@@ -5,6 +5,8 @@
 
 import * as React from 'react';
 import { MessageType } from '../../../shared/types';
+import { MarkdownRenderer } from './MarkdownRenderer';
+import { formatAnalysisAsMarkdown } from '../utils/metricsFormatter';
 
 interface AnalysisTabProps {
   selectedText: string;
@@ -12,6 +14,7 @@ interface AnalysisTabProps {
   result: string;
   isLoading: boolean;
   onLoadingChange: (loading: boolean) => void;
+  statusMessage?: string;
 }
 
 export const AnalysisTab: React.FC<AnalysisTabProps> = ({
@@ -19,7 +22,8 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
   vscode,
   result,
   isLoading,
-  onLoadingChange
+  onLoadingChange,
+  statusMessage
 }) => {
   const [text, setText] = React.useState(selectedText);
 
@@ -53,25 +57,30 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
     });
   };
 
+  const markdownContent = React.useMemo(() => {
+    if (!result) return '';
+    return formatAnalysisAsMarkdown(result);
+  }, [result]);
+
   return (
     <div className="tab-content">
       <h2 className="text-lg font-semibold mb-4">Prose Analysis</h2>
 
-      <div className="mb-4">
+      <div className="input-container">
         <label className="block text-sm font-medium mb-2">
           Text to Analyze
         </label>
         <textarea
-          className="w-full h-32 p-2 border rounded resize-none"
+          className="w-full h-32 resize-none"
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Select text in your editor or paste text here..."
         />
       </div>
 
-      <div className="button-group mb-4">
+      <div className="button-group">
         <button
-          className="btn btn-primary mr-2"
+          className="btn btn-primary"
           onClick={handleAnalyzeDialogue}
           disabled={!text.trim() || isLoading}
         >
@@ -89,16 +98,13 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
       {isLoading && (
         <div className="loading-indicator">
           <div className="spinner"></div>
-          <span>Analyzing...</span>
+          <span>{statusMessage || 'Analyzing...'}</span>
         </div>
       )}
 
       {result && (
         <div className="result-box">
-          <h3 className="text-md font-semibold mb-2">Results</h3>
-          <div className="result-content whitespace-pre-wrap">
-            {result}
-          </div>
+          <MarkdownRenderer content={markdownContent} />
         </div>
       )}
     </div>

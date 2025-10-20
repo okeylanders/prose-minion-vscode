@@ -11,7 +11,8 @@ import {
   MessageType,
   AnalysisResultMessage,
   MetricsResultMessage,
-  ErrorMessage
+  ErrorMessage,
+  StatusMessage
 } from '../../shared/types';
 
 export class MessageHandler {
@@ -59,11 +60,33 @@ export class MessageHandler {
   }
 
   private async handleAnalyzeDialogue(text: string): Promise<void> {
+    const config = vscode.workspace.getConfiguration('proseMinion');
+    const includeCraftGuides = config.get<boolean>('includeCraftGuides') ?? true;
+
+    const loadingMessage = includeCraftGuides
+      ? 'Loading prompts and craft guides...'
+      : 'Loading prompts...';
+
+    this.sendStatus(loadingMessage);
+    await new Promise(resolve => setTimeout(resolve, 100)); // Brief delay to ensure UI updates
+
+    this.sendStatus('Analyzing dialogue with AI...');
     const result = await this.proseAnalysisService.analyzeDialogue(text);
     this.sendAnalysisResult(result.content, result.toolName);
   }
 
   private async handleAnalyzeProse(text: string): Promise<void> {
+    const config = vscode.workspace.getConfiguration('proseMinion');
+    const includeCraftGuides = config.get<boolean>('includeCraftGuides') ?? true;
+
+    const loadingMessage = includeCraftGuides
+      ? 'Loading prompts and craft guides...'
+      : 'Loading prompts...';
+
+    this.sendStatus(loadingMessage);
+    await new Promise(resolve => setTimeout(resolve, 100)); // Brief delay to ensure UI updates
+
+    this.sendStatus('Analyzing prose with AI...');
     const result = await this.proseAnalysisService.analyzeProse(text);
     this.sendAnalysisResult(result.content, result.toolName);
   }
@@ -111,5 +134,14 @@ export class MessageHandler {
       timestamp: Date.now()
     };
     this.webview.postMessage(errorMessage);
+  }
+
+  private sendStatus(message: string): void {
+    const statusMessage: StatusMessage = {
+      type: MessageType.STATUS,
+      message,
+      timestamp: Date.now()
+    };
+    this.webview.postMessage(statusMessage);
   }
 }

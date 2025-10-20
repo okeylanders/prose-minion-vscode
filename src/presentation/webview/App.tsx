@@ -26,6 +26,7 @@ export const App: React.FC = () => {
   const [metricsResult, setMetricsResult] = React.useState<any>(null);
   const [metricsLoading, setMetricsLoading] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [statusMessage, setStatusMessage] = React.useState('');
 
   // Handle messages from extension
   React.useEffect(() => {
@@ -58,7 +59,7 @@ export const App: React.FC = () => {
           break;
 
         case MessageType.STATUS:
-          // Handle status messages if needed
+          setStatusMessage(message.message);
           console.log('Status:', message.message);
           break;
       }
@@ -105,6 +106,7 @@ export const App: React.FC = () => {
             result={analysisResult}
             isLoading={analysisLoading}
             onLoadingChange={setAnalysisLoading}
+            statusMessage={statusMessage}
           />
         )}
 

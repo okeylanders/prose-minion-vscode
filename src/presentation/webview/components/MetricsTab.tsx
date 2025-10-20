@@ -5,6 +5,8 @@
 
 import * as React from 'react';
 import { MessageType } from '../../../shared/types';
+import { MarkdownRenderer } from './MarkdownRenderer';
+import { formatMetricsAsMarkdown } from '../utils/metricsFormatter';
 
 interface MetricsTabProps {
   selectedText: string;
@@ -66,39 +68,44 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
     });
   };
 
+  const markdownContent = React.useMemo(() => {
+    if (!metrics) return '';
+    return formatMetricsAsMarkdown(metrics);
+  }, [metrics]);
+
   return (
     <div className="tab-content">
       <h2 className="text-lg font-semibold mb-4">Prose Metrics</h2>
 
-      <div className="mb-4">
+      <div className="input-container">
         <label className="block text-sm font-medium mb-2">
           Text to Analyze
         </label>
         <textarea
-          className="w-full h-32 p-2 border rounded resize-none"
+          className="w-full h-32 resize-none"
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Select text in your editor or paste text here..."
         />
       </div>
 
-      <div className="button-group mb-4">
+      <div className="button-group">
         <button
-          className="btn btn-secondary mr-2 mb-2"
+          className="btn btn-secondary"
           onClick={handleMeasureProseStats}
           disabled={!text.trim() || isLoading}
         >
           Prose Statistics
         </button>
         <button
-          className="btn btn-secondary mr-2 mb-2"
+          className="btn btn-secondary"
           onClick={handleMeasureStyleFlags}
           disabled={!text.trim() || isLoading}
         >
           Style Flags
         </button>
         <button
-          className="btn btn-secondary mb-2"
+          className="btn btn-secondary"
           onClick={handleMeasureWordFrequency}
           disabled={!text.trim() || isLoading}
         >
@@ -115,17 +122,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
 
       {metrics && (
         <div className="result-box">
-          <h3 className="text-md font-semibold mb-2">Metrics</h3>
-          <div className="metrics-grid">
-            {Object.entries(metrics).map(([key, value]) => (
-              <div key={key} className="metric-item">
-                <span className="metric-label">{key}:</span>
-                <span className="metric-value">
-                  {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
-                </span>
-              </div>
-            ))}
-          </div>
+          <MarkdownRenderer content={markdownContent} />
         </div>
       )}
     </div>
