@@ -1,0 +1,33 @@
+/**
+ * Interface for prose analysis service
+ * Following Dependency Inversion Principle - domain defines the contract
+ */
+
+import { AnalysisResult, MetricsResult } from '../models/AnalysisResult';
+
+export interface IProseAnalysisService {
+  /**
+   * Analyze dialogue and provide microbeat suggestions
+   */
+  analyzeDialogue(text: string): Promise<AnalysisResult>;
+
+  /**
+   * General prose assistance
+   */
+  analyzeProse(text: string): Promise<AnalysisResult>;
+
+  /**
+   * Measure prose statistics (word count, pacing, etc.)
+   */
+  measureProseStats(text: string): Promise<MetricsResult>;
+
+  /**
+   * Analyze style flags and patterns
+   */
+  measureStyleFlags(text: string): Promise<MetricsResult>;
+
+  /**
+   * Measure word frequency
+   */
+  measureWordFrequency(text: string): Promise<MetricsResult>;
+}

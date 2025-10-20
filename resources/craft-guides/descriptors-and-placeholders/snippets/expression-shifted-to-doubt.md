@@ -1,0 +1,104 @@
+# Expression shifted to doubt
+
+## Show-Not-Tell Examples
+
+- The proud tilt of his head wilted like a flower.
+- His steady voice cracked along an unseen fault line.
+- The fire in his eyes curled into a soft wisp of smoke.
+- Self-assurance bled out through trembling lips.
+- The boldness in his grin flinched into stillness.
+- A knot of hesitation tightened around his features.
+- Certain lines etched in his brow went faint.
+- A thunderous certainty became a soft, questioning rainstorm.
+- The light in his gaze flickered on the edge of doubt.
+- Hopeful upright shoulders slouched into uncertainty.
+- His echoing laugh snagged on a quiet hitch.
+- Bold resolution slid away down his spine.
+- A proud stance unraveled like loose stitching.
+- His voice, once brimming with direction, echoed with question.
+- The color of self-reliance drained from his cheeks.
+- Resolve softened into a tentative hush.
+- He clung to silence where conviction once stood.
+- An iron will rusted into reluctant confusion.
+- Like a candle in wind, his surety wavered.
+- His jaw, set like stone, melted into caution.
+- The strong canopy of composure collapsed inward.
+- A confident smirk melted in slow realization.
+- The exhale of bravado caught in his throat.
+- His sure steps faltered on a sudden quake of doubt.
+- Airy confidence chilled into something denser, heavier.
+- A memory of strength ghosted across his uncertain face.
+- He teetered between swagger and uncertain gravity.
+- Self-trust frayed like a thinning rope.
+- Faith in his next words slipped through parted teeth.
+- The halo of boldness dulled to a tentative glow.
+- His winning grin paused, then receded into distance.
+- Gallant posture shrank back into smaller outlines.
+- The firm set of his lips parted under questioning breath.
+- His gaze tore away from light, drifting into murky waters.
+- His shoulders sagged under a newly realized weight.
+- A silent apology replaced the radiance of complete assurance.
+- The thunder in his presence turned to a whisper of uncertainty.
+- He pressed his lips tight, warding off the quiver.
+- The once-straight spine bowed, respectful of unforeseen odds.
+- Confidence wrapped itself in doubt, leaving him motionless.
+- A tightness around his eyes replaced the earlier ease.
+- His laughter grew hollow, like an echo searching for reaffirmation.
+- Proud angles in his face softened to uncertain curves.
+- Each breath stuttered where once it was steady guidance.
+- You could hear confidence recede in the hush of his pause.
+- The statement he readied withered before it reached his tongue.
+- The smile that was certain grew distant and faded at its corners.
+- Sincerity replaced showmanship as he faced new vulnerability.
+- His chest deflated like a balloon losing air.
+- That sparkle of conviction dimmed in a blink of hesitant shrug.
+- The easy wave of his hand hung midair in self-doubt.
+- Pride melted as he fumbled for a thread of dignity.
+- His face seemed to crumble under the weight of discovery.
+- The sure line of his jaw quivered in fleeting hesitance.
+- A slow exhale carried away the last of his self-assured poise.
+- Brightness reeled in, swallowed by a shadow of question.
+- The beacon in his expression flickered, uncertain.
+- Transparency replaced bravado, unveiling a fragile confession.
+- His well-grounded stance found shaky footing.
+- The cool glint in his eye clouded with worry.
+- A quiver at his brow betrayed the slip of confidence.
+- Self-assured words curdled, leaving emptiness behind.
+- Surety drained from his grin, replaced by a plea for answers.
+- The warmth of his pride waned like a dying ember.
+- Bravado sank like a stone in the pit of his stomach.
+- Hesitation tethered his tongue; he couldn’t speak the same certainty.
+- His grand gestures deflated, arms falling in uncertain arcs.
+- Tension spiderwebbed across his features, unraveling the calm veneer.
+- That unwavering façade cracked, revealing fear’s faint lines.
+- His chin lost its bravado, slumping towards his chest.
+- What had glowed with self-belief sputtered like a candle in a draft.
+- A coldness eased into the spaces once filled by bold conviction.
+- Clarity blurred; a hush of confusion stilled his thoughts.
+- The sureness of purpose faded under the haze of second-guessing.
+- Daring angles of his expression bent into an apologetic slump.
+- His bold stride recoiled; next step left dangling in mid-thought.
+- The brash certainty in his tone splintered, leaving him at a loss.
+- Assurance, once pinned in his eyes, fluttered away like an unsettled bird.
+- The brag in his posture softened to self-awareness.
+- The finishing flourish on his words smeared, incomplete and uncertain.
+- A telling flicker in his gaze uncovered a sudden insecurity.
+- Buoyant confidence sank in an undertow of disbelief.
+- A faint tremor surfaced where composure had reigned.
+- Victory lines on his face smudged into unfinished possibility.
+- Self-trust shrank under a subtle, creeping self-doubt.
+- A slow, measured breath turned shaky in the hush of realization.
+- The script in his mind blurred, leaving him ad-lib with caution.
+- The confidence that had soared took a steep dive into hush.
+- Self-assurance halted like a record scratched mid-song.
+- His voice hesitated in the climb, uncertain of the next note.
+- He blinked, as if searching for the place he’d lost his boldness.
+- Surety refracted through a prism of fear in his eyes.
+- A hush of insecurity settled in the lines of his mouth.
+- The bold hue of confidence washed out into gray timidity.
+- His posture drooped, shoulders bowing under a new worry.
+- He seemed to stand outside himself, baffled at his own undone sureness.
+- Confidence evaporated in the heat of a single challenging question.
+- A stunned hush replaced the sure sparkle in his expression.
+- His former bright countenance dimmed like a failing lightbulb.
+- Every ounce of swagger leaked away, leaving him quietly unsteady.

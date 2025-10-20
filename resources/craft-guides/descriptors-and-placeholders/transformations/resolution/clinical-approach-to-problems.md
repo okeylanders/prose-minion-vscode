@@ -1,0 +1,104 @@
+# Clinical Approach To Problems
+
+## Show-Not-Tell Examples
+
+- She stripped the puzzle of extraneous details, drilling straight to its simplest blueprint.  
+- She laid out the variables like specimens on a polished tray, her eyes scanning them for patterns.  
+- She tackled the matter with methodical zeal, clearing away the puzzles of emotion.  
+- She slotted information together with the precision of a lab technician, each piece labeled and logged.  
+- She parsed every angle as though reading a sterile data set, unmoved by distraction.  
+- Her scrutiny carved away fluff until the core remained, stark and unembellished.  
+- She proceeded with an operating room calm, instruments of thought shining under bright logic.  
+- Quietly, she cut through tangled rumors like a surgeon’s scalpel, seeking the problem’s heart.  
+- She navigated each obstacle with crisp deliberation, unwavering in her dissection of facts.  
+- She let emotions settle in the background, zeroing in on reason’s sharp focus.  
+- A chill precision guided her mind, each step measured along well-defined tracks.  
+- She tackled issues by emptying them of frills, wearing the expression of someone counting cells.  
+- Her gaze ran over details like a laser, slicing the intangible into manageable sections.  
+- She removed the color of panic, reducing events to black-and-white, testable components.  
+- She classified the challenge as a scientist dissects samples, ensuring no stray variable remained unchecked.  
+- She pinned assumptions like butterflies in a case, clinically labeling each for closer inspection.  
+- She cordoned off sentiment, preserving the evidence in a meticulously cataloged vault.  
+- She trimmed possibilities with sterile efficiency, discarding outliers in calm swoops.  
+- She opened the situation like an anatomical chart, carefully labeling each muscle, each bone.  
+- She examined the scenario as one might weigh chemical compounds, each measured precisely.  
+- She advanced in methodical increments, each step a note in her steady, unwavering protocol.  
+- She approached confusion like a puzzle box, logically lifting each latch.  
+- She drafted a plan akin to a blueprint, each line crisp, each dimension accounted for.  
+- She approached knots of doubt like a surgeon unraveling a suture: lightly, precisely, and without fuss.  
+- She refined the noise into data, scanning each bit for verifiable truth.  
+- She dashed off emotional entanglements, preferring the clean angles of logic.  
+- She processed stray remarks as if cataloging microbes, ensuring thorough observation without bias.  
+- She compiled evidence in concise bullet points, confident the structure would reveal the answer.  
+- She applied a neat formula to every snarled problem, solving it step by step with unwavering calm.  
+- She layered solutions like a perfect chemical reaction—elements sorted, instructions followed.  
+- She peeled away confusion, placing each fact under a bright, unwavering light.  
+- She withheld judgments until the data had passed her tidy mental lab for testing.  
+- She overcame roadblocks by systematically rearranging each piece in an orderly line.  
+- She handled each question like a controlled test: hypothesis, experiment, conclusion.  
+- She slid feelings to the side, letting the structure of the problem stand alone, uncovered.  
+- She pressed emotional responses into a corner, commanding clarity to speak first.  
+- She treated each hurdle as though it were a diagram on a whiteboard, each arrow clearly defined.  
+- She inverted complexities into simpler shapes, dissecting labyrinths into symmetrical outlines.  
+- She tested every scenario again and again, her mind a pristine environment of checks and balances.  
+- She demanded a blueprint from chaos, sifting out illusions until only the fundamentals remained.  
+- She tightened up the narrative of the puzzle, removing all extraneous verbiage that might mislead.  
+- She approached friction with the efficiency of an engineer, each problem re-formed into solvable steps.  
+- She tapped into pure rational thought, forging a roadmap devoid of subjective turns.  
+- She weighed each detail on a mental scale, discarding imbalance and focusing on equilibrium.  
+- She silenced emotional echoes, reorganizing the question into bullet points with neat subheadings.  
+- She sorted variables as though scanning code, each line debugged and streamlined.  
+- She examined patterns the way a detective inspects footprints, methodically and without emotional coloring.  
+- She reined in distractions with surgical poise, stepping carefully around tangential details.  
+- She executed her plan like clockwork, each gear of reasoning meshing with the next.  
+- She scoured away personal bias, letting raw data shape her conclusion.  
+- She requested only the raw facts, forging a purely evidence-based solution.  
+- She segmented affairs into numbered clauses, each one pinpointing a distinct logical sequence.  
+- She unzipped confusion by converting the problem into a straightforward chart of cause and effect.  
+- She studied the stakes as if they were tissue samples, each cell labeled, no slip-ups allowed.  
+- She defused tension the way one would neutralize acid, sprinkling logic onto heated anxieties.  
+- She navigated the complexity as if it were a maze with an aerial map, ignoring emotional side alleys.  
+- She read unwieldy situations as if scanning medical charts, each symptom systematically addressed.  
+- She requested strict boundaries around the debate, each parameter crisp so the conversation stayed objective.  
+- She reigned over speculation, demanding every guess be tested before acceptance.  
+- She stripped the narrative of metaphor, driving at intangible truths through raw analysis.  
+- She assembled data systematically, verifying each piece the way a chemist verifies precise measurements.  
+- She revered structure, trusting that a clear step-by-step approach outshone any emotional guesswork.  
+- She severed ties to wishful thinking, insisting on results grounded in quantifiable facts.  
+- She replaced dramatic flair with unwavering reason, preferring the dryness of accuracy to flamboyant speech.  
+- She marched through confusion on a path paved by data sets and enumerated logic.  
+- She relied on the arithmetic of logic, each step building on the last in quiet inevitability.  
+- She shaped her process like a manufacturing line, each station cleaning up and refining the last.  
+- She turned hunches inside out, verifying them under the bright lamp of reason.  
+- She walked through complexities as if reading an instruction manual, no nonsense, no decorative language.  
+- She smoothed out entanglements by charting key intersections, forging clarity from muddle.  
+- She combed the facts, every tangle teased into a neat, discernible pattern.  
+- She peeled off sensational layers, revealing a clinical skeleton that refused to lie.  
+- She pinned down stray elements with the calm relentlessness of a naturalist capturing specimens.  
+- She weighed each claim on logic’s scale, dismissing anything that didn’t balance.  
+- She demanded the evidence stand on its own, refusing to let speculation obscure the outcome.  
+- She stabilized the conversation, each piece anchored to a rational anchor.  
+- She grabbed the essential puzzle piece from the tangle, ignoring drama fueling the rest.  
+- She tackled each unanswered question like a formula in a neat blackboard margin.  
+- She locked step with rational procedure, never once flinching at emotional outpourings around her.  
+- She debugged the words spoken, rewriting them into simple lines, free of rhetorical flourish.  
+- She stripped away illusions, letting verified facts line up in a single conclusive row.  
+- She x-rayed the situation, searching behind the obvious for structural weaknesses.  
+- She chloroformed feelings, pinning the problem to a neat partition for deeper study.  
+- She reorganized chaos with impeccable composure, funneling confusion into distinct categories.  
+- She glided through the messy tangles of personalities, forging a clean path grounded in logic.  
+- She got to the root unceremoniously, pivoting from possibilities to the brute inevitability of data.  
+- She recognized emotional overload but calmly set it aside, relying on conclusive metrics.  
+- She pivoted away from clutter, forging a data map that outshone the swirling misunderstandings.  
+- She chiseled away the intangible layers, revealing a crisp block of verifiable reason.  
+- She kept her hands steady on the scalpel of truth, ignoring the tremors of assumption.  
+- She wielded analysis like a confident surgeon, unflinching in the face of messy unknowns.  
+- She took the puzzle into her hands, rotating it puzzle piece by puzzle piece until every edge aligned.  
+- She quarantined ambiguity, shining rational clarity into every shadow of “what if.”  
+- She recorded observations in meticulously numbered lines, leaving no space for interpretive leaps.  
+- She replaced guesswork with verification, plucking out imaginative leaps one by one.  
+- She harnessed an unfeeling logic that transcended the drama, ensuring the data spoke for itself.  
+- She dusted off every corner of ignorance, letting only the clean knowledge remain.  
+- She considered alternate angles only after the primary line of reason stood complete and stable.  
+- She directed her energy toward forming a sterilized environment for logic, far from the chaos of feelings.  
+- She sliced into the problem with unwavering directness, ensuring that clarity stood triumphantly in the end.

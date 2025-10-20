@@ -1,0 +1,135 @@
+{
+  "name": "prose-minion-vscode",
+  "displayName": "Prose Minion",
+  "description": "AI-powered prose analysis and writing assistance for creative writers",
+  "version": "0.0.1",
+  "publisher": "your-publisher-name",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "prose-minion",
+          "title": "Prose Minion",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "prose-minion": [
+        {
+          "type": "webview",
+          "id": "prose-minion.toolsView",
+          "name": "Writing Tools"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "prose-minion.analyzeSelection",
+        "title": "Analyze with Prose Minion"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "editorHasSelection",
+          "command": "prose-minion.analyzeSelection",
+          "group": "prose-minion"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Prose Minion",
+      "properties": {
+        "proseMinion.openRouterApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "OpenRouter API key for AI-powered analysis. Get one at https://openrouter.ai/",
+          "order": 1
+        },
+        "proseMinion.model": {
+          "type": "string",
+          "default": "anthropic/claude-3.5-sonnet",
+          "enum": [
+            "anthropic/claude-3.5-sonnet",
+            "anthropic/claude-3-opus",
+            "anthropic/claude-3-haiku",
+            "openai/gpt-4-turbo",
+            "openai/gpt-4o",
+            "google/gemini-pro-1.5"
+          ],
+          "enumDescriptions": [
+            "Claude 3.5 Sonnet - Best balance of quality and speed (Recommended)",
+            "Claude 3 Opus - Highest quality, best for detailed analysis",
+            "Claude 3 Haiku - Fastest and most affordable",
+            "GPT-4 Turbo - High quality alternative",
+            "GPT-4o - Multimodal, fast, good quality",
+            "Gemini 1.5 Pro - Large context window"
+          ],
+          "description": "AI model to use for prose analysis",
+          "order": 2
+        },
+        "proseMinion.includeCraftGuides": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include craft guides in AI prompts (provides additional writing guidance but uses more tokens)",
+          "order": 3
+        },
+        "proseMinion.temperature": {
+          "type": "number",
+          "default": 0.7,
+          "minimum": 0,
+          "maximum": 2,
+          "description": "AI creativity level (0 = focused, 2 = very creative)",
+          "order": 4
+        },
+        "proseMinion.maxTokens": {
+          "type": "number",
+          "default": 2000,
+          "minimum": 100,
+          "maximum": 8000,
+          "description": "Maximum length of AI responses",
+          "order": 5
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "webpack --mode production",
+    "watch": "webpack --mode development --watch",
+    "package": "vsce package",
+    "lint": "eslint src --ext ts,tsx"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/react": "^17.0.0",
+    "@types/react-dom": "^17.0.0",
+    "@types/vscode": "^1.75.0",
+    "@typescript-eslint/eslint-plugin": "^5.0.0",
+    "@typescript-eslint/parser": "^5.0.0",
+    "autoprefixer": "^10.4.0",
+    "css-loader": "^6.0.0",
+    "eslint": "^8.0.0",
+    "postcss": "^8.4.0",
+    "postcss-loader": "^7.0.0",
+    "style-loader": "^3.0.0",
+    "tailwindcss": "^3.0.0",
+    "ts-loader": "^9.0.0",
+    "typescript": "^4.9.0",
+    "webpack": "^5.0.0",
+    "webpack-cli": "^5.0.0"
+  },
+  "dependencies": {
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2"
+  }
+}
