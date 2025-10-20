@@ -91,21 +91,21 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
 
       <div className="button-group">
         <button
-          className="btn btn-secondary"
+          className="btn btn-primary"
           onClick={handleMeasureProseStats}
           disabled={!text.trim() || isLoading}
         >
           Prose Statistics
         </button>
         <button
-          className="btn btn-secondary"
+          className="btn btn-primary"
           onClick={handleMeasureStyleFlags}
           disabled={!text.trim() || isLoading}
         >
           Style Flags
         </button>
         <button
-          className="btn btn-secondary"
+          className="btn btn-primary"
           onClick={handleMeasureWordFrequency}
           disabled={!text.trim() || isLoading}
         >
