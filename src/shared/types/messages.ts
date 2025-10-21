@@ -21,7 +21,10 @@ export enum MessageType {
 
   // UI state messages
   TAB_CHANGED = 'tab_changed',
-  SELECTION_UPDATED = 'selection_updated'
+  SELECTION_UPDATED = 'selection_updated',
+
+  // Guide actions
+  OPEN_GUIDE_FILE = 'open_guide_file'
 }
 
 export enum TabId {
@@ -67,19 +70,26 @@ export interface TabChangedMessage extends BaseMessage {
   tabId: TabId;
 }
 
+export interface OpenGuideFileMessage extends BaseMessage {
+  type: MessageType.OPEN_GUIDE_FILE;
+  guidePath: string;  // Relative path from craft-guides/
+}
+
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
   | AnalyzeProseMessage
   | MeasureProseStatsMessage
   | MeasureStyleFlagsMessage
   | MeasureWordFrequencyMessage
-  | TabChangedMessage;
+  | TabChangedMessage
+  | OpenGuideFileMessage;
 
 // Messages from extension to webview
 export interface AnalysisResultMessage extends BaseMessage {
   type: MessageType.ANALYSIS_RESULT;
   result: string;
   toolName: string;
+  usedGuides?: string[];  // Array of guide paths that were used in the analysis
 }
 
 export interface MetricsResultMessage extends BaseMessage {
@@ -97,6 +107,7 @@ export interface ErrorMessage extends BaseMessage {
 export interface StatusMessage extends BaseMessage {
   type: MessageType.STATUS;
   message: string;
+  guideNames?: string;  // Comma-separated list of guide names for ticker animation
 }
 
 export interface SelectionUpdatedMessage extends BaseMessage {

@@ -3,9 +3,8 @@
  * General prose analysis and improvement suggestions
  */
 
-import { OpenRouterClient, OpenRouterMessage } from '../../infrastructure/api/OpenRouterClient';
 import { PromptLoader } from '../shared/prompts';
-import { GuideLoader } from '../shared/guides';
+import { AIResourceOrchestrator, ExecutionResult } from '../../application/services/AIResourceOrchestrator';
 
 export interface ProseAssistantInput {
   text: string;
@@ -19,37 +18,32 @@ export interface ProseAssistantOptions {
 
 export class ProseAssistant {
   constructor(
-    private readonly openRouterClient: OpenRouterClient,
-    private readonly promptLoader: PromptLoader,
-    private readonly guideLoader: GuideLoader
+    private readonly aiResourceOrchestrator: AIResourceOrchestrator,
+    private readonly promptLoader: PromptLoader
   ) {}
 
-  async analyze(input: ProseAssistantInput, options?: ProseAssistantOptions): Promise<string> {
-    // Load system prompts
+  async analyze(input: ProseAssistantInput, options?: ProseAssistantOptions): Promise<ExecutionResult> {
+    // Load system prompts (tool-specific and shared)
     const sharedPrompts = await this.promptLoader.loadSharedPrompts();
     const toolPrompts = await this.loadToolPrompts();
-    const guides = options?.includeCraftGuides !== false ? await this.loadGuides() : '';
 
-    // Build system message
-    const systemMessage = this.buildSystemMessage(
-      sharedPrompts,
-      toolPrompts,
-      guides
-    );
+    // Build system message (prompts only, no guides yet)
+    const systemMessage = this.buildSystemMessage(sharedPrompts, toolPrompts);
 
-    // Build user message
+    // Build user message (just the prose text)
     const userMessage = this.buildUserMessage(input.text);
 
-    // Call OpenRouter API
-    const messages: OpenRouterMessage[] = [
-      { role: 'system', content: systemMessage },
-      { role: 'user', content: userMessage }
-    ];
-
-    return await this.openRouterClient.createChatCompletion(messages, {
-      temperature: options?.temperature ?? 0.7,
-      maxTokens: options?.maxTokens ?? 2500
-    });
+    // Use orchestrator to execute with agent capabilities (guide support)
+    return await this.aiResourceOrchestrator.executeWithAgentCapabilities(
+      'prose-assistant',
+      systemMessage,
+      userMessage,
+      {
+        includeCraftGuides: options?.includeCraftGuides,
+        temperature: options?.temperature ?? 0.7,
+        maxTokens: options?.maxTokens ?? 2500
+      }
+    );
   }
 
   private async loadToolPrompts(): Promise<string> {
@@ -64,30 +58,14 @@ export class ProseAssistant {
     }
   }
 
-  private async loadGuides(): Promise<string> {
-    try {
-      return await this.guideLoader.loadGuides([
-        'show-dont-tell',
-        'pacing',
-        'sensory-details',
-        'voice'
-      ]);
-    } catch (error) {
-      // Guides are optional
-      return '';
-    }
-  }
-
   private buildSystemMessage(
     sharedPrompts: string,
-    toolPrompts: string,
-    guides: string
+    toolPrompts: string
   ): string {
     const parts = [
       'You are a creative writing assistant specializing in prose analysis and improvement.',
       toolPrompts || this.getDefaultInstructions(),
-      sharedPrompts,
-      guides
+      sharedPrompts
     ].filter(Boolean);
 
     return parts.join('\n\n---\n\n');

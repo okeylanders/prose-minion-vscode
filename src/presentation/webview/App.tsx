@@ -27,6 +27,8 @@ export const App: React.FC = () => {
   const [metricsLoading, setMetricsLoading] = React.useState(false);
   const [error, setError] = React.useState('');
   const [statusMessage, setStatusMessage] = React.useState('');
+  const [guideNames, setGuideNames] = React.useState<string>('');
+  const [usedGuides, setUsedGuides] = React.useState<string[]>([]);
 
   // Handle messages from extension
   React.useEffect(() => {
@@ -40,7 +42,10 @@ export const App: React.FC = () => {
 
         case MessageType.ANALYSIS_RESULT:
           setAnalysisResult(message.result);
+          setUsedGuides(message.usedGuides || []);
           setAnalysisLoading(false);
+          setStatusMessage(''); // Clear status message
+          setGuideNames(''); // Clear guide names
           setError('');
           break;
 
@@ -60,7 +65,8 @@ export const App: React.FC = () => {
 
         case MessageType.STATUS:
           setStatusMessage(message.message);
-          console.log('Status:', message.message);
+          setGuideNames(message.guideNames || '');
+          console.log('Status:', message.message, message.guideNames ? `(${message.guideNames})` : '');
           break;
       }
     };
@@ -107,6 +113,8 @@ export const App: React.FC = () => {
             isLoading={analysisLoading}
             onLoadingChange={setAnalysisLoading}
             statusMessage={statusMessage}
+            guideNames={guideNames}
+            usedGuides={usedGuides}
           />
         )}
 

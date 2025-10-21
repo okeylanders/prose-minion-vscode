@@ -10,21 +10,39 @@ export class GuideLoader {
 
   /**
    * Load a craft guide from a markdown file
+   * @param guidePath Can be either:
+   *   - Simple name: "dialogue-tags" (assumes root + .md extension)
+   *   - Full path: "scene-example-guides/basketball-game.md"
    */
-  async loadGuide(guideName: string): Promise<string> {
-    const fullPath = vscode.Uri.joinPath(
-      this.extensionUri,
-      'resources',
-      'craft-guides',
-      `${guideName}.md`
-    );
+  async loadGuide(guidePath: string): Promise<string> {
+    // Determine if this is a simple name or a full path
+    const isFullPath = guidePath.includes('/') || guidePath.endsWith('.md');
+
+    let fullPath: vscode.Uri;
+    if (isFullPath) {
+      // Use path as-is (from GuideRegistry)
+      fullPath = vscode.Uri.joinPath(
+        this.extensionUri,
+        'resources',
+        'craft-guides',
+        guidePath
+      );
+    } else {
+      // Legacy behavior: assume root level and add .md extension
+      fullPath = vscode.Uri.joinPath(
+        this.extensionUri,
+        'resources',
+        'craft-guides',
+        `${guidePath}.md`
+      );
+    }
 
     try {
       const content = await vscode.workspace.fs.readFile(fullPath);
       return Buffer.from(content).toString('utf-8');
     } catch (error) {
-      console.error(`Failed to load guide: ${guideName}`, error);
-      throw new Error(`Failed to load guide: ${guideName}`);
+      console.error(`Failed to load guide: ${guidePath}`, error);
+      throw new Error(`Failed to load guide: ${guidePath}`);
     }
   }
 

@@ -176,6 +176,10 @@ input[type="text"]:focus {
   color: var(--vscode-descriptionForeground);
 }
 
+.loading-text {
+  flex: 1;
+}
+
 .spinner {
   width: 16px;
   height: 16px;
@@ -183,11 +187,38 @@ input[type="text"]:focus {
   border-top-color: transparent;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
 }
 
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* Guide ticker animation */
+.guide-ticker-container {
+  margin-top: var(--spacing-xs);
+  overflow: hidden;
+  max-width: 100%;
+  position: relative;
+}
+
+.guide-ticker {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+  white-space: nowrap;
+  animation: ticker 15s linear infinite;
+}
+
+@keyframes ticker {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
   }
 }
 
@@ -352,4 +383,51 @@ input[type="text"]:focus {
 /* Utility classes */
 .text-gray-500 {
   color: var(--vscode-descriptionForeground);
+}
+
+/* Guides footer */
+.guides-footer {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 2px solid var(--vscode-panel-border);
+}
+
+.guides-footer-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  margin-bottom: var(--spacing-sm);
+}
+
+.guides-footer-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.guide-tag {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 3px;
+  border: 1px solid var(--vscode-panel-border);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--vscode-font-family);
+}
+
+.guide-tag:hover {
+  background-color: var(--vscode-button-hoverBackground);
+  color: var(--vscode-button-foreground);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  border-color: var(--vscode-focusBorder);
+}
+
+.guide-tag:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
