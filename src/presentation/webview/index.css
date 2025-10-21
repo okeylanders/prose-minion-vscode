@@ -63,6 +63,10 @@ body {
   transition: all 0.2s ease;
   font-size: 0.875rem;
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
 }
 
 .tab-button:hover {
@@ -77,6 +81,15 @@ body {
   font-weight: 600;
   color: var(--vscode-foreground);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.tab-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.tab-label {
+  line-height: 1;
 }
 
 /* Tab content */

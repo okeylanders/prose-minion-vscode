@@ -13,9 +13,9 @@ interface TabBarProps {
 
 export const TabBar: React.FC<TabBarProps> = ({ activeTab, onTabChange }) => {
   const tabs = [
-    { id: TabId.ANALYSIS, label: 'Analysis' },
-    { id: TabId.SUGGESTIONS, label: 'Suggestions' },
-    { id: TabId.METRICS, label: 'Metrics' }
+    { id: TabId.ANALYSIS, label: 'Analysis', icon: '🤖' },
+    { id: TabId.SUGGESTIONS, label: 'Suggestions', icon: '💡' },
+    { id: TabId.METRICS, label: 'Metrics', icon: '📊' }
   ];
 
   return (
@@ -26,7 +26,8 @@ export const TabBar: React.FC<TabBarProps> = ({ activeTab, onTabChange }) => {
           className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
           onClick={() => onTabChange(tab.id)}
         >
-          {tab.label}
+          <span className="tab-icon">{tab.icon}</span>
+          <span className="tab-label">{tab.label}</span>
         </button>
       ))}
     </div>
