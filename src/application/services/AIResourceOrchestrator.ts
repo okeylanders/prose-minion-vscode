@@ -50,7 +50,9 @@ export class AIResourceOrchestrator {
     userMessage: string,
     options: AIOptions = {}
   ): Promise<ExecutionResult> {
-    this.outputChannel?.appendLine(`\n[AIResourceOrchestrator] Starting conversation for ${toolName}`);
+    this.outputChannel?.appendLine(
+      `\n[AIResourceOrchestrator] Starting conversation for ${toolName} (model: ${this.openRouterClient.getModel()})`
+    );
     const conversationId = this.conversationManager.startConversation(toolName, systemMessage);
     const usedGuides: string[] = [];
 
@@ -87,7 +89,9 @@ export class AIResourceOrchestrator {
       });
 
       let messages = this.conversationManager.getMessages(conversationId);
-      this.outputChannel?.appendLine(`[AIResourceOrchestrator] Calling OpenRouter API (${messages.length} messages in context)`);
+      this.outputChannel?.appendLine(
+        `[AIResourceOrchestrator] Calling OpenRouter API (${messages.length} messages in context) using model ${this.openRouterClient.getModel()}`
+      );
       let response = await this.openRouterClient.createChatCompletion(messages, {
         temperature: options.temperature,
         maxTokens: options.maxTokens
@@ -155,6 +159,46 @@ export class AIResourceOrchestrator {
       };
     } finally {
       // Clean up conversation after completion
+      this.conversationManager.deleteConversation(conversationId);
+    }
+  }
+
+  /**
+   * Execute an AI request without guide-handling capabilities
+   * Suitable for single-turn interactions that only need system + user prompts
+   */
+  async executeWithoutCapabilities(
+    toolName: string,
+    systemMessage: string,
+    userMessage: string,
+    options: AIOptions = {}
+  ): Promise<ExecutionResult> {
+    this.outputChannel?.appendLine(
+      `\n[AIResourceOrchestrator] Starting single-turn request for ${toolName} (model: ${this.openRouterClient.getModel()})`
+    );
+    const conversationId = this.conversationManager.startConversation(toolName, systemMessage);
+
+    try {
+      this.conversationManager.addMessage(conversationId, {
+        role: 'user',
+        content: userMessage
+      });
+
+      const messages = this.conversationManager.getMessages(conversationId);
+      this.outputChannel?.appendLine(
+        `[AIResourceOrchestrator] Calling OpenRouter API (${messages.length} messages in context) using model ${this.openRouterClient.getModel()}`
+      );
+      const response = await this.openRouterClient.createChatCompletion(messages, {
+        temperature: options.temperature,
+        maxTokens: options.maxTokens
+      });
+      this.outputChannel?.appendLine(`[AIResourceOrchestrator] Received response from AI (${response.length} chars)\n`);
+
+      return {
+        content: response,
+        usedGuides: []
+      };
+    } finally {
       this.conversationManager.deleteConversation(conversationId);
     }
   }

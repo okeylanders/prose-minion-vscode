@@ -7,6 +7,7 @@ export enum MessageType {
   // Analysis tab messages
   ANALYZE_DIALOGUE = 'analyze_dialogue',
   ANALYZE_PROSE = 'analyze_prose',
+  LOOKUP_DICTIONARY = 'lookup_dictionary',
 
   // Metrics tab messages
   MEASURE_PROSE_STATS = 'measure_prose_stats',
@@ -16,6 +17,7 @@ export enum MessageType {
   // Results messages
   ANALYSIS_RESULT = 'analysis_result',
   METRICS_RESULT = 'metrics_result',
+  DICTIONARY_RESULT = 'dictionary_result',
   ERROR = 'error',
   STATUS = 'status',
 
@@ -30,7 +32,8 @@ export enum MessageType {
 export enum TabId {
   ANALYSIS = 'analysis',
   SUGGESTIONS = 'suggestions',
-  METRICS = 'metrics'
+  METRICS = 'metrics',
+  UTILITIES = 'utilities'
 }
 
 // Base message interface
@@ -48,6 +51,12 @@ export interface AnalyzeDialogueMessage extends BaseMessage {
 export interface AnalyzeProseMessage extends BaseMessage {
   type: MessageType.ANALYZE_PROSE;
   text: string;
+}
+
+export interface LookupDictionaryMessage extends BaseMessage {
+  type: MessageType.LOOKUP_DICTIONARY;
+  word: string;
+  contextText?: string;
 }
 
 export interface MeasureProseStatsMessage extends BaseMessage {
@@ -78,6 +87,7 @@ export interface OpenGuideFileMessage extends BaseMessage {
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
   | AnalyzeProseMessage
+  | LookupDictionaryMessage
   | MeasureProseStatsMessage
   | MeasureStyleFlagsMessage
   | MeasureWordFrequencyMessage
@@ -95,6 +105,12 @@ export interface AnalysisResultMessage extends BaseMessage {
 export interface MetricsResultMessage extends BaseMessage {
   type: MessageType.METRICS_RESULT;
   result: any;
+  toolName: string;
+}
+
+export interface DictionaryResultMessage extends BaseMessage {
+  type: MessageType.DICTIONARY_RESULT;
+  result: string;
   toolName: string;
 }
 
@@ -118,6 +134,7 @@ export interface SelectionUpdatedMessage extends BaseMessage {
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
   | MetricsResultMessage
+  | DictionaryResultMessage
   | ErrorMessage
   | StatusMessage
   | SelectionUpdatedMessage;

@@ -8,6 +8,7 @@ import { TabBar } from './components/TabBar';
 import { AnalysisTab } from './components/AnalysisTab';
 import { MetricsTab } from './components/MetricsTab';
 import { SuggestionsTab } from './components/SuggestionsTab';
+import { UtilitiesTab } from './components/UtilitiesTab';
 import {
   TabId,
   MessageType,
@@ -25,6 +26,8 @@ export const App: React.FC = () => {
   const [analysisLoading, setAnalysisLoading] = React.useState(false);
   const [metricsResult, setMetricsResult] = React.useState<any>(null);
   const [metricsLoading, setMetricsLoading] = React.useState(false);
+  const [utilitiesResult, setUtilitiesResult] = React.useState('');
+  const [utilitiesLoading, setUtilitiesLoading] = React.useState(false);
   const [error, setError] = React.useState('');
   const [statusMessage, setStatusMessage] = React.useState('');
   const [guideNames, setGuideNames] = React.useState<string>('');
@@ -55,12 +58,22 @@ export const App: React.FC = () => {
           setError('');
           break;
 
+        case MessageType.DICTIONARY_RESULT:
+          setUtilitiesResult(message.result);
+          setUtilitiesLoading(false);
+          setStatusMessage('');
+          setGuideNames('');
+          setError('');
+          break;
+
         case MessageType.ERROR:
           setError(message.message);
           setAnalysisLoading(false);
           setMetricsLoading(false);
+          setUtilitiesLoading(false);
           setAnalysisResult('');
           setMetricsResult(null);
+          setUtilitiesResult('');
           break;
 
         case MessageType.STATUS:
@@ -132,6 +145,17 @@ export const App: React.FC = () => {
             metrics={metricsResult}
             isLoading={metricsLoading}
             onLoadingChange={setMetricsLoading}
+          />
+        )}
+
+        {activeTab === TabId.UTILITIES && (
+          <UtilitiesTab
+            selectedText={selectedText}
+            vscode={vscode}
+            result={utilitiesResult}
+            isLoading={utilitiesLoading}
+            onLoadingChange={setUtilitiesLoading}
+            statusMessage={statusMessage}
           />
         )}
       </main>

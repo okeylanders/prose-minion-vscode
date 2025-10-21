@@ -42,6 +42,10 @@ export class OpenRouterClient {
     this.model = model || 'z-ai/glm-4.6';
   }
 
+  getModel(): string {
+    return this.model;
+  }
+
   async createChatCompletion(
     messages: OpenRouterMessage[],
     options?: {

@@ -17,11 +17,13 @@ import { WordFrequency } from '../../tools/measure/wordFrequency';
 import { AIResourceOrchestrator, StatusCallback } from '../../application/services/AIResourceOrchestrator';
 import { ConversationManager } from '../../application/services/ConversationManager';
 import { GuideRegistry } from '../../infrastructure/guides/GuideRegistry';
+import { DictionaryUtility } from '../../tools/utility/dictionaryUtility';
 
 export class ProseAnalysisService implements IProseAnalysisService {
   private openRouterClient?: OpenRouterClient;
   private dialogueAssistant?: DialogueMicrobeatAssistant;
   private proseAssistant?: ProseAssistant;
+  private dictionaryUtility?: DictionaryUtility;
   private proseStats: PassageProseStats;
   private styleFlags: StyleFlags;
   private wordFrequency: WordFrequency;
@@ -70,6 +72,11 @@ export class ProseAnalysisService implements IProseAnalysisService {
         );
 
         this.proseAssistant = new ProseAssistant(
+          aiResourceOrchestrator,
+          promptLoader
+        );
+
+        this.dictionaryUtility = new DictionaryUtility(
           aiResourceOrchestrator,
           promptLoader
         );
@@ -172,6 +179,39 @@ export class ProseAnalysisService implements IProseAnalysisService {
       return AnalysisResultFactory.createMetricsResult('word_frequency', {
         error: error instanceof Error ? error.message : String(error)
       });
+    }
+  }
+
+  async lookupDictionary(word: string, contextText?: string): Promise<AnalysisResult> {
+    if (!this.dictionaryUtility) {
+      return AnalysisResultFactory.createAnalysisResult(
+        'dictionary_lookup',
+        this.getApiKeyWarning()
+      );
+    }
+
+    try {
+      const options = this.getToolOptions();
+      const executionResult = await this.dictionaryUtility.lookup(
+        {
+          word,
+          contextText
+        },
+        {
+          temperature: options.temperature ?? 0.4,
+          maxTokens: options.maxTokens ?? 2200
+        }
+      );
+
+      return AnalysisResultFactory.createAnalysisResult(
+        'dictionary_lookup',
+        executionResult.content
+      );
+    } catch (error) {
+      return AnalysisResultFactory.createAnalysisResult(
+        'dictionary_lookup',
+        `Error: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 

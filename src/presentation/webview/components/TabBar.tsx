@@ -15,7 +15,8 @@ export const TabBar: React.FC<TabBarProps> = ({ activeTab, onTabChange }) => {
   const tabs = [
     { id: TabId.ANALYSIS, label: 'Analysis', icon: '🤖' },
     { id: TabId.SUGGESTIONS, label: 'Suggestions', icon: '💡' },
-    { id: TabId.METRICS, label: 'Metrics', icon: '📊' }
+    { id: TabId.METRICS, label: 'Metrics', icon: '📊' },
+    { id: TabId.UTILITIES, label: 'Utilities', icon: '🛠️' }
   ];
 
   return (

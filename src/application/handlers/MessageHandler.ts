@@ -11,6 +11,7 @@ import {
   MessageType,
   AnalysisResultMessage,
   MetricsResultMessage,
+  DictionaryResultMessage,
   ErrorMessage,
   StatusMessage
 } from '../../shared/types';
@@ -42,6 +43,10 @@ export class MessageHandler {
           await this.handleAnalyzeProse(message.text);
           break;
 
+        case MessageType.LOOKUP_DICTIONARY:
+          await this.handleLookupDictionary(message.word, message.contextText);
+          break;
+
         case MessageType.MEASURE_PROSE_STATS:
           await this.handleMeasureProseStats(message.text);
           break;
@@ -71,6 +76,20 @@ export class MessageHandler {
         error instanceof Error ? error.message : String(error)
       );
     }
+  }
+
+  private async handleLookupDictionary(word: string, contextText?: string): Promise<void> {
+    if (!word.trim()) {
+      this.sendError('Dictionary lookup requires a word to search');
+      return;
+    }
+
+    this.sendStatus('Preparing dictionary prompt...');
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    this.sendStatus(`Generating dictionary entry for "${word}"...`);
+    const result = await this.proseAnalysisService.lookupDictionary(word, contextText);
+    this.sendDictionaryResult(result.content, result.toolName);
   }
 
   private async handleAnalyzeDialogue(text: string): Promise<void> {
@@ -134,6 +153,16 @@ export class MessageHandler {
   private sendMetricsResult(result: any, toolName: string): void {
     const message: MetricsResultMessage = {
       type: MessageType.METRICS_RESULT,
+      result,
+      toolName,
+      timestamp: Date.now()
+    };
+    this.webview.postMessage(message);
+  }
+
+  private sendDictionaryResult(result: string, toolName: string): void {
+    const message: DictionaryResultMessage = {
+      type: MessageType.DICTIONARY_RESULT,
       result,
       toolName,
       timestamp: Date.now()
