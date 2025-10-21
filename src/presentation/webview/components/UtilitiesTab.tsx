@@ -27,27 +27,42 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
 }) => {
   const [word, setWord] = React.useState('');
   const [context, setContext] = React.useState('');
+  const [hasWordBeenEdited, setHasWordBeenEdited] = React.useState(false);
+
+  const enforceWordLimit = React.useCallback((value: string): string => {
+    const normalized = value.replace(/\s+/g, ' ').trim();
+    if (!normalized) {
+      return '';
+    }
+
+    const tokens = normalized.split(' ').filter(Boolean);
+    return tokens.slice(0, 3).join(' ');
+  }, []);
 
   React.useEffect(() => {
     const trimmed = selectedText.trim();
-    if (!trimmed) {
+    if (!trimmed || hasWordBeenEdited) {
       return;
     }
 
     const tokens = trimmed.split(/\s+/);
-    const primaryWord = tokens[0]?.replace(/^[^A-Za-z'-]+|[^A-Za-z'-]+$/g, '') ?? '';
+    const sanitizedTokens = tokens
+      .map(token => token.replace(/^[^A-Za-z'-]+|[^A-Za-z'-]+$/g, ''))
+      .filter(Boolean);
 
-    setWord(primaryWord || trimmed);
-
-    if (tokens.length > 1) {
-      setContext(trimmed);
-    } else {
-      setContext('');
+    if (sanitizedTokens.length === 0) {
+      return;
     }
-  }, [selectedText]);
+
+    const candidate = enforceWordLimit(sanitizedTokens.join(' '));
+    if (candidate) {
+      setWord(candidate);
+    }
+  }, [selectedText, hasWordBeenEdited, enforceWordLimit]);
 
   const handleLookup = () => {
-    if (!word.trim()) {
+    const sanitizedWord = enforceWordLimit(word);
+    if (!sanitizedWord) {
       return;
     }
 
@@ -55,9 +70,15 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
 
     vscode.postMessage({
       type: MessageType.LOOKUP_DICTIONARY,
-      word: word.trim(),
+      word: sanitizedWord,
       contextText: context.trim() || undefined
     });
+  };
+
+  const handleWordChange = (value: string) => {
+    const sanitized = enforceWordLimit(value);
+    setWord(sanitized);
+    setHasWordBeenEdited(Boolean(sanitized));
   };
 
   const markdownContent = React.useMemo(() => {
@@ -77,7 +98,7 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
           className="w-full"
           type="text"
           value={word}
-          onChange={(e) => setWord(e.target.value)}
+          onChange={(e) => handleWordChange(e.target.value)}
           placeholder="Enter the word you want to explore..."
         />
       </div>
