@@ -51,6 +51,7 @@ src/
    - HTTP client for OpenRouter API
    - Handles API key management from VSCode settings
    - Supports multiple AI models (Claude, GPT-4, Gemini)
+   - Instantiated per model scope (assistant, dictionary, context)
 
 5. **Prompt System** ([prompts.ts](src/tools/shared/prompts.ts))
    - Loads system prompts from `resources/system-prompts/`
@@ -84,8 +85,8 @@ src/
 #### Adding New Configuration Options
 
 1. Update `package.json` in the `contributes.configuration` section
-2. Access settings via `vscode.workspace.getConfiguration('proseMinion')`
-3. Pass settings through the service layer (dependency injection)
+2. Access scoped settings via `vscode.workspace.getConfiguration('proseMinion')`
+3. Pass settings through the service layer (dependency injection) and ensure the relevant orchestrator is refreshed (`ProseAnalysisService.refreshConfiguration`)
 
 ### Code Style and Patterns
 
@@ -134,7 +135,7 @@ npm run package  # Creates .vsix file
 ### OpenRouter API
 
 - API key configured in VSCode settings
-- Supports multiple models: Claude 3.5 Sonnet (default), GPT-4, Gemini
+- Supports multiple models with per-scope overrides (`assistantModel`, `dictionaryModel`, `contextModel`) and a legacy fallback (`model`)
 - Configurable temperature and max tokens
 - Cost tracking available through OpenRouter dashboard
 
@@ -143,7 +144,7 @@ npm run package  # Creates .vsix file
 - Uses webview API for React UI
 - Context menu integration for "Analyze with Prose Minion"
 - Real-time selection updates (optional)
-- Configuration API for user settings
+- Configuration API for user settings (keep UI dropdowns and settings synchronized)
 
 ## Future Enhancements
 
@@ -164,7 +165,8 @@ When working with this codebase:
 4. **Test Incrementally**: Run the extension after changes to verify behavior
 5. **Document Changes**: Update relevant documentation when adding features
 6. **Consider Performance**: Be mindful of API costs and token usage
-7. **Maintain Backward Compatibility**: Don't break existing functionality
+7. **Maintain Backward Compatibility**: Don't break existing functionality; preserve the legacy `proseMinion.model` fallback
+8. **Respect Persistence Hooks**: When updating UI or handlers, keep the result cache (`MessageHandler`) and `vscode.setState` synchronization intact so users don't lose in-progress work
 
 ## Questions and Support
 

@@ -10,12 +10,14 @@ This extension brings the power of the Prose Minion MCP tools directly into VS C
 
 - **Dialogue Analysis**: Get suggestions for dialogue tags and action beats
 - **Prose Analysis**: General prose assistance and improvements
+- **Inline Model Picker**: Choose the OpenRouter model per assistant workflow without leaving the panel
 
 ### Metrics Tab
 
 - **Prose Statistics**: Word count, sentence analysis, pacing metrics
 - **Style Flags**: Identify style patterns and potential issues
 - **Word Frequency**: Analyze word usage patterns
+- **Inline Model Picker**: Select a dedicated model for dictionary utilities
 
 ### Suggestions Tab
 
@@ -25,8 +27,9 @@ This extension brings the power of the Prose Minion MCP tools directly into VS C
 
 1. Open the Prose Minion panel from the activity bar
 2. Select text in your editor or paste text into the input field
-3. Choose the appropriate tool from the tabs
-4. Click the analysis button to get results
+3. (Optional) Pick the model you want to use from the dropdown below the tab bar
+4. Choose the appropriate tool from the tabs
+5. Click the analysis button to get results
 
 ## Architecture
 
@@ -67,9 +70,15 @@ npm run build
 
 This extension is designed to integrate with the [Prose Minion MCP tool](../example-repos/prose-minion/).
 
-Currently using placeholder implementations. Future versions will integrate with:
-- OpenRouter API for AI-powered analysis
-- MCP protocol for tool communication
+### Model & Session Management
+
+The extension manages three dedicated OpenRouter client stacks—assistant, dictionary, and (future) context bot—so each feature can run against a different model without reloading. Responses are cached while the panel is hidden, and UI state is restored when you return to the view, so long-running conversations continue seamlessly.
+
+### Upcoming Integrations
+
+- Deeper MCP protocol support for guide retrieval
+- Additional analysis personas (character voice, setting analysis)
+- Project-aware prompts and reusable presets
 
 ## License
 

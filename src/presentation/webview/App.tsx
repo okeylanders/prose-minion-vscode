@@ -22,21 +22,62 @@ import {
 declare function acquireVsCodeApi(): any;
 const vscode = acquireVsCodeApi();
 
+type PersistedState = {
+  activeTab: TabId;
+  selectedText: string;
+  analysisResult: string;
+  metricsResult: any;
+  utilitiesResult: string;
+  statusMessage: string;
+  guideNames: string;
+  usedGuides: string[];
+  modelSelections: Partial<Record<ModelScope, string>>;
+};
+
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = React.useState<TabId>(TabId.ANALYSIS);
-  const [selectedText, setSelectedText] = React.useState('');
-  const [analysisResult, setAnalysisResult] = React.useState('');
+  const persistedState = (vscode.getState?.() as PersistedState | undefined) ?? undefined;
+
+  const [activeTab, setActiveTab] = React.useState<TabId>(persistedState?.activeTab ?? TabId.ANALYSIS);
+  const [selectedText, setSelectedText] = React.useState(persistedState?.selectedText ?? '');
+  const [analysisResult, setAnalysisResult] = React.useState(persistedState?.analysisResult ?? '');
   const [analysisLoading, setAnalysisLoading] = React.useState(false);
-  const [metricsResult, setMetricsResult] = React.useState<any>(null);
+  const [metricsResult, setMetricsResult] = React.useState<any>(persistedState?.metricsResult ?? null);
   const [metricsLoading, setMetricsLoading] = React.useState(false);
-  const [utilitiesResult, setUtilitiesResult] = React.useState('');
+  const [utilitiesResult, setUtilitiesResult] = React.useState(persistedState?.utilitiesResult ?? '');
   const [utilitiesLoading, setUtilitiesLoading] = React.useState(false);
   const [error, setError] = React.useState('');
-  const [statusMessage, setStatusMessage] = React.useState('');
-  const [guideNames, setGuideNames] = React.useState<string>('');
-  const [usedGuides, setUsedGuides] = React.useState<string[]>([]);
+  const [statusMessage, setStatusMessage] = React.useState(persistedState?.statusMessage ?? '');
+  const [guideNames, setGuideNames] = React.useState<string>(persistedState?.guideNames ?? '');
+  const [usedGuides, setUsedGuides] = React.useState<string[]>(persistedState?.usedGuides ?? []);
   const [modelOptions, setModelOptions] = React.useState<ModelOption[]>([]);
-  const [modelSelections, setModelSelections] = React.useState<Partial<Record<ModelScope, string>>>({});
+  const [modelSelections, setModelSelections] = React.useState<Partial<Record<ModelScope, string>>>(
+    persistedState?.modelSelections ?? {}
+  );
+
+  React.useEffect(() => {
+    const nextState: PersistedState = {
+      activeTab,
+      selectedText,
+      analysisResult,
+      metricsResult,
+      utilitiesResult,
+      statusMessage,
+      guideNames,
+      usedGuides,
+      modelSelections
+    };
+    vscode.setState(nextState);
+  }, [
+    activeTab,
+    selectedText,
+    analysisResult,
+    metricsResult,
+    utilitiesResult,
+    statusMessage,
+    guideNames,
+    usedGuides,
+    modelSelections
+  ]);
 
   // Handle messages from extension
   React.useEffect(() => {
@@ -89,7 +130,10 @@ export const App: React.FC = () => {
 
         case MessageType.MODEL_DATA:
           setModelOptions(message.options);
-          setModelSelections(message.selections ?? {});
+          setModelSelections(prev => ({
+            ...prev,
+            ...(message.selections ?? {})
+          }));
           break;
       }
     };

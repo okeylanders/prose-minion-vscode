@@ -56,8 +56,8 @@ Presentation → Application → Domain ← Infrastructure
 
 ### Message Handler
 - **File**: [src/application/handlers/MessageHandler.ts](src/application/handlers/MessageHandler.ts)
-- **Purpose**: Routes messages from webview to domain services
-- **Pattern**: Command Pattern
+- **Purpose**: Routes messages between webview and services, caches the latest results/status for replay when the webview is recreated
+- **Pattern**: Command Pattern + Mediator
 
 ### Domain Service Interface
 - **File**: [src/domain/services/IProseAnalysisService.ts](src/domain/services/IProseAnalysisService.ts)
@@ -66,8 +66,13 @@ Presentation → Application → Domain ← Infrastructure
 
 ### Infrastructure Service
 - **File**: [src/infrastructure/api/ProseAnalysisService.ts](src/infrastructure/api/ProseAnalysisService.ts)
-- **Purpose**: Implements IProseAnalysisService (currently with placeholders)
+- **Purpose**: Implements IProseAnalysisService, spins up dedicated OpenRouter clients per feature scope (assistant, dictionary, context)
 - **Pattern**: Dependency Inversion
+
+### AI Orchestrator
+- **File**: [src/application/services/AIResourceOrchestrator.ts](src/application/services/AIResourceOrchestrator.ts)
+- **Purpose**: Wraps conversation management, guide loading, and OpenRouter calls for each model scope
+- **Pattern**: Facade + Strategy
 
 ### React Components
 - **TabBar**: [src/presentation/webview/components/TabBar.tsx](src/presentation/webview/components/TabBar.tsx)
@@ -83,8 +88,8 @@ Presentation → Application → Domain ← Infrastructure
 2. Component calls `vscode.postMessage()` with typed message
 3. WebviewViewProvider receives message
 4. MessageHandler routes to appropriate domain service
-5. Service processes request
-6. Handler sends result back to webview
+5. Service processes request using the appropriate orchestrator/model scope
+6. Handler sends result back to webview and stores a copy in the result cache for replay
 
 ### From Extension to Webview
 
@@ -92,8 +97,14 @@ Presentation → Application → Domain ← Infrastructure
 2. Handler creates typed response message
 3. Handler calls `webview.postMessage()`
 4. React App component receives message via event listener
-5. App updates state
-6. Component re-renders with new data
+5. App updates state, persists it via `vscode.getState/setState`, and re-renders with new data
+
+## State & Session Management
+
+- **Result Cache**: `MessageHandler` keeps the latest analysis/dictionary/metrics/status/error messages in memory so that a newly created webview can immediately replay the final state.
+- **UI Persistence**: The React app mirrors all important state (active tab, last responses, model selections) to VS Code's webview storage, preserving context across focus changes and reloads.
+- **Background Execution**: `AIResourceOrchestrator` continues running OpenRouter calls even if the webview is hidden. Once a response arrives it is cached and logged, ready for replay when the user returns.
+- **Context Retention**: The webview is registered with `retainContextWhenHidden` (with a polyfill cast for older API signatures) to minimize disposals during normal sidebar switching.
 
 ## Type Safety
 

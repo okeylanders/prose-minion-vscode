@@ -28,10 +28,12 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
   ): void | Thenable<void> {
     this.view = webviewView;
 
-    webviewView.webview.options = {
+    const webviewOptions: vscode.WebviewOptions & { retainContextWhenHidden?: boolean } = {
       enableScripts: true,
-      localResourceRoots: [this.extensionUri]
+      localResourceRoots: [this.extensionUri],
+      retainContextWhenHidden: true
     };
+    webviewView.webview.options = webviewOptions;
 
     webviewView.webview.html = this.getHtmlForWebview(webviewView.webview);
 

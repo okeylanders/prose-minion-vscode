@@ -16,9 +16,20 @@ import {
   StatusMessage,
   ModelScope,
   ModelDataMessage,
-  ModelOption
+  ModelOption,
+  ExtensionToWebviewMessage
 } from '../../shared/types';
 import { OpenRouterModels } from '../../infrastructure/api/OpenRouterModels';
+
+interface ResultCache {
+  analysis?: AnalysisResultMessage;
+  dictionary?: DictionaryResultMessage;
+  metrics?: MetricsResultMessage;
+  status?: StatusMessage;
+  error?: ErrorMessage;
+}
+
+const sharedResultCache: ResultCache = {};
 
 export class MessageHandler {
   private readonly disposables: vscode.Disposable[] = [];
@@ -50,6 +61,8 @@ export class MessageHandler {
     });
 
     this.disposables.push(configWatcher);
+
+    this.flushCachedResults();
   }
 
   async handleMessage(message: WebviewToExtensionMessage): Promise<void> {
@@ -175,7 +188,13 @@ export class MessageHandler {
       usedGuides,
       timestamp: Date.now()
     };
-    this.webview.postMessage(message);
+    sharedResultCache.analysis = {
+      ...message,
+      usedGuides: message.usedGuides ? [...message.usedGuides] : undefined
+    };
+    sharedResultCache.error = undefined;
+    void this.postMessage(message);
+    this.sendStatus('');
   }
 
   private sendMetricsResult(result: any, toolName: string): void {
@@ -185,7 +204,10 @@ export class MessageHandler {
       toolName,
       timestamp: Date.now()
     };
-    this.webview.postMessage(message);
+    sharedResultCache.metrics = {
+      ...message
+    };
+    void this.postMessage(message);
   }
 
   private sendDictionaryResult(result: string, toolName: string): void {
@@ -195,7 +217,12 @@ export class MessageHandler {
       toolName,
       timestamp: Date.now()
     };
-    this.webview.postMessage(message);
+    sharedResultCache.dictionary = {
+      ...message
+    };
+    sharedResultCache.error = undefined;
+    void this.postMessage(message);
+    this.sendStatus('');
   }
 
   private sendError(message: string, details?: string): void {
@@ -205,7 +232,8 @@ export class MessageHandler {
       details,
       timestamp: Date.now()
     };
-    this.webview.postMessage(errorMessage);
+    sharedResultCache.error = { ...errorMessage };
+    void this.postMessage(errorMessage);
   }
 
   private sendStatus(message: string, guideNames?: string): void {
@@ -215,7 +243,8 @@ export class MessageHandler {
       guideNames,
       timestamp: Date.now()
     };
-    this.webview.postMessage(statusMessage);
+    sharedResultCache.status = { ...statusMessage };
+    void this.postMessage(statusMessage);
   }
 
   private async handleSetModelSelection(scope: ModelScope, modelId: string): Promise<void> {
@@ -268,7 +297,7 @@ export class MessageHandler {
         timestamp: Date.now()
       };
 
-      this.webview.postMessage(message);
+      void this.postMessage(message);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[MessageHandler] Failed to load model data: ${message}`);
@@ -372,6 +401,39 @@ export class MessageHandler {
       this.sendError(
         'Failed to open guide file',
         errorMsg
+      );
+    }
+  }
+
+  private flushCachedResults(): void {
+    if (sharedResultCache.status) {
+      void this.postMessage(sharedResultCache.status);
+    }
+
+    if (sharedResultCache.analysis) {
+      void this.postMessage(sharedResultCache.analysis);
+    }
+
+    if (sharedResultCache.metrics) {
+      void this.postMessage(sharedResultCache.metrics);
+    }
+
+    if (sharedResultCache.dictionary) {
+      void this.postMessage(sharedResultCache.dictionary);
+    }
+
+    if (sharedResultCache.error) {
+      void this.postMessage(sharedResultCache.error);
+    }
+  }
+
+  private async postMessage(message: ExtensionToWebviewMessage): Promise<void> {
+    try {
+      await this.webview.postMessage(message);
+    } catch (error) {
+      const messageText = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(
+        `[MessageHandler] Failed to post message (${message.type}): ${messageText}`
       );
     }
   }

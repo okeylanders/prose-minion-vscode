@@ -31,31 +31,30 @@ Prose Minion offers extensive configuration options to customize AI behavior and
 
 ### 2. AI Model Selection
 
-**Setting**: `proseMinion.model`
-**Type**: Dropdown
-**Default**: `anthropic/claude-3.5-sonnet`
+The extension now separates models by feature so you can tune cost, latency, and quality for each workflow.
 
-**Available Models**:
+| Feature | Settings Key | UI Override | Default |
+|---------|--------------|-------------|---------|
+| Dialogue & Prose Assistants | `proseMinion.assistantModel` | Analysis tab dropdown | `z-ai/glm-4.6` |
+| Dictionary Utility | `proseMinion.dictionaryModel` | Utilities tab dropdown | `z-ai/glm-4.6` |
+| Context Bot (coming soon) | `proseMinion.contextModel` | _n/a yet_ | `z-ai/glm-4.6` |
+| Legacy fallback | `proseMinion.model` | Used only if a scoped model is unset | `z-ai/glm-4.6` |
 
-| Model | Best For | Speed | Cost | Quality |
-|-------|----------|-------|------|---------|
-| **Claude 3.5 Sonnet** ⭐ | Balanced use | Fast | Medium | Excellent |
-| Claude 3 Opus | Detailed analysis | Slower | High | Best |
-| Claude 3 Haiku | Quick checks | Fastest | Low | Good |
-| GPT-4 Turbo | Alternative choice | Fast | Medium | Excellent |
-| GPT-4o | Multimodal tasks | Very Fast | Medium | Excellent |
-| Gemini 1.5 Pro | Long passages | Fast | Medium | Very Good |
+**How it works**
 
-**Recommendations**:
-- **Default use**: Claude 3.5 Sonnet (best balance)
-- **Budget-conscious**: Claude 3 Haiku
-- **Highest quality**: Claude 3 Opus
-- **Very long passages**: Gemini 1.5 Pro (large context window)
+1. Pick a model in Settings or via the dropdown under the tab bar.
+2. The selection updates immediately in Settings (no reload required).
+3. The next request for that scope uses the new model.
 
-**How to change**:
-1. Open Settings
-2. Find "Prose Minion: Model"
-3. Select from dropdown
+> Tip: Use a premium model (e.g., Claude Opus) for prose critique while keeping the dictionary on a faster, cheaper model.
+
+**Recommended Combos**
+
+- **Balanced**: Assistant → `anthropic/claude-sonnet-4.5`, Dictionary → `z-ai/glm-4.5`
+- **Speed first**: Assistant → `google/gemini-2.5-flash`, Dictionary → `x-ai/grok-4-fast`
+- **Premium**: Assistant → `anthropic/claude-opus-4.1`, Dictionary → `openai/gpt-5-chat`
+
+You can still edit only `proseMinion.model` for backward compatibility; the extension cascades that value to any scope that is left blank.
 
 ---
 
@@ -152,7 +151,8 @@ Prose Minion offers extensive configuration options to customize AI behavior and
 
 ```json
 {
-  "proseMinion.model": "anthropic/claude-3-haiku",
+  "proseMinion.assistantModel": "anthropic/claude-sonnet-4.5",
+  "proseMinion.dictionaryModel": "z-ai/glm-4.5",
   "proseMinion.includeCraftGuides": false,
   "proseMinion.temperature": 0.5,
   "proseMinion.maxTokens": 1000
@@ -163,7 +163,8 @@ Prose Minion offers extensive configuration options to customize AI behavior and
 
 ```json
 {
-  "proseMinion.model": "anthropic/claude-3.5-sonnet",
+  "proseMinion.assistantModel": "anthropic/claude-sonnet-4.5",
+  "proseMinion.dictionaryModel": "z-ai/glm-4.6",
   "proseMinion.includeCraftGuides": true,
   "proseMinion.temperature": 0.7,
   "proseMinion.maxTokens": 2000
@@ -174,7 +175,8 @@ Prose Minion offers extensive configuration options to customize AI behavior and
 
 ```json
 {
-  "proseMinion.model": "anthropic/claude-3-opus",
+  "proseMinion.assistantModel": "anthropic/claude-opus-4.1",
+  "proseMinion.dictionaryModel": "openai/gpt-5-chat",
   "proseMinion.includeCraftGuides": true,
   "proseMinion.temperature": 0.6,
   "proseMinion.maxTokens": 3000
@@ -185,7 +187,8 @@ Prose Minion offers extensive configuration options to customize AI behavior and
 
 ```json
 {
-  "proseMinion.model": "anthropic/claude-3.5-sonnet",
+  "proseMinion.assistantModel": "openai/gpt-5",
+  "proseMinion.dictionaryModel": "google/gemini-2.5-flash",
   "proseMinion.includeCraftGuides": true,
   "proseMinion.temperature": 1.0,
   "proseMinion.maxTokens": 2500
@@ -198,6 +201,10 @@ Prose Minion offers extensive configuration options to customize AI behavior and
 2. Click the file icon (top right) to edit `settings.json`
 3. Add the preset configuration
 4. Save the file
+
+## Session Persistence
+
+The UI keeps the last analysis, status messages, and model selections even if you switch to another sidebar view or temporarily close VS Code. Long-running OpenRouter requests continue in the background; when you come back, the cached response is replayed automatically.
 
 Example:
 ```json
