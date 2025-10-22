@@ -134,7 +134,7 @@ select:focus {
 }
 
 .model-selector {
-  max-width: 420px;
+  width: 100%;
 }
 
 .model-selector-label {
