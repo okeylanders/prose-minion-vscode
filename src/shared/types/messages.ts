@@ -25,6 +25,11 @@ export enum MessageType {
   TAB_CHANGED = 'tab_changed',
   SELECTION_UPDATED = 'selection_updated',
 
+  // Configuration messages
+  REQUEST_MODEL_DATA = 'request_model_data',
+  MODEL_DATA = 'model_data',
+  SET_MODEL_SELECTION = 'set_model_selection',
+
   // Guide actions
   OPEN_GUIDE_FILE = 'open_guide_file'
 }
@@ -34,6 +39,14 @@ export enum TabId {
   SUGGESTIONS = 'suggestions',
   METRICS = 'metrics',
   UTILITIES = 'utilities'
+}
+
+export type ModelScope = 'assistant' | 'dictionary' | 'context';
+
+export interface ModelOption {
+  id: string;
+  label: string;
+  description?: string;
 }
 
 // Base message interface
@@ -84,6 +97,16 @@ export interface OpenGuideFileMessage extends BaseMessage {
   guidePath: string;  // Relative path from craft-guides/
 }
 
+export interface RequestModelDataMessage extends BaseMessage {
+  type: MessageType.REQUEST_MODEL_DATA;
+}
+
+export interface SetModelSelectionMessage extends BaseMessage {
+  type: MessageType.SET_MODEL_SELECTION;
+  scope: ModelScope;
+  modelId: string;
+}
+
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
   | AnalyzeProseMessage
@@ -92,7 +115,9 @@ export type WebviewToExtensionMessage =
   | MeasureStyleFlagsMessage
   | MeasureWordFrequencyMessage
   | TabChangedMessage
-  | OpenGuideFileMessage;
+  | OpenGuideFileMessage
+  | RequestModelDataMessage
+  | SetModelSelectionMessage;
 
 // Messages from extension to webview
 export interface AnalysisResultMessage extends BaseMessage {
@@ -131,10 +156,17 @@ export interface SelectionUpdatedMessage extends BaseMessage {
   text: string;
 }
 
+export interface ModelDataMessage extends BaseMessage {
+  type: MessageType.MODEL_DATA;
+  options: ModelOption[];
+  selections: Partial<Record<ModelScope, string>>;
+}
+
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
   | MetricsResultMessage
   | DictionaryResultMessage
   | ErrorMessage
   | StatusMessage
-  | SelectionUpdatedMessage;
+  | SelectionUpdatedMessage
+  | ModelDataMessage;

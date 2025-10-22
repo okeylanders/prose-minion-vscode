@@ -55,6 +55,126 @@
           "description": "OpenRouter API key for AI-powered analysis. Get one at https://openrouter.ai/",
           "order": 1
         },
+        "proseMinion.assistantModel": {
+          "type": "string",
+          "default": "z-ai/glm-4.6",
+          "enum": [
+            "z-ai/glm-4.6",
+            "z-ai/glm-4.5",
+            "anthropic/claude-sonnet-4.5",
+            "anthropic/claude-opus-4.1",
+            "openai/gpt-5-codex",
+            "openai/gpt-5-chat",
+            "openai/gpt-5",
+            "google/gemini-2.5-pro",
+            "google/gemini-2.5-flash",
+            "google/gemini-2.5-flash-image-preview",
+            "deepseek/deepseek-v3.2-exp",
+            "qwen/qwen3-max",
+            "x-ai/grok-4-fast",
+            "x-ai/grok-code-fast-1",
+            "moonshotai/kimi-k2-0905"
+          ],
+          "enumDescriptions": [
+            "GLM 4.6 - Latest ZhipuAI model (Recommended)",
+            "GLM 4.5 - ZhipuAI model",
+            "Claude Sonnet 4.5 - Anthropic's latest balanced model",
+            "Claude Opus 4.1 - Anthropic's most capable model",
+            "GPT-5 Codex - OpenAI's code-optimized model",
+            "GPT-5 Chat - OpenAI's conversational model",
+            "GPT-5 - OpenAI's latest general-purpose model",
+            "Gemini 2.5 Pro - Google's advanced model",
+            "Gemini 2.5 Flash - Google's fast model",
+            "Gemini 2.5 Flash Image Preview - Google's multimodal model",
+            "DeepSeek V3.2 Exp - DeepSeek's experimental model",
+            "Qwen3 Max - Alibaba's most capable model",
+            "Grok 4 Fast - xAI's fast model",
+            "Grok Code Fast 1 - xAI's code-optimized model",
+            "Kimi K2 0905 - Moonshot AI's model"
+          ],
+          "description": "AI model used for assistant tools (Prose / Dialogue analysis)",
+          "order": 2
+        },
+        "proseMinion.dictionaryModel": {
+          "type": "string",
+          "default": "z-ai/glm-4.6",
+          "enum": [
+            "z-ai/glm-4.6",
+            "z-ai/glm-4.5",
+            "anthropic/claude-sonnet-4.5",
+            "anthropic/claude-opus-4.1",
+            "openai/gpt-5-codex",
+            "openai/gpt-5-chat",
+            "openai/gpt-5",
+            "google/gemini-2.5-pro",
+            "google/gemini-2.5-flash",
+            "google/gemini-2.5-flash-image-preview",
+            "deepseek/deepseek-v3.2-exp",
+            "qwen/qwen3-max",
+            "x-ai/grok-4-fast",
+            "x-ai/grok-code-fast-1",
+            "moonshotai/kimi-k2-0905"
+          ],
+          "enumDescriptions": [
+            "GLM 4.6 - Latest ZhipuAI model (Recommended)",
+            "GLM 4.5 - ZhipuAI model",
+            "Claude Sonnet 4.5 - Anthropic's latest balanced model",
+            "Claude Opus 4.1 - Anthropic's most capable model",
+            "GPT-5 Codex - OpenAI's code-optimized model",
+            "GPT-5 Chat - OpenAI's conversational model",
+            "GPT-5 - OpenAI's latest general-purpose model",
+            "Gemini 2.5 Pro - Google's advanced model",
+            "Gemini 2.5 Flash - Google's fast model",
+            "Gemini 2.5 Flash Image Preview - Google's multimodal model",
+            "DeepSeek V3.2 Exp - DeepSeek's experimental model",
+            "Qwen3 Max - Alibaba's most capable model",
+            "Grok 4 Fast - xAI's fast model",
+            "Grok Code Fast 1 - xAI's code-optimized model",
+            "Kimi K2 0905 - Moonshot AI's model"
+          ],
+          "description": "AI model used for dictionary and utility tools",
+          "order": 3
+        },
+        "proseMinion.contextModel": {
+          "type": "string",
+          "default": "z-ai/glm-4.6",
+          "enum": [
+            "z-ai/glm-4.6",
+            "z-ai/glm-4.5",
+            "anthropic/claude-sonnet-4.5",
+            "anthropic/claude-opus-4.1",
+            "openai/gpt-5-codex",
+            "openai/gpt-5-chat",
+            "openai/gpt-5",
+            "google/gemini-2.5-pro",
+            "google/gemini-2.5-flash",
+            "google/gemini-2.5-flash-image-preview",
+            "deepseek/deepseek-v3.2-exp",
+            "qwen/qwen3-max",
+            "x-ai/grok-4-fast",
+            "x-ai/grok-code-fast-1",
+            "moonshotai/kimi-k2-0905"
+          ],
+          "enumDescriptions": [
+            "GLM 4.6 - Latest ZhipuAI model (Recommended)",
+            "GLM 4.5 - ZhipuAI model",
+            "Claude Sonnet 4.5 - Anthropic's latest balanced model",
+            "Claude Opus 4.1 - Anthropic's most capable model",
+            "GPT-5 Codex - OpenAI's code-optimized model",
+            "GPT-5 Chat - OpenAI's conversational model",
+            "GPT-5 - OpenAI's latest general-purpose model",
+            "Gemini 2.5 Pro - Google's advanced model",
+            "Gemini 2.5 Flash - Google's fast model",
+            "Gemini 2.5 Flash Image Preview - Google's multimodal model",
+            "DeepSeek V3.2 Exp - DeepSeek's experimental model",
+            "Qwen3 Max - Alibaba's most capable model",
+            "Grok 4 Fast - xAI's fast model",
+            "Grok Code Fast 1 - xAI's code-optimized model",
+            "Kimi K2 0905 - Moonshot AI's model"
+          ],
+          "description": "AI model reserved for the upcoming context bot features",
+          "order": 4
+        },
         "proseMinion.model": {
           "type": "string",
           "default": "z-ai/glm-4.6",
@@ -92,14 +212,14 @@
             "Grok Code Fast 1 - xAI's code-optimized model",
             "Kimi K2 0905 - Moonshot AI's model"
           ],
-          "description": "AI model to use for prose analysis",
-          "order": 2
+          "description": "Legacy default AI model (used as fallback when specific feature model is not set)",
+          "order": 5
         },
         "proseMinion.includeCraftGuides": {
           "type": "boolean",
           "default": true,
           "description": "Include craft guides in AI prompts (provides additional writing guidance but uses more tokens)",
-          "order": 3
+          "order": 6
         },
         "proseMinion.temperature": {
           "type": "number",
@@ -107,7 +227,7 @@
           "minimum": 0,
           "maximum": 2,
           "description": "AI creativity level (0 = focused, 2 = very creative)",
-          "order": 4
+          "order": 7
         },
         "proseMinion.maxTokens": {
           "type": "number",
@@ -115,7 +235,7 @@
           "minimum": 100,
           "maximum": 8000,
           "description": "Maximum length of AI responses",
-          "order": 5
+          "order": 8
         }
       }
     }

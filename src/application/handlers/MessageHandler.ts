@@ -13,10 +13,16 @@ import {
   MetricsResultMessage,
   DictionaryResultMessage,
   ErrorMessage,
-  StatusMessage
+  StatusMessage,
+  ModelScope,
+  ModelDataMessage,
+  ModelOption
 } from '../../shared/types';
+import { OpenRouterModels } from '../../infrastructure/api/OpenRouterModels';
 
 export class MessageHandler {
+  private readonly disposables: vscode.Disposable[] = [];
+
   constructor(
     private readonly proseAnalysisService: IProseAnalysisService,
     private readonly webview: vscode.Webview,
@@ -30,6 +36,20 @@ export class MessageHandler {
         this.sendStatus(message, guideNames);
       });
     }
+
+    const configWatcher = vscode.workspace.onDidChangeConfiguration(event => {
+      if (
+        event.affectsConfiguration('proseMinion.assistantModel') ||
+        event.affectsConfiguration('proseMinion.dictionaryModel') ||
+        event.affectsConfiguration('proseMinion.contextModel') ||
+        event.affectsConfiguration('proseMinion.model')
+      ) {
+        void this.refreshServiceConfiguration();
+        void this.sendModelData();
+      }
+    });
+
+    this.disposables.push(configWatcher);
   }
 
   async handleMessage(message: WebviewToExtensionMessage): Promise<void> {
@@ -65,6 +85,14 @@ export class MessageHandler {
 
         case MessageType.OPEN_GUIDE_FILE:
           await this.handleOpenGuideFile(message.guidePath);
+          break;
+
+        case MessageType.REQUEST_MODEL_DATA:
+          await this.sendModelData();
+          break;
+
+        case MessageType.SET_MODEL_SELECTION:
+          await this.handleSetModelSelection(message.scope, message.modelId);
           break;
 
         default:
@@ -190,6 +218,122 @@ export class MessageHandler {
     this.webview.postMessage(statusMessage);
   }
 
+  private async handleSetModelSelection(scope: ModelScope, modelId: string): Promise<void> {
+    try {
+      const configKey = this.getConfigKeyForScope(scope);
+      const config = vscode.workspace.getConfiguration('proseMinion');
+
+      await config.update(configKey, modelId, vscode.ConfigurationTarget.Global);
+      this.outputChannel.appendLine(
+        `[MessageHandler] Updated ${scope} model selection to ${modelId}`
+      );
+      await this.refreshServiceConfiguration();
+      await this.sendModelData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(
+        `[MessageHandler] Failed to update model selection for ${scope}: ${message}`
+      );
+      this.sendError('Failed to update model selection', message);
+    }
+  }
+
+  private async sendModelData(): Promise<void> {
+    try {
+      const recommended = OpenRouterModels.getRecommendedModels();
+      const options: ModelOption[] = recommended.map(model => ({
+        id: model.id,
+        label: model.name,
+        description: model.description
+      }));
+
+      const selections = this.getEffectiveModelSelections();
+
+      const seen = new Set(options.map(option => option.id));
+      Object.values(selections).forEach(modelId => {
+        if (modelId && !seen.has(modelId)) {
+          options.push({
+            id: modelId,
+            label: modelId,
+            description: 'Custom model (from settings)'
+          });
+          seen.add(modelId);
+        }
+      });
+
+      const message: ModelDataMessage = {
+        type: MessageType.MODEL_DATA,
+        options,
+        selections,
+        timestamp: Date.now()
+      };
+
+      this.webview.postMessage(message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[MessageHandler] Failed to load model data: ${message}`);
+      this.sendError('Failed to load model list', message);
+    }
+  }
+
+  private getEffectiveModelSelections(): Partial<Record<ModelScope, string>> {
+    const config = vscode.workspace.getConfiguration('proseMinion');
+    const fallback = config.get<string>('model') || 'z-ai/glm-4.6';
+
+    const selections: Partial<Record<ModelScope, string>> = {
+      assistant: config.get<string>('assistantModel') || fallback,
+      dictionary: config.get<string>('dictionaryModel') || fallback,
+      context: config.get<string>('contextModel') || fallback
+    };
+
+    if (
+      'getResolvedModelSelections' in this.proseAnalysisService &&
+      typeof (this.proseAnalysisService as any).getResolvedModelSelections === 'function'
+    ) {
+      try {
+        const resolved = (this.proseAnalysisService as any).getResolvedModelSelections();
+        return { ...selections, ...resolved };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.outputChannel.appendLine(
+          `[MessageHandler] Unable to read resolved model selections: ${message}`
+        );
+      }
+    }
+
+    return selections;
+  }
+
+  private getConfigKeyForScope(scope: ModelScope): string {
+    switch (scope) {
+      case 'assistant':
+        return 'assistantModel';
+      case 'dictionary':
+        return 'dictionaryModel';
+      case 'context':
+        return 'contextModel';
+      default:
+        const exhaustiveCheck: never = scope;
+        throw new Error(`Unknown model scope: ${exhaustiveCheck}`);
+    }
+  }
+
+  private async refreshServiceConfiguration(): Promise<void> {
+    if (
+      'refreshConfiguration' in this.proseAnalysisService &&
+      typeof (this.proseAnalysisService as any).refreshConfiguration === 'function'
+    ) {
+      try {
+        await (this.proseAnalysisService as any).refreshConfiguration();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.outputChannel.appendLine(
+          `[MessageHandler] Failed to refresh service configuration: ${message}`
+        );
+      }
+    }
+  }
+
   private async handleOpenGuideFile(guidePath: string): Promise<void> {
     try {
       this.outputChannel.appendLine(`[MessageHandler] Opening guide file: ${guidePath}`);
@@ -229,6 +373,20 @@ export class MessageHandler {
         'Failed to open guide file',
         errorMsg
       );
+    }
+  }
+
+  dispose(): void {
+    while (this.disposables.length > 0) {
+      const disposable = this.disposables.pop();
+      try {
+        disposable?.dispose();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.outputChannel.appendLine(
+          `[MessageHandler] Error disposing resource: ${message}`
+        );
+      }
     }
   }
 }

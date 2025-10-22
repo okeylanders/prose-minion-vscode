@@ -9,10 +9,13 @@ import { AnalysisTab } from './components/AnalysisTab';
 import { MetricsTab } from './components/MetricsTab';
 import { SuggestionsTab } from './components/SuggestionsTab';
 import { UtilitiesTab } from './components/UtilitiesTab';
+import { ModelSelector } from './components/ModelSelector';
 import {
   TabId,
   MessageType,
-  ExtensionToWebviewMessage
+  ExtensionToWebviewMessage,
+  ModelScope,
+  ModelOption
 } from '../../shared/types';
 
 // Get VS Code API
@@ -32,6 +35,8 @@ export const App: React.FC = () => {
   const [statusMessage, setStatusMessage] = React.useState('');
   const [guideNames, setGuideNames] = React.useState<string>('');
   const [usedGuides, setUsedGuides] = React.useState<string[]>([]);
+  const [modelOptions, setModelOptions] = React.useState<ModelOption[]>([]);
+  const [modelSelections, setModelSelections] = React.useState<Partial<Record<ModelScope, string>>>({});
 
   // Handle messages from extension
   React.useEffect(() => {
@@ -81,6 +86,11 @@ export const App: React.FC = () => {
           setGuideNames(message.guideNames || '');
           console.log('Status:', message.message, message.guideNames ? `(${message.guideNames})` : '');
           break;
+
+        case MessageType.MODEL_DATA:
+          setModelOptions(message.options);
+          setModelSelections(message.selections ?? {});
+          break;
       }
     };
 
@@ -89,6 +99,12 @@ export const App: React.FC = () => {
     return () => {
       window.removeEventListener('message', messageHandler);
     };
+  }, []);
+
+  React.useEffect(() => {
+    vscode.postMessage({
+      type: MessageType.REQUEST_MODEL_DATA
+    });
   }, []);
 
   const handleTabChange = (tabId: TabId) => {
@@ -102,6 +118,57 @@ export const App: React.FC = () => {
     });
   };
 
+  const handleModelChange = React.useCallback((scope: ModelScope, modelId: string) => {
+    setModelSelections(prev => ({
+      ...prev,
+      [scope]: modelId
+    }));
+
+    vscode.postMessage({
+      type: MessageType.SET_MODEL_SELECTION,
+      scope,
+      modelId
+    });
+  }, []);
+
+  const renderModelSelector = () => {
+    if (modelOptions.length === 0) {
+      return null;
+    }
+
+    if (activeTab === TabId.ANALYSIS) {
+      return (
+        <div className="model-selector-container">
+          <ModelSelector
+            scope="assistant"
+            options={modelOptions}
+            value={modelSelections.assistant}
+            onChange={handleModelChange}
+            label="Assistant Model"
+            helperText="Applies to dialogue and prose assistants."
+          />
+        </div>
+      );
+    }
+
+    if (activeTab === TabId.UTILITIES) {
+      return (
+        <div className="model-selector-container">
+          <ModelSelector
+            scope="dictionary"
+            options={modelOptions}
+            value={modelSelections.dictionary}
+            onChange={handleModelChange}
+            label="Dictionary Model"
+            helperText="Used for AI-powered dictionary entries."
+          />
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div className="app-container">
       <header className="app-header">
@@ -110,6 +177,7 @@ export const App: React.FC = () => {
       </header>
 
       <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
+      {renderModelSelector()}
 
       <main className="app-main">
         {error && (

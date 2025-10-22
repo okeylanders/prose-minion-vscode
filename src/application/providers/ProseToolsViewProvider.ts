@@ -49,6 +49,11 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
       undefined,
       []
     );
+
+    webviewView.onDidDispose(() => {
+      this.messageHandler?.dispose();
+      this.messageHandler = undefined;
+    });
   }
 
   /**

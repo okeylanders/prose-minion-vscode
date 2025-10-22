@@ -99,7 +99,8 @@ body {
 
 /* Form elements */
 textarea,
-input[type="text"] {
+input[type="text"],
+select {
   background-color: var(--vscode-input-background);
   color: var(--vscode-input-foreground);
   border: 2px solid var(--vscode-input-border);
@@ -111,7 +112,8 @@ input[type="text"] {
 }
 
 textarea:focus,
-input[type="text"]:focus {
+input[type="text"]:focus,
+select:focus {
   outline: none;
   border-color: var(--vscode-focusBorder);
   box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.1);
@@ -123,6 +125,40 @@ input[type="text"]:focus {
   border: 2px solid var(--vscode-panel-border);
   border-radius: 0;
   margin-bottom: var(--spacing-md);
+}
+
+.model-selector-container {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--vscode-sideBar-background);
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.model-selector {
+  max-width: 420px;
+}
+
+.model-selector-label {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--spacing-xs);
+  color: var(--vscode-descriptionForeground);
+}
+
+.model-selector-dropdown {
+  width: 100%;
+  padding: var(--spacing-sm);
+  font-size: 0.875rem;
+  background-color: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 2px solid var(--vscode-input-border);
+}
+
+.model-selector-helper {
+  margin-top: var(--spacing-xs);
+  font-size: 0.75rem;
+  color: var(--vscode-descriptionForeground);
 }
 
 /* Buttons */

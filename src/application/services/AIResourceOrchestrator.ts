@@ -25,17 +25,18 @@ export type StatusCallback = (message: string, guideNames?: string) => void;
 
 export class AIResourceOrchestrator {
   private readonly MAX_TURNS = 3; // Safety limit to prevent infinite loops
+  private readonly conversationCleanupInterval: NodeJS.Timeout;
 
   constructor(
     private readonly openRouterClient: OpenRouterClient,
     private readonly conversationManager: ConversationManager,
     private readonly guideRegistry: GuideRegistry,
     private readonly guideLoader: GuideLoader,
-    private readonly statusCallback?: StatusCallback,
+    private statusCallback?: StatusCallback,
     private readonly outputChannel?: vscode.OutputChannel
   ) {
     // Periodically clean up old conversations (every 5 minutes)
-    setInterval(() => {
+    this.conversationCleanupInterval = setInterval(() => {
       this.conversationManager.clearOldConversations(300000); // 5 minutes
     }, 300000);
   }
@@ -272,5 +273,19 @@ export class AIResourceOrchestrator {
     }
 
     return lines.join('\n');
+  }
+
+  /**
+   * Update the status callback used for UI notifications
+   */
+  setStatusCallback(callback?: StatusCallback): void {
+    this.statusCallback = callback;
+  }
+
+  /**
+   * Dispose of any timers held by the orchestrator
+   */
+  dispose(): void {
+    clearInterval(this.conversationCleanupInterval);
   }
 }
