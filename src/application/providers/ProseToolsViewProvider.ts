@@ -28,10 +28,9 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
   ): void | Thenable<void> {
     this.view = webviewView;
 
-    const webviewOptions: vscode.WebviewOptions & { retainContextWhenHidden?: boolean } = {
+    const webviewOptions: vscode.WebviewOptions = {
       enableScripts: true,
-      localResourceRoots: [this.extensionUri],
-      retainContextWhenHidden: true
+      localResourceRoots: [this.extensionUri]
     };
     webviewView.webview.options = webviewOptions;
 
@@ -51,6 +50,13 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
       undefined,
       []
     );
+
+    // When the view becomes visible again, replay any cached results that may have arrived while hidden
+    webviewView.onDidChangeVisibility(() => {
+      if (webviewView.visible) {
+        this.messageHandler?.flushCachedResults?.();
+      }
+    });
 
     webviewView.onDidDispose(() => {
       this.messageHandler?.dispose();

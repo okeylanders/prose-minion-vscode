@@ -38,7 +38,12 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
       ProseToolsViewProvider.viewType,
-      proseToolsViewProvider
+      proseToolsViewProvider,
+      {
+        webviewOptions: {
+          retainContextWhenHidden: true
+        }
+      }
     )
   );
   console.log('Webview provider registered successfully');

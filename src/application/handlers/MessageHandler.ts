@@ -405,7 +405,8 @@ export class MessageHandler {
     }
   }
 
-  private flushCachedResults(): void {
+  // Expose flushing so the provider can replay cached results when the view becomes visible again
+  flushCachedResults(): void {
     if (sharedResultCache.status) {
       void this.postMessage(sharedResultCache.status);
     }
@@ -439,6 +440,14 @@ export class MessageHandler {
   }
 
   dispose(): void {
+    // Clear status callback to avoid stale references
+    if ('setStatusCallback' in this.proseAnalysisService && typeof (this.proseAnalysisService as any).setStatusCallback === 'function') {
+      try {
+        (this.proseAnalysisService as any).setStatusCallback(undefined);
+      } catch {
+        // noop
+      }
+    }
     while (this.disposables.length > 0) {
       const disposable = this.disposables.pop();
       try {

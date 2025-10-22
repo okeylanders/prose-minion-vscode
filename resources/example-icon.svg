@@ -1,0 +1,14 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pmGrad" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6C63FF"/>
+      <stop offset="100%" stop-color="#5C6BC0"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="16" fill="url(#pmGrad)"/>
+  <g stroke="white" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M32 48L64 32L96 48V80L64 96L32 80V48Z"/>
+    <circle cx="64" cy="64" r="12" fill="white" stroke="none"/>
+    <path d="M48 64L56 72M80 64L72 72"/>
+  </g>
+</svg>
