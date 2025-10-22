@@ -39,7 +39,11 @@ export class OpenRouterClient {
 
   constructor(apiKey: string, model?: string) {
     this.apiKey = apiKey;
-    this.model = model || 'anthropic/claude-3.5-sonnet';
+    this.model = model || 'z-ai/glm-4.6';
+  }
+
+  getModel(): string {
+    return this.model;
   }
 
   async createChatCompletion(

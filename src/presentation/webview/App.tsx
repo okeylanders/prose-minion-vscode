@@ -8,6 +8,7 @@ import { TabBar } from './components/TabBar';
 import { AnalysisTab } from './components/AnalysisTab';
 import { MetricsTab } from './components/MetricsTab';
 import { SuggestionsTab } from './components/SuggestionsTab';
+import { UtilitiesTab } from './components/UtilitiesTab';
 import {
   TabId,
   MessageType,
@@ -25,7 +26,12 @@ export const App: React.FC = () => {
   const [analysisLoading, setAnalysisLoading] = React.useState(false);
   const [metricsResult, setMetricsResult] = React.useState<any>(null);
   const [metricsLoading, setMetricsLoading] = React.useState(false);
+  const [utilitiesResult, setUtilitiesResult] = React.useState('');
+  const [utilitiesLoading, setUtilitiesLoading] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [statusMessage, setStatusMessage] = React.useState('');
+  const [guideNames, setGuideNames] = React.useState<string>('');
+  const [usedGuides, setUsedGuides] = React.useState<string[]>([]);
 
   // Handle messages from extension
   React.useEffect(() => {
@@ -39,7 +45,10 @@ export const App: React.FC = () => {
 
         case MessageType.ANALYSIS_RESULT:
           setAnalysisResult(message.result);
+          setUsedGuides(message.usedGuides || []);
           setAnalysisLoading(false);
+          setStatusMessage(''); // Clear status message
+          setGuideNames(''); // Clear guide names
           setError('');
           break;
 
@@ -49,17 +58,28 @@ export const App: React.FC = () => {
           setError('');
           break;
 
+        case MessageType.DICTIONARY_RESULT:
+          setUtilitiesResult(message.result);
+          setUtilitiesLoading(false);
+          setStatusMessage('');
+          setGuideNames('');
+          setError('');
+          break;
+
         case MessageType.ERROR:
           setError(message.message);
           setAnalysisLoading(false);
           setMetricsLoading(false);
+          setUtilitiesLoading(false);
           setAnalysisResult('');
           setMetricsResult(null);
+          setUtilitiesResult('');
           break;
 
         case MessageType.STATUS:
-          // Handle status messages if needed
-          console.log('Status:', message.message);
+          setStatusMessage(message.message);
+          setGuideNames(message.guideNames || '');
+          console.log('Status:', message.message, message.guideNames ? `(${message.guideNames})` : '');
           break;
       }
     };
@@ -105,6 +125,9 @@ export const App: React.FC = () => {
             result={analysisResult}
             isLoading={analysisLoading}
             onLoadingChange={setAnalysisLoading}
+            statusMessage={statusMessage}
+            guideNames={guideNames}
+            usedGuides={usedGuides}
           />
         )}
 
@@ -122,6 +145,17 @@ export const App: React.FC = () => {
             metrics={metricsResult}
             isLoading={metricsLoading}
             onLoadingChange={setMetricsLoading}
+          />
+        )}
+
+        {activeTab === TabId.UTILITIES && (
+          <UtilitiesTab
+            selectedText={selectedText}
+            vscode={vscode}
+            result={utilitiesResult}
+            isLoading={utilitiesLoading}
+            onLoadingChange={setUtilitiesLoading}
+            statusMessage={statusMessage}
           />
         )}
       </main>

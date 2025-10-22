@@ -5,6 +5,8 @@
 
 import * as React from 'react';
 import { MessageType } from '../../../shared/types';
+import { MarkdownRenderer } from './MarkdownRenderer';
+import { formatAnalysisAsMarkdown } from '../utils/metricsFormatter';
 
 interface AnalysisTabProps {
   selectedText: string;
@@ -12,6 +14,9 @@ interface AnalysisTabProps {
   result: string;
   isLoading: boolean;
   onLoadingChange: (loading: boolean) => void;
+  statusMessage?: string;
+  guideNames?: string;
+  usedGuides?: string[];
 }
 
 export const AnalysisTab: React.FC<AnalysisTabProps> = ({
@@ -19,7 +24,10 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
   vscode,
   result,
   isLoading,
-  onLoadingChange
+  onLoadingChange,
+  statusMessage,
+  guideNames,
+  usedGuides
 }) => {
   const [text, setText] = React.useState(selectedText);
 
@@ -53,25 +61,30 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
     });
   };
 
+  const markdownContent = React.useMemo(() => {
+    if (!result) return '';
+    return formatAnalysisAsMarkdown(result);
+  }, [result]);
+
   return (
     <div className="tab-content">
       <h2 className="text-lg font-semibold mb-4">Prose Analysis</h2>
 
-      <div className="mb-4">
+      <div className="input-container">
         <label className="block text-sm font-medium mb-2">
           Text to Analyze
         </label>
         <textarea
-          className="w-full h-32 p-2 border rounded resize-none"
+          className="w-full h-32 resize-none"
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Select text in your editor or paste text here..."
         />
       </div>
 
-      <div className="button-group mb-4">
+      <div className="button-group">
         <button
-          className="btn btn-primary mr-2"
+          className="btn btn-primary"
           onClick={handleAnalyzeDialogue}
           disabled={!text.trim() || isLoading}
         >
@@ -89,16 +102,54 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
       {isLoading && (
         <div className="loading-indicator">
           <div className="spinner"></div>
-          <span>Analyzing...</span>
+          <div className="loading-text">
+            <div>{statusMessage || 'Analyzing...'}</div>
+            {guideNames && (
+              <div className="guide-ticker-container">
+                <div className="guide-ticker">{guideNames}</div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {result && (
         <div className="result-box">
-          <h3 className="text-md font-semibold mb-2">Results</h3>
-          <div className="result-content whitespace-pre-wrap">
-            {result}
-          </div>
+          <MarkdownRenderer content={markdownContent} />
+          {usedGuides && usedGuides.length > 0 && (
+            <div className="guides-footer">
+              <div className="guides-footer-title">📚 Guides Used:</div>
+              <div className="guides-footer-list">
+                {usedGuides.map((guide, index) => {
+                  const displayName = guide
+                    .split('/')
+                    .pop()
+                    ?.replace(/\.md$/i, '')
+                    .split('-')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ');
+
+                  const handleGuideClick = () => {
+                    vscode.postMessage({
+                      type: MessageType.OPEN_GUIDE_FILE,
+                      guidePath: guide
+                    });
+                  };
+
+                  return (
+                    <button
+                      key={index}
+                      className="guide-tag"
+                      onClick={handleGuideClick}
+                      title={`Click to open ${guide}`}
+                    >
+                      {displayName}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

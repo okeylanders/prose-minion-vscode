@@ -7,6 +7,7 @@ export interface AnalysisResult {
   readonly toolName: string;
   readonly content: string;
   readonly timestamp: Date;
+  readonly usedGuides?: string[];  // Array of guide paths that were used
 }
 
 export interface MetricsResult {
@@ -16,11 +17,12 @@ export interface MetricsResult {
 }
 
 export class AnalysisResultFactory {
-  static createAnalysisResult(toolName: string, content: string): AnalysisResult {
+  static createAnalysisResult(toolName: string, content: string, usedGuides?: string[]): AnalysisResult {
     return {
       toolName,
       content,
-      timestamp: new Date()
+      timestamp: new Date(),
+      usedGuides
     };
   }
 

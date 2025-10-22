@@ -11,14 +11,26 @@ import {
   MessageType,
   AnalysisResultMessage,
   MetricsResultMessage,
-  ErrorMessage
+  DictionaryResultMessage,
+  ErrorMessage,
+  StatusMessage
 } from '../../shared/types';
 
 export class MessageHandler {
   constructor(
     private readonly proseAnalysisService: IProseAnalysisService,
-    private readonly webview: vscode.Webview
-  ) {}
+    private readonly webview: vscode.Webview,
+    private readonly extensionUri: vscode.Uri,
+    private readonly outputChannel: vscode.OutputChannel
+  ) {
+    // Set up status callback for guide loading notifications
+    // Check if service has setStatusCallback method (ProseAnalysisService does)
+    if ('setStatusCallback' in proseAnalysisService && typeof (proseAnalysisService as any).setStatusCallback === 'function') {
+      (proseAnalysisService as any).setStatusCallback((message: string, guideNames?: string) => {
+        this.sendStatus(message, guideNames);
+      });
+    }
+  }
 
   async handleMessage(message: WebviewToExtensionMessage): Promise<void> {
     try {
@@ -29,6 +41,10 @@ export class MessageHandler {
 
         case MessageType.ANALYZE_PROSE:
           await this.handleAnalyzeProse(message.text);
+          break;
+
+        case MessageType.LOOKUP_DICTIONARY:
+          await this.handleLookupDictionary(message.word, message.contextText);
           break;
 
         case MessageType.MEASURE_PROSE_STATS:
@@ -47,6 +63,10 @@ export class MessageHandler {
           // Tab change is handled in UI, no action needed
           break;
 
+        case MessageType.OPEN_GUIDE_FILE:
+          await this.handleOpenGuideFile(message.guidePath);
+          break;
+
         default:
           this.sendError('Unknown message type', 'Received unrecognized message');
       }
@@ -58,14 +78,50 @@ export class MessageHandler {
     }
   }
 
+  private async handleLookupDictionary(word: string, contextText?: string): Promise<void> {
+    if (!word.trim()) {
+      this.sendError('Dictionary lookup requires a word to search');
+      return;
+    }
+
+    this.sendStatus('Preparing dictionary prompt...');
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    this.sendStatus(`Generating dictionary entry for "${word}"...`);
+    const result = await this.proseAnalysisService.lookupDictionary(word, contextText);
+    this.sendDictionaryResult(result.content, result.toolName);
+  }
+
   private async handleAnalyzeDialogue(text: string): Promise<void> {
+    const config = vscode.workspace.getConfiguration('proseMinion');
+    const includeCraftGuides = config.get<boolean>('includeCraftGuides') ?? true;
+
+    const loadingMessage = includeCraftGuides
+      ? 'Loading prompts and craft guides...'
+      : 'Loading prompts...';
+
+    this.sendStatus(loadingMessage);
+    await new Promise(resolve => setTimeout(resolve, 100)); // Brief delay to ensure UI updates
+
+    this.sendStatus('Analyzing dialogue with AI...');
     const result = await this.proseAnalysisService.analyzeDialogue(text);
-    this.sendAnalysisResult(result.content, result.toolName);
+    this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
   }
 
   private async handleAnalyzeProse(text: string): Promise<void> {
+    const config = vscode.workspace.getConfiguration('proseMinion');
+    const includeCraftGuides = config.get<boolean>('includeCraftGuides') ?? true;
+
+    const loadingMessage = includeCraftGuides
+      ? 'Loading prompts and craft guides...'
+      : 'Loading prompts...';
+
+    this.sendStatus(loadingMessage);
+    await new Promise(resolve => setTimeout(resolve, 100)); // Brief delay to ensure UI updates
+
+    this.sendStatus('Analyzing prose with AI...');
     const result = await this.proseAnalysisService.analyzeProse(text);
-    this.sendAnalysisResult(result.content, result.toolName);
+    this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
   }
 
   private async handleMeasureProseStats(text: string): Promise<void> {
@@ -83,11 +139,12 @@ export class MessageHandler {
     this.sendMetricsResult(result.metrics, result.toolName);
   }
 
-  private sendAnalysisResult(result: string, toolName: string): void {
+  private sendAnalysisResult(result: string, toolName: string, usedGuides?: string[]): void {
     const message: AnalysisResultMessage = {
       type: MessageType.ANALYSIS_RESULT,
       result,
       toolName,
+      usedGuides,
       timestamp: Date.now()
     };
     this.webview.postMessage(message);
@@ -103,6 +160,16 @@ export class MessageHandler {
     this.webview.postMessage(message);
   }
 
+  private sendDictionaryResult(result: string, toolName: string): void {
+    const message: DictionaryResultMessage = {
+      type: MessageType.DICTIONARY_RESULT,
+      result,
+      toolName,
+      timestamp: Date.now()
+    };
+    this.webview.postMessage(message);
+  }
+
   private sendError(message: string, details?: string): void {
     const errorMessage: ErrorMessage = {
       type: MessageType.ERROR,
@@ -111,5 +178,57 @@ export class MessageHandler {
       timestamp: Date.now()
     };
     this.webview.postMessage(errorMessage);
+  }
+
+  private sendStatus(message: string, guideNames?: string): void {
+    const statusMessage: StatusMessage = {
+      type: MessageType.STATUS,
+      message,
+      guideNames,
+      timestamp: Date.now()
+    };
+    this.webview.postMessage(statusMessage);
+  }
+
+  private async handleOpenGuideFile(guidePath: string): Promise<void> {
+    try {
+      this.outputChannel.appendLine(`[MessageHandler] Opening guide file: ${guidePath}`);
+
+      // Construct the full URI to the guide file
+      const guideUri = vscode.Uri.joinPath(
+        this.extensionUri,
+        'resources',
+        'craft-guides',
+        guidePath
+      );
+
+      this.outputChannel.appendLine(`[MessageHandler] Full path: ${guideUri.fsPath}`);
+
+      // Check if file exists first
+      try {
+        await vscode.workspace.fs.stat(guideUri);
+      } catch (statError) {
+        const errorMsg = `Guide file not found: ${guideUri.fsPath}`;
+        this.outputChannel.appendLine(`[MessageHandler] ERROR: ${errorMsg}`);
+        this.sendError('Guide file not found', errorMsg);
+        return;
+      }
+
+      // Open the file in the editor
+      const document = await vscode.workspace.openTextDocument(guideUri);
+      await vscode.window.showTextDocument(document, {
+        preview: false,  // Open in permanent editor tab
+        viewColumn: vscode.ViewColumn.Beside  // Open alongside current editor
+      });
+
+      this.outputChannel.appendLine(`[MessageHandler] Successfully opened guide: ${guidePath}`);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[MessageHandler] ERROR opening guide: ${guidePath} - ${errorMsg}`);
+      this.sendError(
+        'Failed to open guide file',
+        errorMsg
+      );
+    }
   }
 }

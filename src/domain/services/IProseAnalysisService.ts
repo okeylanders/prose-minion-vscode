@@ -30,4 +30,9 @@ export interface IProseAnalysisService {
    * Measure word frequency
    */
   measureWordFrequency(text: string): Promise<MetricsResult>;
+
+  /**
+   * Generate a dictionary entry for a word using AI
+   */
+  lookupDictionary(word: string, contextText?: string): Promise<AnalysisResult>;
 }

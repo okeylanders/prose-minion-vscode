@@ -14,16 +14,25 @@ import { ProseAssistant } from '../../tools/assist/proseAssistant';
 import { PassageProseStats } from '../../tools/measure/passageProseStats';
 import { StyleFlags } from '../../tools/measure/styleFlags';
 import { WordFrequency } from '../../tools/measure/wordFrequency';
+import { AIResourceOrchestrator, StatusCallback } from '../../application/services/AIResourceOrchestrator';
+import { ConversationManager } from '../../application/services/ConversationManager';
+import { GuideRegistry } from '../../infrastructure/guides/GuideRegistry';
+import { DictionaryUtility } from '../../tools/utility/dictionaryUtility';
 
 export class ProseAnalysisService implements IProseAnalysisService {
   private openRouterClient?: OpenRouterClient;
   private dialogueAssistant?: DialogueMicrobeatAssistant;
   private proseAssistant?: ProseAssistant;
+  private dictionaryUtility?: DictionaryUtility;
   private proseStats: PassageProseStats;
   private styleFlags: StyleFlags;
   private wordFrequency: WordFrequency;
+  private statusCallback?: StatusCallback;
 
-  constructor(private readonly extensionUri?: vscode.Uri) {
+  constructor(
+    private readonly extensionUri?: vscode.Uri,
+    private readonly outputChannel?: vscode.OutputChannel
+  ) {
     // Initialize measurement tools (don't need API key)
     this.proseStats = new PassageProseStats();
     this.styleFlags = new StyleFlags();
@@ -44,20 +53,43 @@ export class ProseAnalysisService implements IProseAnalysisService {
       if (this.extensionUri) {
         const promptLoader = new PromptLoader(this.extensionUri);
         const guideLoader = new GuideLoader(this.extensionUri);
+        const guideRegistry = new GuideRegistry(this.extensionUri, this.outputChannel);
+        const conversationManager = new ConversationManager();
+
+        // Create the AI Resource Orchestrator
+        const aiResourceOrchestrator = new AIResourceOrchestrator(
+          this.openRouterClient,
+          conversationManager,
+          guideRegistry,
+          guideLoader,
+          this.statusCallback,
+          this.outputChannel
+        );
 
         this.dialogueAssistant = new DialogueMicrobeatAssistant(
-          this.openRouterClient,
-          promptLoader,
-          guideLoader
+          aiResourceOrchestrator,
+          promptLoader
         );
 
         this.proseAssistant = new ProseAssistant(
-          this.openRouterClient,
-          promptLoader,
-          guideLoader
+          aiResourceOrchestrator,
+          promptLoader
+        );
+
+        this.dictionaryUtility = new DictionaryUtility(
+          aiResourceOrchestrator,
+          promptLoader
         );
       }
     }
+  }
+
+  /**
+   * Set the status callback for guide loading notifications
+   * This should be called by the MessageHandler to receive status updates
+   */
+  setStatusCallback(callback: StatusCallback): void {
+    this.statusCallback = callback;
   }
 
   private getToolOptions() {
@@ -79,8 +111,12 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
     try {
       const options = this.getToolOptions();
-      const result = await this.dialogueAssistant.analyze({ text }, options);
-      return AnalysisResultFactory.createAnalysisResult('dialogue_analysis', result);
+      const executionResult = await this.dialogueAssistant.analyze({ text }, options);
+      return AnalysisResultFactory.createAnalysisResult(
+        'dialogue_analysis',
+        executionResult.content,
+        executionResult.usedGuides
+      );
     } catch (error) {
       return AnalysisResultFactory.createAnalysisResult(
         'dialogue_analysis',
@@ -99,8 +135,12 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
     try {
       const options = this.getToolOptions();
-      const result = await this.proseAssistant.analyze({ text }, options);
-      return AnalysisResultFactory.createAnalysisResult('prose_analysis', result);
+      const executionResult = await this.proseAssistant.analyze({ text }, options);
+      return AnalysisResultFactory.createAnalysisResult(
+        'prose_analysis',
+        executionResult.content,
+        executionResult.usedGuides
+      );
     } catch (error) {
       return AnalysisResultFactory.createAnalysisResult(
         'prose_analysis',
@@ -139,6 +179,39 @@ export class ProseAnalysisService implements IProseAnalysisService {
       return AnalysisResultFactory.createMetricsResult('word_frequency', {
         error: error instanceof Error ? error.message : String(error)
       });
+    }
+  }
+
+  async lookupDictionary(word: string, contextText?: string): Promise<AnalysisResult> {
+    if (!this.dictionaryUtility) {
+      return AnalysisResultFactory.createAnalysisResult(
+        'dictionary_lookup',
+        this.getApiKeyWarning()
+      );
+    }
+
+    try {
+      const options = this.getToolOptions();
+      const executionResult = await this.dictionaryUtility.lookup(
+        {
+          word,
+          contextText
+        },
+        {
+          temperature: options.temperature ?? 0.4,
+          maxTokens: options.maxTokens ?? 2200
+        }
+      );
+
+      return AnalysisResultFactory.createAnalysisResult(
+        'dictionary_lookup',
+        executionResult.content
+      );
+    } catch (error) {
+      return AnalysisResultFactory.createAnalysisResult(
+        'dictionary_lookup',
+        `Error: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 

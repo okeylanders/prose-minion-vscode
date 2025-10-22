@@ -7,6 +7,7 @@ export enum MessageType {
   // Analysis tab messages
   ANALYZE_DIALOGUE = 'analyze_dialogue',
   ANALYZE_PROSE = 'analyze_prose',
+  LOOKUP_DICTIONARY = 'lookup_dictionary',
 
   // Metrics tab messages
   MEASURE_PROSE_STATS = 'measure_prose_stats',
@@ -16,18 +17,23 @@ export enum MessageType {
   // Results messages
   ANALYSIS_RESULT = 'analysis_result',
   METRICS_RESULT = 'metrics_result',
+  DICTIONARY_RESULT = 'dictionary_result',
   ERROR = 'error',
   STATUS = 'status',
 
   // UI state messages
   TAB_CHANGED = 'tab_changed',
-  SELECTION_UPDATED = 'selection_updated'
+  SELECTION_UPDATED = 'selection_updated',
+
+  // Guide actions
+  OPEN_GUIDE_FILE = 'open_guide_file'
 }
 
 export enum TabId {
   ANALYSIS = 'analysis',
   SUGGESTIONS = 'suggestions',
-  METRICS = 'metrics'
+  METRICS = 'metrics',
+  UTILITIES = 'utilities'
 }
 
 // Base message interface
@@ -45,6 +51,12 @@ export interface AnalyzeDialogueMessage extends BaseMessage {
 export interface AnalyzeProseMessage extends BaseMessage {
   type: MessageType.ANALYZE_PROSE;
   text: string;
+}
+
+export interface LookupDictionaryMessage extends BaseMessage {
+  type: MessageType.LOOKUP_DICTIONARY;
+  word: string;
+  contextText?: string;
 }
 
 export interface MeasureProseStatsMessage extends BaseMessage {
@@ -67,24 +79,38 @@ export interface TabChangedMessage extends BaseMessage {
   tabId: TabId;
 }
 
+export interface OpenGuideFileMessage extends BaseMessage {
+  type: MessageType.OPEN_GUIDE_FILE;
+  guidePath: string;  // Relative path from craft-guides/
+}
+
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
   | AnalyzeProseMessage
+  | LookupDictionaryMessage
   | MeasureProseStatsMessage
   | MeasureStyleFlagsMessage
   | MeasureWordFrequencyMessage
-  | TabChangedMessage;
+  | TabChangedMessage
+  | OpenGuideFileMessage;
 
 // Messages from extension to webview
 export interface AnalysisResultMessage extends BaseMessage {
   type: MessageType.ANALYSIS_RESULT;
   result: string;
   toolName: string;
+  usedGuides?: string[];  // Array of guide paths that were used in the analysis
 }
 
 export interface MetricsResultMessage extends BaseMessage {
   type: MessageType.METRICS_RESULT;
   result: any;
+  toolName: string;
+}
+
+export interface DictionaryResultMessage extends BaseMessage {
+  type: MessageType.DICTIONARY_RESULT;
+  result: string;
   toolName: string;
 }
 
@@ -97,6 +123,7 @@ export interface ErrorMessage extends BaseMessage {
 export interface StatusMessage extends BaseMessage {
   type: MessageType.STATUS;
   message: string;
+  guideNames?: string;  // Comma-separated list of guide names for ticker animation
 }
 
 export interface SelectionUpdatedMessage extends BaseMessage {
@@ -107,6 +134,7 @@ export interface SelectionUpdatedMessage extends BaseMessage {
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
   | MetricsResultMessage
+  | DictionaryResultMessage
   | ErrorMessage
   | StatusMessage
   | SelectionUpdatedMessage;

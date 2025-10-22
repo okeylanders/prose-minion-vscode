@@ -20,38 +20,83 @@ export interface OpenRouterModelsResponse {
 
 /**
  * Curated list of recommended models for prose analysis
- * Updated as of 2024
+ * Updated as of 2025
  */
 export const RECOMMENDED_MODELS = [
   {
-    id: 'anthropic/claude-3.5-sonnet',
-    name: 'Claude 3.5 Sonnet',
-    description: 'Best balance of quality and speed for prose analysis'
+    id: 'z-ai/glm-4.6',
+    name: 'GLM 4.6',
+    description: 'Latest ZhipuAI model (Recommended)'
   },
   {
-    id: 'anthropic/claude-3-opus',
-    name: 'Claude 3 Opus',
-    description: 'Highest quality, best for detailed analysis'
+    id: 'z-ai/glm-4.5',
+    name: 'GLM 4.5',
+    description: 'ZhipuAI model'
   },
   {
-    id: 'anthropic/claude-3-haiku',
-    name: 'Claude 3 Haiku',
-    description: 'Fastest and most affordable'
+    id: 'anthropic/claude-sonnet-4.5',
+    name: 'Claude Sonnet 4.5',
+    description: 'Anthropic\'s latest balanced model'
   },
   {
-    id: 'openai/gpt-4-turbo',
-    name: 'GPT-4 Turbo',
-    description: 'High quality alternative'
+    id: 'anthropic/claude-opus-4.1',
+    name: 'Claude Opus 4.1',
+    description: 'Anthropic\'s most capable model'
   },
   {
-    id: 'openai/gpt-4o',
-    name: 'GPT-4o',
-    description: 'Multimodal, fast, good quality'
+    id: 'openai/gpt-5-codex',
+    name: 'GPT-5 Codex',
+    description: 'OpenAI\'s code-optimized model'
   },
   {
-    id: 'google/gemini-pro-1.5',
-    name: 'Gemini 1.5 Pro',
-    description: 'Large context window'
+    id: 'openai/gpt-5-chat',
+    name: 'GPT-5 Chat',
+    description: 'OpenAI\'s conversational model'
+  },
+  {
+    id: 'openai/gpt-5',
+    name: 'GPT-5',
+    description: 'OpenAI\'s latest general-purpose model'
+  },
+  {
+    id: 'google/gemini-2.5-pro',
+    name: 'Gemini 2.5 Pro',
+    description: 'Google\'s advanced model'
+  },
+  {
+    id: 'google/gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
+    description: 'Google\'s fast model'
+  },
+  {
+    id: 'google/gemini-2.5-flash-image-preview',
+    name: 'Gemini 2.5 Flash Image Preview',
+    description: 'Google\'s multimodal model'
+  },
+  {
+    id: 'deepseek/deepseek-v3.2-exp',
+    name: 'DeepSeek V3.2 Exp',
+    description: 'DeepSeek\'s experimental model'
+  },
+  {
+    id: 'qwen/qwen3-max',
+    name: 'Qwen3 Max',
+    description: 'Alibaba\'s most capable model'
+  },
+  {
+    id: 'x-ai/grok-4-fast',
+    name: 'Grok 4 Fast',
+    description: 'xAI\'s fast model'
+  },
+  {
+    id: 'x-ai/grok-code-fast-1',
+    name: 'Grok Code Fast 1',
+    description: 'xAI\'s code-optimized model'
+  },
+  {
+    id: 'moonshotai/kimi-k2-0905',
+    name: 'Kimi K2 0905',
+    description: 'Moonshot AI\'s model'
   }
 ];
 

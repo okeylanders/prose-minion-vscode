@@ -17,7 +17,8 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
 
   constructor(
     private readonly extensionUri: vscode.Uri,
-    private readonly proseAnalysisService: IProseAnalysisService
+    private readonly proseAnalysisService: IProseAnalysisService,
+    private readonly outputChannel: vscode.OutputChannel
   ) {}
 
   public resolveWebviewView(
@@ -37,7 +38,9 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
     // Initialize message handler
     this.messageHandler = new MessageHandler(
       this.proseAnalysisService,
-      webviewView.webview
+      webviewView.webview,
+      this.extensionUri,
+      this.outputChannel
     );
 
     // Set up message listener

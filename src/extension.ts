@@ -13,16 +13,24 @@ import { ProseAnalysisService } from './infrastructure/api/ProseAnalysisService'
 let proseToolsViewProvider: ProseToolsViewProvider | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
+  // Create output channel for logging
+  const outputChannel = vscode.window.createOutputChannel('Prose Minion');
+  context.subscriptions.push(outputChannel);
+
+  outputChannel.appendLine('=== Prose Minion Extension Activated ===');
+  outputChannel.appendLine(`Extension URI: ${context.extensionUri.fsPath}`);
+
   console.log('Prose Minion extension is now active');
   vscode.window.showInformationMessage('Prose Minion extension activated!');
 
   // Initialize infrastructure layer (dependency injection)
-  const proseAnalysisService = new ProseAnalysisService(context.extensionUri);
+  const proseAnalysisService = new ProseAnalysisService(context.extensionUri, outputChannel);
 
   // Initialize application layer
   proseToolsViewProvider = new ProseToolsViewProvider(
     context.extensionUri,
-    proseAnalysisService
+    proseAnalysisService,
+    outputChannel
   );
 
   // Register webview provider
