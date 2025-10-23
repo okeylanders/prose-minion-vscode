@@ -96,6 +96,20 @@ export const App: React.FC = () => {
 
 
   React.useEffect(() => {
+    // When a new analysis run starts, clear previous analysis markdown
+    if (analysisLoading) {
+      setAnalysisResult('');
+    }
+  }, [analysisLoading]);
+
+  React.useEffect(() => {
+    // When a new dictionary lookup starts, clear previous dictionary markdown
+    if (utilitiesLoading) {
+      setUtilitiesResult('');
+    }
+  }, [utilitiesLoading]);
+
+  React.useEffect(() => {
     const nextState: PersistedState = {
       activeTab,
       selectedText,

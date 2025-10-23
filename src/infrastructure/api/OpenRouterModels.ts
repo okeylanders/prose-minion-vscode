@@ -19,7 +19,7 @@ export interface OpenRouterModelsResponse {
 }
 
 /**
- * Curated list of recommended models for prose analysis
+ * Curated list of recommended models for prose analysis ( Prose Excerpt Assistant )
  * Updated as of 2025
  */
 export const RECOMMENDED_MODELS = [

@@ -1,6 +1,6 @@
 /**
  * AnalysisTab component - Presentation layer
- * Handles dialogue and prose analysis
+ * Handles dialogue and prose analysis ( Prose Excerpt Assistant )
  */
 
 import * as React from 'react';
@@ -201,12 +201,12 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
 
   return (
     <div className="tab-content">
-      <h2 className="text-lg font-semibold mb-4">Prose Analysis</h2>
+      <h2 className="text-lg font-semibold mb-4">Prose Excerpt Assistant</h2>
 
       <div className="input-container">
         <div className="input-header">
           <label className="text-sm font-medium">
-            Text to Analyze
+            Excerpt For Assistance &amp; Analysis
           </label>
           <button
             className="icon-button"
@@ -286,14 +286,14 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
           onClick={handleAnalyzeDialogue}
           disabled={!text.trim() || isLoading}
         >
-          Analyze Dialogue
+          Tune Dialog Beat
         </button>
         <button
           className="btn btn-primary"
           onClick={handleAnalyzeProse}
           disabled={!text.trim() || isLoading}
         >
-          Analyze Prose
+          Tune Prose
         </button>
       </div>
 

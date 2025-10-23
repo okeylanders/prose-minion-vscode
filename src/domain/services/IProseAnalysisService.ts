@@ -1,5 +1,5 @@
 /**
- * Interface for prose analysis service
+ * Interface for prose analysis service ( Prose Excerpt Assistant, Dictionary, Measure/Metrics )
  * Following Dependency Inversion Principle - domain defines the contract
  */
 

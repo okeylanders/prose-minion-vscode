@@ -1,6 +1,6 @@
 /**
  * Prose Assistant Tool
- * General prose analysis and improvement suggestions
+ * General prose analysis and improvement suggestions ( Prose Excerpt Assistant )
  */
 
 import { PromptLoader } from '../shared/prompts';

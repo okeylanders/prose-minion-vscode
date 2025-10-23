@@ -1,6 +1,6 @@
 /**
  * Implementation of IProseAnalysisService
- * Integrates all prose analysis tools
+ * Integrates all tools
  */
 
 import * as vscode from 'vscode';

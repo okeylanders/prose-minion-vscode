@@ -227,7 +227,7 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
 }
 
 /**
- * Formats prose analysis results as markdown
+ * Formats prose analysis results as markdown ( Prose Excerpt Assistant )
  */
 export function formatAnalysisAsMarkdown(analysis: string): string {
   // If the analysis already looks like markdown, return it as-is
