@@ -224,7 +224,7 @@ export class ProseAnalysisService implements IProseAnalysisService {
     return {
       includeCraftGuides: config.get<boolean>('includeCraftGuides') ?? true,
       temperature: config.get<number>('temperature') ?? 0.7,
-      maxTokens: config.get<number>('maxTokens') ?? 2000
+      maxTokens: config.get<number>('maxTokens') ?? 10000
     };
   }
 
@@ -340,7 +340,7 @@ export class ProseAnalysisService implements IProseAnalysisService {
         },
         {
           temperature: options.temperature ?? 0.4,
-          maxTokens: options.maxTokens ?? 2200
+          maxTokens: options.maxTokens
         }
       );
 

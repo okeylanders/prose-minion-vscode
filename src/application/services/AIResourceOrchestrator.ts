@@ -96,15 +96,15 @@ export class AIResourceOrchestrator {
       this.outputChannel?.appendLine(
         `[AIResourceOrchestrator] Calling OpenRouter API (${messages.length} messages in context) using model ${this.openRouterClient.getModel()}`
       );
-      let response = await this.openRouterClient.createChatCompletion(messages, {
+      let last = await this.openRouterClient.createChatCompletion(messages, {
         temperature: options.temperature,
         maxTokens: options.maxTokens
       });
-      this.outputChannel?.appendLine(`[AIResourceOrchestrator] Received response from AI (${response.length} chars)`);
+      this.outputChannel?.appendLine(`[AIResourceOrchestrator] Received response from AI (${last.content.length} chars)`);
 
       // Log preview of AI response to see what it's saying
       this.outputChannel?.appendLine(`[AIResourceOrchestrator] AI response preview (first 500 chars):`);
-      this.outputChannel?.appendLine(response.substring(0, 500));
+      this.outputChannel?.appendLine(last.content.substring(0, 500));
       this.outputChannel?.appendLine('...');
 
       // Only check for guide requests if guides are enabled
@@ -113,7 +113,7 @@ export class AIResourceOrchestrator {
 
         while (turnCount < this.MAX_TURNS) {
           this.outputChannel?.appendLine(`[AIResourceOrchestrator] Checking for guide requests in response...`);
-          const resourceRequest = ResourceRequestParser.parse(response);
+          const resourceRequest = ResourceRequestParser.parse(last.content);
 
           if (!resourceRequest.hasGuideRequest) {
             // No guide request - we're done
@@ -137,15 +137,18 @@ export class AIResourceOrchestrator {
           // Turn N: Fulfill guide request
           turnCount++;
           this.outputChannel?.appendLine(`[AIResourceOrchestrator] Turn ${turnCount}: Fulfilling guide request`);
-          response = await this.fulfillGuideRequest(
+          const nextTurn = await this.fulfillGuideRequest(
             conversationId,
-            response,
+            last.content,
             resourceRequest.requestedGuides,
             options
           );
 
           // Track which guides were used
           usedGuides.push(...resourceRequest.requestedGuides);
+
+          // Prepare for the next loop iteration
+          last = nextTurn;
         }
 
         if (turnCount >= this.MAX_TURNS) {
@@ -154,11 +157,14 @@ export class AIResourceOrchestrator {
       }
 
       // Clean up and return final response
-      const cleanedResponse = ResourceRequestParser.stripResourceTags(response);
+      const cleanedResponse = ResourceRequestParser.stripResourceTags(last.content);
+      const truncatedNote = last.finishReason === 'length'
+        ? '\n\n---\n\n⚠️ Response truncated. Increase Max Tokens in settings.'
+        : '';
       this.outputChannel?.appendLine(`[AIResourceOrchestrator] Conversation complete. Used ${usedGuides.length} guides total\n`);
 
       return {
-        content: cleanedResponse,
+        content: cleanedResponse + truncatedNote,
         usedGuides,
         requestedResources: []
       };
@@ -197,10 +203,12 @@ export class AIResourceOrchestrator {
         temperature: options.temperature,
         maxTokens: options.maxTokens
       });
-      this.outputChannel?.appendLine(`[AIResourceOrchestrator] Received response from AI (${response.length} chars)\n`);
+      this.outputChannel?.appendLine(`[AIResourceOrchestrator] Received response from AI (${response.content.length} chars)\n`);
 
       return {
-        content: response,
+        content: response.content + (response.finishReason === 'length'
+          ? '\n\n---\n\n⚠️ Response truncated. Increase Max Tokens in settings.'
+          : ''),
         usedGuides: [],
         requestedResources: []
       };
@@ -256,12 +264,12 @@ export class AIResourceOrchestrator {
         temperature: options.temperature,
         maxTokens: options.maxTokens
       });
-      this.outputChannel?.appendLine(`[AIResourceOrchestrator] Initial context response received (${response.length} chars)`);
+      this.outputChannel?.appendLine(`[AIResourceOrchestrator] Initial context response received (${response.content.length} chars)`);
 
-      const resourceRequest = ContextResourceRequestParser.parse(response);
+      const resourceRequest = ContextResourceRequestParser.parse(response.content);
 
       if (!resourceRequest.hasResourceRequest) {
-        const cleaned = ContextResourceRequestParser.stripRequestTags(response);
+        const cleaned = ContextResourceRequestParser.stripRequestTags(response.content);
         return {
           content: cleaned,
           usedGuides: [],
@@ -285,7 +293,7 @@ export class AIResourceOrchestrator {
       // Add the assistant's turn (with the request) to the conversation
       this.conversationManager.addMessage(conversationId, {
         role: 'assistant',
-        content: response
+        content: response.content
       });
 
       if (this.statusCallback && resourceRequest.requestedPaths.length > 0) {
@@ -320,13 +328,16 @@ export class AIResourceOrchestrator {
         maxTokens: options.maxTokens
       });
       this.outputChannel?.appendLine(
-        `[AIResourceOrchestrator] Final context response received (${followUp.length} chars)`
+        `[AIResourceOrchestrator] Final context response received (${followUp.content.length} chars)`
       );
 
-      const cleanedFollowUp = ContextResourceRequestParser.stripRequestTags(followUp);
+      const cleanedFollowUp = ContextResourceRequestParser.stripRequestTags(followUp.content);
+      const truncatedNote = followUp.finishReason === 'length'
+        ? '\n\n---\n\n⚠️ Response truncated. Increase Max Tokens in settings.'
+        : '';
 
       return {
-        content: cleanedFollowUp,
+        content: cleanedFollowUp + truncatedNote,
         usedGuides: [],
         requestedResources: deliveredResources
       };
@@ -343,7 +354,7 @@ export class AIResourceOrchestrator {
     assistantResponse: string,
     requestedGuidePaths: string[],
     options: AIOptions
-  ): Promise<string> {
+  ): Promise<{ content: string; finishReason?: string }> {
     // Add assistant's response (with guide request) to conversation
     this.conversationManager.addMessage(conversationId, {
       role: 'assistant',

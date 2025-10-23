@@ -121,7 +121,7 @@ You can still edit only `proseMinion.model` for backward compatibility; the exte
 
 **Setting**: `proseMinion.maxTokens`
 **Type**: Number (100 - 8000)
-**Default**: `2000`
+**Default**: `10000`
 
 **What it controls**:
 - Maximum length of AI responses
@@ -141,7 +141,7 @@ You can still edit only `proseMinion.model` for backward compatibility; the exte
 - Most analyses work well with 2000 tokens
 - Only increase for very long passages or detailed analysis
 
-**Note**: The AI may use fewer tokens than the limit if it completes the response early.
+**Note**: The AI may use fewer tokens than the limit if it completes the response early. If a response is cut off, a “Response truncated” notice appears — increase Max Tokens to allow longer outputs.
 
 ---
 
