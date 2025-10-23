@@ -6,24 +6,28 @@
 
 import * as vscode from 'vscode';
 import { IProseAnalysisService } from '../../domain/services/IProseAnalysisService';
+import { ContextGenerationResult } from '../../domain/models/ContextGeneration';
 import {
   WebviewToExtensionMessage,
   MessageType,
   AnalysisResultMessage,
   MetricsResultMessage,
   DictionaryResultMessage,
+  ContextResultMessage,
   ErrorMessage,
   StatusMessage,
   ModelScope,
   ModelDataMessage,
   ModelOption,
-  ExtensionToWebviewMessage
+  ExtensionToWebviewMessage,
+  ContextPathGroup
 } from '../../shared/types';
 import { OpenRouterModels } from '../../infrastructure/api/OpenRouterModels';
 
 interface ResultCache {
   analysis?: AnalysisResultMessage;
   dictionary?: DictionaryResultMessage;
+  context?: ContextResultMessage;
   metrics?: MetricsResultMessage;
   status?: StatusMessage;
   error?: ErrorMessage;
@@ -69,15 +73,24 @@ export class MessageHandler {
     try {
       switch (message.type) {
         case MessageType.ANALYZE_DIALOGUE:
-          await this.handleAnalyzeDialogue(message.text);
+          await this.handleAnalyzeDialogue(message.text, message.contextText, message.sourceFileUri);
           break;
 
         case MessageType.ANALYZE_PROSE:
-          await this.handleAnalyzeProse(message.text);
+          await this.handleAnalyzeProse(message.text, message.contextText, message.sourceFileUri);
           break;
 
         case MessageType.LOOKUP_DICTIONARY:
           await this.handleLookupDictionary(message.word, message.contextText);
+          break;
+
+        case MessageType.GENERATE_CONTEXT:
+          await this.handleGenerateContext(
+            message.excerpt,
+            message.existingContext,
+            message.sourceFileUri,
+            message.requestedGroups
+          );
           break;
 
         case MessageType.MEASURE_PROSE_STATS:
@@ -133,7 +146,31 @@ export class MessageHandler {
     this.sendDictionaryResult(result.content, result.toolName);
   }
 
-  private async handleAnalyzeDialogue(text: string): Promise<void> {
+  private async handleGenerateContext(
+    excerpt: string,
+    existingContext?: string,
+    sourceFileUri?: string,
+    requestedGroups?: ContextPathGroup[]
+  ): Promise<void> {
+    if (!excerpt.trim()) {
+      this.sendError('Context assistant needs an excerpt to analyze.');
+      return;
+    }
+
+    this.sendStatus('Gathering project resources for context...');
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    const result = await this.proseAnalysisService.generateContext({
+      excerpt,
+      existingContext,
+      sourceFileUri,
+      requestedGroups
+    });
+
+    this.sendContextResult(result);
+  }
+
+  private async handleAnalyzeDialogue(text: string, contextText?: string, sourceFileUri?: string): Promise<void> {
     const config = vscode.workspace.getConfiguration('proseMinion');
     const includeCraftGuides = config.get<boolean>('includeCraftGuides') ?? true;
 
@@ -145,11 +182,11 @@ export class MessageHandler {
     await new Promise(resolve => setTimeout(resolve, 100)); // Brief delay to ensure UI updates
 
     this.sendStatus('Analyzing dialogue with AI...');
-    const result = await this.proseAnalysisService.analyzeDialogue(text);
+    const result = await this.proseAnalysisService.analyzeDialogue(text, contextText, sourceFileUri);
     this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
   }
 
-  private async handleAnalyzeProse(text: string): Promise<void> {
+  private async handleAnalyzeProse(text: string, contextText?: string, sourceFileUri?: string): Promise<void> {
     const config = vscode.workspace.getConfiguration('proseMinion');
     const includeCraftGuides = config.get<boolean>('includeCraftGuides') ?? true;
 
@@ -161,7 +198,7 @@ export class MessageHandler {
     await new Promise(resolve => setTimeout(resolve, 100)); // Brief delay to ensure UI updates
 
     this.sendStatus('Analyzing prose with AI...');
-    const result = await this.proseAnalysisService.analyzeProse(text);
+    const result = await this.proseAnalysisService.analyzeProse(text, contextText, sourceFileUri);
     this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
   }
 
@@ -208,6 +245,21 @@ export class MessageHandler {
       ...message
     };
     void this.postMessage(message);
+  }
+
+  private sendContextResult(result: ContextGenerationResult): void {
+    const message: ContextResultMessage = {
+      type: MessageType.CONTEXT_RESULT,
+      result: result.content,
+      toolName: result.toolName,
+      requestedResources: result.requestedResources,
+      timestamp: Date.now()
+    };
+
+    sharedResultCache.context = { ...message };
+    sharedResultCache.error = undefined;
+    void this.postMessage(message);
+    this.sendStatus('');
   }
 
   private sendDictionaryResult(result: string, toolName: string): void {
@@ -417,6 +469,10 @@ export class MessageHandler {
 
     if (sharedResultCache.metrics) {
       void this.postMessage(sharedResultCache.metrics);
+    }
+
+    if (sharedResultCache.context) {
+      void this.postMessage(sharedResultCache.context);
     }
 
     if (sharedResultCache.dictionary) {

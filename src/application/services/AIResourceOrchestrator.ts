@@ -9,6 +9,8 @@ import { GuideRegistry } from '../../infrastructure/guides/GuideRegistry';
 import { GuideLoader } from '../../tools/shared/guides';
 import { ConversationManager } from './ConversationManager';
 import { ResourceRequestParser } from '../utils/ResourceRequestParser';
+import { ContextResourceRequestParser } from '../utils/ContextResourceRequestParser';
+import { ContextResourceContent, ContextResourceProvider, ContextResourceSummary } from '../../domain/models/ContextGeneration';
 
 export interface AIOptions {
   includeCraftGuides?: boolean;
@@ -19,6 +21,7 @@ export interface AIOptions {
 export interface ExecutionResult {
   content: string;
   usedGuides: string[];  // Paths of guides that were actually used
+  requestedResources?: string[];  // Context resources that were loaded during the run
 }
 
 export type StatusCallback = (message: string, guideNames?: string) => void;
@@ -156,7 +159,8 @@ export class AIResourceOrchestrator {
 
       return {
         content: cleanedResponse,
-        usedGuides
+        usedGuides,
+        requestedResources: []
       };
     } finally {
       // Clean up conversation after completion
@@ -197,7 +201,134 @@ export class AIResourceOrchestrator {
 
       return {
         content: response,
-        usedGuides: []
+        usedGuides: [],
+        requestedResources: []
+      };
+    } finally {
+      this.conversationManager.deleteConversation(conversationId);
+    }
+  }
+
+  /**
+   * Execute an AI request that can load workspace context resources on demand.
+   * Designed for the two-turn workflow used by the context assistant.
+   */
+  async executeWithContextResources(
+    toolName: string,
+    systemMessage: string,
+    userMessage: string,
+    resourceProvider: ContextResourceProvider,
+    resourceCatalog: ContextResourceSummary[],
+    options: AIOptions = {}
+  ): Promise<ExecutionResult> {
+    this.outputChannel?.appendLine(
+      `\n[AIResourceOrchestrator] Starting context conversation for ${toolName} (model: ${this.openRouterClient.getModel()})`
+    );
+
+    const conversationId = this.conversationManager.startConversation(toolName, systemMessage);
+    const deliveredResources: string[] = [];
+
+    try {
+      if (resourceCatalog.length > 0) {
+        this.outputChannel?.appendLine(
+          `[AIResourceOrchestrator] Context resource catalog (${resourceCatalog.length} entries):`
+        );
+        resourceCatalog.forEach((resource, index) => {
+          this.outputChannel?.appendLine(
+            `  ${index + 1}. [${resource.group}] ${resource.path}${
+              resource.label && resource.label.toLowerCase() !== resource.path.toLowerCase()
+                ? ` — ${resource.label}`
+                : ''
+            }`
+          );
+        });
+      } else {
+        this.outputChannel?.appendLine('[AIResourceOrchestrator] Context resource catalog is empty.');
+      }
+
+      this.conversationManager.addMessage(conversationId, {
+        role: 'user',
+        content: userMessage
+      });
+
+      let messages = this.conversationManager.getMessages(conversationId);
+      let response = await this.openRouterClient.createChatCompletion(messages, {
+        temperature: options.temperature,
+        maxTokens: options.maxTokens
+      });
+      this.outputChannel?.appendLine(`[AIResourceOrchestrator] Initial context response received (${response.length} chars)`);
+
+      const resourceRequest = ContextResourceRequestParser.parse(response);
+
+      if (!resourceRequest.hasResourceRequest) {
+        const cleaned = ContextResourceRequestParser.stripRequestTags(response);
+        return {
+          content: cleaned,
+          usedGuides: [],
+          requestedResources: deliveredResources
+        };
+      }
+
+      if (resourceRequest.requestedPaths.length > 0) {
+        this.outputChannel?.appendLine('[AIResourceOrchestrator] Context assistant requested the following paths:');
+        resourceRequest.requestedPaths.forEach((requestedPath, index) => {
+          this.outputChannel?.appendLine(`  ${index + 1}. ${requestedPath}`);
+        });
+      } else {
+        this.outputChannel?.appendLine('[AIResourceOrchestrator] Context assistant returned an empty context-request tag.');
+      }
+
+      this.outputChannel?.appendLine(
+        `[AIResourceOrchestrator] Context assistant requested ${resourceRequest.requestedPaths.length} resource(s).`
+      );
+
+      // Add the assistant's turn (with the request) to the conversation
+      this.conversationManager.addMessage(conversationId, {
+        role: 'assistant',
+        content: response
+      });
+
+      if (this.statusCallback && resourceRequest.requestedPaths.length > 0) {
+        this.statusCallback('Loading project reference files...');
+      }
+
+      const loadedResources = await resourceProvider.loadResources(resourceRequest.requestedPaths);
+      deliveredResources.push(...loadedResources.map(resource => resource.path));
+
+      if (loadedResources.length === 0) {
+        this.outputChannel?.appendLine('[AIResourceOrchestrator] No project resources matched the AI request.');
+      } else {
+        this.outputChannel?.appendLine(
+          `[AIResourceOrchestrator] Loaded ${loadedResources.length} project resource(s) for follow-up turn:`
+        );
+        loadedResources.forEach((resource, index) => {
+          this.outputChannel?.appendLine(
+            `  ${index + 1}. ${resource.path} (${resource.content.length} chars)`
+          );
+        });
+      }
+
+      const userFollowUp = this.buildContextResourceMessage(loadedResources, resourceRequest.requestedPaths);
+      this.conversationManager.addMessage(conversationId, {
+        role: 'user',
+        content: userFollowUp
+      });
+
+      messages = this.conversationManager.getMessages(conversationId);
+      const followUp = await this.openRouterClient.createChatCompletion(messages, {
+        temperature: options.temperature,
+        maxTokens: options.maxTokens
+      });
+      this.outputChannel?.appendLine(
+        `[AIResourceOrchestrator] Final context response received (${followUp.length} chars)`
+      );
+
+      const cleanedFollowUp = ContextResourceRequestParser.stripRequestTags(followUp);
+
+      return {
+        content: cleanedFollowUp,
+        usedGuides: [],
+        requestedResources: deliveredResources
       };
     } finally {
       this.conversationManager.deleteConversation(conversationId);
@@ -271,6 +402,43 @@ export class AIResourceOrchestrator {
       lines.push(content);
       lines.push('', '---', '');
     }
+
+    return lines.join('\n');
+  }
+
+  private buildContextResourceMessage(
+    resources: ContextResourceContent[],
+    requestedPaths: string[]
+  ): string {
+    if (resources.length === 0) {
+      const missingList = requestedPaths.length > 0 ? requestedPaths.join(', ') : 'unknown paths';
+      return `No project resources were found for the requested paths (${missingList}). Please continue without them.`;
+    }
+
+    const delivered = new Set(resources.map(resource => resource.path));
+    const missing = requestedPaths.filter(path => !delivered.has(path));
+
+    const lines: string[] = ['Here are the requested project resources:', ''];
+
+    for (const resource of resources) {
+      lines.push(`### Resource: ${resource.path}`);
+      lines.push(`Group: ${resource.group}`);
+      if (resource.workspaceFolder) {
+        lines.push(`Workspace Folder: ${resource.workspaceFolder}`);
+      }
+      lines.push('');
+      lines.push('```markdown');
+      lines.push(resource.content.trim());
+      lines.push('```', '');
+    }
+
+    if (missing.length > 0) {
+      lines.push('The following requested paths could not be located:', '');
+      missing.forEach(path => lines.push(`- ${path}`));
+      lines.push('');
+    }
+
+    lines.push('Please incorporate these references into the context summary.');
 
     return lines.join('\n');
   }

@@ -66,7 +66,14 @@ export function activate(context: vscode.ExtensionContext): void {
       }
 
       // Send selected text to webview
-      proseToolsViewProvider?.sendSelectionToWebview(text);
+      const uri = editor.document.uri;
+      const relativePath = vscode.workspace.asRelativePath(uri, false);
+
+      proseToolsViewProvider?.sendSelectionToWebview({
+        text,
+        sourceUri: uri.toString(),
+        relativePath
+      });
 
       // Show the webview panel
       vscode.commands.executeCommand('prose-minion.toolsView.focus');
@@ -76,10 +83,18 @@ export function activate(context: vscode.ExtensionContext): void {
   // Listen for selection changes (optional - for real-time updates)
   context.subscriptions.push(
     vscode.window.onDidChangeTextEditorSelection(event => {
-      const text = event.textEditor.document.getText(event.selections[0]);
+      const editor = event.textEditor;
+      const text = editor.document.getText(event.selections[0]);
       if (text && text.length > 0 && text.length < 10000) {
         // Only send reasonable-sized selections
-        proseToolsViewProvider?.sendSelectionToWebview(text);
+        const uri = editor.document.uri;
+        const relativePath = vscode.workspace.asRelativePath(uri, false);
+
+        proseToolsViewProvider?.sendSelectionToWebview({
+          text,
+          sourceUri: uri.toString(),
+          relativePath
+        });
       }
     })
   );

@@ -8,6 +8,8 @@ import { AIResourceOrchestrator, ExecutionResult } from '../../application/servi
 
 export interface DialogueMicrobeatInput {
   text: string;
+  contextText?: string;
+  sourceFileUri?: string;
 }
 
 export interface DialogueMicrobeatOutput {
@@ -36,7 +38,7 @@ export class DialogueMicrobeatAssistant {
     const systemMessage = this.buildSystemMessage(sharedPrompts, toolPrompts);
 
     // Build user message (just the dialogue text)
-    const userMessage = this.buildUserMessage(input.text);
+    const userMessage = this.buildUserMessage(input);
 
     // Use orchestrator to execute with agent capabilities (guide support)
     return await this.aiResourceOrchestrator.executeWithAgentCapabilities(
@@ -77,8 +79,28 @@ export class DialogueMicrobeatAssistant {
     return parts.join('\n\n---\n\n');
   }
 
-  private buildUserMessage(text: string): string {
-    return `Please analyze this dialogue passage and provide suggestions for dialogue tags and action beats:\n\n${text}`;
+  private buildUserMessage(input: DialogueMicrobeatInput): string {
+    const lines: string[] = [
+      'Please analyze this dialogue passage and provide suggestions for dialogue tags and action beats.',
+      '',
+      '### Dialogue Passage',
+      '```markdown',
+      input.text,
+      '```',
+      ''
+    ];
+
+    if (input.sourceFileUri) {
+      lines.push(`Source File: ${input.sourceFileUri}`, '');
+    }
+
+    if (input.contextText && input.contextText.trim().length > 0) {
+      lines.push('### Additional Context', input.contextText.trim(), '');
+    }
+
+    lines.push('Focus on the emotional beats, speaker intentions, and body language cues that will make the dialogue feel grounded.');
+
+    return lines.join('\n');
   }
 
   private getDefaultInstructions(): string {

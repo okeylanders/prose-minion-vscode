@@ -3,11 +3,14 @@
  * Following clean architecture: these are shared contracts
  */
 
+import { ContextPathGroup } from './context';
+
 export enum MessageType {
   // Analysis tab messages
   ANALYZE_DIALOGUE = 'analyze_dialogue',
   ANALYZE_PROSE = 'analyze_prose',
   LOOKUP_DICTIONARY = 'lookup_dictionary',
+  GENERATE_CONTEXT = 'generate_context',
 
   // Metrics tab messages
   MEASURE_PROSE_STATS = 'measure_prose_stats',
@@ -18,6 +21,7 @@ export enum MessageType {
   ANALYSIS_RESULT = 'analysis_result',
   METRICS_RESULT = 'metrics_result',
   DICTIONARY_RESULT = 'dictionary_result',
+  CONTEXT_RESULT = 'context_result',
   ERROR = 'error',
   STATUS = 'status',
 
@@ -59,17 +63,29 @@ export interface BaseMessage {
 export interface AnalyzeDialogueMessage extends BaseMessage {
   type: MessageType.ANALYZE_DIALOGUE;
   text: string;
+  contextText?: string;
+  sourceFileUri?: string;
 }
 
 export interface AnalyzeProseMessage extends BaseMessage {
   type: MessageType.ANALYZE_PROSE;
   text: string;
+  contextText?: string;
+  sourceFileUri?: string;
 }
 
 export interface LookupDictionaryMessage extends BaseMessage {
   type: MessageType.LOOKUP_DICTIONARY;
   word: string;
   contextText?: string;
+}
+
+export interface GenerateContextMessage extends BaseMessage {
+  type: MessageType.GENERATE_CONTEXT;
+  excerpt: string;
+  existingContext?: string;
+  sourceFileUri?: string;
+  requestedGroups?: ContextPathGroup[];
 }
 
 export interface MeasureProseStatsMessage extends BaseMessage {
@@ -111,6 +127,7 @@ export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
   | AnalyzeProseMessage
   | LookupDictionaryMessage
+  | GenerateContextMessage
   | MeasureProseStatsMessage
   | MeasureStyleFlagsMessage
   | MeasureWordFrequencyMessage
@@ -139,6 +156,13 @@ export interface DictionaryResultMessage extends BaseMessage {
   toolName: string;
 }
 
+export interface ContextResultMessage extends BaseMessage {
+  type: MessageType.CONTEXT_RESULT;
+  result: string;
+  toolName: string;
+  requestedResources?: string[];
+}
+
 export interface ErrorMessage extends BaseMessage {
   type: MessageType.ERROR;
   message: string;
@@ -154,6 +178,8 @@ export interface StatusMessage extends BaseMessage {
 export interface SelectionUpdatedMessage extends BaseMessage {
   type: MessageType.SELECTION_UPDATED;
   text: string;
+  sourceUri?: string;
+  relativePath?: string;
 }
 
 export interface ModelDataMessage extends BaseMessage {
@@ -166,6 +192,7 @@ export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
   | MetricsResultMessage
   | DictionaryResultMessage
+  | ContextResultMessage
   | ErrorMessage
   | StatusMessage
   | SelectionUpdatedMessage

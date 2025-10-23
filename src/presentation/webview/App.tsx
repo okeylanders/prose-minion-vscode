@@ -25,9 +25,13 @@ const vscode = acquireVsCodeApi();
 type PersistedState = {
   activeTab: TabId;
   selectedText: string;
+  selectedSourceUri?: string;
+  selectedRelativePath?: string;
   analysisResult: string;
   metricsResult: any;
   utilitiesResult: string;
+  contextText: string;
+  contextRequestedResources: string[];
   statusMessage: string;
   guideNames: string;
   usedGuides: string[];
@@ -39,12 +43,20 @@ export const App: React.FC = () => {
 
   const [activeTab, setActiveTab] = React.useState<TabId>(persistedState?.activeTab ?? TabId.ANALYSIS);
   const [selectedText, setSelectedText] = React.useState(persistedState?.selectedText ?? '');
+  const [selectedSourceUri, setSelectedSourceUri] = React.useState(persistedState?.selectedSourceUri ?? '');
+  const [selectedRelativePath, setSelectedRelativePath] = React.useState(persistedState?.selectedRelativePath ?? '');
   const [analysisResult, setAnalysisResult] = React.useState(persistedState?.analysisResult ?? '');
   const [analysisLoading, setAnalysisLoading] = React.useState(false);
   const [metricsResult, setMetricsResult] = React.useState<any>(persistedState?.metricsResult ?? null);
   const [metricsLoading, setMetricsLoading] = React.useState(false);
   const [utilitiesResult, setUtilitiesResult] = React.useState(persistedState?.utilitiesResult ?? '');
   const [utilitiesLoading, setUtilitiesLoading] = React.useState(false);
+  const [contextText, setContextText] = React.useState(persistedState?.contextText ?? '');
+  const [contextLoading, setContextLoading] = React.useState(false);
+  const [contextStatusMessage, setContextStatusMessage] = React.useState('');
+  const [contextRequestedResources, setContextRequestedResources] = React.useState<string[]>(
+    persistedState?.contextRequestedResources ?? []
+  );
   const [error, setError] = React.useState('');
   const [statusMessage, setStatusMessage] = React.useState(persistedState?.statusMessage ?? '');
   const [guideNames, setGuideNames] = React.useState<string>(persistedState?.guideNames ?? '');
@@ -54,13 +66,23 @@ export const App: React.FC = () => {
     persistedState?.modelSelections ?? {}
   );
 
+  const contextLoadingRef = React.useRef(contextLoading);
+
+  React.useEffect(() => {
+    contextLoadingRef.current = contextLoading;
+  }, [contextLoading]);
+
   React.useEffect(() => {
     const nextState: PersistedState = {
       activeTab,
       selectedText,
+      selectedSourceUri,
+      selectedRelativePath,
       analysisResult,
       metricsResult,
       utilitiesResult,
+      contextText,
+      contextRequestedResources,
       statusMessage,
       guideNames,
       usedGuides,
@@ -70,9 +92,13 @@ export const App: React.FC = () => {
   }, [
     activeTab,
     selectedText,
+    selectedSourceUri,
+    selectedRelativePath,
     analysisResult,
     metricsResult,
     utilitiesResult,
+    contextText,
+    contextRequestedResources,
     statusMessage,
     guideNames,
     usedGuides,
@@ -87,6 +113,8 @@ export const App: React.FC = () => {
       switch (message.type) {
         case MessageType.SELECTION_UPDATED:
           setSelectedText(message.text);
+          setSelectedSourceUri(message.sourceUri ?? '');
+          setSelectedRelativePath(message.relativePath ?? '');
           break;
 
         case MessageType.ANALYSIS_RESULT:
@@ -112,11 +140,22 @@ export const App: React.FC = () => {
           setError('');
           break;
 
+        case MessageType.CONTEXT_RESULT:
+          setContextText(message.result);
+          setContextRequestedResources(message.requestedResources ?? []);
+          setContextLoading(false);
+          setContextStatusMessage('');
+          setStatusMessage('');
+          setError('');
+          break;
+
         case MessageType.ERROR:
           setError(message.message);
           setAnalysisLoading(false);
           setMetricsLoading(false);
           setUtilitiesLoading(false);
+          setContextLoading(false);
+          setContextStatusMessage('');
           setAnalysisResult('');
           setMetricsResult(null);
           setUtilitiesResult('');
@@ -125,6 +164,9 @@ export const App: React.FC = () => {
         case MessageType.STATUS:
           setStatusMessage(message.message);
           setGuideNames(message.guideNames || '');
+          if (contextLoadingRef.current) {
+            setContextStatusMessage(message.message);
+          }
           console.log('Status:', message.message, message.guideNames ? `(${message.guideNames})` : '');
           break;
 
@@ -172,6 +214,32 @@ export const App: React.FC = () => {
       type: MessageType.SET_MODEL_SELECTION,
       scope,
       modelId
+    });
+  }, []);
+
+  const handleContextChange = React.useCallback((value: string) => {
+    setContextText(value);
+  }, []);
+
+  const handleContextRequest = React.useCallback((payload: {
+    excerpt: string;
+    existingContext: string;
+    sourceFileUri?: string;
+  }) => {
+    if (!payload.excerpt.trim()) {
+      return;
+    }
+
+    setContextLoading(true);
+    setContextStatusMessage('Gathering project resources...');
+    setContextRequestedResources([]);
+    setError('');
+
+    vscode.postMessage({
+      type: MessageType.GENERATE_CONTEXT,
+      excerpt: payload.excerpt,
+      existingContext: payload.existingContext?.trim() || undefined,
+      sourceFileUri: payload.sourceFileUri
     });
   }, []);
 
@@ -240,6 +308,14 @@ export const App: React.FC = () => {
             statusMessage={statusMessage}
             guideNames={guideNames}
             usedGuides={usedGuides}
+            contextText={contextText}
+            onContextChange={handleContextChange}
+            onContextRequest={handleContextRequest}
+            contextLoading={contextLoading}
+            contextStatusMessage={contextStatusMessage}
+            contextRequestedResources={contextRequestedResources}
+            selectedRelativePath={selectedRelativePath}
+            selectedSourceUri={selectedSourceUri}
           />
         )}
 

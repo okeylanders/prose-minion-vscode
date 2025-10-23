@@ -4,17 +4,18 @@
  */
 
 import { AnalysisResult, MetricsResult } from '../models/AnalysisResult';
+import { ContextGenerationRequest, ContextGenerationResult } from '../models/ContextGeneration';
 
 export interface IProseAnalysisService {
   /**
    * Analyze dialogue and provide microbeat suggestions
    */
-  analyzeDialogue(text: string): Promise<AnalysisResult>;
+  analyzeDialogue(text: string, contextText?: string, sourceFileUri?: string): Promise<AnalysisResult>;
 
   /**
    * General prose assistance
    */
-  analyzeProse(text: string): Promise<AnalysisResult>;
+  analyzeProse(text: string, contextText?: string, sourceFileUri?: string): Promise<AnalysisResult>;
 
   /**
    * Measure prose statistics (word count, pacing, etc.)
@@ -35,4 +36,9 @@ export interface IProseAnalysisService {
    * Generate a dictionary entry for a word using AI
    */
   lookupDictionary(word: string, contextText?: string): Promise<AnalysisResult>;
+
+  /**
+   * Generate contextual briefing material to accompany an excerpt
+   */
+  generateContext(request: ContextGenerationRequest): Promise<ContextGenerationResult>;
 }

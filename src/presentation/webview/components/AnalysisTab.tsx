@@ -17,6 +17,14 @@ interface AnalysisTabProps {
   statusMessage?: string;
   guideNames?: string;
   usedGuides?: string[];
+  contextText: string;
+  onContextChange: (value: string) => void;
+  onContextRequest: (payload: { excerpt: string; existingContext: string; sourceFileUri?: string }) => void;
+  contextLoading: boolean;
+  contextStatusMessage?: string;
+  contextRequestedResources: string[];
+  selectedRelativePath?: string;
+  selectedSourceUri?: string;
 }
 
 export const AnalysisTab: React.FC<AnalysisTabProps> = ({
@@ -27,13 +35,33 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
   onLoadingChange,
   statusMessage,
   guideNames,
-  usedGuides
+  usedGuides,
+  contextText,
+  onContextChange,
+  onContextRequest,
+  contextLoading,
+  contextStatusMessage,
+  contextRequestedResources,
+  selectedRelativePath,
+  selectedSourceUri
 }) => {
   const [text, setText] = React.useState(selectedText);
 
   React.useEffect(() => {
     setText(selectedText);
   }, [selectedText]);
+
+  const sourceReference = React.useMemo(() => {
+    if (selectedRelativePath && selectedRelativePath.trim().length > 0) {
+      return selectedRelativePath;
+    }
+
+    if (selectedSourceUri && selectedSourceUri.trim().length > 0) {
+      return selectedSourceUri;
+    }
+
+    return undefined;
+  }, [selectedRelativePath, selectedSourceUri]);
 
   const handleAnalyzeDialogue = () => {
     if (!text.trim()) {
@@ -44,7 +72,9 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
 
     vscode.postMessage({
       type: MessageType.ANALYZE_DIALOGUE,
-      text
+      text,
+      contextText: contextText && contextText.trim().length > 0 ? contextText : undefined,
+      sourceFileUri: sourceReference
     });
   };
 
@@ -57,7 +87,21 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
 
     vscode.postMessage({
       type: MessageType.ANALYZE_PROSE,
-      text
+      text,
+      contextText: contextText && contextText.trim().length > 0 ? contextText : undefined,
+      sourceFileUri: sourceReference
+    });
+  };
+
+  const handleGenerateContext = () => {
+    if (!text.trim() || contextLoading) {
+      return;
+    }
+
+    onContextRequest({
+      excerpt: text,
+      existingContext: contextText,
+      sourceFileUri: sourceReference
     });
   };
 
@@ -74,12 +118,59 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
         <label className="block text-sm font-medium mb-2">
           Text to Analyze
         </label>
+        {selectedRelativePath && (
+          <div className="excerpt-meta">Source: {selectedRelativePath}</div>
+        )}
         <textarea
           className="w-full h-32 resize-none"
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Select text in your editor or paste text here..."
         />
+      </div>
+
+      <div className="input-container">
+        <div className="context-assist-header">
+          <label className="block text-sm font-medium">
+            Context Brief (optional)
+          </label>
+        </div>
+        <div className="context-assist-row">
+          <textarea
+            className="w-full h-28 resize-none"
+            value={contextText}
+            onChange={(e) => onContextChange(e.target.value)}
+            placeholder="Summaries, goals, tone targets, or notes that help the AI stay grounded..."
+          />
+          <button
+            className="context-assist-button"
+            onClick={handleGenerateContext}
+            disabled={contextLoading || !text.trim()}
+            title="Let the context assistant build a briefing"
+            aria-label="Generate context with assistant"
+          >
+            {contextLoading ? (
+              <div className="spinner spinner-small"></div>
+            ) : (
+              '🤖'
+            )}
+          </button>
+        </div>
+        {(contextStatusMessage && contextLoading) && (
+          <div className="context-status">{contextStatusMessage}</div>
+        )}
+        {contextRequestedResources && contextRequestedResources.length > 0 && (
+          <div className="context-resource-summary">
+            <div className="context-resource-title">Resources referenced:</div>
+            <div className="context-resource-list">
+              {contextRequestedResources.map((path, index) => (
+                <span key={`${path}-${index}`} className="context-resource-chip">
+                  {path}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="button-group">
