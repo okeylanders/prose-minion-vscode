@@ -33,6 +33,9 @@ type PersistedState = {
   metricsResult: any;
   utilitiesResult: string;
   dictionaryToolName?: string;
+  dictionaryWord: string;
+  dictionaryContext: string;
+  dictionaryWordEdited: boolean;
   contextText: string;
   contextRequestedResources: string[];
   statusMessage: string;
@@ -56,6 +59,9 @@ export const App: React.FC = () => {
   const [utilitiesResult, setUtilitiesResult] = React.useState(persistedState?.utilitiesResult ?? '');
   const [dictionaryToolName, setDictionaryToolName] = React.useState<string | undefined>(persistedState?.dictionaryToolName);
   const [utilitiesLoading, setUtilitiesLoading] = React.useState(false);
+  const [dictionaryWord, setDictionaryWord] = React.useState<string>(persistedState?.dictionaryWord ?? '');
+  const [dictionaryContext, setDictionaryContext] = React.useState<string>(persistedState?.dictionaryContext ?? '');
+  const [dictionaryWordEdited, setDictionaryWordEdited] = React.useState<boolean>(persistedState?.dictionaryWordEdited ?? false);
   const [contextText, setContextText] = React.useState(persistedState?.contextText ?? '');
   const [contextLoading, setContextLoading] = React.useState(false);
   const [contextStatusMessage, setContextStatusMessage] = React.useState('');
@@ -100,6 +106,9 @@ export const App: React.FC = () => {
       metricsResult,
       utilitiesResult,
       dictionaryToolName,
+      dictionaryWord,
+      dictionaryContext,
+      dictionaryWordEdited,
       contextText,
       contextRequestedResources,
       statusMessage,
@@ -118,6 +127,9 @@ export const App: React.FC = () => {
     metricsResult,
     utilitiesResult,
     dictionaryToolName,
+    dictionaryWord,
+    dictionaryContext,
+    dictionaryWordEdited,
     contextText,
     contextRequestedResources,
     statusMessage,
@@ -421,6 +433,12 @@ export const App: React.FC = () => {
             dictionaryInjection={dictionaryInjection}
             onDictionaryInjectionHandled={handleDictionaryInjectionHandled}
             onRequestSelection={handleRequestSelection}
+            word={dictionaryWord}
+            context={dictionaryContext}
+            onWordChange={(val) => setDictionaryWord(val)}
+            onContextChange={(val) => setDictionaryContext(val)}
+            hasWordBeenEdited={dictionaryWordEdited}
+            setHasWordBeenEdited={setDictionaryWordEdited}
           />
         )}
       </main>

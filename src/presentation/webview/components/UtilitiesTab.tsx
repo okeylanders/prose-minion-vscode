@@ -19,6 +19,12 @@ interface UtilitiesTabProps {
   dictionaryInjection?: { word?: string; context?: string; timestamp: number } | null;
   onDictionaryInjectionHandled: () => void;
   onRequestSelection: (target: SelectionTarget) => void;
+  word: string;
+  context: string;
+  onWordChange: (value: string) => void;
+  onContextChange: (value: string) => void;
+  hasWordBeenEdited: boolean;
+  setHasWordBeenEdited: (edited: boolean) => void;
 }
 
 export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
@@ -31,11 +37,14 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
   toolName,
   dictionaryInjection,
   onDictionaryInjectionHandled,
-  onRequestSelection
+  onRequestSelection,
+  word,
+  context,
+  onWordChange,
+  onContextChange,
+  hasWordBeenEdited,
+  setHasWordBeenEdited
 }) => {
-  const [word, setWord] = React.useState('');
-  const [context, setContext] = React.useState('');
-  const [hasWordBeenEdited, setHasWordBeenEdited] = React.useState(false);
   const lastLookupRef = React.useRef<{ word: string; context: string } | null>(null);
 
   const enforceWordLimit = React.useCallback((value: string): string => {
@@ -55,12 +64,12 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
 
     if (dictionaryInjection.word !== undefined) {
       const sanitized = enforceWordLimit(dictionaryInjection.word);
-      setWord(sanitized);
+      onWordChange(sanitized);
       setHasWordBeenEdited(false);
     }
 
     if (dictionaryInjection.context !== undefined) {
-      setContext(dictionaryInjection.context);
+      onContextChange(dictionaryInjection.context);
     }
 
     onDictionaryInjectionHandled();
@@ -68,7 +77,7 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
 
   React.useEffect(() => {
     const trimmed = selectedText.trim();
-    if (!trimmed || hasWordBeenEdited) {
+    if (!trimmed || hasWordBeenEdited || (word && word.trim().length > 0)) {
       return;
     }
 
@@ -83,9 +92,9 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
 
     const candidate = enforceWordLimit(sanitizedTokens.join(' '));
     if (candidate) {
-      setWord(candidate);
+      onWordChange(candidate);
     }
-  }, [selectedText, hasWordBeenEdited, enforceWordLimit]);
+  }, [selectedText, hasWordBeenEdited, word, enforceWordLimit, onWordChange]);
 
   const handleLookup = () => {
     const sanitizedWord = enforceWordLimit(word);
@@ -109,7 +118,7 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
 
   const handleWordChange = (value: string) => {
     const sanitized = enforceWordLimit(value);
-    setWord(sanitized);
+    onWordChange(sanitized);
     setHasWordBeenEdited(Boolean(sanitized));
   };
 
@@ -216,7 +225,7 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
         <textarea
           className="w-full h-24 resize-none"
           value={context}
-          onChange={(e) => setContext(e.target.value)}
+          onChange={(e) => onContextChange(e.target.value)}
           placeholder="Paste a sentence, paragraph, or notes to guide the dictionary output..."
         />
       </div>
