@@ -15,7 +15,8 @@ import {
   MessageType,
   ExtensionToWebviewMessage,
   ModelScope,
-  ModelOption
+  ModelOption,
+  SelectionTarget
 } from '../../shared/types';
 
 // Get VS Code API
@@ -69,12 +70,24 @@ export const App: React.FC = () => {
   const [modelSelections, setModelSelections] = React.useState<Partial<Record<ModelScope, string>>>(
     persistedState?.modelSelections ?? {}
   );
+  const [dictionaryInjection, setDictionaryInjection] = React.useState<{ word?: string; context?: string; timestamp: number } | null>(null);
 
   const contextLoadingRef = React.useRef(contextLoading);
 
   React.useEffect(() => {
     contextLoadingRef.current = contextLoading;
   }, [contextLoading]);
+  const handleRequestSelection = React.useCallback((target: SelectionTarget) => {
+    vscode.postMessage({
+      type: MessageType.REQUEST_SELECTION,
+      target
+    });
+  }, []);
+
+  const handleDictionaryInjectionHandled = React.useCallback(() => {
+    setDictionaryInjection(null);
+  }, []);
+
 
   React.useEffect(() => {
     const nextState: PersistedState = {
@@ -119,11 +132,23 @@ export const App: React.FC = () => {
       const message = event.data;
 
       switch (message.type) {
-        case MessageType.SELECTION_UPDATED:
-          setSelectedText(message.text);
-          setSelectedSourceUri(message.sourceUri ?? '');
-          setSelectedRelativePath(message.relativePath ?? '');
+        case MessageType.SELECTION_UPDATED: {
+          const target = message.target || 'assistant';
+
+          if (target === 'assistant' || target === 'both') {
+            setActiveTab(TabId.ANALYSIS);
+            setSelectedText(message.text);
+            setSelectedSourceUri(message.sourceUri ?? '');
+            setSelectedRelativePath(message.relativePath ?? '');
+          }
+
+          if (target === 'dictionary' || target === 'both') {
+            setActiveTab(TabId.UTILITIES);
+            setDictionaryInjection({ word: message.text, timestamp: Date.now() });
+          }
+
           break;
+        }
 
         case MessageType.ANALYSIS_RESULT:
           setAnalysisResult(message.result);
@@ -153,6 +178,31 @@ export const App: React.FC = () => {
         case MessageType.SAVE_RESULT_SUCCESS:
           console.log('Result saved to', message.filePath);
           break;
+
+        case MessageType.SELECTION_DATA: {
+          const content = message.content ?? '';
+          switch (message.target) {
+            case 'assistant_excerpt':
+              setActiveTab(TabId.ANALYSIS);
+              setSelectedText(content);
+              setSelectedSourceUri('');
+              setSelectedRelativePath('');
+              break;
+            case 'assistant_context':
+              setActiveTab(TabId.ANALYSIS);
+              setContextText(content);
+              break;
+            case 'dictionary_word':
+              setActiveTab(TabId.UTILITIES);
+              setDictionaryInjection({ word: content, timestamp: Date.now() });
+              break;
+            case 'dictionary_context':
+              setActiveTab(TabId.UTILITIES);
+              setDictionaryInjection({ context: content, timestamp: Date.now() });
+              break;
+          }
+          break;
+        }
 
         case MessageType.CONTEXT_RESULT:
           setContextText(message.result);
@@ -331,6 +381,7 @@ export const App: React.FC = () => {
             selectedRelativePath={selectedRelativePath}
             selectedSourceUri={selectedSourceUri}
             analysisToolName={analysisToolName}
+            onRequestSelection={handleRequestSelection}
           />
         )}
 
@@ -360,6 +411,9 @@ export const App: React.FC = () => {
             onLoadingChange={setUtilitiesLoading}
             statusMessage={statusMessage}
             toolName={dictionaryToolName}
+            dictionaryInjection={dictionaryInjection}
+            onDictionaryInjectionHandled={handleDictionaryInjectionHandled}
+            onRequestSelection={handleRequestSelection}
           />
         )}
       </main>

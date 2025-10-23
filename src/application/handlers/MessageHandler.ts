@@ -22,7 +22,9 @@ import {
   ExtensionToWebviewMessage,
   ContextPathGroup,
   SaveResultSuccessMessage,
-  SaveResultMetadata
+  SaveResultMetadata,
+  SelectionTarget,
+  SelectionDataMessage
 } from '../../shared/types';
 import { OpenRouterModels } from '../../infrastructure/api/OpenRouterModels';
 
@@ -131,6 +133,10 @@ export class MessageHandler {
           await this.handleSetModelSelection(message.scope, message.modelId);
           break;
 
+        case MessageType.REQUEST_SELECTION:
+          await this.handleSelectionRequest(message.target);
+          break;
+
         default:
           this.sendError('Unknown message type', 'Received unrecognized message');
       }
@@ -209,6 +215,20 @@ export class MessageHandler {
       const message = error instanceof Error ? error.message : String(error);
       this.sendError('Failed to save result', message);
     }
+  }
+
+  private async handleSelectionRequest(target: SelectionTarget): Promise<void> {
+    const editor = vscode.window.activeTextEditor;
+    const content = editor ? editor.document.getText(editor.selection) : '';
+
+    const selectionMessage: SelectionDataMessage = {
+      type: MessageType.SELECTION_DATA,
+      target,
+      content,
+      timestamp: Date.now()
+    };
+
+    void this.postMessage(selectionMessage);
   }
 
   private async handleAnalyzeDialogue(text: string, contextText?: string, sourceFileUri?: string): Promise<void> {

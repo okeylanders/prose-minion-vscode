@@ -48,55 +48,64 @@ export function activate(context: vscode.ExtensionContext): void {
   );
   console.log('Webview provider registered successfully');
 
-  // Register command for analyzing selected text
+  const focusToolsView = () => {
+    void vscode.commands.executeCommand('prose-minion.toolsView.focus');
+  };
+
+  const getSelectionPayload = () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showWarningMessage('No active text editor');
+      return undefined;
+    }
+
+    const selection = editor.selection;
+    const text = editor.document.getText(selection);
+
+    if (!text) {
+      vscode.window.showWarningMessage('No text selected');
+      return undefined;
+    }
+
+    const uri = editor.document.uri;
+    const relativePath = vscode.workspace.asRelativePath(uri, false);
+
+    return { text, uri, relativePath };
+  };
+
+  const sendSelection = (
+    target: 'assistant' | 'dictionary',
+    payload: { text: string; uri: vscode.Uri; relativePath: string }
+  ) => {
+    proseToolsViewProvider?.sendSelectionToWebview({
+      text: payload.text,
+      sourceUri: payload.uri.toString(),
+      relativePath: payload.relativePath,
+      target
+    });
+    focusToolsView();
+  };
+
+  const handleAssistantSelection = () => {
+    const payload = getSelectionPayload();
+    if (!payload) {
+      return;
+    }
+    sendSelection('assistant', payload);
+  };
+
+  const handleWordLookupSelection = () => {
+    const payload = getSelectionPayload();
+    if (!payload) {
+      return;
+    }
+    sendSelection('dictionary', payload);
+  };
+
   context.subscriptions.push(
-    vscode.commands.registerCommand('prose-minion.analyzeSelection', () => {
-      const editor = vscode.window.activeTextEditor;
-      if (!editor) {
-        vscode.window.showWarningMessage('No active text editor');
-        return;
-      }
-
-      const selection = editor.selection;
-      const text = editor.document.getText(selection);
-
-      if (!text) {
-        vscode.window.showWarningMessage('No text selected');
-        return;
-      }
-
-      // Send selected text to webview
-      const uri = editor.document.uri;
-      const relativePath = vscode.workspace.asRelativePath(uri, false);
-
-      proseToolsViewProvider?.sendSelectionToWebview({
-        text,
-        sourceUri: uri.toString(),
-        relativePath
-      });
-
-      // Show the webview panel
-      vscode.commands.executeCommand('prose-minion.toolsView.focus');
-    })
-  );
-
-  // Listen for selection changes (optional - for real-time updates)
-  context.subscriptions.push(
-    vscode.window.onDidChangeTextEditorSelection(event => {
-      const editor = event.textEditor;
-      const text = editor.document.getText(event.selections[0]);
-      if (text && text.length > 0 && text.length < 10000) {
-        // Only send reasonable-sized selections
-        const uri = editor.document.uri;
-        const relativePath = vscode.workspace.asRelativePath(uri, false);
-
-        proseToolsViewProvider?.sendSelectionToWebview({
-          text,
-          sourceUri: uri.toString(),
-          relativePath
-        });
-      }
-    })
+    vscode.commands.registerCommand('prose-minion.assistantSelection', handleAssistantSelection),
+    vscode.commands.registerCommand('prose-minion.analyzeSelection', handleAssistantSelection),
+    vscode.commands.registerCommand('prose-minion.wordLookupSelection', handleWordLookupSelection)
   );
 }
 

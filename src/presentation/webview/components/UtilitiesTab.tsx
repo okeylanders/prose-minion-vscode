@@ -4,7 +4,7 @@
  */
 
 import * as React from 'react';
-import { MessageType } from '../../../shared/types';
+import { SelectionTarget, MessageType } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { formatAnalysisAsMarkdown } from '../utils/metricsFormatter';
 
@@ -16,6 +16,9 @@ interface UtilitiesTabProps {
   onLoadingChange: (loading: boolean) => void;
   statusMessage?: string;
   toolName?: string;
+  dictionaryInjection?: { word?: string; context?: string; timestamp: number } | null;
+  onDictionaryInjectionHandled: () => void;
+  onRequestSelection: (target: SelectionTarget) => void;
 }
 
 export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
@@ -25,7 +28,10 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
   isLoading,
   onLoadingChange,
   statusMessage,
-  toolName
+  toolName,
+  dictionaryInjection,
+  onDictionaryInjectionHandled,
+  onRequestSelection
 }) => {
   const [word, setWord] = React.useState('');
   const [context, setContext] = React.useState('');
@@ -41,6 +47,24 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
     const tokens = normalized.split(' ').filter(Boolean);
     return tokens.slice(0, 3).join(' ');
   }, []);
+
+  React.useEffect(() => {
+    if (!dictionaryInjection) {
+      return;
+    }
+
+    if (dictionaryInjection.word !== undefined) {
+      const sanitized = enforceWordLimit(dictionaryInjection.word);
+      setWord(sanitized);
+      setHasWordBeenEdited(false);
+    }
+
+    if (dictionaryInjection.context !== undefined) {
+      setContext(dictionaryInjection.context);
+    }
+
+    onDictionaryInjectionHandled();
+  }, [dictionaryInjection, enforceWordLimit, onDictionaryInjectionHandled]);
 
   React.useEffect(() => {
     const trimmed = selectedText.trim();
@@ -88,6 +112,14 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
     setWord(sanitized);
     setHasWordBeenEdited(Boolean(sanitized));
   };
+
+  const handlePasteWord = React.useCallback(() => {
+    onRequestSelection('dictionary_word');
+  }, [onRequestSelection]);
+
+  const handlePasteContext = React.useCallback(() => {
+    onRequestSelection('dictionary_context');
+  }, [onRequestSelection]);
 
   const markdownContent = React.useMemo(() => {
     if (!result) return '';
@@ -145,6 +177,16 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
       <h2 className="text-lg font-semibold mb-4">Utilities · Dictionary</h2>
 
       <div className="input-container">
+        <div className="input-toolbar">
+          <button
+            className="icon-button"
+            onClick={handlePasteWord}
+            title="Paste word from clipboard"
+            aria-label="Paste word"
+          >
+            📥
+          </button>
+        </div>
         <label className="block text-sm font-medium mb-2">
           Target Word
         </label>
@@ -158,6 +200,16 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
       </div>
 
       <div className="input-container">
+        <div className="input-toolbar">
+          <button
+            className="icon-button"
+            onClick={handlePasteContext}
+            title="Paste context from clipboard"
+            aria-label="Paste word context"
+          >
+            📥
+          </button>
+        </div>
         <label className="block text-sm font-medium mb-2">
           Optional Context (helps tailor examples and tone)
         </label>

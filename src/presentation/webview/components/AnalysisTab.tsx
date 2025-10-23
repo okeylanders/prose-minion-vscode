@@ -4,7 +4,7 @@
  */
 
 import * as React from 'react';
-import { MessageType } from '../../../shared/types';
+import { SelectionTarget, MessageType } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { formatAnalysisAsMarkdown } from '../utils/metricsFormatter';
 
@@ -26,6 +26,7 @@ interface AnalysisTabProps {
   selectedRelativePath?: string;
   selectedSourceUri?: string;
   analysisToolName?: string;
+  onRequestSelection: (target: SelectionTarget) => void;
 }
 
 export const AnalysisTab: React.FC<AnalysisTabProps> = ({
@@ -45,7 +46,8 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
   contextRequestedResources,
   selectedRelativePath,
   selectedSourceUri,
-  analysisToolName
+  analysisToolName,
+  onRequestSelection
 }) => {
   const [text, setText] = React.useState(selectedText);
 
@@ -136,6 +138,14 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
     });
   };
 
+  const handlePasteExcerpt = React.useCallback(() => {
+    onRequestSelection('assistant_excerpt');
+  }, [onRequestSelection]);
+
+  const handlePasteContext = React.useCallback(() => {
+    onRequestSelection('assistant_context');
+  }, [onRequestSelection]);
+
   const handleCopyAnalysisResult = () => {
     if (!result) {
       return;
@@ -194,6 +204,16 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
       <h2 className="text-lg font-semibold mb-4">Prose Analysis</h2>
 
       <div className="input-container">
+        <div className="input-toolbar">
+          <button
+            className="icon-button"
+            onClick={handlePasteExcerpt}
+            title="Paste excerpt from clipboard"
+            aria-label="Paste excerpt"
+          >
+            📥
+          </button>
+        </div>
         <label className="block text-sm font-medium mb-2">
           Text to Analyze
         </label>
@@ -210,6 +230,16 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
 
       <div className="input-container">
         <div className="context-assist-header">
+          <div className="input-toolbar">
+            <button
+              className="icon-button"
+              onClick={handlePasteContext}
+              title="Paste context from clipboard"
+              aria-label="Paste context"
+            >
+              📥
+            </button>
+          </div>
           <label className="block text-sm font-medium">
             Context Brief (optional)
           </label>

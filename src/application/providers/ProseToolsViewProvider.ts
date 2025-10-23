@@ -67,13 +67,19 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
   /**
    * Send selected text from editor to webview
    */
-  public sendSelectionToWebview(payload: { text: string; sourceUri?: string; relativePath?: string }): void {
+  public sendSelectionToWebview(payload: {
+    text: string;
+    sourceUri?: string;
+    relativePath?: string;
+    target?: 'assistant' | 'dictionary' | 'both';
+  }): void {
     if (this.view) {
       const message: SelectionUpdatedMessage = {
         type: MessageType.SELECTION_UPDATED,
         text: payload.text,
         sourceUri: payload.sourceUri,
         relativePath: payload.relativePath,
+        target: payload.target,
         timestamp: Date.now()
       };
       this.view.webview.postMessage(message);

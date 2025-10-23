@@ -5,8 +5,8 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
+import { ContextPathGroup } from '../../shared/types';
 import {
-  ContextPathGroup,
   ContextResourceContent,
   ContextResourceProvider,
   ContextResourceSummary

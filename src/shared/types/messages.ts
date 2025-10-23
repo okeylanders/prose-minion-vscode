@@ -13,6 +13,7 @@ export enum MessageType {
   GENERATE_CONTEXT = 'generate_context',
   COPY_RESULT = 'copy_result',
   SAVE_RESULT = 'save_result',
+  REQUEST_SELECTION = 'request_selection',
 
   // Metrics tab messages
   MEASURE_PROSE_STATS = 'measure_prose_stats',
@@ -25,6 +26,7 @@ export enum MessageType {
   DICTIONARY_RESULT = 'dictionary_result',
   CONTEXT_RESULT = 'context_result',
   SAVE_RESULT_SUCCESS = 'save_result_success',
+  SELECTION_DATA = 'selection_data',
   ERROR = 'error',
   STATUS = 'status',
 
@@ -96,6 +98,17 @@ export interface SaveResultMessage extends BaseMessage {
   metadata?: SaveResultMetadata;
 }
 
+export type SelectionTarget =
+  | 'assistant_excerpt'
+  | 'assistant_context'
+  | 'dictionary_word'
+  | 'dictionary_context';
+
+export interface RequestSelectionMessage extends BaseMessage {
+  type: MessageType.REQUEST_SELECTION;
+  target: SelectionTarget;
+}
+
 export interface GenerateContextMessage extends BaseMessage {
   type: MessageType.GENERATE_CONTEXT;
   excerpt: string;
@@ -145,6 +158,7 @@ export type WebviewToExtensionMessage =
   | LookupDictionaryMessage
   | CopyResultMessage
   | SaveResultMessage
+  | RequestSelectionMessage
   | GenerateContextMessage
   | MeasureProseStatsMessage
   | MeasureStyleFlagsMessage
@@ -199,6 +213,12 @@ export interface SaveResultSuccessMessage extends BaseMessage {
   toolName: string;
 }
 
+export interface SelectionDataMessage extends BaseMessage {
+  type: MessageType.SELECTION_DATA;
+  target: SelectionTarget;
+  content: string;
+}
+
 export interface SaveResultMetadata {
   word?: string;
   excerpt?: string;
@@ -213,6 +233,7 @@ export interface SelectionUpdatedMessage extends BaseMessage {
   text: string;
   sourceUri?: string;
   relativePath?: string;
+  target?: 'assistant' | 'dictionary' | 'both';
 }
 
 export interface ModelDataMessage extends BaseMessage {
@@ -227,6 +248,7 @@ export type ExtensionToWebviewMessage =
   | DictionaryResultMessage
   | ContextResultMessage
   | SaveResultSuccessMessage
+  | SelectionDataMessage
   | ErrorMessage
   | StatusMessage
   | SelectionUpdatedMessage

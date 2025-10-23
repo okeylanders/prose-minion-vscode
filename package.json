@@ -10,7 +10,12 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onView:prose-minion.toolsView",
+    "onCommand:prose-minion.assistantSelection",
+    "onCommand:prose-minion.wordLookupSelection",
+    "onCommand:prose-minion.analyzeSelection"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "viewsContainers": {
@@ -33,15 +38,24 @@
     },
     "commands": [
       {
-        "command": "prose-minion.analyzeSelection",
-        "title": "Analyze with Prose Minion"
+        "command": "prose-minion.assistantSelection",
+        "title": "Prose Minion: Assistant"
+      },
+      {
+        "command": "prose-minion.wordLookupSelection",
+        "title": "Prose Minion: Word Lookup"
       }
     ],
     "menus": {
       "editor/context": [
         {
           "when": "editorHasSelection",
-          "command": "prose-minion.analyzeSelection",
+          "command": "prose-minion.assistantSelection",
+          "group": "prose-minion@1"
+        },
+        {
+          "when": "editorHasSelection",
+          "command": "prose-minion.wordLookupSelection",
           "group": "prose-minion"
         }
       ]
@@ -229,64 +243,64 @@
           "description": "AI creativity level (0 = focused, 2 = very creative)",
           "order": 7
         },
-    "proseMinion.maxTokens": {
-      "type": "number",
-      "default": 2000,
-      "minimum": 100,
-      "maximum": 8000,
-      "description": "Maximum length of AI responses",
-      "order": 8
-    },
-    "proseMinion.contextPaths.characters": {
-      "type": "string",
-      "default": "characters/**/*,Characters/**/*",
-      "description": "Comma-separated glob patterns for character reference files (only .md and .txt files are used).",
-      "order": 9
-    },
-    "proseMinion.contextPaths.locations": {
-      "type": "string",
-      "default": "locations/**/*,Locations/**/*,Locations-Settings/**/*",
-      "description": "Comma-separated glob patterns for setting/location files (only .md and .txt files are used).",
-      "order": 10
-    },
-    "proseMinion.contextPaths.themes": {
-      "type": "string",
-      "default": "themes/**/*,Themes/**/*",
-      "description": "Comma-separated glob patterns for theme notebooks (only .md and .txt files are used).",
-      "order": 11
-    },
-    "proseMinion.contextPaths.things": {
-      "type": "string",
-      "default": "things/**/*,Things/**/*",
-      "description": "Comma-separated glob patterns for important objects or props (only .md and .txt files are used).",
-      "order": 12
-    },
-    "proseMinion.contextPaths.chapters": {
-      "type": "string",
-      "default": "drafts/**/*,Drafts/**/*,outlines/**/*,Outlines/**/*",
-      "description": "Comma-separated glob patterns for draft chapters and outlines (only .md and .txt files are used).",
-      "order": 13
-    },
-    "proseMinion.contextPaths.manuscript": {
-      "type": "string",
-      "default": "manuscript/**/*,Manuscript/**/*",
-      "description": "Comma-separated glob patterns for polished manuscript chapters (only .md and .txt files are used).",
-      "order": 14
-    },
-    "proseMinion.contextPaths.projectBrief": {
-      "type": "string",
-      "default": "brief/**/*,Brief/**/*",
-      "description": "Comma-separated glob patterns for project brief materials (only .md and .txt files are used).",
-      "order": 15
-    },
-    "proseMinion.contextPaths.general": {
-      "type": "string",
-      "default": "research/**/*,Research/**/*,tone-and-style/**/*,Tone-And-Style/**/*,literary-devices/**/*,Literary-Devices/**/*,**/story-bible.md,**/synopsis.md,**/voice-and-tone.md,**/genre-conventions.md",
-      "description": "Comma-separated glob patterns for general reference material (only .md and .txt files are used).",
-      "order": 16
+        "proseMinion.maxTokens": {
+          "type": "number",
+          "default": 2000,
+          "minimum": 100,
+          "maximum": 8000,
+          "description": "Maximum length of AI responses",
+          "order": 8
+        },
+        "proseMinion.contextPaths.characters": {
+          "type": "string",
+          "default": "characters/**/*,Characters/**/*",
+          "description": "Comma-separated glob patterns for character reference files (only .md and .txt files are used).",
+          "order": 9
+        },
+        "proseMinion.contextPaths.locations": {
+          "type": "string",
+          "default": "locations/**/*,Locations/**/*,Locations-Settings/**/*",
+          "description": "Comma-separated glob patterns for setting/location files (only .md and .txt files are used).",
+          "order": 10
+        },
+        "proseMinion.contextPaths.themes": {
+          "type": "string",
+          "default": "themes/**/*,Themes/**/*",
+          "description": "Comma-separated glob patterns for theme notebooks (only .md and .txt files are used).",
+          "order": 11
+        },
+        "proseMinion.contextPaths.things": {
+          "type": "string",
+          "default": "things/**/*,Things/**/*",
+          "description": "Comma-separated glob patterns for important objects or props (only .md and .txt files are used).",
+          "order": 12
+        },
+        "proseMinion.contextPaths.chapters": {
+          "type": "string",
+          "default": "drafts/**/*,Drafts/**/*,outlines/**/*,Outlines/**/*",
+          "description": "Comma-separated glob patterns for draft chapters and outlines (only .md and .txt files are used).",
+          "order": 13
+        },
+        "proseMinion.contextPaths.manuscript": {
+          "type": "string",
+          "default": "manuscript/**/*,Manuscript/**/*",
+          "description": "Comma-separated glob patterns for polished manuscript chapters (only .md and .txt files are used).",
+          "order": 14
+        },
+        "proseMinion.contextPaths.projectBrief": {
+          "type": "string",
+          "default": "brief/**/*,Brief/**/*",
+          "description": "Comma-separated glob patterns for project brief materials (only .md and .txt files are used).",
+          "order": 15
+        },
+        "proseMinion.contextPaths.general": {
+          "type": "string",
+          "default": "research/**/*,Research/**/*,tone-and-style/**/*,Tone-And-Style/**/*,literary-devices/**/*,Literary-Devices/**/*,**/story-bible.md,**/synopsis.md,**/voice-and-tone.md,**/genre-conventions.md",
+          "description": "Comma-separated glob patterns for general reference material (only .md and .txt files are used).",
+          "order": 16
+        }
+      }
     }
-  }
-}
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
