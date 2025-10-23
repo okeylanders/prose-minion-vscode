@@ -2,7 +2,7 @@
 
 ## Overview
 
-Prose Minion offers extensive configuration options to customize AI behavior and optimize costs.
+Prose Minion offers extensive configuration options to customize AI behavior and optimize costs. Recent updates introduce scoped model selection per feature and a unified token limit.
 
 ## Accessing Settings
 
@@ -121,7 +121,7 @@ You can still edit only `proseMinion.model` for backward compatibility; the exte
 
 **Setting**: `proseMinion.maxTokens`
 **Type**: Number (100 - 8000)
-**Default**: `10000`
+**Default**: `10000` (applied uniformly across all tools)
 
 **What it controls**:
 - Maximum length of AI responses
@@ -142,6 +142,10 @@ You can still edit only `proseMinion.model` for backward compatibility; the exte
 - Only increase for very long passages or detailed analysis
 
 **Note**: The AI may use fewer tokens than the limit if it completes the response early. If a response is cut off, a “Response truncated” notice appears — increase Max Tokens to allow longer outputs.
+
+### 7. Context Assistance
+
+- When an excerpt comes from a real editor selection, the extension reads the full source document and includes it in the first turn of the context assistant. If the excerpt is pasted from the clipboard, no source is included.
 
 ---
 

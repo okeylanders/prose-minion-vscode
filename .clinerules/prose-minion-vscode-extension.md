@@ -31,6 +31,14 @@ This extension brings the power of the Prose Minion MCP tools directly into VS C
 4. Choose the appropriate tool from the tabs
 5. Click the analysis button to get results
 
+## Recent Updates
+
+- Scoped model selection per tool role (assistant/dictionary/context)
+- Unified `maxTokens` across tools (default 10000) with truncation notices when exceeded
+- Context assistant includes full source document on first turn (when available)
+- Paste-selection carries source metadata; clipboard fallback when no selection exists
+- Dictionary UX: persistent inputs, source display, and safer auto-fill behavior
+
 ## Architecture
 
 This extension follows Clean Architecture principles:

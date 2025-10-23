@@ -244,7 +244,8 @@ Optional writing examples provided to AI:
 
 - Base URL: `https://openrouter.ai/api/v1`
 - API key from user settings: `proseMinion.openRouterApiKey`
-- Default model: `anthropic/claude-3.5-sonnet`
+- Scoped models per role with live selection in the UI: `assistantModel`, `dictionaryModel`, `contextModel` (legacy fallback: `model`)
+- Unified `maxTokens` across tools (default 10000). The UI appends a truncation notice when responses hit the cap.
 - Available models defined in [OpenRouterModels.ts](src/infrastructure/api/OpenRouterModels.ts)
 
 ### VSCode Extension API Usage
@@ -261,6 +262,8 @@ Key APIs used:
 
 1. **Webview not loading**: Check webpack build output, ensure React bundle is created
 2. **API calls failing**: Verify API key in settings, check network tab in webview DevTools
+3. **Responses cut off**: Look for the appended truncation notice; increase `proseMinion.maxTokens` or reduce prompt size (guides, source content)
+4. **Dictionary field overwrites**: Word auto-fill is suppressed after user edits; clear persists across tabs by design
 3. **Messages not received**: Check message type matches exactly in [messages.ts](src/shared/types/messages.ts)
 4. **Extension not activating**: Check `activationEvents` in [package.json](package.json)
 
@@ -298,6 +301,7 @@ When asked to work on this project:
 2. **Check** existing tool implementations as examples
 3. **Look** at message types in [shared/types/messages.ts](src/shared/types/messages.ts) for communication contracts
 4. **Review** [package.json](package.json) for available configurations
+5. **Remember**: The context assistant includes the full source document on the first turn (when available). Selection messages include `sourceUri`/`relativePath`; clipboard is used as fallback when no selection exists.
 
 ### Suggesting Changes
 

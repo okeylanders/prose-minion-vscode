@@ -4,6 +4,8 @@
 
 This VS Code extension follows **Clean Architecture** principles with clear separation of concerns across multiple layers.
 
+Recent updates introduce multi-model orchestration, unified token budgeting, explicit truncation notices, and richer context priming using the full source document.
+
 ## Layer Structure
 
 ```
@@ -66,12 +68,12 @@ Presentation → Application → Domain ← Infrastructure
 
 ### Infrastructure Service
 - **File**: [src/infrastructure/api/ProseAnalysisService.ts](src/infrastructure/api/ProseAnalysisService.ts)
-- **Purpose**: Implements IProseAnalysisService, spins up dedicated OpenRouter clients per feature scope (assistant, dictionary, context)
+- **Purpose**: Implements IProseAnalysisService, spins up dedicated OpenRouter clients per feature scope (assistant, dictionary, context). A unified `maxTokens` (default 10000) is applied across all tools. The context assistant now reads and includes the full source document on the initial turn when `sourceFileUri` is provided.
 - **Pattern**: Dependency Inversion
 
 ### AI Orchestrator
 - **File**: [src/application/services/AIResourceOrchestrator.ts](src/application/services/AIResourceOrchestrator.ts)
-- **Purpose**: Wraps conversation management, guide loading, and OpenRouter calls for each model scope
+- **Purpose**: Wraps conversation management, guide loading, and OpenRouter calls for each model scope. Detects `finish_reason: length` from the API and appends a truncation notice to results.
 - **Pattern**: Facade + Strategy
 
 ### React Components
@@ -88,7 +90,7 @@ Presentation → Application → Domain ← Infrastructure
 2. Component calls `vscode.postMessage()` with typed message
 3. WebviewViewProvider receives message
 4. MessageHandler routes to appropriate domain service
-5. Service processes request using the appropriate orchestrator/model scope
+5. Service processes request using the appropriate orchestrator/model scope (scoped OpenRouter client)
 6. Handler sends result back to webview and stores a copy in the result cache for replay
 
 ### From Extension to Webview
@@ -99,10 +101,15 @@ Presentation → Application → Domain ← Infrastructure
 4. React App component receives message via event listener
 5. App updates state, persists it via `vscode.getState/setState`, and re-renders with new data
 
+### Selection and Context Details
+
+- Selection messages include `sourceUri` and `relativePath` when text is selected in the editor; when no selection exists, the handler falls back to the clipboard (no source metadata).
+- The context assistant two-turn flow now includes the full source document content in the first turn (when available) in addition to the excerpt and resource catalog.
+
 ## State & Session Management
 
 - **Result Cache**: `MessageHandler` keeps the latest analysis/dictionary/metrics/status/error messages in memory so that a newly created webview can immediately replay the final state.
-- **UI Persistence**: The React app mirrors all important state (active tab, last responses, model selections) to VS Code's webview storage, preserving context across focus changes and reloads.
+- **UI Persistence**: The React app mirrors all important state (active tab, last responses, model selections) to VS Code's webview storage, preserving context across focus changes and reloads. Dictionary inputs (word/context/edited flag) are lifted to App state to avoid unintended auto-fill and preserve user input across tab switches.
 - **Background Execution**: `AIResourceOrchestrator` continues running OpenRouter calls even if the webview is hidden. Once a response arrives it is cached and logged, ready for replay when the user returns.
 - **Context Retention**: The webview is registered with `retainContextWhenHidden` (with a polyfill cast for older API signatures) to minimize disposals during normal sidebar switching.
 

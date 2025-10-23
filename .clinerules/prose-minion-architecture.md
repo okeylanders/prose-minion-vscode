@@ -2,7 +2,7 @@
 
 ## Overview
 
-This VS Code extension follows **Clean Architecture** principles with clear separation of concerns across multiple layers.
+This VS Code extension follows **Clean Architecture** principles with clear separation of concerns across multiple layers. Recent updates add multi-model orchestration, a unified token cap with truncation signaling, and inclusion of the full source document in the context assistant’s first turn.
 
 ## Layer Structure
 
@@ -91,6 +91,8 @@ Presentation → Application → Domain ← Infrastructure
 5. Service processes request using the appropriate orchestrator/model scope
 6. Handler sends result back to webview and stores a copy in the result cache for replay
 
+Selection messages include `sourceUri` and `relativePath` when taken from the editor; if no selection exists, the handler falls back to clipboard text (no source metadata).
+
 ### From Extension to Webview
 
 1. MessageHandler receives result from service
@@ -158,6 +160,11 @@ The infrastructure layer is designed to integrate with the prose-minion MCP tool
 - Integrate with OpenRouter API
 - Use MCP protocol for tool communication
 - Subprocess execution of prose-minion tools
+
+## Context Assistant Notes
+
+- Turn 1 includes the excerpt, full source document content (when available), and a project resource catalog.
+- The orchestrator appends a truncation notice when the API indicates the response hit the token cap.
 
 ### Extension Points
 

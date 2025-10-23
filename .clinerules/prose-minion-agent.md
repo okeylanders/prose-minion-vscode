@@ -135,8 +135,8 @@ npm run package  # Creates .vsix file
 ### OpenRouter API
 
 - API key configured in VSCode settings
-- Supports multiple models with per-scope overrides (`assistantModel`, `dictionaryModel`, `contextModel`) and a legacy fallback (`model`)
-- Configurable temperature and max tokens
+- Scoped models with per-scope overrides (`assistantModel`, `dictionaryModel`, `contextModel`) and a legacy fallback (`model`)
+- Unified `maxTokens` (default 10000) across tools; truncation notice appended when responses hit the cap
 - Cost tracking available through OpenRouter dashboard
 
 ### VSCode Extension API

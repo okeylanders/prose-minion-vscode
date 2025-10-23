@@ -135,8 +135,8 @@ npm run package  # Creates .vsix file
 ### OpenRouter API
 
 - API key configured in VSCode settings
-- Supports multiple models with per-scope overrides (`assistantModel`, `dictionaryModel`, `contextModel`) and a legacy fallback (`model`)
-- Configurable temperature and max tokens
+- Scoped models per role: `assistantModel`, `dictionaryModel`, `contextModel` with legacy fallback `model`
+- Unified `maxTokens` across tools (default 10000) with truncation notices when responses hit the cap
 - Cost tracking available through OpenRouter dashboard
 
 ### VSCode Extension API
@@ -165,8 +165,20 @@ When working with this codebase:
 4. **Test Incrementally**: Run the extension after changes to verify behavior
 5. **Document Changes**: Update relevant documentation when adding features
 6. **Consider Performance**: Be mindful of API costs and token usage
-7. **Maintain Backward Compatibility**: Don't break existing functionality; preserve the legacy `proseMinion.model` fallback
-8. **Respect Persistence Hooks**: When updating UI or handlers, keep the result cache (`MessageHandler`) and `vscode.setState` synchronization intact so users don't lose in-progress work
+7. **Maintain Backward Compatibility**: Preserve the legacy `proseMinion.model` fallback and message contracts
+8. **Respect Persistence Hooks**: Keep the result cache (`MessageHandler`) and `vscode.setState` synchronization intact; Dictionary inputs persist at App level
+9. **Surface Truncation**: Propagate `finish_reason` and append a truncation note when responses hit the token cap
+10. **Source-Aware Context**: Include `sourceUri`/`relativePath`; context assistant includes full source content on first turn
+
+## What's New
+
+- Multi-model orchestration per scope with live model switching in the UI
+- Default `maxTokens` increased to 10000 and applied uniformly
+- Truncation notice appended when AI returns `finish_reason: "length"`
+- Context assistant includes the full source document on initial turn (when available)
+- Paste-selection carries source metadata; clipboard fallback when no selection
+- Dictionary inputs persist across tabs/sessions; auto-fill suppressed after user edits; source displayed when available
+- UI consistency: paste buttons sized to match the context-assist button
 
 ## Questions and Support
 

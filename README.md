@@ -31,6 +31,14 @@ This extension brings the power of the Prose Minion MCP tools directly into VS C
 4. Choose the appropriate tool from the tabs
 5. Click the analysis button to get results
 
+## Recent Updates
+
+- Scoped model selection per tool role (assistant/dictionary/context) with live dropdowns
+- Unified `maxTokens` across tools (default 10000) with truncation notices on long responses
+- Context assistant includes the full source document on first turn (when available)
+- Paste-selection carries source metadata; clipboard fallback when no selection exists
+- Dictionary UX: persistent inputs, source display, and safer auto-fill behavior
+
 ## Architecture
 
 This extension follows Clean Architecture principles:
@@ -65,6 +73,17 @@ Then press F5 to launch the extension in debug mode.
 ```bash
 npm run build
 ```
+
+## Configuration
+
+Settings (search for "Prose Minion"):
+
+- `proseMinion.assistantModel`, `proseMinion.dictionaryModel`, `proseMinion.contextModel`
+- `proseMinion.model` (legacy fallback)
+- `proseMinion.maxTokens` (default 10000)
+
+Notes:
+- When the model stops due to token limits, a truncation notice is appended; raise `maxTokens` if needed.
 
 ## Integration with Prose Minion
 

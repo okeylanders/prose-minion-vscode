@@ -111,6 +111,12 @@ Output: Suggestions for action beats that show emotion through physical actions 
 - Adapts to optional context excerpts
 - Respects the Dictionary model selection for cost/performance tuning
 
+**Enhancements**:
+- Falls back to clipboard when no editor selection exists
+- Displays source path when content came from an editor selection
+- Persists word/context across tabs and sessions; clearing the word also clears the source
+- Suppresses word auto-fill after the user edits the field (prevents unwanted overwrites)
+
 ### 4. Prose Statistics
 
 **Location**: [src/tools/measure/passageProseStats/index.ts](src/tools/measure/passageProseStats/index.ts)
@@ -223,6 +229,16 @@ resources/craft-guides/
 ```
 
 These will be automatically loaded and included in AI prompts.
+
+## Context Assistant Notes
+
+- The first turn includes the full source document content (when available) in addition to the excerpt and the project resource catalog. This improves guide selection and thematic coherence.
+- Responses append a truncation notice when the model stops due to token limits.
+
+## Token Limits & Models
+
+- A unified `proseMinion.maxTokens` applies across all tools (default 10000). Increase if you routinely see truncation notices.
+- Models can be selected per scope via `assistantModel`, `dictionaryModel`, and `contextModel` (legacy `model` is a fallback).
 
 ## Session Persistence & Model Sync
 
