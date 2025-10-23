@@ -17,33 +17,17 @@ Sensory filter tags like "heard," "saw," "felt," "smelled," "tasted" create unne
 ### Visual Filters
 - ❌ "He saw the storm approaching" → ✅ "Dark clouds massed on the horizon"
 - ❌ "She noticed his expression change" → ✅ "His smile dissolved, replaced by concern"
-- ❌ "Nate observed the colors shifting" → ✅ "Crimson bled into gold across the canvas"
+- ❌ "She observed the colors shifting" → ✅ "Crimson bled into gold across the canvas"
 
 ### Auditory Filters
 - ❌ "They heard music playing" → ✅ "Piano notes drifted through the hallway"
-- ❌ "Ava listened to his explanation" → ✅ "His words tumbled over each other, desperate to convince"
+- ❌ "He listened to the explanation" → ✅ "The words tumbled over each other, desperate to convince"
 - ❌ "I could hear footsteps" → ✅ "Footsteps echoed down the corridor"
 
 ### Tactile Filters
 - ❌ "She felt the cold wind" → ✅ "Wind sliced through her jacket"
 - ❌ "He felt nervous energy" → ✅ "Energy buzzed under his skin"
-- ❌ "Nate touched the rough canvas" → ✅ "Canvas texture scraped against his fingertips"
-
-## The HPC Application
-
-### Character-Specific Sensory Language
-
-**Nate (Artistic Perception)**:
-- ❌ "Nate saw the light change" → ✅ "Late afternoon light stretched shadows into dramatic angles"
-- ❌ "He felt inspired" → ✅ "Ideas sparked and crackled in his mind"
-
-**Ava (Emotional Attunement)**:
-- ❌ "Ava sensed his mood" → ✅ "Tension radiated from his shoulders"
-- ❌ "She heard sadness in his voice" → ✅ "His voice carried that familiar hollowness"
-
-**Jasper (Intellectual Analysis)**:
-- ❌ "Jasper noticed the pattern" → ✅ "The pattern emerged: thesis, antithesis, synthesis"
-- ❌ "He heard the argument's weakness" → ✅ "The logical flaw glared through his reasoning"
+- ❌ "She touched the rough canvas" → ✅ "Canvas texture scraped against her fingertips"
 
 ## Implementation Strategy
 

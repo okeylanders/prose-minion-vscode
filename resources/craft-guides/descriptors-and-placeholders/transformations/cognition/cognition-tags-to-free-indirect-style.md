@@ -18,46 +18,27 @@ Cognition tags like "thought," "realized," "wondered," "knew," "remembered," "de
 ### Think/Thought
 - ❌ "He thought the plan was risky" → ✅ "The plan reeked of unnecessary risk"
 - ❌ "She thought about her options" → ✅ "Three paths stretched ahead, none appealing"
-- ❌ "Nate thought the colors clashed" → ✅ "The colors fought each other across the canvas"
+- ❌ "He thought the colors clashed" → ✅ "The colors fought each other across the canvas"
 
 ### Realized
 - ❌ "She realized he was lying" → ✅ "The truth hit her: every word was fabrication"
 - ❌ "He realized his mistake" → ✅ "The error crystallized, undeniable"
-- ❌ "Ava realized something was wrong" → ✅ "Something was wrong—terribly, obviously wrong"
+- ❌ "She realized something was wrong" → ✅ "Something was wrong—terribly, obviously wrong"
 
 ### Wondered/Asked Himself
 - ❌ "He wondered if she cared" → ✅ "Did she care? The question gnawed at him"
 - ❌ "She wondered why he left" → ✅ "Why had he left without explanation?"
-- ❌ "Jasper wondered about the implications" → ✅ "What did this mean for everything else?"
+- ❌ "He wondered about the implications" → ✅ "What did this mean for everything else?"
 
 ### Knew/Understood
 - ❌ "He knew she was right" → ✅ "She was right, as usual"
 - ❌ "They knew they were in trouble" → ✅ "Trouble had found them, no question"
-- ❌ "Nate knew the deadline was approaching" → ✅ "Three days. The deadline loomed"
+- ❌ "She knew the deadline was approaching" → ✅ "Three days. The deadline loomed"
 
 ### Remembered/Recalled
 - ❌ "She remembered their first meeting" → ✅ "That first meeting—awkward handshakes and nervous laughter"
 - ❌ "He remembered the advice" → ✅ "Dad's words echoed: 'Trust your instincts'"
-- ❌ "Micah remembered the play" → ✅ "Fourth down, two seconds left—the memory burned bright"
-
-## The HPC Application
-
-### Character-Specific Mental Patterns
-
-**Nate (Artistic Processing)**:
-- ❌ "Nate thought about composition" → ✅ "The composition needed something—a focal point, a anchor"
-- ❌ "He realized the technique was wrong" → ✅ "Wrong technique. The brushstrokes fought the vision"
-
-**Ava (Emotional Intelligence)**:
-- ❌ "Ava wondered about his mood" → ✅ "Something was off—the way he held his shoulders, avoided eye contact"
-- ❌ "She knew he was upset" → ✅ "Upset. The word was too small for the storm behind his eyes"
-
-**Jasper (Analytical Mind)**:
-- ❌ "Jasper thought through the problem" → ✅ "Variable A plus Variable B... but Variable C changed everything"
-- ❌ "He realized the contradiction" → ✅ "Wait. That contradicted everything Professor Chen had established"
-
-**Micah (Kinesthetic Thinking)**:
-- ❌ "Micah thought about the game" → ✅ "Fourth quarter. Two-point deficit. Time to show what they were made of"
+- ❌ "She remembered the play" → ✅ "Fourth down, two seconds left—the memory burned bright"
 
 ## Implementation Strategy
 
@@ -118,14 +99,14 @@ Sometimes cognition tags serve specific narrative purposes:
 - **Transition**: "But then he remembered something crucial"
 - **Uncertainty**: "Did he know? She thought maybe, possibly..."
 
-## Brighton Academy Contexts
+## Context-Specific Examples
 
 ### Academic Thinking
 - ❌ "Students thought about the question" → ✅ "The question hung in the air, challenging"
-- ❌ "He realized the professor was right" → ✅ "Professor Chen was right—again"
+- ❌ "He realized the professor was right" → ✅ "The professor was right—again"
 
-### Spiritual Processing
+### Spiritual/Philosophical Processing
 - ❌ "She wondered about faith" → ✅ "Faith. Such a small word for something so immense"
-- ❌ "He thought about God" → ✅ "Where was God in all this chaos?"
+- ❌ "He thought about meaning" → ✅ "Where was meaning in all this chaos?"
 
 Remember: **Let readers experience thoughts directly rather than watching characters think.**

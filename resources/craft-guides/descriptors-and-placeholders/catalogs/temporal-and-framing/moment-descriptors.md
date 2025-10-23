@@ -323,7 +323,7 @@ Short, punchy words you can drop into sentences for rhythm and beat-density cont
 
 ---
 
-## Examples (reworked from HPC vocabulary)
+## Combined Examples
 - "Liminal moments that felt infinite but lasted only as long as a shutter's blink."
 - "The continuing geometry of the moment — a rule-of-thirds composition of grief and consolation."
 - "Their eyes met for a recognition that played like a close-up across the cafeteria's wide shot."

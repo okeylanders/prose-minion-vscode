@@ -50,7 +50,7 @@ This reorganized system supports the three-pass revision workflow outlined in [.
 **When you need specific descriptive language for scene elements:**
 
 **Environment & Setting:**
-- [institutional-descriptors.md](catalogs/environment-and-setting/institutional-descriptors.md) - Brighton Academy specific
+- [institutional-descriptors.md](catalogs/environment-and-setting/institutional-descriptors.md) - Schools and institutions
 - [forest-natural-descriptors.md](catalogs/environment-and-setting/forest-natural-descriptors.md) - Natural settings
 - [weather-descriptors.md](catalogs/environment-and-setting/weather-descriptors.md) - Weather and storms
 - [sanctuary-hospitality-descriptors.md](catalogs/environment-and-setting/sanctuary-hospitality-descriptors.md) - Welcome spaces
@@ -133,17 +133,6 @@ This reorganized system supports the three-pass revision workflow outlined in [.
 
 ---
 
-## Integration with HPC Writing System
-
-This system integrates seamlessly with other HPC writing tools:
-
-- **Character Voice Guides**: Ensure descriptor choices match character perspectives
-- **Style Keywords**: Use `{style}` markers when shifting between narrative modes  
-- **Thematic Framework**: Support dual themes of grief/healing and faith/calling
-- **Narrative Elements**: Maintain consistency with established motifs and symbols
-
----
-
 ## Quick Reference Legend
 
 - 🎯 **Micro-Guides**: Comprehensive transformation strategies
@@ -153,4 +142,4 @@ This system integrates seamlessly with other HPC writing tools:
 
 ---
 
-*For questions about specific transformation techniques or integration with the broader HPC writing system, consult the main [Writing-Theory-and-Technique](../../README.md) documentation.*
+*For questions about specific transformation techniques, refer to the transformation guides in the respective subdirectories.*
