@@ -90,10 +90,6 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview.js')
     );
-    const headerIconUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'resources', 'prose-minion-header.svg')
-    );
-    const headerIconJson = JSON.stringify(headerIconUri.toString());
 
     const nonce = this.getNonce();
 
@@ -107,7 +103,6 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
 </head>
 <body>
   <div id="root"></div>
-  <script nonce="${nonce}">window.__PROSE_MINION_ASSETS__ = { headerIcon: ${headerIconJson} };</script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
