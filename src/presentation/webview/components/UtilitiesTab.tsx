@@ -15,6 +15,7 @@ interface UtilitiesTabProps {
   isLoading: boolean;
   onLoadingChange: (loading: boolean) => void;
   statusMessage?: string;
+  toolName?: string;
 }
 
 export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
@@ -23,11 +24,13 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
   result,
   isLoading,
   onLoadingChange,
-  statusMessage
+  statusMessage,
+  toolName
 }) => {
   const [word, setWord] = React.useState('');
   const [context, setContext] = React.useState('');
   const [hasWordBeenEdited, setHasWordBeenEdited] = React.useState(false);
+  const lastLookupRef = React.useRef<{ word: string; context: string } | null>(null);
 
   const enforceWordLimit = React.useCallback((value: string): string => {
     const normalized = value.replace(/\s+/g, ' ').trim();
@@ -68,6 +71,11 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
 
     onLoadingChange(true);
 
+    lastLookupRef.current = {
+      word: sanitizedWord,
+      context: context.trim()
+    };
+
     vscode.postMessage({
       type: MessageType.LOOKUP_DICTIONARY,
       word: sanitizedWord,
@@ -85,6 +93,52 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
     if (!result) return '';
     return formatAnalysisAsMarkdown(result);
   }, [result]);
+
+  const handleCopyDictionaryResult = () => {
+    if (!result) {
+      return;
+    }
+
+    const metadata = lastLookupRef.current ?? {
+      word: enforceWordLimit(word),
+      context: context.trim()
+    };
+
+    const header = `# ${metadata.word || enforceWordLimit(word) || 'Entry'}`;
+
+    vscode.postMessage({
+      type: MessageType.COPY_RESULT,
+      toolName: toolName ?? 'dictionary_lookup',
+      content: [header, '', result].join('\n')
+    });
+  };
+
+  const handleSaveDictionaryResult = () => {
+    if (!result) {
+      return;
+    }
+
+    const metadata = lastLookupRef.current ?? {
+      word: enforceWordLimit(word),
+      context: context.trim()
+    };
+
+    const header = `# ${metadata.word || enforceWordLimit(word) || 'Entry'}`;
+
+    vscode.postMessage({
+      type: MessageType.SAVE_RESULT,
+      toolName: toolName ?? 'dictionary_lookup',
+      content: [header, '', result].join('\n'),
+      metadata: {
+        word: metadata.word,
+        context: metadata.context,
+        timestamp: Date.now()
+      }
+    });
+  };
+
+  const canCopyDictionary = Boolean(result && result.trim().length > 0);
+  const canSaveDictionary = Boolean(canCopyDictionary && (toolName ?? 'dictionary_lookup'));
 
   return (
     <div className="tab-content">
@@ -136,6 +190,26 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
 
       {result && (
         <div className="result-box">
+          <div className="result-action-bar">
+            <button
+              className="icon-button"
+              onClick={handleCopyDictionaryResult}
+              disabled={!canCopyDictionary}
+              title="Copy dictionary entry"
+              aria-label="Copy dictionary entry"
+            >
+              📋
+            </button>
+            <button
+              className="icon-button"
+              onClick={handleSaveDictionaryResult}
+              disabled={!canSaveDictionary}
+              title="Save dictionary entry"
+              aria-label="Save dictionary entry"
+            >
+              💾
+            </button>
+          </div>
           <MarkdownRenderer content={markdownContent} />
         </div>
       )}

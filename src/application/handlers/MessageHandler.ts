@@ -20,7 +20,9 @@ import {
   ModelDataMessage,
   ModelOption,
   ExtensionToWebviewMessage,
-  ContextPathGroup
+  ContextPathGroup,
+  SaveResultSuccessMessage,
+  SaveResultMetadata
 } from '../../shared/types';
 import { OpenRouterModels } from '../../infrastructure/api/OpenRouterModels';
 
@@ -91,6 +93,14 @@ export class MessageHandler {
             message.sourceFileUri,
             message.requestedGroups
           );
+          break;
+
+        case MessageType.COPY_RESULT:
+          await this.handleCopyResult(message.content, message.toolName);
+          break;
+
+        case MessageType.SAVE_RESULT:
+          await this.handleSaveResult(message.toolName, message.content, message.metadata);
           break;
 
         case MessageType.MEASURE_PROSE_STATS:
@@ -168,6 +178,37 @@ export class MessageHandler {
     });
 
     this.sendContextResult(result);
+  }
+
+  private async handleCopyResult(content: string, toolName: string): Promise<void> {
+    try {
+      await vscode.env.clipboard.writeText(content ?? '');
+      this.outputChannel.appendLine(`[MessageHandler] Copied ${toolName} result to clipboard (${content?.length ?? 0} chars).`);
+      this.sendStatus('Result copied to clipboard.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.sendError('Failed to copy result to clipboard', message);
+    }
+  }
+
+  private async handleSaveResult(toolName: string, content: string, metadata?: SaveResultMetadata): Promise<void> {
+    try {
+      const savedPath = await this.saveResultToFile(toolName, content, metadata);
+      this.outputChannel.appendLine(`[MessageHandler] Saved ${toolName} result to ${savedPath}`);
+
+      const successMessage: SaveResultSuccessMessage = {
+        type: MessageType.SAVE_RESULT_SUCCESS,
+        toolName,
+        filePath: savedPath,
+        timestamp: Date.now()
+      };
+
+      void this.postMessage(successMessage);
+      this.sendStatus(`Saved result to ${savedPath}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.sendError('Failed to save result', message);
+    }
   }
 
   private async handleAnalyzeDialogue(text: string, contextText?: string, sourceFileUri?: string): Promise<void> {
@@ -260,6 +301,107 @@ export class MessageHandler {
     sharedResultCache.error = undefined;
     void this.postMessage(message);
     this.sendStatus('');
+  }
+
+  private async saveResultToFile(toolName: string, content: string, metadata?: SaveResultMetadata): Promise<string> {
+    if (!content || !content.trim()) {
+      throw new Error('Result content is empty; nothing to save.');
+    }
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+      throw new Error('Open a workspace folder before saving results.');
+    }
+
+    const rootUri = workspaceFolder.uri;
+    let targetDir: vscode.Uri;
+    let fileName: string;
+    let fileContent: string;
+
+    if (toolName === 'dictionary_lookup') {
+      const rawWord = metadata?.word?.trim() ?? 'entry';
+      const sanitizedWord = this.sanitizeFileSegment(rawWord.toLowerCase()) || 'entry';
+      targetDir = vscode.Uri.joinPath(rootUri, 'prose-minion', 'dictionary-entries');
+      await vscode.workspace.fs.createDirectory(targetDir);
+      fileName = `${sanitizedWord}.md`;
+      fileContent = content.trim();
+    } else if (toolName === 'prose_analysis' || toolName === 'dialogue_analysis') {
+      targetDir = vscode.Uri.joinPath(rootUri, 'prose-minion', 'assistant');
+      await vscode.workspace.fs.createDirectory(targetDir);
+
+      const prefix = toolName === 'prose_analysis'
+        ? 'excerpt-assisstant-prose-'
+        : 'excertp-assisstant-dialog-beats-';
+
+      const nextCount = await this.getNextSequentialNumber(targetDir, prefix);
+      fileName = `${prefix}${nextCount}.md`;
+
+      const excerpt = metadata?.excerpt?.trim() ?? '';
+      const context = metadata?.context?.trim() ?? '';
+      const source = metadata?.relativePath || metadata?.sourceFileUri;
+
+      const lines: string[] = ['# Excerpt', ''];
+      lines.push(excerpt || '(No excerpt captured.)', '');
+
+      if (source) {
+        lines.push(`Source: ${source}`, '');
+      }
+
+      lines.push('# Context', '');
+      lines.push(context || '(No context provided.)', '', '---', '', content.trim());
+
+      fileContent = lines.join('\n');
+    } else {
+      throw new Error(`Saving results for tool "${toolName}" is not supported yet.`);
+    }
+
+    const fileUri = vscode.Uri.joinPath(targetDir, fileName);
+    if (!fileContent.endsWith('\n')) {
+      fileContent += '\n';
+    }
+    await vscode.workspace.fs.writeFile(fileUri, Buffer.from(fileContent, 'utf8'));
+
+    const document = await vscode.workspace.openTextDocument(fileUri);
+    await vscode.window.showTextDocument(document, { preview: false });
+
+    return vscode.workspace.asRelativePath(fileUri, false);
+  }
+
+  private async getNextSequentialNumber(directory: vscode.Uri, prefix: string): Promise<number> {
+    let maxNumber = 0;
+
+    const entries = await vscode.workspace.fs.readDirectory(directory);
+    for (const [name, type] of entries) {
+      if (type !== vscode.FileType.File) {
+        continue;
+      }
+
+      if (!name.startsWith(prefix) || !name.endsWith('.md')) {
+        continue;
+      }
+
+      const match = name.match(new RegExp(`${this.escapeRegExp(prefix)}(\\d+)\\.md$`));
+      if (match) {
+        const number = Number.parseInt(match[1], 10);
+        if (!Number.isNaN(number)) {
+          maxNumber = Math.max(maxNumber, number);
+        }
+      }
+    }
+
+    return maxNumber + 1;
+  }
+
+  private sanitizeFileSegment(value: string): string {
+    return value
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  private escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   private sendDictionaryResult(result: string, toolName: string): void {

@@ -11,6 +11,8 @@ export enum MessageType {
   ANALYZE_PROSE = 'analyze_prose',
   LOOKUP_DICTIONARY = 'lookup_dictionary',
   GENERATE_CONTEXT = 'generate_context',
+  COPY_RESULT = 'copy_result',
+  SAVE_RESULT = 'save_result',
 
   // Metrics tab messages
   MEASURE_PROSE_STATS = 'measure_prose_stats',
@@ -22,6 +24,7 @@ export enum MessageType {
   METRICS_RESULT = 'metrics_result',
   DICTIONARY_RESULT = 'dictionary_result',
   CONTEXT_RESULT = 'context_result',
+  SAVE_RESULT_SUCCESS = 'save_result_success',
   ERROR = 'error',
   STATUS = 'status',
 
@@ -80,6 +83,19 @@ export interface LookupDictionaryMessage extends BaseMessage {
   contextText?: string;
 }
 
+export interface CopyResultMessage extends BaseMessage {
+  type: MessageType.COPY_RESULT;
+  toolName: string;
+  content: string;
+}
+
+export interface SaveResultMessage extends BaseMessage {
+  type: MessageType.SAVE_RESULT;
+  toolName: string;
+  content: string;
+  metadata?: SaveResultMetadata;
+}
+
 export interface GenerateContextMessage extends BaseMessage {
   type: MessageType.GENERATE_CONTEXT;
   excerpt: string;
@@ -127,6 +143,8 @@ export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
   | AnalyzeProseMessage
   | LookupDictionaryMessage
+  | CopyResultMessage
+  | SaveResultMessage
   | GenerateContextMessage
   | MeasureProseStatsMessage
   | MeasureStyleFlagsMessage
@@ -175,6 +193,21 @@ export interface StatusMessage extends BaseMessage {
   guideNames?: string;  // Comma-separated list of guide names for ticker animation
 }
 
+export interface SaveResultSuccessMessage extends BaseMessage {
+  type: MessageType.SAVE_RESULT_SUCCESS;
+  filePath: string;
+  toolName: string;
+}
+
+export interface SaveResultMetadata {
+  word?: string;
+  excerpt?: string;
+  context?: string;
+  sourceFileUri?: string;
+  relativePath?: string;
+  timestamp?: number;
+}
+
 export interface SelectionUpdatedMessage extends BaseMessage {
   type: MessageType.SELECTION_UPDATED;
   text: string;
@@ -193,6 +226,7 @@ export type ExtensionToWebviewMessage =
   | MetricsResultMessage
   | DictionaryResultMessage
   | ContextResultMessage
+  | SaveResultSuccessMessage
   | ErrorMessage
   | StatusMessage
   | SelectionUpdatedMessage

@@ -25,6 +25,7 @@ interface AnalysisTabProps {
   contextRequestedResources: string[];
   selectedRelativePath?: string;
   selectedSourceUri?: string;
+  analysisToolName?: string;
 }
 
 export const AnalysisTab: React.FC<AnalysisTabProps> = ({
@@ -43,7 +44,8 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
   contextStatusMessage,
   contextRequestedResources,
   selectedRelativePath,
-  selectedSourceUri
+  selectedSourceUri,
+  analysisToolName
 }) => {
   const [text, setText] = React.useState(selectedText);
 
@@ -63,12 +65,33 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
     return undefined;
   }, [selectedRelativePath, selectedSourceUri]);
 
+  const lastSubmissionRef = React.useRef<{
+    toolName: string;
+    excerpt: string;
+    context: string;
+    sourceUri?: string;
+    relativePath?: string;
+  } | null>(null);
+
+  const canCopyAnalysis = Boolean(result && result.trim().length > 0);
+  const canSaveAnalysis = Boolean(
+    result && result.trim().length > 0 && (analysisToolName || lastSubmissionRef.current?.toolName)
+  );
+
   const handleAnalyzeDialogue = () => {
     if (!text.trim()) {
       return;
     }
 
     onLoadingChange(true);
+
+    lastSubmissionRef.current = {
+      toolName: 'dialogue_analysis',
+      excerpt: text,
+      context: contextText,
+      sourceUri: selectedSourceUri,
+      relativePath: selectedRelativePath
+    };
 
     vscode.postMessage({
       type: MessageType.ANALYZE_DIALOGUE,
@@ -84,6 +107,14 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
     }
 
     onLoadingChange(true);
+
+    lastSubmissionRef.current = {
+      toolName: 'prose_analysis',
+      excerpt: text,
+      context: contextText,
+      sourceUri: selectedSourceUri,
+      relativePath: selectedRelativePath
+    };
 
     vscode.postMessage({
       type: MessageType.ANALYZE_PROSE,
@@ -102,6 +133,54 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
       excerpt: text,
       existingContext: contextText,
       sourceFileUri: sourceReference
+    });
+  };
+
+  const handleCopyAnalysisResult = () => {
+    if (!result) {
+      return;
+    }
+
+    const submission = lastSubmissionRef.current;
+    const clipboardPayload = [
+      '# Excerpt',
+      '',
+      (submission?.excerpt ?? text) || '(No excerpt captured.)',
+      '',
+      '# Context',
+      '',
+      (submission?.context ?? contextText) || '(No context provided.)',
+      '',
+      '---',
+      '',
+      result
+    ].join('\n');
+
+    vscode.postMessage({
+      type: MessageType.COPY_RESULT,
+      toolName: analysisToolName ?? (submission?.toolName ?? 'analysis_result'),
+      content: clipboardPayload
+    });
+  };
+
+  const handleSaveAnalysisResult = () => {
+    if (!result) {
+      return;
+    }
+
+    const submission = lastSubmissionRef.current;
+
+    vscode.postMessage({
+      type: MessageType.SAVE_RESULT,
+      toolName: analysisToolName ?? submission?.toolName ?? 'analysis_result',
+      content: result,
+      metadata: {
+        excerpt: submission?.excerpt ?? text,
+        context: submission?.context ?? contextText,
+        sourceFileUri: submission?.sourceUri ?? selectedSourceUri,
+        relativePath: submission?.relativePath ?? selectedRelativePath,
+        timestamp: Date.now()
+      }
     });
   };
 
@@ -206,6 +285,26 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
 
       {result && (
         <div className="result-box">
+          <div className="result-action-bar">
+            <button
+              className="icon-button"
+              onClick={handleCopyAnalysisResult}
+              disabled={!canCopyAnalysis}
+              title="Copy analysis to clipboard"
+              aria-label="Copy analysis"
+            >
+              📋
+            </button>
+            <button
+              className="icon-button"
+              onClick={handleSaveAnalysisResult}
+              disabled={!canSaveAnalysis}
+              title="Save analysis to workspace"
+              aria-label="Save analysis"
+            >
+              💾
+            </button>
+          </div>
           <MarkdownRenderer content={markdownContent} />
           {usedGuides && usedGuides.length > 0 && (
             <div className="guides-footer">

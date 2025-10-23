@@ -28,8 +28,10 @@ type PersistedState = {
   selectedSourceUri?: string;
   selectedRelativePath?: string;
   analysisResult: string;
+  analysisToolName?: string;
   metricsResult: any;
   utilitiesResult: string;
+  dictionaryToolName?: string;
   contextText: string;
   contextRequestedResources: string[];
   statusMessage: string;
@@ -46,10 +48,12 @@ export const App: React.FC = () => {
   const [selectedSourceUri, setSelectedSourceUri] = React.useState(persistedState?.selectedSourceUri ?? '');
   const [selectedRelativePath, setSelectedRelativePath] = React.useState(persistedState?.selectedRelativePath ?? '');
   const [analysisResult, setAnalysisResult] = React.useState(persistedState?.analysisResult ?? '');
+  const [analysisToolName, setAnalysisToolName] = React.useState<string | undefined>(persistedState?.analysisToolName);
   const [analysisLoading, setAnalysisLoading] = React.useState(false);
   const [metricsResult, setMetricsResult] = React.useState<any>(persistedState?.metricsResult ?? null);
   const [metricsLoading, setMetricsLoading] = React.useState(false);
   const [utilitiesResult, setUtilitiesResult] = React.useState(persistedState?.utilitiesResult ?? '');
+  const [dictionaryToolName, setDictionaryToolName] = React.useState<string | undefined>(persistedState?.dictionaryToolName);
   const [utilitiesLoading, setUtilitiesLoading] = React.useState(false);
   const [contextText, setContextText] = React.useState(persistedState?.contextText ?? '');
   const [contextLoading, setContextLoading] = React.useState(false);
@@ -79,8 +83,10 @@ export const App: React.FC = () => {
       selectedSourceUri,
       selectedRelativePath,
       analysisResult,
+      analysisToolName,
       metricsResult,
       utilitiesResult,
+      dictionaryToolName,
       contextText,
       contextRequestedResources,
       statusMessage,
@@ -95,8 +101,10 @@ export const App: React.FC = () => {
     selectedSourceUri,
     selectedRelativePath,
     analysisResult,
+    analysisToolName,
     metricsResult,
     utilitiesResult,
+    dictionaryToolName,
     contextText,
     contextRequestedResources,
     statusMessage,
@@ -119,6 +127,7 @@ export const App: React.FC = () => {
 
         case MessageType.ANALYSIS_RESULT:
           setAnalysisResult(message.result);
+          setAnalysisToolName(message.toolName);
           setUsedGuides(message.usedGuides || []);
           setAnalysisLoading(false);
           setStatusMessage(''); // Clear status message
@@ -134,10 +143,15 @@ export const App: React.FC = () => {
 
         case MessageType.DICTIONARY_RESULT:
           setUtilitiesResult(message.result);
+          setDictionaryToolName(message.toolName);
           setUtilitiesLoading(false);
           setStatusMessage('');
           setGuideNames('');
           setError('');
+          break;
+
+        case MessageType.SAVE_RESULT_SUCCESS:
+          console.log('Result saved to', message.filePath);
           break;
 
         case MessageType.CONTEXT_RESULT:
@@ -316,6 +330,7 @@ export const App: React.FC = () => {
             contextRequestedResources={contextRequestedResources}
             selectedRelativePath={selectedRelativePath}
             selectedSourceUri={selectedSourceUri}
+            analysisToolName={analysisToolName}
           />
         )}
 
@@ -344,6 +359,7 @@ export const App: React.FC = () => {
             isLoading={utilitiesLoading}
             onLoadingChange={setUtilitiesLoading}
             statusMessage={statusMessage}
+            toolName={dictionaryToolName}
           />
         )}
       </main>
