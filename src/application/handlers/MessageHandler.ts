@@ -106,15 +106,27 @@ export class MessageHandler {
           break;
 
         case MessageType.MEASURE_PROSE_STATS:
-          await this.handleMeasureProseStats(message.text);
+          await this.handleMeasureProseStats(message);
           break;
 
         case MessageType.MEASURE_STYLE_FLAGS:
-          await this.handleMeasureStyleFlags(message.text);
+          await this.handleMeasureStyleFlags(message);
           break;
 
         case MessageType.MEASURE_WORD_FREQUENCY:
-          await this.handleMeasureWordFrequency(message.text);
+          await this.handleMeasureWordFrequency(message);
+          break;
+
+        case MessageType.REQUEST_ACTIVE_FILE:
+          await this.handleRequestActiveFile();
+          break;
+
+        case MessageType.REQUEST_MANUSCRIPT_GLOBS:
+          await this.handleRequestManuscriptGlobs();
+          break;
+
+        case MessageType.REQUEST_CHAPTER_GLOBS:
+          await this.handleRequestChapterGlobs();
           break;
 
         case MessageType.TAB_CHANGED:
@@ -287,19 +299,92 @@ export class MessageHandler {
     this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
   }
 
-  private async handleMeasureProseStats(text: string): Promise<void> {
-    const result = await this.proseAnalysisService.measureProseStats(text);
-    this.sendMetricsResult(result.metrics, result.toolName);
+  private async handleMeasureProseStats(message: { text?: string; source?: any }): Promise<void> {
+    try {
+      const text = await this.resolveTextForMetrics(message);
+      const result = await this.proseAnalysisService.measureProseStats(text);
+      this.sendMetricsResult(result.metrics, result.toolName);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('Invalid selection or path', msg);
+    }
   }
 
-  private async handleMeasureStyleFlags(text: string): Promise<void> {
-    const result = await this.proseAnalysisService.measureStyleFlags(text);
-    this.sendMetricsResult(result.metrics, result.toolName);
+  private async handleMeasureStyleFlags(message: { text?: string; source?: any }): Promise<void> {
+    try {
+      const text = await this.resolveTextForMetrics(message);
+      const result = await this.proseAnalysisService.measureStyleFlags(text);
+      this.sendMetricsResult(result.metrics, result.toolName);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('Invalid selection or path', msg);
+    }
   }
 
-  private async handleMeasureWordFrequency(text: string): Promise<void> {
-    const result = await this.proseAnalysisService.measureWordFrequency(text);
-    this.sendMetricsResult(result.metrics, result.toolName);
+  private async handleMeasureWordFrequency(message: { text?: string; source?: any }): Promise<void> {
+    try {
+      const text = await this.resolveTextForMetrics(message);
+      const result = await this.proseAnalysisService.measureWordFrequency(text);
+      this.sendMetricsResult(result.metrics, result.toolName);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('Invalid selection or path', msg);
+    }
+  }
+
+  private async resolveTextForMetrics(message: { text?: string; source?: any }): Promise<string> {
+    // Backward compatibility: if source not provided, use text
+    if (!message.source) {
+      const t = (message.text ?? '').trim();
+      if (!t) {
+        throw new Error('No text provided for metrics.');
+      }
+      return t;
+    }
+
+    // Dynamically import to avoid cyclic deps and keep constructor lean
+    const { TextSourceResolver } = await import('../../infrastructure/text/TextSourceResolver');
+    const resolver = new TextSourceResolver(this.outputChannel);
+    const resolved = await resolver.resolve(message.source);
+    const text = (resolved.text ?? '').trim();
+    if (!text) {
+      throw new Error('Resolved source contains no text.');
+    }
+    return text;
+  }
+
+  private async handleRequestActiveFile(): Promise<void> {
+    const editor = vscode.window.activeTextEditor;
+    const relativePath = editor ? vscode.workspace.asRelativePath(editor.document.uri, false) : undefined;
+    const message = {
+      type: MessageType.ACTIVE_FILE,
+      relativePath,
+      sourceUri: editor?.document.uri.toString(),
+      timestamp: Date.now()
+    } as const;
+    void this.postMessage(message);
+  }
+
+  private async handleRequestManuscriptGlobs(): Promise<void> {
+    const config = vscode.workspace.getConfiguration('proseMinion');
+    const globs = config.get<string>('contextPaths.manuscript') || '';
+    const message = {
+      type: MessageType.MANUSCRIPT_GLOBS,
+      globs,
+      timestamp: Date.now()
+    } as const;
+    void this.postMessage(message);
+  }
+
+  private async handleRequestChapterGlobs(): Promise<void> {
+    const config = vscode.workspace.getConfiguration('proseMinion');
+    const globs = config.get<string>('contextPaths.chapters') || '';
+    const message = {
+      type: MessageType.CHAPTER_GLOBS,
+      globs,
+      timestamp: Date.now()
+    } as const;
+    void this.postMessage(message);
   }
 
   private sendAnalysisResult(result: string, toolName: string, usedGuides?: string[]): void {

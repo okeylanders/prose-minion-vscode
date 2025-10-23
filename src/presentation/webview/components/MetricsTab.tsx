@@ -4,7 +4,7 @@
  */
 
 import * as React from 'react';
-import { MessageType } from '../../../shared/types';
+import { MessageType, TextSourceMode } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { formatMetricsAsMarkdown } from '../utils/metricsFormatter';
 
@@ -14,6 +14,10 @@ interface MetricsTabProps {
   metrics: any;
   isLoading: boolean;
   onLoadingChange: (loading: boolean) => void;
+  sourceMode: TextSourceMode;
+  pathText: string;
+  onSourceModeChange: (mode: TextSourceMode) => void;
+  onPathTextChange: (text: string) => void;
 }
 
 export const MetricsTab: React.FC<MetricsTabProps> = ({
@@ -21,50 +25,35 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   vscode,
   metrics,
   isLoading,
-  onLoadingChange
+  onLoadingChange,
+  sourceMode,
+  pathText,
+  onSourceModeChange,
+  onPathTextChange
 }) => {
-  const [text, setText] = React.useState(selectedText);
-
-  React.useEffect(() => {
-    setText(selectedText);
-  }, [selectedText]);
+  // Keep a local mirror only for selection preview if needed in future.
 
   const handleMeasureProseStats = () => {
-    if (!text.trim()) {
-      return;
-    }
-
     onLoadingChange(true);
-
     vscode.postMessage({
       type: MessageType.MEASURE_PROSE_STATS,
-      text
+      source: { mode: sourceMode, pathText }
     });
   };
 
   const handleMeasureStyleFlags = () => {
-    if (!text.trim()) {
-      return;
-    }
-
     onLoadingChange(true);
-
     vscode.postMessage({
       type: MessageType.MEASURE_STYLE_FLAGS,
-      text
+      source: { mode: sourceMode, pathText }
     });
   };
 
   const handleMeasureWordFrequency = () => {
-    if (!text.trim()) {
-      return;
-    }
-
     onLoadingChange(true);
-
     vscode.postMessage({
       type: MessageType.MEASURE_WORD_FREQUENCY,
-      text
+      source: { mode: sourceMode, pathText }
     });
   };
 
@@ -78,14 +67,57 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
       <h2 className="text-lg font-semibold mb-4">Prose Metrics</h2>
 
       <div className="input-container">
-        <label className="block text-sm font-medium mb-2">
-          Text to Analyze
-        </label>
-        <textarea
-          className="w-full h-32 resize-none"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Select text in your editor or paste text here..."
+        <label className="block text-sm font-medium mb-2">Measure:</label>
+        <div className="tab-bar" style={{ marginBottom: '8px' }}>
+          <button
+            className={`tab-button ${sourceMode === 'activeFile' ? 'active' : ''}`}
+            onClick={() => {
+              onSourceModeChange('activeFile');
+              vscode.postMessage({ type: MessageType.REQUEST_ACTIVE_FILE });
+            }}
+            disabled={isLoading}
+          >
+            <span className="tab-label">Active File</span>
+          </button>
+          <button
+            className={`tab-button ${sourceMode === 'manuscript' ? 'active' : ''}`}
+            onClick={() => {
+              onSourceModeChange('manuscript');
+              vscode.postMessage({ type: MessageType.REQUEST_MANUSCRIPT_GLOBS });
+            }}
+            disabled={isLoading}
+          >
+            <span className="tab-label">Manuscripts</span>
+          </button>
+          <button
+            className={`tab-button ${sourceMode === 'chapters' ? 'active' : ''}`}
+            onClick={() => {
+              onSourceModeChange('chapters');
+              vscode.postMessage({ type: MessageType.REQUEST_CHAPTER_GLOBS });
+            }}
+            disabled={isLoading}
+          >
+            <span className="tab-label">Chapters</span>
+          </button>
+          <button
+            className={`tab-button ${sourceMode === 'selection' ? 'active' : ''}`}
+            onClick={() => {
+              onSourceModeChange('selection');
+              onPathTextChange('[selected text]');
+            }}
+            disabled={isLoading}
+          >
+            <span className="tab-label">Selection</span>
+          </button>
+        </div>
+
+        <label className="block text-sm font-medium mb-2">Path / Pattern</label>
+        <input
+          className="w-full"
+          type="text"
+          value={pathText}
+          onChange={(e) => onPathTextChange(e.target.value)}
+          placeholder={sourceMode === 'selection' ? '[selected text]' : 'workspace-relative path or globs'}
         />
       </div>
 
@@ -93,21 +125,21 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
         <button
           className="btn btn-primary"
           onClick={handleMeasureProseStats}
-          disabled={!text.trim() || isLoading}
+          disabled={isLoading}
         >
           Prose Statistics
         </button>
         <button
           className="btn btn-primary"
           onClick={handleMeasureStyleFlags}
-          disabled={!text.trim() || isLoading}
+          disabled={isLoading}
         >
           Style Flags
         </button>
         <button
           className="btn btn-primary"
           onClick={handleMeasureWordFrequency}
-          disabled={!text.trim() || isLoading}
+          disabled={isLoading}
         >
           Word Frequency
         </button>

@@ -4,6 +4,7 @@
  */
 
 import { ContextPathGroup } from './context';
+import { TextSourceSpec } from './sources';
 
 export enum MessageType {
   // Analysis tab messages
@@ -19,6 +20,14 @@ export enum MessageType {
   MEASURE_PROSE_STATS = 'measure_prose_stats',
   MEASURE_STYLE_FLAGS = 'measure_style_flags',
   MEASURE_WORD_FREQUENCY = 'measure_word_frequency',
+
+  // Metrics source helpers
+  REQUEST_ACTIVE_FILE = 'request_active_file',
+  ACTIVE_FILE = 'active_file',
+  REQUEST_MANUSCRIPT_GLOBS = 'request_manuscript_globs',
+  MANUSCRIPT_GLOBS = 'manuscript_globs',
+  REQUEST_CHAPTER_GLOBS = 'request_chapter_globs',
+  CHAPTER_GLOBS = 'chapter_globs',
 
   // Results messages
   ANALYSIS_RESULT = 'analysis_result',
@@ -119,17 +128,20 @@ export interface GenerateContextMessage extends BaseMessage {
 
 export interface MeasureProseStatsMessage extends BaseMessage {
   type: MessageType.MEASURE_PROSE_STATS;
-  text: string;
+  text?: string;
+  source?: TextSourceSpec;
 }
 
 export interface MeasureStyleFlagsMessage extends BaseMessage {
   type: MessageType.MEASURE_STYLE_FLAGS;
-  text: string;
+  text?: string;
+  source?: TextSourceSpec;
 }
 
 export interface MeasureWordFrequencyMessage extends BaseMessage {
   type: MessageType.MEASURE_WORD_FREQUENCY;
-  text: string;
+  text?: string;
+  source?: TextSourceSpec;
 }
 
 export interface TabChangedMessage extends BaseMessage {
@@ -152,6 +164,34 @@ export interface SetModelSelectionMessage extends BaseMessage {
   modelId: string;
 }
 
+export interface RequestActiveFileMessage extends BaseMessage {
+  type: MessageType.REQUEST_ACTIVE_FILE;
+}
+
+export interface ActiveFileMessage extends BaseMessage {
+  type: MessageType.ACTIVE_FILE;
+  relativePath?: string; // undefined if no active file
+  sourceUri?: string;
+}
+
+export interface RequestManuscriptGlobsMessage extends BaseMessage {
+  type: MessageType.REQUEST_MANUSCRIPT_GLOBS;
+}
+
+export interface ManuscriptGlobsMessage extends BaseMessage {
+  type: MessageType.MANUSCRIPT_GLOBS;
+  globs: string; // raw config string
+}
+
+export interface RequestChapterGlobsMessage extends BaseMessage {
+  type: MessageType.REQUEST_CHAPTER_GLOBS;
+}
+
+export interface ChapterGlobsMessage extends BaseMessage {
+  type: MessageType.CHAPTER_GLOBS;
+  globs: string; // raw config string
+}
+
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
   | AnalyzeProseMessage
@@ -166,7 +206,10 @@ export type WebviewToExtensionMessage =
   | TabChangedMessage
   | OpenGuideFileMessage
   | RequestModelDataMessage
-  | SetModelSelectionMessage;
+  | SetModelSelectionMessage
+  | RequestActiveFileMessage
+  | RequestManuscriptGlobsMessage
+  | RequestChapterGlobsMessage;
 
 // Messages from extension to webview
 export interface AnalysisResultMessage extends BaseMessage {
@@ -254,4 +297,7 @@ export type ExtensionToWebviewMessage =
   | ErrorMessage
   | StatusMessage
   | SelectionUpdatedMessage
-  | ModelDataMessage;
+  | ModelDataMessage
+  | ActiveFileMessage
+  | ManuscriptGlobsMessage
+  | ChapterGlobsMessage;

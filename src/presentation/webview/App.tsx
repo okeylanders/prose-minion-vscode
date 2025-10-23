@@ -16,7 +16,8 @@ import {
   ExtensionToWebviewMessage,
   ModelScope,
   ModelOption,
-  SelectionTarget
+  SelectionTarget,
+  TextSourceMode
 } from '../../shared/types';
 
 // Get VS Code API
@@ -31,6 +32,8 @@ type PersistedState = {
   analysisResult: string;
   analysisToolName?: string;
   metricsResult: any;
+  metricsSourceMode?: TextSourceMode;
+  metricsPathText?: string;
   utilitiesResult: string;
   dictionaryToolName?: string;
   dictionaryWord: string;
@@ -58,6 +61,8 @@ export const App: React.FC = () => {
   const [analysisLoading, setAnalysisLoading] = React.useState(false);
   const [metricsResult, setMetricsResult] = React.useState<any>(persistedState?.metricsResult ?? null);
   const [metricsLoading, setMetricsLoading] = React.useState(false);
+  const [metricsSourceMode, setMetricsSourceMode] = React.useState<TextSourceMode>(persistedState?.metricsSourceMode ?? 'selection');
+  const [metricsPathText, setMetricsPathText] = React.useState<string>(persistedState?.metricsPathText ?? '[selected text]');
   const [utilitiesResult, setUtilitiesResult] = React.useState(persistedState?.utilitiesResult ?? '');
   const [dictionaryToolName, setDictionaryToolName] = React.useState<string | undefined>(persistedState?.dictionaryToolName);
   const [utilitiesLoading, setUtilitiesLoading] = React.useState(false);
@@ -122,6 +127,8 @@ export const App: React.FC = () => {
       analysisResult,
       analysisToolName,
       metricsResult,
+      metricsSourceMode,
+      metricsPathText,
       utilitiesResult,
       dictionaryToolName,
       dictionaryWord,
@@ -158,6 +165,9 @@ export const App: React.FC = () => {
     guideNames,
     usedGuides,
     modelSelections
+    ,
+    metricsSourceMode,
+    metricsPathText
   ]);
 
   // Handle messages from extension
@@ -198,6 +208,18 @@ export const App: React.FC = () => {
           setMetricsResult(message.result);
           setMetricsLoading(false);
           setError('');
+          break;
+
+        case MessageType.ACTIVE_FILE:
+          setMetricsPathText(message.relativePath ?? '');
+          break;
+
+        case MessageType.MANUSCRIPT_GLOBS:
+          setMetricsPathText(message.globs ?? '');
+          break;
+
+        case MessageType.CHAPTER_GLOBS:
+          setMetricsPathText(message.globs ?? '');
           break;
 
         case MessageType.DICTIONARY_RESULT:
@@ -440,6 +462,10 @@ export const App: React.FC = () => {
             metrics={metricsResult}
             isLoading={metricsLoading}
             onLoadingChange={setMetricsLoading}
+            sourceMode={metricsSourceMode}
+            pathText={metricsPathText}
+            onSourceModeChange={setMetricsSourceMode}
+            onPathTextChange={setMetricsPathText}
           />
         )}
 
