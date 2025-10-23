@@ -1,6 +1,6 @@
 /**
  * Prose Assistant Tool
- * General prose analysis and improvement suggestions
+ * General prose analysis and improvement suggestions ( Prose Excerpt Assistant )
  */
 
 import { PromptLoader } from '../shared/prompts';
@@ -8,6 +8,8 @@ import { AIResourceOrchestrator, ExecutionResult } from '../../application/servi
 
 export interface ProseAssistantInput {
   text: string;
+  contextText?: string;
+  sourceFileUri?: string;
 }
 
 export interface ProseAssistantOptions {
@@ -31,7 +33,7 @@ export class ProseAssistant {
     const systemMessage = this.buildSystemMessage(sharedPrompts, toolPrompts);
 
     // Build user message (just the prose text)
-    const userMessage = this.buildUserMessage(input.text);
+    const userMessage = this.buildUserMessage(input);
 
     // Use orchestrator to execute with agent capabilities (guide support)
     return await this.aiResourceOrchestrator.executeWithAgentCapabilities(
@@ -71,8 +73,28 @@ export class ProseAssistant {
     return parts.join('\n\n---\n\n');
   }
 
-  private buildUserMessage(text: string): string {
-    return `Please analyze this prose passage and provide suggestions for improvement:\n\n${text}`;
+  private buildUserMessage(input: ProseAssistantInput): string {
+    const lines: string[] = [
+      'Please analyze this prose passage and provide suggestions for improvement.',
+      '',
+      '### Prose Passage',
+      '```markdown',
+      input.text,
+      '```',
+      ''
+    ];
+
+    if (input.sourceFileUri) {
+      lines.push(`Source File: ${input.sourceFileUri}`, '');
+    }
+
+    if (input.contextText && input.contextText.trim().length > 0) {
+      lines.push('### Supplemental Context', input.contextText.trim(), '');
+    }
+
+    lines.push('Focus on voice, clarity, pacing, sensory detail, and opportunities to reinforce character or theme.');
+
+    return lines.join('\n');
   }
 
   private getDefaultInstructions(): string {

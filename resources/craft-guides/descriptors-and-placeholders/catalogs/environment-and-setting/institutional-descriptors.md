@@ -2,7 +2,7 @@
 
 ## Categories
 
-### Brighton Academy Architecture
+### School Architecture
 
 - brick and stone façade rising against morning sky
 - blend of traditional architecture and history
@@ -69,6 +69,6 @@
 
 ## Examples
 
-- "Brighton Academy loomed ahead, its brick and stone façade rising against the morning sky—a blend of traditional architecture and history." (1.5)
+- "The school loomed ahead, its brick and stone façade rising against the morning sky—a blend of traditional architecture and history." (1.5)
 - "The hallway smelled of floor polish, perfume, cologne, and the lingering warmth of bodies packed too close together." (1.5)
 - "The acoustics remained untamed—a whisper from one side could sometimes be heard in peculiar corners across the space." (2.6)

@@ -13,6 +13,7 @@ This is a **VSCode extension** that helps creative writers analyze and improve t
 - Provides dialogue analysis, prose analysis, and writing metrics
 - Has a React-based webview UI with multiple tabs
 - Follows Clean Architecture principles
+- Persists UI state and cached responses so analysis continues while the view is hidden
 
 ### Key Technologies
 
@@ -44,10 +45,10 @@ Clean Architecture Layers:
 ### Most Important Files
 
 1. **[extension.ts](src/extension.ts)** - Extension entry point, dependency injection
-2. **[ProseToolsViewProvider.ts](src/application/providers/ProseToolsViewProvider.ts)** - Webview orchestration
-3. **[MessageHandler.ts](src/application/handlers/MessageHandler.ts)** - Routes messages between UI and tools
-4. **[OpenRouterClient.ts](src/infrastructure/api/OpenRouterClient.ts)** - API client for LLM calls
-5. **[App.tsx](src/presentation/webview/App.tsx)** - Main React component
+2. **[ProseToolsViewProvider.ts](src/application/providers/ProseToolsViewProvider.ts)** - Webview orchestration (registers with `retainContextWhenHidden`)
+3. **[MessageHandler.ts](src/application/handlers/MessageHandler.ts)** - Routes messages between UI and tools, caches latest responses
+4. **[OpenRouterClient.ts](src/infrastructure/api/OpenRouterClient.ts)** - API client for LLM calls (instantiated per model scope)
+5. **[App.tsx](src/presentation/webview/App.tsx)** - Main React component (persists UI state with `vscode.setState`)
 
 ### Tool Implementations
 
@@ -62,8 +63,8 @@ Statistical tools:
 
 ### Configuration
 
-- [package.json](package.json):60-101 - Extension settings schema
-- User settings: `proseMinion.openRouterApiKey`, `proseMinion.model`, etc.
+- [package.json](package.json):60-182 - Extension settings schema
+- User settings: `proseMinion.openRouterApiKey`, `proseMinion.assistantModel`, `proseMinion.dictionaryModel`, `proseMinion.contextModel`, plus the legacy `proseMinion.model` fallback
 
 ## Common Development Tasks
 
@@ -121,7 +122,7 @@ The tool automatically loads these prompts at runtime. No code changes needed un
 }
 ```
 
-2. Access in code:
+2. Access in code (refresh orchestrators if the setting affects runtime behaviour):
 ```typescript
 const config = vscode.workspace.getConfiguration('proseMinion');
 const focusArea = config.get<string>('focusArea', 'general');
@@ -207,6 +208,12 @@ try {
 - Define interfaces in domain layer, implement in infrastructure
 - Export types alongside implementations
 - Use strict TypeScript settings
+
+### Persistence & Replay
+
+- `MessageHandler` caches the latest analysis, dictionary, metrics, status, and error payloads so a recreated webview can instantly display the final state.
+- `App.tsx` mirrors key UI state (active tab, recent results, model selections) into `vscode.setState`. When adjusting the UI, include any new state slices in the persisted object.
+- The webview is registered with `retainContextWhenHidden` (with a compatibility cast for older VS Code versions). Only remove this if you provide an equivalent persistence mechanism.
 
 ## Resource Files
 

@@ -52,7 +52,7 @@ export class OpenRouterClient {
       temperature?: number;
       maxTokens?: number;
     }
-  ): Promise<string> {
+  ): Promise<{ content: string; finishReason?: string }> {
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -65,7 +65,7 @@ export class OpenRouterClient {
         model: this.model,
         messages,
         temperature: options?.temperature ?? 0.7,
-        max_tokens: options?.maxTokens ?? 2000
+        max_tokens: options?.maxTokens ?? 10000
       })
     });
 
@@ -80,7 +80,10 @@ export class OpenRouterClient {
       throw new Error('No response from OpenRouter API');
     }
 
-    return data.choices[0].message.content;
+    return {
+      content: data.choices[0].message.content,
+      finishReason: data.choices[0]?.finish_reason
+    };
   }
 
   /**

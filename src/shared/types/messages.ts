@@ -3,11 +3,17 @@
  * Following clean architecture: these are shared contracts
  */
 
+import { ContextPathGroup } from './context';
+
 export enum MessageType {
   // Analysis tab messages
   ANALYZE_DIALOGUE = 'analyze_dialogue',
   ANALYZE_PROSE = 'analyze_prose',
   LOOKUP_DICTIONARY = 'lookup_dictionary',
+  GENERATE_CONTEXT = 'generate_context',
+  COPY_RESULT = 'copy_result',
+  SAVE_RESULT = 'save_result',
+  REQUEST_SELECTION = 'request_selection',
 
   // Metrics tab messages
   MEASURE_PROSE_STATS = 'measure_prose_stats',
@@ -18,12 +24,20 @@ export enum MessageType {
   ANALYSIS_RESULT = 'analysis_result',
   METRICS_RESULT = 'metrics_result',
   DICTIONARY_RESULT = 'dictionary_result',
+  CONTEXT_RESULT = 'context_result',
+  SAVE_RESULT_SUCCESS = 'save_result_success',
+  SELECTION_DATA = 'selection_data',
   ERROR = 'error',
   STATUS = 'status',
 
   // UI state messages
   TAB_CHANGED = 'tab_changed',
   SELECTION_UPDATED = 'selection_updated',
+
+  // Configuration messages
+  REQUEST_MODEL_DATA = 'request_model_data',
+  MODEL_DATA = 'model_data',
+  SET_MODEL_SELECTION = 'set_model_selection',
 
   // Guide actions
   OPEN_GUIDE_FILE = 'open_guide_file'
@@ -36,6 +50,14 @@ export enum TabId {
   UTILITIES = 'utilities'
 }
 
+export type ModelScope = 'assistant' | 'dictionary' | 'context';
+
+export interface ModelOption {
+  id: string;
+  label: string;
+  description?: string;
+}
+
 // Base message interface
 export interface BaseMessage {
   type: MessageType;
@@ -46,17 +68,53 @@ export interface BaseMessage {
 export interface AnalyzeDialogueMessage extends BaseMessage {
   type: MessageType.ANALYZE_DIALOGUE;
   text: string;
+  contextText?: string;
+  sourceFileUri?: string;
 }
 
 export interface AnalyzeProseMessage extends BaseMessage {
   type: MessageType.ANALYZE_PROSE;
   text: string;
+  contextText?: string;
+  sourceFileUri?: string;
 }
 
 export interface LookupDictionaryMessage extends BaseMessage {
   type: MessageType.LOOKUP_DICTIONARY;
   word: string;
   contextText?: string;
+}
+
+export interface CopyResultMessage extends BaseMessage {
+  type: MessageType.COPY_RESULT;
+  toolName: string;
+  content: string;
+}
+
+export interface SaveResultMessage extends BaseMessage {
+  type: MessageType.SAVE_RESULT;
+  toolName: string;
+  content: string;
+  metadata?: SaveResultMetadata;
+}
+
+export type SelectionTarget =
+  | 'assistant_excerpt'
+  | 'assistant_context'
+  | 'dictionary_word'
+  | 'dictionary_context';
+
+export interface RequestSelectionMessage extends BaseMessage {
+  type: MessageType.REQUEST_SELECTION;
+  target: SelectionTarget;
+}
+
+export interface GenerateContextMessage extends BaseMessage {
+  type: MessageType.GENERATE_CONTEXT;
+  excerpt: string;
+  existingContext?: string;
+  sourceFileUri?: string;
+  requestedGroups?: ContextPathGroup[];
 }
 
 export interface MeasureProseStatsMessage extends BaseMessage {
@@ -84,15 +142,31 @@ export interface OpenGuideFileMessage extends BaseMessage {
   guidePath: string;  // Relative path from craft-guides/
 }
 
+export interface RequestModelDataMessage extends BaseMessage {
+  type: MessageType.REQUEST_MODEL_DATA;
+}
+
+export interface SetModelSelectionMessage extends BaseMessage {
+  type: MessageType.SET_MODEL_SELECTION;
+  scope: ModelScope;
+  modelId: string;
+}
+
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
   | AnalyzeProseMessage
   | LookupDictionaryMessage
+  | CopyResultMessage
+  | SaveResultMessage
+  | RequestSelectionMessage
+  | GenerateContextMessage
   | MeasureProseStatsMessage
   | MeasureStyleFlagsMessage
   | MeasureWordFrequencyMessage
   | TabChangedMessage
-  | OpenGuideFileMessage;
+  | OpenGuideFileMessage
+  | RequestModelDataMessage
+  | SetModelSelectionMessage;
 
 // Messages from extension to webview
 export interface AnalysisResultMessage extends BaseMessage {
@@ -114,6 +188,13 @@ export interface DictionaryResultMessage extends BaseMessage {
   toolName: string;
 }
 
+export interface ContextResultMessage extends BaseMessage {
+  type: MessageType.CONTEXT_RESULT;
+  result: string;
+  toolName: string;
+  requestedResources?: string[];
+}
+
 export interface ErrorMessage extends BaseMessage {
   type: MessageType.ERROR;
   message: string;
@@ -126,15 +207,51 @@ export interface StatusMessage extends BaseMessage {
   guideNames?: string;  // Comma-separated list of guide names for ticker animation
 }
 
+export interface SaveResultSuccessMessage extends BaseMessage {
+  type: MessageType.SAVE_RESULT_SUCCESS;
+  filePath: string;
+  toolName: string;
+}
+
+export interface SelectionDataMessage extends BaseMessage {
+  type: MessageType.SELECTION_DATA;
+  target: SelectionTarget;
+  content: string;
+  sourceUri?: string;
+  relativePath?: string;
+}
+
+export interface SaveResultMetadata {
+  word?: string;
+  excerpt?: string;
+  context?: string;
+  sourceFileUri?: string;
+  relativePath?: string;
+  timestamp?: number;
+}
+
 export interface SelectionUpdatedMessage extends BaseMessage {
   type: MessageType.SELECTION_UPDATED;
   text: string;
+  sourceUri?: string;
+  relativePath?: string;
+  target?: 'assistant' | 'dictionary' | 'both';
+}
+
+export interface ModelDataMessage extends BaseMessage {
+  type: MessageType.MODEL_DATA;
+  options: ModelOption[];
+  selections: Partial<Record<ModelScope, string>>;
 }
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
   | MetricsResultMessage
   | DictionaryResultMessage
+  | ContextResultMessage
+  | SaveResultSuccessMessage
+  | SelectionDataMessage
   | ErrorMessage
   | StatusMessage
-  | SelectionUpdatedMessage;
+  | SelectionUpdatedMessage
+  | ModelDataMessage;

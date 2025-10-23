@@ -37,7 +37,7 @@ The extension now separates models by feature so you can tune cost, latency, and
 |---------|--------------|-------------|---------|
 | Dialogue & Prose Assistants | `proseMinion.assistantModel` | Analysis tab dropdown | `z-ai/glm-4.6` |
 | Dictionary Utility | `proseMinion.dictionaryModel` | Utilities tab dropdown | `z-ai/glm-4.6` |
-| Context Assistant | `proseMinion.contextModel` | Settings only (auto-applied) | `z-ai/glm-4.6` |
+| Context Bot (coming soon) | `proseMinion.contextModel` | _n/a yet_ | `z-ai/glm-4.6` |
 | Legacy fallback | `proseMinion.model` | Used only if a scoped model is unset | `z-ai/glm-4.6` |
 
 **How it works**
@@ -54,7 +54,7 @@ The extension now separates models by feature so you can tune cost, latency, and
 - **Speed first**: Assistant → `google/gemini-2.5-flash`, Dictionary → `x-ai/grok-4-fast`
 - **Premium**: Assistant → `anthropic/claude-opus-4.1`, Dictionary → `openai/gpt-5-chat`
 
-You can still edit only `proseMinion.model` for backward compatibility; the extension cascades that value to any scope that is left blank. The context assistant always re-reads `proseMinion.contextModel` just before it runs, so you can switch models mid-session without reloading the extension.
+You can still edit only `proseMinion.model` for backward compatibility; the extension cascades that value to any scope that is left blank.
 
 ---
 
@@ -121,7 +121,7 @@ You can still edit only `proseMinion.model` for backward compatibility; the exte
 
 **Setting**: `proseMinion.maxTokens`
 **Type**: Number (100 - 8000)
-**Default**: `10000`
+**Default**: `2000`
 
 **What it controls**:
 - Maximum length of AI responses
@@ -141,34 +141,7 @@ You can still edit only `proseMinion.model` for backward compatibility; the exte
 - Most analyses work well with 2000 tokens
 - Only increase for very long passages or detailed analysis
 
-**Note**: The AI may use fewer tokens than the limit if it completes the response early. If a response is cut off, a “Response truncated” notice appears — increase Max Tokens to allow longer outputs.
-
----
-
-### 6. Context Resource Paths
-
-**Settings (comma-separated globs)**
-
-| Group | Key | Default |
-|-------|-----|---------|
-| Characters | `proseMinion.contextPaths.characters` | `characters/**/*,Characters/**/*` |
-| Locations & Settings | `proseMinion.contextPaths.locations` | `locations/**/*,Locations/**/*,Locations-Settings/**/*` |
-| Themes | `proseMinion.contextPaths.themes` | `themes/**/*,Themes/**/*` |
-| Things / Props | `proseMinion.contextPaths.things` | `things/**/*,Things/**/*` |
-| Draft Chapters & Outlines | `proseMinion.contextPaths.chapters` | `drafts/**/*,Drafts/**/*,outlines/**/*,Outlines/**/*` |
-| Manuscript Chapters | `proseMinion.contextPaths.manuscript` | `manuscript/**/*,Manuscript/**/*` |
-| Project Brief Materials | `proseMinion.contextPaths.projectBrief` | `brief/**/*,Brief/**/*` |
-| General References | `proseMinion.contextPaths.general` | `research/**/*,Research/**/*,tone-and-style/**/*,Tone-And-Style/**/*,literary-devices/**/*,Literary-Devices/**/*,**/story-bible.md,**/synopsis.md,**/voice-and-tone.md,**/genre-conventions.md` |
-
-**How it works**
-
-- Patterns are evaluated against your workspace folders using VS Code glob syntax. Use `**` to search all subdirectories.
-- Only `.md` and `.txt` files are indexed; other file types are ignored automatically.
-- Separate multiple patterns with commas. For example: `characters/**/*,Characters/**/*,**/cast/*.md`.
-- The context assistant receives the catalog of matched files and can request specific ones during its two-turn workflow.
-- Update these settings at any time — the next context request will pick up the new patterns immediately.
-
-> Tip: Point the `projectBrief` or `general` groups at synopsis files, tone guides, or world bibles so the context assistant can summarise them automatically.
+**Note**: The AI may use fewer tokens than the limit if it completes the response early.
 
 ---
 

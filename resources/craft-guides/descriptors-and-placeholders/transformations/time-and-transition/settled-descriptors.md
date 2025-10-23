@@ -1,7 +1,7 @@
 # Settled Descriptors
 
 Purpose
-This file gathers alternatives and ready-to-drop phrases for uses of "settled" and related constructions (e.g., "conversation settled", "they settled", "the room settled", "settled into silence", "settled on a decision", etc.). Grouped by nuance and accompanied by show‑don't‑tell rewrites and micro-phrases, these options are meant to help vary rhythm, match registers (everyday → lyrical → prophetic), and avoid repetition while preserving the Heart Parchment Chronicles voice.
+This file gathers alternatives and ready-to-drop phrases for uses of "settled" and related constructions (e.g., "conversation settled", "they settled", "the room settled", "settled into silence", "settled on a decision", etc.). Grouped by nuance and accompanied by show‑don't‑tell rewrites and micro-phrases, these options are meant to help vary rhythm, match different registers (everyday → lyrical → elevated), and avoid repetition.
 
 ---
 
@@ -279,13 +279,13 @@ Practical / Transactional
 
 ---
 
-## Short Examples Mapped to HPC Style
+## Short Examples by Style Register
 
 - "A hush fell; they listened to the house breathe." (everyday + sensory)
 - "Talk cooled into a low, companionable hum that made space for the smell of rain." (sensory)
 - "They took their seats without ceremony, shoulders easing as leather sighed." (sensory + micro-action)
 - "He nodded, and the argument drew a quiet line under itself." (plain → lyrical blend)
-- "Silence pooled like ink at the center of the table, and Nate watched it stain their hands." (lyrical + character-focus)
+- "Silence pooled like ink at the center of the table, and she watched it stain their hands." (lyrical + character-focus)
 - "They folded the decision closed and moved on as if it had never been a wound." (lyrical → integration)
 
 ---

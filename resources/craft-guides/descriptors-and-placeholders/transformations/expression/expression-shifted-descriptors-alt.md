@@ -488,7 +488,7 @@ This guide offers a wide range of ways to convey a change in a character’s fac
 
 ---
 
-## Extra Deep-Cut Figurative for HPC Vibe
+## Extra Deep-Cut Figurative
 
 ---
 
@@ -526,51 +526,3 @@ This guide offers a wide range of ways to convey a change in a character’s fac
 - The jaw clicked through possible outcomes like gears.
 - He counted seconds with a lip bite and chose the correct lie.
 
----
-
-
-## Extra Deep-Cut Figurative for HPC Vibe
-- Like brass darkening in sudden shadow
-- As if a psalm broke mid‑line
-- The fresco cracked, colours bleeding to charcoal
-- A lamb’s gaze gone flint
-- Their face shifted like weather in the prophets
-- A Rembrandt warmth drained to Giacometti ash
-- Eyes caught the glint of Damascus steel
-- Sun eclipsed mid‑day in the temple court
-- Like parchment curling under sacred fire
-- The icon’s smile fractured into iconoclast dust
-- Face transfigured as on the mount
-- Choir’s light dimmed to vigil candle
-- Like Jordan’s flow suddenly reversed
-- The cherubim’s sword flashed across the gaze
-- Sinai’s smoke traced her brow and lifted
-- Bronze serpent shimmered in the pupils
-- Manna sweetness returned to the mouth’s corners
-- Veil parted—light stepped through the irises
-- A psalter’s chord tuned behind the eyes
-- Oil of anointing warmed the cheeks
-- Stone tablets’ weight shifted in the jaw
-- A prophet’s mantle settled on the brow
-- Lampstand’s flame found fresh oil in the gaze
-- The menorah's light split, revealing a shadow of mercy
-- A psalm's ink darkened on the tongue
-- The pillar of cloud traced a new path
-- Elijah's whisper trembled at the lip
-- The oracle's mirror fogged, then cleared
-- Thunder folded its cloth and handed him a letter
-- A psalm's last line lingered on the lip of his smile
-- A mosaic tooth clicked in the light of the eye
-- The vestibule of memory swung open and inhaled
-- A gold thread stitched new meaning at the temple
-- The river's margin laid its silver at their feet
-- A censer breathed across the cheek and left calm
-- Morning's font spilled silver along the lip
-- An ephod's thread caught a question and smoothed it
-- The courtyard bell tolled silently behind the teeth
-- A mosaic of memory glanced and stayed in the eye
-- An alabaster hush settled across the cheek
-- The face traded color like currency—spent and borrowed
-- A small psalm hid at the corner of the mouth
-- Stained glass found its pattern in the pupils and held it
-- The hush of a chapel sat between the brow and the hairline

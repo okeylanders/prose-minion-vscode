@@ -38,26 +38,6 @@ Value labels like "nice/good/bad," "awesome/amazing/cool," "beautiful/pretty/ugl
 - ❌ "Strange behavior" → ✅ "He counted steps between every streetlight"
 - ❌ "Odd feeling" → ✅ "Like walking into a room after an argument"
 
-## The HPC Application
-
-### Character-Specific Criteria
-
-**Nate (Artistic Standards)**:
-- ❌ "Good art" → ✅ "Art that stopped him mid-stride, demanding attention"
-- ❌ "Bad composition" → ✅ "Elements fighting each other instead of flowing"
-
-**Ava (Relational Intuition)**:
-- ❌ "Nice person" → ✅ "Someone who remembered her coffee order and asked about her day"
-- ❌ "Bad situation" → ✅ "Tension thick enough to choke conversation"
-
-**Jasper (Intellectual Precision)**:
-- ❌ "Good argument" → ✅ "Logic so clean it carved through counterpoints"
-- ❌ "Bad reasoning" → ✅ "Fallacies stacked like a house of cards"
-
-**Micah (Athletic Excellence)**:
-- ❌ "Good game" → ✅ "The kind of performance that silences critics"
-- ❌ "Bad play" → ✅ "A fumble that cost them the quarter"
-
 ## Implementation Strategy
 
 1. **Identify the Label**: Find all generic value judgments
@@ -86,7 +66,7 @@ Value labels like "nice/good/bad," "awesome/amazing/cool," "beautiful/pretty/ugl
 
 ## Context-Specific Criteria
 
-### Brighton Academy Academic
+### Academic Contexts
 - ❌ "Good student" → ✅ "The kind who asked questions that changed the discussion"
 - ❌ "Hard class" → ✅ "Three students had already dropped by midterm"
 

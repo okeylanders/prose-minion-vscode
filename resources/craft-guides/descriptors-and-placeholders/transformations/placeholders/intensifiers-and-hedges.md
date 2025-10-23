@@ -26,22 +26,6 @@ Instead of modifying weak words with intensifiers/hedges, **choose stronger, mor
 - ❌ "somewhat disappointed" → ✅ "let down," "deflated," "discouraged"
 - ❌ "rather impressed" → ✅ "struck by," "taken with," "drawn to"
 
-## The HPC Application
-
-### Character-Specific Approaches
-
-**Nate (Artist's Perception)**:
-- ❌ "very bright colors" → ✅ "colors that burned against his retinas"
-- ❌ "really detailed drawing" → ✅ "every line etched with surgical precision"
-
-**Ava (Emotionally Perceptive)**:
-- ❌ "quite hurt" → ✅ "the sting of recognition"  
-- ❌ "sort of worried" → ✅ "that familiar tightness behind her ribs"
-
-**Jasper (Intellectual)**:
-- ❌ "very complicated" → ✅ "a labyrinthine argument"
-- ❌ "really important" → ✅ "the crux of the matter"
-
 ## Implementation Strategy
 
 1. **Search and Mark**: Find all intensifiers/hedges in your draft

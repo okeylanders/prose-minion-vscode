@@ -28,10 +28,11 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
   ): void | Thenable<void> {
     this.view = webviewView;
 
-    webviewView.webview.options = {
+    const webviewOptions: vscode.WebviewOptions = {
       enableScripts: true,
       localResourceRoots: [this.extensionUri]
     };
+    webviewView.webview.options = webviewOptions;
 
     webviewView.webview.html = this.getHtmlForWebview(webviewView.webview);
 
@@ -49,16 +50,36 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
       undefined,
       []
     );
+
+    // When the view becomes visible again, replay any cached results that may have arrived while hidden
+    webviewView.onDidChangeVisibility(() => {
+      if (webviewView.visible) {
+        this.messageHandler?.flushCachedResults?.();
+      }
+    });
+
+    webviewView.onDidDispose(() => {
+      this.messageHandler?.dispose();
+      this.messageHandler = undefined;
+    });
   }
 
   /**
    * Send selected text from editor to webview
    */
-  public sendSelectionToWebview(text: string): void {
+  public sendSelectionToWebview(payload: {
+    text: string;
+    sourceUri?: string;
+    relativePath?: string;
+    target?: 'assistant' | 'dictionary' | 'both';
+  }): void {
     if (this.view) {
       const message: SelectionUpdatedMessage = {
         type: MessageType.SELECTION_UPDATED,
-        text,
+        text: payload.text,
+        sourceUri: payload.sourceUri,
+        relativePath: payload.relativePath,
+        target: payload.target,
         timestamp: Date.now()
       };
       this.view.webview.postMessage(message);
@@ -77,7 +98,7 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; img-src ${webview.cspSource} https: data:;">
   <title>Prose Minion Tools</title>
 </head>
 <body>

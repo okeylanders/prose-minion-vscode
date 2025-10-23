@@ -1,6 +1,6 @@
 /**
  * Domain model for analysis results
- * Represents the output from prose analysis tools
+ * Represents the output from prose analysis tools ( Prose Excerpt Assistant )
  */
 
 export interface AnalysisResult {

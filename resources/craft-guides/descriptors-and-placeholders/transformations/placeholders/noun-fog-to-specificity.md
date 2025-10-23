@@ -33,26 +33,6 @@ Vague nouns like "things," "stuff," "something," "someone," "place," "way" creat
 - ❌ "Some place quiet" → ✅ "The empty art studio after hours"
 - ❌ "Find a way" → ✅ "Devise a strategy" / "Discover a solution"
 
-## The HPC Application
-
-### Character-Specific Specificity
-
-**Nate (Artistic Details)**:
-- ❌ "His things were scattered" → ✅ "Brushes lay abandoned beside tubes of vermillion and burnt umber"
-- ❌ "Something inspired him" → ✅ "The interplay of shadow and light across Ava's profile"
-
-**Ava (Relational Precision)**:
-- ❌ "Someone needed help" → ✅ "Kayla's smile was too bright, too forced"
-- ❌ "Things felt different" → ✅ "The easy rhythm of their friendship had fractured"
-
-**Jasper (Intellectual Specificity)**:
-- ❌ "Something bothered him" → ✅ "The logical inconsistency gnawed at his methodology"
-- ❌ "Things didn't add up" → ✅ "The timeline contradicted every witness account"
-
-**Brighton Academy Context**:
-- ❌ "School stuff" → ✅ "Chapel requirements and apologetics assignments"
-- ❌ "Someone in charge" → ✅ "Pastor Wilson" / "Dr. Chen" / "The department head"
-
 ## Implementation Strategy
 
 1. **Flag the Fog**: Identify all instances of vague nouns

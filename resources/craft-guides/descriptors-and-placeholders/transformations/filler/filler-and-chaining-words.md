@@ -42,26 +42,6 @@ Filler and chaining words like "actually," "basically," "literally," "just," "th
 - ❌ "Now, this is important" → ✅ "This is important"
 - ❌ "Anyway, moving on..." → ✅ "Moving on..." / [Direct transition]
 
-## The HPC Application
-
-### Character-Specific Filler Patterns
-
-**Nate (Artistic Precision)**:
-- ❌ "The painting was just... actually pretty good" → ✅ "The painting demanded attention"
-- ❌ "He basically knew what he wanted" → ✅ "Vision crystallized in his mind"
-
-**Ava (Confident Clarity)**:
-- ❌ "She just thought maybe they should..." → ✅ "She suggested they..."
-- ❌ "Well, actually, that's not quite right" → ✅ "That's not quite right"
-
-**Jasper (Intellectual Authority)**:
-- ❌ "So basically what he's saying is..." → ✅ "His argument reduces to..."
-- ❌ "It's just that the logic doesn't work" → ✅ "The logic fails"
-
-**Micah (Direct Action)**:
-- ❌ "He just went for it, basically" → ✅ "He committed completely"
-- ❌ "So then he made the shot" → ✅ "The shot found its mark"
-
 ## Implementation Strategy
 
 1. **Hunt the Fillers**: Search for actually, basically, literally, just, then, so, well, now

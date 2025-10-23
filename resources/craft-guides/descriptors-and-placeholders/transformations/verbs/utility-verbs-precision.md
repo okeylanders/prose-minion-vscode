@@ -37,26 +37,6 @@ Generic utility verbs like "get/got/getting," "put/take/make/do," and "went/came
 - ❌ "She came over" → ✅ "She appeared at his door" / "She drifted toward them"
 - ❌ "They went home" → ✅ "They retreated to their sanctuary" / "They trudged back"
 
-## The HPC Application
-
-### Character-Specific Verb Choices
-
-**Nate (Artistic Precision)**:
-- ❌ "Got his supplies" → ✅ "Assembled his brushes and paints with ritual care"
-- ❌ "Made a sketch" → ✅ "Captured the gesture in quick, confident strokes"
-
-**Ava (Graceful Competence)**:
-- ❌ "Got everyone's attention" → ✅ "Drew every eye without effort"
-- ❌ "Took control" → ✅ "Guided the conversation back on track"
-
-**Jasper (Intellectual Movement)**:
-- ❌ "Got the point" → ✅ "Grasped the underlying principle"
-- ❌ "Made an argument" → ✅ "Constructed his thesis methodically"
-
-**Micah (Athletic Energy)**:
-- ❌ "Went across the room" → ✅ "Bounded across the room in three strides"
-- ❌ "Got ready for practice" → ✅ "Suited up with game-day intensity"
-
 ## Implementation Strategy
 
 1. **Hunt the Utility**: Search for get/got, put/take, make/do, went/came
@@ -85,7 +65,7 @@ Generic utility verbs like "get/got/getting," "put/take/make/do," and "went/came
 
 ## Context-Specific Replacements
 
-### Academic Settings (Brighton Academy)
+### Academic Settings
 - ❌ "Got good grades" → ✅ "Earned recognition" / "Excelled in coursework"
 - ❌ "Made a presentation" → ✅ "Delivered his thesis" / "Outlined his argument"
 

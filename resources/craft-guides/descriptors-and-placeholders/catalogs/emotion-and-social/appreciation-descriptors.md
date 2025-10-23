@@ -524,17 +524,17 @@ This guide provides alternatives for describing moments of appreciation, admirat
 
 ---
 
-## Appreciation in Heart Parchment Contexts
+## Context-Specific Appreciation
 
-### Artistic Recognition at Brighton
+### Artistic Recognition
 
-- The specific hush that fell over Mr. Bradley's studio
+- The specific hush that fell over the studio
 - When even the non-artists paused mid-chatter
 - The way creative jealousy transformed into genuine awe
 - Recognition measured in stolen glances at another's canvas
 - The ultimate compliment: attempting to copy the technique
 
-### Spiritual/Mystical Appreciation
+### Spiritual Appreciation
 
 - Acknowledgment that felt like prophecy
 - The recognition that seemed to come from beyond the speaker
@@ -627,5 +627,5 @@ Often the most powerful appreciation is:
 - Specific to the characters involved
 - Tied to the larger themes of your story
 
-Remember: In the Heart Parchment Chronicles context, appreciation often carries spiritual weight—the recognition of divine gifts, artistic calling, or profound human connection. Use these moments to deepen both character and theme.
+Remember: Appreciation can carry weight beyond simple gratitude—the recognition of gifts, calling, or profound human connection. Use these moments to deepen both character and theme.
 

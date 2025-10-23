@@ -1,16 +1,24 @@
 /**
  * Implementation of IProseAnalysisService
- * Integrates all prose analysis tools
+ * Integrates all tools
  */
 
 import * as vscode from 'vscode';
 import { IProseAnalysisService } from '../../domain/services/IProseAnalysisService';
 import { AnalysisResult, MetricsResult, AnalysisResultFactory } from '../../domain/models/AnalysisResult';
+import {
+  ContextGenerationRequest,
+  ContextGenerationResult,
+  ContextResourceProvider,
+  DEFAULT_CONTEXT_GROUPS
+} from '../../domain/models/ContextGeneration';
 import { OpenRouterClient } from './OpenRouterClient';
 import { PromptLoader } from '../../tools/shared/prompts';
 import { GuideLoader } from '../../tools/shared/guides';
 import { DialogueMicrobeatAssistant } from '../../tools/assist/dialogueMicrobeatAssistant';
 import { ProseAssistant } from '../../tools/assist/proseAssistant';
+import { ContextAssistant } from '../../tools/assist/contextAssistant';
+import { ContextResourceResolver } from '../context/ContextResourceResolver';
 import { PassageProseStats } from '../../tools/measure/passageProseStats';
 import { StyleFlags } from '../../tools/measure/styleFlags';
 import { WordFrequency } from '../../tools/measure/wordFrequency';
@@ -18,16 +26,33 @@ import { AIResourceOrchestrator, StatusCallback } from '../../application/servic
 import { ConversationManager } from '../../application/services/ConversationManager';
 import { GuideRegistry } from '../../infrastructure/guides/GuideRegistry';
 import { DictionaryUtility } from '../../tools/utility/dictionaryUtility';
+import { ModelScope } from '../../shared/types';
+import { ContextPathGroup } from '../../shared/types';
+
+interface AIResourceBundle {
+  model: string;
+  orchestrator: AIResourceOrchestrator;
+}
 
 export class ProseAnalysisService implements IProseAnalysisService {
-  private openRouterClient?: OpenRouterClient;
-  private dialogueAssistant?: DialogueMicrobeatAssistant;
-  private proseAssistant?: ProseAssistant;
-  private dictionaryUtility?: DictionaryUtility;
   private proseStats: PassageProseStats;
   private styleFlags: StyleFlags;
   private wordFrequency: WordFrequency;
+
   private statusCallback?: StatusCallback;
+
+  private promptLoader?: PromptLoader;
+  private guideLoader?: GuideLoader;
+  private guideRegistry?: GuideRegistry;
+
+  private aiResources: Partial<Record<ModelScope, AIResourceBundle>> = {};
+  private resolvedModels: Partial<Record<ModelScope, string>> = {};
+
+  private dialogueAssistant?: DialogueMicrobeatAssistant;
+  private proseAssistant?: ProseAssistant;
+  private dictionaryUtility?: DictionaryUtility;
+  private contextAssistant?: ContextAssistant;
+  private contextResourceResolver: ContextResourceResolver;
 
   constructor(
     private readonly extensionUri?: vscode.Uri,
@@ -40,48 +65,81 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
     // Initialize AI tools if API key is configured
     this.initializeAITools();
+
+    this.contextResourceResolver = new ContextResourceResolver(this.outputChannel);
   }
 
   private async initializeAITools(): Promise<void> {
     const config = vscode.workspace.getConfiguration('proseMinion');
     const apiKey = config.get<string>('openRouterApiKey');
-    const model = config.get<string>('model') || 'anthropic/claude-3.5-sonnet';
 
-    if (OpenRouterClient.isConfigured(apiKey)) {
-      this.openRouterClient = new OpenRouterClient(apiKey!, model);
+    this.disposeAIResources();
 
-      if (this.extensionUri) {
-        const promptLoader = new PromptLoader(this.extensionUri);
-        const guideLoader = new GuideLoader(this.extensionUri);
-        const guideRegistry = new GuideRegistry(this.extensionUri, this.outputChannel);
-        const conversationManager = new ConversationManager();
-
-        // Create the AI Resource Orchestrator
-        const aiResourceOrchestrator = new AIResourceOrchestrator(
-          this.openRouterClient,
-          conversationManager,
-          guideRegistry,
-          guideLoader,
-          this.statusCallback,
-          this.outputChannel
-        );
-
-        this.dialogueAssistant = new DialogueMicrobeatAssistant(
-          aiResourceOrchestrator,
-          promptLoader
-        );
-
-        this.proseAssistant = new ProseAssistant(
-          aiResourceOrchestrator,
-          promptLoader
-        );
-
-        this.dictionaryUtility = new DictionaryUtility(
-          aiResourceOrchestrator,
-          promptLoader
-        );
-      }
+    if (!OpenRouterClient.isConfigured(apiKey)) {
+      this.outputChannel?.appendLine('[ProseAnalysisService] OpenRouter API key not configured. AI tools disabled.');
+      this.dialogueAssistant = undefined;
+      this.proseAssistant = undefined;
+      this.dictionaryUtility = undefined;
+      this.contextAssistant = undefined;
+      this.resolvedModels = {};
+      return;
     }
+
+    if (!this.extensionUri) {
+      this.outputChannel?.appendLine('[ProseAnalysisService] Extension URI unavailable; cannot initialize AI tools.');
+      return;
+    }
+
+    this.ensureSharedResources();
+
+    const fallbackModel = config.get<string>('model') || 'z-ai/glm-4.6';
+    const assistantModel = config.get<string>('assistantModel') || fallbackModel;
+    const dictionaryModel = config.get<string>('dictionaryModel') || fallbackModel;
+    const contextModel = config.get<string>('contextModel') || fallbackModel;
+
+    const assistantResources = this.createAIResources(apiKey!, 'assistant', assistantModel);
+    const dictionaryResources = this.createAIResources(apiKey!, 'dictionary', dictionaryModel);
+    const contextResources = this.createAIResources(apiKey!, 'context', contextModel);
+
+    this.aiResources = {
+      assistant: assistantResources,
+      dictionary: dictionaryResources,
+      context: contextResources
+    };
+
+    if (assistantResources) {
+      this.dialogueAssistant = new DialogueMicrobeatAssistant(
+        assistantResources.orchestrator,
+        this.promptLoader!
+      );
+
+      this.proseAssistant = new ProseAssistant(
+        assistantResources.orchestrator,
+        this.promptLoader!
+      );
+    } else {
+      this.dialogueAssistant = undefined;
+      this.proseAssistant = undefined;
+    }
+
+    this.dictionaryUtility = dictionaryResources
+      ? new DictionaryUtility(dictionaryResources.orchestrator, this.promptLoader!)
+      : undefined;
+
+    this.contextAssistant = contextResources
+      ? new ContextAssistant(contextResources.orchestrator, this.promptLoader!)
+      : undefined;
+
+    const callback = this.statusCallback;
+    if (callback) {
+      Object.values(this.aiResources).forEach(resource => resource?.orchestrator.setStatusCallback(callback));
+    }
+
+    this.resolvedModels = {
+      assistant: assistantModel,
+      dictionary: dictionaryModel,
+      context: contextModel
+    };
   }
 
   /**
@@ -90,6 +148,75 @@ export class ProseAnalysisService implements IProseAnalysisService {
    */
   setStatusCallback(callback: StatusCallback): void {
     this.statusCallback = callback;
+    Object.values(this.aiResources).forEach(resource => resource?.orchestrator.setStatusCallback(callback));
+  }
+
+  /**
+   * Reload model configuration and rebuild AI tool scaffolding
+   */
+  async refreshConfiguration(): Promise<void> {
+    await this.initializeAITools();
+  }
+
+  /**
+   * Expose the currently resolved models (with fallbacks applied)
+   */
+  getResolvedModelSelections(): Partial<Record<ModelScope, string>> {
+    return { ...this.resolvedModels };
+  }
+
+  private disposeAIResources(): void {
+    Object.values(this.aiResources).forEach(resource => resource?.orchestrator.dispose());
+    this.aiResources = {};
+    this.contextAssistant = undefined;
+  }
+
+  private ensureSharedResources(): void {
+    if (!this.promptLoader) {
+      this.promptLoader = new PromptLoader(this.extensionUri!);
+    }
+
+    if (!this.guideLoader) {
+      this.guideLoader = new GuideLoader(this.extensionUri!);
+    }
+
+    if (!this.guideRegistry) {
+      this.guideRegistry = new GuideRegistry(this.extensionUri!, this.outputChannel);
+    }
+  }
+
+  private createAIResources(apiKey: string, scope: ModelScope, model: string): AIResourceBundle | undefined {
+    if (!this.guideRegistry || !this.guideLoader) {
+      return undefined;
+    }
+
+    try {
+      const client = new OpenRouterClient(apiKey, model);
+      const conversationManager = new ConversationManager();
+      const orchestrator = new AIResourceOrchestrator(
+        client,
+        conversationManager,
+        this.guideRegistry,
+        this.guideLoader,
+        this.statusCallback,
+        this.outputChannel
+      );
+
+      this.outputChannel?.appendLine(
+        `[ProseAnalysisService] Initialized ${scope} model: ${model}`
+      );
+
+      return {
+        model,
+        orchestrator
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.outputChannel?.appendLine(
+        `[ProseAnalysisService] Failed to initialize ${scope} model ${model}: ${message}`
+      );
+      return undefined;
+    }
   }
 
   private getToolOptions() {
@@ -97,11 +224,11 @@ export class ProseAnalysisService implements IProseAnalysisService {
     return {
       includeCraftGuides: config.get<boolean>('includeCraftGuides') ?? true,
       temperature: config.get<number>('temperature') ?? 0.7,
-      maxTokens: config.get<number>('maxTokens') ?? 2000
+      maxTokens: config.get<number>('maxTokens') ?? 10000
     };
   }
 
-  async analyzeDialogue(text: string): Promise<AnalysisResult> {
+  async analyzeDialogue(text: string, contextText?: string, sourceFileUri?: string): Promise<AnalysisResult> {
     if (!this.dialogueAssistant) {
       return AnalysisResultFactory.createAnalysisResult(
         'dialogue_analysis',
@@ -111,7 +238,14 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
     try {
       const options = this.getToolOptions();
-      const executionResult = await this.dialogueAssistant.analyze({ text }, options);
+      const executionResult = await this.dialogueAssistant.analyze(
+        {
+          text,
+          contextText,
+          sourceFileUri
+        },
+        options
+      );
       return AnalysisResultFactory.createAnalysisResult(
         'dialogue_analysis',
         executionResult.content,
@@ -125,7 +259,7 @@ export class ProseAnalysisService implements IProseAnalysisService {
     }
   }
 
-  async analyzeProse(text: string): Promise<AnalysisResult> {
+  async analyzeProse(text: string, contextText?: string, sourceFileUri?: string): Promise<AnalysisResult> {
     if (!this.proseAssistant) {
       return AnalysisResultFactory.createAnalysisResult(
         'prose_analysis',
@@ -135,7 +269,14 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
     try {
       const options = this.getToolOptions();
-      const executionResult = await this.proseAssistant.analyze({ text }, options);
+      const executionResult = await this.proseAssistant.analyze(
+        {
+          text,
+          contextText,
+          sourceFileUri
+        },
+        options
+      );
       return AnalysisResultFactory.createAnalysisResult(
         'prose_analysis',
         executionResult.content,
@@ -199,7 +340,7 @@ export class ProseAnalysisService implements IProseAnalysisService {
         },
         {
           temperature: options.temperature ?? 0.4,
-          maxTokens: options.maxTokens ?? 2200
+          maxTokens: options.maxTokens
         }
       );
 
@@ -215,6 +356,79 @@ export class ProseAnalysisService implements IProseAnalysisService {
     }
   }
 
+  async generateContext(request: ContextGenerationRequest): Promise<ContextGenerationResult> {
+    const config = vscode.workspace.getConfiguration('proseMinion');
+    const fallbackModel = config.get<string>('model') || 'z-ai/glm-4.6';
+    const contextModel = config.get<string>('contextModel') || fallbackModel;
+
+    if (!this.contextAssistant || this.resolvedModels.context !== contextModel) {
+      await this.initializeAITools();
+    }
+
+    if (!this.contextAssistant) {
+      return {
+        toolName: 'context_assistant',
+        content: this.getApiKeyWarning(),
+        timestamp: new Date()
+      };
+    }
+
+    try {
+      const groups = (request.requestedGroups && request.requestedGroups.length > 0)
+        ? request.requestedGroups
+        : [...DEFAULT_CONTEXT_GROUPS];
+
+      const resourceProvider = await this.createContextResourceProvider(groups);
+      // Try to read the full source document if provided, to prime the model
+      let sourceContent: string | undefined;
+      if (request.sourceFileUri) {
+        try {
+          const uri = vscode.Uri.parse(request.sourceFileUri);
+          const raw = await vscode.workspace.fs.readFile(uri);
+          sourceContent = Buffer.from(raw).toString('utf8');
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          this.outputChannel?.appendLine(`[ProseAnalysisService] Failed to read source file for context: ${message}`);
+        }
+      }
+      const toolOptions = this.getToolOptions();
+
+      const executionResult = await this.contextAssistant.generate(
+        {
+          excerpt: request.excerpt,
+          existingContext: request.existingContext,
+          sourceFileUri: request.sourceFileUri,
+          sourceContent,
+          requestedGroups: groups
+        },
+        {
+          resourceProvider,
+          temperature: toolOptions.temperature,
+          maxTokens: toolOptions.maxTokens
+        }
+      );
+
+      return {
+        toolName: 'context_assistant',
+        content: executionResult.content,
+        timestamp: new Date(),
+        requestedResources: executionResult.requestedResources
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.outputChannel?.appendLine(`[ProseAnalysisService] Context assistant error: ${message}`);
+      return {
+        toolName: 'context_assistant',
+        content: `Error generating context: ${message}`,
+        timestamp: new Date()
+      };
+    }
+  }
+
+  private async createContextResourceProvider(groups: ContextPathGroup[]): Promise<ContextResourceProvider> {
+    return await this.contextResourceResolver.createProvider(groups);
+  }
+
   private getApiKeyWarning(): string {
     return `⚠️ OpenRouter API key not configured
 
@@ -224,6 +438,7 @@ To use AI-powered analysis tools, you need to configure your OpenRouter API key:
 2. Open VS Code Settings (Cmd+, or Ctrl+,)
 3. Search for "Prose Minion"
 4. Enter your API key in "OpenRouter API Key"
+5. Pick models for assistants and utilities under the Prose Minion settings
 
 The measurement tools (Prose Statistics, Style Flags, Word Frequency) work without an API key.`;
   }
