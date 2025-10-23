@@ -379,6 +379,18 @@ export class ProseAnalysisService implements IProseAnalysisService {
         : [...DEFAULT_CONTEXT_GROUPS];
 
       const resourceProvider = await this.createContextResourceProvider(groups);
+      // Try to read the full source document if provided, to prime the model
+      let sourceContent: string | undefined;
+      if (request.sourceFileUri) {
+        try {
+          const uri = vscode.Uri.parse(request.sourceFileUri);
+          const raw = await vscode.workspace.fs.readFile(uri);
+          sourceContent = Buffer.from(raw).toString('utf8');
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          this.outputChannel?.appendLine(`[ProseAnalysisService] Failed to read source file for context: ${message}`);
+        }
+      }
       const toolOptions = this.getToolOptions();
 
       const executionResult = await this.contextAssistant.generate(
@@ -386,6 +398,7 @@ export class ProseAnalysisService implements IProseAnalysisService {
           excerpt: request.excerpt,
           existingContext: request.existingContext,
           sourceFileUri: request.sourceFileUri,
+          sourceContent,
           requestedGroups: groups
         },
         {

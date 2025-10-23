@@ -16,6 +16,7 @@ export interface ContextAssistantInput {
   excerpt: string;
   existingContext?: string;
   sourceFileUri?: string;
+  sourceContent?: string;
   requestedGroups?: ContextPathGroup[];
 }
 
@@ -98,10 +99,11 @@ export class ContextAssistant {
     excerpt: string;
     existingContext?: string;
     sourceFileUri?: string;
+    sourceContent?: string;
     resourceSummaries: ContextResourceSummary[];
     groups: ContextPathGroup[];
   }): string {
-    const { excerpt, existingContext, sourceFileUri, resourceSummaries, groups } = args;
+    const { excerpt, existingContext, sourceFileUri, sourceContent, resourceSummaries, groups } = args;
     const lines: string[] = [];
 
     lines.push('# Excerpt');
@@ -119,6 +121,13 @@ export class ContextAssistant {
     if (sourceFileUri) {
       lines.push('## Excerpt Source');
       lines.push(`The excerpt comes from: ${sourceFileUri}`, '');
+    }
+
+    if (sourceContent && sourceContent.trim().length > 0) {
+      lines.push('## Source Document (full text)');
+      lines.push('```markdown');
+      lines.push(sourceContent.trim());
+      lines.push('```', '');
     }
 
     lines.push('## Context Groups Considered');

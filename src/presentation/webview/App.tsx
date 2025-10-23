@@ -219,8 +219,8 @@ export const App: React.FC = () => {
             case 'assistant_excerpt':
               setActiveTab(TabId.ANALYSIS);
               setSelectedText(content);
-              setSelectedSourceUri('');
-              setSelectedRelativePath('');
+              setSelectedSourceUri(message.sourceUri ?? '');
+              setSelectedRelativePath(message.relativePath ?? '');
               break;
             case 'assistant_context':
               setActiveTab(TabId.ANALYSIS);
