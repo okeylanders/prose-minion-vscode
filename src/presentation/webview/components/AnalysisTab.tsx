@@ -209,7 +209,7 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
             Excerpt For Assistance &amp; Analysis
           </label>
           <button
-            className="icon-button"
+            className="icon-button analysis-paste-button"
             onClick={handlePasteExcerpt}
             title="Paste excerpt from selection"
             aria-label="Paste excerpt"
@@ -234,7 +234,7 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
             Context Brief (optional)
           </label>
           <button
-            className="icon-button"
+            className="icon-button analysis-paste-button"
             onClick={handlePasteContext}
             title="Paste context from selection"
             aria-label="Paste context"
