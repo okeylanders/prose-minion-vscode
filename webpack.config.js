@@ -88,6 +88,10 @@ const webviewConfig = {
             }
           }
         ]
+      },
+      {
+        test: /\.svg$/i,
+        type: 'asset/inline'
       }
     ]
   }

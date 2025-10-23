@@ -37,6 +37,30 @@ body {
 
 .app-header {
   padding: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.app-title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.app-title h1,
+.app-title p {
+  margin: 0;
+}
+
+.app-header-icon {
+  width: 128px;
+  height: 128px;
+  flex-shrink: 0;
+  fill: var(white);
+  color: white;
+  stroke: white;
 }
 
 .app-main {
@@ -127,10 +151,33 @@ select:focus {
   margin-bottom: var(--spacing-md);
 }
 
+.input-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+.input-header label {
+  margin: 0;
+  flex: 1;
+}
+
+
+.input-header .icon-button {
+  flex-shrink: 0;
+}
+
+
 .excerpt-meta {
   margin-bottom: var(--spacing-xs);
   font-size: 0.75rem;
   color: var(--vscode-descriptionForeground);
+}
+
+.context-assist-header {
+  align-items: center;
 }
 
 .context-assist-row {
@@ -324,11 +371,6 @@ select:focus {
   transform: none;
 }
 
-.input-toolbar {
-  display: flex;
-  gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-xs);
-}
 
 /* Loading indicator */
 .loading-indicator {
@@ -599,3 +641,4 @@ select:focus {
   transform: translateY(0);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
+

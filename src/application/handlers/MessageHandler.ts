@@ -219,8 +219,12 @@ export class MessageHandler {
 
   private async handleSelectionRequest(target: SelectionTarget): Promise<void> {
     const editor = vscode.window.activeTextEditor;
-    const content = editor ? editor.document.getText(editor.selection) : '';
+    if (!editor || editor.selection.isEmpty) {
+      this.sendStatus('Select some text in the editor first.');
+      return;
+    }
 
+    const content = editor.document.getText(editor.selection);
     const selectionMessage: SelectionDataMessage = {
       type: MessageType.SELECTION_DATA,
       target,

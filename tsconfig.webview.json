@@ -14,5 +14,9 @@
     "jsx": "react",
     "allowSyntheticDefaultImports": true
   },
-  "include": ["src/presentation/webview/**/*", "src/shared/**/*"]
+  "include": [
+    "src/presentation/webview/**/*",
+    "src/shared/**/*",
+    "src/presentation/webview/types/**/*.d.ts"
+  ]
 }

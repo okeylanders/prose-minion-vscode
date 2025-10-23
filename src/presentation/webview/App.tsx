@@ -72,6 +72,9 @@ export const App: React.FC = () => {
   );
   const [dictionaryInjection, setDictionaryInjection] = React.useState<{ word?: string; context?: string; timestamp: number } | null>(null);
 
+  const assets = (typeof window !== 'undefined' && (window as any).__PROSE_MINION_ASSETS__) || {};
+  const headerIcon: string | undefined = assets.headerIcon;
+
   const contextLoadingRef = React.useRef(contextLoading);
 
   React.useEffect(() => {
@@ -348,8 +351,17 @@ export const App: React.FC = () => {
   return (
     <div className="app-container">
       <header className="app-header">
-        <h1 className="text-xl font-bold">Prose Minion</h1>
-        <p className="text-sm text-gray-500">AI-powered writing assistance</p>
+        <div className="app-title">
+          <h1 className="text-xl font-bold">Prose Minion</h1>
+          <p className="text-sm text-gray-500">AI-powered writing assistance</p>
+        </div>
+        {headerIcon ? (
+          <img
+            src={headerIcon}
+            className="app-header-icon"
+            alt="Prose Minion"
+          />
+        ) : null}
       </header>
 
       <TabBar activeTab={activeTab} onTabChange={handleTabChange} />

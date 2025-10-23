@@ -177,19 +177,19 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
       <h2 className="text-lg font-semibold mb-4">Utilities · Dictionary</h2>
 
       <div className="input-container">
-        <div className="input-toolbar">
+        <div className="input-header">
+          <label className="text-sm font-medium">
+            Target Word
+          </label>
           <button
             className="icon-button"
             onClick={handlePasteWord}
-            title="Paste word from clipboard"
+            title="Paste word from selection"
             aria-label="Paste word"
           >
             📥
           </button>
         </div>
-        <label className="block text-sm font-medium mb-2">
-          Target Word
-        </label>
         <input
           className="w-full"
           type="text"
@@ -200,19 +200,19 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
       </div>
 
       <div className="input-container">
-        <div className="input-toolbar">
+        <div className="input-header">
+          <label className="text-sm font-medium">
+            Optional Context (helps tailor examples and tone)
+          </label>
           <button
             className="icon-button"
             onClick={handlePasteContext}
-            title="Paste context from clipboard"
+            title="Paste context from selection"
             aria-label="Paste word context"
           >
             📥
           </button>
         </div>
-        <label className="block text-sm font-medium mb-2">
-          Optional Context (helps tailor examples and tone)
-        </label>
         <textarea
           className="w-full h-24 resize-none"
           value={context}

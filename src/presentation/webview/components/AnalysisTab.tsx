@@ -204,19 +204,19 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
       <h2 className="text-lg font-semibold mb-4">Prose Analysis</h2>
 
       <div className="input-container">
-        <div className="input-toolbar">
+        <div className="input-header">
+          <label className="text-sm font-medium">
+            Text to Analyze
+          </label>
           <button
             className="icon-button"
             onClick={handlePasteExcerpt}
-            title="Paste excerpt from clipboard"
+            title="Paste excerpt from selection"
             aria-label="Paste excerpt"
           >
             📥
           </button>
         </div>
-        <label className="block text-sm font-medium mb-2">
-          Text to Analyze
-        </label>
         {selectedRelativePath && (
           <div className="excerpt-meta">Source: {selectedRelativePath}</div>
         )}
@@ -229,20 +229,18 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
       </div>
 
       <div className="input-container">
-        <div className="context-assist-header">
-          <div className="input-toolbar">
-            <button
-              className="icon-button"
-              onClick={handlePasteContext}
-              title="Paste context from clipboard"
-              aria-label="Paste context"
-            >
-              📥
-            </button>
-          </div>
-          <label className="block text-sm font-medium">
+        <div className="input-header context-assist-header">
+          <label className="text-sm font-medium">
             Context Brief (optional)
           </label>
+          <button
+            className="icon-button"
+            onClick={handlePasteContext}
+            title="Paste context from selection"
+            aria-label="Paste context"
+          >
+            📥
+          </button>
         </div>
         <div className="context-assist-row">
           <textarea
