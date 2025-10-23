@@ -217,6 +217,8 @@ export interface SelectionDataMessage extends BaseMessage {
   type: MessageType.SELECTION_DATA;
   target: SelectionTarget;
   content: string;
+  sourceUri?: string;
+  relativePath?: string;
 }
 
 export interface SaveResultMetadata {

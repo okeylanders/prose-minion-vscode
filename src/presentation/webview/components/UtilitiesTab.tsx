@@ -16,7 +16,7 @@ interface UtilitiesTabProps {
   onLoadingChange: (loading: boolean) => void;
   statusMessage?: string;
   toolName?: string;
-  dictionaryInjection?: { word?: string; context?: string; timestamp: number } | null;
+  dictionaryInjection?: { word?: string; context?: string; sourceUri?: string; relativePath?: string; timestamp: number } | null;
   onDictionaryInjectionHandled: () => void;
   onRequestSelection: (target: SelectionTarget) => void;
   word: string;
@@ -25,6 +25,9 @@ interface UtilitiesTabProps {
   onContextChange: (value: string) => void;
   hasWordBeenEdited: boolean;
   setHasWordBeenEdited: (edited: boolean) => void;
+  sourceUri?: string;
+  relativePath?: string;
+  onSourceChange: (uri?: string, relativePath?: string) => void;
 }
 
 export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
@@ -43,7 +46,10 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
   onWordChange,
   onContextChange,
   hasWordBeenEdited,
-  setHasWordBeenEdited
+  setHasWordBeenEdited,
+  sourceUri,
+  relativePath,
+  onSourceChange
 }) => {
   const lastLookupRef = React.useRef<{ word: string; context: string } | null>(null);
 
@@ -70,6 +76,13 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
 
     if (dictionaryInjection.context !== undefined) {
       onContextChange(dictionaryInjection.context);
+    }
+
+    // If injection has source metadata, set it; otherwise clear
+    if (dictionaryInjection.sourceUri || dictionaryInjection.relativePath) {
+      onSourceChange(dictionaryInjection.sourceUri, dictionaryInjection.relativePath);
+    } else {
+      onSourceChange(undefined, undefined);
     }
 
     onDictionaryInjectionHandled();
@@ -119,7 +132,8 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
   const handleWordChange = (value: string) => {
     const sanitized = enforceWordLimit(value);
     onWordChange(sanitized);
-    setHasWordBeenEdited(Boolean(sanitized));
+    // Mark as user-edited even when cleared, to prevent auto-fill
+    setHasWordBeenEdited(true);
   };
 
   const handlePasteWord = React.useCallback(() => {
@@ -199,6 +213,9 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
             📥
           </button>
         </div>
+        {relativePath && (
+          <div className="excerpt-meta">Source: {relativePath}</div>
+        )}
         <input
           className="w-full"
           type="text"

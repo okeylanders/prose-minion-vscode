@@ -36,6 +36,8 @@ type PersistedState = {
   dictionaryWord: string;
   dictionaryContext: string;
   dictionaryWordEdited: boolean;
+  dictionarySourceUri: string;
+  dictionaryRelativePath: string;
   contextText: string;
   contextRequestedResources: string[];
   statusMessage: string;
@@ -62,6 +64,8 @@ export const App: React.FC = () => {
   const [dictionaryWord, setDictionaryWord] = React.useState<string>(persistedState?.dictionaryWord ?? '');
   const [dictionaryContext, setDictionaryContext] = React.useState<string>(persistedState?.dictionaryContext ?? '');
   const [dictionaryWordEdited, setDictionaryWordEdited] = React.useState<boolean>(persistedState?.dictionaryWordEdited ?? false);
+  const [dictionarySourceUri, setDictionarySourceUri] = React.useState<string>(persistedState?.dictionarySourceUri ?? '');
+  const [dictionaryRelativePath, setDictionaryRelativePath] = React.useState<string>(persistedState?.dictionaryRelativePath ?? '');
   const [contextText, setContextText] = React.useState(persistedState?.contextText ?? '');
   const [contextLoading, setContextLoading] = React.useState(false);
   const [contextStatusMessage, setContextStatusMessage] = React.useState('');
@@ -76,7 +80,7 @@ export const App: React.FC = () => {
   const [modelSelections, setModelSelections] = React.useState<Partial<Record<ModelScope, string>>>(
     persistedState?.modelSelections ?? {}
   );
-  const [dictionaryInjection, setDictionaryInjection] = React.useState<{ word?: string; context?: string; timestamp: number } | null>(null);
+  const [dictionaryInjection, setDictionaryInjection] = React.useState<{ word?: string; context?: string; sourceUri?: string; relativePath?: string; timestamp: number } | null>(null);
 
   const contextLoadingRef = React.useRef(contextLoading);
 
@@ -123,6 +127,8 @@ export const App: React.FC = () => {
       dictionaryWord,
       dictionaryContext,
       dictionaryWordEdited,
+      dictionarySourceUri,
+      dictionaryRelativePath,
       contextText,
       contextRequestedResources,
       statusMessage,
@@ -144,6 +150,8 @@ export const App: React.FC = () => {
     dictionaryWord,
     dictionaryContext,
     dictionaryWordEdited,
+    dictionarySourceUri,
+    dictionaryRelativePath,
     contextText,
     contextRequestedResources,
     statusMessage,
@@ -220,11 +228,11 @@ export const App: React.FC = () => {
               break;
             case 'dictionary_word':
               setActiveTab(TabId.UTILITIES);
-              setDictionaryInjection({ word: content, timestamp: Date.now() });
+              setDictionaryInjection({ word: content, sourceUri: message.sourceUri, relativePath: message.relativePath, timestamp: Date.now() });
               break;
             case 'dictionary_context':
               setActiveTab(TabId.UTILITIES);
-              setDictionaryInjection({ context: content, timestamp: Date.now() });
+              setDictionaryInjection({ context: content, sourceUri: message.sourceUri, relativePath: message.relativePath, timestamp: Date.now() });
               break;
           }
           break;
@@ -449,10 +457,22 @@ export const App: React.FC = () => {
             onRequestSelection={handleRequestSelection}
             word={dictionaryWord}
             context={dictionaryContext}
-            onWordChange={(val) => setDictionaryWord(val)}
+            onWordChange={(val) => {
+              setDictionaryWord(val);
+              if (!val || !val.trim()) {
+                setDictionarySourceUri('');
+                setDictionaryRelativePath('');
+              }
+            }}
             onContextChange={(val) => setDictionaryContext(val)}
             hasWordBeenEdited={dictionaryWordEdited}
             setHasWordBeenEdited={setDictionaryWordEdited}
+            sourceUri={dictionarySourceUri}
+            relativePath={dictionaryRelativePath}
+            onSourceChange={(uri?: string, rel?: string) => {
+              setDictionarySourceUri(uri ?? '');
+              setDictionaryRelativePath(rel ?? '');
+            }}
           />
         )}
       </main>
