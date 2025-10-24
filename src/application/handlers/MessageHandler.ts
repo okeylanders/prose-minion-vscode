@@ -563,6 +563,14 @@ export class MessageHandler {
       lines.push(context || '(No context provided.)', '', '---', '', content.trim());
 
       fileContent = lines.join('\n');
+    } else if (toolName === 'prose_stats') {
+      targetDir = vscode.Uri.joinPath(rootUri, 'prose-minion', 'reports');
+      await vscode.workspace.fs.createDirectory(targetDir);
+      const now = new Date();
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+      fileName = `prose-statistics-${stamp}.md`;
+      fileContent = content.trim();
     } else {
       throw new Error(`Saving results for tool "${toolName}" is not supported yet.`);
     }

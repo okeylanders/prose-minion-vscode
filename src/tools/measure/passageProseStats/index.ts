@@ -129,10 +129,13 @@ export class PassageProseStats {
   }
 
   private calculateLexicalDensityPercent(text: string): number {
+    // Lexical density as proportion of content words (non-stopwords)
     const words = this.tokenizeWords(text);
     if (words.length === 0) return 0;
-    const unique = new Set(words).size;
-    return (unique / words.length) * 100;
+    const stop = this.getStopwords();
+    let content = 0;
+    for (const w of words) if (!stop.has(w)) content++;
+    return (content / words.length) * 100;
   }
 
   private calculateReadabilityScore(wordCount: number, sentenceCount: number): number {

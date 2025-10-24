@@ -94,12 +94,36 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
 
   const buildExportContent = React.useCallback(() => {
     let content = markdownContent;
+
+    // Append legend explaining metrics (export only)
+    const legend = [
+      '### Legend',
+      '',
+      '- Word Count: Total tokens split by whitespace.',
+      '- Sentence Count: Heuristic split on . ! ?',
+      '- Paragraph Count: Blocks split by blank lines.',
+      '- Avg Words per Sentence: Average words per sentence.',
+      '- Avg Sentences per Paragraph: Average sentences per paragraph.',
+      '- Dialogue Percentage: % of tokens inside quotes.',
+      '- Lexical Density: % of content words (non-stopwords).',
+      '- Stopword Ratio: % tokens in a common English stopword list.',
+      '- Hapax %: % tokens occurring exactly once; Hapax Count is absolute count.',
+      '- Type-Token Ratio: Unique/total tokens × 100.',
+      '- Readability Score: Simplified Flesch Reading Ease (0–100, higher is easier).',
+      '- Readability Grade (FKGL): Flesch–Kincaid Grade Level (approximate grade).',
+      ''
+    ].join('\n');
+
+    content += `\n\n${legend}\n`;
+
     try {
       if (metrics && Array.isArray(metrics.perChapterStats) && metrics.perChapterStats.length > 0) {
-        const rows = metrics.perChapterStats.map((entry: any) => {
+        const header = ['---', '', '## Chapter Details (JSON)', ''].join('\n');
+        let groups = header + '\n';
+        metrics.perChapterStats.forEach((entry: any) => {
           const s = entry.stats || {};
           const chapter = (entry.path || '').split(/\\|\//).pop() || entry.path;
-          return {
+          const obj = {
             chapter,
             path: entry.path,
             words: s.wordCount,
@@ -107,14 +131,16 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
             avgWordsPerSentence: s.averageWordsPerSentence,
             dialoguePercent: s.dialoguePercentage,
             lexicalDensityPercent: s.lexicalDensity,
+            stopwordRatioPercent: s.stopwordRatio,
             uniqueWords: s.uniqueWordCount,
             hapaxCount: s.hapaxCount,
             hapaxPercent: s.hapaxPercent,
             fkgl: s.readabilityGrade
           };
+          const block = `### ${chapter}\n\n\`\`\`json\n${JSON.stringify(obj, null, 2)}\n\`\`\``;
+          groups += block + '\n\n';
         });
-        const json = JSON.stringify({ chapters: rows }, null, 2);
-        content += `\n\n---\n\n### Chapter Details (JSON)\n\n\`\`\`json\n${json}\n\`\`\``;
+        content += groups;
       }
     } catch (e) {
       // ignore export enrichment errors
