@@ -305,12 +305,14 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
       // Chapter aggregation (for multi-file modes)
       if (files && files.length > 0 && (sourceMode === 'manuscript' || sourceMode === 'chapters')) {
-        const chapterWordCounts = await this.computeWordCountsForFiles(files);
+        const per = await this.computePerFileStats(files);
+        const chapterWordCounts = per.map(p => p.stats.wordCount);
         const chapterCount = chapterWordCounts.length;
         const totalWords = chapterWordCounts.reduce((a, b) => a + b, 0);
         const avgChapterLength = chapterCount > 0 ? Math.round(totalWords / chapterCount) : 0;
         (stats as any).chapterCount = chapterCount;
         (stats as any).averageChapterLength = avgChapterLength;
+        (stats as any).perChapterStats = per;
       }
 
       // Standards comparison (based on settings)
@@ -323,22 +325,22 @@ export class ProseAnalysisService implements IProseAnalysisService {
     }
   }
 
-  private async computeWordCountsForFiles(relativePaths: string[]): Promise<number[]> {
-    const counts: number[] = [];
+  private async computePerFileStats(relativePaths: string[]): Promise<Array<{ path: string; stats: any }>> {
+    const results: Array<{ path: string; stats: any }> = [];
     for (const rel of relativePaths) {
       try {
-        // Resolve URI from workspace
         const uri = await this.findUriByRelativePath(rel);
         if (!uri) continue;
         const raw = await vscode.workspace.fs.readFile(uri);
         const text = Buffer.from(raw).toString('utf8');
-        counts.push(this.simpleWordCount(text));
+        const s = this.proseStats.analyze({ text });
+        results.push({ path: rel, stats: s });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        this.outputChannel?.appendLine(`[ProseAnalysisService] Failed counting words for ${rel}: ${msg}`);
+        this.outputChannel?.appendLine(`[ProseAnalysisService] Per-file stats failed for ${rel}: ${msg}`);
       }
     }
-    return counts;
+    return results;
   }
 
   private simpleWordCount(text: string): number {

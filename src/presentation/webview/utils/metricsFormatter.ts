@@ -91,6 +91,30 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
     markdown += `| ${pf.trimSize.label} (${pf.trimSize.width_inches}x${pf.trimSize.height_inches} in) | ${pf.wordsPerPage ?? '-'} | ${pf.estimatedPageCount ?? '-'} | ${range} | ${icon} |\n\n`;
   }
 
+  // Chapter-by-Chapter Prose Statistics (no standards comparison)
+  if (Array.isArray(metrics.perChapterStats) && metrics.perChapterStats.length > 0) {
+    markdown += '# 📖 Chapter-by-Chapter Prose Statistics\n\n';
+    markdown += '---\n\n';
+    markdown += '| Chapter | Words | Sentences | Avg W/S | Dialogue % | Lexical % | FKGL |\n';
+    markdown += '|:------- | -----:| ---------:| -------:| ----------:| ---------:| ----:|\n';
+    metrics.perChapterStats.forEach((entry: any) => {
+      const path = entry.path || '';
+      const name = path.split(/\\|\//).pop() || path;
+      const s = entry.stats || {};
+      const row = [
+        name,
+        (s.wordCount ?? 0).toLocaleString(),
+        (s.sentenceCount ?? 0).toLocaleString(),
+        (typeof s.averageWordsPerSentence === 'number' ? s.averageWordsPerSentence.toFixed(1) : '-') ,
+        (typeof s.dialoguePercentage === 'number' ? `${s.dialoguePercentage.toFixed(1)}%` : '-'),
+        (typeof s.lexicalDensity === 'number' ? `${s.lexicalDensity.toFixed(1)}%` : '-'),
+        (typeof s.readabilityGrade === 'number' ? s.readabilityGrade.toFixed(1) : '-')
+      ];
+      markdown += `| ${row[0]} | ${row[1]} | ${row[2]} | ${row[3]} | ${row[4]} | ${row[5]} | ${row[6]} |\n`;
+    });
+    markdown += '\n';
+  }
+
   // Handle style flags
   if (metrics.flags && Array.isArray(metrics.flags)) {
     markdown += '# 🚩 Style Flags\n\n';
