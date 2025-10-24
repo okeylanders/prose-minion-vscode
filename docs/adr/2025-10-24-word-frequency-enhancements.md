@@ -1,4 +1,4 @@
-# ADR: Word Frequency Enhancements (Top 100, Hapax List, POS, Stopwords)
+# ADR: Word Frequency Enhancements (Top 100, Hapax List, POS via Wink, Stopwords, Length Histogram)
 
 - Status: Proposed
 - Date: 2025-10-24
@@ -14,8 +14,8 @@ The current Word Frequency tool (`src/tools/measure/wordFrequency/`) produces a 
 
 Goals:
 - Expand and improve word frequency reporting while preserving performance and offline operation.
-- Keep changes backward compatible with existing message contracts and UI rendering.
-- Provide a clear path to better POS accuracy without forcing heavy dependencies.
+- Adopt an offline POS tagger for materially better noun/verb/adj/adv detection.
+- Redesign output and renderer as needed (backward compatibility not required for this tool’s payload/renderer coupling).
 
 Non-goals:
 - Introducing runtime network calls or model usage for POS tagging.
@@ -27,64 +27,73 @@ Enhance the Word Frequency tool and its renderer to:
 
 1) Include the hapax list at the bottom of the markdown (with sensible caps).
 2) Expand Top Words from 20 → 100 (configurable).
-3) Replace brittle POS suffix-heuristics with a two-phase approach:
-   - Phase 1 (default): improved heuristics + proper-noun signal; hide POS sections if quality is low.
-   - Phase 2 (opt-in): integrate a lightweight offline POS tagger (e.g., `wink-pos-tagger`) behind a setting.
+3) Use `wink-pos-tagger` for POS tagging by default; evaluate performance in practice. If the tagger fails to initialize, do not use heuristics—mark POS sections as unavailable with a clear note.
 4) Add explicit stopword details: top stopwords table + total stopword count alongside the existing ratio.
-5) Add a few pragmatic extras that are low-cost and high-value: bigrams (top 20), lemmatized Top Words view (opt‑in), and a proper noun highlighter.
+5) Add a few pragmatic extras that are low-cost and high-value: bigrams (top 20), trigrams (top 20), lemmatized Top Words view (opt‑in), and a proper noun highlighter.
 
-The output remains additive and backward compatible; existing fields are preserved, and new fields are optional.
+Backward compatibility: not required for this tool’s consumers; we will evolve the output shape to best fit the renderer.
 
 ## Proposed Changes
 
-### Domain Types (Additive)
+### Domain Types (New/Updated)
 - `src/tools/measure/wordFrequency/index.ts`
   - Extend `WordFrequencyOutput` with optional fields:
     - `topWords`: expand default to 100 entries (configurable).
     - `topStopwords?: WordFrequencyEntry[]` (default top 25).
     - `hapaxList?: string[]` (alphabetical, capped; default max 300).
     - `hapaxCount?: number` (absolute), `hapaxPercent?: number` (0–100) for convenience when running this tool standalone.
-    - `pos?: {
-         mode: 'heuristic' | 'tagger' | 'none';
+    - `pos: {
+         mode: 'tagger' | 'unavailable';
          topNouns?: WordFrequencyEntry[];
          topVerbs?: WordFrequencyEntry[];
          topAdjectives?: WordFrequencyEntry[];
          topAdverbs?: WordFrequencyEntry[];
-       }` (wrap existing fields and add `mode`).
-    - `bigrams?: Array<{ phrase: string; count: number }>` (default top 20).
+       }` (no heuristic mode).
+    - `bigrams?: Array<{ phrase: string; count: number }>` (default top 20), `trigrams?: Array<{ phrase: string; count: number }>` (default top 20).
     - `lemmasEnabled?: boolean` and `topLemmaWords?: WordFrequencyEntry[]` (when enabled).
+    - Character-length stats:
+      - `charLengthCounts: Record<number, number>` // counts for exact token length, at least 1..N
+      - `charLengthPercentages?: Record<number, number>` // 0–100 per length (rounded 1 decimal)
+      - `charLengthHistogram?: string[]` // pre-rendered textual bars for renderer convenience
 
 Notes:
-- Keep existing `topVerbs`, `topAdjectives`, `topNouns` at the root for backward compatibility; populate them from `pos.*` during Phase 1 and deprecate in a future release.
+- Root-level `topVerbs`, `topAdjectives`, `topNouns` can be moved under `pos` (renderer updated in lockstep).
 
 ### Application + Infrastructure
 - Keep the analysis purely local and deterministic.
-- Optionally add a tiny POS tagger dependency (`wink-pos-tagger`) behind a setting; when disabled, use improved heuristics:
-  - Heuristics: suffix patterns + capitalization signal (proper nouns), exclude sentence-initial capitalization when possible.
-  - When in heuristic mode, surface a quality disclaimer and allow hiding POS sections in the UI.
+- Add dependency: `wink-pos-tagger` (offline). Use it by default; if initialization fails, set `pos.mode = 'unavailable'` and do not attempt heuristic tagging.
 
-### Presentation (Webview Renderer)
 - `src/presentation/webview/utils/metricsFormatter.ts`
   - Top Words: render up to 100 rows; if over 50, use compact table styles (already markdown-friendly) and rely on scrolling.
   - Top Stopwords: new section with count and percent columns.
   - Hapax List: new bottom section; show count/percent summary and an alphabetized list. Cap display to `hapaxDisplayMax` (default 300). If truncated, add: “(+ N more)”.
-  - POS Sections: if `pos.mode === 'none'` or `heuristic`, add a light note: “Heuristic POS (may be noisy)”. Hide if disabled by setting.
-  - Bigrams: new section showing top 20 phrases.
+  - POS Sections: if `pos.mode === 'unavailable'`, render a short note under each POS header: “POS tagging unavailable (tagger not initialized).” Skip tables.
+  - Bigrams/Trigrams: new sections showing top 20 phrases.
   - Lemmas: show a toggle note when `lemmasEnabled`.
+  - Word Length Distribution (1–10 chars): add a slider-style histogram using block characters with proportional bars (e.g., `█`), plus percentages:
+    - Example:
+      - `1 chars: ██ 5.1%`
+      - `2 chars: █████ 11.8%`
+      - `3 chars: █████████ 19.5%`
+      - ... up to `10 chars` (or the highest bin observed). Scale bar length to a fixed max (e.g., 10 blocks) based on the max percentage across displayed lengths.
+  - Also render a compact table version for copy-friendly exports.
 
 ### Settings (Contributes → Configuration)
 - `proseMinion.wordFrequency.topN`: number (default 100).
 - `proseMinion.wordFrequency.includeHapaxList`: boolean (default true).
 - `proseMinion.wordFrequency.hapaxDisplayMax`: number (default 300).
 - `proseMinion.wordFrequency.includeStopwordsTable`: boolean (default true).
-- `proseMinion.wordFrequency.posMode`: `'none' | 'heuristic' | 'tagger'` (default `'heuristic'`).
-- `proseMinion.wordFrequency.includeBigrams`: boolean (default false).
+- `proseMinion.wordFrequency.contentWordsOnly`: boolean (default true) — UI toggle for “content words only” vs “all words” in Top Words.
+- `proseMinion.wordFrequency.posEnabled`: boolean (default true) — enable/disable POS sections globally (no heuristics).
+- `proseMinion.wordFrequency.includeBigrams`: boolean (default true).
+- `proseMinion.wordFrequency.includeTrigrams`: boolean (default true).
 - `proseMinion.wordFrequency.enableLemmas`: boolean (default false).
+- `proseMinion.wordFrequency.lengthHistogramMaxChars`: number (default 10) — upper bound for per-length bars.
 
 All new settings are optional; omit when not in use to keep payloads small.
 
 ### Message Contracts
-- No breaking changes. The `word_frequency` metrics payload adds optional keys listed above. Existing consumers remain compatible.
+- The `word_frequency` metrics payload will change to include the new structures described above. Since this is the only renderer, we will update it in lockstep.
 
 ## Implementation Notes
 
@@ -102,16 +111,16 @@ All new settings are optional; omit when not in use to keep payloads small.
   - Make the limit configurable; default 100.
 
 - POS:
-  - Phase 1: improve heuristics; add `pos.mode = 'heuristic'` and surface disclaimer in renderer.
-  - Phase 2: if setting is `'tagger'`, use `wink-pos-tagger` locally to produce `topNouns`, `topVerbs`, `topAdjectives`, `topAdverbs`. Fall back gracefully.
+  - Default: `wink-pos-tagger` to produce `topNouns`, `topVerbs`, `topAdjectives`, `topAdverbs`.
+  - If the tagger cannot initialize, set `pos.mode = 'unavailable'` and skip POS lists.
 
 - Stopwords:
   - Provide `topStopwords` (word, count, percent) and `totalStopwordCount` (optional).
   - Keep the Stopword Ratio computation in Prose Stats authoritative; this tool just mirrors counts for the frequency report.
 
-- Bigrams:
-  - Tokenize; create adjacent pairs; count and sort; output top 20.
-  - No PMI/scoring in Phase 1 to keep it lightweight.
+- Bigrams/Trigrams:
+  - Tokenize; create adjacent pairs and triplets; count and sort; output top 20 each.
+  - No PMI/scoring in this phase to keep it lightweight.
 
 - Lemmas (opt‑in):
   - Implement a simple stemmer/lemmatizer (porter-lite) or rely on a tiny stemming heuristic to group inflections for the “lemma view”.
@@ -124,21 +133,20 @@ All new settings are optional; omit when not in use to keep payloads small.
   - 🏆 Top Words (up to 100).
   - 🧹 Top Stopwords.
   - 🎬/🎨/📦 POS sections (visible per `posMode` + disclaimer for heuristics).
-  - 🔗 Top Bigrams (if enabled).
+  - 🔗 Top Bigrams/Trigrams (if enabled).
+  - ▉ Word Length Distribution (1–10 chars) with slider-style bars and percentages.
   - 🌱 Hapax List (alphabetical; capped; placed at bottom).
 
-- Export: No modal changes. The hapax list appears at the end of the frequency section. Saving still targets `prose-minion/reports/` with timestamped filenames.
+- Export: Support “Extended Copy/Save” like the Prose Statistics section (include/exclude long sections such as full Hapax list and n‑grams). Files save to `prose-minion/reports/` with timestamped filenames.
 
 ## Backward Compatibility
-
-- Existing fields (`topWords`, `topVerbs`, `topAdjectives`, `topNouns`) remain and keep their shapes. Only the Top Words length increases by default (configurable).
-- New fields are optional and safely ignored by older renderers. The current renderer will be extended alongside this ADR.
+- Not required; we control both producer and renderer. We will migrate renderer and payload together.
 
 ## Performance and Size Considerations
 
-- Frequency maps and bigram counts run in O(n) over tokens and are fast for typical chapter/manuscript lengths.
-- Limit and cap lists (Top N, Hapax) to keep payloads and markdown manageable. Defaults: Top 100 words; Hapax display cap 300; Bigrams 20.
-- POS tagger (if enabled) runs locally and should be profiled; default mode remains heuristic.
+- Frequency maps and n-gram counts run in O(n) over tokens and are fast for typical chapter/manuscript lengths.
+- Limit and cap lists (Top N, Hapax) to keep payloads and markdown manageable. Defaults: Top 100 words; Hapax display cap 300; Bigrams/Trigrams 20 each.
+- POS tagger runs locally (wink-pos-tagger) and should be profiled; if unavailable, POS is marked as unavailable.
 
 ## Testing
 
@@ -146,31 +154,30 @@ All new settings are optional; omit when not in use to keep payloads small.
   - Tokenization consistency with Prose Stats.
   - Hapax count/percent and list stability on a fixture.
   - Top 100 logic and stopword exclusion.
-  - Heuristic POS categorization determinism; graceful fallback when tagger disabled.
-  - Bigram counting correctness.
+  - POS tagging correctness on a small gold set; proper "unavailable" mode behavior when tagger cannot init.
+  - Bigram/Trigram counting correctness.
+  - Character-length counts and histogram scaling.
 
 - Manual verification:
-  - Rendered markdown sections, especially large Top Words tables and hapax list truncation note.
+  - Rendered markdown sections, especially large Top Words tables, histogram bars, and hapax list truncation note.
 
 ## Risks
 
-- Heuristic POS remains noisy; mitigated by disclosures and the opt‑in tagger.
+- Heuristic POS remains noisy under fallback; mitigated by disclosures.
 - Large texts can produce long hapax lists; mitigated via display cap and summary counts.
 
-## Open Questions
+## Decisions on Prior Open Questions
 
-- Should we provide a UI toggle to switch between “content words only” vs “all words” for Top Words? Default proposal: content words only.
-- Should we allow exporting the full hapax list to a separate file when truncated? Potential follow-up.
-- Should we add trigrams in a later iteration if bigrams prove useful? Likely yes.
+- UI toggle for “content words only” vs “all words”: Yes (default to content words only).
+- Extended exports/copying for long sections: Yes — mirror Prose Statistics’ extended export flow.
+- Trigrams: Yes — include alongside bigrams (both top 20 by default).
 
 ## Acceptance Criteria
 
 - Top Words default to 100 entries (configurable) in the Word Frequency report.
 - A Hapax section appears at the bottom, with count, percent, and an alphabetized list (capped) with truncation note when applicable.
 - Stopword table appears with top stopwords (word, count, percent) when enabled.
-- POS sections either:
-  - Show with a heuristic disclaimer, or
-  - Use an offline tagger when enabled, or
-  - Hide entirely if `posMode = 'none'`.
-- Renderer updates are additive and do not regress existing metrics displays or exports.
-
+- POS sections use wink-pos-tagger by default; if unavailable, show heuristic POS with a disclaimer.
+- Word Length Distribution (1–10) renders slider-style bars with percentages and matches counts.
+- Bigrams and Trigrams sections render top 20 each when enabled.
+- Extended Copy/Save supports including/excluding long sections (hapax, n‑grams).
