@@ -175,7 +175,28 @@ Metrics reports saved via the Metrics tab are written to:
 
 On Save/Copy, the extension prompts whether to include chapter-by-chapter breakdown tables (if available). Choosing “No” excludes the "## Chapter Details" section while preserving the summary chapter table.
 
-### 6. Context Resource Paths
+---
+
+### 9. Word Frequency Settings
+
+Control the Word Frequency report in the Metrics tab.
+
+Settings:
+- `proseMinion.wordFrequency.topN` (number, default 100): size of Top Words and Top Lemmas.
+- `proseMinion.wordFrequency.includeHapaxList` (boolean, default true): show the Hapax list section.
+- `proseMinion.wordFrequency.hapaxDisplayMax` (number, default 300): maximum hapax entries shown inline.
+- `proseMinion.wordFrequency.includeStopwordsTable` (boolean, default true): show Top Stopwords table and total stopword tokens.
+- `proseMinion.wordFrequency.contentWordsOnly` (boolean, default true): exclude stopwords from Top Words/Lemmas.
+- `proseMinion.wordFrequency.posEnabled` (boolean, default true): enable POS sections via wink-pos-tagger; if the tagger cannot initialize, sections show a short note.
+- `proseMinion.wordFrequency.includeBigrams` (boolean, default true): include Top Bigrams.
+- `proseMinion.wordFrequency.includeTrigrams` (boolean, default true): include Top Trigrams.
+- `proseMinion.wordFrequency.enableLemmas` (boolean, default false): show a “Top Lemmas” section.
+- `proseMinion.wordFrequency.lengthHistogramMaxChars` (number, default 10): max character length shown in the histogram.
+
+Notes:
+- POS tagging uses `wink-pos-tagger` bundled with the extension; no runtime downloads. If unavailable, POS sections are marked as unavailable.
+
+### 8. Context Resource Paths
 
 **Settings (comma-separated globs)**
 

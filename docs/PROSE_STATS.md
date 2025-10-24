@@ -88,6 +88,15 @@ These choices favor performance and determinism over linguistic completeness.
   - Percentages over total tokens.
   - Function: `calculateWordLengthDistribution()`.
 
+- Word Frequency (Enhanced)
+  - Top Words: count of most frequent content words (stopwords excluded by default); size configurable (default 100).
+  - Stopwords: table of top stopwords and total stopword token count (complements Stopword Ratio).
+  - Hapax: hapax count, percent, and an alphabetized list (display capped in UI; full count computed).
+  - POS: parts-of-speech lists (nouns, verbs, adjectives, adverbs) via wink-pos-tagger; if unavailable, sections show a short note.
+  - N‑grams: Top bigrams and trigrams (each top 20 by default).
+  - Word Length Histogram: slider-style bars 1–10 characters with proportional blocks and percentages.
+  - Lemmas (optional): groups common inflections into lemma buckets for an alternate “Top Lemmas” view.
+
 ## Chapter Metrics (Multi-file Modes)
 
 When measuring “Manuscripts” or “Chapters”, each matched file is treated as one chapter.
@@ -139,4 +148,3 @@ When a publishing standards preset is selected, comparisons use the same units:
 - Dialogue percentage: percent 0–100.
 - Word length distribution: percent 0–100 for each bucket.
 - Average words/sentence, sentences/paragraph, unique words, etc. compare to numeric ranges from the standards dataset.
-

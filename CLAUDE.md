@@ -59,13 +59,14 @@ AI-powered analysis tools:
 Statistical tools:
 - [passageProseStats/index.ts](src/tools/measure/passageProseStats/index.ts) - Word count, pacing, lexical density (content-word ratio), stopword ratio, hapax %, FKGL, per-file aggregation
 - [styleFlags/index.ts](src/tools/measure/styleFlags/index.ts) - Style pattern detection
-- [wordFrequency/index.ts](src/tools/measure/wordFrequency/index.ts) - Word usage analysis
+- [wordFrequency/index.ts](src/tools/measure/wordFrequency/index.ts) - Word usage analysis: Top 100 words (configurable), Top Stopwords, Hapax list/count/%, POS via wink-pos-tagger (offline, marked unavailable if not initialized), Top Bigrams/Trigrams, word-length histogram, optional Top Lemmas view
 
 ### Configuration
 
 - [package.json](package.json) - Extension settings schema
 - User settings: `proseMinion.openRouterApiKey`, `proseMinion.assistantModel`, `proseMinion.dictionaryModel`, `proseMinion.contextModel`, plus the legacy `proseMinion.model` fallback
  - Publishing standards: `proseMinion.publishingStandards.preset`, `proseMinion.publishingStandards.pageSizeKey`
+ - Word frequency: `proseMinion.wordFrequency.*` (topN, includeHapaxList, hapaxDisplayMax, includeStopwordsTable, contentWordsOnly, posEnabled, includeBigrams, includeTrigrams, enableLemmas, lengthHistogramMaxChars)
 
 ### Publishing Standards & Metrics
 

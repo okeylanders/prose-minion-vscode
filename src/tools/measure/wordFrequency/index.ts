@@ -32,7 +32,7 @@ export interface NGramEntry {
   percentage?: number;
 }
 
-export interface WordFrequencyOutput {
+  export interface WordFrequencyOutput {
   totalWords: number;
   uniqueWords: number;
   // Top words
@@ -52,14 +52,17 @@ export interface WordFrequencyOutput {
     topAdjectives?: WordFrequencyEntry[];
     topAdverbs?: WordFrequencyEntry[];
   };
-  // N-grams
-  bigrams?: NGramEntry[];
-  trigrams?: NGramEntry[];
-  // Length histogram
-  charLengthCounts: Record<number, number>;
-  charLengthPercentages: Record<number, number>;
-  charLengthHistogram?: string[];
-}
+    // N-grams
+    bigrams?: NGramEntry[];
+    trigrams?: NGramEntry[];
+    // Length histogram
+    charLengthCounts: Record<number, number>;
+    charLengthPercentages: Record<number, number>;
+    charLengthHistogram?: string[];
+    // Lemmas (optional)
+    lemmasEnabled?: boolean;
+    topLemmaWords?: WordFrequencyEntry[];
+  }
 
 export class WordFrequency {
   constructor(private readonly log?: (msg: string) => void) {}
@@ -167,6 +170,20 @@ export class WordFrequency {
       }
     }
 
+    // Lemmas (optional)
+    let topLemmaWords: WordFrequencyEntry[] | undefined;
+    if (opts.enableLemmas) {
+      const lemmaCounts = new Map<string, number>();
+      for (const [w, c] of entries) {
+        // respect contentWordsOnly when building lemma view
+        if (opts.contentWordsOnly && this.stopwords.has(w)) continue;
+        const lemma = this.lemmatize(w);
+        lemmaCounts.set(lemma, (lemmaCounts.get(lemma) || 0) + c);
+      }
+      const lemmaEntries = Array.from(lemmaCounts.entries()).sort((a, b) => b[1] - a[1]);
+      topLemmaWords = this.formatTop(lemmaEntries, totalWords, opts.topN);
+    }
+
     // N-grams
     let bigrams: NGramEntry[] | undefined;
     let trigrams: NGramEntry[] | undefined;
@@ -191,7 +208,9 @@ export class WordFrequency {
       trigrams,
       charLengthCounts: charCounts,
       charLengthPercentages: Object.fromEntries(Object.entries(charPerc).map(([k, v]) => [Number(k), Math.round(v * 10) / 10])) as Record<number, number>,
-      charLengthHistogram: histogram
+      charLengthHistogram: histogram,
+      lemmasEnabled: opts.enableLemmas || undefined,
+      topLemmaWords
     };
   }
 
@@ -243,5 +262,34 @@ export class WordFrequency {
       lines.push(`${k} chars: ${bar} ${pct.toFixed(1)}%`);
     }
     return lines;
+  }
+
+  // Very lightweight lemmatizer to group common inflections.
+  // Not linguistically complete; intended for quick, offline grouping.
+  private lemmatize(word: string): string {
+    let w = word;
+    // Plurals
+    if (/ies$/.test(w) && w.length > 3) {
+      return w.slice(0, -3) + 'y';
+    }
+    if (/(xes|zes|ches|shes|sses)$/.test(w)) {
+      return w.slice(0, -2); // remove 'es'
+    }
+    if (/s$/.test(w) && !/ss$/.test(w)) {
+      w = w.slice(0, -1);
+    }
+    // Verb participles/tense
+    if (/ing$/.test(w) && w.length > 4) {
+      w = w.slice(0, -3);
+    } else if (/ed$/.test(w) && w.length > 3) {
+      w = w.slice(0, -2);
+    }
+    // Comparative/superlative (basic)
+    if (/est$/.test(w) && w.length > 4) {
+      w = w.slice(0, -3);
+    } else if (/er$/.test(w) && w.length > 3) {
+      w = w.slice(0, -2);
+    }
+    return w;
   }
 }

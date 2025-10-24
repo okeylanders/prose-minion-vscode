@@ -45,7 +45,7 @@ src/
    - **Measure Tools**: Statistical analysis tools
      - `passageProseStats`: Word count, sentence analysis, pacing metrics
      - `styleFlags`: Identifies style patterns and issues
-     - `wordFrequency`: Analyzes word usage patterns
+     - `wordFrequency`: Word usage patterns, Top 100, stopwords, hapax (list), POS via wink, bigrams/trigrams, length histogram, optional lemmas
 
 4. **OpenRouter Integration** ([OpenRouterClient.ts](src/infrastructure/api/OpenRouterClient.ts))
    - HTTP client for OpenRouter API
@@ -165,7 +165,7 @@ When working with this codebase:
 4. **Test Incrementally**: Run the extension after changes to verify behavior
 5. **Document Changes**: Update relevant documentation when adding features
 6. **Consider Performance**: Be mindful of API costs and token usage
-7. **Maintain Backward Compatibility**: Preserve the legacy `proseMinion.model` fallback and message contracts
+7. **Maintain Backward Compatibility**: Preserve the legacy `proseMinion.model` fallback and message contracts (metrics renderers for Word Frequency evolve in lockstep with payloads)
 8. **Respect Persistence Hooks**: Keep the result cache (`MessageHandler`) and `vscode.setState` synchronization intact; Dictionary inputs persist at App level
 9. **Surface Truncation**: Propagate `finish_reason` and append a truncation note when responses hit the token cap
 10. **Source-Aware Context**: Include `sourceUri`/`relativePath`; context assistant includes full source content on first turn
@@ -186,6 +186,7 @@ When working with this codebase:
 - Paste-selection carries source metadata; clipboard fallback when no selection
 - Dictionary inputs persist across tabs/sessions; auto-fill suppressed after user edits; source displayed when available
 - UI consistency: paste buttons sized to match the context-assist button
+- Word Frequency: Top 100 words, Top Stopwords, Hapax list (+count/%), POS via wink (offline), bigrams/trigrams, word-length histogram (1–10 chars), optional Top Lemmas view; settings under `proseMinion.wordFrequency.*`
 
 ## Questions and Support
 

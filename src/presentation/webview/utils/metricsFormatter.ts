@@ -197,6 +197,23 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
       markdown += '\n';
     }
 
+    // Top Lemmas (optional)
+    if (metrics.topLemmaWords && Array.isArray(metrics.topLemmaWords) && metrics.topLemmaWords.length > 0) {
+      markdown += '## 🔤 Top Lemmas\n\n';
+      if (metrics.lemmasEnabled) {
+        markdown += '_Lemma view enabled: groups common inflections (approximate)._\n\n';
+      }
+      markdown += '| Rank | Lemma | Count | % of Total |\n';
+      markdown += '|:----:|:------|------:|-----------:|\n';
+
+      metrics.topLemmaWords.forEach((item: { word: string; count: number; percentage?: number }, index: number) => {
+        const rank = index + 1;
+        const percentage = item.percentage !== undefined ? `${item.percentage}%` : '-';
+        markdown += `| ${rank} | \`${item.word}\` | ${item.count} | ${percentage} |\n`;
+      });
+      markdown += '\n';
+    }
+
     // Top Stopwords
     if (metrics.topStopwords && Array.isArray(metrics.topStopwords) && metrics.topStopwords.length > 0) {
       markdown += '## 🧹 Top Stopwords\n\n';
@@ -373,7 +390,7 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
                        'readingTime', 'readingTimeMinutes', 'readingTimeHours', 'pacing', 'dialoguePercentage', 'lexicalDensity', 'readabilityScore', 'readabilityGrade', 'uniqueWordCount', 'stopwordRatio', 'hapaxPercent', 'hapaxCount', 'typeTokenRatio',
                        'frequencies', 'topWords', 'totalWords', 'uniqueWords',
                        'topVerbs', 'topAdjectives', 'topNouns', 'topAdverbs',
-                       'topStopwords', 'totalStopwordCount', 'hapaxList', 'pos', 'bigrams', 'trigrams', 'charLengthCounts', 'charLengthPercentages', 'charLengthHistogram',
+                       'topStopwords', 'totalStopwordCount', 'hapaxList', 'pos', 'bigrams', 'trigrams', 'charLengthCounts', 'charLengthPercentages', 'charLengthHistogram', 'lemmasEnabled', 'topLemmaWords',
                        'comparison', 'publishingFormat', 'chapterCount', 'averageChapterLength', 'wordLengthDistribution', 'perChapterStats'];
 
   const otherKeys = Object.keys(metrics).filter(key => !handledKeys.includes(key));

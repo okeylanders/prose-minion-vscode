@@ -1,6 +1,6 @@
 # ADR: Word Frequency Enhancements (Top 100, Hapax List, POS via Wink, Stopwords, Length Histogram)
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2025-10-24
 
 ## Context
