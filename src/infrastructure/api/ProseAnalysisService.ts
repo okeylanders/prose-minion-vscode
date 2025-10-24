@@ -66,7 +66,7 @@ export class ProseAnalysisService implements IProseAnalysisService {
     // Initialize measurement tools (don't need API key)
     this.proseStats = new PassageProseStats();
     this.styleFlags = new StyleFlags();
-    this.wordFrequency = new WordFrequency();
+    this.wordFrequency = new WordFrequency((msg: string) => this.outputChannel?.appendLine(msg));
 
     // Initialize AI tools if API key is configured
     this.initializeAITools();
@@ -442,7 +442,21 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
   async measureWordFrequency(text: string): Promise<MetricsResult> {
     try {
-      const frequency = this.wordFrequency.analyze({ text });
+      const config = vscode.workspace.getConfiguration('proseMinion');
+      const wfOptions = {
+        topN: config.get<number>('wordFrequency.topN') ?? 100,
+        includeHapaxList: config.get<boolean>('wordFrequency.includeHapaxList') ?? true,
+        hapaxDisplayMax: config.get<number>('wordFrequency.hapaxDisplayMax') ?? 300,
+        includeStopwordsTable: config.get<boolean>('wordFrequency.includeStopwordsTable') ?? true,
+        contentWordsOnly: config.get<boolean>('wordFrequency.contentWordsOnly') ?? true,
+        posEnabled: config.get<boolean>('wordFrequency.posEnabled') ?? true,
+        includeBigrams: config.get<boolean>('wordFrequency.includeBigrams') ?? true,
+        includeTrigrams: config.get<boolean>('wordFrequency.includeTrigrams') ?? true,
+        enableLemmas: config.get<boolean>('wordFrequency.enableLemmas') ?? false,
+        lengthHistogramMaxChars: config.get<number>('wordFrequency.lengthHistogramMaxChars') ?? 10,
+      } as const;
+
+      const frequency = this.wordFrequency.analyze({ text }, wfOptions);
       return AnalysisResultFactory.createMetricsResult('word_frequency', frequency);
     } catch (error) {
       return AnalysisResultFactory.createMetricsResult('word_frequency', {

@@ -310,6 +310,72 @@
           "default": "",
           "description": "Selected trim size key for the chosen genre (uses page_sizes[].format when available, otherwise WIDTHxHEIGHT).",
           "order": 18
+        },
+        "proseMinion.wordFrequency.topN": {
+          "type": "number",
+          "default": 100,
+          "minimum": 10,
+          "maximum": 1000,
+          "description": "Top N words to include in the Word Frequency report.",
+          "order": 19
+        },
+        "proseMinion.wordFrequency.includeHapaxList": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include the Hapax (frequency=1) word list at the bottom of the Word Frequency report.",
+          "order": 20
+        },
+        "proseMinion.wordFrequency.hapaxDisplayMax": {
+          "type": "number",
+          "default": 300,
+          "minimum": 50,
+          "maximum": 5000,
+          "description": "Maximum Hapax words to display inline in the report (full list still counted).",
+          "order": 21
+        },
+        "proseMinion.wordFrequency.includeStopwordsTable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include a Top Stopwords table with counts and percentages.",
+          "order": 22
+        },
+        "proseMinion.wordFrequency.contentWordsOnly": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show Top Words using content words only (excludes stopwords).",
+          "order": 23
+        },
+        "proseMinion.wordFrequency.posEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable POS sections using wink-pos-tagger. If the tagger cannot initialize, sections are marked unavailable.",
+          "order": 24
+        },
+        "proseMinion.wordFrequency.includeBigrams": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include Top Bigrams (two-word phrases).",
+          "order": 25
+        },
+        "proseMinion.wordFrequency.includeTrigrams": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include Top Trigrams (three-word phrases).",
+          "order": 26
+        },
+        "proseMinion.wordFrequency.enableLemmas": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable a lemmatized Top Words view (experimental).",
+          "order": 27
+        },
+        "proseMinion.wordFrequency.lengthHistogramMaxChars": {
+          "type": "number",
+          "default": 10,
+          "minimum": 5,
+          "maximum": 30,
+          "description": "Maximum token length to show in the Word Length Distribution histogram.",
+          "order": 28
         }
       }
     }
@@ -344,6 +410,7 @@
     "@types/marked": "^6.0.0",
     "marked": "^16.4.1",
     "react": "^17.0.2",
-    "react-dom": "^17.0.2"
+    "react-dom": "^17.0.2",
+    "wink-pos-tagger": "^2.2.2"
   }
 }

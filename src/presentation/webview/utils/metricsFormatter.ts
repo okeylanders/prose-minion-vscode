@@ -169,6 +169,13 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
       if (metrics.uniqueWords !== undefined) {
         markdown += `| 🎯 Unique Words | **${metrics.uniqueWords.toLocaleString()}** |\n`;
       }
+      if (metrics.hapaxCount !== undefined) {
+        const hpct = typeof metrics.hapaxPercent === 'number' ? ` (${metrics.hapaxPercent.toFixed(1)}%)` : '';
+        markdown += `| 🌱 Hapax Count | **${metrics.hapaxCount.toLocaleString()}**${hpct} |\n`;
+      }
+      if (metrics.totalStopwordCount !== undefined) {
+        markdown += `| 🧹 Stopword Tokens | **${metrics.totalStopwordCount.toLocaleString()}** |\n`;
+      }
       if (metrics.totalWords && metrics.uniqueWords) {
         const diversity = ((metrics.uniqueWords / metrics.totalWords) * 100).toFixed(1);
         markdown += `| 🌈 Vocabulary Diversity | **${diversity}%** |\n`;
@@ -190,60 +197,159 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
       markdown += '\n';
     }
 
-    // Top Verbs
-    if (metrics.topVerbs && Array.isArray(metrics.topVerbs) && metrics.topVerbs.length > 0) {
-      markdown += '## 🎬 Top Verbs\n\n';
-      markdown += '| Rank | Verb | Count | % of Total |\n';
+    // Top Stopwords
+    if (metrics.topStopwords && Array.isArray(metrics.topStopwords) && metrics.topStopwords.length > 0) {
+      markdown += '## 🧹 Top Stopwords\n\n';
+      markdown += '| Rank | Word | Count | % of Total |\n';
       markdown += '|:----:|:-----|------:|-----------:|\n';
 
-      metrics.topVerbs.forEach((item: { word: string; count: number; percentage?: number }, index: number) => {
+      metrics.topStopwords.forEach((item: { word: string; count: number; percentage?: number }, index: number) => {
         const rank = index + 1;
         const percentage = item.percentage !== undefined ? `${item.percentage}%` : '-';
         markdown += `| ${rank} | \`${item.word}\` | ${item.count} | ${percentage} |\n`;
       });
       markdown += '\n';
+    }
+
+    // POS sections from new structure
+    const pos = metrics.pos;
+    const posUnavailable = pos && pos.mode === 'unavailable';
+
+    // Top Verbs
+    if ((pos && pos.topVerbs && pos.topVerbs.length > 0) || (metrics.topVerbs && Array.isArray(metrics.topVerbs) && metrics.topVerbs.length > 0) || posUnavailable) {
+      markdown += '## 🎬 Top Verbs\n\n';
+      if (posUnavailable) {
+        markdown += '_POS tagging unavailable (tagger not initialized)._\n\n';
+      }
+      if (!posUnavailable) {
+        const list = pos && pos.topVerbs ? pos.topVerbs : metrics.topVerbs;
+        markdown += '| Rank | Verb | Count | % of Total |\n';
+        markdown += '|:----:|:-----|------:|-----------:|\n';
+        list.forEach((item: { word: string; count: number; percentage?: number }, index: number) => {
+        const rank = index + 1;
+        const percentage = item.percentage !== undefined ? `${item.percentage}%` : '-';
+        markdown += `| ${rank} | \`${item.word}\` | ${item.count} | ${percentage} |\n`;
+        });
+        markdown += '\n';
+      }
     }
 
     // Top Adjectives
-    if (metrics.topAdjectives && Array.isArray(metrics.topAdjectives) && metrics.topAdjectives.length > 0) {
+    if ((pos && pos.topAdjectives && pos.topAdjectives.length > 0) || (metrics.topAdjectives && Array.isArray(metrics.topAdjectives) && metrics.topAdjectives.length > 0) || posUnavailable) {
       markdown += '## 🎨 Top Adjectives\n\n';
-      markdown += '| Rank | Adjective | Count | % of Total |\n';
-      markdown += '|:----:|:----------|------:|-----------:|\n';
-
-      metrics.topAdjectives.forEach((item: { word: string; count: number; percentage?: number }, index: number) => {
+      if (posUnavailable) {
+        markdown += '_POS tagging unavailable (tagger not initialized)._\n\n';
+      }
+      if (!posUnavailable) {
+        const list = pos && pos.topAdjectives ? pos.topAdjectives : metrics.topAdjectives;
+        markdown += '| Rank | Adjective | Count | % of Total |\n';
+        markdown += '|:----:|:----------|------:|-----------:|\n';
+        list.forEach((item: { word: string; count: number; percentage?: number }, index: number) => {
         const rank = index + 1;
         const percentage = item.percentage !== undefined ? `${item.percentage}%` : '-';
         markdown += `| ${rank} | \`${item.word}\` | ${item.count} | ${percentage} |\n`;
-      });
-      markdown += '\n';
+        });
+        markdown += '\n';
+      }
     }
 
     // Top Nouns
-    if (metrics.topNouns && Array.isArray(metrics.topNouns) && metrics.topNouns.length > 0) {
+    if ((pos && pos.topNouns && pos.topNouns.length > 0) || (metrics.topNouns && Array.isArray(metrics.topNouns) && metrics.topNouns.length > 0) || posUnavailable) {
       markdown += '## 📦 Top Nouns\n\n';
-      markdown += '| Rank | Noun | Count | % of Total |\n';
-      markdown += '|:----:|:-----|------:|-----------:|\n';
-
-      metrics.topNouns.forEach((item: { word: string; count: number; percentage?: number }, index: number) => {
+      if (posUnavailable) {
+        markdown += '_POS tagging unavailable (tagger not initialized)._\n\n';
+      }
+      if (!posUnavailable) {
+        const list = pos && pos.topNouns ? pos.topNouns : metrics.topNouns;
+        markdown += '| Rank | Noun | Count | % of Total |\n';
+        markdown += '|:----:|:-----|------:|-----------:|\n';
+        list.forEach((item: { word: string; count: number; percentage?: number }, index: number) => {
         const rank = index + 1;
         const percentage = item.percentage !== undefined ? `${item.percentage}%` : '-';
         markdown += `| ${rank} | \`${item.word}\` | ${item.count} | ${percentage} |\n`;
+        });
+        markdown += '\n';
+      }
+    }
+
+    // Top Adverbs
+    if ((pos && pos.topAdverbs && pos.topAdverbs.length > 0) || (metrics.topAdverbs && Array.isArray(metrics.topAdverbs) && metrics.topAdverbs.length > 0) || posUnavailable) {
+      markdown += '## ⚡ Top Adverbs\n\n';
+      if (posUnavailable) {
+        markdown += '_POS tagging unavailable (tagger not initialized)._\n\n';
+      }
+      if (!posUnavailable) {
+        const list = pos && pos.topAdverbs ? pos.topAdverbs : metrics.topAdverbs;
+        markdown += '| Rank | Adverb | Count | % of Total |\n';
+        markdown += '|:----:|:-------|------:|-----------:|\n';
+        list.forEach((item: { word: string; count: number; percentage?: number }, index: number) => {
+        const rank = index + 1;
+        const percentage = item.percentage !== undefined ? `${item.percentage}%` : '-';
+        markdown += `| ${rank} | \`${item.word}\` | ${item.count} | ${percentage} |\n`;
+        });
+        markdown += '\n';
+      }
+    }
+
+    // Word Length Distribution Histogram
+    if ((metrics.charLengthHistogram && metrics.charLengthHistogram.length > 0) || metrics.charLengthPercentages) {
+      markdown += '## 📏 Word Length Distribution\n\n';
+      if (metrics.charLengthHistogram && metrics.charLengthHistogram.length > 0) {
+        metrics.charLengthHistogram.forEach((line: string) => {
+          markdown += `${line}\n`;
+        });
+        markdown += '\n';
+      } else if (metrics.charLengthPercentages) {
+        // Build simple bars if only percentages were provided
+        const entries = Object.entries(metrics.charLengthPercentages).map(([k, v]) => [Number(k), Number(v)]) as Array<[number, number]>;
+        entries.sort((a, b) => a[0] - b[0]);
+        const max = Math.max(...entries.map(([, v]) => v));
+        const maxBlocks = 10;
+        entries.forEach(([k, v]) => {
+          const blocks = max > 0 ? Math.max(1, Math.round((v / max) * maxBlocks)) : 0;
+          const bar = '█'.repeat(blocks);
+          markdown += `${k} chars: ${bar} ${v.toFixed(1)}%\n`;
+        });
+        markdown += '\n';
+      }
+    }
+
+    // N-grams
+    if (metrics.bigrams && Array.isArray(metrics.bigrams) && metrics.bigrams.length > 0) {
+      markdown += '## 🔗 Top Bigrams\n\n';
+      markdown += '| Rank | Phrase | Count | % of Total |\n';
+      markdown += '|:----:|:-------|------:|-----------:|\n';
+      metrics.bigrams.forEach((item: { phrase: string; count: number; percentage?: number }, index: number) => {
+        const rank = index + 1;
+        const percentage = item.percentage !== undefined ? `${item.percentage}%` : '-';
+        markdown += `| ${rank} | \`${item.phrase}\` | ${item.count} | ${percentage} |\n`;
+      });
+      markdown += '\n';
+    }
+    if (metrics.trigrams && Array.isArray(metrics.trigrams) && metrics.trigrams.length > 0) {
+      markdown += '## 🔗 Top Trigrams\n\n';
+      markdown += '| Rank | Phrase | Count | % of Total |\n';
+      markdown += '|:----:|:-------|------:|-----------:|\n';
+      metrics.trigrams.forEach((item: { phrase: string; count: number; percentage?: number }, index: number) => {
+        const rank = index + 1;
+        const percentage = item.percentage !== undefined ? `${item.percentage}%` : '-';
+        markdown += `| ${rank} | \`${item.phrase}\` | ${item.count} | ${percentage} |\n`;
       });
       markdown += '\n';
     }
 
-    // Top Adverbs
-    if (metrics.topAdverbs && Array.isArray(metrics.topAdverbs) && metrics.topAdverbs.length > 0) {
-      markdown += '## ⚡ Top Adverbs\n\n';
-      markdown += '| Rank | Adverb | Count | % of Total |\n';
-      markdown += '|:----:|:-------|------:|-----------:|\n';
-
-      metrics.topAdverbs.forEach((item: { word: string; count: number; percentage?: number }, index: number) => {
-        const rank = index + 1;
-        const percentage = item.percentage !== undefined ? `${item.percentage}%` : '-';
-        markdown += `| ${rank} | \`${item.word}\` | ${item.count} | ${percentage} |\n`;
-      });
-      markdown += '\n';
+    // Hapax List (bottom)
+    if (metrics.hapaxList && Array.isArray(metrics.hapaxList) && metrics.hapaxList.length > 0) {
+      markdown += '## 🌱 Hapax List\n\n';
+      const CAP = 300;
+      const list = metrics.hapaxList;
+      const display = list.slice(0, CAP);
+      markdown += display.map((w: string) => `\`${w}\``).join(', ');
+      if (list.length > CAP) {
+        const more = list.length - CAP;
+        markdown += `, (+ ${more.toLocaleString()} more)`;
+      }
+      markdown += '\n\n';
     }
   }
 
@@ -266,7 +372,9 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
                        'averageWordsPerSentence', 'averageSentencesPerParagraph',
                        'readingTime', 'readingTimeMinutes', 'readingTimeHours', 'pacing', 'dialoguePercentage', 'lexicalDensity', 'readabilityScore', 'readabilityGrade', 'uniqueWordCount', 'stopwordRatio', 'hapaxPercent', 'hapaxCount', 'typeTokenRatio',
                        'frequencies', 'topWords', 'totalWords', 'uniqueWords',
-                       'topVerbs', 'topAdjectives', 'topNouns', 'topAdverbs', 'comparison', 'publishingFormat', 'chapterCount', 'averageChapterLength', 'wordLengthDistribution', 'perChapterStats'];
+                       'topVerbs', 'topAdjectives', 'topNouns', 'topAdverbs',
+                       'topStopwords', 'totalStopwordCount', 'hapaxList', 'pos', 'bigrams', 'trigrams', 'charLengthCounts', 'charLengthPercentages', 'charLengthHistogram',
+                       'comparison', 'publishingFormat', 'chapterCount', 'averageChapterLength', 'wordLengthDistribution', 'perChapterStats'];
 
   const otherKeys = Object.keys(metrics).filter(key => !handledKeys.includes(key));
 
