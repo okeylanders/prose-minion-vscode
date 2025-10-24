@@ -170,6 +170,13 @@ When working with this codebase:
 9. **Surface Truncation**: Propagate `finish_reason` and append a truncation note when responses hit the token cap
 10. **Source-Aware Context**: Include `sourceUri`/`relativePath`; context assistant includes full source content on first turn
 
+## Publishing Standards + Metrics
+
+- Use the `PublishingStandardsRepository` and `StandardsComparisonService` patterns when adding or modifying comparison logic.
+- Do not conflate Type-Token Ratio (TTR) with lexical density; lexical density is the content-word ratio (non-stopwords/total) × 100.
+- When exporting metrics, rely on the extension-side modal prompt to include/exclude the "## Chapter Details" section. Never remove the on-screen “📖 Chapter-by-Chapter Prose Statistics” summary table.
+- Metrics reports should save under `prose-minion/reports/` using timestamped filenames.
+
 ## What's New
 
 - Multi-model orchestration per scope with live model switching in the UI

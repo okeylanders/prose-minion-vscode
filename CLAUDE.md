@@ -57,14 +57,23 @@ AI-powered analysis tools:
 - [proseAssistant.ts](src/tools/assist/proseAssistant.ts) - General prose improvement
 
 Statistical tools:
-- [passageProseStats/index.ts](src/tools/measure/passageProseStats/index.ts) - Word count, pacing
+- [passageProseStats/index.ts](src/tools/measure/passageProseStats/index.ts) - Word count, pacing, lexical density (content-word ratio), stopword ratio, hapax %, FKGL, per-file aggregation
 - [styleFlags/index.ts](src/tools/measure/styleFlags/index.ts) - Style pattern detection
 - [wordFrequency/index.ts](src/tools/measure/wordFrequency/index.ts) - Word usage analysis
 
 ### Configuration
 
-- [package.json](package.json):60-182 - Extension settings schema
+- [package.json](package.json) - Extension settings schema
 - User settings: `proseMinion.openRouterApiKey`, `proseMinion.assistantModel`, `proseMinion.dictionaryModel`, `proseMinion.contextModel`, plus the legacy `proseMinion.model` fallback
+ - Publishing standards: `proseMinion.publishingStandards.preset`, `proseMinion.publishingStandards.pageSizeKey`
+
+### Publishing Standards & Metrics
+
+- Standards repository loads `resources/repository/publishing_standards.json` with genre ranges, page sizes, and formatting.
+- Comparison and publishing format are computed in `StandardsComparisonService` and attached to metrics.
+- Chapter aggregation treats each file as a chapter in multi-file modes and appends a per-chapter summary table.
+- Copy/Save prompts whether to include chapter detail tables; saved metrics go to `prose-minion/reports/prose-statistics-YYYYMMDD-HHmm.md`.
+- Lexical density is content-word ratio (non-stopwords/total) × 100; TTR is a separate metric.
 
 ## Common Development Tasks
 

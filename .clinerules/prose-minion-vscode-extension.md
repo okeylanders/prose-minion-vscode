@@ -14,9 +14,12 @@ This extension brings the power of the Prose Minion MCP tools directly into VS C
 
 ### Metrics Tab
 
-- **Prose Statistics**: Word count, sentence analysis, pacing metrics
+- **Prose Statistics**: Word count, sentence analysis, pacing metrics, lexical density, stopword ratio, hapax %, FKGL
 - **Style Flags**: Identify style patterns and potential issues
 - **Word Frequency**: Analyze word usage patterns
+- **Publishing Standards**: Compare key metrics to genre/manuscript ranges, see publishing format (trim size, words/page, estimated page count)
+- **Chapter Metrics**: Chapter count, average chapter length (multi-file sources)
+- **Chapter-by-Chapter**: Summary table per file; export can include detailed per-chapter tables on request
 - **Inline Model Picker**: Select a dedicated model for dictionary utilities
 
 ### Suggestions Tab
@@ -35,6 +38,10 @@ This extension brings the power of the Prose Minion MCP tools directly into VS C
 
 - Scoped model selection per tool role (assistant/dictionary/context)
 - Unified `maxTokens` across tools (default 10000) with truncation notices when exceeded
+- Publishing standards: genre presets + trim size, comparison table, publishing format with page estimate
+- Prose stats extended: lexical density (content-word ratio), stopword ratio, hapax %, hapax count, TTR, FKGL
+- Chapter aggregation for multi-file metrics with per-chapter summary and optional detailed export
+- Copy/Save prompt to include chapter details; metrics saved to `prose-minion/reports/prose-statistics-YYYYMMDD-HHmm.md`
 - Context assistant includes full source document on first turn (when available)
 - Paste-selection carries source metadata; clipboard fallback when no selection exists
 - Dictionary UX: persistent inputs, source display, and safer auto-fill behavior

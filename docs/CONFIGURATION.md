@@ -149,6 +149,32 @@ You can still edit only `proseMinion.model` for backward compatibility; the exte
 
 ---
 
+### 6. Publishing Standards Preset
+
+Control the standards used for comparison and publishing format in the Metrics tab.
+
+**Settings**:
+- `proseMinion.publishingStandards.preset`: `none` | `manuscript` | `genre:<slug|abbreviation|name>`
+- `proseMinion.publishingStandards.pageSizeKey`: Trim size key (uses `format` when available, else `WIDTHxHEIGHT`)
+
+**Behavior**:
+- When set to a `genre:<key>`, the Metrics tab will display a comparison table against that genre’s ranges and a Publishing Format summary (trim size, words/page, estimated page count).
+- When a genre has multiple `page_sizes`, the Trim Size dropdown appears; the selection is saved to `pageSizeKey`.
+
+**Notes**:
+- Lexical density is computed as content-word ratio (non-stopwords/total) × 100.
+- Type-Token Ratio is provided as a separate metric.
+
+---
+
+### 7. Reports
+
+Metrics reports saved via the Metrics tab are written to:
+
+`prose-minion/reports/prose-statistics-YYYYMMDD-HHmm.md`
+
+On Save/Copy, the extension prompts whether to include chapter-by-chapter breakdown tables (if available). Choosing “No” excludes the "## Chapter Details" section while preserving the summary chapter table.
+
 ### 6. Context Resource Paths
 
 **Settings (comma-separated globs)**

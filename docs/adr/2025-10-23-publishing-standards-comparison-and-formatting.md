@@ -1,6 +1,6 @@
 # ADR: Publishing Standards Comparison + Publishing Format in Metrics
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2025-10-23
 
 ## Context
@@ -115,6 +115,12 @@ Comparison fields mapping (measured → standards):
 - Metrics renderer: add sections:
   - Publishing Standards Comparison: table of Metric | Your Value | Standard | Status.
   - Publishing Format: table of Trim Size | Words/Page | Est. Pages | Page Range | Status.
+  - Chapter Metrics (multi-file): chapter count and average chapter length.
+  - Chapter-by-Chapter Prose Statistics: summary pivoted table across files.
+- Copy/Save actions:
+  - Show a modal confirmation (extension-side) asking to include chapter breakdown.
+  - If Yes: append a "## Chapter Details" section with one pivoted table per chapter (no JSON).
+  - If No: strip only the Chapter Details section; keep the Chapter-by-Chapter summary table.
 - Preserve current Prose Statistics and Word Frequency sections.
 
 Summary components (UI):
@@ -168,6 +174,7 @@ metrics: {
 - Clearer, actionable metrics aligned with industry ranges.
 - Minimal schema change surface with strong backward compatibility.
 - Slightly more complexity in UI to manage preset and trim size; mitigated by sensible defaults and settings persistence.
+ - Export flow clarified: modal prompt governs inclusion of per-chapter details; saved files are written to `prose-minion/reports/` with timestamped names.
 
 ## Follow-ups
 - Populate `slug` in the dataset for all genres.
@@ -181,9 +188,13 @@ metrics: {
 - Publishing Format section displays trim size, words/page, estimated page count, and in-range status.
 - In multi-file modes, chapter count equals the number of files measured; average chapter length equals mean words per file.
 - No regressions for existing metrics tools; legacy requests without presets still work.
+ - Copy/Save asks whether to include per-chapter details; if included, export contains "## Chapter Details" with one pivoted markdown table per chapter.
+ - Metrics files save to `prose-minion/reports/prose-statistics-YYYYMMDD-HHmm.md`.
 
 ## Implementation Notes
 - Chapter aggregation: treat each matched file as a chapter for metrics; compute per-file word counts, then aggregate global metrics (sums) and chapter stats (count/average). For single-file modes, omit chapter metrics.
 - Syllable estimation: use a small heuristic (vowel group counts with adjustments for silent-e, “le” endings, etc.) sufficient for FKGL stability.
 - Stopword list: include a compact English list as a static resource in `resources/` or embed in code to avoid runtime IO.
 - Performance: aggregate text once via `TextSourceResolver` for global metrics; additionally stream per-file word counts for chapter metrics without double-tokenizing when possible.
+- Lexical density is computed as content-word ratio (non-stopwords/total) × 100 (not type-token ratio). TTR is provided as a separate metric.
+- The "Chapter-by-Chapter Prose Statistics" section is always included in the panel and exports unless the user removes the Chapter Details via the confirmation dialog.
