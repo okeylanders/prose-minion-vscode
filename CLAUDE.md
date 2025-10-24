@@ -290,14 +290,14 @@ Key APIs used:
 1. **Don't Break Public APIs**: Extension commands and settings are public
 2. **Test Incrementally**: Run extension after each change
 3. **Preserve Existing Behavior**: Unless explicitly changing it
-4. **Update Documentation**: Keep README and ARCHITECTURE.md current
+4. **Update Documentation**: Keep README and docs/ARCHITECTURE.md current
 
 ## Working with Claude Code Specifically
 
 ### Using Context Effectively
 
 When asked to work on this project:
-1. **Read** [ARCHITECTURE.md](ARCHITECTURE.md) for detailed design decisions
+1. **Read** [ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed design decisions
 2. **Check** existing tool implementations as examples
 3. **Look** at message types in [shared/types/messages.ts](src/shared/types/messages.ts) for communication contracts
 4. **Review** [package.json](package.json) for available configurations
@@ -343,7 +343,7 @@ npm run package  # Creates .vsix file for distribution
 ## Related Documentation
 
 - [README.md](README.md) - User-facing documentation
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Detailed architecture decisions
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) - Detailed architecture decisions
 - [AGENTS.md](AGENTS.md) - General AI agent guidance
 - [package.json](package.json) - Extension manifest
 

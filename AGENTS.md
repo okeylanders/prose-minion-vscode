@@ -102,7 +102,7 @@ src/
 - [extension.ts](src/extension.ts) - Extension activation and setup
 - [shared/types/messages.ts](src/shared/types/messages.ts) - Message contracts
 - [OpenRouterModels.ts](src/infrastructure/api/OpenRouterModels.ts) - Available AI models
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Detailed architecture documentation
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) - Detailed architecture documentation
 
 ### Resource Files
 
@@ -183,7 +183,7 @@ When working with this codebase:
 ## Questions and Support
 
 For questions about the codebase:
-1. Check [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture info
+1. Check [ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed architecture info
 2. Review existing tool implementations as examples
 3. Check the VSCode Extension API documentation for platform-specific features
 4. Refer to OpenRouter API documentation for model capabilities

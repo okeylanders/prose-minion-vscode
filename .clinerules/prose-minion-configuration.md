@@ -305,6 +305,6 @@ Coming soon:
 
 For configuration issues:
 1. Check this guide
-2. Review [QUICKSTART.md](QUICKSTART.md)
+2. Review [QUICKSTART.md](../docs/QUICKSTART.md)
 3. See [TOOLS.md](TOOLS.md) for tool-specific info
 4. Report bugs at https://github.com/anthropics/claude-code/issues
