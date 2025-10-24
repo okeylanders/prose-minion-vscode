@@ -33,6 +33,22 @@ export interface IProseAnalysisService {
   measureWordFrequency(text: string): Promise<MetricsResult>;
 
   /**
+   * Search for words/phrases with context and clusters across scope
+   */
+  measureWordSearch(
+    text: string,
+    files?: string[],
+    sourceMode?: string,
+    options?: {
+      wordsOrPhrases: string[];
+      contextWords: number;
+      clusterWindow: number;
+      minClusterSize: number;
+      caseSensitive?: boolean;
+    }
+  ): Promise<MetricsResult>;
+
+  /**
    * Generate a dictionary entry for a word using AI
    */
   lookupDictionary(word: string, contextText?: string): Promise<AnalysisResult>;

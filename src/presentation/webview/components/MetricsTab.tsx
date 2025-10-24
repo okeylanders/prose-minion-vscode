@@ -13,8 +13,13 @@ interface MetricsTabProps {
   selectedText: string;
   vscode: any;
   metrics: any;
+  metricsToolName?: string;
   isLoading: boolean;
   onLoadingChange: (loading: boolean) => void;
+  activeTool: 'prose_stats' | 'style_flags' | 'word_frequency' | 'word_search';
+  onActiveToolChange: (tool: 'prose_stats' | 'style_flags' | 'word_frequency' | 'word_search') => void;
+  wordSearchTargets: string;
+  onWordSearchTargetsChange: (value: string) => void;
   sourceMode: TextSourceMode;
   pathText: string;
   onSourceModeChange: (mode: TextSourceMode) => void;
@@ -25,8 +30,13 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   selectedText,
   vscode,
   metrics,
+  metricsToolName,
   isLoading,
   onLoadingChange,
+  activeTool,
+  onActiveToolChange,
+  wordSearchTargets,
+  onWordSearchTargetsChange,
   sourceMode,
   pathText,
   onSourceModeChange,
@@ -38,6 +48,13 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   const [genres, setGenres] = React.useState<Array<{ key: string; name: string; abbreviation: string; pageSizes: Array<{ key: string; label: string; width: number; height: number; common: boolean }> }>>([]);
   const [preset, setPreset] = React.useState<string>('none');
   const [pageSizeKey, setPageSizeKey] = React.useState<string>('');
+  // Sub-tool state (local only)
+  // activeTool and wordSearchTargets persisted in App; defaults handled upstream
+  const [wordSearchContextWords, setWordSearchContextWords] = React.useState<number>(7);
+  const [wordSearchClusterWindow, setWordSearchClusterWindow] = React.useState<number>(150);
+  const [wordSearchMinCluster, setWordSearchMinCluster] = React.useState<number>(3);
+  const [wordSearchCaseSensitive, setWordSearchCaseSensitive] = React.useState<boolean>(false);
+  const [expandInfo, setExpandInfo] = React.useState<string>('');
 
   React.useEffect(() => {
     const handler = (event: MessageEvent) => {
@@ -87,10 +104,17 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
     });
   };
 
+  // Only show results that match the active sub-tool
+  const displayMetrics = React.useMemo(() => {
+    if (!metrics || !metricsToolName) return null;
+    // toolName strings match our sub-tool ids
+    return metricsToolName === activeTool ? metrics : null;
+  }, [metrics, metricsToolName, activeTool]);
+
   const markdownContent = React.useMemo(() => {
-    if (!metrics) return '';
-    return formatMetricsAsMarkdown(metrics);
-  }, [metrics]);
+    if (!displayMetrics) return '';
+    return formatMetricsAsMarkdown(displayMetrics);
+  }, [displayMetrics]);
 
   const buildExportContent = React.useCallback(() => {
     let content = markdownContent;
@@ -274,28 +298,89 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
         />
       </div>
 
-      <div className="button-group">
-        <button
-          className="btn btn-primary"
-          onClick={handleMeasureProseStats}
-          disabled={isLoading}
-        >
-          Prose Statistics
-        </button>
-        <button
-          className="btn btn-primary"
-          onClick={handleMeasureStyleFlags}
-          disabled={isLoading}
-        >
-          Style Flags
-        </button>
-        <button
-          className="btn btn-primary"
-          onClick={handleMeasureWordFrequency}
-          disabled={isLoading}
-        >
-          Word Frequency
-        </button>
+      <div>
+        <div className="tab-bar" style={{ marginBottom: '8px' }}>
+          <button className={`tab-button ${activeTool === 'prose_stats' ? 'active' : ''}`} disabled={isLoading}
+            onClick={() => { onActiveToolChange('prose_stats'); handleMeasureProseStats(); }}>
+            <span className="tab-label">Prose Statistics</span>
+          </button>
+          <button className={`tab-button ${activeTool === 'style_flags' ? 'active' : ''}`} disabled={isLoading}
+            onClick={() => { onActiveToolChange('style_flags'); handleMeasureStyleFlags(); }}>
+            <span className="tab-label">Style Flags</span>
+          </button>
+          <button className={`tab-button ${activeTool === 'word_frequency' ? 'active' : ''}`} disabled={isLoading}
+            onClick={() => { onActiveToolChange('word_frequency'); handleMeasureWordFrequency(); }}>
+            <span className="tab-label">Word Frequency</span>
+          </button>
+          <button className={`tab-button ${activeTool === 'word_search' ? 'active' : ''}`} disabled={isLoading}
+            onClick={() => { onActiveToolChange('word_search'); }}>
+            <span className="tab-label">Word Search</span>
+          </button>
+        </div>
+
+        {activeTool === 'word_search' && (
+          <div className="input-container">
+            <div className="input-header">
+              <label className="block text-sm font-medium">Targets (comma or newline separated; phrases allowed)</label>
+              <button
+                className="icon-button"
+                title="Expand word list"
+                aria-label="Expand word list"
+                onClick={() => setExpandInfo('Auto expand search coming soon')}
+              >
+                🤖⚡
+              </button>
+            </div>
+            <textarea
+              rows={3}
+              value={wordSearchTargets}
+              onChange={(e) => onWordSearchTargetsChange(e.target.value)}
+              placeholder=""
+            />
+            {expandInfo && (
+              <div className="context-status">{expandInfo}</div>
+            )}
+
+            <div className="flex gap-2 mt-2">
+              <div className="flex-1">
+                <label className="block text-sm mb-1">Context words</label>
+                <input type="number" value={wordSearchContextWords} onChange={(e) => setWordSearchContextWords(parseInt(e.target.value || '7', 10))} />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm mb-1">Cluster window</label>
+                <input type="number" value={wordSearchClusterWindow} onChange={(e) => setWordSearchClusterWindow(parseInt(e.target.value || '150', 10))} />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm mb-1">Min cluster size</label>
+                <input type="number" value={wordSearchMinCluster} onChange={(e) => setWordSearchMinCluster(parseInt(e.target.value || '3', 10))} />
+              </div>
+            </div>
+            <div className="mt-2">
+              <label className="inline-flex items-center">
+                <input type="checkbox" checked={wordSearchCaseSensitive} onChange={(e) => setWordSearchCaseSensitive(e.target.checked)} />
+                <span className="ml-2">Case sensitive</span>
+              </label>
+            </div>
+
+            <div className="mt-3">
+              <button className="btn btn-primary" disabled={isLoading} onClick={() => {
+                onLoadingChange(true);
+                const wordsOrPhrases = parseTargets(wordSearchTargets);
+                vscode.postMessage({
+                  type: MessageType.MEASURE_WORD_SEARCH,
+                  source: { mode: sourceMode, pathText },
+                  options: {
+                    wordsOrPhrases,
+                    contextWords: wordSearchContextWords,
+                    clusterWindow: wordSearchClusterWindow,
+                    minClusterSize: wordSearchMinCluster,
+                    caseSensitive: wordSearchCaseSensitive
+                  }
+                });
+              }}>Run Search</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {isLoading && (
@@ -305,7 +390,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
         </div>
       )}
 
-      {metrics && (
+      {markdownContent && (
         <div className="result-box">
           <div className="result-action-bar">
             {/* include chapters preference handled via extension modal prompts */}
@@ -331,6 +416,16 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
           <MarkdownRenderer content={markdownContent} />
         </div>
       )}
+      {!markdownContent && activeTool === 'word_search' && (
+        <div className="placeholder-content text-gray-500">No Word Search results yet. Enter targets and click Run Search.</div>
+      )}
     </div>
   );
 };
+
+function parseTargets(input: string): string[] {
+  if (!input) return [];
+  // Split on newlines and commas; trim; drop empty
+  const parts = input.split(/\n|,/).map(s => s.trim()).filter(Boolean);
+  return parts;
+}

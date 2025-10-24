@@ -25,6 +25,69 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
 
   let markdown = '';
 
+  // Word Search (shape detection: scannedFiles + targets with perFile occurrences)
+  if (
+    Array.isArray((metrics as any).scannedFiles) &&
+    Array.isArray((metrics as any).targets)
+  ) {
+    const report: any = metrics;
+    markdown += '# 🔎 Word Search\n\n';
+    markdown += '---\n\n';
+
+    const targetList = (report.targets || []).map((t: any) => `\`${t.target}\``).join(', ') || '—';
+    const scannedFiles = report.scannedFiles || [];
+    const options = report.options || {};
+
+    markdown += `- Targets: ${targetList}\n`;
+    markdown += `- Case sensitive: ${options.caseSensitive ? 'yes' : 'no'}\n`;
+    markdown += `- Context window: ${options.contextWords ?? 7} words | Cluster window: ${options.clusterWindow ?? 150} (min ${options.minClusterSize ?? 3} hits)\n`;
+
+    if (report.note) {
+      markdown += `\n_${report.note}_\n`;
+    }
+
+    for (const target of report.targets || []) {
+      markdown += `\n## Target “${target.target}”\n`;
+      markdown += `- Total occurrences: ${target.totalOccurrences} across ${target.filesWithMatches} file(s)\n`;
+      markdown += `- Average gap between hits: ${formatGap(target.overallAverageGap)}\n`;
+
+      if (!target.perFile?.length) {
+        markdown += '\n_No matches found in the scanned markdown files._\n';
+        continue;
+      }
+
+      for (const file of target.perFile) {
+        markdown += `\n### ${file.relative}\n`;
+        const gapText = file.averageGap != null ? ` (avg gap ${formatGap(file.averageGap)})` : '';
+        markdown += `Hits: ${file.count}${gapText}\n`;
+
+        if (file.occurrences?.length) {
+          markdown += '\n| # | Line | Context |\n';
+          markdown += '| - | - | - |\n';
+          for (const occ of file.occurrences) {
+            const snippet = escapePipes((occ.snippet || '').trim()) || '—';
+            markdown += `| ${occ.index} | ${occ.line} | ${snippet} |\n`;
+          }
+        } else {
+          markdown += '\n(No individual occurrences captured.)\n';
+        }
+
+        if (file.clusters?.length) {
+          markdown += '\nClusters detected:\n';
+          for (const cluster of file.clusters) {
+            const span = cluster.spanWords ?? 0;
+            const range = cluster.startLine === cluster.endLine ? `line ${cluster.startLine}` : `lines ${cluster.startLine}–${cluster.endLine}`;
+            const snippet = escapePipes((cluster.snippet || '').trim()) || '—';
+            markdown += `- ${cluster.count} hits within ${span} words near ${range}: ${snippet}\n`;
+          }
+        } else {
+          markdown += '\nNo clusters above the configured threshold.\n';
+        }
+      }
+    }
+    return markdown;
+  }
+
   // Handle prose statistics (word count, pacing, etc.)
   if (metrics.wordCount !== undefined) {
     markdown += '# 📊 Prose Statistics\n\n';
@@ -90,6 +153,22 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
     markdown += '|:--------- | ----------:| ---------:|:----------:|:------:|\n';
     const range = pf.pageCountRange ? `min ${pf.pageCountRange.min ?? '-'} / max ${pf.pageCountRange.max ?? '-'}` : '-';
     markdown += `| ${pf.trimSize.label} (${pf.trimSize.width_inches}x${pf.trimSize.height_inches} in) | ${pf.wordsPerPage ?? '-'} | ${pf.estimatedPageCount ?? '-'} | ${range} | ${icon} |\n\n`;
+  }
+
+  // Chapter Summary (simple chapter | words table) — shown before detailed per-chapter stats
+  if (Array.isArray((metrics as any).perChapterStats) && (metrics as any).perChapterStats.length > 0) {
+    const list: any[] = (metrics as any).perChapterStats;
+    markdown += '## 📖 Chapter Summary\n\n';
+    markdown += '| Chapter | Words |\n';
+    markdown += '|:------- | -----:|\n';
+    list.forEach((entry: any) => {
+      const path = entry.path || '';
+      const name = path.split(/\\|\//).pop() || path;
+      const s = entry.stats || {};
+      const words = (s.wordCount ?? 0).toLocaleString();
+      markdown += `| ${name} | ${words} |\n`;
+    });
+    markdown += '\n';
   }
 
   // Chapter-by-Chapter Prose Statistics (no standards comparison)
@@ -422,4 +501,17 @@ export function formatAnalysisAsMarkdown(analysis: string): string {
 
   // Otherwise, format it as a simple markdown document
   return `## Analysis Result\n\n${analysis}`;
+}
+
+// --- Local helpers for Word Search rendering ---
+function formatGap(value: any): string {
+  if (value == null || Number.isNaN(value)) return '—';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  const s = n.toFixed(1);
+  return `${s} word${s === '1.0' ? '' : 's'}`;
+}
+
+function escapePipes(text: string): string {
+  return (text || '').replace(/\|/g, '\\|');
 }

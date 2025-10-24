@@ -32,6 +32,9 @@ type PersistedState = {
   analysisResult: string;
   analysisToolName?: string;
   metricsResult: any;
+  metricsToolName?: string;
+  metricsActiveTool?: 'prose_stats' | 'style_flags' | 'word_frequency' | 'word_search';
+  metricsWordSearchTargets?: string;
   metricsSourceMode?: TextSourceMode;
   metricsPathText?: string;
   utilitiesResult: string;
@@ -60,9 +63,12 @@ export const App: React.FC = () => {
   const [analysisToolName, setAnalysisToolName] = React.useState<string | undefined>(persistedState?.analysisToolName);
   const [analysisLoading, setAnalysisLoading] = React.useState(false);
   const [metricsResult, setMetricsResult] = React.useState<any>(persistedState?.metricsResult ?? null);
+  const [metricsToolName, setMetricsToolName] = React.useState<string | undefined>(persistedState?.metricsToolName);
   const [metricsLoading, setMetricsLoading] = React.useState(false);
   const [metricsSourceMode, setMetricsSourceMode] = React.useState<TextSourceMode>(persistedState?.metricsSourceMode ?? 'selection');
   const [metricsPathText, setMetricsPathText] = React.useState<string>(persistedState?.metricsPathText ?? '[selected text]');
+  const [metricsActiveTool, setMetricsActiveTool] = React.useState<'prose_stats' | 'style_flags' | 'word_frequency' | 'word_search'>(persistedState?.metricsActiveTool ?? 'prose_stats');
+  const [metricsWordSearchTargets, setMetricsWordSearchTargets] = React.useState<string>(persistedState?.metricsWordSearchTargets ?? '');
   const [utilitiesResult, setUtilitiesResult] = React.useState(persistedState?.utilitiesResult ?? '');
   const [dictionaryToolName, setDictionaryToolName] = React.useState<string | undefined>(persistedState?.dictionaryToolName);
   const [utilitiesLoading, setUtilitiesLoading] = React.useState(false);
@@ -127,6 +133,9 @@ export const App: React.FC = () => {
       analysisResult,
       analysisToolName,
       metricsResult,
+      metricsToolName,
+      metricsActiveTool,
+      metricsWordSearchTargets,
       metricsSourceMode,
       metricsPathText,
       utilitiesResult,
@@ -152,6 +161,9 @@ export const App: React.FC = () => {
     analysisResult,
     analysisToolName,
     metricsResult,
+    metricsToolName,
+    metricsActiveTool,
+    metricsWordSearchTargets,
     utilitiesResult,
     dictionaryToolName,
     dictionaryWord,
@@ -206,6 +218,10 @@ export const App: React.FC = () => {
 
         case MessageType.METRICS_RESULT:
           setMetricsResult(message.result);
+          setMetricsToolName(message.toolName);
+          if (message.toolName === 'prose_stats' || message.toolName === 'style_flags' || message.toolName === 'word_frequency' || message.toolName === 'word_search') {
+            setMetricsActiveTool(message.toolName);
+          }
           setMetricsLoading(false);
           setError('');
           break;
@@ -460,12 +476,19 @@ export const App: React.FC = () => {
             selectedText={selectedText}
             vscode={vscode}
             metrics={metricsResult}
+            metricsToolName={metricsToolName}
             isLoading={metricsLoading}
             onLoadingChange={setMetricsLoading}
+            activeTool={metricsActiveTool}
+            onActiveToolChange={setMetricsActiveTool}
+            wordSearchTargets={metricsWordSearchTargets}
+            onWordSearchTargetsChange={setMetricsWordSearchTargets}
             sourceMode={metricsSourceMode}
             pathText={metricsPathText}
             onSourceModeChange={setMetricsSourceMode}
             onPathTextChange={setMetricsPathText}
+            // pass through in case MetricsTab wants to adjust save/copy behavior later
+            
           />
         )}
 

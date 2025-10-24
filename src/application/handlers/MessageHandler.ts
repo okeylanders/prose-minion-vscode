@@ -118,6 +118,10 @@ export class MessageHandler {
           await this.handleMeasureWordFrequency(message);
           break;
 
+        case MessageType.MEASURE_WORD_SEARCH:
+          await this.handleMeasureWordSearch(message as any);
+          break;
+
         case MessageType.REQUEST_ACTIVE_FILE:
           await this.handleRequestActiveFile();
           break;
@@ -374,6 +378,23 @@ export class MessageHandler {
     try {
       const text = await this.resolveTextForMetrics(message);
       const result = await this.proseAnalysisService.measureWordFrequency(text);
+      this.sendMetricsResult(result.metrics, result.toolName);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('Invalid selection or path', msg);
+    }
+  }
+
+  private async handleMeasureWordSearch(message: { text?: string; source?: any; options?: any }): Promise<void> {
+    try {
+      const resolved = await this.resolveRichTextForMetrics(message);
+      const options = message.options || {};
+      const result = await this.proseAnalysisService.measureWordSearch(
+        resolved.text,
+        resolved.paths,
+        resolved.mode,
+        options
+      );
       this.sendMetricsResult(result.metrics, result.toolName);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);

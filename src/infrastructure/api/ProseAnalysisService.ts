@@ -347,6 +347,109 @@ export class ProseAnalysisService implements IProseAnalysisService {
     return text.split(/\s+/).filter(w => w.length > 0).length;
   }
 
+  async measureWordSearch(
+    _text: string,
+    files?: string[],
+    _sourceMode?: string,
+    options?: {
+      wordsOrPhrases: string[];
+      contextWords: number;
+      clusterWindow: number;
+      minClusterSize: number;
+      caseSensitive?: boolean;
+    }
+  ) {
+    try {
+      const cfg = vscode.workspace.getConfiguration('proseMinion');
+      const defaults = {
+        contextWords: cfg.get<number>('wordSearch.contextWords') ?? 7,
+        clusterWindow: cfg.get<number>('wordSearch.clusterWindow') ?? 150,
+        minClusterSize: cfg.get<number>('wordSearch.minClusterSize') ?? 3,
+        caseSensitive: cfg.get<boolean>('wordSearch.caseSensitive') ?? false,
+        defaultTargets: cfg.get<string>('wordSearch.defaultTargets') ?? 'just'
+      };
+
+      const targetsInput = options?.wordsOrPhrases && options.wordsOrPhrases.length > 0
+        ? options.wordsOrPhrases
+        : (defaults.defaultTargets ? [defaults.defaultTargets] : []);
+
+      const caseSensitive = options?.caseSensitive ?? defaults.caseSensitive;
+      const contextWords = Number.isFinite(options?.contextWords) ? Math.max(0, Math.floor(options!.contextWords)) : defaults.contextWords;
+      const clusterWindow = Number.isFinite(options?.clusterWindow) ? Math.max(1, Math.floor(options!.clusterWindow)) : defaults.clusterWindow;
+      const minClusterSize = Number.isFinite(options?.minClusterSize) ? Math.max(2, Math.floor(options!.minClusterSize)) : defaults.minClusterSize;
+
+      const normalizedTargets = prepareTargets(targetsInput, caseSensitive);
+
+      const report: any = {
+        scannedFiles: [],
+        options: { caseSensitive, contextWords, clusterWindow, minClusterSize },
+        targets: [] as any[]
+      };
+
+      const relFiles = Array.isArray(files) ? files : [];
+      for (const rel of relFiles) {
+        report.scannedFiles.push({ absolute: rel, relative: rel });
+      }
+
+      if (relFiles.length === 0 || normalizedTargets.length === 0) {
+        return AnalysisResultFactory.createMetricsResult('word_search', {
+          ...report,
+          note: normalizedTargets.length === 0 ? 'No valid targets provided.' : 'No files selected.'
+        });
+      }
+
+      for (const target of normalizedTargets) {
+        const perFile: any[] = [];
+        const allDistances: number[] = [];
+        let totalOccurrences = 0;
+
+        for (const rel of relFiles) {
+          const uri = await this.findUriByRelativePath(rel);
+          if (!uri) continue;
+          const raw = await vscode.workspace.fs.readFile(uri);
+          const content = Buffer.from(raw).toString('utf8');
+          const tokens = tokenizeContent(content, caseSensitive);
+          if (tokens.length === 0) continue;
+          const lineIndex = buildLineIndex(content);
+          const occurrences = findOccurrences(content, tokens, target, { contextWords, lineIndex });
+          if (occurrences.length === 0) continue;
+
+          const distances = computeDistances(occurrences, target.tokenLength);
+          if (distances.length > 0) allDistances.push(...distances);
+
+          const clusters = detectClusters(occurrences, { clusterWindow, minClusterSize, tokens, content, contextWords });
+
+          totalOccurrences += occurrences.length;
+          perFile.push({
+            file: rel,
+            relative: rel,
+            count: occurrences.length,
+            averageGap: average(distances),
+            occurrences: occurrences.map((occ, idx) => ({ index: idx + 1, line: occ.line, snippet: occ.snippet })),
+            clusters: clusters.map(c => ({ count: c.count, spanWords: c.spanWords, startLine: c.startLine, endLine: c.endLine, snippet: c.snippet }))
+          });
+        }
+
+        perFile.sort((a, b) => a.relative.localeCompare(b.relative));
+        report.targets.push({
+          target: target.label,
+          normalized: target.normalizedTokens.join(' '),
+          totalOccurrences,
+          overallAverageGap: average(allDistances),
+          filesWithMatches: perFile.length,
+          perFile
+        });
+      }
+
+      return AnalysisResultFactory.createMetricsResult('word_search', report);
+    } catch (error) {
+      return AnalysisResultFactory.createMetricsResult('word_search', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+
   private async findUriByRelativePath(relativePath: string): Promise<vscode.Uri | undefined> {
     const folders = vscode.workspace.workspaceFolders ?? [];
     for (const folder of folders) {
@@ -584,4 +687,182 @@ To use AI-powered analysis tools, you need to configure your OpenRouter API key:
 
 The measurement tools (Prose Statistics, Style Flags, Word Frequency) work without an API key.`;
   }
+}
+
+// --- Local deterministic word search helpers (ported from example-code) ---
+function makeWordPattern() {
+  return /[A-Za-z0-9']+/g;
+}
+
+function prepareTargets(values: string[], caseSensitive: boolean) {
+  const prepared: Array<{ label: string; normalizedTokens: string[]; tokenLength: number }> = [];
+  for (const raw of values) {
+    const trimmed = String(raw ?? '').trim();
+    if (!trimmed) continue;
+    const tokenMatches = trimmed.match(makeWordPattern());
+    if (!tokenMatches || tokenMatches.length === 0) continue;
+    const normalizedTokens = tokenMatches.map((t) => (caseSensitive ? t : t.toLowerCase()));
+    prepared.push({ label: trimmed, normalizedTokens, tokenLength: normalizedTokens.length });
+  }
+  return prepared;
+}
+
+function tokenizeContent(content: string, caseSensitive: boolean) {
+  const tokens: Array<{ raw: string; normalized: string; start: number; end: number; index: number }> = [];
+  const pattern = makeWordPattern();
+  let match: RegExpExecArray | null;
+  let idx = 0;
+  while ((match = pattern.exec(content)) !== null) {
+    const word = match[0];
+    tokens.push({
+      raw: word,
+      normalized: caseSensitive ? word : word.toLowerCase(),
+      start: match.index,
+      end: match.index + word.length,
+      index: idx
+    });
+    idx += 1;
+  }
+  return tokens;
+}
+
+function buildLineIndex(content: string) {
+  const lineBreaks: number[] = [];
+  let idx = content.indexOf('\n');
+  while (idx !== -1) {
+    lineBreaks.push(idx);
+    idx = content.indexOf('\n', idx + 1);
+  }
+  return lineBreaks;
+}
+
+function findLineNumber(lineIndex: number[], position: number) {
+  if (!lineIndex || lineIndex.length === 0) return 1;
+  let low = 0;
+  let high = lineIndex.length;
+  while (low < high) {
+    const mid = Math.floor((low + high) / 2);
+    if (lineIndex[mid] >= position) {
+      high = mid;
+    } else {
+      low = mid + 1;
+    }
+  }
+  return low + 1;
+}
+
+function extractSnippet(content: string, tokens: any[], opts: { startTokenIndex: number; endTokenIndex: number; highlights: Array<{ start: number; end: number }>; }) {
+  if (tokens.length === 0) return '';
+  const boundedStart = Math.max(0, opts.startTokenIndex);
+  const boundedEnd = Math.min(tokens.length - 1, opts.endTokenIndex);
+  const charStart = tokens[boundedStart]?.start ?? 0;
+  const charEnd = tokens[boundedEnd]?.end ?? Math.min(content.length, charStart + 120);
+  if (charStart >= charEnd) return '';
+
+  const sortedHighlights = (opts.highlights || [])
+    .map((r) => ({ start: Math.max(charStart, r.start), end: Math.min(charEnd, r.end) }))
+    .filter((r) => r.start < r.end)
+    .sort((a, b) => a.start - b.start);
+
+  const parts: string[] = [];
+  let cursor = charStart;
+  for (const range of sortedHighlights) {
+    if (range.start > cursor) parts.push(content.slice(cursor, range.start));
+    parts.push(`**${content.slice(range.start, range.end)}**`);
+    cursor = range.end;
+  }
+  if (cursor < charEnd) parts.push(content.slice(cursor, charEnd));
+
+  const prefix = boundedStart > 0 ? '…' : '';
+  const suffix = boundedEnd < tokens.length - 1 ? '…' : '';
+  return `${prefix}${parts.join('')}${suffix}`.replace(/\s+/g, ' ').trim();
+}
+
+function findOccurrences(content: string, tokens: any[], target: any, { contextWords, lineIndex }: { contextWords: number; lineIndex: number[] }) {
+  const occurrences: Array<{ tokenStart: number; tokenEnd: number; charStart: number; charEnd: number; line: number; snippet: string }> = [];
+  const tokenLimit = target.tokenLength;
+  if (tokenLimit === 0 || tokens.length < tokenLimit) return occurrences;
+
+  for (let i = 0; i <= tokens.length - tokenLimit; i += 1) {
+    let match = true;
+    for (let j = 0; j < tokenLimit; j += 1) {
+      if (tokens[i + j].normalized !== target.normalizedTokens[j]) { match = false; break; }
+    }
+    if (!match) continue;
+
+    const startToken = tokens[i];
+    const endToken = tokens[i + tokenLimit - 1];
+    const contextStartToken = Math.max(0, i - contextWords);
+    const contextEndToken = Math.min(tokens.length - 1, i + tokenLimit - 1 + contextWords);
+    const snippet = extractSnippet(content, tokens, {
+      startTokenIndex: contextStartToken,
+      endTokenIndex: contextEndToken,
+      highlights: [{ start: startToken.start, end: endToken.end }]
+    });
+
+    occurrences.push({
+      tokenStart: startToken.index,
+      tokenEnd: endToken.index,
+      charStart: startToken.start,
+      charEnd: endToken.end,
+      line: findLineNumber(lineIndex, startToken.start),
+      snippet
+    });
+  }
+  return occurrences;
+}
+
+function computeDistances(occurrences: any[], tokenLength: number) {
+  if (!occurrences || occurrences.length < 2) return [] as number[];
+  const distances: number[] = [];
+  for (let i = 0; i < occurrences.length - 1; i += 1) {
+    const current = occurrences[i];
+    const next = occurrences[i + 1];
+    const gap = next.tokenStart - current.tokenStart - tokenLength;
+    if (gap >= 0) distances.push(gap);
+  }
+  return distances;
+}
+
+function detectClusters(occurrences: any[], { clusterWindow, minClusterSize, tokens, content, contextWords }: any) {
+  if (!occurrences || occurrences.length < minClusterSize) return [];
+  const clustersByStart = new Map<number, any>();
+
+  let start = 0;
+  for (let end = 0; end < occurrences.length; end += 1) {
+    while (start < end && occurrences[end].tokenStart - occurrences[start].tokenStart > clusterWindow) {
+      start += 1;
+    }
+    const count = end - start + 1;
+    if (count >= minClusterSize) {
+      const existing = clustersByStart.get(start);
+      if (!existing || end > existing.endIndex) {
+        const startOccurrence = occurrences[start];
+        const endOccurrence = occurrences[end];
+        const contextStartToken = Math.max(0, startOccurrence.tokenStart - Math.max(contextWords * 2, 8));
+        const contextEndToken = Math.min(tokens.length - 1, endOccurrence.tokenEnd + Math.max(contextWords * 2, 8));
+        const highlightRanges = [] as Array<{ start: number; end: number }>;
+        for (let idx = start; idx <= end; idx += 1) {
+          highlightRanges.push({ start: occurrences[idx].charStart, end: occurrences[idx].charEnd });
+        }
+        const snippet = extractSnippet(content, tokens, { startTokenIndex: contextStartToken, endTokenIndex: contextEndToken, highlights: highlightRanges });
+        clustersByStart.set(start, {
+          startIndex: start,
+          endIndex: end,
+          count,
+          spanWords: occurrences[end].tokenStart - occurrences[start].tokenStart,
+          startLine: startOccurrence.line,
+          endLine: endOccurrence.line,
+          snippet
+        });
+      }
+    }
+  }
+  return Array.from(clustersByStart.values()).sort((a, b) => a.startIndex - b.startIndex);
+}
+
+function average(values: number[]) {
+  if (!values || values.length === 0) return null;
+  const sum = values.reduce((acc, v) => acc + v, 0);
+  return Number.isFinite(sum) ? sum / values.length : null;
 }

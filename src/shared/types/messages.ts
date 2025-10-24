@@ -20,6 +20,7 @@ export enum MessageType {
   MEASURE_PROSE_STATS = 'measure_prose_stats',
   MEASURE_STYLE_FLAGS = 'measure_style_flags',
   MEASURE_WORD_FREQUENCY = 'measure_word_frequency',
+  MEASURE_WORD_SEARCH = 'measure_word_search',
 
   // Metrics source helpers
   REQUEST_ACTIVE_FILE = 'request_active_file',
@@ -150,6 +151,21 @@ export interface MeasureWordFrequencyMessage extends BaseMessage {
   source?: TextSourceSpec;
 }
 
+export interface WordSearchOptions {
+  wordsOrPhrases: string[];
+  contextWords: number;
+  clusterWindow: number;
+  minClusterSize: number;
+  caseSensitive?: boolean;
+}
+
+export interface MeasureWordSearchMessage extends BaseMessage {
+  type: MessageType.MEASURE_WORD_SEARCH;
+  text?: string;
+  source?: TextSourceSpec;
+  options: WordSearchOptions;
+}
+
 export interface TabChangedMessage extends BaseMessage {
   type: MessageType.TAB_CHANGED;
   tabId: TabId;
@@ -236,6 +252,7 @@ export type WebviewToExtensionMessage =
   | MeasureProseStatsMessage
   | MeasureStyleFlagsMessage
   | MeasureWordFrequencyMessage
+  | MeasureWordSearchMessage
   | TabChangedMessage
   | OpenGuideFileMessage
   | RequestModelDataMessage
