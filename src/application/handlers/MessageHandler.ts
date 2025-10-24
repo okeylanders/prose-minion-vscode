@@ -213,7 +213,22 @@ export class MessageHandler {
 
   private async handleCopyResult(content: string, toolName: string): Promise<void> {
     try {
-      await vscode.env.clipboard.writeText(content ?? '');
+      let text = content ?? '';
+      if (toolName === 'prose_stats' && /^## Chapter Details/m.test(text)) {
+        const answer = await vscode.window.showInformationMessage(
+          'Include chapter-by-chapter breakdown in the copied report?',
+          { modal: true },
+          'Yes',
+          'No'
+        );
+        if (answer === 'No') {
+          text = this.stripChapterBreakdown(text);
+        } else if (answer !== 'Yes') {
+          // Dialog dismissed; keep default (include)
+        }
+      }
+
+      await vscode.env.clipboard.writeText(text);
       this.outputChannel.appendLine(`[MessageHandler] Copied ${toolName} result to clipboard (${content?.length ?? 0} chars).`);
       this.sendStatus('Result copied to clipboard.');
     } catch (error) {
@@ -224,7 +239,22 @@ export class MessageHandler {
 
   private async handleSaveResult(toolName: string, content: string, metadata?: SaveResultMetadata): Promise<void> {
     try {
-      const savedPath = await this.saveResultToFile(toolName, content, metadata);
+      let text = content ?? '';
+      if (toolName === 'prose_stats' && /^## Chapter Details/m.test(text)) {
+        const answer = await vscode.window.showInformationMessage(
+          'Include chapter-by-chapter breakdown in the saved report?',
+          { modal: true },
+          'Yes',
+          'No'
+        );
+        if (answer === 'No') {
+          text = this.stripChapterBreakdown(text);
+        } else if (answer !== 'Yes') {
+          // Dialog dismissed; keep default (include)
+        }
+      }
+
+      const savedPath = await this.saveResultToFile(toolName, text, metadata);
       this.outputChannel.appendLine(`[MessageHandler] Saved ${toolName} result to ${savedPath}`);
 
       const successMessage: SaveResultSuccessMessage = {
@@ -240,6 +270,12 @@ export class MessageHandler {
       const message = error instanceof Error ? error.message : String(error);
       this.sendError('Failed to save result', message);
     }
+  }
+
+  private stripChapterBreakdown(markdown: string): string {
+    // Remove the Chapter Details section from the markdown report only
+    const sectionRegex = /^## Chapter Details[\s\S]*?(?=^# |\Z)/m;
+    return markdown.replace(sectionRegex, '').trimEnd();
   }
 
   private async handleSelectionRequest(target: SelectionTarget): Promise<void> {

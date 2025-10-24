@@ -116,35 +116,49 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
 
     content += `\n\n${legend}\n`;
 
+    // Append Chapter Details section (per-chapter pivoted tables) if available
     try {
       if (metrics && Array.isArray(metrics.perChapterStats) && metrics.perChapterStats.length > 0) {
-        const header = ['---', '', '## Chapter Details (JSON)', ''].join('\n');
-        let groups = header + '\n';
+        let groups = ['---', '', '## Chapter Details', ''].join('\n') + '\n';
         metrics.perChapterStats.forEach((entry: any) => {
           const s = entry.stats || {};
           const chapter = (entry.path || '').split(/\\|\//).pop() || entry.path;
-          const obj = {
-            chapter,
-            path: entry.path,
-            words: s.wordCount,
-            sentences: s.sentenceCount,
-            avgWordsPerSentence: s.averageWordsPerSentence,
-            dialoguePercent: s.dialoguePercentage,
-            lexicalDensityPercent: s.lexicalDensity,
-            stopwordRatioPercent: s.stopwordRatio,
-            uniqueWords: s.uniqueWordCount,
-            hapaxCount: s.hapaxCount,
-            hapaxPercent: s.hapaxPercent,
-            fkgl: s.readabilityGrade
-          };
-          const block = `### ${chapter}\n\n\`\`\`json\n${JSON.stringify(obj, null, 2)}\n\`\`\``;
-          groups += block + '\n\n';
+
+          const rows: Array<{ label: string; value: any; fmt?: (v: any) => string }> = [
+            { label: '📝 Word Count', value: s.wordCount, fmt: (v) => (v ?? '').toLocaleString?.() ?? v },
+            { label: '📏 Sentence Count', value: s.sentenceCount, fmt: (v) => (v ?? '').toLocaleString?.() ?? v },
+            { label: '📑 Paragraph Count', value: s.paragraphCount, fmt: (v) => (v ?? '').toLocaleString?.() ?? v },
+            { label: '⚖️ Avg Words per Sentence', value: s.averageWordsPerSentence, fmt: (v) => typeof v === 'number' ? v.toFixed(1) : v },
+            { label: '📐 Avg Sentences per Paragraph', value: s.averageSentencesPerParagraph, fmt: (v) => typeof v === 'number' ? v.toFixed(1) : v },
+            { label: '⏱️ Reading Time', value: s.readingTime },
+            { label: '🎯 Pacing', value: s.pacing },
+            { label: '💬 Dialogue Percentage', value: s.dialoguePercentage, fmt: (v) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
+            { label: '🎨 Lexical Density', value: s.lexicalDensity, fmt: (v) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
+            { label: '🧹 Stopword Ratio', value: s.stopwordRatio, fmt: (v) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
+            { label: '🌱 Hapax %', value: s.hapaxPercent, fmt: (v) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
+            { label: '🌱 Hapax Count', value: s.hapaxCount, fmt: (v) => (v ?? '').toLocaleString?.() ?? v },
+            { label: '🔀 Type-Token Ratio', value: s.typeTokenRatio, fmt: (v) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
+            { label: '📖 Readability Score', value: s.readabilityScore, fmt: (v) => typeof v === 'number' ? v.toFixed(1) : v },
+            { label: '🎓 Readability Grade (FKGL)', value: s.readabilityGrade, fmt: (v) => typeof v === 'number' ? v.toFixed(1) : v },
+            { label: '🔎 Unique Words', value: s.uniqueWordCount, fmt: (v) => (v ?? '').toLocaleString?.() ?? v },
+            { label: '⏳ Reading Time (min)', value: s.readingTimeMinutes, fmt: (v) => typeof v === 'number' ? v.toFixed(1) : v }
+          ];
+
+          const lines: string[] = [`### ${chapter}`, '', '| Metric | Value |', '|:-------|------:|'];
+          rows.forEach(({ label, value, fmt }) => {
+            if (value === undefined || value === null || (typeof value === 'string' && value.length === 0)) return;
+            const display = fmt ? fmt(value) : value;
+            lines.push(`| ${label} | **${display}** |`);
+          });
+          lines.push('');
+          groups += lines.join('\n') + '\n';
         });
         content += groups;
       }
-    } catch (e) {
-      // ignore export enrichment errors
+    } catch {
+      // ignore
     }
+
     return content;
   }, [markdownContent, metrics]);
 
@@ -294,6 +308,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
       {metrics && (
         <div className="result-box">
           <div className="result-action-bar">
+            {/* include chapters preference handled via extension modal prompts */}
             <button
               className="icon-button"
               onClick={handleCopyMetricsResult}
