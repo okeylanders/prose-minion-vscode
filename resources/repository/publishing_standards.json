@@ -1,0 +1,1122 @@
+{
+  "publishing_standards": {
+    "genres": [
+      {
+        "name": "Young Adult Fiction",
+        "abbreviation": "YA",
+        "words_per_page": {
+          "min": 250,
+          "max": 300,
+          "average": 275
+        },
+        "page_sizes": [
+          {
+            "width_inches": 5.5,
+            "height_inches": 8.5,
+            "common": true
+          },
+          {
+            "width_inches": 6,
+            "height_inches": 9,
+            "common": false
+          }
+        ],
+        "word_count_range": {
+          "min": 50000,
+          "max": 90000
+        },
+        "page_count_range": {
+          "min": 200,
+          "max": 360
+        },
+        "formatting": {
+          "font_size_pt": [11, 12],
+          "line_spacing": [1.2, 1.4],
+          "margins_inches": [0.75, 1.0]
+        },
+        "literary_statistics": {
+          "unique_word_count": {
+            "min": 8000,
+            "max": 12000
+          },
+          "lexical_density": {
+            "min": 50,
+            "max": 55
+          },
+          "dialogue_percentage": {
+            "min": 40,
+            "max": 55
+          },
+          "avg_words_per_sentence": {
+            "min": 12,
+            "max": 16
+          },
+          "avg_sentences_per_paragraph": {
+            "min": 4,
+            "max": 6
+          },
+          "reading_time_hours": {
+            "min": 4,
+            "max": 6
+          },
+          "chapter_count": {
+            "min": 20,
+            "max": 35
+          },
+          "avg_chapter_length": {
+            "min": 2000,
+            "max": 3500
+          },
+          "word_length_distribution": {
+            "1_to_3_letters": {
+              "min": 45,
+              "max": 50
+            },
+            "4_to_6_letters": {
+              "min": 35,
+              "max": 40
+            },
+            "7_plus_letters": {
+              "min": 10,
+              "max": 15
+            }
+          }
+        },
+        "popular_examples": [
+          {
+            "title": "The Hunger Games",
+            "author": "Suzanne Collins",
+            "words": 101564,
+            "chapters": 27,
+            "unique_words": 9200,
+            "lexical_density": 52,
+            "dialogue_percentage": 48,
+            "avg_words_per_sentence": 14,
+            "avg_sentences_per_paragraph": 5,
+            "reading_time_hours": 5.5
+          },
+          {
+            "title": "The Fault in Our Stars",
+            "author": "John Green",
+            "words": 67203,
+            "chapters": 25,
+            "unique_words": 7800,
+            "lexical_density": 50,
+            "dialogue_percentage": 50,
+            "avg_words_per_sentence": 13,
+            "avg_sentences_per_paragraph": 4,
+            "reading_time_hours": 4
+          }
+        ]
+      },
+      {
+        "name": "Middle Grade Fiction",
+        "abbreviation": "MG",
+        "words_per_page": {
+          "min": 200,
+          "max": 250,
+          "average": 225
+        },
+        "page_sizes": [
+          {
+            "width_inches": 5.25,
+            "height_inches": 8,
+            "common": true
+          },
+          {
+            "width_inches": 5.5,
+            "height_inches": 8.25,
+            "common": true
+          }
+        ],
+        "word_count_range": {
+          "min": 20000,
+          "max": 55000
+        },
+        "page_count_range": {
+          "min": 100,
+          "max": 275
+        },
+        "formatting": {
+          "font_size_pt": [12, 13],
+          "line_spacing": [1.3, 1.5],
+          "margins_inches": [0.85, 1.1]
+        },
+        "literary_statistics": {
+          "unique_word_count": {
+            "min": 4000,
+            "max": 7000
+          },
+          "lexical_density": {
+            "min": 45,
+            "max": 50
+          },
+          "dialogue_percentage": {
+            "min": 50,
+            "max": 65
+          },
+          "avg_words_per_sentence": {
+            "min": 10,
+            "max": 14
+          },
+          "avg_sentences_per_paragraph": {
+            "min": 3,
+            "max": 5
+          },
+          "reading_time_hours": {
+            "min": 2,
+            "max": 4
+          },
+          "chapter_count": {
+            "min": 15,
+            "max": 30
+          },
+          "avg_chapter_length": {
+            "min": 1200,
+            "max": 2500
+          },
+          "word_length_distribution": {
+            "1_to_3_letters": {
+              "min": 50,
+              "max": 55
+            },
+            "4_to_6_letters": {
+              "min": 35,
+              "max": 40
+            },
+            "7_plus_letters": {
+              "min": 8,
+              "max": 12
+            }
+          }
+        },
+        "popular_examples": [
+          {
+            "title": "Wonder",
+            "author": "R.J. Palacio",
+            "words": 73053,
+            "chapters": "8 parts",
+            "unique_words": 6500,
+            "lexical_density": 48,
+            "dialogue_percentage": 60,
+            "avg_words_per_sentence": 12,
+            "avg_sentences_per_paragraph": 4,
+            "reading_time_hours": 3.5
+          },
+          {
+            "title": "Percy Jackson & the Lightning Thief",
+            "author": "Rick Riordan",
+            "words": 87223,
+            "chapters": 22,
+            "unique_words": 7100,
+            "lexical_density": 47,
+            "dialogue_percentage": 55,
+            "avg_words_per_sentence": 11,
+            "avg_sentences_per_paragraph": 3,
+            "reading_time_hours": 3.8
+          }
+        ]
+      },
+      {
+        "name": "Literary Fiction",
+        "abbreviation": "LIT",
+        "words_per_page": {
+          "min": 250,
+          "max": 350,
+          "average": 300
+        },
+        "page_sizes": [
+          {
+            "width_inches": 5.5,
+            "height_inches": 8.25,
+            "common": true
+          },
+          {
+            "width_inches": 6,
+            "height_inches": 9,
+            "common": true
+          },
+          {
+            "width_inches": 5,
+            "height_inches": 8,
+            "common": false
+          }
+        ],
+        "word_count_range": {
+          "min": 70000,
+          "max": 120000
+        },
+        "page_count_range": {
+          "min": 250,
+          "max": 400
+        },
+        "formatting": {
+          "font_size_pt": [10, 11],
+          "line_spacing": [1.15, 1.3],
+          "margins_inches": [0.7, 0.9]
+        },
+        "literary_statistics": {
+          "unique_word_count": {
+            "min": 12000,
+            "max": 18000
+          },
+          "lexical_density": {
+            "min": 55,
+            "max": 65
+          },
+          "dialogue_percentage": {
+            "min": 20,
+            "max": 35
+          },
+          "avg_words_per_sentence": {
+            "min": 16,
+            "max": 22
+          },
+          "avg_sentences_per_paragraph": {
+            "min": 5,
+            "max": 8
+          },
+          "reading_time_hours": {
+            "min": 6,
+            "max": 10
+          },
+          "chapter_count": {
+            "min": 15,
+            "max": 40
+          },
+          "avg_chapter_length": {
+            "min": 3000,
+            "max": 6000
+          },
+          "word_length_distribution": {
+            "1_to_3_letters": {
+              "min": 40,
+              "max": 45
+            },
+            "4_to_6_letters": {
+              "min": 35,
+              "max": 40
+            },
+            "7_plus_letters": {
+              "min": 18,
+              "max": 25
+            }
+          }
+        },
+        "popular_examples": [
+          {
+            "title": "The Goldfinch",
+            "author": "Donna Tartt",
+            "words": 169887,
+            "chapters": 12,
+            "unique_words": 17000,
+            "lexical_density": 60,
+            "dialogue_percentage": 28,
+            "avg_words_per_sentence": 20,
+            "avg_sentences_per_paragraph": 7,
+            "reading_time_hours": 9
+          },
+          {
+            "title": "All the Light We Cannot See",
+            "author": "Anthony Doerr",
+            "words": 175000,
+            "chapters": 173,
+            "unique_words": 15000,
+            "lexical_density": 58,
+            "dialogue_percentage": 30,
+            "avg_words_per_sentence": 18,
+            "avg_sentences_per_paragraph": 6,
+            "reading_time_hours": 8.5
+          }
+        ]
+      },
+      {
+        "name": "Romance",
+        "abbreviation": "ROM",
+        "words_per_page": {
+          "min": 250,
+          "max": 300,
+          "average": 275
+        },
+        "page_sizes": [
+          {
+            "width_inches": 4.25,
+            "height_inches": 6.87,
+            "common": true,
+            "format": "mass market paperback"
+          },
+          {
+            "width_inches": 5.5,
+            "height_inches": 8.5,
+            "common": true,
+            "format": "trade paperback"
+          }
+        ],
+        "word_count_range": {
+          "min": 70000,
+          "max": 100000
+        },
+        "page_count_range": {
+          "min": 250,
+          "max": 400
+        },
+        "formatting": {
+          "font_size_pt": [9, 12],
+          "line_spacing": [1.2, 1.35],
+          "margins_inches": [0.5, 1.0]
+        },
+        "literary_statistics": {
+          "unique_word_count": {
+            "min": 8000,
+            "max": 11000
+          },
+          "lexical_density": {
+            "min": 48,
+            "max": 53
+          },
+          "dialogue_percentage": {
+            "min": 45,
+            "max": 60
+          },
+          "avg_words_per_sentence": {
+            "min": 13,
+            "max": 17
+          },
+          "avg_sentences_per_paragraph": {
+            "min": 4,
+            "max": 6
+          },
+          "reading_time_hours": {
+            "min": 5,
+            "max": 7
+          },
+          "chapter_count": {
+            "min": 20,
+            "max": 35
+          },
+          "avg_chapter_length": {
+            "min": 2500,
+            "max": 4000
+          },
+          "word_length_distribution": {
+            "1_to_3_letters": {
+              "min": 45,
+              "max": 50
+            },
+            "4_to_6_letters": {
+              "min": 35,
+              "max": 40
+            },
+            "7_plus_letters": {
+              "min": 12,
+              "max": 16
+            }
+          }
+        },
+        "popular_examples": [
+          {
+            "title": "The Hating Game",
+            "author": "Sally Thorne",
+            "words": 95000,
+            "chapters": 23,
+            "unique_words": 9000,
+            "lexical_density": 50,
+            "dialogue_percentage": 55,
+            "avg_words_per_sentence": 15,
+            "avg_sentences_per_paragraph": 5,
+            "reading_time_hours": 6
+          },
+          {
+            "title": "Beach Read",
+            "author": "Emily Henry",
+            "words": 102000,
+            "chapters": 31,
+            "unique_words": 9800,
+            "lexical_density": 51,
+            "dialogue_percentage": 52,
+            "avg_words_per_sentence": 16,
+            "avg_sentences_per_paragraph": 5,
+            "reading_time_hours": 6.5
+          }
+        ]
+      },
+      {
+        "name": "Thriller/Mystery",
+        "abbreviation": "THR",
+        "words_per_page": {
+          "min": 250,
+          "max": 300,
+          "average": 275
+        },
+        "page_sizes": [
+          {
+            "width_inches": 5.5,
+            "height_inches": 8.5,
+            "common": true
+          },
+          {
+            "width_inches": 6,
+            "height_inches": 9,
+            "common": true
+          },
+          {
+            "width_inches": 4.25,
+            "height_inches": 6.87,
+            "common": false,
+            "format": "mass market"
+          }
+        ],
+        "word_count_range": {
+          "min": 70000,
+          "max": 100000
+        },
+        "page_count_range": {
+          "min": 280,
+          "max": 400
+        },
+        "formatting": {
+          "font_size_pt": [10, 12],
+          "line_spacing": [1.2, 1.35],
+          "margins_inches": [0.75, 1.0]
+        },
+        "literary_statistics": {
+          "unique_word_count": {
+            "min": 9000,
+            "max": 13000
+          },
+          "lexical_density": {
+            "min": 50,
+            "max": 56
+          },
+          "dialogue_percentage": {
+            "min": 35,
+            "max": 50
+          },
+          "avg_words_per_sentence": {
+            "min": 12,
+            "max": 16
+          },
+          "avg_sentences_per_paragraph": {
+            "min": 3,
+            "max": 5
+          },
+          "reading_time_hours": {
+            "min": 5,
+            "max": 8
+          },
+          "chapter_count": {
+            "min": 30,
+            "max": 60
+          },
+          "avg_chapter_length": {
+            "min": 1500,
+            "max": 2500
+          },
+          "word_length_distribution": {
+            "1_to_3_letters": {
+              "min": 45,
+              "max": 50
+            },
+            "4_to_6_letters": {
+              "min": 36,
+              "max": 40
+            },
+            "7_plus_letters": {
+              "min": 12,
+              "max": 16
+            }
+          }
+        },
+        "popular_examples": [
+          {
+            "title": "Gone Girl",
+            "author": "Gillian Flynn",
+            "words": 145719,
+            "chapters": 67,
+            "unique_words": 12000,
+            "lexical_density": 54,
+            "dialogue_percentage": 40,
+            "avg_words_per_sentence": 14,
+            "avg_sentences_per_paragraph": 4,
+            "reading_time_hours": 7.5
+          },
+          {
+            "title": "The Girl on the Train",
+            "author": "Paula Hawkins",
+            "words": 101750,
+            "chapters": 78,
+            "unique_words": 10500,
+            "lexical_density": 52,
+            "dialogue_percentage": 45,
+            "avg_words_per_sentence": 13,
+            "avg_sentences_per_paragraph": 4,
+            "reading_time_hours": 6.5
+          }
+        ]
+      },
+      {
+        "name": "Science Fiction/Fantasy",
+        "abbreviation": "SFF",
+        "words_per_page": {
+          "min": 250,
+          "max": 350,
+          "average": 300
+        },
+        "page_sizes": [
+          {
+            "width_inches": 6,
+            "height_inches": 9,
+            "common": true
+          },
+          {
+            "width_inches": 5.5,
+            "height_inches": 8.5,
+            "common": true
+          }
+        ],
+        "word_count_range": {
+          "min": 90000,
+          "max": 150000
+        },
+        "page_count_range": {
+          "min": 350,
+          "max": 600
+        },
+        "formatting": {
+          "font_size_pt": [10, 11],
+          "line_spacing": [1.2, 1.3],
+          "margins_inches": [0.7, 0.9]
+        },
+        "literary_statistics": {
+          "unique_word_count": {
+            "min": 12000,
+            "max": 20000
+          },
+          "lexical_density": {
+            "min": 52,
+            "max": 60
+          },
+          "dialogue_percentage": {
+            "min": 30,
+            "max": 45
+          },
+          "avg_words_per_sentence": {
+            "min": 14,
+            "max": 18
+          },
+          "avg_sentences_per_paragraph": {
+            "min": 4,
+            "max": 7
+          },
+          "reading_time_hours": {
+            "min": 8,
+            "max": 15
+          },
+          "chapter_count": {
+            "min": 25,
+            "max": 70
+          },
+          "avg_chapter_length": {
+            "min": 3000,
+            "max": 5000
+          },
+          "word_length_distribution": {
+            "1_to_3_letters": {
+              "min": 42,
+              "max": 47
+            },
+            "4_to_6_letters": {
+              "min": 35,
+              "max": 40
+            },
+            "7_plus_letters": {
+              "min": 15,
+              "max": 20
+            }
+          }
+        },
+        "popular_examples": [
+          {
+            "title": "The Name of the Wind",
+            "author": "Patrick Rothfuss",
+            "words": 259000,
+            "chapters": 92,
+            "unique_words": 18000,
+            "lexical_density": 58,
+            "dialogue_percentage": 35,
+            "avg_words_per_sentence": 17,
+            "avg_sentences_per_paragraph": 6,
+            "reading_time_hours": 14
+          },
+          {
+            "title": "Ender's Game",
+            "author": "Orson Scott Card",
+            "words": 100609,
+            "chapters": 15,
+            "unique_words": 13000,
+            "lexical_density": 55,
+            "dialogue_percentage": 42,
+            "avg_words_per_sentence": 15,
+            "avg_sentences_per_paragraph": 5,
+            "reading_time_hours": 9
+          }
+        ]
+      },
+      {
+        "name": "Horror",
+        "abbreviation": "HOR",
+        "words_per_page": {
+          "min": 250,
+          "max": 300,
+          "average": 275
+        },
+        "page_sizes": [
+          {
+            "width_inches": 5.5,
+            "height_inches": 8.5,
+            "common": true
+          },
+          {
+            "width_inches": 6,
+            "height_inches": 9,
+            "common": true
+          }
+        ],
+        "word_count_range": {
+          "min": 70000,
+          "max": 100000
+        },
+        "page_count_range": {
+          "min": 280,
+          "max": 400
+        },
+        "formatting": {
+          "font_size_pt": [11, 12],
+          "line_spacing": [1.2, 1.4],
+          "margins_inches": [0.75, 1.0]
+        },
+        "literary_statistics": {
+          "unique_word_count": {
+            "min": 9000,
+            "max": 14000
+          },
+          "lexical_density": {
+            "min": 50,
+            "max": 57
+          },
+          "dialogue_percentage": {
+            "min": 30,
+            "max": 45
+          },
+          "avg_words_per_sentence": {
+            "min": 13,
+            "max": 17
+          },
+          "avg_sentences_per_paragraph": {
+            "min": 3,
+            "max": 6
+          },
+          "reading_time_hours": {
+            "min": 5,
+            "max": 8
+          },
+          "chapter_count": {
+            "min": 20,
+            "max": 40
+          },
+          "avg_chapter_length": {
+            "min": 2500,
+            "max": 4000
+          },
+          "word_length_distribution": {
+            "1_to_3_letters": {
+              "min": 44,
+              "max": 48
+            },
+            "4_to_6_letters": {
+              "min": 36,
+              "max": 40
+            },
+            "7_plus_letters": {
+              "min": 14,
+              "max": 18
+            }
+          }
+        },
+        "popular_examples": [
+          {
+            "title": "The Shining",
+            "author": "Stephen King",
+            "words": 197163,
+            "chapters": 58,
+            "unique_words": 13000,
+            "lexical_density": 55,
+            "dialogue_percentage": 38,
+            "avg_words_per_sentence": 16,
+            "avg_sentences_per_paragraph": 4,
+            "reading_time_hours": 8
+          },
+          {
+            "title": "The Haunting of Hill House",
+            "author": "Shirley Jackson",
+            "words": 73000,
+            "chapters": 9,
+            "unique_words": 9500,
+            "lexical_density": 52,
+            "dialogue_percentage": 35,
+            "avg_words_per_sentence": 14,
+            "avg_sentences_per_paragraph": 3,
+            "reading_time_hours": 5
+          }
+        ]
+      },
+      {
+        "name": "Historical Fiction",
+        "abbreviation": "HIST",
+        "words_per_page": {
+          "min": 250,
+          "max": 300,
+          "average": 275
+        },
+        "page_sizes": [
+          {
+            "width_inches": 5.5,
+            "height_inches": 8.5,
+            "common": true
+          },
+          {
+            "width_inches": 6,
+            "height_inches": 9,
+            "common": true
+          }
+        ],
+        "word_count_range": {
+          "min": 80000,
+          "max": 120000
+        },
+        "page_count_range": {
+          "min": 300,
+          "max": 480
+        },
+        "formatting": {
+          "font_size_pt": [10, 12],
+          "line_spacing": [1.2, 1.35],
+          "margins_inches": [0.75, 1.0]
+        },
+        "literary_statistics": {
+          "unique_word_count": {
+            "min": 11000,
+            "max": 16000
+          },
+          "lexical_density": {
+            "min": 53,
+            "max": 60
+          },
+          "dialogue_percentage": {
+            "min": 30,
+            "max": 45
+          },
+          "avg_words_per_sentence": {
+            "min": 15,
+            "max": 20
+          },
+          "avg_sentences_per_paragraph": {
+            "min": 5,
+            "max": 7
+          },
+          "reading_time_hours": {
+            "min": 6,
+            "max": 10
+          },
+          "chapter_count": {
+            "min": 20,
+            "max": 45
+          },
+          "avg_chapter_length": {
+            "min": 3000,
+            "max": 5000
+          },
+          "word_length_distribution": {
+            "1_to_3_letters": {
+              "min": 42,
+              "max": 46
+            },
+            "4_to_6_letters": {
+              "min": 36,
+              "max": 40
+            },
+            "7_plus_letters": {
+              "min": 16,
+              "max": 20
+            }
+          }
+        },
+        "popular_examples": [
+          {
+            "title": "The Book Thief",
+            "author": "Markus Zusak",
+            "words": 118000,
+            "chapters": 88,
+            "unique_words": 12000,
+            "lexical_density": 55,
+            "dialogue_percentage": 40,
+            "avg_words_per_sentence": 16,
+            "avg_sentences_per_paragraph": 6,
+            "reading_time_hours": 7.5
+          },
+          {
+            "title": "Pillars of the Earth",
+            "author": "Ken Follett",
+            "words": 300000,
+            "chapters": "6 parts",
+            "unique_words": 15000,
+            "lexical_density": 58,
+            "dialogue_percentage": 35,
+            "avg_words_per_sentence": 18,
+            "avg_sentences_per_paragraph": 7,
+            "reading_time_hours": 10
+          }
+        ]
+      },
+      {
+        "name": "Non-Fiction/Memoir",
+        "abbreviation": "NF",
+        "words_per_page": {
+          "min": 250,
+          "max": 350,
+          "average": 300
+        },
+        "page_sizes": [
+          {
+            "width_inches": 6,
+            "height_inches": 9,
+            "common": true
+          },
+          {
+            "width_inches": 5.5,
+            "height_inches": 8.5,
+            "common": true
+          },
+          {
+            "width_inches": 7,
+            "height_inches": 10,
+            "common": false,
+            "format": "textbook/reference"
+          }
+        ],
+        "word_count_range": {
+          "min": 50000,
+          "max": 90000
+        },
+        "page_count_range": {
+          "min": 200,
+          "max": 360
+        },
+        "formatting": {
+          "font_size_pt": [10, 12],
+          "line_spacing": [1.2, 1.4],
+          "margins_inches": [0.85, 1.2]
+        },
+        "literary_statistics": {
+          "unique_word_count": {
+            "min": 10000,
+            "max": 16000
+          },
+          "lexical_density": {
+            "min": 55,
+            "max": 65
+          },
+          "dialogue_percentage": {
+            "min": 5,
+            "max": 20
+          },
+          "avg_words_per_sentence": {
+            "min": 16,
+            "max": 22
+          },
+          "avg_sentences_per_paragraph": {
+            "min": 5,
+            "max": 8
+          },
+          "reading_time_hours": {
+            "min": 4,
+            "max": 7
+          },
+          "chapter_count": {
+            "min": 10,
+            "max": 25
+          },
+          "avg_chapter_length": {
+            "min": 3000,
+            "max": 6000
+          },
+          "word_length_distribution": {
+            "1_to_3_letters": {
+              "min": 40,
+              "max": 45
+            },
+            "4_to_6_letters": {
+              "min": 36,
+              "max": 40
+            },
+            "7_plus_letters": {
+              "min": 18,
+              "max": 24
+            }
+          }
+        },
+        "popular_examples": [
+          {
+            "title": "Educated",
+            "author": "Tara Westover",
+            "words": 95000,
+            "chapters": 40,
+            "unique_words": 12000,
+            "lexical_density": 60,
+            "dialogue_percentage": 15,
+            "avg_words_per_sentence": 19,
+            "avg_sentences_per_paragraph": 6,
+            "reading_time_hours": 5.5
+          },
+          {
+            "title": "Sapiens",
+            "author": "Yuval Noah Harari",
+            "words": 160000,
+            "chapters": 20,
+            "unique_words": 15000,
+            "lexical_density": 62,
+            "dialogue_percentage": 10,
+            "avg_words_per_sentence": 20,
+            "avg_sentences_per_paragraph": 7,
+            "reading_time_hours": 7
+          }
+        ]
+      },
+      {
+        "name": "Children's Picture Books",
+        "abbreviation": "PB",
+        "words_per_page": {
+          "min": 50,
+          "max": 150,
+          "average": 100
+        },
+        "page_sizes": [
+          {
+            "width_inches": 8,
+            "height_inches": 10,
+            "common": true
+          },
+          {
+            "width_inches": 8.5,
+            "height_inches": 11,
+            "common": true
+          },
+          {
+            "width_inches": 10,
+            "height_inches": 10,
+            "common": false,
+            "format": "square"
+          }
+        ],
+        "word_count_range": {
+          "min": 500,
+          "max": 1000
+        },
+        "page_count_range": {
+          "min": 24,
+          "max": 40
+        },
+        "formatting": {
+          "font_size_pt": [14, 18],
+          "line_spacing": [1.5, 2.0],
+          "margins_inches": [1.0, 1.5]
+        },
+        "literary_statistics": {
+          "unique_word_count": {
+            "min": 200,
+            "max": 500
+          },
+          "lexical_density": {
+            "min": 40,
+            "max": 50
+          },
+          "dialogue_percentage": {
+            "min": 40,
+            "max": 70
+          },
+          "avg_words_per_sentence": {
+            "min": 6,
+            "max": 10
+          },
+          "avg_sentences_per_paragraph": {
+            "min": 1,
+            "max": 3
+          },
+          "reading_time_minutes": {
+            "min": 5,
+            "max": 10
+          },
+          "chapter_count": "N/A",
+          "avg_spread_length": {
+            "min": 25,
+            "max": 50
+          },
+          "word_length_distribution": {
+            "1_to_3_letters": {
+              "min": 60,
+              "max": 70
+            },
+            "4_to_6_letters": {
+              "min": 25,
+              "max": 35
+            },
+            "7_plus_letters": {
+              "min": 3,
+              "max": 8
+            }
+          }
+        },
+        "popular_examples": [
+          {
+            "title": "Where the Wild Things Are",
+            "author": "Maurice Sendak",
+            "words": 338,
+            "spreads": 19,
+            "unique_words": 150,
+            "lexical_density": 45,
+            "dialogue_percentage": 60,
+            "avg_words_per_sentence": 8,
+            "avg_sentences_per_paragraph": 2,
+            "reading_time_minutes": 5
+          },
+          {
+            "title": "The Very Hungry Caterpillar",
+            "author": "Eric Carle",
+            "words": 224,
+            "pages": 13,
+            "unique_words": 100,
+            "lexical_density": 42,
+            "dialogue_percentage": 50,
+            "avg_words_per_sentence": 7,
+            "avg_sentences_per_paragraph": 1,
+            "reading_time_minutes": 4
+          }
+        ]
+      }
+    ],
+    "manuscript_format": {
+      "words_per_page": 250,
+      "page_size": {
+        "width_inches": 8.5,
+        "height_inches": 11
+      },
+      "formatting": {
+        "font": "Courier or Times New Roman",
+        "font_size_pt": 12,
+        "spacing": "double",
+        "margins_inches": 1.0
+      },
+      "purpose": "submission"
+    }
+  }
+}
