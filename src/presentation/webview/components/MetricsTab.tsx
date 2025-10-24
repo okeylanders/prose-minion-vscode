@@ -92,6 +92,55 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
     return formatMetricsAsMarkdown(metrics);
   }, [metrics]);
 
+  const buildExportContent = React.useCallback(() => {
+    let content = markdownContent;
+    try {
+      if (metrics && Array.isArray(metrics.perChapterStats) && metrics.perChapterStats.length > 0) {
+        const rows = metrics.perChapterStats.map((entry: any) => {
+          const s = entry.stats || {};
+          const chapter = (entry.path || '').split(/\\|\//).pop() || entry.path;
+          return {
+            chapter,
+            path: entry.path,
+            words: s.wordCount,
+            sentences: s.sentenceCount,
+            avgWordsPerSentence: s.averageWordsPerSentence,
+            dialoguePercent: s.dialoguePercentage,
+            lexicalDensityPercent: s.lexicalDensity,
+            uniqueWords: s.uniqueWordCount,
+            hapaxCount: s.hapaxCount,
+            hapaxPercent: s.hapaxPercent,
+            fkgl: s.readabilityGrade
+          };
+        });
+        const json = JSON.stringify({ chapters: rows }, null, 2);
+        content += `\n\n---\n\n### Chapter Details (JSON)\n\n\`\`\`json\n${json}\n\`\`\``;
+      }
+    } catch (e) {
+      // ignore export enrichment errors
+    }
+    return content;
+  }, [markdownContent, metrics]);
+
+  const handleCopyMetricsResult = () => {
+    const content = buildExportContent();
+    vscode.postMessage({
+      type: MessageType.COPY_RESULT,
+      toolName: 'prose_stats',
+      content
+    });
+  };
+
+  const handleSaveMetricsResult = () => {
+    const content = buildExportContent();
+    vscode.postMessage({
+      type: MessageType.SAVE_RESULT,
+      toolName: 'prose_stats',
+      content,
+      metadata: { timestamp: Date.now() }
+    });
+  };
+
   return (
     <div className="tab-content">
       <h2 className="text-lg font-semibold mb-4">Prose Metrics</h2>
@@ -218,6 +267,26 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
 
       {metrics && (
         <div className="result-box">
+          <div className="result-action-bar">
+            <button
+              className="icon-button"
+              onClick={handleCopyMetricsResult}
+              disabled={isLoading}
+              title="Copy metrics to clipboard"
+              aria-label="Copy metrics"
+            >
+              📋
+            </button>
+            <button
+              className="icon-button"
+              onClick={handleSaveMetricsResult}
+              disabled={isLoading}
+              title="Save metrics to workspace"
+              aria-label="Save metrics"
+            >
+              💾
+            </button>
+          </div>
           <MarkdownRenderer content={markdownContent} />
         </div>
       )}

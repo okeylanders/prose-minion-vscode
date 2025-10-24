@@ -42,6 +42,7 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
       { key: 'lexicalDensity', label: '🎨 <span title="Unique words divided by total words, as %.">Lexical Density</span>', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
       { key: 'stopwordRatio', label: '🧹 <span title="% tokens in a common English stopword list.">Stopword Ratio</span>', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
       { key: 'hapaxPercent', label: '🌱 <span title="% tokens that appear only once (hapax legomena).">Hapax %</span>', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
+      { key: 'hapaxCount', label: '🌱 <span title="Number of word types that appear only once.">Hapax Count</span>', format: (v: any) => v?.toLocaleString?.() ?? v },
       { key: 'typeTokenRatio', label: '🔀 <span title="Unique/total tokens × 100.">Type-Token Ratio</span>', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
       { key: 'readabilityScore', label: '📖 <span title="Simplified Flesch Reading Ease (0–100, higher is easier).">Readability Score</span>', format: (v: any) => typeof v === 'number' ? v.toFixed(1) : v },
       { key: 'readabilityGrade', label: '🎓 <span title="Flesch–Kincaid Grade Level (approximate grade).">Readability Grade (FKGL)</span>', format: (v: any) => typeof v === 'number' ? v.toFixed(1) : v },
@@ -262,9 +263,9 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
   // Handle any other properties that weren't specifically handled
   const handledKeys = ['flags', 'summary', 'wordCount', 'sentenceCount', 'paragraphCount',
                        'averageWordsPerSentence', 'averageSentencesPerParagraph',
-                       'readingTime', 'readingTimeMinutes', 'readingTimeHours', 'pacing', 'dialoguePercentage', 'lexicalDensity', 'readabilityScore', 'readabilityGrade', 'uniqueWordCount', 'stopwordRatio', 'hapaxPercent', 'typeTokenRatio',
+                       'readingTime', 'readingTimeMinutes', 'readingTimeHours', 'pacing', 'dialoguePercentage', 'lexicalDensity', 'readabilityScore', 'readabilityGrade', 'uniqueWordCount', 'stopwordRatio', 'hapaxPercent', 'hapaxCount', 'typeTokenRatio',
                        'frequencies', 'topWords', 'totalWords', 'uniqueWords',
-                       'topVerbs', 'topAdjectives', 'topNouns', 'topAdverbs', 'comparison', 'publishingFormat', 'chapterCount', 'averageChapterLength', 'wordLengthDistribution'];
+                       'topVerbs', 'topAdjectives', 'topNouns', 'topAdverbs', 'comparison', 'publishingFormat', 'chapterCount', 'averageChapterLength', 'wordLengthDistribution', 'perChapterStats'];
 
   const otherKeys = Object.keys(metrics).filter(key => !handledKeys.includes(key));
 

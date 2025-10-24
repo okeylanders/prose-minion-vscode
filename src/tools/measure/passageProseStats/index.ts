@@ -29,6 +29,7 @@ export interface ProseStatsOutput {
   };
   stopwordRatio?: number; // percent 0–100
   hapaxPercent?: number;  // percent 0–100
+  hapaxCount?: number;    // absolute count of words appearing once
   typeTokenRatio?: number; // percent 0–100
   readabilityGrade?: number;
 }
@@ -53,6 +54,7 @@ export class PassageProseStats {
     const wordLenDist = this.calculateWordLengthDistribution(text);
     const stopwordRatio = this.calculateStopwordRatioPercent(text);
     const hapaxPercent = this.calculateHapaxPercent(text);
+    const hapaxCount = this.calculateHapaxCount(text);
     const typeTokenRatio = this.calculateTypeTokenRatioPercent(text);
     const readabilityGrade = this.calculateFKGLGrade(text, wordCount, sentenceCount);
 
@@ -77,6 +79,7 @@ export class PassageProseStats {
       wordLengthDistribution: wordLenDist,
       stopwordRatio: Math.round(stopwordRatio * 10) / 10,
       hapaxPercent: Math.round(hapaxPercent * 10) / 10,
+      hapaxCount,
       typeTokenRatio: Math.round(typeTokenRatio * 10) / 10,
       readabilityGrade: readabilityGrade !== undefined ? Math.round(readabilityGrade * 10) / 10 : undefined
     };
@@ -200,6 +203,16 @@ export class PassageProseStats {
     let hapax = 0;
     for (const v of freq.values()) if (v === 1) hapax++;
     return (hapax / words.length) * 100;
+  }
+
+  private calculateHapaxCount(text: string): number {
+    const words = this.tokenizeWords(text);
+    if (words.length === 0) return 0;
+    const freq = new Map<string, number>();
+    for (const w of words) freq.set(w, (freq.get(w) || 0) + 1);
+    let hapax = 0;
+    for (const v of freq.values()) if (v === 1) hapax++;
+    return hapax;
   }
 
   private calculateTypeTokenRatioPercent(text: string): number {
