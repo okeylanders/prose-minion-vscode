@@ -31,16 +31,22 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
     markdown += '---\n\n';
 
     const statsConfig = [
-      { key: 'wordCount', label: '📝 Word Count', format: (v: any) => v.toLocaleString() },
-      { key: 'sentenceCount', label: '📏 Sentence Count', format: (v: any) => v.toLocaleString() },
-      { key: 'paragraphCount', label: '📑 Paragraph Count', format: (v: any) => v.toLocaleString() },
-      { key: 'averageWordsPerSentence', label: '⚖️ Avg Words per Sentence', format: (v: any) => typeof v === 'number' ? v.toFixed(1) : v },
-      { key: 'averageSentencesPerParagraph', label: '📐 Avg Sentences per Paragraph', format: (v: any) => typeof v === 'number' ? v.toFixed(1) : v },
-      { key: 'readingTime', label: '⏱️ Reading Time', format: (v: any) => v },
-      { key: 'pacing', label: '🎯 Pacing', format: (v: any) => v },
-      { key: 'dialoguePercentage', label: '💬 Dialogue Percentage', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
-      { key: 'lexicalDensity', label: '🎨 Lexical Density', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
-      { key: 'readabilityScore', label: '📖 Readability Score', format: (v: any) => typeof v === 'number' ? v.toFixed(1) : v },
+      { key: 'wordCount', label: '📝 <span title="Total number of tokens split by whitespace.">Word Count</span>', format: (v: any) => v.toLocaleString() },
+      { key: 'sentenceCount', label: '📏 <span title="Heuristic split on . ! ?">Sentence Count</span>', format: (v: any) => v.toLocaleString() },
+      { key: 'paragraphCount', label: '📑 <span title="Paragraphs split on blank lines.">Paragraph Count</span>', format: (v: any) => v.toLocaleString() },
+      { key: 'averageWordsPerSentence', label: '⚖️ <span title="Words per sentence (average). Lower tends to read faster.">Avg Words per Sentence</span>', format: (v: any) => typeof v === 'number' ? v.toFixed(1) : v },
+      { key: 'averageSentencesPerParagraph', label: '📐 <span title="Sentences per paragraph (average).">Avg Sentences per Paragraph</span>', format: (v: any) => typeof v === 'number' ? v.toFixed(1) : v },
+      { key: 'readingTime', label: '⏱️ <span title="Estimated at ~240 words per minute.">Reading Time</span>', format: (v: any) => v },
+      { key: 'pacing', label: '🎯 <span title="Qualitative pacing based on sentence length.">Pacing</span>', format: (v: any) => v },
+      { key: 'dialoguePercentage', label: '💬 <span title="% of words inside quotes.">Dialogue Percentage</span>', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
+      { key: 'lexicalDensity', label: '🎨 <span title="Unique words divided by total words, as %.">Lexical Density</span>', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
+      { key: 'stopwordRatio', label: '🧹 <span title="% tokens in a common English stopword list.">Stopword Ratio</span>', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
+      { key: 'hapaxPercent', label: '🌱 <span title="% tokens that appear only once (hapax legomena).">Hapax %</span>', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
+      { key: 'typeTokenRatio', label: '🔀 <span title="Unique/total tokens × 100.">Type-Token Ratio</span>', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
+      { key: 'readabilityScore', label: '📖 <span title="Simplified Flesch Reading Ease (0–100, higher is easier).">Readability Score</span>', format: (v: any) => typeof v === 'number' ? v.toFixed(1) : v },
+      { key: 'readabilityGrade', label: '🎓 <span title="Flesch–Kincaid Grade Level (approximate grade).">Readability Grade (FKGL)</span>', format: (v: any) => typeof v === 'number' ? v.toFixed(1) : v },
+      { key: 'uniqueWordCount', label: '🔎 <span title="Number of distinct word forms.">Unique Words</span>', format: (v: any) => v?.toLocaleString?.() ?? v },
+      { key: 'readingTimeMinutes', label: '⏳ <span title="Estimated reading time in minutes.">Reading Time (min)</span>', format: (v: any) => typeof v === 'number' ? v.toFixed(1) : v },
     ];
 
     // Create a formatted table
@@ -55,6 +61,34 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
     });
 
     markdown += '\n';
+  }
+
+  // Publishing Standards Comparison
+  if (metrics.comparison && Array.isArray(metrics.comparison.items)) {
+    markdown += '# 🧭 Publishing Standards Comparison\n\n';
+    markdown += '---\n\n';
+    markdown += '| Metric | Your Value | Standard | Status |\n';
+    markdown += '|:------ | ----------:|:--------:|:------:|\n';
+    const statusIcon = (s: string) => s === 'within' ? '✅' : s === 'below' ? '⬇️' : s === 'above' ? '⬆️' : '•';
+    metrics.comparison.items.forEach((item: any) => {
+      const standard = item.standard && (item.standard.min !== undefined || item.standard.max !== undefined)
+        ? `min ${item.standard.min ?? '-'} / max ${item.standard.max ?? '-'}`
+        : '-';
+      markdown += `| ${item.label} | **${item.value}** | ${standard} | ${statusIcon(item.status)} |\n`;
+    });
+    markdown += '\n';
+  }
+
+  // Publishing Format section
+  if (metrics.publishingFormat) {
+    const pf = metrics.publishingFormat;
+    const icon = pf.status === 'within' ? '✅' : pf.status === 'below' ? '⬇️' : pf.status === 'above' ? '⬆️' : '•';
+    markdown += '# 🧾 Publishing Format\n\n';
+    markdown += '---\n\n';
+    markdown += '| Trim Size | Words/Page | Est. Pages | Page Range | Status |\n';
+    markdown += '|:--------- | ----------:| ---------:|:----------:|:------:|\n';
+    const range = pf.pageCountRange ? `min ${pf.pageCountRange.min ?? '-'} / max ${pf.pageCountRange.max ?? '-'}` : '-';
+    markdown += `| ${pf.trimSize.label} (${pf.trimSize.width_inches}x${pf.trimSize.height_inches} in) | ${pf.wordsPerPage ?? '-'} | ${pf.estimatedPageCount ?? '-'} | ${range} | ${icon} |\n\n`;
   }
 
   // Handle style flags
@@ -204,9 +238,9 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
   // Handle any other properties that weren't specifically handled
   const handledKeys = ['flags', 'summary', 'wordCount', 'sentenceCount', 'paragraphCount',
                        'averageWordsPerSentence', 'averageSentencesPerParagraph',
-                       'readingTime', 'pacing', 'dialoguePercentage', 'lexicalDensity', 'readabilityScore',
+                       'readingTime', 'readingTimeMinutes', 'readingTimeHours', 'pacing', 'dialoguePercentage', 'lexicalDensity', 'readabilityScore', 'readabilityGrade', 'uniqueWordCount', 'stopwordRatio', 'hapaxPercent', 'typeTokenRatio',
                        'frequencies', 'topWords', 'totalWords', 'uniqueWords',
-                       'topVerbs', 'topAdjectives', 'topNouns', 'topAdverbs'];
+                       'topVerbs', 'topAdjectives', 'topNouns', 'topAdverbs', 'comparison', 'publishingFormat', 'chapterCount', 'averageChapterLength', 'wordLengthDistribution'];
 
   const otherKeys = Object.keys(metrics).filter(key => !handledKeys.includes(key));
 

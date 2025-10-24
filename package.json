@@ -298,6 +298,18 @@
           "default": "research/**/*,Research/**/*,tone-and-style/**/*,Tone-And-Style/**/*,literary-devices/**/*,Literary-Devices/**/*,**/story-bible.md,**/synopsis.md,**/voice-and-tone.md,**/genre-conventions.md",
           "description": "Comma-separated glob patterns for general reference material (only .md and .txt files are used).",
           "order": 16
+        },
+        "proseMinion.publishingStandards.preset": {
+          "type": "string",
+          "default": "none",
+          "description": "Publishing standards preset for Metrics comparison: 'none', 'manuscript', or 'genre:<abbreviation|name|slug>'.",
+          "order": 17
+        },
+        "proseMinion.publishingStandards.pageSizeKey": {
+          "type": "string",
+          "default": "",
+          "description": "Selected trim size key for the chosen genre (uses page_sizes[].format when available, otherwise WIDTHxHEIGHT).",
+          "order": 18
         }
       }
     }

@@ -13,6 +13,11 @@
                 "type": "string",
                 "description": "The full name of the genre."
               },
+              "slug": {
+                "type": "string",
+                "description": "Stable identifier for the genre (lowercase, hyphenated).",
+                "optional": true
+              },
               "abbreviation": {
                 "type": "string",
                 "description": "The common abbreviation for the genre."
@@ -48,6 +53,16 @@
                     },
                     "format": {
                       "type": "string",
+                      "optional": true
+                    },
+                    "words_per_page": {
+                      "type": "object",
+                      "properties": {
+                        "min": { "type": "integer" },
+                        "max": { "type": "integer" },
+                        "average": { "type": "integer" }
+                      },
+                      "description": "Optional trim-size-specific words-per-page; overrides genre-level default when provided.",
                       "optional": true
                     }
                   },
@@ -121,12 +136,8 @@
                   "unique_word_count": {
                     "type": "object",
                     "properties": {
-                      "min": {
-                        "type": "integer"
-                      },
-                      "max": {
-                        "type": "integer"
-                      }
+                      "min": { "type": "integer" },
+                      "max": { "type": "integer" }
                     },
                     "required": [
                       "min",
@@ -136,12 +147,8 @@
                   "lexical_density": {
                     "type": "object",
                     "properties": {
-                      "min": {
-                        "type": "integer"
-                      },
-                      "max": {
-                        "type": "integer"
-                      }
+                      "min": { "type": "number" },
+                      "max": { "type": "number" }
                     },
                     "required": [
                       "min",
@@ -151,12 +158,8 @@
                   "dialogue_percentage": {
                     "type": "object",
                     "properties": {
-                      "min": {
-                        "type": "integer"
-                      },
-                      "max": {
-                        "type": "integer"
-                      }
+                      "min": { "type": "number" },
+                      "max": { "type": "number" }
                     },
                     "required": [
                       "min",
@@ -166,12 +169,8 @@
                   "avg_words_per_sentence": {
                     "type": "object",
                     "properties": {
-                      "min": {
-                        "type": "integer"
-                      },
-                      "max": {
-                        "type": "integer"
-                      }
+                      "min": { "type": "number" },
+                      "max": { "type": "number" }
                     },
                     "required": [
                       "min",
@@ -181,12 +180,8 @@
                   "avg_sentences_per_paragraph": {
                     "type": "object",
                     "properties": {
-                      "min": {
-                        "type": "integer"
-                      },
-                      "max": {
-                        "type": "integer"
-                      }
+                      "min": { "type": "number" },
+                      "max": { "type": "number" }
                     },
                     "required": [
                       "min",

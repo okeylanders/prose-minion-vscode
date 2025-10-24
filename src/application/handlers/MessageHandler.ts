@@ -27,6 +27,7 @@ import {
   SelectionDataMessage
 } from '../../shared/types';
 import { OpenRouterModels } from '../../infrastructure/api/OpenRouterModels';
+import { PublishingStandardsRepository } from '../../infrastructure/standards/PublishingStandardsRepository';
 
 interface ResultCache {
   analysis?: AnalysisResultMessage;
@@ -127,6 +128,18 @@ export class MessageHandler {
 
         case MessageType.REQUEST_CHAPTER_GLOBS:
           await this.handleRequestChapterGlobs();
+          break;
+
+        case MessageType.REQUEST_PUBLISHING_STANDARDS_DATA:
+          await this.handleRequestPublishingStandardsData();
+          break;
+
+        case MessageType.SET_PUBLISHING_PRESET:
+          await this.handleSetPublishingPreset(message.preset);
+          break;
+
+        case MessageType.SET_PUBLISHING_TRIM_SIZE:
+          await this.handleSetPublishingTrim(message.pageSizeKey);
           break;
 
         case MessageType.TAB_CHANGED:
@@ -301,8 +314,8 @@ export class MessageHandler {
 
   private async handleMeasureProseStats(message: { text?: string; source?: any }): Promise<void> {
     try {
-      const text = await this.resolveTextForMetrics(message);
-      const result = await this.proseAnalysisService.measureProseStats(text);
+      const resolved = await this.resolveRichTextForMetrics(message);
+      const result = await this.proseAnalysisService.measureProseStats(resolved.text, resolved.paths, resolved.mode);
       this.sendMetricsResult(result.metrics, result.toolName);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -353,6 +366,20 @@ export class MessageHandler {
     return text;
   }
 
+  private async resolveRichTextForMetrics(message: { text?: string; source?: any }): Promise<{ text: string; paths?: string[]; mode?: string }> {
+    if (!message.source) {
+      const text = await this.resolveTextForMetrics(message);
+      return { text };
+    }
+    const { TextSourceResolver } = await import('../../infrastructure/text/TextSourceResolver');
+    const resolver = new TextSourceResolver(this.outputChannel);
+    const resolved = await resolver.resolve(message.source);
+    const text = (resolved.text ?? '').trim();
+    if (!text) throw new Error('Resolved source contains no text.');
+    const mode = message.source?.mode;
+    return { text, paths: resolved.relativePaths, mode };
+  }
+
   private async handleRequestActiveFile(): Promise<void> {
     const editor = vscode.window.activeTextEditor;
     const relativePath = editor ? vscode.workspace.asRelativePath(editor.document.uri, false) : undefined;
@@ -385,6 +412,62 @@ export class MessageHandler {
       timestamp: Date.now()
     } as const;
     void this.postMessage(message);
+  }
+
+  private async handleRequestPublishingStandardsData(): Promise<void> {
+    try {
+      const repo = new PublishingStandardsRepository(this.extensionUri, this.outputChannel);
+      const genres = await repo.getGenres();
+      const config = vscode.workspace.getConfiguration('proseMinion');
+      const preset = (config.get<string>('publishingStandards.preset') || 'none');
+      const pageSizeKey = (config.get<string>('publishingStandards.pageSizeKey') || '');
+
+      const payload = {
+        type: MessageType.PUBLISHING_STANDARDS_DATA,
+        preset,
+        pageSizeKey,
+        genres: genres.map(g => ({
+          key: (g.slug || g.abbreviation || g.name),
+          name: g.name,
+          abbreviation: g.abbreviation,
+          pageSizes: g.page_sizes.map(ps => ({
+            key: ps.format || `${ps.width_inches}x${ps.height_inches}`,
+            label: ps.format || `${ps.width_inches}x${ps.height_inches}`,
+            width: ps.width_inches,
+            height: ps.height_inches,
+            common: ps.common
+          }))
+        })),
+        timestamp: Date.now()
+      } as const;
+
+      void this.postMessage(payload);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('Failed to load publishing standards', msg);
+    }
+  }
+
+  private async handleSetPublishingPreset(preset: string): Promise<void> {
+    try {
+      const config = vscode.workspace.getConfiguration('proseMinion');
+      await config.update('publishingStandards.preset', preset, true);
+      await this.handleRequestPublishingStandardsData();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('Failed to update publishing preset', msg);
+    }
+  }
+
+  private async handleSetPublishingTrim(pageSizeKey?: string): Promise<void> {
+    try {
+      const config = vscode.workspace.getConfiguration('proseMinion');
+      await config.update('publishingStandards.pageSizeKey', pageSizeKey ?? '', true);
+      await this.handleRequestPublishingStandardsData();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('Failed to update trim size', msg);
+    }
   }
 
   private sendAnalysisResult(result: string, toolName: string, usedGuides?: string[]): void {

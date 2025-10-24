@@ -20,7 +20,7 @@ export interface IProseAnalysisService {
   /**
    * Measure prose statistics (word count, pacing, etc.)
    */
-  measureProseStats(text: string): Promise<MetricsResult>;
+  measureProseStats(text: string, files?: string[], sourceMode?: string): Promise<MetricsResult>;
 
   /**
    * Analyze style flags and patterns

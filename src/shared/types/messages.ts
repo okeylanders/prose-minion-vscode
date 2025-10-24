@@ -49,7 +49,13 @@ export enum MessageType {
   SET_MODEL_SELECTION = 'set_model_selection',
 
   // Guide actions
-  OPEN_GUIDE_FILE = 'open_guide_file'
+  OPEN_GUIDE_FILE = 'open_guide_file',
+
+  // Publishing standards messages
+  REQUEST_PUBLISHING_STANDARDS_DATA = 'request_publishing_standards_data',
+  PUBLISHING_STANDARDS_DATA = 'publishing_standards_data',
+  SET_PUBLISHING_PRESET = 'set_publishing_preset',
+  SET_PUBLISHING_TRIM_SIZE = 'set_publishing_trim_size'
 }
 
 export enum TabId {
@@ -164,6 +170,33 @@ export interface SetModelSelectionMessage extends BaseMessage {
   modelId: string;
 }
 
+// Publishing standards data + settings
+export interface RequestPublishingStandardsDataMessage extends BaseMessage {
+  type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA;
+}
+
+export interface PublishingStandardsDataMessage extends BaseMessage {
+  type: MessageType.PUBLISHING_STANDARDS_DATA;
+  preset: string;           // current configured preset
+  pageSizeKey?: string;     // current configured trim key
+  genres: Array<{
+    key: string;            // slug|abbreviation|name (best available)
+    name: string;
+    abbreviation: string;
+    pageSizes: Array<{ key: string; label: string; width: number; height: number; common: boolean }>;
+  }>;
+}
+
+export interface SetPublishingPresetMessage extends BaseMessage {
+  type: MessageType.SET_PUBLISHING_PRESET;
+  preset: string; // 'none' | 'manuscript' | 'genre:<key>'
+}
+
+export interface SetPublishingTrimMessage extends BaseMessage {
+  type: MessageType.SET_PUBLISHING_TRIM_SIZE;
+  pageSizeKey?: string; // format or WIDTHxHEIGHT
+}
+
 export interface RequestActiveFileMessage extends BaseMessage {
   type: MessageType.REQUEST_ACTIVE_FILE;
 }
@@ -207,6 +240,9 @@ export type WebviewToExtensionMessage =
   | OpenGuideFileMessage
   | RequestModelDataMessage
   | SetModelSelectionMessage
+  | RequestPublishingStandardsDataMessage
+  | SetPublishingPresetMessage
+  | SetPublishingTrimMessage
   | RequestActiveFileMessage
   | RequestManuscriptGlobsMessage
   | RequestChapterGlobsMessage;
@@ -237,6 +273,8 @@ export interface ContextResultMessage extends BaseMessage {
   toolName: string;
   requestedResources?: string[];
 }
+
+// (no extra enums)
 
 export interface ErrorMessage extends BaseMessage {
   type: MessageType.ERROR;
@@ -300,4 +338,5 @@ export type ExtensionToWebviewMessage =
   | ModelDataMessage
   | ActiveFileMessage
   | ManuscriptGlobsMessage
-  | ChapterGlobsMessage;
+  | ChapterGlobsMessage
+  | PublishingStandardsDataMessage;

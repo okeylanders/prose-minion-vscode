@@ -7,6 +7,7 @@ import * as React from 'react';
 import { MessageType, TextSourceMode } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { formatMetricsAsMarkdown } from '../utils/metricsFormatter';
+// MessageType is already imported from shared/types re-export
 
 interface MetricsTabProps {
   selectedText: string;
@@ -32,6 +33,35 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   onPathTextChange
 }) => {
   // Keep a local mirror only for selection preview if needed in future.
+
+  // Publishing standards UI state
+  const [genres, setGenres] = React.useState<Array<{ key: string; name: string; abbreviation: string; pageSizes: Array<{ key: string; label: string; width: number; height: number; common: boolean }> }>>([]);
+  const [preset, setPreset] = React.useState<string>('none');
+  const [pageSizeKey, setPageSizeKey] = React.useState<string>('');
+
+  React.useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      const msg = event.data;
+      if (msg?.type === 'publishing_standards_data') {
+        setGenres(msg.genres || []);
+        setPreset(msg.preset || 'none');
+        setPageSizeKey(msg.pageSizeKey || '');
+      }
+    };
+    window.addEventListener('message', handler);
+    vscode.postMessage({ type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA });
+    return () => window.removeEventListener('message', handler);
+  }, [vscode]);
+
+  const handlePresetChange = (value: string) => {
+    setPreset(value);
+    vscode.postMessage({ type: MessageType.SET_PUBLISHING_PRESET, preset: value });
+  };
+
+  const handleTrimChange = (value: string) => {
+    setPageSizeKey(value);
+    vscode.postMessage({ type: MessageType.SET_PUBLISHING_TRIM_SIZE, pageSizeKey: value });
+  };
 
   const handleMeasureProseStats = () => {
     onLoadingChange(true);
@@ -67,6 +97,40 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
       <h2 className="text-lg font-semibold mb-4">Prose Metrics</h2>
 
       <div className="input-container">
+        <label className="block text-sm font-medium mb-2">Publishing Standards</label>
+        <div className="flex gap-2 mb-2">
+          <select
+            className="w-1/2"
+            value={preset}
+            onChange={(e) => handlePresetChange(e.target.value)}
+            title="Select a genre preset or manuscript format to compare metrics against publishing ranges"
+            disabled={isLoading}
+          >
+            <option value="none">None</option>
+            <option value="manuscript">Manuscript Format</option>
+            <optgroup label="Genres">
+              {genres.map(g => (
+                <option key={g.key} value={`genre:${g.key}`}>{g.name} ({g.abbreviation})</option>
+              ))}
+            </optgroup>
+          </select>
+          <select
+            className="w-1/2"
+            value={pageSizeKey}
+            onChange={(e) => handleTrimChange(e.target.value)}
+            title="Choose a trim size to estimate page count and words-per-page"
+            disabled={isLoading || !preset.startsWith('genre:')}
+          >
+            <option value="">Auto (common size)</option>
+            {(preset.startsWith('genre:')
+              ? (genres.find(g => `genre:${g.key}` === preset)?.pageSizes || [])
+              : []
+            ).map(ps => (
+              <option key={ps.key} value={ps.key}>{ps.label} ({ps.width}x{ps.height} in)</option>
+            ))}
+          </select>
+        </div>
+
         <label className="block text-sm font-medium mb-2">Measure:</label>
         <div className="tab-bar" style={{ marginBottom: '8px' }}>
           <button

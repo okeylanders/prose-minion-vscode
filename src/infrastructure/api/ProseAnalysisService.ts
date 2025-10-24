@@ -28,6 +28,9 @@ import { GuideRegistry } from '../../infrastructure/guides/GuideRegistry';
 import { DictionaryUtility } from '../../tools/utility/dictionaryUtility';
 import { ModelScope } from '../../shared/types';
 import { ContextPathGroup } from '../../shared/types';
+import { PublishingStandardsRepository } from '../standards/PublishingStandardsRepository';
+import { StandardsComparisonService } from '../../application/services/StandardsComparisonService';
+import { Genre } from '../../domain/models/PublishingStandards';
 
 interface AIResourceBundle {
   model: string;
@@ -44,6 +47,8 @@ export class ProseAnalysisService implements IProseAnalysisService {
   private promptLoader?: PromptLoader;
   private guideLoader?: GuideLoader;
   private guideRegistry?: GuideRegistry;
+  private standardsRepo?: PublishingStandardsRepository;
+  private standardsComparer = new StandardsComparisonService();
 
   private aiResources: Partial<Record<ModelScope, AIResourceBundle>> = {};
   private resolvedModels: Partial<Record<ModelScope, string>> = {};
@@ -67,6 +72,10 @@ export class ProseAnalysisService implements IProseAnalysisService {
     this.initializeAITools();
 
     this.contextResourceResolver = new ContextResourceResolver(this.outputChannel);
+
+    if (this.extensionUri) {
+      this.standardsRepo = new PublishingStandardsRepository(this.extensionUri, this.outputChannel);
+    }
   }
 
   private async initializeAITools(): Promise<void> {
@@ -290,14 +299,131 @@ export class ProseAnalysisService implements IProseAnalysisService {
     }
   }
 
-  async measureProseStats(text: string): Promise<MetricsResult> {
+  async measureProseStats(text: string, files?: string[], sourceMode?: string): Promise<MetricsResult> {
     try {
       const stats = this.proseStats.analyze({ text });
-      return AnalysisResultFactory.createMetricsResult('prose_stats', stats);
+
+      // Chapter aggregation (for multi-file modes)
+      if (files && files.length > 0 && (sourceMode === 'manuscript' || sourceMode === 'chapters')) {
+        const chapterWordCounts = await this.computeWordCountsForFiles(files);
+        const chapterCount = chapterWordCounts.length;
+        const totalWords = chapterWordCounts.reduce((a, b) => a + b, 0);
+        const avgChapterLength = chapterCount > 0 ? Math.round(totalWords / chapterCount) : 0;
+        (stats as any).chapterCount = chapterCount;
+        (stats as any).averageChapterLength = avgChapterLength;
+      }
+
+      // Standards comparison (based on settings)
+      const enriched = await this.enrichWithStandards(stats);
+      return AnalysisResultFactory.createMetricsResult('prose_stats', enriched);
     } catch (error) {
       return AnalysisResultFactory.createMetricsResult('prose_stats', {
         error: error instanceof Error ? error.message : String(error)
       });
+    }
+  }
+
+  private async computeWordCountsForFiles(relativePaths: string[]): Promise<number[]> {
+    const counts: number[] = [];
+    for (const rel of relativePaths) {
+      try {
+        // Resolve URI from workspace
+        const uri = await this.findUriByRelativePath(rel);
+        if (!uri) continue;
+        const raw = await vscode.workspace.fs.readFile(uri);
+        const text = Buffer.from(raw).toString('utf8');
+        counts.push(this.simpleWordCount(text));
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.outputChannel?.appendLine(`[ProseAnalysisService] Failed counting words for ${rel}: ${msg}`);
+      }
+    }
+    return counts;
+  }
+
+  private simpleWordCount(text: string): number {
+    return text.split(/\s+/).filter(w => w.length > 0).length;
+  }
+
+  private async findUriByRelativePath(relativePath: string): Promise<vscode.Uri | undefined> {
+    const folders = vscode.workspace.workspaceFolders ?? [];
+    for (const folder of folders) {
+      const candidate = vscode.Uri.joinPath(folder.uri, relativePath);
+      try {
+        await vscode.workspace.fs.stat(candidate);
+        return candidate;
+      } catch {
+        // continue
+      }
+    }
+    return undefined;
+  }
+
+  private async enrichWithStandards(stats: any): Promise<any> {
+    try {
+      if (!this.standardsRepo) return stats;
+      const config = vscode.workspace.getConfiguration('proseMinion');
+      const preset = (config.get<string>('publishingStandards.preset') || 'none').trim().toLowerCase();
+      if (preset === 'none') return stats;
+
+      if (preset === 'manuscript') {
+        // Manuscript format currently not deeply compared; may add in future
+        return stats;
+      }
+
+      // genre:<key>
+      let selectedGenre: Genre | undefined;
+      if (preset.startsWith('genre:')) {
+        const key = preset.slice('genre:'.length).trim();
+        selectedGenre = await this.standardsRepo.findGenre(key);
+      } else {
+        // Backward fallback: try direct key
+        selectedGenre = await this.standardsRepo.findGenre(preset);
+      }
+      if (!selectedGenre) return stats;
+
+      const pageSizeKey = (config.get<string>('publishingStandards.pageSizeKey') || '').trim();
+      const comparer = this.standardsComparer;
+
+      const items = [] as any[];
+      const S = selectedGenre.literary_statistics;
+
+      const push = (key: string, label: string, value: number | string | undefined, range?: any) => {
+        const item = comparer.makeItem(key, label, value as any, range);
+        if (item) items.push(item);
+      };
+
+      push('word_count', 'Word Count', stats.wordCount, selectedGenre.word_count_range);
+      push('dialogue_percentage', 'Dialogue %', stats.dialoguePercentage, S.dialogue_percentage);
+      push('lexical_density', 'Lexical Density %', stats.lexicalDensity, S.lexical_density);
+      push('avg_words_per_sentence', 'Avg Words/Sentence', stats.averageWordsPerSentence, S.avg_words_per_sentence);
+      push('avg_sentences_per_paragraph', 'Avg Sentences/Paragraph', stats.averageSentencesPerParagraph, S.avg_sentences_per_paragraph);
+      push('unique_word_count', 'Unique Words', stats.uniqueWordCount, S.unique_word_count);
+
+      if (stats.wordLengthDistribution) {
+        push('wlen_1_3', '1–3 Letter %', Math.round(stats.wordLengthDistribution['1_to_3_letters'] * 10) / 10, S.word_length_distribution['1_to_3_letters']);
+        push('wlen_4_6', '4–6 Letter %', Math.round(stats.wordLengthDistribution['4_to_6_letters'] * 10) / 10, S.word_length_distribution['4_to_6_letters']);
+        push('wlen_7_plus', '7+ Letter %', Math.round(stats.wordLengthDistribution['7_plus_letters'] * 10) / 10, S.word_length_distribution['7_plus_letters']);
+      }
+
+      if (stats.chapterCount !== undefined) {
+        push('chapter_count', 'Chapter Count', stats.chapterCount, S.chapter_count as any);
+      }
+      if (stats.averageChapterLength !== undefined) {
+        push('avg_chapter_length', 'Avg Chapter Length', stats.averageChapterLength, S.avg_chapter_length as any);
+      }
+
+      const publishingFormat = this.standardsComparer.buildPublishingFormat(selectedGenre, stats.wordCount, pageSizeKey || undefined);
+
+      return {
+        ...stats,
+        comparison: { items },
+        publishingFormat
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.outputChannel?.appendLine(`[ProseAnalysisService] Standards enrichment failed: ${msg}`);
+      return stats;
     }
   }
 
