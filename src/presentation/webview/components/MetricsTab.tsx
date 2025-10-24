@@ -10,7 +10,6 @@ import { formatMetricsAsMarkdown } from '../utils/metricsFormatter';
 // MessageType is already imported from shared/types re-export
 
 interface MetricsTabProps {
-  selectedText: string;
   vscode: any;
   metrics: any;
   metricsToolName?: string;
@@ -27,7 +26,6 @@ interface MetricsTabProps {
 }
 
 export const MetricsTab: React.FC<MetricsTabProps> = ({
-  selectedText,
   vscode,
   metrics,
   metricsToolName,
@@ -59,7 +57,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   React.useEffect(() => {
     const handler = (event: MessageEvent) => {
       const msg = event.data;
-      if (msg?.type === 'publishing_standards_data') {
+      if (msg?.type === MessageType.PUBLISHING_STANDARDS_DATA) {
         setGenres(msg.genres || []);
         setPreset(msg.preset || 'none');
         setPageSizeKey(msg.pageSizeKey || '');
@@ -210,9 +208,10 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
       <h2 className="text-lg font-semibold mb-4">Prose Metrics</h2>
 
       <div className="input-container">
-        <label className="block text-sm font-medium mb-2">Publishing Standards</label>
+        <label className="block text-sm font-medium mb-2" htmlFor="pm-preset-select">Publishing Standards</label>
         <div className="flex gap-2 mb-2">
           <select
+            id="pm-preset-select"
             className="w-1/2"
             value={preset}
             onChange={(e) => handlePresetChange(e.target.value)}
@@ -227,7 +226,9 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
               ))}
             </optgroup>
           </select>
+          <label className="block text-sm font-medium mb-2" htmlFor="pm-trim-select" style={{position:'absolute',left:'-10000px',width:1,height:1,overflow:'hidden'}}>Trim Size</label>
           <select
+            id="pm-trim-select"
             className="w-1/2"
             value={pageSizeKey}
             onChange={(e) => handleTrimChange(e.target.value)}
@@ -288,8 +289,9 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
           </button>
         </div>
 
-        <label className="block text-sm font-medium mb-2">Path / Pattern</label>
+        <label className="block text-sm font-medium mb-2" htmlFor="pm-path-input">Path / Pattern</label>
         <input
+          id="pm-path-input"
           className="w-full"
           type="text"
           value={pathText}
@@ -321,7 +323,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
         {activeTool === 'word_search' && (
           <div className="input-container">
             <div className="input-header">
-              <label className="block text-sm font-medium">Targets (comma or newline separated; phrases allowed)</label>
+              <label className="block text-sm font-medium" htmlFor="pm-targets-textarea">Targets (comma or newline separated; phrases allowed)</label>
               <button
                 className="icon-button"
                 title="Expand word list"
@@ -332,6 +334,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
               </button>
             </div>
             <textarea
+              id="pm-targets-textarea"
               rows={3}
               value={wordSearchTargets}
               onChange={(e) => onWordSearchTargetsChange(e.target.value)}
@@ -343,16 +346,16 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
 
             <div className="flex gap-2 mt-2">
               <div className="flex-1">
-                <label className="block text-sm mb-1">Context words</label>
-                <input type="number" value={wordSearchContextWords} onChange={(e) => setWordSearchContextWords(parseInt(e.target.value || '7', 10))} />
+                <label className="block text-sm mb-1" htmlFor="pm-context-words">Context words</label>
+                <input id="pm-context-words" type="number" value={wordSearchContextWords} onChange={(e) => setWordSearchContextWords(parseInt(e.target.value || '7', 10))} />
               </div>
               <div className="flex-1">
-                <label className="block text-sm mb-1">Cluster window</label>
-                <input type="number" value={wordSearchClusterWindow} onChange={(e) => setWordSearchClusterWindow(parseInt(e.target.value || '150', 10))} />
+                <label className="block text-sm mb-1" htmlFor="pm-cluster-window">Cluster window</label>
+                <input id="pm-cluster-window" type="number" value={wordSearchClusterWindow} onChange={(e) => setWordSearchClusterWindow(parseInt(e.target.value || '150', 10))} />
               </div>
               <div className="flex-1">
-                <label className="block text-sm mb-1">Min cluster size</label>
-                <input type="number" value={wordSearchMinCluster} onChange={(e) => setWordSearchMinCluster(parseInt(e.target.value || '3', 10))} />
+                <label className="block text-sm mb-1" htmlFor="pm-min-cluster">Min cluster size</label>
+                <input id="pm-min-cluster" type="number" value={wordSearchMinCluster} onChange={(e) => setWordSearchMinCluster(parseInt(e.target.value || '3', 10))} />
               </div>
             </div>
             <div className="mt-2">

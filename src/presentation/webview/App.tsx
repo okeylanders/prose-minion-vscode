@@ -473,7 +473,6 @@ export const App: React.FC = () => {
 
         {activeTab === TabId.METRICS && (
           <MetricsTab
-            selectedText={selectedText}
             vscode={vscode}
             metrics={metricsResult}
             metricsToolName={metricsToolName}
