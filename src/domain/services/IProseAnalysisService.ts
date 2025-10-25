@@ -20,7 +20,7 @@ export interface IProseAnalysisService {
   /**
    * Measure prose statistics (word count, pacing, etc.)
    */
-  measureProseStats(text: string): Promise<MetricsResult>;
+  measureProseStats(text: string, files?: string[], sourceMode?: string): Promise<MetricsResult>;
 
   /**
    * Analyze style flags and patterns
@@ -31,6 +31,22 @@ export interface IProseAnalysisService {
    * Measure word frequency
    */
   measureWordFrequency(text: string): Promise<MetricsResult>;
+
+  /**
+   * Search for words/phrases with context and clusters across scope
+   */
+  measureWordSearch(
+    text: string,
+    files?: string[],
+    sourceMode?: string,
+    options?: {
+      wordsOrPhrases: string[];
+      contextWords: number;
+      clusterWindow: number;
+      minClusterSize: number;
+      caseSensitive?: boolean;
+    }
+  ): Promise<MetricsResult>;
 
   /**
    * Generate a dictionary entry for a word using AI

@@ -68,7 +68,7 @@ Presentation → Application → Domain ← Infrastructure
 
 ### Infrastructure Service
 - **File**: [src/infrastructure/api/ProseAnalysisService.ts](src/infrastructure/api/ProseAnalysisService.ts)
-- **Purpose**: Implements IProseAnalysisService, spins up dedicated OpenRouter clients per feature scope (assistant, dictionary, context). A unified `maxTokens` (default 10000) is applied across all tools. The context assistant now reads and includes the full source document on the initial turn when `sourceFileUri` is provided.
+- **Purpose**: Implements IProseAnalysisService, spins up dedicated OpenRouter clients per feature scope (assistant, dictionary, context). A unified `maxTokens` (default 10000) is applied across all tools. The context assistant now reads and includes the full source document on the initial turn when `sourceFileUri` is provided. Aggregates per-file stats for multi-file sources (chapters/manuscripts) and enriches metrics with publishing standards via StandardsComparisonService.
 - **Pattern**: Dependency Inversion
 
 ### AI Orchestrator
@@ -81,6 +81,16 @@ Presentation → Application → Domain ← Infrastructure
 - **AnalysisTab**: [src/presentation/webview/components/AnalysisTab.tsx](src/presentation/webview/components/AnalysisTab.tsx)
 - **MetricsTab**: [src/presentation/webview/components/MetricsTab.tsx](src/presentation/webview/components/MetricsTab.tsx)
 - **SuggestionsTab**: [src/presentation/webview/components/SuggestionsTab.tsx](src/presentation/webview/components/SuggestionsTab.tsx)
+
+### Standards Comparison Service
+- **File**: [src/application/services/StandardsComparisonService.ts](src/application/services/StandardsComparisonService.ts)
+- **Purpose**: Map measured metrics to publishing standard ranges, compute status (below/within/above), and derive Publishing Format estimates (words/page, estimated pages) using genre + trim size.
+- **Pattern**: Pure service (deterministic mapping)
+
+### Publishing Standards Repository
+- **File**: [src/infrastructure/standards/PublishingStandardsRepository.ts](src/infrastructure/standards/PublishingStandardsRepository.ts)
+- **Purpose**: Load and query `resources/repository/publishing_standards.json` (genres + manuscript format). Resolve genre keys (slug/abbr/name) and trim size keys (format or WxH).
+- **Pattern**: Repository
 
 ## Message Flow
 

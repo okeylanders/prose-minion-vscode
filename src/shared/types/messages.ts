@@ -4,6 +4,7 @@
  */
 
 import { ContextPathGroup } from './context';
+import { TextSourceSpec } from './sources';
 
 export enum MessageType {
   // Analysis tab messages
@@ -19,6 +20,15 @@ export enum MessageType {
   MEASURE_PROSE_STATS = 'measure_prose_stats',
   MEASURE_STYLE_FLAGS = 'measure_style_flags',
   MEASURE_WORD_FREQUENCY = 'measure_word_frequency',
+  MEASURE_WORD_SEARCH = 'measure_word_search',
+
+  // Metrics source helpers
+  REQUEST_ACTIVE_FILE = 'request_active_file',
+  ACTIVE_FILE = 'active_file',
+  REQUEST_MANUSCRIPT_GLOBS = 'request_manuscript_globs',
+  MANUSCRIPT_GLOBS = 'manuscript_globs',
+  REQUEST_CHAPTER_GLOBS = 'request_chapter_globs',
+  CHAPTER_GLOBS = 'chapter_globs',
 
   // Results messages
   ANALYSIS_RESULT = 'analysis_result',
@@ -40,7 +50,13 @@ export enum MessageType {
   SET_MODEL_SELECTION = 'set_model_selection',
 
   // Guide actions
-  OPEN_GUIDE_FILE = 'open_guide_file'
+  OPEN_GUIDE_FILE = 'open_guide_file',
+
+  // Publishing standards messages
+  REQUEST_PUBLISHING_STANDARDS_DATA = 'request_publishing_standards_data',
+  PUBLISHING_STANDARDS_DATA = 'publishing_standards_data',
+  SET_PUBLISHING_PRESET = 'set_publishing_preset',
+  SET_PUBLISHING_TRIM_SIZE = 'set_publishing_trim_size'
 }
 
 export enum TabId {
@@ -119,17 +135,35 @@ export interface GenerateContextMessage extends BaseMessage {
 
 export interface MeasureProseStatsMessage extends BaseMessage {
   type: MessageType.MEASURE_PROSE_STATS;
-  text: string;
+  text?: string;
+  source?: TextSourceSpec;
 }
 
 export interface MeasureStyleFlagsMessage extends BaseMessage {
   type: MessageType.MEASURE_STYLE_FLAGS;
-  text: string;
+  text?: string;
+  source?: TextSourceSpec;
 }
 
 export interface MeasureWordFrequencyMessage extends BaseMessage {
   type: MessageType.MEASURE_WORD_FREQUENCY;
-  text: string;
+  text?: string;
+  source?: TextSourceSpec;
+}
+
+export interface WordSearchOptions {
+  wordsOrPhrases: string[];
+  contextWords: number;
+  clusterWindow: number;
+  minClusterSize: number;
+  caseSensitive?: boolean;
+}
+
+export interface MeasureWordSearchMessage extends BaseMessage {
+  type: MessageType.MEASURE_WORD_SEARCH;
+  text?: string;
+  source?: TextSourceSpec;
+  options: WordSearchOptions;
 }
 
 export interface TabChangedMessage extends BaseMessage {
@@ -152,6 +186,61 @@ export interface SetModelSelectionMessage extends BaseMessage {
   modelId: string;
 }
 
+// Publishing standards data + settings
+export interface RequestPublishingStandardsDataMessage extends BaseMessage {
+  type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA;
+}
+
+export interface PublishingStandardsDataMessage extends BaseMessage {
+  type: MessageType.PUBLISHING_STANDARDS_DATA;
+  preset: string;           // current configured preset
+  pageSizeKey?: string;     // current configured trim key
+  genres: Array<{
+    key: string;            // slug|abbreviation|name (best available)
+    name: string;
+    abbreviation: string;
+    pageSizes: Array<{ key: string; label: string; width: number; height: number; common: boolean }>;
+  }>;
+}
+
+export interface SetPublishingPresetMessage extends BaseMessage {
+  type: MessageType.SET_PUBLISHING_PRESET;
+  preset: string; // 'none' | 'manuscript' | 'genre:<key>'
+}
+
+export interface SetPublishingTrimMessage extends BaseMessage {
+  type: MessageType.SET_PUBLISHING_TRIM_SIZE;
+  pageSizeKey?: string; // format or WIDTHxHEIGHT
+}
+
+export interface RequestActiveFileMessage extends BaseMessage {
+  type: MessageType.REQUEST_ACTIVE_FILE;
+}
+
+export interface ActiveFileMessage extends BaseMessage {
+  type: MessageType.ACTIVE_FILE;
+  relativePath?: string; // undefined if no active file
+  sourceUri?: string;
+}
+
+export interface RequestManuscriptGlobsMessage extends BaseMessage {
+  type: MessageType.REQUEST_MANUSCRIPT_GLOBS;
+}
+
+export interface ManuscriptGlobsMessage extends BaseMessage {
+  type: MessageType.MANUSCRIPT_GLOBS;
+  globs: string; // raw config string
+}
+
+export interface RequestChapterGlobsMessage extends BaseMessage {
+  type: MessageType.REQUEST_CHAPTER_GLOBS;
+}
+
+export interface ChapterGlobsMessage extends BaseMessage {
+  type: MessageType.CHAPTER_GLOBS;
+  globs: string; // raw config string
+}
+
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
   | AnalyzeProseMessage
@@ -163,10 +252,17 @@ export type WebviewToExtensionMessage =
   | MeasureProseStatsMessage
   | MeasureStyleFlagsMessage
   | MeasureWordFrequencyMessage
+  | MeasureWordSearchMessage
   | TabChangedMessage
   | OpenGuideFileMessage
   | RequestModelDataMessage
-  | SetModelSelectionMessage;
+  | SetModelSelectionMessage
+  | RequestPublishingStandardsDataMessage
+  | SetPublishingPresetMessage
+  | SetPublishingTrimMessage
+  | RequestActiveFileMessage
+  | RequestManuscriptGlobsMessage
+  | RequestChapterGlobsMessage;
 
 // Messages from extension to webview
 export interface AnalysisResultMessage extends BaseMessage {
@@ -194,6 +290,8 @@ export interface ContextResultMessage extends BaseMessage {
   toolName: string;
   requestedResources?: string[];
 }
+
+// (no extra enums)
 
 export interface ErrorMessage extends BaseMessage {
   type: MessageType.ERROR;
@@ -254,4 +352,8 @@ export type ExtensionToWebviewMessage =
   | ErrorMessage
   | StatusMessage
   | SelectionUpdatedMessage
-  | ModelDataMessage;
+  | ModelDataMessage
+  | ActiveFileMessage
+  | ManuscriptGlobsMessage
+  | ChapterGlobsMessage
+  | PublishingStandardsDataMessage;

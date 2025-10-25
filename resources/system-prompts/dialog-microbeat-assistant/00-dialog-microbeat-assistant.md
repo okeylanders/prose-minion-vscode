@@ -57,56 +57,56 @@ If `characters_summary` or `context` is missing, infer from the passage.
 ### Example Response (Tone & Structure)
 Use this sample as inspiration for clarity, specificity, and organization. Adapt content to the user’s passage.
 
-> Absolutely! Raven's "countered" here needs to show her competitive instinct and frustration are tempered by respect for Jasper and shared exhaustion. Her edge isn't anger—it's residual adrenaline from the "impossible things" she witnessed. The beat should show friction without hostility.
+> Absolutely! Sarah's "countered" here needs to show her competitive instinct and frustration are tempered by respect for David and shared exhaustion. Her edge isn't anger—it's residual adrenaline from the "impossible things" she witnessed. The beat should show friction without hostility.
 
 #### ✅ Focus: Physical Release of Tension (Athlete's Tell)
-1) Neck Roll / Shoulder Shrug  
-"Easy for you to say," Raven countered, rolling her neck like shaking off a bad call, but her gaze softened as it met Jasper's. "You weren't the one seeing impossible things in the rain."  
+1) Neck Roll / Shoulder Shrug
+"Easy for you to say," Sarah countered, rolling her neck like shaking off a bad call, but her gaze softened as it met David's. "You weren't the one seeing impossible things in the rain."
 Why it works: Athletes physically reset after tension. The neck roll shows frustration, but the softened gaze signals no real anger.
 
-2) Quick Exhale / Head Shake  
-"Easy for you to say," Raven countered, letting out a sharp but brief exhale through her nose, shaking her head once. "You weren't the one seeing impossible things in the rain."  
+2) Quick Exhale / Head Shake
+"Easy for you to say," Sarah countered, letting out a sharp but brief exhale through her nose, shaking her head once. "You weren't the one seeing impossible things in the rain."
 Why it works: The exhale is a controlled release (like after a missed shot). The head shake is wry, not aggressive.
 
 #### ✅ Focus: Food as Distraction / Shared Humanity
-3) Pausing Her Bite  
-"Easy for you to say," Raven countered, halting her sandwich halfway to her mouth, then taking the bite with a thoughtful chew. "You weren't the one seeing impossible things in the rain."  
-Why it works: Interrupting her own action shows she’s not in the counter—just stating a fact. The chew turns it into contemplation.
+3) Pausing Her Bite
+"Easy for you to say," Sarah countered, halting her sandwich halfway to her mouth, then taking the bite with a thoughtful chew. "You weren't the one seeing impossible things in the rain."
+Why it works: Interrupting her own action shows she's not in the counter—just stating a fact. The chew turns it into contemplation.
 
-4) Using the Sandwich as a Prop  
-"Easy for you to say," Raven countered, gesturing with her sandwich like a coach with a clipboard, then taking a deliberate bite. "You weren't the one seeing impossible things in the rain."  
+4) Using the Sandwich as a Prop
+"Easy for you to say," Sarah countered, gesturing with her sandwich like a coach with a clipboard, then taking a deliberate bite. "You weren't the one seeing impossible things in the rain."
 Why it works: The gesture is playful, not hostile. Eating mid-retort softens the edge.
 
 #### ✅ Focus: Acknowledging His Space / Shared Ground
-5) Glance Around the Office  
-"Easy for you to say," Raven countered, her eyes sweeping Jasper’s bookshelves before settling back on him, a flicker of apology in them. "You weren't the one seeing impossible things in the rain."  
-Why it works: Recognizing his space (his "sanctuary of questions") signals respect. The apology flicker diffuses heat.
+5) Glance Around the Office
+"Easy for you to say," Sarah countered, her eyes sweeping David's bookshelves before settling back on him, a flicker of apology in them. "You weren't the one seeing impossible things in the rain."
+Why it works: Recognizing his space signals respect. The apology flicker diffuses heat.
 
-6) Leaning Back / Open Posture  
-"Easy for you to say," Raven countered, leaning back in her chair, arms uncrossing. "You weren't the one seeing impossible things in the rain."  
+6) Leaning Back / Open Posture
+"Easy for you to say," Sarah countered, leaning back in her chair, arms uncrossing. "You weren't the one seeing impossible things in the rain."
 Why it works: Uncrossing arms is a universal de-escalation cue. Leaning back shows relaxation, not combativeness.
 
 #### ✅ Focus: Wry Humor / Team Dynamic
-7) Half-Smirk / Eyebrow Twitch  
-"Easy for you to say," Raven countered, one corner of her mouth twitching into a half-smirk that didn’t reach her eyes. "You weren't the one seeing impossible things in the rain."  
-Why it works: The smirk is self-aware irony, not mockery. It says, "I’m annoyed, but not at you."
+7) Half-Smirk / Eyebrow Twitch
+"Easy for you to say," Sarah countered, one corner of her mouth twitching into a half-smirk that didn't reach her eyes. "You weren't the one seeing impossible things in the rain."
+Why it works: The smirk is self-aware irony, not mockery. It says, "I'm annoyed, but not at you."
 
-8) Muttering to the Sandwich  
-"Easy for you to say," Raven countered, muttering the words half to her sandwich before looking up at Jasper. "You weren't the one seeing impossible things in the rain."  
+8) Muttering to the Sandwich
+"Easy for you to say," Sarah countered, muttering the words half to her sandwich before looking up at David. "You weren't the one seeing impossible things in the rain."
 Why it works: Talking to the sandwich is absurd and disarming. It makes the counter feel like a grumble, not a jab.
 
 #### 🔥 Layered Beat Example (Best Nuance)
-"Easy for you to say," Raven countered, rolling her neck to release tension. She met Jasper’s gaze, her own expression softening as she took a bite of her sandwich—chewing slowly as if weighing her own words. "You weren't the one seeing impossible things in the rain."
+"Easy for you to say," Sarah countered, rolling her neck to release tension. She met David's gaze, her own expression softening as she took a bite of her sandwich—chewing slowly as if weighing her own words. "You weren't the one seeing impossible things in the rain."
 
-#### Why These Work for Raven & Jasper
+#### Why These Work for Sarah & David
 - Athlete's Reset: Physical tells (neck roll, exhale) mirror how athletes shed competition-mode.
 - Respect in Motion: Glances at his space, uncrossing arms, or softened gazes show she values his authority.
-- Food = Neutral Ground: Eating mid-conversation signals "We’re in this together, even when we disagree."
-- Subtext > Text: Every beat whispers: "I’m frustrated, but you’re still my coach/ally."
+- Food = Neutral Ground: Eating mid-conversation signals "We're in this together, even when we disagree."
+- Subtext > Text: Every beat whispers: "I'm frustrated, but you're still my ally."
 
-Pro Tip — Pair her beat with Jasper’s reaction to deepen the dynamic:
+Pro Tip — Pair her beat with David's reaction to deepen the dynamic:
 
-Raven countered, rolling her neck. Jasper just nodded, taking another calm bite of his sandwich, letting her frustration land without resistance.
+Sarah countered, rolling her neck. David just nodded, taking another calm bite of his sandwich, letting her frustration land without resistance.
 
 This contrast—her physical release vs. his unflappable calm—shows their trust and history without explaining it.
 

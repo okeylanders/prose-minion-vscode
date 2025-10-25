@@ -1,0 +1,530 @@
+{
+  "type": "object",
+  "properties": {
+    "publishing_standards": {
+      "type": "object",
+      "properties": {
+        "genres": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The full name of the genre."
+              },
+              "slug": {
+                "type": "string",
+                "description": "Stable identifier for the genre (lowercase, hyphenated).",
+                "optional": true
+              },
+              "abbreviation": {
+                "type": "string",
+                "description": "The common abbreviation for the genre."
+              },
+              "words_per_page": {
+                "type": "object",
+                "properties": {
+                  "min": {
+                    "type": "integer"
+                  },
+                  "max": {
+                    "type": "integer"
+                  },
+                  "average": {
+                    "type": "integer"
+                  }
+                },
+                "description": "Typical words per page for the genre."
+              },
+              "page_sizes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "width_inches": {
+                      "type": "number"
+                    },
+                    "height_inches": {
+                      "type": "number"
+                    },
+                    "common": {
+                      "type": "boolean"
+                    },
+                    "format": {
+                      "type": "string",
+                      "optional": true
+                    },
+                    "words_per_page": {
+                      "type": "object",
+                      "properties": {
+                        "min": { "type": "integer" },
+                        "max": { "type": "integer" },
+                        "average": { "type": "integer" }
+                      },
+                      "description": "Optional trim-size-specific words-per-page; overrides genre-level default when provided.",
+                      "optional": true
+                    }
+                  },
+                  "required": [
+                    "width_inches",
+                    "height_inches",
+                    "common"
+                  ]
+                },
+                "description": "Common page sizes (dimensions) for books in this genre."
+              },
+              "word_count_range": {
+                "type": "object",
+                "properties": {
+                  "min": {
+                    "type": "integer"
+                  },
+                  "max": {
+                    "type": "integer"
+                  }
+                },
+                "description": "Typical word count range for books in this genre."
+              },
+              "page_count_range": {
+                "type": "object",
+                "properties": {
+                  "min": {
+                    "type": "integer"
+                  },
+                  "max": {
+                    "type": "integer"
+                  }
+                },
+                "description": "Typical page count range for books in this genre."
+              },
+              "formatting": {
+                "type": "object",
+                "properties": {
+                  "font_size_pt": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "Common font sizes in points."
+                  },
+                  "line_spacing": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "description": "Common line spacing values."
+                  },
+                  "margins_inches": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "description": "Common margin sizes in inches."
+                  }
+                },
+                "required": [
+                  "font_size_pt",
+                  "line_spacing",
+                  "margins_inches"
+                ],
+                "description": "Typical formatting standards for the genre."
+              },
+              "literary_statistics": {
+                "type": "object",
+                "properties": {
+                  "unique_word_count": {
+                    "type": "object",
+                    "properties": {
+                      "min": { "type": "integer" },
+                      "max": { "type": "integer" }
+                    },
+                    "required": [
+                      "min",
+                      "max"
+                    ]
+                  },
+                  "lexical_density": {
+                    "type": "object",
+                    "properties": {
+                      "min": { "type": "number" },
+                      "max": { "type": "number" }
+                    },
+                    "required": [
+                      "min",
+                      "max"
+                    ]
+                  },
+                  "dialogue_percentage": {
+                    "type": "object",
+                    "properties": {
+                      "min": { "type": "number" },
+                      "max": { "type": "number" }
+                    },
+                    "required": [
+                      "min",
+                      "max"
+                    ]
+                  },
+                  "avg_words_per_sentence": {
+                    "type": "object",
+                    "properties": {
+                      "min": { "type": "number" },
+                      "max": { "type": "number" }
+                    },
+                    "required": [
+                      "min",
+                      "max"
+                    ]
+                  },
+                  "avg_sentences_per_paragraph": {
+                    "type": "object",
+                    "properties": {
+                      "min": { "type": "number" },
+                      "max": { "type": "number" }
+                    },
+                    "required": [
+                      "min",
+                      "max"
+                    ]
+                  },
+                  "reading_time_hours": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "min": {
+                            "type": "number"
+                          },
+                          "max": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "min",
+                          "max"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": ["N/A"]
+                      }
+                    ]
+                  },
+                  "reading_time_minutes": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "min": {
+                            "type": "integer"
+                          },
+                          "max": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "min",
+                          "max"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": ["N/A"]
+                      }
+                    ],
+                    "optional": true
+                  },
+                  "chapter_count": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "min": {
+                            "type": "integer"
+                          },
+                          "max": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "min",
+                          "max"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": ["N/A"]
+                      }
+                    ]
+                  },
+                  "avg_chapter_length": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "min": {
+                            "type": "integer"
+                          },
+                          "max": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "min",
+                          "max"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": ["N/A"]
+                      }
+                    ]
+                  },
+                  "avg_spread_length": {
+                    "type": "object",
+                    "properties": {
+                      "min": {
+                        "type": "integer"
+                      },
+                      "max": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "min",
+                      "max"
+                    ],
+                    "optional": true
+                  },
+                  "word_length_distribution": {
+                    "type": "object",
+                    "properties": {
+                      "1_to_3_letters": {
+                        "type": "object",
+                        "properties": {
+                          "min": {
+                            "type": "integer"
+                          },
+                          "max": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "min",
+                          "max"
+                        ]
+                      },
+                      "4_to_6_letters": {
+                        "type": "object",
+                        "properties": {
+                          "min": {
+                            "type": "integer"
+                          },
+                          "max": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "min",
+                          "max"
+                        ]
+                      },
+                      "7_plus_letters": {
+                        "type": "object",
+                        "properties": {
+                          "min": {
+                            "type": "integer"
+                          },
+                          "max": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "min",
+                          "max"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "1_to_3_letters",
+                      "4_to_6_letters",
+                      "7_plus_letters"
+                    ]
+                  }
+                },
+                "required": [
+                  "unique_word_count",
+                  "lexical_density",
+                  "dialogue_percentage",
+                  "avg_words_per_sentence",
+                  "avg_sentences_per_paragraph",
+                  "reading_time_hours",
+                  "chapter_count",
+                  "avg_chapter_length",
+                  "word_length_distribution"
+                ],
+                "description": "Statistical literary characteristics of the genre."
+              },
+              "popular_examples": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string"
+                    },
+                    "author": {
+                      "type": "string"
+                    },
+                    "words": {
+                      "type": "integer"
+                    },
+                    "chapters": {
+                      "oneOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "unique_words": {
+                      "type": "integer",
+                      "optional": true
+                    },
+                    "lexical_density": {
+                      "type": "number",
+                      "optional": true
+                    },
+                    "dialogue_percentage": {
+                      "type": "integer",
+                      "optional": true
+                    },
+                    "avg_words_per_sentence": {
+                      "type": "number",
+                      "optional": true
+                    },
+                    "avg_sentences_per_paragraph": {
+                      "type": "number",
+                      "optional": true
+                    },
+                    "reading_time_hours": {
+                      "type": "number",
+                      "optional": true
+                    },
+                    "reading_time_minutes": {
+                      "type": "integer",
+                      "optional": true
+                    },
+                    "spreads": {
+                      "type": "integer",
+                      "optional": true
+                    },
+                    "pages": {
+                      "type": "integer",
+                      "optional": true
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "author",
+                    "words",
+                    "chapters"
+                  ]
+                },
+                "description": "Examples of popular books within the genre with their literary stats."
+              }
+            },
+            "required": [
+              "name",
+              "abbreviation",
+              "words_per_page",
+              "page_sizes",
+              "word_count_range",
+              "page_count_range",
+              "formatting",
+              "literary_statistics",
+              "popular_examples"
+            ]
+          },
+          "description": "A list of various literary genres and their associated publishing standards and statistics."
+        },
+        "manuscript_format": {
+          "type": "object",
+          "properties": {
+            "words_per_page": {
+              "type": "integer",
+              "description": "Standard words per page for manuscript submission."
+            },
+            "page_size": {
+              "type": "object",
+              "properties": {
+                "width_inches": {
+                  "type": "number"
+                },
+                "height_inches": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "width_inches",
+                "height_inches"
+              ],
+              "description": "Standard page size for manuscript submission."
+            },
+            "formatting": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "string",
+                  "description": "Recommended font for manuscript submission."
+                },
+                "font_size_pt": {
+                  "type": "integer",
+                  "description": "Recommended font size in points."
+                },
+                "spacing": {
+                  "type": "string",
+                  "description": "Recommended line spacing (e.g., 'double')."
+                },
+                "margins_inches": {
+                  "type": "number",
+                  "description": "Recommended margin size in inches."
+                }
+              },
+              "required": [
+                "font",
+                "font_size_pt",
+                "spacing",
+                "margins_inches"
+              ],
+              "description": "Formatting guidelines for manuscript submission."
+            },
+            "purpose": {
+              "type": "string",
+              "description": "The purpose of this manuscript format (e.g., 'submission')."
+            }
+          },
+          "required": [
+            "words_per_page",
+            "page_size",
+            "formatting",
+            "purpose"
+          ],
+          "description": "General manuscript formatting standards for submission."
+        }
+      },
+      "required": [
+        "genres",
+        "manuscript_format"
+      ],
+      "description": "Overall publishing standards including genre-specific details and general manuscript format."
+    }
+  },
+  "required": [
+    "publishing_standards"
+  ],
+  "description": "Schema for literary publishing standards and statistics."
+}

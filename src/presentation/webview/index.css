@@ -556,6 +556,23 @@ select:focus {
   margin: var(--spacing-lg) 0;
 }
 
+/* Markdown tables fill available width */
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.markdown-content th,
+.markdown-content td {
+  border: 1px solid var(--vscode-panel-border);
+  padding: 6px 8px;
+}
+
+.markdown-content thead th {
+  background-color: var(--vscode-sideBar-background);
+}
+
 /* Metrics grid */
 .metrics-grid {
   display: grid;

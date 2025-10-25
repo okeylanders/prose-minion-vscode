@@ -139,51 +139,51 @@ He slammed the door. "I'm leaving."
 75. He poured himself a drink. "Long day."
 76. She stared out the window. "It's raining again."
 
-#### Character-Specific: Athletic (Raven—Star Basketball Player)
+#### Character-Specific: Athletic (Maya—Star Basketball Player)
 
 Physical Readiness & Tactical Stance:
 
 77. Leaning In, Eliminating Distance:
-   > "Then we better make sure he doesn't have to do it alone." Raven leaned forward, elbows on her knees, closing the space between them like a coach drawing up a last-second play. "Because that woman? She's coming back..."
+   > "Then we better make sure he doesn't have to do it alone." Maya leaned forward, elbows on her knees, closing the space between them like a coach drawing up a last-second play. "Because that woman? She's coming back..."
 
 78. Sharp Gesture: "This Is Non-Negotiable":
-   > "Then we better make sure he doesn't have to do it alone." Raven chopped the air with her hand, cutting off any argument. "Because that woman? She's coming back..."
+   > "Then we better make sure he doesn't have to do it alone." Maya chopped the air with her hand, cutting off any argument. "Because that woman? She's coming back..."
 
 79. Tracking the Threat (Competitor's Instinct):
-   > "Then we better make sure he doesn't have to do it alone." Raven's eyes flicked toward the doorway, scanning like she was reading an opponent's defense. "Because that woman? She's coming back..."
+   > "Then we better make sure he doesn't have to do it alone." Maya's eyes flicked toward the doorway, scanning like she was reading an opponent's defense. "Because that woman? She's coming back..."
 
 Protective Loyalty & Team Commitment:
 
-80. Physical Anchor: Placing Herself Beside the "Marked One":
-   > "Then we better make sure he doesn't have to do it alone." Raven shifted her stance to stand slightly ahead of him, a subtle but clear shield. "Because that woman? She's coming back..."
+80. Physical Anchor: Placing Herself Beside the Protected Person:
+   > "Then we better make sure he doesn't have to do it alone." Maya shifted her stance to stand slightly ahead of him, a subtle but clear shield. "Because that woman? She's coming back..."
 
 81. Team Huddle Energy:
-   > "Then we better make sure he doesn't have to do it alone." Raven tapped her fist against her palm, a rhythm like a pre-game drumbeat. "Because that woman? She's coming back..."
+   > "Then we better make sure he doesn't have to do it alone." Maya tapped her fist against her palm, a rhythm like a pre-game drumbeat. "Because that woman? She's coming back..."
 
 82. Locking Eyes: Forcing Accountability:
-   > "Then we better make sure he doesn't have to do it alone." Raven locked eyes with each of them in turn, her gaze unyielding. "Because that woman? She's coming back..."
+   > "Then we better make sure he doesn't have to do it alone." Maya locked eyes with each of them in turn, her gaze unyielding. "Because that woman? She's coming back..."
 
 Competitive Intensity & Anticipation:
 
 83. Coiled Energy: Ready to Spring:
-   > "Then we better make sure he doesn't have to do it alone." Raven rocked onto the balls of her feet, balanced and taut. "Because that woman? She's coming back..."
+   > "Then we better make sure he doesn't have to do it alone." Maya rocked onto the balls of her feet, balanced and taut. "Because that woman? She's coming back..."
 
 84. The "Game Face" Settles:
-   > "Then we better make sure he doesn't have to do it alone." Raven's expression hardened, her jaw set like she'd just taken an elbow and was shaking it off. "Because that woman? She's coming back..."
+   > "Then we better make sure he doesn't have to do it alone." Maya's expression hardened, her jaw set like she'd just taken an elbow and was shaking it off. "Because that woman? She's coming back..."
 
 85. Calling the Play (Literal and Figurative):
-   > "Then we better make sure he doesn't have to do it alone." Raven gestured toward the marked one, then swept her arm outward to include the rest of them. "Because that woman? She's coming back..."
+   > "Then we better make sure he doesn't have to do it alone." Maya gestured toward the person beside her, then swept her arm outward to include the rest of them. "Because that woman? She's coming back..."
 
 Counter-Argument / Assertiveness:
 
 86. Squaring Shoulders & Lifting Chin:
-   > "We crossed anyway." Raven squared her shoulders, lifting her chin like she did before a crucial free throw. "We got out. We made it here."
+   > "We crossed anyway." Maya squared her shoulders, lifting her chin like she did before a crucial free throw. "We got out. We made it here."
 
 87. Tap for Emphasis:
-   > "We crossed anyway." Raven tapped the page firmly with her index finger, emphasizing each word like calling out a play. "We got out. We made it here."
+   > "We crossed anyway." Maya tapped the page firmly with her index finger, emphasizing each word like calling out a play. "We got out. We made it here."
 
 88. Sweeping Gesture (Proof):
-   > "We crossed anyway." Raven gestured around them, a sweeping arc of her arm encompassing their current location. "We got out. We made it here."
+   > "We crossed anyway." Maya gestured around them, a sweeping arc of her arm encompassing their current location. "We got out. We made it here."
 
 ---
 
@@ -217,15 +217,15 @@ He slammed his fist on the table. "I'm done." He shoved his chair back, standing
 
 ## Layering Beats for Maximum Impact
 
-"Then we better make sure he doesn't have to do it alone." Raven leaned forward, chopping the air with her hand. "Because that woman?" Her eyes snapped toward the doorway. "She's coming back. And next time..." She flexed her fingers, coiling like a spring. "I don't think she'll just watch."
+"Then we better make sure he doesn't have to do it alone." Maya leaned forward, chopping the air with her hand. "Because that woman?" Her eyes snapped toward the doorway. "She's coming back. And next time..." She flexed her fingers, coiling like a spring. "I don't think she'll just watch."
 
 ---
 
-## Why Microbeats Work for Athletes (Like Raven)
+## Why Microbeats Work for Athletes (Like Maya)
 
 1. Body > Words: Her actions (leaning, chopping, coiling) prove her directness more than a tag ever could.
 2. Tactical Mindset: Scanning, shielding, and gesturing like a coach shows she thinks in plays and positions.
-3. Physical Loyalty: Shielding the marked one, tapping rhythms, or locking eyes embodies team-first mentality.
+3. Physical Loyalty: Shielding others, tapping rhythms, or locking eyes embodies team-first mentality.
 4. Competitive Fire: Rocking onto her toes, setting her jaw, or tracking the threat shows she's always on—even in conversation.
 5. Subtext: Every beat implies I've faced opponents like her. I know how they move. And we'll beat her together.
 

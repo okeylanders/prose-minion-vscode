@@ -27,6 +27,7 @@ import {
   SelectionDataMessage
 } from '../../shared/types';
 import { OpenRouterModels } from '../../infrastructure/api/OpenRouterModels';
+import { PublishingStandardsRepository } from '../../infrastructure/standards/PublishingStandardsRepository';
 
 interface ResultCache {
   analysis?: AnalysisResultMessage;
@@ -106,15 +107,43 @@ export class MessageHandler {
           break;
 
         case MessageType.MEASURE_PROSE_STATS:
-          await this.handleMeasureProseStats(message.text);
+          await this.handleMeasureProseStats(message);
           break;
 
         case MessageType.MEASURE_STYLE_FLAGS:
-          await this.handleMeasureStyleFlags(message.text);
+          await this.handleMeasureStyleFlags(message);
           break;
 
         case MessageType.MEASURE_WORD_FREQUENCY:
-          await this.handleMeasureWordFrequency(message.text);
+          await this.handleMeasureWordFrequency(message);
+          break;
+
+        case MessageType.MEASURE_WORD_SEARCH:
+          await this.handleMeasureWordSearch(message as any);
+          break;
+
+        case MessageType.REQUEST_ACTIVE_FILE:
+          await this.handleRequestActiveFile();
+          break;
+
+        case MessageType.REQUEST_MANUSCRIPT_GLOBS:
+          await this.handleRequestManuscriptGlobs();
+          break;
+
+        case MessageType.REQUEST_CHAPTER_GLOBS:
+          await this.handleRequestChapterGlobs();
+          break;
+
+        case MessageType.REQUEST_PUBLISHING_STANDARDS_DATA:
+          await this.handleRequestPublishingStandardsData();
+          break;
+
+        case MessageType.SET_PUBLISHING_PRESET:
+          await this.handleSetPublishingPreset(message.preset);
+          break;
+
+        case MessageType.SET_PUBLISHING_TRIM_SIZE:
+          await this.handleSetPublishingTrim(message.pageSizeKey);
           break;
 
         case MessageType.TAB_CHANGED:
@@ -188,7 +217,22 @@ export class MessageHandler {
 
   private async handleCopyResult(content: string, toolName: string): Promise<void> {
     try {
-      await vscode.env.clipboard.writeText(content ?? '');
+      let text = content ?? '';
+      if (toolName === 'prose_stats' && /^## Chapter Details/m.test(text)) {
+        const answer = await vscode.window.showInformationMessage(
+          'Include chapter-by-chapter breakdown in the copied report?',
+          { modal: true },
+          'Yes',
+          'No'
+        );
+        if (answer === 'No') {
+          text = this.stripChapterBreakdown(text);
+        } else if (answer !== 'Yes') {
+          // Dialog dismissed; keep default (include)
+        }
+      }
+
+      await vscode.env.clipboard.writeText(text);
       this.outputChannel.appendLine(`[MessageHandler] Copied ${toolName} result to clipboard (${content?.length ?? 0} chars).`);
       this.sendStatus('Result copied to clipboard.');
     } catch (error) {
@@ -199,7 +243,22 @@ export class MessageHandler {
 
   private async handleSaveResult(toolName: string, content: string, metadata?: SaveResultMetadata): Promise<void> {
     try {
-      const savedPath = await this.saveResultToFile(toolName, content, metadata);
+      let text = content ?? '';
+      if (toolName === 'prose_stats' && /^## Chapter Details/m.test(text)) {
+        const answer = await vscode.window.showInformationMessage(
+          'Include chapter-by-chapter breakdown in the saved report?',
+          { modal: true },
+          'Yes',
+          'No'
+        );
+        if (answer === 'No') {
+          text = this.stripChapterBreakdown(text);
+        } else if (answer !== 'Yes') {
+          // Dialog dismissed; keep default (include)
+        }
+      }
+
+      const savedPath = await this.saveResultToFile(toolName, text, metadata);
       this.outputChannel.appendLine(`[MessageHandler] Saved ${toolName} result to ${savedPath}`);
 
       const successMessage: SaveResultSuccessMessage = {
@@ -215,6 +274,12 @@ export class MessageHandler {
       const message = error instanceof Error ? error.message : String(error);
       this.sendError('Failed to save result', message);
     }
+  }
+
+  private stripChapterBreakdown(markdown: string): string {
+    // Remove the Chapter Details section from the markdown report only
+    const sectionRegex = /^## Chapter Details[\s\S]*?(?=^# |\Z)/m;
+    return markdown.replace(sectionRegex, '').trimEnd();
   }
 
   private async handleSelectionRequest(target: SelectionTarget): Promise<void> {
@@ -287,19 +352,179 @@ export class MessageHandler {
     this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
   }
 
-  private async handleMeasureProseStats(text: string): Promise<void> {
-    const result = await this.proseAnalysisService.measureProseStats(text);
-    this.sendMetricsResult(result.metrics, result.toolName);
+  private async handleMeasureProseStats(message: { text?: string; source?: any }): Promise<void> {
+    try {
+      const resolved = await this.resolveRichTextForMetrics(message);
+      const result = await this.proseAnalysisService.measureProseStats(resolved.text, resolved.paths, resolved.mode);
+      this.sendMetricsResult(result.metrics, result.toolName);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('Invalid selection or path', msg);
+    }
   }
 
-  private async handleMeasureStyleFlags(text: string): Promise<void> {
-    const result = await this.proseAnalysisService.measureStyleFlags(text);
-    this.sendMetricsResult(result.metrics, result.toolName);
+  private async handleMeasureStyleFlags(message: { text?: string; source?: any }): Promise<void> {
+    try {
+      const text = await this.resolveTextForMetrics(message);
+      const result = await this.proseAnalysisService.measureStyleFlags(text);
+      this.sendMetricsResult(result.metrics, result.toolName);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('Invalid selection or path', msg);
+    }
   }
 
-  private async handleMeasureWordFrequency(text: string): Promise<void> {
-    const result = await this.proseAnalysisService.measureWordFrequency(text);
-    this.sendMetricsResult(result.metrics, result.toolName);
+  private async handleMeasureWordFrequency(message: { text?: string; source?: any }): Promise<void> {
+    try {
+      const text = await this.resolveTextForMetrics(message);
+      const result = await this.proseAnalysisService.measureWordFrequency(text);
+      this.sendMetricsResult(result.metrics, result.toolName);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('Invalid selection or path', msg);
+    }
+  }
+
+  private async handleMeasureWordSearch(message: { text?: string; source?: any; options?: any }): Promise<void> {
+    try {
+      const resolved = await this.resolveRichTextForMetrics(message);
+      const options = message.options || {};
+      const result = await this.proseAnalysisService.measureWordSearch(
+        resolved.text,
+        resolved.paths,
+        resolved.mode,
+        options
+      );
+      this.sendMetricsResult(result.metrics, result.toolName);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('Invalid selection or path', msg);
+    }
+  }
+
+  private async resolveTextForMetrics(message: { text?: string; source?: any }): Promise<string> {
+    // Backward compatibility: if source not provided, use text
+    if (!message.source) {
+      const t = (message.text ?? '').trim();
+      if (!t) {
+        throw new Error('No text provided for metrics.');
+      }
+      return t;
+    }
+
+    // Dynamically import to avoid cyclic deps and keep constructor lean
+    const { TextSourceResolver } = await import('../../infrastructure/text/TextSourceResolver');
+    const resolver = new TextSourceResolver(this.outputChannel);
+    const resolved = await resolver.resolve(message.source);
+    const text = (resolved.text ?? '').trim();
+    if (!text) {
+      throw new Error('Resolved source contains no text.');
+    }
+    return text;
+  }
+
+  private async resolveRichTextForMetrics(message: { text?: string; source?: any }): Promise<{ text: string; paths?: string[]; mode?: string }> {
+    if (!message.source) {
+      const text = await this.resolveTextForMetrics(message);
+      return { text };
+    }
+    const { TextSourceResolver } = await import('../../infrastructure/text/TextSourceResolver');
+    const resolver = new TextSourceResolver(this.outputChannel);
+    const resolved = await resolver.resolve(message.source);
+    const text = (resolved.text ?? '').trim();
+    if (!text) throw new Error('Resolved source contains no text.');
+    const mode = message.source?.mode;
+    return { text, paths: resolved.relativePaths, mode };
+  }
+
+  private async handleRequestActiveFile(): Promise<void> {
+    const editor = vscode.window.activeTextEditor;
+    const relativePath = editor ? vscode.workspace.asRelativePath(editor.document.uri, false) : undefined;
+    const message = {
+      type: MessageType.ACTIVE_FILE,
+      relativePath,
+      sourceUri: editor?.document.uri.toString(),
+      timestamp: Date.now()
+    } as const;
+    void this.postMessage(message);
+  }
+
+  private async handleRequestManuscriptGlobs(): Promise<void> {
+    const config = vscode.workspace.getConfiguration('proseMinion');
+    const globs = config.get<string>('contextPaths.manuscript') || '';
+    const message = {
+      type: MessageType.MANUSCRIPT_GLOBS,
+      globs,
+      timestamp: Date.now()
+    } as const;
+    void this.postMessage(message);
+  }
+
+  private async handleRequestChapterGlobs(): Promise<void> {
+    const config = vscode.workspace.getConfiguration('proseMinion');
+    const globs = config.get<string>('contextPaths.chapters') || '';
+    const message = {
+      type: MessageType.CHAPTER_GLOBS,
+      globs,
+      timestamp: Date.now()
+    } as const;
+    void this.postMessage(message);
+  }
+
+  private async handleRequestPublishingStandardsData(): Promise<void> {
+    try {
+      const repo = new PublishingStandardsRepository(this.extensionUri, this.outputChannel);
+      const genres = await repo.getGenres();
+      const config = vscode.workspace.getConfiguration('proseMinion');
+      const preset = (config.get<string>('publishingStandards.preset') || 'none');
+      const pageSizeKey = (config.get<string>('publishingStandards.pageSizeKey') || '');
+
+      const payload = {
+        type: MessageType.PUBLISHING_STANDARDS_DATA,
+        preset,
+        pageSizeKey,
+        genres: genres.map(g => ({
+          key: (g.slug || g.abbreviation || g.name),
+          name: g.name,
+          abbreviation: g.abbreviation,
+          pageSizes: g.page_sizes.map(ps => ({
+            key: ps.format || `${ps.width_inches}x${ps.height_inches}`,
+            label: ps.format || `${ps.width_inches}x${ps.height_inches}`,
+            width: ps.width_inches,
+            height: ps.height_inches,
+            common: ps.common
+          }))
+        })),
+        timestamp: Date.now()
+      } as const;
+
+      void this.postMessage(payload);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('Failed to load publishing standards', msg);
+    }
+  }
+
+  private async handleSetPublishingPreset(preset: string): Promise<void> {
+    try {
+      const config = vscode.workspace.getConfiguration('proseMinion');
+      await config.update('publishingStandards.preset', preset, true);
+      await this.handleRequestPublishingStandardsData();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('Failed to update publishing preset', msg);
+    }
+  }
+
+  private async handleSetPublishingTrim(pageSizeKey?: string): Promise<void> {
+    try {
+      const config = vscode.workspace.getConfiguration('proseMinion');
+      await config.update('publishingStandards.pageSizeKey', pageSizeKey ?? '', true);
+      await this.handleRequestPublishingStandardsData();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('Failed to update trim size', msg);
+    }
   }
 
   private sendAnalysisResult(result: string, toolName: string, usedGuides?: string[]): void {
@@ -395,6 +620,14 @@ export class MessageHandler {
       lines.push(context || '(No context provided.)', '', '---', '', content.trim());
 
       fileContent = lines.join('\n');
+    } else if (toolName === 'prose_stats') {
+      targetDir = vscode.Uri.joinPath(rootUri, 'prose-minion', 'reports');
+      await vscode.workspace.fs.createDirectory(targetDir);
+      const now = new Date();
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+      fileName = `prose-statistics-${stamp}.md`;
+      fileContent = content.trim();
     } else {
       throw new Error(`Saving results for tool "${toolName}" is not supported yet.`);
     }
