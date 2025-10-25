@@ -1,4 +1,6 @@
-# Sprint Plan: 2025‑10‑19 → 2025‑11‑01
+# Epic Search & Architecture
+
+## Sprint Plan: 2025‑10‑19 → 2025‑11‑01
 
 This master plan sequences ADRs and implementation for the next two weeks. Each block follows the flow: Draft ADR → Review/Approve → Implement → Verify. It aligns with Clean Architecture, message contracts, and publishing/reporting standards already in the repo.
 
