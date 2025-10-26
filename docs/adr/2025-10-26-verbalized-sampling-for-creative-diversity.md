@@ -86,10 +86,11 @@ When generating your menu of 4–8 microbeat options or revision suggestions:
 
 ### Quality Preservation
 Diversity does not mean randomness or abandoning craft:
-- Every suggestion must still serve the scene's emotional truth and blocking logic.
+- Prioritize suggestions that serve the scene's emotional truth and blocking logic. When offering an unexpected or unconventional option, briefly note how it integrates with the passage's constraints—or why it's worth bending them.
 - Maintain POV/tense consistency and character voice.
 - Anchor choices in craft principles (from the compendium) even when exploring less-typical options.
 - If a highly typical suggestion is genuinely the best choice, include it—but explain why it outperforms alternatives.
+- **If you find yourself thinking "This is too unusual," that's a signal you're in the right creative space.** Offer it with context about when/why it would work.
 
 ### Practical Application
 Instead of thinking: "What's the standard way to show frustration in dialogue?"
@@ -120,10 +121,11 @@ When generating your wordbank (4–8 terms) or targeted revision suggestions:
 
 ### Quality Preservation
 Diversity does not mean obscurity or purple prose:
-- Every suggestion must fit the established tone, POV, and narrative context.
+- Prioritize suggestions that fit the established tone, POV, and narrative context. When offering unexpected or unconventional vocabulary/imagery, briefly note how it integrates with the passage's mood—or why it's worth the stylistic risk.
 - Maintain continuity of setting, character voice, and internal logic.
 - Anchor choices in craft principles (sensory layering, varied cadence, concrete over abstract) even when exploring less-typical options.
 - If a common phrase genuinely serves the passage best, include it—but explain why it outperforms more distinctive alternatives.
+- **If you find yourself thinking "This word is too unusual," that's a signal you're in the right creative space.** Offer it with context about when/why it would elevate the prose.
 
 ### Practical Application
 Instead of thinking: "What words describe sadness?"
@@ -267,10 +269,12 @@ Add a setting like `proseMinion.assistants.creativeDiversity: boolean` to enable
 
 ## References
 
-- Stanford/Northeastern/WVU Research Paper: "Verbalized Sampling: Overcoming Mode Collapse in Aligned Language Models" (2024–2025)
-- Key Finding: Post-training alignment reduces creative diversity due to typicality bias (α=0.57±0.07, p<10^-14)
-- Technique: Instructing models to "sample from tails of distribution" recovers 66.8% of base model creativity
-- Performance: 1.6–2.1× diversity increase, 25.7% preference improvement for creative tasks
+- **Stanford/Northeastern/WVU Research Paper**: "Verbalized Sampling: Overcoming Mode Collapse in Aligned Language Models" (2024–2025)
+  - Local copy: [`.research/Stanford AI Breakthrough: Unlock ChatGPT Creativity | Generative AI.pdf`](../../.research/Stanford%20AI%20Breakthrough:%20Unlock%20ChatGPT%20Creativity%20|%20Generative%20AI.pdf)
+  - Key Finding: Post-training alignment reduces creative diversity due to typicality bias (α=0.57±0.07, p<10^-14)
+  - Technique: Instructing models to "sample from tails of distribution" recovers 66.8% of base model creativity
+  - Performance: 1.6–2.1× diversity increase, 25.7% preference improvement for creative tasks
+- **Related ADR**: [Prose Playground Assistant (Draft)](2025-10-26-prose-playground-assistant-draft.md) — Future minimal-constraint creative exploration tool
 
 ## Open Questions
 
@@ -305,3 +309,122 @@ Add a setting like `proseMinion.assistants.creativeDiversity: boolean` to enable
 Verbalized Sampling represents a breakthrough in unlocking creative diversity from aligned AI models without retraining or architectural changes. By adding targeted prompt instructions that encourage sampling from the tails of the probability distribution, we can dramatically improve the creative range and usefulness of the dialogue microbeat and prose assistants—providing authors with richer, more varied, and more character-specific suggestions while maintaining craft quality and coherence.
 
 This enhancement aligns perfectly with Prose Minion's mission: empowering creative writers with AI-augmented tools that expand their craft vocabulary and reveal new stylistic possibilities.
+
+---
+
+## Addendum: Design Tension Analysis and Two-Track Vision
+
+### The Paradox at the Heart of This ADR
+
+This proposal contains an inherent tension that warrants explicit discussion: we're instructing models to **"sample from the creative tails of the distribution"** (unlock diversity) while simultaneously requiring that they **"anchor suggestions in craft principles and context"** (constrain output).
+
+**The Risk**: Could "quality preservation" clauses recreate the alignment problem at the prompt level? If we tell the model to be creative but also emphasize "every suggestion must fit established tone/POV/blocking," the model's alignment training might interpret "must fit" as "play it safe," filtering out the most interesting creative suggestions before they reach the user.
+
+This is not a hypothetical concern—it strikes at the core mechanism that creates mode collapse in the first place: human preference for conventional responses.
+
+### Why Anchors Are Appropriate for Prose Minion's Craft-Focused Assistants
+
+Despite this tension, we've chosen to maintain craft-grounding clauses for the dialogue and prose assistants because:
+
+#### 1. Purpose-Fit: These Are Craft Improvement Tools
+
+The dialogue microbeat assistant and prose assistant are **not** open-ended creative writing generators. Users arrive with specific passages needing refinement within established narrative constraints. The tools' value proposition is "help me improve *this specific passage*"—not "show me wild alternatives disconnected from my story."
+
+#### 2. Contextual Constraints Are Real and Necessary
+
+Some constraints are not arbitrary limitations—they're logical requirements:
+
+- **Blocking logic**: A microbeat suggesting a character picks up an object that isn't in the scene isn't "creative"—it's contextually wrong
+- **POV consistency**: Third-person limited suddenly including another character's internal thoughts breaks the narrative contract
+- **Tonal coherence**: Suggesting whimsical imagery for a tense thriller scene misunderstands the passage's purpose
+
+#### 3. Trust and Adoption
+If 3 out of 8 suggestions feel contextually inappropriate, tonally jarring, or logically inconsistent, users will stop trusting the tool—even if the other 5 suggestions are brilliant. Trust is the currency of adoption.
+
+#### 4. Research Alignment
+The Stanford paper's 25% preference improvement measured *useful creative diversity*, not *random diversity*. The verbalized sampling technique still produced coherent, contextually appropriate output—it just explored less-obvious solutions within the problem space. The technique unlocks creativity that respects constraints, not creativity that ignores them.
+
+### The Moderate Approach: Balancing Creativity and Craft
+
+Given this analysis, we've adopted a **moderate approach** that threads the needle:
+
+#### What Changed from Initial Draft
+
+- **From restrictive**: "Every suggestion must still serve the scene's emotional truth"
+- **To permissive**: "Prioritize suggestions that serve the scene's emotional truth. When offering an unexpected option, note how it integrates—or why it's worth bending the rules."
+
+#### Key Permission Clause
+
+Added explicit encouragement: **"If you find yourself thinking 'This is too unusual,' that's a signal you're in the right creative space."**
+
+This reframes the model's self-censorship mechanism—instead of filtering unusual ideas, it should flag them as *exactly what we want* (with justification).
+
+#### Framing Quality as Integration, Not Restriction
+
+- **Not**: "Must fit the established tone" (binary gate)
+- **But**: "Note how it integrates with the passage's mood—or why it's worth the stylistic risk" (invitation to explore boundaries)
+
+This preserves craft grounding while giving the model explicit permission to push boundaries and explain creative risks.
+
+### Two-Track Vision: Grounded Craft Tools + Open Creative Playground
+
+The tension between "unlock creativity" and "anchor to craft" suggests a natural evolution for Prose Minion: **two distinct tool modes for two distinct user intents**.
+
+#### Track 1: Dialogue/Prose Assistants (Current Enhancement)
+
+- **User intent**: "Help me polish this passage within its narrative constraints"
+- **Anchors**: Strong grounding in continuity, POV, blocking, tone
+- **Sampling strategy**: p<0.10, filtered for coherence
+- **Output style**: 6–8 suggestions, mostly contextually safe + 1–2 boundary-pushing options with justification
+
+#### Track 2: Prose Playground Assistant (Future Enhancement)
+
+- **User intent**: "Show me wild alternatives, surprise me, help me break out of my patterns"
+- **Anchors**: Minimal—only safety boundaries, no craft constraints
+- **Sampling strategy**: p<0.05 or lower (extreme tails of distribution)
+- **Output style**: 5–10 suggestions ranging from plausible to experimental, clearly labeled "Inspiration Mode" or "Experimental"
+- **Use cases**:
+  - Brainstorming when stuck
+  - Voice/style experimentation
+  - Breaking out of repetitive patterns
+  - Exploring "what if I tried something completely different?"
+
+#### Why This Two-Track Design Works
+
+1. **User self-selection**: Users choose based on their current need (polish vs. explore)
+2. **Risk isolation**: The Playground can be clearly marked as experimental, preserving trust in the craft-focused tools
+3. **A/B learning**: We can observe which approach users prefer for different tasks and iterate
+4. **Creative freedom**: The Playground can truly "let go" without undermining the reliability of the primary assistants
+5. **Expanded use cases**: Opens Prose Minion to new workflows beyond passage refinement
+
+### Decision: Moderate Now, Playground Later
+
+**For this ADR (immediate implementation)**:
+
+- Keep craft-grounding anchors in dialogue/prose assistants
+- Adjust language to be less restrictive and explicitly encourage boundary-pushing with justification
+- Accept that we're leaving some creative value on the table in exchange for reliability and trust
+
+**For future work**:
+
+- Create separate [Prose Playground Assistant ADR](2025-10-26-prose-playground-assistant-draft.md) (draft)
+- Design minimal-constraint prompt architecture for pure creative exploration
+- Determine UI placement and user communication ("Experimental Mode")
+- Define integration with craft guides as "inspiration libraries" rather than constraint systems
+
+### Meta-Insight: Prompt Engineering Mirrors the Alignment Problem
+
+This design tension reveals a deeper truth: **prompt engineering can recreate the same typicality bias that verbalized sampling is meant to solve**.
+
+When we write prompts with strong "must" and "always" language around quality, we're essentially performing our own RLHF at the prompt level—telling the model to favor safe, conventional responses. The moderate approach acknowledges this and deliberately uses permissive framing ("prioritize," "note how it integrates or why to bend rules") to counteract this bias.
+
+The two-track vision acknowledges that **there is no universal optimal point on the creativity-constraint spectrum**—different tasks need different balances. Rather than compromise both, we can eventually serve both ends of the spectrum with purpose-built tools.
+
+### Summary of Addendum
+
+1. **The paradox is real**: Instructing creativity while requiring craft adherence could recreate mode collapse at the prompt level
+2. **Anchors are justified**: For craft-focused assistants, contextual grounding is not arbitrary—it's purposeful
+3. **Moderate approach**: Adjust language to be permissive rather than restrictive; explicitly encourage boundary-pushing with justification
+4. **Two-track future**: Grounded craft tools (current) + minimal-constraint Playground (future) serve different user intents
+5. **Immediate action**: Implement moderate approach now; defer Playground to separate ADR
+6. **Design lesson**: Prompt engineering can mirror the alignment problem we're trying to solve—be intentional about permissive framing
