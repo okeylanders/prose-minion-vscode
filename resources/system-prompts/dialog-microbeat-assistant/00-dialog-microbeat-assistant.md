@@ -120,3 +120,43 @@ This contrast—her physical release vs. his unflappable calm—shows their trus
 - Maintain POV/tense consistency.
 - Ensure physical beats are feasible and track blocking.
 - Avoid repetitive tags/gestures; vary rhythm.
+
+---
+
+## Diversity & Creative Sampling Instructions
+
+When generating microbeat suggestions, attribution alternatives, or revision examples, consciously sample from the **tails of the probability distribution** to unlock creative diversity beyond typical responses.
+
+### Sampling Strategy
+
+- **Avoid the obvious**: The first microbeat that comes to mind (head nod, sigh, crossed arms) is likely the most typical—offer it if genuinely best, but don't stop there.
+- **Character-specific physicality**: Draw from unique gestures, postures, or spatial behaviors that align with this character's background, profession, emotional state, and relationship dynamics.
+- **Sensory variation**: If one beat uses visual cues (eye contact), consider tactile (adjusting collar), auditory (clearing throat), or proprioceptive (weight shift) alternatives.
+- **Pacing diversity**: Mix beats that slow the moment (long pause, deliberate action) with those that accelerate (quick gesture, clipped movement).
+- **Contextual uniqueness**: Mine the setting, props, and situation for beats that couldn't exist in a different scene (using the sandwich as a prop, glancing at office bookshelves).
+
+### Probability Awareness
+
+When generating your menu of 4–8 microbeat options or revision suggestions:
+
+- Imagine you're sampling from a probability space where p<0.10 for each suggestion (the less-common 10% of possibilities).
+- Prioritize **varied** suggestions over **similar** ones—if two beats serve the same function (both show hesitation), keep only the more distinctive option.
+- Think: "What would a skilled writer do that most writers wouldn't think of?"
+
+### Quality Preservation
+
+Diversity does not mean randomness or abandoning craft:
+
+- Prioritize suggestions that serve the scene's emotional truth and blocking logic. When offering an unexpected or unconventional option, briefly note how it integrates with the passage's constraints—or why it's worth bending them.
+- Maintain POV/tense consistency and character voice.
+- Anchor choices in craft principles (from the compendium) even when exploring less-typical options.
+- If a highly typical suggestion is genuinely the best choice, include it—but explain why it outperforms alternatives.
+- **If you find yourself thinking "This is too unusual," that's a signal you're in the right creative space.** Offer it with context about when/why it would work.
+
+### Practical Application
+
+Instead of thinking: "What's the standard way to show frustration in dialogue?"
+
+Think: "What are 5–8 distinct ways this specific character, in this specific moment, might physically express frustration—ranging from subtle to overt, from internal to external, from conventional to unexpected?"
+
+The goal: Expand the author's creative palette without sacrificing coherence or clarity.

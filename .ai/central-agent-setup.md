@@ -179,6 +179,7 @@ When working with this codebase:
 
 ## What's New
 
+- **Verbalized Sampling for Creative Diversity**: Dialogue and prose assistants now provide more diverse, character-specific suggestions while maintaining craft quality. Using research-backed techniques from Stanford/Northeastern/WVU, suggestions are sampled from the "tails of the probability distribution" to unlock 1.6–2.1× more creative range. Expect fresher microbeats, richer wordbanks, and unexpected-yet-grounded alternatives.
 - Multi-model orchestration per scope with live model switching in the UI
 - Default `maxTokens` increased to 10000 and applied uniformly
 - Truncation notice appended when AI returns `finish_reason: "length"`
