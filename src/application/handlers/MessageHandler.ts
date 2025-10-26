@@ -34,6 +34,7 @@ interface ResultCache {
   dictionary?: DictionaryResultMessage;
   context?: ContextResultMessage;
   metrics?: MetricsResultMessage;
+  search?: { type: string; result: any; toolName: string; timestamp: number };
   status?: StatusMessage;
   error?: ErrorMessage;
 }
@@ -119,7 +120,12 @@ export class MessageHandler {
           break;
 
         case MessageType.MEASURE_WORD_SEARCH:
-          await this.handleMeasureWordSearch(message as any);
+          // Deprecated: legacy route via Metrics; keep for backward compatibility
+          await this.handleMeasureWordSearch(message as any, /*asSearch*/ false);
+          break;
+
+        case MessageType.RUN_WORD_SEARCH:
+          await this.handleMeasureWordSearch(message as any, /*asSearch*/ true);
           break;
 
         case MessageType.REQUEST_ACTIVE_FILE:
@@ -385,7 +391,7 @@ export class MessageHandler {
     }
   }
 
-  private async handleMeasureWordSearch(message: { text?: string; source?: any; options?: any }): Promise<void> {
+  private async handleMeasureWordSearch(message: { text?: string; source?: any; options?: any }, asSearch: boolean): Promise<void> {
     try {
       const resolved = await this.resolveRichTextForMetrics(message);
       const options = message.options || {};
@@ -395,7 +401,11 @@ export class MessageHandler {
         resolved.mode,
         options
       );
-      this.sendMetricsResult(result.metrics, result.toolName);
+      if (asSearch) {
+        this.sendSearchResult(result.metrics, result.toolName);
+      } else {
+        this.sendMetricsResult(result.metrics, result.toolName);
+      }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.sendError('Invalid selection or path', msg);
@@ -570,6 +580,17 @@ export class MessageHandler {
     sharedResultCache.error = undefined;
     void this.postMessage(message);
     this.sendStatus('');
+  }
+
+  private sendSearchResult(result: any, toolName: string): void {
+    const message = {
+      type: MessageType.SEARCH_RESULT,
+      result,
+      toolName,
+      timestamp: Date.now()
+    } as const;
+    sharedResultCache.search = { ...message } as any;
+    void this.postMessage(message);
   }
 
   private async saveResultToFile(toolName: string, content: string, metadata?: SaveResultMetadata): Promise<string> {
@@ -888,6 +909,10 @@ export class MessageHandler {
 
     if (sharedResultCache.metrics) {
       void this.postMessage(sharedResultCache.metrics);
+    }
+
+    if ((sharedResultCache as any).search) {
+      void this.postMessage((sharedResultCache as any).search);
     }
 
     if (sharedResultCache.context) {

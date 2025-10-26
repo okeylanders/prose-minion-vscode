@@ -20,7 +20,11 @@ export enum MessageType {
   MEASURE_PROSE_STATS = 'measure_prose_stats',
   MEASURE_STYLE_FLAGS = 'measure_style_flags',
   MEASURE_WORD_FREQUENCY = 'measure_word_frequency',
+  // Deprecated for Search tab separation: MEASURE_WORD_SEARCH
   MEASURE_WORD_SEARCH = 'measure_word_search',
+
+  // Search tab messages (separate from Metrics)
+  RUN_WORD_SEARCH = 'run_word_search',
 
   // Metrics source helpers
   REQUEST_ACTIVE_FILE = 'request_active_file',
@@ -33,6 +37,7 @@ export enum MessageType {
   // Results messages
   ANALYSIS_RESULT = 'analysis_result',
   METRICS_RESULT = 'metrics_result',
+  SEARCH_RESULT = 'search_result',
   DICTIONARY_RESULT = 'dictionary_result',
   CONTEXT_RESULT = 'context_result',
   SAVE_RESULT_SUCCESS = 'save_result_success',
@@ -167,6 +172,20 @@ export interface MeasureWordSearchMessage extends BaseMessage {
   options: WordSearchOptions;
 }
 
+// Search tab — request/response are separate from Metrics
+export interface RunWordSearchMessage extends BaseMessage {
+  type: MessageType.RUN_WORD_SEARCH;
+  text?: string;
+  source?: TextSourceSpec;
+  options: WordSearchOptions;
+}
+
+export interface SearchResultMessage extends BaseMessage {
+  type: MessageType.SEARCH_RESULT;
+  result: any; // Word Search specific result shape
+  toolName: string; // typically 'word_search'
+}
+
 export interface TabChangedMessage extends BaseMessage {
   type: MessageType.TAB_CHANGED;
   tabId: TabId;
@@ -254,6 +273,7 @@ export type WebviewToExtensionMessage =
   | MeasureStyleFlagsMessage
   | MeasureWordFrequencyMessage
   | MeasureWordSearchMessage
+  | RunWordSearchMessage
   | TabChangedMessage
   | OpenGuideFileMessage
   | RequestModelDataMessage
@@ -346,6 +366,7 @@ export interface ModelDataMessage extends BaseMessage {
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
   | MetricsResultMessage
+  | SearchResultMessage
   | DictionaryResultMessage
   | ContextResultMessage
   | SaveResultSuccessMessage

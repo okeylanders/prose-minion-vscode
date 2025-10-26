@@ -33,8 +33,9 @@ type PersistedState = {
   analysisResult: string;
   analysisToolName?: string;
   metricsResult: any;
+  searchResult?: any;
   metricsToolName?: string;
-  metricsActiveTool?: 'prose_stats' | 'style_flags' | 'word_frequency' | 'word_search';
+  metricsActiveTool?: 'prose_stats' | 'style_flags' | 'word_frequency';
   metricsWordSearchTargets?: string;
   metricsSourceMode?: TextSourceMode;
   metricsPathText?: string;
@@ -64,11 +65,12 @@ export const App: React.FC = () => {
   const [analysisToolName, setAnalysisToolName] = React.useState<string | undefined>(persistedState?.analysisToolName);
   const [analysisLoading, setAnalysisLoading] = React.useState(false);
   const [metricsResult, setMetricsResult] = React.useState<any>(persistedState?.metricsResult ?? null);
+  const [searchResult, setSearchResult] = React.useState<any>(persistedState?.searchResult ?? null);
   const [metricsToolName, setMetricsToolName] = React.useState<string | undefined>(persistedState?.metricsToolName);
   const [metricsLoading, setMetricsLoading] = React.useState(false);
   const [metricsSourceMode, setMetricsSourceMode] = React.useState<TextSourceMode>(persistedState?.metricsSourceMode ?? 'selection');
   const [metricsPathText, setMetricsPathText] = React.useState<string>(persistedState?.metricsPathText ?? '[selected text]');
-  const [metricsActiveTool, setMetricsActiveTool] = React.useState<'prose_stats' | 'style_flags' | 'word_frequency' | 'word_search'>(persistedState?.metricsActiveTool ?? 'prose_stats');
+  const [metricsActiveTool, setMetricsActiveTool] = React.useState<'prose_stats' | 'style_flags' | 'word_frequency'>(persistedState?.metricsActiveTool ?? 'prose_stats');
   const [metricsWordSearchTargets, setMetricsWordSearchTargets] = React.useState<string>(persistedState?.metricsWordSearchTargets ?? '');
   const [utilitiesResult, setUtilitiesResult] = React.useState(persistedState?.utilitiesResult ?? '');
   const [dictionaryToolName, setDictionaryToolName] = React.useState<string | undefined>(persistedState?.dictionaryToolName);
@@ -134,6 +136,7 @@ export const App: React.FC = () => {
       analysisResult,
       analysisToolName,
       metricsResult,
+      searchResult,
       metricsToolName,
       metricsActiveTool,
       metricsWordSearchTargets,
@@ -162,6 +165,7 @@ export const App: React.FC = () => {
     analysisResult,
     analysisToolName,
     metricsResult,
+    searchResult,
     metricsToolName,
     metricsActiveTool,
     metricsWordSearchTargets,
@@ -220,9 +224,15 @@ export const App: React.FC = () => {
         case MessageType.METRICS_RESULT:
           setMetricsResult(message.result);
           setMetricsToolName(message.toolName);
-          if (message.toolName === 'prose_stats' || message.toolName === 'style_flags' || message.toolName === 'word_frequency' || message.toolName === 'word_search') {
+          if (message.toolName === 'prose_stats' || message.toolName === 'style_flags' || message.toolName === 'word_frequency') {
             setMetricsActiveTool(message.toolName);
           }
+          setMetricsLoading(false);
+          setError('');
+          break;
+
+        case MessageType.SEARCH_RESULT:
+          setSearchResult(message.result);
           setMetricsLoading(false);
           setError('');
           break;
@@ -495,7 +505,7 @@ export const App: React.FC = () => {
         {activeTab === TabId.SEARCH && (
           <SearchTab
             vscode={vscode}
-            result={metricsResult}
+            result={searchResult}
             isLoading={metricsLoading}
             onLoadingChange={setMetricsLoading}
             wordSearchTargets={metricsWordSearchTargets}

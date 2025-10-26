@@ -187,7 +187,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
             onLoadingChange(true);
             const wordsOrPhrases = parseTargets(wordSearchTargets);
             vscode.postMessage({
-              type: MessageType.MEASURE_WORD_SEARCH,
+              type: MessageType.RUN_WORD_SEARCH,
               source: { mode: sourceMode, pathText },
               options: {
                 wordsOrPhrases,
@@ -245,4 +245,3 @@ function parseTargets(input: string): string[] {
   const parts = input.split(/\n|,/).map(s => s.trim()).filter(Boolean);
   return parts;
 }
-
