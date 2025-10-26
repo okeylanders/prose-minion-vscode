@@ -1,7 +1,8 @@
 # ADR: Verbalized Sampling for Creative Diversity in Dialogue & Prose Assistants
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2025-10-26
+- Implemented: 2025-10-26
 
 ## Context
 

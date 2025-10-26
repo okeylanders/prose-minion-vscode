@@ -299,14 +299,33 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
 
       {isLoading && (
         <div className="loading-indicator">
-          <div className="spinner"></div>
-          <div className="loading-text">
-            <div>{statusMessage || 'Analyzing...'}</div>
-            {guideNames && (
-              <div className="guide-ticker-container">
-                <div className="guide-ticker">{guideNames}</div>
-              </div>
-            )}
+          <div className="loading-header">
+            <div className="spinner"></div>
+            <div className="loading-text">
+              <div>{statusMessage || 'Analyzing...'}</div>
+              {guideNames && (
+                <div className="guide-ticker-container">
+                  <div className="guide-ticker">{guideNames}</div>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="loading-vhs-container">
+            <img
+              src={(window as any).proseMinonAssets?.vhsLoadingGif || ''}
+              alt="Assistant processing"
+              className="loading-vhs-animation"
+            />
+          </div>
+          <div className="loading-credit">
+            Animation by{' '}
+            <a
+              href="https://www.pinterest.com/pin/29977153764908058/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              matti watt
+            </a>
           </div>
         </div>
       )}
