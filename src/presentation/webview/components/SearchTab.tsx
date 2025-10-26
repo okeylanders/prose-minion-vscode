@@ -129,6 +129,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
         <label className="block text-sm font-medium mb-2" htmlFor="pm-search-path-input">Path / Pattern</label>
         <input
           id="pm-search-path-input"
+          type="text"
           className="w-full"
           value={pathText}
           onChange={(e) => onPathTextChange(e.target.value)}
