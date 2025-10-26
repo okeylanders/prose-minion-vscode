@@ -32,9 +32,8 @@ type PersistedState = {
   selectedRelativePath?: string;
   analysisResult: string;
   analysisToolName?: string;
-  metricsResult: any;
+  metricsResultsByTool?: Partial<Record<'prose_stats' | 'style_flags' | 'word_frequency', any>>;
   searchResult?: any;
-  metricsToolName?: string;
   metricsActiveTool?: 'prose_stats' | 'style_flags' | 'word_frequency';
   wordSearchTargets?: string;
   metricsSourceMode?: TextSourceMode;
@@ -64,9 +63,10 @@ export const App: React.FC = () => {
   const [analysisResult, setAnalysisResult] = React.useState(persistedState?.analysisResult ?? '');
   const [analysisToolName, setAnalysisToolName] = React.useState<string | undefined>(persistedState?.analysisToolName);
   const [analysisLoading, setAnalysisLoading] = React.useState(false);
-  const [metricsResult, setMetricsResult] = React.useState<any>(persistedState?.metricsResult ?? null);
+  const [metricsResultsByTool, setMetricsResultsByTool] = React.useState<Partial<Record<'prose_stats' | 'style_flags' | 'word_frequency', any>>>(
+    persistedState?.metricsResultsByTool ?? {}
+  );
   const [searchResult, setSearchResult] = React.useState<any>(persistedState?.searchResult ?? null);
-  const [metricsToolName, setMetricsToolName] = React.useState<string | undefined>(persistedState?.metricsToolName);
   const [metricsLoading, setMetricsLoading] = React.useState(false);
   const [metricsSourceMode, setMetricsSourceMode] = React.useState<TextSourceMode>(persistedState?.metricsSourceMode ?? 'selection');
   const [metricsPathText, setMetricsPathText] = React.useState<string>(persistedState?.metricsPathText ?? '[selected text]');
@@ -135,9 +135,8 @@ export const App: React.FC = () => {
       selectedRelativePath,
       analysisResult,
       analysisToolName,
-      metricsResult,
+      metricsResultsByTool,
       searchResult,
-      metricsToolName,
       metricsActiveTool,
       wordSearchTargets,
       metricsSourceMode,
@@ -164,9 +163,8 @@ export const App: React.FC = () => {
     selectedRelativePath,
     analysisResult,
     analysisToolName,
-    metricsResult,
+    metricsResultsByTool,
     searchResult,
-    metricsToolName,
     metricsActiveTool,
     wordSearchTargets,
     utilitiesResult,
@@ -222,9 +220,9 @@ export const App: React.FC = () => {
           break;
 
         case MessageType.METRICS_RESULT:
-          setMetricsResult(message.result);
-          setMetricsToolName(message.toolName);
           if (message.toolName === 'prose_stats' || message.toolName === 'style_flags' || message.toolName === 'word_frequency') {
+            // Store per-subtool result without forcing a re-run on tab switch
+            setMetricsResultsByTool(prev => ({ ...prev, [message.toolName]: message.result }));
             setMetricsActiveTool(message.toolName);
           }
           setMetricsLoading(false);
@@ -304,7 +302,8 @@ export const App: React.FC = () => {
           setContextLoading(false);
           setContextStatusMessage('');
           setAnalysisResult('');
-          setMetricsResult(null);
+          // Clear per-subtool metrics cache on error to avoid stale displays
+          setMetricsResultsByTool({});
           setUtilitiesResult('');
           break;
 
@@ -485,8 +484,7 @@ export const App: React.FC = () => {
         {activeTab === TabId.METRICS && (
           <MetricsTab
             vscode={vscode}
-            metrics={metricsResult}
-            metricsToolName={metricsToolName}
+            metricsByTool={metricsResultsByTool}
             isLoading={metricsLoading}
             onLoadingChange={setMetricsLoading}
             activeTool={metricsActiveTool}

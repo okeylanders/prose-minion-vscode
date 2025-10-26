@@ -11,8 +11,7 @@ import { formatMetricsAsMarkdown } from '../utils/resultFormatter';
 
 interface MetricsTabProps {
   vscode: any;
-  metrics: any;
-  metricsToolName?: string;
+  metricsByTool: Partial<Record<'prose_stats' | 'style_flags' | 'word_frequency', any>>;
   isLoading: boolean;
   onLoadingChange: (loading: boolean) => void;
   activeTool: 'prose_stats' | 'style_flags' | 'word_frequency';
@@ -25,8 +24,7 @@ interface MetricsTabProps {
 
 export const MetricsTab: React.FC<MetricsTabProps> = ({
   vscode,
-  metrics,
-  metricsToolName,
+  metricsByTool,
   isLoading,
   onLoadingChange,
   activeTool,
@@ -94,12 +92,11 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
     });
   };
 
-  // Only show results that match the active sub-tool
+  // Prefer per-subtool results from cache
   const displayMetrics = React.useMemo(() => {
-    if (!metrics || !metricsToolName) return null;
-    // toolName strings match our sub-tool ids
-    return metricsToolName === activeTool ? metrics : null;
-  }, [metrics, metricsToolName, activeTool]);
+    if (metricsByTool && metricsByTool[activeTool]) return metricsByTool[activeTool] as any;
+    return null;
+  }, [metricsByTool, activeTool]);
 
   const markdownContent = React.useMemo(() => {
     if (!displayMetrics) return '';
@@ -132,9 +129,10 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
 
     // Append Chapter Details section (per-chapter pivoted tables) if available
     try {
-      if (metrics && Array.isArray(metrics.perChapterStats) && metrics.perChapterStats.length > 0) {
+      const metricsSrc: any = displayMetrics;
+      if (metricsSrc && Array.isArray(metricsSrc.perChapterStats) && metricsSrc.perChapterStats.length > 0) {
         let groups = ['---', '', '## Chapter Details', ''].join('\n') + '\n';
-        metrics.perChapterStats.forEach((entry: any) => {
+        metricsSrc.perChapterStats.forEach((entry: any) => {
           const s = entry.stats || {};
           const chapter = (entry.path || '').split(/\\|\//).pop() || entry.path;
 
@@ -174,7 +172,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
     }
 
     return content;
-  }, [markdownContent, metrics]);
+  }, [markdownContent, displayMetrics]);
 
   const handleCopyMetricsResult = () => {
     const content = buildExportContent();
@@ -198,45 +196,32 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   return (
     <div className="tab-content">
       <h2 className="text-lg font-semibold mb-4">Prose Metrics</h2>
+      {/* Sub‑tab bar (moved above Scope) */}
+      <div className="tab-bar" style={{ marginBottom: '8px' }}>
+        <button
+          className={`tab-button ${activeTool === 'prose_stats' ? 'active' : ''}`}
+          disabled={isLoading}
+          onClick={() => onActiveToolChange('prose_stats')}
+        >
+          <span className="tab-label">Prose Statistics</span>
+        </button>
+        <button
+          className={`tab-button ${activeTool === 'style_flags' ? 'active' : ''}`}
+          disabled={isLoading}
+          onClick={() => onActiveToolChange('style_flags')}
+        >
+          <span className="tab-label">Style Flags</span>
+        </button>
+        <button
+          className={`tab-button ${activeTool === 'word_frequency' ? 'active' : ''}`}
+          disabled={isLoading}
+          onClick={() => onActiveToolChange('word_frequency')}
+        >
+          <span className="tab-label">Word Frequency</span>
+        </button>
+      </div>
 
       <div className="input-container">
-        <label className="block text-sm font-medium mb-2" htmlFor="pm-preset-select">Publishing Standards</label>
-        <div className="flex gap-2 mb-2">
-          <select
-            id="pm-preset-select"
-            className="w-1/2"
-            value={preset}
-            onChange={(e) => handlePresetChange(e.target.value)}
-            title="Select a genre preset or manuscript format to compare metrics against publishing ranges"
-            disabled={isLoading}
-          >
-            <option value="none">None</option>
-            <option value="manuscript">Manuscript Format</option>
-            <optgroup label="Genres">
-              {genres.map(g => (
-                <option key={g.key} value={`genre:${g.key}`}>{g.name} ({g.abbreviation})</option>
-              ))}
-            </optgroup>
-          </select>
-          <label className="block text-sm font-medium mb-2" htmlFor="pm-trim-select" style={{position:'absolute',left:'-10000px',width:1,height:1,overflow:'hidden'}}>Trim Size</label>
-          <select
-            id="pm-trim-select"
-            className="w-1/2"
-            value={pageSizeKey}
-            onChange={(e) => handleTrimChange(e.target.value)}
-            title="Choose a trim size to estimate page count and words-per-page"
-            disabled={isLoading || !preset.startsWith('genre:')}
-          >
-            <option value="">Auto (common size)</option>
-            {(preset.startsWith('genre:')
-              ? (genres.find(g => `genre:${g.key}` === preset)?.pageSizes || [])
-              : []
-            ).map(ps => (
-              <option key={ps.key} value={ps.key}>{ps.label} ({ps.width}x{ps.height} in)</option>
-            ))}
-          </select>
-        </div>
-
         <label className="block text-sm font-medium mb-2">Scope:</label>
         <div className="tab-bar" style={{ marginBottom: '8px' }}>
           <button
@@ -290,25 +275,67 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
           onChange={(e) => onPathTextChange(e.target.value)}
           placeholder={sourceMode === 'selection' ? '[selected text]' : 'workspace-relative path or globs'}
         />
+
+        {/* Publishing Standards: only for Prose Statistics view (moved below Scope for consistency) */}
+        {activeTool === 'prose_stats' && (
+          <>
+            <label className="block text-sm font-medium mb-2 mt-3" htmlFor="pm-preset-select">Publishing Standards</label>
+            <div className="flex gap-2 mb-2">
+              <select
+                id="pm-preset-select"
+                className="w-1/2"
+                value={preset}
+                onChange={(e) => handlePresetChange(e.target.value)}
+                title="Select a genre preset or manuscript format to compare metrics against publishing ranges"
+                disabled={isLoading}
+              >
+                <option value="none">None</option>
+                <option value="manuscript">Manuscript Format</option>
+                <optgroup label="Genres">
+                  {genres.map(g => (
+                    <option key={g.key} value={`genre:${g.key}`}>{g.name} ({g.abbreviation})</option>
+                  ))}
+                </optgroup>
+              </select>
+              <label className="block text-sm font-medium mb-2" htmlFor="pm-trim-select" style={{position:'absolute',left:'-10000px',width:1,height:1,overflow:'hidden'}}>Trim Size</label>
+              <select
+                id="pm-trim-select"
+                className="w-1/2"
+                value={pageSizeKey}
+                onChange={(e) => handleTrimChange(e.target.value)}
+                title="Choose a trim size to estimate page count and words-per-page"
+                disabled={isLoading || !preset.startsWith('genre:')}
+              >
+                <option value="">Auto (common size)</option>
+                {(preset.startsWith('genre:')
+                  ? (genres.find(g => `genre:${g.key}` === preset)?.pageSizes || [])
+                  : []
+                ).map(ps => (
+                  <option key={ps.key} value={ps.key}>{ps.label} ({ps.width}x{ps.height} in)</option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
       </div>
 
-      <div>
-        <div className="tab-bar" style={{ marginBottom: '8px' }}>
-          <button className={`tab-button ${activeTool === 'prose_stats' ? 'active' : ''}`} disabled={isLoading}
-            onClick={() => { onActiveToolChange('prose_stats'); handleMeasureProseStats(); }}>
-            <span className="tab-label">Prose Statistics</span>
+      {/* Explicit Generate buttons per sub-tool */}
+      <div className="button-group">
+        {activeTool === 'prose_stats' && (
+          <button className="btn btn-primary" onClick={handleMeasureProseStats} disabled={isLoading}>
+            ⚙️ Generate Prose Statistics
           </button>
-          <button className={`tab-button ${activeTool === 'style_flags' ? 'active' : ''}`} disabled={isLoading}
-            onClick={() => { onActiveToolChange('style_flags'); handleMeasureStyleFlags(); }}>
-            <span className="tab-label">Style Flags</span>
+        )}
+        {activeTool === 'style_flags' && (
+          <button className="btn btn-primary" onClick={handleMeasureStyleFlags} disabled={isLoading}>
+            🏁 Generate Style Flags
           </button>
-          <button className={`tab-button ${activeTool === 'word_frequency' ? 'active' : ''}`} disabled={isLoading}
-            onClick={() => { onActiveToolChange('word_frequency'); handleMeasureWordFrequency(); }}>
-            <span className="tab-label">Word Frequency</span>
+        )}
+        {activeTool === 'word_frequency' && (
+          <button className="btn btn-primary" onClick={handleMeasureWordFrequency} disabled={isLoading}>
+            📈 Generate Word Frequency
           </button>
-        </div>
-
-        {/* Word Search UI moved to Search tab */}
+        )}
       </div>
 
       {isLoading && (
