@@ -112,6 +112,30 @@ The `resources/` directory contains:
   - `scene-example-guides/`: Specific scene examples
   - `descriptors-and-placeholders/`: Emotion and expression snippets
 
+## Repository Workflow: ADRs, TODOs, Memory Bank
+
+- **.ai/central-agent-setup.md** is a symlinked by: .codex/agents.md, .claude/CLAUDE.md, .cline-rules/prose-minion-agent so that each agent assisted tool is sourced against a central document. Update this document to change agent guidance everywhere.
+
+- docs/adr/: Architecture Decision Records
+  - Holds decision docs that drive notable changes and features.
+  - Epics and sprints reference ADRs for traceability and rationale.
+
+- .todo/: Epics and Sprints
+  - `epics/`: Long-running themes or feature tracks. Each epic folder (e.g., `epic-verbalized-sampling-2025-10-26/`) contains an epic overview markdown and a `sprints/` subfolder.
+  - `sprints/`: Execution units under an epic (e.g., `01-prompt-enhancements.md`). Each sprint lists scope, tasks, acceptance criteria, and links to relevant ADRs.
+  - Coupling: Epics and sprints are tied to ADRs. New or updated ADRs should be linked from the epic and each sprint that implements them. Sprints should call out exactly which ADR(s) they implement.
+
+- .memory-bank/: Working context snapshots
+  - Lightweight notes that capture current focus, links to ADRs, the active epic/sprint, and any open questions.
+  - Use it to provide quick on-ramps for agents and maintain continuity between sessions.
+
+- Branching per sprint
+  - Each sprint runs on its own Git branch to isolate work and simplify review.
+  - Suggested naming: `sprint/<epic-slug>-<NN>-<sprint-slug>`
+    - Example: `sprint/epic-verbalized-sampling-2025-10-26-01-prompt-enhancements`
+  - Open PRs should reference the sprint doc and the ADR(s) it implements.
+  - When merging, ensure the sprint doc is updated with outcomes and the memory bank receives a brief summary + links.
+
 ## Testing and Development
 
 ### Running the Extension
