@@ -312,7 +312,7 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
           </div>
           <div className="loading-vhs-container">
             <img
-              src="assets/assistant-working-vhs.gif"
+              src={(window as any).proseMinonAssets?.vhsLoadingGif || ''}
               alt="Assistant processing"
               className="loading-vhs-animation"
             />

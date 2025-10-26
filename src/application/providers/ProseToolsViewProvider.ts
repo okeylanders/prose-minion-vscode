@@ -91,6 +91,10 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
       vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview.js')
     );
 
+    const vhsLoadingGifUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, 'assets', 'assistant-working-vhs.gif')
+    );
+
     const nonce = this.getNonce();
 
     return `<!DOCTYPE html>
@@ -103,6 +107,11 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
 </head>
 <body>
   <div id="root"></div>
+  <script nonce="${nonce}">
+    window.proseMinonAssets = {
+      vhsLoadingGif: "${vhsLoadingGifUri}"
+    };
+  </script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
