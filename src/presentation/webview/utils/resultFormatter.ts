@@ -47,6 +47,24 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
       markdown += `\n_${report.note}_\n`;
     }
 
+    // Summary table
+    markdown += '\n## Summary\n\n';
+    markdown += '| File | Word | Hits | Cluster Count |\n';
+    markdown += '|:-----|:-----|-----:|--------------:|\n';
+
+    for (const target of report.targets || []) {
+      if (target.perFile && target.perFile.length > 0) {
+        for (const file of target.perFile) {
+          const fileName = file.relative || file.file || '—';
+          const word = target.target || '—';
+          const hits = file.count ?? 0;
+          const clusterCount = file.clusters?.length ?? 0;
+          markdown += `| ${fileName} | \`${word}\` | ${hits} | ${clusterCount} |\n`;
+        }
+      }
+    }
+    markdown += '\n';
+
     for (const target of report.targets || []) {
       markdown += `\n## Target “${target.target}”\n`;
       markdown += `- Total occurrences: ${target.totalOccurrences} across ${target.filesWithMatches} file(s)\n`;

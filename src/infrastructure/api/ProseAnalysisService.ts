@@ -388,7 +388,9 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
       const relFiles = Array.isArray(files) ? files : [];
       for (const rel of relFiles) {
-        report.scannedFiles.push({ absolute: rel, relative: rel });
+        const uri = await this.findUriByRelativePath(rel);
+        const absolutePath = uri?.fsPath ?? rel;
+        report.scannedFiles.push({ absolute: absolutePath, relative: rel });
       }
 
       if (relFiles.length === 0 || normalizedTargets.length === 0) {
@@ -421,7 +423,7 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
           totalOccurrences += occurrences.length;
           perFile.push({
-            file: rel,
+            file: uri.fsPath,
             relative: rel,
             count: occurrences.length,
             averageGap: average(distances),
