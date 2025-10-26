@@ -1,9 +1,12 @@
 # Sprint 1 — Prompt Enhancements & Testing
 
-Status: In Progress
+## Epic
 
-- Window: 2025-10-26 → 2025-10-29 (Days 1–3)
-- Epic: .todo/epics/epic-verbalized-sampling-2025-10-26/epic-verbalized-sampling.md
+.todo/epics/epic-verbalized-sampling-2025-10-26/epic-verbalized-sampling.md
+
+## Status
+
+**10-26-2025 | 2:30 PM CST**: Implemented
 
 ## Goal
 
