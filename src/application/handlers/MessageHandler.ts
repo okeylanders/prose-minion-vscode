@@ -120,13 +120,8 @@ export class MessageHandler {
           await this.handleMeasureWordFrequency(message);
           break;
 
-        case MessageType.MEASURE_WORD_SEARCH:
-          // Deprecated: legacy route via Metrics; keep for backward compatibility
-          await this.handleMeasureWordSearch(message as any, /*asSearch*/ false);
-          break;
-
         case MessageType.RUN_WORD_SEARCH:
-          await this.handleMeasureWordSearch(message as any, /*asSearch*/ true);
+          await this.handleMeasureWordSearch(message as any);
           break;
 
         case MessageType.REQUEST_ACTIVE_FILE:
@@ -392,7 +387,7 @@ export class MessageHandler {
     }
   }
 
-  private async handleMeasureWordSearch(message: { text?: string; source?: any; options?: any }, asSearch: boolean): Promise<void> {
+  private async handleMeasureWordSearch(message: { text?: string; source?: any; options?: any }): Promise<void> {
     try {
       const resolved = await this.resolveRichTextForMetrics(message);
       const options = message.options || {};
@@ -402,11 +397,7 @@ export class MessageHandler {
         resolved.mode,
         options
       );
-      if (asSearch) {
-        this.sendSearchResult(result.metrics, result.toolName);
-      } else {
-        this.sendMetricsResult(result.metrics, result.toolName);
-      }
+      this.sendSearchResult(result.metrics, result.toolName);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.sendError('Invalid selection or path', msg);

@@ -20,8 +20,6 @@ export enum MessageType {
   MEASURE_PROSE_STATS = 'measure_prose_stats',
   MEASURE_STYLE_FLAGS = 'measure_style_flags',
   MEASURE_WORD_FREQUENCY = 'measure_word_frequency',
-  // Deprecated for Search tab separation: MEASURE_WORD_SEARCH
-  MEASURE_WORD_SEARCH = 'measure_word_search',
 
   // Search tab messages (separate from Metrics)
   RUN_WORD_SEARCH = 'run_word_search',
@@ -205,13 +203,6 @@ export interface WordSearchResult {
   error?: string;
 }
 
-export interface MeasureWordSearchMessage extends BaseMessage {
-  type: MessageType.MEASURE_WORD_SEARCH;
-  text?: string;
-  source?: TextSourceSpec;
-  options: WordSearchOptions;
-}
-
 // Search tab — request/response are separate from Metrics
 export interface RunWordSearchMessage extends BaseMessage {
   type: MessageType.RUN_WORD_SEARCH;
@@ -312,7 +303,6 @@ export type WebviewToExtensionMessage =
   | MeasureProseStatsMessage
   | MeasureStyleFlagsMessage
   | MeasureWordFrequencyMessage
-  | MeasureWordSearchMessage
   | RunWordSearchMessage
   | TabChangedMessage
   | OpenGuideFileMessage
