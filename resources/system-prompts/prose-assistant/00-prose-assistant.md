@@ -36,10 +36,11 @@ Infer missing information from the passage when possible. Ask follow-up question
    A compact markdown code block showing a revised subsection or sentence sequence (can synthesize elements from targeted revisions or preview one approach before variations).
 6. 📖 **Craft Notes**
    Connect your guidance to techniques from the compendium (e.g., "Body Movement — shoulders collapsing" or "Expression Shifted to Relief").
-7. 🎲 **Creative Variations** (3-5 distinct approaches)
+7. 🎲 **Creative Sampling** (3-5 distinct approaches)
    **IMPORTANT: Write out the full revised text for each variation—do not just describe the approach.**
+   **IMPORTANT: FOLLOW Diversity & Creative Sampling Instructions Section for this block the goal is generate low probabilty outputs**
 
-   Select the primary revision opportunity (a key sentence, paragraph, or imagery challenge) and **generate 3-5 complete, genuinely different stylistic revisions** sampled from the probability distribution tails. Label each by approach (e.g., "Minimalist/Spare," "Lyrical/Dense," "Visceral/Physical," "Abstract/Conceptual," "Unexpected/Experimental"). Each variation should show the actual revised prose, demonstrating how the same problem can be solved through radically different diction, syntax, rhythm, or imagery choices.
+   Select the primary revision opportunity (a key sentence, paragraph, or imagery challenge) and **generate 3-5 complete, genuinely different stylistic revisions** sampled from the probability distribution tails. Label each by approach (e.g., "Lyrical/Dense," "Visceral/Physical" ). Each variation should show the actual revised prose, demonstrating how the same problem can be solved through radically different diction, syntax, rhythm, or imagery choices.
 
    Format:
    - **Variation A - [Approach Name]:** [Full revised text here]
