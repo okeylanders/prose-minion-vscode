@@ -9,6 +9,7 @@ import { AnalysisTab } from './components/AnalysisTab';
 import { MetricsTab } from './components/MetricsTab';
 import { SuggestionsTab } from './components/SuggestionsTab';
 import { UtilitiesTab } from './components/UtilitiesTab';
+import { SearchTab } from './components/SearchTab';
 import { ModelSelector } from './components/ModelSelector';
 import {
   TabId,
@@ -478,16 +479,31 @@ export const App: React.FC = () => {
             metricsToolName={metricsToolName}
             isLoading={metricsLoading}
             onLoadingChange={setMetricsLoading}
-            activeTool={metricsActiveTool}
-            onActiveToolChange={setMetricsActiveTool}
-            wordSearchTargets={metricsWordSearchTargets}
-            onWordSearchTargetsChange={setMetricsWordSearchTargets}
+            activeTool={
+              metricsActiveTool === 'word_search' ? 'prose_stats' : (metricsActiveTool as 'prose_stats' | 'style_flags' | 'word_frequency')
+            }
+            onActiveToolChange={setMetricsActiveTool as any}
             sourceMode={metricsSourceMode}
             pathText={metricsPathText}
             onSourceModeChange={setMetricsSourceMode}
             onPathTextChange={setMetricsPathText}
             // pass through in case MetricsTab wants to adjust save/copy behavior later
             
+          />
+        )}
+
+        {activeTab === TabId.SEARCH && (
+          <SearchTab
+            vscode={vscode}
+            result={metricsResult}
+            isLoading={metricsLoading}
+            onLoadingChange={setMetricsLoading}
+            wordSearchTargets={metricsWordSearchTargets}
+            onWordSearchTargetsChange={setMetricsWordSearchTargets}
+            sourceMode={metricsSourceMode}
+            pathText={metricsPathText}
+            onSourceModeChange={setMetricsSourceMode}
+            onPathTextChange={setMetricsPathText}
           />
         )}
 

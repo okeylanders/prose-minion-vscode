@@ -62,6 +62,7 @@ export enum MessageType {
 export enum TabId {
   ANALYSIS = 'analysis',
   SUGGESTIONS = 'suggestions',
+  SEARCH = 'search',
   METRICS = 'metrics',
   UTILITIES = 'utilities'
 }
