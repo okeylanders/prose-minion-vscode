@@ -1,4 +1,4 @@
-# Agents Guide for Prose Minion VSCode Extension
+# Agentss Guide for Prose Minion VSCode Extension
 
 This document provides guidance for AI agents (like Claude) working with the Prose Minion VSCode extension codebase.
 
