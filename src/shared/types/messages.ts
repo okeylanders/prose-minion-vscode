@@ -165,6 +165,46 @@ export interface WordSearchOptions {
   caseSensitive?: boolean;
 }
 
+export interface WordSearchResult {
+  scannedFiles: Array<{
+    absolute: string;
+    relative: string;
+  }>;
+  options: {
+    caseSensitive: boolean;
+    contextWords: number;
+    clusterWindow: number;
+    minClusterSize: number;
+  };
+  targets: Array<{
+    target: string;
+    normalized: string;
+    totalOccurrences: number;
+    overallAverageGap: number;
+    filesWithMatches: number;
+    perFile: Array<{
+      file: string;
+      relative: string;
+      count: number;
+      averageGap: number;
+      occurrences: Array<{
+        index: number;
+        line: number;
+        snippet: string;
+      }>;
+      clusters: Array<{
+        count: number;
+        spanWords: number;
+        startLine: number;
+        endLine: number;
+        snippet: string;
+      }>;
+    }>;
+  }>;
+  note?: string;
+  error?: string;
+}
+
 export interface MeasureWordSearchMessage extends BaseMessage {
   type: MessageType.MEASURE_WORD_SEARCH;
   text?: string;
@@ -182,7 +222,7 @@ export interface RunWordSearchMessage extends BaseMessage {
 
 export interface SearchResultMessage extends BaseMessage {
   type: MessageType.SEARCH_RESULT;
-  result: any; // Word Search specific result shape
+  result: WordSearchResult;
   toolName: string; // typically 'word_search'
 }
 

@@ -1,6 +1,7 @@
 /**
- * Metrics Formatter - Utility functions
- * Converts metrics JSON to readable markdown format
+ * Result Formatter - Utility functions
+ * Converts result data (metrics, search, analysis) to readable markdown format
+ * Handles formatting for Metrics, Search, and Analysis tabs
  */
 
 interface StyleFlag {

@@ -6,7 +6,7 @@
 import * as React from 'react';
 import { MessageType, TextSourceMode } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
-import { formatMetricsAsMarkdown } from '../utils/metricsFormatter';
+import { formatMetricsAsMarkdown } from '../utils/resultFormatter';
 
 interface SearchTabProps {
   vscode: any;
@@ -151,6 +151,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
           </button>
         </div>
         <textarea
+          title="Search Target"
           id="pm-search-targets-textarea"
           rows={3}
           value={wordSearchTargets}

@@ -36,7 +36,7 @@ type PersistedState = {
   searchResult?: any;
   metricsToolName?: string;
   metricsActiveTool?: 'prose_stats' | 'style_flags' | 'word_frequency';
-  metricsWordSearchTargets?: string;
+  wordSearchTargets?: string;
   metricsSourceMode?: TextSourceMode;
   metricsPathText?: string;
   utilitiesResult: string;
@@ -71,7 +71,7 @@ export const App: React.FC = () => {
   const [metricsSourceMode, setMetricsSourceMode] = React.useState<TextSourceMode>(persistedState?.metricsSourceMode ?? 'selection');
   const [metricsPathText, setMetricsPathText] = React.useState<string>(persistedState?.metricsPathText ?? '[selected text]');
   const [metricsActiveTool, setMetricsActiveTool] = React.useState<'prose_stats' | 'style_flags' | 'word_frequency'>(persistedState?.metricsActiveTool ?? 'prose_stats');
-  const [metricsWordSearchTargets, setMetricsWordSearchTargets] = React.useState<string>(persistedState?.metricsWordSearchTargets ?? '');
+  const [wordSearchTargets, setWordSearchTargets] = React.useState<string>(persistedState?.wordSearchTargets ?? '');
   const [utilitiesResult, setUtilitiesResult] = React.useState(persistedState?.utilitiesResult ?? '');
   const [dictionaryToolName, setDictionaryToolName] = React.useState<string | undefined>(persistedState?.dictionaryToolName);
   const [utilitiesLoading, setUtilitiesLoading] = React.useState(false);
@@ -139,7 +139,7 @@ export const App: React.FC = () => {
       searchResult,
       metricsToolName,
       metricsActiveTool,
-      metricsWordSearchTargets,
+      wordSearchTargets,
       metricsSourceMode,
       metricsPathText,
       utilitiesResult,
@@ -168,7 +168,7 @@ export const App: React.FC = () => {
     searchResult,
     metricsToolName,
     metricsActiveTool,
-    metricsWordSearchTargets,
+    wordSearchTargets,
     utilitiesResult,
     dictionaryToolName,
     dictionaryWord,
@@ -506,8 +506,8 @@ export const App: React.FC = () => {
             result={searchResult}
             isLoading={metricsLoading}
             onLoadingChange={setMetricsLoading}
-            wordSearchTargets={metricsWordSearchTargets}
-            onWordSearchTargetsChange={setMetricsWordSearchTargets}
+            wordSearchTargets={wordSearchTargets}
+            onWordSearchTargetsChange={setWordSearchTargets}
             sourceMode={metricsSourceMode}
             pathText={metricsPathText}
             onSourceModeChange={setMetricsSourceMode}

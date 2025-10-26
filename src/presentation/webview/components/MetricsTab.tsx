@@ -6,7 +6,7 @@
 import * as React from 'react';
 import { MessageType, TextSourceMode } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
-import { formatMetricsAsMarkdown } from '../utils/metricsFormatter';
+import { formatMetricsAsMarkdown } from '../utils/resultFormatter';
 // MessageType is already imported from shared/types re-export
 
 interface MetricsTabProps {
