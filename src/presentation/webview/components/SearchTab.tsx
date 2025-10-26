@@ -6,6 +6,7 @@
 import * as React from 'react';
 import { MessageType, TextSourceMode } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { LoadingWidget } from './LoadingWidget';
 import { formatMetricsAsMarkdown } from '../utils/resultFormatter';
 
 interface SearchTabProps {
@@ -214,6 +215,8 @@ export const SearchTab: React.FC<SearchTabProps> = ({
 
         <div className="mt-3 flex justify-center">
           <button className="btn btn-primary" disabled={isLoading} onClick={() => {
+            // Clear existing search markdown before re-running
+            setMarkdownContent('');
             onLoadingChange(true);
             const wordsOrPhrases = parseTargets(wordSearchTargets);
             vscode.postMessage({
@@ -233,8 +236,13 @@ export const SearchTab: React.FC<SearchTabProps> = ({
 
       {isLoading && (
         <div className="loading-indicator">
-          <div className="spinner"></div>
-          <span>Running search...</span>
+          <div className="loading-header">
+            <div className="spinner"></div>
+            <div className="loading-text">
+              <div>{'Running search...'}</div>
+            </div>
+          </div>
+          <LoadingWidget />
         </div>
       )}
 

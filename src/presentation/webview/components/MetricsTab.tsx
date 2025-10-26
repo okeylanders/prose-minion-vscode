@@ -6,6 +6,7 @@
 import * as React from 'react';
 import { MessageType, TextSourceMode } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { LoadingWidget } from './LoadingWidget';
 import { formatMetricsAsMarkdown } from '../utils/resultFormatter';
 // MessageType is already imported from shared/types re-export
 
@@ -20,6 +21,7 @@ interface MetricsTabProps {
   pathText: string;
   onSourceModeChange: (mode: TextSourceMode) => void;
   onPathTextChange: (text: string) => void;
+  onClearSubtoolResult: (tool: 'prose_stats' | 'style_flags' | 'word_frequency') => void;
 }
 
 export const MetricsTab: React.FC<MetricsTabProps> = ({
@@ -32,7 +34,8 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   sourceMode,
   pathText,
   onSourceModeChange,
-  onPathTextChange
+  onPathTextChange,
+  onClearSubtoolResult
 }) => {
   // Keep a local mirror only for selection preview if needed in future.
 
@@ -70,6 +73,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
 
   const handleMeasureProseStats = () => {
     onLoadingChange(true);
+    onClearSubtoolResult('prose_stats');
     vscode.postMessage({
       type: MessageType.MEASURE_PROSE_STATS,
       source: { mode: sourceMode, pathText }
@@ -78,6 +82,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
 
   const handleMeasureStyleFlags = () => {
     onLoadingChange(true);
+    onClearSubtoolResult('style_flags');
     vscode.postMessage({
       type: MessageType.MEASURE_STYLE_FLAGS,
       source: { mode: sourceMode, pathText }
@@ -86,6 +91,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
 
   const handleMeasureWordFrequency = () => {
     onLoadingChange(true);
+    onClearSubtoolResult('word_frequency');
     vscode.postMessage({
       type: MessageType.MEASURE_WORD_FREQUENCY,
       source: { mode: sourceMode, pathText }
@@ -340,8 +346,13 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
 
       {isLoading && (
         <div className="loading-indicator">
-          <div className="spinner"></div>
-          <span>Calculating metrics...</span>
+          <div className="loading-header">
+            <div className="spinner"></div>
+            <div className="loading-text">
+              <div>{'Calculating metrics...'}</div>
+            </div>
+          </div>
+          <LoadingWidget />
         </div>
       )}
 

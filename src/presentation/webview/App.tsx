@@ -493,6 +493,11 @@ export const App: React.FC = () => {
             pathText={metricsPathText}
             onSourceModeChange={setMetricsSourceMode}
             onPathTextChange={setMetricsPathText}
+            onClearSubtoolResult={(tool) => setMetricsResultsByTool(prev => {
+              const next = { ...prev } as any;
+              delete next[tool];
+              return next;
+            })}
             // pass through in case MetricsTab wants to adjust save/copy behavior later
             
           />
