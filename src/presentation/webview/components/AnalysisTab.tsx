@@ -299,14 +299,23 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
 
       {isLoading && (
         <div className="loading-indicator">
-          <div className="spinner"></div>
-          <div className="loading-text">
-            <div>{statusMessage || 'Analyzing...'}</div>
-            {guideNames && (
-              <div className="guide-ticker-container">
-                <div className="guide-ticker">{guideNames}</div>
-              </div>
-            )}
+          <div className="loading-header">
+            <div className="spinner"></div>
+            <div className="loading-text">
+              <div>{statusMessage || 'Analyzing...'}</div>
+              {guideNames && (
+                <div className="guide-ticker-container">
+                  <div className="guide-ticker">{guideNames}</div>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="loading-vhs-container">
+            <img
+              src="assets/assistant-working-vhs.gif"
+              alt="Assistant processing"
+              className="loading-vhs-animation"
+            />
           </div>
         </div>
       )}

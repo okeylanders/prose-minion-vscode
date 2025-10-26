@@ -381,14 +381,36 @@ select:focus {
 /* Loading indicator */
 .loading-indicator {
   display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
+  flex-direction: column;
+  gap: var(--spacing-lg);
   padding: var(--spacing-md);
   color: var(--vscode-descriptionForeground);
 }
 
+.loading-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
 .loading-text {
   flex: 1;
+}
+
+.loading-vhs-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: var(--spacing-sm);
+}
+
+.loading-vhs-animation {
+  max-width: 500px;
+  width: 100%;
+  height: auto;
+  border-radius: var(--border-radius);
+  opacity: 0.85;
+  image-rendering: pixelated;
 }
 
 .spinner {
