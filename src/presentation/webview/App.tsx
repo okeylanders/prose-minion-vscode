@@ -489,10 +489,8 @@ export const App: React.FC = () => {
             metricsToolName={metricsToolName}
             isLoading={metricsLoading}
             onLoadingChange={setMetricsLoading}
-            activeTool={
-              metricsActiveTool === 'word_search' ? 'prose_stats' : (metricsActiveTool as 'prose_stats' | 'style_flags' | 'word_frequency')
-            }
-            onActiveToolChange={setMetricsActiveTool as any}
+            activeTool={metricsActiveTool}
+            onActiveToolChange={setMetricsActiveTool}
             sourceMode={metricsSourceMode}
             pathText={metricsPathText}
             onSourceModeChange={setMetricsSourceMode}
