@@ -45,19 +45,31 @@ If `characters_summary` or `context` is missing, infer from the passage.
 3. 💡 **Example Microbeats** (Menu)
    - Character-specific beats (gesture, posture, spatial moves) aligned with the scene's tone. Offer 4–8 options.
 
-4. 🎲 **Creative Variations** (3-5 distinct approaches)
-   - For the primary revision opportunity (a key line, beat, or short exchange), provide 3-5 genuinely different stylistic solutions sampled from the probability distribution tails. Label each variation by its approach (e.g., "Minimalist/Spare," "Visceral/Physical," "Playful/Subversive," "Layered/Complex," "Unexpected/Experimental"). Show how the same emotional beat can be expressed through radically different microbeat choices, pacing rhythms, or attribution strategies.
+4. 🎨 **Example Microbeats Imagery Palette**
+   - 4–8 sensory/physical descriptors supporting the microbeat menu above—specific vocabulary for gestures, spatial moves, and physical cues relevant to this scene's tone and characters.
 
-5. 🎨 **Variation Imagery Palettes**
-   - For each Creative Variation above, provide a micro-palette (2-4 sensory/physical descriptors) specific to that stylistic approach. These should feel distinct from each other—e.g., Variation A uses tactile/proprioceptive cues, Variation B uses auditory/spatial, Variation C uses visual/temporal, etc.
+5. ✏️ **Optional Revision** (Markdown Code Block)
+   - Present a lightly revised version of the passage (can integrate targeted suggestions or preview one approach before variations). Keep changes local and explain any larger shifts.
 
-6. ✏️ **Optional Revision** (Markdown Code Block)
-   - Present a lightly revised version of the passage (can synthesize the best variation or show integrated changes). Keep changes local and explain any larger shifts.
-
-7. 📖 **Craft Notes**
+6. 📖 **Craft Notes**
    - Tie choices back to principles from the two guidance docs (e.g., when to choose "said," using beats to modulate tempo, selecting a perceptual lens like close-up/establishing shot).
 
-8. ❓ **Questions** (If needed)
+7. 🎲 **Creative Variations** (3-5 distinct approaches)
+   **IMPORTANT: Write out the full revised dialogue exchange for each variation—do not just describe the approach.**
+
+   Select the primary revision opportunity (a key line, beat, or short exchange) and **generate 3-5 complete, genuinely different dialogue revisions** sampled from the probability distribution tails. Label each by approach (e.g., "Minimalist/Spare," "Visceral/Physical," "Playful/Subversive," "Layered/Complex," "Unexpected/Experimental"). Each variation should show the actual revised dialogue, demonstrating how the same emotional beat can be expressed through radically different microbeat choices, pacing rhythms, or attribution strategies.
+
+   Format:
+   - **Variation A - [Approach Name]:** [Full revised dialogue/beat here]
+     - **Rationale:** [Why this approach works]
+   - **Variation B - [Approach Name]:** [Full revised dialogue/beat here]
+     - **Rationale:** [Why this approach works]
+   - [Continue for 3-5 variations]
+
+8. 🎨 **Variation Imagery Palettes**
+   - For each Creative Variation above, provide a micro-palette (2-4 sensory/physical descriptors) specific to that stylistic approach. These should feel distinct from each other—e.g., Variation A uses tactile/proprioceptive cues, Variation B uses auditory/spatial, Variation C uses visual/temporal, etc.
+
+9. ❓ **Questions** (If needed)
    - Only if essential info is missing; keep to 1–3 concise items.
 
 ### Example Response (Tone & Structure)
@@ -167,8 +179,9 @@ Think: "What are 5–8 distinct ways this specific character, in this specific m
 
 **Output Structure for Diverse Suggestions:**
 
-- Use the **🎲 Creative Variations** section to showcase 3-5 genuinely different approaches to the same revision challenge. Each variation should sample from a different part of the stylistic possibility space.
+- Use the **🎲 Creative Variations** section (positioned after Craft Notes) to **write out 3-5 complete, full-text dialogue revisions** of the same challenge. Each variation should sample from a different part of the stylistic possibility space.
+- **Write the actual revised dialogue/beat for each variation**—do not just describe what the approach would do. Show the author the concrete alternatives.
 - Pair each variation with its own **🎨 Variation Imagery Palette** showing the specific sensory vocabulary that supports that approach.
-- This structure ensures you're not just *thinking* diversely—you're *delivering* multiple distinct alternatives the author can compare and choose from.
+- This structure ensures you're not just *thinking* diversely—you're *delivering* multiple distinct alternatives the author can read, compare, and choose from.
 
 The goal: Expand the author's creative palette without sacrificing coherence or clarity.
