@@ -96,6 +96,23 @@ src/
 - **TypeScript**: Strict typing throughout the codebase
 - **Error Handling**: Try/catch with fallbacks for missing resources
 
+### Alpha Development Guidelines
+
+**This is alpha software with no released versions. Backward compatibility is NOT required.**
+
+- **No Backward Compatibility Required**: All changes are breaking changes until v1.0 release. Don't maintain deprecated code paths, interfaces, or legacy routes.
+- **Remove Dead Code Aggressively**: When refactoring, fully remove old implementations rather than marking them "deprecated" or adding compatibility shims.
+- **Clean Architecture Over Compatibility**: Favor simplicity, clarity, and maintainability over hypothetical future needs.
+- **Breaking Changes Are Free**: Feel empowered to make large architectural improvements without worrying about existing deployments.
+- **Incremental Cleanup**: If a feature has both old and new paths during development, remove the old path in the same PR or immediately after verification.
+
+**Examples**:
+
+- ✅ Remove old message types entirely when introducing new ones
+- ✅ Delete unused interfaces and handlers immediately
+- ❌ Don't keep "legacy routes" with comments like "keep for backward compatibility"
+- ❌ Don't add boolean flags like `asOldBehavior` to maintain dual behavior
+
 ### Important Files to Know
 
 - [package.json](package.json) - Extension manifest and configuration
