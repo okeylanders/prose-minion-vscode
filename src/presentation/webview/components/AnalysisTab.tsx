@@ -317,6 +317,16 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
               className="loading-vhs-animation"
             />
           </div>
+          <div className="loading-credit">
+            Animation by{' '}
+            <a
+              href="https://www.pinterest.com/pin/29977153764908058/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              matti watt
+            </a>
+          </div>
         </div>
       )}
 
