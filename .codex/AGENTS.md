@@ -1,0 +1,1 @@
+../.ai/central-agent-setup.md
