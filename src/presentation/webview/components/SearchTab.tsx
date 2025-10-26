@@ -129,6 +129,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
         <label className="block text-sm font-medium mb-2" htmlFor="pm-search-path-input">Path / Pattern</label>
         <input
           id="pm-search-path-input"
+          type="text"
           className="w-full"
           value={pathText}
           onChange={(e) => onPathTextChange(e.target.value)}
@@ -153,6 +154,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
         <textarea
           title="Search Target"
           id="pm-search-targets-textarea"
+          className="w-full"
           rows={3}
           value={wordSearchTargets}
           onChange={(e) => onWordSearchTargetsChange(e.target.value)}
@@ -165,15 +167,42 @@ export const SearchTab: React.FC<SearchTabProps> = ({
         <div className="flex gap-2 mt-2">
           <div className="flex-1">
             <label className="block text-sm mb-1" htmlFor="pm-search-context-words">Context words</label>
-            <input id="pm-search-context-words" type="number" value={wordSearchContextWords} onChange={(e) => setWordSearchContextWords(parseInt(e.target.value || '7', 10))} />
+            <input
+              id="pm-search-context-words"
+              type="text"
+              className="w-full"
+              value={wordSearchContextWords}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, '');
+                setWordSearchContextWords(val ? parseInt(val, 10) : 7);
+              }}
+            />
           </div>
           <div className="flex-1">
             <label className="block text-sm mb-1" htmlFor="pm-search-cluster-window">Cluster window</label>
-            <input id="pm-search-cluster-window" type="number" value={wordSearchClusterWindow} onChange={(e) => setWordSearchClusterWindow(parseInt(e.target.value || '150', 10))} />
+            <input
+              id="pm-search-cluster-window"
+              type="text"
+              className="w-full"
+              value={wordSearchClusterWindow}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, '');
+                setWordSearchClusterWindow(val ? parseInt(val, 10) : 150);
+              }}
+            />
           </div>
           <div className="flex-1">
             <label className="block text-sm mb-1" htmlFor="pm-search-min-cluster">Min cluster size</label>
-            <input id="pm-search-min-cluster" type="number" value={wordSearchMinCluster} onChange={(e) => setWordSearchMinCluster(parseInt(e.target.value || '3', 10))} />
+            <input
+              id="pm-search-min-cluster"
+              type="text"
+              className="w-full"
+              value={wordSearchMinCluster}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, '');
+                setWordSearchMinCluster(val ? parseInt(val, 10) : 3);
+              }}
+            />
           </div>
         </div>
         <div className="mt-2">
@@ -183,7 +212,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
           </label>
         </div>
 
-        <div className="mt-3">
+        <div className="mt-3 flex justify-center">
           <button className="btn btn-primary" disabled={isLoading} onClick={() => {
             onLoadingChange(true);
             const wordsOrPhrases = parseTargets(wordSearchTargets);
@@ -198,7 +227,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
                 caseSensitive: wordSearchCaseSensitive
               }
             });
-          }}>Run Search</button>
+          }}>⚡ Run Search</button>
         </div>
       </div>
 
