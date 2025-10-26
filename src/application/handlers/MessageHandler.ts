@@ -14,6 +14,7 @@ import {
   MetricsResultMessage,
   DictionaryResultMessage,
   ContextResultMessage,
+  SearchResultMessage,
   ErrorMessage,
   StatusMessage,
   ModelScope,
@@ -34,7 +35,7 @@ interface ResultCache {
   dictionary?: DictionaryResultMessage;
   context?: ContextResultMessage;
   metrics?: MetricsResultMessage;
-  search?: { type: string; result: any; toolName: string; timestamp: number };
+  search?: SearchResultMessage;
   status?: StatusMessage;
   error?: ErrorMessage;
 }
@@ -583,13 +584,13 @@ export class MessageHandler {
   }
 
   private sendSearchResult(result: any, toolName: string): void {
-    const message = {
+    const message: SearchResultMessage = {
       type: MessageType.SEARCH_RESULT,
       result,
       toolName,
       timestamp: Date.now()
-    } as const;
-    sharedResultCache.search = { ...message } as any;
+    };
+    sharedResultCache.search = { ...message };
     void this.postMessage(message);
   }
 
@@ -911,8 +912,8 @@ export class MessageHandler {
       void this.postMessage(sharedResultCache.metrics);
     }
 
-    if ((sharedResultCache as any).search) {
-      void this.postMessage((sharedResultCache as any).search);
+    if (sharedResultCache.search) {
+      void this.postMessage(sharedResultCache.search);
     }
 
     if (sharedResultCache.context) {
