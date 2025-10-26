@@ -94,6 +94,9 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
     const vhsLoadingGifUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, 'assets', 'assistant-working-vhs.gif')
     );
+    const distortedLoadingGifUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, 'assets', 'assistant-working-distorted-screen.gif')
+    );
 
     const nonce = this.getNonce();
 
@@ -109,7 +112,21 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
   <div id="root"></div>
   <script nonce="${nonce}">
     window.proseMinonAssets = {
-      vhsLoadingGif: "${vhsLoadingGifUri}"
+      vhsLoadingGif: "${vhsLoadingGifUri}",
+      loadingGifs: [
+        "${vhsLoadingGifUri}",
+        "${distortedLoadingGifUri}"
+      ],
+      // Enumerate available loading GIF filenames for credits management
+      loadingGifList: [
+        'assistant-working-vhs.gif',
+        'assistant-working-distorted-screen.gif'
+      ],
+      // Map of filename -> credit info
+      loadingGifCredits: {
+        'assistant-working-vhs.gif': { label: 'matti watt', href: 'https://www.pinterest.com/pin/29977153764908058/' },
+        'assistant-working-distorted-screen.gif': { label: 'E270', href: 'https://www.pinterest.com/pin/21462535717701169/' }
+      }
     };
   </script>
   <script nonce="${nonce}" src="${scriptUri}"></script>

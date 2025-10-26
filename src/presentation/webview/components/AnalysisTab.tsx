@@ -6,6 +6,7 @@
 import * as React from 'react';
 import { SelectionTarget, MessageType } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { LoadingWidget } from './LoadingWidget';
 import { formatAnalysisAsMarkdown } from '../utils/resultFormatter';
 
 interface AnalysisTabProps {
@@ -310,23 +311,8 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
               )}
             </div>
           </div>
-          <div className="loading-vhs-container">
-            <img
-              src={(window as any).proseMinonAssets?.vhsLoadingGif || ''}
-              alt="Assistant processing"
-              className="loading-vhs-animation"
-            />
-          </div>
-          <div className="loading-credit">
-            Animation by{' '}
-            <a
-              href="https://www.pinterest.com/pin/29977153764908058/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              matti watt
-            </a>
-          </div>
+          {/* Shared loading widget with randomized animation */}
+          <LoadingWidget />
         </div>
       )}
 
