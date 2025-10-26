@@ -6,7 +6,7 @@
 import * as React from 'react';
 import { SelectionTarget, MessageType } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
-import { formatAnalysisAsMarkdown } from '../utils/metricsFormatter';
+import { formatAnalysisAsMarkdown } from '../utils/resultFormatter';
 
 interface AnalysisTabProps {
   selectedText: string;

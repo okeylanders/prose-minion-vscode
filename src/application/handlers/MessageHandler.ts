@@ -14,6 +14,7 @@ import {
   MetricsResultMessage,
   DictionaryResultMessage,
   ContextResultMessage,
+  SearchResultMessage,
   ErrorMessage,
   StatusMessage,
   ModelScope,
@@ -34,6 +35,7 @@ interface ResultCache {
   dictionary?: DictionaryResultMessage;
   context?: ContextResultMessage;
   metrics?: MetricsResultMessage;
+  search?: SearchResultMessage;
   status?: StatusMessage;
   error?: ErrorMessage;
 }
@@ -118,7 +120,7 @@ export class MessageHandler {
           await this.handleMeasureWordFrequency(message);
           break;
 
-        case MessageType.MEASURE_WORD_SEARCH:
+        case MessageType.RUN_WORD_SEARCH:
           await this.handleMeasureWordSearch(message as any);
           break;
 
@@ -395,7 +397,7 @@ export class MessageHandler {
         resolved.mode,
         options
       );
-      this.sendMetricsResult(result.metrics, result.toolName);
+      this.sendSearchResult(result.metrics, result.toolName);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.sendError('Invalid selection or path', msg);
@@ -570,6 +572,17 @@ export class MessageHandler {
     sharedResultCache.error = undefined;
     void this.postMessage(message);
     this.sendStatus('');
+  }
+
+  private sendSearchResult(result: any, toolName: string): void {
+    const message: SearchResultMessage = {
+      type: MessageType.SEARCH_RESULT,
+      result,
+      toolName,
+      timestamp: Date.now()
+    };
+    sharedResultCache.search = { ...message };
+    void this.postMessage(message);
   }
 
   private async saveResultToFile(toolName: string, content: string, metadata?: SaveResultMetadata): Promise<string> {
@@ -888,6 +901,10 @@ export class MessageHandler {
 
     if (sharedResultCache.metrics) {
       void this.postMessage(sharedResultCache.metrics);
+    }
+
+    if (sharedResultCache.search) {
+      void this.postMessage(sharedResultCache.search);
     }
 
     if (sharedResultCache.context) {

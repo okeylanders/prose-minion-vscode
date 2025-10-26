@@ -6,7 +6,7 @@
 import * as React from 'react';
 import { MessageType, TextSourceMode } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
-import { formatMetricsAsMarkdown } from '../utils/metricsFormatter';
+import { formatMetricsAsMarkdown } from '../utils/resultFormatter';
 // MessageType is already imported from shared/types re-export
 
 interface MetricsTabProps {
@@ -15,10 +15,8 @@ interface MetricsTabProps {
   metricsToolName?: string;
   isLoading: boolean;
   onLoadingChange: (loading: boolean) => void;
-  activeTool: 'prose_stats' | 'style_flags' | 'word_frequency' | 'word_search';
-  onActiveToolChange: (tool: 'prose_stats' | 'style_flags' | 'word_frequency' | 'word_search') => void;
-  wordSearchTargets: string;
-  onWordSearchTargetsChange: (value: string) => void;
+  activeTool: 'prose_stats' | 'style_flags' | 'word_frequency';
+  onActiveToolChange: (tool: 'prose_stats' | 'style_flags' | 'word_frequency') => void;
   sourceMode: TextSourceMode;
   pathText: string;
   onSourceModeChange: (mode: TextSourceMode) => void;
@@ -33,8 +31,6 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   onLoadingChange,
   activeTool,
   onActiveToolChange,
-  wordSearchTargets,
-  onWordSearchTargetsChange,
   sourceMode,
   pathText,
   onSourceModeChange,
@@ -48,11 +44,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   const [pageSizeKey, setPageSizeKey] = React.useState<string>('');
   // Sub-tool state (local only)
   // activeTool and wordSearchTargets persisted in App; defaults handled upstream
-  const [wordSearchContextWords, setWordSearchContextWords] = React.useState<number>(7);
-  const [wordSearchClusterWindow, setWordSearchClusterWindow] = React.useState<number>(150);
-  const [wordSearchMinCluster, setWordSearchMinCluster] = React.useState<number>(3);
-  const [wordSearchCaseSensitive, setWordSearchCaseSensitive] = React.useState<boolean>(false);
-  const [expandInfo, setExpandInfo] = React.useState<string>('');
+  // Word Search controls moved to SearchTab
 
   React.useEffect(() => {
     const handler = (event: MessageEvent) => {
@@ -245,7 +237,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
           </select>
         </div>
 
-        <label className="block text-sm font-medium mb-2">Measure:</label>
+        <label className="block text-sm font-medium mb-2">Scope:</label>
         <div className="tab-bar" style={{ marginBottom: '8px' }}>
           <button
             className={`tab-button ${sourceMode === 'activeFile' ? 'active' : ''}`}
@@ -314,76 +306,9 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
             onClick={() => { onActiveToolChange('word_frequency'); handleMeasureWordFrequency(); }}>
             <span className="tab-label">Word Frequency</span>
           </button>
-          <button className={`tab-button ${activeTool === 'word_search' ? 'active' : ''}`} disabled={isLoading}
-            onClick={() => { onActiveToolChange('word_search'); }}>
-            <span className="tab-label">Word Search</span>
-          </button>
         </div>
 
-        {activeTool === 'word_search' && (
-          <div className="input-container">
-            <div className="input-header">
-              <label className="block text-sm font-medium" htmlFor="pm-targets-textarea">Targets (comma or newline separated; phrases allowed)</label>
-              <button
-                className="icon-button"
-                title="Expand word list"
-                aria-label="Expand word list"
-                onClick={() => setExpandInfo('Auto expand search coming soon')}
-              >
-                🤖⚡
-              </button>
-            </div>
-            <textarea
-              id="pm-targets-textarea"
-              rows={3}
-              value={wordSearchTargets}
-              onChange={(e) => onWordSearchTargetsChange(e.target.value)}
-              placeholder=""
-            />
-            {expandInfo && (
-              <div className="context-status">{expandInfo}</div>
-            )}
-
-            <div className="flex gap-2 mt-2">
-              <div className="flex-1">
-                <label className="block text-sm mb-1" htmlFor="pm-context-words">Context words</label>
-                <input id="pm-context-words" type="number" value={wordSearchContextWords} onChange={(e) => setWordSearchContextWords(parseInt(e.target.value || '7', 10))} />
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm mb-1" htmlFor="pm-cluster-window">Cluster window</label>
-                <input id="pm-cluster-window" type="number" value={wordSearchClusterWindow} onChange={(e) => setWordSearchClusterWindow(parseInt(e.target.value || '150', 10))} />
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm mb-1" htmlFor="pm-min-cluster">Min cluster size</label>
-                <input id="pm-min-cluster" type="number" value={wordSearchMinCluster} onChange={(e) => setWordSearchMinCluster(parseInt(e.target.value || '3', 10))} />
-              </div>
-            </div>
-            <div className="mt-2">
-              <label className="inline-flex items-center">
-                <input type="checkbox" checked={wordSearchCaseSensitive} onChange={(e) => setWordSearchCaseSensitive(e.target.checked)} />
-                <span className="ml-2">Case sensitive</span>
-              </label>
-            </div>
-
-            <div className="mt-3">
-              <button className="btn btn-primary" disabled={isLoading} onClick={() => {
-                onLoadingChange(true);
-                const wordsOrPhrases = parseTargets(wordSearchTargets);
-                vscode.postMessage({
-                  type: MessageType.MEASURE_WORD_SEARCH,
-                  source: { mode: sourceMode, pathText },
-                  options: {
-                    wordsOrPhrases,
-                    contextWords: wordSearchContextWords,
-                    clusterWindow: wordSearchClusterWindow,
-                    minClusterSize: wordSearchMinCluster,
-                    caseSensitive: wordSearchCaseSensitive
-                  }
-                });
-              }}>Run Search</button>
-            </div>
-          </div>
-        )}
+        {/* Word Search UI moved to Search tab */}
       </div>
 
       {isLoading && (
@@ -419,16 +344,9 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
           <MarkdownRenderer content={markdownContent} />
         </div>
       )}
-      {!markdownContent && activeTool === 'word_search' && (
-        <div className="placeholder-content text-gray-500">No Word Search results yet. Enter targets and click Run Search.</div>
-      )}
+      {/* No Word Search placeholder here; handled in Search tab */}
     </div>
   );
 };
 
-function parseTargets(input: string): string[] {
-  if (!input) return [];
-  // Split on newlines and commas; trim; drop empty
-  const parts = input.split(/\n|,/).map(s => s.trim()).filter(Boolean);
-  return parts;
-}
+// parseTargets moved to SearchTab
