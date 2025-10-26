@@ -29,6 +29,7 @@ export interface ContextAssistantOptions {
 export interface ContextAssistantExecutionResult {
   content: string;
   requestedResources?: string[];
+  usage?: { promptTokens: number; completionTokens: number; totalTokens: number; costUsd?: number };
 }
 
 export class ContextAssistant {
@@ -75,7 +76,8 @@ export class ContextAssistant {
 
     return {
       content: executionResult.content,
-      requestedResources: executionResult.requestedResources
+      requestedResources: executionResult.requestedResources,
+      usage: executionResult.usage
     };
   }
 

@@ -60,6 +60,9 @@ export enum MessageType {
   PUBLISHING_STANDARDS_DATA = 'publishing_standards_data',
   SET_PUBLISHING_PRESET = 'set_publishing_preset',
   SET_PUBLISHING_TRIM_SIZE = 'set_publishing_trim_size'
+  ,
+  // Token usage/cost updates
+  TOKEN_USAGE_UPDATE = 'token_usage_update'
 }
 
 export enum TabId {
@@ -292,6 +295,22 @@ export interface ChapterGlobsMessage extends BaseMessage {
   globs: string; // raw config string
 }
 
+// Token usage update (extension -> webview)
+export interface TokenUsageTotals {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  // Optional cost in USD if available from provider or estimates
+  costUsd?: number;
+  // True when cost is an estimate from model pricing, not authoritative
+  isEstimate?: boolean;
+}
+
+export interface TokenUsageUpdateMessage extends BaseMessage {
+  type: MessageType.TOKEN_USAGE_UPDATE;
+  totals: TokenUsageTotals;
+}
+
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
   | AnalyzeProseMessage
@@ -408,4 +427,5 @@ export type ExtensionToWebviewMessage =
   | ActiveFileMessage
   | ManuscriptGlobsMessage
   | ChapterGlobsMessage
-  | PublishingStandardsDataMessage;
+  | PublishingStandardsDataMessage
+  | TokenUsageUpdateMessage;

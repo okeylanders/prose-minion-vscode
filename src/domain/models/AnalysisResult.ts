@@ -8,6 +8,12 @@ export interface AnalysisResult {
   readonly content: string;
   readonly timestamp: Date;
   readonly usedGuides?: string[];  // Array of guide paths that were used
+  readonly usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    costUsd?: number;
+  };
 }
 
 export interface MetricsResult {
@@ -17,12 +23,13 @@ export interface MetricsResult {
 }
 
 export class AnalysisResultFactory {
-  static createAnalysisResult(toolName: string, content: string, usedGuides?: string[]): AnalysisResult {
+  static createAnalysisResult(toolName: string, content: string, usedGuides?: string[], usage?: { promptTokens: number; completionTokens: number; totalTokens: number; costUsd?: number }): AnalysisResult {
     return {
       toolName,
       content,
       timestamp: new Date(),
-      usedGuides
+      usedGuides,
+      usage
     };
   }
 

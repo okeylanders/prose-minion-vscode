@@ -22,6 +22,12 @@ export interface ExecutionResult {
   content: string;
   usedGuides: string[];  // Paths of guides that were actually used
   requestedResources?: string[];  // Context resources that were loaded during the run
+  usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    costUsd?: number;
+  };
 }
 
 export type StatusCallback = (message: string, guideNames?: string) => void;
@@ -96,10 +102,14 @@ export class AIResourceOrchestrator {
       this.outputChannel?.appendLine(
         `[AIResourceOrchestrator] Calling OpenRouter API (${messages.length} messages in context) using model ${this.openRouterClient.getModel()}`
       );
+      let totalUsage: { promptTokens: number; completionTokens: number; totalTokens: number; costUsd?: number } | undefined;
       let last = await this.openRouterClient.createChatCompletion(messages, {
         temperature: options.temperature,
         maxTokens: options.maxTokens
       });
+      if ((last as any).usage) {
+        totalUsage = { ...(last as any).usage };
+      }
       this.outputChannel?.appendLine(`[AIResourceOrchestrator] Received response from AI (${last.content.length} chars)`);
 
       // Log preview of AI response to see what it's saying
@@ -147,6 +157,21 @@ export class AIResourceOrchestrator {
           // Track which guides were used
           usedGuides.push(...resourceRequest.requestedGuides);
 
+          // Accumulate usage if available
+          if ((nextTurn as any).usage) {
+            const u = (nextTurn as any).usage as { promptTokens: number; completionTokens: number; totalTokens: number; costUsd?: number };
+            if (!totalUsage) {
+              totalUsage = { ...u };
+            } else {
+              totalUsage.promptTokens += u.promptTokens;
+              totalUsage.completionTokens += u.completionTokens;
+              totalUsage.totalTokens += u.totalTokens;
+              if (typeof totalUsage.costUsd === 'number' || typeof u.costUsd === 'number') {
+                totalUsage.costUsd = (totalUsage.costUsd || 0) + (u.costUsd || 0);
+              }
+            }
+          }
+
           // Prepare for the next loop iteration
           last = nextTurn;
         }
@@ -166,7 +191,8 @@ export class AIResourceOrchestrator {
       return {
         content: cleanedResponse + truncatedNote,
         usedGuides,
-        requestedResources: []
+        requestedResources: [],
+        usage: totalUsage
       };
     } finally {
       // Clean up conversation after completion
@@ -210,7 +236,8 @@ export class AIResourceOrchestrator {
           ? '\n\n---\n\n⚠️ Response truncated. Increase Max Tokens in settings.'
           : ''),
         usedGuides: [],
-        requestedResources: []
+        requestedResources: [],
+        usage: (response as any).usage
       };
     } finally {
       this.conversationManager.deleteConversation(conversationId);
@@ -260,11 +287,15 @@ export class AIResourceOrchestrator {
       });
 
       let messages = this.conversationManager.getMessages(conversationId);
+      let totalUsage: { promptTokens: number; completionTokens: number; totalTokens: number; costUsd?: number } | undefined;
       let response = await this.openRouterClient.createChatCompletion(messages, {
         temperature: options.temperature,
         maxTokens: options.maxTokens
       });
       this.outputChannel?.appendLine(`[AIResourceOrchestrator] Initial context response received (${response.content.length} chars)`);
+      if ((response as any).usage) {
+        totalUsage = { ...(response as any).usage };
+      }
 
       const resourceRequest = ContextResourceRequestParser.parse(response.content);
 
@@ -330,6 +361,19 @@ export class AIResourceOrchestrator {
       this.outputChannel?.appendLine(
         `[AIResourceOrchestrator] Final context response received (${followUp.content.length} chars)`
       );
+      if ((followUp as any).usage) {
+        const u = (followUp as any).usage as { promptTokens: number; completionTokens: number; totalTokens: number; costUsd?: number };
+        if (!totalUsage) {
+          totalUsage = { ...u };
+        } else {
+          totalUsage.promptTokens += u.promptTokens;
+          totalUsage.completionTokens += u.completionTokens;
+          totalUsage.totalTokens += u.totalTokens;
+          if (typeof totalUsage.costUsd === 'number' || typeof u.costUsd === 'number') {
+            totalUsage.costUsd = (totalUsage.costUsd || 0) + (u.costUsd || 0);
+          }
+        }
+      }
 
       const cleanedFollowUp = ContextResourceRequestParser.stripRequestTags(followUp.content);
       const truncatedNote = followUp.finishReason === 'length'
@@ -339,7 +383,8 @@ export class AIResourceOrchestrator {
       return {
         content: cleanedFollowUp + truncatedNote,
         usedGuides: [],
-        requestedResources: deliveredResources
+        requestedResources: deliveredResources,
+        usage: totalUsage
       };
     } finally {
       this.conversationManager.deleteConversation(conversationId);

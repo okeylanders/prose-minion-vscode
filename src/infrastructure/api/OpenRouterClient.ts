@@ -13,6 +13,7 @@ export interface OpenRouterRequest {
   messages: OpenRouterMessage[];
   temperature?: number;
   max_tokens?: number;
+  usage?: { include: boolean };
 }
 
 export interface OpenRouterResponse {
@@ -25,10 +26,15 @@ export interface OpenRouterResponse {
     };
     finish_reason: string;
   }>;
-  usage: {
+  usage?: {
     prompt_tokens: number;
     completion_tokens: number;
     total_tokens: number;
+    // Some providers may include cost fields via OpenRouter
+    cost?: number;
+    cost_details?: {
+      upstream_inference_cost?: number;
+    }
   };
 }
 
@@ -52,7 +58,7 @@ export class OpenRouterClient {
       temperature?: number;
       maxTokens?: number;
     }
-  ): Promise<{ content: string; finishReason?: string }> {
+  ): Promise<{ content: string; finishReason?: string; usage?: { promptTokens: number; completionTokens: number; totalTokens: number; costUsd?: number }; id?: string }> {
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -65,7 +71,8 @@ export class OpenRouterClient {
         model: this.model,
         messages,
         temperature: options?.temperature ?? 0.7,
-        max_tokens: options?.maxTokens ?? 10000
+        max_tokens: options?.maxTokens ?? 10000,
+        usage: { include: true }
       })
     });
 
@@ -81,8 +88,17 @@ export class OpenRouterClient {
     }
 
     return {
+      id: data.id,
       content: data.choices[0].message.content,
-      finishReason: data.choices[0]?.finish_reason
+      finishReason: data.choices[0]?.finish_reason,
+      usage: data.usage
+        ? {
+            promptTokens: data.usage.prompt_tokens,
+            completionTokens: data.usage.completion_tokens,
+            totalTokens: data.usage.total_tokens,
+            costUsd: typeof data.usage.cost === 'number' ? data.usage.cost : undefined
+          }
+        : undefined
     };
   }
 

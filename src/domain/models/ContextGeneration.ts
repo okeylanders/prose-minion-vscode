@@ -16,6 +16,12 @@ export interface ContextGenerationResult {
   readonly content: string;
   readonly timestamp: Date;
   readonly requestedResources?: string[];
+  readonly usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    costUsd?: number;
+  };
 }
 
 export interface ContextResourceSummary {
