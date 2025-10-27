@@ -51,6 +51,40 @@ src/
             └── results.ts       # Result messages
 ```
 
+### Presentation Hooks (Webview)
+
+The presentation layer now mirrors backend domain organization via custom React hooks. App.tsx is a thin orchestrator that composes hooks, routes messages, and persists state.
+
+Structure:
+
+```
+src/presentation/webview/
+├── hooks/
+│   ├── useVSCodeApi.ts         # acquireVsCodeApi() wrapper (singleton via ref)
+│   ├── usePersistence.ts       # Compose domain persisted state into vscode.setState
+│   ├── useMessageRouter.ts     # Strategy: MessageType → handler; stable listener
+│   └── domain/
+│       ├── useAnalysis.ts      # Analysis results, guides, status ticker
+│       ├── useMetrics.ts       # Per-subtool cache; source mode/path helpers
+│       ├── useDictionary.ts    # Word/context state and tool name
+│       ├── useContext.ts       # Context text, requested resources, loading/status
+│       ├── useSearch.ts        # Search results and targets
+│       ├── useSettings.ts      # Overlay, settings data, model selections, tokens, API key
+│       ├── useSelection.ts     # Selected text + source metadata; dictionary injection
+│       └── usePublishing.ts    # Publishing presets and trim size
+```
+
+Patterns and conventions:
+- Strategy routing: `useMessageRouter({ [MessageType.X]: handler })` with a ref to maintain a stable event listener.
+- Persistence: Each hook exposes `persistedState`; App composes them into `usePersistence` to sync `vscode.setState`.
+- Message enums: Use `STATUS` for status messages, `MODEL_DATA`/`REQUEST_MODEL_DATA` for model options, and `SET_MODEL_SELECTION` for user selection. Avoid ad-hoc enums like `STATUS_MESSAGE`, `MODEL_OPTIONS_DATA`, or `SET_MODEL`.
+- UI settings: Toggle UI prefs (e.g., token widget) via `UPDATE_SETTING` with nested keys like `ui.showTokenWidget`.
+- Metrics: Provide `setPathText` and `clearSubtoolResult` so subtools can refresh independently.
+
+References:
+- ADR: docs/adr/2025-10-27-presentation-layer-domain-hooks.md
+- Epic: .todo/epics/epic-presentation-refactor-2025-10-27/epic-presentation-refactor.md
+
 ### Key Components
 
 1. **Extension Entry Point** ([extension.ts](src/extension.ts))
