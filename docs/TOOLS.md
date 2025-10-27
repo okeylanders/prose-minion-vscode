@@ -1,18 +1,30 @@
+<p align="center">
+  <img src="../assets/prose-minion-book.svg" alt="Prose Minion" width="120"/>
+</p>
+
+<p align="center">
+  <strong>Prose Minion Tools Guide</strong><br/>
+  Complete reference for all analysis and measurement tools
+</p>
+
+---
+
 # Prose Minion Tools Guide
 
 ## Overview
 
-The extension now includes **5 integrated prose analysis tools** organized in clean architecture:
+The extension includes **7 integrated prose analysis tools** organized in clean architecture:
 
 ### AI-Powered Tools (require OpenRouter API key)
 1. **Dialogue Microbeat Assistant** – Analyzes dialogue and suggests tags/beats (uses the Assistant model scope)
-2. **Prose Assistant** – General prose analysis and improvements (shares the Assistant model scope)
-3. **Dictionary Utility** – Generates rich fiction-focused dictionary entries (uses the Dictionary model scope)
+2. **Prose Assistant** – General prose analysis and improvements (uses the Assistant model scope)
+3. **Context Assistant** – Project-aware insights using your reference materials (uses the Context model scope)
+4. **Dictionary Utility** – Generates rich fiction-focused dictionary entries (uses the Dictionary model scope)
 
 ### Measurement Tools (work without API key)
-4. **Prose Statistics** – Word count, pacing, readability scores
-5. **Style Flags** – Identifies common style issues
-6. **Word Frequency** – Analyzes word usage patterns
+5. **Prose Statistics** – Word count, pacing, readability scores, lexical density, FKGL
+6. **Style Flags** – Identifies style patterns (placeholders, intensifiers, hedges, etc.)
+7. **Word Frequency** – Comprehensive word usage analysis with n-grams, POS tagging, hapax legomena
 
 ## Project Structure
 
@@ -20,19 +32,22 @@ The extension now includes **5 integrated prose analysis tools** organized in cl
 src/
 ├── tools/                   # All analysis tools (clean separation)
 │   ├── assist/             # AI-powered assist tools
+│   │   ├── contextAssistant.ts
 │   │   ├── dialogueMicrobeatAssistant.ts
 │   │   └── proseAssistant.ts
 │   ├── measure/            # Deterministic measurement tools
 │   │   ├── passageProseStats/
 │   │   ├── styleFlags/
 │   │   └── wordFrequency/
+│   ├── utility/            # Utility tools
+│   │   └── dictionaryUtility.ts
 │   └── shared/             # Shared utilities
 │       ├── prompts.ts      # Prompt loading
 │       └── guides.ts       # Craft guide loading
 ├── infrastructure/api/      # API clients and service implementation
 │   ├── OpenRouterClient.ts
 │   └── ProseAnalysisService.ts
-└── resources/              # Prompts and guides (to be added)
+└── resources/              # Prompts and guides
     ├── system-prompts/
     └── craft-guides/
 ```
@@ -96,13 +111,41 @@ Output: Suggestions for action beats that show emotion through physical actions 
 **Location**: [src/tools/assist/proseAssistant.ts](src/tools/assist/proseAssistant.ts)
 
 **What it does**:
-- General prose analysis
-- Identifies show vs. tell opportunities
-- Suggests sensory details
-- Evaluates pacing and voice
-- Recommends improvements
+- Strengthens narrative prose passages
+- Provides craft-grounded suggestions
+- Offers vocabulary palettes and focused rewrites
+- Analyzes pacing, imagery, and cadence
+- Recommends improvements based on writing craft principles
 
-### 3. Dictionary Utility
+**Features**:
+- Accepts optional focus guidance (tone, imagery, cadence priorities)
+- Uses context for POV, tense, genre awareness
+- Applies craft guides when enabled
+- Supports verbalized sampling for creative diversity
+
+### 3. Context Assistant
+
+**Location**: [src/tools/assist/contextAssistant.ts](src/tools/assist/contextAssistant.ts)
+
+**What it does**:
+- Provides project-aware insights using your reference materials
+- Accesses Characters, Locations, Themes, and other project resources
+- Two-turn workflow for focused analysis
+- Includes full source document on first turn (when available)
+
+**Features**:
+- Configurable via Context Resource Paths (Settings overlay)
+- Uses glob patterns to discover reference files (`.md` and `.txt` only)
+- Dedicated model scope for cost/performance tuning
+- Reads and incorporates project structure automatically
+
+**Use Cases**:
+- "Who is this character and what's their arc?"
+- "What are the themes related to redemption in my story?"
+- "Summarize the setting described in my location notes"
+- "What's the tone and style guide for this project?"
+
+### 4. Dictionary Utility
 
 **Location**: [src/tools/utility/dictionaryUtility.ts](src/tools/utility/dictionaryUtility.ts)
 
@@ -111,92 +154,80 @@ Output: Suggestions for action beats that show emotion through physical actions 
 - Adapts to optional context excerpts
 - Respects the Dictionary model selection for cost/performance tuning
 
-**Enhancements**:
+**Features**:
 - Falls back to clipboard when no editor selection exists
 - Displays source path when content came from an editor selection
-- Persists word/context across tabs and sessions; clearing the word also clears the source
-- Suppresses word auto-fill after the user edits the field (prevents unwanted overwrites)
+- Persists word/context across tabs and sessions
+- Suppresses auto-fill after manual edits (prevents unwanted overwrites)
+- Includes definitions, connotations, tonal notes, usage examples, and related words
 
-### 4. Prose Statistics
+---
+
+## Measurement Tools (No API Key Required)
+
+### 5. Prose Statistics
 
 **Location**: [src/tools/measure/passageProseStats/index.ts](src/tools/measure/passageProseStats/index.ts)
 
-**Metrics provided**:
-- Word count
-- Sentence count
-- Paragraph count
-- Average words per sentence
-- Average sentences per paragraph
-- Dialogue percentage
-- Lexical density (unique words ratio)
-- Pacing assessment
-- Readability score
+**Comprehensive prose metrics**:
+- **Basic counts**: Words, sentences, paragraphs
+- **Averages**: Words/sentence, sentences/paragraph
+- **Dialogue analysis**: Percentage of text in quotes
+- **Lexical density**: Content word ratio (non-stopwords/total)
+- **Stopword ratio**: Function word percentage
+- **Vocabulary**: Unique words, Type-Token Ratio, Hapax count/percentage
+- **Readability**: Simplified Flesch Reading Ease, Flesch-Kincaid Grade Level
+- **Pacing**: Qualitative assessment based on sentence length
+- **Reading time**: Estimated minutes and hours
+- **Word length distribution**: Percentage by character length
 
-**Example output**:
-```json
-{
-  "wordCount": 247,
-  "sentenceCount": 15,
-  "paragraphCount": 3,
-  "averageWordsPerSentence": 16.5,
-  "dialoguePercentage": 35.2,
-  "pacing": "Moderate",
-  "readabilityScore": 67.0
-}
-```
+**Additional Features**:
+- Chapter-by-chapter analysis for multi-file sources
+- Publishing standards comparison (when preset selected)
+- Publishing format with trim size and page estimate
+- Detailed per-chapter breakdown tables (optional on save/copy)
 
-### 5. Style Flags
+### 6. Style Flags
 
 **Location**: [src/tools/measure/styleFlags/index.ts](src/tools/measure/styleFlags/index.ts)
 
-**Identifies**:
-- Adverbs (-ly words)
-- Passive voice constructions
-- Weak verbs (is, was, has, get, etc.)
-- Filler words (just, really, very, etc.)
-- Repetitive words
-- Common clichés
+**Identifies style patterns**:
+- **Placeholders**: Generic descriptors needing specificity
+- **Intensifiers**: Overused emphasis words
+- **Hedges**: Uncertainty markers
+- **Noun fog**: Heavy nominalization
+- **Value labels**: Telling instead of showing
+- **Fillers**: Empty words adding no meaning
+- **Cognition tags**: Thought verbs vs. direct thought
 
-**Example output**:
-```json
-{
-  "flags": [
-    {
-      "type": "Adverbs (-ly words)",
-      "count": 12,
-      "examples": ["quickly", "softly", "really"]
-    },
-    {
-      "type": "Weak Verbs",
-      "count": 8,
-      "examples": ["was", "were", "has"]
-    }
-  ],
-  "summary": "Top style issues: Adverbs: 12, Weak Verbs: 8"
-}
-```
+**Output**:
+- Count per category
+- Example sentences for each pattern found
+- Configurable max examples per category
 
-### 6. Word Frequency
+### 7. Word Frequency
 
 **Location**: [src/tools/measure/wordFrequency/index.ts](src/tools/measure/wordFrequency/index.ts)
 
-**Analyzes**:
-- Total and unique word counts
-- Most frequently used words
-- Top verbs, adjectives, and nouns
-- Word usage percentages
+**Comprehensive word usage analysis**:
+- **Top Words**: Most frequent content words (stopwords excluded by default)
+- **Stopwords Table**: Top function words with counts
+- **Hapax Legomena**: Words appearing exactly once (alphabetized list)
+- **Part-of-Speech**: Separate lists for nouns, verbs, adjectives, adverbs (via wink-pos-tagger)
+- **N-grams**: Top bigrams and trigrams for phrase patterns
+- **Word Length Histogram**: Visual distribution of word lengths (1-10+ characters)
+- **Lemmas** (optional): Groups inflected forms (running/ran/runs → run)
 
-**Example output**:
-```json
-{
-  "totalWords": 500,
-  "uniqueWords": 250,
-  "topWords": [
-    { "word": "darkness", "count": 8, "percentage": 1.6 },
-    { "word": "shadow", "count": 6, "percentage": 1.2 }
-  ]
-}
-```
+**Configurable Options** (via Settings):
+- `topN`: Number of words to display (default 100)
+- `includeHapaxList`: Show hapax section (default true)
+- `hapaxDisplayMax`: Max hapax words shown (default 300)
+- `includeStopwordsTable`: Show stopwords analysis (default true)
+- `contentWordsOnly`: Exclude stopwords from top words (default true)
+- `posEnabled`: Enable POS tagging (default true)
+- `includeBigrams/Trigrams`: Show n-gram analysis (default true)
+- `enableLemmas`: Group by lemma (default false)
+- `lengthHistogramMaxChars`: Max word length shown (default 10)
 
 ## Customization
 

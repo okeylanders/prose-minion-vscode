@@ -1,3 +1,14 @@
+<p align="center">
+  <img src="../assets/prose-minion-book.svg" alt="Prose Minion" width="120"/>
+</p>
+
+<p align="center">
+  <strong>Prose Minion Architecture Documentation</strong><br/>
+  System design and architectural principles
+</p>
+
+---
+
 # Architecture Documentation
 
 ## Overview

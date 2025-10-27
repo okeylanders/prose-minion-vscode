@@ -1,3 +1,14 @@
+<p align="center">
+  <img src="../assets/prose-minion-book.svg" alt="Prose Minion" width="120"/>
+</p>
+
+<p align="center">
+  <strong>Prose Minion Configuration Guide</strong><br/>
+  Complete settings reference and configuration options
+</p>
+
+---
+
 # Configuration Guide
 
 ## Overview
@@ -385,6 +396,6 @@ Coming soon:
 
 For configuration issues:
 1. Check this guide
-2. Review [QUICKSTART.md](QUICKSTART.md)
+2. Review [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) for setup and development
 3. See [TOOLS.md](TOOLS.md) for tool-specific info
-4. Report bugs at https://github.com/anthropics/claude-code/issues
+4. Open an issue on GitHub for bugs or questions

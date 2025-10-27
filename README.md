@@ -1,148 +1,261 @@
-# Prose Minion VS Code Extension
+<p align="center">
+  <img src="assets/prose-minion-book.svg" alt="Prose Minion" width="200"/>
+</p>
 
-AI-powered prose analysis and writing assistance for creative writers.
+<p align="center">
+  <strong>AI-powered prose analysis and writing assistance for creative writers</strong>
+</p>
 
-## Features
+<p align="center">
+  Bring professional-grade prose metrics, AI writing assistance, and contextual analysis directly into your VS Code workflow.
+</p>
 
-This extension brings the power of the Prose Minion MCP tools directly into VS Code with a multi-tab interface:
+---
 
-### Analysis Tab
+# Prose Minion
 
-- **Dialogue Analysis**: Get suggestions for dialogue tags and action beats
-- **Prose Analysis**: General prose assistance and improvements
-- **Inline Model Picker**: Choose the OpenRouter model per assistant workflow without leaving the panel
+## ✨ Features
 
-### Metrics Tab
+### 📝 AI Writing Assistance
 
-- **Prose Statistics**: Word count, sentence analysis, pacing metrics, lexical density, stopword ratio, hapax %, FKGL
-- **Style Flags**: Identify style patterns and potential issues
-- **Word Frequency**: Analyze word usage patterns
-- **Publishing Standards**: Compare key metrics to genre/manuscript ranges, see publishing format (trim size, words/page, estimated page count)
-- **Chapter Metrics**: Chapter count, average chapter length (multi-file sources)
-- **Chapter-by-Chapter**: Summary table per file; export can include detailed per-chapter tables on request
-- **Inline Model Picker**: Select a dedicated model for dictionary utilities
+Get intelligent suggestions for your creative writing with dedicated AI models:
 
-See [docs/PROSE_STATS.md](docs/PROSE_STATS.md) for algorithms and the full legend of metrics.
+- **Dialogue Analysis** - Enhance dialogue with natural tags and action beats
+- **Prose Refinement** - Strengthen narrative passages with craft-focused suggestions
+- **Contextual Insights** - Project-aware assistance that understands your characters, settings, and themes
+- **Model Flexibility** - Choose from multiple AI models per workflow
 
-### Dictionary Tab
+### 📊 Professional Prose Metrics
 
-- Fiction‑focused dictionary entries with definitions, connotations, tonal notes, usage examples, and related words
-- Respects the dedicated Dictionary model selection for speed/cost tuning
-- Inputs persist across tab switches and sessions; source of pasted data is shown when available
-- Tool details: [docs/TOOLS.md](docs/TOOLS.md)
+Comprehensive analysis tools for understanding your writing:
 
-### Search Tab
+- **Prose Statistics** - Word count, sentence analysis, pacing metrics, lexical density, readability scores
+- **Publishing Standards** - Compare your metrics against genre-specific benchmarks
+- **Style Flags** - Identify patterns like placeholders, intensifiers, hedges, filler words
+- **Word Frequency** - Analyze vocabulary usage, n-grams, hapax legomena
+- **Chapter Analysis** - Aggregate metrics across multiple files with per-chapter breakdowns
 
-- Word Search with configurable targets, context window, cluster detection, and case sensitivity
-- Optional assistant expansion setting to propose synonyms/inflections (config only; UI toggle wired for future backend)
-- Settings surfaced in overlay: `Word Search` section; keys documented in [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
+### 🔍 Advanced Search
 
-### Settings Overlay
+Find patterns and track word usage across your manuscript:
 
-- Full-screen in-app settings (gear icon in the panel header)
-- Centered header with stacked icon over the title
-- Context Resource Paths section to configure project globs used by the Context Assistant
-- Reset Token Usage button and optional token widget in the header
+- **Pattern Matching** - Search for specific words or phrases with context
+- **Cluster Detection** - Identify repeated patterns and potential overuse
+- **Configurable Context** - See surrounding words for each match
+- **Case Sensitivity** - Toggle exact matching as needed
 
-## Usage
+### 📖 Writer's Dictionary
 
-1. Open the Prose Minion panel from the activity bar
-2. Select text in your editor or paste text into the input field
-3. (Optional) Pick the model you want to use from the dropdown below the tab bar
-4. Choose the appropriate tool from the tabs
-5. Click the analysis button to get results
-6. In Metrics, select a standards preset (optional) and trim size to see comparison and a publishing format summary
-7. Use Copy/Save in Metrics; you’ll be prompted to include detailed per-chapter tables when available
-8. Open the Settings overlay (gear icon) to configure models, tokens, and Context Resource Paths
+Fiction-focused definitions with creative context:
 
-## Recent Updates
+- **Craft-Aware Definitions** - Understand words in a writing context
+- **Tonal Guidance** - Learn connotations and emotional weight
+- **Usage Examples** - See words used in narrative prose
+- **Related Terms** - Discover alternatives and related concepts
 
-- Scoped model selection per tool role (assistant/dictionary/context) with live dropdowns
-- Unified `maxTokens` across tools (default 10000) with truncation notices on long responses
-- In-app Settings overlay refinements: centered header (stacked icon over title) and a new “Context Resource Paths” section that mirrors VS Code settings
-- Verbalized sampling in the Analysis assistants for more creative, character‑specific alternatives while maintaining craft quality (diverse suggestions sampled from tails of the distribution)
-- Publishing standards: genre presets + trim size, comparison table, publishing format with page estimate
-- Prose stats extended: lexical density (content-word ratio), stopword ratio, hapax %, hapax count, TTR, FKGL
-- Chapter aggregation for multi-file metrics with per-chapter summary and optional detailed export
-- Copy/Save prompt to include chapter details; metrics saved to `prose-minion/reports/prose-statistics-YYYYMMDD-HHmm.md`
-- Context assistant includes the full source document on first turn (when available)
-- Paste-selection carries source metadata; clipboard fallback when no selection exists
-- Dictionary UX: persistent inputs, source display, and safer auto-fill behavior
+### ⚙️ In-App Settings
 
-## Architecture
+Configure everything without leaving your workspace:
 
-This extension follows Clean Architecture principles (see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)):
+- **Model Selection** - Choose AI models per tool (assistant, dictionary, context)
+- **Publishing Presets** - Genre-specific standards and trim sizes
+- **Context Paths** - Define your project structure with glob patterns
+- **Token Management** - Track usage and reset session totals
+- **Complete Control** - Access all settings via friendly UI with inline help
 
-```
-src/
-├── application/        # Application layer (providers, handlers)
-├── domain/            # Domain layer (business logic, interfaces)
-├── infrastructure/    # Infrastructure layer (external APIs)
-├── presentation/      # Presentation layer (React UI)
-└── shared/           # Shared types and contracts
-```
+---
 
-## Development
+## 🚀 Getting Started
 
-### Prerequisites
+### Installation
 
-- Node.js 18+
-- npm or yarn
+1. Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/)
+2. Open the Prose Minion panel from the activity bar (hexagon icon)
+3. Configure your OpenRouter API key in Settings (gear icon)
 
-### Setup
+### Quick Start
 
-```bash
-npm install
-npm run watch
-```
+1. **Select text** in your editor or paste into the panel
+2. **Choose a tab** - Analysis, Metrics, Search, or Dictionary
+3. **Select a model** (optional) - Pick from the dropdown below tabs
+4. **Click analyze** - Get instant AI-powered results
+5. **Configure settings** - Click the gear icon for full control
 
-Then press F5 to launch the extension in debug mode.
+### First Time Setup
 
-### Building
+1. **Get an OpenRouter API Key**:
+   - Visit [openrouter.ai](https://openrouter.ai/)
+   - Create a pay-as-you-go account
+   - Generate an API key
 
-```bash
-# Dev bundle
-npm run build
+2. **Add Your Key**:
+   - Open Settings (gear icon in panel header)
+   - Paste your key in the "OpenRouter API Key" field
+   - Changes save automatically
 
-# Production package (.vsix)
-npm run package
-```
+3. **Choose Your Models**:
+   - Select models for Assistant, Dictionary, and Context workflows
+   - Each can use a different model for cost/quality balance
 
-## Configuration
+---
 
-Settings (search for "Prose Minion"):
+## 📚 Key Capabilities
 
-- `proseMinion.assistantModel`, `proseMinion.dictionaryModel`, `proseMinion.contextModel`
-- `proseMinion.model` (legacy fallback)
-- `proseMinion.maxTokens` (default 10000)
-- `proseMinion.publishingStandards.preset` (none | manuscript | genre:<key>)
-- `proseMinion.publishingStandards.pageSizeKey` (format or WIDTHxHEIGHT for selected genre)
+### Publishing Standards Comparison
 
-Additional commonly used settings:
+Compare your work against industry benchmarks:
 
-- `proseMinion.openRouterApiKey`
-- `proseMinion.includeCraftGuides` (boolean)
-- `proseMinion.temperature` (0–2)
-- `proseMinion.ui.showTokenWidget` (boolean)
-- Context Resource Paths: `proseMinion.contextPaths.{characters,locations,themes,things,chapters,manuscript,projectBrief,general}` — can also be edited in the in-app Settings overlay; see docs/CONFIGURATION.md for examples
+- **Genre Presets** - Choose from multiple fiction categories
+- **Trim Size Selection** - Calculate page counts for standard book formats
+- **Metric Comparison** - See how your stats compare to genre ranges
+- **Publishing Format** - Get estimated page counts and words-per-page
 
-Notes:
-- When the model stops due to token limits, a truncation notice is appended; raise `maxTokens` if needed.
+### Context-Aware Assistance
 
-### Model & Session Management
+The extension understands your project structure:
 
-The extension manages three dedicated OpenRouter client stacks—assistant, dictionary, and context bot—so each feature can run against a different model without reloading. Responses are cached while the panel is hidden, and UI state is restored when you return to the view, so long-running conversations continue seamlessly.
+- **Project Resources** - Configure paths to characters, locations, themes
+- **Automatic Discovery** - Uses glob patterns to find your reference files
+- **Contextual Suggestions** - AI assistance informed by your world-building
+- **Flexible Organization** - Works with your existing project structure
 
-### Upcoming Integrations
+### Advanced Metrics
 
-- Deeper MCP protocol support for guide retrieval
-- Additional analysis personas (character voice, setting analysis)
-- Project-aware prompts and reusable presets
+Go beyond basic word count:
 
-## License
+- **Lexical Density** - Content word ratio
+- **Stopword Analysis** - Function word balance
+- **Hapax Legomena** - Unique vocabulary tracking
+- **Type-Token Ratio** - Vocabulary diversity
+- **Flesch-Kincaid Grade Level** - Readability scoring
+- **N-gram Analysis** - Bigrams and trigrams for pattern detection
 
-AGPL-3.0 with Commons Clause (no resale, no closed‑source derivatives). See the [LICENSE](LICENSE) file for details.
+---
 
-Notes:
-- The Commons Clause makes this license "source‑available" rather than OSI‑approved open source.
-- If you need a commercial or alternative license, open an issue to discuss options.
+## 🎯 Use Cases
+
+### For Novelists
+
+- Track chapter-by-chapter metrics across your manuscript
+- Compare prose statistics against genre standards
+- Identify overused words and phrases
+- Generate contextual writing suggestions
+
+### For Short Story Writers
+
+- Analyze pacing and structure
+- Refine dialogue with AI assistance
+- Check vocabulary variety
+- Ensure consistent tone
+
+### For Content Creators
+
+- Maintain consistent voice across pieces
+- Track readability for target audience
+- Identify style patterns
+- Generate alternative phrasings
+
+---
+
+## 🛠️ Technical Details
+
+### Architecture
+
+Built with **Clean Architecture** principles:
+- Separation of concerns across layers
+- Domain-driven design
+- Message-based communication
+- Extensible tool system
+
+### Privacy & Security
+
+- API calls route through OpenRouter
+- Configurable privacy options (no logging, no training)
+- Local-first processing where possible
+- Your writing stays in your workspace
+
+### Requirements
+
+- VS Code 1.85.0 or higher
+- Node.js 18+ (for development only)
+- OpenRouter API account (pay-as-you-go)
+
+---
+
+## 📖 Documentation
+
+- **[Developer Guide](docs/DEVELOPER_GUIDE.md)** - Setup, architecture, and development workflow
+- **[Architecture](docs/ARCHITECTURE.md)** - System design and principles
+- **[Configuration](docs/CONFIGURATION.md)** - Complete settings reference
+- **[Tools Reference](docs/TOOLS.md)** - Detailed tool documentation
+- **[Prose Stats](docs/PROSE_STATS.md)** - Metrics algorithms and legend
+
+---
+
+## 🔄 Recent Updates
+
+### Latest Features
+
+- **Context Resource Paths** - Configure project structure via Settings overlay
+- **Glob Pattern Education** - Learn recursive patterns with visual examples
+- **Centered Settings Header** - Improved layout with stacked icon design
+- **Token Usage Widget** - Optional token tracking in panel header
+- **Publishing Standards** - Genre presets with trim size selection
+- **Extended Metrics** - Lexical density, hapax analysis, readability scores
+
+### Recent Improvements
+
+- Scoped model selection per tool role (assistant/dictionary/context)
+- Verbalized sampling for creative, diverse AI suggestions
+- Chapter aggregation for multi-file manuscripts
+- Enhanced copy/save with optional chapter details
+- Persistent dictionary inputs with source metadata
+- Settings overlay with comprehensive inline help
+
+See [CHANGELOG.md](CHANGELOG.md) for complete version history.
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! See the **[Developer Guide](docs/DEVELOPER_GUIDE.md)** for:
+- Development setup
+- Project architecture
+- Testing procedures
+- Publishing workflow
+
+---
+
+## 📄 License
+
+**AGPL-3.0 with Commons Clause** - Source-available, no resale, no closed-source derivatives.
+
+This means:
+- ✅ Free to use for personal and open-source projects
+- ✅ Full source code available
+- ✅ Modify and share under the same terms
+- ❌ Cannot resell or create proprietary derivatives
+
+See [LICENSE](LICENSE) for complete terms. For commercial licensing inquiries, please open an issue.
+
+---
+
+## 🙏 Acknowledgments
+
+Built with:
+- [OpenRouter](https://openrouter.ai/) - AI model routing
+- [VS Code Extension API](https://code.visualstudio.com/api) - Platform
+- [React](https://react.dev/) - UI framework
+- Open source prose analysis algorithms
+
+---
+
+<p align="center">
+  <strong>Happy Writing! 📚✨</strong>
+</p>
+
+<p align="center">
+  <a href="https://marketplace.visualstudio.com/">Install from Marketplace</a> •
+  <a href="docs/DEVELOPER_GUIDE.md">Developer Guide</a> •
+  <a href="https://github.com/yourusername/prose-minion-vscode/issues">Report Issue</a>
+</p>

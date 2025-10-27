@@ -1,3 +1,14 @@
+<p align="center">
+  <img src="../assets/prose-minion-book.svg" alt="Prose Minion" width="120"/>
+</p>
+
+<p align="center">
+  <strong>Prose Minion Prose Statistics</strong><br/>
+  Algorithms, metrics, and implementation reference
+</p>
+
+---
+
 # Prose Statistics Algorithms and Legend
 
 This document describes how the Prose Minion VS Code extension computes each prose statistic, what it means, and any caveats. Where applicable, the implementation references `src/tools/measure/passageProseStats/index.ts`.
