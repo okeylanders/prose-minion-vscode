@@ -95,6 +95,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
 
         <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
           <button
+            className="settings-button"
             onClick={apiKey.onSave}
             disabled={!apiKey.input.trim()}
           >
@@ -102,7 +103,10 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
           </button>
 
           {apiKey.hasSavedKey && (
-            <button onClick={apiKey.onDelete}>
+            <button
+              className="settings-button"
+              onClick={apiKey.onDelete}
+            >
               Clear API Key
             </button>
           )}
