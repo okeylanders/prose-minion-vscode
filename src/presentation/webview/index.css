@@ -732,10 +732,29 @@ select:focus {
 }
 
 .settings-header {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   margin-bottom: var(--spacing-sm);
+}
+
+.settings-header-content {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+.settings-header .settings-button {
+  grid-column: 3;
+  justify-self: end;
+}
+
+/* Header layout: stack icon above title */
+.settings-header[data-header-layout="stack"] .settings-header-content {
+  flex-direction: column;
+  gap: var(--spacing-xs);
 }
 
 .settings-header h2 {
