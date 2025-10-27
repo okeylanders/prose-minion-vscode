@@ -1,6 +1,6 @@
 # Sprint 4 — Token Cost Widget
 
-Status: In Progress
+Status: Complete
 
 - Window: 2025-10-22 → 2025-10-23 (Days 4–5)
 - Epic: todo/epics/epic-search-architecture-2025-10-19/epic-search-architecture.md

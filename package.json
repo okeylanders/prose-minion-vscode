@@ -44,6 +44,11 @@
       {
         "command": "prose-minion.wordLookupSelection",
         "title": "Prose Minion: Word Lookup"
+      },
+      {
+        "command": "prose-minion.openSettingsOverlay",
+        "title": "Prose Minion: Settings",
+        "icon": "$(gear)"
       }
     ],
     "menus": {
@@ -57,6 +62,13 @@
           "when": "editorHasSelection",
           "command": "prose-minion.wordLookupSelection",
           "group": "prose-minion"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "prose-minion.openSettingsOverlay",
+          "when": "view == prose-minion.toolsView",
+          "group": "navigation@99"
         }
       ]
     },
@@ -251,9 +263,9 @@
         },
         "proseMinion.maxTokens": {
           "type": "number",
-          "default": 2000,
+          "default": 10000,
           "minimum": 100,
-          "maximum": 8000,
+          "maximum": 100000,
           "description": "Maximum length of AI responses",
           "order": 8
         },
@@ -407,7 +419,7 @@
         },
         "proseMinion.wordSearch.minClusterSize": {
           "type": "number",
-          "default": 3,
+          "default": 2,
           "minimum": 2,
           "maximum": 50,
           "description": "Minimum hits within the window to form a cluster.",

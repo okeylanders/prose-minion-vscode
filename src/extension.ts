@@ -105,7 +105,11 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('prose-minion.assistantSelection', handleAssistantSelection),
     vscode.commands.registerCommand('prose-minion.analyzeSelection', handleAssistantSelection),
-    vscode.commands.registerCommand('prose-minion.wordLookupSelection', handleWordLookupSelection)
+    vscode.commands.registerCommand('prose-minion.wordLookupSelection', handleWordLookupSelection),
+    vscode.commands.registerCommand('prose-minion.openSettingsOverlay', () => {
+      focusToolsView();
+      proseToolsViewProvider?.openSettings();
+    })
   );
 }
 

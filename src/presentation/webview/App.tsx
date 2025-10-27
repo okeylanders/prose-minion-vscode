@@ -11,6 +11,7 @@ import { SuggestionsTab } from './components/SuggestionsTab';
 import { UtilitiesTab } from './components/UtilitiesTab';
 import { SearchTab } from './components/SearchTab';
 import { ModelSelector } from './components/ModelSelector';
+import { SettingsOverlay } from './components/SettingsOverlay';
 import {
   TabId,
   MessageType,
@@ -103,6 +104,11 @@ export const App: React.FC = () => {
   const [showTokenWidget, setShowTokenWidget] = React.useState<boolean>(
     persistedState?.showTokenWidget ?? true
   );
+  const [showSettings, setShowSettings] = React.useState<boolean>(false);
+  const [settingsData, setSettingsData] = React.useState<Record<string, string | number | boolean>>({});
+  const [publishingPreset, setPublishingPreset] = React.useState<string>('none');
+  const [publishingTrimKey, setPublishingTrimKey] = React.useState<string>('');
+  const [publishingGenres, setPublishingGenres] = React.useState<Array<{ key: string; name: string; abbreviation?: string; pageSizes: Array<{ key: string; label: string }> }>>([]);
   const [dictionaryInjection, setDictionaryInjection] = React.useState<{ word?: string; context?: string; sourceUri?: string; relativePath?: string; timestamp: number } | null>(null);
 
   const contextLoadingRef = React.useRef(contextLoading);
@@ -298,6 +304,37 @@ export const App: React.FC = () => {
           break;
         }
 
+        case MessageType.OPEN_SETTINGS_TOGGLE:
+          setShowSettings(prev => {
+            const next = !prev;
+            if (next) {
+              vscode.postMessage({ type: MessageType.REQUEST_SETTINGS_DATA, timestamp: Date.now() });
+              vscode.postMessage({ type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA, timestamp: Date.now() });
+            }
+            return next;
+          });
+          break;
+
+        case MessageType.OPEN_SETTINGS:
+          setShowSettings(true);
+          vscode.postMessage({ type: MessageType.REQUEST_SETTINGS_DATA, timestamp: Date.now() });
+          vscode.postMessage({ type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA, timestamp: Date.now() });
+          break;
+
+        case MessageType.SETTINGS_DATA:
+          // @ts-ignore shape validated by extension
+          setSettingsData(message.settings || {});
+          break;
+
+        case MessageType.PUBLISHING_STANDARDS_DATA:
+          // @ts-ignore structured by extension
+          setPublishingPreset((message as any).preset || 'none');
+          // @ts-ignore
+          setPublishingTrimKey((message as any).pageSizeKey || '');
+          // @ts-ignore
+          setPublishingGenres(((message as any).genres ?? []) as any);
+          break;
+
         case MessageType.CONTEXT_RESULT:
           setContextText(message.result);
           setContextRequestedResources(message.requestedResources ?? []);
@@ -408,6 +445,25 @@ export const App: React.FC = () => {
     });
   }, []);
 
+  const handleSettingUpdate = React.useCallback((key: string, value: any) => {
+    setSettingsData(prev => ({ ...prev, [key]: value }));
+    vscode.postMessage({ type: MessageType.UPDATE_SETTING, key, value, timestamp: Date.now() });
+  }, []);
+
+  const handleResetTokens = React.useCallback(() => {
+    vscode.postMessage({ type: MessageType.RESET_TOKEN_USAGE, timestamp: Date.now() });
+  }, []);
+
+  const handleSetPublishingPreset = React.useCallback((preset: string) => {
+    setPublishingPreset(preset);
+    vscode.postMessage({ type: MessageType.SET_PUBLISHING_PRESET, preset, timestamp: Date.now() });
+  }, []);
+
+  const handleSetPublishingTrim = React.useCallback((pageSizeKey?: string) => {
+    setPublishingTrimKey(pageSizeKey || '');
+    vscode.postMessage({ type: MessageType.SET_PUBLISHING_TRIM_SIZE, pageSizeKey, timestamp: Date.now() });
+  }, []);
+
   const renderModelSelector = () => {
     if (modelOptions.length === 0) {
       return null;
@@ -446,6 +502,23 @@ export const App: React.FC = () => {
     return null;
   };
 
+  // Prevent background scroll when settings is open
+  React.useEffect(() => {
+    const prevBody = document.body.style.overflow;
+    const prevDoc = (document.documentElement as HTMLElement).style.overflow;
+    if (showSettings) {
+      document.body.style.overflow = 'hidden';
+      (document.documentElement as HTMLElement).style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = prevBody || '';
+      (document.documentElement as HTMLElement).style.overflow = prevDoc || '';
+    }
+    return () => {
+      document.body.style.overflow = prevBody || '';
+      (document.documentElement as HTMLElement).style.overflow = prevDoc || '';
+    };
+  }, [showSettings]);
+
   return (
     <div className="app-container">
       <header className="app-header">
@@ -470,7 +543,25 @@ export const App: React.FC = () => {
       <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
       {renderModelSelector()}
 
-      <main className="app-main">
+      <main className="app-main" style={{ position: 'relative' }}>
+        <SettingsOverlay
+          visible={showSettings}
+          onClose={() => setShowSettings(false)}
+          vscode={vscode}
+          settings={settingsData}
+          onUpdate={handleSettingUpdate}
+          onResetTokens={handleResetTokens}
+          modelOptions={modelOptions}
+          modelSelections={modelSelections}
+          onModelChange={handleModelChange}
+          publishing={{
+            preset: publishingPreset,
+            trimKey: publishingTrimKey,
+            genres: publishingGenres,
+            onPresetChange: handleSetPublishingPreset,
+            onTrimChange: handleSetPublishingTrim
+          }}
+        />
         {error && (
           <div className="error-message">
             {error}

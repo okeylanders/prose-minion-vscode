@@ -62,7 +62,14 @@ export enum MessageType {
   SET_PUBLISHING_TRIM_SIZE = 'set_publishing_trim_size'
   ,
   // Token usage/cost updates
-  TOKEN_USAGE_UPDATE = 'token_usage_update'
+  TOKEN_USAGE_UPDATE = 'token_usage_update',
+  // Settings overlay and updates
+  OPEN_SETTINGS = 'open_settings',
+  OPEN_SETTINGS_TOGGLE = 'open_settings_toggle',
+  REQUEST_SETTINGS_DATA = 'request_settings_data',
+  SETTINGS_DATA = 'settings_data',
+  UPDATE_SETTING = 'update_setting',
+  RESET_TOKEN_USAGE = 'reset_token_usage'
 }
 
 export enum TabId {
@@ -128,6 +135,16 @@ export interface SaveResultMessage extends BaseMessage {
   toolName: string;
   content: string;
   metadata?: SaveResultMetadata;
+}
+
+export interface UpdateSettingMessage extends BaseMessage {
+  type: MessageType.UPDATE_SETTING;
+  key: string; // key under proseMinion.* (e.g., 'maxTokens', 'ui.showTokenWidget')
+  value: string | number | boolean;
+}
+
+export interface RequestSettingsDataMessage extends BaseMessage {
+  type: MessageType.REQUEST_SETTINGS_DATA;
 }
 
 export type SelectionTarget =
@@ -318,6 +335,8 @@ export type WebviewToExtensionMessage =
   | LookupDictionaryMessage
   | CopyResultMessage
   | SaveResultMessage
+  | UpdateSettingMessage
+  | RequestSettingsDataMessage
   | RequestSelectionMessage
   | GenerateContextMessage
   | MeasureProseStatsMessage
@@ -333,7 +352,8 @@ export type WebviewToExtensionMessage =
   | SetPublishingTrimMessage
   | RequestActiveFileMessage
   | RequestManuscriptGlobsMessage
-  | RequestChapterGlobsMessage;
+  | RequestChapterGlobsMessage
+  | (BaseMessage & { type: MessageType.RESET_TOKEN_USAGE });
 
 // Messages from extension to webview
 export interface AnalysisResultMessage extends BaseMessage {
@@ -382,6 +402,19 @@ export interface SaveResultSuccessMessage extends BaseMessage {
   toolName: string;
 }
 
+export interface SettingsDataMessage extends BaseMessage {
+  type: MessageType.SETTINGS_DATA;
+  settings: Record<string, string | number | boolean>;
+}
+
+export interface OpenSettingsMessage extends BaseMessage {
+  type: MessageType.OPEN_SETTINGS;
+}
+
+export interface OpenSettingsToggleMessage extends BaseMessage {
+  type: MessageType.OPEN_SETTINGS_TOGGLE;
+}
+
 export interface SelectionDataMessage extends BaseMessage {
   type: MessageType.SELECTION_DATA;
   target: SelectionTarget;
@@ -423,6 +456,9 @@ export type ExtensionToWebviewMessage =
   | DictionaryResultMessage
   | ContextResultMessage
   | SaveResultSuccessMessage
+  | SettingsDataMessage
+  | OpenSettingsMessage
+  | OpenSettingsToggleMessage
   | SelectionDataMessage
   | ErrorMessage
   | StatusMessage

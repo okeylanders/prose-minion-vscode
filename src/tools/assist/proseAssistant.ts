@@ -43,7 +43,7 @@ export class ProseAssistant {
       {
         includeCraftGuides: options?.includeCraftGuides,
         temperature: options?.temperature ?? 0.7,
-        maxTokens: options?.maxTokens ?? 2500
+        maxTokens: options?.maxTokens ?? 10000
       }
     );
   }

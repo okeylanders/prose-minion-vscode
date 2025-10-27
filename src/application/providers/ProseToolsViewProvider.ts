@@ -86,6 +86,15 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  /**
+   * Open the settings overlay in the webview
+   */
+  public openSettings(): void {
+    if (this.view) {
+      this.view.webview.postMessage({ type: MessageType.OPEN_SETTINGS_TOGGLE, timestamp: Date.now() });
+    }
+  }
+
   private getHtmlForWebview(webview: vscode.Webview): string {
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview.js')

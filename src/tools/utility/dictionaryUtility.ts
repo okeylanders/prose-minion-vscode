@@ -42,7 +42,7 @@ export class DictionaryUtility {
       userMessage,
       {
         temperature: options?.temperature ?? 0.4,
-        maxTokens: options?.maxTokens ?? 2200
+        maxTokens: options?.maxTokens ?? 10000
       }
     );
   }
