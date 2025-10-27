@@ -424,9 +424,76 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
       {/* Context Resource Paths (moved to bottom) */}
       <section className="settings-section">
         <h3 className="settings-section-title">Context Resource Paths</h3>
-        <div className="settings-description" style={{ marginBottom: 8 }}>
-          Comma-separated glob patterns that tell the Context Assistant and certain metrics where to look for project files.
-          Patterns are matched against your workspace folders; only .md and .txt files are indexed. Use <code>**</code> to search subfolders.
+        
+        <div className="settings-description" style={{ marginBottom: 12 }}>
+          Comma-separated glob patterns that tell the Context Assistant where to look for project files. 
+          Patterns are matched against your workspace folders; only <code>.md</code> and <code>.txt</code> files are reviewed.
+          Context Assistant only reviews files if hitting "🤖" button next to a context entry field. It will only review files that it believes to be necessary.
+          The reviewed files will be listed under the context box. You may also type your own context or direction instead of using the "Context Agent".
+        </div>
+
+        <div className="settings-description" style={{ marginBottom: 16, fontFamily: 'monospace', fontSize: '0.85em', lineHeight: 1.5, background: 'var(--vscode-textBlockQuote-background)', padding: 12, borderRadius: 4, border: '1px solid var(--vscode-textBlockQuote-border)' }}>
+          <div style={{ fontWeight: 'bold', marginBottom: 8, fontFamily: 'var(--vscode-font-family)' }}>### How Glob Paths Work</div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--vscode-textBlockQuote-border)' }}>
+                <th style={{ textAlign: 'left', padding: '4px 8px' }}>Pattern</th>
+                <th style={{ textAlign: 'left', padding: '4px 8px' }}>What it Matches</th>
+                <th style={{ textAlign: 'left', padding: '4px 8px' }}>Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{ padding: '4px 8px' }}><code>Characters/*</code></td>
+                <td style={{ padding: '4px 8px' }}>Only files directly inside <code>Characters</code> (no subdirectories).</td>
+                <td style={{ padding: '4px 8px' }}>Non-recursive (one level)</td>
+              </tr>
+              <tr>
+                <td style={{ padding: '4px 8px' }}><code>Characters/**/*</code></td>
+                <td style={{ padding: '4px 8px' }}>All files in <code>Characters</code> and any subdirectories at any depth.</td>
+                <td style={{ padding: '4px 8px' }}>Recursive (all levels)</td>
+              </tr>
+            </tbody>
+          </table>
+          <div style={{ fontFamily: 'var(--vscode-font-family)', fontSize: '0.95em' }}>
+            <strong>Recommendation:</strong> Use <code>Characters/**/*</code> to find all files recursively. Most project structures organize content in subdirectories, so you'll want the recursive pattern.
+          </div>
+          
+          <hr style={{ margin: '16px 0', border: 'none', borderTop: '1px solid var(--vscode-textBlockQuote-border)' }} />
+          
+          <div style={{ fontWeight: 'bold', marginBottom: 8, fontFamily: 'var(--vscode-font-family)' }}>### Detailed Explanation</div>
+          <div style={{ marginBottom: 8, fontFamily: 'var(--vscode-font-family)', fontSize: '0.95em' }}>Let's use this example folder structure:</div>
+          <pre style={{ margin: '8px 0', whiteSpace: 'pre', overflow: 'auto' }}>{`Characters/
+├── protagonist.md      (a file at top level)
+├── main-cast.md        (a file at top level)
+├── Protagonists/
+│   ├── hero.md         (a file in subdirectory)
+│   └── mentor.md       (a file in subdirectory)
+└── Antagonists/
+    ├── villain.md      (a file in subdirectory)
+    └── henchman.md     (a file in subdirectory)`}</pre>
+          
+          <div style={{ fontWeight: 'bold', marginTop: 12, marginBottom: 8, fontFamily: 'var(--vscode-font-family)' }}>#### 1. <code>Characters/*</code> (Non-Recursive)</div>
+          <div style={{ marginBottom: 8, fontFamily: 'var(--vscode-font-family)', fontSize: '0.95em' }}>The single <code>*</code> matches only at the top level:</div>
+          <ul style={{ marginLeft: 20, marginTop: 4, marginBottom: 8, fontFamily: 'var(--vscode-font-family)', fontSize: '0.95em' }}>
+            <li><code>Characters/protagonist.md</code> ✓ (matches)</li>
+            <li><code>Characters/main-cast.md</code> ✓ (matches)</li>
+            <li><code>Characters/Protagonists/hero.md</code> ✗ (doesn't match - in subdirectory)</li>
+            <li><code>Characters/Antagonists/villain.md</code> ✗ (doesn't match - in subdirectory)</li>
+          </ul>
+          
+          <div style={{ fontWeight: 'bold', marginTop: 12, marginBottom: 8, fontFamily: 'var(--vscode-font-family)' }}>#### 2. <code>Characters/**/*</code> (Recursive)</div>
+          <div style={{ marginBottom: 8, fontFamily: 'var(--vscode-font-family)', fontSize: '0.95em' }}>The <code>**</code> matches zero or more directory levels:</div>
+          <ul style={{ marginLeft: 20, marginTop: 4, marginBottom: 8, fontFamily: 'var(--vscode-font-family)', fontSize: '0.95em' }}>
+            <li><code>Characters/protagonist.md</code> ✓ (matches - <code>**</code> matches zero directories)</li>
+            <li><code>Characters/main-cast.md</code> ✓ (matches - <code>**</code> matches zero directories)</li>
+            <li><code>Characters/Protagonists/hero.md</code> ✓ (matches - <code>**</code> matches <code>Protagonists/</code>)</li>
+            <li><code>Characters/Antagonists/villain.md</code> ✓ (matches - <code>**</code> matches <code>Antagonists/</code>)</li>
+          </ul>
+          
+          <div style={{ marginTop: 12, fontFamily: 'var(--vscode-font-family)', fontSize: '0.95em' }}>
+            <strong>Key takeaway:</strong> <code>**</code> is the magic that makes patterns recursive. Use <code>Characters/**/*</code> to find all character files regardless of how you organize them in subdirectories.
+          </div>
         </div>
 
         <label className="settings-label">
@@ -437,7 +504,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             className="settings-textarea"
           />
           <div className="settings-description">
-            Glob patterns for character reference files. Example: characters/**/*, Characters/**/*
+            Character sheets, biographies, arc notes. Example: <code>Characters/**/*</code>, <code>characters/**/*</code>
           </div>
         </label>
 
@@ -449,7 +516,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             className="settings-textarea"
           />
           <div className="settings-description">
-            Glob patterns for setting/location files. Example: locations/**/*, Locations/**/*, Locations-Settings/**/*
+            World-building notes, setting descriptions, location details. Example: <code>Locations/**/*</code>, <code>Settings/**/*</code>
           </div>
         </label>
 
@@ -461,7 +528,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             className="settings-textarea"
           />
           <div className="settings-description">
-            Glob patterns for theme notebooks. Example: themes/**/*, Themes/**/*
+            Thematic notebooks, motif tracking, symbolic elements. Example: <code>Themes/**/*</code>
           </div>
         </label>
 
@@ -473,7 +540,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             className="settings-textarea"
           />
           <div className="settings-description">
-            Glob patterns for notable objects or props. Example: things/**/*, Things/**/*
+            Notable objects, artifacts, props with significance. Example: <code>Things/**/*</code>, <code>Props/**/*</code>
           </div>
         </label>
 
@@ -485,7 +552,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             className="settings-textarea"
           />
           <div className="settings-description">
-            Glob patterns for draft chapters and outlines. Example: drafts/**/*, Drafts/**/*, outlines/**/*, Outlines/**/*
+            Working drafts, chapter outlines, scene sketches. Example: <code>Drafts/**/*</code>, <code>Outlines/**/*</code>
           </div>
         </label>
 
@@ -497,7 +564,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             className="settings-textarea"
           />
           <div className="settings-description">
-            Glob patterns for polished manuscript chapters. Example: manuscript/**/*, Manuscript/**/*
+            Polished manuscript chapters ready for submission. Example: <code>Manuscript/**/*</code>
           </div>
         </label>
 
@@ -509,7 +576,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             className="settings-textarea"
           />
           <div className="settings-description">
-            Glob patterns for brief/proposal materials. Example: brief/**/*, Brief/**/*
+            Query letters, synopses, pitch materials, project overviews. Example: <code>Brief/**/*</code>, <code>Pitch/**/*</code>
           </div>
         </label>
 
@@ -521,7 +588,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             className="settings-textarea"
           />
           <div className="settings-description">
-            Glob patterns for general references and guides (synopsis, tone guides, world bibles, etc.). Only .md/.txt are used.
+            Research notes, tone guides, series bibles, style guides, general documentation. Example: <code>References/**/*</code>, <code>Research/**/*</code>
           </div>
         </label>
       </section>
