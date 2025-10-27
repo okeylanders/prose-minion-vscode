@@ -1,6 +1,6 @@
 /**
  * Main App component - Presentation layer
- * Manages application state and message handling
+ * Refactored to use domain hooks pattern
  */
 
 import * as React from 'react';
@@ -12,683 +12,266 @@ import { UtilitiesTab } from './components/UtilitiesTab';
 import { SearchTab } from './components/SearchTab';
 import { ModelSelector } from './components/ModelSelector';
 import { SettingsOverlay } from './components/SettingsOverlay';
-import {
-  TabId,
-  MessageType,
-  ExtensionToWebviewMessage,
-  ModelScope,
-  ModelOption,
-  SelectionTarget,
-  TextSourceMode,
-  TokenUsage
-} from '../../shared/types';
+import { TabId, MessageType, ModelScope } from '../../shared/types';
 
-// Get VS Code API
-declare function acquireVsCodeApi(): any;
-const vscode = acquireVsCodeApi();
+// Infrastructure hooks
+import { useVSCodeApi } from './hooks/useVSCodeApi';
+import { usePersistence } from './hooks/usePersistence';
+import { useMessageRouter } from './hooks/useMessageRouter';
 
-type PersistedState = {
-  activeTab: TabId;
-  selectedText: string;
-  selectedSourceUri?: string;
-  selectedRelativePath?: string;
-  analysisResult: string;
-  analysisToolName?: string;
-  metricsResultsByTool?: Partial<Record<'prose_stats' | 'style_flags' | 'word_frequency', any>>;
-  searchResult?: any;
-  metricsActiveTool?: 'prose_stats' | 'style_flags' | 'word_frequency';
-  wordSearchTargets?: string;
-  metricsSourceMode?: TextSourceMode;
-  metricsPathText?: string;
-  utilitiesResult: string;
-  dictionaryToolName?: string;
-  dictionaryWord: string;
-  dictionaryContext: string;
-  dictionaryWordEdited: boolean;
-  dictionarySourceUri: string;
-  dictionaryRelativePath: string;
-  contextText: string;
-  contextRequestedResources: string[];
-  statusMessage: string;
-  guideNames: string;
-  usedGuides: string[];
-  modelSelections: Partial<Record<ModelScope, string>>;
-  tokenTotals?: TokenUsage;
-  showTokenWidget?: boolean;
-};
+// Domain hooks
+import { useAnalysis } from './hooks/domain/useAnalysis';
+import { useMetrics } from './hooks/domain/useMetrics';
+import { useDictionary } from './hooks/domain/useDictionary';
+import { useContext } from './hooks/domain/useContext';
+import { useSearch } from './hooks/domain/useSearch';
+import { useSettings } from './hooks/domain/useSettings';
+import { useSelection } from './hooks/domain/useSelection';
+import { usePublishing } from './hooks/domain/usePublishing';
 
 export const App: React.FC = () => {
-  const persistedState = (vscode.getState?.() as PersistedState | undefined) ?? undefined;
+  const vscode = useVSCodeApi();
 
-  const [activeTab, setActiveTab] = React.useState<TabId>(persistedState?.activeTab ?? TabId.ANALYSIS);
-  const [selectedText, setSelectedText] = React.useState(persistedState?.selectedText ?? '');
-  const [selectedSourceUri, setSelectedSourceUri] = React.useState(persistedState?.selectedSourceUri ?? '');
-  const [selectedRelativePath, setSelectedRelativePath] = React.useState(persistedState?.selectedRelativePath ?? '');
-  const [analysisResult, setAnalysisResult] = React.useState(persistedState?.analysisResult ?? '');
-  const [analysisToolName, setAnalysisToolName] = React.useState<string | undefined>(persistedState?.analysisToolName);
-  const [analysisLoading, setAnalysisLoading] = React.useState(false);
-  const [metricsResultsByTool, setMetricsResultsByTool] = React.useState<Partial<Record<'prose_stats' | 'style_flags' | 'word_frequency', any>>>(
-    persistedState?.metricsResultsByTool ?? {}
-  );
-  const [searchResult, setSearchResult] = React.useState<any>(persistedState?.searchResult ?? null);
-  const [metricsLoading, setMetricsLoading] = React.useState(false);
-  const [metricsSourceMode, setMetricsSourceMode] = React.useState<TextSourceMode>(persistedState?.metricsSourceMode ?? 'selection');
-  const [metricsPathText, setMetricsPathText] = React.useState<string>(persistedState?.metricsPathText ?? '[selected text]');
-  const [metricsActiveTool, setMetricsActiveTool] = React.useState<'prose_stats' | 'style_flags' | 'word_frequency'>(persistedState?.metricsActiveTool ?? 'prose_stats');
-  const [wordSearchTargets, setWordSearchTargets] = React.useState<string>(persistedState?.wordSearchTargets ?? '');
-  const [utilitiesResult, setUtilitiesResult] = React.useState(persistedState?.utilitiesResult ?? '');
-  const [dictionaryToolName, setDictionaryToolName] = React.useState<string | undefined>(persistedState?.dictionaryToolName);
-  const [utilitiesLoading, setUtilitiesLoading] = React.useState(false);
-  const [dictionaryWord, setDictionaryWord] = React.useState<string>(persistedState?.dictionaryWord ?? '');
-  const [dictionaryContext, setDictionaryContext] = React.useState<string>(persistedState?.dictionaryContext ?? '');
-  const [dictionaryWordEdited, setDictionaryWordEdited] = React.useState<boolean>(persistedState?.dictionaryWordEdited ?? false);
-  const [dictionarySourceUri, setDictionarySourceUri] = React.useState<string>(persistedState?.dictionarySourceUri ?? '');
-  const [dictionaryRelativePath, setDictionaryRelativePath] = React.useState<string>(persistedState?.dictionaryRelativePath ?? '');
-  const [contextText, setContextText] = React.useState(persistedState?.contextText ?? '');
-  const [contextLoading, setContextLoading] = React.useState(false);
-  const [contextStatusMessage, setContextStatusMessage] = React.useState('');
-  const [contextRequestedResources, setContextRequestedResources] = React.useState<string[]>(
-    persistedState?.contextRequestedResources ?? []
-  );
+  // Domain hooks
+  const analysis = useAnalysis();
+  const metrics = useMetrics();
+  const dictionary = useDictionary();
+  const context = useContext();
+  const search = useSearch();
+  const settings = useSettings();
+  const selection = useSelection();
+  const publishing = usePublishing();
+
+  // UI-only state
+  const [activeTab, setActiveTab] = React.useState<TabId>(TabId.ANALYSIS);
   const [error, setError] = React.useState('');
-  const [statusMessage, setStatusMessage] = React.useState(persistedState?.statusMessage ?? '');
-  const [guideNames, setGuideNames] = React.useState<string>(persistedState?.guideNames ?? '');
-  const [usedGuides, setUsedGuides] = React.useState<string[]>(persistedState?.usedGuides ?? []);
-  const [modelOptions, setModelOptions] = React.useState<ModelOption[]>([]);
-  const [modelSelections, setModelSelections] = React.useState<Partial<Record<ModelScope, string>>>(
-    persistedState?.modelSelections ?? {}
-  );
-  const [tokenTotals, setTokenTotals] = React.useState<TokenUsage>(
-    persistedState?.tokenTotals ?? { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
-  );
-  const [showTokenWidget, setShowTokenWidget] = React.useState<boolean>(
-    persistedState?.showTokenWidget ?? true
-  );
-  const [showSettings, setShowSettings] = React.useState<boolean>(false);
-  const [settingsData, setSettingsData] = React.useState<Record<string, string | number | boolean>>({});
-  const [publishingPreset, setPublishingPreset] = React.useState<string>('none');
-  const [publishingTrimKey, setPublishingTrimKey] = React.useState<string>('');
-  const [publishingGenres, setPublishingGenres] = React.useState<Array<{ key: string; name: string; abbreviation?: string; pageSizes: Array<{ key: string; label: string }> }>>([]);
-  const [dictionaryInjection, setDictionaryInjection] = React.useState<{ word?: string; context?: string; sourceUri?: string; relativePath?: string; timestamp: number } | null>(null);
-  const [apiKeyInput, setApiKeyInput] = React.useState('');
-  const [hasSavedKey, setHasSavedKey] = React.useState(false);
 
-  const contextLoadingRef = React.useRef(contextLoading);
+  // Message routing using Strategy pattern
+  useMessageRouter({
+    [MessageType.SELECTION_UPDATED]: (msg) => selection.handleSelectionUpdated(msg, setActiveTab),
+    [MessageType.SELECTION_DATA]: (msg) => selection.handleSelectionData(msg, setActiveTab, context.setContextText),
+    [MessageType.ANALYSIS_RESULT]: analysis.handleAnalysisResult,
+    [MessageType.METRICS_RESULT]: metrics.handleMetricsResult,
+    [MessageType.SEARCH_RESULT]: search.handleSearchResult,
+    [MessageType.DICTIONARY_RESULT]: dictionary.handleDictionaryResult,
+    [MessageType.CONTEXT_RESULT]: context.handleContextResult,
+    [MessageType.ACTIVE_FILE]: metrics.handleActiveFile,
+    [MessageType.MANUSCRIPT_GLOBS]: metrics.handleManuscriptGlobs,
+    [MessageType.CHAPTER_GLOBS]: metrics.handleChapterGlobs,
+    [MessageType.STATUS_MESSAGE]: (msg) => analysis.handleStatusMessage(msg, context.loadingRef),
+    [MessageType.SETTINGS_DATA]: settings.handleSettingsData,
+    [MessageType.API_KEY_STATUS]: settings.handleApiKeyStatus,
+    [MessageType.MODEL_OPTIONS_DATA]: settings.handleModelOptionsData,
+    [MessageType.PUBLISHING_STANDARDS_DATA]: publishing.handlePublishingStandardsData,
+    [MessageType.OPEN_SETTINGS]: settings.open,
+    [MessageType.OPEN_SETTINGS_TOGGLE]: settings.toggle,
+    [MessageType.SAVE_RESULT_SUCCESS]: (msg) => console.log('Result saved to', msg.filePath),
+    [MessageType.ERROR]: (msg) => {
+      setError(msg.message);
+      analysis.setLoading(false);
+      metrics.setLoading(false);
+      dictionary.setLoading(false);
+      context.setLoading(false);
+    },
+  });
 
-  React.useEffect(() => {
-    contextLoadingRef.current = contextLoading;
-  }, [contextLoading]);
-  const handleRequestSelection = React.useCallback((target: SelectionTarget) => {
-    vscode.postMessage({
-      type: MessageType.REQUEST_SELECTION,
-      target
-    });
-  }, []);
-
-  const handleDictionaryInjectionHandled = React.useCallback(() => {
-    setDictionaryInjection(null);
-  }, []);
-
-
-  React.useEffect(() => {
-    // When a new analysis run starts, clear previous analysis markdown
-    if (analysisLoading) {
-      setAnalysisResult('');
-    }
-  }, [analysisLoading]);
-
-  React.useEffect(() => {
-    // When a new dictionary lookup starts, clear previous dictionary markdown
-    if (utilitiesLoading) {
-      setUtilitiesResult('');
-    }
-  }, [utilitiesLoading]);
-
-  React.useEffect(() => {
-    const nextState: PersistedState = {
-      activeTab,
-      selectedText,
-      selectedSourceUri,
-      selectedRelativePath,
-      analysisResult,
-      analysisToolName,
-      metricsResultsByTool,
-      searchResult,
-      metricsActiveTool,
-      wordSearchTargets,
-      metricsSourceMode,
-      metricsPathText,
-      utilitiesResult,
-      dictionaryToolName,
-      dictionaryWord,
-      dictionaryContext,
-      dictionaryWordEdited,
-      dictionarySourceUri,
-      dictionaryRelativePath,
-      contextText,
-      contextRequestedResources,
-      statusMessage,
-      guideNames,
-      usedGuides,
-      modelSelections,
-      tokenTotals,
-      showTokenWidget
-    };
-    vscode.setState(nextState);
-  }, [
+  // Persistence - combine all domain state
+  usePersistence({
     activeTab,
-    selectedText,
-    selectedSourceUri,
-    selectedRelativePath,
-    analysisResult,
-    analysisToolName,
-    metricsResultsByTool,
-    searchResult,
-    metricsActiveTool,
-    wordSearchTargets,
-    utilitiesResult,
-    dictionaryToolName,
-    dictionaryWord,
-    dictionaryContext,
-    dictionaryWordEdited,
-    dictionarySourceUri,
-    dictionaryRelativePath,
-    contextText,
-    contextRequestedResources,
-    statusMessage,
-    guideNames,
-    usedGuides,
-    modelSelections,
-    tokenTotals
-    ,
-    metricsSourceMode,
-    metricsPathText,
-    showTokenWidget
-  ]);
+    ...selection.persistedState,
+    ...analysis.persistedState,
+    ...metrics.persistedState,
+    ...dictionary.persistedState,
+    ...context.persistedState,
+    ...search.persistedState,
+    ...settings.persistedState,
+    ...publishing.persistedState,
+  });
 
-  // Handle messages from extension
-  React.useEffect(() => {
-    const messageHandler = (event: MessageEvent<ExtensionToWebviewMessage>) => {
-      const message = event.data;
-
-      switch (message.type) {
-        case MessageType.SELECTION_UPDATED: {
-          const target = message.target || 'assistant';
-
-          if (target === 'assistant' || target === 'both') {
-            setActiveTab(TabId.ANALYSIS);
-            setSelectedText(message.text);
-            setSelectedSourceUri(message.sourceUri ?? '');
-            setSelectedRelativePath(message.relativePath ?? '');
-          }
-
-          if (target === 'dictionary' || target === 'both') {
-            setActiveTab(TabId.UTILITIES);
-            setDictionaryInjection({ word: message.text, timestamp: Date.now() });
-          }
-
-          break;
-        }
-
-        case MessageType.ANALYSIS_RESULT:
-          setAnalysisResult(message.result);
-          setAnalysisToolName(message.toolName);
-          setUsedGuides(message.usedGuides || []);
-          setAnalysisLoading(false);
-          setStatusMessage(''); // Clear status message
-          setGuideNames(''); // Clear guide names
-          setError('');
-          break;
-
-        case MessageType.METRICS_RESULT:
-          if (message.toolName === 'prose_stats' || message.toolName === 'style_flags' || message.toolName === 'word_frequency') {
-            // Store per-subtool result without forcing a re-run on tab switch
-            setMetricsResultsByTool(prev => ({ ...prev, [message.toolName]: message.result }));
-            setMetricsActiveTool(message.toolName);
-          }
-          setMetricsLoading(false);
-          setError('');
-          break;
-
-        case MessageType.SEARCH_RESULT:
-          setSearchResult(message.result);
-          setMetricsLoading(false);
-          setError('');
-          break;
-
-        case MessageType.ACTIVE_FILE:
-          setMetricsPathText(message.relativePath ?? '');
-          break;
-
-        case MessageType.MANUSCRIPT_GLOBS:
-          setMetricsPathText(message.globs ?? '');
-          break;
-
-        case MessageType.CHAPTER_GLOBS:
-          setMetricsPathText(message.globs ?? '');
-          break;
-
-        case MessageType.DICTIONARY_RESULT:
-          setUtilitiesResult(message.result);
-          setDictionaryToolName(message.toolName);
-          setUtilitiesLoading(false);
-          setStatusMessage('');
-          setGuideNames('');
-          setError('');
-          break;
-
-        case MessageType.SAVE_RESULT_SUCCESS:
-          console.log('Result saved to', message.filePath);
-          break;
-
-        case MessageType.SELECTION_DATA: {
-          const content = message.content ?? '';
-          switch (message.target) {
-            case 'assistant_excerpt':
-              setActiveTab(TabId.ANALYSIS);
-              setSelectedText(content);
-              setSelectedSourceUri(message.sourceUri ?? '');
-              setSelectedRelativePath(message.relativePath ?? '');
-              break;
-            case 'assistant_context':
-              setActiveTab(TabId.ANALYSIS);
-              setContextText(content);
-              break;
-            case 'dictionary_word':
-              setActiveTab(TabId.UTILITIES);
-              setDictionaryInjection({ word: content, sourceUri: message.sourceUri, relativePath: message.relativePath, timestamp: Date.now() });
-              break;
-            case 'dictionary_context':
-              setActiveTab(TabId.UTILITIES);
-              setDictionaryInjection({ context: content, sourceUri: message.sourceUri, relativePath: message.relativePath, timestamp: Date.now() });
-              break;
-          }
-          break;
-        }
-
-        case MessageType.OPEN_SETTINGS_TOGGLE:
-          setShowSettings(prev => {
-            const next = !prev;
-            if (next) {
-              vscode.postMessage({ type: MessageType.REQUEST_SETTINGS_DATA, timestamp: Date.now() });
-              vscode.postMessage({ type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA, timestamp: Date.now() });
-            }
-            return next;
-          });
-          break;
-
-        case MessageType.OPEN_SETTINGS:
-          setShowSettings(true);
-          vscode.postMessage({ type: MessageType.REQUEST_SETTINGS_DATA, timestamp: Date.now() });
-          vscode.postMessage({ type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA, timestamp: Date.now() });
-          break;
-
-        case MessageType.SETTINGS_DATA:
-          // @ts-ignore shape validated by extension
-          setSettingsData(message.settings || {});
-          break;
-
-        case MessageType.PUBLISHING_STANDARDS_DATA:
-          // @ts-ignore structured by extension
-          setPublishingPreset((message as any).preset || 'none');
-          // @ts-ignore
-          setPublishingTrimKey((message as any).pageSizeKey || '');
-          // @ts-ignore
-          setPublishingGenres(((message as any).genres ?? []) as any);
-          break;
-
-        case MessageType.CONTEXT_RESULT:
-          setContextText(message.result);
-          setContextRequestedResources(message.requestedResources ?? []);
-          setContextLoading(false);
-          setContextStatusMessage('');
-          setStatusMessage('');
-          setError('');
-          break;
-
-        case MessageType.ERROR:
-          setError(message.message);
-          setAnalysisLoading(false);
-          setMetricsLoading(false);
-          setUtilitiesLoading(false);
-          setContextLoading(false);
-          setContextStatusMessage('');
-          setAnalysisResult('');
-          // Clear per-subtool metrics cache on error to avoid stale displays
-          setMetricsResultsByTool({});
-          setUtilitiesResult('');
-          break;
-
-        case MessageType.STATUS:
-          setStatusMessage(message.message);
-          setGuideNames(message.guideNames || '');
-          if (contextLoadingRef.current) {
-            setContextStatusMessage(message.message);
-          }
-          console.log('Status:', message.message, message.guideNames ? `(${message.guideNames})` : '');
-          break;
-
-        case MessageType.MODEL_DATA:
-          setModelOptions(message.options);
-          setModelSelections(prev => ({
-            ...prev,
-            ...(message.selections ?? {})
-          }));
-          if (message.ui && typeof message.ui.showTokenWidget === 'boolean') {
-            setShowTokenWidget(message.ui.showTokenWidget);
-          }
-          break;
-        case MessageType.TOKEN_USAGE_UPDATE:
-          setTokenTotals(message.totals || { promptTokens: 0, completionTokens: 0, totalTokens: 0 });
-          break;
-        case MessageType.API_KEY_STATUS:
-          setHasSavedKey(message.hasSavedKey);
-          break;
-      }
-    };
-
-    window.addEventListener('message', messageHandler);
-
-    return () => {
-      window.removeEventListener('message', messageHandler);
-    };
-  }, []);
-
-  React.useEffect(() => {
-    vscode.postMessage({
-      type: MessageType.REQUEST_MODEL_DATA
-    });
-    vscode.postMessage({
-      type: MessageType.REQUEST_API_KEY
-    });
-  }, []);
-
+  // Tab change handler
   const handleTabChange = (tabId: TabId) => {
     setActiveTab(tabId);
-    setError('');
-
-    // Notify extension of tab change
-    vscode.postMessage({
-      type: MessageType.TAB_CHANGED,
-      tabId
-    });
+    if (error) {
+      setError('');
+    }
   };
 
-  const handleModelChange = React.useCallback((scope: ModelScope, modelId: string) => {
-    setModelSelections(prev => ({
-      ...prev,
-      [scope]: modelId
-    }));
-
-    vscode.postMessage({
-      type: MessageType.SET_MODEL_SELECTION,
-      scope,
-      modelId
-    });
-  }, []);
-
-  const handleContextChange = React.useCallback((value: string) => {
-    setContextText(value);
-  }, []);
-
-  const handleContextRequest = React.useCallback((payload: {
-    excerpt: string;
-    existingContext: string;
-    sourceFileUri?: string;
-  }) => {
-    if (!payload.excerpt.trim()) {
-      return;
-    }
-
-    setContextLoading(true);
-    setContextStatusMessage('Gathering project resources...');
-    setContextRequestedResources([]);
-    setError('');
-
-    vscode.postMessage({
-      type: MessageType.GENERATE_CONTEXT,
-      excerpt: payload.excerpt,
-      existingContext: payload.existingContext?.trim() || undefined,
-      sourceFileUri: payload.sourceFileUri
-    });
-  }, []);
-
-  const handleSettingUpdate = React.useCallback((key: string, value: any) => {
-    setSettingsData(prev => ({ ...prev, [key]: value }));
-    vscode.postMessage({ type: MessageType.UPDATE_SETTING, key, value, timestamp: Date.now() });
-  }, []);
-
-  const handleResetTokens = React.useCallback(() => {
-    vscode.postMessage({ type: MessageType.RESET_TOKEN_USAGE, timestamp: Date.now() });
-  }, []);
-
-  const handleSetPublishingPreset = React.useCallback((preset: string) => {
-    setPublishingPreset(preset);
-    vscode.postMessage({ type: MessageType.SET_PUBLISHING_PRESET, preset, timestamp: Date.now() });
-  }, []);
-
-  const handleSetPublishingTrim = React.useCallback((pageSizeKey?: string) => {
-    setPublishingTrimKey(pageSizeKey || '');
-    vscode.postMessage({ type: MessageType.SET_PUBLISHING_TRIM_SIZE, pageSizeKey, timestamp: Date.now() });
-  }, []);
-
+  // Model selector rendering
   const renderModelSelector = () => {
-    if (modelOptions.length === 0) {
+    if (settings.modelOptions.length === 0) {
       return null;
     }
 
-    if (activeTab === TabId.ANALYSIS) {
+    // Only show model selector on tabs that use AI
+    if (activeTab === TabId.ANALYSIS || activeTab === TabId.SUGGESTIONS) {
       return (
-        <div className="model-selector-container">
+        <div className="model-selector-section">
           <ModelSelector
             scope="assistant"
-            options={modelOptions}
-            value={modelSelections.assistant}
-            onChange={handleModelChange}
+            options={settings.modelOptions}
+            value={settings.modelSelections.assistant}
+            onChange={settings.setModelSelection}
             label="Assistant Model"
-            helperText="Applies to dialogue and prose assistants."
           />
         </div>
       );
-    }
-
-    if (activeTab === TabId.UTILITIES) {
+    } else if (activeTab === TabId.UTILITIES) {
       return (
-        <div className="model-selector-container">
+        <div className="model-selector-section">
           <ModelSelector
             scope="dictionary"
-            options={modelOptions}
-            value={modelSelections.dictionary}
-            onChange={handleModelChange}
+            options={settings.modelOptions}
+            value={settings.modelSelections.dictionary}
+            onChange={settings.setModelSelection}
             label="Dictionary Model"
-            helperText="Used for AI-powered dictionary entries."
           />
         </div>
       );
     }
-
     return null;
   };
-
-  // Prevent background scroll when settings is open
-  React.useEffect(() => {
-    const prevBody = document.body.style.overflow;
-    const prevDoc = (document.documentElement as HTMLElement).style.overflow;
-    if (showSettings) {
-      document.body.style.overflow = 'hidden';
-      (document.documentElement as HTMLElement).style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = prevBody || '';
-      (document.documentElement as HTMLElement).style.overflow = prevDoc || '';
-    }
-    return () => {
-      document.body.style.overflow = prevBody || '';
-      (document.documentElement as HTMLElement).style.overflow = prevDoc || '';
-    };
-  }, [showSettings]);
 
   return (
     <div className="app-container">
       <header className="app-header">
-        <div className="app-title">
-          <h1 className="text-xl font-bold">Prose Minion</h1>
-          <p className="text-sm text-gray-500">AI-powered writing assistance</p>
-        </div>
-        <div className="app-header-right">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" aria-label="Prose Minion Skull-Book Icon (vectorized)" className="app-header-icon">
-          <g transform="translate(-150 -150) scale(1.3,1.3)">
-            <path fill="currentColor" fill-rule="evenodd" d="M 510.0 456.0 L 509.0 457.0 L 508.0 457.0 L 507.0 458.0 L 505.0 458.0 L 504.0 459.0 L 504.0 461.0 L 503.0 462.0 L 502.0 462.0 L 502.0 465.0 L 501.0 466.0 L 499.0 466.0 L 499.0 469.0 L 498.0 470.0 L 498.0 471.0 L 496.0 473.0 L 496.0 474.0 L 494.0 476.0 L 492.0 476.0 L 492.0 478.0 L 491.0 479.0 L 490.0 479.0 L 490.0 481.0 L 489.0 482.0 L 488.0 482.0 L 488.0 483.0 L 489.0 484.0 L 489.0 486.0 L 488.0 487.0 L 486.0 487.0 L 487.0 488.0 L 487.0 490.0 L 486.0 491.0 L 486.0 492.0 L 484.0 494.0 L 483.0 494.0 L 482.0 495.0 L 483.0 496.0 L 483.0 497.0 L 484.0 498.0 L 484.0 501.0 L 483.0 502.0 L 482.0 502.0 L 481.0 503.0 L 484.0 506.0 L 484.0 507.0 L 485.0 508.0 L 485.0 509.0 L 486.0 508.0 L 488.0 508.0 L 489.0 509.0 L 489.0 511.0 L 490.0 510.0 L 503.0 510.0 L 504.0 511.0 L 504.0 509.0 L 505.0 508.0 L 507.0 508.0 L 508.0 509.0 L 508.0 506.0 L 510.0 504.0 L 512.0 504.0 L 513.0 505.0 L 516.0 505.0 L 521.0 510.0 L 521.0 511.0 L 522.0 510.0 L 525.0 510.0 L 526.0 511.0 L 530.0 511.0 L 531.0 510.0 L 534.0 510.0 L 535.0 509.0 L 536.0 509.0 L 537.0 508.0 L 538.0 508.0 L 539.0 507.0 L 539.0 506.0 L 541.0 504.0 L 543.0 504.0 L 543.0 499.0 L 541.0 499.0 L 540.0 498.0 L 540.0 494.0 L 541.0 493.0 L 539.0 493.0 L 538.0 492.0 L 538.0 491.0 L 537.0 490.0 L 537.0 488.0 L 538.0 487.0 L 537.0 486.0 L 537.0 485.0 L 536.0 485.0 L 535.0 484.0 L 535.0 481.0 L 534.0 480.0 L 534.0 479.0 L 532.0 479.0 L 531.0 478.0 L 531.0 476.0 L 530.0 475.0 L 530.0 473.0 L 531.0 472.0 L 534.0 472.0 L 529.0 472.0 L 527.0 470.0 L 527.0 469.0 L 526.0 468.0 L 524.0 468.0 L 522.0 466.0 L 522.0 462.0 L 521.0 462.0 L 520.0 461.0 L 520.0 460.0 L 518.0 460.0 L 516.0 458.0 L 516.0 456.0 Z M 578.0 352.0 L 577.0 353.0 L 575.0 353.0 L 575.0 355.0 L 574.0 356.0 L 572.0 356.0 L 571.0 355.0 L 571.0 354.0 L 570.0 355.0 L 568.0 355.0 L 568.0 357.0 L 567.0 358.0 L 565.0 358.0 L 564.0 359.0 L 563.0 359.0 L 562.0 360.0 L 561.0 360.0 L 560.0 361.0 L 559.0 361.0 L 558.0 362.0 L 557.0 362.0 L 555.0 364.0 L 554.0 364.0 L 553.0 365.0 L 550.0 365.0 L 550.0 368.0 L 549.0 369.0 L 548.0 369.0 L 547.0 370.0 L 545.0 370.0 L 544.0 371.0 L 544.0 373.0 L 543.0 374.0 L 542.0 374.0 L 542.0 377.0 L 541.0 378.0 L 541.0 379.0 L 539.0 381.0 L 537.0 381.0 L 538.0 382.0 L 538.0 385.0 L 537.0 386.0 L 537.0 388.0 L 536.0 389.0 L 534.0 389.0 L 534.0 391.0 L 533.0 392.0 L 533.0 393.0 L 534.0 393.0 L 535.0 394.0 L 535.0 396.0 L 533.0 398.0 L 532.0 398.0 L 532.0 409.0 L 533.0 409.0 L 535.0 411.0 L 535.0 414.0 L 534.0 415.0 L 533.0 415.0 L 534.0 416.0 L 534.0 419.0 L 535.0 420.0 L 535.0 422.0 L 536.0 423.0 L 537.0 423.0 L 538.0 424.0 L 538.0 426.0 L 537.0 427.0 L 537.0 428.0 L 538.0 429.0 L 540.0 429.0 L 542.0 431.0 L 542.0 432.0 L 544.0 434.0 L 544.0 435.0 L 546.0 437.0 L 546.0 439.0 L 547.0 439.0 L 549.0 441.0 L 549.0 443.0 L 551.0 443.0 L 552.0 444.0 L 552.0 446.0 L 553.0 447.0 L 557.0 447.0 L 559.0 449.0 L 559.0 450.0 L 560.0 451.0 L 562.0 451.0 L 563.0 452.0 L 563.0 453.0 L 564.0 453.0 L 565.0 452.0 L 567.0 452.0 L 568.0 453.0 L 568.0 455.0 L 569.0 454.0 L 571.0 454.0 L 572.0 455.0 L 572.0 456.0 L 572.0 455.0 L 573.0 454.0 L 575.0 454.0 L 576.0 455.0 L 577.0 455.0 L 578.0 456.0 L 578.0 457.0 L 590.0 457.0 L 591.0 456.0 L 594.0 456.0 L 595.0 455.0 L 597.0 455.0 L 598.0 454.0 L 599.0 454.0 L 600.0 453.0 L 602.0 453.0 L 602.0 451.0 L 603.0 450.0 L 605.0 450.0 L 606.0 451.0 L 606.0 449.0 L 607.0 448.0 L 608.0 448.0 L 609.0 447.0 L 612.0 447.0 L 612.0 445.0 L 616.0 441.0 L 618.0 441.0 L 619.0 442.0 L 619.0 440.0 L 620.0 439.0 L 623.0 439.0 L 623.0 436.0 L 624.0 435.0 L 624.0 431.0 L 625.0 430.0 L 627.0 430.0 L 627.0 428.0 L 628.0 427.0 L 629.0 427.0 L 629.0 426.0 L 628.0 425.0 L 628.0 423.0 L 629.0 422.0 L 631.0 422.0 L 631.0 418.0 L 632.0 417.0 L 632.0 414.0 L 633.0 413.0 L 633.0 412.0 L 631.0 410.0 L 631.0 408.0 L 633.0 406.0 L 634.0 406.0 L 634.0 400.0 L 633.0 399.0 L 633.0 395.0 L 632.0 395.0 L 631.0 394.0 L 631.0 392.0 L 632.0 391.0 L 632.0 390.0 L 631.0 389.0 L 631.0 387.0 L 630.0 386.0 L 630.0 385.0 L 629.0 384.0 L 629.0 381.0 L 628.0 381.0 L 627.0 380.0 L 627.0 378.0 L 625.0 376.0 L 625.0 375.0 L 624.0 375.0 L 623.0 374.0 L 623.0 372.0 L 620.0 372.0 L 619.0 371.0 L 619.0 370.0 L 617.0 368.0 L 617.0 366.0 L 614.0 366.0 L 611.0 363.0 L 610.0 363.0 L 608.0 361.0 L 608.0 359.0 L 607.0 360.0 L 605.0 360.0 L 604.0 359.0 L 604.0 357.0 L 602.0 357.0 L 601.0 356.0 L 600.0 356.0 L 599.0 355.0 L 597.0 355.0 L 596.0 354.0 L 595.0 354.0 L 594.0 355.0 L 591.0 355.0 L 590.0 354.0 L 590.0 353.0 L 588.0 353.0 L 588.0 354.0 L 587.0 355.0 L 579.0 355.0 L 578.0 354.0 Z M 440.0 352.0 L 439.0 353.0 L 434.0 353.0 L 434.0 354.0 L 433.0 355.0 L 431.0 355.0 L 430.0 356.0 L 428.0 356.0 L 427.0 355.0 L 426.0 355.0 L 426.0 357.0 L 425.0 358.0 L 421.0 358.0 L 420.0 357.0 L 420.0 359.0 L 418.0 361.0 L 417.0 361.0 L 416.0 362.0 L 415.0 362.0 L 413.0 364.0 L 409.0 364.0 L 409.0 366.0 L 404.0 371.0 L 404.0 372.0 L 400.0 376.0 L 400.0 377.0 L 399.0 378.0 L 397.0 378.0 L 397.0 380.0 L 396.0 381.0 L 395.0 381.0 L 396.0 382.0 L 396.0 384.0 L 395.0 385.0 L 393.0 385.0 L 393.0 387.0 L 392.0 388.0 L 393.0 389.0 L 393.0 394.0 L 392.0 395.0 L 390.0 395.0 L 390.0 399.0 L 391.0 399.0 L 392.0 400.0 L 392.0 403.0 L 391.0 404.0 L 391.0 406.0 L 392.0 407.0 L 392.0 409.0 L 391.0 410.0 L 390.0 410.0 L 390.0 414.0 L 391.0 415.0 L 391.0 417.0 L 392.0 418.0 L 392.0 420.0 L 393.0 421.0 L 393.0 423.0 L 395.0 423.0 L 396.0 424.0 L 396.0 426.0 L 395.0 427.0 L 396.0 428.0 L 396.0 430.0 L 398.0 430.0 L 399.0 431.0 L 399.0 432.0 L 400.0 433.0 L 400.0 436.0 L 401.0 437.0 L 402.0 437.0 L 403.0 438.0 L 403.0 439.0 L 405.0 441.0 L 405.0 442.0 L 406.0 442.0 L 407.0 443.0 L 410.0 443.0 L 411.0 444.0 L 411.0 445.0 L 412.0 445.0 L 413.0 446.0 L 413.0 448.0 L 417.0 448.0 L 418.0 449.0 L 418.0 451.0 L 419.0 450.0 L 421.0 450.0 L 422.0 451.0 L 422.0 453.0 L 424.0 453.0 L 425.0 454.0 L 427.0 454.0 L 428.0 455.0 L 430.0 455.0 L 431.0 456.0 L 432.0 456.0 L 432.0 455.0 L 433.0 454.0 L 435.0 454.0 L 436.0 455.0 L 438.0 455.0 L 439.0 456.0 L 439.0 457.0 L 447.0 457.0 L 448.0 456.0 L 450.0 456.0 L 450.0 455.0 L 451.0 454.0 L 454.0 454.0 L 455.0 455.0 L 456.0 455.0 L 456.0 453.0 L 457.0 452.0 L 458.0 452.0 L 459.0 451.0 L 461.0 451.0 L 462.0 450.0 L 463.0 450.0 L 465.0 448.0 L 466.0 448.0 L 467.0 447.0 L 471.0 447.0 L 471.0 446.0 L 472.0 445.0 L 473.0 445.0 L 474.0 444.0 L 475.0 444.0 L 475.0 441.0 L 476.0 440.0 L 478.0 440.0 L 479.0 439.0 L 479.0 436.0 L 481.0 434.0 L 483.0 434.0 L 483.0 431.0 L 484.0 430.0 L 486.0 430.0 L 486.0 429.0 L 487.0 428.0 L 487.0 427.0 L 488.0 426.0 L 488.0 424.0 L 489.0 423.0 L 489.0 422.0 L 490.0 421.0 L 490.0 419.0 L 491.0 418.0 L 491.0 416.0 L 492.0 415.0 L 495.0 415.0 L 493.0 415.0 L 492.0 414.0 L 492.0 409.0 L 491.0 409.0 L 490.0 408.0 L 490.0 402.0 L 491.0 401.0 L 493.0 401.0 L 492.0 400.0 L 492.0 395.0 L 491.0 394.0 L 491.0 392.0 L 490.0 391.0 L 489.0 391.0 L 488.0 390.0 L 488.0 388.0 L 487.0 387.0 L 487.0 385.0 L 488.0 384.0 L 487.0 383.0 L 487.0 381.0 L 485.0 381.0 L 484.0 380.0 L 484.0 379.0 L 483.0 378.0 L 483.0 375.0 L 482.0 375.0 L 481.0 374.0 L 481.0 372.0 L 479.0 372.0 L 475.0 368.0 L 475.0 365.0 L 474.0 364.0 L 471.0 364.0 L 469.0 362.0 L 469.0 360.0 L 468.0 360.0 L 467.0 359.0 L 465.0 359.0 L 464.0 358.0 L 464.0 357.0 L 463.0 358.0 L 460.0 358.0 L 458.0 356.0 L 458.0 355.0 L 457.0 355.0 L 455.0 353.0 L 455.0 352.0 L 455.0 354.0 L 454.0 355.0 L 452.0 355.0 L 451.0 354.0 L 451.0 353.0 L 448.0 353.0 L 447.0 352.0 L 447.0 354.0 L 446.0 355.0 L 444.0 355.0 L 443.0 354.0 L 443.0 352.0 Z M 826.0 283.0 L 833.0 283.0 L 834.0 284.0 L 835.0 283.0 L 837.0 283.0 L 838.0 284.0 L 838.0 287.0 L 839.0 288.0 L 839.0 289.0 L 841.0 289.0 L 842.0 290.0 L 842.0 293.0 L 841.0 294.0 L 840.0 294.0 L 841.0 295.0 L 841.0 299.0 L 842.0 299.0 L 843.0 300.0 L 843.0 302.0 L 842.0 303.0 L 841.0 303.0 L 842.0 303.0 L 843.0 304.0 L 843.0 312.0 L 842.0 313.0 L 841.0 313.0 L 842.0 313.0 L 843.0 314.0 L 843.0 327.0 L 842.0 328.0 L 841.0 328.0 L 842.0 328.0 L 844.0 330.0 L 845.0 329.0 L 847.0 329.0 L 848.0 330.0 L 848.0 331.0 L 852.0 331.0 L 853.0 330.0 L 860.0 330.0 L 860.0 329.0 L 861.0 328.0 L 862.0 328.0 L 863.0 327.0 L 868.0 327.0 L 869.0 328.0 L 869.0 329.0 L 872.0 329.0 L 872.0 328.0 L 874.0 326.0 L 879.0 326.0 L 880.0 327.0 L 880.0 330.0 L 884.0 330.0 L 885.0 331.0 L 885.0 332.0 L 886.0 333.0 L 886.0 334.0 L 888.0 334.0 L 889.0 335.0 L 889.0 337.0 L 888.0 338.0 L 888.0 366.0 L 889.0 366.0 L 890.0 367.0 L 890.0 369.0 L 889.0 370.0 L 888.0 370.0 L 888.0 371.0 L 889.0 371.0 L 890.0 372.0 L 890.0 376.0 L 889.0 377.0 L 888.0 377.0 L 888.0 415.0 L 889.0 415.0 L 890.0 416.0 L 890.0 419.0 L 889.0 420.0 L 888.0 420.0 L 888.0 482.0 L 889.0 482.0 L 890.0 483.0 L 890.0 485.0 L 889.0 486.0 L 888.0 486.0 L 888.0 488.0 L 889.0 488.0 L 890.0 489.0 L 890.0 498.0 L 889.0 499.0 L 888.0 499.0 L 888.0 500.0 L 889.0 500.0 L 890.0 501.0 L 890.0 506.0 L 889.0 507.0 L 888.0 507.0 L 888.0 515.0 L 889.0 515.0 L 890.0 516.0 L 890.0 518.0 L 889.0 519.0 L 888.0 519.0 L 888.0 533.0 L 889.0 533.0 L 890.0 534.0 L 890.0 536.0 L 889.0 537.0 L 888.0 537.0 L 888.0 565.0 L 889.0 565.0 L 890.0 566.0 L 890.0 568.0 L 889.0 569.0 L 888.0 569.0 L 888.0 571.0 L 889.0 571.0 L 890.0 572.0 L 890.0 576.0 L 889.0 577.0 L 888.0 577.0 L 888.0 612.0 L 889.0 612.0 L 890.0 613.0 L 890.0 616.0 L 889.0 617.0 L 888.0 617.0 L 888.0 618.0 L 889.0 618.0 L 890.0 619.0 L 890.0 621.0 L 889.0 622.0 L 888.0 622.0 L 888.0 630.0 L 889.0 630.0 L 890.0 631.0 L 890.0 640.0 L 889.0 641.0 L 888.0 641.0 L 888.0 643.0 L 889.0 643.0 L 890.0 644.0 L 890.0 647.0 L 889.0 648.0 L 888.0 648.0 L 888.0 649.0 L 889.0 649.0 L 890.0 650.0 L 890.0 652.0 L 889.0 653.0 L 888.0 653.0 L 888.0 655.0 L 889.0 655.0 L 890.0 656.0 L 890.0 658.0 L 889.0 659.0 L 888.0 659.0 L 888.0 662.0 L 889.0 662.0 L 890.0 663.0 L 890.0 665.0 L 889.0 666.0 L 888.0 666.0 L 888.0 669.0 L 889.0 669.0 L 890.0 670.0 L 890.0 672.0 L 889.0 673.0 L 888.0 673.0 L 888.0 674.0 L 889.0 674.0 L 890.0 675.0 L 890.0 678.0 L 889.0 679.0 L 888.0 679.0 L 888.0 683.0 L 889.0 683.0 L 890.0 684.0 L 890.0 688.0 L 889.0 689.0 L 888.0 689.0 L 888.0 698.0 L 889.0 698.0 L 890.0 699.0 L 890.0 701.0 L 889.0 702.0 L 888.0 702.0 L 889.0 702.0 L 890.0 703.0 L 890.0 705.0 L 889.0 706.0 L 888.0 706.0 L 888.0 707.0 L 889.0 707.0 L 890.0 708.0 L 890.0 714.0 L 889.0 715.0 L 888.0 715.0 L 889.0 715.0 L 890.0 716.0 L 890.0 718.0 L 889.0 719.0 L 888.0 719.0 L 888.0 742.0 L 889.0 742.0 L 890.0 743.0 L 890.0 745.0 L 889.0 746.0 L 889.0 747.0 L 887.0 749.0 L 886.0 749.0 L 886.0 751.0 L 885.0 752.0 L 884.0 752.0 L 883.0 753.0 L 883.0 754.0 L 882.0 755.0 L 881.0 755.0 L 880.0 756.0 L 879.0 756.0 L 878.0 757.0 L 876.0 757.0 L 876.0 758.0 L 875.0 759.0 L 873.0 759.0 L 872.0 758.0 L 870.0 758.0 L 869.0 759.0 L 867.0 759.0 L 866.0 760.0 L 860.0 760.0 L 859.0 761.0 L 856.0 761.0 L 855.0 762.0 L 852.0 762.0 L 852.0 763.0 L 851.0 764.0 L 849.0 764.0 L 848.0 763.0 L 846.0 763.0 L 845.0 764.0 L 842.0 764.0 L 841.0 765.0 L 837.0 765.0 L 836.0 766.0 L 833.0 766.0 L 833.0 767.0 L 832.0 768.0 L 830.0 768.0 L 829.0 767.0 L 827.0 767.0 L 826.0 768.0 L 823.0 768.0 L 823.0 769.0 L 822.0 770.0 L 820.0 770.0 L 819.0 769.0 L 819.0 770.0 L 818.0 771.0 L 814.0 771.0 L 813.0 770.0 L 811.0 770.0 L 810.0 771.0 L 808.0 771.0 L 808.0 772.0 L 807.0 773.0 L 805.0 773.0 L 804.0 772.0 L 801.0 772.0 L 800.0 773.0 L 798.0 773.0 L 797.0 774.0 L 795.0 774.0 L 795.0 775.0 L 794.0 776.0 L 791.0 776.0 L 790.0 775.0 L 790.0 776.0 L 789.0 777.0 L 788.0 777.0 L 787.0 778.0 L 785.0 778.0 L 784.0 777.0 L 784.0 776.0 L 783.0 777.0 L 778.0 777.0 L 778.0 779.0 L 777.0 780.0 L 775.0 780.0 L 774.0 779.0 L 774.0 778.0 L 773.0 779.0 L 768.0 779.0 L 767.0 780.0 L 762.0 780.0 L 761.0 781.0 L 760.0 781.0 L 760.0 782.0 L 759.0 783.0 L 757.0 783.0 L 756.0 782.0 L 755.0 782.0 L 755.0 783.0 L 754.0 784.0 L 752.0 784.0 L 751.0 783.0 L 749.0 783.0 L 748.0 784.0 L 744.0 784.0 L 743.0 785.0 L 740.0 785.0 L 739.0 786.0 L 736.0 786.0 L 736.0 787.0 L 735.0 788.0 L 733.0 788.0 L 732.0 787.0 L 730.0 787.0 L 729.0 788.0 L 725.0 788.0 L 724.0 789.0 L 720.0 789.0 L 719.0 790.0 L 715.0 790.0 L 715.0 792.0 L 714.0 793.0 L 712.0 793.0 L 711.0 792.0 L 711.0 791.0 L 710.0 792.0 L 707.0 792.0 L 706.0 793.0 L 701.0 793.0 L 700.0 794.0 L 696.0 794.0 L 695.0 795.0 L 691.0 795.0 L 690.0 796.0 L 687.0 796.0 L 686.0 797.0 L 683.0 797.0 L 683.0 798.0 L 682.0 799.0 L 680.0 799.0 L 679.0 798.0 L 677.0 798.0 L 677.0 800.0 L 676.0 801.0 L 673.0 801.0 L 672.0 800.0 L 672.0 799.0 L 671.0 800.0 L 667.0 800.0 L 666.0 801.0 L 663.0 801.0 L 662.0 802.0 L 657.0 802.0 L 656.0 803.0 L 652.0 803.0 L 651.0 804.0 L 648.0 804.0 L 647.0 805.0 L 643.0 805.0 L 643.0 806.0 L 642.0 807.0 L 640.0 807.0 L 639.0 806.0 L 638.0 806.0 L 637.0 807.0 L 636.0 807.0 L 636.0 808.0 L 635.0 809.0 L 631.0 809.0 L 630.0 808.0 L 628.0 808.0 L 627.0 809.0 L 624.0 809.0 L 624.0 810.0 L 623.0 811.0 L 621.0 811.0 L 620.0 810.0 L 619.0 810.0 L 619.0 811.0 L 618.0 812.0 L 616.0 812.0 L 615.0 811.0 L 614.0 811.0 L 614.0 812.0 L 612.0 814.0 L 609.0 814.0 L 608.0 813.0 L 608.0 812.0 L 607.0 813.0 L 603.0 813.0 L 602.0 814.0 L 599.0 814.0 L 599.0 816.0 L 598.0 817.0 L 596.0 817.0 L 595.0 816.0 L 595.0 815.0 L 594.0 816.0 L 589.0 816.0 L 588.0 817.0 L 584.0 817.0 L 583.0 818.0 L 579.0 818.0 L 578.0 819.0 L 576.0 819.0 L 576.0 820.0 L 575.0 821.0 L 572.0 821.0 L 571.0 820.0 L 569.0 820.0 L 568.0 821.0 L 566.0 821.0 L 565.0 822.0 L 560.0 822.0 L 559.0 823.0 L 557.0 823.0 L 557.0 824.0 L 556.0 825.0 L 554.0 825.0 L 553.0 824.0 L 552.0 824.0 L 552.0 825.0 L 551.0 826.0 L 549.0 826.0 L 548.0 825.0 L 546.0 825.0 L 545.0 826.0 L 541.0 826.0 L 541.0 828.0 L 540.0 829.0 L 538.0 829.0 L 537.0 828.0 L 537.0 825.0 L 537.0 826.0 L 536.0 827.0 L 535.0 827.0 L 534.0 828.0 L 529.0 828.0 L 528.0 829.0 L 526.0 829.0 L 525.0 828.0 L 525.0 824.0 L 526.0 823.0 L 524.0 823.0 L 523.0 822.0 L 523.0 820.0 L 522.0 819.0 L 522.0 813.0 L 523.0 812.0 L 522.0 811.0 L 522.0 805.0 L 523.0 804.0 L 523.0 797.0 L 522.0 796.0 L 522.0 794.0 L 523.0 793.0 L 523.0 790.0 L 524.0 789.0 L 525.0 789.0 L 523.0 789.0 L 522.0 788.0 L 522.0 784.0 L 523.0 783.0 L 523.0 768.0 L 522.0 767.0 L 522.0 765.0 L 523.0 764.0 L 523.0 760.0 L 522.0 759.0 L 522.0 757.0 L 523.0 756.0 L 523.0 750.0 L 522.0 749.0 L 522.0 744.0 L 523.0 743.0 L 522.0 742.0 L 522.0 738.0 L 523.0 737.0 L 523.0 736.0 L 522.0 735.0 L 522.0 729.0 L 523.0 728.0 L 523.0 716.0 L 524.0 715.0 L 525.0 715.0 L 524.0 715.0 L 523.0 714.0 L 523.0 712.0 L 522.0 711.0 L 522.0 704.0 L 523.0 703.0 L 522.0 702.0 L 522.0 697.0 L 523.0 696.0 L 523.0 673.0 L 522.0 672.0 L 522.0 666.0 L 523.0 665.0 L 523.0 658.0 L 525.0 656.0 L 525.0 653.0 L 523.0 653.0 L 522.0 652.0 L 522.0 649.0 L 523.0 648.0 L 523.0 646.0 L 522.0 645.0 L 522.0 642.0 L 523.0 641.0 L 523.0 640.0 L 524.0 639.0 L 525.0 639.0 L 524.0 639.0 L 523.0 638.0 L 523.0 637.0 L 522.0 636.0 L 522.0 634.0 L 523.0 633.0 L 525.0 633.0 L 523.0 633.0 L 522.0 632.0 L 522.0 624.0 L 523.0 623.0 L 522.0 622.0 L 522.0 619.0 L 523.0 618.0 L 523.0 613.0 L 522.0 612.0 L 522.0 610.0 L 523.0 609.0 L 523.0 607.0 L 524.0 606.0 L 558.0 606.0 L 559.0 607.0 L 560.0 606.0 L 564.0 606.0 L 565.0 607.0 L 569.0 607.0 L 570.0 606.0 L 573.0 606.0 L 574.0 607.0 L 575.0 606.0 L 595.0 606.0 L 596.0 607.0 L 598.0 607.0 L 599.0 606.0 L 601.0 606.0 L 602.0 605.0 L 603.0 605.0 L 604.0 604.0 L 606.0 604.0 L 607.0 603.0 L 607.0 601.0 L 608.0 600.0 L 609.0 600.0 L 610.0 599.0 L 612.0 599.0 L 613.0 600.0 L 613.0 599.0 L 614.0 598.0 L 614.0 596.0 L 621.0 589.0 L 623.0 589.0 L 623.0 587.0 L 624.0 586.0 L 625.0 586.0 L 625.0 585.0 L 626.0 584.0 L 625.0 583.0 L 625.0 581.0 L 627.0 579.0 L 628.0 579.0 L 627.0 578.0 L 627.0 575.0 L 629.0 573.0 L 630.0 573.0 L 629.0 573.0 L 628.0 572.0 L 628.0 570.0 L 630.0 568.0 L 631.0 568.0 L 631.0 555.0 L 630.0 555.0 L 629.0 554.0 L 629.0 551.0 L 630.0 550.0 L 631.0 550.0 L 631.0 544.0 L 634.0 541.0 L 638.0 541.0 L 639.0 540.0 L 643.0 540.0 L 643.0 538.0 L 644.0 537.0 L 645.0 537.0 L 646.0 536.0 L 648.0 536.0 L 649.0 535.0 L 651.0 535.0 L 652.0 536.0 L 652.0 535.0 L 654.0 533.0 L 655.0 533.0 L 656.0 532.0 L 659.0 532.0 L 660.0 533.0 L 662.0 533.0 L 661.0 533.0 L 660.0 532.0 L 660.0 530.0 L 661.0 529.0 L 662.0 529.0 L 663.0 528.0 L 664.0 528.0 L 667.0 525.0 L 671.0 525.0 L 672.0 524.0 L 672.0 522.0 L 674.0 520.0 L 676.0 520.0 L 677.0 519.0 L 677.0 517.0 L 679.0 515.0 L 681.0 515.0 L 681.0 513.0 L 682.0 512.0 L 683.0 512.0 L 683.0 510.0 L 685.0 508.0 L 685.0 507.0 L 688.0 504.0 L 688.0 503.0 L 690.0 501.0 L 693.0 501.0 L 693.0 498.0 L 692.0 497.0 L 692.0 495.0 L 694.0 493.0 L 695.0 493.0 L 694.0 492.0 L 694.0 490.0 L 695.0 489.0 L 695.0 488.0 L 696.0 487.0 L 698.0 487.0 L 698.0 486.0 L 700.0 484.0 L 702.0 484.0 L 701.0 484.0 L 700.0 483.0 L 700.0 478.0 L 701.0 477.0 L 701.0 475.0 L 702.0 474.0 L 702.0 469.0 L 701.0 468.0 L 701.0 464.0 L 702.0 463.0 L 703.0 463.0 L 703.0 457.0 L 702.0 457.0 L 701.0 456.0 L 701.0 445.0 L 702.0 444.0 L 703.0 444.0 L 702.0 444.0 L 701.0 443.0 L 701.0 436.0 L 702.0 435.0 L 703.0 435.0 L 702.0 435.0 L 701.0 434.0 L 701.0 384.0 L 702.0 383.0 L 703.0 383.0 L 703.0 379.0 L 702.0 379.0 L 701.0 378.0 L 701.0 376.0 L 702.0 375.0 L 703.0 375.0 L 701.0 375.0 L 700.0 374.0 L 700.0 370.0 L 701.0 369.0 L 702.0 369.0 L 702.0 365.0 L 701.0 364.0 L 701.0 357.0 L 700.0 356.0 L 700.0 352.0 L 699.0 351.0 L 699.0 347.0 L 698.0 346.0 L 698.0 344.0 L 697.0 344.0 L 696.0 343.0 L 696.0 342.0 L 695.0 341.0 L 695.0 337.0 L 696.0 336.0 L 696.0 335.0 L 695.0 335.0 L 693.0 333.0 L 693.0 329.0 L 694.0 328.0 L 694.0 327.0 L 693.0 326.0 L 693.0 324.0 L 692.0 323.0 L 692.0 321.0 L 691.0 320.0 L 691.0 318.0 L 690.0 317.0 L 690.0 316.0 L 689.0 315.0 L 689.0 313.0 L 687.0 313.0 L 686.0 312.0 L 686.0 309.0 L 687.0 308.0 L 693.0 308.0 L 694.0 307.0 L 694.0 306.0 L 696.0 304.0 L 698.0 304.0 L 699.0 305.0 L 699.0 306.0 L 699.0 305.0 L 700.0 304.0 L 703.0 304.0 L 704.0 305.0 L 705.0 305.0 L 705.0 304.0 L 707.0 302.0 L 709.0 302.0 L 710.0 303.0 L 710.0 304.0 L 710.0 303.0 L 711.0 302.0 L 713.0 302.0 L 714.0 303.0 L 714.0 302.0 L 715.0 301.0 L 719.0 301.0 L 720.0 302.0 L 721.0 301.0 L 725.0 301.0 L 725.0 300.0 L 726.0 299.0 L 728.0 299.0 L 729.0 300.0 L 733.0 300.0 L 734.0 301.0 L 734.0 300.0 L 735.0 299.0 L 737.0 299.0 L 737.0 298.0 L 739.0 296.0 L 741.0 296.0 L 742.0 297.0 L 742.0 298.0 L 742.0 297.0 L 743.0 296.0 L 746.0 296.0 L 747.0 297.0 L 747.0 296.0 L 748.0 295.0 L 751.0 295.0 L 752.0 296.0 L 752.0 295.0 L 753.0 294.0 L 754.0 294.0 L 755.0 293.0 L 758.0 293.0 L 759.0 294.0 L 759.0 295.0 L 760.0 294.0 L 766.0 294.0 L 767.0 293.0 L 769.0 293.0 L 769.0 292.0 L 771.0 290.0 L 773.0 290.0 L 774.0 291.0 L 774.0 292.0 L 775.0 292.0 L 776.0 291.0 L 781.0 291.0 L 782.0 290.0 L 785.0 290.0 L 785.0 289.0 L 786.0 288.0 L 788.0 288.0 L 789.0 289.0 L 791.0 289.0 L 791.0 287.0 L 792.0 286.0 L 795.0 286.0 L 796.0 287.0 L 796.0 288.0 L 796.0 287.0 L 797.0 286.0 L 799.0 286.0 L 800.0 287.0 L 802.0 287.0 L 802.0 286.0 L 803.0 285.0 L 805.0 285.0 L 806.0 286.0 L 808.0 286.0 L 809.0 285.0 L 816.0 285.0 L 817.0 284.0 L 823.0 284.0 L 824.0 285.0 Z M 190.0 282.0 L 191.0 281.0 L 197.0 281.0 L 198.0 282.0 L 198.0 283.0 L 201.0 283.0 L 202.0 284.0 L 206.0 284.0 L 207.0 285.0 L 212.0 285.0 L 213.0 286.0 L 217.0 286.0 L 218.0 287.0 L 223.0 287.0 L 224.0 288.0 L 229.0 288.0 L 230.0 289.0 L 234.0 289.0 L 235.0 290.0 L 242.0 290.0 L 243.0 291.0 L 243.0 290.0 L 244.0 289.0 L 246.0 289.0 L 248.0 291.0 L 248.0 292.0 L 248.0 291.0 L 249.0 290.0 L 252.0 290.0 L 253.0 291.0 L 253.0 293.0 L 257.0 293.0 L 258.0 294.0 L 260.0 294.0 L 260.0 293.0 L 261.0 292.0 L 263.0 292.0 L 264.0 293.0 L 264.0 295.0 L 269.0 295.0 L 270.0 296.0 L 270.0 295.0 L 271.0 294.0 L 274.0 294.0 L 275.0 295.0 L 275.0 297.0 L 279.0 297.0 L 280.0 298.0 L 284.0 298.0 L 285.0 299.0 L 290.0 299.0 L 291.0 300.0 L 294.0 300.0 L 295.0 301.0 L 300.0 301.0 L 301.0 302.0 L 306.0 302.0 L 307.0 303.0 L 307.0 302.0 L 308.0 301.0 L 312.0 301.0 L 313.0 302.0 L 314.0 302.0 L 315.0 303.0 L 315.0 304.0 L 316.0 303.0 L 318.0 303.0 L 319.0 304.0 L 319.0 305.0 L 323.0 305.0 L 324.0 306.0 L 328.0 306.0 L 329.0 307.0 L 333.0 307.0 L 334.0 308.0 L 335.0 308.0 L 336.0 309.0 L 336.0 312.0 L 335.0 313.0 L 335.0 315.0 L 334.0 316.0 L 334.0 317.0 L 333.0 318.0 L 333.0 319.0 L 332.0 320.0 L 332.0 323.0 L 333.0 324.0 L 333.0 326.0 L 332.0 327.0 L 330.0 327.0 L 329.0 328.0 L 328.0 328.0 L 328.0 334.0 L 329.0 335.0 L 329.0 337.0 L 328.0 338.0 L 327.0 338.0 L 327.0 340.0 L 326.0 341.0 L 326.0 345.0 L 325.0 346.0 L 325.0 350.0 L 324.0 351.0 L 324.0 356.0 L 323.0 357.0 L 323.0 359.0 L 324.0 359.0 L 325.0 360.0 L 325.0 363.0 L 324.0 364.0 L 322.0 364.0 L 322.0 367.0 L 323.0 367.0 L 324.0 368.0 L 324.0 373.0 L 322.0 375.0 L 321.0 375.0 L 321.0 386.0 L 322.0 386.0 L 323.0 387.0 L 323.0 391.0 L 322.0 392.0 L 321.0 392.0 L 321.0 393.0 L 320.0 394.0 L 320.0 398.0 L 321.0 399.0 L 322.0 399.0 L 323.0 400.0 L 323.0 407.0 L 322.0 408.0 L 321.0 408.0 L 321.0 413.0 L 322.0 413.0 L 323.0 414.0 L 323.0 417.0 L 322.0 418.0 L 321.0 418.0 L 321.0 419.0 L 322.0 419.0 L 323.0 420.0 L 323.0 435.0 L 322.0 436.0 L 321.0 436.0 L 321.0 437.0 L 322.0 437.0 L 323.0 438.0 L 323.0 440.0 L 322.0 441.0 L 321.0 441.0 L 322.0 441.0 L 323.0 442.0 L 323.0 447.0 L 322.0 448.0 L 321.0 448.0 L 321.0 465.0 L 322.0 465.0 L 324.0 467.0 L 324.0 469.0 L 323.0 470.0 L 322.0 470.0 L 323.0 470.0 L 324.0 471.0 L 324.0 474.0 L 323.0 475.0 L 323.0 476.0 L 324.0 476.0 L 325.0 477.0 L 325.0 479.0 L 324.0 480.0 L 324.0 481.0 L 325.0 482.0 L 325.0 483.0 L 326.0 483.0 L 328.0 485.0 L 328.0 487.0 L 329.0 488.0 L 329.0 489.0 L 330.0 490.0 L 330.0 493.0 L 329.0 494.0 L 331.0 494.0 L 332.0 495.0 L 332.0 496.0 L 333.0 497.0 L 333.0 501.0 L 335.0 501.0 L 336.0 502.0 L 336.0 507.0 L 337.0 507.0 L 338.0 508.0 L 338.0 509.0 L 340.0 509.0 L 343.0 512.0 L 343.0 515.0 L 345.0 515.0 L 352.0 522.0 L 352.0 523.0 L 354.0 523.0 L 357.0 526.0 L 357.0 528.0 L 361.0 528.0 L 362.0 529.0 L 362.0 532.0 L 364.0 532.0 L 365.0 533.0 L 367.0 533.0 L 368.0 534.0 L 368.0 535.0 L 370.0 535.0 L 371.0 536.0 L 372.0 536.0 L 373.0 535.0 L 375.0 535.0 L 376.0 536.0 L 376.0 538.0 L 378.0 538.0 L 379.0 539.0 L 382.0 539.0 L 383.0 540.0 L 384.0 540.0 L 385.0 541.0 L 389.0 541.0 L 390.0 542.0 L 394.0 542.0 L 395.0 543.0 L 395.0 550.0 L 394.0 551.0 L 393.0 551.0 L 393.0 567.0 L 394.0 567.0 L 395.0 568.0 L 395.0 571.0 L 394.0 572.0 L 394.0 574.0 L 395.0 575.0 L 395.0 576.0 L 396.0 577.0 L 396.0 580.0 L 397.0 581.0 L 397.0 582.0 L 399.0 582.0 L 401.0 584.0 L 401.0 586.0 L 400.0 587.0 L 400.0 589.0 L 402.0 589.0 L 403.0 590.0 L 403.0 591.0 L 404.0 592.0 L 406.0 592.0 L 411.0 597.0 L 412.0 597.0 L 415.0 600.0 L 416.0 600.0 L 417.0 601.0 L 417.0 603.0 L 418.0 603.0 L 419.0 604.0 L 420.0 604.0 L 421.0 605.0 L 424.0 605.0 L 425.0 606.0 L 425.0 607.0 L 427.0 607.0 L 428.0 606.0 L 453.0 606.0 L 454.0 607.0 L 455.0 606.0 L 475.0 606.0 L 476.0 607.0 L 479.0 607.0 L 480.0 606.0 L 485.0 606.0 L 486.0 607.0 L 487.0 607.0 L 488.0 606.0 L 491.0 606.0 L 492.0 607.0 L 493.0 606.0 L 498.0 606.0 L 499.0 607.0 L 501.0 607.0 L 502.0 608.0 L 502.0 613.0 L 501.0 614.0 L 502.0 615.0 L 502.0 618.0 L 501.0 619.0 L 501.0 623.0 L 502.0 624.0 L 502.0 628.0 L 501.0 629.0 L 502.0 630.0 L 502.0 642.0 L 501.0 643.0 L 502.0 644.0 L 502.0 665.0 L 501.0 666.0 L 501.0 670.0 L 502.0 671.0 L 502.0 674.0 L 501.0 675.0 L 499.0 675.0 L 501.0 675.0 L 502.0 676.0 L 502.0 681.0 L 501.0 682.0 L 501.0 684.0 L 502.0 685.0 L 502.0 709.0 L 501.0 710.0 L 501.0 711.0 L 502.0 712.0 L 502.0 743.0 L 501.0 744.0 L 502.0 745.0 L 502.0 756.0 L 501.0 757.0 L 499.0 757.0 L 501.0 757.0 L 502.0 758.0 L 502.0 760.0 L 501.0 761.0 L 501.0 765.0 L 502.0 766.0 L 502.0 787.0 L 501.0 788.0 L 501.0 789.0 L 502.0 790.0 L 502.0 804.0 L 501.0 805.0 L 501.0 808.0 L 502.0 809.0 L 502.0 812.0 L 501.0 813.0 L 502.0 814.0 L 502.0 823.0 L 501.0 824.0 L 499.0 824.0 L 500.0 825.0 L 500.0 827.0 L 499.0 828.0 L 497.0 828.0 L 495.0 826.0 L 495.0 825.0 L 495.0 827.0 L 494.0 828.0 L 492.0 828.0 L 491.0 827.0 L 486.0 827.0 L 484.0 825.0 L 476.0 825.0 L 475.0 824.0 L 474.0 824.0 L 474.0 825.0 L 473.0 826.0 L 471.0 826.0 L 470.0 825.0 L 467.0 825.0 L 466.0 824.0 L 466.0 822.0 L 462.0 822.0 L 461.0 821.0 L 458.0 821.0 L 457.0 820.0 L 452.0 820.0 L 451.0 819.0 L 448.0 819.0 L 447.0 818.0 L 447.0 819.0 L 446.0 820.0 L 443.0 820.0 L 442.0 819.0 L 442.0 817.0 L 437.0 817.0 L 436.0 816.0 L 435.0 816.0 L 434.0 817.0 L 432.0 817.0 L 431.0 816.0 L 431.0 815.0 L 431.0 816.0 L 430.0 817.0 L 428.0 817.0 L 427.0 816.0 L 427.0 814.0 L 427.0 815.0 L 426.0 816.0 L 424.0 816.0 L 423.0 815.0 L 422.0 815.0 L 421.0 814.0 L 421.0 813.0 L 418.0 813.0 L 417.0 812.0 L 413.0 812.0 L 412.0 811.0 L 411.0 811.0 L 410.0 812.0 L 404.0 812.0 L 402.0 810.0 L 402.0 809.0 L 401.0 809.0 L 400.0 810.0 L 398.0 810.0 L 397.0 809.0 L 397.0 808.0 L 397.0 809.0 L 396.0 810.0 L 394.0 810.0 L 393.0 809.0 L 390.0 809.0 L 388.0 807.0 L 388.0 806.0 L 386.0 806.0 L 385.0 805.0 L 380.0 805.0 L 379.0 804.0 L 377.0 804.0 L 376.0 805.0 L 374.0 805.0 L 373.0 804.0 L 373.0 803.0 L 371.0 803.0 L 370.0 802.0 L 365.0 802.0 L 364.0 801.0 L 363.0 801.0 L 363.0 802.0 L 362.0 803.0 L 360.0 803.0 L 359.0 802.0 L 358.0 802.0 L 357.0 801.0 L 357.0 800.0 L 356.0 800.0 L 355.0 801.0 L 352.0 801.0 L 351.0 800.0 L 351.0 798.0 L 348.0 798.0 L 347.0 799.0 L 345.0 799.0 L 344.0 798.0 L 344.0 797.0 L 343.0 797.0 L 342.0 796.0 L 337.0 796.0 L 336.0 795.0 L 331.0 795.0 L 330.0 794.0 L 327.0 794.0 L 326.0 793.0 L 322.0 793.0 L 321.0 792.0 L 320.0 792.0 L 320.0 793.0 L 319.0 794.0 L 317.0 794.0 L 315.0 792.0 L 315.0 791.0 L 315.0 792.0 L 314.0 793.0 L 312.0 793.0 L 311.0 792.0 L 311.0 790.0 L 307.0 790.0 L 306.0 789.0 L 302.0 789.0 L 301.0 788.0 L 298.0 788.0 L 297.0 787.0 L 295.0 787.0 L 294.0 788.0 L 292.0 788.0 L 291.0 787.0 L 291.0 786.0 L 289.0 786.0 L 288.0 785.0 L 288.0 786.0 L 287.0 787.0 L 284.0 787.0 L 283.0 786.0 L 283.0 784.0 L 280.0 784.0 L 279.0 785.0 L 277.0 785.0 L 276.0 784.0 L 276.0 783.0 L 275.0 783.0 L 274.0 784.0 L 272.0 784.0 L 271.0 783.0 L 271.0 782.0 L 269.0 782.0 L 268.0 781.0 L 264.0 781.0 L 262.0 779.0 L 262.0 778.0 L 261.0 779.0 L 258.0 779.0 L 257.0 778.0 L 257.0 777.0 L 257.0 779.0 L 256.0 780.0 L 250.0 780.0 L 249.0 779.0 L 249.0 777.0 L 246.0 777.0 L 245.0 776.0 L 243.0 776.0 L 242.0 777.0 L 239.0 777.0 L 238.0 776.0 L 238.0 775.0 L 235.0 775.0 L 234.0 774.0 L 232.0 774.0 L 231.0 773.0 L 227.0 773.0 L 226.0 774.0 L 223.0 774.0 L 222.0 773.0 L 222.0 772.0 L 221.0 772.0 L 220.0 771.0 L 216.0 771.0 L 215.0 770.0 L 210.0 770.0 L 209.0 769.0 L 206.0 769.0 L 205.0 768.0 L 203.0 768.0 L 202.0 767.0 L 196.0 767.0 L 195.0 766.0 L 192.0 766.0 L 191.0 765.0 L 189.0 765.0 L 188.0 766.0 L 186.0 766.0 L 185.0 765.0 L 185.0 764.0 L 184.0 764.0 L 183.0 765.0 L 181.0 765.0 L 180.0 764.0 L 180.0 763.0 L 178.0 763.0 L 177.0 762.0 L 174.0 762.0 L 173.0 761.0 L 171.0 761.0 L 171.0 762.0 L 170.0 763.0 L 168.0 763.0 L 167.0 762.0 L 167.0 760.0 L 165.0 760.0 L 164.0 761.0 L 162.0 761.0 L 161.0 760.0 L 161.0 759.0 L 159.0 759.0 L 158.0 758.0 L 156.0 758.0 L 155.0 759.0 L 153.0 759.0 L 152.0 758.0 L 152.0 757.0 L 151.0 757.0 L 150.0 758.0 L 146.0 758.0 L 145.0 757.0 L 144.0 757.0 L 142.0 755.0 L 142.0 753.0 L 141.0 752.0 L 139.0 752.0 L 138.0 751.0 L 138.0 749.0 L 139.0 748.0 L 139.0 747.0 L 138.0 747.0 L 137.0 746.0 L 137.0 745.0 L 135.0 745.0 L 134.0 744.0 L 134.0 741.0 L 135.0 740.0 L 136.0 740.0 L 136.0 737.0 L 134.0 737.0 L 133.0 736.0 L 133.0 732.0 L 134.0 731.0 L 136.0 731.0 L 136.0 728.0 L 135.0 728.0 L 134.0 727.0 L 134.0 725.0 L 133.0 724.0 L 133.0 696.0 L 134.0 695.0 L 136.0 695.0 L 134.0 695.0 L 133.0 694.0 L 133.0 668.0 L 134.0 667.0 L 133.0 666.0 L 133.0 655.0 L 134.0 654.0 L 133.0 653.0 L 133.0 650.0 L 134.0 649.0 L 133.0 648.0 L 133.0 628.0 L 134.0 627.0 L 136.0 627.0 L 134.0 627.0 L 133.0 626.0 L 133.0 611.0 L 134.0 610.0 L 136.0 610.0 L 135.0 610.0 L 134.0 609.0 L 134.0 607.0 L 133.0 606.0 L 133.0 602.0 L 134.0 601.0 L 134.0 599.0 L 133.0 598.0 L 133.0 590.0 L 134.0 589.0 L 134.0 583.0 L 133.0 582.0 L 133.0 578.0 L 134.0 577.0 L 133.0 576.0 L 133.0 568.0 L 134.0 567.0 L 134.0 565.0 L 133.0 564.0 L 133.0 562.0 L 134.0 561.0 L 134.0 545.0 L 133.0 544.0 L 133.0 538.0 L 134.0 537.0 L 133.0 536.0 L 133.0 530.0 L 134.0 529.0 L 133.0 528.0 L 133.0 524.0 L 134.0 523.0 L 133.0 522.0 L 133.0 510.0 L 134.0 509.0 L 134.0 507.0 L 133.0 506.0 L 133.0 495.0 L 134.0 494.0 L 133.0 493.0 L 133.0 486.0 L 134.0 485.0 L 134.0 481.0 L 133.0 480.0 L 133.0 463.0 L 134.0 462.0 L 133.0 461.0 L 133.0 448.0 L 134.0 447.0 L 134.0 440.0 L 133.0 439.0 L 133.0 435.0 L 134.0 434.0 L 134.0 425.0 L 133.0 424.0 L 133.0 413.0 L 134.0 412.0 L 133.0 411.0 L 133.0 397.0 L 134.0 396.0 L 134.0 395.0 L 133.0 394.0 L 133.0 392.0 L 134.0 391.0 L 133.0 390.0 L 133.0 387.0 L 134.0 386.0 L 133.0 385.0 L 133.0 376.0 L 134.0 375.0 L 134.0 373.0 L 133.0 372.0 L 133.0 362.0 L 134.0 361.0 L 134.0 357.0 L 133.0 356.0 L 133.0 346.0 L 134.0 345.0 L 136.0 345.0 L 135.0 344.0 L 135.0 342.0 L 134.0 341.0 L 134.0 337.0 L 136.0 335.0 L 138.0 335.0 L 138.0 334.0 L 139.0 333.0 L 140.0 333.0 L 139.0 332.0 L 139.0 330.0 L 140.0 329.0 L 142.0 329.0 L 142.0 327.0 L 143.0 326.0 L 147.0 326.0 L 149.0 328.0 L 160.0 328.0 L 161.0 327.0 L 164.0 327.0 L 165.0 328.0 L 165.0 329.0 L 173.0 329.0 L 174.0 330.0 L 174.0 329.0 L 175.0 328.0 L 177.0 328.0 L 178.0 329.0 L 178.0 330.0 L 180.0 330.0 L 180.0 318.0 L 181.0 317.0 L 182.0 317.0 L 181.0 317.0 L 180.0 316.0 L 180.0 314.0 L 181.0 313.0 L 182.0 313.0 L 182.0 308.0 L 181.0 308.0 L 180.0 307.0 L 180.0 305.0 L 181.0 304.0 L 182.0 304.0 L 181.0 304.0 L 180.0 303.0 L 180.0 295.0 L 181.0 294.0 L 181.0 293.0 L 182.0 292.0 L 183.0 292.0 L 182.0 291.0 L 182.0 289.0 L 183.0 288.0 L 185.0 288.0 L 187.0 286.0 L 188.0 286.0 L 188.0 285.0 L 189.0 284.0 L 190.0 284.0 Z M 505.0 225.0 L 506.0 224.0 L 512.0 224.0 L 513.0 225.0 L 513.0 227.0 L 516.0 227.0 L 516.0 225.0 L 517.0 224.0 L 520.0 224.0 L 521.0 225.0 L 521.0 227.0 L 532.0 227.0 L 532.0 226.0 L 533.0 225.0 L 536.0 225.0 L 537.0 226.0 L 537.0 228.0 L 541.0 228.0 L 542.0 229.0 L 542.0 231.0 L 542.0 230.0 L 543.0 229.0 L 549.0 229.0 L 550.0 228.0 L 552.0 228.0 L 553.0 229.0 L 553.0 230.0 L 555.0 230.0 L 556.0 229.0 L 558.0 229.0 L 559.0 230.0 L 559.0 231.0 L 562.0 231.0 L 563.0 232.0 L 563.0 231.0 L 564.0 230.0 L 566.0 230.0 L 567.0 231.0 L 567.0 233.0 L 570.0 233.0 L 571.0 234.0 L 573.0 234.0 L 574.0 235.0 L 576.0 235.0 L 578.0 237.0 L 578.0 239.0 L 579.0 238.0 L 583.0 238.0 L 584.0 239.0 L 587.0 239.0 L 588.0 240.0 L 589.0 239.0 L 591.0 239.0 L 593.0 241.0 L 593.0 243.0 L 594.0 243.0 L 595.0 244.0 L 598.0 244.0 L 600.0 246.0 L 601.0 245.0 L 603.0 245.0 L 604.0 246.0 L 605.0 246.0 L 606.0 247.0 L 606.0 249.0 L 607.0 249.0 L 609.0 251.0 L 612.0 251.0 L 613.0 252.0 L 613.0 253.0 L 615.0 255.0 L 619.0 255.0 L 623.0 259.0 L 623.0 261.0 L 624.0 261.0 L 625.0 262.0 L 628.0 262.0 L 634.0 268.0 L 634.0 270.0 L 636.0 270.0 L 639.0 273.0 L 639.0 275.0 L 640.0 276.0 L 640.0 278.0 L 641.0 278.0 L 642.0 279.0 L 644.0 279.0 L 648.0 283.0 L 648.0 286.0 L 650.0 286.0 L 652.0 288.0 L 652.0 289.0 L 654.0 291.0 L 654.0 293.0 L 653.0 294.0 L 654.0 294.0 L 655.0 295.0 L 655.0 296.0 L 656.0 297.0 L 656.0 299.0 L 658.0 301.0 L 658.0 302.0 L 659.0 303.0 L 661.0 303.0 L 662.0 304.0 L 662.0 306.0 L 661.0 307.0 L 663.0 307.0 L 664.0 308.0 L 664.0 310.0 L 663.0 311.0 L 662.0 311.0 L 664.0 313.0 L 664.0 315.0 L 666.0 317.0 L 666.0 318.0 L 668.0 318.0 L 669.0 319.0 L 669.0 322.0 L 668.0 323.0 L 670.0 323.0 L 671.0 324.0 L 671.0 327.0 L 670.0 328.0 L 671.0 328.0 L 673.0 330.0 L 673.0 333.0 L 672.0 334.0 L 672.0 335.0 L 673.0 336.0 L 673.0 338.0 L 674.0 339.0 L 674.0 341.0 L 672.0 343.0 L 674.0 343.0 L 675.0 344.0 L 675.0 347.0 L 676.0 348.0 L 676.0 350.0 L 677.0 350.0 L 678.0 351.0 L 678.0 354.0 L 677.0 355.0 L 677.0 356.0 L 678.0 356.0 L 679.0 357.0 L 679.0 360.0 L 678.0 361.0 L 678.0 364.0 L 680.0 364.0 L 681.0 365.0 L 681.0 372.0 L 680.0 373.0 L 679.0 373.0 L 679.0 374.0 L 681.0 374.0 L 682.0 375.0 L 682.0 377.0 L 681.0 378.0 L 680.0 378.0 L 680.0 469.0 L 679.0 470.0 L 679.0 473.0 L 678.0 474.0 L 678.0 478.0 L 677.0 479.0 L 677.0 480.0 L 676.0 481.0 L 676.0 483.0 L 675.0 484.0 L 675.0 486.0 L 674.0 487.0 L 674.0 491.0 L 672.0 493.0 L 672.0 494.0 L 671.0 495.0 L 669.0 495.0 L 667.0 497.0 L 667.0 498.0 L 666.0 499.0 L 665.0 499.0 L 664.0 500.0 L 664.0 503.0 L 661.0 506.0 L 659.0 506.0 L 658.0 505.0 L 658.0 504.0 L 658.0 506.0 L 657.0 507.0 L 657.0 509.0 L 655.0 511.0 L 653.0 511.0 L 652.0 510.0 L 652.0 511.0 L 651.0 512.0 L 649.0 512.0 L 649.0 514.0 L 648.0 515.0 L 645.0 515.0 L 644.0 514.0 L 644.0 515.0 L 643.0 516.0 L 641.0 516.0 L 640.0 517.0 L 637.0 517.0 L 636.0 518.0 L 632.0 518.0 L 632.0 520.0 L 631.0 521.0 L 629.0 521.0 L 628.0 520.0 L 628.0 519.0 L 618.0 519.0 L 617.0 520.0 L 616.0 520.0 L 616.0 522.0 L 615.0 523.0 L 614.0 523.0 L 613.0 524.0 L 613.0 525.0 L 611.0 527.0 L 611.0 528.0 L 609.0 530.0 L 608.0 530.0 L 608.0 565.0 L 609.0 565.0 L 610.0 566.0 L 610.0 568.0 L 609.0 569.0 L 609.0 571.0 L 607.0 573.0 L 606.0 573.0 L 606.0 574.0 L 605.0 575.0 L 605.0 578.0 L 602.0 581.0 L 599.0 581.0 L 599.0 583.0 L 598.0 584.0 L 597.0 584.0 L 596.0 585.0 L 594.0 585.0 L 593.0 584.0 L 592.0 585.0 L 589.0 585.0 L 589.0 586.0 L 588.0 587.0 L 586.0 587.0 L 585.0 586.0 L 585.0 585.0 L 583.0 585.0 L 583.0 586.0 L 582.0 587.0 L 580.0 587.0 L 579.0 586.0 L 579.0 585.0 L 577.0 585.0 L 577.0 587.0 L 576.0 588.0 L 571.0 588.0 L 570.0 587.0 L 570.0 584.0 L 569.0 585.0 L 562.0 585.0 L 561.0 584.0 L 561.0 581.0 L 562.0 580.0 L 563.0 580.0 L 563.0 559.0 L 562.0 559.0 L 561.0 558.0 L 561.0 556.0 L 562.0 555.0 L 561.0 554.0 L 561.0 553.0 L 559.0 553.0 L 557.0 551.0 L 556.0 551.0 L 555.0 550.0 L 553.0 550.0 L 552.0 549.0 L 552.0 547.0 L 552.0 548.0 L 550.0 550.0 L 546.0 550.0 L 545.0 549.0 L 545.0 551.0 L 544.0 552.0 L 544.0 553.0 L 542.0 555.0 L 542.0 561.0 L 541.0 562.0 L 541.0 566.0 L 540.0 567.0 L 539.0 567.0 L 539.0 584.0 L 538.0 585.0 L 533.0 585.0 L 533.0 587.0 L 532.0 588.0 L 525.0 588.0 L 524.0 587.0 L 524.0 585.0 L 520.0 585.0 L 520.0 587.0 L 519.0 588.0 L 516.0 588.0 L 515.0 587.0 L 515.0 585.0 L 491.0 585.0 L 491.0 586.0 L 490.0 587.0 L 488.0 587.0 L 487.0 586.0 L 487.0 585.0 L 485.0 585.0 L 484.0 584.0 L 484.0 579.0 L 483.0 579.0 L 482.0 578.0 L 482.0 575.0 L 483.0 574.0 L 484.0 574.0 L 483.0 574.0 L 482.0 573.0 L 482.0 570.0 L 483.0 569.0 L 484.0 569.0 L 484.0 568.0 L 483.0 568.0 L 482.0 567.0 L 482.0 565.0 L 483.0 564.0 L 485.0 564.0 L 485.0 560.0 L 484.0 559.0 L 484.0 555.0 L 483.0 555.0 L 482.0 554.0 L 482.0 552.0 L 480.0 552.0 L 479.0 551.0 L 478.0 551.0 L 477.0 550.0 L 476.0 550.0 L 475.0 549.0 L 475.0 547.0 L 472.0 547.0 L 472.0 549.0 L 471.0 550.0 L 469.0 550.0 L 468.0 549.0 L 468.0 551.0 L 466.0 553.0 L 464.0 553.0 L 465.0 554.0 L 465.0 556.0 L 464.0 557.0 L 464.0 559.0 L 463.0 560.0 L 462.0 560.0 L 462.0 584.0 L 461.0 585.0 L 457.0 585.0 L 456.0 584.0 L 456.0 586.0 L 454.0 588.0 L 452.0 588.0 L 451.0 587.0 L 451.0 585.0 L 445.0 585.0 L 445.0 586.0 L 444.0 587.0 L 442.0 587.0 L 441.0 586.0 L 441.0 584.0 L 440.0 584.0 L 439.0 585.0 L 432.0 585.0 L 431.0 584.0 L 426.0 584.0 L 425.0 583.0 L 425.0 581.0 L 424.0 581.0 L 423.0 580.0 L 423.0 579.0 L 422.0 579.0 L 421.0 578.0 L 421.0 576.0 L 418.0 576.0 L 417.0 575.0 L 417.0 573.0 L 418.0 572.0 L 417.0 571.0 L 417.0 569.0 L 416.0 568.0 L 416.0 529.0 L 415.0 528.0 L 415.0 526.0 L 413.0 526.0 L 411.0 524.0 L 411.0 522.0 L 409.0 520.0 L 408.0 520.0 L 407.0 521.0 L 404.0 521.0 L 403.0 520.0 L 403.0 519.0 L 397.0 519.0 L 397.0 520.0 L 396.0 521.0 L 394.0 521.0 L 392.0 519.0 L 392.0 518.0 L 392.0 519.0 L 391.0 520.0 L 389.0 520.0 L 387.0 518.0 L 387.0 517.0 L 386.0 518.0 L 384.0 518.0 L 383.0 517.0 L 383.0 516.0 L 381.0 516.0 L 380.0 515.0 L 380.0 514.0 L 378.0 514.0 L 377.0 513.0 L 376.0 513.0 L 375.0 512.0 L 371.0 512.0 L 369.0 510.0 L 369.0 508.0 L 366.0 508.0 L 365.0 507.0 L 365.0 504.0 L 363.0 504.0 L 362.0 503.0 L 362.0 502.0 L 359.0 499.0 L 359.0 496.0 L 357.0 496.0 L 356.0 495.0 L 354.0 495.0 L 352.0 493.0 L 352.0 492.0 L 351.0 491.0 L 351.0 487.0 L 350.0 486.0 L 350.0 485.0 L 349.0 484.0 L 349.0 483.0 L 348.0 482.0 L 348.0 481.0 L 347.0 481.0 L 346.0 480.0 L 346.0 478.0 L 347.0 477.0 L 346.0 476.0 L 346.0 473.0 L 345.0 472.0 L 345.0 469.0 L 344.0 468.0 L 344.0 389.0 L 343.0 389.0 L 342.0 388.0 L 342.0 384.0 L 343.0 383.0 L 343.0 382.0 L 344.0 381.0 L 345.0 381.0 L 345.0 373.0 L 344.0 373.0 L 343.0 372.0 L 343.0 370.0 L 344.0 369.0 L 344.0 368.0 L 345.0 367.0 L 346.0 367.0 L 346.0 366.0 L 345.0 366.0 L 344.0 365.0 L 344.0 362.0 L 345.0 361.0 L 347.0 361.0 L 347.0 356.0 L 348.0 355.0 L 348.0 352.0 L 349.0 351.0 L 348.0 351.0 L 347.0 350.0 L 347.0 348.0 L 348.0 347.0 L 349.0 347.0 L 349.0 346.0 L 350.0 345.0 L 350.0 342.0 L 351.0 341.0 L 351.0 340.0 L 350.0 339.0 L 350.0 335.0 L 352.0 333.0 L 353.0 333.0 L 353.0 331.0 L 354.0 330.0 L 354.0 328.0 L 355.0 327.0 L 355.0 326.0 L 356.0 325.0 L 356.0 323.0 L 357.0 322.0 L 356.0 321.0 L 356.0 319.0 L 357.0 318.0 L 359.0 318.0 L 359.0 317.0 L 358.0 316.0 L 358.0 314.0 L 361.0 311.0 L 362.0 311.0 L 361.0 310.0 L 361.0 307.0 L 362.0 306.0 L 364.0 306.0 L 364.0 305.0 L 366.0 303.0 L 366.0 302.0 L 367.0 301.0 L 366.0 300.0 L 366.0 298.0 L 367.0 297.0 L 368.0 297.0 L 368.0 296.0 L 369.0 295.0 L 371.0 295.0 L 371.0 294.0 L 372.0 293.0 L 372.0 292.0 L 373.0 291.0 L 375.0 291.0 L 374.0 291.0 L 373.0 290.0 L 373.0 288.0 L 375.0 286.0 L 375.0 285.0 L 376.0 284.0 L 379.0 284.0 L 380.0 285.0 L 379.0 284.0 L 379.0 282.0 L 380.0 281.0 L 381.0 281.0 L 383.0 279.0 L 383.0 276.0 L 387.0 272.0 L 389.0 272.0 L 390.0 271.0 L 391.0 271.0 L 391.0 269.0 L 392.0 268.0 L 394.0 268.0 L 394.0 265.0 L 395.0 264.0 L 398.0 264.0 L 400.0 262.0 L 400.0 261.0 L 401.0 260.0 L 403.0 260.0 L 403.0 259.0 L 404.0 258.0 L 406.0 258.0 L 406.0 257.0 L 407.0 256.0 L 408.0 256.0 L 408.0 254.0 L 410.0 252.0 L 411.0 252.0 L 412.0 251.0 L 413.0 251.0 L 415.0 249.0 L 416.0 249.0 L 417.0 248.0 L 418.0 248.0 L 420.0 246.0 L 422.0 246.0 L 423.0 247.0 L 426.0 247.0 L 427.0 246.0 L 428.0 246.0 L 428.0 245.0 L 429.0 244.0 L 430.0 244.0 L 431.0 243.0 L 432.0 243.0 L 433.0 242.0 L 435.0 242.0 L 435.0 240.0 L 437.0 238.0 L 439.0 238.0 L 440.0 239.0 L 440.0 238.0 L 441.0 237.0 L 443.0 237.0 L 444.0 238.0 L 444.0 236.0 L 445.0 235.0 L 447.0 235.0 L 448.0 234.0 L 451.0 234.0 L 452.0 235.0 L 453.0 234.0 L 455.0 234.0 L 455.0 233.0 L 456.0 232.0 L 459.0 232.0 L 460.0 233.0 L 461.0 232.0 L 466.0 232.0 L 467.0 231.0 L 475.0 231.0 L 475.0 230.0 L 476.0 229.0 L 481.0 229.0 L 482.0 228.0 L 489.0 228.0 L 489.0 227.0 L 490.0 226.0 L 492.0 226.0 L 493.0 227.0 L 494.0 227.0 L 495.0 228.0 L 495.0 229.0 L 495.0 228.0 L 496.0 227.0 L 503.0 227.0 L 503.0 226.0 L 504.0 225.0 Z"/>
+        <TabBar
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          onSettingsClick={settings.toggle}
+        />
+
+        <svg className="settings-icon" width="20" height="20" viewBox="0 0 20 20" onClick={settings.toggle}>
+          <g fill="currentColor">
+            <path d="M15.95 10.78c.03-.25.05-.51.05-.78s-.02-.53-.06-.78l1.69-1.32c.15-.12.19-.34.1-.51l-1.6-2.77c-.1-.18-.31-.24-.49-.18l-1.99.8c-.42-.32-.86-.58-1.35-.78L12 2.34c-.03-.2-.2-.34-.4-.34H8.4c-.2 0-.36.14-.39.34l-.3 2.12c-.49.2-.94.47-1.35.78l-1.99-.8c-.18-.07-.39 0-.49.18l-1.6 2.77c-.1.18-.06.39.1.51l1.69 1.32c-.04.25-.07.52-.07.78s.02.53.06.78L2.37 12.1c-.15.12-.19.34-.1.51l1.6 2.77c.1.18.31.24.49.18l1.99-.8c.42.32.86.58 1.35.78l.3 2.12c.04.2.2.34.4.34h3.2c.2 0 .37-.14.39-.34l.3-2.12c.49-.2.94-.47 1.35-.78l1.99.8c.18.07.39 0 .49-.18l1.6-2.77c.1-.18.06-.39-.1-.51l-1.67-1.32zM10 13c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3z" />
           </g>
         </svg>
-        {showTokenWidget && (
+
+        {settings.showTokenWidget && (
           <div className="token-widget" title="Session token usage (resets on reload)">
-            <span>{(tokenTotals?.totalTokens ?? 0).toLocaleString()} tokens{typeof tokenTotals?.costUsd === 'number' ? ` | $${tokenTotals.costUsd.toFixed(3)}` : ''}</span>
+            <span>
+              {(settings.tokenTotals?.totalTokens ?? 0).toLocaleString()} tokens
+              {typeof settings.tokenTotals?.costUsd === 'number'
+                ? ` | $${settings.tokenTotals.costUsd.toFixed(3)}`
+                : ''}
+            </span>
           </div>
         )}
-        </div>
       </header>
-
-      <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
-      {renderModelSelector()}
 
       <main className="app-main" style={{ position: 'relative' }}>
         <SettingsOverlay
-          visible={showSettings}
-          onClose={() => setShowSettings(false)}
+          visible={settings.showSettings}
+          onClose={settings.close}
           vscode={vscode}
-          settings={settingsData}
-          onUpdate={handleSettingUpdate}
-          onResetTokens={handleResetTokens}
-          modelOptions={modelOptions}
-          modelSelections={modelSelections}
-          onModelChange={handleModelChange}
+          settings={settings.settingsData}
+          onUpdate={settings.updateSetting}
+          onResetTokens={settings.resetTokens}
+          modelOptions={settings.modelOptions}
+          modelSelections={settings.modelSelections}
+          onModelChange={settings.setModelSelection}
           publishing={{
-            preset: publishingPreset,
-            trimKey: publishingTrimKey,
-            genres: publishingGenres,
-            onPresetChange: handleSetPublishingPreset,
-            onTrimChange: handleSetPublishingTrim
+            preset: publishing.publishingPreset,
+            trimKey: publishing.publishingTrimKey,
+            genres: publishing.publishingGenres,
+            onPresetChange: publishing.setPublishingPreset,
+            onTrimChange: publishing.setPublishingTrim,
           }}
           apiKey={{
-            input: apiKeyInput,
-            hasSavedKey: hasSavedKey,
-            onInputChange: setApiKeyInput,
-            onSave: () => {
-              if (!apiKeyInput.trim()) return;
-              vscode.postMessage({
-                type: MessageType.UPDATE_API_KEY,
-                apiKey: apiKeyInput.trim()
-              });
-              setApiKeyInput('');
-            },
-            onDelete: () => {
-              vscode.postMessage({ type: MessageType.DELETE_API_KEY });
-            }
+            input: settings.apiKeyInput,
+            hasSavedKey: settings.hasSavedKey,
+            onInputChange: settings.setApiKeyInput,
+            onSave: settings.saveApiKey,
+            onClear: settings.clearApiKey,
           }}
         />
+
+        {renderModelSelector()}
+
         {error && (
-          <div className="error-message">
+          <div className="error-banner" style={{ padding: '10px', backgroundColor: '#f44336', color: 'white' }}>
             {error}
           </div>
         )}
 
         {activeTab === TabId.ANALYSIS && (
           <AnalysisTab
-            selectedText={selectedText}
+            selectedText={selection.selectedText}
             vscode={vscode}
-            result={analysisResult}
-            isLoading={analysisLoading}
-            onLoadingChange={setAnalysisLoading}
-            statusMessage={statusMessage}
-            guideNames={guideNames}
-            usedGuides={usedGuides}
-            contextText={contextText}
-            onContextChange={handleContextChange}
-            onContextRequest={handleContextRequest}
-            contextLoading={contextLoading}
-            contextStatusMessage={contextStatusMessage}
-            contextRequestedResources={contextRequestedResources}
-            selectedRelativePath={selectedRelativePath}
-            selectedSourceUri={selectedSourceUri}
-            analysisToolName={analysisToolName}
-            onRequestSelection={handleRequestSelection}
+            result={analysis.result}
+            isLoading={analysis.loading}
+            onLoadingChange={analysis.setLoading}
+            statusMessage={analysis.statusMessage}
+            guideNames={analysis.guideNames}
+            usedGuides={analysis.usedGuides}
+            contextText={context.contextText}
+            onContextChange={context.setContextText}
+            onContextRequest={context.requestContext}
+            contextLoading={context.loading}
+            contextStatusMessage={context.statusMessage}
+            contextRequestedResources={context.requestedResources}
+            selectedRelativePath={selection.selectedRelativePath}
+            selectedSourceUri={selection.selectedSourceUri}
+            analysisToolName={analysis.toolName}
+            onRequestSelection={selection.requestSelection}
           />
         )}
 
         {activeTab === TabId.SUGGESTIONS && (
-          <SuggestionsTab
-            selectedText={selectedText}
-            vscode={vscode}
-          />
+          <SuggestionsTab selectedText={selection.selectedText} vscode={vscode} />
         )}
 
         {activeTab === TabId.METRICS && (
           <MetricsTab
             vscode={vscode}
-            metricsByTool={metricsResultsByTool}
-            isLoading={metricsLoading}
-            onLoadingChange={setMetricsLoading}
-            activeTool={metricsActiveTool}
-            onActiveToolChange={setMetricsActiveTool}
-            sourceMode={metricsSourceMode}
-            pathText={metricsPathText}
-            onSourceModeChange={setMetricsSourceMode}
-            onPathTextChange={setMetricsPathText}
-            onClearSubtoolResult={(tool) => setMetricsResultsByTool(prev => {
-              const next = { ...prev } as any;
-              delete next[tool];
-              return next;
-            })}
-            // pass through in case MetricsTab wants to adjust save/copy behavior later
-            
+            metricsByTool={metrics.metricsByTool}
+            isLoading={metrics.loading}
+            onLoadingChange={metrics.setLoading}
+            activeTool={metrics.activeTool}
+            onActiveToolChange={metrics.setActiveTool}
+            sourceMode={metrics.sourceMode}
+            pathText={metrics.pathText}
+            onSourceModeChange={metrics.setSourceMode}
           />
         )}
 
         {activeTab === TabId.SEARCH && (
           <SearchTab
             vscode={vscode}
-            result={searchResult}
-            isLoading={metricsLoading}
-            onLoadingChange={setMetricsLoading}
-            wordSearchTargets={wordSearchTargets}
-            onWordSearchTargetsChange={setWordSearchTargets}
-            sourceMode={metricsSourceMode}
-            pathText={metricsPathText}
-            onSourceModeChange={setMetricsSourceMode}
-            onPathTextChange={setMetricsPathText}
+            result={search.searchResult}
+            isLoading={metrics.loading}
+            onLoadingChange={metrics.setLoading}
+            wordSearchTargets={search.wordSearchTargets}
+            onWordSearchTargetsChange={search.setWordSearchTargets}
+            sourceMode={metrics.sourceMode}
+            pathText={metrics.pathText}
+            onSourceModeChange={metrics.setSourceMode}
           />
         )}
 
         {activeTab === TabId.UTILITIES && (
           <UtilitiesTab
-            selectedText={selectedText}
+            selectedText={selection.selectedText}
             vscode={vscode}
-            result={utilitiesResult}
-            isLoading={utilitiesLoading}
-            onLoadingChange={setUtilitiesLoading}
-            statusMessage={statusMessage}
-            toolName={dictionaryToolName}
-            dictionaryInjection={dictionaryInjection}
-            onDictionaryInjectionHandled={handleDictionaryInjectionHandled}
-            onRequestSelection={handleRequestSelection}
-            word={dictionaryWord}
-            context={dictionaryContext}
+            result={dictionary.result}
+            isLoading={dictionary.loading}
+            onLoadingChange={dictionary.setLoading}
+            statusMessage={analysis.statusMessage}
+            toolName={dictionary.toolName}
+            dictionaryInjection={selection.dictionaryInjection}
+            onDictionaryInjectionHandled={selection.handleDictionaryInjectionHandled}
+            onRequestSelection={selection.requestSelection}
+            word={dictionary.word}
+            context={dictionary.context}
             onWordChange={(val) => {
-              setDictionaryWord(val);
-              if (!val || !val.trim()) {
-                setDictionarySourceUri('');
-                setDictionaryRelativePath('');
-              }
+              dictionary.setWord(val);
+              dictionary.setWordEdited(true);
             }}
-            onContextChange={(val) => setDictionaryContext(val)}
-            hasWordBeenEdited={dictionaryWordEdited}
-            setHasWordBeenEdited={setDictionaryWordEdited}
-            sourceUri={dictionarySourceUri}
-            relativePath={dictionaryRelativePath}
-            onSourceChange={(uri?: string, rel?: string) => {
-              setDictionarySourceUri(uri ?? '');
-              setDictionaryRelativePath(rel ?? '');
-            }}
+            onContextChange={dictionary.setContext}
+            hasWordBeenEdited={dictionary.wordEdited}
+            setHasWordBeenEdited={dictionary.setWordEdited}
+            sourceUri={dictionary.sourceUri}
+            relativePath={dictionary.relativePath}
+            onSourceChange={dictionary.setSource}
           />
         )}
       </main>
