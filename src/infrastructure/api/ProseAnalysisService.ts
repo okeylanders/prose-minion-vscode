@@ -31,6 +31,7 @@ import { ContextPathGroup } from '../../shared/types';
 import { PublishingStandardsRepository } from '../standards/PublishingStandardsRepository';
 import { StandardsComparisonService } from '../../application/services/StandardsComparisonService';
 import { Genre } from '../../domain/models/PublishingStandards';
+import { SecretStorageService } from '../secrets/SecretStorageService';
 
 interface AIResourceBundle {
   model: string;
@@ -61,6 +62,7 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
   constructor(
     private readonly extensionUri?: vscode.Uri,
+    private readonly secretsService?: SecretStorageService,
     private readonly outputChannel?: vscode.OutputChannel
   ) {
     // Initialize measurement tools (don't need API key)
@@ -69,7 +71,7 @@ export class ProseAnalysisService implements IProseAnalysisService {
     this.wordFrequency = new WordFrequency((msg: string) => this.outputChannel?.appendLine(msg));
 
     // Initialize AI tools if API key is configured
-    this.initializeAITools();
+    void this.initializeAITools();
 
     this.contextResourceResolver = new ContextResourceResolver(this.outputChannel);
 
@@ -79,8 +81,17 @@ export class ProseAnalysisService implements IProseAnalysisService {
   }
 
   private async initializeAITools(): Promise<void> {
-    const config = vscode.workspace.getConfiguration('proseMinion');
-    const apiKey = config.get<string>('openRouterApiKey');
+    // Get API key from SecretStorage (fallback to settings for backward compatibility during migration)
+    let apiKey: string | undefined;
+    if (this.secretsService) {
+      apiKey = await this.secretsService.getApiKey();
+    }
+
+    // Fallback to settings if not in SecretStorage (for backward compatibility)
+    if (!apiKey) {
+      const config = vscode.workspace.getConfiguration('proseMinion');
+      apiKey = config.get<string>('openRouterApiKey');
+    }
 
     this.disposeAIResources();
 
@@ -101,6 +112,7 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
     this.ensureSharedResources();
 
+    const config = vscode.workspace.getConfiguration('proseMinion');
     const fallbackModel = config.get<string>('model') || 'z-ai/glm-4.6';
     const assistantModel = config.get<string>('assistantModel') || fallbackModel;
     const dictionaryModel = config.get<string>('dictionaryModel') || fallbackModel;

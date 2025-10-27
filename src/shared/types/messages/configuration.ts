@@ -49,3 +49,22 @@ export interface TokenUsageUpdateMessage extends BaseMessage {
 export interface ResetTokenUsageMessage extends BaseMessage {
   type: MessageType.RESET_TOKEN_USAGE;
 }
+
+// Secure API key management messages
+export interface RequestApiKeyMessage extends BaseMessage {
+  type: MessageType.REQUEST_API_KEY;
+}
+
+export interface ApiKeyStatusMessage extends BaseMessage {
+  type: MessageType.API_KEY_STATUS;
+  hasSavedKey: boolean;
+}
+
+export interface UpdateApiKeyMessage extends BaseMessage {
+  type: MessageType.UPDATE_API_KEY;
+  apiKey: string;
+}
+
+export interface DeleteApiKeyMessage extends BaseMessage {
+  type: MessageType.DELETE_API_KEY;
+}

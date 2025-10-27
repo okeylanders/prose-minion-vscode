@@ -67,7 +67,13 @@ export enum MessageType {
   REQUEST_SETTINGS_DATA = 'request_settings_data',
   SETTINGS_DATA = 'settings_data',
   UPDATE_SETTING = 'update_setting',
-  RESET_TOKEN_USAGE = 'reset_token_usage'
+  RESET_TOKEN_USAGE = 'reset_token_usage',
+
+  // Secure API key management
+  REQUEST_API_KEY = 'request_api_key',
+  API_KEY_STATUS = 'api_key_status',
+  UPDATE_API_KEY = 'update_api_key',
+  DELETE_API_KEY = 'delete_api_key'
 }
 
 export enum TabId {

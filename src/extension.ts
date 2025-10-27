@@ -9,6 +9,7 @@
 import * as vscode from 'vscode';
 import { ProseToolsViewProvider } from './application/providers/ProseToolsViewProvider';
 import { ProseAnalysisService } from './infrastructure/api/ProseAnalysisService';
+import { SecretStorageService } from './infrastructure/secrets/SecretStorageService';
 
 let proseToolsViewProvider: ProseToolsViewProvider | undefined;
 
@@ -24,12 +25,17 @@ export function activate(context: vscode.ExtensionContext): void {
   vscode.window.showInformationMessage('Prose Minion extension activated!');
 
   // Initialize infrastructure layer (dependency injection)
-  const proseAnalysisService = new ProseAnalysisService(context.extensionUri, outputChannel);
+  const secretsService = new SecretStorageService(context.secrets);
+  const proseAnalysisService = new ProseAnalysisService(context.extensionUri, secretsService, outputChannel);
+
+  // Migrate API key from settings to SecretStorage if needed
+  void migrateApiKeyToSecrets(secretsService, outputChannel);
 
   // Initialize application layer
   proseToolsViewProvider = new ProseToolsViewProvider(
     context.extensionUri,
     proseAnalysisService,
+    secretsService,
     outputChannel
   );
 
@@ -115,4 +121,47 @@ export function activate(context: vscode.ExtensionContext): void {
 
 export function deactivate(): void {
   console.log('Prose Minion extension is now deactivated');
+}
+
+/**
+ * Migrate API key from settings to SecretStorage
+ * This is a one-time migration for users upgrading from the settings-based approach
+ */
+async function migrateApiKeyToSecrets(
+  secretsService: SecretStorageService,
+  outputChannel: vscode.OutputChannel
+): Promise<void> {
+  try {
+    // Check if key already exists in SecretStorage
+    const existingKey = await secretsService.getApiKey();
+    if (existingKey) {
+      outputChannel.appendLine('[Migration] API key already exists in SecretStorage, skipping migration');
+      return;
+    }
+
+    // Check if old setting has a value
+    const config = vscode.workspace.getConfiguration('proseMinion');
+    const oldKey = config.get<string>('openRouterApiKey');
+
+    if (oldKey && oldKey.trim().length > 0) {
+      // Migrate to SecretStorage
+      await secretsService.setApiKey(oldKey.trim());
+      outputChannel.appendLine('[Migration] API key migrated to SecretStorage');
+
+      // Clear old setting
+      await config.update('openRouterApiKey', undefined, vscode.ConfigurationTarget.Global);
+      outputChannel.appendLine('[Migration] Cleared old API key setting');
+
+      // Show notification to user
+      vscode.window.showInformationMessage(
+        'Your API key has been migrated to secure storage for better security.'
+      );
+    } else {
+      outputChannel.appendLine('[Migration] No API key found in settings, no migration needed');
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    outputChannel.appendLine(`[Migration] Error during API key migration: ${message}`);
+    // Don't show error to user as migration is not critical
+  }
 }
