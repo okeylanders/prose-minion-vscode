@@ -1,7 +1,8 @@
 # ADR: Message Architecture Organization by Domain
 
-Status: Proposed
+Status: Accepted
 Date: 2025-10-26
+Implemented: Phase 1 Complete (2025-10-26)
 
 ## Context
 
