@@ -304,6 +304,17 @@ export const App: React.FC = () => {
           break;
         }
 
+        case MessageType.OPEN_SETTINGS_TOGGLE:
+          setShowSettings(prev => {
+            const next = !prev;
+            if (next) {
+              vscode.postMessage({ type: MessageType.REQUEST_SETTINGS_DATA, timestamp: Date.now() });
+              vscode.postMessage({ type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA, timestamp: Date.now() });
+            }
+            return next;
+          });
+          break;
+
         case MessageType.OPEN_SETTINGS:
           setShowSettings(true);
           vscode.postMessage({ type: MessageType.REQUEST_SETTINGS_DATA, timestamp: Date.now() });
@@ -490,6 +501,23 @@ export const App: React.FC = () => {
 
     return null;
   };
+
+  // Prevent background scroll when settings is open
+  React.useEffect(() => {
+    const prevBody = document.body.style.overflow;
+    const prevDoc = (document.documentElement as HTMLElement).style.overflow;
+    if (showSettings) {
+      document.body.style.overflow = 'hidden';
+      (document.documentElement as HTMLElement).style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = prevBody || '';
+      (document.documentElement as HTMLElement).style.overflow = prevDoc || '';
+    }
+    return () => {
+      document.body.style.overflow = prevBody || '';
+      (document.documentElement as HTMLElement).style.overflow = prevDoc || '';
+    };
+  }, [showSettings]);
 
   return (
     <div className="app-container">

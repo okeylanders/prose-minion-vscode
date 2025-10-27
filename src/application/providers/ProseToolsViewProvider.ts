@@ -91,7 +91,7 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
    */
   public openSettings(): void {
     if (this.view) {
-      this.view.webview.postMessage({ type: MessageType.OPEN_SETTINGS, timestamp: Date.now() });
+      this.view.webview.postMessage({ type: MessageType.OPEN_SETTINGS_TOGGLE, timestamp: Date.now() });
     }
   }
 

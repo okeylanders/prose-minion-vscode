@@ -65,6 +65,7 @@ export enum MessageType {
   TOKEN_USAGE_UPDATE = 'token_usage_update',
   // Settings overlay and updates
   OPEN_SETTINGS = 'open_settings',
+  OPEN_SETTINGS_TOGGLE = 'open_settings_toggle',
   REQUEST_SETTINGS_DATA = 'request_settings_data',
   SETTINGS_DATA = 'settings_data',
   UPDATE_SETTING = 'update_setting',
@@ -410,6 +411,10 @@ export interface OpenSettingsMessage extends BaseMessage {
   type: MessageType.OPEN_SETTINGS;
 }
 
+export interface OpenSettingsToggleMessage extends BaseMessage {
+  type: MessageType.OPEN_SETTINGS_TOGGLE;
+}
+
 export interface SelectionDataMessage extends BaseMessage {
   type: MessageType.SELECTION_DATA;
   target: SelectionTarget;
@@ -453,6 +458,7 @@ export type ExtensionToWebviewMessage =
   | SaveResultSuccessMessage
   | SettingsDataMessage
   | OpenSettingsMessage
+  | OpenSettingsToggleMessage
   | SelectionDataMessage
   | ErrorMessage
   | StatusMessage

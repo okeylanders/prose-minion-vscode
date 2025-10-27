@@ -39,7 +39,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
   const asNumber = (key: string) => Number(get(key) ?? 0);
   const asBoolean = (key: string) => Boolean(get(key));
 
-  const renderModelSelect = (scope: ModelScope, label: string) => (
+  const renderModelSelect = (scope: ModelScope, label: string, help?: string) => (
     <label style={{ display: 'block', marginBottom: 12 }}>
       <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
       <select
@@ -57,12 +57,13 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
           <option key={opt.id} value={opt.id}>{opt.label}</option>
         ))}
       </select>
+      {help && <div style={{ color: 'var(--vscode-descriptionForeground)', marginTop: 4 }}>{help}</div>}
     </label>
   );
 
   return (
     <div style={{
-      position: 'absolute', inset: 0,
+      position: 'fixed', inset: 0, zIndex: 1000,
       background: 'var(--vscode-editor-background)', color: 'var(--vscode-editor-foreground)',
       overflow: 'auto', padding: 8
     }}>
@@ -83,7 +84,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
           <input type="password" value={asString('openRouterApiKey')} onChange={(e) => onUpdate('openRouterApiKey', e.target.value)}
             style={{ width: '100%', padding: '6px 8px', background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)', borderRadius: 4 }} />
           <div style={{ color: 'var(--vscode-descriptionForeground)', marginTop: 4 }}>
-            Requires an OpenRouter pay‑as‑you‑go account for AI features. OpenRouter routes to leading models with configurable privacy (no logging, no training). Learn more at <a href="https://openrouter.ai/" target="_blank" rel="noreferrer">openrouter.ai</a>.
+            Requires an OpenRouter pay‑as‑you‑go account for AI features. OpenRouter routes to leading models with configurable privacy (no logging, no training). Learn more at <a href="https://openrouter.ai/" target="_blank" rel="noreferrer" style={{ color: 'var(--vscode-textLink-foreground)', textDecoration: 'underline' }}>openrouter.ai</a>.
           </div>
         </label>
       </section>
@@ -91,9 +92,9 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
       {/* Models */}
       <section style={{ marginTop: 8, background: 'var(--vscode-editorWidget-background)', border: '1px solid var(--vscode-editorWidget-border)', borderRadius: 6, padding: 12 }}>
         <h3 style={{ marginTop: 0 }}>Models</h3>
-        {renderModelSelect('assistant', 'Assistant Model (Prose / Dialogue)')}
-        {renderModelSelect('dictionary', 'Dictionary Model')}
-        {renderModelSelect('context', 'Context Assistant Model')}
+        {renderModelSelect('assistant', 'Assistant Model (Prose / Dialogue)', 'Used by dialogue and prose assistants for analysis and suggestions.')}
+        {renderModelSelect('dictionary', 'Dictionary Model', 'Used by the dictionary and utility tools (synonyms, expansions).')}
+        {renderModelSelect('context', 'Context Assistant Model', 'Used by the context assistant for project-aware context and resources.')}
       </section>
 
       {/* General */}
