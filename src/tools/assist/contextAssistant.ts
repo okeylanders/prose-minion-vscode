@@ -71,7 +71,7 @@ export class ContextAssistant {
       resourceSummaries,
       {
         temperature: options.temperature ?? 0.7,
-        maxTokens: options.maxTokens ?? 2000
+        maxTokens: options.maxTokens ?? 10000
       }
     );
 

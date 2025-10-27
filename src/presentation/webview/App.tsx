@@ -11,6 +11,7 @@ import { SuggestionsTab } from './components/SuggestionsTab';
 import { UtilitiesTab } from './components/UtilitiesTab';
 import { SearchTab } from './components/SearchTab';
 import { ModelSelector } from './components/ModelSelector';
+import { SettingsOverlay } from './components/SettingsOverlay';
 import {
   TabId,
   MessageType,
@@ -103,6 +104,8 @@ export const App: React.FC = () => {
   const [showTokenWidget, setShowTokenWidget] = React.useState<boolean>(
     persistedState?.showTokenWidget ?? true
   );
+  const [showSettings, setShowSettings] = React.useState<boolean>(false);
+  const [settingsData, setSettingsData] = React.useState<Record<string, string | number | boolean>>({});
   const [dictionaryInjection, setDictionaryInjection] = React.useState<{ word?: string; context?: string; sourceUri?: string; relativePath?: string; timestamp: number } | null>(null);
 
   const contextLoadingRef = React.useRef(contextLoading);
@@ -298,6 +301,16 @@ export const App: React.FC = () => {
           break;
         }
 
+        case MessageType.OPEN_SETTINGS:
+          setShowSettings(true);
+          vscode.postMessage({ type: MessageType.REQUEST_SETTINGS_DATA, timestamp: Date.now() });
+          break;
+
+        case MessageType.SETTINGS_DATA:
+          // @ts-ignore shape validated by extension
+          setSettingsData(message.settings || {});
+          break;
+
         case MessageType.CONTEXT_RESULT:
           setContextText(message.result);
           setContextRequestedResources(message.requestedResources ?? []);
@@ -408,6 +421,15 @@ export const App: React.FC = () => {
     });
   }, []);
 
+  const handleSettingUpdate = React.useCallback((key: string, value: any) => {
+    setSettingsData(prev => ({ ...prev, [key]: value }));
+    vscode.postMessage({ type: MessageType.UPDATE_SETTING, key, value, timestamp: Date.now() });
+  }, []);
+
+  const handleResetTokens = React.useCallback(() => {
+    vscode.postMessage({ type: MessageType.RESET_TOKEN_USAGE, timestamp: Date.now() });
+  }, []);
+
   const renderModelSelector = () => {
     if (modelOptions.length === 0) {
       return null;
@@ -471,6 +493,17 @@ export const App: React.FC = () => {
       {renderModelSelector()}
 
       <main className="app-main">
+        <SettingsOverlay
+          visible={showSettings}
+          onClose={() => setShowSettings(false)}
+          vscode={vscode}
+          settings={settingsData}
+          onUpdate={handleSettingUpdate}
+          onResetTokens={handleResetTokens}
+          modelOptions={modelOptions}
+          modelSelections={modelSelections}
+          onModelChange={handleModelChange}
+        />
         {error && (
           <div className="error-message">
             {error}

@@ -165,8 +165,20 @@ export class MessageHandler {
           await this.sendModelData();
           break;
 
-        case MessageType.SET_MODEL_SELECTION:
-          await this.handleSetModelSelection(message.scope, message.modelId);
+      case MessageType.SET_MODEL_SELECTION:
+        await this.handleSetModelSelection(message.scope, message.modelId);
+        break;
+
+        case MessageType.REQUEST_SETTINGS_DATA:
+          await this.handleRequestSettingsData();
+          break;
+
+        case MessageType.UPDATE_SETTING:
+          await this.handleUpdateSetting(message.key, message.value as any);
+          break;
+
+        case MessageType.RESET_TOKEN_USAGE:
+          await this.handleResetTokenUsage();
           break;
 
         case MessageType.REQUEST_SELECTION:
@@ -621,6 +633,83 @@ export class MessageHandler {
       timestamp: Date.now()
     };
     sharedResultCache.search = { ...message };
+    void this.postMessage(message);
+  }
+
+  private async handleRequestSettingsData(): Promise<void> {
+    const config = vscode.workspace.getConfiguration('proseMinion');
+    const settings: Record<string, string | number | boolean> = {
+      // Core
+      'openRouterApiKey': config.get<string>('openRouterApiKey') ?? '',
+      'includeCraftGuides': config.get<boolean>('includeCraftGuides') ?? true,
+      'temperature': config.get<number>('temperature') ?? 0.7,
+      'maxTokens': config.get<number>('maxTokens') ?? 10000,
+      'ui.showTokenWidget': config.get<boolean>('ui.showTokenWidget') ?? true,
+      // Publishing standards
+      'publishingStandards.preset': config.get<string>('publishingStandards.preset') ?? 'none',
+      'publishingStandards.pageSizeKey': config.get<string>('publishingStandards.pageSizeKey') ?? '',
+      // Word Frequency
+      'wordFrequency.topN': config.get<number>('wordFrequency.topN') ?? 100,
+      'wordFrequency.includeHapaxList': config.get<boolean>('wordFrequency.includeHapaxList') ?? true,
+      'wordFrequency.hapaxDisplayMax': config.get<number>('wordFrequency.hapaxDisplayMax') ?? 300,
+      'wordFrequency.includeStopwordsTable': config.get<boolean>('wordFrequency.includeStopwordsTable') ?? true,
+      'wordFrequency.contentWordsOnly': config.get<boolean>('wordFrequency.contentWordsOnly') ?? true,
+      'wordFrequency.posEnabled': config.get<boolean>('wordFrequency.posEnabled') ?? true,
+      'wordFrequency.includeBigrams': config.get<boolean>('wordFrequency.includeBigrams') ?? true,
+      'wordFrequency.includeTrigrams': config.get<boolean>('wordFrequency.includeTrigrams') ?? true,
+      'wordFrequency.enableLemmas': config.get<boolean>('wordFrequency.enableLemmas') ?? false,
+      'wordFrequency.lengthHistogramMaxChars': config.get<number>('wordFrequency.lengthHistogramMaxChars') ?? 10,
+      // Word Search
+      'wordSearch.defaultTargets': config.get<string>('wordSearch.defaultTargets') ?? 'just',
+      'wordSearch.contextWords': config.get<number>('wordSearch.contextWords') ?? 7,
+      'wordSearch.clusterWindow': config.get<number>('wordSearch.clusterWindow') ?? 150,
+      'wordSearch.minClusterSize': config.get<number>('wordSearch.minClusterSize') ?? 3,
+      'wordSearch.caseSensitive': config.get<boolean>('wordSearch.caseSensitive') ?? false,
+      'wordSearch.enableAssistantExpansion': config.get<boolean>('wordSearch.enableAssistantExpansion') ?? false
+    };
+
+    const message = {
+      type: MessageType.SETTINGS_DATA,
+      settings,
+      timestamp: Date.now()
+    } as ExtensionToWebviewMessage;
+    void this.postMessage(message);
+  }
+
+  private async handleUpdateSetting(key: string, value: string | number | boolean): Promise<void> {
+    try {
+      const allowedPrefixes = [
+        'ui.',
+        'publishingStandards.',
+        'wordFrequency.',
+        'wordSearch.'
+      ];
+      const allowedTop = new Set(['openRouterApiKey', 'includeCraftGuides', 'temperature', 'maxTokens']);
+
+      const isAllowed = allowedTop.has(key) || allowedPrefixes.some(prefix => key.startsWith(prefix));
+      if (!isAllowed) {
+        throw new Error(`Unsupported setting key: ${key}`);
+      }
+
+      const config = vscode.workspace.getConfiguration('proseMinion');
+      await config.update(key, value, true);
+
+      // Push updated model data for UI-affecting settings (e.g., ui.showTokenWidget)
+      await this.sendModelData();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('Failed to update setting', msg);
+    }
+  }
+
+  private async handleResetTokenUsage(): Promise<void> {
+    this.tokenTotals = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+    const message: TokenUsageUpdateMessage = {
+      type: MessageType.TOKEN_USAGE_UPDATE,
+      totals: { ...this.tokenTotals },
+      timestamp: Date.now()
+    };
+    sharedResultCache.tokenUsage = { ...message };
     void this.postMessage(message);
   }
 
