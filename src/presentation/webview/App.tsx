@@ -82,6 +82,7 @@ export const App: React.FC = () => {
       metrics.setLoading(false);
       dictionary.setLoading(false);
       context.setLoading(false);
+      search.setLoading(false);
     },
   });
 
