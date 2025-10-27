@@ -134,6 +134,7 @@
         "proseMinion.openRouterApiKey": {
           "type": "string",
           "default": "",
+          "format": "password",
           "description": "OpenRouter API key for AI-powered analysis. Get one at https://openrouter.ai/",
           "order": 1
         },
