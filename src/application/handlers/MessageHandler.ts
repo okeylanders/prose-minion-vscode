@@ -1,7 +1,7 @@
 /**
  * Message handler - Application layer
- * Routes messages from webview to appropriate domain services
- * Following Single Responsibility Principle
+ * Routes messages from webview to domain handlers
+ * Refactored to use domain-specific handlers for better organization
  */
 
 import * as vscode from 'vscode';
@@ -17,20 +17,22 @@ import {
   SearchResultMessage,
   ErrorMessage,
   StatusMessage,
-  ModelScope,
-  ModelDataMessage,
-  ModelOption,
   ExtensionToWebviewMessage,
   TokenUsageUpdateMessage,
-  TokenUsageTotals,
-  ContextPathGroup,
-  SaveResultSuccessMessage,
-  SaveResultMetadata,
-  SelectionTarget,
-  SelectionDataMessage
-} from '../../shared/types';
-import { OpenRouterModels } from '../../infrastructure/api/OpenRouterModels';
-import { PublishingStandardsRepository } from '../../infrastructure/standards/PublishingStandardsRepository';
+  TokenUsageTotals
+} from '../../shared/types/messages';
+
+// Domain handlers
+import { AnalysisHandler } from './domain/AnalysisHandler';
+import { DictionaryHandler } from './domain/DictionaryHandler';
+import { ContextHandler } from './domain/ContextHandler';
+import { MetricsHandler } from './domain/MetricsHandler';
+import { SearchHandler } from './domain/SearchHandler';
+import { ConfigurationHandler } from './domain/ConfigurationHandler';
+import { PublishingHandler } from './domain/PublishingHandler';
+import { SourcesHandler } from './domain/SourcesHandler';
+import { UIHandler } from './domain/UIHandler';
+import { FileOperationsHandler } from './domain/FileOperationsHandler';
 
 interface ResultCache {
   analysis?: AnalysisResultMessage;
@@ -49,6 +51,18 @@ export class MessageHandler {
   private readonly disposables: vscode.Disposable[] = [];
   private tokenTotals: TokenUsageTotals = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
 
+  // Domain handlers
+  private readonly analysisHandler: AnalysisHandler;
+  private readonly dictionaryHandler: DictionaryHandler;
+  private readonly contextHandler: ContextHandler;
+  private readonly metricsHandler: MetricsHandler;
+  private readonly searchHandler: SearchHandler;
+  private readonly configurationHandler: ConfigurationHandler;
+  private readonly publishingHandler: PublishingHandler;
+  private readonly sourcesHandler: SourcesHandler;
+  private readonly uiHandler: UIHandler;
+  private readonly fileOperationsHandler: FileOperationsHandler;
+
   constructor(
     private readonly proseAnalysisService: IProseAnalysisService,
     private readonly webview: vscode.Webview,
@@ -56,7 +70,6 @@ export class MessageHandler {
     private readonly outputChannel: vscode.OutputChannel
   ) {
     // Set up status callback for guide loading notifications
-    // Check if service has setStatusCallback method (ProseAnalysisService does)
     if ('setStatusCallback' in proseAnalysisService && typeof (proseAnalysisService as any).setStatusCallback === 'function') {
       (proseAnalysisService as any).setStatusCallback((message: string, guideNames?: string) => {
         this.sendStatus(message, guideNames);
@@ -72,11 +85,85 @@ export class MessageHandler {
         event.affectsConfiguration('proseMinion.ui.showTokenWidget')
       ) {
         void this.refreshServiceConfiguration();
-        void this.sendModelData();
+        void this.configurationHandler.sendModelData();
       }
     });
 
     this.disposables.push(configWatcher);
+
+    // Instantiate domain handlers with bound helper methods
+    this.analysisHandler = new AnalysisHandler(
+      proseAnalysisService,
+      this.sendStatus.bind(this),
+      this.sendAnalysisResult.bind(this),
+      this.sendError.bind(this),
+      this.applyTokenUsage.bind(this)
+    );
+
+    this.dictionaryHandler = new DictionaryHandler(
+      proseAnalysisService,
+      this.sendStatus.bind(this),
+      this.sendDictionaryResult.bind(this),
+      this.sendError.bind(this),
+      this.applyTokenUsage.bind(this)
+    );
+
+    this.contextHandler = new ContextHandler(
+      proseAnalysisService,
+      this.sendStatus.bind(this),
+      this.sendContextResult.bind(this),
+      this.sendError.bind(this),
+      this.applyTokenUsage.bind(this)
+    );
+
+    this.metricsHandler = new MetricsHandler(
+      proseAnalysisService,
+      outputChannel,
+      this.sendMetricsResult.bind(this),
+      this.sendError.bind(this)
+    );
+
+    this.searchHandler = new SearchHandler(
+      proseAnalysisService,
+      outputChannel,
+      this.sendSearchResult.bind(this),
+      this.sendError.bind(this)
+    );
+
+    this.configurationHandler = new ConfigurationHandler(
+      proseAnalysisService,
+      outputChannel,
+      this.postMessage.bind(this),
+      this.sendError.bind(this),
+      sharedResultCache,
+      this.tokenTotals
+    );
+
+    this.publishingHandler = new PublishingHandler(
+      extensionUri,
+      outputChannel,
+      this.postMessage.bind(this),
+      this.sendError.bind(this)
+    );
+
+    this.sourcesHandler = new SourcesHandler(
+      this.postMessage.bind(this)
+    );
+
+    this.uiHandler = new UIHandler(
+      extensionUri,
+      outputChannel,
+      this.postMessage.bind(this),
+      this.sendStatus.bind(this),
+      this.sendError.bind(this)
+    );
+
+    this.fileOperationsHandler = new FileOperationsHandler(
+      outputChannel,
+      this.postMessage.bind(this),
+      this.sendStatus.bind(this),
+      this.sendError.bind(this)
+    );
 
     this.flushCachedResults();
   }
@@ -84,105 +171,110 @@ export class MessageHandler {
   async handleMessage(message: WebviewToExtensionMessage): Promise<void> {
     try {
       switch (message.type) {
+        // Analysis
         case MessageType.ANALYZE_DIALOGUE:
-          await this.handleAnalyzeDialogue(message.text, message.contextText, message.sourceFileUri);
+          await this.analysisHandler.handleAnalyzeDialogue(message);
           break;
 
         case MessageType.ANALYZE_PROSE:
-          await this.handleAnalyzeProse(message.text, message.contextText, message.sourceFileUri);
+          await this.analysisHandler.handleAnalyzeProse(message);
           break;
 
+        // Dictionary
         case MessageType.LOOKUP_DICTIONARY:
-          await this.handleLookupDictionary(message.word, message.contextText);
+          await this.dictionaryHandler.handleLookupDictionary(message);
           break;
 
+        // Context
         case MessageType.GENERATE_CONTEXT:
-          await this.handleGenerateContext(
-            message.excerpt,
-            message.existingContext,
-            message.sourceFileUri,
-            message.requestedGroups
-          );
+          await this.contextHandler.handleGenerateContext(message);
           break;
 
-        case MessageType.COPY_RESULT:
-          await this.handleCopyResult(message.content, message.toolName);
-          break;
-
-        case MessageType.SAVE_RESULT:
-          await this.handleSaveResult(message.toolName, message.content, message.metadata);
-          break;
-
+        // Metrics
         case MessageType.MEASURE_PROSE_STATS:
-          await this.handleMeasureProseStats(message);
+          await this.metricsHandler.handleMeasureProseStats(message);
           break;
 
         case MessageType.MEASURE_STYLE_FLAGS:
-          await this.handleMeasureStyleFlags(message);
+          await this.metricsHandler.handleMeasureStyleFlags(message);
           break;
 
         case MessageType.MEASURE_WORD_FREQUENCY:
-          await this.handleMeasureWordFrequency(message);
+          await this.metricsHandler.handleMeasureWordFrequency(message);
           break;
 
+        // Search
         case MessageType.RUN_WORD_SEARCH:
-          await this.handleMeasureWordSearch(message as any);
+          await this.searchHandler.handleMeasureWordSearch(message);
           break;
 
-        case MessageType.REQUEST_ACTIVE_FILE:
-          await this.handleRequestActiveFile();
+        // Configuration
+        case MessageType.REQUEST_MODEL_DATA:
+          await this.configurationHandler.handleRequestModelData(message);
           break;
 
-        case MessageType.REQUEST_MANUSCRIPT_GLOBS:
-          await this.handleRequestManuscriptGlobs();
+        case MessageType.SET_MODEL_SELECTION:
+          await this.configurationHandler.handleSetModelSelection(message);
           break;
 
-        case MessageType.REQUEST_CHAPTER_GLOBS:
-          await this.handleRequestChapterGlobs();
+        case MessageType.REQUEST_SETTINGS_DATA:
+          await this.configurationHandler.handleRequestSettingsData(message);
           break;
 
+        case MessageType.UPDATE_SETTING:
+          await this.configurationHandler.handleUpdateSetting(message);
+          break;
+
+        case MessageType.RESET_TOKEN_USAGE:
+          await this.configurationHandler.handleResetTokenUsage();
+          break;
+
+        // Publishing
         case MessageType.REQUEST_PUBLISHING_STANDARDS_DATA:
-          await this.handleRequestPublishingStandardsData();
+          await this.publishingHandler.handleRequestPublishingStandardsData(message);
           break;
 
         case MessageType.SET_PUBLISHING_PRESET:
-          await this.handleSetPublishingPreset(message.preset);
+          await this.publishingHandler.handleSetPublishingPreset(message);
           break;
 
         case MessageType.SET_PUBLISHING_TRIM_SIZE:
-          await this.handleSetPublishingTrim(message.pageSizeKey);
+          await this.publishingHandler.handleSetPublishingTrim(message);
+          break;
+
+        // Sources
+        case MessageType.REQUEST_ACTIVE_FILE:
+          await this.sourcesHandler.handleRequestActiveFile(message);
+          break;
+
+        case MessageType.REQUEST_MANUSCRIPT_GLOBS:
+          await this.sourcesHandler.handleRequestManuscriptGlobs(message);
+          break;
+
+        case MessageType.REQUEST_CHAPTER_GLOBS:
+          await this.sourcesHandler.handleRequestChapterGlobs(message);
+          break;
+
+        // UI
+        case MessageType.OPEN_GUIDE_FILE:
+          await this.uiHandler.handleOpenGuideFile(message);
+          break;
+
+        case MessageType.REQUEST_SELECTION:
+          await this.uiHandler.handleSelectionRequest(message);
           break;
 
         case MessageType.TAB_CHANGED:
           // Tab change is handled in UI, no action needed
           break;
 
-        case MessageType.OPEN_GUIDE_FILE:
-          await this.handleOpenGuideFile(message.guidePath);
+        // File Operations
+        case MessageType.COPY_RESULT:
+          await this.fileOperationsHandler.handleCopyResult(message);
           break;
 
-        case MessageType.REQUEST_MODEL_DATA:
-          await this.sendModelData();
-          break;
-
-      case MessageType.SET_MODEL_SELECTION:
-        await this.handleSetModelSelection(message.scope, message.modelId);
-        break;
-
-        case MessageType.REQUEST_SETTINGS_DATA:
-          await this.handleRequestSettingsData();
-          break;
-
-        case MessageType.UPDATE_SETTING:
-          await this.handleUpdateSetting(message.key, message.value as any);
-          break;
-
-        case MessageType.RESET_TOKEN_USAGE:
-          await this.handleResetTokenUsage();
-          break;
-
-        case MessageType.REQUEST_SELECTION:
-          await this.handleSelectionRequest(message.target);
+        case MessageType.SAVE_RESULT:
+          await this.fileOperationsHandler.handleSaveResult(message);
           break;
 
         default:
@@ -196,367 +288,7 @@ export class MessageHandler {
     }
   }
 
-  private async handleLookupDictionary(word: string, contextText?: string): Promise<void> {
-    if (!word.trim()) {
-      this.sendError('Dictionary lookup requires a word to search');
-      return;
-    }
-
-    this.sendStatus('Preparing dictionary prompt...');
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    this.sendStatus(`Generating dictionary entry for "${word}"...`);
-    const result = await this.proseAnalysisService.lookupDictionary(word, contextText);
-    this.sendDictionaryResult(result.content, result.toolName);
-    if ((result as any).usage) {
-      this.applyTokenUsage((result as any).usage);
-    }
-  }
-
-  private async handleGenerateContext(
-    excerpt: string,
-    existingContext?: string,
-    sourceFileUri?: string,
-    requestedGroups?: ContextPathGroup[]
-  ): Promise<void> {
-    if (!excerpt.trim()) {
-      this.sendError('Context assistant needs an excerpt to analyze.');
-      return;
-    }
-
-    this.sendStatus('Gathering project resources for context...');
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    const result = await this.proseAnalysisService.generateContext({
-      excerpt,
-      existingContext,
-      sourceFileUri,
-      requestedGroups
-    });
-
-    this.sendContextResult(result);
-    if ((result as any).usage) {
-      this.applyTokenUsage((result as any).usage);
-    }
-  }
-
-  private async handleCopyResult(content: string, toolName: string): Promise<void> {
-    try {
-      let text = content ?? '';
-      if (toolName === 'prose_stats' && /^## Chapter Details/m.test(text)) {
-        const answer = await vscode.window.showInformationMessage(
-          'Include chapter-by-chapter breakdown in the copied report?',
-          { modal: true },
-          'Yes',
-          'No'
-        );
-        if (answer === 'No') {
-          text = this.stripChapterBreakdown(text);
-        } else if (answer !== 'Yes') {
-          // Dialog dismissed; keep default (include)
-        }
-      }
-
-      await vscode.env.clipboard.writeText(text);
-      this.outputChannel.appendLine(`[MessageHandler] Copied ${toolName} result to clipboard (${content?.length ?? 0} chars).`);
-      this.sendStatus('Result copied to clipboard.');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.sendError('Failed to copy result to clipboard', message);
-    }
-  }
-
-  private async handleSaveResult(toolName: string, content: string, metadata?: SaveResultMetadata): Promise<void> {
-    try {
-      let text = content ?? '';
-      if (toolName === 'prose_stats' && /^## Chapter Details/m.test(text)) {
-        const answer = await vscode.window.showInformationMessage(
-          'Include chapter-by-chapter breakdown in the saved report?',
-          { modal: true },
-          'Yes',
-          'No'
-        );
-        if (answer === 'No') {
-          text = this.stripChapterBreakdown(text);
-        } else if (answer !== 'Yes') {
-          // Dialog dismissed; keep default (include)
-        }
-      }
-
-      const savedPath = await this.saveResultToFile(toolName, text, metadata);
-      this.outputChannel.appendLine(`[MessageHandler] Saved ${toolName} result to ${savedPath}`);
-
-      const successMessage: SaveResultSuccessMessage = {
-        type: MessageType.SAVE_RESULT_SUCCESS,
-        toolName,
-        filePath: savedPath,
-        timestamp: Date.now()
-      };
-
-      void this.postMessage(successMessage);
-      this.sendStatus(`Saved result to ${savedPath}`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.sendError('Failed to save result', message);
-    }
-  }
-
-  private stripChapterBreakdown(markdown: string): string {
-    // Remove the Chapter Details section from the markdown report only
-    const sectionRegex = /^## Chapter Details[\s\S]*?(?=^# |\Z)/m;
-    return markdown.replace(sectionRegex, '').trimEnd();
-  }
-
-  private async handleSelectionRequest(target: SelectionTarget): Promise<void> {
-    const editor = vscode.window.activeTextEditor;
-
-    let content: string | undefined;
-    let sourceUri: string | undefined;
-    let relativePath: string | undefined;
-
-    if (editor && !editor.selection.isEmpty) {
-      content = editor.document.getText(editor.selection);
-      sourceUri = editor.document.uri.toString();
-      relativePath = vscode.workspace.asRelativePath(editor.document.uri, false);
-    } else {
-      // Fallback to clipboard if no selection
-      try {
-        const clip = await vscode.env.clipboard.readText();
-        content = clip?.trim() || undefined;
-      } catch {
-        // ignore
-      }
-    }
-
-    if (!content) {
-      this.sendStatus('Select some text in the editor first or copy text to the clipboard.');
-      return;
-    }
-
-    const selectionMessage: SelectionDataMessage = {
-      type: MessageType.SELECTION_DATA,
-      target,
-      content,
-      sourceUri,
-      relativePath,
-      timestamp: Date.now()
-    };
-
-    void this.postMessage(selectionMessage);
-  }
-
-  private async handleAnalyzeDialogue(text: string, contextText?: string, sourceFileUri?: string): Promise<void> {
-    const config = vscode.workspace.getConfiguration('proseMinion');
-    const includeCraftGuides = config.get<boolean>('includeCraftGuides') ?? true;
-
-    const loadingMessage = includeCraftGuides
-      ? 'Loading prompts and craft guides...'
-      : 'Loading prompts...';
-
-    this.sendStatus(loadingMessage);
-    await new Promise(resolve => setTimeout(resolve, 100)); // Brief delay to ensure UI updates
-
-    this.sendStatus('Analyzing dialogue with AI...');
-    const result = await this.proseAnalysisService.analyzeDialogue(text, contextText, sourceFileUri);
-    this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
-    if ((result as any).usage) {
-      this.applyTokenUsage((result as any).usage);
-    }
-  }
-
-  private async handleAnalyzeProse(text: string, contextText?: string, sourceFileUri?: string): Promise<void> {
-    const config = vscode.workspace.getConfiguration('proseMinion');
-    const includeCraftGuides = config.get<boolean>('includeCraftGuides') ?? true;
-
-    const loadingMessage = includeCraftGuides
-      ? 'Loading prompts and craft guides...'
-      : 'Loading prompts...';
-
-    this.sendStatus(loadingMessage);
-    await new Promise(resolve => setTimeout(resolve, 100)); // Brief delay to ensure UI updates
-
-    this.sendStatus('Analyzing prose with AI...');
-    const result = await this.proseAnalysisService.analyzeProse(text, contextText, sourceFileUri);
-    this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
-    if ((result as any).usage) {
-      this.applyTokenUsage((result as any).usage);
-    }
-  }
-
-  private async handleMeasureProseStats(message: { text?: string; source?: any }): Promise<void> {
-    try {
-      const resolved = await this.resolveRichTextForMetrics(message);
-      const result = await this.proseAnalysisService.measureProseStats(resolved.text, resolved.paths, resolved.mode);
-      this.sendMetricsResult(result.metrics, result.toolName);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('Invalid selection or path', msg);
-    }
-  }
-
-  private async handleMeasureStyleFlags(message: { text?: string; source?: any }): Promise<void> {
-    try {
-      const text = await this.resolveTextForMetrics(message);
-      const result = await this.proseAnalysisService.measureStyleFlags(text);
-      this.sendMetricsResult(result.metrics, result.toolName);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('Invalid selection or path', msg);
-    }
-  }
-
-  private async handleMeasureWordFrequency(message: { text?: string; source?: any }): Promise<void> {
-    try {
-      const text = await this.resolveTextForMetrics(message);
-      const result = await this.proseAnalysisService.measureWordFrequency(text);
-      this.sendMetricsResult(result.metrics, result.toolName);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('Invalid selection or path', msg);
-    }
-  }
-
-  private async handleMeasureWordSearch(message: { text?: string; source?: any; options?: any }): Promise<void> {
-    try {
-      const resolved = await this.resolveRichTextForMetrics(message);
-      const options = message.options || {};
-      const result = await this.proseAnalysisService.measureWordSearch(
-        resolved.text,
-        resolved.paths,
-        resolved.mode,
-        options
-      );
-      this.sendSearchResult(result.metrics, result.toolName);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('Invalid selection or path', msg);
-    }
-  }
-
-  private async resolveTextForMetrics(message: { text?: string; source?: any }): Promise<string> {
-    // Backward compatibility: if source not provided, use text
-    if (!message.source) {
-      const t = (message.text ?? '').trim();
-      if (!t) {
-        throw new Error('No text provided for metrics.');
-      }
-      return t;
-    }
-
-    // Dynamically import to avoid cyclic deps and keep constructor lean
-    const { TextSourceResolver } = await import('../../infrastructure/text/TextSourceResolver');
-    const resolver = new TextSourceResolver(this.outputChannel);
-    const resolved = await resolver.resolve(message.source);
-    const text = (resolved.text ?? '').trim();
-    if (!text) {
-      throw new Error('Resolved source contains no text.');
-    }
-    return text;
-  }
-
-  private async resolveRichTextForMetrics(message: { text?: string; source?: any }): Promise<{ text: string; paths?: string[]; mode?: string }> {
-    if (!message.source) {
-      const text = await this.resolveTextForMetrics(message);
-      return { text };
-    }
-    const { TextSourceResolver } = await import('../../infrastructure/text/TextSourceResolver');
-    const resolver = new TextSourceResolver(this.outputChannel);
-    const resolved = await resolver.resolve(message.source);
-    const text = (resolved.text ?? '').trim();
-    if (!text) throw new Error('Resolved source contains no text.');
-    const mode = message.source?.mode;
-    return { text, paths: resolved.relativePaths, mode };
-  }
-
-  private async handleRequestActiveFile(): Promise<void> {
-    const editor = vscode.window.activeTextEditor;
-    const relativePath = editor ? vscode.workspace.asRelativePath(editor.document.uri, false) : undefined;
-    const message = {
-      type: MessageType.ACTIVE_FILE,
-      relativePath,
-      sourceUri: editor?.document.uri.toString(),
-      timestamp: Date.now()
-    } as const;
-    void this.postMessage(message);
-  }
-
-  private async handleRequestManuscriptGlobs(): Promise<void> {
-    const config = vscode.workspace.getConfiguration('proseMinion');
-    const globs = config.get<string>('contextPaths.manuscript') || '';
-    const message = {
-      type: MessageType.MANUSCRIPT_GLOBS,
-      globs,
-      timestamp: Date.now()
-    } as const;
-    void this.postMessage(message);
-  }
-
-  private async handleRequestChapterGlobs(): Promise<void> {
-    const config = vscode.workspace.getConfiguration('proseMinion');
-    const globs = config.get<string>('contextPaths.chapters') || '';
-    const message = {
-      type: MessageType.CHAPTER_GLOBS,
-      globs,
-      timestamp: Date.now()
-    } as const;
-    void this.postMessage(message);
-  }
-
-  private async handleRequestPublishingStandardsData(): Promise<void> {
-    try {
-      const repo = new PublishingStandardsRepository(this.extensionUri, this.outputChannel);
-      const genres = await repo.getGenres();
-      const config = vscode.workspace.getConfiguration('proseMinion');
-      const preset = (config.get<string>('publishingStandards.preset') || 'none');
-      const pageSizeKey = (config.get<string>('publishingStandards.pageSizeKey') || '');
-
-      const payload = {
-        type: MessageType.PUBLISHING_STANDARDS_DATA,
-        preset,
-        pageSizeKey,
-        genres: genres.map(g => ({
-          key: (g.slug || g.abbreviation || g.name),
-          name: g.name,
-          abbreviation: g.abbreviation,
-          pageSizes: g.page_sizes.map(ps => ({
-            key: ps.format || `${ps.width_inches}x${ps.height_inches}`,
-            label: ps.format || `${ps.width_inches}x${ps.height_inches}`,
-            width: ps.width_inches,
-            height: ps.height_inches,
-            common: ps.common
-          }))
-        })),
-        timestamp: Date.now()
-      } as const;
-
-      void this.postMessage(payload);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('Failed to load publishing standards', msg);
-    }
-  }
-
-  private async handleSetPublishingPreset(preset: string): Promise<void> {
-    try {
-      const config = vscode.workspace.getConfiguration('proseMinion');
-      await config.update('publishingStandards.preset', preset, true);
-      await this.handleRequestPublishingStandardsData();
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('Failed to update publishing preset', msg);
-    }
-  }
-
-  private async handleSetPublishingTrim(pageSizeKey?: string): Promise<void> {
-    try {
-      const config = vscode.workspace.getConfiguration('proseMinion');
-      await config.update('publishingStandards.pageSizeKey', pageSizeKey ?? '', true);
-      await this.handleRequestPublishingStandardsData();
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('Failed to update trim size', msg);
-    }
-  }
+  // Helper methods for sending results and status messages
 
   private sendAnalysisResult(result: string, toolName: string, usedGuides?: string[]): void {
     const message: AnalysisResultMessage = {
@@ -575,17 +307,19 @@ export class MessageHandler {
     this.sendStatus('');
   }
 
-  private sendMetricsResult(result: any, toolName: string): void {
-    const message: MetricsResultMessage = {
-      type: MessageType.METRICS_RESULT,
+  private sendDictionaryResult(result: string, toolName: string): void {
+    const message: DictionaryResultMessage = {
+      type: MessageType.DICTIONARY_RESULT,
       result,
       toolName,
       timestamp: Date.now()
     };
-    sharedResultCache.metrics = {
+    sharedResultCache.dictionary = {
       ...message
     };
+    sharedResultCache.error = undefined;
     void this.postMessage(message);
+    this.sendStatus('');
   }
 
   private sendContextResult(result: ContextGenerationResult): void {
@@ -601,6 +335,30 @@ export class MessageHandler {
     sharedResultCache.error = undefined;
     void this.postMessage(message);
     this.sendStatus('');
+  }
+
+  private sendMetricsResult(result: any, toolName: string): void {
+    const message: MetricsResultMessage = {
+      type: MessageType.METRICS_RESULT,
+      result,
+      toolName,
+      timestamp: Date.now()
+    } as MetricsResultMessage;
+    sharedResultCache.metrics = {
+      ...message
+    };
+    void this.postMessage(message);
+  }
+
+  private sendSearchResult(result: any, toolName: string): void {
+    const message: SearchResultMessage = {
+      type: MessageType.SEARCH_RESULT,
+      result,
+      toolName,
+      timestamp: Date.now()
+    };
+    sharedResultCache.search = { ...message };
+    void this.postMessage(message);
   }
 
   private applyTokenUsage(usage: TokenUsageTotals): void {
@@ -625,229 +383,6 @@ export class MessageHandler {
     }
   }
 
-  private sendSearchResult(result: any, toolName: string): void {
-    const message: SearchResultMessage = {
-      type: MessageType.SEARCH_RESULT,
-      result,
-      toolName,
-      timestamp: Date.now()
-    };
-    sharedResultCache.search = { ...message };
-    void this.postMessage(message);
-  }
-
-  private async handleRequestSettingsData(): Promise<void> {
-    const config = vscode.workspace.getConfiguration('proseMinion');
-    const settings: Record<string, string | number | boolean> = {
-      // Core
-      'openRouterApiKey': config.get<string>('openRouterApiKey') ?? '',
-      'includeCraftGuides': config.get<boolean>('includeCraftGuides') ?? true,
-      'temperature': config.get<number>('temperature') ?? 0.7,
-      'maxTokens': config.get<number>('maxTokens') ?? 10000,
-      'ui.showTokenWidget': config.get<boolean>('ui.showTokenWidget') ?? true,
-      // Publishing standards
-      'publishingStandards.preset': config.get<string>('publishingStandards.preset') ?? 'none',
-      'publishingStandards.pageSizeKey': config.get<string>('publishingStandards.pageSizeKey') ?? '',
-      // Word Frequency
-      'wordFrequency.topN': config.get<number>('wordFrequency.topN') ?? 100,
-      'wordFrequency.includeHapaxList': config.get<boolean>('wordFrequency.includeHapaxList') ?? true,
-      'wordFrequency.hapaxDisplayMax': config.get<number>('wordFrequency.hapaxDisplayMax') ?? 300,
-      'wordFrequency.includeStopwordsTable': config.get<boolean>('wordFrequency.includeStopwordsTable') ?? true,
-      'wordFrequency.contentWordsOnly': config.get<boolean>('wordFrequency.contentWordsOnly') ?? true,
-      'wordFrequency.posEnabled': config.get<boolean>('wordFrequency.posEnabled') ?? true,
-      'wordFrequency.includeBigrams': config.get<boolean>('wordFrequency.includeBigrams') ?? true,
-      'wordFrequency.includeTrigrams': config.get<boolean>('wordFrequency.includeTrigrams') ?? true,
-      'wordFrequency.enableLemmas': config.get<boolean>('wordFrequency.enableLemmas') ?? false,
-      'wordFrequency.lengthHistogramMaxChars': config.get<number>('wordFrequency.lengthHistogramMaxChars') ?? 10,
-      // Word Search
-      'wordSearch.defaultTargets': config.get<string>('wordSearch.defaultTargets') ?? 'just',
-      'wordSearch.contextWords': config.get<number>('wordSearch.contextWords') ?? 7,
-      'wordSearch.clusterWindow': config.get<number>('wordSearch.clusterWindow') ?? 150,
-      'wordSearch.minClusterSize': config.get<number>('wordSearch.minClusterSize') ?? 3,
-      'wordSearch.caseSensitive': config.get<boolean>('wordSearch.caseSensitive') ?? false,
-      'wordSearch.enableAssistantExpansion': config.get<boolean>('wordSearch.enableAssistantExpansion') ?? false
-    };
-
-    const message = {
-      type: MessageType.SETTINGS_DATA,
-      settings,
-      timestamp: Date.now()
-    } as ExtensionToWebviewMessage;
-    void this.postMessage(message);
-  }
-
-  private async handleUpdateSetting(key: string, value: string | number | boolean): Promise<void> {
-    try {
-      const allowedPrefixes = [
-        'ui.',
-        'publishingStandards.',
-        'wordFrequency.',
-        'wordSearch.'
-      ];
-      const allowedTop = new Set(['openRouterApiKey', 'includeCraftGuides', 'temperature', 'maxTokens']);
-
-      const isAllowed = allowedTop.has(key) || allowedPrefixes.some(prefix => key.startsWith(prefix));
-      if (!isAllowed) {
-        throw new Error(`Unsupported setting key: ${key}`);
-      }
-
-      const config = vscode.workspace.getConfiguration('proseMinion');
-      await config.update(key, value, true);
-
-      // Push updated model data for UI-affecting settings (e.g., ui.showTokenWidget)
-      await this.sendModelData();
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('Failed to update setting', msg);
-    }
-  }
-
-  private async handleResetTokenUsage(): Promise<void> {
-    this.tokenTotals = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
-    const message: TokenUsageUpdateMessage = {
-      type: MessageType.TOKEN_USAGE_UPDATE,
-      totals: { ...this.tokenTotals },
-      timestamp: Date.now()
-    };
-    sharedResultCache.tokenUsage = { ...message };
-    void this.postMessage(message);
-  }
-
-  private async saveResultToFile(toolName: string, content: string, metadata?: SaveResultMetadata): Promise<string> {
-    if (!content || !content.trim()) {
-      throw new Error('Result content is empty; nothing to save.');
-    }
-
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) {
-      throw new Error('Open a workspace folder before saving results.');
-    }
-
-    const rootUri = workspaceFolder.uri;
-    let targetDir: vscode.Uri;
-    let fileName: string;
-    let fileContent: string;
-
-    if (toolName === 'dictionary_lookup') {
-      const rawWord = metadata?.word?.trim() ?? 'entry';
-      const sanitizedWord = this.sanitizeFileSegment(rawWord.toLowerCase()) || 'entry';
-      targetDir = vscode.Uri.joinPath(rootUri, 'prose-minion', 'dictionary-entries');
-      await vscode.workspace.fs.createDirectory(targetDir);
-      fileName = `${sanitizedWord}.md`;
-      fileContent = content.trim();
-    } else if (toolName === 'prose_analysis' || toolName === 'dialogue_analysis') {
-      targetDir = vscode.Uri.joinPath(rootUri, 'prose-minion', 'assistant');
-      await vscode.workspace.fs.createDirectory(targetDir);
-
-      const prefix = toolName === 'prose_analysis'
-        ? 'excerpt-assisstant-prose-'
-        : 'excertp-assisstant-dialog-beats-';
-
-      const nextCount = await this.getNextSequentialNumber(targetDir, prefix);
-      fileName = `${prefix}${nextCount}.md`;
-
-      const excerpt = metadata?.excerpt?.trim() ?? '';
-      const context = metadata?.context?.trim() ?? '';
-      const source = metadata?.relativePath || metadata?.sourceFileUri;
-
-      const lines: string[] = ['# Excerpt', ''];
-      lines.push(excerpt || '(No excerpt captured.)', '');
-
-      if (source) {
-        lines.push(`Source: ${source}`, '');
-      }
-
-      lines.push('# Context', '');
-      lines.push(context || '(No context provided.)', '', '---', '', content.trim());
-
-      fileContent = lines.join('\n');
-    } else if (toolName === 'prose_stats') {
-      targetDir = vscode.Uri.joinPath(rootUri, 'prose-minion', 'reports');
-      await vscode.workspace.fs.createDirectory(targetDir);
-      const now = new Date();
-      const pad = (n: number) => n.toString().padStart(2, '0');
-      const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
-      fileName = `prose-statistics-${stamp}.md`;
-      fileContent = content.trim();
-    } else {
-      throw new Error(`Saving results for tool "${toolName}" is not supported yet.`);
-    }
-
-    const fileUri = vscode.Uri.joinPath(targetDir, fileName);
-    if (!fileContent.endsWith('\n')) {
-      fileContent += '\n';
-    }
-    await vscode.workspace.fs.writeFile(fileUri, Buffer.from(fileContent, 'utf8'));
-
-    const document = await vscode.workspace.openTextDocument(fileUri);
-    await vscode.window.showTextDocument(document, { preview: false });
-
-    return vscode.workspace.asRelativePath(fileUri, false);
-  }
-
-  private async getNextSequentialNumber(directory: vscode.Uri, prefix: string): Promise<number> {
-    let maxNumber = 0;
-
-    const entries = await vscode.workspace.fs.readDirectory(directory);
-    for (const [name, type] of entries) {
-      if (type !== vscode.FileType.File) {
-        continue;
-      }
-
-      if (!name.startsWith(prefix) || !name.endsWith('.md')) {
-        continue;
-      }
-
-      const match = name.match(new RegExp(`${this.escapeRegExp(prefix)}(\\d+)\\.md$`));
-      if (match) {
-        const number = Number.parseInt(match[1], 10);
-        if (!Number.isNaN(number)) {
-          maxNumber = Math.max(maxNumber, number);
-        }
-      }
-    }
-
-    return maxNumber + 1;
-  }
-
-  private sanitizeFileSegment(value: string): string {
-    return value
-      .toLowerCase()
-      .replace(/[^a-z0-9-]+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-+|-+$/g, '');
-  }
-
-  private escapeRegExp(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
-
-  private sendDictionaryResult(result: string, toolName: string): void {
-    const message: DictionaryResultMessage = {
-      type: MessageType.DICTIONARY_RESULT,
-      result,
-      toolName,
-      timestamp: Date.now()
-    };
-    sharedResultCache.dictionary = {
-      ...message
-    };
-    sharedResultCache.error = undefined;
-    void this.postMessage(message);
-    this.sendStatus('');
-  }
-
-  private sendError(message: string, details?: string): void {
-    const errorMessage: ErrorMessage = {
-      type: MessageType.ERROR,
-      message,
-      details,
-      timestamp: Date.now()
-    };
-    sharedResultCache.error = { ...errorMessage };
-    void this.postMessage(errorMessage);
-  }
-
   private sendStatus(message: string, guideNames?: string): void {
     const statusMessage: StatusMessage = {
       type: MessageType.STATUS,
@@ -859,108 +394,19 @@ export class MessageHandler {
     void this.postMessage(statusMessage);
   }
 
-  private async handleSetModelSelection(scope: ModelScope, modelId: string): Promise<void> {
-    try {
-      const configKey = this.getConfigKeyForScope(scope);
-      const config = vscode.workspace.getConfiguration('proseMinion');
-
-      await config.update(configKey, modelId, vscode.ConfigurationTarget.Global);
-      this.outputChannel.appendLine(
-        `[MessageHandler] Updated ${scope} model selection to ${modelId}`
-      );
-      await this.refreshServiceConfiguration();
-      await this.sendModelData();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.outputChannel.appendLine(
-        `[MessageHandler] Failed to update model selection for ${scope}: ${message}`
-      );
-      this.sendError('Failed to update model selection', message);
-    }
-  }
-
-  private async sendModelData(): Promise<void> {
-    try {
-      const recommended = OpenRouterModels.getRecommendedModels();
-      const options: ModelOption[] = recommended.map(model => ({
-        id: model.id,
-        label: model.name,
-        description: model.description
-      }));
-
-      const selections = this.getEffectiveModelSelections();
-
-      const seen = new Set(options.map(option => option.id));
-      Object.values(selections).forEach(modelId => {
-        if (modelId && !seen.has(modelId)) {
-          options.push({
-            id: modelId,
-            label: modelId,
-            description: 'Custom model (from settings)'
-          });
-          seen.add(modelId);
-        }
-      });
-
-      const config = vscode.workspace.getConfiguration('proseMinion');
-      const message: ModelDataMessage = {
-        type: MessageType.MODEL_DATA,
-        options,
-        selections,
-        ui: {
-          showTokenWidget: config.get<boolean>('ui.showTokenWidget') ?? true
-        },
-        timestamp: Date.now()
-      };
-
-      void this.postMessage(message);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.outputChannel.appendLine(`[MessageHandler] Failed to load model data: ${message}`);
-      this.sendError('Failed to load model list', message);
-    }
-  }
-
-  private getEffectiveModelSelections(): Partial<Record<ModelScope, string>> {
-    const config = vscode.workspace.getConfiguration('proseMinion');
-    const fallback = config.get<string>('model') || 'z-ai/glm-4.6';
-
-    const selections: Partial<Record<ModelScope, string>> = {
-      assistant: config.get<string>('assistantModel') || fallback,
-      dictionary: config.get<string>('dictionaryModel') || fallback,
-      context: config.get<string>('contextModel') || fallback
+  private sendError(message: string, details?: string): void {
+    const errorMessage: ErrorMessage = {
+      type: MessageType.ERROR,
+      message,
+      details,
+      timestamp: Date.now()
     };
-
-    if (
-      'getResolvedModelSelections' in this.proseAnalysisService &&
-      typeof (this.proseAnalysisService as any).getResolvedModelSelections === 'function'
-    ) {
-      try {
-        const resolved = (this.proseAnalysisService as any).getResolvedModelSelections();
-        return { ...selections, ...resolved };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        this.outputChannel.appendLine(
-          `[MessageHandler] Unable to read resolved model selections: ${message}`
-        );
-      }
-    }
-
-    return selections;
-  }
-
-  private getConfigKeyForScope(scope: ModelScope): string {
-    switch (scope) {
-      case 'assistant':
-        return 'assistantModel';
-      case 'dictionary':
-        return 'dictionaryModel';
-      case 'context':
-        return 'contextModel';
-      default:
-        const exhaustiveCheck: never = scope;
-        throw new Error(`Unknown model scope: ${exhaustiveCheck}`);
-    }
+    sharedResultCache.error = { ...errorMessage };
+    sharedResultCache.analysis = undefined;
+    sharedResultCache.dictionary = undefined;
+    sharedResultCache.context = undefined;
+    void this.postMessage(errorMessage);
+    this.outputChannel.appendLine(`[MessageHandler] ERROR: ${message}${details ? ` - ${details}` : ''}`);
   }
 
   private async refreshServiceConfiguration(): Promise<void> {
@@ -976,48 +422,6 @@ export class MessageHandler {
           `[MessageHandler] Failed to refresh service configuration: ${message}`
         );
       }
-    }
-  }
-
-  private async handleOpenGuideFile(guidePath: string): Promise<void> {
-    try {
-      this.outputChannel.appendLine(`[MessageHandler] Opening guide file: ${guidePath}`);
-
-      // Construct the full URI to the guide file
-      const guideUri = vscode.Uri.joinPath(
-        this.extensionUri,
-        'resources',
-        'craft-guides',
-        guidePath
-      );
-
-      this.outputChannel.appendLine(`[MessageHandler] Full path: ${guideUri.fsPath}`);
-
-      // Check if file exists first
-      try {
-        await vscode.workspace.fs.stat(guideUri);
-      } catch (statError) {
-        const errorMsg = `Guide file not found: ${guideUri.fsPath}`;
-        this.outputChannel.appendLine(`[MessageHandler] ERROR: ${errorMsg}`);
-        this.sendError('Guide file not found', errorMsg);
-        return;
-      }
-
-      // Open the file in the editor
-      const document = await vscode.workspace.openTextDocument(guideUri);
-      await vscode.window.showTextDocument(document, {
-        preview: false,  // Open in permanent editor tab
-        viewColumn: vscode.ViewColumn.Beside  // Open alongside current editor
-      });
-
-      this.outputChannel.appendLine(`[MessageHandler] Successfully opened guide: ${guidePath}`);
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      this.outputChannel.appendLine(`[MessageHandler] ERROR opening guide: ${guidePath} - ${errorMsg}`);
-      this.sendError(
-        'Failed to open guide file',
-        errorMsg
-      );
     }
   }
 
