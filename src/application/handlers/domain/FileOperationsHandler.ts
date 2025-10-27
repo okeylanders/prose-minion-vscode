@@ -63,7 +63,7 @@ export class FileOperationsHandler {
         }
       }
 
-      const savedPath = await this.saveResultToFile(message.toolName, text, message.metadata);
+      const { relativePath: savedPath, fileUri } = await this.saveResultToFile(message.toolName, text, message.metadata);
       this.outputChannel.appendLine(`[FileOperationsHandler] Saved ${message.toolName} result to ${savedPath}`);
 
       const successMessage: SaveResultSuccessMessage = {
@@ -74,6 +74,12 @@ export class FileOperationsHandler {
       };
 
       this.postMessage(successMessage);
+      try {
+        await vscode.window.showTextDocument(fileUri, { preview: false });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        this.outputChannel.appendLine(`[FileOperationsHandler] Failed to open saved file: ${msg}`);
+      }
       this.sendStatus(`Saved result to ${savedPath}`);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -87,7 +93,7 @@ export class FileOperationsHandler {
     return markdown.replace(sectionRegex, '').trimEnd();
   }
 
-  private async saveResultToFile(toolName: string, content: string, metadata?: SaveResultMetadata): Promise<string> {
+  private async saveResultToFile(toolName: string, content: string, metadata?: SaveResultMetadata): Promise<{ relativePath: string; fileUri: vscode.Uri }> {
     if (!content || !content.trim()) {
       throw new Error('Result content is empty; nothing to save.');
     }
@@ -135,13 +141,14 @@ export class FileOperationsHandler {
       lines.push(context || '(No context provided.)', '', '---', '', content.trim());
 
       fileContent = lines.join('\n');
-    } else if (toolName === 'prose_stats') {
+    } else if (toolName === 'prose_stats' || toolName === 'style_flags' || toolName === 'word_frequency') {
       targetDir = vscode.Uri.joinPath(rootUri, 'prose-minion', 'reports');
       await vscode.workspace.fs.createDirectory(targetDir);
       const now = new Date();
       const pad = (n: number) => n.toString().padStart(2, '0');
-      const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
-      fileName = `prose-statistics-${stamp}.md`;
+      const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+      const toolSlug = toolName.replace(/_/g, '-');
+      fileName = `${toolSlug}-${stamp}.md`;
       fileContent = content.trim();
     } else {
       throw new Error(`Saving results for tool "${toolName}" is not supported yet.`);
@@ -151,7 +158,7 @@ export class FileOperationsHandler {
     const encoder = new TextEncoder();
     await vscode.workspace.fs.writeFile(fileUri, encoder.encode(fileContent));
 
-    return vscode.workspace.asRelativePath(fileUri);
+    return { relativePath: vscode.workspace.asRelativePath(fileUri), fileUri };
   }
 
   private async getNextSequentialNumber(directory: vscode.Uri, prefix: string): Promise<number> {

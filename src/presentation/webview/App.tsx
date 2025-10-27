@@ -45,6 +45,7 @@ export const App: React.FC = () => {
   // UI-only state
   const [activeTab, setActiveTab] = React.useState<TabId>(TabId.ANALYSIS);
   const [error, setError] = React.useState('');
+  const [scopeRequester, setScopeRequester] = React.useState<'metrics' | 'search' | null>(null);
 
   // Message routing using Strategy pattern
   useMessageRouter({
@@ -55,9 +56,18 @@ export const App: React.FC = () => {
     [MessageType.SEARCH_RESULT]: search.handleSearchResult,
     [MessageType.DICTIONARY_RESULT]: dictionary.handleDictionaryResult,
     [MessageType.CONTEXT_RESULT]: context.handleContextResult,
-    [MessageType.ACTIVE_FILE]: metrics.handleActiveFile,
-    [MessageType.MANUSCRIPT_GLOBS]: metrics.handleManuscriptGlobs,
-    [MessageType.CHAPTER_GLOBS]: metrics.handleChapterGlobs,
+    [MessageType.ACTIVE_FILE]: (msg) => {
+      if (scopeRequester === 'search') search.handleActiveFile(msg); else metrics.handleActiveFile(msg);
+      setScopeRequester(null);
+    },
+    [MessageType.MANUSCRIPT_GLOBS]: (msg) => {
+      if (scopeRequester === 'search') search.handleManuscriptGlobs(msg); else metrics.handleManuscriptGlobs(msg);
+      setScopeRequester(null);
+    },
+    [MessageType.CHAPTER_GLOBS]: (msg) => {
+      if (scopeRequester === 'search') search.handleChapterGlobs(msg); else metrics.handleChapterGlobs(msg);
+      setScopeRequester(null);
+    },
     [MessageType.STATUS]: (msg) => analysis.handleStatusMessage(msg, context.loadingRef),
     [MessageType.SETTINGS_DATA]: settings.handleSettingsData,
     [MessageType.API_KEY_STATUS]: settings.handleApiKeyStatus,
@@ -217,6 +227,10 @@ export const App: React.FC = () => {
             selectedSourceUri={selection.selectedSourceUri}
             analysisToolName={analysis.toolName}
             onRequestSelection={selection.requestSelection}
+            onClearSourceMeta={() => {
+              selection.setSelectedSourceUri('');
+              selection.setSelectedRelativePath('');
+            }}
           />
         )}
 
@@ -237,6 +251,9 @@ export const App: React.FC = () => {
             onSourceModeChange={metrics.setSourceMode}
             onPathTextChange={metrics.setPathText}
             onClearSubtoolResult={metrics.clearSubtoolResult}
+            onRequestActiveFile={() => { setScopeRequester('metrics'); vscode.postMessage({ type: MessageType.REQUEST_ACTIVE_FILE }); }}
+            onRequestManuscriptGlobs={() => { setScopeRequester('metrics'); vscode.postMessage({ type: MessageType.REQUEST_MANUSCRIPT_GLOBS }); }}
+            onRequestChapterGlobs={() => { setScopeRequester('metrics'); vscode.postMessage({ type: MessageType.REQUEST_CHAPTER_GLOBS }); }}
           />
         )}
 
@@ -244,14 +261,17 @@ export const App: React.FC = () => {
           <SearchTab
             vscode={vscode}
             result={search.searchResult}
-            isLoading={metrics.loading}
-            onLoadingChange={metrics.setLoading}
+            isLoading={search.loading}
+            onLoadingChange={search.setLoading}
             wordSearchTargets={search.wordSearchTargets}
             onWordSearchTargetsChange={search.setWordSearchTargets}
-            sourceMode={metrics.sourceMode}
-            pathText={metrics.pathText}
-            onSourceModeChange={metrics.setSourceMode}
-            onPathTextChange={metrics.setPathText}
+            sourceMode={search.sourceMode}
+            pathText={search.pathText}
+            onSourceModeChange={search.setSourceMode}
+            onPathTextChange={search.setPathText}
+            onRequestActiveFile={() => { setScopeRequester('search'); vscode.postMessage({ type: MessageType.REQUEST_ACTIVE_FILE }); }}
+            onRequestManuscriptGlobs={() => { setScopeRequester('search'); vscode.postMessage({ type: MessageType.REQUEST_MANUSCRIPT_GLOBS }); }}
+            onRequestChapterGlobs={() => { setScopeRequester('search'); vscode.postMessage({ type: MessageType.REQUEST_CHAPTER_GLOBS }); }}
           />
         )}
 
@@ -262,7 +282,6 @@ export const App: React.FC = () => {
             result={dictionary.result}
             isLoading={dictionary.loading}
             onLoadingChange={dictionary.setLoading}
-            statusMessage={analysis.statusMessage}
             toolName={dictionary.toolName}
             dictionaryInjection={selection.dictionaryInjection}
             onDictionaryInjectionHandled={selection.handleDictionaryInjectionHandled}

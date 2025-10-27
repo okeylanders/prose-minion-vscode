@@ -28,6 +28,7 @@ interface AnalysisTabProps {
   selectedSourceUri?: string;
   analysisToolName?: string;
   onRequestSelection: (target: SelectionTarget) => void;
+  onClearSourceMeta: () => void;
 }
 
 export const AnalysisTab: React.FC<AnalysisTabProps> = ({
@@ -48,7 +49,8 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
   selectedRelativePath,
   selectedSourceUri,
   analysisToolName,
-  onRequestSelection
+  onRequestSelection,
+  onClearSourceMeta
 }) => {
   const [text, setText] = React.useState(selectedText);
 
@@ -224,7 +226,13 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
         <textarea
           className="w-full h-32 resize-none"
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            const val = e.target.value;
+            setText(val);
+            if (!val.trim()) {
+              onClearSourceMeta();
+            }
+          }}
           placeholder="Select text in your editor or paste text here..."
         />
       </div>

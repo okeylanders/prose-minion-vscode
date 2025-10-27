@@ -63,7 +63,7 @@ export const useContext = (): UseContextReturn => {
     contextRequestedResources?: string[];
   }>();
 
-  const [contextText, setContextText] = React.useState<string>(persisted?.contextText ?? '');
+  const [contextText, setContextTextState] = React.useState<string>(persisted?.contextText ?? '');
   const [loading, setLoading] = React.useState<boolean>(false);
   const [statusMessage, setStatusMessage] = React.useState<string>('');
   const [requestedResources, setRequestedResources] = React.useState<string[]>(
@@ -78,7 +78,7 @@ export const useContext = (): UseContextReturn => {
   }, [loading]);
 
   const handleContextResult = React.useCallback((message: any) => {
-    setContextText(message.result);
+    setContextTextState(message.result);
     setRequestedResources(message.requestedResources ?? []);
     setLoading(false);
     setStatusMessage('');
@@ -105,8 +105,15 @@ export const useContext = (): UseContextReturn => {
   );
 
   const clearContext = React.useCallback(() => {
-    setContextText('');
+    setContextTextState('');
     setRequestedResources([]);
+  }, []);
+
+  const setContextText = React.useCallback((text: string) => {
+    setContextTextState(text);
+    if (!text || !text.trim()) {
+      setRequestedResources([]);
+    }
   }, []);
 
   return {

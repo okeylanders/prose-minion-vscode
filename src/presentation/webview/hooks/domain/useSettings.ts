@@ -110,6 +110,7 @@ export const useSettings = (): UseSettingsReturn => {
     setShowSettings(true);
     vscode.postMessage({ type: MessageType.REQUEST_SETTINGS_DATA, timestamp: Date.now() });
     vscode.postMessage({ type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA, timestamp: Date.now() });
+    vscode.postMessage({ type: MessageType.REQUEST_API_KEY, timestamp: Date.now() });
   }, [vscode]);
 
   const close = React.useCallback(() => {
@@ -122,6 +123,7 @@ export const useSettings = (): UseSettingsReturn => {
       if (next) {
         vscode.postMessage({ type: MessageType.REQUEST_SETTINGS_DATA, timestamp: Date.now() });
         vscode.postMessage({ type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA, timestamp: Date.now() });
+        vscode.postMessage({ type: MessageType.REQUEST_API_KEY, timestamp: Date.now() });
       }
       return next;
     });

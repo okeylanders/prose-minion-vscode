@@ -22,6 +22,9 @@ interface MetricsTabProps {
   onSourceModeChange: (mode: TextSourceMode) => void;
   onPathTextChange: (text: string) => void;
   onClearSubtoolResult: (tool: 'prose_stats' | 'style_flags' | 'word_frequency') => void;
+  onRequestActiveFile: () => void;
+  onRequestManuscriptGlobs: () => void;
+  onRequestChapterGlobs: () => void;
 }
 
 export const MetricsTab: React.FC<MetricsTabProps> = ({
@@ -35,9 +38,19 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   pathText,
   onSourceModeChange,
   onPathTextChange,
-  onClearSubtoolResult
+  onClearSubtoolResult,
+  onRequestActiveFile,
+  onRequestManuscriptGlobs,
+  onRequestChapterGlobs
 }) => {
   // Keep a local mirror only for selection preview if needed in future.
+
+  // Build a TextSourceSpec consistently for all metric requests
+  const buildSourceSpec = React.useCallback(() => {
+    return sourceMode === 'selection'
+      ? { mode: 'selection' as TextSourceMode, pathText: '[selected text]' }
+      : { mode: sourceMode, pathText };
+  }, [sourceMode, pathText]);
 
   // Publishing standards UI state
   const [genres, setGenres] = React.useState<Array<{ key: string; name: string; abbreviation: string; pageSizes: Array<{ key: string; label: string; width: number; height: number; common: boolean }> }>>([]);
@@ -76,7 +89,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
     onClearSubtoolResult('prose_stats');
     vscode.postMessage({
       type: MessageType.MEASURE_PROSE_STATS,
-      source: { mode: sourceMode, pathText }
+      source: buildSourceSpec()
     });
   };
 
@@ -85,7 +98,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
     onClearSubtoolResult('style_flags');
     vscode.postMessage({
       type: MessageType.MEASURE_STYLE_FLAGS,
-      source: { mode: sourceMode, pathText }
+      source: buildSourceSpec()
     });
   };
 
@@ -94,7 +107,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
     onClearSubtoolResult('word_frequency');
     vscode.postMessage({
       type: MessageType.MEASURE_WORD_FREQUENCY,
-      source: { mode: sourceMode, pathText }
+      source: buildSourceSpec()
     });
   };
 
@@ -184,7 +197,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
     const content = buildExportContent();
     vscode.postMessage({
       type: MessageType.COPY_RESULT,
-      toolName: 'prose_stats',
+      toolName: activeTool,
       content
     });
   };
@@ -193,7 +206,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
     const content = buildExportContent();
     vscode.postMessage({
       type: MessageType.SAVE_RESULT,
-      toolName: 'prose_stats',
+      toolName: activeTool,
       content,
       metadata: { timestamp: Date.now() }
     });
@@ -232,30 +245,30 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
         <div className="tab-bar" style={{ marginBottom: '8px' }}>
           <button
             className={`tab-button ${sourceMode === 'activeFile' ? 'active' : ''}`}
-            onClick={() => {
-              onSourceModeChange('activeFile');
-              vscode.postMessage({ type: MessageType.REQUEST_ACTIVE_FILE });
-            }}
+          onClick={() => {
+            onSourceModeChange('activeFile');
+            onRequestActiveFile();
+          }}
             disabled={isLoading}
           >
             <span className="tab-label">Active File</span>
           </button>
           <button
             className={`tab-button ${sourceMode === 'manuscript' ? 'active' : ''}`}
-            onClick={() => {
-              onSourceModeChange('manuscript');
-              vscode.postMessage({ type: MessageType.REQUEST_MANUSCRIPT_GLOBS });
-            }}
+          onClick={() => {
+            onSourceModeChange('manuscript');
+            onRequestManuscriptGlobs();
+          }}
             disabled={isLoading}
           >
             <span className="tab-label">Manuscripts</span>
           </button>
           <button
             className={`tab-button ${sourceMode === 'chapters' ? 'active' : ''}`}
-            onClick={() => {
-              onSourceModeChange('chapters');
-              vscode.postMessage({ type: MessageType.REQUEST_CHAPTER_GLOBS });
-            }}
+          onClick={() => {
+            onSourceModeChange('chapters');
+            onRequestChapterGlobs();
+          }}
             disabled={isLoading}
           >
             <span className="tab-label">Chapters</span>

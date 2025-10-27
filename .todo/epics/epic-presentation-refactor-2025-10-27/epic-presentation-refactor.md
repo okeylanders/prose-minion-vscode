@@ -224,6 +224,64 @@ Out-of-scope: Unit testing infrastructure (future epic), Redux/Context API migra
 - Hook dependency cycles could cause infinite re-renders (mitigate with clear boundaries)
 - useCallback/useMemo usage critical for performance
 
+### Sprint 2 — Bug Fixes and Polish
+
+Goal: Resolve regressions introduced by the hooks refactor, restore expected UX, and tighten message/persistence flows. Grouped by feature with hypotheses and acceptance criteria.
+
+1) Loading Widget Crossover
+- Symptom: Loading state/messages appear to cross between Dictionary and Analysis (and possibly others), suggesting a shared/global flag or misrouted message.
+- Hypothesis: Shared `STATUS` handling or a single `loading` flag reused across domains; or message router handlers pointing to the wrong domain callback.
+- Acceptance:
+  - Loading indicators toggle independently per tab/tool.
+  - No cross-tab status bleed; guide ticker/status remains scoped to the initiating tool.
+
+2) File Save UX (Copy/Save icons on all result panels)
+- Issues:
+  - Saved file does not open in a new editor tab after save.
+  - Metrics subtools (prose_stats/style_flags/word_frequency) save with the same filename.
+  - Timestamps lack seconds, allowing overwrites within the same minute.
+- Acceptance:
+  - After SAVE_RESULT_SUCCESS, VS Code opens the newly created file.
+  - Metrics saves include subtool in filename (e.g., prose_stats-YYYYMMDD-HHMMSS.md).
+  - Timestamps include seconds; back-to-back saves do not overwrite.
+
+3) Scope Selection Tabs (sub-tabs under “Scope”)
+- Symptom: Scope toggles (Active File, Manuscripts, Chapters, Selection) do not work on panels that use them.
+- Hypothesis: Missing onPathTextChange handler or sourceMode wiring after refactor; messages (REQUEST_ACTIVE_FILE / REQUEST_*_GLOBS) not routed.
+- Acceptance:
+  - Each scope button updates sourceMode and triggers its corresponding request message.
+  - Returned path/globs populate the path field; subsequent runs use the selected scope.
+
+4) Search Module
+- Issues:
+  - Does not finish (no result message observed).
+  - When loading, old results remain visible vertically below loading widget instead of clearing.
+- Acceptance:
+  - RUN_WORD_SEARCH returns SEARCH_RESULT; LoadingWidget disappears on completion.
+  - Kicking off a new search clears prior markdown until results arrive.
+
+5) Analysis Module
+- Issues:
+  - Clearing context manually should clear “resources referenced.”
+  - Clearing excerpt manually should clear source metadata if present.
+- Acceptance:
+  - When context text is emptied, requestedResources clears.
+  - When excerpt text is emptied, selected source/relative path clears.
+
+6) Settings Overlay
+- Issue: UI does not reflect a saved API key (no Clear button shown).
+- Acceptance:
+  - API key status reflects SecretStorage state; shows Clear when saved, Save when not.
+  - Toggling token widget via UPDATE_SETTING('ui.showTokenWidget') immediately updates UI and persists.
+
+Test Checklist (Sprint 2)
+- Independent loading per tab/tool; no cross-talk.
+- Save opens file; filenames unique with seconds; metrics include subtool.
+- Scope buttons function and update inputs.
+- Search completes and clears stale results on run.
+- Analysis clears resources/source metadata when appropriate.
+- Settings shows correct API key state; Clear works.
+
 ## Cross-Cutting Concerns
 
 - **Architecture Consistency**: Frontend now mirrors backend domain handler pattern

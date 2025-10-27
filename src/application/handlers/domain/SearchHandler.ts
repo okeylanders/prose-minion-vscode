@@ -17,7 +17,21 @@ export class SearchHandler {
 
   async handleMeasureWordSearch(message: RunWordSearchMessage): Promise<void> {
     try {
+      // DEBUG: Log incoming message
+      this.outputChannel.appendLine('[SearchHandler] RUN_WORD_SEARCH received:');
+      this.outputChannel.appendLine(`  source.mode: ${message.source?.mode ?? 'NONE'}`);
+      this.outputChannel.appendLine(`  source.pathText: ${message.source?.pathText ?? 'NONE'}`);
+      this.outputChannel.appendLine(`  text field: ${message.text ? `"${message.text.substring(0, 50)}..."` : 'NONE'}`);
+
       const resolved = await this.resolveRichTextForMetrics(message);
+
+      // DEBUG: Log what was resolved
+      this.outputChannel.appendLine('[SearchHandler] Resolved to:');
+      this.outputChannel.appendLine(`  mode: ${resolved.mode ?? 'NONE'}`);
+      this.outputChannel.appendLine(`  text length: ${resolved.text.length} chars`);
+      this.outputChannel.appendLine(`  text preview: "${resolved.text.substring(0, 100).replace(/\n/g, '\\n')}..."`);
+      this.outputChannel.appendLine(`  paths: ${resolved.paths?.join(', ') ?? 'NONE'}`);
+
       const options = message.options || {};
       const result = await this.service.measureWordSearch(
         resolved.text,
@@ -28,6 +42,7 @@ export class SearchHandler {
       this.sendSearchResult(result.metrics, result.toolName);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[SearchHandler] ERROR: ${msg}`);
       this.sendError('Invalid selection or path', msg);
     }
   }
