@@ -39,17 +39,17 @@ src/shared/types/messages/
 
 src/application/handlers/
 ├── MessageHandler.ts                 # Main dispatcher (routing only)
-├── handlers/
-│   ├── AnalysisHandler.ts           # Dialogue, prose analysis
-│   ├── DictionaryHandler.ts         # Dictionary operations
-│   ├── ContextHandler.ts            # Context generation
-│   ├── MetricsHandler.ts            # All metrics tools
-│   ├── SearchHandler.ts             # Word search
-│   ├── ConfigurationHandler.ts      # Settings, models, tokens
-│   ├── PublishingHandler.ts         # Publishing standards
-│   ├── SourcesHandler.ts            # File/glob requests
-│   ├── UIHandler.ts                 # Tab changes, selections
-│   └── FileOperationsHandler.ts     # Copy, save, open guides
+└── domain/
+    ├── AnalysisHandler.ts           # Dialogue, prose analysis
+    ├── DictionaryHandler.ts         # Dictionary operations
+    ├── ContextHandler.ts            # Context generation
+    ├── MetricsHandler.ts            # All metrics tools
+    ├── SearchHandler.ts             # Word search
+    ├── ConfigurationHandler.ts      # Settings, models, tokens
+    ├── PublishingHandler.ts         # Publishing standards
+    ├── SourcesHandler.ts            # File/glob requests
+    ├── UIHandler.ts                 # Tab changes, selections
+    └── FileOperationsHandler.ts     # Copy, save, open guides
 ```
 
 ### Organization Principles
@@ -129,7 +129,8 @@ export class MessageHandler {
 5. Verify no breaking changes
 
 ### Phase 2: Create Handler Modules
-1. Create `src/application/handlers/handlers/` directory
+
+1. Create `src/application/handlers/domain/` directory
 2. Extract handler methods from `MessageHandler.ts` into domain handlers
 3. Update `MessageHandler.ts` to instantiate and delegate to domain handlers
 4. Preserve result cache and token tracking in main `MessageHandler`
