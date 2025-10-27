@@ -195,9 +195,11 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         </label>
         <label style={{ display: 'block', marginBottom: 8 }}>
           <input type="checkbox" checked={asBoolean('wordFrequency.includeBigrams')} onChange={(e) => onUpdate('wordFrequency.includeBigrams', e.target.checked)} /> Include Bigrams
+          <div style={{ color: 'var(--vscode-descriptionForeground)' }}>Show top two‑word phrases. Helpful for spotting recurring collocations and clichés.</div>
         </label>
         <label style={{ display: 'block', marginBottom: 8 }}>
           <input type="checkbox" checked={asBoolean('wordFrequency.includeTrigrams')} onChange={(e) => onUpdate('wordFrequency.includeTrigrams', e.target.checked)} /> Include Trigrams
+          <div style={{ color: 'var(--vscode-descriptionForeground)' }}>Show top three‑word phrases. Useful for set‑piece phrasings and voice patterns.</div>
         </label>
         <label style={{ display: 'block', marginBottom: 10 }}>
           <input type="checkbox" checked={asBoolean('wordFrequency.enableLemmas')} onChange={(e) => onUpdate('wordFrequency.enableLemmas', e.target.checked)} /> Enable Lemmas (experimental)

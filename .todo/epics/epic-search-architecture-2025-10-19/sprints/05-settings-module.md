@@ -1,6 +1,6 @@
 # Sprint 5 — Settings Module
 
-Status: Planned
+Status: In Progress
 
 - Window: 2025-10-23 → 2025-10-24 (Days 5–6)
 - Epic: todo/epics/epic-search-architecture-2025-10-19/epic-search-architecture.md
@@ -28,3 +28,15 @@ Full‑screen overlay module in the webview to guide non‑technical users throu
 - Users can configure API key and model scopes without opening VS Code settings.
 - Changes reflect immediately (watcher fires; model dropdown updates).
 - Users can manually reset the session token usage totals; widget updates immediately.
+
+## Progress (2025-10-26)
+- Implemented full‑screen Settings overlay (blocks background scroll) with VS Code theming and grouped sections.
+- Title‑bar gear toggles overlay (OPEN_SETTINGS_TOGGLE).
+- Per‑item descriptions added across all settings, including hapax/lemmas, and Word Frequency bigrams/trigrams notes.
+- Publishing Standards presented as dropdowns; trim size derives from selected genre (wired via PublishingStandardsRepository).
+- Settings persist via UPDATE_SETTING; `MessageHandler` updates config and re-sends `MODEL_DATA` for UI-affecting values.
+- Reset Token Usage implemented and wired; header widget refreshes immediately.
+
+Next:
+- UX niceties: Esc to close, focus trap, and persist overlay open state on reattach.
+- CONFIGURATION.md links and minor copy polish if needed.
