@@ -18,6 +18,13 @@ type SettingsOverlayProps = {
     onPresetChange: (preset: string) => void;
     onTrimChange: (key?: string) => void;
   };
+  apiKey: {
+    input: string;
+    hasSavedKey: boolean;
+    onInputChange: (value: string) => void;
+    onSave: () => void;
+    onDelete: () => void;
+  };
 };
 
 export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
@@ -30,7 +37,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
   modelOptions,
   modelSelections,
   onModelChange,
-  publishing
+  publishing,
+  apiKey
 }) => {
   if (!visible) return null;
 
@@ -71,19 +79,42 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
 
       {/* Connection */}
       <section className="settings-section">
-        <h3 className="settings-section-title">Connection</h3>
-        <label className="settings-label">
-          <div className="settings-label-title">OpenRouter API Key</div>
-          <input
-            type="password"
-            value={asString('openRouterApiKey')}
-            onChange={(e) => onUpdate('openRouterApiKey', e.target.value)}
-            className="settings-input"
-          />
-          <div className="settings-description">
-            Requires an OpenRouter pay‑as‑you‑go account for AI features. OpenRouter routes to leading models with configurable privacy (no logging, no training). Learn more at <a href="https://openrouter.ai/" target="_blank" rel="noopener">openrouter.ai</a>.
-          </div>
-        </label>
+        <h3 className="settings-section-title">🔐 OpenRouter API Key (Secure Storage)</h3>
+        <p className="settings-description">
+          Your API key is stored securely using OS-level encryption (Keychain/Credential Manager).
+          It will never appear in settings files or be synced to the cloud.
+        </p>
+
+        <input
+          type="password"
+          className="settings-input"
+          placeholder={apiKey.hasSavedKey ? "••••••••" : "Enter your OpenRouter API key"}
+          value={apiKey.input}
+          onChange={(e) => apiKey.onInputChange(e.target.value)}
+        />
+
+        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+          <button
+            className="settings-button"
+            onClick={apiKey.onSave}
+            disabled={!apiKey.input.trim()}
+          >
+            Save API Key
+          </button>
+
+          {apiKey.hasSavedKey && (
+            <button
+              className="settings-button"
+              onClick={apiKey.onDelete}
+            >
+              Clear API Key
+            </button>
+          )}
+        </div>
+
+        <div className="settings-description" style={{ marginTop: '12px' }}>
+          Requires an OpenRouter pay‑as‑you‑go account for AI features. OpenRouter routes to leading models with configurable privacy (no logging, no training). Learn more at <a href="https://openrouter.ai/" target="_blank" rel="noopener">openrouter.ai</a>.
+        </div>
       </section>
 
       {/* Models */}

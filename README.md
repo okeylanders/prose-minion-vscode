@@ -169,6 +169,7 @@ Built with **Clean Architecture** principles:
 
 ### Privacy & Security
 
+- **Secure API Key Storage** - Keys stored in OS keychain (Keychain Access, Credential Manager, libsecret) via VSCode SecretStorage
 - API calls route through OpenRouter
 - Configurable privacy options (no logging, no training)
 - Local-first processing where possible
@@ -196,6 +197,7 @@ Built with **Clean Architecture** principles:
 
 ### Latest Features
 
+- **Secure API Key Storage** - OS-level encryption via VSCode SecretStorage (automatic migration)
 - **Context Resource Paths** - Configure project structure via Settings overlay
 - **Glob Pattern Education** - Learn recursive patterns with visual examples
 - **Centered Settings Header** - Improved layout with stacked icon design

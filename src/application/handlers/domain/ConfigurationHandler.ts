@@ -14,13 +14,19 @@ import {
   ModelScope,
   ModelOption,
   TokenUsageUpdateMessage,
+  RequestApiKeyMessage,
+  ApiKeyStatusMessage,
+  UpdateApiKeyMessage,
+  DeleteApiKeyMessage,
   MessageType
 } from '../../../shared/types/messages';
 import { OpenRouterModels } from '../../../infrastructure/api/OpenRouterModels';
+import { SecretStorageService } from '../../../infrastructure/secrets/SecretStorageService';
 
 export class ConfigurationHandler {
   constructor(
     private readonly service: IProseAnalysisService,
+    private readonly secretsService: SecretStorageService,
     private readonly outputChannel: vscode.OutputChannel,
     private readonly postMessage: (message: any) => void,
     private readonly sendError: (message: string, details?: string) => void,
@@ -31,8 +37,7 @@ export class ConfigurationHandler {
   async handleRequestSettingsData(message: RequestSettingsDataMessage): Promise<void> {
     const config = vscode.workspace.getConfiguration('proseMinion');
     const settings: Record<string, string | number | boolean> = {
-      // Core
-      'openRouterApiKey': config.get<string>('openRouterApiKey') ?? '',
+      // Core (API key now in SecretStorage, not exposed here)
       'includeCraftGuides': config.get<boolean>('includeCraftGuides') ?? true,
       'temperature': config.get<number>('temperature') ?? 0.7,
       'maxTokens': config.get<number>('maxTokens') ?? 10000,
@@ -86,7 +91,7 @@ export class ConfigurationHandler {
         'wordSearch.',
         'contextPaths.'
       ];
-      const allowedTop = new Set(['openRouterApiKey', 'includeCraftGuides', 'temperature', 'maxTokens']);
+      const allowedTop = new Set(['includeCraftGuides', 'temperature', 'maxTokens']);
 
       const isAllowed = allowedTop.has(message.key) || allowedPrefixes.some(prefix => message.key.startsWith(prefix));
       if (!isAllowed) {
@@ -239,6 +244,78 @@ export class ConfigurationHandler {
           `[ConfigurationHandler] Failed to refresh service configuration: ${message}`
         );
       }
+    }
+  }
+
+  // API Key Management (SecretStorage)
+
+  async handleRequestApiKey(message: RequestApiKeyMessage): Promise<void> {
+    try {
+      const apiKey = await this.secretsService.getApiKey();
+      const response: ApiKeyStatusMessage = {
+        type: MessageType.API_KEY_STATUS,
+        hasSavedKey: !!apiKey,
+        timestamp: Date.now()
+      };
+      this.postMessage(response);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[ConfigurationHandler] Error retrieving API key status: ${msg}`);
+      this.sendError('Failed to retrieve API key status', msg);
+    }
+  }
+
+  async handleUpdateApiKey(message: UpdateApiKeyMessage): Promise<void> {
+    try {
+      if (!message.apiKey || message.apiKey.trim().length === 0) {
+        throw new Error('API key cannot be empty');
+      }
+
+      await this.secretsService.setApiKey(message.apiKey.trim());
+      this.outputChannel.appendLine('[ConfigurationHandler] API key saved to secure storage');
+
+      // Refresh service configuration to pick up new API key
+      await this.refreshServiceConfiguration();
+
+      // Send success status
+      const response: ApiKeyStatusMessage = {
+        type: MessageType.API_KEY_STATUS,
+        hasSavedKey: true,
+        timestamp: Date.now()
+      };
+      this.postMessage(response);
+
+      // Show user notification
+      vscode.window.showInformationMessage('API key saved securely');
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[ConfigurationHandler] Error saving API key: ${msg}`);
+      this.sendError('Failed to save API key', msg);
+    }
+  }
+
+  async handleDeleteApiKey(message: DeleteApiKeyMessage): Promise<void> {
+    try {
+      await this.secretsService.deleteApiKey();
+      this.outputChannel.appendLine('[ConfigurationHandler] API key removed from secure storage');
+
+      // Refresh service configuration
+      await this.refreshServiceConfiguration();
+
+      // Send success status
+      const response: ApiKeyStatusMessage = {
+        type: MessageType.API_KEY_STATUS,
+        hasSavedKey: false,
+        timestamp: Date.now()
+      };
+      this.postMessage(response);
+
+      // Show user notification
+      vscode.window.showInformationMessage('API key cleared');
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[ConfigurationHandler] Error deleting API key: ${msg}`);
+      this.sendError('Failed to delete API key', msg);
     }
   }
 }

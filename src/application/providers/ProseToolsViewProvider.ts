@@ -8,6 +8,7 @@ import * as vscode from 'vscode';
 import { MessageHandler } from '../handlers/MessageHandler';
 import { IProseAnalysisService } from '../../domain/services/IProseAnalysisService';
 import { MessageType, SelectionUpdatedMessage } from '../../shared/types';
+import { SecretStorageService } from '../../infrastructure/secrets/SecretStorageService';
 
 export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'prose-minion.toolsView';
@@ -18,6 +19,7 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
   constructor(
     private readonly extensionUri: vscode.Uri,
     private readonly proseAnalysisService: IProseAnalysisService,
+    private readonly secretsService: SecretStorageService,
     private readonly outputChannel: vscode.OutputChannel
   ) {}
 
@@ -39,6 +41,7 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
     // Initialize message handler
     this.messageHandler = new MessageHandler(
       this.proseAnalysisService,
+      this.secretsService,
       webviewView.webview,
       this.extensionUri,
       this.outputChannel

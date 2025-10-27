@@ -50,7 +50,11 @@ import {
   UpdateSettingMessage,
   SettingsDataMessage,
   TokenUsageUpdateMessage,
-  ResetTokenUsageMessage
+  ResetTokenUsageMessage,
+  RequestApiKeyMessage,
+  ApiKeyStatusMessage,
+  UpdateApiKeyMessage,
+  DeleteApiKeyMessage
 } from './configuration';
 import {
   RequestPublishingStandardsDataMessage,
@@ -107,7 +111,10 @@ export type WebviewToExtensionMessage =
   | RequestActiveFileMessage
   | RequestManuscriptGlobsMessage
   | RequestChapterGlobsMessage
-  | ResetTokenUsageMessage;
+  | ResetTokenUsageMessage
+  | RequestApiKeyMessage
+  | UpdateApiKeyMessage
+  | DeleteApiKeyMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
@@ -128,4 +135,5 @@ export type ExtensionToWebviewMessage =
   | ManuscriptGlobsMessage
   | ChapterGlobsMessage
   | PublishingStandardsDataMessage
-  | TokenUsageUpdateMessage;
+  | TokenUsageUpdateMessage
+  | ApiKeyStatusMessage;

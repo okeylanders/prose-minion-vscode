@@ -65,6 +65,7 @@ export class MessageHandler {
 
   constructor(
     private readonly proseAnalysisService: IProseAnalysisService,
+    private readonly secretsService: any, // SecretStorageService
     private readonly webview: vscode.Webview,
     private readonly extensionUri: vscode.Uri,
     private readonly outputChannel: vscode.OutputChannel
@@ -132,6 +133,7 @@ export class MessageHandler {
 
     this.configurationHandler = new ConfigurationHandler(
       proseAnalysisService,
+      this.secretsService,
       outputChannel,
       this.postMessage.bind(this),
       this.sendError.bind(this),
@@ -227,6 +229,18 @@ export class MessageHandler {
 
         case MessageType.RESET_TOKEN_USAGE:
           await this.configurationHandler.handleResetTokenUsage();
+          break;
+
+        case MessageType.REQUEST_API_KEY:
+          await this.configurationHandler.handleRequestApiKey(message);
+          break;
+
+        case MessageType.UPDATE_API_KEY:
+          await this.configurationHandler.handleUpdateApiKey(message);
+          break;
+
+        case MessageType.DELETE_API_KEY:
+          await this.configurationHandler.handleDeleteApiKey(message);
           break;
 
         // Publishing
