@@ -51,11 +51,26 @@ export const App: React.FC = () => {
   useMessageRouter({
     [MessageType.SELECTION_UPDATED]: (msg) => selection.handleSelectionUpdated(msg, setActiveTab),
     [MessageType.SELECTION_DATA]: (msg) => selection.handleSelectionData(msg, setActiveTab, context.setContextText),
-    [MessageType.ANALYSIS_RESULT]: analysis.handleAnalysisResult,
-    [MessageType.METRICS_RESULT]: metrics.handleMetricsResult,
-    [MessageType.SEARCH_RESULT]: search.handleSearchResult,
-    [MessageType.DICTIONARY_RESULT]: dictionary.handleDictionaryResult,
-    [MessageType.CONTEXT_RESULT]: context.handleContextResult,
+    [MessageType.ANALYSIS_RESULT]: (msg) => {
+      analysis.handleAnalysisResult(msg);
+      setError(''); // Clear error on success
+    },
+    [MessageType.METRICS_RESULT]: (msg) => {
+      metrics.handleMetricsResult(msg);
+      setError(''); // Clear error on success
+    },
+    [MessageType.SEARCH_RESULT]: (msg) => {
+      search.handleSearchResult(msg);
+      setError(''); // Clear error on success
+    },
+    [MessageType.DICTIONARY_RESULT]: (msg) => {
+      dictionary.handleDictionaryResult(msg);
+      setError(''); // Clear error on success
+    },
+    [MessageType.CONTEXT_RESULT]: (msg) => {
+      context.handleContextResult(msg);
+      setError(''); // Clear error on success
+    },
     [MessageType.ACTIVE_FILE]: (msg) => {
       if (scopeRequester === 'search') search.handleActiveFile(msg); else metrics.handleActiveFile(msg);
       setScopeRequester(null);
