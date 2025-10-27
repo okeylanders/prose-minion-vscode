@@ -57,7 +57,16 @@ export class ConfigurationHandler {
       'wordSearch.clusterWindow': config.get<number>('wordSearch.clusterWindow') ?? 150,
       'wordSearch.minClusterSize': config.get<number>('wordSearch.minClusterSize') ?? 2,
       'wordSearch.caseSensitive': config.get<boolean>('wordSearch.caseSensitive') ?? false,
-      'wordSearch.enableAssistantExpansion': config.get<boolean>('wordSearch.enableAssistantExpansion') ?? false
+      'wordSearch.enableAssistantExpansion': config.get<boolean>('wordSearch.enableAssistantExpansion') ?? false,
+      // Context resource paths
+      'contextPaths.characters': config.get<string>('contextPaths.characters') ?? '',
+      'contextPaths.locations': config.get<string>('contextPaths.locations') ?? '',
+      'contextPaths.themes': config.get<string>('contextPaths.themes') ?? '',
+      'contextPaths.things': config.get<string>('contextPaths.things') ?? '',
+      'contextPaths.chapters': config.get<string>('contextPaths.chapters') ?? '',
+      'contextPaths.manuscript': config.get<string>('contextPaths.manuscript') ?? '',
+      'contextPaths.projectBrief': config.get<string>('contextPaths.projectBrief') ?? '',
+      'contextPaths.general': config.get<string>('contextPaths.general') ?? ''
     };
 
     const message_out = {
@@ -74,7 +83,8 @@ export class ConfigurationHandler {
         'ui.',
         'publishingStandards.',
         'wordFrequency.',
-        'wordSearch.'
+        'wordSearch.',
+        'contextPaths.'
       ];
       const allowedTop = new Set(['openRouterApiKey', 'includeCraftGuides', 'temperature', 'maxTokens']);
 

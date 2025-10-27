@@ -163,6 +163,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         </div>
       </section>
 
+      
+
       {/* Publishing Standards */}
       <section className="settings-section">
         <h3 className="settings-section-title">Publishing Standards</h3>
@@ -415,6 +417,111 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
           /> Enable Assistant Expansion
           <div className="settings-description">
             Uses the dictionary model to suggest synonyms and inflections when enabled. (Coming soon)
+          </div>
+        </label>
+      </section>
+
+      {/* Context Resource Paths (moved to bottom) */}
+      <section className="settings-section">
+        <h3 className="settings-section-title">Context Resource Paths</h3>
+        <div className="settings-description" style={{ marginBottom: 8 }}>
+          Comma-separated glob patterns that tell the Context Assistant and certain metrics where to look for project files.
+          Patterns are matched against your workspace folders; only .md and .txt files are indexed. Use <code>**</code> to search subfolders.
+        </div>
+
+        <label className="settings-label">
+          <div className="settings-label-title">Characters</div>
+          <textarea
+            value={asString('contextPaths.characters')}
+            onChange={(e) => onUpdate('contextPaths.characters', e.target.value)}
+            className="settings-textarea"
+          />
+          <div className="settings-description">
+            Glob patterns for character reference files. Example: characters/**/*, Characters/**/*
+          </div>
+        </label>
+
+        <label className="settings-label">
+          <div className="settings-label-title">Locations &amp; Settings</div>
+          <textarea
+            value={asString('contextPaths.locations')}
+            onChange={(e) => onUpdate('contextPaths.locations', e.target.value)}
+            className="settings-textarea"
+          />
+          <div className="settings-description">
+            Glob patterns for setting/location files. Example: locations/**/*, Locations/**/*, Locations-Settings/**/*
+          </div>
+        </label>
+
+        <label className="settings-label">
+          <div className="settings-label-title">Themes</div>
+          <textarea
+            value={asString('contextPaths.themes')}
+            onChange={(e) => onUpdate('contextPaths.themes', e.target.value)}
+            className="settings-textarea"
+          />
+          <div className="settings-description">
+            Glob patterns for theme notebooks. Example: themes/**/*, Themes/**/*
+          </div>
+        </label>
+
+        <label className="settings-label">
+          <div className="settings-label-title">Things / Props</div>
+          <textarea
+            value={asString('contextPaths.things')}
+            onChange={(e) => onUpdate('contextPaths.things', e.target.value)}
+            className="settings-textarea"
+          />
+          <div className="settings-description">
+            Glob patterns for notable objects or props. Example: things/**/*, Things/**/*
+          </div>
+        </label>
+
+        <label className="settings-label">
+          <div className="settings-label-title">Draft Chapters &amp; Outlines</div>
+          <textarea
+            value={asString('contextPaths.chapters')}
+            onChange={(e) => onUpdate('contextPaths.chapters', e.target.value)}
+            className="settings-textarea"
+          />
+          <div className="settings-description">
+            Glob patterns for draft chapters and outlines. Example: drafts/**/*, Drafts/**/*, outlines/**/*, Outlines/**/*
+          </div>
+        </label>
+
+        <label className="settings-label">
+          <div className="settings-label-title">Manuscript Chapters</div>
+          <textarea
+            value={asString('contextPaths.manuscript')}
+            onChange={(e) => onUpdate('contextPaths.manuscript', e.target.value)}
+            className="settings-textarea"
+          />
+          <div className="settings-description">
+            Glob patterns for polished manuscript chapters. Example: manuscript/**/*, Manuscript/**/*
+          </div>
+        </label>
+
+        <label className="settings-label">
+          <div className="settings-label-title">Project Brief Materials</div>
+          <textarea
+            value={asString('contextPaths.projectBrief')}
+            onChange={(e) => onUpdate('contextPaths.projectBrief', e.target.value)}
+            className="settings-textarea"
+          />
+          <div className="settings-description">
+            Glob patterns for brief/proposal materials. Example: brief/**/*, Brief/**/*
+          </div>
+        </label>
+
+        <label className="settings-label">
+          <div className="settings-label-title">General References</div>
+          <textarea
+            value={asString('contextPaths.general')}
+            onChange={(e) => onUpdate('contextPaths.general', e.target.value)}
+            className="settings-textarea"
+          />
+          <div className="settings-description">
+            Glob patterns for general references and guides (synopsis, tone guides, world bibles, etc.). Only .md/.txt are used.
           </div>
         </label>
       </section>
