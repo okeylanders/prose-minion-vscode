@@ -50,7 +50,7 @@ Successfully refactored the presentation layer from a monolithic "God Component"
 - `usePersistedState<T>()` - Hydrate from `vscode.getState`
 - Generic type support for any state shape
 
-**useMessageRouter.ts** (56 lines)
+**useMessageRouter.ts** (63 lines)
 - Strategy pattern: `MessageType → Handler` registry
 - Stable event listener (no re-registration)
 - Type-safe handler signatures via `Partial<Record<MessageType, Handler>>`
@@ -69,7 +69,7 @@ Successfully refactored the presentation layer from a monolithic "God Component"
 - Syncs with extension via `postMessage`
 - Persistence support
 
-**useSettings.ts** (265 lines)
+**useSettings.ts** (277 lines)
 - State: `showSettings`, `settingsData`, `tokenTotals`, `showTokenWidget`, `apiKeyInput`, `hasSavedKey`, `modelOptions`, `modelSelections`
 - Actions: `open`, `close`, `toggle`, `updateSetting`, `resetTokens`, `toggleTokenWidget`, `setModelSelection`, `saveApiKey`, `clearApiKey`
 - Handles body overflow when overlay is open
@@ -260,15 +260,15 @@ usePersistence({
 
 ### TypeScript Compilation Errors (12 total)
 
-1. **Error message typing** (`App.tsx:70`)
+1. **Error message typing** (`App.tsx:~60–80`)
    - `message.message` doesn't exist on all `ExtensionToWebviewMessage` types
    - Need to narrow type to `ErrorMessage`
 
-2. **TabBar prop mismatch** (`App.tsx:140`)
+2. **TabBar prop mismatch** (`App.tsx: header TabBar`)
    - `onSettingsClick` not in `TabBarProps`
    - Check actual TabBar component props
 
-3. **API key prop naming** (`App.tsx:184`)
+3. **API key prop naming** (`App.tsx: SettingsOverlay props`)
    - `onClear` should be `onDelete`
    - Update `useSettings` to use `onDelete`
 
@@ -280,10 +280,14 @@ usePersistence({
    - Missing: `onPathTextChange`
    - Add this handler to `useSearch`
 
-6. **useSettings message types** (`useSettings.ts:186, 201`)
-   - `MessageType.TOGGLE_TOKEN_WIDGET` doesn't exist
-   - `MessageType.SET_MODEL` doesn't exist
-   - Check actual message type enum and fix
+6. **useSettings message types** (`useSettings.ts`)
+   - Replace `TOGGLE_TOKEN_WIDGET` with `UPDATE_SETTING` for `ui.showTokenWidget`
+   - Replace `SET_MODEL` with `SET_MODEL_SELECTION`
+   - Use `MODEL_DATA` / `REQUEST_MODEL_DATA` for model options
+
+7. **App.tsx message enums**
+   - Replace `STATUS_MESSAGE` with `STATUS`
+   - Replace `MODEL_OPTIONS_DATA` with `MODEL_DATA`
 
 ### Testing Required
 - ✅ TypeScript compilation (12 errors to fix)

@@ -12,7 +12,8 @@ import { MessageType, ExtensionToWebviewMessage } from '../../../shared/types';
  * Message handler function type
  * Accepts a message and performs some action
  */
-type MessageHandler<T = ExtensionToWebviewMessage> = (message: T) => void;
+// Loosen parameter typing to accept domain-specific handlers without friction
+type MessageHandler = (message: any) => void;
 
 /**
  * Map of MessageType to handler functions

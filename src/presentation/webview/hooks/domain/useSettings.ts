@@ -182,9 +182,11 @@ export const useSettings = (): UseSettingsReturn => {
   const toggleTokenWidget = React.useCallback(() => {
     setShowTokenWidget((prev) => {
       const next = !prev;
+      // Persist UI preference via generic settings update
       vscode.postMessage({
-        type: MessageType.TOGGLE_TOKEN_WIDGET,
-        show: next,
+        type: MessageType.UPDATE_SETTING,
+        key: 'ui.showTokenWidget',
+        value: next,
         timestamp: Date.now(),
       });
       return next;
@@ -198,7 +200,7 @@ export const useSettings = (): UseSettingsReturn => {
         [scope]: model,
       }));
       vscode.postMessage({
-        type: MessageType.SET_MODEL,
+        type: MessageType.SET_MODEL_SELECTION,
         scope,
         model,
         timestamp: Date.now(),

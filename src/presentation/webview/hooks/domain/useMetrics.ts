@@ -27,6 +27,8 @@ export interface MetricsActions {
   setActiveTool: (tool: MetricsTool) => void;
   setLoading: (loading: boolean) => void;
   setSourceMode: (mode: TextSourceMode) => void;
+  setPathText: (text: string) => void;
+  clearSubtoolResult: (tool: MetricsTool) => void;
   clearResults: () => void;
 }
 
@@ -116,6 +118,14 @@ export const useMetrics = (): UseMetricsReturn => {
     setMetricsByTool({});
   }, []);
 
+  const clearSubtoolResult = React.useCallback((tool: MetricsTool) => {
+    setMetricsByTool((prev) => {
+      const next = { ...prev };
+      delete next[tool];
+      return next;
+    });
+  }, []);
+
   return {
     // State
     metricsByTool,
@@ -132,7 +142,9 @@ export const useMetrics = (): UseMetricsReturn => {
     setActiveTool,
     setLoading,
     setSourceMode,
+    setPathText,
     clearResults,
+    clearSubtoolResult,
 
     // Persistence
     persistedState: {

@@ -58,10 +58,10 @@ export const App: React.FC = () => {
     [MessageType.ACTIVE_FILE]: metrics.handleActiveFile,
     [MessageType.MANUSCRIPT_GLOBS]: metrics.handleManuscriptGlobs,
     [MessageType.CHAPTER_GLOBS]: metrics.handleChapterGlobs,
-    [MessageType.STATUS_MESSAGE]: (msg) => analysis.handleStatusMessage(msg, context.loadingRef),
+    [MessageType.STATUS]: (msg) => analysis.handleStatusMessage(msg, context.loadingRef),
     [MessageType.SETTINGS_DATA]: settings.handleSettingsData,
     [MessageType.API_KEY_STATUS]: settings.handleApiKeyStatus,
-    [MessageType.MODEL_OPTIONS_DATA]: settings.handleModelOptionsData,
+    [MessageType.MODEL_DATA]: settings.handleModelOptionsData,
     [MessageType.PUBLISHING_STANDARDS_DATA]: publishing.handlePublishingStandardsData,
     [MessageType.OPEN_SETTINGS]: settings.open,
     [MessageType.OPEN_SETTINGS_TOGGLE]: settings.toggle,
@@ -137,7 +137,6 @@ export const App: React.FC = () => {
         <TabBar
           activeTab={activeTab}
           onTabChange={handleTabChange}
-          onSettingsClick={settings.toggle}
         />
 
         <svg className="settings-icon" width="20" height="20" viewBox="0 0 20 20" onClick={settings.toggle}>
@@ -181,7 +180,7 @@ export const App: React.FC = () => {
             hasSavedKey: settings.hasSavedKey,
             onInputChange: settings.setApiKeyInput,
             onSave: settings.saveApiKey,
-            onClear: settings.clearApiKey,
+            onDelete: settings.clearApiKey,
           }}
         />
 
@@ -231,6 +230,8 @@ export const App: React.FC = () => {
             sourceMode={metrics.sourceMode}
             pathText={metrics.pathText}
             onSourceModeChange={metrics.setSourceMode}
+            onPathTextChange={metrics.setPathText}
+            onClearSubtoolResult={metrics.clearSubtoolResult}
           />
         )}
 
@@ -245,6 +246,7 @@ export const App: React.FC = () => {
             sourceMode={metrics.sourceMode}
             pathText={metrics.pathText}
             onSourceModeChange={metrics.setSourceMode}
+            onPathTextChange={metrics.setPathText}
           />
         )}
 
