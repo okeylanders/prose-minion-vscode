@@ -93,11 +93,33 @@ export const App: React.FC = () => {
     [MessageType.SAVE_RESULT_SUCCESS]: (msg) => console.log('Result saved to', msg.filePath),
     [MessageType.ERROR]: (msg) => {
       setError(msg.message);
-      analysis.setLoading(false);
-      metrics.setLoading(false);
-      dictionary.setLoading(false);
-      context.setLoading(false);
-      search.setLoading(false);
+
+      // Clear loading state only for the domain that errored
+      // This prevents cross-tab error interference (e.g., analysis still running when search errors)
+      const source = msg.source || 'unknown';
+
+      if (source.startsWith('metrics.')) {
+        // Any metrics subtool error clears metrics loading
+        metrics.setLoading(false);
+      } else if (source === 'search') {
+        search.setLoading(false);
+      } else if (source === 'analysis') {
+        analysis.setLoading(false);
+      } else if (source === 'dictionary') {
+        dictionary.setLoading(false);
+      } else if (source === 'context') {
+        context.setLoading(false);
+      } else if (source.startsWith('settings.') || source.startsWith('file_ops.') || source.startsWith('ui.') || source === 'publishing') {
+        // Settings, file ops, UI, publishing errors don't have loading states to clear
+        // Error message display is sufficient
+      } else {
+        // Unknown source - clear all as fallback for safety
+        analysis.setLoading(false);
+        metrics.setLoading(false);
+        dictionary.setLoading(false);
+        context.setLoading(false);
+        search.setLoading(false);
+      }
     },
   });
 

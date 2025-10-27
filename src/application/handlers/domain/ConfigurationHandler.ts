@@ -18,7 +18,8 @@ import {
   ApiKeyStatusMessage,
   UpdateApiKeyMessage,
   DeleteApiKeyMessage,
-  MessageType
+  MessageType,
+  ErrorSource
 } from '../../../shared/types/messages';
 import { OpenRouterModels } from '../../../infrastructure/api/OpenRouterModels';
 import { SecretStorageService } from '../../../infrastructure/secrets/SecretStorageService';
@@ -29,7 +30,7 @@ export class ConfigurationHandler {
     private readonly secretsService: SecretStorageService,
     private readonly outputChannel: vscode.OutputChannel,
     private readonly postMessage: (message: any) => void,
-    private readonly sendError: (message: string, details?: string) => void,
+    private readonly sendError: (source: ErrorSource, message: string, details?: string) => void,
     private readonly sharedResultCache: any,
     private readonly tokenTotals: { promptTokens: number; completionTokens: number; totalTokens: number }
   ) {}
@@ -105,7 +106,7 @@ export class ConfigurationHandler {
       await this.sendModelData();
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('Failed to update setting', msg);
+      this.sendError('settings.general', 'Failed to update setting', msg);
     }
   }
 
@@ -139,7 +140,7 @@ export class ConfigurationHandler {
       this.outputChannel.appendLine(
         `[ConfigurationHandler] Failed to update model selection for ${message.scope}: ${message_err}`
       );
-      this.sendError('Failed to update model selection', message_err);
+      this.sendError('settings.model', 'Failed to update model selection', message_err);
     }
   }
 
@@ -185,7 +186,7 @@ export class ConfigurationHandler {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[ConfigurationHandler] Failed to load model data: ${message}`);
-      this.sendError('Failed to load model list', message);
+      this.sendError('settings.model', 'Failed to load model list', message);
     }
   }
 
@@ -261,7 +262,7 @@ export class ConfigurationHandler {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[ConfigurationHandler] Error retrieving API key status: ${msg}`);
-      this.sendError('Failed to retrieve API key status', msg);
+      this.sendError('settings.api_key', 'Failed to retrieve API key status', msg);
     }
   }
 
@@ -290,7 +291,7 @@ export class ConfigurationHandler {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[ConfigurationHandler] Error saving API key: ${msg}`);
-      this.sendError('Failed to save API key', msg);
+      this.sendError('settings.api_key', 'Failed to save API key', msg);
     }
   }
 
@@ -315,7 +316,7 @@ export class ConfigurationHandler {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[ConfigurationHandler] Error deleting API key: ${msg}`);
-      this.sendError('Failed to delete API key', msg);
+      this.sendError('settings.api_key', 'Failed to delete API key', msg);
     }
   }
 }

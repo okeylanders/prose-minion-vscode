@@ -8,7 +8,8 @@ import { IProseAnalysisService } from '../../../domain/services/IProseAnalysisSe
 import {
   MeasureProseStatsMessage,
   MeasureStyleFlagsMessage,
-  MeasureWordFrequencyMessage
+  MeasureWordFrequencyMessage,
+  ErrorSource
 } from '../../../shared/types/messages';
 
 export class MetricsHandler {
@@ -16,7 +17,7 @@ export class MetricsHandler {
     private readonly service: IProseAnalysisService,
     private readonly outputChannel: vscode.OutputChannel,
     private readonly sendMetricsResult: (result: any, toolName: string) => void,
-    private readonly sendError: (message: string, details?: string) => void
+    private readonly sendError: (source: ErrorSource, message: string, details?: string) => void
   ) {}
 
   async handleMeasureProseStats(message: MeasureProseStatsMessage): Promise<void> {
@@ -26,7 +27,7 @@ export class MetricsHandler {
       this.sendMetricsResult(result.metrics, result.toolName);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('Invalid selection or path', msg);
+      this.sendError('metrics.prose_stats', 'Invalid selection or path', msg);
     }
   }
 
@@ -37,7 +38,7 @@ export class MetricsHandler {
       this.sendMetricsResult(result.metrics, result.toolName);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('Invalid selection or path', msg);
+      this.sendError('metrics.style_flags', 'Invalid selection or path', msg);
     }
   }
 
@@ -48,7 +49,7 @@ export class MetricsHandler {
       this.sendMetricsResult(result.metrics, result.toolName);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('Invalid selection or path', msg);
+      this.sendError('metrics.word_frequency', 'Invalid selection or path', msg);
     }
   }
 

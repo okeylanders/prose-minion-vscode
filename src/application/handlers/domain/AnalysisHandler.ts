@@ -8,7 +8,8 @@ import { IProseAnalysisService } from '../../../domain/services/IProseAnalysisSe
 import {
   AnalyzeDialogueMessage,
   AnalyzeProseMessage,
-  TokenUsage
+  TokenUsage,
+  ErrorSource
 } from '../../../shared/types/messages';
 
 export class AnalysisHandler {
@@ -16,7 +17,7 @@ export class AnalysisHandler {
     private readonly service: IProseAnalysisService,
     private readonly sendStatus: (message: string, guideNames?: string) => void,
     private readonly sendAnalysisResult: (result: string, toolName: string, usedGuides?: string[]) => void,
-    private readonly sendError: (message: string, details?: string) => void,
+    private readonly sendError: (source: ErrorSource, message: string, details?: string) => void,
     private readonly applyTokenUsage: (usage: TokenUsage) => void
   ) {}
 

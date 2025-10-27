@@ -8,7 +8,8 @@ import {
   RequestPublishingStandardsDataMessage,
   SetPublishingPresetMessage,
   SetPublishingTrimMessage,
-  MessageType
+  MessageType,
+  ErrorSource
 } from '../../../shared/types/messages';
 import { PublishingStandardsRepository } from '../../../infrastructure/standards/PublishingStandardsRepository';
 
@@ -17,7 +18,7 @@ export class PublishingHandler {
     private readonly extensionUri: vscode.Uri,
     private readonly outputChannel: vscode.OutputChannel,
     private readonly postMessage: (message: any) => void,
-    private readonly sendError: (message: string, details?: string) => void
+    private readonly sendError: (source: ErrorSource, message: string, details?: string) => void
   ) {}
 
   async handleRequestPublishingStandardsData(message: RequestPublishingStandardsDataMessage): Promise<void> {
@@ -50,7 +51,7 @@ export class PublishingHandler {
       this.postMessage(payload);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('Failed to load publishing standards', msg);
+      this.sendError('publishing', 'Failed to load publishing standards', msg);
     }
   }
 
@@ -61,7 +62,7 @@ export class PublishingHandler {
       await this.handleRequestPublishingStandardsData({} as any);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('Failed to update publishing preset', msg);
+      this.sendError('publishing', 'Failed to update publishing preset', msg);
     }
   }
 
@@ -72,7 +73,7 @@ export class PublishingHandler {
       await this.handleRequestPublishingStandardsData({} as any);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('Failed to update trim size', msg);
+      this.sendError('publishing', 'Failed to update trim size', msg);
     }
   }
 }

@@ -8,7 +8,8 @@ import {
   OpenGuideFileMessage,
   RequestSelectionMessage,
   SelectionDataMessage,
-  MessageType
+  MessageType,
+  ErrorSource
 } from '../../../shared/types/messages';
 
 export class UIHandler {
@@ -17,7 +18,7 @@ export class UIHandler {
     private readonly outputChannel: vscode.OutputChannel,
     private readonly postMessage: (message: any) => void,
     private readonly sendStatus: (message: string, guideNames?: string) => void,
-    private readonly sendError: (message: string, details?: string) => void
+    private readonly sendError: (source: ErrorSource, message: string, details?: string) => void
   ) {}
 
   async handleOpenGuideFile(message: OpenGuideFileMessage): Promise<void> {
@@ -40,7 +41,7 @@ export class UIHandler {
       } catch (statError) {
         const errorMsg = `Guide file not found: ${guideUri.fsPath}`;
         this.outputChannel.appendLine(`[UIHandler] ERROR: ${errorMsg}`);
-        this.sendError('Guide file not found', errorMsg);
+        this.sendError('ui.guide', 'Guide file not found', errorMsg);
         return;
       }
 
@@ -56,6 +57,7 @@ export class UIHandler {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[UIHandler] ERROR opening guide: ${message.guidePath} - ${errorMsg}`);
       this.sendError(
+        'ui.guide',
         'Failed to open guide file',
         errorMsg
       );

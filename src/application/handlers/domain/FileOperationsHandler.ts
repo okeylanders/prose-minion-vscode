@@ -9,7 +9,8 @@ import {
   SaveResultMessage,
   SaveResultSuccessMessage,
   SaveResultMetadata,
-  MessageType
+  MessageType,
+  ErrorSource
 } from '../../../shared/types/messages';
 
 export class FileOperationsHandler {
@@ -17,7 +18,7 @@ export class FileOperationsHandler {
     private readonly outputChannel: vscode.OutputChannel,
     private readonly postMessage: (message: any) => void,
     private readonly sendStatus: (message: string, guideNames?: string) => void,
-    private readonly sendError: (message: string, details?: string) => void
+    private readonly sendError: (source: ErrorSource, message: string, details?: string) => void
   ) {}
 
   async handleCopyResult(message: CopyResultMessage): Promise<void> {
@@ -42,7 +43,7 @@ export class FileOperationsHandler {
       this.sendStatus('Result copied to clipboard.');
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('Failed to copy result to clipboard', msg);
+      this.sendError('file_ops.copy', 'Failed to copy result to clipboard', msg);
     }
   }
 
@@ -83,7 +84,7 @@ export class FileOperationsHandler {
       this.sendStatus(`Saved result to ${savedPath}`);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('Failed to save result', msg);
+      this.sendError('file_ops.save', 'Failed to save result', msg);
     }
   }
 

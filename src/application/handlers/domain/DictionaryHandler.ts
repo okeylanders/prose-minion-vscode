@@ -6,7 +6,8 @@
 import { IProseAnalysisService } from '../../../domain/services/IProseAnalysisService';
 import {
   LookupDictionaryMessage,
-  TokenUsage
+  TokenUsage,
+  ErrorSource
 } from '../../../shared/types/messages';
 
 export class DictionaryHandler {
@@ -14,13 +15,13 @@ export class DictionaryHandler {
     private readonly service: IProseAnalysisService,
     private readonly sendStatus: (message: string, guideNames?: string) => void,
     private readonly sendDictionaryResult: (result: string, toolName: string) => void,
-    private readonly sendError: (message: string, details?: string) => void,
+    private readonly sendError: (source: ErrorSource, message: string, details?: string) => void,
     private readonly applyTokenUsage: (usage: TokenUsage) => void
   ) {}
 
   async handleLookupDictionary(message: LookupDictionaryMessage): Promise<void> {
     if (!message.word.trim()) {
-      this.sendError('Dictionary lookup requires a word to search');
+      this.sendError('dictionary', 'Dictionary lookup requires a word to search');
       return;
     }
 

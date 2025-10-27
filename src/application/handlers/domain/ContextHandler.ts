@@ -7,7 +7,8 @@ import { IProseAnalysisService } from '../../../domain/services/IProseAnalysisSe
 import { ContextGenerationResult } from '../../../domain/models/ContextGeneration';
 import {
   GenerateContextMessage,
-  TokenUsage
+  TokenUsage,
+  ErrorSource
 } from '../../../shared/types/messages';
 
 export class ContextHandler {
@@ -15,13 +16,13 @@ export class ContextHandler {
     private readonly service: IProseAnalysisService,
     private readonly sendStatus: (message: string, guideNames?: string) => void,
     private readonly sendContextResult: (result: ContextGenerationResult) => void,
-    private readonly sendError: (message: string, details?: string) => void,
+    private readonly sendError: (source: ErrorSource, message: string, details?: string) => void,
     private readonly applyTokenUsage: (usage: TokenUsage) => void
   ) {}
 
   async handleGenerateContext(message: GenerateContextMessage): Promise<void> {
     if (!message.excerpt.trim()) {
-      this.sendError('Context assistant needs an excerpt to analyze.');
+      this.sendError('context', 'Context assistant needs an excerpt to analyze.');
       return;
     }
 

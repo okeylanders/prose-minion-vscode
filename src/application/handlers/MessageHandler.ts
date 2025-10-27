@@ -16,6 +16,7 @@ import {
   ContextResultMessage,
   SearchResultMessage,
   ErrorMessage,
+  ErrorSource,
   StatusMessage,
   ExtensionToWebviewMessage,
   TokenUsageUpdateMessage,
@@ -299,10 +300,11 @@ export class MessageHandler {
           break;
 
         default:
-          this.sendError('Unknown message type', 'Received unrecognized message');
+          this.sendError('unknown', 'Unknown message type', 'Received unrecognized message');
       }
     } catch (error) {
       this.sendError(
+        'unknown',
         'Error processing request',
         error instanceof Error ? error.message : String(error)
       );
@@ -415,9 +417,10 @@ export class MessageHandler {
     void this.postMessage(statusMessage);
   }
 
-  private sendError(message: string, details?: string): void {
+  private sendError(source: ErrorSource, message: string, details?: string): void {
     const errorMessage: ErrorMessage = {
       type: MessageType.ERROR,
+      source,
       message,
       details,
       timestamp: Date.now()
@@ -427,7 +430,7 @@ export class MessageHandler {
     sharedResultCache.dictionary = undefined;
     sharedResultCache.context = undefined;
     void this.postMessage(errorMessage);
-    this.outputChannel.appendLine(`[MessageHandler] ERROR: ${message}${details ? ` - ${details}` : ''}`);
+    this.outputChannel.appendLine(`[MessageHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
   }
 
   private async refreshServiceConfiguration(): Promise<void> {

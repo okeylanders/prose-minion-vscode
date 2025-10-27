@@ -5,14 +5,14 @@
 
 import * as vscode from 'vscode';
 import { IProseAnalysisService } from '../../../domain/services/IProseAnalysisService';
-import { RunWordSearchMessage } from '../../../shared/types/messages';
+import { RunWordSearchMessage, ErrorSource } from '../../../shared/types/messages';
 
 export class SearchHandler {
   constructor(
     private readonly service: IProseAnalysisService,
     private readonly outputChannel: vscode.OutputChannel,
     private readonly sendSearchResult: (result: any, toolName: string) => void,
-    private readonly sendError: (message: string, details?: string) => void
+    private readonly sendError: (source: ErrorSource, message: string, details?: string) => void
   ) {}
 
   async handleMeasureWordSearch(message: RunWordSearchMessage): Promise<void> {
@@ -43,7 +43,7 @@ export class SearchHandler {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[SearchHandler] ERROR: ${msg}`);
-      this.sendError('Invalid selection or path', msg);
+      this.sendError('search', 'Invalid selection or path', msg);
     }
   }
 
