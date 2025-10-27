@@ -110,6 +110,8 @@ export const App: React.FC = () => {
   const [publishingTrimKey, setPublishingTrimKey] = React.useState<string>('');
   const [publishingGenres, setPublishingGenres] = React.useState<Array<{ key: string; name: string; abbreviation?: string; pageSizes: Array<{ key: string; label: string }> }>>([]);
   const [dictionaryInjection, setDictionaryInjection] = React.useState<{ word?: string; context?: string; sourceUri?: string; relativePath?: string; timestamp: number } | null>(null);
+  const [apiKeyInput, setApiKeyInput] = React.useState('');
+  const [hasSavedKey, setHasSavedKey] = React.useState(false);
 
   const contextLoadingRef = React.useRef(contextLoading);
 
@@ -379,6 +381,9 @@ export const App: React.FC = () => {
         case MessageType.TOKEN_USAGE_UPDATE:
           setTokenTotals(message.totals || { promptTokens: 0, completionTokens: 0, totalTokens: 0 });
           break;
+        case MessageType.API_KEY_STATUS:
+          setHasSavedKey(message.hasSavedKey);
+          break;
       }
     };
 
@@ -392,6 +397,9 @@ export const App: React.FC = () => {
   React.useEffect(() => {
     vscode.postMessage({
       type: MessageType.REQUEST_MODEL_DATA
+    });
+    vscode.postMessage({
+      type: MessageType.REQUEST_API_KEY
     });
   }, []);
 
@@ -560,6 +568,22 @@ export const App: React.FC = () => {
             genres: publishingGenres,
             onPresetChange: handleSetPublishingPreset,
             onTrimChange: handleSetPublishingTrim
+          }}
+          apiKey={{
+            input: apiKeyInput,
+            hasSavedKey: hasSavedKey,
+            onInputChange: setApiKeyInput,
+            onSave: () => {
+              if (!apiKeyInput.trim()) return;
+              vscode.postMessage({
+                type: MessageType.UPDATE_API_KEY,
+                apiKey: apiKeyInput.trim()
+              });
+              setApiKeyInput('');
+            },
+            onDelete: () => {
+              vscode.postMessage({ type: MessageType.DELETE_API_KEY });
+            }
           }}
         />
         {error && (
