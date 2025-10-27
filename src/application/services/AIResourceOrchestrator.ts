@@ -295,10 +295,12 @@ export class AIResourceOrchestrator {
 
       if (!resourceRequest.hasResourceRequest) {
         const cleaned = ContextResourceRequestParser.stripRequestTags(response.content);
+        const truncatedNote = this.appendTruncationNote(response.content, response.finishReason);
         return {
-          content: cleaned,
+          content: cleaned + truncatedNote,
           usedGuides: [],
-          requestedResources: deliveredResources
+          requestedResources: deliveredResources,
+          usage: totalUsage
         };
       }
 
