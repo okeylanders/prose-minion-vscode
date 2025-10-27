@@ -77,7 +77,8 @@ import {
   SelectionDataMessage,
   SelectionUpdatedMessage,
   OpenSettingsMessage,
-  OpenSettingsToggleMessage
+  OpenSettingsToggleMessage,
+  WebviewErrorMessage
 } from './ui';
 import {
   ErrorMessage,
@@ -114,7 +115,8 @@ export type WebviewToExtensionMessage =
   | ResetTokenUsageMessage
   | RequestApiKeyMessage
   | UpdateApiKeyMessage
-  | DeleteApiKeyMessage;
+  | DeleteApiKeyMessage
+  | WebviewErrorMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage

@@ -43,3 +43,10 @@ export interface OpenSettingsMessage extends BaseMessage {
 export interface OpenSettingsToggleMessage extends BaseMessage {
   type: MessageType.OPEN_SETTINGS_TOGGLE;
 }
+
+// Webview diagnostics → extension output channel
+export interface WebviewErrorMessage extends BaseMessage {
+  type: MessageType.WEBVIEW_ERROR;
+  message: string;
+  details?: string;
+}

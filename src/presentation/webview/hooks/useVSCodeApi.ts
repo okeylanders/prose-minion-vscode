@@ -10,9 +10,18 @@ import * as React from 'react';
 // VSCode API type definition
 declare function acquireVsCodeApi(): any;
 
+// Ensure we only acquire the API once per webview lifecycle
+let cachedApi: any | undefined;
+const getVSCodeApi = () => {
+  if (!cachedApi) {
+    cachedApi = acquireVsCodeApi();
+  }
+  return cachedApi;
+};
+
 /**
  * Custom hook that wraps the VSCode webview API
- * Returns a stable reference to the API instance
+ * Returns a stable reference to the API singleton
  *
  * @example
  * ```tsx
@@ -21,6 +30,6 @@ declare function acquireVsCodeApi(): any;
  * ```
  */
 export const useVSCodeApi = () => {
-  const vscode = React.useRef(acquireVsCodeApi());
-  return vscode.current;
+  const api = React.useMemo(getVSCodeApi, []);
+  return api;
 };

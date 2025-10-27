@@ -117,11 +117,11 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; img-src ${webview.cspSource} https: data:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'nonce-${nonce}'; img-src ${webview.cspSource} https: data:;">
   <title>Prose Minion Tools</title>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root" style="padding:8px;font-family:var(--vscode-font-family);color:var(--vscode-foreground)">Loading Prose Minion…</div>
   <script nonce="${nonce}">
     window.proseMinonAssets = {
       vhsLoadingGif: "${vhsLoadingGifUri}",
@@ -140,6 +140,17 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
         'assistant-working-distorted-screen.gif': { label: 'E270', href: 'https://www.pinterest.com/pin/21462535717701169/' }
       }
     };
+  </script>
+  <script nonce="${nonce}">
+    console.log('[Prose Minion] Webview HTML loaded');
+    window.addEventListener('error', function (e) {
+      try {
+        const el = document.getElementById('root');
+        if (el) el.textContent = 'Webview error: ' + (e?.message || 'unknown');
+        // Forward to extension output channel if API is available
+        try { const vscode = acquireVsCodeApi && acquireVsCodeApi(); vscode && vscode.postMessage && vscode.postMessage({ type: 'webview_error', message: e?.message || 'unknown' }); } catch {}
+      } catch {}
+    });
   </script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>

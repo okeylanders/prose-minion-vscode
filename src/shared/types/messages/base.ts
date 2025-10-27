@@ -74,6 +74,9 @@ export enum MessageType {
   API_KEY_STATUS = 'api_key_status',
   UPDATE_API_KEY = 'update_api_key',
   DELETE_API_KEY = 'delete_api_key'
+  ,
+  // Webview diagnostics
+  WEBVIEW_ERROR = 'webview_error'
 }
 
 export enum TabId {

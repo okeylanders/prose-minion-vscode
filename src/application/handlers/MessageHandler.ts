@@ -282,6 +282,13 @@ export class MessageHandler {
           // Tab change is handled in UI, no action needed
           break;
 
+        // Diagnostics from the webview
+        case MessageType.WEBVIEW_ERROR: {
+          const m = message as any;
+          this.outputChannel.appendLine(`[Webview Error] ${m.message}${m.details ? ` - ${m.details}` : ''}`);
+          break;
+        }
+
         // File Operations
         case MessageType.COPY_RESULT:
           await this.fileOperationsHandler.handleCopyResult(message);
