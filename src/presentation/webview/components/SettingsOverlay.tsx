@@ -74,7 +74,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             className="settings-input"
           />
           <div className="settings-description">
-            Requires an OpenRouter pay‑as‑you‑go account for AI features. OpenRouter routes to leading models with configurable privacy (no logging, no training). Learn more at <a href="https://openrouter.ai/" target="_blank" rel="noreferrer">openrouter.ai</a>.
+            Requires an OpenRouter pay‑as‑you‑go account for AI features. OpenRouter routes to leading models with configurable privacy (no logging, no training). Learn more at <a href="https://openrouter.ai/" target="_blank" rel="noopener">openrouter.ai</a>.
           </div>
         </label>
       </section>
