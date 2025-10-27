@@ -198,6 +198,8 @@ Notes:
 
 ### 8. Context Resource Paths
 
+These can be edited either in VS Code Settings or in the in‑app Settings overlay under “Context Resource Paths” (bottom of the panel). Values update immediately and are picked up by the Context Assistant on the next run.
+
 **Settings (comma-separated globs)**
 
 | Group | Key | Default |

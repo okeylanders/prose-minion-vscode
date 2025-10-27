@@ -3,6 +3,7 @@
   "displayName": "Prose Minion",
   "description": "AI-powered prose analysis and writing assistance for creative writers",
   "version": "0.0.1",
+  "license": "SEE LICENSE",
   "publisher": "your-publisher-name",
   "engines": {
     "vscode": "^1.75.0"

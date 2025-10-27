@@ -41,3 +41,11 @@ We need a first‑class, in‑app settings experience so non‑technical users c
 ## Links
  - Sprint 5 — Settings Module: `.todo/epics/epic-search-architecture-2025-10-19/sprints/05-settings-module.md`
  - Branch: `sprint/epic-search-arch-05-settings-module`
+
+## Update Log
+
+2025-10-27 — UI polish and context paths
+- Header layout: switched to a centered grid with a default “stacked” variant (icon above title). See `docs/settings-header-layout.md` for alternatives.
+- Added a “Context Resource Paths” section to the overlay (bottom). The following keys are surfaced and persisted:
+  - `proseMinion.contextPaths.{characters,locations,themes,things,chapters,manuscript,projectBrief,general}`
+- Configuration handler now includes these keys in `SETTINGS_DATA` and allows updates via `UPDATE_SETTING` (prefix allowlist adds `contextPaths.`).

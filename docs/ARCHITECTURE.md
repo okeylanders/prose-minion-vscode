@@ -12,7 +12,19 @@ Recent updates introduce multi-model orchestration, unified token budgeting, exp
 src/
 ├── application/          # Application Layer
 │   ├── providers/        # VS Code providers (WebviewViewProvider)
-│   └── handlers/         # Message handlers
+│   └── handlers/         # Message routing and domain handlers
+│       ├── MessageHandler.ts    # Main dispatcher (routes messages)
+│       └── domain/              # Domain-specific handlers
+│           ├── AnalysisHandler.ts
+│           ├── DictionaryHandler.ts
+│           ├── ContextHandler.ts
+│           ├── MetricsHandler.ts
+│           ├── SearchHandler.ts
+│           ├── ConfigurationHandler.ts
+│           ├── PublishingHandler.ts
+│           ├── SourcesHandler.ts
+│           ├── UIHandler.ts
+│           └── FileOperationsHandler.ts
 ├── domain/              # Domain Layer (Business Logic)
 │   ├── models/          # Domain models
 │   └── services/        # Service interfaces (contracts)
@@ -26,6 +38,19 @@ src/
 │       └── index.css   # Styles
 └── shared/             # Shared Layer
     └── types/          # Shared type definitions
+        └── messages/   # Message contracts (domain-organized)
+            ├── index.ts          # Barrel export
+            ├── base.ts           # MessageType enum, common types
+            ├── analysis.ts       # Dialogue & prose analysis
+            ├── dictionary.ts     # Dictionary operations
+            ├── context.ts        # Context generation
+            ├── metrics.ts        # Prose stats, style flags, word frequency
+            ├── search.ts         # Word search
+            ├── configuration.ts  # Settings, models, tokens
+            ├── publishing.ts     # Publishing standards
+            ├── sources.ts        # File/glob operations
+            ├── ui.ts            # Tab changes, selections, guides
+            └── results.ts       # Result messages
 ```
 
 ## Dependency Flow
@@ -56,10 +81,25 @@ Presentation → Application → Domain ← Infrastructure
 - **Purpose**: Manages webview lifecycle and HTML generation
 - **Pattern**: Provider Pattern
 
-### Message Handler
-- **File**: [src/application/handlers/MessageHandler.ts](src/application/handlers/MessageHandler.ts)
-- **Purpose**: Routes messages between webview and services, caches the latest results/status for replay when the webview is recreated
-- **Pattern**: Command Pattern + Mediator
+### Message Handler (Domain-Organized Architecture)
+- **Main Dispatcher**: [src/application/handlers/MessageHandler.ts](src/application/handlers/MessageHandler.ts)
+  - **Purpose**: Routes messages to domain handlers, manages result cache for webview replay
+  - **Pattern**: Mediator + Delegation (495 lines, down from 1091)
+  - **Responsibilities**: Message routing, result caching, helper methods for sending responses
+
+- **Domain Handlers**: [src/application/handlers/domain/](src/application/handlers/domain/)
+  - **AnalysisHandler**: Dialogue and prose analysis operations
+  - **DictionaryHandler**: Dictionary lookup operations
+  - **ContextHandler**: Context generation with project resources
+  - **MetricsHandler**: Prose stats, style flags, word frequency analysis
+  - **SearchHandler**: Word search across files
+  - **ConfigurationHandler**: Settings, model selection, token tracking
+  - **PublishingHandler**: Publishing standards and genre presets
+  - **SourcesHandler**: File and glob request operations
+  - **UIHandler**: UI interactions (selections, guide files)
+  - **FileOperationsHandler**: Copy and save result operations
+
+Each handler encapsulates domain-specific logic with clear dependencies injected via constructor. This organization improves maintainability, testability, and makes it easy to locate and modify feature-specific behavior.
 
 ### Domain Service Interface
 - **File**: [src/domain/services/IProseAnalysisService.ts](src/domain/services/IProseAnalysisService.ts)
@@ -125,9 +165,14 @@ Presentation → Application → Domain ← Infrastructure
 
 ## Type Safety
 
-All messages between extension and webview are **strongly typed** using shared interfaces:
+All messages between extension and webview are **strongly typed** using domain-organized shared interfaces:
 
-- [src/shared/types/messages.ts](src/shared/types/messages.ts)
+- [src/shared/types/messages/](src/shared/types/messages/) - Message contracts organized by domain
+  - **index.ts**: Barrel export for backward compatibility (import from this for all message types)
+  - **base.ts**: `MessageType` enum, `BaseMessage`, common types (`TokenUsage`, `ModelScope`, etc.)
+  - **Domain modules**: Each feature area has its own message file (analysis, dictionary, context, metrics, search, configuration, publishing, sources, ui, results)
+
+This organization makes it easy to find and modify message contracts for specific features while maintaining backward compatibility through the barrel export.
 
 ## Build System
 
@@ -180,11 +225,25 @@ The infrastructure layer is designed to integrate with the prose-minion MCP tool
 
 To add a new tool:
 
-1. Add message types to [src/shared/types/messages.ts](src/shared/types/messages.ts)
-2. Add method to [IProseAnalysisService](src/domain/services/IProseAnalysisService.ts)
-3. Implement in [ProseAnalysisService](src/infrastructure/api/ProseAnalysisService.ts)
-4. Add handler case in [MessageHandler](src/application/handlers/MessageHandler.ts)
-5. Add UI in appropriate React component
+1. **Define message types**: Add to appropriate domain file in [src/shared/types/messages/](src/shared/types/messages/) (or create a new one)
+   - Add message interface extending `BaseMessage`
+   - Add to `MessageType` enum in `base.ts`
+   - Export from `index.ts` barrel export
+
+2. **Add domain handler** (if new domain):
+   - Create new handler in [src/application/handlers/domain/](src/application/handlers/domain/)
+   - Inject dependencies via constructor
+   - Implement handler methods
+
+3. **Update MessageHandler routing**:
+   - Instantiate domain handler in [MessageHandler constructor](src/application/handlers/MessageHandler.ts)
+   - Add case to switch statement to delegate to domain handler
+
+4. **Add service method**:
+   - Add method to [IProseAnalysisService](src/domain/services/IProseAnalysisService.ts)
+   - Implement in [ProseAnalysisService](src/infrastructure/api/ProseAnalysisService.ts)
+
+5. **Add UI**: Create or update React component in [src/presentation/webview/components/](src/presentation/webview/components/)
 
 ## Development Workflow
 
