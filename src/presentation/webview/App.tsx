@@ -106,6 +106,9 @@ export const App: React.FC = () => {
   );
   const [showSettings, setShowSettings] = React.useState<boolean>(false);
   const [settingsData, setSettingsData] = React.useState<Record<string, string | number | boolean>>({});
+  const [publishingPreset, setPublishingPreset] = React.useState<string>('none');
+  const [publishingTrimKey, setPublishingTrimKey] = React.useState<string>('');
+  const [publishingGenres, setPublishingGenres] = React.useState<Array<{ key: string; name: string; abbreviation?: string; pageSizes: Array<{ key: string; label: string }> }>>([]);
   const [dictionaryInjection, setDictionaryInjection] = React.useState<{ word?: string; context?: string; sourceUri?: string; relativePath?: string; timestamp: number } | null>(null);
 
   const contextLoadingRef = React.useRef(contextLoading);
@@ -304,11 +307,21 @@ export const App: React.FC = () => {
         case MessageType.OPEN_SETTINGS:
           setShowSettings(true);
           vscode.postMessage({ type: MessageType.REQUEST_SETTINGS_DATA, timestamp: Date.now() });
+          vscode.postMessage({ type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA, timestamp: Date.now() });
           break;
 
         case MessageType.SETTINGS_DATA:
           // @ts-ignore shape validated by extension
           setSettingsData(message.settings || {});
+          break;
+
+        case MessageType.PUBLISHING_STANDARDS_DATA:
+          // @ts-ignore structured by extension
+          setPublishingPreset((message as any).preset || 'none');
+          // @ts-ignore
+          setPublishingTrimKey((message as any).pageSizeKey || '');
+          // @ts-ignore
+          setPublishingGenres(((message as any).genres ?? []) as any);
           break;
 
         case MessageType.CONTEXT_RESULT:
@@ -430,6 +443,16 @@ export const App: React.FC = () => {
     vscode.postMessage({ type: MessageType.RESET_TOKEN_USAGE, timestamp: Date.now() });
   }, []);
 
+  const handleSetPublishingPreset = React.useCallback((preset: string) => {
+    setPublishingPreset(preset);
+    vscode.postMessage({ type: MessageType.SET_PUBLISHING_PRESET, preset, timestamp: Date.now() });
+  }, []);
+
+  const handleSetPublishingTrim = React.useCallback((pageSizeKey?: string) => {
+    setPublishingTrimKey(pageSizeKey || '');
+    vscode.postMessage({ type: MessageType.SET_PUBLISHING_TRIM_SIZE, pageSizeKey, timestamp: Date.now() });
+  }, []);
+
   const renderModelSelector = () => {
     if (modelOptions.length === 0) {
       return null;
@@ -492,7 +515,7 @@ export const App: React.FC = () => {
       <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
       {renderModelSelector()}
 
-      <main className="app-main">
+      <main className="app-main" style={{ position: 'relative' }}>
         <SettingsOverlay
           visible={showSettings}
           onClose={() => setShowSettings(false)}
@@ -503,6 +526,13 @@ export const App: React.FC = () => {
           modelOptions={modelOptions}
           modelSelections={modelSelections}
           onModelChange={handleModelChange}
+          publishing={{
+            preset: publishingPreset,
+            trimKey: publishingTrimKey,
+            genres: publishingGenres,
+            onPresetChange: handleSetPublishingPreset,
+            onTrimChange: handleSetPublishingTrim
+          }}
         />
         {error && (
           <div className="error-message">
