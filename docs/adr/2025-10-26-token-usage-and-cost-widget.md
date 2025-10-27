@@ -52,6 +52,25 @@ OpenRouter supports returning token usage (and sometimes cost) when the request 
 - Persistence: No cross‑restart persistence (per the “per‑session” requirement). Within a session, webview state stores the latest totals for resilience.
 - Cost: Shown only when included in the completion response; no estimates and no generation‑stats follow‑up yet.
 
+### Amendment: UI Toggle + Typing Consolidation (2025-10-26)
+
+Minor follow-ups landed with Sprint 4 to improve UX and type safety without changing the user-facing behavior:
+
+- UI toggle for the header widget
+  - Added setting `proseMinion.ui.showTokenWidget` (default: true).
+  - Exposed to the webview via `MODEL_DATA.ui.showTokenWidget`; widget hides when disabled.
+- Shared `TokenUsage` type across layers
+  - Consolidated token usage shape under `src/shared/types/messages.ts` and reused in:
+    - Orchestrator `ExecutionResult.usage`
+    - Domain `AnalysisResult.usage` and `ContextGenerationResult.usage`
+    - Extension/webview `TokenUsageUpdateMessage.totals`
+- Safer metrics message contracts
+  - Narrowed `METRICS_RESULT` payload via a discriminated union by tool name (`prose_stats`, `style_flags`, `word_frequency`), maintaining alpha compatibility for future tools.
+- Truncation helper
+  - Extracted a single helper in the Orchestrator to append the truncation notice consistently across flows.
+
+Compatibility: No breaking changes to existing message types; `MODEL_DATA` gained an optional `ui.showTokenWidget` field.
+
 ### Message Contract (shipped)
 
 `TOKEN_USAGE_UPDATE` (extension → webview)
@@ -75,3 +94,7 @@ timestamp: number
   - Show/hide cost (once authoritative flow exists)
   - Show/hide usage widget (if desired)
 - Alternative placements: status bar item; native view title string update.
+
+### Links
+
+- Sprint 4 — Token Cost Widget: `.todo/epics/epic-search-architecture-2025-10-19/sprints/04-token-cost-widget.md`

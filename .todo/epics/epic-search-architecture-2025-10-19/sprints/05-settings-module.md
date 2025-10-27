@@ -17,6 +17,7 @@ Full‑screen overlay module in the webview to guide non‑technical users throu
 - Add gear icon to top right to open the overlay.
 - Render settings groups with descriptive help text and links (OpenRouter docs, internal CONFIGURATION.md).
 - Post messages to update VS Code settings; rely on existing config watcher to refresh orchestrators/model data.
+- Add a "Reset Token Usage" button in the overlay to clear session totals (tokens and cost) via an extension message.
 
 ## Affected Files
 - src/presentation/webview/App.tsx (overlay + trigger icon)
@@ -26,3 +27,4 @@ Full‑screen overlay module in the webview to guide non‑technical users throu
 ## Acceptance Criteria
 - Users can configure API key and model scopes without opening VS Code settings.
 - Changes reflect immediately (watcher fires; model dropdown updates).
+- Users can manually reset the session token usage totals; widget updates immediately.

@@ -58,7 +58,7 @@ export class OpenRouterClient {
       temperature?: number;
       maxTokens?: number;
     }
-  ): Promise<{ content: string; finishReason?: string; usage?: { promptTokens: number; completionTokens: number; totalTokens: number; costUsd?: number }; id?: string }> {
+  ): Promise<{ content: string; finishReason?: string; usage?: TokenUsage; id?: string }> {
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -96,7 +96,7 @@ export class OpenRouterClient {
             promptTokens: data.usage.prompt_tokens,
             completionTokens: data.usage.completion_tokens,
             totalTokens: data.usage.total_tokens,
-            costUsd: typeof data.usage.cost === 'number' ? data.usage.cost : undefined
+            costUsd: typeof (data.usage as any).cost === 'number' ? (data.usage as any).cost : undefined
           }
         : undefined
     };
@@ -109,3 +109,4 @@ export class OpenRouterClient {
     return Boolean(apiKey && apiKey.trim().length > 0);
   }
 }
+import { TokenUsage } from '../../shared/types';

@@ -68,7 +68,8 @@ export class MessageHandler {
         event.affectsConfiguration('proseMinion.assistantModel') ||
         event.affectsConfiguration('proseMinion.dictionaryModel') ||
         event.affectsConfiguration('proseMinion.contextModel') ||
-        event.affectsConfiguration('proseMinion.model')
+        event.affectsConfiguration('proseMinion.model') ||
+        event.affectsConfiguration('proseMinion.ui.showTokenWidget')
       ) {
         void this.refreshServiceConfiguration();
         void this.sendModelData();
@@ -590,7 +591,7 @@ export class MessageHandler {
     this.sendStatus('');
   }
 
-  private applyTokenUsage(usage: { promptTokens: number; completionTokens: number; totalTokens: number; costUsd?: number }): void {
+  private applyTokenUsage(usage: TokenUsageTotals): void {
     try {
       this.tokenTotals.promptTokens += usage.promptTokens || 0;
       this.tokenTotals.completionTokens += usage.completionTokens || 0;
@@ -812,10 +813,14 @@ export class MessageHandler {
         }
       });
 
+      const config = vscode.workspace.getConfiguration('proseMinion');
       const message: ModelDataMessage = {
         type: MessageType.MODEL_DATA,
         options,
         selections,
+        ui: {
+          showTokenWidget: config.get<boolean>('ui.showTokenWidget') ?? true
+        },
         timestamp: Date.now()
       };
 

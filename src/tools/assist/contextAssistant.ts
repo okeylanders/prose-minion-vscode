@@ -11,6 +11,7 @@ import {
   ContextResourceSummary,
   DEFAULT_CONTEXT_GROUPS
 } from '../../domain/models/ContextGeneration';
+import { TokenUsage } from '../../shared/types';
 
 export interface ContextAssistantInput {
   excerpt: string;
@@ -29,7 +30,7 @@ export interface ContextAssistantOptions {
 export interface ContextAssistantExecutionResult {
   content: string;
   requestedResources?: string[];
-  usage?: { promptTokens: number; completionTokens: number; totalTokens: number; costUsd?: number };
+  usage?: TokenUsage;
 }
 
 export class ContextAssistant {
