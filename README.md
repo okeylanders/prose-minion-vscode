@@ -16,6 +16,15 @@
 
 ## ✨ Features
 
+### 📖 Writer's Dictionary
+
+Fiction-focused definitions with creative context:
+
+- **Craft-Aware Definitions** - Understand words in a writing context
+- **Tonal Guidance** - Learn connotations and emotional weight
+- **Usage Examples** - See words used in narrative prose
+- **Related Terms** - Discover alternatives and related concepts
+
 ### 📝 AI Writing Assistance
 
 Get intelligent suggestions for your creative writing with dedicated AI models:
@@ -43,15 +52,6 @@ Find patterns and track word usage across your manuscript:
 - **Cluster Detection** - Identify repeated patterns and potential overuse
 - **Configurable Context** - See surrounding words for each match
 - **Case Sensitivity** - Toggle exact matching as needed
-
-### 📖 Writer's Dictionary
-
-Fiction-focused definitions with creative context:
-
-- **Craft-Aware Definitions** - Understand words in a writing context
-- **Tonal Guidance** - Learn connotations and emotional weight
-- **Usage Examples** - See words used in narrative prose
-- **Related Terms** - Discover alternatives and related concepts
 
 ### ⚙️ In-App Settings
 
@@ -247,6 +247,11 @@ Built with:
 - [VS Code Extension API](https://code.visualstudio.com/api) - Platform
 - [React](https://react.dev/) - UI framework
 - Open source prose analysis algorithms
+
+Development assisted by:
+- [Cline](https://github.com/cline/cline) - AI coding assistant for VS Code
+- [Claude Code](https://www.anthropic.com/claude) - AI pair programming
+- [OpenAI Codex](https://openai.com/index/openai-codex/) - Code generation and analysis
 
 ---
 
