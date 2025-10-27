@@ -14,7 +14,19 @@ The project follows **Clean Architecture** principles with clear separation of c
 src/
 ├── application/        # Application layer (orchestration)
 │   ├── providers/      # VSCode webview providers
-│   └── handlers/       # Message handlers for webview communication
+│   └── handlers/       # Message routing and domain handlers
+│       ├── MessageHandler.ts    # Main dispatcher (routes messages)
+│       └── domain/              # Domain-specific handlers
+│           ├── AnalysisHandler.ts
+│           ├── DictionaryHandler.ts
+│           ├── ContextHandler.ts
+│           ├── MetricsHandler.ts
+│           ├── SearchHandler.ts
+│           ├── ConfigurationHandler.ts
+│           ├── PublishingHandler.ts
+│           ├── SourcesHandler.ts
+│           ├── UIHandler.ts
+│           └── FileOperationsHandler.ts
 ├── domain/            # Domain layer (business logic)
 │   ├── models/        # Domain models and entities
 │   └── services/      # Service interfaces
@@ -23,7 +35,20 @@ src/
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components for the webview
 └── shared/           # Shared types and utilities
-    └── types/        # Message contracts between extension and webview
+    └── types/        # Shared type definitions
+        └── messages/   # Message contracts (domain-organized)
+            ├── index.ts          # Barrel export
+            ├── base.ts           # MessageType enum, common types
+            ├── analysis.ts       # Dialogue & prose analysis
+            ├── dictionary.ts     # Dictionary operations
+            ├── context.ts        # Context generation
+            ├── metrics.ts        # Prose stats, style flags, word frequency
+            ├── search.ts         # Word search
+            ├── configuration.ts  # Settings, models, tokens
+            ├── publishing.ts     # Publishing standards
+            ├── sources.ts        # File/glob operations
+            ├── ui.ts            # Tab changes, selections, guides
+            └── results.ts       # Result messages
 ```
 
 ### Key Components
@@ -69,11 +94,27 @@ src/
 
 #### Adding a New Analysis Tool
 
-1. Create a new class in `src/tools/assist/` or `src/tools/measure/`
-2. Follow the pattern from existing tools (e.g., `proseAssistant.ts`)
-3. Create system prompts in `resources/system-prompts/[tool-name]/`
-4. Update the message handler to route to the new tool
-5. Add UI components in `src/presentation/webview/components/`
+1. **Define message types**: Add to appropriate domain file in `src/shared/types/messages/` (or create a new one)
+   - Add message interface extending `BaseMessage`
+   - Add to `MessageType` enum in `base.ts`
+   - Export from `index.ts` barrel export
+
+2. **Add domain handler** (if new domain):
+   - Create new handler in `src/application/handlers/domain/`
+   - Inject dependencies via constructor (service, helper methods)
+   - Implement handler methods for the domain
+
+3. **Update MessageHandler routing**:
+   - Instantiate domain handler in `MessageHandler` constructor
+   - Add case to switch statement to delegate to domain handler
+
+4. **Add service method**:
+   - Add method to `IProseAnalysisService` interface
+   - Implement in `ProseAnalysisService`
+
+5. **Create system prompts** in `resources/system-prompts/[tool-name]/`
+
+6. **Add UI components** in `src/presentation/webview/components/`
 
 #### Modifying AI Behavior
 
@@ -117,7 +158,9 @@ src/
 
 - [package.json](package.json) - Extension manifest and configuration
 - [extension.ts](src/extension.ts) - Extension activation and setup
-- [shared/types/messages.ts](src/shared/types/messages.ts) - Message contracts
+- [MessageHandler.ts](src/application/handlers/MessageHandler.ts) - Main message dispatcher (routes to domain handlers)
+- [src/application/handlers/domain/](src/application/handlers/domain/) - Domain-specific handlers (10 handlers organized by feature)
+- [src/shared/types/messages/](src/shared/types/messages/) - Message contracts organized by domain (import from `index.ts` barrel export)
 - [OpenRouterModels.ts](src/infrastructure/api/OpenRouterModels.ts) - Available AI models
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) - Detailed architecture documentation
 
@@ -220,15 +263,30 @@ When working with this codebase:
 
 ## What's New
 
+- **Domain-Organized Message Architecture** (Oct 2025): Complete refactor of messaging layer for better maintainability
+  - Message contracts split from single `messages.ts` (532 lines) into 11 domain-specific files (674 lines total)
+  - MessageHandler reduced from 1091 lines → 495 lines (54% reduction!)
+  - 10 domain handlers extract feature-specific logic into focused, testable modules
+  - Backward compatible via barrel export at `src/shared/types/messages/index.ts`
+  - See [ADR](docs/adr/2025-10-26-message-architecture-organization.md) and [Memory Bank](../.memory-bank/20251026-2130-message-architecture-refactor.md)
+
 - **Verbalized Sampling for Creative Diversity**: Dialogue and prose assistants now provide more diverse, character-specific suggestions while maintaining craft quality. Using research-backed techniques from Stanford/Northeastern/WVU, suggestions are sampled from the "tails of the probability distribution" to unlock 1.6–2.1× more creative range. Expect fresher microbeats, richer wordbanks, and unexpected-yet-grounded alternatives.
-- Multi-model orchestration per scope with live model switching in the UI
-- Default `maxTokens` increased to 10000 and applied uniformly
-- Truncation notice appended when AI returns `finish_reason: "length"`
-- Context assistant includes the full source document on initial turn (when available)
-- Paste-selection carries source metadata; clipboard fallback when no selection
-- Dictionary inputs persist across tabs/sessions; auto-fill suppressed after user edits; source displayed when available
-- UI consistency: paste buttons sized to match the context-assist button
-- Word Frequency: Top 100 words, Top Stopwords, Hapax list (+count/%), POS via wink (offline), bigrams/trigrams, word-length histogram (1–10 chars), optional Top Lemmas view; settings under `proseMinion.wordFrequency.*`
+
+- **Multi-Model Orchestration & Settings UI**:
+  - Multi-model orchestration per scope with live model switching in the UI
+  - Full-screen Settings overlay with gear icon toggle in title bar
+  - All settings configurable in-app with inline descriptions and examples
+  - Publishing Standards as dropdowns (genre + trim options)
+  - Reset Token Usage button in settings
+
+- **Enhanced Features**:
+  - Default `maxTokens` increased to 10000 and applied uniformly
+  - Truncation notice appended when AI returns `finish_reason: "length"`
+  - Context assistant includes the full source document on initial turn (when available)
+  - Paste-selection carries source metadata; clipboard fallback when no selection
+  - Dictionary inputs persist across tabs/sessions; auto-fill suppressed after user edits; source displayed when available
+  - UI consistency: paste buttons sized to match the context-assist button
+  - Word Frequency: Top 100 words, Top Stopwords, Hapax list (+count/%), POS via wink (offline), bigrams/trigrams, word-length histogram (1–10 chars), optional Top Lemmas view; settings under `proseMinion.wordFrequency.*`
 
 ## Questions and Support
 
