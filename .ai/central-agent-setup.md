@@ -218,10 +218,11 @@ npm run package  # Creates .vsix file
 
 ### OpenRouter API
 
-- API key configured in VSCode settings
+- **API key stored in VSCode SecretStorage** - OS-level encryption via platform keychains (macOS Keychain, Windows Credential Manager, Linux libsecret); automatic migration from legacy settings-based storage
 - Scoped models per role: `assistantModel`, `dictionaryModel`, `contextModel` with legacy fallback `model`
 - Unified `maxTokens` across tools (default 10000) with truncation notices when responses hit the cap
 - Cost tracking available through OpenRouter dashboard
+- Managed via Settings overlay UI (gear icon) with Save/Clear buttons
 
 ### VSCode Extension API
 
@@ -262,6 +263,9 @@ When working with this codebase:
 - Metrics reports should save under `prose-minion/reports/` using timestamped filenames.
 
 ## What's New
+
+- **Secure API Key Storage via SecretStorage** (Oct 2025): OpenRouter API keys now stored with OS-level encryption in platform keychains instead of plain text settings. Automatic one-time migration from `proseMinion.openRouterApiKey` setting to SecretStorage on extension activation. Custom UI in Settings overlay with password-masked input, Save/Clear buttons, and security messaging. Keys never appear in settings files or sync to cloud.
+  - See [ADR](docs/adr/2025-10-27-secure-api-key-storage.md), [Epic](.todo/epics/epic-secure-storage-2025-10-27/epic-secure-storage.md), and [Memory Bank](.memory-bank/20251027-0110-secretstorage-api-key-backend-complete.md)
 
 - **Domain-Organized Message Architecture** (Oct 2025): Complete refactor of messaging layer for better maintainability
   - Message contracts split from single `messages.ts` (532 lines) into 11 domain-specific files (674 lines total)
