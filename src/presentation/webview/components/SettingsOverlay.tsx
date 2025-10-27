@@ -40,216 +40,379 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
   const asBoolean = (key: string) => Boolean(get(key));
 
   const renderModelSelect = (scope: ModelScope, label: string, help?: string) => (
-    <label style={{ display: 'block', marginBottom: 12 }}>
-      <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
+    <label className="settings-label">
+      <div className="settings-label-title">{label}</div>
       <select
         value={modelSelections[scope] || ''}
         onChange={(e) => onModelChange(scope, e.target.value)}
-        style={{
-          width: '100%', padding: '6px 8px',
-          background: 'var(--vscode-input-background)',
-          color: 'var(--vscode-input-foreground)',
-          border: '1px solid var(--vscode-input-border)',
-          borderRadius: 4
-        }}
+        className="settings-input"
       >
         {modelOptions.map(opt => (
           <option key={opt.id} value={opt.id}>{opt.label}</option>
         ))}
       </select>
-      {help && <div style={{ color: 'var(--vscode-descriptionForeground)', marginTop: 4 }}>{help}</div>}
+      {help && <div className="settings-description">{help}</div>}
     </label>
   );
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 1000,
-      background: 'var(--vscode-editor-background)', color: 'var(--vscode-editor-foreground)',
-      overflow: 'auto', padding: 8
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <h2 style={{ margin: 0 }}>Settings</h2>
-        <button onClick={onClose} title="Close"
-          style={{ padding: '4px 10px', background: 'var(--vscode-button-background)', color: 'var(--vscode-button-foreground)', border: '1px solid var(--vscode-button-border, transparent)', borderRadius: 4 }}
-          onMouseOver={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--vscode-button-hoverBackground)')}
-          onMouseOut={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--vscode-button-background)')}
-        >Close</button>
+    <div className="settings-overlay">
+      <div className="settings-header">
+        <h2>Settings</h2>
+        <button onClick={onClose} title="Close" className="settings-button">Close</button>
       </div>
 
       {/* Connection */}
-      <section style={{ marginTop: 8, background: 'var(--vscode-editorWidget-background)', border: '1px solid var(--vscode-editorWidget-border)', borderRadius: 6, padding: 12 }}>
-        <h3 style={{ marginTop: 0 }}>Connection</h3>
-        <label style={{ display: 'block', marginBottom: 8 }}>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>OpenRouter API Key</div>
-          <input type="password" value={asString('openRouterApiKey')} onChange={(e) => onUpdate('openRouterApiKey', e.target.value)}
-            style={{ width: '100%', padding: '6px 8px', background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)', borderRadius: 4 }} />
-          <div style={{ color: 'var(--vscode-descriptionForeground)', marginTop: 4 }}>
-            Requires an OpenRouter pay‑as‑you‑go account for AI features. OpenRouter routes to leading models with configurable privacy (no logging, no training). Learn more at <a href="https://openrouter.ai/" target="_blank" rel="noreferrer" style={{ color: 'var(--vscode-textLink-foreground)', textDecoration: 'underline' }}>openrouter.ai</a>.
+      <section className="settings-section">
+        <h3 className="settings-section-title">Connection</h3>
+        <label className="settings-label">
+          <div className="settings-label-title">OpenRouter API Key</div>
+          <input
+            type="password"
+            value={asString('openRouterApiKey')}
+            onChange={(e) => onUpdate('openRouterApiKey', e.target.value)}
+            className="settings-input"
+          />
+          <div className="settings-description">
+            Requires an OpenRouter pay‑as‑you‑go account for AI features. OpenRouter routes to leading models with configurable privacy (no logging, no training). Learn more at <a href="https://openrouter.ai/" target="_blank" rel="noreferrer">openrouter.ai</a>.
           </div>
         </label>
       </section>
 
       {/* Models */}
-      <section style={{ marginTop: 8, background: 'var(--vscode-editorWidget-background)', border: '1px solid var(--vscode-editorWidget-border)', borderRadius: 6, padding: 12 }}>
-        <h3 style={{ marginTop: 0 }}>Models</h3>
-        {renderModelSelect('assistant', 'Assistant Model (Prose / Dialogue)', 'Used by dialogue and prose assistants for analysis and suggestions.')}
-        {renderModelSelect('dictionary', 'Dictionary Model', 'Used by the dictionary and utility tools (synonyms, expansions).')}
-        {renderModelSelect('context', 'Context Assistant Model', 'Used by the context assistant for project-aware context and resources.')}
+      <section className="settings-section">
+        <h3 className="settings-section-title">Models</h3>
+        {renderModelSelect('assistant', 'Assistant Model (Prose / Dialogue)', 'Powers dialogue and prose assistants for analysis and creative suggestions.')}
+        {renderModelSelect('dictionary', 'Dictionary Model', 'Powers dictionary and utility tools (synonyms, word expansions).')}
+        {renderModelSelect('context', 'Context Assistant Model', 'Powers the context assistant for project-aware insights and resources.')}
       </section>
 
       {/* General */}
-      <section style={{ marginTop: 8, background: 'var(--vscode-editorWidget-background)', border: '1px solid var(--vscode-editorWidget-border)', borderRadius: 6, padding: 12 }}>
-        <h3 style={{ marginTop: 0 }}>General</h3>
-        <label style={{ display: 'block', marginBottom: 10 }}>
-          <input type="checkbox" checked={asBoolean('includeCraftGuides')} onChange={(e) => onUpdate('includeCraftGuides', e.target.checked)} /> Include Craft Guides
-          <div style={{ color: 'var(--vscode-descriptionForeground)' }}>Adds writing guides to prompts for richer suggestions (uses more tokens).</div>
+      <section className="settings-section">
+        <h3 className="settings-section-title">General</h3>
+
+        <label className="settings-checkbox-label">
+          <input
+            type="checkbox"
+            checked={asBoolean('includeCraftGuides')}
+            onChange={(e) => onUpdate('includeCraftGuides', e.target.checked)}
+          /> Include Craft Guides
+          <div className="settings-description">
+            Adds writing guides and examples to prompts for richer, more context-aware suggestions. Uses more tokens but improves quality.
+          </div>
         </label>
-        <label style={{ display: 'block', marginBottom: 10 }}>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>Temperature (0–2)</div>
-          <input type="number" min={0} max={2} step={0.1} value={asNumber('temperature')} onChange={(e) => onUpdate('temperature', Number(e.target.value))}
-            style={{ width: 160, padding: '6px 8px', background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)', borderRadius: 4 }} />
-          <div style={{ color: 'var(--vscode-descriptionForeground)' }}>Higher values increase creativity; lower values are more focused.</div>
+
+        <label className="settings-label">
+          <div className="settings-label-title">Temperature (0–2)</div>
+          <input
+            type="number"
+            min={0}
+            max={2}
+            step={0.1}
+            value={asNumber('temperature')}
+            onChange={(e) => onUpdate('temperature', Number(e.target.value))}
+            className="settings-input settings-input-small"
+          />
+          <div className="settings-description">
+            Controls creative diversity. Higher = more creative variety (1.2+), lower = more focused consistency (0.3). Default 0.7 is balanced.
+          </div>
         </label>
-        <label style={{ display: 'block', marginBottom: 10 }}>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>Max Tokens</div>
-          <input type="number" min={100} max={100000} step={100} value={asNumber('maxTokens')} onChange={(e) => onUpdate('maxTokens', Number(e.target.value))}
-            style={{ width: 220, padding: '6px 8px', background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)', borderRadius: 4 }} />
-          <div style={{ color: 'var(--vscode-descriptionForeground)' }}>Sets the maximum response length. Truncation notices appear when the cap is hit.</div>
+
+        <label className="settings-label">
+          <div className="settings-label-title">Max Tokens</div>
+          <input
+            type="number"
+            min={100}
+            max={100000}
+            step={100}
+            value={asNumber('maxTokens')}
+            onChange={(e) => onUpdate('maxTokens', Number(e.target.value))}
+            className="settings-input settings-input-medium"
+          />
+          <div className="settings-description">
+            Maximum length for AI responses. Truncation notices appear when this limit is reached.
+          </div>
         </label>
-        <label style={{ display: 'block', marginBottom: 4 }}>
-          <input type="checkbox" checked={asBoolean('ui.showTokenWidget')} onChange={(e) => onUpdate('ui.showTokenWidget', e.target.checked)} /> Show Token Usage Widget
-          <div style={{ color: 'var(--vscode-descriptionForeground)' }}>Displays session token totals in the header; resets on manual reset or reload.</div>
+
+        <label className="settings-checkbox-label">
+          <input
+            type="checkbox"
+            checked={asBoolean('ui.showTokenWidget')}
+            onChange={(e) => onUpdate('ui.showTokenWidget', e.target.checked)}
+          /> Show Token Usage Widget
+          <div className="settings-description">
+            Displays running token totals in the header. Resets manually or on reload.
+          </div>
         </label>
+
         <div style={{ marginTop: 8 }}>
-          <button onClick={onResetTokens} title="Reset session token totals"
-            style={{ padding: '6px 10px', background: 'var(--vscode-button-background)', color: 'var(--vscode-button-foreground)', border: '1px solid var(--vscode-button-border, transparent)', borderRadius: 4 }}
-            onMouseOver={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--vscode-button-hoverBackground)')}
-            onMouseOut={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'var(--vscode-button-background)')}
-          >Reset Token Usage</button>
+          <button
+            onClick={onResetTokens}
+            title="Reset session token totals"
+            className="settings-button"
+          >
+            Reset Token Usage
+          </button>
         </div>
       </section>
 
       {/* Publishing Standards */}
-      <section style={{ marginTop: 8, background: 'var(--vscode-editorWidget-background)', border: '1px solid var(--vscode-editorWidget-border)', borderRadius: 6, padding: 12 }}>
-        <h3 style={{ marginTop: 0 }}>Publishing Standards</h3>
-        <label style={{ display: 'block', marginBottom: 10 }}>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>Preset</div>
+      <section className="settings-section">
+        <h3 className="settings-section-title">Publishing Standards</h3>
+
+        <label className="settings-label">
+          <div className="settings-label-title">Preset</div>
           <select
             value={publishing.preset}
             onChange={(e) => publishing.onPresetChange(e.target.value)}
-            style={{ width: '100%', maxWidth: 440, padding: '6px 8px', background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)', borderRadius: 4 }}
+            className="settings-input settings-input-large"
           >
             <option value="none">None</option>
             <option value="manuscript">Manuscript</option>
             {publishing.genres.map(g => (
-              <option key={g.key} value={`genre:${g.key}`}>Genre: {g.name}{g.abbreviation ? ` (${g.abbreviation})` : ''}</option>
+              <option key={g.key} value={`genre:${g.key}`}>
+                Genre: {g.name}{g.abbreviation ? ` (${g.abbreviation})` : ''}
+              </option>
             ))}
           </select>
-          <div style={{ color: 'var(--vscode-descriptionForeground)' }}>Choose a comparison preset for metrics: a generic manuscript or a specific genre.</div>
+          <div className="settings-description">
+            Choose a comparison standard for prose metrics: generic manuscript guidelines or specific genre expectations.
+          </div>
         </label>
-        <label style={{ display: 'block', marginBottom: 6 }}>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>Trim Size</div>
+
+        <label className="settings-label">
+          <div className="settings-label-title">Trim Size</div>
           <select
             value={publishing.trimKey}
             onChange={(e) => publishing.onTrimChange(e.target.value || undefined)}
-            style={{ width: '100%', maxWidth: 320, padding: '6px 8px', background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)', borderRadius: 4 }}
+            className="settings-input settings-input-large"
+            style={{ maxWidth: 320 }}
           >
             <option value="">(Default)</option>
             {(publishing.genres.find(g => `genre:${g.key}` === publishing.preset)?.pageSizes || []).map(ps => (
               <option key={ps.key} value={ps.key}>{ps.label}</option>
             ))}
           </select>
-          <div style={{ color: 'var(--vscode-descriptionForeground)' }}>If a genre is selected, pick a typical trim size for better comparisons.</div>
+          <div className="settings-description">
+            If a genre is selected, choose a typical book trim size for more accurate page count comparisons.
+          </div>
         </label>
       </section>
 
       {/* Word Frequency */}
-      <section style={{ marginTop: 8, background: 'var(--vscode-editorWidget-background)', border: '1px solid var(--vscode-editorWidget-border)', borderRadius: 6, padding: 12 }}>
-        <h3 style={{ marginTop: 0 }}>Word Frequency</h3>
-        <label style={{ display: 'block', marginBottom: 10 }}>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>Top N Words</div>
-          <input type="number" min={10} max={1000} value={asNumber('wordFrequency.topN')} onChange={(e) => onUpdate('wordFrequency.topN', Number(e.target.value))}
-            style={{ width: 160, padding: '6px 8px', background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)', borderRadius: 4 }} />
-          <div style={{ color: 'var(--vscode-descriptionForeground)' }}>Number of top words to show.</div>
+      <section className="settings-section">
+        <h3 className="settings-section-title">Word Frequency</h3>
+
+        <label className="settings-label">
+          <div className="settings-label-title">Top N Words</div>
+          <input
+            type="number"
+            min={10}
+            max={1000}
+            value={asNumber('wordFrequency.topN')}
+            onChange={(e) => onUpdate('wordFrequency.topN', Number(e.target.value))}
+            className="settings-input settings-input-small"
+          />
+          <div className="settings-description">
+            Number of most frequent words to display in the Top Words list.
+          </div>
         </label>
-        <label style={{ display: 'block', marginBottom: 8 }}>
-          <input type="checkbox" checked={asBoolean('wordFrequency.includeHapaxList')} onChange={(e) => onUpdate('wordFrequency.includeHapaxList', e.target.checked)} /> Include Hapax List
-          <div style={{ color: 'var(--vscode-descriptionForeground)' }}>Hapax words occur exactly once; useful for spotting one-off expressions.</div>
+
+        <label className="settings-checkbox-label">
+          <input
+            type="checkbox"
+            checked={asBoolean('wordFrequency.includeHapaxList')}
+            onChange={(e) => onUpdate('wordFrequency.includeHapaxList', e.target.checked)}
+          /> Include Hapax List
+          <div className="settings-description">
+            Hapax words appear exactly once in your text. Useful for spotting unique vocabulary, one-off expressions, or potential typos.
+          </div>
         </label>
-        <label style={{ display: 'block', marginBottom: 8 }}>
-          <div>Hapax Display Max</div>
-          <input type="number" min={50} max={5000} value={asNumber('wordFrequency.hapaxDisplayMax')} onChange={(e) => onUpdate('wordFrequency.hapaxDisplayMax', Number(e.target.value))}
-            style={{ width: 200, padding: '6px 8px', background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)', borderRadius: 4 }} />
+
+        <label className="settings-label">
+          <div className="settings-label-title">Hapax Display Max</div>
+          <input
+            type="number"
+            min={50}
+            max={5000}
+            value={asNumber('wordFrequency.hapaxDisplayMax')}
+            onChange={(e) => onUpdate('wordFrequency.hapaxDisplayMax', Number(e.target.value))}
+            className="settings-input settings-input-medium"
+          />
+          <div className="settings-description">
+            Maximum number of hapax words to show in the list. Total count is always displayed.
+          </div>
         </label>
-        <label style={{ display: 'block', marginBottom: 8 }}>
-          <input type="checkbox" checked={asBoolean('wordFrequency.includeStopwordsTable')} onChange={(e) => onUpdate('wordFrequency.includeStopwordsTable', e.target.checked)} /> Include Stopwords Table
-          <div style={{ color: 'var(--vscode-descriptionForeground)' }}>Shows common function words (the, and, of, …) for balance checks.</div>
+
+        <label className="settings-checkbox-label">
+          <input
+            type="checkbox"
+            checked={asBoolean('wordFrequency.includeStopwordsTable')}
+            onChange={(e) => onUpdate('wordFrequency.includeStopwordsTable', e.target.checked)}
+          /> Include Stopwords Table
+          <div className="settings-description">
+            Shows common function words (the, and, of, to, in, etc.) for checking prose rhythm and balance.
+          </div>
         </label>
-        <label style={{ display: 'block', marginBottom: 8 }}>
-          <input type="checkbox" checked={asBoolean('wordFrequency.contentWordsOnly')} onChange={(e) => onUpdate('wordFrequency.contentWordsOnly', e.target.checked)} /> Content Words Only
-          <div style={{ color: 'var(--vscode-descriptionForeground)' }}>Exclude stopwords to emphasize nouns, verbs, adjectives, and adverbs.</div>
+
+        <label className="settings-checkbox-label">
+          <input
+            type="checkbox"
+            checked={asBoolean('wordFrequency.contentWordsOnly')}
+            onChange={(e) => onUpdate('wordFrequency.contentWordsOnly', e.target.checked)}
+          /> Content Words Only
+          <div className="settings-description">
+            Exclude stopwords (function words) to focus on meaningful content: nouns, verbs, adjectives, and adverbs.
+          </div>
         </label>
-        <label style={{ display: 'block', marginBottom: 8 }}>
-          <input type="checkbox" checked={asBoolean('wordFrequency.posEnabled')} onChange={(e) => onUpdate('wordFrequency.posEnabled', e.target.checked)} /> POS Tagger Enabled
-          <div style={{ color: 'var(--vscode-descriptionForeground)' }}>Enables offline part-of-speech sections; falls back gracefully if unavailable.</div>
+
+        <label className="settings-checkbox-label">
+          <input
+            type="checkbox"
+            checked={asBoolean('wordFrequency.posEnabled')}
+            onChange={(e) => onUpdate('wordFrequency.posEnabled', e.target.checked)}
+          /> POS Tagger Enabled
+          <div className="settings-description">
+            Enables part-of-speech analysis (nouns, verbs, adjectives, etc.) using offline processing. Falls back gracefully if unavailable.
+          </div>
         </label>
-        <label style={{ display: 'block', marginBottom: 8 }}>
-          <input type="checkbox" checked={asBoolean('wordFrequency.includeBigrams')} onChange={(e) => onUpdate('wordFrequency.includeBigrams', e.target.checked)} /> Include Bigrams
-          <div style={{ color: 'var(--vscode-descriptionForeground)' }}>Show top two‑word phrases. Helpful for spotting recurring collocations and clichés.</div>
+
+        <label className="settings-checkbox-label">
+          <input
+            type="checkbox"
+            checked={asBoolean('wordFrequency.includeBigrams')}
+            onChange={(e) => onUpdate('wordFrequency.includeBigrams', e.target.checked)}
+          /> Include Bigrams
+          <div className="settings-description">
+            Shows top two-word phrases (e.g., "dark night", "she said", "front door"). Helpful for spotting recurring collocations and clichés.
+          </div>
         </label>
-        <label style={{ display: 'block', marginBottom: 8 }}>
-          <input type="checkbox" checked={asBoolean('wordFrequency.includeTrigrams')} onChange={(e) => onUpdate('wordFrequency.includeTrigrams', e.target.checked)} /> Include Trigrams
-          <div style={{ color: 'var(--vscode-descriptionForeground)' }}>Show top three‑word phrases. Useful for set‑piece phrasings and voice patterns.</div>
+
+        <label className="settings-checkbox-label">
+          <input
+            type="checkbox"
+            checked={asBoolean('wordFrequency.includeTrigrams')}
+            onChange={(e) => onUpdate('wordFrequency.includeTrigrams', e.target.checked)}
+          /> Include Trigrams
+          <div className="settings-description">
+            Shows top three-word phrases (e.g., "out of the", "end of the", "looked at her"). Useful for identifying set-piece phrasings and voice patterns.
+          </div>
         </label>
-        <label style={{ display: 'block', marginBottom: 10 }}>
-          <input type="checkbox" checked={asBoolean('wordFrequency.enableLemmas')} onChange={(e) => onUpdate('wordFrequency.enableLemmas', e.target.checked)} /> Enable Lemmas (experimental)
-          <div style={{ color: 'var(--vscode-descriptionForeground)' }}>Group inflected forms under a base form (e.g., running → run).</div>
+
+        <label className="settings-checkbox-label">
+          <input
+            type="checkbox"
+            checked={asBoolean('wordFrequency.enableLemmas')}
+            onChange={(e) => onUpdate('wordFrequency.enableLemmas', e.target.checked)}
+          /> Enable Lemmas (experimental)
+          <div className="settings-description">
+            Groups inflected word forms under their base form (e.g., "running", "ran", "runs" → "run"). Helps identify word variety.
+          </div>
         </label>
-        <label style={{ display: 'block', marginBottom: 6 }}>
-          <div>Word Length Histogram Max Chars</div>
-          <input type="number" min={5} max={30} value={asNumber('wordFrequency.lengthHistogramMaxChars')} onChange={(e) => onUpdate('wordFrequency.lengthHistogramMaxChars', Number(e.target.value))}
-            style={{ width: 240, padding: '6px 8px', background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)', borderRadius: 4 }} />
+
+        <label className="settings-label">
+          <div className="settings-label-title">Word Length Histogram Max Chars</div>
+          <input
+            type="number"
+            min={5}
+            max={30}
+            value={asNumber('wordFrequency.lengthHistogramMaxChars')}
+            onChange={(e) => onUpdate('wordFrequency.lengthHistogramMaxChars', Number(e.target.value))}
+            className="settings-input settings-input-medium"
+          />
+          <div className="settings-description">
+            Maximum word length shown in the histogram. Words longer than this are grouped into a final "N+" bucket.
+          </div>
         </label>
       </section>
 
       {/* Word Search */}
-      <section style={{ marginTop: 8, background: 'var(--vscode-editorWidget-background)', border: '1px solid var(--vscode-editorWidget-border)', borderRadius: 6, padding: 12 }}>
-        <h3 style={{ marginTop: 0 }}>Word Search</h3>
-        <label style={{ display: 'block', marginBottom: 10 }}>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>Default Targets</div>
-          <textarea value={asString('wordSearch.defaultTargets')} onChange={(e) => onUpdate('wordSearch.defaultTargets', e.target.value)}
-            style={{ width: '100%', height: 68, padding: '6px 8px', background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)', borderRadius: 4 }} />
-          <div style={{ color: 'var(--vscode-descriptionForeground)' }}>Comma or newline separated words/phrases to scan for by default.</div>
+      <section className="settings-section">
+        <h3 className="settings-section-title">Word Search</h3>
+
+        <label className="settings-label">
+          <div className="settings-label-title">Default Targets</div>
+          <textarea
+            value={asString('wordSearch.defaultTargets')}
+            onChange={(e) => onUpdate('wordSearch.defaultTargets', e.target.value)}
+            className="settings-textarea"
+          />
+          <div className="settings-description">
+            Default words or phrases to search for (comma or newline separated). These auto-populate the search field.
+          </div>
         </label>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <label>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>Context Words</div>
-            <input type="number" min={0} max={50} value={asNumber('wordSearch.contextWords')} onChange={(e) => onUpdate('wordSearch.contextWords', Number(e.target.value))}
-              style={{ width: 140, padding: '6px 8px', background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)', borderRadius: 4 }} />
+
+        <div className="settings-inline-group">
+          <label className="settings-label">
+            <div className="settings-label-title">Context Words</div>
+            <input
+              type="number"
+              min={0}
+              max={50}
+              value={asNumber('wordSearch.contextWords')}
+              onChange={(e) => onUpdate('wordSearch.contextWords', Number(e.target.value))}
+              className="settings-input settings-input-small"
+            />
+            <div className="settings-description">
+              Number of words shown before and after each match for context.
+            </div>
           </label>
-          <label>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>Cluster Window</div>
-            <input type="number" min={10} max={2000} value={asNumber('wordSearch.clusterWindow')} onChange={(e) => onUpdate('wordSearch.clusterWindow', Number(e.target.value))}
-              style={{ width: 160, padding: '6px 8px', background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)', borderRadius: 4 }} />
+
+          <label className="settings-label">
+            <div className="settings-label-title">Cluster Window</div>
+            <input
+              type="number"
+              min={10}
+              max={2000}
+              value={asNumber('wordSearch.clusterWindow')}
+              onChange={(e) => onUpdate('wordSearch.clusterWindow', Number(e.target.value))}
+              className="settings-input settings-input-small"
+            />
+            <div className="settings-description">
+              Word distance within which matches are grouped as a cluster. Smaller values find tighter clusters.
+            </div>
           </label>
-          <label>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>Min Cluster Size</div>
-            <input type="number" min={2} max={50} value={asNumber('wordSearch.minClusterSize')} onChange={(e) => onUpdate('wordSearch.minClusterSize', Number(e.target.value))}
-              style={{ width: 160, padding: '6px 8px', background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', border: '1px solid var(--vscode-input-border)', borderRadius: 4 }} />
+
+          <label className="settings-label">
+            <div className="settings-label-title">Min Cluster Size</div>
+            <input
+              type="number"
+              min={2}
+              max={50}
+              value={asNumber('wordSearch.minClusterSize')}
+              onChange={(e) => onUpdate('wordSearch.minClusterSize', Number(e.target.value))}
+              className="settings-input settings-input-small"
+            />
+            <div className="settings-description">
+              Minimum matches within the cluster window to report a cluster. Set to 2 to see any repeated pattern.
+            </div>
           </label>
         </div>
-        <div style={{ marginTop: 10 }}>
-          <label style={{ display: 'block', marginBottom: 8 }}>
-            <input type="checkbox" checked={asBoolean('wordSearch.caseSensitive')} onChange={(e) => onUpdate('wordSearch.caseSensitive', e.target.checked)} /> Case Sensitive
-          </label>
-          <label style={{ display: 'block', marginBottom: 0 }}>
-            <input type="checkbox" checked={asBoolean('wordSearch.enableAssistantExpansion')} onChange={(e) => onUpdate('wordSearch.enableAssistantExpansion', e.target.checked)} /> Enable Assistant Expansion
-            <div style={{ color: 'var(--vscode-descriptionForeground)' }}>Suggests synonyms/inflections using the configured dictionary model when enabled.</div>
-          </label>
-        </div>
+
+        <label className="settings-checkbox-label">
+          <input
+            type="checkbox"
+            checked={asBoolean('wordSearch.caseSensitive')}
+            onChange={(e) => onUpdate('wordSearch.caseSensitive', e.target.checked)}
+          /> Case Sensitive
+          <div className="settings-description">
+            When enabled, "Rose" and "rose" are treated as different words.
+          </div>
+        </label>
+
+        <label className="settings-checkbox-label">
+          <input
+            type="checkbox"
+            checked={asBoolean('wordSearch.enableAssistantExpansion')}
+            onChange={(e) => onUpdate('wordSearch.enableAssistantExpansion', e.target.checked)}
+          /> Enable Assistant Expansion
+          <div className="settings-description">
+            Uses the dictionary model to suggest synonyms and inflections when enabled. (Coming soon)
+          </div>
+        </label>
       </section>
 
-      <div style={{ opacity: 0.7, marginTop: 10 }}>Settings save automatically.</div>
+      <div className="settings-footer-note">Settings save automatically.</div>
     </div>
   );
 };

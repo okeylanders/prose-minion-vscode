@@ -419,7 +419,7 @@
         },
         "proseMinion.wordSearch.minClusterSize": {
           "type": "number",
-          "default": 3,
+          "default": 2,
           "minimum": 2,
           "maximum": 50,
           "description": "Minimum hits within the window to form a cluster.",

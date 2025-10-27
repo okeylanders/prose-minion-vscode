@@ -32,6 +32,7 @@ We need a first‑class, in‑app settings experience so non‑technical users c
 
 ## Implementation Notes
  - UI: `src/presentation/webview/components/SettingsOverlay.tsx`
+ - Styling: CSS classes in `src/presentation/webview/index.css` replace inline styles for maintainability; section titles sized at 1.3em with border-bottom for visual hierarchy.
  - Toggle: title‑bar `prose-minion.openSettingsOverlay` command posts `OPEN_SETTINGS_TOGGLE`.
  - Contracts: `src/shared/types/messages.ts`
  - Handlers: `src/application/handlers/MessageHandler.ts` fetches settings, updates keys, and supports token reset.
