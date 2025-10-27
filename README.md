@@ -22,11 +22,27 @@ This extension brings the power of the Prose Minion MCP tools directly into VS C
 - **Chapter-by-Chapter**: Summary table per file; export can include detailed per-chapter tables on request
 - **Inline Model Picker**: Select a dedicated model for dictionary utilities
 
-See docs/PROSE_STATS.md for algorithms and the full legend of metrics.
+See [docs/PROSE_STATS.md](docs/PROSE_STATS.md) for algorithms and the full legend of metrics.
 
-### Suggestions Tab
+### Dictionary Tab
 
-- Coming soon: AI-powered writing suggestions
+- Fiction‑focused dictionary entries with definitions, connotations, tonal notes, usage examples, and related words
+- Respects the dedicated Dictionary model selection for speed/cost tuning
+- Inputs persist across tab switches and sessions; source of pasted data is shown when available
+- Tool details: [docs/TOOLS.md](docs/TOOLS.md)
+
+### Search Tab
+
+- Word Search with configurable targets, context window, cluster detection, and case sensitivity
+- Optional assistant expansion setting to propose synonyms/inflections (config only; UI toggle wired for future backend)
+- Settings surfaced in overlay: `Word Search` section; keys documented in [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
+
+### Settings Overlay
+
+- Full-screen in-app settings (gear icon in the panel header)
+- Centered header with stacked icon over the title
+- Context Resource Paths section to configure project globs used by the Context Assistant
+- Reset Token Usage button and optional token widget in the header
 
 ## Usage
 
@@ -37,11 +53,14 @@ See docs/PROSE_STATS.md for algorithms and the full legend of metrics.
 5. Click the analysis button to get results
 6. In Metrics, select a standards preset (optional) and trim size to see comparison and a publishing format summary
 7. Use Copy/Save in Metrics; you’ll be prompted to include detailed per-chapter tables when available
+8. Open the Settings overlay (gear icon) to configure models, tokens, and Context Resource Paths
 
 ## Recent Updates
 
 - Scoped model selection per tool role (assistant/dictionary/context) with live dropdowns
 - Unified `maxTokens` across tools (default 10000) with truncation notices on long responses
+- In-app Settings overlay refinements: centered header (stacked icon over title) and a new “Context Resource Paths” section that mirrors VS Code settings
+- Verbalized sampling in the Analysis assistants for more creative, character‑specific alternatives while maintaining craft quality (diverse suggestions sampled from tails of the distribution)
 - Publishing standards: genre presets + trim size, comparison table, publishing format with page estimate
 - Prose stats extended: lexical density (content-word ratio), stopword ratio, hapax %, hapax count, TTR, FKGL
 - Chapter aggregation for multi-file metrics with per-chapter summary and optional detailed export
@@ -52,7 +71,7 @@ See docs/PROSE_STATS.md for algorithms and the full legend of metrics.
 
 ## Architecture
 
-This extension follows Clean Architecture principles:
+This extension follows Clean Architecture principles (see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)):
 
 ```
 src/
@@ -82,7 +101,11 @@ Then press F5 to launch the extension in debug mode.
 ### Building
 
 ```bash
+# Dev bundle
 npm run build
+
+# Production package (.vsix)
+npm run package
 ```
 
 ## Configuration
@@ -95,16 +118,20 @@ Settings (search for "Prose Minion"):
 - `proseMinion.publishingStandards.preset` (none | manuscript | genre:<key>)
 - `proseMinion.publishingStandards.pageSizeKey` (format or WIDTHxHEIGHT for selected genre)
 
+Additional commonly used settings:
+
+- `proseMinion.openRouterApiKey`
+- `proseMinion.includeCraftGuides` (boolean)
+- `proseMinion.temperature` (0–2)
+- `proseMinion.ui.showTokenWidget` (boolean)
+- Context Resource Paths: `proseMinion.contextPaths.{characters,locations,themes,things,chapters,manuscript,projectBrief,general}` — can also be edited in the in-app Settings overlay; see docs/CONFIGURATION.md for examples
+
 Notes:
 - When the model stops due to token limits, a truncation notice is appended; raise `maxTokens` if needed.
 
-## Integration with Prose Minion
-
-This extension is designed to integrate with the [Prose Minion MCP tool](../example-repos/prose-minion/).
-
 ### Model & Session Management
 
-The extension manages three dedicated OpenRouter client stacks—assistant, dictionary, and (future) context bot—so each feature can run against a different model without reloading. Responses are cached while the panel is hidden, and UI state is restored when you return to the view, so long-running conversations continue seamlessly.
+The extension manages three dedicated OpenRouter client stacks—assistant, dictionary, and context bot—so each feature can run against a different model without reloading. Responses are cached while the panel is hidden, and UI state is restored when you return to the view, so long-running conversations continue seamlessly.
 
 ### Upcoming Integrations
 
@@ -114,4 +141,8 @@ The extension manages three dedicated OpenRouter client stacks—assistant, dict
 
 ## License
 
-MIT
+AGPL-3.0 with Commons Clause (no resale, no closed‑source derivatives). See the [LICENSE](LICENSE) file for details.
+
+Notes:
+- The Commons Clause makes this license "source‑available" rather than OSI‑approved open source.
+- If you need a commercial or alternative license, open an issue to discuss options.
