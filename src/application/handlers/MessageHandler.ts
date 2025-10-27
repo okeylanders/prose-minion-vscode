@@ -21,6 +21,8 @@ import {
   ModelDataMessage,
   ModelOption,
   ExtensionToWebviewMessage,
+  TokenUsageUpdateMessage,
+  TokenUsageTotals,
   ContextPathGroup,
   SaveResultSuccessMessage,
   SaveResultMetadata,
@@ -38,12 +40,14 @@ interface ResultCache {
   search?: SearchResultMessage;
   status?: StatusMessage;
   error?: ErrorMessage;
+  tokenUsage?: TokenUsageUpdateMessage;
 }
 
 const sharedResultCache: ResultCache = {};
 
 export class MessageHandler {
   private readonly disposables: vscode.Disposable[] = [];
+  private tokenTotals: TokenUsageTotals = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
 
   constructor(
     private readonly proseAnalysisService: IProseAnalysisService,
@@ -64,7 +68,8 @@ export class MessageHandler {
         event.affectsConfiguration('proseMinion.assistantModel') ||
         event.affectsConfiguration('proseMinion.dictionaryModel') ||
         event.affectsConfiguration('proseMinion.contextModel') ||
-        event.affectsConfiguration('proseMinion.model')
+        event.affectsConfiguration('proseMinion.model') ||
+        event.affectsConfiguration('proseMinion.ui.showTokenWidget')
       ) {
         void this.refreshServiceConfiguration();
         void this.sendModelData();
@@ -191,6 +196,9 @@ export class MessageHandler {
     this.sendStatus(`Generating dictionary entry for "${word}"...`);
     const result = await this.proseAnalysisService.lookupDictionary(word, contextText);
     this.sendDictionaryResult(result.content, result.toolName);
+    if ((result as any).usage) {
+      this.applyTokenUsage((result as any).usage);
+    }
   }
 
   private async handleGenerateContext(
@@ -215,6 +223,9 @@ export class MessageHandler {
     });
 
     this.sendContextResult(result);
+    if ((result as any).usage) {
+      this.applyTokenUsage((result as any).usage);
+    }
   }
 
   private async handleCopyResult(content: string, toolName: string): Promise<void> {
@@ -336,6 +347,9 @@ export class MessageHandler {
     this.sendStatus('Analyzing dialogue with AI...');
     const result = await this.proseAnalysisService.analyzeDialogue(text, contextText, sourceFileUri);
     this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
+    if ((result as any).usage) {
+      this.applyTokenUsage((result as any).usage);
+    }
   }
 
   private async handleAnalyzeProse(text: string, contextText?: string, sourceFileUri?: string): Promise<void> {
@@ -352,6 +366,9 @@ export class MessageHandler {
     this.sendStatus('Analyzing prose with AI...');
     const result = await this.proseAnalysisService.analyzeProse(text, contextText, sourceFileUri);
     this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
+    if ((result as any).usage) {
+      this.applyTokenUsage((result as any).usage);
+    }
   }
 
   private async handleMeasureProseStats(message: { text?: string; source?: any }): Promise<void> {
@@ -574,6 +591,28 @@ export class MessageHandler {
     this.sendStatus('');
   }
 
+  private applyTokenUsage(usage: TokenUsageTotals): void {
+    try {
+      this.tokenTotals.promptTokens += usage.promptTokens || 0;
+      this.tokenTotals.completionTokens += usage.completionTokens || 0;
+      this.tokenTotals.totalTokens += usage.totalTokens || 0;
+      if (typeof usage.costUsd === 'number') {
+        this.tokenTotals.costUsd = (this.tokenTotals.costUsd || 0) + usage.costUsd;
+      }
+
+      const message: TokenUsageUpdateMessage = {
+        type: MessageType.TOKEN_USAGE_UPDATE,
+        totals: { ...this.tokenTotals },
+        timestamp: Date.now()
+      };
+      sharedResultCache.tokenUsage = { ...message };
+      void this.postMessage(message);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[MessageHandler] Failed to apply token usage update: ${msg}`);
+    }
+  }
+
   private sendSearchResult(result: any, toolName: string): void {
     const message: SearchResultMessage = {
       type: MessageType.SEARCH_RESULT,
@@ -774,10 +813,14 @@ export class MessageHandler {
         }
       });
 
+      const config = vscode.workspace.getConfiguration('proseMinion');
       const message: ModelDataMessage = {
         type: MessageType.MODEL_DATA,
         options,
         selections,
+        ui: {
+          showTokenWidget: config.get<boolean>('ui.showTokenWidget') ?? true
+        },
         timestamp: Date.now()
       };
 
@@ -917,6 +960,10 @@ export class MessageHandler {
 
     if (sharedResultCache.error) {
       void this.postMessage(sharedResultCache.error);
+    }
+
+    if (sharedResultCache.tokenUsage) {
+      void this.postMessage(sharedResultCache.tokenUsage);
     }
   }
 

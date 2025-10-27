@@ -16,6 +16,7 @@ export interface ContextGenerationResult {
   readonly content: string;
   readonly timestamp: Date;
   readonly requestedResources?: string[];
+  readonly usage?: TokenUsage;
 }
 
 export interface ContextResourceSummary {
@@ -44,3 +45,4 @@ export const DEFAULT_CONTEXT_GROUPS: ContextPathGroup[] = [
   'projectBrief',
   'general'
 ];
+import { TokenUsage } from '../../shared/types';

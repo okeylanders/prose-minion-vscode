@@ -258,7 +258,8 @@ export class ProseAnalysisService implements IProseAnalysisService {
       return AnalysisResultFactory.createAnalysisResult(
         'dialogue_analysis',
         executionResult.content,
-        executionResult.usedGuides
+        executionResult.usedGuides,
+        executionResult.usage
       );
     } catch (error) {
       return AnalysisResultFactory.createAnalysisResult(
@@ -289,7 +290,8 @@ export class ProseAnalysisService implements IProseAnalysisService {
       return AnalysisResultFactory.createAnalysisResult(
         'prose_analysis',
         executionResult.content,
-        executionResult.usedGuides
+        executionResult.usedGuides,
+        executionResult.usage
       );
     } catch (error) {
       return AnalysisResultFactory.createAnalysisResult(
@@ -593,7 +595,9 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
       return AnalysisResultFactory.createAnalysisResult(
         'dictionary_lookup',
-        executionResult.content
+        executionResult.content,
+        undefined,
+        executionResult.usage
       );
     } catch (error) {
       return AnalysisResultFactory.createAnalysisResult(
@@ -659,7 +663,8 @@ export class ProseAnalysisService implements IProseAnalysisService {
         toolName: 'context_assistant',
         content: executionResult.content,
         timestamp: new Date(),
-        requestedResources: executionResult.requestedResources
+        requestedResources: executionResult.requestedResources,
+        usage: executionResult.usage
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

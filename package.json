@@ -235,6 +235,12 @@
           "description": "Include craft guides in AI prompts (provides additional writing guidance but uses more tokens)",
           "order": 6
         },
+        "proseMinion.ui.showTokenWidget": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the session token usage widget in the header (tokens and optional cost).",
+          "order": 6
+        },
         "proseMinion.temperature": {
           "type": "number",
           "default": 0.7,

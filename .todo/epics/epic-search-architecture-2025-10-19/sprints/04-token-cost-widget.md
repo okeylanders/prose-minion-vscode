@@ -1,6 +1,6 @@
 # Sprint 4 — Token Cost Widget
 
-Status: Planned
+Status: In Progress
 
 - Window: 2025-10-22 → 2025-10-23 (Days 4–5)
 - Epic: todo/epics/epic-search-architecture-2025-10-19/epic-search-architecture.md
@@ -28,6 +28,17 @@ Add visibility into token usage (and optional cost), decoupled from providers. I
 - src/application/services/AIResourceOrchestrator.ts
 - src/presentation/webview/App.tsx (header widget)
 - src/shared/types/messages.ts (new message for token totals and optional cost)
+
+## Related ADR
+- docs/adr/2025-10-26-token-usage-and-cost-widget.md
+
+## Outcome Notes
+- Phase 1 delivered: per-session token aggregation, header widget (tokens-first), optional cost when provided by provider.
+- Follow-ups added in-line with this sprint scope:
+  - `proseMinion.ui.showTokenWidget` setting and UI wiring.
+  - Shared `TokenUsage` type across layers.
+  - Discriminated union for metrics message payloads.
+  - Orchestrator truncation helper for consistent notices.
 
 ## Acceptance Criteria
 - Token totals increment as assistant/dictionary/context calls complete.

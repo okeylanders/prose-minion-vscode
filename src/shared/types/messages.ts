@@ -60,6 +60,9 @@ export enum MessageType {
   PUBLISHING_STANDARDS_DATA = 'publishing_standards_data',
   SET_PUBLISHING_PRESET = 'set_publishing_preset',
   SET_PUBLISHING_TRIM_SIZE = 'set_publishing_trim_size'
+  ,
+  // Token usage/cost updates
+  TOKEN_USAGE_UPDATE = 'token_usage_update'
 }
 
 export enum TabId {
@@ -82,6 +85,15 @@ export interface ModelOption {
 export interface BaseMessage {
   type: MessageType;
   timestamp?: number;
+}
+
+// Shared token usage shape used across layers
+export interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  costUsd?: number;
+  isEstimate?: boolean;
 }
 
 // Messages from webview to extension
@@ -292,6 +304,14 @@ export interface ChapterGlobsMessage extends BaseMessage {
   globs: string; // raw config string
 }
 
+// Token usage update (extension -> webview)
+export type TokenUsageTotals = TokenUsage;
+
+export interface TokenUsageUpdateMessage extends BaseMessage {
+  type: MessageType.TOKEN_USAGE_UPDATE;
+  totals: TokenUsageTotals;
+}
+
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
   | AnalyzeProseMessage
@@ -323,11 +343,11 @@ export interface AnalysisResultMessage extends BaseMessage {
   usedGuides?: string[];  // Array of guide paths that were used in the analysis
 }
 
-export interface MetricsResultMessage extends BaseMessage {
-  type: MessageType.METRICS_RESULT;
-  result: any;
-  toolName: string;
-}
+export type MetricsResultMessage =
+  | (BaseMessage & { type: MessageType.METRICS_RESULT; toolName: 'prose_stats'; result: ProseStatsReport })
+  | (BaseMessage & { type: MessageType.METRICS_RESULT; toolName: 'style_flags'; result: StyleFlagsReport })
+  | (BaseMessage & { type: MessageType.METRICS_RESULT; toolName: 'word_frequency'; result: WordFrequencyReport })
+  | (BaseMessage & { type: MessageType.METRICS_RESULT; toolName: string; result: unknown });
 
 export interface DictionaryResultMessage extends BaseMessage {
   type: MessageType.DICTIONARY_RESULT;
@@ -391,6 +411,9 @@ export interface ModelDataMessage extends BaseMessage {
   type: MessageType.MODEL_DATA;
   options: ModelOption[];
   selections: Partial<Record<ModelScope, string>>;
+  ui?: {
+    showTokenWidget?: boolean;
+  };
 }
 
 export type ExtensionToWebviewMessage =
@@ -408,4 +431,66 @@ export type ExtensionToWebviewMessage =
   | ActiveFileMessage
   | ManuscriptGlobsMessage
   | ChapterGlobsMessage
-  | PublishingStandardsDataMessage;
+  | PublishingStandardsDataMessage
+  | TokenUsageUpdateMessage;
+
+// Metrics payload contracts (subset of fields used by renderers)
+export interface ProseStatsReport {
+  wordCount: number;
+  sentenceCount: number;
+  paragraphCount: number;
+  averageWordsPerSentence: number;
+  averageSentencesPerParagraph: number;
+  dialoguePercentage: number;
+  lexicalDensity: number;
+  pacing: string;
+  readabilityScore: number;
+  readingTime?: string;
+  readingTimeMinutes?: number;
+  readingTimeHours?: number;
+  uniqueWordCount?: number;
+  wordLengthDistribution?: {
+    '1_to_3_letters': number;
+    '4_to_6_letters': number;
+    '7_plus_letters': number;
+  };
+  stopwordRatio?: number;
+  hapaxPercent?: number;
+  hapaxCount?: number;
+  typeTokenRatio?: number;
+  readabilityGrade?: number;
+  // Optional chapter stats when multi-file modes are used
+  chapterCount?: number;
+  averageChapterLength?: number;
+  perChapterStats?: Array<{ path: string; stats: unknown }>;
+}
+
+export interface StyleFlagsReport {
+  flags: Array<{ type: string; count: number; examples: string[] }>;
+  summary: string;
+}
+
+export interface WordFrequencyReport {
+  totalWords: number;
+  uniqueWords: number;
+  topWords: Array<{ word: string; count: number; percentage: number }>;
+  topStopwords?: Array<{ word: string; count: number; percentage: number }>;
+  totalStopwordCount?: number;
+  hapaxCount?: number;
+  hapaxPercent?: number;
+  hapaxList?: string[];
+  pos?: {
+    mode: 'tagger' | 'unavailable';
+    topNouns?: Array<{ word: string; count: number; percentage: number }>;
+    topVerbs?: Array<{ word: string; count: number; percentage: number }>;
+    topAdjectives?: Array<{ word: string; count: number; percentage: number }>;
+    topAdverbs?: Array<{ word: string; count: number; percentage: number }>;
+  };
+  bigrams?: Array<{ phrase: string; count: number; percentage?: number }>;
+  trigrams?: Array<{ phrase: string; count: number; percentage?: number }>;
+  charLengthCounts: Record<number, number>;
+  charLengthPercentages: Record<number, number>;
+  charLengthHistogram?: string[];
+  lemmasEnabled?: boolean;
+  topLemmaWords?: Array<{ word: string; count: number; percentage: number }>;
+}

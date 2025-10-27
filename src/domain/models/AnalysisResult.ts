@@ -8,6 +8,7 @@ export interface AnalysisResult {
   readonly content: string;
   readonly timestamp: Date;
   readonly usedGuides?: string[];  // Array of guide paths that were used
+  readonly usage?: TokenUsage;
 }
 
 export interface MetricsResult {
@@ -17,12 +18,13 @@ export interface MetricsResult {
 }
 
 export class AnalysisResultFactory {
-  static createAnalysisResult(toolName: string, content: string, usedGuides?: string[]): AnalysisResult {
+  static createAnalysisResult(toolName: string, content: string, usedGuides?: string[], usage?: TokenUsage): AnalysisResult {
     return {
       toolName,
       content,
       timestamp: new Date(),
-      usedGuides
+      usedGuides,
+      usage
     };
   }
 
@@ -34,3 +36,4 @@ export class AnalysisResultFactory {
     };
   }
 }
+import { TokenUsage } from '../../shared/types';
