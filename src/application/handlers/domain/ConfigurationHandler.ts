@@ -102,8 +102,10 @@ export class ConfigurationHandler {
       const config = vscode.workspace.getConfiguration('proseMinion');
       await config.update(message.key, message.value, true);
 
-      // Push updated model data for UI-affecting settings (e.g., ui.showTokenWidget)
-      await this.sendModelData();
+      // Only send model data for UI-affecting settings (prevents overwriting settings overlay state during typing)
+      if (message.key === 'ui.showTokenWidget') {
+        await this.sendModelData();
+      }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.sendError('settings.general', 'Failed to update setting', msg);
@@ -126,15 +128,29 @@ export class ConfigurationHandler {
 
   async handleSetModelSelection(message: SetModelSelectionMessage): Promise<void> {
     try {
+      this.outputChannel.appendLine(
+        `[ConfigurationHandler] handleSetModelSelection received: scope=${message.scope}, modelId=${message.modelId}`
+      );
       const configKey = this.getConfigKeyForScope(message.scope);
+      this.outputChannel.appendLine(
+        `[ConfigurationHandler] Config key for scope: ${configKey}`
+      );
       const config = vscode.workspace.getConfiguration('proseMinion');
 
       await config.update(configKey, message.modelId, vscode.ConfigurationTarget.Global);
       this.outputChannel.appendLine(
-        `[ConfigurationHandler] Updated ${message.scope} model selection to ${message.modelId}`
+        `[ConfigurationHandler] Config saved: ${configKey} = ${message.modelId}`
       );
-      await this.refreshServiceConfiguration();
+
+      // Wait a moment for config to be readable (VSCode's config system is async)
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Send MODEL_DATA with the updated selection
+      // (Config watcher will NOT send it to avoid race conditions)
       await this.sendModelData();
+      this.outputChannel.appendLine(
+        `[ConfigurationHandler] Sent MODEL_DATA after model selection change`
+      );
     } catch (error) {
       const message_err = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(
@@ -158,6 +174,9 @@ export class ConfigurationHandler {
       }));
 
       const selections = this.getEffectiveModelSelections();
+      this.outputChannel.appendLine(
+        `[ConfigurationHandler] sendModelData: selections = ${JSON.stringify(selections)}`
+      );
 
       const seen = new Set(options.map(option => option.id));
       Object.values(selections).forEach(modelId => {
@@ -182,6 +201,9 @@ export class ConfigurationHandler {
         timestamp: Date.now()
       };
 
+      this.outputChannel.appendLine(
+        `[ConfigurationHandler] Sending MODEL_DATA with ${options.length} options and selections: ${JSON.stringify(selections)}`
+      );
       this.postMessage(message);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -233,12 +255,14 @@ export class ConfigurationHandler {
   }
 
   private async refreshServiceConfiguration(): Promise<void> {
+    this.outputChannel.appendLine(`[ConfigurationHandler] refreshServiceConfiguration called`);
     if (
       'refreshConfiguration' in this.service &&
       typeof (this.service as any).refreshConfiguration === 'function'
     ) {
       try {
         await (this.service as any).refreshConfiguration();
+        this.outputChannel.appendLine(`[ConfigurationHandler] Service configuration refreshed`);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         this.outputChannel.appendLine(

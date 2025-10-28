@@ -143,12 +143,9 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-label">
           <div className="settings-label-title">Temperature (0–2)</div>
           <input
-            type="number"
-            min={0}
-            max={2}
-            step={0.1}
+            type="text"
             value={asNumber('temperature')}
-            onChange={(e) => onUpdate('temperature', Number(e.target.value))}
+            onChange={(e) => onUpdate('temperature', Number(e.target.value) || 0)}
             className="settings-input settings-input-small"
           />
           <div className="settings-description">
@@ -159,12 +156,9 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-label">
           <div className="settings-label-title">Max Tokens</div>
           <input
-            type="number"
-            min={100}
-            max={100000}
-            step={100}
+            type="text"
             value={asNumber('maxTokens')}
-            onChange={(e) => onUpdate('maxTokens', Number(e.target.value))}
+            onChange={(e) => onUpdate('maxTokens', Number(e.target.value) || 0)}
             className="settings-input settings-input-medium"
           />
           <div className="settings-description">
@@ -246,11 +240,9 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-label">
           <div className="settings-label-title">Top N Words</div>
           <input
-            type="number"
-            min={10}
-            max={1000}
+            type="text"
             value={asNumber('wordFrequency.topN')}
-            onChange={(e) => onUpdate('wordFrequency.topN', Number(e.target.value))}
+            onChange={(e) => onUpdate('wordFrequency.topN', Number(e.target.value) || 0)}
             className="settings-input settings-input-small"
           />
           <div className="settings-description">
@@ -272,11 +264,9 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-label">
           <div className="settings-label-title">Hapax Display Max</div>
           <input
-            type="number"
-            min={50}
-            max={5000}
+            type="text"
             value={asNumber('wordFrequency.hapaxDisplayMax')}
-            onChange={(e) => onUpdate('wordFrequency.hapaxDisplayMax', Number(e.target.value))}
+            onChange={(e) => onUpdate('wordFrequency.hapaxDisplayMax', Number(e.target.value) || 0)}
             className="settings-input settings-input-medium"
           />
           <div className="settings-description">
@@ -353,11 +343,9 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-label">
           <div className="settings-label-title">Word Length Histogram Max Chars</div>
           <input
-            type="number"
-            min={5}
-            max={30}
+            type="text"
             value={asNumber('wordFrequency.lengthHistogramMaxChars')}
-            onChange={(e) => onUpdate('wordFrequency.lengthHistogramMaxChars', Number(e.target.value))}
+            onChange={(e) => onUpdate('wordFrequency.lengthHistogramMaxChars', Number(e.target.value) || 0)}
             className="settings-input settings-input-medium"
           />
           <div className="settings-description">
@@ -386,11 +374,9 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
           <label className="settings-label">
             <div className="settings-label-title">Context Words</div>
             <input
-              type="number"
-              min={0}
-              max={50}
+              type="text"
               value={asNumber('wordSearch.contextWords')}
-              onChange={(e) => onUpdate('wordSearch.contextWords', Number(e.target.value))}
+              onChange={(e) => onUpdate('wordSearch.contextWords', Number(e.target.value) || 0)}
               className="settings-input settings-input-small"
             />
             <div className="settings-description">
@@ -401,11 +387,9 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
           <label className="settings-label">
             <div className="settings-label-title">Cluster Window</div>
             <input
-              type="number"
-              min={10}
-              max={2000}
+              type="text"
               value={asNumber('wordSearch.clusterWindow')}
-              onChange={(e) => onUpdate('wordSearch.clusterWindow', Number(e.target.value))}
+              onChange={(e) => onUpdate('wordSearch.clusterWindow', Number(e.target.value) || 0)}
               className="settings-input settings-input-small"
             />
             <div className="settings-description">
@@ -416,11 +400,9 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
           <label className="settings-label">
             <div className="settings-label-title">Min Cluster Size</div>
             <input
-              type="number"
-              min={2}
-              max={50}
+              type="text"
               value={asNumber('wordSearch.minClusterSize')}
-              onChange={(e) => onUpdate('wordSearch.minClusterSize', Number(e.target.value))}
+              onChange={(e) => onUpdate('wordSearch.minClusterSize', Number(e.target.value) || 0)}
               className="settings-input settings-input-small"
             />
             <div className="settings-description">

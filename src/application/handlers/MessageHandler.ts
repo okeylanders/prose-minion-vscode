@@ -79,14 +79,21 @@ export class MessageHandler {
     }
 
     const configWatcher = vscode.workspace.onDidChangeConfiguration(event => {
+      // Only refresh service if model configs changed
       if (
         event.affectsConfiguration('proseMinion.assistantModel') ||
         event.affectsConfiguration('proseMinion.dictionaryModel') ||
         event.affectsConfiguration('proseMinion.contextModel') ||
-        event.affectsConfiguration('proseMinion.model') ||
-        event.affectsConfiguration('proseMinion.ui.showTokenWidget')
+        event.affectsConfiguration('proseMinion.model')
       ) {
         void this.refreshServiceConfiguration();
+        // NOTE: Do NOT send MODEL_DATA here for model changes.
+        // handleSetModelSelection will send it after saving.
+        // This prevents race conditions where we send stale data.
+      }
+
+      // Send MODEL_DATA only for UI setting changes (not model changes)
+      if (event.affectsConfiguration('proseMinion.ui.showTokenWidget')) {
         void this.configurationHandler.sendModelData();
       }
     });

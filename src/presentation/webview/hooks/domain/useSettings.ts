@@ -109,6 +109,7 @@ export const useSettings = (): UseSettingsReturn => {
   const open = React.useCallback(() => {
     setShowSettings(true);
     vscode.postMessage({ type: MessageType.REQUEST_SETTINGS_DATA, timestamp: Date.now() });
+    vscode.postMessage({ type: MessageType.REQUEST_MODEL_DATA, timestamp: Date.now() });
     vscode.postMessage({ type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA, timestamp: Date.now() });
     vscode.postMessage({ type: MessageType.REQUEST_API_KEY, timestamp: Date.now() });
   }, [vscode]);
@@ -122,6 +123,7 @@ export const useSettings = (): UseSettingsReturn => {
       const next = !prev;
       if (next) {
         vscode.postMessage({ type: MessageType.REQUEST_SETTINGS_DATA, timestamp: Date.now() });
+        vscode.postMessage({ type: MessageType.REQUEST_MODEL_DATA, timestamp: Date.now() });
         vscode.postMessage({ type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA, timestamp: Date.now() });
         vscode.postMessage({ type: MessageType.REQUEST_API_KEY, timestamp: Date.now() });
       }
@@ -130,9 +132,18 @@ export const useSettings = (): UseSettingsReturn => {
   }, [vscode]);
 
   const handleSettingsData = React.useCallback((message: any) => {
+    // SETTINGS_DATA only contains general settings (not model options/selections)
+    // Model data comes separately via MODEL_DATA message
     setSettingsData(message.settings || {});
-    if (message.modelOptions) {
-      setModelOptions(message.modelOptions);
+  }, []);
+
+  const handleApiKeyStatus = React.useCallback((message: any) => {
+    setHasSavedKey(message.hasSavedKey);
+  }, []);
+
+  const handleModelOptionsData = React.useCallback((message: any) => {
+    if (message.options) {
+      setModelOptions(message.options);
     }
     if (message.selections) {
       setModelSelections((prev) => ({
@@ -145,24 +156,15 @@ export const useSettings = (): UseSettingsReturn => {
     }
   }, []);
 
-  const handleApiKeyStatus = React.useCallback((message: any) => {
-    setHasSavedKey(message.hasSavedKey);
-  }, []);
-
-  const handleModelOptionsData = React.useCallback((message: any) => {
-    if (message.modelOptions) {
-      setModelOptions(message.modelOptions);
-    }
-    if (message.selections) {
-      setModelSelections((prev) => ({
-        ...prev,
-        ...(message.selections ?? {}),
-      }));
-    }
-  }, []);
-
   const updateSetting = React.useCallback(
     (key: string, value: any) => {
+      // Optimistically update local state immediately
+      setSettingsData((prev) => ({
+        ...prev,
+        [key]: value,
+      }));
+
+      // Send update to backend
       vscode.postMessage({
         type: MessageType.UPDATE_SETTING,
         key,
@@ -197,16 +199,21 @@ export const useSettings = (): UseSettingsReturn => {
 
   const setModelSelection = React.useCallback(
     (scope: ModelScope, model: string) => {
+      // Optimistically update local state immediately
       setModelSelections((prev) => ({
         ...prev,
         [scope]: model,
       }));
+
+      // Send to backend to persist
       vscode.postMessage({
         type: MessageType.SET_MODEL_SELECTION,
         scope,
-        model,
+        modelId: model,
         timestamp: Date.now(),
       });
+
+      // Backend will send MODEL_DATA with the updated value after saving
     },
     [vscode]
   );
