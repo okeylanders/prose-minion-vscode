@@ -23,6 +23,9 @@ import {
   TokenUsageTotals
 } from '../../shared/types/messages';
 
+// Message routing
+import { MessageRouter } from './MessageRouter';
+
 // Domain handlers
 import { AnalysisHandler } from './domain/AnalysisHandler';
 import { DictionaryHandler } from './domain/DictionaryHandler';
@@ -51,6 +54,9 @@ const sharedResultCache: ResultCache = {};
 export class MessageHandler {
   private readonly disposables: vscode.Disposable[] = [];
   private tokenTotals: TokenUsageTotals = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+
+  // Message router (Strategy pattern)
+  private readonly router: MessageRouter;
 
   // Domain handlers
   private readonly analysisHandler: AnalysisHandler;
@@ -175,140 +181,72 @@ export class MessageHandler {
       this.sendError.bind(this)
     );
 
+    // Initialize message router and register handler routes
+    this.router = new MessageRouter();
+
+    // TODO: Domain handlers will register their routes in Sprint 2
+    // For now, we register manually to maintain functionality
+    // After Sprint 2, handlers will have registerRoutes(router) methods
+
+    // Analysis routes
+    this.router.register(MessageType.ANALYZE_DIALOGUE, this.analysisHandler.handleAnalyzeDialogue.bind(this.analysisHandler));
+    this.router.register(MessageType.ANALYZE_PROSE, this.analysisHandler.handleAnalyzeProse.bind(this.analysisHandler));
+
+    // Dictionary routes
+    this.router.register(MessageType.LOOKUP_DICTIONARY, this.dictionaryHandler.handleLookupDictionary.bind(this.dictionaryHandler));
+
+    // Context routes
+    this.router.register(MessageType.GENERATE_CONTEXT, this.contextHandler.handleGenerateContext.bind(this.contextHandler));
+
+    // Metrics routes
+    this.router.register(MessageType.MEASURE_PROSE_STATS, this.metricsHandler.handleMeasureProseStats.bind(this.metricsHandler));
+    this.router.register(MessageType.MEASURE_STYLE_FLAGS, this.metricsHandler.handleMeasureStyleFlags.bind(this.metricsHandler));
+    this.router.register(MessageType.MEASURE_WORD_FREQUENCY, this.metricsHandler.handleMeasureWordFrequency.bind(this.metricsHandler));
+
+    // Search routes
+    this.router.register(MessageType.RUN_WORD_SEARCH, this.searchHandler.handleMeasureWordSearch.bind(this.searchHandler));
+
+    // Configuration routes
+    this.router.register(MessageType.REQUEST_MODEL_DATA, this.configurationHandler.handleRequestModelData.bind(this.configurationHandler));
+    this.router.register(MessageType.SET_MODEL_SELECTION, this.configurationHandler.handleSetModelSelection.bind(this.configurationHandler));
+    this.router.register(MessageType.REQUEST_SETTINGS_DATA, this.configurationHandler.handleRequestSettingsData.bind(this.configurationHandler));
+    this.router.register(MessageType.UPDATE_SETTING, this.configurationHandler.handleUpdateSetting.bind(this.configurationHandler));
+    this.router.register(MessageType.RESET_TOKEN_USAGE, this.configurationHandler.handleResetTokenUsage.bind(this.configurationHandler));
+    this.router.register(MessageType.REQUEST_API_KEY, this.configurationHandler.handleRequestApiKey.bind(this.configurationHandler));
+    this.router.register(MessageType.UPDATE_API_KEY, this.configurationHandler.handleUpdateApiKey.bind(this.configurationHandler));
+    this.router.register(MessageType.DELETE_API_KEY, this.configurationHandler.handleDeleteApiKey.bind(this.configurationHandler));
+
+    // Publishing routes
+    this.router.register(MessageType.REQUEST_PUBLISHING_STANDARDS_DATA, this.publishingHandler.handleRequestPublishingStandardsData.bind(this.publishingHandler));
+    this.router.register(MessageType.SET_PUBLISHING_PRESET, this.publishingHandler.handleSetPublishingPreset.bind(this.publishingHandler));
+    this.router.register(MessageType.SET_PUBLISHING_TRIM_SIZE, this.publishingHandler.handleSetPublishingTrim.bind(this.publishingHandler));
+
+    // Sources routes
+    this.router.register(MessageType.REQUEST_ACTIVE_FILE, this.sourcesHandler.handleRequestActiveFile.bind(this.sourcesHandler));
+    this.router.register(MessageType.REQUEST_MANUSCRIPT_GLOBS, this.sourcesHandler.handleRequestManuscriptGlobs.bind(this.sourcesHandler));
+    this.router.register(MessageType.REQUEST_CHAPTER_GLOBS, this.sourcesHandler.handleRequestChapterGlobs.bind(this.sourcesHandler));
+
+    // UI routes
+    this.router.register(MessageType.OPEN_GUIDE_FILE, this.uiHandler.handleOpenGuideFile.bind(this.uiHandler));
+    this.router.register(MessageType.REQUEST_SELECTION, this.uiHandler.handleSelectionRequest.bind(this.uiHandler));
+    this.router.register(MessageType.TAB_CHANGED, async () => {}); // No-op handler for tab changes
+
+    // File Operations routes
+    this.router.register(MessageType.COPY_RESULT, this.fileOperationsHandler.handleCopyResult.bind(this.fileOperationsHandler));
+    this.router.register(MessageType.SAVE_RESULT, this.fileOperationsHandler.handleSaveResult.bind(this.fileOperationsHandler));
+
+    // Webview diagnostics
+    this.router.register(MessageType.WEBVIEW_ERROR, async (message: any) => {
+      this.outputChannel.appendLine(`[Webview Error] ${message.message}${message.details ? ` - ${message.details}` : ''}`);
+    });
+
     this.flushCachedResults();
   }
 
   async handleMessage(message: WebviewToExtensionMessage): Promise<void> {
     try {
-      switch (message.type) {
-        // Analysis
-        case MessageType.ANALYZE_DIALOGUE:
-          await this.analysisHandler.handleAnalyzeDialogue(message);
-          break;
-
-        case MessageType.ANALYZE_PROSE:
-          await this.analysisHandler.handleAnalyzeProse(message);
-          break;
-
-        // Dictionary
-        case MessageType.LOOKUP_DICTIONARY:
-          await this.dictionaryHandler.handleLookupDictionary(message);
-          break;
-
-        // Context
-        case MessageType.GENERATE_CONTEXT:
-          await this.contextHandler.handleGenerateContext(message);
-          break;
-
-        // Metrics
-        case MessageType.MEASURE_PROSE_STATS:
-          await this.metricsHandler.handleMeasureProseStats(message);
-          break;
-
-        case MessageType.MEASURE_STYLE_FLAGS:
-          await this.metricsHandler.handleMeasureStyleFlags(message);
-          break;
-
-        case MessageType.MEASURE_WORD_FREQUENCY:
-          await this.metricsHandler.handleMeasureWordFrequency(message);
-          break;
-
-        // Search
-        case MessageType.RUN_WORD_SEARCH:
-          await this.searchHandler.handleMeasureWordSearch(message);
-          break;
-
-        // Configuration
-        case MessageType.REQUEST_MODEL_DATA:
-          await this.configurationHandler.handleRequestModelData(message);
-          break;
-
-        case MessageType.SET_MODEL_SELECTION:
-          await this.configurationHandler.handleSetModelSelection(message);
-          break;
-
-        case MessageType.REQUEST_SETTINGS_DATA:
-          await this.configurationHandler.handleRequestSettingsData(message);
-          break;
-
-        case MessageType.UPDATE_SETTING:
-          await this.configurationHandler.handleUpdateSetting(message);
-          break;
-
-        case MessageType.RESET_TOKEN_USAGE:
-          await this.configurationHandler.handleResetTokenUsage();
-          break;
-
-        case MessageType.REQUEST_API_KEY:
-          await this.configurationHandler.handleRequestApiKey(message);
-          break;
-
-        case MessageType.UPDATE_API_KEY:
-          await this.configurationHandler.handleUpdateApiKey(message);
-          break;
-
-        case MessageType.DELETE_API_KEY:
-          await this.configurationHandler.handleDeleteApiKey(message);
-          break;
-
-        // Publishing
-        case MessageType.REQUEST_PUBLISHING_STANDARDS_DATA:
-          await this.publishingHandler.handleRequestPublishingStandardsData(message);
-          break;
-
-        case MessageType.SET_PUBLISHING_PRESET:
-          await this.publishingHandler.handleSetPublishingPreset(message);
-          break;
-
-        case MessageType.SET_PUBLISHING_TRIM_SIZE:
-          await this.publishingHandler.handleSetPublishingTrim(message);
-          break;
-
-        // Sources
-        case MessageType.REQUEST_ACTIVE_FILE:
-          await this.sourcesHandler.handleRequestActiveFile(message);
-          break;
-
-        case MessageType.REQUEST_MANUSCRIPT_GLOBS:
-          await this.sourcesHandler.handleRequestManuscriptGlobs(message);
-          break;
-
-        case MessageType.REQUEST_CHAPTER_GLOBS:
-          await this.sourcesHandler.handleRequestChapterGlobs(message);
-          break;
-
-        // UI
-        case MessageType.OPEN_GUIDE_FILE:
-          await this.uiHandler.handleOpenGuideFile(message);
-          break;
-
-        case MessageType.REQUEST_SELECTION:
-          await this.uiHandler.handleSelectionRequest(message);
-          break;
-
-        case MessageType.TAB_CHANGED:
-          // Tab change is handled in UI, no action needed
-          break;
-
-        // Diagnostics from the webview
-        case MessageType.WEBVIEW_ERROR: {
-          const m = message as any;
-          this.outputChannel.appendLine(`[Webview Error] ${m.message}${m.details ? ` - ${m.details}` : ''}`);
-          break;
-        }
-
-        // File Operations
-        case MessageType.COPY_RESULT:
-          await this.fileOperationsHandler.handleCopyResult(message);
-          break;
-
-        case MessageType.SAVE_RESULT:
-          await this.fileOperationsHandler.handleSaveResult(message);
-          break;
-
-        default:
-          this.sendError('unknown', 'Unknown message type', 'Received unrecognized message');
-      }
+      // Route message to registered handler
+      await this.router.route(message);
     } catch (error) {
       this.sendError(
         'unknown',

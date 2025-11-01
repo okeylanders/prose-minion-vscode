@@ -3,16 +3,22 @@
  * Dictionary lookup and word operations
  */
 
-import { BaseMessage, MessageType } from './base';
+import { MessageEnvelope, MessageType } from './base';
 
-export interface LookupDictionaryMessage extends BaseMessage {
-  type: MessageType.LOOKUP_DICTIONARY;
+export interface LookupDictionaryPayload {
   word: string;
   contextText?: string;
 }
 
-export interface DictionaryResultMessage extends BaseMessage {
-  type: MessageType.DICTIONARY_RESULT;
+export interface LookupDictionaryMessage extends MessageEnvelope<LookupDictionaryPayload> {
+  type: MessageType.LOOKUP_DICTIONARY;
+}
+
+export interface DictionaryResultPayload {
   result: string;
   toolName: string;
+}
+
+export interface DictionaryResultMessage extends MessageEnvelope<DictionaryResultPayload> {
+  type: MessageType.DICTIONARY_RESULT;
 }

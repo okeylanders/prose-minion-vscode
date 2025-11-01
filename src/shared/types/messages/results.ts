@@ -3,7 +3,7 @@
  * Generic result messages and file operations
  */
 
-import { BaseMessage, MessageType, SaveResultMetadata } from './base';
+import { MessageEnvelope, MessageType, SaveResultMetadata } from './base';
 
 /**
  * Hierarchical error source identifier
@@ -49,34 +49,49 @@ export type ErrorSource =
   // Unknown/legacy (fallback)
   | 'unknown';
 
-export interface ErrorMessage extends BaseMessage {
-  type: MessageType.ERROR;
+export interface ErrorPayload {
   source: ErrorSource;
   message: string;
   details?: string;
 }
 
-export interface StatusMessage extends BaseMessage {
-  type: MessageType.STATUS;
+export interface ErrorMessage extends MessageEnvelope<ErrorPayload> {
+  type: MessageType.ERROR;
+}
+
+export interface StatusPayload {
   message: string;
   guideNames?: string;  // Comma-separated list of guide names for ticker animation
 }
 
-export interface CopyResultMessage extends BaseMessage {
-  type: MessageType.COPY_RESULT;
+export interface StatusMessage extends MessageEnvelope<StatusPayload> {
+  type: MessageType.STATUS;
+}
+
+export interface CopyResultPayload {
   toolName: string;
   content: string;
 }
 
-export interface SaveResultMessage extends BaseMessage {
-  type: MessageType.SAVE_RESULT;
+export interface CopyResultMessage extends MessageEnvelope<CopyResultPayload> {
+  type: MessageType.COPY_RESULT;
+}
+
+export interface SaveResultPayload {
   toolName: string;
   content: string;
   metadata?: SaveResultMetadata;
 }
 
-export interface SaveResultSuccessMessage extends BaseMessage {
-  type: MessageType.SAVE_RESULT_SUCCESS;
+export interface SaveResultMessage extends MessageEnvelope<SaveResultPayload> {
+  type: MessageType.SAVE_RESULT;
+}
+
+export interface SaveResultSuccessPayload {
   filePath: string;
   toolName: string;
+}
+
+export interface SaveResultSuccessMessage extends MessageEnvelope<SaveResultSuccessPayload> {
+  type: MessageType.SAVE_RESULT_SUCCESS;
 }
