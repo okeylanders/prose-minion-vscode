@@ -12,6 +12,8 @@ import {
   ErrorSource
 } from '../../../shared/types/messages';
 
+import { MessageRouter } from '../MessageRouter';
+
 export class UIHandler {
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -20,6 +22,15 @@ export class UIHandler {
     private readonly sendStatus: (message: string, guideNames?: string) => void,
     private readonly sendError: (source: ErrorSource, message: string, details?: string) => void
   ) {}
+
+  /**
+   * Register message routes for UI domain
+   */
+  registerRoutes(router: MessageRouter): void {
+    router.register(MessageType.OPEN_GUIDE_FILE, this.handleOpenGuideFile.bind(this));
+    router.register(MessageType.REQUEST_SELECTION, this.handleSelectionRequest.bind(this));
+    router.register(MessageType.TAB_CHANGED, async () => {}); // No-op handler for tab changes
+  }
 
   async handleOpenGuideFile(message: OpenGuideFileMessage): Promise<void> {
     try {

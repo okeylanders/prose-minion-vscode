@@ -10,11 +10,21 @@ import {
   RequestChapterGlobsMessage,
   MessageType
 } from '../../../shared/types/messages';
+import { MessageRouter } from '../MessageRouter';
 
 export class SourcesHandler {
   constructor(
     private readonly postMessage: (message: any) => void
   ) {}
+
+  /**
+   * Register message routes for sources domain
+   */
+  registerRoutes(router: MessageRouter): void {
+    router.register(MessageType.REQUEST_ACTIVE_FILE, this.handleRequestActiveFile.bind(this));
+    router.register(MessageType.REQUEST_MANUSCRIPT_GLOBS, this.handleRequestManuscriptGlobs.bind(this));
+    router.register(MessageType.REQUEST_CHAPTER_GLOBS, this.handleRequestChapterGlobs.bind(this));
+  }
 
   async handleRequestActiveFile(message: RequestActiveFileMessage): Promise<void> {
     const editor = vscode.window.activeTextEditor;

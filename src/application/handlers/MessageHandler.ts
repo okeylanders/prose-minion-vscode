@@ -184,58 +184,19 @@ export class MessageHandler {
     // Initialize message router and register handler routes
     this.router = new MessageRouter();
 
-    // TODO: Domain handlers will register their routes in Sprint 2
-    // For now, we register manually to maintain functionality
-    // After Sprint 2, handlers will have registerRoutes(router) methods
+    // Domain handlers self-register their routes (Strategy pattern)
+    this.analysisHandler.registerRoutes(this.router);
+    this.dictionaryHandler.registerRoutes(this.router);
+    this.contextHandler.registerRoutes(this.router);
+    this.metricsHandler.registerRoutes(this.router);
+    this.searchHandler.registerRoutes(this.router);
+    this.configurationHandler.registerRoutes(this.router);
+    this.publishingHandler.registerRoutes(this.router);
+    this.sourcesHandler.registerRoutes(this.router);
+    this.uiHandler.registerRoutes(this.router);
+    this.fileOperationsHandler.registerRoutes(this.router);
 
-    // Analysis routes
-    this.router.register(MessageType.ANALYZE_DIALOGUE, this.analysisHandler.handleAnalyzeDialogue.bind(this.analysisHandler));
-    this.router.register(MessageType.ANALYZE_PROSE, this.analysisHandler.handleAnalyzeProse.bind(this.analysisHandler));
-
-    // Dictionary routes
-    this.router.register(MessageType.LOOKUP_DICTIONARY, this.dictionaryHandler.handleLookupDictionary.bind(this.dictionaryHandler));
-
-    // Context routes
-    this.router.register(MessageType.GENERATE_CONTEXT, this.contextHandler.handleGenerateContext.bind(this.contextHandler));
-
-    // Metrics routes
-    this.router.register(MessageType.MEASURE_PROSE_STATS, this.metricsHandler.handleMeasureProseStats.bind(this.metricsHandler));
-    this.router.register(MessageType.MEASURE_STYLE_FLAGS, this.metricsHandler.handleMeasureStyleFlags.bind(this.metricsHandler));
-    this.router.register(MessageType.MEASURE_WORD_FREQUENCY, this.metricsHandler.handleMeasureWordFrequency.bind(this.metricsHandler));
-
-    // Search routes
-    this.router.register(MessageType.RUN_WORD_SEARCH, this.searchHandler.handleMeasureWordSearch.bind(this.searchHandler));
-
-    // Configuration routes
-    this.router.register(MessageType.REQUEST_MODEL_DATA, this.configurationHandler.handleRequestModelData.bind(this.configurationHandler));
-    this.router.register(MessageType.SET_MODEL_SELECTION, this.configurationHandler.handleSetModelSelection.bind(this.configurationHandler));
-    this.router.register(MessageType.REQUEST_SETTINGS_DATA, this.configurationHandler.handleRequestSettingsData.bind(this.configurationHandler));
-    this.router.register(MessageType.UPDATE_SETTING, this.configurationHandler.handleUpdateSetting.bind(this.configurationHandler));
-    this.router.register(MessageType.RESET_TOKEN_USAGE, this.configurationHandler.handleResetTokenUsage.bind(this.configurationHandler));
-    this.router.register(MessageType.REQUEST_API_KEY, this.configurationHandler.handleRequestApiKey.bind(this.configurationHandler));
-    this.router.register(MessageType.UPDATE_API_KEY, this.configurationHandler.handleUpdateApiKey.bind(this.configurationHandler));
-    this.router.register(MessageType.DELETE_API_KEY, this.configurationHandler.handleDeleteApiKey.bind(this.configurationHandler));
-
-    // Publishing routes
-    this.router.register(MessageType.REQUEST_PUBLISHING_STANDARDS_DATA, this.publishingHandler.handleRequestPublishingStandardsData.bind(this.publishingHandler));
-    this.router.register(MessageType.SET_PUBLISHING_PRESET, this.publishingHandler.handleSetPublishingPreset.bind(this.publishingHandler));
-    this.router.register(MessageType.SET_PUBLISHING_TRIM_SIZE, this.publishingHandler.handleSetPublishingTrim.bind(this.publishingHandler));
-
-    // Sources routes
-    this.router.register(MessageType.REQUEST_ACTIVE_FILE, this.sourcesHandler.handleRequestActiveFile.bind(this.sourcesHandler));
-    this.router.register(MessageType.REQUEST_MANUSCRIPT_GLOBS, this.sourcesHandler.handleRequestManuscriptGlobs.bind(this.sourcesHandler));
-    this.router.register(MessageType.REQUEST_CHAPTER_GLOBS, this.sourcesHandler.handleRequestChapterGlobs.bind(this.sourcesHandler));
-
-    // UI routes
-    this.router.register(MessageType.OPEN_GUIDE_FILE, this.uiHandler.handleOpenGuideFile.bind(this.uiHandler));
-    this.router.register(MessageType.REQUEST_SELECTION, this.uiHandler.handleSelectionRequest.bind(this.uiHandler));
-    this.router.register(MessageType.TAB_CHANGED, async () => {}); // No-op handler for tab changes
-
-    // File Operations routes
-    this.router.register(MessageType.COPY_RESULT, this.fileOperationsHandler.handleCopyResult.bind(this.fileOperationsHandler));
-    this.router.register(MessageType.SAVE_RESULT, this.fileOperationsHandler.handleSaveResult.bind(this.fileOperationsHandler));
-
-    // Webview diagnostics
+    // Webview diagnostics (no dedicated handler)
     this.router.register(MessageType.WEBVIEW_ERROR, async (message: any) => {
       this.outputChannel.appendLine(`[Webview Error] ${message.message}${message.details ? ` - ${message.details}` : ''}`);
     });

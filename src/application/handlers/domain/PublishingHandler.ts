@@ -13,6 +13,8 @@ import {
 } from '../../../shared/types/messages';
 import { PublishingStandardsRepository } from '../../../infrastructure/standards/PublishingStandardsRepository';
 
+import { MessageRouter } from '../MessageRouter';
+
 export class PublishingHandler {
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -20,6 +22,15 @@ export class PublishingHandler {
     private readonly postMessage: (message: any) => void,
     private readonly sendError: (source: ErrorSource, message: string, details?: string) => void
   ) {}
+
+  /**
+   * Register message routes for publishing domain
+   */
+  registerRoutes(router: MessageRouter): void {
+    router.register(MessageType.REQUEST_PUBLISHING_STANDARDS_DATA, this.handleRequestPublishingStandardsData.bind(this));
+    router.register(MessageType.SET_PUBLISHING_PRESET, this.handleSetPublishingPreset.bind(this));
+    router.register(MessageType.SET_PUBLISHING_TRIM_SIZE, this.handleSetPublishingTrim.bind(this));
+  }
 
   async handleRequestPublishingStandardsData(message: RequestPublishingStandardsDataMessage): Promise<void> {
     try {

@@ -9,8 +9,10 @@ import {
   AnalyzeDialogueMessage,
   AnalyzeProseMessage,
   TokenUsage,
-  ErrorSource
+  ErrorSource,
+  MessageType
 } from '../../../shared/types/messages';
+import { MessageRouter } from '../MessageRouter';
 
 export class AnalysisHandler {
   constructor(
@@ -20,6 +22,14 @@ export class AnalysisHandler {
     private readonly sendError: (source: ErrorSource, message: string, details?: string) => void,
     private readonly applyTokenUsage: (usage: TokenUsage) => void
   ) {}
+
+  /**
+   * Register message routes for analysis domain
+   */
+  registerRoutes(router: MessageRouter): void {
+    router.register(MessageType.ANALYZE_DIALOGUE, this.handleAnalyzeDialogue.bind(this));
+    router.register(MessageType.ANALYZE_PROSE, this.handleAnalyzeProse.bind(this));
+  }
 
   async handleAnalyzeDialogue(message: AnalyzeDialogueMessage): Promise<void> {
     const config = vscode.workspace.getConfiguration('proseMinion');

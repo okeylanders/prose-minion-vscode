@@ -12,6 +12,7 @@ import {
   MessageType,
   ErrorSource
 } from '../../../shared/types/messages';
+import { MessageRouter } from '../MessageRouter';
 
 export class FileOperationsHandler {
   constructor(
@@ -20,6 +21,14 @@ export class FileOperationsHandler {
     private readonly sendStatus: (message: string, guideNames?: string) => void,
     private readonly sendError: (source: ErrorSource, message: string, details?: string) => void
   ) {}
+
+  /**
+   * Register message routes for file operations domain
+   */
+  registerRoutes(router: MessageRouter): void {
+    router.register(MessageType.COPY_RESULT, this.handleCopyResult.bind(this));
+    router.register(MessageType.SAVE_RESULT, this.handleSaveResult.bind(this));
+  }
 
   async handleCopyResult(message: CopyResultMessage): Promise<void> {
     try {

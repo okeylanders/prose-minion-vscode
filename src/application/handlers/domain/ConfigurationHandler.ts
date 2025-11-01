@@ -21,6 +21,7 @@ import {
   MessageType,
   ErrorSource
 } from '../../../shared/types/messages';
+import { MessageRouter } from '../MessageRouter';
 import { OpenRouterModels } from '../../../infrastructure/api/OpenRouterModels';
 import { SecretStorageService } from '../../../infrastructure/secrets/SecretStorageService';
 
@@ -34,6 +35,20 @@ export class ConfigurationHandler {
     private readonly sharedResultCache: any,
     private readonly tokenTotals: { promptTokens: number; completionTokens: number; totalTokens: number }
   ) {}
+
+  /**
+   * Register message routes for configuration domain
+   */
+  registerRoutes(router: MessageRouter): void {
+    router.register(MessageType.REQUEST_MODEL_DATA, this.handleRequestModelData.bind(this));
+    router.register(MessageType.SET_MODEL_SELECTION, this.handleSetModelSelection.bind(this));
+    router.register(MessageType.REQUEST_SETTINGS_DATA, this.handleRequestSettingsData.bind(this));
+    router.register(MessageType.UPDATE_SETTING, this.handleUpdateSetting.bind(this));
+    router.register(MessageType.RESET_TOKEN_USAGE, this.handleResetTokenUsage.bind(this));
+    router.register(MessageType.REQUEST_API_KEY, this.handleRequestApiKey.bind(this));
+    router.register(MessageType.UPDATE_API_KEY, this.handleUpdateApiKey.bind(this));
+    router.register(MessageType.DELETE_API_KEY, this.handleDeleteApiKey.bind(this));
+  }
 
   async handleRequestSettingsData(message: RequestSettingsDataMessage): Promise<void> {
     const config = vscode.workspace.getConfiguration('proseMinion');

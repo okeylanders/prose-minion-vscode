@@ -9,8 +9,10 @@ import {
   MeasureProseStatsMessage,
   MeasureStyleFlagsMessage,
   MeasureWordFrequencyMessage,
+  MessageType,
   ErrorSource
 } from '../../../shared/types/messages';
+import { MessageRouter } from '../MessageRouter';
 
 export class MetricsHandler {
   constructor(
@@ -19,6 +21,15 @@ export class MetricsHandler {
     private readonly sendMetricsResult: (result: any, toolName: string) => void,
     private readonly sendError: (source: ErrorSource, message: string, details?: string) => void
   ) {}
+
+  /**
+   * Register message routes for metrics domain
+   */
+  registerRoutes(router: MessageRouter): void {
+    router.register(MessageType.MEASURE_PROSE_STATS, this.handleMeasureProseStats.bind(this));
+    router.register(MessageType.MEASURE_STYLE_FLAGS, this.handleMeasureStyleFlags.bind(this));
+    router.register(MessageType.MEASURE_WORD_FREQUENCY, this.handleMeasureWordFrequency.bind(this));
+  }
 
   async handleMeasureProseStats(message: MeasureProseStatsMessage): Promise<void> {
     try {

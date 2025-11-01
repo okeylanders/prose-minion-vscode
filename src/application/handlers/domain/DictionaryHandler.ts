@@ -6,9 +6,11 @@
 import { IProseAnalysisService } from '../../../domain/services/IProseAnalysisService';
 import {
   LookupDictionaryMessage,
+  MessageType,
   TokenUsage,
   ErrorSource
 } from '../../../shared/types/messages';
+import { MessageRouter } from '../MessageRouter';
 
 export class DictionaryHandler {
   constructor(
@@ -18,6 +20,13 @@ export class DictionaryHandler {
     private readonly sendError: (source: ErrorSource, message: string, details?: string) => void,
     private readonly applyTokenUsage: (usage: TokenUsage) => void
   ) {}
+
+  /**
+   * Register message routes for dictionary domain
+   */
+  registerRoutes(router: MessageRouter): void {
+    router.register(MessageType.LOOKUP_DICTIONARY, this.handleLookupDictionary.bind(this));
+  }
 
   async handleLookupDictionary(message: LookupDictionaryMessage): Promise<void> {
     if (!message.word.trim()) {

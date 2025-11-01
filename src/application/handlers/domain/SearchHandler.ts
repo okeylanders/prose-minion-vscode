@@ -5,7 +5,8 @@
 
 import * as vscode from 'vscode';
 import { IProseAnalysisService } from '../../../domain/services/IProseAnalysisService';
-import { RunWordSearchMessage, ErrorSource } from '../../../shared/types/messages';
+import { RunWordSearchMessage, MessageType, ErrorSource } from '../../../shared/types/messages';
+import { MessageRouter } from '../MessageRouter';
 
 export class SearchHandler {
   constructor(
@@ -14,6 +15,13 @@ export class SearchHandler {
     private readonly sendSearchResult: (result: any, toolName: string) => void,
     private readonly sendError: (source: ErrorSource, message: string, details?: string) => void
   ) {}
+
+  /**
+   * Register message routes for search domain
+   */
+  registerRoutes(router: MessageRouter): void {
+    router.register(MessageType.RUN_WORD_SEARCH, this.handleMeasureWordSearch.bind(this));
+  }
 
   async handleMeasureWordSearch(message: RunWordSearchMessage): Promise<void> {
     try {

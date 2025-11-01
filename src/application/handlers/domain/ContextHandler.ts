@@ -7,9 +7,11 @@ import { IProseAnalysisService } from '../../../domain/services/IProseAnalysisSe
 import { ContextGenerationResult } from '../../../domain/models/ContextGeneration';
 import {
   GenerateContextMessage,
+  MessageType,
   TokenUsage,
   ErrorSource
 } from '../../../shared/types/messages';
+import { MessageRouter } from '../MessageRouter';
 
 export class ContextHandler {
   constructor(
@@ -19,6 +21,13 @@ export class ContextHandler {
     private readonly sendError: (source: ErrorSource, message: string, details?: string) => void,
     private readonly applyTokenUsage: (usage: TokenUsage) => void
   ) {}
+
+  /**
+   * Register message routes for context domain
+   */
+  registerRoutes(router: MessageRouter): void {
+    router.register(MessageType.GENERATE_CONTEXT, this.handleGenerateContext.bind(this));
+  }
 
   async handleGenerateContext(message: GenerateContextMessage): Promise<void> {
     if (!message.excerpt.trim()) {
