@@ -900,3 +900,47 @@ select:focus {
   color: var(--vscode-errorForeground);
   font-weight: 500;
 }
+
+/* Model indicator styles */
+.model-indicator-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: 8px 0 4px 0;
+}
+
+.model-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9em;
+  color: var(--vscode-descriptionForeground);
+}
+
+.model-label {
+  font-weight: 500;
+}
+
+.model-name {
+  color: var(--vscode-foreground);
+}
+
+.model-settings-link {
+  cursor: pointer;
+  font-size: 1.1em;
+  opacity: 0.8;
+  transition: opacity 0.2s, transform 0.1s;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.model-settings-link:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.model-settings-link:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  border-radius: 3px;
+  opacity: 1;
+}

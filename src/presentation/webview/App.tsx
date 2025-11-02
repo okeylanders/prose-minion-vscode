@@ -281,6 +281,8 @@ export const App: React.FC = () => {
               selection.setSelectedSourceUri('');
               selection.setSelectedRelativePath('');
             }}
+            contextModel={settings.modelSelections.context}
+            onOpenSettings={settings.open}
           />
         )}
 
