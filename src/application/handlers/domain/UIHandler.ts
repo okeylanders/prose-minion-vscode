@@ -59,7 +59,6 @@ export class UIHandler {
       timestamp: Date.now()
     };
     void this.postMessage(errorMessage);
-    this.outputChannel.appendLine(`[UIHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
   }
 
   // Message handlers

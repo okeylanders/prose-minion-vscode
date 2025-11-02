@@ -59,7 +59,6 @@ export class MetricsHandler {
       timestamp: Date.now()
     };
     void this.postMessage(errorMessage);
-    this.outputChannel.appendLine(`[MetricsHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
   }
 
   // Message handlers

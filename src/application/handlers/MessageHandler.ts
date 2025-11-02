@@ -112,22 +112,19 @@ export class MessageHandler {
     this.analysisHandler = new AnalysisHandler(
       proseAnalysisService,
       this.postMessage.bind(this),
-      this.applyTokenUsage.bind(this),
-      this.outputChannel
+      this.applyTokenUsage.bind(this)
     );
 
     this.dictionaryHandler = new DictionaryHandler(
       proseAnalysisService,
       this.postMessage.bind(this),
-      this.applyTokenUsage.bind(this),
-      this.outputChannel
+      this.applyTokenUsage.bind(this)
     );
 
     this.contextHandler = new ContextHandler(
       proseAnalysisService,
       this.postMessage.bind(this),
-      this.applyTokenUsage.bind(this),
-      this.outputChannel
+      this.applyTokenUsage.bind(this)
     );
 
     this.metricsHandler = new MetricsHandler(
@@ -158,8 +155,7 @@ export class MessageHandler {
     );
 
     this.sourcesHandler = new SourcesHandler(
-      this.postMessage.bind(this),
-      outputChannel
+      this.postMessage.bind(this)
     );
 
     this.uiHandler = new UIHandler(
@@ -174,7 +170,7 @@ export class MessageHandler {
     );
 
     // Initialize message router and register handler routes
-    this.router = new MessageRouter();
+    this.router = new MessageRouter(outputChannel);
 
     // Domain handlers self-register their routes (Strategy pattern)
     this.analysisHandler.registerRoutes(this.router);
@@ -201,10 +197,14 @@ export class MessageHandler {
       // Route message to registered handler
       await this.router.route(message);
     } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(
+        `[MessageHandler] ✗ Error routing ${message.type} from ${message.source}: ${details}`
+      );
       this.sendError(
         'unknown',
         'Error processing request',
-        error instanceof Error ? error.message : String(error)
+        details
       );
     }
   }
@@ -364,12 +364,17 @@ export class MessageHandler {
         break;
     }
 
+    // Log outgoing message
+    this.outputChannel.appendLine(
+      `[MessageHandler] → ${message.type} to webview (source: ${message.source})`
+    );
+
     try {
       await this.webview.postMessage(message);
     } catch (error) {
       const messageText = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(
-        `[MessageHandler] Failed to post message (${message.type}): ${messageText}`
+        `[MessageHandler] ✗ Failed to post ${message.type}: ${messageText}`
       );
     }
   }

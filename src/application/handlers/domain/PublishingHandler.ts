@@ -47,7 +47,6 @@ export class PublishingHandler {
       timestamp: Date.now()
     };
     void this.postMessage(errorMessage);
-    this.outputChannel.appendLine(`[PublishingHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
   }
 
   // Message handlers

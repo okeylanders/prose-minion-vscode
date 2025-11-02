@@ -19,8 +19,7 @@ import { MessageRouter } from '../MessageRouter';
 
 export class SourcesHandler {
   constructor(
-    private readonly postMessage: (message: any) => void,
-    private readonly outputChannel: vscode.OutputChannel
+    private readonly postMessage: (message: any) => void
   ) {}
 
   /**
@@ -46,7 +45,6 @@ export class SourcesHandler {
       timestamp: Date.now()
     };
     void this.postMessage(errorMessage);
-    this.outputChannel.appendLine(`[SourcesHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
   }
 
   async handleRequestActiveFile(message: RequestActiveFileMessage): Promise<void> {

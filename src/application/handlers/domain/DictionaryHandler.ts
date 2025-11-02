@@ -20,8 +20,7 @@ export class DictionaryHandler {
   constructor(
     private readonly service: IProseAnalysisService,
     private readonly postMessage: (message: any) => Promise<void>,
-    private readonly applyTokenUsageCallback: (usage: TokenUsage) => void,
-    private readonly outputChannel: vscode.OutputChannel
+    private readonly applyTokenUsageCallback: (usage: TokenUsage) => void
   ) {}
 
   /**
@@ -72,7 +71,6 @@ export class DictionaryHandler {
       timestamp: Date.now()
     };
     void this.postMessage(errorMessage);
-    this.outputChannel.appendLine(`[DictionaryHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
   }
 
   private applyTokenUsage(usage: TokenUsage): void {

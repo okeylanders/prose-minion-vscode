@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import { MessageType, WebviewToExtensionMessage } from '../../shared/types/messages';
 
 /**
@@ -14,6 +15,8 @@ import { MessageType, WebviewToExtensionMessage } from '../../shared/types/messa
  */
 export class MessageRouter {
 	private handlers = new Map<MessageType, (msg: WebviewToExtensionMessage) => Promise<void>>();
+
+	constructor(private readonly outputChannel?: vscode.OutputChannel) {}
 
 	/**
 	 * Register a handler for a specific message type.
@@ -48,6 +51,13 @@ export class MessageRouter {
 			throw new Error(
 				`No handler registered for message type: ${message.type}. ` +
 				`Registered types: ${Array.from(this.handlers.keys()).join(', ')}`
+			);
+		}
+
+		// Log incoming message
+		if (this.outputChannel) {
+			this.outputChannel.appendLine(
+				`[MessageRouter] ← ${message.type} from ${message.source}`
 			);
 		}
 

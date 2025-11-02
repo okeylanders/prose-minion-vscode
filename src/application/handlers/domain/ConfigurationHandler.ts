@@ -68,7 +68,6 @@ export class ConfigurationHandler {
       timestamp: Date.now()
     };
     void this.postMessage(errorMessage);
-    this.outputChannel.appendLine(`[ConfigurationHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
   }
 
   /**

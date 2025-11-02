@@ -57,7 +57,6 @@ export class FileOperationsHandler {
       timestamp: Date.now()
     };
     void this.postMessage(errorMessage);
-    this.outputChannel.appendLine(`[FileOperationsHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
   }
 
   // Message handlers

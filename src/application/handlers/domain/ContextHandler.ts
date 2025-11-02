@@ -21,8 +21,7 @@ export class ContextHandler {
   constructor(
     private readonly service: IProseAnalysisService,
     private readonly postMessage: (message: any) => Promise<void>,
-    private readonly applyTokenUsageCallback: (usage: TokenUsage) => void,
-    private readonly outputChannel: vscode.OutputChannel
+    private readonly applyTokenUsageCallback: (usage: TokenUsage) => void
   ) {}
 
   /**
@@ -74,7 +73,6 @@ export class ContextHandler {
       timestamp: Date.now()
     };
     void this.postMessage(errorMessage);
-    this.outputChannel.appendLine(`[ContextHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
   }
 
   private applyTokenUsage(usage: TokenUsage): void {

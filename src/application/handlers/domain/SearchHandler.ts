@@ -55,7 +55,6 @@ export class SearchHandler {
       timestamp: Date.now()
     };
     void this.postMessage(errorMessage);
-    this.outputChannel.appendLine(`[SearchHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
   }
 
   // Message handlers
