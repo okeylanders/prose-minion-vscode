@@ -97,6 +97,7 @@ export class ConfigurationHandler {
         'includeCraftGuides': config.get<boolean>('includeCraftGuides') ?? true,
         'temperature': config.get<number>('temperature') ?? 0.7,
         'maxTokens': config.get<number>('maxTokens') ?? 10000,
+        'applyContextWindowTrimming': config.get<boolean>('applyContextWindowTrimming') ?? true,
         'ui.showTokenWidget': config.get<boolean>('ui.showTokenWidget') ?? true,
         // Publishing standards
         'publishingStandards.preset': config.get<string>('publishingStandards.preset') ?? 'none',
@@ -155,7 +156,7 @@ export class ConfigurationHandler {
         'wordSearch.',
         'contextPaths.'
       ];
-      const allowedTop = new Set(['includeCraftGuides', 'temperature', 'maxTokens']);
+      const allowedTop = new Set(['includeCraftGuides', 'temperature', 'maxTokens', 'applyContextWindowTrimming']);
 
       const isAllowed = allowedTop.has(key) || allowedPrefixes.some(prefix => key.startsWith(prefix));
       if (!isAllowed) {
