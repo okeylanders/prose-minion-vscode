@@ -29,6 +29,8 @@ interface AnalysisTabProps {
   analysisToolName?: string;
   onRequestSelection: (target: SelectionTarget) => void;
   onClearSourceMeta: () => void;
+  contextModel?: string;
+  onOpenSettings: () => void;
 }
 
 export const AnalysisTab: React.FC<AnalysisTabProps> = ({
@@ -50,7 +52,9 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
   selectedSourceUri,
   analysisToolName,
   onRequestSelection,
-  onClearSourceMeta
+  onClearSourceMeta,
+  contextModel,
+  onOpenSettings
 }) => {
   const [text, setText] = React.useState(selectedText);
 
@@ -328,9 +332,32 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
             )}
           </button>
         </div>
-        <div className={`word-counter ${contextWordCountColor}`}>
-          {contextWordCount} words
-          {contextWordCount > 5000 && ' ⚠️ Large Context'}
+        <div className="context-meta-row">
+          <div className={`word-counter ${contextWordCountColor}`}>
+            {contextWordCount} words
+            {contextWordCount > 5000 && ' ⚠️ Large Context'}
+          </div>
+          {contextModel && (
+            <span className="model-indicator">
+              <span className="model-label">Context Model:</span>
+              <span className="model-name">{contextModel}</span>
+              <span
+                className="model-settings-link"
+                onClick={onOpenSettings}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onOpenSettings();
+                  }
+                }}
+                title="Change context model in Settings"
+              >
+                ⚙️
+              </span>
+            </span>
+          )}
         </div>
         {(contextStatusMessage && contextLoading) && (
           <div className="context-status">{contextStatusMessage}</div>
