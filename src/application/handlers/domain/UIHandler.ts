@@ -92,9 +92,16 @@ export class UIHandler {
 
       // Open the file in the editor
       const document = await vscode.workspace.openTextDocument(guideUri);
+
+      // Smart column selection: reuse existing text editor column if available,
+      // otherwise open beside webview (which creates column 2)
+      const targetColumn = vscode.window.visibleTextEditors.length > 0
+        ? vscode.ViewColumn.Two  // Reuse second column if any editors exist
+        : vscode.ViewColumn.Beside;  // Create beside webview on first open
+
       await vscode.window.showTextDocument(document, {
         preview: false,  // Open in permanent editor tab
-        viewColumn: vscode.ViewColumn.Beside  // Open alongside current editor
+        viewColumn: targetColumn
       });
 
       this.outputChannel.appendLine(`[UIHandler] Successfully opened guide: ${guidePath}`);
@@ -138,9 +145,16 @@ export class UIHandler {
 
       // Open the file in the editor
       const document = await vscode.workspace.openTextDocument(resourceUri);
+
+      // Smart column selection: reuse existing text editor column if available,
+      // otherwise open beside webview (which creates column 2)
+      const targetColumn = vscode.window.visibleTextEditors.length > 0
+        ? vscode.ViewColumn.Two  // Reuse second column if any editors exist
+        : vscode.ViewColumn.Beside;  // Create beside webview on first open
+
       await vscode.window.showTextDocument(document, {
         preview: false,  // Open in permanent editor tab
-        viewColumn: vscode.ViewColumn.Beside  // Open alongside current editor
+        viewColumn: targetColumn
       });
 
       this.outputChannel.appendLine(`[UIHandler] Successfully opened resource: ${path}`);
