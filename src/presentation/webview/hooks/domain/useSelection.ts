@@ -8,6 +8,7 @@ import * as React from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
 import { MessageType, SelectionTarget, TabId } from '../../../../shared/types';
+import { SelectionUpdatedMessage, SelectionDataMessage } from '../../../../shared/types/messages';
 
 export interface DictionaryInjection {
   word?: string;
@@ -25,8 +26,8 @@ export interface SelectionState {
 }
 
 export interface SelectionActions {
-  handleSelectionUpdated: (message: any, onTabChange: (tab: TabId) => void) => void;
-  handleSelectionData: (message: any, onTabChange: (tab: TabId) => void, onContextSet?: (context: string) => void) => void;
+  handleSelectionUpdated: (message: SelectionUpdatedMessage, onTabChange: (tab: TabId) => void) => void;
+  handleSelectionData: (message: SelectionDataMessage, onTabChange: (tab: TabId) => void, onContextSet?: (context: string) => void) => void;
   requestSelection: (target: SelectionTarget) => void;
   handleDictionaryInjectionHandled: () => void;
   setSelectedText: (text: string) => void;
@@ -80,7 +81,7 @@ export const useSelection = (): UseSelectionReturn => {
   const [dictionaryInjection, setDictionaryInjection] = React.useState<DictionaryInjection | null>(null);
 
   const handleSelectionUpdated = React.useCallback(
-    (message: any, onTabChange: (tab: TabId) => void) => {
+    (message: SelectionUpdatedMessage, onTabChange: (tab: TabId) => void) => {
       const { text, sourceUri, relativePath, target } = message.payload;
       const targetValue = target || 'assistant';
 
@@ -100,7 +101,7 @@ export const useSelection = (): UseSelectionReturn => {
   );
 
   const handleSelectionData = React.useCallback(
-    (message: any, onTabChange: (tab: TabId) => void, onContextSet?: (context: string) => void) => {
+    (message: SelectionDataMessage, onTabChange: (tab: TabId) => void, onContextSet?: (context: string) => void) => {
       const { content = '', target, sourceUri, relativePath } = message.payload;
 
       switch (target) {
@@ -146,7 +147,11 @@ export const useSelection = (): UseSelectionReturn => {
     (target: SelectionTarget) => {
       vscode.postMessage({
         type: MessageType.REQUEST_SELECTION,
-        target,
+        source: 'webview.selection',
+        payload: {
+          target,
+        },
+        timestamp: Date.now()
       });
     },
     [vscode]

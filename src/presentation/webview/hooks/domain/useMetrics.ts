@@ -8,6 +8,7 @@
 import * as React from 'react';
 import { usePersistedState } from '../usePersistence';
 import { TextSourceMode } from '../../../../shared/types';
+import { MetricsResultMessage, ActiveFileMessage, ManuscriptGlobsMessage, ChapterGlobsMessage } from '../../../../shared/types/messages';
 
 export type MetricsTool = 'prose_stats' | 'style_flags' | 'word_frequency';
 
@@ -20,10 +21,10 @@ export interface MetricsState {
 }
 
 export interface MetricsActions {
-  handleMetricsResult: (message: any) => void;
-  handleActiveFile: (message: any) => void;
-  handleManuscriptGlobs: (message: any) => void;
-  handleChapterGlobs: (message: any) => void;
+  handleMetricsResult: (message: MetricsResultMessage) => void;
+  handleActiveFile: (message: ActiveFileMessage) => void;
+  handleManuscriptGlobs: (message: ManuscriptGlobsMessage) => void;
+  handleChapterGlobs: (message: ChapterGlobsMessage) => void;
   setActiveTool: (tool: MetricsTool) => void;
   setLoading: (loading: boolean) => void;
   setSourceMode: (mode: TextSourceMode) => void;
@@ -89,29 +90,33 @@ export const useMetrics = (): UseMetricsReturn => {
   );
   const [pathText, setPathText] = React.useState<string>(persisted?.metricsPathText ?? '[selected text]');
 
-  const handleMetricsResult = React.useCallback((message: any) => {
+  const handleMetricsResult = React.useCallback((message: MetricsResultMessage) => {
+    const { result, toolName } = message.payload;
     if (
-      message.toolName === 'prose_stats' ||
-      message.toolName === 'style_flags' ||
-      message.toolName === 'word_frequency'
+      toolName === 'prose_stats' ||
+      toolName === 'style_flags' ||
+      toolName === 'word_frequency'
     ) {
       // Store per-subtool result without forcing a re-run on tab switch
-      setMetricsByTool((prev) => ({ ...prev, [message.toolName]: message.result }));
-      setActiveTool(message.toolName);
+      setMetricsByTool((prev) => ({ ...prev, [toolName]: result }));
+      setActiveTool(toolName);
     }
     setLoading(false);
   }, []);
 
-  const handleActiveFile = React.useCallback((message: any) => {
-    setPathText(message.relativePath ?? '');
+  const handleActiveFile = React.useCallback((message: ActiveFileMessage) => {
+    const { relativePath } = message.payload;
+    setPathText(relativePath ?? '');
   }, []);
 
-  const handleManuscriptGlobs = React.useCallback((message: any) => {
-    setPathText(message.globs ?? '');
+  const handleManuscriptGlobs = React.useCallback((message: ManuscriptGlobsMessage) => {
+    const { globs } = message.payload;
+    setPathText(globs ?? '');
   }, []);
 
-  const handleChapterGlobs = React.useCallback((message: any) => {
-    setPathText(message.globs ?? '');
+  const handleChapterGlobs = React.useCallback((message: ChapterGlobsMessage) => {
+    const { globs } = message.payload;
+    setPathText(globs ?? '');
   }, []);
 
   const clearResults = React.useCallback(() => {

@@ -90,26 +90,28 @@ export const App: React.FC = () => {
     [MessageType.PUBLISHING_STANDARDS_DATA]: publishing.handlePublishingStandardsData,
     [MessageType.OPEN_SETTINGS]: settings.open,
     [MessageType.OPEN_SETTINGS_TOGGLE]: settings.toggle,
-    [MessageType.SAVE_RESULT_SUCCESS]: (msg) => console.log('Result saved to', msg.filePath),
+    [MessageType.TOKEN_USAGE_UPDATE]: settings.handleTokenUsageUpdate,
+    [MessageType.SAVE_RESULT_SUCCESS]: (msg) => console.log('Result saved to', msg.payload.filePath),
     [MessageType.ERROR]: (msg) => {
-      setError(msg.message);
+      const { source, message: errorMessage } = msg.payload;
+      setError(errorMessage);
 
       // Clear loading state only for the domain that errored
       // This prevents cross-tab error interference (e.g., analysis still running when search errors)
-      const source = msg.source || 'unknown';
+      const errorSource = source || 'unknown';
 
-      if (source.startsWith('metrics.')) {
+      if (errorSource.startsWith('metrics.')) {
         // Any metrics subtool error clears metrics loading
         metrics.setLoading(false);
-      } else if (source === 'search') {
+      } else if (errorSource === 'search') {
         search.setLoading(false);
-      } else if (source === 'analysis') {
+      } else if (errorSource === 'analysis') {
         analysis.setLoading(false);
-      } else if (source === 'dictionary') {
+      } else if (errorSource === 'dictionary') {
         dictionary.setLoading(false);
-      } else if (source === 'context') {
+      } else if (errorSource === 'context') {
         context.setLoading(false);
-      } else if (source.startsWith('settings.') || source.startsWith('file_ops.') || source.startsWith('ui.') || source === 'publishing') {
+      } else if (errorSource.startsWith('settings.') || errorSource.startsWith('file_ops.') || errorSource.startsWith('ui.') || errorSource === 'publishing') {
         // Settings, file ops, UI, publishing errors don't have loading states to clear
         // Error message display is sufficient
       } else {
@@ -289,9 +291,33 @@ export const App: React.FC = () => {
             onSourceModeChange={metrics.setSourceMode}
             onPathTextChange={metrics.setPathText}
             onClearSubtoolResult={metrics.clearSubtoolResult}
-            onRequestActiveFile={() => { setScopeRequester('metrics'); vscode.postMessage({ type: MessageType.REQUEST_ACTIVE_FILE }); }}
-            onRequestManuscriptGlobs={() => { setScopeRequester('metrics'); vscode.postMessage({ type: MessageType.REQUEST_MANUSCRIPT_GLOBS }); }}
-            onRequestChapterGlobs={() => { setScopeRequester('metrics'); vscode.postMessage({ type: MessageType.REQUEST_CHAPTER_GLOBS }); }}
+            onRequestActiveFile={() => {
+              setScopeRequester('metrics');
+              vscode.postMessage({
+                type: MessageType.REQUEST_ACTIVE_FILE,
+                source: 'webview.metrics.tab',
+                payload: {},
+                timestamp: Date.now()
+              });
+            }}
+            onRequestManuscriptGlobs={() => {
+              setScopeRequester('metrics');
+              vscode.postMessage({
+                type: MessageType.REQUEST_MANUSCRIPT_GLOBS,
+                source: 'webview.metrics.tab',
+                payload: {},
+                timestamp: Date.now()
+              });
+            }}
+            onRequestChapterGlobs={() => {
+              setScopeRequester('metrics');
+              vscode.postMessage({
+                type: MessageType.REQUEST_CHAPTER_GLOBS,
+                source: 'webview.metrics.tab',
+                payload: {},
+                timestamp: Date.now()
+              });
+            }}
           />
         )}
 
@@ -307,9 +333,33 @@ export const App: React.FC = () => {
             pathText={search.pathText}
             onSourceModeChange={search.setSourceMode}
             onPathTextChange={search.setPathText}
-            onRequestActiveFile={() => { setScopeRequester('search'); vscode.postMessage({ type: MessageType.REQUEST_ACTIVE_FILE }); }}
-            onRequestManuscriptGlobs={() => { setScopeRequester('search'); vscode.postMessage({ type: MessageType.REQUEST_MANUSCRIPT_GLOBS }); }}
-            onRequestChapterGlobs={() => { setScopeRequester('search'); vscode.postMessage({ type: MessageType.REQUEST_CHAPTER_GLOBS }); }}
+            onRequestActiveFile={() => {
+              setScopeRequester('search');
+              vscode.postMessage({
+                type: MessageType.REQUEST_ACTIVE_FILE,
+                source: 'webview.search.tab',
+                payload: {},
+                timestamp: Date.now()
+              });
+            }}
+            onRequestManuscriptGlobs={() => {
+              setScopeRequester('search');
+              vscode.postMessage({
+                type: MessageType.REQUEST_MANUSCRIPT_GLOBS,
+                source: 'webview.search.tab',
+                payload: {},
+                timestamp: Date.now()
+              });
+            }}
+            onRequestChapterGlobs={() => {
+              setScopeRequester('search');
+              vscode.postMessage({
+                type: MessageType.REQUEST_CHAPTER_GLOBS,
+                source: 'webview.search.tab',
+                payload: {},
+                timestamp: Date.now()
+              });
+            }}
           />
         )}
 

@@ -6,6 +6,7 @@
 
 import * as React from 'react';
 import { usePersistedState } from '../usePersistence';
+import { DictionaryResultMessage } from '../../../../shared/types/messages';
 
 export interface DictionaryState {
   result: string;
@@ -19,7 +20,7 @@ export interface DictionaryState {
 }
 
 export interface DictionaryActions {
-  handleDictionaryResult: (message: any) => void;
+  handleDictionaryResult: (message: DictionaryResultMessage) => void;
   setLoading: (loading: boolean) => void;
   setWord: (word: string) => void;
   setContext: (context: string) => void;
@@ -97,9 +98,10 @@ export const useDictionary = (): UseDictionaryReturn => {
     }
   }, [loading]);
 
-  const handleDictionaryResult = React.useCallback((message: any) => {
-    setResult(message.result);
-    setToolName(message.toolName);
+  const handleDictionaryResult = React.useCallback((message: DictionaryResultMessage) => {
+    const { result, toolName } = message.payload;
+    setResult(result);
+    setToolName(toolName);
     setLoading(false);
   }, []);
 

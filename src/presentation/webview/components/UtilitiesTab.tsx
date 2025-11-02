@@ -125,8 +125,12 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
 
     vscode.postMessage({
       type: MessageType.LOOKUP_DICTIONARY,
-      word: sanitizedWord,
-      contextText: context.trim() || undefined
+      source: 'webview.utilities.tab',
+      payload: {
+        word: sanitizedWord,
+        contextText: context.trim() || undefined
+      },
+      timestamp: Date.now()
     });
   };
 
@@ -164,8 +168,12 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
 
     vscode.postMessage({
       type: MessageType.COPY_RESULT,
-      toolName: toolName ?? 'dictionary_lookup',
-      content: [header, '', result].join('\n')
+      source: 'webview.utilities.tab',
+      payload: {
+        toolName: toolName ?? 'dictionary_lookup',
+        content: [header, '', result].join('\n')
+      },
+      timestamp: Date.now()
     });
   };
 
@@ -183,13 +191,17 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
 
     vscode.postMessage({
       type: MessageType.SAVE_RESULT,
-      toolName: toolName ?? 'dictionary_lookup',
-      content: [header, '', result].join('\n'),
-      metadata: {
-        word: metadata.word,
-        context: metadata.context,
-        timestamp: Date.now()
-      }
+      source: 'webview.utilities.tab',
+      payload: {
+        toolName: toolName ?? 'dictionary_lookup',
+        content: [header, '', result].join('\n'),
+        metadata: {
+          word: metadata.word,
+          context: metadata.context,
+          timestamp: Date.now()
+        }
+      },
+      timestamp: Date.now()
     });
   };
 

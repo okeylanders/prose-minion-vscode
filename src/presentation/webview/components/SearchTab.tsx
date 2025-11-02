@@ -70,8 +70,12 @@ export const SearchTab: React.FC<SearchTabProps> = ({
     try {
       vscode.postMessage({
         type: MessageType.COPY_RESULT,
-        toolName: 'word_search',
-        content: markdownContent || ''
+        source: 'webview.search.tab',
+        payload: {
+          toolName: 'word_search',
+          content: markdownContent || ''
+        },
+        timestamp: Date.now()
       });
     } catch {
       // ignore
@@ -82,9 +86,13 @@ export const SearchTab: React.FC<SearchTabProps> = ({
     try {
       vscode.postMessage({
         type: MessageType.SAVE_RESULT,
-        toolName: 'word_search',
-        content: markdownContent || '',
-        metadata: { timestamp: Date.now() }
+        source: 'webview.search.tab',
+        payload: {
+          toolName: 'word_search',
+          content: markdownContent || '',
+          metadata: { timestamp: Date.now() }
+        },
+        timestamp: Date.now()
       });
     } catch {
       // ignore
@@ -234,14 +242,18 @@ export const SearchTab: React.FC<SearchTabProps> = ({
             const wordsOrPhrases = parseTargets(wordSearchTargets);
             vscode.postMessage({
               type: MessageType.RUN_WORD_SEARCH,
-              source: buildSourceSpec(),
-              options: {
-                wordsOrPhrases,
-                contextWords: wordSearchContextWords,
-                clusterWindow: wordSearchClusterWindow,
-                minClusterSize: wordSearchMinCluster,
-                caseSensitive: wordSearchCaseSensitive
-              }
+              source: 'webview.search.tab',
+              payload: {
+                source: buildSourceSpec(),
+                options: {
+                  wordsOrPhrases,
+                  contextWords: wordSearchContextWords,
+                  clusterWindow: wordSearchClusterWindow,
+                  minClusterSize: wordSearchMinCluster,
+                  caseSensitive: wordSearchCaseSensitive
+                }
+              },
+              timestamp: Date.now()
             });
           }}>⚡ Run Search</button>
         </div>

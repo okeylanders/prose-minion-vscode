@@ -8,7 +8,8 @@
 import * as React from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
-import { MessageType, TokenUsage, ModelScope, ModelOption } from '../../../../shared/types';
+import { MessageType, ModelScope, ModelOption } from '../../../../shared/types';
+import { SettingsDataMessage, ApiKeyStatusMessage, ModelDataMessage, TokenUsage } from '../../../../shared/types/messages';
 
 export interface SettingsState {
   showSettings: boolean;
@@ -25,9 +26,10 @@ export interface SettingsActions {
   open: () => void;
   close: () => void;
   toggle: () => void;
-  handleSettingsData: (message: any) => void;
-  handleApiKeyStatus: (message: any) => void;
-  handleModelOptionsData: (message: any) => void;
+  handleSettingsData: (message: SettingsDataMessage) => void;
+  handleApiKeyStatus: (message: ApiKeyStatusMessage) => void;
+  handleModelOptionsData: (message: ModelDataMessage) => void;
+  handleTokenUsageUpdate: (message: { type: string; payload: { totals: TokenUsage } }) => void;
   updateSetting: (key: string, value: any) => void;
   resetTokens: () => void;
   toggleTokenWidget: () => void;
@@ -108,10 +110,30 @@ export const useSettings = (): UseSettingsReturn => {
 
   const open = React.useCallback(() => {
     setShowSettings(true);
-    vscode.postMessage({ type: MessageType.REQUEST_SETTINGS_DATA, timestamp: Date.now() });
-    vscode.postMessage({ type: MessageType.REQUEST_MODEL_DATA, timestamp: Date.now() });
-    vscode.postMessage({ type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA, timestamp: Date.now() });
-    vscode.postMessage({ type: MessageType.REQUEST_API_KEY, timestamp: Date.now() });
+    vscode.postMessage({
+      type: MessageType.REQUEST_SETTINGS_DATA,
+      source: 'webview.settings.overlay',
+      payload: {},
+      timestamp: Date.now()
+    });
+    vscode.postMessage({
+      type: MessageType.REQUEST_MODEL_DATA,
+      source: 'webview.settings.overlay',
+      payload: {},
+      timestamp: Date.now()
+    });
+    vscode.postMessage({
+      type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA,
+      source: 'webview.settings.overlay',
+      payload: {},
+      timestamp: Date.now()
+    });
+    vscode.postMessage({
+      type: MessageType.REQUEST_API_KEY,
+      source: 'webview.settings.overlay',
+      payload: {},
+      timestamp: Date.now()
+    });
   }, [vscode]);
 
   const close = React.useCallback(() => {
@@ -122,38 +144,66 @@ export const useSettings = (): UseSettingsReturn => {
     setShowSettings((prev) => {
       const next = !prev;
       if (next) {
-        vscode.postMessage({ type: MessageType.REQUEST_SETTINGS_DATA, timestamp: Date.now() });
-        vscode.postMessage({ type: MessageType.REQUEST_MODEL_DATA, timestamp: Date.now() });
-        vscode.postMessage({ type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA, timestamp: Date.now() });
-        vscode.postMessage({ type: MessageType.REQUEST_API_KEY, timestamp: Date.now() });
+        vscode.postMessage({
+          type: MessageType.REQUEST_SETTINGS_DATA,
+          source: 'webview.settings.overlay',
+          payload: {},
+          timestamp: Date.now()
+        });
+        vscode.postMessage({
+          type: MessageType.REQUEST_MODEL_DATA,
+          source: 'webview.settings.overlay',
+          payload: {},
+          timestamp: Date.now()
+        });
+        vscode.postMessage({
+          type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA,
+          source: 'webview.settings.overlay',
+          payload: {},
+          timestamp: Date.now()
+        });
+        vscode.postMessage({
+          type: MessageType.REQUEST_API_KEY,
+          source: 'webview.settings.overlay',
+          payload: {},
+          timestamp: Date.now()
+        });
       }
       return next;
     });
   }, [vscode]);
 
-  const handleSettingsData = React.useCallback((message: any) => {
+  const handleSettingsData = React.useCallback((message: SettingsDataMessage) => {
     // SETTINGS_DATA only contains general settings (not model options/selections)
     // Model data comes separately via MODEL_DATA message
-    setSettingsData(message.settings || {});
+    const { settings } = message.payload;
+    setSettingsData(settings || {});
   }, []);
 
-  const handleApiKeyStatus = React.useCallback((message: any) => {
-    setHasSavedKey(message.hasSavedKey);
+  const handleApiKeyStatus = React.useCallback((message: ApiKeyStatusMessage) => {
+    const { hasSavedKey } = message.payload;
+    setHasSavedKey(hasSavedKey);
   }, []);
 
-  const handleModelOptionsData = React.useCallback((message: any) => {
-    if (message.options) {
-      setModelOptions(message.options);
+  const handleModelOptionsData = React.useCallback((message: ModelDataMessage) => {
+    const { options, selections, ui } = message.payload;
+    if (options) {
+      setModelOptions(options);
     }
-    if (message.selections) {
+    if (selections) {
       setModelSelections((prev) => ({
         ...prev,
-        ...(message.selections ?? {}),
+        ...(selections ?? {}),
       }));
     }
-    if (message.ui && typeof message.ui.showTokenWidget === 'boolean') {
-      setShowTokenWidget(message.ui.showTokenWidget);
+    if (ui && typeof ui.showTokenWidget === 'boolean') {
+      setShowTokenWidget(ui.showTokenWidget);
     }
+  }, []);
+
+  const handleTokenUsageUpdate = React.useCallback((message: { type: string; payload: { totals: TokenUsage } }) => {
+    const { totals } = message.payload;
+    setTokenTotals(totals);
   }, []);
 
   const updateSetting = React.useCallback(
@@ -167,8 +217,11 @@ export const useSettings = (): UseSettingsReturn => {
       // Send update to backend
       vscode.postMessage({
         type: MessageType.UPDATE_SETTING,
-        key,
-        value,
+        source: 'webview.settings.overlay',
+        payload: {
+          key,
+          value,
+        },
         timestamp: Date.now(),
       });
     },
@@ -179,6 +232,8 @@ export const useSettings = (): UseSettingsReturn => {
     setTokenTotals({ promptTokens: 0, completionTokens: 0, totalTokens: 0 });
     vscode.postMessage({
       type: MessageType.RESET_TOKEN_USAGE,
+      source: 'webview.settings.overlay',
+      payload: {},
       timestamp: Date.now(),
     });
   }, [vscode]);
@@ -189,8 +244,11 @@ export const useSettings = (): UseSettingsReturn => {
       // Persist UI preference via generic settings update
       vscode.postMessage({
         type: MessageType.UPDATE_SETTING,
-        key: 'ui.showTokenWidget',
-        value: next,
+        source: 'webview.settings.overlay',
+        payload: {
+          key: 'ui.showTokenWidget',
+          value: next,
+        },
         timestamp: Date.now(),
       });
       return next;
@@ -208,8 +266,11 @@ export const useSettings = (): UseSettingsReturn => {
       // Send to backend to persist
       vscode.postMessage({
         type: MessageType.SET_MODEL_SELECTION,
-        scope,
-        modelId: model,
+        source: 'webview.settings.overlay',
+        payload: {
+          scope,
+          modelId: model,
+        },
         timestamp: Date.now(),
       });
 
@@ -223,7 +284,11 @@ export const useSettings = (): UseSettingsReturn => {
 
     vscode.postMessage({
       type: MessageType.UPDATE_API_KEY,
-      apiKey: apiKeyInput.trim(),
+      source: 'webview.settings.overlay',
+      payload: {
+        apiKey: apiKeyInput.trim(),
+      },
+      timestamp: Date.now()
     });
 
     setApiKeyInput(''); // Clear input after save
@@ -232,6 +297,9 @@ export const useSettings = (): UseSettingsReturn => {
   const clearApiKey = React.useCallback(() => {
     vscode.postMessage({
       type: MessageType.DELETE_API_KEY,
+      source: 'webview.settings.overlay',
+      payload: {},
+      timestamp: Date.now()
     });
   }, [vscode]);
 
@@ -269,6 +337,7 @@ export const useSettings = (): UseSettingsReturn => {
     handleSettingsData,
     handleApiKeyStatus,
     handleModelOptionsData,
+    handleTokenUsageUpdate,
     updateSetting,
     resetTokens,
     toggleTokenWidget,

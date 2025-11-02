@@ -100,9 +100,13 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
 
     vscode.postMessage({
       type: MessageType.ANALYZE_DIALOGUE,
-      text,
-      contextText: contextText && contextText.trim().length > 0 ? contextText : undefined,
-      sourceFileUri: sourceReference
+      source: 'webview.analysis.tab',
+      payload: {
+        text,
+        contextText: contextText && contextText.trim().length > 0 ? contextText : undefined,
+        sourceFileUri: sourceReference
+      },
+      timestamp: Date.now()
     });
   };
 
@@ -123,9 +127,13 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
 
     vscode.postMessage({
       type: MessageType.ANALYZE_PROSE,
-      text,
-      contextText: contextText && contextText.trim().length > 0 ? contextText : undefined,
-      sourceFileUri: sourceReference
+      source: 'webview.analysis.tab',
+      payload: {
+        text,
+        contextText: contextText && contextText.trim().length > 0 ? contextText : undefined,
+        sourceFileUri: sourceReference
+      },
+      timestamp: Date.now()
     });
   };
 
@@ -171,8 +179,12 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
 
     vscode.postMessage({
       type: MessageType.COPY_RESULT,
-      toolName: analysisToolName ?? (submission?.toolName ?? 'analysis_result'),
-      content: clipboardPayload
+      source: 'webview.analysis.tab',
+      payload: {
+        toolName: analysisToolName ?? (submission?.toolName ?? 'analysis_result'),
+        content: clipboardPayload
+      },
+      timestamp: Date.now()
     });
   };
 
@@ -185,15 +197,19 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
 
     vscode.postMessage({
       type: MessageType.SAVE_RESULT,
-      toolName: analysisToolName ?? submission?.toolName ?? 'analysis_result',
-      content: result,
-      metadata: {
-        excerpt: submission?.excerpt ?? text,
-        context: submission?.context ?? contextText,
-        sourceFileUri: submission?.sourceUri ?? selectedSourceUri,
-        relativePath: submission?.relativePath ?? selectedRelativePath,
-        timestamp: Date.now()
-      }
+      source: 'webview.analysis.tab',
+      payload: {
+        toolName: analysisToolName ?? submission?.toolName ?? 'analysis_result',
+        content: result,
+        metadata: {
+          excerpt: submission?.excerpt ?? text,
+          context: submission?.context ?? contextText,
+          sourceFileUri: submission?.sourceUri ?? selectedSourceUri,
+          relativePath: submission?.relativePath ?? selectedRelativePath,
+          timestamp: Date.now()
+        }
+      },
+      timestamp: Date.now()
     });
   };
 
@@ -363,7 +379,11 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
                   const handleGuideClick = () => {
                     vscode.postMessage({
                       type: MessageType.OPEN_GUIDE_FILE,
-                      guidePath: guide
+                      source: 'webview.analysis.tab',
+                      payload: {
+                        guidePath: guide
+                      },
+                      timestamp: Date.now()
                     });
                   };
 
