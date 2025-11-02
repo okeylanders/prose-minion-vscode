@@ -81,10 +81,10 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
   }, [contextText]);
 
   const contextWordCountColor = React.useMemo(() => {
-    if (contextWordCount >= 500) {
+    if (contextWordCount >= 5000) {
       return 'word-counter-red';
     }
-    if (contextWordCount >= 400) {
+    if (contextWordCount >= 1000) {
       return 'word-counter-yellow';
     }
     return 'word-counter-green';
@@ -329,8 +329,8 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
           </button>
         </div>
         <div className={`word-counter ${contextWordCountColor}`}>
-          {contextWordCount} / 500 words
-          {contextWordCount > 500 && ' ⚠️ Large excerpt'}
+          {contextWordCount} words
+          {contextWordCount > 5000 && ' ⚠️ Large Context'}
         </div>
         {(contextStatusMessage && contextLoading) && (
           <div className="context-status">{contextStatusMessage}</div>
