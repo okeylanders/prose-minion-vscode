@@ -162,6 +162,43 @@ Each handler encapsulates domain-specific logic with clear dependencies injected
 4. React App component receives message via event listener
 5. App updates state, persists it via `vscode.getState/setState`, and re-renders with new data
 
+## Presentation Hooks Architecture
+
+The presentation layer uses custom React hooks organized by domain, mirroring the backend handler layout. `App.tsx` is a thin orchestrator that composes domain hooks, wires message routing, and composes persistence.
+
+Directory structure:
+
+```
+src/presentation/webview/
+├── hooks/
+│   ├── useVSCodeApi.ts         # Singleton wrapper for acquireVsCodeApi()
+│   ├── usePersistence.ts       # Compose domain persisted state into vscode.setState
+│   ├── useMessageRouter.ts     # Strategy: MessageType → handler, stable listener
+│   └── domain/
+│       ├── useAnalysis.ts      # Analysis results, guides, status ticker
+│       ├── useMetrics.ts       # Per-subtool cache (prose_stats/style_flags/word_frequency), source mode/path
+│       ├── useDictionary.ts    # Word/context and tool state
+│       ├── useContext.ts       # Context text, requested resources, loading/status
+│       ├── useSearch.ts        # Search results and targets
+│       ├── useSettings.ts      # Overlay visibility, settings data, model selections, tokens, API key
+│       ├── useSelection.ts     # Selected text and source metadata + dictionary injection
+│       └── usePublishing.ts    # Preset and trim selection (genres)
+```
+
+Core patterns:
+- Strategy routing: `useMessageRouter({ [MessageType.X]: handler })` with a ref to avoid re-registering listeners.
+- Declarative persistence: `usePersistence({ ...domain.persistedState })` composed across domains.
+- Domain boundaries: Each hook returns state, actions, and `persistedState`; components receive hook spreads.
+
+Implementation notes:
+- Settings uses `UPDATE_SETTING` for UI prefs (e.g., `ui.showTokenWidget`) and `SET_MODEL_SELECTION` for model choices; model options come via `MODEL_DATA`.
+- Status messaging uses `MessageType.STATUS`.
+- Metrics exposes `setPathText` and `clearSubtoolResult` to support explicit reruns without clearing unrelated subtool results.
+
+References:
+- ADR: docs/adr/2025-10-27-presentation-layer-domain-hooks.md
+- Epic: .todo/epics/epic-presentation-refactor-2025-10-27/epic-presentation-refactor.md
+
 ### Selection and Context Details
 
 - Selection messages include `sourceUri` and `relativePath` when text is selected in the editor; when no selection exists, the handler falls back to the clipboard (no source metadata).

@@ -20,6 +20,9 @@ interface SearchTabProps {
   pathText: string;
   onSourceModeChange: (mode: TextSourceMode) => void;
   onPathTextChange: (text: string) => void;
+  onRequestActiveFile: () => void;
+  onRequestManuscriptGlobs: () => void;
+  onRequestChapterGlobs: () => void;
 }
 
 export const SearchTab: React.FC<SearchTabProps> = ({
@@ -32,7 +35,10 @@ export const SearchTab: React.FC<SearchTabProps> = ({
   sourceMode,
   pathText,
   onSourceModeChange,
-  onPathTextChange
+  onPathTextChange,
+  onRequestActiveFile,
+  onRequestManuscriptGlobs,
+  onRequestChapterGlobs
 }) => {
   const [markdownContent, setMarkdownContent] = React.useState('');
   const [expandInfo, setExpandInfo] = React.useState<string>('');
@@ -40,6 +46,13 @@ export const SearchTab: React.FC<SearchTabProps> = ({
   const [wordSearchClusterWindow, setWordSearchClusterWindow] = React.useState<number>(150);
   const [wordSearchMinCluster, setWordSearchMinCluster] = React.useState<number>(3);
   const [wordSearchCaseSensitive, setWordSearchCaseSensitive] = React.useState<boolean>(false);
+
+  // Build a TextSourceSpec consistently for search requests
+  const buildSourceSpec = React.useCallback(() => {
+    return sourceMode === 'selection'
+      ? { mode: 'selection' as TextSourceMode, pathText: '[selected text]' }
+      : { mode: sourceMode, pathText };
+  }, [sourceMode, pathText]);
 
   React.useEffect(() => {
     if (!result) {
@@ -57,8 +70,12 @@ export const SearchTab: React.FC<SearchTabProps> = ({
     try {
       vscode.postMessage({
         type: MessageType.COPY_RESULT,
-        toolName: 'word_search',
-        content: markdownContent || ''
+        source: 'webview.search.tab',
+        payload: {
+          toolName: 'word_search',
+          content: markdownContent || ''
+        },
+        timestamp: Date.now()
       });
     } catch {
       // ignore
@@ -69,9 +86,13 @@ export const SearchTab: React.FC<SearchTabProps> = ({
     try {
       vscode.postMessage({
         type: MessageType.SAVE_RESULT,
-        toolName: 'word_search',
-        content: markdownContent || '',
-        metadata: { timestamp: Date.now() }
+        source: 'webview.search.tab',
+        payload: {
+          toolName: 'word_search',
+          content: markdownContent || '',
+          metadata: { timestamp: Date.now() }
+        },
+        timestamp: Date.now()
       });
     } catch {
       // ignore
@@ -87,30 +108,30 @@ export const SearchTab: React.FC<SearchTabProps> = ({
         <div className="tab-bar" style={{ marginBottom: '8px' }}>
           <button
             className={`tab-button ${sourceMode === 'activeFile' ? 'active' : ''}`}
-            onClick={() => {
-              onSourceModeChange('activeFile');
-              vscode.postMessage({ type: MessageType.REQUEST_ACTIVE_FILE });
-            }}
+          onClick={() => {
+            onSourceModeChange('activeFile');
+            onRequestActiveFile();
+          }}
             disabled={isLoading}
           >
             <span className="tab-label">Active File</span>
           </button>
           <button
             className={`tab-button ${sourceMode === 'manuscript' ? 'active' : ''}`}
-            onClick={() => {
-              onSourceModeChange('manuscript');
-              vscode.postMessage({ type: MessageType.REQUEST_MANUSCRIPT_GLOBS });
-            }}
+          onClick={() => {
+            onSourceModeChange('manuscript');
+            onRequestManuscriptGlobs();
+          }}
             disabled={isLoading}
           >
             <span className="tab-label">Manuscripts</span>
           </button>
           <button
             className={`tab-button ${sourceMode === 'chapters' ? 'active' : ''}`}
-            onClick={() => {
-              onSourceModeChange('chapters');
-              vscode.postMessage({ type: MessageType.REQUEST_CHAPTER_GLOBS });
-            }}
+          onClick={() => {
+            onSourceModeChange('chapters');
+            onRequestChapterGlobs();
+          }}
             disabled={isLoading}
           >
             <span className="tab-label">Chapters</span>
@@ -221,14 +242,18 @@ export const SearchTab: React.FC<SearchTabProps> = ({
             const wordsOrPhrases = parseTargets(wordSearchTargets);
             vscode.postMessage({
               type: MessageType.RUN_WORD_SEARCH,
-              source: { mode: sourceMode, pathText },
-              options: {
-                wordsOrPhrases,
-                contextWords: wordSearchContextWords,
-                clusterWindow: wordSearchClusterWindow,
-                minClusterSize: wordSearchMinCluster,
-                caseSensitive: wordSearchCaseSensitive
-              }
+              source: 'webview.search.tab',
+              payload: {
+                source: buildSourceSpec(),
+                options: {
+                  wordsOrPhrases,
+                  contextWords: wordSearchContextWords,
+                  clusterWindow: wordSearchClusterWindow,
+                  minClusterSize: wordSearchMinCluster,
+                  caseSensitive: wordSearchCaseSensitive
+                }
+              },
+              timestamp: Date.now()
             });
           }}>⚡ Run Search</button>
         </div>

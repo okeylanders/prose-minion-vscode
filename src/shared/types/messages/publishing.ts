@@ -3,14 +3,13 @@
  * Publishing standards and genre presets
  */
 
-import { BaseMessage, MessageType } from './base';
+import { MessageEnvelope, MessageType } from './base';
 
-export interface RequestPublishingStandardsDataMessage extends BaseMessage {
+export interface RequestPublishingStandardsDataMessage extends MessageEnvelope<Record<string, never>> {
   type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA;
 }
 
-export interface PublishingStandardsDataMessage extends BaseMessage {
-  type: MessageType.PUBLISHING_STANDARDS_DATA;
+export interface PublishingStandardsDataPayload {
   preset: string;           // current configured preset
   pageSizeKey?: string;     // current configured trim key
   genres: Array<{
@@ -21,12 +20,22 @@ export interface PublishingStandardsDataMessage extends BaseMessage {
   }>;
 }
 
-export interface SetPublishingPresetMessage extends BaseMessage {
-  type: MessageType.SET_PUBLISHING_PRESET;
+export interface PublishingStandardsDataMessage extends MessageEnvelope<PublishingStandardsDataPayload> {
+  type: MessageType.PUBLISHING_STANDARDS_DATA;
+}
+
+export interface SetPublishingPresetPayload {
   preset: string; // 'none' | 'manuscript' | 'genre:<key>'
 }
 
-export interface SetPublishingTrimMessage extends BaseMessage {
-  type: MessageType.SET_PUBLISHING_TRIM_SIZE;
+export interface SetPublishingPresetMessage extends MessageEnvelope<SetPublishingPresetPayload> {
+  type: MessageType.SET_PUBLISHING_PRESET;
+}
+
+export interface SetPublishingTrimPayload {
   pageSizeKey?: string; // format or WIDTHxHEIGHT
+}
+
+export interface SetPublishingTrimMessage extends MessageEnvelope<SetPublishingTrimPayload> {
+  type: MessageType.SET_PUBLISHING_TRIM_SIZE;
 }

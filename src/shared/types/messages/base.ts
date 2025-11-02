@@ -74,6 +74,9 @@ export enum MessageType {
   API_KEY_STATUS = 'api_key_status',
   UPDATE_API_KEY = 'update_api_key',
   DELETE_API_KEY = 'delete_api_key'
+  ,
+  // Webview diagnostics
+  WEBVIEW_ERROR = 'webview_error'
 }
 
 export enum TabId {
@@ -95,6 +98,89 @@ export interface ModelOption {
 export interface BaseMessage {
   type: MessageType;
   timestamp?: number;
+}
+
+/**
+ * Message source type - identifies where a message originated
+ *
+ * Format: `domain.component` (hierarchical, dot-separated)
+ *
+ * Extension sources:
+ * - extension.configuration
+ * - extension.analysis
+ * - extension.metrics
+ * - extension.search
+ * - extension.dictionary
+ * - extension.context
+ * - extension.publishing
+ * - extension.sources
+ * - extension.ui
+ * - extension.file_ops
+ *
+ * Webview sources:
+ * - webview.settings.overlay
+ * - webview.settings.tab_bar
+ * - webview.analysis.tab
+ * - webview.metrics.tab
+ * - webview.dictionary.tab
+ * - webview.search.tab
+ * - webview.context.assistant
+ * - webview.selection
+ */
+export type MessageSource =
+  | `extension.${string}`
+  | `webview.${string}`
+  | 'unknown';
+
+/**
+ * Standard message envelope for all messages
+ *
+ * Provides consistent structure across all message types with routing metadata.
+ * Enables source tracking, correlation, and future features like tracing middleware.
+ *
+ * @example
+ * ```typescript
+ * // Extension sending MODEL_DATA
+ * const message: ModelDataMessage = {
+ *   type: MessageType.MODEL_DATA,
+ *   source: 'extension.configuration',
+ *   payload: {
+ *     modelOptions: { ... },
+ *     modelSelections: { ... }
+ *   },
+ *   timestamp: Date.now()
+ * };
+ *
+ * // Webview sending UPDATE_SETTING
+ * const message: UpdateSettingMessage = {
+ *   type: MessageType.UPDATE_SETTING,
+ *   source: 'webview.settings.overlay',
+ *   payload: {
+ *     key: 'ui.showTokenWidget',
+ *     value: true
+ *   },
+ *   timestamp: Date.now()
+ * };
+ * ```
+ */
+export interface MessageEnvelope<TPayload = any> {
+  /** Message type for routing */
+  type: MessageType;
+
+  /** Source of the message (e.g., 'webview.settings.overlay', 'extension.configuration') */
+  source: MessageSource;
+
+  /** Message-specific data (type varies by MessageType) */
+  payload: TPayload;
+
+  /** Timestamp of message creation */
+  timestamp: number;
+
+  /** Optional target hint for routing (e.g., 'extension.configuration') */
+  target?: MessageSource;
+
+  /** Optional correlation ID for request/response tracking */
+  correlationId?: string;
 }
 
 export interface TokenUsage {

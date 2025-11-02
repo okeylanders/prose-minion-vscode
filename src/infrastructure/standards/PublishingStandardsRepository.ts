@@ -4,7 +4,7 @@ import { PublishingStandardsRoot, Genre, PageSize } from '../../domain/models/Pu
 export class PublishingStandardsRepository {
   private cache?: PublishingStandardsRoot;
 
-  constructor(private readonly extensionUri: vscode.Uri, private readonly output?: vscode.OutputChannel) {}
+  constructor(private readonly extensionUri: vscode.Uri) {}
 
   async load(): Promise<PublishingStandardsRoot> {
     if (this.cache) return this.cache;

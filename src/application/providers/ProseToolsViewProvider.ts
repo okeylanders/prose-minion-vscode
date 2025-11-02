@@ -7,7 +7,7 @@
 import * as vscode from 'vscode';
 import { MessageHandler } from '../handlers/MessageHandler';
 import { IProseAnalysisService } from '../../domain/services/IProseAnalysisService';
-import { MessageType, SelectionUpdatedMessage } from '../../shared/types';
+import { MessageType, SelectionUpdatedMessage, OpenSettingsToggleMessage } from '../../shared/types';
 import { SecretStorageService } from '../../infrastructure/secrets/SecretStorageService';
 
 export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
@@ -79,10 +79,13 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
     if (this.view) {
       const message: SelectionUpdatedMessage = {
         type: MessageType.SELECTION_UPDATED,
-        text: payload.text,
-        sourceUri: payload.sourceUri,
-        relativePath: payload.relativePath,
-        target: payload.target,
+        source: 'extension.provider',
+        payload: {
+          text: payload.text,
+          sourceUri: payload.sourceUri,
+          relativePath: payload.relativePath,
+          target: payload.target
+        },
         timestamp: Date.now()
       };
       this.view.webview.postMessage(message);
@@ -94,7 +97,13 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
    */
   public openSettings(): void {
     if (this.view) {
-      this.view.webview.postMessage({ type: MessageType.OPEN_SETTINGS_TOGGLE, timestamp: Date.now() });
+      const message: OpenSettingsToggleMessage = {
+        type: MessageType.OPEN_SETTINGS_TOGGLE,
+        source: 'extension.provider',
+        payload: {},
+        timestamp: Date.now()
+      };
+      this.view.webview.postMessage(message);
     }
   }
 
@@ -117,11 +126,11 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; img-src ${webview.cspSource} https: data:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'nonce-${nonce}'; img-src ${webview.cspSource} https: data:;">
   <title>Prose Minion Tools</title>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root" style="padding:8px;font-family:var(--vscode-font-family);color:var(--vscode-foreground)">Loading Prose Minion…</div>
   <script nonce="${nonce}">
     window.proseMinonAssets = {
       vhsLoadingGif: "${vhsLoadingGifUri}",
@@ -140,6 +149,17 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
         'assistant-working-distorted-screen.gif': { label: 'E270', href: 'https://www.pinterest.com/pin/21462535717701169/' }
       }
     };
+  </script>
+  <script nonce="${nonce}">
+    console.log('[Prose Minion] Webview HTML loaded');
+    window.addEventListener('error', function (e) {
+      try {
+        const el = document.getElementById('root');
+        if (el) el.textContent = 'Webview error: ' + (e?.message || 'unknown');
+        // Forward to extension output channel if API is available
+        try { const vscode = acquireVsCodeApi && acquireVsCodeApi(); vscode && vscode.postMessage && vscode.postMessage({ type: 'webview_error', message: e?.message || 'unknown' }); } catch {}
+      } catch {}
+    });
   </script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>

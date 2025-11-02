@@ -76,7 +76,7 @@ export class ProseAnalysisService implements IProseAnalysisService {
     this.contextResourceResolver = new ContextResourceResolver(this.outputChannel);
 
     if (this.extensionUri) {
-      this.standardsRepo = new PublishingStandardsRepository(this.extensionUri, this.outputChannel);
+      this.standardsRepo = new PublishingStandardsRepository(this.extensionUri);
     }
   }
 
@@ -362,9 +362,9 @@ export class ProseAnalysisService implements IProseAnalysisService {
   }
 
   async measureWordSearch(
-    _text: string,
+    text: string,
     files?: string[],
-    _sourceMode?: string,
+    sourceMode?: string,
     options?: {
       wordsOrPhrases: string[];
       contextWords: number;
@@ -400,11 +400,21 @@ export class ProseAnalysisService implements IProseAnalysisService {
         targets: [] as any[]
       };
 
-      const relFiles = Array.isArray(files) ? files : [];
-      for (const rel of relFiles) {
-        const uri = await this.findUriByRelativePath(rel);
-        const absolutePath = uri?.fsPath ?? rel;
-        report.scannedFiles.push({ absolute: absolutePath, relative: rel });
+      // FIX: When in selection mode, search the provided text instead of reading files
+      // In selection mode, files[] contains metadata (where selection came from) but we use the text parameter
+      const useTextMode = sourceMode === 'selection' && text && text.trim().length > 0;
+      const relFiles = useTextMode ? ['[selected text]'] : (Array.isArray(files) ? files : []);
+
+      if (!useTextMode) {
+        // File mode: build scanned files list
+        for (const rel of relFiles) {
+          const uri = await this.findUriByRelativePath(rel);
+          const absolutePath = uri?.fsPath ?? rel;
+          report.scannedFiles.push({ absolute: absolutePath, relative: rel });
+        }
+      } else {
+        // Text mode: single "file" entry for the selection
+        report.scannedFiles.push({ absolute: '[selected text]', relative: '[selected text]' });
       }
 
       if (relFiles.length === 0 || normalizedTargets.length === 0) {
@@ -420,10 +430,21 @@ export class ProseAnalysisService implements IProseAnalysisService {
         let totalOccurrences = 0;
 
         for (const rel of relFiles) {
-          const uri = await this.findUriByRelativePath(rel);
-          if (!uri) continue;
-          const raw = await vscode.workspace.fs.readFile(uri);
-          const content = Buffer.from(raw).toString('utf8');
+          // FIX: In text mode, use the provided text; otherwise read from file
+          let content: string;
+          let filePath: string;
+
+          if (useTextMode) {
+            content = text;
+            filePath = '[selected text]';
+          } else {
+            const uri = await this.findUriByRelativePath(rel);
+            if (!uri) continue;
+            const raw = await vscode.workspace.fs.readFile(uri);
+            content = Buffer.from(raw).toString('utf8');
+            filePath = uri.fsPath;
+          }
+
           const tokens = tokenizeContent(content, caseSensitive);
           if (tokens.length === 0) continue;
           const lineIndex = buildLineIndex(content);
@@ -437,7 +458,7 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
           totalOccurrences += occurrences.length;
           perFile.push({
-            file: uri.fsPath,
+            file: filePath,
             relative: rel,
             count: occurrences.length,
             averageGap: average(distances),

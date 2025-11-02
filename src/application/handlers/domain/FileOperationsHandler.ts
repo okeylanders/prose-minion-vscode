@@ -9,21 +9,62 @@ import {
   SaveResultMessage,
   SaveResultSuccessMessage,
   SaveResultMetadata,
-  MessageType
+  MessageType,
+  ErrorSource,
+  ErrorMessage,
+  StatusMessage
 } from '../../../shared/types/messages';
+import { MessageRouter } from '../MessageRouter';
 
 export class FileOperationsHandler {
   constructor(
-    private readonly outputChannel: vscode.OutputChannel,
-    private readonly postMessage: (message: any) => void,
-    private readonly sendStatus: (message: string, guideNames?: string) => void,
-    private readonly sendError: (message: string, details?: string) => void
+    private readonly postMessage: (message: any) => Promise<void>
   ) {}
+
+  /**
+   * Register message routes for file operations domain
+   */
+  registerRoutes(router: MessageRouter): void {
+    router.register(MessageType.COPY_RESULT, this.handleCopyResult.bind(this));
+    router.register(MessageType.SAVE_RESULT, this.handleSaveResult.bind(this));
+  }
+
+  // Helper methods (domain owns its message lifecycle)
+
+  private sendStatus(message: string, guideNames?: string): void {
+    const statusMessage: StatusMessage = {
+      type: MessageType.STATUS,
+      source: 'extension.file_ops',
+      payload: {
+        message,
+        guideNames
+      },
+      timestamp: Date.now()
+    };
+    void this.postMessage(statusMessage);
+  }
+
+  private sendError(source: ErrorSource, message: string, details?: string): void {
+    const errorMessage: ErrorMessage = {
+      type: MessageType.ERROR,
+      source: 'extension.file_ops',
+      payload: {
+        source,
+        message,
+        details
+      },
+      timestamp: Date.now()
+    };
+    void this.postMessage(errorMessage);
+  }
+
+  // Message handlers
 
   async handleCopyResult(message: CopyResultMessage): Promise<void> {
     try {
-      let text = message.content ?? '';
-      if (message.toolName === 'prose_stats' && /^## Chapter Details/m.test(text)) {
+      const { toolName, content } = message.payload;
+      let text = content ?? '';
+      if (toolName === 'prose_stats' && /^## Chapter Details/m.test(text)) {
         const answer = await vscode.window.showInformationMessage(
           'Include chapter-by-chapter breakdown in the copied report?',
           { modal: true },
@@ -38,18 +79,18 @@ export class FileOperationsHandler {
       }
 
       await vscode.env.clipboard.writeText(text);
-      this.outputChannel.appendLine(`[FileOperationsHandler] Copied ${message.toolName} result to clipboard (${message.content?.length ?? 0} chars).`);
       this.sendStatus('Result copied to clipboard.');
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('Failed to copy result to clipboard', msg);
+      this.sendError('file_ops.copy', 'Failed to copy result to clipboard', msg);
     }
   }
 
   async handleSaveResult(message: SaveResultMessage): Promise<void> {
     try {
-      let text = message.content ?? '';
-      if (message.toolName === 'prose_stats' && /^## Chapter Details/m.test(text)) {
+      const { toolName, content, metadata } = message.payload;
+      let text = content ?? '';
+      if (toolName === 'prose_stats' && /^## Chapter Details/m.test(text)) {
         const answer = await vscode.window.showInformationMessage(
           'Include chapter-by-chapter breakdown in the saved report?',
           { modal: true },
@@ -63,21 +104,28 @@ export class FileOperationsHandler {
         }
       }
 
-      const savedPath = await this.saveResultToFile(message.toolName, text, message.metadata);
-      this.outputChannel.appendLine(`[FileOperationsHandler] Saved ${message.toolName} result to ${savedPath}`);
+      const { relativePath: savedPath, fileUri } = await this.saveResultToFile(toolName, text, metadata);
 
       const successMessage: SaveResultSuccessMessage = {
         type: MessageType.SAVE_RESULT_SUCCESS,
-        toolName: message.toolName,
-        filePath: savedPath,
+        source: 'extension.file_ops',
+        payload: {
+          toolName,
+          filePath: savedPath
+        },
         timestamp: Date.now()
       };
 
       this.postMessage(successMessage);
+      try {
+        await vscode.window.showTextDocument(fileUri, { preview: false });
+      } catch {
+        // Silently ignore errors opening the file
+      }
       this.sendStatus(`Saved result to ${savedPath}`);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('Failed to save result', msg);
+      this.sendError('file_ops.save', 'Failed to save result', msg);
     }
   }
 
@@ -87,7 +135,7 @@ export class FileOperationsHandler {
     return markdown.replace(sectionRegex, '').trimEnd();
   }
 
-  private async saveResultToFile(toolName: string, content: string, metadata?: SaveResultMetadata): Promise<string> {
+  private async saveResultToFile(toolName: string, content: string, metadata?: SaveResultMetadata): Promise<{ relativePath: string; fileUri: vscode.Uri }> {
     if (!content || !content.trim()) {
       throw new Error('Result content is empty; nothing to save.');
     }
@@ -135,13 +183,14 @@ export class FileOperationsHandler {
       lines.push(context || '(No context provided.)', '', '---', '', content.trim());
 
       fileContent = lines.join('\n');
-    } else if (toolName === 'prose_stats') {
+    } else if (toolName === 'prose_stats' || toolName === 'style_flags' || toolName === 'word_frequency') {
       targetDir = vscode.Uri.joinPath(rootUri, 'prose-minion', 'reports');
       await vscode.workspace.fs.createDirectory(targetDir);
       const now = new Date();
       const pad = (n: number) => n.toString().padStart(2, '0');
-      const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
-      fileName = `prose-statistics-${stamp}.md`;
+      const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+      const toolSlug = toolName.replace(/_/g, '-');
+      fileName = `${toolSlug}-${stamp}.md`;
       fileContent = content.trim();
     } else {
       throw new Error(`Saving results for tool "${toolName}" is not supported yet.`);
@@ -151,7 +200,7 @@ export class FileOperationsHandler {
     const encoder = new TextEncoder();
     await vscode.workspace.fs.writeFile(fileUri, encoder.encode(fileContent));
 
-    return vscode.workspace.asRelativePath(fileUri);
+    return { relativePath: vscode.workspace.asRelativePath(fileUri), fileUri };
   }
 
   private async getNextSequentialNumber(directory: vscode.Uri, prefix: string): Promise<number> {
