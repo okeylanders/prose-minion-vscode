@@ -199,6 +199,7 @@ Update **Status** field:
 
 ### Active Debt
 - [Settings Sync Registration](2025-11-02-settings-sync-registration.md) - Medium priority, hardcoded settings watcher
+- [Word Counter Component Duplication](2025-11-02-word-counter-component.md) - Low priority, duplicated word counter logic across components
 
 ### Resolved Debt
 - None yet
