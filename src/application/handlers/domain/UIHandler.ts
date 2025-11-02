@@ -98,8 +98,6 @@ export class UIHandler {
       this.outputChannel.appendLine(`[UIHandler] Successfully opened guide: ${guidePath}`);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      const { guidePath } = message.payload;
-      this.outputChannel.appendLine(`[UIHandler] ERROR opening guide: ${guidePath} - ${errorMsg}`);
       this.sendError(
         'ui.guide',
         'Failed to open guide file',

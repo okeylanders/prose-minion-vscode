@@ -20,8 +20,7 @@ import { MessageRouter } from '../MessageRouter';
 export class PublishingHandler {
   constructor(
     private readonly extensionUri: vscode.Uri,
-    private readonly postMessage: (message: any) => Promise<void>,
-    private readonly outputChannel: vscode.OutputChannel
+    private readonly postMessage: (message: any) => Promise<void>
   ) {}
 
   /**
@@ -53,7 +52,7 @@ export class PublishingHandler {
 
   async handleRequestPublishingStandardsData(message: RequestPublishingStandardsDataMessage): Promise<void> {
     try {
-      const repo = new PublishingStandardsRepository(this.extensionUri, this.outputChannel);
+      const repo = new PublishingStandardsRepository(this.extensionUri);
       const genres = await repo.getGenres();
       const config = vscode.workspace.getConfiguration('proseMinion');
       const preset = (config.get<string>('publishingStandards.preset') || 'none');

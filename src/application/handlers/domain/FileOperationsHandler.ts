@@ -18,8 +18,7 @@ import { MessageRouter } from '../MessageRouter';
 
 export class FileOperationsHandler {
   constructor(
-    private readonly postMessage: (message: any) => Promise<void>,
-    private readonly outputChannel: vscode.OutputChannel
+    private readonly postMessage: (message: any) => Promise<void>
   ) {}
 
   /**
@@ -80,7 +79,6 @@ export class FileOperationsHandler {
       }
 
       await vscode.env.clipboard.writeText(text);
-      this.outputChannel.appendLine(`[FileOperationsHandler] Copied ${toolName} result to clipboard (${content?.length ?? 0} chars).`);
       this.sendStatus('Result copied to clipboard.');
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -107,7 +105,6 @@ export class FileOperationsHandler {
       }
 
       const { relativePath: savedPath, fileUri } = await this.saveResultToFile(toolName, text, metadata);
-      this.outputChannel.appendLine(`[FileOperationsHandler] Saved ${toolName} result to ${savedPath}`);
 
       const successMessage: SaveResultSuccessMessage = {
         type: MessageType.SAVE_RESULT_SUCCESS,
@@ -122,9 +119,8 @@ export class FileOperationsHandler {
       this.postMessage(successMessage);
       try {
         await vscode.window.showTextDocument(fileUri, { preview: false });
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        this.outputChannel.appendLine(`[FileOperationsHandler] Failed to open saved file: ${msg}`);
+      } catch {
+        // Silently ignore errors opening the file
       }
       this.sendStatus(`Saved result to ${savedPath}`);
     } catch (error) {

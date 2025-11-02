@@ -76,7 +76,7 @@ export class ProseAnalysisService implements IProseAnalysisService {
     this.contextResourceResolver = new ContextResourceResolver(this.outputChannel);
 
     if (this.extensionUri) {
-      this.standardsRepo = new PublishingStandardsRepository(this.extensionUri, this.outputChannel);
+      this.standardsRepo = new PublishingStandardsRepository(this.extensionUri);
     }
   }
 

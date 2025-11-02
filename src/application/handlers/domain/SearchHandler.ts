@@ -63,20 +63,7 @@ export class SearchHandler {
     try {
       const { text, source, options } = message.payload;
 
-      // DEBUG: Log incoming message
-      this.outputChannel.appendLine('[SearchHandler] RUN_WORD_SEARCH received:');
-      this.outputChannel.appendLine(`  source.mode: ${source?.mode ?? 'NONE'}`);
-      this.outputChannel.appendLine(`  source.pathText: ${source?.pathText ?? 'NONE'}`);
-      this.outputChannel.appendLine(`  text field: ${text ? `"${text.substring(0, 50)}..."` : 'NONE'}`);
-
       const resolved = await this.resolveRichTextForMetrics({ text, source });
-
-      // DEBUG: Log what was resolved
-      this.outputChannel.appendLine('[SearchHandler] Resolved to:');
-      this.outputChannel.appendLine(`  mode: ${resolved.mode ?? 'NONE'}`);
-      this.outputChannel.appendLine(`  text length: ${resolved.text.length} chars`);
-      this.outputChannel.appendLine(`  text preview: "${resolved.text.substring(0, 100).replace(/\n/g, '\\n')}..."`);
-      this.outputChannel.appendLine(`  paths: ${resolved.paths?.join(', ') ?? 'NONE'}`);
 
       const searchOptions = options || {};
       const result = await this.service.measureWordSearch(
@@ -88,7 +75,6 @@ export class SearchHandler {
       this.sendSearchResult(result.metrics, result.toolName);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      this.outputChannel.appendLine(`[SearchHandler] ERROR: ${msg}`);
       this.sendError('search', 'Invalid selection or path', msg);
     }
   }

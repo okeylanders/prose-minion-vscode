@@ -150,8 +150,7 @@ export class MessageHandler {
 
     this.publishingHandler = new PublishingHandler(
       extensionUri,
-      this.postMessage.bind(this),
-      outputChannel
+      this.postMessage.bind(this)
     );
 
     this.sourcesHandler = new SourcesHandler(
@@ -165,8 +164,7 @@ export class MessageHandler {
     );
 
     this.fileOperationsHandler = new FileOperationsHandler(
-      this.postMessage.bind(this),
-      outputChannel
+      this.postMessage.bind(this)
     );
 
     // Initialize message router and register handler routes
