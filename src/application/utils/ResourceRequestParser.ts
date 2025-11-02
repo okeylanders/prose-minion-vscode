@@ -11,26 +11,51 @@ export interface ResourceRequest {
 export class ResourceRequestParser {
   /**
    * Parse an AI response for resource requests
-   * Looks for: <guide-request path=["path1", "path2"] />
+   * Supports both formats:
+   * - Single tag with array: <guide-request path=["path1", "path2"] />
+   * - Multiple tags: <guide-request path=["path1"] /> <guide-request path=["path2"] />
    */
   static parse(aiResponse: string): ResourceRequest {
-    const guideRequestRegex = /<guide-request\s+path=\[(.*?)\]\s*\/>/i;
-    const match = aiResponse.match(guideRequestRegex);
+    const guideRequestRegex = /<guide-request\s+path=\[(.*?)\]\s*\/>/gi;
+    const matches = Array.from(aiResponse.matchAll(guideRequestRegex));
 
-    if (!match) {
+    if (matches.length === 0) {
       return {
         hasGuideRequest: false,
         requestedGuides: []
       };
     }
 
-    // Parse the path array from the match
-    const pathArrayString = match[1];
-    const requestedGuides = this.parsePathArray(pathArrayString);
+    // Collect paths from all matched tags
+    const allPaths: string[] = [];
+    for (const match of matches) {
+      const pathArrayString = match[1];
+      const paths = this.parsePathArray(pathArrayString);
+      allPaths.push(...paths);
+    }
+
+    // De-duplicate paths (in case AI requests same guide multiple times)
+    const uniquePaths = Array.from(new Set(allPaths));
+
+    // Detect unexpected format usage for monitoring
+    if (matches.length > 1) {
+      console.log(
+        `[ResourceRequestParser] AI used ${matches.length} separate guide-request tags ` +
+        `instead of single tag with array. Extracted ${uniquePaths.length} unique guides.`
+      );
+    }
+
+    // Warn if de-duplication removed paths
+    if (allPaths.length !== uniquePaths.length) {
+      console.log(
+        `[ResourceRequestParser] De-duplicated ${allPaths.length - uniquePaths.length} ` +
+        `duplicate guide request(s)`
+      );
+    }
 
     return {
-      hasGuideRequest: requestedGuides.length > 0,
-      requestedGuides
+      hasGuideRequest: uniquePaths.length > 0,
+      requestedGuides: uniquePaths
     };
   }
 
