@@ -12,6 +12,7 @@ import { ResourceRequestParser } from '../utils/ResourceRequestParser';
 import { ContextResourceRequestParser } from '../utils/ContextResourceRequestParser';
 import { ContextResourceContent, ContextResourceProvider, ContextResourceSummary } from '../../domain/models/ContextGeneration';
 import { TokenUsage } from '../../shared/types';
+import { countWords, trimToWordLimit } from '../../utils/textUtils';
 
 export interface AIOptions {
   includeCraftGuides?: boolean;
@@ -443,10 +444,47 @@ export class AIResourceOrchestrator {
 
   /**
    * Build the user message containing loaded guides
+   * Applies context window trimming if enabled
    */
   private buildGuideResponseMessage(guides: Map<string, string>): string {
     const lines = ['Here are the requested craft guides:', ''];
 
+    // Check if trimming is enabled
+    const applyTrimming = vscode.workspace.getConfiguration('proseMinion')
+      .get<boolean>('applyContextWindowTrimming', true);
+
+    if (applyTrimming) {
+      // For analysis agents: Limit total guide content to allow room for excerpt and context
+      // Target: 75K total words (excerpt + context + guides)
+      // Conservative guide limit: 50K words (leaves room for 25K of excerpt + context)
+      const MAX_GUIDE_WORDS = 50000;
+
+      // Combine all guide content
+      const allGuideContent = Array.from(guides.values()).join('\n\n');
+      const totalGuideWords = countWords(allGuideContent);
+
+      if (totalGuideWords > MAX_GUIDE_WORDS) {
+        this.outputChannel?.appendLine(
+          `[Context Window Trim] Guides exceed limit (${totalGuideWords} words > ${MAX_GUIDE_WORDS} words)`
+        );
+
+        // Trim the combined guide content
+        const trimResult = trimToWordLimit(allGuideContent, MAX_GUIDE_WORDS);
+
+        this.outputChannel?.appendLine(
+          `[Context Window Trim] Trimmed guides from ${trimResult.originalWords} to ${trimResult.trimmedWords} words`
+        );
+
+        // Use trimmed content instead
+        lines.push(trimResult.trimmed);
+        lines.push('', '---', '');
+        lines.push('**Note**: Guide content was trimmed to fit context window limits.');
+
+        return lines.join('\n');
+      }
+    }
+
+    // No trimming needed or disabled - use full content
     for (const [path, content] of guides) {
       lines.push(`## Guide: ${path}`, '');
       lines.push(content);
@@ -470,6 +508,52 @@ export class AIResourceOrchestrator {
 
     const lines: string[] = ['Here are the requested project resources:', ''];
 
+    // Check if trimming is enabled
+    const applyTrimming = vscode.workspace.getConfiguration('proseMinion')
+      .get<boolean>('applyContextWindowTrimming', true);
+
+    if (applyTrimming) {
+      // For context agent: Limit total resource content
+      // Target: 50K words total (conservative limit for 128K token context window)
+      const MAX_CONTEXT_WORDS = 50000;
+
+      // Combine all resource content to check total
+      const allResourceContent = resources.map(r => r.content).join('\n\n');
+      const totalWords = countWords(allResourceContent);
+
+      if (totalWords > MAX_CONTEXT_WORDS) {
+        this.outputChannel?.appendLine(
+          `[Context Window Trim] Context resources exceed limit (${totalWords} words > ${MAX_CONTEXT_WORDS} words)`
+        );
+
+        // Trim the combined resource content
+        const trimResult = trimToWordLimit(allResourceContent, MAX_CONTEXT_WORDS);
+
+        this.outputChannel?.appendLine(
+          `[Context Window Trim] Trimmed context from ${trimResult.originalWords} to ${trimResult.trimmedWords} words`
+        );
+
+        // Use trimmed content
+        lines.push('```markdown');
+        lines.push(trimResult.trimmed);
+        lines.push('```', '');
+        lines.push('');
+        lines.push('**Note**: Context resources were trimmed to fit context window limits.');
+
+        if (missing.length > 0) {
+          lines.push('');
+          lines.push('The following requested paths could not be located:', '');
+          missing.forEach(path => lines.push(`- ${path}`));
+        }
+
+        lines.push('');
+        lines.push('Please incorporate these references into the context summary.');
+
+        return lines.join('\n');
+      }
+    }
+
+    // No trimming needed or disabled - use full content
     for (const resource of resources) {
       lines.push(`### Resource: ${resource.path}`);
       lines.push(`Group: ${resource.group}`);

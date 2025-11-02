@@ -104,6 +104,36 @@ export class MessageHandler {
           void this.configurationHandler.sendModelData();
         }
       }
+
+      // Send SETTINGS_DATA when general settings change (from VS Code settings panel)
+      // This ensures Settings Overlay reflects changes made outside the webview
+      if (
+        event.affectsConfiguration('proseMinion.includeCraftGuides') ||
+        event.affectsConfiguration('proseMinion.temperature') ||
+        event.affectsConfiguration('proseMinion.maxTokens') ||
+        event.affectsConfiguration('proseMinion.applyContextWindowTrimming')
+      ) {
+        // Check if change was webview-originated to prevent echo-back
+        const affectedKeys = [
+          'proseMinion.includeCraftGuides',
+          'proseMinion.temperature',
+          'proseMinion.maxTokens',
+          'proseMinion.applyContextWindowTrimming'
+        ];
+        const shouldBroadcast = affectedKeys.some(key =>
+          event.affectsConfiguration(key) &&
+          this.configurationHandler.shouldBroadcastConfigChange(key)
+        );
+
+        if (shouldBroadcast) {
+          void this.configurationHandler.handleRequestSettingsData({
+            type: MessageType.REQUEST_SETTINGS_DATA,
+            source: 'extension.config_watcher',
+            payload: {},
+            timestamp: Date.now()
+          });
+        }
+      }
     });
 
     this.disposables.push(configWatcher);

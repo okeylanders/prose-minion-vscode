@@ -503,6 +503,12 @@
           "default": false,
           "description": "Enable assistant-based expansion for target words (synonyms, inflections).",
           "order": 34
+        },
+        "proseMinion.applyContextWindowTrimming": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Apply context window trimming to prevent token limit errors. **Limits**: UI recommends 500-word excerpts; Context Agent (50K words), Analysis Agents (75K words total: excerpt + context + guides). Targets 128K token context window. Disable if using models with larger context windows (e.g., 200K+).",
+          "order": 35
         }
       }
     }
