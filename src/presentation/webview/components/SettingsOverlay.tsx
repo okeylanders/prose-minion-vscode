@@ -169,6 +169,17 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-checkbox-label">
           <input
             type="checkbox"
+            checked={asBoolean('applyContextWindowTrimming')}
+            onChange={(e) => onUpdate('applyContextWindowTrimming', e.target.checked)}
+          /> Apply Context Window Trimming
+          <div className="settings-description">
+            Automatically trims large inputs to prevent token limit errors. <strong>Limits</strong>: UI recommends 500-word excerpts; Context Agent (50K words), Analysis Agents (50K words for guides). Targets 128K token context window. Disable if using models with larger context windows (e.g., 200K+).
+          </div>
+        </label>
+
+        <label className="settings-checkbox-label">
+          <input
+            type="checkbox"
             checked={asBoolean('ui.showTokenWidget')}
             onChange={(e) => onUpdate('ui.showTokenWidget', e.target.checked)}
           /> Show Token Usage Widget
