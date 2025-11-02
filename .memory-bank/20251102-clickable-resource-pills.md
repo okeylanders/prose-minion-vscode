@@ -185,12 +185,27 @@ This implementation:
 ## Commits
 
 1. `f473724` - feat(ui): add clickable resource pills in Context Assistant
+2. `a1c70d6` - refactor(ui): smart column selection for guide/resource opening
+
+## Follow-up Enhancement: Smart Column Selection
+
+After initial implementation, added smart column logic to prevent excessive editor splits:
+
+```typescript
+const targetColumn = vscode.window.visibleTextEditors.length > 0
+  ? vscode.ViewColumn.Two  // Reuse second column if any editors exist
+  : vscode.ViewColumn.Beside;  // Create beside webview on first open
+```
+
+**Benefit**: Clicking multiple pills no longer creates column 3, 4, 5... Files replace each other in column 2.
+
+Applied to both `handleOpenGuideFile` and `handleOpenResource` for consistency.
 
 ## Next Steps
 
 1. **Manual Testing**: Test in Extension Development Host (F5)
 2. **User Testing**: Gather feedback on interaction pattern
-3. **Merge**: Merge to main if testing passes
+3. **Merge**: ✅ Ready to merge to main
 4. **Future Enhancements** (v1.1+):
    - Preview on hover (tooltip with first few lines)
    - Right-click context menu ("Open", "Copy Path", "Exclude from Context")
