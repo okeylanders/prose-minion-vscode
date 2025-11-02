@@ -32,6 +32,7 @@ export class AnalysisHandler {
   }
 
   async handleAnalyzeDialogue(message: AnalyzeDialogueMessage): Promise<void> {
+    const { text, contextText, sourceFileUri } = message.payload;
     const config = vscode.workspace.getConfiguration('proseMinion');
     const includeCraftGuides = config.get<boolean>('includeCraftGuides') ?? true;
 
@@ -44,9 +45,9 @@ export class AnalysisHandler {
 
     this.sendStatus('Analyzing dialogue with AI...');
     const result = await this.service.analyzeDialogue(
-      message.text,
-      message.contextText,
-      message.sourceFileUri
+      text,
+      contextText,
+      sourceFileUri
     );
     this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
     if ((result as any).usage) {
@@ -55,6 +56,7 @@ export class AnalysisHandler {
   }
 
   async handleAnalyzeProse(message: AnalyzeProseMessage): Promise<void> {
+    const { text, contextText, sourceFileUri } = message.payload;
     const config = vscode.workspace.getConfiguration('proseMinion');
     const includeCraftGuides = config.get<boolean>('includeCraftGuides') ?? true;
 
@@ -67,9 +69,9 @@ export class AnalysisHandler {
 
     this.sendStatus('Analyzing prose with AI...');
     const result = await this.service.analyzeProse(
-      message.text,
-      message.contextText,
-      message.sourceFileUri
+      text,
+      contextText,
+      sourceFileUri
     );
     this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
     if ((result as any).usage) {

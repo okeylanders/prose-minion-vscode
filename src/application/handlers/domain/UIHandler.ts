@@ -34,14 +34,15 @@ export class UIHandler {
 
   async handleOpenGuideFile(message: OpenGuideFileMessage): Promise<void> {
     try {
-      this.outputChannel.appendLine(`[UIHandler] Opening guide file: ${message.guidePath}`);
+      const { guidePath } = message.payload;
+      this.outputChannel.appendLine(`[UIHandler] Opening guide file: ${guidePath}`);
 
       // Construct the full URI to the guide file
       const guideUri = vscode.Uri.joinPath(
         this.extensionUri,
         'resources',
         'craft-guides',
-        message.guidePath
+        guidePath
       );
 
       this.outputChannel.appendLine(`[UIHandler] Full path: ${guideUri.fsPath}`);
@@ -63,10 +64,11 @@ export class UIHandler {
         viewColumn: vscode.ViewColumn.Beside  // Open alongside current editor
       });
 
-      this.outputChannel.appendLine(`[UIHandler] Successfully opened guide: ${message.guidePath}`);
+      this.outputChannel.appendLine(`[UIHandler] Successfully opened guide: ${guidePath}`);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      this.outputChannel.appendLine(`[UIHandler] ERROR opening guide: ${message.guidePath} - ${errorMsg}`);
+      const { guidePath } = message.payload;
+      this.outputChannel.appendLine(`[UIHandler] ERROR opening guide: ${guidePath} - ${errorMsg}`);
       this.sendError(
         'ui.guide',
         'Failed to open guide file',
@@ -76,6 +78,7 @@ export class UIHandler {
   }
 
   async handleSelectionRequest(message: RequestSelectionMessage): Promise<void> {
+    const { target } = message.payload;
     const editor = vscode.window.activeTextEditor;
 
     let content: string | undefined;
@@ -103,10 +106,13 @@ export class UIHandler {
 
     const selectionMessage: SelectionDataMessage = {
       type: MessageType.SELECTION_DATA,
-      target: message.target,
-      content,
-      sourceUri,
-      relativePath,
+      source: 'extension.ui',
+      payload: {
+        target,
+        content,
+        sourceUri,
+        relativePath
+      },
       timestamp: Date.now()
     };
 

@@ -25,13 +25,15 @@ export class SearchHandler {
 
   async handleMeasureWordSearch(message: RunWordSearchMessage): Promise<void> {
     try {
+      const { text, source, options } = message.payload;
+
       // DEBUG: Log incoming message
       this.outputChannel.appendLine('[SearchHandler] RUN_WORD_SEARCH received:');
-      this.outputChannel.appendLine(`  source.mode: ${message.source?.mode ?? 'NONE'}`);
-      this.outputChannel.appendLine(`  source.pathText: ${message.source?.pathText ?? 'NONE'}`);
-      this.outputChannel.appendLine(`  text field: ${message.text ? `"${message.text.substring(0, 50)}..."` : 'NONE'}`);
+      this.outputChannel.appendLine(`  source.mode: ${source?.mode ?? 'NONE'}`);
+      this.outputChannel.appendLine(`  source.pathText: ${source?.pathText ?? 'NONE'}`);
+      this.outputChannel.appendLine(`  text field: ${text ? `"${text.substring(0, 50)}..."` : 'NONE'}`);
 
-      const resolved = await this.resolveRichTextForMetrics(message);
+      const resolved = await this.resolveRichTextForMetrics({ text, source });
 
       // DEBUG: Log what was resolved
       this.outputChannel.appendLine('[SearchHandler] Resolved to:');
@@ -40,12 +42,12 @@ export class SearchHandler {
       this.outputChannel.appendLine(`  text preview: "${resolved.text.substring(0, 100).replace(/\n/g, '\\n')}..."`);
       this.outputChannel.appendLine(`  paths: ${resolved.paths?.join(', ') ?? 'NONE'}`);
 
-      const options = message.options || {};
+      const searchOptions = options || {};
       const result = await this.service.measureWordSearch(
         resolved.text,
         resolved.paths,
         resolved.mode,
-        options as any
+        searchOptions as any
       );
       this.sendSearchResult(result.metrics, result.toolName);
     } catch (error) {
@@ -55,9 +57,9 @@ export class SearchHandler {
     }
   }
 
-  private async resolveRichTextForMetrics(message: { text?: string; source?: any }): Promise<{ text: string; paths?: string[]; mode?: string }> {
-    if (!message.source) {
-      const t = (message.text ?? '').trim();
+  private async resolveRichTextForMetrics(payload: { text?: string; source?: any }): Promise<{ text: string; paths?: string[]; mode?: string }> {
+    if (!payload.source) {
+      const t = (payload.text ?? '').trim();
       if (!t) {
         throw new Error('No text provided for search.');
       }
@@ -65,10 +67,10 @@ export class SearchHandler {
     }
     const { TextSourceResolver } = await import('../../../infrastructure/text/TextSourceResolver');
     const resolver = new TextSourceResolver(this.outputChannel);
-    const resolved = await resolver.resolve(message.source);
+    const resolved = await resolver.resolve(payload.source);
     const text = (resolved.text ?? '').trim();
     if (!text) throw new Error('Resolved source contains no text.');
-    const mode = message.source?.mode;
+    const mode = payload.source?.mode;
     return { text, paths: resolved.relativePaths, mode };
   }
 }

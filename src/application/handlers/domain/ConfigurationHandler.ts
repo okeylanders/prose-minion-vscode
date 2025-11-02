@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 import { IProseAnalysisService } from '../../../domain/services/IProseAnalysisService';
 import {
   RequestSettingsDataMessage,
+  SettingsDataMessage,
   UpdateSettingMessage,
   SetModelSelectionMessage,
   RequestModelDataMessage,
@@ -26,6 +27,9 @@ import { OpenRouterModels } from '../../../infrastructure/api/OpenRouterModels';
 import { SecretStorageService } from '../../../infrastructure/secrets/SecretStorageService';
 
 export class ConfigurationHandler {
+  // Track webview-originated config updates to prevent echo-back
+  private webviewOriginatedUpdates = new Set<string>();
+
   constructor(
     private readonly service: IProseAnalysisService,
     private readonly secretsService: SecretStorageService,
@@ -48,6 +52,25 @@ export class ConfigurationHandler {
     router.register(MessageType.REQUEST_API_KEY, this.handleRequestApiKey.bind(this));
     router.register(MessageType.UPDATE_API_KEY, this.handleUpdateApiKey.bind(this));
     router.register(MessageType.DELETE_API_KEY, this.handleDeleteApiKey.bind(this));
+  }
+
+  /**
+   * Mark a config key as webview-originated (to prevent echo-back)
+   * The key will be cleared after 100ms
+   */
+  private markWebviewOriginatedUpdate(configKey: string): void {
+    this.webviewOriginatedUpdates.add(configKey);
+    setTimeout(() => {
+      this.webviewOriginatedUpdates.delete(configKey);
+    }, 100);
+  }
+
+  /**
+   * Check if a config change should be broadcast to the webview
+   * Returns false if the change was originated by the webview (to prevent echo-back)
+   */
+  public shouldBroadcastConfigChange(configKey: string): boolean {
+    return !this.webviewOriginatedUpdates.has(configKey);
   }
 
   async handleRequestSettingsData(message: RequestSettingsDataMessage): Promise<void> {
@@ -90,9 +113,12 @@ export class ConfigurationHandler {
       'contextPaths.general': config.get<string>('contextPaths.general') ?? ''
     };
 
-    const message_out = {
+    const message_out: SettingsDataMessage = {
       type: MessageType.SETTINGS_DATA,
-      settings,
+      source: 'extension.handler',
+      payload: {
+        settings
+      },
       timestamp: Date.now()
     };
     this.postMessage(message_out);
@@ -100,6 +126,7 @@ export class ConfigurationHandler {
 
   async handleUpdateSetting(message: UpdateSettingMessage): Promise<void> {
     try {
+      const { key, value } = message.payload;
       const allowedPrefixes = [
         'ui.',
         'publishingStandards.',
@@ -109,16 +136,19 @@ export class ConfigurationHandler {
       ];
       const allowedTop = new Set(['includeCraftGuides', 'temperature', 'maxTokens']);
 
-      const isAllowed = allowedTop.has(message.key) || allowedPrefixes.some(prefix => message.key.startsWith(prefix));
+      const isAllowed = allowedTop.has(key) || allowedPrefixes.some(prefix => key.startsWith(prefix));
       if (!isAllowed) {
-        throw new Error(`Unsupported setting key: ${message.key}`);
+        throw new Error(`Unsupported setting key: ${key}`);
       }
 
+      // Mark this update as webview-originated to prevent echo-back
+      this.markWebviewOriginatedUpdate(`proseMinion.${key}`);
+
       const config = vscode.workspace.getConfiguration('proseMinion');
-      await config.update(message.key, message.value, true);
+      await config.update(key, value, true);
 
       // Only send model data for UI-affecting settings (prevents overwriting settings overlay state during typing)
-      if (message.key === 'ui.showTokenWidget') {
+      if (key === 'ui.showTokenWidget') {
         await this.sendModelData();
       }
     } catch (error) {
@@ -134,7 +164,10 @@ export class ConfigurationHandler {
 
     const message: TokenUsageUpdateMessage = {
       type: MessageType.TOKEN_USAGE_UPDATE,
-      totals: { ...this.tokenTotals },
+      source: 'extension.handler',
+      payload: {
+        totals: { ...this.tokenTotals }
+      },
       timestamp: Date.now()
     };
     this.sharedResultCache.tokenUsage = { ...message };
@@ -143,18 +176,23 @@ export class ConfigurationHandler {
 
   async handleSetModelSelection(message: SetModelSelectionMessage): Promise<void> {
     try {
+      const { scope, modelId } = message.payload;
       this.outputChannel.appendLine(
-        `[ConfigurationHandler] handleSetModelSelection received: scope=${message.scope}, modelId=${message.modelId}`
+        `[ConfigurationHandler] handleSetModelSelection received: scope=${scope}, modelId=${modelId}`
       );
-      const configKey = this.getConfigKeyForScope(message.scope);
+      const configKey = this.getConfigKeyForScope(scope);
       this.outputChannel.appendLine(
         `[ConfigurationHandler] Config key for scope: ${configKey}`
       );
+
+      // Mark this update as webview-originated to prevent echo-back
+      this.markWebviewOriginatedUpdate(`proseMinion.${configKey}`);
+
       const config = vscode.workspace.getConfiguration('proseMinion');
 
-      await config.update(configKey, message.modelId, vscode.ConfigurationTarget.Global);
+      await config.update(configKey, modelId, vscode.ConfigurationTarget.Global);
       this.outputChannel.appendLine(
-        `[ConfigurationHandler] Config saved: ${configKey} = ${message.modelId}`
+        `[ConfigurationHandler] Config saved: ${configKey} = ${modelId}`
       );
 
       // Wait a moment for config to be readable (VSCode's config system is async)
@@ -167,9 +205,10 @@ export class ConfigurationHandler {
         `[ConfigurationHandler] Sent MODEL_DATA after model selection change`
       );
     } catch (error) {
+      const { scope } = message.payload;
       const message_err = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(
-        `[ConfigurationHandler] Failed to update model selection for ${message.scope}: ${message_err}`
+        `[ConfigurationHandler] Failed to update model selection for ${scope}: ${message_err}`
       );
       this.sendError('settings.model', 'Failed to update model selection', message_err);
     }
@@ -208,10 +247,13 @@ export class ConfigurationHandler {
       const config = vscode.workspace.getConfiguration('proseMinion');
       const message: ModelDataMessage = {
         type: MessageType.MODEL_DATA,
-        options,
-        selections,
-        ui: {
-          showTokenWidget: config.get<boolean>('ui.showTokenWidget') ?? true
+        source: 'extension.handler',
+        payload: {
+          options,
+          selections,
+          ui: {
+            showTokenWidget: config.get<boolean>('ui.showTokenWidget') ?? true
+          }
         },
         timestamp: Date.now()
       };
@@ -294,7 +336,10 @@ export class ConfigurationHandler {
       const apiKey = await this.secretsService.getApiKey();
       const response: ApiKeyStatusMessage = {
         type: MessageType.API_KEY_STATUS,
-        hasSavedKey: !!apiKey,
+        source: 'extension.handler',
+        payload: {
+          hasSavedKey: !!apiKey
+        },
         timestamp: Date.now()
       };
       this.postMessage(response);
@@ -307,11 +352,12 @@ export class ConfigurationHandler {
 
   async handleUpdateApiKey(message: UpdateApiKeyMessage): Promise<void> {
     try {
-      if (!message.apiKey || message.apiKey.trim().length === 0) {
+      const { apiKey } = message.payload;
+      if (!apiKey || apiKey.trim().length === 0) {
         throw new Error('API key cannot be empty');
       }
 
-      await this.secretsService.setApiKey(message.apiKey.trim());
+      await this.secretsService.setApiKey(apiKey.trim());
       this.outputChannel.appendLine('[ConfigurationHandler] API key saved to secure storage');
 
       // Refresh service configuration to pick up new API key
@@ -320,7 +366,10 @@ export class ConfigurationHandler {
       // Send success status
       const response: ApiKeyStatusMessage = {
         type: MessageType.API_KEY_STATUS,
-        hasSavedKey: true,
+        source: 'extension.handler',
+        payload: {
+          hasSavedKey: true
+        },
         timestamp: Date.now()
       };
       this.postMessage(response);
@@ -345,7 +394,10 @@ export class ConfigurationHandler {
       // Send success status
       const response: ApiKeyStatusMessage = {
         type: MessageType.API_KEY_STATUS,
-        hasSavedKey: false,
+        source: 'extension.configuration',
+        payload: {
+          hasSavedKey: false
+        },
         timestamp: Date.now()
       };
       this.postMessage(response);

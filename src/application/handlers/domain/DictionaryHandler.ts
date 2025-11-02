@@ -29,7 +29,9 @@ export class DictionaryHandler {
   }
 
   async handleLookupDictionary(message: LookupDictionaryMessage): Promise<void> {
-    if (!message.word.trim()) {
+    const { word, contextText } = message.payload;
+
+    if (!word.trim()) {
       this.sendError('dictionary', 'Dictionary lookup requires a word to search');
       return;
     }
@@ -37,8 +39,8 @@ export class DictionaryHandler {
     this.sendStatus('Preparing dictionary prompt...');
     await new Promise(resolve => setTimeout(resolve, 100));
 
-    this.sendStatus(`Generating dictionary entry for "${message.word}"...`);
-    const result = await this.service.lookupDictionary(message.word, message.contextText);
+    this.sendStatus(`Generating dictionary entry for "${word}"...`);
+    const result = await this.service.lookupDictionary(word, contextText);
     this.sendDictionaryResult(result.content, result.toolName);
     if ((result as any).usage) {
       this.applyTokenUsage((result as any).usage);

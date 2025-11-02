@@ -81,18 +81,19 @@ export const useSelection = (): UseSelectionReturn => {
 
   const handleSelectionUpdated = React.useCallback(
     (message: any, onTabChange: (tab: TabId) => void) => {
-      const target = message.target || 'assistant';
+      const { text, sourceUri, relativePath, target } = message.payload;
+      const targetValue = target || 'assistant';
 
-      if (target === 'assistant' || target === 'both') {
+      if (targetValue === 'assistant' || targetValue === 'both') {
         onTabChange(TabId.ANALYSIS);
-        setSelectedText(message.text);
-        setSelectedSourceUri(message.sourceUri ?? '');
-        setSelectedRelativePath(message.relativePath ?? '');
+        setSelectedText(text);
+        setSelectedSourceUri(sourceUri ?? '');
+        setSelectedRelativePath(relativePath ?? '');
       }
 
-      if (target === 'dictionary' || target === 'both') {
+      if (targetValue === 'dictionary' || targetValue === 'both') {
         onTabChange(TabId.UTILITIES);
-        setDictionaryInjection({ word: message.text, timestamp: Date.now() });
+        setDictionaryInjection({ word: text, timestamp: Date.now() });
       }
     },
     []
@@ -100,14 +101,14 @@ export const useSelection = (): UseSelectionReturn => {
 
   const handleSelectionData = React.useCallback(
     (message: any, onTabChange: (tab: TabId) => void, onContextSet?: (context: string) => void) => {
-      const content = message.content ?? '';
+      const { content = '', target, sourceUri, relativePath } = message.payload;
 
-      switch (message.target) {
+      switch (target) {
         case 'assistant_excerpt':
           onTabChange(TabId.ANALYSIS);
           setSelectedText(content);
-          setSelectedSourceUri(message.sourceUri ?? '');
-          setSelectedRelativePath(message.relativePath ?? '');
+          setSelectedSourceUri(sourceUri ?? '');
+          setSelectedRelativePath(relativePath ?? '');
           break;
 
         case 'assistant_context':
@@ -121,8 +122,8 @@ export const useSelection = (): UseSelectionReturn => {
           onTabChange(TabId.UTILITIES);
           setDictionaryInjection({
             word: content,
-            sourceUri: message.sourceUri,
-            relativePath: message.relativePath,
+            sourceUri,
+            relativePath,
             timestamp: Date.now(),
           });
           break;
@@ -131,8 +132,8 @@ export const useSelection = (): UseSelectionReturn => {
           onTabChange(TabId.UTILITIES);
           setDictionaryInjection({
             context: content,
-            sourceUri: message.sourceUri,
-            relativePath: message.relativePath,
+            sourceUri,
+            relativePath,
             timestamp: Date.now(),
           });
           break;

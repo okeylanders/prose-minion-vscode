@@ -8,6 +8,9 @@ import {
   RequestActiveFileMessage,
   RequestManuscriptGlobsMessage,
   RequestChapterGlobsMessage,
+  ActiveFileMessage,
+  ManuscriptGlobsMessage,
+  ChapterGlobsMessage,
   MessageType
 } from '../../../shared/types/messages';
 import { MessageRouter } from '../MessageRouter';
@@ -29,34 +32,43 @@ export class SourcesHandler {
   async handleRequestActiveFile(message: RequestActiveFileMessage): Promise<void> {
     const editor = vscode.window.activeTextEditor;
     const relativePath = editor ? vscode.workspace.asRelativePath(editor.document.uri, false) : undefined;
-    const msg = {
+    const msg: ActiveFileMessage = {
       type: MessageType.ACTIVE_FILE,
-      relativePath,
-      sourceUri: editor?.document.uri.toString(),
+      source: 'extension.sources',
+      payload: {
+        relativePath,
+        sourceUri: editor?.document.uri.toString()
+      },
       timestamp: Date.now()
-    } as const;
+    };
     this.postMessage(msg);
   }
 
   async handleRequestManuscriptGlobs(message: RequestManuscriptGlobsMessage): Promise<void> {
     const config = vscode.workspace.getConfiguration('proseMinion');
     const globs = config.get<string>('contextPaths.manuscript') || '';
-    const msg = {
+    const msg: ManuscriptGlobsMessage = {
       type: MessageType.MANUSCRIPT_GLOBS,
-      globs,
+      source: 'extension.sources',
+      payload: {
+        globs
+      },
       timestamp: Date.now()
-    } as const;
+    };
     this.postMessage(msg);
   }
 
   async handleRequestChapterGlobs(message: RequestChapterGlobsMessage): Promise<void> {
     const config = vscode.workspace.getConfiguration('proseMinion');
     const globs = config.get<string>('contextPaths.chapters') || '';
-    const msg = {
+    const msg: ChapterGlobsMessage = {
       type: MessageType.CHAPTER_GLOBS,
-      globs,
+      source: 'extension.sources',
+      payload: {
+        globs
+      },
       timestamp: Date.now()
-    } as const;
+    };
     this.postMessage(msg);
   }
 }

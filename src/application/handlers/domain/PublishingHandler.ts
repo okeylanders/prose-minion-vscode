@@ -8,6 +8,7 @@ import {
   RequestPublishingStandardsDataMessage,
   SetPublishingPresetMessage,
   SetPublishingTrimMessage,
+  PublishingStandardsDataMessage,
   MessageType,
   ErrorSource
 } from '../../../shared/types/messages';
@@ -40,26 +41,29 @@ export class PublishingHandler {
       const preset = (config.get<string>('publishingStandards.preset') || 'none');
       const pageSizeKey = (config.get<string>('publishingStandards.pageSizeKey') || '');
 
-      const payload = {
+      const message: PublishingStandardsDataMessage = {
         type: MessageType.PUBLISHING_STANDARDS_DATA,
-        preset,
-        pageSizeKey,
-        genres: genres.map(g => ({
-          key: (g.slug || g.abbreviation || g.name),
-          name: g.name,
-          abbreviation: g.abbreviation,
-          pageSizes: g.page_sizes.map(ps => ({
-            key: ps.format || `${ps.width_inches}x${ps.height_inches}`,
-            label: ps.format || `${ps.width_inches}x${ps.height_inches}`,
-            width: ps.width_inches,
-            height: ps.height_inches,
-            common: ps.common
+        source: 'extension.publishing',
+        payload: {
+          preset,
+          pageSizeKey,
+          genres: genres.map(g => ({
+            key: (g.slug || g.abbreviation || g.name),
+            name: g.name,
+            abbreviation: g.abbreviation,
+            pageSizes: g.page_sizes.map(ps => ({
+              key: ps.format || `${ps.width_inches}x${ps.height_inches}`,
+              label: ps.format || `${ps.width_inches}x${ps.height_inches}`,
+              width: ps.width_inches,
+              height: ps.height_inches,
+              common: ps.common
+            }))
           }))
-        })),
+        },
         timestamp: Date.now()
-      } as const;
+      };
 
-      this.postMessage(payload);
+      this.postMessage(message);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.sendError('publishing', 'Failed to load publishing standards', msg);
@@ -68,8 +72,9 @@ export class PublishingHandler {
 
   async handleSetPublishingPreset(message: SetPublishingPresetMessage): Promise<void> {
     try {
+      const { preset } = message.payload;
       const config = vscode.workspace.getConfiguration('proseMinion');
-      await config.update('publishingStandards.preset', message.preset, true);
+      await config.update('publishingStandards.preset', preset, true);
       await this.handleRequestPublishingStandardsData({} as any);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -79,8 +84,9 @@ export class PublishingHandler {
 
   async handleSetPublishingTrim(message: SetPublishingTrimMessage): Promise<void> {
     try {
+      const { pageSizeKey } = message.payload;
       const config = vscode.workspace.getConfiguration('proseMinion');
-      await config.update('publishingStandards.pageSizeKey', message.pageSizeKey ?? '', true);
+      await config.update('publishingStandards.pageSizeKey', pageSizeKey ?? '', true);
       await this.handleRequestPublishingStandardsData({} as any);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);

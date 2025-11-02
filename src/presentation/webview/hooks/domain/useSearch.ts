@@ -76,7 +76,7 @@ export const useSearch = (): UseSearchReturn => {
   const [pathText, setPathText] = React.useState<string>(persisted?.searchPathText ?? '[selected text]');
 
   const handleSearchResult = React.useCallback((message: SearchResultMessage) => {
-    setSearchResult(message.result);
+    setSearchResult(message.payload.result);
     setLoading(false);
   }, []);
 

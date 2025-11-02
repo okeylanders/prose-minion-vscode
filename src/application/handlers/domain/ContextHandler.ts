@@ -30,7 +30,9 @@ export class ContextHandler {
   }
 
   async handleGenerateContext(message: GenerateContextMessage): Promise<void> {
-    if (!message.excerpt.trim()) {
+    const { excerpt, existingContext, sourceFileUri, requestedGroups } = message.payload;
+
+    if (!excerpt.trim()) {
       this.sendError('context', 'Context assistant needs an excerpt to analyze.');
       return;
     }
@@ -39,10 +41,10 @@ export class ContextHandler {
     await new Promise(resolve => setTimeout(resolve, 100));
 
     const result = await this.service.generateContext({
-      excerpt: message.excerpt,
-      existingContext: message.existingContext,
-      sourceFileUri: message.sourceFileUri,
-      requestedGroups: message.requestedGroups
+      excerpt,
+      existingContext,
+      sourceFileUri,
+      requestedGroups
     });
 
     this.sendContextResult(result);

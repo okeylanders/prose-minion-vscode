@@ -99,8 +99,11 @@ export class MessageHandler {
       }
 
       // Send MODEL_DATA only for UI setting changes (not model changes)
+      // AND only if not webview-originated (prevent echo-back)
       if (event.affectsConfiguration('proseMinion.ui.showTokenWidget')) {
-        void this.configurationHandler.sendModelData();
+        if (this.configurationHandler.shouldBroadcastConfigChange('proseMinion.ui.showTokenWidget')) {
+          void this.configurationHandler.sendModelData();
+        }
       }
     });
 
@@ -222,14 +225,20 @@ export class MessageHandler {
   private sendAnalysisResult(result: string, toolName: string, usedGuides?: string[]): void {
     const message: AnalysisResultMessage = {
       type: MessageType.ANALYSIS_RESULT,
-      result,
-      toolName,
-      usedGuides,
+      source: 'extension.handler',
+      payload: {
+        result,
+        toolName,
+        usedGuides
+      },
       timestamp: Date.now()
     };
     sharedResultCache.analysis = {
       ...message,
-      usedGuides: message.usedGuides ? [...message.usedGuides] : undefined
+      payload: {
+        ...message.payload,
+        usedGuides: message.payload.usedGuides ? [...message.payload.usedGuides] : undefined
+      }
     };
     sharedResultCache.error = undefined;
     void this.postMessage(message);
@@ -239,8 +248,11 @@ export class MessageHandler {
   private sendDictionaryResult(result: string, toolName: string): void {
     const message: DictionaryResultMessage = {
       type: MessageType.DICTIONARY_RESULT,
-      result,
-      toolName,
+      source: 'extension.handler',
+      payload: {
+        result,
+        toolName
+      },
       timestamp: Date.now()
     };
     sharedResultCache.dictionary = {
@@ -254,9 +266,12 @@ export class MessageHandler {
   private sendContextResult(result: ContextGenerationResult): void {
     const message: ContextResultMessage = {
       type: MessageType.CONTEXT_RESULT,
-      result: result.content,
-      toolName: result.toolName,
-      requestedResources: result.requestedResources,
+      source: 'extension.handler',
+      payload: {
+        result: result.content,
+        toolName: result.toolName,
+        requestedResources: result.requestedResources
+      },
       timestamp: Date.now()
     };
 
@@ -269,8 +284,11 @@ export class MessageHandler {
   private sendMetricsResult(result: any, toolName: string): void {
     const message: MetricsResultMessage = {
       type: MessageType.METRICS_RESULT,
-      result,
-      toolName,
+      source: 'extension.handler',
+      payload: {
+        result,
+        toolName
+      },
       timestamp: Date.now()
     } as MetricsResultMessage;
     sharedResultCache.metrics = {
@@ -282,8 +300,11 @@ export class MessageHandler {
   private sendSearchResult(result: any, toolName: string): void {
     const message: SearchResultMessage = {
       type: MessageType.SEARCH_RESULT,
-      result,
-      toolName,
+      source: 'extension.handler',
+      payload: {
+        result,
+        toolName
+      },
       timestamp: Date.now()
     };
     sharedResultCache.search = { ...message };
@@ -301,7 +322,10 @@ export class MessageHandler {
 
       const message: TokenUsageUpdateMessage = {
         type: MessageType.TOKEN_USAGE_UPDATE,
-        totals: { ...this.tokenTotals },
+        source: 'extension.handler',
+        payload: {
+          totals: { ...this.tokenTotals }
+        },
         timestamp: Date.now()
       };
       sharedResultCache.tokenUsage = { ...message };
@@ -315,8 +339,11 @@ export class MessageHandler {
   private sendStatus(message: string, guideNames?: string): void {
     const statusMessage: StatusMessage = {
       type: MessageType.STATUS,
-      message,
-      guideNames,
+      source: 'extension.handler',
+      payload: {
+        message,
+        guideNames
+      },
       timestamp: Date.now()
     };
     sharedResultCache.status = { ...statusMessage };
@@ -326,9 +353,12 @@ export class MessageHandler {
   private sendError(source: ErrorSource, message: string, details?: string): void {
     const errorMessage: ErrorMessage = {
       type: MessageType.ERROR,
-      source,
-      message,
-      details,
+      source: 'extension.handler',
+      payload: {
+        source,
+        message,
+        details
+      },
       timestamp: Date.now()
     };
     sharedResultCache.error = { ...errorMessage };

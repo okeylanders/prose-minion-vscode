@@ -33,7 +33,7 @@ export class MetricsHandler {
 
   async handleMeasureProseStats(message: MeasureProseStatsMessage): Promise<void> {
     try {
-      const resolved = await this.resolveRichTextForMetrics(message);
+      const resolved = await this.resolveRichTextForMetrics(message.payload);
       const result = await this.service.measureProseStats(resolved.text, resolved.paths, resolved.mode);
       this.sendMetricsResult(result.metrics, result.toolName);
     } catch (error) {
@@ -44,7 +44,7 @@ export class MetricsHandler {
 
   async handleMeasureStyleFlags(message: MeasureStyleFlagsMessage): Promise<void> {
     try {
-      const text = await this.resolveTextForMetrics(message);
+      const text = await this.resolveTextForMetrics(message.payload);
       const result = await this.service.measureStyleFlags(text);
       this.sendMetricsResult(result.metrics, result.toolName);
     } catch (error) {
@@ -55,7 +55,7 @@ export class MetricsHandler {
 
   async handleMeasureWordFrequency(message: MeasureWordFrequencyMessage): Promise<void> {
     try {
-      const text = await this.resolveTextForMetrics(message);
+      const text = await this.resolveTextForMetrics(message.payload);
       const result = await this.service.measureWordFrequency(text);
       this.sendMetricsResult(result.metrics, result.toolName);
     } catch (error) {
@@ -64,10 +64,10 @@ export class MetricsHandler {
     }
   }
 
-  private async resolveTextForMetrics(message: { text?: string; source?: any }): Promise<string> {
+  private async resolveTextForMetrics(payload: { text?: string; source?: any }): Promise<string> {
     // Backward compatibility: if source not provided, use text
-    if (!message.source) {
-      const t = (message.text ?? '').trim();
+    if (!payload.source) {
+      const t = (payload.text ?? '').trim();
       if (!t) {
         throw new Error('No text provided for metrics.');
       }
@@ -77,7 +77,7 @@ export class MetricsHandler {
     // Dynamically import to avoid cyclic deps and keep constructor lean
     const { TextSourceResolver } = await import('../../../infrastructure/text/TextSourceResolver');
     const resolver = new TextSourceResolver(this.outputChannel);
-    const resolved = await resolver.resolve(message.source);
+    const resolved = await resolver.resolve(payload.source);
     const text = (resolved.text ?? '').trim();
     if (!text) {
       throw new Error('Resolved source contains no text.');
@@ -85,17 +85,17 @@ export class MetricsHandler {
     return text;
   }
 
-  private async resolveRichTextForMetrics(message: { text?: string; source?: any }): Promise<{ text: string; paths?: string[]; mode?: string }> {
-    if (!message.source) {
-      const text = await this.resolveTextForMetrics(message);
+  private async resolveRichTextForMetrics(payload: { text?: string; source?: any }): Promise<{ text: string; paths?: string[]; mode?: string }> {
+    if (!payload.source) {
+      const text = await this.resolveTextForMetrics(payload);
       return { text };
     }
     const { TextSourceResolver } = await import('../../../infrastructure/text/TextSourceResolver');
     const resolver = new TextSourceResolver(this.outputChannel);
-    const resolved = await resolver.resolve(message.source);
+    const resolved = await resolver.resolve(payload.source);
     const text = (resolved.text ?? '').trim();
     if (!text) throw new Error('Resolved source contains no text.');
-    const mode = message.source?.mode;
+    const mode = payload.source?.mode;
     return { text, paths: resolved.relativePaths, mode };
   }
 }

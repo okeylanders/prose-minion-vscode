@@ -32,8 +32,9 @@ export class FileOperationsHandler {
 
   async handleCopyResult(message: CopyResultMessage): Promise<void> {
     try {
-      let text = message.content ?? '';
-      if (message.toolName === 'prose_stats' && /^## Chapter Details/m.test(text)) {
+      const { toolName, content } = message.payload;
+      let text = content ?? '';
+      if (toolName === 'prose_stats' && /^## Chapter Details/m.test(text)) {
         const answer = await vscode.window.showInformationMessage(
           'Include chapter-by-chapter breakdown in the copied report?',
           { modal: true },
@@ -48,7 +49,7 @@ export class FileOperationsHandler {
       }
 
       await vscode.env.clipboard.writeText(text);
-      this.outputChannel.appendLine(`[FileOperationsHandler] Copied ${message.toolName} result to clipboard (${message.content?.length ?? 0} chars).`);
+      this.outputChannel.appendLine(`[FileOperationsHandler] Copied ${toolName} result to clipboard (${content?.length ?? 0} chars).`);
       this.sendStatus('Result copied to clipboard.');
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -58,8 +59,9 @@ export class FileOperationsHandler {
 
   async handleSaveResult(message: SaveResultMessage): Promise<void> {
     try {
-      let text = message.content ?? '';
-      if (message.toolName === 'prose_stats' && /^## Chapter Details/m.test(text)) {
+      const { toolName, content, metadata } = message.payload;
+      let text = content ?? '';
+      if (toolName === 'prose_stats' && /^## Chapter Details/m.test(text)) {
         const answer = await vscode.window.showInformationMessage(
           'Include chapter-by-chapter breakdown in the saved report?',
           { modal: true },
@@ -73,13 +75,16 @@ export class FileOperationsHandler {
         }
       }
 
-      const { relativePath: savedPath, fileUri } = await this.saveResultToFile(message.toolName, text, message.metadata);
-      this.outputChannel.appendLine(`[FileOperationsHandler] Saved ${message.toolName} result to ${savedPath}`);
+      const { relativePath: savedPath, fileUri } = await this.saveResultToFile(toolName, text, metadata);
+      this.outputChannel.appendLine(`[FileOperationsHandler] Saved ${toolName} result to ${savedPath}`);
 
       const successMessage: SaveResultSuccessMessage = {
         type: MessageType.SAVE_RESULT_SUCCESS,
-        toolName: message.toolName,
-        filePath: savedPath,
+        source: 'extension.file_ops',
+        payload: {
+          toolName,
+          filePath: savedPath
+        },
         timestamp: Date.now()
       };
 
