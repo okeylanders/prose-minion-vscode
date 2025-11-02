@@ -3,32 +3,41 @@
  * Prose statistics, style flags, and word frequency analysis
  */
 
-import { BaseMessage, MessageType } from './base';
+import { MessageEnvelope, MessageType } from './base';
 import { TextSourceSpec } from '../sources';
 
-export interface MeasureProseStatsMessage extends BaseMessage {
+export interface MeasureProseStatsPayload {
+  text?: string;
+  source?: TextSourceSpec;
+}
+
+export interface MeasureProseStatsMessage extends MessageEnvelope<MeasureProseStatsPayload> {
   type: MessageType.MEASURE_PROSE_STATS;
+}
+
+export interface MeasureStyleFlagsPayload {
   text?: string;
   source?: TextSourceSpec;
 }
 
-export interface MeasureStyleFlagsMessage extends BaseMessage {
+export interface MeasureStyleFlagsMessage extends MessageEnvelope<MeasureStyleFlagsPayload> {
   type: MessageType.MEASURE_STYLE_FLAGS;
+}
+
+export interface MeasureWordFrequencyPayload {
   text?: string;
   source?: TextSourceSpec;
 }
 
-export interface MeasureWordFrequencyMessage extends BaseMessage {
+export interface MeasureWordFrequencyMessage extends MessageEnvelope<MeasureWordFrequencyPayload> {
   type: MessageType.MEASURE_WORD_FREQUENCY;
-  text?: string;
-  source?: TextSourceSpec;
 }
 
 export type MetricsResultMessage =
-  | (BaseMessage & { type: MessageType.METRICS_RESULT; toolName: 'prose_stats'; result: ProseStatsReport })
-  | (BaseMessage & { type: MessageType.METRICS_RESULT; toolName: 'style_flags'; result: StyleFlagsReport })
-  | (BaseMessage & { type: MessageType.METRICS_RESULT; toolName: 'word_frequency'; result: WordFrequencyReport })
-  | (BaseMessage & { type: MessageType.METRICS_RESULT; toolName: string; result: unknown });
+  | (MessageEnvelope<{ toolName: 'prose_stats'; result: ProseStatsReport }> & { type: MessageType.METRICS_RESULT })
+  | (MessageEnvelope<{ toolName: 'style_flags'; result: StyleFlagsReport }> & { type: MessageType.METRICS_RESULT })
+  | (MessageEnvelope<{ toolName: 'word_frequency'; result: WordFrequencyReport }> & { type: MessageType.METRICS_RESULT })
+  | (MessageEnvelope<{ toolName: string; result: unknown }> & { type: MessageType.METRICS_RESULT });
 
 // Metrics payload contracts (subset of fields used by renderers)
 export interface ProseStatsReport {

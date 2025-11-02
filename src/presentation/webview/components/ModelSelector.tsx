@@ -39,6 +39,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         {label}
       </label>
       <select
+        title="{label} dropdown"
         className="model-selector-dropdown"
         value={selectedValue}
         onChange={handleChange}

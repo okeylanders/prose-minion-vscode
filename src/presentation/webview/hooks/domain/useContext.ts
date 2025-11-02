@@ -8,6 +8,7 @@ import * as React from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
 import { MessageType } from '../../../../shared/types';
+import { ContextResultMessage } from '../../../../shared/types/messages';
 
 export interface ContextState {
   contextText: string;
@@ -18,7 +19,7 @@ export interface ContextState {
 }
 
 export interface ContextActions {
-  handleContextResult: (message: any) => void;
+  handleContextResult: (message: ContextResultMessage) => void;
   setContextText: (text: string) => void;
   setLoading: (loading: boolean) => void;
   setStatusMessage: (message: string) => void;
@@ -77,9 +78,10 @@ export const useContext = (): UseContextReturn => {
     loadingRef.current = loading;
   }, [loading]);
 
-  const handleContextResult = React.useCallback((message: any) => {
-    setContextTextState(message.result);
-    setRequestedResources(message.requestedResources ?? []);
+  const handleContextResult = React.useCallback((message: ContextResultMessage) => {
+    const { result, toolName, requestedResources } = message.payload;
+    setContextTextState(result);
+    setRequestedResources(requestedResources ?? []);
     setLoading(false);
     setStatusMessage('');
   }, []);
@@ -96,9 +98,13 @@ export const useContext = (): UseContextReturn => {
 
       vscode.postMessage({
         type: MessageType.GENERATE_CONTEXT,
-        excerpt: payload.excerpt,
-        existingContext: payload.existingContext?.trim() || undefined,
-        sourceFileUri: payload.sourceFileUri,
+        source: 'webview.context.assistant',
+        payload: {
+          excerpt: payload.excerpt,
+          existingContext: payload.existingContext?.trim() || undefined,
+          sourceFileUri: payload.sourceFileUri,
+        },
+        timestamp: Date.now()
       });
     },
     [vscode]

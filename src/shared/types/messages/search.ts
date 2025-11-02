@@ -3,7 +3,7 @@
  * Word search functionality
  */
 
-import { BaseMessage, MessageType } from './base';
+import { MessageEnvelope, MessageType } from './base';
 import { TextSourceSpec } from '../sources';
 
 export interface WordSearchOptions {
@@ -54,15 +54,21 @@ export interface WordSearchResult {
   error?: string;
 }
 
-export interface RunWordSearchMessage extends BaseMessage {
-  type: MessageType.RUN_WORD_SEARCH;
+export interface RunWordSearchPayload {
   text?: string;
   source?: TextSourceSpec;
   options: WordSearchOptions;
 }
 
-export interface SearchResultMessage extends BaseMessage {
-  type: MessageType.SEARCH_RESULT;
+export interface RunWordSearchMessage extends MessageEnvelope<RunWordSearchPayload> {
+  type: MessageType.RUN_WORD_SEARCH;
+}
+
+export interface SearchResultPayload {
   result: WordSearchResult;
   toolName: string; // typically 'word_search'
+}
+
+export interface SearchResultMessage extends MessageEnvelope<SearchResultPayload> {
+  type: MessageType.SEARCH_RESULT;
 }

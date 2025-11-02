@@ -7,7 +7,7 @@
 import * as vscode from 'vscode';
 import { MessageHandler } from '../handlers/MessageHandler';
 import { IProseAnalysisService } from '../../domain/services/IProseAnalysisService';
-import { MessageType, SelectionUpdatedMessage } from '../../shared/types';
+import { MessageType, SelectionUpdatedMessage, OpenSettingsToggleMessage } from '../../shared/types';
 import { SecretStorageService } from '../../infrastructure/secrets/SecretStorageService';
 
 export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
@@ -79,10 +79,13 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
     if (this.view) {
       const message: SelectionUpdatedMessage = {
         type: MessageType.SELECTION_UPDATED,
-        text: payload.text,
-        sourceUri: payload.sourceUri,
-        relativePath: payload.relativePath,
-        target: payload.target,
+        source: 'extension.provider',
+        payload: {
+          text: payload.text,
+          sourceUri: payload.sourceUri,
+          relativePath: payload.relativePath,
+          target: payload.target
+        },
         timestamp: Date.now()
       };
       this.view.webview.postMessage(message);
@@ -94,7 +97,13 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
    */
   public openSettings(): void {
     if (this.view) {
-      this.view.webview.postMessage({ type: MessageType.OPEN_SETTINGS_TOGGLE, timestamp: Date.now() });
+      const message: OpenSettingsToggleMessage = {
+        type: MessageType.OPEN_SETTINGS_TOGGLE,
+        source: 'extension.provider',
+        payload: {},
+        timestamp: Date.now()
+      };
+      this.view.webview.postMessage(message);
     }
   }
 

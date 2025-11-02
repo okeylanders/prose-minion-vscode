@@ -6,6 +6,7 @@
 
 import * as React from 'react';
 import { usePersistedState } from '../usePersistence';
+import { AnalysisResultMessage, StatusMessage } from '../../../../shared/types/messages';
 
 export interface AnalysisState {
   result: string;
@@ -17,8 +18,8 @@ export interface AnalysisState {
 }
 
 export interface AnalysisActions {
-  handleAnalysisResult: (message: any) => void;
-  handleStatusMessage: (message: any, contextLoadingRef?: React.MutableRefObject<boolean>) => void;
+  handleAnalysisResult: (message: AnalysisResultMessage) => void;
+  handleStatusMessage: (message: StatusMessage, contextLoadingRef?: React.MutableRefObject<boolean>) => void;
   setLoading: (loading: boolean) => void;
   clearResult: () => void;
   clearStatus: () => void;
@@ -82,24 +83,26 @@ export const useAnalysis = (): UseAnalysisReturn => {
     }
   }, [loading]);
 
-  const handleAnalysisResult = React.useCallback((message: any) => {
-    setResult(message.result);
-    setToolName(message.toolName);
-    setUsedGuides(message.usedGuides || []);
+  const handleAnalysisResult = React.useCallback((message: AnalysisResultMessage) => {
+    const { result, toolName, usedGuides } = message.payload;
+    setResult(result);
+    setToolName(toolName);
+    setUsedGuides(usedGuides || []);
     setLoading(false);
     setStatusMessage(''); // Clear status message
     setGuideNames(''); // Clear guide names
   }, []);
 
   const handleStatusMessage = React.useCallback(
-    (message: any, contextLoadingRef?: React.MutableRefObject<boolean>) => {
-      setStatusMessage(message.message);
-      setGuideNames(message.guideNames || '');
+    (message: StatusMessage, contextLoadingRef?: React.MutableRefObject<boolean>) => {
+      const { message: statusText, guideNames } = message.payload;
+      setStatusMessage(statusText);
+      setGuideNames(guideNames || '');
 
       if (contextLoadingRef && contextLoadingRef.current) {
         // Don't log during context loading
       } else {
-        console.log('Status:', message.message, message.guideNames ? `(${message.guideNames})` : '');
+        console.log('Status:', statusText, guideNames ? `(${guideNames})` : '');
       }
     },
     []

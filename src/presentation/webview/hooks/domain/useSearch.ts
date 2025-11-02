@@ -6,7 +6,8 @@
 
 import * as React from 'react';
 import { usePersistedState } from '../usePersistence';
-import { SearchResultMessage, TextSourceMode } from '../../../../shared/types';
+import { TextSourceMode } from '../../../../shared/types';
+import { SearchResultMessage, ActiveFileMessage, ManuscriptGlobsMessage, ChapterGlobsMessage } from '../../../../shared/types/messages';
 
 export interface SearchState {
   searchResult: any | null;
@@ -21,9 +22,9 @@ export interface SearchActions {
   setWordSearchTargets: (targets: string) => void;
   clearSearchResult: () => void;
   setLoading: (loading: boolean) => void;
-  handleActiveFile: (message: any) => void;
-  handleManuscriptGlobs: (message: any) => void;
-  handleChapterGlobs: (message: any) => void;
+  handleActiveFile: (message: ActiveFileMessage) => void;
+  handleManuscriptGlobs: (message: ManuscriptGlobsMessage) => void;
+  handleChapterGlobs: (message: ChapterGlobsMessage) => void;
   setSourceMode: (mode: TextSourceMode) => void;
   setPathText: (text: string) => void;
 }
@@ -76,7 +77,7 @@ export const useSearch = (): UseSearchReturn => {
   const [pathText, setPathText] = React.useState<string>(persisted?.searchPathText ?? '[selected text]');
 
   const handleSearchResult = React.useCallback((message: SearchResultMessage) => {
-    setSearchResult(message.result);
+    setSearchResult(message.payload.result);
     setLoading(false);
   }, []);
 
@@ -84,16 +85,19 @@ export const useSearch = (): UseSearchReturn => {
     setSearchResult(null);
   }, []);
 
-  const handleActiveFile = React.useCallback((message: any) => {
-    setPathText(message.relativePath ?? '');
+  const handleActiveFile = React.useCallback((message: ActiveFileMessage) => {
+    const { relativePath } = message.payload;
+    setPathText(relativePath ?? '');
   }, []);
 
-  const handleManuscriptGlobs = React.useCallback((message: any) => {
-    setPathText(message.globs ?? '');
+  const handleManuscriptGlobs = React.useCallback((message: ManuscriptGlobsMessage) => {
+    const { globs } = message.payload;
+    setPathText(globs ?? '');
   }, []);
 
-  const handleChapterGlobs = React.useCallback((message: any) => {
-    setPathText(message.globs ?? '');
+  const handleChapterGlobs = React.useCallback((message: ChapterGlobsMessage) => {
+    const { globs } = message.payload;
+    setPathText(globs ?? '');
   }, []);
 
   return {

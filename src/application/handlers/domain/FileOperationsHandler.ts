@@ -10,21 +10,61 @@ import {
   SaveResultSuccessMessage,
   SaveResultMetadata,
   MessageType,
-  ErrorSource
+  ErrorSource,
+  ErrorMessage,
+  StatusMessage
 } from '../../../shared/types/messages';
+import { MessageRouter } from '../MessageRouter';
 
 export class FileOperationsHandler {
   constructor(
-    private readonly outputChannel: vscode.OutputChannel,
-    private readonly postMessage: (message: any) => void,
-    private readonly sendStatus: (message: string, guideNames?: string) => void,
-    private readonly sendError: (source: ErrorSource, message: string, details?: string) => void
+    private readonly postMessage: (message: any) => Promise<void>
   ) {}
+
+  /**
+   * Register message routes for file operations domain
+   */
+  registerRoutes(router: MessageRouter): void {
+    router.register(MessageType.COPY_RESULT, this.handleCopyResult.bind(this));
+    router.register(MessageType.SAVE_RESULT, this.handleSaveResult.bind(this));
+  }
+
+  // Helper methods (domain owns its message lifecycle)
+
+  private sendStatus(message: string, guideNames?: string): void {
+    const statusMessage: StatusMessage = {
+      type: MessageType.STATUS,
+      source: 'extension.file_ops',
+      payload: {
+        message,
+        guideNames
+      },
+      timestamp: Date.now()
+    };
+    void this.postMessage(statusMessage);
+  }
+
+  private sendError(source: ErrorSource, message: string, details?: string): void {
+    const errorMessage: ErrorMessage = {
+      type: MessageType.ERROR,
+      source: 'extension.file_ops',
+      payload: {
+        source,
+        message,
+        details
+      },
+      timestamp: Date.now()
+    };
+    void this.postMessage(errorMessage);
+  }
+
+  // Message handlers
 
   async handleCopyResult(message: CopyResultMessage): Promise<void> {
     try {
-      let text = message.content ?? '';
-      if (message.toolName === 'prose_stats' && /^## Chapter Details/m.test(text)) {
+      const { toolName, content } = message.payload;
+      let text = content ?? '';
+      if (toolName === 'prose_stats' && /^## Chapter Details/m.test(text)) {
         const answer = await vscode.window.showInformationMessage(
           'Include chapter-by-chapter breakdown in the copied report?',
           { modal: true },
@@ -39,7 +79,6 @@ export class FileOperationsHandler {
       }
 
       await vscode.env.clipboard.writeText(text);
-      this.outputChannel.appendLine(`[FileOperationsHandler] Copied ${message.toolName} result to clipboard (${message.content?.length ?? 0} chars).`);
       this.sendStatus('Result copied to clipboard.');
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -49,8 +88,9 @@ export class FileOperationsHandler {
 
   async handleSaveResult(message: SaveResultMessage): Promise<void> {
     try {
-      let text = message.content ?? '';
-      if (message.toolName === 'prose_stats' && /^## Chapter Details/m.test(text)) {
+      const { toolName, content, metadata } = message.payload;
+      let text = content ?? '';
+      if (toolName === 'prose_stats' && /^## Chapter Details/m.test(text)) {
         const answer = await vscode.window.showInformationMessage(
           'Include chapter-by-chapter breakdown in the saved report?',
           { modal: true },
@@ -64,22 +104,23 @@ export class FileOperationsHandler {
         }
       }
 
-      const { relativePath: savedPath, fileUri } = await this.saveResultToFile(message.toolName, text, message.metadata);
-      this.outputChannel.appendLine(`[FileOperationsHandler] Saved ${message.toolName} result to ${savedPath}`);
+      const { relativePath: savedPath, fileUri } = await this.saveResultToFile(toolName, text, metadata);
 
       const successMessage: SaveResultSuccessMessage = {
         type: MessageType.SAVE_RESULT_SUCCESS,
-        toolName: message.toolName,
-        filePath: savedPath,
+        source: 'extension.file_ops',
+        payload: {
+          toolName,
+          filePath: savedPath
+        },
         timestamp: Date.now()
       };
 
       this.postMessage(successMessage);
       try {
         await vscode.window.showTextDocument(fileUri, { preview: false });
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        this.outputChannel.appendLine(`[FileOperationsHandler] Failed to open saved file: ${msg}`);
+      } catch {
+        // Silently ignore errors opening the file
       }
       this.sendStatus(`Saved result to ${savedPath}`);
     } catch (error) {

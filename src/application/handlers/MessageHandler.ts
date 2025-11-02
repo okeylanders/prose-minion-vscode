@@ -6,7 +6,6 @@
 
 import * as vscode from 'vscode';
 import { IProseAnalysisService } from '../../domain/services/IProseAnalysisService';
-import { ContextGenerationResult } from '../../domain/models/ContextGeneration';
 import {
   WebviewToExtensionMessage,
   MessageType,
@@ -22,6 +21,9 @@ import {
   TokenUsageUpdateMessage,
   TokenUsageTotals
 } from '../../shared/types/messages';
+
+// Message routing
+import { MessageRouter } from './MessageRouter';
 
 // Domain handlers
 import { AnalysisHandler } from './domain/AnalysisHandler';
@@ -51,6 +53,9 @@ const sharedResultCache: ResultCache = {};
 export class MessageHandler {
   private readonly disposables: vscode.Disposable[] = [];
   private tokenTotals: TokenUsageTotals = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+
+  // Message router (Strategy pattern)
+  private readonly router: MessageRouter;
 
   // Domain handlers
   private readonly analysisHandler: AnalysisHandler;
@@ -93,67 +98,59 @@ export class MessageHandler {
       }
 
       // Send MODEL_DATA only for UI setting changes (not model changes)
+      // AND only if not webview-originated (prevent echo-back)
       if (event.affectsConfiguration('proseMinion.ui.showTokenWidget')) {
-        void this.configurationHandler.sendModelData();
+        if (this.configurationHandler.shouldBroadcastConfigChange('proseMinion.ui.showTokenWidget')) {
+          void this.configurationHandler.sendModelData();
+        }
       }
     });
 
     this.disposables.push(configWatcher);
 
-    // Instantiate domain handlers with bound helper methods
+    // Instantiate domain handlers
     this.analysisHandler = new AnalysisHandler(
       proseAnalysisService,
-      this.sendStatus.bind(this),
-      this.sendAnalysisResult.bind(this),
-      this.sendError.bind(this),
+      this.postMessage.bind(this),
       this.applyTokenUsage.bind(this)
     );
 
     this.dictionaryHandler = new DictionaryHandler(
       proseAnalysisService,
-      this.sendStatus.bind(this),
-      this.sendDictionaryResult.bind(this),
-      this.sendError.bind(this),
+      this.postMessage.bind(this),
       this.applyTokenUsage.bind(this)
     );
 
     this.contextHandler = new ContextHandler(
       proseAnalysisService,
-      this.sendStatus.bind(this),
-      this.sendContextResult.bind(this),
-      this.sendError.bind(this),
+      this.postMessage.bind(this),
       this.applyTokenUsage.bind(this)
     );
 
     this.metricsHandler = new MetricsHandler(
       proseAnalysisService,
-      outputChannel,
-      this.sendMetricsResult.bind(this),
-      this.sendError.bind(this)
+      this.postMessage.bind(this),
+      outputChannel
     );
 
     this.searchHandler = new SearchHandler(
       proseAnalysisService,
-      outputChannel,
-      this.sendSearchResult.bind(this),
-      this.sendError.bind(this)
+      this.postMessage.bind(this),
+      outputChannel
     );
 
     this.configurationHandler = new ConfigurationHandler(
       proseAnalysisService,
       this.secretsService,
-      outputChannel,
       this.postMessage.bind(this),
-      this.sendError.bind(this),
+      outputChannel,
       sharedResultCache,
       this.tokenTotals
     );
 
     this.publishingHandler = new PublishingHandler(
       extensionUri,
-      outputChannel,
-      this.postMessage.bind(this),
-      this.sendError.bind(this)
+      this.postMessage.bind(this)
     );
 
     this.sourcesHandler = new SourcesHandler(
@@ -162,233 +159,87 @@ export class MessageHandler {
 
     this.uiHandler = new UIHandler(
       extensionUri,
-      outputChannel,
       this.postMessage.bind(this),
-      this.sendStatus.bind(this),
-      this.sendError.bind(this)
+      outputChannel
     );
 
     this.fileOperationsHandler = new FileOperationsHandler(
-      outputChannel,
-      this.postMessage.bind(this),
-      this.sendStatus.bind(this),
-      this.sendError.bind(this)
+      this.postMessage.bind(this)
     );
+
+    // Initialize message router and register handler routes
+    this.router = new MessageRouter(outputChannel);
+
+    // Domain handlers self-register their routes (Strategy pattern)
+    this.analysisHandler.registerRoutes(this.router);
+    this.dictionaryHandler.registerRoutes(this.router);
+    this.contextHandler.registerRoutes(this.router);
+    this.metricsHandler.registerRoutes(this.router);
+    this.searchHandler.registerRoutes(this.router);
+    this.configurationHandler.registerRoutes(this.router);
+    this.publishingHandler.registerRoutes(this.router);
+    this.sourcesHandler.registerRoutes(this.router);
+    this.uiHandler.registerRoutes(this.router);
+    this.fileOperationsHandler.registerRoutes(this.router);
+
+    // Webview diagnostics (no dedicated handler)
+    this.router.register(MessageType.WEBVIEW_ERROR, async (message: any) => {
+      this.outputChannel.appendLine(`[Webview Error] ${message.message}${message.details ? ` - ${message.details}` : ''}`);
+    });
 
     this.flushCachedResults();
   }
 
   async handleMessage(message: WebviewToExtensionMessage): Promise<void> {
     try {
-      switch (message.type) {
-        // Analysis
-        case MessageType.ANALYZE_DIALOGUE:
-          await this.analysisHandler.handleAnalyzeDialogue(message);
-          break;
-
-        case MessageType.ANALYZE_PROSE:
-          await this.analysisHandler.handleAnalyzeProse(message);
-          break;
-
-        // Dictionary
-        case MessageType.LOOKUP_DICTIONARY:
-          await this.dictionaryHandler.handleLookupDictionary(message);
-          break;
-
-        // Context
-        case MessageType.GENERATE_CONTEXT:
-          await this.contextHandler.handleGenerateContext(message);
-          break;
-
-        // Metrics
-        case MessageType.MEASURE_PROSE_STATS:
-          await this.metricsHandler.handleMeasureProseStats(message);
-          break;
-
-        case MessageType.MEASURE_STYLE_FLAGS:
-          await this.metricsHandler.handleMeasureStyleFlags(message);
-          break;
-
-        case MessageType.MEASURE_WORD_FREQUENCY:
-          await this.metricsHandler.handleMeasureWordFrequency(message);
-          break;
-
-        // Search
-        case MessageType.RUN_WORD_SEARCH:
-          await this.searchHandler.handleMeasureWordSearch(message);
-          break;
-
-        // Configuration
-        case MessageType.REQUEST_MODEL_DATA:
-          await this.configurationHandler.handleRequestModelData(message);
-          break;
-
-        case MessageType.SET_MODEL_SELECTION:
-          await this.configurationHandler.handleSetModelSelection(message);
-          break;
-
-        case MessageType.REQUEST_SETTINGS_DATA:
-          await this.configurationHandler.handleRequestSettingsData(message);
-          break;
-
-        case MessageType.UPDATE_SETTING:
-          await this.configurationHandler.handleUpdateSetting(message);
-          break;
-
-        case MessageType.RESET_TOKEN_USAGE:
-          await this.configurationHandler.handleResetTokenUsage();
-          break;
-
-        case MessageType.REQUEST_API_KEY:
-          await this.configurationHandler.handleRequestApiKey(message);
-          break;
-
-        case MessageType.UPDATE_API_KEY:
-          await this.configurationHandler.handleUpdateApiKey(message);
-          break;
-
-        case MessageType.DELETE_API_KEY:
-          await this.configurationHandler.handleDeleteApiKey(message);
-          break;
-
-        // Publishing
-        case MessageType.REQUEST_PUBLISHING_STANDARDS_DATA:
-          await this.publishingHandler.handleRequestPublishingStandardsData(message);
-          break;
-
-        case MessageType.SET_PUBLISHING_PRESET:
-          await this.publishingHandler.handleSetPublishingPreset(message);
-          break;
-
-        case MessageType.SET_PUBLISHING_TRIM_SIZE:
-          await this.publishingHandler.handleSetPublishingTrim(message);
-          break;
-
-        // Sources
-        case MessageType.REQUEST_ACTIVE_FILE:
-          await this.sourcesHandler.handleRequestActiveFile(message);
-          break;
-
-        case MessageType.REQUEST_MANUSCRIPT_GLOBS:
-          await this.sourcesHandler.handleRequestManuscriptGlobs(message);
-          break;
-
-        case MessageType.REQUEST_CHAPTER_GLOBS:
-          await this.sourcesHandler.handleRequestChapterGlobs(message);
-          break;
-
-        // UI
-        case MessageType.OPEN_GUIDE_FILE:
-          await this.uiHandler.handleOpenGuideFile(message);
-          break;
-
-        case MessageType.REQUEST_SELECTION:
-          await this.uiHandler.handleSelectionRequest(message);
-          break;
-
-        case MessageType.TAB_CHANGED:
-          // Tab change is handled in UI, no action needed
-          break;
-
-        // Diagnostics from the webview
-        case MessageType.WEBVIEW_ERROR: {
-          const m = message as any;
-          this.outputChannel.appendLine(`[Webview Error] ${m.message}${m.details ? ` - ${m.details}` : ''}`);
-          break;
-        }
-
-        // File Operations
-        case MessageType.COPY_RESULT:
-          await this.fileOperationsHandler.handleCopyResult(message);
-          break;
-
-        case MessageType.SAVE_RESULT:
-          await this.fileOperationsHandler.handleSaveResult(message);
-          break;
-
-        default:
-          this.sendError('unknown', 'Unknown message type', 'Received unrecognized message');
-      }
+      // Route message to registered handler
+      await this.router.route(message);
     } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(
+        `[MessageHandler] ✗ Error routing ${message.type} from ${message.source}: ${details}`
+      );
       this.sendError(
         'unknown',
         'Error processing request',
-        error instanceof Error ? error.message : String(error)
+        details
       );
     }
   }
 
-  // Helper methods for sending results and status messages
+  // Helper methods for centralized token tracking and status messages
 
-  private sendAnalysisResult(result: string, toolName: string, usedGuides?: string[]): void {
-    const message: AnalysisResultMessage = {
-      type: MessageType.ANALYSIS_RESULT,
-      result,
-      toolName,
-      usedGuides,
+  private sendStatus(message: string, guideNames?: string): void {
+    const statusMessage: StatusMessage = {
+      type: MessageType.STATUS,
+      source: 'extension.handler',
+      payload: {
+        message,
+        guideNames
+      },
       timestamp: Date.now()
     };
-    sharedResultCache.analysis = {
-      ...message,
-      usedGuides: message.usedGuides ? [...message.usedGuides] : undefined
-    };
-    sharedResultCache.error = undefined;
-    void this.postMessage(message);
-    this.sendStatus('');
+    sharedResultCache.status = { ...statusMessage };
+    void this.postMessage(statusMessage);
   }
 
-  private sendDictionaryResult(result: string, toolName: string): void {
-    const message: DictionaryResultMessage = {
-      type: MessageType.DICTIONARY_RESULT,
-      result,
-      toolName,
+  private sendError(source: ErrorSource, message: string, details?: string): void {
+    const errorMessage: ErrorMessage = {
+      type: MessageType.ERROR,
+      source: 'extension.handler',
+      payload: {
+        source,
+        message,
+        details
+      },
       timestamp: Date.now()
     };
-    sharedResultCache.dictionary = {
-      ...message
-    };
-    sharedResultCache.error = undefined;
-    void this.postMessage(message);
-    this.sendStatus('');
-  }
-
-  private sendContextResult(result: ContextGenerationResult): void {
-    const message: ContextResultMessage = {
-      type: MessageType.CONTEXT_RESULT,
-      result: result.content,
-      toolName: result.toolName,
-      requestedResources: result.requestedResources,
-      timestamp: Date.now()
-    };
-
-    sharedResultCache.context = { ...message };
-    sharedResultCache.error = undefined;
-    void this.postMessage(message);
-    this.sendStatus('');
-  }
-
-  private sendMetricsResult(result: any, toolName: string): void {
-    const message: MetricsResultMessage = {
-      type: MessageType.METRICS_RESULT,
-      result,
-      toolName,
-      timestamp: Date.now()
-    } as MetricsResultMessage;
-    sharedResultCache.metrics = {
-      ...message
-    };
-    void this.postMessage(message);
-  }
-
-  private sendSearchResult(result: any, toolName: string): void {
-    const message: SearchResultMessage = {
-      type: MessageType.SEARCH_RESULT,
-      result,
-      toolName,
-      timestamp: Date.now()
-    };
-    sharedResultCache.search = { ...message };
-    void this.postMessage(message);
+    sharedResultCache.error = { ...errorMessage };
+    sharedResultCache.analysis = undefined;
+    sharedResultCache.dictionary = undefined;
+    sharedResultCache.context = undefined;
+    void this.postMessage(errorMessage);
+    this.outputChannel.appendLine(`[MessageHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
   }
 
   private applyTokenUsage(usage: TokenUsageTotals): void {
@@ -402,7 +253,10 @@ export class MessageHandler {
 
       const message: TokenUsageUpdateMessage = {
         type: MessageType.TOKEN_USAGE_UPDATE,
-        totals: { ...this.tokenTotals },
+        source: 'extension.handler',
+        payload: {
+          totals: { ...this.tokenTotals }
+        },
         timestamp: Date.now()
       };
       sharedResultCache.tokenUsage = { ...message };
@@ -411,33 +265,6 @@ export class MessageHandler {
       const msg = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[MessageHandler] Failed to apply token usage update: ${msg}`);
     }
-  }
-
-  private sendStatus(message: string, guideNames?: string): void {
-    const statusMessage: StatusMessage = {
-      type: MessageType.STATUS,
-      message,
-      guideNames,
-      timestamp: Date.now()
-    };
-    sharedResultCache.status = { ...statusMessage };
-    void this.postMessage(statusMessage);
-  }
-
-  private sendError(source: ErrorSource, message: string, details?: string): void {
-    const errorMessage: ErrorMessage = {
-      type: MessageType.ERROR,
-      source,
-      message,
-      details,
-      timestamp: Date.now()
-    };
-    sharedResultCache.error = { ...errorMessage };
-    sharedResultCache.analysis = undefined;
-    sharedResultCache.dictionary = undefined;
-    sharedResultCache.context = undefined;
-    void this.postMessage(errorMessage);
-    this.outputChannel.appendLine(`[MessageHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
   }
 
   private async refreshServiceConfiguration(): Promise<void> {
@@ -492,12 +319,60 @@ export class MessageHandler {
   }
 
   private async postMessage(message: ExtensionToWebviewMessage): Promise<void> {
+    // Spy on messages and update cache (orchestration concern, not domain concern)
+    switch (message.type) {
+      case MessageType.ANALYSIS_RESULT:
+        sharedResultCache.analysis = { ...message as AnalysisResultMessage };
+        sharedResultCache.error = undefined;
+        break;
+      case MessageType.DICTIONARY_RESULT:
+        sharedResultCache.dictionary = { ...message as DictionaryResultMessage };
+        sharedResultCache.error = undefined;
+        break;
+      case MessageType.CONTEXT_RESULT:
+        sharedResultCache.context = { ...message as ContextResultMessage };
+        sharedResultCache.error = undefined;
+        break;
+      case MessageType.METRICS_RESULT:
+        sharedResultCache.metrics = { ...message as MetricsResultMessage };
+        break;
+      case MessageType.SEARCH_RESULT:
+        sharedResultCache.search = { ...message as SearchResultMessage };
+        break;
+      case MessageType.STATUS:
+        sharedResultCache.status = { ...message as StatusMessage };
+        break;
+      case MessageType.TOKEN_USAGE_UPDATE:
+        sharedResultCache.tokenUsage = { ...message as TokenUsageUpdateMessage };
+        break;
+      case MessageType.ERROR:
+        const error = message as ErrorMessage;
+        sharedResultCache.error = { ...error };
+
+        // Clear only the relevant domain cache based on envelope source
+        // This ensures domain independence - dictionary error shouldn't clear analysis results
+        if (error.source === 'extension.analysis') {
+          sharedResultCache.analysis = undefined;
+        } else if (error.source === 'extension.dictionary') {
+          sharedResultCache.dictionary = undefined;
+        } else if (error.source === 'extension.context') {
+          sharedResultCache.context = undefined;
+        }
+        // Metrics/Search don't cache results, so no clearing needed
+        break;
+    }
+
+    // Log outgoing message
+    this.outputChannel.appendLine(
+      `[MessageHandler] → ${message.type} to webview (source: ${message.source})`
+    );
+
     try {
       await this.webview.postMessage(message);
     } catch (error) {
       const messageText = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(
-        `[MessageHandler] Failed to post message (${message.type}): ${messageText}`
+        `[MessageHandler] ✗ Failed to post ${message.type}: ${messageText}`
       );
     }
   }

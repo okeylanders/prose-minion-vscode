@@ -3,25 +3,34 @@
  * Dialogue and prose analysis contracts
  */
 
-import { BaseMessage, MessageType } from './base';
+import { MessageEnvelope, MessageType } from './base';
 
-export interface AnalyzeDialogueMessage extends BaseMessage {
+export interface AnalyzeDialoguePayload {
+  text: string;
+  contextText?: string;
+  sourceFileUri?: string;
+}
+
+export interface AnalyzeDialogueMessage extends MessageEnvelope<AnalyzeDialoguePayload> {
   type: MessageType.ANALYZE_DIALOGUE;
+}
+
+export interface AnalyzeProsePayload {
   text: string;
   contextText?: string;
   sourceFileUri?: string;
 }
 
-export interface AnalyzeProseMessage extends BaseMessage {
+export interface AnalyzeProseMessage extends MessageEnvelope<AnalyzeProsePayload> {
   type: MessageType.ANALYZE_PROSE;
-  text: string;
-  contextText?: string;
-  sourceFileUri?: string;
 }
 
-export interface AnalysisResultMessage extends BaseMessage {
-  type: MessageType.ANALYSIS_RESULT;
+export interface AnalysisResultPayload {
   result: string;
   toolName: string;
   usedGuides?: string[];  // Array of guide paths that were used in the analysis
+}
+
+export interface AnalysisResultMessage extends MessageEnvelope<AnalysisResultPayload> {
+  type: MessageType.ANALYSIS_RESULT;
 }

@@ -70,18 +70,33 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
       }
     };
     window.addEventListener('message', handler);
-    vscode.postMessage({ type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA });
+    vscode.postMessage({
+      type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA,
+      source: 'webview.metrics.tab',
+      payload: {},
+      timestamp: Date.now()
+    });
     return () => window.removeEventListener('message', handler);
   }, [vscode]);
 
   const handlePresetChange = (value: string) => {
     setPreset(value);
-    vscode.postMessage({ type: MessageType.SET_PUBLISHING_PRESET, preset: value });
+    vscode.postMessage({
+      type: MessageType.SET_PUBLISHING_PRESET,
+      source: 'webview.metrics.tab',
+      payload: { preset: value },
+      timestamp: Date.now()
+    });
   };
 
   const handleTrimChange = (value: string) => {
     setPageSizeKey(value);
-    vscode.postMessage({ type: MessageType.SET_PUBLISHING_TRIM_SIZE, pageSizeKey: value });
+    vscode.postMessage({
+      type: MessageType.SET_PUBLISHING_TRIM_SIZE,
+      source: 'webview.metrics.tab',
+      payload: { pageSizeKey: value },
+      timestamp: Date.now()
+    });
   };
 
   const handleMeasureProseStats = () => {
@@ -89,7 +104,11 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
     onClearSubtoolResult('prose_stats');
     vscode.postMessage({
       type: MessageType.MEASURE_PROSE_STATS,
-      source: buildSourceSpec()
+      source: 'webview.metrics.tab',
+      payload: {
+        source: buildSourceSpec()
+      },
+      timestamp: Date.now()
     });
   };
 
@@ -98,7 +117,11 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
     onClearSubtoolResult('style_flags');
     vscode.postMessage({
       type: MessageType.MEASURE_STYLE_FLAGS,
-      source: buildSourceSpec()
+      source: 'webview.metrics.tab',
+      payload: {
+        source: buildSourceSpec()
+      },
+      timestamp: Date.now()
     });
   };
 
@@ -107,7 +130,11 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
     onClearSubtoolResult('word_frequency');
     vscode.postMessage({
       type: MessageType.MEASURE_WORD_FREQUENCY,
-      source: buildSourceSpec()
+      source: 'webview.metrics.tab',
+      payload: {
+        source: buildSourceSpec()
+      },
+      timestamp: Date.now()
     });
   };
 
@@ -197,8 +224,12 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
     const content = buildExportContent();
     vscode.postMessage({
       type: MessageType.COPY_RESULT,
-      toolName: activeTool,
-      content
+      source: 'webview.metrics.tab',
+      payload: {
+        toolName: activeTool,
+        content
+      },
+      timestamp: Date.now()
     });
   };
 
@@ -206,9 +237,13 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
     const content = buildExportContent();
     vscode.postMessage({
       type: MessageType.SAVE_RESULT,
-      toolName: activeTool,
-      content,
-      metadata: { timestamp: Date.now() }
+      source: 'webview.metrics.tab',
+      payload: {
+        toolName: activeTool,
+        content,
+        metadata: { timestamp: Date.now() }
+      },
+      timestamp: Date.now()
     });
   };
 

@@ -3,20 +3,46 @@
  * Settings, model selection, and token tracking
  */
 
-import { BaseMessage, MessageType, ModelScope, ModelOption, TokenUsage } from './base';
+import { MessageEnvelope, MessageType, ModelScope, ModelOption, TokenUsage } from './base';
 
-export interface RequestModelDataMessage extends BaseMessage {
+// ============================================================================
+// Request Messages (no payload)
+// ============================================================================
+
+export interface RequestModelDataMessage extends MessageEnvelope<Record<string, never>> {
   type: MessageType.REQUEST_MODEL_DATA;
 }
 
-export interface SetModelSelectionMessage extends BaseMessage {
-  type: MessageType.SET_MODEL_SELECTION;
+export interface RequestSettingsDataMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.REQUEST_SETTINGS_DATA;
+}
+
+export interface ResetTokenUsageMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.RESET_TOKEN_USAGE;
+}
+
+export interface RequestApiKeyMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.REQUEST_API_KEY;
+}
+
+export interface DeleteApiKeyMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.DELETE_API_KEY;
+}
+
+// ============================================================================
+// Model Selection Messages
+// ============================================================================
+
+export interface SetModelSelectionPayload {
   scope: ModelScope;
   modelId: string;
 }
 
-export interface ModelDataMessage extends BaseMessage {
-  type: MessageType.MODEL_DATA;
+export interface SetModelSelectionMessage extends MessageEnvelope<SetModelSelectionPayload> {
+  type: MessageType.SET_MODEL_SELECTION;
+}
+
+export interface ModelDataPayload {
   options: ModelOption[];
   selections: Partial<Record<ModelScope, string>>;
   ui?: {
@@ -24,47 +50,62 @@ export interface ModelDataMessage extends BaseMessage {
   };
 }
 
-export interface RequestSettingsDataMessage extends BaseMessage {
-  type: MessageType.REQUEST_SETTINGS_DATA;
+export interface ModelDataMessage extends MessageEnvelope<ModelDataPayload> {
+  type: MessageType.MODEL_DATA;
 }
 
-export interface UpdateSettingMessage extends BaseMessage {
-  type: MessageType.UPDATE_SETTING;
-  key: string; // key under proseMinion.* (e.g., 'maxTokens', 'ui.showTokenWidget')
+// ============================================================================
+// Settings Messages
+// ============================================================================
+
+export interface UpdateSettingPayload {
+  /** key under proseMinion.* (e.g., 'maxTokens', 'ui.showTokenWidget') */
+  key: string;
   value: string | number | boolean;
 }
 
-export interface SettingsDataMessage extends BaseMessage {
-  type: MessageType.SETTINGS_DATA;
+export interface UpdateSettingMessage extends MessageEnvelope<UpdateSettingPayload> {
+  type: MessageType.UPDATE_SETTING;
+}
+
+export interface SettingsDataPayload {
   settings: Record<string, string | number | boolean>;
 }
 
+export interface SettingsDataMessage extends MessageEnvelope<SettingsDataPayload> {
+  type: MessageType.SETTINGS_DATA;
+}
+
+// ============================================================================
+// Token Usage Messages
+// ============================================================================
+
 export type TokenUsageTotals = TokenUsage;
 
-export interface TokenUsageUpdateMessage extends BaseMessage {
-  type: MessageType.TOKEN_USAGE_UPDATE;
+export interface TokenUsageUpdatePayload {
   totals: TokenUsageTotals;
 }
 
-export interface ResetTokenUsageMessage extends BaseMessage {
-  type: MessageType.RESET_TOKEN_USAGE;
+export interface TokenUsageUpdateMessage extends MessageEnvelope<TokenUsageUpdatePayload> {
+  type: MessageType.TOKEN_USAGE_UPDATE;
 }
 
-// Secure API key management messages
-export interface RequestApiKeyMessage extends BaseMessage {
-  type: MessageType.REQUEST_API_KEY;
-}
+// ============================================================================
+// API Key Management Messages
+// ============================================================================
 
-export interface ApiKeyStatusMessage extends BaseMessage {
-  type: MessageType.API_KEY_STATUS;
+export interface ApiKeyStatusPayload {
   hasSavedKey: boolean;
 }
 
-export interface UpdateApiKeyMessage extends BaseMessage {
-  type: MessageType.UPDATE_API_KEY;
+export interface ApiKeyStatusMessage extends MessageEnvelope<ApiKeyStatusPayload> {
+  type: MessageType.API_KEY_STATUS;
+}
+
+export interface UpdateApiKeyPayload {
   apiKey: string;
 }
 
-export interface DeleteApiKeyMessage extends BaseMessage {
-  type: MessageType.DELETE_API_KEY;
+export interface UpdateApiKeyMessage extends MessageEnvelope<UpdateApiKeyPayload> {
+  type: MessageType.UPDATE_API_KEY;
 }

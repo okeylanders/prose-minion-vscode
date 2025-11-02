@@ -3,50 +3,68 @@
  * Tab changes, selections, and guide interactions
  */
 
-import { BaseMessage, MessageType, TabId, SelectionTarget } from './base';
+import { MessageEnvelope, MessageType, TabId, SelectionTarget } from './base';
 
-export interface TabChangedMessage extends BaseMessage {
-  type: MessageType.TAB_CHANGED;
+export interface TabChangedPayload {
   tabId: TabId;
 }
 
-export interface OpenGuideFileMessage extends BaseMessage {
-  type: MessageType.OPEN_GUIDE_FILE;
+export interface TabChangedMessage extends MessageEnvelope<TabChangedPayload> {
+  type: MessageType.TAB_CHANGED;
+}
+
+export interface OpenGuideFilePayload {
   guidePath: string;  // Relative path from craft-guides/
 }
 
-export interface RequestSelectionMessage extends BaseMessage {
-  type: MessageType.REQUEST_SELECTION;
+export interface OpenGuideFileMessage extends MessageEnvelope<OpenGuideFilePayload> {
+  type: MessageType.OPEN_GUIDE_FILE;
+}
+
+export interface RequestSelectionPayload {
   target: SelectionTarget;
 }
 
-export interface SelectionDataMessage extends BaseMessage {
-  type: MessageType.SELECTION_DATA;
+export interface RequestSelectionMessage extends MessageEnvelope<RequestSelectionPayload> {
+  type: MessageType.REQUEST_SELECTION;
+}
+
+export interface SelectionDataPayload {
   target: SelectionTarget;
   content: string;
   sourceUri?: string;
   relativePath?: string;
 }
 
-export interface SelectionUpdatedMessage extends BaseMessage {
-  type: MessageType.SELECTION_UPDATED;
+export interface SelectionDataMessage extends MessageEnvelope<SelectionDataPayload> {
+  type: MessageType.SELECTION_DATA;
+}
+
+export interface SelectionUpdatedPayload {
   text: string;
   sourceUri?: string;
   relativePath?: string;
   target?: 'assistant' | 'dictionary' | 'both';
 }
 
-export interface OpenSettingsMessage extends BaseMessage {
+export interface SelectionUpdatedMessage extends MessageEnvelope<SelectionUpdatedPayload> {
+  type: MessageType.SELECTION_UPDATED;
+}
+
+export interface OpenSettingsMessage extends MessageEnvelope<Record<string, never>> {
   type: MessageType.OPEN_SETTINGS;
 }
 
-export interface OpenSettingsToggleMessage extends BaseMessage {
+export interface OpenSettingsToggleMessage extends MessageEnvelope<Record<string, never>> {
   type: MessageType.OPEN_SETTINGS_TOGGLE;
 }
 
 // Webview diagnostics → extension output channel
-export interface WebviewErrorMessage extends BaseMessage {
-  type: MessageType.WEBVIEW_ERROR;
+export interface WebviewErrorPayload {
   message: string;
   details?: string;
+}
+
+export interface WebviewErrorMessage extends MessageEnvelope<WebviewErrorPayload> {
+  type: MessageType.WEBVIEW_ERROR;
 }
