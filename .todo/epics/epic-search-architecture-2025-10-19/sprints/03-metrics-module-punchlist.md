@@ -1,8 +1,9 @@
 # Sprint 3 — Metrics Module Punchlist
 
-Status: In Progress
+Status: ✅ Complete
 
 - Window: 2025-10-21 → 2025-10-22 (Days 3–4)
+- Completed: October 2025 (PR #7)
 - Epic: todo/epics/epic-search-architecture-2025-10-19/epic-search-architecture.md
 
 ## Goal

@@ -1,6 +1,6 @@
 # Sprint 3: Webview Migration + Testing
 
-**Status**: Not Started
+**Status**: ✅ Complete (Merged: PR #12, November 2025)
 **Estimated Time**: 6-8 hours
 **Branch**: Same as Sprint 1 & 2 (`sprint/epic-message-envelope-2025-10-28-01-handler-registration-types`)
 **Commit Prefix**: `[sprint-3]`

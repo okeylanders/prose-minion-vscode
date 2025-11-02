@@ -1,8 +1,9 @@
 # Sprint 5 — Settings Module
 
-Status: In Progress
+Status: ✅ Complete
 
 - Window: 2025-10-23 → 2025-10-24 (Days 5–6)
+- Completed: October 2025 (PR #9, #10)
 - Epic: todo/epics/epic-search-architecture-2025-10-19/epic-search-architecture.md
 
 ## Goal

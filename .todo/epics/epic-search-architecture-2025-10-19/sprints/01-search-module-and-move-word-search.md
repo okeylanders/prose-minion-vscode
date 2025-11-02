@@ -1,8 +1,9 @@
 # Sprint 1 — Search Module + Move Word Search
 
-Status: Planned
+Status: ✅ Complete
 
 - Window: 2025-10-19 → 2025-10-20 (Days 1–2)
+- Completed: October 2025 (PRs #5, #6)
 - Epic: todo/epics/epic-search-architecture-2025-10-19/epic-search-architecture.md
 
 ## Goal

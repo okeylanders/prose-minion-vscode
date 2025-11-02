@@ -3,8 +3,17 @@
   "displayName": "Prose Minion",
   "description": "AI-powered prose analysis and writing assistance for creative writers",
   "version": "0.0.1",
-  "license": "SEE LICENSE",
-  "publisher": "your-publisher-name",
+  "license": "SEE LICENSE IN LICENSE",
+  "publisher": "okeylanders",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/okeylanders/prose-minion-vscode.git"
+  },
+  "homepage": "https://github.com/okeylanders/prose-minion-vscode#readme",
+  "bugs": {
+    "url": "https://github.com/okeylanders/prose-minion-vscode/issues"
+  },
+  "icon": "resources/prose-minion-book.svg",
   "engines": {
     "vscode": "^1.75.0"
   },

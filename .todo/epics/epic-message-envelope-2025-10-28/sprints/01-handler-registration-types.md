@@ -1,6 +1,6 @@
 # Sprint 1: Handler Registration + Message Envelope Types
 
-**Status**: Not Started
+**Status**: ✅ Complete (Merged: PR #12, November 2025)
 **Estimated Time**: 4-6 hours
 **Branch**: `sprint/epic-message-envelope-2025-10-28-01-handler-registration-types`
 **Commit Prefix**: `[sprint-1]`

@@ -1,8 +1,9 @@
 # Sprint 2 — Word Search Punchlist
 
-Status: Planned
+Status: ✅ Complete
 
 - Window: 2025-10-20 → 2025-10-21 (Days 2–3)
+- Completed: October 2025 (PR #6)
 - Epic: todo/epics/epic-search-architecture-2025-10-19/epic-search-architecture.md
 
 ## Goal
