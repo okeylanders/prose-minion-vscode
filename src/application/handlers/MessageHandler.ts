@@ -347,11 +347,19 @@ export class MessageHandler {
         sharedResultCache.tokenUsage = { ...message as TokenUsageUpdateMessage };
         break;
       case MessageType.ERROR:
-        sharedResultCache.error = { ...message as ErrorMessage };
-        // Clear result caches on error
-        sharedResultCache.analysis = undefined;
-        sharedResultCache.dictionary = undefined;
-        sharedResultCache.context = undefined;
+        const error = message as ErrorMessage;
+        sharedResultCache.error = { ...error };
+
+        // Clear only the relevant domain cache based on envelope source
+        // This ensures domain independence - dictionary error shouldn't clear analysis results
+        if (error.source === 'extension.analysis') {
+          sharedResultCache.analysis = undefined;
+        } else if (error.source === 'extension.dictionary') {
+          sharedResultCache.dictionary = undefined;
+        } else if (error.source === 'extension.context') {
+          sharedResultCache.context = undefined;
+        }
+        // Metrics/Search don't cache results, so no clearing needed
         break;
     }
 
