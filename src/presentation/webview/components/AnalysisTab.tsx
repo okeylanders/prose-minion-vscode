@@ -332,12 +332,12 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
             )}
           </button>
         </div>
-        <div className={`word-counter ${contextWordCountColor}`}>
-          {contextWordCount} words
-          {contextWordCount > 5000 && ' ⚠️ Large Context'}
-        </div>
-        {contextModel && (
-          <div className="model-indicator-row">
+        <div className="context-meta-row">
+          <div className={`word-counter ${contextWordCountColor}`}>
+            {contextWordCount} words
+            {contextWordCount > 5000 && ' ⚠️ Large Context'}
+          </div>
+          {contextModel && (
             <span className="model-indicator">
               <span className="model-label">Context Model:</span>
               <span className="model-name">{contextModel}</span>
@@ -357,8 +357,8 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
                 ⚙️
               </span>
             </span>
-          </div>
-        )}
+          )}
+        </div>
         {(contextStatusMessage && contextLoading) && (
           <div className="context-status">{contextStatusMessage}</div>
         )}

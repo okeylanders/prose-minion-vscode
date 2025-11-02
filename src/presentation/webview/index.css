@@ -901,13 +901,15 @@ select:focus {
   font-weight: 500;
 }
 
-/* Model indicator styles */
-.model-indicator-row {
+/* Context metadata row (word counter + model indicator) */
+.context-meta-row {
   display: flex;
-  justify-content: flex-end;
-  margin: 8px 0 4px 0;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
 }
 
+/* Model indicator styles */
 .model-indicator {
   display: inline-flex;
   align-items: center;
