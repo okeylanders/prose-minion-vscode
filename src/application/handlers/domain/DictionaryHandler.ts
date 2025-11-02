@@ -89,9 +89,6 @@ export class DictionaryHandler {
         return;
       }
 
-      this.sendStatus('Preparing dictionary prompt...');
-      await new Promise(resolve => setTimeout(resolve, 100));
-
       this.sendStatus(`Generating dictionary entry for "${word}"...`);
       const result = await this.service.lookupDictionary(word, contextText);
       this.sendDictionaryResult(result.content, result.toolName);
