@@ -73,6 +73,7 @@ import {
 import {
   TabChangedMessage,
   OpenGuideFileMessage,
+  OpenResourceMessage,
   RequestSelectionMessage,
   SelectionDataMessage,
   SelectionUpdatedMessage,
@@ -104,6 +105,7 @@ export type WebviewToExtensionMessage =
   | RunWordSearchMessage
   | TabChangedMessage
   | OpenGuideFileMessage
+  | OpenResourceMessage
   | RequestModelDataMessage
   | SetModelSelectionMessage
   | RequestPublishingStandardsDataMessage

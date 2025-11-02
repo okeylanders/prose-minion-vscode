@@ -48,6 +48,7 @@ export type ErrorSource =
 
   // UI operations
   | 'ui.guide'
+  | 'ui.resource'
   | 'ui.selection'
 
   // File operations

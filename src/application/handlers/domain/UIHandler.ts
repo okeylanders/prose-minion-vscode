@@ -6,6 +6,7 @@
 import * as vscode from 'vscode';
 import {
   OpenGuideFileMessage,
+  OpenResourceMessage,
   RequestSelectionMessage,
   SelectionDataMessage,
   MessageType,
@@ -28,6 +29,7 @@ export class UIHandler {
    */
   registerRoutes(router: MessageRouter): void {
     router.register(MessageType.OPEN_GUIDE_FILE, this.handleOpenGuideFile.bind(this));
+    router.register(MessageType.OPEN_RESOURCE, this.handleOpenResource.bind(this));
     router.register(MessageType.REQUEST_SELECTION, this.handleSelectionRequest.bind(this));
     router.register(MessageType.TAB_CHANGED, async () => {}); // No-op handler for tab changes
   }
@@ -101,6 +103,52 @@ export class UIHandler {
       this.sendError(
         'ui.guide',
         'Failed to open guide file',
+        errorMsg
+      );
+    }
+  }
+
+  async handleOpenResource(message: OpenResourceMessage): Promise<void> {
+    try {
+      const { path } = message.payload;
+      this.outputChannel.appendLine(`[UIHandler] Opening resource: ${path}`);
+
+      // Get workspace root
+      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+      if (!workspaceRoot) {
+        const errorMsg = 'No workspace folder open';
+        this.outputChannel.appendLine(`[UIHandler] ERROR: ${errorMsg}`);
+        this.sendError('ui.resource', errorMsg);
+        return;
+      }
+
+      // Construct workspace-relative path
+      const resourceUri = vscode.Uri.joinPath(workspaceRoot, path);
+      this.outputChannel.appendLine(`[UIHandler] Full path: ${resourceUri.fsPath}`);
+
+      // Check if file exists first
+      try {
+        await vscode.workspace.fs.stat(resourceUri);
+      } catch (statError) {
+        const errorMsg = `Resource not found: ${path}`;
+        this.outputChannel.appendLine(`[UIHandler] ERROR: ${errorMsg}`);
+        this.sendError('ui.resource', 'Resource not found', errorMsg);
+        return;
+      }
+
+      // Open the file in the editor
+      const document = await vscode.workspace.openTextDocument(resourceUri);
+      await vscode.window.showTextDocument(document, {
+        preview: false,  // Open in permanent editor tab
+        viewColumn: vscode.ViewColumn.Beside  // Open alongside current editor
+      });
+
+      this.outputChannel.appendLine(`[UIHandler] Successfully opened resource: ${path}`);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.sendError(
+        'ui.resource',
+        'Failed to open resource',
         errorMsg
       );
     }
