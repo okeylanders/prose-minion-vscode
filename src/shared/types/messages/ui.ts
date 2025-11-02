@@ -21,6 +21,14 @@ export interface OpenGuideFileMessage extends MessageEnvelope<OpenGuideFilePaylo
   type: MessageType.OPEN_GUIDE_FILE;
 }
 
+export interface OpenResourcePayload {
+  path: string;  // Workspace-relative path to resource file
+}
+
+export interface OpenResourceMessage extends MessageEnvelope<OpenResourcePayload> {
+  type: MessageType.OPEN_RESOURCE;
+}
+
 export interface RequestSelectionPayload {
   target: SelectionTarget;
 }

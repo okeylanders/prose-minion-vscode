@@ -339,11 +339,27 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
           <div className="context-resource-summary">
             <div className="context-resource-title">Resources referenced:</div>
             <div className="context-resource-list">
-              {contextRequestedResources.map((path, index) => (
-                <span key={`${path}-${index}`} className="context-resource-chip">
-                  {path}
-                </span>
-              ))}
+              {contextRequestedResources.map((path, index) => {
+                const handleResourceClick = () => {
+                  vscode.postMessage({
+                    type: MessageType.OPEN_RESOURCE,
+                    source: 'webview.analysis.tab',
+                    payload: { path },
+                    timestamp: Date.now()
+                  });
+                };
+
+                return (
+                  <button
+                    key={`${path}-${index}`}
+                    className="context-resource-chip clickable"
+                    onClick={handleResourceClick}
+                    title={`Click to open ${path}`}
+                  >
+                    {path}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

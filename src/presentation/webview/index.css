@@ -260,6 +260,20 @@ select:focus {
   border: 1px solid var(--vscode-panel-border);
 }
 
+.context-resource-chip.clickable {
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
+}
+
+.context-resource-chip.clickable:hover {
+  background-color: var(--vscode-list-hoverBackground);
+  border-color: var(--vscode-focusBorder);
+}
+
+.context-resource-chip.clickable:active {
+  transform: translateY(1px);
+}
+
 .model-selector-container {
   padding: var(--spacing-sm) var(--spacing-md);
   background-color: var(--vscode-sideBar-background);
