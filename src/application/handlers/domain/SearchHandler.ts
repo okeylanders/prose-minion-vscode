@@ -5,15 +5,20 @@
 
 import * as vscode from 'vscode';
 import { IProseAnalysisService } from '../../../domain/services/IProseAnalysisService';
-import { RunWordSearchMessage, MessageType, ErrorSource } from '../../../shared/types/messages';
+import {
+  RunWordSearchMessage,
+  MessageType,
+  ErrorSource,
+  SearchResultMessage,
+  ErrorMessage
+} from '../../../shared/types/messages';
 import { MessageRouter } from '../MessageRouter';
 
 export class SearchHandler {
   constructor(
     private readonly service: IProseAnalysisService,
-    private readonly outputChannel: vscode.OutputChannel,
-    private readonly sendSearchResult: (result: any, toolName: string) => void,
-    private readonly sendError: (source: ErrorSource, message: string, details?: string) => void
+    private readonly postMessage: (message: any) => Promise<void>,
+    private readonly outputChannel: vscode.OutputChannel
   ) {}
 
   /**
@@ -22,6 +27,38 @@ export class SearchHandler {
   registerRoutes(router: MessageRouter): void {
     router.register(MessageType.RUN_WORD_SEARCH, this.handleMeasureWordSearch.bind(this));
   }
+
+  // Helper methods (domain owns its message lifecycle)
+
+  private sendSearchResult(result: any, toolName: string): void {
+    const message: SearchResultMessage = {
+      type: MessageType.SEARCH_RESULT,
+      source: 'extension.search',
+      payload: {
+        result,
+        toolName
+      },
+      timestamp: Date.now()
+    };
+    void this.postMessage(message);
+  }
+
+  private sendError(source: ErrorSource, message: string, details?: string): void {
+    const errorMessage: ErrorMessage = {
+      type: MessageType.ERROR,
+      source: 'extension.search',
+      payload: {
+        source,
+        message,
+        details
+      },
+      timestamp: Date.now()
+    };
+    void this.postMessage(errorMessage);
+    this.outputChannel.appendLine(`[SearchHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
+  }
+
+  // Message handlers
 
   async handleMeasureWordSearch(message: RunWordSearchMessage): Promise<void> {
     try {

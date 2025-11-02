@@ -10,7 +10,8 @@ import {
   SetPublishingTrimMessage,
   PublishingStandardsDataMessage,
   MessageType,
-  ErrorSource
+  ErrorSource,
+  ErrorMessage
 } from '../../../shared/types/messages';
 import { PublishingStandardsRepository } from '../../../infrastructure/standards/PublishingStandardsRepository';
 
@@ -19,9 +20,8 @@ import { MessageRouter } from '../MessageRouter';
 export class PublishingHandler {
   constructor(
     private readonly extensionUri: vscode.Uri,
-    private readonly outputChannel: vscode.OutputChannel,
-    private readonly postMessage: (message: any) => void,
-    private readonly sendError: (source: ErrorSource, message: string, details?: string) => void
+    private readonly postMessage: (message: any) => Promise<void>,
+    private readonly outputChannel: vscode.OutputChannel
   ) {}
 
   /**
@@ -32,6 +32,25 @@ export class PublishingHandler {
     router.register(MessageType.SET_PUBLISHING_PRESET, this.handleSetPublishingPreset.bind(this));
     router.register(MessageType.SET_PUBLISHING_TRIM_SIZE, this.handleSetPublishingTrim.bind(this));
   }
+
+  // Helper methods (domain owns its message lifecycle)
+
+  private sendError(source: ErrorSource, message: string, details?: string): void {
+    const errorMessage: ErrorMessage = {
+      type: MessageType.ERROR,
+      source: 'extension.publishing',
+      payload: {
+        source,
+        message,
+        details
+      },
+      timestamp: Date.now()
+    };
+    void this.postMessage(errorMessage);
+    this.outputChannel.appendLine(`[PublishingHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
+  }
+
+  // Message handlers
 
   async handleRequestPublishingStandardsData(message: RequestPublishingStandardsDataMessage): Promise<void> {
     try {

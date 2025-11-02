@@ -10,16 +10,17 @@ import {
   MeasureStyleFlagsMessage,
   MeasureWordFrequencyMessage,
   MessageType,
-  ErrorSource
+  ErrorSource,
+  MetricsResultMessage,
+  ErrorMessage
 } from '../../../shared/types/messages';
 import { MessageRouter } from '../MessageRouter';
 
 export class MetricsHandler {
   constructor(
     private readonly service: IProseAnalysisService,
-    private readonly outputChannel: vscode.OutputChannel,
-    private readonly sendMetricsResult: (result: any, toolName: string) => void,
-    private readonly sendError: (source: ErrorSource, message: string, details?: string) => void
+    private readonly postMessage: (message: any) => Promise<void>,
+    private readonly outputChannel: vscode.OutputChannel
   ) {}
 
   /**
@@ -30,6 +31,38 @@ export class MetricsHandler {
     router.register(MessageType.MEASURE_STYLE_FLAGS, this.handleMeasureStyleFlags.bind(this));
     router.register(MessageType.MEASURE_WORD_FREQUENCY, this.handleMeasureWordFrequency.bind(this));
   }
+
+  // Helper methods (domain owns its message lifecycle)
+
+  private sendMetricsResult(result: any, toolName: string): void {
+    const message: MetricsResultMessage = {
+      type: MessageType.METRICS_RESULT,
+      source: 'extension.metrics',
+      payload: {
+        result,
+        toolName
+      },
+      timestamp: Date.now()
+    };
+    void this.postMessage(message);
+  }
+
+  private sendError(source: ErrorSource, message: string, details?: string): void {
+    const errorMessage: ErrorMessage = {
+      type: MessageType.ERROR,
+      source: 'extension.metrics',
+      payload: {
+        source,
+        message,
+        details
+      },
+      timestamp: Date.now()
+    };
+    void this.postMessage(errorMessage);
+    this.outputChannel.appendLine(`[MetricsHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
+  }
+
+  // Message handlers
 
   async handleMeasureProseStats(message: MeasureProseStatsMessage): Promise<void> {
     try {

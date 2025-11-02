@@ -9,7 +9,9 @@ import {
   RequestSelectionMessage,
   SelectionDataMessage,
   MessageType,
-  ErrorSource
+  ErrorSource,
+  ErrorMessage,
+  StatusMessage
 } from '../../../shared/types/messages';
 
 import { MessageRouter } from '../MessageRouter';
@@ -17,10 +19,8 @@ import { MessageRouter } from '../MessageRouter';
 export class UIHandler {
   constructor(
     private readonly extensionUri: vscode.Uri,
-    private readonly outputChannel: vscode.OutputChannel,
-    private readonly postMessage: (message: any) => void,
-    private readonly sendStatus: (message: string, guideNames?: string) => void,
-    private readonly sendError: (source: ErrorSource, message: string, details?: string) => void
+    private readonly postMessage: (message: any) => Promise<void>,
+    private readonly outputChannel: vscode.OutputChannel
   ) {}
 
   /**
@@ -31,6 +31,38 @@ export class UIHandler {
     router.register(MessageType.REQUEST_SELECTION, this.handleSelectionRequest.bind(this));
     router.register(MessageType.TAB_CHANGED, async () => {}); // No-op handler for tab changes
   }
+
+  // Helper methods (domain owns its message lifecycle)
+
+  private sendStatus(message: string, guideNames?: string): void {
+    const statusMessage: StatusMessage = {
+      type: MessageType.STATUS,
+      source: 'extension.ui',
+      payload: {
+        message,
+        guideNames
+      },
+      timestamp: Date.now()
+    };
+    void this.postMessage(statusMessage);
+  }
+
+  private sendError(source: ErrorSource, message: string, details?: string): void {
+    const errorMessage: ErrorMessage = {
+      type: MessageType.ERROR,
+      source: 'extension.ui',
+      payload: {
+        source,
+        message,
+        details
+      },
+      timestamp: Date.now()
+    };
+    void this.postMessage(errorMessage);
+    this.outputChannel.appendLine(`[UIHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
+  }
+
+  // Message handlers
 
   async handleOpenGuideFile(message: OpenGuideFileMessage): Promise<void> {
     try {

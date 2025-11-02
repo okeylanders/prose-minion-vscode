@@ -20,7 +20,8 @@ import {
   UpdateApiKeyMessage,
   DeleteApiKeyMessage,
   MessageType,
-  ErrorSource
+  ErrorSource,
+  ErrorMessage
 } from '../../../shared/types/messages';
 import { MessageRouter } from '../MessageRouter';
 import { OpenRouterModels } from '../../../infrastructure/api/OpenRouterModels';
@@ -33,9 +34,8 @@ export class ConfigurationHandler {
   constructor(
     private readonly service: IProseAnalysisService,
     private readonly secretsService: SecretStorageService,
+    private readonly postMessage: (message: any) => Promise<void>,
     private readonly outputChannel: vscode.OutputChannel,
-    private readonly postMessage: (message: any) => void,
-    private readonly sendError: (source: ErrorSource, message: string, details?: string) => void,
     private readonly sharedResultCache: any,
     private readonly tokenTotals: { promptTokens: number; completionTokens: number; totalTokens: number }
   ) {}
@@ -52,6 +52,23 @@ export class ConfigurationHandler {
     router.register(MessageType.REQUEST_API_KEY, this.handleRequestApiKey.bind(this));
     router.register(MessageType.UPDATE_API_KEY, this.handleUpdateApiKey.bind(this));
     router.register(MessageType.DELETE_API_KEY, this.handleDeleteApiKey.bind(this));
+  }
+
+  // Helper methods (domain owns its message lifecycle)
+
+  private sendError(source: ErrorSource, message: string, details?: string): void {
+    const errorMessage: ErrorMessage = {
+      type: MessageType.ERROR,
+      source: 'extension.configuration',
+      payload: {
+        source,
+        message,
+        details
+      },
+      timestamp: Date.now()
+    };
+    void this.postMessage(errorMessage);
+    this.outputChannel.appendLine(`[ConfigurationHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
   }
 
   /**

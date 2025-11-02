@@ -10,16 +10,16 @@ import {
   SaveResultSuccessMessage,
   SaveResultMetadata,
   MessageType,
-  ErrorSource
+  ErrorSource,
+  ErrorMessage,
+  StatusMessage
 } from '../../../shared/types/messages';
 import { MessageRouter } from '../MessageRouter';
 
 export class FileOperationsHandler {
   constructor(
-    private readonly outputChannel: vscode.OutputChannel,
-    private readonly postMessage: (message: any) => void,
-    private readonly sendStatus: (message: string, guideNames?: string) => void,
-    private readonly sendError: (source: ErrorSource, message: string, details?: string) => void
+    private readonly postMessage: (message: any) => Promise<void>,
+    private readonly outputChannel: vscode.OutputChannel
   ) {}
 
   /**
@@ -29,6 +29,38 @@ export class FileOperationsHandler {
     router.register(MessageType.COPY_RESULT, this.handleCopyResult.bind(this));
     router.register(MessageType.SAVE_RESULT, this.handleSaveResult.bind(this));
   }
+
+  // Helper methods (domain owns its message lifecycle)
+
+  private sendStatus(message: string, guideNames?: string): void {
+    const statusMessage: StatusMessage = {
+      type: MessageType.STATUS,
+      source: 'extension.file_ops',
+      payload: {
+        message,
+        guideNames
+      },
+      timestamp: Date.now()
+    };
+    void this.postMessage(statusMessage);
+  }
+
+  private sendError(source: ErrorSource, message: string, details?: string): void {
+    const errorMessage: ErrorMessage = {
+      type: MessageType.ERROR,
+      source: 'extension.file_ops',
+      payload: {
+        source,
+        message,
+        details
+      },
+      timestamp: Date.now()
+    };
+    void this.postMessage(errorMessage);
+    this.outputChannel.appendLine(`[FileOperationsHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
+  }
+
+  // Message handlers
 
   async handleCopyResult(message: CopyResultMessage): Promise<void> {
     try {

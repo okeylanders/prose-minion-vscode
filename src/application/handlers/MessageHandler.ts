@@ -6,7 +6,6 @@
 
 import * as vscode from 'vscode';
 import { IProseAnalysisService } from '../../domain/services/IProseAnalysisService';
-import { ContextGenerationResult } from '../../domain/models/ContextGeneration';
 import {
   WebviewToExtensionMessage,
   MessageType,
@@ -109,60 +108,53 @@ export class MessageHandler {
 
     this.disposables.push(configWatcher);
 
-    // Instantiate domain handlers with bound helper methods
+    // Instantiate domain handlers
     this.analysisHandler = new AnalysisHandler(
       proseAnalysisService,
-      this.sendStatus.bind(this),
-      this.sendAnalysisResult.bind(this),
-      this.sendError.bind(this),
-      this.applyTokenUsage.bind(this)
+      this.postMessage.bind(this),
+      this.applyTokenUsage.bind(this),
+      this.outputChannel
     );
 
     this.dictionaryHandler = new DictionaryHandler(
       proseAnalysisService,
-      this.sendStatus.bind(this),
-      this.sendDictionaryResult.bind(this),
-      this.sendError.bind(this),
-      this.applyTokenUsage.bind(this)
+      this.postMessage.bind(this),
+      this.applyTokenUsage.bind(this),
+      this.outputChannel
     );
 
     this.contextHandler = new ContextHandler(
       proseAnalysisService,
-      this.sendStatus.bind(this),
-      this.sendContextResult.bind(this),
-      this.sendError.bind(this),
-      this.applyTokenUsage.bind(this)
+      this.postMessage.bind(this),
+      this.applyTokenUsage.bind(this),
+      this.outputChannel
     );
 
     this.metricsHandler = new MetricsHandler(
       proseAnalysisService,
-      outputChannel,
-      this.sendMetricsResult.bind(this),
-      this.sendError.bind(this)
+      this.postMessage.bind(this),
+      outputChannel
     );
 
     this.searchHandler = new SearchHandler(
       proseAnalysisService,
-      outputChannel,
-      this.sendSearchResult.bind(this),
-      this.sendError.bind(this)
+      this.postMessage.bind(this),
+      outputChannel
     );
 
     this.configurationHandler = new ConfigurationHandler(
       proseAnalysisService,
       this.secretsService,
-      outputChannel,
       this.postMessage.bind(this),
-      this.sendError.bind(this),
+      outputChannel,
       sharedResultCache,
       this.tokenTotals
     );
 
     this.publishingHandler = new PublishingHandler(
       extensionUri,
-      outputChannel,
       this.postMessage.bind(this),
-      this.sendError.bind(this)
+      outputChannel
     );
 
     this.sourcesHandler = new SourcesHandler(
@@ -171,17 +163,13 @@ export class MessageHandler {
 
     this.uiHandler = new UIHandler(
       extensionUri,
-      outputChannel,
       this.postMessage.bind(this),
-      this.sendStatus.bind(this),
-      this.sendError.bind(this)
+      outputChannel
     );
 
     this.fileOperationsHandler = new FileOperationsHandler(
-      outputChannel,
       this.postMessage.bind(this),
-      this.sendStatus.bind(this),
-      this.sendError.bind(this)
+      outputChannel
     );
 
     // Initialize message router and register handler routes
@@ -220,121 +208,7 @@ export class MessageHandler {
     }
   }
 
-  // Helper methods for sending results and status messages
-
-  private sendAnalysisResult(result: string, toolName: string, usedGuides?: string[]): void {
-    const message: AnalysisResultMessage = {
-      type: MessageType.ANALYSIS_RESULT,
-      source: 'extension.handler',
-      payload: {
-        result,
-        toolName,
-        usedGuides
-      },
-      timestamp: Date.now()
-    };
-    sharedResultCache.analysis = {
-      ...message,
-      payload: {
-        ...message.payload,
-        usedGuides: message.payload.usedGuides ? [...message.payload.usedGuides] : undefined
-      }
-    };
-    sharedResultCache.error = undefined;
-    void this.postMessage(message);
-    this.sendStatus('');
-  }
-
-  private sendDictionaryResult(result: string, toolName: string): void {
-    const message: DictionaryResultMessage = {
-      type: MessageType.DICTIONARY_RESULT,
-      source: 'extension.handler',
-      payload: {
-        result,
-        toolName
-      },
-      timestamp: Date.now()
-    };
-    sharedResultCache.dictionary = {
-      ...message
-    };
-    sharedResultCache.error = undefined;
-    void this.postMessage(message);
-    this.sendStatus('');
-  }
-
-  private sendContextResult(result: ContextGenerationResult): void {
-    const message: ContextResultMessage = {
-      type: MessageType.CONTEXT_RESULT,
-      source: 'extension.handler',
-      payload: {
-        result: result.content,
-        toolName: result.toolName,
-        requestedResources: result.requestedResources
-      },
-      timestamp: Date.now()
-    };
-
-    sharedResultCache.context = { ...message };
-    sharedResultCache.error = undefined;
-    void this.postMessage(message);
-    this.sendStatus('');
-  }
-
-  private sendMetricsResult(result: any, toolName: string): void {
-    const message: MetricsResultMessage = {
-      type: MessageType.METRICS_RESULT,
-      source: 'extension.handler',
-      payload: {
-        result,
-        toolName
-      },
-      timestamp: Date.now()
-    } as MetricsResultMessage;
-    sharedResultCache.metrics = {
-      ...message
-    };
-    void this.postMessage(message);
-  }
-
-  private sendSearchResult(result: any, toolName: string): void {
-    const message: SearchResultMessage = {
-      type: MessageType.SEARCH_RESULT,
-      source: 'extension.handler',
-      payload: {
-        result,
-        toolName
-      },
-      timestamp: Date.now()
-    };
-    sharedResultCache.search = { ...message };
-    void this.postMessage(message);
-  }
-
-  private applyTokenUsage(usage: TokenUsageTotals): void {
-    try {
-      this.tokenTotals.promptTokens += usage.promptTokens || 0;
-      this.tokenTotals.completionTokens += usage.completionTokens || 0;
-      this.tokenTotals.totalTokens += usage.totalTokens || 0;
-      if (typeof usage.costUsd === 'number') {
-        this.tokenTotals.costUsd = (this.tokenTotals.costUsd || 0) + usage.costUsd;
-      }
-
-      const message: TokenUsageUpdateMessage = {
-        type: MessageType.TOKEN_USAGE_UPDATE,
-        source: 'extension.handler',
-        payload: {
-          totals: { ...this.tokenTotals }
-        },
-        timestamp: Date.now()
-      };
-      sharedResultCache.tokenUsage = { ...message };
-      void this.postMessage(message);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      this.outputChannel.appendLine(`[MessageHandler] Failed to apply token usage update: ${msg}`);
-    }
-  }
+  // Helper methods for centralized token tracking and status messages
 
   private sendStatus(message: string, guideNames?: string): void {
     const statusMessage: StatusMessage = {
@@ -367,6 +241,31 @@ export class MessageHandler {
     sharedResultCache.context = undefined;
     void this.postMessage(errorMessage);
     this.outputChannel.appendLine(`[MessageHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
+  }
+
+  private applyTokenUsage(usage: TokenUsageTotals): void {
+    try {
+      this.tokenTotals.promptTokens += usage.promptTokens || 0;
+      this.tokenTotals.completionTokens += usage.completionTokens || 0;
+      this.tokenTotals.totalTokens += usage.totalTokens || 0;
+      if (typeof usage.costUsd === 'number') {
+        this.tokenTotals.costUsd = (this.tokenTotals.costUsd || 0) + usage.costUsd;
+      }
+
+      const message: TokenUsageUpdateMessage = {
+        type: MessageType.TOKEN_USAGE_UPDATE,
+        source: 'extension.handler',
+        payload: {
+          totals: { ...this.tokenTotals }
+        },
+        timestamp: Date.now()
+      };
+      sharedResultCache.tokenUsage = { ...message };
+      void this.postMessage(message);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[MessageHandler] Failed to apply token usage update: ${msg}`);
+    }
   }
 
   private async refreshServiceConfiguration(): Promise<void> {
@@ -421,6 +320,41 @@ export class MessageHandler {
   }
 
   private async postMessage(message: ExtensionToWebviewMessage): Promise<void> {
+    // Spy on messages and update cache (orchestration concern, not domain concern)
+    switch (message.type) {
+      case MessageType.ANALYSIS_RESULT:
+        sharedResultCache.analysis = { ...message as AnalysisResultMessage };
+        sharedResultCache.error = undefined;
+        break;
+      case MessageType.DICTIONARY_RESULT:
+        sharedResultCache.dictionary = { ...message as DictionaryResultMessage };
+        sharedResultCache.error = undefined;
+        break;
+      case MessageType.CONTEXT_RESULT:
+        sharedResultCache.context = { ...message as ContextResultMessage };
+        sharedResultCache.error = undefined;
+        break;
+      case MessageType.METRICS_RESULT:
+        sharedResultCache.metrics = { ...message as MetricsResultMessage };
+        break;
+      case MessageType.SEARCH_RESULT:
+        sharedResultCache.search = { ...message as SearchResultMessage };
+        break;
+      case MessageType.STATUS:
+        sharedResultCache.status = { ...message as StatusMessage };
+        break;
+      case MessageType.TOKEN_USAGE_UPDATE:
+        sharedResultCache.tokenUsage = { ...message as TokenUsageUpdateMessage };
+        break;
+      case MessageType.ERROR:
+        sharedResultCache.error = { ...message as ErrorMessage };
+        // Clear result caches on error
+        sharedResultCache.analysis = undefined;
+        sharedResultCache.dictionary = undefined;
+        sharedResultCache.context = undefined;
+        break;
+    }
+
     try {
       await this.webview.postMessage(message);
     } catch (error) {
