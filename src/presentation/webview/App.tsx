@@ -138,6 +138,16 @@ export const App: React.FC = () => {
     ...publishing.persistedState,
   });
 
+  // Request initial model data on app mount
+  React.useEffect(() => {
+    vscode.postMessage({
+      type: MessageType.REQUEST_MODEL_DATA,
+      source: 'webview.app',
+      payload: {},
+      timestamp: Date.now()
+    });
+  }, [vscode]);
+
   // Tab change handler
   const handleTabChange = (tabId: TabId) => {
     setActiveTab(tabId);
