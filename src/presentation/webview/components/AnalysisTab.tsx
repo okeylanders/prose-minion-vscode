@@ -54,6 +54,42 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
 }) => {
   const [text, setText] = React.useState(selectedText);
 
+  // Word counter for excerpt
+  const excerptWordCount = React.useMemo(() => {
+    if (!text || text.trim().length === 0) {
+      return 0;
+    }
+    return text.trim().split(/\s+/).filter(w => w.length > 0).length;
+  }, [text]);
+
+  const excerptWordCountColor = React.useMemo(() => {
+    if (excerptWordCount >= 500) {
+      return 'word-counter-red';
+    }
+    if (excerptWordCount >= 400) {
+      return 'word-counter-yellow';
+    }
+    return 'word-counter-green';
+  }, [excerptWordCount]);
+
+  // Word counter for context brief
+  const contextWordCount = React.useMemo(() => {
+    if (!contextText || contextText.trim().length === 0) {
+      return 0;
+    }
+    return contextText.trim().split(/\s+/).filter(w => w.length > 0).length;
+  }, [contextText]);
+
+  const contextWordCountColor = React.useMemo(() => {
+    if (contextWordCount >= 500) {
+      return 'word-counter-red';
+    }
+    if (contextWordCount >= 400) {
+      return 'word-counter-yellow';
+    }
+    return 'word-counter-green';
+  }, [contextWordCount]);
+
   React.useEffect(() => {
     setText(selectedText);
   }, [selectedText]);
@@ -251,6 +287,10 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
           }}
           placeholder="Select text in your editor or paste text here..."
         />
+        <div className={`word-counter ${excerptWordCountColor}`}>
+          {excerptWordCount} / 500 words
+          {excerptWordCount > 500 && ' ⚠️ Large excerpt'}
+        </div>
       </div>
 
       <div className="input-container">
@@ -287,6 +327,10 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
               '🤖'
             )}
           </button>
+        </div>
+        <div className={`word-counter ${contextWordCountColor}`}>
+          {contextWordCount} / 500 words
+          {contextWordCount > 500 && ' ⚠️ Large excerpt'}
         </div>
         {(contextStatusMessage && contextLoading) && (
           <div className="context-status">{contextStatusMessage}</div>

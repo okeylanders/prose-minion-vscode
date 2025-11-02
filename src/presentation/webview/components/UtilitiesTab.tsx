@@ -54,6 +54,24 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
 }) => {
   const lastLookupRef = React.useRef<{ word: string; context: string } | null>(null);
 
+  // Word counter for dictionary context
+  const contextWordCount = React.useMemo(() => {
+    if (!context || context.trim().length === 0) {
+      return 0;
+    }
+    return context.trim().split(/\s+/).filter(w => w.length > 0).length;
+  }, [context]);
+
+  const contextWordCountColor = React.useMemo(() => {
+    if (contextWordCount >= 500) {
+      return 'word-counter-red';
+    }
+    if (contextWordCount >= 400) {
+      return 'word-counter-yellow';
+    }
+    return 'word-counter-green';
+  }, [contextWordCount]);
+
   const enforceWordLimit = React.useCallback((value: string): string => {
     const normalized = value.replace(/\s+/g, ' ').trim();
     if (!normalized) {
@@ -258,6 +276,10 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
           onChange={(e) => onContextChange(e.target.value)}
           placeholder="Paste a sentence, paragraph, or notes to guide the dictionary output..."
         />
+        <div className={`word-counter ${contextWordCountColor}`}>
+          {contextWordCount} / 500 words
+          {contextWordCount > 500 && ' ⚠️ Large excerpt'}
+        </div>
       </div>
 
       <div className="button-group">

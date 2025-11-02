@@ -865,3 +865,24 @@ select:focus {
   margin-top: var(--spacing-md);
   font-size: 0.9em;
 }
+
+/* Word counter styles */
+.word-counter {
+  font-size: 0.85em;
+  margin-top: 4px;
+  font-family: var(--vscode-font-family);
+  opacity: 0.85;
+}
+
+.word-counter-green {
+  color: var(--vscode-terminal-ansiGreen);
+}
+
+.word-counter-yellow {
+  color: var(--vscode-terminal-ansiYellow);
+}
+
+.word-counter-red {
+  color: var(--vscode-errorForeground);
+  font-weight: 500;
+}
