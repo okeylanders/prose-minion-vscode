@@ -88,50 +88,60 @@ export class AnalysisHandler {
   // Message handlers
 
   async handleAnalyzeDialogue(message: AnalyzeDialogueMessage): Promise<void> {
-    const { text, contextText, sourceFileUri } = message.payload;
-    const config = vscode.workspace.getConfiguration('proseMinion');
-    const includeCraftGuides = config.get<boolean>('includeCraftGuides') ?? true;
+    try {
+      const { text, contextText, sourceFileUri } = message.payload;
+      const config = vscode.workspace.getConfiguration('proseMinion');
+      const includeCraftGuides = config.get<boolean>('includeCraftGuides') ?? true;
 
-    const loadingMessage = includeCraftGuides
-      ? 'Loading prompts and craft guides...'
-      : 'Loading prompts...';
+      const loadingMessage = includeCraftGuides
+        ? 'Loading prompts and craft guides...'
+        : 'Loading prompts...';
 
-    this.sendStatus(loadingMessage);
-    await new Promise(resolve => setTimeout(resolve, 100)); // Brief delay to ensure UI updates
+      this.sendStatus(loadingMessage);
+      await new Promise(resolve => setTimeout(resolve, 100)); // Brief delay to ensure UI updates
 
-    this.sendStatus('Analyzing dialogue with AI...');
-    const result = await this.service.analyzeDialogue(
-      text,
-      contextText,
-      sourceFileUri
-    );
-    this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
-    if ((result as any).usage) {
-      this.applyTokenUsage((result as any).usage);
+      this.sendStatus('Analyzing dialogue with AI...');
+      const result = await this.service.analyzeDialogue(
+        text,
+        contextText,
+        sourceFileUri
+      );
+      this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
+      if ((result as any).usage) {
+        this.applyTokenUsage((result as any).usage);
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('analysis.dialogue', 'Failed to analyze dialogue', msg);
     }
   }
 
   async handleAnalyzeProse(message: AnalyzeProseMessage): Promise<void> {
-    const { text, contextText, sourceFileUri } = message.payload;
-    const config = vscode.workspace.getConfiguration('proseMinion');
-    const includeCraftGuides = config.get<boolean>('includeCraftGuides') ?? true;
+    try {
+      const { text, contextText, sourceFileUri } = message.payload;
+      const config = vscode.workspace.getConfiguration('proseMinion');
+      const includeCraftGuides = config.get<boolean>('includeCraftGuides') ?? true;
 
-    const loadingMessage = includeCraftGuides
-      ? 'Loading prompts and craft guides...'
-      : 'Loading prompts...';
+      const loadingMessage = includeCraftGuides
+        ? 'Loading prompts and craft guides...'
+        : 'Loading prompts...';
 
-    this.sendStatus(loadingMessage);
-    await new Promise(resolve => setTimeout(resolve, 100)); // Brief delay to ensure UI updates
+      this.sendStatus(loadingMessage);
+      await new Promise(resolve => setTimeout(resolve, 100)); // Brief delay to ensure UI updates
 
-    this.sendStatus('Analyzing prose with AI...');
-    const result = await this.service.analyzeProse(
-      text,
-      contextText,
-      sourceFileUri
-    );
-    this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
-    if ((result as any).usage) {
-      this.applyTokenUsage((result as any).usage);
+      this.sendStatus('Analyzing prose with AI...');
+      const result = await this.service.analyzeProse(
+        text,
+        contextText,
+        sourceFileUri
+      );
+      this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
+      if ((result as any).usage) {
+        this.applyTokenUsage((result as any).usage);
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('analysis.prose', 'Failed to analyze prose', msg);
     }
   }
 }

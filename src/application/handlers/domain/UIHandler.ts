@@ -110,44 +110,49 @@ export class UIHandler {
   }
 
   async handleSelectionRequest(message: RequestSelectionMessage): Promise<void> {
-    const { target } = message.payload;
-    const editor = vscode.window.activeTextEditor;
+    try {
+      const { target } = message.payload;
+      const editor = vscode.window.activeTextEditor;
 
-    let content: string | undefined;
-    let sourceUri: string | undefined;
-    let relativePath: string | undefined;
+      let content: string | undefined;
+      let sourceUri: string | undefined;
+      let relativePath: string | undefined;
 
-    if (editor && !editor.selection.isEmpty) {
-      content = editor.document.getText(editor.selection);
-      sourceUri = editor.document.uri.toString();
-      relativePath = vscode.workspace.asRelativePath(editor.document.uri, false);
-    } else {
-      // Fallback to clipboard if no selection
-      try {
-        const clip = await vscode.env.clipboard.readText();
-        content = clip?.trim() || undefined;
-      } catch {
-        // ignore
+      if (editor && !editor.selection.isEmpty) {
+        content = editor.document.getText(editor.selection);
+        sourceUri = editor.document.uri.toString();
+        relativePath = vscode.workspace.asRelativePath(editor.document.uri, false);
+      } else {
+        // Fallback to clipboard if no selection
+        try {
+          const clip = await vscode.env.clipboard.readText();
+          content = clip?.trim() || undefined;
+        } catch {
+          // ignore
+        }
       }
+
+      if (!content) {
+        this.sendStatus('Select some text in the editor first or copy text to the clipboard.');
+        return;
+      }
+
+      const selectionMessage: SelectionDataMessage = {
+        type: MessageType.SELECTION_DATA,
+        source: 'extension.ui',
+        payload: {
+          target,
+          content,
+          sourceUri,
+          relativePath
+        },
+        timestamp: Date.now()
+      };
+
+      this.postMessage(selectionMessage);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('ui.selection', 'Failed to get selection', msg);
     }
-
-    if (!content) {
-      this.sendStatus('Select some text in the editor first or copy text to the clipboard.');
-      return;
-    }
-
-    const selectionMessage: SelectionDataMessage = {
-      type: MessageType.SELECTION_DATA,
-      source: 'extension.ui',
-      payload: {
-        target,
-        content,
-        sourceUri,
-        relativePath
-      },
-      timestamp: Date.now()
-    };
-
-    this.postMessage(selectionMessage);
   }
 }

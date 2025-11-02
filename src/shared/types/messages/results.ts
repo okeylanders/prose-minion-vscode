@@ -15,6 +15,8 @@ import { MessageEnvelope, MessageType, SaveResultMetadata } from './base';
 export type ErrorSource =
   // Analysis domain
   | 'analysis'
+  | 'analysis.dialogue'
+  | 'analysis.prose'
 
   // Metrics domain with subtools
   | 'metrics.prose_stats'
@@ -34,9 +36,15 @@ export type ErrorSource =
   | 'settings.api_key'
   | 'settings.model'
   | 'settings.general'
+  | 'settings.tokens'
 
   // Publishing domain
   | 'publishing'
+
+  // Sources domain
+  | 'sources.active_file'
+  | 'sources.manuscript_globs'
+  | 'sources.chapter_globs'
 
   // UI operations
   | 'ui.guide'

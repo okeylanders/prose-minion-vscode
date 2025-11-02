@@ -158,7 +158,8 @@ export class MessageHandler {
     );
 
     this.sourcesHandler = new SourcesHandler(
-      this.postMessage.bind(this)
+      this.postMessage.bind(this),
+      outputChannel
     );
 
     this.uiHandler = new UIHandler(

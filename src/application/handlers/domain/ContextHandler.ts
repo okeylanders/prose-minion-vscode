@@ -85,26 +85,31 @@ export class ContextHandler {
   // Message handlers
 
   async handleGenerateContext(message: GenerateContextMessage): Promise<void> {
-    const { excerpt, existingContext, sourceFileUri, requestedGroups } = message.payload;
+    try {
+      const { excerpt, existingContext, sourceFileUri, requestedGroups } = message.payload;
 
-    if (!excerpt.trim()) {
-      this.sendError('context', 'Context assistant needs an excerpt to analyze.');
-      return;
-    }
+      if (!excerpt.trim()) {
+        this.sendError('context', 'Context assistant needs an excerpt to analyze.');
+        return;
+      }
 
-    this.sendStatus('Gathering project resources for context...');
-    await new Promise(resolve => setTimeout(resolve, 100));
+      this.sendStatus('Gathering project resources for context...');
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-    const result = await this.service.generateContext({
-      excerpt,
-      existingContext,
-      sourceFileUri,
-      requestedGroups
-    });
+      const result = await this.service.generateContext({
+        excerpt,
+        existingContext,
+        sourceFileUri,
+        requestedGroups
+      });
 
-    this.sendContextResult(result);
-    if ((result as any).usage) {
-      this.applyTokenUsage((result as any).usage);
+      this.sendContextResult(result);
+      if ((result as any).usage) {
+        this.applyTokenUsage((result as any).usage);
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('context', 'Failed to generate context', msg);
     }
   }
 }

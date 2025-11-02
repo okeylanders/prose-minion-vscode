@@ -91,54 +91,59 @@ export class ConfigurationHandler {
   }
 
   async handleRequestSettingsData(message: RequestSettingsDataMessage): Promise<void> {
-    const config = vscode.workspace.getConfiguration('proseMinion');
-    const settings: Record<string, string | number | boolean> = {
-      // Core (API key now in SecretStorage, not exposed here)
-      'includeCraftGuides': config.get<boolean>('includeCraftGuides') ?? true,
-      'temperature': config.get<number>('temperature') ?? 0.7,
-      'maxTokens': config.get<number>('maxTokens') ?? 10000,
-      'ui.showTokenWidget': config.get<boolean>('ui.showTokenWidget') ?? true,
-      // Publishing standards
-      'publishingStandards.preset': config.get<string>('publishingStandards.preset') ?? 'none',
-      'publishingStandards.pageSizeKey': config.get<string>('publishingStandards.pageSizeKey') ?? '',
-      // Word Frequency
-      'wordFrequency.topN': config.get<number>('wordFrequency.topN') ?? 100,
-      'wordFrequency.includeHapaxList': config.get<boolean>('wordFrequency.includeHapaxList') ?? true,
-      'wordFrequency.hapaxDisplayMax': config.get<number>('wordFrequency.hapaxDisplayMax') ?? 300,
-      'wordFrequency.includeStopwordsTable': config.get<boolean>('wordFrequency.includeStopwordsTable') ?? true,
-      'wordFrequency.contentWordsOnly': config.get<boolean>('wordFrequency.contentWordsOnly') ?? true,
-      'wordFrequency.posEnabled': config.get<boolean>('wordFrequency.posEnabled') ?? true,
-      'wordFrequency.includeBigrams': config.get<boolean>('wordFrequency.includeBigrams') ?? true,
-      'wordFrequency.includeTrigrams': config.get<boolean>('wordFrequency.includeTrigrams') ?? true,
-      'wordFrequency.enableLemmas': config.get<boolean>('wordFrequency.enableLemmas') ?? false,
-      'wordFrequency.lengthHistogramMaxChars': config.get<number>('wordFrequency.lengthHistogramMaxChars') ?? 10,
-      // Word Search
-      'wordSearch.defaultTargets': config.get<string>('wordSearch.defaultTargets') ?? 'just',
-      'wordSearch.contextWords': config.get<number>('wordSearch.contextWords') ?? 7,
-      'wordSearch.clusterWindow': config.get<number>('wordSearch.clusterWindow') ?? 150,
-      'wordSearch.minClusterSize': config.get<number>('wordSearch.minClusterSize') ?? 2,
-      'wordSearch.caseSensitive': config.get<boolean>('wordSearch.caseSensitive') ?? false,
-      'wordSearch.enableAssistantExpansion': config.get<boolean>('wordSearch.enableAssistantExpansion') ?? false,
-      // Context resource paths
-      'contextPaths.characters': config.get<string>('contextPaths.characters') ?? '',
-      'contextPaths.locations': config.get<string>('contextPaths.locations') ?? '',
-      'contextPaths.themes': config.get<string>('contextPaths.themes') ?? '',
-      'contextPaths.things': config.get<string>('contextPaths.things') ?? '',
-      'contextPaths.chapters': config.get<string>('contextPaths.chapters') ?? '',
-      'contextPaths.manuscript': config.get<string>('contextPaths.manuscript') ?? '',
-      'contextPaths.projectBrief': config.get<string>('contextPaths.projectBrief') ?? '',
-      'contextPaths.general': config.get<string>('contextPaths.general') ?? ''
-    };
+    try {
+      const config = vscode.workspace.getConfiguration('proseMinion');
+      const settings: Record<string, string | number | boolean> = {
+        // Core (API key now in SecretStorage, not exposed here)
+        'includeCraftGuides': config.get<boolean>('includeCraftGuides') ?? true,
+        'temperature': config.get<number>('temperature') ?? 0.7,
+        'maxTokens': config.get<number>('maxTokens') ?? 10000,
+        'ui.showTokenWidget': config.get<boolean>('ui.showTokenWidget') ?? true,
+        // Publishing standards
+        'publishingStandards.preset': config.get<string>('publishingStandards.preset') ?? 'none',
+        'publishingStandards.pageSizeKey': config.get<string>('publishingStandards.pageSizeKey') ?? '',
+        // Word Frequency
+        'wordFrequency.topN': config.get<number>('wordFrequency.topN') ?? 100,
+        'wordFrequency.includeHapaxList': config.get<boolean>('wordFrequency.includeHapaxList') ?? true,
+        'wordFrequency.hapaxDisplayMax': config.get<number>('wordFrequency.hapaxDisplayMax') ?? 300,
+        'wordFrequency.includeStopwordsTable': config.get<boolean>('wordFrequency.includeStopwordsTable') ?? true,
+        'wordFrequency.contentWordsOnly': config.get<boolean>('wordFrequency.contentWordsOnly') ?? true,
+        'wordFrequency.posEnabled': config.get<boolean>('wordFrequency.posEnabled') ?? true,
+        'wordFrequency.includeBigrams': config.get<boolean>('wordFrequency.includeBigrams') ?? true,
+        'wordFrequency.includeTrigrams': config.get<boolean>('wordFrequency.includeTrigrams') ?? true,
+        'wordFrequency.enableLemmas': config.get<boolean>('wordFrequency.enableLemmas') ?? false,
+        'wordFrequency.lengthHistogramMaxChars': config.get<number>('wordFrequency.lengthHistogramMaxChars') ?? 10,
+        // Word Search
+        'wordSearch.defaultTargets': config.get<string>('wordSearch.defaultTargets') ?? 'just',
+        'wordSearch.contextWords': config.get<number>('wordSearch.contextWords') ?? 7,
+        'wordSearch.clusterWindow': config.get<number>('wordSearch.clusterWindow') ?? 150,
+        'wordSearch.minClusterSize': config.get<number>('wordSearch.minClusterSize') ?? 2,
+        'wordSearch.caseSensitive': config.get<boolean>('wordSearch.caseSensitive') ?? false,
+        'wordSearch.enableAssistantExpansion': config.get<boolean>('wordSearch.enableAssistantExpansion') ?? false,
+        // Context resource paths
+        'contextPaths.characters': config.get<string>('contextPaths.characters') ?? '',
+        'contextPaths.locations': config.get<string>('contextPaths.locations') ?? '',
+        'contextPaths.themes': config.get<string>('contextPaths.themes') ?? '',
+        'contextPaths.things': config.get<string>('contextPaths.things') ?? '',
+        'contextPaths.chapters': config.get<string>('contextPaths.chapters') ?? '',
+        'contextPaths.manuscript': config.get<string>('contextPaths.manuscript') ?? '',
+        'contextPaths.projectBrief': config.get<string>('contextPaths.projectBrief') ?? '',
+        'contextPaths.general': config.get<string>('contextPaths.general') ?? ''
+      };
 
-    const message_out: SettingsDataMessage = {
-      type: MessageType.SETTINGS_DATA,
-      source: 'extension.handler',
-      payload: {
-        settings
-      },
-      timestamp: Date.now()
-    };
-    this.postMessage(message_out);
+      const message_out: SettingsDataMessage = {
+        type: MessageType.SETTINGS_DATA,
+        source: 'extension.handler',
+        payload: {
+          settings
+        },
+        timestamp: Date.now()
+      };
+      this.postMessage(message_out);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('settings.general', 'Failed to load settings data', msg);
+    }
   }
 
   async handleUpdateSetting(message: UpdateSettingMessage): Promise<void> {
@@ -175,20 +180,25 @@ export class ConfigurationHandler {
   }
 
   async handleResetTokenUsage(): Promise<void> {
-    this.tokenTotals.promptTokens = 0;
-    this.tokenTotals.completionTokens = 0;
-    this.tokenTotals.totalTokens = 0;
+    try {
+      this.tokenTotals.promptTokens = 0;
+      this.tokenTotals.completionTokens = 0;
+      this.tokenTotals.totalTokens = 0;
 
-    const message: TokenUsageUpdateMessage = {
-      type: MessageType.TOKEN_USAGE_UPDATE,
-      source: 'extension.handler',
-      payload: {
-        totals: { ...this.tokenTotals }
-      },
-      timestamp: Date.now()
-    };
-    this.sharedResultCache.tokenUsage = { ...message };
-    this.postMessage(message);
+      const message: TokenUsageUpdateMessage = {
+        type: MessageType.TOKEN_USAGE_UPDATE,
+        source: 'extension.handler',
+        payload: {
+          totals: { ...this.tokenTotals }
+        },
+        timestamp: Date.now()
+      };
+      this.sharedResultCache.tokenUsage = { ...message };
+      this.postMessage(message);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('settings.tokens', 'Failed to reset token usage', msg);
+    }
   }
 
   async handleSetModelSelection(message: SetModelSelectionMessage): Promise<void> {
@@ -232,7 +242,12 @@ export class ConfigurationHandler {
   }
 
   async handleRequestModelData(message: RequestModelDataMessage): Promise<void> {
-    await this.sendModelData();
+    try {
+      await this.sendModelData();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('settings.model', 'Failed to load model data', msg);
+    }
   }
 
   async sendModelData(): Promise<void> {
