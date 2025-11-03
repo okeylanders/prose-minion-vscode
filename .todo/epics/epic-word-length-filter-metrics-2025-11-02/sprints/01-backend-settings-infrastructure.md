@@ -2,9 +2,10 @@
 
 **Epic**: [epic-word-length-filter-metrics](../epic-word-length-filter-metrics.md)
 **Date**: 2025-11-02
-**Status**: Planned
+**Status**: ✅ Complete
 **Branch**: `sprint/epic-word-length-filter-metrics-2025-11-02-01-backend-settings-infrastructure`
 **Estimated Time**: 1 hour
+**Actual Time**: 1.5 hours (including bidirectional sync fix)
 
 ## Goals
 
@@ -247,16 +248,54 @@ Manual testing checklist:
 
 ## Completion Summary
 
-_To be filled in after implementation_
+**Date Completed**: 2025-11-02
+**Commits**: 2 (c1d698f, e030c6a)
 
 ### ✅ Implemented
 
-_Files modified, features added, testing results_
+**Files Modified**:
+1. **package.json** (line 465-471)
+   - Added `proseMinion.wordFrequency.minCharacterLength` setting
+   - Type: number, Default: 1, Enum: [1,2,3,4,5,6]
+   - Order: 29 (in Metrics section)
+
+2. **src/presentation/webview/components/SettingsOverlay.tsx** (line 367-385)
+   - Added dropdown UI for minimum word length
+   - 6 options: "1+ characters (all words)" through "6+ characters"
+   - Clear help text explaining filter behavior
+
+3. **src/application/handlers/domain/ConfigurationHandler.ts** (line 116)
+   - Added `wordFrequency.minCharacterLength` to SETTINGS_DATA response
+   - Default value: 1
+
+4. **Bidirectional Sync Fix**:
+   - **MessageHandler.ts**: Added wordFrequency, wordSearch, publishingStandards, contextPaths to config watcher
+   - **ConfigurationHandler.ts**: Enhanced `shouldBroadcastConfigChange` with prefix matching for nested settings
 
 ### Testing Notes
 
-_Manual testing observations, edge cases found_
+**Manual Testing**:
+- ✅ Settings Overlay displays dropdown in correct location (Metrics section)
+- ✅ All 6 options render correctly
+- ✅ Default value is "1+ characters (all words)"
+- ✅ Settings Overlay → VSCode native settings sync works
+- ✅ VSCode native settings → Settings Overlay sync works (fixed via bidirectional sync)
+- ✅ No echo-back when changing settings in overlay (webview-originated filtering works)
+- ✅ Extension builds without errors
+- ✅ No TypeScript errors
+
+**Edge Cases Discovered**:
+- Settings Overlay and VSCode native settings were not syncing bidirectionally
+- Required enhancing config watcher to monitor nested settings (wordFrequency.*)
+- Required prefix matching in `shouldBroadcastConfigChange` to prevent echo-back for nested keys
 
 ### Next Steps
 
-_Sprint 02 planning, branch merge, memory bank update_
+1. **Ready for Sprint 02**: Backend settings infrastructure is complete and fully functional
+2. **Sprint 02 Tasks**:
+   - Create `WordLengthFilterTabs` component
+   - Render tab bar in MetricsTab below scope box
+   - Wire tab clicks to UPDATE_SETTING
+   - Implement backend filtering in `wordFrequency.ts`
+3. **Branch Strategy**: Keep Sprint 01 branch separate, create new branch for Sprint 02
+4. **Memory Bank**: Update with Sprint 01 completion summary
