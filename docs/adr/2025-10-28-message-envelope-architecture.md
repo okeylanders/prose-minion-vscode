@@ -2,7 +2,8 @@
 
 Status: Accepted
 Date: 2025-10-28
-Implemented: Not Started
+Implemented: Complete (PR #12, PR #13)
+Implementation Date: 2025-11-01
 
 ## Context
 

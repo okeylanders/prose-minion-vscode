@@ -1,9 +1,10 @@
 # Epic: v1 Polish & UX Refinements
 
 **Date**: 2025-11-02
-**Status**: In Progress
+**Status**: Mostly Complete (3/4 sprints done)
 **Priority**: MEDIUM
 **Target**: v1.0 Release Readiness
+**Last Updated**: 2025-11-03
 
 ## Overview
 
@@ -52,25 +53,16 @@ Add a visual indicator showing which AI model is used for context generation, wi
 **ADR**: [2025-11-02-context-model-selector-ui.md](../../docs/adr/2025-11-02-context-model-selector-ui.md)
 **Sprint Doc**: [sprints/01-context-model-selector-ui.md](sprints/01-context-model-selector-ui.md)
 
-### Sprint 02: Word Length Filter in Metrics (Current)
-**Status**: Planned
-**Branch**: `sprint/epic-v1-polish-2025-11-02-02-word-length-filter-metrics`
+### Sprint 02: Word Length Filter in Metrics ✅
+**Status**: Completed
+**Branch**: `sprint/epic-v1-polish-2025-11-02-02-word-length-filter-metrics` (merged to main)
 
 Add filtering by word length in the word frequency metrics to help writers identify overused short/long words and stylistic patterns.
 
-**Tasks**:
-- ✅ Create ADR
-- ✅ Create sprint document
-- [ ] Add filter state to useMetrics hook
-- [ ] Implement filter dropdown UI in MetricsTab
-- [ ] Add filtering logic to resultFormatter
-- [ ] Add styling for filter controls
-- [ ] Test all filter options
-- [ ] Verify persistence
-- [ ] Update memory bank
+**Completion**: Moved to standalone epic due to scope, completed via PR #17
 
 **ADR**: [2025-11-02-word-length-filter-metrics.md](../../docs/adr/2025-11-02-word-length-filter-metrics.md)
-**Sprint Doc**: [sprints/02-word-length-filter-metrics.md](sprints/02-word-length-filter-metrics.md)
+**Epic**: [epic-word-length-filter-metrics-2025-11-02](../epic-word-length-filter-metrics-2025-11-02/)
 **Reference**: [.todo/v1-polish/2025-11-02-word-length-filter-metrics.md](../../.todo/v1-polish/2025-11-02-word-length-filter-metrics.md)
 
 ### Sprint 03: Tune Button Refinements (Potential)
@@ -78,13 +70,15 @@ Add filtering by word length in the word frequency metrics to help writers ident
 
 Refine the "Tune Dialog Beat" and "Tune Prose" buttons based on user feedback and visual consistency.
 
-**Scope TBD**: To be defined after Sprint 02 completion
+**Scope TBD**: To be defined based on user feedback
 
-### Sprint 04: Context Window Trim Limits (Potential)
-**Status**: Backlog
+### Sprint 04: Context Window Trim Limits ✅
+**Status**: Completed (Moved to standalone epic)
 
-Add visual feedback when context approaches token limits and automatic smart trimming.
+Implemented as standalone epic due to HIGH priority (v1.0 blocker candidate).
 
+**Completion**: Completed via PR #14 (merged to main)
+**Epic**: [epic-context-window-safety-2025-11-02](../epic-context-window-safety-2025-11-02/)
 **Reference**: [.todo/v1-polish/2025-11-02-context-window-trim-limits.md](../../.todo/v1-polish/2025-11-02-context-window-trim-limits.md)
 
 ## Success Metrics

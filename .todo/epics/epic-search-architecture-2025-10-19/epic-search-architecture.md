@@ -1,8 +1,24 @@
 # Epic Search & Architecture
 
+**Date**: 2025-10-19
+**Status**: Partially Complete (5/8 phases done)
+**Priority**: Medium (phases 6-7), Low (phase 8)
+**Last Updated**: 2025-11-03
+
 ## Sprint Plan: 2025‑10‑19 → 2025‑11‑01
 
 This master plan sequences ADRs and implementation for the next two weeks. Each block follows the flow: Draft ADR → Review/Approve → Implement → Verify. It aligns with Clean Architecture, message contracts, and publishing/reporting standards already in the repo.
+
+## Phase Completion Status
+
+- **Phase 1**: Search Module + Move Word Search → ✅ **DONE** (Archived: `.todo/archived/specs/search-module/`)
+- **Phase 2**: Word Search Punchlist → ✅ **DONE** (Archived: `.todo/archived/specs/search-module/`)
+- **Phase 3**: Metrics Module Punchlist → ✅ **DONE** (Archived: `.todo/archived/specs/metrics-module/`)
+- **Phase 4**: Token Cost Widget → ✅ **DONE** (Archived: `.todo/archived/specs/token-cost-widget/`)
+- **Phase 5**: Settings Module → ✅ **DONE** (Covered by Secure Storage + Settings Overlay epics)
+- **Phase 6**: Architecture Pass I → 🟡 **PENDING** (AI client abstraction)
+- **Phase 7**: Architecture Pass II → 🟡 **PENDING** (Service segmentation, handler split)
+- **Phase 8**: Context Search → 📋 **PLANNING** (AI-assisted search expansion)
 
 ## Objectives
 
@@ -28,10 +44,12 @@ Out‑of‑scope (unless time permits): Style Flags POS integration (tracked in 
 
 ## Milestones, ADRs, and Work Items
 
-### Phase 1 — Search Module + Move Word Search (Days 1–2)
+### Phase 1 — Search Module + Move Word Search ✅ DONE
 
 - Goal
   - Introduce a top‑level Search module in the webview and relocate the Word Search UI there, leaving Metrics purely statistical.
+
+- Status: **Complete** (Archived: `.todo/archived/specs/search-module/`)
 
 - ADR to Author
   - docs/adr/2025-10-XX-search-module-and-word-search-move.md
@@ -60,10 +78,12 @@ Out‑of‑scope (unless time permits): Style Flags POS integration (tracked in 
 
 ---
 
-### Phase 2 — Word Search Punchlist (Days 2–3)
+### Phase 2 — Word Search Punchlist ✅ DONE
 
 - Goal
   - Apply ADR/todo improvements to the Word Search UX and output.
+
+- Status: **Complete** (Archived: `.todo/archived/specs/search-module/`)
 
 - References
   - docs/adr/2025-10-24-metrics-word-search.md
@@ -89,10 +109,12 @@ Out‑of‑scope (unless time permits): Style Flags POS integration (tracked in 
 
 ---
 
-### Phase 3 — Metrics Module Punchlist (Days 3–4)
+### Phase 3 — Metrics Module Punchlist ✅ DONE
 
 - Goal
   - Tighten the Metrics UX per TODOs and ADRs; make Prose Stats own publishing standards selection.
+
+- Status: **Complete** (Archived: `.todo/archived/specs/metrics-module/`)
 
 - References
   - docs/adr/2025-10-23-publishing-standards-comparison-and-formatting.md
@@ -116,10 +138,12 @@ Out‑of‑scope (unless time permits): Style Flags POS integration (tracked in 
 
 ---
 
-### Phase 4 — Token Cost Widget (Days 4–5)
+### Phase 4 — Token Cost Widget ✅ DONE
 
 - Goal
   - Provide a lightweight, running token counter and prep for cost display.
+
+- Status: **Complete** (Archived: `.todo/archived/specs/token-cost-widget/`)
 
 - ADR to Author
   - docs/adr/2025-10-XX-token-usage-and-cost-widget.md
@@ -158,10 +182,12 @@ Out‑of‑scope (unless time permits): Style Flags POS integration (tracked in 
 
 ---
 
-### Phase 5 — Settings Module (Days 5–6)
+### Phase 5 — Settings Module ✅ DONE
 
 - Goal
   - Full‑screen overlay module in the webview to guide non‑technical users through configuration; writes to the same VS Code settings.
+
+- Status: **Complete** (Implemented via Secure Storage + Settings Overlay epics, archived)
 
 - ADR to Author
   - docs/adr/2025-10-XX-webview-settings-module.md
@@ -184,10 +210,12 @@ Out‑of‑scope (unless time permits): Style Flags POS integration (tracked in 
 
 ---
 
-### Phase 6 — Architecture Pass I (Days 6–7)
+### Phase 6 — Architecture Pass I 🟡 PENDING
 
 - Goal
   - Abstract AI chat client from the orchestrator and prepare to split the message handler without breaking behavior.
+
+- Status: **Pending** (Not started, medium priority)
 
 - ADR to Author
   - docs/adr/2025-10-XX-abstract-ai-client-and-handler-split-plan.md
@@ -210,10 +238,12 @@ Out‑of‑scope (unless time permits): Style Flags POS integration (tracked in 
 
 ---
 
-### Phase 7 — Architecture Pass II (Days 7–9)
+### Phase 7 — Architecture Pass II 🟡 PENDING
 
 - Goal
   - Segment services by concern and split the handler, while preserving the façade and message contracts.
+
+- Status: **Pending** (Blocked by Phase 6, medium priority)
 
 - ADR to Author
   - docs/adr/2025-10-XX-service-segmentation-and-handler-composition.md
@@ -236,10 +266,12 @@ Out‑of‑scope (unless time permits): Style Flags POS integration (tracked in 
 
 ---
 
-### Phase 8 — Context Search (Days 9–12)
+### Phase 8 — Context Search 📋 PLANNING
 
 - Goal
   - Build the AI‑assisted search that expands categories/synonyms/variants and re‑scans scope deterministically.
+
+- Status: **Planning** (Specs archived in `.todo/archived/specs/search-module/`, low priority)
 
 - References
   - todo/search-module/2025-10-24-context-search-component.md
