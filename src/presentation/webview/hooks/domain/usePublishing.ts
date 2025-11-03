@@ -13,8 +13,8 @@ import { PublishingStandardsDataMessage } from '../../../../shared/types/message
 export interface Genre {
   key: string;
   name: string;
-  abbreviation?: string;
-  pageSizes: Array<{ key: string; label: string }>;
+  abbreviation: string;
+  pageSizes: Array<{ key: string; label: string; width: number; height: number; common: boolean }>;
 }
 
 export interface PublishingState {
