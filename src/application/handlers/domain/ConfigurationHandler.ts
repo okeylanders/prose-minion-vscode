@@ -84,9 +84,24 @@ export class ConfigurationHandler {
   /**
    * Check if a config change should be broadcast to the webview
    * Returns false if the change was originated by the webview (to prevent echo-back)
+   * For prefixes (e.g., 'proseMinion.wordFrequency'), checks if ANY nested key matches
    */
   public shouldBroadcastConfigChange(configKey: string): boolean {
-    return !this.webviewOriginatedUpdates.has(configKey);
+    // Check exact match first
+    if (this.webviewOriginatedUpdates.has(configKey)) {
+      return false;
+    }
+
+    // For prefix checks (e.g., 'proseMinion.wordFrequency'), check if ANY nested key matches
+    // This handles cases where we detect a change at the prefix level but need to check
+    // if ANY specific nested key (like 'proseMinion.wordFrequency.minCharacterLength') was webview-originated
+    for (const key of this.webviewOriginatedUpdates) {
+      if (key.startsWith(configKey + '.')) {
+        return false; // Found a webview-originated update for this prefix
+      }
+    }
+
+    return true;
   }
 
   async handleRequestSettingsData(message: RequestSettingsDataMessage): Promise<void> {

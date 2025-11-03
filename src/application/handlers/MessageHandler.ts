@@ -111,19 +111,42 @@ export class MessageHandler {
         event.affectsConfiguration('proseMinion.includeCraftGuides') ||
         event.affectsConfiguration('proseMinion.temperature') ||
         event.affectsConfiguration('proseMinion.maxTokens') ||
-        event.affectsConfiguration('proseMinion.applyContextWindowTrimming')
+        event.affectsConfiguration('proseMinion.applyContextWindowTrimming') ||
+        event.affectsConfiguration('proseMinion.wordFrequency') ||
+        event.affectsConfiguration('proseMinion.wordSearch') ||
+        event.affectsConfiguration('proseMinion.publishingStandards') ||
+        event.affectsConfiguration('proseMinion.contextPaths')
       ) {
         // Check if change was webview-originated to prevent echo-back
-        const affectedKeys = [
+        // For top-level settings, check the full key
+        const topLevelKeys = [
           'proseMinion.includeCraftGuides',
           'proseMinion.temperature',
           'proseMinion.maxTokens',
           'proseMinion.applyContextWindowTrimming'
         ];
-        const shouldBroadcast = affectedKeys.some(key =>
+
+        let shouldBroadcast = topLevelKeys.some(key =>
           event.affectsConfiguration(key) &&
           this.configurationHandler.shouldBroadcastConfigChange(key)
         );
+
+        // For nested settings (wordFrequency.*, wordSearch.*, etc.),
+        // check if the prefix has ANY webview-originated updates
+        // If the setting change came from VSCode native UI, broadcast it
+        const nestedPrefixes = [
+          'proseMinion.wordFrequency',
+          'proseMinion.wordSearch',
+          'proseMinion.publishingStandards',
+          'proseMinion.contextPaths'
+        ];
+
+        if (!shouldBroadcast) {
+          shouldBroadcast = nestedPrefixes.some(prefix =>
+            event.affectsConfiguration(prefix) &&
+            this.configurationHandler.shouldBroadcastConfigChange(prefix)
+          );
+        }
 
         if (shouldBroadcast) {
           void this.configurationHandler.handleRequestSettingsData({
