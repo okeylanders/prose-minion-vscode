@@ -2,6 +2,8 @@
 
 **Date**: 2025-11-02
 **Status**: Accepted
+**Implemented**: Complete (PR #15)
+**Implementation Date**: 2025-11-02
 **Priority**: MEDIUM (v1.0 Polish)
 **Epic**: Clickable Resource Pills
 **Sprint**: 01-clickable-resource-pills

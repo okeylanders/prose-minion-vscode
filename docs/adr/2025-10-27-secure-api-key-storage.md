@@ -1,7 +1,9 @@
 # ADR: Secure API Key Storage via SecretStorage
 
-Status: Accepted — Pending Implementation
+Status: Accepted
 Date: 2025-10-27
+Implemented: Complete (PR #11)
+Implementation Date: 2025-10-27
 
 ## Context
 

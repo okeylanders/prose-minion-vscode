@@ -1,7 +1,9 @@
 # ADR: Context Model Selector UI Indicator
 
 **Date**: 2025-11-02
-**Status**: Proposed
+**Status**: Accepted
+**Implemented**: Complete (v1-polish Sprint 01)
+**Implementation Date**: 2025-11-02
 **Priority**: LOW-MEDIUM (UX Polish)
 
 ## Context
