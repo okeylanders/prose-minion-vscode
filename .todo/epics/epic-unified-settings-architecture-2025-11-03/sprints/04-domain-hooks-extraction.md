@@ -13,7 +13,7 @@
 
 ## Sprint Goal
 
-Extract specialized settings from the large `useSettings` hook (360 lines) into focused domain hooks, reducing it to ~150 lines.
+Extract specialized settings from the large `useSettings` hook (360 lines) into focused domain hooks, and eliminate `useSettings` entirely by migrating all settings to specialized hooks with clear naming convention (`use[Domain]Settings`).
 
 ### Problem
 
@@ -30,84 +30,97 @@ Extract specialized settings from the large `useSettings` hook (360 lines) into 
 
 ## Tasks
 
-### Task 1: Create `useContextPaths` Hook (2 hours)
+### Task 1: Create `useContextPathsSettings` Hook (2 hours)
 
-**File**: `src/presentation/webview/hooks/domain/useContextPaths.ts`
+**File**: `src/presentation/webview/hooks/domain/useContextPathsSettings.ts`
 
 **Extract** from `useSettings`:
-- `contextSourceMode`
-- `contextSourcePath`
+- All 8 `contextPaths.*` settings (characters, locations, themes, things, chapters, manuscript, projectBrief, general)
 - Related update methods
 
-**Pattern**: Same as `useWordSearch` / `useWordFrequency`
+**Pattern**: Same as `useWordSearchSettings` / `useWordFrequencySettings`
 
 ---
 
-### Task 2: Create `useModels` Hook (2 hours)
+### Task 2: Create `useModelsSettings` Hook (2 hours)
 
-**File**: `src/presentation/webview/hooks/domain/useModels.ts`
+**File**: `src/presentation/webview/hooks/domain/useModelsSettings.ts`
 
 **Extract** from `useSettings`:
 - `assistantModel`
 - `dictionaryModel`
 - `contextModel`
+- `model` (legacy fallback)
+- `includeCraftGuides`
+- `temperature`
+- `maxTokens`
+- `applyContextWindowTrimming`
 - Model selection methods
 
 **Pattern**: Same as other domain hooks
 
 ---
 
-### Task 3: Create `useTokens` Hook (2 hours)
+### Task 3: Create `useTokensSettings` Hook (2 hours)
 
-**File**: `src/presentation/webview/hooks/domain/useTokens.ts`
+**File**: `src/presentation/webview/hooks/domain/useTokensSettings.ts`
 
 **Extract** from `useSettings`:
-- Token usage tracking
-- Reset token usage
+- Token usage tracking state
+- `ui.showTokenWidget` setting
+- Reset token usage method
 - Token display logic
 
 **Pattern**: Same as other domain hooks
 
 ---
 
-### Task 4: Refactor `useSettings` (4 hours)
+### Task 4: Rename `usePublishing` → `usePublishingSettings` (30 min)
 
-**File**: `src/presentation/webview/hooks/domain/useSettings.ts`
+**Files**:
+- Rename `src/presentation/webview/hooks/domain/usePublishing.ts` → `usePublishingSettings.ts`
+- Update all imports in components and App.tsx
 
-**Reduce** to only general settings:
-- `includeCraftGuides`
-- `temperature`
-- `maxTokens`
-- `applyContextWindowTrimming`
-- `contextAgentWordLimit`
-- `analysisAgentWordLimit`
-
-**Goal**: Reduce from 360 → 150 lines
+**Goal**: Consistent naming convention for all settings hooks
 
 ---
 
-### Task 5: Update ConfigurationHandler (2 hours)
+### Task 5: Eliminate `useSettings` Hook (3 hours)
+
+**File**: `src/presentation/webview/hooks/domain/useSettings.ts`
+
+**Action**: Delete this file entirely - all settings migrated to specialized hooks
+
+**Update** all components that used `useSettings` to use the new specialized hooks instead
+
+**Goal**: No more god hook - all settings in focused, single-purpose hooks
+
+---
+
+### Task 6: Update ConfigurationHandler (2 hours)
 
 **File**: `src/application/handlers/domain/ConfigurationHandler.ts`
 
 **Add** semantic methods:
-- `getContextPathSettings()`
-- `getModelSettings()`
-- `getTokenSettings()`
+- `getContextPathsSettings()`
+- `getModelsSettings()`
+- `getTokensSettings()`
 
 **Update** `getAllSettings()` to include all new groups.
 
 ---
 
-### Task 6: Update App.tsx (1 hour)
+### Task 7: Update App.tsx (1 hour)
 
 **File**: `src/presentation/webview/App.tsx`
 
 **Instantiate** new hooks:
 ```typescript
-const contextPaths = useContextPaths(vscode);
-const models = useModels(vscode);
-const tokens = useTokens(vscode);
+const contextPathsSettings = useContextPathsSettings(vscode);
+const modelsSettings = useModelsSettings(vscode);
+const tokensSettings = useTokensSettings(vscode);
+const publishingSettings = usePublishingSettings(vscode); // Renamed
+// Remove: const settings = useSettings(vscode); ← DELETED
 ```
 
 **Register** with message router and persistence.
@@ -116,7 +129,7 @@ const tokens = useTokens(vscode);
 
 ---
 
-### Task 7: Update Components (3 hours)
+### Task 8: Update Components (3 hours)
 
 **Files**: Various components using extracted settings
 
@@ -126,23 +139,25 @@ const tokens = useTokens(vscode);
 
 ## Definition of Done
 
-- ✅ 3 new domain hooks created
-- ✅ `useSettings` reduced to ~150 lines
+- ✅ 3 new settings hooks created (useContextPathsSettings, useModelsSettings, useTokensSettings)
+- ✅ 1 hook renamed (usePublishing → usePublishingSettings)
+- ✅ `useSettings` hook completely eliminated (deleted)
 - ✅ ConfigurationHandler semantic methods added
-- ✅ All components updated
+- ✅ All components updated to use new hooks
 - ✅ All settings still work (regression test)
 - ✅ No TypeScript errors
+- ✅ Clear naming convention established (all settings hooks end with "Settings")
 
 ---
 
 ## Testing
 
 **Regression Suite**:
-1. ✅ All context path settings work
-2. ✅ All model selections work
-3. ✅ Token tracking works
+1. ✅ All context path settings work (8 settings)
+2. ✅ All model/agent settings work (8 settings)
+3. ✅ Token tracking works (2 items: usage state + UI preference)
 4. ✅ Token reset works
-5. ✅ All general settings work
+5. ✅ Publishing standards work (2 settings)
 6. ✅ Persistence works for all hooks
 7. ✅ Bidirectional sync works
 
@@ -151,12 +166,16 @@ const tokens = useTokens(vscode);
 ## Success Metrics
 
 **Before**:
-- `useSettings`: 360 lines (god hook)
-- Domain hooks: 5
+- `useSettings`: 360 lines (god hook managing 17+ settings)
+- Settings hooks: 5 (useSettings, usePublishingSettings, useAnalysis, useMetrics, etc.)
+- Mixed naming convention
 
 **After**:
-- `useSettings`: 150 lines (focused)
-- Domain hooks: 8 (added 3)
+- `useSettings`: 0 lines (ELIMINATED ✅)
+- Settings hooks: 6 specialized hooks (useModelsSettings, useWordSearchSettings, useWordFrequencySettings, useContextPathsSettings, useTokensSettings, usePublishingSettings)
+- Clear naming convention: All settings hooks end with "Settings" suffix
+- State/service hooks: 5 (useAnalysis, useMetrics, useContext, useSearch, useSelection, useDictionary)
+- Total hooks: 11 focused, single-purpose hooks
 
 ---
 

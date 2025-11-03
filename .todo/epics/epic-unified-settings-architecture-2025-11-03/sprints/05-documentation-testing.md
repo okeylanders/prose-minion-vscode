@@ -46,7 +46,8 @@ Document the unified Domain Hooks architecture and add automated tests to ensure
 **File**: `docs/guides/adding-settings.md` (new)
 
 **Content**:
-- When to use domain hooks vs. SecretStorage
+- When to use settings hooks (`use[Domain]Settings`) vs. state hooks (`use[Domain]`) vs. SecretStorage
+- Naming convention: All settings hooks end with "Settings" suffix
 - Step-by-step checklist for adding settings
 - Common pitfalls and how to avoid them
 - Testing guidelines
@@ -54,11 +55,12 @@ Document the unified Domain Hooks architecture and add automated tests to ensure
 
 **Sections**:
 1. Overview
-2. Adding a Setting (Step-by-Step)
-3. Creating a New Domain Hook
-4. Testing Your Changes
-5. Common Issues
-6. Examples
+2. Hook Naming Convention
+3. Adding a Setting (Step-by-Step)
+4. Creating a New Settings Hook
+5. Testing Your Changes
+6. Common Issues
+7. Examples
 
 **Acceptance Criteria**:
 - ✅ New contributor can follow guide
@@ -72,15 +74,16 @@ Document the unified Domain Hooks architecture and add automated tests to ensure
 **Directory**: `src/tests/hooks/`
 
 **Test Files**:
-- `useWordSearch.test.ts`
-- `useWordFrequency.test.ts`
-- `useContextPaths.test.ts`
-- `useModels.test.ts`
-- `useTokens.test.ts`
+- `useWordSearchSettings.test.ts`
+- `useWordFrequencySettings.test.ts`
+- `useContextPathsSettings.test.ts`
+- `useModelsSettings.test.ts`
+- `useTokensSettings.test.ts`
+- `usePublishingSettings.test.ts`
 
 **Test Coverage**:
 ```typescript
-describe('useWordSearch', () => {
+describe('useWordSearchSettings', () => {
   it('initializes with correct defaults', () => {
     // ...
   });
@@ -198,16 +201,16 @@ describe('Settings Persistence', () => {
  *
  * @example
  * ```typescript
- * const wordSearch = useWordSearch(vscode);
+ * const wordSearchSettings = useWordSearchSettings(vscode);
  *
  * // Use in component
  * <input
- *   value={wordSearch.settings.contextWords}
- *   onChange={(e) => wordSearch.updateSetting('contextWords', e.target.value)}
+ *   value={wordSearchSettings.settings.contextWords}
+ *   onChange={(e) => wordSearchSettings.updateSetting('contextWords', e.target.value)}
  * />
  * ```
  */
-export const useWordSearch = (vscode: VSCodeAPI) => {
+export const useWordSearchSettings = (vscode: VSCodeAPI) => {
   // ...
 };
 ```
@@ -238,18 +241,19 @@ export const useWordSearch = (vscode: VSCodeAPI) => {
 ### Created
 - [ ] `docs/guides/adding-settings.md`
 - [ ] `docs/testing.md` (or update existing)
-- [ ] `src/tests/hooks/useWordSearch.test.ts`
-- [ ] `src/tests/hooks/useWordFrequency.test.ts`
-- [ ] `src/tests/hooks/useContextPaths.test.ts`
-- [ ] `src/tests/hooks/useModels.test.ts`
-- [ ] `src/tests/hooks/useTokens.test.ts`
+- [ ] `src/tests/hooks/useWordSearchSettings.test.ts`
+- [ ] `src/tests/hooks/useWordFrequencySettings.test.ts`
+- [ ] `src/tests/hooks/useContextPathsSettings.test.ts`
+- [ ] `src/tests/hooks/useModelsSettings.test.ts`
+- [ ] `src/tests/hooks/useTokensSettings.test.ts`
+- [ ] `src/tests/hooks/usePublishingSettings.test.ts`
 - [ ] `src/tests/integration/settings-sync.test.ts`
 - [ ] `src/tests/integration/settings-persistence.test.ts`
 - [ ] `src/tests/integration/echo-prevention.test.ts`
 
 ### Modified
 - [ ] `docs/ARCHITECTURE.md`
-- [ ] All domain hook files (JSDoc comments)
+- [ ] All domain hook files (JSDoc comments - all settings hooks with "Settings" suffix)
 
 ---
 

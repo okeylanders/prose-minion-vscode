@@ -35,9 +35,9 @@ SearchTab has 4 settings completely disconnected from the settings system:
 
 ## Tasks
 
-### Task 1: Create `useWordSearch` Hook (1 hour)
+### Task 1: Create `useWordSearchSettings` Hook (1 hour)
 
-**File**: `src/presentation/webview/hooks/domain/useWordSearch.ts`
+**File**: `src/presentation/webview/hooks/domain/useWordSearchSettings.ts`
 
 **Implementation**:
 
@@ -53,7 +53,7 @@ interface WordSearchSettings {
   caseSensitive: boolean;
 }
 
-export const useWordSearch = (vscode: VSCodeAPI) => {
+export const useWordSearchSettings = (vscode: VSCodeAPI) => {
   const [settings, setSettings] = React.useState<WordSearchSettings>({
     contextWords: 3,
     clusterWindow: 50,
@@ -213,7 +213,7 @@ React.useEffect(() => {
 ```typescript
 interface SearchTabProps {
   // ... existing props
-  wordSearch: {
+  wordSearchSettings: {
     settings: {
       contextWords: number;
       clusterWindow: number;
@@ -224,15 +224,15 @@ interface SearchTabProps {
   };
 }
 
-export const SearchTab: React.FC<SearchTabProps> = ({ wordSearch, ...props }) => {
-  // Use wordSearch.settings.* instead of local state
-  // Use wordSearch.updateSetting() to update
+export const SearchTab: React.FC<SearchTabProps> = ({ wordSearchSettings, ...props }) => {
+  // Use wordSearchSettings.settings.* instead of local state
+  // Use wordSearchSettings.updateSetting() to update
 
   // Example:
   <input
     type="number"
-    value={wordSearch.settings.contextWords}
-    onChange={(e) => wordSearch.updateSetting('contextWords', parseInt(e.target.value))}
+    value={wordSearchSettings.settings.contextWords}
+    onChange={(e) => wordSearchSettings.updateSetting('contextWords', parseInt(e.target.value))}
   />
 };
 ```
@@ -253,7 +253,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({ wordSearch, ...props }) =>
 **Instantiate hook**:
 
 ```typescript
-const wordSearch = useWordSearch(vscode);
+const wordSearchSettings = useWordSearchSettings(vscode);
 ```
 
 **Register with message router**:
@@ -261,7 +261,7 @@ const wordSearch = useWordSearch(vscode);
 ```typescript
 useMessageRouter({
   [MessageType.SETTINGS_DATA]: settings.handleMessage,
-  [MessageType.SETTINGS_DATA]: wordSearch.handleMessage,  // ✅ Add
+  [MessageType.SETTINGS_DATA]: wordSearchSettings.handleMessage,  // ✅ Add
   // ... other handlers
 });
 ```
@@ -272,9 +272,9 @@ useMessageRouter({
 usePersistence({
   activeTab,
   ...settings.persistedState,
-  ...publishing.persistedState,
+  ...publishingSettings.persistedState,
   ...analysis.persistedState,
-  ...wordSearch.persistedState,  // ✅ Add
+  ...wordSearchSettings.persistedState,  // ✅ Add
   // ... other persisted state
 });
 ```
@@ -284,7 +284,7 @@ usePersistence({
 ```typescript
 <SearchTab
   // ... existing props
-  wordSearch={wordSearch}
+  wordSearchSettings={wordSearchSettings}
 />
 ```
 
@@ -384,7 +384,7 @@ usePersistence({
 
 ## Definition of Done
 
-- ✅ `useWordSearch` hook created and tested
+- ✅ `useWordSearchSettings` hook created and tested
 - ✅ SearchTab migrated to use hook (no local state)
 - ✅ ConfigurationHandler exposes word search settings
 - ✅ MessageHandler config watcher detects changes
@@ -402,7 +402,7 @@ usePersistence({
 ## Files Changed
 
 ### Created
-- [ ] `src/presentation/webview/hooks/domain/useWordSearch.ts`
+- [ ] `src/presentation/webview/hooks/domain/useWordSearchSettings.ts`
 
 ### Modified
 - [ ] `src/presentation/webview/components/SearchTab.tsx`
@@ -469,10 +469,12 @@ This is a **user-facing bug** that causes data loss. Users lose all search custo
 
 ### Pattern Reference
 
-Follow `usePublishing` as the model:
-- `src/presentation/webview/hooks/domain/usePublishing.ts` - Clean, simple hook
+Follow `usePublishingSettings` as the model:
+- `src/presentation/webview/hooks/domain/usePublishingSettings.ts` - Clean, simple hook
 - Pattern works perfectly for Publishing Standards
 - Same approach will work for Word Search
+
+**Naming Convention**: All settings hooks use `use[Domain]Settings` suffix to distinguish from state/service hooks (like `useContext`, `useAnalysis`, etc.)
 
 ### Temporary Duplication
 

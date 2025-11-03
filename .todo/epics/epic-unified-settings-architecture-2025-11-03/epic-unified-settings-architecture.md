@@ -89,7 +89,7 @@ Migrate all settings to Domain Hooks pattern, matching successful implementation
 **Sprint**: [01-searchtab-urgent-fix.md](sprints/01-searchtab-urgent-fix.md)
 
 **Scope**:
-- Create `useWordSearch` hook
+- Create `useWordSearchSettings` hook
 - Migrate SearchTab to use hook
 - Wire into App.tsx
 - Fix wrong default
@@ -125,8 +125,8 @@ Migrate all settings to Domain Hooks pattern, matching successful implementation
 **Sprint**: [03-metricstab-migration.md](sprints/03-metricstab-migration.md)
 
 **Scope**:
-- Create `useWordFrequency` hook
-- Migrate MetricsTab `minCharacterLength`
+- Create `useWordFrequencySettings` hook
+- Migrate MetricsTab word frequency settings
 - Test persistence
 
 **Deliverables**:
@@ -141,14 +141,16 @@ Migrate all settings to Domain Hooks pattern, matching successful implementation
 **Sprint**: [04-domain-hooks-extraction.md](sprints/04-domain-hooks-extraction.md)
 
 **Scope**:
-- Create `useContextPaths` hook
-- Create `useModels` hook
-- Create `useTokens` hook
-- Reduce `useSettings` from 360 → 150 lines
+- Create `useContextPathsSettings` hook
+- Create `useModelsSettings` hook
+- Create `useTokensSettings` hook
+- Rename `usePublishing` → `usePublishingSettings`
+- Eliminate `useSettings` hook entirely
 
 **Deliverables**:
-- ✅ Focused, single-purpose hooks
-- ✅ Cleaner `useSettings`
+- ✅ Focused, single-purpose settings hooks
+- ✅ useSettings eliminated (replaced by specialized hooks)
+- ✅ Clear naming convention (all settings hooks end with "Settings")
 
 ---
 

@@ -28,9 +28,9 @@ MetricsTab currently has **partial** settings sync:
 
 ## Tasks
 
-### Task 1: Create `useWordFrequency` Hook (30 min)
+### Task 1: Create `useWordFrequencySettings` Hook (30 min)
 
-**File**: `src/presentation/webview/hooks/domain/useWordFrequency.ts`
+**File**: `src/presentation/webview/hooks/domain/useWordFrequencySettings.ts`
 
 ```typescript
 import React from 'react';
@@ -42,7 +42,7 @@ interface WordFrequencySettings {
   includeLemmas: boolean;
 }
 
-export const useWordFrequency = (vscode: VSCodeAPI) => {
+export const useWordFrequencySettings = (vscode: VSCodeAPI) => {
   const [settings, setSettings] = React.useState<WordFrequencySettings>({
     minLength: 1,
     includeLemmas: false
@@ -137,7 +137,7 @@ React.useEffect(() => {
 ```typescript
 interface MetricsTabProps {
   // ... existing props
-  wordFrequency: {
+  wordFrequencySettings: {
     settings: {
       minLength: number;
       includeLemmas: boolean;
@@ -150,8 +150,8 @@ interface MetricsTabProps {
 **Use** hook props:
 
 ```typescript
-// Use wordFrequency.settings.minLength
-// Use wordFrequency.updateSetting('minLength', value)
+// Use wordFrequencySettings.settings.minLength
+// Use wordFrequencySettings.updateSetting('minLength', value)
 ```
 
 ---
@@ -161,21 +161,21 @@ interface MetricsTabProps {
 **File**: `src/presentation/webview/App.tsx`
 
 ```typescript
-const wordFrequency = useWordFrequency(vscode);
+const wordFrequencySettings = useWordFrequencySettings(vscode);
 
 useMessageRouter({
   // ...
-  [MessageType.SETTINGS_DATA]: wordFrequency.handleMessage,
+  [MessageType.SETTINGS_DATA]: wordFrequencySettings.handleMessage,
 });
 
 usePersistence({
   // ...
-  ...wordFrequency.persistedState,
+  ...wordFrequencySettings.persistedState,
 });
 
 <MetricsTab
   // ...
-  wordFrequency={wordFrequency}
+  wordFrequencySettings={wordFrequencySettings}
 />
 ```
 
@@ -183,7 +183,7 @@ usePersistence({
 
 ## Definition of Done
 
-- ✅ `useWordFrequency` hook created
+- ✅ `useWordFrequencySettings` hook created
 - ✅ MetricsTab migrated (no manual listener)
 - ✅ ConfigurationHandler exposes settings
 - ✅ App.tsx wires hook
