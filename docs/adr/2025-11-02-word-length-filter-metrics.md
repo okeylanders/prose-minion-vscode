@@ -1,7 +1,8 @@
 # ADR: Word Length Filter for Word Frequency Metrics
 
 **Date**: 2025-11-02
-**Status**: Proposed
+**Status**: ✅ Implemented
+**Implemented**: 2025-11-02
 **Priority**: MEDIUM-HIGH (Nice-to-have for v1.0)
 
 ## Context
