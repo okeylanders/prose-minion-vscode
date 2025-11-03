@@ -234,6 +234,7 @@ export class WordFrequency {
 
   private extractWords(text: string): string[] {
     return text
+      .replace(/[—–]/g, ' ')  // Convert em-dash and en-dash to space first
       .split(/\s+/)
       .map(word => word.replace(/[^a-z']/g, ''))
       .filter(word => word.length > 0);
