@@ -31,15 +31,15 @@ During the Word Length Filter epic (2025-11-02), we discovered critical inconsis
 
 ### Current State
 
-**Settings Inventory** (29 total):
+**Settings Inventory** (51 total):
 
 | Pattern | Count | Examples | Persistence | Sync | Issues |
 |---------|-------|----------|-------------|------|--------|
-| Domain Hooks | 24 | `useSettings`, `usePublishing`, `useAnalysis` | ✅ Yes | ✅ Bidirectional | None |
-| Message-Based | 5 | SearchTab (4), MetricsTab (1) | ❌ No (SearchTab)<br>⚠️ Indirect (MetricsTab) | ❌ No | Critical |
+| Domain Hooks | 37 | `useSettings`, `usePublishing`, `useAnalysis` | ✅ Yes | ✅ Bidirectional | None |
+| Message-Based | 14 | SearchTab (6), MetricsTab (10) | ❌ No (SearchTab)<br>⚠️ Indirect (MetricsTab) | ❌ No | Critical |
 | Hybrid (SecretStorage) | 1 | API key | ✅ Yes | ✅ Bidirectional | None (correct) |
 
-**Persistence Coverage**: 86% (25/29 settings)
+**Persistence Coverage**: 73% (37/51 settings)
 
 ### User Impact
 
@@ -67,10 +67,12 @@ We will **unify all settings management using the Domain Hooks pattern**, matchi
 // Frontend Hook
 export const useWordSearch = (vscode: VSCodeAPI) => {
   const [settings, setSettings] = React.useState({
-    contextWords: 3,
-    clusterWindow: 50,
+    defaultTargets: 'just',
+    contextWords: 7,
+    clusterWindow: 150,
     minClusterSize: 2,
-    caseSensitive: false
+    caseSensitive: false,
+    enableAssistantExpansion: false
   });
 
   React.useEffect(() => {
@@ -125,19 +127,23 @@ useMessageRouter({
 // ConfigurationHandler exposes all wordSearch.* settings
 public getWordSearchSettings() {
   return {
-    contextWords: this.config.get('wordSearch.contextWords', 3),
-    clusterWindow: this.config.get('wordSearch.clusterWindow', 50),
+    defaultTargets: this.config.get('wordSearch.defaultTargets', 'just'),
+    contextWords: this.config.get('wordSearch.contextWords', 7),
+    clusterWindow: this.config.get('wordSearch.clusterWindow', 150),
     minClusterSize: this.config.get('wordSearch.minClusterSize', 2),
-    caseSensitive: this.config.get('wordSearch.caseSensitive', false)
+    caseSensitive: this.config.get('wordSearch.caseSensitive', false),
+    enableAssistantExpansion: this.config.get('wordSearch.enableAssistantExpansion', false)
   };
 }
 
 // MessageHandler uses semantic methods (no hardcoded lists)
 private readonly WORD_SEARCH_KEYS = [
+  'proseMinion.wordSearch.defaultTargets',
   'proseMinion.wordSearch.contextWords',
   'proseMinion.wordSearch.clusterWindow',
   'proseMinion.wordSearch.minClusterSize',
-  'proseMinion.wordSearch.caseSensitive'
+  'proseMinion.wordSearch.caseSensitive',
+  'proseMinion.wordSearch.enableAssistantExpansion'
 ] as const;
 
 private shouldBroadcastWordSearchSettings(event: vscode.ConfigurationChangeEvent) {
@@ -180,52 +186,75 @@ private shouldBroadcastWordSearchSettings(event: vscode.ConfigurationChangeEvent
 
 This section provides a complete inventory of all settings, their domain groupings, associated hooks, and persistence strategy.
 
-### Complete Settings Inventory (29 Settings)
+### Complete Settings Inventory (51 Items)
 
 | # | Setting Key | Type | Default | Hook (Current/Target) | Phase | Persisted |
 |---|-------------|------|---------|----------------------|-------|-----------|
-| **General Settings** | | | | **useSettings** | Exists | ✅ |
-| 1 | `includeCraftGuides` | boolean | true | useSettings | Current | ✅ |
-| 2 | `temperature` | number | 0.8 | useSettings | Current | ✅ |
-| 3 | `maxTokens` | number | 10000 | useSettings | Current | ✅ |
-| 4 | `applyContextWindowTrimming` | boolean | true | useSettings | Current | ✅ |
-| 5 | `contextAgentWordLimit` | number | 50000 | useSettings | Current | ✅ |
-| 6 | `analysisAgentWordLimit` | number | 75000 | useSettings | Current | ✅ |
+| **Model Configuration Settings** | | | | **useModels** | Phase 3 | ✅ |
+| 1 | `assistantModel` | string | 'z-ai/glm-4.6' | useSettings → useModels | Phase 3 | ✅ |
+| 2 | `dictionaryModel` | string | 'z-ai/glm-4.6' | useSettings → useModels | Phase 3 | ✅ |
+| 3 | `contextModel` | string | 'z-ai/glm-4.6' | useSettings → useModels | Phase 3 | ✅ |
+| 4 | `model` (legacy fallback) | string | 'z-ai/glm-4.6' | useSettings → useModels | Phase 3 | ✅ |
+| 5 | `includeCraftGuides` | boolean | true | useSettings → useModels | Phase 3 | ✅ |
+| 6 | `temperature` | number | 0.7 | useSettings → useModels | Phase 3 | ✅ |
+| 7 | `maxTokens` | number | 10000 | useSettings → useModels | Phase 3 | ✅ |
+| 8 | `applyContextWindowTrimming` | boolean | true | useSettings → useModels | Phase 3 | ✅ |
+| 9 | `ui.showTokenWidget` | boolean | true | useSettings → useTokens | Phase 3 | ✅ |
 | **Word Search Settings** | | | | **useWordSearch** | Phase 0 | ❌→✅ |
-| 7 | `wordSearch.contextWords` | number | 3 | ❌ None → useWordSearch | Phase 0 | ❌→✅ |
-| 8 | `wordSearch.clusterWindow` | number | 50 | ❌ None → useWordSearch | Phase 0 | ❌→✅ |
-| 9 | `wordSearch.minClusterSize` | number | 2 | ❌ None → useWordSearch | Phase 0 | ❌→✅ |
-| 10 | `wordSearch.caseSensitive` | boolean | false | ❌ None → useWordSearch | Phase 0 | ❌→✅ |
+| 10 | `wordSearch.defaultTargets` | string | 'just' | ❌ None → useWordSearch | Phase 0 | ❌→✅ |
+| 11 | `wordSearch.contextWords` | number | 7 | ❌ None → useWordSearch | Phase 0 | ❌→✅ |
+| 12 | `wordSearch.clusterWindow` | number | 150 | ❌ None → useWordSearch | Phase 0 | ❌→✅ |
+| 13 | `wordSearch.minClusterSize` | number | 2 | ❌ None → useWordSearch | Phase 0 | ❌→✅ |
+| 14 | `wordSearch.caseSensitive` | boolean | false | ❌ None → useWordSearch | Phase 0 | ❌→✅ |
+| 15 | `wordSearch.enableAssistantExpansion` | boolean | false | ❌ None → useWordSearch | Phase 0 | ❌→✅ |
 | **Word Frequency Settings** | | | | **useWordFrequency** | Phase 2 | ⚠️→✅ |
-| 11 | `wordFrequency.minLength` | number | 1 | ⚠️ MetricsTab → useWordFrequency | Phase 2 | ⚠️→✅ |
-| 12 | `wordFrequency.includeLemmas` | boolean | false | ⚠️ MetricsTab → useWordFrequency | Phase 2 | ⚠️→✅ |
-| **Context Path Settings** | | | | **useContextPaths** | Phase 3 | ✅ |
-| 13 | `contextSourceMode` | string | 'selection' | useSettings → useContextPaths | Phase 3 | ✅ |
-| 14 | `contextSourcePath` | string | '' | useSettings → useContextPaths | Phase 3 | ✅ |
-| **Model Settings** | | | | **useModels** | Phase 3 | ✅ |
-| 15 | `assistantModel` | string | 'anthropic/claude-3.5-sonnet' | useSettings → useModels | Phase 3 | ✅ |
-| 16 | `dictionaryModel` | string | 'anthropic/claude-3.5-sonnet' | useSettings → useModels | Phase 3 | ✅ |
-| 17 | `contextModel` | string | 'anthropic/claude-3.5-sonnet' | useSettings → useModels | Phase 3 | ✅ |
-| **Token Tracking** | | | | **useTokens** | Phase 3 | ✅ |
-| 18 | `ui.showTokenWidget` | boolean | true | useSettings → useTokens | Phase 3 | ✅ |
-| 19 | Token usage (state) | object | - | useSettings → useTokens | Phase 3 | ✅ |
+| 16 | `wordFrequency.topN` | number | 100 | ⚠️ MetricsTab → useWordFrequency | Phase 2 | ⚠️→✅ |
+| 17 | `wordFrequency.includeHapaxList` | boolean | true | ⚠️ MetricsTab → useWordFrequency | Phase 2 | ⚠️→✅ |
+| 18 | `wordFrequency.hapaxDisplayMax` | number | 300 | ⚠️ MetricsTab → useWordFrequency | Phase 2 | ⚠️→✅ |
+| 19 | `wordFrequency.includeStopwordsTable` | boolean | true | ⚠️ MetricsTab → useWordFrequency | Phase 2 | ⚠️→✅ |
+| 20 | `wordFrequency.contentWordsOnly` | boolean | true | ⚠️ MetricsTab → useWordFrequency | Phase 2 | ⚠️→✅ |
+| 21 | `wordFrequency.posEnabled` | boolean | true | ⚠️ MetricsTab → useWordFrequency | Phase 2 | ⚠️→✅ |
+| 22 | `wordFrequency.includeBigrams` | boolean | true | ⚠️ MetricsTab → useWordFrequency | Phase 2 | ⚠️→✅ |
+| 23 | `wordFrequency.includeTrigrams` | boolean | true | ⚠️ MetricsTab → useWordFrequency | Phase 2 | ⚠️→✅ |
+| 24 | `wordFrequency.enableLemmas` | boolean | false | ⚠️ MetricsTab → useWordFrequency | Phase 2 | ⚠️→✅ |
+| 25 | `wordFrequency.lengthHistogramMaxChars` | number | 10 | ⚠️ MetricsTab → useWordFrequency | Phase 2 | ⚠️→✅ |
+| 26 | `wordFrequency.minCharacterLength` | number | 1 | ⚠️ MetricsTab → useWordFrequency | Phase 2 | ⚠️→✅ |
+| **Context Resource Paths** | | | | **useContextPaths** | Phase 3 | ✅ |
+| 27 | `contextPaths.characters` | string | 'characters/**/*,...' | useSettings → useContextPaths | Phase 3 | ✅ |
+| 28 | `contextPaths.locations` | string | 'locations/**/*,...' | useSettings → useContextPaths | Phase 3 | ✅ |
+| 29 | `contextPaths.themes` | string | 'themes/**/*,...' | useSettings → useContextPaths | Phase 3 | ✅ |
+| 30 | `contextPaths.things` | string | 'things/**/*,...' | useSettings → useContextPaths | Phase 3 | ✅ |
+| 31 | `contextPaths.chapters` | string | 'drafts/**/*,...' | useSettings → useContextPaths | Phase 3 | ✅ |
+| 32 | `contextPaths.manuscript` | string | 'manuscript/**/*,...' | useSettings → useContextPaths | Phase 3 | ✅ |
+| 33 | `contextPaths.projectBrief` | string | 'brief/**/*,...' | useSettings → useContextPaths | Phase 3 | ✅ |
+| 34 | `contextPaths.general` | string | 'research/**/*,...' | useSettings → useContextPaths | Phase 3 | ✅ |
 | **Publishing Standards** | | | | **usePublishing** | Exists | ✅ |
-| 20 | `publishing.genre` | string | 'commercial-fiction' | usePublishing | Current | ✅ |
-| 21 | `publishing.trimOption` | string | 'typical' | usePublishing | Current | ✅ |
+| 35 | `publishingStandards.preset` | string | 'none' | usePublishing | Current | ✅ |
+| 36 | `publishingStandards.pageSizeKey` | string | '' | usePublishing | Current | ✅ |
+| **Token Tracking** | | | | **useTokens** | Phase 3 | ✅ |
+| 37 | Token usage (state) | object | - | useSettings → useTokens | Phase 3 | ✅ |
 | **Analysis Results** | | | | **useAnalysis** | Exists | ✅ |
-| 22 | Analysis results (state) | object | - | useAnalysis | Current | ✅ |
-| 23 | Guides (state) | array | - | useAnalysis | Current | ✅ |
+| 38 | Analysis results (state) | object | - | useAnalysis | Current | ✅ |
+| 39 | Guides (state) | array | - | useAnalysis | Current | ✅ |
+| 40 | Analysis context (component state) | string | - | Local to AnalysisTab | Current | ✅ |
 | **Metrics Results** | | | | **useMetrics** | Exists | ✅ |
-| 24 | Metrics results (state) | object | - | useMetrics | Current | ✅ |
-| 25 | Active subtool (state) | string | - | useMetrics | Current | ✅ |
+| 41 | Metrics results (state) | object | - | useMetrics | Current | ✅ |
+| 42 | Active subtool (state) | string | - | useMetrics | Current | ✅ |
+| 43 | Metrics scope selection (component state) | object | - | Local to MetricsTab subtools | Current | ✅ |
 | **Dictionary** | | | | **useDictionary** | Exists | ✅ |
-| 26 | Dictionary inputs (state) | object | - | useDictionary | Current | ✅ |
-| **Context** | | | | **useContext** | Exists | ✅ |
-| 27 | Context text (state) | string | - | useContext | Current | ✅ |
+| 44 | Dictionary word/context (state) | object | - | useDictionary | Current | ✅ |
+| 45 | Dictionary context (component state) | string | - | Local to DictionaryTab | Current | ✅ |
+| **Context Generation Service** | | | | **useContext** | Exists | ✅ |
+| 46 | Context generation results (state) | string | - | useContext | Current | ✅ |
+| 47 | Requested resources (state) | array | - | useContext | Current | ✅ |
+| 48 | Context generation status (state) | string | - | useContext | Current | ✅ |
 | **Search** | | | | **useSearch** | Exists | ✅ |
-| 28 | Search results (state) | object | - | useSearch | Current | ✅ |
+| 49 | Search results (state) | object | - | useSearch | Current | ✅ |
+| 50 | Search scope selection (component state) | object | - | Local to SearchTab | Current | ✅ |
 | **API Key** | | | | **Hybrid (SecretStorage)** | Exists | ✅ |
-| 29 | `openRouterApiKey` | secret | - | SecretStorage (not hook) | Current | ✅ |
+| 51 | `openRouterApiKey` | secret | - | SecretStorage (not hook) | Current | ✅ |
+
+**Total**: 51 items (36 config settings, 14 state items, 1 secret)
 
 **Legend**:
 
@@ -239,59 +268,79 @@ This section provides a complete inventory of all settings, their domain groupin
 
 ### Domain Hook Mapping
 
-This table shows which hooks manage which settings and which components consume them.
+This table shows which hooks manage which settings/state and which components consume them.
 
 | Hook | Type | Settings/State Managed | Used By Components | Phase | File |
 |------|------|------------------------|-------------------|-------|------|
-| **useSettings** | Config | 6 general settings (after Phase 3 refactor) | SettingsOverlay, AnalysisTab, UtilitiesTab | Exists (refactor Phase 3) | `hooks/domain/useSettings.ts` |
+| **useModels** | Config | 8 model/agent configuration settings | SettingsOverlay, All tabs (model behavior) | Phase 3 (NEW) | `hooks/domain/useModels.ts` |
+| | | • `assistantModel` | | | |
+| | | • `dictionaryModel` | | | |
+| | | • `contextModel` | | | |
+| | | • `model` (legacy fallback) | | | |
 | | | • `includeCraftGuides` | | | |
 | | | • `temperature` | | | |
 | | | • `maxTokens` | | | |
 | | | • `applyContextWindowTrimming` | | | |
-| | | • `contextAgentWordLimit` | | | |
-| | | • `analysisAgentWordLimit` | | | |
-| **useWordSearch** | Config | 4 word search settings | SearchTab, SettingsOverlay | Phase 0 (NEW) | `hooks/domain/useWordSearch.ts` |
+| **useWordSearch** | Config | 6 word search settings | SearchTab, SettingsOverlay | Phase 0 (NEW) | `hooks/domain/useWordSearch.ts` |
+| | | • `wordSearch.defaultTargets` | | | |
 | | | • `wordSearch.contextWords` | | | |
 | | | • `wordSearch.clusterWindow` | | | |
 | | | • `wordSearch.minClusterSize` | | | |
 | | | • `wordSearch.caseSensitive` | | | |
-| **useWordFrequency** | Config | 2 word frequency settings | MetricsTab (word frequency subtool), SettingsOverlay | Phase 2 (NEW) | `hooks/domain/useWordFrequency.ts` |
-| | | • `wordFrequency.minLength` | | | |
-| | | • `wordFrequency.includeLemmas` | | | |
-| **useContextPaths** | Config | 2 context path settings | SettingsOverlay, ContextTab | Phase 3 (NEW) | `hooks/domain/useContextPaths.ts` |
-| | | • `contextSourceMode` | | | |
-| | | • `contextSourcePath` | | | |
-| **useModels** | Config | 3 model selection settings | SettingsOverlay, AnalysisTab, DictionaryTab, ContextTab | Phase 3 (NEW) | `hooks/domain/useModels.ts` |
-| | | • `assistantModel` | | | |
-| | | • `dictionaryModel` | | | |
-| | | • `contextModel` | | | |
+| | | • `wordSearch.enableAssistantExpansion` | | | |
+| **useWordFrequency** | Config | 11 word frequency settings | MetricsTab (word frequency subtool), SettingsOverlay | Phase 2 (NEW) | `hooks/domain/useWordFrequency.ts` |
+| | | • `wordFrequency.topN` | | | |
+| | | • `wordFrequency.includeHapaxList` | | | |
+| | | • `wordFrequency.hapaxDisplayMax` | | | |
+| | | • `wordFrequency.includeStopwordsTable` | | | |
+| | | • `wordFrequency.contentWordsOnly` | | | |
+| | | • `wordFrequency.posEnabled` | | | |
+| | | • `wordFrequency.includeBigrams` | | | |
+| | | • `wordFrequency.includeTrigrams` | | | |
+| | | • `wordFrequency.enableLemmas` | | | |
+| | | • `wordFrequency.lengthHistogramMaxChars` | | | |
+| | | • `wordFrequency.minCharacterLength` | | | |
+| **useContextPaths** | Config | 8 context resource path settings (glob patterns) | SettingsOverlay, used by context generation ([bot] button) | Phase 3 (NEW) | `hooks/domain/useContextPaths.ts` |
+| | | • `contextPaths.characters` | | | |
+| | | • `contextPaths.locations` | | | |
+| | | • `contextPaths.themes` | | | |
+| | | • `contextPaths.things` | | | |
+| | | • `contextPaths.chapters` | | | |
+| | | • `contextPaths.manuscript` | | | |
+| | | • `contextPaths.projectBrief` | | | |
+| | | • `contextPaths.general` | | | |
+| | | **Note**: Glob patterns defining where different resource types are stored. Used by context agent when scanning for materials. | | | |
 | **useTokens** | Config + State | Token tracking + UI preference | SettingsOverlay, TokenWidget (all tabs) | Phase 3 (NEW) | `hooks/domain/useTokens.ts` |
 | | | • `ui.showTokenWidget` | | | |
 | | | • Token usage state | | | |
 | **usePublishing** | Config | 2 publishing standard settings | SettingsOverlay, MetricsTab (prose stats) | Exists | `hooks/domain/usePublishing.ts` |
 | | | • `publishing.genre` | | | |
 | | | • `publishing.trimOption` | | | |
-| **useAnalysis** | State | Analysis results + guides | AnalysisTab, UtilitiesTab | Exists | `hooks/domain/useAnalysis.ts` |
+| **useAnalysis** | State | Analysis results + guides (NOT context text) | AnalysisTab, UtilitiesTab | Exists | `hooks/domain/useAnalysis.ts` |
 | | | • Dialogue/prose results | | | |
 | | | • Loaded guides | | | |
 | | | • Status ticker | | | |
-| **useMetrics** | State | Metrics results + active subtool | MetricsTab | Exists | `hooks/domain/useMetrics.ts` |
+| | | **Note**: Analysis context text is component-local state | | | |
+| **useMetrics** | State | Metrics results + active subtool (NOT scope) | MetricsTab | Exists | `hooks/domain/useMetrics.ts` |
 | | | • Prose stats results | | | |
 | | | • Style flags results | | | |
 | | | • Word frequency results | | | |
 | | | • Active subtool name | | | |
-| **useDictionary** | State | Dictionary word + context | DictionaryTab | Exists | `hooks/domain/useDictionary.ts` |
+| | | **Note**: Each subtool's scope selection is component-local state | | | |
+| **useDictionary** | State | Dictionary word + tool name (NOT context) | DictionaryTab | Exists | `hooks/domain/useDictionary.ts` |
 | | | • Current word | | | |
-| | | • Context text | | | |
 | | | • Tool name | | | |
-| **useContext** | State | Context generation text + resources | ContextTab | Exists | `hooks/domain/useContext.ts` |
-| | | • Context text | | | |
+| | | **Note**: Dictionary context text is component-local state | | | |
+| **useContext** | State | Context generation service (triggered by [bot] button) | AnalysisTab ([bot] button), potentially DictionaryTab | Exists | `hooks/domain/useContext.ts` |
+| | | • Generated context text | | | |
 | | | • Requested resources | | | |
-| | | • Loading status | | | |
-| **useSearch** | State | Search results + targets | SearchTab | Exists | `hooks/domain/useSearch.ts` |
+| | | • Generation status/loading | | | |
+| | | **Note**: Generates context when [bot] clicked. Result displayed in component-local context boxes. | | | |
+| **useSearch** | State | Search results (NOT scope selection) | SearchTab | Exists | `hooks/domain/useSearch.ts` |
 | | | • Word search results | | | |
 | | | • Search targets | | | |
-| **useSelection** | State | Selected text + metadata | App.tsx (global) | Exists | `hooks/domain/useSelection.ts` |
+| | | **Note**: SearchTab scope selection is component-local state | | | |
+| **useSelection** | State | Selected text + metadata (global) | App.tsx → all tabs | Exists | `hooks/domain/useSelection.ts` |
 | | | • Selected text | | | |
 | | | • Source metadata | | | |
 
@@ -307,13 +356,13 @@ This table shows which hooks manage which settings and which components consume 
 
 All domain hooks expose `persistedState` which is composed in App.tsx via `usePersistence`.
 
-#### Before Refactor (86% coverage)
+#### Before Refactor (86% coverage - 30/35 items)
 
 ```typescript
 // App.tsx - Current State
 usePersistence({
   activeTab,
-  ...settings.persistedState,      // ✅ General + Models + Context Paths + Tokens (mixed)
+  ...settings.persistedState,      // ⚠️ Mixed: Models + Context Paths + Tokens all in one
   ...publishing.persistedState,    // ✅ Publishing standards
   ...analysis.persistedState,      // ✅ Analysis results
   ...metrics.persistedState,       // ✅ Metrics results (but wordFrequency settings indirect)
@@ -323,12 +372,14 @@ usePersistence({
   ...selection.persistedState      // ✅ Selection state
   // ❌ Missing: wordSearch.* settings (SearchTab broken)
   // ⚠️ Indirect: wordFrequency.* settings (via backend sync)
+  // ⚠️ God hook: useSettings has too many concerns (360 lines)
 });
 ```
 
 **Issues**:
 - SearchTab settings (4) not included → lost on reload ❌
 - MetricsTab settings (2) indirectly persisted via backend ⚠️
+- useSettings is a god hook with mixed concerns ⚠️
 
 ---
 
@@ -338,47 +389,48 @@ usePersistence({
 // App.tsx - Target State
 usePersistence({
   activeTab,
-  ...settings.persistedState,      // ✅ General settings only (refactored)
-  ...wordSearch.persistedState,    // ✅ NEW: Word search settings
-  ...wordFrequency.persistedState, // ✅ NEW: Word frequency settings (explicit)
-  ...contextPaths.persistedState,  // ✅ NEW: Context path settings
-  ...models.persistedState,        // ✅ NEW: Model selections
-  ...tokens.persistedState,        // ✅ NEW: Token tracking + UI prefs
-  ...publishing.persistedState,    // ✅ Publishing standards
+  ...models.persistedState,        // ✅ NEW: Model configuration (9 settings)
+  ...wordSearch.persistedState,    // ✅ NEW: Word search settings (4)
+  ...wordFrequency.persistedState, // ✅ NEW: Word frequency settings (2, explicit)
+  ...contextPaths.persistedState,  // ✅ NEW: Context source settings (2)
+  ...tokens.persistedState,        // ✅ NEW: Token tracking + UI prefs (2)
+  ...publishing.persistedState,    // ✅ Publishing standards (2)
   ...analysis.persistedState,      // ✅ Analysis results
   ...metrics.persistedState,       // ✅ Metrics results
   ...dictionary.persistedState,    // ✅ Dictionary state
-  ...context.persistedState,       // ✅ Context state
-  ...search.persistedState,        // ✅ Search state
-  ...selection.persistedState      // ✅ Selection state
+  ...context.persistedState,       // ✅ Context Assistant state
+  ...search.persistedState,        // ✅ Search results
+  ...selection.persistedState      // ✅ Selection state (global)
+  // ✅ useSettings eliminated - all settings in specialized hooks
 });
 ```
 
 **Benefits**:
 
-- All 29 settings/states explicitly persisted ✅
+- All 35 items explicitly persisted ✅
 - No reliance on backend sync for persistence ✅
 - Clear, predictable persistence model ✅
+- Each hook has a single, focused purpose ✅
+- useSettings god hook eliminated ✅
 
 ---
 
 ### Component-to-Hook Matrix
 
-This table shows which components consume which hooks (read-only reference).
+This table shows which components consume which hooks.
 
-| Component | Hooks Consumed | Settings/State Used |
-|-----------|---------------|-------------------|
-| **App.tsx** | All hooks (composition) | Composes all `persistedState`, routes all messages |
-| **SettingsOverlay** | useSettings, useWordSearch, useWordFrequency, useContextPaths, useModels, useTokens, usePublishing | All config settings (editable UI) |
-| **AnalysisTab** | useSettings, useModels, useAnalysis | General settings, assistant model, results |
-| **MetricsTab** | useWordFrequency, usePublishing, useMetrics | Word frequency settings, publishing standards, results |
-| **SearchTab** | useWordSearch, useSearch | Word search settings, search results |
-| **DictionaryTab** | useModels, useDictionary | Dictionary model, word/context state |
-| **ContextTab** | useContextPaths, useModels, useContext | Context paths, context model, generated text |
-| **UtilitiesTab** | useSettings, useAnalysis | General settings, prose assistant results |
-| **TokenWidget** | useTokens | Token usage, show/hide preference |
+| Component | Hooks Consumed | Settings/State Used | Component-Local State |
+|-----------|---------------|-------------------|---------------------|
+| **App.tsx** | All hooks (composition) | Composes all `persistedState`, routes all messages | Active tab |
+| **SettingsOverlay** | useModels, useWordSearch, useWordFrequency, useContextPaths, useTokens, usePublishing | All 20 config settings (editable UI) | - |
+| **AnalysisTab** | useModels, useAnalysis, useContext, useSelection | Model config, analysis results, context generation ([bot] button) | Context text box (local), scope selection |
+| **MetricsTab** | useModels, useWordFrequency, usePublishing, useMetrics | Model config, word frequency settings, publishing standards, results | Scope selection per subtool (local) |
+| **SearchTab** | useModels, useWordSearch, useSearch, useSelection | Model config, word search settings, search results | Scope selection (local) |
+| **DictionaryTab** | useModels, useDictionary, useSelection | Model config, dictionary model, word/tool state | Context text box (local) |
+| **UtilitiesTab** | useModels, useAnalysis | Model config, prose assistant results | - |
+| **TokenWidget** | useTokens | Token usage, show/hide preference | - |
 
-**Navigation Flow**:
+**Navigation Flow** (for config settings):
 1. User changes setting in SettingsOverlay
 2. Hook sends `UPDATE_SETTING` to backend
 3. Backend updates VSCode config
@@ -386,6 +438,25 @@ This table shows which components consume which hooks (read-only reference).
 5. Hook receives message, updates state
 6. React re-renders component with new state
 7. `usePersistence` persists state to webview storage
+
+**Component-Local State** (NOT in hooks):
+
+- **Context text boxes**:
+  - **AnalysisTab**: Has a context box with a **[bot]** button. When clicked, triggers `useContext` to generate context, which is then displayed in the local box.
+  - **DictionaryTab**: Has a context box for manual text entry (no [bot] button).
+  - These boxes are local `useState` in each component - NOT shared.
+
+- **Scope selection**: Each metrics subtool (prose stats, style flags, word frequency), SearchTab, and AnalysisTab has its own scope selection (which text to analyze). This is component-local state, NOT a global setting.
+
+- **Why local?**: These are UI-specific, temporary values that don't need to be shared or persisted across components. They're managed with standard React `useState` in each component.
+
+**Context Generation Flow** (AnalysisTab [bot] button):
+
+1. User clicks [bot] in AnalysisTab context box
+2. AnalysisTab triggers `useContext` hook to generate context
+3. `useContext` uses `useContextPaths` settings (global defaults for source)
+4. Generated context returned to AnalysisTab
+5. AnalysisTab displays result in its local context box
 
 ---
 
@@ -395,15 +466,20 @@ The backend `MessageHandler` will use semantic methods to group settings (Phase 
 
 | Settings Group | Constant Name | Settings Count | Broadcast Method |
 |----------------|---------------|----------------|------------------|
-| General | `GENERAL_SETTINGS_KEYS` | 6 | `shouldBroadcastGeneralSettings()` |
-| Word Search | `WORD_SEARCH_KEYS` | 4 | `shouldBroadcastWordSearchSettings()` |
-| Word Frequency | `WORD_FREQUENCY_KEYS` | 2 | `shouldBroadcastWordFrequencySettings()` |
-| Context Paths | `CONTEXT_PATH_KEYS` | 2 | `shouldBroadcastContextPathSettings()` |
-| Models | `MODEL_KEYS` | 3 | `shouldBroadcastModelSettings()` |
+| Model Configuration | `MODEL_CONFIG_KEYS` | 8 | `shouldBroadcastModelConfigSettings()` |
+| | | (craft guides, temperature, max tokens, trim settings, model selections + legacy) | |
+| Word Search | `WORD_SEARCH_KEYS` | 6 | `shouldBroadcastWordSearchSettings()` |
+| | | (default targets, context words, cluster window, min cluster size, case sensitive, assistant expansion) | |
+| Word Frequency | `WORD_FREQUENCY_KEYS` | 11 | `shouldBroadcastWordFrequencySettings()` |
+| | | (topN, hapax settings, stopwords, content words only, POS, bigrams, trigrams, lemmas, histogram, min length) | |
+| Context Paths | `CONTEXT_PATH_KEYS` | 8 | `shouldBroadcastContextPathSettings()` |
+| | | (characters, locations, themes, things, chapters, manuscript, project brief, general) | |
 | UI Preferences | `UI_KEYS` | 1 | `shouldBroadcastUISettings()` |
+| | | (show token widget) | |
 | Publishing | `PUBLISHING_KEYS` | 2 | `shouldBroadcastPublishingSettings()` |
+| | | (preset, page size key) | |
 
-**Total**: 20 config settings (excludes 9 state-only items)
+**Total**: 36 config settings (excludes state-only items and component-local state)
 
 ---
 
@@ -411,15 +487,24 @@ The backend `MessageHandler` will use semantic methods to group settings (Phase 
 
 | Phase | Hooks Created/Modified | Settings Fixed | Components Updated | Persistence Coverage |
 |-------|----------------------|----------------|-------------------|---------------------|
-| **Current** | 8 hooks (mixed patterns) | 25/29 working | Mixed patterns | 86% |
-| **Phase 0** | +1 (useWordSearch) | 29/29 working | SearchTab | 100% |
+| **Current** | 8 hooks (mixed patterns) | 37/51 working | Mixed patterns | 73% |
+| **Phase 0** | +1 (useWordSearch) | 51/51 working | SearchTab | 100% |
 | **Phase 1** | Backend refactor only | - | - | 100% |
 | **Phase 2** | +1 (useWordFrequency) | - | MetricsTab | 100% |
-| **Phase 3** | +3 (useContextPaths, useModels, useTokens) | - | Multiple | 100% |
+| **Phase 3** | +3 (useModels, useContextPaths, useTokens), -1 (remove useSettings) | - | SettingsOverlay, all tabs | 100% |
 | **Phase 4** | Documentation + tests | - | - | 100% |
-| **Target** | 13 hooks (all domain hooks) | 29/29 working | All using hooks | 100% |
+| **Target** | 11 hooks (all domain hooks) | 51/51 working | All using hooks | 100% |
 
-**Hook Count Progression**: 8 → 9 → 9 → 10 → 13 hooks
+**Hook Count Progression**: 8 → 9 → 9 → 10 → 11 hooks
+
+**Key Changes**:
+
+- **useSettings eliminated**: All settings moved to specialized hooks (useModels, useContextPaths, useTokens)
+- **useModels**: 8 model/agent settings (4 model selections + agent behavior configuration)
+- **useWordSearch**: 6 word search settings (including defaults and assistant expansion)
+- **useWordFrequency**: 11 comprehensive word frequency settings (all metrics display options)
+- **useContextPaths**: 8 resource path globs (defines where context agent scans for materials)
+- **Component-local state identified**: Context text boxes and scope selections remain in components (not hooks)
 
 ---
 
@@ -433,7 +518,13 @@ The backend `MessageHandler` will use semantic methods to group settings (Phase 
 
 **Tasks**:
 1. Create `useWordSearch` hook (1 hour)
-   - All 4 word search settings
+   - All 6 word search settings:
+     - `defaultTargets` - Default search targets
+     - `contextWords` - Context words around hits
+     - `clusterWindow` - Cluster detection window
+     - `minClusterSize` - Minimum cluster size
+     - `caseSensitive` - Case-sensitive matching
+     - `enableAssistantExpansion` - AI-based synonym expansion
    - Message handlers for `SETTINGS_DATA`
    - Send `UPDATE_SETTING` on changes
    - Expose `persistedState`
@@ -456,7 +547,7 @@ The backend `MessageHandler` will use semantic methods to group settings (Phase 
    - Correct defaults applied
 
 **Success Criteria**:
-- ✅ All 4 SearchTab settings sync bidirectionally
+- ✅ All 6 SearchTab settings sync bidirectionally
 - ✅ Settings persist across webview reload
 - ✅ `minClusterSize` default is 2 (not 3)
 - ✅ Native VSCode settings panel changes reflected in SearchTab
@@ -498,50 +589,95 @@ The backend `MessageHandler` will use semantic methods to group settings (Phase 
 
 ---
 
-### Phase 2: MetricsTab Migration (1 hour)
+### Phase 2: MetricsTab Migration (1.5 hours)
 
 **Priority**: MEDIUM
 **Timeline**: v1.1
 **Risk**: Low
 
 **Tasks**:
-1. Create `useWordFrequency` hook (30 min)
-   - Extract `minCharacterLength` from MetricsTab
-   - Message handlers
-   - Persistence
+1. Create `useWordFrequency` hook (45 min)
+   - All 11 word frequency settings:
+     - `topN` - Top N words to display
+     - `includeHapaxList` - Include hapax (frequency=1) list
+     - `hapaxDisplayMax` - Max hapax words to display
+     - `includeStopwordsTable` - Include stopwords table
+     - `contentWordsOnly` - Filter to content words only
+     - `posEnabled` - Enable POS tagging sections
+     - `includeBigrams` - Include bigrams analysis
+     - `includeTrigrams` - Include trigrams analysis
+     - `enableLemmas` - Enable lemmatization view
+     - `lengthHistogramMaxChars` - Max word length in histogram
+     - `minCharacterLength` - Minimum word length filter
+   - Message handlers for `SETTINGS_DATA`
+   - Send `UPDATE_SETTING` on changes
+   - Expose `persistedState`
 
-2. Migrate MetricsTab (20 min)
-   - Remove manual listener
-   - Use hook
+2. Migrate MetricsTab (30 min)
+   - Remove manual listeners
+   - Use hook for all word frequency settings
+   - Update word frequency subtool to use hook props
 
-3. Test (10 min)
+3. Test (15 min)
+   - Bidirectional sync for all 11 settings
+   - Persistence across webview reload
 
 **Success Criteria**:
-- ✅ `minCharacterLength` uses hook pattern
+- ✅ All 11 word frequency settings use hook pattern
 - ✅ Explicit webview persistence (not reliant on backend sync)
+- ✅ Settings Overlay ↔ MetricsTab sync works
 
 ---
 
-### Phase 3: Additional Domain Hooks (1 week)
+### Phase 3: Domain Hooks Extraction & useSettings Elimination (1 week)
 
 **Priority**: MEDIUM
 **Timeline**: v1.1
 **Risk**: Medium
 
 **Tasks**:
-1. Create `useContextPaths` hook
-   - Extract context path settings from `useSettings`
-2. Create `useModels` hook
-   - Extract model selections from `useSettings`
-3. Create `useTokens` hook
-   - Extract token tracking from `useSettings`
 
-**Goal**: Reduce `useSettings` from 360 → 150 lines
+1. Create `useModels` hook (2 hours)
+   - Extract all 8 model/agent configuration settings from `useSettings`
+   - Model selections: assistantModel, dictionaryModel, contextModel, model (legacy)
+   - Agent behavior: includeCraftGuides, temperature, maxTokens, applyContextWindowTrimming
+   - Message handlers and persistence
+
+2. Create `useContextPaths` hook (2 hours)
+   - Extract all 8 context resource path settings from `useSettings`
+   - Resource paths (glob patterns):
+     - `contextPaths.characters` - Character reference files
+     - `contextPaths.locations` - Location/setting files
+     - `contextPaths.themes` - Theme notebooks
+     - `contextPaths.things` - Props/objects files
+     - `contextPaths.chapters` - Draft chapters/outlines
+     - `contextPaths.manuscript` - Manuscript chapters
+     - `contextPaths.projectBrief` - Project brief materials
+     - `contextPaths.general` - General reference materials
+   - Used by context agent when [bot] button is clicked
+   - Message handlers and persistence
+
+3. Create `useTokens` hook (1 hour)
+   - Extract token tracking and UI preferences from `useSettings`
+   - `ui.showTokenWidget` setting
+   - Token usage state
+   - Message handlers and persistence
+
+4. **Eliminate useSettings** (3 hours)
+   - Remove useSettings hook entirely (all settings migrated)
+   - Update all components to use specialized hooks
+   - Update App.tsx composition (remove useSettings, add 3 new hooks)
+   - Update SettingsOverlay to use new hooks
+
+**Goal**: Eliminate useSettings god hook entirely, replace with 3 focused hooks
 
 **Success Criteria**:
-- ✅ All settings use domain hooks
-- ✅ 100% persistence coverage (29/29 settings)
-- ✅ `useSettings` < 200 lines
+
+- ✅ All config settings use domain hooks
+- ✅ 100% persistence coverage (51/51 items)
+- ✅ useSettings hook removed (0 lines, down from 360)
+- ✅ All components updated to use specialized hooks
+- ✅ Context agent can access all 8 resource path settings
 
 ---
 
@@ -607,9 +743,9 @@ The backend `MessageHandler` will use semantic methods to group settings (Phase 
 
 **Full Migration Complete When**:
 - All settings use domain hooks (0 message-based) ✅
-- 100% persistence coverage (29/29 settings) ✅
+- 100% persistence coverage (51/51 items) ✅
 - Backend uses semantic methods (0 hardcoded lists) ✅
-- `useSettings` < 200 lines ✅
+- `useSettings` eliminated (0 lines, replaced by specialized hooks) ✅
 - Clear architectural guidelines documented ✅
 
 ### Testing Strategy
