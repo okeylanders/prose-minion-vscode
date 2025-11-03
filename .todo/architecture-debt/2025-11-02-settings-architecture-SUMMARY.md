@@ -13,6 +13,96 @@ Your extension has **three different patterns** for managing settings (domain ho
 
 ---
 
+## ELI5: What Are We Actually Changing?
+
+**TL;DR**: The hooks still use messages - we're just organizing the mail room better! 📬
+
+### The Message Bus Stays the Same
+
+**What's NOT changing:**
+- ✅ Still using `vscode.postMessage()` to send settings
+- ✅ Still using message events to receive settings
+- ✅ Backend still uses VSCode workspace config
+- ✅ Same messages: `UPDATE_SETTING`, `SETTINGS_DATA`
+
+**What IS changing:**
+- 📋 **Organization**: One receptionist (useMessageRouter) instead of everyone shouting in a room
+- 🗂️ **Routing**: Strategy pattern routes messages to the right department (hook)
+- 🔄 **Reusability**: Shared state via props instead of copy-paste
+- 💾 **Persistence**: Automatic composition instead of manual per component
+
+### Analogy: The Post Office
+
+**Before (Message-Based in Components)**:
+```
+📮 Post Office (vscode.postMessage)
+  ↓
+📬 Every component has its own mailbox
+📬 Every component reads all mail themselves
+📬 Mail gets lost when component unmounts
+📬 Copy-paste mailbox code everywhere
+```
+
+**After (Domain Hooks)**:
+```
+📮 Post Office (vscode.postMessage) ← Same postal service!
+  ↓
+📋 Receptionist (useMessageRouter) ← Routes to departments
+  ↓
+🗂️ Departments (hooks) ← Handle their domain's mail
+  ↓
+👥 Components ← Get mail via props
+```
+
+### Code Comparison
+
+**Messages are still sent the same way:**
+
+```typescript
+// Before (in component)
+vscode.postMessage({ type: UPDATE_SETTING, payload: { key: 'wordSearch.contextWords', value: 10 } });
+
+// After (in hook)
+vscode.postMessage({ type: UPDATE_SETTING, payload: { key: 'wordSearch.contextWords', value: 10 } });
+```
+
+**Messages are still received, just routed:**
+
+```typescript
+// Before (duplicate listener per component)
+useEffect(() => {
+  const handler = (event: MessageEvent) => {
+    if (event.data.type === SETTINGS_DATA) {
+      setSetting(event.data.payload.settings['key']);
+    }
+  };
+  window.addEventListener('message', handler);  // ⬅️ Duplicate listener
+  return () => window.removeEventListener('message', handler);
+}, []);
+
+// After (centralized routing)
+useMessageRouter({
+  [MessageType.SETTINGS_DATA]: wordSearch.handleSettingsData  // ⬅️ One router
+});
+```
+
+### What You Get
+
+**Same messages, better organization:**
+
+| Aspect | Message-Based (Now) | Hook-Based (Proposed) |
+|--------|---------------------|----------------------|
+| **Uses vscode.postMessage?** | ✅ Yes | ✅ Yes (same!) |
+| **Receives message events?** | ✅ Yes | ✅ Yes (same!) |
+| **Listener count** | ❌ Many (per component) | ✅ One (useMessageRouter) |
+| **State location** | ❌ Component local | ✅ Hook (shared) |
+| **Reusability** | ❌ Copy-paste | ✅ Props spread |
+| **Persistence** | ❌ Manual | ✅ Automatic |
+
+**Think of it like refactoring** - same functionality, cleaner code! The VSCode message bus is still the foundation.
+
+---
+
 ## Key Findings
 
 ### ❌ Frontend Issues (Webview)
