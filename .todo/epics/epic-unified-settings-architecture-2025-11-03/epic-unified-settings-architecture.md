@@ -141,16 +141,18 @@ Migrate all settings to Domain Hooks pattern, matching successful implementation
 **Sprint**: [04-domain-hooks-extraction.md](sprints/04-domain-hooks-extraction.md)
 
 **Scope**:
-- Create `useContextPathsSettings` hook
-- Create `useModelsSettings` hook
-- Create `useTokensSettings` hook
+- Create `useContextPathsSettings` hook (config)
+- Create `useModelsSettings` hook (config)
+- Create `useTokensSettings` hook (config - UI preference only)
+- Create `useTokenTracking` hook (state - ephemeral token usage)
 - Rename `usePublishing` → `usePublishingSettings`
 - Eliminate `useSettings` hook entirely
 
 **Deliverables**:
-- ✅ Focused, single-purpose settings hooks
+- ✅ Focused, single-purpose hooks (4 new + 1 renamed)
 - ✅ useSettings eliminated (replaced by specialized hooks)
-- ✅ Clear naming convention (all settings hooks end with "Settings")
+- ✅ Clear naming convention (all settings hooks end with "Settings", state hooks don't)
+- ✅ Token tracking separated from token UI preferences
 
 ---
 
@@ -362,11 +364,13 @@ Can proceed alongside other v1.0/v1.1 work. Phase 0 is independent and urgent.
 ## Code Locations
 
 ### Files to Create
-- `src/presentation/webview/hooks/domain/useWordSearch.ts` (Phase 0)
-- `src/presentation/webview/hooks/domain/useWordFrequency.ts` (Phase 2)
-- `src/presentation/webview/hooks/domain/useContextPaths.ts` (Phase 3)
-- `src/presentation/webview/hooks/domain/useModels.ts` (Phase 3)
-- `src/presentation/webview/hooks/domain/useTokens.ts` (Phase 3)
+
+- `src/presentation/webview/hooks/domain/useWordSearchSettings.ts` (Phase 0)
+- `src/presentation/webview/hooks/domain/useWordFrequencySettings.ts` (Phase 2)
+- `src/presentation/webview/hooks/domain/useContextPathsSettings.ts` (Phase 3)
+- `src/presentation/webview/hooks/domain/useModelsSettings.ts` (Phase 3)
+- `src/presentation/webview/hooks/domain/useTokensSettings.ts` (Phase 3 - config)
+- `src/presentation/webview/hooks/domain/useTokenTracking.ts` (Phase 3 - state)
 
 ### Files to Modify
 
@@ -391,8 +395,9 @@ Can proceed alongside other v1.0/v1.1 work. Phase 0 is independent and urgent.
 - New test files in `src/tests/`
 
 ### Reference Implementations
-- `src/presentation/webview/hooks/domain/usePublishing.ts` - Clean, focused example
-- `src/presentation/webview/hooks/domain/useSettings.ts` - Larger example (to be refactored)
+
+- `src/presentation/webview/hooks/domain/usePublishingSettings.ts` - Clean, focused example (renamed from usePublishing)
+- `src/presentation/webview/hooks/domain/useSettings.ts` - Larger example (to be eliminated in Phase 3)
 - `src/presentation/webview/hooks/useMessageRouter.ts` - Strategy pattern
 - `src/presentation/webview/hooks/usePersistence.ts` - State composition
 
