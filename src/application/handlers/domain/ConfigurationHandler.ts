@@ -113,6 +113,7 @@ export class ConfigurationHandler {
         'wordFrequency.includeTrigrams': config.get<boolean>('wordFrequency.includeTrigrams') ?? true,
         'wordFrequency.enableLemmas': config.get<boolean>('wordFrequency.enableLemmas') ?? false,
         'wordFrequency.lengthHistogramMaxChars': config.get<number>('wordFrequency.lengthHistogramMaxChars') ?? 10,
+        'wordFrequency.minCharacterLength': config.get<number>('wordFrequency.minCharacterLength') ?? 1,
         // Word Search
         'wordSearch.defaultTargets': config.get<string>('wordSearch.defaultTargets') ?? 'just',
         'wordSearch.contextWords': config.get<number>('wordSearch.contextWords') ?? 7,
