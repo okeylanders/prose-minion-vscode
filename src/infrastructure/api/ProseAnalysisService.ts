@@ -594,6 +594,7 @@ export class ProseAnalysisService implements IProseAnalysisService {
         includeTrigrams: config.get<boolean>('wordFrequency.includeTrigrams') ?? true,
         enableLemmas: config.get<boolean>('wordFrequency.enableLemmas') ?? false,
         lengthHistogramMaxChars: config.get<number>('wordFrequency.lengthHistogramMaxChars') ?? 10,
+        minCharacterLength: config.get<number>('wordFrequency.minCharacterLength') ?? 1,
       } as const;
 
       const frequency = this.wordFrequency.analyze({ text }, wfOptions);

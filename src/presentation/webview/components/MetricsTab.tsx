@@ -8,6 +8,7 @@ import { MessageType, TextSourceMode } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
 import { formatMetricsAsMarkdown } from '../utils/resultFormatter';
+import { WordLengthFilterTabs } from './WordLengthFilterTabs';
 // MessageType is already imported from shared/types re-export
 
 interface MetricsTabProps {
@@ -56,6 +57,8 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   const [genres, setGenres] = React.useState<Array<{ key: string; name: string; abbreviation: string; pageSizes: Array<{ key: string; label: string; width: number; height: number; common: boolean }> }>>([]);
   const [preset, setPreset] = React.useState<string>('none');
   const [pageSizeKey, setPageSizeKey] = React.useState<string>('');
+  // Word length filter state (synced with settings)
+  const [minCharLength, setMinCharLength] = React.useState<number>(1);
   // Sub-tool state (local only)
   // activeTool and wordSearchTargets persisted in App; defaults handled upstream
   // Word Search controls moved to SearchTab
@@ -68,10 +71,24 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
         setPreset(msg.preset || 'none');
         setPageSizeKey(msg.pageSizeKey || '');
       }
+      // Listen for settings updates to sync filter state
+      if (msg?.type === MessageType.SETTINGS_DATA) {
+        const settings = msg.payload?.settings || {};
+        if (settings['wordFrequency.minCharacterLength'] !== undefined) {
+          setMinCharLength(settings['wordFrequency.minCharacterLength']);
+        }
+      }
     };
     window.addEventListener('message', handler);
     vscode.postMessage({
       type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA,
+      source: 'webview.metrics.tab',
+      payload: {},
+      timestamp: Date.now()
+    });
+    // Request settings to get initial filter value
+    vscode.postMessage({
+      type: MessageType.REQUEST_SETTINGS_DATA,
       source: 'webview.metrics.tab',
       payload: {},
       timestamp: Date.now()
@@ -95,6 +112,19 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
       type: MessageType.SET_PUBLISHING_TRIM_SIZE,
       source: 'webview.metrics.tab',
       payload: { pageSizeKey: value },
+      timestamp: Date.now()
+    });
+  };
+
+  const handleFilterChange = (minLength: number) => {
+    setMinCharLength(minLength);
+    vscode.postMessage({
+      type: MessageType.UPDATE_SETTING,
+      source: 'webview.metrics.tab',
+      payload: {
+        key: 'wordFrequency.minCharacterLength',
+        value: minLength
+      },
       timestamp: Date.now()
     });
   };
@@ -372,6 +402,15 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
           </>
         )}
       </div>
+
+      {/* Word Length Filter: only for Word Frequency view */}
+      {activeTool === 'word_frequency' && (
+        <WordLengthFilterTabs
+          activeFilter={minCharLength}
+          onFilterChange={handleFilterChange}
+          disabled={isLoading}
+        />
+      )}
 
       {/* Explicit Generate buttons per sub-tool */}
       <div className="button-group">
