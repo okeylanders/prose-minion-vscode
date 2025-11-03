@@ -227,9 +227,6 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
     markdown += '- **Readability Score**: Simplified Flesch Reading Ease (0–100, higher is easier).\n';
     markdown += '- **Readability Grade (FKGL)**: Flesch–Kincaid Grade Level (approximate grade).\n';
     markdown += '\n';
-
-    // Detailed metrics guide at the very bottom
-    markdown += buildMetricsLegend();
   }
 
   // Publishing Standards Comparison
@@ -555,9 +552,6 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
       }
       markdown += '\n\n';
     }
-
-    // Append metrics legend
-    markdown += buildMetricsLegend();
   }
 
   // Handle legacy word frequency format
@@ -573,6 +567,33 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
     });
     markdown += '\n';
   }
+
+  // Handle any other properties that weren't specifically handled
+  const handledKeys = ['flags', 'summary', 'wordCount', 'sentenceCount', 'paragraphCount',
+                       'averageWordsPerSentence', 'averageSentencesPerParagraph',
+                       'readingTime', 'readingTimeMinutes', 'readingTimeHours', 'pacing', 'dialoguePercentage', 'lexicalDensity', 'vocabularyDiversity', 'readabilityScore', 'readabilityGrade', 'uniqueWordCount', 'stopwordRatio', 'hapaxPercent', 'hapaxCount', 'typeTokenRatio',
+                       'frequencies', 'topWords', 'totalWords', 'uniqueWords',
+                       'topVerbs', 'topAdjectives', 'topNouns', 'topAdverbs',
+                       'topStopwords', 'totalStopwordCount', 'hapaxList', 'pos', 'bigrams', 'trigrams', 'charLengthCounts', 'charLengthPercentages', 'charLengthHistogram', 'lemmasEnabled', 'topLemmaWords',
+                       'comparison', 'publishingFormat', 'chapterCount', 'averageChapterLength', 'wordLengthDistribution', 'perChapterStats'];
+
+  const otherKeys = Object.keys(metrics).filter(key => !handledKeys.includes(key));
+
+  if (otherKeys.length > 0) {
+    markdown += '# 📋 Additional Metrics\n\n';
+    markdown += '---\n\n';
+    otherKeys.forEach(key => {
+      const value = metrics[key];
+      if (typeof value === 'object' && value !== null) {
+        markdown += `**${key}:**\n\`\`\`json\n${JSON.stringify(value, null, 2)}\n\`\`\`\n\n`;
+      } else {
+        markdown += `**${key}:** ${value}\n\n`;
+      }
+    });
+  }
+
+  // Append detailed metrics guide at the very end (after all sections)
+  markdown += buildMetricsLegend();
 
   return markdown || '# 📊 Metrics\n\nNo metrics data available.';
 }
