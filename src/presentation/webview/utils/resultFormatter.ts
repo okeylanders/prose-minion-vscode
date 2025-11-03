@@ -213,7 +213,22 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
 
     markdown += '\n';
 
-    // Append metrics legend
+    // Simple legend for basic metrics
+    markdown += '### Legend\n\n';
+    markdown += '- **Word Count**: Total tokens split by whitespace.\n';
+    markdown += '- **Sentence Count**: Heuristic split on . ! ?\n';
+    markdown += '- **Paragraph Count**: Blocks split by blank lines.\n';
+    markdown += '- **Avg Words per Sentence**: Average words per sentence.\n';
+    markdown += '- **Avg Sentences per Paragraph**: Average sentences per paragraph.\n';
+    markdown += '- **Dialogue Percentage**: % of tokens inside quotes.\n';
+    markdown += '- **Stopword Ratio**: % tokens in a common English stopword list.\n';
+    markdown += '- **Hapax %**: % tokens occurring exactly once; Hapax Count is absolute count.\n';
+    markdown += '- **Type-Token Ratio**: Unique/total tokens × 100.\n';
+    markdown += '- **Readability Score**: Simplified Flesch Reading Ease (0–100, higher is easier).\n';
+    markdown += '- **Readability Grade (FKGL)**: Flesch–Kincaid Grade Level (approximate grade).\n';
+    markdown += '\n';
+
+    // Detailed metrics guide at the very bottom
     markdown += buildMetricsLegend();
   }
 
@@ -557,30 +572,6 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
       markdown += `| ${rank} | \`${freq.word}\` | ${freq.count} |\n`;
     });
     markdown += '\n';
-  }
-
-  // Handle any other properties that weren't specifically handled
-  const handledKeys = ['flags', 'summary', 'wordCount', 'sentenceCount', 'paragraphCount',
-                       'averageWordsPerSentence', 'averageSentencesPerParagraph',
-                       'readingTime', 'readingTimeMinutes', 'readingTimeHours', 'pacing', 'dialoguePercentage', 'lexicalDensity', 'readabilityScore', 'readabilityGrade', 'uniqueWordCount', 'stopwordRatio', 'hapaxPercent', 'hapaxCount', 'typeTokenRatio',
-                       'frequencies', 'topWords', 'totalWords', 'uniqueWords',
-                       'topVerbs', 'topAdjectives', 'topNouns', 'topAdverbs',
-                       'topStopwords', 'totalStopwordCount', 'hapaxList', 'pos', 'bigrams', 'trigrams', 'charLengthCounts', 'charLengthPercentages', 'charLengthHistogram', 'lemmasEnabled', 'topLemmaWords',
-                       'comparison', 'publishingFormat', 'chapterCount', 'averageChapterLength', 'wordLengthDistribution', 'perChapterStats'];
-
-  const otherKeys = Object.keys(metrics).filter(key => !handledKeys.includes(key));
-
-  if (otherKeys.length > 0) {
-    markdown += '# 📋 Additional Metrics\n\n';
-    markdown += '---\n\n';
-    otherKeys.forEach(key => {
-      const value = metrics[key];
-      if (typeof value === 'object' && value !== null) {
-        markdown += `**${key}:**\n\`\`\`json\n${JSON.stringify(value, null, 2)}\n\`\`\`\n\n`;
-      } else {
-        markdown += `**${key}:** ${value}\n\n`;
-      }
-    });
   }
 
   return markdown || '# 📊 Metrics\n\nNo metrics data available.';
