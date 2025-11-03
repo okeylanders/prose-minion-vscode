@@ -41,6 +41,8 @@ export interface NGramEntry {
   // Stopwords
   topStopwords?: WordFrequencyEntry[];
   totalStopwordCount?: number;
+  // Lexical Density
+  lexicalDensity?: number; // percent 0–100 (content words / total words)
   // Hapax
   hapaxCount?: number;
   hapaxPercent?: number;
@@ -110,6 +112,11 @@ export class WordFrequency {
       totalStopwordCount = stopEntries.reduce((acc, [, c]) => acc + c, 0);
       topStopwords = this.formatTop(stopEntries, totalWords, Math.min(25, stopEntries.length));
     }
+
+    // Lexical Density (content words / total words × 100)
+    const lexicalDensity = totalWords > 0 && totalStopwordCount !== undefined
+      ? ((totalWords - totalStopwordCount) / totalWords) * 100
+      : undefined;
 
     // Hapax (filter word pool first, then identify hapax from filtered set)
     let hapaxCount = 0;
@@ -218,6 +225,7 @@ export class WordFrequency {
       topWords,
       topStopwords,
       totalStopwordCount,
+      lexicalDensity: lexicalDensity !== undefined ? Math.round(lexicalDensity * 10) / 10 : undefined,
       hapaxCount,
       hapaxPercent: Math.round(hapaxPercent * 10) / 10,
       hapaxList,

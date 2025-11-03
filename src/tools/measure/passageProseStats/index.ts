@@ -31,6 +31,7 @@ export interface ProseStatsOutput {
   hapaxPercent?: number;  // percent 0–100
   hapaxCount?: number;    // absolute count of words appearing once
   typeTokenRatio?: number; // percent 0–100
+  vocabularyDiversity?: number; // percent 0–100 (same as TTR, but more intuitive name)
   readabilityGrade?: number;
 }
 
@@ -81,6 +82,7 @@ export class PassageProseStats {
       hapaxPercent: Math.round(hapaxPercent * 10) / 10,
       hapaxCount,
       typeTokenRatio: Math.round(typeTokenRatio * 10) / 10,
+      vocabularyDiversity: Math.round(typeTokenRatio * 10) / 10, // Same as TTR with more intuitive name
       readabilityGrade: readabilityGrade !== undefined ? Math.round(readabilityGrade * 10) / 10 : undefined
     };
   }

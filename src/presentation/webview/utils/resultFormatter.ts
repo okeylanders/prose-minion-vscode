@@ -17,6 +17,49 @@ interface MetricsData {
 }
 
 /**
+ * Builds a metrics legend explaining Vocabulary Diversity and Lexical Density
+ */
+function buildMetricsLegend(): string {
+  return `---
+
+## 📖 Metrics Guide
+
+### 🌈 Vocabulary Diversity
+
+**Formula:** (Unique Words / Total Words) × 100
+
+**What it measures:** Word repetition rate. Higher diversity means more varied vocabulary with fewer repeated words.
+
+**Typical ranges:**
+- **Short passages** (< 1,000 words): 30-60% — High diversity expected with minimal repetition
+- **Medium passages** (1,000-10,000 words): 15-30% — Natural repetition emerges across scenes/chapters
+- **Long works** (10,000+ words): 5-15% — Function words and key terms naturally repeat across the narrative
+
+**Interpretation:**
+- **Higher diversity:** More varied vocabulary, potentially more descriptive or technical
+- **Lower diversity:** More repetition, potentially more focused or conversational
+- **Natural variation:** Dialogue tends to have lower diversity than narrative prose
+
+### 🎨 Lexical Density
+
+**Formula:** (Content Words / Total Words) × 100
+
+**What it measures:** Information richness. Content words (nouns, verbs, adjectives, adverbs) carry meaning, while function words (articles, prepositions, conjunctions) provide grammatical structure.
+
+**Typical ranges:**
+- **Conversation/Dialogue**: 40-50% — Natural speech uses more function words
+- **Fiction Narrative**: 50-60% — Balanced blend of description and flow
+- **Academic/Technical**: 60-80% — Dense with information-carrying words
+
+**Interpretation:**
+- **Higher density:** More information-packed, potentially more formal or descriptive
+- **Lower density:** More conversational flow, easier to read, more dialogue-heavy
+- **Natural variation:** Action scenes often have lower density, while descriptive passages have higher density
+
+`;
+}
+
+/**
  * Converts metrics JSON data to formatted markdown
  */
 export function formatMetricsAsMarkdown(metrics: MetricsData): string {
@@ -146,6 +189,7 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
       { key: 'pacing', label: '🎯 Pacing', format: (v: any) => v },
       { key: 'dialoguePercentage', label: '💬 Dialogue Percentage', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
       { key: 'lexicalDensity', label: '🎨 Lexical Density', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
+      { key: 'vocabularyDiversity', label: '🌈 Vocabulary Diversity', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
       { key: 'stopwordRatio', label: '🧹 Stopword Ratio', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
       { key: 'hapaxPercent', label: '🌱 Hapax %', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
       { key: 'hapaxCount', label: '🌱 Hapax Count', format: (v: any) => v?.toLocaleString?.() ?? v },
@@ -168,6 +212,9 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
     });
 
     markdown += '\n';
+
+    // Append metrics legend
+    markdown += buildMetricsLegend();
   }
 
   // Publishing Standards Comparison
@@ -301,6 +348,9 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
       if (metrics.totalWords && metrics.uniqueWords) {
         const diversity = ((metrics.uniqueWords / metrics.totalWords) * 100).toFixed(1);
         markdown += `| 🌈 Vocabulary Diversity | **${diversity}%** |\n`;
+      }
+      if (metrics.lexicalDensity !== undefined) {
+        markdown += `| 🎨 Lexical Density | **${typeof metrics.lexicalDensity === 'number' ? metrics.lexicalDensity.toFixed(1) : metrics.lexicalDensity}%** |\n`;
       }
       markdown += '\n';
     }
@@ -490,6 +540,9 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
       }
       markdown += '\n\n';
     }
+
+    // Append metrics legend
+    markdown += buildMetricsLegend();
   }
 
   // Handle legacy word frequency format
