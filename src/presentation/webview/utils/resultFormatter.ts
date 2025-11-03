@@ -305,6 +305,29 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
       markdown += '\n';
     }
 
+    // Word Length Distribution Histogram (moved before Top Words for better context)
+    if ((metrics.charLengthHistogram && metrics.charLengthHistogram.length > 0) || metrics.charLengthPercentages) {
+      markdown += '## 📏 Word Length Distribution\n\n';
+      if (metrics.charLengthHistogram && metrics.charLengthHistogram.length > 0) {
+        metrics.charLengthHistogram.forEach((line: string) => {
+          markdown += `${line}\n`;
+        });
+        markdown += '\n';
+      } else if (metrics.charLengthPercentages) {
+        // Build simple bars if only percentages were provided
+        const entries = Object.entries(metrics.charLengthPercentages).map(([k, v]) => [Number(k), Number(v)]) as Array<[number, number]>;
+        entries.sort((a, b) => a[0] - b[0]);
+        const max = Math.max(...entries.map(([, v]) => v));
+        const maxBlocks = 10;
+        entries.forEach(([k, v]) => {
+          const blocks = max > 0 ? Math.max(1, Math.round((v / max) * maxBlocks)) : 0;
+          const bar = '█'.repeat(blocks);
+          markdown += `${k} chars: ${bar} ${v.toFixed(1)}%\n`;
+        });
+        markdown += '\n';
+      }
+    }
+
     // Top Words
     if (metrics.topWords && Array.isArray(metrics.topWords) && metrics.topWords.length > 0) {
       markdown += '## 🏆 Top Words\n\n';
@@ -425,29 +448,6 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
         const rank = index + 1;
         const percentage = item.percentage !== undefined ? `${item.percentage}%` : '-';
         markdown += `| ${rank} | \`${item.word}\` | ${item.count} | ${percentage} |\n`;
-        });
-        markdown += '\n';
-      }
-    }
-
-    // Word Length Distribution Histogram
-    if ((metrics.charLengthHistogram && metrics.charLengthHistogram.length > 0) || metrics.charLengthPercentages) {
-      markdown += '## 📏 Word Length Distribution\n\n';
-      if (metrics.charLengthHistogram && metrics.charLengthHistogram.length > 0) {
-        metrics.charLengthHistogram.forEach((line: string) => {
-          markdown += `${line}\n`;
-        });
-        markdown += '\n';
-      } else if (metrics.charLengthPercentages) {
-        // Build simple bars if only percentages were provided
-        const entries = Object.entries(metrics.charLengthPercentages).map(([k, v]) => [Number(k), Number(v)]) as Array<[number, number]>;
-        entries.sort((a, b) => a[0] - b[0]);
-        const max = Math.max(...entries.map(([, v]) => v));
-        const maxBlocks = 10;
-        entries.forEach(([k, v]) => {
-          const blocks = max > 0 ? Math.max(1, Math.round((v / max) * maxBlocks)) : 0;
-          const bar = '█'.repeat(blocks);
-          markdown += `${k} chars: ${bar} ${v.toFixed(1)}%\n`;
         });
         markdown += '\n';
       }

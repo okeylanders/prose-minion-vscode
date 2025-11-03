@@ -377,10 +377,13 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             <option value="4">4+ characters</option>
             <option value="5">5+ characters</option>
             <option value="6">6+ characters</option>
+            <option value="7">7+ characters (complex words)</option>
+            <option value="8">8+ characters (advanced vocabulary)</option>
+            <option value="9">9+ characters (rare/specialized)</option>
           </select>
           <div className="settings-description">
             Filter word frequency by minimum character count. Higher values focus on longer,
-            more distinctive words (3+ removes "it", "is"; 5+ shows multi-syllable words).
+            more distinctive words (3+ removes "it", "is"; 5+ shows multi-syllable words; 7+ = complex; 9+ = rare).
           </div>
         </label>
       </section>
