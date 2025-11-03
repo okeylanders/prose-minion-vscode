@@ -462,11 +462,18 @@
           "description": "Maximum token length to show in the Word Length Distribution histogram.",
           "order": 28
         },
+        "proseMinion.wordFrequency.minCharacterLength": {
+          "type": "number",
+          "default": 1,
+          "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+          "markdownDescription": "Minimum character length for words in Word Frequency results. Filter helps identify longer, more distinctive word patterns by excluding short common words. **1+** = all words, **3+** = excludes 'it', 'is', 'an', **5+** = multi-syllable words, **6+** = distinctive vocabulary, **7+** = complex words, **8+** = advanced vocabulary, **9+** = rare/specialized words. Applied to Top Words, POS, Bigrams/Trigrams, Hapax List, and Lemmas. Does NOT filter Stop Words or Length Histogram.",
+          "order": 29
+        },
         "proseMinion.wordSearch.defaultTargets": {
           "type": "string",
           "default": "just",
           "description": "Default targets for Word Search (comma or newline separated).",
-          "order": 29
+          "order": 30
         },
         "proseMinion.wordSearch.contextWords": {
           "type": "number",

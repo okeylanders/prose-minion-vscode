@@ -8,6 +8,7 @@ import { MessageType, TextSourceMode } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
 import { formatMetricsAsMarkdown } from '../utils/resultFormatter';
+import { WordLengthFilterTabs } from './WordLengthFilterTabs';
 // MessageType is already imported from shared/types re-export
 
 interface MetricsTabProps {
@@ -25,6 +26,12 @@ interface MetricsTabProps {
   onRequestActiveFile: () => void;
   onRequestManuscriptGlobs: () => void;
   onRequestChapterGlobs: () => void;
+  // Publishing standards props (from usePublishing hook)
+  publishingPreset: string;
+  publishingTrimKey: string;
+  publishingGenres: Array<{ key: string; name: string; abbreviation: string; pageSizes: Array<{ key: string; label: string; width: number; height: number; common: boolean }> }>;
+  onPublishingPresetChange: (preset: string) => void;
+  onPublishingTrimChange: (pageSizeKey: string) => void;
 }
 
 export const MetricsTab: React.FC<MetricsTabProps> = ({
@@ -41,7 +48,12 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   onClearSubtoolResult,
   onRequestActiveFile,
   onRequestManuscriptGlobs,
-  onRequestChapterGlobs
+  onRequestChapterGlobs,
+  publishingPreset,
+  publishingTrimKey,
+  publishingGenres,
+  onPublishingPresetChange,
+  onPublishingTrimChange
 }) => {
   // Keep a local mirror only for selection preview if needed in future.
 
@@ -52,10 +64,8 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
       : { mode: sourceMode, pathText };
   }, [sourceMode, pathText]);
 
-  // Publishing standards UI state
-  const [genres, setGenres] = React.useState<Array<{ key: string; name: string; abbreviation: string; pageSizes: Array<{ key: string; label: string; width: number; height: number; common: boolean }> }>>([]);
-  const [preset, setPreset] = React.useState<string>('none');
-  const [pageSizeKey, setPageSizeKey] = React.useState<string>('');
+  // Word length filter state (synced with settings)
+  const [minCharLength, setMinCharLength] = React.useState<number>(1);
   // Sub-tool state (local only)
   // activeTool and wordSearchTargets persisted in App; defaults handled upstream
   // Word Search controls moved to SearchTab
@@ -63,15 +73,18 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   React.useEffect(() => {
     const handler = (event: MessageEvent) => {
       const msg = event.data;
-      if (msg?.type === MessageType.PUBLISHING_STANDARDS_DATA) {
-        setGenres(msg.genres || []);
-        setPreset(msg.preset || 'none');
-        setPageSizeKey(msg.pageSizeKey || '');
+      // Listen for settings updates to sync filter state
+      if (msg?.type === MessageType.SETTINGS_DATA) {
+        const settings = msg.payload?.settings || {};
+        if (settings['wordFrequency.minCharacterLength'] !== undefined) {
+          setMinCharLength(settings['wordFrequency.minCharacterLength']);
+        }
       }
     };
     window.addEventListener('message', handler);
+    // Request settings to get initial filter value
     vscode.postMessage({
-      type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA,
+      type: MessageType.REQUEST_SETTINGS_DATA,
       source: 'webview.metrics.tab',
       payload: {},
       timestamp: Date.now()
@@ -80,21 +93,22 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   }, [vscode]);
 
   const handlePresetChange = (value: string) => {
-    setPreset(value);
-    vscode.postMessage({
-      type: MessageType.SET_PUBLISHING_PRESET,
-      source: 'webview.metrics.tab',
-      payload: { preset: value },
-      timestamp: Date.now()
-    });
+    onPublishingPresetChange(value);
   };
 
   const handleTrimChange = (value: string) => {
-    setPageSizeKey(value);
+    onPublishingTrimChange(value);
+  };
+
+  const handleFilterChange = (minLength: number) => {
+    setMinCharLength(minLength);
     vscode.postMessage({
-      type: MessageType.SET_PUBLISHING_TRIM_SIZE,
+      type: MessageType.UPDATE_SETTING,
       source: 'webview.metrics.tab',
-      payload: { pageSizeKey: value },
+      payload: {
+        key: 'wordFrequency.minCharacterLength',
+        value: minLength
+      },
       timestamp: Date.now()
     });
   };
@@ -338,7 +352,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
               <select
                 id="pm-preset-select"
                 className="w-1/2"
-                value={preset}
+                value={publishingPreset}
                 onChange={(e) => handlePresetChange(e.target.value)}
                 title="Select a genre preset or manuscript format to compare metrics against publishing ranges"
                 disabled={isLoading}
@@ -346,7 +360,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
                 <option value="none">None</option>
                 <option value="manuscript">Manuscript Format</option>
                 <optgroup label="Genres">
-                  {genres.map(g => (
+                  {publishingGenres.map(g => (
                     <option key={g.key} value={`genre:${g.key}`}>{g.name} ({g.abbreviation})</option>
                   ))}
                 </optgroup>
@@ -355,14 +369,14 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
               <select
                 id="pm-trim-select"
                 className="w-1/2"
-                value={pageSizeKey}
+                value={publishingTrimKey}
                 onChange={(e) => handleTrimChange(e.target.value)}
                 title="Choose a trim size to estimate page count and words-per-page"
-                disabled={isLoading || !preset.startsWith('genre:')}
+                disabled={isLoading || !publishingPreset.startsWith('genre:')}
               >
                 <option value="">Auto (common size)</option>
-                {(preset.startsWith('genre:')
-                  ? (genres.find(g => `genre:${g.key}` === preset)?.pageSizes || [])
+                {(publishingPreset.startsWith('genre:')
+                  ? (publishingGenres.find(g => `genre:${g.key}` === publishingPreset)?.pageSizes || [])
                   : []
                 ).map(ps => (
                   <option key={ps.key} value={ps.key}>{ps.label} ({ps.width}x{ps.height} in)</option>
@@ -372,6 +386,15 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
           </>
         )}
       </div>
+
+      {/* Word Length Filter: only for Word Frequency view */}
+      {activeTool === 'word_frequency' && (
+        <WordLengthFilterTabs
+          activeFilter={minCharLength}
+          onFilterChange={handleFilterChange}
+          disabled={isLoading}
+        />
+      )}
 
       {/* Explicit Generate buttons per sub-tool */}
       <div className="button-group">

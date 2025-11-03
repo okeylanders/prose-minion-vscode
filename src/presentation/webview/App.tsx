@@ -330,6 +330,11 @@ export const App: React.FC = () => {
                 timestamp: Date.now()
               });
             }}
+            publishingPreset={publishing.publishingPreset}
+            publishingTrimKey={publishing.publishingTrimKey}
+            publishingGenres={publishing.publishingGenres}
+            onPublishingPresetChange={publishing.setPublishingPreset}
+            onPublishingTrimChange={publishing.setPublishingTrim}
           />
         )}
 

@@ -18,6 +18,7 @@ export interface WordFrequencyOptions {
   includeTrigrams?: boolean; // default true
   enableLemmas?: boolean; // default false (placeholder only)
   lengthHistogramMaxChars?: number; // default 10
+  minCharacterLength?: number; // default 1 (filter words by minimum character count)
 }
 
 export interface WordFrequencyEntry {
@@ -40,6 +41,8 @@ export interface NGramEntry {
   // Stopwords
   topStopwords?: WordFrequencyEntry[];
   totalStopwordCount?: number;
+  // Lexical Density
+  lexicalDensity?: number; // percent 0–100 (content words / total words)
   // Hapax
   hapaxCount?: number;
   hapaxPercent?: number;
@@ -81,7 +84,8 @@ export class WordFrequency {
       includeBigrams: options?.includeBigrams ?? true,
       includeTrigrams: options?.includeTrigrams ?? true,
       enableLemmas: options?.enableLemmas ?? false,
-      lengthHistogramMaxChars: options?.lengthHistogramMaxChars ?? 10
+      lengthHistogramMaxChars: options?.lengthHistogramMaxChars ?? 10,
+      minCharacterLength: options?.minCharacterLength ?? 1
     };
 
     const text = input.text.toLowerCase();
@@ -95,8 +99,10 @@ export class WordFrequency {
     const contentEntries = opts.contentWordsOnly
       ? entries.filter(([w]) => !this.stopwords.has(w))
       : entries;
-    contentEntries.sort((a, b) => b[1] - a[1]);
-    const topWords = this.formatTop(contentEntries, totalWords, opts.topN);
+    // FILTER FIRST (before sorting/limiting)
+    const filteredContent = contentEntries.filter(([w]) => w.length >= opts.minCharacterLength);
+    filteredContent.sort((a, b) => b[1] - a[1]);
+    const topWords = this.formatTop(filteredContent, totalWords, opts.topN);
 
     // Stopwords table
     let topStopwords: WordFrequencyEntry[] | undefined;
@@ -107,10 +113,20 @@ export class WordFrequency {
       topStopwords = this.formatTop(stopEntries, totalWords, Math.min(25, stopEntries.length));
     }
 
-    // Hapax
+    // Lexical Density (content words / total words × 100)
+    const lexicalDensity = totalWords > 0 && totalStopwordCount !== undefined
+      ? ((totalWords - totalStopwordCount) / totalWords) * 100
+      : undefined;
+
+    // Hapax (filter word pool first, then identify hapax from filtered set)
     let hapaxCount = 0;
     const hapaxListAll: string[] = [];
-    for (const [w, c] of wordCounts.entries()) if (c === 1) { hapaxCount++; hapaxListAll.push(w); }
+    for (const [w, c] of wordCounts.entries()) {
+      if (c === 1 && w.length >= opts.minCharacterLength) {
+        hapaxCount++;
+        hapaxListAll.push(w);
+      }
+    }
     hapaxListAll.sort();
     const hapaxPercent = totalWords > 0 ? (hapaxCount / totalWords) * 100 : 0;
     const hapaxList = opts.includeHapaxList ? hapaxListAll : undefined;
@@ -158,10 +174,16 @@ export class WordFrequency {
           else if (advTags.has(posTag)) advCounts.set(w, (advCounts.get(w) || 0) + 1);
         }
 
-        const nouns = this.formatTop(Array.from(nounCounts.entries()).sort((a, b) => b[1] - a[1]), totalWords, 25);
-        const verbs = this.formatTop(Array.from(verbCounts.entries()).sort((a, b) => b[1] - a[1]), totalWords, 25);
-        const adjs = this.formatTop(Array.from(adjCounts.entries()).sort((a, b) => b[1] - a[1]), totalWords, 25);
-        const advs = this.formatTop(Array.from(advCounts.entries()).sort((a, b) => b[1] - a[1]), totalWords, 25);
+        // Filter each POS category before sorting/limiting
+        const filterAndSort = (counts: Map<string, number>) => {
+          return Array.from(counts.entries())
+            .filter(([w]) => w.length >= opts.minCharacterLength)
+            .sort((a, b) => b[1] - a[1]);
+        };
+        const nouns = this.formatTop(filterAndSort(nounCounts), totalWords, 25);
+        const verbs = this.formatTop(filterAndSort(verbCounts), totalWords, 25);
+        const adjs = this.formatTop(filterAndSort(adjCounts), totalWords, 25);
+        const advs = this.formatTop(filterAndSort(advCounts), totalWords, 25);
         pos = { mode: 'tagger', topNouns: nouns, topVerbs: verbs, topAdjectives: adjs, topAdverbs: advs };
       } catch (e: any) {
         const msg = e instanceof Error ? `${e.message}\n${e.stack ?? ''}` : String(e);
@@ -180,18 +202,21 @@ export class WordFrequency {
         const lemma = this.lemmatize(w);
         lemmaCounts.set(lemma, (lemmaCounts.get(lemma) || 0) + c);
       }
-      const lemmaEntries = Array.from(lemmaCounts.entries()).sort((a, b) => b[1] - a[1]);
+      // Filter before sorting/limiting
+      const lemmaEntries = Array.from(lemmaCounts.entries())
+        .filter(([lemma]) => lemma.length >= opts.minCharacterLength)
+        .sort((a, b) => b[1] - a[1]);
       topLemmaWords = this.formatTop(lemmaEntries, totalWords, opts.topN);
     }
 
-    // N-grams
+    // N-grams (filter by ALL component word lengths)
     let bigrams: NGramEntry[] | undefined;
     let trigrams: NGramEntry[] | undefined;
     if (opts.includeBigrams) {
-      bigrams = this.computeNGrams(words, 2, totalWords, 20);
+      bigrams = this.computeNGrams(words, 2, totalWords, 20, opts.minCharacterLength);
     }
     if (opts.includeTrigrams) {
-      trigrams = this.computeNGrams(words, 3, totalWords, 20);
+      trigrams = this.computeNGrams(words, 3, totalWords, 20, opts.minCharacterLength);
     }
 
     return {
@@ -200,6 +225,7 @@ export class WordFrequency {
       topWords,
       topStopwords,
       totalStopwordCount,
+      lexicalDensity: lexicalDensity !== undefined ? Math.round(lexicalDensity * 10) / 10 : undefined,
       hapaxCount,
       hapaxPercent: Math.round(hapaxPercent * 10) / 10,
       hapaxList,
@@ -216,8 +242,10 @@ export class WordFrequency {
 
   private extractWords(text: string): string[] {
     return text
+      .replace(/[—–]/g, ' ')  // Convert em-dash and en-dash to space first
       .split(/\s+/)
-      .map(word => word.replace(/[^a-z']/g, ''))
+      .map(word => word.replace(/[^a-z'-]/g, ''))  // Keep hyphens and apostrophes
+      .map(word => word.replace(/^'+|'+$/g, ''))   // Trim leading/trailing apostrophes
       .filter(word => word.length > 0);
   }
 
@@ -239,11 +267,15 @@ export class WordFrequency {
     }));
   }
 
-  private computeNGrams(tokens: string[], n: number, totalWords: number, limit: number): NGramEntry[] {
+  private computeNGrams(tokens: string[], n: number, totalWords: number, limit: number, minCharLength: number = 1): NGramEntry[] {
     const counts = new Map<string, number>();
     for (let i = 0; i <= tokens.length - n; i++) {
-      const phrase = tokens.slice(i, i + n).join(' ');
-      counts.set(phrase, (counts.get(phrase) || 0) + 1);
+      const words = tokens.slice(i, i + n);
+      // Filter: ALL component words must meet minimum character length
+      if (words.every(w => w.length >= minCharLength)) {
+        const phrase = words.join(' ');
+        counts.set(phrase, (counts.get(phrase) || 0) + 1);
+      }
     }
     const entries = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, limit);
     return entries.map(([phrase, count]) => ({ phrase, count, percentage: totalWords > 0 ? Math.round((count / totalWords) * 1000) / 10 : 0 }));

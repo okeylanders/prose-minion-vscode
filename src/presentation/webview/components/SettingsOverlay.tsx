@@ -363,6 +363,29 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             Maximum word length shown in the histogram. Words longer than this are grouped into a final "N+" bucket.
           </div>
         </label>
+
+        <label className="settings-label">
+          <div className="settings-label-title">Minimum Word Length</div>
+          <select
+            value={asNumber('wordFrequency.minCharacterLength')}
+            onChange={(e) => onUpdate('wordFrequency.minCharacterLength', Number(e.target.value))}
+            className="settings-select"
+          >
+            <option value="1">1+ characters (all words)</option>
+            <option value="2">2+ characters</option>
+            <option value="3">3+ characters</option>
+            <option value="4">4+ characters</option>
+            <option value="5">5+ characters</option>
+            <option value="6">6+ characters</option>
+            <option value="7">7+ characters (complex words)</option>
+            <option value="8">8+ characters (advanced vocabulary)</option>
+            <option value="9">9+ characters (rare/specialized)</option>
+          </select>
+          <div className="settings-description">
+            Filter word frequency by minimum character count. Higher values focus on longer,
+            more distinctive words (3+ removes "it", "is"; 5+ shows multi-syllable words; 7+ = complex; 9+ = rare).
+          </div>
+        </label>
       </section>
 
       {/* Word Search */}

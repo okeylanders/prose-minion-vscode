@@ -17,6 +17,64 @@ interface MetricsData {
 }
 
 /**
+ * Builds unified metrics legend with both simple definitions and detailed explanations
+ * Used at the bottom of both Prose Stats and Word Frequency outputs
+ */
+function buildMetricsLegend(): string {
+  return `---
+
+## 📖 Metrics Guide
+
+### Legend
+
+- **Word Count**: Total tokens split by whitespace.
+- **Sentence Count**: Heuristic split on . ! ?
+- **Paragraph Count**: Blocks split by blank lines.
+- **Avg Words per Sentence**: Average words per sentence.
+- **Avg Sentences per Paragraph**: Average sentences per paragraph.
+- **Dialogue Percentage**: % of tokens inside quotes.
+- **Stopword Ratio**: % tokens in a common English stopword list.
+- **Hapax %**: % tokens occurring exactly once; Hapax Count is absolute count.
+- **Type-Token Ratio**: Unique/total tokens × 100.
+- **Readability Score**: Simplified Flesch Reading Ease (0–100, higher is easier).
+- **Readability Grade (FKGL)**: Flesch–Kincaid Grade Level (approximate grade).
+
+### 🌈 Vocabulary Diversity
+
+**Formula:** (Unique Words / Total Words) × 100
+
+**What it measures:** Word repetition rate. Higher diversity means more varied vocabulary with fewer repeated words.
+
+**Typical ranges:**
+- **Short passages** (< 1,000 words): 30-60% — High diversity expected with minimal repetition
+- **Medium passages** (1,000-10,000 words): 15-30% — Natural repetition emerges across scenes/chapters
+- **Long works** (10,000+ words): 5-15% — Function words and key terms naturally repeat across the narrative
+
+**Interpretation:**
+- **Higher diversity:** More varied vocabulary, potentially more descriptive or technical
+- **Lower diversity:** More repetition, potentially more focused or conversational
+- **Natural variation:** Dialogue tends to have lower diversity than narrative prose
+
+### 🎨 Lexical Density
+
+**Formula:** (Content Words / Total Words) × 100
+
+**What it measures:** Information richness. Content words (nouns, verbs, adjectives, adverbs) carry meaning, while function words (articles, prepositions, conjunctions) provide grammatical structure.
+
+**Typical ranges:**
+- **Conversation/Dialogue**: 40-50% — Natural speech uses more function words
+- **Fiction Narrative**: 50-60% — Balanced blend of description and flow
+- **Academic/Technical**: 60-80% — Dense with information-carrying words
+
+**Interpretation:**
+- **Higher density:** More information-packed, potentially more formal or descriptive
+- **Lower density:** More conversational flow, easier to read, more dialogue-heavy
+- **Natural variation:** Action scenes often have lower density, while descriptive passages have higher density
+
+`;
+}
+
+/**
  * Converts metrics JSON data to formatted markdown
  */
 export function formatMetricsAsMarkdown(metrics: MetricsData): string {
@@ -146,6 +204,7 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
       { key: 'pacing', label: '🎯 Pacing', format: (v: any) => v },
       { key: 'dialoguePercentage', label: '💬 Dialogue Percentage', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
       { key: 'lexicalDensity', label: '🎨 Lexical Density', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
+      { key: 'vocabularyDiversity', label: '🌈 Vocabulary Diversity', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
       { key: 'stopwordRatio', label: '🧹 Stopword Ratio', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
       { key: 'hapaxPercent', label: '🌱 Hapax %', format: (v: any) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
       { key: 'hapaxCount', label: '🌱 Hapax Count', format: (v: any) => v?.toLocaleString?.() ?? v },
@@ -302,7 +361,33 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
         const diversity = ((metrics.uniqueWords / metrics.totalWords) * 100).toFixed(1);
         markdown += `| 🌈 Vocabulary Diversity | **${diversity}%** |\n`;
       }
+      if (metrics.lexicalDensity !== undefined) {
+        markdown += `| 🎨 Lexical Density | **${typeof metrics.lexicalDensity === 'number' ? metrics.lexicalDensity.toFixed(1) : metrics.lexicalDensity}%** |\n`;
+      }
       markdown += '\n';
+    }
+
+    // Word Length Distribution Histogram (moved before Top Words for better context)
+    if ((metrics.charLengthHistogram && metrics.charLengthHistogram.length > 0) || metrics.charLengthPercentages) {
+      markdown += '## 📏 Word Length Distribution\n\n';
+      if (metrics.charLengthHistogram && metrics.charLengthHistogram.length > 0) {
+        metrics.charLengthHistogram.forEach((line: string) => {
+          markdown += `${line}\n`;
+        });
+        markdown += '\n';
+      } else if (metrics.charLengthPercentages) {
+        // Build simple bars if only percentages were provided
+        const entries = Object.entries(metrics.charLengthPercentages).map(([k, v]) => [Number(k), Number(v)]) as Array<[number, number]>;
+        entries.sort((a, b) => a[0] - b[0]);
+        const max = Math.max(...entries.map(([, v]) => v));
+        const maxBlocks = 10;
+        entries.forEach(([k, v]) => {
+          const blocks = max > 0 ? Math.max(1, Math.round((v / max) * maxBlocks)) : 0;
+          const bar = '█'.repeat(blocks);
+          markdown += `${k} chars: ${bar} ${v.toFixed(1)}%\n`;
+        });
+        markdown += '\n';
+      }
     }
 
     // Top Words
@@ -430,29 +515,6 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
       }
     }
 
-    // Word Length Distribution Histogram
-    if ((metrics.charLengthHistogram && metrics.charLengthHistogram.length > 0) || metrics.charLengthPercentages) {
-      markdown += '## 📏 Word Length Distribution\n\n';
-      if (metrics.charLengthHistogram && metrics.charLengthHistogram.length > 0) {
-        metrics.charLengthHistogram.forEach((line: string) => {
-          markdown += `${line}\n`;
-        });
-        markdown += '\n';
-      } else if (metrics.charLengthPercentages) {
-        // Build simple bars if only percentages were provided
-        const entries = Object.entries(metrics.charLengthPercentages).map(([k, v]) => [Number(k), Number(v)]) as Array<[number, number]>;
-        entries.sort((a, b) => a[0] - b[0]);
-        const max = Math.max(...entries.map(([, v]) => v));
-        const maxBlocks = 10;
-        entries.forEach(([k, v]) => {
-          const blocks = max > 0 ? Math.max(1, Math.round((v / max) * maxBlocks)) : 0;
-          const bar = '█'.repeat(blocks);
-          markdown += `${k} chars: ${bar} ${v.toFixed(1)}%\n`;
-        });
-        markdown += '\n';
-      }
-    }
-
     // N-grams
     if (metrics.bigrams && Array.isArray(metrics.bigrams) && metrics.bigrams.length > 0) {
       markdown += '## 🔗 Top Bigrams\n\n';
@@ -509,7 +571,7 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
   // Handle any other properties that weren't specifically handled
   const handledKeys = ['flags', 'summary', 'wordCount', 'sentenceCount', 'paragraphCount',
                        'averageWordsPerSentence', 'averageSentencesPerParagraph',
-                       'readingTime', 'readingTimeMinutes', 'readingTimeHours', 'pacing', 'dialoguePercentage', 'lexicalDensity', 'readabilityScore', 'readabilityGrade', 'uniqueWordCount', 'stopwordRatio', 'hapaxPercent', 'hapaxCount', 'typeTokenRatio',
+                       'readingTime', 'readingTimeMinutes', 'readingTimeHours', 'pacing', 'dialoguePercentage', 'lexicalDensity', 'vocabularyDiversity', 'readabilityScore', 'readabilityGrade', 'uniqueWordCount', 'stopwordRatio', 'hapaxPercent', 'hapaxCount', 'typeTokenRatio',
                        'frequencies', 'topWords', 'totalWords', 'uniqueWords',
                        'topVerbs', 'topAdjectives', 'topNouns', 'topAdverbs',
                        'topStopwords', 'totalStopwordCount', 'hapaxList', 'pos', 'bigrams', 'trigrams', 'charLengthCounts', 'charLengthPercentages', 'charLengthHistogram', 'lemmasEnabled', 'topLemmaWords',
@@ -529,6 +591,9 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
       }
     });
   }
+
+  // Append detailed metrics guide at the very end (after all sections)
+  markdown += buildMetricsLegend();
 
   return markdown || '# 📊 Metrics\n\nNo metrics data available.';
 }

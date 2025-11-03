@@ -35,35 +35,50 @@ Final polish pass on Prose Minion's UI/UX before the v1.0 release. This epic foc
 
 ## Planned Sprints
 
-### Sprint 01: Context Model Selector UI ✅ (Current)
-**Status**: In Progress
+### Sprint 01: Context Model Selector UI ✅
+**Status**: Completed
 **Branch**: `sprint/epic-v1-polish-2025-11-02-01-context-model-selector-ui`
 
 Add a visual indicator showing which AI model is used for context generation, with a quick link to change it in Settings.
 
 **Tasks**:
 - ✅ Create ADR for UI design
-- [ ] Implement right-aligned model indicator in UtilitiesTab
-- [ ] Add styling (right-aligned, subtle, accessible)
-- [ ] Wire up gear icon to open Settings
-- [ ] Test in both themes
-- [ ] Update memory bank
+- ✅ Implement right-aligned model indicator in UtilitiesTab
+- ✅ Add styling (right-aligned, subtle, accessible)
+- ✅ Wire up gear icon to open Settings
+- ✅ Test in both themes
+- ✅ Update memory bank
 
 **ADR**: [2025-11-02-context-model-selector-ui.md](../../docs/adr/2025-11-02-context-model-selector-ui.md)
+**Sprint Doc**: [sprints/01-context-model-selector-ui.md](sprints/01-context-model-selector-ui.md)
 
-### Sprint 02: Tune Button Refinements (Planned)
+### Sprint 02: Word Length Filter in Metrics (Current)
 **Status**: Planned
+**Branch**: `sprint/epic-v1-polish-2025-11-02-02-word-length-filter-metrics`
+
+Add filtering by word length in the word frequency metrics to help writers identify overused short/long words and stylistic patterns.
+
+**Tasks**:
+- ✅ Create ADR
+- ✅ Create sprint document
+- [ ] Add filter state to useMetrics hook
+- [ ] Implement filter dropdown UI in MetricsTab
+- [ ] Add filtering logic to resultFormatter
+- [ ] Add styling for filter controls
+- [ ] Test all filter options
+- [ ] Verify persistence
+- [ ] Update memory bank
+
+**ADR**: [2025-11-02-word-length-filter-metrics.md](../../docs/adr/2025-11-02-word-length-filter-metrics.md)
+**Sprint Doc**: [sprints/02-word-length-filter-metrics.md](sprints/02-word-length-filter-metrics.md)
+**Reference**: [.todo/v1-polish/2025-11-02-word-length-filter-metrics.md](../../.todo/v1-polish/2025-11-02-word-length-filter-metrics.md)
+
+### Sprint 03: Tune Button Refinements (Potential)
+**Status**: Backlog
 
 Refine the "Tune Dialog Beat" and "Tune Prose" buttons based on user feedback and visual consistency.
 
-**Scope TBD**: To be defined after Sprint 01 completion
-
-### Sprint 03: Word Length Filter in Metrics (Potential)
-**Status**: Backlog
-
-Add filtering by word length in the word frequency metrics to help writers identify overused short/long words.
-
-**Reference**: [.todo/v1-polish/2025-11-02-word-length-filter-metrics.md](../../.todo/v1-polish/2025-11-02-word-length-filter-metrics.md)
+**Scope TBD**: To be defined after Sprint 02 completion
 
 ### Sprint 04: Context Window Trim Limits (Potential)
 **Status**: Backlog
@@ -85,7 +100,8 @@ Add visual feedback when context approaches token limits and automatic smart tri
 
 ### ADRs
 - [2025-11-02-clickable-resource-pills.md](../../docs/adr/2025-11-02-clickable-resource-pills.md) ✅ (Completed)
-- [2025-11-02-context-model-selector-ui.md](../../docs/adr/2025-11-02-context-model-selector-ui.md) (Current)
+- [2025-11-02-context-model-selector-ui.md](../../docs/adr/2025-11-02-context-model-selector-ui.md) ✅ (Completed)
+- [2025-11-02-word-length-filter-metrics.md](../../docs/adr/2025-11-02-word-length-filter-metrics.md) (Current)
 
 ### Other Epics
 - [epic-clickable-resource-pills-2025-11-02](../epic-clickable-resource-pills-2025-11-02/) ✅ (Completed)

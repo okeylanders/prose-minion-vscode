@@ -946,3 +946,62 @@ select:focus {
   border-radius: 3px;
   opacity: 1;
 }
+
+/* Word Length Filter Tabs */
+.word-length-filter-tabs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+  padding: 12px;
+  background-color: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+}
+
+.word-length-filter-tabs .filter-label {
+  font-size: 0.9em;
+  font-weight: 500;
+  color: var(--vscode-foreground);
+  white-space: nowrap;
+}
+
+.word-length-filter-tabs .filter-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.word-length-filter-tabs .filter-tab {
+  padding: 6px 12px;
+  font-size: 0.9em;
+  border: 1px solid var(--vscode-panel-border);
+  background-color: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 40px;
+}
+
+.word-length-filter-tabs .filter-tab:hover:not(:disabled) {
+  background-color: var(--vscode-button-secondaryHoverBackground);
+  border-color: var(--vscode-focusBorder);
+}
+
+.word-length-filter-tabs .filter-tab.active {
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border-color: var(--vscode-button-background);
+  font-weight: 600;
+}
+
+.word-length-filter-tabs .filter-tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.word-length-filter-tabs .filter-tab:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
