@@ -13,93 +13,120 @@ Your extension has **three different patterns** for managing settings (domain ho
 
 ---
 
-## ELI5: What Are We Actually Changing?
+## How the Proposed Hooks Work
 
-**TL;DR**: The hooks still use messages - we're just organizing the mail room better! 📬
+**Key Point**: The hooks still use messages - we're just organizing who listens and how state is shared.
 
-### The Message Bus Stays the Same
-
-**What's NOT changing:**
-- ✅ Still using `vscode.postMessage()` to send settings
-- ✅ Still using message events to receive settings
-- ✅ Backend still uses VSCode workspace config
-- ✅ Same messages: `UPDATE_SETTING`, `SETTINGS_DATA`
-
-**What IS changing:**
-- 📋 **Organization**: One receptionist (useMessageRouter) instead of everyone shouting in a room
-- 🗂️ **Routing**: Strategy pattern routes messages to the right department (hook)
-- 🔄 **Reusability**: Shared state via props instead of copy-paste
-- 💾 **Persistence**: Automatic composition instead of manual per component
-
-### Analogy: The Post Office
-
-**Before (Message-Based in Components)**:
-```
-📮 Post Office (vscode.postMessage)
-  ↓
-📬 Every component has its own mailbox
-📬 Every component reads all mail themselves
-📬 Mail gets lost when component unmounts
-📬 Copy-paste mailbox code everywhere
-```
-
-**After (Domain Hooks)**:
-```
-📮 Post Office (vscode.postMessage) ← Same postal service!
-  ↓
-📋 Receptionist (useMessageRouter) ← Routes to departments
-  ↓
-🗂️ Departments (hooks) ← Handle their domain's mail
-  ↓
-👥 Components ← Get mail via props
-```
-
-### Code Comparison
-
-**Messages are still sent the same way:**
+### Current: Message-Based (SearchTab - ❌ Bad)
 
 ```typescript
-// Before (in component)
-vscode.postMessage({ type: UPDATE_SETTING, payload: { key: 'wordSearch.contextWords', value: 10 } });
+// Each component duplicates this pattern
+const [setting, setSetting] = useState(defaultValue);
 
-// After (in hook)
-vscode.postMessage({ type: UPDATE_SETTING, payload: { key: 'wordSearch.contextWords', value: 10 } });
-```
-
-**Messages are still received, just routed:**
-
-```typescript
-// Before (duplicate listener per component)
 useEffect(() => {
   const handler = (event: MessageEvent) => {
-    if (event.data.type === SETTINGS_DATA) {
+    if (event.data.type === MessageType.SETTINGS_DATA) {
       setSetting(event.data.payload.settings['key']);
     }
   };
-  window.addEventListener('message', handler);  // ⬅️ Duplicate listener
+  window.addEventListener('message', handler);  // ⬅️ Duplicate listener per component
   return () => window.removeEventListener('message', handler);
 }, []);
 
-// After (centralized routing)
-useMessageRouter({
-  [MessageType.SETTINGS_DATA]: wordSearch.handleSettingsData  // ⬅️ One router
-});
+const handleChange = (value) => {
+  setSetting(value);
+  vscode.postMessage({ type: UPDATE_SETTING, ... });  // ⬅️ Still messages
+};
 ```
 
-### What You Get
+### Proposed: Hook Pattern (✅ Good)
 
-**Same messages, better organization:**
+```typescript
+// Hook (useWordSearch.ts)
+export const useWordSearch = () => {
+  const vscode = useVSCodeApi();
+  const [settings, setSettings] = useState(defaults);
 
-| Aspect | Message-Based (Now) | Hook-Based (Proposed) |
-|--------|---------------------|----------------------|
-| **Uses vscode.postMessage?** | ✅ Yes | ✅ Yes (same!) |
-| **Receives message events?** | ✅ Yes | ✅ Yes (same!) |
-| **Listener count** | ❌ Many (per component) | ✅ One (useMessageRouter) |
-| **State location** | ❌ Component local | ✅ Hook (shared) |
+  // Handler method (called by useMessageRouter, not manual listener)
+  const handleSettingsData = useCallback((message: SettingsDataMessage) => {
+    // Extract wordSearch.* settings from message
+    setSettings(extracted);
+  }, []);
+
+  const updateSetting = useCallback((key, value) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+    vscode.postMessage({ type: UPDATE_SETTING, ... });  // ⬅️ Still messages!
+  }, [vscode]);
+
+  return { settings, handleSettingsData, updateSetting, persistedState: { settings } };
+};
+
+// App.tsx - Centralized routing (Strategy pattern)
+const wordSearch = useWordSearch();
+
+useMessageRouter({
+  [MessageType.SETTINGS_DATA]: wordSearch.handleSettingsData,  // ⬅️ Route to hook
+  // ... other hooks
+});
+
+// SearchTab - Just uses props
+<SearchTab
+  contextWords={wordSearch.settings.contextWords}
+  onContextWordsChange={(v) => wordSearch.updateSetting('contextWords', v)}
+/>
+```
+
+### Key Differences
+
+| Aspect | Message-Based (Current) | Hook-Based (Proposed) |
+|--------|------------------------|----------------------|
+| **Messages Used?** | ✅ Yes | ✅ Yes (same messages!) |
+| **vscode.postMessage?** | ✅ Yes (in component) | ✅ Yes (in hook) |
+| **Listener Pattern** | ❌ Manual per component | ✅ Centralized (useMessageRouter) |
+| **State Location** | ❌ Component local | ✅ Hook (shared) |
+| **Persistence** | ❌ Manual or none | ✅ Automatic (usePersistence) |
 | **Reusability** | ❌ Copy-paste | ✅ Props spread |
-| **Persistence** | ❌ Manual | ✅ Automatic |
 
-**Think of it like refactoring** - same functionality, cleaner code! The VSCode message bus is still the foundation.
+### The Message Flow Stays the Same
+
+**Webview → Backend:**
+
+```text
+User clicks filter
+  ↓
+Hook method called (wordSearch.updateSetting)
+  ↓
+Hook sends: vscode.postMessage({ type: UPDATE_SETTING, ... })  ⬅️ Same!
+  ↓
+Backend receives & persists to VSCode config
+```
+
+**Backend → Webview:**
+
+```text
+Config changed (native VSCode settings or other component)
+  ↓
+Backend sends: SETTINGS_DATA message  ⬅️ Same!
+  ↓
+useMessageRouter receives (single listener)
+  ↓
+Routes to: wordSearch.handleSettingsData()
+  ↓
+Hook updates state
+  ↓
+Components re-render
+```
+
+### What Actually Changes
+
+**Architecture**, not protocol:
+
+1. **One listener** (useMessageRouter) instead of many (per component)
+2. **Strategy pattern** routes messages to handlers
+3. **Shared state** via props instead of isolated state
+4. **Automatic persistence** via composition
+
+**The VSCode message bus is still the foundation** - we're just organizing how we subscribe to it and who handles what!
 
 ---
 
