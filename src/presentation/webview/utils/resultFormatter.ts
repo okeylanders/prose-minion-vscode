@@ -17,12 +17,27 @@ interface MetricsData {
 }
 
 /**
- * Builds a metrics legend explaining Vocabulary Diversity and Lexical Density
+ * Builds unified metrics legend with both simple definitions and detailed explanations
+ * Used at the bottom of both Prose Stats and Word Frequency outputs
  */
 function buildMetricsLegend(): string {
   return `---
 
 ## 📖 Metrics Guide
+
+### Legend
+
+- **Word Count**: Total tokens split by whitespace.
+- **Sentence Count**: Heuristic split on . ! ?
+- **Paragraph Count**: Blocks split by blank lines.
+- **Avg Words per Sentence**: Average words per sentence.
+- **Avg Sentences per Paragraph**: Average sentences per paragraph.
+- **Dialogue Percentage**: % of tokens inside quotes.
+- **Stopword Ratio**: % tokens in a common English stopword list.
+- **Hapax %**: % tokens occurring exactly once; Hapax Count is absolute count.
+- **Type-Token Ratio**: Unique/total tokens × 100.
+- **Readability Score**: Simplified Flesch Reading Ease (0–100, higher is easier).
+- **Readability Grade (FKGL)**: Flesch–Kincaid Grade Level (approximate grade).
 
 ### 🌈 Vocabulary Diversity
 
@@ -211,21 +226,6 @@ export function formatMetricsAsMarkdown(metrics: MetricsData): string {
       }
     });
 
-    markdown += '\n';
-
-    // Simple legend for basic metrics
-    markdown += '### Legend\n\n';
-    markdown += '- **Word Count**: Total tokens split by whitespace.\n';
-    markdown += '- **Sentence Count**: Heuristic split on . ! ?\n';
-    markdown += '- **Paragraph Count**: Blocks split by blank lines.\n';
-    markdown += '- **Avg Words per Sentence**: Average words per sentence.\n';
-    markdown += '- **Avg Sentences per Paragraph**: Average sentences per paragraph.\n';
-    markdown += '- **Dialogue Percentage**: % of tokens inside quotes.\n';
-    markdown += '- **Stopword Ratio**: % tokens in a common English stopword list.\n';
-    markdown += '- **Hapax %**: % tokens occurring exactly once; Hapax Count is absolute count.\n';
-    markdown += '- **Type-Token Ratio**: Unique/total tokens × 100.\n';
-    markdown += '- **Readability Score**: Simplified Flesch Reading Ease (0–100, higher is easier).\n';
-    markdown += '- **Readability Grade (FKGL)**: Flesch–Kincaid Grade Level (approximate grade).\n';
     markdown += '\n';
   }
 
