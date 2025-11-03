@@ -236,7 +236,8 @@ export class WordFrequency {
     return text
       .replace(/[—–]/g, ' ')  // Convert em-dash and en-dash to space first
       .split(/\s+/)
-      .map(word => word.replace(/[^a-z']/g, ''))
+      .map(word => word.replace(/[^a-z'-]/g, ''))  // Keep hyphens and apostrophes
+      .map(word => word.replace(/^'+|'+$/g, ''))   // Trim leading/trailing apostrophes
       .filter(word => word.length > 0);
   }
 
