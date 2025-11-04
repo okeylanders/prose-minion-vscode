@@ -882,12 +882,13 @@ This architecture naturally supports:
 - Backend maintainability improved
 
 ### Phase 2: MetricsTab Migration ✅
-**Status**: Complete (2025-11-03)
-**PR**: Pending
+**Status**: Complete (2025-11-04)
+**PR**: #20 (merged)
 - Created `useWordFrequencySettings` hook (all 11 settings)
 - Migrated MetricsTab component (82% code reduction)
 - Optimistic updates implemented
 - Bidirectional sync working
+- Pattern improvements: Standardized persistence keys, defaults merging, legacy key support
 
 ### Phase 3: Domain Hooks Extraction
 **Status**: Planned

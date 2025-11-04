@@ -432,9 +432,9 @@ Can proceed alongside other v1.0/v1.1 work. Phase 0 is independent and urgent.
 
 | Sprint | Phase | Effort | Priority | Target | Status |
 |--------|-------|--------|----------|--------|--------|
-| [01-searchtab-urgent-fix.md](sprints/01-searchtab-urgent-fix.md) | Phase 0 | 2 hours | CRITICAL | Before v1.0 | ✅ Complete (PR #18 merged) |
-| [02-backend-semantic-methods.md](sprints/02-backend-semantic-methods.md) | Phase 1 | 30 min | HIGH | Next week | ✅ Complete (PR #19 merged) |
-| [03-metricstab-migration.md](sprints/03-metricstab-migration.md) | Phase 2 | 1.5 hours | MEDIUM | v1.1 | ✅ Complete (PR pending) |
+| [01-searchtab-urgent-fix.md](sprints/01-searchtab-urgent-fix.md) | Phase 0 | 2 hours | CRITICAL | Before v1.0 | ✅ Complete (PR #18 merged 2025-11-03) |
+| [02-backend-semantic-methods.md](sprints/02-backend-semantic-methods.md) | Phase 1 | 30 min | HIGH | Next week | ✅ Complete (PR #19 merged 2025-11-03) |
+| [03-metricstab-migration.md](sprints/03-metricstab-migration.md) | Phase 2 | 1.5 hours | MEDIUM | v1.1 | ✅ Complete (PR #20 merged 2025-11-04) |
 | [04-domain-hooks-extraction.md](sprints/04-domain-hooks-extraction.md) | Phase 3 | 1 week (15.5h) | MEDIUM | v1.1 | Planned |
 | [05-documentation-testing.md](sprints/05-documentation-testing.md) | Phase 4 | 3 days | MEDIUM | v1.1 | Planned |
 
