@@ -271,9 +271,10 @@ private onConfigurationChange(event: vscode.ConfigurationChangeEvent): void {
 
 **Pattern Established**:
 
-- 6 constant arrays: GENERAL_SETTINGS_KEYS, WORD_SEARCH_KEYS, WORD_FREQUENCY_KEYS, CONTEXT_PATH_KEYS, MODEL_KEYS, UI_KEYS
-- 6 semantic methods: shouldBroadcastGeneralSettings(), shouldBroadcastWordSearchSettings(), etc.
+- 7 constant arrays: GENERAL_SETTINGS_KEYS, WORD_SEARCH_KEYS, WORD_FREQUENCY_KEYS, CONTEXT_PATH_KEYS, MODEL_KEYS, UI_KEYS, PUBLISHING_STANDARDS_KEYS
+- 7 semantic methods: shouldBroadcastGeneralSettings(), shouldBroadcastWordSearchSettings(), shouldBroadcastPublishingSettings(), etc.
 - Clean, declarative config watcher using semantic methods
+- **100% consistent pattern** - zero hardcoded settings keys remaining
 
 ### Verification
 
@@ -281,11 +282,12 @@ private onConfigurationChange(event: vscode.ConfigurationChangeEvent): void {
 - ✅ Webpack build: Passed
 - ✅ No runtime errors
 - ✅ Settings broadcast logic preserved (functionality unchanged)
+- ✅ Publishing standards refactored to match pattern (commit d4e2017)
 
 ### Notes
 
-- Preserved legacy support for `proseMinion.publishingStandards` (to be migrated in future sprint)
 - All semantic methods follow consistent pattern: check `affectsConfiguration()` + `shouldBroadcastConfigChange()`
+- Pattern 100% complete - no hardcoded settings keys remaining in config watcher
 - Ready to merge and serve as reference implementation for future settings groups
 
 ---
