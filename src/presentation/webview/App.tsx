@@ -27,7 +27,7 @@ import { useContext } from './hooks/domain/useContext';
 import { useSearch } from './hooks/domain/useSearch';
 import { useSettings } from './hooks/domain/useSettings';
 import { useSelection } from './hooks/domain/useSelection';
-import { usePublishing } from './hooks/domain/usePublishing';
+import { usePublishingSettings } from './hooks/domain/usePublishingSettings';
 import { useWordSearchSettings } from './hooks/domain/useWordSearchSettings';
 import { useWordFrequencySettings } from './hooks/domain/useWordFrequencySettings';
 
@@ -42,7 +42,7 @@ export const App: React.FC = () => {
   const search = useSearch();
   const settings = useSettings();
   const selection = useSelection();
-  const publishing = usePublishing();
+  const publishingSettings = usePublishingSettings();
   const wordSearchSettings = useWordSearchSettings();
   const wordFrequencySettings = useWordFrequencySettings();
 
@@ -95,7 +95,7 @@ export const App: React.FC = () => {
     },
     [MessageType.API_KEY_STATUS]: settings.handleApiKeyStatus,
     [MessageType.MODEL_DATA]: settings.handleModelOptionsData,
-    [MessageType.PUBLISHING_STANDARDS_DATA]: publishing.handlePublishingStandardsData,
+    [MessageType.PUBLISHING_STANDARDS_DATA]: publishingSettings.handlePublishingStandardsData,
     [MessageType.OPEN_SETTINGS]: settings.open,
     [MessageType.OPEN_SETTINGS_TOGGLE]: settings.toggle,
     [MessageType.TOKEN_USAGE_UPDATE]: settings.handleTokenUsageUpdate,
@@ -143,7 +143,7 @@ export const App: React.FC = () => {
     ...context.persistedState,
     ...search.persistedState,
     ...settings.persistedState,
-    ...publishing.persistedState,
+    ...publishingSettings.persistedState,
     ...wordSearchSettings.persistedState,
     ...wordFrequencySettings.persistedState,
   });
@@ -244,11 +244,11 @@ export const App: React.FC = () => {
           modelSelections={settings.modelSelections}
           onModelChange={settings.setModelSelection}
           publishing={{
-            preset: publishing.publishingPreset,
-            trimKey: publishing.publishingTrimKey,
-            genres: publishing.publishingGenres,
-            onPresetChange: publishing.setPublishingPreset,
-            onTrimChange: publishing.setPublishingTrim,
+            preset: publishingSettings.publishingPreset,
+            trimKey: publishingSettings.publishingTrimKey,
+            genres: publishingSettings.publishingGenres,
+            onPresetChange: publishingSettings.setPublishingPreset,
+            onTrimChange: publishingSettings.setPublishingTrim,
           }}
           apiKey={{
             input: settings.apiKeyInput,
@@ -340,11 +340,15 @@ export const App: React.FC = () => {
                 timestamp: Date.now()
               });
             }}
-            publishingPreset={publishing.publishingPreset}
-            publishingTrimKey={publishing.publishingTrimKey}
-            publishingGenres={publishing.publishingGenres}
-            onPublishingPresetChange={publishing.setPublishingPreset}
-            onPublishingTrimChange={publishing.setPublishingTrim}
+            publishingSettings={{
+              settings: {
+                preset: publishingSettings.publishingPreset,
+                trimKey: publishingSettings.publishingTrimKey,
+              },
+              genres: publishingSettings.publishingGenres,
+              setPreset: publishingSettings.setPublishingPreset,
+              setTrimKey: publishingSettings.setPublishingTrim,
+            }}
             wordFrequencySettings={wordFrequencySettings}
           />
         )}
