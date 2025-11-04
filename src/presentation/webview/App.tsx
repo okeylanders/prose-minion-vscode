@@ -29,6 +29,7 @@ import { useSettings } from './hooks/domain/useSettings';
 import { useSelection } from './hooks/domain/useSelection';
 import { usePublishing } from './hooks/domain/usePublishing';
 import { useWordSearchSettings } from './hooks/domain/useWordSearchSettings';
+import { useWordFrequencySettings } from './hooks/domain/useWordFrequencySettings';
 
 export const App: React.FC = () => {
   const vscode = useVSCodeApi();
@@ -43,6 +44,7 @@ export const App: React.FC = () => {
   const selection = useSelection();
   const publishing = usePublishing();
   const wordSearchSettings = useWordSearchSettings();
+  const wordFrequencySettings = useWordFrequencySettings();
 
   // UI-only state
   const [activeTab, setActiveTab] = React.useState<TabId>(TabId.ANALYSIS);
@@ -89,6 +91,7 @@ export const App: React.FC = () => {
     [MessageType.SETTINGS_DATA]: (msg) => {
       settings.handleSettingsData(msg);
       wordSearchSettings.handleSettingsData(msg);
+      wordFrequencySettings.handleMessage(msg);
     },
     [MessageType.API_KEY_STATUS]: settings.handleApiKeyStatus,
     [MessageType.MODEL_DATA]: settings.handleModelOptionsData,
@@ -142,6 +145,7 @@ export const App: React.FC = () => {
     ...settings.persistedState,
     ...publishing.persistedState,
     ...wordSearchSettings.persistedState,
+    ...wordFrequencySettings.persistedState,
   });
 
   // Request initial model data on app mount
@@ -341,6 +345,7 @@ export const App: React.FC = () => {
             publishingGenres={publishing.publishingGenres}
             onPublishingPresetChange={publishing.setPublishingPreset}
             onPublishingTrimChange={publishing.setPublishingTrim}
+            wordFrequencySettings={wordFrequencySettings}
           />
         )}
 
