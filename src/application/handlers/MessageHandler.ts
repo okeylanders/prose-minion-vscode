@@ -126,9 +126,15 @@ export class MessageHandler {
     }
 
     const configWatcher = vscode.workspace.onDidChangeConfiguration(event => {
+      // Log all proseMinion config changes for debugging
+      if (event.affectsConfiguration('proseMinion')) {
+        this.outputChannel.appendLine('[ConfigWatcher] Config change detected');
+      }
+
       // Only refresh service if model configs changed
       if (this.MODEL_KEYS.some(key => event.affectsConfiguration(key)) ||
           event.affectsConfiguration('proseMinion.model')) {
+        this.outputChannel.appendLine('[ConfigWatcher] Model config changed, refreshing service');
         void this.refreshServiceConfiguration();
         // NOTE: Do NOT send MODEL_DATA here for model changes.
         // handleSetModelSelection will send it after saving.
@@ -138,24 +144,34 @@ export class MessageHandler {
       // Send MODEL_DATA only for UI setting changes (not model changes)
       // AND only if not webview-originated (prevent echo-back)
       if (this.shouldBroadcastUISettings(event)) {
+        this.outputChannel.appendLine('[ConfigWatcher] UI settings changed, sending MODEL_DATA');
         void this.configurationHandler.sendModelData();
       }
 
       // Send SETTINGS_DATA when any settings change (from VS Code settings panel)
       // This ensures Settings Overlay reflects changes made outside the webview
-      if (
-        this.shouldBroadcastGeneralSettings(event) ||
-        this.shouldBroadcastWordSearchSettings(event) ||
-        this.shouldBroadcastWordFrequencySettings(event) ||
-        this.shouldBroadcastContextPathSettings(event) ||
-        this.shouldBroadcastPublishingSettings(event)
-      ) {
+      const shouldBroadcastGeneral = this.shouldBroadcastGeneralSettings(event);
+      const shouldBroadcastWordSearch = this.shouldBroadcastWordSearchSettings(event);
+      const shouldBroadcastWordFreq = this.shouldBroadcastWordFrequencySettings(event);
+      const shouldBroadcastContextPath = this.shouldBroadcastContextPathSettings(event);
+      const shouldBroadcastPublishing = this.shouldBroadcastPublishingSettings(event);
+
+      if (shouldBroadcastGeneral || shouldBroadcastWordSearch || shouldBroadcastWordFreq ||
+          shouldBroadcastContextPath || shouldBroadcastPublishing) {
+        this.outputChannel.appendLine(
+          `[ConfigWatcher] Broadcasting SETTINGS_DATA (general:${shouldBroadcastGeneral}, ` +
+          `wordSearch:${shouldBroadcastWordSearch}, wordFreq:${shouldBroadcastWordFreq}, ` +
+          `contextPath:${shouldBroadcastContextPath}, publishing:${shouldBroadcastPublishing})`
+        );
         void this.configurationHandler.handleRequestSettingsData({
           type: MessageType.REQUEST_SETTINGS_DATA,
           source: 'extension.config_watcher',
           payload: {},
           timestamp: Date.now()
         });
+      } else if (event.affectsConfiguration('proseMinion')) {
+        // Config change detected but not broadcast - log for debugging
+        this.outputChannel.appendLine('[ConfigWatcher] Config change detected but not broadcasting (likely echo prevention)');
       }
     });
 

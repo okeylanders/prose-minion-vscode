@@ -88,9 +88,15 @@ export class ConfigurationHandler {
    * The key will be cleared after 100ms
    */
   private markWebviewOriginatedUpdate(configKey: string): void {
+    this.outputChannel.appendLine(
+      `[ConfigurationHandler] Marking ${configKey} as webview-originated (will clear in 100ms)`
+    );
     this.webviewOriginatedUpdates.add(configKey);
     setTimeout(() => {
       this.webviewOriginatedUpdates.delete(configKey);
+      this.outputChannel.appendLine(
+        `[ConfigurationHandler] Cleared webview-originated flag for ${configKey}`
+      );
     }, 100);
   }
 
@@ -102,6 +108,9 @@ export class ConfigurationHandler {
   public shouldBroadcastConfigChange(configKey: string): boolean {
     // Check exact match first
     if (this.webviewOriginatedUpdates.has(configKey)) {
+      this.outputChannel.appendLine(
+        `[ConfigurationHandler] Blocking broadcast for ${configKey} (exact match in webview-originated set)`
+      );
       return false;
     }
 
@@ -110,6 +119,9 @@ export class ConfigurationHandler {
     // if ANY specific nested key (like 'proseMinion.wordFrequency.minCharacterLength') was webview-originated
     for (const key of this.webviewOriginatedUpdates) {
       if (key.startsWith(configKey + '.')) {
+        this.outputChannel.appendLine(
+          `[ConfigurationHandler] Blocking broadcast for ${configKey} (prefix match with ${key} in webview-originated set)`
+        );
         return false; // Found a webview-originated update for this prefix
       }
     }
