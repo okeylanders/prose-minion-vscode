@@ -74,26 +74,41 @@ export class MessageHandler {
     'proseMinion.includeCraftGuides',
     'proseMinion.temperature',
     'proseMinion.maxTokens',
-    'proseMinion.applyContextWindowTrimming',
-    'proseMinion.contextAgentWordLimit',
-    'proseMinion.analysisAgentWordLimit'
+    'proseMinion.applyContextWindowTrimming'
   ] as const;
 
   private readonly WORD_SEARCH_KEYS = [
+    'proseMinion.wordSearch.defaultTargets',
     'proseMinion.wordSearch.contextWords',
     'proseMinion.wordSearch.clusterWindow',
     'proseMinion.wordSearch.minClusterSize',
-    'proseMinion.wordSearch.caseSensitive'
+    'proseMinion.wordSearch.caseSensitive',
+    'proseMinion.wordSearch.enableAssistantExpansion'
   ] as const;
 
   private readonly WORD_FREQUENCY_KEYS = [
-    'proseMinion.wordFrequency.minLength',
-    'proseMinion.wordFrequency.includeLemmas'
+    'proseMinion.wordFrequency.topN',
+    'proseMinion.wordFrequency.includeHapaxList',
+    'proseMinion.wordFrequency.hapaxDisplayMax',
+    'proseMinion.wordFrequency.includeStopwordsTable',
+    'proseMinion.wordFrequency.contentWordsOnly',
+    'proseMinion.wordFrequency.posEnabled',
+    'proseMinion.wordFrequency.includeBigrams',
+    'proseMinion.wordFrequency.includeTrigrams',
+    'proseMinion.wordFrequency.enableLemmas',
+    'proseMinion.wordFrequency.lengthHistogramMaxChars',
+    'proseMinion.wordFrequency.minCharacterLength'
   ] as const;
 
   private readonly CONTEXT_PATH_KEYS = [
-    'proseMinion.contextSourceMode',
-    'proseMinion.contextSourcePath'
+    'proseMinion.contextPaths.characters',
+    'proseMinion.contextPaths.locations',
+    'proseMinion.contextPaths.themes',
+    'proseMinion.contextPaths.things',
+    'proseMinion.contextPaths.chapters',
+    'proseMinion.contextPaths.manuscript',
+    'proseMinion.contextPaths.projectBrief',
+    'proseMinion.contextPaths.general'
   ] as const;
 
   private readonly MODEL_KEYS = [
