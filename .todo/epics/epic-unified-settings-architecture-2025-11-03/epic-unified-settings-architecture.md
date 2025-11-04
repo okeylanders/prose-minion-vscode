@@ -140,7 +140,7 @@ Migrate all settings to Domain Hooks pattern, matching successful implementation
 
 ### Phase 3: Domain Hooks Extraction
 **Timeline**: v1.1
-**Effort**: 1 week (13.5 hours)
+**Effort**: 1 week (15.5 hours)
 **Risk**: Medium
 **Sprint**: [04-domain-hooks-extraction.md](sprints/04-domain-hooks-extraction.md)
 
@@ -151,6 +151,7 @@ Migrate all settings to Domain Hooks pattern, matching successful implementation
 - Create `useTokenTracking` hook (state - ephemeral token usage)
 - Rename `usePublishing` → `usePublishingSettings`
 - Refactor MetricsTab publishing props to object pattern (consistency)
+- Refactor SettingsOverlay to accept specialized hooks (no more generic settings prop)
 - Eliminate `useSettings` hook entirely
 
 **Deliverables**:
@@ -159,6 +160,7 @@ Migrate all settings to Domain Hooks pattern, matching successful implementation
 - ✅ Clear naming convention (all settings hooks end with "Settings", state hooks don't)
 - ✅ Token tracking separated from token UI preferences
 - ✅ Consistent object pattern for all settings hooks
+- ✅ SettingsOverlay refactored to use specialized hooks
 
 ---
 
@@ -433,7 +435,7 @@ Can proceed alongside other v1.0/v1.1 work. Phase 0 is independent and urgent.
 | [01-searchtab-urgent-fix.md](sprints/01-searchtab-urgent-fix.md) | Phase 0 | 2 hours | CRITICAL | Before v1.0 | ✅ Complete (PR #18 merged) |
 | [02-backend-semantic-methods.md](sprints/02-backend-semantic-methods.md) | Phase 1 | 30 min | HIGH | Next week | ✅ Complete (PR #19 merged) |
 | [03-metricstab-migration.md](sprints/03-metricstab-migration.md) | Phase 2 | 1.5 hours | MEDIUM | v1.1 | ✅ Complete (PR pending) |
-| [04-domain-hooks-extraction.md](sprints/04-domain-hooks-extraction.md) | Phase 3 | 1 week (13.5h) | MEDIUM | v1.1 | Planned |
+| [04-domain-hooks-extraction.md](sprints/04-domain-hooks-extraction.md) | Phase 3 | 1 week (15.5h) | MEDIUM | v1.1 | Planned |
 | [05-documentation-testing.md](sprints/05-documentation-testing.md) | Phase 4 | 3 days | MEDIUM | v1.1 | Planned |
 
 ---

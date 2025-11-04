@@ -640,7 +640,7 @@ The backend `MessageHandler` will use semantic methods to group settings (Phase 
 
 ---
 
-### Phase 3: Domain Hooks Extraction & useSettings Elimination (1 week / 13.5 hours)
+### Phase 3: Domain Hooks Extraction & useSettings Elimination (1 week / 15.5 hours)
 
 **Priority**: MEDIUM
 **Timeline**: v1.1
@@ -684,20 +684,24 @@ The backend `MessageHandler` will use semantic methods to group settings (Phase 
    - Update imports in App.tsx and components
    - Update variable names throughout
 
-5b. Refactor MetricsTab Publishing Props to Object Pattern (30 min)
+6. Refactor MetricsTab Publishing Props to Object Pattern (30 min)
    - Change from individual props pattern to object pattern (matches word frequency)
    - Update MetricsTabProps interface
    - Update App.tsx to pass `publishingSettings` object
    - **Goal**: Consistent prop pattern for all settings hooks
 
-6. **Eliminate useSettings** (3 hours)
+7. **Eliminate useSettings** (3 hours)
    - Remove useSettings hook entirely (all settings migrated)
-   - Update all components to use specialized hooks
    - Update App.tsx composition (remove useSettings, add 4 new hooks)
-   - Update SettingsOverlay to use new hooks
    - Update TokenWidget to use both useTokensSettings and useTokenTracking
 
-**Goal**: Eliminate useSettings god hook entirely, replace with 5 focused hooks (4 new + 1 renamed), and unify prop patterns across all settings hooks
+8. **Refactor SettingsOverlay to Accept Specialized Hooks** (2 hours)
+   - Replace generic `settings` prop with 4 specialized hook objects
+   - Update ~30 `onUpdate()` calls to use appropriate hook's `updateSetting`
+   - Update helper functions to work with typed objects
+   - Update App.tsx to pass specialized hook objects
+
+**Goal**: Eliminate useSettings god hook entirely, replace with 5 focused hooks (4 new + 1 renamed), unify prop patterns across all settings hooks, and refactor SettingsOverlay to use specialized hooks
 
 **Success Criteria**:
 
