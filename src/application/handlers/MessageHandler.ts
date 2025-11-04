@@ -69,6 +69,63 @@ export class MessageHandler {
   private readonly uiHandler: UIHandler;
   private readonly fileOperationsHandler: FileOperationsHandler;
 
+  // Settings key constants for config watcher
+  private readonly GENERAL_SETTINGS_KEYS = [
+    'proseMinion.includeCraftGuides',
+    'proseMinion.temperature',
+    'proseMinion.maxTokens',
+    'proseMinion.applyContextWindowTrimming'
+  ] as const;
+
+  private readonly WORD_SEARCH_KEYS = [
+    'proseMinion.wordSearch.defaultTargets',
+    'proseMinion.wordSearch.contextWords',
+    'proseMinion.wordSearch.clusterWindow',
+    'proseMinion.wordSearch.minClusterSize',
+    'proseMinion.wordSearch.caseSensitive',
+    'proseMinion.wordSearch.enableAssistantExpansion'
+  ] as const;
+
+  private readonly WORD_FREQUENCY_KEYS = [
+    'proseMinion.wordFrequency.topN',
+    'proseMinion.wordFrequency.includeHapaxList',
+    'proseMinion.wordFrequency.hapaxDisplayMax',
+    'proseMinion.wordFrequency.includeStopwordsTable',
+    'proseMinion.wordFrequency.contentWordsOnly',
+    'proseMinion.wordFrequency.posEnabled',
+    'proseMinion.wordFrequency.includeBigrams',
+    'proseMinion.wordFrequency.includeTrigrams',
+    'proseMinion.wordFrequency.enableLemmas',
+    'proseMinion.wordFrequency.lengthHistogramMaxChars',
+    'proseMinion.wordFrequency.minCharacterLength'
+  ] as const;
+
+  private readonly CONTEXT_PATH_KEYS = [
+    'proseMinion.contextPaths.characters',
+    'proseMinion.contextPaths.locations',
+    'proseMinion.contextPaths.themes',
+    'proseMinion.contextPaths.things',
+    'proseMinion.contextPaths.chapters',
+    'proseMinion.contextPaths.manuscript',
+    'proseMinion.contextPaths.projectBrief',
+    'proseMinion.contextPaths.general'
+  ] as const;
+
+  private readonly MODEL_KEYS = [
+    'proseMinion.assistantModel',
+    'proseMinion.dictionaryModel',
+    'proseMinion.contextModel'
+  ] as const;
+
+  private readonly UI_KEYS = [
+    'proseMinion.ui.showTokenWidget'
+  ] as const;
+
+  private readonly PUBLISHING_STANDARDS_KEYS = [
+    'proseMinion.publishingStandards.preset',
+    'proseMinion.publishingStandards.pageSizeKey'
+  ] as const;
+
   constructor(
     private readonly proseAnalysisService: IProseAnalysisService,
     private readonly secretsService: any, // SecretStorageService
@@ -84,13 +141,15 @@ export class MessageHandler {
     }
 
     const configWatcher = vscode.workspace.onDidChangeConfiguration(event => {
+      // Log all proseMinion config changes for debugging
+      if (event.affectsConfiguration('proseMinion')) {
+        this.outputChannel.appendLine('[ConfigWatcher] Config change detected');
+      }
+
       // Only refresh service if model configs changed
-      if (
-        event.affectsConfiguration('proseMinion.assistantModel') ||
-        event.affectsConfiguration('proseMinion.dictionaryModel') ||
-        event.affectsConfiguration('proseMinion.contextModel') ||
-        event.affectsConfiguration('proseMinion.model')
-      ) {
+      if (this.MODEL_KEYS.some(key => event.affectsConfiguration(key)) ||
+          event.affectsConfiguration('proseMinion.model')) {
+        this.outputChannel.appendLine('[ConfigWatcher] Model config changed, refreshing service');
         void this.refreshServiceConfiguration();
         // NOTE: Do NOT send MODEL_DATA here for model changes.
         // handleSetModelSelection will send it after saving.
@@ -99,63 +158,35 @@ export class MessageHandler {
 
       // Send MODEL_DATA only for UI setting changes (not model changes)
       // AND only if not webview-originated (prevent echo-back)
-      if (event.affectsConfiguration('proseMinion.ui.showTokenWidget')) {
-        if (this.configurationHandler.shouldBroadcastConfigChange('proseMinion.ui.showTokenWidget')) {
-          void this.configurationHandler.sendModelData();
-        }
+      if (this.shouldBroadcastUISettings(event)) {
+        this.outputChannel.appendLine('[ConfigWatcher] UI settings changed, sending MODEL_DATA');
+        void this.configurationHandler.sendModelData();
       }
 
-      // Send SETTINGS_DATA when general settings change (from VS Code settings panel)
+      // Send SETTINGS_DATA when any settings change (from VS Code settings panel)
       // This ensures Settings Overlay reflects changes made outside the webview
-      if (
-        event.affectsConfiguration('proseMinion.includeCraftGuides') ||
-        event.affectsConfiguration('proseMinion.temperature') ||
-        event.affectsConfiguration('proseMinion.maxTokens') ||
-        event.affectsConfiguration('proseMinion.applyContextWindowTrimming') ||
-        event.affectsConfiguration('proseMinion.wordFrequency') ||
-        event.affectsConfiguration('proseMinion.wordSearch') ||
-        event.affectsConfiguration('proseMinion.publishingStandards') ||
-        event.affectsConfiguration('proseMinion.contextPaths')
-      ) {
-        // Check if change was webview-originated to prevent echo-back
-        // For top-level settings, check the full key
-        const topLevelKeys = [
-          'proseMinion.includeCraftGuides',
-          'proseMinion.temperature',
-          'proseMinion.maxTokens',
-          'proseMinion.applyContextWindowTrimming'
-        ];
+      const shouldBroadcastGeneral = this.shouldBroadcastGeneralSettings(event);
+      const shouldBroadcastWordSearch = this.shouldBroadcastWordSearchSettings(event);
+      const shouldBroadcastWordFreq = this.shouldBroadcastWordFrequencySettings(event);
+      const shouldBroadcastContextPath = this.shouldBroadcastContextPathSettings(event);
+      const shouldBroadcastPublishing = this.shouldBroadcastPublishingSettings(event);
 
-        let shouldBroadcast = topLevelKeys.some(key =>
-          event.affectsConfiguration(key) &&
-          this.configurationHandler.shouldBroadcastConfigChange(key)
+      if (shouldBroadcastGeneral || shouldBroadcastWordSearch || shouldBroadcastWordFreq ||
+          shouldBroadcastContextPath || shouldBroadcastPublishing) {
+        this.outputChannel.appendLine(
+          `[ConfigWatcher] Broadcasting SETTINGS_DATA (general:${shouldBroadcastGeneral}, ` +
+          `wordSearch:${shouldBroadcastWordSearch}, wordFreq:${shouldBroadcastWordFreq}, ` +
+          `contextPath:${shouldBroadcastContextPath}, publishing:${shouldBroadcastPublishing})`
         );
-
-        // For nested settings (wordFrequency.*, wordSearch.*, etc.),
-        // check if the prefix has ANY webview-originated updates
-        // If the setting change came from VSCode native UI, broadcast it
-        const nestedPrefixes = [
-          'proseMinion.wordFrequency',
-          'proseMinion.wordSearch',
-          'proseMinion.publishingStandards',
-          'proseMinion.contextPaths'
-        ];
-
-        if (!shouldBroadcast) {
-          shouldBroadcast = nestedPrefixes.some(prefix =>
-            event.affectsConfiguration(prefix) &&
-            this.configurationHandler.shouldBroadcastConfigChange(prefix)
-          );
-        }
-
-        if (shouldBroadcast) {
-          void this.configurationHandler.handleRequestSettingsData({
-            type: MessageType.REQUEST_SETTINGS_DATA,
-            source: 'extension.config_watcher',
-            payload: {},
-            timestamp: Date.now()
-          });
-        }
+        void this.configurationHandler.handleRequestSettingsData({
+          type: MessageType.REQUEST_SETTINGS_DATA,
+          source: 'extension.config_watcher',
+          payload: {},
+          timestamp: Date.now()
+        });
+      } else if (event.affectsConfiguration('proseMinion')) {
+        // Config change detected but not broadcast - log for debugging
+        this.outputChannel.appendLine('[ConfigWatcher] Config change detected but not broadcasting (likely echo prevention)');
       }
     });
 
@@ -334,6 +365,56 @@ export class MessageHandler {
         );
       }
     }
+  }
+
+  // Semantic helper methods for config change broadcasting
+  private shouldBroadcastGeneralSettings(event: vscode.ConfigurationChangeEvent): boolean {
+    return this.GENERAL_SETTINGS_KEYS.some(key =>
+      event.affectsConfiguration(key) &&
+      this.configurationHandler.shouldBroadcastConfigChange(key)
+    );
+  }
+
+  private shouldBroadcastWordSearchSettings(event: vscode.ConfigurationChangeEvent): boolean {
+    return this.WORD_SEARCH_KEYS.some(key =>
+      event.affectsConfiguration(key) &&
+      this.configurationHandler.shouldBroadcastConfigChange(key)
+    );
+  }
+
+  private shouldBroadcastWordFrequencySettings(event: vscode.ConfigurationChangeEvent): boolean {
+    return this.WORD_FREQUENCY_KEYS.some(key =>
+      event.affectsConfiguration(key) &&
+      this.configurationHandler.shouldBroadcastConfigChange(key)
+    );
+  }
+
+  private shouldBroadcastContextPathSettings(event: vscode.ConfigurationChangeEvent): boolean {
+    return this.CONTEXT_PATH_KEYS.some(key =>
+      event.affectsConfiguration(key) &&
+      this.configurationHandler.shouldBroadcastConfigChange(key)
+    );
+  }
+
+  private shouldBroadcastModelSettings(event: vscode.ConfigurationChangeEvent): boolean {
+    return this.MODEL_KEYS.some(key =>
+      event.affectsConfiguration(key) &&
+      this.configurationHandler.shouldBroadcastConfigChange(key)
+    );
+  }
+
+  private shouldBroadcastUISettings(event: vscode.ConfigurationChangeEvent): boolean {
+    return this.UI_KEYS.some(key =>
+      event.affectsConfiguration(key) &&
+      this.configurationHandler.shouldBroadcastConfigChange(key)
+    );
+  }
+
+  private shouldBroadcastPublishingSettings(event: vscode.ConfigurationChangeEvent): boolean {
+    return this.PUBLISHING_STANDARDS_KEYS.some(key =>
+      event.affectsConfiguration(key) &&
+      this.configurationHandler.shouldBroadcastConfigChange(key)
+    );
   }
 
   // Expose flushing so the provider can replay cached results when the view becomes visible again

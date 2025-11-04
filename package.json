@@ -140,14 +140,6 @@
     "configuration": {
       "title": "Prose Minion",
       "properties": {
-        "proseMinion.openRouterApiKey": {
-          "type": "string",
-          "default": "",
-          "format": "password",
-          "markdownDescription": "**DEPRECATED**: API keys are now stored securely using OS-level encryption. Please use the **Settings** overlay in Prose Minion (gear icon in title bar) to manage your API key. Your existing key will be automatically migrated to secure storage on next reload.",
-          "deprecationMessage": "Use the Prose Minion Settings overlay to manage your API key securely. Access it via the gear icon in the Prose Minion view title bar.",
-          "order": 1
-        },
         "proseMinion.assistantModel": {
           "type": "string",
           "default": "z-ai/glm-4.6",
