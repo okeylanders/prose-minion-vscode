@@ -4,7 +4,7 @@
 **Phase**: Phase 3
 **Status**: Planned
 **Priority**: MEDIUM
-**Effort**: 1 week
+**Effort**: 1 week (13.5 hours)
 **Timeline**: v1.1
 **Owner**: Development Team
 **Branch**: `sprint/unified-settings-04-domain-hooks-extraction`
@@ -95,6 +95,45 @@ Extract specialized settings from the large `useSettings` hook (360 lines) into 
 
 ---
 
+### Task 5b: Refactor MetricsTab Publishing Props to Object Pattern (30 min)
+
+**File**: `src/presentation/webview/components/MetricsTab.tsx`
+
+**Problem**: Publishing props use individual props pattern (inconsistent with word frequency settings):
+
+**Current** (individual props):
+```typescript
+publishingPreset: string;
+publishingTrimKey: string;
+publishingGenres: Array<...>;
+onPublishingPresetChange: (preset: string) => void;
+onPublishingTrimChange: (pageSizeKey: string) => void;
+```
+
+**Target** (object pattern - matches word frequency):
+```typescript
+publishingSettings: {
+  settings: {
+    preset: string;
+    trimKey: string;
+  };
+  genres: Array<...>;  // Reference data, not a setting
+  setPreset: (preset: string) => void;
+  setTrimKey: (pageSizeKey: string) => void;
+}
+```
+
+**Changes Required**:
+
+1. **Update MetricsTabProps interface** to use object pattern
+2. **Update component destructuring** to use `publishingSettings`
+3. **Update all usages** of individual props to `publishingSettings.settings.preset`, etc.
+4. **Update App.tsx** to pass `publishingSettings` object instead of individual props
+
+**Goal**: Consistent prop pattern for all settings hooks (object pattern everywhere)
+
+---
+
 ### Task 6: Eliminate `useSettings` Hook (3 hours)
 
 **File**: `src/presentation/webview/hooks/domain/useSettings.ts`
@@ -156,6 +195,7 @@ const publishingSettings = usePublishingSettings(vscode); // Renamed
 
 - ✅ 4 new hooks created (useContextPathsSettings, useModelsSettings, useTokensSettings, useTokenTracking)
 - ✅ 1 hook renamed (usePublishing → usePublishingSettings)
+- ✅ MetricsTab refactored to use object pattern for publishing props (consistent with word frequency)
 - ✅ `useSettings` hook completely eliminated (deleted)
 - ✅ ConfigurationHandler semantic methods added
 - ✅ All components updated to use new hooks
@@ -163,6 +203,7 @@ const publishingSettings = usePublishingSettings(vscode); // Renamed
 - ✅ All settings still work (regression test)
 - ✅ No TypeScript errors
 - ✅ Clear naming convention established (all settings hooks end with "Settings", state hooks don't)
+- ✅ Consistent prop pattern (object pattern) used for all settings hooks
 
 ---
 
