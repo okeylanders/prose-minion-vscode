@@ -56,6 +56,19 @@ export class ConfigurationHandler {
 
   // Helper methods (domain owns its message lifecycle)
 
+  /**
+   * Get word search settings with correct defaults
+   */
+  public getWordSearchSettings() {
+    const config = vscode.workspace.getConfiguration('proseMinion');
+    return {
+      contextWords: config.get<number>('wordSearch.contextWords', 3),
+      clusterWindow: config.get<number>('wordSearch.clusterWindow', 50),
+      minClusterSize: config.get<number>('wordSearch.minClusterSize', 2),
+      caseSensitive: config.get<boolean>('wordSearch.caseSensitive', false)
+    };
+  }
+
   private sendError(source: ErrorSource, message: string, details?: string): void {
     const errorMessage: ErrorMessage = {
       type: MessageType.ERROR,
@@ -107,6 +120,7 @@ export class ConfigurationHandler {
   async handleRequestSettingsData(message: RequestSettingsDataMessage): Promise<void> {
     try {
       const config = vscode.workspace.getConfiguration('proseMinion');
+      const wordSearchSettings = this.getWordSearchSettings();
       const settings: Record<string, string | number | boolean> = {
         // Core (API key now in SecretStorage, not exposed here)
         'includeCraftGuides': config.get<boolean>('includeCraftGuides') ?? true,
@@ -129,12 +143,12 @@ export class ConfigurationHandler {
         'wordFrequency.enableLemmas': config.get<boolean>('wordFrequency.enableLemmas') ?? false,
         'wordFrequency.lengthHistogramMaxChars': config.get<number>('wordFrequency.lengthHistogramMaxChars') ?? 10,
         'wordFrequency.minCharacterLength': config.get<number>('wordFrequency.minCharacterLength') ?? 1,
-        // Word Search
+        // Word Search (using getWordSearchSettings method for consistency)
         'wordSearch.defaultTargets': config.get<string>('wordSearch.defaultTargets') ?? 'just',
-        'wordSearch.contextWords': config.get<number>('wordSearch.contextWords') ?? 7,
-        'wordSearch.clusterWindow': config.get<number>('wordSearch.clusterWindow') ?? 150,
-        'wordSearch.minClusterSize': config.get<number>('wordSearch.minClusterSize') ?? 2,
-        'wordSearch.caseSensitive': config.get<boolean>('wordSearch.caseSensitive') ?? false,
+        'wordSearch.contextWords': wordSearchSettings.contextWords,
+        'wordSearch.clusterWindow': wordSearchSettings.clusterWindow,
+        'wordSearch.minClusterSize': wordSearchSettings.minClusterSize,
+        'wordSearch.caseSensitive': wordSearchSettings.caseSensitive,
         'wordSearch.enableAssistantExpansion': config.get<boolean>('wordSearch.enableAssistantExpansion') ?? false,
         // Context resource paths
         'contextPaths.characters': config.get<string>('contextPaths.characters') ?? '',

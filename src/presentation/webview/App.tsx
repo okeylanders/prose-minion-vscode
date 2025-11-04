@@ -28,6 +28,7 @@ import { useSearch } from './hooks/domain/useSearch';
 import { useSettings } from './hooks/domain/useSettings';
 import { useSelection } from './hooks/domain/useSelection';
 import { usePublishing } from './hooks/domain/usePublishing';
+import { useWordSearchSettings } from './hooks/domain/useWordSearchSettings';
 
 export const App: React.FC = () => {
   const vscode = useVSCodeApi();
@@ -41,6 +42,7 @@ export const App: React.FC = () => {
   const settings = useSettings();
   const selection = useSelection();
   const publishing = usePublishing();
+  const wordSearchSettings = useWordSearchSettings();
 
   // UI-only state
   const [activeTab, setActiveTab] = React.useState<TabId>(TabId.ANALYSIS);
@@ -84,7 +86,10 @@ export const App: React.FC = () => {
       setScopeRequester(null);
     },
     [MessageType.STATUS]: (msg) => analysis.handleStatusMessage(msg, context.loadingRef),
-    [MessageType.SETTINGS_DATA]: settings.handleSettingsData,
+    [MessageType.SETTINGS_DATA]: (msg) => {
+      settings.handleSettingsData(msg);
+      wordSearchSettings.handleSettingsData(msg);
+    },
     [MessageType.API_KEY_STATUS]: settings.handleApiKeyStatus,
     [MessageType.MODEL_DATA]: settings.handleModelOptionsData,
     [MessageType.PUBLISHING_STANDARDS_DATA]: publishing.handlePublishingStandardsData,
@@ -136,6 +141,7 @@ export const App: React.FC = () => {
     ...search.persistedState,
     ...settings.persistedState,
     ...publishing.persistedState,
+    ...wordSearchSettings.persistedState,
   });
 
   // Request initial model data on app mount
@@ -376,6 +382,10 @@ export const App: React.FC = () => {
                 payload: {},
                 timestamp: Date.now()
               });
+            }}
+            wordSearchSettings={{
+              settings: wordSearchSettings.settings,
+              updateSetting: wordSearchSettings.updateSetting,
             }}
           />
         )}

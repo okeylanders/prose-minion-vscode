@@ -23,6 +23,15 @@ interface SearchTabProps {
   onRequestActiveFile: () => void;
   onRequestManuscriptGlobs: () => void;
   onRequestChapterGlobs: () => void;
+  wordSearchSettings: {
+    settings: {
+      contextWords: number;
+      clusterWindow: number;
+      minClusterSize: number;
+      caseSensitive: boolean;
+    };
+    updateSetting: (key: 'contextWords' | 'clusterWindow' | 'minClusterSize' | 'caseSensitive', value: any) => void;
+  };
 }
 
 export const SearchTab: React.FC<SearchTabProps> = ({
@@ -38,14 +47,11 @@ export const SearchTab: React.FC<SearchTabProps> = ({
   onPathTextChange,
   onRequestActiveFile,
   onRequestManuscriptGlobs,
-  onRequestChapterGlobs
+  onRequestChapterGlobs,
+  wordSearchSettings
 }) => {
   const [markdownContent, setMarkdownContent] = React.useState('');
   const [expandInfo, setExpandInfo] = React.useState<string>('');
-  const [wordSearchContextWords, setWordSearchContextWords] = React.useState<number>(7);
-  const [wordSearchClusterWindow, setWordSearchClusterWindow] = React.useState<number>(150);
-  const [wordSearchMinCluster, setWordSearchMinCluster] = React.useState<number>(3);
-  const [wordSearchCaseSensitive, setWordSearchCaseSensitive] = React.useState<boolean>(false);
 
   // Build a TextSourceSpec consistently for search requests
   const buildSourceSpec = React.useCallback(() => {
@@ -193,10 +199,10 @@ export const SearchTab: React.FC<SearchTabProps> = ({
               id="pm-search-context-words"
               type="text"
               className="w-full"
-              value={wordSearchContextWords}
+              value={wordSearchSettings.settings.contextWords}
               onChange={(e) => {
                 const val = e.target.value.replace(/\D/g, '');
-                setWordSearchContextWords(val ? parseInt(val, 10) : 7);
+                wordSearchSettings.updateSetting('contextWords', val ? parseInt(val, 10) : 3);
               }}
             />
           </div>
@@ -206,10 +212,10 @@ export const SearchTab: React.FC<SearchTabProps> = ({
               id="pm-search-cluster-window"
               type="text"
               className="w-full"
-              value={wordSearchClusterWindow}
+              value={wordSearchSettings.settings.clusterWindow}
               onChange={(e) => {
                 const val = e.target.value.replace(/\D/g, '');
-                setWordSearchClusterWindow(val ? parseInt(val, 10) : 150);
+                wordSearchSettings.updateSetting('clusterWindow', val ? parseInt(val, 10) : 50);
               }}
             />
           </div>
@@ -219,17 +225,17 @@ export const SearchTab: React.FC<SearchTabProps> = ({
               id="pm-search-min-cluster"
               type="text"
               className="w-full"
-              value={wordSearchMinCluster}
+              value={wordSearchSettings.settings.minClusterSize}
               onChange={(e) => {
                 const val = e.target.value.replace(/\D/g, '');
-                setWordSearchMinCluster(val ? parseInt(val, 10) : 3);
+                wordSearchSettings.updateSetting('minClusterSize', val ? parseInt(val, 10) : 2);
               }}
             />
           </div>
         </div>
         <div className="mt-2">
           <label className="inline-flex items-center">
-            <input type="checkbox" checked={wordSearchCaseSensitive} onChange={(e) => setWordSearchCaseSensitive(e.target.checked)} />
+            <input type="checkbox" checked={wordSearchSettings.settings.caseSensitive} onChange={(e) => wordSearchSettings.updateSetting('caseSensitive', e.target.checked)} />
             <span className="ml-2">Case sensitive</span>
           </label>
         </div>
@@ -247,10 +253,10 @@ export const SearchTab: React.FC<SearchTabProps> = ({
                 source: buildSourceSpec(),
                 options: {
                   wordsOrPhrases,
-                  contextWords: wordSearchContextWords,
-                  clusterWindow: wordSearchClusterWindow,
-                  minClusterSize: wordSearchMinCluster,
-                  caseSensitive: wordSearchCaseSensitive
+                  contextWords: wordSearchSettings.settings.contextWords,
+                  clusterWindow: wordSearchSettings.settings.clusterWindow,
+                  minClusterSize: wordSearchSettings.settings.minClusterSize,
+                  caseSensitive: wordSearchSettings.settings.caseSensitive
                 }
               },
               timestamp: Date.now()
