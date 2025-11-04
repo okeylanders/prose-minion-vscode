@@ -199,18 +199,60 @@ Migrated **all 11 word frequency settings** from message-based pattern to Domain
 
 ---
 
+## Sprint 04 Impact Discovery
+
+### Component Migration Scan
+
+After completing Sprint 03, a comprehensive scan was performed to identify which components will need migration during Sprint 04 (Phase 3: Domain Hooks Extraction).
+
+**Key Finding**: **SettingsOverlay** component requires major refactoring ⚠️
+
+**Current State** ([SettingsOverlay.tsx:4-28](../src/presentation/webview/components/SettingsOverlay.tsx#L4-L28)):
+
+- Receives generic `settings: Record<string, any>` prop from god hook
+- Uses generic `onUpdate(key, value)` method
+- Contains ~30 `onUpdate()` calls accessing different settings
+
+**Required Changes** (Task 10 added to Sprint 04):
+
+- Replace generic `settings` prop with 4 specialized hook objects:
+  - `modelsSettings` (8 model/agent settings)
+  - `contextPathsSettings` (8 context path globs)
+  - `tokensSettings` (1 UI preference)
+  - `tokenTracking` (ephemeral token usage state)
+- Refactor ~30 `onUpdate()` calls to use appropriate hook's `updateSetting` method
+- Update helper functions to work with typed objects
+
+**Effort Impact**: Sprint 04 effort increased from 13.5 hours → **15.5 hours** (+2 hours)
+
+**Components NOT Requiring Changes**:
+
+- ✅ SearchTab (already migrated in Sprint 01)
+- ✅ AnalysisTab, SuggestionsTab, UtilitiesTab (don't use settings)
+- ✅ MetricsTab publishing props (already scoped as Task 5b)
+
+**Documentation Updated**:
+
+- Sprint 04 doc: Added Task 10 (commit `25a27d2`)
+- ADR: Added Task 8 with detailed requirements
+- Epic: Updated Phase 3 scope and deliverables
+
+---
+
 ## Next Steps
 
 **Immediate**:
 - Merge to `main` branch
 - Archive Sprint 03 as complete
 
-**Sprint 04 (Phase 3)**: Domain Hooks Extraction
+**Sprint 04 (Phase 3)**: Domain Hooks Extraction (15.5 hours)
 - Create `useModelsSettings` (8 model/agent settings)
 - Create `useContextPathsSettings` (8 resource path globs)
 - Create `useTokensSettings` (1 UI preference)
 - Create `useTokenTracking` (ephemeral token usage state)
 - Rename `usePublishing` → `usePublishingSettings`
+- Refactor MetricsTab publishing props to object pattern
+- **Refactor SettingsOverlay** to accept specialized hooks (NEW - 2 hours)
 - **Eliminate `useSettings` god hook** (360 lines → 0 lines)
 
 ---
