@@ -106,6 +106,11 @@ export class MessageHandler {
     'proseMinion.ui.showTokenWidget'
   ] as const;
 
+  private readonly PUBLISHING_STANDARDS_KEYS = [
+    'proseMinion.publishingStandards.preset',
+    'proseMinion.publishingStandards.pageSizeKey'
+  ] as const;
+
   constructor(
     private readonly proseAnalysisService: IProseAnalysisService,
     private readonly secretsService: any, // SecretStorageService
@@ -143,9 +148,7 @@ export class MessageHandler {
         this.shouldBroadcastWordSearchSettings(event) ||
         this.shouldBroadcastWordFrequencySettings(event) ||
         this.shouldBroadcastContextPathSettings(event) ||
-        // Publishing standards and context paths (legacy support)
-        (event.affectsConfiguration('proseMinion.publishingStandards') &&
-          this.configurationHandler.shouldBroadcastConfigChange('proseMinion.publishingStandards'))
+        this.shouldBroadcastPublishingSettings(event)
       ) {
         void this.configurationHandler.handleRequestSettingsData({
           type: MessageType.REQUEST_SETTINGS_DATA,
@@ -371,6 +374,13 @@ export class MessageHandler {
 
   private shouldBroadcastUISettings(event: vscode.ConfigurationChangeEvent): boolean {
     return this.UI_KEYS.some(key =>
+      event.affectsConfiguration(key) &&
+      this.configurationHandler.shouldBroadcastConfigChange(key)
+    );
+  }
+
+  private shouldBroadcastPublishingSettings(event: vscode.ConfigurationChangeEvent): boolean {
+    return this.PUBLISHING_STANDARDS_KEYS.some(key =>
       event.affectsConfiguration(key) &&
       this.configurationHandler.shouldBroadcastConfigChange(key)
     );
