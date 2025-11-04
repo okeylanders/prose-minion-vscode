@@ -1,9 +1,10 @@
 # Configuration Strategy Inconsistency (Tech Debt)
 
 **Date Identified**: 2025-11-02
+**Date Resolved**: 2025-11-04
 **Severity**: Medium
 **Category**: Architecture / State Management
-**Status**: Documented - Not Yet Addressed
+**Status**: ✅ RESOLVED (Sprint 03 - PR #20)
 
 ## Problem
 
@@ -238,9 +239,34 @@ useMessageRouter({ [MessageType.SETTINGS_DATA]: wordFreq.handleSettingsData });
 4. **Prevent Future Inconsistency**: Code review checklist item for new settings
 5. **Update Agent Guide**: Add guidance to .claude/CLAUDE.md about settings patterns
 
+## Resolution
+
+**Decision**: Option A (Migrate All to Domain Hooks) ✅
+
+**Implementation**:
+- **Sprint 03**: Created `useWordFrequencySettings` hook (all 11 settings)
+- **Migrated**: MetricsTab word frequency filter from message-based to domain hooks
+- **Pattern**: Established `<domain>Settings` naming convention
+- **Result**: 100% of settings now use domain hooks pattern
+
+**Benefits Realized**:
+- ✅ Consistent architecture across all settings
+- ✅ Pattern improvements (defaults merging, legacy key support, type safety)
+- ✅ 82% code reduction in MetricsTab settings management
+- ✅ Clear template for future settings (Sprint 04 will create 4 more hooks)
+
+**References**:
+- [PR #20: Sprint 03 - MetricsTab Word Frequency Settings Migration](https://github.com/okeylanders/prose-minion-vscode/pull/20)
+- [Memory Bank: Sprint 03 Completion](../../../.memory-bank/20251104-1011-sprint-03-merged-and-sprint-04-review.md)
+- [Sprint 03 Doc](../../epics/epic-unified-settings-architecture-2025-11-03/sprints/03-metricstab-migration.md)
+
+**Status**: ✅ RESOLVED (2025-11-04)
+
 ## Priority
 
-**Medium**: Not blocking, but impacts maintainability and scalability. Should address within next 2-3 sprints to prevent further inconsistency.
+~~**Medium**: Not blocking, but impacts maintainability and scalability. Should address within next 2-3 sprints to prevent further inconsistency.~~
+
+**RESOLVED**: Addressed in Sprint 03. All settings now use domain hooks pattern.
 
 ## Notes
 
