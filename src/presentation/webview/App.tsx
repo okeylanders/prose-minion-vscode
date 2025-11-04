@@ -91,7 +91,7 @@ export const App: React.FC = () => {
     [MessageType.SETTINGS_DATA]: (msg) => {
       settings.handleSettingsData(msg);
       wordSearchSettings.handleSettingsData(msg);
-      wordFrequencySettings.handleMessage(msg);
+      wordFrequencySettings.handleSettingsData(msg);
     },
     [MessageType.API_KEY_STATUS]: settings.handleApiKeyStatus,
     [MessageType.MODEL_DATA]: settings.handleModelOptionsData,

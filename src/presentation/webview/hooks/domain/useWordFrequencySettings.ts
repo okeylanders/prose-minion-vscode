@@ -27,7 +27,7 @@ export interface WordFrequencySettingsState {
 
 export interface WordFrequencySettingsActions {
   updateSetting: (key: keyof WordFrequencySettings, value: any) => void;
-  handleMessage: (message: any) => void;
+  handleSettingsData: (message: any) => void;
 }
 
 export interface WordFrequencySettingsPersistence {
@@ -66,63 +66,56 @@ export const useWordFrequencySettings = (): UseWordFrequencySettingsReturn => {
     minCharacterLength: 1
   });
 
-  const handleMessage = React.useCallback((message: any) => {
+  // Handle SETTINGS_DATA messages and extract word frequency settings
+  const handleSettingsData = React.useCallback((message: any) => {
     if (message.type === MessageType.SETTINGS_DATA) {
       const payload = message.payload || message.data;
       const settingsData = payload?.settings || payload;
 
       // Extract wordFrequency.* settings from flat or nested structure
-      const wordFrequencySettings: Partial<WordFrequencySettings> = {};
+      const wordFrequencySettings: Partial<WordFrequencySettings> = {
+        topN: settingsData['wordFrequency.topN'],
+        includeHapaxList: settingsData['wordFrequency.includeHapaxList'],
+        hapaxDisplayMax: settingsData['wordFrequency.hapaxDisplayMax'],
+        includeStopwordsTable: settingsData['wordFrequency.includeStopwordsTable'],
+        contentWordsOnly: settingsData['wordFrequency.contentWordsOnly'],
+        posEnabled: settingsData['wordFrequency.posEnabled'],
+        includeBigrams: settingsData['wordFrequency.includeBigrams'],
+        includeTrigrams: settingsData['wordFrequency.includeTrigrams'],
+        enableLemmas: settingsData['wordFrequency.enableLemmas'],
+        lengthHistogramMaxChars: settingsData['wordFrequency.lengthHistogramMaxChars'],
+        minCharacterLength: settingsData['wordFrequency.minCharacterLength'],
+      };
 
-      if (settingsData['wordFrequency.topN'] !== undefined) {
-        wordFrequencySettings.topN = settingsData['wordFrequency.topN'];
-      }
-      if (settingsData['wordFrequency.includeHapaxList'] !== undefined) {
-        wordFrequencySettings.includeHapaxList = settingsData['wordFrequency.includeHapaxList'];
-      }
-      if (settingsData['wordFrequency.hapaxDisplayMax'] !== undefined) {
-        wordFrequencySettings.hapaxDisplayMax = settingsData['wordFrequency.hapaxDisplayMax'];
-      }
-      if (settingsData['wordFrequency.includeStopwordsTable'] !== undefined) {
-        wordFrequencySettings.includeStopwordsTable = settingsData['wordFrequency.includeStopwordsTable'];
-      }
-      if (settingsData['wordFrequency.contentWordsOnly'] !== undefined) {
-        wordFrequencySettings.contentWordsOnly = settingsData['wordFrequency.contentWordsOnly'];
-      }
-      if (settingsData['wordFrequency.posEnabled'] !== undefined) {
-        wordFrequencySettings.posEnabled = settingsData['wordFrequency.posEnabled'];
-      }
-      if (settingsData['wordFrequency.includeBigrams'] !== undefined) {
-        wordFrequencySettings.includeBigrams = settingsData['wordFrequency.includeBigrams'];
-      }
-      if (settingsData['wordFrequency.includeTrigrams'] !== undefined) {
-        wordFrequencySettings.includeTrigrams = settingsData['wordFrequency.includeTrigrams'];
-      }
-      if (settingsData['wordFrequency.enableLemmas'] !== undefined) {
-        wordFrequencySettings.enableLemmas = settingsData['wordFrequency.enableLemmas'];
-      }
-      if (settingsData['wordFrequency.lengthHistogramMaxChars'] !== undefined) {
-        wordFrequencySettings.lengthHistogramMaxChars = settingsData['wordFrequency.lengthHistogramMaxChars'];
-      }
-      if (settingsData['wordFrequency.minCharacterLength'] !== undefined) {
-        wordFrequencySettings.minCharacterLength = settingsData['wordFrequency.minCharacterLength'];
-      }
-
-      if (Object.keys(wordFrequencySettings).length > 0) {
-        setSettings(prev => ({ ...prev, ...wordFrequencySettings }));
+      // Only update if we got valid data (check at least one setting is defined)
+      if (wordFrequencySettings.topN !== undefined) {
+        setSettings(prev => ({
+          ...prev,
+          topN: wordFrequencySettings.topN ?? prev.topN,
+          includeHapaxList: wordFrequencySettings.includeHapaxList ?? prev.includeHapaxList,
+          hapaxDisplayMax: wordFrequencySettings.hapaxDisplayMax ?? prev.hapaxDisplayMax,
+          includeStopwordsTable: wordFrequencySettings.includeStopwordsTable ?? prev.includeStopwordsTable,
+          contentWordsOnly: wordFrequencySettings.contentWordsOnly ?? prev.contentWordsOnly,
+          posEnabled: wordFrequencySettings.posEnabled ?? prev.posEnabled,
+          includeBigrams: wordFrequencySettings.includeBigrams ?? prev.includeBigrams,
+          includeTrigrams: wordFrequencySettings.includeTrigrams ?? prev.includeTrigrams,
+          enableLemmas: wordFrequencySettings.enableLemmas ?? prev.enableLemmas,
+          lengthHistogramMaxChars: wordFrequencySettings.lengthHistogramMaxChars ?? prev.lengthHistogramMaxChars,
+          minCharacterLength: wordFrequencySettings.minCharacterLength ?? prev.minCharacterLength,
+        }));
       }
     }
   }, []);
 
-  React.useEffect(() => {
-    const handler = (event: MessageEvent) => {
-      handleMessage(event.data);
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, [handleMessage]);
-
+  // Update a specific setting (send to backend with optimistic update)
   const updateSetting = React.useCallback((key: keyof WordFrequencySettings, value: any) => {
+    // Optimistically update local state immediately for responsive UI
+    setSettings(prev => ({
+      ...prev,
+      [key]: value,
+    }));
+
+    // Send to backend
     vscode.postMessage({
       type: MessageType.UPDATE_SETTING,
       source: 'webview.hooks.useWordFrequencySettings',
@@ -137,7 +130,7 @@ export const useWordFrequencySettings = (): UseWordFrequencySettingsReturn => {
   return {
     settings,
     updateSetting,
-    handleMessage,
+    handleSettingsData,
     persistedState: { wordFrequency: settings }
   };
 };
