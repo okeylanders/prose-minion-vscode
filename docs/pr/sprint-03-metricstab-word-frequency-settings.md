@@ -40,6 +40,9 @@ Migrated **all 11 word frequency settings** from message-based pattern to Domain
 - ✅ Message envelope pattern
 - ✅ TypeScript interfaces exported
 - ✅ Follows `useWordSearchSettings` pattern
+- ✅ **Standardized persistence key**: `wordFrequencySettings` (matches `<domain>Settings` convention)
+- ✅ **Legacy key support**: Reads both `wordFrequency` and `wordFrequencySettings` for migration
+- ✅ **Defaults merging**: Prevents first-paint flicker by merging defaults with persisted state
 
 ### MetricsTab Migration
 
@@ -170,6 +173,121 @@ Migrated **all 11 word frequency settings** from message-based pattern to Domain
    - Renamed handleMessage → handleSettingsData
 
 4. **`1afe21b`** - docs(memory-bank): add sprint 03 completion summary
+
+5. **`d6bf5d7`** - refactor(settings): standardize persistence patterns and improve type safety
+   - Renamed persisted key: `wordFrequency` → `wordFrequencySettings` (matches Sprint 01 pattern)
+   - Added legacy key support for backward compatibility
+   - Extracted defaults and merged with persisted state (prevents first-paint flicker)
+   - Improved type safety in handleSettingsData with explicit type casts
+   - Applied defaults pattern to useWordSearchSettings consistently
+   - Documented cross-cutting requirements in Sprint 04 for future hooks
+
+---
+
+## Pattern Improvements (Commit 5)
+
+After initial implementation, a code review revealed opportunities to standardize patterns across all settings hooks. These improvements establish conventions for Sprint 04 Phase 3 (4 new hooks).
+
+### Key Improvements
+
+**1. Standardized Persistence Key Naming**:
+
+```typescript
+// ❌ Before: Inconsistent naming
+persistedState: { wordFrequency: settings }
+
+// ✅ After: Consistent <domain>Settings pattern
+persistedState: { wordFrequencySettings: settings }
+```
+
+**Benefits**:
+
+- Matches pattern established in Sprint 01 (`wordSearchSettings`)
+- Clear convention for Sprint 04 hooks (`modelsSettings`, `contextPathsSettings`, `tokensSettings`)
+- Easy to identify what each persisted key contains
+
+---
+
+**2. Legacy Key Support**:
+
+```typescript
+const persisted = usePersistedState<{
+  wordFrequency?: WordFrequencySettings;        // Legacy (commit 2)
+  wordFrequencySettings?: WordFrequencySettings; // New standard
+}>();
+
+const persistedSeed = persisted?.wordFrequencySettings ?? persisted?.wordFrequency;
+```
+
+**Benefits**:
+
+- Graceful migration from initial implementation
+- No data loss for users who ran early commits
+- Template for future migrations
+
+---
+
+**3. Defaults Merging Pattern**:
+
+```typescript
+// ❌ Before: Inline defaults in useState
+const [settings, setSettings] = React.useState<WordFrequencySettings>(
+  persisted?.wordFrequencySettings ?? {
+    topN: 100,
+    // ... all defaults inline
+  }
+);
+
+// ✅ After: Extracted defaults with explicit merge
+const defaults: WordFrequencySettings = {
+  topN: 100,
+  // ... all defaults
+};
+
+const [settings, setSettings] = React.useState<WordFrequencySettings>({
+  ...defaults,
+  ...(persistedSeed ?? {}),
+});
+```
+
+**Benefits**:
+
+- No first-paint flicker (defaults always present)
+- Graceful handling of partial persisted data
+- Defaults object reusable in tests
+- Clearer intent (merge vs fallback)
+
+---
+
+**4. Improved Type Safety**:
+
+```typescript
+// ✅ Explicit type casts for settings data extraction
+const wordFrequencySettings: Partial<WordFrequencySettings> = {
+  topN: settingsData['wordFrequency.topN'] as number | undefined,
+  includeHapaxList: settingsData['wordFrequency.includeHapaxList'] as boolean | undefined,
+  // ...
+};
+```
+
+**Benefits**:
+
+- Type safety without `any` types
+- Clear documentation of expected types
+- Better IDE support
+
+---
+
+### Cross-Cutting Requirements Documented
+
+Added to Sprint 04 document for all future settings hooks:
+
+1. **Persisted key naming**: All settings hooks must use `<domain>Settings` pattern
+2. **Defaults merging**: All hooks must merge defaults with persisted state
+3. **Legacy support**: Consider migration path if renaming keys
+4. **Type safety**: Use explicit type casts for settings extraction
+
+These patterns will be applied to the 4 new hooks in Sprint 04 Phase 3.
 
 ---
 
