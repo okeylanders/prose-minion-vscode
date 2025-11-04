@@ -477,32 +477,32 @@
         },
         "proseMinion.wordSearch.contextWords": {
           "type": "number",
-          "default": 7,
-          "minimum": 0,
-          "maximum": 50,
-          "description": "Context words to show around each hit in Word Search.",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Number of words to show around each word search match for context",
           "order": 30
         },
         "proseMinion.wordSearch.clusterWindow": {
           "type": "number",
-          "default": 150,
+          "default": 50,
           "minimum": 10,
-          "maximum": 2000,
-          "description": "Maximum distance in words for cluster detection.",
+          "maximum": 500,
+          "description": "Maximum word distance to group matches into a cluster",
           "order": 31
         },
         "proseMinion.wordSearch.minClusterSize": {
           "type": "number",
           "default": 2,
           "minimum": 2,
-          "maximum": 50,
-          "description": "Minimum hits within the window to form a cluster.",
+          "maximum": 10,
+          "description": "Minimum number of matches required to form a cluster",
           "order": 32
         },
         "proseMinion.wordSearch.caseSensitive": {
           "type": "boolean",
           "default": false,
-          "description": "Use case-sensitive matching for Word Search.",
+          "description": "Enable case-sensitive word search matching",
           "order": 33
         },
         "proseMinion.wordSearch.enableAssistantExpansion": {
