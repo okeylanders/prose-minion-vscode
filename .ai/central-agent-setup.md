@@ -234,7 +234,7 @@ usePersistence({
 - ✅ Testability - can mock infrastructure
 - ✅ Referential stability via useRef/useMemo
 
-**References**: [Presentation Layer Review](.memory-bank/20251102-presentation-layer-architectural-review.md)
+**References**: [Presentation Layer Review](.memory-bank/20251102-1845-presentation-layer-architectural-review.md)
 
 ### Key Components
 
@@ -474,7 +474,7 @@ The `resources/` directory contains:
   - State snapshots (like `20251103-1230-state-of-repo-snapshot.md`)
   - Sprint completion summaries
   - Architectural review outcomes
-- **Naming**: `YYYYMMDD-HHMM-descriptive-title.md` or `YYYYMMDD-descriptive-title.md`
+- **Naming**: `YYYYMMDD-HHMM-descriptive-title.md` (time is REQUIRED for chronological clarity)
 - **Usage**: Provide quick on-ramps for agents and maintain continuity between sessions
 
 ### Development Flow & Process
@@ -546,6 +546,7 @@ The repository follows a structured flow from ideation to implementation:
   - Track architecture debt discovered (create `.todo/architecture-debt/` entries)
   - Update sprint doc with progress notes
   - Add Memory Bank entries for complex decisions or blockers
+    - **IMPORTANT**: All memory bank entries MUST include time in filename: `YYYYMMDD-HHMM-descriptive-title.md`
 
 **6. PR Review & Merge**
 - Open PR referencing:
@@ -567,6 +568,7 @@ The repository follows a structured flow from ideation to implementation:
   - Preserve full directory structure (including `sprints/` subfolder)
   - Add final summary to epic doc (completion date, total PRs, outcomes)
 - **Memory Bank**: Create completion summary in `.memory-bank/` with:
+  - **Filename format**: `YYYYMMDD-HHMM-descriptive-title.md` (time is REQUIRED)
   - Links to ADR, Epic, PRs
   - Key achievements
   - Any follow-up items or debt identified
@@ -759,9 +761,9 @@ Project Root
 │           └── v1-polish/
 ├── .memory-bank/                 # Session continuity & state snapshots
 │   ├── 20251103-1230-state-of-repo-snapshot.md
-│   ├── 20251103-unified-settings-architecture-planning.md
-│   ├── 20251102-presentation-layer-architectural-review.md
-│   ├── 20251102-context-window-safety-sprint-complete.md
+│   ├── 20251103-1415-unified-settings-architecture-planning.md
+│   ├── 20251102-1845-presentation-layer-architectural-review.md
+│   ├── 20251102-1620-context-window-safety-sprint-complete.md
 │   └── ... (15+ entries)
 ├── .ai/
 │   └── central-agent-setup.md    # This file (symlinked to agent configs)
@@ -873,6 +875,7 @@ When working with this codebase:
    - Update this file (central-agent-setup.md) for new patterns or conventions
    - Create or update ADRs for architectural decisions
    - Add Memory Bank entries for complex decisions or sprint completions
+     - **Format**: `YYYYMMDD-HHMM-descriptive-title.md` (time is REQUIRED)
    - Update "What's New" section when merging major features
 
 8. **Test Incrementally**: Run the extension after changes to verify behavior
@@ -1143,6 +1146,7 @@ When working on this codebase, AI agents should:
 8. **Review for anti-patterns** before requesting PR
 9. **Document debt discovered** during sprint
 10. **Update memory bank** with outcomes and lessons learned
+    - Use format: `YYYYMMDD-HHMM-descriptive-title.md` (time is REQUIRED)
 
 ---
 
@@ -1254,7 +1258,7 @@ If any checked, **request ADR revision** before coding.
 
 **References**:
 - [ADR](docs/adr/2025-10-28-message-envelope-architecture.md)
-- [Memory Bank](.memory-bank/20251101-epic-message-envelope-complete.md)
+- [Memory Bank](.memory-bank/20251101-1630-epic-message-envelope-complete.md)
 
 ---
 
@@ -1272,7 +1276,7 @@ If any checked, **request ADR revision** before coding.
 **References**:
 - [ADR](docs/adr/2025-10-27-presentation-layer-domain-hooks.md)
 - [Epic](.todo/archived/epics/epic-presentation-refactor-2025-10-27/)
-- [Architectural Review](.memory-bank/20251102-presentation-layer-architectural-review.md)
+- [Architectural Review](.memory-bank/20251102-1845-presentation-layer-architectural-review.md)
 
 ---
 
@@ -1290,7 +1294,7 @@ If any checked, **request ADR revision** before coding.
 **References**:
 - [ADR](docs/adr/2025-11-02-context-window-trim-limits.md)
 - [Epic](.todo/archived/epics/epic-context-window-safety-2025-11-02/)
-- [Memory Bank](.memory-bank/20251102-context-window-safety-sprint-complete.md)
+- [Memory Bank](.memory-bank/20251102-1620-context-window-safety-sprint-complete.md)
 
 ---
 
@@ -1307,7 +1311,7 @@ If any checked, **request ADR revision** before coding.
 **References**:
 - [ADR](docs/adr/2025-11-02-clickable-resource-pills.md)
 - [Epic](.todo/archived/epics/epic-clickable-resource-pills-2025-11-02/)
-- [Memory Bank](.memory-bank/20251102-clickable-resource-pills.md)
+- [Memory Bank](.memory-bank/20251102-1530-clickable-resource-pills.md)
 
 ---
 
