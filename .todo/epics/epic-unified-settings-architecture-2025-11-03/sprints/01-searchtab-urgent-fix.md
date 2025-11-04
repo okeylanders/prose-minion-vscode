@@ -507,9 +507,11 @@ Task 3 adds temporary duplication to `MessageHandler` config watcher. This is ac
 
 ---
 
-**Sprint Status**: Complete ✅
+**Sprint Status**: Complete ✅ **MERGED**
 **Branch**: `sprint/unified-settings-01-searchtab-urgent-fix`
 **Started**: 2025-11-03
 **Completed**: 2025-11-03
-**PR**: TBD (ready for creation)
-**Commit**: d91b601 `feat(settings): implement useWordSearchSettings hook for SearchTab`
+**PR**: #18 (merged to main)
+**Commits**:
+- d91b601 `feat(settings): implement useWordSearchSettings hook for SearchTab`
+- e4d3ce5 `docs(sprint-01): mark SearchTab settings sprint as complete`

@@ -424,7 +424,7 @@ Can proceed alongside other v1.0/v1.1 work. Phase 0 is independent and urgent.
 
 | Sprint | Phase | Effort | Priority | Target | Status |
 |--------|-------|--------|----------|--------|--------|
-| [01-searchtab-urgent-fix.md](sprints/01-searchtab-urgent-fix.md) | Phase 0 | 2 hours | CRITICAL | Before v1.0 | Planned |
+| [01-searchtab-urgent-fix.md](sprints/01-searchtab-urgent-fix.md) | Phase 0 | 2 hours | CRITICAL | Before v1.0 | ✅ Complete (PR #18 merged) |
 | [02-backend-semantic-methods.md](sprints/02-backend-semantic-methods.md) | Phase 1 | 30 min | HIGH | Next week | Planned |
 | [03-metricstab-migration.md](sprints/03-metricstab-migration.md) | Phase 2 | 1 hour | MEDIUM | v1.1 | Planned |
 | [04-domain-hooks-extraction.md](sprints/04-domain-hooks-extraction.md) | Phase 3 | 1 week | MEDIUM | v1.1 | Planned |
