@@ -4,7 +4,7 @@
 **Phase**: Phase 3
 **Status**: Planned
 **Priority**: MEDIUM
-**Effort**: 1 week
+**Effort**: 1 week (15.5 hours)
 **Timeline**: v1.1
 **Owner**: Development Team
 **Branch**: `sprint/unified-settings-04-domain-hooks-extraction`
@@ -95,6 +95,45 @@ Extract specialized settings from the large `useSettings` hook (360 lines) into 
 
 ---
 
+### Task 5b: Refactor MetricsTab Publishing Props to Object Pattern (30 min)
+
+**File**: `src/presentation/webview/components/MetricsTab.tsx`
+
+**Problem**: Publishing props use individual props pattern (inconsistent with word frequency settings):
+
+**Current** (individual props):
+```typescript
+publishingPreset: string;
+publishingTrimKey: string;
+publishingGenres: Array<...>;
+onPublishingPresetChange: (preset: string) => void;
+onPublishingTrimChange: (pageSizeKey: string) => void;
+```
+
+**Target** (object pattern - matches word frequency):
+```typescript
+publishingSettings: {
+  settings: {
+    preset: string;
+    trimKey: string;
+  };
+  genres: Array<...>;  // Reference data, not a setting
+  setPreset: (preset: string) => void;
+  setTrimKey: (pageSizeKey: string) => void;
+}
+```
+
+**Changes Required**:
+
+1. **Update MetricsTabProps interface** to use object pattern
+2. **Update component destructuring** to use `publishingSettings`
+3. **Update all usages** of individual props to `publishingSettings.settings.preset`, etc.
+4. **Update App.tsx** to pass `publishingSettings` object instead of individual props
+
+**Goal**: Consistent prop pattern for all settings hooks (object pattern everywhere)
+
+---
+
 ### Task 6: Eliminate `useSettings` Hook (3 hours)
 
 **File**: `src/presentation/webview/hooks/domain/useSettings.ts`
@@ -152,10 +191,122 @@ const publishingSettings = usePublishingSettings(vscode); // Renamed
 
 ---
 
+### Task 10: Refactor SettingsOverlay to Accept Specialized Hooks (2 hours)
+
+**File**: `src/presentation/webview/components/SettingsOverlay.tsx`
+
+**Problem**: SettingsOverlay currently receives generic `settings` object from god hook:
+
+**Current** ([SettingsOverlay.tsx:4-28](../../../src/presentation/webview/components/SettingsOverlay.tsx#L4-L28)):
+```typescript
+type SettingsOverlayProps = {
+  visible: boolean;
+  onClose: () => void;
+  vscode: any;
+  settings: Record<string, string | number | boolean>;  // Generic settings object
+  onUpdate: (key: string, value: string | number | boolean) => void;  // Generic updater
+  onResetTokens: () => void;
+  modelOptions: ModelOption[];
+  modelSelections: Partial<Record<ModelScope, string>>;
+  onModelChange: (scope: ModelScope, modelId: string) => void;
+  publishing: { ... };
+  apiKey: { ... };
+};
+```
+
+**Target**: Replace generic `settings` prop with 4 specialized hook prop objects:
+
+```typescript
+type SettingsOverlayProps = {
+  visible: boolean;
+  onClose: () => void;
+  vscode: any;
+  // Specialized settings hooks (replaces generic settings + onUpdate)
+  modelsSettings: {
+    settings: ModelsSettings;
+    updateSetting: (key: keyof ModelsSettings, value: any) => void;
+  };
+  contextPathsSettings: {
+    settings: ContextPathsSettings;
+    updateSetting: (key: keyof ContextPathsSettings, value: any) => void;
+  };
+  tokensSettings: {
+    settings: TokensSettings;
+    updateSetting: (key: keyof TokensSettings, value: any) => void;
+  };
+  tokenTracking: {
+    usage: { input: number; output: number };
+    resetTokens: () => void;
+  };
+  // Model selection remains (from modelsSettings hook)
+  modelOptions: ModelOption[];
+  modelSelections: Partial<Record<ModelScope, string>>;
+  onModelChange: (scope: ModelScope, modelId: string) => void;
+  // Publishing and API key remain unchanged
+  publishing: { ... };
+  apiKey: { ... };
+};
+```
+
+**Changes Required**:
+
+1. **Update SettingsOverlayProps interface** to accept 4 specialized hook objects instead of generic `settings` + `onUpdate`
+2. **Update component destructuring** to use specialized props
+3. **Update ~30 `onUpdate()` calls** throughout the file to use appropriate hook's `updateSetting`:
+   - Model/agent settings (8 settings) → `modelsSettings.updateSetting(key, value)`
+   - Context paths (8 settings) → `contextPathsSettings.updateSetting(key, value)`
+   - UI preferences (1 setting) → `tokensSettings.updateSetting(key, value)`
+   - Token reset → `tokenTracking.resetTokens()`
+4. **Update helper functions** (`asString`, `asNumber`, `asBoolean`) to work with typed objects instead of generic Record
+5. **Update App.tsx** to pass specialized hook objects instead of generic `settings` object
+
+**Current App.tsx usage** ([App.tsx:236-260](../../../src/presentation/webview/App.tsx#L236-L260)):
+```typescript
+<SettingsOverlay
+  settings={settings.settingsData}           // From useSettings (god hook)
+  onUpdate={settings.updateSetting}          // From useSettings
+  onResetTokens={settings.resetTokens}       // From useSettings
+  modelOptions={settings.modelOptions}       // From useSettings
+  modelSelections={settings.modelSelections} // From useSettings
+  onModelChange={settings.setModelSelection} // From useSettings
+  // ... other props
+/>
+```
+
+**Target App.tsx usage**:
+
+```typescript
+<SettingsOverlay
+  modelsSettings={modelsSettings}             // From useModelsSettings
+  contextPathsSettings={contextPathsSettings} // From useContextPathsSettings
+  tokensSettings={tokensSettings}             // From useTokensSettings
+  tokenTracking={tokenTracking}               // From useTokenTracking
+  modelOptions={modelsSettings.modelOptions}
+  modelSelections={modelsSettings.modelSelections}
+  onModelChange={modelsSettings.setModelSelection}
+  // ... other props
+/>
+```
+
+**Goal**: SettingsOverlay no longer depends on generic `settings` object from god hook. Each setting is accessed from its domain-specific hook.
+
+**Impact**: ~30 `onUpdate()` calls need to be refactored to use appropriate hook's `updateSetting` method.
+
+---
+
+## Cross-Cutting Requirements (Additions)
+
+- Persisted key naming: All settings hooks must expose a `persistedState` key named `<domain>Settings` (e.g., `wordSearchSettings`, `wordFrequencySettings`, `publishingSettings`, `modelsSettings`, `contextPathsSettings`, `tokensSettings`). If legacy keys exist, keep read compatibility but write the new name.
+- Merge defaults with persisted: All settings hooks must initialize by merging domain defaults with any persisted values to avoid first‑paint flicker and undefined fields. Support partial persisted data gracefully.
+
+---
+
 ## Definition of Done
 
 - ✅ 4 new hooks created (useContextPathsSettings, useModelsSettings, useTokensSettings, useTokenTracking)
 - ✅ 1 hook renamed (usePublishing → usePublishingSettings)
+- ✅ MetricsTab refactored to use object pattern for publishing props (consistent with word frequency)
+- ✅ SettingsOverlay refactored to accept specialized hook objects (no more generic settings prop)
 - ✅ `useSettings` hook completely eliminated (deleted)
 - ✅ ConfigurationHandler semantic methods added
 - ✅ All components updated to use new hooks
@@ -163,6 +314,9 @@ const publishingSettings = usePublishingSettings(vscode); // Renamed
 - ✅ All settings still work (regression test)
 - ✅ No TypeScript errors
 - ✅ Clear naming convention established (all settings hooks end with "Settings", state hooks don't)
+- ✅ Consistent prop pattern (object pattern) used for all settings hooks
+- ✅ Consistent persistedState key names across all settings hooks (`<domain>Settings`)
+- ✅ All settings hooks merge defaults with persisted values (no first‑paint flicker)
 
 ---
 

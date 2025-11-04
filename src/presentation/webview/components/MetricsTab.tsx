@@ -9,6 +9,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
 import { formatMetricsAsMarkdown } from '../utils/resultFormatter';
 import { WordLengthFilterTabs } from './WordLengthFilterTabs';
+import { WordFrequencySettings } from '../hooks/domain/useWordFrequencySettings';
 // MessageType is already imported from shared/types re-export
 
 interface MetricsTabProps {
@@ -32,6 +33,11 @@ interface MetricsTabProps {
   publishingGenres: Array<{ key: string; name: string; abbreviation: string; pageSizes: Array<{ key: string; label: string; width: number; height: number; common: boolean }> }>;
   onPublishingPresetChange: (preset: string) => void;
   onPublishingTrimChange: (pageSizeKey: string) => void;
+  // Word frequency settings props (from useWordFrequencySettings hook)
+  wordFrequencySettings: {
+    settings: WordFrequencySettings;
+    updateSetting: (key: keyof WordFrequencySettings, value: any) => void;
+  };
 }
 
 export const MetricsTab: React.FC<MetricsTabProps> = ({
@@ -53,7 +59,8 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   publishingTrimKey,
   publishingGenres,
   onPublishingPresetChange,
-  onPublishingTrimChange
+  onPublishingTrimChange,
+  wordFrequencySettings
 }) => {
   // Keep a local mirror only for selection preview if needed in future.
 
@@ -64,34 +71,6 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
       : { mode: sourceMode, pathText };
   }, [sourceMode, pathText]);
 
-  // Word length filter state (synced with settings)
-  const [minCharLength, setMinCharLength] = React.useState<number>(1);
-  // Sub-tool state (local only)
-  // activeTool and wordSearchTargets persisted in App; defaults handled upstream
-  // Word Search controls moved to SearchTab
-
-  React.useEffect(() => {
-    const handler = (event: MessageEvent) => {
-      const msg = event.data;
-      // Listen for settings updates to sync filter state
-      if (msg?.type === MessageType.SETTINGS_DATA) {
-        const settings = msg.payload?.settings || {};
-        if (settings['wordFrequency.minCharacterLength'] !== undefined) {
-          setMinCharLength(settings['wordFrequency.minCharacterLength']);
-        }
-      }
-    };
-    window.addEventListener('message', handler);
-    // Request settings to get initial filter value
-    vscode.postMessage({
-      type: MessageType.REQUEST_SETTINGS_DATA,
-      source: 'webview.metrics.tab',
-      payload: {},
-      timestamp: Date.now()
-    });
-    return () => window.removeEventListener('message', handler);
-  }, [vscode]);
-
   const handlePresetChange = (value: string) => {
     onPublishingPresetChange(value);
   };
@@ -101,16 +80,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   };
 
   const handleFilterChange = (minLength: number) => {
-    setMinCharLength(minLength);
-    vscode.postMessage({
-      type: MessageType.UPDATE_SETTING,
-      source: 'webview.metrics.tab',
-      payload: {
-        key: 'wordFrequency.minCharacterLength',
-        value: minLength
-      },
-      timestamp: Date.now()
-    });
+    wordFrequencySettings.updateSetting('minCharacterLength', minLength);
   };
 
   const handleMeasureProseStats = () => {
@@ -390,7 +360,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
       {/* Word Length Filter: only for Word Frequency view */}
       {activeTool === 'word_frequency' && (
         <WordLengthFilterTabs
-          activeFilter={minCharLength}
+          activeFilter={wordFrequencySettings.settings.minCharacterLength}
           onFilterChange={handleFilterChange}
           disabled={isLoading}
         />
