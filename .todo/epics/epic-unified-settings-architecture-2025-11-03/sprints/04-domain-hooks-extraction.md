@@ -294,6 +294,13 @@ type SettingsOverlayProps = {
 
 ---
 
+## Cross-Cutting Requirements (Additions)
+
+- Persisted key naming: All settings hooks must expose a `persistedState` key named `<domain>Settings` (e.g., `wordSearchSettings`, `wordFrequencySettings`, `publishingSettings`, `modelsSettings`, `contextPathsSettings`, `tokensSettings`). If legacy keys exist, keep read compatibility but write the new name.
+- Merge defaults with persisted: All settings hooks must initialize by merging domain defaults with any persisted values to avoid first‑paint flicker and undefined fields. Support partial persisted data gracefully.
+
+---
+
 ## Definition of Done
 
 - ✅ 4 new hooks created (useContextPathsSettings, useModelsSettings, useTokensSettings, useTokenTracking)
@@ -308,6 +315,8 @@ type SettingsOverlayProps = {
 - ✅ No TypeScript errors
 - ✅ Clear naming convention established (all settings hooks end with "Settings", state hooks don't)
 - ✅ Consistent prop pattern (object pattern) used for all settings hooks
+- ✅ Consistent persistedState key names across all settings hooks (`<domain>Settings`)
+- ✅ All settings hooks merge defaults with persisted values (no first‑paint flicker)
 
 ---
 

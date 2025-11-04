@@ -60,14 +60,17 @@ export const useWordSearchSettings = (): UseWordSearchSettingsReturn => {
   const vscode = useVSCodeApi();
   const persisted = usePersistedState<{ wordSearchSettings?: WordSearchSettings }>();
 
-  const [settings, setSettings] = React.useState<WordSearchSettings>(
-    persisted?.wordSearchSettings ?? {
-      contextWords: 3,
-      clusterWindow: 50,
-      minClusterSize: 2,  // ✅ Correct default (not 3)
-      caseSensitive: false
-    }
-  );
+  const defaults: WordSearchSettings = {
+    contextWords: 3,
+    clusterWindow: 50,
+    minClusterSize: 2, // ✅ Correct default (not 3)
+    caseSensitive: false,
+  };
+
+  const [settings, setSettings] = React.useState<WordSearchSettings>({
+    ...defaults,
+    ...(persisted?.wordSearchSettings ?? {}),
+  });
 
   // Handle SETTINGS_DATA messages and extract word search settings
   const handleSettingsData = React.useCallback((message: SettingsDataMessage) => {

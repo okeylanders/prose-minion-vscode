@@ -1,6 +1,8 @@
 import React from 'react';
-import { MessageType } from '../../../../shared/types/messages';
+import { MessageType } from '../../../../shared/types';
+import { SettingsDataMessage } from '../../../../shared/types/messages';
 import { useVSCodeApi } from '../useVSCodeApi';
+import { usePersistedState } from '../usePersistence';
 
 /**
  * Word Frequency Settings
@@ -27,11 +29,11 @@ export interface WordFrequencySettingsState {
 
 export interface WordFrequencySettingsActions {
   updateSetting: (key: keyof WordFrequencySettings, value: any) => void;
-  handleSettingsData: (message: any) => void;
+  handleSettingsData: (message: SettingsDataMessage) => void;
 }
 
 export interface WordFrequencySettingsPersistence {
-  wordFrequency: WordFrequencySettings;
+  wordFrequencySettings: WordFrequencySettings;
 }
 
 export type UseWordFrequencySettingsReturn =
@@ -52,7 +54,13 @@ export type UseWordFrequencySettingsReturn =
  */
 export const useWordFrequencySettings = (): UseWordFrequencySettingsReturn => {
   const vscode = useVSCodeApi();
-  const [settings, setSettings] = React.useState<WordFrequencySettings>({
+  const persisted = usePersistedState<{
+    // Support both legacy and standardized persisted keys
+    wordFrequency?: WordFrequencySettings;
+    wordFrequencySettings?: WordFrequencySettings;
+  }>();
+
+  const defaults: WordFrequencySettings = {
     topN: 100,
     includeHapaxList: true,
     hapaxDisplayMax: 300,
@@ -63,28 +71,36 @@ export const useWordFrequencySettings = (): UseWordFrequencySettingsReturn => {
     includeTrigrams: true,
     enableLemmas: false,
     lengthHistogramMaxChars: 10,
-    minCharacterLength: 1
+    minCharacterLength: 1,
+  };
+
+  const persistedSeed = (persisted?.wordFrequencySettings ?? persisted?.wordFrequency) as
+    | WordFrequencySettings
+    | undefined;
+
+  const [settings, setSettings] = React.useState<WordFrequencySettings>({
+    ...defaults,
+    ...(persistedSeed ?? {}),
   });
 
   // Handle SETTINGS_DATA messages and extract word frequency settings
-  const handleSettingsData = React.useCallback((message: any) => {
+  const handleSettingsData = React.useCallback((message: SettingsDataMessage) => {
     if (message.type === MessageType.SETTINGS_DATA) {
-      const payload = message.payload || message.data;
-      const settingsData = payload?.settings || payload;
+      const { settings: settingsData } = message.payload;
 
       // Extract wordFrequency.* settings from flat or nested structure
       const wordFrequencySettings: Partial<WordFrequencySettings> = {
-        topN: settingsData['wordFrequency.topN'],
-        includeHapaxList: settingsData['wordFrequency.includeHapaxList'],
-        hapaxDisplayMax: settingsData['wordFrequency.hapaxDisplayMax'],
-        includeStopwordsTable: settingsData['wordFrequency.includeStopwordsTable'],
-        contentWordsOnly: settingsData['wordFrequency.contentWordsOnly'],
-        posEnabled: settingsData['wordFrequency.posEnabled'],
-        includeBigrams: settingsData['wordFrequency.includeBigrams'],
-        includeTrigrams: settingsData['wordFrequency.includeTrigrams'],
-        enableLemmas: settingsData['wordFrequency.enableLemmas'],
-        lengthHistogramMaxChars: settingsData['wordFrequency.lengthHistogramMaxChars'],
-        minCharacterLength: settingsData['wordFrequency.minCharacterLength'],
+        topN: settingsData['wordFrequency.topN'] as number | undefined,
+        includeHapaxList: settingsData['wordFrequency.includeHapaxList'] as boolean | undefined,
+        hapaxDisplayMax: settingsData['wordFrequency.hapaxDisplayMax'] as number | undefined,
+        includeStopwordsTable: settingsData['wordFrequency.includeStopwordsTable'] as boolean | undefined,
+        contentWordsOnly: settingsData['wordFrequency.contentWordsOnly'] as boolean | undefined,
+        posEnabled: settingsData['wordFrequency.posEnabled'] as boolean | undefined,
+        includeBigrams: settingsData['wordFrequency.includeBigrams'] as boolean | undefined,
+        includeTrigrams: settingsData['wordFrequency.includeTrigrams'] as boolean | undefined,
+        enableLemmas: settingsData['wordFrequency.enableLemmas'] as boolean | undefined,
+        lengthHistogramMaxChars: settingsData['wordFrequency.lengthHistogramMaxChars'] as number | undefined,
+        minCharacterLength: settingsData['wordFrequency.minCharacterLength'] as number | undefined,
       };
 
       // Only update if we got valid data (check at least one setting is defined)
@@ -131,6 +147,6 @@ export const useWordFrequencySettings = (): UseWordFrequencySettingsReturn => {
     settings,
     updateSetting,
     handleSettingsData,
-    persistedState: { wordFrequency: settings }
+    persistedState: { wordFrequencySettings: settings }
   };
 };
