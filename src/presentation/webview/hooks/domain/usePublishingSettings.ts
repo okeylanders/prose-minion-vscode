@@ -72,11 +72,29 @@ export const usePublishingSettings = (): UsePublishingSettingsReturn => {
   );
   const [publishingGenres, setPublishingGenres] = React.useState<Genre[]>([]);
 
+  // Request publishing standards data on mount to populate genres array
+  React.useEffect(() => {
+    vscode.postMessage({
+      type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA,
+      source: 'webview.hooks.usePublishingSettings',
+      payload: {},
+      timestamp: Date.now()
+    });
+  }, [vscode]);
+
   const handlePublishingStandardsData = React.useCallback((message: PublishingStandardsDataMessage) => {
     const { preset, pageSizeKey, genres } = message.payload;
-    setPublishingPresetState(preset || 'none');
-    setPublishingTrimKeyState(pageSizeKey || '');
-    setPublishingGenres((genres ?? []) as Genre[]);
+
+    // Only update if values are provided (preserves persisted state on initial empty message)
+    if (preset !== undefined) {
+      setPublishingPresetState(preset || 'none');
+    }
+    if (pageSizeKey !== undefined) {
+      setPublishingTrimKeyState(pageSizeKey || '');
+    }
+    if (genres !== undefined) {
+      setPublishingGenres(genres as Genre[]);
+    }
   }, []);
 
   const setPublishingPreset = React.useCallback(
