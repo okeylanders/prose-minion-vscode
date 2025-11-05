@@ -460,6 +460,28 @@ Can proceed alongside other v1.0/v1.1 work. Phase 0 is independent and urgent.
 
 ---
 
+## Sprint Status
+
+### Sprint 01: SearchTab Fix ✅
+**Status**: Complete (2025-11-03)
+**PR**: #18 (merged)
+
+### Sprint 02: Backend Cleanup ✅
+**Status**: Complete (2025-11-03)
+**PR**: #19 (merged)
+
+### Sprint 03: MetricsTab Migration ✅
+**Status**: Complete (2025-11-04)
+**PR**: #20 (merged)
+
+### Sprint 04: Domain Hooks Extraction
+**Status**: In Progress - Phase C Complete (2025-11-05)
+**Branch**: `sprint/unified-settings-04-domain-hooks-extraction`
+**Progress**: Phases A, B, C complete. Phases D, E pending.
+**Memory Bank**: [20251105-1445-sprint-04-phase-c-complete.md](../../../.memory-bank/20251105-1445-sprint-04-phase-c-complete.md)
+
+---
+
 ## Retrospective Questions
 
 After each sprint:

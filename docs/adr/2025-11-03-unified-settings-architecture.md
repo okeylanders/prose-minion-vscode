@@ -890,9 +890,23 @@ This architecture naturally supports:
 - Bidirectional sync working
 - Pattern improvements: Standardized persistence keys, defaults merging, legacy key support
 
-### Phase 3: Domain Hooks Extraction
-**Status**: Planned
+### Phase 3: Domain Hooks Extraction (Sprint 04)
+**Status**: In Progress - Phase C Complete (2025-11-05)
 **Target**: v1.1
+**Branch**: `sprint/unified-settings-04-domain-hooks-extraction`
+
+**Completed**:
+- ✅ Phase A: Created 4 domain hooks (useTokensSettings, useTokenTracking, useContextPathsSettings, useModelsSettings)
+- ✅ Phase B: Renamed usePublishing → usePublishingSettings for consistency
+- ✅ Phase C: Wired all hooks in App.tsx, migrated token widget, updated all references
+- ✅ Bug Fix: Publishing settings persistence (request data on mount + preserve state)
+- ✅ Architecture Debt: Documented useEffect extraction pattern
+
+**Pending**:
+- ⏭️ Phase D: SettingsOverlay refactor (~30 onUpdate calls)
+- ⏭️ Phase E: Regression testing, code quality checks, documentation
+
+**Memory Bank**: [20251105-1445-sprint-04-phase-c-complete.md](../../.memory-bank/20251105-1445-sprint-04-phase-c-complete.md)
 
 ### Phase 4: Documentation & Testing
 **Status**: Planned

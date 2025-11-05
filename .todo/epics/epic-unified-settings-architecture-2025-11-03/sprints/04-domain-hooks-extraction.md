@@ -2,12 +2,13 @@
 
 **Epic**: Unified Settings Architecture
 **Phase**: Phase 3
-**Status**: Planned
+**Status**: In Progress - Phase C Complete (2025-11-05)
 **Priority**: MEDIUM
 **Effort**: 1 week (15.5 hours)
 **Timeline**: v1.1
 **Owner**: Development Team
 **Branch**: `sprint/unified-settings-04-domain-hooks-extraction`
+**Memory Bank**: [20251105-1445-sprint-04-phase-c-complete.md](../../../../.memory-bank/20251105-1445-sprint-04-phase-c-complete.md)
 
 ---
 
@@ -734,5 +735,41 @@ Run full regression suite (see Testing section below):
 
 ---
 
-**Sprint Status**: Planned
+## Phase C Completion Summary (2025-11-05)
+
+**Completed**:
+- ✅ Phase A: Created 4 domain hooks (9 hours)
+  - useTokensSettings (1 setting)
+  - useTokenTracking (state hook)
+  - useContextPathsSettings (8 settings)
+  - useModelsSettings (8 settings, most complex)
+- ✅ Phase B: Renamed usePublishing → usePublishingSettings (1 hour)
+- ✅ Phase C: Wired all hooks, migrated references (3 hours)
+  - All hooks instantiated in App.tsx
+  - Message routing configured
+  - Persistence composition updated
+  - Token widget migrated
+  - Model selectors migrated
+  - SettingsOverlay props updated
+
+**Bug Fixes**:
+- ✅ Publishing settings persistence (2-part fix: preserve state + request data on mount)
+
+**Architecture Debt**:
+- 📝 useEffect extraction pattern documented
+
+**Pending**:
+- ⏭️ Phase D: SettingsOverlay refactor (~30 onUpdate calls, most complex)
+- ⏭️ Phase E: Regression testing, code quality checks, documentation
+
+**Builds**: ✅ All compile successfully
+**Tests**: ✅ Manual testing complete, all features working
+
+**Commit**: `be330e3` - fix(publishing): preserve persisted state and request data on mount
+
+---
+
+**Sprint Status**: In Progress - Phase C Complete
 **Branch**: `sprint/unified-settings-04-domain-hooks-extraction`
+**Next**: Phase D (SettingsOverlay refactor) - start fresh thread
+**Memory Bank**: [20251105-1445-sprint-04-phase-c-complete.md](../../../../.memory-bank/20251105-1445-sprint-04-phase-c-complete.md)
