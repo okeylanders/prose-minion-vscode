@@ -255,9 +255,12 @@ export const App: React.FC = () => {
           visible={settings.showSettings}
           onClose={settings.close}
           vscode={vscode}
-          settings={settings.settingsData}
-          onUpdate={settings.updateSetting}
-          onResetTokens={tokenTracking.resetTokens}
+          modelsSettings={modelsSettings}
+          tokensSettings={tokensSettings}
+          tokenTracking={tokenTracking}
+          contextPathsSettings={contextPathsSettings}
+          wordFrequencySettings={wordFrequencySettings}
+          wordSearchSettings={wordSearchSettings}
           modelOptions={modelsSettings.modelOptions}
           modelSelections={modelsSettings.modelSelections}
           onModelChange={modelsSettings.setModelSelection}
