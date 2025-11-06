@@ -12,10 +12,12 @@ import { MessageType } from '../../../../shared/types';
 import { SettingsDataMessage } from '../../../../shared/types/messages';
 
 export interface WordSearchSettings {
-  contextWords: number;
-  clusterWindow: number;
-  minClusterSize: number;
-  caseSensitive: boolean;
+  defaultTargets: string;           // Default search targets (e.g., 'just')
+  contextWords: number;              // Context words around hits
+  clusterWindow: number;             // Cluster detection window
+  minClusterSize: number;            // Minimum cluster size
+  caseSensitive: boolean;            // Case-sensitive matching
+  enableAssistantExpansion: boolean; // AI-based synonym expansion
 }
 
 export interface WordSearchSettingsState {
@@ -61,10 +63,12 @@ export const useWordSearchSettings = (): UseWordSearchSettingsReturn => {
   const persisted = usePersistedState<{ wordSearchSettings?: WordSearchSettings }>();
 
   const defaults: WordSearchSettings = {
-    contextWords: 3,
-    clusterWindow: 50,
-    minClusterSize: 2, // ✅ Correct default (not 3)
-    caseSensitive: false,
+    defaultTargets: 'just',          // Default search targets
+    contextWords: 7,                 // Context words around hits (changed from 3 to match ADR)
+    clusterWindow: 150,              // Cluster detection window (changed from 50 to match ADR)
+    minClusterSize: 2,               // ✅ Correct default (not 3)
+    caseSensitive: false,            // Case-sensitive matching
+    enableAssistantExpansion: false, // AI-based synonym expansion
   };
 
   const [settings, setSettings] = React.useState<WordSearchSettings>({
@@ -78,20 +82,24 @@ export const useWordSearchSettings = (): UseWordSearchSettingsReturn => {
 
     // Extract word search settings from the flat settings object
     const wordSearch: Partial<WordSearchSettings> = {
+      defaultTargets: allSettings['wordSearch.defaultTargets'] as string | undefined,
       contextWords: allSettings['wordSearch.contextWords'] as number | undefined,
       clusterWindow: allSettings['wordSearch.clusterWindow'] as number | undefined,
       minClusterSize: allSettings['wordSearch.minClusterSize'] as number | undefined,
       caseSensitive: allSettings['wordSearch.caseSensitive'] as boolean | undefined,
+      enableAssistantExpansion: allSettings['wordSearch.enableAssistantExpansion'] as boolean | undefined,
     };
 
     // Only update if we got valid data
-    if (wordSearch.contextWords !== undefined) {
+    if (wordSearch.contextWords !== undefined || wordSearch.defaultTargets !== undefined) {
       setSettings((prev) => ({
         ...prev,
+        defaultTargets: wordSearch.defaultTargets ?? prev.defaultTargets,
         contextWords: wordSearch.contextWords ?? prev.contextWords,
         clusterWindow: wordSearch.clusterWindow ?? prev.clusterWindow,
         minClusterSize: wordSearch.minClusterSize ?? prev.minClusterSize,
         caseSensitive: wordSearch.caseSensitive ?? prev.caseSensitive,
+        enableAssistantExpansion: wordSearch.enableAssistantExpansion ?? prev.enableAssistantExpansion,
       }));
     }
   }, []);

@@ -27,13 +27,17 @@ interface MetricsTabProps {
   onRequestActiveFile: () => void;
   onRequestManuscriptGlobs: () => void;
   onRequestChapterGlobs: () => void;
-  // Publishing standards props (from usePublishing hook)
-  publishingPreset: string;
-  publishingTrimKey: string;
-  publishingGenres: Array<{ key: string; name: string; abbreviation: string; pageSizes: Array<{ key: string; label: string; width: number; height: number; common: boolean }> }>;
-  onPublishingPresetChange: (preset: string) => void;
-  onPublishingTrimChange: (pageSizeKey: string) => void;
-  // Word frequency settings props (from useWordFrequencySettings hook)
+  // Publishing standards props (from usePublishingSettings hook, object pattern)
+  publishingSettings: {
+    settings: {
+      preset: string;
+      trimKey: string;
+    };
+    genres: Array<{ key: string; name: string; abbreviation: string; pageSizes: Array<{ key: string; label: string; width: number; height: number; common: boolean }> }>;
+    setPreset: (preset: string) => void;
+    setTrimKey: (pageSizeKey: string) => void;
+  };
+  // Word frequency settings props (from useWordFrequencySettings hook, object pattern)
   wordFrequencySettings: {
     settings: WordFrequencySettings;
     updateSetting: (key: keyof WordFrequencySettings, value: any) => void;
@@ -55,11 +59,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   onRequestActiveFile,
   onRequestManuscriptGlobs,
   onRequestChapterGlobs,
-  publishingPreset,
-  publishingTrimKey,
-  publishingGenres,
-  onPublishingPresetChange,
-  onPublishingTrimChange,
+  publishingSettings,
   wordFrequencySettings
 }) => {
   // Keep a local mirror only for selection preview if needed in future.
@@ -72,11 +72,11 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   }, [sourceMode, pathText]);
 
   const handlePresetChange = (value: string) => {
-    onPublishingPresetChange(value);
+    publishingSettings.setPreset(value);
   };
 
   const handleTrimChange = (value: string) => {
-    onPublishingTrimChange(value);
+    publishingSettings.setTrimKey(value);
   };
 
   const handleFilterChange = (minLength: number) => {
@@ -322,7 +322,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
               <select
                 id="pm-preset-select"
                 className="w-1/2"
-                value={publishingPreset}
+                value={publishingSettings.settings.preset}
                 onChange={(e) => handlePresetChange(e.target.value)}
                 title="Select a genre preset or manuscript format to compare metrics against publishing ranges"
                 disabled={isLoading}
@@ -330,7 +330,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
                 <option value="none">None</option>
                 <option value="manuscript">Manuscript Format</option>
                 <optgroup label="Genres">
-                  {publishingGenres.map(g => (
+                  {publishingSettings.genres.map(g => (
                     <option key={g.key} value={`genre:${g.key}`}>{g.name} ({g.abbreviation})</option>
                   ))}
                 </optgroup>
@@ -339,14 +339,14 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
               <select
                 id="pm-trim-select"
                 className="w-1/2"
-                value={publishingTrimKey}
+                value={publishingSettings.settings.trimKey}
                 onChange={(e) => handleTrimChange(e.target.value)}
                 title="Choose a trim size to estimate page count and words-per-page"
-                disabled={isLoading || !publishingPreset.startsWith('genre:')}
+                disabled={isLoading || !publishingSettings.settings.preset.startsWith('genre:')}
               >
                 <option value="">Auto (common size)</option>
-                {(publishingPreset.startsWith('genre:')
-                  ? (publishingGenres.find(g => `genre:${g.key}` === publishingPreset)?.pageSizes || [])
+                {(publishingSettings.settings.preset.startsWith('genre:')
+                  ? (publishingSettings.genres.find(g => `genre:${g.key}` === publishingSettings.settings.preset)?.pageSizes || [])
                   : []
                 ).map(ps => (
                   <option key={ps.key} value={ps.key}>{ps.label} ({ps.width}x{ps.height} in)</option>

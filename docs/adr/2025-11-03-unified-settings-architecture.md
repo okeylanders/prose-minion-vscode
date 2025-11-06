@@ -890,9 +890,35 @@ This architecture naturally supports:
 - Bidirectional sync working
 - Pattern improvements: Standardized persistence keys, defaults merging, legacy key support
 
-### Phase 3: Domain Hooks Extraction
-**Status**: Planned
+### Phase 3: Domain Hooks Extraction (Sprint 04) ✅
+**Status**: Complete (2025-11-06)
 **Target**: v1.1
+**Branch**: `sprint/unified-settings-04-domain-hooks-extraction`
+**PR**: #TBD (ready for creation)
+
+**Completed**:
+- ✅ Phase A: Created 4 domain hooks (useTokensSettings, useTokenTracking, useContextPathsSettings, useModelsSettings)
+- ✅ Phase B: Renamed usePublishing → usePublishingSettings for consistency
+- ✅ Phase C: Wired all hooks in App.tsx, migrated token widget, updated all references
+- ✅ Phase D: Refactored SettingsOverlay to use specialized domain hooks (~30 onUpdate calls replaced)
+- ✅ Phase E: User testing complete, all 36 settings verified working, documentation updated
+- ✅ Bug Fix #1: Publishing settings persistence (request data on mount + preserve state)
+- ✅ Bug Fix #2: useWordSearchSettings incomplete (missing 2 settings, fixed with correct defaults)
+- ✅ Bug Fix #3: Model config race conditions (enhanced MODEL_DATA broadcast to prevent echoes)
+- ✅ Architecture Debt: Documented useEffect extraction pattern
+
+**Achievements**:
+- ✅ useSettings god hook eliminated (360 lines → 0)
+- ✅ 6 specialized settings hooks created/renamed
+- ✅ 100% type safety (no more generic Record<string, any>)
+- ✅ All 36 config settings using domain hooks
+- ✅ Consistent naming convention ("Settings" suffix for config hooks)
+- ✅ Zero TypeScript errors, clean builds
+
+**Memory Bank**:
+- [20251105-1445-sprint-04-phase-c-complete.md](../../.memory-bank/20251105-1445-sprint-04-phase-c-complete.md)
+- [20251105-1857-sprint-04-phase-d-complete.md](../../.memory-bank/20251105-1857-sprint-04-phase-d-complete.md)
+- [20251106-0705-sprint-04-complete.md](../../.memory-bank/20251106-0705-sprint-04-complete.md)
 
 ### Phase 4: Documentation & Testing
 **Status**: Planned

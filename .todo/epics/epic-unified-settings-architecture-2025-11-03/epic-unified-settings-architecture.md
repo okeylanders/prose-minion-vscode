@@ -435,7 +435,7 @@ Can proceed alongside other v1.0/v1.1 work. Phase 0 is independent and urgent.
 | [01-searchtab-urgent-fix.md](sprints/01-searchtab-urgent-fix.md) | Phase 0 | 2 hours | CRITICAL | Before v1.0 | ✅ Complete (PR #18 merged 2025-11-03) |
 | [02-backend-semantic-methods.md](sprints/02-backend-semantic-methods.md) | Phase 1 | 30 min | HIGH | Next week | ✅ Complete (PR #19 merged 2025-11-03) |
 | [03-metricstab-migration.md](sprints/03-metricstab-migration.md) | Phase 2 | 1.5 hours | MEDIUM | v1.1 | ✅ Complete (PR #20 merged 2025-11-04) |
-| [04-domain-hooks-extraction.md](sprints/04-domain-hooks-extraction.md) | Phase 3 | 1 week (15.5h) | MEDIUM | v1.1 | Planned |
+| [04-domain-hooks-extraction.md](sprints/04-domain-hooks-extraction.md) | Phase 3 | 1 week (15.5h) | MEDIUM | v1.1 | ✅ Complete (PR #TBD, 2025-11-06) |
 | [05-documentation-testing.md](sprints/05-documentation-testing.md) | Phase 4 | 3 days | MEDIUM | v1.1 | Planned |
 
 ---
@@ -457,6 +457,32 @@ Can proceed alongside other v1.0/v1.1 work. Phase 0 is independent and urgent.
 - ✅ 100% persistence coverage
 - ✅ Clear documentation for contributors
 - ✅ Automated test coverage
+
+---
+
+## Sprint Status
+
+### Sprint 01: SearchTab Fix ✅
+**Status**: Complete (2025-11-03)
+**PR**: #18 (merged)
+
+### Sprint 02: Backend Cleanup ✅
+**Status**: Complete (2025-11-03)
+**PR**: #19 (merged)
+
+### Sprint 03: MetricsTab Migration ✅
+**Status**: Complete (2025-11-04)
+**PR**: #20 (merged)
+
+### Sprint 04: Domain Hooks Extraction ✅
+**Status**: Complete (2025-11-06)
+**Branch**: `sprint/unified-settings-04-domain-hooks-extraction`
+**PR**: #TBD (ready for creation)
+**Progress**: All phases (A, B, C, D, E) complete.
+**Memory Bank**:
+- [20251105-1445-sprint-04-phase-c-complete.md](../../../.memory-bank/20251105-1445-sprint-04-phase-c-complete.md)
+- [20251105-1857-sprint-04-phase-d-complete.md](../../../.memory-bank/20251105-1857-sprint-04-phase-d-complete.md)
+- [20251106-0705-sprint-04-complete.md](../../../.memory-bank/20251106-0705-sprint-04-complete.md)
 
 ---
 

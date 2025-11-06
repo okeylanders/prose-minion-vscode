@@ -1,16 +1,28 @@
 import * as React from 'react';
 import { ModelScope, ModelOption } from '../../../shared/types';
+import { UseModelsSettingsReturn } from '../hooks/domain/useModelsSettings';
+import { UseTokensSettingsReturn } from '../hooks/domain/useTokensSettings';
+import { UseTokenTrackingReturn } from '../hooks/domain/useTokenTracking';
+import { UseContextPathsSettingsReturn } from '../hooks/domain/useContextPathsSettings';
+import { UseWordFrequencySettingsReturn } from '../hooks/domain/useWordFrequencySettings';
+import { UseWordSearchSettingsReturn } from '../hooks/domain/useWordSearchSettings';
 
 type SettingsOverlayProps = {
   visible: boolean;
   onClose: () => void;
   vscode: any;
-  settings: Record<string, string | number | boolean>;
-  onUpdate: (key: string, value: string | number | boolean) => void;
-  onResetTokens: () => void;
+  // Specialized hook objects (replaces generic settings + onUpdate)
+  modelsSettings: UseModelsSettingsReturn;
+  tokensSettings: UseTokensSettingsReturn;
+  tokenTracking: UseTokenTrackingReturn;
+  contextPathsSettings: UseContextPathsSettingsReturn;
+  wordFrequencySettings: UseWordFrequencySettingsReturn;
+  wordSearchSettings: UseWordSearchSettingsReturn;
+  // Keep model selections (from modelsSettings)
   modelOptions: ModelOption[];
   modelSelections: Partial<Record<ModelScope, string>>;
   onModelChange: (scope: ModelScope, modelId: string) => void;
+  // Keep publishing and apiKey
   publishing: {
     preset: string;
     trimKey: string;
@@ -31,9 +43,12 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
   visible,
   onClose,
   vscode,
-  settings,
-  onUpdate,
-  onResetTokens,
+  modelsSettings,
+  tokensSettings,
+  tokenTracking,
+  contextPathsSettings,
+  wordFrequencySettings,
+  wordSearchSettings,
   modelOptions,
   modelSelections,
   onModelChange,
@@ -42,10 +57,12 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
 }) => {
   if (!visible) return null;
 
-  const get = (key: string) => settings[key];
-  const asString = (key: string) => String(get(key) ?? '');
-  const asNumber = (key: string) => Number(get(key) ?? 0);
-  const asBoolean = (key: string) => Boolean(get(key));
+  // Helper functions for accessing typed settings from hooks
+  const getModelsSetting = <K extends keyof typeof modelsSettings.settings>(key: K) => modelsSettings.settings[key];
+  const getTokensSetting = <K extends keyof typeof tokensSettings.settings>(key: K) => tokensSettings.settings[key];
+  const getWordFreqSetting = <K extends keyof typeof wordFrequencySettings.settings>(key: K) => wordFrequencySettings.settings[key];
+  const getWordSearchSetting = <K extends keyof typeof wordSearchSettings.settings>(key: K) => wordSearchSettings.settings[key];
+  const getContextPathsSetting = <K extends keyof typeof contextPathsSettings.settings>(key: K) => contextPathsSettings.settings[key];
 
   const renderModelSelect = (scope: ModelScope, label: string, help?: string) => (
     <label className="settings-label">
@@ -132,8 +149,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-checkbox-label">
           <input
             type="checkbox"
-            checked={asBoolean('includeCraftGuides')}
-            onChange={(e) => onUpdate('includeCraftGuides', e.target.checked)}
+            checked={getModelsSetting('includeCraftGuides')}
+            onChange={(e) => modelsSettings.updateSetting('includeCraftGuides', e.target.checked)}
           /> Include Craft Guides
           <div className="settings-description">
             Adds writing guides and examples to prompts for richer, more context-aware suggestions. Uses more tokens but improves quality.
@@ -144,8 +161,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
           <div className="settings-label-title">Temperature (0–2)</div>
           <input
             type="text"
-            value={asNumber('temperature')}
-            onChange={(e) => onUpdate('temperature', Number(e.target.value) || 0)}
+            value={getModelsSetting('temperature')}
+            onChange={(e) => modelsSettings.updateSetting('temperature', Number(e.target.value) || 0)}
             className="settings-input settings-input-small"
           />
           <div className="settings-description">
@@ -157,8 +174,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
           <div className="settings-label-title">Max Tokens</div>
           <input
             type="text"
-            value={asNumber('maxTokens')}
-            onChange={(e) => onUpdate('maxTokens', Number(e.target.value) || 0)}
+            value={getModelsSetting('maxTokens')}
+            onChange={(e) => modelsSettings.updateSetting('maxTokens', Number(e.target.value) || 0)}
             className="settings-input settings-input-medium"
           />
           <div className="settings-description">
@@ -169,8 +186,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-checkbox-label">
           <input
             type="checkbox"
-            checked={asBoolean('applyContextWindowTrimming')}
-            onChange={(e) => onUpdate('applyContextWindowTrimming', e.target.checked)}
+            checked={getModelsSetting('applyContextWindowTrimming')}
+            onChange={(e) => modelsSettings.updateSetting('applyContextWindowTrimming', e.target.checked)}
           /> Apply Context Window Trimming
           <div className="settings-description">
             Automatically trims large inputs to prevent token limit errors. <strong>Limits</strong>: UI recommends 500-word excerpts; Context Agent (50K words), Analysis Agents (50K words for guides). Targets 128K token context window. Disable if using models with larger context windows (e.g., 200K+).
@@ -180,8 +197,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-checkbox-label">
           <input
             type="checkbox"
-            checked={asBoolean('ui.showTokenWidget')}
-            onChange={(e) => onUpdate('ui.showTokenWidget', e.target.checked)}
+            checked={getTokensSetting('showTokenWidget')}
+            onChange={(e) => tokensSettings.updateSetting('showTokenWidget', e.target.checked)}
           /> Show Token Usage Widget
           <div className="settings-description">
             Displays running token totals in the header. Resets manually or on reload.
@@ -190,7 +207,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
 
         <div style={{ marginTop: 8 }}>
           <button
-            onClick={onResetTokens}
+            onClick={tokenTracking.resetTokens}
             title="Reset session token totals"
             className="settings-button"
           >
@@ -252,8 +269,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
           <div className="settings-label-title">Top N Words</div>
           <input
             type="text"
-            value={asNumber('wordFrequency.topN')}
-            onChange={(e) => onUpdate('wordFrequency.topN', Number(e.target.value) || 0)}
+            value={getWordFreqSetting('topN')}
+            onChange={(e) => wordFrequencySettings.updateSetting('topN', Number(e.target.value) || 0)}
             className="settings-input settings-input-small"
           />
           <div className="settings-description">
@@ -264,8 +281,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-checkbox-label">
           <input
             type="checkbox"
-            checked={asBoolean('wordFrequency.includeHapaxList')}
-            onChange={(e) => onUpdate('wordFrequency.includeHapaxList', e.target.checked)}
+            checked={getWordFreqSetting('includeHapaxList')}
+            onChange={(e) => wordFrequencySettings.updateSetting('includeHapaxList', e.target.checked)}
           /> Include Hapax List
           <div className="settings-description">
             Hapax words appear exactly once in your text. Useful for spotting unique vocabulary, one-off expressions, or potential typos.
@@ -276,8 +293,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
           <div className="settings-label-title">Hapax Display Max</div>
           <input
             type="text"
-            value={asNumber('wordFrequency.hapaxDisplayMax')}
-            onChange={(e) => onUpdate('wordFrequency.hapaxDisplayMax', Number(e.target.value) || 0)}
+            value={getWordFreqSetting('hapaxDisplayMax')}
+            onChange={(e) => wordFrequencySettings.updateSetting('hapaxDisplayMax', Number(e.target.value) || 0)}
             className="settings-input settings-input-medium"
           />
           <div className="settings-description">
@@ -288,8 +305,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-checkbox-label">
           <input
             type="checkbox"
-            checked={asBoolean('wordFrequency.includeStopwordsTable')}
-            onChange={(e) => onUpdate('wordFrequency.includeStopwordsTable', e.target.checked)}
+            checked={getWordFreqSetting('includeStopwordsTable')}
+            onChange={(e) => wordFrequencySettings.updateSetting('includeStopwordsTable', e.target.checked)}
           /> Include Stopwords Table
           <div className="settings-description">
             Shows common function words (the, and, of, to, in, etc.) for checking prose rhythm and balance.
@@ -299,8 +316,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-checkbox-label">
           <input
             type="checkbox"
-            checked={asBoolean('wordFrequency.contentWordsOnly')}
-            onChange={(e) => onUpdate('wordFrequency.contentWordsOnly', e.target.checked)}
+            checked={getWordFreqSetting('contentWordsOnly')}
+            onChange={(e) => wordFrequencySettings.updateSetting('contentWordsOnly', e.target.checked)}
           /> Content Words Only
           <div className="settings-description">
             Exclude stopwords (function words) to focus on meaningful content: nouns, verbs, adjectives, and adverbs.
@@ -310,8 +327,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-checkbox-label">
           <input
             type="checkbox"
-            checked={asBoolean('wordFrequency.posEnabled')}
-            onChange={(e) => onUpdate('wordFrequency.posEnabled', e.target.checked)}
+            checked={getWordFreqSetting('posEnabled')}
+            onChange={(e) => wordFrequencySettings.updateSetting('posEnabled', e.target.checked)}
           /> POS Tagger Enabled
           <div className="settings-description">
             Enables part-of-speech analysis (nouns, verbs, adjectives, etc.) using offline processing. Falls back gracefully if unavailable.
@@ -321,8 +338,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-checkbox-label">
           <input
             type="checkbox"
-            checked={asBoolean('wordFrequency.includeBigrams')}
-            onChange={(e) => onUpdate('wordFrequency.includeBigrams', e.target.checked)}
+            checked={getWordFreqSetting('includeBigrams')}
+            onChange={(e) => wordFrequencySettings.updateSetting('includeBigrams', e.target.checked)}
           /> Include Bigrams
           <div className="settings-description">
             Shows top two-word phrases (e.g., "dark night", "she said", "front door"). Helpful for spotting recurring collocations and clichés.
@@ -332,8 +349,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-checkbox-label">
           <input
             type="checkbox"
-            checked={asBoolean('wordFrequency.includeTrigrams')}
-            onChange={(e) => onUpdate('wordFrequency.includeTrigrams', e.target.checked)}
+            checked={getWordFreqSetting('includeTrigrams')}
+            onChange={(e) => wordFrequencySettings.updateSetting('includeTrigrams', e.target.checked)}
           /> Include Trigrams
           <div className="settings-description">
             Shows top three-word phrases (e.g., "out of the", "end of the", "looked at her"). Useful for identifying set-piece phrasings and voice patterns.
@@ -343,8 +360,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-checkbox-label">
           <input
             type="checkbox"
-            checked={asBoolean('wordFrequency.enableLemmas')}
-            onChange={(e) => onUpdate('wordFrequency.enableLemmas', e.target.checked)}
+            checked={getWordFreqSetting('enableLemmas')}
+            onChange={(e) => wordFrequencySettings.updateSetting('enableLemmas', e.target.checked)}
           /> Enable Lemmas (experimental)
           <div className="settings-description">
             Groups inflected word forms under their base form (e.g., "running", "ran", "runs" → "run"). Helps identify word variety.
@@ -355,8 +372,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
           <div className="settings-label-title">Word Length Histogram Max Chars</div>
           <input
             type="text"
-            value={asNumber('wordFrequency.lengthHistogramMaxChars')}
-            onChange={(e) => onUpdate('wordFrequency.lengthHistogramMaxChars', Number(e.target.value) || 0)}
+            value={getWordFreqSetting('lengthHistogramMaxChars')}
+            onChange={(e) => wordFrequencySettings.updateSetting('lengthHistogramMaxChars', Number(e.target.value) || 0)}
             className="settings-input settings-input-medium"
           />
           <div className="settings-description">
@@ -367,8 +384,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-label">
           <div className="settings-label-title">Minimum Word Length</div>
           <select
-            value={asNumber('wordFrequency.minCharacterLength')}
-            onChange={(e) => onUpdate('wordFrequency.minCharacterLength', Number(e.target.value))}
+            value={getWordFreqSetting('minCharacterLength')}
+            onChange={(e) => wordFrequencySettings.updateSetting('minCharacterLength', Number(e.target.value))}
             className="settings-select"
           >
             <option value="1">1+ characters (all words)</option>
@@ -395,8 +412,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-label">
           <div className="settings-label-title">Default Targets</div>
           <textarea
-            value={asString('wordSearch.defaultTargets')}
-            onChange={(e) => onUpdate('wordSearch.defaultTargets', e.target.value)}
+            value={getWordSearchSetting('defaultTargets')}
+            onChange={(e) => wordSearchSettings.updateSetting('defaultTargets', e.target.value)}
             className="settings-textarea"
           />
           <div className="settings-description">
@@ -409,8 +426,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             <div className="settings-label-title">Context Words</div>
             <input
               type="text"
-              value={asNumber('wordSearch.contextWords')}
-              onChange={(e) => onUpdate('wordSearch.contextWords', Number(e.target.value) || 0)}
+              value={getWordSearchSetting('contextWords')}
+              onChange={(e) => wordSearchSettings.updateSetting('contextWords', Number(e.target.value) || 0)}
               className="settings-input settings-input-small"
             />
             <div className="settings-description">
@@ -422,8 +439,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             <div className="settings-label-title">Cluster Window</div>
             <input
               type="text"
-              value={asNumber('wordSearch.clusterWindow')}
-              onChange={(e) => onUpdate('wordSearch.clusterWindow', Number(e.target.value) || 0)}
+              value={getWordSearchSetting('clusterWindow')}
+              onChange={(e) => wordSearchSettings.updateSetting('clusterWindow', Number(e.target.value) || 0)}
               className="settings-input settings-input-small"
             />
             <div className="settings-description">
@@ -435,8 +452,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             <div className="settings-label-title">Min Cluster Size</div>
             <input
               type="text"
-              value={asNumber('wordSearch.minClusterSize')}
-              onChange={(e) => onUpdate('wordSearch.minClusterSize', Number(e.target.value) || 0)}
+              value={getWordSearchSetting('minClusterSize')}
+              onChange={(e) => wordSearchSettings.updateSetting('minClusterSize', Number(e.target.value) || 0)}
               className="settings-input settings-input-small"
             />
             <div className="settings-description">
@@ -448,8 +465,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-checkbox-label">
           <input
             type="checkbox"
-            checked={asBoolean('wordSearch.caseSensitive')}
-            onChange={(e) => onUpdate('wordSearch.caseSensitive', e.target.checked)}
+            checked={getWordSearchSetting('caseSensitive')}
+            onChange={(e) => wordSearchSettings.updateSetting('caseSensitive', e.target.checked)}
           /> Case Sensitive
           <div className="settings-description">
             When enabled, "Rose" and "rose" are treated as different words.
@@ -459,8 +476,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-checkbox-label">
           <input
             type="checkbox"
-            checked={asBoolean('wordSearch.enableAssistantExpansion')}
-            onChange={(e) => onUpdate('wordSearch.enableAssistantExpansion', e.target.checked)}
+            checked={getWordSearchSetting('enableAssistantExpansion')}
+            onChange={(e) => wordSearchSettings.updateSetting('enableAssistantExpansion', e.target.checked)}
           /> Enable Assistant Expansion
           <div className="settings-description">
             Uses the dictionary model to suggest synonyms and inflections when enabled. (Coming soon)
@@ -546,8 +563,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-label">
           <div className="settings-label-title">Characters</div>
           <textarea
-            value={asString('contextPaths.characters')}
-            onChange={(e) => onUpdate('contextPaths.characters', e.target.value)}
+            value={getContextPathsSetting('characters')}
+            onChange={(e) => contextPathsSettings.updateSetting('characters', e.target.value)}
             className="settings-textarea"
           />
           <div className="settings-description">
@@ -558,8 +575,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-label">
           <div className="settings-label-title">Locations &amp; Settings</div>
           <textarea
-            value={asString('contextPaths.locations')}
-            onChange={(e) => onUpdate('contextPaths.locations', e.target.value)}
+            value={getContextPathsSetting('locations')}
+            onChange={(e) => contextPathsSettings.updateSetting('locations', e.target.value)}
             className="settings-textarea"
           />
           <div className="settings-description">
@@ -570,8 +587,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-label">
           <div className="settings-label-title">Themes</div>
           <textarea
-            value={asString('contextPaths.themes')}
-            onChange={(e) => onUpdate('contextPaths.themes', e.target.value)}
+            value={getContextPathsSetting('themes')}
+            onChange={(e) => contextPathsSettings.updateSetting('themes', e.target.value)}
             className="settings-textarea"
           />
           <div className="settings-description">
@@ -582,8 +599,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-label">
           <div className="settings-label-title">Things / Props</div>
           <textarea
-            value={asString('contextPaths.things')}
-            onChange={(e) => onUpdate('contextPaths.things', e.target.value)}
+            value={getContextPathsSetting('things')}
+            onChange={(e) => contextPathsSettings.updateSetting('things', e.target.value)}
             className="settings-textarea"
           />
           <div className="settings-description">
@@ -594,8 +611,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-label">
           <div className="settings-label-title">Draft Chapters &amp; Outlines</div>
           <textarea
-            value={asString('contextPaths.chapters')}
-            onChange={(e) => onUpdate('contextPaths.chapters', e.target.value)}
+            value={getContextPathsSetting('chapters')}
+            onChange={(e) => contextPathsSettings.updateSetting('chapters', e.target.value)}
             className="settings-textarea"
           />
           <div className="settings-description">
@@ -606,8 +623,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-label">
           <div className="settings-label-title">Manuscript Chapters</div>
           <textarea
-            value={asString('contextPaths.manuscript')}
-            onChange={(e) => onUpdate('contextPaths.manuscript', e.target.value)}
+            value={getContextPathsSetting('manuscript')}
+            onChange={(e) => contextPathsSettings.updateSetting('manuscript', e.target.value)}
             className="settings-textarea"
           />
           <div className="settings-description">
@@ -618,8 +635,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-label">
           <div className="settings-label-title">Project Brief Materials</div>
           <textarea
-            value={asString('contextPaths.projectBrief')}
-            onChange={(e) => onUpdate('contextPaths.projectBrief', e.target.value)}
+            value={getContextPathsSetting('projectBrief')}
+            onChange={(e) => contextPathsSettings.updateSetting('projectBrief', e.target.value)}
             className="settings-textarea"
           />
           <div className="settings-description">
@@ -630,8 +647,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <label className="settings-label">
           <div className="settings-label-title">General References</div>
           <textarea
-            value={asString('contextPaths.general')}
-            onChange={(e) => onUpdate('contextPaths.general', e.target.value)}
+            value={getContextPathsSetting('general')}
+            onChange={(e) => contextPathsSettings.updateSetting('general', e.target.value)}
             className="settings-textarea"
           />
           <div className="settings-description">

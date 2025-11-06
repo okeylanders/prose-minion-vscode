@@ -1,5 +1,5 @@
 /**
- * usePublishing - Domain hook for publishing standards management
+ * usePublishingSettings - Domain hook for publishing standards management
  *
  * Manages publishing preset, trim size, and genre data.
  */
@@ -17,50 +17,50 @@ export interface Genre {
   pageSizes: Array<{ key: string; label: string; width: number; height: number; common: boolean }>;
 }
 
-export interface PublishingState {
+export interface PublishingSettingsState {
   publishingPreset: string;
   publishingTrimKey: string;
   publishingGenres: Genre[];
 }
 
-export interface PublishingActions {
+export interface PublishingSettingsActions {
   handlePublishingStandardsData: (message: PublishingStandardsDataMessage) => void;
   setPublishingPreset: (preset: string) => void;
   setPublishingTrim: (pageSizeKey?: string) => void;
 }
 
-export interface PublishingPersistence {
+export interface PublishingSettingsPersistence {
   publishingPreset: string;
   publishingTrimKey: string;
 }
 
-export type UsePublishingReturn = PublishingState & PublishingActions & { persistedState: PublishingPersistence };
+export type UsePublishingSettingsReturn = PublishingSettingsState & PublishingSettingsActions & { persistedState: PublishingSettingsPersistence };
 
 /**
  * Custom hook for managing publishing standards state and operations
  *
  * @example
  * ```tsx
- * const publishing = usePublishing();
+ * const publishingSettings = usePublishingSettings();
  *
  * // Handle publishing standards data message
  * useMessageRouter({
- *   [MessageType.PUBLISHING_STANDARDS_DATA]: publishing.handlePublishingStandardsData,
+ *   [MessageType.PUBLISHING_STANDARDS_DATA]: publishingSettings.handlePublishingStandardsData,
  * });
  *
  * // Use in SettingsOverlay
  * <SettingsOverlay
  *   publishing={{
- *     preset: publishing.publishingPreset,
- *     trimKey: publishing.publishingTrimKey,
- *     genres: publishing.publishingGenres,
- *     onPresetChange: publishing.setPublishingPreset,
- *     onTrimChange: publishing.setPublishingTrim,
+ *     preset: publishingSettings.publishingPreset,
+ *     trimKey: publishingSettings.publishingTrimKey,
+ *     genres: publishingSettings.publishingGenres,
+ *     onPresetChange: publishingSettings.setPublishingPreset,
+ *     onTrimChange: publishingSettings.setPublishingTrim,
  *   }}
  * />
  * ```
  */
-export const usePublishing = (): UsePublishingReturn => {
+export const usePublishingSettings = (): UsePublishingSettingsReturn => {
   const vscode = useVSCodeApi();
   const persisted = usePersistedState<{ publishingPreset?: string; publishingTrimKey?: string }>();
 
@@ -72,11 +72,29 @@ export const usePublishing = (): UsePublishingReturn => {
   );
   const [publishingGenres, setPublishingGenres] = React.useState<Genre[]>([]);
 
+  // Request publishing standards data on mount to populate genres array
+  React.useEffect(() => {
+    vscode.postMessage({
+      type: MessageType.REQUEST_PUBLISHING_STANDARDS_DATA,
+      source: 'webview.hooks.usePublishingSettings',
+      payload: {},
+      timestamp: Date.now()
+    });
+  }, [vscode]);
+
   const handlePublishingStandardsData = React.useCallback((message: PublishingStandardsDataMessage) => {
     const { preset, pageSizeKey, genres } = message.payload;
-    setPublishingPresetState(preset || 'none');
-    setPublishingTrimKeyState(pageSizeKey || '');
-    setPublishingGenres((genres ?? []) as Genre[]);
+
+    // Only update if values are provided (preserves persisted state on initial empty message)
+    if (preset !== undefined) {
+      setPublishingPresetState(preset || 'none');
+    }
+    if (pageSizeKey !== undefined) {
+      setPublishingTrimKeyState(pageSizeKey || '');
+    }
+    if (genres !== undefined) {
+      setPublishingGenres(genres as Genre[]);
+    }
   }, []);
 
   const setPublishingPreset = React.useCallback(
