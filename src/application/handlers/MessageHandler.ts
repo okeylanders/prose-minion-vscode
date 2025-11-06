@@ -147,16 +147,26 @@ export class MessageHandler {
       }
 
       // Only refresh service if model configs changed
-      if (this.MODEL_KEYS.some(key => event.affectsConfiguration(key)) ||
-          event.affectsConfiguration('proseMinion.model')) {
+      if (this.MODEL_KEYS.some(key => event.affectsConfiguration(key))) {
         this.outputChannel.appendLine('[ConfigWatcher] Model config changed, refreshing service');
         void this.refreshServiceConfiguration();
-        // NOTE: Do NOT send MODEL_DATA here for model changes.
-        // handleSetModelSelection will send it after saving.
-        // This prevents race conditions where we send stale data.
+
+        // Send MODEL_DATA if this change came from external source (VS Code Settings UI)
+        // handleSetModelSelection will send it for webview changes (with echo prevention)
+        const shouldBroadcast = this.shouldBroadcastModelSettings(event);
+        if (shouldBroadcast) {
+          this.outputChannel.appendLine('[ConfigWatcher] Model settings changed externally, sending MODEL_DATA after delay');
+          // Wait for VSCode's async config system to finish writing (same delay as handleSetModelSelection)
+          void (async () => {
+            await new Promise(resolve => setTimeout(resolve, 50));
+            await this.configurationHandler.sendModelData();
+          })();
+        } else {
+          this.outputChannel.appendLine('[ConfigWatcher] Model settings changed from webview, skipping MODEL_DATA (echo prevention)');
+        }
       }
 
-      // Send MODEL_DATA only for UI setting changes (not model changes)
+      // Send MODEL_DATA for UI setting changes (not model changes)
       // AND only if not webview-originated (prevent echo-back)
       if (this.shouldBroadcastUISettings(event)) {
         this.outputChannel.appendLine('[ConfigWatcher] UI settings changed, sending MODEL_DATA');

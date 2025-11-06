@@ -144,10 +144,13 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
       }
 
       if (selections) {
-        setModelSelections(prev => ({
-          ...prev,
-          ...(selections ?? {}),
-        }));
+        setModelSelections(prev => {
+          const next = {
+            ...prev,
+            ...(selections ?? {}),
+          };
+          return next;
+        });
       }
     }
   }, []);
