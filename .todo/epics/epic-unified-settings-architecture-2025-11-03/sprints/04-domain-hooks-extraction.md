@@ -2,13 +2,17 @@
 
 **Epic**: Unified Settings Architecture
 **Phase**: Phase 3
-**Status**: In Progress - Phase C Complete (2025-11-05)
+**Status**: ✅ COMPLETE (2025-11-06)
 **Priority**: MEDIUM
-**Effort**: 1 week (15.5 hours)
+**Effort**: 15.5 hours actual (15.5 hours estimated) ✅
 **Timeline**: v1.1
 **Owner**: Development Team
 **Branch**: `sprint/unified-settings-04-domain-hooks-extraction`
-**Memory Bank**: [20251105-1445-sprint-04-phase-c-complete.md](../../../../.memory-bank/20251105-1445-sprint-04-phase-c-complete.md)
+**PR**: #TBD (ready for creation)
+**Memory Bank**:
+- [20251105-1445-sprint-04-phase-c-complete.md](../../../../.memory-bank/20251105-1445-sprint-04-phase-c-complete.md)
+- [20251105-1857-sprint-04-phase-d-complete.md](../../../../.memory-bank/20251105-1857-sprint-04-phase-d-complete.md)
+- [20251106-0705-sprint-04-complete.md](../../../../.memory-bank/20251106-0705-sprint-04-complete.md)
 
 ---
 
@@ -769,7 +773,75 @@ Run full regression suite (see Testing section below):
 
 ---
 
-**Sprint Status**: In Progress - Phase C Complete
+## Phase D Completion Summary (2025-11-05)
+
+**Status**: Complete ✅
+**Effort**: 2 hours actual (2 hours estimated)
 **Branch**: `sprint/unified-settings-04-domain-hooks-extraction`
-**Next**: Phase D (SettingsOverlay refactor) - start fresh thread
-**Memory Bank**: [20251105-1445-sprint-04-phase-c-complete.md](../../../../.memory-bank/20251105-1445-sprint-04-phase-c-complete.md)
+
+### SettingsOverlay Refactored (159 lines changed)
+
+**Props Transformation**:
+- ✅ Removed generic `settings: Record<string, any>` prop
+- ✅ Removed generic `onUpdate` prop
+- ✅ Added 6 specialized domain hook props (modelsSettings, tokensSettings, tokenTracking, contextPathsSettings, wordFrequencySettings, wordSearchSettings)
+
+**OnUpdate Calls Replaced**: 30 total
+- Agent Behavior: 4 calls → `modelsSettings.updateSetting()`
+- Token Widget: 1 call → `tokensSettings.updateSetting()`
+- Word Frequency: 11 calls → `wordFrequencySettings.updateSetting()`
+- Word Search: 6 calls → `wordSearchSettings.updateSetting()`
+- Context Paths: 8 calls → `contextPathsSettings.updateSetting()`
+
+**Bug Fixes**:
+1. **useWordSearchSettings incomplete**: Missing 2 settings (defaultTargets, enableAssistantExpansion) - fixed with correct defaults
+2. **Model config race conditions**: Enhanced MODEL_DATA broadcast to prevent echoes (commit `5bdf80f`)
+
+**Verification**:
+- ✅ Zero TypeScript errors
+- ✅ Clean builds (Extension: 2.02 MiB, Webview: 408 KiB)
+- ✅ All settings sections tested
+
+**Memory Bank**: [20251105-1857-sprint-04-phase-d-complete.md](../../../../.memory-bank/20251105-1857-sprint-04-phase-d-complete.md)
+
+---
+
+## Phase E Completion Summary (2025-11-06)
+
+**Status**: Complete ✅
+**Effort**: 1 hour actual (2.5 hours estimated - reduced due to completed user testing)
+
+### Final Verification
+
+**User Testing**: ✅ Complete (all 36 settings verified working)
+- All model selections work
+- All agent behavior settings work
+- All context paths work
+- All word frequency settings work
+- All word search settings work
+- Token widget toggle works
+- Persistence works (reload webview)
+- Bidirectional sync works (Settings Overlay ↔ VSCode settings panel)
+
+**Code Quality Checks**: ✅ Complete
+- TypeScript compilation: Zero errors
+- Git status: Clean working tree, all changes committed
+- Build status: Extension (2.02 MiB), Webview (408 KiB) - clean builds
+
+**Documentation**: ✅ Complete
+- Sprint doc updated with Phase D/E summaries
+- Epic doc updated (Sprint 04 marked complete)
+- ADR updated (Phase 3 marked implemented)
+- Memory bank entries complete
+- PR description created
+
+---
+
+**Sprint Status**: ✅ COMPLETE (2025-11-06)
+**Branch**: `sprint/unified-settings-04-domain-hooks-extraction`
+**PR**: #TBD (ready for creation)
+**Next**: User creates PR, merges to main, proceeds to Sprint 05 (Phase 4)
+**Memory Bank**:
+- [20251105-1445-sprint-04-phase-c-complete.md](../../../../.memory-bank/20251105-1445-sprint-04-phase-c-complete.md)
+- [20251105-1857-sprint-04-phase-d-complete.md](../../../../.memory-bank/20251105-1857-sprint-04-phase-d-complete.md)
+- [20251106-0705-sprint-04-complete.md](../../../../.memory-bank/20251106-0705-sprint-04-complete.md) (final summary)
