@@ -43,8 +43,26 @@ src/
 │   └── api/            # External API implementations
 ├── presentation/        # Presentation Layer
 │   └── webview/        # React UI components
+│       ├── hooks/       # Custom React hooks
+│       │   ├── useVSCodeApi.ts       # VSCode API singleton
+│       │   ├── usePersistence.ts     # State persistence composition
+│       │   ├── useMessageRouter.ts   # Strategy-based message routing
+│       │   └── domain/               # Domain-specific hooks
+│       │       ├── useModelsSettings.ts        # Model selections + agent behavior (8 settings)
+│       │       ├── useWordSearchSettings.ts    # Word search configuration (6 settings)
+│       │       ├── useWordFrequencySettings.ts # Word frequency options (11 settings)
+│       │       ├── useContextPathsSettings.ts  # Context resource paths (8 settings)
+│       │       ├── useTokensSettings.ts        # Token widget UI preference (1 setting)
+│       │       ├── usePublishingSettings.ts    # Publishing standards (2 settings)
+│       │       ├── useTokenTracking.ts         # Token usage tracking (ephemeral state)
+│       │       ├── useAnalysis.ts              # Analysis results and guides
+│       │       ├── useMetrics.ts               # Metrics results and scope
+│       │       ├── useDictionary.ts            # Dictionary state
+│       │       ├── useContext.ts               # Context generation state
+│       │       ├── useSearch.ts                # Search results and targets
+│       │       └── useSelection.ts             # Selected text and metadata
 │       ├── components/  # React components
-│       ├── App.tsx     # Main app component
+│       ├── App.tsx     # Main app component (thin orchestrator)
 │       ├── index.tsx   # Entry point
 │       └── index.css   # Styles
 └── shared/             # Shared Layer
@@ -198,6 +216,385 @@ Implementation notes:
 References:
 - ADR: docs/adr/2025-10-27-presentation-layer-domain-hooks.md
 - Epic: .todo/epics/epic-presentation-refactor-2025-10-27/epic-presentation-refactor.md
+
+## Settings Management Architecture
+
+The extension uses a **unified Domain Hooks pattern** for all settings management, providing 100% persistence coverage, bidirectional sync, and type-safe configuration. This architecture was established in Sprint 04 (November 2025) to eliminate the god hook anti-pattern and achieve Clean Architecture principles.
+
+### Specialized Settings Hooks
+
+All settings are managed through 6 specialized domain hooks, each owning a specific configuration domain:
+
+| Hook | Settings Count | Purpose | Used By |
+|------|---------------|---------|---------|
+| **useModelsSettings** | 8 | Model selections + agent behavior | All tabs (model config), SettingsOverlay |
+| **useWordSearchSettings** | 6 | Word search configuration | SearchTab, SettingsOverlay |
+| **useWordFrequencySettings** | 11 | Word frequency display options | MetricsTab (word frequency), SettingsOverlay |
+| **useContextPathsSettings** | 8 | Context resource glob patterns | Context agent ([bot] button), SettingsOverlay |
+| **useTokensSettings** | 1 | Token widget UI preference | TokenWidget, SettingsOverlay |
+| **usePublishingSettings** | 2 | Publishing standards (genre + trim) | MetricsTab (prose stats), SettingsOverlay |
+
+**Additional State Hook**:
+- **useTokenTracking**: Ephemeral token usage tracking (not configuration settings)
+
+**Total Configuration Settings**: 36 settings with 100% persistence coverage
+
+### Tripartite Hook Interface Pattern
+
+Each settings hook follows a consistent three-part interface:
+
+```typescript
+// Example: useWordSearchSettings
+export interface WordSearchSettingsState {
+  // Read-only state (what the UI displays)
+  settings: {
+    defaultTargets: string;
+    contextWords: number;
+    clusterWindow: number;
+    minClusterSize: number;
+    caseSensitive: boolean;
+    enableAssistantExpansion: boolean;
+  };
+}
+
+export interface WordSearchSettingsActions {
+  // Write operations (what the UI can trigger)
+  updateSetting: (key: string, value: any) => void;
+}
+
+export interface WordSearchSettingsPersistence {
+  // What gets saved to vscode.setState
+  persistedState: {
+    wordSearch: {
+      defaultTargets: string;
+      contextWords: number;
+      // ... all settings
+    };
+  };
+}
+
+export type UseWordSearchSettingsReturn =
+  WordSearchSettingsState &
+  WordSearchSettingsActions &
+  WordSearchSettingsPersistence;
+```
+
+**Benefits**:
+- ✅ Clear separation of concerns (state vs actions vs persistence)
+- ✅ Type-safe contracts for hook consumers
+- ✅ Explicit persistence declarations
+- ✅ Consistent pattern across all hooks
+
+### Bidirectional Sync Flow
+
+Settings sync bidirectionally between three sources:
+
+```
+┌─────────────────────┐
+│  VSCode Settings    │ (Native settings panel)
+│  Panel              │
+└──────────┬──────────┘
+           │
+           ↓ Configuration change event
+┌─────────────────────┐
+│  ConfigurationHandler│ (Backend)
+│  + Echo Prevention  │
+└──────────┬──────────┘
+           │
+           ↓ SETTINGS_DATA message
+┌─────────────────────┐
+│  Domain Hook        │ (Frontend: useWordSearchSettings, etc.)
+│  (useState)         │
+└──────────┬──────────┘
+           │
+           ↓ Props
+┌─────────────────────┐     ┌─────────────────────┐
+│  SettingsOverlay    │ ←→  │  Feature Component  │
+│  (Gear icon)        │     │  (SearchTab, etc.)  │
+└──────────┬──────────┘     └─────────────────────┘
+           │
+           ↓ updateSetting()
+┌─────────────────────┐
+│  UPDATE_SETTING     │ (Message to backend)
+│  message            │
+└──────────┬──────────┘
+           │
+           ↓
+┌─────────────────────┐
+│  VSCode Config API  │ (Persists to workspace/user settings)
+└─────────────────────┘
+```
+
+**Flow Steps**:
+
+1. **User changes setting** (in SettingsOverlay or native panel)
+2. **Hook sends `UPDATE_SETTING`** message to backend
+3. **Backend updates VSCode config** via Configuration API
+4. **Config watcher detects change** and checks echo prevention
+5. **Backend broadcasts `SETTINGS_DATA`** to webview (if not an echo)
+6. **Hook receives message**, updates state
+7. **React re-renders** component with new state
+8. **`usePersistence` saves** state to webview storage
+
+### Persistence Composition
+
+All domain hooks expose `persistedState` which is composed in `App.tsx`:
+
+```typescript
+// App.tsx - Persistence composition
+const modelsSettings = useModelsSettings(vscode);
+const wordSearchSettings = useWordSearchSettings(vscode);
+const wordFrequencySettings = useWordFrequencySettings(vscode);
+const contextPathsSettings = useContextPathsSettings(vscode);
+const tokensSettings = useTokensSettings(vscode);
+const publishingSettings = usePublishingSettings(vscode);
+const tokenTracking = useTokenTracking(vscode);
+
+// Compose all persistence into single state object
+usePersistence({
+  activeTab,
+  ...modelsSettings.persistedState,        // Model configuration (8 settings)
+  ...wordSearchSettings.persistedState,    // Word search (6 settings)
+  ...wordFrequencySettings.persistedState, // Word frequency (11 settings)
+  ...contextPathsSettings.persistedState,  // Context paths (8 settings)
+  ...tokensSettings.persistedState,        // Token widget UI (1 setting)
+  ...publishingSettings.persistedState,    // Publishing standards (2 settings)
+  ...tokenTracking.persistedState,         // Token usage (ephemeral state)
+  ...analysis.persistedState,              // Analysis results
+  ...metrics.persistedState,               // Metrics results
+  ...dictionary.persistedState,            // Dictionary state
+  ...context.persistedState,               // Context state
+  ...search.persistedState,                // Search state
+  ...selection.persistedState              // Selection state
+});
+```
+
+**Benefits**:
+- ✅ Declarative: Each hook owns its persistence contract
+- ✅ Automatic: Syncs on every state change via `vscode.setState`
+- ✅ Type-safe: TypeScript validates shape
+- ✅ Centralized: One place to manage all persistence
+
+### Echo Prevention System
+
+To prevent infinite loops during bidirectional sync, the backend uses an echo prevention system in `ConfigurationHandler`:
+
+```typescript
+// ConfigurationHandler.ts
+private webviewOriginatedUpdates = new Set<string>();
+
+public shouldBroadcastConfigChange(key: string): boolean {
+  // Check if this change originated from webview
+  if (this.webviewOriginatedUpdates.has(key)) {
+    this.webviewOriginatedUpdates.delete(key);
+    return false; // Don't broadcast back to webview
+  }
+  return true; // Broadcast (external change)
+}
+
+public async updateSetting(key: string, value: any, fromWebview: boolean) {
+  if (fromWebview) {
+    // Track this update to prevent echo
+    this.webviewOriginatedUpdates.add(`proseMinion.${key}`);
+    setTimeout(() => this.webviewOriginatedUpdates.delete(`proseMinion.${key}`), 100);
+  }
+  await this.config.update(key, value, vscode.ConfigurationTarget.Global);
+}
+```
+
+**How it works**:
+1. Webview sends `UPDATE_SETTING` with setting key
+2. Backend adds key to `webviewOriginatedUpdates` Set
+3. Backend updates VSCode config
+4. Config change event fires
+5. Backend checks `shouldBroadcastConfigChange()` → returns `false` (echo)
+6. No broadcast sent back to webview (loop prevented)
+7. After 100ms timeout, key removed from Set
+
+### Message Routing Strategy
+
+Settings hooks register handlers with `useMessageRouter` using the Strategy pattern:
+
+```typescript
+// App.tsx - Message routing
+useMessageRouter({
+  [MessageType.SETTINGS_DATA]: (msg) => {
+    // All settings hooks handle SETTINGS_DATA
+    modelsSettings.handleSettingsMessage(msg);
+    wordSearchSettings.handleSettingsMessage(msg);
+    wordFrequencySettings.handleSettingsMessage(msg);
+    contextPathsSettings.handleSettingsMessage(msg);
+    tokensSettings.handleSettingsMessage(msg);
+    publishingSettings.handleSettingsMessage(msg);
+  },
+  [MessageType.MODEL_DATA]: modelsSettings.handleModelData,
+  [MessageType.PUBLISHING_STANDARDS_DATA]: publishingSettings.handleStandardsData,
+  // ... other message types
+});
+```
+
+**Pattern Benefits**:
+- ✅ No switch statements
+- ✅ Declarative handler registration
+- ✅ Easy to add new message types
+- ✅ Stable event listener (ref-based)
+
+### Adding a New Setting
+
+Follow this checklist to add a new setting:
+
+#### 1. Add to package.json (Backend)
+
+```json
+{
+  "contributes": {
+    "configuration": {
+      "properties": {
+        "proseMinion.wordSearch.newSetting": {
+          "type": "boolean",
+          "default": true,
+          "description": "Description of new setting"
+        }
+      }
+    }
+  }
+}
+```
+
+#### 2. Add to ConfigurationHandler (Backend)
+
+```typescript
+// src/application/handlers/domain/ConfigurationHandler.ts
+public getWordSearchSettings() {
+  return {
+    defaultTargets: this.config.get('wordSearch.defaultTargets', 'just'),
+    contextWords: this.config.get('wordSearch.contextWords', 7),
+    // ... existing settings
+    newSetting: this.config.get('wordSearch.newSetting', true) // Add here
+  };
+}
+```
+
+#### 3. Update Settings Keys Constant (Backend)
+
+```typescript
+// src/application/handlers/MessageHandler.ts
+private readonly WORD_SEARCH_KEYS = [
+  'proseMinion.wordSearch.defaultTargets',
+  'proseMinion.wordSearch.contextWords',
+  // ... existing keys
+  'proseMinion.wordSearch.newSetting' // Add here
+] as const;
+```
+
+#### 4. Add to Domain Hook Interface (Frontend)
+
+```typescript
+// src/presentation/webview/hooks/domain/useWordSearchSettings.ts
+export interface WordSearchSettings {
+  defaultTargets: string;
+  contextWords: number;
+  // ... existing settings
+  newSetting: boolean; // Add here
+}
+```
+
+#### 5. Update Hook Defaults (Frontend)
+
+```typescript
+// useWordSearchSettings.ts
+const [settings, setSettings] = React.useState<WordSearchSettings>({
+  defaultTargets: 'just',
+  contextWords: 7,
+  // ... existing defaults
+  newSetting: true // Add here
+});
+```
+
+#### 6. Update Message Handler (Frontend)
+
+```typescript
+// useWordSearchSettings.ts - handleSettingsMessage
+const wordSearchSettings = {
+  defaultTargets: payload.wordSearch?.defaultTargets ?? 'just',
+  contextWords: payload.wordSearch?.contextWords ?? 7,
+  // ... existing settings
+  newSetting: payload.wordSearch?.newSetting ?? true // Add here
+};
+```
+
+#### 7. Add to SettingsOverlay UI (Frontend)
+
+```typescript
+// src/presentation/webview/components/SettingsOverlay.tsx
+<label>
+  <input
+    type="checkbox"
+    checked={wordSearchSettings.settings.newSetting}
+    onChange={(e) => wordSearchSettings.updateSetting('newSetting', e.target.checked)}
+  />
+  New Setting Description
+</label>
+```
+
+#### 8. Test Bidirectional Sync
+
+- [ ] Change in SettingsOverlay → verify feature component updates
+- [ ] Change in VSCode settings panel → verify SettingsOverlay updates
+- [ ] Reload webview → verify setting persists
+- [ ] Check Output Channel for echo prevention (no duplicate broadcasts)
+
+**Estimated Time**: 15 minutes (following this checklist)
+
+### Naming Conventions
+
+**Hook Naming**:
+- **Settings hooks**: `use[Domain]Settings` (e.g., `useWordSearchSettings`)
+  - Manage VSCode configuration settings
+  - Persist to workspace/user settings
+  - Bidirectional sync with native settings panel
+
+- **State hooks**: `use[Domain]` (e.g., `useTokenTracking`, `useAnalysis`)
+  - Manage UI/result state (ephemeral or persisted to webview state)
+  - No connection to VSCode configuration
+  - Persist only to webview storage
+
+**Persistence Key Naming**:
+- Settings hooks: `persistedState: { [domain]: settings }` (e.g., `{ wordSearch: settings }`)
+- State hooks: `persistedState: { [stateKey]: value }` (e.g., `{ tokenUsage: state }`)
+
+### Common Pitfalls
+
+**❌ Don't**:
+- Create settings in `useSettings` (eliminated god hook)
+- Skip echo prevention (causes infinite loops)
+- Forget to add to `package.json` (setting won't appear in native panel)
+- Use hardcoded defaults (always match `package.json` defaults)
+- Mix concerns (keep settings in settings hooks, state in state hooks)
+
+**✅ Do**:
+- Follow the checklist above (mechanical process)
+- Use existing hooks as templates (`useWordSearchSettings` is a clean example)
+- Test bidirectional sync thoroughly
+- Update all 3 locations: package.json, backend handler, frontend hook
+- Match naming conventions ("Settings" suffix for config hooks)
+
+### References
+
+**Architecture Decision Records**:
+- [ADR-2025-11-03: Unified Settings Architecture](../adr/2025-11-03-unified-settings-architecture.md)
+- [ADR-2025-10-27: Presentation Layer Domain Hooks](../adr/2025-10-27-presentation-layer-domain-hooks.md)
+- [ADR-2025-10-28: Message Envelope Architecture](../adr/2025-10-28-message-envelope-architecture.md)
+
+**Epic & Sprint Documentation**:
+- [Epic: Unified Settings Architecture](./../.todo/epics/epic-unified-settings-architecture-2025-11-03/)
+- [Sprint 04: Domain Hooks Extraction](./../.todo/epics/epic-unified-settings-architecture-2025-11-03/sprints/04-domain-hooks-extraction.md)
+
+**Code Locations**:
+- Frontend hooks: [src/presentation/webview/hooks/domain/](../../src/presentation/webview/hooks/domain/)
+- Backend handler: [src/application/handlers/domain/ConfigurationHandler.ts](../../src/application/handlers/domain/ConfigurationHandler.ts)
+- Message routing: [src/application/handlers/MessageHandler.ts](../../src/application/handlers/MessageHandler.ts)
+- Settings UI: [src/presentation/webview/components/SettingsOverlay.tsx](../../src/presentation/webview/components/SettingsOverlay.tsx)
 
 ### Selection and Context Details
 
