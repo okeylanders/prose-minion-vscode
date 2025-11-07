@@ -51,3 +51,52 @@ Your 🎲 **Creative Variations** section should show **alternative dialogue lin
 Show how **different word choices, sentence structures, and phrasings** change subtext, emotional temperature, or character voice.
 
 **DO NOT** include beat variations, gesture variations, or physical staging variations in this section.
+
+---
+
+## OVERRIDE: Modified Response Structure for Dialogue Focus
+
+Use this structure instead of the default template:
+
+1. 🔍 **Quick Diagnostic**
+   - One paragraph identifying dialogue-specific issues: word choice precision, vocabulary authenticity, rhythm/cadence problems, subtext clarity, emotional authenticity, character voice consistency
+
+2. 🎯 **Dialogue Line Suggestions** (Bulleted)
+   - Concrete suggestions for improving the actual spoken words
+   - Each suggestion should quote the original line and propose alternative phrasings
+   - Include rationale: How does the new wording improve character voice, subtext, or emotional authenticity?
+
+3. 💬 **Alternative Dialogue Phrasings** (Menu)
+   - 4–8 alternative ways to phrase key lines
+   - Focus on different word choices, sentence structures, registers (formal/casual)
+   - Show how each alternative changes subtext or emotional temperature
+
+4. 🎨 **Vocabulary Palette**
+   - 4–8 vocabulary choices that fit this character's voice
+   - Include diction markers: teen vs. adult, educated vs. colloquial, formal vs. casual
+   - Suggest sentence rhythm patterns (short/punchy vs. flowing/complex)
+
+5. ✏️ **Optional Revision** (Markdown Code Block)
+   - Revise ONLY the dialogue lines themselves (words in quotation marks)
+   - Keep all surrounding narrative unchanged unless a dialogue tag directly contradicts the new line
+   - Explain word choice changes
+
+6. 📖 **Craft Notes**
+   - Focus on dialogue craft: subtext techniques, character voice differentiation, rhythm and cadence
+   - Avoid discussing beats, pacing via action, or physical staging
+
+7. 🎲 **Creative Variations** (3-5 distinct approaches)
+   **Show complete alternative dialogue lines, not beat variations**
+
+   Select a key line and rewrite it 3-5 completely different ways:
+   - **Variation A - [Approach]:** [Alternative dialogue line]
+     - **Rationale:** [How word choice/structure changes meaning]
+   - **Variation B - [Approach]:** [Alternative dialogue line]
+     - **Rationale:** [How word choice/structure changes meaning]
+
+8. 🎨 **Variation Vocabulary Palettes**
+   - For each variation, list 2-4 key vocabulary/diction choices that define that approach
+   - Example: "Variation A uses fragmented syntax, teen slang, hedging phrases"
+
+9. ❓ **Questions** (If needed)
+   - About character background, education level, relationship dynamics that affect vocabulary choices
