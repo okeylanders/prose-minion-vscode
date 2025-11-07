@@ -179,9 +179,106 @@ Select ONE dialogue exchange and **generate 3-5 complete, genuinely different in
 
 ---
 
-### 8. 🎨 **Variation Imagery Palettes**
+### 7b. 🎨 **Variation Imagery Palettes**
 
 For each Creative Variation above, provide a micro-palette (2-4 combined dialogue + beat markers) specific to that integrated approach. These should feel distinct from each other—e.g., Variation A uses fragmented syntax + sparse tactile beats, Variation B uses formal register + dense spatial choreography, Variation C uses colloquial phrasing + environmental auditory cues, etc.
+
+**Format with proper markdown:**
+Use `####` headers for each variation palette, bulleted lists for items.
+
+---
+
+### 8. 🎯 **Bound Creative Variations** (Optional Alternative Approach)
+
+**For lighter/faster models that benefit from more scaffolding.**
+
+This section provides a prescriptive framework approach with dimension menus. Use this if you need more structural guidance while still sampling from low-probability choices.
+
+Select ONE dialogue exchange and rewrite it 3-5 completely different ways, changing BOTH dialogue lines AND beat choreography together.
+
+**Dimension Framework:**
+
+#### Dialogue Dimensions:
+
+**Syntax Options:**
+- **Fragmented:** Short bursts, incomplete sentences, ellipsis, dashes
+- **Flowing:** Complete sentences, smooth rhythm, conjunctions
+- **Clipped:** Minimal words, dropped articles, staccato
+- **Run-on:** Long sentences, racing thoughts, breathless
+
+**Register Options:**
+- **Formal/Clinical:** Academic vocabulary, precise terminology, emotional distance
+- **Casual/Colloquial:** Everyday language, contractions, informal
+- **Poetic/Literary:** Metaphorical, imagery-rich, elevated
+- **Regional/Dialectal:** Place-specific phrasing, idioms, local color
+
+**Emotional Temperature Options:**
+- **Detached/Numb:** Flat affect, minimal modifiers, understatement
+- **Volatile/Urgent:** Intense language, repetition, exclamations
+- **Controlled/Simmering:** Restrained surface with tension beneath
+
+**Subtext Strategy Options:**
+- **Omission:** What's NOT said reveals truth
+- **Euphemism:** Indirect language masks reality
+- **Deflection:** Changes subject, avoids direct answer
+- **Intellectualization:** Uses analysis to avoid feeling
+
+#### Beat Dimensions:
+
+**Beat Density Options:**
+- **Sparse/Minimal (1-2 beats):** Brisk pacing, tension sustained, beats as punctuation only
+- **Dense/Layered (5+ beats):** Slow, intimate pacing, every moment physically grounded
+- **Medium (3-4 beats):** Balanced approach, mix of grounding and momentum
+
+**Sensory Mode Options:**
+- **Visual:** Gaze tracking, facial expressions, observable cues
+- **Tactile:** Touch-based, texture, temperature, physical contact
+- **Auditory:** Breath sounds, movement sounds, environmental audio
+- **Proprioceptive:** Body awareness, weight shifts, tension, balance
+
+**Beat Type Options:**
+- **Micro-gestures:** Subtle tells (finger taps, eye shifts, breath changes)
+- **Object-driven:** Props become emotional/relational markers
+- **Spatial choreography:** Physical distance changes reveal relationship dynamics
+- **Environmental:** Setting/atmosphere does emotional work alongside physicality
+- **Asymmetric contrast:** One character's physicality sharply contrasts the other's
+
+**Format:**
+#### Variation A - [Your Chosen Combination]:
+[Full dialogue with beats choreographed here]
+
+**Rationale:** [How your dimension choices create specific effects]
+
+**Applied framework:**
+- **Dialogue - Syntax:** [Which syntax and why]
+- **Dialogue - Register:** [Which register and why]
+- **Dialogue - Emotional temperature:** [Which temperature and why]
+- **Dialogue - Subtext strategy:** [Which strategy and why]
+- **Beat - Density:** [Which density and why]
+- **Beat - Sensory mode:** [Which mode(s) and why]
+- **Beat - Type:** [Which type(s) and why]
+
+[Repeat for 3-5 variations, each with different dimension combinations]
+
+---
+
+### 8b. 🎨 **Bound Variation Palettes**
+
+For each Bound Creative Variation above, explicitly identify the framework dimensions used.
+
+**Format with proper markdown:**
+
+#### Variation A Palette:
+- **Dialogue - Syntax type:** [Fragmented/Flowing/Clipped/Run-on with example]
+- **Dialogue - Register:** [Formal/Casual/Poetic/Dialectal with markers]
+- **Dialogue - Emotional temperature:** [Detached/Volatile/Controlled with indicators]
+- **Dialogue - Subtext strategy:** [Omission/Euphemism/Deflection/Intellectualization]
+- **Beat - Density:** [Sparse/Medium/Dense with count]
+- **Beat - Primary sensory mode:** [Visual/Tactile/Auditory/Proprioceptive]
+- **Beat - Types used:** [List 2-3 specific categories]
+- **Character-specific:** [Any profession/background-based markers for vocabulary or physicality]
+
+[Repeat for each variation]
 
 ---
 
