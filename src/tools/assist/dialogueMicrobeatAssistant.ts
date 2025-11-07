@@ -21,6 +21,7 @@ export interface DialogueMicrobeatOptions {
   includeCraftGuides?: boolean;
   temperature?: number;
   maxTokens?: number;
+  focus?: 'dialogue' | 'microbeats' | 'both';
 }
 
 export class DialogueMicrobeatAssistant {
@@ -32,7 +33,7 @@ export class DialogueMicrobeatAssistant {
   async analyze(input: DialogueMicrobeatInput, options?: DialogueMicrobeatOptions): Promise<ExecutionResult> {
     // Load system prompts (tool-specific and shared)
     const sharedPrompts = await this.promptLoader.loadSharedPrompts();
-    const toolPrompts = await this.loadToolPrompts();
+    const toolPrompts = await this.loadToolPrompts(options?.focus ?? 'both');
 
     // Build system message (prompts only, no guides yet)
     const systemMessage = this.buildSystemMessage(sharedPrompts, toolPrompts);
@@ -53,11 +54,20 @@ export class DialogueMicrobeatAssistant {
     );
   }
 
-  private async loadToolPrompts(): Promise<string> {
+  private async loadToolPrompts(focus: 'dialogue' | 'microbeats' | 'both' = 'both'): Promise<string> {
     try {
-      return await this.promptLoader.loadPrompts([
+      // Always load base prompts
+      const basePaths = [
         'dialog-microbeat-assistant/00-dialog-microbeat-assistant.md',
         'dialog-microbeat-assistant/01-dialogue-tags-and-microbeats.md'
+      ];
+
+      // Add focus-specific prompt (appended to base)
+      const focusPath = `dialog-microbeat-assistant/focus/${focus}.md`;
+
+      return await this.promptLoader.loadPrompts([
+        ...basePaths,
+        focusPath
       ]);
     } catch (error) {
       // Fallback to default instructions if files don't exist
