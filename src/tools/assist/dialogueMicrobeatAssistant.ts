@@ -3,6 +3,7 @@
  * Analyzes dialogue passages and suggests dialogue tags and action beats
  */
 
+import type * as vscode from 'vscode';
 import { PromptLoader } from '../shared/prompts';
 import { AIResourceOrchestrator, ExecutionResult } from '../../application/services/AIResourceOrchestrator';
 
@@ -21,18 +22,20 @@ export interface DialogueMicrobeatOptions {
   includeCraftGuides?: boolean;
   temperature?: number;
   maxTokens?: number;
+  focus?: 'dialogue' | 'microbeats' | 'both';
 }
 
 export class DialogueMicrobeatAssistant {
   constructor(
     private readonly aiResourceOrchestrator: AIResourceOrchestrator,
-    private readonly promptLoader: PromptLoader
+    private readonly promptLoader: PromptLoader,
+    private readonly outputChannel?: vscode.OutputChannel
   ) {}
 
   async analyze(input: DialogueMicrobeatInput, options?: DialogueMicrobeatOptions): Promise<ExecutionResult> {
     // Load system prompts (tool-specific and shared)
     const sharedPrompts = await this.promptLoader.loadSharedPrompts();
-    const toolPrompts = await this.loadToolPrompts();
+    const toolPrompts = await this.loadToolPrompts(options?.focus ?? 'both');
 
     // Build system message (prompts only, no guides yet)
     const systemMessage = this.buildSystemMessage(sharedPrompts, toolPrompts);
@@ -53,15 +56,29 @@ export class DialogueMicrobeatAssistant {
     );
   }
 
-  private async loadToolPrompts(): Promise<string> {
+  private async loadToolPrompts(focus: 'dialogue' | 'microbeats' | 'both' = 'both'): Promise<string> {
     try {
-      return await this.promptLoader.loadPrompts([
+      // Always load base prompts
+      const basePaths = [
         'dialog-microbeat-assistant/00-dialog-microbeat-assistant.md',
         'dialog-microbeat-assistant/01-dialogue-tags-and-microbeats.md'
-      ]);
+      ];
+
+      // Add focus-specific prompt (appended to base)
+      const focusPath = `dialog-microbeat-assistant/focus/${focus}.md`;
+      const allPaths = [...basePaths, focusPath];
+
+      // Log loaded prompts for transparency
+      this.outputChannel?.appendLine(`[DialogueMicrobeatAssistant] Loading prompts with focus="${focus}":`);
+      allPaths.forEach((path, index) => {
+        this.outputChannel?.appendLine(`  ${index + 1}. ${path}`);
+      });
+
+      return await this.promptLoader.loadPrompts(allPaths);
     } catch (error) {
       // Fallback to default instructions if files don't exist
-      console.warn('Could not load dialog microbeat prompts, using defaults');
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.outputChannel?.appendLine(`[DialogueMicrobeatAssistant] Could not load prompts, using defaults: ${errorMsg}`);
       return this.getDefaultInstructions();
     }
   }

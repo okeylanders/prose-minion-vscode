@@ -131,7 +131,8 @@ export class ProseAnalysisService implements IProseAnalysisService {
     if (assistantResources) {
       this.dialogueAssistant = new DialogueMicrobeatAssistant(
         assistantResources.orchestrator,
-        this.promptLoader!
+        this.promptLoader!,
+        this.outputChannel
       );
 
       this.proseAssistant = new ProseAssistant(
@@ -240,16 +241,17 @@ export class ProseAnalysisService implements IProseAnalysisService {
     }
   }
 
-  private getToolOptions() {
+  private getToolOptions(focus?: 'dialogue' | 'microbeats' | 'both') {
     const config = vscode.workspace.getConfiguration('proseMinion');
     return {
       includeCraftGuides: config.get<boolean>('includeCraftGuides') ?? true,
       temperature: config.get<number>('temperature') ?? 0.7,
-      maxTokens: config.get<number>('maxTokens') ?? 10000
+      maxTokens: config.get<number>('maxTokens') ?? 10000,
+      focus: focus ?? 'both'
     };
   }
 
-  async analyzeDialogue(text: string, contextText?: string, sourceFileUri?: string): Promise<AnalysisResult> {
+  async analyzeDialogue(text: string, contextText?: string, sourceFileUri?: string, focus?: 'dialogue' | 'microbeats' | 'both'): Promise<AnalysisResult> {
     if (!this.dialogueAssistant) {
       return AnalysisResultFactory.createAnalysisResult(
         'dialogue_analysis',
@@ -258,7 +260,13 @@ export class ProseAnalysisService implements IProseAnalysisService {
     }
 
     try {
-      const options = this.getToolOptions();
+      const options = this.getToolOptions(focus);
+
+      // Log analysis focus for transparency
+      this.outputChannel?.appendLine(
+        `[DialogueAnalysis] Focus: ${options.focus} | Craft Guides: ${options.includeCraftGuides ? 'enabled' : 'disabled'}`
+      );
+
       const executionResult = await this.dialogueAssistant.analyze(
         {
           text,

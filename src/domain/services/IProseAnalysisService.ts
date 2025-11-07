@@ -10,7 +10,7 @@ export interface IProseAnalysisService {
   /**
    * Analyze dialogue and provide microbeat suggestions
    */
-  analyzeDialogue(text: string, contextText?: string, sourceFileUri?: string): Promise<AnalysisResult>;
+  analyzeDialogue(text: string, contextText?: string, sourceFileUri?: string, focus?: 'dialogue' | 'microbeats' | 'both'): Promise<AnalysisResult>;
 
   /**
    * General prose assistance

@@ -123,7 +123,7 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
     result && result.trim().length > 0 && (analysisToolName || lastSubmissionRef.current?.toolName)
   );
 
-  const handleAnalyzeDialogue = () => {
+  const handleAnalyzeDialogue = (focus: 'dialogue' | 'microbeats' | 'both' = 'both') => {
     if (!text.trim()) {
       return;
     }
@@ -144,7 +144,8 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
       payload: {
         text,
         contextText: contextText && contextText.trim().length > 0 ? contextText : undefined,
-        sourceFileUri: sourceReference
+        sourceFileUri: sourceReference,
+        focus
       },
       timestamp: Date.now()
     });
@@ -392,21 +393,42 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
         )}
       </div>
 
-      <div className="button-group">
-        <button
-          className="btn btn-primary"
-          onClick={handleAnalyzeDialogue}
-          disabled={!text.trim() || isLoading}
-        >
-          Tune Dialog Beat
-        </button>
-        <button
-          className="btn btn-primary"
-          onClick={handleAnalyzeProse}
-          disabled={!text.trim() || isLoading}
-        >
-          Tune Prose
-        </button>
+      <div className="analysis-buttons-section">
+        <h4 className="analysis-section-header">Analyze & Suggest Improvements:</h4>
+        <div className="primary-buttons">
+          <button
+            className="action-button primary"
+            onClick={() => handleAnalyzeDialogue('both')}
+            disabled={!text.trim() || isLoading}
+          >
+            🎭 Dialogue & Beats
+          </button>
+          <button
+            className="action-button primary"
+            onClick={handleAnalyzeProse}
+            disabled={!text.trim() || isLoading}
+          >
+            📝 Prose
+          </button>
+        </div>
+
+        <h5 className="analysis-section-subheader">Focused:</h5>
+        <div className="focused-buttons">
+          <button
+            className="action-button secondary"
+            onClick={() => handleAnalyzeDialogue('dialogue')}
+            disabled={!text.trim() || isLoading}
+          >
+            💬 Dialogue Only
+          </button>
+          <button
+            className="action-button secondary"
+            onClick={() => handleAnalyzeDialogue('microbeats')}
+            disabled={!text.trim() || isLoading}
+          >
+            🎭 Microbeats Only
+          </button>
+        </div>
       </div>
 
       {isLoading && (

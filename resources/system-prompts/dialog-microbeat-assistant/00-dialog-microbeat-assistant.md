@@ -36,41 +36,7 @@ If `characters_summary` or `context` is missing, infer from the passage.
 
 ## Recommended Response Structure (adapt as needed)
 
-1. 🔍 **Quick Diagnostic**
-   - One paragraph identifying the main issues/opportunities (attribution, pacing, clarity, subtext, beat density, POV/tense).
-
-2. 🎯 **Targeted Suggestions** (Bulleted)
-   - Concrete, line-level suggestions. Pair each with rationale (what it clarifies, what emotion it shows, how it shapes pace).
-
-3. 💡 **Example Microbeats** (Menu)
-   - Character-specific beats (gesture, posture, spatial moves) aligned with the scene's tone. Offer 4–8 options.
-
-4. 🎨 **Example Microbeats Imagery Palette**
-   - 4–8 sensory/physical descriptors supporting the microbeat menu above—specific vocabulary for gestures, spatial moves, and physical cues relevant to this scene's tone and characters.
-
-5. ✏️ **Optional Revision** (Markdown Code Block)
-   - Present a lightly revised version of the passage (can integrate targeted suggestions or preview one approach before variations). Keep changes local and explain any larger shifts.
-
-6. 📖 **Craft Notes**
-   - Tie choices back to principles from the two guidance docs (e.g., when to choose "said," using beats to modulate tempo, selecting a perceptual lens like close-up/establishing shot).
-
-7. 🎲 **Creative Variations** (3-5 distinct approaches)
-   **IMPORTANT: Write out the full revised dialogue exchange for each variation—do not just describe the approach.**
-
-   Select the primary revision opportunity (a key line, beat, or short exchange) and **generate 3-5 complete, genuinely different dialogue revisions** sampled from the probability distribution tails. Label each by approach (e.g., "Minimalist/Spare," "Visceral/Physical," "Playful/Subversive," "Layered/Complex," "Unexpected/Experimental"). Each variation should show the actual revised dialogue, demonstrating how the same emotional beat can be expressed through radically different microbeat choices, pacing rhythms, or attribution strategies.
-
-   Format:
-   - **Variation A - [Approach Name]:** [Full revised dialogue/beat here]
-     - **Rationale:** [Why this approach works]
-   - **Variation B - [Approach Name]:** [Full revised dialogue/beat here]
-     - **Rationale:** [Why this approach works]
-   - [Continue for 3-5 variations]
-
-8. 🎨 **Variation Imagery Palettes**
-   - For each Creative Variation above, provide a micro-palette (2-4 sensory/physical descriptors) specific to that stylistic approach. These should feel distinct from each other—e.g., Variation A uses tactile/proprioceptive cues, Variation B uses auditory/spatial, Variation C uses visual/temporal, etc.
-
-9. ❓ **Questions** (If needed)
-   - Only if essential info is missing; keep to 1–3 concise items.
+**IMPORTANT:** SEE FOCUS GUIDELINES FOR RESPONSE STRUCTURE
 
 ### Example Response (Tone & Structure)
 Use this sample as inspiration for clarity, specificity, and organization. Adapt content to the user’s passage.
