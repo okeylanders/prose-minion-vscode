@@ -97,6 +97,11 @@ export const RECOMMENDED_MODELS = [
     id: 'moonshotai/kimi-k2-0905',
     name: 'Kimi K2 0905',
     description: 'Moonshot AI\'s model'
+  },
+  {
+    id: 'moonshotai/kimi-k2-thinking',
+    name: 'Kimi K2 Thinking',
+    description: 'Advanced reasoning model with 256K context, optimized for persistent step-by-step thought and complex multi-turn workflows'
   }
 ];
 
