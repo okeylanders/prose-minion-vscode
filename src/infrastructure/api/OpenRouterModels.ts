@@ -25,6 +25,11 @@ export interface OpenRouterModelsResponse {
  */
 export const RECOMMENDED_MODELS = [
   {
+    id: 'anthropic/claude-haiku-4.5',
+    name: 'Claude Haiku 4.5',
+    description: 'Anthropic\'s fastest and most efficient model with frontier-level capabilities'
+  },
+  {
     id: 'anthropic/claude-opus-4.1',
     name: 'Claude Opus 4.1',
     description: 'Anthropic\'s most capable model'
@@ -103,6 +108,11 @@ export const RECOMMENDED_MODELS = [
     id: 'qwen/qwen3-max',
     name: 'Qwen3 Max',
     description: 'Alibaba\'s most capable model'
+  },
+  {
+    id: 'arcee-ai/virtuoso-large',
+    name: 'Virtuoso Large',
+    description: 'Arcee AI\'s top-tier 72B parameter model with 128K context for cross-domain reasoning and creative writing'
   }
 ];
 
