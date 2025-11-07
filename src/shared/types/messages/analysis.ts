@@ -9,6 +9,7 @@ export interface AnalyzeDialoguePayload {
   text: string;
   contextText?: string;
   sourceFileUri?: string;
+  focus?: 'dialogue' | 'microbeats' | 'both';
 }
 
 export interface AnalyzeDialogueMessage extends MessageEnvelope<AnalyzeDialoguePayload> {
