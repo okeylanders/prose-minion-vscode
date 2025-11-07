@@ -65,12 +65,23 @@ Add filtering by word length in the word frequency metrics to help writers ident
 **Epic**: [epic-word-length-filter-metrics-2025-11-02](../epic-word-length-filter-metrics-2025-11-02/)
 **Reference**: [.todo/v1-polish/2025-11-02-word-length-filter-metrics.md](../../.todo/v1-polish/2025-11-02-word-length-filter-metrics.md)
 
-### Sprint 03: Tune Button Refinements (Potential)
-**Status**: Backlog
+### Sprint 03: Focused Dialogue Analysis Buttons
+**Status**: 📝 Planned
+**Branch**: `sprint/epic-v1-polish-03-focused-dialogue-buttons`
 
-Refine the "Tune Dialog Beat" and "Tune Prose" buttons based on user feedback and visual consistency.
+Replace single "Tune Dialog Beat" button with four focused buttons that allow users to specify analysis intent.
 
-**Scope TBD**: To be defined based on user feedback
+**Tasks**:
+- [ ] Create focus-specific system prompts (dialogue, microbeats, both)
+- [ ] Update DialogueMicrobeatAssistant to load focus prompts
+- [ ] Update AnalysisHandler to extract and pass focus parameter
+- [ ] Replace button in AnalysisTab with four-button layout
+- [ ] Add primary/secondary visual hierarchy styling
+- [ ] Test functional behavior (all 4 buttons produce correct emphasis)
+- [ ] Test UI in both themes
+
+**ADR**: [2025-11-07-focused-dialogue-analysis-buttons.md](../../docs/adr/2025-11-07-focused-dialogue-analysis-buttons.md)
+**Sprint Doc**: [sprints/03-focused-dialogue-buttons.md](sprints/03-focused-dialogue-buttons.md)
 
 ### Sprint 04: Context Window Trim Limits ✅
 **Status**: Completed (Moved to standalone epic)
