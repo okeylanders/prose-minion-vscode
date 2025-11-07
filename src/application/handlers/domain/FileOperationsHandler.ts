@@ -162,8 +162,8 @@ export class FileOperationsHandler {
       await vscode.workspace.fs.createDirectory(targetDir);
 
       const prefix = toolName === 'prose_analysis'
-        ? 'excerpt-assisstant-prose-'
-        : 'excertp-assisstant-dialog-beats-';
+        ? 'excerpt-assistant-prose-'
+        : 'excerpt-assistant-dialog-beats-';
 
       const nextCount = await this.getNextSequentialNumber(targetDir, prefix);
       fileName = `${prefix}${nextCount}.md`;
