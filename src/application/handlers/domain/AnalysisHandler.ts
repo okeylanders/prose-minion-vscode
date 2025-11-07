@@ -87,7 +87,7 @@ export class AnalysisHandler {
 
   async handleAnalyzeDialogue(message: AnalyzeDialogueMessage): Promise<void> {
     try {
-      const { text, contextText, sourceFileUri } = message.payload;
+      const { text, contextText, sourceFileUri, focus } = message.payload;
       const config = vscode.workspace.getConfiguration('proseMinion');
       const includeCraftGuides = config.get<boolean>('includeCraftGuides') ?? true;
 
@@ -102,7 +102,8 @@ export class AnalysisHandler {
       const result = await this.service.analyzeDialogue(
         text,
         contextText,
-        sourceFileUri
+        sourceFileUri,
+        focus ?? 'both'  // Default to 'both' for backward compatibility
       );
       this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
       if ((result as any).usage) {

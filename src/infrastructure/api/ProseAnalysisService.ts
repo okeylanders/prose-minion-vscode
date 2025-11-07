@@ -249,7 +249,7 @@ export class ProseAnalysisService implements IProseAnalysisService {
     };
   }
 
-  async analyzeDialogue(text: string, contextText?: string, sourceFileUri?: string): Promise<AnalysisResult> {
+  async analyzeDialogue(text: string, contextText?: string, sourceFileUri?: string, focus?: 'dialogue' | 'microbeats' | 'both'): Promise<AnalysisResult> {
     if (!this.dialogueAssistant) {
       return AnalysisResultFactory.createAnalysisResult(
         'dialogue_analysis',
@@ -258,7 +258,10 @@ export class ProseAnalysisService implements IProseAnalysisService {
     }
 
     try {
-      const options = this.getToolOptions();
+      const options = {
+        ...this.getToolOptions(),
+        focus: focus ?? 'both'  // Default to 'both' for backward compatibility
+      };
       const executionResult = await this.dialogueAssistant.analyze(
         {
           text,
