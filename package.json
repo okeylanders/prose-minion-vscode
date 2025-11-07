@@ -184,8 +184,9 @@
         },
         "proseMinion.dictionaryModel": {
           "type": "string",
-          "default": "anthropic/claude-sonnet-4.5",
+          "default": "anthropic/claude-haiku-4.5",
           "enum": [
+            "anthropic/claude-haiku-4.5",
             "anthropic/claude-opus-4.1",
             "anthropic/claude-sonnet-4.5",
             "deepseek/deepseek-v3.2-exp",
@@ -204,6 +205,7 @@
             "qwen/qwen3-max"
           ],
           "enumDescriptions": [
+            "Claude Haiku 4.5 - Anthropic's fastest and most efficient model",
             "Claude Opus 4.1 - Anthropic's most capable model",
             "Claude Sonnet 4.5 - Anthropic's latest balanced model (Recommended)",
             "DeepSeek V3.2 Exp - DeepSeek's experimental model",
@@ -468,12 +470,6 @@
           "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9],
           "markdownDescription": "Minimum character length for words in Word Frequency results. Filter helps identify longer, more distinctive word patterns by excluding short common words. **1+** = all words, **3+** = excludes 'it', 'is', 'an', **5+** = multi-syllable words, **6+** = distinctive vocabulary, **7+** = complex words, **8+** = advanced vocabulary, **9+** = rare/specialized words. Applied to Top Words, POS, Bigrams/Trigrams, Hapax List, and Lemmas. Does NOT filter Stop Words or Length Histogram.",
           "order": 29
-        },
-        "proseMinion.wordSearch.defaultTargets": {
-          "type": "string",
-          "default": "just",
-          "description": "Default targets for Word Search (comma or newline separated).",
-          "order": 30
         },
         "proseMinion.wordSearch.contextWords": {
           "type": "number",

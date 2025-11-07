@@ -78,7 +78,6 @@ export class MessageHandler {
   ] as const;
 
   private readonly WORD_SEARCH_KEYS = [
-    'proseMinion.wordSearch.defaultTargets',
     'proseMinion.wordSearch.contextWords',
     'proseMinion.wordSearch.clusterWindow',
     'proseMinion.wordSearch.minClusterSize',

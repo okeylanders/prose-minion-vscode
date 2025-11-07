@@ -387,13 +387,12 @@ export class ProseAnalysisService implements IProseAnalysisService {
         contextWords: cfg.get<number>('wordSearch.contextWords') ?? 7,
         clusterWindow: cfg.get<number>('wordSearch.clusterWindow') ?? 150,
         minClusterSize: cfg.get<number>('wordSearch.minClusterSize') ?? 3,
-        caseSensitive: cfg.get<boolean>('wordSearch.caseSensitive') ?? false,
-        defaultTargets: cfg.get<string>('wordSearch.defaultTargets') ?? 'just'
+        caseSensitive: cfg.get<boolean>('wordSearch.caseSensitive') ?? false
       };
 
       const targetsInput = options?.wordsOrPhrases && options.wordsOrPhrases.length > 0
         ? options.wordsOrPhrases
-        : (defaults.defaultTargets ? [defaults.defaultTargets] : []);
+        : [];
 
       const caseSensitive = options?.caseSensitive ?? defaults.caseSensitive;
       const contextWords = Number.isFinite(options?.contextWords) ? Math.max(0, Math.floor(options!.contextWords)) : defaults.contextWords;

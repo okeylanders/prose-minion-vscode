@@ -12,7 +12,6 @@ import { MessageType } from '../../../../shared/types';
 import { SettingsDataMessage } from '../../../../shared/types/messages';
 
 export interface WordSearchSettings {
-  defaultTargets: string;           // Default search targets (e.g., 'just')
   contextWords: number;              // Context words around hits
   clusterWindow: number;             // Cluster detection window
   minClusterSize: number;            // Minimum cluster size
@@ -63,7 +62,6 @@ export const useWordSearchSettings = (): UseWordSearchSettingsReturn => {
   const persisted = usePersistedState<{ wordSearchSettings?: WordSearchSettings }>();
 
   const defaults: WordSearchSettings = {
-    defaultTargets: 'just',          // Default search targets
     contextWords: 7,                 // Context words around hits (changed from 3 to match ADR)
     clusterWindow: 150,              // Cluster detection window (changed from 50 to match ADR)
     minClusterSize: 2,               // ✅ Correct default (not 3)
@@ -82,7 +80,6 @@ export const useWordSearchSettings = (): UseWordSearchSettingsReturn => {
 
     // Extract word search settings from the flat settings object
     const wordSearch: Partial<WordSearchSettings> = {
-      defaultTargets: allSettings['wordSearch.defaultTargets'] as string | undefined,
       contextWords: allSettings['wordSearch.contextWords'] as number | undefined,
       clusterWindow: allSettings['wordSearch.clusterWindow'] as number | undefined,
       minClusterSize: allSettings['wordSearch.minClusterSize'] as number | undefined,
@@ -91,10 +88,9 @@ export const useWordSearchSettings = (): UseWordSearchSettingsReturn => {
     };
 
     // Only update if we got valid data
-    if (wordSearch.contextWords !== undefined || wordSearch.defaultTargets !== undefined) {
+    if (wordSearch.contextWords !== undefined) {
       setSettings((prev) => ({
         ...prev,
-        defaultTargets: wordSearch.defaultTargets ?? prev.defaultTargets,
         contextWords: wordSearch.contextWords ?? prev.contextWords,
         clusterWindow: wordSearch.clusterWindow ?? prev.clusterWindow,
         minClusterSize: wordSearch.minClusterSize ?? prev.minClusterSize,

@@ -409,18 +409,6 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
       <section className="settings-section">
         <h3 className="settings-section-title">Word Search</h3>
 
-        <label className="settings-label">
-          <div className="settings-label-title">Default Targets</div>
-          <textarea
-            value={getWordSearchSetting('defaultTargets')}
-            onChange={(e) => wordSearchSettings.updateSetting('defaultTargets', e.target.value)}
-            className="settings-textarea"
-          />
-          <div className="settings-description">
-            Default words or phrases to search for (comma or newline separated). These auto-populate the search field.
-          </div>
-        </label>
-
         <div className="settings-inline-group">
           <label className="settings-label">
             <div className="settings-label-title">Context Words</div>

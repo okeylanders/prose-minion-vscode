@@ -156,7 +156,6 @@ export class ConfigurationHandler {
         'wordFrequency.lengthHistogramMaxChars': config.get<number>('wordFrequency.lengthHistogramMaxChars') ?? 10,
         'wordFrequency.minCharacterLength': config.get<number>('wordFrequency.minCharacterLength') ?? 1,
         // Word Search (using getWordSearchSettings method for consistency)
-        'wordSearch.defaultTargets': config.get<string>('wordSearch.defaultTargets') ?? 'just',
         'wordSearch.contextWords': wordSearchSettings.contextWords,
         'wordSearch.clusterWindow': wordSearchSettings.clusterWindow,
         'wordSearch.minClusterSize': wordSearchSettings.minClusterSize,
