@@ -240,12 +240,13 @@ export class ProseAnalysisService implements IProseAnalysisService {
     }
   }
 
-  private getToolOptions() {
+  private getToolOptions(focus?: 'dialogue' | 'microbeats' | 'both') {
     const config = vscode.workspace.getConfiguration('proseMinion');
     return {
       includeCraftGuides: config.get<boolean>('includeCraftGuides') ?? true,
       temperature: config.get<number>('temperature') ?? 0.7,
-      maxTokens: config.get<number>('maxTokens') ?? 10000
+      maxTokens: config.get<number>('maxTokens') ?? 10000,
+      focus: focus ?? 'both'
     };
   }
 
@@ -258,10 +259,13 @@ export class ProseAnalysisService implements IProseAnalysisService {
     }
 
     try {
-      const options = {
-        ...this.getToolOptions(),
-        focus: focus ?? 'both'  // Default to 'both' for backward compatibility
-      };
+      const options = this.getToolOptions(focus);
+
+      // Log analysis focus for transparency
+      this.outputChannel?.appendLine(
+        `[DialogueAnalysis] Focus: ${options.focus} | Craft Guides: ${options.includeCraftGuides ? 'enabled' : 'disabled'}`
+      );
+
       const executionResult = await this.dialogueAssistant.analyze(
         {
           text,

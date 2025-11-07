@@ -64,14 +64,15 @@ export class DialogueMicrobeatAssistant {
 
       // Add focus-specific prompt (appended to base)
       const focusPath = `dialog-microbeat-assistant/focus/${focus}.md`;
+      const allPaths = [...basePaths, focusPath];
 
-      return await this.promptLoader.loadPrompts([
-        ...basePaths,
-        focusPath
-      ]);
+      // Log loaded prompts for transparency
+      console.log(`[DialogueMicrobeatAssistant] Loading prompts with focus="${focus}":`, allPaths);
+
+      return await this.promptLoader.loadPrompts(allPaths);
     } catch (error) {
       // Fallback to default instructions if files don't exist
-      console.warn('Could not load dialog microbeat prompts, using defaults');
+      console.warn('[DialogueMicrobeatAssistant] Could not load dialog microbeat prompts, using defaults:', error);
       return this.getDefaultInstructions();
     }
   }

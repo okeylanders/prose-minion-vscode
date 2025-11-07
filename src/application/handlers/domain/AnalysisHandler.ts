@@ -103,7 +103,7 @@ export class AnalysisHandler {
         text,
         contextText,
         sourceFileUri,
-        focus ?? 'both'  // Default to 'both' for backward compatibility
+        focus
       );
       this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
       if ((result as any).usage) {
