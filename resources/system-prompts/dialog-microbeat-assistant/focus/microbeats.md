@@ -186,52 +186,31 @@ Write 2-3 paragraphs about beat craft ONLY. Address:
 
 ### 7. 🎲 **Creative Variations** (3-5 Complete Beat Choreographies)
 
+**IMPORTANT: Write out the full beat choreography for each variation—do not just describe the approach.**
+
 **CRITICAL**: Apply the **Diversity & Creative Sampling Instructions** from the base prompt. Sample from low-probability beat choices (p<0.10). Avoid obvious gestures (head nods, sighs, crossed arms). Think: "What would a skilled writer do that most writers wouldn't think of?"
 
-Select ONE static dialogue exchange and add beats 3-5 completely different ways. Keep dialogue IDENTICAL across all variations—only beat placement and density change.
+Select ONE static dialogue exchange and **generate 3-5 complete, genuinely different beat choreographies** sampled from the probability distribution tails. Keep dialogue IDENTICAL across all variations—only beat placement, density, and type change. Label each by approach (e.g., "Sparse/Athletic," "Dense/Contemplative," "Environmental/Atmospheric," "Micro-gesture/Intimate," "Unexpected/Experimental"). Each variation should show the same dialogue with radically different physical grounding.
 
-**REQUIRED FORMAT for each variation:**
-
-**Variation A - [Approach Name] ([Beat Density descriptor]):**
-```markdown
-[Same dialogue with beats choreographed using this approach]
-```
-**Rationale:** [2-3 sentences explaining how this beat density creates specific pacing/mood and what the physicality reveals about character state]
-
-**Variation Types to Explore** (choose 3-5):
-- **Sparse/Minimal (1-2 beats):** Brisk pacing, tension sustained, beats as punctuation only
-- **Dense/Layered (5+ beats):** Slow, intimate pacing, every moment physically grounded
-- **Environmental (3-4 beats):** Setting/atmosphere does emotional work alongside character physicality
-- **Micro-gesture focused:** Subtle tells (finger taps, eye movements, breath patterns)
-- **Object-driven:** Props become emotional/relational markers
-- **Spatial choreography:** Physical distance changes reveal relationship dynamics
-- **Sensory-rich:** Tactile, auditory, proprioceptive beats create immersive grounding
-- **Asymmetric contrast:** One character's physicality sharply contrasts the other's
+**Format:**
+- **Variation A - [Approach Name]:** [Full dialogue exchange with beats inserted here]
+  - **Rationale:** [Why this beat approach creates specific pacing/mood and what the physicality reveals]
+- **Variation B - [Approach Name]:** [Full dialogue exchange with beats inserted here]
+  - **Rationale:** [Why this beat approach creates specific pacing/mood and what the physicality reveals]
+- [Continue for 3-5 variations]
 
 **Sampling Reminders:**
 - Mine character background for profession-specific gestures (athlete, teacher, musician, etc.)
 - Consider setting-unique beats that couldn't exist elsewhere
 - Vary sensory modes across variations (visual → tactile → auditory → proprioceptive)
 - Make each variation explore a DIFFERENT part of the beat possibility space
+- Label names are descriptive of YOUR approach, not selected from a menu
 
 ---
 
 ### 8. 🎨 **Variation Beat Palettes**
 
-For EACH variation above, list 3-4 key beat types or categories that define that approach. Focus on the **type of physicality**, not specific gestures.
-
-**Format:**
-
-**Variation A Palette:**
-- [Beat type/category with functional description]
-- [Beat type/category with functional description]
-- [Beat type/category with functional description]
-
-**Example Structure** (NOT beat content):
-- **[Category]:** [What this type of beat reveals or accomplishes]
-- **[Sensory mode]:** [How this sensory approach affects the scene]
-- **[Density descriptor]:** [How pacing/tempo is affected]
-- **[Relational function]:** [What this reveals about character dynamics]
+For each Creative Variation above, provide a micro-palette (2-4 sensory/physical descriptors or beat categories) specific to that stylistic approach. These should feel distinct from each other—e.g., Variation A uses tactile/proprioceptive cues, Variation B uses auditory/spatial, Variation C uses micro-gesture/temporal, etc.
 
 ---
 

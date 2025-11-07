@@ -173,54 +173,33 @@ Write 2-3 paragraphs about dialogue craft ONLY. Address:
 
 ---
 
-### 7. 🎲 **Creative Variations** (3-5 Complete Rewrites)
+### 7. 🎲 **Creative Variations** (3-5 Complete Dialogue Rewrites)
+
+**IMPORTANT: Write out the full revised dialogue exchange for each variation—do not just describe the approach.**
 
 **CRITICAL**: Apply the **Diversity & Creative Sampling Instructions** from the base prompt. Sample from low-probability vocabulary and syntax choices (p<0.10). Avoid obvious phrasings. Think: "What would a skilled writer do that most writers wouldn't think of?"
 
-Select ONE key dialogue exchange and rewrite it 3-5 completely different ways. Each variation explores a different stylistic approach.
+Select ONE key dialogue exchange and **generate 3-5 complete, genuinely different dialogue revisions** sampled from the probability distribution tails. Label each by approach (e.g., "Fragmented/Breathless," "Clinical/Detached," "Poetic/Metaphorical," "Colloquial/Wry," "Unexpected/Experimental"). Each variation should show the same emotional beat expressed through radically different word choices, syntax, and rhythm.
 
-**REQUIRED FORMAT for each variation:**
-
-**Variation A - [Approach Name]:**
-```
-[Complete dialogue rewrite showing this approach]
-```
-**Rationale:** [2-3 sentences explaining how word choice/structure changes subtext, emotional temperature, or character voice]
-
-**Stylistic Approaches to Explore** (choose 3-5 DIFFERENT directions):
-- **Syntax variations:** Fragmented vs. flowing vs. clipped vs. run-on
-- **Register shifts:** Formal/clinical vs. casual/colloquial vs. poetic/literary
-- **Emotional temperature:** Detached/numb vs. volatile/urgent vs. controlled/simmering
-- **Subtext strategies:** What's NOT said, implications, euphemisms, deflection
-- **Rhythm patterns:** Staccato (short bursts) vs. lyrical (flowing) vs. stuttering (hesitation)
-- **Vocabulary registers:** Teen slang vs. adult phrasing vs. educated/academic vs. regional dialect
-- **Sensory specificity:** Abstract ("terror") vs. visceral ("gut-wrenching") vs. metaphorical
-- **Defensive mechanisms:** Intellectualization, minimization, humor, aggression
+**Format:**
+- **Variation A - [Approach Name]:** [Full revised dialogue exchange here]
+  - **Rationale:** [Why this word choice/structure changes subtext, emotional temperature, or character voice]
+- **Variation B - [Approach Name]:** [Full revised dialogue exchange here]
+  - **Rationale:** [Why this word choice/structure changes subtext, emotional temperature, or character voice]
+- [Continue for 3-5 variations]
 
 **Sampling Reminders:**
 - Mine character background for vocabulary markers (profession, education, region, age)
 - Explore sentence structures that mirror emotional state (fragments = overwhelm, run-ons = racing thoughts)
 - Consider what the character would AVOID saying (revealing via omission)
 - Make each variation explore a DIFFERENT register/rhythm/subtext combination
+- Label names are descriptive of YOUR approach, not selected from a menu
 
 ---
 
 ### 8. 🎨 **Variation Vocabulary Palettes**
 
-For EACH variation above, list 3-4 key vocabulary/diction categories that define that approach. Focus on the **type of language choice**, not specific words.
-
-**Format:**
-
-**Variation A Palette:**
-- [Vocabulary category with functional description]
-- [Syntax pattern with effect on meaning]
-- [Register marker with character implications]
-
-**Example Structure** (NOT specific words):
-- **[Syntax type]:** [How this structure affects pacing/emotion]
-- **[Register descriptor]:** [What this vocabulary level reveals about character]
-- **[Rhetorical device]:** [How this technique creates subtext]
-- **[Emotional tell]:** [What linguistic choice reveals about state]
+For each Creative Variation above, provide a micro-palette (2-4 vocabulary/diction markers or syntax patterns) specific to that stylistic approach. These should feel distinct from each other—e.g., Variation A uses fragmented syntax + sensory concrete words, Variation B uses clinical register + passive constructions, Variation C uses colloquial slang + elliptical phrasing, etc.
 
 ---
 

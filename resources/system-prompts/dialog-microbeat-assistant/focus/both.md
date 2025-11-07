@@ -155,79 +155,33 @@ Write 2-3 paragraphs covering BOTH dialogue craft AND beat craft equally.
 
 ---
 
-### 7. 🎲 **Creative Variations** (3-5 Complete Integrated Approaches)
+### 7. 🎲 **Creative Variations** (3-5 Complete Integrated Revisions)
+
+**IMPORTANT: Write out the full revised dialogue exchange for each variation—do not just describe the approach.**
 
 **CRITICAL**: Apply the **Diversity & Creative Sampling Instructions** from the base prompt. Sample from low-probability choices for BOTH dialogue AND beats (p<0.10). Think: "What would a skilled writer do that most writers wouldn't think of?"
 
-Select ONE dialogue exchange and revise it 3-5 completely different ways, changing BOTH dialogue lines AND beat choreography together. Show how different word choices pair with different physicality.
+Select ONE dialogue exchange and **generate 3-5 complete, genuinely different integrated revisions** sampled from the probability distribution tails, changing BOTH dialogue lines AND beat choreography together. Label each by approach (e.g., "Fragmented/Sparse," "Articulate/Dense," "Casual/Environmental," "Tense/Contrasting," "Unexpected/Experimental"). Each variation should show the same emotional moment expressed through radically different combinations of word choice and physicality.
 
-**REQUIRED FORMAT for each variation:**
-
-**Variation A - [Approach Name]:**
-```markdown
-[Complete revision with different dialogue AND different beats]
-```
-**Rationale:** [2-3 sentences explaining how dialogue changes and beat choices work together to create specific mood/subtext/pacing]
-
-**Integrated Approaches to Explore** (choose 3-5 DIFFERENT combinations):
-
-**Dialogue dimensions:**
-- Syntax (fragmented, flowing, clipped, run-on)
-- Register (formal, casual, clinical, poetic)
-- Emotional temperature (detached, volatile, controlled)
-- Subtext strategy (omission, euphemism, deflection)
-
-**Beat dimensions:**
-- Density (sparse 1-2, medium 3-4, dense 5+)
-- Sensory mode (visual, tactile, auditory, proprioceptive)
-- Spatial choreography (distance changes, barriers)
-- Object/environment integration
-
-**Integration Strategies:**
-- **Harmony:** Dialogue and beats reinforce same emotional state (fragmented words + jittery gestures = panic)
-- **Contrast:** Dialogue and beats create tension (calm words + tense physicality = suppressed emotion)
-- **Revelation:** Beats reveal what dialogue conceals (deflecting words + vulnerable gestures = defensive facade)
-- **Atmosphere:** Both ground scene in setting (thematic words + environmental beats = immersive world)
+**Format:**
+- **Variation A - [Approach Name]:** [Full dialogue exchange with beats integrated here]
+  - **Rationale:** [How dialogue changes and beat choices work together to create specific mood/subtext/pacing]
+- **Variation B - [Approach Name]:** [Full dialogue exchange with beats integrated here]
+  - **Rationale:** [How dialogue changes and beat choices work together to create specific mood/subtext/pacing]
+- [Continue for 3-5 variations]
 
 **Sampling Reminders:**
 - Make each variation explore a DIFFERENT dialogue/beat combination
 - Vary which element (words or physicality) carries primary emotional weight
 - Consider character-specific markers for both vocabulary AND physical habits
 - Explore how changing one dimension (dialogue register) affects optimal beat choices
+- Label names are descriptive of YOUR approach, not selected from a menu
 
 ---
 
 ### 8. 🎨 **Variation Imagery Palettes**
 
-For EACH variation above, list 3-4 dialogue categories AND 3-4 beat categories that define that approach. Focus on **types and functions**, not specific words or gestures.
-
-**Format:**
-
-**Variation A Palette:**
-
-**Dialogue categories:**
-- [Syntax/register type with functional effect]
-- [Vocabulary pattern with character implication]
-- [Rhetorical strategy with subtext result]
-
-**Beat categories:**
-- [Beat type/density with pacing effect]
-- [Sensory mode with grounding result]
-- [Spatial/relational function with dynamic revelation]
-
-**Example Structure** (NOT specific content):
-
-**Variation A Palette:**
-
-**Dialogue categories:**
-- **[Syntax type]:** [How structure affects emotional read]
-- **[Register descriptor]:** [What vocabulary level reveals]
-- **[Rhetorical device]:** [How technique creates meaning]
-
-**Beat categories:**
-- **[Beat density]:** [Pacing impact]
-- **[Sensory mode]:** [Grounding effect]
-- **[Relational function]:** [Dynamic revelation]
+For each Creative Variation above, provide a micro-palette (2-4 combined dialogue + beat markers) specific to that integrated approach. These should feel distinct from each other—e.g., Variation A uses fragmented syntax + sparse tactile beats, Variation B uses formal register + dense spatial choreography, Variation C uses colloquial phrasing + environmental auditory cues, etc.
 
 ---
 
