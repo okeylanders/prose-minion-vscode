@@ -175,6 +175,8 @@ Write 2-3 paragraphs about dialogue craft ONLY. Address:
 
 ### 7. 🎲 **Creative Variations** (3-5 Complete Rewrites)
 
+**CRITICAL**: Apply the **Diversity & Creative Sampling Instructions** from the base prompt. Sample from low-probability vocabulary and syntax choices (p<0.10). Avoid obvious phrasings. Think: "What would a skilled writer do that most writers wouldn't think of?"
+
 Select ONE key dialogue exchange and rewrite it 3-5 completely different ways. Each variation explores a different stylistic approach.
 
 **REQUIRED FORMAT for each variation:**
@@ -185,49 +187,40 @@ Select ONE key dialogue exchange and rewrite it 3-5 completely different ways. E
 ```
 **Rationale:** [2-3 sentences explaining how word choice/structure changes subtext, emotional temperature, or character voice]
 
-**Example:**
+**Stylistic Approaches to Explore** (choose 3-5 DIFFERENT directions):
+- **Syntax variations:** Fragmented vs. flowing vs. clipped vs. run-on
+- **Register shifts:** Formal/clinical vs. casual/colloquial vs. poetic/literary
+- **Emotional temperature:** Detached/numb vs. volatile/urgent vs. controlled/simmering
+- **Subtext strategies:** What's NOT said, implications, euphemisms, deflection
+- **Rhythm patterns:** Staccato (short bursts) vs. lyrical (flowing) vs. stuttering (hesitation)
+- **Vocabulary registers:** Teen slang vs. adult phrasing vs. educated/academic vs. regional dialect
+- **Sensory specificity:** Abstract ("terror") vs. visceral ("gut-wrenching") vs. metaphorical
+- **Defensive mechanisms:** Intellectualization, minimization, humor, aggression
 
-**Variation A - Fragmented/Breathless (High Anxiety):**
-```
-"Random places. Forests. I just—I'm there. No warning."
-"Where?"
-"Wilderness. Always wilderness. Fields, oceans, waterfalls. Never... never anywhere safe."
-```
-**Rationale:** Fragmented syntax mirrors panic and cognitive overwhelm. Short declaratives create breathless pacing. Ellipsis on "never" shows character struggling to articulate fear.
-
-**Variation B - Controlled/Clinical (Defensive Distance):**
-```
-"I experience episodes of spontaneous relocation. Wilderness environments—forests, oceanic regions, mountainous terrain."
-"Episodes?"
-"That's what I call them. It's easier than trying to explain something that makes no logical sense."
-```
-**Rationale:** Clinical vocabulary ("episodes," "spontaneous relocation") creates emotional distance—a coping mechanism. The character intellectualizes trauma to maintain control, but "makes no logical sense" reveals cracks in the facade.
+**Sampling Reminders:**
+- Mine character background for vocabulary markers (profession, education, region, age)
+- Explore sentence structures that mirror emotional state (fragments = overwhelm, run-ons = racing thoughts)
+- Consider what the character would AVOID saying (revealing via omission)
+- Make each variation explore a DIFFERENT register/rhythm/subtext combination
 
 ---
 
 ### 8. 🎨 **Variation Vocabulary Palettes**
 
-For EACH variation above, list 3-4 key vocabulary/diction choices that define that approach.
+For EACH variation above, list 3-4 key vocabulary/diction categories that define that approach. Focus on the **type of language choice**, not specific words.
 
 **Format:**
 
 **Variation A Palette:**
-- [Vocabulary marker 1]
-- [Vocabulary marker 2]
-- [Vocabulary marker 3]
+- [Vocabulary category with functional description]
+- [Syntax pattern with effect on meaning]
+- [Register marker with character implications]
 
-**Example:**
-
-**Variation A Palette:**
-- Sentence fragments ("Random places. Forests.")
-- Repetition of "never" for emphasis
-- Hedging with ellipsis (trailing off)
-
-**Variation B Palette:**
-- Clinical terminology ("episodes," "spontaneous relocation")
-- Passive constructions ("I experience")
-- Formal register ("oceanic regions" vs. "oceans")
-- Revealing crack ("makes no logical sense")
+**Example Structure** (NOT specific words):
+- **[Syntax type]:** [How this structure affects pacing/emotion]
+- **[Register descriptor]:** [What this vocabulary level reveals about character]
+- **[Rhetorical device]:** [How this technique creates subtext]
+- **[Emotional tell]:** [What linguistic choice reveals about state]
 
 ---
 

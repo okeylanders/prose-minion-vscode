@@ -157,6 +157,8 @@ Write 2-3 paragraphs covering BOTH dialogue craft AND beat craft equally.
 
 ### 7. 🎲 **Creative Variations** (3-5 Complete Integrated Approaches)
 
+**CRITICAL**: Apply the **Diversity & Creative Sampling Instructions** from the base prompt. Sample from low-probability choices for BOTH dialogue AND beats (p<0.10). Think: "What would a skilled writer do that most writers wouldn't think of?"
+
 Select ONE dialogue exchange and revise it 3-5 completely different ways, changing BOTH dialogue lines AND beat choreography together. Show how different word choices pair with different physicality.
 
 **REQUIRED FORMAT for each variation:**
@@ -167,83 +169,65 @@ Select ONE dialogue exchange and revise it 3-5 completely different ways, changi
 ```
 **Rationale:** [2-3 sentences explaining how dialogue changes and beat choices work together to create specific mood/subtext/pacing]
 
-**Example:**
+**Integrated Approaches to Explore** (choose 3-5 DIFFERENT combinations):
 
-**Variation A - Fragmented/Sparse (High Tension, Brisk Pacing):**
-```markdown
-"Easy for you to say," Sarah countered, neck rolling like shaking off a bad call. "Random places. Forests. I'm just—there. No warning."
+**Dialogue dimensions:**
+- Syntax (fragmented, flowing, clipped, run-on)
+- Register (formal, casual, clinical, poetic)
+- Emotional temperature (detached, volatile, controlled)
+- Subtext strategy (omission, euphemism, deflection)
 
-David took a deliberate bite, chewing slowly. "I believe you."
-```
-**Rationale:** Fragmented dialogue (short declaratives, no complete sentences) pairs with sparse beats (2 total). Both create brisk, urgent pacing. Sarah's neck roll is athletic reset; David's eating creates single weighted pause. Dialogue does emotional work; beats punctuate without slowing.
+**Beat dimensions:**
+- Density (sparse 1-2, medium 3-4, dense 5+)
+- Sensory mode (visual, tactile, auditory, proprioceptive)
+- Spatial choreography (distance changes, barriers)
+- Object/environment integration
 
-**Variation B - Articulate/Dense (Controlled, Contemplative):**
-```markdown
-"That's easy for you to say," Sarah said, setting her sandwich down carefully on the desk. She paused, eyes drifting to David's bookshelves before returning to him. "You weren't there. You didn't see those forests, those oceans appearing out of nowhere."
+**Integration Strategies:**
+- **Harmony:** Dialogue and beats reinforce same emotional state (fragmented words + jittery gestures = panic)
+- **Contrast:** Dialogue and beats create tension (calm words + tense physicality = suppressed emotion)
+- **Revelation:** Beats reveal what dialogue conceals (deflecting words + vulnerable gestures = defensive facade)
+- **Atmosphere:** Both ground scene in setting (thematic words + environmental beats = immersive world)
 
-David leaned back in his chair, fingers steepled beneath his chin, watching her carefully. "I believe what you're telling me," he said quietly.
-```
-**Rationale:** More formal, complete dialogue (full sentences, careful word choice) pairs with dense beats (5 total). Both slow pace to contemplative. Sarah's beats show internal conflict (setting food down = vulnerability, bookshelf glance = respect). David's beats mirror thoughtful consideration. Words and physicality both create intimacy.
-
-**Variation C - Casual/Environmental (Atmospheric, Grounded):**
-```markdown
-The rain picked up against the windows. "Easy for you to say," Sarah muttered, glancing toward the sound. "You weren't the one ending up in random places. Forests, fields... always when it rains."
-
-David followed her gaze to the rain-streaked glass. "I believe you." His coffee sat untouched between them, steam gone cold.
-```
-**Rationale:** Casual dialogue ("ending up," "always when it rains") pairs with environmental beats (rain sounds, shared glances, cold coffee). Both ground scene in atmosphere. Rain becomes thematic element connecting dialogue subject to physical space. Setting does emotional work alongside words.
+**Sampling Reminders:**
+- Make each variation explore a DIFFERENT dialogue/beat combination
+- Vary which element (words or physicality) carries primary emotional weight
+- Consider character-specific markers for both vocabulary AND physical habits
+- Explore how changing one dimension (dialogue register) affects optimal beat choices
 
 ---
 
 ### 8. 🎨 **Variation Imagery Palettes**
 
-For EACH variation above, list 3-4 dialogue markers AND 3-4 beat types that define that approach.
+For EACH variation above, list 3-4 dialogue categories AND 3-4 beat categories that define that approach. Focus on **types and functions**, not specific words or gestures.
 
 **Format:**
 
 **Variation A Palette:**
-**Dialogue markers:**
-- [Marker 1]
-- [Marker 2]
 
-**Beat types:**
-- [Beat type 1]
-- [Beat type 2]
+**Dialogue categories:**
+- [Syntax/register type with functional effect]
+- [Vocabulary pattern with character implication]
+- [Rhetorical strategy with subtext result]
 
-**Example:**
+**Beat categories:**
+- [Beat type/density with pacing effect]
+- [Sensory mode with grounding result]
+- [Spatial/relational function with dynamic revelation]
+
+**Example Structure** (NOT specific content):
 
 **Variation A Palette:**
-**Dialogue markers:**
-- Sentence fragments ("Random places. Forests.")
-- Dropped articles ("I'm just—there")
-- Minimal words, maximum urgency
 
-**Beat types:**
-- Athletic reset (neck roll)
-- Food as punctuation (deliberate bite)
-- Sparse density (2 beats, brisk pace)
+**Dialogue categories:**
+- **[Syntax type]:** [How structure affects emotional read]
+- **[Register descriptor]:** [What vocabulary level reveals]
+- **[Rhetorical device]:** [How technique creates meaning]
 
-**Variation B Palette:**
-**Dialogue markers:**
-- Complete sentences, formal register
-- Careful word choice ("appearing out of nowhere")
-- Longer phrasing, contemplative tone
-
-**Beat types:**
-- Vulnerability signals (setting food down)
-- Respect gestures (bookshelf glance)
-- Dense choreography (5 beats, slow pace)
-
-**Variation C Palette:**
-**Dialogue markers:**
-- Casual register ("ending up")
-- Thematic connection ("always when it rains")
-- Ellipsis suggesting trailing thought
-
-**Beat types:**
-- Environmental awareness (rain sounds, glances)
-- Atmospheric grounding (window focus)
-- Object as time/emotion marker (cold coffee)
+**Beat categories:**
+- **[Beat density]:** [Pacing impact]
+- **[Sensory mode]:** [Grounding effect]
+- **[Relational function]:** [Dynamic revelation]
 
 ---
 
