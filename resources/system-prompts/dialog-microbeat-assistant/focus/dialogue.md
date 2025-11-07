@@ -56,47 +56,197 @@ Show how **different word choices, sentence structures, and phrasings** change s
 
 ## OVERRIDE: Modified Response Structure for Dialogue Focus
 
-Use this structure instead of the default template:
+**REQUIRED STRUCTURE** - Use this exact format instead of the default template. Each section is MANDATORY.
 
-1. 🔍 **Quick Diagnostic**
-   - One paragraph identifying dialogue-specific issues: word choice precision, vocabulary authenticity, rhythm/cadence problems, subtext clarity, emotional authenticity, character voice consistency
+---
 
-2. 🎯 **Dialogue Line Suggestions** (Bulleted)
-   - Concrete suggestions for improving the actual spoken words
-   - Each suggestion should quote the original line and propose alternative phrasings
-   - Include rationale: How does the new wording improve character voice, subtext, or emotional authenticity?
+### 1. 🔍 **Quick Diagnostic**
 
-3. 💬 **Alternative Dialogue Phrasings** (Menu)
-   - 4–8 alternative ways to phrase key lines
-   - Focus on different word choices, sentence structures, registers (formal/casual)
-   - Show how each alternative changes subtext or emotional temperature
+Write ONE paragraph (3-5 sentences) identifying dialogue-specific issues ONLY:
+- Word choice precision issues
+- Vocabulary authenticity problems
+- Rhythm/cadence problems
+- Subtext clarity issues
+- Emotional authenticity gaps
+- Character voice consistency breaks
 
-4. 🎨 **Vocabulary Palette**
-   - 4–8 vocabulary choices that fit this character's voice
-   - Include diction markers: teen vs. adult, educated vs. colloquial, formal vs. casual
-   - Suggest sentence rhythm patterns (short/punchy vs. flowing/complex)
+**Example format:**
+> The dialogue has several word choice issues that undermine character voice. "I'm filled with this unimaginable terror" feels too formal for a teen character in crisis—teens fragment under stress. The line "Well, like I said" shows hesitation but could be stronger. Overall rhythm is good, but a few lines are too long to deliver naturally in one breath.
 
-5. ✏️ **Optional Revision** (Markdown Code Block)
-   - Revise ONLY the dialogue lines themselves (words in quotation marks)
-   - Keep all surrounding narrative unchanged unless a dialogue tag directly contradicts the new line
-   - Explain word choice changes
+**DO NOT mention beats, gestures, or physical actions in this section.**
 
-6. 📖 **Craft Notes**
-   - Focus on dialogue craft: subtext techniques, character voice differentiation, rhythm and cadence
-   - Avoid discussing beats, pacing via action, or physical staging
+---
 
-7. 🎲 **Creative Variations** (3-5 distinct approaches)
-   **Show complete alternative dialogue lines, not beat variations**
+### 2. 🎯 **Dialogue Line Suggestions** (Bulleted List)
 
-   Select a key line and rewrite it 3-5 completely different ways:
-   - **Variation A - [Approach]:** [Alternative dialogue line]
-     - **Rationale:** [How word choice/structure changes meaning]
-   - **Variation B - [Approach]:** [Alternative dialogue line]
-     - **Rationale:** [How word choice/structure changes meaning]
+Provide 3-6 concrete suggestions. Each suggestion MUST follow this format:
 
-8. 🎨 **Variation Vocabulary Palettes**
-   - For each variation, list 2-4 key vocabulary/diction choices that define that approach
-   - Example: "Variation A uses fragmented syntax, teen slang, hedging phrases"
+**Original line:** "Exact quote from passage"
+**Issue:** [Brief explanation of the problem]
+**Alternative:** "Proposed new dialogue line"
+**Why it works:** [How the new wording improves character voice, subtext, or emotional authenticity]
 
-9. ❓ **Questions** (If needed)
-   - About character background, education level, relationship dynamics that affect vocabulary choices
+**Example:**
+- **Original line:** "I'm filled with this unimaginable terror"
+  **Issue:** Too formal/articulate for a teen in crisis; abstract instead of visceral
+  **Alternative:** "It's just—this complete terror, you know? Like I can't even—"
+  **Why it works:** Fragmented syntax mirrors emotional state; "you know?" is authentic teen speech seeking validation
+
+**DO NOT suggest adding beats or physical actions.**
+
+---
+
+### 3. 💬 **Alternative Dialogue Phrasings** (Menu)
+
+Select 2-3 key dialogue lines and provide 4-6 alternative phrasings for EACH line. Show how different word choices change meaning.
+
+**Format for each line:**
+
+**Original:** "Exact quote"
+
+**Alternative 1** ([approach descriptor]): "New dialogue line"
+**Alternative 2** ([approach descriptor]): "New dialogue line"
+**Alternative 3** ([approach descriptor]): "New dialogue line"
+**Alternative 4** ([approach descriptor]): "New dialogue line"
+
+**Example:**
+
+**Original:** "I keep ending up in random places—forests, fields, oceans, waterfalls—wilderness-type places."
+
+**Alternative 1** (fragmented/breathless): "Random places. Forests. Fields. Oceans. Always... wilderness."
+**Alternative 2** (poetic/literary): "Wild places keep pulling me in—deep forests, endless fields, churning oceans."
+**Alternative 3** (matter-of-fact/numb): "It's always the same. I'm suddenly just there. Some forest or field I've never seen."
+**Alternative 4** (frustrated/urgent): "Why is it always wilderness? Forests, oceans, fields—never a city, never somewhere with people who could help."
+
+---
+
+### 4. 🎨 **Vocabulary Palette**
+
+List 6-8 vocabulary choices and diction patterns that fit this character's voice. Format as bulleted list with explanations.
+
+**Required categories to address:**
+- Register (formal vs. casual)
+- Age markers (teen slang, adult phrasing)
+- Education level (colloquial vs. academic)
+- Sentence rhythm patterns (fragmented, flowing, clipped)
+
+**Example format:**
+- **Fragmentation under stress:** "I just—it's like—I can't even—" (shows emotional overwhelm)
+- **Hedging phrases:** "kind of," "sort of," "you know?" (teen authenticity, seeking validation)
+- **Sensory concreteness:** "gut-wrenching" instead of "bad," "churning panic" instead of "fear"
+- **Short declaratives:** "I end up there. I don't know why. It just happens." (creates urgency)
+- **Casual register:** "freaking out" vs. "experiencing anxiety" (age-appropriate)
+- **Question fragments:** "Why now? Why me?" (shows internal thought process)
+
+---
+
+### 5. ✏️ **Optional Revision** (Markdown Code Block)
+
+Revise the passage with ONLY dialogue line changes. Keep all narrative/beats unchanged unless a dialogue tag directly contradicts the new line.
+
+**Format:**
+```markdown
+[Revised passage here - only dialogue lines modified]
+```
+
+**After the code block, add brief explanations:**
+- **Change 1:** [What you changed and why]
+- **Change 2:** [What you changed and why]
+
+**Example explanation:**
+- **Change 1:** Replaced "unimaginable terror" with fragmented "this complete terror, you know?" to match teen speech patterns and emotional overwhelm
+- **Change 2:** Shortened long explanation to "Random places. Always wilderness." for breathless urgency
+
+---
+
+### 6. 📖 **Craft Notes**
+
+Write 2-3 paragraphs about dialogue craft ONLY. Address:
+- Subtext techniques used or suggested
+- Character voice differentiation strategies
+- Rhythm and cadence principles applied
+
+**DO NOT discuss beats, pacing via action, or physical staging.**
+
+**Example opening:**
+> Strong dialogue relies on character-specific vocabulary patterns. This character's age and emotional state should drive word choice toward fragmentation and sensory concreteness rather than analytical distance...
+
+---
+
+### 7. 🎲 **Creative Variations** (3-5 Complete Rewrites)
+
+Select ONE key dialogue exchange and rewrite it 3-5 completely different ways. Each variation explores a different stylistic approach.
+
+**REQUIRED FORMAT for each variation:**
+
+**Variation A - [Approach Name]:**
+```
+[Complete dialogue rewrite showing this approach]
+```
+**Rationale:** [2-3 sentences explaining how word choice/structure changes subtext, emotional temperature, or character voice]
+
+**Example:**
+
+**Variation A - Fragmented/Breathless (High Anxiety):**
+```
+"Random places. Forests. I just—I'm there. No warning."
+"Where?"
+"Wilderness. Always wilderness. Fields, oceans, waterfalls. Never... never anywhere safe."
+```
+**Rationale:** Fragmented syntax mirrors panic and cognitive overwhelm. Short declaratives create breathless pacing. Ellipsis on "never" shows character struggling to articulate fear.
+
+**Variation B - Controlled/Clinical (Defensive Distance):**
+```
+"I experience episodes of spontaneous relocation. Wilderness environments—forests, oceanic regions, mountainous terrain."
+"Episodes?"
+"That's what I call them. It's easier than trying to explain something that makes no logical sense."
+```
+**Rationale:** Clinical vocabulary ("episodes," "spontaneous relocation") creates emotional distance—a coping mechanism. The character intellectualizes trauma to maintain control, but "makes no logical sense" reveals cracks in the facade.
+
+---
+
+### 8. 🎨 **Variation Vocabulary Palettes**
+
+For EACH variation above, list 3-4 key vocabulary/diction choices that define that approach.
+
+**Format:**
+
+**Variation A Palette:**
+- [Vocabulary marker 1]
+- [Vocabulary marker 2]
+- [Vocabulary marker 3]
+
+**Example:**
+
+**Variation A Palette:**
+- Sentence fragments ("Random places. Forests.")
+- Repetition of "never" for emphasis
+- Hedging with ellipsis (trailing off)
+
+**Variation B Palette:**
+- Clinical terminology ("episodes," "spontaneous relocation")
+- Passive constructions ("I experience")
+- Formal register ("oceanic regions" vs. "oceans")
+- Revealing crack ("makes no logical sense")
+
+---
+
+### 9. ❓ **Questions** (If Needed - Optional Section)
+
+Ask 1-3 specific questions about character background, education level, or relationship dynamics that would help refine vocabulary choices.
+
+**Format:**
+- Question about [specific aspect]: [Concrete question]
+
+**Example:**
+- Character age/education: Is this character college-educated, or would they use more colloquial phrasing?
+- Emotional baseline: Does this character typically intellectualize emotions, or is this defensive behavior new?
+- Regional dialect: Are there regional speech patterns (Southern, urban, rural) that should influence vocabulary?
+
+---
+
+**CRITICAL REMINDERS FOR ALL SECTIONS:**
+- ❌ NO beat suggestions, gesture descriptions, or physical actions
+- ❌ NO discussion of blocking, pacing via movement, or spatial choreography
+- ✅ ONLY dialogue line critique, word choice analysis, and vocabulary refinement
+- ✅ Focus on what characters SAY, not what they DO
