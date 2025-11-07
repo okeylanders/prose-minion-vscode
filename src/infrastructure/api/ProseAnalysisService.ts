@@ -131,7 +131,8 @@ export class ProseAnalysisService implements IProseAnalysisService {
     if (assistantResources) {
       this.dialogueAssistant = new DialogueMicrobeatAssistant(
         assistantResources.orchestrator,
-        this.promptLoader!
+        this.promptLoader!,
+        this.outputChannel
       );
 
       this.proseAssistant = new ProseAssistant(

@@ -3,6 +3,7 @@
  * Analyzes dialogue passages and suggests dialogue tags and action beats
  */
 
+import type * as vscode from 'vscode';
 import { PromptLoader } from '../shared/prompts';
 import { AIResourceOrchestrator, ExecutionResult } from '../../application/services/AIResourceOrchestrator';
 
@@ -27,7 +28,8 @@ export interface DialogueMicrobeatOptions {
 export class DialogueMicrobeatAssistant {
   constructor(
     private readonly aiResourceOrchestrator: AIResourceOrchestrator,
-    private readonly promptLoader: PromptLoader
+    private readonly promptLoader: PromptLoader,
+    private readonly outputChannel?: vscode.OutputChannel
   ) {}
 
   async analyze(input: DialogueMicrobeatInput, options?: DialogueMicrobeatOptions): Promise<ExecutionResult> {
@@ -67,12 +69,16 @@ export class DialogueMicrobeatAssistant {
       const allPaths = [...basePaths, focusPath];
 
       // Log loaded prompts for transparency
-      console.log(`[DialogueMicrobeatAssistant] Loading prompts with focus="${focus}":`, allPaths);
+      this.outputChannel?.appendLine(`[DialogueMicrobeatAssistant] Loading prompts with focus="${focus}":`);
+      allPaths.forEach((path, index) => {
+        this.outputChannel?.appendLine(`  ${index + 1}. ${path}`);
+      });
 
       return await this.promptLoader.loadPrompts(allPaths);
     } catch (error) {
       // Fallback to default instructions if files don't exist
-      console.warn('[DialogueMicrobeatAssistant] Could not load dialog microbeat prompts, using defaults:', error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.outputChannel?.appendLine(`[DialogueMicrobeatAssistant] Could not load prompts, using defaults: ${errorMsg}`);
       return this.getDefaultInstructions();
     }
   }
