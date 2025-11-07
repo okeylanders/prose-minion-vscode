@@ -208,9 +208,71 @@ Select ONE static dialogue exchange and **generate 3-5 complete, genuinely diffe
 
 ---
 
-### 8. 🎨 **Variation Beat Palettes**
+### 7b. 🎨 **Variation Palettes**
 
 For each Creative Variation above, provide a micro-palette (2-4 sensory/physical descriptors or beat categories) specific to that stylistic approach. These should feel distinct from each other—e.g., Variation A uses tactile/proprioceptive cues, Variation B uses auditory/spatial, Variation C uses micro-gesture/temporal, etc.
+
+**Format with proper markdown:**
+Use `####` headers for each variation palette, bulleted lists for items.
+
+---
+
+### 8. 🎯 **Bound Creative Variations**
+
+**Use for Bounded Creative Sampling.**
+
+This section provides a prescriptive framework approach with dimension menus. Use this for more structural guidance while still sampling from low-probability choices.
+
+Select ONE static dialogue exchange and add beats 3-5 completely different ways. Keep dialogue IDENTICAL—only beat placement and density change.
+
+**Dimension Framework:**
+
+#### Beat Density Options:
+- **Sparse/Minimal (1-2 beats):** Brisk pacing, tension sustained, beats as punctuation only
+- **Dense/Layered (5+ beats):** Slow, intimate pacing, every moment physically grounded
+- **Medium (3-4 beats):** Balanced approach, mix of grounding and momentum
+
+#### Sensory Mode Options:
+- **Visual:** Gaze tracking, facial expressions, observable cues
+- **Tactile:** Touch-based, texture, temperature, physical contact
+- **Auditory:** Breath sounds, movement sounds, environmental audio
+- **Proprioceptive:** Body awareness, weight shifts, tension, balance
+
+#### Beat Type Options:
+- **Micro-gestures:** Subtle tells (finger taps, eye shifts, breath changes)
+- **Object-driven:** Props become emotional/relational markers
+- **Spatial choreography:** Physical distance changes reveal relationship dynamics
+- **Environmental:** Setting/atmosphere does emotional work alongside physicality
+- **Asymmetric contrast:** One character's physicality sharply contrasts the other's
+
+**Format:**
+#### Variation A - [Your Chosen Combination]:
+[Full dialogue with beats choreographed here]
+
+**Rationale:** [How your dimension choices create specific effects]
+
+**Applied framework:**
+- Beat density: [Which density you chose and why]
+- Sensory mode: [Which mode(s) and why]
+- Beat types: [Which types and why]
+
+[Repeat for 3-5 variations, each with different dimension combinations]
+
+---
+
+### 8b. 🎨 **Bound Variation Palettes**
+
+For each Bound Creative Variation above, explicitly identify the framework dimensions used.
+
+**Format with proper markdown:**
+
+#### Variation A Palette:
+- **Beat density:** [Sparse/Medium/Dense with count]
+- **Primary sensory mode:** [Visual/Tactile/Auditory/Proprioceptive]
+- **Beat types used:** [List 2-3 specific categories]
+- **Character-specific:** [Any profession/background-based physicality]
+
+[Repeat for each variation]
 
 ---
 

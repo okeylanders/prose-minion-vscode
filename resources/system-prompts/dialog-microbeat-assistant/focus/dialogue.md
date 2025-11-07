@@ -197,9 +197,77 @@ Select ONE key dialogue exchange and **generate 3-5 complete, genuinely differen
 
 ---
 
-### 8. 🎨 **Variation Vocabulary Palettes**
+### 7b. 🎨 **Variation Vocabulary Palettes**
 
 For each Creative Variation above, provide a micro-palette (2-4 vocabulary/diction markers or syntax patterns) specific to that stylistic approach. These should feel distinct from each other—e.g., Variation A uses fragmented syntax + sensory concrete words, Variation B uses clinical register + passive constructions, Variation C uses colloquial slang + elliptical phrasing, etc.
+
+**Format with proper markdown:**
+Use `####` headers for each variation palette, bulleted lists for items.
+
+---
+
+### 8. 🎯 **Bound Creative Variations**
+
+**Use for Bounded Creative Sampling.**
+
+This section provides a prescriptive framework approach with dimension menus. Use this for more structural guidance while still sampling from low-probability choices.
+
+Select ONE key dialogue exchange and rewrite it 3-5 completely different ways.
+
+**Dimension Framework:**
+
+#### Syntax Options:
+- **Fragmented:** Short bursts, incomplete sentences, ellipsis, dashes
+- **Flowing:** Complete sentences, smooth rhythm, conjunctions
+- **Clipped:** Minimal words, dropped articles, staccato
+- **Run-on:** Long sentences, racing thoughts, breathless
+
+#### Register Options:
+- **Formal/Clinical:** Academic vocabulary, precise terminology, emotional distance
+- **Casual/Colloquial:** Everyday language, contractions, informal
+- **Poetic/Literary:** Metaphorical, imagery-rich, elevated
+- **Regional/Dialectal:** Place-specific phrasing, idioms, local color
+
+#### Emotional Temperature Options:
+- **Detached/Numb:** Flat affect, minimal modifiers, understatement
+- **Volatile/Urgent:** Intense language, repetition, exclamations
+- **Controlled/Simmering:** Restrained surface with tension beneath
+
+#### Subtext Strategy Options:
+- **Omission:** What's NOT said reveals truth
+- **Euphemism:** Indirect language masks reality
+- **Deflection:** Changes subject, avoids direct answer
+- **Intellectualization:** Uses analysis to avoid feeling
+
+**Format:**
+#### Variation A - [Your Chosen Combination]:
+"[Full revised dialogue here]"
+
+**Rationale:** [How your dimension choices create specific effects]
+
+**Applied framework:**
+- Syntax: [Which syntax and why]
+- Register: [Which register and why]
+- Emotional temperature: [Which temperature and why]
+- Subtext strategy: [Which strategy and why]
+
+[Repeat for 3-5 variations, each with different dimension combinations]
+
+---
+
+### 8b. 🎨 **Bound Variation Palettes**
+
+For each Bound Creative Variation above, explicitly identify the framework dimensions used.
+
+**Format with proper markdown:**
+
+#### Variation A Palette:
+- **Syntax type:** [Fragmented/Flowing/Clipped/Run-on with example]
+- **Register:** [Formal/Casual/Poetic/Dialectal with markers]
+- **Emotional temperature:** [Detached/Volatile/Controlled with indicators]
+- **Subtext strategy:** [Omission/Euphemism/Deflection/Intellectualization]
+
+[Repeat for each variation]
 
 ---
 

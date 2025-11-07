@@ -188,11 +188,11 @@ Use `####` headers for each variation palette, bulleted lists for items.
 
 ---
 
-### 8. 🎯 **Bound Creative Variations** (Optional Alternative Approach)
+### 8. 🎯 **Bound Creative Variations**
 
-**For lighter/faster models that benefit from more scaffolding.**
+**Use for Bounded Creative Sampling.**
 
-This section provides a prescriptive framework approach with dimension menus. Use this if you need more structural guidance while still sampling from low-probability choices.
+This section provides a prescriptive framework approach with dimension menus. Use this for more structural guidance while still sampling from low-probability choices.
 
 Select ONE dialogue exchange and rewrite it 3-5 completely different ways, changing BOTH dialogue lines AND beat choreography together.
 
