@@ -1,17 +1,63 @@
+# IDE and development tools
 .vscode/**
 .vscode-test/**
+.eslintrc.json
+
+# Source files (we ship compiled dist/)
 src/**
-.gitignore
-.yarnrc
-vsc-extension-quickstart.md
-**/tsconfig.json
-**/.eslintrc.json
-**/*.map
 **/*.ts
-!dist/**/*.js
-node_modules/**
-out/**
+!dist/**/*.d.ts
+**/*.map
+
+# Build configuration
 webpack.config.js
 tailwind.config.js
 postcss.config.js
+tsconfig.json
+tsconfig.webview.json
+.yarnrc
+
+# Dependencies (bundled in dist/)
+node_modules/**
+
+# Build outputs (keep dist/)
+out/**
+
+# Git and version control
+.git/**
+.gitignore
+.github/**
+
+# AI agent configurations
+.ai/**
+.claude/**
+.clinerules/**
+AGENTS.md
+
+# Development documentation
+.memory-bank/**
+.todo/**
+.planning/**
+.research/**
+docs/**
+
+# Screenshots and demo files (used in README only)
+screenshots/**
+assets/prose-minion-book-animated.gif
+assets/example-outputs/**
+assets/example-icon-from-the-bookening.svg
+assets/prose-minion-robot.svg
+assets/prose-minion-book-inverted.svg
+
+# macOS metadata
+**/.DS_Store
+.DS_Store
+
+# Example repositories and build artifacts
 example-repos/**
+*.vsix
+
+# Misc development files
+vsc-extension-quickstart.md
+scripts/**
+resources/.DS_Store
