@@ -31,7 +31,7 @@ No automated tests exist for hooks. Testing is done manually via:
 - Webview reload persistence checks
 - Output Channel echo prevention verification
 
-**Manual Test Checklist** (from `docs/guides/adding-settings.md`):
+**Manual Test Checklist** (from `docs/guides/ADDING_SETTINGS.md`):
 1. ✅ SettingsOverlay → Component updates
 2. ✅ VSCode Settings Panel → Component updates
 3. ✅ Persistence across reload
@@ -43,7 +43,7 @@ No automated tests exist for hooks. Testing is done manually via:
 
 ## Recommendation
 
-Add comprehensive unit tests for all 6 settings hooks following the test patterns documented in `docs/testing.md`.
+Add comprehensive unit tests for all 6 settings hooks following the test patterns documented in `docs/TESTING.md`.
 
 ### Test Coverage Requirements
 
@@ -165,7 +165,7 @@ export const createMockVSCode = () => ({
 
 ## References
 
-- **Test Documentation**: [docs/testing.md](../../docs/testing.md) - Complete test patterns and examples
+- **Test Documentation**: [docs/TESTING.md](../../docs/TESTING.md) - Complete test patterns and examples
 - **Test Examples**: See test documentation for full hook test template
 - **Sprint**: [Sprint 05 - Documentation & Testing](../epics/epic-unified-settings-architecture-2025-11-03/sprints/05-documentation-testing.md)
 - **ADR**: [2025-11-03: Unified Settings Architecture](../../docs/adr/2025-11-03-unified-settings-architecture.md)

@@ -16,7 +16,7 @@ Key Changes
     - SETTINGS_DATA now includes contextPaths.* keys.
     - UPDATE_SETTING allowlist includes `contextPaths.` prefix.
 - Docs
-  - docs/settings-header-layout.md: how to switch among three header layouts.
+  - docs/SETTINGS_HEADER_LAYOUT.md: how to switch among three header layouts.
   - docs/CONFIGURATION.md: note that Context Paths are editable in the in‑app Settings overlay.
   - docs/adr/2025-10-26-webview-settings-module.md: update log noting stacked header and Context Paths UI.
 

@@ -329,8 +329,8 @@ private shouldBroadcastWordSearchSettings(event) {
 - `src/tests/integration/` (3 test files)
 
 **Documentation** (Phase 4):
-- `docs/guides/adding-settings.md`
-- `docs/testing.md` (or update existing)
+- `docs/guides/ADDING_SETTINGS.md`
+- `docs/TESTING.md` (or update existing)
 
 ### Files to Modify
 

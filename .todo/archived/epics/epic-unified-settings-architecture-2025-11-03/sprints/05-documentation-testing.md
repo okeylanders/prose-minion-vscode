@@ -43,7 +43,7 @@ Document the unified Domain Hooks architecture and add automated tests to ensure
 
 ### Task 2: Create Migration Guide (1 day)
 
-**File**: `docs/guides/adding-settings.md` (new)
+**File**: `docs/guides/ADDING_SETTINGS.md` (new)
 
 **Content**:
 - When to use settings hooks (`use[Domain]Settings`) vs. state hooks (`use[Domain]`) vs. SecretStorage
@@ -163,7 +163,7 @@ describe('Settings Persistence', () => {
 
 ### Task 5: Update Test Documentation (0.5 days)
 
-**File**: `docs/testing.md` (new or update existing)
+**File**: `docs/TESTING.md` (new or update existing)
 
 **Content**:
 - How to run tests
@@ -239,8 +239,8 @@ export const useWordSearchSettings = (vscode: VSCodeAPI) => {
 ## Files Changed
 
 ### Created
-- [ ] `docs/guides/adding-settings.md`
-- [ ] `docs/testing.md` (or update existing)
+- [ ] `docs/guides/ADDING_SETTINGS.md`
+- [ ] `docs/TESTING.md` (or update existing)
 - [ ] `src/tests/hooks/useWordSearchSettings.test.ts`
 - [ ] `src/tests/hooks/useWordFrequencySettings.test.ts`
 - [ ] `src/tests/hooks/useContextPathsSettings.test.ts`

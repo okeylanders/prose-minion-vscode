@@ -94,7 +94,7 @@ Add comprehensive JSDoc to all remaining hooks following the `useWordSearchSetti
 - **Template**: [src/presentation/webview/hooks/domain/useWordSearchSettings.ts](../../src/presentation/webview/hooks/domain/useWordSearchSettings.ts) (lines 40-145)
 - **Sprint**: [Sprint 05 - Documentation & Testing](../epics/epic-unified-settings-architecture-2025-11-03/sprints/05-documentation-testing.md)
 - **ADR**: [2025-11-03: Unified Settings Architecture](../../docs/adr/2025-11-03-unified-settings-architecture.md)
-- **Guide**: [Adding Settings Guide](../../docs/guides/adding-settings.md)
+- **Guide**: [Adding Settings Guide](../../docs/guides/ADDING_SETTINGS.md)
 
 ---
 

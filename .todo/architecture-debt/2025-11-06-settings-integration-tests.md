@@ -212,7 +212,7 @@ export const createSettingsDataMessage = (settings: any) => ({
 
 ## References
 
-- **Test Documentation**: [docs/testing.md](../../docs/testing.md) - Integration test examples and patterns
+- **Test Documentation**: [docs/TESTING.md](../../docs/TESTING.md) - Integration test examples and patterns
 - **Sprint**: [Sprint 05 - Documentation & Testing](../epics/epic-unified-settings-architecture-2025-11-03/sprints/05-documentation-testing.md)
 - **Architecture**: [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md#settings-management-architecture) - Bidirectional sync flow
 - **ADR**: [2025-11-03: Unified Settings Architecture](../../docs/adr/2025-11-03-unified-settings-architecture.md)

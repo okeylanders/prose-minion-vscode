@@ -104,7 +104,7 @@ npm run watch
 ```
 
 **Manual Test Checklists**:
-- [Adding Settings Guide](./guides/adding-settings.md#testing-your-changes)
+- [Adding Settings Guide](./guides/ADDING_SETTINGS.md#testing-your-changes)
 - Sprint completion checklists in `.todo/epics/*/sprints/`
 
 ---
@@ -762,7 +762,7 @@ module.exports = {
 
 ## Additional Resources
 
-- [Adding Settings Guide](./guides/adding-settings.md) - Testing checklist for new settings
+- [Adding Settings Guide](./guides/ADDING_SETTINGS.md) - Testing checklist for new settings
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Architecture overview
 - [Jest Documentation](https://jestjs.io/docs/getting-started)
 - [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/)
