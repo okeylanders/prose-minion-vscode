@@ -528,6 +528,13 @@ I decided to make Prose Minion publicly available in case it helps other writers
 
 ---
 
+## ☕ Support Development
+
+If Prose Minion helps your writing, consider [buying me a coffee](https://buymeacoffee.com/okeylanders)! Your support helps keep this project maintained and improved.
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support%20development-orange?style=for-the-badge&logo=buy-me-a-coffee)](https://buymeacoffee.com/okeylanders)
+
+---
 
 ## 🙏 Acknowledgments
 
@@ -551,5 +558,6 @@ Development assisted by:
 <p align="center">
   <a href="https://marketplace.visualstudio.com/">Install from Marketplace</a> •
   <a href="docs/DEVELOPER_GUIDE.md">Developer Guide</a> •
-  <a href="https://github.com/okeylanders/prose-minion-vscode/issues">Report Issue</a>
+  <a href="https://github.com/okeylanders/prose-minion-vscode/issues">Report Issue</a> •
+  <a href="https://buymeacoffee.com/okeylanders">☕ Support Development</a>
 </p>
