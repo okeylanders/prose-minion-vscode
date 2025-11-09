@@ -18,7 +18,8 @@ declare global {
 }
 
 export const LoadingWidget: React.FC<{ className?: string }> = ({ className = '' }) => {
-  const pickRandom = React.useCallback(() => {
+  // Pick a random GIF on each render to ensure variety when component is shown/hidden
+  const pickRandom = () => {
     const assets = window.proseMinonAssets;
     const arr = assets?.loadingGifs && assets.loadingGifs.length > 0
       ? assets.loadingGifs
@@ -45,9 +46,9 @@ export const LoadingWidget: React.FC<{ className?: string }> = ({ className = ''
       // ignore
     }
     return { src, creditLabel, creditHref };
-  }, []);
+  };
 
-  const [{ src, creditLabel, creditHref }] = React.useState(() => pickRandom());
+  const { src, creditLabel, creditHref } = pickRandom();
 
   return (
     <>

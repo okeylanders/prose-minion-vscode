@@ -55,7 +55,7 @@ Prose Minion provides four powerful tool categories in a dedicated sidebar panel
 
 1. **Get an API Key**:
    - Visit [openrouter.ai](https://openrouter.ai/)
-   - Create a pay-as-you-go account (~$0.50-$2 per 100K words depending on model)
+   - Create a pay-as-you-go account
    - Generate an API key
 
 2. **Add Your Key**:

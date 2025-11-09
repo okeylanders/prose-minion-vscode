@@ -95,7 +95,17 @@ export const App: React.FC = () => {
       if (scopeRequester === 'search') search.handleChapterGlobs(msg); else metrics.handleChapterGlobs(msg);
       setScopeRequester(null);
     },
-    [MessageType.STATUS]: (msg) => analysis.handleStatusMessage(msg, context.loadingRef),
+    [MessageType.STATUS]: (msg) => {
+      // Route status messages based on source
+      if (msg.source === 'extension.dictionary') {
+        dictionary.handleStatusMessage(msg);
+      } else if (msg.source === 'extension.analysis') {
+        analysis.handleStatusMessage(msg, context.loadingRef);
+      } else {
+        // Default to analysis for backward compatibility
+        analysis.handleStatusMessage(msg, context.loadingRef);
+      }
+    },
     [MessageType.SETTINGS_DATA]: (msg) => {
       settings.handleSettingsData(msg);
       wordSearchSettings.handleSettingsData(msg);
@@ -427,6 +437,7 @@ export const App: React.FC = () => {
             result={dictionary.result}
             isLoading={dictionary.loading}
             onLoadingChange={dictionary.setLoading}
+            statusMessage={dictionary.statusMessage}
             toolName={dictionary.toolName}
             dictionaryInjection={selection.dictionaryInjection}
             onDictionaryInjectionHandled={selection.handleDictionaryInjectionHandled}

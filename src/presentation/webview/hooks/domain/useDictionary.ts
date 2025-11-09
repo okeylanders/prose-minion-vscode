@@ -17,10 +17,12 @@ export interface DictionaryState {
   wordEdited: boolean;
   sourceUri: string;
   relativePath: string;
+  statusMessage: string;
 }
 
 export interface DictionaryActions {
   handleDictionaryResult: (message: DictionaryResultMessage) => void;
+  handleStatusMessage: (message: any) => void;
   setLoading: (loading: boolean) => void;
   setWord: (word: string) => void;
   setContext: (context: string) => void;
@@ -37,6 +39,7 @@ export interface DictionaryPersistence {
   dictionaryWordEdited: boolean;
   dictionarySourceUri: string;
   dictionaryRelativePath: string;
+  dictionaryStatusMessage: string;
 }
 
 export type UseDictionaryReturn = DictionaryState & DictionaryActions & { persistedState: DictionaryPersistence };
@@ -80,6 +83,7 @@ export const useDictionary = (): UseDictionaryReturn => {
     dictionaryWordEdited?: boolean;
     dictionarySourceUri?: string;
     dictionaryRelativePath?: string;
+    dictionaryStatusMessage?: string;
   }>();
 
   const [result, setResult] = React.useState<string>(persisted?.utilitiesResult ?? '');
@@ -90,6 +94,7 @@ export const useDictionary = (): UseDictionaryReturn => {
   const [wordEdited, setWordEdited] = React.useState<boolean>(persisted?.dictionaryWordEdited ?? false);
   const [sourceUri, setSourceUri] = React.useState<string>(persisted?.dictionarySourceUri ?? '');
   const [relativePath, setRelativePath] = React.useState<string>(persisted?.dictionaryRelativePath ?? '');
+  const [statusMessage, setStatusMessage] = React.useState<string>(persisted?.dictionaryStatusMessage ?? '');
 
   // Clear result when dictionary lookup starts
   React.useEffect(() => {
@@ -103,6 +108,12 @@ export const useDictionary = (): UseDictionaryReturn => {
     setResult(result);
     setToolName(toolName);
     setLoading(false);
+    setStatusMessage(''); // Clear status message
+  }, []);
+
+  const handleStatusMessage = React.useCallback((message: any) => {
+    const { message: statusText } = message.payload;
+    setStatusMessage(statusText);
   }, []);
 
   const setSource = React.useCallback((uri?: string, rel?: string) => {
@@ -124,9 +135,11 @@ export const useDictionary = (): UseDictionaryReturn => {
     wordEdited,
     sourceUri,
     relativePath,
+    statusMessage,
 
     // Actions
     handleDictionaryResult,
+    handleStatusMessage,
     setLoading,
     setWord,
     setContext,
@@ -143,6 +156,7 @@ export const useDictionary = (): UseDictionaryReturn => {
       dictionaryWordEdited: wordEdited,
       dictionarySourceUri: sourceUri,
       dictionaryRelativePath: relativePath,
+      dictionaryStatusMessage: statusMessage,
     },
   };
 };
