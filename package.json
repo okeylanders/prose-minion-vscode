@@ -13,7 +13,7 @@
   "bugs": {
     "url": "https://github.com/okeylanders/prose-minion-vscode/issues"
   },
-  "icon": "resources/prose-minion-book.png",
+  "icon": "assets/prose-minion-book.png",
   "engines": {
     "vscode": "^1.75.0"
   },
@@ -88,7 +88,7 @@
         {
           "id": "prose-minion",
           "title": "Prose Minion",
-          "icon": "resources/prose-minion-book.svg"
+          "icon": "assets/prose-minion-book.svg"
         }
       ]
     },
