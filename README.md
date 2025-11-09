@@ -246,21 +246,39 @@ The **Assistant** tab's context features work best with a well-organized project
 
 ```
 MyNovel/
-├── Drafts/
-│   ├── chapter-1.md
+├── Manuscripts/
+│   ├── chapter-1.md      (polished/edited versions)
 │   ├── chapter-2.md
 │   ├── chapter-3.md
-│   └── ... (one file per chapter)
+│   └── ...
+├── Drafts/
+│   ├── chapter-1.md      (working drafts)
+│   ├── chapter-2.md
+│   ├── chapter-3.md
+│   └── ...
 ├── Characters/
 │   ├── protagonist.md
 │   ├── antagonist.md
 │   └── supporting-characters.md
 ├── Locations/
-│   ├── setting-overview.md
-│   └── key-locations.md
+│   ├── castle-blackwood.md
+│   ├── riverside-town.md
+│   └── key-places.md
+├── Themes/
+│   ├── redemption-arc.md
+│   └── power-dynamics.md
+├── Things/
+│   ├── magic-system.md
+│   ├── important-artifacts.md
+│   └── technology.md
+├── ProjectBrief/
+│   ├── synopsis.md
+│   ├── story-bible.md
+│   └── series-overview.md
 └── Notes/
-    ├── themes.md
-    └── plot-outline.md
+    ├── research.md
+    ├── plot-outline.md
+    └── worldbuilding.md
 ```
 
 ### Why This Matters
@@ -291,13 +309,18 @@ MyNovel/
 1. Click the **gear icon** in the panel header
 2. Navigate to the **Context Paths** section
 3. Set glob patterns for:
-   - Manuscripts (where your draft chapters live)
-   - Characters (character profiles and bios)
-   - Locations (setting descriptions)
-   - Notes (themes, outlines, research)
+   - **Manuscript** - Polished/edited chapter files ready for publication
+   - **Chapters** - Alternative chapter organization or work-in-progress chapters
+   - **Characters** - Character profiles, bios, and development notes
+   - **Locations** - Profiles for places & locations that occur in the novel
+   - **Themes** - Thematic elements, motifs, and narrative threads
+   - **Things** - Magic systems, technology, artifacts, or significant objects
+   - **Project Brief** - Synopsis, story bible, series overview, pitch documents
+   - **General** - Research, outlines, worldbuilding notes, misc. reference material
 
 4. The extension will discover files matching these patterns
 5. When analyzing text, relevant resources appear as **clickable pills**
+6. Click any pill to load that resource into the AI's context for richer suggestions
 
 ---
 
@@ -317,10 +340,15 @@ Click the **gear icon** in the Prose Minion header for comprehensive settings:
 - Each scope can use a different model to balance cost/quality
 
 ### Context Paths
-- **Manuscripts Path** - Glob pattern for draft files
-- **Characters Path** - Character profiles location
-- **Locations Path** - Setting files
-- **Notes Path** - Research and outlines
+
+- **Manuscript** - Polished/edited chapter files ready for publication
+- **Chapters** - Alternative chapter organization or work-in-progress chapters
+- **Characters** - Character profiles, bios, and development notes
+- **Locations** - Profiles for places & locations that occur in the novel
+- **Themes** - Thematic elements, motifs, and narrative threads
+- **Things** - Magic systems, technology, artifacts, or significant objects
+- **Project Brief** - Synopsis, story bible, series overview, pitch documents
+- **General** - Research, outlines, worldbuilding notes, misc. reference material
 - **Visual Examples** - Learn glob syntax with inline help
 
 ### Publishing Standards
