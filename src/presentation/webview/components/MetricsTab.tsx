@@ -136,26 +136,8 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   const buildExportContent = React.useCallback(() => {
     let content = markdownContent;
 
-    // Append legend explaining metrics (export only)
-    const legend = [
-      '### Legend',
-      '',
-      '- Word Count: Total tokens split by whitespace.',
-      '- Sentence Count: Heuristic split on . ! ?',
-      '- Paragraph Count: Blocks split by blank lines.',
-      '- Avg Words per Sentence: Average words per sentence.',
-      '- Avg Sentences per Paragraph: Average sentences per paragraph.',
-      '- Dialogue Percentage: % of tokens inside quotes.',
-      '- Lexical Density: % of content words (non-stopwords).',
-      '- Stopword Ratio: % tokens in a common English stopword list.',
-      '- Hapax %: % tokens occurring exactly once; Hapax Count is absolute count.',
-      '- Type-Token Ratio: Unique/total tokens × 100.',
-      '- Readability Score: Simplified Flesch Reading Ease (0–100, higher is easier).',
-      '- Readability Grade (FKGL): Flesch–Kincaid Grade Level (approximate grade).',
-      ''
-    ].join('\n');
-
-    content += `\n\n${legend}\n`;
+    // Note: Legend is already appended by formatMetricsAsMarkdown() in resultFormatter.ts
+    // (includes comprehensive Metrics Guide with Vocabulary Diversity and Lexical Density explainers)
 
     // Append Chapter Details section (per-chapter pivoted tables) if available
     try {
