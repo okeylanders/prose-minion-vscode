@@ -112,11 +112,11 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
       vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview.js')
     );
 
-    const vhsLoadingGifUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'assets', 'assistant-working-vhs.gif')
+    const myWorldLoadingGifUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, 'assets', 'assistant-working-prose-minion-my-world-is-user-generated.gif')
     );
-    const distortedLoadingGifUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'assets', 'assistant-working-distorted-screen.gif')
+    const helloWorldLoadingGifUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, 'assets', 'assistant-working-prose-minion-hello-world.gif')
     );
 
     const nonce = this.getNonce();
@@ -133,20 +133,20 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
   <div id="root" style="padding:8px;font-family:var(--vscode-font-family);color:var(--vscode-foreground)">Loading Prose Minion…</div>
   <script nonce="${nonce}">
     window.proseMinonAssets = {
-      vhsLoadingGif: "${vhsLoadingGifUri}",
+      vhsLoadingGif: "${myWorldLoadingGifUri}",
       loadingGifs: [
-        "${vhsLoadingGifUri}",
-        "${distortedLoadingGifUri}"
+        "${myWorldLoadingGifUri}",
+        "${helloWorldLoadingGifUri}"
       ],
       // Enumerate available loading GIF filenames for credits management
       loadingGifList: [
-        'assistant-working-vhs.gif',
-        'assistant-working-distorted-screen.gif'
+        'assistant-working-prose-minion-my-world-is-user-generated.gif',
+        'assistant-working-prose-minion-hello-world.gif'
       ],
       // Map of filename -> credit info
       loadingGifCredits: {
-        'assistant-working-vhs.gif': { label: 'matti watt', href: 'https://www.pinterest.com/pin/29977153764908058/' },
-        'assistant-working-distorted-screen.gif': { label: 'E270', href: 'https://www.pinterest.com/pin/21462535717701169/' }
+        'assistant-working-prose-minion-my-world-is-user-generated.gif': 'Generated with Adobe Firefly',
+        'assistant-working-prose-minion-hello-world.gif': 'Generated with Adobe Firefly'
       }
     };
   </script>
