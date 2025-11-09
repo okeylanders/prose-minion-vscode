@@ -1,10 +1,10 @@
 {
   "name": "prose-minion-vscode",
-  "displayName": "Prose Minion",
-  "description": "AI-powered prose analysis and writing assistance for creative writers",
-  "version": "0.0.1",
+  "displayName": "Prose Minion: Writing Toolkit",
+  "description": "AI prose analysis and writing assistant for fiction authors. Dialogue suggestions, context-aware dictionary, comprehensive prose metrics, style flags, word frequency, and manuscript search. Metrics/search work offline—no API key needed.",
+  "version": "1.0.0",
   "license": "SEE LICENSE IN LICENSE",
-  "publisher": "okeylanders",
+  "publisher": "OkeyLanders",
   "repository": {
     "type": "git",
     "url": "https://github.com/okeylanders/prose-minion-vscode.git"
@@ -13,7 +13,7 @@
   "bugs": {
     "url": "https://github.com/okeylanders/prose-minion-vscode/issues"
   },
-  "icon": "resources/prose-minion-book.svg",
+  "icon": "resources/prose-minion-book.png",
   "engines": {
     "vscode": "^1.75.0"
   },

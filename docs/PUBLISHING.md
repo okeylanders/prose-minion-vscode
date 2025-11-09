@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../assets/prose-minion-book.svg" alt="Prose Minion" width="120"/>
+  <img src="../assets/prose-minion-book.png" alt="Prose Minion" width="120"/>
 </p>
 
 <p align="center">
