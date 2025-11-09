@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/prose-minion-book.svg" alt="Prose Minion" width="200"/>
+  <img src="assets/prose-minion-book-animated.gif" alt="Prose Minion" width="200"/>
 </p>
 
 <p align="center">
@@ -169,7 +169,7 @@ Comprehensive statistics and style analysis without any AI or API requirements.
 - **💓 Pacing** - Slow, Moderate, or Fast based on sentence length
 - **💬 Dialogue Percentage** - % of text that's dialogue
 - **🧬 Lexical Density** - Content word ratio (non-stopwords/total × 100)
-- **🌈 Vocabulary Diversity** - Type-token ratio
+- **🌈 Vocabulary Diversity** - Word variety ratio (unique words ÷ total words; higher = more varied vocabulary)
 - **🎯 Stopword Ratio** - Function word balance
 - **✨ Hapax %** - Unique vocabulary percentage
 - **📖 Readability Score** - Flesch Reading Ease
@@ -320,7 +320,7 @@ MyNovel/
 
 4. The extension will discover files matching these patterns
 5. When analyzing text, relevant resources appear as **clickable pills**
-6. Click any pill to load that resource into the AI's context for richer suggestions
+6. Click any pill to quickly open that used resource.
 
 ---
 
