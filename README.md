@@ -11,7 +11,6 @@
 </p>
 
 ---
-
 ## ✨ Features at a Glance
 
 Prose Minion provides four powerful tool categories in a dedicated sidebar panel:
@@ -509,6 +508,26 @@ This means:
 See [LICENSE](LICENSE) for complete terms. For commercial licensing inquiries, please open an issue.
 
 ---
+
+
+## 📝 Author's Note: Pairing with Cline for Creative Writing
+
+I originally developed Prose Minion for my own creative writing workflow - specifically to pair with **Cline**: [Web](https://cline.bot) , ([GitHub](https://github.com/cline/cline)), an AI coding assistant for VS Code. While Cline is built for software development, it becomes an incredibly powerful creative writing assistant when customized with `.cline-rules` that focus it on fiction craft instead of code.
+
+**Why this pairing works so well:**
+
+- **Traditional Chat Experience** - Cline provides a familiar chat interface while Prose Minion gives you structured analysis tools
+- **Copy Button Integration** - I added the copy buttons throughout Prose Minion so I can easily paste analysis into Cline's chat: metrics, word searches, style flags, and focused excerpt suggestions. While I'm also developing an MCP tool for tighter integration, I've found this manual approach more useful for refining the MCP and guiding Cline on when to call specific analyses
+- **File Operations** - Cline can automatically edit your manuscript files and retrieve content when needed
+- **OpenRouter Compatible** - Both tools work with OpenRouter, giving you access to the latest models
+- **Git Integration** - Set up your writing project as a private GitHub repository to track all changes, maintain version history, and even collaborate with other writers
+
+**My recommendation:** If you're a creative writer using VS Code, try pairing Prose Minion with Cline. Use Prose Minion to analyze your prose (metrics, word frequency, style flags), then copy those insights into Cline to discuss revisions and improvements. It's like having both an analytical editor and a creative writing partner in your sidebar.
+
+I decided to make Prose Minion publicly available in case it helps other writers working with AI tools. Happy writing!
+
+---
+
 
 ## 🙏 Acknowledgments
 
