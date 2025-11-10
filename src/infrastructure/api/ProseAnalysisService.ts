@@ -728,10 +728,10 @@ export class ProseAnalysisService implements IProseAnalysisService {
 To use AI-powered analysis tools, you need to configure your OpenRouter API key:
 
 1. Get an API key from https://openrouter.ai/
-2. Open VS Code Settings (Cmd+, or Ctrl+,)
-3. Search for "Prose Minion"
-4. Enter your API key in "OpenRouter API Key"
-5. Pick models for assistants and utilities under the Prose Minion settings
+2. Click the ⚙️ gear icon at the top of the Prose Minion view
+3. Enter your API key in the "OpenRouter API Key" field
+4. Click Save
+5. Select your preferred models for assistants and utilities
 
 The measurement tools (Prose Statistics, Style Flags, Word Frequency) work without an API key.`;
   }

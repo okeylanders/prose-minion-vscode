@@ -61,7 +61,7 @@ export const LoadingWidget: React.FC<{ className?: string }> = ({ className = ''
       </div>
       {(creditLabel || creditHref) && (
         <div className="loading-credit">
-          Animation by{' '}
+          {' '}
           {creditHref ? (
             <a href={creditHref} target="_blank" rel="noopener noreferrer">{creditLabel || creditHref}</a>
           ) : (

@@ -28,7 +28,7 @@ Prose Minion provides four powerful tool categories in a dedicated sidebar panel
 
 ### Installation
 
-1. Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/)
+1. Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=OkeyLanders.prose-minion)
 2. Open the Prose Minion panel from the activity bar (book/hexagon icon)
 3. Start using **Search** and **Metrics** immediately (no API key needed!)
 4. Configure OpenRouter API key for AI features (**Assistant** and **Dictionary**)
