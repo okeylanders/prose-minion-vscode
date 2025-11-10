@@ -64,7 +64,7 @@ export class OpenRouterClient {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.apiKey}`,
-        'HTTP-Referer': 'https://github.com/your-username/prose-minion-vscode',
+        'HTTP-Referer': 'https://github.com/okeylanders/prose-minion-vscode',
         'X-Title': 'Prose Minion VS Code Extension'
       },
       body: JSON.stringify({
