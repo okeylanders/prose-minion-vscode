@@ -1,0 +1,238 @@
+# Sprint 02: Create Measurement Service Wrappers
+
+**Status**: Pending Sprint 01
+**Estimated Effort**: 1-2 hours
+**Risk Level**: Low
+**Branch**: `sprint/epic-prose-analysis-service-refactor-2025-11-11-02-measurement-wrappers`
+
+---
+
+## Goal
+
+Create thin service wrappers for measurement tools (ProseStats, StyleFlags, WordFrequency) for architectural consistency. All handlers will depend on services, not tools directly.
+
+---
+
+## Scope
+
+### Services to Create
+
+1. **ProseStatsService** (~80-100 lines)
+   - Wrap PassageProseStats measurement tool
+   - Thin wrapper, mostly delegation
+   - Provides clean extension point for future orchestration
+
+2. **StyleFlagsService** (~60-80 lines)
+   - Wrap StyleFlags measurement tool
+   - Thin wrapper, pure delegation
+
+3. **WordFrequencyService** (~80-100 lines)
+   - Wrap WordFrequency measurement tool
+   - Handles configuration retrieval via ToolOptionsProvider
+
+### Files to Create
+
+```
+src/infrastructure/api/services/
+└── measurement/
+    ├── ProseStatsService.ts
+    ├── StyleFlagsService.ts
+    └── WordFrequencyService.ts
+```
+
+---
+
+## Tasks
+
+- [ ] **Create ProseStatsService**
+  - [ ] Define class structure and constructor
+  - [ ] Inject PassageProseStats tool
+  - [ ] Implement `analyze(text: string)` method
+  - [ ] Add JSDoc comments
+  - [ ] Test prose stats analysis
+
+- [ ] **Create StyleFlagsService**
+  - [ ] Define class structure and constructor
+  - [ ] Inject StyleFlags tool
+  - [ ] Implement `analyze(text: string)` method
+  - [ ] Add JSDoc comments
+  - [ ] Test style flags detection
+
+- [ ] **Create WordFrequencyService**
+  - [ ] Define class structure and constructor
+  - [ ] Inject WordFrequency tool
+  - [ ] Inject ToolOptionsProvider (for config)
+  - [ ] Implement `analyze(text: string, options?)` method
+  - [ ] Add JSDoc comments
+  - [ ] Test word frequency analysis with options
+
+- [ ] **Update ProseAnalysisService** (Temporary)
+  - [ ] Inject ProseStatsService in constructor
+  - [ ] Inject StyleFlagsService in constructor
+  - [ ] Inject WordFrequencyService in constructor
+  - [ ] Replace direct PassageProseStats calls with ProseStatsService
+  - [ ] Replace direct StyleFlags calls with StyleFlagsService
+  - [ ] Replace direct WordFrequency calls with WordFrequencyService
+
+- [ ] **Update extension.ts**
+  - [ ] Instantiate ProseStatsService
+  - [ ] Instantiate StyleFlagsService
+  - [ ] Instantiate WordFrequencyService
+  - [ ] Inject services into ProseAnalysisService
+
+- [ ] **Test All Metrics Tools**
+  - [ ] Prose stats on selection, file, manuscript
+  - [ ] Style flags detection
+  - [ ] Word frequency with all options
+  - [ ] Publishing standards comparison (ProseStats integration)
+
+---
+
+## Acceptance Criteria
+
+- [ ] All 3 measurement service wrappers created
+- [ ] Service wrappers follow consistent pattern
+- [ ] All metrics tools work identically to before
+- [ ] Metrics tab shows correct results
+- [ ] Extension loads without errors
+- [ ] Manual tests pass (see testing checklist)
+
+---
+
+## Rationale: Why Create Wrappers?
+
+**For consistency and architectural symmetry**:
+
+- ✅ Analysis tools are wrapped (AssistantToolService, ContextAssistantService, DictionaryService)
+- ✅ Measurement tools should also be wrapped
+- ✅ All handlers depend on services, not tools directly
+- ✅ Provides clean extension points for future orchestration
+- ✅ Consistent abstraction level across codebase
+
+**Key distinction**: These are **service → tool** wrappers (infrastructure abstraction), not a facade. Each service wraps one tool.
+
+---
+
+## Testing Checklist
+
+### Manual Tests (After Sprint)
+
+1. **Prose Stats**:
+   - [ ] Analysis on selection (< 300 words)
+   - [ ] Analysis on file (single chapter)
+   - [ ] Analysis on manuscript (multi-file with chapter aggregation)
+   - [ ] Publishing standards comparison works
+   - [ ] Chapter-by-chapter stats table shows
+
+2. **Style Flags**:
+   - [ ] Detects adverb overuse
+   - [ ] Detects passive voice
+   - [ ] Detects dialogue tags
+   - [ ] Results display correctly
+
+3. **Word Frequency**:
+   - [ ] Top 100 words list
+   - [ ] Stopwords analysis
+   - [ ] Hapax legomena
+   - [ ] Bigrams/trigrams
+   - [ ] Word length histogram
+   - [ ] POS tagging (wink)
+   - [ ] Optional lemmas view
+   - [ ] Min character length filter works
+
+---
+
+## Implementation Notes
+
+### ProseStatsService
+
+Simple wrapper:
+```typescript
+export class ProseStatsService {
+  private proseStats: PassageProseStats;
+
+  constructor() {
+    this.proseStats = new PassageProseStats();
+  }
+
+  analyze(text: string): any {
+    return this.proseStats.analyze({ text });
+  }
+}
+```
+
+### StyleFlagsService
+
+Simple wrapper:
+```typescript
+export class StyleFlagsService {
+  private styleFlags: StyleFlags;
+
+  constructor() {
+    this.styleFlags = new StyleFlags();
+  }
+
+  analyze(text: string): any {
+    return this.styleFlags.analyze({ text });
+  }
+}
+```
+
+### WordFrequencyService
+
+Wrapper with configuration:
+```typescript
+export class WordFrequencyService {
+  private wordFrequency: WordFrequency;
+  private toolOptions: ToolOptionsProvider;
+
+  constructor(toolOptions: ToolOptionsProvider) {
+    this.wordFrequency = new WordFrequency((msg) => console.log(msg));
+    this.toolOptions = toolOptions;
+  }
+
+  analyze(text: string, options?: WordFrequencyOptions): any {
+    const wfOptions = options || this.toolOptions.getWordFrequencyOptions();
+    return this.wordFrequency.analyze({ text }, wfOptions);
+  }
+}
+```
+
+---
+
+## Risks & Mitigations
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|-----------|--------|------------|
+| Wrappers add overhead | Very Low | Very Low | Wrappers are thin, negligible overhead |
+| Tests fail due to wrapper issues | Low | Medium | Test each tool individually |
+| Configuration changes break word frequency | Low | Medium | Test with all word frequency options |
+
+---
+
+## Definition of Done
+
+- [ ] All 3 service wrappers created with JSDoc comments
+- [ ] ProseAnalysisService uses new services
+- [ ] All metrics tools work identically
+- [ ] All manual tests pass
+- [ ] No errors in Output Channel
+- [ ] Extension loads without errors
+- [ ] Git commit with clear message
+- [ ] Memory bank entry created
+
+---
+
+## Previous Sprint
+
+[Sprint 01: Extract Resource Services](01-extract-resource-services.md)
+
+## Next Sprint
+
+[Sprint 03: Extract Analysis Services](03-extract-analysis-services.md)
+
+---
+
+**Created**: 2025-11-11
+**Status**: Pending Sprint 01
+**ADR**: [docs/adr/2025-11-11-prose-analysis-service-refactor.md](../../../docs/adr/2025-11-11-prose-analysis-service-refactor.md#phase-2-create-measurement-service-wrappers-low-risk)
