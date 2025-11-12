@@ -107,105 +107,76 @@ Related: ADR-2025-10-26 (MessageHandler), ADR-2025-10-27 (Presentation Layer)
 
 ## Decision
 
-Refactor ProseAnalysisService into **domain-specific services** following the Facade pattern, with the main service acting as a lightweight orchestrator delegating to focused domain services.
+Refactor ProseAnalysisService into **focused domain services** that handlers inject directly. **Remove the facade pattern** - orchestration logic belongs in the application layer (handlers), not infrastructure layer. Services wrap tools for consistency and provide clean abstractions.
+
+### Key Architectural Principle
+
+**Handlers orchestrate use cases. Services provide focused capabilities.**
+
+```
+Application Layer (Handlers)
+  ↓ orchestrates
+Infrastructure Services (focused, single-responsibility)
+  ↓ wrap
+Tools (PassageProseStats, DialogueMicrobeatAssistant, etc.)
+```
 
 ### Proposed Architecture
 
 ```
-src/infrastructure/api/
-├── ProseAnalysisService.ts              # Facade (~150-200 lines)
-│   - Implements IProseAnalysisService
-│   - Delegates to domain services
-│   - Minimal orchestration logic
+src/application/handlers/domain/
+├── AnalysisHandler.ts              # Orchestrates analysis use cases
+├── MetricsHandler.ts                # Orchestrates metrics use cases (includes ProseStats orchestration)
+├── DictionaryHandler.ts
+├── ContextHandler.ts
+├── SearchHandler.ts
+└── ... (other handlers)
+
+src/infrastructure/api/services/
+├── analysis/
+│   ├── AssistantToolService.ts       # Wraps DialogueMicrobeatAssistant + ProseAssistant
+│   └── ContextAssistantService.ts    # Wraps ContextAssistant
 │
-└── services/
-    ├── analysis/
-    │   ├── AssistantToolService.ts       # Dialogue + Prose assistants
-    │   └── ContextAssistantService.ts    # Context generation
-    │
-    ├── measurement/
-    │   # No facade needed - tools injected directly into ProseAnalysisService
-    │   # PassageProseStats, StyleFlags, WordFrequency are already focused classes
-    │
-    ├── search/
-    │   ├── WordSearchService.ts          # Current word search logic
-    │   └── ContextSearchService.ts       # NEW: Semantic search (future)
-    │
-    ├── dictionary/
-    │   └── DictionaryService.ts          # Dictionary utility wrapper
-    │
-    ├── resources/
-    │   ├── AIResourceManager.ts          # OpenRouterClient + orchestrator lifecycle
-    │   ├── ResourceLoaderService.ts      # Prompts, guides, registry
-    │   └── StandardsService.ts           # Publishing standards
-    │
-    └── shared/
-        └── ToolOptionsProvider.ts        # Configuration helper
+├── measurement/
+│   ├── ProseStatsService.ts          # Wraps PassageProseStats
+│   ├── StyleFlagsService.ts          # Wraps StyleFlags
+│   └── WordFrequencyService.ts       # Wraps WordFrequency
+│
+├── search/
+│   ├── WordSearchService.ts          # Word search logic
+│   └── ContextSearchService.ts       # NEW: Semantic search (future)
+│
+├── dictionary/
+│   └── DictionaryService.ts          # Wraps DictionaryUtility
+│
+├── resources/
+│   ├── AIResourceManager.ts          # OpenRouterClient + orchestrator lifecycle
+│   ├── ResourceLoaderService.ts      # Prompts, guides, registry
+│   └── StandardsService.ts           # Publishing standards comparison
+│
+└── shared/
+    └── ToolOptionsProvider.ts        # Configuration helper
+
+src/tools/ (unchanged - wrapped by services)
+├── assist/
+│   ├── DialogueMicrobeatAssistant.ts
+│   ├── ProseAssistant.ts
+│   ├── DictionaryUtility.ts
+│   └── ContextAssistant.ts
+└── measure/
+    ├── PassageProseStats.ts
+    ├── StyleFlags.ts
+    └── WordFrequency.ts
 ```
 
-### Service Responsibilities
-
-#### 1. **ProseAnalysisService (Facade)** (~150-200 lines)
-**Single Responsibility**: Orchestrate domain services to implement IProseAnalysisService
-
-```typescript
-export class ProseAnalysisService implements IProseAnalysisService {
-  constructor(
-    private readonly assistantTools: AssistantToolService,
-    private readonly contextAssistant: ContextAssistantService,
-    private readonly proseStats: PassageProseStats,      // Direct injection
-    private readonly styleFlags: StyleFlags,              // Direct injection
-    private readonly wordFrequency: WordFrequency,        // Direct injection
-    private readonly wordSearch: WordSearchService,
-    private readonly dictionary: DictionaryService,
-    private readonly standards: StandardsService,
-    private readonly aiResources: AIResourceManager,
-    private readonly toolOptions: ToolOptionsProvider
-  ) {}
-
-  async analyzeDialogue(text: string, contextText?: string, sourceFileUri?: string, focus?: 'dialogue' | 'microbeats' | 'both'): Promise<AnalysisResult> {
-    const options = this.toolOptions.getOptions(focus);
-    return this.assistantTools.analyzeDialogue(text, contextText, sourceFileUri, options);
-  }
-
-  async measureProseStats(text: string, files?: string[], sourceMode?: string): Promise<MetricsResult> {
-    const stats = this.proseStats.analyze({ text });
-
-    // Multi-file aggregation (ProseStats-specific)
-    if (files?.length && (sourceMode === 'manuscript' || sourceMode === 'chapters')) {
-      const perFileStats = await this.standards.computePerFileStats(files, this.proseStats);
-      Object.assign(stats, perFileStats); // Aggregate chapter data
-    }
-
-    // Standards enrichment
-    const enriched = await this.standards.enrichWithStandards(stats);
-    return AnalysisResultFactory.createMetricsResult('prose_stats', enriched);
-  }
-
-  async measureStyleFlags(text: string): Promise<MetricsResult> {
-    const flags = this.styleFlags.analyze({ text });
-    return AnalysisResultFactory.createMetricsResult('style_flags', flags);
-  }
-
-  async measureWordFrequency(text: string): Promise<MetricsResult> {
-    const options = this.toolOptions.getWordFrequencyOptions();
-    const frequency = this.wordFrequency.analyze({ text }, options);
-    return AnalysisResultFactory.createMetricsResult('word_frequency', frequency);
-  }
-
-  // ... delegate all other methods
-}
-```
-
-**Benefits**:
-- Clear delegation pattern
-- Easy to unit test (mock domain services)
-- Each method 3-5 lines (delegate + error handling)
+**Note**: ProseAnalysisService.ts will be **deleted**. IProseAnalysisService interface will be **removed**. Handlers will inject services directly.
 
 ---
 
-#### 2. **AssistantToolService** (~120-150 lines)
-**Single Responsibility**: Manage dialogue and prose assistant tools
+## Service Responsibilities
+
+### 1. **AssistantToolService** (~120-150 lines)
+**Single Responsibility**: Wrap dialogue and prose assistant tools
 
 **Methods**:
 - `analyzeDialogue(text, context, sourceUri, options): Promise<AnalysisResult>`
@@ -214,13 +185,15 @@ export class ProseAnalysisService implements IProseAnalysisService {
 **Dependencies**:
 - AIResourceManager (for orchestrator)
 - ResourceLoaderService (for prompts)
+- DialogueMicrobeatAssistant (tool)
+- ProseAssistant (tool)
 
 **Extracts**: Lines 254-290 + 292-322 from current PAS
 
 ---
 
-#### 3. **ContextAssistantService** (~100-120 lines)
-**Single Responsibility**: Handle context generation with resource providers
+### 2. **ContextAssistantService** (~100-120 lines)
+**Single Responsibility**: Wrap context generation tool
 
 **Methods**:
 - `generateContext(request: ContextGenerationRequest): Promise<ContextGenerationResult>`
@@ -230,28 +203,53 @@ export class ProseAnalysisService implements IProseAnalysisService {
 - AIResourceManager (for orchestrator)
 - ContextResourceResolver
 - ResourceLoaderService (for prompts)
+- ContextAssistant (tool)
 
 **Extracts**: Lines 651-719 from current PAS
 
 ---
 
-#### 4. **Measurement Tools** (No Service Wrapper Needed)
+### 3. **ProseStatsService** (~80-100 lines)
+**Single Responsibility**: Wrap PassageProseStats measurement tool
 
-**Decision**: PassageProseStats, StyleFlags, and WordFrequency are **already focused service classes** with no shared orchestration. They will be injected **directly** into ProseAnalysisService.
+**Methods**:
+- `analyze(text: string): any`
 
-**Rationale**:
+**Dependencies**:
+- PassageProseStats (tool)
 
-- No shared state between the three tools
-- No coordination needed (they don't interact)
-- No shared initialization logic
-- Adding a facade would be an extra layer with no value (pure delegation)
-- YAGNI - You Aren't Gonna Need It
-
-**See**: "Appendix A: MeasurementToolService Facade Analysis" at end of this document for detailed reasoning.
+**Rationale**: Thin wrapper for consistency. All handlers depend on services, not tools directly. Provides clean extension point if orchestration is needed later.
 
 ---
 
-#### 5. **WordSearchService** (~250-300 lines)
+### 4. **StyleFlagsService** (~60-80 lines)
+**Single Responsibility**: Wrap StyleFlags measurement tool
+
+**Methods**:
+- `analyze(text: string): any`
+
+**Dependencies**:
+- StyleFlags (tool)
+
+**Rationale**: Thin wrapper for consistency. Symmetric architecture with ProseStatsService and WordFrequencyService.
+
+---
+
+### 5. **WordFrequencyService** (~80-100 lines)
+**Single Responsibility**: Wrap WordFrequency measurement tool
+
+**Methods**:
+- `analyze(text: string, options: WordFrequencyOptions): any`
+
+**Dependencies**:
+- WordFrequency (tool)
+- ToolOptionsProvider (for config)
+
+**Rationale**: Thin wrapper for consistency. Handles configuration retrieval before delegating to tool.
+
+---
+
+### 6. **WordSearchService** (~250-300 lines)
 **Single Responsibility**: Deterministic word search across files and text
 
 **Methods**:
@@ -268,8 +266,8 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
 ---
 
-#### 6. **DictionaryService** (~80-100 lines)
-**Single Responsibility**: Dictionary word lookups with context
+### 7. **DictionaryService** (~80-100 lines)
+**Single Responsibility**: Wrap dictionary lookup tool
 
 **Methods**:
 - `lookupWord(word, contextText?): Promise<AnalysisResult>`
@@ -277,12 +275,13 @@ export class ProseAnalysisService implements IProseAnalysisService {
 **Dependencies**:
 - AIResourceManager (for orchestrator)
 - ResourceLoaderService (for prompts)
+- DictionaryUtility (tool)
 
 **Extracts**: Lines 616-649 from current PAS
 
 ---
 
-#### 7. **AIResourceManager** (~200-250 lines)
+### 8. **AIResourceManager** (~200-250 lines)
 **Single Responsibility**: Manage OpenRouterClient and AIResourceOrchestrator lifecycle per model scope
 
 **Methods**:
@@ -308,7 +307,7 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
 ---
 
-#### 8. **ResourceLoaderService** (~100-120 lines)
+### 9. **ResourceLoaderService** (~100-120 lines)
 **Single Responsibility**: Load and manage prompts, guides, and guide registry
 
 **Methods**:
@@ -327,24 +326,27 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
 ---
 
-#### 9. **StandardsService** (~120-150 lines)
+### 10. **StandardsService** (~120-150 lines)
 **Single Responsibility**: Publishing standards comparison and enrichment
 
 **Methods**:
 - `enrichWithStandards(stats: any): Promise<any>`
-- `computePerFileStats(relativePaths: string[]): Promise<any[]>`
+- `computePerFileStats(relativePaths: string[], proseStatsService: ProseStatsService): Promise<any[]>`
 - `findGenre(preset: string): Promise<Genre | undefined>`
 
 **Dependencies**:
 - PublishingStandardsRepository
 - StandardsComparisonService
 - VSCode workspace API (for file reading)
+- ProseStatsService (for per-file analysis)
 
 **Extracts**: Lines 350-366 + 511-577 from current PAS
 
+**Note**: `computePerFileStats` takes ProseStatsService as parameter to analyze individual files
+
 ---
 
-#### 10. **ToolOptionsProvider** (~60-80 lines)
+### 11. **ToolOptionsProvider** (~60-80 lines)
 **Single Responsibility**: Centralize configuration option retrieval
 
 **Methods**:
@@ -364,7 +366,91 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
 ---
 
-### Dependency Injection Architecture
+## Handler Orchestration Examples
+
+### MetricsHandler: Orchestrating Prose Stats
+
+**Before** (via facade):
+```typescript
+constructor(private readonly proseAnalysisService: IProseAnalysisService) {}
+
+async handleProseStats(message: MessageEnvelope) {
+  const result = await this.proseAnalysisService.measureProseStats(text, files, sourceMode);
+  this.panel.postMessage(result);
+}
+```
+
+**After** (direct orchestration):
+```typescript
+constructor(
+  private readonly proseStatsService: ProseStatsService,
+  private readonly standardsService: StandardsService,
+  private readonly panel: ProseToolsViewProvider
+) {}
+
+async handleProseStats(message: MessageEnvelope) {
+  const { text, files, sourceMode } = message.payload;
+
+  // Step 1: Get base stats
+  const stats = this.proseStatsService.analyze(text);
+
+  // Step 2: Multi-file aggregation (if needed)
+  if (files?.length && (sourceMode === 'manuscript' || sourceMode === 'chapters')) {
+    const perFileStats = await this.standardsService.computePerFileStats(files, this.proseStatsService);
+    Object.assign(stats, { chapterStats: perFileStats });
+  }
+
+  // Step 3: Standards enrichment
+  const enriched = await this.standardsService.enrichWithStandards(stats);
+
+  // Step 4: Send result
+  const result = AnalysisResultFactory.createMetricsResult('prose_stats', enriched);
+  this.panel.postMessage(result);
+}
+```
+
+**Benefits**:
+- ✅ Handler owns the use case orchestration
+- ✅ Clear, explicit steps
+- ✅ Easy to test (mock services)
+- ✅ No hidden logic in facade
+
+---
+
+### AnalysisHandler: Delegating to Services
+
+```typescript
+constructor(
+  private readonly assistantToolsService: AssistantToolService,
+  private readonly contextAssistantService: ContextAssistantService,
+  private readonly dictionaryService: DictionaryService,
+  private readonly toolOptions: ToolOptionsProvider,
+  private readonly panel: ProseToolsViewProvider
+) {}
+
+async handleDialogueAnalysis(message: MessageEnvelope) {
+  const { text, contextText, sourceFileUri, focus } = message.payload;
+  const options = this.toolOptions.getOptions(focus);
+
+  const result = await this.assistantToolsService.analyzeDialogue(
+    text,
+    contextText,
+    sourceFileUri,
+    options
+  );
+
+  this.panel.postMessage(result);
+}
+```
+
+**Benefits**:
+- ✅ Thin delegation when no orchestration needed
+- ✅ Handler still owns message routing and result posting
+- ✅ Service provides focused capability
+
+---
+
+## Dependency Injection Architecture
 
 ```typescript
 // Extension activation (extension.ts)
@@ -372,35 +458,63 @@ export async function activate(context: vscode.ExtensionContext) {
   const outputChannel = vscode.window.createOutputChannel('Prose Minion');
   const secretsService = new SecretStorageService(context.secrets);
 
-  // Resource services
+  // Resource services (foundation)
   const resourceLoader = new ResourceLoaderService(context.extensionUri, outputChannel);
   const aiResourceManager = new AIResourceManager(resourceLoader, secretsService, outputChannel);
   const toolOptions = new ToolOptionsProvider();
   const standards = new StandardsService(context.extensionUri, outputChannel);
 
-  // Domain services
+  // Analysis services (wrap AI tools)
   const assistantTools = new AssistantToolService(aiResourceManager, resourceLoader);
   const contextAssistant = new ContextAssistantService(aiResourceManager, resourceLoader);
-  const wordSearch = new WordSearchService(toolOptions, outputChannel);
   const dictionary = new DictionaryService(aiResourceManager, resourceLoader);
 
-  // Measurement tools (no facade needed - inject directly)
-  const proseStats = new PassageProseStats();
-  const styleFlags = new StyleFlags();
-  const wordFrequency = new WordFrequency((msg) => outputChannel.appendLine(msg));
+  // Measurement services (wrap measurement tools)
+  const proseStatsService = new ProseStatsService();
+  const styleFlagsService = new StyleFlagsService();
+  const wordFrequencyService = new WordFrequencyService(toolOptions);
 
-  // Facade
-  const proseAnalysisService = new ProseAnalysisService(
+  // Search service
+  const wordSearch = new WordSearchService(toolOptions, outputChannel);
+
+  // Handlers inject services directly
+  const analysisHandler = new AnalysisHandler(
     assistantTools,
     contextAssistant,
-    proseStats,      // Direct injection
-    styleFlags,      // Direct injection
-    wordFrequency,   // Direct injection
-    wordSearch,
     dictionary,
+    toolOptions,
+    panel
+  );
+
+  const metricsHandler = new MetricsHandler(
+    proseStatsService,
+    styleFlagsService,
+    wordFrequencyService,
+    wordSearch,
     standards,
-    aiResourceManager,
-    toolOptions
+    toolOptions,
+    panel
+  );
+
+  const dictionaryHandler = new DictionaryHandler(dictionary, panel);
+  const contextHandler = new ContextHandler(contextAssistant, panel);
+  const searchHandler = new SearchHandler(wordSearch, panel);
+
+  // MessageHandler routes to domain handlers
+  const messageHandler = new MessageHandler(
+    analysisHandler,
+    metricsHandler,
+    dictionaryHandler,
+    contextHandler,
+    searchHandler,
+    // ... other handlers
+  );
+
+  // ProseToolsViewProvider uses messageHandler
+  const panel = new ProseToolsViewProvider(
+    context.extensionUri,
+    messageHandler,
+    aiResourceManager
   );
 
   // Rest of activation...
@@ -408,10 +522,11 @@ export async function activate(context: vscode.ExtensionContext) {
 ```
 
 **Benefits**:
-- Explicit dependency tree
-- Easy to unit test (mock individual dependencies)
-- Clear service boundaries
-- Services can be reused independently
+- ✅ Explicit dependency tree
+- ✅ Services created once, injected into handlers
+- ✅ Easy to unit test (mock individual services)
+- ✅ Clear service boundaries
+- ✅ Services can be reused independently
 
 ---
 
@@ -423,39 +538,40 @@ export async function activate(context: vscode.ExtensionContext) {
 **Mitigation**:
 - Each service has **exactly one responsibility**
 - Line count cap: Services < 300 lines (except WordSearchService due to helpers)
-- If service grows, extract further (but avoid facades with no orchestration value)
+- If service grows, extract further
 
-### 2. **Circular Dependencies**
+### 2. **Handlers Become God Components**
+**Risk**: Handlers accumulate orchestration logic and become bloated
+
+**Mitigation**:
+- Handlers own **use case orchestration only** (not business logic)
+- Complex orchestration → extract to service
+- If handler > 200 lines, extract orchestration to service
+- Each handler focuses on one domain (analysis, metrics, search, etc.)
+
+### 3. **Circular Dependencies**
 **Risk**: Services depend on each other in cycles
 
 **Mitigation**:
-- Dependency graph flows **inward** (services → resources → infrastructure)
+- Dependency graph flows **inward** (handlers → services → tools)
 - Shared dependencies injected via constructor
-- No service-to-service calls (only through facade if needed)
+- No service-to-service calls except through composition (e.g., StandardsService uses ProseStatsService via parameter)
 
-### 3. **Shared Mutable State**
+### 4. **Shared Mutable State**
 **Risk**: Services share global state leading to race conditions
 
 **Mitigation**:
 - AIResourceManager owns all AI resource lifecycle (single source of truth)
 - Each service is stateless except for injected dependencies
-- Configuration changes flow through facade → AIResourceManager → services
+- Configuration changes flow through handlers → services
 
-### 4. **Leaky Abstractions**
+### 5. **Leaky Abstractions**
 **Risk**: Services expose internal implementation details
 
 **Mitigation**:
 - Each service has clear public interface (3-5 methods max)
 - Internal helpers are private
 - Return types use domain models (AnalysisResult, MetricsResult), not implementation types
-
-### 5. **Facade Becomes God Component**
-**Risk**: ProseAnalysisService facade accumulates logic instead of delegating
-
-**Mitigation**:
-- Facade methods are **delegation only** (3-5 lines each)
-- No business logic in facade (only orchestration)
-- If method > 10 lines, logic belongs in domain service
 
 ---
 
@@ -468,8 +584,9 @@ export async function activate(context: vscode.ExtensionContext) {
 1. Create `ResourceLoaderService` (prompts, guides, registry)
 2. Create `ToolOptionsProvider` (configuration helper)
 3. Create `AIResourceManager` (OpenRouter + orchestrator lifecycle)
-4. Update ProseAnalysisService to use these services
-5. Test all existing functionality
+4. Create `StandardsService` (publishing standards)
+5. Update ProseAnalysisService to use these services (temporary - will be deleted later)
+6. Test all existing functionality
 
 **Acceptance Criteria**:
 - All tests pass
@@ -480,21 +597,21 @@ export async function activate(context: vscode.ExtensionContext) {
 
 ---
 
-### Phase 2: Inject Measurement Tools Directly (Low Risk)
+### Phase 2: Create Measurement Service Wrappers (Low Risk)
 
-**Goal**: Inject measurement tools directly (no facade needed)
+**Goal**: Create thin service wrappers for measurement tools (consistency)
 
 **Tasks**:
-
-1. Inject PassageProseStats, StyleFlags, WordFrequency directly into ProseAnalysisService constructor
-2. Update ProseAnalysisService measurement methods to use injected tools
-3. Move `computePerFileStats` to StandardsService
-4. Test all metrics tools (Prose Stats, Style Flags, Word Frequency)
+1. Create `ProseStatsService` (wraps PassageProseStats)
+2. Create `StyleFlagsService` (wraps StyleFlags)
+3. Create `WordFrequencyService` (wraps WordFrequency)
+4. Update ProseAnalysisService to use these services (temporary)
+5. Test all metrics tools (Prose Stats, Style Flags, Word Frequency)
 
 **Acceptance Criteria**:
 - All measurement tools work identically
 - Metrics tab shows correct results
-- ProseAnalysisService line count reduced ~150 lines
+- Service wrappers follow consistent pattern
 
 **Estimated Effort**: 1-2 hours
 
@@ -504,10 +621,10 @@ export async function activate(context: vscode.ExtensionContext) {
 **Goal**: Extract AI-powered analysis tools
 
 **Tasks**:
-1. Create `AssistantToolService` (dialogue + prose)
-2. Create `DictionaryService` (word lookups)
-3. Create `ContextAssistantService` (context generation)
-4. Update ProseAnalysisService to delegate analysis methods
+1. Create `AssistantToolService` (wraps dialogue + prose assistants)
+2. Create `DictionaryService` (wraps dictionary utility)
+3. Create `ContextAssistantService` (wraps context assistant)
+4. Update ProseAnalysisService to use these services (temporary)
 5. Test all analysis flows
 
 **Acceptance Criteria**:
@@ -520,59 +637,66 @@ export async function activate(context: vscode.ExtensionContext) {
 
 ---
 
-### Phase 4: Extract Search Services (Medium Risk)
+### Phase 4: Extract Search Service (Medium Risk)
 **Goal**: Extract word search logic (heaviest method)
 
 **Tasks**:
 1. Create `WordSearchService` with all helper functions
 2. Move 200+ lines of search logic
-3. Update ProseAnalysisService to delegate
+3. Update ProseAnalysisService to use this service (temporary)
 4. Test word search across selection, files, manuscript modes
 
 **Acceptance Criteria**:
 - Word search returns identical results
 - Search tab functions correctly
 - Cluster detection works as expected
-- ProseAnalysisService line count reduced ~250 lines
 
 **Estimated Effort**: 2-3 hours
 
 ---
 
-### Phase 5: Extract Standards Service (Low Risk)
-**Goal**: Extract publishing standards integration
+### Phase 5: Update Handlers to Inject Services Directly (Medium Risk)
+**Goal**: Remove ProseAnalysisService facade, handlers orchestrate directly
 
 **Tasks**:
-1. Create `StandardsService` (enrichment + per-file stats)
-2. Update ProseAnalysisService to delegate
-3. Test prose stats with publishing standards comparison
+1. Update AnalysisHandler to inject AssistantToolService, ContextAssistantService, DictionaryService
+2. Update MetricsHandler to inject measurement services and orchestrate ProseStats use case
+3. Update SearchHandler to inject WordSearchService
+4. Update DictionaryHandler to inject DictionaryService
+5. Update ContextHandler to inject ContextAssistantService
+6. Update extension.ts dependency injection
+7. **Delete ProseAnalysisService.ts**
+8. **Delete IProseAnalysisService interface**
+9. Test all handlers end-to-end
 
 **Acceptance Criteria**:
-- Standards comparison works for all genres
-- Per-file stats aggregation correct
-- Publishing format details accurate
+- All handlers work identically to before
+- ProseAnalysisService.ts deleted
+- IProseAnalysisService interface removed
+- All use cases functional
+- Orchestration logic lives in handlers
 
-**Estimated Effort**: 1-2 hours
+**Estimated Effort**: 3-4 hours
 
 ---
 
-### Phase 6: Finalize Facade (Low Risk)
-**Goal**: Reduce ProseAnalysisService to pure delegation
+### Phase 6: Documentation and Cleanup (Low Risk)
+**Goal**: Update documentation and verify architecture
 
 **Tasks**:
-1. Review facade for any remaining logic
-2. Extract to services if found
-3. Verify ProseAnalysisService ~150-200 lines
-4. Add comprehensive JSDoc comments
-5. Update ARCHITECTURE.md
+1. Update ARCHITECTURE.md with new service organization
+2. Add JSDoc comments to all services
+3. Verify dependency graph flows inward
+4. Run comprehensive regression testing
+5. Update memory bank with completion summary
 
 **Acceptance Criteria**:
-- ProseAnalysisService is pure delegation (no business logic)
-- All public methods delegate to domain services
-- Line count: 916 → ~150-200 (83% reduction)
-- Architecture documentation updated
+- Architecture documentation accurate
+- All services have JSDoc comments
+- No circular dependencies
+- All manual tests pass
 
-**Estimated Effort**: 1 hour
+**Estimated Effort**: 1-2 hours
 
 ---
 
@@ -595,6 +719,7 @@ export async function activate(context: vscode.ExtensionContext) {
    - Style flags detection
    - Word frequency with all options
    - Publishing standards comparison
+   - **Multi-file chapter aggregation** (critical orchestration test)
 
 3. **Dictionary**:
    - Word lookup with context
@@ -630,17 +755,20 @@ export async function activate(context: vscode.ExtensionContext) {
 ### 1. Keep ProseAnalysisService as God Component
 **Rejected** - Maintainability continues to degrade, blocks clean feature implementation, violates architectural principles established in MessageHandler and App.tsx refactors.
 
-### 2. Split by Tool Type Only (Assist vs Measure)
+### 2. Keep ProseAnalysisService as Facade (Original Proposal)
+**Rejected** - After analysis, most methods would be pure delegation. Orchestration belongs in application layer (handlers), not infrastructure layer. YAGNI principle - don't create facade until orchestration is needed across multiple handlers.
+
+### 3. Split by Tool Type Only (Assist vs Measure)
 **Rejected** - Still creates large services with multiple responsibilities. Doesn't align with domain-driven organization.
 
-### 3. Use Dependency Injection Framework (InversifyJS, TSyringe)
+### 4. Use Dependency Injection Framework (InversifyJS, TSyringe)
 **Rejected** - Overkill for current needs. Manual DI in extension.ts is explicit and easier to understand. May revisit for v1.0.
 
-### 4. Implement Services as Singletons
+### 5. Implement Services as Singletons
 **Rejected** - Singletons hide dependencies and make testing harder. Constructor injection is clearer and more testable.
 
-### 5. Keep All Logic in ProseAnalysisService, Create Helpers
-**Rejected** - Helper functions don't solve the god component problem. Need true separation of concerns with independent services.
+### 6. Inject Tools Directly into Handlers (No Service Wrappers)
+**Rejected** - Inconsistent architecture. Some handlers would depend on services (AssistantToolService) while others depend on tools (PassageProseStats). Service wrappers provide consistency and clean extension points.
 
 ---
 
@@ -652,29 +780,34 @@ export async function activate(context: vscode.ExtensionContext) {
    - Last god component eliminated
    - Consistent domain organization across backend, frontend, infrastructure
    - SOLID principles followed throughout codebase
+   - **Orchestration in application layer** (where it belongs)
 
 2. **Maintainability Improved**
-   - ProseAnalysisService: 916 → ~150-200 lines (83% reduction)
-   - Each service < 300 lines with single responsibility
+   - ProseAnalysisService: **deleted** (916 lines eliminated)
+   - 11 focused services (~80-300 lines each)
+   - Each service has single responsibility
    - Easy to locate and modify specific functionality
 
 3. **Testability Improved**
    - Services can be unit tested in isolation
+   - Handlers can be tested with mocked services
    - Clear dependency injection makes mocking easy
-   - Integration tests simpler (test facade + mocked services)
 
 4. **Extensibility Improved**
    - Context Search can be added as clean SearchService sibling
-   - New measurement tools easy to add (inject directly, no facade needed)
+   - New measurement tools easy to add (create service wrapper)
    - New AI tools easy to add to AssistantToolService
+   - **Handlers own orchestration** - easy to add new use cases
 
 5. **Code Navigation Improved**
    - Find analysis logic → AssistantToolService
-   - Find measurement logic → PassageProseStats, StyleFlags, WordFrequency
+   - Find measurement logic → ProseStatsService, StyleFlagsService, WordFrequencyService
    - Find search logic → WordSearchService
+   - Find orchestration → Handlers
    - Clear mental model
 
 6. **Reduced Coupling**
+   - Handlers depend on focused services
    - Services depend on abstractions, not concretions
    - Changes to one service don't cascade to others
    - Resource lifecycle isolated in AIResourceManager
@@ -682,26 +815,28 @@ export async function activate(context: vscode.ExtensionContext) {
 ### Neutral ⚖️
 
 1. **More Files to Navigate**
-   - 1 file → ~10 files
+   - 1 file → ~11 services + updated handlers
    - But: Better organized, easier to find specific logic
 
 2. **Dependency Injection Complexity**
    - extension.ts activation becomes longer
-   - But: Explicit dependencies easier to understand than implicit ones
+   - Handlers have more constructor parameters
+   - But: Explicit dependencies easier to understand than hidden facade
 
 3. **Learning Curve**
    - New contributors need to understand service organization
    - But: Mirrors backend handler architecture (consistent pattern)
+   - But: Orchestration in handlers is familiar pattern (MessageHandler already does this)
 
 ### Risks & Mitigations ⚠️
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
 | Breaking existing functionality | Medium | High | Test after each phase, manual testing checklist |
+| Handlers become god components | Low | Medium | Line count caps, orchestration complexity review |
 | Introducing circular dependencies | Low | Medium | Strict dependency graph, code review |
 | Services become mini god components | Low | Medium | Line count caps, single responsibility review |
-| Performance degradation | Very Low | Low | Services are lightweight delegates, no overhead |
-| Increased memory usage | Very Low | Very Low | Services hold no state beyond dependencies |
+| Performance degradation | Very Low | Low | Services are lightweight wrappers, no overhead |
 
 ---
 
@@ -709,12 +844,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
 | Metric | Before | Target | Success Criteria |
 |--------|--------|--------|------------------|
-| ProseAnalysisService lines | 916 | 150-200 | ✅ 83% reduction |
-| Service responsibilities | 9+ | 1 per service | ✅ Single responsibility |
-| Largest service file | 916 | < 300 | ✅ All focused |
-| God components | 1 | 0 | ✅ Eliminated |
+| God components | 1 (ProseAnalysisService) | 0 | ✅ Eliminated |
+| Service count | 1 monolith | 11 focused services | ✅ Domain-organized |
+| Service responsibilities | 9+ in one file | 1 per service | ✅ Single responsibility |
+| Largest service file | 916 lines | < 300 lines | ✅ All focused |
+| Orchestration location | Mixed (facade + handlers) | Handlers only | ✅ Application layer |
+| Handler complexity | Thin (facade dependency) | Explicit (orchestration) | ✅ Use case ownership |
 | Test coverage | Minimal | Unit tests per service | ✅ Improved testability |
-| Architecture consistency | Inconsistent | Mirrors backend | ✅ Domain organization |
+| Architecture consistency | Inconsistent | Mirrors frontend/backend | ✅ Symmetric |
 | Feature readiness | Blocked | Ready for Context Search | ✅ Clean extension point |
 
 ---
@@ -743,6 +880,11 @@ export async function activate(context: vscode.ExtensionContext) {
    - Resolved models tracking unchanged
    - Resource disposal on configuration refresh identical
 
+5. **Preserve Orchestration Logic**
+   - ProseStats multi-file aggregation + standards enrichment **must work identically**
+   - Chapter stats computation unchanged
+   - Standards comparison logic preserved
+
 ### Code Quality Standards
 
 - **TypeScript**: Strict typing throughout, no `any` except pragmatic cases (document rationale)
@@ -754,16 +896,16 @@ export async function activate(context: vscode.ExtensionContext) {
 ### Dependency Graph (Must Flow Inward)
 
 ```
-ProseAnalysisService (Facade)
+Application Layer (Handlers)
     ↓ depends on
-Domain Services (Analysis, Measurement, Search, Dictionary)
+Infrastructure Services (Analysis, Measurement, Search, Dictionary, Resources)
     ↓ depends on
-Resource Services (AIResourceManager, ResourceLoader, Standards, ToolOptions)
+Tools (DialogueMicrobeatAssistant, PassageProseStats, etc.)
     ↓ depends on
 Infrastructure (OpenRouterClient, VSCode API, File System)
 ```
 
-**Rule**: No upward dependencies. Services never import from outer layers.
+**Rule**: No upward dependencies. Services never import from handlers. Tools never import from services.
 
 ---
 
@@ -790,11 +932,12 @@ Infrastructure (OpenRouterClient, VSCode API, File System)
 
 Before implementation:
 
-- [ ] **Architecture Review**: ADR reviewed against anti-patterns (god components, circular deps, leaky abstractions)
+- [ ] **Architecture Review**: ADR reviewed against anti-patterns (god components, circular deps, leaky abstractions, handlers becoming bloated)
 - [ ] **Dependency Graph Validated**: No upward dependencies, clear separation of concerns
 - [ ] **Service Responsibilities Defined**: Each service has exactly one responsibility
+- [ ] **Orchestration Strategy Confirmed**: Handlers own use case orchestration, services provide focused capabilities
 - [ ] **Migration Strategy Confirmed**: Phased approach with acceptance criteria per phase
-- [ ] **Testing Plan Confirmed**: Manual testing checklist for each phase
+- [ ] **Testing Plan Confirmed**: Manual testing checklist for each phase, special focus on ProseStats orchestration
 - [ ] **Epic and Sprints Created**: Breakdown into executable sprints with time estimates
 - [ ] **Branch Strategy Confirmed**: Sprint branches off main, PR per phase or combined
 
@@ -803,187 +946,129 @@ Before implementation:
 **Status**: Proposed (awaiting review and iteration)
 **Next Steps**:
 1. Review ADR for anti-patterns
-2. Iterate on architecture if needed
-3. Create epic and sprint breakdown
-4. Implement Phase 1 (Resource Services)
+2. Validate dependency graph (no circular dependencies)
+3. Confirm handler orchestration pattern doesn't create bloat
+4. Create epic and sprint breakdown
+5. Implement Phase 1 (Resource Services)
 
 ---
 
-## Appendix A: MeasurementToolService Facade Analysis
+## Appendix A: Facade vs. Direct Injection Analysis
 
 **Date Added**: 2025-11-11 (Post-Draft Review)
-**Question**: Should we create a MeasurementToolService facade, or inject measurement tools directly?
-**Decision**: **Inject directly** (no facade needed)
+**Question**: Do we need ProseAnalysisService as a facade, or should handlers inject services directly?
+**Decision**: **Direct injection** (no facade needed)
 
-### Analysis: Shared Orchestration Between Measurement Tools?
+### Analysis: Where Should Orchestration Live?
 
-We analyzed the three measurement methods to determine if a facade provides value:
+We analyzed the proposed facade methods to determine where orchestration logic belongs:
 
-#### 1. measureStyleFlags (Lines 579-588)
+#### Methods That Would Be Pure Delegation
 
+1. **analyzeDialogue** → delegate to assistantTools
+2. **analyzeProse** → delegate to assistantTools
+3. **lookupDictionary** → delegate to dictionary
+4. **generateContext** → delegate to contextAssistant
+5. **measureStyleFlags** → delegate to styleFlagsService
+6. **measureWordFrequency** → delegate to wordFrequencyService (with config)
+7. **measureWordSearch** → delegate to wordSearch
+
+**7 out of 8 methods** = pure delegation with no orchestration value.
+
+#### Method With Real Orchestration
+
+**measureProseStats** - Multi-step orchestration:
+1. Call proseStatsService.analyze()
+2. If multi-file mode, call standards.computePerFileStats()
+3. Aggregate chapter stats
+4. Call standards.enrichWithStandards()
+5. Wrap result
+
+**Question**: Where does this orchestration belong?
+
+**Answer**: In **MetricsHandler** (application layer), not in a facade (infrastructure layer).
+
+### Clean Architecture: Orchestration Belongs in Application Layer
+
+```
+Application Layer (Handlers)
+  ↓ orchestrates use cases
+Domain/Infrastructure Services
+  ↓ provide capabilities
+Tools
+```
+
+**MetricsHandler.handleProseStats()** should orchestrate:
 ```typescript
-async measureStyleFlags(text: string): Promise<MetricsResult> {
-  const flags = this.styleFlags.analyze({ text });
-  return AnalysisResultFactory.createMetricsResult('style_flags', flags);
+async handleProseStats(message: MessageEnvelope) {
+  const { text, files, sourceMode } = message.payload;
+
+  // Handler orchestrates the use case
+  const stats = this.proseStatsService.analyze(text);
+
+  if (files?.length && (sourceMode === 'manuscript' || sourceMode === 'chapters')) {
+    const perFileStats = await this.standardsService.computePerFileStats(files, this.proseStatsService);
+    Object.assign(stats, { chapterStats: perFileStats });
+  }
+
+  const enriched = await this.standardsService.enrichWithStandards(stats);
+  const result = AnalysisResultFactory.createMetricsResult('prose_stats', enriched);
+
+  this.panel.postMessage(result);
 }
 ```
 
-**Orchestration**: None. Pure delegation.
-
-#### 2. measureWordFrequency (Lines 590-614)
-
-```typescript
-async measureWordFrequency(text: string): Promise<MetricsResult> {
-  const wfOptions = this.toolOptions.getWordFrequencyOptions();
-  const frequency = this.wordFrequency.analyze({ text }, wfOptions);
-  return AnalysisResultFactory.createMetricsResult('word_frequency', frequency);
-}
-```
-
-**Orchestration**: Config retrieval only (handled by ToolOptionsProvider).
-
-#### 3. measureProseStats (Lines 324-348)
-
-```typescript
-async measureProseStats(text: string, files?, sourceMode?): Promise<MetricsResult> {
-  const stats = this.proseStats.analyze({ text });
-
-  // Chapter aggregation (multi-file modes)
-  if (files && files.length > 0 && (sourceMode === 'manuscript' || sourceMode === 'chapters')) {
-    const per = await this.computePerFileStats(files);
-    // ... aggregate chapter stats
-  }
-
-  // Standards comparison
-  const enriched = await this.enrichWithStandards(stats);
-  return AnalysisResultFactory.createMetricsResult('prose_stats', enriched);
-}
-```
-
-**Orchestration**: Chapter aggregation + standards enrichment (**ProseStats-specific**, doesn't apply to StyleFlags or WordFrequency).
-
-### Key Findings: No Shared Orchestration
-
-1. ❌ **No shared state** between the three tools
-2. ❌ **No coordination** between tools (they don't interact)
-3. ❌ **No shared initialization** (all are simple constructors)
-4. ❌ **No shared resource management** (no AI resources needed)
-5. ✅ **Each tool is already a focused service class** (PassageProseStats, StyleFlags, WordFrequency)
-6. ✅ **ProseStats has unique orchestration** (chapter aggregation, standards enrichment) that the other two don't need
-
-### What Would a Facade Look Like?
-
-```typescript
-export class MeasurementToolService {
-  private proseStats: PassageProseStats;
-  private styleFlags: StyleFlags;
-  private wordFrequency: WordFrequency;
-
-  async computeStyleFlags(text: string): Promise<any> {
-    return this.styleFlags.analyze({ text }); // ← Just delegation, no value added
-  }
-
-  async computeWordFrequency(text: string): Promise<any> {
-    const options = this.toolOptions.getWordFrequencyOptions();
-    return this.wordFrequency.analyze({ text }, options); // ← Config + delegation
-  }
-
-  async computeProseStats(text: string, files?, sourceMode?): Promise<any> {
-    return this.proseStats.analyze({ text });
-    // Wait... what about chapter aggregation and standards enrichment?
-    // Do we move that logic HERE? Or keep it in ProseAnalysisService?
-  }
-}
-```
-
-**Problem**: The facade adds an extra layer of indirection with **no orchestration value**.
+**Benefits**:
+- ✅ Use case logic lives in application layer (correct architectural layer)
+- ✅ Clear, explicit orchestration steps
+- ✅ Easy to test (mock services)
+- ✅ No hidden logic in facade
 
 ### Comparison: With vs. Without Facade
 
 | Aspect | With Facade | Without Facade (Direct) |
 |--------|-------------|-------------------------|
-| **Layers** | ProseAnalysisService → MeasurementToolService → Tools | ProseAnalysisService → Tools |
-| **Lines** | ~150 extra lines (facade) | 0 extra lines |
-| **Complexity** | Higher (extra abstraction) | Lower (direct delegation) |
-| **Testability** | Same | Same |
-| **Clarity** | Less clear (what does facade do?) | Very clear (direct calls) |
-| **Orchestration** | None (just delegation) | None needed |
-| **Dependencies** | 1 facade | 3 focused tools |
+| **Orchestration Location** | Infrastructure layer (wrong) | Application layer (correct) |
+| **Facade Value** | 7/8 methods pure delegation | N/A - handlers own orchestration |
+| **Handler Complexity** | Thin (delegates to facade) | Explicit (orchestrates use cases) |
+| **Testability** | Mock one facade | Mock individual services (more granular) |
+| **Clarity** | Orchestration hidden in facade | Orchestration explicit in handlers |
+| **Architecture** | Extra layer with minimal value | Clean Architecture pattern |
+| **Lines of Code** | +150-200 (facade) | 0 extra |
 
 ### Decision Rationale
 
-**YAGNI (You Aren't Gonna Need It)** - The facade provides no value:
+**YAGNI + Clean Architecture** - The facade provides minimal value:
 
-1. **No shared orchestration** to abstract
-2. **Simpler architecture** - fewer layers, easier to trace
-3. **Already focused classes** - PassageProseStats, StyleFlags, WordFrequency are well-designed service objects
-4. **ProseStats has unique needs** - Chapter aggregation and standards enrichment don't belong in a shared facade
-5. **False simplification** - Facade doesn't abstract complexity, it just hides dependencies
+1. **7/8 methods are pure delegation** - No orchestration to abstract
+2. **Orchestration belongs in application layer** - Handlers should own use case logic
+3. **Simpler architecture** - One fewer layer, explicit dependencies
+4. **Already consistent** - MessageHandler already orchestrates (routes messages to domain handlers)
+5. **Handlers won't become bloated** - Each handler focuses on one domain with clear responsibilities
 
-### Implementation: Direct Injection
+### What About Measurement Service Wrappers?
 
-**ProseAnalysisService Constructor**:
+**Question**: If we're rejecting the facade for YAGNI reasons, why add measurement service wrappers?
 
-```typescript
-export class ProseAnalysisService implements IProseAnalysisService {
-  constructor(
-    private readonly assistantTools: AssistantToolService,
-    private readonly contextAssistant: ContextAssistantService,
-    private readonly proseStats: PassageProseStats,      // ← Direct
-    private readonly styleFlags: StyleFlags,              // ← Direct
-    private readonly wordFrequency: WordFrequency,        // ← Direct
-    private readonly wordSearch: WordSearchService,
-    private readonly dictionary: DictionaryService,
-    private readonly standards: StandardsService,
-    private readonly aiResources: AIResourceManager,
-    private readonly toolOptions: ToolOptionsProvider
-  ) {}
-}
-```
+**Answer**: **Consistency and architectural symmetry**
 
-**Measurement Methods**:
+- **Analysis tools**: Wrapped (AssistantToolService, ContextAssistantService, DictionaryService)
+- **Measurement tools**: Should also be wrapped for consistency
+- **Pattern**: All handlers depend on services, not tools directly
+- **Benefits**: Clean extension points, symmetric architecture, consistent abstraction level
 
-```typescript
-async measureProseStats(text: string, files?: string[], sourceMode?: string): Promise<MetricsResult> {
-  const stats = this.proseStats.analyze({ text });
+**Difference from facade**:
+- Wrappers are **service → tool** (infrastructure abstraction)
+- Facade would be **handler → service** (application → infrastructure delegation)
 
-  // Multi-file aggregation (ProseStats-specific)
-  if (files?.length && (sourceMode === 'manuscript' || sourceMode === 'chapters')) {
-    const perFileStats = await this.standards.computePerFileStats(files, this.proseStats);
-    Object.assign(stats, perFileStats);
-  }
-
-  // Standards enrichment
-  const enriched = await this.standards.enrichWithStandards(stats);
-  return AnalysisResultFactory.createMetricsResult('prose_stats', enriched);
-}
-
-async measureStyleFlags(text: string): Promise<MetricsResult> {
-  const flags = this.styleFlags.analyze({ text });
-  return AnalysisResultFactory.createMetricsResult('style_flags', flags);
-}
-
-async measureWordFrequency(text: string): Promise<MetricsResult> {
-  const options = this.toolOptions.getWordFrequencyOptions();
-  const frequency = this.wordFrequency.analyze({ text }, options);
-  return AnalysisResultFactory.createMetricsResult('word_frequency', frequency);
-}
-```
-
-### Benefits of Direct Injection
-
-1. ✅ **Simpler architecture** - One fewer layer to maintain
-2. ✅ **Clearer intent** - Obvious what each method does (direct tool call)
-3. ✅ **No false abstraction** - No facade pretending to orchestrate when it's just delegating
-4. ✅ **Easier to trace** - Jump directly from ProseAnalysisService to tool implementation
-5. ✅ **Follows YAGNI** - Don't create abstractions until you need them
+Wrappers provide architectural consistency. Facade would add unnecessary indirection.
 
 ### Conclusion
 
-**Skip the MeasurementToolService facade.** Inject PassageProseStats, StyleFlags, and WordFrequency directly into ProseAnalysisService. The tools are already well-designed service classes with no shared orchestration needs.
+**Remove ProseAnalysisService facade.** Handlers inject services directly and orchestrate use cases. Create measurement service wrappers for consistency (ProseStatsService, StyleFlagsService, WordFrequencyService), but let handlers own orchestration logic.
 
 ---
 
 **Author**: Claude (AI Assistant)
 **Date**: 2025-11-11
-**Updated**: 2025-11-11 (Added Appendix A: MeasurementToolService analysis)
+**Updated**: 2025-11-11 (Major revision: removed facade, handlers orchestrate directly, added measurement service wrappers)
