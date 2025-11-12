@@ -10,6 +10,11 @@ import * as vscode from 'vscode';
 import { ProseToolsViewProvider } from './application/providers/ProseToolsViewProvider';
 import { ProseAnalysisService } from './infrastructure/api/ProseAnalysisService';
 import { SecretStorageService } from './infrastructure/secrets/SecretStorageService';
+// SPRINT 01: Import new services
+import { ResourceLoaderService } from './infrastructure/api/services/resources/ResourceLoaderService';
+import { AIResourceManager } from './infrastructure/api/services/resources/AIResourceManager';
+import { StandardsService } from './infrastructure/api/services/resources/StandardsService';
+import { ToolOptionsProvider } from './infrastructure/api/services/shared/ToolOptionsProvider';
 
 let proseToolsViewProvider: ProseToolsViewProvider | undefined;
 
@@ -24,9 +29,25 @@ export function activate(context: vscode.ExtensionContext): void {
   console.log('Prose Minion extension is now active');
   vscode.window.showInformationMessage('Prose Minion extension activated!');
 
-  // Initialize infrastructure layer (dependency injection)
+  // SPRINT 01: Initialize infrastructure layer (dependency injection)
   const secretsService = new SecretStorageService(context.secrets);
-  const proseAnalysisService = new ProseAnalysisService(context.extensionUri, secretsService, outputChannel);
+
+  // Create resource services (foundation)
+  const resourceLoader = new ResourceLoaderService(context.extensionUri, outputChannel);
+  const aiResourceManager = new AIResourceManager(resourceLoader, secretsService, outputChannel);
+  const standardsService = new StandardsService(context.extensionUri, outputChannel);
+  const toolOptions = new ToolOptionsProvider();
+
+  // Create ProseAnalysisService with injected services
+  const proseAnalysisService = new ProseAnalysisService(
+    resourceLoader,
+    aiResourceManager,
+    standardsService,
+    toolOptions,
+    context.extensionUri,
+    secretsService,
+    outputChannel
+  );
 
   // Migrate API key from settings to SecretStorage if needed
   void migrateApiKeyToSecrets(secretsService, outputChannel);

@@ -1,6 +1,9 @@
 /**
  * Implementation of IProseAnalysisService
  * Integrates all tools
+ *
+ * SPRINT 01 REFACTOR: Now uses ResourceLoaderService, AIResourceManager, StandardsService, and ToolOptionsProvider
+ * This is temporary - ProseAnalysisService will be deleted in Sprint 05
  */
 
 import * as vscode from 'vscode';
@@ -13,8 +16,6 @@ import {
   DEFAULT_CONTEXT_GROUPS
 } from '../../domain/models/ContextGeneration';
 import { OpenRouterClient } from './OpenRouterClient';
-import { PromptLoader } from '../../tools/shared/prompts';
-import { GuideLoader } from '../../tools/shared/guides';
 import { DialogueMicrobeatAssistant } from '../../tools/assist/dialogueMicrobeatAssistant';
 import { ProseAssistant } from '../../tools/assist/proseAssistant';
 import { ContextAssistant } from '../../tools/assist/contextAssistant';
@@ -22,37 +23,22 @@ import { ContextResourceResolver } from '../context/ContextResourceResolver';
 import { PassageProseStats } from '../../tools/measure/passageProseStats';
 import { StyleFlags } from '../../tools/measure/styleFlags';
 import { WordFrequency } from '../../tools/measure/wordFrequency';
-import { AIResourceOrchestrator, StatusCallback } from '../../application/services/AIResourceOrchestrator';
-import { ConversationManager } from '../../application/services/ConversationManager';
-import { GuideRegistry } from '../../infrastructure/guides/GuideRegistry';
+import { StatusCallback } from '../../application/services/AIResourceOrchestrator';
 import { DictionaryUtility } from '../../tools/utility/dictionaryUtility';
 import { ModelScope } from '../../shared/types';
 import { ContextPathGroup } from '../../shared/types';
-import { PublishingStandardsRepository } from '../standards/PublishingStandardsRepository';
-import { StandardsComparisonService } from '../../application/services/StandardsComparisonService';
-import { Genre } from '../../domain/models/PublishingStandards';
 import { SecretStorageService } from '../secrets/SecretStorageService';
 
-interface AIResourceBundle {
-  model: string;
-  orchestrator: AIResourceOrchestrator;
-}
+// SPRINT 01: Import new services
+import { ResourceLoaderService } from './services/resources/ResourceLoaderService';
+import { AIResourceManager } from './services/resources/AIResourceManager';
+import { StandardsService } from './services/resources/StandardsService';
+import { ToolOptionsProvider } from './services/shared/ToolOptionsProvider';
 
 export class ProseAnalysisService implements IProseAnalysisService {
   private proseStats: PassageProseStats;
   private styleFlags: StyleFlags;
   private wordFrequency: WordFrequency;
-
-  private statusCallback?: StatusCallback;
-
-  private promptLoader?: PromptLoader;
-  private guideLoader?: GuideLoader;
-  private guideRegistry?: GuideRegistry;
-  private standardsRepo?: PublishingStandardsRepository;
-  private standardsComparer = new StandardsComparisonService();
-
-  private aiResources: Partial<Record<ModelScope, AIResourceBundle>> = {};
-  private resolvedModels: Partial<Record<ModelScope, string>> = {};
 
   private dialogueAssistant?: DialogueMicrobeatAssistant;
   private proseAssistant?: ProseAssistant;
@@ -61,6 +47,11 @@ export class ProseAnalysisService implements IProseAnalysisService {
   private contextResourceResolver: ContextResourceResolver;
 
   constructor(
+    // SPRINT 01: Inject new services
+    private readonly resourceLoader: ResourceLoaderService,
+    private readonly aiResourceManager: AIResourceManager,
+    private readonly standardsService: StandardsService,
+    private readonly toolOptions: ToolOptionsProvider,
     private readonly extensionUri?: vscode.Uri,
     private readonly secretsService?: SecretStorageService,
     private readonly outputChannel?: vscode.OutputChannel
@@ -74,94 +65,47 @@ export class ProseAnalysisService implements IProseAnalysisService {
     void this.initializeAITools();
 
     this.contextResourceResolver = new ContextResourceResolver(this.outputChannel);
-
-    if (this.extensionUri) {
-      this.standardsRepo = new PublishingStandardsRepository(this.extensionUri);
-    }
   }
 
   private async initializeAITools(): Promise<void> {
-    // Get API key from SecretStorage (fallback to settings for backward compatibility during migration)
-    let apiKey: string | undefined;
-    if (this.secretsService) {
-      apiKey = await this.secretsService.getApiKey();
-    }
+    // SPRINT 01: Use AIResourceManager to initialize resources
+    await this.aiResourceManager.initializeResources();
 
-    // Fallback to settings if not in SecretStorage (for backward compatibility)
-    if (!apiKey) {
-      const config = vscode.workspace.getConfiguration('proseMinion');
-      apiKey = config.get<string>('openRouterApiKey');
-    }
+    // Get orchestrators from AIResourceManager
+    const assistantOrchestrator = this.aiResourceManager.getOrchestrator('assistant');
+    const dictionaryOrchestrator = this.aiResourceManager.getOrchestrator('dictionary');
+    const contextOrchestrator = this.aiResourceManager.getOrchestrator('context');
 
-    this.disposeAIResources();
-
-    if (!OpenRouterClient.isConfigured(apiKey)) {
-      this.outputChannel?.appendLine('[ProseAnalysisService] OpenRouter API key not configured. AI tools disabled.');
-      this.dialogueAssistant = undefined;
-      this.proseAssistant = undefined;
-      this.dictionaryUtility = undefined;
-      this.contextAssistant = undefined;
-      this.resolvedModels = {};
-      return;
-    }
-
-    if (!this.extensionUri) {
-      this.outputChannel?.appendLine('[ProseAnalysisService] Extension URI unavailable; cannot initialize AI tools.');
-      return;
-    }
-
-    this.ensureSharedResources();
-
-    const config = vscode.workspace.getConfiguration('proseMinion');
-    const fallbackModel = config.get<string>('model') || 'z-ai/glm-4.6';
-    const assistantModel = config.get<string>('assistantModel') || fallbackModel;
-    const dictionaryModel = config.get<string>('dictionaryModel') || fallbackModel;
-    const contextModel = config.get<string>('contextModel') || fallbackModel;
-
-    const assistantResources = this.createAIResources(apiKey!, 'assistant', assistantModel);
-    const dictionaryResources = this.createAIResources(apiKey!, 'dictionary', dictionaryModel);
-    const contextResources = this.createAIResources(apiKey!, 'context', contextModel);
-
-    this.aiResources = {
-      assistant: assistantResources,
-      dictionary: dictionaryResources,
-      context: contextResources
-    };
-
-    if (assistantResources) {
+    // Create tool instances if orchestrators are available
+    if (assistantOrchestrator) {
+      const promptLoader = this.resourceLoader.getPromptLoader();
       this.dialogueAssistant = new DialogueMicrobeatAssistant(
-        assistantResources.orchestrator,
-        this.promptLoader!,
+        assistantOrchestrator,
+        promptLoader,
         this.outputChannel
       );
-
       this.proseAssistant = new ProseAssistant(
-        assistantResources.orchestrator,
-        this.promptLoader!
+        assistantOrchestrator,
+        promptLoader
       );
     } else {
       this.dialogueAssistant = undefined;
       this.proseAssistant = undefined;
     }
 
-    this.dictionaryUtility = dictionaryResources
-      ? new DictionaryUtility(dictionaryResources.orchestrator, this.promptLoader!)
-      : undefined;
-
-    this.contextAssistant = contextResources
-      ? new ContextAssistant(contextResources.orchestrator, this.promptLoader!)
-      : undefined;
-
-    const callback = this.statusCallback;
-    if (callback) {
-      Object.values(this.aiResources).forEach(resource => resource?.orchestrator.setStatusCallback(callback));
+    if (dictionaryOrchestrator) {
+      const promptLoader = this.resourceLoader.getPromptLoader();
+      this.dictionaryUtility = new DictionaryUtility(dictionaryOrchestrator, promptLoader);
+    } else {
+      this.dictionaryUtility = undefined;
     }
 
-    this.resolvedModels = {
-      assistant: assistantModel,
-      dictionary: dictionaryModel,
-      context: contextModel
-    };
+    if (contextOrchestrator) {
+      const promptLoader = this.resourceLoader.getPromptLoader();
+      this.contextAssistant = new ContextAssistant(contextOrchestrator, promptLoader);
+    } else {
+      this.contextAssistant = undefined;
+    }
   }
 
   /**
@@ -169,14 +113,17 @@ export class ProseAnalysisService implements IProseAnalysisService {
    * This should be called by the MessageHandler to receive status updates
    */
   setStatusCallback(callback: StatusCallback): void {
-    this.statusCallback = callback;
-    Object.values(this.aiResources).forEach(resource => resource?.orchestrator.setStatusCallback(callback));
+    // SPRINT 01: Delegate to AIResourceManager
+    this.aiResourceManager.setStatusCallback(callback);
   }
 
   /**
    * Reload model configuration and rebuild AI tool scaffolding
    */
   async refreshConfiguration(): Promise<void> {
+    // SPRINT 01: Delegate to AIResourceManager
+    await this.aiResourceManager.refreshConfiguration();
+    // Reinitialize tools with new orchestrators
     await this.initializeAITools();
   }
 
@@ -184,71 +131,8 @@ export class ProseAnalysisService implements IProseAnalysisService {
    * Expose the currently resolved models (with fallbacks applied)
    */
   getResolvedModelSelections(): Partial<Record<ModelScope, string>> {
-    return { ...this.resolvedModels };
-  }
-
-  private disposeAIResources(): void {
-    Object.values(this.aiResources).forEach(resource => resource?.orchestrator.dispose());
-    this.aiResources = {};
-    this.contextAssistant = undefined;
-  }
-
-  private ensureSharedResources(): void {
-    if (!this.promptLoader) {
-      this.promptLoader = new PromptLoader(this.extensionUri!);
-    }
-
-    if (!this.guideLoader) {
-      this.guideLoader = new GuideLoader(this.extensionUri!);
-    }
-
-    if (!this.guideRegistry) {
-      this.guideRegistry = new GuideRegistry(this.extensionUri!, this.outputChannel);
-    }
-  }
-
-  private createAIResources(apiKey: string, scope: ModelScope, model: string): AIResourceBundle | undefined {
-    if (!this.guideRegistry || !this.guideLoader) {
-      return undefined;
-    }
-
-    try {
-      const client = new OpenRouterClient(apiKey, model);
-      const conversationManager = new ConversationManager();
-      const orchestrator = new AIResourceOrchestrator(
-        client,
-        conversationManager,
-        this.guideRegistry,
-        this.guideLoader,
-        this.statusCallback,
-        this.outputChannel
-      );
-
-      this.outputChannel?.appendLine(
-        `[ProseAnalysisService] Initialized ${scope} model: ${model}`
-      );
-
-      return {
-        model,
-        orchestrator
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.outputChannel?.appendLine(
-        `[ProseAnalysisService] Failed to initialize ${scope} model ${model}: ${message}`
-      );
-      return undefined;
-    }
-  }
-
-  private getToolOptions(focus?: 'dialogue' | 'microbeats' | 'both') {
-    const config = vscode.workspace.getConfiguration('proseMinion');
-    return {
-      includeCraftGuides: config.get<boolean>('includeCraftGuides') ?? true,
-      temperature: config.get<number>('temperature') ?? 0.7,
-      maxTokens: config.get<number>('maxTokens') ?? 10000,
-      focus: focus ?? 'both'
-    };
+    // SPRINT 01: Delegate to AIResourceManager
+    return this.aiResourceManager.getResolvedModelSelections();
   }
 
   async analyzeDialogue(text: string, contextText?: string, sourceFileUri?: string, focus?: 'dialogue' | 'microbeats' | 'both'): Promise<AnalysisResult> {
@@ -260,7 +144,8 @@ export class ProseAnalysisService implements IProseAnalysisService {
     }
 
     try {
-      const options = this.getToolOptions(focus);
+      // SPRINT 01: Use ToolOptionsProvider
+      const options = this.toolOptions.getOptions(focus);
 
       // Log analysis focus for transparency
       this.outputChannel?.appendLine(
@@ -298,7 +183,8 @@ export class ProseAnalysisService implements IProseAnalysisService {
     }
 
     try {
-      const options = this.getToolOptions();
+      // SPRINT 01: Use ToolOptionsProvider
+      const options = this.toolOptions.getOptions();
       const executionResult = await this.proseAssistant.analyze(
         {
           text,
@@ -326,8 +212,9 @@ export class ProseAnalysisService implements IProseAnalysisService {
       const stats = this.proseStats.analyze({ text });
 
       // Chapter aggregation (for multi-file modes)
+      // SPRINT 01: Use StandardsService for per-file stats computation
       if (files && files.length > 0 && (sourceMode === 'manuscript' || sourceMode === 'chapters')) {
-        const per = await this.computePerFileStats(files);
+        const per = await this.standardsService.computePerFileStats(files, this.proseStats);
         const chapterWordCounts = per.map(p => p.stats.wordCount);
         const chapterCount = chapterWordCounts.length;
         const totalWords = chapterWordCounts.reduce((a, b) => a + b, 0);
@@ -338,7 +225,8 @@ export class ProseAnalysisService implements IProseAnalysisService {
       }
 
       // Standards comparison (based on settings)
-      const enriched = await this.enrichWithStandards(stats);
+      // SPRINT 01: Use StandardsService for enrichment
+      const enriched = await this.standardsService.enrichWithStandards(stats);
       return AnalysisResultFactory.createMetricsResult('prose_stats', enriched);
     } catch (error) {
       return AnalysisResultFactory.createMetricsResult('prose_stats', {
@@ -347,26 +235,139 @@ export class ProseAnalysisService implements IProseAnalysisService {
     }
   }
 
-  private async computePerFileStats(relativePaths: string[]): Promise<Array<{ path: string; stats: any }>> {
-    const results: Array<{ path: string; stats: any }> = [];
-    for (const rel of relativePaths) {
-      try {
-        const uri = await this.findUriByRelativePath(rel);
-        if (!uri) continue;
-        const raw = await vscode.workspace.fs.readFile(uri);
-        const text = Buffer.from(raw).toString('utf8');
-        const s = this.proseStats.analyze({ text });
-        results.push({ path: rel, stats: s });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        this.outputChannel?.appendLine(`[ProseAnalysisService] Per-file stats failed for ${rel}: ${msg}`);
-      }
+  async measureStyleFlags(text: string): Promise<MetricsResult> {
+    try {
+      const flags = this.styleFlags.analyze({ text });
+      return AnalysisResultFactory.createMetricsResult('style_flags', flags);
+    } catch (error) {
+      return AnalysisResultFactory.createMetricsResult('style_flags', {
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
-    return results;
   }
 
-  private simpleWordCount(text: string): number {
-    return text.split(/\s+/).filter(w => w.length > 0).length;
+  async measureWordFrequency(text: string): Promise<MetricsResult> {
+    try {
+      // SPRINT 01: Use ToolOptionsProvider for configuration
+      const wfOptions = this.toolOptions.getWordFrequencyOptions();
+      const frequency = this.wordFrequency.analyze({ text }, wfOptions);
+      return AnalysisResultFactory.createMetricsResult('word_frequency', frequency);
+    } catch (error) {
+      return AnalysisResultFactory.createMetricsResult('word_frequency', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  async lookupDictionary(word: string, contextText?: string): Promise<AnalysisResult> {
+    if (!this.dictionaryUtility) {
+      return AnalysisResultFactory.createAnalysisResult(
+        'dictionary_lookup',
+        this.getApiKeyWarning()
+      );
+    }
+
+    try {
+      // SPRINT 01: Use ToolOptionsProvider
+      const options = this.toolOptions.getOptions();
+      const executionResult = await this.dictionaryUtility.lookup(
+        {
+          word,
+          contextText
+        },
+        {
+          temperature: options.temperature ?? 0.4,
+          maxTokens: options.maxTokens
+        }
+      );
+
+      return AnalysisResultFactory.createAnalysisResult(
+        'dictionary_lookup',
+        executionResult.content,
+        undefined,
+        executionResult.usage
+      );
+    } catch (error) {
+      return AnalysisResultFactory.createAnalysisResult(
+        'dictionary_lookup',
+        `Error: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  async generateContext(request: ContextGenerationRequest): Promise<ContextGenerationResult> {
+    const config = vscode.workspace.getConfiguration('proseMinion');
+    const fallbackModel = config.get<string>('model') || 'z-ai/glm-4.6';
+    const contextModel = config.get<string>('contextModel') || fallbackModel;
+
+    // SPRINT 01: Use AIResourceManager to check resolved model
+    const resolvedModel = this.aiResourceManager.getResolvedModel('context');
+    if (!this.contextAssistant || resolvedModel !== contextModel) {
+      await this.initializeAITools();
+    }
+
+    if (!this.contextAssistant) {
+      return {
+        toolName: 'context_assistant',
+        content: this.getApiKeyWarning(),
+        timestamp: new Date()
+      };
+    }
+
+    try {
+      const groups = (request.requestedGroups && request.requestedGroups.length > 0)
+        ? request.requestedGroups
+        : [...DEFAULT_CONTEXT_GROUPS];
+
+      const resourceProvider = await this.createContextResourceProvider(groups);
+
+      // Try to read the full source document if provided, to prime the model
+      let sourceContent: string | undefined;
+      if (request.sourceFileUri) {
+        try {
+          const uri = vscode.Uri.parse(request.sourceFileUri);
+          const raw = await vscode.workspace.fs.readFile(uri);
+          sourceContent = Buffer.from(raw).toString('utf8');
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          this.outputChannel?.appendLine(`[ProseAnalysisService] Failed to read source file for context: ${message}`);
+        }
+      }
+
+      // SPRINT 01: Use ToolOptionsProvider
+      const toolOptions = this.toolOptions.getOptions();
+
+      const executionResult = await this.contextAssistant.generate(
+        {
+          excerpt: request.excerpt,
+          existingContext: request.existingContext,
+          sourceFileUri: request.sourceFileUri,
+          sourceContent,
+          requestedGroups: groups
+        },
+        {
+          resourceProvider,
+          temperature: toolOptions.temperature,
+          maxTokens: toolOptions.maxTokens
+        }
+      );
+
+      return {
+        toolName: 'context_assistant',
+        content: executionResult.content,
+        timestamp: new Date(),
+        requestedResources: executionResult.requestedResources,
+        usage: executionResult.usage
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.outputChannel?.appendLine(`[ProseAnalysisService] Context assistant error: ${message}`);
+      return {
+        toolName: 'context_assistant',
+        content: `Error generating context: ${message}`,
+        timestamp: new Date()
+      };
+    }
   }
 
   async measureWordSearch(
@@ -382,13 +383,8 @@ export class ProseAnalysisService implements IProseAnalysisService {
     }
   ) {
     try {
-      const cfg = vscode.workspace.getConfiguration('proseMinion');
-      const defaults = {
-        contextWords: cfg.get<number>('wordSearch.contextWords') ?? 7,
-        clusterWindow: cfg.get<number>('wordSearch.clusterWindow') ?? 150,
-        minClusterSize: cfg.get<number>('wordSearch.minClusterSize') ?? 3,
-        caseSensitive: cfg.get<boolean>('wordSearch.caseSensitive') ?? false
-      };
+      // SPRINT 01: Use ToolOptionsProvider for defaults
+      const defaults = this.toolOptions.getWordSearchOptions();
 
       const targetsInput = options?.wordsOrPhrases && options.wordsOrPhrases.length > 0
         ? options.wordsOrPhrases
@@ -493,6 +489,9 @@ export class ProseAnalysisService implements IProseAnalysisService {
     }
   }
 
+  private async createContextResourceProvider(groups: ContextPathGroup[]): Promise<ContextResourceProvider> {
+    return await this.contextResourceResolver.createProvider(groups);
+  }
 
   private async findUriByRelativePath(relativePath: string): Promise<vscode.Uri | undefined> {
     const folders = vscode.workspace.workspaceFolders ?? [];
@@ -506,220 +505,6 @@ export class ProseAnalysisService implements IProseAnalysisService {
       }
     }
     return undefined;
-  }
-
-  private async enrichWithStandards(stats: any): Promise<any> {
-    try {
-      if (!this.standardsRepo) return stats;
-      const config = vscode.workspace.getConfiguration('proseMinion');
-      const preset = (config.get<string>('publishingStandards.preset') || 'none').trim().toLowerCase();
-      if (preset === 'none') return stats;
-
-      if (preset === 'manuscript') {
-        // Manuscript format currently not deeply compared; may add in future
-        return stats;
-      }
-
-      // genre:<key>
-      let selectedGenre: Genre | undefined;
-      if (preset.startsWith('genre:')) {
-        const key = preset.slice('genre:'.length).trim();
-        selectedGenre = await this.standardsRepo.findGenre(key);
-      } else {
-        // Backward fallback: try direct key
-        selectedGenre = await this.standardsRepo.findGenre(preset);
-      }
-      if (!selectedGenre) return stats;
-
-      const pageSizeKey = (config.get<string>('publishingStandards.pageSizeKey') || '').trim();
-      const comparer = this.standardsComparer;
-
-      const items = [] as any[];
-      const S = selectedGenre.literary_statistics;
-
-      const push = (key: string, label: string, value: number | string | undefined, range?: any) => {
-        const item = comparer.makeItem(key, label, value as any, range);
-        if (item) items.push(item);
-      };
-
-      push('word_count', 'Word Count', stats.wordCount, selectedGenre.word_count_range);
-      push('dialogue_percentage', 'Dialogue %', stats.dialoguePercentage, S.dialogue_percentage);
-      push('lexical_density', 'Lexical Density %', stats.lexicalDensity, S.lexical_density);
-      push('avg_words_per_sentence', 'Avg Words/Sentence', stats.averageWordsPerSentence, S.avg_words_per_sentence);
-      push('avg_sentences_per_paragraph', 'Avg Sentences/Paragraph', stats.averageSentencesPerParagraph, S.avg_sentences_per_paragraph);
-      push('unique_word_count', 'Unique Words', stats.uniqueWordCount, S.unique_word_count);
-
-      if (stats.wordLengthDistribution) {
-        push('wlen_1_3', '1–3 Letter %', Math.round(stats.wordLengthDistribution['1_to_3_letters'] * 10) / 10, S.word_length_distribution['1_to_3_letters']);
-        push('wlen_4_6', '4–6 Letter %', Math.round(stats.wordLengthDistribution['4_to_6_letters'] * 10) / 10, S.word_length_distribution['4_to_6_letters']);
-        push('wlen_7_plus', '7+ Letter %', Math.round(stats.wordLengthDistribution['7_plus_letters'] * 10) / 10, S.word_length_distribution['7_plus_letters']);
-      }
-
-      if (stats.chapterCount !== undefined) {
-        push('chapter_count', 'Chapter Count', stats.chapterCount, S.chapter_count as any);
-      }
-      if (stats.averageChapterLength !== undefined) {
-        push('avg_chapter_length', 'Avg Chapter Length', stats.averageChapterLength, S.avg_chapter_length as any);
-      }
-
-      const publishingFormat = this.standardsComparer.buildPublishingFormat(selectedGenre, stats.wordCount, pageSizeKey || undefined);
-
-      return {
-        ...stats,
-        comparison: { items },
-        publishingFormat
-      };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.outputChannel?.appendLine(`[ProseAnalysisService] Standards enrichment failed: ${msg}`);
-      return stats;
-    }
-  }
-
-  async measureStyleFlags(text: string): Promise<MetricsResult> {
-    try {
-      const flags = this.styleFlags.analyze({ text });
-      return AnalysisResultFactory.createMetricsResult('style_flags', flags);
-    } catch (error) {
-      return AnalysisResultFactory.createMetricsResult('style_flags', {
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
-  }
-
-  async measureWordFrequency(text: string): Promise<MetricsResult> {
-    try {
-      const config = vscode.workspace.getConfiguration('proseMinion');
-      const wfOptions = {
-        topN: config.get<number>('wordFrequency.topN') ?? 100,
-        includeHapaxList: config.get<boolean>('wordFrequency.includeHapaxList') ?? true,
-        hapaxDisplayMax: config.get<number>('wordFrequency.hapaxDisplayMax') ?? 300,
-        includeStopwordsTable: config.get<boolean>('wordFrequency.includeStopwordsTable') ?? true,
-        contentWordsOnly: config.get<boolean>('wordFrequency.contentWordsOnly') ?? true,
-        posEnabled: config.get<boolean>('wordFrequency.posEnabled') ?? true,
-        includeBigrams: config.get<boolean>('wordFrequency.includeBigrams') ?? true,
-        includeTrigrams: config.get<boolean>('wordFrequency.includeTrigrams') ?? true,
-        enableLemmas: config.get<boolean>('wordFrequency.enableLemmas') ?? false,
-        lengthHistogramMaxChars: config.get<number>('wordFrequency.lengthHistogramMaxChars') ?? 10,
-        minCharacterLength: config.get<number>('wordFrequency.minCharacterLength') ?? 1,
-      } as const;
-
-      const frequency = this.wordFrequency.analyze({ text }, wfOptions);
-      return AnalysisResultFactory.createMetricsResult('word_frequency', frequency);
-    } catch (error) {
-      return AnalysisResultFactory.createMetricsResult('word_frequency', {
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
-  }
-
-  async lookupDictionary(word: string, contextText?: string): Promise<AnalysisResult> {
-    if (!this.dictionaryUtility) {
-      return AnalysisResultFactory.createAnalysisResult(
-        'dictionary_lookup',
-        this.getApiKeyWarning()
-      );
-    }
-
-    try {
-      const options = this.getToolOptions();
-      const executionResult = await this.dictionaryUtility.lookup(
-        {
-          word,
-          contextText
-        },
-        {
-          temperature: options.temperature ?? 0.4,
-          maxTokens: options.maxTokens
-        }
-      );
-
-      return AnalysisResultFactory.createAnalysisResult(
-        'dictionary_lookup',
-        executionResult.content,
-        undefined,
-        executionResult.usage
-      );
-    } catch (error) {
-      return AnalysisResultFactory.createAnalysisResult(
-        'dictionary_lookup',
-        `Error: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
-  }
-
-  async generateContext(request: ContextGenerationRequest): Promise<ContextGenerationResult> {
-    const config = vscode.workspace.getConfiguration('proseMinion');
-    const fallbackModel = config.get<string>('model') || 'z-ai/glm-4.6';
-    const contextModel = config.get<string>('contextModel') || fallbackModel;
-
-    if (!this.contextAssistant || this.resolvedModels.context !== contextModel) {
-      await this.initializeAITools();
-    }
-
-    if (!this.contextAssistant) {
-      return {
-        toolName: 'context_assistant',
-        content: this.getApiKeyWarning(),
-        timestamp: new Date()
-      };
-    }
-
-    try {
-      const groups = (request.requestedGroups && request.requestedGroups.length > 0)
-        ? request.requestedGroups
-        : [...DEFAULT_CONTEXT_GROUPS];
-
-      const resourceProvider = await this.createContextResourceProvider(groups);
-      // Try to read the full source document if provided, to prime the model
-      let sourceContent: string | undefined;
-      if (request.sourceFileUri) {
-        try {
-          const uri = vscode.Uri.parse(request.sourceFileUri);
-          const raw = await vscode.workspace.fs.readFile(uri);
-          sourceContent = Buffer.from(raw).toString('utf8');
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          this.outputChannel?.appendLine(`[ProseAnalysisService] Failed to read source file for context: ${message}`);
-        }
-      }
-      const toolOptions = this.getToolOptions();
-
-      const executionResult = await this.contextAssistant.generate(
-        {
-          excerpt: request.excerpt,
-          existingContext: request.existingContext,
-          sourceFileUri: request.sourceFileUri,
-          sourceContent,
-          requestedGroups: groups
-        },
-        {
-          resourceProvider,
-          temperature: toolOptions.temperature,
-          maxTokens: toolOptions.maxTokens
-        }
-      );
-
-      return {
-        toolName: 'context_assistant',
-        content: executionResult.content,
-        timestamp: new Date(),
-        requestedResources: executionResult.requestedResources,
-        usage: executionResult.usage
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.outputChannel?.appendLine(`[ProseAnalysisService] Context assistant error: ${message}`);
-      return {
-        toolName: 'context_assistant',
-        content: `Error generating context: ${message}`,
-        timestamp: new Date()
-      };
-    }
-  }
-
-  private async createContextResourceProvider(groups: ContextPathGroup[]): Promise<ContextResourceProvider> {
-    return await this.contextResourceResolver.createProvider(groups);
   }
 
   private getApiKeyWarning(): string {
