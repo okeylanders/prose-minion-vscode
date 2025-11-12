@@ -124,10 +124,8 @@ src/infrastructure/api/
     │   └── ContextAssistantService.ts    # Context generation
     │
     ├── measurement/
-    │   ├── ProseStatsService.ts          # PassageProseStats wrapper
-    │   ├── StyleFlagsService.ts          # StyleFlags wrapper
-    │   ├── WordFrequencyService.ts       # WordFrequency wrapper
-    │   └── MeasurementToolService.ts     # Facade for all 3 (optional)
+    │   # No facade needed - tools injected directly into ProseAnalysisService
+    │   # PassageProseStats, StyleFlags, WordFrequency are already focused classes
     │
     ├── search/
     │   ├── WordSearchService.ts          # Current word search logic
@@ -155,7 +153,9 @@ export class ProseAnalysisService implements IProseAnalysisService {
   constructor(
     private readonly assistantTools: AssistantToolService,
     private readonly contextAssistant: ContextAssistantService,
-    private readonly measurementTools: MeasurementToolService,
+    private readonly proseStats: PassageProseStats,      // Direct injection
+    private readonly styleFlags: StyleFlags,              // Direct injection
+    private readonly wordFrequency: WordFrequency,        // Direct injection
     private readonly wordSearch: WordSearchService,
     private readonly dictionary: DictionaryService,
     private readonly standards: StandardsService,
@@ -169,8 +169,28 @@ export class ProseAnalysisService implements IProseAnalysisService {
   }
 
   async measureProseStats(text: string, files?: string[], sourceMode?: string): Promise<MetricsResult> {
-    const stats = await this.measurementTools.computeProseStats(text, files, sourceMode);
-    return this.standards.enrichWithStandards(stats);
+    const stats = this.proseStats.analyze({ text });
+
+    // Multi-file aggregation (ProseStats-specific)
+    if (files?.length && (sourceMode === 'manuscript' || sourceMode === 'chapters')) {
+      const perFileStats = await this.standards.computePerFileStats(files, this.proseStats);
+      Object.assign(stats, perFileStats); // Aggregate chapter data
+    }
+
+    // Standards enrichment
+    const enriched = await this.standards.enrichWithStandards(stats);
+    return AnalysisResultFactory.createMetricsResult('prose_stats', enriched);
+  }
+
+  async measureStyleFlags(text: string): Promise<MetricsResult> {
+    const flags = this.styleFlags.analyze({ text });
+    return AnalysisResultFactory.createMetricsResult('style_flags', flags);
+  }
+
+  async measureWordFrequency(text: string): Promise<MetricsResult> {
+    const options = this.toolOptions.getWordFrequencyOptions();
+    const frequency = this.wordFrequency.analyze({ text }, options);
+    return AnalysisResultFactory.createMetricsResult('word_frequency', frequency);
   }
 
   // ... delegate all other methods
@@ -215,23 +235,19 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
 ---
 
-#### 4. **MeasurementToolService** (~150-180 lines)
-**Single Responsibility**: Aggregate measurement tools (stats, flags, frequency)
+#### 4. **Measurement Tools** (No Service Wrapper Needed)
 
-**Methods**:
-- `computeProseStats(text, files?, sourceMode?): Promise<any>`
-- `computeStyleFlags(text): Promise<any>`
-- `computeWordFrequency(text): Promise<any>`
+**Decision**: PassageProseStats, StyleFlags, and WordFrequency are **already focused service classes** with no shared orchestration. They will be injected **directly** into ProseAnalysisService.
 
-**Dependencies**:
-- ProseStatsService
-- StyleFlagsService
-- WordFrequencyService
-- ToolOptionsProvider (for settings)
+**Rationale**:
 
-**Extracts**: Lines 324-348 + 579-614 from current PAS
+- No shared state between the three tools
+- No coordination needed (they don't interact)
+- No shared initialization logic
+- Adding a facade would be an extra layer with no value (pure delegation)
+- YAGNI - You Aren't Gonna Need It
 
-**Note**: Could optionally keep ProseStats/StyleFlags/WordFrequency as thin wrappers since they're already focused classes.
+**See**: "Appendix A: MeasurementToolService Facade Analysis" at end of this document for detailed reasoning.
 
 ---
 
@@ -365,15 +381,21 @@ export async function activate(context: vscode.ExtensionContext) {
   // Domain services
   const assistantTools = new AssistantToolService(aiResourceManager, resourceLoader);
   const contextAssistant = new ContextAssistantService(aiResourceManager, resourceLoader);
-  const measurementTools = new MeasurementToolService(toolOptions, outputChannel);
   const wordSearch = new WordSearchService(toolOptions, outputChannel);
   const dictionary = new DictionaryService(aiResourceManager, resourceLoader);
+
+  // Measurement tools (no facade needed - inject directly)
+  const proseStats = new PassageProseStats();
+  const styleFlags = new StyleFlags();
+  const wordFrequency = new WordFrequency((msg) => outputChannel.appendLine(msg));
 
   // Facade
   const proseAnalysisService = new ProseAnalysisService(
     assistantTools,
     contextAssistant,
-    measurementTools,
+    proseStats,      // Direct injection
+    styleFlags,      // Direct injection
+    wordFrequency,   // Direct injection
     wordSearch,
     dictionary,
     standards,
@@ -401,7 +423,7 @@ export async function activate(context: vscode.ExtensionContext) {
 **Mitigation**:
 - Each service has **exactly one responsibility**
 - Line count cap: Services < 300 lines (except WordSearchService due to helpers)
-- If service grows, extract further (e.g., MeasurementToolService delegates to Stats/Flags/Frequency)
+- If service grows, extract further (but avoid facades with no orchestration value)
 
 ### 2. **Circular Dependencies**
 **Risk**: Services depend on each other in cycles
@@ -458,14 +480,16 @@ export async function activate(context: vscode.ExtensionContext) {
 
 ---
 
-### Phase 2: Extract Measurement Services (Low Risk)
-**Goal**: Extract measurement tools (no AI dependencies)
+### Phase 2: Inject Measurement Tools Directly (Low Risk)
+
+**Goal**: Inject measurement tools directly (no facade needed)
 
 **Tasks**:
-1. Create `MeasurementToolService` (stats, flags, frequency)
-   - Or keep as thin wrappers (ProseStatsService, etc.) if preferred
-2. Update ProseAnalysisService to delegate measurement methods
-3. Test all metrics tools (Prose Stats, Style Flags, Word Frequency)
+
+1. Inject PassageProseStats, StyleFlags, WordFrequency directly into ProseAnalysisService constructor
+2. Update ProseAnalysisService measurement methods to use injected tools
+3. Move `computePerFileStats` to StandardsService
+4. Test all metrics tools (Prose Stats, Style Flags, Word Frequency)
 
 **Acceptance Criteria**:
 - All measurement tools work identically
@@ -641,12 +665,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
 4. **Extensibility Improved**
    - Context Search can be added as clean SearchService sibling
-   - New measurement tools easy to add to MeasurementToolService
+   - New measurement tools easy to add (inject directly, no facade needed)
    - New AI tools easy to add to AssistantToolService
 
 5. **Code Navigation Improved**
    - Find analysis logic → AssistantToolService
-   - Find measurement logic → MeasurementToolService
+   - Find measurement logic → PassageProseStats, StyleFlags, WordFrequency
    - Find search logic → WordSearchService
    - Clear mental model
 
@@ -783,5 +807,183 @@ Before implementation:
 3. Create epic and sprint breakdown
 4. Implement Phase 1 (Resource Services)
 
+---
+
+## Appendix A: MeasurementToolService Facade Analysis
+
+**Date Added**: 2025-11-11 (Post-Draft Review)
+**Question**: Should we create a MeasurementToolService facade, or inject measurement tools directly?
+**Decision**: **Inject directly** (no facade needed)
+
+### Analysis: Shared Orchestration Between Measurement Tools?
+
+We analyzed the three measurement methods to determine if a facade provides value:
+
+#### 1. measureStyleFlags (Lines 579-588)
+
+```typescript
+async measureStyleFlags(text: string): Promise<MetricsResult> {
+  const flags = this.styleFlags.analyze({ text });
+  return AnalysisResultFactory.createMetricsResult('style_flags', flags);
+}
+```
+
+**Orchestration**: None. Pure delegation.
+
+#### 2. measureWordFrequency (Lines 590-614)
+
+```typescript
+async measureWordFrequency(text: string): Promise<MetricsResult> {
+  const wfOptions = this.toolOptions.getWordFrequencyOptions();
+  const frequency = this.wordFrequency.analyze({ text }, wfOptions);
+  return AnalysisResultFactory.createMetricsResult('word_frequency', frequency);
+}
+```
+
+**Orchestration**: Config retrieval only (handled by ToolOptionsProvider).
+
+#### 3. measureProseStats (Lines 324-348)
+
+```typescript
+async measureProseStats(text: string, files?, sourceMode?): Promise<MetricsResult> {
+  const stats = this.proseStats.analyze({ text });
+
+  // Chapter aggregation (multi-file modes)
+  if (files && files.length > 0 && (sourceMode === 'manuscript' || sourceMode === 'chapters')) {
+    const per = await this.computePerFileStats(files);
+    // ... aggregate chapter stats
+  }
+
+  // Standards comparison
+  const enriched = await this.enrichWithStandards(stats);
+  return AnalysisResultFactory.createMetricsResult('prose_stats', enriched);
+}
+```
+
+**Orchestration**: Chapter aggregation + standards enrichment (**ProseStats-specific**, doesn't apply to StyleFlags or WordFrequency).
+
+### Key Findings: No Shared Orchestration
+
+1. ❌ **No shared state** between the three tools
+2. ❌ **No coordination** between tools (they don't interact)
+3. ❌ **No shared initialization** (all are simple constructors)
+4. ❌ **No shared resource management** (no AI resources needed)
+5. ✅ **Each tool is already a focused service class** (PassageProseStats, StyleFlags, WordFrequency)
+6. ✅ **ProseStats has unique orchestration** (chapter aggregation, standards enrichment) that the other two don't need
+
+### What Would a Facade Look Like?
+
+```typescript
+export class MeasurementToolService {
+  private proseStats: PassageProseStats;
+  private styleFlags: StyleFlags;
+  private wordFrequency: WordFrequency;
+
+  async computeStyleFlags(text: string): Promise<any> {
+    return this.styleFlags.analyze({ text }); // ← Just delegation, no value added
+  }
+
+  async computeWordFrequency(text: string): Promise<any> {
+    const options = this.toolOptions.getWordFrequencyOptions();
+    return this.wordFrequency.analyze({ text }, options); // ← Config + delegation
+  }
+
+  async computeProseStats(text: string, files?, sourceMode?): Promise<any> {
+    return this.proseStats.analyze({ text });
+    // Wait... what about chapter aggregation and standards enrichment?
+    // Do we move that logic HERE? Or keep it in ProseAnalysisService?
+  }
+}
+```
+
+**Problem**: The facade adds an extra layer of indirection with **no orchestration value**.
+
+### Comparison: With vs. Without Facade
+
+| Aspect | With Facade | Without Facade (Direct) |
+|--------|-------------|-------------------------|
+| **Layers** | ProseAnalysisService → MeasurementToolService → Tools | ProseAnalysisService → Tools |
+| **Lines** | ~150 extra lines (facade) | 0 extra lines |
+| **Complexity** | Higher (extra abstraction) | Lower (direct delegation) |
+| **Testability** | Same | Same |
+| **Clarity** | Less clear (what does facade do?) | Very clear (direct calls) |
+| **Orchestration** | None (just delegation) | None needed |
+| **Dependencies** | 1 facade | 3 focused tools |
+
+### Decision Rationale
+
+**YAGNI (You Aren't Gonna Need It)** - The facade provides no value:
+
+1. **No shared orchestration** to abstract
+2. **Simpler architecture** - fewer layers, easier to trace
+3. **Already focused classes** - PassageProseStats, StyleFlags, WordFrequency are well-designed service objects
+4. **ProseStats has unique needs** - Chapter aggregation and standards enrichment don't belong in a shared facade
+5. **False simplification** - Facade doesn't abstract complexity, it just hides dependencies
+
+### Implementation: Direct Injection
+
+**ProseAnalysisService Constructor**:
+
+```typescript
+export class ProseAnalysisService implements IProseAnalysisService {
+  constructor(
+    private readonly assistantTools: AssistantToolService,
+    private readonly contextAssistant: ContextAssistantService,
+    private readonly proseStats: PassageProseStats,      // ← Direct
+    private readonly styleFlags: StyleFlags,              // ← Direct
+    private readonly wordFrequency: WordFrequency,        // ← Direct
+    private readonly wordSearch: WordSearchService,
+    private readonly dictionary: DictionaryService,
+    private readonly standards: StandardsService,
+    private readonly aiResources: AIResourceManager,
+    private readonly toolOptions: ToolOptionsProvider
+  ) {}
+}
+```
+
+**Measurement Methods**:
+
+```typescript
+async measureProseStats(text: string, files?: string[], sourceMode?: string): Promise<MetricsResult> {
+  const stats = this.proseStats.analyze({ text });
+
+  // Multi-file aggregation (ProseStats-specific)
+  if (files?.length && (sourceMode === 'manuscript' || sourceMode === 'chapters')) {
+    const perFileStats = await this.standards.computePerFileStats(files, this.proseStats);
+    Object.assign(stats, perFileStats);
+  }
+
+  // Standards enrichment
+  const enriched = await this.standards.enrichWithStandards(stats);
+  return AnalysisResultFactory.createMetricsResult('prose_stats', enriched);
+}
+
+async measureStyleFlags(text: string): Promise<MetricsResult> {
+  const flags = this.styleFlags.analyze({ text });
+  return AnalysisResultFactory.createMetricsResult('style_flags', flags);
+}
+
+async measureWordFrequency(text: string): Promise<MetricsResult> {
+  const options = this.toolOptions.getWordFrequencyOptions();
+  const frequency = this.wordFrequency.analyze({ text }, options);
+  return AnalysisResultFactory.createMetricsResult('word_frequency', frequency);
+}
+```
+
+### Benefits of Direct Injection
+
+1. ✅ **Simpler architecture** - One fewer layer to maintain
+2. ✅ **Clearer intent** - Obvious what each method does (direct tool call)
+3. ✅ **No false abstraction** - No facade pretending to orchestrate when it's just delegating
+4. ✅ **Easier to trace** - Jump directly from ProseAnalysisService to tool implementation
+5. ✅ **Follows YAGNI** - Don't create abstractions until you need them
+
+### Conclusion
+
+**Skip the MeasurementToolService facade.** Inject PassageProseStats, StyleFlags, and WordFrequency directly into ProseAnalysisService. The tools are already well-designed service classes with no shared orchestration needs.
+
+---
+
 **Author**: Claude (AI Assistant)
 **Date**: 2025-11-11
+**Updated**: 2025-11-11 (Added Appendix A: MeasurementToolService analysis)
