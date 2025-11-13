@@ -6,7 +6,7 @@
 **Sprint**: [Sprint 02](../.todo/epics/epic-prose-analysis-service-refactor-2025-11-11/sprints/02-create-measurement-service-wrappers.md)
 **Status**: ✅ Complete - All tests passed
 **Branch**: `adr/prose-analysis-service-refactor-2025-11-11`
-**Commits**: a4a30bb, e0b5ee9, (final to be added)
+**Commits**: a4a30bb, e0b5ee9, 7128540
 
 ---
 
@@ -388,5 +388,5 @@ outputChannel.appendLine('>>> DEVELOPMENT BUILD - SPRINT 02 REFACTOR <<<');
 **Sprint 02: COMPLETE** ✅
 **All Tests Passed**: YES ✅
 **Ready for Sprint 03**: YES
-**Commits**: a4a30bb, e0b5ee9, (final completion commit)
+**Commits**: a4a30bb, e0b5ee9, 7128540
 **Next Session**: Sprint 03 - Extract Analysis Services
