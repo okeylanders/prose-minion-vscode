@@ -10,11 +10,15 @@ import * as vscode from 'vscode';
 import { ProseToolsViewProvider } from './application/providers/ProseToolsViewProvider';
 import { ProseAnalysisService } from './infrastructure/api/ProseAnalysisService';
 import { SecretStorageService } from './infrastructure/secrets/SecretStorageService';
-// SPRINT 01: Import new services
+// SPRINT 01: Import resource services
 import { ResourceLoaderService } from './infrastructure/api/services/resources/ResourceLoaderService';
 import { AIResourceManager } from './infrastructure/api/services/resources/AIResourceManager';
 import { StandardsService } from './infrastructure/api/services/resources/StandardsService';
 import { ToolOptionsProvider } from './infrastructure/api/services/shared/ToolOptionsProvider';
+// SPRINT 02: Import measurement services
+import { ProseStatsService } from './infrastructure/api/services/measurement/ProseStatsService';
+import { StyleFlagsService } from './infrastructure/api/services/measurement/StyleFlagsService';
+import { WordFrequencyService } from './infrastructure/api/services/measurement/WordFrequencyService';
 
 let proseToolsViewProvider: ProseToolsViewProvider | undefined;
 
@@ -24,7 +28,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(outputChannel);
 
   outputChannel.appendLine('=== Prose Minion Extension Activated ===');
-  outputChannel.appendLine('>>> DEVELOPMENT BUILD - SPRINT 01 REFACTOR <<<');
+  outputChannel.appendLine('>>> DEVELOPMENT BUILD - SPRINT 02 REFACTOR <<<');
   outputChannel.appendLine(`Extension URI: ${context.extensionUri.fsPath}`);
 
   console.log('Prose Minion extension is now active');
@@ -33,18 +37,29 @@ export function activate(context: vscode.ExtensionContext): void {
   // SPRINT 01: Initialize infrastructure layer (dependency injection)
   const secretsService = new SecretStorageService(context.secrets);
 
-  // Create resource services (foundation)
+  // SPRINT 01: Create resource services (foundation)
   const resourceLoader = new ResourceLoaderService(context.extensionUri, outputChannel);
   const aiResourceManager = new AIResourceManager(resourceLoader, secretsService, outputChannel);
   const standardsService = new StandardsService(context.extensionUri, outputChannel);
   const toolOptions = new ToolOptionsProvider();
 
+  // SPRINT 02: Create measurement services
+  const proseStatsService = new ProseStatsService();
+  const styleFlagsService = new StyleFlagsService();
+  const wordFrequencyService = new WordFrequencyService(toolOptions, outputChannel);
+
   // Create ProseAnalysisService with injected services
   const proseAnalysisService = new ProseAnalysisService(
+    // SPRINT 01: Resource services
     resourceLoader,
     aiResourceManager,
     standardsService,
     toolOptions,
+    // SPRINT 02: Measurement services
+    proseStatsService,
+    styleFlagsService,
+    wordFrequencyService,
+    // Extension resources
     context.extensionUri,
     secretsService,
     outputChannel

@@ -20,25 +20,28 @@ import { DialogueMicrobeatAssistant } from '../../tools/assist/dialogueMicrobeat
 import { ProseAssistant } from '../../tools/assist/proseAssistant';
 import { ContextAssistant } from '../../tools/assist/contextAssistant';
 import { ContextResourceResolver } from '../context/ContextResourceResolver';
-import { PassageProseStats } from '../../tools/measure/passageProseStats';
-import { StyleFlags } from '../../tools/measure/styleFlags';
-import { WordFrequency } from '../../tools/measure/wordFrequency';
 import { StatusCallback } from '../../application/services/AIResourceOrchestrator';
 import { DictionaryUtility } from '../../tools/utility/dictionaryUtility';
 import { ModelScope } from '../../shared/types';
 import { ContextPathGroup } from '../../shared/types';
 import { SecretStorageService } from '../secrets/SecretStorageService';
 
-// SPRINT 01: Import new services
+// SPRINT 01: Import resource services
 import { ResourceLoaderService } from './services/resources/ResourceLoaderService';
 import { AIResourceManager } from './services/resources/AIResourceManager';
 import { StandardsService } from './services/resources/StandardsService';
 import { ToolOptionsProvider } from './services/shared/ToolOptionsProvider';
 
+// SPRINT 02: Import measurement services
+import { ProseStatsService } from './services/measurement/ProseStatsService';
+import { StyleFlagsService } from './services/measurement/StyleFlagsService';
+import { WordFrequencyService } from './services/measurement/WordFrequencyService';
+
 export class ProseAnalysisService implements IProseAnalysisService {
-  private proseStats: PassageProseStats;
-  private styleFlags: StyleFlags;
-  private wordFrequency: WordFrequency;
+  // SPRINT 02: Measurement services (replaced tool instances)
+  private proseStatsService: ProseStatsService;
+  private styleFlagsService: StyleFlagsService;
+  private wordFrequencyService: WordFrequencyService;
 
   private dialogueAssistant?: DialogueMicrobeatAssistant;
   private proseAssistant?: ProseAssistant;
@@ -47,19 +50,23 @@ export class ProseAnalysisService implements IProseAnalysisService {
   private contextResourceResolver: ContextResourceResolver;
 
   constructor(
-    // SPRINT 01: Inject new services
+    // SPRINT 01: Resource services
     private readonly resourceLoader: ResourceLoaderService,
     private readonly aiResourceManager: AIResourceManager,
     private readonly standardsService: StandardsService,
     private readonly toolOptions: ToolOptionsProvider,
+    // SPRINT 02: Measurement services
+    proseStatsService: ProseStatsService,
+    styleFlagsService: StyleFlagsService,
+    wordFrequencyService: WordFrequencyService,
     private readonly extensionUri?: vscode.Uri,
     private readonly secretsService?: SecretStorageService,
     private readonly outputChannel?: vscode.OutputChannel
   ) {
-    // Initialize measurement tools (don't need API key)
-    this.proseStats = new PassageProseStats();
-    this.styleFlags = new StyleFlags();
-    this.wordFrequency = new WordFrequency((msg: string) => this.outputChannel?.appendLine(msg));
+    // SPRINT 02: Store injected measurement services
+    this.proseStatsService = proseStatsService;
+    this.styleFlagsService = styleFlagsService;
+    this.wordFrequencyService = wordFrequencyService;
 
     // Initialize AI tools if API key is configured
     void this.initializeAITools();
@@ -209,12 +216,14 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
   async measureProseStats(text: string, files?: string[], sourceMode?: string): Promise<MetricsResult> {
     try {
-      const stats = this.proseStats.analyze({ text });
+      // SPRINT 02: Use ProseStatsService instead of PassageProseStats tool
+      const stats = this.proseStatsService.analyze({ text });
 
       // Chapter aggregation (for multi-file modes)
       // SPRINT 01: Use StandardsService for per-file stats computation
+      // SPRINT 02: Pass ProseStatsService (implements ProseStatsAnalyzer interface)
       if (files && files.length > 0 && (sourceMode === 'manuscript' || sourceMode === 'chapters')) {
-        const per = await this.standardsService.computePerFileStats(files, this.proseStats);
+        const per = await this.standardsService.computePerFileStats(files, this.proseStatsService);
         const chapterWordCounts = per.map(p => p.stats.wordCount);
         const chapterCount = chapterWordCounts.length;
         const totalWords = chapterWordCounts.reduce((a, b) => a + b, 0);
@@ -237,7 +246,8 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
   async measureStyleFlags(text: string): Promise<MetricsResult> {
     try {
-      const flags = this.styleFlags.analyze({ text });
+      // SPRINT 02: Use StyleFlagsService instead of StyleFlags tool
+      const flags = this.styleFlagsService.analyze(text);
       return AnalysisResultFactory.createMetricsResult('style_flags', flags);
     } catch (error) {
       return AnalysisResultFactory.createMetricsResult('style_flags', {
@@ -248,9 +258,9 @@ export class ProseAnalysisService implements IProseAnalysisService {
 
   async measureWordFrequency(text: string): Promise<MetricsResult> {
     try {
-      // SPRINT 01: Use ToolOptionsProvider for configuration
-      const wfOptions = this.toolOptions.getWordFrequencyOptions();
-      const frequency = this.wordFrequency.analyze({ text }, wfOptions);
+      // SPRINT 02: Use WordFrequencyService instead of WordFrequency tool
+      // Configuration is handled by the service (via ToolOptionsProvider)
+      const frequency = this.wordFrequencyService.analyze(text);
       return AnalysisResultFactory.createMetricsResult('word_frequency', frequency);
     } catch (error) {
       return AnalysisResultFactory.createMetricsResult('word_frequency', {

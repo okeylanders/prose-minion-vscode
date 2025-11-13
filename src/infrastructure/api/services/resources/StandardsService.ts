@@ -184,7 +184,7 @@ export class StandardsService {
    */
   private loadStandards(): void {
     try {
-      this.standardsRepo = new PublishingStandardsRepository(this.extensionUri, this.outputChannel);
+      this.standardsRepo = new PublishingStandardsRepository(this.extensionUri);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.outputChannel?.appendLine(`[StandardsService] Failed to load standards repository: ${msg}`);
