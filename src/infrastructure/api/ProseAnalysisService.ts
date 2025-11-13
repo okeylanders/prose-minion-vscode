@@ -3,6 +3,8 @@
  * Integrates all tools
  *
  * SPRINT 01 REFACTOR: Now uses ResourceLoaderService, AIResourceManager, StandardsService, and ToolOptionsProvider
+ * SPRINT 02 REFACTOR: Now uses measurement service wrappers (ProseStatsService, StyleFlagsService, WordFrequencyService)
+ * SPRINT 03 REFACTOR: Now uses analysis service wrappers (AssistantToolService, DictionaryService, ContextAssistantService)
  * This is temporary - ProseAnalysisService will be deleted in Sprint 05
  */
 
@@ -11,20 +13,10 @@ import { IProseAnalysisService } from '../../domain/services/IProseAnalysisServi
 import { AnalysisResult, MetricsResult, AnalysisResultFactory } from '../../domain/models/AnalysisResult';
 import {
   ContextGenerationRequest,
-  ContextGenerationResult,
-  ContextResourceProvider,
-  DEFAULT_CONTEXT_GROUPS
+  ContextGenerationResult
 } from '../../domain/models/ContextGeneration';
-import { OpenRouterClient } from './OpenRouterClient';
-import { DialogueMicrobeatAssistant } from '../../tools/assist/dialogueMicrobeatAssistant';
-import { ProseAssistant } from '../../tools/assist/proseAssistant';
-import { ContextAssistant } from '../../tools/assist/contextAssistant';
-import { ContextResourceResolver } from '../context/ContextResourceResolver';
 import { StatusCallback } from '../../application/services/AIResourceOrchestrator';
-import { DictionaryUtility } from '../../tools/utility/dictionaryUtility';
 import { ModelScope } from '../../shared/types';
-import { ContextPathGroup } from '../../shared/types';
-import { SecretStorageService } from '../secrets/SecretStorageService';
 
 // SPRINT 01: Import resource services
 import { ResourceLoaderService } from './services/resources/ResourceLoaderService';
@@ -37,17 +29,21 @@ import { ProseStatsService } from './services/measurement/ProseStatsService';
 import { StyleFlagsService } from './services/measurement/StyleFlagsService';
 import { WordFrequencyService } from './services/measurement/WordFrequencyService';
 
+// SPRINT 03: Import analysis services
+import { AssistantToolService } from './services/analysis/AssistantToolService';
+import { DictionaryService } from './services/dictionary/DictionaryService';
+import { ContextAssistantService } from './services/analysis/ContextAssistantService';
+
 export class ProseAnalysisService implements IProseAnalysisService {
   // SPRINT 02: Measurement services (replaced tool instances)
   private proseStatsService: ProseStatsService;
   private styleFlagsService: StyleFlagsService;
   private wordFrequencyService: WordFrequencyService;
 
-  private dialogueAssistant?: DialogueMicrobeatAssistant;
-  private proseAssistant?: ProseAssistant;
-  private dictionaryUtility?: DictionaryUtility;
-  private contextAssistant?: ContextAssistant;
-  private contextResourceResolver: ContextResourceResolver;
+  // SPRINT 03: Analysis services (replaced tool instances)
+  private assistantToolService: AssistantToolService;
+  private dictionaryService: DictionaryService;
+  private contextAssistantService: ContextAssistantService;
 
   constructor(
     // SPRINT 01: Resource services
@@ -59,8 +55,11 @@ export class ProseAnalysisService implements IProseAnalysisService {
     proseStatsService: ProseStatsService,
     styleFlagsService: StyleFlagsService,
     wordFrequencyService: WordFrequencyService,
+    // SPRINT 03: Analysis services
+    assistantToolService: AssistantToolService,
+    dictionaryService: DictionaryService,
+    contextAssistantService: ContextAssistantService,
     private readonly extensionUri?: vscode.Uri,
-    private readonly secretsService?: SecretStorageService,
     private readonly outputChannel?: vscode.OutputChannel
   ) {
     // SPRINT 02: Store injected measurement services
@@ -68,52 +67,12 @@ export class ProseAnalysisService implements IProseAnalysisService {
     this.styleFlagsService = styleFlagsService;
     this.wordFrequencyService = wordFrequencyService;
 
-    // Initialize AI tools if API key is configured
-    void this.initializeAITools();
-
-    this.contextResourceResolver = new ContextResourceResolver(this.outputChannel);
+    // SPRINT 03: Store injected analysis services
+    this.assistantToolService = assistantToolService;
+    this.dictionaryService = dictionaryService;
+    this.contextAssistantService = contextAssistantService;
   }
 
-  private async initializeAITools(): Promise<void> {
-    // SPRINT 01: Use AIResourceManager to initialize resources
-    await this.aiResourceManager.initializeResources();
-
-    // Get orchestrators from AIResourceManager
-    const assistantOrchestrator = this.aiResourceManager.getOrchestrator('assistant');
-    const dictionaryOrchestrator = this.aiResourceManager.getOrchestrator('dictionary');
-    const contextOrchestrator = this.aiResourceManager.getOrchestrator('context');
-
-    // Create tool instances if orchestrators are available
-    if (assistantOrchestrator) {
-      const promptLoader = this.resourceLoader.getPromptLoader();
-      this.dialogueAssistant = new DialogueMicrobeatAssistant(
-        assistantOrchestrator,
-        promptLoader,
-        this.outputChannel
-      );
-      this.proseAssistant = new ProseAssistant(
-        assistantOrchestrator,
-        promptLoader
-      );
-    } else {
-      this.dialogueAssistant = undefined;
-      this.proseAssistant = undefined;
-    }
-
-    if (dictionaryOrchestrator) {
-      const promptLoader = this.resourceLoader.getPromptLoader();
-      this.dictionaryUtility = new DictionaryUtility(dictionaryOrchestrator, promptLoader);
-    } else {
-      this.dictionaryUtility = undefined;
-    }
-
-    if (contextOrchestrator) {
-      const promptLoader = this.resourceLoader.getPromptLoader();
-      this.contextAssistant = new ContextAssistant(contextOrchestrator, promptLoader);
-    } else {
-      this.contextAssistant = undefined;
-    }
-  }
 
   /**
    * Set the status callback for guide loading notifications
@@ -130,8 +89,11 @@ export class ProseAnalysisService implements IProseAnalysisService {
   async refreshConfiguration(): Promise<void> {
     // SPRINT 01: Delegate to AIResourceManager
     await this.aiResourceManager.refreshConfiguration();
-    // Reinitialize tools with new orchestrators
-    await this.initializeAITools();
+
+    // SPRINT 03: Delegate to analysis services to reinitialize their tools
+    await this.assistantToolService.refreshConfiguration();
+    await this.dictionaryService.refreshConfiguration();
+    await this.contextAssistantService.refreshConfiguration();
   }
 
   /**
@@ -143,75 +105,13 @@ export class ProseAnalysisService implements IProseAnalysisService {
   }
 
   async analyzeDialogue(text: string, contextText?: string, sourceFileUri?: string, focus?: 'dialogue' | 'microbeats' | 'both'): Promise<AnalysisResult> {
-    if (!this.dialogueAssistant) {
-      return AnalysisResultFactory.createAnalysisResult(
-        'dialogue_analysis',
-        this.getApiKeyWarning()
-      );
-    }
-
-    try {
-      // SPRINT 01: Use ToolOptionsProvider
-      const options = this.toolOptions.getOptions(focus);
-
-      // Log analysis focus for transparency
-      this.outputChannel?.appendLine(
-        `[DialogueAnalysis] Focus: ${options.focus} | Craft Guides: ${options.includeCraftGuides ? 'enabled' : 'disabled'}`
-      );
-
-      const executionResult = await this.dialogueAssistant.analyze(
-        {
-          text,
-          contextText,
-          sourceFileUri
-        },
-        options
-      );
-      return AnalysisResultFactory.createAnalysisResult(
-        'dialogue_analysis',
-        executionResult.content,
-        executionResult.usedGuides,
-        executionResult.usage
-      );
-    } catch (error) {
-      return AnalysisResultFactory.createAnalysisResult(
-        'dialogue_analysis',
-        `Error: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
+    // SPRINT 03: Delegate to AssistantToolService
+    return this.assistantToolService.analyzeDialogue(text, contextText, sourceFileUri, focus);
   }
 
   async analyzeProse(text: string, contextText?: string, sourceFileUri?: string): Promise<AnalysisResult> {
-    if (!this.proseAssistant) {
-      return AnalysisResultFactory.createAnalysisResult(
-        'prose_analysis',
-        this.getApiKeyWarning()
-      );
-    }
-
-    try {
-      // SPRINT 01: Use ToolOptionsProvider
-      const options = this.toolOptions.getOptions();
-      const executionResult = await this.proseAssistant.analyze(
-        {
-          text,
-          contextText,
-          sourceFileUri
-        },
-        options
-      );
-      return AnalysisResultFactory.createAnalysisResult(
-        'prose_analysis',
-        executionResult.content,
-        executionResult.usedGuides,
-        executionResult.usage
-      );
-    } catch (error) {
-      return AnalysisResultFactory.createAnalysisResult(
-        'prose_analysis',
-        `Error: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
+    // SPRINT 03: Delegate to AssistantToolService
+    return this.assistantToolService.analyzeProse(text, contextText, sourceFileUri);
   }
 
   async measureProseStats(text: string, files?: string[], sourceMode?: string): Promise<MetricsResult> {
@@ -270,114 +170,13 @@ export class ProseAnalysisService implements IProseAnalysisService {
   }
 
   async lookupDictionary(word: string, contextText?: string): Promise<AnalysisResult> {
-    if (!this.dictionaryUtility) {
-      return AnalysisResultFactory.createAnalysisResult(
-        'dictionary_lookup',
-        this.getApiKeyWarning()
-      );
-    }
-
-    try {
-      // SPRINT 01: Use ToolOptionsProvider
-      const options = this.toolOptions.getOptions();
-      const executionResult = await this.dictionaryUtility.lookup(
-        {
-          word,
-          contextText
-        },
-        {
-          temperature: options.temperature ?? 0.4,
-          maxTokens: options.maxTokens
-        }
-      );
-
-      return AnalysisResultFactory.createAnalysisResult(
-        'dictionary_lookup',
-        executionResult.content,
-        undefined,
-        executionResult.usage
-      );
-    } catch (error) {
-      return AnalysisResultFactory.createAnalysisResult(
-        'dictionary_lookup',
-        `Error: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
+    // SPRINT 03: Delegate to DictionaryService
+    return this.dictionaryService.lookupWord(word, contextText);
   }
 
   async generateContext(request: ContextGenerationRequest): Promise<ContextGenerationResult> {
-    const config = vscode.workspace.getConfiguration('proseMinion');
-    const fallbackModel = config.get<string>('model') || 'z-ai/glm-4.6';
-    const contextModel = config.get<string>('contextModel') || fallbackModel;
-
-    // SPRINT 01: Use AIResourceManager to check resolved model
-    const resolvedModel = this.aiResourceManager.getResolvedModel('context');
-    if (!this.contextAssistant || resolvedModel !== contextModel) {
-      await this.initializeAITools();
-    }
-
-    if (!this.contextAssistant) {
-      return {
-        toolName: 'context_assistant',
-        content: this.getApiKeyWarning(),
-        timestamp: new Date()
-      };
-    }
-
-    try {
-      const groups = (request.requestedGroups && request.requestedGroups.length > 0)
-        ? request.requestedGroups
-        : [...DEFAULT_CONTEXT_GROUPS];
-
-      const resourceProvider = await this.createContextResourceProvider(groups);
-
-      // Try to read the full source document if provided, to prime the model
-      let sourceContent: string | undefined;
-      if (request.sourceFileUri) {
-        try {
-          const uri = vscode.Uri.parse(request.sourceFileUri);
-          const raw = await vscode.workspace.fs.readFile(uri);
-          sourceContent = Buffer.from(raw).toString('utf8');
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          this.outputChannel?.appendLine(`[ProseAnalysisService] Failed to read source file for context: ${message}`);
-        }
-      }
-
-      // SPRINT 01: Use ToolOptionsProvider
-      const toolOptions = this.toolOptions.getOptions();
-
-      const executionResult = await this.contextAssistant.generate(
-        {
-          excerpt: request.excerpt,
-          existingContext: request.existingContext,
-          sourceFileUri: request.sourceFileUri,
-          sourceContent,
-          requestedGroups: groups
-        },
-        {
-          resourceProvider,
-          temperature: toolOptions.temperature,
-          maxTokens: toolOptions.maxTokens
-        }
-      );
-
-      return {
-        toolName: 'context_assistant',
-        content: executionResult.content,
-        timestamp: new Date(),
-        requestedResources: executionResult.requestedResources,
-        usage: executionResult.usage
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.outputChannel?.appendLine(`[ProseAnalysisService] Context assistant error: ${message}`);
-      return {
-        toolName: 'context_assistant',
-        content: `Error generating context: ${message}`,
-        timestamp: new Date()
-      };
-    }
+    // SPRINT 03: Delegate to ContextAssistantService
+    return this.contextAssistantService.generateContext(request);
   }
 
   async measureWordSearch(
@@ -499,10 +298,6 @@ export class ProseAnalysisService implements IProseAnalysisService {
     }
   }
 
-  private async createContextResourceProvider(groups: ContextPathGroup[]): Promise<ContextResourceProvider> {
-    return await this.contextResourceResolver.createProvider(groups);
-  }
-
   private async findUriByRelativePath(relativePath: string): Promise<vscode.Uri | undefined> {
     const folders = vscode.workspace.workspaceFolders ?? [];
     for (const folder of folders) {
@@ -515,20 +310,6 @@ export class ProseAnalysisService implements IProseAnalysisService {
       }
     }
     return undefined;
-  }
-
-  private getApiKeyWarning(): string {
-    return `⚠️ OpenRouter API key not configured
-
-To use AI-powered analysis tools, you need to configure your OpenRouter API key:
-
-1. Get an API key from https://openrouter.ai/
-2. Click the ⚙️ gear icon at the top of the Prose Minion view
-3. Enter your API key in the "OpenRouter API Key" field
-4. Click Save
-5. Select your preferred models for assistants and utilities
-
-The measurement tools (Prose Statistics, Style Flags, Word Frequency) work without an API key.`;
   }
 }
 
