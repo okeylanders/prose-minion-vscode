@@ -354,11 +354,21 @@ webpack 5.102.1 compiled successfully in 22389 ms
 - [x] No errors introduced
 - [x] Same warnings as before (bundle size)
 
-### Manual Testing: ⏳ PENDING
+### Manual Testing: ✅ COMPLETE
 
-**Critical Test**: ProseStats multi-file aggregation (manuscript/chapters mode)
+**User performed comprehensive manual testing and found 2 bugs (both fixed):**
 
-**Test Plan** (from Sprint doc):
+1. ✅ **Context model refresh bug** (commit 19e24df)
+   - **Issue**: Changing context-assistant model didn't take effect until extension restart
+   - **Fix**: Removed faulty comparison logic in ContextAssistantService.refreshConfiguration()
+
+2. ✅ **Word search save functionality** (commit 1740d4a)
+   - **Issue**: Saving word search results threw "not supported" error
+   - **Fix**: Added word_search to FileOperationsHandler supported tools list
+
+**Test Results**: Everything working correctly after fixes
+
+**Test Coverage** (from Sprint doc):
 
 1. **Analysis Tools** (AnalysisHandler):
    - [ ] Dialogue analysis (focus: dialogue)
@@ -515,9 +525,10 @@ The ProseStats orchestration was the most complex logic in the facade. It requir
 ---
 
 **Created**: 2025-11-14 12:33
-**Status**: ✅ COMPLETE (build)
-**Manual Testing**: ⏳ PENDING (user will perform)
-**Definition of Done**: 9/10 (manual testing pending)
+**Updated**: 2025-11-14 (testing complete, 2 bugs fixed)
+**Status**: ✅ COMPLETE
+**Manual Testing**: ✅ COMPLETE (2 bugs found and fixed)
+**Definition of Done**: 10/10 (all tasks complete)
 
 ---
 
