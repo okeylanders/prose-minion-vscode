@@ -23,6 +23,8 @@ import { WordFrequencyService } from './infrastructure/api/services/measurement/
 import { AssistantToolService } from './infrastructure/api/services/analysis/AssistantToolService';
 import { DictionaryService } from './infrastructure/api/services/dictionary/DictionaryService';
 import { ContextAssistantService } from './infrastructure/api/services/analysis/ContextAssistantService';
+// SPRINT 04: Import search service
+import { WordSearchService } from './infrastructure/api/services/search/WordSearchService';
 
 let proseToolsViewProvider: ProseToolsViewProvider | undefined;
 
@@ -32,7 +34,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(outputChannel);
 
   outputChannel.appendLine('=== Prose Minion Extension Activated ===');
-  outputChannel.appendLine('>>> DEVELOPMENT BUILD - SPRINT 03 REFACTOR <<<');
+  outputChannel.appendLine('>>> DEVELOPMENT BUILD - SPRINT 04 REFACTOR <<<');
   outputChannel.appendLine(`Extension URI: ${context.extensionUri.fsPath}`);
 
   console.log('Prose Minion extension is now active');
@@ -72,6 +74,12 @@ export function activate(context: vscode.ExtensionContext): void {
     outputChannel
   );
 
+  // SPRINT 04: Create search service
+  const wordSearchService = new WordSearchService(
+    toolOptions,
+    outputChannel
+  );
+
   // Create ProseAnalysisService with injected services
   const proseAnalysisService = new ProseAnalysisService(
     // SPRINT 01: Resource services
@@ -87,6 +95,8 @@ export function activate(context: vscode.ExtensionContext): void {
     assistantToolService,
     dictionaryService,
     contextAssistantService,
+    // SPRINT 04: Search service
+    wordSearchService,
     // Extension resources
     context.extensionUri,
     outputChannel
