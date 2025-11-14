@@ -83,17 +83,12 @@ export class ContextAssistantService {
    * Reinitialize context assistant after configuration changes
    *
    * Should be called when model selections or API key changes
+   * SPRINT 05 FIX: Always reinitialize after AIResourceManager refresh
+   * (comparison was failing because resolvedModel was already updated)
    */
   async refreshConfiguration(): Promise<void> {
-    // Check if context model has changed and reinitialize if needed
-    const config = vscode.workspace.getConfiguration('proseMinion');
-    const fallbackModel = config.get<string>('model') || 'z-ai/glm-4.6';
-    const contextModel = config.get<string>('contextModel') || fallbackModel;
-    const resolvedModel = this.aiResourceManager.getResolvedModel('context');
-
-    if (resolvedModel !== contextModel) {
-      await this.initializeContextAssistant();
-    }
+    // Always reinitialize to get the latest orchestrator from AIResourceManager
+    await this.initializeContextAssistant();
   }
 
   /**
