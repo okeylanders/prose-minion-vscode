@@ -6,9 +6,13 @@
  * - Clear boundaries between layers
  */
 
+/**
+ * SPRINT 05 REFACTOR: ProseAnalysisService facade removed
+ * Services now injected directly into ProseToolsViewProvider
+ */
+
 import * as vscode from 'vscode';
 import { ProseToolsViewProvider } from './application/providers/ProseToolsViewProvider';
-import { ProseAnalysisService } from './infrastructure/api/ProseAnalysisService';
 import { SecretStorageService } from './infrastructure/secrets/SecretStorageService';
 // SPRINT 01: Import resource services
 import { ResourceLoaderService } from './infrastructure/api/services/resources/ResourceLoaderService';
@@ -34,7 +38,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(outputChannel);
 
   outputChannel.appendLine('=== Prose Minion Extension Activated ===');
-  outputChannel.appendLine('>>> DEVELOPMENT BUILD - SPRINT 04 REFACTOR <<<');
+  outputChannel.appendLine('>>> DEVELOPMENT BUILD - SPRINT 05 REFACTOR <<<');
   outputChannel.appendLine(`Extension URI: ${context.extensionUri.fsPath}`);
 
   console.log('Prose Minion extension is now active');
@@ -80,27 +84,8 @@ export function activate(context: vscode.ExtensionContext): void {
     outputChannel
   );
 
-  // Create ProseAnalysisService with injected services
-  const proseAnalysisService = new ProseAnalysisService(
-    // SPRINT 01: Resource services
-    resourceLoader,
-    aiResourceManager,
-    standardsService,
-    toolOptions,
-    // SPRINT 02: Measurement services
-    proseStatsService,
-    styleFlagsService,
-    wordFrequencyService,
-    // SPRINT 03: Analysis services
-    assistantToolService,
-    dictionaryService,
-    contextAssistantService,
-    // SPRINT 04: Search service
-    wordSearchService,
-    // Extension resources
-    context.extensionUri,
-    outputChannel
-  );
+  // SPRINT 05: ProseAnalysisService facade removed
+  // Services now passed directly to ProseToolsViewProvider
 
   // Migrate API key from settings to SecretStorage if needed
   void migrateApiKeyToSecrets(secretsService, outputChannel);
@@ -108,7 +93,16 @@ export function activate(context: vscode.ExtensionContext): void {
   // Initialize application layer
   proseToolsViewProvider = new ProseToolsViewProvider(
     context.extensionUri,
-    proseAnalysisService,
+    // SPRINT 05: Inject all services directly
+    assistantToolService,
+    dictionaryService,
+    contextAssistantService,
+    proseStatsService,
+    styleFlagsService,
+    wordFrequencyService,
+    wordSearchService,
+    standardsService,
+    aiResourceManager,
     secretsService,
     outputChannel
   );

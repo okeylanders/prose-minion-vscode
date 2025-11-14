@@ -2,13 +2,24 @@
  * WebviewViewProvider - Application layer
  * Manages the lifecycle of the webview panel
  * Following Open/Closed Principle - extensible without modification
+ *
+ * SPRINT 05 REFACTOR: ProseAnalysisService facade removed
+ * Now accepts services directly and passes them to MessageHandler
  */
 
 import * as vscode from 'vscode';
 import { MessageHandler } from '../handlers/MessageHandler';
-import { IProseAnalysisService } from '../../domain/services/IProseAnalysisService';
 import { MessageType, SelectionUpdatedMessage, OpenSettingsToggleMessage } from '../../shared/types';
 import { SecretStorageService } from '../../infrastructure/secrets/SecretStorageService';
+import { AssistantToolService } from '../../infrastructure/api/services/analysis/AssistantToolService';
+import { DictionaryService } from '../../infrastructure/api/services/dictionary/DictionaryService';
+import { ContextAssistantService } from '../../infrastructure/api/services/analysis/ContextAssistantService';
+import { ProseStatsService } from '../../infrastructure/api/services/measurement/ProseStatsService';
+import { StyleFlagsService } from '../../infrastructure/api/services/measurement/StyleFlagsService';
+import { WordFrequencyService } from '../../infrastructure/api/services/measurement/WordFrequencyService';
+import { WordSearchService } from '../../infrastructure/api/services/search/WordSearchService';
+import { StandardsService } from '../../infrastructure/api/services/resources/StandardsService';
+import { AIResourceManager } from '../../infrastructure/api/services/resources/AIResourceManager';
 
 export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'prose-minion.toolsView';
@@ -18,7 +29,16 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
 
   constructor(
     private readonly extensionUri: vscode.Uri,
-    private readonly proseAnalysisService: IProseAnalysisService,
+    // SPRINT 05: Inject all services directly
+    private readonly assistantToolService: AssistantToolService,
+    private readonly dictionaryService: DictionaryService,
+    private readonly contextAssistantService: ContextAssistantService,
+    private readonly proseStatsService: ProseStatsService,
+    private readonly styleFlagsService: StyleFlagsService,
+    private readonly wordFrequencyService: WordFrequencyService,
+    private readonly wordSearchService: WordSearchService,
+    private readonly standardsService: StandardsService,
+    private readonly aiResourceManager: AIResourceManager,
     private readonly secretsService: SecretStorageService,
     private readonly outputChannel: vscode.OutputChannel
   ) {}
@@ -38,9 +58,17 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.html = this.getHtmlForWebview(webviewView.webview);
 
-    // Initialize message handler
+    // SPRINT 05: Initialize message handler with direct service injection
     this.messageHandler = new MessageHandler(
-      this.proseAnalysisService,
+      this.assistantToolService,
+      this.dictionaryService,
+      this.contextAssistantService,
+      this.proseStatsService,
+      this.styleFlagsService,
+      this.wordFrequencyService,
+      this.wordSearchService,
+      this.standardsService,
+      this.aiResourceManager,
       this.secretsService,
       webviewView.webview,
       this.extensionUri,

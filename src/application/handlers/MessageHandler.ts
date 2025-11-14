@@ -2,10 +2,12 @@
  * Message handler - Application layer
  * Routes messages from webview to domain handlers
  * Refactored to use domain-specific handlers for better organization
+ *
+ * SPRINT 05 REFACTOR: ProseAnalysisService facade removed
+ * Now injects services directly into domain handlers
  */
 
 import * as vscode from 'vscode';
-import { IProseAnalysisService } from '../../domain/services/IProseAnalysisService';
 import {
   WebviewToExtensionMessage,
   MessageType,
@@ -36,6 +38,17 @@ import { PublishingHandler } from './domain/PublishingHandler';
 import { SourcesHandler } from './domain/SourcesHandler';
 import { UIHandler } from './domain/UIHandler';
 import { FileOperationsHandler } from './domain/FileOperationsHandler';
+
+// SPRINT 05: Import services for direct injection
+import { AssistantToolService } from '../../infrastructure/api/services/analysis/AssistantToolService';
+import { DictionaryService } from '../../infrastructure/api/services/dictionary/DictionaryService';
+import { ContextAssistantService } from '../../infrastructure/api/services/analysis/ContextAssistantService';
+import { ProseStatsService } from '../../infrastructure/api/services/measurement/ProseStatsService';
+import { StyleFlagsService } from '../../infrastructure/api/services/measurement/StyleFlagsService';
+import { WordFrequencyService } from '../../infrastructure/api/services/measurement/WordFrequencyService';
+import { WordSearchService } from '../../infrastructure/api/services/search/WordSearchService';
+import { StandardsService } from '../../infrastructure/api/services/resources/StandardsService';
+import { AIResourceManager } from '../../infrastructure/api/services/resources/AIResourceManager';
 
 interface ResultCache {
   analysis?: AnalysisResultMessage;
@@ -126,18 +139,25 @@ export class MessageHandler {
   ] as const;
 
   constructor(
-    private readonly proseAnalysisService: IProseAnalysisService,
+    // SPRINT 05: Inject services directly (facade removed)
+    private readonly assistantToolService: AssistantToolService,
+    private readonly dictionaryService: DictionaryService,
+    private readonly contextAssistantService: ContextAssistantService,
+    private readonly proseStatsService: ProseStatsService,
+    private readonly styleFlagsService: StyleFlagsService,
+    private readonly wordFrequencyService: WordFrequencyService,
+    private readonly wordSearchService: WordSearchService,
+    private readonly standardsService: StandardsService,
+    private readonly aiResourceManager: AIResourceManager,
     private readonly secretsService: any, // SecretStorageService
     private readonly webview: vscode.Webview,
     private readonly extensionUri: vscode.Uri,
     private readonly outputChannel: vscode.OutputChannel
   ) {
-    // Set up status callback for guide loading notifications
-    if ('setStatusCallback' in proseAnalysisService && typeof (proseAnalysisService as any).setStatusCallback === 'function') {
-      (proseAnalysisService as any).setStatusCallback((message: string, guideNames?: string) => {
-        this.sendStatus(message, guideNames);
-      });
-    }
+    // SPRINT 05: Set up status callback on AIResourceManager (not facade)
+    this.aiResourceManager.setStatusCallback((message: string, guideNames?: string) => {
+      this.sendStatus(message, guideNames);
+    });
 
     const configWatcher = vscode.workspace.onDidChangeConfiguration(event => {
       // Log all proseMinion config changes for debugging
@@ -201,39 +221,45 @@ export class MessageHandler {
 
     this.disposables.push(configWatcher);
 
-    // Instantiate domain handlers
+    // SPRINT 05: Instantiate domain handlers with direct service injection
     this.analysisHandler = new AnalysisHandler(
-      proseAnalysisService,
+      assistantToolService,
       this.postMessage.bind(this),
       this.applyTokenUsage.bind(this)
     );
 
     this.dictionaryHandler = new DictionaryHandler(
-      proseAnalysisService,
+      dictionaryService,
       this.postMessage.bind(this),
       this.applyTokenUsage.bind(this)
     );
 
     this.contextHandler = new ContextHandler(
-      proseAnalysisService,
+      contextAssistantService,
       this.postMessage.bind(this),
       this.applyTokenUsage.bind(this)
     );
 
     this.metricsHandler = new MetricsHandler(
-      proseAnalysisService,
+      proseStatsService,
+      styleFlagsService,
+      wordFrequencyService,
+      standardsService,
       this.postMessage.bind(this),
       outputChannel
     );
 
     this.searchHandler = new SearchHandler(
-      proseAnalysisService,
+      wordSearchService,
       this.postMessage.bind(this),
       outputChannel
     );
 
     this.configurationHandler = new ConfigurationHandler(
-      proseAnalysisService,
+      aiResourceManager,
+      assistantToolService,
+      dictionaryService,
+      contextAssistantService,
       this.secretsService,
       this.postMessage.bind(this),
       outputChannel,
@@ -361,18 +387,17 @@ export class MessageHandler {
   }
 
   private async refreshServiceConfiguration(): Promise<void> {
-    if (
-      'refreshConfiguration' in this.proseAnalysisService &&
-      typeof (this.proseAnalysisService as any).refreshConfiguration === 'function'
-    ) {
-      try {
-        await (this.proseAnalysisService as any).refreshConfiguration();
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        this.outputChannel.appendLine(
-          `[MessageHandler] Failed to refresh service configuration: ${message}`
-        );
-      }
+    // SPRINT 05: Refresh configuration on all services that need it
+    try {
+      await this.aiResourceManager.refreshConfiguration();
+      await this.assistantToolService.refreshConfiguration();
+      await this.dictionaryService.refreshConfiguration();
+      await this.contextAssistantService.refreshConfiguration();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(
+        `[MessageHandler] Failed to refresh service configuration: ${message}`
+      );
     }
   }
 
@@ -521,13 +546,11 @@ export class MessageHandler {
   }
 
   dispose(): void {
-    // Clear status callback to avoid stale references
-    if ('setStatusCallback' in this.proseAnalysisService && typeof (this.proseAnalysisService as any).setStatusCallback === 'function') {
-      try {
-        (this.proseAnalysisService as any).setStatusCallback(undefined);
-      } catch {
-        // noop
-      }
+    // SPRINT 05: Clear status callback on AIResourceManager to avoid stale references
+    try {
+      this.aiResourceManager.setStatusCallback(undefined as any);
+    } catch {
+      // noop
     }
     while (this.disposables.length > 0) {
       const disposable = this.disposables.pop();

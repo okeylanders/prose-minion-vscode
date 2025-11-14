@@ -1,10 +1,12 @@
 /**
  * Search domain handler
  * Handles word search operations
+ *
+ * SPRINT 05 REFACTOR: Now injects WordSearchService directly (facade removed)
  */
 
 import * as vscode from 'vscode';
-import { IProseAnalysisService } from '../../../domain/services/IProseAnalysisService';
+import { WordSearchService } from '../../../infrastructure/api/services/search/WordSearchService';
 import {
   RunWordSearchMessage,
   MessageType,
@@ -16,7 +18,7 @@ import { MessageRouter } from '../MessageRouter';
 
 export class SearchHandler {
   constructor(
-    private readonly service: IProseAnalysisService,
+    private readonly wordSearchService: WordSearchService,
     private readonly postMessage: (message: any) => Promise<void>,
     private readonly outputChannel: vscode.OutputChannel
   ) {}
@@ -66,7 +68,7 @@ export class SearchHandler {
       const resolved = await this.resolveRichTextForMetrics({ text, source });
 
       const searchOptions = options || {};
-      const result = await this.service.measureWordSearch(
+      const result = await this.wordSearchService.searchWords(
         resolved.text,
         resolved.paths,
         resolved.mode,

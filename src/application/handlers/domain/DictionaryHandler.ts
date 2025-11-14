@@ -1,10 +1,12 @@
 /**
  * Dictionary domain handler
  * Handles dictionary lookup operations
+ *
+ * SPRINT 05 REFACTOR: Now injects DictionaryService directly (facade removed)
  */
 
 import * as vscode from 'vscode';
-import { IProseAnalysisService } from '../../../domain/services/IProseAnalysisService';
+import { DictionaryService } from '../../../infrastructure/api/services/dictionary/DictionaryService';
 import {
   LookupDictionaryMessage,
   MessageType,
@@ -18,7 +20,7 @@ import { MessageRouter } from '../MessageRouter';
 
 export class DictionaryHandler {
   constructor(
-    private readonly service: IProseAnalysisService,
+    private readonly dictionaryService: DictionaryService,
     private readonly postMessage: (message: any) => Promise<void>,
     private readonly applyTokenUsageCallback: (usage: TokenUsage) => void
   ) {}
@@ -90,7 +92,7 @@ export class DictionaryHandler {
       }
 
       this.sendStatus(`Generating dictionary entry for "${word}"...`);
-      const result = await this.service.lookupDictionary(word, contextText);
+      const result = await this.dictionaryService.lookupWord(word, contextText);
       this.sendDictionaryResult(result.content, result.toolName);
       if ((result as any).usage) {
         this.applyTokenUsage((result as any).usage);

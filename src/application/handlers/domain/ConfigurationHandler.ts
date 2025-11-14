@@ -1,10 +1,15 @@
 /**
  * Configuration domain handler
  * Handles settings, model selection, and token tracking
+ *
+ * SPRINT 05 REFACTOR: Now injects AIResourceManager and analysis services directly (facade removed)
  */
 
 import * as vscode from 'vscode';
-import { IProseAnalysisService } from '../../../domain/services/IProseAnalysisService';
+import { AIResourceManager } from '../../../infrastructure/api/services/resources/AIResourceManager';
+import { AssistantToolService } from '../../../infrastructure/api/services/analysis/AssistantToolService';
+import { DictionaryService } from '../../../infrastructure/api/services/dictionary/DictionaryService';
+import { ContextAssistantService } from '../../../infrastructure/api/services/analysis/ContextAssistantService';
 import {
   RequestSettingsDataMessage,
   SettingsDataMessage,
@@ -32,7 +37,10 @@ export class ConfigurationHandler {
   private webviewOriginatedUpdates = new Set<string>();
 
   constructor(
-    private readonly service: IProseAnalysisService,
+    private readonly aiResourceManager: AIResourceManager,
+    private readonly assistantToolService: AssistantToolService,
+    private readonly dictionaryService: DictionaryService,
+    private readonly contextAssistantService: ContextAssistantService,
     private readonly secretsService: SecretStorageService,
     private readonly postMessage: (message: any) => Promise<void>,
     private readonly outputChannel: vscode.OutputChannel,
@@ -352,19 +360,15 @@ export class ConfigurationHandler {
       context: config.get<string>('contextModel') || fallback
     };
 
-    if (
-      'getResolvedModelSelections' in this.service &&
-      typeof (this.service as any).getResolvedModelSelections === 'function'
-    ) {
-      try {
-        const resolved = (this.service as any).getResolvedModelSelections();
-        return { ...selections, ...resolved };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        this.outputChannel.appendLine(
-          `[ConfigurationHandler] Unable to read resolved model selections: ${message}`
-        );
-      }
+    // SPRINT 05: Get resolved model selections from AIResourceManager
+    try {
+      const resolved = this.aiResourceManager.getResolvedModelSelections();
+      return { ...selections, ...resolved };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(
+        `[ConfigurationHandler] Unable to read resolved model selections: ${message}`
+      );
     }
 
     return selections;
@@ -386,19 +390,18 @@ export class ConfigurationHandler {
 
   private async refreshServiceConfiguration(): Promise<void> {
     this.outputChannel.appendLine(`[ConfigurationHandler] refreshServiceConfiguration called`);
-    if (
-      'refreshConfiguration' in this.service &&
-      typeof (this.service as any).refreshConfiguration === 'function'
-    ) {
-      try {
-        await (this.service as any).refreshConfiguration();
-        this.outputChannel.appendLine(`[ConfigurationHandler] Service configuration refreshed`);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        this.outputChannel.appendLine(
-          `[ConfigurationHandler] Failed to refresh service configuration: ${message}`
-        );
-      }
+    // SPRINT 05: Refresh configuration on all services that need it
+    try {
+      await this.aiResourceManager.refreshConfiguration();
+      await this.assistantToolService.refreshConfiguration();
+      await this.dictionaryService.refreshConfiguration();
+      await this.contextAssistantService.refreshConfiguration();
+      this.outputChannel.appendLine(`[ConfigurationHandler] Service configuration refreshed`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(
+        `[ConfigurationHandler] Failed to refresh service configuration: ${message}`
+      );
     }
   }
 
