@@ -183,7 +183,7 @@ export class FileOperationsHandler {
       lines.push(context || '(No context provided.)', '', '---', '', content.trim());
 
       fileContent = lines.join('\n');
-    } else if (toolName === 'prose_stats' || toolName === 'style_flags' || toolName === 'word_frequency') {
+    } else if (toolName === 'prose_stats' || toolName === 'style_flags' || toolName === 'word_frequency' || toolName === 'word_search') {
       targetDir = vscode.Uri.joinPath(rootUri, 'prose-minion', 'reports');
       await vscode.workspace.fs.createDirectory(targetDir);
       const now = new Date();
