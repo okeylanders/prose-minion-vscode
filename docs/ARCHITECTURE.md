@@ -130,15 +130,113 @@ Presentation → Application → Domain ← Infrastructure
 
 Each handler encapsulates domain-specific logic with clear dependencies injected via constructor. This organization improves maintainability, testability, and makes it easy to locate and modify feature-specific behavior.
 
-### Domain Service Interface
-- **File**: [src/domain/services/IProseAnalysisService.ts](src/domain/services/IProseAnalysisService.ts)
-- **Purpose**: Defines contract for prose analysis operations
-- **Pattern**: Interface Segregation
+### Infrastructure Services Layer
 
-### Infrastructure Service
-- **File**: [src/infrastructure/api/ProseAnalysisService.ts](src/infrastructure/api/ProseAnalysisService.ts)
-- **Purpose**: Implements IProseAnalysisService, spins up dedicated OpenRouter clients per feature scope (assistant, dictionary, context). A unified `maxTokens` (default 10000) is applied across all tools. The context assistant now reads and includes the full source document on the initial turn when `sourceFileUri` is provided. Aggregates per-file stats for multi-file sources (chapters/manuscripts) and enriches metrics with publishing standards via StandardsComparisonService.
-- **Pattern**: Dependency Inversion
+The infrastructure layer consists of **11 focused services** organized by capability domain. Each service has a single responsibility and is injected directly into handlers.
+
+#### Service Organization
+
+```
+src/infrastructure/api/services/
+├── analysis/                  # AI-powered analysis services
+│   ├── AssistantToolService.ts      # Dialogue & prose analysis (208 lines)
+│   └── ContextAssistantService.ts   # Context generation (202 lines)
+├── dictionary/
+│   └── DictionaryService.ts         # Dictionary lookups (139 lines)
+├── measurement/               # Statistical measurement services
+│   ├── ProseStatsService.ts         # Prose statistics (47 lines)
+│   ├── StyleFlagsService.ts         # Style pattern detection (46 lines)
+│   └── WordFrequencyService.ts      # Word frequency analysis (57 lines)
+├── search/
+│   └── WordSearchService.ts         # Word search & clustering (466 lines)
+├── resources/                 # Resource management services
+│   ├── AIResourceManager.ts         # OpenRouter client lifecycle (247 lines)
+│   ├── StandardsService.ts          # Publishing standards enrichment (213 lines)
+│   ├── ResourceLoaderService.ts     # Prompt/guide loading (84 lines)
+│   └── ToolOptionsProvider.ts       # Tool options configuration (103 lines)
+└── shared/
+    └── (shared utilities)
+```
+
+#### Service Descriptions
+
+**Analysis Services** (`analysis/`):
+- **AssistantToolService**: Wraps DialogueMicrobeatAssistant and ProseAssistant for AI-powered analysis
+  - Dialogue analysis with focus modes (dialogue/microbeats/both)
+  - Prose analysis with craft guide integration
+  - Uses assistant-scoped OpenRouter client
+- **ContextAssistantService**: Context generation with project resource integration
+  - Two-turn conversation workflow
+  - Resource provider integration
+  - Uses context-scoped OpenRouter client
+
+**Dictionary Service** (`dictionary/`):
+- **DictionaryService**: AI-powered dictionary lookups with context awareness
+  - Word definitions, synonyms, usage
+  - Context-aware explanations
+  - Uses dictionary-scoped OpenRouter client
+
+**Measurement Services** (`measurement/`):
+- **ProseStatsService**: Statistical analysis wrapper for PassageProseStats tool
+  - Word count, sentence count, pacing metrics
+  - Simple delegation pattern
+- **StyleFlagsService**: Style pattern detection wrapper
+  - Identifies style patterns and issues
+  - Simple delegation pattern
+- **WordFrequencyService**: Word usage analysis wrapper
+  - Top 100 words, stopwords, hapax legomena
+  - POS tagging, bigrams/trigrams, lemmatization
+  - Configurable via settings
+
+**Search Service** (`search/`):
+- **WordSearchService**: Word search with cluster detection
+  - Multi-file search support
+  - Context window extraction
+  - Cluster detection algorithm
+
+**Resource Services** (`resources/`):
+- **AIResourceManager**: Manages OpenRouter client lifecycle per model scope
+  - Creates scoped clients (assistant, dictionary, context)
+  - Handles model configuration changes
+  - Propagates status callbacks
+- **StandardsService**: Publishing standards enrichment and comparison
+  - Enriches metrics with publishing standards
+  - Computes per-file stats for multi-file sources
+  - Supports genre and trim size selection
+- **ResourceLoaderService**: Centralized resource loading
+  - Prompts, guides, publishing standards
+  - Singleton instances for shared resources
+- **ToolOptionsProvider**: Tool options configuration
+  - Provides options for analysis tools
+  - Handles temperature, max tokens, etc.
+
+#### Architectural Pattern
+
+**Before (God Component)**:
+```
+extension.ts → ProseAnalysisService (868 lines, all responsibilities)
+                    ↓
+               Domain Handlers
+```
+
+**After (Focused Services)**:
+```
+extension.ts → 11 Focused Services (< 500 lines each)
+                    ↓
+            Domain Handlers (inject what they need)
+```
+
+**Benefits**:
+- ✅ Single Responsibility Principle: Each service has one clear purpose
+- ✅ Dependency Inversion: Handlers depend on services, not a facade
+- ✅ Open/Closed: Easy to add new services without modifying existing ones
+- ✅ Interface Segregation: Handlers only inject what they need
+- ✅ No god components: Largest service is 466 lines (WordSearchService)
+
+**References**:
+- [ADR-2025-11-11: ProseAnalysisService Domain Services Refactor](../adr/2025-11-11-prose-analysis-service-refactor.md)
+- [Epic: ProseAnalysisService Refactor](./../.todo/epics/epic-prose-analysis-service-refactor-2025-11-11/)
+- [Memory Bank: Sprint 05 Complete](./../.memory-bank/20251114-1233-sprint-05-facade-deleted-complete.md)
 
 ### AI Orchestrator
 - **File**: [src/application/services/AIResourceOrchestrator.ts](src/application/services/AIResourceOrchestrator.ts)
@@ -639,11 +737,16 @@ The project uses **two webpack configurations** in [webpack.config.js](webpack.c
 
 ### SOLID Principles
 
-1. **Single Responsibility**: Each class/module has one reason to change
-2. **Open/Closed**: Extensible without modification (add new tools by implementing interfaces)
-3. **Liskov Substitution**: IProseAnalysisService can be swapped with any implementation
-4. **Interface Segregation**: Small, focused interfaces
-5. **Dependency Inversion**: High-level modules depend on abstractions
+1. **Single Responsibility**: Each service has one clear purpose and reason to change
+   - Example: AssistantToolService only handles dialogue/prose analysis
+2. **Open/Closed**: Extensible without modification (add new services without changing existing ones)
+   - Example: Adding SearchHandler didn't require modifying other handlers
+3. **Liskov Substitution**: Services implement focused contracts that can be swapped
+   - Example: Different AI orchestrators could be injected into services
+4. **Interface Segregation**: Handlers inject only the services they need
+   - Example: SearchHandler only injects WordSearchService, not all 11 services
+5. **Dependency Inversion**: Handlers depend on service abstractions, not concrete implementations
+   - Example: MetricsHandler depends on injected services, enabling testability
 
 ### Clean Code Practices
 
@@ -657,38 +760,57 @@ The project uses **two webpack configurations** in [webpack.config.js](webpack.c
 
 ### Prose Minion MCP Tools
 
-The infrastructure layer is designed to integrate with the prose-minion MCP tool:
+The infrastructure services layer is designed to integrate with MCP tools:
 
-**Current**: Placeholder implementations in [ProseAnalysisService.ts](src/infrastructure/api/ProseAnalysisService.ts)
+**Current**: Direct OpenRouter API integration via AIResourceManager
 
 **Future**:
-- Integrate with OpenRouter API
-- Use MCP protocol for tool communication
-- Subprocess execution of prose-minion tools
+- MCP protocol integration for tool communication
+- Subprocess execution of prose-minion MCP tools
+- Additional analysis capabilities via MCP server
 
 ### Extension Points
 
-To add a new tool:
+To add a new feature:
 
 1. **Define message types**: Add to appropriate domain file in [src/shared/types/messages/](src/shared/types/messages/) (or create a new one)
    - Add message interface extending `BaseMessage`
    - Add to `MessageType` enum in `base.ts`
    - Export from `index.ts` barrel export
 
-2. **Add domain handler** (if new domain):
-   - Create new handler in [src/application/handlers/domain/](src/application/handlers/domain/)
+2. **Create service** (if needed):
+   - Create new service in [src/infrastructure/api/services/](src/infrastructure/api/services/)
+   - Follow Single Responsibility Principle (one clear purpose)
+   - Keep services focused (< 500 lines)
    - Inject dependencies via constructor
+
+3. **Add domain handler** (if new domain):
+   - Create new handler in [src/application/handlers/domain/](src/application/handlers/domain/)
+   - Inject required services via constructor (only what's needed)
    - Implement handler methods
+   - Register routes with MessageRouter
 
-3. **Update MessageHandler routing**:
-   - Instantiate domain handler in [MessageHandler constructor](src/application/handlers/MessageHandler.ts)
-   - Add case to switch statement to delegate to domain handler
+4. **Update MessageHandler**:
+   - Add service instantiation in [extension.ts](src/extension.ts)
+   - Pass services to ProseToolsViewProvider
+   - ProseToolsViewProvider passes to MessageHandler
+   - MessageHandler instantiates domain handler with services
+   - Register handler routes with MessageRouter
 
-4. **Add service method**:
-   - Add method to [IProseAnalysisService](src/domain/services/IProseAnalysisService.ts)
-   - Implement in [ProseAnalysisService](src/infrastructure/api/ProseAnalysisService.ts)
+5. **Add frontend hook** (if needed):
+   - Create domain hook in [src/presentation/webview/hooks/domain/](src/presentation/webview/hooks/domain/)
+   - Follow Tripartite Hook Interface pattern (State, Actions, Persistence)
+   - Register message handlers with useMessageRouter
 
-5. **Add UI**: Create or update React component in [src/presentation/webview/components/](src/presentation/webview/components/)
+6. **Add UI**: Create or update React component in [src/presentation/webview/components/](src/presentation/webview/components/)
+
+**Example Flow**:
+```
+User action in UI → Domain Hook → postMessage
+  → MessageHandler → Domain Handler → Service(s)
+  → Result → MessageHandler → postMessage
+  → Domain Hook → Update state → UI re-renders
+```
 
 ## Development Workflow
 

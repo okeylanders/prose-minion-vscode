@@ -1,10 +1,17 @@
 /**
  * Metrics domain handler
  * Handles prose statistics, style flags, and word frequency operations
+ *
+ * SPRINT 05 REFACTOR: Now injects measurement services directly (facade removed)
+ * Implements ProseStats orchestration (application layer responsibility)
  */
 
 import * as vscode from 'vscode';
-import { IProseAnalysisService } from '../../../domain/services/IProseAnalysisService';
+import { ProseStatsService } from '../../../infrastructure/api/services/measurement/ProseStatsService';
+import { StyleFlagsService } from '../../../infrastructure/api/services/measurement/StyleFlagsService';
+import { WordFrequencyService } from '../../../infrastructure/api/services/measurement/WordFrequencyService';
+import { StandardsService } from '../../../infrastructure/api/services/resources/StandardsService';
+import { AnalysisResultFactory } from '../../../domain/models/AnalysisResult';
 import {
   MeasureProseStatsMessage,
   MeasureStyleFlagsMessage,
@@ -18,7 +25,10 @@ import { MessageRouter } from '../MessageRouter';
 
 export class MetricsHandler {
   constructor(
-    private readonly service: IProseAnalysisService,
+    private readonly proseStatsService: ProseStatsService,
+    private readonly styleFlagsService: StyleFlagsService,
+    private readonly wordFrequencyService: WordFrequencyService,
+    private readonly standardsService: StandardsService,
     private readonly postMessage: (message: any) => Promise<void>,
     private readonly outputChannel: vscode.OutputChannel
   ) {}
@@ -66,7 +76,28 @@ export class MetricsHandler {
   async handleMeasureProseStats(message: MeasureProseStatsMessage): Promise<void> {
     try {
       const resolved = await this.resolveRichTextForMetrics(message.payload);
-      const result = await this.service.measureProseStats(resolved.text, resolved.paths, resolved.mode);
+
+      // SPRINT 05: Orchestrate ProseStats use case (application layer responsibility)
+      // Step 1: Get base stats from ProseStatsService
+      const stats = this.proseStatsService.analyze({ text: resolved.text });
+
+      // Step 2: Multi-file aggregation (if manuscript/chapters mode)
+      if (resolved.paths && resolved.paths.length > 0 && (resolved.mode === 'manuscript' || resolved.mode === 'chapters')) {
+        const per = await this.standardsService.computePerFileStats(resolved.paths, this.proseStatsService);
+        const chapterWordCounts = per.map(p => p.stats.wordCount);
+        const chapterCount = chapterWordCounts.length;
+        const totalWords = chapterWordCounts.reduce((a, b) => a + b, 0);
+        const avgChapterLength = chapterCount > 0 ? Math.round(totalWords / chapterCount) : 0;
+        (stats as any).chapterCount = chapterCount;
+        (stats as any).averageChapterLength = avgChapterLength;
+        (stats as any).perChapterStats = per;
+      }
+
+      // Step 3: Standards enrichment
+      const enriched = await this.standardsService.enrichWithStandards(stats);
+
+      // Step 4: Wrap result and send
+      const result = AnalysisResultFactory.createMetricsResult('prose_stats', enriched);
       this.sendMetricsResult(result.metrics, result.toolName);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -77,7 +108,9 @@ export class MetricsHandler {
   async handleMeasureStyleFlags(message: MeasureStyleFlagsMessage): Promise<void> {
     try {
       const text = await this.resolveTextForMetrics(message.payload);
-      const result = await this.service.measureStyleFlags(text);
+      // SPRINT 05: Direct delegation to StyleFlagsService
+      const flags = this.styleFlagsService.analyze(text);
+      const result = AnalysisResultFactory.createMetricsResult('style_flags', flags);
       this.sendMetricsResult(result.metrics, result.toolName);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -88,7 +121,9 @@ export class MetricsHandler {
   async handleMeasureWordFrequency(message: MeasureWordFrequencyMessage): Promise<void> {
     try {
       const text = await this.resolveTextForMetrics(message.payload);
-      const result = await this.service.measureWordFrequency(text);
+      // SPRINT 05: Direct delegation to WordFrequencyService
+      const frequency = this.wordFrequencyService.analyze(text);
+      const result = AnalysisResultFactory.createMetricsResult('word_frequency', frequency);
       this.sendMetricsResult(result.metrics, result.toolName);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);

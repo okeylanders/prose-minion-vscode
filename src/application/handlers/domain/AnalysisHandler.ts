@@ -1,19 +1,19 @@
 /**
  * Analysis domain handler
  * Handles dialogue and prose analysis operations
+ *
+ * SPRINT 05 REFACTOR: Now injects AssistantToolService directly (facade removed)
  */
 
 import * as vscode from 'vscode';
-import { IProseAnalysisService } from '../../../domain/services/IProseAnalysisService';
+import { AssistantToolService } from '../../../infrastructure/api/services/analysis/AssistantToolService';
 import {
   AnalyzeDialogueMessage,
   AnalyzeProseMessage,
   AnalysisResultMessage,
   StatusMessage,
   ErrorMessage,
-  TokenUsageUpdateMessage,
   TokenUsage,
-  TokenUsageTotals,
   ErrorSource,
   MessageType
 } from '../../../shared/types/messages';
@@ -21,7 +21,7 @@ import { MessageRouter } from '../MessageRouter';
 
 export class AnalysisHandler {
   constructor(
-    private readonly service: IProseAnalysisService,
+    private readonly assistantToolService: AssistantToolService,
     private readonly postMessage: (message: any) => Promise<void>,
     private readonly applyTokenUsageCallback: (usage: TokenUsage) => void
   ) {}
@@ -99,7 +99,7 @@ export class AnalysisHandler {
       await new Promise(resolve => setTimeout(resolve, 100)); // Brief delay to ensure UI updates
 
       this.sendStatus('Analyzing dialogue with AI...');
-      const result = await this.service.analyzeDialogue(
+      const result = await this.assistantToolService.analyzeDialogue(
         text,
         contextText,
         sourceFileUri,
@@ -129,7 +129,7 @@ export class AnalysisHandler {
       await new Promise(resolve => setTimeout(resolve, 100)); // Brief delay to ensure UI updates
 
       this.sendStatus('Analyzing prose with AI...');
-      const result = await this.service.analyzeProse(
+      const result = await this.assistantToolService.analyzeProse(
         text,
         contextText,
         sourceFileUri

@@ -1,10 +1,12 @@
 /**
  * Context domain handler
  * Handles context generation operations
+ *
+ * SPRINT 05 REFACTOR: Now injects ContextAssistantService directly (facade removed)
  */
 
 import * as vscode from 'vscode';
-import { IProseAnalysisService } from '../../../domain/services/IProseAnalysisService';
+import { ContextAssistantService } from '../../../infrastructure/api/services/analysis/ContextAssistantService';
 import { ContextGenerationResult } from '../../../domain/models/ContextGeneration';
 import {
   GenerateContextMessage,
@@ -19,7 +21,7 @@ import { MessageRouter } from '../MessageRouter';
 
 export class ContextHandler {
   constructor(
-    private readonly service: IProseAnalysisService,
+    private readonly contextAssistantService: ContextAssistantService,
     private readonly postMessage: (message: any) => Promise<void>,
     private readonly applyTokenUsageCallback: (usage: TokenUsage) => void
   ) {}
@@ -94,7 +96,7 @@ export class ContextHandler {
       this.sendStatus('Gathering project resources for context...');
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      const result = await this.service.generateContext({
+      const result = await this.contextAssistantService.generateContext({
         excerpt,
         existingContext,
         sourceFileUri,

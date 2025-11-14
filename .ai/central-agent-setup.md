@@ -289,13 +289,22 @@ usePersistence({
    - Inject dependencies via constructor (service, helper methods)
    - Implement handler methods for the domain
 
-3. **Update MessageHandler routing**:
-   - Instantiate domain handler in `MessageHandler` constructor
-   - Add case to switch statement to delegate to domain handler
+3. **Create service** (if needed):
+   - Create new service in `src/infrastructure/api/services/` under appropriate subdirectory:
+     - `analysis/` - Analysis tools (AssistantToolService, ContextAssistantService)
+     - `dictionary/` - Dictionary services (DictionaryService)
+     - `measurement/` - Metrics services (ProseStatsService, StyleFlagsService, WordFrequencyService)
+     - `search/` - Search services (WordSearchService)
+     - `resources/` - Resource management (AIResourceManager, StandardsService)
+   - Follow Single Responsibility Principle (one clear purpose)
+   - Keep services focused (< 500 lines)
+   - Inject dependencies via constructor
+   - If extending existing functionality, add method to existing service instead
 
-4. **Add service method**:
-   - Add method to `IProseAnalysisService` interface
-   - Implement in `ProseAnalysisService`
+4. **Update MessageHandler**:
+   - Instantiate service(s) in `MessageHandler` constructor (if new services)
+   - Inject required services into domain handler constructor
+   - Handler registers its routes via `registerRoutes()` method
 
 5. **Create system prompts** in `resources/system-prompts/[tool-name]/`
 
