@@ -4,6 +4,7 @@ module.exports = {
   testEnvironment: 'node', // 'jsdom' for React component tests later
   roots: ['<rootDir>/src/__tests__'], // All tests in separate directory
   testMatch: ['**/*.test.ts', '**/*.spec.ts'],
+  setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
   moduleNameMapper: {
     // Support path aliases in tests
     '^@/(.*)$': '<rootDir>/src/$1'
