@@ -4,3 +4,6 @@ node_modules
 out/
 dist/
 .DS_Store
+
+# Test coverage output
+coverage/

@@ -828,7 +828,75 @@ npm run build
 # Press F5 to launch Extension Development Host
 ```
 
-## Testing the Extension
+## Testing
+
+### Automated Testing Framework
+
+The codebase uses **Jest** with **ts-jest** for automated testing. The testing strategy follows an **Infrastructure-First Lightweight** approach, targeting 40% code coverage while protecting core architectural patterns and business logic.
+
+**Test Structure**:
+- All tests located in `src/__tests__/` (separate from source code)
+- Mirrors `src/` directory structure for easy navigation
+- Path aliases supported: `@/` maps to `src/`
+
+**Test Commands**:
+```bash
+# Run all tests (124 tests)
+npm test
+
+# Run with coverage report
+npm run test:coverage
+
+# Watch mode (auto-rerun on changes)
+npm run test:watch
+
+# Run only Tier 1 infrastructure tests
+npm run test:tier1
+```
+
+**Coverage Goals** (Achieved 2025-11-15):
+| Metric | Target | Actual | Status |
+|--------|--------|--------|--------|
+| Statements | 40% | 43.1% | ✅ |
+| Functions | 40% | 46.52% | ✅ |
+| Lines | 40% | 41.58% | ✅ |
+| Branches | 20% | 20.72% | ✅ |
+
+**What's Tested**:
+
+**Tier 1 - Infrastructure Patterns** (25 tests):
+- MessageRouter (Strategy pattern implementation)
+- Domain hooks (Tripartite Interface: State, Actions, Persistence)
+- Message routing and handler registration
+
+**Tier 2 - Domain Handlers** (25 tests):
+- Route registration for all 10 domain handlers
+- Handler initialization and dependency injection
+- Error handling for handler operations
+
+**Tier 3 - Business Logic** (74 tests):
+- Word clustering algorithm (window size, minimum cluster size, case sensitivity)
+- Publishing standards lookup and caching
+- Prose statistics calculations (word count, dialogue %, lexical density, pacing, etc.)
+
+**Not Tested** (Intentionally Deferred):
+- UI components (React - complex mocking, high churn)
+- OpenRouter API integration (external dependency - manual testing)
+- VSCode extension activation (requires @vscode/test-electron)
+
+**Testing Philosophy**:
+- Focus on **architectural patterns** that every feature depends on
+- Test **complex business logic** (algorithms, calculations)
+- **Defer UI testing** until v1.0 (presentation layer has high churn)
+- Target **40% coverage** (not 80-100%) for alpha development velocity
+
+**References**:
+- [ADR-2025-11-15: Lightweight Testing Framework](adr/2025-11-15-lightweight-testing-framework.md)
+- [Infrastructure Testing Epic](.todo/archived/epics/epic-infrastructure-testing-2025-11-15/)
+
+---
+
+### Manual Testing the Extension
 
 1. Open this project in VS Code
 2. Press F5 to launch Extension Development Host

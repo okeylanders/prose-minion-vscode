@@ -470,7 +470,17 @@
         "proseMinion.wordFrequency.minCharacterLength": {
           "type": "number",
           "default": 1,
-          "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+          "enum": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ],
           "markdownDescription": "Minimum character length for words in Word Frequency results. Filter helps identify longer, more distinctive word patterns by excluding short common words. **1+** = all words, **3+** = excludes 'it', 'is', 'an', **5+** = multi-syllable words, **6+** = distinctive vocabulary, **7+** = complex words, **8+** = advanced vocabulary, **9+** = rare/specialized words. Applied to Top Words, POS, Bigrams/Trigrams, Hapax List, and Lemmas. Does NOT filter Stop Words or Length Histogram.",
           "order": 29
         },
@@ -521,12 +531,18 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
-    "build": "webpack --mode production",
+    "build": "npm run test:tier1 && webpack --mode production",
     "watch": "webpack --mode development --watch",
     "package": "vsce package",
-    "lint": "eslint src --ext ts,tsx"
+    "lint": "eslint src --ext ts,tsx",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:tier1": "jest --testPathPattern='(useMessageRouter|usePersistence|MessageHandler|useAnalysis|useMetrics)'"
   },
   "devDependencies": {
+    "@testing-library/react-hooks": "^8.0.1",
+    "@types/jest": "^30.0.0",
     "@types/node": "^18.0.0",
     "@types/react": "^17.0.0",
     "@types/react-dom": "^17.0.0",
@@ -536,10 +552,12 @@
     "autoprefixer": "^10.4.0",
     "css-loader": "^6.0.0",
     "eslint": "^8.0.0",
+    "jest": "^29.7.0",
     "postcss": "^8.4.0",
     "postcss-loader": "^7.0.0",
     "style-loader": "^3.0.0",
     "tailwindcss": "^3.0.0",
+    "ts-jest": "^29.4.5",
     "ts-loader": "^9.0.0",
     "typescript": "^4.9.0",
     "webpack": "^5.0.0",
