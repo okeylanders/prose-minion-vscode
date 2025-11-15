@@ -54,7 +54,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const toolOptions = new ToolOptionsProvider();
 
   // SPRINT 02: Create measurement services
-  const proseStatsService = new ProseStatsService();
+  const proseStatsService = new ProseStatsService(outputChannel);
   const styleFlagsService = new StyleFlagsService();
   const wordFrequencyService = new WordFrequencyService(toolOptions, outputChannel);
 
