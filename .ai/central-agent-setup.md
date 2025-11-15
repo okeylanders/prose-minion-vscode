@@ -795,6 +795,67 @@ Project Root
 
 ## Testing and Development
 
+### Automated Testing Framework
+
+The project uses **Jest** with **ts-jest** for automated testing. Tests follow an **Infrastructure-First Lightweight Testing** approach focusing on protecting core architectural patterns and business logic.
+
+**Test Organization**:
+```
+src/__tests__/         # All tests in separate directory (mirrors src/ structure)
+├── setup.ts           # VSCode API mocks and global test setup
+├── application/
+│   └── handlers/      # MessageRouter + domain handler tests
+├── presentation/
+│   └── webview/hooks/domain/  # Domain hook contract tests
+├── infrastructure/
+│   ├── api/services/  # Business logic tests (word search, etc.)
+│   └── standards/     # Publishing standards tests
+└── tools/measure/     # Measurement tool tests (prose stats, etc.)
+```
+
+**Running Tests**:
+```bash
+# Run all tests
+npm test
+
+# Run with coverage report
+npm run test:coverage
+
+# Run tests in watch mode (re-runs on changes)
+npm run test:watch
+
+# Run only infrastructure tests
+npm run test:tier1
+```
+
+**Test Coverage** (as of 2025-11-15):
+- 124 tests across 3 tiers
+- 43.1% statement coverage (target: 40%) ✅
+- 46.52% function coverage (target: 40%) ✅
+- 41.58% line coverage (target: 40%) ✅
+- Coverage report saved to `coverage/` (gitignored)
+
+**What's Tested**:
+- ✅ **Tier 1 - Infrastructure Patterns**: MessageRouter (Strategy pattern), domain hooks (Tripartite Interface), message routing
+- ✅ **Tier 2 - Domain Handlers**: Route registration for all 10 domain handlers
+- ✅ **Tier 3 - Business Logic**: Word clustering algorithm, publishing standards lookup, prose statistics calculations
+
+**What's NOT Tested** (intentionally deferred):
+- ❌ UI components (React components - deferred to v1.0)
+- ❌ OpenRouter API integration (external dependency - manual testing only)
+- ❌ VSCode extension activation (requires @vscode/test-electron)
+
+**Testing Philosophy**:
+- **Infrastructure-First**: Protect architectural patterns that every feature depends on
+- **Lightweight**: 40% coverage target (not 80-100%) to balance velocity with safety
+- **Token-Conscious**: Focus on high-value tests; defer comprehensive TDD until v1.0
+
+**References**:
+- [ADR-2025-11-15: Lightweight Testing Framework](docs/adr/2025-11-15-lightweight-testing-framework.md)
+- [Epic: Infrastructure Testing](.todo/archived/epics/epic-infrastructure-testing-2025-11-15/)
+
+---
+
 ### Running the Extension
 
 ```bash
