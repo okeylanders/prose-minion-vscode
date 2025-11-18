@@ -57,7 +57,17 @@ Build the backend infrastructure for Context Search: message contracts, service 
 - [ ] Define `ContextSearchResult` interface (see ADR for full schema)
 - [ ] Export from `search.ts` and `index.ts` barrel
 
-### 2. System Prompts
+### 2. WordFrequency Enhancement
+**File**: `src/tools/measure/wordFrequency/index.ts`
+
+- [ ] Add public method `extractUniqueWords(text, options)` to WordFrequency class
+  - Options: `minCharacterLength`, `excludeStopwords`
+  - Reuses private `extractWords()` for tokenization
+  - Filters by min length and stopwords
+  - Returns sorted array of unique words
+- [ ] Export method for use by ContextSearchService
+
+### 3. System Prompts
 **Directory**: `resources/system-prompts/context-search/`
 
 - [ ] Create `00-role.md` (semantic word matcher role)
@@ -65,7 +75,7 @@ Build the backend infrastructure for Context Search: message contracts, service 
 - [ ] Create `02-constraints.md` (matching guidelines)
 - [ ] Test prompt manually via OpenRouter playground
 
-### 3. ContextSearchService
+### 4. ContextSearchService
 **File**: `src/infrastructure/api/services/search/ContextSearchService.ts`
 
 **Methods to implement**:
@@ -94,7 +104,7 @@ Build the backend infrastructure for Context Search: message contracts, service 
   - Wrap WordSearchService result with category metadata (query)
   - Add timestamp
 
-### 4. SearchHandler Integration
+### 5. SearchHandler Integration
 **File**: `src/application/handlers/domain/SearchHandler.ts`
 
 - [ ] Instantiate `ContextSearchService` in constructor (inject OpenRouterClient)
@@ -110,14 +120,14 @@ Build the backend infrastructure for Context Search: message contracts, service 
   ```
 - [ ] Add error handling (try/catch, send error result on failure)
 
-### 5. Error Handling
+### 6. Error Handling
 - [ ] Handle AI API failures (network errors, rate limits)
 - [ ] Handle invalid AI responses (non-JSON, wrong format)
 - [ ] Handle empty word lists (no distinct words found)
 - [ ] Handle invalid queries (empty string)
 - [ ] Log errors to Output Channel
 
-### 6. Testing
+### 7. Testing
 - [ ] Manual test: Small text (100 words), simple query ("clothing")
 - [ ] Manual test: Medium text (1K words), compound query ("color red")
 - [ ] Manual test: Edge cases (empty query, no matches)

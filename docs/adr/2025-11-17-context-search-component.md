@@ -137,7 +137,7 @@ export interface ContextSearchResult extends BaseMessage {
 
 **Responsibilities**:
 
-- Extract distinct word list from text
+- **Delegate to WordFrequency for unique word extraction** (consistent tokenization across all features)
 - Build AI prompt for semantic matching
 - Parse AI response to get matched words
 - **Delegate to WordSearchService for occurrence counting, clustering, chapter detection**
@@ -149,8 +149,8 @@ export interface ContextSearchResult extends BaseMessage {
 class ContextSearchService {
   constructor(
     private openRouterClient: OpenRouterClient,
-    private wordSearchService: WordSearchService,  // NEW: Composition
-    private textProcessor: TextProcessorService
+    private wordSearchService: WordSearchService,  // Composition: occurrence counting
+    private wordFrequency: WordFrequency           // Composition: word extraction
   );
 
   async searchByContext(
@@ -161,9 +161,9 @@ class ContextSearchService {
     options: ContextSearchOptions
   ): Promise<ContextSearchResult>;
 
-  private extractDistinctWords(text: string, options: WordFilterOptions): string[];
   private buildMatchingPrompt(query: string, words: string[]): string;
   private parseAIMatches(aiResponse: string): string[];
+  // REMOVED: extractDistinctWords → delegates to WordFrequency.extractUniqueWords() instead
   // REMOVED: countOccurrences → delegates to WordSearchService instead
   private formatResults(wordSearchResult: MetricsResult, query: string): ContextSearchResult;
 }
@@ -173,8 +173,11 @@ class ContextSearchService {
 
 ```typescript
 async searchByContext(query, text, files, sourceMode, options) {
-  // 1. Extract unique words
-  const allWords = this.extractDistinctWords(text, options);
+  // 1. Extract unique words via WordFrequency (consistent tokenization)
+  const allWords = this.wordFrequency.extractUniqueWords(text, {
+    minCharacterLength: options.minWordLength || 2,
+    excludeStopwords: options.excludeStopwords !== false
+  });
 
   // 2. AI matching
   const matchedWords = await this.queryAIForMatches(query, allWords);
@@ -408,6 +411,7 @@ See [Epic: Context Search](.todo/epics/epic-context-search-2025-11-17/epic-conte
 
 **Effort Savings**:
 
+- ✅ No word extraction/tokenization logic (WordFrequency provides consistent implementation)
 - ✅ No occurrence counting logic (WordSearchService)
 - ✅ No cluster detection logic (WordSearchService)
 - ✅ No chapter detection logic (WordSearchService)
@@ -418,16 +422,22 @@ See [Epic: Context Search](.todo/epics/epic-context-search-2025-11-17/epic-conte
 ## References
 
 - [Spec Document](.todo/search-module/2025-10-24-context-search-component.md)
-- [Word Search Architecture](src/infrastructure/api/services/search/WordSearchService.ts)
+- [Word Search Architecture](src/infrastructure/api/services/search/WordSearchService.ts) (occurrence counting, clustering, chapters)
+- [Word Frequency](src/tools/measure/wordFrequency/index.ts) (word extraction/tokenization)
 - [Search Handler](src/application/handlers/domain/SearchHandler.ts)
 - [useSearch Hook](src/presentation/webview/hooks/domain/useSearch.ts)
 
 ## Revision History
 
-- **2025-11-18**: **MAJOR UPDATE** - Service Composition Pattern
-  - Added WordSearchService delegation strategy (50% effort reduction)
+- **2025-11-18**: **MAJOR UPDATE** - Service Composition Pattern (Two Architectural Wins)
+  - **Win #1**: WordSearchService delegation strategy (50% effort reduction)
+    - Occurrence counting, clustering, chapter detection delegated
+    - Multi-file batch processing moved from Phase 2 to Phase 1 (FREE)
+    - ZERO new settings needed (reuse Word Search settings)
+  - **Win #2**: WordFrequency tokenization reuse (consistency win)
+    - Use `WordFrequency.extractUniqueWords()` for word extraction
+    - Ensures consistent word tokenization across all features (dashes, apostrophes, stopwords)
+    - Single source of truth for word extraction logic
   - Updated architecture to reflect composition over duplication
-  - Multi-file batch processing moved from Phase 2 to Phase 1 (FREE)
-  - ZERO new settings needed (reuse Word Search settings)
   - Revised effort estimate: 3-4 days → 1.75 days
 - **2025-11-17**: Initial draft (Proposed)

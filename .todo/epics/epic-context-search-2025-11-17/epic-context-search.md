@@ -74,13 +74,15 @@ Add AI-powered semantic search to the Search tab, enabling writers to find words
 
 **Anti-Pattern Prevention**:
 
-- ✅ Single responsibility (ContextSearchService = "AI matching", WordSearchService = "search & analyze")
+- ✅ Single responsibility (ContextSearchService = "AI matching", WordSearchService = "search & analyze", WordFrequency = "tokenization")
 - ✅ No god components (ContextSearchService < 200 lines estimated, delegates heavy lifting)
 - ✅ Clear domain boundaries (Search, not scattered)
 - ✅ Type-safe (full TypeScript contracts)
-- ✅ **DRY via composition** (reuse WordSearchService instead of duplicating logic)
+- ✅ **DRY via composition** (reuse WordSearchService + WordFrequency instead of duplicating logic)
 
-**Architectural Win**: By delegating to WordSearchService, we get:
+**Architectural Wins** (Two Major Discoveries):
+
+**Win #1 - WordSearchService Delegation**:
 
 - ✅ Occurrence counting (line numbers, snippets)
 - ✅ Cluster detection (proximity analysis)
@@ -89,6 +91,13 @@ Add AI-powered semantic search to the Search tab, enabling writers to find words
 - ✅ Context snippet extraction
 - ✅ All existing Word Search settings (contextWords, clusterWindow, minClusterSize)
 - ✅ Proven, tested implementation (no new bugs from duplication)
+
+**Win #2 - WordFrequency Tokenization Reuse**:
+
+- ✅ Consistent word extraction across all features (dashes, apostrophes, stopwords)
+- ✅ Single source of truth for tokenization logic
+- ✅ No custom word extraction implementation needed
+- ✅ `WordFrequency.extractUniqueWords()` handles filtering (min length, stopwords)
 
 ## Sprints
 
@@ -100,16 +109,17 @@ Add AI-powered semantic search to the Search tab, enabling writers to find words
 **Scope**:
 
 - Define message types (CONTEXT_SEARCH_REQUEST, CONTEXT_SEARCH_RESULT)
-- Implement ContextSearchService (word extraction, AI prompt, parsing, **delegate to WordSearchService**)
+- **Add public method to WordFrequency** for unique word extraction
+- Implement ContextSearchService (AI prompt, parsing, **delegate to WordFrequency + WordSearchService**)
 - Create system prompts for semantic matching
 - Register route in SearchHandler
-- Unit tests for word extraction and AI response parsing (not counting - WordSearchService handles it)
+- Unit tests for AI response parsing (word extraction & counting delegated)
 
 **Acceptance**:
 
 - ✅ Backend accepts context search request, returns results
 - ✅ AI prompt format tested manually (returns valid JSON)
-- ✅ Word extraction filters stopwords, min length
+- ✅ **Delegates to WordFrequency.extractUniqueWords() for word extraction**
 - ✅ **Delegates to WordSearchService.searchWords() for occurrence counting**
 
 **Details**: [Sprint 01](sprints/01-backend-service.md)
@@ -201,9 +211,9 @@ Add AI-powered semantic search to the Search tab, enabling writers to find words
 **Internal**:
 
 - **WordSearchService** (existing, **CRITICAL** - provides occurrence counting, clustering, chapter detection)
+- **WordFrequency** (existing, **CRITICAL** - provides consistent word extraction/tokenization)
 - SearchHandler (existing, extend with new route)
 - useSearch hook (existing, extend with context search state)
-- TextProcessorService (existing, for word extraction)
 - ToolOptionsProvider (existing, provides Word Search settings)
 
 **Settings Reused** (ZERO new settings needed):
@@ -223,7 +233,7 @@ Add AI-powered semantic search to the Search tab, enabling writers to find words
 | AI matching inaccurate | Medium | Prompt iteration, examples in system prompt |
 | Slow performance on large texts | Medium | Batch processing, progress indicators, Haiku model |
 | High API cost | Low | Default to Haiku ($0.01/search), warn for large texts |
-| Word extraction misses variations | Low | Use existing TextProcessorService (proven in Word Frequency) |
+| Word extraction misses variations | Low | Use WordFrequency.extractUniqueWords() (proven, consistent tokenization) |
 
 ## Testing Strategy
 
@@ -271,17 +281,23 @@ Add AI-powered semantic search to the Search tab, enabling writers to find words
 
 - [Spec Document](.todo/search-module/2025-10-24-context-search-component.md)
 - [ADR-2025-11-17](../../docs/adr/2025-11-17-context-search-component.md)
-- [Word Search Service](../../src/infrastructure/api/services/search/WordSearchService.ts) (reference implementation)
+- [Word Search Service](../../src/infrastructure/api/services/search/WordSearchService.ts) (occurrence counting, clustering, chapters)
+- [Word Frequency](../../src/tools/measure/wordFrequency/index.ts) (word extraction/tokenization)
 - [Search Handler](../../src/application/handlers/domain/SearchHandler.ts)
 - [useSearch Hook](../../src/presentation/webview/hooks/domain/useSearch.ts)
 
 ## Changelog
 
-- **2025-11-18**: **MAJOR ARCHITECTURAL WIN** - Discovered WordSearchService reuse strategy
-  - **50% effort reduction**: 3.5-4 days → 1.75 days total
-  - Multi-file batch processing now FREE (was deferred to Phase 2)
-  - Cluster analysis & chapter detection now FREE (WordSearchService provides)
-  - ZERO new settings needed (reuse Word Search settings)
-  - Service composition pattern: ContextSearchService delegates to WordSearchService
+- **2025-11-18**: **TWO MAJOR ARCHITECTURAL WINS** - Service Composition Pattern
+  - **Win #1 - WordSearchService delegation**: 50% effort reduction (3.5-4 days → 1.75 days)
+    - Multi-file batch processing now FREE (was deferred to Phase 2)
+    - Cluster analysis & chapter detection now FREE (WordSearchService provides)
+    - ZERO new settings needed (reuse Word Search settings)
+    - ContextSearchService delegates to WordSearchService for occurrence counting
+  - **Win #2 - WordFrequency tokenization reuse**: Consistency win
+    - Use `WordFrequency.extractUniqueWords()` for word extraction
+    - Consistent tokenization across all features (dashes, apostrophes, stopwords)
+    - Single source of truth for word extraction logic
+    - Task added to Sprint 01 to add public method to WordFrequency
   - Sprint estimates updated: 01 (0.5d), 02 (0.5d), 03 (0.5d), 04 (0.25d)
 - **2025-11-17**: Epic created (Proposed status)
