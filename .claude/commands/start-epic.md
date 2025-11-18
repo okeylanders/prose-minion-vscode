@@ -1,132 +1,126 @@
-# Start Epic from ADR
+# Start Epic
 
-You are helping the user implement an epic based on an Architecture Decision Record (ADR).
+You are helping the user start or resume work on an existing epic.
 
 ## Your Task
 
 Follow these steps in order:
 
-### Step 1: Select ADR
-Ask the user which ADR they want to implement. List available ADRs from `docs/adr/` directory.
+### Step 1: Select Epic
 
-### Step 2: Review ADR
-Read the selected ADR file and summarize:
-- The decision being implemented
-- Key technical approaches
-- Major components involved
+List available epics from `.todo/epics/` directory with status information:
+
+- Epic name
+- Number of sprints
+- Which sprints are complete/in-progress
+
+Ask the user which epic they want to work on.
+
+### Step 2: Review Epic Structure
+
+Read the epic README.md and sprint files, then summarize:
+
+- Epic goals and scope
+- Available sprints with brief descriptions
+- Current progress (which sprints are complete/in-progress)
+- Related ADRs (if any)
 
 ### Step 3: Ask About Branch Strategy
+
 **IMPORTANT**: Ask the user:
+
 > "Should all sprints for this epic be implemented in a single epic branch (e.g., `epic/feature-name`) or should each sprint have its own branch (e.g., `epic/feature-name/sprint/01-name`, `epic/feature-name/sprint/02-name`)?"
 
 Wait for their answer before proceeding.
 
-### Step 4: Create Epic Structure
-Based on the ADR, create the epic documentation structure in `.todo/epics/[epic-name]/`:
+### Step 4: Ask Which Sprint to Start
 
-1. **README.md** - Epic overview with:
-   - Overview section
-   - Goals
-   - Sprint breakdown (brief description of each sprint)
-   - Completion criteria
-   - Related ADRs reference
-
-2. **sprint-XX.md** files - One per sprint with:
-   - Goals (specific deliverables)
-   - Tasks (checkboxes)
-   - Technical Notes
-   - Completion Criteria
-
-### Step 5: Commit Epic Docs
-After creating the epic documentation:
-1. Stage all files: `git add .todo/epics/[epic-name]/`
-2. Commit with message: `[EPIC: UPPERCASE-NAME] docs: create epic structure for [Epic Name]`
-3. Stay on main branch (do NOT switch yet)
-
-### Step 6: Ask to Start
 Ask the user:
-> "Epic documentation created and committed to main. Ready to start implementation? (yes/no)"
 
-If yes, proceed to Step 7. If no, stop here.
+> "Which sprint should we start with?"
 
-### Step 7: Create Branch and Begin
+List the available sprints to help them choose.
+
+### Step 5: Create Branch and Begin
 
 1. Create the epic/sprint branch based on the user's earlier choice:
    - Single branch strategy: `git checkout -b epic/[epic-name]`
-   - Multiple branch strategy: `git checkout -b epic/[epic-name]/sprint/01-[sprint-name]`
+   - Multiple branch strategy: `git checkout -b epic/[epic-name]/sprint/[NN]-[sprint-name]`
 2. Confirm the branch was created
-3. Ask which sprint to start with (typically Sprint 01)
-4. Begin working on the first task from that sprint
+3. Begin working on the first task from that sprint
 
 ## Important Guidelines
 
-- **Use existing epic examples** from `.todo/epics/centralized-logging/` as templates
-- **Follow commit conventions**: All commit messages must use `[EPIC: UPPERCASE-NAME]` or `[SPRINT XX]` prefix
-- **Be thorough**: Break down complex features into manageable sprint tasks
-- **Ask questions**: If the ADR lacks details, ask the user for clarification
-- **Stay organized**: Each sprint should have clear, achievable goals
+- **Follow commit conventions**: All commit messages must use `[EPIC: UPPERCASE-NAME]` or `[SPRINT NN]` prefix
+- **Stay organized**: Work through sprint tasks methodically
+- **Ask questions**: If sprint scope is unclear, ask the user for clarification
+- **Update sprint docs**: Check off tasks as you complete them
 
 ## Example Flow
 
-### Single Epic Branch Strategy
+### Single Epic Branch
 
 ```text
-Claude: Which ADR would you like to implement? I found:
-- ADR 003: Centralized Polling System
-- ADR 004: Centralized Logging System (✅ Complete)
-- ADR 005: Domain Hooks Pattern
+Claude: Which epic would you like to work on? I found:
+- epic-unified-settings-architecture-2025-11-03/ (5 sprints, Sprint 01 complete)
+- epic-search-architecture-2025-10-19/ (3 sprints, all complete ✅)
+- epic-v1-polish-2025-11-02/ (4 sprints, Sprint 01-02 complete)
 
-User: ADR 003
+User: epic-unified-settings-architecture-2025-11-03
 
-Claude: [Reviews ADR 003 and summarizes]
+Claude: [Reviews epic structure]
+
+Epic: Unified Settings Architecture
+Status: In Progress (1/5 sprints complete)
+
+Goals:
+- Standardize all settings using domain hooks pattern
+- Fix critical SearchTab settings bugs
+- Achieve 100% persistence coverage
+
+Available Sprints:
+- Sprint 01: SearchTab Urgent Fix ✅ COMPLETE
+- Sprint 02: Backend Semantic Methods (pending)
+- Sprint 03: Frontend Domain Hook Extraction (pending)
+- Sprint 04: Settings Panel Integration (pending)
+- Sprint 05: Cleanup & Documentation (pending)
+
+Related ADRs:
+- ADR 2025-11-03: Unified Settings Architecture
 
 Claude: Should all sprints for this epic be implemented in a single epic branch
-(e.g., `epic/centralized-polling`) or should each sprint have its own branch
-(e.g., `epic/centralized-polling/sprint/01-name`)?
+(e.g., `epic/unified-settings-architecture`) or should each sprint have its own branch?
 
 User: Single epic branch
 
-Claude: [Creates epic structure]
-Created:
-- .todo/epics/centralized-polling/README.md
-- .todo/epics/centralized-polling/sprint-01.md
-- .todo/epics/centralized-polling/sprint-02.md
-- .todo/epics/centralized-polling/sprint-03.md
+Claude: Which sprint should we start with?
 
-Committing to main...
-✅ Committed: [EPIC: POLLING] docs: create epic structure for Centralized Polling System
-
-Epic documentation created and committed to main. Ready to start implementation? (yes/no)
-
-User: yes
+User: Sprint 02
 
 Claude: Creating epic branch...
-✅ Switched to branch 'epic/centralized-polling'
+✅ Switched to branch 'epic/unified-settings-architecture-2025-11-03'
 
-Which sprint should we start with? (typically Sprint 01)
-
-User: Sprint 01
-
-Claude: Starting Sprint 01: Core PollingManager Infrastructure
+Starting Sprint 02: Backend Semantic Methods
 [Begins implementation]
 ```
 
-### Multiple Sprint Branch Strategy
+### Multiple Sprint Branches
 
 ```text
+Claude: [Same epic selection and review as above]
+
+Claude: Should all sprints for this epic be implemented in a single epic branch
+or should each sprint have its own branch?
+
 User: Multiple sprint branches
 
-Claude: [Creates epic structure and commits to main]
+Claude: Which sprint should we start with?
 
-✅ Committed: [EPIC: POLLING] docs: create epic structure for Centralized Polling System
-
-Epic documentation created and committed to main. Ready to start implementation? (yes/no)
-
-User: yes
+User: Sprint 02
 
 Claude: Creating sprint branch...
-✅ Switched to branch 'epic/centralized-polling/sprint/01-core-infrastructure'
+✅ Switched to branch 'epic/unified-settings-architecture-2025-11-03/sprint/02-backend-semantic-methods'
 
-Starting Sprint 01: Core PollingManager Infrastructure
+Starting Sprint 02: Backend Semantic Methods
 [Begins implementation]
 ```
