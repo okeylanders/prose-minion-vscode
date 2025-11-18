@@ -3,14 +3,14 @@
 **Sprint ID**: 02-frontend-ui
 **Epic**: [Context Search](../epic-context-search.md)
 **Status**: Pending
-**Estimated Effort**: 1 day
+**Estimated Effort**: 0.5 days (was 1 day) - **50% reduction via settings reuse**
 **Branch**: `sprint/epic-context-search-2025-11-17-02-frontend-ui`
 **Depends On**: Sprint 01 (backend service)
 **ADR**: [ADR-2025-11-17](../../../docs/adr/2025-11-17-context-search-component.md)
 
 ## Goal
 
-Integrate Context Search into the frontend: extend `useSearch` hook, add UI to SearchTab, implement basic result display.
+Integrate Context Search into the frontend: extend `useSearch` hook, add UI to SearchTab (reuse existing components & settings), implement basic result display.
 
 ## Scope
 

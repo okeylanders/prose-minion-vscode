@@ -38,56 +38,79 @@ Add AI-powered semantic search to the Search tab, enabling writers to find words
 ## Scope
 
 ### In Scope
-- Backend ContextSearchService (word extraction, AI matching, occurrence counting)
+
+- Backend ContextSearchService (word extraction, AI matching, **delegates to WordSearchService for occurrence counting**)
 - Message contracts (CONTEXT_SEARCH_REQUEST, CONTEXT_SEARCH_RESULT)
 - SearchHandler integration (route registration)
 - Frontend useSearch hook extension (state, actions, persistence)
-- UI in SearchTab (query input, scope selector, results display)
+- UI in SearchTab (query input, scope selector, results display, **reuse existing Word Search settings**)
 - System prompts for AI matching
-- Result export (markdown format)
-- Pagination strategy for large word lists
+- Result export (markdown format, **reuse existing export patterns**)
+- Pagination strategy for large word lists (**AI calls only**, file processing already handled by WordSearchService)
+- **Multi-file batch processing** (FREE via WordSearchService delegation)
+- **Cluster analysis & context snippets** (FREE via WordSearchService)
+- **Chapter detection & breakdown** (FREE via WordSearchService)
 
 ### Out of Scope (Deferred)
-- ❌ Multi-category search (e.g., "clothing OR colors") → Phase 2
+
+- ❌ Multi-category search (e.g., "clothing OR colors") → Phase 2 (prompt-based, easy add)
+- ❌ Negative queries (e.g., "clothing NOT formal") → Phase 2 (prompt-based, easy add)
+- ❌ Trigram mode for context disambiguation → Phase 2 (optional accuracy enhancement)
 - ❌ Custom word filters beyond min length / stopwords → Phase 2
-- ❌ AI model selection per search (uses default context model) → Phase 2
+- ❌ AI model selection per search (uses `proseMinion.contextModel` setting) → Phase 2
 - ❌ Offline mode / local lexical database → Not planned
-- ❌ Batch processing multiple files → Phase 2
 
 ## Architecture Alignment
 
 **Domain**: Search (not Metrics)
 **Layer**: Infrastructure → Application → Presentation
 **Patterns**:
+
 - Message Envelope (source tracking, echo prevention)
 - Strategy Pattern (SearchHandler route registration)
 - Domain Hooks (useSearch owns all Search state/actions)
 - Tripartite Interface (State, Actions, Persistence)
+- **Service Composition** (ContextSearchService delegates to WordSearchService for occurrence counting, clustering, snippets)
 
 **Anti-Pattern Prevention**:
-- ✅ Single responsibility (ContextSearchService does one thing)
-- ✅ No god components (service < 300 lines estimated)
+
+- ✅ Single responsibility (ContextSearchService = "AI matching", WordSearchService = "search & analyze")
+- ✅ No god components (ContextSearchService < 200 lines estimated, delegates heavy lifting)
 - ✅ Clear domain boundaries (Search, not scattered)
 - ✅ Type-safe (full TypeScript contracts)
+- ✅ **DRY via composition** (reuse WordSearchService instead of duplicating logic)
+
+**Architectural Win**: By delegating to WordSearchService, we get:
+
+- ✅ Occurrence counting (line numbers, snippets)
+- ✅ Cluster detection (proximity analysis)
+- ✅ Chapter detection & breakdown
+- ✅ Multi-file batch processing
+- ✅ Context snippet extraction
+- ✅ All existing Word Search settings (contextWords, clusterWindow, minClusterSize)
+- ✅ Proven, tested implementation (no new bugs from duplication)
 
 ## Sprints
 
 ### Sprint 01: Backend Service + Message Contracts
 **Status**: Pending
-**Estimated Effort**: 1 day
+**Estimated Effort**: 0.5 days (was 1 day) - **50% reduction via WordSearchService reuse**
 **Branch**: `sprint/epic-context-search-2025-11-17-01-backend-service`
 
 **Scope**:
+
 - Define message types (CONTEXT_SEARCH_REQUEST, CONTEXT_SEARCH_RESULT)
-- Implement ContextSearchService (word extraction, AI prompt, parsing, counting)
+- Implement ContextSearchService (word extraction, AI prompt, parsing, **delegate to WordSearchService**)
 - Create system prompts for semantic matching
 - Register route in SearchHandler
-- Unit tests for word extraction and counting logic
+- Unit tests for word extraction and AI response parsing (not counting - WordSearchService handles it)
 
 **Acceptance**:
+
 - ✅ Backend accepts context search request, returns results
 - ✅ AI prompt format tested manually (returns valid JSON)
 - ✅ Word extraction filters stopwords, min length
+- ✅ **Delegates to WordSearchService.searchWords() for occurrence counting**
 
 **Details**: [Sprint 01](sprints/01-backend-service.md)
 
@@ -95,20 +118,25 @@ Add AI-powered semantic search to the Search tab, enabling writers to find words
 
 ### Sprint 02: Frontend Integration + Basic UI
 **Status**: Pending
-**Estimated Effort**: 1 day
+**Estimated Effort**: 0.5 days (was 1 day) - **50% reduction via settings reuse**
 **Branch**: `sprint/epic-context-search-2025-11-17-02-frontend-ui`
 
 **Scope**:
+
 - Extend useSearch hook (contextSearch state, actions)
 - Add Context Search subtool to SearchTab
-- Query input + scope selector
+- Query input + scope selector (**reuse existing ScopeSelector component**)
+- Model dropdown (**reuse existing pattern from Dictionary**)
 - Basic result display (summary table only)
 - Loading states
+- **No new settings needed** (reuse Word Search settings)
 
 **Acceptance**:
+
 - ✅ User can enter category query and trigger search
 - ✅ Results display in summary table (word | count)
 - ✅ Loading indicator shows during AI processing
+- ✅ **Model dropdown uses existing `proseMinion.contextModel` setting**
 
 **Details**: [Sprint 02](sprints/02-frontend-ui.md)
 
@@ -116,19 +144,23 @@ Add AI-powered semantic search to the Search tab, enabling writers to find words
 
 ### Sprint 03: Result Formatting + Export
 **Status**: Pending
-**Estimated Effort**: 1 day
+**Estimated Effort**: 0.5 days (was 1 day) - **50% reduction via WordSearchService delegation**
 **Branch**: `sprint/epic-context-search-2025-11-17-03-result-formatting`
 
 **Scope**:
-- Expanded summary table (word | count | chapter)
-- Details & cluster analysis (match Word Search format)
-- Export to markdown report
-- Chapter-level breakdown
+
+- Add category label to results (only new work needed)
+- Expanded summary table (word | count | chapter) - **WordSearchService provides chapter data**
+- Details & cluster analysis - **WordSearchService provides clusters**
+- Export to markdown report (**reuse existing export pattern**)
+- Chapter-level breakdown - **WordSearchService detects chapters**
 
 **Acceptance**:
-- ✅ Results show chapter-by-chapter breakdown
+
+- ✅ Results show chapter-by-chapter breakdown (WordSearchService output)
 - ✅ Export button saves markdown report
 - ✅ Report format matches Word Search structure
+- ✅ **Category label displays in results header**
 
 **Details**: [Sprint 03](sprints/03-result-formatting.md)
 
@@ -136,21 +168,24 @@ Add AI-powered semantic search to the Search tab, enabling writers to find words
 
 ### Sprint 04: Performance + Polish
 **Status**: Pending
-**Estimated Effort**: 0.5-1 day
+**Estimated Effort**: 0.25 days (was 0.5-1 day) - **75% reduction via WordSearchService**
 **Branch**: `sprint/epic-context-search-2025-11-17-04-performance-polish`
 
 **Scope**:
-- Pagination for large word lists (>2K distinct words)
-- Progress indicators for batch processing
+
+- Pagination for large word lists (>2K distinct words) **ONLY for AI calls** (file processing already handled)
+- Progress indicators for AI batch processing
 - Error handling (AI failures, invalid queries)
-- Settings persistence (last query, options)
+- Settings persistence (last query only - options reuse Word Search settings)
 - Token cost estimation display (optional)
 
 **Acceptance**:
+
 - ✅ 50K word novel processes without token errors
-- ✅ Progress shows "Analyzing batch 2 of 5..." during pagination
+- ✅ Progress shows "Analyzing batch 2 of 5..." during AI pagination
 - ✅ Graceful error messages for API failures
-- ✅ Settings persist across sessions
+- ✅ Last query persists across sessions
+- ✅ **Multi-file processing works via WordSearchService (no custom code needed)**
 
 **Details**: [Sprint 04](sprints/04-performance-polish.md)
 
@@ -159,13 +194,24 @@ Add AI-powered semantic search to the Search tab, enabling writers to find words
 ## Dependencies
 
 **External**:
+
 - OpenRouter API (existing)
 - Context model (default: uses `proseMinion.contextModel` setting)
 
 **Internal**:
+
+- **WordSearchService** (existing, **CRITICAL** - provides occurrence counting, clustering, chapter detection)
 - SearchHandler (existing, extend with new route)
 - useSearch hook (existing, extend with context search state)
 - TextProcessorService (existing, for word extraction)
+- ToolOptionsProvider (existing, provides Word Search settings)
+
+**Settings Reused** (ZERO new settings needed):
+
+- `proseMinion.wordSearch.contextWords` - Used by WordSearchService for snippet context
+- `proseMinion.wordSearch.clusterWindow` - Used by WordSearchService for cluster detection
+- `proseMinion.wordSearch.minClusterSize` - Used by WordSearchService for cluster detection
+- `proseMinion.contextModel` - AI model for semantic matching
 
 **None**: No new external dependencies required
 
@@ -209,12 +255,17 @@ Add AI-powered semantic search to the Search tab, enabling writers to find words
 
 ## Future Enhancements (Phase 2)
 
-- Multi-category search (`clothing OR colors`)
-- Negative queries (`clothing NOT formal`)
-- AI model selection per search
-- Batch process multiple files
-- Save/load query presets
-- Integration with Word Frequency (compare categories)
+**Easy Adds (Prompt-Based)**:
+
+- Multi-category search (`clothing OR colors`) - Just update system prompt
+- Negative queries (`clothing NOT formal`) - Just update system prompt
+
+**Moderate Complexity**:
+
+- Trigram mode for context disambiguation (optional accuracy enhancement, higher cost)
+- AI model selection per search (UI dropdown + override default)
+- Save/load query presets (state management)
+- Integration with Word Frequency (cross-domain comparison)
 
 ## References
 
@@ -226,4 +277,11 @@ Add AI-powered semantic search to the Search tab, enabling writers to find words
 
 ## Changelog
 
+- **2025-11-18**: **MAJOR ARCHITECTURAL WIN** - Discovered WordSearchService reuse strategy
+  - **50% effort reduction**: 3.5-4 days → 1.75 days total
+  - Multi-file batch processing now FREE (was deferred to Phase 2)
+  - Cluster analysis & chapter detection now FREE (WordSearchService provides)
+  - ZERO new settings needed (reuse Word Search settings)
+  - Service composition pattern: ContextSearchService delegates to WordSearchService
+  - Sprint estimates updated: 01 (0.5d), 02 (0.5d), 03 (0.5d), 04 (0.25d)
 - **2025-11-17**: Epic created (Proposed status)

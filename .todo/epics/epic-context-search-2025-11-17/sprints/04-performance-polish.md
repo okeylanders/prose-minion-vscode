@@ -3,14 +3,14 @@
 **Sprint ID**: 04-performance-polish
 **Epic**: [Context Search](../epic-context-search.md)
 **Status**: Pending
-**Estimated Effort**: 0.5-1 day
+**Estimated Effort**: 0.25 days (was 0.5-1 day) - **75% reduction via WordSearchService**
 **Branch**: `sprint/epic-context-search-2025-11-17-04-performance-polish`
 **Depends On**: Sprint 03 (result formatting)
 **ADR**: [ADR-2025-11-17](../../../docs/adr/2025-11-17-context-search-component.md)
 
 ## Goal
 
-Optimize Context Search for large texts (novels with 10K+ distinct words), add pagination for batch processing, improve UX with progress indicators and settings persistence.
+Add pagination for AI calls (large word lists), progress indicators, and error handling (**file processing performance already handled by WordSearchService**).
 
 ## Scope
 

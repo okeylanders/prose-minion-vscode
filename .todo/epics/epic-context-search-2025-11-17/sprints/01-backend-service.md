@@ -3,33 +3,38 @@
 **Sprint ID**: 01-backend-service
 **Epic**: [Context Search](../epic-context-search.md)
 **Status**: Pending
-**Estimated Effort**: 1 day
+**Estimated Effort**: 0.5 days (was 1 day) - **50% reduction via WordSearchService reuse**
 **Branch**: `sprint/epic-context-search-2025-11-17-01-backend-service`
 **ADR**: [ADR-2025-11-17](../../../docs/adr/2025-11-17-context-search-component.md)
 
 ## Goal
 
-Build the backend infrastructure for Context Search: message contracts, service implementation, and SearchHandler integration.
+Build the backend infrastructure for Context Search: message contracts, service implementation (delegates to WordSearchService), and SearchHandler integration.
 
 ## Scope
 
 ### In Scope
+
 - ✅ Define message types (CONTEXT_SEARCH_REQUEST, CONTEXT_SEARCH_RESULT)
 - ✅ Implement ContextSearchService
   - Word extraction (distinct words from text)
   - AI prompt construction
   - OpenRouter integration
   - AI response parsing (JSON validation)
-  - Occurrence counting per chapter
+  - **Delegate to WordSearchService for occurrence counting, clustering, chapter detection**
 - ✅ Create system prompts (`resources/system-prompts/context-search/`)
 - ✅ Register route in SearchHandler
 - ✅ Basic error handling (AI failures, invalid responses)
 
 ### Out of Scope
+
 - ❌ Frontend UI (Sprint 02)
 - ❌ Export functionality (Sprint 03)
 - ❌ Pagination (Sprint 04)
 - ❌ Advanced filtering options
+- ❌ **Custom occurrence counting** (WordSearchService handles this)
+- ❌ **Custom cluster detection** (WordSearchService handles this)
+- ❌ **Custom chapter detection** (WordSearchService handles this)
 
 ## Tasks
 
@@ -64,14 +69,15 @@ Build the backend infrastructure for Context Search: message contracts, service 
 **File**: `src/infrastructure/api/services/search/ContextSearchService.ts`
 
 **Methods to implement**:
-- [ ] `constructor(openRouterClient, textProcessor)`
-- [ ] `async searchByContext(query, text, options): Promise<ContextSearchResult>`
+
+- [ ] `constructor(openRouterClient, wordSearchService, textProcessor)`  **← NEW: inject WordSearchService**
+- [ ] `async searchByContext(query, text, files, sourceMode, options): Promise<ContextSearchResult>`
   - [ ] Call `extractDistinctWords()` to get word list
   - [ ] Call `buildMatchingPrompt()` to create AI prompt
   - [ ] Call `openRouterClient.chat()` to get AI response
   - [ ] Call `parseAIMatches()` to validate and extract matched words
-  - [ ] Call `countOccurrences()` to find word locations
-  - [ ] Call `formatResults()` to build result object
+  - [ ] **Call `wordSearchService.searchWords(text, files, sourceMode, { wordsOrPhrases: matchedWords, ...options })`** ← NEW: delegate
+  - [ ] Call `formatResults()` to wrap WordSearchService result with category metadata
 - [ ] `private extractDistinctWords(text, options): string[]`
   - Filter by `minWordLength` (default 2)
   - Filter stopwords if `excludeStopwords === true`
@@ -83,13 +89,9 @@ Build the backend infrastructure for Context Search: message contracts, service 
   - Parse JSON array from response
   - Validate format (throw error if invalid)
   - Return matched words
-- [ ] `private countOccurrences(text, words): WordCountMap`
-  - Scan text for each matched word
-  - Count occurrences (case-insensitive if option set)
-  - Track locations (line number, context snippet)
-- [ ] `private formatResults(matches, metadata): ContextSearchResult`
-  - Build summary (totalMatches, uniqueWords, wordsAnalyzed)
-  - Format chapter breakdowns
+- [ ] **REMOVED**: `countOccurrences()` → WordSearchService handles this
+- [ ] `private formatResults(wordSearchResult: MetricsResult, query: string): ContextSearchResult`
+  - Wrap WordSearchService result with category metadata (query)
   - Add timestamp
 
 ### 4. SearchHandler Integration
@@ -183,27 +185,44 @@ function parseAIMatches(response: string): string[] {
 }
 ```
 
-### Occurrence Counting
+### Word SearchService Delegation
+
+**REMOVED**: Custom occurrence counting implementation
+
+Instead, delegate to WordSearchService:
+
 ```typescript
-function countOccurrences(text: string, words: string[]): WordCountMap {
-  const map = new Map<string, { count: number; locations: Location[] }>();
+// After AI matching, pass matched words to WordSearchService
+const matchedWords = await this.parseAIMatches(aiResponse);
 
-  words.forEach(word => {
-    const regex = new RegExp(`\\b${word}\\b`, 'gi');
-    const matches = [...text.matchAll(regex)];
+const wordSearchResult = await this.wordSearchService.searchWords(
+  text,
+  files,
+  sourceMode,
+  {
+    wordsOrPhrases: matchedWords,  // AI-matched words become search targets
+    contextWords: options.contextWords || 10,        // From Word Search settings
+    clusterWindow: options.clusterWindow || 100,     // From Word Search settings
+    minClusterSize: options.minClusterSize || 3,     // From Word Search settings
+    caseSensitive: options.caseSensitive || false
+  }
+);
 
-    map.set(word, {
-      count: matches.length,
-      locations: matches.map(m => ({
-        index: m.index,
-        context: text.slice(m.index - 50, m.index + 50)
-      }))
-    });
-  });
-
-  return map;
-}
+// WordSearchService returns MetricsResult with:
+// - Occurrence counts per file/chapter
+// - Context snippets around matches
+// - Cluster analysis (proximity detection)
+// - Line numbers
+// - Chapter breakdown (if markdown headings detected)
 ```
+
+**Benefits**:
+
+- ✅ Reuses proven, tested implementation
+- ✅ Gets multi-file processing for FREE
+- ✅ Gets cluster analysis for FREE
+- ✅ Gets chapter detection for FREE
+- ✅ Uses existing Word Search settings (no new settings needed)
 
 ## Definition of Done
 

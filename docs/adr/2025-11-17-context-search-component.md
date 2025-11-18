@@ -67,13 +67,19 @@ Current Word Search requires exact target words. Context Search leverages AI to 
 
 ## Decision Outcome
 
-**Chosen**: Option 1 (Two-Phase AI Processing)
+**Chosen**: Option 1 (Two-Phase AI Processing) + **Service Composition Pattern**
 
 **Rationale**:
+
 - Simplest implementation aligned with spec
 - Single AI call minimizes cost and latency
 - Accurate semantic matching with full context
 - Token limit manageable with pagination/truncation strategy
+- **ARCHITECTURAL WIN**: Delegate to WordSearchService for occurrence counting, clustering, chapter detection
+  - Eliminates duplication (DRY principle)
+  - Reuses proven, tested implementation
+  - Gets multi-file processing, clusters, snippets for FREE
+  - ZERO new settings needed (reuse Word Search settings)
 
 ## Architecture
 
@@ -130,31 +136,65 @@ export interface ContextSearchResult extends BaseMessage {
 **Location**: `src/infrastructure/api/services/search/ContextSearchService.ts`
 
 **Responsibilities**:
+
 - Extract distinct word list from text
 - Build AI prompt for semantic matching
 - Parse AI response to get matched words
-- Re-scan text to count occurrences and locations
-- Format results for frontend
+- **Delegate to WordSearchService for occurrence counting, clustering, chapter detection**
+- Format results for frontend (add category metadata wrapper)
 
 **Key Methods**:
+
 ```typescript
 class ContextSearchService {
   constructor(
     private openRouterClient: OpenRouterClient,
+    private wordSearchService: WordSearchService,  // NEW: Composition
     private textProcessor: TextProcessorService
   );
 
   async searchByContext(
     query: string,
     text: string,
+    files?: string[],
+    sourceMode?: string,
     options: ContextSearchOptions
   ): Promise<ContextSearchResult>;
 
   private extractDistinctWords(text: string, options: WordFilterOptions): string[];
   private buildMatchingPrompt(query: string, words: string[]): string;
   private parseAIMatches(aiResponse: string): string[];
-  private countOccurrences(text: string, words: string[]): WordCountMap;
-  private formatResults(matches: WordCountMap, metadata: Metadata): ContextSearchResult;
+  // REMOVED: countOccurrences → delegates to WordSearchService instead
+  private formatResults(wordSearchResult: MetricsResult, query: string): ContextSearchResult;
+}
+```
+
+**Service Composition Flow**:
+
+```typescript
+async searchByContext(query, text, files, sourceMode, options) {
+  // 1. Extract unique words
+  const allWords = this.extractDistinctWords(text, options);
+
+  // 2. AI matching
+  const matchedWords = await this.queryAIForMatches(query, allWords);
+
+  // 3. Delegate to WordSearchService for occurrence counting
+  const wordSearchResult = await this.wordSearchService.searchWords(
+    text,
+    files,
+    sourceMode,
+    {
+      wordsOrPhrases: matchedWords,  // AI-matched words become search targets
+      contextWords: options.contextWords,      // From existing settings
+      clusterWindow: options.clusterWindow,    // From existing settings
+      minClusterSize: options.minClusterSize,  // From existing settings
+      caseSensitive: options.caseSensitive
+    }
+  );
+
+  // 4. Wrap result with category metadata
+  return this.formatResults(wordSearchResult, query);
 }
 ```
 
@@ -357,17 +397,23 @@ async searchByContext(query: string, text: string): Promise<ContextSearchResult>
 
 See [Epic: Context Search](.todo/epics/epic-context-search-2025-11-17/epic-context-search.md) for sprint breakdown.
 
-**Estimated Effort**: 3-4 days (4 sprints)
+**Estimated Effort**: 1.75 days (was 3-4 days) - **50% reduction via WordSearchService reuse**
 
-**Phase 0 (Foundation)**:
-- Sprint 01: Message contracts + backend service
+**Sprint Breakdown**:
 
-**Phase 1 (Core Functionality)**:
-- Sprint 02: Frontend integration + basic UI
+- Sprint 01: Message contracts + backend service (0.5 days)
+- Sprint 02: Frontend integration + basic UI (0.5 days)
+- Sprint 03: Result formatting + export (0.5 days)
+- Sprint 04: Performance optimization + testing (0.25 days)
 
-**Phase 2 (Polish)**:
-- Sprint 03: Result formatting + export
-- Sprint 04: Performance optimization + testing
+**Effort Savings**:
+
+- ✅ No occurrence counting logic (WordSearchService)
+- ✅ No cluster detection logic (WordSearchService)
+- ✅ No chapter detection logic (WordSearchService)
+- ✅ No snippet extraction logic (WordSearchService)
+- ✅ No multi-file processing logic (WordSearchService)
+- ✅ No new settings to create (reuse Word Search settings)
 
 ## References
 
@@ -378,4 +424,10 @@ See [Epic: Context Search](.todo/epics/epic-context-search-2025-11-17/epic-conte
 
 ## Revision History
 
+- **2025-11-18**: **MAJOR UPDATE** - Service Composition Pattern
+  - Added WordSearchService delegation strategy (50% effort reduction)
+  - Updated architecture to reflect composition over duplication
+  - Multi-file batch processing moved from Phase 2 to Phase 1 (FREE)
+  - ZERO new settings needed (reuse Word Search settings)
+  - Revised effort estimate: 3-4 days → 1.75 days
 - **2025-11-17**: Initial draft (Proposed)

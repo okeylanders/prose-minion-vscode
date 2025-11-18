@@ -3,14 +3,14 @@
 **Sprint ID**: 03-result-formatting
 **Epic**: [Context Search](../epic-context-search.md)
 **Status**: Pending
-**Estimated Effort**: 1 day
+**Estimated Effort**: 0.5 days (was 1 day) - **50% reduction via WordSearchService**
 **Branch**: `sprint/epic-context-search-2025-11-17-03-result-formatting`
 **Depends On**: Sprint 02 (frontend UI)
 **ADR**: [ADR-2025-11-17](../../../docs/adr/2025-11-17-context-search-component.md)
 
 ## Goal
 
-Enhance Context Search results with expanded summary, chapter-level details, and markdown export functionality (matching Word Search output format).
+Add category label to results and export functionality (**chapter/cluster analysis already provided by WordSearchService**).
 
 ## Scope
 
