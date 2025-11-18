@@ -16,6 +16,7 @@ import {
   DictionaryResultMessage,
   ContextResultMessage,
   SearchResultMessage,
+  CategorySearchResultMessage,
   ErrorMessage,
   ErrorSource,
   StatusMessage,
@@ -57,6 +58,7 @@ interface ResultCache {
   context?: ContextResultMessage;
   metrics?: MetricsResultMessage;
   search?: SearchResultMessage;
+  categorySearch?: CategorySearchResultMessage;
   status?: StatusMessage;
   error?: ErrorMessage;
   tokenUsage?: TokenUsageUpdateMessage;
@@ -478,6 +480,10 @@ export class MessageHandler {
       void this.postMessage(sharedResultCache.search);
     }
 
+    if (sharedResultCache.categorySearch) {
+      void this.postMessage(sharedResultCache.categorySearch);
+    }
+
     if (sharedResultCache.context) {
       void this.postMessage(sharedResultCache.context);
     }
@@ -515,6 +521,9 @@ export class MessageHandler {
         break;
       case MessageType.SEARCH_RESULT:
         sharedResultCache.search = { ...message as SearchResultMessage };
+        break;
+      case MessageType.CATEGORY_SEARCH_RESULT:
+        sharedResultCache.categorySearch = { ...message as CategorySearchResultMessage };
         break;
       case MessageType.STATUS:
         sharedResultCache.status = { ...message as StatusMessage };
