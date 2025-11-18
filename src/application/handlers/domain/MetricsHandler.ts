@@ -83,7 +83,7 @@ export class MetricsHandler {
 
       // Step 2: Multi-file aggregation (if manuscript/chapters mode)
       if (resolved.paths && resolved.paths.length > 0 && (resolved.mode === 'manuscript' || resolved.mode === 'chapters')) {
-        const per = await this.standardsService.computePerFileStats(resolved.paths, this.proseStatsService);
+        const per = await this.proseStatsService.analyzeMultipleFiles(resolved.paths);
         const chapterWordCounts = per.map(p => p.stats.wordCount);
         const chapterCount = chapterWordCounts.length;
         const totalWords = chapterWordCounts.reduce((a, b) => a + b, 0);

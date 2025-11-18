@@ -74,9 +74,13 @@ export const useContext = (): UseContextReturn => {
   // Ref to track loading state (used by analysis hook for status message filtering)
   const loadingRef = React.useRef(loading);
 
-  React.useEffect(() => {
+  const syncLoadingRef = React.useCallback(() => {
     loadingRef.current = loading;
   }, [loading]);
+
+  React.useEffect(() => {
+    syncLoadingRef();
+  }, [syncLoadingRef]);
 
   const handleContextResult = React.useCallback((message: ContextResultMessage) => {
     const { result, toolName, requestedResources } = message.payload;

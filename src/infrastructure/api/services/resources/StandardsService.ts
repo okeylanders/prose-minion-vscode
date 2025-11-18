@@ -5,26 +5,14 @@
  *
  * This service handles:
  * - Enriching prose stats with publishing standards comparison
- * - Computing per-file stats for multi-file analysis (manuscript/chapters mode)
  * - Genre lookup from PublishingStandardsRepository
  * - Building publishing format information
- *
- * Note: computePerFileStats takes a proseStatsService parameter to analyze individual files,
- * demonstrating service composition at the application layer (handlers).
  */
 
 import * as vscode from 'vscode';
 import { PublishingStandardsRepository } from '../../../standards/PublishingStandardsRepository';
 import { StandardsComparisonService } from '../../../../application/services/StandardsComparisonService';
 import { Genre } from '../../../../domain/models/PublishingStandards';
-
-/**
- * Interface for a service that can analyze prose stats
- * This allows StandardsService to work with any prose stats analyzer
- */
-export interface ProseStatsAnalyzer {
-  analyze(input: { text: string }): any;
-}
 
 export class StandardsService {
   private standardsRepo?: PublishingStandardsRepository;
@@ -131,42 +119,6 @@ export class StandardsService {
   }
 
   /**
-   * Compute per-file stats for multi-file analysis (manuscript/chapters mode)
-   *
-   * This method demonstrates service composition - it takes a proseStatsAnalyzer
-   * parameter to analyze individual files. This allows handlers to orchestrate
-   * the use case while keeping StandardsService focused on standards concerns.
-   *
-   * @param relativePaths - Array of relative file paths
-   * @param proseStatsAnalyzer - Service that can analyze prose stats
-   * @returns Array of per-file stats with path and stats
-   */
-  async computePerFileStats(
-    relativePaths: string[],
-    proseStatsAnalyzer: ProseStatsAnalyzer
-  ): Promise<Array<{ path: string; stats: any }>> {
-    const results: Array<{ path: string; stats: any }> = [];
-
-    for (const rel of relativePaths) {
-      try {
-        const uri = await this.findUriByRelativePath(rel);
-        if (!uri) continue;
-
-        const raw = await vscode.workspace.fs.readFile(uri);
-        const text = Buffer.from(raw).toString('utf8');
-        const stats = proseStatsAnalyzer.analyze({ text });
-
-        results.push({ path: rel, stats });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        this.outputChannel?.appendLine(`[StandardsService] Per-file stats failed for ${rel}: ${msg}`);
-      }
-    }
-
-    return results;
-  }
-
-  /**
    * Find a genre by key in the PublishingStandardsRepository
    *
    * @param key - Genre key (e.g., 'literary_fiction', 'thriller')
@@ -189,25 +141,5 @@ export class StandardsService {
       const msg = err instanceof Error ? err.message : String(err);
       this.outputChannel?.appendLine(`[StandardsService] Failed to load standards repository: ${msg}`);
     }
-  }
-
-  /**
-   * Find a VSCode URI by relative path in workspace folders
-   *
-   * @param relativePath - Relative file path
-   * @returns VSCode URI if found, undefined otherwise
-   */
-  private async findUriByRelativePath(relativePath: string): Promise<vscode.Uri | undefined> {
-    const folders = vscode.workspace.workspaceFolders ?? [];
-    for (const folder of folders) {
-      const candidate = vscode.Uri.joinPath(folder.uri, relativePath);
-      try {
-        await vscode.workspace.fs.stat(candidate);
-        return candidate;
-      } catch {
-        // continue to next folder
-      }
-    }
-    return undefined;
   }
 }

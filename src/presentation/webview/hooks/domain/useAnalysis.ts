@@ -77,11 +77,15 @@ export const useAnalysis = (): UseAnalysisReturn => {
   const [statusMessage, setStatusMessage] = React.useState<string>(persisted?.statusMessage ?? '');
 
   // Clear result when analysis starts
-  React.useEffect(() => {
+  const clearResultWhenLoading = React.useCallback(() => {
     if (loading) {
       setResult('');
     }
   }, [loading]);
+
+  React.useEffect(() => {
+    clearResultWhenLoading();
+  }, [clearResultWhenLoading]);
 
   const handleAnalysisResult = React.useCallback((message: AnalysisResultMessage) => {
     const { result, toolName, usedGuides } = message.payload;
