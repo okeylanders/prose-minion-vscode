@@ -98,3 +98,49 @@ React.useEffect(() => {
 - Related: [ADR: Presentation Layer Domain Hooks](../../docs/adr/2025-10-27-presentation-layer-domain-hooks.md)
 - Sprint: [Sprint 04 - Domain Hooks Extraction](.todo/epics/epic-unified-settings-architecture-2025-11-03/sprints/04-domain-hooks-extraction.md)
 - Files affected: All hooks in `src/presentation/webview/hooks/domain/`
+
+---
+
+## Resolution
+
+**Status**: ✅ **RESOLVED**
+**Resolution Date**: 2025-11-17
+**Resolved By**: [Technical Debt Cleanup Epic - Sprint 03](.todo/epics/epic-technical-debt-cleanup-2025-11-15/sprints/03-useeffect-extraction-pattern.md)
+**Commit**: 9550ff6
+
+### What Was Done
+
+✅ **4 Hooks Modified** (only 4 had useEffect, not 12 as originally estimated):
+
+1. **usePublishingSettings**: Extracted `requestPublishingStandardsData()`
+2. **useDictionary**: Extracted `clearResultWhenLoading()`
+3. **useContext**: Extracted `syncLoadingRef()`
+4. **useAnalysis**: Extracted `clearResultWhenLoading()`
+
+✅ **Naming Patterns Established**:
+- `request*` - Data fetching (e.g., `requestPublishingStandardsData`)
+- `sync*` - Synchronization (e.g., `syncLoadingRef`)
+- `clear*When*` - Conditional state updates (e.g., `clearResultWhenLoading`)
+- `initialize*` - Initialization (for future use)
+- `validate*` - Validation (for future use)
+
+✅ **Documentation Updated**:
+- Added useEffect extraction pattern to `.ai/central-agent-setup.md`
+- Included in presentation hooks conventions
+
+✅ **All Methods Wrapped in useCallback**:
+- Referential stability maintained
+- No unnecessary re-renders
+
+### Outcome
+
+✅ Self-documenting code (method names explain intent)
+✅ Testable in isolation
+✅ Imperative calling enabled (can call from buttons/triggers)
+✅ Better debugging (clearer stack traces)
+✅ No regressions (207/207 tests passing)
+
+### Actual Time
+
+- **Estimated**: 2-4 hours
+- **Actual**: ~1 hour (75% faster - only 4 hooks had useEffect)
