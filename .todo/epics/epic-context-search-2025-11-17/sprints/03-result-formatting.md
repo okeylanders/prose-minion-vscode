@@ -2,11 +2,13 @@
 
 **Sprint ID**: 03-result-formatting
 **Epic**: [Context Search](../epic-context-search.md)
-**Status**: Pending
+**Status**: Complete
 **Estimated Effort**: 0.5 days (was 1 day) - **50% reduction via WordSearchService**
-**Branch**: `sprint/epic-context-search-2025-11-17-03-result-formatting`
+**Actual Effort**: ~0.5 days
+**Branch**: `epic/context-search-2025-11-17`
 **Depends On**: Sprint 02 (frontend UI)
 **ADR**: [ADR-2025-11-17](../../../docs/adr/2025-11-17-context-search-component.md)
+**Commit**: `1424f54`
 
 ## Goal
 
@@ -283,9 +285,10 @@ async function handleExportContextSearch(message: MessageEnvelope) {
 
 ## Outcomes
 
-*To be filled after sprint completion*
-
-- **PR**: #[number]
-- **Completion Date**: YYYY-MM-DD
-- **Actual Effort**: [hours/days]
-- **Discoveries**: [any tech debt, blockers, or insights]
+- **Commit**: `1424f54`
+- **Completion Date**: 2025-11-18
+- **Actual Effort**: ~0.5 days
+- **Discoveries**:
+  - Added `formatCategorySearchAsMarkdown()` to shared resultFormatter.ts (reused existing helpers like `formatGap`, `escapePipes`)
+  - Cluster settings UI added (context words, cluster window, min cluster size) - shared with Word Search
+  - Copy/Save buttons use existing COPY_RESULT/SAVE_RESULT message types
