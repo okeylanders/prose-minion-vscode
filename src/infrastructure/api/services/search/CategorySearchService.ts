@@ -78,20 +78,28 @@ export class CategorySearchService {
       );
 
       // 2. Build AI prompt and get matches
-      const matchedWords = await this.getAIMatches(query, uniqueWords);
+      const aiResult = await this.getAIMatches(query, uniqueWords);
+      const matchedWords = aiResult.matchedWords;
+      const tokensUsed = aiResult.tokensUsed;
 
       if (matchedWords.length === 0) {
         return {
           query,
           matchedWords: [],
           wordSearchResult: this.createEmptyResult(),
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          tokensUsed
         };
       }
 
       this.outputChannel?.appendLine(
         `[CategorySearchService] AI matched ${matchedWords.length} words: ${matchedWords.slice(0, 10).join(', ')}${matchedWords.length > 10 ? '...' : ''}`
       );
+      if (tokensUsed) {
+        this.outputChannel?.appendLine(
+          `[CategorySearchService] Token usage: ${tokensUsed.prompt} prompt + ${tokensUsed.completion} completion = ${tokensUsed.total} total`
+        );
+      }
 
       // 3. Delegate to WordSearchService for occurrence counting
       const wordSearchResult = await this.wordSearchService.searchWords(
@@ -107,11 +115,34 @@ export class CategorySearchService {
         }
       );
 
+      // 4. Filter out hallucinated words (0 occurrences)
+      const searchResult = wordSearchResult.metrics as WordSearchResult;
+      const validTargets = searchResult.targets.filter(t => t.totalOccurrences > 0);
+      const hallucinatedCount = searchResult.targets.length - validTargets.length;
+
+      if (hallucinatedCount > 0) {
+        const hallucinatedWords = searchResult.targets
+          .filter(t => t.totalOccurrences === 0)
+          .map(t => t.target);
+        this.outputChannel?.appendLine(
+          `[CategorySearchService] Filtered ${hallucinatedCount} hallucinated words: ${hallucinatedWords.join(', ')}`
+        );
+      }
+
+      // Update matchedWords to only include words that were actually found
+      const validWords = matchedWords.filter(word =>
+        validTargets.some(t => t.normalized === word.toLowerCase() || t.target.toLowerCase() === word.toLowerCase())
+      );
+
       return {
         query,
-        matchedWords,
-        wordSearchResult: wordSearchResult.metrics as WordSearchResult,
-        timestamp: Date.now()
+        matchedWords: validWords,
+        wordSearchResult: {
+          ...searchResult,
+          targets: validTargets
+        },
+        timestamp: Date.now(),
+        tokensUsed
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -129,8 +160,12 @@ export class CategorySearchService {
 
   /**
    * Get AI-matched words for a category
+   * Returns both matched words and token usage
    */
-  private async getAIMatches(query: string, words: string[]): Promise<string[]> {
+  private async getAIMatches(query: string, words: string[]): Promise<{
+    matchedWords: string[];
+    tokensUsed?: { prompt: number; completion: number; total: number };
+  }> {
     // Get orchestrator from AIResourceManager (uses 'context' model scope)
     const orchestrator = this.aiResourceManager.getOrchestrator('context');
     if (!orchestrator) {
@@ -158,8 +193,15 @@ export class CategorySearchService {
       }
     );
 
-    // Parse response
-    return this.parseAIResponse(result.content);
+    // Parse response and extract token usage
+    const matchedWords = this.parseAIResponse(result.content);
+    const tokensUsed = result.usage ? {
+      prompt: result.usage.promptTokens,
+      completion: result.usage.completionTokens,
+      total: result.usage.totalTokens
+    } : undefined;
+
+    return { matchedWords, tokensUsed };
   }
 
   /**

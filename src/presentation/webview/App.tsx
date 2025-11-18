@@ -435,6 +435,9 @@ export const App: React.FC = () => {
             onCategorySearchQueryChange={search.setCategorySearchQuery}
             onCategorySearchLoadingChange={search.setCategorySearchLoading}
             onClearCategorySearchResult={search.clearCategorySearchResult}
+            modelOptions={modelsSettings.modelOptions}
+            contextModel={modelsSettings.modelSelections.context}
+            onModelChange={modelsSettings.setModelSelection}
           />
         )}
 

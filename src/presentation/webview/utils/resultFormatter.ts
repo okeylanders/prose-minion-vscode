@@ -680,6 +680,37 @@ export function formatCategorySearchAsMarkdown(result: any): string {
   }
   markdown += '\n';
 
+  // Files Summary table - shows which files each word appears in
+  markdown += '### Files Summary\n\n';
+  markdown += '| Word | Count | Clusters | Files | Files w/ Clusters |\n';
+  markdown += '|:-----|------:|---------:|:------|:------------------|\n';
+
+  for (const word of matchedWords) {
+    const targetData = targets.find(
+      (t: any) => t.normalized?.toLowerCase() === word.toLowerCase()
+    );
+
+    if (!targetData) continue;
+
+    const count = targetData.totalOccurrences ?? 0;
+    const perFile = targetData.perFile || [];
+
+    // Calculate total clusters across all files
+    const totalClusters = perFile.reduce((sum: number, f: any) => sum + (f.clusters?.length ?? 0), 0);
+
+    // Get file lists
+    const files = perFile.map((f: any) => f.relative || f.file || '—');
+    const filesWithClusters = perFile
+      .filter((f: any) => f.clusters?.length > 0)
+      .map((f: any) => f.relative || f.file || '—');
+
+    const filesStr = files.length > 0 ? files.join(', ') : '—';
+    const filesWithClustersStr = filesWithClusters.length > 0 ? filesWithClusters.join(', ') : '—';
+
+    markdown += `| \`${word}\` | ${count} | ${totalClusters} | ${filesStr} | ${filesWithClustersStr} |\n`;
+  }
+  markdown += '\n';
+
   // Details section - file-by-file breakdown with clusters and context
   markdown += '## Details & Cluster Analysis\n\n';
 

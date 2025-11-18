@@ -98,6 +98,11 @@ export interface CategorySearchResult {
   wordSearchResult: WordSearchResult;
   timestamp: number;
   error?: string;
+  tokensUsed?: {
+    prompt: number;
+    completion: number;
+    total: number;
+  };
 }
 
 export interface CategorySearchResultPayload {

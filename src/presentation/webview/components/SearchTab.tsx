@@ -4,9 +4,10 @@
  */
 
 import * as React from 'react';
-import { MessageType, TextSourceMode } from '../../../shared/types';
+import { MessageType, TextSourceMode, ModelOption, ModelScope } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
+import { ModelSelector } from './ModelSelector';
 import { formatMetricsAsMarkdown, formatCategorySearchAsMarkdown } from '../utils/resultFormatter';
 import { CategorySearchState } from '../hooks/domain/useSearch';
 
@@ -40,6 +41,10 @@ interface SearchTabProps {
   onCategorySearchQueryChange: (query: string) => void;
   onCategorySearchLoadingChange: (loading: boolean) => void;
   onClearCategorySearchResult: () => void;
+  // Model selection props for Category Search
+  modelOptions: ModelOption[];
+  contextModel?: string;
+  onModelChange: (scope: ModelScope, modelId: string) => void;
 }
 
 export const SearchTab: React.FC<SearchTabProps> = ({
@@ -60,7 +65,10 @@ export const SearchTab: React.FC<SearchTabProps> = ({
   categorySearch,
   onCategorySearchQueryChange,
   onCategorySearchLoadingChange,
-  onClearCategorySearchResult
+  onClearCategorySearchResult,
+  modelOptions,
+  contextModel,
+  onModelChange
 }) => {
   const [markdownContent, setMarkdownContent] = React.useState('');
   const [categoryMarkdownContent, setCategoryMarkdownContent] = React.useState('');
@@ -392,9 +400,23 @@ export const SearchTab: React.FC<SearchTabProps> = ({
       {/* Category Search panel */}
       {activeSubtool === 'category' && (
       <>
+        {/* Model selector for Category Search */}
+        {modelOptions.length > 0 && (
+          <div className="input-container" style={{ marginBottom: '12px' }}>
+            <ModelSelector
+              scope="context"
+              options={modelOptions}
+              value={contextModel}
+              onChange={onModelChange}
+              label="Category Model"
+              helperText="Shared with Context Assistant"
+            />
+          </div>
+        )}
+
         <div className="input-container">
           <label className="block text-sm font-medium mb-2">Scope:</label>
-          <div className="tab-bar" style={{ marginBottom: '8px' }}>
+          <div className="tab-bar" role="tablist" aria-label="Category search scope" style={{ marginBottom: '8px' }}>
             <button
               className={`tab-button ${sourceMode === 'activeFile' ? 'active' : ''}`}
               onClick={() => {
@@ -402,6 +424,9 @@ export const SearchTab: React.FC<SearchTabProps> = ({
                 onRequestActiveFile();
               }}
               disabled={categorySearch.isLoading}
+              role="tab"
+              aria-selected={sourceMode === 'activeFile'}
+              aria-label="Search active file"
             >
               <span className="tab-label">Active File</span>
             </button>
@@ -412,6 +437,9 @@ export const SearchTab: React.FC<SearchTabProps> = ({
                 onRequestManuscriptGlobs();
               }}
               disabled={categorySearch.isLoading}
+              role="tab"
+              aria-selected={sourceMode === 'manuscript'}
+              aria-label="Search manuscripts"
             >
               <span className="tab-label">Manuscripts</span>
             </button>
@@ -422,6 +450,9 @@ export const SearchTab: React.FC<SearchTabProps> = ({
                 onRequestChapterGlobs();
               }}
               disabled={categorySearch.isLoading}
+              role="tab"
+              aria-selected={sourceMode === 'chapters'}
+              aria-label="Search chapters"
             >
               <span className="tab-label">Chapters</span>
             </button>
@@ -432,6 +463,9 @@ export const SearchTab: React.FC<SearchTabProps> = ({
                 onPathTextChange('[selected text]');
               }}
               disabled={categorySearch.isLoading}
+              role="tab"
+              aria-selected={sourceMode === 'selection'}
+              aria-label="Search selection"
             >
               <span className="tab-label">Selection</span>
             </button>
@@ -460,6 +494,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
             onChange={(e) => onCategorySearchQueryChange(e.target.value)}
             placeholder="e.g., words related to weather"
             disabled={categorySearch.isLoading}
+            aria-label="Category query input"
           />
 
           <div className="flex gap-2 mt-2">
@@ -541,6 +576,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
                   timestamp: Date.now()
                 });
               }}
+              aria-label="Run category search"
             >⚡ Run Category Search</button>
           </div>
         </div>
