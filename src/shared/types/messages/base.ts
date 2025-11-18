@@ -20,6 +20,8 @@ export enum MessageType {
 
   // Search tab messages (separate from Metrics)
   RUN_WORD_SEARCH = 'run_word_search',
+  CATEGORY_SEARCH_REQUEST = 'category_search_request',
+  CATEGORY_SEARCH_RESULT = 'category_search_result',
 
   // Metrics source helpers
   REQUEST_ACTIVE_FILE = 'request_active_file',

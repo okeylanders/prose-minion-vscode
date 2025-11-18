@@ -47,6 +47,7 @@ import { ProseStatsService } from '../../infrastructure/api/services/measurement
 import { StyleFlagsService } from '../../infrastructure/api/services/measurement/StyleFlagsService';
 import { WordFrequencyService } from '../../infrastructure/api/services/measurement/WordFrequencyService';
 import { WordSearchService } from '../../infrastructure/api/services/search/WordSearchService';
+import { CategorySearchService } from '../../infrastructure/api/services/search/CategorySearchService';
 import { StandardsService } from '../../infrastructure/api/services/resources/StandardsService';
 import { AIResourceManager } from '../../infrastructure/api/services/resources/AIResourceManager';
 
@@ -249,10 +250,18 @@ export class MessageHandler {
       outputChannel
     );
 
+    const categorySearchService = new CategorySearchService(
+      aiResourceManager,
+      wordSearchService,
+      extensionUri,
+      outputChannel
+    );
+
     this.searchHandler = new SearchHandler(
       wordSearchService,
       this.postMessage.bind(this),
-      outputChannel
+      outputChannel,
+      categorySearchService
     );
 
     this.configurationHandler = new ConfigurationHandler(

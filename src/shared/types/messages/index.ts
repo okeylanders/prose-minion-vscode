@@ -40,7 +40,9 @@ import {
 } from './metrics';
 import {
   RunWordSearchMessage,
-  SearchResultMessage
+  SearchResultMessage,
+  CategorySearchRequestMessage,
+  CategorySearchResultMessage
 } from './search';
 import {
   RequestModelDataMessage,
@@ -103,6 +105,7 @@ export type WebviewToExtensionMessage =
   | MeasureStyleFlagsMessage
   | MeasureWordFrequencyMessage
   | RunWordSearchMessage
+  | CategorySearchRequestMessage
   | TabChangedMessage
   | OpenGuideFileMessage
   | OpenResourceMessage
@@ -124,6 +127,7 @@ export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
   | MetricsResultMessage
   | SearchResultMessage
+  | CategorySearchResultMessage
   | DictionaryResultMessage
   | ContextResultMessage
   | SaveResultSuccessMessage
