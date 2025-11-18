@@ -966,7 +966,13 @@ When working with this codebase:
 10. **Maintain Clean Code**:
     - Single Responsibility: Each hook/handler owns one domain
     - Open/Closed: Extend via registration, not modification
-    - DRY: Extract duplication (but document as debt if out of scope)
+    - **Composition over Duplication** (when use cases align):
+      - Prefer composition pattern to maintain DRY (e.g., ContextSearchService delegates to WordSearchService)
+      - **CRITICAL**: Only apply when use cases genuinely align
+      - What looks like duplication now may not be duplication later as use cases diverge
+      - Example: Context Search + Word Search both need occurrence counting → composition makes sense
+      - Counter-example: Two features happen to format strings similarly but for different purposes → duplication is acceptable
+      - Document composition decisions in ADRs with use case alignment rationale
     - No God Components: Keep orchestrators thin (App.tsx, MessageHandler)
 
 ### Integration & Compatibility
@@ -1137,6 +1143,40 @@ When AI agents rush to implement features without architectural planning, they t
 - ✅ Force agent to export State/Actions/Persistence interfaces
 
 **Fix**: Explicit interfaces for all domain hooks, message contracts organized by domain
+
+---
+
+#### 7. Premature DRY / Composition Overreach
+**Symptom**: Extracting shared code or using composition pattern when use cases don't genuinely align
+
+**Example**:
+
+- Two features format strings similarly → agent extracts shared formatter (but purposes differ)
+- Similar-looking logic → agent creates shared service (but use cases will diverge)
+- "DRY at all costs" mentality ignoring use case boundaries
+
+**Prevention**:
+
+- ✅ Ask: "Do these use cases genuinely align long-term?"
+- ✅ Document composition decisions in ADRs with use case alignment rationale
+- ✅ Accept duplication when use cases are distinct (even if code looks similar now)
+- ✅ Remember: What looks like duplication now may not be duplication later as use cases diverge
+
+**Good Composition** (Context Search epic):
+
+- ContextSearchService delegates to WordSearchService for occurrence counting
+- ✅ Use cases align: Both need occurrence counts, clusters, chapter detection
+- ✅ Shared settings, shared data structures, shared purpose
+- ✅ Composition eliminates genuine duplication
+
+**Bad Composition** (Hypothetical):
+
+- Two features both format dates → extract shared DateFormatter
+- ❌ Use cases differ: One needs ISO format for API, other needs human-readable for UI
+- ❌ Coupling unrelated features through shared formatter
+- ❌ When UI formatting changes, API formatting shouldn't be affected
+
+**Fix**: Apply composition only when use cases genuinely align. Document rationale in ADRs.
 
 ---
 
