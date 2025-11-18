@@ -8,6 +8,9 @@ import { MessageType, TextSourceMode } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
 import { formatMetricsAsMarkdown } from '../utils/resultFormatter';
+import { CategorySearchState } from '../hooks/domain/useSearch';
+
+type SearchSubtool = 'word' | 'category';
 
 interface SearchTabProps {
   vscode: any;
@@ -32,6 +35,11 @@ interface SearchTabProps {
     };
     updateSetting: (key: 'contextWords' | 'clusterWindow' | 'minClusterSize' | 'caseSensitive', value: any) => void;
   };
+  // Category search props
+  categorySearch: CategorySearchState;
+  onCategorySearchQueryChange: (query: string) => void;
+  onCategorySearchLoadingChange: (loading: boolean) => void;
+  onClearCategorySearchResult: () => void;
 }
 
 export const SearchTab: React.FC<SearchTabProps> = ({
@@ -48,10 +56,15 @@ export const SearchTab: React.FC<SearchTabProps> = ({
   onRequestActiveFile,
   onRequestManuscriptGlobs,
   onRequestChapterGlobs,
-  wordSearchSettings
+  wordSearchSettings,
+  categorySearch,
+  onCategorySearchQueryChange,
+  onCategorySearchLoadingChange,
+  onClearCategorySearchResult
 }) => {
   const [markdownContent, setMarkdownContent] = React.useState('');
   const [expandInfo, setExpandInfo] = React.useState<string>('');
+  const [activeSubtool, setActiveSubtool] = React.useState<SearchSubtool>('word');
 
   // Build a TextSourceSpec consistently for search requests
   const buildSourceSpec = React.useCallback(() => {
@@ -109,6 +122,27 @@ export const SearchTab: React.FC<SearchTabProps> = ({
     <div className="tab-content">
       <h2 className="text-lg font-semibold mb-4">Search</h2>
 
+      {/* Subtool tabs */}
+      <div className="tab-bar" style={{ marginBottom: '16px' }}>
+        <button
+          className={`tab-button ${activeSubtool === 'word' ? 'active' : ''}`}
+          onClick={() => setActiveSubtool('word')}
+          disabled={isLoading || categorySearch.isLoading}
+        >
+          <span className="tab-label">Word Search</span>
+        </button>
+        <button
+          className={`tab-button ${activeSubtool === 'category' ? 'active' : ''}`}
+          onClick={() => setActiveSubtool('category')}
+          disabled={isLoading || categorySearch.isLoading}
+        >
+          <span className="tab-label">Category Search</span>
+        </button>
+      </div>
+
+      {/* Word Search panel */}
+      {activeSubtool === 'word' && (
+      <>
       <div className="input-container">
         <label className="block text-sm font-medium mb-2">Scope:</label>
         <div className="tab-bar" style={{ marginBottom: '8px' }}>
@@ -304,6 +338,164 @@ export const SearchTab: React.FC<SearchTabProps> = ({
       )}
       {!markdownContent && (
         <div className="placeholder-content text-gray-500">No results yet. Enter targets and click Run Search.</div>
+      )}
+      </>
+      )}
+
+      {/* Category Search panel */}
+      {activeSubtool === 'category' && (
+      <>
+        <div className="input-container">
+          <label className="block text-sm font-medium mb-2">Scope:</label>
+          <div className="tab-bar" style={{ marginBottom: '8px' }}>
+            <button
+              className={`tab-button ${sourceMode === 'activeFile' ? 'active' : ''}`}
+              onClick={() => {
+                onSourceModeChange('activeFile');
+                onRequestActiveFile();
+              }}
+              disabled={categorySearch.isLoading}
+            >
+              <span className="tab-label">Active File</span>
+            </button>
+            <button
+              className={`tab-button ${sourceMode === 'manuscript' ? 'active' : ''}`}
+              onClick={() => {
+                onSourceModeChange('manuscript');
+                onRequestManuscriptGlobs();
+              }}
+              disabled={categorySearch.isLoading}
+            >
+              <span className="tab-label">Manuscripts</span>
+            </button>
+            <button
+              className={`tab-button ${sourceMode === 'chapters' ? 'active' : ''}`}
+              onClick={() => {
+                onSourceModeChange('chapters');
+                onRequestChapterGlobs();
+              }}
+              disabled={categorySearch.isLoading}
+            >
+              <span className="tab-label">Chapters</span>
+            </button>
+            <button
+              className={`tab-button ${sourceMode === 'selection' ? 'active' : ''}`}
+              onClick={() => {
+                onSourceModeChange('selection');
+                onPathTextChange('[selected text]');
+              }}
+              disabled={categorySearch.isLoading}
+            >
+              <span className="tab-label">Selection</span>
+            </button>
+          </div>
+
+          <label className="block text-sm font-medium mb-2" htmlFor="pm-category-search-path-input">Path / Pattern</label>
+          <input
+            id="pm-category-search-path-input"
+            type="text"
+            className="w-full"
+            value={pathText}
+            onChange={(e) => onPathTextChange(e.target.value)}
+            placeholder={sourceMode === 'selection' ? 'Selected text' : 'e.g. prose/**/*.md'}
+            disabled={categorySearch.isLoading}
+          />
+        </div>
+
+        <div className="input-container">
+          <label className="block text-sm font-medium mb-2" htmlFor="pm-category-search-query">Category Query</label>
+          <span className="text-xs text-gray-500 block mb-1">Describe the category of words to find (e.g., "weather words", "emotion verbs")</span>
+          <textarea
+            id="pm-category-search-query"
+            className="w-full"
+            rows={2}
+            value={categorySearch.query}
+            onChange={(e) => onCategorySearchQueryChange(e.target.value)}
+            placeholder="e.g., words related to weather"
+            disabled={categorySearch.isLoading}
+          />
+
+          <div className="mt-3 flex justify-center">
+            <button
+              className="btn btn-primary"
+              disabled={categorySearch.isLoading || !categorySearch.query.trim()}
+              onClick={() => {
+                onClearCategorySearchResult();
+                onCategorySearchLoadingChange(true);
+                vscode.postMessage({
+                  type: MessageType.CATEGORY_SEARCH_REQUEST,
+                  source: 'webview.search.tab',
+                  payload: {
+                    query: categorySearch.query,
+                    source: buildSourceSpec(),
+                    options: {
+                      contextWords: wordSearchSettings.settings.contextWords,
+                      clusterWindow: wordSearchSettings.settings.clusterWindow,
+                      minClusterSize: wordSearchSettings.settings.minClusterSize,
+                      caseSensitive: wordSearchSettings.settings.caseSensitive
+                    }
+                  },
+                  timestamp: Date.now()
+                });
+              }}
+            >⚡ Run Category Search</button>
+          </div>
+        </div>
+
+        {categorySearch.isLoading && (
+          <div className="loading-indicator">
+            <div className="loading-header">
+              <div className="spinner"></div>
+              <div className="loading-text">
+                <div>{'Running category search...'}</div>
+              </div>
+            </div>
+            <LoadingWidget />
+          </div>
+        )}
+
+        {categorySearch.error && (
+          <div className="error-message" style={{ marginTop: '8px', color: 'var(--vscode-errorForeground)' }}>
+            {categorySearch.error}
+          </div>
+        )}
+
+        {categorySearch.result && !categorySearch.isLoading && (
+          <div className="result-box">
+            <h3 className="text-md font-semibold mb-2">Matched Words ({categorySearch.result.matchedWords.length})</h3>
+            {categorySearch.result.matchedWords.length > 0 ? (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr>
+                    <th className="text-left pb-2">Word</th>
+                    <th className="text-right pb-2">Count</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {categorySearch.result.matchedWords.map((word, idx) => {
+                    const targetData = categorySearch.result?.wordSearchResult.targets.find(
+                      t => t.normalized.toLowerCase() === word.toLowerCase()
+                    );
+                    const count = targetData?.totalOccurrences ?? 0;
+                    return (
+                      <tr key={idx}>
+                        <td className="py-1">{word}</td>
+                        <td className="text-right py-1">{count}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <div className="text-gray-500">No words matched the category query.</div>
+            )}
+          </div>
+        )}
+
+        {!categorySearch.result && !categorySearch.isLoading && !categorySearch.error && (
+          <div className="placeholder-content text-gray-500">No results yet. Enter a category query and click Run Category Search.</div>
+        )}
+      </>
       )}
     </div>
   );

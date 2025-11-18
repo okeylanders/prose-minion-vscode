@@ -75,6 +75,10 @@ export const App: React.FC = () => {
       search.handleSearchResult(msg);
       setError(''); // Clear error on success
     },
+    [MessageType.CATEGORY_SEARCH_RESULT]: (msg) => {
+      search.handleCategorySearchResult(msg);
+      setError(''); // Clear error on success
+    },
     [MessageType.DICTIONARY_RESULT]: (msg) => {
       dictionary.handleDictionaryResult(msg);
       setError(''); // Clear error on success
@@ -427,6 +431,10 @@ export const App: React.FC = () => {
               settings: wordSearchSettings.settings,
               updateSetting: wordSearchSettings.updateSetting,
             }}
+            categorySearch={search.categorySearch}
+            onCategorySearchQueryChange={search.setCategorySearchQuery}
+            onCategorySearchLoadingChange={search.setCategorySearchLoading}
+            onClearCategorySearchResult={search.clearCategorySearchResult}
           />
         )}
 

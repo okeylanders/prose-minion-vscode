@@ -13,9 +13,10 @@ describe('SearchHandler', () => {
 
   beforeEach(() => {
     handler = new SearchHandler(
+      {} as any,  // wordSearchService
       jest.fn().mockResolvedValue(undefined) as any, // postMessage
       {} as any, // outputChannel
-      {} as any  // wordSearchService
+      {} as any  // categorySearchService
     );
     router = new MessageRouter();
   });
@@ -26,9 +27,14 @@ describe('SearchHandler', () => {
       expect(router.hasHandler(MessageType.RUN_WORD_SEARCH)).toBe(true);
     });
 
-    it('should register exactly 1 route', () => {
+    it('should register CATEGORY_SEARCH_REQUEST route', () => {
       handler.registerRoutes(router);
-      expect(router.handlerCount).toBe(1);
+      expect(router.hasHandler(MessageType.CATEGORY_SEARCH_REQUEST)).toBe(true);
+    });
+
+    it('should register exactly 2 routes', () => {
+      handler.registerRoutes(router);
+      expect(router.handlerCount).toBe(2);
     });
   });
 });
