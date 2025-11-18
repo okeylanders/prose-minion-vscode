@@ -2,9 +2,11 @@
 
 **Epic**: [epic-ux-polish](../epic-ux-polish.md)
 **Date**: 2025-11-17
-**Status**: 📝 Planned
+**Status**: ✅ **COMPLETE**
+**Completion Date**: 2025-11-17
 **Branch**: `sprint/epic-ux-polish-2025-11-17-02-custom-models`
 **Estimated Time**: 1-2 hours
+**Actual Time**: ~1 hour
 **Priority**: LOW (power user feature)
 **Depends On**: Sprint 01 (optional dependency)
 
@@ -288,12 +290,44 @@ try {
 
 ## Completion Summary
 
-*(To be filled in after sprint completion)*
+**Status**: ✅ **COMPLETE**
+**Completion Date**: 2025-11-17
+**Actual Time**: ~1 hour (better than estimated 1-2 hours)
 
-**Status**: 📝 Planned
-**Files Modified**: TBD
-**Time Spent**: TBD
-**Outcome**: TBD
+### ✅ Implemented
+
+**Phase 1: Remove Enum from package.json** (~5 min)
+- Removed `enum` and `enumDescriptions` from:
+  - `proseMinion.assistantModel`
+  - `proseMinion.dictionaryModel`
+  - `proseMinion.contextModel`
+- Updated descriptions to mention custom model IDs
+
+**Phase 2: Update Settings Overlay** (~45 min)
+- Added `RECOMMENDED_MODELS` import
+- Modified `renderModelSelect` to detect custom models
+- Custom models shown with "(Custom)" label
+- Curated dropdown preserved for normal users
+
+**Phase 3: Error Messages** (SKIPPED)
+- OpenRouter API already provides clear error messages
+- Optional enhancement deferred
+
+**Files Modified**:
+1. `package.json` - Removed enum constraints (3 model settings)
+2. `src/presentation/webview/components/SettingsOverlay.tsx` - Custom model detection
+
+**Commits**:
+- 0215fba: [Phase 1] Remove enum constraints from model settings
+- ff47c2e: [Phase 2] Add custom model detection to Settings Overlay
+
+**Outcome**:
+- ✅ Power users can enter any OpenRouter model ID via VSCode settings
+- ✅ Settings Overlay detects and displays custom models with "(Custom)" label
+- ✅ Curated dropdown experience preserved for normal users
+- ✅ Future-proof: No extension updates needed when OpenRouter adds models
+- ✅ Build successful with no errors
+- ⏸️ Manual testing deferred to user verification (see testing checklist below)
 
 ---
 
