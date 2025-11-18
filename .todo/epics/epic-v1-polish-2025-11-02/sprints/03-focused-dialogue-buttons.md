@@ -2,9 +2,11 @@
 
 **Epic**: [epic-v1-polish](../epic-v1-polish.md)
 **Date**: 2025-11-07
-**Status**: 📝 Planned
-**Branch**: `sprint/epic-v1-polish-03-focused-dialogue-buttons`
+**Completed**: 2025-11-07
+**Status**: ✅ **COMPLETE**
+**Branch**: `sprint/epic-v1-polish-03-focused-dialogue-buttons` (merged)
 **Estimated Time**: 2-3 hours
+**Actual Time**: ~2 hours
 **Priority**: MEDIUM (v1.0 Polish)
 
 ## Goals
@@ -321,23 +323,45 @@ Focused:
 
 ## Completion Summary
 
-*(To be filled in after sprint completion)*
+**Status**: ✅ **COMPLETE**
+**Completion Date**: 2025-11-07
+**Actual Time**: ~2 hours (matched estimate)
 
 ### ✅ Implemented
 
 **Files Modified**:
-- TBD
+- `src/presentation/webview/components/AnalysisTab.tsx` - Four-button UI with section headers
+- `src/tools/assist/dialogueMicrobeatAssistant.ts` - Focus parameter support
+- `src/application/handlers/domain/AnalysisHandler.ts` - Extract and pass focus to tool
+- `src/shared/types/messages/analysis.ts` - Added focus to AnalyzeDialogueRequest
+- `resources/system-prompts/dialog-microbeat-assistant/focus/` - Created focus-specific prompts
+  - `both.md` - Balanced analysis (50/50)
+  - `dialogue.md` - Dialogue emphasis (80/20)
+  - `microbeats.md` - Microbeats emphasis (80/20)
 
 **Features**:
-- TBD
+- ✅ Four-button layout with clear visual hierarchy
+- ✅ Primary buttons: 🎭 Dialogue & Beats, 📝 Prose
+- ✅ Focused buttons: 💬 Dialogue Only, 🎭 Microbeats Only
+- ✅ Section headers: "Analyze & Suggest Improvements:" and "Focused:"
+- ✅ Focus parameter flows through full stack (UI → Handler → Service → Tool)
+- ✅ Focus-specific prompts appended to base prompts
+- ✅ Default behavior: `focus: 'both'` (backward compatible)
 
 **What Was NOT Implemented**:
-- TBD
+- None - all planned features implemented
 
 ### Testing Notes
 
-- TBD
+**Manual Testing Verified**:
+- ✅ All four buttons render correctly with icons
+- ✅ Visual hierarchy clear (primary vs focused distinction)
+- ✅ Focus parameter included in message payload
+- ✅ AI responses reflect focus emphasis (dialogue-heavy vs beats-heavy)
+- ✅ No regressions in existing prose analysis button
+- ✅ Works in both light and dark themes
 
 ### Next Steps
 
-- TBD
+- Epic complete - all 4 sprints done (Sprint 03 was last)
+- v1 Polish epic ready for archival or final review

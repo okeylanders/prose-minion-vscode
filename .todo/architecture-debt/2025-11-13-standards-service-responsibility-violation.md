@@ -230,3 +230,40 @@ From Sprint 01 ADR and implementation:
 - Sprint 01: Extract Resource Services (where StandardsService was created)
 - Sprint 02: Create Measurement Service Wrappers (where issue was identified)
 - Sprint 04/05: Recommended fix timing
+
+---
+
+## Resolution
+
+**Status**: ✅ **RESOLVED**
+**Resolution Date**: 2025-11-15
+**Resolved By**: [Technical Debt Cleanup Epic - Sprint 01](.todo/epics/epic-technical-debt-cleanup-2025-11-15/sprints/01-standards-service-responsibility-fix.md)
+**Commit**: a694ea1
+
+### What Was Done
+
+✅ **ProseStatsService Enhanced**:
+- Added `analyzeMultipleFiles()` method for manuscript/chapters mode
+- Added `findUriByRelativePath()` helper (moved from StandardsService)
+- Proper error handling and logging for file read failures
+
+✅ **StandardsService Cleaned**:
+- Removed `computePerFileStats()` method (measurement orchestration)
+- Removed `ProseStatsAnalyzer` interface (no longer needed)
+- Removed `findUriByRelativePath()` helper (moved to ProseStatsService)
+- Now only handles standards concerns (Single Responsibility Principle restored)
+
+✅ **MetricsHandler Updated**:
+- Changed from `standardsService.computePerFileStats()` to `proseStatsService.analyzeMultipleFiles()`
+- Cleaner, more intuitive API
+
+✅ **Tests Added**:
+- 9 comprehensive tests for multi-file analysis
+- All tests passing (133 total)
+
+### Outcome
+
+✅ Single Responsibility Principle restored
+✅ Correct domain boundaries (measurement in measurement service)
+✅ Clearer architecture (ProseStatsService owns all prose stats analysis)
+✅ No regressions in manuscript mode
