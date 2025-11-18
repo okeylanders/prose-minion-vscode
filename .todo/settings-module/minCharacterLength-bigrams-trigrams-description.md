@@ -1,8 +1,23 @@
 # Add minCharacterLength Impact Description for N-Grams
 
 **Date Created**: 2025-11-11
+**Status**: ✅ **SUPERSEDED**
 **Priority**: Low
 **Estimated Effort**: 15-30 minutes
+**Superseded By**: [UX Polish Epic - Sprint 01](../epics/epic-ux-polish-2025-11-17/sprints/01-ngram-filter-description.md)
+
+---
+
+## Status
+
+✅ **SUPERSEDED** - This feature is now part of:
+- **Epic**: [UX Polish Enhancements](../epics/epic-ux-polish-2025-11-17/epic-ux-polish.md)
+- **Sprint**: [Sprint 01 - N-Gram Filter Description](../epics/epic-ux-polish-2025-11-17/sprints/01-ngram-filter-description.md)
+- **ADR**: [ADR-2025-11-17: UX Polish Enhancements](../../docs/adr/2025-11-17-ux-polish-enhancements.md)
+
+Please refer to the sprint document for implementation details.
+
+---
 
 ## Problem
 

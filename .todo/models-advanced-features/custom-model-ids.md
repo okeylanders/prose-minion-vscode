@@ -1,8 +1,22 @@
 # Feature: Custom Model IDs for Advanced Users
 
-**Status**: Pending (Future Release)
+**Status**: ✅ **SUPERSEDED**
 **Priority**: Low (Nice-to-have for power users)
 **Date Created**: 2025-11-07
+**Superseded By**: [UX Polish Epic - Sprint 02](../epics/epic-ux-polish-2025-11-17/sprints/02-custom-model-ids.md)
+
+---
+
+## Status
+
+✅ **SUPERSEDED** - This feature is now part of:
+- **Epic**: [UX Polish Enhancements](../epics/epic-ux-polish-2025-11-17/epic-ux-polish.md)
+- **Sprint**: [Sprint 02 - Custom Model IDs](../epics/epic-ux-polish-2025-11-17/sprints/02-custom-model-ids.md)
+- **ADR**: [ADR-2025-11-17: UX Polish Enhancements](../../docs/adr/2025-11-17-ux-polish-enhancements.md)
+
+Please refer to the sprint document for implementation details.
+
+---
 
 ## Overview
 
