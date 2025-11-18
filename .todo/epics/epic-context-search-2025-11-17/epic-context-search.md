@@ -1,7 +1,7 @@
 # Epic: Context Search (AI-Powered Semantic Search)
 
 **Epic ID**: epic-context-search-2025-11-17
-**Status**: In Progress (3/4 Sprints Complete)
+**Status**: Complete (4/4 Sprints Complete)
 **Created**: 2025-11-17
 **Updated**: 2025-11-18
 **Owner**: okeylanders
@@ -178,26 +178,26 @@ Add AI-powered semantic search to the Search tab, enabling writers to find words
 
 ---
 
-### Sprint 04: Performance + Polish
-**Status**: Pending
-**Estimated Effort**: 0.25 days (was 0.5-1 day) - **75% reduction via WordSearchService**
-**Branch**: `sprint/epic-context-search-2025-11-17-04-performance-polish`
+### Sprint 04: Polish & Enhancements
+**Status**: Complete
+**Estimated Effort**: 0.5 days | **Actual**: ~1.5 hours
+**Commit**: `2f435c8`
 
-**Scope**:
+**Scope** (revised after user testing):
 
-- Pagination for large word lists (>2K distinct words) **ONLY for AI calls** (file processing already handled)
-- Progress indicators for AI batch processing
-- Error handling (AI failures, invalid queries)
-- Settings persistence (last query only - options reuse Word Search settings)
-- Token cost estimation display (optional)
+- Context model dropdown (shared with Context Assistant)
+- Token usage tracking from API response
+- Filter hallucinated words (0-occurrence results)
+- Files Summary table (word | count | clusters | files)
+- ARIA labels for accessibility
 
 **Acceptance**:
 
-- ✅ 50K word novel processes without token errors
-- ✅ Progress shows "Analyzing batch 2 of 5..." during AI pagination
-- ✅ Graceful error messages for API failures
-- ✅ Last query persists across sessions
-- ✅ **Multi-file processing works via WordSearchService (no custom code needed)**
+- ✅ Model dropdown shows at top of Category Search, changes persist
+- ✅ Token usage tracked in result (visible in Output Channel)
+- ✅ Words with 0 results are not shown in output
+- ✅ Files Summary table appears with correct data
+- ✅ ARIA labels present on main interactive elements
 
 **Details**: [Sprint 04](sprints/04-performance-polish.md)
 
