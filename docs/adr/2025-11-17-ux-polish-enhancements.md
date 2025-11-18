@@ -1,7 +1,8 @@
 # ADR: UX Polish Enhancements - Settings & Power User Features
 
 **Date**: 2025-11-17
-**Status**: 🚧 Proposed
+**Status**: ✅ Implemented
+**Completion Date**: 2025-11-17
 **Context**: Post-v1.0 alpha polish
 **Decision Makers**: Okey Landers + AI Agent Team
 **Implementation**: [UX Polish Epic](.todo/epics/epic-ux-polish-2025-11-17/)

@@ -1,9 +1,11 @@
 # Epic: UX Polish Enhancements
 
 **Created**: 2025-11-17
-**Status**: 📝 Planned
+**Status**: ✅ **COMPLETE**
+**Completion Date**: 2025-11-17
 **Priority**: Medium (Post-v1.0 polish)
 **Estimated Duration**: 2-3 hours total
+**Actual Duration**: ~1.25 hours (better than estimate!)
 **ADR**: [ADR-2025-11-17: UX Polish Enhancements](../../../docs/adr/2025-11-17-ux-polish-enhancements.md)
 
 ---
@@ -46,7 +48,7 @@ Two quick-win UX improvements to enhance user experience and power user flexibil
 ## Sprints
 
 ### Sprint 01: N-Gram Filter Description (15-30 min)
-**Status**: 📝 Planned
+**Status**: ✅ **COMPLETE** (2025-11-17)
 **Document**: [sprints/01-ngram-filter-description.md](sprints/01-ngram-filter-description.md)
 
 **Scope**: Add description to Settings Overlay explaining n-gram filter behavior
@@ -59,7 +61,7 @@ Two quick-win UX improvements to enhance user experience and power user flexibil
 ---
 
 ### Sprint 02: Custom Model IDs (1-2 hours)
-**Status**: 📝 Planned
+**Status**: ✅ **COMPLETE** (2025-11-17)
 **Document**: [sprints/02-custom-model-ids.md](sprints/02-custom-model-ids.md)
 
 **Scope**: Remove enum restriction, allow free-text model input for power users
@@ -118,4 +120,4 @@ Two quick-win UX improvements to enhance user experience and power user flexibil
 ---
 
 **Last Updated**: 2025-11-17
-**Epic Status**: 📝 Planned - Ready to begin Sprint 01
+**Epic Status**: ✅ **COMPLETE** - Both sprints finished, PRs #29 and #28 merged
