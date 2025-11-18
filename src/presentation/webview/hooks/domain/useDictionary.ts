@@ -97,11 +97,15 @@ export const useDictionary = (): UseDictionaryReturn => {
   const [statusMessage, setStatusMessage] = React.useState<string>(persisted?.dictionaryStatusMessage ?? '');
 
   // Clear result when dictionary lookup starts
-  React.useEffect(() => {
+  const clearResultWhenLoading = React.useCallback(() => {
     if (loading) {
       setResult('');
     }
   }, [loading]);
+
+  React.useEffect(() => {
+    clearResultWhenLoading();
+  }, [clearResultWhenLoading]);
 
   const handleDictionaryResult = React.useCallback((message: DictionaryResultMessage) => {
     const { result, toolName } = message.payload;
