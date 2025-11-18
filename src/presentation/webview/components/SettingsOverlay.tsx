@@ -6,6 +6,7 @@ import { UseTokenTrackingReturn } from '../hooks/domain/useTokenTracking';
 import { UseContextPathsSettingsReturn } from '../hooks/domain/useContextPathsSettings';
 import { UseWordFrequencySettingsReturn } from '../hooks/domain/useWordFrequencySettings';
 import { UseWordSearchSettingsReturn } from '../hooks/domain/useWordSearchSettings';
+import { RECOMMENDED_MODELS } from '../../../infrastructure/api/OpenRouterModels';
 
 type SettingsOverlayProps = {
   visible: boolean;
@@ -64,21 +65,35 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
   const getWordSearchSetting = <K extends keyof typeof wordSearchSettings.settings>(key: K) => wordSearchSettings.settings[key];
   const getContextPathsSetting = <K extends keyof typeof contextPathsSettings.settings>(key: K) => contextPathsSettings.settings[key];
 
-  const renderModelSelect = (scope: ModelScope, label: string, help?: string) => (
-    <label className="settings-label">
-      <div className="settings-label-title">{label}</div>
-      <select
-        value={modelSelections[scope] || ''}
-        onChange={(e) => onModelChange(scope, e.target.value)}
-        className="settings-input"
-      >
-        {modelOptions.map(opt => (
-          <option key={opt.id} value={opt.id}>{opt.label}</option>
-        ))}
-      </select>
-      {help && <div className="settings-description">{help}</div>}
-    </label>
-  );
+  const renderModelSelect = (scope: ModelScope, label: string, help?: string) => {
+    // Detect if current model is custom (not in RECOMMENDED_MODELS)
+    const currentModel = modelSelections[scope] || '';
+    const isCustomModel = currentModel && !RECOMMENDED_MODELS.find(m => m.id === currentModel);
+
+    return (
+      <label className="settings-label">
+        <div className="settings-label-title">{label}</div>
+        <select
+          value={currentModel}
+          onChange={(e) => onModelChange(scope, e.target.value)}
+          className="settings-input"
+        >
+          {/* Show current custom model if exists */}
+          {isCustomModel && (
+            <option value={currentModel}>
+              {currentModel} (Custom)
+            </option>
+          )}
+          
+          {/* Recommended models */}
+          {modelOptions.map(opt => (
+            <option key={opt.id} value={opt.id}>{opt.label}</option>
+          ))}
+        </select>
+        {help && <div className="settings-description">{help}</div>}
+      </label>
+    );
+  };
 
   return (
     <div className="settings-overlay">
