@@ -7,7 +7,7 @@ import * as React from 'react';
 import { MessageType, TextSourceMode } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
-import { formatMetricsAsMarkdown } from '../utils/resultFormatter';
+import { formatMetricsAsMarkdown, formatCategorySearchAsMarkdown } from '../utils/resultFormatter';
 import { CategorySearchState } from '../hooks/domain/useSearch';
 
 type SearchSubtool = 'word' | 'category';
@@ -63,6 +63,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
   onClearCategorySearchResult
 }) => {
   const [markdownContent, setMarkdownContent] = React.useState('');
+  const [categoryMarkdownContent, setCategoryMarkdownContent] = React.useState('');
   const [expandInfo, setExpandInfo] = React.useState<string>('');
   const [activeSubtool, setActiveSubtool] = React.useState<SearchSubtool>('word');
 
@@ -84,6 +85,19 @@ export const SearchTab: React.FC<SearchTabProps> = ({
       setMarkdownContent('');
     }
   }, [result]);
+
+  // Convert category search result to markdown
+  React.useEffect(() => {
+    if (!categorySearch.result) {
+      setCategoryMarkdownContent('');
+      return;
+    }
+    try {
+      setCategoryMarkdownContent(formatCategorySearchAsMarkdown(categorySearch.result));
+    } catch {
+      setCategoryMarkdownContent('');
+    }
+  }, [categorySearch.result]);
 
   const handleCopyResult = () => {
     try {
@@ -109,6 +123,39 @@ export const SearchTab: React.FC<SearchTabProps> = ({
         payload: {
           toolName: 'word_search',
           content: markdownContent || '',
+          metadata: { timestamp: Date.now() }
+        },
+        timestamp: Date.now()
+      });
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleCopyCategoryResult = () => {
+    try {
+      vscode.postMessage({
+        type: MessageType.COPY_RESULT,
+        source: 'webview.search.category',
+        payload: {
+          toolName: 'category_search',
+          content: categoryMarkdownContent || ''
+        },
+        timestamp: Date.now()
+      });
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleSaveCategoryResult = () => {
+    try {
+      vscode.postMessage({
+        type: MessageType.SAVE_RESULT,
+        source: 'webview.search.category',
+        payload: {
+          toolName: 'category_search',
+          content: categoryMarkdownContent || '',
           metadata: { timestamp: Date.now() }
         },
         timestamp: Date.now()
@@ -415,6 +462,62 @@ export const SearchTab: React.FC<SearchTabProps> = ({
             disabled={categorySearch.isLoading}
           />
 
+          <div className="flex gap-2 mt-2">
+            <div className="flex-1">
+              <label className="block text-sm mb-1" htmlFor="pm-category-context-words">Context words</label>
+              <input
+                id="pm-category-context-words"
+                type="text"
+                className="w-full"
+                value={wordSearchSettings.settings.contextWords}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  wordSearchSettings.updateSetting('contextWords', val ? parseInt(val, 10) : 3);
+                }}
+                disabled={categorySearch.isLoading}
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-sm mb-1" htmlFor="pm-category-cluster-window">Cluster window</label>
+              <input
+                id="pm-category-cluster-window"
+                type="text"
+                className="w-full"
+                value={wordSearchSettings.settings.clusterWindow}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  wordSearchSettings.updateSetting('clusterWindow', val ? parseInt(val, 10) : 50);
+                }}
+                disabled={categorySearch.isLoading}
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-sm mb-1" htmlFor="pm-category-min-cluster">Min cluster size</label>
+              <input
+                id="pm-category-min-cluster"
+                type="text"
+                className="w-full"
+                value={wordSearchSettings.settings.minClusterSize}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  wordSearchSettings.updateSetting('minClusterSize', val ? parseInt(val, 10) : 2);
+                }}
+                disabled={categorySearch.isLoading}
+              />
+            </div>
+          </div>
+          <div className="mt-2">
+            <label className="inline-flex items-center">
+              <input
+                type="checkbox"
+                checked={wordSearchSettings.settings.caseSensitive}
+                onChange={(e) => wordSearchSettings.updateSetting('caseSensitive', e.target.checked)}
+                disabled={categorySearch.isLoading}
+              />
+              <span className="ml-2">Case sensitive</span>
+            </label>
+          </div>
+
           <div className="mt-3 flex justify-center">
             <button
               className="btn btn-primary"
@@ -460,35 +563,29 @@ export const SearchTab: React.FC<SearchTabProps> = ({
           </div>
         )}
 
-        {categorySearch.result && !categorySearch.isLoading && (
+        {categoryMarkdownContent && !categorySearch.isLoading && (
           <div className="result-box">
-            <h3 className="text-md font-semibold mb-2">Matched Words ({categorySearch.result.matchedWords.length})</h3>
-            {categorySearch.result.matchedWords.length > 0 ? (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr>
-                    <th className="text-left pb-2">Word</th>
-                    <th className="text-right pb-2">Count</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {categorySearch.result.matchedWords.map((word, idx) => {
-                    const targetData = categorySearch.result?.wordSearchResult.targets.find(
-                      t => t.normalized.toLowerCase() === word.toLowerCase()
-                    );
-                    const count = targetData?.totalOccurrences ?? 0;
-                    return (
-                      <tr key={idx}>
-                        <td className="py-1">{word}</td>
-                        <td className="text-right py-1">{count}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            ) : (
-              <div className="text-gray-500">No words matched the category query.</div>
-            )}
+            <div className="result-action-bar">
+              <button
+                className="icon-button"
+                onClick={handleCopyCategoryResult}
+                disabled={categorySearch.isLoading}
+                title="Copy category search results"
+                aria-label="Copy category search results"
+              >
+                📋
+              </button>
+              <button
+                className="icon-button"
+                onClick={handleSaveCategoryResult}
+                disabled={categorySearch.isLoading}
+                title="Save category search results"
+                aria-label="Save category search results"
+              >
+                💾
+              </button>
+            </div>
+            <MarkdownRenderer content={categoryMarkdownContent} />
           </div>
         )}
 
