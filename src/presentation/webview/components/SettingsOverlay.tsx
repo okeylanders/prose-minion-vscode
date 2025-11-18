@@ -401,6 +401,10 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
           <div className="settings-description">
             Filter word frequency by minimum character count. Higher values focus on longer,
             more distinctive words (3+ removes "it", "is"; 5+ shows multi-syllable words; 7+ = complex; 9+ = rare).
+            <br /><br />
+            <strong>Note:</strong> For bigrams and trigrams, ALL words in the phrase must meet
+            the minimum length. Setting to 4+ characters will filter most prepositional
+            phrases like "in the", "of the", and "to the".
           </div>
         </label>
       </section>
