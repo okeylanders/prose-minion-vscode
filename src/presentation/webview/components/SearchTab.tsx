@@ -182,14 +182,12 @@ export const SearchTab: React.FC<SearchTabProps> = ({
         <button
           className={`tab-button ${activeSubtool === 'word' ? 'active' : ''}`}
           onClick={() => setActiveSubtool('word')}
-          disabled={isLoading || categorySearch.isLoading}
         >
           <span className="tab-label">Word Search</span>
         </button>
         <button
           className={`tab-button ${activeSubtool === 'category' ? 'active' : ''}`}
           onClick={() => setActiveSubtool('category')}
-          disabled={isLoading || categorySearch.isLoading}
         >
           <span className="tab-label">Category Search</span>
         </button>
