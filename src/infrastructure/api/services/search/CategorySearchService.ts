@@ -164,7 +164,7 @@ export class CategorySearchService {
    */
   private async getAIMatches(query: string, words: string[]): Promise<{
     matchedWords: string[];
-    tokensUsed?: { prompt: number; completion: number; total: number };
+    tokensUsed?: { prompt: number; completion: number; total: number; costUsd?: number };
   }> {
     // Get orchestrator from AIResourceManager (uses 'context' model scope)
     const orchestrator = this.aiResourceManager.getOrchestrator('context');
@@ -198,7 +198,8 @@ export class CategorySearchService {
     const tokensUsed = result.usage ? {
       prompt: result.usage.promptTokens,
       completion: result.usage.completionTokens,
-      total: result.usage.totalTokens
+      total: result.usage.totalTokens,
+      costUsd: result.usage.costUsd
     } : undefined;
 
     return { matchedWords, tokensUsed };

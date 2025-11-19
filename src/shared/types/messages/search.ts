@@ -102,6 +102,7 @@ export interface CategorySearchResult {
     prompt: number;
     completion: number;
     total: number;
+    costUsd?: number;
   };
 }
 

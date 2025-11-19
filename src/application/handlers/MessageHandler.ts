@@ -263,7 +263,8 @@ export class MessageHandler {
       wordSearchService,
       this.postMessage.bind(this),
       outputChannel,
-      categorySearchService
+      categorySearchService,
+      this.applyTokenUsage.bind(this)
     );
 
     this.configurationHandler = new ConfigurationHandler(
