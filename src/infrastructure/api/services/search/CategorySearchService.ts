@@ -210,8 +210,13 @@ export class CategorySearchService {
    */
   private parseAIResponse(content: string): string[] {
     try {
+      // Strip markdown code block delimiters if present
+      let cleanContent = content;
+      cleanContent = cleanContent.replace(/^```(?:json)?\s*\n?/i, '');
+      cleanContent = cleanContent.replace(/\n?```\s*$/i, '');
+
       // Try to extract JSON from the response
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      const jsonMatch = cleanContent.match(/\[[\s\S]*\]/);
       if (!jsonMatch) {
         throw new Error('No JSON array found in AI response');
       }
