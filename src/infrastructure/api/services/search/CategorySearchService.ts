@@ -182,6 +182,10 @@ export class CategorySearchService {
     // Build user message
     const userMessage = `Category: ${query}\nWords: ${words.join(', ')}`;
 
+    // Get maxTokens from settings
+    const config = vscode.workspace.getConfiguration('proseMinion');
+    const maxTokens = config.get<number>('maxTokens') ?? 10000;
+
     // Call AI using orchestrator (single-turn, no guide capabilities needed)
     const result = await orchestrator.executeWithoutCapabilities(
       'category_search',
@@ -189,7 +193,7 @@ export class CategorySearchService {
       userMessage,
       {
         temperature: 0.3, // Lower temperature for more consistent matching
-        maxTokens: 4000
+        maxTokens: 7500 // need separate configuration setting to better tune
       }
     );
 
@@ -215,8 +219,33 @@ export class CategorySearchService {
       cleanContent = cleanContent.replace(/^```(?:json)?\s*\n?/i, '');
       cleanContent = cleanContent.replace(/\n?```\s*$/i, '');
 
+      // Strip truncation notice if present (added by orchestrator when response hits token limit)
+      cleanContent = cleanContent.replace(/\n*---\n*⚠️ Response truncated[\s\S]*$/i, '');
+
       // Try to extract JSON from the response
-      const jsonMatch = cleanContent.match(/\[[\s\S]*\]/);
+      let jsonMatch = cleanContent.match(/\[[\s\S]*\]/);
+
+      // If no complete array found, try to repair truncated JSON
+      if (!jsonMatch) {
+        // Find the opening bracket
+        const startIdx = cleanContent.indexOf('[');
+        if (startIdx !== -1) {
+          let arrayContent = cleanContent.substring(startIdx);
+          // Remove trailing incomplete elements (anything after last complete string)
+          arrayContent = arrayContent.replace(/,\s*"[^"]*$/, '');
+          // Ensure it ends with ]
+          if (!arrayContent.endsWith(']')) {
+            arrayContent = arrayContent.trimEnd();
+            if (arrayContent.endsWith(',')) {
+              arrayContent = arrayContent.slice(0, -1);
+            }
+            arrayContent += ']';
+          }
+          jsonMatch = [arrayContent];
+          this.outputChannel?.appendLine(`[CategorySearchService] Repaired truncated JSON array`);
+        }
+      }
+
       if (!jsonMatch) {
         throw new Error('No JSON array found in AI response');
       }
@@ -226,12 +255,18 @@ export class CategorySearchService {
         throw new Error('AI response is not an array');
       }
 
-      // Filter to only valid strings
-      return parsed.filter((item): item is string => typeof item === 'string' && item.length > 0);
+      // Filter to only valid strings and deduplicate
+      const uniqueWords = [...new Set(
+        parsed.filter((item): item is string => typeof item === 'string' && item.length > 0)
+      )];
+
+      return uniqueWords;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.outputChannel?.appendLine(`[CategorySearchService] Failed to parse AI response: ${message}`);
-      this.outputChannel?.appendLine(`[CategorySearchService] Raw response: ${content.substring(0, 500)}`);
+      this.outputChannel?.appendLine(`[CategorySearchService] Response length: ${content.length}`);
+      this.outputChannel?.appendLine(`[CategorySearchService] First 200 chars: ${content.substring(0, 200)}`);
+      this.outputChannel?.appendLine(`[CategorySearchService] Last 200 chars: ${content.substring(content.length - 200)}`);
       throw new Error(`Invalid AI response format: ${message}`);
     }
   }
