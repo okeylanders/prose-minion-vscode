@@ -6,7 +6,7 @@ import { UseTokenTrackingReturn } from '../hooks/domain/useTokenTracking';
 import { UseContextPathsSettingsReturn } from '../hooks/domain/useContextPathsSettings';
 import { UseWordFrequencySettingsReturn } from '../hooks/domain/useWordFrequencySettings';
 import { UseWordSearchSettingsReturn } from '../hooks/domain/useWordSearchSettings';
-import { RECOMMENDED_MODELS } from '../../../infrastructure/api/OpenRouterModels';
+import { RECOMMENDED_MODELS, CATEGORY_MODELS } from '../../../infrastructure/api/OpenRouterModels';
 
 type SettingsOverlayProps = {
   visible: boolean;
@@ -66,9 +66,16 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
   const getContextPathsSetting = <K extends keyof typeof contextPathsSettings.settings>(key: K) => contextPathsSettings.settings[key];
 
   const renderModelSelect = (scope: ModelScope, label: string, help?: string) => {
-    // Detect if current model is custom (not in RECOMMENDED_MODELS)
+    // Use CATEGORY_MODELS for category scope, modelOptions for others
+    const isCategory = scope === 'category';
+    const availableModels = isCategory
+      ? CATEGORY_MODELS.map(m => ({ id: m.id, label: m.name }))
+      : modelOptions;
+
+    // Detect if current model is custom (not in available models)
     const currentModel = modelSelections[scope] || '';
-    const isCustomModel = currentModel && !RECOMMENDED_MODELS.find(m => m.id === currentModel);
+    const modelList = isCategory ? CATEGORY_MODELS : RECOMMENDED_MODELS;
+    const isCustomModel = currentModel && !modelList.find(m => m.id === currentModel);
 
     return (
       <label className="settings-label">
@@ -84,9 +91,9 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               {currentModel} (Custom)
             </option>
           )}
-          
-          {/* Recommended models */}
-          {modelOptions.map(opt => (
+
+          {/* Available models */}
+          {availableModels.map(opt => (
             <option key={opt.id} value={opt.id}>{opt.label}</option>
           ))}
         </select>
@@ -155,6 +162,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         {renderModelSelect('assistant', 'Assistant Model (Prose / Dialogue)', 'Powers dialogue and prose assistants for analysis and creative suggestions.')}
         {renderModelSelect('dictionary', 'Dictionary Model', 'Powers dictionary and utility tools (synonyms, word expansions).')}
         {renderModelSelect('context', 'Context Assistant Model', 'Powers the context assistant for project-aware insights and resources.')}
+        {renderModelSelect('category', 'Category Search Model', 'Powers semantic word matching for category search. Limited to non-thinking models.')}
       </section>
 
       {/* General */}

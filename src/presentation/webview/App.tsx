@@ -229,6 +229,18 @@ export const App: React.FC = () => {
           />
         </div>
       );
+    } else if (activeTab === TabId.SEARCH) {
+      return (
+        <div className="model-selector-section">
+          <ModelSelector
+            scope="category"
+            options={modelsSettings.categoryModelOptions}
+            value={modelsSettings.modelSelections.category}
+            onChange={modelsSettings.setModelSelection}
+            label="Category Model"
+          />
+        </div>
+      );
     }
     return null;
   };
@@ -435,9 +447,8 @@ export const App: React.FC = () => {
             onCategorySearchQueryChange={search.setCategorySearchQuery}
             onCategorySearchLoadingChange={search.setCategorySearchLoading}
             onClearCategorySearchResult={search.clearCategorySearchResult}
-            modelOptions={modelsSettings.modelOptions}
-            contextModel={modelsSettings.modelSelections.context}
-            onModelChange={modelsSettings.setModelSelection}
+            onCategorySearchRelevanceChange={search.setCategorySearchRelevance}
+            onCategorySearchWordLimitChange={search.setCategorySearchWordLimit}
           />
         )}
 

@@ -78,7 +78,12 @@ export class CategorySearchService {
       );
 
       // 2. Build AI prompt and get matches
-      const aiResult = await this.getAIMatches(query, uniqueWords);
+      const aiResult = await this.getAIMatches(
+        query,
+        uniqueWords,
+        options?.relevance ?? 'focused',
+        options?.wordLimit ?? 50
+      );
       const matchedWords = aiResult.matchedWords;
       const tokensUsed = aiResult.tokensUsed;
 
@@ -162,29 +167,40 @@ export class CategorySearchService {
    * Get AI-matched words for a category
    * Returns both matched words and token usage
    */
-  private async getAIMatches(query: string, words: string[]): Promise<{
+  private async getAIMatches(
+    query: string,
+    words: string[],
+    relevance: 'broad' | 'adjacent' | 'focused' | 'specific',
+    wordLimit: number
+  ): Promise<{
     matchedWords: string[];
     tokensUsed?: { prompt: number; completion: number; total: number; costUsd?: number };
   }> {
-    // Get orchestrator from AIResourceManager (uses 'context' model scope)
-    const orchestrator = this.aiResourceManager.getOrchestrator('context');
+    // Get orchestrator from AIResourceManager (uses 'category' model scope)
+    const orchestrator = this.aiResourceManager.getOrchestrator('category');
     if (!orchestrator) {
       throw new Error('OpenRouter API key not configured. Please set your API key in settings.');
     }
 
     // Load system prompts
-    const systemPrompt = await this.promptLoader.loadPrompts([
+    const basePrompt = await this.promptLoader.loadPrompts([
       'category-search/00-role.md',
       'category-search/01-instructions.md',
       'category-search/02-constraints.md'
     ]);
 
+    // Append constraint note based on relevance and word limit
+    const relevanceDescriptions: Record<string, string> = {
+      broad: 'loosely related',
+      adjacent: 'moderately related',
+      focused: 'closely related',
+      specific: 'exact semantic matches only'
+    };
+    const constraintNote = `\n\n---\n**CONSTRAINTS**: Return up to ${wordLimit} ${relevanceDescriptions[relevance]} words.`;
+    const systemPrompt = basePrompt + constraintNote;
+
     // Build user message
     const userMessage = `Category: ${query}\nWords: ${words.join(', ')}`;
-
-    // Get maxTokens from settings
-    const config = vscode.workspace.getConfiguration('proseMinion');
-    const maxTokens = config.get<number>('maxTokens') ?? 10000;
 
     // Call AI using orchestrator (single-turn, no guide capabilities needed)
     const result = await orchestrator.executeWithoutCapabilities(
@@ -193,7 +209,7 @@ export class CategorySearchService {
       userMessage,
       {
         temperature: 0.3, // Lower temperature for more consistent matching
-        maxTokens: 7500 // need separate configuration setting to better tune
+        maxTokens: 7500 // Fixed token limit for category search
       }
     );
 

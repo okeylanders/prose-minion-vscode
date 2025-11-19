@@ -40,6 +40,7 @@ export interface ModelConfiguration {
   assistantModel?: string;
   dictionaryModel?: string;
   contextModel?: string;
+  categoryModel?: string;
   fallbackModel?: string;
 }
 
@@ -98,16 +99,19 @@ export class AIResourceManager {
     const assistantModel = modelConfig?.assistantModel ?? config.get<string>('assistantModel') ?? fallbackModel;
     const dictionaryModel = modelConfig?.dictionaryModel ?? config.get<string>('dictionaryModel') ?? fallbackModel;
     const contextModel = modelConfig?.contextModel ?? config.get<string>('contextModel') ?? fallbackModel;
+    const categoryModel = modelConfig?.categoryModel ?? config.get<string>('categoryModel') ?? 'anthropic/claude-sonnet-4.5';
 
     // Create AI resources for each scope
     const assistantResources = this.createResourceBundle(apiKey!, 'assistant', assistantModel);
     const dictionaryResources = this.createResourceBundle(apiKey!, 'dictionary', dictionaryModel);
     const contextResources = this.createResourceBundle(apiKey!, 'context', contextModel);
+    const categoryResources = this.createResourceBundle(apiKey!, 'category', categoryModel);
 
     this.aiResources = {
       assistant: assistantResources,
       dictionary: dictionaryResources,
-      context: contextResources
+      context: contextResources,
+      category: categoryResources
     };
 
     // Propagate status callback to all orchestrators
@@ -121,7 +125,8 @@ export class AIResourceManager {
     this.resolvedModels = {
       assistant: assistantModel,
       dictionary: dictionaryModel,
-      context: contextModel
+      context: contextModel,
+      category: categoryModel
     };
   }
 

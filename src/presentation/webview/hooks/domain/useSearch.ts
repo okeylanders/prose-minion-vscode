@@ -17,11 +17,16 @@ import {
   CategorySearchOptions
 } from '../../../../shared/types/messages';
 
+export type CategoryRelevance = 'broad' | 'adjacent' | 'focused' | 'specific';
+export type CategoryWordLimit = 20 | 50 | 75 | 100 | 250;
+
 export interface CategorySearchState {
   query: string;
   result: CategorySearchResult | null;
   isLoading: boolean;
   error: string | null;
+  relevance: CategoryRelevance;
+  wordLimit: CategoryWordLimit;
 }
 
 export interface SearchState {
@@ -48,6 +53,8 @@ export interface SearchActions {
   setCategorySearchQuery: (query: string) => void;
   setCategorySearchLoading: (loading: boolean) => void;
   clearCategorySearchResult: () => void;
+  setCategorySearchRelevance: (relevance: CategoryRelevance) => void;
+  setCategorySearchWordLimit: (limit: CategoryWordLimit) => void;
 }
 
 export interface SearchPersistence {
@@ -57,6 +64,8 @@ export interface SearchPersistence {
   searchPathText: string;
   categorySearchQuery: string;
   categorySearchResult: CategorySearchResult | null;
+  categorySearchRelevance: CategoryRelevance;
+  categorySearchWordLimit: CategoryWordLimit;
 }
 
 export type UseSearchReturn = SearchState & SearchActions & { persistedState: SearchPersistence };
@@ -89,6 +98,8 @@ export const useSearch = (): UseSearchReturn => {
     searchPathText?: string;
     categorySearchQuery?: string;
     categorySearchResult?: CategorySearchResult | null;
+    categorySearchRelevance?: CategoryRelevance;
+    categorySearchWordLimit?: CategoryWordLimit;
   }>();
 
   const [searchResult, setSearchResult] = React.useState<any | null>(
@@ -110,6 +121,12 @@ export const useSearch = (): UseSearchReturn => {
   );
   const [categorySearchLoading, setCategorySearchLoading] = React.useState<boolean>(false);
   const [categorySearchError, setCategorySearchError] = React.useState<string | null>(null);
+  const [categorySearchRelevance, setCategorySearchRelevance] = React.useState<CategoryRelevance>(
+    persisted?.categorySearchRelevance ?? 'focused'
+  );
+  const [categorySearchWordLimit, setCategorySearchWordLimit] = React.useState<CategoryWordLimit>(
+    persisted?.categorySearchWordLimit ?? 50
+  );
 
   const handleSearchResult = React.useCallback((message: SearchResultMessage) => {
     setSearchResult(message.payload.result);
@@ -164,6 +181,8 @@ export const useSearch = (): UseSearchReturn => {
       result: categorySearchResult,
       isLoading: categorySearchLoading,
       error: categorySearchError,
+      relevance: categorySearchRelevance,
+      wordLimit: categorySearchWordLimit,
     },
 
     // Actions
@@ -181,6 +200,8 @@ export const useSearch = (): UseSearchReturn => {
     setCategorySearchQuery,
     setCategorySearchLoading,
     clearCategorySearchResult,
+    setCategorySearchRelevance,
+    setCategorySearchWordLimit,
 
     // Persistence
     persistedState: {
@@ -190,6 +211,8 @@ export const useSearch = (): UseSearchReturn => {
       searchPathText: pathText,
       categorySearchQuery,
       categorySearchResult,
+      categorySearchRelevance,
+      categorySearchWordLimit,
     },
   };
 };

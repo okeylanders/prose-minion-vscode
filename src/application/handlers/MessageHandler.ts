@@ -129,7 +129,8 @@ export class MessageHandler {
   private readonly MODEL_KEYS = [
     'proseMinion.assistantModel',
     'proseMinion.dictionaryModel',
-    'proseMinion.contextModel'
+    'proseMinion.contextModel',
+    'proseMinion.categoryModel'
   ] as const;
 
   private readonly UI_KEYS = [

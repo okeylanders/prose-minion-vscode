@@ -90,7 +90,10 @@ export enum TabId {
   UTILITIES = 'utilities'
 }
 
-export type ModelScope = 'assistant' | 'dictionary' | 'context';
+export type ModelScope = 'assistant' | 'dictionary' | 'context' | 'category';
+
+export type CategoryRelevance = 'broad' | 'adjacent' | 'focused' | 'specific';
+export type CategoryWordLimit = 20 | 50 | 75 | 100 | 250;
 
 export interface ModelOption {
   id: string;

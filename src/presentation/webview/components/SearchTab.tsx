@@ -4,12 +4,11 @@
  */
 
 import * as React from 'react';
-import { MessageType, TextSourceMode, ModelOption, ModelScope } from '../../../shared/types';
+import { MessageType, TextSourceMode } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
-import { ModelSelector } from './ModelSelector';
 import { formatMetricsAsMarkdown, formatCategorySearchAsMarkdown } from '../utils/resultFormatter';
-import { CategorySearchState } from '../hooks/domain/useSearch';
+import { CategorySearchState, CategoryRelevance, CategoryWordLimit } from '../hooks/domain/useSearch';
 
 type SearchSubtool = 'word' | 'category';
 
@@ -41,10 +40,8 @@ interface SearchTabProps {
   onCategorySearchQueryChange: (query: string) => void;
   onCategorySearchLoadingChange: (loading: boolean) => void;
   onClearCategorySearchResult: () => void;
-  // Model selection props for Category Search
-  modelOptions: ModelOption[];
-  contextModel?: string;
-  onModelChange: (scope: ModelScope, modelId: string) => void;
+  onCategorySearchRelevanceChange: (relevance: CategoryRelevance) => void;
+  onCategorySearchWordLimitChange: (limit: CategoryWordLimit) => void;
 }
 
 export const SearchTab: React.FC<SearchTabProps> = ({
@@ -66,9 +63,8 @@ export const SearchTab: React.FC<SearchTabProps> = ({
   onCategorySearchQueryChange,
   onCategorySearchLoadingChange,
   onClearCategorySearchResult,
-  modelOptions,
-  contextModel,
-  onModelChange
+  onCategorySearchRelevanceChange,
+  onCategorySearchWordLimitChange
 }) => {
   const [markdownContent, setMarkdownContent] = React.useState('');
   const [categoryMarkdownContent, setCategoryMarkdownContent] = React.useState('');
@@ -398,20 +394,6 @@ export const SearchTab: React.FC<SearchTabProps> = ({
       {/* Category Search panel */}
       {activeSubtool === 'category' && (
       <>
-        {/* Model selector for Category Search */}
-        {modelOptions.length > 0 && (
-          <div className="input-container" style={{ marginBottom: '12px' }}>
-            <ModelSelector
-              scope="context"
-              options={modelOptions}
-              value={contextModel}
-              onChange={onModelChange}
-              label="Category Model"
-              helperText="Shared with Context Assistant"
-            />
-          </div>
-        )}
-
         <div className="input-container">
           <label className="block text-sm font-medium mb-2">Scope:</label>
           <div className="tab-bar" role="tablist" aria-label="Category search scope" style={{ marginBottom: '8px' }}>
@@ -479,6 +461,40 @@ export const SearchTab: React.FC<SearchTabProps> = ({
             placeholder={sourceMode === 'selection' ? 'Selected text' : 'e.g. prose/**/*.md'}
             disabled={categorySearch.isLoading}
           />
+        </div>
+
+        {/* Relevance selector */}
+        <div className="input-container">
+          <label className="block text-sm font-medium mb-2">Relevance:</label>
+          <div className="tab-bar" style={{ marginBottom: '8px' }}>
+            {(['broad', 'adjacent', 'focused', 'specific'] as const).map((level) => (
+              <button
+                key={level}
+                className={`tab-button ${categorySearch.relevance === level ? 'active' : ''}`}
+                onClick={() => onCategorySearchRelevanceChange(level)}
+                disabled={categorySearch.isLoading}
+              >
+                <span className="tab-label">{level.charAt(0).toUpperCase() + level.slice(1)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Word limit selector */}
+        <div className="input-container">
+          <label className="block text-sm font-medium mb-2">Limit to:</label>
+          <div className="tab-bar" style={{ marginBottom: '8px' }}>
+            {([20, 50, 75, 100, 250] as const).map((limit) => (
+              <button
+                key={limit}
+                className={`tab-button ${categorySearch.wordLimit === limit ? 'active' : ''}`}
+                onClick={() => onCategorySearchWordLimitChange(limit)}
+                disabled={categorySearch.isLoading}
+              >
+                <span className="tab-label">{limit}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="input-container">
@@ -568,7 +584,9 @@ export const SearchTab: React.FC<SearchTabProps> = ({
                       contextWords: wordSearchSettings.settings.contextWords,
                       clusterWindow: wordSearchSettings.settings.clusterWindow,
                       minClusterSize: wordSearchSettings.settings.minClusterSize,
-                      caseSensitive: wordSearchSettings.settings.caseSensitive
+                      caseSensitive: wordSearchSettings.settings.caseSensitive,
+                      relevance: categorySearch.relevance,
+                      wordLimit: categorySearch.wordLimit
                     }
                   },
                   timestamp: Date.now()
