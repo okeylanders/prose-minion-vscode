@@ -1,8 +1,9 @@
 # Sprint 05: Relevance Controls & Dedicated Model
 
-**Status**: Ready
+**Status**: ✅ Complete
 **Branch**: `epic/context-search-2025-11-17`
 **Estimated Effort**: 2-3 hours
+**Actual Effort**: ~2 hours
 
 ## Goals
 
