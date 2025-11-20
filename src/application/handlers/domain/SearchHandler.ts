@@ -17,7 +17,8 @@ import {
   SearchResultMessage,
   CategorySearchResultMessage,
   ErrorMessage,
-  TokenUsage
+  TokenUsage,
+  StatusMessage
 } from '../../../shared/types/messages';
 import { MessageRouter } from '../MessageRouter';
 
@@ -65,6 +66,16 @@ export class SearchHandler {
       timestamp: Date.now()
     };
     void this.postMessage(errorMessage);
+  }
+
+  private sendStatus(message: string): void {
+    const status: StatusMessage = {
+      type: MessageType.STATUS,
+      source: 'extension.search',
+      payload: { message },
+      timestamp: Date.now()
+    };
+    void this.postMessage(status);
   }
 
   private sendCategorySearchResult(result: CategorySearchResult): void {

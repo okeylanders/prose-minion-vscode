@@ -8,7 +8,8 @@ import { MessageType, TextSourceMode } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
 import { formatMetricsAsMarkdown, formatCategorySearchAsMarkdown } from '../utils/resultFormatter';
-import { CategorySearchState, CategoryRelevance, CategoryWordLimit } from '../hooks/domain/useSearch';
+import { CategorySearchState } from '../hooks/domain/useSearch';
+import { CategoryRelevance, CategoryWordLimit } from '../../../shared/types';
 
 type SearchSubtool = 'word' | 'category';
 
@@ -17,6 +18,7 @@ interface SearchTabProps {
   result: any;
   isLoading: boolean;
   onLoadingChange: (loading: boolean) => void;
+  statusMessage?: string;
   wordSearchTargets: string;
   onWordSearchTargetsChange: (value: string) => void;
   sourceMode: TextSourceMode;
@@ -49,6 +51,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
   result,
   isLoading,
   onLoadingChange,
+  statusMessage,
   wordSearchTargets,
   onWordSearchTargetsChange,
   sourceMode,
@@ -353,7 +356,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
           <div className="loading-header">
             <div className="spinner"></div>
             <div className="loading-text">
-              <div>{'Running search...'}</div>
+              <div>{statusMessage || 'Running search...'}</div>
             </div>
           </div>
           <LoadingWidget />
@@ -602,7 +605,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
             <div className="loading-header">
               <div className="spinner"></div>
               <div className="loading-text">
-                <div>{'Running category search...'}</div>
+                <div>{statusMessage || 'Running category search...'}</div>
               </div>
             </div>
             <LoadingWidget />

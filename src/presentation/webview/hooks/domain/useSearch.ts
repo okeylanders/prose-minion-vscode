@@ -14,11 +14,9 @@ import {
   ChapterGlobsMessage,
   CategorySearchResultMessage,
   CategorySearchResult,
-  CategorySearchOptions
+  StatusMessage
 } from '../../../../shared/types/messages';
-
-export type CategoryRelevance = 'broad' | 'adjacent' | 'focused' | 'specific';
-export type CategoryWordLimit = 20 | 50 | 75 | 100 | 250;
+import { CategoryRelevance, CategoryWordLimit } from '../../../../shared/types';
 
 export interface CategorySearchState {
   query: string;
@@ -36,6 +34,7 @@ export interface SearchState {
   sourceMode: TextSourceMode;
   pathText: string;
   categorySearch: CategorySearchState;
+  statusMessage?: string;
 }
 
 export interface SearchActions {
@@ -43,6 +42,7 @@ export interface SearchActions {
   setWordSearchTargets: (targets: string) => void;
   clearSearchResult: () => void;
   setLoading: (loading: boolean) => void;
+  handleStatusMessage: (message: StatusMessage) => void;
   handleActiveFile: (message: ActiveFileMessage) => void;
   handleManuscriptGlobs: (message: ManuscriptGlobsMessage) => void;
   handleChapterGlobs: (message: ChapterGlobsMessage) => void;
@@ -62,6 +62,7 @@ export interface SearchPersistence {
   wordSearchTargets: string;
   searchSourceMode: TextSourceMode;
   searchPathText: string;
+  statusMessage?: string;
   categorySearchQuery: string;
   categorySearchResult: CategorySearchResult | null;
   categorySearchRelevance: CategoryRelevance;
@@ -96,6 +97,7 @@ export const useSearch = (): UseSearchReturn => {
     wordSearchTargets?: string;
     searchSourceMode?: TextSourceMode;
     searchPathText?: string;
+    statusMessage?: string;
     categorySearchQuery?: string;
     categorySearchResult?: CategorySearchResult | null;
     categorySearchRelevance?: CategoryRelevance;
@@ -111,6 +113,7 @@ export const useSearch = (): UseSearchReturn => {
   const [loading, setLoading] = React.useState<boolean>(false);
   const [sourceMode, setSourceMode] = React.useState<TextSourceMode>(persisted?.searchSourceMode ?? 'selection');
   const [pathText, setPathText] = React.useState<string>(persisted?.searchPathText ?? '[selected text]');
+  const [statusMessage, setStatusMessage] = React.useState<string>(persisted?.statusMessage ?? '');
 
   // Category search state
   const [categorySearchQuery, setCategorySearchQuery] = React.useState<string>(
@@ -162,11 +165,16 @@ export const useSearch = (): UseSearchReturn => {
     } else {
       setCategorySearchError(null);
     }
+    setStatusMessage('');
   }, []);
 
   const clearCategorySearchResult = React.useCallback(() => {
     setCategorySearchResult(null);
     setCategorySearchError(null);
+  }, []);
+
+  const handleStatusMessage = React.useCallback((message: StatusMessage) => {
+    setStatusMessage(message.payload.message || '');
   }, []);
 
   return {
@@ -176,6 +184,7 @@ export const useSearch = (): UseSearchReturn => {
     loading,
     sourceMode,
     pathText,
+    statusMessage,
     categorySearch: {
       query: categorySearchQuery,
       result: categorySearchResult,
@@ -190,6 +199,7 @@ export const useSearch = (): UseSearchReturn => {
     setWordSearchTargets,
     clearSearchResult,
     setLoading,
+    handleStatusMessage,
     handleActiveFile,
     handleManuscriptGlobs,
     handleChapterGlobs,
@@ -209,6 +219,7 @@ export const useSearch = (): UseSearchReturn => {
       wordSearchTargets,
       searchSourceMode: sourceMode,
       searchPathText: pathText,
+      statusMessage,
       categorySearchQuery,
       categorySearchResult,
       categorySearchRelevance,

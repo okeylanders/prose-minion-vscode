@@ -30,18 +30,18 @@ Add polish items: model dropdown, token tracking, Files Summary table, hallucina
 
 ## Tasks
 
-### 1. Context Model Dropdown
+### 1. Category Model Dropdown
 **Files**: `SearchTab.tsx`, `useSearch.ts`, `App.tsx`
 
 Add model selector at top of Category Search UI (pattern from Dictionary/AnalysisTab):
 
-- [ ] Add `contextModel` prop to SearchTab
+- [ ] Add `categoryModel` prop to SearchTab
 - [ ] Wire up ModelSelector component in Category Search section
-- [ ] Label: **"Category Model: *shared with Context Model*"**
-- [ ] Connect to existing `proseMinion.contextModel` setting
+- [ ] Label: **"Category Model (thinking models only)"**
+- [ ] Connect to dedicated `proseMinion.categoryModel` setting (curated list separate from context)
 - [ ] Pass model selection in search request message
 
-**Note**: Future epic may separate Category Model from Context Model, but shared setting is fine for now.
+**Note**: Category Search uses a curated -thinking subset; it intentionally does **not** share the Context model.
 
 ### 2. Token Usage Tracking
 **Files**: `CategorySearchService.ts`, `search.ts` (types)

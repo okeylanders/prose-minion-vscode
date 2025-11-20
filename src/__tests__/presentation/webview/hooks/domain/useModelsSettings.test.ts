@@ -45,6 +45,7 @@ describe('useModelsSettings', () => {
         assistantModel: 'z-ai/glm-4.6',
         dictionaryModel: 'z-ai/glm-4.6',
         contextModel: 'z-ai/glm-4.6',
+        categoryModel: 'anthropic/claude-sonnet-4.5',
         model: 'z-ai/glm-4.6',
         includeCraftGuides: true,
         temperature: 0.7,
@@ -58,6 +59,7 @@ describe('useModelsSettings', () => {
         assistantModel: 'anthropic/claude-3-5-sonnet',
         dictionaryModel: 'openai/gpt-4',
         contextModel: 'google/gemini-pro',
+        categoryModel: 'anthropic/claude-sonnet-4.5',
         model: 'anthropic/claude-3-5-sonnet',
         includeCraftGuides: false,
         temperature: 0.5,
@@ -82,6 +84,7 @@ describe('useModelsSettings', () => {
         assistantModel: 'anthropic/claude-3-5-sonnet',  // From persisted
         dictionaryModel: 'z-ai/glm-4.6',                // Default
         contextModel: 'z-ai/glm-4.6',                   // Default
+        categoryModel: 'anthropic/claude-sonnet-4.5',   // Default
         model: 'z-ai/glm-4.6',                          // Default
         includeCraftGuides: true,                       // Default
         temperature: 0.9,                               // From persisted
@@ -97,6 +100,7 @@ describe('useModelsSettings', () => {
 
       expect(result.current.persistedState).toHaveProperty('modelsSettings');
       expect(result.current.persistedState.modelsSettings.assistantModel).toBe('z-ai/glm-4.6');
+      expect(result.current.persistedState.modelsSettings.categoryModel).toBe('anthropic/claude-sonnet-4.5');
     });
 
     it('should update persistedState when settings change', () => {

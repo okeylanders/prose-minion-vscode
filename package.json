@@ -168,9 +168,11 @@
             "anthropic/claude-sonnet-4.5",
             "openai/gpt-5.1-chat",
             "google/gemini-2.5-pro",
-            "mistralai/mistral-large-2411"
+            "mistralai/mistral-large-2411",
+            "anthropic/claude-haiku-4.5",
+            "google/gemini-2.5-flash"
           ],
-          "description": "AI model for Category Search (curated list, no thinking models)",
+          "description": "AI model for Category Search (curated list, thinking models)",
           "order": 5
         },
         "proseMinion.model": {

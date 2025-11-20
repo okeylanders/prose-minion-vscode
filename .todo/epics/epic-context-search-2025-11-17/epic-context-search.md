@@ -59,7 +59,7 @@ Add AI-powered semantic search to the Search tab, enabling writers to find words
 - ❌ Negative queries (e.g., "clothing NOT formal") → Phase 2 (prompt-based, easy add)
 - ❌ Trigram mode for context disambiguation → Phase 2 (optional accuracy enhancement)
 - ❌ Custom word filters beyond min length / stopwords → Phase 2
-- ❌ AI model selection per search (uses `proseMinion.contextModel` setting) → Phase 2
+- ❌ AI model selection per search (uses dedicated `proseMinion.categoryModel` with a curated thinking model subset) → Phase 2
 - ❌ Offline mode / local lexical database → Not planned
 
 ## Architecture Alignment
@@ -185,7 +185,7 @@ Add AI-powered semantic search to the Search tab, enabling writers to find words
 
 **Scope** (revised after user testing):
 
-- Context model dropdown (shared with Context Assistant)
+- Category model dropdown (uses dedicated `proseMinion.categoryModel` so we can enforce thinking, models)
 - Token usage tracking from API response
 - Filter hallucinated words (0-occurrence results)
 - Files Summary table (word | count | clusters | files)

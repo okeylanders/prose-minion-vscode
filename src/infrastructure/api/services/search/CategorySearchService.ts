@@ -25,6 +25,8 @@ import {
   WordSearchResult
 } from '../../../../shared/types/messages/search';
 
+const MAX_WORDS_PER_BATCH = 400;
+
 export class CategorySearchService {
   private readonly wordFrequency: WordFrequency;
   private readonly promptLoader: PromptLoader;
@@ -33,7 +35,8 @@ export class CategorySearchService {
     private readonly aiResourceManager: AIResourceManager,
     private readonly wordSearchService: WordSearchService,
     private readonly extensionUri: vscode.Uri,
-    private readonly outputChannel?: vscode.OutputChannel
+    private readonly outputChannel?: vscode.OutputChannel,
+    private readonly statusEmitter?: (message: string) => void
   ) {
     this.wordFrequency = new WordFrequency((msg) => this.outputChannel?.appendLine(msg));
     this.promptLoader = new PromptLoader(extensionUri);
@@ -76,16 +79,54 @@ export class CategorySearchService {
       this.outputChannel?.appendLine(
         `[CategorySearchService] Extracted ${uniqueWords.length} unique words for category "${query}"`
       );
+      this.sendStatus(`Total unique words: ${uniqueWords.length}`);
 
-      // 2. Build AI prompt and get matches
-      const aiResult = await this.getAIMatches(
-        query,
-        uniqueWords,
-        options?.relevance ?? 'focused',
-        options?.wordLimit ?? 50
-      );
-      const matchedWords = aiResult.matchedWords;
-      const tokensUsed = aiResult.tokensUsed;
+      // 2. Build AI prompt and get matches (chunked to avoid token limits)
+      const relevance = options?.relevance ?? 'focused';
+      const wordLimit = options?.wordLimit ?? 50;
+      const batches: string[][] = [];
+      for (let i = 0; i < uniqueWords.length; i += MAX_WORDS_PER_BATCH) {
+        batches.push(uniqueWords.slice(i, i + MAX_WORDS_PER_BATCH));
+      }
+
+      const matchedWordsSet = new Set<string>();
+      let aggregatedPrompt = 0;
+      let aggregatedCompletion = 0;
+      let aggregatedTotal = 0;
+      let aggregatedCost: number | undefined;
+
+      for (let idx = 0; idx < batches.length; idx++) {
+        const batch = batches[idx];
+        const batchLabel = `Batch ${idx + 1}/${batches.length}`;
+
+        const aiResult = await this.getAIMatches(
+          query,
+          batch,
+          relevance,
+          wordLimit
+        );
+        aiResult.matchedWords.forEach(word => matchedWordsSet.add(word));
+        if (aiResult.tokensUsed) {
+          aggregatedPrompt += aiResult.tokensUsed.prompt || 0;
+          aggregatedCompletion += aiResult.tokensUsed.completion || 0;
+          aggregatedTotal += aiResult.tokensUsed.total || 0;
+          if (typeof aiResult.tokensUsed.costUsd === 'number') {
+            aggregatedCost = (aggregatedCost ?? 0) + aiResult.tokensUsed.costUsd;
+          }
+        }
+
+        this.sendStatus(
+          `${batchLabel}: matched ${aiResult.matchedWords.length} words (accumulated ${matchedWordsSet.size}/${uniqueWords.length})`
+        );
+      }
+
+      const matchedWords = Array.from(matchedWordsSet);
+      const tokensUsed = aggregatedTotal > 0 ? {
+        prompt: aggregatedPrompt,
+        completion: aggregatedCompletion,
+        total: aggregatedTotal,
+        costUsd: aggregatedCost
+      } : undefined;
 
       if (matchedWords.length === 0) {
         return {
@@ -132,6 +173,7 @@ export class CategorySearchService {
         this.outputChannel?.appendLine(
           `[CategorySearchService] Filtered ${hallucinatedCount} hallucinated words: ${hallucinatedWords.join(', ')}`
         );
+        this.sendStatus(`Filtered ${hallucinatedCount} hallucinated words (0 hits).`);
       }
 
       // Update matchedWords to only include words that were actually found
@@ -301,5 +343,11 @@ export class CategorySearchService {
       },
       targets: []
     };
+  }
+
+  private sendStatus(message: string): void {
+    if (this.statusEmitter) {
+      this.statusEmitter(message);
+    }
   }
 }

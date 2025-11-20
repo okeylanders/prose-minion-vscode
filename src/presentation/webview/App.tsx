@@ -105,6 +105,8 @@ export const App: React.FC = () => {
         dictionary.handleStatusMessage(msg);
       } else if (msg.source === 'extension.analysis') {
         analysis.handleStatusMessage(msg, context.loadingRef);
+      } else if (msg.source === 'extension.search') {
+        search.handleStatusMessage(msg);
       } else {
         // Default to analysis for backward compatibility
         analysis.handleStatusMessage(msg, context.loadingRef);
@@ -139,8 +141,9 @@ export const App: React.FC = () => {
       if (errorSource.startsWith('metrics.')) {
         // Any metrics subtool error clears metrics loading
         metrics.setLoading(false);
-      } else if (errorSource === 'search') {
+      } else if (errorSource === 'search' || errorSource.startsWith('extension.search')) {
         search.setLoading(false);
+        search.setCategorySearchLoading(false);
       } else if (errorSource === 'analysis') {
         analysis.setLoading(false);
       } else if (errorSource === 'dictionary') {
@@ -443,14 +446,15 @@ export const App: React.FC = () => {
               settings: wordSearchSettings.settings,
               updateSetting: wordSearchSettings.updateSetting,
             }}
-            categorySearch={search.categorySearch}
-            onCategorySearchQueryChange={search.setCategorySearchQuery}
-            onCategorySearchLoadingChange={search.setCategorySearchLoading}
-            onClearCategorySearchResult={search.clearCategorySearchResult}
-            onCategorySearchRelevanceChange={search.setCategorySearchRelevance}
-            onCategorySearchWordLimitChange={search.setCategorySearchWordLimit}
-          />
-        )}
+          categorySearch={search.categorySearch}
+          onCategorySearchQueryChange={search.setCategorySearchQuery}
+          onCategorySearchLoadingChange={search.setCategorySearchLoading}
+          onClearCategorySearchResult={search.clearCategorySearchResult}
+          onCategorySearchRelevanceChange={search.setCategorySearchRelevance}
+          onCategorySearchWordLimitChange={search.setCategorySearchWordLimit}
+          statusMessage={search.statusMessage}
+        />
+      )}
 
         {activeTab === TabId.UTILITIES && (
           <UtilitiesTab

@@ -47,7 +47,18 @@ export const CATEGORY_MODELS = [
     id: 'mistralai/mistral-large-2411',
     name: 'Mistral Large 2411',
     description: 'Mistral large model'
-  }
+  },
+  {
+    id: 'anthropic/claude-haiku-4.5',
+    name: 'Claude Haiku 4.5',
+    description: 'Anthropic\'s fastest and most efficient model with frontier-level capabilities'
+  },
+  {
+    id: 'google/gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
+    description: 'Google\'s fast model'
+  },
+
 ];
 
 /**

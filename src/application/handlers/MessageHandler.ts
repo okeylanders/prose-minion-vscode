@@ -257,7 +257,8 @@ export class MessageHandler {
       aiResourceManager,
       wordSearchService,
       extensionUri,
-      outputChannel
+      outputChannel,
+      this.sendSearchStatus.bind(this)
     );
 
     this.searchHandler = new SearchHandler(
@@ -396,6 +397,21 @@ export class MessageHandler {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[MessageHandler] Failed to apply token usage update: ${msg}`);
+    }
+  }
+
+  private sendSearchStatus(message: string): void {
+    try {
+      const status: StatusMessage = {
+        type: MessageType.STATUS,
+        source: 'extension.search',
+        payload: { message },
+        timestamp: Date.now()
+      };
+      void this.postMessage(status);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[MessageHandler] Failed to post search status: ${msg}`);
     }
   }
 
