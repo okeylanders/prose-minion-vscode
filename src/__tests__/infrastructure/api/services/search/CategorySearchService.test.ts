@@ -130,8 +130,10 @@ describe('CategorySearchService', () => {
   });
 
   it('halts early when hitting word limit and reports warning', async () => {
+    // Mock AI returning 25 words (more than limit of 20)
+    const words = Array.from({ length: 25 }, (_, i) => `word${i}`);
     const { service } = createService({
-      orchestratorResponse: { content: '["apple","pear","berry"]' }
+      orchestratorResponse: { content: JSON.stringify(words) }
     });
 
     const result = await service.searchByCategory(
@@ -139,7 +141,7 @@ describe('CategorySearchService', () => {
       'apple pear berry banana orange',
       undefined,
       'selection',
-      { wordLimit: 1 }
+      { wordLimit: 20 }
     );
 
     expect(result.haltedEarly).toBe(true);
