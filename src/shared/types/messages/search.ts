@@ -3,7 +3,7 @@
  * Word search functionality
  */
 
-import { MessageEnvelope, MessageType } from './base';
+import { MessageEnvelope, MessageType, CategoryRelevance, CategoryWordLimit } from './base';
 import { TextSourceSpec } from '../sources';
 
 export interface WordSearchOptions {
@@ -80,8 +80,8 @@ export interface CategorySearchOptions {
   clusterWindow?: number;
   minClusterSize?: number;
   caseSensitive?: boolean;
-  relevance?: 'broad' | 'adjacent' | 'focused' | 'specific';
-  wordLimit?: 20 | 50 | 75 | 100 | 250 | 350 | 500;
+  relevance?: CategoryRelevance;
+  wordLimit?: CategoryWordLimit;
 }
 
 export interface CategorySearchRequestPayload {

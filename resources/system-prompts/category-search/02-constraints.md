@@ -35,3 +35,10 @@
 - Don't exclude words because they're informal (e.g., "pissed" is a valid anger word)
 - Don't add words that weren't in the input list
 - Don't explain your reasoning—just return the array
+
+## Relevance Modes (!!!IMPORTANT)
+
+- **broad**: Return loosely related words that belong in the general category (inclusive, but still credible).
+- **focused**: Return closely related words that clearly fit the category (default, balanced strictness).
+- **specific**: Return only exact semantic matches; exclude anything loosely related.
+- **synonym**: Return strict synonyms only; no broader related terms.

@@ -135,7 +135,9 @@ export class CategorySearchService {
       const workers = Array.from({ length: concurrency }, () => runWorker());
       await Promise.all(workers);
 
-      const matchedWords = Array.from(matchedWordsSet);
+      const matchedWords = Array.from(matchedWordsSet).sort((a, b) =>
+        a.localeCompare(b, undefined, { sensitivity: 'base' })
+      );
       const finalMatchedWords = matchedWords.slice(0, wordLimit);
       const tokensUsed = aggregatedTotal > 0 ? {
         prompt: aggregatedPrompt,
@@ -231,7 +233,7 @@ export class CategorySearchService {
   private async getAIMatches(
     query: string,
     words: string[],
-    relevance: 'broad' | 'adjacent' | 'focused' | 'specific',
+    relevance: 'broad' | 'focused' | 'specific' | 'synonym',
     wordLimit: number
   ): Promise<{
     matchedWords: string[];
@@ -252,12 +254,12 @@ export class CategorySearchService {
 
     // Append constraint note based on relevance and word limit
     const relevanceDescriptions: Record<string, string> = {
-      broad: 'loosely related',
-      adjacent: 'moderately related',
-      focused: 'closely related',
-      specific: 'exact semantic matches only'
+      broad: '!!!IMPORTANT: Return loosely related category-adjacent words.',
+      focused: '!!!IMPORTANT: Return closely related words that fit the category.',
+      specific: '!!!IMPORTANT: Return exact semantic matches only.',
+      synonym: '!!!IMPORTANT: Return strict synonyms only; no broader related terms.'
     };
-    const constraintNote = `\n\n---\n**CONSTRAINTS**: Return up to ${wordLimit} ${relevanceDescriptions[relevance]} words.`;
+    const constraintNote = `\n\n---\n**CONSTRAINTS**: RELEVANCE MODE SELECTED: ${relevance.toUpperCase()} — ${relevanceDescriptions[relevance]} Limit to ${wordLimit} words.`;
     const systemPrompt = basePrompt + constraintNote;
 
     // Build user message

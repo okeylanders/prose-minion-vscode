@@ -9,7 +9,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
 import { formatMetricsAsMarkdown, formatCategorySearchAsMarkdown } from '../utils/resultFormatter';
 import { CategorySearchState } from '../hooks/domain/useSearch';
-import { CategoryRelevance, CategoryWordLimit } from '../../../shared/types';
+import { CategoryRelevance, CategoryWordLimit, CATEGORY_RELEVANCE_OPTIONS } from '../../../shared/types';
 
 type SearchSubtool = 'word' | 'category';
 
@@ -470,7 +470,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
         <div className="input-container">
           <label className="block text-sm font-medium mb-2">Relevance:</label>
           <div className="tab-bar" style={{ marginBottom: '8px' }}>
-            {(['broad', 'adjacent', 'focused', 'specific'] as const).map((level) => (
+            {CATEGORY_RELEVANCE_OPTIONS.map((level) => (
               <button
                 key={level}
                 className={`tab-button ${categorySearch.relevance === level ? 'active' : ''}`}
