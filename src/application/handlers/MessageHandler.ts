@@ -281,6 +281,15 @@ export class MessageHandler {
       this.tokenTotals
     );
 
+    // Ensure token totals are reset on activation/startup so the webview does not
+    // display stale persisted values from prior sessions.
+    this.applyTokenUsage({
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      costUsd: 0
+    });
+
     this.publishingHandler = new PublishingHandler(
       extensionUri,
       this.postMessage.bind(this)
