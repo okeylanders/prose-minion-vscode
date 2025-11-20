@@ -81,7 +81,7 @@ export interface CategorySearchOptions {
   minClusterSize?: number;
   caseSensitive?: boolean;
   relevance?: 'broad' | 'adjacent' | 'focused' | 'specific';
-  wordLimit?: 20 | 50 | 75 | 100 | 250;
+  wordLimit?: 20 | 50 | 75 | 100 | 250 | 350 | 500;
 }
 
 export interface CategorySearchRequestPayload {

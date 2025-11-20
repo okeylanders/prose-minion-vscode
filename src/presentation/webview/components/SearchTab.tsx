@@ -487,7 +487,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
         <div className="input-container">
           <label className="block text-sm font-medium mb-2">Limit to:</label>
           <div className="tab-bar" style={{ marginBottom: '8px' }}>
-            {([20, 50, 75, 100, 250] as const).map((limit) => (
+            {([20, 50, 75, 100, 250, 350, 500] as const).map((limit) => (
               <button
                 key={limit}
                 className={`tab-button ${categorySearch.wordLimit === limit ? 'active' : ''}`}

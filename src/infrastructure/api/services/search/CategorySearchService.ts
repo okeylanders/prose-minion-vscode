@@ -95,32 +95,48 @@ export class CategorySearchService {
       let aggregatedTotal = 0;
       let aggregatedCost: number | undefined;
 
-      for (let idx = 0; idx < batches.length; idx++) {
-        const batch = batches[idx];
-        const batchLabel = `Batch ${idx + 1}/${batches.length}`;
+      // Run batches with a small concurrency pool (5)
+      const concurrency = Math.min(5, batches.length);
+      let nextIndex = 0;
+      const runWorker = async () => {
+        while (nextIndex < batches.length) {
+          const idx = nextIndex++;
+          const batch = batches[idx];
+          const batchLabel = `Batch ${idx + 1}/${batches.length}`;
 
-        const aiResult = await this.getAIMatches(
-          query,
-          batch,
-          relevance,
-          wordLimit
-        );
-        aiResult.matchedWords.forEach(word => matchedWordsSet.add(word));
-        if (aiResult.tokensUsed) {
-          aggregatedPrompt += aiResult.tokensUsed.prompt || 0;
-          aggregatedCompletion += aiResult.tokensUsed.completion || 0;
-          aggregatedTotal += aiResult.tokensUsed.total || 0;
-          if (typeof aiResult.tokensUsed.costUsd === 'number') {
-            aggregatedCost = (aggregatedCost ?? 0) + aiResult.tokensUsed.costUsd;
+          try {
+            const aiResult = await this.getAIMatches(
+              query,
+              batch,
+              relevance,
+              wordLimit
+            );
+            aiResult.matchedWords.forEach(word => matchedWordsSet.add(word));
+            if (aiResult.tokensUsed) {
+              aggregatedPrompt += aiResult.tokensUsed.prompt || 0;
+              aggregatedCompletion += aiResult.tokensUsed.completion || 0;
+              aggregatedTotal += aiResult.tokensUsed.total || 0;
+              if (typeof aiResult.tokensUsed.costUsd === 'number') {
+                aggregatedCost = (aggregatedCost ?? 0) + aiResult.tokensUsed.costUsd;
+              }
+            }
+
+            this.sendStatus(
+              `${batchLabel}: matched ${aiResult.matchedWords.length} words (accumulated ${matchedWordsSet.size}/${uniqueWords.length})`
+            );
+          } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
+            this.outputChannel?.appendLine(`[CategorySearchService] ${batchLabel} failed: ${msg}`);
+            this.sendStatus(`${batchLabel} failed: ${msg}`);
           }
         }
+      };
 
-        this.sendStatus(
-          `${batchLabel}: matched ${aiResult.matchedWords.length} words (accumulated ${matchedWordsSet.size}/${uniqueWords.length})`
-        );
-      }
+      const workers = Array.from({ length: concurrency }, () => runWorker());
+      await Promise.all(workers);
 
       const matchedWords = Array.from(matchedWordsSet);
+      const finalMatchedWords = matchedWords.slice(0, wordLimit);
       const tokensUsed = aggregatedTotal > 0 ? {
         prompt: aggregatedPrompt,
         completion: aggregatedCompletion,
@@ -128,7 +144,7 @@ export class CategorySearchService {
         costUsd: aggregatedCost
       } : undefined;
 
-      if (matchedWords.length === 0) {
+      if (finalMatchedWords.length === 0) {
         return {
           query,
           matchedWords: [],
@@ -139,11 +155,14 @@ export class CategorySearchService {
       }
 
       this.outputChannel?.appendLine(
-        `[CategorySearchService] AI matched ${matchedWords.length} words: ${matchedWords.slice(0, 10).join(', ')}${matchedWords.length > 10 ? '...' : ''}`
+        `[CategorySearchService] AI matched ${finalMatchedWords.length} words: ${finalMatchedWords.slice(0, 10).join(', ')}${finalMatchedWords.length > 10 ? '...' : ''}`
       );
       if (tokensUsed) {
         this.outputChannel?.appendLine(
           `[CategorySearchService] Token usage: ${tokensUsed.prompt} prompt + ${tokensUsed.completion} completion = ${tokensUsed.total} total`
+        );
+        this.sendStatus(
+          `Completed category search: ${finalMatchedWords.length} words matched, total tokens ${tokensUsed.total}`
         );
       }
 
@@ -153,7 +172,7 @@ export class CategorySearchService {
         files,
         sourceMode,
         {
-          wordsOrPhrases: matchedWords,
+          wordsOrPhrases: finalMatchedWords,
           contextWords: options?.contextWords ?? 10,
           clusterWindow: options?.clusterWindow ?? 100,
           minClusterSize: options?.minClusterSize ?? 3,
@@ -177,7 +196,7 @@ export class CategorySearchService {
       }
 
       // Update matchedWords to only include words that were actually found
-      const validWords = matchedWords.filter(word =>
+      const validWords = finalMatchedWords.filter(word =>
         validTargets.some(t => t.normalized === word.toLowerCase() || t.target.toLowerCase() === word.toLowerCase())
       );
 

@@ -93,7 +93,7 @@ export enum TabId {
 export type ModelScope = 'assistant' | 'dictionary' | 'context' | 'category';
 
 export type CategoryRelevance = 'broad' | 'adjacent' | 'focused' | 'specific';
-export type CategoryWordLimit = 20 | 50 | 75 | 100 | 250;
+export type CategoryWordLimit = 20 | 50 | 75 | 100 | 250 | 350 | 500;
 
 export interface ModelOption {
   id: string;

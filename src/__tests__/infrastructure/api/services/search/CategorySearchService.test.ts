@@ -104,6 +104,8 @@ describe('CategorySearchService', () => {
     expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('Total unique words: 900'));
     expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('Batch 1/3'));
     expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('matched 2 words (accumulated'));
+    expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('Batch 2/3'));
+    expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('Batch 3/3'));
   });
 
   it('returns error message when no words are available to search', async () => {
