@@ -94,12 +94,15 @@ export class CategorySearchService {
       let aggregatedCompletion = 0;
       let aggregatedTotal = 0;
       let aggregatedCost: number | undefined;
+      let hadBatchFailure = false;
+      let shouldStop = false;
+      let haltStatusSent = false;
 
       // Run batches with a small concurrency pool (5)
       const concurrency = Math.min(5, batches.length);
       let nextIndex = 0;
       const runWorker = async () => {
-        while (nextIndex < batches.length) {
+        while (!shouldStop && nextIndex < batches.length) {
           const idx = nextIndex++;
           const batch = batches[idx];
           const batchLabel = `Batch ${idx + 1}/${batches.length}`;
@@ -121,6 +124,17 @@ export class CategorySearchService {
               }
             }
 
+            if (matchedWordsSet.size >= wordLimit) {
+              shouldStop = true;
+              if (!haltStatusSent) {
+                haltStatusSent = true;
+                this.sendStatus(
+                  `Reached word limit (${wordLimit}). Stopped early; more words may match. Try increasing limit or broadening relevance.`
+                );
+              }
+              break;
+            }
+
             this.sendStatus(
               `${batchLabel}: matched ${aiResult.matchedWords.length} words (accumulated ${matchedWordsSet.size}/${uniqueWords.length})`
             );
@@ -128,6 +142,7 @@ export class CategorySearchService {
             const msg = error instanceof Error ? error.message : String(error);
             this.outputChannel?.appendLine(`[CategorySearchService] ${batchLabel} failed: ${msg}`);
             this.sendStatus(`${batchLabel} failed: ${msg}`);
+            hadBatchFailure = true;
           }
         }
       };
@@ -146,13 +161,23 @@ export class CategorySearchService {
         costUsd: aggregatedCost
       } : undefined;
 
+      const warnings: string[] = [];
+      if (hadBatchFailure) {
+        warnings.push('Some batches failed; results may be incomplete.');
+      }
+      if (shouldStop && matchedWordsSet.size >= wordLimit) {
+        warnings.push(`Stopped after reaching word limit (${wordLimit}); additional words may match if you increase the limit or broaden relevance.`);
+      }
+
       if (finalMatchedWords.length === 0) {
         return {
           query,
           matchedWords: [],
           wordSearchResult: this.createEmptyResult(),
           timestamp: Date.now(),
-          tokensUsed
+          tokensUsed,
+          warnings: warnings.length ? warnings : undefined,
+          haltedEarly: shouldStop && matchedWordsSet.size >= wordLimit
         };
       }
 
@@ -210,7 +235,9 @@ export class CategorySearchService {
           targets: validTargets
         },
         timestamp: Date.now(),
-        tokensUsed
+        tokensUsed,
+        warnings: warnings.length ? warnings : undefined,
+        haltedEarly: shouldStop && matchedWordsSet.size >= wordLimit
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

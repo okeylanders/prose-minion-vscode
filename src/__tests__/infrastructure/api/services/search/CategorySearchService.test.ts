@@ -14,9 +14,10 @@ describe('CategorySearchService', () => {
     overrides?: {
       orchestratorResponse?: { content: string; usage?: any };
       wordSearchResult?: any;
+      orchestratorImpl?: any;
     }
   ) => {
-    const orchestrator = {
+    const orchestrator = overrides?.orchestratorImpl || {
       executeWithoutCapabilities: jest.fn().mockResolvedValue(
         overrides?.orchestratorResponse || { content: '["apple","pear"]' }
       )
@@ -115,5 +116,33 @@ describe('CategorySearchService', () => {
     expect(wordSearchService.searchWords).not.toHaveBeenCalled();
     expect(result.error).toBe('No words found in text after filtering');
     expect(result.matchedWords).toEqual([]);
+  });
+
+  it('includes warning when batches fail', async () => {
+    const failingOrchestrator = {
+      executeWithoutCapabilities: jest.fn().mockRejectedValue(new Error('boom'))
+    };
+    const { service } = createService({ orchestratorImpl: failingOrchestrator });
+    const result = await service.searchByCategory('fruit', 'apple orange pear', undefined, 'selection');
+
+    expect(failingOrchestrator.executeWithoutCapabilities).toHaveBeenCalled();
+    expect(result.warnings).toEqual(['Some batches failed; results may be incomplete.']);
+  });
+
+  it('halts early when hitting word limit and reports warning', async () => {
+    const { service } = createService({
+      orchestratorResponse: { content: '["apple","pear","berry"]' }
+    });
+
+    const result = await service.searchByCategory(
+      'fruit',
+      'apple pear berry banana orange',
+      undefined,
+      'selection',
+      { wordLimit: 1 }
+    );
+
+    expect(result.haltedEarly).toBe(true);
+    expect(result.warnings?.[0]).toContain('Stopped after reaching word limit');
   });
 });

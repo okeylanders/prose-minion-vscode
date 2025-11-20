@@ -642,6 +642,11 @@ export function formatCategorySearchAsMarkdown(result: any): string {
   markdown += `**Search Date**: ${timestamp}\n`;
   markdown += `**Matched Words**: ${matchedWords?.length ?? 0}\n\n`;
 
+  // Warnings (non-fatal)
+  if (result.warnings?.length) {
+    markdown += `> ⚠️ ${result.warnings.join(' ')}\n\n`;
+  }
+
   if (!matchedWords || matchedWords.length === 0) {
     markdown += '_No words matched the category query._\n';
     return markdown;

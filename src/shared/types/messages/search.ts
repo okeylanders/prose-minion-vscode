@@ -106,6 +106,10 @@ export interface CategorySearchResult {
     total: number;
     costUsd?: number;
   };
+  /** Non-fatal issues encountered while processing batches */
+  warnings?: string[];
+  /** True when processing stopped early due to wordLimit */
+  haltedEarly?: boolean;
 }
 
 export interface CategorySearchResultPayload {
