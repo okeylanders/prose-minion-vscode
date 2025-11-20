@@ -169,6 +169,13 @@ This refactor should happen **after**:
 6. Extract `WordFrequencyPanel` from MetricsTab
 7. Verify MetricsTab works correctly
 
+### Acceptance Criteria (include status scoping)
+
+- SearchTab and MetricsTab orchestrate per-subtab panels; no inline panel UIs remain.
+- Each panel owns its own status/loading state; status messages and spinners cannot bleed across subtabs (e.g., word search status never appears in category search, and vice versa).
+- Shared infrastructure (status messages, loading widgets) is namespaced or routed per panel, not global.
+- ScopeBox and LoadingIndicator are shared components consumed by panels.
+
 ## Related Files
 
 - [src/presentation/webview/components/SearchTab.tsx](../../src/presentation/webview/components/SearchTab.tsx)
