@@ -4,9 +4,10 @@
  */
 
 import * as React from 'react';
-import { MessageType, TextSourceMode } from '../../../shared/types';
+import { MessageType, TextSourceMode, ModelScope, ModelOption } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
+import { ModelSelector } from './ModelSelector';
 import { formatMetricsAsMarkdown, formatCategorySearchAsMarkdown } from '../utils/resultFormatter';
 import { CategorySearchState } from '../hooks/domain/useSearch';
 import { CategoryRelevance, CategoryWordLimit, CATEGORY_RELEVANCE_OPTIONS } from '../../../shared/types';
@@ -44,6 +45,10 @@ interface SearchTabProps {
   onClearCategorySearchResult: () => void;
   onCategorySearchRelevanceChange: (relevance: CategoryRelevance) => void;
   onCategorySearchWordLimitChange: (limit: CategoryWordLimit) => void;
+  // Category model props
+  categoryModel?: string;
+  categoryModelOptions: ModelOption[];
+  onCategoryModelChange: (scope: ModelScope, modelId: string) => void;
 }
 
 export const SearchTab: React.FC<SearchTabProps> = ({
@@ -67,7 +72,10 @@ export const SearchTab: React.FC<SearchTabProps> = ({
   onCategorySearchLoadingChange,
   onClearCategorySearchResult,
   onCategorySearchRelevanceChange,
-  onCategorySearchWordLimitChange
+  onCategorySearchWordLimitChange,
+  categoryModel,
+  categoryModelOptions,
+  onCategoryModelChange
 }) => {
   const [markdownContent, setMarkdownContent] = React.useState('');
   const [categoryMarkdownContent, setCategoryMarkdownContent] = React.useState('');
@@ -397,6 +405,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
       {/* Category Search panel */}
       {activeSubtool === 'category' && (
       <>
+        {/* Scope + Path/Pattern well */}
         <div className="input-container">
           <label className="block text-sm font-medium mb-2">Scope:</label>
           <div className="tab-bar" role="tablist" aria-label="Category search scope" style={{ marginBottom: '8px' }}>
@@ -466,40 +475,18 @@ export const SearchTab: React.FC<SearchTabProps> = ({
           />
         </div>
 
-        {/* Relevance selector */}
-        <div className="input-container">
-          <label className="block text-sm font-medium mb-2">Relevance:</label>
-          <div className="tab-bar" style={{ marginBottom: '8px' }}>
-            {CATEGORY_RELEVANCE_OPTIONS.map((level) => (
-              <button
-                key={level}
-                className={`tab-button ${categorySearch.relevance === level ? 'active' : ''}`}
-                onClick={() => onCategorySearchRelevanceChange(level)}
-                disabled={categorySearch.isLoading}
-              >
-                <span className="tab-label">{level.charAt(0).toUpperCase() + level.slice(1)}</span>
-              </button>
-            ))}
-          </div>
+        {/* Category Model selector - standalone above the query well */}
+        <div style={{ margin: '16px 0' }}>
+          <ModelSelector
+            scope="category"
+            options={categoryModelOptions}
+            value={categoryModel}
+            onChange={onCategoryModelChange}
+            label="Category Model"
+          />
         </div>
 
-        {/* Word limit selector */}
-        <div className="input-container">
-          <label className="block text-sm font-medium mb-2">Limit to:</label>
-          <div className="tab-bar" style={{ marginBottom: '8px' }}>
-            {([20, 50, 75, 100, 250, 350, 500] as const).map((limit) => (
-              <button
-                key={limit}
-                className={`tab-button ${categorySearch.wordLimit === limit ? 'active' : ''}`}
-                onClick={() => onCategorySearchWordLimitChange(limit)}
-                disabled={categorySearch.isLoading}
-              >
-                <span className="tab-label">{limit}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
+        {/* Unified Category Query well */}
         <div className="input-container">
           <label className="block text-sm font-medium mb-2" htmlFor="pm-category-search-query">Category Query</label>
           <span className="text-xs text-gray-500 block mb-1">Describe the category of words to find (e.g., "weather words", "emotion verbs")</span>
@@ -514,6 +501,37 @@ export const SearchTab: React.FC<SearchTabProps> = ({
             aria-label="Category query input"
           />
 
+          {/* Relevance selector */}
+          <label className="block text-sm font-medium mb-2 mt-3">Relevance:</label>
+          <div className="tab-bar" style={{ marginBottom: '8px', padding: 0 }}>
+            {CATEGORY_RELEVANCE_OPTIONS.map((level) => (
+              <button
+                key={level}
+                className={`tab-button ${categorySearch.relevance === level ? 'active' : ''}`}
+                onClick={() => onCategorySearchRelevanceChange(level)}
+                disabled={categorySearch.isLoading}
+              >
+                <span className="tab-label">{level.charAt(0).toUpperCase() + level.slice(1)}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Word limit selector */}
+          <label className="block text-sm font-medium mb-2">Limit to:</label>
+          <div className="tab-bar" style={{ marginBottom: '8px', padding: 0 }}>
+            {([20, 50, 75, 100, 250, 350, 500] as const).map((limit) => (
+              <button
+                key={limit}
+                className={`tab-button ${categorySearch.wordLimit === limit ? 'active' : ''}`}
+                onClick={() => onCategorySearchWordLimitChange(limit)}
+                disabled={categorySearch.isLoading}
+              >
+                <span className="tab-label">{limit}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Context/Cluster settings */}
           <div className="flex gap-2 mt-2">
             <div className="flex-1">
               <label className="block text-sm mb-1" htmlFor="pm-category-context-words">Context words</label>
@@ -558,17 +576,6 @@ export const SearchTab: React.FC<SearchTabProps> = ({
               />
             </div>
           </div>
-          <div className="mt-2">
-            <label className="inline-flex items-center">
-              <input
-                type="checkbox"
-                checked={wordSearchSettings.settings.caseSensitive}
-                onChange={(e) => wordSearchSettings.updateSetting('caseSensitive', e.target.checked)}
-                disabled={categorySearch.isLoading}
-              />
-              <span className="ml-2">Case sensitive</span>
-            </label>
-          </div>
 
           <div className="mt-3 flex justify-center">
             <button
@@ -587,7 +594,6 @@ export const SearchTab: React.FC<SearchTabProps> = ({
                       contextWords: wordSearchSettings.settings.contextWords,
                       clusterWindow: wordSearchSettings.settings.clusterWindow,
                       minClusterSize: wordSearchSettings.settings.minClusterSize,
-                      caseSensitive: wordSearchSettings.settings.caseSensitive,
                       relevance: categorySearch.relevance,
                       wordLimit: categorySearch.wordLimit
                     }
