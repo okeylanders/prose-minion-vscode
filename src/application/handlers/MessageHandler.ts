@@ -16,6 +16,7 @@ import {
   DictionaryResultMessage,
   ContextResultMessage,
   SearchResultMessage,
+  CategorySearchResultMessage,
   ErrorMessage,
   ErrorSource,
   StatusMessage,
@@ -47,6 +48,7 @@ import { ProseStatsService } from '../../infrastructure/api/services/measurement
 import { StyleFlagsService } from '../../infrastructure/api/services/measurement/StyleFlagsService';
 import { WordFrequencyService } from '../../infrastructure/api/services/measurement/WordFrequencyService';
 import { WordSearchService } from '../../infrastructure/api/services/search/WordSearchService';
+import { CategorySearchService } from '../../infrastructure/api/services/search/CategorySearchService';
 import { StandardsService } from '../../infrastructure/api/services/resources/StandardsService';
 import { AIResourceManager } from '../../infrastructure/api/services/resources/AIResourceManager';
 
@@ -56,6 +58,7 @@ interface ResultCache {
   context?: ContextResultMessage;
   metrics?: MetricsResultMessage;
   search?: SearchResultMessage;
+  categorySearch?: CategorySearchResultMessage;
   status?: StatusMessage;
   error?: ErrorMessage;
   tokenUsage?: TokenUsageUpdateMessage;
@@ -126,7 +129,8 @@ export class MessageHandler {
   private readonly MODEL_KEYS = [
     'proseMinion.assistantModel',
     'proseMinion.dictionaryModel',
-    'proseMinion.contextModel'
+    'proseMinion.contextModel',
+    'proseMinion.categoryModel'
   ] as const;
 
   private readonly UI_KEYS = [
@@ -249,10 +253,20 @@ export class MessageHandler {
       outputChannel
     );
 
+    const categorySearchService = new CategorySearchService(
+      aiResourceManager,
+      wordSearchService,
+      extensionUri,
+      outputChannel,
+      this.sendSearchStatus.bind(this)
+    );
+
     this.searchHandler = new SearchHandler(
       wordSearchService,
       this.postMessage.bind(this),
-      outputChannel
+      outputChannel,
+      categorySearchService,
+      this.applyTokenUsage.bind(this)
     );
 
     this.configurationHandler = new ConfigurationHandler(
@@ -266,6 +280,15 @@ export class MessageHandler {
       sharedResultCache,
       this.tokenTotals
     );
+
+    // Ensure token totals are reset on activation/startup so the webview does not
+    // display stale persisted values from prior sessions.
+    this.applyTokenUsage({
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      costUsd: 0
+    });
 
     this.publishingHandler = new PublishingHandler(
       extensionUri,
@@ -386,6 +409,21 @@ export class MessageHandler {
     }
   }
 
+  private sendSearchStatus(message: string): void {
+    try {
+      const status: StatusMessage = {
+        type: MessageType.STATUS,
+        source: 'extension.search',
+        payload: { message },
+        timestamp: Date.now()
+      };
+      void this.postMessage(status);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[MessageHandler] Failed to post search status: ${msg}`);
+    }
+  }
+
   private async refreshServiceConfiguration(): Promise<void> {
     // SPRINT 05: Refresh configuration on all services that need it
     try {
@@ -469,6 +507,10 @@ export class MessageHandler {
       void this.postMessage(sharedResultCache.search);
     }
 
+    if (sharedResultCache.categorySearch) {
+      void this.postMessage(sharedResultCache.categorySearch);
+    }
+
     if (sharedResultCache.context) {
       void this.postMessage(sharedResultCache.context);
     }
@@ -506,6 +548,9 @@ export class MessageHandler {
         break;
       case MessageType.SEARCH_RESULT:
         sharedResultCache.search = { ...message as SearchResultMessage };
+        break;
+      case MessageType.CATEGORY_SEARCH_RESULT:
+        sharedResultCache.categorySearch = { ...message as CategorySearchResultMessage };
         break;
       case MessageType.STATUS:
         sharedResultCache.status = { ...message as StatusMessage };

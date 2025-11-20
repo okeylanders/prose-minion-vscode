@@ -1,355 +1,196 @@
-# Sprint 04: Performance + Polish
+# Sprint 04: Polish & Enhancements
 
-**Sprint ID**: 04-performance-polish
+**Sprint ID**: 04-polish-enhancements
 **Epic**: [Context Search](../epic-context-search.md)
 **Status**: Pending
-**Estimated Effort**: 0.25 days (was 0.5-1 day) - **75% reduction via WordSearchService**
-**Branch**: `sprint/epic-context-search-2025-11-17-04-performance-polish`
+**Estimated Effort**: 0.5 days
+**Branch**: `sprint/epic-context-search-2025-11-17-04-polish`
 **Depends On**: Sprint 03 (result formatting)
 **ADR**: [ADR-2025-11-17](../../../docs/adr/2025-11-17-context-search-component.md)
 
 ## Goal
 
-Add pagination for AI calls (large word lists), progress indicators, and error handling (**file processing performance already handled by WordSearchService**).
+Add polish items: model dropdown, token tracking, Files Summary table, hallucination filtering, and ARIA labels.
 
 ## Scope
 
 ### In Scope
-- ✅ Pagination for large word lists (>2K distinct words)
-- ✅ Progress indicators for batch processing
-- ✅ Error handling refinements
-- ✅ Settings persistence (last query, options)
-- ✅ Token cost estimation display (optional)
-- ✅ Final testing and polish
+- Context model dropdown (like Dictionary/Analysis)
+- Token usage tracking from API response
+- Files Summary table (new view between summary and details)
+- Filter out 0-result words (AI hallucinations)
+- ARIA labels (where used elsewhere)
 
-### Out of Scope
-- ❌ Multi-category search (Phase 2)
-- ❌ AI model selection per search (Phase 2)
-- ❌ Comprehensive automated test suite (deferred)
+### Out of Scope (Moved to separate epic)
+- ~~Pagination for large word lists~~ (tested with 90K words - not needed)
+- ~~Subtab persistence~~ (moved to [UI Cross-Cutting Epic](../../epic-ui-cross-cutting-2025-11-18/))
+- ~~Cancel button on loading~~ (moved to [UI Cross-Cutting Epic](../../epic-ui-cross-cutting-2025-11-18/))
+- ~~Token cost estimation display~~
+- ~~Keyboard shortcuts~~
 
 ## Tasks
 
-### 1. Backend: Pagination Implementation
-**File**: `src/infrastructure/api/services/search/ContextSearchService.ts`
+### 1. Category Model Dropdown
+**Files**: `SearchTab.tsx`, `useSearch.ts`, `App.tsx`
 
-**Add Pagination Logic**:
-- [ ] Define `MAX_WORDS_PER_BATCH = 2000` constant
-- [ ] Update `searchByContext()` to handle pagination:
+Add model selector at top of Category Search UI (pattern from Dictionary/AnalysisTab):
+
+- [ ] Add `categoryModel` prop to SearchTab
+- [ ] Wire up ModelSelector component in Category Search section
+- [ ] Label: **"Category Model (thinking models only)"**
+- [ ] Connect to dedicated `proseMinion.categoryModel` setting (curated list separate from context)
+- [ ] Pass model selection in search request message
+
+**Note**: Category Search uses a curated -thinking subset; it intentionally does **not** share the Context model.
+
+### 2. Token Usage Tracking
+**Files**: `CategorySearchService.ts`, `search.ts` (types)
+
+Track tokens from API response:
+
+- [ ] Extract `usage` from OpenRouter response in CategorySearchService
+- [ ] Add to result interface:
   ```typescript
-  async searchByContext(query, text, options): Promise<ContextSearchResult> {
-    const allWords = this.extractDistinctWords(text, options);
-
-    // Paginate if word count exceeds threshold
-    if (allWords.length > MAX_WORDS_PER_BATCH) {
-      return await this.searchByContextPaginated(query, text, allWords, options);
-    }
-
-    // Single batch (existing logic)
-    return await this.searchByContextSingleBatch(query, text, allWords, options);
-  }
-  ```
-- [ ] Implement `searchByContextPaginated()`:
-  ```typescript
-  private async searchByContextPaginated(
-    query: string,
-    text: string,
-    allWords: string[],
-    options: ContextSearchOptions
-  ): Promise<ContextSearchResult> {
-    const batches = this.chunkArray(allWords, MAX_WORDS_PER_BATCH);
-    const allMatches: string[] = [];
-
-    for (let i = 0; i < batches.length; i++) {
-      // Send progress update to frontend
-      this.sendProgress(i + 1, batches.length);
-
-      const batchMatches = await this.queryAIForMatches(query, batches[i]);
-      allMatches.push(...batchMatches);
-    }
-
-    // Re-scan text for all matched words
-    return this.countOccurrences(text, allMatches, options);
-  }
-  ```
-- [ ] Implement `sendProgress()`:
-  ```typescript
-  private sendProgress(current: number, total: number) {
-    this.webviewProvider.postMessage({
-      type: MessageType.CONTEXT_SEARCH_PROGRESS,
-      source: 'extension.handler.search',
-      payload: { current, total, message: `Analyzing batch ${current} of ${total}...` },
-      timestamp: Date.now()
-    });
-  }
-  ```
-- [ ] Add `chunkArray()` utility function
-
-**Message Type**:
-- [ ] Add `MessageType.CONTEXT_SEARCH_PROGRESS` to `base.ts`
-- [ ] Define `ContextSearchProgressMessage` interface
-
-### 2. Frontend: Progress Indicators
-**File**: `src/presentation/webview/hooks/domain/useSearch.ts`
-
-**State Extension**:
-- [ ] Add progress tracking to `contextSearch` state:
-  ```typescript
-  contextSearch: {
-    query: string;
-    result: ContextSearchResult | null;
-    isLoading: boolean;
-    error: string | null;
-    progress?: {          // New
-      current: number;
+  export interface CategorySearchResult {
+    // existing...
+    tokensUsed?: {
+      prompt: number;
+      completion: number;
       total: number;
-      message: string;
     };
   }
   ```
+- [ ] Display in result metadata (optional - or just track for cost widget)
 
-**Handler**:
-- [ ] Implement `handleContextSearchProgress()`:
-  ```typescript
-  function handleContextSearchProgress(message: MessageEnvelope) {
-    setContextSearch(prev => ({
-      ...prev,
-      progress: message.payload
-    }));
-  }
-  ```
-- [ ] Register in `useMessageRouter`:
-  ```typescript
-  [MessageType.CONTEXT_SEARCH_PROGRESS]: handleContextSearchProgress
-  ```
+### 3. Filter Hallucinated Words
+**File**: `CategorySearchService.ts`
 
-**UI Update** (`SearchTab.tsx`):
-- [ ] Show progress bar when `progress !== undefined`:
-  ```tsx
-  {contextSearch.progress && (
-    <div className="progress-container">
-      <progress value={contextSearch.progress.current} max={contextSearch.progress.total} />
-      <span>{contextSearch.progress.message}</span>
-    </div>
-  )}
-  ```
+Remove words with 0 occurrences before returning result:
 
-### 3. Settings Persistence
-**File**: `src/presentation/webview/hooks/domain/useSearch.ts`
+- [ ] After WordSearchService returns results, filter out targets with `totalOccurrences === 0`
+- [ ] Update `matchedWords` array to only include words that were actually found
+- [ ] Log filtered words to Output Channel for debugging
 
-**Persistence Interface Extension**:
-- [ ] Add to `SearchPersistence`:
-  ```typescript
-  interface SearchPersistence {
-    // ... existing
-    contextSearchQuery?: string;
-    contextSearchOptions?: {
-      minWordLength: number;
-      excludeStopwords: boolean;
-      caseSensitive: boolean;
-    };
-  }
-  ```
+```typescript
+// Filter out hallucinated words (0 occurrences)
+const validTargets = wordSearchResult.targets.filter(t => t.totalOccurrences > 0);
+const validWords = matchedWords.filter(word =>
+  validTargets.some(t => t.normalized === word.toLowerCase())
+);
 
-**Restore from Persistence**:
-- [ ] Load last query and options from `vscode.getState()` on mount
-- [ ] Populate input fields with saved values
+return {
+  query,
+  matchedWords: validWords,
+  wordSearchResult: { ...wordSearchResult, targets: validTargets },
+  timestamp: Date.now()
+};
+```
 
-**Save on Change**:
-- [ ] Update persistence whenever query or options change
-- [ ] Use `usePersistence` hook pattern
+### 4. Files Summary Table
+**File**: `resultFormatter.ts`
 
-### 4. Error Handling Refinements
-**Backend** (`ContextSearchService.ts`):
-- [ ] Add specific error messages:
-  - "API key not configured. Please add your OpenRouter API key in Settings."
-  - "AI request timed out. Try reducing the text size or using a glob pattern to exclude files."
-  - "Invalid AI response format. Please try again or contact support."
-- [ ] Add retry logic for transient failures (rate limits, network errors)
-- [ ] Log detailed errors to Output Channel
+Add new table between summary and details:
 
-**Frontend** (`SearchTab.tsx`):
-- [ ] Display user-friendly error messages
-- [ ] Add "Retry" button for failed searches
-- [ ] Link to Settings for API key errors
+```markdown
+## Files Summary
 
-### 5. Token Cost Estimation (Optional)
-**Backend** (`ContextSearchService.ts`):
-- [ ] Estimate input tokens before API call:
-  ```typescript
-  function estimateTokens(words: string[]): number {
-    // Rough estimate: ~1 token per 4 characters
-    const totalChars = words.join(', ').length;
-    return Math.ceil(totalChars / 4) + 50; // +50 for prompt overhead
-  }
-  ```
-- [ ] Add `estimatedCost` to result metadata:
-  ```typescript
-  summary: {
-    totalMatches: number;
-    uniqueWords: number;
-    wordsAnalyzed: number;
-    truncated: boolean;
-    estimatedCost?: number;  // In cents
-  }
-  ```
+| Word | Count | Clusters | Files | Files w/ Clusters |
+|------|-------|----------|-------|-------------------|
+| cloud | 13 | 3 | chapter-1.1.md, chapter-3.4.md | chapter-3.4.md |
+| clouds | 8 | 7 | chapter-1.1.md, chapter-3.4.md | chapter-1.1.md, chapter-3.4.md |
+| fog | 4 | 0 | chapter-1.1.md | - |
+```
 
-**Frontend** (`SearchTab.tsx`):
-- [ ] Show estimated cost before search (optional toggle in settings):
-  ```tsx
-  {showCostEstimate && (
-    <div className="cost-estimate">
-      Estimated cost: ~${(estimatedCost / 100).toFixed(3)}
-    </div>
-  )}
-  ```
+- [ ] Add `formatFilesSummary()` function in resultFormatter.ts
+- [ ] Calculate per-word: total count, total clusters, file list, files with clusters
+- [ ] Insert between summary table and details section in `formatCategorySearchAsMarkdown()`
 
-### 6. Final Polish
-**UI/UX**:
-- [ ] Add keyboard shortcuts:
-  - Enter to trigger search
-  - Cmd/Ctrl+K to focus query input
-- [ ] Add clear button (X icon) in query input
-- [ ] Add tooltips for options toggles
-- [ ] Add placeholder text for empty results
-- [ ] Improve responsive layout (mobile-friendly)
+### 5. ARIA Labels
+**File**: `SearchTab.tsx`
 
-**Performance**:
-- [ ] Debounce query input (avoid re-rendering on every keystroke)
-- [ ] Memoize expensive computations (result formatting)
-- [ ] Lazy-load details section (collapse by default)
+Add accessibility labels where used in other components:
 
-**Accessibility**:
-- [ ] Add ARIA labels to inputs and buttons
-- [ ] Ensure keyboard navigation works
-- [ ] Add screen reader announcements for loading/results
-
-### 7. Testing
-**Manual Testing**:
-- [ ] Test with large novel (50K+ words, expect pagination)
-- [ ] Verify progress bar shows and updates
-- [ ] Verify settings persist across sessions
-- [ ] Test error handling (disconnect network, invalid API key)
-- [ ] Test keyboard shortcuts
-- [ ] Test on different screen sizes (responsive layout)
-
-**Performance Testing**:
-- [ ] Measure time to process 50K word novel
-- [ ] Verify no memory leaks (check DevTools Memory profiler)
-- [ ] Verify UI remains responsive during batch processing
-
-**Edge Cases**:
-- [ ] Empty text (no words)
-- [ ] Single word text
-- [ ] Text with only stopwords
-- [ ] Query with special characters (escape properly)
+- [ ] Audit other tabs for ARIA patterns
+- [ ] Add `aria-label` to query input
+- [ ] Add `aria-label` to scope selector
+- [ ] Add `aria-label` to search button
+- [ ] Add `role` attributes where appropriate
 
 ## Acceptance Criteria
 
-- ✅ Large texts (10K+ words) process without token errors
-- ✅ Progress bar shows "Analyzing batch X of Y..." during pagination
-- ✅ Last query and options persist across sessions
-- ✅ Error messages are user-friendly and actionable
-- ✅ Retry button works for failed searches
-- ✅ Keyboard shortcuts work (Enter, Cmd/Ctrl+K)
-- ✅ UI is responsive and accessible
-- ✅ No performance degradation on large texts
+- [ ] Model dropdown shows at top of Category Search, changes persist
+- [ ] Token usage tracked in result (visible in cost widget or metadata)
+- [ ] Words with 0 results are not shown in output
+- [ ] Files Summary table appears with correct data
+- [ ] ARIA labels present on main interactive elements
 
 ## Testing Checklist
 
-**Test Case 1: Large Text Pagination**
-- Input: 50K word novel (expect 5 batches at 2K words/batch)
-- Expected: Progress bar shows "Analyzing batch 1 of 5...", increments to 5
-- Result: ✅ / ❌
+**Test Case 1: Model Dropdown**
+- Input: Select different context model, run search
+- Expected: Search uses selected model
+- Result: /
 
-**Test Case 2: Settings Persistence**
-- Input: Set query "clothing", options (min length 3, exclude stopwords), close/reopen webview
-- Expected: Query and options restored
-- Result: ✅ / ❌
+**Test Case 2: Hallucination Filtering**
+- Input: Search that returns some AI hallucinations
+- Expected: 0-count words don't appear in results
+- Result: /
 
-**Test Case 3: Error Handling**
-- Input: Disconnect network, trigger search
-- Expected: Error message "AI request timed out...", Retry button shows
-- Result: ✅ / ❌
+**Test Case 3: Files Summary Table**
+- Input: Multi-file search with clusters
+- Expected: Table shows correct file lists and cluster counts
+- Result: /
 
-**Test Case 4: Keyboard Shortcuts**
-- Input: Type query, press Enter
-- Expected: Search triggers
-- Result: ✅ / ❌
-
-**Test Case 5: Token Cost Estimation**
-- Input: 5K word list, enable cost estimate
-- Expected: Shows "Estimated cost: ~$0.005" before search
-- Result: ✅ / ❌
-
-**Test Case 6: Performance**
-- Input: 50K word novel
-- Expected: Completes in <30 seconds, UI remains responsive
-- Result: ✅ / ❌
+**Test Case 4: Token Tracking**
+- Input: Run search, check result
+- Expected: tokensUsed populated with prompt/completion/total
+- Result: /
 
 ## Implementation Notes
 
-### Pagination Strategy
+### Files Summary Table Data Extraction
 
-**Batch Size Tuning**:
-- Start with 2K words/batch
-- Monitor token usage in Output Channel
-- Adjust if hitting rate limits or timeouts
-
-**Progress Updates**:
-- Send after each batch completes (not during)
-- Include estimated time remaining (optional)
-
-### Error Recovery
-
-**Retry Logic**:
 ```typescript
-async function queryAIWithRetry(query: string, words: string[], maxRetries = 3): Promise<string[]> {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await this.queryAIForMatches(query, words);
-    } catch (error) {
-      if (attempt === maxRetries) throw error;
+function formatFilesSummary(result: CategorySearchResult): string {
+  const rows = result.wordSearchResult.targets.map(target => {
+    const files = target.perFile.map(f => f.relative);
+    const filesWithClusters = target.perFile
+      .filter(f => f.clusters.length > 0)
+      .map(f => f.relative);
+    const totalClusters = target.perFile.reduce((sum, f) => sum + f.clusters.length, 0);
 
-      // Exponential backoff
-      const delay = Math.pow(2, attempt) * 1000;
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
+    return {
+      word: target.target,
+      count: target.totalOccurrences,
+      clusters: totalClusters,
+      files: files.join(', '),
+      filesWithClusters: filesWithClusters.length > 0 ? filesWithClusters.join(', ') : '-'
+    };
+  });
+
+  // Format as markdown table
+  // ...
 }
 ```
 
-### Token Cost Calculation
+### Token Usage from OpenRouter
 
-**Model Pricing** (as of 2025-11):
-- Claude Haiku: $0.25 per 1M input tokens, $1.25 per 1M output tokens
-- GPT-4o-mini: $0.15 per 1M input tokens, $0.60 per 1M output tokens
-
-**Estimation Formula**:
 ```typescript
-function estimateCost(inputTokens: number, model: string): number {
-  const pricing = {
-    'claude-haiku': { input: 0.25, output: 1.25 },
-    'gpt-4o-mini': { input: 0.15, output: 0.60 }
-  };
-
-  const rates = pricing[model] || pricing['claude-haiku'];
-  const outputTokens = 200; // Estimate based on typical response
-
-  const costInDollars =
-    (inputTokens / 1_000_000) * rates.input +
-    (outputTokens / 1_000_000) * rates.output;
-
-  return Math.ceil(costInDollars * 100); // Return in cents
-}
+// In CategorySearchService after API call
+const response = await this.openRouterClient.chat(messages, options);
+const tokensUsed = response.usage ? {
+  prompt: response.usage.prompt_tokens,
+  completion: response.usage.completion_tokens,
+  total: response.usage.total_tokens
+} : undefined;
 ```
 
 ## Definition of Done
 
-- [ ] All tasks completed
-- [ ] Code committed to sprint branch
+- [x] All tasks completed
+- [x] Code committed to sprint branch
 - [ ] Manual tests passed
-- [ ] Performance tests passed
-- [ ] No TypeScript errors
+- [x] No TypeScript errors
 - [ ] PR ready for review
 - [ ] Epic ready to close
 
@@ -357,15 +198,17 @@ function estimateCost(inputTokens: number, model: string): number {
 
 - [ADR-2025-11-17](../../../docs/adr/2025-11-17-context-search-component.md)
 - [useSearch Hook](../../../src/presentation/webview/hooks/domain/useSearch.ts)
-- [ContextSearchService](../../../src/infrastructure/api/services/search/ContextSearchService.ts)
-- [OpenRouter Pricing](https://openrouter.ai/docs#models)
+- [CategorySearchService](../../../src/infrastructure/api/services/search/CategorySearchService.ts)
+- [resultFormatter](../../../src/presentation/webview/utils/resultFormatter.ts)
+- [UI Cross-Cutting Epic](../../epic-ui-cross-cutting-2025-11-18/) (subtab persistence, cancel button)
 
 ## Outcomes
 
-*To be filled after sprint completion*
-
-- **PR**: #[number]
-- **Completion Date**: YYYY-MM-DD
-- **Actual Effort**: [hours/days]
-- **Discoveries**: [any tech debt, blockers, or insights]
-- **Performance Metrics**: [time to process 50K words, token usage, etc.]
+- **PR**: Pending (on epic branch)
+- **Completion Date**: 2025-11-18
+- **Actual Effort**: ~1.5 hours
+- **Commit**: `2f435c8`
+- **Discoveries**:
+  - Token usage from orchestrator already available via `result.usage`
+  - Files Summary table provides useful cross-file visibility
+  - Hallucination filtering improves result quality significantly

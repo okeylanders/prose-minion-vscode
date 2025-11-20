@@ -73,6 +73,31 @@ export class WordFrequency {
     'a','an','and','are','as','at','be','by','for','from','has','he','in','is','it','its','of','on','that','the','to','was','were','will','with','i','you','she','they','we','this','these','those','your','our','their','but','or','if','because','so','what','which','who','whom','where','when','how','why','not','no','nor','too','very','can','could','should','would','may','might','must','do','does','did','done','than','then','there','here','over','under','again','once'
   ]);
 
+  /**
+   * Extract unique words from text for use by other services (e.g., ContextSearchService)
+   * @param text - The text to extract words from
+   * @param options - Filtering options
+   * @returns Sorted array of unique words (lowercase)
+   */
+  extractUniqueWords(
+    text: string,
+    options?: { minCharacterLength?: number; excludeStopwords?: boolean }
+  ): string[] {
+    const minLen = options?.minCharacterLength ?? 2;
+    const excludeStopwords = options?.excludeStopwords ?? false;
+
+    const words = this.extractWords(text.toLowerCase());
+    const uniqueSet = new Set<string>();
+
+    for (const word of words) {
+      if (word.length < minLen) continue;
+      if (excludeStopwords && this.stopwords.has(word)) continue;
+      uniqueSet.add(word);
+    }
+
+    return Array.from(uniqueSet).sort();
+  }
+
   analyze(input: WordFrequencyInput, options?: WordFrequencyOptions): WordFrequencyOutput {
     const opts: Required<WordFrequencyOptions> = {
       topN: options?.topN ?? 100,

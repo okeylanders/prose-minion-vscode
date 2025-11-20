@@ -3,6 +3,7 @@ import { MessageType, ModelScope, ModelOption } from '../../../../shared/types';
 import { SettingsDataMessage, ModelDataMessage } from '../../../../shared/types/messages';
 import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
+import { CATEGORY_MODELS } from '../../../../infrastructure/api/OpenRouterModels';
 
 /**
  * Models Settings
@@ -10,10 +11,11 @@ import { usePersistedState } from '../usePersistence';
  * Syncs with package.json proseMinion.* settings
  */
 export interface ModelsSettings {
-  // Model Selections (4 settings)
+  // Model Selections (5 settings)
   assistantModel: string;          // Model for prose/dialogue analysis (default: z-ai/glm-4.6)
   dictionaryModel: string;         // Model for dictionary lookups (default: z-ai/glm-4.6)
   contextModel: string;            // Model for context generation (default: z-ai/glm-4.6)
+  categoryModel: string;           // Model for category search (default: anthropic/claude-sonnet-4.5)
   model: string;                   // Legacy fallback model (default: z-ai/glm-4.6)
 
   // Agent Behavior (4 settings)
@@ -25,7 +27,8 @@ export interface ModelsSettings {
 
 export interface ModelsSettingsState {
   settings: ModelsSettings;
-  modelOptions: ModelOption[];                          // Available models
+  modelOptions: ModelOption[];                          // Available models (full list)
+  categoryModelOptions: ModelOption[];                  // Category models (curated list)
   modelSelections: Partial<Record<ModelScope, string>>; // Current selections by scope
 }
 
@@ -73,6 +76,7 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
     assistantModel: 'z-ai/glm-4.6',
     dictionaryModel: 'z-ai/glm-4.6',
     contextModel: 'z-ai/glm-4.6',
+    categoryModel: 'anthropic/claude-sonnet-4.5',
     model: 'z-ai/glm-4.6',  // Legacy fallback
 
     // Agent Behavior
@@ -91,6 +95,9 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
   });
 
   const [modelOptions, setModelOptions] = React.useState<ModelOption[]>([]);
+  const [categoryModelOptions] = React.useState<ModelOption[]>(
+    CATEGORY_MODELS.map(m => ({ id: m.id, label: m.name }))
+  );
   const [modelSelections, setModelSelections] = React.useState<Partial<Record<ModelScope, string>>>(
     persisted?.modelSelections ?? {}
   );
@@ -106,6 +113,7 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
         assistantModel: settingsData['assistantModel'] as string | undefined,
         dictionaryModel: settingsData['dictionaryModel'] as string | undefined,
         contextModel: settingsData['contextModel'] as string | undefined,
+        categoryModel: settingsData['categoryModel'] as string | undefined,
         model: settingsData['model'] as string | undefined,
 
         // Agent Behavior
@@ -123,6 +131,7 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
           assistantModel: modelsSettings.assistantModel ?? prev.assistantModel,
           dictionaryModel: modelsSettings.dictionaryModel ?? prev.dictionaryModel,
           contextModel: modelsSettings.contextModel ?? prev.contextModel,
+          categoryModel: modelsSettings.categoryModel ?? prev.categoryModel,
           model: modelsSettings.model ?? prev.model,
           // Agent Behavior
           includeCraftGuides: modelsSettings.includeCraftGuides ?? prev.includeCraftGuides,
@@ -200,6 +209,7 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
   return {
     settings,
     modelOptions,
+    categoryModelOptions,
     modelSelections,
     updateSetting,
     setModelSelection,

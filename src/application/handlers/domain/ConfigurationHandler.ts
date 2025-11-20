@@ -357,7 +357,8 @@ export class ConfigurationHandler {
     const selections: Partial<Record<ModelScope, string>> = {
       assistant: config.get<string>('assistantModel') || fallback,
       dictionary: config.get<string>('dictionaryModel') || fallback,
-      context: config.get<string>('contextModel') || fallback
+      context: config.get<string>('contextModel') || fallback,
+      category: config.get<string>('categoryModel') || 'anthropic/claude-sonnet-4.5'
     };
 
     // SPRINT 05: Get resolved model selections from AIResourceManager
@@ -382,6 +383,8 @@ export class ConfigurationHandler {
         return 'dictionaryModel';
       case 'context':
         return 'contextModel';
+      case 'category':
+        return 'categoryModel';
       default:
         const exhaustiveCheck: never = scope;
         throw new Error(`Unknown model scope: ${exhaustiveCheck}`);

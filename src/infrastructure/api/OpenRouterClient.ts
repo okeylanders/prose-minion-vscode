@@ -96,7 +96,14 @@ export class OpenRouterClient {
             promptTokens: data.usage.prompt_tokens,
             completionTokens: data.usage.completion_tokens,
             totalTokens: data.usage.total_tokens,
-            costUsd: typeof (data.usage as any).cost === 'number' ? (data.usage as any).cost : undefined
+            costUsd: (() => {
+              const rawCost =
+                (data.usage as any).cost ??
+                (data.usage as any).costUsd ??
+                (data.usage as any).cost_usd;
+              const costNum = rawCost !== undefined && rawCost !== null ? Number(rawCost) : undefined;
+              return Number.isFinite(costNum) ? costNum : undefined;
+            })()
           }
         : undefined
     };

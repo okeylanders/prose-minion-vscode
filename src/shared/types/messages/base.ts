@@ -20,6 +20,8 @@ export enum MessageType {
 
   // Search tab messages (separate from Metrics)
   RUN_WORD_SEARCH = 'run_word_search',
+  CATEGORY_SEARCH_REQUEST = 'category_search_request',
+  CATEGORY_SEARCH_RESULT = 'category_search_result',
 
   // Metrics source helpers
   REQUEST_ACTIVE_FILE = 'request_active_file',
@@ -88,7 +90,11 @@ export enum TabId {
   UTILITIES = 'utilities'
 }
 
-export type ModelScope = 'assistant' | 'dictionary' | 'context';
+export type ModelScope = 'assistant' | 'dictionary' | 'context' | 'category';
+
+export type CategoryRelevance = 'broad' | 'focused' | 'specific' | 'synonym';
+export type CategoryWordLimit = 20 | 50 | 75 | 100 | 250 | 350 | 500;
+export const CATEGORY_RELEVANCE_OPTIONS: readonly CategoryRelevance[] = ['broad', 'focused', 'specific', 'synonym'];
 
 export interface ModelOption {
   id: string;

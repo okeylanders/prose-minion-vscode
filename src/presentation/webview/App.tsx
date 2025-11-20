@@ -75,6 +75,10 @@ export const App: React.FC = () => {
       search.handleSearchResult(msg);
       setError(''); // Clear error on success
     },
+    [MessageType.CATEGORY_SEARCH_RESULT]: (msg) => {
+      search.handleCategorySearchResult(msg);
+      setError(''); // Clear error on success
+    },
     [MessageType.DICTIONARY_RESULT]: (msg) => {
       dictionary.handleDictionaryResult(msg);
       setError(''); // Clear error on success
@@ -101,6 +105,8 @@ export const App: React.FC = () => {
         dictionary.handleStatusMessage(msg);
       } else if (msg.source === 'extension.analysis') {
         analysis.handleStatusMessage(msg, context.loadingRef);
+      } else if (msg.source === 'extension.search') {
+        search.handleStatusMessage(msg);
       } else {
         // Default to analysis for backward compatibility
         analysis.handleStatusMessage(msg, context.loadingRef);
@@ -135,8 +141,9 @@ export const App: React.FC = () => {
       if (errorSource.startsWith('metrics.')) {
         // Any metrics subtool error clears metrics loading
         metrics.setLoading(false);
-      } else if (errorSource === 'search') {
+      } else if (errorSource === 'search' || errorSource.startsWith('extension.search')) {
         search.setLoading(false);
+        search.setCategorySearchLoading(false);
       } else if (errorSource === 'analysis') {
         analysis.setLoading(false);
       } else if (errorSource === 'dictionary') {
@@ -427,8 +434,18 @@ export const App: React.FC = () => {
               settings: wordSearchSettings.settings,
               updateSetting: wordSearchSettings.updateSetting,
             }}
-          />
-        )}
+          categorySearch={search.categorySearch}
+          onCategorySearchQueryChange={search.setCategorySearchQuery}
+          onCategorySearchLoadingChange={search.setCategorySearchLoading}
+          onClearCategorySearchResult={search.clearCategorySearchResult}
+          onCategorySearchRelevanceChange={search.setCategorySearchRelevance}
+          onCategorySearchWordLimitChange={search.setCategorySearchWordLimit}
+          statusMessage={search.statusMessage}
+          categoryModel={modelsSettings.modelSelections.category}
+          categoryModelOptions={modelsSettings.categoryModelOptions}
+          onCategoryModelChange={modelsSettings.setModelSelection}
+        />
+      )}
 
         {activeTab === TabId.UTILITIES && (
           <UtilitiesTab

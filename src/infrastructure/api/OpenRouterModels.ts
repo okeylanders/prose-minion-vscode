@@ -23,6 +23,49 @@ export interface OpenRouterModelsResponse {
  * Updated as of 2025
  * Sorted alphabetically by name
  */
+/**
+ * Curated list of models for Category Search
+ * Non-thinking models only for predictable token usage
+ */
+export const CATEGORY_MODELS = [
+  {
+    id: 'anthropic/claude-sonnet-4.5',
+    name: 'Claude Sonnet 4.5',
+    description: 'Default for category search'
+  },
+  {
+    id: 'openai/gpt-5.1-chat',
+    name: 'GPT-5.1 Chat',
+    description: 'OpenAI conversational model'
+  },
+  {
+    id: 'google/gemini-2.5-pro',
+    name: 'Gemini 2.5 Pro',
+    description: 'Google advanced model'
+  },
+  {
+    id: 'mistralai/mistral-large-2411',
+    name: 'Mistral Large 2411',
+    description: 'Mistral large model'
+  },
+  {
+    id: 'anthropic/claude-haiku-4.5',
+    name: 'Claude Haiku 4.5',
+    description: 'Anthropic\'s fastest and most efficient model with frontier-level capabilities'
+  },
+  {
+    id: 'google/gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
+    description: 'Google\'s fast model'
+  },
+
+];
+
+/**
+ * Curated list of recommended models for prose analysis ( Prose Excerpt Assistant )
+ * Updated as of 2025
+ * Sorted alphabetically by name
+ */
 export const RECOMMENDED_MODELS = [
   {
     id: 'anthropic/claude-haiku-4.5',

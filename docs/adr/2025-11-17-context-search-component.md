@@ -1,9 +1,10 @@
 # ADR-2025-11-17: Context Search Component (AI-Powered Semantic Search)
 
-**Status**: Proposed
+**Status**: Accepted (Implementation in Progress)
 **Date**: 2025-11-17
+**Updated**: 2025-11-18
 **Deciders**: okeylanders
-**Epic**: [Epic: Context Search](.todo/epics/epic-context-search-2025-11-17/epic-context-search.md)
+**Epic**: [Epic: Context Search](../../.todo/epics/epic-context-search-2025-11-17/epic-context-search.md)
 
 ## Context and Problem Statement
 
