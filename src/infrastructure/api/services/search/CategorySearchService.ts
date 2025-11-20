@@ -129,7 +129,7 @@ export class CategorySearchService {
               if (!haltStatusSent) {
                 haltStatusSent = true;
                 this.sendStatus(
-                  `Reached word limit (${wordLimit}). Stopped early; more words may match. Try increasing limit or broadening relevance.`
+                  `Reached word limit (${wordLimit}). Stopped early; more words may match. Try increasing the limit or narrowing relevance.`
                 );
               }
               break;
@@ -166,7 +166,7 @@ export class CategorySearchService {
         warnings.push('Some batches failed; results may be incomplete.');
       }
       if (shouldStop && matchedWordsSet.size >= wordLimit) {
-        warnings.push(`Stopped after reaching word limit (${wordLimit}); additional words may match if you increase the limit or broaden relevance.`);
+        warnings.push(`Stopped after reaching word limit (${wordLimit}); additional words may match if you increase the limit or narrow relevance.`);
       }
 
       if (finalMatchedWords.length === 0) {

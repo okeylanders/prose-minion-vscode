@@ -144,5 +144,6 @@ describe('CategorySearchService', () => {
 
     expect(result.haltedEarly).toBe(true);
     expect(result.warnings?.[0]).toContain('Stopped after reaching word limit');
+    expect(result.warnings?.[0]).toContain('narrow relevance');
   });
 });
