@@ -73,7 +73,7 @@ export class DictionaryService {
   private dictionaryUtility?: DictionaryUtility;
 
   // Parallel generation constants
-  private readonly CONCURRENCY_LIMIT = 5;
+  private readonly CONCURRENCY_LIMIT = 14;
   private readonly BLOCK_TIMEOUT = 15000; // 15 seconds per block
 
   constructor(
@@ -281,7 +281,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
           userMessage,
           {
             temperature: 0.4,
-            maxTokens: 1500 // Smaller max for individual blocks
+            maxTokens: 3500 // Smaller max for individual blocks
           }
         ),
         this.createTimeout(this.BLOCK_TIMEOUT)
@@ -314,7 +314,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
           userMessage,
           {
             temperature: 0.4,
-            maxTokens: 1500
+            maxTokens: 3500
           }
         );
 
