@@ -6,7 +6,24 @@
 
 import * as React from 'react';
 import { usePersistedState } from '../usePersistence';
-import { DictionaryResultMessage } from '../../../../shared/types/messages';
+import {
+  DictionaryResultMessage,
+  FastGenerateDictionaryResultMessage,
+  DictionaryGenerationProgressMessage
+} from '../../../../shared/types/messages';
+
+export interface FastGenerationProgress {
+  completedBlocks: string[];
+  totalBlocks: number;
+}
+
+export interface FastGenerationMetadata {
+  totalDuration: number;
+  blockDurations: Record<string, number>;
+  partialFailures: string[];
+  successCount: number;
+  totalBlocks: number;
+}
 
 export interface DictionaryState {
   result: string;
@@ -18,6 +35,10 @@ export interface DictionaryState {
   sourceUri: string;
   relativePath: string;
   statusMessage: string;
+  // Fast generation state
+  isFastGenerating: boolean;
+  fastGenerationProgress: FastGenerationProgress | null;
+  lastFastGenerationMetadata: FastGenerationMetadata | null;
 }
 
 export interface DictionaryActions {
@@ -29,6 +50,10 @@ export interface DictionaryActions {
   setWordEdited: (edited: boolean) => void;
   setSource: (uri?: string, relativePath?: string) => void;
   clearResult: () => void;
+  // Fast generation actions
+  handleFastGenerateResult: (message: FastGenerateDictionaryResultMessage) => void;
+  handleProgress: (message: DictionaryGenerationProgressMessage) => void;
+  setFastGenerating: (isGenerating: boolean) => void;
 }
 
 export interface DictionaryPersistence {
@@ -96,6 +121,11 @@ export const useDictionary = (): UseDictionaryReturn => {
   const [relativePath, setRelativePath] = React.useState<string>(persisted?.dictionaryRelativePath ?? '');
   const [statusMessage, setStatusMessage] = React.useState<string>(persisted?.dictionaryStatusMessage ?? '');
 
+  // Fast generation state
+  const [isFastGenerating, setIsFastGenerating] = React.useState<boolean>(false);
+  const [fastGenerationProgress, setFastGenerationProgress] = React.useState<FastGenerationProgress | null>(null);
+  const [lastFastGenerationMetadata, setLastFastGenerationMetadata] = React.useState<FastGenerationMetadata | null>(null);
+
   // Clear result when dictionary lookup starts
   const clearResultWhenLoading = React.useCallback(() => {
     if (loading) {
@@ -129,6 +159,31 @@ export const useDictionary = (): UseDictionaryReturn => {
     setResult('');
   }, []);
 
+  // Fast generation handlers
+  const handleFastGenerateResult = React.useCallback((message: FastGenerateDictionaryResultMessage) => {
+    const { result: content, metadata } = message.payload;
+    setResult(content);
+    setToolName('dictionary_fast_generate');
+    setIsFastGenerating(false);
+    setFastGenerationProgress(null);
+    setLastFastGenerationMetadata(metadata);
+    setStatusMessage(''); // Clear status message
+  }, []);
+
+  const handleProgress = React.useCallback((message: DictionaryGenerationProgressMessage) => {
+    const { completedBlocks, totalBlocks } = message.payload;
+    setFastGenerationProgress({ completedBlocks, totalBlocks });
+  }, []);
+
+  const setFastGenerating = React.useCallback((isGenerating: boolean) => {
+    setIsFastGenerating(isGenerating);
+    if (isGenerating) {
+      setResult('');
+      setFastGenerationProgress(null);
+      setLastFastGenerationMetadata(null);
+    }
+  }, []);
+
   return {
     // State
     result,
@@ -140,6 +195,9 @@ export const useDictionary = (): UseDictionaryReturn => {
     sourceUri,
     relativePath,
     statusMessage,
+    isFastGenerating,
+    fastGenerationProgress,
+    lastFastGenerationMetadata,
 
     // Actions
     handleDictionaryResult,
@@ -150,6 +208,9 @@ export const useDictionary = (): UseDictionaryReturn => {
     setWordEdited,
     setSource,
     clearResult,
+    handleFastGenerateResult,
+    handleProgress,
+    setFastGenerating,
 
     // Persistence
     persistedState: {

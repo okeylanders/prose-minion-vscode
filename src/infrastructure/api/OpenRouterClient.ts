@@ -3,6 +3,8 @@
  * Handles communication with OpenRouter API for AI-powered analysis
  */
 
+import { TokenUsage } from '../../shared/types';
+
 export interface OpenRouterMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -57,6 +59,7 @@ export class OpenRouterClient {
     options?: {
       temperature?: number;
       maxTokens?: number;
+      signal?: AbortSignal;
     }
   ): Promise<{ content: string; finishReason?: string; usage?: TokenUsage; id?: string }> {
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
@@ -67,6 +70,7 @@ export class OpenRouterClient {
         'HTTP-Referer': 'https://github.com/okeylanders/prose-minion-vscode',
         'X-Title': 'Prose Minion VS Code Extension'
       },
+      signal: options?.signal,
       body: JSON.stringify({
         model: this.model,
         messages,
@@ -116,4 +120,3 @@ export class OpenRouterClient {
     return Boolean(apiKey && apiKey.trim().length > 0);
   }
 }
-import { TokenUsage } from '../../shared/types';

@@ -18,6 +18,8 @@ export interface AIOptions {
   includeCraftGuides?: boolean;
   temperature?: number;
   maxTokens?: number;
+  signal?: AbortSignal;
+  timeoutMs?: number;
 }
 
 export interface ExecutionResult {
@@ -28,6 +30,11 @@ export interface ExecutionResult {
 }
 
 export type StatusCallback = (message: string, guideNames?: string) => void;
+
+interface TerminationContext {
+  signal?: AbortSignal;
+  dispose: () => void;
+}
 
 export class AIResourceOrchestrator {
   private readonly MAX_TURNS = 3; // Safety limit to prevent infinite loops
@@ -47,6 +54,57 @@ export class AIResourceOrchestrator {
     }, 300000);
   }
 
+  private createTerminationContext(options: AIOptions): TerminationContext {
+    if (!options.timeoutMs && !options.signal) {
+      return { signal: undefined, dispose: () => {} };
+    }
+
+    const controller = new AbortController();
+    let timeoutId: NodeJS.Timeout | undefined;
+    let externalAbortListener: (() => void) | undefined;
+
+    const abortWithReason = (reason: unknown) => {
+      if (!controller.signal.aborted) {
+        controller.abort(reason instanceof Error ? reason : new Error(String(reason ?? 'Aborted')));
+      }
+    };
+
+    if (options.signal) {
+      if (options.signal.aborted) {
+        abortWithReason(options.signal.reason ?? new Error('Aborted'));
+      } else {
+        externalAbortListener = () => abortWithReason(options.signal?.reason ?? new Error('Aborted'));
+        options.signal.addEventListener('abort', externalAbortListener, { once: true });
+      }
+    }
+
+    if (options.timeoutMs) {
+      timeoutId = setTimeout(
+        () => abortWithReason(new Error(`Request timed out after ${options.timeoutMs}ms`)),
+        options.timeoutMs
+      );
+    }
+
+    return {
+      signal: controller.signal,
+      dispose: () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        if (externalAbortListener && options.signal) {
+          options.signal.removeEventListener('abort', externalAbortListener);
+        }
+      }
+    };
+  }
+
+  private withTerminationSignal(options: AIOptions, termination: TerminationContext): AIOptions {
+    return {
+      ...options,
+      signal: termination.signal ?? options.signal
+    };
+  }
+
   /**
    * Execute an AI request with agent capabilities support
    * Handles multi-turn conversations for guide requests
@@ -62,6 +120,8 @@ export class AIResourceOrchestrator {
     );
     const conversationId = this.conversationManager.startConversation(toolName, systemMessage);
     const usedGuides: string[] = [];
+    const termination = this.createTerminationContext(options);
+    const requestOptions = this.withTerminationSignal(options, termination);
 
     try {
       // Build first user message
@@ -101,8 +161,9 @@ export class AIResourceOrchestrator {
       );
       let totalUsage: TokenUsage | undefined;
       let last = await this.openRouterClient.createChatCompletion(messages, {
-        temperature: options.temperature,
-        maxTokens: options.maxTokens
+        temperature: requestOptions.temperature,
+        maxTokens: requestOptions.maxTokens,
+        signal: requestOptions.signal
       });
       if ((last as any).usage) {
         totalUsage = { ...(last as any).usage };
@@ -148,7 +209,7 @@ export class AIResourceOrchestrator {
             conversationId,
             last.content,
             resourceRequest.requestedGuides,
-            options
+            requestOptions
           );
 
           // Track which guides were used
@@ -191,6 +252,7 @@ export class AIResourceOrchestrator {
       };
     } finally {
       // Clean up conversation after completion
+      termination.dispose();
       this.conversationManager.deleteConversation(conversationId);
     }
   }
@@ -209,6 +271,8 @@ export class AIResourceOrchestrator {
       `\n[AIResourceOrchestrator] Starting single-turn request for ${toolName} (model: ${this.openRouterClient.getModel()})`
     );
     const conversationId = this.conversationManager.startConversation(toolName, systemMessage);
+    const termination = this.createTerminationContext(options);
+    const requestOptions = this.withTerminationSignal(options, termination);
 
     try {
       this.conversationManager.addMessage(conversationId, {
@@ -221,8 +285,9 @@ export class AIResourceOrchestrator {
         `[AIResourceOrchestrator] Calling OpenRouter API (${messages.length} messages in context) using model ${this.openRouterClient.getModel()}`
       );
       const response = await this.openRouterClient.createChatCompletion(messages, {
-        temperature: options.temperature,
-        maxTokens: options.maxTokens
+        temperature: requestOptions.temperature,
+        maxTokens: requestOptions.maxTokens,
+        signal: requestOptions.signal
       });
       this.outputChannel?.appendLine(`[AIResourceOrchestrator] Received response from AI (${response.content.length} chars)\n`);
 
@@ -235,6 +300,7 @@ export class AIResourceOrchestrator {
         usage: (response as any).usage
       };
     } finally {
+      termination.dispose();
       this.conversationManager.deleteConversation(conversationId);
     }
   }
@@ -256,6 +322,8 @@ export class AIResourceOrchestrator {
     );
 
     const conversationId = this.conversationManager.startConversation(toolName, systemMessage);
+    const termination = this.createTerminationContext(options);
+    const requestOptions = this.withTerminationSignal(options, termination);
     const deliveredResources: string[] = [];
 
     try {
@@ -284,8 +352,9 @@ export class AIResourceOrchestrator {
       let messages = this.conversationManager.getMessages(conversationId);
       let totalUsage: TokenUsage | undefined;
       let response = await this.openRouterClient.createChatCompletion(messages, {
-        temperature: options.temperature,
-        maxTokens: options.maxTokens
+        temperature: requestOptions.temperature,
+        maxTokens: requestOptions.maxTokens,
+        signal: requestOptions.signal
       });
       this.outputChannel?.appendLine(`[AIResourceOrchestrator] Initial context response received (${response.content.length} chars)`);
       if ((response as any).usage) {
@@ -352,8 +421,9 @@ export class AIResourceOrchestrator {
 
       messages = this.conversationManager.getMessages(conversationId);
       const followUp = await this.openRouterClient.createChatCompletion(messages, {
-        temperature: options.temperature,
-        maxTokens: options.maxTokens
+        temperature: requestOptions.temperature,
+        maxTokens: requestOptions.maxTokens,
+        signal: requestOptions.signal
       });
       this.outputChannel?.appendLine(
         `[AIResourceOrchestrator] Final context response received (${followUp.content.length} chars)`
@@ -382,6 +452,7 @@ export class AIResourceOrchestrator {
         usage: totalUsage
       };
     } finally {
+      termination.dispose();
       this.conversationManager.deleteConversation(conversationId);
     }
   }
@@ -417,7 +488,8 @@ export class AIResourceOrchestrator {
     const messages = this.conversationManager.getMessages(conversationId);
     return await this.openRouterClient.createChatCompletion(messages, {
       temperature: options.temperature,
-      maxTokens: options.maxTokens
+      maxTokens: options.maxTokens,
+      signal: options.signal
     });
   }
 

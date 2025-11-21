@@ -2,6 +2,23 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.1.1] - 2025-11-20
+
+### Added
+
+- **⚡ Fast Generate (Experimental)**: Parallel dictionary generation using concurrent API calls (2-4× faster)
+  - 14 dictionary blocks generated in parallel with 7-thread concurrency
+  - Progress bar UI with real-time updates
+  - Token usage aggregation across all API calls
+  - Fan-out pattern using `p-limit` for rate limiting
+
+### Fixed
+
+- Error recovery for fast generation loading state (UI no longer gets stuck on API errors)
+- Added loading widget consistency for fast generation loading indicator
+
+---
+
 ## [1.1.0] - 2025-11-20
 
 ### Added

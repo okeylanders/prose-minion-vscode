@@ -568,6 +568,37 @@ select:focus {
   }
 }
 
+/* Progress bar for parallel generation */
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background-color: var(--vscode-progressBar-background);
+  border-radius: 4px;
+  margin-top: var(--spacing-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background-color: var(--vscode-progressBar-background);
+  background-image: linear-gradient(
+    90deg,
+    var(--vscode-charts-blue) 0%,
+    var(--vscode-charts-green) 100%
+  );
+  border-radius: 4px;
+  transition: width 0.3s ease-out;
+}
+
+.progress-text {
+  display: block;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  margin-top: var(--spacing-xs);
+  text-align: center;
+}
+
 /* Guide ticker animation */
 .guide-ticker-container {
   margin-top: var(--spacing-xs);

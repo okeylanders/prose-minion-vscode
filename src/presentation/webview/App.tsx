@@ -83,6 +83,13 @@ export const App: React.FC = () => {
       dictionary.handleDictionaryResult(msg);
       setError(''); // Clear error on success
     },
+    [MessageType.FAST_GENERATE_DICTIONARY_RESULT]: (msg) => {
+      dictionary.handleFastGenerateResult(msg);
+      setError(''); // Clear error on success
+    },
+    [MessageType.DICTIONARY_GENERATION_PROGRESS]: (msg) => {
+      dictionary.handleProgress(msg);
+    },
     [MessageType.CONTEXT_RESULT]: (msg) => {
       context.handleContextResult(msg);
       setError(''); // Clear error on success
@@ -148,6 +155,7 @@ export const App: React.FC = () => {
         analysis.setLoading(false);
       } else if (errorSource === 'dictionary') {
         dictionary.setLoading(false);
+        dictionary.setFastGenerating(false);
       } else if (errorSource === 'context') {
         context.setLoading(false);
       } else if (errorSource.startsWith('settings.') || errorSource.startsWith('file_ops.') || errorSource.startsWith('ui.') || errorSource === 'publishing') {
@@ -158,6 +166,7 @@ export const App: React.FC = () => {
         analysis.setLoading(false);
         metrics.setLoading(false);
         dictionary.setLoading(false);
+        dictionary.setFastGenerating(false);
         context.setLoading(false);
         search.setLoading(false);
       }
@@ -471,6 +480,10 @@ export const App: React.FC = () => {
             sourceUri={dictionary.sourceUri}
             relativePath={dictionary.relativePath}
             onSourceChange={dictionary.setSource}
+            isFastGenerating={dictionary.isFastGenerating}
+            fastGenerationProgress={dictionary.fastGenerationProgress}
+            lastFastGenerationMetadata={dictionary.lastFastGenerationMetadata}
+            onFastGeneratingChange={dictionary.setFastGenerating}
           />
         )}
       </main>

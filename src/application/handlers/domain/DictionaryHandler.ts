@@ -9,10 +9,13 @@ import * as vscode from 'vscode';
 import { DictionaryService } from '../../../infrastructure/api/services/dictionary/DictionaryService';
 import {
   LookupDictionaryMessage,
+  FastGenerateDictionaryMessage,
   MessageType,
   TokenUsage,
   ErrorSource,
   DictionaryResultMessage,
+  FastGenerateDictionaryResultMessage,
+  DictionaryGenerationProgressMessage,
   StatusMessage,
   ErrorMessage
 } from '../../../shared/types/messages';
@@ -30,6 +33,7 @@ export class DictionaryHandler {
    */
   registerRoutes(router: MessageRouter): void {
     router.register(MessageType.LOOKUP_DICTIONARY, this.handleLookupDictionary.bind(this));
+    router.register(MessageType.FAST_GENERATE_DICTIONARY, this.handleFastGenerate.bind(this));
   }
 
   // Helper methods (domain owns its message lifecycle)
@@ -101,5 +105,89 @@ export class DictionaryHandler {
       const msg = error instanceof Error ? error.message : String(error);
       this.sendError('dictionary', 'Failed to lookup dictionary entry', msg);
     }
+  }
+
+  /**
+   * Handle fast (parallel) dictionary generation request
+   */
+  async handleFastGenerate(message: FastGenerateDictionaryMessage): Promise<void> {
+    try {
+      const { word, context } = message.payload;
+
+      if (!word.trim()) {
+        this.sendError('dictionary', 'Fast dictionary generation requires a word');
+        return;
+      }
+
+      this.sendStatus(`🧪 Fast generating dictionary entry for "${word}"...`);
+
+      // Progress callback to send updates to webview
+      const onProgress = (progress: {
+        word: string;
+        completedBlocks: string[];
+        totalBlocks: number;
+      }): void => {
+        this.sendProgress(progress.word, progress.completedBlocks, progress.totalBlocks);
+      };
+
+      // Generate parallel dictionary
+      const result = await this.dictionaryService.generateParallelDictionary(
+        word,
+        context,
+        onProgress
+      );
+
+      // Send result back to webview
+      this.sendFastGenerateResult(result);
+      this.sendStatus('');
+
+      // Apply aggregated token usage
+      if (result.usage) {
+        this.applyTokenUsage(result.usage);
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.sendError('dictionary', 'Failed to generate dictionary entry', msg);
+    }
+  }
+
+  /**
+   * Send fast generate result to webview
+   */
+  private sendFastGenerateResult(result: {
+    word: string;
+    result: string;
+    metadata: {
+      totalDuration: number;
+      blockDurations: Record<string, number>;
+      partialFailures: string[];
+      successCount: number;
+      totalBlocks: number;
+    };
+  }): void {
+    const message: FastGenerateDictionaryResultMessage = {
+      type: MessageType.FAST_GENERATE_DICTIONARY_RESULT,
+      source: 'extension.dictionary',
+      payload: result,
+      timestamp: Date.now()
+    };
+    void this.postMessage(message);
+  }
+
+  /**
+   * Send generation progress update to webview
+   */
+  private sendProgress(word: string, completedBlocks: string[], totalBlocks: number): void {
+    const message: DictionaryGenerationProgressMessage = {
+      type: MessageType.DICTIONARY_GENERATION_PROGRESS,
+      source: 'extension.dictionary',
+      payload: {
+        word,
+        completedBlocks,
+        totalBlocks
+      },
+      timestamp: Date.now()
+    };
+    void this.postMessage(message);
   }
 }

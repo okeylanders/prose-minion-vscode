@@ -9,6 +9,19 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
 import { formatAnalysisAsMarkdown } from '../utils/resultFormatter';
 
+interface FastGenerationProgress {
+  completedBlocks: string[];
+  totalBlocks: number;
+}
+
+interface FastGenerationMetadata {
+  totalDuration: number;
+  blockDurations: Record<string, number>;
+  partialFailures: string[];
+  successCount: number;
+  totalBlocks: number;
+}
+
 interface UtilitiesTabProps {
   selectedText: string;
   vscode: any;
@@ -29,6 +42,11 @@ interface UtilitiesTabProps {
   sourceUri?: string;
   relativePath?: string;
   onSourceChange: (uri?: string, relativePath?: string) => void;
+  // Fast generation props
+  isFastGenerating?: boolean;
+  fastGenerationProgress?: FastGenerationProgress | null;
+  lastFastGenerationMetadata?: FastGenerationMetadata | null;
+  onFastGeneratingChange?: (isGenerating: boolean) => void;
 }
 
 export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
@@ -50,7 +68,11 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
   setHasWordBeenEdited,
   sourceUri,
   relativePath,
-  onSourceChange
+  onSourceChange,
+  isFastGenerating = false,
+  fastGenerationProgress,
+  lastFastGenerationMetadata,
+  onFastGeneratingChange
 }) => {
   const lastLookupRef = React.useRef<{ word: string; context: string } | null>(null);
 
@@ -147,6 +169,30 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
       payload: {
         word: sanitizedWord,
         contextText: context.trim() || undefined
+      },
+      timestamp: Date.now()
+    });
+  };
+
+  const handleFastGenerate = () => {
+    const sanitizedWord = enforceWordLimit(word);
+    if (!sanitizedWord) {
+      return;
+    }
+
+    onFastGeneratingChange?.(true);
+
+    lastLookupRef.current = {
+      word: sanitizedWord,
+      context: context.trim()
+    };
+
+    vscode.postMessage({
+      type: MessageType.FAST_GENERATE_DICTIONARY,
+      source: 'webview.utilities.tab',
+      payload: {
+        word: sanitizedWord,
+        context: context.trim() || undefined
       },
       timestamp: Date.now()
     });
@@ -286,10 +332,20 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
         <button
           className="btn btn-primary"
           onClick={handleLookup}
-          disabled={!word.trim() || isLoading}
+          disabled={!word.trim() || isLoading || isFastGenerating}
         >
           Generate Dictionary Entry
         </button>
+        {onFastGeneratingChange && (
+          <button
+            className="btn btn-secondary"
+            onClick={handleFastGenerate}
+            disabled={!word.trim() || isLoading || isFastGenerating}
+            title="Experimental: Generate using parallel API calls (2-4× faster)"
+          >
+            ⚡ Fast Generate (Experimental)
+          </button>
+        )}
       </div>
 
       {isLoading && (
@@ -298,6 +354,31 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
             <div className="spinner"></div>
             <div className="loading-text">
               <div>{statusMessage || 'Generating dictionary entry...'}</div>
+            </div>
+          </div>
+          <LoadingWidget />
+        </div>
+      )}
+
+      {isFastGenerating && (
+        <div className="loading-indicator">
+          <div className="loading-header">
+            <div className="spinner"></div>
+            <div className="loading-text">
+              <div>{statusMessage || '⚡ Fast generating dictionary entry...'}</div>
+              {fastGenerationProgress && (
+                <div className="progress-bar-container">
+                  <div
+                    className="progress-bar"
+                    style={{
+                      width: `${(fastGenerationProgress.completedBlocks.length / fastGenerationProgress.totalBlocks) * 100}%`
+                    }}
+                  />
+                  <span className="progress-text">
+                    {fastGenerationProgress.completedBlocks.length} / {fastGenerationProgress.totalBlocks} blocks
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           <LoadingWidget />
