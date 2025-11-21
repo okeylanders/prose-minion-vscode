@@ -63,7 +63,7 @@ The extension now separates models by feature so you can tune cost, latency, and
 
 - **Balanced**: Assistant → `anthropic/claude-sonnet-4.5`, Dictionary → `z-ai/glm-4.5`
 - **Speed first**: Assistant → `google/gemini-2.5-flash`, Dictionary → `x-ai/grok-4-fast`
-- **Premium**: Assistant → `anthropic/claude-opus-4.1`, Dictionary → `openai/gpt-5-chat`
+- **Premium**: Assistant → `anthropic/claude-opus-4.1`, Dictionary → `openai/gpt-5.1-chat`
 
 You can still edit only `proseMinion.model` for backward compatibility; the extension cascades that value to any scope that is left blank. The context assistant always re-reads `proseMinion.contextModel` just before it runs, so you can switch models mid-session without reloading the extension.
 

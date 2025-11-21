@@ -138,21 +138,6 @@ export const RECOMMENDED_MODELS = [
     description: 'Highly reliable legacy frontier model. Consistent instruction following for specific formatting needs.'
   },
   {
-    id: 'openai/gpt-5',
-    name: 'GPT-5',
-    description: 'Major leap in reasoning. Great for complex narrative generation and editing.'
-  },
-  {
-    id: 'openai/gpt-5-chat',
-    name: 'GPT-5 Chat',
-    description: 'Optimized for conversation. Good for brainstorming and character roleplay sessions.'
-  },
-  {
-    id: 'openai/gpt-5-codex',
-    name: 'GPT-5 Codex',
-    description: 'Specialized for code. Perfect for technical writing or scripting.'
-  },
-  {
     id: 'openai/gpt-5.1',
     name: 'GPT-5.1',
     description: 'The adaptable virtuoso. Capable of mastering diverse tones and styles, from punchy thrillers to literary fiction.'
