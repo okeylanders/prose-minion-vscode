@@ -12,7 +12,8 @@
 
 ---
 
-## 🎉 What's New in v1.1.0 & v1.1.1
+## 🎉 What's New in v1.2.0
+
 > **✨ Context Search** - AI-powered semantic word discovery! Search your manuscript by category or concept instead of exact words. 
 >
 > Try queries like `[clothing]`, `[emotions]`, or `[color red]`. 
