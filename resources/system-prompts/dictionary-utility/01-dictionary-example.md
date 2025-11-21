@@ -4,7 +4,9 @@ Use this exemplar as a stylistic benchmark. The sections, iconography, and depth
 
 ---
 
-# Sample Output · Word: *crunched*
+# Prose Minion | Writer's Dictionary Lookup
+
+# Word: *crunched*
 
 # 📕 Definition  
 To compress or crush something with force, producing a sharp, brittle sound; to grind or chew with a noisy crushing action; to process data or numbers intensively; to experience severe pressure or constraint.
