@@ -26,7 +26,10 @@ import {
 } from './analysis';
 import {
   LookupDictionaryMessage,
-  DictionaryResultMessage
+  DictionaryResultMessage,
+  FastGenerateDictionaryMessage,
+  FastGenerateDictionaryResultMessage,
+  DictionaryGenerationProgressMessage
 } from './dictionary';
 import {
   GenerateContextMessage,
@@ -121,7 +124,8 @@ export type WebviewToExtensionMessage =
   | RequestApiKeyMessage
   | UpdateApiKeyMessage
   | DeleteApiKeyMessage
-  | WebviewErrorMessage;
+  | WebviewErrorMessage
+  | FastGenerateDictionaryMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
@@ -144,4 +148,6 @@ export type ExtensionToWebviewMessage =
   | ChapterGlobsMessage
   | PublishingStandardsDataMessage
   | TokenUsageUpdateMessage
-  | ApiKeyStatusMessage;
+  | ApiKeyStatusMessage
+  | FastGenerateDictionaryResultMessage
+  | DictionaryGenerationProgressMessage;

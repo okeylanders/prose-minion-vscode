@@ -22,3 +22,48 @@ export interface DictionaryResultPayload {
 export interface DictionaryResultMessage extends MessageEnvelope<DictionaryResultPayload> {
   type: MessageType.DICTIONARY_RESULT;
 }
+
+// Fast (parallel) dictionary generation
+
+export interface FastGenerateDictionaryPayload {
+  word: string;
+  context?: string;
+  sourceUri?: string;
+}
+
+export interface FastGenerateDictionaryMessage extends MessageEnvelope<FastGenerateDictionaryPayload> {
+  type: MessageType.FAST_GENERATE_DICTIONARY;
+}
+
+export interface DictionaryBlockResult {
+  blockName: string;
+  content: string;
+  duration: number;
+  error?: string;
+}
+
+export interface FastGenerateDictionaryResultPayload {
+  word: string;
+  result: string; // Combined markdown result
+  metadata: {
+    totalDuration: number;
+    blockDurations: Record<string, number>;
+    partialFailures: string[];
+    successCount: number;
+    totalBlocks: number;
+  };
+}
+
+export interface FastGenerateDictionaryResultMessage extends MessageEnvelope<FastGenerateDictionaryResultPayload> {
+  type: MessageType.FAST_GENERATE_DICTIONARY_RESULT;
+}
+
+export interface DictionaryGenerationProgressPayload {
+  word: string;
+  completedBlocks: string[];
+  totalBlocks: number;
+}
+
+export interface DictionaryGenerationProgressMessage extends MessageEnvelope<DictionaryGenerationProgressPayload> {
+  type: MessageType.DICTIONARY_GENERATION_PROGRESS;
+}

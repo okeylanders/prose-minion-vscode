@@ -18,7 +18,10 @@ describe('useDictionary - Type Contracts', () => {
         wordEdited: false,
         sourceUri: '',
         relativePath: '',
-        statusMessage: ''
+        statusMessage: '',
+        isFastGenerating: false,
+        fastGenerationProgress: null,
+        lastFastGenerationMetadata: null
       };
 
       expect(state).toHaveProperty('result');
@@ -27,6 +30,8 @@ describe('useDictionary - Type Contracts', () => {
       expect(state).toHaveProperty('context');
       expect(state).toHaveProperty('wordEdited');
       expect(state).toHaveProperty('sourceUri');
+      expect(state).toHaveProperty('isFastGenerating');
+      expect(state).toHaveProperty('fastGenerationProgress');
     });
 
     it('should define Actions interface', () => {
@@ -38,12 +43,17 @@ describe('useDictionary - Type Contracts', () => {
         setContext: jest.fn(),
         setWordEdited: jest.fn(),
         setSource: jest.fn(),
-        clearResult: jest.fn()
+        clearResult: jest.fn(),
+        handleFastGenerateResult: jest.fn(),
+        handleProgress: jest.fn(),
+        setFastGenerating: jest.fn()
       };
 
       expect(typeof actions.handleDictionaryResult).toBe('function');
       expect(typeof actions.setWord).toBe('function');
       expect(typeof actions.clearResult).toBe('function');
+      expect(typeof actions.handleFastGenerateResult).toBe('function');
+      expect(typeof actions.setFastGenerating).toBe('function');
     });
 
     it('should define Persistence interface', () => {

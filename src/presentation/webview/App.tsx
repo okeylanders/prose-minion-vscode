@@ -83,6 +83,13 @@ export const App: React.FC = () => {
       dictionary.handleDictionaryResult(msg);
       setError(''); // Clear error on success
     },
+    [MessageType.FAST_GENERATE_DICTIONARY_RESULT]: (msg) => {
+      dictionary.handleFastGenerateResult(msg);
+      setError(''); // Clear error on success
+    },
+    [MessageType.DICTIONARY_GENERATION_PROGRESS]: (msg) => {
+      dictionary.handleProgress(msg);
+    },
     [MessageType.CONTEXT_RESULT]: (msg) => {
       context.handleContextResult(msg);
       setError(''); // Clear error on success
@@ -471,6 +478,10 @@ export const App: React.FC = () => {
             sourceUri={dictionary.sourceUri}
             relativePath={dictionary.relativePath}
             onSourceChange={dictionary.setSource}
+            isFastGenerating={dictionary.isFastGenerating}
+            fastGenerationProgress={dictionary.fastGenerationProgress}
+            lastFastGenerationMetadata={dictionary.lastFastGenerationMetadata}
+            onFastGeneratingChange={dictionary.setFastGenerating}
           />
         )}
       </main>

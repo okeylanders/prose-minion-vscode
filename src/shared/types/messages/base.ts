@@ -80,7 +80,12 @@ export enum MessageType {
   DELETE_API_KEY = 'delete_api_key'
   ,
   // Webview diagnostics
-  WEBVIEW_ERROR = 'webview_error'
+  WEBVIEW_ERROR = 'webview_error',
+
+  // Fast dictionary generation (parallel)
+  FAST_GENERATE_DICTIONARY = 'fast_generate_dictionary',
+  FAST_GENERATE_DICTIONARY_RESULT = 'fast_generate_dictionary_result',
+  DICTIONARY_GENERATION_PROGRESS = 'dictionary_generation_progress'
 }
 
 export enum TabId {
