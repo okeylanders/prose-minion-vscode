@@ -31,7 +31,7 @@ Generate dictionary entries 2-4× faster by running multiple API calls in parall
 - **Token Aggregation**: Total token usage calculated across all parallel API calls
 
 **Technical Implementation:**
-- Fan-out pattern: Single request spawns 14 parallel API calls
+- Fan-out pattern: Single request spawns 7 parallel API calls
 - Each block has its own focused prompt for better quality
 - Results assembled in deterministic order regardless of completion order
 - Graceful error handling: Partial failures don't crash the entire generation
@@ -51,7 +51,7 @@ Generate dictionary entries 2-4× faster by running multiple API calls in parall
 
 **User Notes:**
 - Marked as "Experimental" - some models may struggle with high concurrency
-- Works best with fast models (Claude Haiku, GPT-4o-mini)
+- Works best with fast models Works best with Newest Models ( Haiku 4.5, Sonnet 4.5, Gemini Flash 2.5, GPT **5.1**)
 - Uses same API key and model as regular dictionary lookup
 
 ---
