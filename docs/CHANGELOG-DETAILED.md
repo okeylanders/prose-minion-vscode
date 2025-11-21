@@ -5,6 +5,78 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2025-11-20
+
+### Overview
+
+This patch release introduces **Fast Generate (Experimental)**, a new parallel dictionary generation feature that generates dictionary entries 2-4× faster using concurrent API calls.
+
+**Key Highlights:**
+- ⚡ **Fast Generate** - Experimental parallel dictionary generation
+- 🔧 **Bug Fixes** - Error recovery and loading state improvements
+
+---
+
+### Features
+
+#### ⚡ Fast Generate - Parallel Dictionary Generation (Experimental)
+
+**What It Does:**
+Generate dictionary entries 2-4× faster by running multiple API calls in parallel.
+
+**How It Works:**
+- **14 Dictionary Blocks**: Definition, pronunciation, parts of speech, etymology, synonyms, antonyms, usage examples, collocations, register notes, common mistakes, idioms, word family, mnemonic, and summary
+- **Parallel Execution**: 7-thread concurrency limit (configurable) using `p-limit`
+- **Progress Bar**: Real-time progress indicator showing completed blocks
+- **Token Aggregation**: Total token usage calculated across all parallel API calls
+
+**Technical Implementation:**
+- Fan-out pattern: Single request spawns 14 parallel API calls
+- Each block has its own focused prompt for better quality
+- Results assembled in deterministic order regardless of completion order
+- Graceful error handling: Partial failures don't crash the entire generation
+
+**UI Changes:**
+- New "⚡ Fast Generate (Experimental)" button in Dictionary tab
+- Progress bar shows `X / 14 blocks` completion
+- Loading widget displays during generation
+
+**Files Added/Modified:**
+- `src/infrastructure/api/services/dictionary/DictionaryService.ts` - Added `generateParallelDictionary()` method
+- `src/application/handlers/domain/DictionaryHandler.ts` - Added fast generation message handler
+- `src/shared/types/messages/dictionary.ts` - Added fast generation message types
+- `src/presentation/webview/hooks/domain/useDictionary.ts` - Added fast generation state
+- `src/presentation/webview/components/UtilitiesTab.tsx` - Added Fast Generate button and progress UI
+- `resources/system-prompts/dictionary-parallel/` - 14 block-specific prompt files
+
+**User Notes:**
+- Marked as "Experimental" - some models may struggle with high concurrency
+- Works best with fast models (Claude Haiku, GPT-4o-mini)
+- Uses same API key and model as regular dictionary lookup
+
+---
+
+### Fixed
+
+#### Error Recovery for Fast Generation
+- **Issue**: When fast generation encountered an API error, the `isFastGenerating` state wasn't being reset, leaving the UI stuck in loading state
+- **Fix**: Added `setFastGenerating(false)` to error handler in App.tsx
+- **Impact**: UI now correctly recovers from errors during fast generation
+
+#### Loading Widget Consistency
+- **Issue**: Fast generation loading indicator was missing the animated LoadingWidget that regular dictionary lookup has
+- **Fix**: Added `<LoadingWidget />` component to fast generation loading section
+- **Impact**: Consistent visual feedback during all dictionary operations
+
+---
+
+### References
+
+- ADR: [docs/adr/2025-11-20-parallel-dictionary-generation.md](docs/adr/2025-11-20-parallel-dictionary-generation.md)
+- Epic: [.todo/epics/epic-parallel-dictionary-generation-2025-11-20/](.todo/epics/epic-parallel-dictionary-generation-2025-11-20/)
+
+---
+
 ## [1.1.0] - 2025-11-20
 
 ### Overview

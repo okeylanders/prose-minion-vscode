@@ -12,13 +12,15 @@
 
 ---
 
-## 🎉 What's New in v1.1.0
-
-> **✨ Context Search** - NEW AI-powered semantic word discovery! Search your manuscript by category or concept instead of exact words.
+## 🎉 What's New in v1.1.0 & v1.1.1
+> **✨ Context Search** - AI-powered semantic word discovery! Search your manuscript by category or concept instead of exact words. 
 >
-> Try queries like `[clothing]`, `[emotions]`, or `[color red]` to discover all related words you've used. [Learn more →](#context-search-ai-powered)
+> Try queries like `[clothing]`, `[emotions]`, or `[color red]`. 
+> [Learn more →](#context-search-ai-powered)
 >
-> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete v1.1.0 release notes including testing framework, custom model support, and bug fixes.
+> **⚡ Fast Dictionary Generate (Experimental)** - NEW parallel dictionary generation! Generate dictionary entries 2-4× faster using concurrent API calls. Look for the "Fast Generate (Experimental)" button in the Dictionary tab. Works best with Newest Models ( Haiku 4.5, Sonnet 4.5, Gemini Flash 2.5, GPT **5.1**)
+>
+> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes including testing framework, custom model support, and bug fixes.
 
 ---
 
