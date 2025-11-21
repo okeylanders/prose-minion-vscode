@@ -155,6 +155,7 @@ export const App: React.FC = () => {
         analysis.setLoading(false);
       } else if (errorSource === 'dictionary') {
         dictionary.setLoading(false);
+        dictionary.setFastGenerating(false);
       } else if (errorSource === 'context') {
         context.setLoading(false);
       } else if (errorSource.startsWith('settings.') || errorSource.startsWith('file_ops.') || errorSource.startsWith('ui.') || errorSource === 'publishing') {
@@ -165,6 +166,7 @@ export const App: React.FC = () => {
         analysis.setLoading(false);
         metrics.setLoading(false);
         dictionary.setLoading(false);
+        dictionary.setFastGenerating(false);
         context.setLoading(false);
         search.setLoading(false);
       }

@@ -381,6 +381,7 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
               )}
             </div>
           </div>
+          <LoadingWidget />
         </div>
       )}
 
