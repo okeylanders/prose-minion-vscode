@@ -47,11 +47,11 @@ Generate dictionary entries 2-4× faster by running multiple API calls in parall
 - `src/shared/types/messages/dictionary.ts` - Added fast generation message types
 - `src/presentation/webview/hooks/domain/useDictionary.ts` - Added fast generation state
 - `src/presentation/webview/components/UtilitiesTab.tsx` - Added Fast Generate button and progress UI
-- `resources/system-prompts/dictionary-parallel/` - 14 block-specific prompt files
+- `resources/system-prompts/dictionary-fast/` - 14 block-specific prompt files
 
 **User Notes:**
 - Marked as "Experimental" - some models may struggle with high concurrency
-- Works best with fast models Works best with Newest Models ( Haiku 4.5, Sonnet 4.5, Gemini Flash 2.5, GPT **5.1**)
+- Works best with newer fast models (Haiku 4.5, Sonnet 4.5, Gemini Flash 2.5, GPT **5.1**)
 - Uses same API key and model as regular dictionary lookup
 
 ---

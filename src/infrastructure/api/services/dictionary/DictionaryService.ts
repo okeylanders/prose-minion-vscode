@@ -273,19 +273,17 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
 
       this.outputChannel?.appendLine(`[DictionaryService] Generating block: ${blockName}`);
 
-      // Execute with timeout
-      const result = await Promise.race([
-        orchestrator.executeWithoutCapabilities(
-          `dictionary-fast-${blockName}`,
-          systemMessage,
-          userMessage,
-          {
-            temperature: 0.4,
-            maxTokens: 3500 // Smaller max for individual blocks
-          }
-        ),
-        this.createTimeout(this.BLOCK_TIMEOUT)
-      ]);
+      // Execute with timeout surfaced through the orchestrator
+      const result = await orchestrator.executeWithoutCapabilities(
+        `dictionary-fast-${blockName}`,
+        systemMessage,
+        userMessage,
+        {
+          temperature: 0.4,
+          maxTokens: 3500, // Smaller max for individual blocks
+          timeoutMs: this.BLOCK_TIMEOUT
+        }
+      );
 
       const duration = Date.now() - startTime;
       this.outputChannel?.appendLine(`[DictionaryService] Block "${blockName}" completed in ${duration}ms`);
@@ -315,7 +313,8 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
           userMessage,
           {
             temperature: 0.4,
-            maxTokens: 3500
+            maxTokens: 3500,
+            timeoutMs: this.BLOCK_TIMEOUT
           }
         );
 
@@ -374,15 +373,6 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     lines.push('', 'Output ONLY the section content as specified in the block instructions.');
 
     return lines.join('\n');
-  }
-
-  /**
-   * Create a timeout promise
-   */
-  private createTimeout(ms: number): Promise<never> {
-    return new Promise((_, reject) => {
-      setTimeout(() => reject(new Error(`Block generation timed out after ${ms}ms`)), ms);
-    });
   }
 
   /**
