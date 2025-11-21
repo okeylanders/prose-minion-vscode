@@ -11,14 +11,26 @@
 </p>
 
 ---
+
+## 🎉 What's New in v1.1.0
+
+> **✨ Context Search** - NEW AI-powered semantic word discovery! Search your manuscript by category or concept instead of exact words.
+>
+> Try queries like `[clothing]`, `[emotions]`, or `[color red]` to discover all related words you've used. [Learn more →](#context-search-ai-powered)
+>
+> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete v1.1.0 release notes including testing framework, custom model support, and bug fixes.
+
+---
+
 ## ✨ Features at a Glance
 
 Prose Minion provides four powerful tool categories in a dedicated sidebar panel:
 
-- **🤖 Assistant** - AI-powered dialogue and prose analysis with contextual suggestions
-- **🔍 Search** - Advanced word pattern matching and cluster detection across your manuscript
-- **📊 Metrics** - Comprehensive prose statistics, style flags, and word frequency analysis
-- **📖 Dictionary** - Fiction-focused word definitions with creative context
+- **🤖 [Assistant](#-assistant-ai-powered-writing-suggestions)** - AI-powered dialogue and prose analysis with contextual suggestions
+- **🔍 [Search](#-search-find-patterns-across-your-manuscript)** - Advanced word pattern matching, cluster detection, and **[AI-powered semantic discovery](#context-search-ai-powered)** (NEW: Context Search)
+- **📊 [Metrics](#-metrics-professional-prose-analysis)** - Comprehensive prose statistics, style flags, and word frequency analysis
+- **📖 [Dictionary](#-dictionary-fiction-focused-word-definitions)** - Fiction-focused word definitions with creative context
+- **⚙️ [Settings](#️-settings-complete-control)** - Full-screen overlay with model selection, API key management, and complete customization
 
 > **💡 Tip:** For best experience, **widen your sidebar** to give Prose Minion room to display all its features comfortably.
 
@@ -40,6 +52,12 @@ Prose Minion provides four powerful tool categories in a dedicated sidebar panel
 3. **Run your analysis** - Metrics and Search work immediately
 4. **For AI tools**: Configure OpenRouter API key in Settings (gear icon)
 
+**Accessing Settings:**
+
+Click the **gear icon** in the Prose Minion panel header to open the full-screen settings overlay:
+
+![Open Settings](screenshots/screenshot-click-to-open-settings.png)
+
 ---
 
 ## 🔑 OpenRouter API: When You Need It
@@ -47,7 +65,8 @@ Prose Minion provides four powerful tool categories in a dedicated sidebar panel
 **Important:** OpenRouter API is **only required for AI-powered tools**:
 
 - ✅ **Metrics** - Works offline, no API key needed
-- ✅ **Search** - Works offline, no API key needed
+- ✅ **Search (Word Search)** - Works offline, no API key needed
+- 🔑 **Search (Context Search)** - Requires OpenRouter API key
 - 🔑 **Assistant** - Requires OpenRouter API key
 - 🔑 **Dictionary** - Requires OpenRouter API key
 
@@ -64,10 +83,23 @@ Prose Minion provides four powerful tool categories in a dedicated sidebar panel
    - Your key is securely stored in your OS keychain
    - Changes save automatically
 
+   ![Setting OpenRouter API Key](screenshots/screenshot-set-openrouter-api-key.png)
+
 3. **Choose Your Models** (optional):
    - Select different models for Assistant, Dictionary, and Context workflows
    - Balance cost vs. quality based on your needs
    - Default models work great out of the box
+
+   ![Models Selection](screenshots/screenshot-settings-models.png)
+
+4. **Configure AI Settings** (optional):
+   - **Include Craft Guides** - Make beta craft guides available if requested by agent.
+   - **Temperature (0-2)** - Control creative diversity (0.7 is balanced)
+   - **Max Tokens** - Set response length limit (default: 10,000). Experiment with larger for thinking models.
+   - **Context Window Trimming** - Auto-trim large inputs to prevent errors
+   - **Token Usage Widget** - Display running token totals in header
+
+   ![AI Model Controls](screenshots/screenshot-ai-model-controls.png)
 
 ---
 
@@ -89,7 +121,7 @@ Get intelligent, context-aware suggestions for your creative writing.
 - **Quick Diagnostic** - Instant overview of pacing, grounding, and style issues
 - **Targeted Suggestions** - Line-by-line improvements with craft rationale
 
-> **⚠️ Important:** The **Excerpt Assistant** is designed for **short passages** (100-500 words). For full chapter analysis, use the **Context Assistant** or **Metrics** tab instead.
+> **⚠️ Important:** The **Excerpt Assistant** is designed for **short passages** (100-500 words).
 
 **Best Practices:**
 - Analyze **excerpts**, not entire chapters (keeps responses focused and affordable)
@@ -101,7 +133,11 @@ Get intelligent, context-aware suggestions for your creative writing.
 
 ### 🔍 Search: Find Patterns Across Your Manuscript
 
-Advanced word search with context windows and cluster detection.
+Two powerful search modes: find specific words with **Word Search**, or discover related words by meaning with **Context Search**.
+
+#### Word Search
+
+Advanced word pattern matching with context windows and cluster detection.
 
 ![Word Search Tool](screenshots/screenshot-search-word-search.png)
 
@@ -126,7 +162,61 @@ Advanced word search with context windows and cluster detection.
 - Per-file breakdown with hit counts
 - Cluster detection for identifying overuse zones
 
-> **💡 No API key required** - Search works entirely offline
+> **💡 No API key required** - Word Search works entirely offline
+
+---
+
+#### Context Search (AI-Powered)
+
+**NEW in v1.1.0** - Discover words by category, concept, or meaning using AI semantic analysis.
+
+![Context Search Tool](screenshots/screenshot-search-category-search.png)
+
+**What It Does:**
+
+Instead of searching for specific words, search by **meaning** or **category**:
+
+- `[clothing]` → finds: coat, pants, jeans, shirt, jacket, shoes, dress, etc.
+- `[angry]` → finds: pissed, upset, furious, irate, seething, livid, etc.
+- `[color red]` → finds: crimson, scarlet, ruby, burgundy, rose, etc.
+- `[movement verbs]` → finds: walked, ran, stumbled, rushed, crept, etc.
+
+**Key Features:**
+
+- **Natural Language Queries** - Describe what you're looking for in plain English
+- **Semantic Discovery** - Find words by meaning, not just exact matches
+- **Full Word Search Integration** - Results show occurrence counts, clusters, and chapter locations
+- **Export to Markdown** - Save results with full context for reference
+- **Batch Processing** - Handles large manuscripts (10K+ words) reliably
+- **Cost-Effective** - ~$0.02 per search for a 50K word novel using Haiku model
+
+**How to Use:**
+
+1. Open the **Context Search** subtab in Search
+2. Select a **context model** (Haiku recommended for cost efficiency)
+3. Choose your **scope** (Active File, Manuscripts, Chapters, or Selection)
+4. Enter your **category query** (e.g., `[emotions]`, `[weather]`, `[color blue]`)
+5. Click **"Search Category"**
+6. Review the word list with occurrence counts and clusters
+7. Export to markdown or use words for further analysis
+
+**Best For:**
+
+- Finding synonyms and related words you've used
+- Discovering semantic patterns (e.g., "How many different anger words did I use?")
+- Vocabulary diversity analysis
+- Thematic word tracking (colors, emotions, sensory words, etc.)
+- Identifying repeated semantic concepts with varied vocabulary
+
+**Example Queries:**
+
+- `[emotions related to fear]`
+- `[words describing darkness or shadows]`
+- `[verbs for aggressive movement]`
+- `[adjectives for cold temperature]`
+- `[sounds related to nature]`
+
+> **🔑 Requires API key** - Context Search uses AI for semantic analysis (OpenRouter API)
 
 ---
 
@@ -326,6 +416,8 @@ MyNovel/
 ## ⚙️ Settings: Complete Control
 
 Click the **gear icon** in the Prose Minion header for comprehensive settings:
+
+![Settings Overlay](screenshots/screenshot-settings-pane.png)
 
 ### General Settings
 - **OpenRouter API Key** - Securely stored in OS keychain

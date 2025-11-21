@@ -158,11 +158,28 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
 
       {/* Models */}
       <section className="settings-section">
-        <h3 className="settings-section-title">Models</h3>
+        <h3 className="settings-section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Models</span>
+          <span
+            className="docs-link"
+            onClick={() => {
+              vscode.postMessage({
+                type: 'open_docs_file',
+                source: 'webview.settings',
+                payload: { docsPath: 'RECOMMENDED_MODELS.md' },
+                timestamp: Date.now()
+              });
+            }}
+            title="View recommended models documentation"
+            style={{ cursor: 'pointer', fontSize: '0.85em', fontWeight: 'normal', color: '#999' }}
+          >
+            Click For Model Reference Guide → 📖
+          </span>
+        </h3>
         {renderModelSelect('assistant', 'Assistant Model (Prose / Dialogue)', 'Powers dialogue and prose assistants for analysis and creative suggestions.')}
         {renderModelSelect('dictionary', 'Dictionary Model', 'Powers dictionary and utility tools (synonyms, word expansions).')}
         {renderModelSelect('context', 'Context Assistant Model', 'Powers the context assistant for project-aware insights and resources.')}
-        {renderModelSelect('category', 'Category Search Model', 'Powers semantic word matching for category search. Limited to non-thinking models.')}
+        {renderModelSelect('category', 'Category Search Model', 'Powers semantic word matching for category search.')}
       </section>
 
       {/* General */}

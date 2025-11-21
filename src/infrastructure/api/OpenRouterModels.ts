@@ -34,6 +34,11 @@ export const CATEGORY_MODELS = [
     description: 'Default for category search'
   },
   {
+    id: 'google/gemini-3-pro-preview',
+    name: 'Gemini 3 Pro Preview',
+    description: 'Google\'s flagship frontier model'
+  },
+  {
     id: 'openai/gpt-5.1-chat',
     name: 'GPT-5.1 Chat',
     description: 'OpenAI conversational model'
@@ -68,94 +73,174 @@ export const CATEGORY_MODELS = [
  */
 export const RECOMMENDED_MODELS = [
   {
+    id: 'anthropic/claude-3.7-sonnet',
+    name: 'Claude 3.7 Sonnet',
+    description: 'A highly popular favorite known for its exceptional balance of lyrical prose and nuanced reasoning. Great for style matching.'
+  },
+  {
     id: 'anthropic/claude-haiku-4.5',
     name: 'Claude Haiku 4.5',
-    description: 'Anthropic\'s fastest and most efficient model with frontier-level capabilities'
+    description: 'Anthropic\'s fastest efficient model. Perfect for quick grammar checks, style flag detection, and word frequency analysis.'
   },
   {
     id: 'anthropic/claude-opus-4.1',
     name: 'Claude Opus 4.1',
-    description: 'Anthropic\'s most capable model'
+    description: 'The creative heavyweight. Unequalled nuance and depth in storytelling; writes with a distinctive, sophisticated voice.'
   },
   {
     id: 'anthropic/claude-sonnet-4.5',
     name: 'Claude Sonnet 4.5',
-    description: 'Anthropic\'s latest balanced model (Recommended)'
+    description: 'Top-tier powerhouse. Exceptional at natural prose, deep subtext, and complex narrative construction. (Recommended)'
+  },
+  {
+    id: 'deepseek/deepseek-r1',
+    name: 'DeepSeek R1',
+    description: 'Open-weight reasoning king. Excellent for heavy structural analysis, plot logic, and pacing verification at a low cost.'
+  },
+  {
+    id: 'deepseek/deepseek-v3.1-terminus',
+    name: 'DeepSeek V3.1 Terminus',
+    description: 'Optimized for complex tasks. Strong general reasoning for structured text analysis and coding.'
   },
   {
     id: 'deepseek/deepseek-v3.2-exp',
     name: 'DeepSeek V3.2 Exp',
-    description: 'DeepSeek\'s experimental model'
+    description: 'Experimental sparse attention model. Good for long-context chapter analysis.'
   },
   {
     id: 'google/gemini-2.5-flash',
     name: 'Gemini 2.5 Flash',
-    description: 'Google\'s fast model'
-  },
-  {
-    id: 'google/gemini-2.5-flash-image-preview',
-    name: 'Gemini 2.5 Flash Image Preview',
-    description: 'Google\'s multimodal model'
+    description: 'High-speed workhorse. Good for rapid critiques and checking large batches of text.'
   },
   {
     id: 'google/gemini-2.5-pro',
     name: 'Gemini 2.5 Pro',
-    description: 'Google\'s advanced model'
+    description: 'Advanced reasoning with thinking capabilities. A strong option for complex prose tasks.'
+  },
+  {
+    id: 'google/gemini-3-pro-preview',
+    name: 'Gemini 3 Pro Preview',
+    description: 'A master of scale and style. Excellent at weaving complex plot threads into cohesive, engaging prose over massive contexts (1M+).'
   },
   {
     id: 'z-ai/glm-4.5',
     name: 'GLM 4.5',
-    description: 'ZhipuAI model'
+    description: 'Strong agentic model. Good for multi-step editing workflows.'
   },
   {
     id: 'z-ai/glm-4.6',
     name: 'GLM 4.6',
-    description: 'Latest ZhipuAI model'
+    description: 'Latest iteration with improved reasoning. Reliable for general writing assistance.'
+  },
+  {
+    id: 'openai/gpt-4.1',
+    name: 'GPT-4.1',
+    description: 'Highly reliable legacy frontier model. Consistent instruction following for specific formatting needs.'
   },
   {
     id: 'openai/gpt-5',
     name: 'GPT-5',
-    description: 'OpenAI\'s latest general-purpose model'
+    description: 'Major leap in reasoning. Great for complex narrative generation and editing.'
   },
   {
     id: 'openai/gpt-5-chat',
     name: 'GPT-5 Chat',
-    description: 'OpenAI\'s conversational model'
+    description: 'Optimized for conversation. Good for brainstorming and character roleplay sessions.'
   },
   {
     id: 'openai/gpt-5-codex',
     name: 'GPT-5 Codex',
-    description: 'OpenAI\'s code-optimized model'
+    description: 'Specialized for code. Perfect for technical writing or scripting.'
+  },
+  {
+    id: 'openai/gpt-5.1',
+    name: 'GPT-5.1',
+    description: 'The adaptable virtuoso. Capable of mastering diverse tones and styles, from punchy thrillers to literary fiction.'
+  },
+  {
+    id: 'openai/gpt-5.1-chat',
+    name: 'GPT-5.1 Chat',
+    description: 'Highly conversational and fluid. Excellent for dialogue workshops, brainstorming, and writing that flows naturally.'
+  },
+  {
+    id: 'openai/gpt-5.1-codex',
+    name: 'GPT-5.1 Codex',
+    description: 'Advanced coding specialist. Use for scripting or complex formatting tasks.'
+  },
+  {
+    id: 'x-ai/grok-4',
+    name: 'Grok 4',
+    description: 'Deep reasoning model with 256k context. Strong at maintaining consistency across long narratives.'
   },
   {
     id: 'x-ai/grok-4-fast',
     name: 'Grok 4 Fast',
-    description: 'xAI\'s fast model'
+    description: 'Cost-efficient regular model. Good for quick iterations and drafting.'
+  },
+  {
+    id: 'x-ai/grok-4.1-fast',
+    name: 'Grok 4.1 Fast',
+    description: 'Latest agentic fast model. Excellent for tooling and automated text processing tasks.'
   },
   {
     id: 'x-ai/grok-code-fast-1',
     name: 'Grok Code Fast 1',
-    description: 'xAI\'s code-optimized model'
+    description: 'Fast coding specialist. Useful for technical formatting tools.'
   },
   {
     id: 'moonshotai/kimi-k2-0905',
     name: 'Kimi K2 0905',
-    description: 'Moonshot AI\'s model'
+    description: 'Large-scale MoE. Strong at general instruction following and long-context inputs.'
   },
   {
     id: 'moonshotai/kimi-k2-thinking',
     name: 'Kimi K2 Thinking',
-    description: 'Advanced reasoning model with 256K context, optimized for persistent step-by-step thought and complex multi-turn workflows'
+    description: 'Reasoning-optimized. Good for deep-dives into plot holes and character motivations.'
+  },
+  {
+    id: 'mistralai/mistral-large-2411',
+    name: 'Mistral Large 2411',
+    description: 'Flagship open-weight class. Excellent European-style prose quality and multilingual support.'
+  },
+  {
+    id: 'mistralai/magistral-medium-2506',
+    name: 'Mistral Magistral Medium',
+    description: 'Mistral\'s first dedicated reasoning model. Great for deeper structural critiques.'
+  },
+  {
+    id: 'nousresearch/hermes-4-405b',
+    name: 'Nous Hermes 4 405B',
+    description: 'Uncensored frontier model. Best for mature themes, gritty narratives, and avoiding "assistant voice".'
+  },
+  {
+    id: 'qwen/qwen3-coder-plus',
+    name: 'Qwen3 Coder Plus',
+    description: 'Powerhouse coding agent. Use for advanced formatting scripts or technical edits.'
   },
   {
     id: 'qwen/qwen3-max',
     name: 'Qwen3 Max',
-    description: 'Alibaba\'s most capable model'
+    description: 'Top-tier open model capability. Strong reasoning and creative writing performance.'
+  },
+  {
+    id: 'sao10k/l3.3-euryale-70b',
+    name: 'Sao10K Euryale 70B',
+    description: 'Roleplay specialist. Creative, non-restrictive, and great for unique character voices.'
+  },
+  {
+    id: 'thedrummer/anubis-70b-v1.1',
+    name: 'TheDrummer: Anubis 70B',
+    description: 'Unaligned creative writer. Excels at visceral, "human" prose and gritty storytelling.'
+  },
+  {
+    id: 'thedrummer/rocinante-12b',
+    name: 'TheDrummer: Rocinante 12B',
+    description: 'Storytelling specialist. Engaging narrative voice and varied vocabulary.'
   },
   {
     id: 'arcee-ai/virtuoso-large',
     name: 'Virtuoso Large',
-    description: 'Arcee AI\'s top-tier 72B parameter model with 128K context for cross-domain reasoning and creative writing'
+    description: 'Cross-domain reasoning. Good balance of creative writing and enterprise-grade analysis.'
   }
 ];
 

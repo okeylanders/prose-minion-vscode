@@ -53,6 +53,7 @@ export enum MessageType {
 
   // Guide actions
   OPEN_GUIDE_FILE = 'open_guide_file',
+  OPEN_DOCS_FILE = 'open_docs_file',
   OPEN_RESOURCE = 'open_resource',
 
   // Publishing standards messages

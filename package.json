@@ -2,7 +2,7 @@
   "name": "prose-minion",
   "displayName": "Prose Minion: Writing Toolkit",
   "description": "AI prose analysis and writing assistant for fiction authors. Dialogue suggestions, context-aware dictionary, comprehensive prose metrics, style flags, word frequency, and manuscript search. Metrics/search work offline—no API key needed.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "license": "SEE LICENSE IN LICENSE",
   "publisher": "OkeyLanders",
   "repository": {
@@ -166,9 +166,10 @@
           "default": "anthropic/claude-sonnet-4.5",
           "enum": [
             "anthropic/claude-sonnet-4.5",
-            "openai/gpt-5.1-chat",
+            "google/gemini-3-pro-preview",
             "google/gemini-2.5-pro",
             "mistralai/mistral-large-2411",
+            "openai/gpt-5.1-chat",
             "anthropic/claude-haiku-4.5",
             "google/gemini-2.5-flash"
           ],

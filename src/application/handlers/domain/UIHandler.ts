@@ -6,6 +6,7 @@
 import * as vscode from 'vscode';
 import {
   OpenGuideFileMessage,
+  OpenDocsFileMessage,
   OpenResourceMessage,
   RequestSelectionMessage,
   SelectionDataMessage,
@@ -29,6 +30,7 @@ export class UIHandler {
    */
   registerRoutes(router: MessageRouter): void {
     router.register(MessageType.OPEN_GUIDE_FILE, this.handleOpenGuideFile.bind(this));
+    router.register(MessageType.OPEN_DOCS_FILE, this.handleOpenDocsFile.bind(this));
     router.register(MessageType.OPEN_RESOURCE, this.handleOpenResource.bind(this));
     router.register(MessageType.REQUEST_SELECTION, this.handleSelectionRequest.bind(this));
     router.register(MessageType.TAB_CHANGED, async () => {}); // No-op handler for tab changes
@@ -110,6 +112,55 @@ export class UIHandler {
       this.sendError(
         'ui.guide',
         'Failed to open guide file',
+        errorMsg
+      );
+    }
+  }
+
+  async handleOpenDocsFile(message: OpenDocsFileMessage): Promise<void> {
+    try {
+      const { docsPath } = message.payload;
+      this.outputChannel.appendLine(`[UIHandler] Opening docs file: ${docsPath}`);
+
+      // Construct the full URI to the docs file
+      const docsUri = vscode.Uri.joinPath(
+        this.extensionUri,
+        'docs',
+        docsPath
+      );
+
+      this.outputChannel.appendLine(`[UIHandler] Full path: ${docsUri.fsPath}`);
+
+      // Check if file exists first
+      try {
+        await vscode.workspace.fs.stat(docsUri);
+      } catch (statError) {
+        const errorMsg = `Docs file not found: ${docsUri.fsPath}`;
+        this.outputChannel.appendLine(`[UIHandler] ERROR: ${errorMsg}`);
+        this.sendError('ui.docs', 'Docs file not found', errorMsg);
+        return;
+      }
+
+      // Open the file in the editor
+      const document = await vscode.workspace.openTextDocument(docsUri);
+
+      // Smart column selection: reuse existing text editor column if available,
+      // otherwise open beside webview (which creates column 2)
+      const targetColumn = vscode.window.visibleTextEditors.length > 0
+        ? vscode.ViewColumn.Two  // Reuse second column if any editors exist
+        : vscode.ViewColumn.Beside;  // Create beside webview on first open
+
+      await vscode.window.showTextDocument(document, {
+        preview: false,  // Open in permanent editor tab
+        viewColumn: targetColumn
+      });
+
+      this.outputChannel.appendLine(`[UIHandler] Successfully opened docs: ${docsPath}`);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.sendError(
+        'ui.docs',
+        'Failed to open docs file',
         errorMsg
       );
     }

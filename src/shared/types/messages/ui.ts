@@ -21,6 +21,14 @@ export interface OpenGuideFileMessage extends MessageEnvelope<OpenGuideFilePaylo
   type: MessageType.OPEN_GUIDE_FILE;
 }
 
+export interface OpenDocsFilePayload {
+  docsPath: string;  // Relative path from docs/
+}
+
+export interface OpenDocsFileMessage extends MessageEnvelope<OpenDocsFilePayload> {
+  type: MessageType.OPEN_DOCS_FILE;
+}
+
 export interface OpenResourcePayload {
   path: string;  // Workspace-relative path to resource file
 }
