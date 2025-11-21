@@ -73,7 +73,7 @@ export class DictionaryService {
   private dictionaryUtility?: DictionaryUtility;
 
   // Parallel generation constants
-  private readonly CONCURRENCY_LIMIT = 14;
+  private readonly CONCURRENCY_LIMIT = 7;
   private readonly BLOCK_TIMEOUT = 15000; // 15 seconds per block
 
   constructor(

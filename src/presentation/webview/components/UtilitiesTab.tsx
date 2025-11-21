@@ -343,7 +343,7 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
             disabled={!word.trim() || isLoading || isFastGenerating}
             title="Experimental: Generate using parallel API calls (2-4× faster)"
           >
-            ⚡ Fast Generate
+            ⚡ Fast Generate (Experimental)
           </button>
         )}
       </div>
