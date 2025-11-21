@@ -140,6 +140,11 @@ export class DictionaryHandler {
       // Send result back to webview
       this.sendFastGenerateResult(result);
       this.sendStatus('');
+
+      // Apply aggregated token usage
+      if (result.usage) {
+        this.applyTokenUsage(result.usage);
+      }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.sendError('dictionary', 'Failed to generate dictionary entry', msg);

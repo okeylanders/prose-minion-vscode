@@ -3,7 +3,7 @@
  * Dictionary lookup and word operations
  */
 
-import { MessageEnvelope, MessageType } from './base';
+import { MessageEnvelope, MessageType, TokenUsage } from './base';
 
 export interface LookupDictionaryPayload {
   word: string;
@@ -40,6 +40,7 @@ export interface DictionaryBlockResult {
   content: string;
   duration: number;
   error?: string;
+  usage?: TokenUsage;
 }
 
 export interface FastGenerateDictionaryResultPayload {
@@ -52,6 +53,7 @@ export interface FastGenerateDictionaryResultPayload {
     successCount: number;
     totalBlocks: number;
   };
+  usage?: TokenUsage; // Aggregated usage across all blocks
 }
 
 export interface FastGenerateDictionaryResultMessage extends MessageEnvelope<FastGenerateDictionaryResultPayload> {

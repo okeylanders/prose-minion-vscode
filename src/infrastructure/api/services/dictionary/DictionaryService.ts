@@ -293,7 +293,8 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
       return {
         blockName,
         content: result.content,
-        duration
+        duration,
+        usage: result.usage
       };
     } catch (error) {
       const duration = Date.now() - startTime;
@@ -324,7 +325,8 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         return {
           blockName,
           content: result.content,
-          duration: retryDuration
+          duration: retryDuration,
+          usage: result.usage
         };
       } catch (retryError) {
         const retryDuration = Date.now() - startTime;
@@ -398,6 +400,13 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     const partialFailures: string[] = [];
     let successCount = 0;
 
+    // Aggregate token usage across all blocks
+    let totalPromptTokens = 0;
+    let totalCompletionTokens = 0;
+    let totalTokens = 0;
+    let totalCostUsd = 0;
+    let hasUsageData = false;
+
     // Sort blocks to maintain order and build result
     const orderedContent: string[] = [];
 
@@ -405,6 +414,15 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
       const result = blockResults.find(r => r.blockName === blockName);
       if (result) {
         blockDurations[blockName] = result.duration;
+
+        // Aggregate usage
+        if (result.usage) {
+          hasUsageData = true;
+          totalPromptTokens += result.usage.promptTokens || 0;
+          totalCompletionTokens += result.usage.completionTokens || 0;
+          totalTokens += result.usage.totalTokens || 0;
+          totalCostUsd += result.usage.costUsd || 0;
+        }
 
         if (result.error) {
           partialFailures.push(blockName);
@@ -440,7 +458,13 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         partialFailures,
         successCount,
         totalBlocks: DICTIONARY_BLOCKS.length
-      }
+      },
+      usage: hasUsageData ? {
+        promptTokens: totalPromptTokens,
+        completionTokens: totalCompletionTokens,
+        totalTokens,
+        costUsd: totalCostUsd
+      } : undefined
     };
   }
 }
