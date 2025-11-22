@@ -78,6 +78,9 @@ export class DictionaryService {
   private readonly CONCURRENCY_LIMIT = 7;
   private readonly BLOCK_TIMEOUT = 15000; // 15 seconds per block
 
+  // Track processed blocks for ticker display
+  private processedBlocks: string[] = [];
+
   constructor(
     private readonly aiResourceManager: AIResourceManager,
     private readonly resourceLoader: ResourceLoaderService,
@@ -214,6 +217,9 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     const startTime = Date.now();
     this.outputChannel?.appendLine(`\n[DictionaryService] Starting parallel dictionary generation for "${word}"`);
 
+    // Clear processed blocks for new generation
+    this.processedBlocks = [];
+
     // Get orchestrator
     const orchestrator = this.aiResourceManager.getOrchestrator('dictionary');
     if (!orchestrator) {
@@ -244,10 +250,23 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         if (!result.error) {
           completedBlocks.push(blockName);
 
-          // Send STATUS message with progress
+          // Track block name for ticker
+          // Use index + 1 for block number (matches DICTIONARY_BLOCKS order)
+          const blockDisplayName = `Block ${index + 1}`;
+          this.processedBlocks.push(blockDisplayName);
+
+          // Build ticker message (comma-separated block names)
+          let ticker = this.processedBlocks.join(', ');
+          // Truncate if too long (keep last ~100 chars with "..." prefix)
+          if (ticker.length > 100) {
+            ticker = '...' + ticker.slice(-97);
+          }
+
+          // Send STATUS message with progress and ticker
           this.sendStatus(
             `Block ${completedBlocks.length}/${totalBlocks} complete`,
-            { current: completedBlocks.length, total: totalBlocks }
+            { current: completedBlocks.length, total: totalBlocks },
+            ticker
           );
 
           // Also call legacy callback if provided (for backward compatibility)
@@ -483,9 +502,9 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
   /**
    * Send status update via status emitter
    */
-  private sendStatus(message: string, progress?: { current: number; total: number }): void {
+  private sendStatus(message: string, progress?: { current: number; total: number }, tickerMessage?: string): void {
     if (this.statusEmitter) {
-      this.statusEmitter(message, progress);
+      this.statusEmitter(message, progress, tickerMessage);
     }
   }
 }

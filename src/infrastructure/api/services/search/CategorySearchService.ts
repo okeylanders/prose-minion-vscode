@@ -31,6 +31,7 @@ const MAX_WORDS_PER_BATCH = 400;
 export class CategorySearchService {
   private readonly wordFrequency: WordFrequency;
   private readonly promptLoader: PromptLoader;
+  private matchedWords: string[] = [];
 
   constructor(
     private readonly aiResourceManager: AIResourceManager,
@@ -61,6 +62,9 @@ export class CategorySearchService {
     options?: CategorySearchOptions
   ): Promise<CategorySearchResult> {
     try {
+      // Clear matched words from any previous search
+      this.matchedWords = [];
+
       // 1. Extract unique words from text
       const uniqueWords = this.wordFrequency.extractUniqueWords(text, {
         minCharacterLength: 2,
@@ -117,6 +121,16 @@ export class CategorySearchService {
               wordLimit
             );
             aiResult.matchedWords.forEach(word => matchedWordsSet.add(word));
+
+            // Accumulate matched words for ticker
+            this.matchedWords.push(...aiResult.matchedWords);
+
+            // Build ticker message (truncate if too long)
+            let ticker = this.matchedWords.join(', ');
+            if (ticker.length > 100) {
+              ticker = '...' + ticker.slice(-97);
+            }
+
             if (aiResult.tokensUsed) {
               aggregatedPrompt += aiResult.tokensUsed.prompt || 0;
               aggregatedCompletion += aiResult.tokensUsed.completion || 0;
@@ -140,7 +154,8 @@ export class CategorySearchService {
             completedBatches++;
             this.sendStatus(
               `${batchLabel}: matched ${aiResult.matchedWords.length} words (${completedBatches} batches completed)`,
-              { current: completedBatches, total: batches.length }
+              { current: completedBatches, total: batches.length },
+              ticker
             );
           } catch (error) {
             const msg = error instanceof Error ? error.message : String(error);
@@ -398,9 +413,9 @@ export class CategorySearchService {
     };
   }
 
-  private sendStatus(message: string, progress?: { current: number; total: number }): void {
+  private sendStatus(message: string, progress?: { current: number; total: number }, tickerMessage?: string): void {
     if (this.statusEmitter) {
-      this.statusEmitter(message, progress);
+      this.statusEmitter(message, progress, tickerMessage);
     }
   }
 }

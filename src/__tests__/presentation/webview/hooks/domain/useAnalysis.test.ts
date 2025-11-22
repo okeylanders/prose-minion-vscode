@@ -17,7 +17,7 @@ describe('useAnalysis - Type Contracts', () => {
         'toolName',
         'loading',
         'usedGuides',
-        'guideNames',
+        'tickerMessage',
         'statusMessage'
       ];
 
@@ -27,7 +27,7 @@ describe('useAnalysis - Type Contracts', () => {
         toolName: undefined,
         loading: false,
         usedGuides: [],
-        guideNames: '',
+        tickerMessage: '',
         statusMessage: ''
       };
 
@@ -69,7 +69,7 @@ describe('useAnalysis - Type Contracts', () => {
         'analysisResult',
         'analysisToolName',
         'usedGuides',
-        'guideNames',
+        'tickerMessage',
         'statusMessage'
       ];
 
@@ -78,7 +78,7 @@ describe('useAnalysis - Type Contracts', () => {
         analysisResult: '',
         analysisToolName: undefined,
         usedGuides: [],
-        guideNames: '',
+        tickerMessage: '',
         statusMessage: ''
       };
 
@@ -91,13 +91,13 @@ describe('useAnalysis - Type Contracts', () => {
   describe('Tripartite Interface Pattern Compliance', () => {
     it('should maintain separation of concerns', () => {
       // State properties (read-only)
-      const stateProps: (keyof AnalysisState)[] = ['result', 'toolName', 'loading', 'usedGuides', 'guideNames', 'statusMessage'];
+      const stateProps: (keyof AnalysisState)[] = ['result', 'toolName', 'loading', 'usedGuides', 'tickerMessage', 'statusMessage'];
 
       // Actions (user-triggered operations)
       const actionProps: (keyof AnalysisActions)[] = ['handleAnalysisResult', 'handleStatusMessage', 'setLoading', 'clearResult', 'clearStatus'];
 
       // Persistence (what gets saved)
-      const persistenceProps: (keyof AnalysisPersistence)[] = ['analysisResult', 'analysisToolName', 'usedGuides', 'guideNames', 'statusMessage'];
+      const persistenceProps: (keyof AnalysisPersistence)[] = ['analysisResult', 'analysisToolName', 'usedGuides', 'tickerMessage', 'statusMessage'];
 
       // Validate no overlap between State and Actions
       const stateActionOverlap = stateProps.filter(prop => actionProps.includes(prop as any));

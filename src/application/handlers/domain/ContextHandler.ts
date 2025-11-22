@@ -50,13 +50,13 @@ export class ContextHandler {
     this.sendStatus('');
   }
 
-  private sendStatus(message: string, guideNames?: string): void {
+  private sendStatus(message: string, tickerMessage?: string): void {
     const statusMessage: StatusMessage = {
       type: MessageType.STATUS,
       source: 'extension.context',
       payload: {
         message,
-        guideNames
+        tickerMessage
       },
       timestamp: Date.now()
     };

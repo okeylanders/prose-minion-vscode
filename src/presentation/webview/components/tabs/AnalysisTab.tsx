@@ -413,7 +413,7 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
           isLoading={analysis.loading}
           statusMessage={analysis.statusMessage}
           defaultMessage="Analyzing..."
-          guideNames={analysis.guideNames}
+          tickerMessage={analysis.tickerMessage}
         />
       )}
 

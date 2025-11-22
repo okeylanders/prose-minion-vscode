@@ -24,8 +24,8 @@ interface LoadingIndicatorProps {
   statusMessage?: string;
   /** Default message when no status message provided */
   defaultMessage: string;
-  /** Guide names for Analysis tab guide ticker (optional) */
-  guideNames?: string;
+  /** Optional scrolling ticker text (e.g., matched words, guide names, block names) */
+  tickerMessage?: string;
   /** Progress tracking (optional, for operations with known progress) */
   progress?: {
     current: number;        // Items processed
@@ -42,7 +42,7 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
   isLoading,
   statusMessage,
   defaultMessage,
-  guideNames,
+  tickerMessage,
   progress,
   onCancel,
   className = ''
@@ -89,9 +89,9 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
         <div className="spinner"></div>
         <div className="loading-text">
           <div>{statusMessage || defaultMessage}</div>
-          {guideNames && (
+          {tickerMessage && (
             <div className="guide-ticker-container">
-              <div className="guide-ticker">{guideNames}</div>
+              <div className="guide-ticker">{tickerMessage}</div>
             </div>
           )}
         </div>

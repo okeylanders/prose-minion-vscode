@@ -312,6 +312,7 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
           isLoading={dictionary.isFastGenerating}
           statusMessage={dictionary.statusMessage}
           defaultMessage="⚡ Fast generating dictionary entry..."
+          tickerMessage={dictionary.tickerMessage}
           progress={dictionary.progress ? {
             current: dictionary.progress.current,
             total: dictionary.progress.total,

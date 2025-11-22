@@ -21,6 +21,7 @@ import { AIResourceManager } from '../resources/AIResourceManager';
 import { ResourceLoaderService } from '../resources/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
 import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
+import { StatusEmitter } from '@messages';
 
 /**
  * Service wrapper for AI-powered assistant analysis
@@ -34,6 +35,7 @@ import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisR
 export class AssistantToolService {
   private dialogueAssistant?: DialogueMicrobeatAssistant;
   private proseAssistant?: ProseAssistant;
+  private statusEmitter?: StatusEmitter;
 
   constructor(
     private readonly aiResourceManager: AIResourceManager,
@@ -43,6 +45,34 @@ export class AssistantToolService {
   ) {
     // Assistants will be initialized when AI resources are available
     void this.initializeAssistants();
+  }
+
+  /**
+   * Set the status emitter for reporting guide loading progress
+   */
+  setStatusEmitter(statusEmitter: StatusEmitter): void {
+    this.statusEmitter = statusEmitter;
+    // Propagate to AIResourceManager for guide loading notifications
+    this.aiResourceManager.setStatusCallback((message: string, tickerMessage?: string) => {
+      this.sendStatus(message, undefined, tickerMessage);
+    });
+  }
+
+  /**
+   * Send status message via StatusEmitter
+   *
+   * @param message - Main status message
+   * @param progress - Optional progress tracking
+   * @param tickerMessage - Optional scrolling ticker text (guide names, etc.)
+   */
+  private sendStatus(
+    message: string,
+    progress?: { current: number; total: number },
+    tickerMessage?: string
+  ): void {
+    if (this.statusEmitter) {
+      this.statusEmitter(message, progress, tickerMessage);
+    }
   }
 
   /**

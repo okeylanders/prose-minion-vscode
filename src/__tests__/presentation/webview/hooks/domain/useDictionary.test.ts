@@ -21,7 +21,8 @@ describe('useDictionary - Type Contracts', () => {
         statusMessage: '',
         isFastGenerating: false,
         progress: undefined,
-        lastFastGenerationMetadata: null
+        lastFastGenerationMetadata: null,
+        tickerMessage: ''
       };
 
       expect(state).toHaveProperty('result');
@@ -32,6 +33,7 @@ describe('useDictionary - Type Contracts', () => {
       expect(state).toHaveProperty('sourceUri');
       expect(state).toHaveProperty('isFastGenerating');
       expect(state).toHaveProperty('progress');
+      expect(state).toHaveProperty('tickerMessage');
     });
 
     it('should define Actions interface', () => {

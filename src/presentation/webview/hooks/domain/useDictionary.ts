@@ -34,6 +34,7 @@ export interface DictionaryState {
   isFastGenerating: boolean;
   progress: { current: number; total: number } | undefined;
   lastFastGenerationMetadata: FastGenerationMetadata | null;
+  tickerMessage: string;
 }
 
 export interface DictionaryActions {
@@ -119,6 +120,7 @@ export const useDictionary = (): UseDictionaryReturn => {
   const [isFastGenerating, setIsFastGenerating] = React.useState<boolean>(false);
   const [progress, setProgress] = React.useState<{ current: number; total: number } | undefined>(undefined);
   const [lastFastGenerationMetadata, setLastFastGenerationMetadata] = React.useState<FastGenerationMetadata | null>(null);
+  const [tickerMessage, setTickerMessage] = React.useState<string>('');
 
   // Clear result when dictionary lookup starts
   const clearResultWhenLoading = React.useCallback(() => {
@@ -140,12 +142,17 @@ export const useDictionary = (): UseDictionaryReturn => {
   }, []);
 
   const handleStatusMessage = React.useCallback((message: StatusMessage) => {
-    const { message: statusText, progress: statusProgress } = message.payload;
+    const { message: statusText, progress: statusProgress, tickerMessage: ticker } = message.payload;
     setStatusMessage(statusText);
 
     // Extract progress from STATUS message if present and we're fast generating
     if (statusProgress && isFastGenerating) {
       setProgress(statusProgress);
+    }
+
+    // Extract ticker message if present and we're fast generating
+    if (ticker && isFastGenerating) {
+      setTickerMessage(ticker);
     }
   }, [isFastGenerating]);
 
@@ -167,6 +174,7 @@ export const useDictionary = (): UseDictionaryReturn => {
     setProgress(undefined); // Clear progress
     setLastFastGenerationMetadata(metadata);
     setStatusMessage(''); // Clear status message
+    setTickerMessage(''); // Clear ticker message
   }, []);
 
   const setFastGenerating = React.useCallback((isGenerating: boolean) => {
@@ -175,6 +183,7 @@ export const useDictionary = (): UseDictionaryReturn => {
       setResult('');
       setProgress(undefined); // Clear progress when starting
       setLastFastGenerationMetadata(null);
+      setTickerMessage(''); // Clear ticker when starting
     }
   }, []);
 
@@ -192,6 +201,7 @@ export const useDictionary = (): UseDictionaryReturn => {
     isFastGenerating,
     progress,
     lastFastGenerationMetadata,
+    tickerMessage,
 
     // Actions
     handleDictionaryResult,

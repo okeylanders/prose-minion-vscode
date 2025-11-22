@@ -29,7 +29,7 @@ export interface ExecutionResult {
   usage?: TokenUsage;
 }
 
-export type StatusCallback = (message: string, guideNames?: string) => void;
+export type StatusCallback = (message: string, tickerMessage?: string) => void;
 
 interface TerminationContext {
   signal?: AbortSignal;
@@ -196,10 +196,10 @@ export class AIResourceOrchestrator {
 
           // Notify UI that we're loading guides
           if (this.statusCallback && resourceRequest.requestedGuides.length > 0) {
-            const guideNames = ResourceRequestParser.formatGuideNamesForStatus(
+            const tickerMessage = ResourceRequestParser.formatGuideNamesForStatus(
               resourceRequest.requestedGuides
             );
-            this.statusCallback('Loading requested craft guides...', guideNames);
+            this.statusCallback('Loading requested craft guides...', tickerMessage);
           }
 
           // Turn N: Fulfill guide request
