@@ -7,7 +7,11 @@ import * as React from 'react';
 import { MessageType, TextSourceMode } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
-import { formatMetricsAsMarkdown } from '../utils/formatters';
+import {
+  formatProseStatsAsMarkdown,
+  formatStyleFlagsAsMarkdown,
+  formatWordFrequencyAsMarkdown
+} from '../utils/formatters';
 import { WordLengthFilterTabs } from './WordLengthFilterTabs';
 import { WordFrequencySettings } from '../hooks/domain/useWordFrequencySettings';
 // MessageType is already imported from shared/types re-export
@@ -130,13 +134,24 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
 
   const markdownContent = React.useMemo(() => {
     if (!displayMetrics) return '';
-    return formatMetricsAsMarkdown(displayMetrics);
-  }, [displayMetrics]);
+
+    // Call the appropriate formatter based on active tool
+    switch (activeTool) {
+      case 'prose_stats':
+        return formatProseStatsAsMarkdown(displayMetrics);
+      case 'style_flags':
+        return formatStyleFlagsAsMarkdown(displayMetrics);
+      case 'word_frequency':
+        return formatWordFrequencyAsMarkdown(displayMetrics);
+      default:
+        return '';
+    }
+  }, [displayMetrics, activeTool]);
 
   const buildExportContent = React.useCallback(() => {
     let content = markdownContent;
 
-    // Note: Legend is already appended by formatMetricsAsMarkdown() in formatters/
+    // Note: Legend is already appended by prose stats and word frequency formatters
     // (includes comprehensive Metrics Guide with Vocabulary Diversity and Lexical Density explainers)
 
     // Append Chapter Details section (per-chapter pivoted tables) if available
