@@ -4,10 +4,11 @@
  */
 
 import * as React from 'react';
+import { VSCodeAPI } from '../types/vscode';
 
 interface SuggestionsTabProps {
   selectedText: string;
-  vscode: any;
+  vscode: VSCodeAPI;
 }
 
 export const SuggestionsTab: React.FC<SuggestionsTabProps> = ({ selectedText, vscode }) => {

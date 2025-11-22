@@ -11,11 +11,12 @@ import { ModelSelector } from './ModelSelector';
 import { formatSearchResultAsMarkdown, formatCategorySearchAsMarkdown } from '../utils/formatters';
 import { CategorySearchState } from '../hooks/domain/useSearch';
 import { CategoryRelevance, CategoryWordLimit, CATEGORY_RELEVANCE_OPTIONS } from '@shared/types';
+import { VSCodeAPI } from '../types/vscode';
 
 type SearchSubtool = 'word' | 'category';
 
 interface SearchTabProps {
-  vscode: any;
+  vscode: VSCodeAPI;
   result: any;
   isLoading: boolean;
   onLoadingChange: (loading: boolean) => void;

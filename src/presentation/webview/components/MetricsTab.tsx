@@ -14,10 +14,11 @@ import {
 } from '../utils/formatters';
 import { WordLengthFilterTabs } from './WordLengthFilterTabs';
 import { WordFrequencySettings } from '../hooks/domain/useWordFrequencySettings';
+import { VSCodeAPI } from '../types/vscode';
 // MessageType is already imported from shared/types re-export
 
 interface MetricsTabProps {
-  vscode: any;
+  vscode: VSCodeAPI;
   metricsByTool: Partial<Record<'prose_stats' | 'style_flags' | 'word_frequency', any>>;
   isLoading: boolean;
   onLoadingChange: (loading: boolean) => void;

@@ -8,6 +8,7 @@ import { SelectionTarget, MessageType } from '@shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
 import { formatAnalysisAsMarkdown } from '../utils/formatters';
+import { VSCodeAPI } from '../types/vscode';
 
 interface FastGenerationProgress {
   completedBlocks: string[];
@@ -24,7 +25,7 @@ interface FastGenerationMetadata {
 
 interface UtilitiesTabProps {
   selectedText: string;
-  vscode: any;
+  vscode: VSCodeAPI;
   result: string;
   isLoading: boolean;
   onLoadingChange: (loading: boolean) => void;

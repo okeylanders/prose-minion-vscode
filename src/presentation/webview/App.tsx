@@ -34,9 +34,10 @@ import { useTokensSettings } from './hooks/domain/useTokensSettings';
 import { useTokenTracking } from './hooks/domain/useTokenTracking';
 import { useContextPathsSettings } from './hooks/domain/useContextPathsSettings';
 import { useModelsSettings } from './hooks/domain/useModelsSettings';
+import { VSCodeAPI } from './types/vscode';
 
 export const App: React.FC = () => {
-  const vscode = useVSCodeApi();
+  const vscode: VSCodeAPI = useVSCodeApi();
 
   // Domain hooks
   const analysis = useAnalysis();

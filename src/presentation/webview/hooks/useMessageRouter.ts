@@ -11,9 +11,12 @@ import { MessageType, ExtensionToWebviewMessage } from '@shared/types';
 /**
  * Message handler function type
  * Accepts a message and performs some action
+ *
+ * Note: Uses a constraint to allow domain-specific message types
+ * while maintaining type safety. Each handler can specify its exact
+ * message type (e.g., AnalysisResultMessage, SearchResultMessage).
  */
-// Loosen parameter typing to accept domain-specific handlers without friction
-type MessageHandler = (message: any) => void;
+type MessageHandler = (message: ExtensionToWebviewMessage | any) => void;
 
 /**
  * Map of MessageType to handler functions
