@@ -1,13 +1,13 @@
 # Architecture Debt Status Summary
 
 **Last Updated**: 2025-11-22
-**Total Items**: 14
-**Resolved**: 7
+**Total Items**: 15
+**Resolved**: 8
 **Pending**: 7
 
 ---
 
-## ✅ RESOLVED (7 items)
+## ✅ RESOLVED (8 items)
 
 ### 1. Configuration Strategy Inconsistency
 **File**: [2025-11-02-configuration-strategy-inconsistency.md](2025-11-02-configuration-strategy-inconsistency.md)
@@ -75,6 +75,27 @@
 - ✅ All 244 tests passing
 
 **Phases**: Type Relocation → Import Aliases → Message Reorganization → Deep Import Migration → Documentation
+
+**Epic**: Architecture Health Pass v1.3 - Sub-Epic 1: Foundation Cleanup
+
+---
+
+### 8. Prop Drilling & Type Safety
+
+**File**: [2025-11-19-prop-drilling-and-type-safety.md](2025-11-19-prop-drilling-and-type-safety.md)
+**Status**: ✅ **RESOLVED** (2025-11-22, Sprint 03 - PR #34)
+**Solution**: Created typed VSCodeAPI interface, typed all message handlers, reduced prop drilling by 72%
+
+**Outcomes**:
+
+- ✅ Zero `vscode: any` in components (created `VSCodeAPI` interface)
+- ✅ Zero `message: any` in critical paths (typed all domain hook handlers)
+- ✅ 72% prop reduction (78 individual props → 22 hook objects)
+- ✅ Bug caught by type safety (SettingsOverlay string literal issue)
+- ✅ IDE autocomplete now works for VSCode API and message types
+- ✅ All 244 tests passing
+
+**Innovation**: Parallel subagent execution pattern (3 agents working simultaneously = 67% time reduction)
 
 **Epic**: Architecture Health Pass v1.3 - Sub-Epic 1: Foundation Cleanup
 
@@ -224,9 +245,9 @@
 
 | Category | Count | Priority Breakdown |
 |----------|-------|-------------------|
-| **Resolved** | 7 | All CRITICAL issues resolved |
+| **Resolved** | 8 | All CRITICAL issues resolved |
 | **Pending** | 7 | HIGH: 1, MEDIUM: 4, LOW: 1, DOC: 1 |
-| **Total** | 14 | - |
+| **Total** | 15 | - |
 
 ---
 
@@ -261,12 +282,18 @@
 
 ## Recent Achievements
 
-**Architecture Health Pass v1.3 - Foundation Cleanup** (Sprint 01-02, Completed 2025-11-22):
+**Architecture Health Pass v1.3 - Foundation Cleanup** (Sprint 01-03, Completed 2025-11-22):
 
 - ✅ Result Formatter Decomposition (763 lines → 7 focused files)
 - ✅ Shared Types & Imports Hygiene (116 deep imports → semantic aliases)
 - ✅ Type organization cleanup (cross-cutting concerns extracted)
 - ✅ Comprehensive import alias strategy documented
+- ✅ **Prop Drilling & Type Safety** (78 props → 22 hook objects, full type safety)
+  - Created `VSCodeAPI` interface (eliminates `vscode: any`)
+  - Typed all message handlers (eliminates `message: any`)
+  - 72% prop reduction via hook object pattern
+  - IDE autocomplete now works throughout presentation layer
+  - Caught real bug (SettingsOverlay string literal) via compile-time checking
 
 **Unified Settings Architecture Epic** (Completed 2025-11-07):
 - ✅ Fixed SearchTab settings (4 settings completely broken)
@@ -274,7 +301,7 @@
 - ✅ Backend refactored to semantic methods
 - ✅ 100% persistence coverage (29/29 settings)
 
-These epics resolved **7 major architecture debt items**, eliminating all CRITICAL issues.
+These epics resolved **8 major architecture debt items**, eliminating all CRITICAL issues.
 
 ---
 
