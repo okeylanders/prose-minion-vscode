@@ -3,11 +3,12 @@
 **Date Identified**: 2025-11-19
 **Identified During**: Search status wiring + Code Review
 **Priority**: Medium
-**Estimated Effort**: 2-3 hours
+**Estimated Effort**: 3-4 hours
+**Updated**: 2025-11-21 (added progress bar requirement)
 
 ## Problem
 
-Two related DRY violations in the loading indicator pattern:
+Multiple related issues with loading indicator pattern:
 
 ### 1. Duplicated Loading UI Structure
 
@@ -29,6 +30,14 @@ Each tab manually renders status text and routes STATUS messages through App.tsx
 - Each tab renders its own status text above LoadingWidget (`statusMessage || fallback`)
 - LoadingWidget does not receive or render status
 
+### 3. Missing Progress Bar Integration
+
+Fast Dictionary Generation uses a progress bar pattern (PR #31) that should be available to all loading states:
+
+- Currently progress bar is inline in UtilitiesTab
+- No reusable component for progress tracking
+- Other features (Context Search, Metrics) could benefit from progress feedback
+
 ## Current Implementation
 
 ```tsx
@@ -49,9 +58,17 @@ Each tab manually renders status text and routes STATUS messages through App.tsx
 
 ## Recommendation
 
-### Extract LoadingIndicator Component
+### Create Unified LoadingIndicator Component
 
-Create a shared component that handles both UI structure and status:
+**IMPORTANT**: This should be a **single unified component** that integrates:
+
+1. Status message display
+2. Spinner animation
+3. Progress bar (from Fast Dictionary pattern)
+4. Loading widget (token cost tracking)
+5. Guide ticker (for Analysis tab)
+
+**Goal**: All loading states travel together as one component, not separate pieces.
 
 ```tsx
 // src/presentation/webview/components/shared/LoadingIndicator.tsx
@@ -61,7 +78,12 @@ interface LoadingIndicatorProps {
   statusMessage?: string;
   defaultMessage: string;
   guideNames?: string;
-  statusSource?: string;  // e.g., 'extension.search' for auto-registration
+  progress?: {
+    current: number;
+    total: number;
+    label?: string;
+  };
+  onCancel?: () => void;
 }
 
 export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
@@ -69,11 +91,9 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
   statusMessage,
   defaultMessage,
   guideNames,
-  statusSource
+  progress,
+  onCancel
 }) => {
-  // Optional: auto-register STATUS handler if statusSource provided
-  // useEffect to register/unregister with useMessageRouter
-
   if (!isLoading) return null;
 
   return (
@@ -88,17 +108,39 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
             </div>
           )}
         </div>
+        {onCancel && (
+          <button onClick={onCancel} className="cancel-button">
+            Cancel
+          </button>
+        )}
       </div>
+
+      {/* Progress bar (from Fast Dictionary pattern) */}
+      {progress && (
+        <div className="progress-container">
+          <div className="progress-bar">
+            <div
+              className="progress-fill"
+              style={{ width: `${(progress.current / progress.total) * 100}%` }}
+            />
+          </div>
+          <div className="progress-label">
+            {progress.label || `${progress.current} / ${progress.total}`}
+          </div>
+        </div>
+      )}
+
+      {/* Token cost tracking widget */}
       <LoadingWidget />
     </div>
   );
 };
 ```
 
-### Usage
+### Usage Examples
 
 ```tsx
-// AnalysisTab.tsx
+// AnalysisTab.tsx - with guide ticker
 <LoadingIndicator
   isLoading={isLoading}
   statusMessage={statusMessage}
@@ -106,26 +148,49 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
   guideNames={guideNames}
 />
 
-// SearchTab.tsx - simpler
+// UtilitiesTab.tsx - with progress bar
 <LoadingIndicator
   isLoading={isLoading}
+  statusMessage={statusMessage}
+  defaultMessage="Generating dictionary entry..."
+  progress={{
+    current: completedBlocks,
+    total: totalBlocks,
+    label: `${completedBlocks} of ${totalBlocks} blocks complete`
+  }}
+/>
+
+// SearchTab.tsx - with cancel button
+<LoadingIndicator
+  isLoading={isLoading}
+  statusMessage={statusMessage}
   defaultMessage="Running search..."
-  statusSource="extension.search"  // auto-register STATUS handler
+  onCancel={() => handleCancelSearch()}
+/>
+
+// MetricsTab.tsx - simple
+<LoadingIndicator
+  isLoading={isLoading}
+  defaultMessage="Calculating metrics..."
 />
 ```
 
 ## Impact
 
 ### Benefits
-- Eliminates ~40 lines of duplicated JSX
-- Reduces duplicated status wiring per tab
-- Lowers risk of missing STATUS display for new tools
-- Centralizes UX for loading + ticker effects
-- Single place to add features (cancel button, progress bar)
+
+- ✅ Eliminates ~40 lines of duplicated JSX
+- ✅ Unified component: status + spinner + progress + token cost
+- ✅ Progress bar available to all features (not just Fast Dictionary)
+- ✅ Single place to add features (cancel button, error recovery)
+- ✅ Consistent UX across all loading states
+- ✅ Easier to add features like ETA, retry, detailed progress
 
 ### Trade-offs
-- Need to update 4 components to use new pattern
-- Optional status auto-registration adds complexity
+
+- Need to update 4 tab components to use new pattern
+- Progress bar optional (not all features need it)
+- Component has multiple responsibilities (acceptable for presentation layer)
 
 ## Related Work
 
