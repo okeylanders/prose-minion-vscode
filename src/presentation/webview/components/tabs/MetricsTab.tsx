@@ -225,35 +225,15 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
       <ScopeBox
         mode={metrics.sourceMode}
         pathText={metrics.pathText}
-        onModeChange={(mode) => metrics.setSourceMode(mode)}
+        onModeChange={(mode) => {
+          metrics.setSourceMode(mode);
+          if (mode === 'selection') {
+            metrics.setPathText('[selected text]');
+          }
+        }}
         onPathTextChange={(text) => metrics.setPathText(text)}
-        onActiveFileClick={() => {
-          vscode.postMessage({
-            type: MessageType.REQUEST_ACTIVE_FILE,
-            source: 'webview.metrics.tab',
-            payload: {},
-            timestamp: Date.now()
-          });
-        }}
-        onManuscriptsClick={() => {
-          vscode.postMessage({
-            type: MessageType.REQUEST_MANUSCRIPT_GLOBS,
-            source: 'webview.metrics.tab',
-            payload: {},
-            timestamp: Date.now()
-          });
-        }}
-        onChaptersClick={() => {
-          vscode.postMessage({
-            type: MessageType.REQUEST_CHAPTER_GLOBS,
-            source: 'webview.metrics.tab',
-            payload: {},
-            timestamp: Date.now()
-          });
-        }}
-        onSelectionClick={() => {
-          metrics.setPathText('[selected text]');
-        }}
+        vscode={vscode}
+        source="webview.metrics.tab"
         disabled={metrics.loading}
         pathInputId="pm-path-input"
         pathPlaceholder={metrics.sourceMode === 'selection' ? '[selected text]' : 'workspace-relative path or globs'}

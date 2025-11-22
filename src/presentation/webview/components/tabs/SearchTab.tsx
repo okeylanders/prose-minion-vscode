@@ -163,35 +163,15 @@ export const SearchTab: React.FC<SearchTabProps> = ({
       <ScopeBox
         mode={metrics.sourceMode}
         pathText={metrics.pathText}
-        onModeChange={(mode) => metrics.setSourceMode(mode)}
+        onModeChange={(mode) => {
+          metrics.setSourceMode(mode);
+          if (mode === 'selection') {
+            metrics.setPathText('[selected text]');
+          }
+        }}
         onPathTextChange={(text) => metrics.setPathText(text)}
-        onActiveFileClick={() => {
-          vscode.postMessage({
-            type: MessageType.REQUEST_ACTIVE_FILE,
-            source: 'webview.search.tab',
-            payload: {},
-            timestamp: Date.now()
-          });
-        }}
-        onManuscriptsClick={() => {
-          vscode.postMessage({
-            type: MessageType.REQUEST_MANUSCRIPT_GLOBS,
-            source: 'webview.search.tab',
-            payload: {},
-            timestamp: Date.now()
-          });
-        }}
-        onChaptersClick={() => {
-          vscode.postMessage({
-            type: MessageType.REQUEST_CHAPTER_GLOBS,
-            source: 'webview.search.tab',
-            payload: {},
-            timestamp: Date.now()
-          });
-        }}
-        onSelectionClick={() => {
-          metrics.setPathText('[selected text]');
-        }}
+        vscode={vscode}
+        source="webview.search.tab"
         disabled={search.loading}
         pathInputId="pm-search-path-input"
       />
@@ -345,35 +325,15 @@ export const SearchTab: React.FC<SearchTabProps> = ({
         <ScopeBox
           mode={metrics.sourceMode}
           pathText={metrics.pathText}
-          onModeChange={(mode) => metrics.setSourceMode(mode)}
+          onModeChange={(mode) => {
+            metrics.setSourceMode(mode);
+            if (mode === 'selection') {
+              metrics.setPathText('[selected text]');
+            }
+          }}
           onPathTextChange={(text) => metrics.setPathText(text)}
-          onActiveFileClick={() => {
-            vscode.postMessage({
-              type: MessageType.REQUEST_ACTIVE_FILE,
-              source: 'webview.search.tab',
-              payload: {},
-              timestamp: Date.now()
-            });
-          }}
-          onManuscriptsClick={() => {
-            vscode.postMessage({
-              type: MessageType.REQUEST_MANUSCRIPT_GLOBS,
-              source: 'webview.search.tab',
-              payload: {},
-              timestamp: Date.now()
-            });
-          }}
-          onChaptersClick={() => {
-            vscode.postMessage({
-              type: MessageType.REQUEST_CHAPTER_GLOBS,
-              source: 'webview.search.tab',
-              payload: {},
-              timestamp: Date.now()
-            });
-          }}
-          onSelectionClick={() => {
-            metrics.setPathText('[selected text]');
-          }}
+          vscode={vscode}
+          source="webview.search.tab"
           disabled={search.categorySearch.isLoading}
           pathInputId="pm-category-search-path-input"
           scopeAriaLabel="Category search scope"

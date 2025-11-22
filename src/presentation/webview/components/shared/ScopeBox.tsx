@@ -1,5 +1,6 @@
 import React from 'react';
-import { TextSourceMode } from '@shared/types/sources';
+import { TextSourceMode, MessageType, MessageSource } from '../../../../shared/types';
+import { VSCodeAPI } from '../../types/vscode';
 
 /**
  * Props for the ScopeBox component.
@@ -7,6 +8,10 @@ import { TextSourceMode } from '@shared/types/sources';
  * ScopeBox is a reusable component for selecting text source scope
  * (Active File, Manuscripts, Chapters, Selection) with an associated
  * path/pattern input field.
+ *
+ * The component handles ALL message posting internally - simply provide the
+ * vscode API and source identifier. The parent handles state updates via
+ * onModeChange (and can set pathText based on mode if needed).
  */
 export interface ScopeBoxProps {
   // Current state (controlled component)
@@ -17,11 +22,9 @@ export interface ScopeBoxProps {
   onModeChange: (mode: TextSourceMode) => void;
   onPathTextChange: (text: string) => void;
 
-  // Optional side effects (for message posting when mode changes)
-  onActiveFileClick?: () => void;
-  onManuscriptsClick?: () => void;
-  onChaptersClick?: () => void;
-  onSelectionClick?: () => void;
+  // Message posting (component handles internally)
+  vscode: VSCodeAPI;
+  source: MessageSource; // e.g., 'webview.search.tab' or 'webview.metrics.tab'
 
   // UI customization
   disabled?: boolean;
@@ -40,6 +43,8 @@ export interface ScopeBoxProps {
  * ScopeBox - Reusable scope selector component
  *
  * Displays a tab bar with 4 scope options and a path/pattern input field.
+ * Handles all message posting internally - no need for click handlers!
+ *
  * Used across SearchTab (Word Search, Category Search) and MetricsTab.
  *
  * @example
@@ -47,9 +52,15 @@ export interface ScopeBoxProps {
  * <ScopeBox
  *   mode={metrics.sourceMode}
  *   pathText={metrics.pathText}
- *   onModeChange={(mode) => metrics.setSourceMode(mode)}
+ *   onModeChange={(mode) => {
+ *     metrics.setSourceMode(mode);
+ *     if (mode === 'selection') {
+ *       metrics.setPathText('[selected text]');
+ *     }
+ *   }}
  *   onPathTextChange={(text) => metrics.setPathText(text)}
- *   onActiveFileClick={() => vscode.postMessage({ type: MessageType.REQUEST_ACTIVE_FILE, ... })}
+ *   vscode={vscode}
+ *   source="webview.search.tab"
  *   disabled={loading}
  *   pathInputId="pm-search-path-input"
  * />
@@ -60,10 +71,8 @@ export const ScopeBox: React.FC<ScopeBoxProps> = ({
   pathText,
   onModeChange,
   onPathTextChange,
-  onActiveFileClick,
-  onManuscriptsClick,
-  onChaptersClick,
-  onSelectionClick,
+  vscode,
+  source,
   disabled = false,
   pathInputId = 'pm-scope-path-input',
   pathPlaceholder,
@@ -80,10 +89,39 @@ export const ScopeBox: React.FC<ScopeBoxProps> = ({
 
   const placeholder = pathPlaceholder ?? defaultPlaceholder;
 
-  const handleModeClick = (newMode: TextSourceMode, sideEffect?: () => void) => {
+  const handleModeClick = (newMode: TextSourceMode) => {
     onModeChange(newMode);
-    if (sideEffect) {
-      sideEffect();
+
+    // Post appropriate message based on mode
+    switch (newMode) {
+      case 'activeFile':
+        vscode.postMessage({
+          type: MessageType.REQUEST_ACTIVE_FILE,
+          source,
+          payload: {},
+          timestamp: Date.now()
+        });
+        break;
+      case 'manuscript':
+        vscode.postMessage({
+          type: MessageType.REQUEST_MANUSCRIPT_GLOBS,
+          source,
+          payload: {},
+          timestamp: Date.now()
+        });
+        break;
+      case 'chapters':
+        vscode.postMessage({
+          type: MessageType.REQUEST_CHAPTER_GLOBS,
+          source,
+          payload: {},
+          timestamp: Date.now()
+        });
+        break;
+      case 'selection':
+        // Selection mode doesn't post a message
+        // Parent handles setting pathText via onModeChange
+        break;
     }
   };
 
@@ -98,7 +136,7 @@ export const ScopeBox: React.FC<ScopeBoxProps> = ({
       >
         <button
           className={`tab-button ${mode === 'activeFile' ? 'active' : ''}`}
-          onClick={() => handleModeClick('activeFile', onActiveFileClick)}
+          onClick={() => handleModeClick('activeFile')}
           disabled={disabled}
           role="tab"
           aria-selected={mode === 'activeFile'}
@@ -108,7 +146,7 @@ export const ScopeBox: React.FC<ScopeBoxProps> = ({
         </button>
         <button
           className={`tab-button ${mode === 'manuscript' ? 'active' : ''}`}
-          onClick={() => handleModeClick('manuscript', onManuscriptsClick)}
+          onClick={() => handleModeClick('manuscript')}
           disabled={disabled}
           role="tab"
           aria-selected={mode === 'manuscript'}
@@ -118,7 +156,7 @@ export const ScopeBox: React.FC<ScopeBoxProps> = ({
         </button>
         <button
           className={`tab-button ${mode === 'chapters' ? 'active' : ''}`}
-          onClick={() => handleModeClick('chapters', onChaptersClick)}
+          onClick={() => handleModeClick('chapters')}
           disabled={disabled}
           role="tab"
           aria-selected={mode === 'chapters'}
@@ -128,7 +166,7 @@ export const ScopeBox: React.FC<ScopeBoxProps> = ({
         </button>
         <button
           className={`tab-button ${mode === 'selection' ? 'active' : ''}`}
-          onClick={() => handleModeClick('selection', onSelectionClick)}
+          onClick={() => handleModeClick('selection')}
           disabled={disabled}
           role="tab"
           aria-selected={mode === 'selection'}
