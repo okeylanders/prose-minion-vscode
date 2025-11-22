@@ -71,7 +71,7 @@ Fix the foundational architecture issues that block all other improvements: type
 
 **Deliverable**: Full type safety, 72% prop reduction, IDE autocomplete, compile-time errors
 
-**PR**: TBD
+**PR**: [#34](https://github.com/okeylanders/prose-minion-vscode/pull/34)
 
 📁 [sprints/03-prop-drilling-type-safety.md](sprints/03-prop-drilling-type-safety.md)
 

@@ -221,7 +221,7 @@ export const useSettingsContext = () => {
 **Status**: ✅ Resolved
 **Resolved By**: Sprint 03 - Prop Drilling & Type Safety
 **Date**: 2025-11-22
-**PR**: TBD
+**PR**: [#34](https://github.com/okeylanders/prose-minion-vscode/pull/34)
 
 ### Implementation Summary
 

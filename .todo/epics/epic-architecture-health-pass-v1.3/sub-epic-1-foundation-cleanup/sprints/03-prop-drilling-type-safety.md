@@ -408,7 +408,7 @@ Fix each one as you encounter them.
 
 **Completion Date**: 2025-11-22
 **Actual Duration**: ~3-4 hours
-**PR**: TBD
+**PR**: [#34](https://github.com/okeylanders/prose-minion-vscode/pull/34)
 **Branch**: `sprint/foundation-cleanup-03-type-safety`
 
 **Commits**:
