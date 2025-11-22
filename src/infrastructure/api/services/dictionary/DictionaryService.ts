@@ -250,17 +250,17 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         if (!result.error) {
           completedBlocks.push(blockName);
 
-          // Track block name for ticker
-          // Use index + 1 for block number (matches DICTIONARY_BLOCKS order)
-          const blockDisplayName = `Block ${index + 1}`;
+          // Track block name for ticker (use actual block name)
+          const blockDisplayName = this.formatBlockName(blockName);
           this.processedBlocks.push(blockDisplayName);
 
-          // Build ticker message (comma-separated block names)
-          let ticker = this.processedBlocks.join(', ');
-          // Truncate if too long (keep last ~100 chars with "..." prefix)
-          if (ticker.length > 100) {
-            ticker = '...' + ticker.slice(-97);
+          // Keep only last 10 blocks to prevent ticker overflow
+          if (this.processedBlocks.length > 10) {
+            this.processedBlocks = this.processedBlocks.slice(-10);
           }
+
+          // Build ticker message (show last 10 blocks)
+          const ticker = this.processedBlocks.join(', ');
 
           // Send STATUS message with progress and ticker
           this.sendStatus(
@@ -497,6 +497,22 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         costUsd: totalCostUsd
       } : undefined
     };
+  }
+
+  /**
+   * Format block name for ticker display
+   * Converts hyphenated block names to title case
+   *
+   * Examples:
+   * - "definition" -> "Definition"
+   * - "parts-of-speech" -> "Parts-of-Speech"
+   * - "semantic-gradient" -> "Semantic-Gradient"
+   */
+  private formatBlockName(blockName: string): string {
+    return blockName
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join('-');
   }
 
   /**

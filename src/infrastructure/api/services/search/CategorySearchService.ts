@@ -122,14 +122,14 @@ export class CategorySearchService {
             );
             aiResult.matchedWords.forEach(word => matchedWordsSet.add(word));
 
-            // Accumulate matched words for ticker
+            // Accumulate matched words for ticker (keep only last 10)
             this.matchedWords.push(...aiResult.matchedWords);
-
-            // Build ticker message (truncate if too long)
-            let ticker = this.matchedWords.join(', ');
-            if (ticker.length > 100) {
-              ticker = '...' + ticker.slice(-97);
+            if (this.matchedWords.length > 10) {
+              this.matchedWords = this.matchedWords.slice(-10);
             }
+
+            // Build ticker message (show last 10 words)
+            const ticker = this.matchedWords.join(', ');
 
             if (aiResult.tokensUsed) {
               aggregatedPrompt += aiResult.tokensUsed.prompt || 0;
@@ -152,6 +152,10 @@ export class CategorySearchService {
             }
 
             completedBatches++;
+
+            // Log ticker for debugging
+            this.outputChannel?.appendLine(`[CategorySearchService] Ticker: "${ticker}" (${this.matchedWords.length} words)`);
+
             this.sendStatus(
               `${batchLabel}: matched ${aiResult.matchedWords.length} words (${completedBatches} batches completed)`,
               { current: completedBatches, total: batches.length },

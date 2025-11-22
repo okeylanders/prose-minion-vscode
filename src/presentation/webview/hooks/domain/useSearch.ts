@@ -187,6 +187,7 @@ export const useSearch = (): UseSearchReturn => {
     if (message.source === 'extension.search' && categorySearchLoading) {
       setCategorySearchProgress(message.payload.progress);
       if (message.payload.tickerMessage) {
+        console.log('[useSearch] Category search ticker:', message.payload.tickerMessage);
         setCategorySearchTicker(message.payload.tickerMessage);
       }
     }
