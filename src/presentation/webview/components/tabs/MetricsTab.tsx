@@ -1,18 +1,15 @@
 /**
- * MetricsTab component - Presentation layer
- * Handles prose metrics and statistics
+ * MetricsTab component - Thin orchestrator
+ * Routes to focused panel components (ProseStats, StyleFlags, WordFrequency)
+ * Refactored from god component to follow Single Responsibility Principle
  */
 
 import * as React from 'react';
 import { MessageType } from '@shared/types';
-import { MarkdownRenderer } from '../shared/MarkdownRenderer';
-import { LoadingIndicator, ScopeBox } from '../shared';
-import {
-  formatProseStatsAsMarkdown,
-  formatStyleFlagsAsMarkdown,
-  formatWordFrequencyAsMarkdown
-} from '../../utils/formatters';
-import { WordLengthFilterTabs } from '../shared/WordLengthFilterTabs';
+import { ScopeBox, LoadingIndicator } from '../shared';
+import { ProseStatsPanel } from '../metrics/ProseStatsPanel';
+import { StyleFlagsPanel } from '../metrics/StyleFlagsPanel';
+import { WordFrequencyPanel } from '../metrics/WordFrequencyPanel';
 import { VSCodeAPI } from '../../types/vscode';
 import { UseMetricsReturn } from '../../hooks/domain/useMetrics';
 import { UsePublishingSettingsReturn } from '../../hooks/domain/usePublishingSettings';
@@ -31,8 +28,6 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   publishingSettings,
   wordFrequencySettings
 }) => {
-  // Keep a local mirror only for selection preview if needed in future.
-
   // Build a TextSourceSpec consistently for all metric requests
   const buildSourceSpec = React.useCallback(() => {
     return metrics.sourceMode === 'selection'
@@ -97,77 +92,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
     return null;
   }, [metrics.metricsByTool, metrics.activeTool]);
 
-  const markdownContent = React.useMemo(() => {
-    if (!displayMetrics) return '';
-
-    // Call the appropriate formatter based on active tool
-    switch (metrics.activeTool) {
-      case 'prose_stats':
-        return formatProseStatsAsMarkdown(displayMetrics);
-      case 'style_flags':
-        return formatStyleFlagsAsMarkdown(displayMetrics);
-      case 'word_frequency':
-        return formatWordFrequencyAsMarkdown(displayMetrics);
-      default:
-        return '';
-    }
-  }, [displayMetrics, metrics.activeTool]);
-
-  const buildExportContent = React.useCallback(() => {
-    let content = markdownContent;
-
-    // Note: Legend is already appended by prose stats and word frequency formatters
-    // (includes comprehensive Metrics Guide with Vocabulary Diversity and Lexical Density explainers)
-
-    // Append Chapter Details section (per-chapter pivoted tables) if available
-    try {
-      const metricsSrc: any = displayMetrics;
-      if (metricsSrc && Array.isArray(metricsSrc.perChapterStats) && metricsSrc.perChapterStats.length > 0) {
-        let groups = ['---', '', '## Chapter Details', ''].join('\n') + '\n';
-        metricsSrc.perChapterStats.forEach((entry: any) => {
-          const s = entry.stats || {};
-          const chapter = (entry.path || '').split(/\\|\//).pop() || entry.path;
-
-          const rows: Array<{ label: string; value: any; fmt?: (v: any) => string }> = [
-            { label: '📝 Word Count', value: s.wordCount, fmt: (v) => (v ?? '').toLocaleString?.() ?? v },
-            { label: '📏 Sentence Count', value: s.sentenceCount, fmt: (v) => (v ?? '').toLocaleString?.() ?? v },
-            { label: '📑 Paragraph Count', value: s.paragraphCount, fmt: (v) => (v ?? '').toLocaleString?.() ?? v },
-            { label: '⚖️ Avg Words per Sentence', value: s.averageWordsPerSentence, fmt: (v) => typeof v === 'number' ? v.toFixed(1) : v },
-            { label: '📐 Avg Sentences per Paragraph', value: s.averageSentencesPerParagraph, fmt: (v) => typeof v === 'number' ? v.toFixed(1) : v },
-            { label: '⏱️ Reading Time', value: s.readingTime },
-            { label: '🎯 Pacing', value: s.pacing },
-            { label: '💬 Dialogue Percentage', value: s.dialoguePercentage, fmt: (v) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
-            { label: '🎨 Lexical Density', value: s.lexicalDensity, fmt: (v) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
-            { label: '🧹 Stopword Ratio', value: s.stopwordRatio, fmt: (v) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
-            { label: '🌱 Hapax %', value: s.hapaxPercent, fmt: (v) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
-            { label: '🌱 Hapax Count', value: s.hapaxCount, fmt: (v) => (v ?? '').toLocaleString?.() ?? v },
-            { label: '🔀 Type-Token Ratio', value: s.typeTokenRatio, fmt: (v) => typeof v === 'number' ? `${v.toFixed(1)}%` : v },
-            { label: '📖 Readability Score', value: s.readabilityScore, fmt: (v) => typeof v === 'number' ? v.toFixed(1) : v },
-            { label: '🎓 Readability Grade (FKGL)', value: s.readabilityGrade, fmt: (v) => typeof v === 'number' ? v.toFixed(1) : v },
-            { label: '🔎 Unique Words', value: s.uniqueWordCount, fmt: (v) => (v ?? '').toLocaleString?.() ?? v },
-            { label: '⏳ Reading Time (min)', value: s.readingTimeMinutes, fmt: (v) => typeof v === 'number' ? v.toFixed(1) : v }
-          ];
-
-          const lines: string[] = [`### ${chapter}`, '', '| Metric | Value |', '|:-------|------:|'];
-          rows.forEach(({ label, value, fmt }) => {
-            if (value === undefined || value === null || (typeof value === 'string' && value.length === 0)) return;
-            const display = fmt ? fmt(value) : value;
-            lines.push(`| ${label} | **${display}** |`);
-          });
-          lines.push('');
-          groups += lines.join('\n') + '\n';
-        });
-        content += groups;
-      }
-    } catch {
-      // ignore
-    }
-
-    return content;
-  }, [markdownContent, displayMetrics]);
-
-  const handleCopyMetricsResult = () => {
-    const content = buildExportContent();
+  const handleCopyMetricsResult = (content: string) => {
     vscode.postMessage({
       type: MessageType.COPY_RESULT,
       source: 'webview.metrics.tab',
@@ -179,8 +104,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
     });
   };
 
-  const handleSaveMetricsResult = () => {
-    const content = buildExportContent();
+  const handleSaveMetricsResult = (content: string) => {
     vscode.postMessage({
       type: MessageType.SAVE_RESULT,
       source: 'webview.metrics.tab',
@@ -282,34 +206,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
         )}
       </div>
 
-      {/* Word Length Filter: only for Word Frequency view */}
-      {metrics.activeTool === 'word_frequency' && (
-        <WordLengthFilterTabs
-          activeFilter={wordFrequencySettings.settings.minCharacterLength}
-          onFilterChange={handleFilterChange}
-          disabled={metrics.loading}
-        />
-      )}
-
-      {/* Explicit Generate buttons per sub-tool */}
-      <div className="button-group">
-        {metrics.activeTool === 'prose_stats' && (
-          <button className="btn btn-primary" onClick={handleMeasureProseStats} disabled={metrics.loading}>
-            ⚙️ Generate Prose Statistics
-          </button>
-        )}
-        {metrics.activeTool === 'style_flags' && (
-          <button className="btn btn-primary" onClick={handleMeasureStyleFlags} disabled={metrics.loading}>
-            🏁 Generate Style Flags
-          </button>
-        )}
-        {metrics.activeTool === 'word_frequency' && (
-          <button className="btn btn-primary" onClick={handleMeasureWordFrequency} disabled={metrics.loading}>
-            📈 Generate Word Frequency
-          </button>
-        )}
-      </div>
-
+      {/* Loading indicator */}
       {metrics.loading && (
         <LoadingIndicator
           isLoading={metrics.loading}
@@ -317,35 +214,44 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
         />
       )}
 
-      {markdownContent && (
-        <div className="result-box">
-          <div className="result-action-bar">
-            {/* include chapters preference handled via extension modal prompts */}
-            <button
-              className="icon-button"
-              onClick={handleCopyMetricsResult}
-              disabled={metrics.loading}
-              title="Copy metrics to clipboard"
-              aria-label="Copy metrics"
-            >
-              📋
-            </button>
-            <button
-              className="icon-button"
-              onClick={handleSaveMetricsResult}
-              disabled={metrics.loading}
-              title="Save metrics to workspace"
-              aria-label="Save metrics"
-            >
-              💾
-            </button>
-          </div>
-          <MarkdownRenderer content={markdownContent} />
-        </div>
+      {/* Route to active panel */}
+      {metrics.activeTool === 'prose_stats' && (
+        <ProseStatsPanel
+          vscode={vscode}
+          isLoading={metrics.loading}
+          displayMetrics={displayMetrics}
+          sourceSpec={buildSourceSpec}
+          onMeasure={handleMeasureProseStats}
+          onCopy={handleCopyMetricsResult}
+          onSave={handleSaveMetricsResult}
+        />
       )}
-      {/* No Word Search placeholder here; handled in Search tab */}
+
+      {metrics.activeTool === 'style_flags' && (
+        <StyleFlagsPanel
+          vscode={vscode}
+          isLoading={metrics.loading}
+          displayMetrics={displayMetrics}
+          sourceSpec={buildSourceSpec}
+          onMeasure={handleMeasureStyleFlags}
+          onCopy={handleCopyMetricsResult}
+          onSave={handleSaveMetricsResult}
+        />
+      )}
+
+      {metrics.activeTool === 'word_frequency' && (
+        <WordFrequencyPanel
+          vscode={vscode}
+          isLoading={metrics.loading}
+          displayMetrics={displayMetrics}
+          sourceSpec={buildSourceSpec}
+          minCharacterLength={wordFrequencySettings.settings.minCharacterLength}
+          onMinLengthChange={handleFilterChange}
+          onMeasure={handleMeasureWordFrequency}
+          onCopy={handleCopyMetricsResult}
+          onSave={handleSaveMetricsResult}
+        />
+      )}
     </div>
   );
 };
-
-// parseTargets moved to SearchTab
