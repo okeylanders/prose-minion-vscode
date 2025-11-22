@@ -7,6 +7,7 @@ import * as React from 'react';
 import { MessageType } from '@shared/types';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { LoadingWidget } from '../shared/LoadingWidget';
+import { ScopeBox } from '../shared';
 import {
   formatProseStatsAsMarkdown,
   formatStyleFlagsAsMarkdown,
@@ -221,77 +222,25 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
         </button>
       </div>
 
+      <ScopeBox
+        mode={metrics.sourceMode}
+        pathText={metrics.pathText}
+        onModeChange={(mode) => {
+          metrics.setSourceMode(mode);
+          if (mode === 'selection') {
+            metrics.setPathText('[selected text]');
+          }
+        }}
+        onPathTextChange={(text) => metrics.setPathText(text)}
+        vscode={vscode}
+        source="webview.metrics.tab"
+        disabled={metrics.loading}
+        pathInputId="pm-path-input"
+        pathPlaceholder={metrics.sourceMode === 'selection' ? '[selected text]' : 'workspace-relative path or globs'}
+      />
+
+      {/* Publishing Standards: only for Prose Statistics view (moved below Scope for consistency) */}
       <div className="input-container">
-        <label className="block text-sm font-medium mb-2">Scope:</label>
-        <div className="tab-bar" style={{ marginBottom: '8px' }}>
-          <button
-            className={`tab-button ${metrics.sourceMode === 'activeFile' ? 'active' : ''}`}
-          onClick={() => {
-            metrics.setSourceMode('activeFile');
-            vscode.postMessage({
-              type: MessageType.REQUEST_ACTIVE_FILE,
-              source: 'webview.metrics.tab',
-              payload: {},
-              timestamp: Date.now()
-            });
-          }}
-            disabled={metrics.loading}
-          >
-            <span className="tab-label">Active File</span>
-          </button>
-          <button
-            className={`tab-button ${metrics.sourceMode === 'manuscript' ? 'active' : ''}`}
-          onClick={() => {
-            metrics.setSourceMode('manuscript');
-            vscode.postMessage({
-              type: MessageType.REQUEST_MANUSCRIPT_GLOBS,
-              source: 'webview.metrics.tab',
-              payload: {},
-              timestamp: Date.now()
-            });
-          }}
-            disabled={metrics.loading}
-          >
-            <span className="tab-label">Manuscripts</span>
-          </button>
-          <button
-            className={`tab-button ${metrics.sourceMode === 'chapters' ? 'active' : ''}`}
-          onClick={() => {
-            metrics.setSourceMode('chapters');
-            vscode.postMessage({
-              type: MessageType.REQUEST_CHAPTER_GLOBS,
-              source: 'webview.metrics.tab',
-              payload: {},
-              timestamp: Date.now()
-            });
-          }}
-            disabled={metrics.loading}
-          >
-            <span className="tab-label">Chapters</span>
-          </button>
-          <button
-            className={`tab-button ${metrics.sourceMode === 'selection' ? 'active' : ''}`}
-            onClick={() => {
-              metrics.setSourceMode('selection');
-              metrics.setPathText('[selected text]');
-            }}
-            disabled={metrics.loading}
-          >
-            <span className="tab-label">Selection</span>
-          </button>
-        </div>
-
-        <label className="block text-sm font-medium mb-2" htmlFor="pm-path-input">Path / Pattern</label>
-        <input
-          id="pm-path-input"
-          className="w-full"
-          type="text"
-          value={metrics.pathText}
-          onChange={(e) => metrics.setPathText(e.target.value)}
-          placeholder={metrics.sourceMode === 'selection' ? '[selected text]' : 'workspace-relative path or globs'}
-        />
-
-        {/* Publishing Standards: only for Prose Statistics view (moved below Scope for consistency) */}
         {metrics.activeTool === 'prose_stats' && (
           <>
             <label className="block text-sm font-medium mb-2 mt-3" htmlFor="pm-preset-select">Publishing Standards</label>
