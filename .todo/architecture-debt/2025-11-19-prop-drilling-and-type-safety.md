@@ -213,3 +213,93 @@ export const useSettingsContext = () => {
 
 - [ADR: Presentation Layer Domain Hooks](../../docs/adr/2025-10-27-presentation-layer-domain-hooks.md)
 - [Message types](../../src/shared/types/messages/)
+
+---
+
+## Resolution
+
+**Status**: ✅ Resolved
+**Resolved By**: Sprint 03 - Prop Drilling & Type Safety
+**Date**: 2025-11-22
+**PR**: TBD
+
+### Implementation Summary
+
+All recommendations from this architecture debt document were successfully implemented:
+
+**1. Typed VSCode API Interface** ✅
+
+- Created `src/presentation/webview/types/vscode.ts` with `VSCodeAPI` interface
+- Updated `useVSCodeApi` hook to return typed API
+- Updated all 6 tab components to use `VSCodeAPI` instead of `any`
+- IDE autocomplete now works for `vscode.postMessage`
+
+**2. Typed Message Handlers** ✅
+
+- Updated `useDictionary` to use `StatusMessage` type
+- Updated `useMessageRouter` with proper type documentation
+- All message handlers have explicit types (pragmatic `any` allowed in router for flexibility)
+- IDE autocomplete now works for message payloads
+
+**3. Prop Drilling Reduction** ✅
+
+- Implemented hook object pattern (pass entire hook returns instead of individual props)
+- **Before**: 78 individual props across 4 tab components
+- **After**: 22 hook objects across 4 tab components
+- **Reduction**: 72% reduction in prop count
+- AnalysisTab: 23 props → 6 hook objects
+- SearchTab: 24 props → 5 hook objects
+- MetricsTab: 16 props → 7 (4 hooks + 3 callbacks, later reduced to 4 hooks only)
+- UtilitiesTab: 15 props → 4 hook objects
+
+**4. Additional Improvements**
+
+- Further simplified MetricsTab by removing callback props (cleanup commit)
+- MetricsTab now posts messages directly using vscode API
+- Eliminated `scopeRequester` state tracking in App.tsx
+
+### Bugs Caught by Type Safety
+
+SettingsOverlay string literal bug:
+
+- Type safety caught use of string literal `'open_docs_file'` instead of `MessageType.OPEN_DOCS_FILE` enum
+- Would have been a runtime error if message type enum values changed
+- Demonstrates value of compile-time type checking
+
+### Testing Results
+
+- ✅ All 244 tests passing
+- ✅ Extension build successful
+- ✅ Webview build successful
+- ✅ Zero TypeScript compilation errors
+- ✅ Zero `vscode: any` in components
+- ✅ Zero `message: any` in critical paths
+
+### Documentation
+
+- [Sprint Document](../../.todo/epics/epic-architecture-health-pass-v1.3/sub-epic-1-foundation-cleanup/sprints/03-prop-drilling-type-safety.md)
+- [Memory Bank Entry](../../.memory-bank/20251122-1600-sprint-03-type-safety-complete.md)
+- [Epic: Foundation Cleanup](../../.todo/epics/epic-architecture-health-pass-v1.3/sub-epic-1-foundation-cleanup/epic-foundation-cleanup.md)
+
+### Resolution Impact
+
+**Type Safety**:
+
+- IDE autocomplete for VSCode API and message types
+- Compile-time error detection (prevents runtime bugs)
+- Safer refactoring (TypeScript catches all usages)
+
+**Maintainability**:
+
+- 72% reduction in prop count
+- Simpler component interfaces (6 lines vs 25 lines for AnalysisTab)
+- Easier to add new hook properties (non-breaking changes)
+- Clearer data flow (hook objects show domain boundaries)
+
+**Developer Experience**:
+
+- Better IDE support (autocomplete, navigation)
+- Faster development (less prop wiring)
+- Reduced cognitive load (fewer props to track)
+
+This architecture debt is now fully resolved and can be marked as complete.
