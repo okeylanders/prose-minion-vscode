@@ -46,13 +46,15 @@ Fix the foundational architecture issues that block all other improvements: type
 ### Sprint 02: Shared Types & Imports Hygiene
 **Duration**: 4-6 hours (3 phases)
 **Priority**: MEDIUM
-**Status**: Blocked by Sprint 01
+**Status**: ✅ Complete
 
-**Problem**: base.ts bloated, 46 deep imports, no aliases
+**Problem**: base.ts bloated, 116 deep imports, no aliases
 
 **Solution**: Move types to domain files, add import aliases
 
 **Deliverable**: Clean type organization, `@messages` aliases everywhere
+
+**PR**: [#33](https://github.com/okeylanders/prose-minion-vscode/pull/33)
 
 📁 [sprints/02-shared-types-imports-hygiene.md](sprints/02-shared-types-imports-hygiene.md)
 
@@ -61,7 +63,7 @@ Fix the foundational architecture issues that block all other improvements: type
 ### Sprint 03: Prop Drilling & Type Safety
 **Duration**: 4-6 hours
 **Priority**: HIGH
-**Status**: Blocked by Sprint 02
+**Status**: Ready
 
 **Problem**: Untyped VSCode API, untyped message handlers, 30-52 props per tab
 
