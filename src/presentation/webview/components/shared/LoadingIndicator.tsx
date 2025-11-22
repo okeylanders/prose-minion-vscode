@@ -89,11 +89,11 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
         <div className="spinner"></div>
         <div className="loading-text">
           <div>{statusMessage || defaultMessage}</div>
-          {tickerMessage && (
-            <div className="guide-ticker-container">
-              <div className="guide-ticker">{tickerMessage}</div>
+          <div className="guide-ticker-container">
+            <div className={`guide-ticker ${tickerMessage ? '' : 'empty'}`}>
+              {tickerMessage || '\u00A0'}
             </div>
-          )}
+          </div>
         </div>
         {onCancel && (
           <button onClick={onCancel} className="cancel-button" title="Cancel operation">
