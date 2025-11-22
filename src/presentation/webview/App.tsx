@@ -58,7 +58,6 @@ export const App: React.FC = () => {
   // UI-only state
   const [activeTab, setActiveTab] = React.useState<TabId>(TabId.ANALYSIS);
   const [error, setError] = React.useState('');
-  const [scopeRequester, setScopeRequester] = React.useState<'metrics' | 'search' | null>(null);
 
   // Message routing using Strategy pattern
   useMessageRouter({
@@ -95,18 +94,9 @@ export const App: React.FC = () => {
       context.handleContextResult(msg);
       setError(''); // Clear error on success
     },
-    [MessageType.ACTIVE_FILE]: (msg) => {
-      if (scopeRequester === 'search') search.handleActiveFile(msg); else metrics.handleActiveFile(msg);
-      setScopeRequester(null);
-    },
-    [MessageType.MANUSCRIPT_GLOBS]: (msg) => {
-      if (scopeRequester === 'search') search.handleManuscriptGlobs(msg); else metrics.handleManuscriptGlobs(msg);
-      setScopeRequester(null);
-    },
-    [MessageType.CHAPTER_GLOBS]: (msg) => {
-      if (scopeRequester === 'search') search.handleChapterGlobs(msg); else metrics.handleChapterGlobs(msg);
-      setScopeRequester(null);
-    },
+    [MessageType.ACTIVE_FILE]: metrics.handleActiveFile,
+    [MessageType.MANUSCRIPT_GLOBS]: metrics.handleManuscriptGlobs,
+    [MessageType.CHAPTER_GLOBS]: metrics.handleChapterGlobs,
     [MessageType.STATUS]: (msg) => {
       // Route status messages based on source
       if (msg.source === 'extension.dictionary') {
@@ -336,33 +326,6 @@ export const App: React.FC = () => {
             metrics={metrics}
             publishingSettings={publishingSettings}
             wordFrequencySettings={wordFrequencySettings}
-            onRequestActiveFile={() => {
-              setScopeRequester('metrics');
-              vscode.postMessage({
-                type: MessageType.REQUEST_ACTIVE_FILE,
-                source: 'webview.metrics.tab',
-                payload: {},
-                timestamp: Date.now()
-              });
-            }}
-            onRequestManuscriptGlobs={() => {
-              setScopeRequester('metrics');
-              vscode.postMessage({
-                type: MessageType.REQUEST_MANUSCRIPT_GLOBS,
-                source: 'webview.metrics.tab',
-                payload: {},
-                timestamp: Date.now()
-              });
-            }}
-            onRequestChapterGlobs={() => {
-              setScopeRequester('metrics');
-              vscode.postMessage({
-                type: MessageType.REQUEST_CHAPTER_GLOBS,
-                source: 'webview.metrics.tab',
-                payload: {},
-                timestamp: Date.now()
-              });
-            }}
           />
         )}
 

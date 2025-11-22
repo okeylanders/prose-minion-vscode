@@ -23,19 +23,13 @@ interface MetricsTabProps {
   metrics: UseMetricsReturn;
   publishingSettings: UsePublishingSettingsReturn;
   wordFrequencySettings: UseWordFrequencySettingsReturn;
-  onRequestActiveFile: () => void;
-  onRequestManuscriptGlobs: () => void;
-  onRequestChapterGlobs: () => void;
 }
 
 export const MetricsTab: React.FC<MetricsTabProps> = ({
   vscode,
   metrics,
   publishingSettings,
-  wordFrequencySettings,
-  onRequestActiveFile,
-  onRequestManuscriptGlobs,
-  onRequestChapterGlobs
+  wordFrequencySettings
 }) => {
   // Keep a local mirror only for selection preview if needed in future.
 
@@ -234,7 +228,12 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
             className={`tab-button ${metrics.sourceMode === 'activeFile' ? 'active' : ''}`}
           onClick={() => {
             metrics.setSourceMode('activeFile');
-            onRequestActiveFile();
+            vscode.postMessage({
+              type: MessageType.REQUEST_ACTIVE_FILE,
+              source: 'webview.metrics.tab',
+              payload: {},
+              timestamp: Date.now()
+            });
           }}
             disabled={metrics.loading}
           >
@@ -244,7 +243,12 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
             className={`tab-button ${metrics.sourceMode === 'manuscript' ? 'active' : ''}`}
           onClick={() => {
             metrics.setSourceMode('manuscript');
-            onRequestManuscriptGlobs();
+            vscode.postMessage({
+              type: MessageType.REQUEST_MANUSCRIPT_GLOBS,
+              source: 'webview.metrics.tab',
+              payload: {},
+              timestamp: Date.now()
+            });
           }}
             disabled={metrics.loading}
           >
@@ -254,7 +258,12 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
             className={`tab-button ${metrics.sourceMode === 'chapters' ? 'active' : ''}`}
           onClick={() => {
             metrics.setSourceMode('chapters');
-            onRequestChapterGlobs();
+            vscode.postMessage({
+              type: MessageType.REQUEST_CHAPTER_GLOBS,
+              source: 'webview.metrics.tab',
+              payload: {},
+              timestamp: Date.now()
+            });
           }}
             disabled={metrics.loading}
           >
