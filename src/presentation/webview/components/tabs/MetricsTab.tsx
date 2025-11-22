@@ -6,8 +6,7 @@
 import * as React from 'react';
 import { MessageType } from '@shared/types';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
-import { LoadingWidget } from '../shared/LoadingWidget';
-import { ScopeBox } from '../shared';
+import { LoadingIndicator, ScopeBox } from '../shared';
 import {
   formatProseStatsAsMarkdown,
   formatStyleFlagsAsMarkdown,
@@ -312,15 +311,10 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
       </div>
 
       {metrics.loading && (
-        <div className="loading-indicator">
-          <div className="loading-header">
-            <div className="spinner"></div>
-            <div className="loading-text">
-              <div>{'Calculating metrics...'}</div>
-            </div>
-          </div>
-          <LoadingWidget />
-        </div>
+        <LoadingIndicator
+          isLoading={metrics.loading}
+          defaultMessage="Calculating metrics..."
+        />
       )}
 
       {markdownContent && (

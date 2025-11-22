@@ -6,7 +6,7 @@
 import * as React from 'react';
 import { SelectionTarget, MessageType } from '@shared/types';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
-import { LoadingWidget } from '../shared/LoadingWidget';
+import { LoadingIndicator } from '../shared/LoadingIndicator';
 import { formatAnalysisAsMarkdown } from '../../utils/formatters';
 import { VSCodeAPI } from '../../types/vscode';
 import { UseAnalysisReturn } from '../../hooks/domain/useAnalysis';
@@ -409,21 +409,12 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
       </div>
 
       {analysis.loading && (
-        <div className="loading-indicator">
-          <div className="loading-header">
-            <div className="spinner"></div>
-            <div className="loading-text">
-              <div>{analysis.statusMessage || 'Analyzing...'}</div>
-              {analysis.guideNames && (
-                <div className="guide-ticker-container">
-                  <div className="guide-ticker">{analysis.guideNames}</div>
-                </div>
-              )}
-            </div>
-          </div>
-          {/* Shared loading widget with randomized animation */}
-          <LoadingWidget />
-        </div>
+        <LoadingIndicator
+          isLoading={analysis.loading}
+          statusMessage={analysis.statusMessage}
+          defaultMessage="Analyzing..."
+          guideNames={analysis.guideNames}
+        />
       )}
 
       {analysis.result && (
