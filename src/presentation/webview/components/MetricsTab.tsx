@@ -7,7 +7,7 @@ import * as React from 'react';
 import { MessageType, TextSourceMode } from '../../../shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
-import { formatMetricsAsMarkdown } from '../utils/resultFormatter';
+import { formatMetricsAsMarkdown } from '../utils/formatters';
 import { WordLengthFilterTabs } from './WordLengthFilterTabs';
 import { WordFrequencySettings } from '../hooks/domain/useWordFrequencySettings';
 // MessageType is already imported from shared/types re-export
@@ -136,7 +136,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   const buildExportContent = React.useCallback(() => {
     let content = markdownContent;
 
-    // Note: Legend is already appended by formatMetricsAsMarkdown() in resultFormatter.ts
+    // Note: Legend is already appended by formatMetricsAsMarkdown() in formatters/
     // (includes comprehensive Metrics Guide with Vocabulary Diversity and Lexical Density explainers)
 
     // Append Chapter Details section (per-chapter pivoted tables) if available

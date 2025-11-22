@@ -8,7 +8,7 @@ import { MessageType, TextSourceMode, ModelScope, ModelOption } from '../../../s
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
 import { ModelSelector } from './ModelSelector';
-import { formatMetricsAsMarkdown, formatCategorySearchAsMarkdown } from '../utils/resultFormatter';
+import { formatMetricsAsMarkdown, formatCategorySearchAsMarkdown } from '../utils/formatters';
 import { CategorySearchState } from '../hooks/domain/useSearch';
 import { CategoryRelevance, CategoryWordLimit, CATEGORY_RELEVANCE_OPTIONS } from '../../../shared/types';
 
