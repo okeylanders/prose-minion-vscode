@@ -5,18 +5,18 @@
 
 import * as React from 'react';
 import { MessageType } from '@shared/types';
-import { MarkdownRenderer } from './MarkdownRenderer';
-import { LoadingWidget } from './LoadingWidget';
+import { MarkdownRenderer } from '../shared/MarkdownRenderer';
+import { LoadingWidget } from '../shared/LoadingWidget';
 import {
   formatProseStatsAsMarkdown,
   formatStyleFlagsAsMarkdown,
   formatWordFrequencyAsMarkdown
-} from '../utils/formatters';
-import { WordLengthFilterTabs } from './WordLengthFilterTabs';
-import { VSCodeAPI } from '../types/vscode';
-import { UseMetricsReturn } from '../hooks/domain/useMetrics';
-import { UsePublishingSettingsReturn } from '../hooks/domain/usePublishingSettings';
-import { UseWordFrequencySettingsReturn } from '../hooks/domain/useWordFrequencySettings';
+} from '../../utils/formatters';
+import { WordLengthFilterTabs } from '../shared/WordLengthFilterTabs';
+import { VSCodeAPI } from '../../types/vscode';
+import { UseMetricsReturn } from '../../hooks/domain/useMetrics';
+import { UsePublishingSettingsReturn } from '../../hooks/domain/usePublishingSettings';
+import { UseWordFrequencySettingsReturn } from '../../hooks/domain/useWordFrequencySettings';
 
 interface MetricsTabProps {
   vscode: VSCodeAPI;

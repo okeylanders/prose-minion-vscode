@@ -4,7 +4,7 @@
  */
 
 import * as React from 'react';
-import { VSCodeAPI } from '../types/vscode';
+import { VSCodeAPI } from '../../types/vscode';
 
 interface SuggestionsTabProps {
   selectedText: string;

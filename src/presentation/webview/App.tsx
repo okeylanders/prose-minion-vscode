@@ -4,13 +4,13 @@
  */
 
 import * as React from 'react';
-import { TabBar } from './components/TabBar';
-import { AnalysisTab } from './components/AnalysisTab';
-import { MetricsTab } from './components/MetricsTab';
-import { SuggestionsTab } from './components/SuggestionsTab';
-import { UtilitiesTab } from './components/UtilitiesTab';
-import { SearchTab } from './components/SearchTab';
-import { ModelSelector } from './components/ModelSelector';
+import { TabBar } from './components/shared/TabBar';
+import { AnalysisTab } from './components/tabs/AnalysisTab';
+import { MetricsTab } from './components/tabs/MetricsTab';
+import { SuggestionsTab } from './components/tabs/SuggestionsTab';
+import { UtilitiesTab } from './components/tabs/UtilitiesTab';
+import { SearchTab } from './components/tabs/SearchTab';
+import { ModelSelector } from './components/shared/ModelSelector';
 import { SettingsOverlay } from './components/SettingsOverlay';
 import { TabId, MessageType, ModelScope } from '@shared/types';
 

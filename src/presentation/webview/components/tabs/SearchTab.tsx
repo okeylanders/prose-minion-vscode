@@ -5,16 +5,16 @@
 
 import * as React from 'react';
 import { MessageType, TextSourceMode, ModelScope } from '@shared/types';
-import { MarkdownRenderer } from './MarkdownRenderer';
-import { LoadingWidget } from './LoadingWidget';
-import { ModelSelector } from './ModelSelector';
-import { formatSearchResultAsMarkdown, formatCategorySearchAsMarkdown } from '../utils/formatters';
+import { MarkdownRenderer } from '../shared/MarkdownRenderer';
+import { LoadingWidget } from '../shared/LoadingWidget';
+import { ModelSelector } from '../shared/ModelSelector';
+import { formatSearchResultAsMarkdown, formatCategorySearchAsMarkdown } from '../../utils/formatters';
 import { CategoryRelevance, CategoryWordLimit, CATEGORY_RELEVANCE_OPTIONS } from '@shared/types';
-import { VSCodeAPI } from '../types/vscode';
-import { UseSearchReturn } from '../hooks/domain/useSearch';
-import { UseMetricsReturn } from '../hooks/domain/useMetrics';
-import { UseWordSearchSettingsReturn } from '../hooks/domain/useWordSearchSettings';
-import { UseModelsSettingsReturn } from '../hooks/domain/useModelsSettings';
+import { VSCodeAPI } from '../../types/vscode';
+import { UseSearchReturn } from '../../hooks/domain/useSearch';
+import { UseMetricsReturn } from '../../hooks/domain/useMetrics';
+import { UseWordSearchSettingsReturn } from '../../hooks/domain/useWordSearchSettings';
+import { UseModelsSettingsReturn } from '../../hooks/domain/useModelsSettings';
 
 type SearchSubtool = 'word' | 'category';
 

@@ -5,13 +5,13 @@
 
 import * as React from 'react';
 import { MessageType } from '@shared/types';
-import { MarkdownRenderer } from './MarkdownRenderer';
-import { LoadingWidget } from './LoadingWidget';
-import { formatAnalysisAsMarkdown } from '../utils/formatters';
-import { VSCodeAPI } from '../types/vscode';
-import { UseDictionaryReturn } from '../hooks/domain/useDictionary';
-import { UseSelectionReturn } from '../hooks/domain/useSelection';
-import { UseSettingsReturn } from '../hooks/domain/useSettings';
+import { MarkdownRenderer } from '../shared/MarkdownRenderer';
+import { LoadingWidget } from '../shared/LoadingWidget';
+import { formatAnalysisAsMarkdown } from '../../utils/formatters';
+import { VSCodeAPI } from '../../types/vscode';
+import { UseDictionaryReturn } from '../../hooks/domain/useDictionary';
+import { UseSelectionReturn } from '../../hooks/domain/useSelection';
+import { UseSettingsReturn } from '../../hooks/domain/useSettings';
 
 interface UtilitiesTabProps {
   vscode: VSCodeAPI;

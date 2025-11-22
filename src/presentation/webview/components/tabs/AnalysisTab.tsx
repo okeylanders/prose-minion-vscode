@@ -5,15 +5,15 @@
 
 import * as React from 'react';
 import { SelectionTarget, MessageType } from '@shared/types';
-import { MarkdownRenderer } from './MarkdownRenderer';
-import { LoadingWidget } from './LoadingWidget';
-import { formatAnalysisAsMarkdown } from '../utils/formatters';
-import { VSCodeAPI } from '../types/vscode';
-import { UseAnalysisReturn } from '../hooks/domain/useAnalysis';
-import { UseContextReturn } from '../hooks/domain/useContext';
-import { UseSelectionReturn } from '../hooks/domain/useSelection';
-import { UseModelsSettingsReturn } from '../hooks/domain/useModelsSettings';
-import { UseSettingsReturn } from '../hooks/domain/useSettings';
+import { MarkdownRenderer } from '../shared/MarkdownRenderer';
+import { LoadingWidget } from '../shared/LoadingWidget';
+import { formatAnalysisAsMarkdown } from '../../utils/formatters';
+import { VSCodeAPI } from '../../types/vscode';
+import { UseAnalysisReturn } from '../../hooks/domain/useAnalysis';
+import { UseContextReturn } from '../../hooks/domain/useContext';
+import { UseSelectionReturn } from '../../hooks/domain/useSelection';
+import { UseModelsSettingsReturn } from '../../hooks/domain/useModelsSettings';
+import { UseSettingsReturn } from '../../hooks/domain/useSettings';
 
 interface AnalysisTabProps {
   vscode: VSCodeAPI;
