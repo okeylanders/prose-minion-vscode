@@ -24,6 +24,7 @@ import {
   CategorySearchOptions,
   WordSearchResult
 } from '@messages/search';
+import { StatusEmitter } from '@messages/status';
 
 const MAX_WORDS_PER_BATCH = 400;
 
@@ -36,7 +37,7 @@ export class CategorySearchService {
     private readonly wordSearchService: WordSearchService,
     private readonly extensionUri: vscode.Uri,
     private readonly outputChannel?: vscode.OutputChannel,
-    private readonly statusEmitter?: (message: string, progress?: { current: number; total: number }) => void
+    private readonly statusEmitter?: StatusEmitter
   ) {
     this.wordFrequency = new WordFrequency((msg) => this.outputChannel?.appendLine(msg));
     this.promptLoader = new PromptLoader(extensionUri);

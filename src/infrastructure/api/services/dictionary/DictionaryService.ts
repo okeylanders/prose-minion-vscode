@@ -28,6 +28,7 @@ import {
   FastGenerateDictionaryResultPayload
 } from '@messages/dictionary';
 import { TokenUsage } from '@messages/tokenUsage';
+import { StatusEmitter } from '@messages/status';
 
 /**
  * Service wrapper for AI-powered dictionary lookups
@@ -71,7 +72,7 @@ export type ParallelGenerationProgressCallback = (progress: {
 
 export class DictionaryService {
   private dictionaryUtility?: DictionaryUtility;
-  private statusEmitter?: (message: string, progress?: { current: number; total: number }) => void;
+  private statusEmitter?: StatusEmitter;
 
   // Parallel generation constants
   private readonly CONCURRENCY_LIMIT = 7;
@@ -81,8 +82,10 @@ export class DictionaryService {
     private readonly aiResourceManager: AIResourceManager,
     private readonly resourceLoader: ResourceLoaderService,
     private readonly toolOptions: ToolOptionsProvider,
-    private readonly outputChannel?: vscode.OutputChannel
+    private readonly outputChannel?: vscode.OutputChannel,
+    statusEmitter?: StatusEmitter
   ) {
+    this.statusEmitter = statusEmitter;
     // Dictionary will be initialized when AI resources are available
     void this.initializeDictionary();
   }
@@ -91,7 +94,7 @@ export class DictionaryService {
    * Set status callback for progress updates
    * Called by MessageHandler after construction
    */
-  setStatusEmitter(statusEmitter: (message: string, progress?: { current: number; total: number }) => void): void {
+  setStatusEmitter(statusEmitter: StatusEmitter): void {
     this.statusEmitter = statusEmitter;
   }
 
