@@ -3,7 +3,20 @@
  * Settings, model selection, and token tracking
  */
 
-import { MessageEnvelope, MessageType, ModelScope, ModelOption, TokenUsage } from './base';
+import { MessageEnvelope, MessageType } from './base';
+import { TokenUsage } from './tokenUsage';
+
+// ============================================================================
+// Model Configuration Types
+// ============================================================================
+
+export type ModelScope = 'assistant' | 'dictionary' | 'context' | 'category';
+
+export interface ModelOption {
+  id: string;
+  label: string;
+  description?: string;
+}
 
 // ============================================================================
 // Request Messages (no payload)

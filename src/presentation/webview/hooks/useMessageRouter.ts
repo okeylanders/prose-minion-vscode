@@ -6,7 +6,7 @@
  */
 
 import * as React from 'react';
-import { MessageType, ExtensionToWebviewMessage } from '../../../shared/types';
+import { MessageType, ExtensionToWebviewMessage } from '@shared/types';
 
 /**
  * Message handler function type

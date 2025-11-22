@@ -2,7 +2,7 @@
  * Tests for formatter helper functions
  */
 
-import { formatGap, escapePipes, buildMetricsLegend } from '../../../../../presentation/webview/utils/formatters/helpers';
+import { formatGap, escapePipes, buildMetricsLegend } from '@formatters/helpers';
 
 describe('formatGap', () => {
   it('formats finite numbers correctly', () => {

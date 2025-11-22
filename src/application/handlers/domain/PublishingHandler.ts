@@ -12,8 +12,8 @@ import {
   MessageType,
   ErrorSource,
   ErrorMessage
-} from '../../../shared/types/messages';
-import { PublishingStandardsRepository } from '../../../infrastructure/standards/PublishingStandardsRepository';
+} from '@messages';
+import { PublishingStandardsRepository } from '@/infrastructure/standards/PublishingStandardsRepository';
 
 import { MessageRouter } from '../MessageRouter';
 

@@ -4,15 +4,15 @@
  */
 
 import * as vscode from 'vscode';
-import { OpenRouterClient, OpenRouterMessage } from '../../infrastructure/api/OpenRouterClient';
-import { GuideRegistry } from '../../infrastructure/guides/GuideRegistry';
-import { GuideLoader } from '../../tools/shared/guides';
+import { OpenRouterClient, OpenRouterMessage } from '@/infrastructure/api/OpenRouterClient';
+import { GuideRegistry } from '@/infrastructure/guides/GuideRegistry';
+import { GuideLoader } from '@/tools/shared/guides';
 import { ConversationManager } from './ConversationManager';
 import { ResourceRequestParser } from '../utils/ResourceRequestParser';
 import { ContextResourceRequestParser } from '../utils/ContextResourceRequestParser';
-import { ContextResourceContent, ContextResourceProvider, ContextResourceSummary } from '../../domain/models/ContextGeneration';
-import { TokenUsage } from '../../shared/types';
-import { countWords, trimToWordLimit } from '../../utils/textUtils';
+import { ContextResourceContent, ContextResourceProvider, ContextResourceSummary } from '@/domain/models/ContextGeneration';
+import { TokenUsage } from '@shared/types';
+import { countWords, trimToWordLimit } from '@/utils/textUtils';
 
 export interface AIOptions {
   includeCraftGuides?: boolean;

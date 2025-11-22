@@ -17,8 +17,8 @@
  */
 
 import * as vscode from 'vscode';
-import { ContextAssistant } from '../../../../tools/assist/contextAssistant';
-import { ContextResourceResolver } from '../../../context/ContextResourceResolver';
+import { ContextAssistant } from '@/tools/assist/contextAssistant';
+import { ContextResourceResolver } from '@/infrastructure/context/ContextResourceResolver';
 import { AIResourceManager } from '../resources/AIResourceManager';
 import { ResourceLoaderService } from '../resources/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
@@ -27,8 +27,8 @@ import {
   ContextGenerationResult,
   ContextResourceProvider,
   DEFAULT_CONTEXT_GROUPS
-} from '../../../../domain/models/ContextGeneration';
-import { ContextPathGroup } from '../../../../shared/types';
+} from '@/domain/models/ContextGeneration';
+import { ContextPathGroup } from '@shared/types';
 
 /**
  * Service wrapper for AI-powered context generation

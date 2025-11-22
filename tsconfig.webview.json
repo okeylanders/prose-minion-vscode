@@ -12,11 +12,23 @@
     "resolveJsonModule": true,
     "moduleResolution": "node",
     "jsx": "react",
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@shared/*": ["src/shared/*"],
+      "@messages": ["src/shared/types/messages/index.ts"],
+      "@messages/*": ["src/shared/types/messages/*"],
+      "@components/*": ["src/presentation/webview/components/*"],
+      "@hooks/*": ["src/presentation/webview/hooks/*"],
+      "@utils/*": ["src/presentation/webview/utils/*"],
+      "@formatters": ["src/presentation/webview/utils/formatters"]
+    }
   },
   "include": [
     "src/presentation/webview/**/*",
     "src/shared/**/*",
+    "src/infrastructure/**/*",
     "src/presentation/webview/types/**/*.d.ts"
   ]
 }

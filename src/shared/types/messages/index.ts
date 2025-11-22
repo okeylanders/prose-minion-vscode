@@ -6,6 +6,11 @@
 // Base types
 export * from './base';
 
+// Cross-cutting concerns
+export * from './error';
+export * from './status';
+export * from './tokenUsage';
+
 // Domain-specific messages
 export * from './analysis';
 export * from './dictionary';
@@ -86,9 +91,9 @@ import {
   OpenSettingsToggleMessage,
   WebviewErrorMessage
 } from './ui';
+import { ErrorMessage } from './error';
+import { StatusMessage } from './status';
 import {
-  ErrorMessage,
-  StatusMessage,
   CopyResultMessage,
   SaveResultMessage,
   SaveResultSuccessMessage

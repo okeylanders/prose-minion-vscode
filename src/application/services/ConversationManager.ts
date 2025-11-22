@@ -3,7 +3,7 @@
  * Manages multi-turn conversation state for AI tools
  */
 
-import { OpenRouterMessage } from '../../infrastructure/api/OpenRouterClient';
+import { OpenRouterMessage } from '@/infrastructure/api/OpenRouterClient';
 
 export interface ConversationContext {
   toolName: string;

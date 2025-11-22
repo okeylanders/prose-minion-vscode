@@ -3,8 +3,16 @@
  * Word search functionality
  */
 
-import { MessageEnvelope, MessageType, CategoryRelevance, CategoryWordLimit } from './base';
+import { MessageEnvelope, MessageType } from './base';
 import { TextSourceSpec } from '../sources';
+
+// ============================================================================
+// Category Search Types
+// ============================================================================
+
+export type CategoryRelevance = 'broad' | 'focused' | 'specific' | 'synonym';
+export type CategoryWordLimit = 20 | 50 | 75 | 100 | 250 | 350 | 500;
+export const CATEGORY_RELEVANCE_OPTIONS: readonly CategoryRelevance[] = ['broad', 'focused', 'specific', 'synonym'];
 
 export interface WordSearchOptions {
   wordsOrPhrases: string[];

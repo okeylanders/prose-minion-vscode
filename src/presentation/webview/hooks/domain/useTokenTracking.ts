@@ -1,6 +1,6 @@
 import React from 'react';
-import { MessageType, TokenUsage } from '../../../../shared/types';
-import { TokenUsageUpdateMessage } from '../../../../shared/types/messages';
+import { MessageType, TokenUsage } from '@shared/types';
+import { TokenUsageUpdateMessage } from '@messages';
 import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
 

@@ -7,11 +7,11 @@
  */
 
 import * as vscode from 'vscode';
-import { ProseStatsService } from '../../../infrastructure/api/services/measurement/ProseStatsService';
-import { StyleFlagsService } from '../../../infrastructure/api/services/measurement/StyleFlagsService';
-import { WordFrequencyService } from '../../../infrastructure/api/services/measurement/WordFrequencyService';
-import { StandardsService } from '../../../infrastructure/api/services/resources/StandardsService';
-import { AnalysisResultFactory } from '../../../domain/models/AnalysisResult';
+import { ProseStatsService } from '@services/measurement/ProseStatsService';
+import { StyleFlagsService } from '@services/measurement/StyleFlagsService';
+import { WordFrequencyService } from '@services/measurement/WordFrequencyService';
+import { StandardsService } from '@services/resources/StandardsService';
+import { AnalysisResultFactory } from '@/domain/models/AnalysisResult';
 import {
   MeasureProseStatsMessage,
   MeasureStyleFlagsMessage,
@@ -20,7 +20,7 @@ import {
   ErrorSource,
   MetricsResultMessage,
   ErrorMessage
-} from '../../../shared/types/messages';
+} from '@messages';
 import { MessageRouter } from '../MessageRouter';
 
 export class MetricsHandler {
@@ -142,7 +142,7 @@ export class MetricsHandler {
     }
 
     // Dynamically import to avoid cyclic deps and keep constructor lean
-    const { TextSourceResolver } = await import('../../../infrastructure/text/TextSourceResolver');
+    const { TextSourceResolver } = await import('@/infrastructure/text/TextSourceResolver');
     const resolver = new TextSourceResolver(this.outputChannel);
     const resolved = await resolver.resolve(payload.source);
     const text = (resolved.text ?? '').trim();
@@ -157,7 +157,7 @@ export class MetricsHandler {
       const text = await this.resolveTextForMetrics(payload);
       return { text };
     }
-    const { TextSourceResolver } = await import('../../../infrastructure/text/TextSourceResolver');
+    const { TextSourceResolver } = await import('@/infrastructure/text/TextSourceResolver');
     const resolver = new TextSourceResolver(this.outputChannel);
     const resolved = await resolver.resolve(payload.source);
     const text = (resolved.text ?? '').trim();

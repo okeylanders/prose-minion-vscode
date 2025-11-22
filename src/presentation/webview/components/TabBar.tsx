@@ -4,7 +4,7 @@
  */
 
 import * as React from 'react';
-import { TabId } from '../../../shared/types';
+import { TabId } from '@shared/types';
 
 interface TabBarProps {
   activeTab: TabId;

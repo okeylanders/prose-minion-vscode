@@ -10,16 +10,16 @@
  */
 
 import { renderHook, act } from '@testing-library/react-hooks';
-import { usePublishingSettings } from '../../../../../presentation/webview/hooks/domain/usePublishingSettings';
-import { MessageType } from '../../../../../shared/types';
-import { createMockVSCode } from '../../../../mocks/vscode';
+import { usePublishingSettings } from '@hooks/domain/usePublishingSettings';
+import { MessageType } from '@shared/types';
+import { createMockVSCode } from '@/__tests__/mocks/vscode';
 
 // Mock dependencies
 jest.mock('../../../../../presentation/webview/hooks/useVSCodeApi');
 jest.mock('../../../../../presentation/webview/hooks/usePersistence');
 
-import { useVSCodeApi } from '../../../../../presentation/webview/hooks/useVSCodeApi';
-import { usePersistedState } from '../../../../../presentation/webview/hooks/usePersistence';
+import { useVSCodeApi } from '@hooks/useVSCodeApi';
+import { usePersistedState } from '@hooks/usePersistence';
 
 describe('usePublishingSettings', () => {
   let mockVSCode: ReturnType<typeof createMockVSCode>;

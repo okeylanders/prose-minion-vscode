@@ -3,7 +3,7 @@
  * Handles communication with OpenRouter API for AI-powered analysis
  */
 
-import { TokenUsage } from '../../shared/types';
+import { TokenUsage } from '@shared/types';
 
 export interface OpenRouterMessage {
   role: 'system' | 'user' | 'assistant';

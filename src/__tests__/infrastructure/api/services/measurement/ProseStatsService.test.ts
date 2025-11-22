@@ -8,7 +8,7 @@
  */
 
 import * as vscode from 'vscode';
-import { ProseStatsService } from '../../../../../infrastructure/api/services/measurement/ProseStatsService';
+import { ProseStatsService } from '@services/measurement/ProseStatsService';
 
 // Mock vscode module
 jest.mock('vscode');

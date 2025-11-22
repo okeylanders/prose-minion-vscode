@@ -4,7 +4,7 @@
  */
 
 import * as React from 'react';
-import { SelectionTarget, MessageType } from '../../../shared/types';
+import { SelectionTarget, MessageType } from '@shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
 import { formatAnalysisAsMarkdown } from '../utils/formatters';

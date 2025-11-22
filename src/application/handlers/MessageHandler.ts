@@ -23,7 +23,7 @@ import {
   ExtensionToWebviewMessage,
   TokenUsageUpdateMessage,
   TokenUsageTotals
-} from '../../shared/types/messages';
+} from '@messages';
 
 // Message routing
 import { MessageRouter } from './MessageRouter';
@@ -41,16 +41,16 @@ import { UIHandler } from './domain/UIHandler';
 import { FileOperationsHandler } from './domain/FileOperationsHandler';
 
 // SPRINT 05: Import services for direct injection
-import { AssistantToolService } from '../../infrastructure/api/services/analysis/AssistantToolService';
-import { DictionaryService } from '../../infrastructure/api/services/dictionary/DictionaryService';
-import { ContextAssistantService } from '../../infrastructure/api/services/analysis/ContextAssistantService';
-import { ProseStatsService } from '../../infrastructure/api/services/measurement/ProseStatsService';
-import { StyleFlagsService } from '../../infrastructure/api/services/measurement/StyleFlagsService';
-import { WordFrequencyService } from '../../infrastructure/api/services/measurement/WordFrequencyService';
-import { WordSearchService } from '../../infrastructure/api/services/search/WordSearchService';
-import { CategorySearchService } from '../../infrastructure/api/services/search/CategorySearchService';
-import { StandardsService } from '../../infrastructure/api/services/resources/StandardsService';
-import { AIResourceManager } from '../../infrastructure/api/services/resources/AIResourceManager';
+import { AssistantToolService } from '@services/analysis/AssistantToolService';
+import { DictionaryService } from '@services/dictionary/DictionaryService';
+import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
+import { ProseStatsService } from '@services/measurement/ProseStatsService';
+import { StyleFlagsService } from '@services/measurement/StyleFlagsService';
+import { WordFrequencyService } from '@services/measurement/WordFrequencyService';
+import { WordSearchService } from '@services/search/WordSearchService';
+import { CategorySearchService } from '@services/search/CategorySearchService';
+import { StandardsService } from '@services/resources/StandardsService';
+import { AIResourceManager } from '@services/resources/AIResourceManager';
 
 interface ResultCache {
   analysis?: AnalysisResultMessage;

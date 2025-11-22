@@ -7,8 +7,8 @@
 
 import * as React from 'react';
 import { usePersistedState } from '../usePersistence';
-import { TextSourceMode } from '../../../../shared/types';
-import { MetricsResultMessage, ActiveFileMessage, ManuscriptGlobsMessage, ChapterGlobsMessage } from '../../../../shared/types/messages';
+import { TextSourceMode } from '@shared/types';
+import { MetricsResultMessage, ActiveFileMessage, ManuscriptGlobsMessage, ChapterGlobsMessage } from '@messages';
 
 export type MetricsTool = 'prose_stats' | 'style_flags' | 'word_frequency';
 

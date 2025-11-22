@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { PublishingStandardsRoot, Genre, PageSize } from '../../domain/models/PublishingStandards';
+import { PublishingStandardsRoot, Genre, PageSize } from '@/domain/models/PublishingStandards';
 
 export class PublishingStandardsRepository {
   private cache?: PublishingStandardsRoot;

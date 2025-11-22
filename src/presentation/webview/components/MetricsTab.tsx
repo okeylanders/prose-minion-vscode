@@ -4,7 +4,7 @@
  */
 
 import * as React from 'react';
-import { MessageType, TextSourceMode } from '../../../shared/types';
+import { MessageType, TextSourceMode } from '@shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
 import {

@@ -3,15 +3,15 @@
  * Generates contextual briefings to accompany prose excerpts
  */
 
-import { AIResourceOrchestrator } from '../../application/services/AIResourceOrchestrator';
+import { AIResourceOrchestrator } from '@/application/services/AIResourceOrchestrator';
 import { PromptLoader } from '../shared/prompts';
-import { ContextPathGroup } from '../../shared/types';
+import { ContextPathGroup } from '@shared/types';
 import {
   ContextResourceProvider,
   ContextResourceSummary,
   DEFAULT_CONTEXT_GROUPS
-} from '../../domain/models/ContextGeneration';
-import { TokenUsage } from '../../shared/types';
+} from '@/domain/models/ContextGeneration';
+import { TokenUsage } from '@shared/types';
 
 export interface ContextAssistantInput {
   excerpt: string;

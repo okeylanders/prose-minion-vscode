@@ -6,8 +6,8 @@
  */
 
 import * as vscode from 'vscode';
-import { WordSearchService } from '../../../infrastructure/api/services/search/WordSearchService';
-import { CategorySearchService } from '../../../infrastructure/api/services/search/CategorySearchService';
+import { WordSearchService } from '@services/search/WordSearchService';
+import { CategorySearchService } from '@services/search/CategorySearchService';
 import {
   RunWordSearchMessage,
   CategorySearchRequestMessage,
@@ -19,7 +19,7 @@ import {
   ErrorMessage,
   TokenUsage,
   StatusMessage
-} from '../../../shared/types/messages';
+} from '@messages';
 import { MessageRouter } from '../MessageRouter';
 
 export class SearchHandler {
@@ -163,7 +163,7 @@ export class SearchHandler {
       }
       return { text: t };
     }
-    const { TextSourceResolver } = await import('../../../infrastructure/text/TextSourceResolver');
+    const { TextSourceResolver } = await import('@/infrastructure/text/TextSourceResolver');
     const resolver = new TextSourceResolver(this.outputChannel);
     const resolved = await resolver.resolve(payload.source);
     const text = (resolved.text ?? '').trim();

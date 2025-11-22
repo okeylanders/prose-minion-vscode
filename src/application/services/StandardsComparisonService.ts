@@ -1,4 +1,4 @@
-import { Genre, RangeInteger, RangeNumber, WordsPerPage } from '../../domain/models/PublishingStandards';
+import { Genre, RangeInteger, RangeNumber, WordsPerPage } from '@/domain/models/PublishingStandards';
 
 export type ComparisonStatus = 'below' | 'within' | 'above' | 'n/a';
 

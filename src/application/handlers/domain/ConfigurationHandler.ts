@@ -6,10 +6,10 @@
  */
 
 import * as vscode from 'vscode';
-import { AIResourceManager } from '../../../infrastructure/api/services/resources/AIResourceManager';
-import { AssistantToolService } from '../../../infrastructure/api/services/analysis/AssistantToolService';
-import { DictionaryService } from '../../../infrastructure/api/services/dictionary/DictionaryService';
-import { ContextAssistantService } from '../../../infrastructure/api/services/analysis/ContextAssistantService';
+import { AIResourceManager } from '@services/resources/AIResourceManager';
+import { AssistantToolService } from '@services/analysis/AssistantToolService';
+import { DictionaryService } from '@services/dictionary/DictionaryService';
+import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 import {
   RequestSettingsDataMessage,
   SettingsDataMessage,
@@ -27,10 +27,10 @@ import {
   MessageType,
   ErrorSource,
   ErrorMessage
-} from '../../../shared/types/messages';
+} from '@messages';
 import { MessageRouter } from '../MessageRouter';
-import { OpenRouterModels } from '../../../infrastructure/api/OpenRouterModels';
-import { SecretStorageService } from '../../../infrastructure/secrets/SecretStorageService';
+import { OpenRouterModels } from '@/infrastructure/api/OpenRouterModels';
+import { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
 
 export class ConfigurationHandler {
   // Track webview-originated config updates to prevent echo-back

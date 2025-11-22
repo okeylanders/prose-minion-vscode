@@ -4,13 +4,13 @@
  */
 
 import * as React from 'react';
-import { MessageType, TextSourceMode, ModelScope, ModelOption } from '../../../shared/types';
+import { MessageType, TextSourceMode, ModelScope, ModelOption } from '@shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
 import { ModelSelector } from './ModelSelector';
 import { formatSearchResultAsMarkdown, formatCategorySearchAsMarkdown } from '../utils/formatters';
 import { CategorySearchState } from '../hooks/domain/useSearch';
-import { CategoryRelevance, CategoryWordLimit, CATEGORY_RELEVANCE_OPTIONS } from '../../../shared/types';
+import { CategoryRelevance, CategoryWordLimit, CATEGORY_RELEVANCE_OPTIONS } from '@shared/types';
 
 type SearchSubtool = 'word' | 'category';
 

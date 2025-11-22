@@ -9,17 +9,17 @@
 
 import * as vscode from 'vscode';
 import { MessageHandler } from '../handlers/MessageHandler';
-import { MessageType, SelectionUpdatedMessage, OpenSettingsToggleMessage } from '../../shared/types';
-import { SecretStorageService } from '../../infrastructure/secrets/SecretStorageService';
-import { AssistantToolService } from '../../infrastructure/api/services/analysis/AssistantToolService';
-import { DictionaryService } from '../../infrastructure/api/services/dictionary/DictionaryService';
-import { ContextAssistantService } from '../../infrastructure/api/services/analysis/ContextAssistantService';
-import { ProseStatsService } from '../../infrastructure/api/services/measurement/ProseStatsService';
-import { StyleFlagsService } from '../../infrastructure/api/services/measurement/StyleFlagsService';
-import { WordFrequencyService } from '../../infrastructure/api/services/measurement/WordFrequencyService';
-import { WordSearchService } from '../../infrastructure/api/services/search/WordSearchService';
-import { StandardsService } from '../../infrastructure/api/services/resources/StandardsService';
-import { AIResourceManager } from '../../infrastructure/api/services/resources/AIResourceManager';
+import { MessageType, SelectionUpdatedMessage, OpenSettingsToggleMessage } from '@shared/types';
+import { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
+import { AssistantToolService } from '@services/analysis/AssistantToolService';
+import { DictionaryService } from '@services/dictionary/DictionaryService';
+import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
+import { ProseStatsService } from '@services/measurement/ProseStatsService';
+import { StyleFlagsService } from '@services/measurement/StyleFlagsService';
+import { WordFrequencyService } from '@services/measurement/WordFrequencyService';
+import { WordSearchService } from '@services/search/WordSearchService';
+import { StandardsService } from '@services/resources/StandardsService';
+import { AIResourceManager } from '@services/resources/AIResourceManager';
 
 export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'prose-minion.toolsView';

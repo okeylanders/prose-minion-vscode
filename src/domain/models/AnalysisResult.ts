@@ -36,4 +36,4 @@ export class AnalysisResultFactory {
     };
   }
 }
-import { TokenUsage } from '../../shared/types';
+import { TokenUsage } from '@shared/types';

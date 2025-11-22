@@ -1,5 +1,5 @@
-import { CategorySearchService } from '../../../../../infrastructure/api/services/search/CategorySearchService';
-import { WordSearchService } from '../../../../../infrastructure/api/services/search/WordSearchService';
+import { CategorySearchService } from '@services/search/CategorySearchService';
+import { WordSearchService } from '@services/search/WordSearchService';
 
 jest.mock('../../../../../tools/shared/prompts', () => ({
   PromptLoader: jest.fn().mockImplementation(() => ({

@@ -17,10 +17,16 @@ const extensionConfig = {
   resolve: {
     extensions: ['.ts', '.js'],
     alias: {
+      '@': path.resolve(__dirname, 'src'),
       '@shared': path.resolve(__dirname, 'src/shared'),
+      '@messages': path.resolve(__dirname, 'src/shared/types/messages'),
       '@domain': path.resolve(__dirname, 'src/domain'),
       '@application': path.resolve(__dirname, 'src/application'),
-      '@infrastructure': path.resolve(__dirname, 'src/infrastructure')
+      '@infrastructure': path.resolve(__dirname, 'src/infrastructure'),
+      '@handlers': path.resolve(__dirname, 'src/application/handlers'),
+      '@services': path.resolve(__dirname, 'src/infrastructure/api/services'),
+      '@standards': path.resolve(__dirname, 'src/infrastructure/standards'),
+      '@secrets': path.resolve(__dirname, 'src/infrastructure/secrets')
     }
   },
   module: {
@@ -54,7 +60,13 @@ const webviewConfig = {
   resolve: {
     extensions: ['.tsx', '.ts', '.jsx', '.js'],
     alias: {
-      '@shared': path.resolve(__dirname, 'src/shared')
+      '@': path.resolve(__dirname, 'src'),
+      '@shared': path.resolve(__dirname, 'src/shared'),
+      '@messages': path.resolve(__dirname, 'src/shared/types/messages'),
+      '@components': path.resolve(__dirname, 'src/presentation/webview/components'),
+      '@hooks': path.resolve(__dirname, 'src/presentation/webview/hooks'),
+      '@utils': path.resolve(__dirname, 'src/presentation/webview/utils'),
+      '@formatters': path.resolve(__dirname, 'src/presentation/webview/utils/formatters')
     }
   },
   module: {

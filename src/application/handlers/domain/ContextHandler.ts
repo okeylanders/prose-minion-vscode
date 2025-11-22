@@ -6,8 +6,8 @@
  */
 
 import * as vscode from 'vscode';
-import { ContextAssistantService } from '../../../infrastructure/api/services/analysis/ContextAssistantService';
-import { ContextGenerationResult } from '../../../domain/models/ContextGeneration';
+import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
+import { ContextGenerationResult } from '@/domain/models/ContextGeneration';
 import {
   GenerateContextMessage,
   MessageType,
@@ -16,7 +16,7 @@ import {
   ContextResultMessage,
   StatusMessage,
   ErrorMessage
-} from '../../../shared/types/messages';
+} from '@messages';
 import { MessageRouter } from '../MessageRouter';
 
 export class ContextHandler {

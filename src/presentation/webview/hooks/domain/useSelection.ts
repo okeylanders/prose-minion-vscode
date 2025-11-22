@@ -7,8 +7,8 @@
 import * as React from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
-import { MessageType, SelectionTarget, TabId } from '../../../../shared/types';
-import { SelectionUpdatedMessage, SelectionDataMessage } from '../../../../shared/types/messages';
+import { MessageType, SelectionTarget, TabId } from '@shared/types';
+import { SelectionUpdatedMessage, SelectionDataMessage } from '@messages';
 
 export interface DictionaryInjection {
   word?: string;

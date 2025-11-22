@@ -3,7 +3,8 @@
  * Dictionary lookup and word operations
  */
 
-import { MessageEnvelope, MessageType, TokenUsage } from './base';
+import { MessageEnvelope, MessageType } from './base';
+import { TokenUsage } from './tokenUsage';
 
 export interface LookupDictionaryPayload {
   word: string;

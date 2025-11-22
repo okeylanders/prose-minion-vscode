@@ -17,13 +17,13 @@
 import * as vscode from 'vscode';
 import { WordSearchService } from './WordSearchService';
 import { AIResourceManager } from '../resources/AIResourceManager';
-import { WordFrequency } from '../../../../tools/measure/wordFrequency';
-import { PromptLoader } from '../../../../tools/shared/prompts';
+import { WordFrequency } from '@/tools/measure/wordFrequency';
+import { PromptLoader } from '@/tools/shared/prompts';
 import {
   CategorySearchResult,
   CategorySearchOptions,
   WordSearchResult
-} from '../../../../shared/types/messages/search';
+} from '@messages/search';
 
 const MAX_WORDS_PER_BATCH = 400;
 

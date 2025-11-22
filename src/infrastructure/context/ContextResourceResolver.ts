@@ -5,12 +5,12 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { ContextPathGroup } from '../../shared/types';
+import { ContextPathGroup } from '@shared/types';
 import {
   ContextResourceContent,
   ContextResourceProvider,
   ContextResourceSummary
-} from '../../domain/models/ContextGeneration';
+} from '@/domain/models/ContextGeneration';
 
 interface InternalContextResource {
   group: ContextPathGroup;

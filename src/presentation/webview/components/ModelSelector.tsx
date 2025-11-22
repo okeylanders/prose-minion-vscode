@@ -4,7 +4,7 @@
  */
 
 import * as React from 'react';
-import { ModelScope, ModelOption } from '../../../shared/types';
+import { ModelScope, ModelOption } from '@shared/types';
 
 interface ModelSelectorProps {
   scope: ModelScope;

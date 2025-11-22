@@ -1,12 +1,12 @@
 import * as React from 'react';
-import { ModelScope, ModelOption } from '../../../shared/types';
+import { ModelScope, ModelOption } from '@shared/types';
 import { UseModelsSettingsReturn } from '../hooks/domain/useModelsSettings';
 import { UseTokensSettingsReturn } from '../hooks/domain/useTokensSettings';
 import { UseTokenTrackingReturn } from '../hooks/domain/useTokenTracking';
 import { UseContextPathsSettingsReturn } from '../hooks/domain/useContextPathsSettings';
 import { UseWordFrequencySettingsReturn } from '../hooks/domain/useWordFrequencySettings';
 import { UseWordSearchSettingsReturn } from '../hooks/domain/useWordSearchSettings';
-import { RECOMMENDED_MODELS, CATEGORY_MODELS } from '../../../infrastructure/api/OpenRouterModels';
+import { RECOMMENDED_MODELS, CATEGORY_MODELS } from '@/infrastructure/api/OpenRouterModels';
 
 type SettingsOverlayProps = {
   visible: boolean;

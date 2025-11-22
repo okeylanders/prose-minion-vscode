@@ -14,7 +14,7 @@
  */
 
 import * as vscode from 'vscode';
-import { WordFrequency } from '../../../../tools/measure/wordFrequency';
+import { WordFrequency } from '@/tools/measure/wordFrequency';
 import { ToolOptionsProvider, WordFrequencyOptions } from '../shared/ToolOptionsProvider';
 
 /**

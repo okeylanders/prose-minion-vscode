@@ -6,7 +6,19 @@ module.exports = {
   testMatch: ['**/*.test.ts', '**/*.spec.ts'],
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
   moduleNameMapper: {
-    // Support path aliases in tests
+    // Support path aliases in tests (order matters - most specific first)
+    '^@messages$': '<rootDir>/src/shared/types/messages/index.ts',
+    '^@messages/(.*)$': '<rootDir>/src/shared/types/messages/$1',
+    '^@formatters$': '<rootDir>/src/presentation/webview/utils/formatters',
+    '^@formatters/(.*)$': '<rootDir>/src/presentation/webview/utils/formatters/$1',
+    '^@standards$': '<rootDir>/src/infrastructure/standards',
+    '^@secrets$': '<rootDir>/src/infrastructure/secrets',
+    '^@shared/(.*)$': '<rootDir>/src/shared/$1',
+    '^@handlers/(.*)$': '<rootDir>/src/application/handlers/$1',
+    '^@services/(.*)$': '<rootDir>/src/infrastructure/api/services/$1',
+    '^@components/(.*)$': '<rootDir>/src/presentation/webview/components/$1',
+    '^@hooks/(.*)$': '<rootDir>/src/presentation/webview/hooks/$1',
+    '^@utils/(.*)$': '<rootDir>/src/presentation/webview/utils/$1',
     '^@/(.*)$': '<rootDir>/src/$1'
   },
   collectCoverageFrom: [

@@ -16,13 +16,13 @@
  */
 
 import * as vscode from 'vscode';
-import { OpenRouterClient } from '../../OpenRouterClient';
-import { AIResourceOrchestrator, StatusCallback } from '../../../../application/services/AIResourceOrchestrator';
-import { ConversationManager } from '../../../../application/services/ConversationManager';
-import { GuideRegistry } from '../../../guides/GuideRegistry';
-import { GuideLoader } from '../../../../tools/shared/guides';
-import { ModelScope } from '../../../../shared/types';
-import { SecretStorageService } from '../../../secrets/SecretStorageService';
+import { OpenRouterClient } from '@/infrastructure/api/OpenRouterClient';
+import { AIResourceOrchestrator, StatusCallback } from '@/application/services/AIResourceOrchestrator';
+import { ConversationManager } from '@/application/services/ConversationManager';
+import { GuideRegistry } from '@/infrastructure/guides/GuideRegistry';
+import { GuideLoader } from '@/tools/shared/guides';
+import { ModelScope } from '@shared/types';
+import { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
 import { ResourceLoaderService } from './ResourceLoaderService';
 
 /**

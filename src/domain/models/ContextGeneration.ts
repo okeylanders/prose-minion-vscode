@@ -2,7 +2,7 @@
  * Domain models for the context assistant workflow
  */
 
-import { ContextPathGroup } from '../../shared/types';
+import { ContextPathGroup } from '@shared/types';
 
 export interface ContextGenerationRequest {
   readonly excerpt: string;
@@ -45,4 +45,4 @@ export const DEFAULT_CONTEXT_GROUPS: ContextPathGroup[] = [
   'projectBrief',
   'general'
 ];
-import { TokenUsage } from '../../shared/types';
+import { TokenUsage } from '@shared/types';

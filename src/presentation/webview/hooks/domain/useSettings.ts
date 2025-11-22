@@ -8,8 +8,8 @@
 import * as React from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
-import { MessageType, ModelScope, ModelOption } from '../../../../shared/types';
-import { SettingsDataMessage, ApiKeyStatusMessage, ModelDataMessage, TokenUsage } from '../../../../shared/types/messages';
+import { MessageType, ModelScope, ModelOption } from '@shared/types';
+import { SettingsDataMessage, ApiKeyStatusMessage, ModelDataMessage, TokenUsage } from '@messages';
 
 export interface SettingsState {
   showSettings: boolean;
