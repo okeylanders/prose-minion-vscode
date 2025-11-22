@@ -4,79 +4,34 @@
  */
 
 import * as React from 'react';
-import { MessageType, TextSourceMode, ModelScope, ModelOption } from '@shared/types';
+import { MessageType, TextSourceMode, ModelScope } from '@shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
 import { ModelSelector } from './ModelSelector';
 import { formatSearchResultAsMarkdown, formatCategorySearchAsMarkdown } from '../utils/formatters';
-import { CategorySearchState } from '../hooks/domain/useSearch';
 import { CategoryRelevance, CategoryWordLimit, CATEGORY_RELEVANCE_OPTIONS } from '@shared/types';
 import { VSCodeAPI } from '../types/vscode';
+import { UseSearchReturn } from '../hooks/domain/useSearch';
+import { UseMetricsReturn } from '../hooks/domain/useMetrics';
+import { UseWordSearchSettingsReturn } from '../hooks/domain/useWordSearchSettings';
+import { UseModelsSettingsReturn } from '../hooks/domain/useModelsSettings';
 
 type SearchSubtool = 'word' | 'category';
 
 interface SearchTabProps {
   vscode: VSCodeAPI;
-  result: any;
-  isLoading: boolean;
-  onLoadingChange: (loading: boolean) => void;
-  statusMessage?: string;
-  wordSearchTargets: string;
-  onWordSearchTargetsChange: (value: string) => void;
-  sourceMode: TextSourceMode;
-  pathText: string;
-  onSourceModeChange: (mode: TextSourceMode) => void;
-  onPathTextChange: (text: string) => void;
-  onRequestActiveFile: () => void;
-  onRequestManuscriptGlobs: () => void;
-  onRequestChapterGlobs: () => void;
-  wordSearchSettings: {
-    settings: {
-      contextWords: number;
-      clusterWindow: number;
-      minClusterSize: number;
-      caseSensitive: boolean;
-    };
-    updateSetting: (key: 'contextWords' | 'clusterWindow' | 'minClusterSize' | 'caseSensitive', value: any) => void;
-  };
-  // Category search props
-  categorySearch: CategorySearchState;
-  onCategorySearchQueryChange: (query: string) => void;
-  onCategorySearchLoadingChange: (loading: boolean) => void;
-  onClearCategorySearchResult: () => void;
-  onCategorySearchRelevanceChange: (relevance: CategoryRelevance) => void;
-  onCategorySearchWordLimitChange: (limit: CategoryWordLimit) => void;
-  // Category model props
-  categoryModel?: string;
-  categoryModelOptions: ModelOption[];
-  onCategoryModelChange: (scope: ModelScope, modelId: string) => void;
+  search: UseSearchReturn;
+  metrics: UseMetricsReturn;
+  wordSearchSettings: UseWordSearchSettingsReturn;
+  modelsSettings: UseModelsSettingsReturn;
 }
 
 export const SearchTab: React.FC<SearchTabProps> = ({
   vscode,
-  result,
-  isLoading,
-  onLoadingChange,
-  statusMessage,
-  wordSearchTargets,
-  onWordSearchTargetsChange,
-  sourceMode,
-  pathText,
-  onSourceModeChange,
-  onPathTextChange,
-  onRequestActiveFile,
-  onRequestManuscriptGlobs,
-  onRequestChapterGlobs,
+  search,
+  metrics,
   wordSearchSettings,
-  categorySearch,
-  onCategorySearchQueryChange,
-  onCategorySearchLoadingChange,
-  onClearCategorySearchResult,
-  onCategorySearchRelevanceChange,
-  onCategorySearchWordLimitChange,
-  categoryModel,
-  categoryModelOptions,
-  onCategoryModelChange
+  modelsSettings
 }) => {
   const [markdownContent, setMarkdownContent] = React.useState('');
   const [categoryMarkdownContent, setCategoryMarkdownContent] = React.useState('');
@@ -85,35 +40,35 @@ export const SearchTab: React.FC<SearchTabProps> = ({
 
   // Build a TextSourceSpec consistently for search requests
   const buildSourceSpec = React.useCallback(() => {
-    return sourceMode === 'selection'
+    return metrics.sourceMode === 'selection'
       ? { mode: 'selection' as TextSourceMode, pathText: '[selected text]' }
-      : { mode: sourceMode, pathText };
-  }, [sourceMode, pathText]);
+      : { mode: metrics.sourceMode, pathText: metrics.pathText };
+  }, [metrics.sourceMode, metrics.pathText]);
 
   React.useEffect(() => {
-    if (!result) {
+    if (!search.searchResult) {
       setMarkdownContent('');
       return;
     }
     try {
-      setMarkdownContent(formatSearchResultAsMarkdown(result));
+      setMarkdownContent(formatSearchResultAsMarkdown(search.searchResult));
     } catch {
       setMarkdownContent('');
     }
-  }, [result]);
+  }, [search.searchResult]);
 
   // Convert category search result to markdown
   React.useEffect(() => {
-    if (!categorySearch.result) {
+    if (!search.categorySearch.result) {
       setCategoryMarkdownContent('');
       return;
     }
     try {
-      setCategoryMarkdownContent(formatCategorySearchAsMarkdown(categorySearch.result));
+      setCategoryMarkdownContent(formatCategorySearchAsMarkdown(search.categorySearch.result));
     } catch {
       setCategoryMarkdownContent('');
     }
-  }, [categorySearch.result]);
+  }, [search.categorySearch.result]);
 
   const handleCopyResult = () => {
     try {
@@ -208,42 +163,57 @@ export const SearchTab: React.FC<SearchTabProps> = ({
         <label className="block text-sm font-medium mb-2">Scope:</label>
         <div className="tab-bar" style={{ marginBottom: '8px' }}>
           <button
-            className={`tab-button ${sourceMode === 'activeFile' ? 'active' : ''}`}
+            className={`tab-button ${metrics.sourceMode === 'activeFile' ? 'active' : ''}`}
           onClick={() => {
-            onSourceModeChange('activeFile');
-            onRequestActiveFile();
+            metrics.setSourceMode('activeFile');
+            vscode.postMessage({
+              type: MessageType.REQUEST_ACTIVE_FILE,
+              source: 'webview.search.tab',
+              payload: {},
+              timestamp: Date.now()
+            });
           }}
-            disabled={isLoading}
+            disabled={search.loading}
           >
             <span className="tab-label">Active File</span>
           </button>
           <button
-            className={`tab-button ${sourceMode === 'manuscript' ? 'active' : ''}`}
+            className={`tab-button ${metrics.sourceMode === 'manuscript' ? 'active' : ''}`}
           onClick={() => {
-            onSourceModeChange('manuscript');
-            onRequestManuscriptGlobs();
+            metrics.setSourceMode('manuscript');
+            vscode.postMessage({
+              type: MessageType.REQUEST_MANUSCRIPT_GLOBS,
+              source: 'webview.search.tab',
+              payload: {},
+              timestamp: Date.now()
+            });
           }}
-            disabled={isLoading}
+            disabled={search.loading}
           >
             <span className="tab-label">Manuscripts</span>
           </button>
           <button
-            className={`tab-button ${sourceMode === 'chapters' ? 'active' : ''}`}
+            className={`tab-button ${metrics.sourceMode === 'chapters' ? 'active' : ''}`}
           onClick={() => {
-            onSourceModeChange('chapters');
-            onRequestChapterGlobs();
+            metrics.setSourceMode('chapters');
+            vscode.postMessage({
+              type: MessageType.REQUEST_CHAPTER_GLOBS,
+              source: 'webview.search.tab',
+              payload: {},
+              timestamp: Date.now()
+            });
           }}
-            disabled={isLoading}
+            disabled={search.loading}
           >
             <span className="tab-label">Chapters</span>
           </button>
           <button
-            className={`tab-button ${sourceMode === 'selection' ? 'active' : ''}`}
+            className={`tab-button ${metrics.sourceMode === 'selection' ? 'active' : ''}`}
             onClick={() => {
-              onSourceModeChange('selection');
-              onPathTextChange('[selected text]');
+              metrics.setSourceMode('selection');
+              metrics.setPathText('[selected text]');
             }}
-            disabled={isLoading}
+            disabled={search.loading}
           >
             <span className="tab-label">Selection</span>
           </button>
@@ -254,10 +224,10 @@ export const SearchTab: React.FC<SearchTabProps> = ({
           id="pm-search-path-input"
           type="text"
           className="w-full"
-          value={pathText}
-          onChange={(e) => onPathTextChange(e.target.value)}
-          placeholder={sourceMode === 'selection' ? 'Selected text' : 'e.g. prose/**/*.md'}
-          disabled={isLoading}
+          value={metrics.pathText}
+          onChange={(e) => metrics.setPathText(e.target.value)}
+          placeholder={metrics.sourceMode === 'selection' ? 'Selected text' : 'e.g. prose/**/*.md'}
+          disabled={search.loading}
         />
       </div>
 
@@ -279,8 +249,8 @@ export const SearchTab: React.FC<SearchTabProps> = ({
           id="pm-search-targets-textarea"
           className="w-full"
           rows={3}
-          value={wordSearchTargets}
-          onChange={(e) => onWordSearchTargetsChange(e.target.value)}
+          value={search.wordSearchTargets}
+          onChange={(e) => search.setWordSearchTargets(e.target.value)}
           placeholder=""
         />
         {expandInfo && (
@@ -336,11 +306,11 @@ export const SearchTab: React.FC<SearchTabProps> = ({
         </div>
 
         <div className="mt-3 flex justify-center">
-          <button className="btn btn-primary" disabled={isLoading} onClick={() => {
+          <button className="btn btn-primary" disabled={search.loading} onClick={() => {
             // Clear existing search markdown before re-running
             setMarkdownContent('');
-            onLoadingChange(true);
-            const wordsOrPhrases = parseTargets(wordSearchTargets);
+            search.setLoading(true);
+            const wordsOrPhrases = parseTargets(search.wordSearchTargets);
             vscode.postMessage({
               type: MessageType.RUN_WORD_SEARCH,
               source: 'webview.search.tab',
@@ -360,12 +330,12 @@ export const SearchTab: React.FC<SearchTabProps> = ({
         </div>
       </div>
 
-      {isLoading && (
+      {search.loading && (
         <div className="loading-indicator">
           <div className="loading-header">
             <div className="spinner"></div>
             <div className="loading-text">
-              <div>{statusMessage || 'Running search...'}</div>
+              <div>{search.statusMessage || 'Running search...'}</div>
             </div>
           </div>
           <LoadingWidget />
@@ -378,7 +348,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
             <button
               className="icon-button"
               onClick={handleCopyResult}
-              disabled={isLoading}
+              disabled={search.loading}
               title="Copy search results"
               aria-label="Copy search results"
             >
@@ -387,7 +357,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
             <button
               className="icon-button"
               onClick={handleSaveResult}
-              disabled={isLoading}
+              disabled={search.loading}
               title="Save search results"
               aria-label="Save search results"
             >
@@ -411,53 +381,68 @@ export const SearchTab: React.FC<SearchTabProps> = ({
           <label className="block text-sm font-medium mb-2">Scope:</label>
           <div className="tab-bar" role="tablist" aria-label="Category search scope" style={{ marginBottom: '8px' }}>
             <button
-              className={`tab-button ${sourceMode === 'activeFile' ? 'active' : ''}`}
+              className={`tab-button ${metrics.sourceMode === 'activeFile' ? 'active' : ''}`}
               onClick={() => {
-                onSourceModeChange('activeFile');
-                onRequestActiveFile();
+                metrics.setSourceMode('activeFile');
+                vscode.postMessage({
+                  type: MessageType.REQUEST_ACTIVE_FILE,
+                  source: 'webview.search.tab',
+                  payload: {},
+                  timestamp: Date.now()
+                });
               }}
-              disabled={categorySearch.isLoading}
+              disabled={search.categorySearch.isLoading}
               role="tab"
-              aria-selected={sourceMode === 'activeFile'}
+              aria-selected={metrics.sourceMode === 'activeFile'}
               aria-label="Search active file"
             >
               <span className="tab-label">Active File</span>
             </button>
             <button
-              className={`tab-button ${sourceMode === 'manuscript' ? 'active' : ''}`}
+              className={`tab-button ${metrics.sourceMode === 'manuscript' ? 'active' : ''}`}
               onClick={() => {
-                onSourceModeChange('manuscript');
-                onRequestManuscriptGlobs();
+                metrics.setSourceMode('manuscript');
+                vscode.postMessage({
+                  type: MessageType.REQUEST_MANUSCRIPT_GLOBS,
+                  source: 'webview.search.tab',
+                  payload: {},
+                  timestamp: Date.now()
+                });
               }}
-              disabled={categorySearch.isLoading}
+              disabled={search.categorySearch.isLoading}
               role="tab"
-              aria-selected={sourceMode === 'manuscript'}
+              aria-selected={metrics.sourceMode === 'manuscript'}
               aria-label="Search manuscripts"
             >
               <span className="tab-label">Manuscripts</span>
             </button>
             <button
-              className={`tab-button ${sourceMode === 'chapters' ? 'active' : ''}`}
+              className={`tab-button ${metrics.sourceMode === 'chapters' ? 'active' : ''}`}
               onClick={() => {
-                onSourceModeChange('chapters');
-                onRequestChapterGlobs();
+                metrics.setSourceMode('chapters');
+                vscode.postMessage({
+                  type: MessageType.REQUEST_CHAPTER_GLOBS,
+                  source: 'webview.search.tab',
+                  payload: {},
+                  timestamp: Date.now()
+                });
               }}
-              disabled={categorySearch.isLoading}
+              disabled={search.categorySearch.isLoading}
               role="tab"
-              aria-selected={sourceMode === 'chapters'}
+              aria-selected={metrics.sourceMode === 'chapters'}
               aria-label="Search chapters"
             >
               <span className="tab-label">Chapters</span>
             </button>
             <button
-              className={`tab-button ${sourceMode === 'selection' ? 'active' : ''}`}
+              className={`tab-button ${metrics.sourceMode === 'selection' ? 'active' : ''}`}
               onClick={() => {
-                onSourceModeChange('selection');
-                onPathTextChange('[selected text]');
+                metrics.setSourceMode('selection');
+                metrics.setPathText('[selected text]');
               }}
-              disabled={categorySearch.isLoading}
+              disabled={search.categorySearch.isLoading}
               role="tab"
-              aria-selected={sourceMode === 'selection'}
+              aria-selected={metrics.sourceMode === 'selection'}
               aria-label="Search selection"
             >
               <span className="tab-label">Selection</span>
@@ -469,10 +454,10 @@ export const SearchTab: React.FC<SearchTabProps> = ({
             id="pm-category-search-path-input"
             type="text"
             className="w-full"
-            value={pathText}
-            onChange={(e) => onPathTextChange(e.target.value)}
-            placeholder={sourceMode === 'selection' ? 'Selected text' : 'e.g. prose/**/*.md'}
-            disabled={categorySearch.isLoading}
+            value={metrics.pathText}
+            onChange={(e) => metrics.setPathText(e.target.value)}
+            placeholder={metrics.sourceMode === 'selection' ? 'Selected text' : 'e.g. prose/**/*.md'}
+            disabled={search.categorySearch.isLoading}
           />
         </div>
 
@@ -480,9 +465,9 @@ export const SearchTab: React.FC<SearchTabProps> = ({
         <div style={{ margin: '16px 0' }}>
           <ModelSelector
             scope="category"
-            options={categoryModelOptions}
-            value={categoryModel}
-            onChange={onCategoryModelChange}
+            options={modelsSettings.categoryModelOptions}
+            value={modelsSettings.modelSelections.category}
+            onChange={modelsSettings.setModelSelection}
             label="Category Model"
           />
         </div>
@@ -495,10 +480,10 @@ export const SearchTab: React.FC<SearchTabProps> = ({
             id="pm-category-search-query"
             className="w-full"
             rows={2}
-            value={categorySearch.query}
-            onChange={(e) => onCategorySearchQueryChange(e.target.value)}
+            value={search.categorySearch.query}
+            onChange={(e) => search.setCategorySearchQuery(e.target.value)}
             placeholder="e.g., words related to weather"
-            disabled={categorySearch.isLoading}
+            disabled={search.categorySearch.isLoading}
             aria-label="Category query input"
           />
 
@@ -508,9 +493,9 @@ export const SearchTab: React.FC<SearchTabProps> = ({
             {CATEGORY_RELEVANCE_OPTIONS.map((level) => (
               <button
                 key={level}
-                className={`tab-button ${categorySearch.relevance === level ? 'active' : ''}`}
-                onClick={() => onCategorySearchRelevanceChange(level)}
-                disabled={categorySearch.isLoading}
+                className={`tab-button ${search.categorySearch.relevance === level ? 'active' : ''}`}
+                onClick={() => search.setCategorySearchRelevance(level)}
+                disabled={search.categorySearch.isLoading}
               >
                 <span className="tab-label">{level.charAt(0).toUpperCase() + level.slice(1)}</span>
               </button>
@@ -523,9 +508,9 @@ export const SearchTab: React.FC<SearchTabProps> = ({
             {([20, 50, 75, 100, 250, 350, 500] as const).map((limit) => (
               <button
                 key={limit}
-                className={`tab-button ${categorySearch.wordLimit === limit ? 'active' : ''}`}
-                onClick={() => onCategorySearchWordLimitChange(limit)}
-                disabled={categorySearch.isLoading}
+                className={`tab-button ${search.categorySearch.wordLimit === limit ? 'active' : ''}`}
+                onClick={() => search.setCategorySearchWordLimit(limit)}
+                disabled={search.categorySearch.isLoading}
               >
                 <span className="tab-label">{limit}</span>
               </button>
@@ -545,7 +530,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
                   const val = e.target.value.replace(/\D/g, '');
                   wordSearchSettings.updateSetting('contextWords', val ? parseInt(val, 10) : 3);
                 }}
-                disabled={categorySearch.isLoading}
+                disabled={search.categorySearch.isLoading}
               />
             </div>
             <div className="flex-1">
@@ -559,7 +544,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
                   const val = e.target.value.replace(/\D/g, '');
                   wordSearchSettings.updateSetting('clusterWindow', val ? parseInt(val, 10) : 50);
                 }}
-                disabled={categorySearch.isLoading}
+                disabled={search.categorySearch.isLoading}
               />
             </div>
             <div className="flex-1">
@@ -573,7 +558,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
                   const val = e.target.value.replace(/\D/g, '');
                   wordSearchSettings.updateSetting('minClusterSize', val ? parseInt(val, 10) : 2);
                 }}
-                disabled={categorySearch.isLoading}
+                disabled={search.categorySearch.isLoading}
               />
             </div>
           </div>
@@ -581,22 +566,22 @@ export const SearchTab: React.FC<SearchTabProps> = ({
           <div className="mt-3 flex justify-center">
             <button
               className="btn btn-primary"
-              disabled={categorySearch.isLoading || !categorySearch.query.trim()}
+              disabled={search.categorySearch.isLoading || !search.categorySearch.query.trim()}
               onClick={() => {
-                onClearCategorySearchResult();
-                onCategorySearchLoadingChange(true);
+                search.clearCategorySearchResult();
+                search.setCategorySearchLoading(true);
                 vscode.postMessage({
                   type: MessageType.CATEGORY_SEARCH_REQUEST,
                   source: 'webview.search.tab',
                   payload: {
-                    query: categorySearch.query,
+                    query: search.categorySearch.query,
                     source: buildSourceSpec(),
                     options: {
                       contextWords: wordSearchSettings.settings.contextWords,
                       clusterWindow: wordSearchSettings.settings.clusterWindow,
                       minClusterSize: wordSearchSettings.settings.minClusterSize,
-                      relevance: categorySearch.relevance,
-                      wordLimit: categorySearch.wordLimit
+                      relevance: search.categorySearch.relevance,
+                      wordLimit: search.categorySearch.wordLimit
                     }
                   },
                   timestamp: Date.now()
@@ -607,31 +592,31 @@ export const SearchTab: React.FC<SearchTabProps> = ({
           </div>
         </div>
 
-        {categorySearch.isLoading && (
+        {search.categorySearch.isLoading && (
           <div className="loading-indicator">
             <div className="loading-header">
               <div className="spinner"></div>
               <div className="loading-text">
-                <div>{statusMessage || 'Running category search...'}</div>
+                <div>{search.statusMessage || 'Running category search...'}</div>
               </div>
             </div>
             <LoadingWidget />
           </div>
         )}
 
-        {categorySearch.error && (
+        {search.categorySearch.error && (
           <div className="error-message" style={{ marginTop: '8px', color: 'var(--vscode-errorForeground)' }}>
-            {categorySearch.error}
+            {search.categorySearch.error}
           </div>
         )}
 
-        {categoryMarkdownContent && !categorySearch.isLoading && (
+        {categoryMarkdownContent && !search.categorySearch.isLoading && (
           <div className="result-box">
             <div className="result-action-bar">
               <button
                 className="icon-button"
                 onClick={handleCopyCategoryResult}
-                disabled={categorySearch.isLoading}
+                disabled={search.categorySearch.isLoading}
                 title="Copy category search results"
                 aria-label="Copy category search results"
               >
@@ -640,7 +625,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
               <button
                 className="icon-button"
                 onClick={handleSaveCategoryResult}
-                disabled={categorySearch.isLoading}
+                disabled={search.categorySearch.isLoading}
                 title="Save category search results"
                 aria-label="Save category search results"
               >
@@ -651,7 +636,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
           </div>
         )}
 
-        {!categorySearch.result && !categorySearch.isLoading && !categorySearch.error && (
+        {!search.categorySearch.result && !search.categorySearch.isLoading && !search.categorySearch.error && (
           <div className="placeholder-content text-gray-500">No results yet. Enter a category query and click Run Category Search.</div>
         )}
       </>

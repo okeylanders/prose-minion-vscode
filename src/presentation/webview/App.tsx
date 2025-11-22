@@ -317,30 +317,12 @@ export const App: React.FC = () => {
 
         {activeTab === TabId.ANALYSIS && (
           <AnalysisTab
-            selectedText={selection.selectedText}
             vscode={vscode}
-            result={analysis.result}
-            isLoading={analysis.loading}
-            onLoadingChange={analysis.setLoading}
-            statusMessage={analysis.statusMessage}
-            guideNames={analysis.guideNames}
-            usedGuides={analysis.usedGuides}
-            contextText={context.contextText}
-            onContextChange={context.setContextText}
-            onContextRequest={context.requestContext}
-            contextLoading={context.loading}
-            contextStatusMessage={context.statusMessage}
-            contextRequestedResources={context.requestedResources}
-            selectedRelativePath={selection.selectedRelativePath}
-            selectedSourceUri={selection.selectedSourceUri}
-            analysisToolName={analysis.toolName}
-            onRequestSelection={selection.requestSelection}
-            onClearSourceMeta={() => {
-              selection.setSelectedSourceUri('');
-              selection.setSelectedRelativePath('');
-            }}
-            contextModel={modelsSettings.modelSelections.context}
-            onOpenSettings={settings.open}
+            analysis={analysis}
+            context={context}
+            selection={selection}
+            modelsSettings={modelsSettings}
+            settings={settings}
           />
         )}
 
@@ -351,16 +333,9 @@ export const App: React.FC = () => {
         {activeTab === TabId.METRICS && (
           <MetricsTab
             vscode={vscode}
-            metricsByTool={metrics.metricsByTool}
-            isLoading={metrics.loading}
-            onLoadingChange={metrics.setLoading}
-            activeTool={metrics.activeTool}
-            onActiveToolChange={metrics.setActiveTool}
-            sourceMode={metrics.sourceMode}
-            pathText={metrics.pathText}
-            onSourceModeChange={metrics.setSourceMode}
-            onPathTextChange={metrics.setPathText}
-            onClearSubtoolResult={metrics.clearSubtoolResult}
+            metrics={metrics}
+            publishingSettings={publishingSettings}
+            wordFrequencySettings={wordFrequencySettings}
             onRequestActiveFile={() => {
               setScopeRequester('metrics');
               vscode.postMessage({
@@ -388,103 +363,25 @@ export const App: React.FC = () => {
                 timestamp: Date.now()
               });
             }}
-            publishingSettings={{
-              settings: {
-                preset: publishingSettings.publishingPreset,
-                trimKey: publishingSettings.publishingTrimKey,
-              },
-              genres: publishingSettings.publishingGenres,
-              setPreset: publishingSettings.setPublishingPreset,
-              setTrimKey: publishingSettings.setPublishingTrim,
-            }}
-            wordFrequencySettings={wordFrequencySettings}
           />
         )}
 
         {activeTab === TabId.SEARCH && (
           <SearchTab
             vscode={vscode}
-            result={search.searchResult}
-            isLoading={search.loading}
-            onLoadingChange={search.setLoading}
-            wordSearchTargets={search.wordSearchTargets}
-            onWordSearchTargetsChange={search.setWordSearchTargets}
-            sourceMode={search.sourceMode}
-            pathText={search.pathText}
-            onSourceModeChange={search.setSourceMode}
-            onPathTextChange={search.setPathText}
-            onRequestActiveFile={() => {
-              setScopeRequester('search');
-              vscode.postMessage({
-                type: MessageType.REQUEST_ACTIVE_FILE,
-                source: 'webview.search.tab',
-                payload: {},
-                timestamp: Date.now()
-              });
-            }}
-            onRequestManuscriptGlobs={() => {
-              setScopeRequester('search');
-              vscode.postMessage({
-                type: MessageType.REQUEST_MANUSCRIPT_GLOBS,
-                source: 'webview.search.tab',
-                payload: {},
-                timestamp: Date.now()
-              });
-            }}
-            onRequestChapterGlobs={() => {
-              setScopeRequester('search');
-              vscode.postMessage({
-                type: MessageType.REQUEST_CHAPTER_GLOBS,
-                source: 'webview.search.tab',
-                payload: {},
-                timestamp: Date.now()
-              });
-            }}
-            wordSearchSettings={{
-              settings: wordSearchSettings.settings,
-              updateSetting: wordSearchSettings.updateSetting,
-            }}
-          categorySearch={search.categorySearch}
-          onCategorySearchQueryChange={search.setCategorySearchQuery}
-          onCategorySearchLoadingChange={search.setCategorySearchLoading}
-          onClearCategorySearchResult={search.clearCategorySearchResult}
-          onCategorySearchRelevanceChange={search.setCategorySearchRelevance}
-          onCategorySearchWordLimitChange={search.setCategorySearchWordLimit}
-          statusMessage={search.statusMessage}
-          categoryModel={modelsSettings.modelSelections.category}
-          categoryModelOptions={modelsSettings.categoryModelOptions}
-          onCategoryModelChange={modelsSettings.setModelSelection}
-        />
-      )}
+            search={search}
+            metrics={metrics}
+            wordSearchSettings={wordSearchSettings}
+            modelsSettings={modelsSettings}
+          />
+        )}
 
         {activeTab === TabId.UTILITIES && (
           <UtilitiesTab
-            selectedText={selection.selectedText}
             vscode={vscode}
-            result={dictionary.result}
-            isLoading={dictionary.loading}
-            onLoadingChange={dictionary.setLoading}
-            statusMessage={dictionary.statusMessage}
-            toolName={dictionary.toolName}
-            dictionaryInjection={selection.dictionaryInjection}
-            onDictionaryInjectionHandled={selection.handleDictionaryInjectionHandled}
-            onRequestSelection={selection.requestSelection}
-            word={dictionary.word}
-            context={dictionary.context}
-            onWordChange={(val) => {
-              dictionary.setWord(val);
-              dictionary.setWordEdited(true);
-            }}
-            onContextChange={dictionary.setContext}
-            hasWordBeenEdited={dictionary.wordEdited}
-            setHasWordBeenEdited={dictionary.setWordEdited}
-            sourceUri={dictionary.sourceUri}
-            relativePath={dictionary.relativePath}
-            onSourceChange={dictionary.setSource}
-            isFastGenerating={dictionary.isFastGenerating}
-            fastGenerationProgress={dictionary.fastGenerationProgress}
-            lastFastGenerationMetadata={dictionary.lastFastGenerationMetadata}
-            onFastGeneratingChange={dictionary.setFastGenerating}
+            dictionary={dictionary}
+            selection={selection}
+            settings={settings}
           />
         )}
       </main>
