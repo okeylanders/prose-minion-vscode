@@ -5,6 +5,10 @@
 **Priority**: Medium
 **Estimated Effort**: 3-4 hours
 **Updated**: 2025-11-21 (added progress bar requirement)
+**Status**: ✅ RESOLVED (2025-11-22)
+**Resolved By**: Sprint 02 - Loading Indicator Integration
+**PR**: #37
+**Branch**: sprint/component-decomposition-02-loading-indicator
 
 ## Problem
 
@@ -204,3 +208,42 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
 - `src/presentation/webview/components/SearchTab.tsx`
 - `src/presentation/webview/components/MetricsTab.tsx`
 - `src/presentation/webview/App.tsx` (if status routing changes)
+
+---
+
+## Resolution (2025-11-22)
+
+**Resolved by**: [Sprint 02: Loading Indicator Integration](../epics/epic-architecture-health-pass-v1.3/sub-epic-2-component-decomposition/sprints/02-loading-indicator-integration.md)
+
+**Implementation**:
+
+- ✅ Created unified `LoadingIndicator` component (145 lines)
+- ✅ Consolidated LoadingWidget functionality into LoadingIndicator (animated GIF + status + spinner)
+- ✅ **Deleted** LoadingWidget.tsx (75 lines) - no longer needed as separate component
+- ✅ Updated all 4 tabs to use LoadingIndicator
+- ✅ Eliminated ~28 lines of duplicated loading JSX across tabs
+- ✅ Integrated progress bar support (optional prop)
+- ✅ Guide ticker support (AnalysisTab)
+- ✅ Cancel button support (extensible for future)
+
+**Key Change**: LoadingWidget was not just composed - it was **fully integrated** into LoadingIndicator and then deleted. The animated GIF logic, credit display, and token cost tracking all moved into the unified component.
+
+**Code Reduction**:
+
+- AnalysisTab: 17 → 8 lines (9 lines saved)
+- SearchTab: 2 loading sections consolidated (4 lines saved)
+- MetricsTab: 11 → 6 lines (5 lines saved)
+- UtilitiesTab: 40+ → 20 lines (~50% reduction)
+
+**Benefits Achieved**:
+
+- ✅ Single source of truth for all loading UI
+- ✅ Consistent loading experience across all tools
+- ✅ Easy to extend (progress bar, cancel button, error states)
+- ✅ Maintainable (changes in one place)
+
+**References**:
+
+- **PR**: [#37](https://github.com/okeylanders/prose-minion-vscode/pull/37)
+- **Memory Bank**: [20251122-1530-sprint-02-loading-indicator-complete.md](../../.memory-bank/20251122-1530-sprint-02-loading-indicator-complete.md)
+- **Commit**: 0cf8b30
