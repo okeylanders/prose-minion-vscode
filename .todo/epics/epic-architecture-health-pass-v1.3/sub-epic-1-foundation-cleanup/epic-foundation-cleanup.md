@@ -1,7 +1,7 @@
 # Sub-Epic 1: Foundation Cleanup
 
 **Part of**: [Architecture Health Pass (v1.3)](../epic-architecture-health-pass-v1.3.md)
-**Status**: Ready to Start
+**Status**: 🔄 In Progress
 **Duration**: 2-3 days
 **Sprints**: 3
 
@@ -29,13 +29,15 @@ Fix the foundational architecture issues that block all other improvements: type
 ### Sprint 01: Result Formatter Decomposition
 **Duration**: 3-4 hours
 **Priority**: HIGH
-**Status**: Ready
+**Status**: ✅ Complete
 
 **Problem**: 763-line grab bag mixing 6 unrelated domains
 
 **Solution**: Extract into 7 focused formatter files
 
 **Deliverable**: Clean, domain-organized formatters
+
+**PR**: [#32](https://github.com/okeylanders/prose-minion-vscode/pull/32)
 
 📁 [sprints/01-result-formatter-decomposition.md](sprints/01-result-formatter-decomposition.md)
 
@@ -201,11 +203,11 @@ git checkout -b sprint/foundation-cleanup-03-type-safety
 
 | Sprint | Status | Duration | Completion |
 |--------|--------|----------|------------|
-| 01. Result Formatter | 🔵 Ready | 3-4 hrs | - |
-| 02. Types & Imports | ⏸️ Blocked | 4-6 hrs | - |
+| 01. Result Formatter | ✅ Complete | 3-4 hrs | 2025-11-21 |
+| 02. Types & Imports | 🔵 Ready | 4-6 hrs | - |
 | 03. Type Safety | ⏸️ Blocked | 4-6 hrs | - |
 
-**Sub-Epic Progress**: 0/3 sprints (0%)
+**Sub-Epic Progress**: 1/3 sprints (33%)
 
 ---
 
