@@ -8,6 +8,7 @@ import { MessageType, TextSourceMode, ModelScope } from '@shared/types';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { LoadingWidget } from '../shared/LoadingWidget';
 import { ModelSelector } from '../shared/ModelSelector';
+import { ScopeBox } from '../shared';
 import { formatSearchResultAsMarkdown, formatCategorySearchAsMarkdown } from '../../utils/formatters';
 import { CategoryRelevance, CategoryWordLimit, CATEGORY_RELEVANCE_OPTIONS } from '@shared/types';
 import { VSCodeAPI } from '../../types/vscode';
@@ -159,77 +160,41 @@ export const SearchTab: React.FC<SearchTabProps> = ({
       {/* Word Search panel */}
       {activeSubtool === 'word' && (
       <>
-      <div className="input-container">
-        <label className="block text-sm font-medium mb-2">Scope:</label>
-        <div className="tab-bar" style={{ marginBottom: '8px' }}>
-          <button
-            className={`tab-button ${metrics.sourceMode === 'activeFile' ? 'active' : ''}`}
-          onClick={() => {
-            metrics.setSourceMode('activeFile');
-            vscode.postMessage({
-              type: MessageType.REQUEST_ACTIVE_FILE,
-              source: 'webview.search.tab',
-              payload: {},
-              timestamp: Date.now()
-            });
-          }}
-            disabled={search.loading}
-          >
-            <span className="tab-label">Active File</span>
-          </button>
-          <button
-            className={`tab-button ${metrics.sourceMode === 'manuscript' ? 'active' : ''}`}
-          onClick={() => {
-            metrics.setSourceMode('manuscript');
-            vscode.postMessage({
-              type: MessageType.REQUEST_MANUSCRIPT_GLOBS,
-              source: 'webview.search.tab',
-              payload: {},
-              timestamp: Date.now()
-            });
-          }}
-            disabled={search.loading}
-          >
-            <span className="tab-label">Manuscripts</span>
-          </button>
-          <button
-            className={`tab-button ${metrics.sourceMode === 'chapters' ? 'active' : ''}`}
-          onClick={() => {
-            metrics.setSourceMode('chapters');
-            vscode.postMessage({
-              type: MessageType.REQUEST_CHAPTER_GLOBS,
-              source: 'webview.search.tab',
-              payload: {},
-              timestamp: Date.now()
-            });
-          }}
-            disabled={search.loading}
-          >
-            <span className="tab-label">Chapters</span>
-          </button>
-          <button
-            className={`tab-button ${metrics.sourceMode === 'selection' ? 'active' : ''}`}
-            onClick={() => {
-              metrics.setSourceMode('selection');
-              metrics.setPathText('[selected text]');
-            }}
-            disabled={search.loading}
-          >
-            <span className="tab-label">Selection</span>
-          </button>
-        </div>
-
-        <label className="block text-sm font-medium mb-2" htmlFor="pm-search-path-input">Path / Pattern</label>
-        <input
-          id="pm-search-path-input"
-          type="text"
-          className="w-full"
-          value={metrics.pathText}
-          onChange={(e) => metrics.setPathText(e.target.value)}
-          placeholder={metrics.sourceMode === 'selection' ? 'Selected text' : 'e.g. prose/**/*.md'}
-          disabled={search.loading}
-        />
-      </div>
+      <ScopeBox
+        mode={metrics.sourceMode}
+        pathText={metrics.pathText}
+        onModeChange={(mode) => metrics.setSourceMode(mode)}
+        onPathTextChange={(text) => metrics.setPathText(text)}
+        onActiveFileClick={() => {
+          vscode.postMessage({
+            type: MessageType.REQUEST_ACTIVE_FILE,
+            source: 'webview.search.tab',
+            payload: {},
+            timestamp: Date.now()
+          });
+        }}
+        onManuscriptsClick={() => {
+          vscode.postMessage({
+            type: MessageType.REQUEST_MANUSCRIPT_GLOBS,
+            source: 'webview.search.tab',
+            payload: {},
+            timestamp: Date.now()
+          });
+        }}
+        onChaptersClick={() => {
+          vscode.postMessage({
+            type: MessageType.REQUEST_CHAPTER_GLOBS,
+            source: 'webview.search.tab',
+            payload: {},
+            timestamp: Date.now()
+          });
+        }}
+        onSelectionClick={() => {
+          metrics.setPathText('[selected text]');
+        }}
+        disabled={search.loading}
+        pathInputId="pm-search-path-input"
+      />
 
       <div className="input-container">
         <label className="block text-sm font-medium mb-2">Targets</label>
@@ -377,89 +342,42 @@ export const SearchTab: React.FC<SearchTabProps> = ({
       {activeSubtool === 'category' && (
       <>
         {/* Scope + Path/Pattern well */}
-        <div className="input-container">
-          <label className="block text-sm font-medium mb-2">Scope:</label>
-          <div className="tab-bar" role="tablist" aria-label="Category search scope" style={{ marginBottom: '8px' }}>
-            <button
-              className={`tab-button ${metrics.sourceMode === 'activeFile' ? 'active' : ''}`}
-              onClick={() => {
-                metrics.setSourceMode('activeFile');
-                vscode.postMessage({
-                  type: MessageType.REQUEST_ACTIVE_FILE,
-                  source: 'webview.search.tab',
-                  payload: {},
-                  timestamp: Date.now()
-                });
-              }}
-              disabled={search.categorySearch.isLoading}
-              role="tab"
-              aria-selected={metrics.sourceMode === 'activeFile'}
-              aria-label="Search active file"
-            >
-              <span className="tab-label">Active File</span>
-            </button>
-            <button
-              className={`tab-button ${metrics.sourceMode === 'manuscript' ? 'active' : ''}`}
-              onClick={() => {
-                metrics.setSourceMode('manuscript');
-                vscode.postMessage({
-                  type: MessageType.REQUEST_MANUSCRIPT_GLOBS,
-                  source: 'webview.search.tab',
-                  payload: {},
-                  timestamp: Date.now()
-                });
-              }}
-              disabled={search.categorySearch.isLoading}
-              role="tab"
-              aria-selected={metrics.sourceMode === 'manuscript'}
-              aria-label="Search manuscripts"
-            >
-              <span className="tab-label">Manuscripts</span>
-            </button>
-            <button
-              className={`tab-button ${metrics.sourceMode === 'chapters' ? 'active' : ''}`}
-              onClick={() => {
-                metrics.setSourceMode('chapters');
-                vscode.postMessage({
-                  type: MessageType.REQUEST_CHAPTER_GLOBS,
-                  source: 'webview.search.tab',
-                  payload: {},
-                  timestamp: Date.now()
-                });
-              }}
-              disabled={search.categorySearch.isLoading}
-              role="tab"
-              aria-selected={metrics.sourceMode === 'chapters'}
-              aria-label="Search chapters"
-            >
-              <span className="tab-label">Chapters</span>
-            </button>
-            <button
-              className={`tab-button ${metrics.sourceMode === 'selection' ? 'active' : ''}`}
-              onClick={() => {
-                metrics.setSourceMode('selection');
-                metrics.setPathText('[selected text]');
-              }}
-              disabled={search.categorySearch.isLoading}
-              role="tab"
-              aria-selected={metrics.sourceMode === 'selection'}
-              aria-label="Search selection"
-            >
-              <span className="tab-label">Selection</span>
-            </button>
-          </div>
-
-          <label className="block text-sm font-medium mb-2" htmlFor="pm-category-search-path-input">Path / Pattern</label>
-          <input
-            id="pm-category-search-path-input"
-            type="text"
-            className="w-full"
-            value={metrics.pathText}
-            onChange={(e) => metrics.setPathText(e.target.value)}
-            placeholder={metrics.sourceMode === 'selection' ? 'Selected text' : 'e.g. prose/**/*.md'}
-            disabled={search.categorySearch.isLoading}
-          />
-        </div>
+        <ScopeBox
+          mode={metrics.sourceMode}
+          pathText={metrics.pathText}
+          onModeChange={(mode) => metrics.setSourceMode(mode)}
+          onPathTextChange={(text) => metrics.setPathText(text)}
+          onActiveFileClick={() => {
+            vscode.postMessage({
+              type: MessageType.REQUEST_ACTIVE_FILE,
+              source: 'webview.search.tab',
+              payload: {},
+              timestamp: Date.now()
+            });
+          }}
+          onManuscriptsClick={() => {
+            vscode.postMessage({
+              type: MessageType.REQUEST_MANUSCRIPT_GLOBS,
+              source: 'webview.search.tab',
+              payload: {},
+              timestamp: Date.now()
+            });
+          }}
+          onChaptersClick={() => {
+            vscode.postMessage({
+              type: MessageType.REQUEST_CHAPTER_GLOBS,
+              source: 'webview.search.tab',
+              payload: {},
+              timestamp: Date.now()
+            });
+          }}
+          onSelectionClick={() => {
+            metrics.setPathText('[selected text]');
+          }}
+          disabled={search.categorySearch.isLoading}
+          pathInputId="pm-category-search-path-input"
+          scopeAriaLabel="Category search scope"
+        />
 
         {/* Category Model selector - standalone above the query well */}
         <div style={{ margin: '16px 0' }}>
