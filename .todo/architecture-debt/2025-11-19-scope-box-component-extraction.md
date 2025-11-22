@@ -5,6 +5,29 @@
 **Priority**: Medium
 **Estimated Effort**: 2-3 hours
 
+---
+
+## ✅ RESOLVED
+
+**Resolution Date**: 2025-11-22
+**Resolved By**: PR #36 - [Sprint 01: Scope Box Extraction](../epics/epic-architecture-health-pass-v1.3/sub-epic-2-component-decomposition/sprints/01-scope-box-extraction.md)
+**Status**: Complete
+
+### Resolution Summary
+
+Successfully extracted ScopeBox as a shared component:
+
+- Created `src/presentation/webview/components/shared/ScopeBox.tsx` (193 lines)
+- Eliminated 5 duplicate implementations across SearchTab and MetricsTab
+- Reduced SearchTab by 44% (-176 lines)
+- Reduced MetricsTab by 18% (-76 lines)
+- Message posting consolidated inside ScopeBox component
+- Full TypeScript type safety with `ScopeBoxProps` interface
+
+See: [Memory Bank Entry](./.memory-bank/20251122-1434-sprint-01-scope-box-extraction-complete.md)
+
+---
+
 ## Problem
 
 The Scope Box UI (source mode selector + path input) is duplicated across SearchTab and MetricsTab with nearly identical code. This violates DRY and makes maintenance harder.

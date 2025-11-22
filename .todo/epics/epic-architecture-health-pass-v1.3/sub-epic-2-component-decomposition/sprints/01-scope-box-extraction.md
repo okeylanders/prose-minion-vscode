@@ -1,10 +1,12 @@
 # Sprint 01: Scope Box Extraction
 
 **Sub-Epic**: [Component Decomposition](../epic-component-decomposition.md)
-**Status**: ⏳ Pending
+**Status**: ✅ Complete
 **Priority**: HIGH
 **Duration**: 2-3 hours
 **Branch**: `sprint/component-decomposition-01-scope-box-extraction`
+**PR**: [#36](https://github.com/okeylanders/prose-minion-vscode/pull/36)
+**Completed**: 2025-11-22
 
 ---
 
@@ -262,9 +264,38 @@ This extraction enables:
 
 ## Outcomes (Post-Sprint)
 
-**Status**: ⏳ Pending
+**Status**: ✅ Complete
+**Completed**: 2025-11-22
+**PR**: [#36](https://github.com/okeylanders/prose-minion-vscode/pull/36)
 
-_To be completed after sprint execution_
+### Achievements
+
+✅ **ScopeBox Component Created**: 193 lines with clean, typed API
+
+✅ **Code Reduction**:
+
+- SearchTab: 396 → 220 lines (-44% / -176 lines)
+- MetricsTab: 416 → 340 lines (-18% / -76 lines)
+
+✅ **Duplication Eliminated**: 5 duplicate implementations → 1 shared component
+✅ **Message Posting Consolidated**: Component now owns its side effects (improvement discovered during implementation)
+✅ **Type Safety**: Full TypeScript interfaces with `ScopeBoxProps`
+✅ **Accessibility Preserved**: All ARIA attributes maintained
+✅ **All Tests Pass**: TypeScript compilation successful, no broken imports
+
+### Implementation Notes
+
+**Key Commits**:
+
+- `004ef6d`: Extract ScopeBox shared component
+- `cf1795a`: Consolidate message posting inside ScopeBox
+- `55c2de4`: Bump Output Version Number
+
+**Architectural Improvement**: Initially planned to have parent components handle message posting, but discovered during implementation that consolidating message posting inside ScopeBox created a cleaner API. This pattern keeps the component presentation-focused while owning its side effects.
+
+**Architecture Debt Resolved**: [2025-11-19-scope-box-component-extraction.md](../../../architecture-debt/2025-11-19-scope-box-component-extraction.md)
+
+**Memory Bank**: [20251122-1434-sprint-01-scope-box-extraction-complete.md](../../../.memory-bank/20251122-1434-sprint-01-scope-box-extraction-complete.md)
 
 ---
 
