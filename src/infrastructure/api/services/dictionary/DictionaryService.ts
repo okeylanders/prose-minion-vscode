@@ -78,9 +78,6 @@ export class DictionaryService {
   private readonly CONCURRENCY_LIMIT = 7;
   private readonly BLOCK_TIMEOUT = 15000; // 15 seconds per block
 
-  // Track processed blocks for ticker display
-  private processedBlocks: string[] = [];
-
   constructor(
     private readonly aiResourceManager: AIResourceManager,
     private readonly resourceLoader: ResourceLoaderService,
@@ -217,9 +214,6 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     const startTime = Date.now();
     this.outputChannel?.appendLine(`\n[DictionaryService] Starting parallel dictionary generation for "${word}"`);
 
-    // Clear processed blocks for new generation
-    this.processedBlocks = [];
-
     // Get orchestrator
     const orchestrator = this.aiResourceManager.getOrchestrator('dictionary');
     if (!orchestrator) {
@@ -250,23 +244,10 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         if (!result.error) {
           completedBlocks.push(blockName);
 
-          // Track block name for ticker (use actual block name)
-          const blockDisplayName = this.formatBlockName(blockName);
-          this.processedBlocks.push(blockDisplayName);
-
-          // Keep only last 10 blocks to prevent ticker overflow
-          if (this.processedBlocks.length > 10) {
-            this.processedBlocks = this.processedBlocks.slice(-10);
-          }
-
-          // Build ticker message (show last 10 blocks)
-          const ticker = this.processedBlocks.join(', ');
-
-          // Send STATUS message with progress and ticker
+          // Send STATUS message with progress
           this.sendStatus(
             `Block ${completedBlocks.length}/${totalBlocks} complete`,
-            { current: completedBlocks.length, total: totalBlocks },
-            ticker
+            { current: completedBlocks.length, total: totalBlocks }
           );
 
           // Also call legacy callback if provided (for backward compatibility)
@@ -497,22 +478,6 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         costUsd: totalCostUsd
       } : undefined
     };
-  }
-
-  /**
-   * Format block name for ticker display
-   * Converts hyphenated block names to title case
-   *
-   * Examples:
-   * - "definition" -> "Definition"
-   * - "parts-of-speech" -> "Parts-of-Speech"
-   * - "semantic-gradient" -> "Semantic-Gradient"
-   */
-  private formatBlockName(blockName: string): string {
-    return blockName
-      .split('-')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join('-');
   }
 
   /**

@@ -31,7 +31,6 @@ const MAX_WORDS_PER_BATCH = 400;
 export class CategorySearchService {
   private readonly wordFrequency: WordFrequency;
   private readonly promptLoader: PromptLoader;
-  private matchedWords: string[] = [];
 
   constructor(
     private readonly aiResourceManager: AIResourceManager,
@@ -62,9 +61,6 @@ export class CategorySearchService {
     options?: CategorySearchOptions
   ): Promise<CategorySearchResult> {
     try {
-      // Clear matched words from any previous search
-      this.matchedWords = [];
-
       // 1. Extract unique words from text
       const uniqueWords = this.wordFrequency.extractUniqueWords(text, {
         minCharacterLength: 2,
@@ -122,15 +118,6 @@ export class CategorySearchService {
             );
             aiResult.matchedWords.forEach(word => matchedWordsSet.add(word));
 
-            // Accumulate matched words for ticker (keep only last 10)
-            this.matchedWords.push(...aiResult.matchedWords);
-            if (this.matchedWords.length > 10) {
-              this.matchedWords = this.matchedWords.slice(-10);
-            }
-
-            // Build ticker message (show last 10 words)
-            const ticker = this.matchedWords.join(', ');
-
             if (aiResult.tokensUsed) {
               aggregatedPrompt += aiResult.tokensUsed.prompt || 0;
               aggregatedCompletion += aiResult.tokensUsed.completion || 0;
@@ -153,13 +140,9 @@ export class CategorySearchService {
 
             completedBatches++;
 
-            // Log ticker for debugging
-            this.outputChannel?.appendLine(`[CategorySearchService] Ticker: "${ticker}" (${this.matchedWords.length} words)`);
-
             this.sendStatus(
               `${batchLabel}: matched ${aiResult.matchedWords.length} words (${completedBatches} batches completed)`,
-              { current: completedBatches, total: batches.length },
-              ticker
+              { current: completedBatches, total: batches.length }
             );
           } catch (error) {
             const msg = error instanceof Error ? error.message : String(error);
