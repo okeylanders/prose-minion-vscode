@@ -159,8 +159,8 @@ export class MessageHandler {
     private readonly outputChannel: vscode.OutputChannel
   ) {
     // SPRINT 05: Set up status callback on AIResourceManager (not facade)
-    this.aiResourceManager.setStatusCallback((message: string, guideNames?: string) => {
-      this.sendStatus(message, guideNames);
+    this.aiResourceManager.setStatusCallback((message: string, tickerMessage?: string) => {
+      this.sendStatus(message, tickerMessage);
     });
 
     const configWatcher = vscode.workspace.onDidChangeConfiguration(event => {
@@ -237,6 +237,9 @@ export class MessageHandler {
       this.postMessage.bind(this),
       this.applyTokenUsage.bind(this)
     );
+
+    // Set status emitter for dictionary service (for fast generation progress)
+    dictionaryService.setStatusEmitter(this.sendDictionaryStatus.bind(this));
 
     this.contextHandler = new ContextHandler(
       contextAssistantService,
@@ -351,13 +354,13 @@ export class MessageHandler {
 
   // Helper methods for centralized token tracking and status messages
 
-  private sendStatus(message: string, guideNames?: string): void {
+  private sendStatus(message: string, tickerMessage?: string): void {
     const statusMessage: StatusMessage = {
       type: MessageType.STATUS,
       source: 'extension.handler',
       payload: {
         message,
-        guideNames
+        tickerMessage
       },
       timestamp: Date.now()
     };
@@ -409,18 +412,33 @@ export class MessageHandler {
     }
   }
 
-  private sendSearchStatus(message: string): void {
+  private sendSearchStatus(message: string, progress?: { current: number; total: number }): void {
     try {
       const status: StatusMessage = {
         type: MessageType.STATUS,
         source: 'extension.search',
-        payload: { message },
+        payload: { message, progress },
         timestamp: Date.now()
       };
       void this.postMessage(status);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[MessageHandler] Failed to post search status: ${msg}`);
+    }
+  }
+
+  private sendDictionaryStatus(message: string, progress?: { current: number; total: number }, tickerMessage?: string): void {
+    try {
+      const status: StatusMessage = {
+        type: MessageType.STATUS,
+        source: 'extension.dictionary',
+        payload: { message, progress, tickerMessage },
+        timestamp: Date.now()
+      };
+      void this.postMessage(status);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[MessageHandler] Failed to post dictionary status: ${msg}`);
     }
   }
 

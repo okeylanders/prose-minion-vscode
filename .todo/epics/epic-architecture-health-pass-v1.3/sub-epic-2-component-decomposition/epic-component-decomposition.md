@@ -63,7 +63,7 @@ Extract shared components and decompose large tab components to improve maintain
 ### Sprint 02: Loading Indicator Integration
 **Duration**: 2-3 hours
 **Priority**: HIGH
-**Status**: ⏸️ Blocked by Sprint 00 + 01
+**Status**: ✅ Complete (2025-11-22 15:30)
 
 **Problem**: Inconsistent loading states + separate LoadingWidget component
 
@@ -289,15 +289,15 @@ src/presentation/webview/components/
 
 | Sprint | Status | Duration | Completion |
 |--------|--------|----------|------------|
-| 00. Component Organization | ✅ Complete | 45 min | 2025-11-22 ([PR #35](https://github.com/okeylanders/prose-minion-vscode/pull/35)) |
-| 01. Scope Box Extraction | 🟢 Ready | 2-3 hrs | - |
-| 02. Loading Indicator | ⏸️ Blocked | 2-3 hrs | - |
-| 03. Subtab Panels | ⏸️ Blocked | 4-6 hrs | - |
-| 04. Word Counter | ⏸️ Blocked | 1-2 hrs | - |
+| 00. Component Organization | ✅ Complete | 45 min | 2025-11-22 14:33 ([PR #35](https://github.com/okeylanders/prose-minion-vscode/pull/35)) |
+| 01. Scope Box Extraction | ✅ Complete | 2 hrs | 2025-11-22 14:34 ([PR #36](https://github.com/okeylanders/prose-minion-vscode/pull/36)) |
+| 02. Loading Indicator | ✅ Complete | 2 hrs | 2025-11-22 15:30 (Commit: 0cf8b30) |
+| 03. Subtab Panels | 🟢 Ready | 4-6 hrs | - |
+| 04. Word Counter | 🟢 Ready | 1-2 hrs | - |
 
-**Sub-Epic Progress**: 1/5 sprints (20%)
+**Sub-Epic Progress**: 3/5 sprints (60%)
 
-**Note**: Sprint 00 ✅ complete! Sprint 01 is now unblocked and ready to begin.
+**Note**: Sprints 00, 01, 02 ✅ complete! Sprint 03 is now unblocked and ready to begin.
 
 ---
 

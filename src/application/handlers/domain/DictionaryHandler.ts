@@ -15,7 +15,6 @@ import {
   ErrorSource,
   DictionaryResultMessage,
   FastGenerateDictionaryResultMessage,
-  DictionaryGenerationProgressMessage,
   StatusMessage,
   ErrorMessage
 } from '@messages';
@@ -52,13 +51,13 @@ export class DictionaryHandler {
     this.sendStatus('');
   }
 
-  private sendStatus(message: string, guideNames?: string): void {
+  private sendStatus(message: string, tickerMessage?: string): void {
     const statusMessage: StatusMessage = {
       type: MessageType.STATUS,
       source: 'extension.dictionary',
       payload: {
         message,
-        guideNames
+        tickerMessage
       },
       timestamp: Date.now()
     };
@@ -121,20 +120,10 @@ export class DictionaryHandler {
 
       this.sendStatus(`🧪 Fast generating dictionary entry for "${word}"...`);
 
-      // Progress callback to send updates to webview
-      const onProgress = (progress: {
-        word: string;
-        completedBlocks: string[];
-        totalBlocks: number;
-      }): void => {
-        this.sendProgress(progress.word, progress.completedBlocks, progress.totalBlocks);
-      };
-
-      // Generate parallel dictionary
+      // Generate parallel dictionary (progress sent via STATUS messages)
       const result = await this.dictionaryService.generateParallelDictionary(
         word,
-        context,
-        onProgress
+        context
       );
 
       // Send result back to webview
@@ -169,23 +158,6 @@ export class DictionaryHandler {
       type: MessageType.FAST_GENERATE_DICTIONARY_RESULT,
       source: 'extension.dictionary',
       payload: result,
-      timestamp: Date.now()
-    };
-    void this.postMessage(message);
-  }
-
-  /**
-   * Send generation progress update to webview
-   */
-  private sendProgress(word: string, completedBlocks: string[], totalBlocks: number): void {
-    const message: DictionaryGenerationProgressMessage = {
-      type: MessageType.DICTIONARY_GENERATION_PROGRESS,
-      source: 'extension.dictionary',
-      payload: {
-        word,
-        completedBlocks,
-        totalBlocks
-      },
       timestamp: Date.now()
     };
     void this.postMessage(message);

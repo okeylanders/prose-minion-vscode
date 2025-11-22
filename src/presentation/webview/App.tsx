@@ -87,9 +87,6 @@ export const App: React.FC = () => {
       dictionary.handleFastGenerateResult(msg);
       setError(''); // Clear error on success
     },
-    [MessageType.DICTIONARY_GENERATION_PROGRESS]: (msg) => {
-      dictionary.handleProgress(msg);
-    },
     [MessageType.CONTEXT_RESULT]: (msg) => {
       context.handleContextResult(msg);
       setError(''); // Clear error on success

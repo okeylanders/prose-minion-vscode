@@ -24,7 +24,12 @@ export class AnalysisHandler {
     private readonly assistantToolService: AssistantToolService,
     private readonly postMessage: (message: any) => Promise<void>,
     private readonly applyTokenUsageCallback: (usage: TokenUsage) => void
-  ) {}
+  ) {
+    // Inject status emitter for guide loading notifications
+    this.assistantToolService.setStatusEmitter((message, progress, tickerMessage) => {
+      this.sendStatus(message, progress, tickerMessage);
+    });
+  }
 
   /**
    * Register message routes for analysis domain
@@ -51,13 +56,18 @@ export class AnalysisHandler {
     this.sendStatus('');
   }
 
-  private sendStatus(message: string, guideNames?: string): void {
+  private sendStatus(
+    message: string,
+    progress?: { current: number; total: number },
+    tickerMessage?: string
+  ): void {
     const statusMessage: StatusMessage = {
       type: MessageType.STATUS,
       source: 'extension.analysis',
       payload: {
         message,
-        guideNames
+        progress,
+        tickerMessage
       },
       timestamp: Date.now()
     };

@@ -616,6 +616,11 @@ select:focus {
   animation: ticker 15s linear infinite;
 }
 
+.guide-ticker.empty {
+  animation-play-state: paused;
+  opacity: 0;
+}
+
 @keyframes ticker {
   0% {
     transform: translateX(100%);

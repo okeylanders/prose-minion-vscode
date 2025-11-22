@@ -37,7 +37,8 @@ describe('AnalysisHandler', () => {
       analyzeProse: jest.fn().mockResolvedValue({
         result: 'Test prose result',
         tokenUsage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 }
-      })
+      }),
+      setStatusEmitter: jest.fn()
     } as any;
 
     mockPostMessage = jest.fn().mockResolvedValue(undefined);

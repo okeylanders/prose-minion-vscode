@@ -68,11 +68,11 @@ export class SearchHandler {
     void this.postMessage(errorMessage);
   }
 
-  private sendStatus(message: string): void {
+  private sendStatus(message: string, progress?: { current: number; total: number }, tickerMessage?: string): void {
     const status: StatusMessage = {
       type: MessageType.STATUS,
       source: 'extension.search',
-      payload: { message },
+      payload: { message, progress, tickerMessage },
       timestamp: Date.now()
     };
     void this.postMessage(status);

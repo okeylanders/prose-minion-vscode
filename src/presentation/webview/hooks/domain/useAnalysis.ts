@@ -13,7 +13,7 @@ export interface AnalysisState {
   toolName: string | undefined;
   loading: boolean;
   usedGuides: string[];
-  guideNames: string;
+  tickerMessage: string;
   statusMessage: string;
 }
 
@@ -29,7 +29,7 @@ export interface AnalysisPersistence {
   analysisResult: string;
   analysisToolName: string | undefined;
   usedGuides: string[];
-  guideNames: string;
+  tickerMessage: string;
   statusMessage: string;
 }
 
@@ -45,7 +45,7 @@ export type UseAnalysisReturn = AnalysisState & AnalysisActions & { persistedSta
  * // Handle analysis messages
  * useMessageRouter({
  *   [MessageType.ANALYSIS_RESULT]: analysis.handleAnalysisResult,
- *   [MessageType.STATUS_MESSAGE]: (msg) => analysis.handleStatusMessage(msg, contextLoadingRef),
+ *   [MessageType.STATUS]: (msg) => analysis.handleStatusMessage(msg, contextLoadingRef),
  * });
  *
  * // Use in AnalysisTab
@@ -54,7 +54,7 @@ export type UseAnalysisReturn = AnalysisState & AnalysisActions & { persistedSta
  *   isLoading={analysis.loading}
  *   onLoadingChange={analysis.setLoading}
  *   statusMessage={analysis.statusMessage}
- *   guideNames={analysis.guideNames}
+ *   tickerMessage={analysis.tickerMessage}
  *   usedGuides={analysis.usedGuides}
  *   analysisToolName={analysis.toolName}
  * />
@@ -65,7 +65,7 @@ export const useAnalysis = (): UseAnalysisReturn => {
     analysisResult?: string;
     analysisToolName?: string;
     usedGuides?: string[];
-    guideNames?: string;
+    tickerMessage?: string;
     statusMessage?: string;
   }>();
 
@@ -73,7 +73,7 @@ export const useAnalysis = (): UseAnalysisReturn => {
   const [toolName, setToolName] = React.useState<string | undefined>(persisted?.analysisToolName);
   const [loading, setLoading] = React.useState<boolean>(false);
   const [usedGuides, setUsedGuides] = React.useState<string[]>(persisted?.usedGuides ?? []);
-  const [guideNames, setGuideNames] = React.useState<string>(persisted?.guideNames ?? '');
+  const [tickerMessage, setTickerMessage] = React.useState<string>(persisted?.tickerMessage ?? '');
   const [statusMessage, setStatusMessage] = React.useState<string>(persisted?.statusMessage ?? '');
 
   // Clear result when analysis starts
@@ -94,19 +94,19 @@ export const useAnalysis = (): UseAnalysisReturn => {
     setUsedGuides(usedGuides || []);
     setLoading(false);
     setStatusMessage(''); // Clear status message
-    setGuideNames(''); // Clear guide names
+    setTickerMessage(''); // Clear ticker message
   }, []);
 
   const handleStatusMessage = React.useCallback(
     (message: StatusMessage, contextLoadingRef?: React.MutableRefObject<boolean>) => {
-      const { message: statusText, guideNames } = message.payload;
+      const { message: statusText, tickerMessage } = message.payload;
       setStatusMessage(statusText);
-      setGuideNames(guideNames || '');
+      setTickerMessage(tickerMessage || '');
 
       if (contextLoadingRef && contextLoadingRef.current) {
         // Don't log during context loading
       } else {
-        console.log('Status:', statusText, guideNames ? `(${guideNames})` : '');
+        console.log('Status:', statusText, tickerMessage ? `(${tickerMessage})` : '');
       }
     },
     []
@@ -119,7 +119,7 @@ export const useAnalysis = (): UseAnalysisReturn => {
 
   const clearStatus = React.useCallback(() => {
     setStatusMessage('');
-    setGuideNames('');
+    setTickerMessage('');
   }, []);
 
   return {
@@ -128,7 +128,7 @@ export const useAnalysis = (): UseAnalysisReturn => {
     toolName,
     loading,
     usedGuides,
-    guideNames,
+    tickerMessage,
     statusMessage,
 
     // Actions
@@ -143,7 +143,7 @@ export const useAnalysis = (): UseAnalysisReturn => {
       analysisResult: result,
       analysisToolName: toolName,
       usedGuides,
-      guideNames,
+      tickerMessage,
       statusMessage,
     },
   };

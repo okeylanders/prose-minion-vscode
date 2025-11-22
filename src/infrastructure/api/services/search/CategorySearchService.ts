@@ -24,6 +24,7 @@ import {
   CategorySearchOptions,
   WordSearchResult
 } from '@messages/search';
+import { StatusEmitter } from '@messages/status';
 
 const MAX_WORDS_PER_BATCH = 400;
 
@@ -36,7 +37,7 @@ export class CategorySearchService {
     private readonly wordSearchService: WordSearchService,
     private readonly extensionUri: vscode.Uri,
     private readonly outputChannel?: vscode.OutputChannel,
-    private readonly statusEmitter?: (message: string) => void
+    private readonly statusEmitter?: StatusEmitter
   ) {
     this.wordFrequency = new WordFrequency((msg) => this.outputChannel?.appendLine(msg));
     this.promptLoader = new PromptLoader(extensionUri);
@@ -101,6 +102,7 @@ export class CategorySearchService {
       // Run batches with a small concurrency pool (5)
       const concurrency = Math.min(5, batches.length);
       let nextIndex = 0;
+      let completedBatches = 0;
       const runWorker = async () => {
         while (!shouldStop && nextIndex < batches.length) {
           const idx = nextIndex++;
@@ -115,6 +117,7 @@ export class CategorySearchService {
               wordLimit
             );
             aiResult.matchedWords.forEach(word => matchedWordsSet.add(word));
+
             if (aiResult.tokensUsed) {
               aggregatedPrompt += aiResult.tokensUsed.prompt || 0;
               aggregatedCompletion += aiResult.tokensUsed.completion || 0;
@@ -135,13 +138,17 @@ export class CategorySearchService {
               break;
             }
 
+            completedBatches++;
+
             this.sendStatus(
-              `${batchLabel}: matched ${aiResult.matchedWords.length} words (accumulated ${matchedWordsSet.size}/${uniqueWords.length})`
+              `${batchLabel}: matched ${aiResult.matchedWords.length} words (${completedBatches} batches completed)`,
+              { current: completedBatches, total: batches.length }
             );
           } catch (error) {
             const msg = error instanceof Error ? error.message : String(error);
             this.outputChannel?.appendLine(`[CategorySearchService] ${batchLabel} failed: ${msg}`);
-            this.sendStatus(`${batchLabel} failed: ${msg}`);
+            completedBatches++;
+            this.sendStatus(`${batchLabel} failed: ${msg}`, { current: completedBatches, total: batches.length });
             hadBatchFailure = true;
           }
         }
@@ -393,9 +400,9 @@ export class CategorySearchService {
     };
   }
 
-  private sendStatus(message: string): void {
+  private sendStatus(message: string, progress?: { current: number; total: number }, tickerMessage?: string): void {
     if (this.statusEmitter) {
-      this.statusEmitter(message);
+      this.statusEmitter(message, progress, tickerMessage);
     }
   }
 }

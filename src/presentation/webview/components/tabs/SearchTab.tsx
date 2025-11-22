@@ -6,7 +6,7 @@
 import * as React from 'react';
 import { MessageType, TextSourceMode, ModelScope } from '@shared/types';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
-import { LoadingWidget } from '../shared/LoadingWidget';
+import { LoadingIndicator } from '../shared/LoadingIndicator';
 import { ModelSelector } from '../shared/ModelSelector';
 import { ScopeBox } from '../shared';
 import { formatSearchResultAsMarkdown, formatCategorySearchAsMarkdown } from '../../utils/formatters';
@@ -276,15 +276,11 @@ export const SearchTab: React.FC<SearchTabProps> = ({
       </div>
 
       {search.loading && (
-        <div className="loading-indicator">
-          <div className="loading-header">
-            <div className="spinner"></div>
-            <div className="loading-text">
-              <div>{search.statusMessage || 'Running search...'}</div>
-            </div>
-          </div>
-          <LoadingWidget />
-        </div>
+        <LoadingIndicator
+          isLoading={search.loading}
+          statusMessage={search.statusMessage}
+          defaultMessage="Running search..."
+        />
       )}
 
       {markdownContent && (
@@ -471,15 +467,17 @@ export const SearchTab: React.FC<SearchTabProps> = ({
         </div>
 
         {search.categorySearch.isLoading && (
-          <div className="loading-indicator">
-            <div className="loading-header">
-              <div className="spinner"></div>
-              <div className="loading-text">
-                <div>{search.statusMessage || 'Running category search...'}</div>
-              </div>
-            </div>
-            <LoadingWidget />
-          </div>
+          <LoadingIndicator
+            isLoading={search.categorySearch.isLoading}
+            statusMessage={search.statusMessage}
+            defaultMessage="Running category search..."
+            tickerMessage={search.categorySearch.tickerMessage}
+            progress={search.categorySearch.progress ? {
+              current: search.categorySearch.progress.current,
+              total: search.categorySearch.progress.total,
+              label: `Batch ${search.categorySearch.progress.current} of ${search.categorySearch.progress.total}`
+            } : undefined}
+          />
         )}
 
         {search.categorySearch.error && (

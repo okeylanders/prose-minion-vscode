@@ -6,7 +6,7 @@
 import * as React from 'react';
 import { MessageType } from '@shared/types';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
-import { LoadingWidget } from '../shared/LoadingWidget';
+import { LoadingIndicator } from '../shared/LoadingIndicator';
 import { formatAnalysisAsMarkdown } from '../../utils/formatters';
 import { VSCodeAPI } from '../../types/vscode';
 import { UseDictionaryReturn } from '../../hooks/domain/useDictionary';
@@ -300,40 +300,25 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
       </div>
 
       {dictionary.loading && (
-        <div className="loading-indicator">
-          <div className="loading-header">
-            <div className="spinner"></div>
-            <div className="loading-text">
-              <div>{dictionary.statusMessage || 'Generating dictionary entry...'}</div>
-            </div>
-          </div>
-          <LoadingWidget />
-        </div>
+        <LoadingIndicator
+          isLoading={dictionary.loading}
+          statusMessage={dictionary.statusMessage}
+          defaultMessage="Generating dictionary entry..."
+        />
       )}
 
       {dictionary.isFastGenerating && (
-        <div className="loading-indicator">
-          <div className="loading-header">
-            <div className="spinner"></div>
-            <div className="loading-text">
-              <div>{dictionary.statusMessage || '⚡ Fast generating dictionary entry...'}</div>
-              {dictionary.fastGenerationProgress && (
-                <div className="progress-bar-container">
-                  <div
-                    className="progress-bar"
-                    style={{
-                      width: `${(dictionary.fastGenerationProgress.completedBlocks.length / dictionary.fastGenerationProgress.totalBlocks) * 100}%`
-                    }}
-                  />
-                  <span className="progress-text">
-                    {dictionary.fastGenerationProgress.completedBlocks.length} / {dictionary.fastGenerationProgress.totalBlocks} blocks
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-          <LoadingWidget />
-        </div>
+        <LoadingIndicator
+          isLoading={dictionary.isFastGenerating}
+          statusMessage={dictionary.statusMessage}
+          defaultMessage="⚡ Fast generating dictionary entry..."
+          tickerMessage={dictionary.tickerMessage}
+          progress={dictionary.progress ? {
+            current: dictionary.progress.current,
+            total: dictionary.progress.total,
+            label: `Block ${dictionary.progress.current} of ${dictionary.progress.total}`
+          } : undefined}
+        />
       )}
 
       {dictionary.result && (

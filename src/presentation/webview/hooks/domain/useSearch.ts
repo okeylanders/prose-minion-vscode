@@ -25,6 +25,8 @@ export interface CategorySearchState {
   error: string | null;
   relevance: CategoryRelevance;
   wordLimit: CategoryWordLimit;
+  progress?: { current: number; total: number };
+  tickerMessage?: string;
 }
 
 export interface SearchState {
@@ -130,6 +132,8 @@ export const useSearch = (): UseSearchReturn => {
   const [categorySearchWordLimit, setCategorySearchWordLimit] = React.useState<CategoryWordLimit>(
     persisted?.categorySearchWordLimit ?? 50
   );
+  const [categorySearchProgress, setCategorySearchProgress] = React.useState<{ current: number; total: number } | undefined>(undefined);
+  const [categorySearchTicker, setCategorySearchTicker] = React.useState<string>('');
 
   const handleSearchResult = React.useCallback((message: SearchResultMessage) => {
     setSearchResult(message.payload.result);
@@ -160,6 +164,8 @@ export const useSearch = (): UseSearchReturn => {
     const { result } = message.payload;
     setCategorySearchResult(result);
     setCategorySearchLoading(false);
+    setCategorySearchProgress(undefined); // Clear progress when complete
+    setCategorySearchTicker(''); // Clear ticker when complete
     if (result.error) {
       setCategorySearchError(result.error);
     } else {
@@ -171,11 +177,21 @@ export const useSearch = (): UseSearchReturn => {
   const clearCategorySearchResult = React.useCallback(() => {
     setCategorySearchResult(null);
     setCategorySearchError(null);
+    setCategorySearchProgress(undefined); // Clear progress when clearing result
+    setCategorySearchTicker(''); // Clear ticker when clearing result
   }, []);
 
   const handleStatusMessage = React.useCallback((message: StatusMessage) => {
     setStatusMessage(message.payload.message || '');
-  }, []);
+    // Update category search progress and ticker if available
+    if (message.source === 'extension.search' && categorySearchLoading) {
+      setCategorySearchProgress(message.payload.progress);
+      if (message.payload.tickerMessage) {
+        console.log('[useSearch] Category search ticker:', message.payload.tickerMessage);
+        setCategorySearchTicker(message.payload.tickerMessage);
+      }
+    }
+  }, [categorySearchLoading]);
 
   return {
     // State
@@ -192,6 +208,8 @@ export const useSearch = (): UseSearchReturn => {
       error: categorySearchError,
       relevance: categorySearchRelevance,
       wordLimit: categorySearchWordLimit,
+      progress: categorySearchProgress,
+      tickerMessage: categorySearchTicker,
     },
 
     // Actions

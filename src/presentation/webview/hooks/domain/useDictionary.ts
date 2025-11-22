@@ -9,14 +9,8 @@ import { usePersistedState } from '../usePersistence';
 import {
   DictionaryResultMessage,
   FastGenerateDictionaryResultMessage,
-  DictionaryGenerationProgressMessage,
   StatusMessage
 } from '@messages';
-
-export interface FastGenerationProgress {
-  completedBlocks: string[];
-  totalBlocks: number;
-}
 
 export interface FastGenerationMetadata {
   totalDuration: number;
@@ -38,8 +32,9 @@ export interface DictionaryState {
   statusMessage: string;
   // Fast generation state
   isFastGenerating: boolean;
-  fastGenerationProgress: FastGenerationProgress | null;
+  progress: { current: number; total: number } | undefined;
   lastFastGenerationMetadata: FastGenerationMetadata | null;
+  tickerMessage: string;
 }
 
 export interface DictionaryActions {
@@ -53,7 +48,6 @@ export interface DictionaryActions {
   clearResult: () => void;
   // Fast generation actions
   handleFastGenerateResult: (message: FastGenerateDictionaryResultMessage) => void;
-  handleProgress: (message: DictionaryGenerationProgressMessage) => void;
   setFastGenerating: (isGenerating: boolean) => void;
 }
 
@@ -124,8 +118,9 @@ export const useDictionary = (): UseDictionaryReturn => {
 
   // Fast generation state
   const [isFastGenerating, setIsFastGenerating] = React.useState<boolean>(false);
-  const [fastGenerationProgress, setFastGenerationProgress] = React.useState<FastGenerationProgress | null>(null);
+  const [progress, setProgress] = React.useState<{ current: number; total: number } | undefined>(undefined);
   const [lastFastGenerationMetadata, setLastFastGenerationMetadata] = React.useState<FastGenerationMetadata | null>(null);
+  const [tickerMessage, setTickerMessage] = React.useState<string>('');
 
   // Clear result when dictionary lookup starts
   const clearResultWhenLoading = React.useCallback(() => {
@@ -147,9 +142,19 @@ export const useDictionary = (): UseDictionaryReturn => {
   }, []);
 
   const handleStatusMessage = React.useCallback((message: StatusMessage) => {
-    const { message: statusText } = message.payload;
+    const { message: statusText, progress: statusProgress, tickerMessage: ticker } = message.payload;
     setStatusMessage(statusText);
-  }, []);
+
+    // Extract progress from STATUS message if present and we're fast generating
+    if (statusProgress && isFastGenerating) {
+      setProgress(statusProgress);
+    }
+
+    // Extract ticker message if present and we're fast generating
+    if (ticker && isFastGenerating) {
+      setTickerMessage(ticker);
+    }
+  }, [isFastGenerating]);
 
   const setSource = React.useCallback((uri?: string, rel?: string) => {
     setSourceUri(uri || '');
@@ -166,22 +171,19 @@ export const useDictionary = (): UseDictionaryReturn => {
     setResult(content);
     setToolName('dictionary_fast_generate');
     setIsFastGenerating(false);
-    setFastGenerationProgress(null);
+    setProgress(undefined); // Clear progress
     setLastFastGenerationMetadata(metadata);
     setStatusMessage(''); // Clear status message
-  }, []);
-
-  const handleProgress = React.useCallback((message: DictionaryGenerationProgressMessage) => {
-    const { completedBlocks, totalBlocks } = message.payload;
-    setFastGenerationProgress({ completedBlocks, totalBlocks });
+    setTickerMessage(''); // Clear ticker message
   }, []);
 
   const setFastGenerating = React.useCallback((isGenerating: boolean) => {
     setIsFastGenerating(isGenerating);
     if (isGenerating) {
       setResult('');
-      setFastGenerationProgress(null);
+      setProgress(undefined); // Clear progress when starting
       setLastFastGenerationMetadata(null);
+      setTickerMessage(''); // Clear ticker when starting
     }
   }, []);
 
@@ -197,8 +199,9 @@ export const useDictionary = (): UseDictionaryReturn => {
     relativePath,
     statusMessage,
     isFastGenerating,
-    fastGenerationProgress,
+    progress,
     lastFastGenerationMetadata,
+    tickerMessage,
 
     // Actions
     handleDictionaryResult,
@@ -210,7 +213,6 @@ export const useDictionary = (): UseDictionaryReturn => {
     setSource,
     clearResult,
     handleFastGenerateResult,
-    handleProgress,
     setFastGenerating,
 
     // Persistence
