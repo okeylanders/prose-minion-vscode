@@ -9,7 +9,8 @@ import { usePersistedState } from '../usePersistence';
 import {
   DictionaryResultMessage,
   FastGenerateDictionaryResultMessage,
-  DictionaryGenerationProgressMessage
+  DictionaryGenerationProgressMessage,
+  StatusMessage
 } from '@messages';
 
 export interface FastGenerationProgress {
@@ -43,7 +44,7 @@ export interface DictionaryState {
 
 export interface DictionaryActions {
   handleDictionaryResult: (message: DictionaryResultMessage) => void;
-  handleStatusMessage: (message: any) => void;
+  handleStatusMessage: (message: StatusMessage) => void;
   setLoading: (loading: boolean) => void;
   setWord: (word: string) => void;
   setContext: (context: string) => void;
@@ -145,7 +146,7 @@ export const useDictionary = (): UseDictionaryReturn => {
     setStatusMessage(''); // Clear status message
   }, []);
 
-  const handleStatusMessage = React.useCallback((message: any) => {
+  const handleStatusMessage = React.useCallback((message: StatusMessage) => {
     const { message: statusText } = message.payload;
     setStatusMessage(statusText);
   }, []);

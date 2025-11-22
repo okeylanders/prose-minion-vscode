@@ -4,85 +4,37 @@
  */
 
 import * as React from 'react';
-import { SelectionTarget, MessageType } from '@shared/types';
+import { MessageType } from '@shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
 import { formatAnalysisAsMarkdown } from '../utils/formatters';
-
-interface FastGenerationProgress {
-  completedBlocks: string[];
-  totalBlocks: number;
-}
-
-interface FastGenerationMetadata {
-  totalDuration: number;
-  blockDurations: Record<string, number>;
-  partialFailures: string[];
-  successCount: number;
-  totalBlocks: number;
-}
+import { VSCodeAPI } from '../types/vscode';
+import { UseDictionaryReturn } from '../hooks/domain/useDictionary';
+import { UseSelectionReturn } from '../hooks/domain/useSelection';
+import { UseSettingsReturn } from '../hooks/domain/useSettings';
 
 interface UtilitiesTabProps {
-  selectedText: string;
-  vscode: any;
-  result: string;
-  isLoading: boolean;
-  onLoadingChange: (loading: boolean) => void;
-  statusMessage?: string;
-  toolName?: string;
-  dictionaryInjection?: { word?: string; context?: string; sourceUri?: string; relativePath?: string; timestamp: number } | null;
-  onDictionaryInjectionHandled: () => void;
-  onRequestSelection: (target: SelectionTarget) => void;
-  word: string;
-  context: string;
-  onWordChange: (value: string) => void;
-  onContextChange: (value: string) => void;
-  hasWordBeenEdited: boolean;
-  setHasWordBeenEdited: (edited: boolean) => void;
-  sourceUri?: string;
-  relativePath?: string;
-  onSourceChange: (uri?: string, relativePath?: string) => void;
-  // Fast generation props
-  isFastGenerating?: boolean;
-  fastGenerationProgress?: FastGenerationProgress | null;
-  lastFastGenerationMetadata?: FastGenerationMetadata | null;
-  onFastGeneratingChange?: (isGenerating: boolean) => void;
+  vscode: VSCodeAPI;
+  dictionary: UseDictionaryReturn;
+  selection: UseSelectionReturn;
+  settings: UseSettingsReturn;
 }
 
 export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
-  selectedText,
   vscode,
-  result,
-  isLoading,
-  onLoadingChange,
-  statusMessage,
-  toolName,
-  dictionaryInjection,
-  onDictionaryInjectionHandled,
-  onRequestSelection,
-  word,
-  context,
-  onWordChange,
-  onContextChange,
-  hasWordBeenEdited,
-  setHasWordBeenEdited,
-  sourceUri,
-  relativePath,
-  onSourceChange,
-  isFastGenerating = false,
-  fastGenerationProgress,
-  lastFastGenerationMetadata,
-  onFastGeneratingChange
+  dictionary,
+  selection,
+  settings
 }) => {
   const lastLookupRef = React.useRef<{ word: string; context: string } | null>(null);
 
   // Word counter for dictionary context
   const contextWordCount = React.useMemo(() => {
-    if (!context || context.trim().length === 0) {
+    if (!dictionary.context || dictionary.context.trim().length === 0) {
       return 0;
     }
-    return context.trim().split(/\s+/).filter(w => w.length > 0).length;
-  }, [context]);
+    return dictionary.context.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+  }, [dictionary.context]);
 
   const contextWordCountColor = React.useMemo(() => {
     if (contextWordCount >= 500) {
@@ -105,39 +57,40 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
   }, []);
 
   React.useEffect(() => {
-    if (!dictionaryInjection) {
+    const injection = selection.dictionaryInjection;
+    if (!injection) {
       return;
     }
 
-    if (dictionaryInjection.word !== undefined) {
-      const sanitized = enforceWordLimit(dictionaryInjection.word);
-      onWordChange(sanitized);
-      setHasWordBeenEdited(false);
+    if (injection.word !== undefined) {
+      const sanitized = enforceWordLimit(injection.word);
+      dictionary.setWord(sanitized);
+      dictionary.setWordEdited(false);
     }
 
-    if (dictionaryInjection.context !== undefined) {
-      onContextChange(dictionaryInjection.context);
+    if (injection.context !== undefined) {
+      dictionary.setContext(injection.context);
     }
 
     // If injection has source metadata, set it; otherwise clear
-    if (dictionaryInjection.sourceUri || dictionaryInjection.relativePath) {
-      onSourceChange(dictionaryInjection.sourceUri, dictionaryInjection.relativePath);
+    if (injection.sourceUri || injection.relativePath) {
+      dictionary.setSource(injection.sourceUri, injection.relativePath);
     } else {
-      onSourceChange(undefined, undefined);
+      dictionary.setSource(undefined, undefined);
     }
 
-    onDictionaryInjectionHandled();
-  }, [dictionaryInjection, enforceWordLimit, onDictionaryInjectionHandled]);
+    selection.handleDictionaryInjectionHandled();
+  }, [selection.dictionaryInjection, enforceWordLimit, dictionary, selection]);
 
   React.useEffect(() => {
-    const trimmed = selectedText.trim();
-    if (!trimmed || hasWordBeenEdited || (word && word.trim().length > 0)) {
+    const trimmed = selection.selectedText.trim();
+    if (!trimmed || dictionary.wordEdited || (dictionary.word && dictionary.word.trim().length > 0)) {
       return;
     }
 
     const tokens = trimmed.split(/\s+/);
     const sanitizedTokens = tokens
-      .map(token => token.replace(/^[^A-Za-z'-]+|[^A-Za-z'-]+$/g, ''))
+      .map((token: string) => token.replace(/^[^A-Za-z'-]+|[^A-Za-z'-]+$/g, ''))
       .filter(Boolean);
 
     if (sanitizedTokens.length === 0) {
@@ -146,21 +99,21 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
 
     const candidate = enforceWordLimit(sanitizedTokens.join(' '));
     if (candidate) {
-      onWordChange(candidate);
+      dictionary.setWord(candidate);
     }
-  }, [selectedText, hasWordBeenEdited, word, enforceWordLimit, onWordChange]);
+  }, [selection.selectedText, dictionary.wordEdited, dictionary.word, enforceWordLimit, dictionary]);
 
   const handleLookup = () => {
-    const sanitizedWord = enforceWordLimit(word);
+    const sanitizedWord = enforceWordLimit(dictionary.word);
     if (!sanitizedWord) {
       return;
     }
 
-    onLoadingChange(true);
+    dictionary.setLoading(true);
 
     lastLookupRef.current = {
       word: sanitizedWord,
-      context: context.trim()
+      context: dictionary.context.trim()
     };
 
     vscode.postMessage({
@@ -168,23 +121,23 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
       source: 'webview.utilities.tab',
       payload: {
         word: sanitizedWord,
-        contextText: context.trim() || undefined
+        contextText: dictionary.context.trim() || undefined
       },
       timestamp: Date.now()
     });
   };
 
   const handleFastGenerate = () => {
-    const sanitizedWord = enforceWordLimit(word);
+    const sanitizedWord = enforceWordLimit(dictionary.word);
     if (!sanitizedWord) {
       return;
     }
 
-    onFastGeneratingChange?.(true);
+    dictionary.setFastGenerating(true);
 
     lastLookupRef.current = {
       word: sanitizedWord,
-      context: context.trim()
+      context: dictionary.context.trim()
     };
 
     vscode.postMessage({
@@ -192,7 +145,7 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
       source: 'webview.utilities.tab',
       payload: {
         word: sanitizedWord,
-        context: context.trim() || undefined
+        context: dictionary.context.trim() || undefined
       },
       timestamp: Date.now()
     });
@@ -200,65 +153,65 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
 
   const handleWordChange = (value: string) => {
     const sanitized = enforceWordLimit(value);
-    onWordChange(sanitized);
+    dictionary.setWord(sanitized);
     // Mark as user-edited even when cleared, to prevent auto-fill
-    setHasWordBeenEdited(true);
+    dictionary.setWordEdited(true);
   };
 
   const handlePasteWord = React.useCallback(() => {
-    onRequestSelection('dictionary_word');
-  }, [onRequestSelection]);
+    selection.requestSelection('dictionary_word');
+  }, [selection]);
 
   const handlePasteContext = React.useCallback(() => {
-    onRequestSelection('dictionary_context');
-  }, [onRequestSelection]);
+    selection.requestSelection('dictionary_context');
+  }, [selection]);
 
   const markdownContent = React.useMemo(() => {
-    if (!result) return '';
-    return formatAnalysisAsMarkdown(result);
-  }, [result]);
+    if (!dictionary.result) return '';
+    return formatAnalysisAsMarkdown(dictionary.result);
+  }, [dictionary.result]);
 
   const handleCopyDictionaryResult = () => {
-    if (!result) {
+    if (!dictionary.result) {
       return;
     }
 
     const metadata = lastLookupRef.current ?? {
-      word: enforceWordLimit(word),
-      context: context.trim()
+      word: enforceWordLimit(dictionary.word),
+      context: dictionary.context.trim()
     };
 
-    const header = `# ${metadata.word || enforceWordLimit(word) || 'Entry'}`;
+    const header = `# ${metadata.word || enforceWordLimit(dictionary.word) || 'Entry'}`;
 
     vscode.postMessage({
       type: MessageType.COPY_RESULT,
       source: 'webview.utilities.tab',
       payload: {
-        toolName: toolName ?? 'dictionary_lookup',
-        content: [header, '', result].join('\n')
+        toolName: dictionary.toolName ?? 'dictionary_lookup',
+        content: [header, '', dictionary.result].join('\n')
       },
       timestamp: Date.now()
     });
   };
 
   const handleSaveDictionaryResult = () => {
-    if (!result) {
+    if (!dictionary.result) {
       return;
     }
 
     const metadata = lastLookupRef.current ?? {
-      word: enforceWordLimit(word),
-      context: context.trim()
+      word: enforceWordLimit(dictionary.word),
+      context: dictionary.context.trim()
     };
 
-    const header = `# ${metadata.word || enforceWordLimit(word) || 'Entry'}`;
+    const header = `# ${metadata.word || enforceWordLimit(dictionary.word) || 'Entry'}`;
 
     vscode.postMessage({
       type: MessageType.SAVE_RESULT,
       source: 'webview.utilities.tab',
       payload: {
-        toolName: toolName ?? 'dictionary_lookup',
-        content: [header, '', result].join('\n'),
+        toolName: dictionary.toolName ?? 'dictionary_lookup',
+        content: [header, '', dictionary.result].join('\n'),
         metadata: {
           word: metadata.word,
           context: metadata.context,
@@ -269,8 +222,8 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
     });
   };
 
-  const canCopyDictionary = Boolean(result && result.trim().length > 0);
-  const canSaveDictionary = Boolean(canCopyDictionary && (toolName ?? 'dictionary_lookup'));
+  const canCopyDictionary = Boolean(dictionary.result && dictionary.result.trim().length > 0);
+  const canSaveDictionary = Boolean(canCopyDictionary && (dictionary.toolName ?? 'dictionary_lookup'));
 
   return (
     <div className="tab-content">
@@ -290,13 +243,13 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
             📥
           </button>
         </div>
-        {relativePath && (
-          <div className="excerpt-meta">Source: {relativePath}</div>
+        {dictionary.relativePath && (
+          <div className="excerpt-meta">Source: {dictionary.relativePath}</div>
         )}
         <input
           className="w-full"
           type="text"
-          value={word}
+          value={dictionary.word}
           onChange={(e) => handleWordChange(e.target.value)}
           placeholder="Enter the word you want to explore..."
         />
@@ -318,8 +271,8 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
         </div>
         <textarea
           className="w-full h-24 resize-none"
-          value={context}
-          onChange={(e) => onContextChange(e.target.value)}
+          value={dictionary.context}
+          onChange={(e) => dictionary.setContext(e.target.value)}
           placeholder="Paste a sentence, paragraph, or notes to guide the dictionary output..."
         />
         <div className={`word-counter ${contextWordCountColor}`}>
@@ -332,50 +285,48 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
         <button
           className="btn btn-primary"
           onClick={handleLookup}
-          disabled={!word.trim() || isLoading || isFastGenerating}
+          disabled={!dictionary.word.trim() || dictionary.loading || dictionary.isFastGenerating}
         >
           Generate Dictionary Entry
         </button>
-        {onFastGeneratingChange && (
-          <button
-            className="btn btn-secondary"
-            onClick={handleFastGenerate}
-            disabled={!word.trim() || isLoading || isFastGenerating}
-            title="Experimental: Generate using parallel API calls (2-4× faster)"
-          >
-            ⚡ Fast Generate (Experimental)
-          </button>
-        )}
+        <button
+          className="btn btn-secondary"
+          onClick={handleFastGenerate}
+          disabled={!dictionary.word.trim() || dictionary.loading || dictionary.isFastGenerating}
+          title="Experimental: Generate using parallel API calls (2-4× faster)"
+        >
+          ⚡ Fast Generate (Experimental)
+        </button>
       </div>
 
-      {isLoading && (
+      {dictionary.loading && (
         <div className="loading-indicator">
           <div className="loading-header">
             <div className="spinner"></div>
             <div className="loading-text">
-              <div>{statusMessage || 'Generating dictionary entry...'}</div>
+              <div>{dictionary.statusMessage || 'Generating dictionary entry...'}</div>
             </div>
           </div>
           <LoadingWidget />
         </div>
       )}
 
-      {isFastGenerating && (
+      {dictionary.isFastGenerating && (
         <div className="loading-indicator">
           <div className="loading-header">
             <div className="spinner"></div>
             <div className="loading-text">
-              <div>{statusMessage || '⚡ Fast generating dictionary entry...'}</div>
-              {fastGenerationProgress && (
+              <div>{dictionary.statusMessage || '⚡ Fast generating dictionary entry...'}</div>
+              {dictionary.fastGenerationProgress && (
                 <div className="progress-bar-container">
                   <div
                     className="progress-bar"
                     style={{
-                      width: `${(fastGenerationProgress.completedBlocks.length / fastGenerationProgress.totalBlocks) * 100}%`
+                      width: `${(dictionary.fastGenerationProgress.completedBlocks.length / dictionary.fastGenerationProgress.totalBlocks) * 100}%`
                     }}
                   />
                   <span className="progress-text">
-                    {fastGenerationProgress.completedBlocks.length} / {fastGenerationProgress.totalBlocks} blocks
+                    {dictionary.fastGenerationProgress.completedBlocks.length} / {dictionary.fastGenerationProgress.totalBlocks} blocks
                   </span>
                 </div>
               )}
@@ -385,7 +336,7 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
         </div>
       )}
 
-      {result && (
+      {dictionary.result && (
         <div className="result-box">
           <div className="result-action-bar">
             <button

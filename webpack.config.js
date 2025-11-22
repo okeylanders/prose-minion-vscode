@@ -19,6 +19,7 @@ const extensionConfig = {
     alias: {
       '@': path.resolve(__dirname, 'src'),
       '@shared': path.resolve(__dirname, 'src/shared'),
+      '@messages$': path.resolve(__dirname, 'src/shared/types/messages/index.ts'),
       '@messages': path.resolve(__dirname, 'src/shared/types/messages'),
       '@domain': path.resolve(__dirname, 'src/domain'),
       '@application': path.resolve(__dirname, 'src/application'),
@@ -62,6 +63,7 @@ const webviewConfig = {
     alias: {
       '@': path.resolve(__dirname, 'src'),
       '@shared': path.resolve(__dirname, 'src/shared'),
+      '@messages$': path.resolve(__dirname, 'src/shared/types/messages/index.ts'),
       '@messages': path.resolve(__dirname, 'src/shared/types/messages'),
       '@components': path.resolve(__dirname, 'src/presentation/webview/components'),
       '@hooks': path.resolve(__dirname, 'src/presentation/webview/hooks'),

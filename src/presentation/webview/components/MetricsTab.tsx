@@ -4,7 +4,7 @@
  */
 
 import * as React from 'react';
-import { MessageType, TextSourceMode } from '@shared/types';
+import { MessageType } from '@shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
 import {
@@ -13,56 +13,21 @@ import {
   formatWordFrequencyAsMarkdown
 } from '../utils/formatters';
 import { WordLengthFilterTabs } from './WordLengthFilterTabs';
-import { WordFrequencySettings } from '../hooks/domain/useWordFrequencySettings';
-// MessageType is already imported from shared/types re-export
+import { VSCodeAPI } from '../types/vscode';
+import { UseMetricsReturn } from '../hooks/domain/useMetrics';
+import { UsePublishingSettingsReturn } from '../hooks/domain/usePublishingSettings';
+import { UseWordFrequencySettingsReturn } from '../hooks/domain/useWordFrequencySettings';
 
 interface MetricsTabProps {
-  vscode: any;
-  metricsByTool: Partial<Record<'prose_stats' | 'style_flags' | 'word_frequency', any>>;
-  isLoading: boolean;
-  onLoadingChange: (loading: boolean) => void;
-  activeTool: 'prose_stats' | 'style_flags' | 'word_frequency';
-  onActiveToolChange: (tool: 'prose_stats' | 'style_flags' | 'word_frequency') => void;
-  sourceMode: TextSourceMode;
-  pathText: string;
-  onSourceModeChange: (mode: TextSourceMode) => void;
-  onPathTextChange: (text: string) => void;
-  onClearSubtoolResult: (tool: 'prose_stats' | 'style_flags' | 'word_frequency') => void;
-  onRequestActiveFile: () => void;
-  onRequestManuscriptGlobs: () => void;
-  onRequestChapterGlobs: () => void;
-  // Publishing standards props (from usePublishingSettings hook, object pattern)
-  publishingSettings: {
-    settings: {
-      preset: string;
-      trimKey: string;
-    };
-    genres: Array<{ key: string; name: string; abbreviation: string; pageSizes: Array<{ key: string; label: string; width: number; height: number; common: boolean }> }>;
-    setPreset: (preset: string) => void;
-    setTrimKey: (pageSizeKey: string) => void;
-  };
-  // Word frequency settings props (from useWordFrequencySettings hook, object pattern)
-  wordFrequencySettings: {
-    settings: WordFrequencySettings;
-    updateSetting: (key: keyof WordFrequencySettings, value: any) => void;
-  };
+  vscode: VSCodeAPI;
+  metrics: UseMetricsReturn;
+  publishingSettings: UsePublishingSettingsReturn;
+  wordFrequencySettings: UseWordFrequencySettingsReturn;
 }
 
 export const MetricsTab: React.FC<MetricsTabProps> = ({
   vscode,
-  metricsByTool,
-  isLoading,
-  onLoadingChange,
-  activeTool,
-  onActiveToolChange,
-  sourceMode,
-  pathText,
-  onSourceModeChange,
-  onPathTextChange,
-  onClearSubtoolResult,
-  onRequestActiveFile,
-  onRequestManuscriptGlobs,
-  onRequestChapterGlobs,
+  metrics,
   publishingSettings,
   wordFrequencySettings
 }) => {
@@ -70,17 +35,17 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
 
   // Build a TextSourceSpec consistently for all metric requests
   const buildSourceSpec = React.useCallback(() => {
-    return sourceMode === 'selection'
-      ? { mode: 'selection' as TextSourceMode, pathText: '[selected text]' }
-      : { mode: sourceMode, pathText };
-  }, [sourceMode, pathText]);
+    return metrics.sourceMode === 'selection'
+      ? { mode: 'selection' as const, pathText: '[selected text]' }
+      : { mode: metrics.sourceMode, pathText: metrics.pathText };
+  }, [metrics.sourceMode, metrics.pathText]);
 
   const handlePresetChange = (value: string) => {
-    publishingSettings.setPreset(value);
+    publishingSettings.setPublishingPreset(value);
   };
 
   const handleTrimChange = (value: string) => {
-    publishingSettings.setTrimKey(value);
+    publishingSettings.setPublishingTrim(value);
   };
 
   const handleFilterChange = (minLength: number) => {
@@ -88,8 +53,8 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   };
 
   const handleMeasureProseStats = () => {
-    onLoadingChange(true);
-    onClearSubtoolResult('prose_stats');
+    metrics.setLoading(true);
+    metrics.clearSubtoolResult('prose_stats');
     vscode.postMessage({
       type: MessageType.MEASURE_PROSE_STATS,
       source: 'webview.metrics.tab',
@@ -101,8 +66,8 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   };
 
   const handleMeasureStyleFlags = () => {
-    onLoadingChange(true);
-    onClearSubtoolResult('style_flags');
+    metrics.setLoading(true);
+    metrics.clearSubtoolResult('style_flags');
     vscode.postMessage({
       type: MessageType.MEASURE_STYLE_FLAGS,
       source: 'webview.metrics.tab',
@@ -114,8 +79,8 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   };
 
   const handleMeasureWordFrequency = () => {
-    onLoadingChange(true);
-    onClearSubtoolResult('word_frequency');
+    metrics.setLoading(true);
+    metrics.clearSubtoolResult('word_frequency');
     vscode.postMessage({
       type: MessageType.MEASURE_WORD_FREQUENCY,
       source: 'webview.metrics.tab',
@@ -128,15 +93,15 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
 
   // Prefer per-subtool results from cache
   const displayMetrics = React.useMemo(() => {
-    if (metricsByTool && metricsByTool[activeTool]) return metricsByTool[activeTool] as any;
+    if (metrics.metricsByTool && metrics.metricsByTool[metrics.activeTool]) return metrics.metricsByTool[metrics.activeTool] as any;
     return null;
-  }, [metricsByTool, activeTool]);
+  }, [metrics.metricsByTool, metrics.activeTool]);
 
   const markdownContent = React.useMemo(() => {
     if (!displayMetrics) return '';
 
     // Call the appropriate formatter based on active tool
-    switch (activeTool) {
+    switch (metrics.activeTool) {
       case 'prose_stats':
         return formatProseStatsAsMarkdown(displayMetrics);
       case 'style_flags':
@@ -146,7 +111,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
       default:
         return '';
     }
-  }, [displayMetrics, activeTool]);
+  }, [displayMetrics, metrics.activeTool]);
 
   const buildExportContent = React.useCallback(() => {
     let content = markdownContent;
@@ -207,7 +172,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
       type: MessageType.COPY_RESULT,
       source: 'webview.metrics.tab',
       payload: {
-        toolName: activeTool,
+        toolName: metrics.activeTool,
         content
       },
       timestamp: Date.now()
@@ -220,7 +185,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
       type: MessageType.SAVE_RESULT,
       source: 'webview.metrics.tab',
       payload: {
-        toolName: activeTool,
+        toolName: metrics.activeTool,
         content,
         metadata: { timestamp: Date.now() }
       },
@@ -234,23 +199,23 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
       {/* Sub‑tab bar (moved above Scope) */}
       <div className="tab-bar" style={{ marginBottom: '8px' }}>
         <button
-          className={`tab-button ${activeTool === 'prose_stats' ? 'active' : ''}`}
-          disabled={isLoading}
-          onClick={() => onActiveToolChange('prose_stats')}
+          className={`tab-button ${metrics.activeTool === 'prose_stats' ? 'active' : ''}`}
+          disabled={metrics.loading}
+          onClick={() => metrics.setActiveTool('prose_stats')}
         >
           <span className="tab-label">Prose Statistics</span>
         </button>
         <button
-          className={`tab-button ${activeTool === 'style_flags' ? 'active' : ''}`}
-          disabled={isLoading}
-          onClick={() => onActiveToolChange('style_flags')}
+          className={`tab-button ${metrics.activeTool === 'style_flags' ? 'active' : ''}`}
+          disabled={metrics.loading}
+          onClick={() => metrics.setActiveTool('style_flags')}
         >
           <span className="tab-label">Style Flags</span>
         </button>
         <button
-          className={`tab-button ${activeTool === 'word_frequency' ? 'active' : ''}`}
-          disabled={isLoading}
-          onClick={() => onActiveToolChange('word_frequency')}
+          className={`tab-button ${metrics.activeTool === 'word_frequency' ? 'active' : ''}`}
+          disabled={metrics.loading}
+          onClick={() => metrics.setActiveTool('word_frequency')}
         >
           <span className="tab-label">Word Frequency</span>
         </button>
@@ -260,42 +225,57 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
         <label className="block text-sm font-medium mb-2">Scope:</label>
         <div className="tab-bar" style={{ marginBottom: '8px' }}>
           <button
-            className={`tab-button ${sourceMode === 'activeFile' ? 'active' : ''}`}
+            className={`tab-button ${metrics.sourceMode === 'activeFile' ? 'active' : ''}`}
           onClick={() => {
-            onSourceModeChange('activeFile');
-            onRequestActiveFile();
+            metrics.setSourceMode('activeFile');
+            vscode.postMessage({
+              type: MessageType.REQUEST_ACTIVE_FILE,
+              source: 'webview.metrics.tab',
+              payload: {},
+              timestamp: Date.now()
+            });
           }}
-            disabled={isLoading}
+            disabled={metrics.loading}
           >
             <span className="tab-label">Active File</span>
           </button>
           <button
-            className={`tab-button ${sourceMode === 'manuscript' ? 'active' : ''}`}
+            className={`tab-button ${metrics.sourceMode === 'manuscript' ? 'active' : ''}`}
           onClick={() => {
-            onSourceModeChange('manuscript');
-            onRequestManuscriptGlobs();
+            metrics.setSourceMode('manuscript');
+            vscode.postMessage({
+              type: MessageType.REQUEST_MANUSCRIPT_GLOBS,
+              source: 'webview.metrics.tab',
+              payload: {},
+              timestamp: Date.now()
+            });
           }}
-            disabled={isLoading}
+            disabled={metrics.loading}
           >
             <span className="tab-label">Manuscripts</span>
           </button>
           <button
-            className={`tab-button ${sourceMode === 'chapters' ? 'active' : ''}`}
+            className={`tab-button ${metrics.sourceMode === 'chapters' ? 'active' : ''}`}
           onClick={() => {
-            onSourceModeChange('chapters');
-            onRequestChapterGlobs();
+            metrics.setSourceMode('chapters');
+            vscode.postMessage({
+              type: MessageType.REQUEST_CHAPTER_GLOBS,
+              source: 'webview.metrics.tab',
+              payload: {},
+              timestamp: Date.now()
+            });
           }}
-            disabled={isLoading}
+            disabled={metrics.loading}
           >
             <span className="tab-label">Chapters</span>
           </button>
           <button
-            className={`tab-button ${sourceMode === 'selection' ? 'active' : ''}`}
+            className={`tab-button ${metrics.sourceMode === 'selection' ? 'active' : ''}`}
             onClick={() => {
-              onSourceModeChange('selection');
-              onPathTextChange('[selected text]');
+              metrics.setSourceMode('selection');
+              metrics.setPathText('[selected text]');
             }}
-            disabled={isLoading}
+            disabled={metrics.loading}
           >
             <span className="tab-label">Selection</span>
           </button>
@@ -306,28 +286,28 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
           id="pm-path-input"
           className="w-full"
           type="text"
-          value={pathText}
-          onChange={(e) => onPathTextChange(e.target.value)}
-          placeholder={sourceMode === 'selection' ? '[selected text]' : 'workspace-relative path or globs'}
+          value={metrics.pathText}
+          onChange={(e) => metrics.setPathText(e.target.value)}
+          placeholder={metrics.sourceMode === 'selection' ? '[selected text]' : 'workspace-relative path or globs'}
         />
 
         {/* Publishing Standards: only for Prose Statistics view (moved below Scope for consistency) */}
-        {activeTool === 'prose_stats' && (
+        {metrics.activeTool === 'prose_stats' && (
           <>
             <label className="block text-sm font-medium mb-2 mt-3" htmlFor="pm-preset-select">Publishing Standards</label>
             <div className="flex gap-2 mb-2">
               <select
                 id="pm-preset-select"
                 className="w-1/2"
-                value={publishingSettings.settings.preset}
+                value={publishingSettings.publishingPreset}
                 onChange={(e) => handlePresetChange(e.target.value)}
                 title="Select a genre preset or manuscript format to compare metrics against publishing ranges"
-                disabled={isLoading}
+                disabled={metrics.loading}
               >
                 <option value="none">None</option>
                 <option value="manuscript">Manuscript Format</option>
                 <optgroup label="Genres">
-                  {publishingSettings.genres.map(g => (
+                  {publishingSettings.publishingGenres.map((g: any) => (
                     <option key={g.key} value={`genre:${g.key}`}>{g.name} ({g.abbreviation})</option>
                   ))}
                 </optgroup>
@@ -336,16 +316,16 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
               <select
                 id="pm-trim-select"
                 className="w-1/2"
-                value={publishingSettings.settings.trimKey}
+                value={publishingSettings.publishingTrimKey}
                 onChange={(e) => handleTrimChange(e.target.value)}
                 title="Choose a trim size to estimate page count and words-per-page"
-                disabled={isLoading || !publishingSettings.settings.preset.startsWith('genre:')}
+                disabled={metrics.loading || !publishingSettings.publishingPreset.startsWith('genre:')}
               >
                 <option value="">Auto (common size)</option>
-                {(publishingSettings.settings.preset.startsWith('genre:')
-                  ? (publishingSettings.genres.find(g => `genre:${g.key}` === publishingSettings.settings.preset)?.pageSizes || [])
+                {(publishingSettings.publishingPreset.startsWith('genre:')
+                  ? (publishingSettings.publishingGenres.find((g: any) => `genre:${g.key}` === publishingSettings.publishingPreset)?.pageSizes || [])
                   : []
-                ).map(ps => (
+                ).map((ps: any) => (
                   <option key={ps.key} value={ps.key}>{ps.label} ({ps.width}x{ps.height} in)</option>
                 ))}
               </select>
@@ -355,34 +335,34 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
       </div>
 
       {/* Word Length Filter: only for Word Frequency view */}
-      {activeTool === 'word_frequency' && (
+      {metrics.activeTool === 'word_frequency' && (
         <WordLengthFilterTabs
           activeFilter={wordFrequencySettings.settings.minCharacterLength}
           onFilterChange={handleFilterChange}
-          disabled={isLoading}
+          disabled={metrics.loading}
         />
       )}
 
       {/* Explicit Generate buttons per sub-tool */}
       <div className="button-group">
-        {activeTool === 'prose_stats' && (
-          <button className="btn btn-primary" onClick={handleMeasureProseStats} disabled={isLoading}>
+        {metrics.activeTool === 'prose_stats' && (
+          <button className="btn btn-primary" onClick={handleMeasureProseStats} disabled={metrics.loading}>
             ⚙️ Generate Prose Statistics
           </button>
         )}
-        {activeTool === 'style_flags' && (
-          <button className="btn btn-primary" onClick={handleMeasureStyleFlags} disabled={isLoading}>
+        {metrics.activeTool === 'style_flags' && (
+          <button className="btn btn-primary" onClick={handleMeasureStyleFlags} disabled={metrics.loading}>
             🏁 Generate Style Flags
           </button>
         )}
-        {activeTool === 'word_frequency' && (
-          <button className="btn btn-primary" onClick={handleMeasureWordFrequency} disabled={isLoading}>
+        {metrics.activeTool === 'word_frequency' && (
+          <button className="btn btn-primary" onClick={handleMeasureWordFrequency} disabled={metrics.loading}>
             📈 Generate Word Frequency
           </button>
         )}
       </div>
 
-      {isLoading && (
+      {metrics.loading && (
         <div className="loading-indicator">
           <div className="loading-header">
             <div className="spinner"></div>
@@ -401,7 +381,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
             <button
               className="icon-button"
               onClick={handleCopyMetricsResult}
-              disabled={isLoading}
+              disabled={metrics.loading}
               title="Copy metrics to clipboard"
               aria-label="Copy metrics"
             >
@@ -410,7 +390,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
             <button
               className="icon-button"
               onClick={handleSaveMetricsResult}
-              disabled={isLoading}
+              disabled={metrics.loading}
               title="Save metrics to workspace"
               aria-label="Save metrics"
             >

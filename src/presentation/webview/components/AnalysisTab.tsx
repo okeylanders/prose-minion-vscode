@@ -8,62 +8,38 @@ import { SelectionTarget, MessageType } from '@shared/types';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingWidget } from './LoadingWidget';
 import { formatAnalysisAsMarkdown } from '../utils/formatters';
+import { VSCodeAPI } from '../types/vscode';
+import { UseAnalysisReturn } from '../hooks/domain/useAnalysis';
+import { UseContextReturn } from '../hooks/domain/useContext';
+import { UseSelectionReturn } from '../hooks/domain/useSelection';
+import { UseModelsSettingsReturn } from '../hooks/domain/useModelsSettings';
+import { UseSettingsReturn } from '../hooks/domain/useSettings';
 
 interface AnalysisTabProps {
-  selectedText: string;
-  vscode: any;
-  result: string;
-  isLoading: boolean;
-  onLoadingChange: (loading: boolean) => void;
-  statusMessage?: string;
-  guideNames?: string;
-  usedGuides?: string[];
-  contextText: string;
-  onContextChange: (value: string) => void;
-  onContextRequest: (payload: { excerpt: string; existingContext: string; sourceFileUri?: string }) => void;
-  contextLoading: boolean;
-  contextStatusMessage?: string;
-  contextRequestedResources: string[];
-  selectedRelativePath?: string;
-  selectedSourceUri?: string;
-  analysisToolName?: string;
-  onRequestSelection: (target: SelectionTarget) => void;
-  onClearSourceMeta: () => void;
-  contextModel?: string;
-  onOpenSettings: () => void;
+  vscode: VSCodeAPI;
+  analysis: UseAnalysisReturn;
+  context: UseContextReturn;
+  selection: UseSelectionReturn;
+  modelsSettings: UseModelsSettingsReturn;
+  settings: UseSettingsReturn;
 }
 
 export const AnalysisTab: React.FC<AnalysisTabProps> = ({
-  selectedText,
   vscode,
-  result,
-  isLoading,
-  onLoadingChange,
-  statusMessage,
-  guideNames,
-  usedGuides,
-  contextText,
-  onContextChange,
-  onContextRequest,
-  contextLoading,
-  contextStatusMessage,
-  contextRequestedResources,
-  selectedRelativePath,
-  selectedSourceUri,
-  analysisToolName,
-  onRequestSelection,
-  onClearSourceMeta,
-  contextModel,
-  onOpenSettings
+  analysis,
+  context,
+  selection,
+  modelsSettings,
+  settings
 }) => {
-  const [text, setText] = React.useState(selectedText);
+  const [text, setText] = React.useState(selection.selectedText);
 
   // Word counter for excerpt
   const excerptWordCount = React.useMemo(() => {
     if (!text || text.trim().length === 0) {
       return 0;
     }
-    return text.trim().split(/\s+/).filter(w => w.length > 0).length;
+    return text.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
   }, [text]);
 
   const excerptWordCountColor = React.useMemo(() => {
@@ -78,11 +54,11 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
 
   // Word counter for context brief
   const contextWordCount = React.useMemo(() => {
-    if (!contextText || contextText.trim().length === 0) {
+    if (!context.contextText || context.contextText.trim().length === 0) {
       return 0;
     }
-    return contextText.trim().split(/\s+/).filter(w => w.length > 0).length;
-  }, [contextText]);
+    return context.contextText.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+  }, [context.contextText]);
 
   const contextWordCountColor = React.useMemo(() => {
     if (contextWordCount >= 5000) {
@@ -95,20 +71,20 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
   }, [contextWordCount]);
 
   React.useEffect(() => {
-    setText(selectedText);
-  }, [selectedText]);
+    setText(selection.selectedText);
+  }, [selection.selectedText]);
 
   const sourceReference = React.useMemo(() => {
-    if (selectedRelativePath && selectedRelativePath.trim().length > 0) {
-      return selectedRelativePath;
+    if (selection.selectedRelativePath && selection.selectedRelativePath.trim().length > 0) {
+      return selection.selectedRelativePath;
     }
 
-    if (selectedSourceUri && selectedSourceUri.trim().length > 0) {
-      return selectedSourceUri;
+    if (selection.selectedSourceUri && selection.selectedSourceUri.trim().length > 0) {
+      return selection.selectedSourceUri;
     }
 
     return undefined;
-  }, [selectedRelativePath, selectedSourceUri]);
+  }, [selection.selectedRelativePath, selection.selectedSourceUri]);
 
   const lastSubmissionRef = React.useRef<{
     toolName: string;
@@ -118,9 +94,9 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
     relativePath?: string;
   } | null>(null);
 
-  const canCopyAnalysis = Boolean(result && result.trim().length > 0);
+  const canCopyAnalysis = Boolean(analysis.result && analysis.result.trim().length > 0);
   const canSaveAnalysis = Boolean(
-    result && result.trim().length > 0 && (analysisToolName || lastSubmissionRef.current?.toolName)
+    analysis.result && analysis.result.trim().length > 0 && (analysis.toolName || lastSubmissionRef.current?.toolName)
   );
 
   const handleAnalyzeDialogue = (focus: 'dialogue' | 'microbeats' | 'both' = 'both') => {
@@ -128,14 +104,14 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
       return;
     }
 
-    onLoadingChange(true);
+    analysis.setLoading(true);
 
     lastSubmissionRef.current = {
       toolName: 'dialogue_analysis',
       excerpt: text,
-      context: contextText,
-      sourceUri: selectedSourceUri,
-      relativePath: selectedRelativePath
+      context: context.contextText,
+      sourceUri: selection.selectedSourceUri,
+      relativePath: selection.selectedRelativePath
     };
 
     vscode.postMessage({
@@ -143,7 +119,7 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
       source: 'webview.analysis.tab',
       payload: {
         text,
-        contextText: contextText && contextText.trim().length > 0 ? contextText : undefined,
+        contextText: context.contextText && context.contextText.trim().length > 0 ? context.contextText : undefined,
         sourceFileUri: sourceReference,
         focus
       },
@@ -156,14 +132,14 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
       return;
     }
 
-    onLoadingChange(true);
+    analysis.setLoading(true);
 
     lastSubmissionRef.current = {
       toolName: 'prose_analysis',
       excerpt: text,
-      context: contextText,
-      sourceUri: selectedSourceUri,
-      relativePath: selectedRelativePath
+      context: context.contextText,
+      sourceUri: selection.selectedSourceUri,
+      relativePath: selection.selectedRelativePath
     };
 
     vscode.postMessage({
@@ -171,7 +147,7 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
       source: 'webview.analysis.tab',
       payload: {
         text,
-        contextText: contextText && contextText.trim().length > 0 ? contextText : undefined,
+        contextText: context.contextText && context.contextText.trim().length > 0 ? context.contextText : undefined,
         sourceFileUri: sourceReference
       },
       timestamp: Date.now()
@@ -179,27 +155,27 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
   };
 
   const handleGenerateContext = () => {
-    if (!text.trim() || contextLoading) {
+    if (!text.trim() || context.loading) {
       return;
     }
 
-    onContextRequest({
+    context.requestContext({
       excerpt: text,
-      existingContext: contextText,
+      existingContext: context.contextText,
       sourceFileUri: sourceReference
     });
   };
 
   const handlePasteExcerpt = React.useCallback(() => {
-    onRequestSelection('assistant_excerpt');
-  }, [onRequestSelection]);
+    selection.requestSelection('assistant_excerpt');
+  }, [selection]);
 
   const handlePasteContext = React.useCallback(() => {
-    onRequestSelection('assistant_context');
-  }, [onRequestSelection]);
+    selection.requestSelection('assistant_context');
+  }, [selection]);
 
   const handleCopyAnalysisResult = () => {
-    if (!result) {
+    if (!analysis.result) {
       return;
     }
 
@@ -211,18 +187,18 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
       '',
       '# Context',
       '',
-      (submission?.context ?? contextText) || '(No context provided.)',
+      (submission?.context ?? context.contextText) || '(No context provided.)',
       '',
       '---',
       '',
-      result
+      analysis.result
     ].join('\n');
 
     vscode.postMessage({
       type: MessageType.COPY_RESULT,
       source: 'webview.analysis.tab',
       payload: {
-        toolName: analysisToolName ?? (submission?.toolName ?? 'analysis_result'),
+        toolName: analysis.toolName ?? (submission?.toolName ?? 'analysis_result'),
         content: clipboardPayload
       },
       timestamp: Date.now()
@@ -230,7 +206,7 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
   };
 
   const handleSaveAnalysisResult = () => {
-    if (!result) {
+    if (!analysis.result) {
       return;
     }
 
@@ -240,13 +216,13 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
       type: MessageType.SAVE_RESULT,
       source: 'webview.analysis.tab',
       payload: {
-        toolName: analysisToolName ?? submission?.toolName ?? 'analysis_result',
-        content: result,
+        toolName: analysis.toolName ?? submission?.toolName ?? 'analysis_result',
+        content: analysis.result,
         metadata: {
           excerpt: submission?.excerpt ?? text,
-          context: submission?.context ?? contextText,
-          sourceFileUri: submission?.sourceUri ?? selectedSourceUri,
-          relativePath: submission?.relativePath ?? selectedRelativePath,
+          context: submission?.context ?? context.contextText,
+          sourceFileUri: submission?.sourceUri ?? selection.selectedSourceUri,
+          relativePath: submission?.relativePath ?? selection.selectedRelativePath,
           timestamp: Date.now()
         }
       },
@@ -255,9 +231,9 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
   };
 
   const markdownContent = React.useMemo(() => {
-    if (!result) return '';
-    return formatAnalysisAsMarkdown(result);
-  }, [result]);
+    if (!analysis.result) return '';
+    return formatAnalysisAsMarkdown(analysis.result);
+  }, [analysis.result]);
 
   return (
     <div className="tab-content">
@@ -277,8 +253,8 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
             📥
           </button>
         </div>
-        {selectedRelativePath && (
-          <div className="excerpt-meta">Source: {selectedRelativePath}</div>
+        {selection.selectedRelativePath && (
+          <div className="excerpt-meta">Source: {selection.selectedRelativePath}</div>
         )}
         <textarea
           className="w-full h-32 resize-none"
@@ -287,7 +263,8 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
             const val = e.target.value;
             setText(val);
             if (!val.trim()) {
-              onClearSourceMeta();
+              selection.setSelectedSourceUri('');
+              selection.setSelectedRelativePath('');
             }
           }}
           placeholder="Select text in your editor or paste text here..."
@@ -315,18 +292,18 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
         <div className="context-assist-row">
           <textarea
             className="w-full h-28 resize-none"
-            value={contextText}
-            onChange={(e) => onContextChange(e.target.value)}
+            value={context.contextText}
+            onChange={(e) => context.setContextText(e.target.value)}
             placeholder="Summaries, goals, tone targets, or notes that help the AI stay grounded..."
           />
           <button
             className="context-assist-button"
             onClick={handleGenerateContext}
-            disabled={contextLoading || !text.trim()}
+            disabled={context.loading || !text.trim()}
             title="Let the context assistant build a briefing"
             aria-label="Generate context with assistant"
           >
-            {contextLoading ? (
+            {context.loading ? (
               <div className="spinner spinner-small"></div>
             ) : (
               '🤖'
@@ -338,19 +315,19 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
             {contextWordCount} words
             {contextWordCount > 5000 && ' ⚠️ Large Context'}
           </div>
-          {contextModel && (
+          {modelsSettings.modelSelections.context && (
             <span className="model-indicator">
               <span className="model-label">Context Model:</span>
-              <span className="model-name">{contextModel}</span>
+              <span className="model-name">{modelsSettings.modelSelections.context}</span>
               <span
                 className="model-settings-link"
-                onClick={onOpenSettings}
+                onClick={settings.open}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    onOpenSettings();
+                    settings.open();
                   }
                 }}
                 title="Change context model in Settings"
@@ -360,14 +337,14 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
             </span>
           )}
         </div>
-        {(contextStatusMessage && contextLoading) && (
-          <div className="context-status">{contextStatusMessage}</div>
+        {(context.statusMessage && context.loading) && (
+          <div className="context-status">{context.statusMessage}</div>
         )}
-        {contextRequestedResources && contextRequestedResources.length > 0 && (
+        {context.requestedResources && context.requestedResources.length > 0 && (
           <div className="context-resource-summary">
             <div className="context-resource-title">Resources referenced:</div>
             <div className="context-resource-list">
-              {contextRequestedResources.map((path, index) => {
+              {context.requestedResources.map((path: string, index: number) => {
                 const handleResourceClick = () => {
                   vscode.postMessage({
                     type: MessageType.OPEN_RESOURCE,
@@ -399,14 +376,14 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
           <button
             className="action-button primary"
             onClick={() => handleAnalyzeDialogue('both')}
-            disabled={!text.trim() || isLoading}
+            disabled={!text.trim() || analysis.loading}
           >
             🎭 Dialogue & Beats
           </button>
           <button
             className="action-button primary"
             onClick={handleAnalyzeProse}
-            disabled={!text.trim() || isLoading}
+            disabled={!text.trim() || analysis.loading}
           >
             📝 Prose
           </button>
@@ -417,29 +394,29 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
           <button
             className="action-button secondary"
             onClick={() => handleAnalyzeDialogue('dialogue')}
-            disabled={!text.trim() || isLoading}
+            disabled={!text.trim() || analysis.loading}
           >
             💬 Dialogue Only
           </button>
           <button
             className="action-button secondary"
             onClick={() => handleAnalyzeDialogue('microbeats')}
-            disabled={!text.trim() || isLoading}
+            disabled={!text.trim() || analysis.loading}
           >
             🎭 Microbeats Only
           </button>
         </div>
       </div>
 
-      {isLoading && (
+      {analysis.loading && (
         <div className="loading-indicator">
           <div className="loading-header">
             <div className="spinner"></div>
             <div className="loading-text">
-              <div>{statusMessage || 'Analyzing...'}</div>
-              {guideNames && (
+              <div>{analysis.statusMessage || 'Analyzing...'}</div>
+              {analysis.guideNames && (
                 <div className="guide-ticker-container">
-                  <div className="guide-ticker">{guideNames}</div>
+                  <div className="guide-ticker">{analysis.guideNames}</div>
                 </div>
               )}
             </div>
@@ -449,7 +426,7 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
         </div>
       )}
 
-      {result && (
+      {analysis.result && (
         <div className="result-box">
           <div className="result-action-bar">
             <button
@@ -472,17 +449,17 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
             </button>
           </div>
           <MarkdownRenderer content={markdownContent} />
-          {usedGuides && usedGuides.length > 0 && (
+          {analysis.usedGuides && analysis.usedGuides.length > 0 && (
             <div className="guides-footer">
               <div className="guides-footer-title">📚 Guides Used:</div>
               <div className="guides-footer-list">
-                {usedGuides.map((guide, index) => {
+                {analysis.usedGuides.map((guide: string, index: number) => {
                   const displayName = guide
                     .split('/')
                     .pop()
                     ?.replace(/\.md$/i, '')
                     .split('-')
-                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
                     .join(' ');
 
                   const handleGuideClick = () => {

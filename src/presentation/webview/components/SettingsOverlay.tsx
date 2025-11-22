@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ModelScope, ModelOption } from '@shared/types';
+import { ModelScope, ModelOption, MessageType } from '@shared/types';
 import { UseModelsSettingsReturn } from '../hooks/domain/useModelsSettings';
 import { UseTokensSettingsReturn } from '../hooks/domain/useTokensSettings';
 import { UseTokenTrackingReturn } from '../hooks/domain/useTokenTracking';
@@ -7,11 +7,12 @@ import { UseContextPathsSettingsReturn } from '../hooks/domain/useContextPathsSe
 import { UseWordFrequencySettingsReturn } from '../hooks/domain/useWordFrequencySettings';
 import { UseWordSearchSettingsReturn } from '../hooks/domain/useWordSearchSettings';
 import { RECOMMENDED_MODELS, CATEGORY_MODELS } from '@/infrastructure/api/OpenRouterModels';
+import { VSCodeAPI } from '../types/vscode';
 
 type SettingsOverlayProps = {
   visible: boolean;
   onClose: () => void;
-  vscode: any;
+  vscode: VSCodeAPI;
   // Specialized hook objects (replaces generic settings + onUpdate)
   modelsSettings: UseModelsSettingsReturn;
   tokensSettings: UseTokensSettingsReturn;
@@ -164,7 +165,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             className="docs-link"
             onClick={() => {
               vscode.postMessage({
-                type: 'open_docs_file',
+                type: MessageType.OPEN_DOCS_FILE,
                 source: 'webview.settings',
                 payload: { docsPath: 'RECOMMENDED_MODELS.md' },
                 timestamp: Date.now()

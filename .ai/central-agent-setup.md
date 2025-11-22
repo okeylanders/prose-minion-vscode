@@ -1072,9 +1072,32 @@ When working with this codebase:
    - Verify persistence works across sessions (reload webview)
    - Check Output Channel for backend logging
 
+9. **Use Parallel Subagents for Independent Tasks**: Maximize efficiency by splitting work
+   - **When to use**: Tasks with clear, non-overlapping boundaries that can run simultaneously
+   - **How to launch**: Send a single message with multiple Task tool calls
+   - **Good candidates**:
+     - Updating multiple similar components (e.g., 3 tab components with same refactor pattern)
+     - Independent file modifications (e.g., updating separate domain handlers)
+     - Parallel research tasks (e.g., analyzing different parts of codebase)
+   - **Benefits**:
+     - ✅ 3-5x faster than sequential execution
+     - ✅ Fresh context for each subtask (no token bloat)
+     - ✅ Better focus (each agent works on one clear task)
+   - **Example** (Sprint 03): Launched 3 parallel subagents to update SearchTab, MetricsTab, UtilitiesTab simultaneously, completing in ~10 minutes vs ~30 minutes sequential
+   - **Pattern**:
+
+     ```typescript
+     // Launch multiple agents in one message:
+     <function_calls>
+       <invoke name="Task">...</invoke>  // Agent 1: Update SearchTab
+       <invoke name="Task">...</invoke>  // Agent 2: Update MetricsTab
+       <invoke name="Task">...</invoke>  // Agent 3: Update UtilitiesTab
+     </function_calls>
+     ```
+
 ### Code Quality
 
-9. **Consider Performance**: Be mindful of API costs and token usage
+10. **Consider Performance**: Be mindful of API costs and token usage
    - Use context window limits (Context: 50K words, Analysis: 75K words)
    - Apply sentence-boundary-aware trimming
    - Log truncation transparently in Output Channel
