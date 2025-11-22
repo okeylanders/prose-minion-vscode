@@ -471,6 +471,11 @@ export const SearchTab: React.FC<SearchTabProps> = ({
             isLoading={search.categorySearch.isLoading}
             statusMessage={search.statusMessage}
             defaultMessage="Running category search..."
+            progress={search.categorySearch.progress ? {
+              current: search.categorySearch.progress.current,
+              total: search.categorySearch.progress.total,
+              label: `Batch ${search.categorySearch.progress.current} of ${search.categorySearch.progress.total}`
+            } : undefined}
           />
         )}
 

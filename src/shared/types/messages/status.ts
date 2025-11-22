@@ -12,6 +12,10 @@ import { MessageEnvelope, MessageType } from './base';
 export interface StatusPayload {
   message: string;
   guideNames?: string;  // Comma-separated list of guide names for ticker animation
+  progress?: {
+    current: number;
+    total: number;
+  };
 }
 
 export interface StatusMessage extends MessageEnvelope<StatusPayload> {

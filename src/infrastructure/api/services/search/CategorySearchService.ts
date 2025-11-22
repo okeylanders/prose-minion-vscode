@@ -36,7 +36,7 @@ export class CategorySearchService {
     private readonly wordSearchService: WordSearchService,
     private readonly extensionUri: vscode.Uri,
     private readonly outputChannel?: vscode.OutputChannel,
-    private readonly statusEmitter?: (message: string) => void
+    private readonly statusEmitter?: (message: string, progress?: { current: number; total: number }) => void
   ) {
     this.wordFrequency = new WordFrequency((msg) => this.outputChannel?.appendLine(msg));
     this.promptLoader = new PromptLoader(extensionUri);
@@ -136,12 +136,13 @@ export class CategorySearchService {
             }
 
             this.sendStatus(
-              `${batchLabel}: matched ${aiResult.matchedWords.length} words (accumulated ${matchedWordsSet.size}/${uniqueWords.length})`
+              `${batchLabel}: matched ${aiResult.matchedWords.length} words (accumulated ${matchedWordsSet.size}/${uniqueWords.length})`,
+              { current: idx + 1, total: batches.length }
             );
           } catch (error) {
             const msg = error instanceof Error ? error.message : String(error);
             this.outputChannel?.appendLine(`[CategorySearchService] ${batchLabel} failed: ${msg}`);
-            this.sendStatus(`${batchLabel} failed: ${msg}`);
+            this.sendStatus(`${batchLabel} failed: ${msg}`, { current: idx + 1, total: batches.length });
             hadBatchFailure = true;
           }
         }
@@ -393,9 +394,9 @@ export class CategorySearchService {
     };
   }
 
-  private sendStatus(message: string): void {
+  private sendStatus(message: string, progress?: { current: number; total: number }): void {
     if (this.statusEmitter) {
-      this.statusEmitter(message);
+      this.statusEmitter(message, progress);
     }
   }
 }

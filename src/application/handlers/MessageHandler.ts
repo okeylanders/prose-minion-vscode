@@ -409,12 +409,12 @@ export class MessageHandler {
     }
   }
 
-  private sendSearchStatus(message: string): void {
+  private sendSearchStatus(message: string, progress?: { current: number; total: number }): void {
     try {
       const status: StatusMessage = {
         type: MessageType.STATUS,
         source: 'extension.search',
-        payload: { message },
+        payload: { message, progress },
         timestamp: Date.now()
       };
       void this.postMessage(status);
