@@ -312,10 +312,10 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
           isLoading={dictionary.isFastGenerating}
           statusMessage={dictionary.statusMessage}
           defaultMessage="⚡ Fast generating dictionary entry..."
-          progress={dictionary.fastGenerationProgress ? {
-            current: dictionary.fastGenerationProgress.completedBlocks.length,
-            total: dictionary.fastGenerationProgress.totalBlocks,
-            label: `${dictionary.fastGenerationProgress.completedBlocks.length} of ${dictionary.fastGenerationProgress.totalBlocks} blocks complete`
+          progress={dictionary.progress ? {
+            current: dictionary.progress.current,
+            total: dictionary.progress.total,
+            label: `Block ${dictionary.progress.current} of ${dictionary.progress.total}`
           } : undefined}
         />
       )}

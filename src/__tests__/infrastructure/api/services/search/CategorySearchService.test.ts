@@ -104,7 +104,7 @@ describe('CategorySearchService', () => {
     expect(result.tokensUsed?.total).toBe(45); // aggregated across batches
     expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('Total unique words: 900'), undefined);
     expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('Batch 1/3'), { current: 1, total: 3 });
-    expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('matched 2 words (accumulated'), expect.objectContaining({ current: expect.any(Number), total: 3 }));
+    expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('batches completed'), expect.objectContaining({ current: expect.any(Number), total: 3 }));
     expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('Batch 2/3'), { current: 2, total: 3 });
     expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('Batch 3/3'), { current: 3, total: 3 });
   });

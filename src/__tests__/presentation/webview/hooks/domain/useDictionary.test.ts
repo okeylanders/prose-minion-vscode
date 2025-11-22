@@ -20,7 +20,7 @@ describe('useDictionary - Type Contracts', () => {
         relativePath: '',
         statusMessage: '',
         isFastGenerating: false,
-        fastGenerationProgress: null,
+        progress: undefined,
         lastFastGenerationMetadata: null
       };
 
@@ -31,7 +31,7 @@ describe('useDictionary - Type Contracts', () => {
       expect(state).toHaveProperty('wordEdited');
       expect(state).toHaveProperty('sourceUri');
       expect(state).toHaveProperty('isFastGenerating');
-      expect(state).toHaveProperty('fastGenerationProgress');
+      expect(state).toHaveProperty('progress');
     });
 
     it('should define Actions interface', () => {
@@ -45,7 +45,6 @@ describe('useDictionary - Type Contracts', () => {
         setSource: jest.fn(),
         clearResult: jest.fn(),
         handleFastGenerateResult: jest.fn(),
-        handleProgress: jest.fn(),
         setFastGenerating: jest.fn()
       };
 

@@ -238,6 +238,9 @@ export class MessageHandler {
       this.applyTokenUsage.bind(this)
     );
 
+    // Set status emitter for dictionary service (for fast generation progress)
+    dictionaryService.setStatusEmitter(this.sendDictionaryStatus.bind(this));
+
     this.contextHandler = new ContextHandler(
       contextAssistantService,
       this.postMessage.bind(this),
@@ -421,6 +424,21 @@ export class MessageHandler {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[MessageHandler] Failed to post search status: ${msg}`);
+    }
+  }
+
+  private sendDictionaryStatus(message: string, progress?: { current: number; total: number }): void {
+    try {
+      const status: StatusMessage = {
+        type: MessageType.STATUS,
+        source: 'extension.dictionary',
+        payload: { message, progress },
+        timestamp: Date.now()
+      };
+      void this.postMessage(status);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[MessageHandler] Failed to post dictionary status: ${msg}`);
     }
   }
 

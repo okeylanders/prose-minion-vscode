@@ -101,6 +101,7 @@ export class CategorySearchService {
       // Run batches with a small concurrency pool (5)
       const concurrency = Math.min(5, batches.length);
       let nextIndex = 0;
+      let completedBatches = 0;
       const runWorker = async () => {
         while (!shouldStop && nextIndex < batches.length) {
           const idx = nextIndex++;
@@ -135,14 +136,16 @@ export class CategorySearchService {
               break;
             }
 
+            completedBatches++;
             this.sendStatus(
-              `${batchLabel}: matched ${aiResult.matchedWords.length} words (accumulated ${matchedWordsSet.size}/${uniqueWords.length})`,
-              { current: idx + 1, total: batches.length }
+              `${batchLabel}: matched ${aiResult.matchedWords.length} words (${completedBatches} batches completed)`,
+              { current: completedBatches, total: batches.length }
             );
           } catch (error) {
             const msg = error instanceof Error ? error.message : String(error);
             this.outputChannel?.appendLine(`[CategorySearchService] ${batchLabel} failed: ${msg}`);
-            this.sendStatus(`${batchLabel} failed: ${msg}`, { current: idx + 1, total: batches.length });
+            completedBatches++;
+            this.sendStatus(`${batchLabel} failed: ${msg}`, { current: completedBatches, total: batches.length });
             hadBatchFailure = true;
           }
         }

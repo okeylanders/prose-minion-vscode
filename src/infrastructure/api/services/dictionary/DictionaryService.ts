@@ -71,6 +71,7 @@ export type ParallelGenerationProgressCallback = (progress: {
 
 export class DictionaryService {
   private dictionaryUtility?: DictionaryUtility;
+  private statusEmitter?: (message: string, progress?: { current: number; total: number }) => void;
 
   // Parallel generation constants
   private readonly CONCURRENCY_LIMIT = 7;
@@ -84,6 +85,14 @@ export class DictionaryService {
   ) {
     // Dictionary will be initialized when AI resources are available
     void this.initializeDictionary();
+  }
+
+  /**
+   * Set status callback for progress updates
+   * Called by MessageHandler after construction
+   */
+  setStatusEmitter(statusEmitter: (message: string, progress?: { current: number; total: number }) => void): void {
+    this.statusEmitter = statusEmitter;
   }
 
   /**
@@ -187,9 +196,11 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
    * Generate dictionary entry using parallel fan-out pattern
    * Fires concurrent API calls for each block and reassembles results
    *
+   * Progress updates are sent via STATUS messages through the statusEmitter.
+   *
    * @param word - Word to look up
    * @param context - Optional context text
-   * @param onProgress - Optional callback for progress updates
+   * @param onProgress - (Deprecated) Legacy callback for progress updates. Use STATUS messages instead.
    * @returns Combined dictionary result with metadata
    */
   async generateParallelDictionary(
@@ -229,6 +240,14 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         // Update progress
         if (!result.error) {
           completedBlocks.push(blockName);
+
+          // Send STATUS message with progress
+          this.sendStatus(
+            `Block ${completedBlocks.length}/${totalBlocks} complete`,
+            { current: completedBlocks.length, total: totalBlocks }
+          );
+
+          // Also call legacy callback if provided (for backward compatibility)
           onProgress?.({
             word,
             completedBlocks: [...completedBlocks],
@@ -456,5 +475,14 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         costUsd: totalCostUsd
       } : undefined
     };
+  }
+
+  /**
+   * Send status update via status emitter
+   */
+  private sendStatus(message: string, progress?: { current: number; total: number }): void {
+    if (this.statusEmitter) {
+      this.statusEmitter(message, progress);
+    }
   }
 }
