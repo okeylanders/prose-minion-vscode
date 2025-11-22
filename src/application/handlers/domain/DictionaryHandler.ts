@@ -6,7 +6,7 @@
  */
 
 import * as vscode from 'vscode';
-import { DictionaryService } from '../../../infrastructure/api/services/dictionary/DictionaryService';
+import { DictionaryService } from '@services/dictionary/DictionaryService';
 import {
   LookupDictionaryMessage,
   FastGenerateDictionaryMessage,
@@ -18,7 +18,7 @@ import {
   DictionaryGenerationProgressMessage,
   StatusMessage,
   ErrorMessage
-} from '../../../shared/types/messages';
+} from '@messages';
 import { MessageRouter } from '../MessageRouter';
 
 export class DictionaryHandler {

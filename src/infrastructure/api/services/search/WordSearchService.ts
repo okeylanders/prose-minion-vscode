@@ -20,7 +20,7 @@
 
 import * as vscode from 'vscode';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
-import { MetricsResult, AnalysisResultFactory } from '../../../../domain/models/AnalysisResult';
+import { MetricsResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
 
 /**
  * Service wrapper for deterministic word search

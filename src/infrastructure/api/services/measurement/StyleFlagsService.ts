@@ -12,7 +12,7 @@
  * - Follows the same pattern as other measurement service wrappers
  */
 
-import { StyleFlags } from '../../../../tools/measure/styleFlags';
+import { StyleFlags } from '@/tools/measure/styleFlags';
 
 /**
  * Service wrapper for style flag detection

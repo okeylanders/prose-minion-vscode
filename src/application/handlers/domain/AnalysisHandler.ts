@@ -6,7 +6,7 @@
  */
 
 import * as vscode from 'vscode';
-import { AssistantToolService } from '../../../infrastructure/api/services/analysis/AssistantToolService';
+import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import {
   AnalyzeDialogueMessage,
   AnalyzeProseMessage,
@@ -16,7 +16,7 @@ import {
   TokenUsage,
   ErrorSource,
   MessageType
-} from '../../../shared/types/messages';
+} from '@messages';
 import { MessageRouter } from '../MessageRouter';
 
 export class AnalysisHandler {

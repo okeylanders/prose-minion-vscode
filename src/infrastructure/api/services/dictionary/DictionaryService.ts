@@ -18,16 +18,16 @@
 
 import * as vscode from 'vscode';
 import pLimit from 'p-limit';
-import { DictionaryUtility } from '../../../../tools/utility/dictionaryUtility';
+import { DictionaryUtility } from '@/tools/utility/dictionaryUtility';
 import { AIResourceManager } from '../resources/AIResourceManager';
 import { ResourceLoaderService } from '../resources/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
-import { AnalysisResult, AnalysisResultFactory } from '../../../../domain/models/AnalysisResult';
+import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
 import {
   DictionaryBlockResult,
   FastGenerateDictionaryResultPayload
-} from '../../../../shared/types/messages/dictionary';
-import { TokenUsage } from '../../../../shared/types/messages/base';
+} from '@messages/dictionary';
+import { TokenUsage } from '@messages/tokenUsage';
 
 /**
  * Service wrapper for AI-powered dictionary lookups

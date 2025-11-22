@@ -7,8 +7,8 @@
 import * as React from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
-import { MessageType } from '../../../../shared/types';
-import { PublishingStandardsDataMessage } from '../../../../shared/types/messages';
+import { MessageType } from '@shared/types';
+import { PublishingStandardsDataMessage } from '@messages';
 
 export interface Genre {
   key: string;

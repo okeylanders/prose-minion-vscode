@@ -8,9 +8,9 @@
  */
 
 import * as vscode from 'vscode';
-import { PromptLoader } from '../../../../tools/shared/prompts';
-import { GuideLoader } from '../../../../tools/shared/guides';
-import { GuideRegistry } from '../../../guides/GuideRegistry';
+import { PromptLoader } from '@/tools/shared/prompts';
+import { GuideLoader } from '@/tools/shared/guides';
+import { GuideRegistry } from '@/infrastructure/guides/GuideRegistry';
 
 export class ResourceLoaderService {
   private promptLoader?: PromptLoader;

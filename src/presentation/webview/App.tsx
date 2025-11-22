@@ -12,7 +12,7 @@ import { UtilitiesTab } from './components/UtilitiesTab';
 import { SearchTab } from './components/SearchTab';
 import { ModelSelector } from './components/ModelSelector';
 import { SettingsOverlay } from './components/SettingsOverlay';
-import { TabId, MessageType, ModelScope } from '../../shared/types';
+import { TabId, MessageType, ModelScope } from '@shared/types';
 
 // Infrastructure hooks
 import { useVSCodeApi } from './hooks/useVSCodeApi';

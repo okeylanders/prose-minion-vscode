@@ -14,7 +14,7 @@ import {
   MessageType,
   ErrorSource,
   ErrorMessage
-} from '../../../shared/types/messages';
+} from '@messages';
 import { MessageRouter } from '../MessageRouter';
 
 export class SourcesHandler {

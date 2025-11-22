@@ -5,7 +5,7 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { ResolvedTextSource, TextSourceSpec } from '../../shared/types';
+import { ResolvedTextSource, TextSourceSpec } from '@shared/types';
 
 export class TextSourceResolver {
   constructor(private readonly output?: vscode.OutputChannel) {}

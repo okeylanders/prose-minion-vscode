@@ -10,9 +10,9 @@
  */
 
 import * as vscode from 'vscode';
-import { PublishingStandardsRepository } from '../../../standards/PublishingStandardsRepository';
-import { StandardsComparisonService } from '../../../../application/services/StandardsComparisonService';
-import { Genre } from '../../../../domain/models/PublishingStandards';
+import { PublishingStandardsRepository } from '@/infrastructure/standards/PublishingStandardsRepository';
+import { StandardsComparisonService } from '@/application/services/StandardsComparisonService';
+import { Genre } from '@/domain/models/PublishingStandards';
 
 export class StandardsService {
   private standardsRepo?: PublishingStandardsRepository;

@@ -348,6 +348,123 @@ usePersistence({
 - **TypeScript**: Strict typing throughout the codebase
 - **Error Handling**: Try/catch with fallbacks for missing resources
 
+### Type Organization & Import Conventions
+
+**Sprint 02 (Foundation Cleanup) established clear type organization and semantic import patterns.**
+
+#### Message Type Organization
+
+Message contracts live in `src/shared/types/messages/` organized by domain:
+
+```plaintext
+src/shared/types/messages/
+├── index.ts              # Barrel export (import from here)
+├── base.ts              # MessageType enum, MessageEnvelope, common base types
+├── error.ts             # Error suite (ErrorSource, ErrorPayload, ErrorMessage)
+├── status.ts            # Status messages (StatusPayload, StatusMessage)
+├── tokenUsage.ts        # TokenUsage interface (first-class app behavior)
+├── analysis.ts          # Dialogue & prose analysis messages
+├── dictionary.ts        # Dictionary lookup messages
+├── context.ts           # Context generation messages
+├── metrics.ts           # Prose stats, style flags, word frequency
+├── search.ts            # Word search messages
+├── configuration.ts     # Settings, models, tokens messages
+├── publishing.ts        # Publishing standards messages
+├── sources.ts           # File/glob operation messages
+├── ui.ts                # Tab changes, selections, guide messages
+└── results.ts           # Save/copy result messages
+```
+
+**Type Location Guidelines:**
+
+| Type Category | Location | Example |
+|--------------|----------|---------|
+| **Cross-cutting concerns** | Dedicated files (error, status, tokenUsage) | `ErrorPayload`, `StatusMessage`, `TokenUsage` |
+| **Domain-specific messages** | Domain file (analysis, dictionary, etc.) | `AnalyzeDialoguePayload` in `analysis.ts` |
+| **First-class app behaviors** | Own file at messages root | `TokenUsage` in `tokenUsage.ts` |
+| **Base/shared types** | `base.ts` only | `MessageEnvelope`, `MessageType` enum |
+
+**Import from barrel export:**
+```typescript
+// ✅ Correct: Import from barrel export
+import { MessageType, ErrorPayload, TokenUsage } from '@messages';
+import { AnalyzeDialoguePayload } from '@messages';
+
+// ❌ Incorrect: Don't import from specific files
+import { MessageType } from '@messages/base';
+import { ErrorPayload } from '@messages/error';
+```
+
+#### Semantic Import Aliases
+
+**Zero relative imports policy**: All imports use semantic aliases (no `../../../`).
+
+**Extension (Backend) Aliases:**
+```typescript
+import { AnalysisHandler } from '@handlers/domain/AnalysisHandler';
+import { DictionaryService } from '@services/dictionary/DictionaryService';
+import { PublishingStandardsRepository } from '@standards';
+import { SecretStorageService } from '@secrets';
+import { AnalysisResult } from '@/domain/models/AnalysisResult';
+import { DialogueMicrobeatAssistant } from '@/tools/assist/dialogueMicrobeatAssistant';
+```
+
+**Webview (Frontend) Aliases:**
+```typescript
+import { AnalysisTab } from '@components/AnalysisTab';
+import { useAnalysis } from '@hooks/domain/useAnalysis';
+import { useVSCodeApi } from '@hooks/useVSCodeApi';
+import { formatSearchResultAsMarkdown } from '@formatters/wordSearchFormatter';
+import { TextUtils } from '@utils/textUtils';
+```
+
+**Shared Aliases (Both):**
+```typescript
+import { MessageType, ErrorPayload } from '@messages';
+import { CustomTypes } from '@shared/types/customTypes';
+```
+
+**Universal Fallback:**
+```typescript
+// Use @/* for anything without a specific alias
+import { SomeUtility } from '@/utils/someUtility';
+import { ApplicationService } from '@/application/services/ApplicationService';
+```
+
+**Alias Reference Table:**
+
+| Alias | Resolves To | Used In |
+|-------|-------------|---------|
+| `@messages` | `src/shared/types/messages/index.ts` | Both (barrel import) |
+| `@messages/*` | `src/shared/types/messages/*` | Both (specific files) |
+| `@shared/*` | `src/shared/*` | Both |
+| `@handlers/*` | `src/application/handlers/*` | Extension |
+| `@services/*` | `src/infrastructure/api/services/*` | Extension |
+| `@standards` | `src/infrastructure/standards` | Extension |
+| `@secrets` | `src/infrastructure/secrets` | Extension |
+| `@components/*` | `src/presentation/webview/components/*` | Webview |
+| `@hooks/*` | `src/presentation/webview/hooks/*` | Webview |
+| `@utils/*` | `src/presentation/webview/utils/*` | Webview |
+| `@formatters` | `src/presentation/webview/utils/formatters` | Webview |
+| `@formatters/*` | `src/presentation/webview/utils/formatters/*` | Webview |
+| `@/*` | `src/*` | Both (universal fallback) |
+
+**Configuration Files:**
+
+- `tsconfig.json` - Extension + test type resolution (includes webview aliases for tests)
+- `tsconfig.webview.json` - Webview type resolution (includes infrastructure for OpenRouterModels)
+- `webpack.config.js` - Both extension and webview module resolution
+- `jest.config.js` - Test module resolution (order-specific: most specific first)
+
+**Best Practices:**
+
+- ✅ Always use semantic aliases (never `../../../`)
+- ✅ Import from barrel exports when available (`@messages` not `@messages/base`)
+- ✅ Prefer specific aliases over `@/*` when available
+- ✅ Keep cross-cutting concerns in dedicated files (error, status, tokenUsage)
+- ❌ Don't add types to `base.ts` unless truly shared across all domains
+- ❌ Don't import directly from domain files when barrel export exists
+
 ### Alpha Development Guidelines
 
 **This is alpha software with no released versions. Backward compatibility is NOT required.**

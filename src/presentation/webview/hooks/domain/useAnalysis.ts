@@ -6,7 +6,7 @@
 
 import * as React from 'react';
 import { usePersistedState } from '../usePersistence';
-import { AnalysisResultMessage, StatusMessage } from '../../../../shared/types/messages';
+import { AnalysisResultMessage, StatusMessage } from '@messages';
 
 export interface AnalysisState {
   result: string;

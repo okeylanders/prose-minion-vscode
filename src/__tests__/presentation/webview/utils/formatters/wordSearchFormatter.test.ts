@@ -2,7 +2,7 @@
  * Tests for word search formatter
  */
 
-import { formatSearchResultAsMarkdown } from '../../../../../presentation/webview/utils/formatters/wordSearchFormatter';
+import { formatSearchResultAsMarkdown } from '@formatters/wordSearchFormatter';
 
 describe('formatSearchResultAsMarkdown', () => {
   it('returns empty string for null/undefined input', () => {

@@ -8,8 +8,8 @@
 import * as React from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
-import { MessageType } from '../../../../shared/types';
-import { SettingsDataMessage } from '../../../../shared/types/messages';
+import { MessageType } from '@shared/types';
+import { SettingsDataMessage } from '@messages';
 
 export interface WordSearchSettings {
   contextWords: number;              // Context words around hits

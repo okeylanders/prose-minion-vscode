@@ -10,7 +10,7 @@ import {
   DictionaryResultMessage,
   FastGenerateDictionaryResultMessage,
   DictionaryGenerationProgressMessage
-} from '../../../../shared/types/messages';
+} from '@messages';
 
 export interface FastGenerationProgress {
   completedBlocks: string[];

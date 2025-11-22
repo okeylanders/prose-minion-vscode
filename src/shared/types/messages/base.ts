@@ -88,26 +88,6 @@ export enum MessageType {
   DICTIONARY_GENERATION_PROGRESS = 'dictionary_generation_progress'
 }
 
-export enum TabId {
-  ANALYSIS = 'analysis',
-  SUGGESTIONS = 'suggestions',
-  SEARCH = 'search',
-  METRICS = 'metrics',
-  UTILITIES = 'utilities'
-}
-
-export type ModelScope = 'assistant' | 'dictionary' | 'context' | 'category';
-
-export type CategoryRelevance = 'broad' | 'focused' | 'specific' | 'synonym';
-export type CategoryWordLimit = 20 | 50 | 75 | 100 | 250 | 350 | 500;
-export const CATEGORY_RELEVANCE_OPTIONS: readonly CategoryRelevance[] = ['broad', 'focused', 'specific', 'synonym'];
-
-export interface ModelOption {
-  id: string;
-  label: string;
-  description?: string;
-}
-
 export interface BaseMessage {
   type: MessageType;
   timestamp?: number;
@@ -194,27 +174,4 @@ export interface MessageEnvelope<TPayload = any> {
 
   /** Optional correlation ID for request/response tracking */
   correlationId?: string;
-}
-
-export interface TokenUsage {
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
-  costUsd?: number;
-  isEstimate?: boolean;
-}
-
-export type SelectionTarget =
-  | 'assistant_excerpt'
-  | 'assistant_context'
-  | 'dictionary_word'
-  | 'dictionary_context';
-
-export interface SaveResultMetadata {
-  word?: string;
-  excerpt?: string;
-  context?: string;
-  sourceFileUri?: string;
-  relativePath?: string;
-  timestamp?: number;
 }

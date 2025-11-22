@@ -14,7 +14,19 @@
     "moduleResolution": "node",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@shared/*": ["src/shared/*"],
+      "@messages": ["src/shared/types/messages/index.ts"],
+      "@messages/*": ["src/shared/types/messages/*"],
+      "@handlers/*": ["src/application/handlers/*"],
+      "@services/*": ["src/infrastructure/api/services/*"],
+      "@standards": ["src/infrastructure/standards"],
+      "@secrets": ["src/infrastructure/secrets"],
+      "@components/*": ["src/presentation/webview/components/*"],
+      "@hooks/*": ["src/presentation/webview/hooks/*"],
+      "@utils/*": ["src/presentation/webview/utils/*"],
+      "@formatters": ["src/presentation/webview/utils/formatters"],
+      "@formatters/*": ["src/presentation/webview/utils/formatters/*"]
     }
   },
   "include": ["src/**/*"],

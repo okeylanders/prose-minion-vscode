@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { MessageType, WebviewToExtensionMessage } from '../../shared/types/messages';
+import { MessageType, WebviewToExtensionMessage } from '@messages';
 
 /**
  * MessageRouter implements the Strategy pattern for message routing.

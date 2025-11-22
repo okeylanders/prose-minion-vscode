@@ -3,7 +3,25 @@
  * Tab changes, selections, and guide interactions
  */
 
-import { MessageEnvelope, MessageType, TabId, SelectionTarget } from './base';
+import { MessageEnvelope, MessageType } from './base';
+
+// ============================================================================
+// UI Types
+// ============================================================================
+
+export enum TabId {
+  ANALYSIS = 'analysis',
+  SUGGESTIONS = 'suggestions',
+  SEARCH = 'search',
+  METRICS = 'metrics',
+  UTILITIES = 'utilities'
+}
+
+export type SelectionTarget =
+  | 'assistant_excerpt'
+  | 'assistant_context'
+  | 'dictionary_word'
+  | 'dictionary_context';
 
 export interface TabChangedPayload {
   tabId: TabId;

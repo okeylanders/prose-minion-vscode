@@ -6,7 +6,7 @@
 
 import * as React from 'react';
 import { usePersistedState } from '../usePersistence';
-import { TextSourceMode } from '../../../../shared/types';
+import { TextSourceMode } from '@shared/types';
 import {
   SearchResultMessage,
   ActiveFileMessage,
@@ -15,8 +15,8 @@ import {
   CategorySearchResultMessage,
   CategorySearchResult,
   StatusMessage
-} from '../../../../shared/types/messages';
-import { CategoryRelevance, CategoryWordLimit } from '../../../../shared/types';
+} from '@messages';
+import { CategoryRelevance, CategoryWordLimit } from '@shared/types';
 
 export interface CategorySearchState {
   query: string;

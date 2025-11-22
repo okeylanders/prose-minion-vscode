@@ -15,12 +15,12 @@
  */
 
 import * as vscode from 'vscode';
-import { DialogueMicrobeatAssistant } from '../../../../tools/assist/dialogueMicrobeatAssistant';
-import { ProseAssistant } from '../../../../tools/assist/proseAssistant';
+import { DialogueMicrobeatAssistant } from '@/tools/assist/dialogueMicrobeatAssistant';
+import { ProseAssistant } from '@/tools/assist/proseAssistant';
 import { AIResourceManager } from '../resources/AIResourceManager';
 import { ResourceLoaderService } from '../resources/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
-import { AnalysisResult, AnalysisResultFactory } from '../../../../domain/models/AnalysisResult';
+import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
 
 /**
  * Service wrapper for AI-powered assistant analysis

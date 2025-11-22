@@ -16,7 +16,7 @@
  */
 
 import * as vscode from 'vscode';
-import { PassageProseStats } from '../../../../tools/measure/passageProseStats';
+import { PassageProseStats } from '@/tools/measure/passageProseStats';
 
 /**
  * Service wrapper for prose statistics analysis

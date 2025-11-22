@@ -117,3 +117,41 @@ import { formatCategorySearchAsMarkdown } from '../utils/formatters/categorySear
 
 - This grab bag grew with each feature: Word Search → Metrics → Category Search
 - Category Search epic added `formatCategorySearchAsMarkdown()` (lines 631-763)
+
+---
+
+## ✅ RESOLVED
+
+**Resolution Date**: 2025-11-22
+**Resolved By**: Sprint 01 - Result Formatter Decomposition
+**Branch**: `sprint/foundation-cleanup-01-result-formatter`
+**PR**: #33
+
+### What Was Done
+
+Extracted `resultFormatter.ts` (763 lines) into 7 focused domain formatters:
+
+```
+src/presentation/webview/utils/formatters/
+├── index.ts                    # Barrel export
+├── helpers.ts                  # Shared helpers (60 lines)
+├── wordSearchFormatter.ts      # Word search (110 lines)
+├── proseStatsFormatter.ts      # Prose statistics (120 lines)
+├── styleFlagsFormatter.ts      # Style flags (40 lines)
+├── wordFrequencyFormatter.ts   # Word frequency (220 lines)
+└── categorySearchFormatter.ts  # Category search (140 lines)
+```
+
+**Outcomes:**
+- ✅ Single Responsibility restored
+- ✅ Each formatter testable in isolation
+- ✅ 7 focused files replace 1 grab bag
+- ✅ All 244 tests passing
+- ✅ Build successful
+
+**Files Modified:** 12 files (7 new formatters + 5 component imports)
+
+**References:**
+- Epic: `.todo/archived/epics/epic-architecture-health-pass-v1.3/`
+- Sprint: `sub-epic-1-foundation-cleanup/sprints/01-result-formatter-decomposition.md`
+- Commit: `01aca66` - "docs: update Sprint 01 completion status"

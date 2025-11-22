@@ -1,6 +1,6 @@
 import React from 'react';
-import { MessageType } from '../../../../shared/types';
-import { SettingsDataMessage, ModelDataMessage } from '../../../../shared/types/messages';
+import { MessageType } from '@shared/types';
+import { SettingsDataMessage, ModelDataMessage } from '@messages';
 import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
 

@@ -2,7 +2,7 @@
  * Tests for prose statistics formatter
  */
 
-import { formatProseStatsAsMarkdown } from '../../../../../presentation/webview/utils/formatters/proseStatsFormatter';
+import { formatProseStatsAsMarkdown } from '@formatters/proseStatsFormatter';
 
 describe('formatProseStatsAsMarkdown', () => {
   it('returns empty string for null/undefined input', () => {

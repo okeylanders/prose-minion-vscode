@@ -1,13 +1,13 @@
 # Architecture Debt Status Summary
 
-**Last Updated**: 2025-11-15
-**Total Items**: 12
-**Resolved**: 5
+**Last Updated**: 2025-11-22
+**Total Items**: 14
+**Resolved**: 7
 **Pending**: 7
 
 ---
 
-## ✅ RESOLVED (5 items)
+## ✅ RESOLVED (7 items)
 
 ### 1. Configuration Strategy Inconsistency
 **File**: [2025-11-02-configuration-strategy-inconsistency.md](2025-11-02-configuration-strategy-inconsistency.md)
@@ -41,6 +41,42 @@
 **File**: [2025-11-02-settings-sync-registration.md](2025-11-02-settings-sync-registration.md)
 **Status**: ✅ **RESOLVED** (2025-11-04, Sprint 02 - PR #19)
 **Solution**: Backend refactored to use semantic methods instead of hardcoded lists
+
+---
+
+### 6. Result Formatter Grab Bag
+
+**File**: [archived/2025-11-19-result-formatter-grab-bag.md](archived/2025-11-19-result-formatter-grab-bag.md)
+**Status**: ✅ **RESOLVED** (2025-11-22, Sprint 01 - PR #33)
+**Solution**: Extracted `resultFormatter.ts` (763 lines) into 7 focused domain formatters
+
+**Outcomes**:
+
+- ✅ Single Responsibility restored (7 focused files replace 1 grab bag)
+- ✅ Each formatter testable in isolation
+- ✅ All 244 tests passing
+
+**Epic**: Architecture Health Pass v1.3 - Sub-Epic 1: Foundation Cleanup
+
+---
+
+### 7. Shared Types & Imports Hygiene
+
+**File**: [archived/2025-11-19-shared-types-imports-hygiene.md](archived/2025-11-19-shared-types-imports-hygiene.md)
+**Status**: ✅ **RESOLVED** (2025-11-22, Sprint 02 - PR #TBD)
+**Solution**: Complete type reorganization and semantic import alias migration
+
+**Outcomes**:
+
+- ✅ Zero deep relative imports (116 conversions)
+- ✅ Clear type organization (cross-cutting vs domain)
+- ✅ Comprehensive semantic aliases (@messages, @handlers, @services, @hooks, etc.)
+- ✅ Full documentation added to agent setup
+- ✅ All 244 tests passing
+
+**Phases**: Type Relocation → Import Aliases → Message Reorganization → Deep Import Migration → Documentation
+
+**Epic**: Architecture Health Pass v1.3 - Sub-Epic 1: Foundation Cleanup
 
 ---
 
@@ -188,9 +224,9 @@
 
 | Category | Count | Priority Breakdown |
 |----------|-------|-------------------|
-| **Resolved** | 5 | All CRITICAL issues resolved |
+| **Resolved** | 7 | All CRITICAL issues resolved |
 | **Pending** | 7 | HIGH: 1, MEDIUM: 4, LOW: 1, DOC: 1 |
-| **Total** | 12 | - |
+| **Total** | 14 | - |
 
 ---
 
@@ -225,13 +261,20 @@
 
 ## Recent Achievements
 
+**Architecture Health Pass v1.3 - Foundation Cleanup** (Sprint 01-02, Completed 2025-11-22):
+
+- ✅ Result Formatter Decomposition (763 lines → 7 focused files)
+- ✅ Shared Types & Imports Hygiene (116 deep imports → semantic aliases)
+- ✅ Type organization cleanup (cross-cutting concerns extracted)
+- ✅ Comprehensive import alias strategy documented
+
 **Unified Settings Architecture Epic** (Completed 2025-11-07):
 - ✅ Fixed SearchTab settings (4 settings completely broken)
 - ✅ Migrated all settings to Domain Hooks pattern
 - ✅ Backend refactored to semantic methods
 - ✅ 100% persistence coverage (29/29 settings)
 
-This epic resolved **5 major architecture debt items**, eliminating all CRITICAL issues.
+These epics resolved **7 major architecture debt items**, eliminating all CRITICAL issues.
 
 ---
 

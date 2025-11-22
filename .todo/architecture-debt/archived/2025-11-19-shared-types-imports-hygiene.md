@@ -136,3 +136,60 @@ Configure webpack and jest to respect aliases.
 
 - **ADR**: [2025-11-19-shared-types-imports-hygiene.md](../../docs/adr/2025-11-19-shared-types-imports-hygiene.md)
 - **Related ADR**: [2025-10-26-message-architecture-organization.md](../../docs/adr/2025-10-26-message-architecture-organization.md)
+
+---
+
+## ✅ RESOLVED
+
+**Resolution Date**: 2025-11-22
+**Resolved By**: Sprint 02 - Shared Types & Imports Hygiene
+**Branch**: `sprint/foundation-cleanup-02-types-imports`
+**PR**: #TBD (pending)
+
+### What Was Done
+
+**Phase 1: Type Relocation**
+- Moved domain-specific types from base.ts to domain files
+- base.ts reduced from 221 → 178 lines
+
+**Phase 2A: Import Aliases - Initial**
+- Configured @messages barrel export
+- Added to all config files (tsconfig × 2, webpack, jest)
+
+**Phase 2B: Message File Reorganization**
+- Extracted cross-cutting concerns:
+  - `error.ts` - Error suite (ErrorSource, ErrorPayload, ErrorMessage)
+  - `status.ts` - Status messages
+  - `tokenUsage.ts` - TokenUsage as first-class app behavior
+
+**Phase 2C: Comprehensive Semantic Aliases**
+- Added 13 semantic aliases across extension and webview
+- Extension: @handlers, @services, @standards, @secrets, @/*
+- Webview: @components, @hooks, @utils, @formatters, @/*
+
+**Phase 2D: Migrate All Deep Imports**
+- Converted 116 relative imports to semantic aliases
+- Zero `../../../` patterns remaining
+- 53 source files + 33 test files migrated
+
+**Phase 3: Documentation**
+- Added 117 lines of documentation to `.ai/central-agent-setup.md`
+- Type location guidelines
+- Import alias reference table
+- Best practices
+
+**Outcomes:**
+- ✅ Zero deep relative imports (116 conversions)
+- ✅ Clear type organization (cross-cutting vs domain)
+- ✅ Comprehensive semantic aliases configured
+- ✅ Full documentation for future work
+- ✅ All 244 tests passing
+- ✅ Build successful
+
+**Files Modified:** 86 files (3 new message files, 4 configs, 79 migrations)
+
+**References:**
+- Epic: `.todo/epics/epic-architecture-health-pass-v1.3/`
+- Sprint: `sub-epic-1-foundation-cleanup/sprints/02-shared-types-imports-hygiene.md`
+- ADR: `docs/adr/2025-11-19-shared-types-imports-hygiene.md`
+- Commits: `115314a`, `26284df`

@@ -13,7 +13,7 @@ import {
   ErrorSource,
   ErrorMessage,
   StatusMessage
-} from '../../../shared/types/messages';
+} from '@messages';
 import { MessageRouter } from '../MessageRouter';
 
 export class FileOperationsHandler {
