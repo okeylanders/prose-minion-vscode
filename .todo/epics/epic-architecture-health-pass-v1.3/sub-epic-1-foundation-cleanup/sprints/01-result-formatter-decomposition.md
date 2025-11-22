@@ -1,7 +1,7 @@
 # Sprint 01: Result Formatter Decomposition
 
 **Sub-Epic**: [Foundation Cleanup](../epic-foundation-cleanup.md)
-**Status**: Ready to Start
+**Status**: ✅ Complete
 **Priority**: HIGH
 **Duration**: 3-4 hours
 **Branch**: `sprint/foundation-cleanup-01-result-formatter`
@@ -228,15 +228,35 @@ src/presentation/webview/utils/
 
 ## Outcomes (Post-Sprint)
 
-*To be filled after sprint completion*
+**Completion Date**: 2025-11-21
+**Actual Duration**: ~3 hours
+**PR**: [#32](https://github.com/okeylanders/prose-minion-vscode/pull/32)
 
-**Completion Date**:
-**Actual Duration**:
-**PR**:
+**Deliverables**:
+
+- ✅ Created 8 focused formatter files (817 lines total, each < 250 lines)
+- ✅ Removed facade pattern from index.ts (104 → 15 lines) for cleaner architecture
+- ✅ Added 31 foundation tests (244 total tests, all passing)
+- ✅ Deleted original 769-line grab bag
+- ✅ Zero breaking changes, all functionality preserved
+
 **Lessons Learned**:
+
+- **Architectural Improvement via User Feedback**: User questioned why index.ts looked like "metrics formatter" instead of being generalized. This led to removing the facade pattern (shape-detection routing) in favor of direct formatter calls. Result: Cleaner code that prepares for upcoming subtab separation work.
+- **Foundation Tests Are Quick Wins**: 31 tests added in ~30 minutes for pure functions. High value, low effort. Testing pure functions prevents regressions during future refactors.
+- **AI Agent Anti-Pattern Identified**: The facade pattern was a premature abstraction. Components already know their data types (activeTool, subtool), so routing via shape detection added complexity without benefit.
+
+**Architecture Debt Resolved**:
+
+- ✅ Closed: `.todo/architecture-debt/2025-11-19-result-formatter-grab-bag.md`
+
+**Memory Bank Entry**:
+
+- [Sprint 01 Complete Summary](../../../../.memory-bank/20251121-1930-sprint-01-result-formatter-complete.md)
 
 ---
 
 **Created**: 2025-11-21
-**Status**: Ready to begin
+**Completed**: 2025-11-21
+**Status**: ✅ Complete
 **Next Sprint**: [02-shared-types-imports-hygiene.md](02-shared-types-imports-hygiene.md)

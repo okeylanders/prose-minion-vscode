@@ -1,9 +1,10 @@
 # Epic: Architecture Health Pass (v1.3)
 
 **Created**: 2025-11-21
-**Status**: Planning → In Progress
+**Status**: In Progress
 **Target**: Post-v1.2.0 Architecture Cleanup
 **Duration**: 7-11 days (estimated)
+**Progress**: 1/16 sprints complete (6%)
 
 ---
 
@@ -30,16 +31,18 @@ After v1.2.0 release, 20 architecture debt items have accumulated:
 
 ## Sub-Epics
 
-### Sub-Epic 1: Foundation Cleanup ✅ Ready
-**Status**: Ready to start
+### Sub-Epic 1: Foundation Cleanup 🔄 In Progress
+
+**Status**: In Progress (1/3 sprints complete)
 **Duration**: 2-3 days
 **Sprints**: 3
 **Why First**: Type safety and organized code unblock everything else
 
 **Deliverables**:
-- ✅ Result Formatter: 763 lines → 7 focused files
-- ✅ Shared Types: Clean organization, import aliases
-- ✅ Type Safety: Typed VSCode API, typed message handlers
+
+- ✅ Result Formatter: 763 lines → 8 focused files (Complete - PR #32)
+- ⏳ Shared Types: Clean organization, import aliases
+- ⏳ Type Safety: Typed VSCode API, typed message handlers
 
 **Blocks**: All component extraction work
 
@@ -224,12 +227,12 @@ Sub-Epic 4: Polish & UX
 
 | Sub-Epic | Status | Progress | Completion Date |
 |----------|--------|----------|-----------------|
-| 1. Foundation Cleanup | 🔵 Ready | 0/3 sprints | - |
+| 1. Foundation Cleanup | 🔄 In Progress | 1/3 sprints | - |
 | 2. Component Decomposition | ⏸️ Blocked | 0/4 sprints | - |
 | 3. Standards & Testing | ⏸️ Blocked | 0/5 sprints | - |
 | 4. Polish & UX | ⏸️ Blocked | 0/4 sprints | - |
 
-**Overall Progress**: 0/16 sprints complete (0%)
+**Overall Progress**: 1/16 sprints complete (6%)
 
 ---
 
