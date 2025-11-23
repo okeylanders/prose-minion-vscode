@@ -47,6 +47,7 @@ export const SearchTab: React.FC<SearchTabProps> = ({
         activeTab={activeSubtool}
         onTabChange={setActiveSubtool}
         ariaLabel="Search tools"
+        className="mb-4"
       />
 
       {/* Route to appropriate panel */}
