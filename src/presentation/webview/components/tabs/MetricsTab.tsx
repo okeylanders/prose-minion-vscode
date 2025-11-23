@@ -7,11 +7,12 @@
 import * as React from 'react';
 import { MessageType } from '@shared/types';
 import { ScopeBox, LoadingIndicator } from '../shared';
+import { TabBar, Tab } from '../shared/TabBar';
 import { ProseStatsPanel } from '../metrics/ProseStatsPanel';
 import { StyleFlagsPanel } from '../metrics/StyleFlagsPanel';
 import { WordFrequencyPanel } from '../metrics/WordFrequencyPanel';
 import { VSCodeAPI } from '../../types/vscode';
-import { UseMetricsReturn } from '../../hooks/domain/useMetrics';
+import { UseMetricsReturn, MetricsTool } from '../../hooks/domain/useMetrics';
 import { UsePublishingSettingsReturn } from '../../hooks/domain/usePublishingSettings';
 import { UseWordFrequencySettingsReturn } from '../../hooks/domain/useWordFrequencySettings';
 
@@ -28,12 +29,11 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   publishingSettings,
   wordFrequencySettings
 }) => {
-  // Build a TextSourceSpec consistently for all metric requests
-  const buildSourceSpec = React.useCallback(() => {
-    return metrics.sourceMode === 'selection'
-      ? { mode: 'selection' as const, pathText: '[selected text]' }
-      : { mode: metrics.sourceMode, pathText: metrics.pathText };
-  }, [metrics.sourceMode, metrics.pathText]);
+  const tools: Tab<MetricsTool>[] = [
+    { id: 'prose_stats', label: 'Prose Statistics' },
+    { id: 'style_flags', label: 'Style Flags' },
+    { id: 'word_frequency', label: 'Word Frequency' }
+  ];
 
   const handlePresetChange = (value: string) => {
     publishingSettings.setPublishingPreset(value);
@@ -42,55 +42,6 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
   const handleTrimChange = (value: string) => {
     publishingSettings.setPublishingTrim(value);
   };
-
-  const handleFilterChange = (minLength: number) => {
-    wordFrequencySettings.updateSetting('minCharacterLength', minLength);
-  };
-
-  const handleMeasureProseStats = () => {
-    metrics.setLoading(true);
-    metrics.clearSubtoolResult('prose_stats');
-    vscode.postMessage({
-      type: MessageType.MEASURE_PROSE_STATS,
-      source: 'webview.metrics.tab',
-      payload: {
-        source: buildSourceSpec()
-      },
-      timestamp: Date.now()
-    });
-  };
-
-  const handleMeasureStyleFlags = () => {
-    metrics.setLoading(true);
-    metrics.clearSubtoolResult('style_flags');
-    vscode.postMessage({
-      type: MessageType.MEASURE_STYLE_FLAGS,
-      source: 'webview.metrics.tab',
-      payload: {
-        source: buildSourceSpec()
-      },
-      timestamp: Date.now()
-    });
-  };
-
-  const handleMeasureWordFrequency = () => {
-    metrics.setLoading(true);
-    metrics.clearSubtoolResult('word_frequency');
-    vscode.postMessage({
-      type: MessageType.MEASURE_WORD_FREQUENCY,
-      source: 'webview.metrics.tab',
-      payload: {
-        source: buildSourceSpec()
-      },
-      timestamp: Date.now()
-    });
-  };
-
-  // Prefer per-subtool results from cache
-  const displayMetrics = React.useMemo(() => {
-    if (metrics.metricsByTool && metrics.metricsByTool[metrics.activeTool]) return metrics.metricsByTool[metrics.activeTool] as any;
-    return null;
-  }, [metrics.metricsByTool, metrics.activeTool]);
 
   const handleCopyMetricsResult = (content: string) => {
     vscode.postMessage({
@@ -121,29 +72,13 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
     <div className="tab-content">
       <h2 className="text-lg font-semibold mb-4">Prose Metrics</h2>
       {/* Sub‑tab bar (moved above Scope) */}
-      <div className="tab-bar" style={{ marginBottom: '8px' }}>
-        <button
-          className={`tab-button ${metrics.activeTool === 'prose_stats' ? 'active' : ''}`}
-          disabled={metrics.loading}
-          onClick={() => metrics.setActiveTool('prose_stats')}
-        >
-          <span className="tab-label">Prose Statistics</span>
-        </button>
-        <button
-          className={`tab-button ${metrics.activeTool === 'style_flags' ? 'active' : ''}`}
-          disabled={metrics.loading}
-          onClick={() => metrics.setActiveTool('style_flags')}
-        >
-          <span className="tab-label">Style Flags</span>
-        </button>
-        <button
-          className={`tab-button ${metrics.activeTool === 'word_frequency' ? 'active' : ''}`}
-          disabled={metrics.loading}
-          onClick={() => metrics.setActiveTool('word_frequency')}
-        >
-          <span className="tab-label">Word Frequency</span>
-        </button>
-      </div>
+      <TabBar
+        tabs={tools}
+        activeTab={metrics.activeTool}
+        onTabChange={metrics.setActiveTool}
+        ariaLabel="Metrics tools"
+        disabled={metrics.loading}
+      />
 
       <ScopeBox
         mode={metrics.sourceMode}
@@ -218,10 +153,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
       {metrics.activeTool === 'prose_stats' && (
         <ProseStatsPanel
           vscode={vscode}
-          isLoading={metrics.loading}
-          displayMetrics={displayMetrics}
-          sourceSpec={buildSourceSpec}
-          onMeasure={handleMeasureProseStats}
+          metrics={metrics}
           onCopy={handleCopyMetricsResult}
           onSave={handleSaveMetricsResult}
         />
@@ -230,10 +162,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
       {metrics.activeTool === 'style_flags' && (
         <StyleFlagsPanel
           vscode={vscode}
-          isLoading={metrics.loading}
-          displayMetrics={displayMetrics}
-          sourceSpec={buildSourceSpec}
-          onMeasure={handleMeasureStyleFlags}
+          metrics={metrics}
           onCopy={handleCopyMetricsResult}
           onSave={handleSaveMetricsResult}
         />
@@ -242,12 +171,8 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
       {metrics.activeTool === 'word_frequency' && (
         <WordFrequencyPanel
           vscode={vscode}
-          isLoading={metrics.loading}
-          displayMetrics={displayMetrics}
-          sourceSpec={buildSourceSpec}
-          minCharacterLength={wordFrequencySettings.settings.minCharacterLength}
-          onMinLengthChange={handleFilterChange}
-          onMeasure={handleMeasureWordFrequency}
+          metrics={metrics}
+          wordFrequencySettings={wordFrequencySettings}
           onCopy={handleCopyMetricsResult}
           onSave={handleSaveMetricsResult}
         />

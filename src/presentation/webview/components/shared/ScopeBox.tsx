@@ -1,6 +1,7 @@
 import React from 'react';
 import { TextSourceMode, MessageType, MessageSource } from '../../../../shared/types';
 import { VSCodeAPI } from '../../types/vscode';
+import { TabBar, Tab } from './TabBar';
 
 /**
  * Props for the ScopeBox component.
@@ -89,6 +90,14 @@ export const ScopeBox: React.FC<ScopeBoxProps> = ({
 
   const placeholder = pathPlaceholder ?? defaultPlaceholder;
 
+  // Define scope tabs
+  const scopeTabs: Tab<TextSourceMode>[] = [
+    { id: 'activeFile', label: 'Active File', ariaLabel: activeFileAriaLabel },
+    { id: 'manuscript', label: 'Manuscripts', ariaLabel: manuscriptsAriaLabel },
+    { id: 'chapters', label: 'Chapters', ariaLabel: chaptersAriaLabel },
+    { id: 'selection', label: 'Selection', ariaLabel: selectionAriaLabel }
+  ];
+
   const handleModeClick = (newMode: TextSourceMode) => {
     onModeChange(newMode);
 
@@ -128,53 +137,13 @@ export const ScopeBox: React.FC<ScopeBoxProps> = ({
   return (
     <div className="input-container">
       <label className="block text-sm font-medium mb-2">Scope:</label>
-      <div
-        className="tab-bar"
-        style={{ marginBottom: '8px' }}
-        role="tablist"
-        aria-label={scopeAriaLabel}
-      >
-        <button
-          className={`tab-button ${mode === 'activeFile' ? 'active' : ''}`}
-          onClick={() => handleModeClick('activeFile')}
-          disabled={disabled}
-          role="tab"
-          aria-selected={mode === 'activeFile'}
-          aria-label={activeFileAriaLabel}
-        >
-          <span className="tab-label">Active File</span>
-        </button>
-        <button
-          className={`tab-button ${mode === 'manuscript' ? 'active' : ''}`}
-          onClick={() => handleModeClick('manuscript')}
-          disabled={disabled}
-          role="tab"
-          aria-selected={mode === 'manuscript'}
-          aria-label={manuscriptsAriaLabel}
-        >
-          <span className="tab-label">Manuscripts</span>
-        </button>
-        <button
-          className={`tab-button ${mode === 'chapters' ? 'active' : ''}`}
-          onClick={() => handleModeClick('chapters')}
-          disabled={disabled}
-          role="tab"
-          aria-selected={mode === 'chapters'}
-          aria-label={chaptersAriaLabel}
-        >
-          <span className="tab-label">Chapters</span>
-        </button>
-        <button
-          className={`tab-button ${mode === 'selection' ? 'active' : ''}`}
-          onClick={() => handleModeClick('selection')}
-          disabled={disabled}
-          role="tab"
-          aria-selected={mode === 'selection'}
-          aria-label={selectionAriaLabel}
-        >
-          <span className="tab-label">Selection</span>
-        </button>
-      </div>
+      <TabBar
+        tabs={scopeTabs}
+        activeTab={mode}
+        onTabChange={handleModeClick}
+        disabled={disabled}
+        ariaLabel={scopeAriaLabel}
+      />
 
       <label className="block text-sm font-medium mb-2" htmlFor={pathInputId}>
         Path / Pattern

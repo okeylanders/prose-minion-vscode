@@ -1,6 +1,7 @@
 /**
  * ProseStatsPanel - Focused panel for Prose Statistics tool
  * Extracted from MetricsTab to follow Single Responsibility Principle
+ * Handles message posting independently (no callbacks from parent)
  */
 
 import * as React from 'react';
@@ -8,26 +9,48 @@ import { MessageType } from '@messages';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { formatProseStatsAsMarkdown } from '@formatters';
 import { VSCodeAPI } from '../../types/vscode';
+import { UseMetricsReturn } from '@hooks/domain/useMetrics';
+import { TextSourceMode } from '@shared/types';
 
 interface ProseStatsPanelProps {
   vscode: VSCodeAPI;
-  isLoading: boolean;
-  displayMetrics: any;
-  sourceSpec: () => { mode: 'selection' | 'activeFile' | 'manuscript' | 'chapters'; pathText: string };
-  onMeasure: () => void;
+  metrics: UseMetricsReturn;
   onCopy: (content: string) => void;
   onSave: (content: string) => void;
 }
 
 export const ProseStatsPanel: React.FC<ProseStatsPanelProps> = ({
   vscode,
-  isLoading,
-  displayMetrics,
-  sourceSpec,
-  onMeasure,
+  metrics,
   onCopy,
   onSave
 }) => {
+  // Build a TextSourceSpec consistently for prose stats requests
+  const buildSourceSpec = React.useCallback(() => {
+    return metrics.sourceMode === 'selection'
+      ? { mode: 'selection' as TextSourceMode, pathText: '[selected text]' }
+      : { mode: metrics.sourceMode, pathText: metrics.pathText };
+  }, [metrics.sourceMode, metrics.pathText]);
+
+  const displayMetrics = React.useMemo(() => {
+    if (metrics.metricsByTool && metrics.metricsByTool['prose_stats']) {
+      return metrics.metricsByTool['prose_stats'] as any;
+    }
+    return null;
+  }, [metrics.metricsByTool]);
+
+  const handleMeasure = () => {
+    metrics.clearSubtoolResult('prose_stats');
+    metrics.setLoading(true);
+    vscode.postMessage({
+      type: MessageType.MEASURE_PROSE_STATS,
+      source: 'webview.metrics.prose_stats',
+      payload: {
+        source: buildSourceSpec()
+      },
+      timestamp: Date.now()
+    });
+  };
   const markdownContent = React.useMemo(() => {
     if (!displayMetrics) return '';
     return formatProseStatsAsMarkdown(displayMetrics);
@@ -97,7 +120,7 @@ export const ProseStatsPanel: React.FC<ProseStatsPanelProps> = ({
     <>
       {/* Generate button */}
       <div className="button-group">
-        <button className="btn btn-primary" onClick={onMeasure} disabled={isLoading}>
+        <button className="btn btn-primary" onClick={handleMeasure} disabled={metrics.loading}>
           ⚙️ Generate Prose Statistics
         </button>
       </div>
@@ -109,7 +132,7 @@ export const ProseStatsPanel: React.FC<ProseStatsPanelProps> = ({
             <button
               className="icon-button"
               onClick={handleCopy}
-              disabled={isLoading}
+              disabled={metrics.loading}
               title="Copy metrics to clipboard"
               aria-label="Copy metrics"
             >
@@ -118,7 +141,7 @@ export const ProseStatsPanel: React.FC<ProseStatsPanelProps> = ({
             <button
               className="icon-button"
               onClick={handleSave}
-              disabled={isLoading}
+              disabled={metrics.loading}
               title="Save metrics to workspace"
               aria-label="Save metrics"
             >

@@ -4,7 +4,7 @@
  */
 
 import * as React from 'react';
-import { TabBar } from './components/shared/TabBar';
+import { TabBar, Tab } from './components/shared/TabBar';
 import { AnalysisTab } from './components/tabs/AnalysisTab';
 import { MetricsTab } from './components/tabs/MetricsTab';
 import { SuggestionsTab } from './components/tabs/SuggestionsTab';
@@ -198,6 +198,14 @@ export const App: React.FC = () => {
     }
   };
 
+  // Define tabs array for TabBar
+  const tabs: Tab<TabId>[] = [
+    { id: TabId.ANALYSIS, label: 'Assistant', icon: '🤖' },
+    { id: TabId.SEARCH, label: 'Search', icon: '🔎' },
+    { id: TabId.METRICS, label: 'Metrics', icon: '📊' },
+    { id: TabId.UTILITIES, label: 'Dictionary', icon: '📕' }
+  ];
+
   // Model selector rendering
   const renderModelSelector = () => {
     if (modelsSettings.modelOptions.length === 0) {
@@ -260,8 +268,10 @@ export const App: React.FC = () => {
       </header>
 
       <TabBar
+        tabs={tabs}
         activeTab={activeTab}
         onTabChange={handleTabChange}
+        ariaLabel="Main navigation"
       />
 
       <main className="app-main" style={{ position: 'relative' }}>

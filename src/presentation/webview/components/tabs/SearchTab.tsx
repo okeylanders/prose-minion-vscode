@@ -6,6 +6,7 @@
 import * as React from 'react';
 import { WordSearchPanel } from '@components/search/WordSearchPanel';
 import { CategorySearchPanel } from '@components/search/CategorySearchPanel';
+import { TabBar, Tab } from '../shared/TabBar';
 import { VSCodeAPI } from '../../types/vscode';
 import { UseSearchReturn } from '@hooks/domain/useSearch';
 import { UseMetricsReturn } from '@hooks/domain/useMetrics';
@@ -31,25 +32,22 @@ export const SearchTab: React.FC<SearchTabProps> = ({
 }) => {
   const [activeSubtool, setActiveSubtool] = React.useState<SearchSubtool>('word');
 
+  const subtabs: Tab<SearchSubtool>[] = [
+    { id: 'word', label: 'Word Search' },
+    { id: 'category', label: 'Category Search' }
+  ];
+
   return (
     <div className="tab-content">
       <h2 className="text-lg font-semibold mb-4">Search</h2>
 
       {/* Subtool tabs */}
-      <div className="tab-bar" style={{ marginBottom: '16px' }}>
-        <button
-          className={`tab-button ${activeSubtool === 'word' ? 'active' : ''}`}
-          onClick={() => setActiveSubtool('word')}
-        >
-          <span className="tab-label">Word Search</span>
-        </button>
-        <button
-          className={`tab-button ${activeSubtool === 'category' ? 'active' : ''}`}
-          onClick={() => setActiveSubtool('category')}
-        >
-          <span className="tab-label">Category Search</span>
-        </button>
-      </div>
+      <TabBar
+        tabs={subtabs}
+        activeTab={activeSubtool}
+        onTabChange={setActiveSubtool}
+        ariaLabel="Search tools"
+      />
 
       {/* Route to appropriate panel */}
       {activeSubtool === 'word' && (

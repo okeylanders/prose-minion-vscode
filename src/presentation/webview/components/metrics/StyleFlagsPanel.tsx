@@ -1,6 +1,7 @@
 /**
  * StyleFlagsPanel - Focused panel for Style Flags tool
  * Extracted from MetricsTab to follow Single Responsibility Principle
+ * Handles message posting independently (no callbacks from parent)
  */
 
 import * as React from 'react';
@@ -8,26 +9,48 @@ import { MessageType } from '@messages';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { formatStyleFlagsAsMarkdown } from '@formatters';
 import { VSCodeAPI } from '../../types/vscode';
+import { UseMetricsReturn } from '@hooks/domain/useMetrics';
+import { TextSourceMode } from '@shared/types';
 
 interface StyleFlagsPanelProps {
   vscode: VSCodeAPI;
-  isLoading: boolean;
-  displayMetrics: any;
-  sourceSpec: () => { mode: 'selection' | 'activeFile' | 'manuscript' | 'chapters'; pathText: string };
-  onMeasure: () => void;
+  metrics: UseMetricsReturn;
   onCopy: (content: string) => void;
   onSave: (content: string) => void;
 }
 
 export const StyleFlagsPanel: React.FC<StyleFlagsPanelProps> = ({
   vscode,
-  isLoading,
-  displayMetrics,
-  sourceSpec,
-  onMeasure,
+  metrics,
   onCopy,
   onSave
 }) => {
+  // Build a TextSourceSpec consistently for style flags requests
+  const buildSourceSpec = React.useCallback(() => {
+    return metrics.sourceMode === 'selection'
+      ? { mode: 'selection' as TextSourceMode, pathText: '[selected text]' }
+      : { mode: metrics.sourceMode, pathText: metrics.pathText };
+  }, [metrics.sourceMode, metrics.pathText]);
+
+  const displayMetrics = React.useMemo(() => {
+    if (metrics.metricsByTool && metrics.metricsByTool['style_flags']) {
+      return metrics.metricsByTool['style_flags'] as any;
+    }
+    return null;
+  }, [metrics.metricsByTool]);
+
+  const handleMeasure = () => {
+    metrics.clearSubtoolResult('style_flags');
+    metrics.setLoading(true);
+    vscode.postMessage({
+      type: MessageType.MEASURE_STYLE_FLAGS,
+      source: 'webview.metrics.style_flags',
+      payload: {
+        source: buildSourceSpec()
+      },
+      timestamp: Date.now()
+    });
+  };
   const markdownContent = React.useMemo(() => {
     if (!displayMetrics) return '';
     return formatStyleFlagsAsMarkdown(displayMetrics);
@@ -45,7 +68,7 @@ export const StyleFlagsPanel: React.FC<StyleFlagsPanelProps> = ({
     <>
       {/* Generate button */}
       <div className="button-group">
-        <button className="btn btn-primary" onClick={onMeasure} disabled={isLoading}>
+        <button className="btn btn-primary" onClick={handleMeasure} disabled={metrics.loading}>
           🏁 Generate Style Flags
         </button>
       </div>
@@ -57,7 +80,7 @@ export const StyleFlagsPanel: React.FC<StyleFlagsPanelProps> = ({
             <button
               className="icon-button"
               onClick={handleCopy}
-              disabled={isLoading}
+              disabled={metrics.loading}
               title="Copy metrics to clipboard"
               aria-label="Copy metrics"
             >
@@ -66,7 +89,7 @@ export const StyleFlagsPanel: React.FC<StyleFlagsPanelProps> = ({
             <button
               className="icon-button"
               onClick={handleSave}
-              disabled={isLoading}
+              disabled={metrics.loading}
               title="Save metrics to workspace"
               aria-label="Save metrics"
             >
