@@ -7,6 +7,7 @@ import * as React from 'react';
 import { SelectionTarget, MessageType } from '@shared/types';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { LoadingIndicator } from '../shared/LoadingIndicator';
+import { WordCounter } from '../shared/WordCounter';
 import { formatAnalysisAsMarkdown } from '../../utils/formatters';
 import { VSCodeAPI } from '../../types/vscode';
 import { UseAnalysisReturn } from '../../hooks/domain/useAnalysis';
@@ -33,42 +34,6 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
   settings
 }) => {
   const [text, setText] = React.useState(selection.selectedText);
-
-  // Word counter for excerpt
-  const excerptWordCount = React.useMemo(() => {
-    if (!text || text.trim().length === 0) {
-      return 0;
-    }
-    return text.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
-  }, [text]);
-
-  const excerptWordCountColor = React.useMemo(() => {
-    if (excerptWordCount >= 500) {
-      return 'word-counter-red';
-    }
-    if (excerptWordCount >= 400) {
-      return 'word-counter-yellow';
-    }
-    return 'word-counter-green';
-  }, [excerptWordCount]);
-
-  // Word counter for context brief
-  const contextWordCount = React.useMemo(() => {
-    if (!context.contextText || context.contextText.trim().length === 0) {
-      return 0;
-    }
-    return context.contextText.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
-  }, [context.contextText]);
-
-  const contextWordCountColor = React.useMemo(() => {
-    if (contextWordCount >= 5000) {
-      return 'word-counter-red';
-    }
-    if (contextWordCount >= 1000) {
-      return 'word-counter-yellow';
-    }
-    return 'word-counter-green';
-  }, [contextWordCount]);
 
   React.useEffect(() => {
     setText(selection.selectedText);
@@ -269,10 +234,11 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
           }}
           placeholder="Select text in your editor or paste text here..."
         />
-        <div className={`word-counter ${excerptWordCountColor}`}>
-          {excerptWordCount} / 500 words
-          {excerptWordCount > 500 && ' ⚠️ Large excerpt'}
-        </div>
+        <WordCounter
+          text={text}
+          maxWords={500}
+          warningMessage="Large excerpt"
+        />
       </div>
 
       <div className="input-container">
@@ -311,10 +277,13 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
           </button>
         </div>
         <div className="context-meta-row">
-          <div className={`word-counter ${contextWordCountColor}`}>
-            {contextWordCount} words
-            {contextWordCount > 5000 && ' ⚠️ Large Context'}
-          </div>
+          <WordCounter
+            text={context.contextText}
+            maxWords={5000}
+            warningWords={1000}
+            warningMessage="Large Context"
+            showMax={false}
+          />
           {modelsSettings.modelSelections.context && (
             <span className="model-indicator">
               <span className="model-label">Context Model:</span>
