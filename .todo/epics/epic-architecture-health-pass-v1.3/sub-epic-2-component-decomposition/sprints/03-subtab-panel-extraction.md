@@ -1,7 +1,7 @@
 # Sprint 03: Subtab Panel Extraction
 
 **Sub-Epic**: [Component Decomposition](../epic-component-decomposition.md)
-**Status**: 🟢 Ready
+**Status**: ✅ Complete (2025-11-23 - per-subtool loading isolation + tests green)
 **Priority**: HIGH
 **Duration**: 4-6 hours
 **Branch**: `sprint/component-decomposition-03-subtab-panels`
@@ -70,7 +70,7 @@ src/presentation/webview/components/
 
 Each panel component:
 - ✅ Owns its domain-specific logic (no cross-tool concerns)
-- ✅ Uses shared ScopeBox + LoadingIndicator components
+- ✅ Uses shared ScopeBox + LoadingIndicator components (now rendered inside each panel for isolated loading/status)
 - ✅ Has focused, typed props interface
 - ✅ Manages domain-specific state (e.g., word frequency filter)
 - ✅ Receives status message callbacks from parent
@@ -103,6 +103,13 @@ export const WordSearchPanel: React.FC<WordSearchPanelProps> = (props) => {
   );
 };
 ```
+
+## Completion Notes (2025-11-23)
+
+- Implemented per-subtool loading/status isolation for search and metrics; loading indicators now live inside each panel to prevent cross-tool bleed.
+- Metrics panels use per-tool loading state; shared tab bar stays enabled.
+- Search panels retain scoped status/loading state per subtool.
+- Tests: `npm run test` (2025-11-23) ✅ all passing.
 
 ---
 

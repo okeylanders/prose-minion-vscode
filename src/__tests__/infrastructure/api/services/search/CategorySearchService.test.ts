@@ -103,10 +103,10 @@ describe('CategorySearchService', () => {
     expect(orchestrator.executeWithoutCapabilities).toHaveBeenCalledTimes(3);
     expect(result.tokensUsed?.total).toBe(45); // aggregated across batches
     expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('Total unique words: 900'), undefined, undefined);
-    expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('Batch 1/3'), { current: 1, total: 3 }, expect.any(String));
-    expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('batches completed'), expect.objectContaining({ current: expect.any(Number), total: 3 }), expect.any(String));
-    expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('Batch 2/3'), { current: 2, total: 3 }, expect.any(String));
-    expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('Batch 3/3'), { current: 3, total: 3 }, expect.any(String));
+    expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('Batch 1/3'), { current: 1, total: 3 }, undefined);
+    expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('batches completed'), expect.objectContaining({ current: expect.any(Number), total: 3 }), undefined);
+    expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('Batch 2/3'), { current: 2, total: 3 }, undefined);
+    expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('Batch 3/3'), { current: 3, total: 3 }, undefined);
   });
 
   it('returns error message when no words are available to search', async () => {

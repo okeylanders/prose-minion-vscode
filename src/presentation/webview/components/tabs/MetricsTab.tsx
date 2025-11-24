@@ -6,7 +6,7 @@
 
 import * as React from 'react';
 import { MessageType } from '@shared/types';
-import { ScopeBox, LoadingIndicator } from '../shared';
+import { ScopeBox } from '../shared';
 import { TabBar, Tab } from '../shared/TabBar';
 import { ProseStatsPanel } from '../metrics/ProseStatsPanel';
 import { StyleFlagsPanel } from '../metrics/StyleFlagsPanel';
@@ -138,14 +138,6 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
             </select>
           </div>
         </div>
-      )}
-
-      {/* Loading indicator */}
-      {metrics.loading && (
-        <LoadingIndicator
-          isLoading={metrics.loading}
-          defaultMessage="Calculating metrics..."
-        />
       )}
 
       {/* Route to active panel */}

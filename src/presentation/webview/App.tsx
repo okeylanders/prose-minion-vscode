@@ -135,7 +135,7 @@ export const App: React.FC = () => {
 
       if (errorSource.startsWith('metrics.')) {
         // Any metrics subtool error clears metrics loading
-        metrics.setLoading(false);
+        (['prose_stats', 'style_flags', 'word_frequency'] as const).forEach(tool => metrics.setLoadingForTool(tool, false));
       } else if (errorSource === 'search' || errorSource.startsWith('extension.search')) {
         search.setLoading(false);
         search.setCategorySearchLoading(false);
@@ -152,11 +152,12 @@ export const App: React.FC = () => {
       } else {
         // Unknown source - clear all as fallback for safety
         analysis.setLoading(false);
-        metrics.setLoading(false);
+        (['prose_stats', 'style_flags', 'word_frequency'] as const).forEach(tool => metrics.setLoadingForTool(tool, false));
         dictionary.setLoading(false);
         dictionary.setFastGenerating(false);
         context.setLoading(false);
-        search.setLoading(false);
+        search.setLoadingForSubtool('word', false);
+        search.setCategorySearchLoading(false);
       }
     },
   });

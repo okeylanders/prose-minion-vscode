@@ -87,7 +87,8 @@ export const WordSearchPanel: React.FC<WordSearchPanelProps> = ({
   const handleRunSearch = () => {
     // Clear existing search markdown before re-running
     setMarkdownContent('');
-    search.setLoading(true);
+    search.setLoadingForSubtool('word', true);
+    search.clearStatusForSubtool('word');
     const wordsOrPhrases = parseTargets(search.wordSearchTargets);
     vscode.postMessage({
       type: MessageType.RUN_WORD_SEARCH,
@@ -216,7 +217,7 @@ export const WordSearchPanel: React.FC<WordSearchPanelProps> = ({
       {search.loading && (
         <LoadingIndicator
           isLoading={search.loading}
-          statusMessage={search.statusMessage}
+          statusMessage={search.wordStatusMessage}
           defaultMessage="Running search..."
         />
       )}

@@ -11,6 +11,7 @@ import { formatProseStatsAsMarkdown } from '@formatters';
 import { VSCodeAPI } from '../../types/vscode';
 import { UseMetricsReturn } from '@hooks/domain/useMetrics';
 import { TextSourceMode } from '@shared/types';
+import { LoadingIndicator } from '../shared/LoadingIndicator';
 
 interface ProseStatsPanelProps {
   vscode: VSCodeAPI;
@@ -25,6 +26,8 @@ export const ProseStatsPanel: React.FC<ProseStatsPanelProps> = ({
   onCopy,
   onSave
 }) => {
+  const toolLoading = metrics.isLoading('prose_stats');
+
   // Build a TextSourceSpec consistently for prose stats requests
   const buildSourceSpec = React.useCallback(() => {
     return metrics.sourceMode === 'selection'
@@ -41,7 +44,7 @@ export const ProseStatsPanel: React.FC<ProseStatsPanelProps> = ({
 
   const handleMeasure = () => {
     metrics.clearSubtoolResult('prose_stats');
-    metrics.setLoading(true);
+    metrics.setLoadingForTool('prose_stats', true);
     vscode.postMessage({
       type: MessageType.MEASURE_PROSE_STATS,
       source: 'webview.metrics.prose_stats',
@@ -120,10 +123,17 @@ export const ProseStatsPanel: React.FC<ProseStatsPanelProps> = ({
     <>
       {/* Generate button */}
       <div className="button-group">
-        <button className="btn btn-primary" onClick={handleMeasure} disabled={metrics.loading}>
+        <button className="btn btn-primary" onClick={handleMeasure} disabled={toolLoading}>
           ⚙️ Generate Prose Statistics
         </button>
       </div>
+
+      {toolLoading && (
+        <LoadingIndicator
+          isLoading
+          defaultMessage="Calculating prose statistics..."
+        />
+      )}
 
       {/* Results */}
       {markdownContent && (
@@ -132,7 +142,7 @@ export const ProseStatsPanel: React.FC<ProseStatsPanelProps> = ({
             <button
               className="icon-button"
               onClick={handleCopy}
-              disabled={metrics.loading}
+              disabled={toolLoading}
               title="Copy metrics to clipboard"
               aria-label="Copy metrics"
             >
@@ -141,7 +151,7 @@ export const ProseStatsPanel: React.FC<ProseStatsPanelProps> = ({
             <button
               className="icon-button"
               onClick={handleSave}
-              disabled={metrics.loading}
+              disabled={toolLoading}
               title="Save metrics to workspace"
               aria-label="Save metrics"
             >

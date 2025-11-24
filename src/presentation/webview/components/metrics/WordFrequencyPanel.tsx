@@ -14,6 +14,7 @@ import { VSCodeAPI } from '../../types/vscode';
 import { UseMetricsReturn } from '@hooks/domain/useMetrics';
 import { UseWordFrequencySettingsReturn } from '@hooks/domain/useWordFrequencySettings';
 import { TextSourceMode } from '@shared/types';
+import { LoadingIndicator } from '../shared/LoadingIndicator';
 
 interface WordFrequencyPanelProps {
   vscode: VSCodeAPI;
@@ -30,6 +31,8 @@ export const WordFrequencyPanel: React.FC<WordFrequencyPanelProps> = ({
   onCopy,
   onSave
 }) => {
+  const toolLoading = metrics.isLoading('word_frequency');
+
   // Build a TextSourceSpec consistently for word frequency requests
   const buildSourceSpec = React.useCallback(() => {
     return metrics.sourceMode === 'selection'
@@ -46,7 +49,7 @@ export const WordFrequencyPanel: React.FC<WordFrequencyPanelProps> = ({
 
   const handleMeasure = () => {
     metrics.clearSubtoolResult('word_frequency');
-    metrics.setLoading(true);
+    metrics.setLoadingForTool('word_frequency', true);
     vscode.postMessage({
       type: MessageType.MEASURE_WORD_FREQUENCY,
       source: 'webview.metrics.word_frequency',
@@ -79,15 +82,22 @@ export const WordFrequencyPanel: React.FC<WordFrequencyPanelProps> = ({
       <WordLengthFilterTabs
         activeFilter={wordFrequencySettings.settings.minCharacterLength}
         onFilterChange={handleFilterChange}
-        disabled={metrics.loading}
+        disabled={toolLoading}
       />
 
       {/* Generate button */}
       <div className="button-group">
-        <button className="btn btn-primary" onClick={handleMeasure} disabled={metrics.loading}>
+        <button className="btn btn-primary" onClick={handleMeasure} disabled={toolLoading}>
           📈 Generate Word Frequency
         </button>
       </div>
+
+      {toolLoading && (
+        <LoadingIndicator
+          isLoading
+          defaultMessage="Calculating word frequency..."
+        />
+      )}
 
       {/* Results */}
       {markdownContent && (
@@ -96,7 +106,7 @@ export const WordFrequencyPanel: React.FC<WordFrequencyPanelProps> = ({
             <button
               className="icon-button"
               onClick={handleCopy}
-              disabled={metrics.loading}
+              disabled={toolLoading}
               title="Copy metrics to clipboard"
               aria-label="Copy metrics"
             >
@@ -105,7 +115,7 @@ export const WordFrequencyPanel: React.FC<WordFrequencyPanelProps> = ({
             <button
               className="icon-button"
               onClick={handleSave}
-              disabled={metrics.loading}
+              disabled={toolLoading}
               title="Save metrics to workspace"
               aria-label="Save metrics"
             >

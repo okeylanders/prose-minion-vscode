@@ -11,6 +11,7 @@ import { formatStyleFlagsAsMarkdown } from '@formatters';
 import { VSCodeAPI } from '../../types/vscode';
 import { UseMetricsReturn } from '@hooks/domain/useMetrics';
 import { TextSourceMode } from '@shared/types';
+import { LoadingIndicator } from '../shared/LoadingIndicator';
 
 interface StyleFlagsPanelProps {
   vscode: VSCodeAPI;
@@ -25,6 +26,8 @@ export const StyleFlagsPanel: React.FC<StyleFlagsPanelProps> = ({
   onCopy,
   onSave
 }) => {
+  const toolLoading = metrics.isLoading('style_flags');
+
   // Build a TextSourceSpec consistently for style flags requests
   const buildSourceSpec = React.useCallback(() => {
     return metrics.sourceMode === 'selection'
@@ -41,7 +44,7 @@ export const StyleFlagsPanel: React.FC<StyleFlagsPanelProps> = ({
 
   const handleMeasure = () => {
     metrics.clearSubtoolResult('style_flags');
-    metrics.setLoading(true);
+    metrics.setLoadingForTool('style_flags', true);
     vscode.postMessage({
       type: MessageType.MEASURE_STYLE_FLAGS,
       source: 'webview.metrics.style_flags',
@@ -68,10 +71,17 @@ export const StyleFlagsPanel: React.FC<StyleFlagsPanelProps> = ({
     <>
       {/* Generate button */}
       <div className="button-group">
-        <button className="btn btn-primary" onClick={handleMeasure} disabled={metrics.loading}>
+        <button className="btn btn-primary" onClick={handleMeasure} disabled={toolLoading}>
           🏁 Generate Style Flags
         </button>
       </div>
+
+      {toolLoading && (
+        <LoadingIndicator
+          isLoading
+          defaultMessage="Calculating style flags..."
+        />
+      )}
 
       {/* Results */}
       {markdownContent && (
@@ -80,7 +90,7 @@ export const StyleFlagsPanel: React.FC<StyleFlagsPanelProps> = ({
             <button
               className="icon-button"
               onClick={handleCopy}
-              disabled={metrics.loading}
+              disabled={toolLoading}
               title="Copy metrics to clipboard"
               aria-label="Copy metrics"
             >
@@ -89,7 +99,7 @@ export const StyleFlagsPanel: React.FC<StyleFlagsPanelProps> = ({
             <button
               className="icon-button"
               onClick={handleSave}
-              disabled={metrics.loading}
+              disabled={toolLoading}
               title="Save metrics to workspace"
               aria-label="Save metrics"
             >

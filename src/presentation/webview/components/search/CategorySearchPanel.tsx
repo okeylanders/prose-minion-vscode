@@ -90,6 +90,7 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
   const handleRunCategorySearch = () => {
     search.clearCategorySearchResult();
     search.setCategorySearchLoading(true);
+    search.clearStatusForSubtool('category');
     vscode.postMessage({
       type: MessageType.CATEGORY_SEARCH_REQUEST,
       source: 'webview.search.category',
@@ -255,7 +256,7 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
       {search.categorySearch.isLoading && (
         <LoadingIndicator
           isLoading={search.categorySearch.isLoading}
-          statusMessage={search.statusMessage}
+          statusMessage={search.categoryStatusMessage}
           defaultMessage="Running category search..."
           tickerMessage={search.categorySearch.tickerMessage}
           progress={search.categorySearch.progress ? {
