@@ -15,7 +15,8 @@ export type MetricsTool = 'prose_stats' | 'style_flags' | 'word_frequency';
 export interface MetricsState {
   metricsByTool: Partial<Record<MetricsTool, any>>;
   activeTool: MetricsTool;
-  loading: boolean;
+  loading: boolean; // active tool loading (derived from loadingByTool)
+  loadingByTool: Partial<Record<MetricsTool, boolean>>;
   sourceMode: TextSourceMode;
   pathText: string;
 }
@@ -26,7 +27,8 @@ export interface MetricsActions {
   handleManuscriptGlobs: (message: ManuscriptGlobsMessage) => void;
   handleChapterGlobs: (message: ChapterGlobsMessage) => void;
   setActiveTool: (tool: MetricsTool) => void;
-  setLoading: (loading: boolean) => void;
+  setLoadingForTool: (tool: MetricsTool, loading: boolean) => void;
+  isLoading: (tool: MetricsTool) => boolean;
   setSourceMode: (mode: TextSourceMode) => void;
   setPathText: (text: string) => void;
   clearSubtoolResult: (tool: MetricsTool) => void;
@@ -84,11 +86,20 @@ export const useMetrics = (): UseMetricsReturn => {
   const [activeTool, setActiveTool] = React.useState<MetricsTool>(
     persisted?.metricsActiveTool ?? 'prose_stats'
   );
-  const [loading, setLoading] = React.useState<boolean>(false);
+  const [loadingByTool, setLoadingByTool] = React.useState<Partial<Record<MetricsTool, boolean>>>({});
   const [sourceMode, setSourceMode] = React.useState<TextSourceMode>(
     persisted?.metricsSourceMode ?? 'selection'
   );
   const [pathText, setPathText] = React.useState<string>(persisted?.metricsPathText ?? '[selected text]');
+
+  const setLoadingForTool = React.useCallback((tool: MetricsTool, loading: boolean) => {
+    setLoadingByTool((prev) => ({ ...prev, [tool]: loading }));
+  }, []);
+
+  const isLoading = React.useCallback(
+    (tool: MetricsTool) => Boolean(loadingByTool[tool]),
+    [loadingByTool]
+  );
 
   const handleMetricsResult = React.useCallback((message: MetricsResultMessage) => {
     const { result, toolName } = message.payload;
@@ -100,8 +111,8 @@ export const useMetrics = (): UseMetricsReturn => {
       // Store per-subtool result without forcing a re-run on tab switch
       setMetricsByTool((prev) => ({ ...prev, [toolName]: result }));
       setActiveTool(toolName);
+      setLoadingForTool(toolName, false);
     }
-    setLoading(false);
   }, []);
 
   const handleActiveFile = React.useCallback((message: ActiveFileMessage) => {
@@ -129,13 +140,21 @@ export const useMetrics = (): UseMetricsReturn => {
       delete next[tool];
       return next;
     });
+    setLoadingForTool(tool, false);
   }, []);
+
+  // Active tool loading derived from per-tool map
+  const activeToolLoading = React.useMemo(
+    () => Boolean(loadingByTool[activeTool]),
+    [loadingByTool, activeTool]
+  );
 
   return {
     // State
     metricsByTool,
     activeTool,
-    loading,
+    loading: activeToolLoading,
+    loadingByTool,
     sourceMode,
     pathText,
 
@@ -145,7 +164,8 @@ export const useMetrics = (): UseMetricsReturn => {
     handleManuscriptGlobs,
     handleChapterGlobs,
     setActiveTool,
-    setLoading,
+    setLoadingForTool,
+    isLoading,
     setSourceMode,
     setPathText,
     clearResults,

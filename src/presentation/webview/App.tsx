@@ -4,7 +4,7 @@
  */
 
 import * as React from 'react';
-import { TabBar } from './components/shared/TabBar';
+import { TabBar, Tab } from './components/shared/TabBar';
 import { AnalysisTab } from './components/tabs/AnalysisTab';
 import { MetricsTab } from './components/tabs/MetricsTab';
 import { SuggestionsTab } from './components/tabs/SuggestionsTab';
@@ -135,7 +135,7 @@ export const App: React.FC = () => {
 
       if (errorSource.startsWith('metrics.')) {
         // Any metrics subtool error clears metrics loading
-        metrics.setLoading(false);
+        (['prose_stats', 'style_flags', 'word_frequency'] as const).forEach(tool => metrics.setLoadingForTool(tool, false));
       } else if (errorSource === 'search' || errorSource.startsWith('extension.search')) {
         search.setLoading(false);
         search.setCategorySearchLoading(false);
@@ -152,11 +152,12 @@ export const App: React.FC = () => {
       } else {
         // Unknown source - clear all as fallback for safety
         analysis.setLoading(false);
-        metrics.setLoading(false);
+        (['prose_stats', 'style_flags', 'word_frequency'] as const).forEach(tool => metrics.setLoadingForTool(tool, false));
         dictionary.setLoading(false);
         dictionary.setFastGenerating(false);
         context.setLoading(false);
-        search.setLoading(false);
+        search.setLoadingForSubtool('word', false);
+        search.setCategorySearchLoading(false);
       }
     },
   });
@@ -197,6 +198,14 @@ export const App: React.FC = () => {
       setError('');
     }
   };
+
+  // Define tabs array for TabBar
+  const tabs: Tab<TabId>[] = [
+    { id: TabId.ANALYSIS, label: 'Assistant', icon: '🤖' },
+    { id: TabId.SEARCH, label: 'Search', icon: '🔎' },
+    { id: TabId.METRICS, label: 'Metrics', icon: '📊' },
+    { id: TabId.UTILITIES, label: 'Dictionary', icon: '📕' }
+  ];
 
   // Model selector rendering
   const renderModelSelector = () => {
@@ -260,8 +269,10 @@ export const App: React.FC = () => {
       </header>
 
       <TabBar
+        tabs={tabs}
         activeTab={activeTab}
         onTabChange={handleTabChange}
+        ariaLabel="Main navigation"
       />
 
       <main className="app-main" style={{ position: 'relative' }}>

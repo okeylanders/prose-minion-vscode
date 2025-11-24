@@ -13,6 +13,7 @@ describe('useMetrics - Type Contracts', () => {
         metricsByTool: {},
         activeTool: 'prose_stats',
         loading: false,
+        loadingByTool: {},
         sourceMode: 'selection',
         pathText: ''
       };
@@ -31,7 +32,8 @@ describe('useMetrics - Type Contracts', () => {
         handleManuscriptGlobs: jest.fn(),
         handleChapterGlobs: jest.fn(),
         setActiveTool: jest.fn(),
-        setLoading: jest.fn(),
+        setLoadingForTool: jest.fn(),
+        isLoading: jest.fn().mockReturnValue(false),
         setSourceMode: jest.fn(),
         setPathText: jest.fn(),
         clearSubtoolResult: jest.fn(),

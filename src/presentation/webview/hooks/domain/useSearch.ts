@@ -18,6 +18,8 @@ import {
 } from '@messages';
 import { CategoryRelevance, CategoryWordLimit } from '@shared/types';
 
+type SearchSubtool = 'word' | 'category';
+
 export interface CategorySearchState {
   query: string;
   result: CategorySearchResult | null;
@@ -32,11 +34,13 @@ export interface CategorySearchState {
 export interface SearchState {
   searchResult: any | null;
   wordSearchTargets: string;
-  loading: boolean;
+  loading: boolean; // word search loading (derived)
+  loadingBySubtool: Record<SearchSubtool, boolean>;
   sourceMode: TextSourceMode;
   pathText: string;
   categorySearch: CategorySearchState;
-  statusMessage?: string;
+  wordStatusMessage?: string;
+  categoryStatusMessage?: string;
 }
 
 export interface SearchActions {
@@ -44,6 +48,8 @@ export interface SearchActions {
   setWordSearchTargets: (targets: string) => void;
   clearSearchResult: () => void;
   setLoading: (loading: boolean) => void;
+  setLoadingForSubtool: (tool: SearchSubtool, loading: boolean) => void;
+  clearStatusForSubtool: (tool: SearchSubtool) => void;
   handleStatusMessage: (message: StatusMessage) => void;
   handleActiveFile: (message: ActiveFileMessage) => void;
   handleManuscriptGlobs: (message: ManuscriptGlobsMessage) => void;
@@ -64,7 +70,8 @@ export interface SearchPersistence {
   wordSearchTargets: string;
   searchSourceMode: TextSourceMode;
   searchPathText: string;
-  statusMessage?: string;
+  wordStatusMessage?: string;
+  categoryStatusMessage?: string;
   categorySearchQuery: string;
   categorySearchResult: CategorySearchResult | null;
   categorySearchRelevance: CategoryRelevance;
@@ -99,7 +106,8 @@ export const useSearch = (): UseSearchReturn => {
     wordSearchTargets?: string;
     searchSourceMode?: TextSourceMode;
     searchPathText?: string;
-    statusMessage?: string;
+    wordStatusMessage?: string;
+    categoryStatusMessage?: string;
     categorySearchQuery?: string;
     categorySearchResult?: CategorySearchResult | null;
     categorySearchRelevance?: CategoryRelevance;
@@ -112,10 +120,14 @@ export const useSearch = (): UseSearchReturn => {
   const [wordSearchTargets, setWordSearchTargets] = React.useState<string>(
     persisted?.wordSearchTargets ?? ''
   );
-  const [loading, setLoading] = React.useState<boolean>(false);
+  const [loadingBySubtool, setLoadingBySubtool] = React.useState<Record<SearchSubtool, boolean>>({
+    word: false,
+    category: false
+  });
   const [sourceMode, setSourceMode] = React.useState<TextSourceMode>(persisted?.searchSourceMode ?? 'selection');
   const [pathText, setPathText] = React.useState<string>(persisted?.searchPathText ?? '[selected text]');
-  const [statusMessage, setStatusMessage] = React.useState<string>(persisted?.statusMessage ?? '');
+  const [wordStatusMessage, setWordStatusMessage] = React.useState<string>(persisted?.wordStatusMessage ?? '');
+  const [categoryStatusMessage, setCategoryStatusMessage] = React.useState<string>(persisted?.categoryStatusMessage ?? '');
 
   // Category search state
   const [categorySearchQuery, setCategorySearchQuery] = React.useState<string>(
@@ -135,13 +147,19 @@ export const useSearch = (): UseSearchReturn => {
   const [categorySearchProgress, setCategorySearchProgress] = React.useState<{ current: number; total: number } | undefined>(undefined);
   const [categorySearchTicker, setCategorySearchTicker] = React.useState<string>('');
 
+  const setLoadingForSubtool = React.useCallback((tool: SearchSubtool, isLoading: boolean) => {
+    setLoadingBySubtool((prev) => ({ ...prev, [tool]: isLoading }));
+  }, []);
+
   const handleSearchResult = React.useCallback((message: SearchResultMessage) => {
     setSearchResult(message.payload.result);
-    setLoading(false);
+    setLoadingForSubtool('word', false);
+    setWordStatusMessage('');
   }, []);
 
   const clearSearchResult = React.useCallback(() => {
     setSearchResult(null);
+    setWordStatusMessage('');
   }, []);
 
   const handleActiveFile = React.useCallback((message: ActiveFileMessage) => {
@@ -166,12 +184,12 @@ export const useSearch = (): UseSearchReturn => {
     setCategorySearchLoading(false);
     setCategorySearchProgress(undefined); // Clear progress when complete
     setCategorySearchTicker(''); // Clear ticker when complete
+    setCategoryStatusMessage('');
     if (result.error) {
       setCategorySearchError(result.error);
     } else {
       setCategorySearchError(null);
     }
-    setStatusMessage('');
   }, []);
 
   const clearCategorySearchResult = React.useCallback(() => {
@@ -179,28 +197,49 @@ export const useSearch = (): UseSearchReturn => {
     setCategorySearchError(null);
     setCategorySearchProgress(undefined); // Clear progress when clearing result
     setCategorySearchTicker(''); // Clear ticker when clearing result
+    setCategoryStatusMessage('');
   }, []);
 
   const handleStatusMessage = React.useCallback((message: StatusMessage) => {
-    setStatusMessage(message.payload.message || '');
-    // Update category search progress and ticker if available
-    if (message.source === 'extension.search' && categorySearchLoading) {
+    if (message.source !== 'extension.search') return;
+    const msg = message.payload.message || '';
+
+    if (categorySearchLoading) {
+      setCategoryStatusMessage(msg);
+      // Update category search progress and ticker if available
       setCategorySearchProgress(message.payload.progress);
       if (message.payload.tickerMessage) {
-        console.log('[useSearch] Category search ticker:', message.payload.tickerMessage);
         setCategorySearchTicker(message.payload.tickerMessage);
       }
+      return;
     }
+
+    // Default to word search status
+    setWordStatusMessage(msg);
   }, [categorySearchLoading]);
+
+  const clearStatusForSubtool = React.useCallback((tool: SearchSubtool) => {
+    if (tool === 'category') {
+      setCategoryStatusMessage('');
+      setCategorySearchTicker('');
+      setCategorySearchProgress(undefined);
+      return;
+    }
+    setWordStatusMessage('');
+  }, []);
+
+  const wordLoading = React.useMemo(() => loadingBySubtool.word ?? false, [loadingBySubtool]);
 
   return {
     // State
     searchResult,
     wordSearchTargets,
-    loading,
+    loading: wordLoading,
+    loadingBySubtool,
     sourceMode,
     pathText,
-    statusMessage,
+    wordStatusMessage,
+    categoryStatusMessage,
     categorySearch: {
       query: categorySearchQuery,
       result: categorySearchResult,
@@ -216,7 +255,9 @@ export const useSearch = (): UseSearchReturn => {
     handleSearchResult,
     setWordSearchTargets,
     clearSearchResult,
-    setLoading,
+    setLoading: (loading: boolean) => setLoadingForSubtool('word', loading), // backwards compatibility
+    setLoadingForSubtool,
+    clearStatusForSubtool,
     handleStatusMessage,
     handleActiveFile,
     handleManuscriptGlobs,
@@ -237,7 +278,8 @@ export const useSearch = (): UseSearchReturn => {
       wordSearchTargets,
       searchSourceMode: sourceMode,
       searchPathText: pathText,
-      statusMessage,
+      wordStatusMessage,
+      categoryStatusMessage,
       categorySearchQuery,
       categorySearchResult,
       categorySearchRelevance,
