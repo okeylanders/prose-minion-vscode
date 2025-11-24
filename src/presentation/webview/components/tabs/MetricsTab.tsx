@@ -11,6 +11,7 @@ import { TabBar, Tab } from '../shared/TabBar';
 import { ProseStatsPanel } from '../metrics/ProseStatsPanel';
 import { StyleFlagsPanel } from '../metrics/StyleFlagsPanel';
 import { WordFrequencyPanel } from '../metrics/WordFrequencyPanel';
+import { PublishingSelector } from '../metrics/PublishingSelector';
 import { VSCodeAPI } from '../../types/vscode';
 import { UseMetricsReturn, MetricsTool } from '../../hooks/domain/useMetrics';
 import { UsePublishingSettingsReturn } from '../../hooks/domain/usePublishingSettings';
@@ -34,14 +35,6 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
     { id: 'style_flags', label: 'Style Flags' },
     { id: 'word_frequency', label: 'Word Frequency' }
   ];
-
-  const handlePresetChange = (value: string) => {
-    publishingSettings.setPublishingPreset(value);
-  };
-
-  const handleTrimChange = (value: string) => {
-    publishingSettings.setPublishingTrim(value);
-  };
 
   const handleCopyMetricsResult = (content: string) => {
     vscode.postMessage({
@@ -100,44 +93,7 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
 
       {/* Publishing Standards: only for Prose Statistics view (moved below Scope for consistency) */}
       {metrics.activeTool === 'prose_stats' && (
-        <div className="input-container">
-          <label className="block text-sm font-medium mb-2 mt-3" htmlFor="pm-preset-select">Publishing Standards</label>
-          <div className="flex gap-2 mb-2">
-            <select
-              id="pm-preset-select"
-              className="w-1/2"
-              value={publishingSettings.publishingPreset}
-              onChange={(e) => handlePresetChange(e.target.value)}
-              title="Select a genre preset or manuscript format to compare metrics against publishing ranges"
-              disabled={metrics.loading}
-            >
-              <option value="none">None</option>
-              <option value="manuscript">Manuscript Format</option>
-              <optgroup label="Genres">
-                {publishingSettings.publishingGenres.map((g: any) => (
-                  <option key={g.key} value={`genre:${g.key}`}>{g.name} ({g.abbreviation})</option>
-                ))}
-              </optgroup>
-            </select>
-            <label className="block text-sm font-medium mb-2" htmlFor="pm-trim-select" style={{position:'absolute',left:'-10000px',width:1,height:1,overflow:'hidden'}}>Trim Size</label>
-            <select
-              id="pm-trim-select"
-              className="w-1/2"
-              value={publishingSettings.publishingTrimKey}
-              onChange={(e) => handleTrimChange(e.target.value)}
-              title="Choose a trim size to estimate page count and words-per-page"
-              disabled={metrics.loading || !publishingSettings.publishingPreset.startsWith('genre:')}
-            >
-              <option value="">Auto (common size)</option>
-              {(publishingSettings.publishingPreset.startsWith('genre:')
-                ? (publishingSettings.publishingGenres.find((g: any) => `genre:${g.key}` === publishingSettings.publishingPreset)?.pageSizes || [])
-                : []
-              ).map((ps: any) => (
-                <option key={ps.key} value={ps.key}>{ps.label} ({ps.width}x{ps.height} in)</option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <PublishingSelector publishingSettings={publishingSettings} disabled={metrics.loading} />
       )}
 
       {/* Route to active panel */}
