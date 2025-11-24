@@ -4,7 +4,7 @@
 **Status**: In Progress
 **Target**: Post-v1.2.0 Architecture Cleanup
 **Duration**: 7-11 days (estimated)
-**Progress**: 3/16 sprints complete (19%)
+**Progress**: 8/16 sprints complete (50%)
 
 ---
 
@@ -50,24 +50,26 @@ After v1.2.0 release, 20 architecture debt items have accumulated:
 
 ---
 
-### Sub-Epic 2: Component Decomposition 🟢 Ready to Start
-**Status**: Ready (Sub-Epic 1 Complete)
-**Duration**: 2-3 days
-**Sprints**: 4
+### Sub-Epic 2: Component Decomposition ✅ Complete
+**Status**: Complete (5/5 sprints, 2025-11-24)
+**Duration**: 2-3 days (actual: ~8.25 hours)
+**Sprints**: 5 (including Sprint 00 prerequisite)
 
 **Deliverables**:
-- Extract shared components (ScopeBox, LoadingIndicator, WordCounter)
-- Decompose SearchTab (666 → 150 lines)
-- Decompose MetricsTab (413 → 150 lines)
+- ✅ Component organization (tabs/, shared/, search/, metrics/)
+- ✅ ScopeBox extracted (5 duplications eliminated) - PR #36
+- ✅ LoadingIndicator unified (LoadingWidget consolidated) - PR #37
+- ✅ Subtab panels extracted (SearchTab 666→74, MetricsTab 413→129) - PR #38
+- ✅ WordCounter extracted (3 duplications eliminated) - PR #39
 
 **Foundation**: Type safety from Sub-Epic 1 ✅
 
-📁 *To be created when starting Sub-Epic 2*
+📁 [sub-epic-2-component-decomposition/](sub-epic-2-component-decomposition/)
 
 ---
 
-### Sub-Epic 3: Standards & Testing ⏳ Pending
-**Status**: Waiting for Sub-Epic 2
+### Sub-Epic 3: Standards & Testing 🟢 Ready to Start
+**Status**: Ready (Sub-Epic 2 Complete)
 **Duration**: 2-3 days
 **Sprints**: 5
 
@@ -228,24 +230,30 @@ Sub-Epic 4: Polish & UX
 | Sub-Epic | Status | Progress | Completion Date |
 |----------|--------|----------|-----------------|
 | 1. Foundation Cleanup | ✅ Complete | 3/3 sprints | 2025-11-22 |
-| 2. Component Decomposition | 🟢 Ready | 0/4 sprints | - |
-| 3. Standards & Testing | ⏸️ Blocked | 0/5 sprints | - |
+| 2. Component Decomposition | ✅ Complete | 5/5 sprints | 2025-11-24 |
+| 3. Standards & Testing | 🟢 Ready | 0/5 sprints | - |
 | 4. Polish & UX | ⏸️ Blocked | 0/4 sprints | - |
 
-**Overall Progress**: 3/16 sprints complete (19%)
+**Overall Progress**: 8/17 sprints complete (47%)
 
 ---
 
 ## Next Steps
 
 1. ✅ **Complete Sub-Epic 1**: Foundation Cleanup (Done - 2025-11-22)
-2. 🟢 **Start Sub-Epic 2**: Component Decomposition
+2. ✅ **Complete Sub-Epic 2**: Component Decomposition (Done - 2025-11-24)
+   - PRs #35, #36, #37, #38, #39 merged
+   - SearchTab: 666 → 74 lines (88.9% reduction)
+   - MetricsTab: 413 → 129 lines (68.8% reduction)
+   - 4 shared components created (ScopeBox, LoadingIndicator, TabBar, WordCounter)
+   - 6 panel components extracted
+3. 🟢 **Start Sub-Epic 3**: Standards & Testing
    - Create sub-epic directory structure
-   - Plan Sprint 01: Scope Box Extraction
+   - Plan Sprint 01: StandardsService Compliance
    - Begin implementation
 
 ---
 
-**Last Updated**: 2025-11-22
+**Last Updated**: 2025-11-24
 **Created By**: Claude Code (AI Agent)
-**Status**: Sub-Epic 1 Complete, Ready for Sub-Epic 2
+**Status**: Sub-Epic 2 Complete, Ready for Sub-Epic 3

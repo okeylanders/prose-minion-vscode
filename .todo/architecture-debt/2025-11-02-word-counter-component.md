@@ -4,7 +4,8 @@
 **Category**: Presentation Layer / Component Design
 **Priority**: Low
 **Effort**: Low (< 2h)
-**Status**: Identified
+**Status**: ✅ RESOLVED (2025-11-24)
+**Resolution**: [Sprint 04 - Word Counter Component](../epics/epic-architecture-health-pass-v1.3/sub-epic-2-component-decomposition/sprints/04-word-counter-component.md) | [PR #39](https://github.com/okeylanders/prose-minion-vscode/pull/39)
 **Introduced In**: Context Window Trimming feature (Sprint: epic-context-window-safety-2025-11-02-01-trim-limits)
 
 ---
@@ -443,6 +444,8 @@ Make word limits configurable via VS Code settings with UI awareness.
 
 ---
 
-**Status**: 📝 Documented, deferred to v1.1
-**Owner**: TBD
+**Status**: ✅ RESOLVED
+**Resolved**: 2025-11-24
+**Resolution**: Implemented "Minimum Fix" - WordCounter component extracted to `src/presentation/webview/components/shared/WordCounter.tsx`
+**PR**: [#39](https://github.com/okeylanders/prose-minion-vscode/pull/39)
 **Related ADR**: [Context Window Trim Limits](../../docs/adr/2025-11-02-context-window-trim-limits.md)
