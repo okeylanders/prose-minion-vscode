@@ -293,7 +293,7 @@ src/presentation/webview/components/
 | 01. Scope Box Extraction | ✅ Complete | 2 hrs | 2025-11-22 14:34 ([PR #36](https://github.com/okeylanders/prose-minion-vscode/pull/36)) |
 | 02. Loading Indicator | ✅ Complete | 2 hrs | 2025-11-22 15:30 ([PR #37](https://github.com/okeylanders/prose-minion-vscode/pull/37)) |
 | 03. Subtab Panels | ✅ Complete | 3 hrs | 2025-11-23 ([PR #38](https://github.com/okeylanders/prose-minion-vscode/pull/38)) |
-| 04. Word Counter | ✅ Complete | 30 min | 2025-11-24 (PR TBD) |
+| 04. Word Counter | ✅ Complete | 30 min | 2025-11-24 ([PR #39](https://github.com/okeylanders/prose-minion-vscode/pull/39)) |
 
 **Sub-Epic Progress**: 5/5 sprints (100%) ✅
 

@@ -368,7 +368,7 @@ src/presentation/webview/components/
 
 **Completion Date**: 2025-11-24
 **Actual Duration**: ~30 minutes
-**PR**: TBD (awaiting PR creation)
+**PR**: [#39](https://github.com/okeylanders/prose-minion-vscode/pull/39)
 **Branch**: `sprint/component-decomposition-04-word-counter`
 
 **Deliverables**:
