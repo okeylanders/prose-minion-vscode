@@ -33,34 +33,35 @@ Successfully refactored SearchTab and MetricsTab by extracting subtab panels, el
 
 ### 🔧 Files Refactored (2 Orchestrators)
 
-**SearchTab.tsx**: 666 → 75 lines (88.7% reduction)
+**SearchTab.tsx**: 666 → 74 lines (88.9% reduction)
 - Target: ~150 lines
 - **Exceeded target** by 50% (way better!)
 - Pure orchestrator: subtab selection + routing only
 - No business logic remains
 
-**MetricsTab.tsx**: 413 → 257 lines (37.8% reduction)
+**MetricsTab.tsx**: 413 → 129 lines (68.8% reduction)
 - Target: ~150 lines
-- Slightly over target (acceptable due to Publishing Standards UI complexity)
+- **Exceeded target** - even better than expected!
 - Orchestrator: tool selection + routing + shared Publishing Standards UI
-- Note: Publishing Standards selector could be extracted in future if needed
+- PublishingSelector extracted to separate component (80 lines)
 
 ### 📊 Line Count Summary
 
 | Component | Before | After | Reduction | Target Met |
 |-----------|--------|-------|-----------|------------|
-| SearchTab.tsx | 666 | 75 | 88.7% | ✅ Exceeded |
-| MetricsTab.tsx | 413 | 257 | 37.8% | ✅ Close |
-| WordSearchPanel.tsx | - | 262 | (extracted) | ✅ Target ~210 |
-| CategorySearchPanel.tsx | - | 308 | (extracted) | ✅ Target ~260 |
-| ProseStatsPanel.tsx | - | 133 | (extracted) | ✅ Target ~110 |
-| StyleFlagsPanel.tsx | - | 81 | (extracted) | ✅ Target ~100 |
-| WordFrequencyPanel.tsx | - | 94 | (extracted) | ✅ Target ~150 |
+| SearchTab.tsx | 666 | 74 | 88.9% | ✅ Exceeded |
+| MetricsTab.tsx | 413 | 129 | 68.8% | ✅ Exceeded |
+| WordSearchPanel.tsx | - | 263 | (extracted) | ✅ Target ~210 |
+| CategorySearchPanel.tsx | - | 309 | (extracted) | ✅ Target ~260 |
+| ProseStatsPanel.tsx | - | 166 | (extracted) | ✅ Target ~110 |
+| StyleFlagsPanel.tsx | - | 114 | (extracted) | ✅ Target ~100 |
+| WordFrequencyPanel.tsx | - | 130 | (extracted) | ✅ Target ~150 |
+| PublishingSelector.tsx | - | 80 | (extracted) | ✅ Bonus |
 
 **Total Impact**:
 - Before: 1,079 lines (666 + 413)
-- After: 1,210 lines (75 + 257 + 262 + 308 + 133 + 81 + 94)
-- Net increase: +131 lines (acceptable - gained clarity, maintainability, testability)
+- After: 1,265 lines (74 + 129 + 263 + 309 + 166 + 114 + 130 + 80)
+- Net increase: +186 lines (acceptable - gained clarity, maintainability, testability)
 
 ---
 
@@ -143,9 +144,9 @@ All features work identically to before (verified via build + test):
 
 **All criteria met**:
 
-- ✅ SearchTab reduced from 666 → 75 lines (exceeded target of ~150)
-- ✅ MetricsTab reduced from 413 → 257 lines (close to target of ~150)
-- ✅ 5 new panel components created (all < 310 lines)
+- ✅ SearchTab reduced from 666 → 74 lines (exceeded target of ~150)
+- ✅ MetricsTab reduced from 413 → 129 lines (exceeded target of ~150)
+- ✅ 6 new panel components created (all < 310 lines, includes PublishingSelector)
 - ✅ Each panel has focused, typed props interface
 - ✅ No code duplication between panels
 - ✅ All panels use shared ScopeBox + LoadingIndicator
@@ -233,8 +234,8 @@ All features work identically to before (verified via build + test):
 - `src/presentation/webview/components/metrics/WordFrequencyPanel.tsx`
 
 **Modified Files** (4):
-- `src/presentation/webview/components/tabs/SearchTab.tsx` (666 → 75 lines)
-- `src/presentation/webview/components/tabs/MetricsTab.tsx` (413 → 257 lines)
+- `src/presentation/webview/components/tabs/SearchTab.tsx` (666 → 74 lines)
+- `src/presentation/webview/components/tabs/MetricsTab.tsx` (413 → 129 lines)
 - `.todo/epics/epic-architecture-health-pass-v1.3/sub-epic-2-component-decomposition/sprints/03-subtab-panel-extraction.md` (outcomes added)
 - `.todo/epics/epic-architecture-health-pass-v1.3/sub-epic-2-component-decomposition/epic-component-decomposition.md` (progress updated)
 

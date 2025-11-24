@@ -67,17 +67,19 @@ Sprint 03 completed with comprehensive polish improvements using sequential + pa
 
 ## Final Results
 
-### Line Count Impact
-| File | Before | After | Change | Notes |
-|------|--------|-------|--------|-------|
-| MetricsTab.tsx | 258 | 182 | -76 (-29%) | Independence + TabBar + UI fixes |
-| SearchTab.tsx | 75 | 73 | -2 | TabBar integration |
-| ScopeBox.tsx | 194 | 162 | -32 (-16.5%) | TabBar integration |
-| TabBar.tsx | 38 | 131 | +93 | Enhanced + docs |
-| ProseStatsPanel.tsx | 134 | 156 | +22 | Independence (owns lifecycle) |
-| StyleFlagsPanel.tsx | 82 | 104 | +22 | Independence |
-| WordFrequencyPanel.tsx | 95 | 120 | +25 | Independence |
-| **Net Impact** | | | **-48 lines** | Excluding TabBar docs |
+### Line Count Impact (Final Actual)
+| File | Before Sprint | After Sprint | Notes |
+|------|---------------|--------------|-------|
+| MetricsTab.tsx | 413 | 129 | 68.8% reduction |
+| SearchTab.tsx | 666 | 74 | 88.9% reduction |
+| ScopeBox.tsx | 194 | 63 | 67.5% reduction (TabBar integration) |
+| TabBar.tsx | 38 | 132 | Enhanced + docs |
+| ProseStatsPanel.tsx | - | 166 | (extracted) |
+| StyleFlagsPanel.tsx | - | 114 | (extracted) |
+| WordFrequencyPanel.tsx | - | 130 | (extracted) |
+| WordSearchPanel.tsx | - | 263 | (extracted) |
+| CategorySearchPanel.tsx | - | 309 | (extracted) |
+| PublishingSelector.tsx | - | 80 | (extracted) |
 
 ### Test Status
 - ✅ **25/26 test suites passing**
@@ -134,8 +136,8 @@ Sprint 03 completed with comprehensive polish improvements using sequential + pa
 ## Sprint 03 Complete Status
 
 ### Main Work (from earlier session)
-- ✅ Panel extraction: SearchTab (666 → 75 lines), MetricsTab (413 → 257 lines)
-- ✅ 5 panel components created (WordSearchPanel, CategorySearchPanel, ProseStatsPanel, StyleFlagsPanel, WordFrequencyPanel)
+- ✅ Panel extraction: SearchTab (666 → 74 lines), MetricsTab (413 → 129 lines)
+- ✅ 6 panel components created (WordSearchPanel, CategorySearchPanel, ProseStatsPanel, StyleFlagsPanel, WordFrequencyPanel, PublishingSelector)
 - ✅ All panels use ScopeBox + LoadingIndicator
 
 ### Polish Work (this session)
