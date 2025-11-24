@@ -7,6 +7,7 @@ import * as React from 'react';
 import { MessageType } from '@shared/types';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { LoadingIndicator } from '../shared/LoadingIndicator';
+import { WordCounter } from '../shared/WordCounter';
 import { formatAnalysisAsMarkdown } from '../../utils/formatters';
 import { VSCodeAPI } from '../../types/vscode';
 import { UseDictionaryReturn } from '../../hooks/domain/useDictionary';
@@ -27,24 +28,6 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
   settings
 }) => {
   const lastLookupRef = React.useRef<{ word: string; context: string } | null>(null);
-
-  // Word counter for dictionary context
-  const contextWordCount = React.useMemo(() => {
-    if (!dictionary.context || dictionary.context.trim().length === 0) {
-      return 0;
-    }
-    return dictionary.context.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
-  }, [dictionary.context]);
-
-  const contextWordCountColor = React.useMemo(() => {
-    if (contextWordCount >= 500) {
-      return 'word-counter-red';
-    }
-    if (contextWordCount >= 400) {
-      return 'word-counter-yellow';
-    }
-    return 'word-counter-green';
-  }, [contextWordCount]);
 
   const enforceWordLimit = React.useCallback((value: string): string => {
     const normalized = value.replace(/\s+/g, ' ').trim();
@@ -275,10 +258,11 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
           onChange={(e) => dictionary.setContext(e.target.value)}
           placeholder="Paste a sentence, paragraph, or notes to guide the dictionary output..."
         />
-        <div className={`word-counter ${contextWordCountColor}`}>
-          {contextWordCount} / 500 words
-          {contextWordCount > 500 && ' ⚠️ Large excerpt'}
-        </div>
+        <WordCounter
+          text={dictionary.context}
+          maxWords={500}
+          warningMessage="Large excerpt"
+        />
       </div>
 
       <div className="button-group">
