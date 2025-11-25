@@ -446,6 +446,47 @@ export class AIResourceOrchestrator {
 
       if (turnCount >= this.MAX_TURNS) {
         this.outputChannel?.appendLine(`[AIResourceOrchestrator] Conversation reached max turns (${this.MAX_TURNS})`);
+
+        // Check if final response is still a resource request - if so, force output
+        const finalRequest = ContextResourceRequestParser.parse(response.content);
+        if (finalRequest.hasResourceRequest) {
+          this.outputChannel?.appendLine(`[AIResourceOrchestrator] Final turn was still a resource request - forcing output generation`);
+
+          // Add the request to conversation and ask for output
+          this.conversationManager.addMessage(conversationId, {
+            role: 'assistant',
+            content: response.content
+          });
+          this.conversationManager.addMessage(conversationId, {
+            role: 'user',
+            content: 'You have reached the maximum number of resource requests. Please produce your context briefing NOW using only the resources you have already received. Do not request any more files.'
+          });
+
+          messages = this.conversationManager.getMessages(conversationId);
+          response = await this.openRouterClient.createChatCompletion(messages, {
+            temperature: requestOptions.temperature,
+            maxTokens: requestOptions.maxTokens,
+            signal: requestOptions.signal
+          });
+          this.outputChannel?.appendLine(
+            `[AIResourceOrchestrator] Forced output response received (${response.content.length} chars)`
+          );
+
+          // Accumulate final usage
+          if ((response as any).usage) {
+            const u = (response as any).usage as { promptTokens: number; completionTokens: number; totalTokens: number; costUsd?: number };
+            if (!totalUsage) {
+              totalUsage = { ...u };
+            } else {
+              totalUsage.promptTokens += u.promptTokens;
+              totalUsage.completionTokens += u.completionTokens;
+              totalUsage.totalTokens += u.totalTokens;
+              if (typeof totalUsage.costUsd === 'number' || typeof u.costUsd === 'number') {
+                totalUsage.costUsd = (totalUsage.costUsd || 0) + (u.costUsd || 0);
+              }
+            }
+          }
+        }
       }
 
       // Clean up and return final response
