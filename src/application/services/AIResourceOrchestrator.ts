@@ -307,7 +307,7 @@ export class AIResourceOrchestrator {
 
   /**
    * Execute an AI request that can load workspace context resources on demand.
-   * Designed for the two-turn workflow used by the context assistant.
+   * Supports up to 3 turns (2 resource request rounds) for the context assistant workflow.
    */
   async executeWithContextResources(
     toolName: string,
@@ -344,6 +344,7 @@ export class AIResourceOrchestrator {
         this.outputChannel?.appendLine('[AIResourceOrchestrator] Context resource catalog is empty.');
       }
 
+      // Turn 1: Initial request
       this.conversationManager.addMessage(conversationId, {
         role: 'user',
         content: userMessage
@@ -356,97 +357,103 @@ export class AIResourceOrchestrator {
         maxTokens: requestOptions.maxTokens,
         signal: requestOptions.signal
       });
-      this.outputChannel?.appendLine(`[AIResourceOrchestrator] Initial context response received (${response.content.length} chars)`);
+      this.outputChannel?.appendLine(`[AIResourceOrchestrator] Turn 1 response received (${response.content.length} chars)`);
       if ((response as any).usage) {
         totalUsage = { ...(response as any).usage };
       }
 
-      const resourceRequest = ContextResourceRequestParser.parse(response.content);
+      // Support up to 2 resource request turns (MAX_TURNS = 3 total)
+      let turnCount = 1;
+      while (turnCount < this.MAX_TURNS) {
+        const resourceRequest = ContextResourceRequestParser.parse(response.content);
 
-      if (!resourceRequest.hasResourceRequest) {
-        const cleaned = ContextResourceRequestParser.stripRequestTags(response.content);
-        const truncatedNote = this.appendTruncationNote(response.content, response.finishReason);
-        return {
-          content: cleaned + truncatedNote,
-          usedGuides: [],
-          requestedResources: deliveredResources,
-          usage: totalUsage
-        };
-      }
+        if (!resourceRequest.hasResourceRequest) {
+          // No more resource requests - we're done
+          this.outputChannel?.appendLine(`[AIResourceOrchestrator] No resource request found in turn ${turnCount}, conversation complete`);
+          break;
+        }
 
-      if (resourceRequest.requestedPaths.length > 0) {
-        this.outputChannel?.appendLine('[AIResourceOrchestrator] Context assistant requested the following paths:');
-        resourceRequest.requestedPaths.forEach((requestedPath, index) => {
-          this.outputChannel?.appendLine(`  ${index + 1}. ${requestedPath}`);
-        });
-      } else {
-        this.outputChannel?.appendLine('[AIResourceOrchestrator] Context assistant returned an empty context-request tag.');
-      }
-
-      this.outputChannel?.appendLine(
-        `[AIResourceOrchestrator] Context assistant requested ${resourceRequest.requestedPaths.length} resource(s).`
-      );
-
-      // Add the assistant's turn (with the request) to the conversation
-      this.conversationManager.addMessage(conversationId, {
-        role: 'assistant',
-        content: response.content
-      });
-
-      if (this.statusCallback && resourceRequest.requestedPaths.length > 0) {
-        this.statusCallback('Loading project reference files...');
-      }
-
-      const loadedResources = await resourceProvider.loadResources(resourceRequest.requestedPaths);
-      deliveredResources.push(...loadedResources.map(resource => resource.path));
-
-      if (loadedResources.length === 0) {
-        this.outputChannel?.appendLine('[AIResourceOrchestrator] No project resources matched the AI request.');
-      } else {
-        this.outputChannel?.appendLine(
-          `[AIResourceOrchestrator] Loaded ${loadedResources.length} project resource(s) for follow-up turn:`
-        );
-        loadedResources.forEach((resource, index) => {
-          this.outputChannel?.appendLine(
-            `  ${index + 1}. ${resource.path} (${resource.content.length} chars)`
-          );
-        });
-      }
-
-      const userFollowUp = this.buildContextResourceMessage(loadedResources, resourceRequest.requestedPaths);
-      this.conversationManager.addMessage(conversationId, {
-        role: 'user',
-        content: userFollowUp
-      });
-
-      messages = this.conversationManager.getMessages(conversationId);
-      const followUp = await this.openRouterClient.createChatCompletion(messages, {
-        temperature: requestOptions.temperature,
-        maxTokens: requestOptions.maxTokens,
-        signal: requestOptions.signal
-      });
-      this.outputChannel?.appendLine(
-        `[AIResourceOrchestrator] Final context response received (${followUp.content.length} chars)`
-      );
-      if ((followUp as any).usage) {
-        const u = (followUp as any).usage as { promptTokens: number; completionTokens: number; totalTokens: number; costUsd?: number };
-        if (!totalUsage) {
-          totalUsage = { ...u };
+        if (resourceRequest.requestedPaths.length > 0) {
+          this.outputChannel?.appendLine(`[AIResourceOrchestrator] Turn ${turnCount}: Context assistant requested ${resourceRequest.requestedPaths.length} resource(s):`);
+          resourceRequest.requestedPaths.forEach((requestedPath, index) => {
+            this.outputChannel?.appendLine(`  ${index + 1}. ${requestedPath}`);
+          });
         } else {
-          totalUsage.promptTokens += u.promptTokens;
-          totalUsage.completionTokens += u.completionTokens;
-          totalUsage.totalTokens += u.totalTokens;
-          if (typeof totalUsage.costUsd === 'number' || typeof u.costUsd === 'number') {
-            totalUsage.costUsd = (totalUsage.costUsd || 0) + (u.costUsd || 0);
+          this.outputChannel?.appendLine(`[AIResourceOrchestrator] Turn ${turnCount}: Context assistant returned an empty context-request tag.`);
+        }
+
+        // Add the assistant's turn (with the request) to the conversation
+        this.conversationManager.addMessage(conversationId, {
+          role: 'assistant',
+          content: response.content
+        });
+
+        if (this.statusCallback && resourceRequest.requestedPaths.length > 0) {
+          this.statusCallback('Loading project reference files...');
+        }
+
+        // Load the requested resources
+        const loadedResources = await resourceProvider.loadResources(resourceRequest.requestedPaths);
+        deliveredResources.push(...loadedResources.map(resource => resource.path));
+
+        if (loadedResources.length === 0) {
+          this.outputChannel?.appendLine(`[AIResourceOrchestrator] Turn ${turnCount}: No project resources matched the AI request.`);
+        } else {
+          this.outputChannel?.appendLine(
+            `[AIResourceOrchestrator] Turn ${turnCount}: Loaded ${loadedResources.length} project resource(s):`
+          );
+          loadedResources.forEach((resource, index) => {
+            this.outputChannel?.appendLine(
+              `  ${index + 1}. ${resource.path} (${resource.content.length} chars)`
+            );
+          });
+        }
+
+        // Build user message with loaded resources
+        const userFollowUp = this.buildContextResourceMessage(loadedResources, resourceRequest.requestedPaths);
+        this.conversationManager.addMessage(conversationId, {
+          role: 'user',
+          content: userFollowUp
+        });
+
+        // Call API again with updated conversation
+        turnCount++;
+        messages = this.conversationManager.getMessages(conversationId);
+        response = await this.openRouterClient.createChatCompletion(messages, {
+          temperature: requestOptions.temperature,
+          maxTokens: requestOptions.maxTokens,
+          signal: requestOptions.signal
+        });
+        this.outputChannel?.appendLine(
+          `[AIResourceOrchestrator] Turn ${turnCount} response received (${response.content.length} chars)`
+        );
+
+        // Accumulate usage
+        if ((response as any).usage) {
+          const u = (response as any).usage as { promptTokens: number; completionTokens: number; totalTokens: number; costUsd?: number };
+          if (!totalUsage) {
+            totalUsage = { ...u };
+          } else {
+            totalUsage.promptTokens += u.promptTokens;
+            totalUsage.completionTokens += u.completionTokens;
+            totalUsage.totalTokens += u.totalTokens;
+            if (typeof totalUsage.costUsd === 'number' || typeof u.costUsd === 'number') {
+              totalUsage.costUsd = (totalUsage.costUsd || 0) + (u.costUsd || 0);
+            }
           }
         }
       }
 
-      const cleanedFollowUp = ContextResourceRequestParser.stripRequestTags(followUp.content);
-      const truncatedNote = this.appendTruncationNote(followUp.content, followUp.finishReason);
+      if (turnCount >= this.MAX_TURNS) {
+        this.outputChannel?.appendLine(`[AIResourceOrchestrator] Conversation reached max turns (${this.MAX_TURNS})`);
+      }
+
+      // Clean up and return final response
+      const cleanedResponse = ContextResourceRequestParser.stripRequestTags(response.content);
+      const truncatedNote = this.appendTruncationNote(response.content, response.finishReason);
 
       return {
-        content: cleanedFollowUp + truncatedNote,
+        content: cleanedResponse + truncatedNote,
         usedGuides: [],
         requestedResources: deliveredResources,
         usage: totalUsage

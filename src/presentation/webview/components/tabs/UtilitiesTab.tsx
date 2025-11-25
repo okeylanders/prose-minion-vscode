@@ -65,6 +65,41 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
     selection.handleDictionaryInjectionHandled();
   }, [selection.dictionaryInjection, enforceWordLimit, dictionary, selection]);
 
+  // Auto-run fast dictionary lookup when autoRun flag is set
+  React.useEffect(() => {
+    const injection = selection.dictionaryInjection;
+    if (!injection?.autoRun) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const sanitizedWord = enforceWordLimit(dictionary.word);
+      if (!sanitizedWord) {
+        return;
+      }
+
+      dictionary.setFastGenerating(true);
+
+      lastLookupRef.current = {
+        word: sanitizedWord,
+        context: dictionary.context.trim()
+      };
+
+      vscode.postMessage({
+        type: MessageType.FAST_GENERATE_DICTIONARY,
+        source: 'webview.utilities.tab',
+        payload: {
+          word: sanitizedWord,
+          context: dictionary.context.trim() || undefined
+        },
+        timestamp: Date.now()
+      });
+    }, 100);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selection.dictionaryInjection?.autoRun, dictionary.word]);
+
   React.useEffect(() => {
     const trimmed = selection.selectedText.trim();
     if (!trimmed || dictionary.wordEdited || (dictionary.word && dictionary.word.trim().length > 0)) {
@@ -271,7 +306,7 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
           onClick={handleLookup}
           disabled={!dictionary.word.trim() || dictionary.loading || dictionary.isFastGenerating}
         >
-          Generate Dictionary Entry
+          Run Dictionary Lookup
         </button>
         <button
           className="btn btn-secondary"
@@ -279,7 +314,7 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
           disabled={!dictionary.word.trim() || dictionary.loading || dictionary.isFastGenerating}
           title="Experimental: Generate using parallel API calls (2-4× faster)"
         >
-          ⚡ Fast Generate (Experimental)
+          ⚡ Experimental: Run Dictionary Lookup [Fast]
         </button>
       </div>
 

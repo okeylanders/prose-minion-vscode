@@ -29,9 +29,34 @@ export interface OpenRouterModelsResponse {
  */
 export const CATEGORY_MODELS = [
   {
+    id: 'anthropic/claude-haiku-4.5',
+    name: 'Claude Haiku 4.5',
+    description: 'Anthropic\'s fastest and most efficient model with frontier-level capabilities'
+  },
+  {
+    id: 'anthropic/claude-opus-4.5',
+    name: 'Claude Opus 4.5',
+    description: 'Anthropic\'s frontier reasoning model for complex tasks and agentic workflows'
+  },
+  {
     id: 'anthropic/claude-sonnet-4.5',
     name: 'Claude Sonnet 4.5',
     description: 'Default for category search'
+  },
+  {
+    id: 'deepcogito/cogito-v2.1-671b',
+    name: 'Cogito v2.1 671B',
+    description: 'One of the strongest open models globally, matching frontier closed models'
+  },
+  {
+    id: 'google/gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
+    description: 'Google\'s fast model'
+  },
+  {
+    id: 'google/gemini-2.5-pro',
+    name: 'Gemini 2.5 Pro',
+    description: 'Google advanced model'
   },
   {
     id: 'google/gemini-3-pro-preview',
@@ -44,24 +69,9 @@ export const CATEGORY_MODELS = [
     description: 'OpenAI conversational model'
   },
   {
-    id: 'google/gemini-2.5-pro',
-    name: 'Gemini 2.5 Pro',
-    description: 'Google advanced model'
-  },
-  {
     id: 'mistralai/mistral-large-2411',
     name: 'Mistral Large 2411',
     description: 'Mistral large model'
-  },
-  {
-    id: 'anthropic/claude-haiku-4.5',
-    name: 'Claude Haiku 4.5',
-    description: 'Anthropic\'s fastest and most efficient model with frontier-level capabilities'
-  },
-  {
-    id: 'google/gemini-2.5-flash',
-    name: 'Gemini 2.5 Flash',
-    description: 'Google\'s fast model'
   },
 
 ];
@@ -88,9 +98,19 @@ export const RECOMMENDED_MODELS = [
     description: 'The creative heavyweight. Unequalled nuance and depth in storytelling; writes with a distinctive, sophisticated voice.'
   },
   {
+    id: 'anthropic/claude-opus-4.5',
+    name: 'Claude Opus 4.5',
+    description: 'Anthropic\'s frontier reasoning model optimized for complex software engineering and agentic workflows. Strong multimodal capabilities with improved robustness. Supports extended context and multi-step planning.'
+  },
+  {
     id: 'anthropic/claude-sonnet-4.5',
     name: 'Claude Sonnet 4.5',
     description: 'Top-tier powerhouse. Exceptional at natural prose, deep subtext, and complex narrative construction. (Recommended)'
+  },
+  {
+    id: 'deepcogito/cogito-v2.1-671b',
+    name: 'Cogito v2.1 671B',
+    description: 'One of the strongest open MoE models globally. Trained via self-play RL for state-of-the-art instruction following, coding, longer queries, and creative writing.'
   },
   {
     id: 'deepseek/deepseek-r1',

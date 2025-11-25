@@ -15,6 +15,7 @@ export interface DictionaryInjection {
   context?: string;
   sourceUri?: string;
   relativePath?: string;
+  autoRun?: boolean;
   timestamp: number;
 }
 
@@ -82,7 +83,7 @@ export const useSelection = (): UseSelectionReturn => {
 
   const handleSelectionUpdated = React.useCallback(
     (message: SelectionUpdatedMessage, onTabChange: (tab: TabId) => void) => {
-      const { text, sourceUri, relativePath, target } = message.payload;
+      const { text, sourceUri, relativePath, target, autoRun } = message.payload;
       const targetValue = target || 'assistant';
 
       if (targetValue === 'assistant' || targetValue === 'both') {
@@ -94,7 +95,7 @@ export const useSelection = (): UseSelectionReturn => {
 
       if (targetValue === 'dictionary' || targetValue === 'both') {
         onTabChange(TabId.UTILITIES);
-        setDictionaryInjection({ word: text, timestamp: Date.now() });
+        setDictionaryInjection({ word: text, autoRun, timestamp: Date.now() });
       }
     },
     []

@@ -79,6 +79,7 @@ export interface SelectionUpdatedPayload {
   sourceUri?: string;
   relativePath?: string;
   target?: 'assistant' | 'dictionary' | 'both';
+  autoRun?: boolean;
 }
 
 export interface SelectionUpdatedMessage extends MessageEnvelope<SelectionUpdatedPayload> {
