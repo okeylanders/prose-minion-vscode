@@ -62,7 +62,10 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
       dictionary.setSource(undefined, undefined);
     }
 
-    selection.handleDictionaryInjectionHandled();
+    // Don't clear injection yet if autoRun is true - let the auto-run effect handle it
+    if (!injection.autoRun) {
+      selection.handleDictionaryInjectionHandled();
+    }
   }, [selection.dictionaryInjection, enforceWordLimit, dictionary, selection]);
 
   // Auto-run fast dictionary lookup when autoRun flag is set
@@ -72,9 +75,12 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
       return;
     }
 
+    // Use longer delay to ensure word state is populated from previous effect
     const timer = setTimeout(() => {
       const sanitizedWord = enforceWordLimit(dictionary.word);
       if (!sanitizedWord) {
+        // Clear injection even if no word to prevent stuck state
+        selection.handleDictionaryInjectionHandled();
         return;
       }
 
@@ -94,7 +100,10 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
         },
         timestamp: Date.now()
       });
-    }, 100);
+
+      // Clear injection after triggering lookup
+      selection.handleDictionaryInjectionHandled();
+    }, 150);
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
