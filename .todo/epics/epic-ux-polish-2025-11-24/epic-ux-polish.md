@@ -1,8 +1,9 @@
 # Micro-Epic: UX Polish & Model Updates
 
 **Created**: 2025-11-24
-**Status**: Ready to Start
-**Duration**: 2.75-3 hours (estimated)
+**Completed**: 2025-11-24
+**Status**: ✅ COMPLETE
+**Duration**: ~15 minutes (parallel execution)
 **Sprints**: 3
 **Priority**: Medium
 
@@ -72,13 +73,13 @@ Three improvements to dictionary flow:
 
 ## Success Criteria
 
-- [ ] Cogito v2.1 671B and Claude Opus 4.5 appear in model dropdowns
-- [ ] Context assistant requests story-bible/overview files when available
-- [ ] Dictionary buttons renamed to "Run Dictionary Lookup" terminology
-- [ ] Command Palette "Word Lookup" auto-runs fast dictionary lookup
-- [ ] Toast notification appears on auto-run
-- [ ] All tests pass
-- [ ] Build succeeds
+- [x] Cogito v2.1 671B and Claude Opus 4.5 appear in model dropdowns
+- [x] Context assistant requests story-bible/overview files when available
+- [x] Dictionary buttons renamed to "Run Dictionary Lookup" terminology
+- [x] Command Palette "Word Lookup" auto-runs fast dictionary lookup
+- [x] Toast notification appears on auto-run
+- [x] All tests pass
+- [x] Build succeeds
 
 ---
 
@@ -108,3 +109,33 @@ git checkout -b epic/ux-polish-2025-11-24
 
 **Last Updated**: 2025-11-24
 **Created By**: Claude Code (AI Agent)
+
+---
+
+## Completion Notes
+
+**Completed**: 2025-11-24
+
+### Implementation Approach
+
+All 3 sprints were executed in parallel using subagents since they had zero file overlap:
+
+- Sprint 01: `OpenRouterModels.ts` only
+- Sprint 02: `AIResourceOrchestrator.ts` + system prompt
+- Sprint 03: `UtilitiesTab.tsx`, `extension.ts`, `ProseToolsViewProvider.ts`, `useSelection.ts`
+
+### Commit
+
+- Commit: `ff19fb7` - [EPIC: UX-POLISH] Add models, enhance context, improve dictionary UX
+- Branch: `epic/ux-polish-2025-11-24`
+
+### Files Changed (8 files, +196/-97 lines)
+
+1. `src/infrastructure/api/OpenRouterModels.ts` - New model entries
+2. `src/application/services/AIResourceOrchestrator.ts` - 3-turn support
+3. `resources/system-prompts/context-assistant/00-context-briefing.md` - Priority resources
+4. `src/presentation/webview/components/tabs/UtilitiesTab.tsx` - Button labels + auto-run
+5. `src/extension.ts` - Toast notification + autoRun flag
+6. `src/application/providers/ProseToolsViewProvider.ts` - autoRun type
+7. `src/presentation/webview/hooks/domain/useSelection.ts` - autoRun type
+8. `src/shared/types/messages/ui.ts` - autoRun property
