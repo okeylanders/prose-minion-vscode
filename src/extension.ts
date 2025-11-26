@@ -175,7 +175,7 @@ export function activate(context: vscode.ExtensionContext): void {
     if (!payload) {
       return;
     }
-    vscode.window.showInformationMessage(`Running dictionary lookup for "${payload.text}"...`);
+    vscode.window.showInformationMessage(`Running dictionary lookup for word/phrase "${payload.text}"...`);
     sendSelection('dictionary', payload, true);
   };
 
