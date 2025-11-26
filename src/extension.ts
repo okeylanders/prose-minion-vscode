@@ -38,7 +38,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(outputChannel);
 
   outputChannel.appendLine('=== Prose Minion Extension Activated ===');
-  outputChannel.appendLine('>>> Version 1.2.6 <<<');
+  outputChannel.appendLine('>>> Version 1.2.7 <<<');
   outputChannel.appendLine(`Extension URI: ${context.extensionUri.fsPath}`);
 
   console.log('Prose Minion extension is now active');
@@ -149,13 +149,15 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const sendSelection = (
     target: 'assistant' | 'dictionary',
-    payload: { text: string; uri: vscode.Uri; relativePath: string }
+    payload: { text: string; uri: vscode.Uri; relativePath: string },
+    autoRun?: boolean
   ) => {
     proseToolsViewProvider?.sendSelectionToWebview({
       text: payload.text,
       sourceUri: payload.uri.toString(),
       relativePath: payload.relativePath,
-      target
+      target,
+      autoRun
     });
     focusToolsView();
   };
@@ -173,7 +175,8 @@ export function activate(context: vscode.ExtensionContext): void {
     if (!payload) {
       return;
     }
-    sendSelection('dictionary', payload);
+    vscode.window.showInformationMessage(`Running dictionary lookup for word/phrase "${payload.text}"...`);
+    sendSelection('dictionary', payload, true);
   };
 
   context.subscriptions.push(

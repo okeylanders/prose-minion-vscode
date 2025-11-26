@@ -29,16 +29,42 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
 }) => {
   const lastLookupRef = React.useRef<{ word: string; context: string } | null>(null);
 
-  const enforceWordLimit = React.useCallback((value: string): string => {
+  // Normalize for submission (trim + limit words)
+  const normalizePhrase = React.useCallback((value: string): string => {
     const normalized = value.replace(/\s+/g, ' ').trim();
     if (!normalized) {
       return '';
     }
-
     const tokens = normalized.split(' ').filter(Boolean);
-    return tokens.slice(0, 3).join(' ');
+    return tokens.slice(0, 6).join(' ');
   }, []);
 
+  // For typing: allow trailing space, just limit word count
+  const enforceWordLimit = React.useCallback((value: string): string => {
+    // Normalize multiple spaces to single, but preserve trailing space
+    const hasTrailingSpace = value.endsWith(' ');
+    const normalized = value.replace(/\s+/g, ' ');
+    const tokens = normalized.trim().split(' ').filter(Boolean);
+
+    if (tokens.length === 0) {
+      return '';
+    }
+
+    const limited = tokens.slice(0, 6).join(' ');
+    // Preserve trailing space if user is typing between words
+    return hasTrailingSpace && tokens.length < 6 ? limited + ' ' : limited;
+  }, []);
+
+  /**
+   * Effect: handleInjection
+   *
+   * Trigger: When dictionaryInjection changes (from paste button or right-click menu)
+   *
+   * Purpose: Populates the dictionary form fields from incoming injection data.
+   * - Sets word, context, and source metadata from the injection
+   * - If autoRun is false, clears the injection immediately (we're done)
+   * - If autoRun is true, leaves injection for the autoRunLookup effect to handle
+   */
   React.useEffect(() => {
     const injection = selection.dictionaryInjection;
     if (!injection) {
@@ -46,7 +72,7 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
     }
 
     if (injection.word !== undefined) {
-      const sanitized = enforceWordLimit(injection.word);
+      const sanitized = normalizePhrase(injection.word);
       dictionary.setWord(sanitized);
       dictionary.setWordEdited(false);
     }
@@ -55,39 +81,69 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
       dictionary.setContext(injection.context);
     }
 
-    // If injection has source metadata, set it; otherwise clear
     if (injection.sourceUri || injection.relativePath) {
       dictionary.setSource(injection.sourceUri, injection.relativePath);
     } else {
       dictionary.setSource(undefined, undefined);
     }
 
-    selection.handleDictionaryInjectionHandled();
-  }, [selection.dictionaryInjection, enforceWordLimit, dictionary, selection]);
+    // Don't clear injection yet if autoRun is true - let autoRunLookup effect handle it
+    if (!injection.autoRun) {
+      selection.handleDictionaryInjectionHandled();
+    }
+  }, [selection.dictionaryInjection, normalizePhrase, dictionary, selection]);
 
+  /**
+   * Effect: autoRunLookup
+   *
+   * Trigger: When dictionaryInjection changes AND autoRun flag is true
+   *
+   * Purpose: Automatically triggers fast dictionary lookup from right-click menu.
+   * - Reads word directly from injection (not dictionary state) to avoid race condition
+   * - Posts FAST_GENERATE_DICTIONARY message to extension
+   * - Clears injection after triggering
+   *
+   * Flow: Right-click "Look Up Word" → extension sends injection with autoRun:true
+   *       → handleInjection populates form → this effect fires the API call
+   */
   React.useEffect(() => {
-    const trimmed = selection.selectedText.trim();
-    if (!trimmed || dictionary.wordEdited || (dictionary.word && dictionary.word.trim().length > 0)) {
+    const injection = selection.dictionaryInjection;
+    if (!injection?.autoRun) {
       return;
     }
 
-    const tokens = trimmed.split(/\s+/);
-    const sanitizedTokens = tokens
-      .map((token: string) => token.replace(/^[^A-Za-z'-]+|[^A-Za-z'-]+$/g, ''))
-      .filter(Boolean);
-
-    if (sanitizedTokens.length === 0) {
+    const sanitizedWord = normalizePhrase(injection.word || '');
+    if (!sanitizedWord) {
+      // Clear injection even if no word to prevent stuck state
+      selection.handleDictionaryInjectionHandled();
       return;
     }
 
-    const candidate = enforceWordLimit(sanitizedTokens.join(' '));
-    if (candidate) {
-      dictionary.setWord(candidate);
-    }
-  }, [selection.selectedText, dictionary.wordEdited, dictionary.word, enforceWordLimit, dictionary]);
+    dictionary.setFastGenerating(true);
+
+    const contextValue = (injection.context || dictionary.context || '').trim();
+    lastLookupRef.current = {
+      word: sanitizedWord,
+      context: contextValue
+    };
+
+    vscode.postMessage({
+      type: MessageType.FAST_GENERATE_DICTIONARY,
+      source: 'webview.utilities.tab',
+      payload: {
+        word: sanitizedWord,
+        context: contextValue || undefined
+      },
+      timestamp: Date.now()
+    });
+
+    // Clear injection after triggering lookup
+    selection.handleDictionaryInjectionHandled();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selection.dictionaryInjection]);
 
   const handleLookup = () => {
-    const sanitizedWord = enforceWordLimit(dictionary.word);
+    const sanitizedWord = normalizePhrase(dictionary.word);
     if (!sanitizedWord) {
       return;
     }
@@ -111,7 +167,7 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
   };
 
   const handleFastGenerate = () => {
-    const sanitizedWord = enforceWordLimit(dictionary.word);
+    const sanitizedWord = normalizePhrase(dictionary.word);
     if (!sanitizedWord) {
       return;
     }
@@ -160,11 +216,11 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
     }
 
     const metadata = lastLookupRef.current ?? {
-      word: enforceWordLimit(dictionary.word),
+      word: normalizePhrase(dictionary.word),
       context: dictionary.context.trim()
     };
 
-    const header = `# ${metadata.word || enforceWordLimit(dictionary.word) || 'Entry'}`;
+    const header = `# ${metadata.word || normalizePhrase(dictionary.word) || 'Entry'}`;
 
     vscode.postMessage({
       type: MessageType.COPY_RESULT,
@@ -183,11 +239,11 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
     }
 
     const metadata = lastLookupRef.current ?? {
-      word: enforceWordLimit(dictionary.word),
+      word: normalizePhrase(dictionary.word),
       context: dictionary.context.trim()
     };
 
-    const header = `# ${metadata.word || enforceWordLimit(dictionary.word) || 'Entry'}`;
+    const header = `# ${metadata.word || normalizePhrase(dictionary.word) || 'Entry'}`;
 
     vscode.postMessage({
       type: MessageType.SAVE_RESULT,
@@ -215,13 +271,13 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
       <div className="input-container">
         <div className="input-header">
           <label className="text-sm font-medium">
-            Target Word
+            Target Word or Phrase (6 words max)
           </label>
           <button
             className="icon-button"
             onClick={handlePasteWord}
-            title="Paste word from selection"
-            aria-label="Paste word"
+            title="Paste word or phrase from selection"
+            aria-label="Paste word or phrase"
           >
             📥
           </button>
@@ -234,7 +290,7 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
           type="text"
           value={dictionary.word}
           onChange={(e) => handleWordChange(e.target.value)}
-          placeholder="Enter the word you want to explore..."
+          placeholder="Enter the word or phrase you want to explore (6 words max)..."
         />
       </div>
 
@@ -271,7 +327,7 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
           onClick={handleLookup}
           disabled={!dictionary.word.trim() || dictionary.loading || dictionary.isFastGenerating}
         >
-          Generate Dictionary Entry
+          Run Dictionary Lookup
         </button>
         <button
           className="btn btn-secondary"
@@ -279,7 +335,7 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
           disabled={!dictionary.word.trim() || dictionary.loading || dictionary.isFastGenerating}
           title="Experimental: Generate using parallel API calls (2-4× faster)"
         >
-          ⚡ Fast Generate (Experimental)
+          ⚡ Experimental: Run Dictionary Lookup [Fast]
         </button>
       </div>
 

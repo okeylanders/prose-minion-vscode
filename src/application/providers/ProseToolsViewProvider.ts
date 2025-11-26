@@ -103,6 +103,7 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
     sourceUri?: string;
     relativePath?: string;
     target?: 'assistant' | 'dictionary' | 'both';
+    autoRun?: boolean;
   }): void {
     if (this.view) {
       const message: SelectionUpdatedMessage = {
@@ -112,7 +113,8 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
           text: payload.text,
           sourceUri: payload.sourceUri,
           relativePath: payload.relativePath,
-          target: payload.target
+          target: payload.target,
+          autoRun: payload.autoRun
         },
         timestamp: Date.now()
       };

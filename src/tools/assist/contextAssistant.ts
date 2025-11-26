@@ -147,9 +147,29 @@ export class ContextAssistant {
       return '## Available Project Resources\nNo project references matched the configured path patterns. Continue using the excerpt and your knowledge of genre conventions.';
     }
 
-    const lines: string[] = ['## Available Project Resources', '', 'Use the exact path values when requesting files.', ''];
+    // Prioritize projectBrief items at the top of the catalog
+    const priorityGroups = ['projectBrief'];
+    const sorted = [...resourceSummaries].sort((a, b) => {
+      const aPriority = priorityGroups.indexOf(a.group);
+      const bPriority = priorityGroups.indexOf(b.group);
+      // Items in priority groups come first (lower index = higher priority)
+      if (aPriority !== -1 && bPriority === -1) return -1;
+      if (aPriority === -1 && bPriority !== -1) return 1;
+      if (aPriority !== -1 && bPriority !== -1) return aPriority - bPriority;
+      // Non-priority items maintain original order
+      return 0;
+    });
 
-    const limitedResources = resourceSummaries.slice(0, this.MAX_RESOURCE_LIST);
+    const lines: string[] = [
+      '## Available Project Resources',
+      '',
+      '**IMPORTANT**: Items in `[projectBrief]` are your story bible/overview. Request ALL of them on your first turn.',
+      '',
+      'Use the exact path values when requesting files.',
+      ''
+    ];
+
+    const limitedResources = sorted.slice(0, this.MAX_RESOURCE_LIST);
 
     for (const summary of limitedResources) {
       const workspacePrefix = summary.workspaceFolder ? ` (workspace: ${summary.workspaceFolder})` : '';
