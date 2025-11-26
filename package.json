@@ -436,7 +436,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
-    "build": "npm run test:tier1 && webpack --mode production",
+    "build": "npm test && webpack --mode production",
     "watch": "webpack --mode development --watch",
     "package": "vsce package",
     "lint": "eslint src --ext ts,tsx",

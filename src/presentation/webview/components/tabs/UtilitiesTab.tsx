@@ -69,45 +69,42 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
   }, [selection.dictionaryInjection, enforceWordLimit, dictionary, selection]);
 
   // Auto-run fast dictionary lookup when autoRun flag is set
+  // Reads directly from injection to avoid race condition with dictionary state
   React.useEffect(() => {
     const injection = selection.dictionaryInjection;
     if (!injection?.autoRun) {
       return;
     }
 
-    // Use longer delay to ensure word state is populated from previous effect
-    const timer = setTimeout(() => {
-      const sanitizedWord = enforceWordLimit(dictionary.word);
-      if (!sanitizedWord) {
-        // Clear injection even if no word to prevent stuck state
-        selection.handleDictionaryInjectionHandled();
-        return;
-      }
-
-      dictionary.setFastGenerating(true);
-
-      lastLookupRef.current = {
-        word: sanitizedWord,
-        context: dictionary.context.trim()
-      };
-
-      vscode.postMessage({
-        type: MessageType.FAST_GENERATE_DICTIONARY,
-        source: 'webview.utilities.tab',
-        payload: {
-          word: sanitizedWord,
-          context: dictionary.context.trim() || undefined
-        },
-        timestamp: Date.now()
-      });
-
-      // Clear injection after triggering lookup
+    const sanitizedWord = enforceWordLimit(injection.word || '');
+    if (!sanitizedWord) {
+      // Clear injection even if no word to prevent stuck state
       selection.handleDictionaryInjectionHandled();
-    }, 150);
+      return;
+    }
 
-    return () => clearTimeout(timer);
+    dictionary.setFastGenerating(true);
+
+    const contextValue = (injection.context || dictionary.context || '').trim();
+    lastLookupRef.current = {
+      word: sanitizedWord,
+      context: contextValue
+    };
+
+    vscode.postMessage({
+      type: MessageType.FAST_GENERATE_DICTIONARY,
+      source: 'webview.utilities.tab',
+      payload: {
+        word: sanitizedWord,
+        context: contextValue || undefined
+      },
+      timestamp: Date.now()
+    });
+
+    // Clear injection after triggering lookup
+    selection.handleDictionaryInjectionHandled();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selection.dictionaryInjection?.autoRun, dictionary.word]);
+  }, [selection.dictionaryInjection]);
 
   React.useEffect(() => {
     const trimmed = selection.selectedText.trim();

@@ -338,4 +338,412 @@ describe('AIResourceOrchestrator', () => {
       expect(addMessageCalls[2][1].content).toContain('Guide content');
     });
   });
+
+  describe('executeWithContextResources - Context Resource Request Flow', () => {
+    let mockResourceProvider: {
+      loadResources: jest.Mock;
+    };
+    let mockResourceCatalog: Array<{
+      path: string;
+      label: string;
+      group: string;
+      isProjectBrief?: boolean;
+    }>;
+
+    beforeEach(() => {
+      // Create mock resource provider
+      mockResourceProvider = {
+        loadResources: jest.fn()
+      };
+
+      // Create mock resource catalog
+      mockResourceCatalog = [
+        { path: 'characters/protagonist.md', label: 'Main Character', group: 'projectBrief', isProjectBrief: true },
+        { path: 'world/setting.md', label: 'World Setting', group: 'projectBrief', isProjectBrief: true },
+        { path: 'chapters/chapter-01.md', label: 'Chapter 1', group: 'manuscript' },
+        { path: 'chapters/chapter-02.md', label: 'Chapter 2', group: 'manuscript' }
+      ];
+    });
+
+    it('should handle max turns recovery when all 3 turns return resource requests', async () => {
+      // All 3 regular turns request resources
+      const resourceRequestResponse = {
+        content: '<context-request path=["characters/protagonist.md"] />',
+        finishReason: 'stop',
+        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150, costUsd: 0.001 }
+      };
+
+      // Recovery turn should produce actual output
+      const recoveryResponse = {
+        content: '## Context Summary\n\nBased on the resources provided, here is the context briefing...',
+        finishReason: 'stop',
+        usage: { promptTokens: 200, completionTokens: 150, totalTokens: 350, costUsd: 0.002 }
+      };
+
+      // Setup mock responses: 3 resource requests + 1 recovery
+      mockOpenRouterClient.createChatCompletion
+        .mockResolvedValueOnce(resourceRequestResponse)
+        .mockResolvedValueOnce(resourceRequestResponse)
+        .mockResolvedValueOnce(resourceRequestResponse)
+        .mockResolvedValueOnce(recoveryResponse);
+
+      // Setup resource provider to return content
+      mockResourceProvider.loadResources.mockResolvedValue([
+        {
+          path: 'characters/protagonist.md',
+          content: '# Protagonist\n\nMain character details...',
+          group: 'projectBrief',
+          workspaceFolder: 'my-project'
+        }
+      ]);
+
+      // Execute
+      const result = await orchestrator.executeWithContextResources(
+        'context-generation',
+        'You are a context assistant.',
+        'Generate a context briefing for chapter 5.',
+        mockResourceProvider as any,
+        mockResourceCatalog as any,
+        {}
+      );
+
+      // Verify 4 API calls were made (3 regular + 1 recovery)
+      expect(mockOpenRouterClient.createChatCompletion).toHaveBeenCalledTimes(4);
+
+      // Verify recovery message was added
+      const addMessageCalls = mockConversationManager.addMessage.mock.calls;
+      const recoveryMessageCall = addMessageCalls.find(call =>
+        call[1].role === 'user' &&
+        call[1].content.includes('reached the maximum number of resource requests')
+      );
+      expect(recoveryMessageCall).toBeDefined();
+      expect(recoveryMessageCall![1].content).toContain('Please produce your context briefing NOW');
+
+      // Verify token usage was aggregated across all turns (including recovery)
+      // Turn 1 (100+50), Turn 2 (100+50), Turn 3 (100+50), Recovery (200+150)
+      expect(result.usage).toEqual({
+        promptTokens: 500, // 100 + 100 + 100 + 200
+        completionTokens: 300, // 50 + 50 + 50 + 150
+        totalTokens: 800, // 150 + 150 + 150 + 350
+        costUsd: 0.005 // 0.001 + 0.001 + 0.001 + 0.002
+      });
+
+      // Verify final content is non-empty and stripped of tags
+      expect(result.content).toBe('## Context Summary\n\nBased on the resources provided, here is the context briefing...');
+      expect(result.requestedResources).toContain('characters/protagonist.md');
+
+      // Verify output channel logged the recovery
+      expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('Final turn was still a resource request - forcing output generation')
+      );
+    });
+
+    it('should handle normal 2-turn flow: request resources on turn 1, output on turn 2', async () => {
+      // Turn 1: AI requests resources
+      const turn1Response = {
+        content: 'I need context. <context-request path=["characters/protagonist.md", "world/setting.md"] />',
+        finishReason: 'stop',
+        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150, costUsd: 0.001 }
+      };
+
+      // Turn 2: AI provides final output (no more requests)
+      const turn2Response = {
+        content: '## Context Summary\n\nThe protagonist is described as brave and curious. The setting is a medieval fantasy world.',
+        finishReason: 'stop',
+        usage: { promptTokens: 300, completionTokens: 200, totalTokens: 500, costUsd: 0.003 }
+      };
+
+      mockOpenRouterClient.createChatCompletion
+        .mockResolvedValueOnce(turn1Response)
+        .mockResolvedValueOnce(turn2Response);
+
+      mockResourceProvider.loadResources.mockResolvedValueOnce([
+        {
+          path: 'characters/protagonist.md',
+          content: '# Protagonist\n\nBrave and curious...',
+          group: 'projectBrief'
+        },
+        {
+          path: 'world/setting.md',
+          content: '# Setting\n\nMedieval fantasy world...',
+          group: 'projectBrief'
+        }
+      ]);
+
+      const result = await orchestrator.executeWithContextResources(
+        'context-generation',
+        'You are a context assistant.',
+        'Generate a context briefing.',
+        mockResourceProvider as any,
+        mockResourceCatalog as any,
+        {}
+      );
+
+      // Verify 2 API calls
+      expect(mockOpenRouterClient.createChatCompletion).toHaveBeenCalledTimes(2);
+
+      // Verify resources were loaded
+      expect(mockResourceProvider.loadResources).toHaveBeenCalledTimes(1);
+      expect(mockResourceProvider.loadResources).toHaveBeenCalledWith([
+        'characters/protagonist.md',
+        'world/setting.md'
+      ]);
+
+      // Verify final result
+      expect(result.content).toContain('The protagonist is described as brave and curious');
+      expect(result.requestedResources).toEqual([
+        'characters/protagonist.md',
+        'world/setting.md'
+      ]);
+
+      // Verify token usage aggregated
+      expect(result.usage).toEqual({
+        promptTokens: 400, // 100 + 300
+        completionTokens: 250, // 50 + 200
+        totalTokens: 650, // 150 + 500
+        costUsd: 0.004 // 0.001 + 0.003
+      });
+
+      // Should not have triggered recovery
+      expect(mockOutputChannel.appendLine).not.toHaveBeenCalledWith(
+        expect.stringContaining('forcing output generation')
+      );
+    });
+
+    it('should complete in 1 turn if no resources are requested', async () => {
+      const immediateResponse = {
+        content: '## Context Summary\n\nBased on the existing knowledge, here is the context briefing.',
+        finishReason: 'stop',
+        usage: { promptTokens: 100, completionTokens: 150, totalTokens: 250, costUsd: 0.002 }
+      };
+
+      mockOpenRouterClient.createChatCompletion.mockResolvedValueOnce(immediateResponse);
+
+      const result = await orchestrator.executeWithContextResources(
+        'context-generation',
+        'You are a context assistant.',
+        'Generate a context briefing.',
+        mockResourceProvider as any,
+        mockResourceCatalog as any,
+        {}
+      );
+
+      // Only 1 API call
+      expect(mockOpenRouterClient.createChatCompletion).toHaveBeenCalledTimes(1);
+
+      // No resources loaded
+      expect(mockResourceProvider.loadResources).not.toHaveBeenCalled();
+
+      // Result should be immediate response
+      expect(result.content).toBe('## Context Summary\n\nBased on the existing knowledge, here is the context briefing.');
+      expect(result.requestedResources).toEqual([]);
+
+      // Should have logged "conversation complete"
+      expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('No resource request found in turn 1, conversation complete')
+      );
+    });
+
+    it('should handle empty resource loads gracefully', async () => {
+      // Turn 1: AI requests resources
+      const turn1Response = {
+        content: '<context-request path=["nonexistent/file.md"] />',
+        finishReason: 'stop',
+        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 }
+      };
+
+      // Turn 2: AI adapts to empty response
+      const turn2Response = {
+        content: '## Context Summary\n\nNo additional resources were available, proceeding with available information.',
+        finishReason: 'stop',
+        usage: { promptTokens: 200, completionTokens: 100, totalTokens: 300 }
+      };
+
+      mockOpenRouterClient.createChatCompletion
+        .mockResolvedValueOnce(turn1Response)
+        .mockResolvedValueOnce(turn2Response);
+
+      // Resource provider returns empty array
+      mockResourceProvider.loadResources.mockResolvedValueOnce([]);
+
+      const result = await orchestrator.executeWithContextResources(
+        'context-generation',
+        'You are a context assistant.',
+        'Generate a context briefing.',
+        mockResourceProvider as any,
+        mockResourceCatalog as any,
+        {}
+      );
+
+      // Verify 2 API calls
+      expect(mockOpenRouterClient.createChatCompletion).toHaveBeenCalledTimes(2);
+
+      // Verify user message indicated no resources found
+      const addMessageCalls = mockConversationManager.addMessage.mock.calls;
+      const resourceResponseCall = addMessageCalls.find(call =>
+        call[1].role === 'user' &&
+        call[1].content.includes('No project resources were found')
+      );
+      expect(resourceResponseCall).toBeDefined();
+      expect(resourceResponseCall![1].content).toContain('nonexistent/file.md');
+
+      // Verify AI adapted
+      expect(result.content).toContain('No additional resources were available');
+      expect(result.requestedResources).toEqual([]);
+
+      // Should have logged "No project resources matched"
+      expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('No project resources matched the AI request')
+      );
+    });
+
+    it('should handle 3-turn flow with multiple resource requests', async () => {
+      // Turn 1: Request first batch
+      const turn1Response = {
+        content: '<context-request path=["characters/protagonist.md"] />',
+        finishReason: 'stop',
+        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150, costUsd: 0.001 }
+      };
+
+      // Turn 2: Request second batch
+      const turn2Response = {
+        content: 'Thanks. I also need: <context-request path=["world/setting.md"] />',
+        finishReason: 'stop',
+        usage: { promptTokens: 200, completionTokens: 75, totalTokens: 275, costUsd: 0.002 }
+      };
+
+      // Turn 3: Final output
+      const turn3Response = {
+        content: '## Context Summary\n\nCombined context from protagonist and setting...',
+        finishReason: 'stop',
+        usage: { promptTokens: 300, completionTokens: 150, totalTokens: 450, costUsd: 0.003 }
+      };
+
+      mockOpenRouterClient.createChatCompletion
+        .mockResolvedValueOnce(turn1Response)
+        .mockResolvedValueOnce(turn2Response)
+        .mockResolvedValueOnce(turn3Response);
+
+      mockResourceProvider.loadResources
+        .mockResolvedValueOnce([
+          { path: 'characters/protagonist.md', content: 'Character details...', group: 'projectBrief' }
+        ])
+        .mockResolvedValueOnce([
+          { path: 'world/setting.md', content: 'Setting details...', group: 'projectBrief' }
+        ]);
+
+      const result = await orchestrator.executeWithContextResources(
+        'context-generation',
+        'You are a context assistant.',
+        'Generate a context briefing.',
+        mockResourceProvider as any,
+        mockResourceCatalog as any,
+        {}
+      );
+
+      // Verify 3 API calls
+      expect(mockOpenRouterClient.createChatCompletion).toHaveBeenCalledTimes(3);
+
+      // Verify both resource loads
+      expect(mockResourceProvider.loadResources).toHaveBeenCalledTimes(2);
+      expect(mockResourceProvider.loadResources).toHaveBeenNthCalledWith(1, ['characters/protagonist.md']);
+      expect(mockResourceProvider.loadResources).toHaveBeenNthCalledWith(2, ['world/setting.md']);
+
+      // Verify all resources tracked
+      expect(result.requestedResources).toEqual([
+        'characters/protagonist.md',
+        'world/setting.md'
+      ]);
+
+      // Verify token usage aggregated
+      expect(result.usage).toEqual({
+        promptTokens: 600, // 100 + 200 + 300
+        completionTokens: 275, // 50 + 75 + 150
+        totalTokens: 875, // 150 + 275 + 450
+        costUsd: 0.006 // 0.001 + 0.002 + 0.003
+      });
+    });
+
+    it('should log catalog with projectBrief items highlighted', async () => {
+      const response = {
+        content: '## Context Summary\n\nImmediate response.',
+        finishReason: 'stop'
+      };
+
+      mockOpenRouterClient.createChatCompletion.mockResolvedValueOnce(response);
+
+      await orchestrator.executeWithContextResources(
+        'context-generation',
+        'You are a context assistant.',
+        'Generate a context briefing.',
+        mockResourceProvider as any,
+        mockResourceCatalog as any,
+        {}
+      );
+
+      // Verify catalog was logged
+      expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('Context resource catalog (4 entries)')
+      );
+
+      // Verify projectBrief items logged with their group
+      expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('[projectBrief] characters/protagonist.md')
+      );
+      expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('[projectBrief] world/setting.md')
+      );
+      expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('[manuscript] chapters/chapter-01.md')
+      );
+    });
+
+    it('should append truncation note when finish_reason is length', async () => {
+      const truncatedResponse = {
+        content: 'This context summary was truncated...',
+        finishReason: 'length',
+        usage: { promptTokens: 100, completionTokens: 10000, totalTokens: 10100 }
+      };
+
+      mockOpenRouterClient.createChatCompletion.mockResolvedValueOnce(truncatedResponse);
+
+      const result = await orchestrator.executeWithContextResources(
+        'context-generation',
+        'You are a context assistant.',
+        'Generate a context briefing.',
+        mockResourceProvider as any,
+        mockResourceCatalog as any,
+        {}
+      );
+
+      expect(result.content).toContain('This context summary was truncated...');
+      expect(result.content).toContain('⚠️ Response truncated');
+    });
+
+    it('should handle empty catalog gracefully', async () => {
+      const response = {
+        content: '## Context Summary\n\nNo catalog available.',
+        finishReason: 'stop'
+      };
+
+      mockOpenRouterClient.createChatCompletion.mockResolvedValueOnce(response);
+
+      await orchestrator.executeWithContextResources(
+        'context-generation',
+        'You are a context assistant.',
+        'Generate a context briefing.',
+        mockResourceProvider as any,
+        [], // Empty catalog
+        {}
+      );
+
+      // Should log empty catalog message
+      expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('Context resource catalog is empty')
+      );
+
+      // Should still complete successfully
+      expect(mockOpenRouterClient.createChatCompletion).toHaveBeenCalledTimes(1);
+    });
+  });
 });
