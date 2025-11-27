@@ -13,6 +13,7 @@ This release focuses on **architecture health** and **developer experience**, wi
 
 **Key Highlights:**
 - 📝 **Phrase Lookup** - Dictionary now supports multi-word phrases (up to 6 words)
+- 🤖 **New AI Models** - Claude Opus 4.5 and Cogito v2.1 671B added
 - 🏗️ **Architecture Health Pass** - Foundation Cleanup (3 sprints) + Component Decomposition (5 sprints)
 - 🐛 **Stability Fixes** - Context assistant, dictionary race conditions, UI polish
 - 🛠️ **Developer Tools** - `/release-vsce` slash command with branch strategy
@@ -46,6 +47,20 @@ Dictionary now accepts phrases up to 6 words, enabling lookup of idioms, express
 **Files Modified:**
 - `src/tools/utility/dictionaryUtility.ts` - Phrase validation
 - `src/presentation/webview/components/UtilitiesTab.tsx` - UX improvements
+
+---
+
+#### 🤖 New AI Models
+
+Added two new frontier models to both CATEGORY_MODELS and RECOMMENDED_MODELS:
+
+| Model | Description |
+|-------|-------------|
+| **Claude Opus 4.5** | Anthropic's frontier reasoning model optimized for complex software engineering and agentic workflows |
+| **Cogito v2.1 671B** | One of the strongest open MoE models globally, trained via self-play RL for instruction following, coding, and creative writing |
+
+**Files Modified:**
+- `src/infrastructure/api/OpenRouterModels.ts` - Added new model entries
 
 ---
 

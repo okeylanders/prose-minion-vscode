@@ -11,6 +11,10 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
   - Improved dictionary UX with auto-scroll to results
   - Cleaner "More to explore" display format
 
+- **🤖 New AI Models**:
+  - Claude Opus 4.5 - Anthropic's frontier reasoning model for complex tasks
+  - Cogito v2.1 671B - One of the strongest open models globally
+
 ### Enhanced
 
 - **🏗️ Architecture Health Pass**: Major internal refactoring (2 sub-epics, 8 sprints)
