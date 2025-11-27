@@ -5,6 +5,152 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-11-27
+
+### Overview
+
+This release focuses on **architecture health** and **developer experience**, with two major refactoring epics completing 8 sprints of internal improvements. The user-facing highlight is **phrase lookup support** in the dictionary.
+
+**Key Highlights:**
+- 📝 **Phrase Lookup** - Dictionary now supports multi-word phrases (up to 6 words)
+- 🏗️ **Architecture Health Pass** - Foundation Cleanup (3 sprints) + Component Decomposition (5 sprints)
+- 🐛 **Stability Fixes** - Context assistant, dictionary race conditions, UI polish
+- 🛠️ **Developer Tools** - `/release-vsce` slash command with branch strategy
+
+**Statistics:**
+- 80 commits over 6 days
+- 190 files changed (+16,087 insertions, -4,351 deletions)
+- 10 merged PRs (#31-40)
+- 2 completed epics (8 sprints total)
+- 12 memory bank entries
+
+---
+
+### Features
+
+#### 📝 Phrase Lookup - Multi-Word Dictionary Support (PR #40)
+
+**What It Does:**
+Dictionary now accepts phrases up to 6 words, enabling lookup of idioms, expressions, and contextual phrases.
+
+**Examples:**
+- "kick the bucket" → idiom meaning, usage, alternatives
+- "once in a blue moon" → definition, frequency, creative uses
+- "break a leg" → theatrical origin, modern usage
+
+**Technical Implementation:**
+- Updated word validation to accept multi-word inputs
+- Phrase-aware prompt adjustments in dictionary service
+- UI improvements: auto-scroll to results, cleaner "More to explore" display
+
+**Files Modified:**
+- `src/tools/utility/dictionaryUtility.ts` - Phrase validation
+- `src/presentation/webview/components/UtilitiesTab.tsx` - UX improvements
+
+---
+
+### Architecture
+
+#### 🏗️ Sub-Epic 1: Foundation Cleanup (PRs #32-34)
+
+**Sprint 01: Result Formatter Decomposition**
+- Decomposed 769-line `resultFormatter.ts` into 8 focused formatter files
+- Each formatter handles one domain (analysis, metrics, dictionary, etc.)
+- Added foundation tests for formatters
+
+**Sprint 02: Shared Types & Imports Hygiene**
+- Organized message types into domain-specific files
+- Established semantic import aliases (`@messages`, `@handlers`, `@services`, etc.)
+- Zero relative imports policy enforced
+
+**Sprint 03: Prop Drilling & Type Safety**
+- Eliminated callback prop drilling via hook object pattern
+- Comprehensive type safety across presentation layer
+- Simplified MetricsTab by removing callback props
+
+**Files Added/Modified:**
+- `src/presentation/webview/utils/formatters/` - 8 new formatter files
+- `src/shared/types/messages/` - Reorganized type structure
+- `tsconfig.json`, `webpack.config.js` - Path alias configuration
+
+---
+
+#### 🏗️ Sub-Epic 2: Component Decomposition (PRs #35-40)
+
+**Sprint 00: Domain-Oriented Directory Structure**
+- Reorganized components into domain folders
+- Clear separation: `analysis/`, `metrics/`, `search/`, `utilities/`, `shared/`
+
+**Sprint 01: ScopeBox Shared Component**
+- Extracted common scope selection UI into reusable component
+- Consolidated message posting inside ScopeBox
+
+**Sprint 02: Loading Indicator + StatusEmitter Unification**
+- Created unified `LoadingIndicator` component
+- Established `StatusEmitter` pattern for consistent progress tracking
+- Added ticker message support across all tools
+
+**Sprint 03: Subtab Panel Extraction + Universal TabBar**
+- Extracted subtab panels from SearchTab and MetricsTab
+- Created universal TabBar component for consistent navigation
+- Fixed empty Publishing Standards well display
+
+**Sprint 04: WordCounter Shared Component**
+- Extracted word counter logic into reusable component
+- Consistent word counting across all text inputs
+
+**Architectural Benefits:**
+- Reduced component line counts by 30-50%
+- Improved testability through isolated components
+- Consistent UX patterns across all tabs
+- Better maintainability and faster feature development
+
+---
+
+### Fixed
+
+#### Context Assistant Max Turns Recovery (PR #40)
+- **Issue**: Context assistant could get stuck after hitting max turns
+- **Fix**: Added recovery logic and improved catalog prioritization
+- **Impact**: More reliable multi-turn conversations
+
+#### Dictionary Auto-Run Race Condition (Multiple PRs)
+- **Issue**: Multiple root causes causing duplicate dictionary lookups
+- **Fixes**:
+  - Eliminated auto-run race in initialization
+  - Fixed context prompt emphasis timing
+  - Added proper debouncing
+- **Impact**: Cleaner single-lookup behavior
+
+#### UI Polish
+- **SearchTab**: Added margin bottom for better spacing
+- **MetricsTab**: Hide empty Publishing Standards well, TabBar spacing
+- **Ticker**: Fixed animation reset on content updates
+- **Webpack**: Resolved @messages alias runtime error
+
+---
+
+### Developer Tools
+
+#### `/release-vsce` Slash Command
+- Streamlined release workflow with checkpoints
+- Release branch strategy (work on `release/vX.Y.Z`, merge to main only after validation)
+- Orchestration support for parallel tasks
+- Memory bank integration for pause/resume
+
+**Files Added:**
+- `.claude/commands/release-vsce.md` - Release workflow command
+
+---
+
+### References
+
+- Epic: [Architecture Health Pass](.todo/archived/epics/epic-architecture-health-pass-2025-11-21/)
+- Epic: [UX Polish 2025-11-24](.todo/archived/epics/epic-ux-polish-2025-11-24/)
+- Memory Bank: [20251125-2110-epic-ux-polish-complete](.memory-bank/20251125-2110-epic-ux-polish-2025-11-24-complete.md)
+
+---
+
 ## [1.1.1] - 2025-11-20
 
 ### Overview

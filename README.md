@@ -12,16 +12,15 @@
 
 ---
 
-## 🎉 What's New in v1.2.0
+## 🎉 What's New in v1.3.0
 
-> **✨ Context Search** - AI-powered semantic word discovery! Search your manuscript by category or concept instead of exact words. 
+> **📝 Phrase Lookup** - Dictionary now supports multi-word phrases! Look up idioms, expressions, and phrases up to 6 words. Great for understanding contextual usage and creative alternatives.
 >
-> Try queries like `[clothing]`, `[emotions]`, or `[color red]`. 
-> [Learn more →](#context-search-ai-powered)
+> **🏗️ Architecture Health Pass** - Major internal refactoring across 8 sprints. Improved code maintainability, shared components (ScopeBox, LoadingIndicator, WordCounter), and better type safety throughout.
 >
-> **⚡ Fast Generate (Experimental)** - NEW parallel dictionary generation! Generate dictionary entries 2-4× faster using concurrent API calls. Look for the "Fast Generate (Experimental)" button in the Dictionary tab. Works best with newer models such as Haiku 4.5, Sonnet 4.5, Gemini Flash 2.5, GPT **5.1**.
+> **🐛 Stability Fixes** - Context assistant recovery improvements, dictionary race condition fixes, and UI polish across all tabs.
 >
-> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes including testing framework, custom model support, and bug fixes.
+> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes.
 
 ---
 
