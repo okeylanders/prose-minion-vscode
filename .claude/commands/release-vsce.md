@@ -1,6 +1,6 @@
 # Release VSCode Extension
 
-Prepare and publish a release for the Prose Minion VSCode extension.
+Prepare and publish a release for a VSCode extension.
 
 **Usage:**
 - `/release-vsce` or `/release-vsce begin` - Start a new release from the beginning
