@@ -11,6 +11,51 @@ Prepare and publish a release for the Prose Minion VSCode extension.
 
 ---
 
+## Orchestration Mode
+
+**If the `/orchestrate` skill is available, invoke it at the start of this command.**
+
+This release workflow benefits from parallel execution:
+- Step 1: Analysis tasks can run in parallel (commits, PRs, memory bank, changelogs)
+- Steps 5 + 6: Security audit and code review can run simultaneously
+- Step 3: Documentation updates can be parallelized across files
+
+If `/orchestrate` is not available, proceed normally and parallelize using standard subagent patterns where beneficial.
+
+---
+
+## Release Branch Strategy
+
+**All release work happens on an isolated branch.** Main stays clean until the release is fully validated.
+
+```
+main (clean, production-ready)
+    │
+    └──► release/vX.Y.Z (created at Step 0.5)
+              │
+              ├── Steps 1-3: Analysis, version bump, docs
+              ├── Steps 4-6: Tests, audit, review
+              │     │
+              │     └── Fix any issues HERE (not on main)
+              │
+              ├── Steps 7-8: Memory bank, commit to branch
+              ├── Step 9: Package & user testing
+              │
+              └──► User approves
+                      │
+                      └──► Step 10: Merge to main → Tag → GitHub Release
+                              │
+                              └──► Step 11: Marketplace (on request)
+```
+
+**Benefits:**
+- Main stays clean if release is aborted
+- Issues found during audit/review are fixed on the branch
+- Version bump only reaches main when fully validated
+- Standard release engineering practice
+
+---
+
 ## Release State Management
 
 Before proceeding, determine the release state:
@@ -19,22 +64,25 @@ Before proceeding, determine the release state:
 1. Create a memory bank entry immediately: `.memory-bank/YYYYMMDD-HHMM-release-vsce-paused.md`
 2. Include:
    - Current step number and name
+   - Release branch name
    - All completed steps with outcomes
    - Any pending decisions or blockers
    - Version number determined (if reached that step)
    - Files modified so far
    - Any audit findings
-3. Tell the user: "Release paused. Run `/release-vsce resume` to continue from Step [X]."
+3. Tell the user: "Release paused at Step [X]. Run `/release-vsce resume` to continue."
 4. **STOP HERE** - Do not proceed with any steps
 
 ### If `$ARGUMENTS` is "resume"
 1. Search `.memory-bank/` for most recent `*release-vsce*.md` file
 2. Read the file to determine:
    - Last completed step
+   - Release branch name
    - Version number (if determined)
    - Any pending decisions
-3. Tell the user what step you're resuming from
-4. **Skip to that step** and continue from there
+3. Checkout the release branch if not already on it
+4. Tell the user what step you're resuming from
+5. **Skip to that step** and continue from there
 
 ### If `$ARGUMENTS` is blank, "begin", or anything else
 1. Check for any existing paused release: `grep -l "release-vsce" .memory-bank/*.md | tail -1`
@@ -75,6 +123,25 @@ If any check fails, inform the user and **STOP**. User must resolve before conti
 
 ---
 
+## Step 0.5: Create Release Branch
+
+**Checkpoint: BRANCH**
+
+After pre-flight passes, create the release branch:
+
+```bash
+# Create and checkout release branch
+# Use placeholder version for now (will be determined in Step 2)
+git checkout -b release/vNEXT
+
+# Push branch to remote (for backup/collaboration)
+git push -u origin release/vNEXT
+```
+
+**All subsequent work happens on this branch until Step 10.**
+
+---
+
 ## Step 1: Analyze Changes Since Last Release
 
 **Checkpoint: ANALYSIS**
@@ -95,7 +162,7 @@ git rev-list -n 1 $LAST_TAG
 
 ### 1.2 Gather All Changes
 
-Run these commands to collect change information:
+**These tasks can run in parallel if using orchestration:**
 
 ```bash
 # Commits since last tag
@@ -179,9 +246,22 @@ Based on the analysis from Step 1, determine the appropriate version bump.
 
 **Ask user to confirm:** "Based on my analysis, I recommend version `vX.Y.Z` ([MAJOR/MINOR/PATCH]). Proceed? (yes/no/suggest alternative)"
 
+### Rename Release Branch
+
+Once version is confirmed:
+
+```bash
+# Rename local branch to include actual version
+git branch -m release/vNEXT release/vX.Y.Z
+
+# Update remote tracking
+git push origin -u release/vX.Y.Z
+git push origin --delete release/vNEXT 2>/dev/null || true
+```
+
 ### Update Version Numbers
 
-Once confirmed, update these files:
+Update these files on the release branch:
 
 **1. package.json:**
 ```json
@@ -198,6 +278,8 @@ outputChannel.appendLine('>>> Version X.Y.Z <<<');
 ## Step 3: Update Documentation
 
 **Checkpoint: DOCS**
+
+**These updates can be parallelized if using orchestration.**
 
 ### 3.1 Update README.md
 
@@ -313,13 +395,19 @@ npm run build
 - [ ] Note test count: `____`
 - [ ] Note coverage: `____%`
 
-If tests fail, **STOP** and inform user. Fix issues before continuing.
+If tests fail:
+1. Fix the issues on the release branch
+2. Commit fixes: `git commit -m "fix: [description] (release prep)"`
+3. Re-run tests
+4. Continue when passing
 
 ---
 
 ## Step 5: Security Audit
 
 **Checkpoint: AUDIT**
+
+**Can run in parallel with Step 6 if using orchestration.**
 
 ```bash
 # Run npm audit
@@ -350,13 +438,18 @@ npm audit --audit-level=high
    - **Action:** [Fix now / Accept risk / Defer]
    ```
 
-If critical vulnerabilities apply to our use case, **STOP** and fix before continuing.
+If critical vulnerabilities apply to our use case:
+1. Fix on the release branch
+2. Commit: `git commit -m "security: fix [vulnerability] (release prep)"`
+3. Re-run audit
 
 ---
 
 ## Step 6: Light Code Review
 
 **Checkpoint: REVIEW**
+
+**Can run in parallel with Step 5 if using orchestration.**
 
 Use a subagent to perform a light code and architecture review:
 
@@ -385,7 +478,11 @@ Report format:
 If no issues found, report 'No critical issues found.'"
 ```
 
-**If CRITICAL issues found:** Stop and fix before continuing.
+**If CRITICAL issues found:**
+1. Fix on the release branch
+2. Commit: `git commit -m "fix: [description] (release prep)"`
+3. Re-run review if significant changes
+
 **If WARNING issues found:** Ask user if they want to fix now or proceed.
 
 ---
@@ -402,6 +499,7 @@ Create comprehensive release notes in memory bank:
 # Release Preparation: vX.Y.Z
 
 **Date:** YYYY-MM-DD
+**Branch:** release/vX.Y.Z
 **Previous Version:** vA.B.C
 **New Version:** vX.Y.Z
 
@@ -449,16 +547,17 @@ Create comprehensive release notes in memory bank:
 ---
 
 ## Next Steps
-- [ ] Commit and push
+- [ ] Commit to release branch
 - [ ] Package vsix
 - [ ] Manual testing
+- [ ] Merge to main
 - [ ] Create GitHub release
 - [ ] Publish to marketplace (when requested)
 ```
 
 ---
 
-## Step 8: Commit and Push
+## Step 8: Commit to Release Branch
 
 **Checkpoint: COMMIT**
 
@@ -485,9 +584,11 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 EOF
 )"
 
-# Push to main
-git push origin main
+# Push release branch
+git push origin release/vX.Y.Z
 ```
+
+**Note:** We are NOT merging to main yet. That happens after user testing in Step 10.
 
 ---
 
@@ -507,6 +608,7 @@ ls -la *.vsix
 
 ```
 📦 Package created: prose-minion-vscode-X.Y.Z.vsix
+📍 Branch: release/vX.Y.Z (not yet merged to main)
 
 Please test manually:
 1. Uninstall existing Prose Minion extension
@@ -524,22 +626,55 @@ Test checklist:
 - [ ] Version shows correctly in Output Channel
 
 When testing is complete, tell me:
-- "tests passed" - to continue to tagging
-- "found issue: [description]" - to pause and fix
+- "tests passed" - to merge and create release
+- "found issue: [description]" - to fix on release branch
 ```
 
-**Wait for user response before continuing.**
+**If user finds issues:**
+1. Fix on the release branch
+2. Commit: `git commit -m "fix: [description] (release prep)"`
+3. Re-package: `npm run package`
+4. Ask user to re-test
+
+**Wait for user confirmation before continuing.**
 
 ---
 
-## Step 10: Create GitHub Release
+## Step 10: Merge to Main and Create GitHub Release
 
 **Checkpoint: RELEASE**
 
 Only proceed when user confirms tests passed.
 
+### 10.1 Merge Release Branch to Main
+
 ```bash
-# Create the tag
+# Switch to main
+git checkout main
+
+# Pull latest (in case of any changes)
+git pull origin main
+
+# Merge release branch (no fast-forward to preserve history)
+git merge --no-ff release/vX.Y.Z -m "$(cat <<'EOF'
+Merge release/vX.Y.Z into main
+
+Release vX.Y.Z - [brief description]
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+EOF
+)"
+
+# Push main
+git push origin main
+```
+
+### 10.2 Create Tag and GitHub Release
+
+```bash
+# Create the tag on main
 git tag vX.Y.Z
 
 # Push the tag
@@ -570,6 +705,16 @@ EOF
   --attach prose-minion-vscode-X.Y.Z.vsix
 ```
 
+### 10.3 Cleanup Release Branch
+
+```bash
+# Delete local release branch
+git branch -d release/vX.Y.Z
+
+# Delete remote release branch
+git push origin --delete release/vX.Y.Z
+```
+
 **Tell the user:**
 
 ```
@@ -580,6 +725,8 @@ The release includes:
 - Release notes
 - Downloadable .vsix file
 - Tag pointing to this commit
+
+🧹 Release branch cleaned up (merged to main, deleted)
 
 📢 To publish to VSCode Marketplace, say: "publish to marketplace"
 
@@ -595,6 +742,9 @@ The release includes:
 **⚠️ ONLY proceed with this step when user explicitly requests it.**
 
 ```bash
+# Ensure we're on main with the release
+git checkout main
+
 # Publish to VSCode Marketplace
 npx vsce publish
 ```
@@ -653,8 +803,9 @@ Update the preparation entry or create new:
 ---
 
 ## Timeline
-- Preparation started: [timestamp]
+- Release branch created: [timestamp]
 - Tests passed: [timestamp]
+- Merged to main: [timestamp]
 - GitHub release: [timestamp]
 - Marketplace publish: [timestamp]
 
@@ -673,16 +824,32 @@ Update the preparation entry or create new:
 1. Note the error and current step
 2. Ask user how to proceed:
    - "retry" - Retry the failed step
-   - "skip" - Skip and continue (use with caution)
+   - "fix" - Fix the issue on release branch and continue
    - "pause" - Save progress and stop
-   - "abort" - Stop entirely (manual cleanup may be needed)
+   - "abort" - Stop entirely and cleanup
+
+### If user says "abort":
+
+```bash
+# Switch back to main
+git checkout main
+
+# Delete local release branch
+git branch -D release/vX.Y.Z 2>/dev/null || true
+
+# Delete remote release branch
+git push origin --delete release/vX.Y.Z 2>/dev/null || true
+```
+
+Tell user: "Release aborted. Release branch deleted. Main is unchanged."
 
 ### If user says "pause" at any point:
 
 1. Immediately create memory bank checkpoint
 2. Note exact step and sub-step
-3. List any temporary state that needs preservation
-4. Provide resume instructions
+3. Note release branch name
+4. List any temporary state that needs preservation
+5. Provide resume instructions
 
 ---
 
@@ -690,15 +857,28 @@ Update the preparation entry or create new:
 
 | Step | Checkpoint | Description |
 |------|------------|-------------|
-| 0 | PREFLIGHT | Branch, clean, up-to-date |
+| 0 | PREFLIGHT | Verify main branch, clean, up-to-date |
+| 0.5 | BRANCH | Create release/vX.Y.Z branch |
 | 1 | ANALYSIS | Gather all changes since last release |
-| 2 | VERSION | Determine and update version |
+| 2 | VERSION | Determine version, rename branch, update files |
 | 3 | DOCS | Update README, CHANGELOG, CHANGELOG-DETAILED |
 | 4 | TESTS | Run tests and build |
 | 5 | AUDIT | npm audit + vulnerability review |
 | 6 | REVIEW | Light code review via subagent |
 | 7 | MEMORY_BANK | Create release preparation entry |
-| 8 | COMMIT | Commit and push changes |
+| 8 | COMMIT | Commit to release branch |
 | 9 | PACKAGE | Create vsix, user manual testing |
-| 10 | RELEASE | Create GitHub release with tag |
+| 10 | RELEASE | Merge to main → Tag → GitHub Release |
 | 11 | MARKETPLACE | Publish (on explicit request only) |
+
+---
+
+## Parallelization Summary
+
+When using `/orchestrate` or standard parallelization:
+
+| Parallel Group | Steps | Notes |
+|----------------|-------|-------|
+| Analysis | 1.2 tasks | Commits, PRs, files changed can run together |
+| Validation | 5 + 6 | Audit and code review are independent |
+| Documentation | 3.1, 3.2, 3.3 | README, CHANGELOG, CHANGELOG-DETAILED |
