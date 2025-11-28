@@ -15,6 +15,9 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
   - Claude Opus 4.5 - Anthropic's frontier reasoning model for complex tasks
   - Cogito v2.1 671B - One of the strongest open models globally
 
+- **📝 Experiment with Larger Passages**: Assistant tab now allows up to 2000 words before warning
+  - Try analyzing whole chapter scenes for larger revision suggestions
+
 ### Enhanced
 
 - **🏗️ Architecture Health Pass**: Major internal refactoring (2 sub-epics, 8 sprints)

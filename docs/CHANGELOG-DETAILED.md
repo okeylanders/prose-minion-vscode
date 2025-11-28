@@ -14,6 +14,7 @@ This release focuses on **architecture health** and **developer experience**, wi
 **Key Highlights:**
 - 📝 **Phrase Lookup** - Dictionary now supports multi-word phrases (up to 6 words)
 - 🤖 **New AI Models** - Claude Opus 4.5 and Cogito v2.1 671B added
+- 📝 **Larger Passages** - Assistant tab now allows up to 2000 words for full scene analysis
 - 🏗️ **Architecture Health Pass** - Foundation Cleanup (3 sprints) + Component Decomposition (5 sprints)
 - 🐛 **Stability Fixes** - Context assistant, dictionary race conditions, UI polish
 - 🛠️ **Developer Tools** - `/release-vsce` slash command with branch strategy
@@ -61,6 +62,20 @@ Added two new frontier models to both CATEGORY_MODELS and RECOMMENDED_MODELS:
 
 **Files Modified:**
 - `src/infrastructure/api/OpenRouterModels.ts` - Added new model entries
+
+---
+
+#### 📝 Experiment with Larger Passages
+
+**What It Does:**
+Assistant tab WordCounter limit increased from 500 to 2000 words, enabling analysis of complete chapter scenes rather than just short excerpts.
+
+**Why:**
+Users requested the ability to analyze larger passages for more comprehensive revision suggestions. The previous 500-word limit was too restrictive for full scene analysis.
+
+**Files Modified:**
+
+- `src/presentation/webview/components/tabs/AnalysisTab.tsx` - Updated maxWords prop
 
 ---
 
