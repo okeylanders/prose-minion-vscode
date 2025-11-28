@@ -236,7 +236,7 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
         />
         <WordCounter
           text={text}
-          maxWords={500}
+          maxWords={2000}
           warningMessage="Large excerpt"
         />
       </div>
