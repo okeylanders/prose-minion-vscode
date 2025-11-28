@@ -12,6 +12,22 @@
 
 ---
 
+## 🎉 What's New in v1.3.0
+
+> **📝 Phrase Lookup** - Dictionary now supports multi-word phrases! Look up idioms, expressions, and phrases up to 6 words. Great for understanding contextual usage and creative alternatives.
+>
+> **📝 New AI Models Added** - Claude Opus 4.5 & Cogito v2.1 671B added to quick dropdown. *Note you can always added model ids manually via VS Code setting panel.*
+>
+> **📝 Experiment with Larger Passages in Assistant** - Assistant tab updated to allow up to 2000 words before warning. Try out whole chapter scenes for larger revision suggestions.
+>
+> **🏗️ Architecture Health Pass** - Major internal refactoring across 8 sprints. Improved code maintainability, shared components (ScopeBox, LoadingIndicator, WordCounter), and better type safety throughout.
+>
+> **🐛 Stability Fixes** - Context assistant recovery improvements, dictionary race condition fixes, and UI polish across all tabs.
+>
+> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes.
+
+---
+
 ## 🎉 What's New in v1.2.0
 
 > **✨ Context Search** - AI-powered semantic word discovery! Search your manuscript by category or concept instead of exact words. 

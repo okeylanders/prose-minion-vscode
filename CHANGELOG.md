@@ -2,6 +2,48 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.3.0] - 2025-11-27
+
+### Added
+
+- **📝 Phrase Lookup**: Dictionary now supports multi-word phrases up to 6 words
+  - Look up idioms, expressions, and contextual phrases
+  - Improved dictionary UX with auto-scroll to results
+  - Cleaner "More to explore" display format
+
+- **🤖 New AI Models**:
+  - Claude Opus 4.5 - Anthropic's frontier reasoning model for complex tasks
+  - Cogito v2.1 671B - One of the strongest open models globally
+
+- **📝 Experiment with Larger Passages**: Assistant tab now allows up to 2000 words before warning
+  - Try analyzing whole chapter scenes for larger revision suggestions
+
+### Enhanced
+
+- **🏗️ Architecture Health Pass**: Major internal refactoring (2 sub-epics, 8 sprints)
+  - Result Formatter decomposition: 769 lines → 8 focused files
+  - Shared types & semantic import aliases (zero relative imports)
+  - Prop drilling elimination + comprehensive type safety
+  - Domain-oriented component directory structure
+  - Shared components: ScopeBox, LoadingIndicator, WordCounter, TabBar
+  - StatusEmitter unification with ticker message support
+
+### Fixed
+
+- Context assistant max turns recovery and catalog prioritization
+- Dictionary auto-run race condition (multiple root causes addressed)
+- SearchTab and MetricsTab UI spacing improvements
+- SearchHandler ticker forwarding
+- Ticker animation reset on content updates
+- @messages alias webpack runtime resolution
+
+### Developer Tools
+
+- `/release-vsce` slash command for streamlined extension releases
+- Release branch strategy with orchestration support
+
+---
+
 ## [1.1.1] - 2025-11-20
 
 ### Added

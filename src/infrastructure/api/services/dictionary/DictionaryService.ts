@@ -217,7 +217,17 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     // Get orchestrator
     const orchestrator = this.aiResourceManager.getOrchestrator('dictionary');
     if (!orchestrator) {
-      throw new Error('Dictionary service not initialized. Please configure your OpenRouter API key.');
+      return {
+        word,
+        result: this.getApiKeyWarning(),
+        metadata: {
+          totalDuration: 0,
+          blockDurations: {},
+          partialFailures: [],
+          successCount: 0,
+          totalBlocks: 0
+        }
+      };
     }
 
     // Load prompts
