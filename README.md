@@ -24,6 +24,19 @@
 
 ---
 
+## 🎉 What's New in v1.2.0
+
+> **✨ Context Search** - AI-powered semantic word discovery! Search your manuscript by category or concept instead of exact words. 
+>
+> Try queries like `[clothing]`, `[emotions]`, or `[color red]`. 
+> [Learn more →](#context-search-ai-powered)
+>
+> **⚡ Fast Generate (Experimental)** - NEW parallel dictionary generation! Generate dictionary entries 2-4× faster using concurrent API calls. Look for the "Fast Generate (Experimental)" button in the Dictionary tab. Works best with newer models such as Haiku 4.5, Sonnet 4.5, Gemini Flash 2.5, GPT **5.1**.
+>
+> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes including testing framework, custom model support, and bug fixes.
+
+---
+
 ## ✨ Features at a Glance
 
 Prose Minion provides four powerful tool categories in a dedicated sidebar panel:
