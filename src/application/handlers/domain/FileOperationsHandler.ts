@@ -150,7 +150,7 @@ export class FileOperationsHandler {
     let fileName: string;
     let fileContent: string;
 
-    if (toolName === 'dictionary_lookup') {
+    if (toolName === 'dictionary_lookup' || toolName === 'dictionary_fast_generate') {
       const rawWord = metadata?.word?.trim() ?? 'entry';
       const sanitizedWord = this.sanitizeFileSegment(rawWord.toLowerCase()) || 'entry';
       targetDir = vscode.Uri.joinPath(rootUri, 'prose-minion', 'dictionary-entries');
