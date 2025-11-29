@@ -23,7 +23,8 @@
       "@hooks/*": ["src/presentation/webview/hooks/*"],
       "@utils/*": ["src/presentation/webview/utils/*"],
       "@formatters": ["src/presentation/webview/utils/formatters"],
-      "@formatters/*": ["src/presentation/webview/utils/formatters/*"]
+      "@formatters/*": ["src/presentation/webview/utils/formatters/*"],
+      "@providers/*": ["src/infrastructure/api/providers/*"]
     }
   },
   "include": [

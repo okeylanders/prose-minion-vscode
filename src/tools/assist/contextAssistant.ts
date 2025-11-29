@@ -3,7 +3,7 @@
  * Generates contextual briefings to accompany prose excerpts
  */
 
-import { AIResourceOrchestrator } from '@/application/services/AIResourceOrchestrator';
+import { AIResourceOrchestrator } from '@orchestration/AIResourceOrchestrator';
 import { PromptLoader } from '../shared/prompts';
 import { ContextPathGroup } from '@shared/types';
 import {

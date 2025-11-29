@@ -3,7 +3,7 @@ import { MessageType, ModelScope, ModelOption } from '@shared/types';
 import { SettingsDataMessage, ModelDataMessage } from '@messages';
 import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
-import { CATEGORY_MODELS } from '@/infrastructure/api/OpenRouterModels';
+import { CATEGORY_MODELS } from '@providers/OpenRouterModels';
 
 /**
  * Models Settings

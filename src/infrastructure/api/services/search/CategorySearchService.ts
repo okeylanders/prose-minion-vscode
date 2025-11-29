@@ -16,7 +16,7 @@
 
 import * as vscode from 'vscode';
 import { WordSearchService } from './WordSearchService';
-import { AIResourceManager } from '../resources/AIResourceManager';
+import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { WordFrequency } from '@/tools/measure/wordFrequency';
 import { PromptLoader } from '@/tools/shared/prompts';
 import {

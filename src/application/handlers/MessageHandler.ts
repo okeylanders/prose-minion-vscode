@@ -50,7 +50,7 @@ import { WordFrequencyService } from '@services/measurement/WordFrequencyService
 import { WordSearchService } from '@services/search/WordSearchService';
 import { CategorySearchService } from '@services/search/CategorySearchService';
 import { StandardsService } from '@services/resources/StandardsService';
-import { AIResourceManager } from '@services/resources/AIResourceManager';
+import { AIResourceManager } from '@orchestration/AIResourceManager';
 
 interface ResultCache {
   analysis?: AnalysisResultMessage;

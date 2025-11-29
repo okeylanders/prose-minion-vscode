@@ -6,7 +6,7 @@
  */
 
 import * as vscode from 'vscode';
-import { AIResourceManager } from '@services/resources/AIResourceManager';
+import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { DictionaryService } from '@services/dictionary/DictionaryService';
 import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
@@ -29,7 +29,7 @@ import {
   ErrorMessage
 } from '@messages';
 import { MessageRouter } from '../MessageRouter';
-import { OpenRouterModels } from '@/infrastructure/api/OpenRouterModels';
+import { OpenRouterModels } from '@providers/OpenRouterModels';
 import { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
 
 export class ConfigurationHandler {
