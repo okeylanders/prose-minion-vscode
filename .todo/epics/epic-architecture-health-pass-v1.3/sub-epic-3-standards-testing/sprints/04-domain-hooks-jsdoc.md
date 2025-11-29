@@ -1,9 +1,9 @@
-# Sprint 03: Domain Hooks JSDoc Completion
+# Sprint 04: Domain Hooks JSDoc Completion
 
-**Status**: ⏸️ Pending (Blocked on Sprint 02)
+**Status**: ⏸️ Pending (Blocked on Sprint 03)
 **Estimated Time**: 1-2 hours
 **Priority**: MEDIUM
-**Branch**: `sprint/epic-ahp-v1.3-sub3-03-domain-hooks-jsdoc`
+**Branch**: `sprint/epic-ahp-v1.3-sub3-04-domain-hooks-jsdoc`
 
 ---
 

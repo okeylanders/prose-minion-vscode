@@ -22,8 +22,7 @@ import { MessageRouter } from '../MessageRouter';
 export class ContextHandler {
   constructor(
     private readonly contextAssistantService: ContextAssistantService,
-    private readonly postMessage: (message: any) => Promise<void>,
-    private readonly applyTokenUsageCallback: (usage: TokenUsage) => void
+    private readonly postMessage: (message: any) => Promise<void>
   ) {}
 
   /**
@@ -77,11 +76,6 @@ export class ContextHandler {
     void this.postMessage(errorMessage);
   }
 
-  private applyTokenUsage(usage: TokenUsage): void {
-    // Delegate to MessageHandler's centralized token tracking
-    this.applyTokenUsageCallback(usage);
-  }
-
   // Message handlers
 
   async handleGenerateContext(message: GenerateContextMessage): Promise<void> {
@@ -104,9 +98,6 @@ export class ContextHandler {
       });
 
       this.sendContextResult(result);
-      if ((result as any).usage) {
-        this.applyTokenUsage((result as any).usage);
-      }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.sendError('context', 'Failed to generate context', msg);

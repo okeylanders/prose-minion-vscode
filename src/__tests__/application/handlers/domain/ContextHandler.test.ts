@@ -14,9 +14,8 @@ describe('ContextHandler', () => {
   beforeEach(() => {
     const mockService = {} as any;
     const mockPostMessage = jest.fn().mockResolvedValue(undefined);
-    const mockTokenCallback = jest.fn();
 
-    handler = new ContextHandler(mockService, mockPostMessage, mockTokenCallback);
+    handler = new ContextHandler(mockService, mockPostMessage);
     router = new MessageRouter();
   });
 

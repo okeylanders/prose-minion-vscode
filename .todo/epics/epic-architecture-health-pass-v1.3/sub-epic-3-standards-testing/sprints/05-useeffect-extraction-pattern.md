@@ -1,9 +1,9 @@
-# Sprint 04: useEffect Extraction Pattern
+# Sprint 05: useEffect Extraction Pattern
 
-**Status**: ⏸️ Pending (Blocked on Sprint 03)
+**Status**: ⏸️ Pending (Blocked on Sprint 04)
 **Estimated Time**: 2-4 hours
 **Priority**: MEDIUM
-**Branch**: `sprint/epic-ahp-v1.3-sub3-04-useeffect-extraction`
+**Branch**: `sprint/epic-ahp-v1.3-sub3-05-useeffect-extraction`
 
 ---
 
