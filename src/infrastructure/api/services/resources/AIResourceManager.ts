@@ -115,12 +115,8 @@ export class AIResourceManager {
       category: categoryResources
     };
 
-    // Propagate statusCallback to orchestrators (tokenUsageCallback is passed in constructor)
-    if (this.statusCallback) {
-      Object.values(this.aiResources).forEach(resource => {
-        resource?.orchestrator.setStatusCallback(this.statusCallback!);
-      });
-    }
+    // Note: Both statusCallback and tokenUsageCallback are passed in constructor
+    // via createResourceBundle(), so no post-construction propagation needed
 
     // Store resolved models (with fallbacks applied)
     this.resolvedModels = {
