@@ -38,7 +38,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(outputChannel);
 
   outputChannel.appendLine('=== Prose Minion Extension Activated ===');
-  outputChannel.appendLine('>>> Version 1.3.1.1 ( sub-epic 3 sprint 02 ) <<<');
+  outputChannel.appendLine('>>> Version 1.3.1.2 ( sub-epic 3 sprint 03 ) <<<');
   outputChannel.appendLine(`Extension URI: ${context.extensionUri.fsPath}`);
 
   console.log('Prose Minion extension is now active');
