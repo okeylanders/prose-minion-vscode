@@ -1,9 +1,12 @@
-# AIResourceManager Layer Violation
+# AIResourceManager Layer Violation → Infrastructure Reorganization
 
 **Date Identified**: 2025-11-29
 **Identified During**: Sprint 02 - Token Usage Centralization (code review)
-**Priority**: Low
+**Priority**: Medium (upgraded from Low)
 **Estimated Effort**: 2-3 hours
+**Status**: 🟡 Plan Approved - Ready for Sprint
+
+---
 
 ## Problem
 
@@ -12,6 +15,7 @@
 **Current location**: `src/infrastructure/api/services/resources/AIResourceManager.ts`
 
 **Problematic imports**:
+
 ```typescript
 import { AIResourceOrchestrator } from '@/application/services/AIResourceOrchestrator';
 import { ConversationManager } from '@/application/services/ConversationManager';
@@ -19,45 +23,140 @@ import { ConversationManager } from '@/application/services/ConversationManager'
 
 Infrastructure → Application is the wrong direction.
 
-## Current State
+---
 
-This violation exists but doesn't cause immediate issues because:
-1. AIResourceManager is injected via dependency injection from `extension.ts`
-2. Services receive it as a dependency, they don't instantiate it directly
-3. The dependency flows downward through injection from the composition root
+## Solution: Infrastructure Reorganization
 
-## Complication
+After analysis, the cleanest solution is to **move AIRO, ConversationManager, and related utilities INTO infrastructure** rather than moving AIResourceManager out. These components form an "AI Gateway" layer - the smart client that mediates all AI interactions.
 
-Moving AIResourceManager to application layer would create a similar violation in reverse:
-- `DictionaryService`, `AssistantToolService`, `ContextAssistantService`, `CategorySearchService` (all in infrastructure) import AIResourceManager
-- If AIResourceManager moves to application, those infrastructure services would import from application
+### Current Structure (Scattered)
 
-This suggests a deeper architectural issue where the boundary between "AI orchestration" and "infrastructure" isn't cleanly defined.
+```plaintext
+src/
+├── application/
+│   ├── services/
+│   │   ├── AIResourceOrchestrator.ts  ❌ Should be infra
+│   │   └── ConversationManager.ts     ❌ Should be infra
+│   └── utils/
+│       └── ResourceRequestParser.ts   ❌ Should be infra
+├── infrastructure/
+│   └── api/
+│       ├── OpenRouterClient.ts
+│       ├── OpenRouterModels.ts
+│       └── services/
+│           ├── resources/
+│           │   ├── AIResourceManager.ts
+│           │   └── ResourceLoaderService.ts
+│           ├── analysis/
+│           ├── dictionary/
+│           └── ...
+```
 
-## Recommendation
+### Target Structure (Organized)
 
-**Option A (Simple)**: Accept the current state as pragmatic for this codebase size. Document it and move on.
+```plaintext
+src/infrastructure/api/
+├── providers/                          # External API clients
+│   ├── OpenRouterClient.ts             # ← move from api/
+│   └── OpenRouterModels.ts             # ← move from api/
+│
+├── orchestration/                      # AI Gateway layer
+│   ├── AIResourceOrchestrator.ts       # ← move from application/services/
+│   ├── AIResourceManager.ts            # ← move from api/services/resources/
+│   ├── ConversationManager.ts          # ← move from application/services/
+│   └── ResourceLoaderService.ts        # ← move from api/services/resources/
+│
+├── parsers/                            # Request/response parsing
+│   ├── ResourceRequestParser.ts        # ← move from application/utils/
+│   └── ContextResourceRequestParser.ts # ← if exists
+│
+└── services/                           # Domain services (unchanged internally)
+    ├── analysis/
+    │   ├── AssistantToolService.ts
+    │   └── ContextAssistantService.ts
+    ├── dictionary/
+    │   └── DictionaryService.ts
+    ├── search/
+    │   ├── WordSearchService.ts
+    │   └── CategorySearchService.ts
+    └── measurement/
+        ├── ProseStatsService.ts
+        ├── StyleFlagsService.ts
+        └── WordFrequencyService.ts
+```
 
-**Option B (Future refactor)**: Introduce interface inversion:
-1. Define `IAIResourceManager` interface in application layer
-2. AIResourceManager implements it (stays in infrastructure)
-3. Services depend on interface only
-4. Factory pattern for creation
+### Rationale
 
-**Recommendation**: Option A for now. This is a medium-effort refactor with low immediate benefit. Revisit if codebase grows significantly.
+1. **providers/**: External API clients (OpenRouter). Clear boundary for external dependencies.
+2. **orchestration/**: The "AI Gateway" - manages client lifecycle, conversations, resource bundles. This is the smart layer that domain services depend on.
+3. **parsers/**: Request/response parsing utilities used by orchestration and services.
+4. **services/**: Domain-specific AI services that consume orchestration layer.
+
+**Dependency flow (all within infrastructure):**
+
+```plaintext
+services/ → orchestration/ → providers/
+         ↘ parsers/ ↗
+```
+
+All dependencies point inward/down. No violations.
+
+---
+
+## Files to Move
+
+| Current Location | New Location |
+|-----------------|--------------|
+| `src/infrastructure/api/OpenRouterClient.ts` | `providers/OpenRouterClient.ts` |
+| `src/infrastructure/api/OpenRouterModels.ts` | `providers/OpenRouterModels.ts` |
+| `src/application/services/AIResourceOrchestrator.ts` | `orchestration/AIResourceOrchestrator.ts` |
+| `src/application/services/ConversationManager.ts` | `orchestration/ConversationManager.ts` |
+| `src/infrastructure/api/services/resources/AIResourceManager.ts` | `orchestration/AIResourceManager.ts` |
+| `src/infrastructure/api/services/resources/ResourceLoaderService.ts` | `orchestration/ResourceLoaderService.ts` |
+| `src/application/utils/ResourceRequestParser.ts` | `parsers/ResourceRequestParser.ts` |
+
+Total: 7-8 files to move
+
+---
+
+## Import Updates Required
+
+After moving files, imports throughout the codebase will need updating:
+
+1. **MessageHandler.ts** - imports AIRO, ARM
+2. **Domain services** - import from orchestration/
+3. **extension.ts** - composition root updates
+4. **Test files** - import path updates
+5. **tsconfig paths** - add new aliases (@providers, @orchestration, @parsers)
+
+---
+
+## Implementation Notes
+
+1. **Use `git mv`** to preserve history
+2. **Update tsconfig.json** with new path aliases
+3. **Update webpack.config.js** for new alias resolution
+4. **Run tests after each file move** to catch import breaks early
+5. **Remove empty directories** after moves complete
+
+---
 
 ## Impact
 
-- No functional impact (code works correctly)
-- Theoretical Clean Architecture violation
-- May make future refactoring slightly harder
+- ✅ Clean Architecture compliance restored
+- ✅ Clear "AI Gateway" layer emerges
+- ✅ Better discoverability (related files together)
+- ✅ Easier to understand dependency flow
+- ⚠️ Many import updates required (but straightforward)
 
-## Files Affected
-
-- `src/infrastructure/api/services/resources/AIResourceManager.ts`
-- 8 files that import AIResourceManager
+---
 
 ## References
 
-- Sprint 02: Token Usage Centralization
-- Clean Architecture by Robert C. Martin (Chapter 22: The Clean Architecture)
+- Sprint 02: Token Usage Centralization (where this was identified)
+- Sprint 03: Infrastructure Reorganization (where this will be implemented)
+- Clean Architecture by Robert C. Martin (Chapter 22)
+
+---
+
+**Last Updated**: 2025-11-29

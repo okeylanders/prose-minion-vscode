@@ -4,7 +4,7 @@
 **Status**: In Progress
 **Parent Epic**: [Architecture Health Pass v1.3](../epic-architecture-health-pass-v1.3.md)
 **Duration**: 2-3 days (estimated)
-**Progress**: 2/5 sprints complete (40%)
+**Progress**: 2/6 sprints complete (33%)
 
 ---
 
@@ -46,33 +46,43 @@ AIResourceOrchestrator now emits token usage automatically via callback, elimina
 
 ---
 
-### Sprint 03: Domain Hooks JSDoc Completion (1-2 hrs) - MEDIUM
+### Sprint 03: Infrastructure Reorganization (2-3 hrs) - MEDIUM
 **Status**: 🟡 Ready to Start
+**Goal**: Fix layer violation and organize AI Gateway layer
+
+Move AIRO, ConversationManager, and related files to infrastructure, creating clean `providers/`, `orchestration/`, `parsers/`, `services/` structure.
+
+📁 [sprints/03-infrastructure-reorganization.md](sprints/03-infrastructure-reorganization.md)
+
+---
+
+### Sprint 04: Domain Hooks JSDoc Completion (1-2 hrs) - MEDIUM
+**Status**: ⏸️ Blocked on Sprint 03
 **Goal**: Comprehensive documentation for all domain hooks
 
 Copy JSDoc template from `useWordSearchSettings` to 6 other hooks.
 
-📁 [sprints/03-domain-hooks-jsdoc.md](sprints/03-domain-hooks-jsdoc.md)
+📁 [sprints/04-domain-hooks-jsdoc.md](sprints/04-domain-hooks-jsdoc.md)
 
 ---
 
-### Sprint 04: useEffect Extraction Pattern (2-4 hrs) - MEDIUM
-**Status**: ⏸️ Blocked on Sprint 03
+### Sprint 05: useEffect Extraction Pattern (2-4 hrs) - MEDIUM
+**Status**: ⏸️ Blocked on Sprint 04
 **Goal**: Testable, reusable effect logic
 
 Extract inline useEffect logic to named methods wrapped in `useCallback`.
 
-📁 [sprints/04-useeffect-extraction-pattern.md](sprints/04-useeffect-extraction-pattern.md)
+📁 [sprints/05-useeffect-extraction-pattern.md](sprints/05-useeffect-extraction-pattern.md)
 
 ---
 
-### Sprint 05: Settings Hooks Unit Tests (1 day) - HIGH
-**Status**: ⏸️ Blocked on Sprint 04
+### Sprint 06: Settings Hooks Unit Tests (1 day) - HIGH
+**Status**: ⏸️ Blocked on Sprint 05
 **Goal**: Comprehensive test coverage for settings hooks
 
 Add unit tests for all 6 settings hooks business logic.
 
-📁 [sprints/05-settings-hooks-unit-tests.md](sprints/05-settings-hooks-unit-tests.md)
+📁 [sprints/06-settings-hooks-unit-tests.md](sprints/06-settings-hooks-unit-tests.md)
 
 ---
 
@@ -82,9 +92,10 @@ Add unit tests for all 6 settings hooks business logic.
 |------|----------|--------|
 | StandardsService Responsibility Violation | MEDIUM | 01 |
 | Token Usage Centralization | MEDIUM | 02 |
-| Domain Hooks JSDoc Completion | MEDIUM | 03 |
-| useEffect Extraction Pattern | MEDIUM | 04 |
-| Settings Hooks Unit Tests | HIGH | 05 |
+| Infrastructure Layer Violation | MEDIUM | 03 |
+| Domain Hooks JSDoc Completion | MEDIUM | 04 |
+| useEffect Extraction Pattern | MEDIUM | 05 |
+| Settings Hooks Unit Tests | HIGH | 06 |
 
 ---
 
@@ -97,6 +108,8 @@ After completing this sub-epic:
 - ✅ All domain hooks have comprehensive JSDoc
 - ✅ useEffect logic extracted to named, testable methods
 - ✅ All settings hooks have comprehensive unit tests
+- ✅ Infrastructure layer has clean organization (providers/, orchestration/, parsers/, services/)
+- ✅ No Clean Architecture layer violations
 - ✅ All 259+ tests passing
 
 ---
@@ -109,4 +122,4 @@ After completing this sub-epic:
 
 ---
 
-**Last Updated**: 2025-11-29
+**Last Updated**: 2025-11-29 (reordered: Infrastructure Reorg now Sprint 03)

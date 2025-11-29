@@ -1,9 +1,9 @@
-# Sprint 05: Settings Hooks Unit Tests
+# Sprint 06: Settings Hooks Unit Tests
 
-**Status**: ⏸️ Pending (Blocked on Sprint 04)
+**Status**: ⏸️ Pending (Blocked on Sprint 05)
 **Estimated Time**: 1 day (8 hours)
 **Priority**: HIGH
-**Branch**: `sprint/epic-ahp-v1.3-sub3-05-settings-hooks-tests`
+**Branch**: `sprint/epic-ahp-v1.3-sub3-06-settings-hooks-tests`
 
 ---
 
