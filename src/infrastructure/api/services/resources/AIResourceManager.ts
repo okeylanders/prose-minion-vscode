@@ -115,15 +115,10 @@ export class AIResourceManager {
       category: categoryResources
     };
 
-    // Propagate callbacks to all orchestrators
+    // Propagate statusCallback to orchestrators (tokenUsageCallback is passed in constructor)
     if (this.statusCallback) {
       Object.values(this.aiResources).forEach(resource => {
         resource?.orchestrator.setStatusCallback(this.statusCallback!);
-      });
-    }
-    if (this.tokenUsageCallback) {
-      Object.values(this.aiResources).forEach(resource => {
-        resource?.orchestrator.setTokenUsageCallback(this.tokenUsageCallback!);
       });
     }
 
@@ -252,7 +247,8 @@ export class AIResourceManager {
         guideRegistry,
         guideLoader,
         this.statusCallback,
-        this.outputChannel
+        this.outputChannel,
+        this.tokenUsageCallback
       );
 
       this.outputChannel?.appendLine(
