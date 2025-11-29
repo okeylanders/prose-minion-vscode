@@ -206,7 +206,7 @@ const isCustomModel = !RECOMMENDED_MODELS.find(m => m.id === settings.assistantM
 
 **References**:
 - [Word Frequency Implementation](src/tools/measure/wordFrequency/index.ts:270-282)
-- [OpenRouter Models](src/infrastructure/api/OpenRouterModels.ts)
+- [OpenRouter Models](src/infrastructure/api/providers/OpenRouterModels.ts)
 - [Settings Overlay](src/presentation/webview/components/SettingsOverlay.tsx)
 
 ---

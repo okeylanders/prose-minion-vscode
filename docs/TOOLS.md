@@ -312,7 +312,7 @@ expect(result.wordCount).toBe(2);
 
 ### Supported Models
 
-Recommended and curated models are defined in [OpenRouterModels.ts](src/infrastructure/api/OpenRouterModels.ts). Choose models in Settings (`assistantModel`, `dictionaryModel`, `contextModel`) or via the UI dropdown; the selection is injected into the appropriate OpenRouter client on the next request.
+Recommended and curated models are defined in [OpenRouterModels.ts](src/infrastructure/api/providers/OpenRouterModels.ts). Choose models in Settings (`assistantModel`, `dictionaryModel`, `contextModel`) or via the UI dropdown; the selection is injected into the appropriate OpenRouter client on the next request.
 
 ### API Costs
 

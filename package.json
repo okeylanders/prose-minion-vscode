@@ -443,6 +443,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "typecheck": "npm run typecheck:extension && npm run typecheck:webview",
+    "typecheck:extension": "tsc --noEmit -p tsconfig.json",
+    "typecheck:webview": "tsc --noEmit -p tsconfig.webview.json",
     "test:tier1": "jest --testPathPattern='(useMessageRouter|usePersistence|MessageHandler|useAnalysis|useMetrics)'"
   },
   "devDependencies": {
