@@ -1,13 +1,13 @@
 # Architecture Debt Status Summary
 
-**Last Updated**: 2025-11-22
+**Last Updated**: 2025-11-29
 **Total Items**: 15
-**Resolved**: 8
-**Pending**: 7
+**Resolved**: 10
+**Pending**: 5
 
 ---
 
-## ✅ RESOLVED (8 items)
+## ✅ RESOLVED (10 items)
 
 ### 1. Configuration Strategy Inconsistency
 **File**: [2025-11-02-configuration-strategy-inconsistency.md](2025-11-02-configuration-strategy-inconsistency.md)
@@ -101,28 +101,41 @@
 
 ---
 
-## 🟡 PENDING (7 items)
+### 9. Word Counter Component Duplication
 
-### 1. Word Counter Component Duplication
 **File**: [2025-11-02-word-counter-component.md](2025-11-02-word-counter-component.md)
-**Priority**: LOW
-**Effort**: < 2 hours
-**Status**: Identified, not yet addressed
+**Status**: ✅ **RESOLVED** (2025-11-24, Sprint 04 - PR #39)
+**Solution**: Extracted shared `<WordCounter />` component used by AnalysisTab, UtilitiesTab
 
-**Problem**: Word counter logic duplicated in 3 components (AnalysisTab, UtilitiesTab)
+**Outcomes**:
 
-**Impact**:
-- ⚠️ Code duplication (DRY violation)
-- ⚠️ Maintenance burden (change in 3 places)
-- ⚠️ Inconsistency risk (thresholds might diverge)
+- ✅ Single shared component (DRY restored)
+- ✅ Consistent thresholds across all uses
+- ✅ All 259 tests passing
 
-**Recommendation**: Extract to shared component `<WordCounter />`
-
-**When to Fix**: Low priority - nice-to-have cleanup for v1.1
+**Epic**: Architecture Health Pass v1.3 - Sub-Epic 2: Component Decomposition
 
 ---
 
-### 2. useEffect Extraction Pattern
+### 10. StandardsService Responsibility Violation
+
+**File**: [2025-11-13-standards-service-responsibility-violation.md](2025-11-13-standards-service-responsibility-violation.md)
+**Status**: ✅ **RESOLVED** (2025-11-15, Technical Debt Cleanup Epic - commit a694ea1)
+**Solution**: Moved `computePerFileStats()` to `ProseStatsService.analyzeMultipleFiles()`
+
+**Outcomes**:
+
+- ✅ Single Responsibility Principle restored
+- ✅ Correct domain boundaries (measurement in measurement service)
+- ✅ Cleaner architecture (ProseStatsService owns all prose stats analysis)
+
+**Epic**: Technical Debt Cleanup 2025-11-15
+
+---
+
+## 🟡 PENDING (5 items)
+
+### 1. useEffect Extraction Pattern
 **File**: [2025-11-05-useeffect-extraction-pattern.md](2025-11-05-useeffect-extraction-pattern.md)
 **Priority**: MEDIUM
 **Effort**: 2-4 hours
@@ -141,7 +154,7 @@
 
 ---
 
-### 3. Domain Hooks JSDoc Completion
+### 2. Domain Hooks JSDoc Completion
 **File**: [2025-11-06-domain-hooks-jsdoc-completion.md](2025-11-06-domain-hooks-jsdoc-completion.md)
 **Priority**: MEDIUM
 **Effort**: 1-2 hours
@@ -167,7 +180,7 @@
 
 ---
 
-### 4. Settings Hooks Unit Tests
+### 3. Settings Hooks Unit Tests
 **File**: [2025-11-06-settings-hooks-unit-tests.md](2025-11-06-settings-hooks-unit-tests.md)
 **Priority**: HIGH
 **Effort**: 1 day (8 hours)
@@ -190,7 +203,7 @@
 
 ---
 
-### 5. Settings Integration Tests
+### 4. Settings Integration Tests
 **File**: [2025-11-06-settings-integration-tests.md](2025-11-06-settings-integration-tests.md)
 **Priority**: MEDIUM
 **Effort**: 1-2 days
@@ -209,33 +222,7 @@
 
 ---
 
-### 6. StandardsService Responsibility Violation
-**File**: [2025-11-13-standards-service-responsibility-violation.md](2025-11-13-standards-service-responsibility-violation.md)
-**Priority**: MEDIUM
-**Effort**: 1-2 hours
-**Status**: Identified during Sprint 02 (ProseAnalysisService refactor)
-
-**Problem**: StandardsService has `computePerFileStats()` method that belongs in ProseStatsService
-
-**Current (Wrong) Responsibilities**:
-1. ✅ Standards comparison (`enrichWithStandards`)
-2. ✅ Genre lookup (`findGenre`)
-3. ❌ **Per-file stats computation** (`computePerFileStats`) - Measurement orchestration!
-
-**Impact**:
-- ❌ Violates Single Responsibility Principle
-- ❌ Confuses domain boundaries (standards vs. measurement)
-- ❌ Makes testing harder (complex dependency injection)
-
-**Recommendation**: Move `computePerFileStats()` to `ProseStatsService.analyzeMultipleFiles()`
-
-**Current Usage**: [src/application/handlers/domain/MetricsHandler.ts:86](../src/application/handlers/domain/MetricsHandler.ts#L86)
-
-**When to Fix**: Medium priority - functionality works but violates architecture principles
-
----
-
-### 7. README.md (Architecture Debt Tracker)
+### 5. README.md (Architecture Debt Tracker)
 **File**: [README.md](README.md)
 **Status**: Documentation file explaining the architecture debt tracking process
 
@@ -245,8 +232,8 @@
 
 | Category | Count | Priority Breakdown |
 |----------|-------|-------------------|
-| **Resolved** | 8 | All CRITICAL issues resolved |
-| **Pending** | 7 | HIGH: 1, MEDIUM: 4, LOW: 1, DOC: 1 |
+| **Resolved** | 10 | All CRITICAL issues resolved |
+| **Pending** | 5 | HIGH: 1, MEDIUM: 3, DOC: 1 |
 | **Total** | 15 | - |
 
 ---
@@ -274,9 +261,6 @@
 5. **Settings Integration Tests** (MEDIUM) - 1-2 days
    - Comprehensive coverage
    - Lower ROI than unit tests
-6. **Word Counter Component** (LOW) - < 2 hours
-   - Minor DRY violation
-   - Works fine, just duplicated
 
 ---
 
@@ -301,7 +285,15 @@
 - ✅ Backend refactored to semantic methods
 - ✅ 100% persistence coverage (29/29 settings)
 
-These epics resolved **8 major architecture debt items**, eliminating all CRITICAL issues.
+**Architecture Health Pass v1.3 - Component Decomposition** (Sprint 00-04, Completed 2025-11-24):
+
+- ✅ Component organization (tabs/, shared/, search/, metrics/)
+- ✅ ScopeBox extracted (5 duplications eliminated) - PR #36
+- ✅ LoadingIndicator unified - PR #37
+- ✅ Subtab panels extracted (SearchTab 666→74, MetricsTab 413→129) - PR #38
+- ✅ WordCounter extracted (3 duplications eliminated) - PR #39
+
+These epics resolved **9 major architecture debt items**, eliminating all CRITICAL issues.
 
 ---
 
@@ -311,9 +303,9 @@ These epics resolved **8 major architecture debt items**, eliminating all CRITIC
 
 **For v1.1**: Focus on automated testing (Settings Hooks Unit Tests) to improve development velocity. This is the highest-ROI item remaining.
 
-**For v1.2+**: Address remaining code quality items (useEffect extraction, word counter component) as polish work.
+**For v1.2+**: Address remaining code quality items (useEffect extraction) as polish work.
 
 ---
 
-**Last Reviewed**: 2025-11-15
-**Next Review**: After v1.1 planning session
+**Last Reviewed**: 2025-11-29
+**Next Review**: After Sub-Epic 3 completion
