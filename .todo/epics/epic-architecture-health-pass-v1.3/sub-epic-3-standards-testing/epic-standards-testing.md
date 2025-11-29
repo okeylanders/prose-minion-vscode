@@ -4,7 +4,7 @@
 **Status**: In Progress
 **Parent Epic**: [Architecture Health Pass v1.3](../epic-architecture-health-pass-v1.3.md)
 **Duration**: 2-3 days (estimated)
-**Progress**: 1/5 sprints complete (Sprint 01 was already resolved 2025-11-15)
+**Progress**: 2/5 sprints complete (40%)
 
 ---
 
@@ -35,18 +35,19 @@ This was already fixed before this epic was planned. See [sprint doc](sprints/01
 
 ---
 
-### Sprint 02: Token Usage Centralization (3-4 hrs) - MEDIUM
-**Status**: 🟡 Ready to Start
+### Sprint 02: Token Usage Centralization (~2 hrs) - MEDIUM
+
+**Status**: ✅ **COMPLETE** (2025-11-29)
 **Goal**: Single source of truth for token tracking
 
-AIResourceOrchestrator should emit TOKEN_USAGE messages automatically, eliminating duplication across 10+ services.
+AIResourceOrchestrator now emits token usage automatically via callback, eliminating duplication.
 
 📁 [sprints/02-token-usage-centralization.md](sprints/02-token-usage-centralization.md)
 
 ---
 
 ### Sprint 03: Domain Hooks JSDoc Completion (1-2 hrs) - MEDIUM
-**Status**: ⏸️ Blocked on Sprint 02
+**Status**: 🟡 Ready to Start
 **Goal**: Comprehensive documentation for all domain hooks
 
 Copy JSDoc template from `useWordSearchSettings` to 6 other hooks.
