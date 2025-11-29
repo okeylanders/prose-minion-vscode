@@ -5,6 +5,48 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2025-11-29
+
+### Overview
+
+Patch release fixing a bug where Fast Dictionary results weren't being saved to the dictionary-entries folder.
+
+**Key Fix:**
+
+- 🐛 **Dictionary Save** - Fast Generate results now save alongside standard Dictionary Lookup results
+
+---
+
+### Fixed
+
+#### Dictionary Save - Fast Generate Results Not Saving
+
+**Issue:**
+When using the "Fast Generate" dictionary feature, results were not being saved to the `prose-minion/dictionary-entries/` folder, while standard "Dictionary Lookup" results saved correctly.
+
+**Root Cause:**
+The `FileOperationsHandler.handleSaveResult()` method only checked for `toolName === 'dictionary_lookup'` when routing saves to the dictionary-entries folder. The Fast Generate feature uses `toolName === 'dictionary_fast_generate'`, which wasn't included in the condition.
+
+**Fix:**
+
+Updated the conditional to include both tool names:
+
+```typescript
+// Before
+if (toolName === 'dictionary_lookup') {
+
+// After
+if (toolName === 'dictionary_lookup' || toolName === 'dictionary_fast_generate') {
+```
+
+**Files Modified:**
+
+- `src/application/handlers/domain/FileOperationsHandler.ts` - Line 153
+
+**Commit:** `c1c07d3`
+
+---
+
 ## [1.3.0] - 2025-11-27
 
 ### Overview

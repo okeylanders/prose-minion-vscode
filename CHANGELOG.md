@@ -2,6 +2,16 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.3.1] - 2025-11-29
+
+### Fixed
+
+- **Dictionary Save**: Fast Dictionary results now save correctly to dictionary-entries folder
+  - Previously only standard Dictionary Lookup results were saved
+  - Fast Generate results now follow the same save path
+
+---
+
 ## [1.3.0] - 2025-11-27
 
 ### Added
