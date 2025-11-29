@@ -11,7 +11,6 @@ import {
   LookupDictionaryMessage,
   FastGenerateDictionaryMessage,
   MessageType,
-  TokenUsage,
   ErrorSource,
   DictionaryResultMessage,
   FastGenerateDictionaryResultMessage,
@@ -23,8 +22,7 @@ import { MessageRouter } from '../MessageRouter';
 export class DictionaryHandler {
   constructor(
     private readonly dictionaryService: DictionaryService,
-    private readonly postMessage: (message: any) => Promise<void>,
-    private readonly applyTokenUsageCallback: (usage: TokenUsage) => void
+    private readonly postMessage: (message: any) => Promise<void>
   ) {}
 
   /**
@@ -78,11 +76,6 @@ export class DictionaryHandler {
     void this.postMessage(errorMessage);
   }
 
-  private applyTokenUsage(usage: TokenUsage): void {
-    // Delegate to MessageHandler's centralized token tracking
-    this.applyTokenUsageCallback(usage);
-  }
-
   // Message handlers
 
   async handleLookupDictionary(message: LookupDictionaryMessage): Promise<void> {
@@ -97,9 +90,6 @@ export class DictionaryHandler {
       this.sendStatus(`Generating dictionary entry for "${word}"...`);
       const result = await this.dictionaryService.lookupWord(word, contextText);
       this.sendDictionaryResult(result.content, result.toolName);
-      if ((result as any).usage) {
-        this.applyTokenUsage((result as any).usage);
-      }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.sendError('dictionary', 'Failed to lookup dictionary entry', msg);
@@ -129,11 +119,6 @@ export class DictionaryHandler {
       // Send result back to webview
       this.sendFastGenerateResult(result);
       this.sendStatus('');
-
-      // Apply aggregated token usage
-      if (result.usage) {
-        this.applyTokenUsage(result.usage);
-      }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.sendError('dictionary', 'Failed to generate dictionary entry', msg);

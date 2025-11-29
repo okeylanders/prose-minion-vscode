@@ -17,7 +17,7 @@
 
 import * as vscode from 'vscode';
 import { OpenRouterClient } from '@/infrastructure/api/OpenRouterClient';
-import { AIResourceOrchestrator, StatusCallback } from '@/application/services/AIResourceOrchestrator';
+import { AIResourceOrchestrator, StatusCallback, TokenUsageCallback } from '@/application/services/AIResourceOrchestrator';
 import { ConversationManager } from '@/application/services/ConversationManager';
 import { GuideRegistry } from '@/infrastructure/guides/GuideRegistry';
 import { GuideLoader } from '@/tools/shared/guides';
@@ -48,6 +48,7 @@ export class AIResourceManager {
   private aiResources: Partial<Record<ModelScope, AIResourceBundle>> = {};
   private resolvedModels: Partial<Record<ModelScope, string>> = {};
   private statusCallback?: StatusCallback;
+  private tokenUsageCallback?: TokenUsageCallback;
 
   constructor(
     private readonly resourceLoader: ResourceLoaderService,
@@ -114,10 +115,15 @@ export class AIResourceManager {
       category: categoryResources
     };
 
-    // Propagate status callback to all orchestrators
+    // Propagate callbacks to all orchestrators
     if (this.statusCallback) {
       Object.values(this.aiResources).forEach(resource => {
         resource?.orchestrator.setStatusCallback(this.statusCallback!);
+      });
+    }
+    if (this.tokenUsageCallback) {
+      Object.values(this.aiResources).forEach(resource => {
+        resource?.orchestrator.setTokenUsageCallback(this.tokenUsageCallback!);
       });
     }
 
@@ -174,6 +180,21 @@ export class AIResourceManager {
   }
 
   /**
+   * Set the token usage callback for centralized token tracking
+   *
+   * This callback is propagated to all AIResourceOrchestrators
+   * and will be called after each API call with usage data
+   *
+   * @param callback - Token usage callback function
+   */
+  setTokenUsageCallback(callback: TokenUsageCallback): void {
+    this.tokenUsageCallback = callback;
+    Object.values(this.aiResources).forEach(resource => {
+      resource?.orchestrator.setTokenUsageCallback(callback);
+    });
+  }
+
+  /**
    * Refresh configuration by reinitializing all resources
    *
    * This is called when configuration changes (API key, model selections, etc.)
@@ -203,6 +224,7 @@ export class AIResourceManager {
     this.disposeResources();
     this.resolvedModels = {};
     this.statusCallback = undefined;
+    this.tokenUsageCallback = undefined;
   }
 
   /**

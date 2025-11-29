@@ -24,7 +24,6 @@ describe('AnalysisHandler', () => {
   let handler: AnalysisHandler;
   let mockService: jest.Mocked<AssistantToolService>;
   let mockPostMessage: jest.Mock;
-  let mockTokenCallback: jest.Mock;
   let router: MessageRouter;
 
   beforeEach(() => {
@@ -42,9 +41,8 @@ describe('AnalysisHandler', () => {
     } as any;
 
     mockPostMessage = jest.fn().mockResolvedValue(undefined);
-    mockTokenCallback = jest.fn();
 
-    handler = new AnalysisHandler(mockService, mockPostMessage, mockTokenCallback);
+    handler = new AnalysisHandler(mockService, mockPostMessage);
     router = new MessageRouter();
   });
 

@@ -163,6 +163,12 @@ export class MessageHandler {
       this.sendStatus(message, tickerMessage);
     });
 
+    // Token tracking: centralized in AIResourceOrchestrator
+    // This callback is called after each API call with usage data
+    this.aiResourceManager.setTokenUsageCallback((usage) => {
+      this.applyTokenUsage(usage);
+    });
+
     const configWatcher = vscode.workspace.onDidChangeConfiguration(event => {
       // Log all proseMinion config changes for debugging
       if (event.affectsConfiguration('proseMinion')) {
@@ -226,16 +232,15 @@ export class MessageHandler {
     this.disposables.push(configWatcher);
 
     // SPRINT 05: Instantiate domain handlers with direct service injection
+    // Token tracking is now centralized in AIResourceOrchestrator via setTokenUsageCallback
     this.analysisHandler = new AnalysisHandler(
       assistantToolService,
-      this.postMessage.bind(this),
-      this.applyTokenUsage.bind(this)
+      this.postMessage.bind(this)
     );
 
     this.dictionaryHandler = new DictionaryHandler(
       dictionaryService,
-      this.postMessage.bind(this),
-      this.applyTokenUsage.bind(this)
+      this.postMessage.bind(this)
     );
 
     // Set status emitter for dictionary service (for fast generation progress)
@@ -243,8 +248,7 @@ export class MessageHandler {
 
     this.contextHandler = new ContextHandler(
       contextAssistantService,
-      this.postMessage.bind(this),
-      this.applyTokenUsage.bind(this)
+      this.postMessage.bind(this)
     );
 
     this.metricsHandler = new MetricsHandler(
@@ -268,8 +272,7 @@ export class MessageHandler {
       wordSearchService,
       this.postMessage.bind(this),
       outputChannel,
-      categorySearchService,
-      this.applyTokenUsage.bind(this)
+      categorySearchService
     );
 
     this.configurationHandler = new ConfigurationHandler(

@@ -13,7 +13,6 @@ import {
   AnalysisResultMessage,
   StatusMessage,
   ErrorMessage,
-  TokenUsage,
   ErrorSource,
   MessageType
 } from '@messages';
@@ -22,8 +21,7 @@ import { MessageRouter } from '../MessageRouter';
 export class AnalysisHandler {
   constructor(
     private readonly assistantToolService: AssistantToolService,
-    private readonly postMessage: (message: any) => Promise<void>,
-    private readonly applyTokenUsageCallback: (usage: TokenUsage) => void
+    private readonly postMessage: (message: any) => Promise<void>
   ) {
     // Inject status emitter for guide loading notifications
     this.assistantToolService.setStatusEmitter((message, progress, tickerMessage) => {
@@ -88,11 +86,6 @@ export class AnalysisHandler {
     void this.postMessage(errorMessage);
   }
 
-  private applyTokenUsage(usage: TokenUsage): void {
-    // Delegate to MessageHandler's centralized token tracking
-    this.applyTokenUsageCallback(usage);
-  }
-
   // Message handlers
 
   async handleAnalyzeDialogue(message: AnalyzeDialogueMessage): Promise<void> {
@@ -116,9 +109,6 @@ export class AnalysisHandler {
         focus
       );
       this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
-      if ((result as any).usage) {
-        this.applyTokenUsage((result as any).usage);
-      }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.sendError('analysis.dialogue', 'Failed to analyze dialogue', msg);
@@ -145,9 +135,6 @@ export class AnalysisHandler {
         sourceFileUri
       );
       this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
-      if ((result as any).usage) {
-        this.applyTokenUsage((result as any).usage);
-      }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.sendError('analysis.prose', 'Failed to analyze prose', msg);

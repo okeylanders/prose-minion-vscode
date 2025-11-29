@@ -17,7 +17,6 @@ import {
   SearchResultMessage,
   CategorySearchResultMessage,
   ErrorMessage,
-  TokenUsage,
   StatusMessage
 } from '@messages';
 import { MessageRouter } from '../MessageRouter';
@@ -27,8 +26,7 @@ export class SearchHandler {
     private readonly wordSearchService: WordSearchService,
     private readonly postMessage: (message: any) => Promise<void>,
     private readonly outputChannel: vscode.OutputChannel,
-    private readonly categorySearchService?: CategorySearchService,
-    private readonly applyTokenUsageCallback?: (usage: TokenUsage) => void
+    private readonly categorySearchService?: CategorySearchService
   ) {}
 
   /**
@@ -136,16 +134,6 @@ export class SearchHandler {
         resolved.mode,
         options
       );
-
-      // Apply token usage to global tracking
-      if (result.tokensUsed && this.applyTokenUsageCallback) {
-        this.applyTokenUsageCallback({
-          promptTokens: result.tokensUsed.prompt,
-          completionTokens: result.tokensUsed.completion,
-          totalTokens: result.tokensUsed.total,
-          costUsd: result.tokensUsed.costUsd
-        });
-      }
 
       this.sendCategorySearchResult(result);
     } catch (error) {

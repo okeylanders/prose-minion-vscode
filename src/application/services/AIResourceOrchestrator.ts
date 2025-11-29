@@ -30,6 +30,7 @@ export interface ExecutionResult {
 }
 
 export type StatusCallback = (message: string, tickerMessage?: string) => void;
+export type TokenUsageCallback = (usage: TokenUsage) => void;
 
 interface TerminationContext {
   signal?: AbortSignal;
@@ -46,7 +47,8 @@ export class AIResourceOrchestrator {
     private readonly guideRegistry: GuideRegistry,
     private readonly guideLoader: GuideLoader,
     private statusCallback?: StatusCallback,
-    private readonly outputChannel?: vscode.OutputChannel
+    private readonly outputChannel?: vscode.OutputChannel,
+    private tokenUsageCallback?: TokenUsageCallback
   ) {
     // Periodically clean up old conversations (every 5 minutes)
     this.conversationCleanupInterval = setInterval(() => {
@@ -165,8 +167,10 @@ export class AIResourceOrchestrator {
         maxTokens: requestOptions.maxTokens,
         signal: requestOptions.signal
       });
-      if ((last as any).usage) {
-        totalUsage = { ...(last as any).usage };
+      // Emit token usage to callback and accumulate
+      const firstUsage = this.emitTokenUsage(last);
+      if (firstUsage) {
+        totalUsage = { ...firstUsage };
       }
       this.outputChannel?.appendLine(`[AIResourceOrchestrator] Received response from AI (${last.content.length} chars)`);
 
@@ -215,17 +219,17 @@ export class AIResourceOrchestrator {
           // Track which guides were used
           usedGuides.push(...resourceRequest.requestedGuides);
 
-          // Accumulate usage if available
-          if ((nextTurn as any).usage) {
-            const u = (nextTurn as any).usage as { promptTokens: number; completionTokens: number; totalTokens: number; costUsd?: number };
+          // Emit token usage to callback and accumulate
+          const turnUsage = this.emitTokenUsage(nextTurn);
+          if (turnUsage) {
             if (!totalUsage) {
-              totalUsage = { ...u };
+              totalUsage = { ...turnUsage };
             } else {
-              totalUsage.promptTokens += u.promptTokens;
-              totalUsage.completionTokens += u.completionTokens;
-              totalUsage.totalTokens += u.totalTokens;
-              if (typeof totalUsage.costUsd === 'number' || typeof u.costUsd === 'number') {
-                totalUsage.costUsd = (totalUsage.costUsd || 0) + (u.costUsd || 0);
+              totalUsage.promptTokens += turnUsage.promptTokens;
+              totalUsage.completionTokens += turnUsage.completionTokens;
+              totalUsage.totalTokens += turnUsage.totalTokens;
+              if (typeof totalUsage.costUsd === 'number' || typeof turnUsage.costUsd === 'number') {
+                totalUsage.costUsd = (totalUsage.costUsd || 0) + (turnUsage.costUsd || 0);
               }
             }
           }
@@ -291,13 +295,16 @@ export class AIResourceOrchestrator {
       });
       this.outputChannel?.appendLine(`[AIResourceOrchestrator] Received response from AI (${response.content.length} chars)\n`);
 
+      // Emit token usage to callback
+      const usage = this.emitTokenUsage(response);
+
       return {
         content: response.content + (response.finishReason === 'length'
           ? '\n\n---\n\n⚠️ Response truncated. Increase Max Tokens in settings.'
           : ''),
         usedGuides: [],
         requestedResources: [],
-        usage: (response as any).usage
+        usage
       };
     } finally {
       termination.dispose();
@@ -358,8 +365,10 @@ export class AIResourceOrchestrator {
         signal: requestOptions.signal
       });
       this.outputChannel?.appendLine(`[AIResourceOrchestrator] Turn 1 response received (${response.content.length} chars)`);
-      if ((response as any).usage) {
-        totalUsage = { ...(response as any).usage };
+      // Emit token usage to callback and accumulate
+      const firstUsage = this.emitTokenUsage(response);
+      if (firstUsage) {
+        totalUsage = { ...firstUsage };
       }
 
       // Support up to 2 resource request turns (MAX_TURNS = 3 total)
@@ -428,17 +437,17 @@ export class AIResourceOrchestrator {
           `[AIResourceOrchestrator] Turn ${turnCount} response received (${response.content.length} chars)`
         );
 
-        // Accumulate usage
-        if ((response as any).usage) {
-          const u = (response as any).usage as { promptTokens: number; completionTokens: number; totalTokens: number; costUsd?: number };
+        // Emit token usage to callback and accumulate
+        const turnUsage = this.emitTokenUsage(response);
+        if (turnUsage) {
           if (!totalUsage) {
-            totalUsage = { ...u };
+            totalUsage = { ...turnUsage };
           } else {
-            totalUsage.promptTokens += u.promptTokens;
-            totalUsage.completionTokens += u.completionTokens;
-            totalUsage.totalTokens += u.totalTokens;
-            if (typeof totalUsage.costUsd === 'number' || typeof u.costUsd === 'number') {
-              totalUsage.costUsd = (totalUsage.costUsd || 0) + (u.costUsd || 0);
+            totalUsage.promptTokens += turnUsage.promptTokens;
+            totalUsage.completionTokens += turnUsage.completionTokens;
+            totalUsage.totalTokens += turnUsage.totalTokens;
+            if (typeof totalUsage.costUsd === 'number' || typeof turnUsage.costUsd === 'number') {
+              totalUsage.costUsd = (totalUsage.costUsd || 0) + (turnUsage.costUsd || 0);
             }
           }
         }
@@ -472,17 +481,17 @@ export class AIResourceOrchestrator {
             `[AIResourceOrchestrator] Forced output response received (${response.content.length} chars)`
           );
 
-          // Accumulate final usage
-          if ((response as any).usage) {
-            const u = (response as any).usage as { promptTokens: number; completionTokens: number; totalTokens: number; costUsd?: number };
+          // Emit token usage to callback and accumulate
+          const finalUsage = this.emitTokenUsage(response);
+          if (finalUsage) {
             if (!totalUsage) {
-              totalUsage = { ...u };
+              totalUsage = { ...finalUsage };
             } else {
-              totalUsage.promptTokens += u.promptTokens;
-              totalUsage.completionTokens += u.completionTokens;
-              totalUsage.totalTokens += u.totalTokens;
-              if (typeof totalUsage.costUsd === 'number' || typeof u.costUsd === 'number') {
-                totalUsage.costUsd = (totalUsage.costUsd || 0) + (u.costUsd || 0);
+              totalUsage.promptTokens += finalUsage.promptTokens;
+              totalUsage.completionTokens += finalUsage.completionTokens;
+              totalUsage.totalTokens += finalUsage.totalTokens;
+              if (typeof totalUsage.costUsd === 'number' || typeof finalUsage.costUsd === 'number') {
+                totalUsage.costUsd = (totalUsage.costUsd || 0) + (finalUsage.costUsd || 0);
               }
             }
           }
@@ -513,7 +522,7 @@ export class AIResourceOrchestrator {
     assistantResponse: string,
     requestedGuidePaths: string[],
     options: AIOptions
-  ): Promise<{ content: string; finishReason?: string }> {
+  ): Promise<{ content: string; finishReason?: string; usage?: TokenUsage }> {
     // Add assistant's response (with guide request) to conversation
     this.conversationManager.addMessage(conversationId, {
       role: 'assistant',
@@ -702,6 +711,27 @@ export class AIResourceOrchestrator {
    */
   setStatusCallback(callback?: StatusCallback): void {
     this.statusCallback = callback;
+  }
+
+  /**
+   * Update the token usage callback for centralized token tracking
+   * When set, the orchestrator will call this callback after each API call
+   * with accumulated token usage data
+   */
+  setTokenUsageCallback(callback?: TokenUsageCallback): void {
+    this.tokenUsageCallback = callback;
+  }
+
+  /**
+   * Emit token usage to the callback if set
+   * Called after each API response to provide real-time token tracking
+   */
+  private emitTokenUsage(response: { usage?: TokenUsage }): TokenUsage | undefined {
+    const usage = (response as any).usage as TokenUsage | undefined;
+    if (usage && this.tokenUsageCallback) {
+      this.tokenUsageCallback(usage);
+    }
+    return usage;
   }
 
   /**
