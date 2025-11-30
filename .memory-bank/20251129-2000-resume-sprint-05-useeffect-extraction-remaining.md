@@ -93,4 +93,38 @@ The architecture debt document showed Sprint 05 as "RESOLVED" (2025-11-17), but 
 
 **Session Started**: 2025-11-29 20:00
 **Branch**: `sprint/epic-ahp-v1.3-sub3-05-useeffect-extraction-remaining`
-**Status**: 🟢 Extracting 7 remaining useEffects
+**Status**: ✅ COMPLETE
+
+---
+
+## Completion Summary
+
+**Duration**: ~20 minutes
+**Commit**: `fcea5b8`
+
+### Extracted Methods (7 total)
+
+| File | Method | Pattern |
+|------|--------|---------|
+| App.tsx | `requestModelData()` | request* |
+| useSettings.ts | `lockScrollWhenSettingsOpen()` | lock*When* |
+| CategorySearchPanel.tsx | `syncCategoryMarkdownContent()` | sync* |
+| WordSearchPanel.tsx | `syncMarkdownContent()` | sync* |
+| UtilitiesTab.tsx | `populateDictionaryFromInjection()` | populate* |
+| UtilitiesTab.tsx | `autoRunLookupWhenInjected()` | *WhenInjected |
+| AnalysisTab.tsx | `syncTextFromSelection()` | sync* |
+
+### Execution Strategy
+- 6 parallel subagents (one per file)
+- All completed successfully in ~15 minutes
+- 259/259 tests passing
+
+### Final useEffect Audit
+
+| Category | Count |
+|----------|-------|
+| ✅ Extracted (calls named method) | **11** |
+| ⚙️ Infrastructure (acceptable inline) | **3** |
+| **Total** | **14** |
+
+All useEffects now either call named methods or are simple infrastructure patterns.
