@@ -24,7 +24,9 @@
       "@utils/*": ["src/presentation/webview/utils/*"],
       "@formatters": ["src/presentation/webview/utils/formatters"],
       "@formatters/*": ["src/presentation/webview/utils/formatters/*"],
-      "@providers/*": ["src/infrastructure/api/providers/*"]
+      "@providers/*": ["src/infrastructure/api/providers/*"],
+      "@orchestration/*": ["src/infrastructure/api/orchestration/*"],
+      "@parsers/*": ["src/infrastructure/api/parsers/*"]
     }
   },
   "include": [

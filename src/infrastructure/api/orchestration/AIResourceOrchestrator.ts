@@ -194,7 +194,7 @@ export class AIResourceOrchestrator {
           }
 
           this.outputChannel?.appendLine(`[AIResourceOrchestrator] AI requested ${resourceRequest.requestedGuides.length} guides:`);
-          resourceRequest.requestedGuides.forEach((guide, index) => {
+          resourceRequest.requestedGuides.forEach((guide: string, index: number) => {
             this.outputChannel?.appendLine(`  ${index + 1}. ${guide}`);
           });
 
