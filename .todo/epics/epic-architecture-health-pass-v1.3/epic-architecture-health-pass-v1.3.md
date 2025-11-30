@@ -231,10 +231,10 @@ Sub-Epic 4: Polish & UX
 |----------|--------|----------|-----------------|
 | 1. Foundation Cleanup | ✅ Complete | 3/3 sprints | 2025-11-22 |
 | 2. Component Decomposition | ✅ Complete | 5/5 sprints | 2025-11-24 |
-| 3. Standards & Testing | 🟢 Ready | 0/5 sprints | - |
+| 3. Standards & Testing | 🟢 In Progress | 3/6 sprints | - |
 | 4. Polish & UX | ⏸️ Blocked | 0/4 sprints | - |
 
-**Overall Progress**: 8/17 sprints complete (47%)
+**Overall Progress**: 11/18 sprints complete (61%)
 
 ---
 
@@ -247,13 +247,16 @@ Sub-Epic 4: Polish & UX
    - MetricsTab: 413 → 129 lines (68.8% reduction)
    - 4 shared components created (ScopeBox, LoadingIndicator, TabBar, WordCounter)
    - 6 panel components extracted
-3. 🟢 **Start Sub-Epic 3**: Standards & Testing
-   - Create sub-epic directory structure
-   - Plan Sprint 01: StandardsService Compliance
-   - Begin implementation
+3. 🟢 **Continue Sub-Epic 3**: Standards & Testing (3/6 sprints complete)
+   - ✅ Sprint 01: StandardsService Compliance (pre-resolved)
+   - ✅ Sprint 02: Token Usage Centralization (PR #41)
+   - ✅ Sprint 03: Infrastructure Reorganization (PR #42)
+   - 🟡 Sprint 04: Domain Hooks JSDoc (Ready)
+   - ⏸️ Sprint 05: useEffect Extraction
+   - ⏸️ Sprint 06: Settings Hooks Unit Tests
 
 ---
 
-**Last Updated**: 2025-11-24
+**Last Updated**: 2025-11-29
 **Created By**: Claude Code (AI Agent)
-**Status**: Sub-Epic 2 Complete, Ready for Sub-Epic 3
+**Status**: Sub-Epic 3 In Progress (3/6 sprints complete)

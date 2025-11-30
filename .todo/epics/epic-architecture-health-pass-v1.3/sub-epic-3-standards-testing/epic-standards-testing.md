@@ -4,7 +4,7 @@
 **Status**: In Progress
 **Parent Epic**: [Architecture Health Pass v1.3](../epic-architecture-health-pass-v1.3.md)
 **Duration**: 2-3 days (estimated)
-**Progress**: 2/6 sprints complete (33%)
+**Progress**: 3/6 sprints complete (50%)
 
 ---
 
@@ -47,17 +47,19 @@ AIResourceOrchestrator now emits token usage automatically via callback, elimina
 ---
 
 ### Sprint 03: Infrastructure Reorganization (2-3 hrs) - MEDIUM
-**Status**: 🟡 Ready to Start
+**Status**: ✅ **COMPLETE** (2025-11-29, PR #42)
 **Goal**: Fix layer violation and organize AI Gateway layer
 
-Move AIRO, ConversationManager, and related files to infrastructure, creating clean `providers/`, `orchestration/`, `parsers/`, `services/` structure.
+Created clean four-tier structure: `providers/`, `orchestration/`, `parsers/`, `services/`. 8 files moved, 3 new aliases added.
+
+**ADR**: [2025-11-29-infrastructure-layer-reorganization.md](../../../../docs/adr/2025-11-29-infrastructure-layer-reorganization.md)
 
 📁 [sprints/03-infrastructure-reorganization.md](sprints/03-infrastructure-reorganization.md)
 
 ---
 
 ### Sprint 04: Domain Hooks JSDoc Completion (1-2 hrs) - MEDIUM
-**Status**: ⏸️ Blocked on Sprint 03
+**Status**: 🟡 Ready to Start
 **Goal**: Comprehensive documentation for all domain hooks
 
 Copy JSDoc template from `useWordSearchSettings` to 6 other hooks.
