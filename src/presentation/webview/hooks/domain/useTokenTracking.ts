@@ -37,6 +37,32 @@ export type UseTokenTrackingReturn =
  * This is a STATE hook (not a settings hook) - manages ephemeral runtime state
  * that persists across sessions but does NOT sync with VSCode configuration.
  *
+ * @example
+ * ```tsx
+ * // In App.tsx: Initialize the hook
+ * const tokenTracking = useTokenTracking();
+ *
+ * // Wire up message handler for token usage updates
+ * useMessageRouter({
+ *   [MessageType.TOKEN_USAGE_UPDATE]: tokenTracking.handleTokenUsageUpdate,
+ * });
+ *
+ * // Compose into persistence
+ * usePersistence({
+ *   activeTab,
+ *   ...tokenTracking.persistedState,
+ *   // ... other persisted state
+ * });
+ *
+ * // In components: Display and manage token usage
+ * <div className="token-widget">
+ *   <span>Prompt: {tokenTracking.usage.promptTokens}</span>
+ *   <span>Completion: {tokenTracking.usage.completionTokens}</span>
+ *   <span>Total: {tokenTracking.usage.totalTokens}</span>
+ *   <button onClick={tokenTracking.resetTokens}>Reset Tokens</button>
+ * </div>
+ * ```
+ *
  * @returns Token usage state, actions, and persisted state
  */
 export const useTokenTracking = (): UseTokenTrackingReturn => {

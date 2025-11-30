@@ -50,7 +50,30 @@ export type UseWordFrequencySettingsReturn =
  * Backend support: ConfigurationHandler.getAllSettings() (Sprint 02)
  * Config watcher: WORD_FREQUENCY_KEYS in MessageHandler (Sprint 02)
  *
- * @returns Settings state, actions, and persisted state
+ * @example
+ * ```tsx
+ * const wordFrequencySettings = useWordFrequencySettings();
+ *
+ * // Handle settings messages
+ * useMessageRouter({
+ *   [MessageType.SETTINGS_DATA]: wordFrequencySettings.handleSettingsData,
+ * });
+ *
+ * // Use in MetricsTab to configure word frequency analysis
+ * <MetricsTab
+ *   wordFrequencySettings={{
+ *     settings: wordFrequencySettings.settings,
+ *     updateSetting: wordFrequencySettings.updateSetting,
+ *   }}
+ * />
+ *
+ * // Access individual settings
+ * const topNWords = wordFrequencySettings.settings.topN;
+ * const includeHapax = wordFrequencySettings.settings.includeHapaxList;
+ * const minLength = wordFrequencySettings.settings.minCharacterLength;
+ * ```
+ *
+ * @returns Settings state (with 11 configurable options), actions (updateSetting, handleSettingsData), and persisted state
  */
 export const useWordFrequencySettings = (): UseWordFrequencySettingsReturn => {
   const vscode = useVSCodeApi();

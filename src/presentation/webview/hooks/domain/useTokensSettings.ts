@@ -44,6 +44,33 @@ export type UseTokensSettingsReturn =
  * Note: This manages the UI preference (show/hide widget). Token usage tracking
  * itself is managed by useTokenTracking hook (ephemeral state).
  *
+ * @example
+ * ```tsx
+ * const tokensSettings = useTokensSettings();
+ *
+ * // Wire up message handlers (both are needed for full sync)
+ * useMessageRouter({
+ *   [MessageType.SETTINGS_DATA]: tokensSettings.handleSettingsData,
+ *   [MessageType.MODEL_DATA]: tokensSettings.handleModelData,
+ * });
+ *
+ * // Conditionally render token widget based on settings
+ * {tokensSettings.settings.showTokenWidget && (
+ *   <TokenUsageWidget />
+ * )}
+ *
+ * // Toggle widget visibility (updates both local state and backend)
+ * const handleToggle = () => {
+ *   tokensSettings.updateSetting('showTokenWidget', !tokensSettings.settings.showTokenWidget);
+ * };
+ *
+ * // Add to persistence (compose into App.tsx usePersistence)
+ * usePersistence({
+ *   // ... other domains
+ *   ...tokensSettings.persistedState,
+ * });
+ * ```
+ *
  * @returns Settings state, actions, and persisted state
  */
 export const useTokensSettings = (): UseTokensSettingsReturn => {
