@@ -50,7 +50,43 @@ export type UseContextPathsSettingsReturn =
  * Backend support: ConfigurationHandler.getAllSettings() (Sprint 02)
  * Config watcher: General settings watcher in MessageHandler
  *
- * @returns Settings state, actions, and persisted state
+ * @example
+ * ```tsx
+ * const contextPathsSettings = useContextPathsSettings();
+ *
+ * // Handle settings messages
+ * useMessageRouter({
+ *   [MessageType.SETTINGS_DATA]: contextPathsSettings.handleSettingsData,
+ * });
+ *
+ * // Use in SettingsOverlay - Context Paths section
+ * <div className="context-paths-settings">
+ *   <label>Character Files</label>
+ *   <input
+ *     value={contextPathsSettings.settings.characters}
+ *     onChange={(e) => contextPathsSettings.updateSetting('characters', e.target.value)}
+ *     placeholder="characters/**\/*,Characters/**\/*"
+ *   />
+ *
+ *   <label>Location Files</label>
+ *   <input
+ *     value={contextPathsSettings.settings.locations}
+ *     onChange={(e) => contextPathsSettings.updateSetting('locations', e.target.value)}
+ *     placeholder="locations/**\/*,Locations/**\/*"
+ *   />
+ *
+ *   <label>Theme Notebooks</label>
+ *   <input
+ *     value={contextPathsSettings.settings.themes}
+ *     onChange={(e) => contextPathsSettings.updateSetting('themes', e.target.value)}
+ *     placeholder="themes/**\/*,Themes/**\/*"
+ *   />
+ *
+ *   // ... similar inputs for things, chapters, manuscript, projectBrief, general
+ * </div>
+ * ```
+ *
+ * @returns Settings state (8 glob path patterns), actions (updateSetting, handleSettingsData), and persisted state
  */
 export const useContextPathsSettings = (): UseContextPathsSettingsReturn => {
   const vscode = useVSCodeApi();

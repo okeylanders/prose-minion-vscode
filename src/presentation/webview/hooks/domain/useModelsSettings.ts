@@ -61,6 +61,41 @@ export type UseModelsSettingsReturn =
  * Backend support: ConfigurationHandler.getAllSettings() (Sprint 02)
  * Config watcher: General settings watcher in MessageHandler
  *
+ * @example
+ * ```tsx
+ * const modelsSettings = useModelsSettings();
+ *
+ * // Wire up message handlers in useMessageRouter
+ * useMessageRouter({
+ *   [MessageType.SETTINGS_DATA]: modelsSettings.handleSettingsData,
+ *   [MessageType.MODEL_DATA]: modelsSettings.handleModelData,
+ * });
+ *
+ * // Compose persistence into usePersistence
+ * usePersistence({
+ *   ...modelsSettings.persistedState,
+ * });
+ *
+ * // Update a setting with optimistic update and backend sync
+ * modelsSettings.updateSetting('temperature', 0.5);
+ * modelsSettings.updateSetting('includeCraftGuides', false);
+ * modelsSettings.updateSetting('maxTokens', 15000);
+ *
+ * // Change model for a specific scope
+ * modelsSettings.setModelSelection('assistant', 'anthropic/claude-sonnet-4.5');
+ * modelsSettings.setModelSelection('context', 'z-ai/glm-4.6');
+ *
+ * // Use in SettingsOverlay component
+ * <SettingsOverlay
+ *   modelOptions={modelsSettings.modelOptions}
+ *   categoryModelOptions={modelsSettings.categoryModelOptions}
+ *   settings={modelsSettings.settings}
+ *   modelSelections={modelsSettings.modelSelections}
+ *   onUpdateSetting={modelsSettings.updateSetting}
+ *   onSetModelSelection={modelsSettings.setModelSelection}
+ * />
+ * ```
+ *
  * @returns Settings state, actions, and persisted state
  */
 export const useModelsSettings = (): UseModelsSettingsReturn => {
