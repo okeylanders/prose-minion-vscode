@@ -56,16 +56,12 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
   }, []);
 
   /**
-   * Effect: handleInjection
-   *
-   * Trigger: When dictionaryInjection changes (from paste button or right-click menu)
-   *
-   * Purpose: Populates the dictionary form fields from incoming injection data.
+   * Populates dictionary form fields from incoming injection data.
    * - Sets word, context, and source metadata from the injection
    * - If autoRun is false, clears the injection immediately (we're done)
    * - If autoRun is true, leaves injection for the autoRunLookup effect to handle
    */
-  React.useEffect(() => {
+  const populateDictionaryFromInjection = React.useCallback(() => {
     const injection = selection.dictionaryInjection;
     if (!injection) {
       return;
@@ -94,11 +90,21 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
   }, [selection.dictionaryInjection, normalizePhrase, dictionary, selection]);
 
   /**
-   * Effect: autoRunLookup
+   * Effect: handleInjection
    *
-   * Trigger: When dictionaryInjection changes AND autoRun flag is true
+   * Trigger: When dictionaryInjection changes (from paste button or right-click menu)
    *
-   * Purpose: Automatically triggers fast dictionary lookup from right-click menu.
+   * Purpose: Populates the dictionary form fields from incoming injection data.
+   * - Sets word, context, and source metadata from the injection
+   * - If autoRun is false, clears the injection immediately (we're done)
+   * - If autoRun is true, leaves injection for the autoRunLookup effect to handle
+   */
+  React.useEffect(() => {
+    populateDictionaryFromInjection();
+  }, [populateDictionaryFromInjection]);
+
+  /**
+   * Automatically triggers fast dictionary lookup from right-click menu.
    * - Reads word directly from injection (not dictionary state) to avoid race condition
    * - Posts FAST_GENERATE_DICTIONARY message to extension
    * - Clears injection after triggering
@@ -106,7 +112,7 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
    * Flow: Right-click "Look Up Word" → extension sends injection with autoRun:true
    *       → handleInjection populates form → this effect fires the API call
    */
-  React.useEffect(() => {
+  const autoRunLookupWhenInjected = React.useCallback(() => {
     const injection = selection.dictionaryInjection;
     if (!injection?.autoRun) {
       return;
@@ -139,8 +145,24 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
 
     // Clear injection after triggering lookup
     selection.handleDictionaryInjectionHandled();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selection.dictionaryInjection]);
+  }, [selection.dictionaryInjection, normalizePhrase, dictionary, selection, vscode]);
+
+  /**
+   * Effect: autoRunLookup
+   *
+   * Trigger: When dictionaryInjection changes AND autoRun flag is true
+   *
+   * Purpose: Automatically triggers fast dictionary lookup from right-click menu.
+   * - Reads word directly from injection (not dictionary state) to avoid race condition
+   * - Posts FAST_GENERATE_DICTIONARY message to extension
+   * - Clears injection after triggering
+   *
+   * Flow: Right-click "Look Up Word" → extension sends injection with autoRun:true
+   *       → handleInjection populates form → this effect fires the API call
+   */
+  React.useEffect(() => {
+    autoRunLookupWhenInjected();
+  }, [autoRunLookupWhenInjected]);
 
   const handleLookup = () => {
     const sanitizedWord = normalizePhrase(dictionary.word);

@@ -303,21 +303,25 @@ export const useSettings = (): UseSettingsReturn => {
     });
   }, [vscode]);
 
+  const lockScrollWhenSettingsOpen = React.useCallback(() => {
+    if (showSettings) {
+      document.body.style.overflow = 'hidden';
+      (document.documentElement as HTMLElement).style.overflow = 'hidden';
+    }
+  }, [showSettings]);
+
   // Handle body overflow when settings overlay is open
   React.useEffect(() => {
     const prevBody = document.body.style.overflow;
     const prevDoc = (document.documentElement as HTMLElement).style.overflow;
 
-    if (showSettings) {
-      document.body.style.overflow = 'hidden';
-      (document.documentElement as HTMLElement).style.overflow = 'hidden';
-    }
+    lockScrollWhenSettingsOpen();
 
     return () => {
       document.body.style.overflow = prevBody || '';
       (document.documentElement as HTMLElement).style.overflow = prevDoc || '';
     };
-  }, [showSettings]);
+  }, [showSettings, lockScrollWhenSettingsOpen]);
 
   return {
     // State
