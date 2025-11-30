@@ -39,7 +39,7 @@ export const WordSearchPanel: React.FC<WordSearchPanelProps> = ({
   }, [metrics.sourceMode, metrics.pathText]);
 
   // Convert search result to markdown
-  React.useEffect(() => {
+  const syncMarkdownContent = React.useCallback(() => {
     if (!search.searchResult) {
       setMarkdownContent('');
       return;
@@ -50,6 +50,10 @@ export const WordSearchPanel: React.FC<WordSearchPanelProps> = ({
       setMarkdownContent('');
     }
   }, [search.searchResult]);
+
+  React.useEffect(() => {
+    syncMarkdownContent();
+  }, [syncMarkdownContent]);
 
   const handleCopyResult = () => {
     try {

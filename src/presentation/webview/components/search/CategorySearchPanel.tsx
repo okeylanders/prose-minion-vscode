@@ -41,8 +41,8 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
       : { mode: metrics.sourceMode, pathText: metrics.pathText };
   }, [metrics.sourceMode, metrics.pathText]);
 
-  // Convert category search result to markdown
-  React.useEffect(() => {
+  // Sync category search result to markdown format
+  const syncCategoryMarkdownContent = React.useCallback(() => {
     if (!search.categorySearch.result) {
       setCategoryMarkdownContent('');
       return;
@@ -53,6 +53,10 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
       setCategoryMarkdownContent('');
     }
   }, [search.categorySearch.result]);
+
+  React.useEffect(() => {
+    syncCategoryMarkdownContent();
+  }, [syncCategoryMarkdownContent]);
 
   const handleCopyCategoryResult = () => {
     try {
