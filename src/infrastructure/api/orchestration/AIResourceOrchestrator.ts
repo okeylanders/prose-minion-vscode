@@ -4,12 +4,12 @@
  */
 
 import * as vscode from 'vscode';
-import { OpenRouterClient, OpenRouterMessage } from '@/infrastructure/api/OpenRouterClient';
+import { OpenRouterClient, OpenRouterMessage } from '@providers/OpenRouterClient';
 import { GuideRegistry } from '@/infrastructure/guides/GuideRegistry';
 import { GuideLoader } from '@/tools/shared/guides';
 import { ConversationManager } from './ConversationManager';
-import { ResourceRequestParser } from '../utils/ResourceRequestParser';
-import { ContextResourceRequestParser } from '../utils/ContextResourceRequestParser';
+import { ResourceRequestParser } from '@parsers/ResourceRequestParser';
+import { ContextResourceRequestParser } from '@parsers/ContextResourceRequestParser';
 import { ContextResourceContent, ContextResourceProvider, ContextResourceSummary } from '@/domain/models/ContextGeneration';
 import { TokenUsage } from '@shared/types';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
@@ -194,7 +194,7 @@ export class AIResourceOrchestrator {
           }
 
           this.outputChannel?.appendLine(`[AIResourceOrchestrator] AI requested ${resourceRequest.requestedGuides.length} guides:`);
-          resourceRequest.requestedGuides.forEach((guide, index) => {
+          resourceRequest.requestedGuides.forEach((guide: string, index: number) => {
             this.outputChannel?.appendLine(`  ${index + 1}. ${guide}`);
           });
 
@@ -384,7 +384,7 @@ export class AIResourceOrchestrator {
 
         if (resourceRequest.requestedPaths.length > 0) {
           this.outputChannel?.appendLine(`[AIResourceOrchestrator] Turn ${turnCount}: Context assistant requested ${resourceRequest.requestedPaths.length} resource(s):`);
-          resourceRequest.requestedPaths.forEach((requestedPath, index) => {
+          resourceRequest.requestedPaths.forEach((requestedPath: string, index: number) => {
             this.outputChannel?.appendLine(`  ${index + 1}. ${requestedPath}`);
           });
         } else {

@@ -4,7 +4,7 @@
  */
 
 import { PromptLoader } from '../shared/prompts';
-import { AIResourceOrchestrator, ExecutionResult } from '@/application/services/AIResourceOrchestrator';
+import { AIResourceOrchestrator, ExecutionResult } from '@orchestration/AIResourceOrchestrator';
 
 export interface DictionaryLookupInput {
   word: string;

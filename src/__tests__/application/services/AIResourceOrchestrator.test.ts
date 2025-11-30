@@ -1,12 +1,12 @@
-import { AIResourceOrchestrator } from '@/application/services/AIResourceOrchestrator';
-import { OpenRouterClient } from '@/infrastructure/api/OpenRouterClient';
-import { ConversationManager } from '@/application/services/ConversationManager';
+import { AIResourceOrchestrator } from '@orchestration/AIResourceOrchestrator';
+import { OpenRouterClient } from '@providers/OpenRouterClient';
+import { ConversationManager } from '@orchestration/ConversationManager';
 import { GuideRegistry } from '@/infrastructure/guides/GuideRegistry';
 import { GuideLoader } from '@/tools/shared/guides';
 
 // Mock dependencies
-jest.mock('@/infrastructure/api/OpenRouterClient');
-jest.mock('@/application/services/ConversationManager');
+jest.mock('@providers/OpenRouterClient');
+jest.mock('@orchestration/ConversationManager');
 jest.mock('@/infrastructure/guides/GuideRegistry');
 jest.mock('@/tools/shared/guides');
 

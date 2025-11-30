@@ -440,6 +440,9 @@ import { ApplicationService } from '@/application/services/ApplicationService';
 | `@shared/*` | `src/shared/*` | Both |
 | `@handlers/*` | `src/application/handlers/*` | Extension |
 | `@services/*` | `src/infrastructure/api/services/*` | Extension |
+| `@providers/*` | `src/infrastructure/api/providers/*` | Both |
+| `@orchestration/*` | `src/infrastructure/api/orchestration/*` | Extension |
+| `@parsers/*` | `src/infrastructure/api/parsers/*` | Extension |
 | `@standards` | `src/infrastructure/standards` | Extension |
 | `@secrets` | `src/infrastructure/secrets` | Extension |
 | `@components/*` | `src/presentation/webview/components/*` | Webview |

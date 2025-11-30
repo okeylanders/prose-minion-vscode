@@ -19,7 +19,7 @@ import { StyleFlagsService } from '@services/measurement/StyleFlagsService';
 import { WordFrequencyService } from '@services/measurement/WordFrequencyService';
 import { WordSearchService } from '@services/search/WordSearchService';
 import { StandardsService } from '@services/resources/StandardsService';
-import { AIResourceManager } from '@services/resources/AIResourceManager';
+import { AIResourceManager } from '@orchestration/AIResourceManager';
 
 export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'prose-minion.toolsView';

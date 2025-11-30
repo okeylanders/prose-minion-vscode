@@ -19,8 +19,8 @@
 import * as vscode from 'vscode';
 import { ContextAssistant } from '@/tools/assist/contextAssistant';
 import { ContextResourceResolver } from '@/infrastructure/context/ContextResourceResolver';
-import { AIResourceManager } from '../resources/AIResourceManager';
-import { ResourceLoaderService } from '../resources/ResourceLoaderService';
+import { AIResourceManager } from '@orchestration/AIResourceManager';
+import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
 import {
   ContextGenerationRequest,

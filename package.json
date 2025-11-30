@@ -436,13 +436,16 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
-    "build": "npm test && webpack --mode production",
+    "build": "npm test && npm run typecheck && webpack --mode production",
     "watch": "webpack --mode development --watch",
     "package": "vsce package",
     "lint": "eslint src --ext ts,tsx",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "typecheck": "npm run typecheck:extension && npm run typecheck:webview",
+    "typecheck:extension": "tsc --noEmit -p tsconfig.json",
+    "typecheck:webview": "tsc --noEmit -p tsconfig.webview.json",
     "test:tier1": "jest --testPathPattern='(useMessageRouter|usePersistence|MessageHandler|useAnalysis|useMetrics)'"
   },
   "devDependencies": {
@@ -465,6 +468,7 @@
     "tailwindcss": "^3.0.0",
     "ts-jest": "^29.4.5",
     "ts-loader": "^9.0.0",
+    "tsconfig-paths-webpack-plugin": "^4.2.0",
     "typescript": "^4.9.0",
     "webpack": "^5.0.0",
     "webpack-cli": "^5.0.0"

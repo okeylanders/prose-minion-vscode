@@ -16,9 +16,9 @@
  */
 
 import * as vscode from 'vscode';
-import { OpenRouterClient } from '@/infrastructure/api/OpenRouterClient';
-import { AIResourceOrchestrator, StatusCallback, TokenUsageCallback } from '@/application/services/AIResourceOrchestrator';
-import { ConversationManager } from '@/application/services/ConversationManager';
+import { OpenRouterClient } from '@providers/OpenRouterClient';
+import { AIResourceOrchestrator, StatusCallback, TokenUsageCallback } from './AIResourceOrchestrator';
+import { ConversationManager } from './ConversationManager';
 import { GuideRegistry } from '@/infrastructure/guides/GuideRegistry';
 import { GuideLoader } from '@/tools/shared/guides';
 import { ModelScope } from '@shared/types';

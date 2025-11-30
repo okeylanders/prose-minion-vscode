@@ -4,7 +4,8 @@
 **Identified During**: Sprint 02 - Token Usage Centralization (code review)
 **Priority**: Medium (upgraded from Low)
 **Estimated Effort**: 2-3 hours
-**Status**: 🟡 Plan Approved - Ready for Sprint
+**Status**: ✅ Resolved (2025-11-29, Sprint 03)
+**ADR**: [2025-11-29-infrastructure-layer-reorganization.md](../../docs/adr/2025-11-29-infrastructure-layer-reorganization.md)
 
 ---
 

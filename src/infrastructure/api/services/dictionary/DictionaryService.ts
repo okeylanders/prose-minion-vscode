@@ -19,8 +19,8 @@
 import * as vscode from 'vscode';
 import pLimit from 'p-limit';
 import { DictionaryUtility } from '@/tools/utility/dictionaryUtility';
-import { AIResourceManager } from '../resources/AIResourceManager';
-import { ResourceLoaderService } from '../resources/ResourceLoaderService';
+import { AIResourceManager } from '@orchestration/AIResourceManager';
+import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
 import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
 import {

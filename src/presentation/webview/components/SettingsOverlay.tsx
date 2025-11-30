@@ -6,7 +6,7 @@ import { UseTokenTrackingReturn } from '../hooks/domain/useTokenTracking';
 import { UseContextPathsSettingsReturn } from '../hooks/domain/useContextPathsSettings';
 import { UseWordFrequencySettingsReturn } from '../hooks/domain/useWordFrequencySettings';
 import { UseWordSearchSettingsReturn } from '../hooks/domain/useWordSearchSettings';
-import { RECOMMENDED_MODELS, CATEGORY_MODELS } from '@/infrastructure/api/OpenRouterModels';
+import { RECOMMENDED_MODELS, CATEGORY_MODELS } from '@providers/OpenRouterModels';
 import { VSCodeAPI } from '../types/vscode';
 
 type SettingsOverlayProps = {

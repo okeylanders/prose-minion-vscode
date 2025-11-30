@@ -17,8 +17,8 @@
 import * as vscode from 'vscode';
 import { DialogueMicrobeatAssistant } from '@/tools/assist/dialogueMicrobeatAssistant';
 import { ProseAssistant } from '@/tools/assist/proseAssistant';
-import { AIResourceManager } from '../resources/AIResourceManager';
-import { ResourceLoaderService } from '../resources/ResourceLoaderService';
+import { AIResourceManager } from '@orchestration/AIResourceManager';
+import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
 import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
 import { StatusEmitter } from '@messages';

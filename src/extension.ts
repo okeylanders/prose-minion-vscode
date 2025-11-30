@@ -13,22 +13,22 @@
 
 import * as vscode from 'vscode';
 import { ProseToolsViewProvider } from './application/providers/ProseToolsViewProvider';
-import { SecretStorageService } from './infrastructure/secrets/SecretStorageService';
+import { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
 // SPRINT 01: Import resource services
-import { ResourceLoaderService } from './infrastructure/api/services/resources/ResourceLoaderService';
-import { AIResourceManager } from './infrastructure/api/services/resources/AIResourceManager';
-import { StandardsService } from './infrastructure/api/services/resources/StandardsService';
-import { ToolOptionsProvider } from './infrastructure/api/services/shared/ToolOptionsProvider';
+import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
+import { AIResourceManager } from '@orchestration/AIResourceManager';
+import { StandardsService } from '@services/resources/StandardsService';
+import { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
 // SPRINT 02: Import measurement services
-import { ProseStatsService } from './infrastructure/api/services/measurement/ProseStatsService';
-import { StyleFlagsService } from './infrastructure/api/services/measurement/StyleFlagsService';
-import { WordFrequencyService } from './infrastructure/api/services/measurement/WordFrequencyService';
+import { ProseStatsService } from '@services/measurement/ProseStatsService';
+import { StyleFlagsService } from '@services/measurement/StyleFlagsService';
+import { WordFrequencyService } from '@services/measurement/WordFrequencyService';
 // SPRINT 03: Import analysis services
-import { AssistantToolService } from './infrastructure/api/services/analysis/AssistantToolService';
-import { DictionaryService } from './infrastructure/api/services/dictionary/DictionaryService';
-import { ContextAssistantService } from './infrastructure/api/services/analysis/ContextAssistantService';
+import { AssistantToolService } from '@services/analysis/AssistantToolService';
+import { DictionaryService } from '@services/dictionary/DictionaryService';
+import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 // SPRINT 04: Import search service
-import { WordSearchService } from './infrastructure/api/services/search/WordSearchService';
+import { WordSearchService } from '@services/search/WordSearchService';
 
 let proseToolsViewProvider: ProseToolsViewProvider | undefined;
 
@@ -38,7 +38,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(outputChannel);
 
   outputChannel.appendLine('=== Prose Minion Extension Activated ===');
-  outputChannel.appendLine('>>> Version 1.3.1 <<<');
+  outputChannel.appendLine('>>> Version 1.3.1.2 ( sub-epic 3 sprint 03 ) <<<');
   outputChannel.appendLine(`Extension URI: ${context.extensionUri.fsPath}`);
 
   console.log('Prose Minion extension is now active');

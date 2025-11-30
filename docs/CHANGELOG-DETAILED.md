@@ -103,7 +103,7 @@ Added two new frontier models to both CATEGORY_MODELS and RECOMMENDED_MODELS:
 | **Cogito v2.1 671B** | One of the strongest open MoE models globally, trained via self-play RL for instruction following, coding, and creative writing |
 
 **Files Modified:**
-- `src/infrastructure/api/OpenRouterModels.ts` - Added new model entries
+- `src/infrastructure/api/providers/OpenRouterModels.ts` - Added new model entries
 
 ---
 
