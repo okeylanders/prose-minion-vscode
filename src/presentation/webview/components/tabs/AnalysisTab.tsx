@@ -35,9 +35,14 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
 }) => {
   const [text, setText] = React.useState(selection.selectedText);
 
-  React.useEffect(() => {
+  // Sync local text state from selection
+  const syncTextFromSelection = React.useCallback(() => {
     setText(selection.selectedText);
   }, [selection.selectedText]);
+
+  React.useEffect(() => {
+    syncTextFromSelection();
+  }, [syncTextFromSelection]);
 
   const sourceReference = React.useMemo(() => {
     if (selection.selectedRelativePath && selection.selectedRelativePath.trim().length > 0) {

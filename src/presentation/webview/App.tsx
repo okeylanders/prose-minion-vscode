@@ -182,7 +182,7 @@ export const App: React.FC = () => {
   });
 
   // Request initial model data on app mount
-  React.useEffect(() => {
+  const requestModelData = React.useCallback(() => {
     vscode.postMessage({
       type: MessageType.REQUEST_MODEL_DATA,
       source: 'webview.app',
@@ -190,6 +190,10 @@ export const App: React.FC = () => {
       timestamp: Date.now()
     });
   }, [vscode]);
+
+  React.useEffect(() => {
+    requestModelData();
+  }, [requestModelData]);
 
   // Tab change handler
   const handleTabChange = (tabId: TabId) => {
