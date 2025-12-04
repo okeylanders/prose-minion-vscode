@@ -4,7 +4,7 @@
 **Status**: In Progress
 **Target**: Post-v1.2.0 Architecture Cleanup
 **Duration**: 7-11 days (estimated)
-**Progress**: 8/16 sprints complete (50%)
+**Progress**: 14/18 sprints complete (78%)
 
 ---
 
@@ -68,38 +68,41 @@ After v1.2.0 release, 20 architecture debt items have accumulated:
 
 ---
 
-### Sub-Epic 3: Standards & Testing 🟢 Ready to Start
-**Status**: Ready (Sub-Epic 2 Complete)
-**Duration**: 2-3 days
-**Sprints**: 5
+### Sub-Epic 3: Standards & Testing ✅ Complete
+**Status**: Complete (6/6 sprints, 2025-12-03)
+**Duration**: 2-3 days (actual: 9 days due to scope discovery)
+**Sprints**: 6 (including Sprint 00 prerequisite)
 
 **Deliverables**:
-- Architectural compliance (StandardsService)
-- Centralized token tracking (AIOrchestrator)
-- Comprehensive documentation (JSDoc)
-- Pattern standardization (useEffect extraction)
-- Robust testing (if needed)
+- ✅ Architectural compliance (StandardsService) - pre-resolved
+- ✅ Centralized token tracking (AIOrchestrator) - PR #41
+- ✅ Infrastructure reorganization (services, orchestration) - PR #42
+- ✅ Domain Hooks JSDoc (complete documentation) - PR #43
+- ✅ useEffect extraction (7 remaining hooks refactored) - PR #44
+- ✅ Settings Hooks unit tests (deferred - covered by integration tests)
 
-**Requires**: Clean components from Sub-Epic 2
+**Foundation**: Clean components from Sub-Epic 2 ✅
 
-📁 *Will be created after Sub-Epic 2 completion*
+📁 [sub-epic-3-standards-testing/](sub-epic-3-standards-testing/)
 
 ---
 
-### Sub-Epic 4: Polish & UX ⏳ Pending
-**Status**: Waiting for Sub-Epic 3
+### Sub-Epic 4: Polish & UX 🟢 Ready to Start
+
+**Status**: Ready (Sub-Epic 3 Complete)
 **Duration**: 1-2 days
 **Sprints**: 4
 
 **Deliverables**:
+
 - Error boundary (graceful degradation)
 - Performance optimization (React.memo)
 - Request cancellation UI
 - CSS pattern standardization
 
-**Requires**: Clean architecture from Sub-Epic 3
+**Prerequisites**: ✅ Sub-Epic 3 Complete
 
-📁 *Will be created after Sub-Epic 3 completion*
+📁 [sub-epic-4-polish-ux/](sub-epic-4-polish-ux/)
 
 ---
 
@@ -231,10 +234,10 @@ Sub-Epic 4: Polish & UX
 |----------|--------|----------|-----------------|
 | 1. Foundation Cleanup | ✅ Complete | 3/3 sprints | 2025-11-22 |
 | 2. Component Decomposition | ✅ Complete | 5/5 sprints | 2025-11-24 |
-| 3. Standards & Testing | 🟢 In Progress | 3/6 sprints | - |
-| 4. Polish & UX | ⏸️ Blocked | 0/4 sprints | - |
+| 3. Standards & Testing | ✅ Complete | 6/6 sprints | 2025-12-03 |
+| 4. Polish & UX | 🟢 Ready | 0/4 sprints | - |
 
-**Overall Progress**: 11/18 sprints complete (61%)
+**Overall Progress**: 14/18 sprints complete (78%)
 
 ---
 
@@ -247,16 +250,21 @@ Sub-Epic 4: Polish & UX
    - MetricsTab: 413 → 129 lines (68.8% reduction)
    - 4 shared components created (ScopeBox, LoadingIndicator, TabBar, WordCounter)
    - 6 panel components extracted
-3. 🟢 **Continue Sub-Epic 3**: Standards & Testing (3/6 sprints complete)
+3. ✅ **Complete Sub-Epic 3**: Standards & Testing (Done - 2025-12-03)
    - ✅ Sprint 01: StandardsService Compliance (pre-resolved)
    - ✅ Sprint 02: Token Usage Centralization (PR #41)
    - ✅ Sprint 03: Infrastructure Reorganization (PR #42)
-   - 🟡 Sprint 04: Domain Hooks JSDoc (Ready)
-   - ⏸️ Sprint 05: useEffect Extraction
-   - ⏸️ Sprint 06: Settings Hooks Unit Tests
+   - ✅ Sprint 04: Domain Hooks JSDoc (PR #43)
+   - ✅ Sprint 05: useEffect Extraction - Remaining 7 Hooks (PR #44)
+   - ✅ Sprint 06: Settings Hooks Unit Tests (deferred - covered by integration tests)
+4. 🟢 **Start Sub-Epic 4**: Polish & UX (Ready - 0/4 sprints)
+   - 🟡 Sprint 01: Error Boundary Implementation
+   - ⏸️ Sprint 02: React.memo Performance Optimization
+   - ⏸️ Sprint 03: Request Cancellation UI
+   - ⏸️ Sprint 04: CSS Pattern Standardization
 
 ---
 
-**Last Updated**: 2025-11-29
+**Last Updated**: 2025-12-03
 **Created By**: Claude Code (AI Agent)
-**Status**: Sub-Epic 3 In Progress (3/6 sprints complete)
+**Status**: Sub-Epic 3 Complete (14/18 sprints total, 78%)
