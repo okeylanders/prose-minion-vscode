@@ -3,7 +3,7 @@
  * Generates contextual briefings to accompany prose excerpts
  */
 
-import { AIResourceOrchestrator } from '@orchestration/AIResourceOrchestrator';
+import { AIResourceOrchestrator, StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
 import { PromptLoader } from '../shared/prompts';
 import { ContextPathGroup } from '@shared/types';
 import {
@@ -25,6 +25,10 @@ export interface ContextAssistantOptions {
   resourceProvider: ContextResourceProvider;
   temperature?: number;
   maxTokens?: number;
+  /** AbortSignal for cancellation support */
+  signal?: AbortSignal;
+  /** Callback for streaming tokens (enables streaming mode) */
+  onToken?: StreamingTokenCallback;
 }
 
 export interface ContextAssistantExecutionResult {
@@ -71,7 +75,9 @@ export class ContextAssistant {
       resourceSummaries,
       {
         temperature: options.temperature ?? 0.7,
-        maxTokens: options.maxTokens ?? 10000
+        maxTokens: options.maxTokens ?? 10000,
+        signal: options.signal,
+        onToken: options.onToken
       }
     );
 

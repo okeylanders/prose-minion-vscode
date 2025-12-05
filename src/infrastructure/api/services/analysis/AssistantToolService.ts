@@ -22,6 +22,17 @@ import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
 import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
 import { StatusEmitter } from '@messages';
+import { StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
+
+/**
+ * Options for streaming analysis operations
+ */
+export interface AnalysisStreamingOptions {
+  /** AbortSignal for cancellation support */
+  signal?: AbortSignal;
+  /** Callback for streaming tokens (enables streaming mode) */
+  onToken?: StreamingTokenCallback;
+}
 
 /**
  * Service wrapper for AI-powered assistant analysis
@@ -125,13 +136,15 @@ export class AssistantToolService {
    * @param contextText - Optional surrounding context
    * @param sourceFileUri - Optional source file URI for tracking
    * @param focus - Analysis focus: 'dialogue' (tags only), 'microbeats' (beats only), or 'both' (default)
+   * @param streamingOptions - Optional streaming configuration (signal, onToken)
    * @returns Analysis result with suggestions and optional usage metrics
    */
   async analyzeDialogue(
     text: string,
     contextText?: string,
     sourceFileUri?: string,
-    focus?: 'dialogue' | 'microbeats' | 'both'
+    focus?: 'dialogue' | 'microbeats' | 'both',
+    streamingOptions?: AnalysisStreamingOptions
   ): Promise<AnalysisResult> {
     if (!this.dialogueAssistant) {
       return AnalysisResultFactory.createAnalysisResult(
@@ -145,8 +158,9 @@ export class AssistantToolService {
       const options = this.toolOptions.getOptions(focus);
 
       // Log analysis focus for transparency
+      const isStreaming = !!streamingOptions?.onToken;
       this.outputChannel?.appendLine(
-        `[AssistantToolService] Dialogue Analysis - Focus: ${options.focus} | Craft Guides: ${options.includeCraftGuides ? 'enabled' : 'disabled'}`
+        `[AssistantToolService] Dialogue Analysis - Focus: ${options.focus} | Craft Guides: ${options.includeCraftGuides ? 'enabled' : 'disabled'} | Streaming: ${isStreaming}`
       );
 
       const executionResult = await this.dialogueAssistant.analyze(
@@ -155,7 +169,11 @@ export class AssistantToolService {
           contextText,
           sourceFileUri
         },
-        options
+        {
+          ...options,
+          signal: streamingOptions?.signal,
+          onToken: streamingOptions?.onToken
+        }
       );
 
       return AnalysisResultFactory.createAnalysisResult(
@@ -178,12 +196,14 @@ export class AssistantToolService {
    * @param text - Prose text to analyze
    * @param contextText - Optional surrounding context
    * @param sourceFileUri - Optional source file URI for tracking
+   * @param streamingOptions - Optional streaming configuration (signal, onToken)
    * @returns Analysis result with suggestions and optional usage metrics
    */
   async analyzeProse(
     text: string,
     contextText?: string,
-    sourceFileUri?: string
+    sourceFileUri?: string,
+    streamingOptions?: AnalysisStreamingOptions
   ): Promise<AnalysisResult> {
     if (!this.proseAssistant) {
       return AnalysisResultFactory.createAnalysisResult(
@@ -196,13 +216,23 @@ export class AssistantToolService {
       // Get options from ToolOptionsProvider
       const options = this.toolOptions.getOptions();
 
+      // Log analysis for transparency
+      const isStreaming = !!streamingOptions?.onToken;
+      this.outputChannel?.appendLine(
+        `[AssistantToolService] Prose Analysis - Craft Guides: ${options.includeCraftGuides ? 'enabled' : 'disabled'} | Streaming: ${isStreaming}`
+      );
+
       const executionResult = await this.proseAssistant.analyze(
         {
           text,
           contextText,
           sourceFileUri
         },
-        options
+        {
+          ...options,
+          signal: streamingOptions?.signal,
+          onToken: streamingOptions?.onToken
+        }
       );
 
       return AnalysisResultFactory.createAnalysisResult(

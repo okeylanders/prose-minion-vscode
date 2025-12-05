@@ -111,18 +111,28 @@ export const App: React.FC = () => {
     },
     [MessageType.STREAM_CHUNK]: (msg) => {
       // Route streaming chunks based on domain
-      if (msg.payload.domain === 'dictionary') {
+      const domain = msg.payload.domain;
+      if (domain === 'dictionary') {
         dictionary.handleStreamChunk(msg);
+      } else if (domain === 'analysis') {
+        analysis.handleStreamChunk(msg);
+      } else if (domain === 'context') {
+        context.handleStreamChunk(msg);
       }
-      // Future: add routing for 'analysis', 'context' domains
     },
     [MessageType.STREAM_COMPLETE]: (msg) => {
       // Route stream complete based on domain
-      if (msg.payload.domain === 'dictionary') {
+      const domain = msg.payload.domain;
+      if (domain === 'dictionary') {
         dictionary.handleStreamComplete(msg);
         setError(''); // Clear error on success
+      } else if (domain === 'analysis') {
+        analysis.handleStreamComplete(msg);
+        setError(''); // Clear error on success
+      } else if (domain === 'context') {
+        context.handleStreamComplete(msg);
+        setError(''); // Clear error on success
       }
-      // Future: add routing for 'analysis', 'context' domains
     },
     [MessageType.CONTEXT_RESULT]: (msg) => {
       context.handleContextResult(msg);

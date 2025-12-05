@@ -29,6 +29,17 @@ import {
   DEFAULT_CONTEXT_GROUPS
 } from '@/domain/models/ContextGeneration';
 import { ContextPathGroup } from '@shared/types';
+import { StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
+
+/**
+ * Options for streaming context generation operations
+ */
+export interface ContextStreamingOptions {
+  /** AbortSignal for cancellation support */
+  signal?: AbortSignal;
+  /** Callback for streaming tokens (enables streaming mode) */
+  onToken?: StreamingTokenCallback;
+}
 
 /**
  * Service wrapper for AI-powered context generation
@@ -95,9 +106,13 @@ export class ContextAssistantService {
    * Generate context using AI assistant
    *
    * @param request - Context generation request with excerpt and options
+   * @param streamingOptions - Optional streaming configuration (signal, onToken)
    * @returns Context generation result with content and resource metadata
    */
-  async generateContext(request: ContextGenerationRequest): Promise<ContextGenerationResult> {
+  async generateContext(
+    request: ContextGenerationRequest,
+    streamingOptions?: ContextStreamingOptions
+  ): Promise<ContextGenerationResult> {
     // Ensure context assistant is initialized with correct model
     await this.refreshConfiguration();
 
@@ -136,6 +151,12 @@ export class ContextAssistantService {
       // Get options from ToolOptionsProvider
       const toolOptions = this.toolOptions.getOptions();
 
+      // Log streaming status for transparency
+      const isStreaming = !!streamingOptions?.onToken;
+      this.outputChannel?.appendLine(
+        `[ContextAssistantService] Context Generation - Streaming: ${isStreaming}`
+      );
+
       // Generate context with assistant
       const executionResult = await this.contextAssistant.generate(
         {
@@ -148,7 +169,9 @@ export class ContextAssistantService {
         {
           resourceProvider,
           temperature: toolOptions.temperature,
-          maxTokens: toolOptions.maxTokens
+          maxTokens: toolOptions.maxTokens,
+          signal: streamingOptions?.signal,
+          onToken: streamingOptions?.onToken
         }
       );
 

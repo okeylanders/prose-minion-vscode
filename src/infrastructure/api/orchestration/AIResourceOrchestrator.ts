@@ -158,7 +158,8 @@ export class AIResourceOrchestrator {
       this.outputChannel?.appendLine('...');
 
       // Turn 1: Initial request
-      this.outputChannel?.appendLine(`[AIResourceOrchestrator] Turn 1: Sending initial request to AI`);
+      const isStreaming = !!options.onToken;
+      this.outputChannel?.appendLine(`[AIResourceOrchestrator] Turn 1: Sending initial request to AI (streaming: ${isStreaming})`);
       this.conversationManager.addMessage(conversationId, {
         role: 'user',
         content: firstUserMessage
@@ -169,15 +170,33 @@ export class AIResourceOrchestrator {
         `[AIResourceOrchestrator] Calling OpenRouter API (${messages.length} messages in context) using model ${this.openRouterClient.getModel()}`
       );
       let totalUsage: TokenUsage | undefined;
-      let last = await this.openRouterClient.createChatCompletion(messages, {
-        temperature: requestOptions.temperature,
-        maxTokens: requestOptions.maxTokens,
-        signal: requestOptions.signal
-      });
-      // Emit token usage to callback and accumulate
-      const firstUsage = this.emitTokenUsage(last);
-      if (firstUsage) {
-        totalUsage = { ...firstUsage };
+      let last: { content: string; finishReason?: string; usage?: TokenUsage };
+
+      if (isStreaming) {
+        // Use streaming with resource request detection
+        const streamResult = await this.executeStreamingTurnWithDetection(
+          messages,
+          requestOptions,
+          options.onToken
+        );
+        last = streamResult;
+        // Emit token usage
+        if (streamResult.usage) {
+          this.emitTokenUsage({ usage: streamResult.usage });
+          totalUsage = { ...streamResult.usage };
+        }
+      } else {
+        // Non-streaming path
+        last = await this.openRouterClient.createChatCompletion(messages, {
+          temperature: requestOptions.temperature,
+          maxTokens: requestOptions.maxTokens,
+          signal: requestOptions.signal
+        });
+        // Emit token usage to callback and accumulate
+        const firstUsage = this.emitTokenUsage(last);
+        if (firstUsage) {
+          totalUsage = { ...firstUsage };
+        }
       }
       this.outputChannel?.appendLine(`[AIResourceOrchestrator] Received response from AI (${last.content.length} chars)`);
 
@@ -403,6 +422,8 @@ export class AIResourceOrchestrator {
       }
 
       // Turn 1: Initial request
+      const isStreaming = !!options.onToken;
+      this.outputChannel?.appendLine(`[AIResourceOrchestrator] Context Turn 1: Sending initial request to AI (streaming: ${isStreaming})`);
       this.conversationManager.addMessage(conversationId, {
         role: 'user',
         content: userMessage
@@ -410,17 +431,35 @@ export class AIResourceOrchestrator {
 
       let messages = this.conversationManager.getMessages(conversationId);
       let totalUsage: TokenUsage | undefined;
-      let response = await this.openRouterClient.createChatCompletion(messages, {
-        temperature: requestOptions.temperature,
-        maxTokens: requestOptions.maxTokens,
-        signal: requestOptions.signal
-      });
-      this.outputChannel?.appendLine(`[AIResourceOrchestrator] Turn 1 response received (${response.content.length} chars)`);
-      // Emit token usage to callback and accumulate
-      const firstUsage = this.emitTokenUsage(response);
-      if (firstUsage) {
-        totalUsage = { ...firstUsage };
+      let response: { content: string; finishReason?: string; usage?: TokenUsage };
+
+      if (isStreaming) {
+        // Use streaming with resource request detection
+        const streamResult = await this.executeStreamingTurnWithDetection(
+          messages,
+          requestOptions,
+          options.onToken
+        );
+        response = streamResult;
+        // Emit token usage
+        if (streamResult.usage) {
+          this.emitTokenUsage({ usage: streamResult.usage });
+          totalUsage = { ...streamResult.usage };
+        }
+      } else {
+        // Non-streaming path
+        response = await this.openRouterClient.createChatCompletion(messages, {
+          temperature: requestOptions.temperature,
+          maxTokens: requestOptions.maxTokens,
+          signal: requestOptions.signal
+        });
+        // Emit token usage to callback and accumulate
+        const firstUsage = this.emitTokenUsage(response);
+        if (firstUsage) {
+          totalUsage = { ...firstUsage };
+        }
       }
+      this.outputChannel?.appendLine(`[AIResourceOrchestrator] Turn 1 response received (${response.content.length} chars)`);
 
       // Support up to 2 resource request turns (MAX_TURNS = 3 total)
       let turnCount = 1;
@@ -479,17 +518,33 @@ export class AIResourceOrchestrator {
         // Call API again with updated conversation
         turnCount++;
         messages = this.conversationManager.getMessages(conversationId);
-        response = await this.openRouterClient.createChatCompletion(messages, {
-          temperature: requestOptions.temperature,
-          maxTokens: requestOptions.maxTokens,
-          signal: requestOptions.signal
-        });
+
+        // Use streaming if enabled
+        let turnUsage: TokenUsage | undefined;
+        if (isStreaming) {
+          const streamResult = await this.executeStreamingTurnWithDetection(
+            messages,
+            requestOptions,
+            options.onToken
+          );
+          response = streamResult;
+          if (streamResult.usage) {
+            this.emitTokenUsage({ usage: streamResult.usage });
+            turnUsage = streamResult.usage;
+          }
+        } else {
+          response = await this.openRouterClient.createChatCompletion(messages, {
+            temperature: requestOptions.temperature,
+            maxTokens: requestOptions.maxTokens,
+            signal: requestOptions.signal
+          });
+          turnUsage = this.emitTokenUsage(response);
+        }
         this.outputChannel?.appendLine(
           `[AIResourceOrchestrator] Turn ${turnCount} response received (${response.content.length} chars)`
         );
 
-        // Emit token usage to callback and accumulate
-        const turnUsage = this.emitTokenUsage(response);
+        // Accumulate token usage
         if (turnUsage) {
           if (!totalUsage) {
             totalUsage = { ...turnUsage };
@@ -523,17 +578,33 @@ export class AIResourceOrchestrator {
           });
 
           messages = this.conversationManager.getMessages(conversationId);
-          response = await this.openRouterClient.createChatCompletion(messages, {
-            temperature: requestOptions.temperature,
-            maxTokens: requestOptions.maxTokens,
-            signal: requestOptions.signal
-          });
+
+          // Use streaming for forced output if enabled
+          let finalUsage: TokenUsage | undefined;
+          if (isStreaming) {
+            const streamResult = await this.executeStreamingTurnWithDetection(
+              messages,
+              requestOptions,
+              options.onToken
+            );
+            response = streamResult;
+            if (streamResult.usage) {
+              this.emitTokenUsage({ usage: streamResult.usage });
+              finalUsage = streamResult.usage;
+            }
+          } else {
+            response = await this.openRouterClient.createChatCompletion(messages, {
+              temperature: requestOptions.temperature,
+              maxTokens: requestOptions.maxTokens,
+              signal: requestOptions.signal
+            });
+            finalUsage = this.emitTokenUsage(response);
+          }
           this.outputChannel?.appendLine(
             `[AIResourceOrchestrator] Forced output response received (${response.content.length} chars)`
           );
 
-          // Emit token usage to callback and accumulate
-          const finalUsage = this.emitTokenUsage(response);
+          // Accumulate token usage
           if (finalUsage) {
             if (!totalUsage) {
               totalUsage = { ...finalUsage };
@@ -566,7 +637,57 @@ export class AIResourceOrchestrator {
   }
 
   /**
+   * Execute a streaming turn with resource request detection.
+   * Checks if response starts with '<' (resource request) vs text (final response).
+   * Only forwards tokens to callback on final response turns.
+   *
+   * @returns Full content, usage, finish reason, and whether this was a resource request
+   */
+  private async executeStreamingTurnWithDetection(
+    messages: OpenRouterMessage[],
+    options: AIOptions,
+    onFinalToken?: StreamingTokenCallback
+  ): Promise<{ content: string; finishReason?: string; usage?: TokenUsage; isResourceRequest: boolean }> {
+    let fullContent = '';
+    let usage: TokenUsage | undefined;
+    let finishReason: string | undefined;
+    let isResourceRequest = false;
+    let firstTokenChecked = false;
+
+    for await (const chunk of this.openRouterClient.createStreamingChatCompletion(messages, {
+      temperature: options.temperature,
+      maxTokens: options.maxTokens,
+      signal: options.signal
+    })) {
+      if (chunk.done) {
+        usage = chunk.usage;
+        finishReason = 'stop';
+      } else if (chunk.token) {
+        fullContent += chunk.token;
+
+        // Check first non-empty token to detect resource requests
+        if (!firstTokenChecked && chunk.token.trim()) {
+          firstTokenChecked = true;
+          // Resource requests start with '<guide-request' or '<context-request'
+          isResourceRequest = chunk.token.trimStart().startsWith('<');
+          this.outputChannel?.appendLine(
+            `[AIResourceOrchestrator] First token detection: ${isResourceRequest ? 'resource request' : 'text response'}`
+          );
+        }
+
+        // Only forward tokens to callback if this is a final text response
+        if (!isResourceRequest && onFinalToken) {
+          onFinalToken(chunk.token);
+        }
+      }
+    }
+
+    return { content: fullContent, finishReason, usage, isResourceRequest };
+  }
+
+  /**
    * Fulfill a guide request by loading guides and continuing the conversation
+   * Supports streaming with resource request detection when onToken is provided
    */
   private async fulfillGuideRequest(
     conversationId: string,
@@ -594,6 +715,22 @@ export class AIResourceOrchestrator {
 
     // Call API again with updated conversation
     const messages = this.conversationManager.getMessages(conversationId);
+
+    // Use streaming if onToken callback is provided
+    if (options.onToken) {
+      const streamResult = await this.executeStreamingTurnWithDetection(
+        messages,
+        options,
+        options.onToken
+      );
+      return {
+        content: streamResult.content,
+        finishReason: streamResult.finishReason,
+        usage: streamResult.usage
+      };
+    }
+
+    // Non-streaming path
     return await this.openRouterClient.createChatCompletion(messages, {
       temperature: options.temperature,
       maxTokens: options.maxTokens,

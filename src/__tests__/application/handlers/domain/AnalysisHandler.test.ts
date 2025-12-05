@@ -59,18 +59,26 @@ describe('AnalysisHandler', () => {
       expect(router.hasHandler(MessageType.ANALYZE_PROSE)).toBe(true);
     });
 
-    it('should register exactly 2 routes', () => {
+    it('should register CANCEL_REQUEST route', () => {
       handler.registerRoutes(router);
 
-      expect(router.handlerCount).toBe(2);
+      expect(router.hasHandler(MessageType.CANCEL_REQUEST)).toBe(true);
+    });
+
+    it('should register exactly 3 routes', () => {
+      handler.registerRoutes(router);
+
+      expect(router.handlerCount).toBe(3);
     });
   });
 
   describe('Message Processing', () => {
     it('should handle ANALYZE_DIALOGUE message', async () => {
       const message = createTestMessage(MessageType.ANALYZE_DIALOGUE, {
-        excerpt: 'Test dialogue',
-        includeCraftGuides: false
+        text: 'Test dialogue',
+        contextText: undefined,
+        sourceFileUri: undefined,
+        focus: 'both'
       });
 
       handler.registerRoutes(router);
@@ -81,8 +89,9 @@ describe('AnalysisHandler', () => {
 
     it('should handle ANALYZE_PROSE message', async () => {
       const message = createTestMessage(MessageType.ANALYZE_PROSE, {
-        excerpt: 'Test prose',
-        includeCraftGuides: false
+        text: 'Test prose',
+        contextText: undefined,
+        sourceFileUri: undefined
       });
 
       handler.registerRoutes(router);
@@ -97,8 +106,10 @@ describe('AnalysisHandler', () => {
       mockService.analyzeDialogue.mockRejectedValue(new Error('Service failure'));
 
       const message = createTestMessage(MessageType.ANALYZE_DIALOGUE, {
-        excerpt: 'Test',
-        includeCraftGuides: false
+        text: 'Test dialogue',
+        contextText: undefined,
+        sourceFileUri: undefined,
+        focus: 'both'
       });
 
       handler.registerRoutes(router);
@@ -111,8 +122,10 @@ describe('AnalysisHandler', () => {
       mockService.analyzeDialogue.mockRejectedValue(new Error('Service failure'));
 
       const message = createTestMessage(MessageType.ANALYZE_DIALOGUE, {
-        excerpt: 'Test',
-        includeCraftGuides: false
+        text: 'Test dialogue',
+        contextText: undefined,
+        sourceFileUri: undefined,
+        focus: 'both'
       });
 
       handler.registerRoutes(router);

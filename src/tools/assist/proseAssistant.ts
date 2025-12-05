@@ -4,7 +4,7 @@
  */
 
 import { PromptLoader } from '../shared/prompts';
-import { AIResourceOrchestrator, ExecutionResult } from '@orchestration/AIResourceOrchestrator';
+import { AIResourceOrchestrator, ExecutionResult, StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
 
 export interface ProseAssistantInput {
   text: string;
@@ -16,6 +16,10 @@ export interface ProseAssistantOptions {
   includeCraftGuides?: boolean;
   temperature?: number;
   maxTokens?: number;
+  /** AbortSignal for cancellation support */
+  signal?: AbortSignal;
+  /** Callback for streaming tokens (enables streaming mode) */
+  onToken?: StreamingTokenCallback;
 }
 
 export class ProseAssistant {
@@ -43,7 +47,9 @@ export class ProseAssistant {
       {
         includeCraftGuides: options?.includeCraftGuides,
         temperature: options?.temperature ?? 0.7,
-        maxTokens: options?.maxTokens ?? 10000
+        maxTokens: options?.maxTokens ?? 10000,
+        signal: options?.signal,
+        onToken: options?.onToken
       }
     );
   }

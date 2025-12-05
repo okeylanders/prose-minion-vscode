@@ -9,6 +9,7 @@ import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { ErrorBoundary } from '../shared/ErrorBoundary';
 import { LoadingIndicator } from '../shared/LoadingIndicator';
 import { WordCounter } from '../shared/WordCounter';
+import { StreamingContent } from '../shared/StreamingContent';
 import { formatAnalysisAsMarkdown } from '../../utils/formatters';
 import { VSCodeAPI } from '../../types/vscode';
 import { UseAnalysisReturn } from '../../hooks/domain/useAnalysis';
@@ -145,6 +146,36 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
     selection.requestSelection('assistant_context');
   }, [selection]);
 
+  const handleCancelAnalysisStreaming = React.useCallback(() => {
+    if (analysis.currentRequestId) {
+      vscode.postMessage({
+        type: MessageType.CANCEL_REQUEST,
+        source: 'webview.analysis.tab',
+        payload: {
+          requestId: analysis.currentRequestId,
+          domain: 'analysis'
+        },
+        timestamp: Date.now()
+      });
+    }
+    analysis.cancelStreaming();
+  }, [analysis, vscode]);
+
+  const handleCancelContextStreaming = React.useCallback(() => {
+    if (context.currentRequestId) {
+      vscode.postMessage({
+        type: MessageType.CANCEL_REQUEST,
+        source: 'webview.analysis.tab',
+        payload: {
+          requestId: context.currentRequestId,
+          domain: 'context'
+        },
+        timestamp: Date.now()
+      });
+    }
+    context.cancelStreaming();
+  }, [context, vscode]);
+
   const handleCopyAnalysisResult = () => {
     if (!analysis.result) {
       return;
@@ -271,11 +302,11 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
           <button
             className="context-assist-button"
             onClick={handleGenerateContext}
-            disabled={context.loading || !text.trim()}
+            disabled={context.loading || context.isStreaming || !text.trim()}
             title="Let the context assistant build a briefing"
             aria-label="Generate context with assistant"
           >
-            {context.loading ? (
+            {context.loading || context.isStreaming ? (
               <div className="spinner spinner-small"></div>
             ) : (
               '🤖'
@@ -312,7 +343,17 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
             </span>
           )}
         </div>
-        {(context.statusMessage && context.loading) && (
+        {context.isStreaming && (
+          <StreamingContent
+            content={context.streamingContent}
+            isStreaming={context.isStreaming}
+            isBuffering={context.isBuffering}
+            tokenCount={context.streamingTokenCount}
+            onCancel={handleCancelContextStreaming}
+            className="context-streaming"
+          />
+        )}
+        {(context.statusMessage && context.loading && !context.isStreaming) && (
           <div className="context-status">{context.statusMessage}</div>
         )}
         {context.requestedResources && context.requestedResources.length > 0 && (
@@ -351,14 +392,14 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
           <button
             className="action-button primary"
             onClick={() => handleAnalyzeDialogue('both')}
-            disabled={!text.trim() || analysis.loading}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
           >
             🎭 Dialogue & Beats
           </button>
           <button
             className="action-button primary"
             onClick={handleAnalyzeProse}
-            disabled={!text.trim() || analysis.loading}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
           >
             📝 Prose
           </button>
@@ -369,21 +410,31 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
           <button
             className="action-button secondary"
             onClick={() => handleAnalyzeDialogue('dialogue')}
-            disabled={!text.trim() || analysis.loading}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
           >
             💬 Dialogue Only
           </button>
           <button
             className="action-button secondary"
             onClick={() => handleAnalyzeDialogue('microbeats')}
-            disabled={!text.trim() || analysis.loading}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
           >
             🎭 Microbeats Only
           </button>
         </div>
       </div>
 
-      {analysis.loading && (
+      {analysis.isStreaming && (
+        <StreamingContent
+          content={analysis.streamingContent}
+          isStreaming={analysis.isStreaming}
+          isBuffering={analysis.isBuffering}
+          tokenCount={analysis.streamingTokenCount}
+          onCancel={handleCancelAnalysisStreaming}
+        />
+      )}
+
+      {analysis.loading && !analysis.isStreaming && (
         <LoadingIndicator
           isLoading={analysis.loading}
           statusMessage={analysis.statusMessage}
@@ -392,7 +443,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
         />
       )}
 
-      {analysis.result && (
+      {analysis.result && !analysis.isStreaming && (
         <div className="result-box">
           <div className="result-action-bar">
             <button

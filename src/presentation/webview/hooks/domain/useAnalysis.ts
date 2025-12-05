@@ -2,11 +2,18 @@
  * useAnalysis - Domain hook for prose/dialogue analysis operations
  *
  * Manages analysis results, loading state, guides, and status messages.
+ * Includes streaming support for progressive response display.
  */
 
 import * as React from 'react';
 import { usePersistedState } from '../usePersistence';
-import { AnalysisResultMessage, StatusMessage } from '@messages';
+import { useStreaming } from '../useStreaming';
+import {
+  AnalysisResultMessage,
+  StatusMessage,
+  StreamChunkMessage,
+  StreamCompleteMessage
+} from '@messages';
 
 export interface AnalysisState {
   result: string;
@@ -15,6 +22,12 @@ export interface AnalysisState {
   usedGuides: string[];
   tickerMessage: string;
   statusMessage: string;
+  // Streaming state
+  isStreaming: boolean;
+  isBuffering: boolean;
+  streamingContent: string;
+  streamingTokenCount: number;
+  currentRequestId: string | null;
 }
 
 export interface AnalysisActions {
@@ -23,6 +36,11 @@ export interface AnalysisActions {
   setLoading: (loading: boolean) => void;
   clearResult: () => void;
   clearStatus: () => void;
+  // Streaming actions
+  handleStreamChunk: (message: StreamChunkMessage) => void;
+  handleStreamComplete: (message: StreamCompleteMessage) => void;
+  startStreaming: (requestId: string) => void;
+  cancelStreaming: () => void;
 }
 
 export interface AnalysisPersistence {
@@ -76,6 +94,10 @@ export const useAnalysis = (): UseAnalysisReturn => {
   const [tickerMessage, setTickerMessage] = React.useState<string>(persisted?.tickerMessage ?? '');
   const [statusMessage, setStatusMessage] = React.useState<string>(persisted?.statusMessage ?? '');
 
+  // Streaming state (using useStreaming hook)
+  const streaming = useStreaming();
+  const [currentRequestId, setCurrentRequestId] = React.useState<string | null>(null);
+
   // Clear result when analysis starts
   const clearResultWhenLoading = React.useCallback(() => {
     if (loading) {
@@ -122,6 +144,51 @@ export const useAnalysis = (): UseAnalysisReturn => {
     setTickerMessage('');
   }, []);
 
+  // Streaming handlers
+  const startStreaming = React.useCallback((requestId: string) => {
+    setCurrentRequestId(requestId);
+    streaming.startStreaming();
+    setLoading(true);
+    setResult(''); // Clear previous result
+  }, [streaming]);
+
+  const handleStreamChunk = React.useCallback((message: StreamChunkMessage) => {
+    const { domain, token, requestId } = message.payload;
+    // Only handle analysis domain chunks
+    if (domain !== 'analysis') return;
+
+    // Auto-start streaming on first chunk (if not already streaming)
+    if (!streaming.isStreaming) {
+      setCurrentRequestId(requestId);
+      streaming.startStreaming();
+      setResult(''); // Clear previous result
+    }
+
+    streaming.appendToken(token);
+  }, [streaming]);
+
+  const handleStreamComplete = React.useCallback((message: StreamCompleteMessage) => {
+    const { domain, cancelled } = message.payload;
+    // Only handle analysis domain completion
+    if (domain !== 'analysis') return;
+
+    streaming.endStreaming();
+    setCurrentRequestId(null);
+    setLoading(false);
+
+    if (!cancelled) {
+      // Content will come through ANALYSIS_RESULT message for backward compatibility
+      // The streaming content is shown progressively until then
+    }
+  }, [streaming]);
+
+  const cancelStreaming = React.useCallback(() => {
+    streaming.reset();
+    setCurrentRequestId(null);
+    setLoading(false);
+    setStatusMessage('');
+  }, [streaming]);
+
   return {
     // State
     result,
@@ -130,6 +197,12 @@ export const useAnalysis = (): UseAnalysisReturn => {
     usedGuides,
     tickerMessage,
     statusMessage,
+    // Streaming state
+    isStreaming: streaming.isStreaming,
+    isBuffering: streaming.isBuffering,
+    streamingContent: streaming.displayContent,
+    streamingTokenCount: streaming.tokenCount,
+    currentRequestId,
 
     // Actions
     handleAnalysisResult,
@@ -137,6 +210,11 @@ export const useAnalysis = (): UseAnalysisReturn => {
     setLoading,
     clearResult,
     clearStatus,
+    // Streaming actions
+    handleStreamChunk,
+    handleStreamComplete,
+    startStreaming,
+    cancelStreaming,
 
     // Persistence
     persistedState: {
