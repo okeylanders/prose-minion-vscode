@@ -1,238 +1,359 @@
-# Sprint 03: Request Cancellation UI
+# Sprint 03: Streaming Responses + Cancellation UI
 
 **Status**: 🟡 Ready
-**Estimated Time**: 4-6 hours
+**Estimated Time**: 8-10 hours
 **Priority**: MEDIUM
-**Branch**: `sprint/epic-ahp-v1.3-sub4-03-request-cancellation-ui`
+**Branch**: `sprint/epic-ahp-v1.3-sub4-03-streaming-cancel`
 
 ---
 
 ## Problem
 
-Backend infrastructure for request cancellation is now implemented (PR #31), but not exposed to the UI layer. Users cannot cancel long-running AI requests (analysis, dictionary generation, context generation, word search, metrics).
+1. **No streaming**: Users wait for full response with no feedback (poor UX)
+2. **Ineffective cancellation**: AbortController only stops local fetch, server keeps processing/billing
+3. **No cancel button**: Users can't abort long-running requests
 
-**Current Behavior**: User starts long request → must wait for completion (no cancel option)
+**Current Behavior**: User starts request → waits in silence → gets full response (or gives up)
 
-**Impact**:
-- Expensive requests burn tokens even if user changes mind
-- No way to stop accidental large context generation
-- Poor UX for users who want to refine query mid-request
+**Desired Behavior**:
+- Streaming: Progressive response display (5s buffer → 100ms debounce)
+- Cancel button: Actually stops server-side generation (saves tokens)
+- Smooth UX: Text appears progressively, user feels in control
 
-**Desired Behavior**: Cancel button appears during loading → user can abort → clean cleanup
+---
+
+## Scope
+
+### Phase 3A: Streaming API Responses
+Add streaming support to single-request AI tools (NOT Fast Dictionary - already has fan-out pattern).
+
+**Tools to update:**
+- Dialogue Analysis
+- Prose Analysis
+- Context Assistant
+- Standard Dictionary Lookup
+
+**NOT included:**
+- Fast Dictionary (uses fan-out, already has progress bar)
+- Category Search (returns structured data, streaming less useful)
+- Word Search / Metrics (not AI-based)
+
+### Phase 3B: Cancel UI
+Add cancel button to LoadingIndicator, wire to AbortController.
 
 ---
 
 ## Prerequisites
 
-- ✅ Backend infrastructure complete (PR #31):
-  - `AIOptions` supports `signal` and `timeoutMs`
-  - `AIResourceOrchestrator.createTerminationContext()` handles both external signals and timeouts
-  - `OpenRouterClient.createChatCompletion()` passes signal to fetch
-  - Proper cleanup with `termination.dispose()` in all execution paths
+- ✅ Backend infrastructure complete (PR #31): `AIOptions.signal`, `OpenRouterClient` passes signal to fetch
 - ✅ LoadingIndicator component extracted (Sub-Epic 2, Sprint 02)
 
 ---
 
 ## Tasks
 
-### Phase 1: Domain Hooks State Management
-- [ ] Add `cancelRequest()` method to `useAnalysis` hook
-- [ ] Add `cancelRequest()` method to `useDictionary` hook
-- [ ] Add `cancelRequest()` method to `useContext` hook
-- [ ] Add `cancelRequest()` method to `useSearch` hook
-- [ ] Add `cancelRequest()` method to `useMetrics` hook
-- [ ] Add `abortController` state management to each hook
-- [ ] Create new AbortController when request starts
-- [ ] Cleanup AbortController when request completes/aborts
+### Phase 3A: Streaming (6-7 hours)
 
-### Phase 2: Backend Signal Registry
-- [ ] Add `abortControllers` map to AnalysisHandler (track by request ID)
-- [ ] Add `abortControllers` map to DictionaryHandler
-- [ ] Add `abortControllers` map to ContextHandler
-- [ ] Add `abortControllers` map to SearchHandler
-- [ ] Add `abortControllers` map to MetricsHandler
-- [ ] Register AbortController when request starts
-- [ ] Pass `signal` to orchestrator in all handlers
-- [ ] Cleanup AbortController after request completes
-- [ ] Handle `CANCEL_REQUEST` message in all handlers
+#### Backend: OpenRouterClient Streaming
+- [ ] Add `createStreamingChatCompletion()` method to OpenRouterClient
+- [ ] Enable `stream: true` in request body
+- [ ] Parse Server-Sent Events (SSE) from response
+- [ ] Yield tokens via async generator or callback
+- [ ] Handle `[DONE]` message for completion
+- [ ] Extract token usage from final message
 
-### Phase 3: UI Components
-- [ ] Add `onCancel` prop to LoadingIndicator component
-- [ ] Add cancel button to LoadingIndicator UI (next to spinner)
-- [ ] Wire cancel button to domain hook `cancelRequest()` method
-- [ ] Update AnalysisTab to pass `onCancel` callback
-- [ ] Update UtilitiesTab (dictionary/context) to pass `onCancel` callback
-- [ ] Update SearchTab to pass `onCancel` callback
-- [ ] Update MetricsTab to pass `onCancel` callback
+#### Backend: Handler Streaming Support
+- [ ] Add streaming option to AnalysisHandler
+- [ ] Add streaming option to DictionaryHandler (standard lookup only)
+- [ ] Add streaming option to ContextHandler
+- [ ] Send `STREAM_CHUNK` messages to webview as tokens arrive
+- [ ] Send `STREAM_COMPLETE` message with final result + token usage
 
-### Phase 4: Message Contracts
-- [ ] Add `CANCEL_REQUEST` to `MessageType` enum
-- [ ] Create `CancelRequestPayload` interface with `requestId` and `domain`
-- [ ] Add to message barrel export
-- [ ] Generate unique request IDs for all AI requests
-- [ ] Include request ID in all AI request payloads
+#### Frontend: Streaming State Management
+- [ ] Add `streamBuffer` state to domain hooks
+- [ ] Add `isStreaming` flag (distinct from `isLoading`)
+- [ ] Handle `STREAM_CHUNK` messages (accumulate buffer)
+- [ ] Handle `STREAM_COMPLETE` messages (finalize result)
+
+#### Frontend: Progressive Rendering
+- [ ] Create `StreamingContent` component
+- [ ] Implement 5-second initial buffer (wait before first render)
+- [ ] Implement 100ms debounce (smooth updates after buffer)
+- [ ] Show token count during stream (`Streaming... (142 tokens)`)
+- [ ] Render markdown progressively (debounced)
+
+#### Message Contracts
+- [ ] Add `STREAM_CHUNK` to MessageType enum
+- [ ] Add `STREAM_COMPLETE` to MessageType enum
+- [ ] Create `StreamChunkPayload` interface
+- [ ] Create `StreamCompletePayload` interface
+
+### Phase 3B: Cancel UI (2-3 hours)
+
+#### UI Components
+- [ ] Add `onCancel` prop to LoadingIndicator
+- [ ] Add cancel button next to spinner
+- [ ] Style cancel button (VSCode-themed)
+
+#### Cancel Wiring
+- [ ] Add `cancelRequest()` to useAnalysis hook
+- [ ] Add `cancelRequest()` to useDictionary hook
+- [ ] Add `cancelRequest()` to useContext hook
+- [ ] Wire cancel button in AnalysisTab
+- [ ] Wire cancel button in UtilitiesTab (dictionary/context sections)
+
+#### Message Contracts
+- [ ] Add `CANCEL_REQUEST` to MessageType enum
+- [ ] Create `CancelRequestPayload` interface
 
 ---
 
 ## Implementation Details
 
-### Phase 1: Domain Hooks State Management
+### Phase 3A: Streaming
 
-**Pattern** (apply to all domain hooks):
+#### OpenRouterClient Streaming Method
 
 ```typescript
-// useAnalysis.ts
-export interface AnalysisActions {
-  // ... existing actions
-  cancelAnalysis: () => void;
-}
+// OpenRouterClient.ts
+async *createStreamingChatCompletion(
+  messages: OpenRouterMessage[],
+  options?: {
+    temperature?: number;
+    maxTokens?: number;
+    signal?: AbortSignal;
+    onToken?: (token: string) => void;
+  }
+): AsyncGenerator<{ token: string; done: boolean; usage?: TokenUsage }> {
+  const response = await fetch(`${this.baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: { /* ... */ },
+    signal: options?.signal,
+    body: JSON.stringify({
+      model: this.model,
+      messages,
+      stream: true,  // Enable streaming
+      temperature: options?.temperature ?? 0.7,
+      max_tokens: options?.maxTokens ?? 10000,
+    })
+  });
 
-const useAnalysis = (vscode: VSCodeAPI) => {
-  const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
 
-  const cancelAnalysis = useCallback(() => {
-    if (abortController) {
-      abortController.abort(new Error('User cancelled analysis'));
-      setAbortController(null);
-      setIsLoading(false);
-      setStatusMessage('Analysis cancelled');
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const data = line.slice(6);
+        if (data === '[DONE]') {
+          return;
+        }
+
+        const parsed = JSON.parse(data);
+        const token = parsed.choices?.[0]?.delta?.content || '';
+        const usage = parsed.usage;  // Available in final chunk
+
+        if (token) {
+          yield { token, done: false };
+        }
+        if (usage) {
+          yield { token: '', done: true, usage };
+        }
+      }
     }
-  }, [abortController]);
-
-  const handleAnalyzeDialogue = useCallback((msg: MessageEnvelope<AnalyzeDialoguePayload>) => {
-    const controller = new AbortController();
-    const requestId = generateRequestId();
-
-    setAbortController(controller);
-    setIsLoading(true);
-
-    vscode.postMessage({
-      type: MessageType.ANALYZE_DIALOGUE,
-      source: 'webview.analysis.tab',
-      payload: {
-        ...msg.payload,
-        requestId
-      },
-      timestamp: Date.now()
-    });
-  }, [vscode]);
-
-  // Cleanup on completion
-  const handleAnalysisResult = useCallback((msg: MessageEnvelope<AnalysisResultPayload>) => {
-    setAbortController(null);
-    setIsLoading(false);
-    // ... handle result
-  }, []);
-
-  return {
-    // ... state
-    cancelAnalysis,
-    // ... other actions
-  };
-};
-```
-
-**Helper Function** (create in utils):
-
-```typescript
-// src/presentation/webview/utils/requestId.ts
-let requestCounter = 0;
-
-export function generateRequestId(): string {
-  return `${Date.now()}-${++requestCounter}`;
+  }
 }
 ```
 
----
-
-### Phase 2: Backend Signal Registry
-
-**Pattern** (apply to all domain handlers):
+#### Handler Streaming Pattern
 
 ```typescript
 // AnalysisHandler.ts
-export class AnalysisHandler {
-  private abortControllers = new Map<string, AbortController>();
+private async handleAnalyzeDialogue(message: AnalyzeDialogueMessage) {
+  const requestId = generateRequestId();
 
-  private async handleAnalyzeDialogue(message: MessageEnvelope<AnalyzeDialoguePayload>) {
-    const controller = new AbortController();
-    const requestId = message.payload.requestId || this.generateRequestId();
+  try {
+    let fullContent = '';
 
-    this.abortControllers.set(requestId, controller);
-
-    try {
-      const result = await this.orchestrator.executeWithCapabilities(
-        toolName,
-        systemPrompt,
-        userMessage,
-        {
-          signal: controller.signal,
-          // ... other options
-        }
-      );
-
-      // Send result to webview
-      this.sendToWebview(MessageType.ANALYSIS_RESULT, {
-        result,
-        requestId
-      });
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        this.sendToWebview(MessageType.STATUS, {
-          message: 'Analysis cancelled',
-          type: 'info'
+    for await (const chunk of this.client.createStreamingChatCompletion(
+      messages,
+      { signal: controller.signal }
+    )) {
+      if (chunk.done) {
+        // Final message with usage
+        this.postMessage({
+          type: MessageType.STREAM_COMPLETE,
+          payload: { requestId, content: fullContent, usage: chunk.usage }
         });
       } else {
-        this.handleError(error);
+        fullContent += chunk.token;
+        this.postMessage({
+          type: MessageType.STREAM_CHUNK,
+          payload: { requestId, token: chunk.token }
+        });
       }
-    } finally {
-      this.abortControllers.delete(requestId);
     }
-  }
-
-  private handleCancelRequest(message: MessageEnvelope<CancelRequestPayload>) {
-    const controller = this.abortControllers.get(message.payload.requestId);
-    if (controller) {
-      controller.abort(new Error('User cancelled'));
-      this.abortControllers.delete(message.payload.requestId);
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      this.postMessage({
+        type: MessageType.STATUS,
+        payload: { message: 'Analysis cancelled' }
+      });
     }
-  }
-
-  registerRoutes() {
-    // ... existing routes
-    this.messageRouter.set(MessageType.CANCEL_REQUEST, this.handleCancelRequest.bind(this));
   }
 }
 ```
 
----
+#### Frontend: 5s Buffer + 100ms Debounce
 
-### Phase 3: UI Components
+```typescript
+// useStreaming.ts (new hook)
+const INITIAL_BUFFER_MS = 5000;
+const DEBOUNCE_MS = 100;
 
-**Update LoadingIndicator**:
+export function useStreaming() {
+  const [buffer, setBuffer] = useState('');
+  const [displayContent, setDisplayContent] = useState('');
+  const [isBuffering, setIsBuffering] = useState(true);
+  const [tokenCount, setTokenCount] = useState(0);
+  const startTimeRef = useRef<number | null>(null);
+
+  const appendToken = useCallback((token: string) => {
+    if (!startTimeRef.current) {
+      startTimeRef.current = Date.now();
+    }
+
+    setBuffer(prev => prev + token);
+    setTokenCount(prev => prev + 1);
+  }, []);
+
+  // Debounced display update
+  useEffect(() => {
+    if (!startTimeRef.current) return;
+
+    const elapsed = Date.now() - startTimeRef.current;
+
+    // Still in initial buffer phase
+    if (elapsed < INITIAL_BUFFER_MS) {
+      return;
+    }
+
+    // Past buffer - start debounced updates
+    setIsBuffering(false);
+
+    const timer = setTimeout(() => {
+      setDisplayContent(buffer);
+    }, DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [buffer]);
+
+  const reset = useCallback(() => {
+    setBuffer('');
+    setDisplayContent('');
+    setIsBuffering(true);
+    setTokenCount(0);
+    startTimeRef.current = null;
+  }, []);
+
+  return {
+    buffer,
+    displayContent,
+    isBuffering,
+    tokenCount,
+    appendToken,
+    reset
+  };
+}
+```
+
+#### StreamingContent Component
+
+```tsx
+// StreamingContent.tsx
+interface StreamingContentProps {
+  content: string;
+  isStreaming: boolean;
+  isBuffering: boolean;
+  tokenCount: number;
+  onCancel?: () => void;
+}
+
+export const StreamingContent: React.FC<StreamingContentProps> = ({
+  content,
+  isStreaming,
+  isBuffering,
+  tokenCount,
+  onCancel
+}) => {
+  if (isBuffering) {
+    return (
+      <div className="streaming-buffer">
+        <div className="spinner" />
+        <span>Streaming... ({tokenCount} tokens)</span>
+        {onCancel && (
+          <button onClick={onCancel} className="cancel-button">
+            Cancel
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="streaming-content">
+      <div className="streaming-header">
+        {isStreaming && (
+          <>
+            <span className="streaming-indicator">⟳ Streaming ({tokenCount} tokens)</span>
+            {onCancel && (
+              <button onClick={onCancel} className="cancel-button">
+                Cancel
+              </button>
+            )}
+          </>
+        )}
+      </div>
+      <MarkdownRenderer content={content} />
+    </div>
+  );
+};
+```
+
+### Phase 3B: Cancel UI
+
+#### LoadingIndicator with Cancel
 
 ```tsx
 // LoadingIndicator.tsx
 interface LoadingIndicatorProps {
   statusMessage?: string;
   defaultMessage?: string;
-  onCancel?: () => void; // NEW
+  onCancel?: () => void;  // NEW
+  showCancel?: boolean;   // NEW
 }
 
 export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
   statusMessage,
   defaultMessage = 'Processing...',
-  onCancel
+  onCancel,
+  showCancel = true
 }) => (
   <div className="loading-indicator">
     <div className="loading-header">
-      <div className="spinner"></div>
-      <div className="loading-text">
-        <div>{statusMessage || defaultMessage}</div>
-      </div>
-      {onCancel && (
-        <button onClick={onCancel} className="cancel-button" title="Cancel request">
-          ✕ Cancel
+      <div className="spinner" />
+      <span>{statusMessage || defaultMessage}</span>
+      {showCancel && onCancel && (
+        <button onClick={onCancel} className="cancel-button" title="Cancel">
+          ✕
         </button>
       )}
     </div>
@@ -241,54 +362,34 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
 );
 ```
 
-**Wire in AnalysisTab**:
-
-```tsx
-// AnalysisTab.tsx
-{isLoading && (
-  <LoadingIndicator
-    statusMessage={statusMessage}
-    defaultMessage="Analyzing..."
-    onCancel={cancelAnalysis} // from useAnalysis hook
-  />
-)}
-```
-
-**Apply to all tabs**: SearchTab, MetricsTab, UtilitiesTab (dictionary/context sections)
-
 ---
 
-### Phase 4: Message Contracts
-
-**Add to `MessageType` enum** (src/shared/types/messages/base.ts):
+## Message Contracts
 
 ```typescript
-export enum MessageType {
-  // ... existing types
-  CANCEL_REQUEST = 'cancelRequest',
+// src/shared/types/messages/streaming.ts (new file)
+export interface StreamChunkPayload {
+  requestId: string;
+  token: string;
 }
-```
 
-**Create `CancelRequestPayload`** (src/shared/types/messages/base.ts or domain-specific file):
+export interface StreamCompletePayload {
+  requestId: string;
+  content: string;
+  usage?: TokenUsage;
+}
 
-```typescript
 export interface CancelRequestPayload {
   requestId: string;
-  domain: 'analysis' | 'dictionary' | 'context' | 'search' | 'metrics';
+  domain: 'analysis' | 'dictionary' | 'context';
 }
 
-export type CancelRequestMessage = MessageEnvelope<CancelRequestPayload>;
-```
-
-**Update all AI request payloads** to include `requestId?`:
-
-```typescript
-// Example: AnalyzeDialoguePayload
-export interface AnalyzeDialoguePayload {
-  text: string;
-  sourceUri?: string;
-  relativePath?: string;
-  requestId?: string; // NEW
+// Add to MessageType enum
+export enum MessageType {
+  // ... existing
+  STREAM_CHUNK = 'streamChunk',
+  STREAM_COMPLETE = 'streamComplete',
+  CANCEL_REQUEST = 'cancelRequest',
 }
 ```
 
@@ -296,136 +397,88 @@ export interface AnalyzeDialoguePayload {
 
 ## Acceptance Criteria
 
-- ✅ Cancel button appears during all loading states
-- ✅ Domain hooks manage AbortControllers (create on request, cleanup on complete/abort)
-- ✅ Backend handlers track signals by request ID
-- ✅ Users can cancel analysis, dictionary, context, search, and metrics requests
-- ✅ Cancel button sends `CANCEL_REQUEST` message to backend
-- ✅ Backend aborts fetch via AbortController
-- ✅ Proper cleanup (no orphaned promises)
-- ✅ UI shows "Cancelled" status message after abort
-- ✅ No errors in console after cancellation
-- ✅ Manual test: Start long request → click cancel → request aborts cleanly
+### Phase 3A: Streaming
+- [ ] Dialogue analysis streams progressively
+- [ ] Prose analysis streams progressively
+- [ ] Context assistant streams progressively
+- [ ] Standard dictionary lookup streams progressively
+- [ ] 5-second buffer before first render
+- [ ] 100ms debounce after buffer
+- [ ] Token count displayed during stream
+- [ ] Markdown renders correctly (debounced)
+- [ ] Fast Dictionary unchanged (fan-out pattern preserved)
 
----
-
-## Testing Strategy
-
-### Manual Testing Checklist
-
-1. **Analysis Cancellation**:
-   - Start dialogue analysis (long text)
-   - Click cancel button
-   - Verify loading stops
-   - Verify status message shows "Analysis cancelled"
-   - Verify no errors in console
-   - Verify can start new analysis immediately
-
-2. **Dictionary Cancellation**:
-   - Start fast dictionary generation (6 blocks)
-   - Click cancel button during first block
-   - Verify loading stops
-   - Verify subsequent blocks don't execute
-   - Verify status message shows "Dictionary generation cancelled"
-
-3. **Context Cancellation**:
-   - Start context generation with multiple resources
-   - Click cancel button
-   - Verify loading stops
-   - Verify status message shows "Context generation cancelled"
-
-4. **Search Cancellation**:
-   - Start word search on large corpus
-   - Click cancel button
-   - Verify loading stops
-   - Verify status message shows "Search cancelled"
-
-5. **Metrics Cancellation**:
-   - Start metrics calculation (if applicable for AI metrics)
-   - Click cancel button
-   - Verify loading stops
-
-6. **Edge Cases**:
-   - Click cancel after request completes (should be no-op)
-   - Click cancel multiple times (should handle gracefully)
-   - Start new request after cancelling (should work normally)
+### Phase 3B: Cancel UI
+- [ ] Cancel button appears during all loading/streaming states
+- [ ] Cancel actually stops server-side generation (verify token savings)
+- [ ] UI shows "Cancelled" status after abort
+- [ ] Can start new request immediately after cancel
+- [ ] No console errors after cancellation
 
 ---
 
 ## Files to Create/Update
 
 ### Create
-- `src/presentation/webview/utils/requestId.ts` (request ID generation)
+- `src/presentation/webview/hooks/useStreaming.ts`
+- `src/presentation/webview/components/shared/StreamingContent.tsx`
+- `src/shared/types/messages/streaming.ts`
 
-### Update - Domain Hooks (Phase 1)
-- `src/presentation/webview/hooks/domain/useAnalysis.ts`
-- `src/presentation/webview/hooks/domain/useDictionary.ts`
-- `src/presentation/webview/hooks/domain/useContext.ts`
-- `src/presentation/webview/hooks/domain/useSearch.ts`
-- `src/presentation/webview/hooks/domain/useMetrics.ts`
-
-### Update - Backend Handlers (Phase 2)
+### Update - Backend
+- `src/infrastructure/api/providers/OpenRouterClient.ts` (add streaming method)
 - `src/application/handlers/domain/AnalysisHandler.ts`
 - `src/application/handlers/domain/DictionaryHandler.ts`
 - `src/application/handlers/domain/ContextHandler.ts`
-- `src/application/handlers/domain/SearchHandler.ts`
-- `src/application/handlers/domain/MetricsHandler.ts`
 
-### Update - UI Components (Phase 3)
+### Update - Frontend
+- `src/presentation/webview/hooks/domain/useAnalysis.ts`
+- `src/presentation/webview/hooks/domain/useDictionary.ts`
+- `src/presentation/webview/hooks/domain/useContext.ts`
 - `src/presentation/webview/components/shared/LoadingIndicator.tsx`
 - `src/presentation/webview/components/tabs/AnalysisTab.tsx`
-- `src/presentation/webview/components/tabs/SearchTab.tsx`
-- `src/presentation/webview/components/tabs/MetricsTab.tsx`
 - `src/presentation/webview/components/tabs/UtilitiesTab.tsx`
 
-### Update - Message Contracts (Phase 4)
-- `src/shared/types/messages/base.ts` (add CANCEL_REQUEST enum, CancelRequestPayload)
-- `src/shared/types/messages/analysis.ts` (add requestId to payloads)
-- `src/shared/types/messages/dictionary.ts` (add requestId to payloads)
-- `src/shared/types/messages/context.ts` (add requestId to payloads)
-- `src/shared/types/messages/search.ts` (add requestId to payloads)
-- `src/shared/types/messages/metrics.ts` (add requestId to payloads)
+### Update - Message Contracts
+- `src/shared/types/messages/base.ts` (add new MessageTypes)
+- `src/shared/types/messages/index.ts` (export streaming types)
 
 ---
 
-## Implementation Phases
+## Testing Strategy
 
-**Phase 1** (1-1.5 hours): Domain hooks state management
-- Add AbortController state to hooks
-- Add cancel methods
-- Generate request IDs
+### Streaming Tests
+1. Start dialogue analysis with medium text
+2. Verify 5-second buffer (no content shows immediately)
+3. After 5s, verify content appears and updates smoothly
+4. Verify token count increases during stream
+5. Verify final markdown renders correctly
 
-**Phase 2** (1.5-2 hours): Backend signal registry
-- Add AbortController maps to handlers
-- Pass signals to orchestrator
-- Handle CANCEL_REQUEST messages
+### Cancel Tests
+1. Start long request → click cancel during buffer phase
+2. Start long request → click cancel during streaming phase
+3. Verify token usage is lower after cancel (vs letting it complete)
+4. Verify can start new request after cancel
 
-**Phase 3** (1 hour): UI components
-- Add onCancel prop to LoadingIndicator
-- Wire cancel buttons in all tabs
-
-**Phase 4** (30-45 minutes): Message contracts
-- Add CANCEL_REQUEST type
-- Update payloads with requestId
-
-**Testing** (1 hour): Manual testing all scenarios
-
-**Total**: 4-6 hours
+### Edge Cases
+- Very fast response (completes within buffer period)
+- Very slow response (user waits longer than buffer)
+- Network error during stream
+- Cancel after completion (no-op)
 
 ---
 
 ## Risks and Considerations
 
 ### Risks
-- ⚠️ Race conditions: Cancel arriving after completion (handled by checking controller existence)
-- ⚠️ Orphaned promises: Need cleanup in all code paths (use `finally` blocks)
-- ⚠️ State management complexity: Need to track request IDs across boundary
+- ⚠️ SSE parsing edge cases (partial chunks, malformed data)
+- ⚠️ Memory with long streams (buffer accumulation)
+- ⚠️ Markdown glitches during partial render (mitigated by debounce)
 
 ### Mitigations
-- ✅ Use `finally` for cleanup (guaranteed execution)
-- ✅ Check controller existence before aborting (prevent errors)
-- ✅ Generate unique request IDs (timestamp + counter)
-- ✅ Clean up maps in handlers (delete after completion)
+- ✅ Robust SSE parsing with buffer handling
+- ✅ Reset buffer on completion
+- ✅ 100ms debounce prevents glitchy renders
+- ✅ ErrorBoundary around StreamingContent (from Sprint 01)
 
 ---
 
@@ -438,10 +491,12 @@ export interface AnalyzeDialoguePayload {
 - PR #31: Fast Dictionary Generation (backend cancellation infrastructure)
 - PR #37: LoadingIndicator extraction
 
-**Web APIs**:
+**External Resources**:
+- [OpenRouter Streaming](https://openrouter.ai/docs)
+- [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events)
 - [AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController)
-- [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)
 
 ---
 
 **Created**: 2025-12-03
+**Updated**: 2025-12-04 (Combined 3A Streaming + 3B Cancel UI)

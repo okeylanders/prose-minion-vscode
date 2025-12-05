@@ -22,7 +22,13 @@ describe('useDictionary - Type Contracts', () => {
         isFastGenerating: false,
         progress: undefined,
         lastFastGenerationMetadata: null,
-        tickerMessage: ''
+        tickerMessage: '',
+        // Streaming state
+        isStreaming: false,
+        isBuffering: false,
+        streamingContent: '',
+        streamingTokenCount: 0,
+        currentRequestId: null
       };
 
       expect(state).toHaveProperty('result');
@@ -34,6 +40,9 @@ describe('useDictionary - Type Contracts', () => {
       expect(state).toHaveProperty('isFastGenerating');
       expect(state).toHaveProperty('progress');
       expect(state).toHaveProperty('tickerMessage');
+      expect(state).toHaveProperty('isStreaming');
+      expect(state).toHaveProperty('isBuffering');
+      expect(state).toHaveProperty('streamingContent');
     });
 
     it('should define Actions interface', () => {
@@ -47,7 +56,12 @@ describe('useDictionary - Type Contracts', () => {
         setSource: jest.fn(),
         clearResult: jest.fn(),
         handleFastGenerateResult: jest.fn(),
-        setFastGenerating: jest.fn()
+        setFastGenerating: jest.fn(),
+        // Streaming actions
+        handleStreamChunk: jest.fn(),
+        handleStreamComplete: jest.fn(),
+        startStreaming: jest.fn(),
+        cancelStreaming: jest.fn()
       };
 
       expect(typeof actions.handleDictionaryResult).toBe('function');
@@ -55,6 +69,9 @@ describe('useDictionary - Type Contracts', () => {
       expect(typeof actions.clearResult).toBe('function');
       expect(typeof actions.handleFastGenerateResult).toBe('function');
       expect(typeof actions.setFastGenerating).toBe('function');
+      expect(typeof actions.handleStreamChunk).toBe('function');
+      expect(typeof actions.handleStreamComplete).toBe('function');
+      expect(typeof actions.cancelStreaming).toBe('function');
     });
 
     it('should define Persistence interface', () => {

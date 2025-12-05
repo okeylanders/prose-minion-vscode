@@ -14,12 +14,19 @@ import { ContextResourceContent, ContextResourceProvider, ContextResourceSummary
 import { TokenUsage } from '@shared/types';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
 
+/**
+ * Callback for receiving streaming tokens
+ */
+export type StreamingTokenCallback = (token: string) => void;
+
 export interface AIOptions {
   includeCraftGuides?: boolean;
   temperature?: number;
   maxTokens?: number;
   signal?: AbortSignal;
   timeoutMs?: number;
+  /** When provided, enables streaming mode and calls this callback for each token */
+  onToken?: StreamingTokenCallback;
 }
 
 export interface ExecutionResult {
@@ -264,6 +271,10 @@ export class AIResourceOrchestrator {
   /**
    * Execute an AI request without guide-handling capabilities
    * Suitable for single-turn interactions that only need system + user prompts
+   *
+   * When options.onToken is provided, enables streaming mode where tokens are
+   * delivered progressively via the callback. This allows for real-time display
+   * of AI responses and enables effective cancellation (server stops generating).
    */
   async executeWithoutCapabilities(
     toolName: string,
@@ -271,8 +282,9 @@ export class AIResourceOrchestrator {
     userMessage: string,
     options: AIOptions = {}
   ): Promise<ExecutionResult> {
+    const isStreaming = !!options.onToken;
     this.outputChannel?.appendLine(
-      `\n[AIResourceOrchestrator] Starting single-turn request for ${toolName} (model: ${this.openRouterClient.getModel()})`
+      `\n[AIResourceOrchestrator] Starting single-turn request for ${toolName} (model: ${this.openRouterClient.getModel()}, streaming: ${isStreaming})`
     );
     const conversationId = this.conversationManager.startConversation(toolName, systemMessage);
     const termination = this.createTerminationContext(options);
@@ -288,6 +300,45 @@ export class AIResourceOrchestrator {
       this.outputChannel?.appendLine(
         `[AIResourceOrchestrator] Calling OpenRouter API (${messages.length} messages in context) using model ${this.openRouterClient.getModel()}`
       );
+
+      // Use streaming when onToken callback is provided
+      if (options.onToken) {
+        let fullContent = '';
+        let usage: TokenUsage | undefined;
+        let finishReason: string | undefined;
+
+        for await (const chunk of this.openRouterClient.createStreamingChatCompletion(messages, {
+          temperature: requestOptions.temperature,
+          maxTokens: requestOptions.maxTokens,
+          signal: requestOptions.signal
+        })) {
+          if (chunk.done) {
+            usage = chunk.usage;
+            finishReason = 'stop';
+          } else if (chunk.token) {
+            fullContent += chunk.token;
+            options.onToken(chunk.token);
+          }
+        }
+
+        this.outputChannel?.appendLine(`[AIResourceOrchestrator] Streaming complete (${fullContent.length} chars)\n`);
+
+        // Emit token usage to callback
+        if (usage) {
+          this.emitTokenUsage({ usage });
+        }
+
+        return {
+          content: fullContent + (finishReason === 'length'
+            ? '\n\n---\n\n⚠️ Response truncated. Increase Max Tokens in settings.'
+            : ''),
+          usedGuides: [],
+          requestedResources: [],
+          usage
+        };
+      }
+
+      // Non-streaming path (original behavior)
       const response = await this.openRouterClient.createChatCompletion(messages, {
         temperature: requestOptions.temperature,
         maxTokens: requestOptions.maxTokens,

@@ -85,7 +85,12 @@ export enum MessageType {
   // Fast dictionary generation (parallel)
   FAST_GENERATE_DICTIONARY = 'fast_generate_dictionary',
   FAST_GENERATE_DICTIONARY_RESULT = 'fast_generate_dictionary_result',
-  DICTIONARY_GENERATION_PROGRESS = 'dictionary_generation_progress'
+  DICTIONARY_GENERATION_PROGRESS = 'dictionary_generation_progress',
+
+  // Streaming API responses
+  STREAM_CHUNK = 'stream_chunk',
+  STREAM_COMPLETE = 'stream_complete',
+  CANCEL_REQUEST = 'cancel_request'
 }
 
 export interface BaseMessage {

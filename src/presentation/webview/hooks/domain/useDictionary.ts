@@ -2,14 +2,18 @@
  * useDictionary - Domain hook for dictionary lookup operations
  *
  * Manages dictionary word, context, results, and source tracking.
+ * Includes streaming support for progressive response display.
  */
 
 import * as React from 'react';
 import { usePersistedState } from '../usePersistence';
+import { useStreaming } from '../useStreaming';
 import {
   DictionaryResultMessage,
   FastGenerateDictionaryResultMessage,
-  StatusMessage
+  StatusMessage,
+  StreamChunkMessage,
+  StreamCompleteMessage
 } from '@messages';
 
 export interface FastGenerationMetadata {
@@ -35,6 +39,12 @@ export interface DictionaryState {
   progress: { current: number; total: number } | undefined;
   lastFastGenerationMetadata: FastGenerationMetadata | null;
   tickerMessage: string;
+  // Streaming state
+  isStreaming: boolean;
+  isBuffering: boolean;
+  streamingContent: string;
+  streamingTokenCount: number;
+  currentRequestId: string | null;
 }
 
 export interface DictionaryActions {
@@ -49,6 +59,11 @@ export interface DictionaryActions {
   // Fast generation actions
   handleFastGenerateResult: (message: FastGenerateDictionaryResultMessage) => void;
   setFastGenerating: (isGenerating: boolean) => void;
+  // Streaming actions
+  handleStreamChunk: (message: StreamChunkMessage) => void;
+  handleStreamComplete: (message: StreamCompleteMessage) => void;
+  startStreaming: (requestId: string) => void;
+  cancelStreaming: () => void;
 }
 
 export interface DictionaryPersistence {
@@ -122,6 +137,10 @@ export const useDictionary = (): UseDictionaryReturn => {
   const [lastFastGenerationMetadata, setLastFastGenerationMetadata] = React.useState<FastGenerationMetadata | null>(null);
   const [tickerMessage, setTickerMessage] = React.useState<string>('');
 
+  // Streaming state (using useStreaming hook)
+  const streaming = useStreaming();
+  const [currentRequestId, setCurrentRequestId] = React.useState<string | null>(null);
+
   // Clear result when dictionary lookup starts
   const clearResultWhenLoading = React.useCallback(() => {
     if (loading) {
@@ -187,6 +206,51 @@ export const useDictionary = (): UseDictionaryReturn => {
     }
   }, []);
 
+  // Streaming handlers
+  const startStreaming = React.useCallback((requestId: string) => {
+    setCurrentRequestId(requestId);
+    streaming.startStreaming();
+    setLoading(true);
+    setResult(''); // Clear previous result
+  }, [streaming]);
+
+  const handleStreamChunk = React.useCallback((message: StreamChunkMessage) => {
+    const { domain, token, requestId } = message.payload;
+    // Only handle dictionary domain chunks
+    if (domain !== 'dictionary') return;
+
+    // Auto-start streaming on first chunk (if not already streaming)
+    if (!streaming.isStreaming) {
+      setCurrentRequestId(requestId);
+      streaming.startStreaming();
+      setResult(''); // Clear previous result
+    }
+
+    streaming.appendToken(token);
+  }, [streaming]);
+
+  const handleStreamComplete = React.useCallback((message: StreamCompleteMessage) => {
+    const { domain, content, cancelled } = message.payload;
+    // Only handle dictionary domain completion
+    if (domain !== 'dictionary') return;
+
+    streaming.endStreaming();
+    setCurrentRequestId(null);
+    setLoading(false);
+
+    if (!cancelled) {
+      // Content will come through DICTIONARY_RESULT message for backward compatibility
+      // The streaming content is shown progressively until then
+    }
+  }, [streaming]);
+
+  const cancelStreaming = React.useCallback(() => {
+    streaming.reset();
+    setCurrentRequestId(null);
+    setLoading(false);
+    setStatusMessage('');
+  }, [streaming]);
+
   return {
     // State
     result,
@@ -202,6 +266,12 @@ export const useDictionary = (): UseDictionaryReturn => {
     progress,
     lastFastGenerationMetadata,
     tickerMessage,
+    // Streaming state
+    isStreaming: streaming.isStreaming,
+    isBuffering: streaming.isBuffering,
+    streamingContent: streaming.displayContent,
+    streamingTokenCount: streaming.tokenCount,
+    currentRequestId,
 
     // Actions
     handleDictionaryResult,
@@ -214,6 +284,11 @@ export const useDictionary = (): UseDictionaryReturn => {
     clearResult,
     handleFastGenerateResult,
     setFastGenerating,
+    // Streaming actions
+    handleStreamChunk,
+    handleStreamComplete,
+    startStreaming,
+    cancelStreaming,
 
     // Persistence
     persistedState: {

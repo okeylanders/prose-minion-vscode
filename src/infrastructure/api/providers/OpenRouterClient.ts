@@ -114,6 +114,108 @@ export class OpenRouterClient {
   }
 
   /**
+   * Create a streaming chat completion using Server-Sent Events (SSE).
+   * Yields tokens progressively as they arrive from the server.
+   * When cancelled via signal, server stops generating (saves tokens).
+   */
+  async *createStreamingChatCompletion(
+    messages: OpenRouterMessage[],
+    options?: {
+      temperature?: number;
+      maxTokens?: number;
+      signal?: AbortSignal;
+    }
+  ): AsyncGenerator<{ token: string; done: boolean; usage?: TokenUsage }> {
+    const response = await fetch(`${this.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`,
+        'HTTP-Referer': 'https://github.com/okeylanders/prose-minion-vscode',
+        'X-Title': 'Prose Minion VS Code Extension'
+      },
+      signal: options?.signal,
+      body: JSON.stringify({
+        model: this.model,
+        messages,
+        stream: true,
+        temperature: options?.temperature ?? 0.7,
+        max_tokens: options?.maxTokens ?? 10000,
+        stream_options: { include_usage: true }
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`OpenRouter API error: ${response.status} - ${error}`);
+    }
+
+    if (!response.body) {
+      throw new Error('No response body from OpenRouter API');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (!trimmedLine || !trimmedLine.startsWith('data: ')) {
+            continue;
+          }
+
+          const data = trimmedLine.slice(6);
+          if (data === '[DONE]') {
+            return;
+          }
+
+          try {
+            const parsed = JSON.parse(data);
+            const delta = parsed.choices?.[0]?.delta;
+            const token = delta?.content || '';
+            const finishReason = parsed.choices?.[0]?.finish_reason;
+            const usage = parsed.usage;
+
+            if (token) {
+              yield { token, done: false };
+            }
+
+            if (finishReason || usage) {
+              yield {
+                token: '',
+                done: true,
+                usage: usage ? {
+                  promptTokens: usage.prompt_tokens,
+                  completionTokens: usage.completion_tokens,
+                  totalTokens: usage.total_tokens,
+                  costUsd: (() => {
+                    const rawCost = usage.cost ?? usage.costUsd ?? usage.cost_usd;
+                    const costNum = rawCost !== undefined && rawCost !== null ? Number(rawCost) : undefined;
+                    return Number.isFinite(costNum) ? costNum : undefined;
+                  })()
+                } : undefined
+              };
+            }
+          } catch {
+            // Skip malformed JSON chunks
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+
+  /**
    * Check if API key is configured
    */
   static isConfigured(apiKey?: string): boolean {
