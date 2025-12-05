@@ -23,7 +23,7 @@ interface SearchTabProps {
   modelsSettings: UseModelsSettingsReturn;
 }
 
-export const SearchTab: React.FC<SearchTabProps> = ({
+export const SearchTab = React.memo<SearchTabProps>(({
   vscode,
   search,
   metrics,
@@ -71,4 +71,6 @@ export const SearchTab: React.FC<SearchTabProps> = ({
       )}
     </div>
   );
-};
+});
+
+SearchTab.displayName = 'SearchTab';

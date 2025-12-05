@@ -24,7 +24,7 @@ interface MetricsTabProps {
   wordFrequencySettings: UseWordFrequencySettingsReturn;
 }
 
-export const MetricsTab: React.FC<MetricsTabProps> = ({
+export const MetricsTab = React.memo<MetricsTabProps>(({
   vscode,
   metrics,
   publishingSettings,
@@ -126,4 +126,6 @@ export const MetricsTab: React.FC<MetricsTabProps> = ({
       )}
     </div>
   );
-};
+});
+
+MetricsTab.displayName = 'MetricsTab';

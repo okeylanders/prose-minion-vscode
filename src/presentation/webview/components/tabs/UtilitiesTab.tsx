@@ -22,7 +22,7 @@ interface UtilitiesTabProps {
   settings: UseSettingsReturn;
 }
 
-export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
+export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
   vscode,
   dictionary,
   selection,
@@ -423,4 +423,6 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
       )}
     </div>
   );
-};
+});
+
+UtilitiesTab.displayName = 'UtilitiesTab';

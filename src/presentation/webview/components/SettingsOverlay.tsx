@@ -41,7 +41,7 @@ type SettingsOverlayProps = {
   };
 };
 
-export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
+export const SettingsOverlay = React.memo<SettingsOverlayProps>(({
   visible,
   onClose,
   vscode,
@@ -693,4 +693,6 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
       <div className="settings-footer-note">Settings save automatically.</div>
     </div>
   );
-};
+});
+
+SettingsOverlay.displayName = 'SettingsOverlay';
