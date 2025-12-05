@@ -1233,3 +1233,31 @@ select:focus {
   cursor: not-allowed;
   transform: none;
 }
+
+/* Context preview and header actions */
+.context-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.analysis-preview-button {
+  font-size: 14px;
+}
+
+.context-preview {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 6px;
+  background: var(--vscode-editor-background);
+}
+
+/* Streaming waiting area */
+.streaming-waiting {
+  margin-top: var(--spacing-sm);
+}
+
+.streaming-waiting-indicator .loading-vhs-container {
+  margin-top: 0;
+}

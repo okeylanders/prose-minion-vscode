@@ -36,6 +36,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
   settings
 }) => {
   const [text, setText] = React.useState(selection.selectedText);
+  const [showContextPreview, setShowContextPreview] = React.useState(false);
 
   // Sync local text state from selection
   const syncTextFromSelection = React.useCallback(() => {
@@ -283,14 +284,24 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
           <label className="text-sm font-medium">
             Context Brief (optional)
           </label>
-          <button
-            className="icon-button analysis-paste-button"
-            onClick={handlePasteContext}
-            title="Paste context from selection"
-            aria-label="Paste context"
-          >
-            📥
-          </button>
+          <div className="context-header-actions">
+            <button
+              className="icon-button analysis-paste-button"
+              onClick={handlePasteContext}
+              title="Paste context from selection"
+              aria-label="Paste context"
+            >
+              📥
+            </button>
+            <button
+              className="icon-button analysis-preview-button"
+              onClick={() => setShowContextPreview(prev => !prev)}
+              title={showContextPreview ? 'Hide rendered context preview' : 'Show rendered context preview'}
+              aria-label="Toggle context preview"
+            >
+              {showContextPreview ? '👁️‍🗨️' : '👁️'}
+            </button>
+          </div>
         </div>
         <div className="context-assist-row">
           <textarea
@@ -313,6 +324,11 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
             )}
           </button>
         </div>
+        {showContextPreview && context.contextText.trim() && (
+          <div className="context-preview">
+            <MarkdownRenderer content={context.contextText} />
+          </div>
+        )}
         <div className="context-meta-row">
           <WordCounter
             text={context.contextText}

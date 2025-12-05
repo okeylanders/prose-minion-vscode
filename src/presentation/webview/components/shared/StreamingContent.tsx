@@ -8,6 +8,7 @@
 
 import * as React from 'react';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { LoadingIndicator } from './LoadingIndicator';
 
 interface StreamingContentProps {
   /** Content to display (debounced from streaming hook) */
@@ -22,6 +23,8 @@ interface StreamingContentProps {
   onCancel?: () => void;
   /** Disable cancel button (e.g., no requestId yet) */
   cancelDisabled?: boolean;
+  /** Optional status message while waiting for first token */
+  waitingMessage?: string;
   /** Additional CSS class */
   className?: string;
 }
@@ -33,31 +36,9 @@ export const StreamingContent: React.FC<StreamingContentProps> = ({
   tokenCount,
   onCancel,
   cancelDisabled,
+  waitingMessage = 'Waiting for first tokens…',
   className = ''
 }) => {
-  // During buffer phase, show loading indicator
-  if (isBuffering && isStreaming) {
-    return (
-      <div className={`streaming-buffer ${className}`}>
-        <div className="streaming-buffer-content">
-          <div className="spinner" />
-          <span className="streaming-status">
-            Streaming... ({tokenCount} tokens)
-          </span>
-          {onCancel && (
-            <button onClick={onCancel} className="cancel-button" title="Cancel" disabled={cancelDisabled}>
-              ✕
-            </button>
-          )}
-        </div>
-        <p className="streaming-hint">
-          Buffering response for smoother display...
-        </p>
-      </div>
-    );
-  }
-
-  // After buffer phase, render progressive markdown
   return (
     <div className={`streaming-content ${className}`}>
       {isStreaming && (
@@ -73,7 +54,19 @@ export const StreamingContent: React.FC<StreamingContentProps> = ({
           )}
         </div>
       )}
-      <MarkdownRenderer content={content} />
+
+      {tokenCount === 0 ? (
+        <div className="streaming-waiting">
+          <LoadingIndicator
+            isLoading={true}
+            statusMessage={waitingMessage}
+            defaultMessage={waitingMessage}
+            className="streaming-waiting-indicator"
+          />
+        </div>
+      ) : (
+        <MarkdownRenderer content={content} />
+      )}
     </div>
   );
 };
