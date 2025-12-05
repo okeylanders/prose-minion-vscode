@@ -12,6 +12,8 @@ import { UtilitiesTab } from './components/tabs/UtilitiesTab';
 import { SearchTab } from './components/tabs/SearchTab';
 import { ModelSelector } from './components/shared/ModelSelector';
 import { SettingsOverlay } from './components/SettingsOverlay';
+import { ErrorBoundary } from './components/shared/ErrorBoundary';
+import { TabErrorFallback } from './components/shared/TabErrorFallback';
 import { TabId, MessageType, ModelScope } from '@shared/types';
 
 // Infrastructure hooks
@@ -58,6 +60,26 @@ export const App: React.FC = () => {
   // UI-only state
   const [activeTab, setActiveTab] = React.useState<TabId>(TabId.ANALYSIS);
   const [error, setError] = React.useState('');
+
+  // Error boundary handler - sends errors to extension for logging
+  const handleBoundaryError = React.useCallback((error: Error, errorInfo: React.ErrorInfo) => {
+    vscode.postMessage({
+      type: MessageType.WEBVIEW_ERROR,
+      source: 'webview.error_boundary',
+      payload: {
+        message: error.message,
+        details: errorInfo.componentStack || undefined
+      },
+      timestamp: Date.now()
+    });
+  }, [vscode]);
+
+  // Refs for error boundary reset
+  const analysisErrorRef = React.useRef<ErrorBoundary>(null);
+  const suggestionsErrorRef = React.useRef<ErrorBoundary>(null);
+  const metricsErrorRef = React.useRef<ErrorBoundary>(null);
+  const searchErrorRef = React.useRef<ErrorBoundary>(null);
+  const utilitiesErrorRef = React.useRef<ErrorBoundary>(null);
 
   // Message routing using Strategy pattern
   useMessageRouter({
@@ -318,46 +340,101 @@ export const App: React.FC = () => {
         )}
 
         {activeTab === TabId.ANALYSIS && (
-          <AnalysisTab
-            vscode={vscode}
-            analysis={analysis}
-            context={context}
-            selection={selection}
-            modelsSettings={modelsSettings}
-            settings={settings}
-          />
+          <ErrorBoundary
+            ref={analysisErrorRef}
+            fallback={
+              <TabErrorFallback
+                tabName="Assistant"
+                onRetry={() => analysisErrorRef.current?.reset()}
+              />
+            }
+            onError={handleBoundaryError}
+          >
+            <AnalysisTab
+              vscode={vscode}
+              analysis={analysis}
+              context={context}
+              selection={selection}
+              modelsSettings={modelsSettings}
+              settings={settings}
+            />
+          </ErrorBoundary>
         )}
 
         {activeTab === TabId.SUGGESTIONS && (
-          <SuggestionsTab selectedText={selection.selectedText} vscode={vscode} />
+          <ErrorBoundary
+            ref={suggestionsErrorRef}
+            fallback={
+              <TabErrorFallback
+                tabName="Suggestions"
+                onRetry={() => suggestionsErrorRef.current?.reset()}
+              />
+            }
+            onError={handleBoundaryError}
+          >
+            <SuggestionsTab selectedText={selection.selectedText} vscode={vscode} />
+          </ErrorBoundary>
         )}
 
         {activeTab === TabId.METRICS && (
-          <MetricsTab
-            vscode={vscode}
-            metrics={metrics}
-            publishingSettings={publishingSettings}
-            wordFrequencySettings={wordFrequencySettings}
-          />
+          <ErrorBoundary
+            ref={metricsErrorRef}
+            fallback={
+              <TabErrorFallback
+                tabName="Metrics"
+                onRetry={() => metricsErrorRef.current?.reset()}
+              />
+            }
+            onError={handleBoundaryError}
+          >
+            <MetricsTab
+              vscode={vscode}
+              metrics={metrics}
+              publishingSettings={publishingSettings}
+              wordFrequencySettings={wordFrequencySettings}
+            />
+          </ErrorBoundary>
         )}
 
         {activeTab === TabId.SEARCH && (
-          <SearchTab
-            vscode={vscode}
-            search={search}
-            metrics={metrics}
-            wordSearchSettings={wordSearchSettings}
-            modelsSettings={modelsSettings}
-          />
+          <ErrorBoundary
+            ref={searchErrorRef}
+            fallback={
+              <TabErrorFallback
+                tabName="Search"
+                onRetry={() => searchErrorRef.current?.reset()}
+              />
+            }
+            onError={handleBoundaryError}
+          >
+            <SearchTab
+              vscode={vscode}
+              search={search}
+              metrics={metrics}
+              wordSearchSettings={wordSearchSettings}
+              modelsSettings={modelsSettings}
+            />
+          </ErrorBoundary>
         )}
 
         {activeTab === TabId.UTILITIES && (
-          <UtilitiesTab
-            vscode={vscode}
-            dictionary={dictionary}
-            selection={selection}
-            settings={settings}
-          />
+          <ErrorBoundary
+            ref={utilitiesErrorRef}
+            fallback={
+              <TabErrorFallback
+                tabName="Dictionary"
+                onRetry={() => utilitiesErrorRef.current?.reset()}
+              />
+            }
+            onError={handleBoundaryError}
+          >
+            <UtilitiesTab
+              vscode={vscode}
+              dictionary={dictionary}
+              selection={selection}
+              settings={settings}
+            />
+          </ErrorBoundary>
         )}
       </main>
     </div>

@@ -7,6 +7,7 @@ import * as React from 'react';
 import { MessageType, CATEGORY_RELEVANCE_OPTIONS } from '@messages';
 import { TextSourceMode } from '@shared/types';
 import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
+import { ErrorBoundary } from '@components/shared/ErrorBoundary';
 import { LoadingIndicator } from '@components/shared/LoadingIndicator';
 import { ModelSelector } from '@components/shared/ModelSelector';
 import { ScopeBox } from '@components/shared';
@@ -299,7 +300,9 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
               💾
             </button>
           </div>
-          <MarkdownRenderer content={categoryMarkdownContent} />
+          <ErrorBoundary fallback={<pre className="markdown-fallback">{categoryMarkdownContent}</pre>}>
+            <MarkdownRenderer content={categoryMarkdownContent} />
+          </ErrorBoundary>
         </div>
       )}
 

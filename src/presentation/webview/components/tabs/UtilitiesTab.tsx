@@ -6,6 +6,7 @@
 import * as React from 'react';
 import { MessageType } from '@shared/types';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
+import { ErrorBoundary } from '../shared/ErrorBoundary';
 import { LoadingIndicator } from '../shared/LoadingIndicator';
 import { WordCounter } from '../shared/WordCounter';
 import { formatAnalysisAsMarkdown } from '../../utils/formatters';
@@ -405,7 +406,9 @@ export const UtilitiesTab: React.FC<UtilitiesTabProps> = ({
               💾
             </button>
           </div>
-          <MarkdownRenderer content={markdownContent} />
+          <ErrorBoundary fallback={<pre className="markdown-fallback">{markdownContent}</pre>}>
+            <MarkdownRenderer content={markdownContent} />
+          </ErrorBoundary>
         </div>
       )}
     </div>

@@ -7,6 +7,7 @@
 import * as React from 'react';
 import { MessageType } from '@messages';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
+import { ErrorBoundary } from '../shared/ErrorBoundary';
 import { formatProseStatsAsMarkdown } from '@formatters';
 import { VSCodeAPI } from '../../types/vscode';
 import { UseMetricsReturn } from '@hooks/domain/useMetrics';
@@ -158,7 +159,9 @@ export const ProseStatsPanel: React.FC<ProseStatsPanelProps> = ({
               💾
             </button>
           </div>
-          <MarkdownRenderer content={markdownContent} />
+          <ErrorBoundary fallback={<pre className="markdown-fallback">{markdownContent}</pre>}>
+            <MarkdownRenderer content={markdownContent} />
+          </ErrorBoundary>
         </div>
       )}
     </>

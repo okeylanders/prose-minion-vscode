@@ -13,7 +13,8 @@ import {
   MessageType,
   ErrorSource,
   ErrorMessage,
-  StatusMessage
+  StatusMessage,
+  WebviewErrorMessage
 } from '@messages';
 
 import { MessageRouter } from '../MessageRouter';
@@ -33,6 +34,7 @@ export class UIHandler {
     router.register(MessageType.OPEN_DOCS_FILE, this.handleOpenDocsFile.bind(this));
     router.register(MessageType.OPEN_RESOURCE, this.handleOpenResource.bind(this));
     router.register(MessageType.REQUEST_SELECTION, this.handleSelectionRequest.bind(this));
+    router.register(MessageType.WEBVIEW_ERROR, this.handleWebviewError.bind(this));
     router.register(MessageType.TAB_CHANGED, async () => {}); // No-op handler for tab changes
   }
 
@@ -66,6 +68,16 @@ export class UIHandler {
   }
 
   // Message handlers
+
+  /**
+   * Handle webview error reports - log to output channel for debugging
+   */
+  private async handleWebviewError(message: WebviewErrorMessage): Promise<void> {
+    this.outputChannel.appendLine(`[WEBVIEW ERROR] ${message.payload.message}`);
+    if (message.payload.details) {
+      this.outputChannel.appendLine(`  Details: ${message.payload.details}`);
+    }
+  }
 
   async handleOpenGuideFile(message: OpenGuideFileMessage): Promise<void> {
     try {

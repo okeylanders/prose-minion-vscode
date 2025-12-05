@@ -1,7 +1,8 @@
 # Sprint 01: Error Boundary
 
-**Status**: 🟡 Ready
+**Status**: 🟢 Complete
 **Estimated Time**: 1-2 hours
+**Actual Time**: ~45 minutes
 **Priority**: MEDIUM
 **Branch**: `sprint/epic-ahp-v1.3-sub4-01-error-boundary`
 
@@ -24,11 +25,12 @@ No React Error Boundary wraps tab components or critical UI sections. If any com
 
 ## Tasks
 
-- [ ] Create `ErrorBoundary` component (class component with `getDerivedStateFromError` and `componentDidCatch`)
-- [ ] Create `TabErrorFallback` component (friendly error message with retry button)
-- [ ] Wrap all tab components in `<ErrorBoundary>` in App.tsx
-- [ ] Wrap `MarkdownRenderer` separately (high-risk for parsing errors)
-- [ ] Add `WEBVIEW_ERROR` message type for logging errors to extension
+- [x] Create `ErrorBoundary` component (class component with `getDerivedStateFromError` and `componentDidCatch`)
+- [x] Create `TabErrorFallback` component (friendly error message with retry button)
+- [x] Wrap all tab components in `<ErrorBoundary>` in App.tsx
+- [x] Wrap `MarkdownRenderer` separately (high-risk for parsing errors)
+- [x] Add `WEBVIEW_ERROR` message type for logging errors to extension (already existed)
+- [x] Add backend handler for WEBVIEW_ERROR in UIHandler
 - [ ] Test error boundary by throwing intentional error
 - [ ] Verify retry button works
 - [ ] Verify other tabs remain functional when one crashes
