@@ -2,6 +2,18 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.3.3] - 2025-12-04
+
+### Enhanced
+
+- **⚡ React.memo Performance**: All tab components wrapped in React.memo
+  - `AnalysisTab`, `SearchTab`, `MetricsTab`, `UtilitiesTab`, `SettingsOverlay` memoized
+  - Prevents unnecessary re-renders when parent state changes
+  - displayName added for React DevTools debugging
+  - PR: [#47](https://github.com/okeylanders/prose-minion-vscode/pull/47)
+
+---
+
 ## [1.3.2] - 2025-12-04
 
 ### Added

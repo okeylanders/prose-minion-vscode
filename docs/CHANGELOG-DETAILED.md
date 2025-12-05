@@ -5,6 +5,113 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.3] - 2025-12-04
+
+### Overview
+
+Performance optimization release wrapping all tab components in `React.memo()` to reduce unnecessary re-renders.
+
+**Key Enhancement:**
+
+- ⚡ **React.memo Performance** - All 5 major components wrapped in React.memo with displayName
+
+---
+
+### Enhanced
+
+#### React.memo Performance Optimization (PR #47)
+
+**What Changed:**
+Wrapped all tab components and SettingsOverlay in `React.memo()` to prevent unnecessary re-renders when parent state changes.
+
+**Components Memoized:**
+
+- `AnalysisTab` (34 props) - High priority
+- `SearchTab` (52 props) - High priority
+- `MetricsTab` (29 props) - High priority
+- `UtilitiesTab` (20 props) - Medium priority
+- `SettingsOverlay` (15+ props) - Medium priority
+
+**Pattern Applied:**
+
+```tsx
+export const MetricsTab = React.memo<MetricsTabProps>(({
+  vscode, metrics, publishingSettings, wordFrequencySettings
+}) => {
+  // component body
+});
+MetricsTab.displayName = 'MetricsTab';
+```
+
+**Benefits:**
+
+- Fewer re-renders when App.tsx state changes (status messages, token usage, etc.)
+- Smoother UX during interactions
+- Lower CPU usage in long sessions
+- React DevTools shows component names via displayName
+
+**Files Modified:**
+
+- `src/presentation/webview/components/tabs/AnalysisTab.tsx`
+- `src/presentation/webview/components/tabs/SearchTab.tsx`
+- `src/presentation/webview/components/tabs/MetricsTab.tsx`
+- `src/presentation/webview/components/tabs/UtilitiesTab.tsx`
+- `src/presentation/webview/components/SettingsOverlay.tsx`
+
+**References:**
+- Architecture Debt: [.todo/architecture-debt/2025-11-19-react-memo-performance.md]
+- Sprint: [.todo/epics/epic-architecture-health-pass-v1.3/sub-epic-4-polish-ux/sprints/02-react-memo-performance.md]
+
+---
+
+## [1.3.2] - 2025-12-04
+
+### Overview
+
+Error boundary release adding graceful error handling to prevent UI crashes.
+
+**Key Enhancement:**
+
+- 🛡️ **Error Boundaries** - Graceful error handling prevents UI crashes
+
+---
+
+### Added
+
+#### Error Boundary Components (PR #46)
+
+**What Changed:**
+Added React Error Boundaries to catch rendering errors and display friendly fallback UI instead of crashing the entire webview.
+
+**Components Created:**
+
+- `ErrorBoundary` - Class component with `getDerivedStateFromError` and `componentDidCatch`
+- `TabErrorFallback` - Friendly error UI with retry/reload buttons
+
+**Implementation:**
+
+- All 5 tabs wrapped in isolated error boundaries (one crash doesn't affect others)
+- MarkdownRenderer wrapped in 7 panel components for parsing error fallback
+- Errors logged to Output Channel via `WEBVIEW_ERROR` telemetry
+- Refs for programmatic reset support
+
+**Files Created:**
+
+- `src/presentation/webview/components/shared/ErrorBoundary.tsx`
+- `src/presentation/webview/components/shared/TabErrorFallback.tsx`
+
+**Files Modified:**
+
+- `src/presentation/webview/App.tsx` - Wrapped tabs in ErrorBoundary
+- `src/application/handlers/domain/UIHandler.ts` - Added WEBVIEW_ERROR handler
+- 7 panel components - Wrapped MarkdownRenderer with onError telemetry
+
+**References:**
+- Architecture Debt: [.todo/architecture-debt/2025-11-19-error-boundary-needed.md]
+- Sprint: [.todo/epics/epic-architecture-health-pass-v1.3/sub-epic-4-polish-ux/sprints/01-error-boundary.md]
+
+---
+
 ## [1.3.1] - 2025-11-29
 
 ### Overview
