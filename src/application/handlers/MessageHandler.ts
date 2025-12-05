@@ -330,11 +330,6 @@ export class MessageHandler {
     this.uiHandler.registerRoutes(this.router);
     this.fileOperationsHandler.registerRoutes(this.router);
 
-    // Webview diagnostics (no dedicated handler)
-    this.router.register(MessageType.WEBVIEW_ERROR, async (message: any) => {
-      this.outputChannel.appendLine(`[Webview Error] ${message.message}${message.details ? ` - ${message.details}` : ''}`);
-    });
-
     this.flushCachedResults();
   }
 
