@@ -7,6 +7,7 @@ import * as React from 'react';
 import { MessageType } from '@messages';
 import { TextSourceMode } from '@shared/types';
 import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
+import { ErrorBoundary } from '@components/shared/ErrorBoundary';
 import { LoadingIndicator } from '@components/shared/LoadingIndicator';
 import { ScopeBox } from '@components/shared';
 import { formatSearchResultAsMarkdown } from '@formatters';
@@ -248,7 +249,19 @@ export const WordSearchPanel: React.FC<WordSearchPanelProps> = ({
               💾
             </button>
           </div>
-          <MarkdownRenderer content={markdownContent} />
+          <ErrorBoundary
+            fallback={<pre className="markdown-fallback">{markdownContent}</pre>}
+            onError={(error: Error) => {
+              vscode.postMessage({
+                type: MessageType.WEBVIEW_ERROR,
+                source: 'webview.markdown_renderer',
+                payload: { message: error.message },
+                timestamp: Date.now()
+              });
+            }}
+          >
+            <MarkdownRenderer content={markdownContent} />
+          </ErrorBoundary>
         </div>
       )}
       {!markdownContent && (

@@ -7,6 +7,7 @@
 import * as React from 'react';
 import { MessageType } from '@messages';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
+import { ErrorBoundary } from '../shared/ErrorBoundary';
 import { formatStyleFlagsAsMarkdown } from '@formatters';
 import { VSCodeAPI } from '../../types/vscode';
 import { UseMetricsReturn } from '@hooks/domain/useMetrics';
@@ -106,7 +107,19 @@ export const StyleFlagsPanel: React.FC<StyleFlagsPanelProps> = ({
               💾
             </button>
           </div>
-          <MarkdownRenderer content={markdownContent} />
+          <ErrorBoundary
+            fallback={<pre className="markdown-fallback">{markdownContent}</pre>}
+            onError={(error) => {
+              vscode.postMessage({
+                type: MessageType.WEBVIEW_ERROR,
+                source: 'webview.markdown_renderer',
+                payload: { message: error.message },
+                timestamp: Date.now()
+              });
+            }}
+          >
+            <MarkdownRenderer content={markdownContent} />
+          </ErrorBoundary>
         </div>
       )}
     </>

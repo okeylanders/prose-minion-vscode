@@ -1,7 +1,9 @@
 // Barrel export for shared components
+export { ErrorBoundary } from './ErrorBoundary';
 export { LoadingIndicator } from './LoadingIndicator';
 export { ModelSelector } from './ModelSelector';
 export { TabBar } from './TabBar';
+export { TabErrorFallback } from './TabErrorFallback';
 export { WordCounter } from './WordCounter';
 export type { WordCounterProps } from './WordCounter';
 export { WordLengthFilterTabs } from './WordLengthFilterTabs';

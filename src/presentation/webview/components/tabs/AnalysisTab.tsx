@@ -6,6 +6,7 @@
 import * as React from 'react';
 import { SelectionTarget, MessageType } from '@shared/types';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
+import { ErrorBoundary } from '../shared/ErrorBoundary';
 import { LoadingIndicator } from '../shared/LoadingIndicator';
 import { WordCounter } from '../shared/WordCounter';
 import { formatAnalysisAsMarkdown } from '../../utils/formatters';
@@ -413,7 +414,19 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
               💾
             </button>
           </div>
-          <MarkdownRenderer content={markdownContent} />
+          <ErrorBoundary
+            fallback={<pre className="markdown-fallback">{markdownContent}</pre>}
+            onError={(error) => {
+              vscode.postMessage({
+                type: MessageType.WEBVIEW_ERROR,
+                source: 'webview.markdown_renderer',
+                payload: { message: error.message },
+                timestamp: Date.now()
+              });
+            }}
+          >
+            <MarkdownRenderer content={markdownContent} />
+          </ErrorBoundary>
           {analysis.usedGuides && analysis.usedGuides.length > 0 && (
             <div className="guides-footer">
               <div className="guides-footer-title">📚 Guides Used:</div>
