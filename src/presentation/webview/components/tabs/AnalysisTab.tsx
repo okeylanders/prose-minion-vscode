@@ -26,7 +26,7 @@ interface AnalysisTabProps {
   settings: UseSettingsReturn;
 }
 
-export const AnalysisTab: React.FC<AnalysisTabProps> = ({
+export const AnalysisTab = React.memo<AnalysisTabProps>(({
   vscode,
   analysis,
   context,
@@ -469,4 +469,6 @@ export const AnalysisTab: React.FC<AnalysisTabProps> = ({
       )}
     </div>
   );
-};
+});
+
+AnalysisTab.displayName = 'AnalysisTab';
