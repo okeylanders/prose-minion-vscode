@@ -165,7 +165,8 @@ export class DictionaryService {
         'dictionary_lookup',
         executionResult.content,
         undefined,
-        executionResult.usage
+        executionResult.usage,
+        executionResult.finishReason
       );
     } catch (error) {
       return AnalysisResultFactory.createAnalysisResult(
@@ -215,7 +216,8 @@ export class DictionaryService {
         'dictionary_lookup',
         executionResult.content,
         undefined,
-        executionResult.usage
+        executionResult.usage,
+        executionResult.finishReason
       );
     } catch (error) {
       // Handle abort separately

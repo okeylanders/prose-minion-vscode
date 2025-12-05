@@ -25,6 +25,17 @@ export interface StreamChunkPayload {
 }
 
 /**
+ * Payload for STREAM_STARTED messages
+ * Sent immediately when a streaming request begins so the UI can enable cancel
+ */
+export interface StreamStartedPayload {
+  /** Unique identifier for this request */
+  requestId: string;
+  /** Domain originating the stream */
+  domain: StreamingDomain;
+}
+
+/**
  * Payload for STREAM_COMPLETE messages
  * Sent when streaming finishes (success or abort)
  */
@@ -39,10 +50,12 @@ export interface StreamCompletePayload {
   usage?: TokenUsage;
   /** Whether the stream was cancelled */
   cancelled?: boolean;
+  /** Whether the response was truncated due to max token limit */
+  truncated?: boolean;
 }
 
 /**
- * Payload for CANCEL_REQUEST messages
+ * Payload for cancel messages
  * Sent from webview to cancel an in-progress streaming request
  */
 export interface CancelRequestPayload {
@@ -55,6 +68,10 @@ export interface CancelRequestPayload {
 /**
  * Message types for streaming
  */
+export interface StreamStartedMessage extends MessageEnvelope<StreamStartedPayload> {
+  type: MessageType.STREAM_STARTED;
+}
+
 export interface StreamChunkMessage extends MessageEnvelope<StreamChunkPayload> {
   type: MessageType.STREAM_CHUNK;
 }
@@ -63,6 +80,14 @@ export interface StreamCompleteMessage extends MessageEnvelope<StreamCompletePay
   type: MessageType.STREAM_COMPLETE;
 }
 
-export interface CancelRequestMessage extends MessageEnvelope<CancelRequestPayload> {
-  type: MessageType.CANCEL_REQUEST;
+export interface CancelAnalysisRequestMessage extends MessageEnvelope<CancelRequestPayload> {
+  type: MessageType.CANCEL_ANALYSIS_REQUEST;
+}
+
+export interface CancelDictionaryRequestMessage extends MessageEnvelope<CancelRequestPayload> {
+  type: MessageType.CANCEL_DICTIONARY_REQUEST;
+}
+
+export interface CancelContextRequestMessage extends MessageEnvelope<CancelRequestPayload> {
+  type: MessageType.CANCEL_CONTEXT_REQUEST;
 }

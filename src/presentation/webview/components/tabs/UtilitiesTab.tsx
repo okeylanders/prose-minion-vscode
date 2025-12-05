@@ -232,7 +232,7 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
   const handleCancelStreaming = React.useCallback(() => {
     if (dictionary.currentRequestId) {
       vscode.postMessage({
-        type: MessageType.CANCEL_REQUEST,
+        type: MessageType.CANCEL_DICTIONARY_REQUEST,
         source: 'webview.utilities.tab',
         payload: {
           requestId: dictionary.currentRequestId,
@@ -384,7 +384,8 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
           isStreaming={dictionary.isStreaming}
           isBuffering={dictionary.isBuffering}
           tokenCount={dictionary.streamingTokenCount}
-          onCancel={handleCancelStreaming}
+          onCancel={dictionary.currentRequestId ? handleCancelStreaming : undefined}
+          cancelDisabled={!dictionary.currentRequestId}
         />
       )}
 

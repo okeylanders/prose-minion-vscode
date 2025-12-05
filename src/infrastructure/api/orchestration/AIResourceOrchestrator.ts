@@ -34,6 +34,7 @@ export interface ExecutionResult {
   usedGuides: string[];  // Paths of guides that were actually used
   requestedResources?: string[];  // Context resources that were loaded during the run
   usage?: TokenUsage;
+  finishReason?: string;
 }
 
 export type StatusCallback = (message: string, tickerMessage?: string) => void;
@@ -278,7 +279,8 @@ export class AIResourceOrchestrator {
         content: cleanedResponse + truncatedNote,
         usedGuides,
         requestedResources: [],
-        usage: totalUsage
+        usage: totalUsage,
+        finishReason: last.finishReason
       };
     } finally {
       // Clean up conversation after completion
@@ -333,7 +335,7 @@ export class AIResourceOrchestrator {
         })) {
           if (chunk.done) {
             usage = chunk.usage;
-            finishReason = 'stop';
+            finishReason = chunk.finishReason ?? finishReason;
           } else if (chunk.token) {
             fullContent += chunk.token;
             options.onToken(chunk.token);
@@ -348,12 +350,11 @@ export class AIResourceOrchestrator {
         }
 
         return {
-          content: fullContent + (finishReason === 'length'
-            ? '\n\n---\n\n⚠️ Response truncated. Increase Max Tokens in settings.'
-            : ''),
+          content: fullContent + this.appendTruncationNote(fullContent, finishReason),
           usedGuides: [],
           requestedResources: [],
-          usage
+          usage,
+          finishReason
         };
       }
 
@@ -367,14 +368,14 @@ export class AIResourceOrchestrator {
 
       // Emit token usage to callback
       const usage = this.emitTokenUsage(response);
+      const truncatedNote = this.appendTruncationNote(response.content, response.finishReason);
 
       return {
-        content: response.content + (response.finishReason === 'length'
-          ? '\n\n---\n\n⚠️ Response truncated. Increase Max Tokens in settings.'
-          : ''),
+        content: response.content + truncatedNote,
         usedGuides: [],
         requestedResources: [],
-        usage
+        usage,
+        finishReason: response.finishReason
       };
     } finally {
       termination.dispose();
@@ -628,7 +629,8 @@ export class AIResourceOrchestrator {
         content: cleanedResponse + truncatedNote,
         usedGuides: [],
         requestedResources: deliveredResources,
-        usage: totalUsage
+        usage: totalUsage,
+        finishReason: response.finishReason
       };
     } finally {
       termination.dispose();
@@ -661,7 +663,7 @@ export class AIResourceOrchestrator {
     })) {
       if (chunk.done) {
         usage = chunk.usage;
-        finishReason = 'stop';
+        finishReason = chunk.finishReason ?? finishReason;
       } else if (chunk.token) {
         fullContent += chunk.token;
 

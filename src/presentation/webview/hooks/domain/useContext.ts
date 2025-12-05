@@ -10,7 +10,7 @@ import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
 import { useStreaming } from '../useStreaming';
 import { MessageType } from '@shared/types';
-import { ContextResultMessage, StreamChunkMessage, StreamCompleteMessage } from '@messages';
+import { ContextResultMessage, StreamChunkMessage, StreamCompleteMessage, StreamStartedMessage } from '@messages';
 
 export interface ContextState {
   contextText: string;
@@ -36,6 +36,7 @@ export interface ContextActions {
   // Streaming actions
   handleStreamChunk: (message: StreamChunkMessage) => void;
   handleStreamComplete: (message: StreamCompleteMessage) => void;
+  handleStreamStarted: (message: StreamStartedMessage) => void;
   startStreaming: (requestId: string) => void;
   cancelStreaming: () => void;
 }
@@ -87,6 +88,7 @@ export const useContext = (): UseContextReturn => {
   // Streaming state (using useStreaming hook)
   const streaming = useStreaming();
   const [currentRequestId, setCurrentRequestId] = React.useState<string | null>(null);
+  const ignoredRequestIdsRef = React.useRef<Set<string>>(new Set());
 
   // Ref to track loading state (used by analysis hook for status message filtering)
   const loadingRef = React.useRef(loading);
@@ -145,31 +147,50 @@ export const useContext = (): UseContextReturn => {
 
   // Streaming handlers
   const startStreaming = React.useCallback((requestId: string) => {
+    ignoredRequestIdsRef.current.delete(requestId);
     setCurrentRequestId(requestId);
     streaming.startStreaming();
     setLoading(true);
     setContextTextState(''); // Clear previous context
   }, [streaming]);
 
+  const handleStreamStarted = React.useCallback((message: StreamStartedMessage) => {
+    const { domain, requestId } = message.payload;
+    if (domain !== 'context') return;
+    startStreaming(requestId);
+  }, [startStreaming]);
+
   const handleStreamChunk = React.useCallback((message: StreamChunkMessage) => {
     const { domain, token, requestId } = message.payload;
     // Only handle context domain chunks
     if (domain !== 'context') return;
 
+    if (ignoredRequestIdsRef.current.has(requestId)) return;
+
+    if (currentRequestId && requestId !== currentRequestId) {
+      if (ignoredRequestIdsRef.current.has(requestId)) return;
+      return;
+    }
+
     // Auto-start streaming on first chunk (if not already streaming)
     if (!streaming.isStreaming) {
-      setCurrentRequestId(requestId);
-      streaming.startStreaming();
-      setContextTextState(''); // Clear previous context
+      startStreaming(requestId);
     }
 
     streaming.appendToken(token);
-  }, [streaming]);
+  }, [currentRequestId, startStreaming, streaming]);
 
   const handleStreamComplete = React.useCallback((message: StreamCompleteMessage) => {
-    const { domain, cancelled } = message.payload;
+    const { domain, cancelled, requestId } = message.payload;
     // Only handle context domain completion
     if (domain !== 'context') return;
+
+    if (ignoredRequestIdsRef.current.has(requestId)) return;
+
+    if (currentRequestId && requestId !== currentRequestId) {
+      if (ignoredRequestIdsRef.current.has(requestId)) return;
+      return;
+    }
 
     streaming.endStreaming();
     setCurrentRequestId(null);
@@ -179,14 +200,17 @@ export const useContext = (): UseContextReturn => {
       // Content will come through CONTEXT_RESULT message for backward compatibility
       // The streaming content is shown progressively until then
     }
-  }, [streaming]);
+  }, [currentRequestId, streaming]);
 
   const cancelStreaming = React.useCallback(() => {
+    if (currentRequestId) {
+      ignoredRequestIdsRef.current.add(currentRequestId);
+    }
     streaming.reset();
     setCurrentRequestId(null);
     setLoading(false);
     setStatusMessage('');
-  }, [streaming]);
+  }, [currentRequestId, streaming]);
 
   return {
     // State
@@ -210,6 +234,7 @@ export const useContext = (): UseContextReturn => {
     requestContext,
     clearContext,
     // Streaming actions
+    handleStreamStarted,
     handleStreamChunk,
     handleStreamComplete,
     startStreaming,

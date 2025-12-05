@@ -11,13 +11,15 @@ import { ContextAssistantService } from '@services/analysis/ContextAssistantServ
 import { ContextGenerationResult } from '@/domain/models/ContextGeneration';
 import {
   GenerateContextMessage,
-  CancelRequestMessage,
+  StreamStartedMessage,
+  CancelContextRequestMessage,
   MessageType,
   TokenUsage,
   ErrorSource,
   ContextResultMessage,
   StatusMessage,
   ErrorMessage,
+  StreamStartedPayload,
   StreamChunkMessage,
   StreamCompleteMessage
 } from '@messages';
@@ -41,13 +43,13 @@ export class ContextHandler {
    */
   registerRoutes(router: MessageRouter): void {
     router.register(MessageType.GENERATE_CONTEXT, this.handleGenerateContext.bind(this));
-    router.register(MessageType.CANCEL_REQUEST, this.handleCancelRequest.bind(this));
+    router.register(MessageType.CANCEL_CONTEXT_REQUEST, this.handleCancelRequest.bind(this));
   }
 
   /**
    * Handle cancel request for streaming operations
    */
-  async handleCancelRequest(message: CancelRequestMessage): Promise<void> {
+  async handleCancelRequest(message: CancelContextRequestMessage): Promise<void> {
     const { requestId, domain } = message.payload;
 
     // Only handle context domain cancellations
@@ -62,6 +64,19 @@ export class ContextHandler {
   }
 
   // Helper methods (domain owns its message lifecycle)
+
+  /**
+   * Send stream started message so UI can enable cancel immediately
+   */
+  private sendStreamStarted(payload: StreamStartedPayload): void {
+    const message: StreamStartedMessage = {
+      type: MessageType.STREAM_STARTED,
+      source: 'extension.context',
+      payload,
+      timestamp: Date.now()
+    };
+    void this.postMessage(message);
+  }
 
   private sendContextResult(result: ContextGenerationResult): void {
     const message: ContextResultMessage = {
@@ -160,6 +175,7 @@ export class ContextHandler {
     const requestId = generateRequestId();
     const controller = new AbortController();
     this.activeRequests.set(requestId, controller);
+    this.sendStreamStarted({ requestId, domain: 'context' });
 
     try {
       this.sendStatus('Streaming context generation...');

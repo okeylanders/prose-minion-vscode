@@ -109,6 +109,16 @@ export const App: React.FC = () => {
       dictionary.handleFastGenerateResult(msg);
       setError(''); // Clear error on success
     },
+    [MessageType.STREAM_STARTED]: (msg) => {
+      const domain = msg.payload.domain;
+      if (domain === 'dictionary') {
+        dictionary.handleStreamStarted(msg);
+      } else if (domain === 'analysis') {
+        analysis.handleStreamStarted(msg);
+      } else if (domain === 'context') {
+        context.handleStreamStarted(msg);
+      }
+    },
     [MessageType.STREAM_CHUNK]: (msg) => {
       // Route streaming chunks based on domain
       const domain = msg.payload.domain;

@@ -149,7 +149,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
   const handleCancelAnalysisStreaming = React.useCallback(() => {
     if (analysis.currentRequestId) {
       vscode.postMessage({
-        type: MessageType.CANCEL_REQUEST,
+        type: MessageType.CANCEL_ANALYSIS_REQUEST,
         source: 'webview.analysis.tab',
         payload: {
           requestId: analysis.currentRequestId,
@@ -164,7 +164,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
   const handleCancelContextStreaming = React.useCallback(() => {
     if (context.currentRequestId) {
       vscode.postMessage({
-        type: MessageType.CANCEL_REQUEST,
+        type: MessageType.CANCEL_CONTEXT_REQUEST,
         source: 'webview.analysis.tab',
         payload: {
           requestId: context.currentRequestId,
@@ -349,7 +349,8 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
             isStreaming={context.isStreaming}
             isBuffering={context.isBuffering}
             tokenCount={context.streamingTokenCount}
-            onCancel={handleCancelContextStreaming}
+            onCancel={context.currentRequestId ? handleCancelContextStreaming : undefined}
+            cancelDisabled={!context.currentRequestId}
             className="context-streaming"
           />
         )}
@@ -430,7 +431,8 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
           isStreaming={analysis.isStreaming}
           isBuffering={analysis.isBuffering}
           tokenCount={analysis.streamingTokenCount}
-          onCancel={handleCancelAnalysisStreaming}
+          onCancel={analysis.currentRequestId ? handleCancelAnalysisStreaming : undefined}
+          cancelDisabled={!analysis.currentRequestId}
         />
       )}
 

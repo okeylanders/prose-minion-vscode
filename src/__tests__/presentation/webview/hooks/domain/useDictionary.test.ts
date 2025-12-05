@@ -58,6 +58,7 @@ describe('useDictionary - Type Contracts', () => {
         handleFastGenerateResult: jest.fn(),
         setFastGenerating: jest.fn(),
         // Streaming actions
+        handleStreamStarted: jest.fn(),
         handleStreamChunk: jest.fn(),
         handleStreamComplete: jest.fn(),
         startStreaming: jest.fn(),
@@ -69,6 +70,7 @@ describe('useDictionary - Type Contracts', () => {
       expect(typeof actions.clearResult).toBe('function');
       expect(typeof actions.handleFastGenerateResult).toBe('function');
       expect(typeof actions.setFastGenerating).toBe('function');
+      expect(typeof actions.handleStreamStarted).toBe('function');
       expect(typeof actions.handleStreamChunk).toBe('function');
       expect(typeof actions.handleStreamComplete).toBe('function');
       expect(typeof actions.cancelStreaming).toBe('function');

@@ -125,7 +125,7 @@ export class OpenRouterClient {
       maxTokens?: number;
       signal?: AbortSignal;
     }
-  ): AsyncGenerator<{ token: string; done: boolean; usage?: TokenUsage }> {
+  ): AsyncGenerator<{ token: string; done: boolean; usage?: TokenUsage; finishReason?: string }> {
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -159,6 +159,7 @@ export class OpenRouterClient {
     let buffer = '';
 
     try {
+      let finishReason: string | undefined;
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -182,14 +183,18 @@ export class OpenRouterClient {
             const parsed = JSON.parse(data);
             const delta = parsed.choices?.[0]?.delta;
             const token = delta?.content || '';
-            const finishReason = parsed.choices?.[0]?.finish_reason;
+            const finish = parsed.choices?.[0]?.finish_reason;
             const usage = parsed.usage;
+
+            if (finish) {
+              finishReason = finish;
+            }
 
             if (token) {
               yield { token, done: false };
             }
 
-            if (finishReason || usage) {
+            if (finish || usage) {
               yield {
                 token: '',
                 done: true,
@@ -202,7 +207,8 @@ export class OpenRouterClient {
                     const costNum = rawCost !== undefined && rawCost !== null ? Number(rawCost) : undefined;
                     return Number.isFinite(costNum) ? costNum : undefined;
                   })()
-                } : undefined
+                } : undefined,
+                finishReason
               };
             }
           } catch {

@@ -20,6 +20,8 @@ interface StreamingContentProps {
   tokenCount: number;
   /** Optional cancel callback */
   onCancel?: () => void;
+  /** Disable cancel button (e.g., no requestId yet) */
+  cancelDisabled?: boolean;
   /** Additional CSS class */
   className?: string;
 }
@@ -30,6 +32,7 @@ export const StreamingContent: React.FC<StreamingContentProps> = ({
   isBuffering,
   tokenCount,
   onCancel,
+  cancelDisabled,
   className = ''
 }) => {
   // During buffer phase, show loading indicator
@@ -42,7 +45,7 @@ export const StreamingContent: React.FC<StreamingContentProps> = ({
             Streaming... ({tokenCount} tokens)
           </span>
           {onCancel && (
-            <button onClick={onCancel} className="cancel-button" title="Cancel">
+            <button onClick={onCancel} className="cancel-button" title="Cancel" disabled={cancelDisabled}>
               ✕
             </button>
           )}
@@ -64,7 +67,7 @@ export const StreamingContent: React.FC<StreamingContentProps> = ({
             Streaming ({tokenCount} tokens)
           </span>
           {onCancel && (
-            <button onClick={onCancel} className="cancel-button" title="Cancel">
+            <button onClick={onCancel} className="cancel-button" title="Cancel" disabled={cancelDisabled}>
               ✕
             </button>
           )}

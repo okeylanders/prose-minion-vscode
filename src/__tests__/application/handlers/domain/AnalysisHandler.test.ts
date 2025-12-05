@@ -59,10 +59,10 @@ describe('AnalysisHandler', () => {
       expect(router.hasHandler(MessageType.ANALYZE_PROSE)).toBe(true);
     });
 
-    it('should register CANCEL_REQUEST route', () => {
+    it('should register CANCEL_ANALYSIS_REQUEST route', () => {
       handler.registerRoutes(router);
 
-      expect(router.hasHandler(MessageType.CANCEL_REQUEST)).toBe(true);
+      expect(router.hasHandler(MessageType.CANCEL_ANALYSIS_REQUEST)).toBe(true);
     });
 
     it('should register exactly 3 routes', () => {

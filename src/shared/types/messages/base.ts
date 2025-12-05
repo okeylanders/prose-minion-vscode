@@ -88,9 +88,12 @@ export enum MessageType {
   DICTIONARY_GENERATION_PROGRESS = 'dictionary_generation_progress',
 
   // Streaming API responses
+  STREAM_STARTED = 'stream_started',
   STREAM_CHUNK = 'stream_chunk',
   STREAM_COMPLETE = 'stream_complete',
-  CANCEL_REQUEST = 'cancel_request'
+  CANCEL_ANALYSIS_REQUEST = 'cancel_analysis_request',
+  CANCEL_DICTIONARY_REQUEST = 'cancel_dictionary_request',
+  CANCEL_CONTEXT_REQUEST = 'cancel_context_request'
 }
 
 export interface BaseMessage {

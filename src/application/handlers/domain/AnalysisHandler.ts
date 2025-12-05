@@ -12,11 +12,13 @@ import {
   AnalyzeDialogueMessage,
   AnalyzeProseMessage,
   AnalysisResultMessage,
-  CancelRequestMessage,
+  StreamStartedMessage,
+  CancelAnalysisRequestMessage,
   StatusMessage,
   ErrorMessage,
   ErrorSource,
   MessageType,
+  StreamStartedPayload,
   StreamChunkMessage,
   StreamCompleteMessage
 } from '@messages';
@@ -46,13 +48,13 @@ export class AnalysisHandler {
   registerRoutes(router: MessageRouter): void {
     router.register(MessageType.ANALYZE_DIALOGUE, this.handleAnalyzeDialogue.bind(this));
     router.register(MessageType.ANALYZE_PROSE, this.handleAnalyzeProse.bind(this));
-    router.register(MessageType.CANCEL_REQUEST, this.handleCancelRequest.bind(this));
+    router.register(MessageType.CANCEL_ANALYSIS_REQUEST, this.handleCancelRequest.bind(this));
   }
 
   /**
    * Handle cancel request for streaming operations
    */
-  async handleCancelRequest(message: CancelRequestMessage): Promise<void> {
+  async handleCancelRequest(message: CancelAnalysisRequestMessage): Promise<void> {
     const { requestId, domain } = message.payload;
 
     // Only handle analysis domain cancellations
@@ -67,6 +69,19 @@ export class AnalysisHandler {
   }
 
   // Helper methods (domain owns its message lifecycle)
+
+  /**
+   * Send stream started message so UI can enable cancel immediately
+   */
+  private sendStreamStarted(payload: StreamStartedPayload): void {
+    const message: StreamStartedMessage = {
+      type: MessageType.STREAM_STARTED,
+      source: 'extension.analysis',
+      payload,
+      timestamp: Date.now()
+    };
+    void this.postMessage(message);
+  }
 
   private sendAnalysisResult(result: string, toolName: string, usedGuides?: string[]): void {
     const message: AnalysisResultMessage = {
@@ -139,7 +154,8 @@ export class AnalysisHandler {
     requestId: string,
     content: string,
     cancelled: boolean = false,
-    usage?: { promptTokens: number; completionTokens: number; totalTokens: number; costUsd?: number }
+    usage?: { promptTokens: number; completionTokens: number; totalTokens: number; costUsd?: number },
+    truncated: boolean = false
   ): void {
     const message: StreamCompleteMessage = {
       type: MessageType.STREAM_COMPLETE,
@@ -149,7 +165,8 @@ export class AnalysisHandler {
         domain: 'analysis',
         content,
         cancelled,
-        usage
+        usage,
+        truncated
       },
       timestamp: Date.now()
     };
@@ -170,6 +187,7 @@ export class AnalysisHandler {
     const requestId = generateRequestId('dialogue');
     const controller = new AbortController();
     this.activeRequests.set(requestId, controller);
+    this.sendStreamStarted({ requestId, domain: 'analysis' });
 
     try {
       const config = vscode.workspace.getConfiguration('proseMinion');
@@ -200,7 +218,7 @@ export class AnalysisHandler {
 
       // Check if cancelled
       const cancelled = controller.signal.aborted;
-      this.sendStreamComplete(requestId, result.content, cancelled, result.usage);
+      this.sendStreamComplete(requestId, result.content, cancelled, result.usage, result.finishReason === 'length');
 
       // Also send analysis result for backward compatibility
       if (!cancelled) {
@@ -231,6 +249,7 @@ export class AnalysisHandler {
     const requestId = generateRequestId('prose');
     const controller = new AbortController();
     this.activeRequests.set(requestId, controller);
+    this.sendStreamStarted({ requestId, domain: 'analysis' });
 
     try {
       const config = vscode.workspace.getConfiguration('proseMinion');
@@ -260,7 +279,7 @@ export class AnalysisHandler {
 
       // Check if cancelled
       const cancelled = controller.signal.aborted;
-      this.sendStreamComplete(requestId, result.content, cancelled, result.usage);
+      this.sendStreamComplete(requestId, result.content, cancelled, result.usage, result.finishReason === 'length');
 
       // Also send analysis result for backward compatibility
       if (!cancelled) {

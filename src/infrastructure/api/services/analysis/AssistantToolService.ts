@@ -180,7 +180,8 @@ export class AssistantToolService {
         'dialogue_analysis',
         executionResult.content,
         executionResult.usedGuides,
-        executionResult.usage
+        executionResult.usage,
+        executionResult.finishReason
       );
     } catch (error) {
       return AnalysisResultFactory.createAnalysisResult(
@@ -239,7 +240,8 @@ export class AssistantToolService {
         'prose_analysis',
         executionResult.content,
         executionResult.usedGuides,
-        executionResult.usage
+        executionResult.usage,
+        executionResult.finishReason
       );
     } catch (error) {
       return AnalysisResultFactory.createAnalysisResult(

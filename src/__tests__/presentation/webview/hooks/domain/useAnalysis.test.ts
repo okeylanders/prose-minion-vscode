@@ -58,6 +58,7 @@ describe('useAnalysis - Type Contracts', () => {
         'clearResult',
         'clearStatus',
         // Streaming actions
+        'handleStreamStarted',
         'handleStreamChunk',
         'handleStreamComplete',
         'startStreaming',
@@ -72,6 +73,7 @@ describe('useAnalysis - Type Contracts', () => {
         clearResult: jest.fn(),
         clearStatus: jest.fn(),
         // Streaming actions
+        handleStreamStarted: jest.fn(),
         handleStreamChunk: jest.fn(),
         handleStreamComplete: jest.fn(),
         startStreaming: jest.fn(),
@@ -121,7 +123,7 @@ describe('useAnalysis - Type Contracts', () => {
       // Actions (user-triggered operations) - including streaming actions
       const actionProps: (keyof AnalysisActions)[] = [
         'handleAnalysisResult', 'handleStatusMessage', 'setLoading', 'clearResult', 'clearStatus',
-        'handleStreamChunk', 'handleStreamComplete', 'startStreaming', 'cancelStreaming'
+        'handleStreamStarted', 'handleStreamChunk', 'handleStreamComplete', 'startStreaming', 'cancelStreaming'
       ];
 
       // Persistence (what gets saved) - note: streaming state is NOT persisted (transient)

@@ -11,13 +11,15 @@ import { DictionaryService } from '@services/dictionary/DictionaryService';
 import {
   LookupDictionaryMessage,
   FastGenerateDictionaryMessage,
-  CancelRequestMessage,
+  StreamStartedMessage,
+  CancelDictionaryRequestMessage,
   MessageType,
   ErrorSource,
   DictionaryResultMessage,
   FastGenerateDictionaryResultMessage,
   StatusMessage,
   ErrorMessage,
+  StreamStartedPayload,
   StreamChunkMessage,
   StreamCompleteMessage
 } from '@messages';
@@ -42,13 +44,13 @@ export class DictionaryHandler {
   registerRoutes(router: MessageRouter): void {
     router.register(MessageType.LOOKUP_DICTIONARY, this.handleLookupDictionary.bind(this));
     router.register(MessageType.FAST_GENERATE_DICTIONARY, this.handleFastGenerate.bind(this));
-    router.register(MessageType.CANCEL_REQUEST, this.handleCancelRequest.bind(this));
+    router.register(MessageType.CANCEL_DICTIONARY_REQUEST, this.handleCancelRequest.bind(this));
   }
 
   /**
    * Handle cancel request for streaming operations
    */
-  async handleCancelRequest(message: CancelRequestMessage): Promise<void> {
+  async handleCancelRequest(message: CancelDictionaryRequestMessage): Promise<void> {
     const { requestId, domain } = message.payload;
 
     // Only handle dictionary domain cancellations
@@ -63,6 +65,19 @@ export class DictionaryHandler {
   }
 
   // Helper methods (domain owns its message lifecycle)
+
+  /**
+   * Send stream started message so UI can enable cancel immediately
+   */
+  private sendStreamStarted(payload: StreamStartedPayload): void {
+    const message: StreamStartedMessage = {
+      type: MessageType.STREAM_STARTED,
+      source: 'extension.dictionary',
+      payload,
+      timestamp: Date.now()
+    };
+    void this.postMessage(message);
+  }
 
   private sendDictionaryResult(result: string, toolName: string): void {
     const message: DictionaryResultMessage = {
@@ -129,7 +144,8 @@ export class DictionaryHandler {
     requestId: string,
     content: string,
     cancelled: boolean = false,
-    usage?: { promptTokens: number; completionTokens: number; totalTokens: number; costUsd?: number }
+    usage?: { promptTokens: number; completionTokens: number; totalTokens: number; costUsd?: number },
+    truncated: boolean = false
   ): void {
     const message: StreamCompleteMessage = {
       type: MessageType.STREAM_COMPLETE,
@@ -139,7 +155,8 @@ export class DictionaryHandler {
         domain: 'dictionary',
         content,
         cancelled,
-        usage
+        usage,
+        truncated
       },
       timestamp: Date.now()
     };
@@ -164,6 +181,7 @@ export class DictionaryHandler {
     const requestId = generateRequestId();
     const controller = new AbortController();
     this.activeRequests.set(requestId, controller);
+    this.sendStreamStarted({ requestId, domain: 'dictionary' });
 
     try {
       this.sendStatus(`Streaming dictionary entry for "${word}"...`);
@@ -181,7 +199,7 @@ export class DictionaryHandler {
 
       // Send complete message (result.content has full content for non-streaming fallback)
       const cancelled = result.content === '(Cancelled)';
-      this.sendStreamComplete(requestId, result.content, cancelled, result.usage);
+      this.sendStreamComplete(requestId, result.content, cancelled, result.usage, result.finishReason === 'length');
 
       // Also send dictionary result for backward compatibility
       if (!cancelled) {

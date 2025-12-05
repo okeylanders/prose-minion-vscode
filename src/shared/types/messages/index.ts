@@ -100,9 +100,12 @@ import {
   SaveResultSuccessMessage
 } from './results';
 import {
+  StreamStartedMessage,
   StreamChunkMessage,
   StreamCompleteMessage,
-  CancelRequestMessage
+  CancelAnalysisRequestMessage,
+  CancelDictionaryRequestMessage,
+  CancelContextRequestMessage
 } from './streaming';
 
 export type WebviewToExtensionMessage =
@@ -137,7 +140,9 @@ export type WebviewToExtensionMessage =
   | DeleteApiKeyMessage
   | WebviewErrorMessage
   | FastGenerateDictionaryMessage
-  | CancelRequestMessage;
+  | CancelAnalysisRequestMessage
+  | CancelDictionaryRequestMessage
+  | CancelContextRequestMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
@@ -163,5 +168,6 @@ export type ExtensionToWebviewMessage =
   | ApiKeyStatusMessage
   | FastGenerateDictionaryResultMessage
   | DictionaryGenerationProgressMessage
+  | StreamStartedMessage
   | StreamChunkMessage
   | StreamCompleteMessage;
