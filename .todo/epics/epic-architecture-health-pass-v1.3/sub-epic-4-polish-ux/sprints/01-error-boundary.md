@@ -5,6 +5,8 @@
 **Actual Time**: ~45 minutes
 **Priority**: MEDIUM
 **Branch**: `sprint/epic-ahp-v1.3-sub4-01-error-boundary`
+**PR**: [#46](https://github.com/okeylanders/prose-minion-vscode/pull/46)
+**Completed**: 2025-12-04
 
 ---
 

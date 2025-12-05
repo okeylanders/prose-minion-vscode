@@ -1,8 +1,8 @@
 # Sub-Epic 4: Polish & UX
 
-**Status**: 🟢 Ready to Start
+**Status**: 🟡 In Progress
 **Duration**: 1-2 days
-**Progress**: 0/4 sprints complete (0%)
+**Progress**: 1/4 sprints complete (25%)
 **Prerequisites**: ✅ Sub-Epic 3 Complete
 
 ---
@@ -34,16 +34,19 @@ After Sub-Epic 3 completes standards and testing, several UX improvements remain
 
 ## Sprints
 
-### Sprint 01: Error Boundary 🟡 Ready
-**Status**: Ready to Start
+### Sprint 01: Error Boundary ✅ Complete
+
+**Status**: Complete
 **Priority**: MEDIUM
-**Estimated Time**: 1-2 hours
+**Estimated Time**: 1-2 hours | **Actual**: ~45 minutes
+**PR**: [#46](https://github.com/okeylanders/prose-minion-vscode/pull/46)
 
 **Deliverables**:
 - ErrorBoundary component with graceful fallback UI
 - TabErrorFallback component for friendly error messages
 - Wrap tab components in error boundaries
 - Wrap MarkdownRenderer separately (high-risk parsing)
+- WEBVIEW_ERROR telemetry for error logging
 
 **References**:
 - [Architecture Debt: Error Boundary](./../../../architecture-debt/2025-11-19-error-boundary-needed.md)

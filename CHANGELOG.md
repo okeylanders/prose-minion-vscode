@@ -2,6 +2,32 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.3.2] - 2025-12-04
+
+### Added
+
+- **🛡️ Error Boundaries**: Graceful error handling prevents UI crashes
+  - `ErrorBoundary` component catches React rendering errors
+  - `TabErrorFallback` provides friendly error UI with retry/reload buttons
+  - All 5 tabs wrapped in isolated error boundaries (one crash doesn't affect others)
+  - MarkdownRenderer wrapped in 7 panel components for parsing error fallback
+  - Errors logged to Output Channel via `WEBVIEW_ERROR` telemetry
+
+### Enhanced
+
+- **🏗️ Architecture Health Pass (Sub-Epic 4, Sprint 01)**
+  - Error boundary pattern with refs for programmatic reset
+  - Unified error logging through UIHandler
+  - VSCode-themed fallback UI with retry functionality
+
+### Technical Details
+
+- Components created: `ErrorBoundary.tsx`, `TabErrorFallback.tsx`
+- Files modified: App.tsx, UIHandler.ts, 7 panel components
+- PR: [#46](https://github.com/okeylanders/prose-minion-vscode/pull/46)
+
+---
+
 ## [1.3.1] - 2025-11-29
 
 ### Fixed
