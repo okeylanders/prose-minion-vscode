@@ -300,7 +300,17 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
               💾
             </button>
           </div>
-          <ErrorBoundary fallback={<pre className="markdown-fallback">{categoryMarkdownContent}</pre>}>
+          <ErrorBoundary
+            fallback={<pre className="markdown-fallback">{categoryMarkdownContent}</pre>}
+            onError={(error: Error) => {
+              vscode.postMessage({
+                type: MessageType.WEBVIEW_ERROR,
+                source: 'webview.markdown_renderer',
+                payload: { message: error.message },
+                timestamp: Date.now()
+              });
+            }}
+          >
             <MarkdownRenderer content={categoryMarkdownContent} />
           </ErrorBoundary>
         </div>

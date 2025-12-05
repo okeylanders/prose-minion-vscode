@@ -123,7 +123,17 @@ export const WordFrequencyPanel: React.FC<WordFrequencyPanelProps> = ({
               💾
             </button>
           </div>
-          <ErrorBoundary fallback={<pre className="markdown-fallback">{markdownContent}</pre>}>
+          <ErrorBoundary
+            fallback={<pre className="markdown-fallback">{markdownContent}</pre>}
+            onError={(error) => {
+              vscode.postMessage({
+                type: MessageType.WEBVIEW_ERROR,
+                source: 'webview.markdown_renderer',
+                payload: { message: error.message },
+                timestamp: Date.now()
+              });
+            }}
+          >
             <MarkdownRenderer content={markdownContent} />
           </ErrorBoundary>
         </div>
