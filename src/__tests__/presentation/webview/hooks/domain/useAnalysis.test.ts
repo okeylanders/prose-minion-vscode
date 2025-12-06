@@ -18,7 +18,13 @@ describe('useAnalysis - Type Contracts', () => {
         'loading',
         'usedGuides',
         'tickerMessage',
-        'statusMessage'
+        'statusMessage',
+        // Streaming state
+        'isStreaming',
+        'isBuffering',
+        'streamingContent',
+        'streamingTokenCount',
+        'currentRequestId'
       ];
 
       // Type assertion validates the interface exists and has these properties
@@ -28,7 +34,13 @@ describe('useAnalysis - Type Contracts', () => {
         loading: false,
         usedGuides: [],
         tickerMessage: '',
-        statusMessage: ''
+        statusMessage: '',
+        // Streaming state
+        isStreaming: false,
+        isBuffering: false,
+        streamingContent: '',
+        streamingTokenCount: 0,
+        currentRequestId: null
       };
 
       requiredProperties.forEach(prop => {
@@ -44,7 +56,13 @@ describe('useAnalysis - Type Contracts', () => {
         'handleStatusMessage',
         'setLoading',
         'clearResult',
-        'clearStatus'
+        'clearStatus',
+        // Streaming actions
+        'handleStreamStarted',
+        'handleStreamChunk',
+        'handleStreamComplete',
+        'startStreaming',
+        'cancelStreaming'
       ];
 
       // Type assertion validates the interface exists
@@ -53,7 +71,13 @@ describe('useAnalysis - Type Contracts', () => {
         handleStatusMessage: jest.fn(),
         setLoading: jest.fn(),
         clearResult: jest.fn(),
-        clearStatus: jest.fn()
+        clearStatus: jest.fn(),
+        // Streaming actions
+        handleStreamStarted: jest.fn(),
+        handleStreamChunk: jest.fn(),
+        handleStreamComplete: jest.fn(),
+        startStreaming: jest.fn(),
+        cancelStreaming: jest.fn()
       };
 
       requiredActions.forEach(action => {
@@ -90,13 +114,19 @@ describe('useAnalysis - Type Contracts', () => {
 
   describe('Tripartite Interface Pattern Compliance', () => {
     it('should maintain separation of concerns', () => {
-      // State properties (read-only)
-      const stateProps: (keyof AnalysisState)[] = ['result', 'toolName', 'loading', 'usedGuides', 'tickerMessage', 'statusMessage'];
+      // State properties (read-only) - including streaming state
+      const stateProps: (keyof AnalysisState)[] = [
+        'result', 'toolName', 'loading', 'usedGuides', 'tickerMessage', 'statusMessage',
+        'isStreaming', 'isBuffering', 'streamingContent', 'streamingTokenCount', 'currentRequestId'
+      ];
 
-      // Actions (user-triggered operations)
-      const actionProps: (keyof AnalysisActions)[] = ['handleAnalysisResult', 'handleStatusMessage', 'setLoading', 'clearResult', 'clearStatus'];
+      // Actions (user-triggered operations) - including streaming actions
+      const actionProps: (keyof AnalysisActions)[] = [
+        'handleAnalysisResult', 'handleStatusMessage', 'setLoading', 'clearResult', 'clearStatus',
+        'handleStreamStarted', 'handleStreamChunk', 'handleStreamComplete', 'startStreaming', 'cancelStreaming'
+      ];
 
-      // Persistence (what gets saved)
+      // Persistence (what gets saved) - note: streaming state is NOT persisted (transient)
       const persistenceProps: (keyof AnalysisPersistence)[] = ['analysisResult', 'analysisToolName', 'usedGuides', 'tickerMessage', 'statusMessage'];
 
       // Validate no overlap between State and Actions

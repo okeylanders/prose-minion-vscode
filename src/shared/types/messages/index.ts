@@ -22,6 +22,7 @@ export * from './publishing';
 export * from './sources';
 export * from './ui';
 export * from './results';
+export * from './streaming';
 
 // Union types for message routing
 import {
@@ -98,6 +99,14 @@ import {
   SaveResultMessage,
   SaveResultSuccessMessage
 } from './results';
+import {
+  StreamStartedMessage,
+  StreamChunkMessage,
+  StreamCompleteMessage,
+  CancelAnalysisRequestMessage,
+  CancelDictionaryRequestMessage,
+  CancelContextRequestMessage
+} from './streaming';
 
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
@@ -130,7 +139,10 @@ export type WebviewToExtensionMessage =
   | UpdateApiKeyMessage
   | DeleteApiKeyMessage
   | WebviewErrorMessage
-  | FastGenerateDictionaryMessage;
+  | FastGenerateDictionaryMessage
+  | CancelAnalysisRequestMessage
+  | CancelDictionaryRequestMessage
+  | CancelContextRequestMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
@@ -155,4 +167,7 @@ export type ExtensionToWebviewMessage =
   | TokenUsageUpdateMessage
   | ApiKeyStatusMessage
   | FastGenerateDictionaryResultMessage
-  | DictionaryGenerationProgressMessage;
+  | DictionaryGenerationProgressMessage
+  | StreamStartedMessage
+  | StreamChunkMessage
+  | StreamCompleteMessage;

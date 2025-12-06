@@ -29,6 +29,7 @@ import {
 } from '@messages/dictionary';
 import { TokenUsage } from '@messages/tokenUsage';
 import { StatusEmitter } from '@messages/status';
+import { StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
 
 /**
  * Service wrapper for AI-powered dictionary lookups
@@ -164,9 +165,68 @@ export class DictionaryService {
         'dictionary_lookup',
         executionResult.content,
         undefined,
-        executionResult.usage
+        executionResult.usage,
+        executionResult.finishReason
       );
     } catch (error) {
+      return AnalysisResultFactory.createAnalysisResult(
+        'dictionary_lookup',
+        `Error: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Look up a word with streaming response
+   * Tokens are delivered progressively via the onToken callback
+   *
+   * @param word - Word to look up
+   * @param contextText - Optional context text
+   * @param onToken - Callback for each token received
+   * @param signal - AbortSignal for cancellation
+   * @returns Dictionary lookup result (after streaming completes)
+   */
+  async lookupWordStreaming(
+    word: string,
+    contextText: string | undefined,
+    onToken: StreamingTokenCallback,
+    signal?: AbortSignal
+  ): Promise<AnalysisResult> {
+    if (!this.dictionaryUtility) {
+      return AnalysisResultFactory.createAnalysisResult(
+        'dictionary_lookup',
+        this.getApiKeyWarning()
+      );
+    }
+
+    try {
+      const options = this.toolOptions.getOptions();
+
+      const executionResult = await this.dictionaryUtility.lookup(
+        { word, contextText },
+        {
+          temperature: options.temperature ?? 0.4,
+          maxTokens: options.maxTokens,
+          signal,
+          onToken
+        }
+      );
+
+      return AnalysisResultFactory.createAnalysisResult(
+        'dictionary_lookup',
+        executionResult.content,
+        undefined,
+        executionResult.usage,
+        executionResult.finishReason
+      );
+    } catch (error) {
+      // Handle abort separately
+      if (error instanceof Error && error.name === 'AbortError') {
+        return AnalysisResultFactory.createAnalysisResult(
+          'dictionary_lookup',
+          '(Cancelled)'
+        );
+      }
       return AnalysisResultFactory.createAnalysisResult(
         'dictionary_lookup',
         `Error: ${error instanceof Error ? error.message : String(error)}`

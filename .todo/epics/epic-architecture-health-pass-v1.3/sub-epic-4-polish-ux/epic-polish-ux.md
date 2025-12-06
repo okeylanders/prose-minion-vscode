@@ -71,16 +71,24 @@ After Sub-Epic 3 completes standards and testing, several UX improvements remain
 
 ---
 
-### Sprint 03: Request Cancellation UI 🟡 Ready
+### Sprint 03: Streaming Responses + Cancellation UI 🟡 Ready
+
 **Status**: Ready to Start
 **Priority**: MEDIUM
-**Estimated Time**: 4-6 hours
+**Estimated Time**: 8-10 hours
 
-**Deliverables**:
-- Add cancellation state to domain hooks (abortController management)
-- Backend signal registry (track AbortControllers by request ID)
-- Cancel button in LoadingIndicator component
-- Message contracts for cancellation (CANCEL_REQUEST type)
+**Phase 3A - Streaming (6-7h)**:
+- Add `createStreamingChatCompletion()` to OpenRouterClient
+- Parse Server-Sent Events (SSE), yield tokens
+- 5-second initial buffer before first render
+- 100ms debounce for smooth progressive updates
+- Token count display during stream
+- Applies to: Dialogue/Prose Analysis, Context Assistant, Standard Dictionary
+
+**Phase 3B - Cancel UI (2-3h)**:
+- Cancel button in LoadingIndicator + StreamingContent
+- Wire to AbortController in domain hooks
+- Actually stops server-side generation (saves tokens with streaming)
 
 **Prerequisites**:
 - ✅ Backend infrastructure complete (PR #31)

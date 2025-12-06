@@ -2,11 +2,21 @@
  * useAnalysis - Domain hook for prose/dialogue analysis operations
  *
  * Manages analysis results, loading state, guides, and status messages.
+ * Includes streaming support for progressive response display.
  */
 
 import * as React from 'react';
+import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
-import { AnalysisResultMessage, StatusMessage } from '@messages';
+import { useStreaming } from '../useStreaming';
+import { MessageType } from '@shared/types';
+import {
+  AnalysisResultMessage,
+  StatusMessage,
+  StreamStartedMessage,
+  StreamChunkMessage,
+  StreamCompleteMessage
+} from '@messages';
 
 export interface AnalysisState {
   result: string;
@@ -15,6 +25,12 @@ export interface AnalysisState {
   usedGuides: string[];
   tickerMessage: string;
   statusMessage: string;
+  // Streaming state
+  isStreaming: boolean;
+  isBuffering: boolean;
+  streamingContent: string;
+  streamingTokenCount: number;
+  currentRequestId: string | null;
 }
 
 export interface AnalysisActions {
@@ -23,6 +39,12 @@ export interface AnalysisActions {
   setLoading: (loading: boolean) => void;
   clearResult: () => void;
   clearStatus: () => void;
+  // Streaming actions
+  handleStreamChunk: (message: StreamChunkMessage) => void;
+  handleStreamComplete: (message: StreamCompleteMessage) => void;
+  handleStreamStarted: (message: StreamStartedMessage) => void;
+  startStreaming: (requestId: string) => void;
+  cancelStreaming: () => void;
 }
 
 export interface AnalysisPersistence {
@@ -61,6 +83,7 @@ export type UseAnalysisReturn = AnalysisState & AnalysisActions & { persistedSta
  * ```
  */
 export const useAnalysis = (): UseAnalysisReturn => {
+  const vscode = useVSCodeApi();
   const persisted = usePersistedState<{
     analysisResult?: string;
     analysisToolName?: string;
@@ -75,6 +98,11 @@ export const useAnalysis = (): UseAnalysisReturn => {
   const [usedGuides, setUsedGuides] = React.useState<string[]>(persisted?.usedGuides ?? []);
   const [tickerMessage, setTickerMessage] = React.useState<string>(persisted?.tickerMessage ?? '');
   const [statusMessage, setStatusMessage] = React.useState<string>(persisted?.statusMessage ?? '');
+
+  // Streaming state (using useStreaming hook)
+  const streaming = useStreaming();
+  const [currentRequestId, setCurrentRequestId] = React.useState<string | null>(null);
+  const ignoredRequestIdsRef = React.useRef<Set<string>>(new Set());
 
   // Clear result when analysis starts
   const clearResultWhenLoading = React.useCallback(() => {
@@ -122,6 +150,91 @@ export const useAnalysis = (): UseAnalysisReturn => {
     setTickerMessage('');
   }, []);
 
+  // Streaming handlers
+  const startStreaming = React.useCallback((requestId: string) => {
+    // Cancel any existing stream first
+    if (currentRequestId) {
+      // Notify backend to stop the old stream
+      vscode.postMessage({
+        type: MessageType.CANCEL_ANALYSIS_REQUEST,
+        source: 'webview.analysis.preempt',
+        payload: { requestId: currentRequestId, domain: 'analysis' },
+        timestamp: Date.now()
+      });
+
+      ignoredRequestIdsRef.current.add(currentRequestId);
+      streaming.reset();
+    }
+
+    ignoredRequestIdsRef.current.delete(requestId);
+    setCurrentRequestId(requestId);
+    streaming.startStreaming();
+    setLoading(true);
+    setResult(''); // Clear previous result
+  }, [currentRequestId, streaming, vscode]);
+
+  const handleStreamStarted = React.useCallback((message: StreamStartedMessage) => {
+    const { domain, requestId } = message.payload;
+    if (domain !== 'analysis') return;
+    startStreaming(requestId);
+  }, [startStreaming]);
+
+  const handleStreamChunk = React.useCallback((message: StreamChunkMessage) => {
+    const { domain, token, requestId } = message.payload;
+    // Only handle analysis domain chunks
+    if (domain !== 'analysis') return;
+
+    if (ignoredRequestIdsRef.current.has(requestId)) return;
+
+    // Ignore chunks for cancelled/old requests
+    if (currentRequestId && requestId !== currentRequestId) {
+      if (ignoredRequestIdsRef.current.has(requestId)) return;
+      return;
+    }
+
+    // Auto-start streaming on first chunk (if not already streaming)
+    if (!streaming.isStreaming) {
+      startStreaming(requestId);
+    }
+
+    streaming.appendToken(token);
+  }, [currentRequestId, startStreaming, streaming]);
+
+  const handleStreamComplete = React.useCallback((message: StreamCompleteMessage) => {
+    const { domain, cancelled, requestId } = message.payload;
+    // Only handle analysis domain completion
+    if (domain !== 'analysis') return;
+
+    // Clean up ignored ID for this request (whether it completed or was ignored)
+    ignoredRequestIdsRef.current.delete(requestId);
+
+    if (ignoredRequestIdsRef.current.has(requestId)) return;
+
+    if (currentRequestId && requestId !== currentRequestId) {
+      if (ignoredRequestIdsRef.current.has(requestId)) return;
+      return;
+    }
+
+    streaming.endStreaming();
+    setCurrentRequestId(null);
+    setLoading(false);
+
+    if (!cancelled) {
+      // Content will come through ANALYSIS_RESULT message for backward compatibility
+      // The streaming content is shown progressively until then
+    }
+  }, [currentRequestId, streaming]);
+
+  const cancelStreaming = React.useCallback(() => {
+    if (currentRequestId) {
+      ignoredRequestIdsRef.current.add(currentRequestId);
+    }
+    streaming.reset();
+    setCurrentRequestId(null);
+    setLoading(false);
+    setStatusMessage('');
+  }, [currentRequestId, streaming]);
+
   return {
     // State
     result,
@@ -130,6 +243,12 @@ export const useAnalysis = (): UseAnalysisReturn => {
     usedGuides,
     tickerMessage,
     statusMessage,
+    // Streaming state
+    isStreaming: streaming.isStreaming,
+    isBuffering: streaming.isBuffering,
+    streamingContent: streaming.displayContent,
+    streamingTokenCount: streaming.tokenCount,
+    currentRequestId,
 
     // Actions
     handleAnalysisResult,
@@ -137,6 +256,12 @@ export const useAnalysis = (): UseAnalysisReturn => {
     setLoading,
     clearResult,
     clearStatus,
+    // Streaming actions
+    handleStreamStarted,
+    handleStreamChunk,
+    handleStreamComplete,
+    startStreaming,
+    cancelStreaming,
 
     // Persistence
     persistedState: {

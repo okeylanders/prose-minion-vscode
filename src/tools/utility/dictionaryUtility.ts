@@ -4,7 +4,7 @@
  */
 
 import { PromptLoader } from '../shared/prompts';
-import { AIResourceOrchestrator, ExecutionResult } from '@orchestration/AIResourceOrchestrator';
+import { AIResourceOrchestrator, ExecutionResult, StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
 
 export interface DictionaryLookupInput {
   word: string;
@@ -15,6 +15,10 @@ export interface DictionaryLookupInput {
 export interface DictionaryLookupOptions {
   temperature?: number;
   maxTokens?: number;
+  /** AbortSignal for cancellation support */
+  signal?: AbortSignal;
+  /** When provided, enables streaming mode */
+  onToken?: StreamingTokenCallback;
 }
 
 export class DictionaryUtility {
@@ -42,7 +46,9 @@ export class DictionaryUtility {
       userMessage,
       {
         temperature: options?.temperature ?? 0.4,
-        maxTokens: options?.maxTokens ?? 10000
+        maxTokens: options?.maxTokens ?? 10000,
+        signal: options?.signal,
+        onToken: options?.onToken
       }
     );
   }

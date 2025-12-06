@@ -109,6 +109,41 @@ export const App: React.FC = () => {
       dictionary.handleFastGenerateResult(msg);
       setError(''); // Clear error on success
     },
+    [MessageType.STREAM_STARTED]: (msg) => {
+      const domain = msg.payload.domain;
+      if (domain === 'dictionary') {
+        dictionary.handleStreamStarted(msg);
+      } else if (domain === 'analysis') {
+        analysis.handleStreamStarted(msg);
+      } else if (domain === 'context') {
+        context.handleStreamStarted(msg);
+      }
+    },
+    [MessageType.STREAM_CHUNK]: (msg) => {
+      // Route streaming chunks based on domain
+      const domain = msg.payload.domain;
+      if (domain === 'dictionary') {
+        dictionary.handleStreamChunk(msg);
+      } else if (domain === 'analysis') {
+        analysis.handleStreamChunk(msg);
+      } else if (domain === 'context') {
+        context.handleStreamChunk(msg);
+      }
+    },
+    [MessageType.STREAM_COMPLETE]: (msg) => {
+      // Route stream complete based on domain
+      const domain = msg.payload.domain;
+      if (domain === 'dictionary') {
+        dictionary.handleStreamComplete(msg);
+        setError(''); // Clear error on success
+      } else if (domain === 'analysis') {
+        analysis.handleStreamComplete(msg);
+        setError(''); // Clear error on success
+      } else if (domain === 'context') {
+        context.handleStreamComplete(msg);
+        setError(''); // Clear error on success
+      }
+    },
     [MessageType.CONTEXT_RESULT]: (msg) => {
       context.handleContextResult(msg);
       setError(''); // Clear error on success

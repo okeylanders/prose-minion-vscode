@@ -5,7 +5,7 @@
 
 import type * as vscode from 'vscode';
 import { PromptLoader } from '../shared/prompts';
-import { AIResourceOrchestrator, ExecutionResult } from '@orchestration/AIResourceOrchestrator';
+import { AIResourceOrchestrator, ExecutionResult, StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
 
 export interface DialogueMicrobeatInput {
   text: string;
@@ -23,6 +23,10 @@ export interface DialogueMicrobeatOptions {
   temperature?: number;
   maxTokens?: number;
   focus?: 'dialogue' | 'microbeats' | 'both';
+  /** AbortSignal for cancellation support */
+  signal?: AbortSignal;
+  /** Callback for streaming tokens (enables streaming mode) */
+  onToken?: StreamingTokenCallback;
 }
 
 export class DialogueMicrobeatAssistant {
@@ -51,7 +55,9 @@ export class DialogueMicrobeatAssistant {
       {
         includeCraftGuides: options?.includeCraftGuides,
         temperature: options?.temperature ?? 0.7,
-        maxTokens: options?.maxTokens ?? 10000
+        maxTokens: options?.maxTokens ?? 10000,
+        signal: options?.signal,
+        onToken: options?.onToken
       }
     );
   }

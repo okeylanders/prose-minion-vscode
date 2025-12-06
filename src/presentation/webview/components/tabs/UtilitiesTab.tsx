@@ -9,6 +9,7 @@ import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { ErrorBoundary } from '../shared/ErrorBoundary';
 import { LoadingIndicator } from '../shared/LoadingIndicator';
 import { WordCounter } from '../shared/WordCounter';
+import { StreamingContent } from '../shared/StreamingContent';
 import { formatAnalysisAsMarkdown } from '../../utils/formatters';
 import { VSCodeAPI } from '../../types/vscode';
 import { UseDictionaryReturn } from '../../hooks/domain/useDictionary';
@@ -228,6 +229,21 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
     selection.requestSelection('dictionary_context');
   }, [selection]);
 
+  const handleCancelStreaming = React.useCallback(() => {
+    if (dictionary.currentRequestId) {
+      vscode.postMessage({
+        type: MessageType.CANCEL_DICTIONARY_REQUEST,
+        source: 'webview.utilities.tab',
+        payload: {
+          requestId: dictionary.currentRequestId,
+          domain: 'dictionary'
+        },
+        timestamp: Date.now()
+      });
+    }
+    dictionary.cancelStreaming();
+  }, [dictionary, vscode]);
+
   const markdownContent = React.useMemo(() => {
     if (!dictionary.result) return '';
     return formatAnalysisAsMarkdown(dictionary.result);
@@ -348,21 +364,32 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
         <button
           className="btn btn-primary"
           onClick={handleLookup}
-          disabled={!dictionary.word.trim() || dictionary.loading || dictionary.isFastGenerating}
+          disabled={!dictionary.word.trim() || dictionary.loading || dictionary.isFastGenerating || dictionary.isStreaming}
         >
           Run Dictionary Lookup
         </button>
         <button
           className="btn btn-secondary"
           onClick={handleFastGenerate}
-          disabled={!dictionary.word.trim() || dictionary.loading || dictionary.isFastGenerating}
+          disabled={!dictionary.word.trim() || dictionary.loading || dictionary.isFastGenerating || dictionary.isStreaming}
           title="Experimental: Generate using parallel API calls (2-4× faster)"
         >
           ⚡ Experimental: Run Dictionary Lookup [Fast]
         </button>
       </div>
 
-      {dictionary.loading && (
+      {dictionary.isStreaming && (
+        <StreamingContent
+          content={dictionary.streamingContent}
+          isStreaming={dictionary.isStreaming}
+          isBuffering={dictionary.isBuffering}
+          tokenCount={dictionary.streamingTokenCount}
+          onCancel={dictionary.currentRequestId ? handleCancelStreaming : undefined}
+          cancelDisabled={!dictionary.currentRequestId}
+        />
+      )}
+
+      {dictionary.loading && !dictionary.isStreaming && (
         <LoadingIndicator
           isLoading={dictionary.loading}
           statusMessage={dictionary.statusMessage}
@@ -384,7 +411,7 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
         />
       )}
 
-      {dictionary.result && (
+      {dictionary.result && !dictionary.isStreaming && (
         <div className="result-box">
           <div className="result-action-bar">
             <button
