@@ -5,6 +5,144 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2025-12-06
+
+### Overview
+
+Major feature release adding streaming responses and request cancellation across all AI operations. Users can now watch responses generate in real-time and cancel mid-stream to save tokens.
+
+**PR:** [#49](https://github.com/okeylanders/prose-minion-vscode/pull/49)
+**Branch:** `sprint/epic-ahp-v1.3-sub4-03-streaming-cancel`
+
+---
+
+### Added
+
+#### Streaming Responses
+
+Real-time streaming for all AI-powered features:
+
+- **Analysis Tab**: Dialogue and prose analysis stream as they generate
+- **Context Tab**: Context generation streams with live updates
+- **Utilities Tab**: Dictionary lookups stream progressively
+
+**Implementation:**
+- New `useStreaming` hook manages streaming state (content, token count, status)
+- `StreamingContent` component renders streaming UI with cancel button
+- Message types: `STREAM_STARTED`, `STREAM_CHUNK`, `STREAM_COMPLETE`
+
+#### Request Cancellation
+
+Full cancellation support with AbortSignal propagation:
+
+- Cancel button appears during all streaming operations
+- AbortSignal threads through: UI → Handlers → Services → OpenRouterClient
+- Graceful handling shows "(Cancelled)" instead of "Error: Aborted"
+
+**Domain-specific cancel routes:**
+- `CANCEL_ANALYSIS_REQUEST`
+- `CANCEL_CONTEXT_REQUEST`
+- `CANCEL_DICTIONARY_REQUEST`
+
+#### Race Condition Protection
+
+Prevents orphaned streams and wasted tokens:
+
+- New request automatically cancels any in-progress request
+- Cancelled request ID added to ignore set
+- Backend receives cancel signal immediately
+- Memory leak fix: ignored IDs cleared on stream complete
+
+---
+
+### Enhanced
+
+#### OpenRouterClient Streaming
+
+- Added `streamChatCompletion()` method with SSE parsing
+- AbortSignal support for immediate stream termination
+- `response.body.cancel()` on abort for HTTP cleanup
+- OutputChannel logging for malformed SSE chunks
+
+#### Handler Streaming Lifecycle
+
+All three domain handlers (Analysis, Context, Dictionary) now support:
+
+- `sendStreamStarted()` - Notifies UI streaming has begun
+- `sendStreamChunk()` - Sends progressive content with token count
+- `sendStreamComplete()` - Finalizes with full content, cancelled/truncated flags
+
+#### Service AbortError Handling
+
+`AssistantToolService` and `ContextAssistantService`:
+- Check for `error.name === 'AbortError'`
+- Return "(Cancelled)" result instead of error message
+
+---
+
+### Files Modified
+
+**New Files:**
+- `src/presentation/webview/hooks/useStreaming.ts` - Streaming state hook
+- `src/presentation/webview/components/shared/StreamingContent.tsx` - Streaming UI
+- `src/shared/types/messages/streaming.ts` - Streaming message contracts
+
+**Infrastructure:**
+- `src/infrastructure/api/providers/OpenRouterClient.ts` - Streaming + abort
+- `src/infrastructure/api/orchestration/AIResourceManager.ts` - OutputChannel wiring
+- `src/infrastructure/api/orchestration/AIResourceOrchestrator.ts` - Streaming orchestration
+
+**Handlers:**
+- `src/application/handlers/domain/AnalysisHandler.ts`
+- `src/application/handlers/domain/ContextHandler.ts`
+- `src/application/handlers/domain/DictionaryHandler.ts`
+
+**Services:**
+- `src/infrastructure/api/services/analysis/AssistantToolService.ts`
+- `src/infrastructure/api/services/analysis/ContextAssistantService.ts`
+
+**Hooks:**
+- `src/presentation/webview/hooks/domain/useAnalysis.ts`
+- `src/presentation/webview/hooks/domain/useContext.ts`
+- `src/presentation/webview/hooks/domain/useDictionary.ts`
+
+**Components:**
+- `src/presentation/webview/components/tabs/AnalysisTab.tsx`
+- `src/presentation/webview/components/tabs/UtilitiesTab.tsx`
+- `src/presentation/webview/App.tsx`
+
+---
+
+### Architecture Notes
+
+**Pattern: AbortSignal Threading**
+```
+UI (cancel click)
+  → useAnalysis.handleCancel()
+    → vscode.postMessage(CANCEL_ANALYSIS_REQUEST)
+      → AnalysisHandler.handleCancelRequest()
+        → abortController.abort()
+          → AssistantToolService (catches AbortError)
+            → OpenRouterClient (stream.cancel())
+```
+
+**Pattern: Race Condition Protection**
+```typescript
+const startStreaming = (requestId: string) => {
+  if (currentRequestId) {
+    // Cancel old stream
+    vscode.postMessage({ type: CANCEL_*_REQUEST, ... });
+    ignoredRequestIdsRef.current.add(currentRequestId);
+    streaming.reset();
+  }
+  // Start new stream
+  setCurrentRequestId(requestId);
+  streaming.startStreaming();
+};
+```
+
+---
+
 ## [1.3.3] - 2025-12-04
 
 ### Overview

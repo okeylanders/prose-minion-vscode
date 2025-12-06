@@ -2,6 +2,41 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.4.0] - 2025-12-06
+
+### Added
+
+- **🌊 Streaming Responses**: AI responses now stream in real-time
+  - Watch dialogue analysis, prose analysis, context generation, and dictionary lookups as they generate
+  - Live token count display during streaming
+  - Progressive rendering for faster perceived performance
+
+- **⏹️ Request Cancellation**: Stop AI operations mid-stream
+  - Cancel button appears during all streaming operations
+  - Graceful abort with "(Cancelled)" message instead of errors
+  - Immediate token savings when you cancel early
+
+- **🔄 Race Condition Protection**: Prevents wasted API tokens
+  - Starting a new request automatically cancels any in-progress request
+  - Backend receives cancel signal to stop generating immediately
+  - No orphaned requests burning tokens in the background
+
+### Enhanced
+
+- **Context Preview UX**: Toggle button with flash animation for context visibility
+- **AbortError Handling**: User-friendly cancellation messages across all services
+- **HTTP Cleanup**: Stream connections closed immediately on abort
+- **Debug Logging**: SSE parsing issues logged to Output Channel
+
+### Technical Details
+
+- New message types: `STREAM_STARTED`, `STREAM_CHUNK`, `STREAM_COMPLETE`, `CANCEL_*_REQUEST`
+- AbortSignal threads through entire stack (UI → handlers → services → OpenRouter)
+- Shared `useStreaming` hook for consistent streaming state management
+- PR: [#49](https://github.com/okeylanders/prose-minion-vscode/pull/49)
+
+---
+
 ## [1.3.3] - 2025-12-04
 
 ### Enhanced
