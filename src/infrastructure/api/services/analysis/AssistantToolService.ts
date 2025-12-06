@@ -184,6 +184,13 @@ export class AssistantToolService {
         executionResult.finishReason
       );
     } catch (error) {
+      // Handle abort separately for graceful UX
+      if (error instanceof Error && error.name === 'AbortError') {
+        return AnalysisResultFactory.createAnalysisResult(
+          'dialogue_analysis',
+          '(Cancelled)'
+        );
+      }
       return AnalysisResultFactory.createAnalysisResult(
         'dialogue_analysis',
         `Error: ${error instanceof Error ? error.message : String(error)}`
@@ -244,6 +251,13 @@ export class AssistantToolService {
         executionResult.finishReason
       );
     } catch (error) {
+      // Handle abort separately for graceful UX
+      if (error instanceof Error && error.name === 'AbortError') {
+        return AnalysisResultFactory.createAnalysisResult(
+          'prose_analysis',
+          '(Cancelled)'
+        );
+      }
       return AnalysisResultFactory.createAnalysisResult(
         'prose_analysis',
         `Error: ${error instanceof Error ? error.message : String(error)}`

@@ -144,7 +144,8 @@ export class ContextHandler {
     requestId: string,
     content: string,
     cancelled: boolean = false,
-    usage?: TokenUsage
+    usage?: TokenUsage,
+    truncated: boolean = false
   ): void {
     const message: StreamCompleteMessage = {
       type: MessageType.STREAM_COMPLETE,
@@ -154,7 +155,8 @@ export class ContextHandler {
         domain: 'context',
         content,
         cancelled,
-        usage
+        usage,
+        truncated
       },
       timestamp: Date.now()
     };
@@ -199,7 +201,8 @@ export class ContextHandler {
 
       // Check if cancelled
       const cancelled = controller.signal.aborted;
-      this.sendStreamComplete(requestId, result.content, cancelled, result.usage);
+      // TODO: Implement finishReason tracking in ContextGenerationResult to detect truncation
+      this.sendStreamComplete(requestId, result.content, cancelled, result.usage, false);
 
       // Also send context result for backward compatibility
       if (!cancelled) {

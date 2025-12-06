@@ -3,6 +3,7 @@
  * Handles communication with OpenRouter API for AI-powered analysis
  */
 
+import * as vscode from 'vscode';
 import { TokenUsage } from '@shared/types';
 
 export interface OpenRouterMessage {
@@ -44,10 +45,12 @@ export class OpenRouterClient {
   private readonly apiKey: string;
   private readonly baseUrl = 'https://openrouter.ai/api/v1';
   private readonly model: string;
+  private readonly outputChannel?: vscode.OutputChannel;
 
-  constructor(apiKey: string, model?: string) {
+  constructor(apiKey: string, model?: string, outputChannel?: vscode.OutputChannel) {
     this.apiKey = apiKey;
     this.model = model || 'z-ai/glm-4.6';
+    this.outputChannel = outputChannel;
   }
 
   getModel(): string {
@@ -211,11 +214,20 @@ export class OpenRouterClient {
                 finishReason
               };
             }
-          } catch {
-            // Skip malformed JSON chunks
+          } catch (error) {
+            // Log for debugging but don't fail the stream
+            this.outputChannel?.appendLine(
+              `[OpenRouterClient] Skipped malformed JSON chunk: ${error instanceof Error ? error.message : String(error)}`
+            );
           }
         }
       }
+    } catch (error) {
+      // Cancel the underlying stream body on abort
+      if (response.body) {
+        await response.body.cancel().catch(() => {});
+      }
+      throw error;
     } finally {
       reader.releaseLock();
     }

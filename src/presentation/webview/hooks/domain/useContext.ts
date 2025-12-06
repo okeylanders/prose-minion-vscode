@@ -147,12 +147,26 @@ export const useContext = (): UseContextReturn => {
 
   // Streaming handlers
   const startStreaming = React.useCallback((requestId: string) => {
+    // Cancel any existing stream first
+    if (currentRequestId) {
+      // Notify backend to stop the old stream
+      vscode.postMessage({
+        type: MessageType.CANCEL_CONTEXT_REQUEST,
+        source: 'webview.context.preempt',
+        payload: { requestId: currentRequestId, domain: 'context' },
+        timestamp: Date.now()
+      });
+
+      ignoredRequestIdsRef.current.add(currentRequestId);
+      streaming.reset();
+    }
+
     ignoredRequestIdsRef.current.delete(requestId);
     setCurrentRequestId(requestId);
     streaming.startStreaming();
     setLoading(true);
     setContextTextState(''); // Clear previous context
-  }, [streaming]);
+  }, [currentRequestId, streaming, vscode]);
 
   const handleStreamStarted = React.useCallback((message: StreamStartedMessage) => {
     const { domain, requestId } = message.payload;
@@ -184,6 +198,9 @@ export const useContext = (): UseContextReturn => {
     const { domain, cancelled, requestId } = message.payload;
     // Only handle context domain completion
     if (domain !== 'context') return;
+
+    // Clean up ignored ID for this request (whether it completed or was ignored)
+    ignoredRequestIdsRef.current.delete(requestId);
 
     if (ignoredRequestIdsRef.current.has(requestId)) return;
 

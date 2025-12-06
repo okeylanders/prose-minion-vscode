@@ -6,8 +6,10 @@
  */
 
 import * as React from 'react';
+import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
 import { useStreaming } from '../useStreaming';
+import { MessageType } from '@shared/types';
 import {
   DictionaryResultMessage,
   FastGenerateDictionaryResultMessage,
@@ -112,6 +114,7 @@ export type UseDictionaryReturn = DictionaryState & DictionaryActions & { persis
  * ```
  */
 export const useDictionary = (): UseDictionaryReturn => {
+  const vscode = useVSCodeApi();
   const persisted = usePersistedState<{
     utilitiesResult?: string;
     dictionaryToolName?: string;
@@ -211,12 +214,26 @@ export const useDictionary = (): UseDictionaryReturn => {
 
   // Streaming handlers
   const startStreaming = React.useCallback((requestId: string) => {
+    // Cancel any existing stream first
+    if (currentRequestId) {
+      // Notify backend to stop the old stream
+      vscode.postMessage({
+        type: MessageType.CANCEL_DICTIONARY_REQUEST,
+        source: 'webview.dictionary.preempt',
+        payload: { requestId: currentRequestId, domain: 'dictionary' },
+        timestamp: Date.now()
+      });
+
+      ignoredRequestIdsRef.current.add(currentRequestId);
+      streaming.reset();
+    }
+
     ignoredRequestIdsRef.current.delete(requestId);
     setCurrentRequestId(requestId);
     streaming.startStreaming();
     setLoading(true);
     setResult(''); // Clear previous result
-  }, [streaming]);
+  }, [currentRequestId, streaming, vscode]);
 
   const handleStreamStarted = React.useCallback((message: StreamStartedMessage) => {
     const { domain, requestId } = message.payload;
@@ -248,6 +265,9 @@ export const useDictionary = (): UseDictionaryReturn => {
     const { domain, content, cancelled, requestId } = message.payload;
     // Only handle dictionary domain completion
     if (domain !== 'dictionary') return;
+
+    // Clean up ignored ID for this request (whether it completed or was ignored)
+    ignoredRequestIdsRef.current.delete(requestId);
 
     if (ignoredRequestIdsRef.current.has(requestId)) return;
 

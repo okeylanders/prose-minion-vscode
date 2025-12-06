@@ -235,7 +235,7 @@ export class AIResourceManager {
       const guideRegistry = this.resourceLoader.getGuideRegistry();
       const guideLoader = this.resourceLoader.getGuideLoader();
 
-      const client = new OpenRouterClient(apiKey, model);
+      const client = new OpenRouterClient(apiKey, model, this.outputChannel);
       const conversationManager = new ConversationManager();
       const orchestrator = new AIResourceOrchestrator(
         client,

@@ -183,6 +183,14 @@ export class ContextAssistantService {
         usage: executionResult.usage
       };
     } catch (error) {
+      // Handle abort separately for graceful UX
+      if (error instanceof Error && error.name === 'AbortError') {
+        return {
+          toolName: 'context_assistant',
+          content: '(Cancelled)',
+          timestamp: new Date()
+        };
+      }
       const message = error instanceof Error ? error.message : String(error);
       this.outputChannel?.appendLine(`[ContextAssistantService] Context generation error: ${message}`);
 

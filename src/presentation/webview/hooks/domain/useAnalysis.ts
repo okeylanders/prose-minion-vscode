@@ -6,8 +6,10 @@
  */
 
 import * as React from 'react';
+import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
 import { useStreaming } from '../useStreaming';
+import { MessageType } from '@shared/types';
 import {
   AnalysisResultMessage,
   StatusMessage,
@@ -81,6 +83,7 @@ export type UseAnalysisReturn = AnalysisState & AnalysisActions & { persistedSta
  * ```
  */
 export const useAnalysis = (): UseAnalysisReturn => {
+  const vscode = useVSCodeApi();
   const persisted = usePersistedState<{
     analysisResult?: string;
     analysisToolName?: string;
@@ -149,12 +152,26 @@ export const useAnalysis = (): UseAnalysisReturn => {
 
   // Streaming handlers
   const startStreaming = React.useCallback((requestId: string) => {
+    // Cancel any existing stream first
+    if (currentRequestId) {
+      // Notify backend to stop the old stream
+      vscode.postMessage({
+        type: MessageType.CANCEL_ANALYSIS_REQUEST,
+        source: 'webview.analysis.preempt',
+        payload: { requestId: currentRequestId, domain: 'analysis' },
+        timestamp: Date.now()
+      });
+
+      ignoredRequestIdsRef.current.add(currentRequestId);
+      streaming.reset();
+    }
+
     ignoredRequestIdsRef.current.delete(requestId);
     setCurrentRequestId(requestId);
     streaming.startStreaming();
     setLoading(true);
     setResult(''); // Clear previous result
-  }, [streaming]);
+  }, [currentRequestId, streaming, vscode]);
 
   const handleStreamStarted = React.useCallback((message: StreamStartedMessage) => {
     const { domain, requestId } = message.payload;
@@ -187,6 +204,9 @@ export const useAnalysis = (): UseAnalysisReturn => {
     const { domain, cancelled, requestId } = message.payload;
     // Only handle analysis domain completion
     if (domain !== 'analysis') return;
+
+    // Clean up ignored ID for this request (whether it completed or was ignored)
+    ignoredRequestIdsRef.current.delete(requestId);
 
     if (ignoredRequestIdsRef.current.has(requestId)) return;
 
