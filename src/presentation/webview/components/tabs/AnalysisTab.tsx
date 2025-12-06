@@ -37,6 +37,18 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
 }) => {
   const [text, setText] = React.useState(selection.selectedText);
   const [showContextPreview, setShowContextPreview] = React.useState(false);
+  const [contextFlash, setContextFlash] = React.useState(false);
+  const wasStreamingRef = React.useRef(false);
+
+  // Flash context box when streaming completes
+  React.useEffect(() => {
+    if (wasStreamingRef.current && !context.isStreaming && !context.loading) {
+      setContextFlash(true);
+      const timeout = setTimeout(() => setContextFlash(false), 600);
+      return () => clearTimeout(timeout);
+    }
+    wasStreamingRef.current = context.isStreaming;
+  }, [context.isStreaming, context.loading]);
 
   // Sync local text state from selection
   const syncTextFromSelection = React.useCallback(() => {
@@ -284,28 +296,18 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
           <label className="text-sm font-medium">
             Context Brief (optional)
           </label>
-          <div className="context-header-actions">
-            <button
-              className="icon-button analysis-paste-button"
-              onClick={handlePasteContext}
-              title="Paste context from selection"
-              aria-label="Paste context"
-            >
-              📥
-            </button>
-            <button
-              className="icon-button analysis-preview-button"
-              onClick={() => setShowContextPreview(prev => !prev)}
-              title={showContextPreview ? 'Hide rendered context preview' : 'Show rendered context preview'}
-              aria-label="Toggle context preview"
-            >
-              {showContextPreview ? '👁️‍🗨️' : '👁️'}
-            </button>
-          </div>
+          <button
+            className="icon-button analysis-paste-button"
+            onClick={handlePasteContext}
+            title="Paste context from selection"
+            aria-label="Paste context"
+          >
+            📥
+          </button>
         </div>
         <div className="context-assist-row">
           <textarea
-            className="w-full h-28 resize-none"
+            className={`w-full h-28 resize-none${contextFlash ? ' context-flash' : ''}`}
             value={context.contextText}
             onChange={(e) => context.setContextText(e.target.value)}
             placeholder="Summaries, goals, tone targets, or notes that help the AI stay grounded..."
@@ -337,6 +339,18 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
             warningMessage="Large Context"
             showMax={false}
           />
+          {context.contextText.trim() && (
+            <button
+              type="button"
+              className="context-preview-toggle"
+              onClick={() => setShowContextPreview(prev => !prev)}
+              title={showContextPreview ? 'Hide formatted preview' : 'Show formatted preview'}
+              aria-label="Toggle context preview"
+            >
+              <span className="preview-toggle-chevron">{showContextPreview ? '▼' : '▲'}</span>
+              <span className="preview-toggle-text">{showContextPreview ? 'hide' : 'show'} formatted</span>
+            </button>
+          )}
           {modelsSettings.modelSelections.context && (
             <span className="model-indicator">
               <span className="model-label">Context Model:</span>

@@ -1253,6 +1253,55 @@ select:focus {
   background: var(--vscode-editor-background);
 }
 
+/* Context preview toggle lip button */
+.context-preview-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  background: var(--vscode-button-secondaryBackground);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 10px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.context-preview-toggle:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+  border-color: var(--vscode-focusBorder);
+  color: var(--vscode-foreground);
+}
+
+.preview-toggle-chevron {
+  font-size: 0.6rem;
+  line-height: 1;
+}
+
+.preview-toggle-text {
+  line-height: 1;
+}
+
+/* Context flash animation on stream complete */
+.context-flash {
+  animation: context-flash-anim 0.6s ease-out;
+}
+
+@keyframes context-flash-anim {
+  0% {
+    box-shadow: 0 0 0 0 var(--vscode-focusBorder);
+  }
+  30% {
+    box-shadow: 0 0 8px 3px var(--vscode-focusBorder);
+    border-color: var(--vscode-focusBorder);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
 /* Streaming waiting area */
 .streaming-waiting {
   margin-top: var(--spacing-sm);
