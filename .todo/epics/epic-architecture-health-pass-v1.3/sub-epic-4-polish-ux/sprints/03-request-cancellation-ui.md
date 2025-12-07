@@ -1,9 +1,13 @@
 # Sprint 03: Streaming Responses + Cancellation UI
 
-**Status**: 🟡 Ready
+**Status**: 🟢 Complete
 **Estimated Time**: 8-10 hours
+**Actual Time**: ~12 hours (expanded scope with robustness fixes)
 **Priority**: MEDIUM
 **Branch**: `sprint/epic-ahp-v1.3-sub4-03-streaming-cancel`
+**PR**: [#49](https://github.com/okeylanders/prose-minion-vscode/pull/49)
+**Completed**: 2025-12-06
+**Release**: v1.4.0
 
 ---
 

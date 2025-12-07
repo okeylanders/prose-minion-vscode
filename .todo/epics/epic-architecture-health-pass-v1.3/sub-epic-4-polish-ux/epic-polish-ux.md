@@ -1,8 +1,8 @@
 # Sub-Epic 4: Polish & UX
 
-**Status**: 🟡 In Progress
+**Status**: 🟡 Near Complete
 **Duration**: 1-2 days
-**Progress**: 2/4 sprints complete (50%)
+**Progress**: 3/4 sprints complete (75%)
 **Prerequisites**: ✅ Sub-Epic 3 Complete
 
 ---
@@ -71,31 +71,31 @@ After Sub-Epic 3 completes standards and testing, several UX improvements remain
 
 ---
 
-### Sprint 03: Streaming Responses + Cancellation UI 🟡 Ready
+### Sprint 03: Streaming Responses + Cancellation UI ✅ Complete
 
-**Status**: Ready to Start
+**Status**: Complete
 **Priority**: MEDIUM
-**Estimated Time**: 8-10 hours
+**Estimated Time**: 8-10 hours | **Actual**: ~12 hours (expanded scope)
+**PR**: [#49](https://github.com/okeylanders/prose-minion-vscode/pull/49)
+**Completed**: 2025-12-06
+**Release**: v1.4.0
 
-**Phase 3A - Streaming (6-7h)**:
-- Add `createStreamingChatCompletion()` to OpenRouterClient
-- Parse Server-Sent Events (SSE), yield tokens
-- 5-second initial buffer before first render
-- 100ms debounce for smooth progressive updates
-- Token count display during stream
-- Applies to: Dialogue/Prose Analysis, Context Assistant, Standard Dictionary
+**Deliverables**:
+- ✅ Streaming responses for Analysis, Context, Dictionary
+- ✅ `streamChatCompletion()` in OpenRouterClient with SSE parsing
+- ✅ `useStreaming` shared hook for streaming state
+- ✅ `StreamingContent` component with cancel button
+- ✅ AbortSignal threading through entire stack (UI → handlers → services → OpenRouter)
+- ✅ Race condition protection (new request cancels old)
+- ✅ Memory leak fix (clear ignored request IDs on complete)
+- ✅ Graceful abort handling ("(Cancelled)" vs "Error: Aborted")
 
-**Phase 3B - Cancel UI (2-3h)**:
-- Cancel button in LoadingIndicator + StreamingContent
-- Wire to AbortController in domain hooks
-- Actually stops server-side generation (saves tokens with streaming)
-
-**Prerequisites**:
-- ✅ Backend infrastructure complete (PR #31)
-- ✅ LoadingIndicator component extracted (Sub-Epic 2)
+**New Architecture Debt Identified**:
+- [Streaming Hook Duplication](./../../../architecture-debt/2025-12-05-streaming-hook-duplication.md) - 180 lines duplicated across 3 hooks
+- [Cancel Message Duplication](./../../../architecture-debt/2025-12-05-cancel-message-duplication.md) - Cancel message construction repeated
 
 **References**:
-- [Architecture Debt: Request Cancellation UI](./../../../architecture-debt/2025-11-21-request-cancellation-ui-exposure.md)
+- [Architecture Debt: Request Cancellation UI](./../../../architecture-debt/2025-11-21-request-cancellation-ui-exposure.md) ✅ Resolved
 
 ---
 
@@ -131,12 +131,14 @@ After Sub-Epic 3 completes standards and testing, several UX improvements remain
 - ✅ Fewer re-renders verified in React DevTools
 - ✅ Smoother UX during interactions
 
-### After Sprint 03 (Cancellation UI)
-- ✅ Cancel buttons visible during loading states
+### After Sprint 03 (Streaming + Cancellation UI) ✅ Complete
+- ✅ Streaming responses for all AI operations
+- ✅ Cancel buttons visible during streaming
 - ✅ Domain hooks manage AbortControllers
 - ✅ Backend tracks signals by request ID
-- ✅ Users can cancel analysis/dictionary/context/search/metrics requests
+- ✅ Users can cancel analysis/dictionary/context requests
 - ✅ Proper cleanup on abort (no orphaned promises)
+- ✅ Race condition protection (new request cancels old)
 
 ### After Sprint 04 (CSS Pattern)
 - ✅ Hybrid pattern documented in agent guidance
@@ -205,13 +207,14 @@ After Sub-Epic 3 completes standards and testing, several UX improvements remain
 
 ## Next Steps
 
-1. Complete Sub-Epic 3 (Standards & Testing)
-2. Start Sprint 01: Error Boundary
-3. Continue sequentially through sprints
-4. Evaluate Sprint 04 timing based on velocity
+1. ✅ Complete Sub-Epic 3 (Standards & Testing) - Done 2025-12-03
+2. ✅ Sprint 01: Error Boundary - Done 2025-12-04 (PR #46)
+3. ✅ Sprint 02: React.memo Performance - Done 2025-12-04 (PR #47)
+4. ✅ Sprint 03: Streaming + Cancellation - Done 2025-12-06 (PR #49) → **v1.4.0**
+5. 🟡 Sprint 04: CSS Pattern Standardization - Ready (LOW priority)
 
 ---
 
 **Created**: 2025-12-03
-**Last Updated**: 2025-12-03
-**Status**: Ready to Start (blocked on Sub-Epic 3 completion)
+**Last Updated**: 2025-12-06
+**Status**: Near Complete (3/4 sprints, 75%)

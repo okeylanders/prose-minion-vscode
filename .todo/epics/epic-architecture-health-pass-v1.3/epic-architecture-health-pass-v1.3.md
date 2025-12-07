@@ -1,10 +1,10 @@
 # Epic: Architecture Health Pass (v1.3)
 
 **Created**: 2025-11-21
-**Status**: In Progress
+**Status**: Near Complete (1 sprint remaining)
 **Target**: Post-v1.2.0 Architecture Cleanup
 **Duration**: 7-11 days (estimated)
-**Progress**: 14/18 sprints complete (78%)
+**Progress**: 17/18 sprints complete (94%)
 
 ---
 
@@ -87,18 +87,18 @@ After v1.2.0 release, 20 architecture debt items have accumulated:
 
 ---
 
-### Sub-Epic 4: Polish & UX 🟢 Ready to Start
+### Sub-Epic 4: Polish & UX 🟡 Near Complete
 
-**Status**: Ready (Sub-Epic 3 Complete)
+**Status**: Near Complete (3/4 sprints, 2025-12-06)
 **Duration**: 1-2 days
 **Sprints**: 4
 
 **Deliverables**:
 
-- Error boundary (graceful degradation)
-- Performance optimization (React.memo)
-- Request cancellation UI
-- CSS pattern standardization
+- ✅ Error boundary (graceful degradation) - PR #46
+- ✅ Performance optimization (React.memo) - PR #47
+- ✅ Streaming responses + Request cancellation UI - PR #49
+- 🟡 CSS pattern standardization - Ready
 
 **Prerequisites**: ✅ Sub-Epic 3 Complete
 
@@ -235,9 +235,9 @@ Sub-Epic 4: Polish & UX
 | 1. Foundation Cleanup | ✅ Complete | 3/3 sprints | 2025-11-22 |
 | 2. Component Decomposition | ✅ Complete | 5/5 sprints | 2025-11-24 |
 | 3. Standards & Testing | ✅ Complete | 6/6 sprints | 2025-12-03 |
-| 4. Polish & UX | 🟢 Ready | 0/4 sprints | - |
+| 4. Polish & UX | 🟡 Near Complete | 3/4 sprints | - |
 
-**Overall Progress**: 14/18 sprints complete (78%)
+**Overall Progress**: 17/18 sprints complete (94%)
 
 ---
 
@@ -257,14 +257,14 @@ Sub-Epic 4: Polish & UX
    - ✅ Sprint 04: Domain Hooks JSDoc (PR #43)
    - ✅ Sprint 05: useEffect Extraction - Remaining 7 Hooks (PR #44)
    - ✅ Sprint 06: Settings Hooks Unit Tests (deferred - covered by integration tests)
-4. 🟢 **Start Sub-Epic 4**: Polish & UX (Ready - 0/4 sprints)
-   - 🟡 Sprint 01: Error Boundary Implementation
-   - ⏸️ Sprint 02: React.memo Performance Optimization
-   - ⏸️ Sprint 03: Request Cancellation UI
-   - ⏸️ Sprint 04: CSS Pattern Standardization
+4. 🟡 **Sub-Epic 4**: Polish & UX (Near Complete - 3/4 sprints)
+   - ✅ Sprint 01: Error Boundary Implementation (PR #46, 2025-12-04)
+   - ✅ Sprint 02: React.memo Performance Optimization (PR #47, 2025-12-04)
+   - ✅ Sprint 03: Streaming Responses + Cancellation UI (PR #49, 2025-12-06) → **v1.4.0**
+   - 🟡 Sprint 04: CSS Pattern Standardization (Ready, LOW priority)
 
 ---
 
-**Last Updated**: 2025-12-03
+**Last Updated**: 2025-12-06
 **Created By**: Claude Code (AI Agent)
-**Status**: Sub-Epic 3 Complete (14/18 sprints total, 78%)
+**Status**: Sub-Epic 4 Near Complete (17/18 sprints total, 94%)
