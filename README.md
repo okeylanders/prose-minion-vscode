@@ -12,6 +12,18 @@
 
 ---
 
+## 🎉 What's New in v1.4.0
+
+> **🌊 Streaming Responses** - Watch AI responses generate in real-time! Dialogue analysis, prose analysis, context generation, and dictionary lookups now stream progressively with live token counts.
+>
+> **⏹️ Request Cancellation** - Cancel any AI operation mid-stream with the new cancel button. Stop early to save tokens when you've seen enough.
+>
+> **🔄 Smart Request Handling** - Starting a new request automatically cancels any in-progress one. No more wasted tokens from accidental double-clicks or changed minds.
+>
+> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes.
+
+---
+
 ## 🎉 What's New in v1.3.0
 
 > **📝 Phrase Lookup** - Dictionary now supports multi-word phrases! Look up idioms, expressions, and phrases up to 6 words. Great for understanding contextual usage and creative alternatives.
