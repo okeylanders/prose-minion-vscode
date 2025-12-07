@@ -1,311 +1,141 @@
 # Architecture Debt Status Summary
 
-**Last Updated**: 2025-11-29
-**Total Items**: 15
-**Resolved**: 10
-**Pending**: 5
+**Last Updated**: 2025-12-06
+**Total Items**: 20
+**Resolved**: 12 (archived)
+**Pending**: 8
 
 ---
 
-## ✅ RESOLVED (10 items)
+## ✅ RESOLVED (12 items) → Archived
 
-### 1. Configuration Strategy Inconsistency
-**File**: [2025-11-02-configuration-strategy-inconsistency.md](2025-11-02-configuration-strategy-inconsistency.md)
-**Status**: ✅ **RESOLVED** (2025-11-04, Sprint 03 - PR #20)
-**Solution**: All settings migrated to Domain Hooks pattern via Unified Settings Architecture epic
+All resolved items have been moved to `archived/` with resolution headers.
 
----
-
-### 2. Settings Architecture Analysis
-**File**: [2025-11-02-settings-architecture-analysis.md](2025-11-02-settings-architecture-analysis.md)
-**Status**: ✅ **RESOLVED** (2025-11-07)
-**Solution**: Comprehensive analysis led to Unified Settings Architecture epic (Phases 0-3 complete)
-
----
-
-### 3. Settings Architecture SUMMARY
-**File**: [2025-11-02-settings-architecture-SUMMARY.md](2025-11-02-settings-architecture-SUMMARY.md)
-**Status**: ✅ **RESOLVED** (2025-11-07)
-**Solution**: Executive summary of analysis, epic completed
+| File | Resolved | PR/Commit | Sprint |
+|------|----------|-----------|--------|
+| [word-counter-component](archived/2025-11-02-word-counter-component.md) | 2025-11-24 | PR #39 | Sub-Epic 2, Sprint 04 |
+| [useeffect-extraction-pattern](archived/2025-11-05-useeffect-extraction-pattern.md) | 2025-11-17 | PR #44 | Sub-Epic 3, Sprint 05 |
+| [settings-hooks-unit-tests](archived/2025-11-06-settings-hooks-unit-tests.md) | 2025-11-15 | Commit f0c08ac | Sub-Epic 3, Sprint 06 |
+| [standards-service-responsibility-violation](archived/2025-11-13-standards-service-responsibility-violation.md) | 2025-11-15 | PR #41 | Sub-Epic 3, Sprint 01 |
+| [error-boundary-needed](archived/2025-11-19-error-boundary-needed.md) | 2025-12-04 | PR #46 | Sub-Epic 4, Sprint 01 |
+| [loading-widget-status-integration](archived/2025-11-19-loading-widget-status-integration.md) | 2025-11-22 | PR #37 | Sub-Epic 2, Sprint 02 |
+| [prop-drilling-and-type-safety](archived/2025-11-19-prop-drilling-and-type-safety.md) | 2025-11-22 | PR #34 | Sub-Epic 1, Sprint 03 |
+| [react-memo-performance](archived/2025-11-19-react-memo-performance.md) | 2025-12-04 | PR #47 | Sub-Epic 4, Sprint 02 |
+| [scope-box-component-extraction](archived/2025-11-19-scope-box-component-extraction.md) | 2025-11-22 | PR #36 | Sub-Epic 2, Sprint 01 |
+| [subtab-panel-extraction](archived/2025-11-19-subtab-panel-extraction.md) | 2025-11-22 | PR #38 | Sub-Epic 2, Sprint 03 |
+| [request-cancellation-ui-exposure](archived/2025-11-21-request-cancellation-ui-exposure.md) | 2025-12-06 | PR #49 | Sub-Epic 4, Sprint 03 (v1.4.0) |
+| [airesourcemanager-layer-violation](archived/2025-11-29-airesourcemanager-layer-violation.md) | 2025-11-29 | PR #42 | Sub-Epic 3, Sprint 03 |
 
 ---
 
-### 4. Settings Architecture ADDENDUM (SearchTab Deep-Dive)
-**File**: [2025-11-02-settings-architecture-ADDENDUM.md](2025-11-02-settings-architecture-ADDENDUM.md)
-**Status**: ✅ **RESOLVED** (2025-11-07, PR #18)
-**Solution**: SearchTab settings fixed via `useWordSearchSettings` hook
+## 🟡 PENDING (8 items)
 
----
+### LOW Priority (5 items)
 
-### 5. Settings Sync Registration
-**File**: [2025-11-02-settings-sync-registration.md](2025-11-02-settings-sync-registration.md)
-**Status**: ✅ **RESOLVED** (2025-11-04, Sprint 02 - PR #19)
-**Solution**: Backend refactored to use semantic methods instead of hardcoded lists
-
----
-
-### 6. Result Formatter Grab Bag
-
-**File**: [archived/2025-11-19-result-formatter-grab-bag.md](archived/2025-11-19-result-formatter-grab-bag.md)
-**Status**: ✅ **RESOLVED** (2025-11-22, Sprint 01 - PR #33)
-**Solution**: Extracted `resultFormatter.ts` (763 lines) into 7 focused domain formatters
-
-**Outcomes**:
-
-- ✅ Single Responsibility restored (7 focused files replace 1 grab bag)
-- ✅ Each formatter testable in isolation
-- ✅ All 244 tests passing
-
-**Epic**: Architecture Health Pass v1.3 - Sub-Epic 1: Foundation Cleanup
-
----
-
-### 7. Shared Types & Imports Hygiene
-
-**File**: [archived/2025-11-19-shared-types-imports-hygiene.md](archived/2025-11-19-shared-types-imports-hygiene.md)
-**Status**: ✅ **RESOLVED** (2025-11-22, Sprint 02 - PR #TBD)
-**Solution**: Complete type reorganization and semantic import alias migration
-
-**Outcomes**:
-
-- ✅ Zero deep relative imports (116 conversions)
-- ✅ Clear type organization (cross-cutting vs domain)
-- ✅ Comprehensive semantic aliases (@messages, @handlers, @services, @hooks, etc.)
-- ✅ Full documentation added to agent setup
-- ✅ All 244 tests passing
-
-**Phases**: Type Relocation → Import Aliases → Message Reorganization → Deep Import Migration → Documentation
-
-**Epic**: Architecture Health Pass v1.3 - Sub-Epic 1: Foundation Cleanup
-
----
-
-### 8. Prop Drilling & Type Safety
-
-**File**: [2025-11-19-prop-drilling-and-type-safety.md](2025-11-19-prop-drilling-and-type-safety.md)
-**Status**: ✅ **RESOLVED** (2025-11-22, Sprint 03 - PR #34)
-**Solution**: Created typed VSCodeAPI interface, typed all message handlers, reduced prop drilling by 72%
-
-**Outcomes**:
-
-- ✅ Zero `vscode: any` in components (created `VSCodeAPI` interface)
-- ✅ Zero `message: any` in critical paths (typed all domain hook handlers)
-- ✅ 72% prop reduction (78 individual props → 22 hook objects)
-- ✅ Bug caught by type safety (SettingsOverlay string literal issue)
-- ✅ IDE autocomplete now works for VSCode API and message types
-- ✅ All 244 tests passing
-
-**Innovation**: Parallel subagent execution pattern (3 agents working simultaneously = 67% time reduction)
-
-**Epic**: Architecture Health Pass v1.3 - Sub-Epic 1: Foundation Cleanup
-
----
-
-### 9. Word Counter Component Duplication
-
-**File**: [2025-11-02-word-counter-component.md](2025-11-02-word-counter-component.md)
-**Status**: ✅ **RESOLVED** (2025-11-24, Sprint 04 - PR #39)
-**Solution**: Extracted shared `<WordCounter />` component used by AnalysisTab, UtilitiesTab
-
-**Outcomes**:
-
-- ✅ Single shared component (DRY restored)
-- ✅ Consistent thresholds across all uses
-- ✅ All 259 tests passing
-
-**Epic**: Architecture Health Pass v1.3 - Sub-Epic 2: Component Decomposition
-
----
-
-### 10. StandardsService Responsibility Violation
-
-**File**: [2025-11-13-standards-service-responsibility-violation.md](2025-11-13-standards-service-responsibility-violation.md)
-**Status**: ✅ **RESOLVED** (2025-11-15, Technical Debt Cleanup Epic - commit a694ea1)
-**Solution**: Moved `computePerFileStats()` to `ProseStatsService.analyzeMultipleFiles()`
-
-**Outcomes**:
-
-- ✅ Single Responsibility Principle restored
-- ✅ Correct domain boundaries (measurement in measurement service)
-- ✅ Cleaner architecture (ProseStatsService owns all prose stats analysis)
-
-**Epic**: Technical Debt Cleanup 2025-11-15
-
----
-
-## 🟡 PENDING (5 items)
-
-### 1. useEffect Extraction Pattern
-**File**: [2025-11-05-useeffect-extraction-pattern.md](2025-11-05-useeffect-extraction-pattern.md)
-**Priority**: MEDIUM
+#### 1. Tailwind + Custom CSS Pattern
+**File**: [2025-11-20-tailwind-custom-css-pattern.md](2025-11-20-tailwind-custom-css-pattern.md)
 **Effort**: 2-4 hours
-**Status**: Identified during Sprint 04 (Phase C)
+**Sprint**: Sub-Epic 4, Sprint 04 (Ready)
 
-**Problem**: `useEffect` hooks contain inline logic with comments explaining intent
-
-**Impact**:
-- ⚠️ Harder to test (need to mock React lifecycle)
-- ⚠️ Can't reuse logic (anonymous functions)
-- ⚠️ Less readable (intent buried in comments)
-
-**Recommendation**: Extract to named methods (self-documenting)
-
-**When to Fix**: Medium priority - improves maintainability but not critical
+Tailwind configured but unused. Need to document hybrid pattern (custom CSS for reusables, Tailwind for one-offs).
 
 ---
 
-### 2. Domain Hooks JSDoc Completion
+#### 2. Streaming Hook Duplication
+**File**: [2025-12-05-streaming-hook-duplication.md](2025-12-05-streaming-hook-duplication.md)
+**Effort**: 0.5-1 day
+**Identified**: v1.4.0 (PR #49)
+
+~180 lines of streaming orchestration logic duplicated across useAnalysis, useContext, useDictionary. Recommend extracting shared `useDomainStreaming` helper.
+
+---
+
+#### 3. Cancel Message Duplication
+**File**: [2025-12-05-cancel-message-duplication.md](2025-12-05-cancel-message-duplication.md)
+**Effort**: <0.5 day
+**Identified**: v1.4.0 (PR #49)
+
+Cancel message construction repeated across AnalysisTab & UtilitiesTab. Small UI helper extraction.
+
+---
+
+#### 4. AI Orchestrator Loop Duplication
+**File**: [2025-11-25-ai-resource-orchestrator-loop-duplication.md](2025-11-25-ai-resource-orchestrator-loop-duplication.md)
+**Effort**: 2-3 hours
+
+Multi-turn loop pattern (~200 lines) duplicated in `executeWithAgentCapabilities` and `executeWithContextResources`. Can extract to generic loop when needed.
+
+---
+
+#### 5. Large File Review
+**File**: [2025-11-19-large-file-review-needed.md](2025-11-19-large-file-review-needed.md)
+**Effort**: TBD
+
+10 files exceed size guidelines. Review opportunistically when modifying.
+
+---
+
+### MEDIUM Priority (3 items)
+
+#### 6. Token Usage Standardization
+**File**: [2025-11-18-token-usage-standardization.md](2025-11-18-token-usage-standardization.md)
+**Effort**: 3-4 hours
+
+Infrastructure complete for centralization in AIResourceOrchestrator. Services need cleanup to use unified pattern.
+
+---
+
+#### 7. Domain Hooks JSDoc Completion
 **File**: [2025-11-06-domain-hooks-jsdoc-completion.md](2025-11-06-domain-hooks-jsdoc-completion.md)
-**Priority**: MEDIUM
 **Effort**: 1-2 hours
-**Status**: Identified during Sprint 05
 
-**Problem**: Only `useWordSearchSettings` has comprehensive JSDoc, 6 other hooks need same level
-
-**Hooks Needing JSDoc**:
-- `useWordFrequencySettings`
-- `useModelsSettings`
-- `useContextPathsSettings`
-- `useTokensSettings`
-- `usePublishingSettings`
-- `useTokenTracking`
-
-**Impact**:
-- ⚠️ Inconsistent developer experience
-- ⚠️ Harder for new contributors to understand
-
-**Recommendation**: Copy JSDoc template from `useWordSearchSettings` to all hooks
-
-**When to Fix**: Medium priority - improves DX but not blocking
+Only `useWordSearchSettings` has comprehensive JSDoc. 6 other hooks need enhancement.
 
 ---
 
-### 3. Settings Hooks Unit Tests
-**File**: [2025-11-06-settings-hooks-unit-tests.md](2025-11-06-settings-hooks-unit-tests.md)
-**Priority**: HIGH
-**Effort**: 1 day (8 hours)
-**Status**: Identified during Sprint 05
-
-**Problem**: 6 settings hooks have no automated unit tests
-
-**Current Coverage**: Manual testing only (checklists)
-
-**Impact**:
-- ⚠️ Regressions not caught automatically
-- ⚠️ Manual testing required for every change
-- ⚠️ Fear of refactoring (might break something)
-
-**Recommendation**: Add comprehensive unit tests for all 6 hooks
-
-**Note**: Infrastructure Testing Epic (PR #25) added tests for infrastructure patterns (MessageRouter, Domain Hooks tripartite interface). Settings hooks still need specific unit tests for their business logic.
-
-**When to Fix**: High priority for v1.1 - automated tests improve velocity
-
----
-
-### 4. Settings Integration Tests
+#### 8. Settings Integration Tests
 **File**: [2025-11-06-settings-integration-tests.md](2025-11-06-settings-integration-tests.md)
-**Priority**: MEDIUM
-**Effort**: 1-2 days
-**Status**: Identified during Sprint 05
+**Effort**: 4 hours
 
-**Problem**: No integration tests for settings sync flow (Settings Overlay → VSCode settings → Component)
-
-**Impact**:
-- ⚠️ Complex workflows not covered by unit tests
-- ⚠️ Echo prevention only manually verified
-- ⚠️ Persistence only manually verified
-
-**Recommendation**: Add integration tests for critical settings flows
-
-**When to Fix**: Medium priority - deferred to v1.1+
-
----
-
-### 5. README.md (Architecture Debt Tracker)
-**File**: [README.md](README.md)
-**Status**: Documentation file explaining the architecture debt tracking process
+No integration tests for settings sync flow. Deferred - unit tests provide sufficient coverage.
 
 ---
 
 ## Summary Statistics
 
-| Category | Count | Priority Breakdown |
-|----------|-------|-------------------|
-| **Resolved** | 10 | All CRITICAL issues resolved |
-| **Pending** | 5 | HIGH: 1, MEDIUM: 3, DOC: 1 |
-| **Total** | 15 | - |
+| Category | Count | Notes |
+|----------|-------|-------|
+| **Resolved** | 12 | All moved to `archived/` |
+| **Pending** | 8 | LOW: 5, MEDIUM: 3 |
+| **Total** | 20 | - |
 
 ---
 
-## Prioritization for v1.1
+## Recent Achievements (v1.4.0)
 
-### Must Fix (v1.1)
-1. **Settings Hooks Unit Tests** (HIGH) - 1 day
-   - Improves development velocity
-   - Catches regressions automatically
-   - Foundation for future testing
+**Sub-Epic 4, Sprint 03** (PR #49, 2025-12-06):
+- ✅ Streaming responses for Analysis, Context, Dictionary
+- ✅ Request cancellation UI with AbortSignal threading
+- ✅ Race condition protection (new request cancels old)
+- ✅ Memory leak fix (clear ignored request IDs)
 
-### Should Fix (v1.1)
-2. **StandardsService Responsibility Violation** (MEDIUM) - 1-2 hours
-   - Clean architecture violation
-   - Easy to fix now, harder later
-3. **Domain Hooks JSDoc Completion** (MEDIUM) - 1-2 hours
-   - Improves developer experience
-   - Consistency across hooks
-
-### Nice to Have (v1.2+)
-4. **useEffect Extraction Pattern** (MEDIUM) - 2-4 hours
-   - Code quality improvement
-   - Not blocking
-5. **Settings Integration Tests** (MEDIUM) - 1-2 days
-   - Comprehensive coverage
-   - Lower ROI than unit tests
-
----
-
-## Recent Achievements
-
-**Architecture Health Pass v1.3 - Foundation Cleanup** (Sprint 01-03, Completed 2025-11-22):
-
-- ✅ Result Formatter Decomposition (763 lines → 7 focused files)
-- ✅ Shared Types & Imports Hygiene (116 deep imports → semantic aliases)
-- ✅ Type organization cleanup (cross-cutting concerns extracted)
-- ✅ Comprehensive import alias strategy documented
-- ✅ **Prop Drilling & Type Safety** (78 props → 22 hook objects, full type safety)
-  - Created `VSCodeAPI` interface (eliminates `vscode: any`)
-  - Typed all message handlers (eliminates `message: any`)
-  - 72% prop reduction via hook object pattern
-  - IDE autocomplete now works throughout presentation layer
-  - Caught real bug (SettingsOverlay string literal) via compile-time checking
-
-**Unified Settings Architecture Epic** (Completed 2025-11-07):
-- ✅ Fixed SearchTab settings (4 settings completely broken)
-- ✅ Migrated all settings to Domain Hooks pattern
-- ✅ Backend refactored to semantic methods
-- ✅ 100% persistence coverage (29/29 settings)
-
-**Architecture Health Pass v1.3 - Component Decomposition** (Sprint 00-04, Completed 2025-11-24):
-
-- ✅ Component organization (tabs/, shared/, search/, metrics/)
-- ✅ ScopeBox extracted (5 duplications eliminated) - PR #36
-- ✅ LoadingIndicator unified - PR #37
-- ✅ Subtab panels extracted (SearchTab 666→74, MetricsTab 413→129) - PR #38
-- ✅ WordCounter extracted (3 duplications eliminated) - PR #39
-
-These epics resolved **9 major architecture debt items**, eliminating all CRITICAL issues.
+**New Debt Identified**:
+- Streaming Hook Duplication (180 lines across 3 hooks)
+- Cancel Message Duplication (small extraction)
 
 ---
 
 ## Recommendation
 
-**For v1.0**: All critical issues are resolved. The codebase is ready for release.
+**Epic Status**: Architecture Health Pass v1.3 is 94% complete (17/18 sprints).
 
-**For v1.1**: Focus on automated testing (Settings Hooks Unit Tests) to improve development velocity. This is the highest-ROI item remaining.
+**Remaining Work**:
+1. **Sprint 04**: CSS Pattern Standardization (LOW priority, 2-4h)
+2. **Future**: Streaming hook extraction when pattern stabilizes
 
-**For v1.2+**: Address remaining code quality items (useEffect extraction) as polish work.
+**v1.4.0 Ready**: All critical and high-priority debt resolved. Codebase is healthy.
 
 ---
 
-**Last Reviewed**: 2025-11-29
-**Next Review**: After Sub-Epic 3 completion
+**Last Reviewed**: 2025-12-06
+**Next Review**: After Epic completion or v1.5 planning

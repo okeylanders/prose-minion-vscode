@@ -1,3 +1,8 @@
+> **✅ RESOLVED**
+> - **PR**: #41
+> - **Date**: 2025-11-15
+> - **Sprint**: Sub-Epic 3, Sprint 01
+
 # StandardsService Responsibility Violation: computePerFileStats
 
 **Date Identified**: 2025-11-13

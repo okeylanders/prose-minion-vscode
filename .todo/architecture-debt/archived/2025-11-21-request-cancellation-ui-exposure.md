@@ -1,3 +1,9 @@
+> **✅ RESOLVED**
+> - **PR**: #49
+> - **Date**: 2025-12-06
+> - **Sprint**: Sub-Epic 4, Sprint 03
+> - **Release**: v1.4.0
+
 # Request Cancellation - UI Exposure
 
 **Date Identified**: 2025-11-21

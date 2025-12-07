@@ -1,3 +1,8 @@
+> **✅ RESOLVED**
+> - **PR**: #36
+> - **Date**: 2025-11-22
+> - **Sprint**: Sub-Epic 2, Sprint 01
+
 # Scope Box Component Extraction
 
 **Date Identified**: 2025-11-19
