@@ -24,7 +24,7 @@ This is particularly useful when you want to:
 
 In the **Target Word or Phrase** field, enter the word or phrase you want to look up (maximum 6 words).
 
-**Tip**: If you select text in your editor before opening the Dictionary tab, it will auto-populate this field and show the source file.
+**Tip**: If you select text in your editor and click the right pin button will paste the content in and record the reference on tabs that use tools to read files.
 
 ### Step 2: Add Optional Context
 
@@ -157,7 +157,7 @@ Context-aware analysis of your specific sentence:
 ### Alternative Phrasings for Your Context
 ![Alternative Phrasings](../../../screenshots/dictionary/section-13-alternative-phrasings.png)
 
-**The key deliverable when requesting alternatives.** Organized by emphasis:
+**The key deliverable when requesting alternatives.** Organized by emphases related to phrase:
 - For cold efficiency
 - For cruelty/power
 - For skill

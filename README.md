@@ -14,6 +14,8 @@
 
 ## 🎉 What's New in v1.4.0
 
+> <img src="assets/pixel-minion-icon.png" alt="Pixel Minion" width="20" style="vertical-align: middle;"/> **Sister Extension: [Pixel Minion](https://marketplace.visualstudio.com/items?itemName=OkeyLanders.pixel-minion)** - Generate images and SVGs directly in VS Code using AI models like Flux, Recraft, and more via OpenRouter. [GitHub](https://github.com/okeylanders/pixel-minion-vscode)
+>
 > **🌊 Streaming Responses** - Watch AI responses generate in real-time! Dialogue analysis, prose analysis, context generation, and dictionary lookups now stream progressively with live token counts.
 >
 > **⏹️ Request Cancellation** - Cancel any AI operation mid-stream with the new cancel button. Stop early to save tokens when you've seen enough.
