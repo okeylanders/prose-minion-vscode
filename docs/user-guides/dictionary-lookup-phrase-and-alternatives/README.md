@@ -36,9 +36,9 @@ In the **Optional Context** field, provide:
 This context helps the AI tailor its alternatives to your specific use case.
 
 **Example context from the screenshot:**
-> *I want to re-word the descriptor surgical precision in this sentence can you provide some options:*
+> *I want to re-word the descriptor methodical precision in this sentence can you provide some options?*
 >
-> *"She reached over without warning and plucked at his arm hair with surgical precision"*
+> *"As Nate moved to follow, he caught Mr. Scrumpsher erasing the board with methodical precision. The teacher paused at the empty circle, staring at it for a long moment before deliberately wiping it away with a single sweep of the eraser."*
 
 ### Step 3: Run the Lookup
 
@@ -82,7 +82,7 @@ This is invaluable for understanding the full semantic range of your phrase.
 ![Register & Connotation](../../../screenshots/dictionary/section-04-register-connotation.png)
 
 **Tonal sliders** provide at-a-glance insight into the phrase's emotional weight:
-- Coldness, Admiration, Detachment, Efficiency (in this example)
+- Formality, Coldness, Authority, Obsessiveness, Trustworthiness (varies by phrase)
 - Helps you quickly assess if the phrase matches your intended tone
 
 ### Narrative Texture
@@ -146,37 +146,26 @@ Visual scales showing where your phrase sits on relevant spectrums:
 
 Helps you find alternatives that shift the intensity in either direction.
 
-### AI Advisory Notes
+### AI Advisory Notes & Alternative Phrasings
 ![AI Advisory Notes](../../../screenshots/dictionary/section-12-ai-advisory-notes.png)
 
-Context-aware analysis of your specific sentence:
-- How the phrase interacts with other elements
-- What it emphasizes or undermines
-- Suggestions for what to consider
+**The key deliverable when requesting alternatives.** This section provides:
 
-### Alternative Phrasings for Your Context
-![Alternative Phrasings](../../../screenshots/dictionary/section-13-alternative-phrasings.png)
+- Context-aware analysis of your specific sentence
+- Single-word and two-word replacement options
+- "Show don't tell" action alternatives
+- Contextual recommendations tailored to your scene
 
-**The key deliverable when requesting alternatives.** Organized by emphases related to phrase:
-- For cold efficiency
-- For cruelty/power
-- For skill
-- For intimacy violation
-- For surprise/speed
-- For sensory freshness
-- For humor/absurdity
-- For gothic/dark romance
-
-### Final Recommendation
-![Recommendation](../../../screenshots/dictionary/section-14-recommendation.png)
-
-A synthesized recommendation based on your specific context, weighing the trade-offs between instant recognition and memorable originality.
+The AI analyzes how your phrase interacts with surrounding elements and suggests alternatives organized by what you want to emphasize (ritual, obsession, emotion, etc.).
 
 ---
 
-## Output
+## Output Examples
 
-The full output for this example is shown below. You can copy this to your notes or export it using the clipboard buttons in the Dictionary panel.
+The full outputs are shown below. You can copy these to your notes or export using the clipboard buttons in the Dictionary panel.
+
+<details>
+<summary><strong>Example 1: "surgical precision"</strong> — Intimate action with clinical distance</summary>
 
 ---
 
@@ -372,3 +361,201 @@ approximate → careful → meticulous → **surgical precision** → atomic acc
 Given the intimate, potentially unsettling nature of the action, consider whether "surgical precision" serves your tonal goals. If you want **clinical coldness**, keep it or swap to "clinical detachment." If you want **playful cruelty**, try "sadistic exactitude" or "predatory care." If you want **speed**, use "cobra-strike swiftness." If you want **fresh imagery**, consider "pickpocket dexterity" or "as if plucking harp strings."
 
 The phrase's strength is its immediate clarity; its weakness is its ubiquity. Choose based on whether you prioritize **instant recognition** or **memorable originality**.
+
+</details>
+
+<details>
+<summary><strong>Example 2: "methodical precision"</strong> — Scene-specific context with character action (recommended)</summary>
+
+---
+
+# Prose Minion | Writer's Dictionary Lookup
+
+# Phrase: *methodical precision*
+
+## Optional Context ( user provided )
+
+*I want to re-word the descriptor methodical precision in this sentence can you provide some options? 
+
+"As Nate moved to follow, he caught Mr. Scrumpsher erasing the board with methodical precision. The teacher paused at the empty circle, staring at it for a long moment before deliberately wiping it away with a single sweep of the eraser."*
+
+## 📕 Definition  
+A compound descriptor denoting systematic, orderly action executed with exacting accuracy; the intersection of deliberate process and flawless calibration; action characterized by both careful sequencing and unwavering exactitude.
+
+## 🔈 Pronunciation  
+- IPA: `/məˈθɒdɪkəl prɪˈsɪʒən/`  
+- Phonetic: *muh-THOD-ih-kuhl prih-SIZH-uhn*  
+- Syllables: 8 total (4 + 4)  
+- Stress: Secondary-primary, secondary-primary pattern  
+- Audio cues: Rhythmic alternation; dental fricatives create measured, clinical mouthfeel
+
+## 🧩 Parts of Speech  
+- **Noun phrase** (adjectival modifier + abstract noun): Functions as descriptor of action, process, or character trait  
+- **Adverbial construction** (when preceded by "with"): Modifies verbs to specify manner of execution
+
+## 🔍 Sense Explorer  
+
+1. **Systematic exactitude in physical action**  
+   - *Definition*: Performing tasks with both ordered methodology and pinpoint accuracy.  
+   - *Example*: *The surgeon approached the incision with methodical precision, each movement anticipated three steps ahead.*  
+   - *Synonyms*: systematic accuracy, deliberate exactness, measured care, calculated finesse, orderly meticulousness, disciplined rigor, structured thoroughness, choreographed accuracy, regimented perfection, careful calibration, planned exactitude, controlled mastery  
+   - *Antonyms*: haphazard carelessness, chaotic sloppiness, impulsive recklessness, spontaneous abandon, frenzied disorder, erratic fumbling  
+   - *Nuance*: Implies conscious control and rehearsed competence; suggests character who values process over speed.
+
+2. **Psychological/character trait**  
+   - *Definition*: Habitual disposition toward ordered thinking and exacting execution.  
+   - *Example*: *Her methodical precision made her invaluable during crises, though exhausting at dinner parties.*  
+   - *Synonyms*: systematic temperament, ordered mindset, disciplined nature, meticulous disposition, regimented personality, fastidious character, structured approach, calibrated thinking, procedural bent, detail-oriented focus, exacting mentality, process-driven psychology  
+   - *Antonyms*: spontaneous nature, chaotic temperament, improvisational spirit, loose approach, flexible mindset, adaptive fluidity  
+   - *Nuance*: Can read as admirable competence or obsessive rigidity depending on context and tone.
+
+3. **Ritualistic/ceremonial action**  
+   - *Definition*: Performing repetitive or symbolic acts with reverential exactitude.  
+   - *Example*: *He folded each letter with methodical precision, as though the creases themselves held meaning.*  
+   - *Synonyms*: ritualistic care, ceremonial exactness, reverential thoroughness, liturgical attention, practiced solemnity, habitual devotion, customary rigor, traditional meticulousness, prescribed accuracy, routine sanctity, formal discipline, codified carefulness  
+   - *Antonyms*: casual handling, irreverent haste, dismissive carelessness, profane sloppiness, impromptu treatment, informal looseness  
+   - *Nuance*: Elevates mundane actions to significance through obsessive attention; suggests hidden meaning or psychological compulsion.
+
+4. **Technical/professional competence**  
+   - *Definition*: Expertise demonstrated through flawless procedural execution.  
+   - *Example*: *The watchmaker's methodical precision transformed scattered gears into synchronized harmony.*  
+   - *Synonyms*: professional exactitude, expert calibration, masterly accuracy, skilled thoroughness, trained meticulousness, practiced perfection, technical rigor, specialist care, artisanal discipline, craftsman's attention, virtuosic control, adept finesse  
+   - *Antonyms*: amateur fumbling, novice clumsiness, untrained sloppiness, apprentice errors, dilettante carelessness, beginner uncertainty  
+   - *Nuance*: Connotes years of practice; implies muscle memory and unconscious competence made visible.
+
+## 🗣️ Register & Connotation  
+- **Registers**: Formal-to-neutral; clinical in technical contexts; potentially ironic in casual speech  
+- **Emotional valence**: Neutral-to-positive (competence, control) or negative (obsessiveness, rigidity)  
+- **Tonal sliders**:  
+  - Formality: ████████░░ (80%)  
+  - Coldness: ██████░░░░ (60%)  
+  - Authority: ████████░░ (80%)  
+  - Obsessiveness: ███████░░░ (70%)  
+  - Trustworthiness: ███████░░░ (70%)
+
+## 🪶 Narrative Texture  
+- **Sensory tags**: Visual (primary), kinesthetic, temporal (pacing)  
+- **Mood levers**: Control vs. compulsion, competence vs. rigidity, calm vs. coldness, mastery vs. mania  
+- **Symbolism**: Order imposed on chaos, repression, perfectionism, hidden trauma (when excessive), professional identity, ritualistic coping  
+- **Genre pointers**: Thrillers (serial killers, forensic experts), literary fiction (character studies), mystery (detective methodologies), horror (obsessive behaviors), sci-fi (AI/android movements)  
+- **Pacing impact**: Slows narrative tempo; creates pregnant pauses; builds tension through deliberation
+
+## 📚 Collocations & Idioms  
+- **High-value collocations**: *with methodical precision*, *methodical precision of*, *approached with methodical precision*, *executed with methodical precision*, *moved with methodical precision*  
+- **Semantic neighbors**: clinical detachment, surgical accuracy, clockwork regularity, mechanical efficiency  
+- **Clichés to avoid/refresh**:  
+  - **Tired**: "with methodical precision" (overused in thriller/mystery)  
+  - **Refreshed**: "with calibrated intent," "in measured increments," "through ritualized care," "via practiced geometry"  
+- **Context-specific warning**: In your sentence, the phrase risks redundancy—both words emphasize similar qualities. Consider splitting the attributes or replacing entirely.
+
+## 🧬 Morphology & Family  
+- **Base components**: *method* (Greek *methodos*: pursuit of knowledge) + *-ical* (adjectival) + *precision* (Latin *praecisio*: cutting off)  
+- **Derivatives**: methodically precise, precision methodology, methodological exactness  
+- **Semantic family**: systematic, meticulous, rigorous, exacting, scrupulous, fastidious, punctilious, painstaking  
+- **Compound variations**: precision-driven methodology, method-bound accuracy, systematic exactitude
+
+## 🎭 Character Voice Variations  
+
+**For the Mr. Scrumpsher scene specifically:**
+
+1. **Academic theorist**: "The teacher's erasure followed algorithmic protocol—each stroke predetermined."  
+2. **Hardboiled detective**: "Scrumpsher wiped that board like he was erasing a witness."  
+3. **Teen slangster**: "Mr. S was, like, weirdly obsessed with getting every speck of chalk off."  
+4. **Lyrical poet**: "He swept the board clean with a monk's devotion to emptiness."  
+5. **Battlefield commander**: "The teacher cleared the board with tactical efficiency—no wasted motion."  
+6. **Whimsical fae guide**: "Each stroke sang a little song of order, dust motes dancing their obedience."  
+7. **Villainous mastermind**: "Scrumpsher erased with the same care he'd use removing evidence."  
+8. **AI concierge**: "Erasure pattern: optimal. Surface restoration: 99.7% complete."  
+9. **Southern Gothic narrator**: "He worried that board like a man trying to rub out sin itself."  
+10. **Noir journalist**: "The chalk disappeared under his hand like secrets under subpoena."  
+11. **Clinical psychologist**: "The repetitive erasure displayed classic displacement behavior—anxiety channeled through ritual."  
+12. **Cosmic horror observer**: "The teacher unmade each symbol with ceremonial care, as though the equations themselves might notice."
+
+## 🎵 Soundplay & Rhyme  
+- **Assonance**: The long *e* sounds (*me-THOD-i-cal*) create measured, thoughtful pacing  
+- **Consonance**: Dental/alveolar clusters (*d-k-l*, *pr-s-zh-n*) produce crisp, technical mouthfeel  
+- **Alliterative partners**: measured movements, practiced patience, calibrated care, deliberate discipline, systematic sweeps, ordered operations  
+- **Rhythm note**: The phrase's eight syllables create natural caesura—ideal for slowing narrative tempo
+
+## 🌐 Translations & Cognates  
+- **French**: *précision méthodique* (same word order; emphasizes precision first in common usage)  
+- **Spanish**: *precisión metódica* (precision-first construction)  
+- **German**: *methodische Präzision* (method-first; culturally resonant with engineering precision)  
+- **Japanese**: 几帳面な正確さ (*kichōmen na seikaku-sa*: scrupulous accuracy; 系統的精密 *keitō-teki seimitsu*: systematic precision)  
+- **Nuance**: Romance languages tend to front "precision"; Germanic languages front "methodical." Japanese distinguishes personality trait from action quality.
+
+## ⚠️ Usage Watchpoints  
+
+### For your specific sentence:
+1. **Redundancy alert**: "Methodical" already implies careful process; "precision" adds exactitude. Together they're emphatic but potentially redundant. Consider whether you need *both* qualities or if one suffices.
+
+2. **Pacing concern**: The phrase slows the sentence significantly. If Mr. Scrumpsher's action should feel ominous or obsessive, this works. If you want quicker pacing, trim to one descriptor.
+
+3. **Character revelation**: The phrase suggests Mr. Scrumpsher is:
+   - Habitually controlled (positive reading)  
+   - Obsessively rigid (negative reading)  
+   - Performing a ritual (symbolic reading)  
+   - Hiding something through over-control (suspicious reading)
+
+4. **Tonal shift risk**: Moving from Nate's observation to this formal phrase creates distance. If Nate is your POV character, consider whether *he* would think in these terms or if you want omniscient narrative voice here.
+
+### General warnings:
+- **Overuse in genre fiction**: Thriller/mystery writers lean on this phrase heavily for villain characterization  
+- **Clinical coldness**: Can make characters feel robotic if overused  
+- **Show vs. tell**: The phrase *tells* us about precision rather than *showing* it through specific action details  
+- **Adverb proximity**: Avoid stacking with other -ly adverbs ("slowly and methodically with methodical precision")
+
+## 🧭 Semantic Gradient  
+
+**Intensity scale (weak → strong):**  
+casual care → careful attention → deliberate focus → systematic approach → **methodical precision** → obsessive exactitude → compulsive perfectionism → pathological rigidity → ritualistic mania
+
+**Warmth scale (warm → cold):**  
+loving attention → gentle care → focused diligence → professional competence → **methodical precision** → clinical detachment → mechanical efficiency → robotic execution → inhuman automation
+
+**Speed scale (fast → slow):**  
+efficient speed → practiced fluency → measured pace → deliberate tempo → **methodical precision** → painstaking slowness → laborious crawl → glacial progression
+
+## 🧠 AI Advisory Notes  
+
+### For your specific revision task:
+
+**Single-word alternatives** (maintaining formality):
+- *ritualistic* (adds ceremonial weight)
+- *practiced* (suggests habit/routine)
+- *deliberate* (emphasizes intentionality)
+- *measured* (suggests careful pacing)
+- *systematic* (emphasizes process)
+- *exacting* (emphasizes standards)
+
+**Two-word alternatives** (splitting the qualities):
+- *careful geometry* (visual + mathematical)
+- *practiced ritual* (habit + ceremony)
+- *calibrated intent* (precision + purpose)
+- *measured devotion* (pacing + intensity)
+- *systematic reverence* (method + meaning)
+- *deliberate ceremony* (intention + ritual)
+- *habitual exactness* (routine + precision)
+- *clockwork solemnity* (mechanical + serious)
+- *studied care* (learned + attentive)
+- *rehearsed thoroughness* (practiced + complete)
+
+**Descriptive action alternatives** (show don't tell):
+- "...erasing the board in straight, even strokes"
+- "...wiping the board clean with three measured sweeps"
+- "...clearing the board as though following invisible guidelines"
+- "...erasing each symbol in sequence, left to right, top to bottom"
+- "...working the eraser across the board like a metronome"
+
+**Contextual recommendations**:
+Given that Mr. Scrumpsher *pauses* at the empty circle and *deliberately* wipes it away, you're already showing precision and intent. The phrase "methodical precision" may be redundant. Consider:
+
+1. **Emphasize the ritual**: "...erasing the board with ritualistic care"
+2. **Emphasize the obsession**: "...erasing the board as though each stroke mattered"
+3. **Emphasize the contrast**: "...erasing the board with unusual thoroughness" (if this differs from his normal behavior)
+4. **Emphasize the emotion**: "...erasing the board with grim determination"
+5. **Emphasize the performance**: "...erasing the board as though someone were watching"
+
+**Verification needed**: Etymology of "methodical" is well-established; "precision" from Latin *praecidere* is standard. Japanese equivalents simplified for clarity—consult native speaker for nuanced contexts.
+
+</details>
