@@ -20,6 +20,8 @@
 >
 > **🔄 Smart Request Handling** - Starting a new request automatically cancels any in-progress one. No more wasted tokens from accidental double-clicks or changed minds.
 >
+> **📚 New User Guides** - [Dictionary: Looking Up Phrases & Alternatives](docs/user-guides/dictionary-lookup-phrase-and-alternatives/README.md) - Learn how to get context-aware alternative phrasings for your prose. More guides coming soon!
+>
 > **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes.
 
 ---
