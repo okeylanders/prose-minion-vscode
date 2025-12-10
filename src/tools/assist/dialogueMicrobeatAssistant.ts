@@ -6,6 +6,7 @@
 import type * as vscode from 'vscode';
 import { PromptLoader } from '../shared/prompts';
 import { AIResourceOrchestrator, ExecutionResult, StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
+import { AssistantFocus } from '@messages';
 
 export interface DialogueMicrobeatInput {
   text: string;
@@ -22,7 +23,7 @@ export interface DialogueMicrobeatOptions {
   includeCraftGuides?: boolean;
   temperature?: number;
   maxTokens?: number;
-  focus?: 'dialogue' | 'microbeats' | 'both';
+  focus?: AssistantFocus;
   /** AbortSignal for cancellation support */
   signal?: AbortSignal;
   /** Callback for streaming tokens (enables streaming mode) */
@@ -62,7 +63,7 @@ export class DialogueMicrobeatAssistant {
     );
   }
 
-  private async loadToolPrompts(focus: 'dialogue' | 'microbeats' | 'both' = 'both'): Promise<string> {
+  private async loadToolPrompts(focus: AssistantFocus = 'both'): Promise<string> {
     try {
       // Always load base prompts
       const basePaths = [

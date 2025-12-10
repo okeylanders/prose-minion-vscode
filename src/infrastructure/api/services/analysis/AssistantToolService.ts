@@ -21,7 +21,7 @@ import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
 import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
-import { StatusEmitter } from '@messages';
+import { AssistantFocus, StatusEmitter } from '@messages';
 import { StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
 
 /**
@@ -143,7 +143,7 @@ export class AssistantToolService {
     text: string,
     contextText?: string,
     sourceFileUri?: string,
-    focus?: 'dialogue' | 'microbeats' | 'both',
+    focus?: AssistantFocus,
     streamingOptions?: AnalysisStreamingOptions
   ): Promise<AnalysisResult> {
     if (!this.dialogueAssistant) {

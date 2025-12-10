@@ -4,7 +4,7 @@
  */
 
 import * as React from 'react';
-import { SelectionTarget, MessageType } from '@shared/types';
+import { SelectionTarget, MessageType, AssistantFocus } from '@shared/types';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { ErrorBoundary } from '../shared/ErrorBoundary';
 import { LoadingIndicator } from '../shared/LoadingIndicator';
@@ -84,7 +84,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
     analysis.result && analysis.result.trim().length > 0 && (analysis.toolName || lastSubmissionRef.current?.toolName)
   );
 
-  const handleAnalyzeDialogue = (focus: 'dialogue' | 'microbeats' | 'both' = 'both') => {
+  const handleAnalyzeDialogue = (focus: AssistantFocus = 'both') => {
     if (!text.trim()) {
       return;
     }
@@ -451,6 +451,38 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
             disabled={!text.trim() || analysis.loading || analysis.isStreaming}
           >
             🎭 Microbeats Only
+          </button>
+        </div>
+
+        <h5 className="analysis-section-subheader">Writing Tools:</h5>
+        <div className="focused-buttons">
+          <button
+            className="action-button secondary"
+            onClick={() => handleAnalyzeDialogue('cliche')}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+          >
+            🔍 Cliché Analysis
+          </button>
+          <button
+            className="action-button secondary"
+            onClick={() => handleAnalyzeDialogue('continuity')}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+          >
+            🔗 Continuity Check
+          </button>
+          <button
+            className="action-button secondary"
+            onClick={() => handleAnalyzeDialogue('style')}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+          >
+            🎨 Style Consistency
+          </button>
+          <button
+            className="action-button secondary"
+            onClick={() => handleAnalyzeDialogue('editor')}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+          >
+            ✏️ Editor
           </button>
         </div>
       </div>
