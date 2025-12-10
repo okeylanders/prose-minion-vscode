@@ -7,6 +7,7 @@ export enum MessageType {
   // Analysis tab messages
   ANALYZE_DIALOGUE = 'analyze_dialogue',
   ANALYZE_PROSE = 'analyze_prose',
+  ANALYZE_WRITING_TOOLS = 'analyze_writing_tools',
   LOOKUP_DICTIONARY = 'lookup_dictionary',
   GENERATE_CONTEXT = 'generate_context',
   COPY_RESULT = 'copy_result',

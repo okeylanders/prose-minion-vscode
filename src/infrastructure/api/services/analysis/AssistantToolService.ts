@@ -17,12 +17,12 @@
 import * as vscode from 'vscode';
 import { DialogueMicrobeatAssistant } from '@/tools/assist/dialogueMicrobeatAssistant';
 import { ProseAssistant } from '@/tools/assist/proseAssistant';
-import { WritingToolsAssistant, isWritingToolsFocus } from '@/tools/assist/writingToolsAssistant';
+import { WritingToolsAssistant } from '@/tools/assist/writingToolsAssistant';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
 import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
-import { AssistantFocus, StatusEmitter } from '@messages';
+import { DialogueFocus, WritingToolsFocus, StatusEmitter } from '@messages';
 import { StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
 
 /**
@@ -143,14 +143,10 @@ export class AssistantToolService {
   /**
    * Analyze dialogue with AI assistant
    *
-   * Routes to appropriate assistant based on focus:
-   * - dialogue/microbeats/both → DialogueMicrobeatAssistant
-   * - cliche/continuity/style/editor → WritingToolsAssistant
-   *
-   * @param text - Text to analyze
+   * @param text - Dialogue text to analyze
    * @param contextText - Optional surrounding context
    * @param sourceFileUri - Optional source file URI for tracking
-   * @param focus - Analysis focus (see AssistantFocus type)
+   * @param focus - Dialogue focus: 'dialogue', 'microbeats', or 'both' (default)
    * @param streamingOptions - Optional streaming configuration (signal, onToken)
    * @returns Analysis result with suggestions and optional usage metrics
    */
@@ -158,15 +154,9 @@ export class AssistantToolService {
     text: string,
     contextText?: string,
     sourceFileUri?: string,
-    focus?: AssistantFocus,
+    focus?: DialogueFocus,
     streamingOptions?: AnalysisStreamingOptions
   ): Promise<AnalysisResult> {
-    // Route writing tools focus modes to dedicated assistant
-    if (focus && isWritingToolsFocus(focus)) {
-      return this.analyzeWithWritingTools(text, contextText, sourceFileUri, focus, streamingOptions);
-    }
-
-    // Default: use dialogue/microbeat assistant
     if (!this.dialogueAssistant) {
       return AnalysisResultFactory.createAnalysisResult(
         'dialogue_analysis',
@@ -221,12 +211,19 @@ export class AssistantToolService {
 
   /**
    * Analyze with Writing Tools assistant (cliche, continuity, style, editor)
+   *
+   * @param text - Text to analyze
+   * @param contextText - Optional surrounding context
+   * @param sourceFileUri - Optional source file URI for tracking
+   * @param focus - Writing tools focus: 'cliche', 'continuity', 'style', or 'editor'
+   * @param streamingOptions - Optional streaming configuration (signal, onToken)
+   * @returns Analysis result with suggestions and optional usage metrics
    */
-  private async analyzeWithWritingTools(
+  async analyzeWritingTools(
     text: string,
     contextText?: string,
     sourceFileUri?: string,
-    focus: 'cliche' | 'continuity' | 'style' | 'editor' = 'editor',
+    focus: WritingToolsFocus = 'editor',
     streamingOptions?: AnalysisStreamingOptions
   ): Promise<AnalysisResult> {
     if (!this.writingToolsAssistant) {

@@ -4,7 +4,7 @@
  */
 
 import * as React from 'react';
-import { SelectionTarget, MessageType, AssistantFocus } from '@shared/types';
+import { SelectionTarget, MessageType, DialogueFocus, WritingToolsFocus } from '@shared/types';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { ErrorBoundary } from '../shared/ErrorBoundary';
 import { LoadingIndicator } from '../shared/LoadingIndicator';
@@ -84,7 +84,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
     analysis.result && analysis.result.trim().length > 0 && (analysis.toolName || lastSubmissionRef.current?.toolName)
   );
 
-  const handleAnalyzeDialogue = (focus: AssistantFocus = 'both') => {
+  const handleAnalyzeDialogue = (focus: DialogueFocus = 'both') => {
     if (!text.trim()) {
       return;
     }
@@ -101,6 +101,34 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
 
     vscode.postMessage({
       type: MessageType.ANALYZE_DIALOGUE,
+      source: 'webview.analysis.tab',
+      payload: {
+        text,
+        contextText: context.contextText && context.contextText.trim().length > 0 ? context.contextText : undefined,
+        sourceFileUri: sourceReference,
+        focus
+      },
+      timestamp: Date.now()
+    });
+  };
+
+  const handleAnalyzeWritingTools = (focus: WritingToolsFocus) => {
+    if (!text.trim()) {
+      return;
+    }
+
+    analysis.setLoading(true);
+
+    lastSubmissionRef.current = {
+      toolName: `writing_tools_${focus}`,
+      excerpt: text,
+      context: context.contextText,
+      sourceUri: selection.selectedSourceUri,
+      relativePath: selection.selectedRelativePath
+    };
+
+    vscode.postMessage({
+      type: MessageType.ANALYZE_WRITING_TOOLS,
       source: 'webview.analysis.tab',
       payload: {
         text,
@@ -458,28 +486,28 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
         <div className="focused-buttons">
           <button
             className="action-button secondary"
-            onClick={() => handleAnalyzeDialogue('cliche')}
+            onClick={() => handleAnalyzeWritingTools('cliche')}
             disabled={!text.trim() || analysis.loading || analysis.isStreaming}
           >
             🔍 Cliché Analysis
           </button>
           <button
             className="action-button secondary"
-            onClick={() => handleAnalyzeDialogue('continuity')}
+            onClick={() => handleAnalyzeWritingTools('continuity')}
             disabled={!text.trim() || analysis.loading || analysis.isStreaming}
           >
             🔗 Continuity Check
           </button>
           <button
             className="action-button secondary"
-            onClick={() => handleAnalyzeDialogue('style')}
+            onClick={() => handleAnalyzeWritingTools('style')}
             disabled={!text.trim() || analysis.loading || analysis.isStreaming}
           >
             🎨 Style Consistency
           </button>
           <button
             className="action-button secondary"
-            onClick={() => handleAnalyzeDialogue('editor')}
+            onClick={() => handleAnalyzeWritingTools('editor')}
             disabled={!text.trim() || analysis.loading || analysis.isStreaming}
           >
             ✏️ Editor

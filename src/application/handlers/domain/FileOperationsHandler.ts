@@ -157,13 +157,28 @@ export class FileOperationsHandler {
       await vscode.workspace.fs.createDirectory(targetDir);
       fileName = `${sanitizedWord}.md`;
       fileContent = content.trim();
-    } else if (toolName === 'prose_analysis' || toolName === 'dialogue_analysis') {
+    } else if (toolName === 'prose_analysis' || toolName === 'dialogue_analysis' || toolName.startsWith('writing_tools_')) {
       targetDir = vscode.Uri.joinPath(rootUri, 'prose-minion', 'assistant');
       await vscode.workspace.fs.createDirectory(targetDir);
 
-      const prefix = toolName === 'prose_analysis'
-        ? 'excerpt-assistant-prose-'
-        : 'excerpt-assistant-dialog-beats-';
+      // Map tool names to file prefixes
+      let prefix: string;
+      if (toolName === 'prose_analysis') {
+        prefix = 'excerpt-assistant-prose-';
+      } else if (toolName === 'dialogue_analysis') {
+        prefix = 'excerpt-assistant-dialog-beats-';
+      } else if (toolName === 'writing_tools_cliche') {
+        prefix = 'cliche-analysis-';
+      } else if (toolName === 'writing_tools_continuity') {
+        prefix = 'continuity-check-';
+      } else if (toolName === 'writing_tools_style') {
+        prefix = 'style-consistency-';
+      } else if (toolName === 'writing_tools_editor') {
+        prefix = 'editor-';
+      } else {
+        // Fallback for any future writing tools
+        prefix = `${toolName.replace(/_/g, '-')}-`;
+      }
 
       const nextCount = await this.getNextSequentialNumber(targetDir, prefix);
       fileName = `${prefix}${nextCount}.md`;
