@@ -17,6 +17,7 @@
 import * as vscode from 'vscode';
 import { DialogueMicrobeatAssistant } from '@/tools/assist/dialogueMicrobeatAssistant';
 import { ProseAssistant } from '@/tools/assist/proseAssistant';
+import { WritingToolsAssistant, isWritingToolsFocus } from '@/tools/assist/writingToolsAssistant';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
@@ -40,12 +41,14 @@ export interface AnalysisStreamingOptions {
  * Provides dialogue and prose analysis capabilities:
  * - Dialogue: Tags, microbeats, action beats with configurable focus
  * - Prose: Writing quality, style, and improvement suggestions
+ * - Writing Tools: Cliche analysis, continuity check, style consistency, editor
  * - Craft guides integration (optional)
  * - Context-aware analysis with source file tracking
  */
 export class AssistantToolService {
   private dialogueAssistant?: DialogueMicrobeatAssistant;
   private proseAssistant?: ProseAssistant;
+  private writingToolsAssistant?: WritingToolsAssistant;
   private statusEmitter?: StatusEmitter;
 
   constructor(
@@ -113,10 +116,18 @@ export class AssistantToolService {
         orchestrator,
         promptLoader
       );
+
+      // Initialize writing tools assistant
+      this.writingToolsAssistant = new WritingToolsAssistant(
+        orchestrator,
+        promptLoader,
+        this.outputChannel
+      );
     } else {
       // No orchestrator available (no API key configured)
       this.dialogueAssistant = undefined;
       this.proseAssistant = undefined;
+      this.writingToolsAssistant = undefined;
     }
   }
 
@@ -132,10 +143,14 @@ export class AssistantToolService {
   /**
    * Analyze dialogue with AI assistant
    *
-   * @param text - Dialogue text to analyze
+   * Routes to appropriate assistant based on focus:
+   * - dialogue/microbeats/both → DialogueMicrobeatAssistant
+   * - cliche/continuity/style/editor → WritingToolsAssistant
+   *
+   * @param text - Text to analyze
    * @param contextText - Optional surrounding context
    * @param sourceFileUri - Optional source file URI for tracking
-   * @param focus - Analysis focus: 'dialogue' (tags only), 'microbeats' (beats only), or 'both' (default)
+   * @param focus - Analysis focus (see AssistantFocus type)
    * @param streamingOptions - Optional streaming configuration (signal, onToken)
    * @returns Analysis result with suggestions and optional usage metrics
    */
@@ -146,6 +161,12 @@ export class AssistantToolService {
     focus?: AssistantFocus,
     streamingOptions?: AnalysisStreamingOptions
   ): Promise<AnalysisResult> {
+    // Route writing tools focus modes to dedicated assistant
+    if (focus && isWritingToolsFocus(focus)) {
+      return this.analyzeWithWritingTools(text, contextText, sourceFileUri, focus, streamingOptions);
+    }
+
+    // Default: use dialogue/microbeat assistant
     if (!this.dialogueAssistant) {
       return AnalysisResultFactory.createAnalysisResult(
         'dialogue_analysis',
@@ -193,6 +214,68 @@ export class AssistantToolService {
       }
       return AnalysisResultFactory.createAnalysisResult(
         'dialogue_analysis',
+        `Error: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Analyze with Writing Tools assistant (cliche, continuity, style, editor)
+   */
+  private async analyzeWithWritingTools(
+    text: string,
+    contextText?: string,
+    sourceFileUri?: string,
+    focus: 'cliche' | 'continuity' | 'style' | 'editor' = 'editor',
+    streamingOptions?: AnalysisStreamingOptions
+  ): Promise<AnalysisResult> {
+    if (!this.writingToolsAssistant) {
+      return AnalysisResultFactory.createAnalysisResult(
+        `writing_tools_${focus}`,
+        this.getApiKeyWarning()
+      );
+    }
+
+    try {
+      const options = this.toolOptions.getOptions(focus);
+
+      const isStreaming = !!streamingOptions?.onToken;
+      this.outputChannel?.appendLine(
+        `[AssistantToolService] Writing Tools - Focus: ${focus} | Craft Guides: ${options.includeCraftGuides ? 'enabled' : 'disabled'} | Streaming: ${isStreaming}`
+      );
+
+      const executionResult = await this.writingToolsAssistant.analyze(
+        {
+          text,
+          contextText,
+          sourceFileUri
+        },
+        {
+          focus,
+          includeCraftGuides: options.includeCraftGuides,
+          temperature: options.temperature,
+          maxTokens: options.maxTokens,
+          signal: streamingOptions?.signal,
+          onToken: streamingOptions?.onToken
+        }
+      );
+
+      return AnalysisResultFactory.createAnalysisResult(
+        `writing_tools_${focus}`,
+        executionResult.content,
+        executionResult.usedGuides,
+        executionResult.usage,
+        executionResult.finishReason
+      );
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        return AnalysisResultFactory.createAnalysisResult(
+          `writing_tools_${focus}`,
+          '(Cancelled)'
+        );
+      }
+      return AnalysisResultFactory.createAnalysisResult(
+        `writing_tools_${focus}`,
         `Error: ${error instanceof Error ? error.message : String(error)}`
       );
     }
