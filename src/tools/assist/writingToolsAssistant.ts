@@ -10,10 +10,9 @@
 import type * as vscode from 'vscode';
 import { PromptLoader } from '../shared/prompts';
 import { AIResourceOrchestrator, ExecutionResult, StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
-import { AssistantFocus } from '@messages';
+import { AssistantFocus, WritingToolsFocus } from '@messages';
 
-/** Focus modes supported by WritingToolsAssistant */
-export type WritingToolsFocus = 'cliche' | 'continuity' | 'style' | 'editor';
+export type { WritingToolsFocus };
 
 export interface WritingToolsInput {
   text: string;
@@ -111,7 +110,8 @@ export class WritingToolsAssistant {
       cliche: 'You are a writing assistant specializing in identifying cliches, dead metaphors, and overused expressions in creative writing.',
       continuity: 'You are a writing assistant specializing in detecting scene continuity errors, choreography issues, and logical inconsistencies.',
       style: 'You are a writing assistant specializing in detecting stylistic drift, tense shifts, POV breaks, and register inconsistencies.',
-      editor: 'You are a copyeditor specializing in grammar, spelling, punctuation, and mechanical correctness in creative writing.'
+      editor: 'You are a copyeditor specializing in grammar, spelling, punctuation, and mechanical correctness in creative writing.',
+      fresh: 'You are a writing assistant specializing in reader engagement analysis—character depth, pacing dynamics, stakes, and overall page-turner quality.'
     };
     return roles[focus];
   }
@@ -145,7 +145,8 @@ export class WritingToolsAssistant {
       cliche: 'Please analyze this passage for cliches, dead metaphors, stock phrases, and overused expressions. Provide fresh alternatives.',
       continuity: 'Please analyze this passage for continuity errors, choreography issues, object tracking problems, and logical inconsistencies.',
       style: 'Please analyze this passage for stylistic drift, tense shifts, POV breaks, and register inconsistencies.',
-      editor: 'Please copyedit this passage for grammar, spelling, punctuation, and mechanical errors.'
+      editor: 'Please copyedit this passage for grammar, spelling, punctuation, and mechanical errors.',
+      fresh: 'Please analyze this passage for reader engagement: character depth, pacing, stakes, tension, and page-turner quality.'
     };
     return instructions[focus];
   }
@@ -195,7 +196,19 @@ Check for:
 - Comma splices and run-ons
 - Spelling and typos
 
-Provide specific corrections with explanations.`
+Provide specific corrections with explanations.`,
+
+      fresh: `# Engagement & Freshness Check
+
+Analyze:
+- Character depth and agency (flat vs. dimensional)
+- Pacing dynamics (too fast, too slow, well-calibrated)
+- Stakes and tension (external and internal)
+- Reader hooks (questions planted, curiosity gaps)
+- Emotional engagement (earned vs. forced beats)
+- Scene purpose (advancing plot, revealing character)
+
+Rate overall engagement and provide actionable improvements.`
     };
     return defaults[focus];
   }
@@ -205,5 +218,5 @@ Provide specific corrections with explanations.`
  * Type guard to check if a focus is a WritingTools focus
  */
 export function isWritingToolsFocus(focus: AssistantFocus): focus is WritingToolsFocus {
-  return ['cliche', 'continuity', 'style', 'editor'].includes(focus);
+  return ['cliche', 'continuity', 'style', 'editor', 'fresh'].includes(focus);
 }

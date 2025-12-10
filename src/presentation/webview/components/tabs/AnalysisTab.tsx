@@ -512,6 +512,13 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
           >
             ✏️ Editor
           </button>
+          <button
+            className="action-button secondary"
+            onClick={() => handleAnalyzeWritingTools('fresh')}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+          >
+            🌱 Fresh Check
+          </button>
         </div>
       </div>
 

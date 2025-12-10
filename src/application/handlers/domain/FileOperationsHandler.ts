@@ -175,6 +175,8 @@ export class FileOperationsHandler {
         prefix = 'style-consistency-';
       } else if (toolName === 'writing_tools_editor') {
         prefix = 'editor-';
+      } else if (toolName === 'writing_tools_fresh') {
+        prefix = 'engagement-check-';
       } else {
         // Fallback for any future writing tools
         prefix = `${toolName.replace(/_/g, '-')}-`;

@@ -19,8 +19,9 @@ export type DialogueFocus = 'dialogue' | 'microbeats' | 'both';
  * - continuity: Catch logical inconsistencies, choreography issues, object tracking
  * - style: Detect stylistic drift (tense shifts, POV breaks, register drift)
  * - editor: Traditional copyediting (grammar, spelling, punctuation, mechanics)
+ * - fresh: Engagement check (flat characters, pacing issues, compelling plot)
  */
-export type WritingToolsFocus = 'cliche' | 'continuity' | 'style' | 'editor';
+export type WritingToolsFocus = 'cliche' | 'continuity' | 'style' | 'editor' | 'fresh';
 
 /**
  * Union of all assistant focus modes (for backward compatibility)
