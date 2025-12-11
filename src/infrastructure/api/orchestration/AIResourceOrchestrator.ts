@@ -35,6 +35,8 @@ export interface ExecutionResult {
   requestedResources?: string[];  // Context resources that were loaded during the run
   usage?: TokenUsage;
   finishReason?: string;
+  /** True if the request was cancelled via AbortSignal - content contains partial response */
+  cancelled?: boolean;
 }
 
 export type StatusCallback = (message: string, tickerMessage?: string) => void;
@@ -327,22 +329,38 @@ export class AIResourceOrchestrator {
         let fullContent = '';
         let usage: TokenUsage | undefined;
         let finishReason: string | undefined;
+        let cancelled = false;
 
-        for await (const chunk of this.openRouterClient.createStreamingChatCompletion(messages, {
-          temperature: requestOptions.temperature,
-          maxTokens: requestOptions.maxTokens,
-          signal: requestOptions.signal
-        })) {
-          if (chunk.done) {
-            usage = chunk.usage;
-            finishReason = chunk.finishReason ?? finishReason;
-          } else if (chunk.token) {
-            fullContent += chunk.token;
-            options.onToken(chunk.token);
+        try {
+          for await (const chunk of this.openRouterClient.createStreamingChatCompletion(messages, {
+            temperature: requestOptions.temperature,
+            maxTokens: requestOptions.maxTokens,
+            signal: requestOptions.signal
+          })) {
+            if (chunk.done) {
+              usage = chunk.usage;
+              finishReason = chunk.finishReason ?? finishReason;
+            } else if (chunk.token) {
+              fullContent += chunk.token;
+              options.onToken(chunk.token);
+            }
+          }
+        } catch (error) {
+          // Preserve partial content on cancellation
+          if (error instanceof Error && error.name === 'AbortError') {
+            cancelled = true;
+            this.outputChannel?.appendLine(
+              `[AIResourceOrchestrator] Streaming cancelled - preserving ${fullContent.length} chars of partial response`
+            );
+          } else {
+            // Re-throw non-abort errors
+            throw error;
           }
         }
 
-        this.outputChannel?.appendLine(`[AIResourceOrchestrator] Streaming complete (${fullContent.length} chars)\n`);
+        this.outputChannel?.appendLine(
+          `[AIResourceOrchestrator] Streaming ${cancelled ? 'cancelled' : 'complete'} (${fullContent.length} chars)\n`
+        );
 
         // Emit token usage to callback
         if (usage) {
@@ -354,7 +372,8 @@ export class AIResourceOrchestrator {
           usedGuides: [],
           requestedResources: [],
           usage,
-          finishReason
+          finishReason,
+          cancelled
         };
       }
 
@@ -642,49 +661,64 @@ export class AIResourceOrchestrator {
    * Execute a streaming turn with resource request detection.
    * Checks if response starts with '<' (resource request) vs text (final response).
    * Only forwards tokens to callback on final response turns.
+   * Preserves partial content on cancellation.
    *
-   * @returns Full content, usage, finish reason, and whether this was a resource request
+   * @returns Full content, usage, finish reason, whether this was a resource request, and cancellation status
    */
   private async executeStreamingTurnWithDetection(
     messages: OpenRouterMessage[],
     options: AIOptions,
     onFinalToken?: StreamingTokenCallback
-  ): Promise<{ content: string; finishReason?: string; usage?: TokenUsage; isResourceRequest: boolean }> {
+  ): Promise<{ content: string; finishReason?: string; usage?: TokenUsage; isResourceRequest: boolean; cancelled?: boolean }> {
     let fullContent = '';
     let usage: TokenUsage | undefined;
     let finishReason: string | undefined;
     let isResourceRequest = false;
     let firstTokenChecked = false;
+    let cancelled = false;
 
-    for await (const chunk of this.openRouterClient.createStreamingChatCompletion(messages, {
-      temperature: options.temperature,
-      maxTokens: options.maxTokens,
-      signal: options.signal
-    })) {
-      if (chunk.done) {
-        usage = chunk.usage;
-        finishReason = chunk.finishReason ?? finishReason;
-      } else if (chunk.token) {
-        fullContent += chunk.token;
+    try {
+      for await (const chunk of this.openRouterClient.createStreamingChatCompletion(messages, {
+        temperature: options.temperature,
+        maxTokens: options.maxTokens,
+        signal: options.signal
+      })) {
+        if (chunk.done) {
+          usage = chunk.usage;
+          finishReason = chunk.finishReason ?? finishReason;
+        } else if (chunk.token) {
+          fullContent += chunk.token;
 
-        // Check first non-empty token to detect resource requests
-        if (!firstTokenChecked && chunk.token.trim()) {
-          firstTokenChecked = true;
-          // Resource requests start with '<guide-request' or '<context-request'
-          isResourceRequest = chunk.token.trimStart().startsWith('<');
-          this.outputChannel?.appendLine(
-            `[AIResourceOrchestrator] First token detection: ${isResourceRequest ? 'resource request' : 'text response'}`
-          );
+          // Check first non-empty token to detect resource requests
+          if (!firstTokenChecked && chunk.token.trim()) {
+            firstTokenChecked = true;
+            // Resource requests start with '<guide-request' or '<context-request'
+            isResourceRequest = chunk.token.trimStart().startsWith('<');
+            this.outputChannel?.appendLine(
+              `[AIResourceOrchestrator] First token detection: ${isResourceRequest ? 'resource request' : 'text response'}`
+            );
+          }
+
+          // Only forward tokens to callback if this is a final text response
+          if (!isResourceRequest && onFinalToken) {
+            onFinalToken(chunk.token);
+          }
         }
-
-        // Only forward tokens to callback if this is a final text response
-        if (!isResourceRequest && onFinalToken) {
-          onFinalToken(chunk.token);
-        }
+      }
+    } catch (error) {
+      // Preserve partial content on cancellation
+      if (error instanceof Error && error.name === 'AbortError') {
+        cancelled = true;
+        this.outputChannel?.appendLine(
+          `[AIResourceOrchestrator] Streaming turn cancelled - preserving ${fullContent.length} chars of partial response`
+        );
+      } else {
+        // Re-throw non-abort errors
+        throw error;
       }
     }
 
-    return { content: fullContent, finishReason, usage, isResourceRequest };
+    return { content: fullContent, finishReason, usage, isResourceRequest, cancelled };
   }
 
   /**

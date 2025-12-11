@@ -187,6 +187,18 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
     selection.requestSelection('assistant_context');
   }, [selection]);
 
+  /**
+   * Handle native Ctrl/Cmd+V paste in excerpt textarea.
+   * Requests the current editor selection and compares with pasted text.
+   * If they match, applies source metadata; otherwise clears it.
+   */
+  const handleExcerptNativePaste = React.useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const pastedText = e.clipboardData.getData('text');
+    // Request current editor selection for verification
+    // The response handler will compare and apply source if match
+    selection.requestSelectionVerify(pastedText);
+  }, [selection]);
+
   const handleCancelAnalysisStreaming = React.useCallback(() => {
     if (analysis.currentRequestId) {
       vscode.postMessage({
@@ -310,6 +322,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
               selection.setSelectedRelativePath('');
             }
           }}
+          onPaste={handleExcerptNativePaste}
           placeholder="Select text in your editor or paste text here..."
         />
         <WordCounter
@@ -483,41 +496,54 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
         </div>
 
         <h5 className="analysis-section-subheader">Writing Tools:</h5>
-        <div className="focused-buttons">
+        <div className="focused-buttons writing-tools-grid">
           <button
-            className="action-button secondary"
+            className="action-button secondary writing-tool-button"
             onClick={() => handleAnalyzeWritingTools('cliche')}
             disabled={!text.trim() || analysis.loading || analysis.isStreaming}
           >
-            🔍 Cliché Analysis
+            <span className="writing-tool-icon">🔍</span>
+            <span className="writing-tool-label">Cliché</span>
           </button>
           <button
-            className="action-button secondary"
+            className="action-button secondary writing-tool-button"
             onClick={() => handleAnalyzeWritingTools('continuity')}
             disabled={!text.trim() || analysis.loading || analysis.isStreaming}
           >
-            🔗 Continuity Check
+            <span className="writing-tool-icon">🔗</span>
+            <span className="writing-tool-label">Continuity</span>
           </button>
           <button
-            className="action-button secondary"
+            className="action-button secondary writing-tool-button"
             onClick={() => handleAnalyzeWritingTools('style')}
             disabled={!text.trim() || analysis.loading || analysis.isStreaming}
           >
-            🎨 Style Consistency
+            <span className="writing-tool-icon">🎨</span>
+            <span className="writing-tool-label">Style</span>
           </button>
           <button
-            className="action-button secondary"
+            className="action-button secondary writing-tool-button"
             onClick={() => handleAnalyzeWritingTools('editor')}
             disabled={!text.trim() || analysis.loading || analysis.isStreaming}
           >
-            ✏️ Editor
+            <span className="writing-tool-icon">✏️</span>
+            <span className="writing-tool-label">Editor</span>
           </button>
           <button
-            className="action-button secondary"
+            className="action-button secondary writing-tool-button"
             onClick={() => handleAnalyzeWritingTools('fresh')}
             disabled={!text.trim() || analysis.loading || analysis.isStreaming}
           >
-            🌱 Fresh Check
+            <span className="writing-tool-icon">🌱</span>
+            <span className="writing-tool-label">Fresh</span>
+          </button>
+          <button
+            className="action-button secondary writing-tool-button"
+            onClick={() => handleAnalyzeWritingTools('repetition')}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+          >
+            <span className="writing-tool-icon">🔁</span>
+            <span className="writing-tool-label">Repetition</span>
           </button>
         </div>
       </div>

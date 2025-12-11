@@ -329,7 +329,9 @@ export class AnalysisHandler {
         cliche: 'Cliché Analysis',
         continuity: 'Continuity Check',
         style: 'Style Consistency',
-        editor: 'Editor'
+        editor: 'Editor',
+        fresh: 'Fresh Check',
+        repetition: 'Repetition Analysis'
       };
       this.sendStatus(`Streaming ${focusLabels[focus] || focus}...`);
 

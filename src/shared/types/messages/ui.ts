@@ -20,6 +20,7 @@ export enum TabId {
 export type SelectionTarget =
   | 'assistant_excerpt'
   | 'assistant_context'
+  | 'assistant_excerpt_verify'  // For Ctrl+V paste verification - compares, doesn't overwrite
   | 'dictionary_word'
   | 'dictionary_context';
 

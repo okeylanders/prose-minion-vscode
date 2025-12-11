@@ -103,6 +103,86 @@ Provide 3-6 concrete identifications. Each identification MUST follow this forma
 
 ---
 
+### 2b. ⚖️ **Priority Assessment & Balanced Perspective**
+
+**CRITICAL PRINCIPLE**: Constant novelty exhausts readers. Not every cliché requires replacement—only those at narrative peaks where reader attention matters most.
+
+**Analyze the identified clichés above and categorize them by replacement priority:**
+
+#### 🔴 **HIGH PRIORITY - Replace These** (Reader attention critical)
+Clichés occurring at:
+- Emotional breakthroughs or revelations
+- First introductions (characters, settings, key objects)
+- Climactic moments or turning points
+- Passages repeated/echoed throughout the text
+- Opening lines or final beats of scenes/chapters
+
+**Format:**
+- **[Clichéd phrase]** - [Why stakes are high here] - [Suggested alternative from Section 2]
+
+#### 🟡 **MEDIUM PRIORITY - Consider Revising** (Context-dependent)
+Clichés that are:
+- Frequent but not in pivotal moments
+- Functional but could be character-specific
+- Genre-aware but potentially unintentional
+
+**Format:**
+- **[Clichéd phrase]** - [Contextual factors to consider]
+
+#### 🟢 **LOW PRIORITY - Functional/Acceptable** (Leave as-is or light touch)
+Clichés that are:
+- In transitional/connecting passages
+- Accurate and doing their job efficiently
+- Already surrounded by fresh language
+- Part of authentic character dialogue/voice
+
+**Format:**
+- **[Clichéd phrase]** - [Why it's working adequately in this context]
+
+**Replacement Guideline**: Aim to replace 40-60% of identified clichés (prioritizing HIGH, selectively addressing MEDIUM, leaving most LOW alone). This maintains prose freshness without overwhelming the reader.
+
+---
+
+### 2c. 🎨 **Over-Elaboration Assessment & Simplification Opportunities**
+
+**BALANCING PRINCIPLE**: While clichés weaken prose through staleness, purple prose weakens through distraction. Sometimes "His hands shook" is more powerful than elaborate metaphor—especially in transitional moments, action sequences, or when surrounded by already-rich language.
+
+**Analyze the passage for over-elaborate, forced, or distracting language:**
+
+#### 🔴 **HIGH PRIORITY - Simplify These** (Ornate language disrupting clarity/pacing)
+Over-elaborate expressions that:
+- Slow momentum in action sequences
+- Distract from emotional beats with clever-for-clever's-sake language
+- Stack metaphors where one concrete detail would suffice
+- Use five-dollar words where plain language communicates better
+- Call attention to themselves rather than serving the scene
+
+**Format:**
+- **[Over-elaborate phrase]** - [Why it's distracting/weakening] - [Simpler alternative]
+
+#### 🟡 **MEDIUM PRIORITY - Consider Simplifying** (Context-dependent)
+Language that might be:
+- Appropriate in a lyrical passage but too ornate for this moment
+- Character-voice accurate (character *would* think this way) butReader tiring
+- Thematically resonant but execution is forced
+
+**Format:**
+- **[Phrase]** - [Contextual factors - when does ornate work vs. distract?]
+
+#### 🟢 **APPROPRIATE ELABORATION** (Rich language earning its keep)
+Complex/ornate language that:
+- Appears at emotional peaks where richness is warranted
+- Creates specific, necessary imagery (not decoration)
+- Serves character voice or thematic purpose
+- Is surrounded by simpler language (creates contrast/rhythm)
+
+**Format:**
+- **[Phrase]** - [Why the elaboration is justified here]
+
+**Simplification Guideline**: Look for passages where "less is more." Sometimes the most powerful choice is the plainest: "He died" beats "He surrendered his mortal coil to the inexorable embrace of the eternal void."
+
+---
+
 ### 3. 💬 **Alternative Expression Menu** (Menu)
 
 Select 2-3 key clichéd expressions and provide 4-6 fresh alternatives for EACH. Show how different specific language changes reader experience.
@@ -167,6 +247,10 @@ Revise the passage replacing clichés with fresh expressions. Keep story structu
 ---
 
 ### 6. 📖 **Craft Notes**
+
+**The Novelty Exhaustion Principle**: While clichés weaken prose, constant originality exhausts readers just as much. Every sentence cannot be a firework—readers need rhythm, they need breathing room, they need familiar language to anchor them between moments of heightened imagery. The craft lies in **strategic emphasis**: spending your "freshness budget" on emotional peaks, key introductions, and thematic moments, while allowing functional language to do quiet work in transitions and connective tissue. 
+
+Think of it like cinematography: you don't want every shot to be a dramatic Dutch angle, but you DO want climactic moments to have visual punch. A skilled writer knows when "His chest constricted" is perfectly adequate (middle of a reaction list, surrounded by stronger imagery) and when that same phrase robs a pivotal moment of its impact.
 
 Write 2-3 paragraphs about avoiding clichés and creating fresh expression. Address:
 - Why clichés weaken prose (reader fatigue, lack of specificity)
@@ -260,22 +344,6 @@ Select ONE cliché-heavy passage and rewrite it 3-5 completely different ways.
 - Tone: [Which tone and why]
 
 [Repeat for 3-5 variations, each with different dimension combinations]
-
----
-
-### 8b. 🎨 **Bound Variation Palettes**
-
-For each Bound Creative Variation above, explicitly identify the framework dimensions used.
-
-**Format with proper markdown:**
-
-#### Variation A Palette:
-- **Imagery source:** [Character Background/Environment/Unexpected Sensory/Subverted Cliché with example]
-- **Specificity level:** [Hyper-Specific/Sensory Concrete/Action-Based/Comparative with markers]
-- **Freshness strategy:** [Low-Probability Vocab/Inverted Expectation/Synesthetic/Understated with indicators]
-- **Tone:** [Matter-of-Fact/Lyrical/Character Voice/Visceral]
-
-[Repeat for each variation]
 
 ---
 

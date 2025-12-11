@@ -69,6 +69,21 @@ export const CATEGORY_MODELS = [
     description: 'OpenAI conversational model'
   },
   {
+    id: 'openai/gpt-5.2',
+    name: 'GPT-5.2',
+    description: 'Latest frontier-grade model with adaptive reasoning for dynamic complexity handling'
+  },
+  {
+    id: 'openai/gpt-5.2-chat',
+    name: 'GPT-5.2 Chat',
+    description: 'Fast, lightweight model optimized for low-latency chat with adaptive reasoning'
+  },
+  {
+    id: 'openai/gpt-5.2-pro',
+    name: 'GPT-5.2 Pro',
+    description: '$$$ OpenAI\'s most advanced model (~6x Opus price) for complex agentic tasks'
+  },
+  {
     id: 'mistralai/mistral-large-2411',
     name: 'Mistral Large 2411',
     description: 'Mistral large model'
@@ -171,6 +186,21 @@ export const RECOMMENDED_MODELS = [
     id: 'openai/gpt-5.1-codex',
     name: 'GPT-5.1 Codex',
     description: 'Advanced coding specialist. Use for scripting or complex formatting tasks.'
+  },
+  {
+    id: 'openai/gpt-5.2',
+    name: 'GPT-5.2',
+    description: 'Latest frontier-grade model with adaptive reasoning that allocates more depth to complex tasks. Consistent gains across math, coding, and tool calling with more coherent long-form answers. Great for creative writing.'
+  },
+  {
+    id: 'openai/gpt-5.2-chat',
+    name: 'GPT-5.2 Chat',
+    description: 'Fast, warmer conversational model with selective "thinking" on harder queries. Optimized for high-throughput interactive workloads where responsiveness matters. Better instruction following and stable short-form reasoning.'
+  },
+  {
+    id: 'openai/gpt-5.2-pro',
+    name: 'GPT-5.2 Pro',
+    description: '$$$ OpenAI\'s most advanced model (~6x Opus price). Major improvements in agentic coding and long context over GPT-5 Pro. Optimized for step-by-step reasoning, reduced hallucination/sycophancy, and accuracy in high-stakes use cases.'
   },
   {
     id: 'x-ai/grok-4',

@@ -212,6 +212,8 @@ export class DictionaryService {
         }
       );
 
+      // Note: orchestrator now catches AbortError internally and returns partial content
+      // The executionResult.content will contain whatever was received before cancellation
       return AnalysisResultFactory.createAnalysisResult(
         'dictionary_lookup',
         executionResult.content,
@@ -220,13 +222,7 @@ export class DictionaryService {
         executionResult.finishReason
       );
     } catch (error) {
-      // Handle abort separately
-      if (error instanceof Error && error.name === 'AbortError') {
-        return AnalysisResultFactory.createAnalysisResult(
-          'dictionary_lookup',
-          '(Cancelled)'
-        );
-      }
+      // AbortError is now caught in the orchestrator, so this is only for other errors
       return AnalysisResultFactory.createAnalysisResult(
         'dictionary_lookup',
         `Error: ${error instanceof Error ? error.message : String(error)}`

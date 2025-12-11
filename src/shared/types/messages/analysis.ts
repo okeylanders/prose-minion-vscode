@@ -20,8 +20,9 @@ export type DialogueFocus = 'dialogue' | 'microbeats' | 'both';
  * - style: Detect stylistic drift (tense shifts, POV breaks, register drift)
  * - editor: Traditional copyediting (grammar, spelling, punctuation, mechanics)
  * - fresh: Engagement check (flat characters, pacing issues, compelling plot)
+ * - repetition: Detect repeated metaphors, descriptors, action beats, sentence structures
  */
-export type WritingToolsFocus = 'cliche' | 'continuity' | 'style' | 'editor' | 'fresh';
+export type WritingToolsFocus = 'cliche' | 'continuity' | 'style' | 'editor' | 'fresh' | 'repetition';
 
 /**
  * Union of all assistant focus modes (for backward compatibility)

@@ -187,6 +187,8 @@ export class AssistantToolService {
         }
       );
 
+      // Note: orchestrator now catches AbortError internally and returns partial content
+      // The executionResult.content will contain whatever was received before cancellation
       return AnalysisResultFactory.createAnalysisResult(
         'dialogue_analysis',
         executionResult.content,
@@ -195,13 +197,7 @@ export class AssistantToolService {
         executionResult.finishReason
       );
     } catch (error) {
-      // Handle abort separately for graceful UX
-      if (error instanceof Error && error.name === 'AbortError') {
-        return AnalysisResultFactory.createAnalysisResult(
-          'dialogue_analysis',
-          '(Cancelled)'
-        );
-      }
+      // AbortError is now caught in the orchestrator, so this is only for other errors
       return AnalysisResultFactory.createAnalysisResult(
         'dialogue_analysis',
         `Error: ${error instanceof Error ? error.message : String(error)}`
@@ -257,6 +253,7 @@ export class AssistantToolService {
         }
       );
 
+      // Note: orchestrator now catches AbortError internally and returns partial content
       return AnalysisResultFactory.createAnalysisResult(
         `writing_tools_${focus}`,
         executionResult.content,
@@ -265,12 +262,7 @@ export class AssistantToolService {
         executionResult.finishReason
       );
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        return AnalysisResultFactory.createAnalysisResult(
-          `writing_tools_${focus}`,
-          '(Cancelled)'
-        );
-      }
+      // AbortError is now caught in the orchestrator, so this is only for other errors
       return AnalysisResultFactory.createAnalysisResult(
         `writing_tools_${focus}`,
         `Error: ${error instanceof Error ? error.message : String(error)}`
@@ -323,6 +315,7 @@ export class AssistantToolService {
         }
       );
 
+      // Note: orchestrator now catches AbortError internally and returns partial content
       return AnalysisResultFactory.createAnalysisResult(
         'prose_analysis',
         executionResult.content,
@@ -331,13 +324,7 @@ export class AssistantToolService {
         executionResult.finishReason
       );
     } catch (error) {
-      // Handle abort separately for graceful UX
-      if (error instanceof Error && error.name === 'AbortError') {
-        return AnalysisResultFactory.createAnalysisResult(
-          'prose_analysis',
-          '(Cancelled)'
-        );
-      }
+      // AbortError is now caught in the orchestrator, so this is only for other errors
       return AnalysisResultFactory.createAnalysisResult(
         'prose_analysis',
         `Error: ${error instanceof Error ? error.message : String(error)}`

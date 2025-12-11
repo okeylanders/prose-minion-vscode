@@ -30,6 +30,8 @@ export interface SelectionActions {
   handleSelectionUpdated: (message: SelectionUpdatedMessage, onTabChange: (tab: TabId) => void) => void;
   handleSelectionData: (message: SelectionDataMessage, onTabChange: (tab: TabId) => void, onContextSet?: (context: string) => void) => void;
   requestSelection: (target: SelectionTarget) => void;
+  /** Request selection to verify against pasted text - only applies source if match */
+  requestSelectionVerify: (pastedText: string) => void;
   handleDictionaryInjectionHandled: () => void;
   setSelectedText: (text: string) => void;
   setSelectedSourceUri: (uri: string) => void;
@@ -81,6 +83,9 @@ export const useSelection = (): UseSelectionReturn => {
   );
   const [dictionaryInjection, setDictionaryInjection] = React.useState<DictionaryInjection | null>(null);
 
+  // Ref to store pending paste text for verification
+  const pendingVerifyTextRef = React.useRef<string | null>(null);
+
   const handleSelectionUpdated = React.useCallback(
     (message: SelectionUpdatedMessage, onTabChange: (tab: TabId) => void) => {
       const { text, sourceUri, relativePath, target, autoRun } = message.payload;
@@ -111,6 +116,20 @@ export const useSelection = (): UseSelectionReturn => {
           setSelectedText(content);
           setSelectedSourceUri(sourceUri ?? '');
           setSelectedRelativePath(relativePath ?? '');
+          break;
+
+        case 'assistant_excerpt_verify':
+          // Verify paste: only apply source metadata if pasted text matches editor selection
+          if (pendingVerifyTextRef.current && content === pendingVerifyTextRef.current) {
+            // Match! Apply source metadata (text was already pasted, don't overwrite)
+            setSelectedSourceUri(sourceUri ?? '');
+            setSelectedRelativePath(relativePath ?? '');
+          } else {
+            // No match - text is from unknown source, clear metadata
+            setSelectedSourceUri('');
+            setSelectedRelativePath('');
+          }
+          pendingVerifyTextRef.current = null;
           break;
 
         case 'assistant_context':
@@ -158,6 +177,26 @@ export const useSelection = (): UseSelectionReturn => {
     [vscode]
   );
 
+  /**
+   * Request selection for paste verification.
+   * Stores the pasted text and requests current editor selection.
+   * When response arrives, compares and only applies source if they match.
+   */
+  const requestSelectionVerify = React.useCallback(
+    (pastedText: string) => {
+      pendingVerifyTextRef.current = pastedText;
+      vscode.postMessage({
+        type: MessageType.REQUEST_SELECTION,
+        source: 'webview.selection',
+        payload: {
+          target: 'assistant_excerpt_verify',
+        },
+        timestamp: Date.now()
+      });
+    },
+    [vscode]
+  );
+
   const handleDictionaryInjectionHandled = React.useCallback(() => {
     setDictionaryInjection(null);
   }, []);
@@ -173,6 +212,7 @@ export const useSelection = (): UseSelectionReturn => {
     handleSelectionUpdated,
     handleSelectionData,
     requestSelection,
+    requestSelectionVerify,
     handleDictionaryInjectionHandled,
     setSelectedText,
     setSelectedSourceUri,

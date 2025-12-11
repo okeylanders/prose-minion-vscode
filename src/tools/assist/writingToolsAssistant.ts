@@ -111,7 +111,8 @@ export class WritingToolsAssistant {
       continuity: 'You are a writing assistant specializing in detecting scene continuity errors, choreography issues, and logical inconsistencies.',
       style: 'You are a writing assistant specializing in detecting stylistic drift, tense shifts, POV breaks, and register inconsistencies.',
       editor: 'You are a copyeditor specializing in grammar, spelling, punctuation, and mechanical correctness in creative writing.',
-      fresh: 'You are a writing assistant specializing in reader engagement analysis—character depth, pacing dynamics, stakes, and overall page-turner quality.'
+      fresh: 'You are a writing assistant specializing in reader engagement analysis—character depth, pacing dynamics, stakes, and overall page-turner quality.',
+      repetition: 'You are a writing assistant specializing in detecting repetitive patterns—echo words, recycled metaphors, repeated action beats, and structural redundancy.'
     };
     return roles[focus];
   }
@@ -146,7 +147,8 @@ export class WritingToolsAssistant {
       continuity: 'Please analyze this passage for continuity errors, choreography issues, object tracking problems, and logical inconsistencies.',
       style: 'Please analyze this passage for stylistic drift, tense shifts, POV breaks, and register inconsistencies.',
       editor: 'Please copyedit this passage for grammar, spelling, punctuation, and mechanical errors.',
-      fresh: 'Please analyze this passage for reader engagement: character depth, pacing, stakes, tension, and page-turner quality.'
+      fresh: 'Please analyze this passage for reader engagement: character depth, pacing, stakes, tension, and page-turner quality.',
+      repetition: 'Please analyze this passage for repetitive patterns: echo words, recycled metaphors, repeated action beats, sentence structures, and descriptive redundancy.'
     };
     return instructions[focus];
   }
@@ -208,7 +210,20 @@ Analyze:
 - Emotional engagement (earned vs. forced beats)
 - Scene purpose (advancing plot, revealing character)
 
-Rate overall engagement and provide actionable improvements.`
+Rate overall engagement and provide actionable improvements.`,
+
+      repetition: `# Repetition Analysis
+
+Identify repetitive patterns:
+- Echo words (same word appearing too close together)
+- Recycled metaphors and imagery
+- Repeated action beats (nodded, sighed, shrugged)
+- Sentence structure patterns (all starting with subject-verb)
+- Descriptor redundancy (same adjectives reused)
+- Emotional tells (same physical reactions for emotions)
+- Transitional phrase repetition
+
+Flag severity (mild/moderate/egregious) and suggest varied alternatives.`
     };
     return defaults[focus];
   }
@@ -218,5 +233,5 @@ Rate overall engagement and provide actionable improvements.`
  * Type guard to check if a focus is a WritingTools focus
  */
 export function isWritingToolsFocus(focus: AssistantFocus): focus is WritingToolsFocus {
-  return ['cliche', 'continuity', 'style', 'editor', 'fresh'].includes(focus);
+  return ['cliche', 'continuity', 'style', 'editor', 'fresh', 'repetition'].includes(focus);
 }
