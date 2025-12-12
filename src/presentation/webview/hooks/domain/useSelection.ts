@@ -30,6 +30,8 @@ export interface SelectionActions {
   handleSelectionUpdated: (message: SelectionUpdatedMessage, onTabChange: (tab: TabId) => void) => void;
   handleSelectionData: (message: SelectionDataMessage, onTabChange: (tab: TabId) => void, onContextSet?: (context: string) => void) => void;
   requestSelection: (target: SelectionTarget) => void;
+  /** Request selection to verify against pasted text - only applies source if match */
+  requestSelectionVerify: (pastedText: string) => void;
   handleDictionaryInjectionHandled: () => void;
   setSelectedText: (text: string) => void;
   setSelectedSourceUri: (uri: string) => void;
@@ -81,6 +83,16 @@ export const useSelection = (): UseSelectionReturn => {
   );
   const [dictionaryInjection, setDictionaryInjection] = React.useState<DictionaryInjection | null>(null);
 
+  // Ref to store pending paste text for verification
+  const pendingVerifyTextRef = React.useRef<string | null>(null);
+
+  // Cleanup ref on unmount to prevent memory leaks
+  React.useEffect(() => {
+    return () => {
+      pendingVerifyTextRef.current = null;
+    };
+  }, []);
+
   const handleSelectionUpdated = React.useCallback(
     (message: SelectionUpdatedMessage, onTabChange: (tab: TabId) => void) => {
       const { text, sourceUri, relativePath, target, autoRun } = message.payload;
@@ -101,47 +113,90 @@ export const useSelection = (): UseSelectionReturn => {
     []
   );
 
+  // Selection data handlers (Strategy pattern - mirrors backend MessageRouter)
+  const selectionDataHandlers = React.useMemo(() => ({
+    assistant_excerpt: (
+      content: string,
+      sourceUri: string | undefined,
+      relativePath: string | undefined,
+      onTabChange: (tab: TabId) => void
+    ) => {
+      onTabChange(TabId.ANALYSIS);
+      setSelectedText(content);
+      setSelectedSourceUri(sourceUri ?? '');
+      setSelectedRelativePath(relativePath ?? '');
+    },
+
+    assistant_excerpt_verify: (
+      content: string,
+      sourceUri: string | undefined,
+      relativePath: string | undefined
+    ) => {
+      // Verify paste: only apply source metadata if pasted text matches editor selection
+      if (pendingVerifyTextRef.current && content === pendingVerifyTextRef.current) {
+        // Match! Apply source metadata (text was already pasted, don't overwrite)
+        setSelectedSourceUri(sourceUri ?? '');
+        setSelectedRelativePath(relativePath ?? '');
+      } else {
+        // No match - text is from unknown source, clear metadata
+        setSelectedSourceUri('');
+        setSelectedRelativePath('');
+      }
+      pendingVerifyTextRef.current = null;
+    },
+
+    assistant_context: (
+      content: string,
+      _sourceUri: string | undefined,
+      _relativePath: string | undefined,
+      onTabChange: (tab: TabId) => void,
+      onContextSet?: (context: string) => void
+    ) => {
+      onTabChange(TabId.ANALYSIS);
+      onContextSet?.(content);
+    },
+
+    dictionary_word: (
+      content: string,
+      sourceUri: string | undefined,
+      relativePath: string | undefined,
+      onTabChange: (tab: TabId) => void
+    ) => {
+      onTabChange(TabId.UTILITIES);
+      setDictionaryInjection({
+        word: content,
+        sourceUri,
+        relativePath,
+        timestamp: Date.now(),
+      });
+    },
+
+    dictionary_context: (
+      content: string,
+      sourceUri: string | undefined,
+      relativePath: string | undefined,
+      onTabChange: (tab: TabId) => void
+    ) => {
+      onTabChange(TabId.UTILITIES);
+      setDictionaryInjection({
+        context: content,
+        sourceUri,
+        relativePath,
+        timestamp: Date.now(),
+      });
+    }
+  }), []);
+
   const handleSelectionData = React.useCallback(
     (message: SelectionDataMessage, onTabChange: (tab: TabId) => void, onContextSet?: (context: string) => void) => {
       const { content = '', target, sourceUri, relativePath } = message.payload;
 
-      switch (target) {
-        case 'assistant_excerpt':
-          onTabChange(TabId.ANALYSIS);
-          setSelectedText(content);
-          setSelectedSourceUri(sourceUri ?? '');
-          setSelectedRelativePath(relativePath ?? '');
-          break;
-
-        case 'assistant_context':
-          onTabChange(TabId.ANALYSIS);
-          if (onContextSet) {
-            onContextSet(content);
-          }
-          break;
-
-        case 'dictionary_word':
-          onTabChange(TabId.UTILITIES);
-          setDictionaryInjection({
-            word: content,
-            sourceUri,
-            relativePath,
-            timestamp: Date.now(),
-          });
-          break;
-
-        case 'dictionary_context':
-          onTabChange(TabId.UTILITIES);
-          setDictionaryInjection({
-            context: content,
-            sourceUri,
-            relativePath,
-            timestamp: Date.now(),
-          });
-          break;
+      const handler = selectionDataHandlers[target as keyof typeof selectionDataHandlers];
+      if (handler) {
+        handler(content, sourceUri, relativePath, onTabChange, onContextSet);
       }
     },
-    []
+    [selectionDataHandlers]
   );
 
   const requestSelection = React.useCallback(
@@ -151,6 +206,26 @@ export const useSelection = (): UseSelectionReturn => {
         source: 'webview.selection',
         payload: {
           target,
+        },
+        timestamp: Date.now()
+      });
+    },
+    [vscode]
+  );
+
+  /**
+   * Request selection for paste verification.
+   * Stores the pasted text and requests current editor selection.
+   * When response arrives, compares and only applies source if they match.
+   */
+  const requestSelectionVerify = React.useCallback(
+    (pastedText: string) => {
+      pendingVerifyTextRef.current = pastedText;
+      vscode.postMessage({
+        type: MessageType.REQUEST_SELECTION,
+        source: 'webview.selection',
+        payload: {
+          target: 'assistant_excerpt_verify',
         },
         timestamp: Date.now()
       });
@@ -173,6 +248,7 @@ export const useSelection = (): UseSelectionReturn => {
     handleSelectionUpdated,
     handleSelectionData,
     requestSelection,
+    requestSelectionVerify,
     handleDictionaryInjectionHandled,
     setSelectedText,
     setSelectedSourceUri,

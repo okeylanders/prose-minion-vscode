@@ -21,6 +21,7 @@ export type ErrorSource =
   | 'analysis'
   | 'analysis.dialogue'
   | 'analysis.prose'
+  | 'analysis.writing_tools'
 
   // Metrics domain with subtools
   | 'metrics.prose_stats'

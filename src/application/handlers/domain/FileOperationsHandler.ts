@@ -16,6 +16,21 @@ import {
 } from '@messages';
 import { MessageRouter } from '../MessageRouter';
 
+/**
+ * File prefix mapping for assistant tools (Strategy pattern - Open/Closed Principle)
+ * Adding new tools only requires a new map entry, not code changes
+ */
+const FILE_PREFIX_MAP: Record<string, string> = {
+  'prose_analysis': 'excerpt-assistant-prose-',
+  'dialogue_analysis': 'excerpt-assistant-dialog-beats-',
+  'writing_tools_cliche': 'cliche-analysis-',
+  'writing_tools_continuity': 'continuity-check-',
+  'writing_tools_style': 'style-consistency-',
+  'writing_tools_editor': 'editor-',
+  'writing_tools_fresh': 'engagement-check-',
+  'writing_tools_repetition': 'repetition-analysis-'
+};
+
 export class FileOperationsHandler {
   constructor(
     private readonly postMessage: (message: any) => Promise<void>
@@ -157,13 +172,12 @@ export class FileOperationsHandler {
       await vscode.workspace.fs.createDirectory(targetDir);
       fileName = `${sanitizedWord}.md`;
       fileContent = content.trim();
-    } else if (toolName === 'prose_analysis' || toolName === 'dialogue_analysis') {
+    } else if (toolName === 'prose_analysis' || toolName === 'dialogue_analysis' || toolName.startsWith('writing_tools_')) {
       targetDir = vscode.Uri.joinPath(rootUri, 'prose-minion', 'assistant');
       await vscode.workspace.fs.createDirectory(targetDir);
 
-      const prefix = toolName === 'prose_analysis'
-        ? 'excerpt-assistant-prose-'
-        : 'excerpt-assistant-dialog-beats-';
+      // Map tool names to file prefixes (Strategy pattern)
+      const prefix = FILE_PREFIX_MAP[toolName] ?? `${toolName.replace(/_/g, '-')}-`;
 
       const nextCount = await this.getNextSequentialNumber(targetDir, prefix);
       fileName = `${prefix}${nextCount}.md`;

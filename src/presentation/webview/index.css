@@ -430,6 +430,35 @@ select:focus {
   gap: var(--spacing-xs);
 }
 
+/* Writing Tools grid layout with stacked icon/label buttons */
+.writing-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--spacing-xs);
+}
+
+.writing-tool-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px !important;
+  min-width: 0;
+  gap: 2px;
+}
+
+.writing-tool-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.writing-tool-label {
+  font-size: 0.7rem;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .action-button.secondary {
   background-color: var(--vscode-button-secondaryBackground);
   color: var(--vscode-button-secondaryForeground);

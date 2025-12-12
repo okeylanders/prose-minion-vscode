@@ -17,11 +17,12 @@
 import * as vscode from 'vscode';
 import { DialogueMicrobeatAssistant } from '@/tools/assist/dialogueMicrobeatAssistant';
 import { ProseAssistant } from '@/tools/assist/proseAssistant';
+import { WritingToolsAssistant } from '@/tools/assist/writingToolsAssistant';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
 import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
-import { StatusEmitter } from '@messages';
+import { DialogueFocus, WritingToolsFocus, StatusEmitter } from '@messages';
 import { StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
 
 /**
@@ -40,12 +41,14 @@ export interface AnalysisStreamingOptions {
  * Provides dialogue and prose analysis capabilities:
  * - Dialogue: Tags, microbeats, action beats with configurable focus
  * - Prose: Writing quality, style, and improvement suggestions
+ * - Writing Tools: Cliche analysis, continuity check, style consistency, editor
  * - Craft guides integration (optional)
  * - Context-aware analysis with source file tracking
  */
 export class AssistantToolService {
   private dialogueAssistant?: DialogueMicrobeatAssistant;
   private proseAssistant?: ProseAssistant;
+  private writingToolsAssistant?: WritingToolsAssistant;
   private statusEmitter?: StatusEmitter;
 
   constructor(
@@ -113,10 +116,18 @@ export class AssistantToolService {
         orchestrator,
         promptLoader
       );
+
+      // Initialize writing tools assistant
+      this.writingToolsAssistant = new WritingToolsAssistant(
+        orchestrator,
+        promptLoader,
+        this.outputChannel
+      );
     } else {
       // No orchestrator available (no API key configured)
       this.dialogueAssistant = undefined;
       this.proseAssistant = undefined;
+      this.writingToolsAssistant = undefined;
     }
   }
 
@@ -135,7 +146,7 @@ export class AssistantToolService {
    * @param text - Dialogue text to analyze
    * @param contextText - Optional surrounding context
    * @param sourceFileUri - Optional source file URI for tracking
-   * @param focus - Analysis focus: 'dialogue' (tags only), 'microbeats' (beats only), or 'both' (default)
+   * @param focus - Dialogue focus: 'dialogue', 'microbeats', or 'both' (default)
    * @param streamingOptions - Optional streaming configuration (signal, onToken)
    * @returns Analysis result with suggestions and optional usage metrics
    */
@@ -143,7 +154,7 @@ export class AssistantToolService {
     text: string,
     contextText?: string,
     sourceFileUri?: string,
-    focus?: 'dialogue' | 'microbeats' | 'both',
+    focus?: DialogueFocus,
     streamingOptions?: AnalysisStreamingOptions
   ): Promise<AnalysisResult> {
     if (!this.dialogueAssistant) {
@@ -176,6 +187,8 @@ export class AssistantToolService {
         }
       );
 
+      // Note: orchestrator now catches AbortError internally and returns partial content
+      // The executionResult.content will contain whatever was received before cancellation
       return AnalysisResultFactory.createAnalysisResult(
         'dialogue_analysis',
         executionResult.content,
@@ -184,15 +197,74 @@ export class AssistantToolService {
         executionResult.finishReason
       );
     } catch (error) {
-      // Handle abort separately for graceful UX
-      if (error instanceof Error && error.name === 'AbortError') {
-        return AnalysisResultFactory.createAnalysisResult(
-          'dialogue_analysis',
-          '(Cancelled)'
-        );
-      }
+      // AbortError is now caught in the orchestrator, so this is only for other errors
       return AnalysisResultFactory.createAnalysisResult(
         'dialogue_analysis',
+        `Error: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Analyze with Writing Tools assistant (cliche, continuity, style, editor)
+   *
+   * @param text - Text to analyze
+   * @param contextText - Optional surrounding context
+   * @param sourceFileUri - Optional source file URI for tracking
+   * @param focus - Writing tools focus: 'cliche', 'continuity', 'style', or 'editor'
+   * @param streamingOptions - Optional streaming configuration (signal, onToken)
+   * @returns Analysis result with suggestions and optional usage metrics
+   */
+  async analyzeWritingTools(
+    text: string,
+    contextText?: string,
+    sourceFileUri?: string,
+    focus: WritingToolsFocus = 'editor',
+    streamingOptions?: AnalysisStreamingOptions
+  ): Promise<AnalysisResult> {
+    if (!this.writingToolsAssistant) {
+      return AnalysisResultFactory.createAnalysisResult(
+        `writing_tools_${focus}`,
+        this.getApiKeyWarning()
+      );
+    }
+
+    try {
+      const options = this.toolOptions.getOptions(focus);
+
+      const isStreaming = !!streamingOptions?.onToken;
+      this.outputChannel?.appendLine(
+        `[AssistantToolService] Writing Tools - Focus: ${focus} | Craft Guides: ${options.includeCraftGuides ? 'enabled' : 'disabled'} | Streaming: ${isStreaming}`
+      );
+
+      const executionResult = await this.writingToolsAssistant.analyze(
+        {
+          text,
+          contextText,
+          sourceFileUri
+        },
+        {
+          focus,
+          includeCraftGuides: options.includeCraftGuides,
+          temperature: options.temperature,
+          maxTokens: options.maxTokens,
+          signal: streamingOptions?.signal,
+          onToken: streamingOptions?.onToken
+        }
+      );
+
+      // Note: orchestrator now catches AbortError internally and returns partial content
+      return AnalysisResultFactory.createAnalysisResult(
+        `writing_tools_${focus}`,
+        executionResult.content,
+        executionResult.usedGuides,
+        executionResult.usage,
+        executionResult.finishReason
+      );
+    } catch (error) {
+      // AbortError is now caught in the orchestrator, so this is only for other errors
+      return AnalysisResultFactory.createAnalysisResult(
+        `writing_tools_${focus}`,
         `Error: ${error instanceof Error ? error.message : String(error)}`
       );
     }
@@ -243,6 +315,7 @@ export class AssistantToolService {
         }
       );
 
+      // Note: orchestrator now catches AbortError internally and returns partial content
       return AnalysisResultFactory.createAnalysisResult(
         'prose_analysis',
         executionResult.content,
@@ -251,13 +324,7 @@ export class AssistantToolService {
         executionResult.finishReason
       );
     } catch (error) {
-      // Handle abort separately for graceful UX
-      if (error instanceof Error && error.name === 'AbortError') {
-        return AnalysisResultFactory.createAnalysisResult(
-          'prose_analysis',
-          '(Cancelled)'
-        );
-      }
+      // AbortError is now caught in the orchestrator, so this is only for other errors
       return AnalysisResultFactory.createAnalysisResult(
         'prose_analysis',
         `Error: ${error instanceof Error ? error.message : String(error)}`

@@ -11,6 +11,7 @@ import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import {
   AnalyzeDialogueMessage,
   AnalyzeProseMessage,
+  AnalyzeWritingToolsMessage,
   AnalysisResultMessage,
   StreamStartedMessage,
   CancelAnalysisRequestMessage,
@@ -48,6 +49,7 @@ export class AnalysisHandler {
   registerRoutes(router: MessageRouter): void {
     router.register(MessageType.ANALYZE_DIALOGUE, this.handleAnalyzeDialogue.bind(this));
     router.register(MessageType.ANALYZE_PROSE, this.handleAnalyzeProse.bind(this));
+    router.register(MessageType.ANALYZE_WRITING_TOOLS, this.handleAnalyzeWritingTools.bind(this));
     router.register(MessageType.CANCEL_ANALYSIS_REQUEST, this.handleCancelRequest.bind(this));
   }
 
@@ -293,6 +295,76 @@ export class AnalysisHandler {
         this.sendStatus('Prose analysis cancelled');
       } else {
         this.sendError('analysis.prose', 'Failed to analyze prose', msg);
+      }
+    } finally {
+      this.activeRequests.delete(requestId);
+    }
+  }
+
+  async handleAnalyzeWritingTools(message: AnalyzeWritingToolsMessage): Promise<void> {
+    const { text, contextText, sourceFileUri, focus } = message.payload;
+
+    if (!text.trim()) {
+      this.sendError('analysis.writing_tools', 'Writing tools analysis requires text to analyze');
+      return;
+    }
+
+    const requestId = generateRequestId(`writing_tools_${focus}`);
+    const controller = new AbortController();
+    this.activeRequests.set(requestId, controller);
+    this.sendStreamStarted({ requestId, domain: 'analysis' });
+
+    try {
+      const config = vscode.workspace.getConfiguration('proseMinion');
+      const includeCraftGuides = config.get<boolean>('includeCraftGuides') ?? true;
+
+      const loadingMessage = includeCraftGuides
+        ? 'Loading prompts and craft guides...'
+        : 'Loading prompts...';
+
+      this.sendStatus(loadingMessage);
+      await new Promise(resolve => setTimeout(resolve, 100)); // Brief delay to ensure UI updates
+
+      const focusLabels: Record<string, string> = {
+        cliche: 'Cliché Analysis',
+        continuity: 'Continuity Check',
+        style: 'Style Consistency',
+        editor: 'Editor',
+        fresh: 'Fresh Check',
+        repetition: 'Repetition Analysis'
+      };
+      this.sendStatus(`Streaming ${focusLabels[focus] || focus}...`);
+
+      // Use streaming analysis
+      const result = await this.assistantToolService.analyzeWritingTools(
+        text,
+        contextText,
+        sourceFileUri,
+        focus,
+        {
+          signal: controller.signal,
+          onToken: (token: string) => {
+            this.sendStreamChunk(requestId, token);
+          }
+        }
+      );
+
+      // Check if cancelled
+      const cancelled = controller.signal.aborted;
+      this.sendStreamComplete(requestId, result.content, cancelled, result.usage, result.finishReason === 'length');
+
+      // Also send analysis result for backward compatibility
+      if (!cancelled) {
+        this.sendAnalysisResult(result.content, result.toolName, result.usedGuides);
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+
+      if (error instanceof Error && error.name === 'AbortError') {
+        this.sendStreamComplete(requestId, '', true);
+        this.sendStatus('Analysis cancelled');
+      } else {
+        this.sendError('analysis.writing_tools', 'Failed to analyze with writing tools', msg);
       }
     } finally {
       this.activeRequests.delete(requestId);

@@ -4,7 +4,7 @@
  */
 
 import * as React from 'react';
-import { SelectionTarget, MessageType } from '@shared/types';
+import { SelectionTarget, MessageType, DialogueFocus, WritingToolsFocus } from '@shared/types';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { ErrorBoundary } from '../shared/ErrorBoundary';
 import { LoadingIndicator } from '../shared/LoadingIndicator';
@@ -84,7 +84,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
     analysis.result && analysis.result.trim().length > 0 && (analysis.toolName || lastSubmissionRef.current?.toolName)
   );
 
-  const handleAnalyzeDialogue = (focus: 'dialogue' | 'microbeats' | 'both' = 'both') => {
+  const handleAnalyzeDialogue = (focus: DialogueFocus = 'both') => {
     if (!text.trim()) {
       return;
     }
@@ -101,6 +101,34 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
 
     vscode.postMessage({
       type: MessageType.ANALYZE_DIALOGUE,
+      source: 'webview.analysis.tab',
+      payload: {
+        text,
+        contextText: context.contextText && context.contextText.trim().length > 0 ? context.contextText : undefined,
+        sourceFileUri: sourceReference,
+        focus
+      },
+      timestamp: Date.now()
+    });
+  };
+
+  const handleAnalyzeWritingTools = (focus: WritingToolsFocus) => {
+    if (!text.trim()) {
+      return;
+    }
+
+    analysis.setLoading(true);
+
+    lastSubmissionRef.current = {
+      toolName: `writing_tools_${focus}`,
+      excerpt: text,
+      context: context.contextText,
+      sourceUri: selection.selectedSourceUri,
+      relativePath: selection.selectedRelativePath
+    };
+
+    vscode.postMessage({
+      type: MessageType.ANALYZE_WRITING_TOOLS,
       source: 'webview.analysis.tab',
       payload: {
         text,
@@ -157,6 +185,28 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
 
   const handlePasteContext = React.useCallback(() => {
     selection.requestSelection('assistant_context');
+  }, [selection]);
+
+  /**
+   * Handle native Ctrl/Cmd+V paste in excerpt textarea.
+   * Requests the current editor selection and compares with pasted text.
+   * If they match, applies source metadata; otherwise clears it.
+   */
+  const handleExcerptNativePaste = React.useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const pastedText = e.clipboardData.getData('text');
+
+    // Validate and sanitize clipboard content
+    const MAX_EXCERPT_LENGTH = 100000; // 100KB reasonable limit
+    if (!pastedText?.trim()) return;
+
+    const sanitizedText = pastedText.trim().slice(0, MAX_EXCERPT_LENGTH);
+    if (pastedText.length > MAX_EXCERPT_LENGTH) {
+      console.warn(`[AnalysisTab] Pasted text truncated from ${pastedText.length} to ${MAX_EXCERPT_LENGTH} chars`);
+    }
+
+    // Request current editor selection for verification
+    // The response handler will compare and apply source if match
+    selection.requestSelectionVerify(sanitizedText);
   }, [selection]);
 
   const handleCancelAnalysisStreaming = React.useCallback(() => {
@@ -282,6 +332,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
               selection.setSelectedRelativePath('');
             }
           }}
+          onPaste={handleExcerptNativePaste}
           placeholder="Select text in your editor or paste text here..."
         />
         <WordCounter
@@ -451,6 +502,58 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
             disabled={!text.trim() || analysis.loading || analysis.isStreaming}
           >
             🎭 Microbeats Only
+          </button>
+        </div>
+
+        <h5 className="analysis-section-subheader">Writing Tools:</h5>
+        <div className="focused-buttons writing-tools-grid">
+          <button
+            className="action-button secondary writing-tool-button"
+            onClick={() => handleAnalyzeWritingTools('cliche')}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+          >
+            <span className="writing-tool-icon">🔍</span>
+            <span className="writing-tool-label">Cliché</span>
+          </button>
+          <button
+            className="action-button secondary writing-tool-button"
+            onClick={() => handleAnalyzeWritingTools('continuity')}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+          >
+            <span className="writing-tool-icon">🔗</span>
+            <span className="writing-tool-label">Continuity</span>
+          </button>
+          <button
+            className="action-button secondary writing-tool-button"
+            onClick={() => handleAnalyzeWritingTools('style')}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+          >
+            <span className="writing-tool-icon">🎨</span>
+            <span className="writing-tool-label">Style</span>
+          </button>
+          <button
+            className="action-button secondary writing-tool-button"
+            onClick={() => handleAnalyzeWritingTools('editor')}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+          >
+            <span className="writing-tool-icon">✏️</span>
+            <span className="writing-tool-label">Editor</span>
+          </button>
+          <button
+            className="action-button secondary writing-tool-button"
+            onClick={() => handleAnalyzeWritingTools('fresh')}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+          >
+            <span className="writing-tool-icon">🌱</span>
+            <span className="writing-tool-label">Fresh</span>
+          </button>
+          <button
+            className="action-button secondary writing-tool-button"
+            onClick={() => handleAnalyzeWritingTools('repetition')}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+          >
+            <span className="writing-tool-icon">🔁</span>
+            <span className="writing-tool-label">Repetition</span>
           </button>
         </div>
       </div>

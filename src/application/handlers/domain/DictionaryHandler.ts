@@ -197,8 +197,9 @@ export class DictionaryHandler {
         controller.signal
       );
 
-      // Send complete message (result.content has full content for non-streaming fallback)
-      const cancelled = result.content === '(Cancelled)';
+      // Send complete message - use signal.aborted to detect cancellation
+      // (orchestrator now returns partial content on abort instead of throwing)
+      const cancelled = controller.signal.aborted;
       this.sendStreamComplete(requestId, result.content, cancelled, result.usage, result.finishReason === 'length');
 
       // Also send dictionary result for backward compatibility

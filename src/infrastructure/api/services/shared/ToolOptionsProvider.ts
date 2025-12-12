@@ -9,6 +9,7 @@
  */
 
 import * as vscode from 'vscode';
+import { AssistantFocus } from '@messages';
 
 /**
  * Options for AI analysis tools (dialogue, prose, dictionary)
@@ -17,7 +18,7 @@ export interface ToolOptions {
   includeCraftGuides: boolean;
   temperature: number;
   maxTokens: number;
-  focus?: 'dialogue' | 'microbeats' | 'both';
+  focus?: AssistantFocus;
 }
 
 /**
@@ -51,10 +52,10 @@ export class ToolOptionsProvider {
   /**
    * Get options for AI analysis tools (dialogue, prose, dictionary)
    *
-   * @param focus - Optional focus for dialogue analysis ('dialogue', 'microbeats', 'both')
+   * @param focus - Optional focus for dialogue analysis (see AssistantFocus type)
    * @returns Tool options with defaults applied
    */
-  getOptions(focus?: 'dialogue' | 'microbeats' | 'both'): ToolOptions {
+  getOptions(focus?: AssistantFocus): ToolOptions {
     const config = vscode.workspace.getConfiguration('proseMinion');
     return {
       includeCraftGuides: config.get<boolean>('includeCraftGuides') ?? true,

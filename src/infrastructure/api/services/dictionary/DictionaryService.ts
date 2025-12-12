@@ -20,6 +20,7 @@ import * as vscode from 'vscode';
 import pLimit from 'p-limit';
 import { DictionaryUtility } from '@/tools/utility/dictionaryUtility';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
+import { AIResourceOrchestrator } from '@orchestration/AIResourceOrchestrator';
 import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
 import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
@@ -212,6 +213,8 @@ export class DictionaryService {
         }
       );
 
+      // Note: orchestrator now catches AbortError internally and returns partial content
+      // The executionResult.content will contain whatever was received before cancellation
       return AnalysisResultFactory.createAnalysisResult(
         'dictionary_lookup',
         executionResult.content,
@@ -220,13 +223,7 @@ export class DictionaryService {
         executionResult.finishReason
       );
     } catch (error) {
-      // Handle abort separately
-      if (error instanceof Error && error.name === 'AbortError') {
-        return AnalysisResultFactory.createAnalysisResult(
-          'dictionary_lookup',
-          '(Cancelled)'
-        );
-      }
+      // AbortError is now caught in the orchestrator, so this is only for other errors
       return AnalysisResultFactory.createAnalysisResult(
         'dictionary_lookup',
         `Error: ${error instanceof Error ? error.message : String(error)}`
@@ -343,7 +340,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
    * Generate a single dictionary block
    */
   private async generateSingleBlock(
-    orchestrator: any,
+    orchestrator: AIResourceOrchestrator,
     baseInstructions: string,
     blockName: DictionaryBlockName,
     blockNumber: number,
