@@ -951,7 +951,7 @@ export class AIResourceOrchestrator {
    * Called after each API response to provide real-time token tracking
    */
   private emitTokenUsage(response: { usage?: TokenUsage }): TokenUsage | undefined {
-    const usage = (response as any).usage as TokenUsage | undefined;
+    const usage = response.usage;
     if (usage && this.tokenUsageCallback) {
       this.tokenUsageCallback(usage);
     }

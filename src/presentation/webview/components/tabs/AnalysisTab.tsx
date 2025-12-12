@@ -194,9 +194,19 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
    */
   const handleExcerptNativePaste = React.useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const pastedText = e.clipboardData.getData('text');
+
+    // Validate and sanitize clipboard content
+    const MAX_EXCERPT_LENGTH = 100000; // 100KB reasonable limit
+    if (!pastedText?.trim()) return;
+
+    const sanitizedText = pastedText.trim().slice(0, MAX_EXCERPT_LENGTH);
+    if (pastedText.length > MAX_EXCERPT_LENGTH) {
+      console.warn(`[AnalysisTab] Pasted text truncated from ${pastedText.length} to ${MAX_EXCERPT_LENGTH} chars`);
+    }
+
     // Request current editor selection for verification
     // The response handler will compare and apply source if match
-    selection.requestSelectionVerify(pastedText);
+    selection.requestSelectionVerify(sanitizedText);
   }, [selection]);
 
   const handleCancelAnalysisStreaming = React.useCallback(() => {

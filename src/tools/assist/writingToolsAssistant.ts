@@ -84,7 +84,10 @@ export class WritingToolsAssistant {
 
       return await this.promptLoader.loadPrompts(paths);
     } catch (error) {
-      console.warn(`Could not load writing tools prompts for focus="${focus}", using defaults`);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.outputChannel?.appendLine(
+        `[WritingToolsAssistant] Could not load prompts for focus="${focus}", using defaults: ${errorMsg}`
+      );
       return this.getDefaultInstructions(focus);
     }
   }

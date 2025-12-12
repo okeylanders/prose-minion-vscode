@@ -20,6 +20,7 @@ import * as vscode from 'vscode';
 import pLimit from 'p-limit';
 import { DictionaryUtility } from '@/tools/utility/dictionaryUtility';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
+import { AIResourceOrchestrator } from '@orchestration/AIResourceOrchestrator';
 import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
 import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
@@ -339,7 +340,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
    * Generate a single dictionary block
    */
   private async generateSingleBlock(
-    orchestrator: any,
+    orchestrator: AIResourceOrchestrator,
     baseInstructions: string,
     blockName: DictionaryBlockName,
     blockNumber: number,

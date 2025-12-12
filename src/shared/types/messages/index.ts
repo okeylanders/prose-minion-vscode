@@ -28,6 +28,7 @@ export * from './streaming';
 import {
   AnalyzeDialogueMessage,
   AnalyzeProseMessage,
+  AnalyzeWritingToolsMessage,
   AnalysisResultMessage
 } from './analysis';
 import {
@@ -84,6 +85,7 @@ import {
 import {
   TabChangedMessage,
   OpenGuideFileMessage,
+  OpenDocsFileMessage,
   OpenResourceMessage,
   RequestSelectionMessage,
   SelectionDataMessage,
@@ -111,6 +113,7 @@ import {
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
   | AnalyzeProseMessage
+  | AnalyzeWritingToolsMessage
   | LookupDictionaryMessage
   | CopyResultMessage
   | SaveResultMessage
@@ -125,6 +128,7 @@ export type WebviewToExtensionMessage =
   | CategorySearchRequestMessage
   | TabChangedMessage
   | OpenGuideFileMessage
+  | OpenDocsFileMessage
   | OpenResourceMessage
   | RequestModelDataMessage
   | SetModelSelectionMessage

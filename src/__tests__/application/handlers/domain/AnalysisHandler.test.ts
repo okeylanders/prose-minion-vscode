@@ -105,6 +105,26 @@ describe('AnalysisHandler', () => {
 
       expect(mockService.analyzeProse).toHaveBeenCalled();
     });
+
+    it('should handle ANALYZE_WRITING_TOOLS message', async () => {
+      // Add mock for analyzeWritingTools
+      mockService.analyzeWritingTools = jest.fn().mockResolvedValue({
+        result: 'Test writing tools result',
+        tokenUsage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 }
+      });
+
+      const message = createTestMessage(MessageType.ANALYZE_WRITING_TOOLS, {
+        text: 'Test text for writing tools analysis',
+        contextText: undefined,
+        sourceFileUri: undefined,
+        focus: 'cliche'
+      });
+
+      handler.registerRoutes(router);
+      await router.route(message);
+
+      expect(mockService.analyzeWritingTools).toHaveBeenCalled();
+    });
   });
 
   describe('Error Handling', () => {

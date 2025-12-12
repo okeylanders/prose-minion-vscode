@@ -50,6 +50,13 @@ Flag low tension as an engagement issue when:
 - __Worldbuilding disconnected from plot__ (information that doesn't serve imminent needs)
 - __Failed transitions__ (should be moving between modes but isn't working)
 
+### If Sequential Context Is Not Provided
+
+- State "Sequential context unavailable - analyzing passage in isolation"
+- Focus on intrinsic engagement factors (character depth, stakes clarity, sensory grounding)
+- Note which contextual assessments cannot be made reliably
+- Skip narrative rhythm analysis if no adjacent scenes available
+
 ---
 
 ## PRIMARY EMPHASIS (80% of suggestions)
