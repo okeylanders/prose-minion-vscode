@@ -12,10 +12,24 @@
 
 ---
 
-## 🎉 What's New in v1.4.0
+## 🎉 What's New in v1.5.0
 
 > <img src="assets/pixel-minion-icon.png" alt="Pixel Minion" width="20" style="vertical-align: middle;"/> **Sister Extension: [Pixel Minion](https://marketplace.visualstudio.com/items?itemName=OkeyLanders.pixel-minion)** - Generate images and SVGs directly in VS Code using AI models like Flux, Recraft, and more via OpenRouter. [GitHub](https://github.com/okeylanders/pixel-minion-vscode)
 >
+> **✍️ Writing Tools Assistant** - Six specialized analysis tools in one dropdown! **Cliche Analysis** finds dead metaphors, **Continuity Check** catches choreography errors, **Style Consistency** detects tense/POV drift, **Editor** handles grammar, **Fresh Check** analyzes engagement, and **Repetition Analysis** flags echo words and redundancy.
+>
+> **📖 Narrative Sequence Context** - Context Assistant now outputs structured positioning: what happened before, this scene's role, what comes next, and position in the arc. Perfect for pacing analysis.
+>
+> **🔒 Security Hardening** - Context assistant validates resource paths and rejects injection attempts.
+>
+> **🧪 Test Coverage** - 11 new tests for WritingToolsAssistant ensuring reliability.
+>
+> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes.
+
+---
+
+## 🎉 What's New in v1.4.0
+
 > **🌊 Streaming Responses** - Watch AI responses generate in real-time! Dialogue analysis, prose analysis, context generation, and dictionary lookups now stream progressively with live token counts.
 >
 > **⏹️ Request Cancellation** - Cancel any AI operation mid-stream with the new cancel button. Stop early to save tokens when you've seen enough.
@@ -23,8 +37,6 @@
 > **🔄 Smart Request Handling** - Starting a new request automatically cancels any in-progress one. No more wasted tokens from accidental double-clicks or changed minds.
 >
 > **📚 New User Guides** - [Dictionary: Looking Up Phrases & Alternatives](docs/user-guides/dictionary-lookup-phrase-and-alternatives/README.md) - Learn how to get context-aware alternative phrasings for your prose. More guides coming soon!
->
-> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes.
 
 ---
 

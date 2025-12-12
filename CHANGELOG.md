@@ -2,6 +2,47 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.5.0] - 2025-12-11
+
+### Added
+
+- **✍️ Writing Tools Assistant**: Six specialized writing analysis tools
+  - **Cliche Analysis**: Detects dead metaphors, stock phrases, and overused expressions
+  - **Continuity Check**: Finds scene choreography issues and timeline inconsistencies
+  - **Style Consistency**: Identifies tense shifts, POV breaks, and register drift
+  - **Editor (Grammar)**: Copyediting for grammar, spelling, and punctuation
+  - **Fresh Check**: Engagement analysis for character depth, pacing, and stakes
+  - **Repetition Analysis**: Detects echo words, recycled metaphors, and structural redundancy
+
+- **📖 Narrative Sequence Context**: Context Assistant now outputs structured sequence info
+  - Previous scene summary with tension level and function
+  - Excerpt's structural role in the narrative
+  - Following scene preview (when available)
+  - Position in story arc
+
+### Enhanced
+
+- **🔄 Streaming Improvements**: Cancel preserves partial content instead of clearing
+- **📋 Ctrl+V Source Detection**: Native paste now detects source file from clipboard
+- **🔒 Security Hardening**: Context assistant validates resource paths
+- **🧪 Test Coverage**: Added WritingToolsAssistant tests (11 new tests)
+
+### Fixed
+
+- Type safety improvements (removed `any` assertions in orchestration layer)
+- Missing message types added to union exports
+- React ref cleanup for memory leak prevention
+- Logging consistency (console.warn → outputChannel)
+
+### Technical Details
+
+- New `ANALYZE_WRITING_TOOLS` message type with `WritingToolsFocus` discriminant
+- FILE_PREFIX_MAP for Open/Closed Principle compliance
+- Strategy pattern in useSelection for message handling
+- PR: [#50](https://github.com/okeylanders/prose-minion-vscode/pull/50)
+
+---
+
 ## [1.4.0] - 2025-12-06
 
 ### Added
