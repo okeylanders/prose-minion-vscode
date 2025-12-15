@@ -22,11 +22,14 @@ import { PromptLoader } from '@/tools/shared/prompts';
 import {
   CategorySearchResult,
   CategorySearchOptions,
-  WordSearchResult
+  WordSearchResult,
+  NGramMode
 } from '@messages/search';
 import { StatusEmitter } from '@messages/status';
 
 const MAX_WORDS_PER_BATCH = 400;
+const MAX_BIGRAMS_PER_BATCH = 200;
+const MAX_TRIGRAMS_PER_BATCH = 150;
 
 export class CategorySearchService {
   private readonly wordFrequency: WordFrequency;
@@ -61,33 +64,53 @@ export class CategorySearchService {
     options?: CategorySearchOptions
   ): Promise<CategorySearchResult> {
     try {
-      // 1. Extract unique words from text
-      const uniqueWords = this.wordFrequency.extractUniqueWords(text, {
-        minCharacterLength: 2,
-        excludeStopwords: true
-      });
+      // 1. Extract unique words/n-grams from text
+      const ngramMode = options?.ngramMode ?? 'words';
+      const minOccurrences = options?.minOccurrences ?? 2;
 
-      if (uniqueWords.length === 0) {
+      let uniqueItems: string[];
+      let batchSize: number;
+      let itemType: string;
+
+      if (ngramMode === 'words') {
+        uniqueItems = this.wordFrequency.extractUniqueWords(text, {
+          minCharacterLength: 2,
+          excludeStopwords: true
+        });
+        batchSize = MAX_WORDS_PER_BATCH;
+        itemType = 'unique words';
+      } else if (ngramMode === 'bigrams') {
+        uniqueItems = this.extractUniqueNGrams(text, 2, minOccurrences);
+        batchSize = MAX_BIGRAMS_PER_BATCH;
+        itemType = 'unique bigrams';
+      } else { // trigrams
+        uniqueItems = this.extractUniqueNGrams(text, 3, minOccurrences);
+        batchSize = MAX_TRIGRAMS_PER_BATCH;
+        itemType = 'unique trigrams';
+      }
+
+      if (uniqueItems.length === 0) {
         return {
           query,
           matchedWords: [],
           wordSearchResult: this.createEmptyResult(),
           timestamp: Date.now(),
-          error: 'No words found in text after filtering'
+          ngramMode,
+          error: `No ${itemType} found in text after filtering`
         };
       }
 
       this.outputChannel?.appendLine(
-        `[CategorySearchService] Extracted ${uniqueWords.length} unique words for category "${query}"`
+        `[CategorySearchService] Extracted ${uniqueItems.length} ${itemType} for category "${query}"`
       );
-      this.sendStatus(`Total unique words: ${uniqueWords.length}`);
+      this.sendStatus(`Total ${itemType}: ${uniqueItems.length}`);
 
       // 2. Build AI prompt and get matches (chunked to avoid token limits)
       const relevance = options?.relevance ?? 'focused';
       const wordLimit = options?.wordLimit ?? 50;
       const batches: string[][] = [];
-      for (let i = 0; i < uniqueWords.length; i += MAX_WORDS_PER_BATCH) {
-        batches.push(uniqueWords.slice(i, i + MAX_WORDS_PER_BATCH));
+      for (let i = 0; i < uniqueItems.length; i += batchSize) {
+        batches.push(uniqueItems.slice(i, i + batchSize));
       }
 
       const matchedWordsSet = new Set<string>();
@@ -114,7 +137,8 @@ export class CategorySearchService {
               query,
               batch,
               relevance,
-              wordLimit
+              wordLimit,
+              ngramMode
             );
             aiResult.matchedWords.forEach(word => matchedWordsSet.add(word));
 
@@ -182,6 +206,7 @@ export class CategorySearchService {
           matchedWords: [],
           wordSearchResult: this.createEmptyResult(),
           timestamp: Date.now(),
+          ngramMode,
           tokensUsed,
           warnings: warnings.length ? warnings : undefined,
           haltedEarly: shouldStop && matchedWordsSet.size >= wordLimit
@@ -242,6 +267,7 @@ export class CategorySearchService {
           targets: validTargets
         },
         timestamp: Date.now(),
+        ngramMode,
         tokensUsed,
         warnings: warnings.length ? warnings : undefined,
         haltedEarly: shouldStop && matchedWordsSet.size >= wordLimit
@@ -255,6 +281,7 @@ export class CategorySearchService {
         matchedWords: [],
         wordSearchResult: this.createEmptyResult(),
         timestamp: Date.now(),
+        ngramMode: options?.ngramMode ?? 'words',
         error: message
       };
     }
@@ -268,7 +295,8 @@ export class CategorySearchService {
     query: string,
     words: string[],
     relevance: 'broad' | 'focused' | 'specific' | 'synonym',
-    wordLimit: number
+    wordLimit: number,
+    ngramMode: NGramMode
   ): Promise<{
     matchedWords: string[];
     tokensUsed?: { prompt: number; completion: number; total: number; costUsd?: number };
@@ -296,8 +324,16 @@ export class CategorySearchService {
     const constraintNote = `\n\n---\n**CONSTRAINTS**: RELEVANCE MODE SELECTED: ${relevance.toUpperCase()} — ${relevanceDescriptions[relevance]} Limit to ${wordLimit} words.`;
     const systemPrompt = basePrompt + constraintNote;
 
-    // Build user message
-    const userMessage = `Category: ${query}\nWords: ${words.join(', ')}`;
+    // Build user message with appropriate label based on n-gram mode
+    let itemLabel: string;
+    if (ngramMode === 'words') {
+      itemLabel = 'Words';
+    } else if (ngramMode === 'bigrams') {
+      itemLabel = 'Phrases (bigrams)';
+    } else {
+      itemLabel = 'Phrases (trigrams)';
+    }
+    const userMessage = `Category: ${query}\n${itemLabel}: ${words.join(', ')}`;
 
     // Call AI using orchestrator (single-turn, no guide capabilities needed)
     const result = await orchestrator.executeWithoutCapabilities(
@@ -404,5 +440,31 @@ export class CategorySearchService {
     if (this.statusEmitter) {
       this.statusEmitter(message, progress, tickerMessage);
     }
+  }
+
+  /**
+   * Extract unique n-grams from text with frequency filtering
+   * @param text - Text to extract n-grams from
+   * @param n - N-gram size (2 for bigrams, 3 for trigrams)
+   * @param minOccurrences - Minimum frequency threshold
+   * @returns Array of unique n-grams sorted by frequency (descending)
+   */
+  private extractUniqueNGrams(
+    text: string,
+    n: number,
+    minOccurrences: number
+  ): string[] {
+    const tokens = text.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+    const counts = new Map<string, number>();
+
+    for (let i = 0; i <= tokens.length - n; i++) {
+      const phrase = tokens.slice(i, i + n).join(' ');
+      counts.set(phrase, (counts.get(phrase) || 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .filter(([_, count]) => count >= minOccurrences)
+      .sort((a, b) => b[1] - a[1])
+      .map(([phrase]) => phrase);
   }
 }

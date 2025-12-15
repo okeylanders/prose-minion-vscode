@@ -114,7 +114,7 @@ describe('CategorySearchService', () => {
     const result = await service.searchByCategory('empty', '', undefined, 'selection');
 
     expect(wordSearchService.searchWords).not.toHaveBeenCalled();
-    expect(result.error).toBe('No words found in text after filtering');
+    expect(result.error).toBe('No unique words found in text after filtering');
     expect(result.matchedWords).toEqual([]);
   });
 

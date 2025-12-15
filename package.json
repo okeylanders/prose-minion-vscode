@@ -454,6 +454,25 @@
           "default": true,
           "markdownDescription": "Apply context window trimming to prevent token limit errors. **Limits**: UI recommends 500-word excerpts; Context Agent (50K words), Analysis Agents (75K words total: excerpt + context + guides). Targets 128K token context window. Disable if using models with larger context windows (e.g., 200K+).",
           "order": 35
+        },
+        "proseMinion.categorySearch.ngramMode": {
+          "type": "string",
+          "enum": [
+            "words",
+            "bigrams",
+            "trigrams"
+          ],
+          "default": "words",
+          "description": "Search mode: individual words, 2-word phrases (bigrams), or 3-word phrases (trigrams)",
+          "order": 36
+        },
+        "proseMinion.categorySearch.minPhraseOccurrences": {
+          "type": "number",
+          "default": 2,
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Minimum times a phrase must appear to be included (bigram/trigram modes only)",
+          "order": 37
         }
       }
     }
