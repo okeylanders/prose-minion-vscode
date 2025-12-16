@@ -116,6 +116,19 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
     });
   };
 
+  const handleCancelCategorySearch = () => {
+    vscode.postMessage({
+      type: MessageType.CANCEL_CATEGORY_SEARCH_REQUEST,
+      source: 'webview.search.category',
+      payload: {
+        requestId: 'category-search',
+        domain: 'search'
+      },
+      timestamp: Date.now()
+    });
+    search.cancelCategorySearch();
+  };
+
   return (
     <>
       {/* Scope + Path/Pattern well */}
@@ -282,8 +295,9 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
           </>
         )}
 
-        <div className="mt-3 flex justify-center">
+        <div className="mt-3 flex justify-center gap-2">
           <button
+            type="button"
             className="btn btn-primary"
             disabled={search.categorySearch.isLoading || !search.categorySearch.query.trim()}
             onClick={handleRunCategorySearch}
@@ -291,6 +305,16 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
           >
             ⚡ Run Category Search
           </button>
+          {search.categorySearch.isLoading && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleCancelCategorySearch}
+              aria-label="Cancel category search"
+            >
+              ✕ Cancel
+            </button>
+          )}
         </div>
       </div>
 

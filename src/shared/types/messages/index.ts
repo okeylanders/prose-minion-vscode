@@ -107,7 +107,8 @@ import {
   StreamCompleteMessage,
   CancelAnalysisRequestMessage,
   CancelDictionaryRequestMessage,
-  CancelContextRequestMessage
+  CancelContextRequestMessage,
+  CancelCategorySearchRequestMessage
 } from './streaming';
 
 export type WebviewToExtensionMessage =
@@ -146,7 +147,8 @@ export type WebviewToExtensionMessage =
   | FastGenerateDictionaryMessage
   | CancelAnalysisRequestMessage
   | CancelDictionaryRequestMessage
-  | CancelContextRequestMessage;
+  | CancelContextRequestMessage
+  | CancelCategorySearchRequestMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage

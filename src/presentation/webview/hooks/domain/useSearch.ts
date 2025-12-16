@@ -69,6 +69,7 @@ export interface SearchActions {
   setCategorySearchWordLimit: (limit: CategoryWordLimit) => void;
   setCategorySearchNgramMode: (mode: NGramMode) => void;
   setCategorySearchMinOccurrences: (min: MinOccurrences) => void;
+  cancelCategorySearch: () => void;
 }
 
 export interface SearchPersistence {
@@ -244,6 +245,13 @@ export const useSearch = (): UseSearchReturn => {
     setWordStatusMessage('');
   }, []);
 
+  const cancelCategorySearch = React.useCallback(() => {
+    setCategorySearchLoading(false);
+    setCategorySearchProgress(undefined);
+    setCategorySearchTicker('');
+    setCategoryStatusMessage('Cancelled');
+  }, []);
+
   const wordLoading = React.useMemo(() => loadingBySubtool.word ?? false, [loadingBySubtool]);
 
   return {
@@ -291,6 +299,7 @@ export const useSearch = (): UseSearchReturn => {
     setCategorySearchWordLimit,
     setCategorySearchNgramMode,
     setCategorySearchMinOccurrences,
+    cancelCategorySearch,
 
     // Persistence
     persistedState: {

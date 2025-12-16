@@ -34,6 +34,7 @@ const MAX_TRIGRAMS_PER_BATCH = 150;
 export class CategorySearchService {
   private readonly wordFrequency: WordFrequency;
   private readonly promptLoader: PromptLoader;
+  private abortController: AbortController | null = null;
 
   constructor(
     private readonly aiResourceManager: AIResourceManager,
@@ -44,6 +45,24 @@ export class CategorySearchService {
   ) {
     this.wordFrequency = new WordFrequency((msg) => this.outputChannel?.appendLine(msg));
     this.promptLoader = new PromptLoader(extensionUri);
+  }
+
+  /**
+   * Cancel any in-progress category search
+   */
+  public cancelSearch(): void {
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+      this.outputChannel?.appendLine('[CategorySearchService] Search cancelled by user');
+    }
+  }
+
+  /**
+   * Check if a search is currently running
+   */
+  public isSearchRunning(): boolean {
+    return this.abortController !== null;
   }
 
   /**
@@ -64,6 +83,10 @@ export class CategorySearchService {
     options?: CategorySearchOptions
   ): Promise<CategorySearchResult> {
     try {
+      // Create new AbortController for this search
+      this.abortController = new AbortController();
+      const signal = this.abortController.signal;
+
       // 1. Extract unique words/n-grams from text
       const ngramMode = options?.ngramMode ?? 'words';
       const minOccurrences = options?.minOccurrences ?? 2;
@@ -90,6 +113,7 @@ export class CategorySearchService {
       }
 
       if (uniqueItems.length === 0) {
+        this.abortController = null;
         return {
           query,
           matchedWords: [],
@@ -128,6 +152,12 @@ export class CategorySearchService {
       let completedBatches = 0;
       const runWorker = async () => {
         while (!shouldStop && nextIndex < batches.length) {
+          // Check if cancelled
+          if (signal.aborted) {
+            this.outputChannel?.appendLine('[CategorySearchService] Search aborted');
+            return;
+          }
+
           const idx = nextIndex++;
           const batch = batches[idx];
           const batchLabel = `Batch ${idx + 1}/${batches.length}`;
@@ -165,7 +195,7 @@ export class CategorySearchService {
             completedBatches++;
 
             this.sendStatus(
-              `${batchLabel}: matched ${aiResult.matchedWords.length} words (${completedBatches} batches completed)`,
+              `${batchLabel}: +${aiResult.matchedWords.length} matches (${matchedWordsSet.size} total found)`,
               { current: completedBatches, total: batches.length }
             );
           } catch (error) {
@@ -180,6 +210,19 @@ export class CategorySearchService {
 
       const workers = Array.from({ length: concurrency }, () => runWorker());
       await Promise.all(workers);
+
+      // Check if cancelled after workers complete
+      if (signal.aborted) {
+        this.abortController = null;
+        return {
+          query,
+          matchedWords: [],
+          wordSearchResult: this.createEmptyResult(),
+          timestamp: Date.now(),
+          ngramMode,
+          error: 'Search cancelled'
+        };
+      }
 
       const matchedWords = Array.from(matchedWordsSet).sort((a, b) =>
         a.localeCompare(b, undefined, { sensitivity: 'base' })
@@ -201,6 +244,7 @@ export class CategorySearchService {
       }
 
       if (finalMatchedWords.length === 0) {
+        this.abortController = null;
         return {
           query,
           matchedWords: [],
@@ -259,6 +303,7 @@ export class CategorySearchService {
         validTargets.some(t => t.normalized === word.toLowerCase() || t.target.toLowerCase() === word.toLowerCase())
       );
 
+      this.abortController = null;
       return {
         query,
         matchedWords: validWords,
@@ -276,6 +321,7 @@ export class CategorySearchService {
       const message = error instanceof Error ? error.message : String(error);
       this.outputChannel?.appendLine(`[CategorySearchService] Error: ${message}`);
 
+      this.abortController = null;
       return {
         query,
         matchedWords: [],
