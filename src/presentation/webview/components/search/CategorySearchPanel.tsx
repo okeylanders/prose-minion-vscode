@@ -292,10 +292,19 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
                 </button>
               ))}
             </div>
+
+            {/* N-gram mode warning */}
+            <div className="warning-message">
+              <strong>⚠️ Increased Token Usage</strong>
+              Searching n-grams results in vastly more batches (100s+) and will increase token spend.
+              This searches for every rolling 2 or 3 word combination, producing a larger list than distinct single words.
+              Success varies—models can struggle with phrase lists.
+              Included for exploration purposes such as finding full names or concepts requiring 2–3 words.
+            </div>
           </>
         )}
 
-        <div className="mt-3 flex justify-center gap-2">
+        <div className="mt-3 flex justify-center">
           <button
             type="button"
             className="btn btn-primary"
@@ -305,16 +314,6 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
           >
             ⚡ Run Category Search
           </button>
-          {search.categorySearch.isLoading && (
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={handleCancelCategorySearch}
-              aria-label="Cancel category search"
-            >
-              ✕ Cancel
-            </button>
-          )}
         </div>
       </div>
 
@@ -329,6 +328,7 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
             total: search.categorySearch.progress.total,
             label: `Batch ${search.categorySearch.progress.current} of ${search.categorySearch.progress.total}`
           } : undefined}
+          onCancel={handleCancelCategorySearch}
         />
       )}
 

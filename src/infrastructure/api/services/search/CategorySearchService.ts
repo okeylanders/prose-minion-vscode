@@ -211,18 +211,8 @@ export class CategorySearchService {
       const workers = Array.from({ length: concurrency }, () => runWorker());
       await Promise.all(workers);
 
-      // Check if cancelled after workers complete
-      if (signal.aborted) {
-        this.abortController = null;
-        return {
-          query,
-          matchedWords: [],
-          wordSearchResult: this.createEmptyResult(),
-          timestamp: Date.now(),
-          ngramMode,
-          error: 'Search cancelled'
-        };
-      }
+      // Track if this was a cancellation
+      const wasCancelled = signal.aborted;
 
       const matchedWords = Array.from(matchedWordsSet).sort((a, b) =>
         a.localeCompare(b, undefined, { sensitivity: 'base' })
@@ -236,6 +226,12 @@ export class CategorySearchService {
       } : undefined;
 
       const warnings: string[] = [];
+      if (wasCancelled) {
+        warnings.push(`Search cancelled after ${completedBatches}/${batches.length} batches; showing partial results.`);
+        this.outputChannel?.appendLine(
+          `[CategorySearchService] Cancelled with ${matchedWordsSet.size} matches from ${completedBatches}/${batches.length} batches`
+        );
+      }
       if (hadBatchFailure) {
         warnings.push('Some batches failed; results may be incomplete.');
       }
@@ -245,6 +241,11 @@ export class CategorySearchService {
 
       if (finalMatchedWords.length === 0) {
         this.abortController = null;
+        // If cancelled with no results, add a specific message
+        if (wasCancelled && warnings.length === 1) {
+          // Replace the partial results message with no-results message
+          warnings[0] = `Search cancelled after ${completedBatches}/${batches.length} batches; no matches found before cancellation.`;
+        }
         return {
           query,
           matchedWords: [],
