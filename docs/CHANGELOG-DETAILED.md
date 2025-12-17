@@ -5,6 +5,134 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2025-12-16
+
+### Overview
+
+Feature release adding **N-gram mode** to Category Search, enabling phrase-based semantic searches (bigrams/trigrams) with cancellation support and partial results preservation.
+
+**PR:** [#51](https://github.com/okeylanders/prose-minion-vscode/pull/51)
+**Branch:** `feature/ngram-category-search-2025-12-12`
+
+---
+
+### Added
+
+#### N-gram Mode for Category Search
+
+Search for multi-word phrases instead of individual words:
+
+| Mode | Description | Batch Size |
+|------|-------------|------------|
+| **Words** | Individual words (default) | 400 |
+| **Bigrams** | 2-word phrases ("cold night", "racing heart") | 200 |
+| **Trigrams** | 3-word phrases ("heart pounding faster") | 150 |
+
+**Implementation:**
+
+- New types in `src/shared/types/messages/search.ts`:
+
+  ```typescript
+  export type NGramMode = 'words' | 'bigrams' | 'trigrams';
+  export type MinOccurrences = 1 | 2 | 3 | 4 | 5;
+  export const NGRAM_MODE_OPTIONS: readonly NGramMode[] = ['words', 'bigrams', 'trigrams'];
+  export const MIN_OCCURRENCES_OPTIONS: readonly MinOccurrences[] = [1, 2, 3, 4, 5];
+  ```
+
+- `extractUniqueNGrams()` method in CategorySearchService:
+  - Generates rolling n-grams from text
+  - Filters by minimum occurrence threshold
+  - Sorts by frequency (descending)
+  - Strips punctuation (preserves apostrophes for contractions)
+
+- UI components in CategorySearchPanel:
+  - Tab-based mode selector
+  - Min occurrences selector (shown for bigrams/trigrams only)
+  - Warning message about increased token usage
+
+- System prompt updates in `resources/system-prompts/category-search/01-instructions.md`:
+  - Bigrams/Trigrams mode documentation
+  - Examples for partial phrase matching
+  - Adjacent subset rules
+
+#### Category Search Cancellation
+
+Cancel long-running searches while preserving partial results:
+
+**Implementation:**
+
+- AbortController pattern in CategorySearchService:
+
+  ```typescript
+  private abortController: AbortController | null = null;
+
+  public cancelSearch(): void {
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
+  }
+  ```
+
+- New message type: `CANCEL_CATEGORY_SEARCH_REQUEST`
+- Cancel button in LoadingIndicator with `.btn-alert` styling
+- Warnings array in results indicates cancellation status
+
+**Behavior:**
+
+- Cancellation prevents new batches from starting
+- In-flight requests complete normally
+- Partial results returned with warning message
+- Progress shows completed/total batches
+
+---
+
+### Enhanced
+
+#### Punctuation Stripping
+
+N-gram extraction now strips punctuation for cleaner matching:
+
+```typescript
+const tokens = text
+  .toLowerCase()
+  .replace(/[^\w\s']/g, ' ')  // Keep apostrophes for contractions
+  .split(/\s+/)
+  .filter(t => t.length > 0);
+```
+
+**Benefits:**
+
+- "cold!" becomes "cold" in bigrams
+- "night." becomes "night"
+- Contractions preserved: "don't", "it's"
+
+---
+
+### Files Modified
+
+- `src/shared/types/messages/search.ts` - NGramMode, MinOccurrences types
+- `src/shared/types/messages/base.ts` - CANCEL_CATEGORY_SEARCH_REQUEST message type
+- `src/infrastructure/api/services/search/CategorySearchService.ts` - N-gram extraction, cancellation
+- `src/application/handlers/domain/SearchHandler.ts` - Cancel route registration
+- `src/presentation/webview/components/search/CategorySearchPanel.tsx` - N-gram UI
+- `src/presentation/webview/components/shared/LoadingIndicator.tsx` - Cancel button
+- `src/presentation/webview/hooks/domain/useSearch.ts` - N-gram state, cancellation
+- `src/presentation/webview/index.css` - .btn-alert, .warning-message styles
+- `resources/system-prompts/category-search/01-instructions.md` - N-gram documentation
+- `package.json` - New settings: ngramMode, minPhraseOccurrences
+
+---
+
+### Test Coverage
+
+New tests in `CategorySearchService.test.ts`:
+
+- `returns partial results when search is cancelled`
+- `strips punctuation from n-grams during extraction`
+
+---
+
 ## [1.5.0] - 2025-12-11
 
 ### Overview

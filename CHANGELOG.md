@@ -2,6 +2,38 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.6.0] - 2025-12-16
+
+### Added
+
+- **🔤 N-gram Mode for Category Search**: Search for 2-word (bigrams) or 3-word (trigrams) phrases
+  - Tab-based mode selector: Words / Bigrams / Trigrams
+  - Min occurrences filter (1-5) to reduce noise from rare phrases
+  - Useful for finding full names, compound concepts, or multi-word expressions
+  - Warning message about increased token usage for phrase-based searches
+
+- **⏹️ Category Search Cancellation**: Cancel long-running searches with partial results
+  - Red "✕ Cancel" button during search
+  - Preserves matches found before cancellation
+  - Warning message indicates how many batches completed
+
+### Enhanced
+
+- **🧹 Punctuation Stripping**: N-grams now strip punctuation for cleaner phrase matching
+  - Preserves apostrophes for contractions (e.g., "don't", "it's")
+  - Prevents artifacts like "cold," or "night." in results
+
+### Technical Details
+
+- New types: `NGramMode`, `MinOccurrences` with const arrays for UI iteration
+- New message type: `CANCEL_CATEGORY_SEARCH_REQUEST`
+- AbortController pattern for graceful cancellation
+- Mode-aware batch sizing: 400 words, 200 bigrams, 150 trigrams
+- System prompt updated with bigram/trigram examples
+- PR: [#51](https://github.com/okeylanders/prose-minion-vscode/pull/51)
+
+---
+
 ## [1.5.0] - 2025-12-11
 
 ### Added

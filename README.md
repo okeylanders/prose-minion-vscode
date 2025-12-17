@@ -12,60 +12,41 @@
 
 ---
 
-## 🎉 What's New in v1.5.0
+## 🎉 What's New in v1.6.0
 
 > <img src="assets/pixel-minion-icon.png" alt="Pixel Minion" width="20" style="vertical-align: middle;"/> **Sister Extension: [Pixel Minion](https://marketplace.visualstudio.com/items?itemName=OkeyLanders.pixel-minion)** - Generate images and SVGs directly in VS Code using AI models like Flux, Recraft, and more via OpenRouter. [GitHub](https://github.com/okeylanders/pixel-minion-vscode)
 >
+> **🔤 N-gram Mode for Category Search** - Search for 2-word phrases (bigrams) or 3-word phrases (trigrams)! Perfect for finding full names, compound concepts, or multi-word expressions in your manuscript.
+>
+> **⏹️ Category Search Cancellation** - Cancel long-running searches with the new red "✕ Cancel" button. Partial results are preserved, so you keep matches found before cancellation.
+>
+> **🧹 Punctuation Stripping** - N-grams now strip punctuation for cleaner phrase matching while preserving contractions like "don't" and "it's".
+>
+> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
+
+---
+
+## 🎉 What's New in v1.5.0
+
 > **✍️ Writing Tools Assistant** - Six specialized analysis tools in one dropdown! **Cliche Analysis** finds dead metaphors, **Continuity Check** catches choreography errors, **Style Consistency** detects tense/POV drift, **Editor** handles grammar, **Fresh Check** analyzes engagement, and **Repetition Analysis** flags echo words and redundancy.
 >
-> **📖 Narrative Sequence Context** - Context Assistant now outputs structured positioning: what happened before, this scene's role, what comes next, and position in the arc. Perfect for pacing analysis.
+> **📖 Narrative Sequence Context** - Context Assistant now outputs structured positioning: what happened before, this scene's role, what comes next, and position in the arc.
 >
 > **🔒 Security Hardening** - Context assistant validates resource paths and rejects injection attempts.
->
-> **🧪 Test Coverage** - 11 new tests for WritingToolsAssistant ensuring reliability.
->
-> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes.
 
 ---
 
 ## 🎉 What's New in v1.4.0
 
-> **🌊 Streaming Responses** - Watch AI responses generate in real-time! Dialogue analysis, prose analysis, context generation, and dictionary lookups now stream progressively with live token counts.
+> **🌊 Streaming Responses** - Watch AI responses generate in real-time with live token counts.
 >
-> **⏹️ Request Cancellation** - Cancel any AI operation mid-stream with the new cancel button. Stop early to save tokens when you've seen enough.
+> **⏹️ Request Cancellation** - Cancel any AI operation mid-stream. Stop early to save tokens when you've seen enough.
 >
-> **🔄 Smart Request Handling** - Starting a new request automatically cancels any in-progress one. No more wasted tokens from accidental double-clicks or changed minds.
->
-> **📚 New User Guides** - [Dictionary: Looking Up Phrases & Alternatives](docs/user-guides/dictionary-lookup-phrase-and-alternatives/README.md) - Learn how to get context-aware alternative phrasings for your prose. More guides coming soon!
+> **📚 New User Guides** - [Dictionary: Looking Up Phrases & Alternatives](docs/user-guides/dictionary-lookup-phrase-and-alternatives/README.md)
 
 ---
 
-## 🎉 What's New in v1.3.0
-
-> **📝 Phrase Lookup** - Dictionary now supports multi-word phrases! Look up idioms, expressions, and phrases up to 6 words. Great for understanding contextual usage and creative alternatives.
->
-> **📝 New AI Models Added** - Claude Opus 4.5 & Cogito v2.1 671B added to quick dropdown. *Note you can always added model ids manually via VS Code setting panel.*
->
-> **📝 Experiment with Larger Passages in Assistant** - Assistant tab updated to allow up to 2000 words before warning. Try out whole chapter scenes for larger revision suggestions.
->
-> **🏗️ Architecture Health Pass** - Major internal refactoring across 8 sprints. Improved code maintainability, shared components (ScopeBox, LoadingIndicator, WordCounter), and better type safety throughout.
->
-> **🐛 Stability Fixes** - Context assistant recovery improvements, dictionary race condition fixes, and UI polish across all tabs.
->
-> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes.
-
----
-
-## 🎉 What's New in v1.2.0
-
-> **✨ Context Search** - AI-powered semantic word discovery! Search your manuscript by category or concept instead of exact words. 
->
-> Try queries like `[clothing]`, `[emotions]`, or `[color red]`. 
-> [Learn more →](#context-search-ai-powered)
->
-> **⚡ Fast Generate (Experimental)** - NEW parallel dictionary generation! Generate dictionary entries 2-4× faster using concurrent API calls. Look for the "Fast Generate (Experimental)" button in the Dictionary tab. Works best with newer models such as Haiku 4.5, Sonnet 4.5, Gemini Flash 2.5, GPT **5.1**.
->
-> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes including testing framework, custom model support, and bug fixes.
+> **📜 Looking for older releases?** See [CHANGELOG.md](CHANGELOG.md) for complete version history including v1.3.0 (Phrase Lookup, Architecture Health Pass), v1.2.0 (Context Search, Fast Generate), and earlier releases.
 
 ---
 
@@ -215,7 +196,7 @@ Advanced word pattern matching with context windows and cluster detection.
 
 #### Context Search (AI-Powered)
 
-**NEW in v1.1.0** - Discover words by category, concept, or meaning using AI semantic analysis.
+Discover words by category, concept, or meaning using AI semantic analysis.
 
 ![Context Search Tool](screenshots/screenshot-search-category-search.png)
 
@@ -232,6 +213,8 @@ Instead of searching for specific words, search by **meaning** or **category**:
 
 - **Natural Language Queries** - Describe what you're looking for in plain English
 - **Semantic Discovery** - Find words by meaning, not just exact matches
+- **N-gram Mode (NEW)** - Search for bigrams (2-word phrases) or trigrams (3-word phrases) instead of individual words
+- **Cancellation Support** - Cancel long searches and keep partial results
 - **Full Word Search Integration** - Results show occurrence counts, clusters, and chapter locations
 - **Export to Markdown** - Save results with full context for reference
 - **Batch Processing** - Handles large manuscripts (10K+ words) reliably
