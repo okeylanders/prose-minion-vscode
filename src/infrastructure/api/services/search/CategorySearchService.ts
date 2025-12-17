@@ -501,7 +501,13 @@ export class CategorySearchService {
     n: number,
     minOccurrences: number
   ): string[] {
-    const tokens = text.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+    // Strip punctuation (keep apostrophes for contractions) and normalize whitespace
+    const tokens = text
+      .toLowerCase()
+      .replace(/[^\w\s']/g, ' ')
+      .split(/\s+/)
+      .filter(t => t.length > 0);
+
     const counts = new Map<string, number>();
 
     for (let i = 0; i <= tokens.length - n; i++) {

@@ -463,7 +463,7 @@
             "trigrams"
           ],
           "default": "words",
-          "description": "Search mode: individual words, 2-word phrases (bigrams), or 3-word phrases (trigrams)",
+          "description": "Default search mode for new searches. Words = individual words, Bigrams = 2-word phrases, Trigrams = 3-word phrases. Changes take effect on panel reload.",
           "order": 36
         },
         "proseMinion.categorySearch.minPhraseOccurrences": {
@@ -471,7 +471,7 @@
           "default": 2,
           "minimum": 1,
           "maximum": 10,
-          "description": "Minimum times a phrase must appear to be included (bigram/trigram modes only)",
+          "description": "Default minimum phrase occurrences for bigram/trigram searches. Phrases appearing fewer times are filtered out. Changes take effect on panel reload.",
           "order": 37
         }
       }
