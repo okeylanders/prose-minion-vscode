@@ -94,7 +94,8 @@ export enum MessageType {
   STREAM_COMPLETE = 'stream_complete',
   CANCEL_ANALYSIS_REQUEST = 'cancel_analysis_request',
   CANCEL_DICTIONARY_REQUEST = 'cancel_dictionary_request',
-  CANCEL_CONTEXT_REQUEST = 'cancel_context_request'
+  CANCEL_CONTEXT_REQUEST = 'cancel_context_request',
+  CANCEL_CATEGORY_SEARCH_REQUEST = 'cancel_category_search_request'
 }
 
 export interface BaseMessage {

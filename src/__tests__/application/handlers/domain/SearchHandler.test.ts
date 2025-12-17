@@ -32,9 +32,14 @@ describe('SearchHandler', () => {
       expect(router.hasHandler(MessageType.CATEGORY_SEARCH_REQUEST)).toBe(true);
     });
 
-    it('should register exactly 2 routes', () => {
+    it('should register CANCEL_CATEGORY_SEARCH_REQUEST route', () => {
       handler.registerRoutes(router);
-      expect(router.handlerCount).toBe(2);
+      expect(router.hasHandler(MessageType.CANCEL_CATEGORY_SEARCH_REQUEST)).toBe(true);
+    });
+
+    it('should register exactly 3 routes', () => {
+      handler.registerRoutes(router);
+      expect(router.handlerCount).toBe(3);
     });
   });
 });

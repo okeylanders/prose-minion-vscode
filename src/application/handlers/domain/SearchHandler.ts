@@ -17,7 +17,8 @@ import {
   SearchResultMessage,
   CategorySearchResultMessage,
   ErrorMessage,
-  StatusMessage
+  StatusMessage,
+  CancelCategorySearchRequestMessage
 } from '@messages';
 import { MessageRouter } from '../MessageRouter';
 
@@ -35,6 +36,7 @@ export class SearchHandler {
   registerRoutes(router: MessageRouter): void {
     router.register(MessageType.RUN_WORD_SEARCH, this.handleMeasureWordSearch.bind(this));
     router.register(MessageType.CATEGORY_SEARCH_REQUEST, this.handleCategorySearchRequest.bind(this));
+    router.register(MessageType.CANCEL_CATEGORY_SEARCH_REQUEST, this.handleCancelCategorySearch.bind(this));
   }
 
   // Helper methods (domain owns its message lifecycle)
@@ -140,6 +142,16 @@ export class SearchHandler {
       const msg = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[SearchHandler] Category search error: ${msg}`);
       this.sendError('search', 'Category search failed', msg);
+    }
+  }
+
+  private async handleCancelCategorySearch(): Promise<void> {
+    this.outputChannel?.appendLine('[SearchHandler] Cancel category search requested');
+    if (this.categorySearchService) {
+      this.categorySearchService.cancelSearch();
+      this.sendStatus('Category search cancelled');
+    } else {
+      this.outputChannel?.appendLine('[SearchHandler] CategorySearchService not available');
     }
   }
 

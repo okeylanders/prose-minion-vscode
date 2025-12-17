@@ -14,7 +14,9 @@ import {
   ChapterGlobsMessage,
   CategorySearchResultMessage,
   CategorySearchResult,
-  StatusMessage
+  StatusMessage,
+  NGramMode,
+  MinOccurrences
 } from '@messages';
 import { CategoryRelevance, CategoryWordLimit } from '@shared/types';
 
@@ -27,6 +29,8 @@ export interface CategorySearchState {
   error: string | null;
   relevance: CategoryRelevance;
   wordLimit: CategoryWordLimit;
+  ngramMode: NGramMode;
+  minOccurrences: MinOccurrences;
   progress?: { current: number; total: number };
   tickerMessage?: string;
 }
@@ -63,6 +67,9 @@ export interface SearchActions {
   clearCategorySearchResult: () => void;
   setCategorySearchRelevance: (relevance: CategoryRelevance) => void;
   setCategorySearchWordLimit: (limit: CategoryWordLimit) => void;
+  setCategorySearchNgramMode: (mode: NGramMode) => void;
+  setCategorySearchMinOccurrences: (min: MinOccurrences) => void;
+  cancelCategorySearch: () => void;
 }
 
 export interface SearchPersistence {
@@ -76,6 +83,8 @@ export interface SearchPersistence {
   categorySearchResult: CategorySearchResult | null;
   categorySearchRelevance: CategoryRelevance;
   categorySearchWordLimit: CategoryWordLimit;
+  categorySearchNgramMode: NGramMode;
+  categorySearchMinOccurrences: MinOccurrences;
 }
 
 export type UseSearchReturn = SearchState & SearchActions & { persistedState: SearchPersistence };
@@ -112,6 +121,8 @@ export const useSearch = (): UseSearchReturn => {
     categorySearchResult?: CategorySearchResult | null;
     categorySearchRelevance?: CategoryRelevance;
     categorySearchWordLimit?: CategoryWordLimit;
+    categorySearchNgramMode?: NGramMode;
+    categorySearchMinOccurrences?: MinOccurrences;
   }>();
 
   const [searchResult, setSearchResult] = React.useState<any | null>(
@@ -143,6 +154,12 @@ export const useSearch = (): UseSearchReturn => {
   );
   const [categorySearchWordLimit, setCategorySearchWordLimit] = React.useState<CategoryWordLimit>(
     persisted?.categorySearchWordLimit ?? 50
+  );
+  const [categorySearchNgramMode, setCategorySearchNgramMode] = React.useState<NGramMode>(
+    persisted?.categorySearchNgramMode ?? 'words'
+  );
+  const [categorySearchMinOccurrences, setCategorySearchMinOccurrences] = React.useState<MinOccurrences>(
+    persisted?.categorySearchMinOccurrences ?? 2
   );
   const [categorySearchProgress, setCategorySearchProgress] = React.useState<{ current: number; total: number } | undefined>(undefined);
   const [categorySearchTicker, setCategorySearchTicker] = React.useState<string>('');
@@ -228,6 +245,13 @@ export const useSearch = (): UseSearchReturn => {
     setWordStatusMessage('');
   }, []);
 
+  const cancelCategorySearch = React.useCallback(() => {
+    setCategorySearchLoading(false);
+    setCategorySearchProgress(undefined);
+    setCategorySearchTicker('');
+    setCategoryStatusMessage('Cancelled');
+  }, []);
+
   const wordLoading = React.useMemo(() => loadingBySubtool.word ?? false, [loadingBySubtool]);
 
   return {
@@ -247,6 +271,8 @@ export const useSearch = (): UseSearchReturn => {
       error: categorySearchError,
       relevance: categorySearchRelevance,
       wordLimit: categorySearchWordLimit,
+      ngramMode: categorySearchNgramMode,
+      minOccurrences: categorySearchMinOccurrences,
       progress: categorySearchProgress,
       tickerMessage: categorySearchTicker,
     },
@@ -271,6 +297,9 @@ export const useSearch = (): UseSearchReturn => {
     clearCategorySearchResult,
     setCategorySearchRelevance,
     setCategorySearchWordLimit,
+    setCategorySearchNgramMode,
+    setCategorySearchMinOccurrences,
+    cancelCategorySearch,
 
     // Persistence
     persistedState: {
@@ -284,6 +313,8 @@ export const useSearch = (): UseSearchReturn => {
       categorySearchResult,
       categorySearchRelevance,
       categorySearchWordLimit,
+      categorySearchNgramMode,
+      categorySearchMinOccurrences,
     },
   };
 };

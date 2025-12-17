@@ -4,7 +4,7 @@
  */
 
 import * as React from 'react';
-import { MessageType, CATEGORY_RELEVANCE_OPTIONS } from '@messages';
+import { MessageType, CATEGORY_RELEVANCE_OPTIONS, NGRAM_MODE_OPTIONS, MIN_OCCURRENCES_OPTIONS } from '@messages';
 import { TextSourceMode } from '@shared/types';
 import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
 import { ErrorBoundary } from '@components/shared/ErrorBoundary';
@@ -107,11 +107,26 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
           clusterWindow: wordSearchSettings.settings.clusterWindow,
           minClusterSize: wordSearchSettings.settings.minClusterSize,
           relevance: search.categorySearch.relevance,
-          wordLimit: search.categorySearch.wordLimit
+          wordLimit: search.categorySearch.wordLimit,
+          ngramMode: search.categorySearch.ngramMode,
+          minOccurrences: search.categorySearch.minOccurrences
         }
       },
       timestamp: Date.now()
     });
+  };
+
+  const handleCancelCategorySearch = () => {
+    vscode.postMessage({
+      type: MessageType.CANCEL_CATEGORY_SEARCH_REQUEST,
+      source: 'webview.search.category',
+      payload: {
+        requestId: 'category-search',
+        domain: 'search'
+      },
+      timestamp: Date.now()
+    });
+    search.cancelCategorySearch();
   };
 
   return (
@@ -246,8 +261,52 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
           </div>
         </div>
 
+        {/* N-gram mode selector */}
+        <label className="block text-sm font-medium mb-2 mt-3">Search mode:</label>
+        <div className="tab-bar" style={{ marginBottom: '8px', padding: 0 }}>
+          {NGRAM_MODE_OPTIONS.map((mode) => (
+            <button
+              key={mode}
+              className={`tab-button ${search.categorySearch.ngramMode === mode ? 'active' : ''}`}
+              onClick={() => search.setCategorySearchNgramMode(mode)}
+              disabled={search.categorySearch.isLoading}
+            >
+              <span className="tab-label">{mode.charAt(0).toUpperCase() + mode.slice(1)}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Min occurrences - only shown for bigrams/trigrams */}
+        {search.categorySearch.ngramMode !== 'words' && (
+          <>
+            <label className="block text-sm font-medium mb-2">Min occurrences:</label>
+            <div className="tab-bar" style={{ marginBottom: '8px', padding: 0 }}>
+              {MIN_OCCURRENCES_OPTIONS.map((min) => (
+                <button
+                  key={min}
+                  className={`tab-button ${search.categorySearch.minOccurrences === min ? 'active' : ''}`}
+                  onClick={() => search.setCategorySearchMinOccurrences(min)}
+                  disabled={search.categorySearch.isLoading}
+                >
+                  <span className="tab-label">{min}{min === 5 ? '+' : ''}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* N-gram mode warning */}
+            <div className="warning-message">
+              <strong>⚠️ Increased Token Usage</strong>
+              Searching n-grams results in vastly more batches (100s+) and will increase token spend.
+              This searches for every rolling 2 or 3 word combination, producing a larger list than distinct single words.
+              Success varies—models can struggle with phrase lists.
+              Included for exploration purposes such as finding full names or concepts requiring 2–3 words.
+            </div>
+          </>
+        )}
+
         <div className="mt-3 flex justify-center">
           <button
+            type="button"
             className="btn btn-primary"
             disabled={search.categorySearch.isLoading || !search.categorySearch.query.trim()}
             onClick={handleRunCategorySearch}
@@ -269,6 +328,7 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
             total: search.categorySearch.progress.total,
             label: `Batch ${search.categorySearch.progress.current} of ${search.categorySearch.progress.total}`
           } : undefined}
+          onCancel={handleCancelCategorySearch}
         />
       )}
 

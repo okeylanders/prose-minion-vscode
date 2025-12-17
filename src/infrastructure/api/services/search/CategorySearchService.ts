@@ -22,15 +22,19 @@ import { PromptLoader } from '@/tools/shared/prompts';
 import {
   CategorySearchResult,
   CategorySearchOptions,
-  WordSearchResult
+  WordSearchResult,
+  NGramMode
 } from '@messages/search';
 import { StatusEmitter } from '@messages/status';
 
 const MAX_WORDS_PER_BATCH = 400;
+const MAX_BIGRAMS_PER_BATCH = 200;
+const MAX_TRIGRAMS_PER_BATCH = 150;
 
 export class CategorySearchService {
   private readonly wordFrequency: WordFrequency;
   private readonly promptLoader: PromptLoader;
+  private abortController: AbortController | null = null;
 
   constructor(
     private readonly aiResourceManager: AIResourceManager,
@@ -41,6 +45,24 @@ export class CategorySearchService {
   ) {
     this.wordFrequency = new WordFrequency((msg) => this.outputChannel?.appendLine(msg));
     this.promptLoader = new PromptLoader(extensionUri);
+  }
+
+  /**
+   * Cancel any in-progress category search
+   */
+  public cancelSearch(): void {
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+      this.outputChannel?.appendLine('[CategorySearchService] Search cancelled by user');
+    }
+  }
+
+  /**
+   * Check if a search is currently running
+   */
+  public isSearchRunning(): boolean {
+    return this.abortController !== null;
   }
 
   /**
@@ -61,33 +83,58 @@ export class CategorySearchService {
     options?: CategorySearchOptions
   ): Promise<CategorySearchResult> {
     try {
-      // 1. Extract unique words from text
-      const uniqueWords = this.wordFrequency.extractUniqueWords(text, {
-        minCharacterLength: 2,
-        excludeStopwords: true
-      });
+      // Create new AbortController for this search
+      this.abortController = new AbortController();
+      const signal = this.abortController.signal;
 
-      if (uniqueWords.length === 0) {
+      // 1. Extract unique words/n-grams from text
+      const ngramMode = options?.ngramMode ?? 'words';
+      const minOccurrences = options?.minOccurrences ?? 2;
+
+      let uniqueItems: string[];
+      let batchSize: number;
+      let itemType: string;
+
+      if (ngramMode === 'words') {
+        uniqueItems = this.wordFrequency.extractUniqueWords(text, {
+          minCharacterLength: 2,
+          excludeStopwords: true
+        });
+        batchSize = MAX_WORDS_PER_BATCH;
+        itemType = 'unique words';
+      } else if (ngramMode === 'bigrams') {
+        uniqueItems = this.extractUniqueNGrams(text, 2, minOccurrences);
+        batchSize = MAX_BIGRAMS_PER_BATCH;
+        itemType = 'unique bigrams';
+      } else { // trigrams
+        uniqueItems = this.extractUniqueNGrams(text, 3, minOccurrences);
+        batchSize = MAX_TRIGRAMS_PER_BATCH;
+        itemType = 'unique trigrams';
+      }
+
+      if (uniqueItems.length === 0) {
+        this.abortController = null;
         return {
           query,
           matchedWords: [],
           wordSearchResult: this.createEmptyResult(),
           timestamp: Date.now(),
-          error: 'No words found in text after filtering'
+          ngramMode,
+          error: `No ${itemType} found in text after filtering`
         };
       }
 
       this.outputChannel?.appendLine(
-        `[CategorySearchService] Extracted ${uniqueWords.length} unique words for category "${query}"`
+        `[CategorySearchService] Extracted ${uniqueItems.length} ${itemType} for category "${query}"`
       );
-      this.sendStatus(`Total unique words: ${uniqueWords.length}`);
+      this.sendStatus(`Total ${itemType}: ${uniqueItems.length}`);
 
       // 2. Build AI prompt and get matches (chunked to avoid token limits)
       const relevance = options?.relevance ?? 'focused';
       const wordLimit = options?.wordLimit ?? 50;
       const batches: string[][] = [];
-      for (let i = 0; i < uniqueWords.length; i += MAX_WORDS_PER_BATCH) {
-        batches.push(uniqueWords.slice(i, i + MAX_WORDS_PER_BATCH));
+      for (let i = 0; i < uniqueItems.length; i += batchSize) {
+        batches.push(uniqueItems.slice(i, i + batchSize));
       }
 
       const matchedWordsSet = new Set<string>();
@@ -105,6 +152,12 @@ export class CategorySearchService {
       let completedBatches = 0;
       const runWorker = async () => {
         while (!shouldStop && nextIndex < batches.length) {
+          // Check if cancelled
+          if (signal.aborted) {
+            this.outputChannel?.appendLine('[CategorySearchService] Search aborted');
+            return;
+          }
+
           const idx = nextIndex++;
           const batch = batches[idx];
           const batchLabel = `Batch ${idx + 1}/${batches.length}`;
@@ -114,7 +167,8 @@ export class CategorySearchService {
               query,
               batch,
               relevance,
-              wordLimit
+              wordLimit,
+              ngramMode
             );
             aiResult.matchedWords.forEach(word => matchedWordsSet.add(word));
 
@@ -141,7 +195,7 @@ export class CategorySearchService {
             completedBatches++;
 
             this.sendStatus(
-              `${batchLabel}: matched ${aiResult.matchedWords.length} words (${completedBatches} batches completed)`,
+              `${batchLabel}: +${aiResult.matchedWords.length} matches (${matchedWordsSet.size} total found)`,
               { current: completedBatches, total: batches.length }
             );
           } catch (error) {
@@ -157,6 +211,9 @@ export class CategorySearchService {
       const workers = Array.from({ length: concurrency }, () => runWorker());
       await Promise.all(workers);
 
+      // Track if this was a cancellation
+      const wasCancelled = signal.aborted;
+
       const matchedWords = Array.from(matchedWordsSet).sort((a, b) =>
         a.localeCompare(b, undefined, { sensitivity: 'base' })
       );
@@ -169,6 +226,12 @@ export class CategorySearchService {
       } : undefined;
 
       const warnings: string[] = [];
+      if (wasCancelled) {
+        warnings.push(`Search cancelled after ${completedBatches}/${batches.length} batches; showing partial results.`);
+        this.outputChannel?.appendLine(
+          `[CategorySearchService] Cancelled with ${matchedWordsSet.size} matches from ${completedBatches}/${batches.length} batches`
+        );
+      }
       if (hadBatchFailure) {
         warnings.push('Some batches failed; results may be incomplete.');
       }
@@ -177,11 +240,18 @@ export class CategorySearchService {
       }
 
       if (finalMatchedWords.length === 0) {
+        this.abortController = null;
+        // If cancelled with no results, add a specific message
+        if (wasCancelled && warnings.length === 1) {
+          // Replace the partial results message with no-results message
+          warnings[0] = `Search cancelled after ${completedBatches}/${batches.length} batches; no matches found before cancellation.`;
+        }
         return {
           query,
           matchedWords: [],
           wordSearchResult: this.createEmptyResult(),
           timestamp: Date.now(),
+          ngramMode,
           tokensUsed,
           warnings: warnings.length ? warnings : undefined,
           haltedEarly: shouldStop && matchedWordsSet.size >= wordLimit
@@ -234,6 +304,7 @@ export class CategorySearchService {
         validTargets.some(t => t.normalized === word.toLowerCase() || t.target.toLowerCase() === word.toLowerCase())
       );
 
+      this.abortController = null;
       return {
         query,
         matchedWords: validWords,
@@ -242,6 +313,7 @@ export class CategorySearchService {
           targets: validTargets
         },
         timestamp: Date.now(),
+        ngramMode,
         tokensUsed,
         warnings: warnings.length ? warnings : undefined,
         haltedEarly: shouldStop && matchedWordsSet.size >= wordLimit
@@ -250,11 +322,13 @@ export class CategorySearchService {
       const message = error instanceof Error ? error.message : String(error);
       this.outputChannel?.appendLine(`[CategorySearchService] Error: ${message}`);
 
+      this.abortController = null;
       return {
         query,
         matchedWords: [],
         wordSearchResult: this.createEmptyResult(),
         timestamp: Date.now(),
+        ngramMode: options?.ngramMode ?? 'words',
         error: message
       };
     }
@@ -268,7 +342,8 @@ export class CategorySearchService {
     query: string,
     words: string[],
     relevance: 'broad' | 'focused' | 'specific' | 'synonym',
-    wordLimit: number
+    wordLimit: number,
+    ngramMode: NGramMode
   ): Promise<{
     matchedWords: string[];
     tokensUsed?: { prompt: number; completion: number; total: number; costUsd?: number };
@@ -296,8 +371,16 @@ export class CategorySearchService {
     const constraintNote = `\n\n---\n**CONSTRAINTS**: RELEVANCE MODE SELECTED: ${relevance.toUpperCase()} — ${relevanceDescriptions[relevance]} Limit to ${wordLimit} words.`;
     const systemPrompt = basePrompt + constraintNote;
 
-    // Build user message
-    const userMessage = `Category: ${query}\nWords: ${words.join(', ')}`;
+    // Build user message with appropriate label based on n-gram mode
+    let itemLabel: string;
+    if (ngramMode === 'words') {
+      itemLabel = 'Words';
+    } else if (ngramMode === 'bigrams') {
+      itemLabel = 'Phrases (bigrams)';
+    } else {
+      itemLabel = 'Phrases (trigrams)';
+    }
+    const userMessage = `Category: ${query}\n${itemLabel}: ${words.join(', ')}`;
 
     // Call AI using orchestrator (single-turn, no guide capabilities needed)
     const result = await orchestrator.executeWithoutCapabilities(
@@ -404,5 +487,37 @@ export class CategorySearchService {
     if (this.statusEmitter) {
       this.statusEmitter(message, progress, tickerMessage);
     }
+  }
+
+  /**
+   * Extract unique n-grams from text with frequency filtering
+   * @param text - Text to extract n-grams from
+   * @param n - N-gram size (2 for bigrams, 3 for trigrams)
+   * @param minOccurrences - Minimum frequency threshold
+   * @returns Array of unique n-grams sorted by frequency (descending)
+   */
+  private extractUniqueNGrams(
+    text: string,
+    n: number,
+    minOccurrences: number
+  ): string[] {
+    // Strip punctuation (keep apostrophes for contractions) and normalize whitespace
+    const tokens = text
+      .toLowerCase()
+      .replace(/[^\w\s']/g, ' ')
+      .split(/\s+/)
+      .filter(t => t.length > 0);
+
+    const counts = new Map<string, number>();
+
+    for (let i = 0; i <= tokens.length - n; i++) {
+      const phrase = tokens.slice(i, i + n).join(' ');
+      counts.set(phrase, (counts.get(phrase) || 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .filter(([_, count]) => count >= minOccurrences)
+      .sort((a, b) => b[1] - a[1])
+      .map(([phrase]) => phrase);
   }
 }

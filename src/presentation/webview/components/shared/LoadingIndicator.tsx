@@ -96,8 +96,8 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
           </div>
         </div>
         {onCancel && (
-          <button onClick={onCancel} className="cancel-button" title="Cancel operation">
-            ✕
+          <button onClick={onCancel} className="btn btn-alert cancel-button" title="Cancel operation">
+            ✕ Cancel
           </button>
         )}
       </div>
