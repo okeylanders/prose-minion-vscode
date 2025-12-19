@@ -59,6 +59,11 @@ export const CATEGORY_MODELS = [
     description: 'Google advanced model'
   },
   {
+    id: 'google/gemini-3-flash-preview',
+    name: 'Gemini 3 Flash Preview',
+    description: 'High-speed thinking model for agentic workflows with near Pro-level reasoning at lower latency'
+  },
+  {
     id: 'google/gemini-3-pro-preview',
     name: 'Gemini 3 Pro Preview',
     description: 'Google\'s flagship frontier model'
@@ -151,6 +156,11 @@ export const RECOMMENDED_MODELS = [
     id: 'google/gemini-2.5-pro',
     name: 'Gemini 2.5 Pro',
     description: 'Advanced reasoning with thinking capabilities. A strong option for complex prose tasks.'
+  },
+  {
+    id: 'google/gemini-3-flash-preview',
+    name: 'Gemini 3 Flash Preview',
+    description: 'High-speed thinking model with near Pro-level reasoning. Great for rapid critiques, multi-turn dialogue, and agentic writing workflows (1M context).'
   },
   {
     id: 'google/gemini-3-pro-preview',

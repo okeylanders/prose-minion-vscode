@@ -23,10 +23,12 @@ Prose Minion offers extensive configuration options to customize AI behavior and
 
 ## Configuration Options
 
+> **Architecture Note**: All settings follow the **domain hooks pattern** per [ADR-2025-11-03 (Unified Settings Architecture)](../docs/adr/2025-11-03-unified-settings-architecture.md). See [ARCHITECTURE.md](ARCHITECTURE.md) for implementation details.
+
 ### 1. OpenRouter API Key (Required for AI Tools)
 
-**Setting**: `proseMinion.openRouterApiKey`
-**Type**: String
+**Setting**: Stored in OS-level **SecretStorage** (not `settings.json`)
+**Type**: Encrypted string (macOS Keychain, Windows Credential Manager, Linux libsecret)
 **Default**: `""` (empty)
 
 **How to get an API key**:
@@ -34,38 +36,23 @@ Prose Minion offers extensive configuration options to customize AI behavior and
 2. Sign up for an account
 3. Navigate to "API Keys"
 4. Create a new key
-5. Copy and paste into this setting
+5. Enter in Settings overlay (gear icon) → Save
 
-**Security Note**: Your API key is stored locally in VS Code settings. Never share it or commit it to version control.
+**Security Note**: Keys are encrypted via OS keychains and never appear in settings files. Automatic migration from legacy `proseMinion.openRouterApiKey` setting occurs once.
 
 ---
 
 ### 2. AI Model Selection
 
-The extension now separates models by feature so you can tune cost, latency, and quality for each workflow.
+**Scoped Models**: Configure different models per feature to optimize cost/quality.
 
-| Feature | Settings Key | UI Override | Default |
-|---------|--------------|-------------|---------|
-| Dialogue & Prose Assistants | `proseMinion.assistantModel` | Analysis tab dropdown | `z-ai/glm-4.6` |
-| Dictionary Utility | `proseMinion.dictionaryModel` | Utilities tab dropdown | `z-ai/glm-4.6` |
-| Context Assistant | `proseMinion.contextModel` | Settings only (auto-applied) | `z-ai/glm-4.6` |
-| Legacy fallback | `proseMinion.model` | Used only if a scoped model is unset | `z-ai/glm-4.6` |
+| Feature                      | Setting                         | UI Control            | Default         |
+| ---------------------------- | ------------------------------- | --------------------- | --------------- |
+| Dialogue & Prose Assistants  | `proseMinion.assistantModel`    | Analysis tab dropdown | `z-ai/glm-4.6`  |
+| Dictionary Utility           | `proseMinion.dictionaryModel`   | Utilities tab dropdown| `z-ai/glm-4.6`  |
+| Context Assistant            | `proseMinion.contextModel`      | Settings overlay      | `z-ai/glm-4.6`  |
 
-**How it works**
-
-1. Pick a model in Settings or via the dropdown under the tab bar.
-2. The selection updates immediately in Settings (no reload required).
-3. The next request for that scope uses the new model.
-
-> Tip: Use a premium model (e.g., Claude Opus) for prose critique while keeping the dictionary on a faster, cheaper model.
-
-**Recommended Combos**
-
-- **Balanced**: Assistant → `anthropic/claude-sonnet-4.5`, Dictionary → `z-ai/glm-4.5`
-- **Speed first**: Assistant → `google/gemini-2.5-flash`, Dictionary → `x-ai/grok-4-fast`
-- **Premium**: Assistant → `anthropic/claude-opus-4.1`, Dictionary → `openai/gpt-5.1-chat`
-
-You can still edit only `proseMinion.model` for backward compatibility; the extension cascades that value to any scope that is left blank. The context assistant always re-reads `proseMinion.contextModel` just before it runs, so you can switch models mid-session without reloading the extension.
+> **Tip**: Use premium models (e.g., Claude Opus) for analysis while keeping dictionary on faster/cheaper models. Changes apply immediately—no reload required.
 
 ---
 
@@ -236,76 +223,9 @@ These can be edited either in VS Code Settings or in the in‑app Settings overl
 
 ---
 
-## Configuration Presets
-
-### Budget-Conscious
-
-```json
-{
-  "proseMinion.assistantModel": "anthropic/claude-sonnet-4.5",
-  "proseMinion.dictionaryModel": "z-ai/glm-4.5",
-  "proseMinion.includeCraftGuides": false,
-  "proseMinion.temperature": 0.5,
-  "proseMinion.maxTokens": 1000
-}
-```
-
-### Balanced (Default)
-
-```json
-{
-  "proseMinion.assistantModel": "anthropic/claude-sonnet-4.5",
-  "proseMinion.dictionaryModel": "z-ai/glm-4.6",
-  "proseMinion.includeCraftGuides": true,
-  "proseMinion.temperature": 0.7,
-  "proseMinion.maxTokens": 2000
-}
-```
-
-### High Quality
-
-```json
-{
-  "proseMinion.assistantModel": "anthropic/claude-opus-4.1",
-  "proseMinion.dictionaryModel": "openai/gpt-5-chat",
-  "proseMinion.includeCraftGuides": true,
-  "proseMinion.temperature": 0.6,
-  "proseMinion.maxTokens": 3000
-}
-```
-
-### Creative Exploration
-
-```json
-{
-  "proseMinion.assistantModel": "openai/gpt-5",
-  "proseMinion.dictionaryModel": "google/gemini-2.5-flash",
-  "proseMinion.includeCraftGuides": true,
-  "proseMinion.temperature": 1.0,
-  "proseMinion.maxTokens": 2500
-}
-```
-
-## How to Apply Presets
-
-1. Open Settings: `Cmd+,` or `Ctrl+,`
-2. Click the file icon (top right) to edit `settings.json`
-3. Add the preset configuration
-4. Save the file
-
 ## Session Persistence
 
-The UI keeps the last analysis, status messages, and model selections even if you switch to another sidebar view or temporarily close VS Code. Long-running OpenRouter requests continue in the background; when you come back, the cached response is replayed automatically.
-
-Example:
-```json
-{
-  "proseMinion.model": "anthropic/claude-3.5-sonnet",
-  "proseMinion.includeCraftGuides": true,
-  "proseMinion.temperature": 0.7,
-  "proseMinion.maxTokens": 2000
-}
-```
+The extension automatically persists analysis results, model selections, and UI state via domain hooks. Long-running API requests continue in the background; when you reopen the sidebar, cached responses are replayed automatically.
 
 ## Cost Optimization Tips
 

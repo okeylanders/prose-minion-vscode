@@ -892,7 +892,7 @@ npm run test:tier1
 
 **References**:
 - [ADR-2025-11-15: Lightweight Testing Framework](adr/2025-11-15-lightweight-testing-framework.md)
-- [Infrastructure Testing Epic](.todo/archived/epics/epic-infrastructure-testing-2025-11-15/)
+- [Infrastructure Testing Epic](.todo/archive/epics/epic-infrastructure-testing-2025-11-15/)
 
 ---
 

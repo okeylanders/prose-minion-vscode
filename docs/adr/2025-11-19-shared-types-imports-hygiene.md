@@ -1,7 +1,8 @@
 # ADR: Shared Types & Imports Hygiene
 
 **Date**: 2025-11-19
-**Status**: Proposed
+**Status**: ✅ Implemented
+**Completion Date**: 2025-11-22
 **Author**: Claude Code
 
 ## Context
@@ -198,8 +199,50 @@ Document conventions to prevent regression:
 - base.ts: ~100 lines, only 4 foundational types (MessageType, MessageEnvelope, MessageSource, BaseMessage)
 - Deep imports: < 10 occurrences (legacy/edge cases)
 
+## Implementation Results
+
+This ADR was fully implemented as Sprint 02 of the Architecture Health Pass v1.3 epic (Sub-Epic 1: Foundation Cleanup).
+
+**Merged**: PR #33 (2025-11-22)
+
+**Achievements**:
+
+**Phase 1: Type Relocation**
+- ✅ Moved domain-specific types from base.ts to domain files
+- ✅ base.ts reduced from 221 → 178 lines
+- ✅ Clear separation: shared base types vs domain-specific types
+
+**Phase 2A-D: Import Aliases & Migration**
+- ✅ Created 3 new message files for cross-cutting concerns (error.ts, status.ts, tokenUsage.ts)
+- ✅ Added 13 semantic aliases across extension and webview
+- ✅ Converted 116 relative imports to semantic aliases
+- ✅ Zero `../../../` patterns remaining (from 46+ occurrences)
+
+**Phase 3: Documentation**
+- ✅ Added 117 lines of documentation to central-agent-setup.md
+- ✅ Type location guidelines and import alias reference table
+- ✅ Configuration file explanations and best practices
+
+**Impact**:
+- Zero deep relative imports (116 conversions across 53 source files + 33 test files)
+- Clear type organization with cross-cutting concerns properly separated
+- Comprehensive semantic aliases configured for both extension and webview
+- All 244 tests passing after migration
+
+**Files Changed**: 107 files (3 new, 7 configs, 97 migrations)
+
+**Architecture Debt Resolved**:
+- `2025-11-19-shared-types-imports-hygiene.md` (archived)
+- `2025-11-19-result-formatter-grab-bag.md` (archived)
+
 ## References
 
 - Current base.ts: [src/shared/types/messages/base.ts](../../src/shared/types/messages/base.ts)
 - Message architecture ADR: [2025-10-26-message-architecture-organization.md](2025-10-26-message-architecture-organization.md)
 - Presentation layer hooks ADR: [2025-10-27-presentation-layer-domain-hooks.md](2025-10-27-presentation-layer-domain-hooks.md)
+- Sprint Doc: [.todo/epics/epic-architecture-health-pass-v1.3/sub-epic-1-foundation-cleanup/sprints/02-shared-types-imports-hygiene.md](.todo/epics/epic-architecture-health-pass-v1.3/sub-epic-1-foundation-cleanup/sprints/02-shared-types-imports-hygiene.md)
+- PR: #33 (2025-11-22)
+
+---
+
+**Last Updated**: 2025-12-18

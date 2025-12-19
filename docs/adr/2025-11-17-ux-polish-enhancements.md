@@ -223,5 +223,36 @@ const isCustomModel = !RECOMMENDED_MODELS.find(m => m.id === settings.assistantM
 
 ---
 
-**Last Updated**: 2025-11-17
-**Epic**: [epic-ux-polish-2025-11-17](.todo/epics/epic-ux-polish-2025-11-17/)
+---
+
+## Implementation Results
+
+Both sprints were successfully implemented and merged as part of the UX Polish Epic.
+
+**Sprint 01: N-Gram Filter Description**
+- Merged: PR #29 (2025-11-17)
+- Commit: `e903295` - Added clear description to Settings Overlay explaining all-or-nothing filter behavior
+- Impact: Users now understand how `minCharacterLength` affects bigrams/trigrams
+
+**Sprint 02: Custom Model IDs**
+- Merged: PR #28 (2025-11-17)
+- Commits:
+  - `0215fba` - Removed enum constraints from package.json (3 model settings)
+  - `ff47c2e` - Added custom model detection to Settings Overlay with "(Custom)" label
+- Impact: Power users can now experiment with any OpenRouter model without extension updates
+
+**Additional Work (Sprint 03):**
+The epic was expanded to include dictionary UX improvements (commit `ff19fb7`, 2025-11-24):
+- Renamed buttons to clarify fast vs. standard lookup
+- Auto-run fast lookup when triggered via Command Palette
+- Added toast notifications for better user feedback
+
+**Epic Completion:**
+- All features implemented and tested
+- Epic archived: 2025-11-24
+- Total PRs: 2 (original) + 1 (additional improvements)
+
+---
+
+**Last Updated**: 2025-12-18
+**Epic**: [epic-ux-polish-2025-11-17](.todo/archived/epics/epic-ux-polish-2025-11-17/) (Archived)
