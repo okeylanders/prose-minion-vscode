@@ -1,8 +1,9 @@
 # ADR: Cross-Cutting UI Improvements
 
 **Date**: 2025-11-18
-**Status**: Proposed
+**Status**: Deferred
 **Author**: okeylanders
+**Deferral Reason**: Identified during Category Search epic planning but superseded by Architecture Health Pass work
 
 ## Context
 
@@ -104,11 +105,27 @@ const handleCancel = () => {
 - Context Assistant
 - Dictionary lookup
 
-## Implementation Plan
+## Implementation Status
 
-See [Epic: UI Cross-Cutting Improvements](.todo/epics/epic-ui-cross-cutting-2025-11-18/)
+**Status**: Deferred
+
+This ADR was created during Category Search epic planning but was not immediately implemented. Instead, development priorities shifted to the Architecture Health Pass v1.3 epic, which addressed more foundational concerns including:
+
+- Component decomposition (Sub-Epic 2)
+- Loading indicator standardization (Sprint 02 of Sub-Epic 2)
+- Request cancellation UI (Sprint 03 of Sub-Epic 4)
+
+**Subtab Persistence**: Partially addressed through component decomposition work
+**Cancellable Loading**: Addressed in Architecture Health Pass Sub-Epic 4, Sprint 03
+
+The concerns raised in this ADR informed the broader architectural improvements but this specific epic was not created as a standalone effort.
 
 ## References
 
 - Identified during: Category Search Epic Sprint 04 planning
 - Related: [ADR-2025-10-27: Presentation Layer Domain Hooks](2025-10-27-presentation-layer-domain-hooks.md)
+- Superseded by: [Architecture Health Pass v1.3](.todo/epics/epic-architecture-health-pass-v1.3/epic-architecture-health-pass-v1.3.md)
+
+---
+
+**Last Updated**: 2025-12-18

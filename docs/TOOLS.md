@@ -46,46 +46,21 @@ src/
 │       └── guides.ts       # Craft guide loading
 ├── infrastructure/api/      # API clients and service implementation
 │   ├── OpenRouterClient.ts
-│   └── ProseAnalysisService.ts
+│   └── services/           # Service layer (11 focused services)
+│       ├── analysis/       # AssistantToolService, ContextAssistantService
+│       ├── dictionary/     # DictionaryService
+│       ├── measurement/    # ProseStatsService, StyleFlagsService, WordFrequencyService
+│       ├── search/         # WordSearchService, CategorySearchService
+│       ├── resources/      # StandardsService (publishing standards)
+│       └── shared/         # ToolOptionsProvider
 └── resources/              # Prompts and guides
     ├── system-prompts/
     └── craft-guides/
 ```
 
-## Setup
+## Quick Start
 
-### 1. Test Measurement Tools (No API Key Required)
-
-The measurement tools work immediately:
-
-1. Open the Prose Minion panel
-2. Go to **Metrics** tab
-3. Type or paste some text
-4. Click any of the measurement buttons:
-   - **Prose Statistics**
-   - **Style Flags**
-   - **Word Frequency**
-
-### 2. Enable AI-Powered Tools
-
-To use the AI analysis features:
-
-1. **Get an API key**:
-   - Go to https://openrouter.ai/
-   - Sign up for an account
-   - Create an API key
-
-2. **Configure VS Code**:
-   - Open Settings: `Cmd+,` (Mac) or `Ctrl+,` (Windows/Linux)
-   - Search for "Prose Minion"
-   - Paste your API key in "OpenRouter API Key"
-   - (Optional) Choose default models for assistants, dictionary, and the upcoming context bot scopes
-
-3. **Test AI tools**:
-   - Go to **Analysis** tab
-   - Select a model from the dropdown under the tab bar if you want to override the default
-   - Click "Analyze Dialogue" or "Analyze Prose"
-   - You should get AI-powered analysis!
+See [CLAUDE.md](../CLAUDE.md) for complete setup instructions, architecture overview, and development guidelines.
 
 ## Tool Details
 
@@ -290,12 +265,38 @@ Each tool is **self-contained**:
 
 To add a new tool:
 
-1. Create tool file in `src/tools/assist/` or `src/tools/measure/`
-2. Implement the tool logic
-3. Add method to `IProseAnalysisService` interface
-4. Implement in `ProseAnalysisService`
-5. Add handler in `MessageHandler`
-6. Add UI in React component
+1. **Define message types**: Add to appropriate domain file in `src/shared/types/messages/` (or create new domain file)
+   - Add message interface extending `BaseMessage`
+   - Add to `MessageType` enum in `base.ts`
+   - Export from `index.ts` barrel export
+
+2. **Create service** (if needed):
+   - Create in `src/infrastructure/api/services/` under appropriate subdirectory:
+     - `analysis/` - Analysis tools (AssistantToolService, ContextAssistantService)
+     - `dictionary/` - Dictionary services (DictionaryService)
+     - `measurement/` - Metrics services (ProseStatsService, StyleFlagsService, WordFrequencyService)
+     - `search/` - Search services (WordSearchService, CategorySearchService)
+     - `resources/` - Resource management (StandardsService)
+   - Follow Single Responsibility Principle
+   - Inject dependencies via constructor
+
+3. **Add domain handler** (if new domain):
+   - Create in `src/application/handlers/domain/`
+   - Inject services via constructor
+   - Implement `registerRoutes()` method to register message handlers
+
+4. **Update MessageHandler**:
+   - Instantiate service(s) in constructor (if new services)
+   - Inject into domain handler constructor
+   - Handler auto-registers routes via `registerRoutes()`
+
+5. **Create frontend domain hook** in `src/presentation/webview/hooks/domain/`
+   - Follow Tripartite Hook Interface pattern (State, Actions, Persistence)
+   - Mirror backend domain handler organization
+
+6. **Wire into App.tsx**:
+   - Add message routing
+   - Compose persistence state
 
 ### Testable
 

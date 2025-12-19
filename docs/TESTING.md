@@ -23,17 +23,17 @@
 
 Prose Minion uses a **token-disciplined testing approach** during alpha development:
 
-- **Manual testing** during sprints (checklists in sprint docs)
-- **Automated tests** for infrastructure and critical flows
-- **Integration tests** for settings sync and persistence
-- **Comprehensive test suite** deferred to v1.0+
+- **Automated tests** for infrastructure patterns, domain handlers, and business logic (124 tests)
+- **Manual testing** for UI components and integration flows (checklists in sprint docs)
+- **Comprehensive UI test suite** deferred to v1.0+
 
-**Testing Framework** (when automated tests are added):
-- `@vscode/test-electron` for extension host tests
-- Jest for unit tests
-- React Testing Library for component tests
+**Testing Framework**:
+- **Jest** with **ts-jest** for unit and integration tests
+- **Coverage**: 43.1% statement coverage (target: 40%)
+- **3-Tier Architecture**: Infrastructure patterns → Domain handlers → Business logic
+- React Testing Library for component tests (planned for v1.0+)
 
-**Current Status**: Sprint 05 establishes testing patterns and documentation. Full test suite to be implemented in subsequent sprints.
+**Current Status**: Infrastructure testing complete (Nov 2025). UI component testing deferred to v1.0.
 
 ---
 
@@ -41,59 +41,81 @@ Prose Minion uses a **token-disciplined testing approach** during alpha developm
 
 ### Three-Tier Approach
 
-#### 1. Infrastructure Tests (HIGH PRIORITY)
+#### 1. Infrastructure Patterns (Tier 1) - ✅ Complete
 
-Test infrastructure hooks that underpin the entire application:
+**Protects core architectural patterns** that every feature depends on:
 
-- `useVSCodeApi` - VSCode API singleton
-- `usePersistence` - State persistence composition
-- `useMessageRouter` - Strategy-based message routing
+- `MessageRouter` - Strategy-based message routing (no switch statements)
+- Domain handlers - Route registration for all 10 handlers
+- Message envelope pattern - Source tracking, echo prevention
 
-**Why critical**: Failures here cascade to all features
-
----
-
-#### 2. Domain Hook Tests (MEDIUM PRIORITY)
-
-Test settings hooks and state hooks:
-
-**Settings Hooks**:
-- `useModelsSettings`
-- `useWordSearchSettings`
-- `useWordFrequencySettings`
-- `useContextPathsSettings`
-- `useTokensSettings`
-- `usePublishingSettings`
-
-**State Hooks**:
-- `useTokenTracking`
-- `useAnalysis`
-- `useMetrics`
-- `useDictionary`
-- `useContext`
-- `useSearch`
-- `useSelection`
-
-**Why important**: Ensures settings sync, persistence, and type safety
+**Status**: ✅ Implemented (15 tests)
+**Coverage**: Infrastructure layer patterns
 
 ---
 
-#### 3. Integration Tests (HIGH PRIORITY)
+#### 2. Domain Handlers (Tier 2) - ✅ Complete
 
-Test end-to-end flows:
+**Tests domain-specific message handling**:
 
-- Settings sync (VSCode config ↔ hook state ↔ components)
-- Persistence (webview reload preserves state)
-- Echo prevention (no infinite loops)
-- Message routing (correct handlers invoked)
+- AnalysisHandler, MetricsHandler, DictionaryHandler
+- ContextHandler, SearchHandler, PublishingHandler
+- ConfigurationHandler, SourcesHandler, UIHandler, FileOperationsHandler
 
-**Why critical**: Catches architectural issues and integration bugs
+**Status**: ✅ Implemented (10 tests)
+**Coverage**: Handler route registration
+
+---
+
+#### 3. Business Logic (Tier 3) - ✅ Complete
+
+**Tests critical algorithms and services**:
+
+- Word clustering algorithm (WordSearchService)
+- Publishing standards lookup (PublishingStandardsRepository)
+- Prose statistics calculations (ProseStatsService)
+- Category search orchestration (CategorySearchService)
+
+**Status**: ✅ Implemented (99 tests)
+**Coverage**: Core business logic
+
+---
+
+#### UI Components - Deferred to v1.0
+
+React component tests deferred to comprehensive test suite post-alpha.
 
 ---
 
 ## Running Tests
 
-### Manual Testing (Current)
+### Automated Tests
+
+```bash
+# Run all tests (124 tests)
+npm test
+
+# Run tests in watch mode (re-runs on changes)
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run only infrastructure tests (Tier 1)
+npm run test:tier1
+
+# Run specific test file
+npm test -- WordSearchService.test.ts
+```
+
+**Coverage Report**:
+- Coverage report saved to `coverage/` directory (gitignored)
+- Open `coverage/index.html` in browser for detailed report
+- Current coverage: **43.1% statements** (target: 40%) ✅
+
+---
+
+### Manual Testing
 
 ```bash
 # Run extension in debug mode
@@ -106,29 +128,6 @@ npm run watch
 **Manual Test Checklists**:
 - [Adding Settings Guide](./guides/ADDING_SETTINGS.md#testing-your-changes)
 - Sprint completion checklists in `.todo/epics/*/sprints/`
-
----
-
-### Automated Tests (Planned)
-
-When automated tests are implemented:
-
-```bash
-# Run all tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run tests with coverage
-npm run test:coverage
-
-# Run specific test file
-npm test -- useWordSearchSettings.test.ts
-
-# Run integration tests only
-npm run test:integration
-```
 
 ---
 
@@ -695,26 +694,24 @@ npm run test:coverage
 open coverage/index.html
 ```
 
-**Coverage thresholds** (to be configured in jest.config.js):
+**Coverage thresholds** (configured in jest.config.js):
 
 ```javascript
 module.exports = {
   coverageThreshold: {
     global: {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70
-    },
-    './src/presentation/webview/hooks/': {
-      branches: 80,
-      functions: 80,
-      lines: 80,
-      statements: 80
+      statements: 40,  // Lightweight target (infrastructure + handlers)
+      branches: 20,    // Lower for infrastructure testing
+      functions: 40,
+      lines: 40
     }
   }
 };
 ```
+
+**Coverage exclusions**:
+- `src/presentation/**` - UI components (manual testing during alpha)
+- `src/infrastructure/api/**` - External API clients (manual testing only)
 
 ---
 
@@ -740,23 +737,44 @@ module.exports = {
 
 ---
 
+## Test Organization
+
+**Directory Structure**:
+```
+src/__tests__/              # All tests mirror src/ structure
+├── setup.ts                # VSCode API mocks and global setup
+├── mocks/                  # Shared test mocks
+│   └── vscode.ts           # Mock VSCode API
+├── application/
+│   ├── handlers/
+│   │   ├── MessageRouter.test.ts
+│   │   └── domain/         # Domain handler tests (10 handlers)
+│   └── services/
+│       └── AIResourceOrchestrator.test.ts
+├── infrastructure/
+│   ├── api/services/       # Business logic tests
+│   │   ├── measurement/    # ProseStatsService
+│   │   └── search/         # WordSearchService, CategorySearchService
+│   └── standards/          # PublishingStandardsRepository
+└── tools/                  # Tool tests
+    ├── assist/             # WritingToolsAssistant
+    └── measure/            # PassageProseStats
+```
+
+**Test Count**: 124 tests across 30 test files
+
+---
+
 ## Future Work
-
-**Sprint 06+**:
-
-1. Implement Jest configuration
-2. Write hook unit tests (all 6 settings hooks)
-3. Write integration tests (sync, persistence, echo prevention)
-4. Add CI integration (GitHub Actions)
-5. Set up coverage reporting
-6. Write component tests (React Testing Library)
 
 **V1.0+**:
 
-1. Comprehensive test suite
-2. E2E tests (VSCode extension testing framework)
-3. Performance tests
-4. Regression test suite
+1. React component tests (React Testing Library)
+2. Domain hook tests (useAnalysis, useMetrics, etc.)
+3. E2E tests (VSCode extension testing framework)
+4. CI integration (GitHub Actions)
+5. Performance tests
+6. Regression test suite
 
 ---
 
@@ -770,6 +788,6 @@ module.exports = {
 
 ---
 
-**Last Updated**: November 2025 (Sprint 05)
-**Maintainer**: Development Team
-**Questions**: See [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) or open an issue
+**Last Updated**: December 2025
+**Status**: Infrastructure testing complete (124 tests, 43.1% coverage)
+**Questions**: See [ARCHITECTURE.md](./ARCHITECTURE.md) or open an issue

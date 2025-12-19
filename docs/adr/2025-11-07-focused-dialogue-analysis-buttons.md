@@ -1,10 +1,12 @@
 # ADR: Focused Dialogue Analysis Buttons
 
 **Date**: 2025-11-07
-**Status**: Proposed
-**Implemented**: Not yet
+**Status**: Implemented (with changes)
+**Implemented**: 2025-11-08
 **Priority**: MEDIUM (v1.0 Polish)
 **Category**: UX Improvement
+
+> **Implementation Note**: The final implementation evolved from this proposal. Instead of the 4-button layout proposed here (Dialogue & Beats, Prose, Dialogue Only, Microbeats Only), the actual implementation uses **4 Focus Tools**: Fresh Check, Writing Tools, Dialogue, and Prose. The core concept of focused analysis was preserved, but the specific button structure and focus options differ. See commits 18f4cbe, 909f004, 60ad091 for implementation details.
 
 ## Context
 
