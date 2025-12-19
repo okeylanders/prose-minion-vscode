@@ -2,6 +2,31 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.6.1] - 2025-12-18
+
+### Added
+
+- **🤖 Gemini 3 Flash Preview Model**: New high-speed thinking model for agentic workflows
+  - Near Pro-level reasoning at lower latency
+  - Available in all model dropdowns
+
+- **📚 New Craft Guides**: Added 3 new creative writing guides
+  - Deep POV guide for immersive narration
+  - Indirect dialogue techniques
+  - Subtext and implication patterns
+
+### Fixed
+
+- **📂 Documentation Path References**: Fixed stale `.todo/architecture-debt/` → `.todo/tech-debt/`
+- **📖 Domain Hooks Documentation**: Updated list from 8 to 14 hooks
+
+### Technical Details
+
+- Documentation cleanup: central-agent-setup.md reduced by 58% (1,653 → 694 lines)
+- PR: [#52](https://github.com/okeylanders/prose-minion-vscode/pull/52)
+
+---
+
 ## [1.6.0] - 2025-12-16
 
 ### Added

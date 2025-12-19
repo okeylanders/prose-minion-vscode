@@ -5,6 +5,70 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2025-12-18
+
+### Overview
+
+Patch release adding **Gemini 3 Flash Preview** model, **new craft guides**, and **documentation cleanup**.
+
+**PR:** [#52](https://github.com/okeylanders/prose-minion-vscode/pull/52)
+**Branch:** `patch/v1.6.1-models-and-guides`
+
+---
+
+### Added
+
+#### Gemini 3 Flash Preview Model
+
+New high-speed thinking model available in all model dropdowns:
+
+```typescript
+{
+  id: 'google/gemini-3-flash-preview',
+  name: 'Gemini 3 Flash Preview',
+  description: 'High-speed thinking model for agentic workflows with near Pro-level reasoning at lower latency'
+}
+```
+
+**File:** `src/infrastructure/api/providers/OpenRouterModels.ts`
+
+#### New Craft Guides
+
+Three new creative writing guides added to `resources/craft-guides/`:
+
+| Guide | Purpose |
+|-------|---------|
+| **Deep POV** | Techniques for immersive first/third-person narration |
+| **Indirect Dialogue** | Conveying speech without direct quotes |
+| **Subtext & Implication** | Layering meaning beneath surface text |
+
+---
+
+### Fixed
+
+- **Documentation Path References**: Fixed 4 occurrences of stale `.todo/architecture-debt/` → `.todo/tech-debt/`
+- **Domain Hooks List**: Updated from 8 to 14 hooks in central-agent-setup.md
+- **OpenRouterClient Path**: Added missing `/providers/` subdirectory reference
+- **ARCHITECTURE.md**: Fixed `.todo/archived/` → `.todo/archive/`
+
+---
+
+### Changed
+
+#### Documentation Cleanup
+
+Major reduction of `.ai/central-agent-setup.md`:
+
+| Section | Before | After | Reduction |
+|---------|--------|-------|-----------|
+| What's New | 143 lines | 0 | -100% |
+| AI Anti-Patterns Essay | ~300 lines | Checklist only | -90% |
+| Repository Workflow | 409 lines | 30 lines | -93% |
+| Best Practices | 153 lines | 23 lines | -85% |
+| **Total** | 1,653 lines | 694 lines | **-58%** |
+
+---
+
 ## [1.6.0] - 2025-12-16
 
 ### Overview
