@@ -64,14 +64,20 @@ src/presentation/webview/
 │   ├── usePersistence.ts       # Compose domain persisted state into vscode.setState
 │   ├── useMessageRouter.ts     # Strategy: MessageType → handler; stable listener
 │   └── domain/
-│       ├── useAnalysis.ts      # Analysis results, guides, status ticker
-│       ├── useMetrics.ts       # Per-subtool cache; source mode/path helpers
-│       ├── useDictionary.ts    # Word/context state and tool name
-│       ├── useContext.ts       # Context text, requested resources, loading/status
-│       ├── useSearch.ts        # Search results and targets
-│       ├── useSettings.ts      # Overlay, settings data, model selections, tokens, API key
-│       ├── useSelection.ts     # Selected text + source metadata; dictionary injection
-│       └── usePublishing.ts    # Publishing presets and trim size
+│       ├── useAnalysis.ts              # Analysis results, guides, status ticker
+│       ├── useContext.ts               # Context text, requested resources, loading/status
+│       ├── useContextPathsSettings.ts  # Context paths configuration
+│       ├── useDictionary.ts            # Word/context state and tool name
+│       ├── useMetrics.ts               # Per-subtool cache; source mode/path helpers
+│       ├── useModelsSettings.ts        # Model selection settings
+│       ├── usePublishingSettings.ts    # Publishing presets and trim size
+│       ├── useSearch.ts                # Search results and targets
+│       ├── useSelection.ts             # Selected text + source metadata
+│       ├── useSettings.ts              # Overlay state, API key management
+│       ├── useTokensSettings.ts        # Max tokens configuration
+│       ├── useTokenTracking.ts         # Token usage tracking
+│       ├── useWordFrequencySettings.ts # Word frequency tool settings
+│       └── useWordSearchSettings.ts    # Word search tool settings
 ```
 
 Patterns and conventions:
@@ -80,7 +86,7 @@ Patterns and conventions:
 - Message enums: Use `STATUS` for status messages, `MODEL_DATA`/`REQUEST_MODEL_DATA` for model options, and `SET_MODEL_SELECTION` for user selection. Avoid ad-hoc enums like `STATUS_MESSAGE`, `MODEL_OPTIONS_DATA`, or `SET_MODEL`.
 - UI settings: Toggle UI prefs (e.g., token widget) via `UPDATE_SETTING` with nested keys like `ui.showTokenWidget`.
 - Metrics: Provide `setPathText` and `clearSubtoolResult` so subtools can refresh independently.
-- **useEffect extraction**: Extract inline useEffect logic to named methods wrapped in `useCallback` for testability, reusability, and clarity. Use semantic naming: `request*` (data fetching), `sync*` (synchronization), `clear*When*` (conditional state updates), `initialize*` (initialization), `validate*` (validation). See [Architecture Debt: useEffect Extraction Pattern](.todo/architecture-debt/2025-11-05-useeffect-extraction-pattern.md).
+- **useEffect extraction**: Extract inline useEffect logic to named methods wrapped in `useCallback` for testability, reusability, and clarity. Use semantic naming: `request*` (data fetching), `sync*` (synchronization), `clear*When*` (conditional state updates), `initialize*` (initialization), `validate*` (validation). See [Architecture Debt: useEffect Extraction Pattern](.todo/archive/tech-debt/2025-11-05-useeffect-extraction-pattern.md).
 
 References:
 - ADR: [docs/adr/2025-10-27-presentation-layer-domain-hooks.md](docs/adr/2025-10-27-presentation-layer-domain-hooks.md)
@@ -258,7 +264,7 @@ usePersistence({
      - `styleFlags`: Identifies style patterns and issues
      - `wordFrequency`: Word usage patterns, Top 100, stopwords, hapax (list), POS via wink, bigrams/trigrams, length histogram, optional lemmas
 
-4. **OpenRouter Integration** ([OpenRouterClient.ts](src/infrastructure/api/OpenRouterClient.ts))
+4. **OpenRouter Integration** ([OpenRouterClient.ts](src/infrastructure/api/providers/OpenRouterClient.ts))
    - HTTP client for OpenRouter API
    - Handles API key management from VSCode settings
    - Supports multiple AI models (Claude, GPT-4, Gemini)
@@ -329,7 +335,7 @@ usePersistence({
 5. **Wire into App.tsx**: Message routing + persistence composition
 6. **Test bidirectional sync**: Settings Overlay ↔ VSCode settings panel ↔ Webview state
 
-**Reference Implementation**: See `usePublishing.ts` for clean example.
+**Reference Implementation**: See `usePublishingSettings.ts` for clean example.
 
 #### Modifying AI Behavior
 
@@ -370,7 +376,8 @@ src/shared/types/messages/
 ├── publishing.ts        # Publishing standards messages
 ├── sources.ts           # File/glob operation messages
 ├── ui.ts                # Tab changes, selections, guide messages
-└── results.ts           # Save/copy result messages
+├── results.ts           # Save/copy result messages
+└── streaming.ts         # Streaming response messages
 ```
 
 **Type Location Guidelines:**
@@ -509,7 +516,7 @@ The `resources/` directory contains:
 |-----------|---------|
 | `docs/adr/` | Architecture Decision Records (ADRs) - document decisions before coding |
 | `.todo/epics/` | Active feature work with sprint breakdowns |
-| `.todo/architecture-debt/` | Tracked technical debt for future resolution |
+| `.todo/tech-debt/` | Tracked technical debt for future resolution |
 | `.todo/archive/` | Completed epics and specs |
 | `.memory-bank/` | Session continuity snapshots (format: `YYYYMMDD-HHMM-title.md`) |
 
@@ -526,7 +533,8 @@ The `resources/` directory contains:
 ### Architecture Debt
 
 When you discover issues out of scope for current work:
-1. Create `.todo/architecture-debt/YYYY-MM-DD-issue-name.md`
+
+1. Create `.todo/tech-debt/YYYY-MM-DD-issue-name.md`
 2. Assign priority (High/Medium/Low)
 3. Reference in sprint completion notes
 4. Continue sprint - don't let debt tracking block progress
@@ -648,7 +656,7 @@ Potential areas for expansion:
 
 4. **ADR-First for Architecture Changes**: Create ADR before coding. Iterate until sound.
 
-5. **Track Debt Immediately**: Document in `.todo/architecture-debt/` with priority. Don't let tracking block progress.
+5. **Track Debt Immediately**: Document in `.todo/tech-debt/` with priority. Don't let tracking block progress.
 
 6. **Alpha Freedom**: No backward compatibility until v1.0. Remove dead code aggressively. Breaking changes are free.
 
