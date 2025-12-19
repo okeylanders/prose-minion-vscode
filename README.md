@@ -12,17 +12,25 @@
 
 ---
 
-## 🎉 What's New in v1.6.0
+## 🎉 What's New in v1.6.1
 
 > <img src="assets/pixel-minion-icon.png" alt="Pixel Minion" width="20" style="vertical-align: middle;"/> **Sister Extension: [Pixel Minion](https://marketplace.visualstudio.com/items?itemName=OkeyLanders.pixel-minion)** - Generate images and SVGs directly in VS Code using AI models like Flux, Recraft, and more via OpenRouter. [GitHub](https://github.com/okeylanders/pixel-minion-vscode)
 >
+> **🤖 Gemini 3 Flash Preview Model** - New high-speed thinking model with near Pro-level reasoning at lower latency. Available in all model dropdowns.
+>
+> **📚 New Craft Guides** - Three new creative writing guides: Deep POV for immersive narration, Indirect Dialogue techniques, and Subtext & Implication patterns.
+>
+> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
+
+---
+
+## 🎉 What's New in v1.6.0
+
 > **🔤 N-gram Mode for Category Search** - Search for 2-word phrases (bigrams) or 3-word phrases (trigrams)! Perfect for finding full names, compound concepts, or multi-word expressions in your manuscript.
 >
 > **⏹️ Category Search Cancellation** - Cancel long-running searches with the new red "✕ Cancel" button. Partial results are preserved, so you keep matches found before cancellation.
 >
 > **🧹 Punctuation Stripping** - N-grams now strip punctuation for cleaner phrase matching while preserving contractions like "don't" and "it's".
->
-> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
 
 ---
 
