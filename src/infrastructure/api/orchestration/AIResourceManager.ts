@@ -96,7 +96,7 @@ export class AIResourceManager {
 
     // Resolve model selections with fallbacks
     const config = vscode.workspace.getConfiguration('proseMinion');
-    const fallbackModel = modelConfig?.fallbackModel ?? config.get<string>('model') ?? 'z-ai/glm-4.6';
+    const fallbackModel = modelConfig?.fallbackModel ?? 'anthropic/claude-sonnet-4.5';
     const assistantModel = modelConfig?.assistantModel ?? config.get<string>('assistantModel') ?? fallbackModel;
     const dictionaryModel = modelConfig?.dictionaryModel ?? config.get<string>('dictionaryModel') ?? fallbackModel;
     const contextModel = modelConfig?.contextModel ?? config.get<string>('contextModel') ?? fallbackModel;

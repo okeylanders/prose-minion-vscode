@@ -93,7 +93,11 @@ export const CATEGORY_MODELS = [
     name: 'Mistral Large 2411',
     description: 'Mistral large model'
   },
-
+  {
+    id: 'z-ai/glm-4.7',
+    name: 'GLM 4.7',
+    description: 'Z.AI\'s latest flagship model with enhanced programming and stable multi-step reasoning for complex agent tasks'
+  },
 ];
 
 /**
@@ -176,6 +180,11 @@ export const RECOMMENDED_MODELS = [
     id: 'z-ai/glm-4.6',
     name: 'GLM 4.6',
     description: 'Latest iteration with improved reasoning. Reliable for general writing assistance.'
+  },
+  {
+    id: 'z-ai/glm-4.7',
+    name: 'GLM 4.7',
+    description: 'Z.AI\'s latest flagship model with enhanced programming capabilities and more stable multi-step reasoning/execution. Significant improvements in complex agent tasks with natural conversational experiences.'
   },
   {
     id: 'openai/gpt-4.1',

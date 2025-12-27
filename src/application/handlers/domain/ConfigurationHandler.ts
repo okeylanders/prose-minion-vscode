@@ -352,13 +352,13 @@ export class ConfigurationHandler {
 
   private getEffectiveModelSelections(): Partial<Record<ModelScope, string>> {
     const config = vscode.workspace.getConfiguration('proseMinion');
-    const fallback = config.get<string>('model') || 'z-ai/glm-4.6';
+    const fallback = 'anthropic/claude-sonnet-4.5';
 
     const selections: Partial<Record<ModelScope, string>> = {
       assistant: config.get<string>('assistantModel') || fallback,
       dictionary: config.get<string>('dictionaryModel') || fallback,
       context: config.get<string>('contextModel') || fallback,
-      category: config.get<string>('categoryModel') || 'anthropic/claude-sonnet-4.5'
+      category: config.get<string>('categoryModel') || fallback
     };
 
     // SPRINT 05: Get resolved model selections from AIResourceManager

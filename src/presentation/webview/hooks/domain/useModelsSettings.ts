@@ -7,16 +7,15 @@ import { CATEGORY_MODELS } from '@providers/OpenRouterModels';
 
 /**
  * Models Settings
- * All 8 settings for AI model configuration and agent behavior
+ * 8 settings for AI model configuration and agent behavior (4 models + 4 behavior)
  * Syncs with package.json proseMinion.* settings
  */
 export interface ModelsSettings {
-  // Model Selections (5 settings)
-  assistantModel: string;          // Model for prose/dialogue analysis (default: z-ai/glm-4.6)
-  dictionaryModel: string;         // Model for dictionary lookups (default: z-ai/glm-4.6)
-  contextModel: string;            // Model for context generation (default: z-ai/glm-4.6)
-  categoryModel: string;           // Model for category search (default: anthropic/claude-sonnet-4.5)
-  model: string;                   // Legacy fallback model (default: z-ai/glm-4.6)
+  // Model Selections (4 settings) - fallback: anthropic/claude-sonnet-4.5
+  assistantModel: string;          // Model for prose/dialogue analysis
+  dictionaryModel: string;         // Model for dictionary lookups
+  contextModel: string;            // Model for context generation
+  categoryModel: string;           // Model for category search
 
   // Agent Behavior (4 settings)
   includeCraftGuides: boolean;     // Include craft guides in prompts (default: true)
@@ -107,12 +106,11 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
   }>();
 
   const defaults: ModelsSettings = {
-    // Model Selections
-    assistantModel: 'z-ai/glm-4.6',
-    dictionaryModel: 'z-ai/glm-4.6',
-    contextModel: 'z-ai/glm-4.6',
+    // Model Selections (fallback: anthropic/claude-sonnet-4.5)
+    assistantModel: 'anthropic/claude-sonnet-4.5',
+    dictionaryModel: 'anthropic/claude-sonnet-4.5',
+    contextModel: 'anthropic/claude-sonnet-4.5',
     categoryModel: 'anthropic/claude-sonnet-4.5',
-    model: 'z-ai/glm-4.6',  // Legacy fallback
 
     // Agent Behavior
     includeCraftGuides: true,
@@ -149,7 +147,6 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
         dictionaryModel: settingsData['dictionaryModel'] as string | undefined,
         contextModel: settingsData['contextModel'] as string | undefined,
         categoryModel: settingsData['categoryModel'] as string | undefined,
-        model: settingsData['model'] as string | undefined,
 
         // Agent Behavior
         includeCraftGuides: settingsData['includeCraftGuides'] as boolean | undefined,
@@ -167,7 +164,6 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
           dictionaryModel: modelsSettings.dictionaryModel ?? prev.dictionaryModel,
           contextModel: modelsSettings.contextModel ?? prev.contextModel,
           categoryModel: modelsSettings.categoryModel ?? prev.categoryModel,
-          model: modelsSettings.model ?? prev.model,
           // Agent Behavior
           includeCraftGuides: modelsSettings.includeCraftGuides ?? prev.includeCraftGuides,
           temperature: modelsSettings.temperature ?? prev.temperature,
