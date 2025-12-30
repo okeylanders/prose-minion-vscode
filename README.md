@@ -12,6 +12,16 @@
 
 ---
 
+## 🎉 What's New in v1.7.0
+
+> **🤖 Z.AI GLM 4.7 Model** - New Chinese-developed LLM now available in all model dropdowns. Competitive reasoning and language capabilities.
+>
+> **🔄 Default Fallback Update** - Changed default fallback model to Claude Sonnet 4.5 for more reliable results when no model is explicitly selected.
+>
+> **🗑️ Legacy Cleanup** - Removed deprecated `proseMinion.model` setting. Use the scoped settings (`assistantModel`, `dictionaryModel`, `contextModel`) for model configuration.
+
+---
+
 ## 🎉 What's New in v1.6.1
 
 > <img src="assets/pixel-minion-icon.png" alt="Pixel Minion" width="20" style="vertical-align: middle;"/> **Sister Extension: [Pixel Minion](https://marketplace.visualstudio.com/items?itemName=OkeyLanders.pixel-minion)** - Generate images and SVGs directly in VS Code using AI models like Flux, Recraft, and more via OpenRouter. [GitHub](https://github.com/okeylanders/pixel-minion-vscode)
