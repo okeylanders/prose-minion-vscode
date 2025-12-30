@@ -2,6 +2,32 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.7.0] - 2025-12-30
+
+### Added
+
+- **🤖 Z.AI GLM 4.7 Model**: New Chinese-developed LLM available in all model dropdowns
+  - Added to both Category Models and Recommended Models
+  - Competitive reasoning and language capabilities
+
+### Changed
+
+- **🔄 Default Fallback Model**: Changed from `z-ai/glm-4.6` to `anthropic/claude-sonnet-4.5`
+  - More reliable default when no model is explicitly selected
+  - Applies to all model scopes (assistant, dictionary, context)
+
+### Removed
+
+- **🗑️ Legacy Model Setting**: Removed deprecated `proseMinion.model` setting
+  - Scoped settings (`assistantModel`, `dictionaryModel`, `contextModel`) are the standard approach
+  - Simplifies configuration and reduces confusion
+
+### Technical Details
+
+- PR: [#53](https://github.com/okeylanders/prose-minion-vscode/pull/53)
+
+---
+
 ## [1.6.1] - 2025-12-18
 
 ### Added

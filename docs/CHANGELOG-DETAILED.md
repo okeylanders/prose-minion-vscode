@@ -5,6 +5,79 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2025-12-30
+
+### Overview
+
+Minor release adding **Z.AI GLM 4.7** model support, updating default fallback to Claude Sonnet 4.5, and removing deprecated legacy model setting.
+
+**PR:** [#53](https://github.com/okeylanders/prose-minion-vscode/pull/53)
+**Branch:** `feature/add-zai-glm-4.7-model`
+
+---
+
+### Added
+
+#### Z.AI GLM 4.7 Model
+
+New Chinese-developed LLM added to both model arrays:
+
+```typescript
+{
+  id: 'z-ai/glm-4.7',
+  name: 'Z.AI GLM 4.7',
+  description: 'Latest Z.AI model with improved reasoning'
+}
+```
+
+**Files:**
+
+- `src/infrastructure/api/providers/OpenRouterModels.ts` - Added to CATEGORY_MODELS and RECOMMENDED_MODELS
+
+---
+
+### Changed
+
+#### Default Fallback Model
+
+Updated hardcoded fallback from `z-ai/glm-4.6` to `anthropic/claude-sonnet-4.5`:
+
+| Scope | Before | After |
+|-------|--------|-------|
+| Assistant Model | z-ai/glm-4.6 | anthropic/claude-sonnet-4.5 |
+| Dictionary Model | z-ai/glm-4.6 | anthropic/claude-sonnet-4.5 |
+| Context Model | z-ai/glm-4.6 | anthropic/claude-sonnet-4.5 |
+
+**Files:**
+
+- `src/application/handlers/domain/ConfigurationHandler.ts`
+- `src/infrastructure/api/orchestration/AIResourceManager.ts`
+- `src/presentation/webview/hooks/domain/useModelsSettings.ts`
+
+---
+
+### Removed
+
+#### Legacy Model Setting
+
+Removed deprecated `proseMinion.model` setting from package.json:
+
+```diff
+- "proseMinion.model": {
+-   "type": "string",
+-   "default": "anthropic/claude-sonnet-4",
+-   "description": "Default AI model to use"
+- }
+```
+
+This legacy setting has been superseded by scoped settings:
+
+- `proseMinion.assistantModel`
+- `proseMinion.dictionaryModel`
+- `proseMinion.contextModel`
+
+---
+
 ## [1.6.1] - 2025-12-18
 
 ### Overview
