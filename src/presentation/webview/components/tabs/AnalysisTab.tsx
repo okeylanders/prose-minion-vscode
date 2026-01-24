@@ -555,6 +555,14 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
             <span className="writing-tool-icon">🔁</span>
             <span className="writing-tool-label">Repetition</span>
           </button>
+          <button
+            className="action-button secondary writing-tool-button"
+            onClick={() => handleAnalyzeWritingTools('decision-points')}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+          >
+            <span className="writing-tool-icon">🎯</span>
+            <span className="writing-tool-label">Decision Points</span>
+          </button>
         </div>
       </div>
 

@@ -21,8 +21,9 @@ export type DialogueFocus = 'dialogue' | 'microbeats' | 'both';
  * - editor: Traditional copyediting (grammar, spelling, punctuation, mechanics)
  * - fresh: Engagement check (flat characters, pacing issues, compelling plot)
  * - repetition: Detect repeated metaphors, descriptors, action beats, sentence structures
+ * - decision-points: Semantic gradient commitment (middle-gradient defaults, semantic airlocks)
  */
-export type WritingToolsFocus = 'cliche' | 'continuity' | 'style' | 'editor' | 'fresh' | 'repetition';
+export type WritingToolsFocus = 'cliche' | 'continuity' | 'style' | 'editor' | 'fresh' | 'repetition' | 'decision-points';
 
 /**
  * Union of all assistant focus modes (for backward compatibility)

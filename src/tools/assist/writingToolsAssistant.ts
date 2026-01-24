@@ -115,7 +115,8 @@ export class WritingToolsAssistant {
       style: 'You are a writing assistant specializing in detecting stylistic drift, tense shifts, POV breaks, and register inconsistencies.',
       editor: 'You are a copyeditor specializing in grammar, spelling, punctuation, and mechanical correctness in creative writing.',
       fresh: 'You are a writing assistant specializing in reader engagement analysis—character depth, pacing dynamics, stakes, and overall page-turner quality.',
-      repetition: 'You are a writing assistant specializing in detecting repetitive patterns—echo words, recycled metaphors, repeated action beats, and structural redundancy.'
+      repetition: 'You are a writing assistant specializing in detecting repetitive patterns—echo words, recycled metaphors, repeated action beats, and structural redundancy.',
+      'decision-points': 'You are a writing assistant specializing in semantic gradient commitment—detecting middle-gradient word defaults, semantic airlocks (appositive hedges), and adverb intensifiers that indicate uncommitted AI scaffolding requiring authorial decision.'
     };
     return roles[focus];
   }
@@ -151,7 +152,8 @@ export class WritingToolsAssistant {
       style: 'Please analyze this passage for stylistic drift, tense shifts, POV breaks, and register inconsistencies.',
       editor: 'Please copyedit this passage for grammar, spelling, punctuation, and mechanical errors.',
       fresh: 'Please analyze this passage for reader engagement: character depth, pacing, stakes, tension, and page-turner quality.',
-      repetition: 'Please analyze this passage for repetitive patterns: echo words, recycled metaphors, repeated action beats, sentence structures, and descriptive redundancy.'
+      repetition: 'Please analyze this passage for repetitive patterns: echo words, recycled metaphors, repeated action beats, sentence structures, and descriptive redundancy.',
+      'decision-points': 'Please analyze this passage for gradient commitment issues: middle-gradient word defaults (walked, looked, felt, very, quite), semantic airlocks (appositive hedges like "which was Y", "a kind of Z"), and weak verb + adverb patterns. For each, apply the Commitment Questions (Intent/Character/Theme/Clarity) and suggest gradient alternatives.'
     };
     return instructions[focus];
   }
@@ -226,7 +228,34 @@ Identify repetitive patterns:
 - Emotional tells (same physical reactions for emotions)
 - Transitional phrase repetition
 
-Flag severity (mild/moderate/egregious) and suggest varied alternatives.`
+Flag severity (mild/moderate/egregious) and suggest varied alternatives.`,
+
+      'decision-points': `# Semantic Gradient Commitment Analysis
+
+Detect where prose defaults to middle-gradient values instead of committing to extremes that carry intent, character, or theme.
+
+## Middle-Gradient Word Defaults
+Flag words from the middle 40-60% of intensity spectrums:
+- **Verbs:** walked, looked, moved, went, got, felt, seemed, said, told, asked
+- **Adjectives:** big, small, good, bad, nice, hard, soft, strange, weird
+- **Adverbs:** very, really, quite, rather, somewhat, fairly, kind of, sort of
+
+## Semantic Airlocks
+Flag appositive constructions that hedge instead of commit:
+- "X, which was Y" / "X, a kind of Z" / "X, something like Y" / "X, almost Y"
+- Explanatory appositives (emotion + explanation instead of showing)
+- Nested appositive airlocks
+
+## Common AI Patterns
+- Weak verb + adverb intensifier → should be strong verb
+- Generic emotion + explanatory appositive → should show through action
+- Middle-gradient observation + qualifier → should commit to specificity
+
+## Commitment Questions
+For each flagged word: Intent? Character? Theme? Clarity?
+
+## Priority
+Climactic moments > routine moments. Not all middle-gradient needs revision—strategic use provides pacing relief.`
     };
     return defaults[focus];
   }
@@ -236,5 +265,5 @@ Flag severity (mild/moderate/egregious) and suggest varied alternatives.`
  * Type guard to check if a focus is a WritingTools focus
  */
 export function isWritingToolsFocus(focus: AssistantFocus): focus is WritingToolsFocus {
-  return ['cliche', 'continuity', 'style', 'editor', 'fresh', 'repetition'].includes(focus);
+  return ['cliche', 'continuity', 'style', 'editor', 'fresh', 'repetition', 'decision-points'].includes(focus);
 }
