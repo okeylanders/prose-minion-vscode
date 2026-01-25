@@ -22,8 +22,9 @@ export type DialogueFocus = 'dialogue' | 'microbeats' | 'both';
  * - fresh: Engagement check (flat characters, pacing issues, compelling plot)
  * - repetition: Detect repeated metaphors, descriptors, action beats, sentence structures
  * - decision-points: Semantic gradient commitment (middle-gradient defaults, semantic airlocks)
+ * - show-and-tell: Dramatization balance (under-showing vs over-showing, scene vs summary)
  */
-export type WritingToolsFocus = 'cliche' | 'continuity' | 'style' | 'editor' | 'fresh' | 'repetition' | 'decision-points';
+export type WritingToolsFocus = 'cliche' | 'continuity' | 'style' | 'editor' | 'fresh' | 'repetition' | 'decision-points' | 'show-and-tell';
 
 /**
  * Union of all assistant focus modes (for backward compatibility)

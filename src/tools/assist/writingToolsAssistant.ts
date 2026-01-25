@@ -116,7 +116,8 @@ export class WritingToolsAssistant {
       editor: 'You are a copyeditor specializing in grammar, spelling, punctuation, and mechanical correctness in creative writing.',
       fresh: 'You are a writing assistant specializing in reader engagement analysis—character depth, pacing dynamics, stakes, and overall page-turner quality.',
       repetition: 'You are a writing assistant specializing in detecting repetitive patterns—echo words, recycled metaphors, repeated action beats, and structural redundancy.',
-      'decision-points': 'You are a writing assistant specializing in semantic gradient commitment—detecting middle-gradient word defaults, semantic airlocks (appositive hedges), and adverb intensifiers that indicate uncommitted AI scaffolding requiring authorial decision.'
+      'decision-points': 'You are a writing assistant specializing in semantic gradient commitment—detecting middle-gradient word defaults, semantic airlocks (appositive hedges), and adverb intensifiers that indicate uncommitted AI scaffolding requiring authorial decision.',
+      'show-and-tell': 'You are a writing assistant specializing in dramatization balance—analyzing when prose under-shows (tells flatly at peaks) or over-shows (labors minor moments), and the appropriate use of scene vs. summary.'
     };
     return roles[focus];
   }
@@ -153,7 +154,8 @@ export class WritingToolsAssistant {
       editor: 'Please copyedit this passage for grammar, spelling, punctuation, and mechanical errors.',
       fresh: 'Please analyze this passage for reader engagement: character depth, pacing, stakes, tension, and page-turner quality.',
       repetition: 'Please analyze this passage for repetitive patterns: echo words, recycled metaphors, repeated action beats, sentence structures, and descriptive redundancy.',
-      'decision-points': 'Please analyze this passage for gradient commitment issues: middle-gradient word defaults (walked, looked, felt, very, quite), semantic airlocks (appositive hedges like "which was Y", "a kind of Z"), and weak verb + adverb patterns. For each, apply the Commitment Questions (Intent/Character/Theme/Clarity) and suggest gradient alternatives.'
+      'decision-points': 'Please analyze this passage for gradient commitment issues: middle-gradient word defaults (walked, looked, felt, very, quite), semantic airlocks (appositive hedges like "which was Y", "a kind of Z"), and weak verb + adverb patterns. For each, apply the Commitment Questions (Intent/Character/Theme/Clarity) and suggest gradient alternatives.',
+      'show-and-tell': 'Please analyze this passage for dramatization balance: identify moments that are under-dramatized (told flatly when they should be shown through action/sensation) and over-dramatized (labored with excessive rendering when efficient telling would serve better). Consider pacing rhythm, reader cognitive load, and whether each moment warrants its current treatment.'
     };
     return instructions[focus];
   }
@@ -255,7 +257,47 @@ Flag appositive constructions that hedge instead of commit:
 For each flagged word: Intent? Character? Theme? Clarity?
 
 ## Priority
-Climactic moments > routine moments. Not all middle-gradient needs revision—strategic use provides pacing relief.`
+Climactic moments > routine moments. Not all middle-gradient needs revision—strategic use provides pacing relief.`,
+
+      'show-and-tell': `# Show & Tell: Dramatization Balance Analysis
+
+Analyze the balance between dramatized rendering (showing) and efficient narration (telling). Both are valid tools—the craft is knowing when to use each.
+
+## When to Show (Dramatize)
+- Emotional peaks and turning points
+- Character-defining moments
+- First impressions/introductions
+- Conflict enacted in real-time
+- Sensory experiences that matter thematically
+
+## When to Tell (Summarize)
+- Transitions and time skips
+- Orienting the reader in space/time
+- Cognitive breaks after intense sequences
+- Efficient context-setting
+- Minor moments that don't warrant dramatic weight
+
+## Under-Dramatized (Should Show)
+Flag moments told flatly that warrant rendering:
+- "She was devastated" at a climactic moment
+- Character introductions described rather than demonstrated
+- Conflict summarized when stakes demand enactment
+- Emotional states labeled rather than embodied
+
+## Over-Dramatized (Should Tell)
+Flag moments labored beyond their weight:
+- Belabored transitions that should be a sentence
+- Every emotion rendered through elaborate physical tells
+- Minor moments given excessive dramatic weight
+- Purple prose obscuring simple information
+- Reader fatigue from unbroken showing
+
+## Balance Questions
+For each flagged passage:
+- Peak vs. Valley: Is this a dramatic peak or transitional passage?
+- Pacing rhythm: What does the surrounding context demand?
+- Cognitive load: Has the reader had enough showing lately?
+- Efficiency: Is the prose doing more work than the moment warrants?`
     };
     return defaults[focus];
   }
@@ -265,5 +307,5 @@ Climactic moments > routine moments. Not all middle-gradient needs revision—st
  * Type guard to check if a focus is a WritingTools focus
  */
 export function isWritingToolsFocus(focus: AssistantFocus): focus is WritingToolsFocus {
-  return ['cliche', 'continuity', 'style', 'editor', 'fresh', 'repetition', 'decision-points'].includes(focus);
+  return ['cliche', 'continuity', 'style', 'editor', 'fresh', 'repetition', 'decision-points', 'show-and-tell'].includes(focus);
 }

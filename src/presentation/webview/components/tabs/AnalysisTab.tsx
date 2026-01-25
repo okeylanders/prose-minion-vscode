@@ -505,7 +505,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
           </button>
         </div>
 
-        <h5 className="analysis-section-subheader">Writing Tools:</h5>
+        <h5 className="analysis-section-subheader">Craft & Voice:</h5>
         <div className="focused-buttons writing-tools-grid">
           <button
             className="action-button secondary writing-tool-button"
@@ -517,12 +517,32 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
           </button>
           <button
             className="action-button secondary writing-tool-button"
-            onClick={() => handleAnalyzeWritingTools('continuity')}
+            onClick={() => handleAnalyzeWritingTools('repetition')}
             disabled={!text.trim() || analysis.loading || analysis.isStreaming}
           >
-            <span className="writing-tool-icon">🔗</span>
-            <span className="writing-tool-label">Continuity</span>
+            <span className="writing-tool-icon">🔁</span>
+            <span className="writing-tool-label">Repetition</span>
           </button>
+          <button
+            className="action-button secondary writing-tool-button"
+            onClick={() => handleAnalyzeWritingTools('decision-points')}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+          >
+            <span className="writing-tool-icon">🎯</span>
+            <span className="writing-tool-label">Decision Points</span>
+          </button>
+          <button
+            className="action-button secondary writing-tool-button"
+            onClick={() => handleAnalyzeWritingTools('show-and-tell')}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+          >
+            <span className="writing-tool-icon">⚖️</span>
+            <span className="writing-tool-label">Show & Tell</span>
+          </button>
+        </div>
+
+        <h5 className="analysis-section-subheader">Technical & Quality:</h5>
+        <div className="focused-buttons writing-tools-grid">
           <button
             className="action-button secondary writing-tool-button"
             onClick={() => handleAnalyzeWritingTools('style')}
@@ -541,27 +561,19 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
           </button>
           <button
             className="action-button secondary writing-tool-button"
+            onClick={() => handleAnalyzeWritingTools('continuity')}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+          >
+            <span className="writing-tool-icon">🔗</span>
+            <span className="writing-tool-label">Continuity</span>
+          </button>
+          <button
+            className="action-button secondary writing-tool-button"
             onClick={() => handleAnalyzeWritingTools('fresh')}
             disabled={!text.trim() || analysis.loading || analysis.isStreaming}
           >
             <span className="writing-tool-icon">🌱</span>
             <span className="writing-tool-label">Fresh</span>
-          </button>
-          <button
-            className="action-button secondary writing-tool-button"
-            onClick={() => handleAnalyzeWritingTools('repetition')}
-            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
-          >
-            <span className="writing-tool-icon">🔁</span>
-            <span className="writing-tool-label">Repetition</span>
-          </button>
-          <button
-            className="action-button secondary writing-tool-button"
-            onClick={() => handleAnalyzeWritingTools('decision-points')}
-            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
-          >
-            <span className="writing-tool-icon">🎯</span>
-            <span className="writing-tool-label">Decision Points</span>
           </button>
         </div>
       </div>
