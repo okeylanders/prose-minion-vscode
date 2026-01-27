@@ -23,8 +23,9 @@ export type DialogueFocus = 'dialogue' | 'microbeats' | 'both';
  * - repetition: Detect repeated metaphors, descriptors, action beats, sentence structures
  * - decision-points: Semantic gradient commitment (middle-gradient defaults, semantic airlocks)
  * - show-and-tell: Dramatization balance (under-showing vs over-showing, scene vs summary)
+ * - gestures: Alternative gesture prose variations (show-centric physical action alternatives)
  */
-export type WritingToolsFocus = 'cliche' | 'continuity' | 'style' | 'editor' | 'fresh' | 'repetition' | 'decision-points' | 'show-and-tell';
+export type WritingToolsFocus = 'cliche' | 'continuity' | 'style' | 'editor' | 'fresh' | 'repetition' | 'decision-points' | 'show-and-tell' | 'gestures';
 
 /**
  * Union of all assistant focus modes (for backward compatibility)

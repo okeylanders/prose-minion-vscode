@@ -485,6 +485,13 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
           >
             📝 Prose
           </button>
+          <button
+            className="action-button primary"
+            onClick={() => handleAnalyzeWritingTools('gestures')}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+          >
+            🤌 Gestures
+          </button>
         </div>
 
         <h5 className="analysis-section-subheader">Focused:</h5>

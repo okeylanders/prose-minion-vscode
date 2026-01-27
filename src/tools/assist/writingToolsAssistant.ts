@@ -117,7 +117,8 @@ export class WritingToolsAssistant {
       fresh: 'You are a writing assistant specializing in reader engagement analysis—character depth, pacing dynamics, stakes, and overall page-turner quality.',
       repetition: 'You are a writing assistant specializing in detecting repetitive patterns—echo words, recycled metaphors, repeated action beats, and structural redundancy.',
       'decision-points': 'You are a writing assistant specializing in semantic gradient commitment—detecting middle-gradient word defaults, semantic airlocks (appositive hedges), and adverb intensifiers that indicate uncommitted AI scaffolding requiring authorial decision.',
-      'show-and-tell': 'You are a writing assistant specializing in dramatization balance—analyzing when prose under-shows (tells flatly at peaks) or over-shows (labors minor moments), and the appropriate use of scene vs. summary.'
+      'show-and-tell': 'You are a writing assistant specializing in dramatization balance—analyzing when prose under-shows (tells flatly at peaks) or over-shows (labors minor moments), and the appropriate use of scene vs. summary.',
+      gestures: 'You are a writing assistant specializing in gesture prose variations—generating diverse physical action alternatives that show emotion, intent, and character through body language, micro-expressions, and movement rather than telling.'
     };
     return roles[focus];
   }
@@ -155,7 +156,8 @@ export class WritingToolsAssistant {
       fresh: 'Please analyze this passage for reader engagement: character depth, pacing, stakes, tension, and page-turner quality.',
       repetition: 'Please analyze this passage for repetitive patterns: echo words, recycled metaphors, repeated action beats, sentence structures, and descriptive redundancy.',
       'decision-points': 'Please analyze this passage for gradient commitment issues: middle-gradient word defaults (walked, looked, felt, very, quite), semantic airlocks (appositive hedges like "which was Y", "a kind of Z"), and weak verb + adverb patterns. For each, apply the Commitment Questions (Intent/Character/Theme/Clarity) and suggest gradient alternatives.',
-      'show-and-tell': 'Please analyze this passage for dramatization balance: identify moments that are under-dramatized (told flatly when they should be shown through action/sensation) and over-dramatized (labored with excessive rendering when efficient telling would serve better). Consider pacing rhythm, reader cognitive load, and whether each moment warrants its current treatment.'
+      'show-and-tell': 'Please analyze this passage for dramatization balance: identify moments that are under-dramatized (told flatly when they should be shown through action/sensation) and over-dramatized (labored with excessive rendering when efficient telling would serve better). Consider pacing rhythm, reader cognitive load, and whether each moment warrants its current treatment.',
+      gestures: 'Please analyze this passage and generate a rich variety of alternative gesture prose for each moment where physical action conveys emotion or intent. For each gesture opportunity, provide 5-8 distinct variations ranging from subtle micro-expressions to bold full-body movements. Focus on showing character state through body language rather than telling.'
     };
     return instructions[focus];
   }
@@ -297,7 +299,60 @@ For each flagged passage:
 - Peak vs. Valley: Is this a dramatic peak or transitional passage?
 - Pacing rhythm: What does the surrounding context demand?
 - Cognitive load: Has the reader had enough showing lately?
-- Efficiency: Is the prose doing more work than the moment warrants?`
+- Efficiency: Is the prose doing more work than the moment warrants?`,
+
+      gestures: `# Gesture Prose Variations
+
+Generate diverse physical action alternatives for each gesture opportunity in the passage. The goal is to provide a rich menu of options showing how body language can convey emotion, intent, and character.
+
+## Gesture Categories
+
+### Micro-Expressions (Face)
+- Eye movements (darting, narrowing, widening, blinking patterns)
+- Mouth tells (lip compression, twitches, pursing, parting)
+- Brow movements (furrowing, raising, knitting)
+- Jaw tension, nostril flares, cheek movements
+
+### Hand Gestures
+- Self-soothing (touching face, neck, hair)
+- Defensive (crossing arms, gripping objects)
+- Aggressive (pointing, fist-making, table-slapping)
+- Nervous (fidgeting, drumming, picking)
+- Expressive (waving, gesturing while speaking)
+
+### Full-Body Posture
+- Stance shifts (leaning in/away, weight distribution)
+- Shoulder movements (shrugging, tensing, dropping)
+- Spatial behavior (stepping toward/back, turning away)
+- Stillness as choice (freezing, becoming statue-like)
+
+### Breath and Rhythm
+- Breathing patterns (catching breath, sighing, exhaling sharply)
+- Speaking rhythm (pausing, speeding up, trailing off)
+- Physical rhythm (pacing, rocking, tapping)
+
+## Variation Spectrum
+
+For each gesture opportunity, provide alternatives across:
+- **Intensity**: Subtle → Moderate → Bold
+- **Visibility**: Internal sensation → External action
+- **Character-specific**: How THIS character would express THIS emotion
+
+## Quality Markers
+
+Good gesture prose:
+✅ Shows without naming the emotion
+✅ Feels specific to the character
+✅ Matches the moment's intensity
+✅ Avoids cliché gestures (nodding, shrugging as defaults)
+✅ Creates visual imagery
+✅ Implies subtext without stating it
+
+Avoid:
+❌ Generic gestures that could be anyone
+❌ Telling the emotion alongside showing it
+❌ Over-describing every micro-movement
+❌ Gestures that contradict stated emotions`
     };
     return defaults[focus];
   }
@@ -307,5 +362,5 @@ For each flagged passage:
  * Type guard to check if a focus is a WritingTools focus
  */
 export function isWritingToolsFocus(focus: AssistantFocus): focus is WritingToolsFocus {
-  return ['cliche', 'continuity', 'style', 'editor', 'fresh', 'repetition', 'decision-points', 'show-and-tell'].includes(focus);
+  return ['cliche', 'continuity', 'style', 'editor', 'fresh', 'repetition', 'decision-points', 'show-and-tell', 'gestures'].includes(focus);
 }
