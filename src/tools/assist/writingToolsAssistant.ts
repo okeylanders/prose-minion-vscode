@@ -118,7 +118,8 @@ export class WritingToolsAssistant {
       repetition: 'You are a writing assistant specializing in detecting repetitive patterns—echo words, recycled metaphors, repeated action beats, and structural redundancy.',
       'decision-points': 'You are a writing assistant specializing in semantic gradient commitment—detecting middle-gradient word defaults, semantic airlocks (appositive hedges), and adverb intensifiers that indicate uncommitted AI scaffolding requiring authorial decision.',
       'show-and-tell': 'You are a writing assistant specializing in dramatization balance—analyzing when prose under-shows (tells flatly at peaks) or over-shows (labors minor moments), and the appropriate use of scene vs. summary.',
-      gestures: 'You are a writing assistant specializing in gesture prose variations—generating diverse physical action alternatives that show emotion, intent, and character through body language, micro-expressions, and movement rather than telling.'
+      gestures: 'You are a writing assistant specializing in gesture prose variations—generating diverse physical action alternatives that show emotion, intent, and character through body language, micro-expressions, and movement rather than telling.',
+      choreography: 'You are a writing assistant specializing in scene-wide choreography analysis—detecting repetitive movement patterns, staging monotony, and physical action flow across the entire passage while maintaining spatial continuity and suggesting novel variations by zone.'
     };
     return roles[focus];
   }
@@ -157,7 +158,8 @@ export class WritingToolsAssistant {
       repetition: 'Please analyze this passage for repetitive patterns: echo words, recycled metaphors, repeated action beats, sentence structures, and descriptive redundancy.',
       'decision-points': 'Please analyze this passage for gradient commitment issues: middle-gradient word defaults (walked, looked, felt, very, quite), semantic airlocks (appositive hedges like "which was Y", "a kind of Z"), and weak verb + adverb patterns. For each, apply the Commitment Questions (Intent/Character/Theme/Clarity) and suggest gradient alternatives.',
       'show-and-tell': 'Please analyze this passage for dramatization balance: identify moments that are under-dramatized (told flatly when they should be shown through action/sensation) and over-dramatized (labored with excessive rendering when efficient telling would serve better). Consider pacing rhythm, reader cognitive load, and whether each moment warrants its current treatment.',
-      gestures: 'Please analyze this passage and generate a rich variety of alternative gesture prose for each moment where physical action conveys emotion or intent. For each gesture opportunity, provide 5-8 distinct variations ranging from subtle micro-expressions to bold full-body movements. Focus on showing character state through body language rather than telling.'
+      gestures: 'Please analyze this passage and generate a rich variety of alternative gesture prose for each moment where physical action conveys emotion or intent. For each gesture opportunity, provide 5-8 distinct variations ranging from subtle micro-expressions to bold full-body movements. Focus on showing character state through body language rather than telling.',
+      choreography: 'Please analyze this passage for scene-wide choreography patterns: identify repetitive movements (everyone nodding, constant walking, similar transitions), map the physical staging into zones, check spatial continuity, and provide diverse alternative choreography for each zone. Generate 3-5 complete scene variations with novel movement vocabulary while maintaining physical logic.'
     };
     return instructions[focus];
   }
@@ -352,7 +354,54 @@ Avoid:
 ❌ Generic gestures that could be anyone
 ❌ Telling the emotion alongside showing it
 ❌ Over-describing every micro-movement
-❌ Gestures that contradict stated emotions`
+❌ Gestures that contradict stated emotions`,
+
+      choreography: `# Scene Choreography Analysis
+
+Analyze the passage as a whole for movement patterns, staging, and physical action flow. Provide diverse alternatives while maintaining spatial continuity.
+
+## Zone Mapping
+Divide the scene into spatial/temporal zones:
+- **Zone A**: Opening staging (where characters start, initial positions)
+- **Zone B**: Core action (primary physical exchanges, main blocking)
+- **Zone C**: Transitions (movement between beats, repositioning)
+- **Zone D**: Resolution staging (final positions, exit choreography)
+
+## Repetition Detection
+Flag choreography patterns that repeat:
+- Same movements across characters (everyone nods, shrugs, walks)
+- Similar transitions (always "turned and walked")
+- Monotonous staging (characters static in same positions)
+- Default beats (constant sitting/standing without variety)
+
+## Continuity Check
+Verify physical logic:
+- Character positions track logically through scene
+- Objects remain where placed (or movement is shown)
+- Spatial relationships stay consistent
+- Actions are physically possible given staging
+
+## Variation Principles
+For each zone, provide alternatives that:
+- Use different movement vocabulary
+- Vary the scale (micro-gestures to major repositioning)
+- Consider character-specific physicality
+- Maintain emotional through-line while refreshing choreography
+
+## Quality Markers
+
+Good choreography:
+✅ Varied movement vocabulary across the scene
+✅ Spatial logic maintained throughout
+✅ Movement reveals character and emotion
+✅ Staging creates visual interest
+✅ Transitions feel natural, not mechanical
+
+Avoid:
+❌ Everyone doing the same types of movements
+❌ Static "talking heads" without physical grounding
+❌ Breaking spatial continuity for convenience
+❌ Over-choreographing (not every moment needs blocking)`
     };
     return defaults[focus];
   }
@@ -362,5 +411,5 @@ Avoid:
  * Type guard to check if a focus is a WritingTools focus
  */
 export function isWritingToolsFocus(focus: AssistantFocus): focus is WritingToolsFocus {
-  return ['cliche', 'continuity', 'style', 'editor', 'fresh', 'repetition', 'decision-points', 'show-and-tell', 'gestures'].includes(focus);
+  return ['cliche', 'continuity', 'style', 'editor', 'fresh', 'repetition', 'decision-points', 'show-and-tell', 'gestures', 'choreography'].includes(focus);
 }

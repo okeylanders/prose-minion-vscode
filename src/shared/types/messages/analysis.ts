@@ -24,8 +24,9 @@ export type DialogueFocus = 'dialogue' | 'microbeats' | 'both';
  * - decision-points: Semantic gradient commitment (middle-gradient defaults, semantic airlocks)
  * - show-and-tell: Dramatization balance (under-showing vs over-showing, scene vs summary)
  * - gestures: Alternative gesture prose variations (show-centric physical action alternatives)
+ * - choreography: Scene-wide movement pattern analysis and variation (physical action flow, zone diversity)
  */
-export type WritingToolsFocus = 'cliche' | 'continuity' | 'style' | 'editor' | 'fresh' | 'repetition' | 'decision-points' | 'show-and-tell' | 'gestures';
+export type WritingToolsFocus = 'cliche' | 'continuity' | 'style' | 'editor' | 'fresh' | 'repetition' | 'decision-points' | 'show-and-tell' | 'gestures' | 'choreography';
 
 /**
  * Union of all assistant focus modes (for backward compatibility)

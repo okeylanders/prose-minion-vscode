@@ -546,6 +546,14 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
             <span className="writing-tool-icon">⚖️</span>
             <span className="writing-tool-label">Show & Tell</span>
           </button>
+          <button
+            className="action-button secondary writing-tool-button"
+            onClick={() => handleAnalyzeWritingTools('choreography')}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+          >
+            <span className="writing-tool-icon">🎬</span>
+            <span className="writing-tool-label">Choreography</span>
+          </button>
         </div>
 
         <h5 className="analysis-section-subheader">Technical & Quality:</h5>
