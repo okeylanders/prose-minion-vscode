@@ -119,7 +119,8 @@ export class WritingToolsAssistant {
       'decision-points': 'You are a writing assistant specializing in semantic gradient commitment—detecting middle-gradient word defaults, semantic airlocks (appositive hedges), and adverb intensifiers that indicate uncommitted AI scaffolding requiring authorial decision.',
       'show-and-tell': 'You are a writing assistant specializing in dramatization balance—analyzing when prose under-shows (tells flatly at peaks) or over-shows (labors minor moments), and the appropriate use of scene vs. summary.',
       gestures: 'You are a writing assistant specializing in gesture prose variations—generating diverse physical action alternatives that show emotion, intent, and character through body language, micro-expressions, and movement rather than telling.',
-      choreography: 'You are a writing assistant specializing in scene-wide choreography analysis—detecting repetitive movement patterns, staging monotony, and physical action flow across the entire passage while maintaining spatial continuity and suggesting novel variations by zone.'
+      choreography: 'You are a writing assistant specializing in scene-wide choreography analysis—detecting repetitive movement patterns, staging monotony, and physical action flow across the entire passage while maintaining spatial continuity and suggesting novel variations by zone.',
+      'stock-and-signature': 'You are a writing assistant specializing in cognitive economy analysis—identifying where convention serves as invisible infrastructure versus where the author\'s distinctive voice rises above it, ensuring stock elements stay functional, emotional peaks are built on signature beats, and flagging any suspiciously polished AI-assisted passages for originality verification.'
     };
     return roles[focus];
   }
@@ -159,7 +160,8 @@ export class WritingToolsAssistant {
       'decision-points': 'Please analyze this passage for gradient commitment issues: middle-gradient word defaults (walked, looked, felt, very, quite), semantic airlocks (appositive hedges like "which was Y", "a kind of Z"), and weak verb + adverb patterns. For each, apply the Commitment Questions (Intent/Character/Theme/Clarity) and suggest gradient alternatives.',
       'show-and-tell': 'Please analyze this passage for dramatization balance: identify moments that are under-dramatized (told flatly when they should be shown through action/sensation) and over-dramatized (labored with excessive rendering when efficient telling would serve better). Consider pacing rhythm, reader cognitive load, and whether each moment warrants its current treatment.',
       gestures: 'Please analyze this passage and generate a rich variety of alternative gesture prose for each moment where physical action conveys emotion or intent. For each gesture opportunity, provide 5-8 distinct variations ranging from subtle micro-expressions to bold full-body movements. Focus on showing character state through body language rather than telling.',
-      choreography: 'Please analyze this passage for scene-wide choreography patterns: identify repetitive movements (everyone nodding, constant walking, similar transitions), map the physical staging into zones, check spatial continuity, and provide diverse alternative choreography for each zone. Generate 3-5 complete scene variations with novel movement vocabulary while maintaining physical logic.'
+      choreography: 'Please analyze this passage for scene-wide choreography patterns: identify repetitive movements (everyone nodding, constant walking, similar transitions), map the physical staging into zones, check spatial continuity, and provide diverse alternative choreography for each zone. Generate 3-5 complete scene variations with novel movement vocabulary while maintaining physical logic.',
+      'stock-and-signature': 'Please analyze this passage for cognitive economy: categorize each beat into the 4-tier spectrum (Functional Stock, Decorated Stock, Stock Doing Heavy Lifting, Signature Beats). Identify the structural template being used, assess the stock/signature ratio, verify peaks are built on signature not stock. Separately: (1) flag any passages with genuine external provenance risk, and (2) identify closure-complete passages that may compete with scene flow (craft observation, not accusation).'
     };
     return instructions[focus];
   }
@@ -401,7 +403,72 @@ Avoid:
 ❌ Everyone doing the same types of movements
 ❌ Static "talking heads" without physical grounding
 ❌ Breaking spatial continuity for convenience
-❌ Over-choreographing (not every moment needs blocking)`
+❌ Over-choreographing (not every moment needs blocking)`,
+
+      'stock-and-signature': `# Stock & Signature Analysis
+
+Analyze the scene's cognitive economy—where convention serves as invisible infrastructure versus where the author's distinctive voice rises above it.
+
+## The 4-Tier Spectrum
+
+Categorize each significant beat:
+
+**Tier 1 - Functional Stock** ✅ (Keep)
+- Invisible infrastructure that orients readers
+- Common gestures/transitions that don't draw attention
+- Example: "She set her fork down." (pure function)
+
+**Tier 2 - Decorated Stock** ⚠️ (The Fence)
+- Stock with elevation attempts that draw attention to conventionality
+- Example: "She set her fork down, the clink clean and final."
+- Action: Strip to pure function OR upgrade to signature
+
+**Tier 3 - Stock Doing Heavy Lifting** ❌ (Replace)
+- Convention asked to carry emotional weight at peaks
+- Example: "The refrigerator hummed, a mechanical heartbeat marking time."
+- Action: Replace with signature beat
+
+**Tier 4 - Signature Beats** 🔥 (Protect)
+- Lines only THIS author would write
+- Example: "He folded his napkin into a hard rectangle, crease after crease, like he could iron the hurt out of his words."
+- Action: Protect; ensure nothing stock competes nearby
+
+## Target Ratio
+- 60-70% Functional Stock (invisible infrastructure)
+- 10-15% Fence Moments (decide case-by-case)
+- 0% Stock Doing Heavy Lifting
+- 20-25% Signature Beats
+
+## Peak-Moment Audit
+Verify structural peaks (emotional climax, revelation, coda) are built on signature, not stock.
+
+## External Provenance Check (Hard Risk Only)
+Flag passages with genuine external source overlap risk:
+- **Known Source**: "This closely echoes [Author]'s *[Title]*"
+- **Verification Recommended**: Distinctive phrasing with potential external overlap
+
+ONLY flag when: distinctive phrasing unlikely to arise independently, or specific source echo detectable.
+Do NOT flag: scene-bound description, common metaphors, passages that are simply good.
+
+## Closure & Air-Lock Detection (Craft Signal, Not Risk)
+Identify passages that are unusually complete/self-contained (NOT an originality accusation):
+- May compete with nearby signature beats
+- May deserve author confirmation of intent
+- Flag: extractable micro-essays, full metaphorical closure, quote-shaped passages
+
+## Quality Markers
+
+Good cognitive economy:
+✅ Functional stock stays invisible (not decorated)
+✅ Peaks built on signature beats
+✅ Signature moments protected from competing stock
+✅ Provenance risk separated from closure observations
+
+Avoid:
+❌ Decorating functional stock (draws attention to convention)
+❌ Building emotional climaxes on stock furniture
+❌ Conflating "polished" with "plagiarized"
+❌ Treating closure-complete passages as accusations`
     };
     return defaults[focus];
   }
@@ -411,5 +478,5 @@ Avoid:
  * Type guard to check if a focus is a WritingTools focus
  */
 export function isWritingToolsFocus(focus: AssistantFocus): focus is WritingToolsFocus {
-  return ['cliche', 'continuity', 'style', 'editor', 'fresh', 'repetition', 'decision-points', 'show-and-tell', 'gestures', 'choreography'].includes(focus);
+  return ['cliche', 'continuity', 'style', 'editor', 'fresh', 'repetition', 'decision-points', 'show-and-tell', 'gestures', 'choreography', 'stock-and-signature'].includes(focus);
 }
