@@ -39,6 +39,11 @@ export const CATEGORY_MODELS = [
     description: 'Anthropic\'s frontier reasoning model for complex tasks and agentic workflows'
   },
   {
+    id: 'anthropic/claude-opus-4.6',
+    name: 'Claude Opus 4.6',
+    description: 'Anthropic\'s strongest model for complex agentic workflows and extended sessions'
+  },
+  {
     id: 'anthropic/claude-sonnet-4.5',
     name: 'Claude Sonnet 4.5',
     description: 'Default for category search'
@@ -125,6 +130,11 @@ export const RECOMMENDED_MODELS = [
     id: 'anthropic/claude-opus-4.5',
     name: 'Claude Opus 4.5',
     description: 'Anthropic\'s frontier reasoning model optimized for complex software engineering and agentic workflows. Strong multimodal capabilities with improved robustness. Supports extended context and multi-step planning.'
+  },
+  {
+    id: 'anthropic/claude-opus-4.6',
+    name: 'Claude Opus 4.6',
+    description: 'Anthropic\'s strongest model for sustained knowledge work. Exceptional coherence across long outputs and extended sessions. Near-production-ready prose in a single pass with deep contextual understanding.'
   },
   {
     id: 'anthropic/claude-sonnet-4.5',
