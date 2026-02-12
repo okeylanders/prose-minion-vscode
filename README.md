@@ -43,34 +43,6 @@
 > **📚 New Craft Guides** - Three new creative writing guides: Deep POV for immersive narration, Indirect Dialogue techniques, and Subtext & Implication patterns.
 >
 > **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
-
----
-
-## 🎉 What's New in v1.6.0
-
-> **🔤 N-gram Mode for Category Search** - Search for 2-word phrases (bigrams) or 3-word phrases (trigrams)! Perfect for finding full names, compound concepts, or multi-word expressions in your manuscript.
->
-> **⏹️ Category Search Cancellation** - Cancel long-running searches with the new red "✕ Cancel" button. Partial results are preserved, so you keep matches found before cancellation.
->
-> **🧹 Punctuation Stripping** - N-grams now strip punctuation for cleaner phrase matching while preserving contractions like "don't" and "it's".
-
----
-
-## 🎉 What's New in v1.5.0
-
-> **✍️ Writing Tools Assistant** - Six specialized analysis tools in one dropdown! **Cliche Analysis** finds dead metaphors, **Continuity Check** catches choreography errors, **Style Consistency** detects tense/POV drift, **Editor** handles grammar, **Fresh Check** analyzes engagement, and **Repetition Analysis** flags echo words and redundancy.
->
-> **📖 Narrative Sequence Context** - Context Assistant now outputs structured positioning: what happened before, this scene's role, what comes next, and position in the arc.
->
-> **🔒 Security Hardening** - Context assistant validates resource paths and rejects injection attempts.
-
----
-
-## 🎉 What's New in v1.4.0
-
-> **🌊 Streaming Responses** - Watch AI responses generate in real-time with live token counts.
->
-> **⏹️ Request Cancellation** - Cancel any AI operation mid-stream. Stop early to save tokens when you've seen enough.
 >
 > **📚 New User Guides** - [Dictionary: Looking Up Phrases & Alternatives](docs/user-guides/dictionary-lookup-phrase-and-alternatives/README.md)
 
