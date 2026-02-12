@@ -5,6 +5,82 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-02-11
+
+### Overview
+
+Minor release adding **five new focus writing tools** (Decision Points, Show & Tell, Gestures, Choreography, Stock & Signature), **Opus 4.6 model support**, a **streaming cancellation fix** that preserves partial content, and a **UI grid reorganization** for the expanded toolset.
+
+**PR:** [#54](https://github.com/okeylanders/prose-minion-vscode/pull/54)
+**Branch:** `feature/decision-points-tool`
+
+---
+
+### Added
+
+#### Focus Writing Tools Suite
+
+Five new AI-powered focus analysis tools added to the Writing Tools Assistant:
+
+| Tool | Purpose |
+|------|---------|
+| **Decision Points** | Analyzes character decision moments, stakes, and consequences |
+| **Show & Tell** | Evaluates balance of showing vs telling in prose |
+| **Gestures** | Body language variations for show-centric writing |
+| **Choreography** | Scene-wide movement pattern analysis |
+| **Stock & Signature** | Cognitive economy analysis for stock vs distinctive descriptions |
+
+**Files:**
+
+- `resources/system-prompts/writing-tools-assistant/focus/decision-points.md` - Decision Points prompt
+- `resources/system-prompts/writing-tools-assistant/focus/show-and-tell.md` - Show & Tell prompt
+- `resources/system-prompts/writing-tools-assistant/focus/gestures.md` - Gestures prompt
+- `resources/system-prompts/writing-tools-assistant/focus/choreography.md` - Choreography prompt
+- `resources/system-prompts/writing-tools-assistant/focus/stock-and-signature.md` - Stock & Signature prompt
+- `src/tools/assist/writingToolsAssistant.ts` - Tool registration and orchestration
+- `src/shared/types/messages/analysis.ts` - New tool type enums
+- `src/application/handlers/domain/AnalysisHandler.ts` - Route handling for new tools
+
+#### Opus 4.6 Model
+
+- `src/infrastructure/api/providers/OpenRouterModels.ts` - Added Claude Opus 4.6 to model arrays
+
+#### Standalone Prompt
+
+- `resources/standalone-prompts/decision-points-standalone.md` - Decision Points prompt for chat interfaces
+
+---
+
+### Fixed
+
+#### Streaming Cancellation Content Preservation
+
+Cancelling a streaming analysis now calls `endStreaming()` instead of `reset()`, preserving already-received content in the result display rather than wiping it.
+
+**Files:**
+
+- `src/presentation/webview/hooks/domain/useAnalysis.ts` - Changed cancel logic to preserve buffer
+
+**Tests:**
+
+- `src/__tests__/presentation/webview/hooks/domain/useAnalysis.test.ts` - Behavioral tests for cancellation
+- `src/__tests__/presentation/webview/hooks/useStreaming.test.ts` - Buffer accumulation and endStreaming vs reset semantics
+
+---
+
+### Changed
+
+#### Analysis UI Grid Layout
+
+Writing tools grid reorganized from previous layout to 2×4 (4 columns full width) to accommodate the expanded toolset.
+
+**Files:**
+
+- `src/presentation/webview/components/tabs/AnalysisTab.tsx` - Grid layout update
+- `src/presentation/webview/index.css` - CSS adjustments
+
+---
+
 ## [1.7.0] - 2025-12-30
 
 ### Overview

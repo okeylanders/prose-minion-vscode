@@ -2,6 +2,32 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.8.0] - 2026-02-11
+
+### Added
+
+- **Decision Points Tool**: Analyzes character decision moments, stakes, and consequences in scenes
+- **Show & Tell Tool**: Evaluates the balance of showing vs telling in prose passages
+- **Gestures Focus Tool**: Analyzes body language variations for show-centric writing
+- **Choreography Tool**: Scene-wide movement pattern analysis for spatial storytelling
+- **Stock & Signature Tool**: Cognitive economy analysis distinguishing stock descriptions from distinctive ones
+- **Opus 4.6 Model**: Added Claude Opus 4.6 to available models
+
+### Fixed
+
+- **Streaming Cancellation**: Cancelling a streaming analysis now preserves already-received content instead of wiping it
+
+### Changed
+
+- **Analysis UI**: Writing tools grid reorganized to 2x4 layout (4 columns full width) for expanded toolset
+
+### Technical Details
+
+- PR: [#54](https://github.com/okeylanders/prose-minion-vscode/pull/54)
+- Added behavioral tests for streaming cancellation and useStreaming hook
+
+---
+
 ## [1.7.0] - 2025-12-30
 
 ### Added

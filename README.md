@@ -12,6 +12,18 @@
 
 ---
 
+## 🎉 What's New in v1.8.0
+
+> **🎯 Five New Focus Writing Tools** - Decision Points, Show & Tell, Gestures, Choreography, and Stock & Signature. Analyze character decisions, prose balance, body language, spatial movement, and cognitive economy in your scenes.
+>
+> **🤖 Opus 4.6 Model** - Claude Opus 4.6 now available in all model dropdowns.
+>
+> **🛠️ Streaming Fix** - Cancelling a streaming analysis now preserves already-received content instead of wiping it.
+>
+> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
+
+---
+
 ## 🎉 What's New in v1.7.0
 
 > **🤖 Z.AI GLM 4.7 Model** - New Chinese-developed LLM now available in all model dropdowns. Competitive reasoning and language capabilities.
