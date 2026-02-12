@@ -1,13 +1,29 @@
 /**
- * useAnalysis Contract Tests
+ * @jest-environment jsdom
+ */
+
+/**
+ * useAnalysis Contract + Behavioral Tests
  *
  * Validates that useAnalysis hook exports the Tripartite Interface pattern:
  * - State: Read-only state properties
  * - Actions: User-triggered operations
  * - Persistence: What gets saved to vscode.setState
+ *
+ * Also tests critical streaming cancellation behavior (content preservation).
  */
 
-import { AnalysisState, AnalysisActions, AnalysisPersistence } from '@/presentation/webview/hooks/domain/useAnalysis';
+import { renderHook, act } from '@testing-library/react-hooks';
+import { AnalysisState, AnalysisActions, AnalysisPersistence, useAnalysis } from '@/presentation/webview/hooks/domain/useAnalysis';
+import { MessageType } from '@shared/types';
+import { createMockVSCode } from '@/__tests__/mocks/vscode';
+
+// Mock dependencies
+jest.mock('../../../../../presentation/webview/hooks/useVSCodeApi');
+jest.mock('../../../../../presentation/webview/hooks/usePersistence');
+
+import { useVSCodeApi } from '@hooks/useVSCodeApi';
+import { usePersistedState } from '@hooks/usePersistence';
 
 describe('useAnalysis - Type Contracts', () => {
   describe('AnalysisState Interface', () => {
@@ -138,5 +154,69 @@ describe('useAnalysis - Type Contracts', () => {
       expect(actionProps.length).toBeGreaterThan(0);
       expect(persistenceProps.length).toBeGreaterThan(0);
     });
+  });
+});
+
+describe('useAnalysis - Streaming Cancellation', () => {
+  let mockVSCode: ReturnType<typeof createMockVSCode>;
+
+  beforeEach(() => {
+    mockVSCode = createMockVSCode();
+    (useVSCodeApi as jest.Mock).mockReturnValue(mockVSCode);
+    (usePersistedState as jest.Mock).mockReturnValue({});
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should preserve streamed content when cancelling', () => {
+    const { result } = renderHook(() => useAnalysis());
+
+    // Simulate streaming: start, receive chunks, then cancel
+    act(() => result.current.startStreaming('req-1'));
+
+    act(() => result.current.handleStreamChunk({
+      type: MessageType.STREAM_CHUNK,
+      source: 'extension.test',
+      payload: { domain: 'analysis', requestId: 'req-1', token: 'Hello ' },
+      timestamp: Date.now()
+    }));
+
+    act(() => result.current.handleStreamChunk({
+      type: MessageType.STREAM_CHUNK,
+      source: 'extension.test',
+      payload: { domain: 'analysis', requestId: 'req-1', token: 'world' },
+      timestamp: Date.now()
+    }));
+
+    // Cancel — content should be preserved, not erased
+    act(() => result.current.cancelStreaming());
+
+    expect(result.current.result).toBe('Hello world');
+    expect(result.current.loading).toBe(false);
+    expect(result.current.isStreaming).toBe(false);
+  });
+
+  it('should not overwrite result when cancelling with empty buffer', () => {
+    const { result } = renderHook(() => useAnalysis());
+
+    // Set a previous result via analysis result message
+    act(() => result.current.handleAnalysisResult({
+      type: MessageType.ANALYSIS_RESULT,
+      source: 'extension.test',
+      payload: { result: 'previous result', toolName: 'prose', usedGuides: [] },
+      timestamp: Date.now()
+    }));
+
+    expect(result.current.result).toBe('previous result');
+
+    // Start streaming (clears result), then immediately cancel with no chunks
+    act(() => result.current.startStreaming('req-2'));
+    act(() => result.current.cancelStreaming());
+
+    // No streamed content, so result stays cleared (expected — nothing to preserve)
+    expect(result.current.result).toBe('');
+    expect(result.current.loading).toBe(false);
   });
 });
