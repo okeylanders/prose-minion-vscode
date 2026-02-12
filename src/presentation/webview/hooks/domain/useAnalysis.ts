@@ -229,7 +229,12 @@ export const useAnalysis = (): UseAnalysisReturn => {
     if (currentRequestId) {
       ignoredRequestIdsRef.current.add(currentRequestId);
     }
-    streaming.reset();
+    // Preserve already-streamed content instead of wiping it
+    const partialContent = streaming.buffer;
+    streaming.endStreaming();
+    if (partialContent) {
+      setResult(partialContent);
+    }
     setCurrentRequestId(null);
     setLoading(false);
     setStatusMessage('');

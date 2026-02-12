@@ -446,8 +446,9 @@ select:focus {
 /* Writing Tools grid layout with stacked icon/label buttons */
 .writing-tools-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--spacing-xs);
+  width: 100%;
 }
 
 .writing-tool-button {
