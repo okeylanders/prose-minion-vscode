@@ -334,9 +334,10 @@ export class AnalysisHandler {
         repetition: 'Repetition Analysis',
         'decision-points': 'Decision Points Analysis',
         'show-and-tell': 'Show & Tell Analysis',
-        gestures: 'Gesture Variations',
+        gestures: 'Gesture & Choreographic Events',
         choreography: 'Choreography Analysis',
-        'stock-and-signature': 'Stock & Signature Analysis'
+        'stock-and-signature': 'Stock & Signature Analysis',
+        placeholders: 'Placeholder Analysis'
       };
       this.sendStatus(`Streaming ${focusLabels[focus] || focus}...`);
 
