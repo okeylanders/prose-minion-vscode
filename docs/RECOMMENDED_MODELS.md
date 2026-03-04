@@ -134,12 +134,12 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/openai/gpt-5.1-chat
   - OpenAI: https://openai.com/
 
-### Google Gemini 3 Pro — Massive Context
+### Google Gemini 3.1 Pro — Massive Context
 
 - **Best For:** Master of scale (1M+ tokens)
 - **Description:** Excellent at weaving narrative threads across massive contexts. Perfect for Series Bibles
 - **Links:**
-  - OpenRouter: https://openrouter.ai/google/gemini-3-pro-preview
+  - OpenRouter: https://openrouter.ai/google/gemini-3.1-pro-preview
   - Google DeepMind: https://deepmind.google/technologies/gemini/
 
 ---
