@@ -118,9 +118,10 @@ export class WritingToolsAssistant {
       repetition: 'You are a writing assistant specializing in detecting repetitive patterns—echo words, recycled metaphors, repeated action beats, and structural redundancy.',
       'decision-points': 'You are a writing assistant specializing in semantic gradient commitment—detecting middle-gradient word defaults, semantic airlocks (appositive hedges), and adverb intensifiers that indicate uncommitted AI scaffolding requiring authorial decision.',
       'show-and-tell': 'You are a writing assistant specializing in dramatization balance—analyzing when prose under-shows (tells flatly at peaks) or over-shows (labors minor moments), and the appropriate use of scene vs. summary.',
-      gestures: 'You are a writing assistant specializing in gesture prose variations—generating diverse physical action alternatives that show emotion, intent, and character through body language, micro-expressions, and movement rather than telling.',
+      gestures: 'You are a writing assistant specializing in choreographic event generation—converting static states and descriptions into live events with physical consequences that change the scene, invite follow-up, and feel alive rather than described.',
       choreography: 'You are a writing assistant specializing in scene-wide choreography analysis—detecting repetitive movement patterns, staging monotony, and physical action flow across the entire passage while maintaining spatial continuity and suggesting novel variations by zone.',
-      'stock-and-signature': 'You are a writing assistant specializing in cognitive economy analysis—identifying where convention serves as invisible infrastructure versus where the author\'s distinctive voice rises above it, ensuring stock elements stay functional, emotional peaks are built on signature beats, and flagging any suspiciously polished AI-assisted passages for originality verification.'
+      'stock-and-signature': 'You are a writing assistant specializing in cognitive economy analysis—identifying where convention serves as invisible infrastructure versus where the author\'s distinctive voice rises above it, ensuring stock elements stay functional, emotional peaks are built on signature beats, and flagging any suspiciously polished AI-assisted passages for originality verification.',
+      placeholders: 'You are a writing assistant specializing in bidirectional precision analysis—identifying placeholder language that needs sharpening (somethings, noun fog, filler, intensifiers, weak gradient choices) AND over-precise language that should be softened in background moments to preserve cognitive budget for peaks.'
     };
     return roles[focus];
   }
@@ -159,9 +160,10 @@ export class WritingToolsAssistant {
       repetition: 'Please analyze this passage for repetitive patterns: echo words, recycled metaphors, repeated action beats, sentence structures, and descriptive redundancy.',
       'decision-points': 'Please analyze this passage for gradient commitment issues: middle-gradient word defaults (walked, looked, felt, very, quite), semantic airlocks (appositive hedges like "which was Y", "a kind of Z"), and weak verb + adverb patterns. For each, apply the Commitment Questions (Intent/Character/Theme/Clarity) and suggest gradient alternatives.',
       'show-and-tell': 'Please analyze this passage for dramatization balance: identify moments that are under-dramatized (told flatly when they should be shown through action/sensation) and over-dramatized (labored with excessive rendering when efficient telling would serve better). Consider pacing rhythm, reader cognitive load, and whether each moment warrants its current treatment.',
-      gestures: 'Please analyze this passage and generate a rich variety of alternative gesture prose for each moment where physical action conveys emotion or intent. For each gesture opportunity, provide 5-8 distinct variations ranging from subtle micro-expressions to bold full-body movements. Focus on showing character state through body language rather than telling.',
+      gestures: 'Please analyze this input and convert static descriptions into live choreographic events. Detect the input mode: if a request/description of a desired action, generate 5-8 concrete prose options for the choreography; if a state (e.g. "she was nervous"), convert to 5-8 events with physical consequences; if a full passage, scan for every state-to-event opportunity and provide 3-5 event options per opportunity. Events must change the physical scene, invite follow-up, and feel alive.',
       choreography: 'Please analyze this passage for scene-wide choreography patterns: identify repetitive movements (everyone nodding, constant walking, similar transitions), map the physical staging into zones, check spatial continuity, and provide diverse alternative choreography for each zone. Generate 3-5 complete scene variations with novel movement vocabulary while maintaining physical logic.',
-      'stock-and-signature': 'Please analyze this passage for cognitive economy: categorize each beat into the 4-tier spectrum (Functional Stock, Decorated Stock, Stock Doing Heavy Lifting, Signature Beats). Identify the structural template being used, assess the stock/signature ratio, verify peaks are built on signature not stock. Separately: (1) flag any passages with genuine external provenance risk, and (2) identify closure-complete passages that may compete with scene flow (craft observation, not accusation).'
+      'stock-and-signature': 'Please analyze this passage for cognitive economy: categorize each beat into the 4-tier spectrum (Functional Stock, Decorated Stock, Stock Doing Heavy Lifting, Signature Beats). Identify the structural template being used, assess the stock/signature ratio, verify peaks are built on signature not stock. Separately: (1) flag any passages with genuine external provenance risk, and (2) identify closure-complete passages that may compete with scene flow (craft observation, not accusation).',
+      placeholders: 'Please analyze this passage in two directions: (1) SHARPEN — identify placeholder language (somethings, noun fog, filler words, intensifiers/hedges, weak semantic gradient choices) and provide 2-3 concrete replacements per flag; (2) SOFTEN — identify over-precise language in background/transitional moments where ambiguity or lighter touch would serve better, and suggest relaxed alternatives. Prioritize the flags by impact.'
     };
     return instructions[focus];
   }
@@ -305,58 +307,39 @@ For each flagged passage:
 - Cognitive load: Has the reader had enough showing lately?
 - Efficiency: Is the prose doing more work than the moment warrants?`,
 
-      gestures: `# Gesture Prose Variations
+      gestures: `# Gesture & Choreographic Events
 
-Generate diverse physical action alternatives for each gesture opportunity in the passage. The goal is to provide a rich menu of options showing how body language can convey emotion, intent, and character.
+Convert static descriptions into live events with physical consequences. Detect input mode and adapt:
 
-## Gesture Categories
+## Input Modes
 
-### Micro-Expressions (Face)
-- Eye movements (darting, narrowing, widening, blinking patterns)
-- Mouth tells (lip compression, twitches, pursing, parting)
-- Brow movements (furrowing, raising, knitting)
-- Jaw tension, nostril flares, cheek movements
+**Request Mode** (user describes a desired action):
+Generate 5-8 concrete prose options showing the choreographic sequence. Each should be fully written prose (2-4 sentences) with physical consequences.
 
-### Hand Gestures
-- Self-soothing (touching face, neck, hair)
-- Defensive (crossing arms, gripping objects)
-- Aggressive (pointing, fist-making, table-slapping)
-- Nervous (fidgeting, drumming, picking)
-- Expressive (waving, gesturing while speaking)
+**State Mode** (user pastes a state like "she was nervous"):
+Convert to 5-8 events that make something HAPPEN. Events change the physical scene, invite follow-up, and never name the emotion.
 
-### Full-Body Posture
-- Stance shifts (leaning in/away, weight distribution)
-- Shoulder movements (shrugging, tensing, dropping)
-- Spatial behavior (stepping toward/back, turning away)
-- Stillness as choice (freezing, becoming statue-like)
+**Passage Mode** (user pastes full prose):
+Scan for state-to-event opportunities. For each: quote the state, explain why it's static, provide 3-5 event alternatives with consequences.
 
-### Breath and Rhythm
-- Breathing patterns (catching breath, sighing, exhaling sharply)
-- Speaking rhythm (pausing, speeding up, trailing off)
-- Physical rhythm (pacing, rocking, tapping)
+## Core Principle: State vs Event
 
-## Variation Spectrum
+State (Weaker): "Her hand trembled slightly, ice cubes clinked against the sides."
+Event (Stronger): "Her hand slipped and the glass tipped. Two ice cubes slid out and tumbled onto the table."
 
-For each gesture opportunity, provide alternatives across:
-- **Intensity**: Subtle → Moderate → Bold
-- **Visibility**: Internal sensation → External action
-- **Character-specific**: How THIS character would express THIS emotion
+Events create consequences, invite follow-up, and feel alive. States describe conditions.
 
-## Quality Markers
+## Event Quality Tests
+1. Consequence test: Does it change something in the physical scene?
+2. Follow-up test: Does it create a moment someone could respond to?
+3. Specificity test: Is it concrete enough to visualize as a single camera shot?
+4. Originality test: Is it fresh, not the first-thing-that-comes-to-mind?
 
-Good gesture prose:
-✅ Shows without naming the emotion
-✅ Feels specific to the character
-✅ Matches the moment's intensity
-✅ Avoids cliché gestures (nodding, shrugging as defaults)
-✅ Creates visual imagery
-✅ Implies subtext without stating it
-
-Avoid:
-❌ Generic gestures that could be anyone
-❌ Telling the emotion alongside showing it
-❌ Over-describing every micro-movement
-❌ Gestures that contradict stated emotions`,
+## What NOT to Do
+❌ Generate body-language synonym lists or vocabulary menus
+❌ Organize by body region or intensity scale
+❌ Replace a state with another state ("she bit her lip" is still a state)
+❌ Name the emotion alongside the event`,
 
       choreography: `# Scene Choreography Analysis
 
@@ -468,7 +451,36 @@ Avoid:
 ❌ Decorating functional stock (draws attention to convention)
 ❌ Building emotional climaxes on stock furniture
 ❌ Conflating "polished" with "plagiarized"
-❌ Treating closure-complete passages as accusations`
+❌ Treating closure-complete passages as accusations`,
+
+      placeholders: `# Placeholder & Precision Analysis
+
+Analyze prose in TWO directions:
+
+## Direction 1: SHARPEN (Too Vague)
+Identify and flag:
+- "Somethings" — vague placeholder nouns (something, things, stuff, it)
+- Noun fog — abstract nouns replacing concrete specifics (situation, circumstances, way, place)
+- Filler words — meaningless connectives (actually, basically, just, literally, really)
+- Intensifiers & hedges — adverb props for weak words (very, quite, rather, somewhat, sort of)
+- Weak gradient choices — middle-of-the-road verbs/adjectives (walked, looked, felt, nice, strange)
+
+For each: quote exact text, identify category, provide 2-3 concrete replacements.
+
+## Direction 2: SOFTEN (Too Precise)
+Identify and flag:
+- Over-precise language in transitional/background moments
+- Unusual vocabulary in connective passages that draws attention from peaks
+- Elaborate sensory detail for functional actions
+- Stacked modifiers in non-peak sentences
+
+For each: quote exact text, explain why it's too loud for its position, suggest softer alternative.
+
+## Priority
+Sharpen flags at peaks matter most. Soften flags in background matter most. Not every vague word is a problem — respect intentional ambiguity.
+
+## Do NOT overlap with Decision Points
+Stay practical (what to change and to what). Do not use gradient commitment framework, Commitment Questions, or semantic airlock analysis.`
     };
     return defaults[focus];
   }
@@ -478,5 +490,5 @@ Avoid:
  * Type guard to check if a focus is a WritingTools focus
  */
 export function isWritingToolsFocus(focus: AssistantFocus): focus is WritingToolsFocus {
-  return ['cliche', 'continuity', 'style', 'editor', 'fresh', 'repetition', 'decision-points', 'show-and-tell', 'gestures', 'choreography', 'stock-and-signature'].includes(focus);
+  return ['cliche', 'continuity', 'style', 'editor', 'fresh', 'repetition', 'decision-points', 'show-and-tell', 'gestures', 'choreography', 'stock-and-signature', 'placeholders'].includes(focus);
 }

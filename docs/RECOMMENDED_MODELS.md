@@ -18,6 +18,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/anthropic/claude-sonnet-4.5
   - Anthropic: https://www.anthropic.com
 
+### Claude Sonnet 4.6 — New Sonnet Flagship
+
+- **Best For:** Stronger long-context reasoning and mixed writing + coding workflows
+- **Description:** Newest Sonnet generation with improved reliability, deeper reasoning stability, and agentic execution
+- **Links:**
+  - OpenRouter: https://openrouter.ai/anthropic/claude-sonnet-4.6
+  - Anthropic: https://www.anthropic.com
+
 ### Claude 3.7 Sonnet — The All-Rounder
 
 - **Best For:** A user favorite for balanced creative work
@@ -134,12 +142,36 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/openai/gpt-5.1-chat
   - OpenAI: https://openai.com/
 
-### Google Gemini 3 Pro — Massive Context
+### OpenAI GPT-5.3 Chat — Everyday Writing Flow
+
+- **Best For:** Smoother day-to-day ideation and editing conversations
+- **Description:** Latest OpenAI chat model on OpenRouter with stronger everyday helpfulness and cleaner conversational responses
+- **Links:**
+  - OpenRouter: https://openrouter.ai/openai/gpt-5.3-chat
+  - OpenAI: https://openai.com/
+
+### OpenAI GPT-5.4 — Frontier Generalist
+
+- **Best For:** Heavy-lift editing, structural rewrites, and mixed reasoning + coding tasks
+- **Description:** New flagship GPT release with stronger tool use and long-context reliability for professional workflows
+- **Links:**
+  - OpenRouter: https://openrouter.ai/openai/gpt-5.4
+  - OpenAI: https://openai.com/
+
+### OpenAI GPT-5.4 Pro — Maximum Reliability
+
+- **Best For:** High-stakes tasks where quality and consistency matter more than cost
+- **Description:** Highest-capability GPT-5.4 tier with deeper reasoning for complex multi-step workflows
+- **Links:**
+  - OpenRouter: https://openrouter.ai/openai/gpt-5.4-pro
+  - OpenAI: https://openai.com/
+
+### Google Gemini 3.1 Pro — Massive Context
 
 - **Best For:** Master of scale (1M+ tokens)
 - **Description:** Excellent at weaving narrative threads across massive contexts. Perfect for Series Bibles
 - **Links:**
-  - OpenRouter: https://openrouter.ai/google/gemini-3-pro-preview
+  - OpenRouter: https://openrouter.ai/google/gemini-3.1-pro-preview
   - Google DeepMind: https://deepmind.google/technologies/gemini/
 
 ---

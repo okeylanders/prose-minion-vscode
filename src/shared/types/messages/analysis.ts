@@ -23,11 +23,12 @@ export type DialogueFocus = 'dialogue' | 'microbeats' | 'both';
  * - repetition: Detect repeated metaphors, descriptors, action beats, sentence structures
  * - decision-points: Semantic gradient commitment (middle-gradient defaults, semantic airlocks)
  * - show-and-tell: Dramatization balance (under-showing vs over-showing, scene vs summary)
- * - gestures: Alternative gesture prose variations (show-centric physical action alternatives)
+ * - gestures: Choreographic event generation (converting static states into live events with consequences)
  * - choreography: Scene-wide movement pattern analysis and variation (physical action flow, zone diversity)
  * - stock-and-signature: Cognitive economy analysis (functional stock vs decorated stock vs signature beats, originality audit)
+ * - placeholders: Bidirectional precision analysis (sharpen vague placeholders, soften over-precise background language)
  */
-export type WritingToolsFocus = 'cliche' | 'continuity' | 'style' | 'editor' | 'fresh' | 'repetition' | 'decision-points' | 'show-and-tell' | 'gestures' | 'choreography' | 'stock-and-signature';
+export type WritingToolsFocus = 'cliche' | 'continuity' | 'style' | 'editor' | 'fresh' | 'repetition' | 'decision-points' | 'show-and-tell' | 'gestures' | 'choreography' | 'stock-and-signature' | 'placeholders';
 
 /**
  * Union of all assistant focus modes (for backward compatibility)

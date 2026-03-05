@@ -11,7 +11,7 @@ import { CATEGORY_MODELS } from '@providers/OpenRouterModels';
  * Syncs with package.json proseMinion.* settings
  */
 export interface ModelsSettings {
-  // Model Selections (4 settings) - fallback: anthropic/claude-sonnet-4.5
+  // Model Selections (4 settings)
   assistantModel: string;          // Model for prose/dialogue analysis
   dictionaryModel: string;         // Model for dictionary lookups
   contextModel: string;            // Model for context generation
@@ -106,11 +106,11 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
   }>();
 
   const defaults: ModelsSettings = {
-    // Model Selections (fallback: anthropic/claude-sonnet-4.5)
-    assistantModel: 'anthropic/claude-sonnet-4.5',
+    // Model Selections
+    assistantModel: 'anthropic/claude-sonnet-4.6',
     dictionaryModel: 'anthropic/claude-sonnet-4.5',
-    contextModel: 'anthropic/claude-sonnet-4.5',
-    categoryModel: 'anthropic/claude-sonnet-4.5',
+    contextModel: 'openai/gpt-5.4',
+    categoryModel: 'anthropic/claude-sonnet-4.6',
 
     // Agent Behavior
     includeCraftGuides: true,
