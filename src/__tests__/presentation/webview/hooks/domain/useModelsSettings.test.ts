@@ -42,10 +42,10 @@ describe('useModelsSettings', () => {
       const { result } = renderHook(() => useModelsSettings());
 
       expect(result.current.settings).toEqual({
-        assistantModel: 'anthropic/claude-sonnet-4.5',
+        assistantModel: 'anthropic/claude-sonnet-4.6',
         dictionaryModel: 'anthropic/claude-sonnet-4.5',
-        contextModel: 'anthropic/claude-sonnet-4.5',
-        categoryModel: 'anthropic/claude-sonnet-4.5',
+        contextModel: 'openai/gpt-5.4',
+        categoryModel: 'anthropic/claude-sonnet-4.6',
         includeCraftGuides: true,
         temperature: 0.7,
         maxTokens: 10000,
@@ -81,8 +81,8 @@ describe('useModelsSettings', () => {
       expect(result.current.settings).toEqual({
         assistantModel: 'anthropic/claude-3-5-sonnet',  // From persisted
         dictionaryModel: 'anthropic/claude-sonnet-4.5', // Default
-        contextModel: 'anthropic/claude-sonnet-4.5',    // Default
-        categoryModel: 'anthropic/claude-sonnet-4.5',   // Default
+        contextModel: 'openai/gpt-5.4',                 // Default
+        categoryModel: 'anthropic/claude-sonnet-4.6',   // Default
         includeCraftGuides: true,                       // Default
         temperature: 0.9,                               // From persisted
         maxTokens: 10000,                               // Default
@@ -96,8 +96,8 @@ describe('useModelsSettings', () => {
       const { result } = renderHook(() => useModelsSettings());
 
       expect(result.current.persistedState).toHaveProperty('modelsSettings');
-      expect(result.current.persistedState.modelsSettings.assistantModel).toBe('anthropic/claude-sonnet-4.5');
-      expect(result.current.persistedState.modelsSettings.categoryModel).toBe('anthropic/claude-sonnet-4.5');
+      expect(result.current.persistedState.modelsSettings.assistantModel).toBe('anthropic/claude-sonnet-4.6');
+      expect(result.current.persistedState.modelsSettings.categoryModel).toBe('anthropic/claude-sonnet-4.6');
     });
 
     it('should update persistedState when settings change', () => {
@@ -204,7 +204,7 @@ describe('useModelsSettings', () => {
       });
 
       expect(result.current.settings.temperature).toBe(0.9);
-      expect(result.current.settings.assistantModel).toBe('anthropic/claude-sonnet-4.5'); // Default preserved
+      expect(result.current.settings.assistantModel).toBe('anthropic/claude-sonnet-4.6'); // Default preserved
     });
 
     it('should not update if message has no models settings', () => {

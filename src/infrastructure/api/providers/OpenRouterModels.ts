@@ -21,13 +21,23 @@ export interface OpenRouterModelsResponse {
 /**
  * Curated list of recommended models for prose analysis ( Prose Excerpt Assistant )
  * Updated as of 2025
- * Sorted alphabetically by name
+ * Grouped by provider family and version progression
  */
 /**
  * Curated list of models for Category Search
  * Non-thinking models only for predictable token usage
  */
 export const CATEGORY_MODELS = [
+  {
+    id: 'anthropic/claude-sonnet-4.5',
+    name: 'Claude Sonnet 4.5',
+    description: 'Default for category search'
+  },
+  {
+    id: 'anthropic/claude-sonnet-4.6',
+    name: 'Claude Sonnet 4.6',
+    description: 'Anthropic\'s latest Sonnet model with stronger coding, agentic reliability, and long-context performance'
+  },
   {
     id: 'anthropic/claude-haiku-4.5',
     name: 'Claude Haiku 4.5',
@@ -42,16 +52,6 @@ export const CATEGORY_MODELS = [
     id: 'anthropic/claude-opus-4.6',
     name: 'Claude Opus 4.6',
     description: 'Anthropic\'s strongest model for complex agentic workflows and extended sessions'
-  },
-  {
-    id: 'anthropic/claude-sonnet-4.5',
-    name: 'Claude Sonnet 4.5',
-    description: 'Default for category search'
-  },
-  {
-    id: 'deepcogito/cogito-v2.1-671b',
-    name: 'Cogito v2.1 671B',
-    description: 'One of the strongest open models globally, matching frontier closed models'
   },
   {
     id: 'google/gemini-2.5-flash',
@@ -94,6 +94,26 @@ export const CATEGORY_MODELS = [
     description: '$$$ OpenAI\'s most advanced model (~6x Opus price) for complex agentic tasks'
   },
   {
+    id: 'openai/gpt-5.3-chat',
+    name: 'GPT-5.3 Chat',
+    description: 'Latest conversational release focused on smoother, more directly helpful everyday chat'
+  },
+  {
+    id: 'openai/gpt-5.4',
+    name: 'GPT-5.4',
+    description: 'OpenAI\'s latest frontier model for professional work with stronger tool use and long-context performance'
+  },
+  {
+    id: 'openai/gpt-5.4-pro',
+    name: 'GPT-5.4 Pro',
+    description: '$$$ Maximum-capability GPT-5.4 variant for complex, high-stakes multi-step tasks'
+  },
+  {
+    id: 'deepcogito/cogito-v2.1-671b',
+    name: 'Cogito v2.1 671B',
+    description: 'One of the strongest open models globally, matching frontier closed models'
+  },
+  {
     id: 'mistralai/mistral-large-2411',
     name: 'Mistral Large 2411',
     description: 'Mistral large model'
@@ -108,7 +128,7 @@ export const CATEGORY_MODELS = [
 /**
  * Curated list of recommended models for prose analysis ( Prose Excerpt Assistant )
  * Updated as of 2025
- * Sorted alphabetically by name
+ * Grouped by provider family and version progression
  */
 export const RECOMMENDED_MODELS = [
   {
@@ -117,14 +137,24 @@ export const RECOMMENDED_MODELS = [
     description: 'A highly popular favorite known for its exceptional balance of lyrical prose and nuanced reasoning. Great for style matching.'
   },
   {
+    id: 'anthropic/claude-opus-4.1',
+    name: 'Claude Opus 4.1',
+    description: 'The creative heavyweight. Unequalled nuance and depth in storytelling; writes with a distinctive, sophisticated voice.'
+  },
+  {
     id: 'anthropic/claude-haiku-4.5',
     name: 'Claude Haiku 4.5',
     description: 'Anthropic\'s fastest efficient model. Perfect for quick grammar checks, style flag detection, and word frequency analysis.'
   },
   {
-    id: 'anthropic/claude-opus-4.1',
-    name: 'Claude Opus 4.1',
-    description: 'The creative heavyweight. Unequalled nuance and depth in storytelling; writes with a distinctive, sophisticated voice.'
+    id: 'anthropic/claude-sonnet-4.5',
+    name: 'Claude Sonnet 4.5',
+    description: 'Top-tier powerhouse. Exceptional at natural prose, deep subtext, and complex narrative construction. (Recommended)'
+  },
+  {
+    id: 'anthropic/claude-sonnet-4.6',
+    name: 'Claude Sonnet 4.6',
+    description: 'Most capable Sonnet generation with improved coding, reasoning consistency, and 1M-context readiness for long workflows.'
   },
   {
     id: 'anthropic/claude-opus-4.5',
@@ -135,11 +165,6 @@ export const RECOMMENDED_MODELS = [
     id: 'anthropic/claude-opus-4.6',
     name: 'Claude Opus 4.6',
     description: 'Anthropic\'s strongest model for sustained knowledge work. Exceptional coherence across long outputs and extended sessions. Near-production-ready prose in a single pass with deep contextual understanding.'
-  },
-  {
-    id: 'anthropic/claude-sonnet-4.5',
-    name: 'Claude Sonnet 4.5',
-    description: 'Top-tier powerhouse. Exceptional at natural prose, deep subtext, and complex narrative construction. (Recommended)'
   },
   {
     id: 'deepcogito/cogito-v2.1-671b',
@@ -230,6 +255,21 @@ export const RECOMMENDED_MODELS = [
     id: 'openai/gpt-5.2-pro',
     name: 'GPT-5.2 Pro',
     description: '$$$ OpenAI\'s most advanced model (~6x Opus price). Major improvements in agentic coding and long context over GPT-5 Pro. Optimized for step-by-step reasoning, reduced hallucination/sycophancy, and accuracy in high-stakes use cases.'
+  },
+  {
+    id: 'openai/gpt-5.3-chat',
+    name: 'GPT-5.3 Chat',
+    description: 'Newest ChatGPT-style conversational model with improved everyday helpfulness, smoother responses, and fewer unnecessary refusals.'
+  },
+  {
+    id: 'openai/gpt-5.4',
+    name: 'GPT-5.4',
+    description: 'OpenAI\'s latest frontier model, unifying GPT and Codex strengths with stronger coding, document reasoning, and tool-use performance.'
+  },
+  {
+    id: 'openai/gpt-5.4-pro',
+    name: 'GPT-5.4 Pro',
+    description: '$$$ Highest-capability GPT-5.4 variant for difficult, high-stakes work that needs deeper reasoning and maximum reliability.'
   },
   {
     id: 'x-ai/grok-4',
