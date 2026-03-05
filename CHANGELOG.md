@@ -2,6 +2,25 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.9.0] - 2026-03-05
+
+### Added
+
+- **Placeholders Focus Tool**: New assistant focus for finding and revising placeholder words, vague gestures, and generic descriptive stand-ins in prose
+
+### Changed
+
+- **Gestures Focus Tool**: Reframed the guidance toward choreographic events and scene-level physical action choices
+- **Model Catalog and Defaults**: Refreshed model ordering, Gemini category mapping, and scoped default model selections
+- **Release Workflows**: Added Codex prompt workflows for PR approval and VSCE release steps
+
+### Technical Details
+
+- PR: [#55](https://github.com/okeylanders/prose-minion-vscode/pull/55)
+- Updated writing tools prompt assets, model settings hooks/tests, and analysis message wiring
+
+---
+
 ## [1.8.0] - 2026-02-11
 
 ### Added

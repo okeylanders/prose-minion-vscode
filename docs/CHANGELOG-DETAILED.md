@@ -5,6 +5,64 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-03-05
+
+### Overview
+
+Minor release adding the **Placeholders** writing tool, revising the **Gestures** focus into a more choreography-aware assistant, and refreshing **model catalog/default selection wiring** across the extension.
+
+**PR:** [#55](https://github.com/okeylanders/prose-minion-vscode/pull/55)
+**Branch:** `feat/assistant-tools-gesture-placeholders`
+
+---
+
+### Added
+
+#### Placeholders Focus Tool
+
+New AI-powered writing tool for identifying placeholder phrasing and generic stand-ins that weaken specificity in prose.
+
+**Files:**
+
+- `resources/system-prompts/writing-tools-assistant/focus/placeholders.md` - New Placeholders prompt
+- `src/tools/assist/writingToolsAssistant.ts` - Added Placeholders tool registration and orchestration
+- `src/shared/types/messages/analysis.ts` - Added analysis message support for the new focus
+- `src/application/handlers/domain/AnalysisHandler.ts` - Added handler wiring for Placeholders requests
+- `src/presentation/webview/components/tabs/AnalysisTab.tsx` - Exposed the tool in the analysis UI
+
+### Changed
+
+#### Gestures Focus Rework
+
+Updated the Gestures prompt and assistant behavior to emphasize choreographic events, physical sequencing, and scene-level movement choices instead of narrower gesture replacement guidance.
+
+**Files:**
+
+- `resources/system-prompts/writing-tools-assistant/focus/gestures.md` - Reworked prompt guidance
+- `src/tools/assist/writingToolsAssistant.ts` - Updated focus tool behavior
+
+#### Model Catalog and Defaults
+
+Refreshed available model metadata, Gemini category mapping, and default scoped model selections so the UI and backend stay aligned.
+
+**Files:**
+
+- `src/infrastructure/api/providers/OpenRouterModels.ts` - Updated category/recommended model catalog
+- `src/presentation/webview/hooks/domain/useModelsSettings.ts` - Synced default selections
+- `src/__tests__/presentation/webview/hooks/domain/useModelsSettings.test.ts` - Updated model settings coverage
+- `docs/RECOMMENDED_MODELS.md` - Refreshed recommended model documentation
+
+#### Codex Release Workflows
+
+Added local Codex workflow prompts for PR approval and VSCE release operations.
+
+**Files:**
+
+- `.ai/codex/prompts/pr-approved.md`
+- `.ai/codex/prompts/vsce-release.md`
+
+---
+
 ## [1.8.0] - 2026-02-11
 
 ### Overview

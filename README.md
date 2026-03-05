@@ -12,6 +12,18 @@
 
 ---
 
+## 🎉 What's New in v1.9.0
+
+> **🧩 Placeholders Focus Tool** - New assistant focus for catching placeholder words, generic stand-ins, and vague descriptive shortcuts in your prose.
+>
+> **🏃 Gestures Rework** - The Gestures focus now leans into choreographic events and scene-level physical action choices.
+>
+> **🤖 Model Catalog Refresh** - Updated model ordering, Gemini category mappings, and default scoped model selections.
+>
+> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
+
+---
+
 ## 🎉 What's New in v1.8.0
 
 > **🎯 Five New Focus Writing Tools** - Decision Points, Show & Tell, Gestures, Choreography, and Stock & Signature. Analyze character decisions, prose balance, body language, spatial movement, and cognitive economy in your scenes.
