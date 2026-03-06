@@ -115,13 +115,15 @@ Respond in markdown only with the following sections, preserving the icons and h
 11. 🌐 **Translations & Cognates** — Key equivalents in major languages with nuance notes.
 12. ⚠️ **Usage Watchpoints** — Pitfalls, cliché warnings, or ambiguity flags.
 13. 🧭 **Semantic Gradient** — Ordered ladder of near-synonyms illustrating intensity/nuance.
-14. 🧠 **AI Advisory Notes** — Call out any sections that rely on model inference or may need verification.
+14. Special Focus — When context or author notes are provided, add a dedicated markdown section titled "## **Special Focus: [brief context label]**" that directly answers the user's contextual question or use case with targeted guidance, examples, and if helpful a recommended layering or comparison.
+15. 🧠 **AI Advisory Notes** — Call out any sections that rely on model inference or may need verification.
 
 ### Additional Guidelines
 - Stay factual where data is known; clearly label speculative guidance.
 - Prefer bullet lists and tables for readability.
 - Adapt the richness of synonyms/antonyms to the word’s versatility.
 - Reference genre applications whenever relevant.
+- Treat optional context as a concrete writing question, not just background color.
 - Never include system-level commentary or raw XML tags in the final output.`;
   }
 }

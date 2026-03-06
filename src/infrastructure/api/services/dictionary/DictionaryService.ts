@@ -58,6 +58,7 @@ const DICTIONARY_BLOCKS = [
   'translations-cognates',
   'usage-watchpoints',
   'semantic-gradient',
+  'special-focus',
   'ai-advisory-notes'
 ] as const;
 
@@ -459,6 +460,10 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
       lines.push('', 'Context (use to tailor examples and usage notes):', context.trim());
     }
 
+    lines.push(
+      '',
+      'If context is provided, generate a dedicated "Special Focus" section that directly answers the writer\'s contextual question or use case.'
+    );
     lines.push('', 'Output ONLY the section content as specified in the block instructions.');
 
     return lines.join('\n');

@@ -108,6 +108,11 @@ To compress or crush something with force, producing a sharp, brittle sound; to 
 # 🧭 Semantic Gradient  
 pressed → compressed → squeezed → crushed → **crunched** → pulverized → shattered → obliterated → annihilated
 
+## **Special Focus: Percussive Winter Footfall**
+- For a soundscape built around boots on frozen grass or leaves, *crunched* works best when you want brittle compression plus audible texture in one word.
+- If you want a lighter, more scattered aftermath, pair it with *crackled* or *crisped* in the surrounding sentence rather than replacing it outright.
+- Example layering: *The frosted verge crunched under their boots, then crackled in small, splintering protests behind them.*
+
 # 🧠 AI Advisory Notes  
 - Onomatopoetic origin is well-attested.  
 - Japanese equivalents simplified; verify nuance when stakes are high.  
