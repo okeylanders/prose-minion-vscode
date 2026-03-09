@@ -2,6 +2,23 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.10.0] - 2026-03-09
+
+### Added
+
+- **Dictionary Special Focus**: Dictionary lookups now add a dedicated Special Focus section when context or author notes are supplied, making the output respond directly to the writer's immediate use case.
+
+### Changed
+
+- **Fast Dictionary Prompt Set**: Added a Special Focus block and shifted the AI Advisory Notes block to keep the parallel dictionary output aligned with the richer contextual response.
+
+### Technical Details
+
+- PR: [#56](https://github.com/okeylanders/prose-minion-vscode/pull/56)
+- Updated dictionary prompts, examples, service wiring, and test coverage for context-aware dictionary output
+
+---
+
 ## [1.9.0] - 2026-03-05
 
 ### Added

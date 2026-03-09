@@ -12,6 +12,16 @@
 
 ---
 
+## 🎉 What's New in v1.10.0
+
+> **🎯 Dictionary Special Focus** - Dictionary lookups now add a dedicated Special Focus section when you supply context or author notes, so the response can address your exact scene or phrasing problem.
+>
+> **⚡ Faster Context-Aware Dictionary Output** - The fast dictionary prompt set now includes a focused contextual block so parallel generation stays aligned with the richer standard lookup behavior.
+>
+> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
+
+---
+
 ## 🎉 What's New in v1.9.0
 
 > **🧩 Placeholders Focus Tool** - New assistant focus for catching placeholder words, generic stand-ins, and vague descriptive shortcuts in your prose.

@@ -5,6 +5,48 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2026-03-09
+
+### Overview
+
+Minor release adding a **Dictionary Special Focus** section that turns optional context or author notes into a targeted, explicit response block in both standard and fast dictionary generation paths.
+
+**PR:** [#56](https://github.com/okeylanders/prose-minion-vscode/pull/56)
+**Branch:** `feature/dictionary-special-focus`
+
+---
+
+### Added
+
+#### Dictionary Special Focus Section
+
+Dictionary output now includes a dedicated `Special Focus` section when the user supplies contextual excerpt text or author notes. This section is meant to answer the concrete writing situation instead of treating context as passive background.
+
+**Files:**
+
+- `resources/system-prompts/dictionary-fast/14-special-focus-block.md` - New block-specific prompt for targeted context responses
+- `resources/system-prompts/dictionary-utility/00-dictionary-utility.md` - Output contract updated to require Special Focus when context is present
+- `resources/system-prompts/dictionary-utility/01-dictionary-example.md` - Added example coverage for the new section
+- `src/tools/utility/dictionaryUtility.ts` - Prompt input structure updated for contextual focus handling
+- `src/infrastructure/api/services/dictionary/DictionaryService.ts` - Service path updated for the richer dictionary output
+
+### Changed
+
+#### Fast Dictionary Block Ordering
+
+Renamed the advisory block path from `14-ai-advisory-notes-block.md` to `15-ai-advisory-notes-block.md` so the new Special Focus block can occupy slot 14 without leaving numbering gaps in the prompt set.
+
+**Files:**
+
+- `resources/system-prompts/dictionary-fast/15-ai-advisory-notes-block.md`
+
+### Tests
+
+- `src/__tests__/infrastructure/api/services/dictionary/DictionaryService.test.ts` - Added service-level coverage for contextual dictionary behavior
+- `src/__tests__/tools/utility/dictionaryUtility.test.ts` - Added utility-level coverage for prompt construction and contextual output contract
+
+---
+
 ## [1.9.0] - 2026-03-05
 
 ### Overview
