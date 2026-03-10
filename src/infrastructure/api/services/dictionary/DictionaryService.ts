@@ -359,7 +359,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
       const systemMessage = `${baseInstructions}\n\n---\n\n${blockPrompt}`;
 
       // Build user message
-      const userMessage = this.buildBlockUserMessage(word, context);
+      const userMessage = this.buildBlockUserMessage(blockName, word, context);
 
       this.outputChannel?.appendLine(`[DictionaryService] Generating block: ${blockName}`);
 
@@ -395,7 +395,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         this.outputChannel?.appendLine(`[DictionaryService] Retrying block "${blockName}"...`);
         const blockPrompt = await this.loadBlockPrompt(`${paddedNumber}-${blockName}-block`);
         const systemMessage = `${baseInstructions}\n\n---\n\n${blockPrompt}`;
-        const userMessage = this.buildBlockUserMessage(word, context);
+        const userMessage = this.buildBlockUserMessage(blockName, word, context);
 
         const result = await orchestrator.executeWithoutCapabilities(
           `dictionary-fast-${blockName}-retry`,
@@ -449,21 +449,27 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
   /**
    * Build user message for block generation
    */
-  private buildBlockUserMessage(word: string, context?: string): string {
+  private buildBlockUserMessage(blockName: DictionaryBlockName, word: string, context?: string): string {
     const lines = [
       `Generate the dictionary section for the following word:`,
       '',
-      `Word: ${word.trim()}`
+      `Word: ${word.trim()}`,
+      `Requested block: ${blockName}`
     ];
 
     if (context?.trim()) {
       lines.push('', 'Context (use to tailor examples and usage notes):', context.trim());
     }
 
-    lines.push(
-      '',
-      'If context is provided, generate a dedicated "Special Focus" section that directly answers the writer\'s contextual question or use case.'
-    );
+    if (blockName === 'special-focus') {
+      lines.push(
+        '',
+        'Use the provided context to generate the dedicated "Special Focus" section and answer the writer\'s contextual question or use case directly.'
+      );
+    } else {
+      lines.push('', 'Do NOT generate a "Special Focus" section in this block.');
+    }
+
     lines.push('', 'Output ONLY the section content as specified in the block instructions.');
 
     return lines.join('\n');
@@ -512,7 +518,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
           partialFailures.push(blockName);
         } else if (result.content.trim()) {
           successCount++;
-          orderedContent.push(result.content.trim());
+          orderedContent.push(this.normalizeBlockContent(blockName, result.content));
         }
       }
     }
@@ -559,5 +565,19 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     if (this.statusEmitter) {
       this.statusEmitter(message, progress, tickerMessage);
     }
+  }
+
+  /**
+   * Defensive cleanup for block spillover when the model ignores block boundaries.
+   */
+  private normalizeBlockContent(blockName: DictionaryBlockName, content: string): string {
+    const trimmed = content.trim();
+
+    if (blockName === 'special-focus') {
+      return trimmed;
+    }
+
+    const specialFocusHeader = /(?:^|\n)## \*\*Special Focus:[\s\S]*$/i;
+    return trimmed.replace(specialFocusHeader, '').trim();
   }
 }
