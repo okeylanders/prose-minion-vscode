@@ -5,6 +5,36 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.1] - 2026-03-10
+
+### Overview
+
+Patch release fixing a regression in fast dictionary fan-out where context-aware runs could emit the `Special Focus` section multiple times instead of only once.
+
+**PR:** [#57](https://github.com/okeylanders/prose-minion-vscode/pull/57)
+**Branch:** `sprint/dictionary-fast-special-focus-fix`
+
+---
+
+### Fixed
+
+#### Fast Dictionary Special Focus Duplication
+
+- **Issue**: Every parallel dictionary block received a user instruction telling it to generate a `Special Focus` section whenever context was present, so multiple blocks could return duplicate focus sections.
+- **Fix**: Scoped the runtime user message so only the `special-focus` block is allowed to generate that section, and explicitly forbade it for all other blocks.
+- **Impact**: Fast dictionary output now produces a single context-specific `Special Focus` section instead of repeating it across the assembled entry.
+- **Commit**: `4d3e5a0`
+
+**Files:**
+
+- `src/infrastructure/api/services/dictionary/DictionaryService.ts` - Scoped block-specific user instructions and added content normalization for stray focus output
+
+### Tests
+
+- `src/__tests__/infrastructure/api/services/dictionary/DictionaryService.test.ts` - Added regression coverage for prompt scoping and duplicate-section stripping
+
+---
+
 ## [1.10.0] - 2026-03-09
 
 ### Overview

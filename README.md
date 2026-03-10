@@ -12,6 +12,16 @@
 
 ---
 
+## 🎉 What's New in v1.10.1
+
+> **🩹 Fast Dictionary Fix** - Batch fan-out dictionary lookups no longer repeat the `Special Focus` section across multiple blocks when you provide context.
+>
+> **🧱 Assembly Guardrails** - Fast dictionary assembly now strips stray `Special Focus` output from non-focus blocks before combining the final entry.
+>
+> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
+
+---
+
 ## 🎉 What's New in v1.10.0
 
 > **🎯 Dictionary Special Focus** - Dictionary lookups now add a dedicated Special Focus section when you supply context or author notes, so the response can address your exact scene or phrasing problem.

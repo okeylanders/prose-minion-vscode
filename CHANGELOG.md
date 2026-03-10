@@ -2,6 +2,23 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.10.1] - 2026-03-10
+
+### Fixed
+
+- **Fast Dictionary Special Focus Duplication**: Batch fan-out dictionary generation now keeps the `Special Focus` section confined to its dedicated block instead of repeating it across multiple sections when context is provided.
+
+### Changed
+
+- **Fast Dictionary Assembly Guardrails**: Added defensive cleanup so stray `Special Focus` output from non-focus blocks is removed before the final dictionary entry is assembled.
+
+### Technical Details
+
+- PR: [#57](https://github.com/okeylanders/prose-minion-vscode/pull/57)
+- Tightened fast dictionary block prompting and added regression coverage for duplicate-section prevention
+
+---
+
 ## [1.10.0] - 2026-03-09
 
 ### Added
