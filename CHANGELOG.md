@@ -21,6 +21,8 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
 ### Technical Details
 
 - Verified all curated model IDs against the current OpenRouter model API.
+- Added focused coverage for word-frequency and text-trimming utilities.
+- Cleared high/critical npm audit findings with a non-breaking lockfile dependency refresh; remaining advisories are low-severity test-environment transitive dependencies.
 - Updated package metadata for v1.10.2.
 
 ---

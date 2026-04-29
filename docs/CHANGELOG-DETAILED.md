@@ -89,21 +89,45 @@ The webview model settings hook now uses the same dictionary default as `package
 
 #### Release Metadata
 
-Updated package metadata and release documentation for v1.10.2.
+Updated package metadata, release documentation, and the extension Output Channel version banner for v1.10.2.
 
 **Files:**
 
 - `package.json`
 - `package-lock.json`
+- `src/extension.ts`
 - `README.md`
 - `CHANGELOG.md`
 - `docs/CHANGELOG-DETAILED.md`
 
+#### Release Validation Hardening
+
+Added focused tests for utility code that is included in global coverage thresholds, restoring the release coverage gate without lowering thresholds.
+
+**Files:**
+
+- `src/__tests__/tools/measure/wordFrequency/index.test.ts` - Added direct coverage for unique-word extraction, optional output sections, n-grams, histograms, and lemmas
+- `src/__tests__/utils/textUtils.test.ts` - Added direct coverage for word counting and word-limit trimming behavior
+
+#### Audit Cleanup
+
+Ran `npm audit fix --package-lock-only --registry=https://registry.npmjs.org` and synced dependencies with `npm install --registry=https://registry.npmjs.org`.
+
+**Result:**
+
+- Cleared high/critical audit findings from dev/build/test dependency paths
+- Remaining advisories: 4 low-severity transitive advisories under `jest-environment-jsdom`; npm requires a breaking major upgrade to address them
+
+**Files:**
+
+- `package-lock.json`
+
 ### Tests
 
 - Verified all curated model IDs against `https://openrouter.ai/api/v1/models`.
-- `npm run typecheck`
-- `npm test`
+- `npm run test:coverage` - 296 tests passing; 49.5% statements, 33.27% branches, 52.7% functions, 48.46% lines
+- `npm audit --audit-level=high --registry=https://registry.npmjs.org` - passes; only low-severity advisories remain
+- `npm run build` - passes; webpack reports existing webview bundle-size warnings
 
 ---
 
