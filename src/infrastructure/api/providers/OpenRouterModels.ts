@@ -20,7 +20,7 @@ export interface OpenRouterModelsResponse {
 
 /**
  * Curated list of recommended models for prose analysis ( Prose Excerpt Assistant )
- * Updated as of 2025
+ * Updated as of 2026
  * Grouped by provider family and version progression
  */
 /**
@@ -54,6 +54,16 @@ export const CATEGORY_MODELS = [
     description: 'Anthropic\'s strongest model for complex agentic workflows and extended sessions'
   },
   {
+    id: 'openai/gpt-5.4-mini',
+    name: 'GPT-5.4 Mini',
+    description: 'Cost-efficient OpenAI model for structured category matching and high-throughput utility tasks'
+  },
+  {
+    id: 'openai/gpt-5.4-nano',
+    name: 'GPT-5.4 Nano',
+    description: 'Fast, low-cost OpenAI model for lightweight category matching'
+  },
+  {
     id: 'google/gemini-2.5-flash',
     name: 'Gemini 2.5 Flash',
     description: 'Google\'s fast model'
@@ -72,6 +82,26 @@ export const CATEGORY_MODELS = [
     id: 'google/gemini-3.1-pro-preview',
     name: 'Gemini 3.1 Pro Preview',
     description: 'Google\'s flagship frontier model'
+  },
+  {
+    id: 'google/gemini-3.1-flash-lite-preview',
+    name: 'Gemini 3.1 Flash Lite Preview',
+    description: 'High-efficiency Gemini model for large category lists and high-volume matching'
+  },
+  {
+    id: 'deepseek/deepseek-v4-flash',
+    name: 'DeepSeek V4 Flash',
+    description: 'Low-cost 1M-context model for fast category matching over larger inputs'
+  },
+  {
+    id: 'qwen/qwen3.6-flash',
+    name: 'Qwen3.6 Flash',
+    description: 'Fast 1M-context model for inexpensive category search and utility tasks'
+  },
+  {
+    id: 'mistralai/mistral-small-2603',
+    name: 'Mistral Small 4',
+    description: 'Current low-cost Mistral model with strong general instruction following'
   },
   {
     id: 'openai/gpt-5.1-chat',
@@ -127,7 +157,7 @@ export const CATEGORY_MODELS = [
 
 /**
  * Curated list of recommended models for prose analysis ( Prose Excerpt Assistant )
- * Updated as of 2025
+ * Updated as of 2026
  * Grouped by provider family and version progression
  */
 export const RECOMMENDED_MODELS = [
@@ -167,6 +197,11 @@ export const RECOMMENDED_MODELS = [
     description: 'Anthropic\'s strongest model for sustained knowledge work. Exceptional coherence across long outputs and extended sessions. Near-production-ready prose in a single pass with deep contextual understanding.'
   },
   {
+    id: 'anthropic/claude-opus-4.7',
+    name: 'Claude Opus 4.7',
+    description: 'Anthropic\'s latest Opus model for long-running reasoning, sustained context, and premium prose analysis workflows.'
+  },
+  {
     id: 'deepcogito/cogito-v2.1-671b',
     name: 'Cogito v2.1 671B',
     description: 'One of the strongest open MoE models globally. Trained via self-play RL for state-of-the-art instruction following, coding, longer queries, and creative writing.'
@@ -187,6 +222,16 @@ export const RECOMMENDED_MODELS = [
     description: 'Experimental sparse attention model. Good for long-context chapter analysis.'
   },
   {
+    id: 'deepseek/deepseek-v4-pro',
+    name: 'DeepSeek V4 Pro',
+    description: 'Large MoE model with 1M context. Strong value option for deep structural critique, long manuscript context, and reasoning-heavy writing tasks.'
+  },
+  {
+    id: 'deepseek/deepseek-v4-flash',
+    name: 'DeepSeek V4 Flash',
+    description: 'Efficiency-focused 1M-context model. Good for fast dictionary work, rewrites, and budget long-context analysis.'
+  },
+  {
     id: 'google/gemini-2.5-flash',
     name: 'Gemini 2.5 Flash',
     description: 'High-speed workhorse. Good for rapid critiques and checking large batches of text.'
@@ -205,6 +250,11 @@ export const RECOMMENDED_MODELS = [
     id: 'google/gemini-3.1-pro-preview',
     name: 'Gemini 3.1 Pro Preview',
     description: 'A master of scale and style. Excellent at weaving complex plot threads into cohesive, engaging prose over massive contexts (1M+).'
+  },
+  {
+    id: 'google/gemini-3.1-flash-lite-preview',
+    name: 'Gemini 3.1 Flash Lite Preview',
+    description: 'High-efficiency Gemini model with 1M context. Useful for quick dictionary work, large batches, and low-cost category-style reasoning.'
   },
   {
     id: 'z-ai/glm-4.5',
@@ -272,6 +322,21 @@ export const RECOMMENDED_MODELS = [
     description: '$$$ Highest-capability GPT-5.4 variant for difficult, high-stakes work that needs deeper reasoning and maximum reliability.'
   },
   {
+    id: 'openai/gpt-5.4-mini',
+    name: 'GPT-5.4 Mini',
+    description: 'Efficient GPT-5.4 family model. Good for dictionary rewrites, style alternatives, and responsive utility workflows.'
+  },
+  {
+    id: 'openai/gpt-5.4-nano',
+    name: 'GPT-5.4 Nano',
+    description: 'Fastest GPT-5.4 family option. Best for low-cost dictionary lookups and short rewrite suggestions.'
+  },
+  {
+    id: 'openai/gpt-5.5',
+    name: 'GPT-5.5',
+    description: 'OpenAI frontier model with 1M+ context and stronger reasoning. Premium option for complex prose analysis, context-heavy rewrites, and chapter-scale work.'
+  },
+  {
     id: 'x-ai/grok-4',
     name: 'Grok 4',
     description: 'Deep reasoning model with 256k context. Strong at maintaining consistency across long narratives.'
@@ -302,14 +367,19 @@ export const RECOMMENDED_MODELS = [
     description: 'Reasoning-optimized. Good for deep-dives into plot holes and character motivations.'
   },
   {
+    id: 'moonshotai/kimi-k2.6',
+    name: 'Kimi K2.6',
+    description: 'Long-horizon reasoning model with strong multimodal and agentic performance. Good for extended writing workflows and context-heavy critique.'
+  },
+  {
     id: 'mistralai/mistral-large-2411',
     name: 'Mistral Large 2411',
     description: 'Flagship open-weight class. Excellent European-style prose quality and multilingual support.'
   },
   {
-    id: 'mistralai/magistral-medium-2506',
-    name: 'Mistral Magistral Medium',
-    description: 'Mistral\'s first dedicated reasoning model. Great for deeper structural critiques.'
+    id: 'mistralai/mistral-small-2603',
+    name: 'Mistral Small 4',
+    description: 'Current low-cost Mistral model. Good for quick rewrite alternatives, dictionary utilities, and general prose assistance.'
   },
   {
     id: 'nousresearch/hermes-4-405b',
@@ -327,14 +397,24 @@ export const RECOMMENDED_MODELS = [
     description: 'Top-tier open model capability. Strong reasoning and creative writing performance.'
   },
   {
+    id: 'qwen/qwen3.6-plus',
+    name: 'Qwen3.6 Plus',
+    description: 'Cost-efficient 1M-context model. Strong candidate for long-context prose analysis, dictionary rewrites, and large context packs.'
+  },
+  {
+    id: 'qwen/qwen3.6-flash',
+    name: 'Qwen3.6 Flash',
+    description: 'Fast 1M-context Qwen model. Good for inexpensive utility tasks, dictionary alternatives, and large batch checks.'
+  },
+  {
     id: 'sao10k/l3.3-euryale-70b',
     name: 'Sao10K Euryale 70B',
     description: 'Roleplay specialist. Creative, non-restrictive, and great for unique character voices.'
   },
   {
-    id: 'thedrummer/anubis-70b-v1.1',
-    name: 'TheDrummer: Anubis 70B',
-    description: 'Unaligned creative writer. Excels at visceral, "human" prose and gritty storytelling.'
+    id: 'aion-labs/aion-2.0',
+    name: 'Aion 2.0',
+    description: 'Storytelling-focused model optimized for immersive roleplay, narrative tension, and character-driven rewrite exploration.'
   },
   {
     id: 'thedrummer/rocinante-12b',

@@ -2,6 +2,29 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.10.2] - 2026-04-29
+
+### Added
+
+- **OpenRouter Model Refresh**: Added recent OpenRouter models to the curated assistant/dictionary/context list, including Claude Opus 4.7, GPT-5.5, DeepSeek V4 Pro/Flash, Qwen 3.6 Plus/Flash, Kimi K2.6, Gemini 3.1 Flash Lite, GPT-5.4 Mini/Nano, Mistral Small 4, and Aion 2.0.
+- **Aion 2.0 Storytelling Option**: Added `aion-labs/aion-2.0` as an experimental storytelling-focused model worth trying for narrative tension, character context, and rewrite exploration.
+- **Category Search Options**: Added lower-cost category search choices including GPT-5.4 Mini/Nano, Gemini 3.1 Flash Lite, DeepSeek V4 Flash, Qwen 3.6 Flash, and Mistral Small 4.
+
+### Fixed
+
+- **Dictionary Default Alignment**: Aligned the webview model settings default with `package.json` so dictionary defaults consistently resolve to `anthropic/claude-haiku-4.5`.
+
+### Removed
+
+- **Unavailable OpenRouter IDs**: Removed `mistralai/magistral-medium-2506` and `thedrummer/anubis-70b-v1.1` from the curated model list because they are no longer returned by OpenRouter.
+
+### Technical Details
+
+- Verified all curated model IDs against the current OpenRouter model API.
+- Updated package metadata for v1.10.2.
+
+---
+
 ## [1.10.1] - 2026-03-10
 
 ### Fixed

@@ -43,7 +43,7 @@ describe('useModelsSettings', () => {
 
       expect(result.current.settings).toEqual({
         assistantModel: 'anthropic/claude-sonnet-4.6',
-        dictionaryModel: 'anthropic/claude-sonnet-4.5',
+        dictionaryModel: 'anthropic/claude-haiku-4.5',
         contextModel: 'openai/gpt-5.4',
         categoryModel: 'anthropic/claude-sonnet-4.6',
         includeCraftGuides: true,
@@ -80,7 +80,7 @@ describe('useModelsSettings', () => {
 
       expect(result.current.settings).toEqual({
         assistantModel: 'anthropic/claude-3-5-sonnet',  // From persisted
-        dictionaryModel: 'anthropic/claude-sonnet-4.5', // Default
+        dictionaryModel: 'anthropic/claude-haiku-4.5',  // Default
         contextModel: 'openai/gpt-5.4',                 // Default
         categoryModel: 'anthropic/claude-sonnet-4.6',   // Default
         includeCraftGuides: true,                       // Default

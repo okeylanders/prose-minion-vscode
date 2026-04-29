@@ -5,6 +5,108 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.2] - 2026-04-29
+
+### Overview
+
+Patch release refreshing the curated OpenRouter model catalog for assistant, dictionary, context, and category search workflows. This release also removes two unavailable model IDs and fixes a frontend/backend default mismatch for the dictionary model setting.
+
+**PR:** None - direct chore release prep
+**Branch:** `main`
+
+---
+
+### Added
+
+#### OpenRouter Model Catalog Refresh
+
+The shared recommended model catalog now includes recent OpenRouter additions for the Assistant, Dictionary, and Context model selectors. Dictionary intentionally receives the heavier assistant-class additions as well, because dictionary workflows include contextual rewriting and alternative phrasing tasks.
+
+**Added recommended models:**
+
+- `anthropic/claude-opus-4.7` - premium long-context Opus option for sustained critique and reasoning
+- `openai/gpt-5.5` - premium OpenAI frontier option for complex prose and context-heavy rewrite work
+- `openai/gpt-5.4-mini` - efficient dictionary/rewrite and utility option
+- `openai/gpt-5.4-nano` - lightweight dictionary lookup and short rewrite option
+- `deepseek/deepseek-v4-pro` - 1M-context value option for structural critique and long-context analysis
+- `deepseek/deepseek-v4-flash` - low-cost 1M-context option for fast utility and category-style reasoning
+- `google/gemini-3.1-flash-lite-preview` - high-efficiency Gemini option for large batches and utility workflows
+- `moonshotai/kimi-k2.6` - long-horizon reasoning candidate for extended writing workflows
+- `mistralai/mistral-small-2603` - current low-cost Mistral option for utility and prose assistance
+- `qwen/qwen3.6-plus` - cost-efficient 1M-context option for long-context prose analysis
+- `qwen/qwen3.6-flash` - fast 1M-context option for inexpensive utility work
+- `aion-labs/aion-2.0` - storytelling-focused option for narrative tension, character context, and rewrite exploration
+
+**Files:**
+
+- `src/infrastructure/api/providers/OpenRouterModels.ts` - Added recommended model entries and descriptions
+
+#### Category Search Model Options
+
+Category Search now includes cheaper, current models that are better suited to structured matching and high-volume phrase/category work than the most expensive frontier models.
+
+**Added category models:**
+
+- `openai/gpt-5.4-mini`
+- `openai/gpt-5.4-nano`
+- `google/gemini-3.1-flash-lite-preview`
+- `deepseek/deepseek-v4-flash`
+- `qwen/qwen3.6-flash`
+- `mistralai/mistral-small-2603`
+
+**Files:**
+
+- `src/infrastructure/api/providers/OpenRouterModels.ts` - Added `CATEGORY_MODELS` entries
+- `package.json` - Updated `proseMinion.categoryModel` enum to match `CATEGORY_MODELS`
+
+### Removed
+
+#### Unavailable OpenRouter Models
+
+Removed curated IDs that are no longer returned by the OpenRouter model catalog.
+
+**Removed models:**
+
+- `mistralai/magistral-medium-2506`
+- `thedrummer/anubis-70b-v1.1`
+
+**Files:**
+
+- `src/infrastructure/api/providers/OpenRouterModels.ts`
+
+### Fixed
+
+#### Dictionary Model Default Alignment
+
+The webview model settings hook now uses the same dictionary default as `package.json`: `anthropic/claude-haiku-4.5`.
+
+**Files:**
+
+- `src/presentation/webview/hooks/domain/useModelsSettings.ts` - Aligned default dictionary model
+- `src/__tests__/presentation/webview/hooks/domain/useModelsSettings.test.ts` - Updated default expectations
+
+### Changed
+
+#### Release Metadata
+
+Updated package metadata and release documentation for v1.10.2.
+
+**Files:**
+
+- `package.json`
+- `package-lock.json`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/CHANGELOG-DETAILED.md`
+
+### Tests
+
+- Verified all curated model IDs against `https://openrouter.ai/api/v1/models`.
+- `npm run typecheck`
+- `npm test`
+
+---
+
 ## [1.10.1] - 2026-03-10
 
 ### Overview

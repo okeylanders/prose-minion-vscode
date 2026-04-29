@@ -12,6 +12,18 @@
 
 ---
 
+## 🎉 What's New in v1.10.2
+
+> **🤖 OpenRouter Model Refresh** - Updated the curated model catalog with recent OpenRouter additions for assistant, dictionary, context, and category search workflows.
+>
+> **🧠 Aion 2.0 Is Worth a Spin** - Added `aion-labs/aion-2.0`, a storytelling-focused model that is interesting for narrative tension, character context, and rewrite exploration.
+>
+> **🧹 Model List Cleanup** - Removed unavailable OpenRouter model IDs and aligned the webview dictionary default with the extension setting.
+>
+> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
+
+---
+
 ## 🎉 What's New in v1.10.1
 
 > **🩹 Fast Dictionary Fix** - Batch fan-out dictionary lookups no longer repeat the `Special Focus` section across multiple blocks when you provide context.
