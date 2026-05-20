@@ -54,6 +54,11 @@ export const CATEGORY_MODELS = [
     description: 'Anthropic\'s strongest model for complex agentic workflows and extended sessions'
   },
   {
+    id: 'anthropic/claude-opus-4.7-fast',
+    name: 'Claude Opus 4.7 Fast',
+    description: 'Lower-latency variant of Opus 4.7 for category search and high-throughput utility tasks'
+  },
+  {
     id: 'openai/gpt-5.4-mini',
     name: 'GPT-5.4 Mini',
     description: 'Cost-efficient OpenAI model for structured category matching and high-throughput utility tasks'
@@ -62,6 +67,11 @@ export const CATEGORY_MODELS = [
     id: 'openai/gpt-5.4-nano',
     name: 'GPT-5.4 Nano',
     description: 'Fast, low-cost OpenAI model for lightweight category matching'
+  },
+  {
+    id: 'openai/gpt-5.5-pro',
+    name: 'GPT-5.5 Pro',
+    description: 'Premium GPT-5.5 variant for high-accuracy category matching on difficult/ambiguous inputs'
   },
   {
     id: 'google/gemini-2.5-flash',
@@ -87,6 +97,11 @@ export const CATEGORY_MODELS = [
     id: 'google/gemini-3.1-flash-lite-preview',
     name: 'Gemini 3.1 Flash Lite Preview',
     description: 'High-efficiency Gemini model for large category lists and high-volume matching'
+  },
+  {
+    id: 'google/gemini-3.5-flash',
+    name: 'Gemini 3.5 Flash',
+    description: 'Latest Gemini 3.5 fast tier — strong reasoning at high throughput for large category lists'
   },
   {
     id: 'deepseek/deepseek-v4-flash',
@@ -153,6 +168,16 @@ export const CATEGORY_MODELS = [
     name: 'GLM 4.7',
     description: 'Z.AI\'s latest flagship model with enhanced programming and stable multi-step reasoning for complex agent tasks'
   },
+  {
+    id: 'z-ai/glm-4.7-flash',
+    name: 'GLM 4.7 Flash',
+    description: 'Fast variant of GLM 4.7 — low-latency category matching with the same reasoning lineage'
+  },
+  {
+    id: 'z-ai/glm-5.1',
+    name: 'GLM 5.1',
+    description: 'Z.AI\'s newest flagship for predictable structured matching with improved reliability'
+  },
 ];
 
 /**
@@ -161,11 +186,6 @@ export const CATEGORY_MODELS = [
  * Grouped by provider family and version progression
  */
 export const RECOMMENDED_MODELS = [
-  {
-    id: 'anthropic/claude-3.7-sonnet',
-    name: 'Claude 3.7 Sonnet',
-    description: 'A highly popular favorite known for its exceptional balance of lyrical prose and nuanced reasoning. Great for style matching.'
-  },
   {
     id: 'anthropic/claude-opus-4.1',
     name: 'Claude Opus 4.1',
@@ -197,9 +217,19 @@ export const RECOMMENDED_MODELS = [
     description: 'Anthropic\'s strongest model for sustained knowledge work. Exceptional coherence across long outputs and extended sessions. Near-production-ready prose in a single pass with deep contextual understanding.'
   },
   {
+    id: 'anthropic/claude-opus-4.6-fast',
+    name: 'Claude Opus 4.6 Fast',
+    description: 'Lower-latency Opus 4.6 variant. Near-Opus prose quality at throughput closer to Sonnet — good for iterative chapter passes.'
+  },
+  {
     id: 'anthropic/claude-opus-4.7',
     name: 'Claude Opus 4.7',
     description: 'Anthropic\'s latest Opus model for long-running reasoning, sustained context, and premium prose analysis workflows.'
+  },
+  {
+    id: 'anthropic/claude-opus-4.7-fast',
+    name: 'Claude Opus 4.7 Fast',
+    description: 'Fast-tier Opus 4.7. Premium prose reasoning with reduced latency for interactive editing and rapid critique loops.'
   },
   {
     id: 'deepcogito/cogito-v2.1-671b',
@@ -220,6 +250,16 @@ export const RECOMMENDED_MODELS = [
     id: 'deepseek/deepseek-v3.2-exp',
     name: 'DeepSeek V3.2 Exp',
     description: 'Experimental sparse attention model. Good for long-context chapter analysis.'
+  },
+  {
+    id: 'deepseek/deepseek-v3.2',
+    name: 'DeepSeek V3.2',
+    description: 'Stable V3.2 release. Sparse-attention long-context model suited to manuscript-scale critique and consistency checks.'
+  },
+  {
+    id: 'deepseek/deepseek-v3.2-speciale',
+    name: 'DeepSeek V3.2 Speciale',
+    description: 'V3.2 variant tuned for long-form creative tasks. Useful for extended narrative reasoning over large context windows.'
   },
   {
     id: 'deepseek/deepseek-v4-pro',
@@ -257,6 +297,16 @@ export const RECOMMENDED_MODELS = [
     description: 'High-efficiency Gemini model with 1M context. Useful for quick dictionary work, large batches, and low-cost category-style reasoning.'
   },
   {
+    id: 'google/gemini-3.1-flash-lite',
+    name: 'Gemini 3.1 Flash Lite',
+    description: 'Stable release of Flash Lite. Same 1M-context efficiency profile without preview-channel churn — good default for high-volume utility work.'
+  },
+  {
+    id: 'google/gemini-3.5-flash',
+    name: 'Gemini 3.5 Flash',
+    description: 'Latest Gemini fast tier. Stronger reasoning than 3-flash with high throughput — good for rapid prose critique and dictionary alternatives.'
+  },
+  {
     id: 'z-ai/glm-4.5',
     name: 'GLM 4.5',
     description: 'Strong agentic model. Good for multi-step editing workflows.'
@@ -270,6 +320,21 @@ export const RECOMMENDED_MODELS = [
     id: 'z-ai/glm-4.7',
     name: 'GLM 4.7',
     description: 'Z.AI\'s latest flagship model with enhanced programming capabilities and more stable multi-step reasoning/execution. Significant improvements in complex agent tasks with natural conversational experiences.'
+  },
+  {
+    id: 'z-ai/glm-4.7-flash',
+    name: 'GLM 4.7 Flash',
+    description: 'Fast variant of GLM 4.7. Lower-latency option for utility rewrites and quick critiques on the GLM 4.7 reasoning lineage.'
+  },
+  {
+    id: 'z-ai/glm-5',
+    name: 'GLM 5',
+    description: 'Major GLM version bump. Improved instruction following and creative coherence over GLM 4.7.'
+  },
+  {
+    id: 'z-ai/glm-5.1',
+    name: 'GLM 5.1',
+    description: 'Z.AI\'s newest flagship. Refines GLM 5 with stronger long-context reasoning and more reliable multi-step prose generation.'
   },
   {
     id: 'openai/gpt-4.1',
@@ -289,7 +354,12 @@ export const RECOMMENDED_MODELS = [
   {
     id: 'openai/gpt-5.1-codex',
     name: 'GPT-5.1 Codex',
-    description: 'Advanced coding specialist. Use for scripting or complex formatting tasks.'
+    description: 'Coding specialist. Use for scripting or complex formatting tasks.'
+  },
+  {
+    id: 'openai/gpt-5.1-codex-max',
+    name: 'GPT-5.1 Codex Max',
+    description: 'Premium GPT-5.1 Codex variant for advanced formatting scripts and heavier technical edit workflows.'
   },
   {
     id: 'openai/gpt-5.2',
@@ -302,6 +372,11 @@ export const RECOMMENDED_MODELS = [
     description: 'Fast, warmer conversational model with selective "thinking" on harder queries. Optimized for high-throughput interactive workloads where responsiveness matters. Better instruction following and stable short-form reasoning.'
   },
   {
+    id: 'openai/gpt-5.2-codex',
+    name: 'GPT-5.2 Codex',
+    description: 'GPT-5.2 Codex tier. Improved tool use and code reasoning over 5.1 Codex for technical scripting and structured-text tooling.'
+  },
+  {
     id: 'openai/gpt-5.2-pro',
     name: 'GPT-5.2 Pro',
     description: '$$$ OpenAI\'s most advanced model (~6x Opus price). Major improvements in agentic coding and long context over GPT-5 Pro. Optimized for step-by-step reasoning, reduced hallucination/sycophancy, and accuracy in high-stakes use cases.'
@@ -310,6 +385,11 @@ export const RECOMMENDED_MODELS = [
     id: 'openai/gpt-5.3-chat',
     name: 'GPT-5.3 Chat',
     description: 'Newest ChatGPT-style conversational model with improved everyday helpfulness, smoother responses, and fewer unnecessary refusals.'
+  },
+  {
+    id: 'openai/gpt-5.3-codex',
+    name: 'GPT-5.3 Codex',
+    description: 'Newest Codex variant. Strongest tool-use and structured-edit performance in the Codex line.'
   },
   {
     id: 'openai/gpt-5.4',
@@ -337,24 +417,24 @@ export const RECOMMENDED_MODELS = [
     description: 'OpenAI frontier model with 1M+ context and stronger reasoning. Premium option for complex prose analysis, context-heavy rewrites, and chapter-scale work.'
   },
   {
-    id: 'x-ai/grok-4',
-    name: 'Grok 4',
-    description: 'Deep reasoning model with 256k context. Strong at maintaining consistency across long narratives.'
+    id: 'openai/gpt-5.5-pro',
+    name: 'GPT-5.5 Pro',
+    description: '$$$ Premium GPT-5.5 variant for the deepest reasoning, longest context, and highest-stakes prose work.'
   },
   {
-    id: 'x-ai/grok-4-fast',
-    name: 'Grok 4 Fast',
-    description: 'Cost-efficient regular model. Good for quick iterations and drafting.'
+    id: 'x-ai/grok-4.20',
+    name: 'Grok 4.20',
+    description: 'xAI\'s current flagship. Strong long-context reasoning and consistent voice across extended narratives.'
   },
   {
-    id: 'x-ai/grok-4.1-fast',
-    name: 'Grok 4.1 Fast',
-    description: 'Latest agentic fast model. Excellent for tooling and automated text processing tasks.'
+    id: 'x-ai/grok-4.20-multi-agent',
+    name: 'Grok 4.20 Multi-Agent',
+    description: 'Multi-agent variant of Grok 4.20. Suited to tooling pipelines and agentic editing workflows.'
   },
   {
-    id: 'x-ai/grok-code-fast-1',
-    name: 'Grok Code Fast 1',
-    description: 'Fast coding specialist. Useful for technical formatting tools.'
+    id: 'x-ai/grok-4.3',
+    name: 'Grok 4.3',
+    description: 'Newest Grok deep-reasoning model. Premium tier for complex structural critique and consistency analysis.'
   },
   {
     id: 'moonshotai/kimi-k2-0905',
@@ -367,6 +447,11 @@ export const RECOMMENDED_MODELS = [
     description: 'Reasoning-optimized. Good for deep-dives into plot holes and character motivations.'
   },
   {
+    id: 'moonshotai/kimi-k2.5',
+    name: 'Kimi K2.5',
+    description: 'Mid-generation Kimi release. Sits between K2-0905 and K2.6 for cost/quality tradeoffs on long-context critique.'
+  },
+  {
     id: 'moonshotai/kimi-k2.6',
     name: 'Kimi K2.6',
     description: 'Long-horizon reasoning model with strong multimodal and agentic performance. Good for extended writing workflows and context-heavy critique.'
@@ -375,6 +460,16 @@ export const RECOMMENDED_MODELS = [
     id: 'mistralai/mistral-large-2411',
     name: 'Mistral Large 2411',
     description: 'Flagship open-weight class. Excellent European-style prose quality and multilingual support.'
+  },
+  {
+    id: 'mistralai/mistral-large-2512',
+    name: 'Mistral Large 2512',
+    description: 'Newest Mistral Large. Improved reasoning and instruction following over 2411 with strong multilingual prose.'
+  },
+  {
+    id: 'mistralai/mistral-medium-3.1',
+    name: 'Mistral Medium 3.1',
+    description: 'Mid-tier Mistral. Good balance between Small and Large for general prose assistance and structured edits.'
   },
   {
     id: 'mistralai/mistral-small-2603',
@@ -387,6 +482,11 @@ export const RECOMMENDED_MODELS = [
     description: 'Uncensored frontier model. Best for mature themes, gritty narratives, and avoiding "assistant voice".'
   },
   {
+    id: 'nousresearch/hermes-4-70b',
+    name: 'Nous Hermes 4 70B',
+    description: 'Smaller, cheaper Hermes 4. Same uncensored character handling at lower cost for mature-theme drafting.'
+  },
+  {
     id: 'qwen/qwen3-coder-plus',
     name: 'Qwen3 Coder Plus',
     description: 'Powerhouse coding agent. Use for advanced formatting scripts or technical edits.'
@@ -397,6 +497,11 @@ export const RECOMMENDED_MODELS = [
     description: 'Top-tier open model capability. Strong reasoning and creative writing performance.'
   },
   {
+    id: 'qwen/qwen3-max-thinking',
+    name: 'Qwen3 Max Thinking',
+    description: 'Thinking-optimized Qwen3 Max. Stronger structural reasoning for plot analysis and consistency review.'
+  },
+  {
     id: 'qwen/qwen3.6-plus',
     name: 'Qwen3.6 Plus',
     description: 'Cost-efficient 1M-context model. Strong candidate for long-context prose analysis, dictionary rewrites, and large context packs.'
@@ -405,6 +510,11 @@ export const RECOMMENDED_MODELS = [
     id: 'qwen/qwen3.6-flash',
     name: 'Qwen3.6 Flash',
     description: 'Fast 1M-context Qwen model. Good for inexpensive utility tasks, dictionary alternatives, and large batch checks.'
+  },
+  {
+    id: 'qwen/qwen3.6-max-preview',
+    name: 'Qwen3.6 Max Preview',
+    description: 'Top-tier Qwen 3.6 preview. Premium open-model option for deep prose critique with very long context.'
   },
   {
     id: 'sao10k/l3.3-euryale-70b',
@@ -422,9 +532,29 @@ export const RECOMMENDED_MODELS = [
     description: 'Storytelling specialist. Engaging narrative voice and varied vocabulary.'
   },
   {
+    id: 'thedrummer/cydonia-24b-v4.1',
+    name: 'TheDrummer: Cydonia 24B v4.1',
+    description: 'Mid-size creative-writing specialist. Stronger structural coherence than Rocinante with the same narrative flair.'
+  },
+  {
+    id: 'thedrummer/skyfall-36b-v2',
+    name: 'TheDrummer: Skyfall 36B v2',
+    description: 'Larger TheDrummer model. Premium creative-writing tier for distinctive voice and longer-form fiction.'
+  },
+  {
     id: 'arcee-ai/virtuoso-large',
     name: 'Virtuoso Large',
     description: 'Cross-domain reasoning. Good balance of creative writing and enterprise-grade analysis.'
+  },
+  {
+    id: 'arcee-ai/maestro-reasoning',
+    name: 'Arcee Maestro Reasoning',
+    description: 'Reasoning specialist from Arcee. Good for structural critique, plot logic, and pacing analysis.'
+  },
+  {
+    id: 'arcee-ai/trinity-large-thinking',
+    name: 'Arcee Trinity Large Thinking',
+    description: 'Arcee\'s top thinking-tier model. Deep multi-step reasoning for complex narrative analysis.'
   }
 ];
 
