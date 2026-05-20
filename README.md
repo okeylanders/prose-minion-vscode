@@ -12,6 +12,18 @@
 
 ---
 
+## 🎉 What's New in v1.10.3
+
+> **🤖 OpenRouter Catalog Audit** - Curated model list audited against the live OpenRouter API. Added 26 new prose-relevant models including Claude Opus 4.6/4.7 Fast, GPT-5.5 Pro, Gemini 3.5 Flash, GLM 5/5.1, DeepSeek V3.2, Mistral Large 2512, Qwen3 Max Thinking, Kimi K2.5, Hermes 4 70B, Grok 4.20/4.3, and refreshed creative/reasoning SKUs from TheDrummer and Arcee.
+>
+> **🧰 Codex Family Update** - Added GPT-5.1 Codex Max, GPT-5.2 Codex, and GPT-5.3 Codex alongside the existing GPT-5.1 Codex.
+>
+> **🧹 Stale Model Cleanup** - Removed `claude-3.7-sonnet` and four retired Grok IDs that OpenRouter no longer serves.
+>
+> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
+
+---
+
 ## 🎉 What's New in v1.10.2
 
 > **🤖 OpenRouter Model Refresh** - Updated the curated model catalog with recent OpenRouter additions for assistant, dictionary, context, and category search workflows.

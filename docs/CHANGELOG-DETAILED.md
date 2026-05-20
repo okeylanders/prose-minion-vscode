@@ -5,6 +5,99 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.3] - 2026-05-20
+
+### Overview
+
+Patch release auditing the curated OpenRouter model catalog against the live `/models` endpoint. Removes five stale model IDs that OpenRouter no longer serves and adds 26 new prose-relevant models across Anthropic, OpenAI, Google, xAI, Z.AI, DeepSeek, Mistral, Qwen, Kimi, Hermes, TheDrummer, and Arcee.
+
+**PR:** None - direct chore release prep
+**Branch:** `main`
+
+---
+
+### Added
+
+#### OpenRouter Model Catalog Refresh
+
+Curated catalog audited end-to-end against the live OpenRouter `/models` response. All 26 newly-added IDs were verified to exist on OpenRouter before being added; all 5 removed IDs were verified missing from OpenRouter before being removed.
+
+**Added to `RECOMMENDED_MODELS` (high-value tier):**
+
+- `anthropic/claude-opus-4.6-fast` - Lower-latency Opus 4.6 variant
+- `anthropic/claude-opus-4.7-fast` - Fast-tier Opus 4.7
+- `openai/gpt-5.5-pro` - Premium GPT-5.5 variant for deepest reasoning
+- `google/gemini-3.5-flash` - Latest Gemini fast tier
+- `google/gemini-3.1-flash-lite` - Stable release of Flash Lite
+- `z-ai/glm-5` - Major GLM version bump
+- `z-ai/glm-5.1` - Z.AI's newest flagship
+- `z-ai/glm-4.7-flash` - Fast variant of GLM 4.7
+- `x-ai/grok-4.20` - Current Grok flagship (replaces removed `grok-4`)
+- `x-ai/grok-4.20-multi-agent` - Multi-agent Grok variant
+- `x-ai/grok-4.3` - Newest Grok deep-reasoning model
+
+**Added to `RECOMMENDED_MODELS` (medium-value tier):**
+
+- `deepseek/deepseek-v3.2` - Stable V3.2 release
+- `deepseek/deepseek-v3.2-speciale` - V3.2 long-form creative variant
+- `mistralai/mistral-large-2512` - Newer Mistral Large
+- `mistralai/mistral-medium-3.1` - Mid-tier Mistral
+- `qwen/qwen3-max-thinking` - Thinking-optimized Qwen3 Max
+- `qwen/qwen3.6-max-preview` - Top-tier Qwen 3.6 preview
+- `moonshotai/kimi-k2.5` - Mid-generation Kimi release
+- `nousresearch/hermes-4-70b` - Smaller/cheaper Hermes 4
+- `thedrummer/cydonia-24b-v4.1` - Mid-size creative-writing specialist
+- `thedrummer/skyfall-36b-v2` - Larger TheDrummer creative-writing model
+- `arcee-ai/maestro-reasoning` - Arcee reasoning specialist
+- `arcee-ai/trinity-large-thinking` - Arcee top thinking-tier model
+
+**Added to `RECOMMENDED_MODELS` (Codex family update):**
+
+- `openai/gpt-5.1-codex-max` - Premium GPT-5.1 Codex
+- `openai/gpt-5.2-codex` - GPT-5.2 Codex tier
+- `openai/gpt-5.3-codex` - Newest Codex variant
+
+**Added to `CATEGORY_MODELS` (non-thinking/predictable tier):**
+
+- `anthropic/claude-opus-4.7-fast`
+- `openai/gpt-5.5-pro`
+- `google/gemini-3.5-flash`
+- `z-ai/glm-4.7-flash`
+- `z-ai/glm-5.1`
+
+**Files:**
+
+- `src/infrastructure/api/providers/OpenRouterModels.ts` - Added 23 entries to `RECOMMENDED_MODELS` and 5 entries to `CATEGORY_MODELS`
+- `package.json` - Updated `proseMinion.categoryModel` enum to match `CATEGORY_MODELS`
+
+### Removed
+
+#### Stale OpenRouter Model IDs
+
+Removed curated IDs that no longer appear in the OpenRouter `/models` catalog.
+
+**Removed models:**
+
+- `anthropic/claude-3.7-sonnet` - Sunset by Anthropic; superseded by Sonnet 4.5/4.6 already in the catalog
+- `x-ai/grok-4` - Replaced by `grok-4.20` and `grok-4.3`
+- `x-ai/grok-4-fast` - No longer served on OpenRouter
+- `x-ai/grok-4.1-fast` - No longer served on OpenRouter
+- `x-ai/grok-code-fast-1` - xAI no longer ships a code-specialized SKU on OpenRouter
+
+**Files:**
+
+- `src/infrastructure/api/providers/OpenRouterModels.ts` - Removed stale entries from `RECOMMENDED_MODELS`
+
+### Technical Details
+
+- Catalog audited against the OpenRouter `/models` endpoint (358 models returned at audit time on 2026-05-20).
+- Each new and retained ID verified present in the live response before inclusion.
+- `RECOMMENDED_MODELS` grew from 53 to 74 entries (5 removed, 26 added).
+- `CATEGORY_MODELS` grew from 25 to 30 entries.
+- `proseMinion.categoryModel` enum in `package.json` re-synced with `CATEGORY_MODELS`.
+
+---
+
 ## [1.10.2] - 2026-04-29
 
 ### Overview

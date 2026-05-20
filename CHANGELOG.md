@@ -2,6 +2,26 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.10.3] - 2026-05-20
+
+### Added
+
+- **OpenRouter Catalog Refresh**: Curated assistant/dictionary/context catalog expanded with verified models including Claude Opus 4.6/4.7 Fast, GPT-5.5 Pro, Gemini 3.5 Flash, GLM 5/5.1, GLM 4.7 Flash, DeepSeek V3.2 (stable + Speciale), Mistral Large 2512, Mistral Medium 3.1, Qwen3 Max Thinking, Qwen3.6 Max Preview, Kimi K2.5, Hermes 4 70B, TheDrummer Cydonia 24B / Skyfall 36B, Arcee Maestro Reasoning / Trinity Large Thinking, and Grok 4.20 / 4.20 Multi-Agent / 4.3.
+- **Codex Family Update**: Added GPT-5.1 Codex Max, GPT-5.2 Codex, and GPT-5.3 Codex alongside the existing GPT-5.1 Codex.
+- **Category Search Options**: Added Claude Opus 4.7 Fast, GPT-5.5 Pro, Gemini 3.5 Flash, GLM 4.7 Flash, and GLM 5.1 to the Category Search model list.
+
+### Removed
+
+- **Stale OpenRouter IDs**: Removed `anthropic/claude-3.7-sonnet`, `x-ai/grok-4`, `x-ai/grok-4-fast`, `x-ai/grok-4.1-fast`, and `x-ai/grok-code-fast-1` because they are no longer returned by the OpenRouter API.
+
+### Technical Details
+
+- Verified all new and retained model IDs against the live OpenRouter `/models` endpoint.
+- `proseMinion.categoryModel` enum in `package.json` re-synced with `CATEGORY_MODELS`.
+- Updated package metadata for v1.10.3.
+
+---
+
 ## [1.10.2] - 2026-04-29
 
 ### Added
