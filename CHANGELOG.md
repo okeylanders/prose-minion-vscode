@@ -2,6 +2,21 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.10.4] - 2026-05-29
+
+### Added
+
+- **OpenRouter Same-Day Model Audit**: Added newly available prose-relevant OpenRouter models: Claude Opus 4.8, Claude Opus 4.8 Fast, Qwen3.7 Max, Step 3.7 Flash, Mistral Medium 3.5, OpenAI GPT Chat Latest, inclusionAI Ling 2.6 Flash, Ling 2.6 1T, and Ring 2.6 1T.
+- **Category Search Options**: Added Claude Opus 4.8/4.8 Fast, Qwen3.7 Max, Step 3.7 Flash, Mistral Medium 3.5, GPT Chat Latest, and inclusionAI Ling/Ring options to the Category Search model enum.
+
+### Technical Details
+
+- Verified the curated model catalog against OpenRouter's live `/models` endpoint on May 29, 2026.
+- Confirmed all retained curated model IDs are still present in OpenRouter.
+- Updated package metadata for v1.10.4.
+
+---
+
 ## [1.10.3] - 2026-05-20
 
 ### Added

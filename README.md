@@ -12,6 +12,18 @@
 
 ---
 
+## 🎉 What's New in v1.10.4
+
+> **🤖 OpenRouter Model Audit** - Curated model list re-checked against the live OpenRouter API on May 29, 2026. Added Claude Opus 4.8, Claude Opus 4.8 Fast, Qwen3.7 Max, Step 3.7 Flash, Mistral Medium 3.5, OpenAI GPT Chat Latest, and inclusionAI Ling/Ring utility models.
+>
+> **🔎 Category Search Refresh** - Added the strongest new category-friendly options to the Category Search model enum so VS Code settings and the in-app dropdown stay aligned.
+>
+> **✅ Stale ID Check** - Confirmed all retained curated model IDs are still served by OpenRouter.
+>
+> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
+
+---
+
 ## 🎉 What's New in v1.10.3
 
 > **🤖 OpenRouter Catalog Audit** - Curated model list audited against the live OpenRouter API. Added 26 new prose-relevant models including Claude Opus 4.6/4.7 Fast, GPT-5.5 Pro, Gemini 3.5 Flash, GLM 5/5.1, DeepSeek V3.2, Mistral Large 2512, Qwen3 Max Thinking, Kimi K2.5, Hermes 4 70B, Grok 4.20/4.3, and refreshed creative/reasoning SKUs from TheDrummer and Arcee.

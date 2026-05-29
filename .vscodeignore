@@ -22,6 +22,7 @@ node_modules/**
 
 # Build outputs (keep dist/)
 out/**
+coverage/**
 
 # Git and version control
 .git/**

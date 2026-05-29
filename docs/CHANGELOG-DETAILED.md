@@ -5,6 +5,55 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.4] - 2026-05-29
+
+### Overview
+
+Patch release refreshing the curated OpenRouter model catalog after the May 29, 2026 live model audit. Adds the newest high-value text models while leaving lower-signal router/free/vision-heavy catalog entries out of the curated dropdowns.
+
+**PR:** TBD
+**Branch:** `chore/openrouter-model-audit-2026-05-29`
+
+---
+
+### Added
+
+#### OpenRouter Model Catalog Refresh
+
+Curated catalog audited against the live OpenRouter `/models` response. No retained curated IDs were missing from OpenRouter.
+
+**Added to `RECOMMENDED_MODELS`:**
+
+- `anthropic/claude-opus-4.8` - Newest Opus model, 1M context
+- `anthropic/claude-opus-4.8-fast` - Higher-throughput Opus 4.8 variant
+- `qwen/qwen3.7-max` - Flagship Qwen3.7 model, 1M context
+- `stepfun/step-3.7-flash` - Fast StepFun model for quick critique and utility rewrites
+- `mistralai/mistral-medium-3-5` - Newer medium-tier Mistral model
+- `openai/gpt-chat-latest` - OpenAI chat alias tracking the latest Instant chat model
+- `inclusionai/ling-2.6-flash` - Very low-cost utility text model
+- `inclusionai/ling-2.6-1t` - Large efficient text model for long-context reasoning
+- `inclusionai/ring-2.6-1t` - Efficient thinking model for structured long-form reasoning
+
+**Added to `CATEGORY_MODELS`:**
+
+- `anthropic/claude-opus-4.8`
+- `anthropic/claude-opus-4.8-fast`
+- `qwen/qwen3.7-max`
+- `stepfun/step-3.7-flash`
+- `mistralai/mistral-medium-3-5`
+- `openai/gpt-chat-latest`
+- `inclusionai/ling-2.6-flash`
+- `inclusionai/ring-2.6-1t`
+
+**Files:**
+
+- `src/infrastructure/api/providers/OpenRouterModels.ts` - Added new recommended/category entries
+- `package.json` - Synced `proseMinion.categoryModel` enum and bumped extension version
+- `package-lock.json` - Synced package version
+- `README.md`, `CHANGELOG.md`, `docs/RECOMMENDED_MODELS.md` - Updated release/model documentation
+
+---
+
 ## [1.10.3] - 2026-05-20
 
 ### Overview
