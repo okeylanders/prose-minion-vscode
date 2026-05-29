@@ -54,6 +54,16 @@ export const CATEGORY_MODELS = [
     description: 'Anthropic\'s strongest model for complex agentic workflows and extended sessions'
   },
   {
+    id: 'anthropic/claude-opus-4.8',
+    name: 'Claude Opus 4.8',
+    description: 'Anthropic\'s newest Opus model with 1M context, stronger agentic reasoning, and premium long-form analysis quality'
+  },
+  {
+    id: 'anthropic/claude-opus-4.8-fast',
+    name: 'Claude Opus 4.8 Fast',
+    description: 'Higher-throughput Opus 4.8 variant for interactive category search and rapid high-quality utility passes'
+  },
+  {
     id: 'anthropic/claude-opus-4.7-fast',
     name: 'Claude Opus 4.7 Fast',
     description: 'Lower-latency variant of Opus 4.7 for category search and high-throughput utility tasks'
@@ -109,14 +119,39 @@ export const CATEGORY_MODELS = [
     description: 'Low-cost 1M-context model for fast category matching over larger inputs'
   },
   {
+    id: 'stepfun/step-3.7-flash',
+    name: 'Step 3.7 Flash',
+    description: 'Fast multimodal StepFun model with strong throughput for category matching, quick rewrites, and utility analysis'
+  },
+  {
+    id: 'inclusionai/ling-2.6-flash',
+    name: 'Ling 2.6 Flash',
+    description: 'Very low-cost text model for high-volume utility classification and simple category searches'
+  },
+  {
+    id: 'inclusionai/ring-2.6-1t',
+    name: 'Ring 2.6 1T',
+    description: 'Efficient large-scale thinking model for structured reasoning and long category lists'
+  },
+  {
     id: 'qwen/qwen3.6-flash',
     name: 'Qwen3.6 Flash',
     description: 'Fast 1M-context model for inexpensive category search and utility tasks'
   },
   {
+    id: 'qwen/qwen3.7-max',
+    name: 'Qwen3.7 Max',
+    description: 'Flagship Qwen3.7 model with 1M context and strong agentic instruction following'
+  },
+  {
     id: 'mistralai/mistral-small-2603',
     name: 'Mistral Small 4',
     description: 'Current low-cost Mistral model with strong general instruction following'
+  },
+  {
+    id: 'mistralai/mistral-medium-3-5',
+    name: 'Mistral Medium 3.5',
+    description: 'Mid-premium Mistral model for more complex category matching and structured prose analysis'
   },
   {
     id: 'openai/gpt-5.1-chat',
@@ -152,6 +187,11 @@ export const CATEGORY_MODELS = [
     id: 'openai/gpt-5.4-pro',
     name: 'GPT-5.4 Pro',
     description: '$$$ Maximum-capability GPT-5.4 variant for complex, high-stakes multi-step tasks'
+  },
+  {
+    id: 'openai/gpt-chat-latest',
+    name: 'GPT Chat Latest',
+    description: 'OpenAI stable chat alias that tracks the latest Instant chat model for conversational utility work'
   },
   {
     id: 'deepcogito/cogito-v2.1-671b',
@@ -232,6 +272,16 @@ export const RECOMMENDED_MODELS = [
     description: 'Fast-tier Opus 4.7. Premium prose reasoning with reduced latency for interactive editing and rapid critique loops.'
   },
   {
+    id: 'anthropic/claude-opus-4.8',
+    name: 'Claude Opus 4.8',
+    description: 'Anthropic\'s newest Opus model. 1M context, improved agentic reasoning, and premium long-form prose analysis for difficult scenes and manuscript-scale critique.'
+  },
+  {
+    id: 'anthropic/claude-opus-4.8-fast',
+    name: 'Claude Opus 4.8 Fast',
+    description: 'Higher-throughput Opus 4.8. Same model family and context window with faster output for iterative chapter passes and rapid critique loops.'
+  },
+  {
     id: 'deepcogito/cogito-v2.1-671b',
     name: 'Cogito v2.1 671B',
     description: 'One of the strongest open MoE models globally. Trained via self-play RL for state-of-the-art instruction following, coding, longer queries, and creative writing.'
@@ -270,6 +320,26 @@ export const RECOMMENDED_MODELS = [
     id: 'deepseek/deepseek-v4-flash',
     name: 'DeepSeek V4 Flash',
     description: 'Efficiency-focused 1M-context model. Good for fast dictionary work, rewrites, and budget long-context analysis.'
+  },
+  {
+    id: 'stepfun/step-3.7-flash',
+    name: 'Step 3.7 Flash',
+    description: 'StepFun\'s latest Flash model with 256K context. Fast, inexpensive option for quick critique, dictionary alternatives, and utility rewriting.'
+  },
+  {
+    id: 'inclusionai/ling-2.6-flash',
+    name: 'Ling 2.6 Flash',
+    description: 'Tiny-cost inclusionAI text model for high-volume utility work, quick classification, and lightweight prose checks.'
+  },
+  {
+    id: 'inclusionai/ling-2.6-1t',
+    name: 'Ling 2.6 1T',
+    description: 'Large inclusionAI text model with efficient pricing. Useful for long-context reasoning and structured manuscript analysis on a budget.'
+  },
+  {
+    id: 'inclusionai/ring-2.6-1t',
+    name: 'Ring 2.6 1T',
+    description: '1T-parameter-scale thinking model with efficient active parameters. Good for agentic critique, coding-adjacent workflows, and structured long-form reasoning.'
   },
   {
     id: 'google/gemini-2.5-flash',
@@ -422,6 +492,11 @@ export const RECOMMENDED_MODELS = [
     description: '$$$ Premium GPT-5.5 variant for the deepest reasoning, longest context, and highest-stakes prose work.'
   },
   {
+    id: 'openai/gpt-chat-latest',
+    name: 'GPT Chat Latest',
+    description: 'Stable OpenAI chat alias on OpenRouter. Tracks the latest Instant chat model for brainstorming, dialogue workshops, and everyday editorial conversations.'
+  },
+  {
     id: 'x-ai/grok-4.20',
     name: 'Grok 4.20',
     description: 'xAI\'s current flagship. Strong long-context reasoning and consistent voice across extended narratives.'
@@ -472,6 +547,11 @@ export const RECOMMENDED_MODELS = [
     description: 'Mid-tier Mistral. Good balance between Small and Large for general prose assistance and structured edits.'
   },
   {
+    id: 'mistralai/mistral-medium-3-5',
+    name: 'Mistral Medium 3.5',
+    description: 'Newer medium-tier Mistral model. Stronger agentic workflow and instruction-following option for structured edits, critique, and multilingual prose.'
+  },
+  {
     id: 'mistralai/mistral-small-2603',
     name: 'Mistral Small 4',
     description: 'Current low-cost Mistral model. Good for quick rewrite alternatives, dictionary utilities, and general prose assistance.'
@@ -515,6 +595,11 @@ export const RECOMMENDED_MODELS = [
     id: 'qwen/qwen3.6-max-preview',
     name: 'Qwen3.6 Max Preview',
     description: 'Top-tier Qwen 3.6 preview. Premium open-model option for deep prose critique with very long context.'
+  },
+  {
+    id: 'qwen/qwen3.7-max',
+    name: 'Qwen3.7 Max',
+    description: 'Flagship Qwen3.7 model with 1M context. Strong agent-centric instruction following for long-context prose analysis, planning, and structured rewrites.'
   },
   {
     id: 'sao10k/l3.3-euryale-70b',

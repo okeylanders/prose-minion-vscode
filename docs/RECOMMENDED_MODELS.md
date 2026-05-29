@@ -26,14 +26,6 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/anthropic/claude-sonnet-4.6
   - Anthropic: https://www.anthropic.com
 
-### Claude 3.7 Sonnet — The All-Rounder
-
-- **Best For:** A user favorite for balanced creative work
-- **Description:** Balances exceptional lyrical prose with deep reasoning. Ideal for complex narrative rewrites
-- **Links:**
-  - OpenRouter: https://openrouter.ai/anthropic/claude-3.7-sonnet
-  - Anthropic: https://www.anthropic.com
-
 ### Claude Opus 4.1 — Deep Storytelling
 
 - **Best For:** The creative heavyweight for nuanced work
@@ -42,13 +34,13 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/anthropic/claude-opus-4.1
   - Anthropic: https://www.anthropic.com
 
-### TheDrummer: Anubis 70B — Visceral Prose
+### Claude Opus 4.8 — Premium Long-Form Analysis
 
-- **Best For:** Gritty, "human" prose that avoids AI tropes
-- **Description:** An unaligned creative specialist. Excels at visceral storytelling
+- **Best For:** Difficult scenes, manuscript-scale critique, and highest-quality prose analysis
+- **Description:** Newest Opus model with 1M context and stronger agentic reasoning for sustained editorial work
 - **Links:**
-  - OpenRouter: https://openrouter.ai/thedrummer/anubis-70b-v1.1
-  - HuggingFace: https://huggingface.co/TheDrummer
+  - OpenRouter: https://openrouter.ai/anthropic/claude-opus-4.8
+  - Anthropic: https://www.anthropic.com
 
 ### Sao10K Euryale 70B — Roleplay & Voice
 
@@ -96,20 +88,20 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/deepseek/deepseek-r1
   - DeepSeek: https://www.deepseek.com/
 
-### xAI Grok 4 — Deep Reasoning
+### xAI Grok 4.3 — Deep Reasoning
 
-- **Best For:** Massive context (256k) with strong reasoning
+- **Best For:** Massive context with strong reasoning
 - **Description:** Great for maintaining consistency across long narratives
 - **Links:**
-  - OpenRouter: https://openrouter.ai/x-ai/grok-4
+  - OpenRouter: https://openrouter.ai/x-ai/grok-4.3
   - xAI: https://x.ai/
 
-### Mistral Magistral — Literary Analysis
+### Mistral Medium 3.5 — Literary Analysis
 
 - **Best For:** Deeper structural critiques
-- **Description:** Mistral's dedicated reasoning model. Great for European-style prose sensibilities
+- **Description:** Newer medium-tier Mistral model with strong instruction following, multilingual prose, and structured critique behavior
 - **Links:**
-  - OpenRouter: https://openrouter.ai/mistralai/magistral-medium-2506
+  - OpenRouter: https://openrouter.ai/mistralai/mistral-medium-3-5
   - Mistral AI: https://mistral.ai/
 
 ### Moonshot Kimi K2 — Plot Logic
@@ -166,6 +158,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/openai/gpt-5.4-pro
   - OpenAI: https://openai.com/
 
+### Qwen3.7 Max — Open-Model Powerhouse
+
+- **Best For:** Long-context prose analysis, planning, and structured rewrites
+- **Description:** Flagship Qwen3.7 model with 1M context and strong agent-centric instruction following
+- **Links:**
+  - OpenRouter: https://openrouter.ai/qwen/qwen3.7-max
+  - Qwen: https://qwenlm.github.io/
+
 ### Google Gemini 3.1 Pro — Massive Context
 
 - **Best For:** Master of scale (1M+ tokens)
@@ -196,13 +196,21 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/google/gemini-2.5-flash
   - Google DeepMind: https://deepmind.google/technologies/gemini/
 
-### xAI Grok 4 Fast — Drafting
+### Claude Opus 4.8 Fast — Premium Iteration
 
-- **Best For:** Cost-efficient regular model
-- **Description:** Good for quick iterations and drafting
+- **Best For:** Iterative chapter passes and rapid critique loops
+- **Description:** Higher-throughput Opus 4.8 variant with the same 1M context family for faster editorial feedback
 - **Links:**
-  - OpenRouter: https://openrouter.ai/x-ai/grok-4-fast
-  - xAI: https://x.ai/
+  - OpenRouter: https://openrouter.ai/anthropic/claude-opus-4.8-fast
+  - Anthropic: https://www.anthropic.com
+
+### Step 3.7 Flash — Utility Drafting
+
+- **Best For:** Quick critiques, category searches, dictionary alternatives, and utility rewrites
+- **Description:** Fast StepFun model with 256K context and low operating cost
+- **Links:**
+  - OpenRouter: https://openrouter.ai/stepfun/step-3.7-flash
+  - StepFun: https://www.stepfun.com/
 
 ---
 
