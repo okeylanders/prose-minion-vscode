@@ -342,7 +342,9 @@ All fixups in **`62e125f`** (same branch, `claude/funny-davinci-yqautn`). Post-f
 - **#13 🟢 Wording — ✅ Fixed.** Changelog now says "same file set" with identical runtime behavior, not "byte-identical/reproducible."
 - **#14 ↪ Informational — not actioned** (build/test costs trivial at this scale; `isolatedModules`/mtime-gating revisited at ~2× file count).
 
-**Still open (by design):** the **author F5 smoke** — now unblocked by #1; no interactive VS Code in CI, so it remains the human acceptance step.
+**Post-review follow-up (F5 smoke, `5340757`):** the author ran the F5 smoke (now unblocked by #1) and it caught a **real Stage-2 regression the review missed** — the webview's **Tailwind utilities were purged** (textareas lost `w-full`/`h-32`: "the box can't take up both spots"). The move changed the build cwd (root → app dir) and Tailwind resolves its config from `process.cwd()`, so it found none → default empty-content config → purged every utility, while webpack still "compiled successfully." **Fixed:** absolute `__dirname` content glob + an explicit Tailwind config path in the webpack `postcss-loader` (`config: false`). **Witness added:** `scripts/verify-bundle.js` fails the production build (and CI) if sentinel utilities are absent from `webview.js`. This is the textbook case for Sensei's Lesson 3 — the one unwitnessed delivery path (CSS) is exactly where the "behavior-identical" claim broke; it now has a guard.
+
+**Still open (by design):** the author re-runs F5 to confirm the layout (textareas full-width). No interactive VS Code in CI, so the visual check remains the human acceptance step — but the Tailwind delivery itself is now CI-guarded.
 
 ---
 
