@@ -1,7 +1,7 @@
 # Status — Prose Minion Migration & Facelift
 
-**Branch:** `claude/vigilant-cannon-jma748` (≡ `epic/monorepo-ports-and-adapters`) · **Last updated:** 2026-06-17
-**Health:** 🟢 green — full build passing (304 tests · both typechecks · both webpack bundles · `vsce package` clean). **Stage 1 COMPLETE — core is `vscode`-free.**
+**Branch:** `claude/funny-davinci-yqautn` (cut off `epic/monorepo-ports-and-adapters` @ `ae617df`) · **Last updated:** 2026-06-17
+**Health:** 🟢 green — **Stage 1 COMPLETE** (core is `vscode`-free). **Stage 2 IN PROGRESS** (monorepo move). Baseline re-confirmed green at Wave 0.
 
 ## Pass / Stage tracker
 
@@ -15,8 +15,23 @@
 | 1 | Wave 4 — `ShellService` + `EditorContext` | ✅ done (`ConfigurationHandler` info-message → shell this wave) | — |
 | 1 | Wave 5 — Wiring (watcher→shell, post fn) | ✅ done | — |
 | 1 | Wave 6 — Tests + assert core `vscode`-free | ✅ done (boundary guard test green) | — |
-| 2 | Monorepo move (`git mv`, aliases, TS 5.x, boundary) | ⬜ todo (👈 next) | — |
 | P2 | Design facelift | ⬜ blocked (needs design HTML — but try fetching first, see tech-debt) | — |
+
+## Stage 2 — wave tracker (resumable; pick up from the first ⬜)
+
+> Each wave lands green (both typechecks · 313 tests · both webpack bundles) + committed + pushed.
+> Sequencing approved by author 2026-06-17 (see decision-tracker D22 for the resource call).
+
+| Wave | Scope | Status | Commit |
+|---|---|---|---|
+| 0 | Branch/baseline confirm; lock resource (D22) + logging-defer decisions | ✅ done | _this commit_ |
+| 1 | **AppMessagePort** (webview port, in-place, pre-move) — plan task #1 | ⬜ next | — |
+| 2 | **TS 4.9 → 5.x** (D10, in-place) | ⬜ todo | — |
+| 3 | **The move** — `git mv` core/app split; `tsconfig.base.json` paths; core barrel; shell imports→barrel; rewrite boundary guard; resources→`packages/core/resources` + copy script | ⬜ todo | — |
+| 4 | **Packaging + boundary** — `vsce package --no-dependencies` (D13, add `@vscode/vsce`); eslint `no-restricted-imports` app→core; verify VSIX ships resources | ⬜ todo | — |
+| 5 | **Final verify + docs** — full matrix vs Wave-0 baseline; F5 smoke handoff; doc tick | ⬜ todo | — |
+
+**Wave 0 baseline (the diff target):** 313 tests / 40 suites · extension+webview typechecks CLEAN · webpack both bundles (`extension.js` + `webview.js` 484 KiB, size-warnings only) · `vsce package` deferred (not installed; `@vscode/vsce` added to app devDeps in Wave 3).
 
 ## Stage 1 complete — what closed it
 
@@ -54,8 +69,16 @@ This wave finished the last two `vscode` consumers in core:
   `Workspace` ✅, `EditorContext` ✅, `ShellService` ✅
 - **Platform bundle:** assembled in `extension.ts`, threaded provider → MessageHandler
 
-## Notes for the next session
+## Notes for the next session (resume point)
 
-- Stage 1 is done and PR'd. **Stage 2 (monorepo move) is next** — pick up from the first
-  unchecked box in [plan.md](plan.md), starting with the new `AppMessagePort` extraction item.
-- `extension.ts` + `ProseToolsViewProvider.ts` stay shell (keep `vscode`) — that's by design.
+- **Resume at Stage 2 Wave 1 — `AppMessagePort`** (first ⬜ in the wave tracker above). The
+  webview `VSCodeAPI` interface is already the exact `{ postMessage, getState, setState }`
+  shape; `useVSCodeApi` is the single seam (27 consumers); only `webview/index.tsx`'s
+  bootstrap error-reporter also calls the global directly. Reseat behind
+  `presentation/webview/ports/AppMessagePort.ts` (FM's home) + adapter.
+- `git fetch` first; the dev branch `claude/funny-davinci-yqautn` is cut off the updated
+  epic @ `ae617df` and is the push target (run `npm install` on a fresh container).
+- `extension.ts` + `ProseToolsViewProvider.ts` stay shell (keep `vscode`) — by design; they
+  move to `apps/vscode-extension/src/` in Wave 3.
+- Reference chassis: FrameMinion at `../frame-minion-vscode` (`tsconfig.base.json`, the core
+  `src/index.ts` barrel, `apps/vscode-extension/webpack.config.js`, `.eslintrc.json` boundary).
