@@ -9,8 +9,7 @@
  * - Building publishing format information
  */
 
-import * as vscode from 'vscode';
-import { LogSink, SettingsStore } from '@/platform';
+import { FileSystem, LogSink, SettingsStore } from '@/platform';
 import { PublishingStandardsRepository } from '@/infrastructure/standards/PublishingStandardsRepository';
 import { StandardsComparisonService } from '@/application/services/StandardsComparisonService';
 import { Genre } from '@/domain/models/PublishingStandards';
@@ -20,7 +19,8 @@ export class StandardsService {
   private standardsComparer: StandardsComparisonService;
 
   constructor(
-    private readonly extensionUri: vscode.Uri,
+    private readonly extensionPath: string,
+    private readonly fileSystem: FileSystem,
     private readonly settings: SettingsStore,
     private readonly outputChannel?: LogSink
   ) {
@@ -137,7 +137,7 @@ export class StandardsService {
    */
   private loadStandards(): void {
     try {
-      this.standardsRepo = new PublishingStandardsRepository(this.extensionUri);
+      this.standardsRepo = new PublishingStandardsRepository(this.extensionPath, this.fileSystem);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.outputChannel?.appendLine(`[StandardsService] Failed to load standards repository: ${msg}`);

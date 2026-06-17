@@ -266,7 +266,8 @@ export class MessageHandler {
     const categorySearchService = new CategorySearchService(
       aiResourceManager,
       wordSearchService,
-      extensionUri,
+      this.platform.fileSystem,
+      this.platform.workspace.extensionPath,
       outputChannel,
       this.sendSearchStatus.bind(this)
     );
@@ -301,7 +302,8 @@ export class MessageHandler {
     });
 
     this.publishingHandler = new PublishingHandler(
-      extensionUri,
+      this.platform.fileSystem,
+      this.platform.workspace.extensionPath,
       this.postMessage.bind(this),
       this.platform.settings
     );

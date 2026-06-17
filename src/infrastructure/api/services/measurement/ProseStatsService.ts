@@ -15,8 +15,8 @@
  * - Owns all prose stats analysis (single file or multiple files)
  */
 
-import * as vscode from 'vscode';
-import { LogSink } from '@/platform';
+import * as path from 'path';
+import { FileSystem, LogSink, Workspace } from '@/platform';
 import { PassageProseStats } from '@/tools/measure/passageProseStats';
 
 /**
@@ -38,6 +38,8 @@ export class ProseStatsService {
   private proseStats: PassageProseStats;
 
   constructor(
+    private readonly fileSystem: FileSystem,
+    private readonly workspace: Workspace,
     private readonly outputChannel?: LogSink
   ) {
     this.proseStats = new PassageProseStats();
@@ -69,10 +71,10 @@ export class ProseStatsService {
 
     for (const rel of relativePaths) {
       try {
-        const uri = await this.findUriByRelativePath(rel);
-        if (!uri) continue;
+        const filePath = await this.findPathByRelative(rel);
+        if (!filePath) continue;
 
-        const raw = await vscode.workspace.fs.readFile(uri);
+        const raw = await this.fileSystem.readFile(filePath);
         const text = Buffer.from(raw).toString('utf8');
         const stats = this.analyze({ text });
 
@@ -94,12 +96,12 @@ export class ProseStatsService {
    * @param relativePath - Relative file path from workspace root
    * @returns VSCode URI if found, undefined otherwise
    */
-  private async findUriByRelativePath(relativePath: string): Promise<vscode.Uri | undefined> {
-    const folders = vscode.workspace.workspaceFolders ?? [];
+  private async findPathByRelative(relativePath: string): Promise<string | undefined> {
+    const folders = this.workspace.workspaceFolders();
     for (const folder of folders) {
-      const candidate = vscode.Uri.joinPath(folder.uri, relativePath);
+      const candidate = path.join(folder.path, relativePath);
       try {
-        await vscode.workspace.fs.stat(candidate);
+        await this.fileSystem.stat(candidate);
         return candidate;
       } catch {
         // continue to next folder

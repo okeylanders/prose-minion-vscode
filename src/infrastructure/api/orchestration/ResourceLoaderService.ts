@@ -7,8 +7,7 @@
  * Resources are loaded once and cached for the lifetime of the service.
  */
 
-import * as vscode from 'vscode';
-import { LogSink } from '@/platform';
+import { FileSystem, LogSink } from '@/platform';
 import { PromptLoader } from '@/tools/shared/prompts';
 import { GuideLoader } from '@/tools/shared/guides';
 import { GuideRegistry } from '@/infrastructure/guides/GuideRegistry';
@@ -19,7 +18,8 @@ export class ResourceLoaderService {
   private guideRegistry?: GuideRegistry;
 
   constructor(
-    private readonly extensionUri: vscode.Uri,
+    private readonly extensionPath: string,
+    private readonly fileSystem: FileSystem,
     private readonly outputChannel?: LogSink
   ) {}
 
@@ -61,15 +61,15 @@ export class ResourceLoaderService {
    */
   private ensureLoaded(): void {
     if (!this.promptLoader) {
-      this.promptLoader = new PromptLoader(this.extensionUri);
+      this.promptLoader = new PromptLoader(this.extensionPath, this.fileSystem);
     }
 
     if (!this.guideLoader) {
-      this.guideLoader = new GuideLoader(this.extensionUri);
+      this.guideLoader = new GuideLoader(this.extensionPath, this.fileSystem);
     }
 
     if (!this.guideRegistry) {
-      this.guideRegistry = new GuideRegistry(this.extensionUri, this.outputChannel);
+      this.guideRegistry = new GuideRegistry(this.extensionPath, this.fileSystem, this.outputChannel);
     }
   }
 

@@ -4,6 +4,7 @@
  */
 
 import { WordSearchService } from '@/infrastructure/api/services/search/WordSearchService';
+import { createFakeFileSystem, createFakeWorkspace } from '../../../../mocks/platform';
 
 describe('WordSearchService - Business Logic', () => {
   let service: WordSearchService;
@@ -18,7 +19,7 @@ describe('WordSearchService - Business Logic', () => {
         minClusterSize: 2
       })
     };
-    service = new WordSearchService(mockToolOptions);
+    service = new WordSearchService(mockToolOptions, createFakeFileSystem(), createFakeWorkspace());
   });
 
   describe('Clustering Algorithm', () => {

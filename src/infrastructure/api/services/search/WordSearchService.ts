@@ -18,8 +18,8 @@
  * - Provides clean interface for word search features
  */
 
-import * as vscode from 'vscode';
-import { LogSink } from '@/platform';
+import * as path from 'path';
+import { FileSystem, LogSink, Workspace } from '@/platform';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
 import { MetricsResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
 
@@ -36,6 +36,8 @@ import { MetricsResult, AnalysisResultFactory } from '@/domain/models/AnalysisRe
 export class WordSearchService {
   constructor(
     private readonly toolOptions: ToolOptionsProvider,
+    private readonly fileSystem: FileSystem,
+    private readonly workspace: Workspace,
     private readonly outputChannel?: LogSink
   ) {}
 
@@ -89,8 +91,8 @@ export class WordSearchService {
       if (!useTextMode) {
         // File mode: build scanned files list
         for (const rel of relFiles) {
-          const uri = await this.findUriByRelativePath(rel);
-          const absolutePath = uri?.fsPath ?? rel;
+          const resolved = await this.findPathByRelative(rel);
+          const absolutePath = resolved ?? rel;
           report.scannedFiles.push({ absolute: absolutePath, relative: rel });
         }
       } else {
@@ -119,11 +121,11 @@ export class WordSearchService {
             content = text;
             filePath = '[selected text]';
           } else {
-            const uri = await this.findUriByRelativePath(rel);
-            if (!uri) continue;
-            const raw = await vscode.workspace.fs.readFile(uri);
+            const resolved = await this.findPathByRelative(rel);
+            if (!resolved) continue;
+            const raw = await this.fileSystem.readFile(resolved);
             content = Buffer.from(raw).toString('utf8');
-            filePath = uri.fsPath;
+            filePath = resolved;
           }
 
           const tokens = WordSearchService.tokenizeContent(content, caseSensitive);
@@ -176,12 +178,12 @@ export class WordSearchService {
    * @param relativePath - Relative path to resolve
    * @returns URI if found, undefined otherwise
    */
-  private async findUriByRelativePath(relativePath: string): Promise<vscode.Uri | undefined> {
-    const folders = vscode.workspace.workspaceFolders ?? [];
+  private async findPathByRelative(relativePath: string): Promise<string | undefined> {
+    const folders = this.workspace.workspaceFolders();
     for (const folder of folders) {
-      const candidate = vscode.Uri.joinPath(folder.uri, relativePath);
+      const candidate = path.join(folder.path, relativePath);
       try {
-        await vscode.workspace.fs.stat(candidate);
+        await this.fileSystem.stat(candidate);
         return candidate;
       } catch {
         // continue

@@ -7,18 +7,17 @@
  * - Error handling for missing/invalid files
  */
 
-import * as vscode from 'vscode';
 import { ProseStatsService } from '@services/measurement/ProseStatsService';
-
-// Mock vscode module
-jest.mock('vscode');
+import { createFakeFileSystem, createFakeWorkspace } from '../../../../mocks/platform';
 
 describe('ProseStatsService', () => {
   let service: ProseStatsService;
-  let mockOutputChannel: jest.Mocked<vscode.OutputChannel>;
+  let mockOutputChannel: { appendLine: jest.Mock; [k: string]: unknown };
+  let mockReadFile: jest.Mock;
+  let mockStat: jest.Mock;
+  let fakeWorkspaceFolders: Array<{ path: string; name: string }>;
 
   beforeEach(() => {
-    // Create mock output channel
     mockOutputChannel = {
       appendLine: jest.fn(),
       append: jest.fn(),
@@ -28,9 +27,17 @@ describe('ProseStatsService', () => {
       dispose: jest.fn(),
       name: 'Test Channel',
       replace: jest.fn()
-    } as any;
+    };
 
-    service = new ProseStatsService(mockOutputChannel);
+    mockReadFile = jest.fn();
+    mockStat = jest.fn();
+    fakeWorkspaceFolders = [{ path: '/mock/workspace', name: 'test-workspace' }];
+
+    service = new ProseStatsService(
+      createFakeFileSystem({ readFile: mockReadFile, stat: mockStat }),
+      createFakeWorkspace({ workspaceFolders: () => fakeWorkspaceFolders }),
+      mockOutputChannel as any
+    );
   });
 
   afterEach(() => {
@@ -57,38 +64,14 @@ describe('ProseStatsService', () => {
   });
 
   describe('analyzeMultipleFiles', () => {
-    // Mock workspace functions
-    const mockWorkspaceFolders = [
-      {
-        uri: { fsPath: '/mock/workspace', path: '/mock/workspace' } as vscode.Uri,
-        name: 'test-workspace',
-        index: 0
-      }
-    ];
-
-    beforeEach(() => {
-      // Mock workspace.workspaceFolders
-      Object.defineProperty(vscode.workspace, 'workspaceFolders', {
-        value: mockWorkspaceFolders,
-        configurable: true
-      });
-
-      // Mock Uri.joinPath
-      (vscode.Uri.joinPath as jest.Mock) = jest.fn((base, ...paths) => ({
-        fsPath: `${base.fsPath}/${paths.join('/')}`,
-        path: `${base.path}/${paths.join('/')}`
-      } as vscode.Uri));
-    });
-
     it('should analyze multiple files successfully', async () => {
       const relativePaths = ['chapter1.txt', 'chapter2.txt'];
 
-      // Mock file reads
       const mockFileContent1 = Buffer.from('This is chapter one. It has two sentences.');
       const mockFileContent2 = Buffer.from('This is chapter two. It also has two sentences.');
 
-      (vscode.workspace.fs.stat as jest.Mock) = jest.fn().mockResolvedValue({});
-      (vscode.workspace.fs.readFile as jest.Mock) = jest.fn()
+      mockStat.mockResolvedValue(undefined);
+      mockReadFile
         .mockResolvedValueOnce(mockFileContent1)
         .mockResolvedValueOnce(mockFileContent2);
 
@@ -115,8 +98,8 @@ describe('ProseStatsService', () => {
       const relativePaths = ['chapter1.txt'];
       const mockFileContent = Buffer.from('Test content.');
 
-      (vscode.workspace.fs.stat as jest.Mock) = jest.fn().mockResolvedValue({});
-      (vscode.workspace.fs.readFile as jest.Mock) = jest.fn().mockResolvedValue(mockFileContent);
+      mockStat.mockResolvedValue(undefined);
+      mockReadFile.mockResolvedValue(mockFileContent);
 
       const results = await service.analyzeMultipleFiles(relativePaths);
 
@@ -130,45 +113,37 @@ describe('ProseStatsService', () => {
       const relativePaths = ['missing.txt', 'exists.txt'];
       const mockFileContent = Buffer.from('This file exists.');
 
-      // First file: stat fails (file doesn't exist) - findUriByRelativePath returns undefined
-      // Second file: stat succeeds, read succeeds
-      (vscode.workspace.fs.stat as jest.Mock) = jest.fn()
+      // First file: stat rejects (missing) → resolver returns undefined → skipped.
+      // Second file: stat resolves, read succeeds.
+      mockStat
         .mockRejectedValueOnce(new Error('File not found'))
-        .mockResolvedValueOnce({});
-
-      (vscode.workspace.fs.readFile as jest.Mock) = jest.fn()
-        .mockResolvedValue(mockFileContent);
+        .mockResolvedValueOnce(undefined);
+      mockReadFile.mockResolvedValue(mockFileContent);
 
       const results = await service.analyzeMultipleFiles(relativePaths);
 
-      // Should only have result for the existing file
       expect(results).toHaveLength(1);
       expect(results[0].path).toBe('exists.txt');
-      // Note: Missing files are silently skipped (no logging), only read errors are logged
+      // Missing files are silently skipped (no logging); only read errors are logged.
       expect(mockOutputChannel.appendLine).not.toHaveBeenCalled();
     });
 
     it('should skip files that do not exist', async () => {
       const relativePaths = ['nonexistent1.txt', 'nonexistent2.txt'];
 
-      // All files fail stat check (findUriByRelativePath returns undefined)
-      (vscode.workspace.fs.stat as jest.Mock) = jest.fn()
-        .mockRejectedValue(new Error('File not found'));
+      mockStat.mockRejectedValue(new Error('File not found'));
 
       const results = await service.analyzeMultipleFiles(relativePaths);
 
       expect(results).toHaveLength(0);
-      // Note: Missing files are silently skipped (no logging)
       expect(mockOutputChannel.appendLine).not.toHaveBeenCalled();
     });
 
     it('should handle file read errors gracefully', async () => {
       const relativePaths = ['error.txt'];
 
-      // Stat succeeds but read fails
-      (vscode.workspace.fs.stat as jest.Mock) = jest.fn().mockResolvedValue({});
-      (vscode.workspace.fs.readFile as jest.Mock) = jest.fn()
-        .mockRejectedValue(new Error('Read permission denied'));
+      mockStat.mockResolvedValue(undefined);
+      mockReadFile.mockRejectedValue(new Error('Read permission denied'));
 
       const results = await service.analyzeMultipleFiles(relativePaths);
 
@@ -186,10 +161,7 @@ describe('ProseStatsService', () => {
     });
 
     it('should handle no workspace folders', async () => {
-      Object.defineProperty(vscode.workspace, 'workspaceFolders', {
-        value: undefined,
-        configurable: true
-      });
+      fakeWorkspaceFolders = [];
 
       const relativePaths = ['chapter1.txt'];
       const results = await service.analyzeMultipleFiles(relativePaths);

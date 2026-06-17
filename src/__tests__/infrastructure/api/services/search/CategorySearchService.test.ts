@@ -1,5 +1,6 @@
 import { CategorySearchService } from '@services/search/CategorySearchService';
 import { WordSearchService } from '@services/search/WordSearchService';
+import { createFakeFileSystem } from '../../../../mocks/platform';
 
 jest.mock('../../../../../tools/shared/prompts', () => ({
   PromptLoader: jest.fn().mockImplementation(() => ({
@@ -44,7 +45,8 @@ describe('CategorySearchService', () => {
     const service = new CategorySearchService(
       aiResourceManager,
       wordSearchService,
-      {} as any,
+      createFakeFileSystem(),
+      '/ext',
       outputChannel,
       statusEmitter
     );

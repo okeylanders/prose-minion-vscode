@@ -68,13 +68,13 @@ export function activate(context: vscode.ExtensionContext): void {
   };
 
   // SPRINT 01: Create resource services (foundation)
-  const resourceLoader = new ResourceLoaderService(context.extensionUri, outputChannel);
+  const resourceLoader = new ResourceLoaderService(platform.workspace.extensionPath, platform.fileSystem, outputChannel);
   const aiResourceManager = new AIResourceManager(resourceLoader, secretsService, platform.settings, outputChannel);
-  const standardsService = new StandardsService(context.extensionUri, platform.settings, outputChannel);
+  const standardsService = new StandardsService(platform.workspace.extensionPath, platform.fileSystem, platform.settings, outputChannel);
   const toolOptions = new ToolOptionsProvider(platform.settings);
 
   // SPRINT 02: Create measurement services
-  const proseStatsService = new ProseStatsService(outputChannel);
+  const proseStatsService = new ProseStatsService(platform.fileSystem, platform.workspace, outputChannel);
   const styleFlagsService = new StyleFlagsService();
   const wordFrequencyService = new WordFrequencyService(toolOptions, outputChannel);
 
@@ -95,12 +95,17 @@ export function activate(context: vscode.ExtensionContext): void {
     aiResourceManager,
     resourceLoader,
     toolOptions,
+    platform.settings,
+    platform.fileSystem,
+    platform.workspace,
     outputChannel
   );
 
   // SPRINT 04: Create search service
   const wordSearchService = new WordSearchService(
     toolOptions,
+    platform.fileSystem,
+    platform.workspace,
     outputChannel
   );
 

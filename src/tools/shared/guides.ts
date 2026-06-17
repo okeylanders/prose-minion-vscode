@@ -3,10 +3,14 @@
  * Loads writing craft guides from markdown files
  */
 
-import * as vscode from 'vscode';
+import * as path from 'path';
+import { FileSystem } from '@/platform';
 
 export class GuideLoader {
-  constructor(private readonly extensionUri: vscode.Uri) {}
+  constructor(
+    private readonly extensionPath: string,
+    private readonly fileSystem: FileSystem
+  ) {}
 
   /**
    * Load a craft guide from a markdown file
@@ -18,27 +22,12 @@ export class GuideLoader {
     // Determine if this is a simple name or a full path
     const isFullPath = guidePath.includes('/') || guidePath.endsWith('.md');
 
-    let fullPath: vscode.Uri;
-    if (isFullPath) {
-      // Use path as-is (from GuideRegistry)
-      fullPath = vscode.Uri.joinPath(
-        this.extensionUri,
-        'resources',
-        'craft-guides',
-        guidePath
-      );
-    } else {
-      // Legacy behavior: assume root level and add .md extension
-      fullPath = vscode.Uri.joinPath(
-        this.extensionUri,
-        'resources',
-        'craft-guides',
-        `${guidePath}.md`
-      );
-    }
+    // Use path as-is (from GuideRegistry); legacy simple names get .md appended.
+    const relative = isFullPath ? guidePath : `${guidePath}.md`;
+    const fullPath = path.join(this.extensionPath, 'resources', 'craft-guides', relative);
 
     try {
-      const content = await vscode.workspace.fs.readFile(fullPath);
+      const content = await this.fileSystem.readFile(fullPath);
       return Buffer.from(content).toString('utf-8');
     } catch (error) {
       console.error(`Failed to load guide: ${guidePath}`, error);

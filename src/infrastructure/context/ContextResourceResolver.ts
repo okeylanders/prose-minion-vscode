@@ -3,8 +3,7 @@
  * Discovers and loads workspace files for the context assistant.
  */
 
-import * as vscode from 'vscode';
-import { LogSink } from '@/platform';
+import { FileSystem, LogSink, SettingsStore, Workspace } from '@/platform';
 import * as path from 'path';
 import { ContextPathGroup } from '@shared/types';
 import {
@@ -18,14 +17,19 @@ interface InternalContextResource {
   path: string;
   label: string;
   workspaceFolder?: string;
-  uri: vscode.Uri;
+  absolutePath: string;
 }
 
 /**
  * Provides access to project reference materials based on user-configured glob patterns.
  */
 export class ContextResourceResolver {
-  constructor(private readonly outputChannel?: LogSink) {}
+  constructor(
+    private readonly settings: SettingsStore,
+    private readonly fileSystem: FileSystem,
+    private readonly workspace: Workspace,
+    private readonly outputChannel?: LogSink
+  ) {}
 
   async createProvider(groups: ContextPathGroup[]): Promise<ContextResourceProvider> {
     const resources = await this.collectResources(groups);
@@ -54,7 +58,7 @@ export class ContextResourceResolver {
           }
 
           try {
-            const raw = await vscode.workspace.fs.readFile(resource.uri);
+            const raw = await this.fileSystem.readFile(resource.absolutePath);
             const content = Buffer.from(raw).toString('utf8');
 
             contents.push({
@@ -78,8 +82,8 @@ export class ContextResourceResolver {
   }
 
   private async collectResources(groups: ContextPathGroup[]): Promise<InternalContextResource[]> {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders || workspaceFolders.length === 0) {
+    const workspaceFolders = this.workspace.workspaceFolders();
+    if (workspaceFolders.length === 0) {
       this.outputChannel?.appendLine('[ContextResourceResolver] No workspace folders found.');
       return [];
     }
@@ -100,12 +104,11 @@ export class ContextResourceResolver {
             continue;
           }
 
-          const includePattern = new vscode.RelativePattern(workspaceFolder, normalizedPattern);
           const excludePattern = '{**/node_modules/**,**/.git/**,**/.svn/**,**/.hg/**,**/dist/**,**/out/**}';
 
-          let matches: vscode.Uri[] = [];
+          let matches: string[] = [];
           try {
-            matches = await vscode.workspace.findFiles(includePattern, excludePattern);
+            matches = await this.workspace.findFiles(workspaceFolder.path, normalizedPattern, excludePattern);
           } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             this.outputChannel?.appendLine(
@@ -115,7 +118,7 @@ export class ContextResourceResolver {
           }
 
           for (const match of matches) {
-            const relativePath = vscode.workspace.asRelativePath(match, false);
+            const relativePath = this.workspace.asRelativePath(match, false);
             const normalizedKey = this.normalizeKey(relativePath);
 
             if (seenPaths.has(normalizedKey)) {
@@ -133,7 +136,7 @@ export class ContextResourceResolver {
               path: relativePath,
               label: this.deriveLabel(match),
               workspaceFolder: workspaceFolder.name,
-              uri: match
+              absolutePath: match
             });
           }
         }
@@ -165,8 +168,7 @@ export class ContextResourceResolver {
   }
 
   private getPatternsForGroup(group: ContextPathGroup): string[] {
-    const config = vscode.workspace.getConfiguration('proseMinion');
-    const rawValue = config.get<string>(`contextPaths.${group}`) || '';
+    const rawValue = this.settings.get<string>('proseMinion', `contextPaths.${group}`) || '';
 
     return rawValue
       .split(',')
@@ -199,13 +201,13 @@ export class ContextResourceResolver {
     return pathValue.trim().replace(/\\/g, '/').replace(/^\/+/, '').toLowerCase();
   }
 
-  private isSupportedFile(uri: vscode.Uri): boolean {
-    const extension = path.extname(uri.fsPath).toLowerCase();
+  private isSupportedFile(filePath: string): boolean {
+    const extension = path.extname(filePath).toLowerCase();
     return extension === '.md' || extension === '.txt';
   }
 
-  private deriveLabel(uri: vscode.Uri): string {
-    const basename = path.basename(uri.fsPath, path.extname(uri.fsPath));
+  private deriveLabel(filePath: string): string {
+    const basename = path.basename(filePath, path.extname(filePath));
     return basename
       .replace(/[-_]+/g, ' ')
       .split(' ')

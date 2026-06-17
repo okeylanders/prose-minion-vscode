@@ -3,26 +3,23 @@
  * Loads system prompts from markdown files
  */
 
-import * as vscode from 'vscode';
 import * as path from 'path';
-import * as fs from 'fs';
+import { FileSystem } from '@/platform';
 
 export class PromptLoader {
-  constructor(private readonly extensionUri: vscode.Uri) {}
+  constructor(
+    private readonly extensionPath: string,
+    private readonly fileSystem: FileSystem
+  ) {}
 
   /**
    * Load a system prompt from a markdown file
    */
   async loadPrompt(promptPath: string): Promise<string> {
-    const fullPath = vscode.Uri.joinPath(
-      this.extensionUri,
-      'resources',
-      'system-prompts',
-      promptPath
-    );
+    const fullPath = path.join(this.extensionPath, 'resources', 'system-prompts', promptPath);
 
     try {
-      const content = await vscode.workspace.fs.readFile(fullPath);
+      const content = await this.fileSystem.readFile(fullPath);
       return Buffer.from(content).toString('utf-8');
     } catch (error) {
       console.error(`Failed to load prompt: ${promptPath}`, error);

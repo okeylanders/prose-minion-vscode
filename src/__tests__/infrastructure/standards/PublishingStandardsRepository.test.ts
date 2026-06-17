@@ -5,31 +5,11 @@
 
 import { PublishingStandardsRepository } from '@/infrastructure/standards/PublishingStandardsRepository';
 import { Genre, PageSize } from '@/domain/models/PublishingStandards';
-
-// Mock vscode module
-jest.mock('vscode', () => {
-  const mockReadFile = jest.fn();
-  return {
-    Uri: {
-      joinPath: jest.fn((_base: any, ...segments: string[]) => ({
-        fsPath: segments.join('/'),
-        path: segments.join('/')
-      }))
-    },
-    workspace: {
-      fs: {
-        readFile: mockReadFile
-      }
-    },
-    _mockReadFile: mockReadFile
-  };
-}, { virtual: true });
-
-const vscode = require('vscode');
-const mockReadFile = vscode._mockReadFile;
+import { createFakeFileSystem } from '../../mocks/platform';
 
 describe('PublishingStandardsRepository - Business Logic', () => {
   let repository: PublishingStandardsRepository;
+  let readFileMock: jest.Mock;
 
   const mockGenres: Genre[] = [
     {
@@ -80,8 +60,11 @@ describe('PublishingStandardsRepository - Business Logic', () => {
   };
 
   beforeEach(() => {
-    mockReadFile.mockResolvedValue(Buffer.from(JSON.stringify(mockData)));
-    repository = new PublishingStandardsRepository({ fsPath: '/test', path: '/test' } as any);
+    readFileMock = jest.fn().mockResolvedValue(Buffer.from(JSON.stringify(mockData)));
+    repository = new PublishingStandardsRepository(
+      '/test',
+      createFakeFileSystem({ readFile: readFileMock })
+    );
   });
 
   afterEach(() => {
@@ -198,7 +181,7 @@ describe('PublishingStandardsRepository - Business Logic', () => {
       await repository.getGenres();
 
       // File should only be read once
-      expect(mockReadFile).toHaveBeenCalledTimes(1);
+      expect(readFileMock).toHaveBeenCalledTimes(1);
     });
 
     it('should use cached data for subsequent operations', async () => {
@@ -207,7 +190,7 @@ describe('PublishingStandardsRepository - Business Logic', () => {
       await repository.getManuscriptFormat();
 
       // File should only be read once despite multiple operations
-      expect(mockReadFile).toHaveBeenCalledTimes(1);
+      expect(readFileMock).toHaveBeenCalledTimes(1);
     });
   });
 });

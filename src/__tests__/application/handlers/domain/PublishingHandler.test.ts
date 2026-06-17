@@ -6,7 +6,7 @@
 import { PublishingHandler } from '@/application/handlers/domain/PublishingHandler';
 import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { MessageType } from '@/shared/types/messages';
-import { createFakeSettings } from '../../../mocks/platform';
+import { createFakeSettings, createFakeFileSystem } from '../../../mocks/platform';
 
 describe('PublishingHandler', () => {
   let handler: PublishingHandler;
@@ -14,8 +14,9 @@ describe('PublishingHandler', () => {
 
   beforeEach(() => {
     handler = new PublishingHandler(
+      createFakeFileSystem(),
+      '/ext',
       jest.fn().mockResolvedValue(undefined) as any, // postMessage
-      {} as any, // extensionUri
       createFakeSettings()
     );
     router = new MessageRouter();

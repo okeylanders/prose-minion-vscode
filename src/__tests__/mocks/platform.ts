@@ -5,7 +5,7 @@
  * exercise the host integration. Grows as later waves add FileSystem/Workspace/
  * ShellService/EditorContext fakes.
  */
-import { SettingsStore } from '@/platform';
+import { FileStat, FileSystem, FileType, SettingsStore, Workspace } from '@/platform';
 
 /**
  * A SettingsStore that serves `values` (keyed by "key" or "section.key") and
@@ -25,5 +25,35 @@ export function createFakeSettings(values: Record<string, unknown> = {}): Settin
   return {
     get: get as SettingsStore['get'],
     update: async () => undefined,
+  };
+}
+
+/**
+ * A FileSystem returning empty results by default; override any method (commonly
+ * `readFile`) to feed fixture bytes.
+ */
+export function createFakeFileSystem(overrides: Partial<FileSystem> = {}): FileSystem {
+  const emptyStat: FileStat = { type: FileType.File, ctime: 0, mtime: 0, size: 0 };
+  return {
+    readFile: async () => new Uint8Array(),
+    writeFile: async () => undefined,
+    readDirectory: async () => [],
+    stat: async () => emptyStat,
+    createDirectory: async () => undefined,
+    ...overrides,
+  };
+}
+
+/**
+ * A Workspace with no folders and an `/ext` extension path by default; override
+ * `workspaceFolders`/`findFiles` to simulate a project.
+ */
+export function createFakeWorkspace(overrides: Partial<Workspace> = {}): Workspace {
+  return {
+    workspaceFolders: () => [],
+    extensionPath: '/ext',
+    asRelativePath: (p: string) => p,
+    findFiles: async () => [],
+    ...overrides,
   };
 }

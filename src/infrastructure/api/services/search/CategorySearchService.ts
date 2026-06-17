@@ -14,8 +14,7 @@
  * - Uses OpenRouterClient for AI matching
  */
 
-import * as vscode from 'vscode';
-import { LogSink } from '@/platform';
+import { FileSystem, LogSink } from '@/platform';
 import { WordSearchService } from './WordSearchService';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { WordFrequency } from '@/tools/measure/wordFrequency';
@@ -40,12 +39,13 @@ export class CategorySearchService {
   constructor(
     private readonly aiResourceManager: AIResourceManager,
     private readonly wordSearchService: WordSearchService,
-    private readonly extensionUri: vscode.Uri,
+    private readonly fileSystem: FileSystem,
+    private readonly extensionPath: string,
     private readonly outputChannel?: LogSink,
     private readonly statusEmitter?: StatusEmitter
   ) {
     this.wordFrequency = new WordFrequency((msg) => this.outputChannel?.appendLine(msg));
-    this.promptLoader = new PromptLoader(extensionUri);
+    this.promptLoader = new PromptLoader(extensionPath, fileSystem);
   }
 
   /**

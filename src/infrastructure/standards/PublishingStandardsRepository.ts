@@ -1,15 +1,19 @@
-import * as vscode from 'vscode';
+import * as path from 'path';
+import { FileSystem } from '@/platform';
 import { PublishingStandardsRoot, Genre, PageSize } from '@/domain/models/PublishingStandards';
 
 export class PublishingStandardsRepository {
   private cache?: PublishingStandardsRoot;
 
-  constructor(private readonly extensionUri: vscode.Uri) {}
+  constructor(
+    private readonly extensionPath: string,
+    private readonly fileSystem: FileSystem
+  ) {}
 
   async load(): Promise<PublishingStandardsRoot> {
     if (this.cache) return this.cache;
-    const uri = vscode.Uri.joinPath(this.extensionUri, 'resources', 'repository', 'publishing_standards.json');
-    const raw = await vscode.workspace.fs.readFile(uri);
+    const filePath = path.join(this.extensionPath, 'resources', 'repository', 'publishing_standards.json');
+    const raw = await this.fileSystem.readFile(filePath);
     const json = JSON.parse(Buffer.from(raw).toString('utf8')) as PublishingStandardsRoot;
     this.cache = json;
     return json;

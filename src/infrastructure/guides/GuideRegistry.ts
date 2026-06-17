@@ -3,8 +3,7 @@
  * Dynamically discovers and catalogs all available craft guides
  */
 
-import * as vscode from 'vscode';
-import { LogSink } from '@/platform';
+import { FileSystem, FileType, LogSink } from '@/platform';
 import * as path from 'path';
 
 export interface GuideMetadata {
@@ -19,7 +18,8 @@ export class GuideRegistry {
   private readonly CACHE_TTL = 60000; // 1 minute cache
 
   constructor(
-    private readonly extensionUri: vscode.Uri,
+    private readonly extensionPath: string,
+    private readonly fileSystem: FileSystem,
     private readonly outputChannel?: LogSink
   ) {}
 
@@ -49,7 +49,7 @@ export class GuideRegistry {
    * Scan the craft-guides directory and catalog all .md files
    */
   async scanGuidesDirectory(): Promise<void> {
-    const guidesPath = vscode.Uri.joinPath(this.extensionUri, 'resources', 'craft-guides');
+    const guidesPath = path.join(this.extensionPath, 'resources', 'craft-guides');
     const guides: GuideMetadata[] = [];
 
     try {
@@ -75,12 +75,12 @@ export class GuideRegistry {
    * Recursively scan a directory for markdown files
    */
   private async scanDirectory(
-    dirUri: vscode.Uri,
+    dirPath: string,
     relativePath: string,
     guides: GuideMetadata[]
   ): Promise<void> {
     try {
-      const entries = await vscode.workspace.fs.readDirectory(dirUri);
+      const entries = await this.fileSystem.readDirectory(dirPath);
 
       for (const [name, type] of entries) {
         // Skip hidden files and README
@@ -88,13 +88,13 @@ export class GuideRegistry {
           continue;
         }
 
-        const entryUri = vscode.Uri.joinPath(dirUri, name);
+        const entryPath = path.join(dirPath, name);
         const entryRelativePath = relativePath ? `${relativePath}/${name}` : name;
 
-        if (type === vscode.FileType.Directory) {
+        if (type === FileType.Directory) {
           // Recursively scan subdirectory
-          await this.scanDirectory(entryUri, entryRelativePath, guides);
-        } else if (type === vscode.FileType.File && name.endsWith('.md')) {
+          await this.scanDirectory(entryPath, entryRelativePath, guides);
+        } else if (type === FileType.File && name.endsWith('.md')) {
           // Add markdown file as a guide
           const category = this.getCategoryFromPath(entryRelativePath);
           const displayName = this.getDisplayNameFromFilename(name);
@@ -107,7 +107,7 @@ export class GuideRegistry {
         }
       }
     } catch (error) {
-      console.warn(`Failed to scan directory ${dirUri.fsPath}:`, error);
+      console.warn(`Failed to scan directory ${dirPath}:`, error);
     }
   }
 

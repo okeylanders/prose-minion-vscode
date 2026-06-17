@@ -3,8 +3,7 @@
  * Handles publishing standards operations
  */
 
-import * as vscode from 'vscode';
-import { SettingsStore } from '@/platform';
+import { FileSystem, SettingsStore } from '@/platform';
 import {
   RequestPublishingStandardsDataMessage,
   SetPublishingPresetMessage,
@@ -20,7 +19,8 @@ import { MessageRouter } from '../MessageRouter';
 
 export class PublishingHandler {
   constructor(
-    private readonly extensionUri: vscode.Uri,
+    private readonly fileSystem: FileSystem,
+    private readonly extensionPath: string,
     private readonly postMessage: (message: any) => Promise<void>,
     private readonly settings: SettingsStore
   ) {}
@@ -54,7 +54,7 @@ export class PublishingHandler {
 
   async handleRequestPublishingStandardsData(message: RequestPublishingStandardsDataMessage): Promise<void> {
     try {
-      const repo = new PublishingStandardsRepository(this.extensionUri);
+      const repo = new PublishingStandardsRepository(this.extensionPath, this.fileSystem);
       const genres = await repo.getGenres();
       const preset = (this.settings.get<string>('proseMinion', 'publishingStandards.preset') || 'none');
       const pageSizeKey = (this.settings.get<string>('proseMinion', 'publishingStandards.pageSizeKey') || '');

@@ -16,8 +16,8 @@
  * - Provides clean extension point for context features
  */
 
-import * as vscode from 'vscode';
-import { LogSink } from '@/platform';
+import { fileURLToPath } from 'url';
+import { FileSystem, LogSink, SettingsStore, Workspace } from '@/platform';
 import { ContextAssistant } from '@/tools/assist/contextAssistant';
 import { ContextResourceResolver } from '@/infrastructure/context/ContextResourceResolver';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
@@ -60,9 +60,17 @@ export class ContextAssistantService {
     private readonly aiResourceManager: AIResourceManager,
     private readonly resourceLoader: ResourceLoaderService,
     private readonly toolOptions: ToolOptionsProvider,
+    private readonly settings: SettingsStore,
+    private readonly fileSystem: FileSystem,
+    private readonly workspace: Workspace,
     private readonly outputChannel?: LogSink
   ) {
-    this.contextResourceResolver = new ContextResourceResolver(this.outputChannel);
+    this.contextResourceResolver = new ContextResourceResolver(
+      this.settings,
+      this.fileSystem,
+      this.workspace,
+      this.outputChannel
+    );
 
     // Context assistant will be initialized when AI resources are available
     void this.initializeContextAssistant();
@@ -138,8 +146,8 @@ export class ContextAssistantService {
       let sourceContent: string | undefined;
       if (request.sourceFileUri) {
         try {
-          const uri = vscode.Uri.parse(request.sourceFileUri);
-          const raw = await vscode.workspace.fs.readFile(uri);
+          const fsPath = fileURLToPath(request.sourceFileUri);
+          const raw = await this.fileSystem.readFile(fsPath);
           sourceContent = Buffer.from(raw).toString('utf8');
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
