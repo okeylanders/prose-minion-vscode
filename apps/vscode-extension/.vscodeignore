@@ -26,6 +26,10 @@ coverage/**
 .git/**
 .gitignore
 
+# NOTE: assets/assistant-working-*.gif are intentionally SHIPPED — they're the
+# webview loading animation (referenced by ProseToolsViewProvider via extensionUri),
+# not bloat (PR #60 review #12). Only the README-only assets below are excluded.
+
 # README-only assets (not needed at runtime)
 assets/prose-minion-book-animated.gif
 assets/example-outputs/**

@@ -13,8 +13,10 @@ Structural-only move to a workspace monorepo: one platform-agnostic
 `@prose-minion/core` consumed by a thin `apps/vscode-extension` shell, mirroring
 FrameMinion's chassis. **No behavior change** — the 313-test suite, all three
 typechecks, and both webpack bundles are green before and after, and the
-`vsce package` VSIX ships identical contents (`dist/` + `resources/` + `assets/`,
-`src/`-free). Builds on Stage 1 (ports-and-adapters; core was already vscode-free).
+`vsce package` VSIX ships the **same file set** (`dist/` + `resources/` + `assets/`,
+`src/`-free) with identical runtime behavior (not a byte-reproducible build — the
+archive's internal root moved to the app dir). Builds on Stage 1 (ports-and-adapters;
+core was already vscode-free).
 
 **Branch:** `claude/funny-davinci-yqautn` (off `epic/monorepo-ports-and-adapters` @ `ae617df`)
 **Docs:** `migration-and-facelift/` · ADR `docs/adr/2026-06-16-monorepo-ports-and-adapters.md`
@@ -69,6 +71,40 @@ typechecks, and both webpack bundles are green before and after, and the
 - `boundaries.test.ts` rewritten — asserts `packages/core/src` imports no `vscode` anywhere
   (no shell exceptions). `wordSearchDefaultsSync.test.ts` repointed at the relocated app
   manifest. 313 tests / 40 suites green before and after.
+
+### Review fixups (PR #60 — multi-agent review, `docs/pr-reviews/pr-60-…`)
+
+Addressed every actionable finding on the branch (no 🔴 blockers; the shipped VSIX was sound):
+
+- **🟠 F5 dev-launch repointed** — `.vscode/launch.json` `extensionDevelopmentPath`/`outFiles`
+  now target `apps/vscode-extension[/dist]` (were stale at the repo root, so F5 loaded
+  nothing). `tasks.json` watch now runs in the app dir (`options.cwd`) with `reveal: silent`
+  so webpack errors surface in the Problems panel.
+- **🟠 Verification gate restored** — root `prepackage` runs `typecheck && test` before any
+  `npm run package`, and a new `.github/workflows/ci.yml` runs typecheck + test + lint + build
+  on every push/PR (webpack is `transpileOnly`, so this is the type/test/boundary net the
+  move had removed from `build`).
+- **D22 resource witness** — `resourceStaging.test.ts` stages the real `packages/core/resources`
+  via the same `fs.cpSync` the copy script uses and reads a prompt back through the real
+  `PromptLoader` over a Node-fs `FileSystem` — so a copy-script or loader-path regression goes
+  red. (+2 tests → 315 / 41 suites.)
+- **`copy-resources.js` is symlink-safe** — switched the hand-rolled walk to
+  `fs.cpSync(..., { recursive: true, dereference: true })` (the prior walk silently dropped
+  symlinked entries). Added `clean-dist.js` (PM had no clean step; stale `*.map` lingered).
+- **Production source maps dropped** — webpack `devtool` is `false` under `--mode production`
+  (maps were generated then stripped by `.vscodeignore`); dev/watch keeps them for F5.
+- **Smaller**: dropped vestigial `@types/marked` from core (marked ^16 self-types; core now
+  has zero devDeps); jest `testMatch` + `tsconfig.test.json` include `.tsx` and a TODO marks
+  the missing app-side `vscode` mock; corrected the stale `testEnvironment` comment; `.vscodeignore`
+  notes the intentionally-shipped loading GIFs.
+- **No action (recharacterized)**: the barrel's two `export *`s match FrameMinion's *actual*
+  barrel over the same bounded namespaces — the "never `export *`" rule lives only in FM's prose.
+
+### Behavior delta (intentional)
+
+Root `npm run build` delegates to the app webpack only — it no longer runs test+typecheck first
+(the pre-move single-package `build` did). The `prepackage` gate + CI restore that net at the
+package/CI boundary; run `npm test` / `npm run typecheck` explicitly for a bare `build`.
 
 ---
 

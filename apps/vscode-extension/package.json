@@ -459,8 +459,9 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
+    "clean:dist": "node ./scripts/clean-dist.js",
     "copy:resources": "node ./scripts/copy-resources.js",
-    "build": "npm run copy:resources && webpack --mode production",
+    "build": "npm run clean:dist && npm run copy:resources && webpack --mode production",
     "watch": "npm run copy:resources && webpack --mode development --watch",
     "package": "vsce package --no-dependencies"
   },

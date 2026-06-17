@@ -11,7 +11,8 @@
   "include": [
     "packages/core/src/**/*.ts",
     "packages/core/src/**/*.tsx",
-    "apps/vscode-extension/src/**/*.ts"
+    "apps/vscode-extension/src/**/*.ts",
+    "apps/vscode-extension/src/**/*.tsx"
   ],
   "exclude": ["node_modules", "dist"]
 }

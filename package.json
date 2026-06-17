@@ -22,6 +22,7 @@
   "scripts": {
     "build": "npm run build -w apps/vscode-extension",
     "watch": "npm run watch -w apps/vscode-extension",
+    "prepackage": "npm run typecheck && npm test",
     "package": "npm run package -w apps/vscode-extension",
     "lint": "eslint packages apps --ext ts,tsx",
     "test": "jest",

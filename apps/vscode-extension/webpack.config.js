@@ -101,4 +101,14 @@ const webviewConfig = {
   }
 };
 
-module.exports = [extensionConfig, webviewConfig];
+module.exports = (env, argv) => {
+  if (argv && argv.mode === 'production') {
+    // Production source maps are generated then stripped by .vscodeignore's
+    // `**/*.map` (PR #60 review #11) — skip them for the prepublish/package build.
+    // The dev/watch build (`--mode development`) keeps `devtool: 'source-map'` so
+    // breakpoints bind under F5.
+    extensionConfig.devtool = false;
+    webviewConfig.devtool = false;
+  }
+  return [extensionConfig, webviewConfig];
+};

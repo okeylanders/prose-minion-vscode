@@ -18,19 +18,6 @@ const path = require('path');
 const SRC = path.resolve(__dirname, '..', '..', '..', 'packages', 'core', 'resources');
 const DEST = path.resolve(__dirname, '..', 'resources');
 
-function copyDir(src, dest) {
-  fs.mkdirSync(dest, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    const s = path.join(src, entry.name);
-    const d = path.join(dest, entry.name);
-    if (entry.isDirectory()) {
-      copyDir(s, d);
-    } else if (entry.isFile()) {
-      fs.copyFileSync(s, d);
-    }
-  }
-}
-
 if (!fs.existsSync(SRC)) {
   console.error(`[copy-resources] source not found: ${SRC}`);
   process.exit(1);
@@ -38,5 +25,10 @@ if (!fs.existsSync(SRC)) {
 
 // Clean the staged copy first so files removed from core don't linger in the VSIX.
 fs.rmSync(DEST, { recursive: true, force: true });
-copyDir(SRC, DEST);
+
+// fs.cpSync (Node 16.7+) copies the whole tree including symlinked entries —
+// which the prior hand-rolled isDirectory()/isFile() walk silently dropped
+// (PR #60 review #4). `dereference: true` materializes any symlinked resource as
+// a real file so it actually lands in the VSIX (the runtime reads bytes off disk).
+fs.cpSync(SRC, DEST, { recursive: true, dereference: true });
 console.log(`[copy-resources] staged ${SRC} -> ${DEST}`);

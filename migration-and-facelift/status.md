@@ -1,7 +1,17 @@
 # Status — Prose Minion Migration & Facelift
 
 **Branch:** `claude/funny-davinci-yqautn` (cut off `epic/monorepo-ports-and-adapters` @ `ae617df`) · **Last updated:** 2026-06-17
-**Health:** 🟢 green — **Stage 1 COMPLETE** (core is `vscode`-free) · **Stage 2 COMPLETE** (monorepo move; all 5 waves green + pushed). Behavior-identical to the Wave-0 baseline. **F5 smoke pending the author** (no interactive VS Code in CI). Next: Pass 2 facelift.
+**Health:** 🟢 green — **Stage 1 COMPLETE** (core is `vscode`-free) · **Stage 2 COMPLETE** (monorepo move, all 5 waves) · **PR #60 review fixups LANDED** (315 tests / 41 suites · 3 typechecks · build · lint 0-err · VSIX). **F5 now unblocked** (launch.json repointed — was the one thing that would have failed the smoke). **F5 smoke still pending the author.** Next: Pass 2 facelift.
+
+## PR #60 review fixups (2026-06-17)
+
+Multi-agent review (`docs/pr-reviews/pr-60-stage-2-monorepo-move-review.md`) — no 🔴 blockers; every actionable finding addressed on-branch:
+
+- 🟠 **F5 launch** repointed to `apps/vscode-extension` (the smoke would have failed at step zero); watch task runs in the app dir + `reveal: silent`.
+- 🟠 **Gate restored** — root `prepackage` = `typecheck && test`; new `.github/workflows/ci.yml` (D23).
+- **D22 witness** — `resourceStaging.test.ts` proves staged resources resolve through the real loader (+2 tests).
+- copy-resources `fs.cpSync` (symlink-safe) + new `clean-dist.js`; prod `devtool:false`; dropped `@types/marked`; jest `.tsx` globs + app-mock TODO; `.vscodeignore` GIF note; changelog wording.
+- `export *` finding = no action (matches FM's actual barrel; recharacterized).
 
 ## Pass / Stage tracker
 

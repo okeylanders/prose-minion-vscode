@@ -4,6 +4,9 @@
     {
       "type": "npm",
       "script": "watch",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/vscode-extension"
+      },
       "problemMatcher": {
         "pattern": {
           "regexp": "^([^\\s].*)[\\(:](\\d+)[,:](\\d+)(?:\\):|:)\\s+(warning|error)\\s+(.*)$",
@@ -21,7 +24,7 @@
       },
       "isBackground": true,
       "presentation": {
-        "reveal": "never"
+        "reveal": "silent"
       },
       "group": {
         "kind": "build",

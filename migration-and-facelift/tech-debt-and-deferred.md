@@ -28,6 +28,8 @@ silent deferrals read as "done" when they aren't.
 | `.vscodeignore` did not exclude `migration-and-facelift/**` | Low | Added 2026-06-17 so root packaging never bundles tracking docs. Moot after Stage 2 (packaging moves into `apps/vscode-extension`). |
 | Long constructors (`MessageHandler` 12 params, `ProseToolsViewProvider` 11) | Low–Med | Adding ports risks 16+ params. Mitigation: thread a `Platform` bundle (Wave 5) rather than more individual params. |
 | `outputChannel`-named params now typed `LogSink` | Cosmetic | Param name kept to minimize Wave-1 churn; the name still reads "output channel" though the type is the narrower port. Rename opportunistically. |
+| Root `npm run build` no longer typechecks/tests (Stage-2 delta) | Low (mitigated) | The pre-move single-package `build` ran `test + typecheck + webpack`; the monorepo root `build` delegates to the app webpack only. **Mitigated** by the PR #60 fixups: root `prepackage` runs `typecheck && test` before any `npm run package`, and `.github/workflows/ci.yml` runs typecheck+test+lint+build on every push/PR. A bare `npm run build` still skips them by design (fast inner loop) — run them explicitly or rely on the gate. |
+| App `apps/*` jest root has no app-side `vscode` mock | Low | `jest.config.js` lists the app src as a root for future adapter tests, but the `vscode` mock is scoped to core's `setup.ts`. The first app-side adapter test that touches a `vscode` global must add an app-scoped mock seam (TODO noted in `jest.config.js`). No app tests today. |
 
 ## PR #59 review — deferred items (with rationale)
 
