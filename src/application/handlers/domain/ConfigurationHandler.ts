@@ -32,6 +32,7 @@ import {
 import { MessageRouter } from '../MessageRouter';
 import { OpenRouterModels } from '@providers/OpenRouterModels';
 import { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
+import { WORD_SEARCH_DEFAULTS } from '@shared/constants/wordSearchDefaults';
 
 export class ConfigurationHandler {
   // Track webview-originated config updates to prevent echo-back
@@ -71,10 +72,10 @@ export class ConfigurationHandler {
    */
   public getWordSearchSettings() {
     return {
-      contextWords: this.settings.get<number>('proseMinion', 'wordSearch.contextWords', 3),
-      clusterWindow: this.settings.get<number>('proseMinion', 'wordSearch.clusterWindow', 50),
-      minClusterSize: this.settings.get<number>('proseMinion', 'wordSearch.minClusterSize', 2),
-      caseSensitive: this.settings.get<boolean>('proseMinion', 'wordSearch.caseSensitive', false)
+      contextWords: this.settings.get<number>('proseMinion', 'wordSearch.contextWords', WORD_SEARCH_DEFAULTS.contextWords),
+      clusterWindow: this.settings.get<number>('proseMinion', 'wordSearch.clusterWindow', WORD_SEARCH_DEFAULTS.clusterWindow),
+      minClusterSize: this.settings.get<number>('proseMinion', 'wordSearch.minClusterSize', WORD_SEARCH_DEFAULTS.minClusterSize),
+      caseSensitive: this.settings.get<boolean>('proseMinion', 'wordSearch.caseSensitive', WORD_SEARCH_DEFAULTS.caseSensitive)
     };
   }
 

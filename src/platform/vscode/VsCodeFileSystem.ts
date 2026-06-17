@@ -1,9 +1,17 @@
 /**
  * VsCodeFileSystem - VS Code adapter for the `FileSystem` port.
  *
- * Backed by `vscode.workspace.fs` + `vscode.Uri.file()`, NOT Node `fs`:
- * workspace.fs preserves virtual/remote-FS support that Node fs would silently
- * drop. Pure pass-throughs of the prior inline calls, on plain string paths.
+ * Backed by `vscode.workspace.fs` (NOT Node `fs`) so it can reach virtual/remote
+ * FS providers at all — Node `fs` only ever sees the local disk. Pure
+ * pass-throughs of the prior inline calls, on plain string paths.
+ *
+ * CAVEAT (string-path port boundary): each call reconstructs a URI via
+ * `vscode.Uri.file(path)`, which forces the `file:` scheme. So this faithfully
+ * preserves behavior for `file://` workspaces (the norm), but a non-`file://`
+ * path (e.g. a `vscode-vfs://` remote) is rebuilt as `file:` and effectively
+ * degrades — the original scheme is lost on the `fsPath` round-trip. Promoting
+ * full URI fidelity into the port is the documented fix if that ever matters
+ * (see migration tech-debt notes).
  *
  * `writeFile` does MORE than the bare `workspace.fs` call: the port contract
  * promises mkdir-p, but `vscode.workspace.fs.writeFile` throws on a missing
