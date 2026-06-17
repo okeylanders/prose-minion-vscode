@@ -28,8 +28,8 @@
 | 1 | **AppMessagePort** (webview port, in-place, pre-move) — plan task #1 | ✅ done | `874b4d5` |
 | 2 | **TS 4.9 → 5.x** (D10, in-place) | ✅ done (→ TS 5.9.3, zero code changes) | `41af823` |
 | 3 | **The move** — `git mv` core/app split; `tsconfig.base.json` paths; core barrel; shell imports→barrel; rewrite boundary guard; resources→`packages/core/resources` + copy script | ✅ done (A `fe0e6cb` pure-mv · B `7777119` wiring) | — |
-| 4 | **Packaging + boundary** — `vsce package --no-dependencies` (D13); eslint `no-restricted-imports` app→core; verify VSIX ships resources | ⬜ next | — |
-| 5 | **Final verify + docs** — full matrix vs Wave-0 baseline; F5 smoke handoff; doc tick | ⬜ todo | — |
+| 4 | **Packaging + boundary** — `vsce package --no-dependencies` (D13); eslint `no-restricted-imports` app→core; verify VSIX ships resources | ✅ done | _this commit_ |
+| 5 | **Final verify + docs** — full matrix vs Wave-0 baseline; F5 smoke handoff; doc tick | ⬜ next | — |
 
 **Wave 0 baseline (the diff target):** 313 tests / 40 suites · extension+webview typechecks CLEAN · webpack both bundles (`extension.js` + `webview.js` 484 KiB, size-warnings only) · `vsce package` deferred (not installed; `@vscode/vsce` added to app devDeps in Wave 3).
 
@@ -71,11 +71,18 @@ This wave finished the last two `vscode` consumers in core:
 
 ## Notes for the next session (resume point)
 
-- **Resume at Stage 2 Wave 4 — packaging + boundary** (first ⬜ in the wave tracker above):
-  (1) `npm run package -w apps/vscode-extension` (= `vsce package --no-dependencies` via
-  prepublish→build→copy-resources) and verify the `.vsix` ships `dist/` + `resources/` +
-  `assets/` and is `src/`-free; (2) `npm run lint` and prove the eslint `no-restricted-imports`
-  app→core boundary actually fires (try a deep `@/`-import in a shell file, confirm error, revert).
+- **Resume at Stage 2 Wave 5 — final verify + docs** (first ⬜ in the wave tracker above):
+  re-run the full matrix one more time as a single clean pass (both typechecks · 313 tests ·
+  app build · `vsce package`), write the changelog entries (`docs/CHANGELOG-DETAILED.md`; the
+  Marketplace `apps/vscode-extension/CHANGELOG.md` only if user-visible — this move is not),
+  flip status to **Stage 2 COMPLETE**, and hand the author the **F5 smoke** checklist (sidebar,
+  analysis, word-frequency, dictionary, save report, settings round-trip, API key store/clear).
+- **Wave 4 done — packaging + boundary verified.** `vsce package --no-dependencies` → clean
+  `prose-minion-1.10.4.vsix` (128 files / 10.45 MB) shipping `dist/` + `resources/` (all 4
+  subdirs, copy-staged from core) + runtime `assets/`, **`src/`-free**. `npm run lint` = 0
+  errors (469 pre-existing warnings). The eslint app→core boundary FIRES (a deep `@/`-import in
+  a shell file errors with the barrel message). Fixed a Wave-3 slip: an illegal `"//"` key inside
+  the eslint `overrides[0]` (schema-invalid) was removed.
 - **Wave 3 done — the monorepo move is GREEN.** Structure now: `packages/core` (vscode-free,
   consumed via the `@prose-minion/core` barrel) + `apps/vscode-extension` (the 7 shell files +
   manifest + webpack). Single `tsconfig.base.json` paths table; TS 5.9.3; resources owned by

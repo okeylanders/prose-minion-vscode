@@ -18,7 +18,6 @@
   },
   "overrides": [
     {
-      "//": "App→core boundary (ADR 2026-06-16 monorepo). The shell must import core ONLY via the @prose-minion/core barrel, never deep core aliases. tsc resolves them (the app compiles core transitively), so this rule is the enforcement.",
       "files": ["apps/vscode-extension/src/**/*.ts", "apps/vscode-extension/src/**/*.tsx"],
       "rules": {
         "no-restricted-imports": [

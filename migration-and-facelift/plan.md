@@ -77,8 +77,8 @@ no-logic relocation.
 - [x] `git mv` source into core/app; presentation/webview → core — ✅ Wave 3 (313 pure renames, `--follow` intact)
 - [x] Single `tsconfig.base.json` paths table (TS 5.x bumped in Wave 2) — ✅ Wave 3
 - [x] Point webpack at the core webview entry; core `index.ts` barrel (named exports) — ✅ Wave 3
-- [ ] ESLint `no-restricted-imports` app→core boundary — Wave 4
-- [ ] `vsce package --no-dependencies` (resource bundling settled = D22) — Wave 4
+- [x] ESLint `no-restricted-imports` app→core boundary — ✅ Wave 4 (rule fires; lint 0 errors)
+- [x] `vsce package --no-dependencies` (resource bundling settled = D22) — ✅ Wave 4 (VSIX ships dist+resources+assets, src-free)
 - [ ] Final verify: typecheck + tests + build + package + **F5 smoke** — Wave 5
 
 ## Pass 2 — Facelift (after Stage 2)
