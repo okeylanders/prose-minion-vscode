@@ -7,7 +7,7 @@
  * - Editor (Grammar & Mechanics)
  */
 
-import type * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import { PromptLoader } from '../shared/prompts';
 import { AIResourceOrchestrator, ExecutionResult, StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
 import { AssistantFocus, WritingToolsFocus } from '@messages';
@@ -35,7 +35,7 @@ export class WritingToolsAssistant {
   constructor(
     private readonly aiResourceOrchestrator: AIResourceOrchestrator,
     private readonly promptLoader: PromptLoader,
-    private readonly outputChannel?: vscode.OutputChannel
+    private readonly outputChannel?: LogSink
   ) {}
 
   async analyze(input: WritingToolsInput, options: WritingToolsOptions): Promise<ExecutionResult> {

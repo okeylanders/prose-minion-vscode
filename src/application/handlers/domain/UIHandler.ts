@@ -4,6 +4,7 @@
  */
 
 import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import {
   OpenGuideFileMessage,
   OpenDocsFileMessage,
@@ -23,7 +24,7 @@ export class UIHandler {
   constructor(
     private readonly extensionUri: vscode.Uri,
     private readonly postMessage: (message: any) => Promise<void>,
-    private readonly outputChannel: vscode.OutputChannel
+    private readonly outputChannel: LogSink
   ) {}
 
   /**

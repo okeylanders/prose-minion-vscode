@@ -6,6 +6,7 @@
  */
 
 import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { DictionaryService } from '@services/dictionary/DictionaryService';
@@ -43,7 +44,7 @@ export class ConfigurationHandler {
     private readonly contextAssistantService: ContextAssistantService,
     private readonly secretsService: SecretStorageService,
     private readonly postMessage: (message: any) => Promise<void>,
-    private readonly outputChannel: vscode.OutputChannel,
+    private readonly outputChannel: LogSink,
     private readonly sharedResultCache: any,
     private readonly tokenTotals: { promptTokens: number; completionTokens: number; totalTokens: number }
   ) {}

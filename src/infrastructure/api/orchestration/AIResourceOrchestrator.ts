@@ -4,6 +4,7 @@
  */
 
 import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import { OpenRouterClient, OpenRouterMessage } from '@providers/OpenRouterClient';
 import { GuideRegistry } from '@/infrastructure/guides/GuideRegistry';
 import { GuideLoader } from '@/tools/shared/guides';
@@ -57,7 +58,7 @@ export class AIResourceOrchestrator {
     private readonly guideRegistry: GuideRegistry,
     private readonly guideLoader: GuideLoader,
     private statusCallback?: StatusCallback,
-    private readonly outputChannel?: vscode.OutputChannel,
+    private readonly outputChannel?: LogSink,
     private tokenUsageCallback?: TokenUsageCallback
   ) {
     // Periodically clean up old conversations (every 5 minutes)

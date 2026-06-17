@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+import { SecretStore, PlatformDisposable } from '@/platform';
 
 /**
  * Service for managing sensitive data using VSCode's SecretStorage API.
@@ -8,7 +8,7 @@ import * as vscode from 'vscode';
 export class SecretStorageService {
 	private static readonly API_KEY_SECRET = 'openRouterApiKey';
 
-	constructor(private secrets: vscode.SecretStorage) {}
+	constructor(private secrets: SecretStore) {}
 
 	/**
 	 * Retrieve the OpenRouter API key from secure storage.
@@ -54,7 +54,7 @@ export class SecretStorageService {
 	 * @param listener Callback function to invoke when secrets change
 	 * @returns Disposable to unregister the listener
 	 */
-	onDidChange(listener: () => void): vscode.Disposable {
+	onDidChange(listener: () => void): PlatformDisposable {
 		return this.secrets.onDidChange(() => {
 			listener();
 		});

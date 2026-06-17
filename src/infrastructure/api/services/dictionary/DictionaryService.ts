@@ -16,7 +16,7 @@
  * - Maintains consistent abstraction level across the codebase
  */
 
-import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import pLimit from 'p-limit';
 import { DictionaryUtility } from '@/tools/utility/dictionaryUtility';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
@@ -85,7 +85,7 @@ export class DictionaryService {
     private readonly aiResourceManager: AIResourceManager,
     private readonly resourceLoader: ResourceLoaderService,
     private readonly toolOptions: ToolOptionsProvider,
-    private readonly outputChannel?: vscode.OutputChannel,
+    private readonly outputChannel?: LogSink,
     statusEmitter?: StatusEmitter
   ) {
     this.statusEmitter = statusEmitter;

@@ -13,7 +13,7 @@
  * - Follows the same pattern as other measurement service wrappers
  */
 
-import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import { WordFrequency } from '@/tools/measure/wordFrequency';
 import { ToolOptionsProvider, WordFrequencyOptions } from '../shared/ToolOptionsProvider';
 
@@ -36,7 +36,7 @@ export class WordFrequencyService {
 
   constructor(
     private readonly toolOptions: ToolOptionsProvider,
-    private readonly outputChannel?: vscode.OutputChannel
+    private readonly outputChannel?: LogSink
   ) {
     this.wordFrequency = new WordFrequency(
       (msg: string) => this.outputChannel?.appendLine(msg)

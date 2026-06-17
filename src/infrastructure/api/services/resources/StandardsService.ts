@@ -10,6 +10,7 @@
  */
 
 import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import { PublishingStandardsRepository } from '@/infrastructure/standards/PublishingStandardsRepository';
 import { StandardsComparisonService } from '@/application/services/StandardsComparisonService';
 import { Genre } from '@/domain/models/PublishingStandards';
@@ -20,7 +21,7 @@ export class StandardsService {
 
   constructor(
     private readonly extensionUri: vscode.Uri,
-    private readonly outputChannel?: vscode.OutputChannel
+    private readonly outputChannel?: LogSink
   ) {
     this.standardsComparer = new StandardsComparisonService();
     this.loadStandards();

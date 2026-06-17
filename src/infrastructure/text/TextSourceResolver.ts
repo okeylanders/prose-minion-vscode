@@ -4,11 +4,12 @@
  */
 
 import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import * as path from 'path';
 import { ResolvedTextSource, TextSourceSpec } from '@shared/types';
 
 export class TextSourceResolver {
-  constructor(private readonly output?: vscode.OutputChannel) {}
+  constructor(private readonly output?: LogSink) {}
 
   async resolve(spec: TextSourceSpec): Promise<ResolvedTextSource> {
     switch (spec.mode) {

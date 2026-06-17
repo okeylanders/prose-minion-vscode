@@ -16,6 +16,7 @@
  */
 
 import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import { PassageProseStats } from '@/tools/measure/passageProseStats';
 
 /**
@@ -37,7 +38,7 @@ export class ProseStatsService {
   private proseStats: PassageProseStats;
 
   constructor(
-    private readonly outputChannel?: vscode.OutputChannel
+    private readonly outputChannel?: LogSink
   ) {
     this.proseStats = new PassageProseStats();
   }

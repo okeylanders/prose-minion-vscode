@@ -6,7 +6,7 @@
  * Implements ProseStats orchestration (application layer responsibility)
  */
 
-import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import { ProseStatsService } from '@services/measurement/ProseStatsService';
 import { StyleFlagsService } from '@services/measurement/StyleFlagsService';
 import { WordFrequencyService } from '@services/measurement/WordFrequencyService';
@@ -30,7 +30,7 @@ export class MetricsHandler {
     private readonly wordFrequencyService: WordFrequencyService,
     private readonly standardsService: StandardsService,
     private readonly postMessage: (message: any) => Promise<void>,
-    private readonly outputChannel: vscode.OutputChannel
+    private readonly outputChannel: LogSink
   ) {}
 
   /**

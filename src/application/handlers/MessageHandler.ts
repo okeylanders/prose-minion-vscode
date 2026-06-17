@@ -8,6 +8,7 @@
  */
 
 import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import {
   WebviewToExtensionMessage,
   MessageType,
@@ -156,7 +157,7 @@ export class MessageHandler {
     private readonly secretsService: any, // SecretStorageService
     private readonly webview: vscode.Webview,
     private readonly extensionUri: vscode.Uri,
-    private readonly outputChannel: vscode.OutputChannel
+    private readonly outputChannel: LogSink
   ) {
     // SPRINT 05: Set up status callback on AIResourceManager (not facade)
     this.aiResourceManager.setStatusCallback((message: string, tickerMessage?: string) => {

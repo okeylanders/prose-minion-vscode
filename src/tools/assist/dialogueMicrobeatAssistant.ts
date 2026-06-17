@@ -3,7 +3,7 @@
  * Analyzes dialogue passages and suggests dialogue tags and action beats
  */
 
-import type * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import { PromptLoader } from '../shared/prompts';
 import { AIResourceOrchestrator, ExecutionResult, StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
 import { AssistantFocus } from '@messages';
@@ -34,7 +34,7 @@ export class DialogueMicrobeatAssistant {
   constructor(
     private readonly aiResourceOrchestrator: AIResourceOrchestrator,
     private readonly promptLoader: PromptLoader,
-    private readonly outputChannel?: vscode.OutputChannel
+    private readonly outputChannel?: LogSink
   ) {}
 
   async analyze(input: DialogueMicrobeatInput, options?: DialogueMicrobeatOptions): Promise<ExecutionResult> {

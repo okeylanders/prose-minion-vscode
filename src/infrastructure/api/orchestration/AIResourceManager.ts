@@ -16,6 +16,7 @@
  */
 
 import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import { OpenRouterClient } from '@providers/OpenRouterClient';
 import { AIResourceOrchestrator, StatusCallback, TokenUsageCallback } from './AIResourceOrchestrator';
 import { ConversationManager } from './ConversationManager';
@@ -53,7 +54,7 @@ export class AIResourceManager {
   constructor(
     private readonly resourceLoader: ResourceLoaderService,
     private readonly secretsService: SecretStorageService,
-    private readonly outputChannel?: vscode.OutputChannel
+    private readonly outputChannel?: LogSink
   ) {}
 
   /**

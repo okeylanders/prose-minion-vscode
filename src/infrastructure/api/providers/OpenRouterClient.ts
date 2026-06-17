@@ -3,7 +3,7 @@
  * Handles communication with OpenRouter API for AI-powered analysis
  */
 
-import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import { TokenUsage } from '@shared/types';
 
 export interface OpenRouterMessage {
@@ -45,9 +45,9 @@ export class OpenRouterClient {
   private readonly apiKey: string;
   private readonly baseUrl = 'https://openrouter.ai/api/v1';
   private readonly model: string;
-  private readonly outputChannel?: vscode.OutputChannel;
+  private readonly outputChannel?: LogSink;
 
-  constructor(apiKey: string, model?: string, outputChannel?: vscode.OutputChannel) {
+  constructor(apiKey: string, model?: string, outputChannel?: LogSink) {
     this.apiKey = apiKey;
     this.model = model || 'z-ai/glm-4.6';
     this.outputChannel = outputChannel;

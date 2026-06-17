@@ -6,7 +6,6 @@
  * SPRINT 03 (Sub-Epic 4): Added streaming + cancellation support
  */
 
-import * as vscode from 'vscode';
 import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 import { ContextGenerationResult } from '@/domain/models/ContextGeneration';
 import {

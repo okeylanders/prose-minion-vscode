@@ -4,6 +4,7 @@
  */
 
 import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import * as path from 'path';
 
 export interface GuideMetadata {
@@ -19,7 +20,7 @@ export class GuideRegistry {
 
   constructor(
     private readonly extensionUri: vscode.Uri,
-    private readonly outputChannel?: vscode.OutputChannel
+    private readonly outputChannel?: LogSink
   ) {}
 
   /**

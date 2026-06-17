@@ -14,7 +14,7 @@
  * - Maintains consistent abstraction level across the codebase
  */
 
-import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import { DialogueMicrobeatAssistant } from '@/tools/assist/dialogueMicrobeatAssistant';
 import { ProseAssistant } from '@/tools/assist/proseAssistant';
 import { WritingToolsAssistant } from '@/tools/assist/writingToolsAssistant';
@@ -55,7 +55,7 @@ export class AssistantToolService {
     private readonly aiResourceManager: AIResourceManager,
     private readonly resourceLoader: ResourceLoaderService,
     private readonly toolOptions: ToolOptionsProvider,
-    private readonly outputChannel?: vscode.OutputChannel
+    private readonly outputChannel?: LogSink
   ) {
     // Assistants will be initialized when AI resources are available
     void this.initializeAssistants();

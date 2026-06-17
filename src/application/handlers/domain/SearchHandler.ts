@@ -5,7 +5,7 @@
  * SPRINT 05 REFACTOR: Now injects WordSearchService directly (facade removed)
  */
 
-import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import { WordSearchService } from '@services/search/WordSearchService';
 import { CategorySearchService } from '@services/search/CategorySearchService';
 import {
@@ -26,7 +26,7 @@ export class SearchHandler {
   constructor(
     private readonly wordSearchService: WordSearchService,
     private readonly postMessage: (message: any) => Promise<void>,
-    private readonly outputChannel: vscode.OutputChannel,
+    private readonly outputChannel: LogSink,
     private readonly categorySearchService?: CategorySearchService
   ) {}
 

@@ -17,6 +17,7 @@
  */
 
 import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import { ContextAssistant } from '@/tools/assist/contextAssistant';
 import { ContextResourceResolver } from '@/infrastructure/context/ContextResourceResolver';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
@@ -59,7 +60,7 @@ export class ContextAssistantService {
     private readonly aiResourceManager: AIResourceManager,
     private readonly resourceLoader: ResourceLoaderService,
     private readonly toolOptions: ToolOptionsProvider,
-    private readonly outputChannel?: vscode.OutputChannel
+    private readonly outputChannel?: LogSink
   ) {
     this.contextResourceResolver = new ContextResourceResolver(this.outputChannel);
 

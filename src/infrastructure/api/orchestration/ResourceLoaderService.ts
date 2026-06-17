@@ -8,6 +8,7 @@
  */
 
 import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import { PromptLoader } from '@/tools/shared/prompts';
 import { GuideLoader } from '@/tools/shared/guides';
 import { GuideRegistry } from '@/infrastructure/guides/GuideRegistry';
@@ -19,7 +20,7 @@ export class ResourceLoaderService {
 
   constructor(
     private readonly extensionUri: vscode.Uri,
-    private readonly outputChannel?: vscode.OutputChannel
+    private readonly outputChannel?: LogSink
   ) {}
 
   /**

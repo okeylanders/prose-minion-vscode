@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import { MessageType, WebviewToExtensionMessage } from '@messages';
 
 /**
@@ -16,7 +16,7 @@ import { MessageType, WebviewToExtensionMessage } from '@messages';
 export class MessageRouter {
 	private handlers = new Map<MessageType, (msg: WebviewToExtensionMessage) => Promise<void>>();
 
-	constructor(private readonly outputChannel?: vscode.OutputChannel) {}
+	constructor(private readonly outputChannel?: LogSink) {}
 
 	/**
 	 * Register a handler for a specific message type.

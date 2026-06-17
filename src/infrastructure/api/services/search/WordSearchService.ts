@@ -19,6 +19,7 @@
  */
 
 import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
 import { MetricsResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
 
@@ -35,7 +36,7 @@ import { MetricsResult, AnalysisResultFactory } from '@/domain/models/AnalysisRe
 export class WordSearchService {
   constructor(
     private readonly toolOptions: ToolOptionsProvider,
-    private readonly outputChannel?: vscode.OutputChannel
+    private readonly outputChannel?: LogSink
   ) {}
 
   /**

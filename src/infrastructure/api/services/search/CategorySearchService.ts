@@ -15,6 +15,7 @@
  */
 
 import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import { WordSearchService } from './WordSearchService';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { WordFrequency } from '@/tools/measure/wordFrequency';
@@ -40,7 +41,7 @@ export class CategorySearchService {
     private readonly aiResourceManager: AIResourceManager,
     private readonly wordSearchService: WordSearchService,
     private readonly extensionUri: vscode.Uri,
-    private readonly outputChannel?: vscode.OutputChannel,
+    private readonly outputChannel?: LogSink,
     private readonly statusEmitter?: StatusEmitter
   ) {
     this.wordFrequency = new WordFrequency((msg) => this.outputChannel?.appendLine(msg));

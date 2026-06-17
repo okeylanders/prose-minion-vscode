@@ -4,6 +4,7 @@
  */
 
 import * as vscode from 'vscode';
+import { LogSink } from '@/platform';
 import * as path from 'path';
 import { ContextPathGroup } from '@shared/types';
 import {
@@ -24,7 +25,7 @@ interface InternalContextResource {
  * Provides access to project reference materials based on user-configured glob patterns.
  */
 export class ContextResourceResolver {
-  constructor(private readonly outputChannel?: vscode.OutputChannel) {}
+  constructor(private readonly outputChannel?: LogSink) {}
 
   async createProvider(groups: ContextPathGroup[]): Promise<ContextResourceProvider> {
     const resources = await this.collectResources(groups);
