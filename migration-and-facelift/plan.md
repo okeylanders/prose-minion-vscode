@@ -37,7 +37,9 @@ Deltas from FM: **no** `StateStore`/`AssetUrlResolver` (unused); **added**
 - [x] Confirm baseline green (`npm run build` = test + typecheck + webpack)
 - [x] Write the ADR
 
-## Stage 1 — Extract ports in-place (behavior-preserving)
+## Stage 1 — Extract ports in-place (behavior-preserving) ✅ COMPLETE
+
+> Core is `vscode`-free (guarded by a test). 304 tests · both typechecks · both bundles · `vsce package` clean. F5 smoke deferred to the reviewer (no interactive VS Code in CI).
 
 Ports + adapters live in `src/platform/` / `src/platform/vscode/` (relative
 imports) while still a single package; the monorepo move (Stage 2) then becomes a
@@ -50,12 +52,15 @@ no-logic relocation.
   — part 1 (loaders + metrics/search reads, `9df924f`); part 2 = the 4 file-handling
   handlers, converted FULLY (fs/workspace/shell/editor), `TextSourceResolver` now a
   shared injected singleton
-- [~] **Wave 4 — `ShellService` + `EditorContext`** (dialogs/clipboard/open-in-editor + selection)
-  — mostly pulled forward by Wave 3 pt 2's "convert each fully"; `EditorContext` fully done,
-  `ShellService` only `ConfigurationHandler`'s one `showInformationMessage` remains
-- [ ] **Wave 5 — Wiring** (config-watcher → shell; `postMessage` → injected fn; assemble adapters in `extension.ts`)
-- [ ] **Wave 6 — Tests** inject in-memory fakes instead of vscode mocks
-- [ ] **Assert core is `vscode`-free** (grep guard) + green build
+- [x] **Wave 4 — `ShellService` + `EditorContext`** (dialogs/clipboard/open-in-editor + selection)
+  — `EditorContext` + most of `ShellService` rode Wave 3 pt 2; `ConfigurationHandler`'s one
+  `showInformationMessage` finished it
+- [x] **Wave 5 — Wiring** — `MessageHandler` config-watcher → shell (vscode-free `affects()`
+  predicate into `handleConfigurationChange`); `webview.postMessage` → injected `post` fn;
+  dead `extensionUri` param + `Disposable[]` field removed; provider owns the watcher.
+  `extension.ts` needed no change (platform already assembled there)
+- [x] **Wave 6 — Tests** — handler tests already inject fakes (Wave 3 pt 2); added the boundary guard
+- [x] **Assert core is `vscode`-free** — `coreVscodeFree.test.ts` (2 sanctioned shells only) + green build + `vsce package`
 
 ## Stage 2 — Monorepo move
 

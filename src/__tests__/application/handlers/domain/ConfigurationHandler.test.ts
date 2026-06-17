@@ -13,16 +13,17 @@ describe('ConfigurationHandler', () => {
 
   beforeEach(() => {
     handler = new ConfigurationHandler(
-      {} as any, // context
+      {} as any, // aiResourceManager
+      {} as any, // assistantToolService
+      {} as any, // dictionaryService
+      {} as any, // contextAssistantService
+      {} as any, // secretsService
+      {} as any, // settings port
+      {} as any, // shell port
       jest.fn().mockResolvedValue(undefined) as any, // postMessage
       {} as any, // outputChannel
-      {} as any, // contextService
-      {} as any, // publishingRepo
-      {} as any, // standardsService
-      {} as any, // aiResourceManager
-      {} as any, // workspaceConfig
-      {} as any, // secretStorage
-      {} as any  // settings port (ports refactor)
+      {} as any, // sharedResultCache
+      {} as any  // tokenTotals
     );
     router = new MessageRouter();
   });

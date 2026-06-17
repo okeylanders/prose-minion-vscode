@@ -27,6 +27,7 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
 
   private view?: vscode.WebviewView;
   private messageHandler?: MessageHandler;
+  private configWatcher?: vscode.Disposable;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -72,11 +73,17 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
       this.standardsService,
       this.aiResourceManager,
       this.secretsService,
-      webviewView.webview,
-      this.extensionUri,
+      (message) => webviewView.webview.postMessage(message),
       this.outputChannel,
       this.platform
     );
+
+    // Config-change watcher lives in the shell (keeps MessageHandler vscode-free).
+    // Forward changes inward as a vscode-free `affects(section)` predicate.
+    this.configWatcher?.dispose();
+    this.configWatcher = vscode.workspace.onDidChangeConfiguration(event => {
+      this.messageHandler?.handleConfigurationChange(section => event.affectsConfiguration(section));
+    });
 
     // Set up message listener
     webviewView.webview.onDidReceiveMessage(
@@ -93,6 +100,8 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
     });
 
     webviewView.onDidDispose(() => {
+      this.configWatcher?.dispose();
+      this.configWatcher = undefined;
       this.messageHandler?.dispose();
       this.messageHandler = undefined;
     });

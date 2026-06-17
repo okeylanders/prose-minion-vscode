@@ -1,7 +1,7 @@
 # Status — Prose Minion Migration & Facelift
 
 **Branch:** `claude/vigilant-cannon-jma748` (≡ `epic/monorepo-ports-and-adapters`) · **Last updated:** 2026-06-17
-**Health:** 🟢 green — full build passing (296 tests · both typechecks · both webpack bundles)
+**Health:** 🟢 green — full build passing (304 tests · both typechecks · both webpack bundles · `vsce package` clean). **Stage 1 COMPLETE — core is `vscode`-free.**
 
 ## Pass / Stage tracker
 
@@ -11,50 +11,51 @@
 | 1 | Platform ports + VS Code adapters | ✅ done | `5a4b1d8` |
 | 1 | Wave 1 — `LogSink` + `SecretStore` | ✅ done | `5a4b1d8` |
 | 1 | Wave 2 — `SettingsStore` | ✅ done | `7b6809a` |
-| 1 | Wave 3 — `FileSystem` + `Workspace` | ✅ done (part 1 `9df924f` · part 2 this wave) | — |
-| 1 | Wave 4 — `ShellService` + `EditorContext` | ◐ mostly done (pulled forward by Wave 3 pt 2 "convert fully") — only `ConfigurationHandler`'s one info-message left | — |
-| 1 | Wave 5 — Wiring (watcher→shell, post fn, adapters) | ⬜ todo | — |
-| 1 | Wave 6 — Tests + assert core `vscode`-free | ⬜ todo | — |
-| 2 | Monorepo move (`git mv`, aliases, TS 5.x, boundary) | ⬜ todo | — |
+| 1 | Wave 3 — `FileSystem` + `Workspace` | ✅ done (pt 1 `9df924f` · pt 2 `a42c2e8`) | — |
+| 1 | Wave 4 — `ShellService` + `EditorContext` | ✅ done (`ConfigurationHandler` info-message → shell this wave) | — |
+| 1 | Wave 5 — Wiring (watcher→shell, post fn) | ✅ done | — |
+| 1 | Wave 6 — Tests + assert core `vscode`-free | ✅ done (boundary guard test green) | — |
+| 2 | Monorepo move (`git mv`, aliases, TS 5.x, boundary) | ⬜ todo (👈 next) | — |
 | P2 | Design facelift | ⬜ blocked (needs design HTML — but try fetching first, see tech-debt) | — |
 
-## Current focus — Wave 4 remainder + Wave 5 (👈 resume here)
+## Stage 1 complete — what closed it
 
-Wave 3 part 2 converted all **four** file-handling handlers FULLY (FileSystem + Workspace +
-ShellService + EditorContext, plus the leftover settings reads in `TextSourceResolver`),
-which is why **Wave 4 is now mostly done** — `EditorContext` has no remaining consumers,
-and the only un-ported `ShellService` call left is `ConfigurationHandler`'s single
-`showInformationMessage`. What landed this wave:
+This wave finished the last two `vscode` consumers in core:
 
-- **`TextSourceResolver`** — fully port-driven on string paths; now **stateless and built
-  ONCE** in `MessageHandler` (from `this.platform.*`) and **injected** into both
-  `MetricsHandler` and `SearchHandler` (the per-call `await import(...)` + `new` is gone).
-- **`FileOperationsHandler`** — fs/workspace/shell; `saveResultToFile` now returns
-  `{ relativePath, absolutePath }` and opens via `shell.openFileInEditor(absolutePath)`.
-- **`UIHandler`** — fs stat + `workspace.extensionPath`/workspace root + `shell.openFileInEditor(path, { beside: true })` (the column logic lives in the adapter) + `editor.getActiveSelection()` + `shell.readClipboard()`. No longer takes `extensionUri`.
-- **`SourcesHandler`** — `editor.getActiveSelection()` for the active-file path/uri.
+- **`ConfigurationHandler`** (Wave 4 tail) — its two `showInformationMessage` calls (API key
+  saved/cleared) now go through `ShellService`; no more `vscode` import.
+- **`MessageHandler`** (Wave 5) — (a) injected `post: (message) => PromiseLike<unknown>`
+  replaces the `vscode.Webview` field + `this.webview.postMessage`; (b) the dead `extensionUri`
+  ctor param is gone; (c) the `onDidChangeConfiguration` watcher is **relocated to the shell**:
+  the provider registers it and forwards a vscode-free `affects(section)` predicate into the new
+  public `handleConfigurationChange(affects)` — all broadcast logic stays in core. The
+  `vscode.Disposable[]` field is gone (the shell owns the watcher disposable now).
+- **`ProseToolsViewProvider`** (shell, keeps `vscode`) — builds the `post` closure
+  (`(msg) => webviewView.webview.postMessage(msg)`), registers/disposes the config watcher.
+- **Wave 6** — `src/__tests__/architecture/coreVscodeFree.test.ts` scans production `src/` and
+  fails if anything outside the two sanctioned shells (+ `platform/vscode/**`) imports `vscode`.
 
-**Remaining (Wave 4 tail + Wave 5):** `ConfigurationHandler` (one `showInformationMessage`
-→ `shell`), `MessageHandler` (move the `onDidChangeConfiguration` watcher to the shell +
-swap `webview.postMessage` for an injected post fn — and drop its now-unused `extensionUri`
-ctor param), and the two genuine shells (`extension.ts`, `ProseToolsViewProvider.ts` — they
-keep `vscode`). Then assert core is vscode-free, run the full build + `vsce package`, and F5
-smoke-test.
+## Verification
+
+- `npm test` → **304 / 304** (37 suites) · `npm run typecheck` (both) → clean ·
+  `webpack --mode production` (both bundles) → clean · `vsce package` → `prose-minion-1.10.4.vsix`
+  built clean (no `src/`, no tracking docs).
+- ⚠️ **F5 smoke-test NOT run** — can't drive interactive VS Code in this environment. The
+  reviewer/author should F5 once: sidebar loads, analysis, word-frequency, dictionary, save
+  report, settings round-trip, API key store/clear, **and a settings change made in the VS Code
+  Settings UI broadcasts back to the webview** (exercises the relocated config watcher).
 
 ## Metrics
 
-- **vscode imports remaining in core:** 4 files (was 37 at Stage-0; was 8 before this wave) —
-  2 of those (`extension.ts`, `ProseToolsViewProvider.ts`) are legitimately shell, so only
-  **2 real** left: `MessageHandler.ts` (Wave 5) + `ConfigurationHandler.ts` (Wave 4 tail).
-- **Tests:** 296 passing / 35 suites
-- **Ports done:** `LogSink` ✅, `SecretStore` ✅, `SettingsStore` ✅, `FileSystem` ✅,
-  `Workspace` ✅, `EditorContext` ✅ (all consumers ported), `ShellService` ◐ (only
-  `ConfigurationHandler` left)
+- **vscode imports remaining in core:** **2 files** (was 37 at Stage-0) — `extension.ts` +
+  `ProseToolsViewProvider.ts`, both legitimately shell. **0 real** remaining. Guarded by a test.
+- **Tests:** 304 passing / 37 suites
+- **Ports done:** all seven — `LogSink` ✅, `SecretStore` ✅, `SettingsStore` ✅, `FileSystem` ✅,
+  `Workspace` ✅, `EditorContext` ✅, `ShellService` ✅
 - **Platform bundle:** assembled in `extension.ts`, threaded provider → MessageHandler
 
 ## Notes for the next session
 
-- Each wave ends green + committed; pick up from the first unchecked box in
-  [plan.md](plan.md).
-- `extension.ts` + `ProseToolsViewProvider.ts` stay shell (keep `vscode`); they're
-  rewired last (Wave 5).
+- Stage 1 is done and PR'd. **Stage 2 (monorepo move) is next** — pick up from the first
+  unchecked box in [plan.md](plan.md), starting with the new `AppMessagePort` extraction item.
+- `extension.ts` + `ProseToolsViewProvider.ts` stay shell (keep `vscode`) — that's by design.
