@@ -11,7 +11,7 @@
  * `ConfigurationTarget.Global` (the only target this app writes).
  */
 import * as vscode from 'vscode';
-import { SettingsStore } from '../SettingsStore';
+import { SettingsStore } from '@prose-minion/core';
 
 export class VsCodeSettingsStore implements SettingsStore {
   get<T>(section: string, key: string): T | undefined;

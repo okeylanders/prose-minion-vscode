@@ -1,6 +1,15 @@
 const path = require('path');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 
+// Shared @prose-minion/core lives one level up in the monorepo. Module resolution for
+// every `@`-alias (incl. `@prose-minion/core` itself) is DERIVED from the single
+// source-of-truth path table in tsconfig.base.json via TsconfigPathsPlugin — no
+// hand-mirrored alias list to drift. Because the plugin maps to core's TS *source*
+// (not the node_modules workspace symlink), ts-loader — which excludes /node_modules/ —
+// transpiles core as first-party.
+const CORE_SRC = path.resolve(__dirname, '../../packages/core/src');
+const BASE_TSCONFIG = path.resolve(__dirname, '../../tsconfig.base.json');
+
 const extensionConfig = {
   target: 'node',
   mode: 'none',
@@ -17,17 +26,7 @@ const extensionConfig = {
   },
   resolve: {
     extensions: ['.ts', '.js'],
-    plugins: [new TsconfigPathsPlugin({ configFile: './tsconfig.json' })],
-    alias: {
-      '@orchestration': path.resolve(__dirname, 'src/infrastructure/api/orchestration'),
-      '@parsers': path.resolve(__dirname, 'src/infrastructure/api/parsers'),
-      '@providers': path.resolve(__dirname, 'src/infrastructure/api/providers'),
-      '@services': path.resolve(__dirname, 'src/infrastructure/api/services'),
-      '@handlers': path.resolve(__dirname, 'src/application/handlers'),
-      '@shared': path.resolve(__dirname, 'src/shared'),
-      '@messages': path.resolve(__dirname, 'src/shared/types/messages'),
-      '@': path.resolve(__dirname, 'src')
-    }
+    plugins: [new TsconfigPathsPlugin({ configFile: BASE_TSCONFIG })]
   },
   module: {
     rules: [
@@ -38,9 +37,10 @@ const extensionConfig = {
           {
             loader: 'ts-loader',
             options: {
-              configFile: 'tsconfig.json',
-              transpileOnly: true,
-              context: __dirname
+              // App host config; extends ../../tsconfig.base.json. Compiles the
+              // shell + transitive core under commonjs/node (same as the pre-move host build).
+              configFile: path.resolve(__dirname, 'tsconfig.json'),
+              transpileOnly: true
             }
           }
         ]
@@ -52,7 +52,7 @@ const extensionConfig = {
 const webviewConfig = {
   target: 'web',
   mode: 'none',
-  entry: './src/presentation/webview/index.tsx',
+  entry: path.resolve(CORE_SRC, 'presentation/webview/index.tsx'),
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'webview.js',
@@ -61,7 +61,7 @@ const webviewConfig = {
   devtool: 'source-map',
   resolve: {
     extensions: ['.tsx', '.ts', '.jsx', '.js'],
-    plugins: [new TsconfigPathsPlugin({ configFile: './tsconfig.webview.json' })]
+    plugins: [new TsconfigPathsPlugin({ configFile: BASE_TSCONFIG })]
   },
   module: {
     rules: [
@@ -72,9 +72,8 @@ const webviewConfig = {
           {
             loader: 'ts-loader',
             options: {
-              configFile: 'tsconfig.webview.json',
-              transpileOnly: true,
-              context: __dirname
+              configFile: path.resolve(__dirname, '../../packages/core/tsconfig.webview.json'),
+              transpileOnly: true
             }
           }
         ]
@@ -88,10 +87,7 @@ const webviewConfig = {
             loader: 'postcss-loader',
             options: {
               postcssOptions: {
-                plugins: [
-                  require('tailwindcss'),
-                  require('autoprefixer')
-                ]
+                plugins: [require('tailwindcss'), require('autoprefixer')]
               }
             }
           }

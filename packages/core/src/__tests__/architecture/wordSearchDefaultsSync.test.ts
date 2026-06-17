@@ -12,7 +12,9 @@ import { WORD_SEARCH_DEFAULTS } from '@shared/constants/wordSearchDefaults';
 
 describe('WORD_SEARCH_DEFAULTS ↔ package.json contributed defaults', () => {
   it('matches the proseMinion.wordSearch.* defaults in package.json', () => {
-    const pkgPath = path.resolve(__dirname, '..', '..', '..', 'package.json');
+    // The contributed config lives in the app manifest after the monorepo move:
+    // packages/core/src/__tests__/architecture -> repo root (../ x5) -> apps/vscode-extension.
+    const pkgPath = path.resolve(__dirname, '..', '..', '..', '..', '..', 'apps', 'vscode-extension', 'package.json');
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
     const props = pkg?.contributes?.configuration?.properties ?? {};
 

@@ -1,0 +1,11 @@
+{
+  "//": "VS Code extension host type-check. Compiles the shell (extension.ts + provider + vscode adapters) AND, transitively through @prose-minion/core, core's TS source — so it inherits base's full path table (the public boundary is enforced by the eslint no-restricted-imports rule, not by tsc resolution). @types/vscode comes from app devDeps. module/resolution mirror PM's pre-move host config (commonjs/node).",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "lib": ["ES2020"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

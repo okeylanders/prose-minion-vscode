@@ -1,6 +1,6 @@
 module.exports = {
   content: [
-    './src/presentation/webview/**/*.{ts,tsx,js,jsx}'
+    './packages/core/src/presentation/webview/**/*.{ts,tsx,js,jsx}'
   ],
   theme: {
     extend: {

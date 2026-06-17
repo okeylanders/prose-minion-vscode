@@ -7,7 +7,7 @@
  * VS-Code-specific editor-layout concern, so it belongs in the adapter, not core.
  */
 import * as vscode from 'vscode';
-import { ShellService } from '../ShellService';
+import { ShellService } from '@prose-minion/core';
 
 export class VsCodeShellService implements ShellService {
   showInformationMessage(message: string, ...actions: string[]): Promise<string | undefined> {

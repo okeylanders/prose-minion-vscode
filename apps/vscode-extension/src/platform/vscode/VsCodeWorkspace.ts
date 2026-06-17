@@ -7,7 +7,7 @@
  * composition root injects.
  */
 import * as vscode from 'vscode';
-import { Workspace, WorkspaceFolderInfo } from '../Workspace';
+import { Workspace, WorkspaceFolderInfo } from '@prose-minion/core';
 
 export class VsCodeWorkspace implements Workspace {
   constructor(private readonly extensionUri: vscode.Uri) {}

@@ -8,19 +8,24 @@
  */
 
 import * as vscode from 'vscode';
-import { MessageHandler } from '../handlers/MessageHandler';
-import { Platform } from '@/platform';
-import { MessageType, SelectionUpdatedMessage, OpenSettingsToggleMessage } from '@shared/types';
-import { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
-import { AssistantToolService } from '@services/analysis/AssistantToolService';
-import { DictionaryService } from '@services/dictionary/DictionaryService';
-import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
-import { ProseStatsService } from '@services/measurement/ProseStatsService';
-import { StyleFlagsService } from '@services/measurement/StyleFlagsService';
-import { WordFrequencyService } from '@services/measurement/WordFrequencyService';
-import { WordSearchService } from '@services/search/WordSearchService';
-import { StandardsService } from '@services/resources/StandardsService';
-import { AIResourceManager } from '@orchestration/AIResourceManager';
+// All core symbols via the public barrel (ADR 2026-06-16 monorepo boundary).
+import {
+  MessageHandler,
+  Platform,
+  MessageType,
+  SelectionUpdatedMessage,
+  OpenSettingsToggleMessage,
+  SecretStorageService,
+  AssistantToolService,
+  DictionaryService,
+  ContextAssistantService,
+  ProseStatsService,
+  StyleFlagsService,
+  WordFrequencyService,
+  WordSearchService,
+  StandardsService,
+  AIResourceManager,
+} from '@prose-minion/core';
 
 export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'prose-minion.toolsView';

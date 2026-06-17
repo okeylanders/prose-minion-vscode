@@ -6,7 +6,7 @@
  * so core never touches `vscode.Uri` or the editor object.
  */
 import * as vscode from 'vscode';
-import { ActiveSelectionInfo, EditorContext } from '../EditorContext';
+import { ActiveSelectionInfo, EditorContext } from '@prose-minion/core';
 
 export class VsCodeEditorContext implements EditorContext {
   getActiveSelection(): ActiveSelectionInfo | undefined {

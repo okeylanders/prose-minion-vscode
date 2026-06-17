@@ -22,7 +22,7 @@
  */
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { FileStat, FileSystem, FileType } from '../FileSystem';
+import { FileStat, FileSystem, FileType } from '@prose-minion/core';
 
 export class VsCodeFileSystem implements FileSystem {
   readFile(filePath: string): Promise<Uint8Array> {

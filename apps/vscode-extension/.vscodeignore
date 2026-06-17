@@ -1,65 +1,37 @@
-# IDE and development tools
-.vscode/**
-.vscode-test/**
-.eslintrc.json
+# Only dist/ (bundled JS), resources/ (staged from core), and runtime assets/ ship.
+# (vsce runs in this app dir; root-level docs/tracking dirs aren't here to exclude.)
 
-# Source files (we ship compiled dist/)
+# Source (compiled into dist/)
 src/**
 **/*.ts
-!dist/**/*.d.ts
 **/*.map
 
-# Build configuration
-webpack.config.js
-tailwind.config.js
-postcss.config.js
+# Build configuration + scripts (build-time only)
 tsconfig.json
-tsconfig.webview.json
-.yarnrc
+webpack.config.js
+scripts/**
+.eslintrc.json
+.vscode/**
 
-# Dependencies (bundled in dist/)
+# Dependencies (everything is webpack-bundled; packaged with --no-dependencies)
 node_modules/**
+package-lock.json
 
-# Build outputs (keep dist/)
+# Build outputs we don't ship
 out/**
 coverage/**
+*.vsix
 
-# Git and version control
+# Git
 .git/**
 .gitignore
-.github/**
 
-# AI agent configurations
-.ai/**
-.claude/**
-.clinerules/**
-AGENTS.md
-
-# Development documentation
-.memory-bank/**
-.todo/**
-.planning/**
-.research/**
-docs/**
-migration-and-facelift/**
-
-# Screenshots and demo files (used in README only)
-screenshots/**
+# README-only assets (not needed at runtime)
 assets/prose-minion-book-animated.gif
 assets/example-outputs/**
 assets/example-icon-from-the-bookening.svg
 assets/prose-minion-robot.svg
 assets/prose-minion-book-inverted.svg
 
-# macOS metadata
+# OS metadata
 **/.DS_Store
-.DS_Store
-
-# Example repositories and build artifacts
-example-repos/**
-*.vsix
-
-# Misc development files
-vsc-extension-quickstart.md
-scripts/**
-resources/.DS_Store

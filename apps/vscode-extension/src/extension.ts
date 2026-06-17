@@ -13,29 +13,29 @@
 
 import * as vscode from 'vscode';
 import { ProseToolsViewProvider } from './application/providers/ProseToolsViewProvider';
-import { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
-// SPRINT 01: Import resource services
-import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
-import { AIResourceManager } from '@orchestration/AIResourceManager';
-import { StandardsService } from '@services/resources/StandardsService';
-import { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
-// SPRINT 02: Import measurement services
-import { ProseStatsService } from '@services/measurement/ProseStatsService';
-import { StyleFlagsService } from '@services/measurement/StyleFlagsService';
-import { WordFrequencyService } from '@services/measurement/WordFrequencyService';
-// SPRINT 03: Import analysis services
-import { AssistantToolService } from '@services/analysis/AssistantToolService';
-import { DictionaryService } from '@services/dictionary/DictionaryService';
-import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
-// SPRINT 04: Import search service
-import { WordSearchService } from '@services/search/WordSearchService';
-// Platform ports + VS Code adapters (composition root)
-import { Platform } from '@/platform';
-import { VsCodeSettingsStore } from '@/platform/vscode/VsCodeSettingsStore';
-import { VsCodeFileSystem } from '@/platform/vscode/VsCodeFileSystem';
-import { VsCodeWorkspace } from '@/platform/vscode/VsCodeWorkspace';
-import { VsCodeShellService } from '@/platform/vscode/VsCodeShellService';
-import { VsCodeEditorContext } from '@/platform/vscode/VsCodeEditorContext';
+// Core services + the Platform port type — imported via the public barrel only
+// (ADR 2026-06-16 monorepo boundary; enforced by eslint no-restricted-imports).
+import {
+  Platform,
+  SecretStorageService,
+  ResourceLoaderService,
+  AIResourceManager,
+  StandardsService,
+  ToolOptionsProvider,
+  ProseStatsService,
+  StyleFlagsService,
+  WordFrequencyService,
+  AssistantToolService,
+  DictionaryService,
+  ContextAssistantService,
+  WordSearchService,
+} from '@prose-minion/core';
+// VS Code adapters (app-local; the composition root wires them into the ports)
+import { VsCodeSettingsStore } from './platform/vscode/VsCodeSettingsStore';
+import { VsCodeFileSystem } from './platform/vscode/VsCodeFileSystem';
+import { VsCodeWorkspace } from './platform/vscode/VsCodeWorkspace';
+import { VsCodeShellService } from './platform/vscode/VsCodeShellService';
+import { VsCodeEditorContext } from './platform/vscode/VsCodeEditorContext';
 
 let proseToolsViewProvider: ProseToolsViewProvider | undefined;
 
