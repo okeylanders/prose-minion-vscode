@@ -100,6 +100,24 @@ Addressed every actionable finding on the branch (no 🔴 blockers; the shipped 
 - **No action (recharacterized)**: the barrel's two `export *`s match FrameMinion's *actual*
   barrel over the same bounded namespaces — the "never `export *`" rule lives only in FM's prose.
 
+### Post-review regression fix (Tailwind purge — caught by the F5 smoke)
+
+The F5 smoke surfaced a **real Stage-2 regression** the "behavior-identical" claim
+and the review both missed: the webview's **Tailwind utilities were being purged**
+(textareas lost `w-full`/`h-32`, etc. — "the box can't take up both spots"). Root
+cause: the monorepo move changed the build's cwd from the repo root to the app dir,
+and Tailwind resolves its config from `process.cwd()` — so it found no config, fell
+back to its default empty-content config, and purged every utility while webpack
+still reported success. **Fix:** (1) `tailwind.config.js` `content` is now an absolute
+`path.join(__dirname, …)` glob (cwd-independent; mirrors FrameMinion); (2) the webpack
+`postcss-loader` passes Tailwind an **explicit config path**
+(`require('tailwindcss')(path.resolve(__dirname,'../../tailwind.config.js'))`) with
+`config: false` so no second cwd-default pass re-purges. **Witness added:**
+`scripts/verify-bundle.js` runs at the tail of the production `build` (and so in CI)
+and fails if sentinel utilities are absent from `webview.js` — webpack won't catch a
+purge, this does. (Sensei's Lesson 3: a "no behavior change" claim needs a witness;
+the unwitnessed CSS-delivery path was exactly where it bit.)
+
 ### Behavior delta (intentional)
 
 Root `npm run build` delegates to the app webpack only — it no longer runs test+typecheck first

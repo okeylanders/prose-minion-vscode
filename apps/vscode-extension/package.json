@@ -461,7 +461,8 @@
     "vscode:prepublish": "npm run build",
     "clean:dist": "node ./scripts/clean-dist.js",
     "copy:resources": "node ./scripts/copy-resources.js",
-    "build": "npm run clean:dist && npm run copy:resources && webpack --mode production",
+    "verify:bundle": "node ./scripts/verify-bundle.js",
+    "build": "npm run clean:dist && npm run copy:resources && webpack --mode production && npm run verify:bundle",
     "watch": "npm run copy:resources && webpack --mode development --watch",
     "package": "vsce package --no-dependencies"
   },

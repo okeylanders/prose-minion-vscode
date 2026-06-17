@@ -13,6 +13,8 @@ Multi-agent review (`docs/pr-reviews/pr-60-stage-2-monorepo-move-review.md`) —
 - copy-resources `fs.cpSync` (symlink-safe) + new `clean-dist.js`; prod `devtool:false`; dropped `@types/marked`; jest `.tsx` globs + app-mock TODO; `.vscodeignore` GIF note; changelog wording.
 - `export *` finding = no action (matches FM's actual barrel; recharacterized).
 
+**Post-smoke regression fix (F5 found it):** the F5 smoke caught a real Stage-2 regression the review missed — webview **Tailwind utilities were purged** (textareas lost `w-full`/`h-32`). Cause: the move changed the build cwd (root → app dir) and Tailwind resolves its config from `process.cwd()` → found none → default empty-content → purged everything (webpack still "compiled successfully"). Fixed: absolute `__dirname` content glob + explicit Tailwind config path in the webpack `postcss-loader` (`config: false`). **Guard added:** `scripts/verify-bundle.js` fails the production build + CI if sentinel utilities are absent from `webview.js`. Lesson 3 in action — the one unwitnessed delivery path (CSS) is where "behavior-identical" broke; now witnessed.
+
 ## Pass / Stage tracker
 
 | Stage | Item | Status | Commit |

@@ -87,7 +87,19 @@ const webviewConfig = {
             loader: 'postcss-loader',
             options: {
               postcssOptions: {
-                plugins: [require('tailwindcss'), require('autoprefixer')]
+                // `config: false` + explicit inline plugins. Tailwind resolves its
+                // config from process.cwd() (the app dir during this build), where
+                // there is none — so without an explicit path it falls back to its
+                // default empty-content config and PURGES every utility, breaking the
+                // webview layout (PR #60 follow-up). Point it at the root config
+                // (__dirname = app dir → ../../tailwind.config.js). `config: false`
+                // stops a second, cwd-default tailwind pass from the root
+                // postcss.config.js that would re-purge.
+                config: false,
+                plugins: [
+                  require('tailwindcss')(path.resolve(__dirname, '../../tailwind.config.js')),
+                  require('autoprefixer'),
+                ]
               }
             }
           }
