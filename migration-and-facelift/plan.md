@@ -45,7 +45,7 @@ no-logic relocation.
 
 - [x] **Ports + adapters** authored, typecheck green
 - [x] **Wave 1 — `LogSink` + `SecretStore`** (structural swaps, ~24 files)
-- [ ] **Wave 2 — `SettingsStore`** (replace `getConfiguration('proseMinion')`, ~8 files)
+- [x] **Wave 2 — `SettingsStore`** (replace `getConfiguration('proseMinion')`, 8 files) — `7b6809a`
 - [ ] **Wave 3 — `FileSystem` + `Workspace`** (convert `vscode.Uri` ops → string paths)
 - [ ] **Wave 4 — `ShellService` + `EditorContext`** (dialogs/clipboard/open-in-editor + selection)
 - [ ] **Wave 5 — Wiring** (config-watcher → shell; `postMessage` → injected fn; assemble adapters in `extension.ts`)

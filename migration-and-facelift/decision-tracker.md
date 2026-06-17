@@ -18,11 +18,12 @@ fuller trail, including the smaller calls.
 | D11 | 2026-06-16 | **React 17 stays for Pass 1** | Behavior-preserving; any React 18 move rides with the Pass-2 facelift. | ⏳ Pass 2 |
 | D12 | 2026-06-16 | Port-import alias `@/platform` (in-place) | Resolves via the existing `@/*` alias now; stays stable when `platform/` moves into `packages/core/src/` in Stage 2. Adapters use relative `../X` (fixed to the core barrel at move time). | ✅ |
 | D13 | 2026-06-17 | **`vsce package --no-dependencies`** (Stage 2) | With a `@prose-minion/core` workspace dependency, vsce must not traverse it — webpack bundles everything. | ⏳ Stage 2 |
+| D14 | 2026-06-17 | **`Platform` bundle through the shell; individual ports to leaves** | The wiring (extension.ts → provider → MessageHandler) threads ONE `Platform` object so the shell's constructors don't sprout a parallel param per port; leaf consumers still take only the specific ports they need (drawn from the bundle at the construction site). Resolves the open wiring-style question. | ✅ |
 
 ## Open decisions
 
-- **Wiring style:** `Platform` bundle object vs. individual port params threaded
-  through `extension.ts → provider → MessageHandler`. _Leaning: bundle_, to avoid
-  a 16-param constructor — confirm in Wave 5.
 - **Resource bundling mechanism** (Stage 2): copy `packages/core/resources` into
   the VSIX vs. webpack copy step vs. ship from the app dir.
+- **Config-watcher relocation** (Wave 5): move `MessageHandler`'s
+  `onDidChangeConfiguration` watcher to the shell (FrameMinion pattern), passing a
+  vscode-free `affectsConfiguration` predicate inward.
