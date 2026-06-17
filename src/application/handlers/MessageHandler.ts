@@ -41,6 +41,9 @@ import { SourcesHandler } from './domain/SourcesHandler';
 import { UIHandler } from './domain/UIHandler';
 import { FileOperationsHandler } from './domain/FileOperationsHandler';
 
+// Infrastructure shared across metrics + search handlers (built once, injected)
+import { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
+
 // SPRINT 05: Import services for direct injection
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { DictionaryService } from '@services/dictionary/DictionaryService';
@@ -254,13 +257,25 @@ export class MessageHandler {
       this.postMessage.bind(this)
     );
 
+    // Build ONE stateless TextSourceResolver from the platform ports and share it
+    // across the metrics + search handlers (it was previously `new`-ed per call
+    // via dynamic import inside each handler).
+    const textSourceResolver = new TextSourceResolver(
+      this.platform.fileSystem,
+      this.platform.workspace,
+      this.platform.settings,
+      this.platform.editor,
+      outputChannel
+    );
+
     this.metricsHandler = new MetricsHandler(
       proseStatsService,
       styleFlagsService,
       wordFrequencyService,
       standardsService,
       this.postMessage.bind(this),
-      outputChannel
+      outputChannel,
+      textSourceResolver
     );
 
     const categorySearchService = new CategorySearchService(
@@ -276,6 +291,7 @@ export class MessageHandler {
       wordSearchService,
       this.postMessage.bind(this),
       outputChannel,
+      textSourceResolver,
       categorySearchService
     );
 
@@ -310,17 +326,24 @@ export class MessageHandler {
 
     this.sourcesHandler = new SourcesHandler(
       this.postMessage.bind(this),
-      this.platform.settings
+      this.platform.settings,
+      this.platform.editor
     );
 
     this.uiHandler = new UIHandler(
-      extensionUri,
       this.postMessage.bind(this),
-      outputChannel
+      outputChannel,
+      this.platform.fileSystem,
+      this.platform.workspace,
+      this.platform.shell,
+      this.platform.editor
     );
 
     this.fileOperationsHandler = new FileOperationsHandler(
-      this.postMessage.bind(this)
+      this.postMessage.bind(this),
+      this.platform.fileSystem,
+      this.platform.workspace,
+      this.platform.shell
     );
 
     // Initialize message router and register handler routes

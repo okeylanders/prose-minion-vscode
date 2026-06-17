@@ -3,7 +3,8 @@
  * Handles copy and save operations for results
  */
 
-import * as vscode from 'vscode';
+import * as path from 'path';
+import { FileSystem, FileType, ShellService, Workspace } from '@/platform';
 import {
   CopyResultMessage,
   SaveResultMessage,
@@ -33,7 +34,10 @@ const FILE_PREFIX_MAP: Record<string, string> = {
 
 export class FileOperationsHandler {
   constructor(
-    private readonly postMessage: (message: any) => Promise<void>
+    private readonly postMessage: (message: any) => Promise<void>,
+    private readonly fileSystem: FileSystem,
+    private readonly workspace: Workspace,
+    private readonly shell: ShellService
   ) {}
 
   /**
@@ -80,9 +84,8 @@ export class FileOperationsHandler {
       const { toolName, content } = message.payload;
       let text = content ?? '';
       if (toolName === 'prose_stats' && /^## Chapter Details/m.test(text)) {
-        const answer = await vscode.window.showInformationMessage(
+        const answer = await this.shell.showModalInformationMessage(
           'Include chapter-by-chapter breakdown in the copied report?',
-          { modal: true },
           'Yes',
           'No'
         );
@@ -93,7 +96,7 @@ export class FileOperationsHandler {
         }
       }
 
-      await vscode.env.clipboard.writeText(text);
+      await this.shell.copyToClipboard(text);
       this.sendStatus('Result copied to clipboard.');
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -106,9 +109,8 @@ export class FileOperationsHandler {
       const { toolName, content, metadata } = message.payload;
       let text = content ?? '';
       if (toolName === 'prose_stats' && /^## Chapter Details/m.test(text)) {
-        const answer = await vscode.window.showInformationMessage(
+        const answer = await this.shell.showModalInformationMessage(
           'Include chapter-by-chapter breakdown in the saved report?',
-          { modal: true },
           'Yes',
           'No'
         );
@@ -119,7 +121,7 @@ export class FileOperationsHandler {
         }
       }
 
-      const { relativePath: savedPath, fileUri } = await this.saveResultToFile(toolName, text, metadata);
+      const { relativePath: savedPath, absolutePath } = await this.saveResultToFile(toolName, text, metadata);
 
       const successMessage: SaveResultSuccessMessage = {
         type: MessageType.SAVE_RESULT_SUCCESS,
@@ -133,7 +135,7 @@ export class FileOperationsHandler {
 
       this.postMessage(successMessage);
       try {
-        await vscode.window.showTextDocument(fileUri, { preview: false });
+        await this.shell.openFileInEditor(absolutePath);
       } catch {
         // Silently ignore errors opening the file
       }
@@ -150,31 +152,31 @@ export class FileOperationsHandler {
     return markdown.replace(sectionRegex, '').trimEnd();
   }
 
-  private async saveResultToFile(toolName: string, content: string, metadata?: SaveResultMetadata): Promise<{ relativePath: string; fileUri: vscode.Uri }> {
+  private async saveResultToFile(toolName: string, content: string, metadata?: SaveResultMetadata): Promise<{ relativePath: string; absolutePath: string }> {
     if (!content || !content.trim()) {
       throw new Error('Result content is empty; nothing to save.');
     }
 
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    const workspaceFolder = this.workspace.workspaceFolders()[0];
     if (!workspaceFolder) {
       throw new Error('Open a workspace folder before saving results.');
     }
 
-    const rootUri = workspaceFolder.uri;
-    let targetDir: vscode.Uri;
+    const rootPath = workspaceFolder.path;
+    let targetDir: string;
     let fileName: string;
     let fileContent: string;
 
     if (toolName === 'dictionary_lookup' || toolName === 'dictionary_fast_generate') {
       const rawWord = metadata?.word?.trim() ?? 'entry';
       const sanitizedWord = this.sanitizeFileSegment(rawWord.toLowerCase()) || 'entry';
-      targetDir = vscode.Uri.joinPath(rootUri, 'prose-minion', 'dictionary-entries');
-      await vscode.workspace.fs.createDirectory(targetDir);
+      targetDir = path.join(rootPath, 'prose-minion', 'dictionary-entries');
+      await this.fileSystem.createDirectory(targetDir);
       fileName = `${sanitizedWord}.md`;
       fileContent = content.trim();
     } else if (toolName === 'prose_analysis' || toolName === 'dialogue_analysis' || toolName.startsWith('writing_tools_')) {
-      targetDir = vscode.Uri.joinPath(rootUri, 'prose-minion', 'assistant');
-      await vscode.workspace.fs.createDirectory(targetDir);
+      targetDir = path.join(rootPath, 'prose-minion', 'assistant');
+      await this.fileSystem.createDirectory(targetDir);
 
       // Map tool names to file prefixes (Strategy pattern)
       const prefix = FILE_PREFIX_MAP[toolName] ?? `${toolName.replace(/_/g, '-')}-`;
@@ -198,8 +200,8 @@ export class FileOperationsHandler {
 
       fileContent = lines.join('\n');
     } else if (toolName === 'prose_stats' || toolName === 'style_flags' || toolName === 'word_frequency' || toolName === 'word_search' || toolName === 'category_search') {
-      targetDir = vscode.Uri.joinPath(rootUri, 'prose-minion', 'reports');
-      await vscode.workspace.fs.createDirectory(targetDir);
+      targetDir = path.join(rootPath, 'prose-minion', 'reports');
+      await this.fileSystem.createDirectory(targetDir);
       const now = new Date();
       const pad = (n: number) => n.toString().padStart(2, '0');
       const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
@@ -210,19 +212,21 @@ export class FileOperationsHandler {
       throw new Error(`Saving results for tool "${toolName}" is not supported yet.`);
     }
 
-    const fileUri = vscode.Uri.joinPath(targetDir, fileName);
+    const filePath = path.join(targetDir, fileName);
     const encoder = new TextEncoder();
-    await vscode.workspace.fs.writeFile(fileUri, encoder.encode(fileContent));
+    await this.fileSystem.writeFile(filePath, encoder.encode(fileContent));
 
-    return { relativePath: vscode.workspace.asRelativePath(fileUri), fileUri };
+    // `false` (no workspace-folder prefix) matches every other call site and the
+    // single-root norm; the saved file always lives under workspaceFolders[0].
+    return { relativePath: this.workspace.asRelativePath(filePath, false), absolutePath: filePath };
   }
 
-  private async getNextSequentialNumber(directory: vscode.Uri, prefix: string): Promise<number> {
+  private async getNextSequentialNumber(directory: string, prefix: string): Promise<number> {
     let maxNumber = 0;
 
-    const entries = await vscode.workspace.fs.readDirectory(directory);
+    const entries = await this.fileSystem.readDirectory(directory);
     for (const [name, type] of entries) {
-      if (type !== vscode.FileType.File) {
+      if (type !== FileType.File) {
         continue;
       }
 

@@ -46,10 +46,13 @@ no-logic relocation.
 - [x] **Ports + adapters** authored, typecheck green
 - [x] **Wave 1 — `LogSink` + `SecretStore`** (structural swaps, ~24 files)
 - [x] **Wave 2 — `SettingsStore`** (replace `getConfiguration('proseMinion')`, 8 files) — `7b6809a`
-- [~] **Wave 3 — `FileSystem` + `Workspace`** (convert `vscode.Uri` ops → string paths)
-  — part 1 done (loaders + metrics/search reads, `9df924f`); part 2 = the 4 file-handling
-  handlers (see status.md "resume here")
-- [ ] **Wave 4 — `ShellService` + `EditorContext`** (dialogs/clipboard/open-in-editor + selection)
+- [x] **Wave 3 — `FileSystem` + `Workspace`** (convert `vscode.Uri` ops → string paths)
+  — part 1 (loaders + metrics/search reads, `9df924f`); part 2 = the 4 file-handling
+  handlers, converted FULLY (fs/workspace/shell/editor), `TextSourceResolver` now a
+  shared injected singleton
+- [~] **Wave 4 — `ShellService` + `EditorContext`** (dialogs/clipboard/open-in-editor + selection)
+  — mostly pulled forward by Wave 3 pt 2's "convert each fully"; `EditorContext` fully done,
+  `ShellService` only `ConfigurationHandler`'s one `showInformationMessage` remains
 - [ ] **Wave 5 — Wiring** (config-watcher → shell; `postMessage` → injected fn; assemble adapters in `extension.ts`)
 - [ ] **Wave 6 — Tests** inject in-memory fakes instead of vscode mocks
 - [ ] **Assert core is `vscode`-free** (grep guard) + green build

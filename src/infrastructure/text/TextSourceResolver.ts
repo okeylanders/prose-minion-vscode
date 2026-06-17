@@ -1,15 +1,26 @@
 /**
  * TextSourceResolver - Infrastructure layer
  * Resolves text input for metrics tools from various sources.
+ *
+ * Platform-ported (ADR 2026-06-16): all host access goes through the injected
+ * ports (FileSystem / Workspace / SettingsStore / EditorContext) on plain string
+ * paths — no `vscode.Uri` / `vscode.workspace.*` here. Stateless, so the
+ * composition root builds ONE instance and injects it into both MetricsHandler
+ * and SearchHandler.
  */
 
-import * as vscode from 'vscode';
-import { LogSink } from '@/platform';
 import * as path from 'path';
+import { EditorContext, FileSystem, FileType, LogSink, SettingsStore, Workspace } from '@/platform';
 import { ResolvedTextSource, TextSourceSpec } from '@shared/types';
 
 export class TextSourceResolver {
-  constructor(private readonly output?: LogSink) {}
+  constructor(
+    private readonly fileSystem: FileSystem,
+    private readonly workspace: Workspace,
+    private readonly settings: SettingsStore,
+    private readonly editor: EditorContext,
+    private readonly output?: LogSink
+  ) {}
 
   async resolve(spec: TextSourceSpec): Promise<ResolvedTextSource> {
     switch (spec.mode) {
@@ -32,39 +43,41 @@ export class TextSourceResolver {
       throw new Error('Invalid selection token. Leave as [selected text] or pick another source.');
     }
 
-    const editor = vscode.window.activeTextEditor;
-    if (!editor || editor.selection.isEmpty) {
+    const selection = this.editor.getActiveSelection();
+    if (!selection || selection.isEmpty) {
       throw new Error('No text selected. Select text in the editor first.');
     }
 
-    const text = editor.document.getText(editor.selection);
-    const relativePath = vscode.workspace.asRelativePath(editor.document.uri, false);
-    return { text, relativePaths: [relativePath], displayPath: relativePath };
+    return {
+      text: selection.text,
+      relativePaths: [selection.relativePath],
+      displayPath: selection.relativePath,
+    };
   }
 
   private async resolveActiveFile(spec: TextSourceSpec): Promise<ResolvedTextSource> {
-    const uri = await this.resolveSingleFilePath(spec.pathText);
-    if (!uri) {
+    const filePath = await this.resolveSingleFilePath(spec.pathText);
+    if (!filePath) {
       throw new Error('Active file not found. Provide a valid path.');
     }
 
-    const content = await this.readFileUtf8(uri);
-    const relativePath = vscode.workspace.asRelativePath(uri, false);
+    const content = await this.readFileUtf8(filePath);
+    const relativePath = this.workspace.asRelativePath(filePath, false);
     return { text: content, relativePaths: [relativePath], displayPath: relativePath };
   }
 
   private async resolveManuscript(spec: TextSourceSpec): Promise<ResolvedTextSource> {
     const patterns = this.getManuscriptPatterns(spec.pathText);
     const matches = await this.findFilesAcrossWorkspaces(patterns);
-    const unique: vscode.Uri[] = [];
+    const unique: string[] = [];
     const seen = new Set<string>();
 
-    for (const uri of matches) {
-      if (!this.isSupportedFile(uri)) continue;
-      const rel = this.normalizeKey(vscode.workspace.asRelativePath(uri, false));
+    for (const filePath of matches) {
+      if (!this.isSupportedFile(filePath)) continue;
+      const rel = this.normalizeKey(this.workspace.asRelativePath(filePath, false));
       if (!seen.has(rel)) {
         seen.add(rel);
-        unique.push(uri);
+        unique.push(filePath);
       }
     }
 
@@ -75,10 +88,10 @@ export class TextSourceResolver {
     const parts: string[] = [];
     const relativePaths: string[] = [];
 
-    for (const uri of unique) {
-      const rel = vscode.workspace.asRelativePath(uri, false);
+    for (const filePath of unique) {
+      const rel = this.workspace.asRelativePath(filePath, false);
       relativePaths.push(rel);
-      const content = await this.readFileUtf8(uri);
+      const content = await this.readFileUtf8(filePath);
       parts.push(content);
     }
 
@@ -89,15 +102,15 @@ export class TextSourceResolver {
   private async resolveChapters(spec: TextSourceSpec): Promise<ResolvedTextSource> {
     const patterns = this.getChaptersPatterns(spec.pathText);
     const matches = await this.findFilesAcrossWorkspaces(patterns);
-    const unique: vscode.Uri[] = [];
+    const unique: string[] = [];
     const seen = new Set<string>();
 
-    for (const uri of matches) {
-      if (!this.isSupportedFile(uri)) continue;
-      const rel = this.normalizeKey(vscode.workspace.asRelativePath(uri, false));
+    for (const filePath of matches) {
+      if (!this.isSupportedFile(filePath)) continue;
+      const rel = this.normalizeKey(this.workspace.asRelativePath(filePath, false));
       if (!seen.has(rel)) {
         seen.add(rel);
-        unique.push(uri);
+        unique.push(filePath);
       }
     }
 
@@ -108,10 +121,10 @@ export class TextSourceResolver {
     const parts: string[] = [];
     const relativePaths: string[] = [];
 
-    for (const uri of unique) {
-      const rel = vscode.workspace.asRelativePath(uri, false);
+    for (const filePath of unique) {
+      const rel = this.workspace.asRelativePath(filePath, false);
       relativePaths.push(rel);
-      const content = await this.readFileUtf8(uri);
+      const content = await this.readFileUtf8(filePath);
       parts.push(content);
     }
 
@@ -119,8 +132,8 @@ export class TextSourceResolver {
     return { text: aggregated, relativePaths, displayPath: relativePaths.join(', ') };
   }
 
-  private async resolveSingleFilePath(pathText?: string): Promise<vscode.Uri | undefined> {
-    const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
+  private async resolveSingleFilePath(pathText?: string): Promise<string | undefined> {
+    const workspaceFolders = this.workspace.workspaceFolders();
 
     // If a path was supplied, try it first (absolute or workspace-relative)
     if (pathText && pathText.trim()) {
@@ -128,28 +141,30 @@ export class TextSourceResolver {
 
       // Absolute
       if (path.isAbsolute(trimmed)) {
-        const uri = vscode.Uri.file(trimmed);
-        if (await this.exists(uri)) return uri;
+        if (await this.exists(trimmed)) return trimmed;
       }
 
       // Try as workspace-relative into each folder
       for (const folder of workspaceFolders) {
-        const full = vscode.Uri.file(path.join(folder.uri.fsPath, trimmed));
+        const full = path.join(folder.path, trimmed);
         if (await this.exists(full)) return full;
       }
 
       // As a fallback, try findFiles with an exact relative pattern
       for (const folder of workspaceFolders) {
-        const include = new vscode.RelativePattern(folder, this.normalizePattern(trimmed));
-        const found = await vscode.workspace.findFiles(include, this.defaultExcludeGlob());
+        const found = await this.workspace.findFiles(
+          folder.path,
+          this.normalizePattern(trimmed),
+          this.defaultExcludeGlob()
+        );
         if (found.length > 0) return found[0];
       }
     }
 
     // Fallback to active editor
-    const editor = vscode.window.activeTextEditor;
-    if (editor) {
-      return editor.document.uri;
+    const selection = this.editor.getActiveSelection();
+    if (selection) {
+      return selection.fsPath;
     }
     return undefined;
   }
@@ -158,8 +173,7 @@ export class TextSourceResolver {
     if (pathText && pathText.trim()) {
       return pathText.split(',').map(s => this.normalizePattern(s)).filter(Boolean);
     }
-    const config = vscode.workspace.getConfiguration('proseMinion');
-    const rawValue = config.get<string>('contextPaths.manuscript') || '';
+    const rawValue = this.settings.get<string>('proseMinion', 'contextPaths.manuscript') || '';
     return rawValue
       .split(',')
       .map(s => this.normalizePattern(s))
@@ -170,23 +184,21 @@ export class TextSourceResolver {
     if (pathText && pathText.trim()) {
       return pathText.split(',').map(s => this.normalizePattern(s)).filter(Boolean);
     }
-    const config = vscode.workspace.getConfiguration('proseMinion');
-    const rawValue = config.get<string>('contextPaths.chapters') || '';
+    const rawValue = this.settings.get<string>('proseMinion', 'contextPaths.chapters') || '';
     return rawValue
       .split(',')
       .map(s => this.normalizePattern(s))
       .filter(Boolean);
   }
 
-  private async findFilesAcrossWorkspaces(patterns: string[]): Promise<vscode.Uri[]> {
-    const folders = vscode.workspace.workspaceFolders ?? [];
-    const results: vscode.Uri[] = [];
+  private async findFilesAcrossWorkspaces(patterns: string[]): Promise<string[]> {
+    const folders = this.workspace.workspaceFolders();
+    const results: string[] = [];
     for (const folder of folders) {
       for (const pattern of patterns) {
         try {
-          const include = new vscode.RelativePattern(folder, pattern);
-          const uris = await vscode.workspace.findFiles(include, this.defaultExcludeGlob());
-          results.push(...uris);
+          const found = await this.workspace.findFiles(folder.path, pattern, this.defaultExcludeGlob());
+          results.push(...found);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           this.output?.appendLine(`[TextSourceResolver] Error searching ${pattern}: ${message}`);
@@ -196,8 +208,8 @@ export class TextSourceResolver {
     return results;
   }
 
-  private isSupportedFile(uri: vscode.Uri): boolean {
-    const ext = path.extname(uri.fsPath).toLowerCase();
+  private isSupportedFile(filePath: string): boolean {
+    const ext = path.extname(filePath).toLowerCase();
     return ext === '.md' || ext === '.txt';
   }
 
@@ -222,17 +234,17 @@ export class TextSourceResolver {
     return '{**/node_modules/**,**/.git/**,**/.svn/**,**/.hg/**,**/dist/**,**/out/**}';
   }
 
-  private async exists(uri: vscode.Uri): Promise<boolean> {
+  private async exists(filePath: string): Promise<boolean> {
     try {
-      const stat = await vscode.workspace.fs.stat(uri);
-      return stat.type === vscode.FileType.File;
+      const stat = await this.fileSystem.stat(filePath);
+      return stat.type === FileType.File;
     } catch {
       return false;
     }
   }
 
-  private async readFileUtf8(uri: vscode.Uri): Promise<string> {
-    const raw = await vscode.workspace.fs.readFile(uri);
+  private async readFileUtf8(filePath: string): Promise<string> {
+    const raw = await this.fileSystem.readFile(filePath);
     return Buffer.from(raw).toString('utf8');
   }
 }

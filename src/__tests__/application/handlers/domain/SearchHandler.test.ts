@@ -16,6 +16,7 @@ describe('SearchHandler', () => {
       {} as any,  // wordSearchService
       jest.fn().mockResolvedValue(undefined) as any, // postMessage
       {} as any, // outputChannel
+      {} as any, // textSourceResolver
       {} as any  // categorySearchService
     );
     router = new MessageRouter();

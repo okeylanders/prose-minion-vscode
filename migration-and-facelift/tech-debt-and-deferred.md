@@ -17,7 +17,7 @@ silent deferrals read as "done" when they aren't.
 
 | Item | Blocker |
 |---|---|
-| **Pass 2 — Design Facelift** | Needs the "Prose Minion – Design Refresh.html" saved to disk (e.g. `docs/design/` or `/tmp`). The hosted claude.ai design share can't be fetched by tooling (not a UUID project; API is auth-gated). |
+| **Pass 2 — Design Facelift** | Needs the "Prose Minion – Design Refresh" artifacts available to tooling. **First action when Pass 2 starts: actually attempt the fetch** (share links, any downloadable bundle/zip, the chat thread + assets) via `WebFetch`/`WebSearch` before assuming it's auth-gated — the earlier "can't be fetched" note was untested pessimism. Fall back to "save the HTML to `docs/design/` or `/tmp`" only if the tooling genuinely hits an auth wall. In the meantime, FrameMinion's design language (`--fm-*` tokens, flame brand marks, sidebar/header chrome) is the reference to absorb. |
 
 ## Discovered debt (note as we go)
 

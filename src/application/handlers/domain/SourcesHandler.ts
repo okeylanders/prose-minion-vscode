@@ -3,8 +3,7 @@
  * Handles file and glob request operations
  */
 
-import * as vscode from 'vscode';
-import { SettingsStore } from '@/platform';
+import { EditorContext, SettingsStore } from '@/platform';
 import {
   RequestActiveFileMessage,
   RequestManuscriptGlobsMessage,
@@ -21,7 +20,8 @@ import { MessageRouter } from '../MessageRouter';
 export class SourcesHandler {
   constructor(
     private readonly postMessage: (message: any) => void,
-    private readonly settings: SettingsStore
+    private readonly settings: SettingsStore,
+    private readonly editor: EditorContext
   ) {}
 
   /**
@@ -51,14 +51,13 @@ export class SourcesHandler {
 
   async handleRequestActiveFile(message: RequestActiveFileMessage): Promise<void> {
     try {
-      const editor = vscode.window.activeTextEditor;
-      const relativePath = editor ? vscode.workspace.asRelativePath(editor.document.uri, false) : undefined;
+      const selection = this.editor.getActiveSelection();
       const msg: ActiveFileMessage = {
         type: MessageType.ACTIVE_FILE,
         source: 'extension.sources',
         payload: {
-          relativePath,
-          sourceUri: editor?.document.uri.toString()
+          relativePath: selection?.relativePath,
+          sourceUri: selection?.uriString
         },
         timestamp: Date.now()
       };

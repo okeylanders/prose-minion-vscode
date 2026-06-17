@@ -7,6 +7,7 @@
  */
 
 import { LogSink } from '@/platform';
+import { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
 import { ProseStatsService } from '@services/measurement/ProseStatsService';
 import { StyleFlagsService } from '@services/measurement/StyleFlagsService';
 import { WordFrequencyService } from '@services/measurement/WordFrequencyService';
@@ -30,7 +31,8 @@ export class MetricsHandler {
     private readonly wordFrequencyService: WordFrequencyService,
     private readonly standardsService: StandardsService,
     private readonly postMessage: (message: any) => Promise<void>,
-    private readonly outputChannel: LogSink
+    private readonly outputChannel: LogSink,
+    private readonly textSourceResolver: TextSourceResolver
   ) {}
 
   /**
@@ -141,10 +143,7 @@ export class MetricsHandler {
       return t;
     }
 
-    // Dynamically import to avoid cyclic deps and keep constructor lean
-    const { TextSourceResolver } = await import('@/infrastructure/text/TextSourceResolver');
-    const resolver = new TextSourceResolver(this.outputChannel);
-    const resolved = await resolver.resolve(payload.source);
+    const resolved = await this.textSourceResolver.resolve(payload.source);
     const text = (resolved.text ?? '').trim();
     if (!text) {
       throw new Error('Resolved source contains no text.');
@@ -157,9 +156,7 @@ export class MetricsHandler {
       const text = await this.resolveTextForMetrics(payload);
       return { text };
     }
-    const { TextSourceResolver } = await import('@/infrastructure/text/TextSourceResolver');
-    const resolver = new TextSourceResolver(this.outputChannel);
-    const resolved = await resolver.resolve(payload.source);
+    const resolved = await this.textSourceResolver.resolve(payload.source);
     const text = (resolved.text ?? '').trim();
     if (!text) throw new Error('Resolved source contains no text.');
     const mode = payload.source?.mode;

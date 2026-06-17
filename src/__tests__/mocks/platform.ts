@@ -5,7 +5,16 @@
  * exercise the host integration. Grows as later waves add FileSystem/Workspace/
  * ShellService/EditorContext fakes.
  */
-import { FileStat, FileSystem, FileType, SettingsStore, Workspace } from '@/platform';
+import {
+  ActiveSelectionInfo,
+  EditorContext,
+  FileStat,
+  FileSystem,
+  FileType,
+  SettingsStore,
+  ShellService,
+  Workspace,
+} from '@/platform';
 
 /**
  * A SettingsStore that serves `values` (keyed by "key" or "section.key") and
@@ -54,6 +63,32 @@ export function createFakeWorkspace(overrides: Partial<Workspace> = {}): Workspa
     extensionPath: '/ext',
     asRelativePath: (p: string) => p,
     findFiles: async () => [],
+    ...overrides,
+  };
+}
+
+/**
+ * A ShellService whose notifications return undefined (dialog dismissed) and
+ * whose clipboard is empty by default; override any method to assert/feed values.
+ */
+export function createFakeShellService(overrides: Partial<ShellService> = {}): ShellService {
+  return {
+    showInformationMessage: async () => undefined,
+    showModalInformationMessage: async () => undefined,
+    copyToClipboard: async () => undefined,
+    readClipboard: async () => '',
+    openFileInEditor: async () => undefined,
+    ...overrides,
+  };
+}
+
+/**
+ * An EditorContext with no active editor by default; override `getActiveSelection`
+ * to simulate a selection or open file.
+ */
+export function createFakeEditorContext(overrides: Partial<EditorContext> = {}): EditorContext {
+  return {
+    getActiveSelection: (): ActiveSelectionInfo | undefined => undefined,
     ...overrides,
   };
 }
