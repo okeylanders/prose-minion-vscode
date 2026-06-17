@@ -28,6 +28,22 @@ silent deferrals read as "done" when they aren't.
 | Long constructors (`MessageHandler` 12 params, `ProseToolsViewProvider` 11) | Low–Med | Adding ports risks 16+ params. Mitigation: thread a `Platform` bundle (Wave 5) rather than more individual params. |
 | `outputChannel`-named params now typed `LogSink` | Cosmetic | Param name kept to minimize Wave-1 churn; the name still reads "output channel" though the type is the narrower port. Rename opportunistically. |
 
+## PR #59 review — deferred items (with rationale)
+
+From the multi-agent review ([docs/pr-reviews/pr-59-…](../docs/pr-reviews/pr-59-ports-and-adapters-core-vscode-free-review.md)). Most findings were fixed on the branch; these were consciously deferred:
+
+| Finding | Why deferred | Revisit |
+|---|---|---|
+| **#14 — `handleConfigurationChange` public method → constructor-callback seam** | Marcus's "seal it before the Stage-2 interface lock." The provider↔handler wiring is itself being reshaped by the monorepo move; sealing the seam now then re-touching it in Stage 2 is churn. The public method is safe in-process (the provider is its only caller). | Stage 2 (interface lock) |
+| **#8 — untitled-document `activeFile` edge** | `selection.fsPath` through `Uri.file()` forces `file:` scheme; for an unsaved buffer this *may* diverge from the old `untitled:`-URI path — but the old path likely also failed (`workspace.fs.readFile` on `untitled:` isn't generally supported). Needs the **F5 smoke** to confirm whether it's a regression or just an error-message change. | F5 / next pass |
+| **#16 — config-watcher relocation has no integration test** | It's pure `vscode` shell wiring (provider's `onDidChangeConfiguration` → `handleConfigurationChange`); the broadcast *logic* is unit-tested via the predicate. End-to-end belongs to the **F5 smoke** on the merge checklist. | F5 |
+| **#15 / #19 — perf nits** (sequential manuscript reads; guard reads ~134 files sync) | Out of scope for a behavior-preserving pass / immeasurable at current scale. `Promise.all` and a ripgrep-subprocess guard are one-liners when the repo warrants. | If/when scale warrants |
+
+**Containment guard (review #6/#7) — done now, not deferred.** A local
+`src/infrastructure/storage/pathContainment.ts` (`isPathWithinRoot`) guards the three
+`UIHandler` open-file joins. It deliberately mirrors FrameMinion's containment check;
+**fold it into FM's shared helper when that lands in Stage 2** rather than maintaining two.
+
 ## Resolved review findings (loose pass, pre–Wave 3 pt 2)
 
 All four notes from the pre-wave review were addressed in the fixups commit:

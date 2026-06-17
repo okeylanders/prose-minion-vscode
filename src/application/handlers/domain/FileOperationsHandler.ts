@@ -4,7 +4,7 @@
  */
 
 import * as path from 'path';
-import { FileSystem, FileType, ShellService, Workspace } from '@/platform';
+import { FileSystem, FileType, LogSink, ShellService, Workspace } from '@/platform';
 import {
   CopyResultMessage,
   SaveResultMessage,
@@ -37,7 +37,8 @@ export class FileOperationsHandler {
     private readonly postMessage: (message: any) => Promise<void>,
     private readonly fileSystem: FileSystem,
     private readonly workspace: Workspace,
-    private readonly shell: ShellService
+    private readonly shell: ShellService,
+    private readonly outputChannel: LogSink
   ) {}
 
   /**
@@ -136,8 +137,13 @@ export class FileOperationsHandler {
       this.postMessage(successMessage);
       try {
         await this.shell.openFileInEditor(absolutePath);
-      } catch {
-        // Silently ignore errors opening the file
+      } catch (openError) {
+        // Best-effort open: the save already succeeded, so don't surface an error
+        // to the user — but DO leave a trail (the adapter does openTextDocument +
+        // showTextDocument, a real throw surface) so a "saved but didn't open" is
+        // diagnosable instead of a silent black hole.
+        const msg = openError instanceof Error ? openError.message : String(openError);
+        this.outputChannel.appendLine(`[FileOpsHandler] Saved but failed to open ${absolutePath}: ${msg}`);
       }
       this.sendStatus(`Saved result to ${savedPath}`);
     } catch (error) {

@@ -156,10 +156,11 @@ export class MessageHandler {
     private readonly standardsService: StandardsService,
     private readonly aiResourceManager: AIResourceManager,
     private readonly secretsService: any, // SecretStorageService
-    // Inject the raw webview post (the shell binds it to `webview.postMessage`);
-    // keeps MessageHandler vscode-free. The host also owns the config-change
-    // watcher and calls `handleConfigurationChange` (see below).
-    private readonly post: (message: ExtensionToWebviewMessage) => PromiseLike<unknown>,
+    // Raw webview transport (the shell binds it to `webview.postMessage`); keeps
+    // MessageHandler vscode-free. NOTE: domain handlers must receive the wrapped
+    // `this.postMessage` (logging + result cache), NOT this raw `transport` — the
+    // distinct name is deliberate so the unwrapped one isn't grabbed by accident.
+    private readonly transport: (message: ExtensionToWebviewMessage) => PromiseLike<unknown>,
     private readonly outputChannel: LogSink,
     private readonly platform: Platform
   ) {
@@ -282,7 +283,8 @@ export class MessageHandler {
       this.postMessage.bind(this),
       this.platform.fileSystem,
       this.platform.workspace,
-      this.platform.shell
+      this.platform.shell,
+      outputChannel
     );
 
     // Initialize message router and register handler routes
@@ -451,7 +453,7 @@ export class MessageHandler {
         void (async () => {
           await new Promise(resolve => setTimeout(resolve, 50));
           await this.configurationHandler.sendModelData();
-        })();
+        })().catch(this.logBroadcastError('delayed sendModelData'));
       } else {
         this.outputChannel.appendLine('[ConfigWatcher] Model settings changed from webview, skipping MODEL_DATA (echo prevention)');
       }
@@ -461,7 +463,7 @@ export class MessageHandler {
     // AND only if not webview-originated (prevent echo-back)
     if (this.shouldBroadcastUISettings(affects)) {
       this.outputChannel.appendLine('[ConfigWatcher] UI settings changed, sending MODEL_DATA');
-      void this.configurationHandler.sendModelData();
+      void this.configurationHandler.sendModelData().catch(this.logBroadcastError('sendModelData'));
     }
 
     // Send SETTINGS_DATA when any settings change (from VS Code settings panel)
@@ -484,11 +486,23 @@ export class MessageHandler {
         source: 'extension.config_watcher',
         payload: {},
         timestamp: Date.now()
-      });
+      }).catch(this.logBroadcastError('handleRequestSettingsData'));
     } else if (affects('proseMinion')) {
       // Config change detected but not broadcast - log for debugging
       this.outputChannel.appendLine('[ConfigWatcher] Config change detected but not broadcasting (likely echo prevention)');
     }
+  }
+
+  /**
+   * Returns a `.catch` handler that records a fire-and-forget config-broadcast
+   * rejection to the Output channel — so a "settings changed but the webview
+   * didn't update" is diagnosable instead of vanishing into a `void`.
+   */
+  private logBroadcastError(what: string): (err: unknown) => void {
+    return (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.outputChannel.appendLine(`[ConfigWatcher] ${what} failed: ${msg}`);
+    };
   }
 
   // Semantic helper methods for config change broadcasting
@@ -633,7 +647,7 @@ export class MessageHandler {
     );
 
     try {
-      await this.post(message);
+      await this.transport(message);
     } catch (error) {
       const messageText = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(

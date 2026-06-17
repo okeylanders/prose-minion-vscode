@@ -138,4 +138,43 @@ describe('TextSourceResolver', () => {
       await expect(resolver.resolve({ mode: 'manuscript' })).rejects.toThrow(/No manuscript files matched/);
     });
   });
+
+  describe('chapters mode', () => {
+    // Structurally identical to manuscript, but reads a DIFFERENT settings key
+    // (contextPaths.chapters) — a miswired key would otherwise slip through.
+    it('globs via the chapters settings key, reads + aggregates the matches', async () => {
+      const resolver = new TextSourceResolver(
+        createFakeFileSystem({}, {
+          '/ws/chapters/ch1.md': 'Chapter one.',
+          '/ws/chapters/ch2.md': 'Chapter two.',
+        }),
+        createFakeWorkspace({
+          workspaceFolders: () => [{ path: '/ws', name: 'ws' }],
+          asRelativePath: (p: string) => p.replace('/ws/', ''),
+          findFiles: async () => ['/ws/chapters/ch1.md', '/ws/chapters/ch2.md'],
+        }),
+        createFakeSettings({ 'contextPaths.chapters': 'chapters/*.md' }),
+        createFakeEditorContext()
+      );
+
+      const result = await resolver.resolve({ mode: 'chapters' });
+
+      expect(result.text).toBe('Chapter one.\n\nChapter two.');
+      expect(result.relativePaths).toEqual(['chapters/ch1.md', 'chapters/ch2.md']);
+    });
+
+    it('throws when no chapter files match', async () => {
+      const resolver = new TextSourceResolver(
+        createFakeFileSystem(),
+        createFakeWorkspace({
+          workspaceFolders: () => [{ path: '/ws', name: 'ws' }],
+          findFiles: async () => [],
+        }),
+        createFakeSettings({ 'contextPaths.chapters': 'nope/*.md' }),
+        createFakeEditorContext()
+      );
+
+      await expect(resolver.resolve({ mode: 'chapters' })).rejects.toThrow(/No chapter files matched/);
+    });
+  });
 });

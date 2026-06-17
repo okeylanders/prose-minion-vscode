@@ -3,11 +3,24 @@
  */
 
 import { formatSearchResultAsMarkdown } from '@formatters/wordSearchFormatter';
+import { WORD_SEARCH_DEFAULTS } from '@shared/constants/wordSearchDefaults';
 
 describe('formatSearchResultAsMarkdown', () => {
   it('returns empty string for null/undefined input', () => {
     expect(formatSearchResultAsMarkdown(null)).toBe('');
     expect(formatSearchResultAsMarkdown(undefined)).toBe('');
+  });
+
+  it('criteria line falls back to the shipped WORD_SEARCH_DEFAULTS when options are absent', () => {
+    // Pins #2: the display layer must echo the same defaults as the runtime sites
+    // (3/50/2), not the old 7/150/3 that never shipped.
+    const markdown = formatSearchResultAsMarkdown({ scannedFiles: ['f.md'], targets: [] });
+    expect(markdown).toContain(
+      `Context window: ${WORD_SEARCH_DEFAULTS.contextWords} words | ` +
+        `Cluster window: ${WORD_SEARCH_DEFAULTS.clusterWindow} ` +
+        `(min ${WORD_SEARCH_DEFAULTS.minClusterSize} hits)`
+    );
+    expect(markdown).toContain('Context window: 3 words');
   });
 
   it('returns empty string for invalid shape (missing scannedFiles or targets)', () => {
@@ -29,9 +42,9 @@ describe('formatSearchResultAsMarkdown', () => {
       ],
       options: {
         caseSensitive: false,
-        contextWords: 7,
-        clusterWindow: 150,
-        minClusterSize: 3
+        contextWords: 3,
+        clusterWindow: 50,
+        minClusterSize: 2
       }
     };
 
@@ -72,9 +85,9 @@ describe('formatSearchResultAsMarkdown', () => {
       ],
       options: {
         caseSensitive: false,
-        contextWords: 7,
-        clusterWindow: 150,
-        minClusterSize: 3
+        contextWords: 3,
+        clusterWindow: 50,
+        minClusterSize: 2
       }
     };
 

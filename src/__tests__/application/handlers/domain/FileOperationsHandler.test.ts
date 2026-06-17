@@ -23,7 +23,8 @@ describe('FileOperationsHandler', () => {
       mockPostMessage,
       createFakeFileSystem(),
       createFakeWorkspace(),
-      createFakeShellService()
+      createFakeShellService(),
+      { appendLine: jest.fn() } as any // outputChannel (LogSink)
     );
     router = new MessageRouter();
   });

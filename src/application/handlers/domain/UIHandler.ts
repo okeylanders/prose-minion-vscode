@@ -5,6 +5,7 @@
 
 import * as path from 'path';
 import { EditorContext, FileSystem, LogSink, ShellService, Workspace } from '@/platform';
+import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 import {
   OpenGuideFileMessage,
   OpenDocsFileMessage,
@@ -88,13 +89,15 @@ export class UIHandler {
       const { guidePath } = message.payload;
       this.outputChannel.appendLine(`[UIHandler] Opening guide file: ${guidePath}`);
 
-      // Construct the full path to the guide file
-      const guideFsPath = path.join(
-        this.workspace.extensionPath,
-        'resources',
-        'craft-guides',
-        guidePath
-      );
+      // Construct the full path to the guide file, contained within the guides dir.
+      // guidePath is webview/AI-supplied — reject `..` traversal out of the root.
+      const guidesRoot = path.join(this.workspace.extensionPath, 'resources', 'craft-guides');
+      const guideFsPath = path.join(guidesRoot, guidePath);
+      if (!isPathWithinRoot(guidesRoot, guideFsPath)) {
+        this.outputChannel.appendLine(`[UIHandler] ERROR: guide path escapes root: ${guidePath}`);
+        this.sendError('ui.guide', 'Invalid guide path', guidePath);
+        return;
+      }
 
       this.outputChannel.appendLine(`[UIHandler] Full path: ${guideFsPath}`);
 
@@ -127,12 +130,15 @@ export class UIHandler {
       const { docsPath } = message.payload;
       this.outputChannel.appendLine(`[UIHandler] Opening docs file: ${docsPath}`);
 
-      // Construct the full path to the docs file
-      const docsFsPath = path.join(
-        this.workspace.extensionPath,
-        'docs',
-        docsPath
-      );
+      // Construct the full path to the docs file, contained within the docs dir.
+      // docsPath is webview/AI-supplied — reject `..` traversal out of the root.
+      const docsRoot = path.join(this.workspace.extensionPath, 'docs');
+      const docsFsPath = path.join(docsRoot, docsPath);
+      if (!isPathWithinRoot(docsRoot, docsFsPath)) {
+        this.outputChannel.appendLine(`[UIHandler] ERROR: docs path escapes root: ${docsPath}`);
+        this.sendError('ui.docs', 'Invalid docs path', docsPath);
+        return;
+      }
 
       this.outputChannel.appendLine(`[UIHandler] Full path: ${docsFsPath}`);
 
@@ -162,8 +168,9 @@ export class UIHandler {
 
   async handleOpenResource(message: OpenResourceMessage): Promise<void> {
     try {
-      const { path: resourcePath } = message.payload;
-      this.outputChannel.appendLine(`[UIHandler] Opening resource: ${resourcePath}`);
+      // The payload field is a workspace-relative path (joined onto the root below).
+      const { path: relativePath } = message.payload;
+      this.outputChannel.appendLine(`[UIHandler] Opening resource: ${relativePath}`);
 
       // Get workspace root
       const workspaceRoot = this.workspace.workspaceFolders()[0]?.path;
@@ -174,15 +181,21 @@ export class UIHandler {
         return;
       }
 
-      // Construct workspace-relative path
-      const resourceFsPath = path.join(workspaceRoot, resourcePath);
+      // Construct workspace-relative path, contained within the workspace root.
+      // relativePath is webview/AI-supplied — reject `..` traversal out of the workspace.
+      const resourceFsPath = path.join(workspaceRoot, relativePath);
+      if (!isPathWithinRoot(workspaceRoot, resourceFsPath)) {
+        this.outputChannel.appendLine(`[UIHandler] ERROR: resource path escapes workspace: ${relativePath}`);
+        this.sendError('ui.resource', 'Invalid resource path', relativePath);
+        return;
+      }
       this.outputChannel.appendLine(`[UIHandler] Full path: ${resourceFsPath}`);
 
       // Check if file exists first
       try {
         await this.fileSystem.stat(resourceFsPath);
       } catch (statError) {
-        const errorMsg = `Resource not found: ${resourcePath}`;
+        const errorMsg = `Resource not found: ${relativePath}`;
         this.outputChannel.appendLine(`[UIHandler] ERROR: ${errorMsg}`);
         this.sendError('ui.resource', 'Resource not found', errorMsg);
         return;
@@ -191,7 +204,7 @@ export class UIHandler {
       // Open beside the webview (the adapter owns the reuse-column-2 logic).
       await this.shell.openFileInEditor(resourceFsPath, { beside: true });
 
-      this.outputChannel.appendLine(`[UIHandler] Successfully opened resource: ${resourcePath}`);
+      this.outputChannel.appendLine(`[UIHandler] Successfully opened resource: ${relativePath}`);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.sendError(

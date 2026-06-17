@@ -4,6 +4,7 @@
  */
 
 import { formatGap, escapePipes } from './helpers';
+import { WORD_SEARCH_DEFAULTS } from '@shared/constants/wordSearchDefaults';
 
 /**
  * Formats word search results as markdown
@@ -34,7 +35,7 @@ export function formatSearchResultAsMarkdown(metrics: any): string {
   markdown += '## Criteria\n\n';
   markdown += `- Targets: ${targetList}\n`;
   markdown += `- Case sensitive: ${options.caseSensitive ? 'yes' : 'no'}\n`;
-  markdown += `- Context window: ${options.contextWords ?? 7} words | Cluster window: ${options.clusterWindow ?? 150} (min ${options.minClusterSize ?? 3} hits)\n`;
+  markdown += `- Context window: ${options.contextWords ?? WORD_SEARCH_DEFAULTS.contextWords} words | Cluster window: ${options.clusterWindow ?? WORD_SEARCH_DEFAULTS.clusterWindow} (min ${options.minClusterSize ?? WORD_SEARCH_DEFAULTS.minClusterSize} hits)\n`;
 
   if (report.note) {
     markdown += `\n_${report.note}_\n`;

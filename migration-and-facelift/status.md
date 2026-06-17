@@ -49,7 +49,7 @@ This wave finished the last two `vscode` consumers in core:
 
 - **vscode imports remaining in core:** **2 files** (was 37 at Stage-0) — `extension.ts` +
   `ProseToolsViewProvider.ts`, both legitimately shell. **0 real** remaining. Guarded by a test.
-- **Tests:** 304 passing / 37 suites
+- **Tests:** 313 passing / 40 suites (incl. PR #59 review fixups)
 - **Ports done:** all seven — `LogSink` ✅, `SecretStore` ✅, `SettingsStore` ✅, `FileSystem` ✅,
   `Workspace` ✅, `EditorContext` ✅, `ShellService` ✅
 - **Platform bundle:** assembled in `extension.ts`, threaded provider → MessageHandler
