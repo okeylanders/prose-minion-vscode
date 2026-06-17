@@ -26,9 +26,9 @@
 |---|---|---|---|
 | 0 | Branch/baseline confirm; lock resource (D22) + logging-defer decisions | ✅ done | `d571959` |
 | 1 | **AppMessagePort** (webview port, in-place, pre-move) — plan task #1 | ✅ done | `874b4d5` |
-| 2 | **TS 4.9 → 5.x** (D10, in-place) | ✅ done (→ TS 5.9.3, zero code changes) | _this commit_ |
-| 3 | **The move** — `git mv` core/app split; `tsconfig.base.json` paths; core barrel; shell imports→barrel; rewrite boundary guard; resources→`packages/core/resources` + copy script | ⬜ next (👈 the risky one; author wants to eyeball) | — |
-| 4 | **Packaging + boundary** — `vsce package --no-dependencies` (D13, add `@vscode/vsce`); eslint `no-restricted-imports` app→core; verify VSIX ships resources | ⬜ todo | — |
+| 2 | **TS 4.9 → 5.x** (D10, in-place) | ✅ done (→ TS 5.9.3, zero code changes) | `41af823` |
+| 3 | **The move** — `git mv` core/app split; `tsconfig.base.json` paths; core barrel; shell imports→barrel; rewrite boundary guard; resources→`packages/core/resources` + copy script | ✅ done (A `fe0e6cb` pure-mv · B `7777119` wiring) | — |
+| 4 | **Packaging + boundary** — `vsce package --no-dependencies` (D13); eslint `no-restricted-imports` app→core; verify VSIX ships resources | ⬜ next | — |
 | 5 | **Final verify + docs** — full matrix vs Wave-0 baseline; F5 smoke handoff; doc tick | ⬜ todo | — |
 
 **Wave 0 baseline (the diff target):** 313 tests / 40 suites · extension+webview typechecks CLEAN · webpack both bundles (`extension.js` + `webview.js` 484 KiB, size-warnings only) · `vsce package` deferred (not installed; `@vscode/vsce` added to app devDeps in Wave 3).
@@ -71,28 +71,20 @@ This wave finished the last two `vscode` consumers in core:
 
 ## Notes for the next session (resume point)
 
-- **Resume at Stage 2 Wave 3 — THE MOVE** (first ⬜ in the wave tracker above). This is the
-  high-stakes step (author asked to eyeball before it runs). Shape (atomic, planned as two
-  commits so `git log --follow` stays clean):
-  - **Commit A — pure `git mv`** (no content edits; transiently red): `src` →
-    `packages/core/src`; the shell OUT of core → `apps/vscode-extension/src/` (`extension.ts`,
-    `application/providers/ProseToolsViewProvider.ts`, `platform/vscode/*`); `resources` →
-    `packages/core/resources`; `assets` + `README.md`/`CHANGELOG.md`/`LICENSE` → app dir.
-  - **Commit B — wire (green):** author `tsconfig.base.json` (single re-rooted paths table,
-    PM's own alias spellings), `packages/core/{package.json,tsconfig.json,tsconfig.webview.json}`,
-    `apps/vscode-extension/{package.json,tsconfig.json,webpack.config.js,.vscodeignore}`, root
-    `package.json` (workspaces + orchestration scripts), `packages/core/src/index.ts` barrel
-    (named exports for what the shell needs), root `jest.config.js` (generated mapper) +
-    `tsconfig.test.json`; repoint the moved shell files' relative `../X` imports → the
-    `@prose-minion/core` barrel; add `apps/vscode-extension/scripts/copy-resources.js` (D22);
-    rewrite `boundaries.test.ts` to scan `packages/core/src` (zero vscode, no allowed-shells);
-    repoint `wordSearchDefaultsSync.test.ts` at the app manifest. Add `@vscode/vsce` to app devDeps.
-  - **Why aliases make this low-churn:** core files move with ~zero content edits (the central
-    paths table redirects every `@`-alias); only the handful of shell files get relative→barrel
-    import fixes.
-- **Wave 2 done:** `typescript@^5.3` (resolved 5.9.3); `ignoreDeprecations: "5.0"` in both
-  tsconfigs; zero code changes needed. **Wave 1 done:** `AppMessagePort` seam in place.
+- **Resume at Stage 2 Wave 4 — packaging + boundary** (first ⬜ in the wave tracker above):
+  (1) `npm run package -w apps/vscode-extension` (= `vsce package --no-dependencies` via
+  prepublish→build→copy-resources) and verify the `.vsix` ships `dist/` + `resources/` +
+  `assets/` and is `src/`-free; (2) `npm run lint` and prove the eslint `no-restricted-imports`
+  app→core boundary actually fires (try a deep `@/`-import in a shell file, confirm error, revert).
+- **Wave 3 done — the monorepo move is GREEN.** Structure now: `packages/core` (vscode-free,
+  consumed via the `@prose-minion/core` barrel) + `apps/vscode-extension` (the 7 shell files +
+  manifest + webpack). Single `tsconfig.base.json` paths table; TS 5.9.3; resources owned by
+  `packages/core/resources` and copy-staged into the app for the VSIX (D22). All three typechecks
+  clean, 313/313 tests, both webpack bundles. The build/test commands now run from the workspace
+  root (`npm test`, `npm run typecheck`, `npm run build`) or per-workspace (`-w apps/vscode-extension`).
+- **Behavior delta to note:** root `npm run build` now delegates to the app's webpack only
+  (it no longer runs test+typecheck first, as the pre-move single-package `build` did). Run
+  `npm test` + `npm run typecheck` explicitly (or in CI). Net coverage unchanged.
 - `git fetch` first; dev branch `claude/funny-davinci-yqautn` (off epic @ `ae617df`) is the
-  push target (run `npm install` on a fresh container).
-- Reference chassis: FrameMinion at `../frame-minion-vscode` (`tsconfig.base.json`, the core
-  `src/index.ts` barrel, `apps/vscode-extension/webpack.config.js`, `.eslintrc.json` boundary).
+  push target (run `npm install` on a fresh container — workspaces relink `@prose-minion/core`).
+- Reference chassis: FrameMinion at `../frame-minion-vscode`.

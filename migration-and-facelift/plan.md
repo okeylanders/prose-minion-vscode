@@ -73,13 +73,13 @@ no-logic relocation.
 - [x] **TS 4.9 → 5.x** (✅ Wave 2, in-place) — bumped to `^5.3` (resolved 5.9.3) +
   `ignoreDeprecations: "5.0"` in both tsconfigs; zero code changes; matrix green. Required
   for the shared base paths table.
-- [ ] Scaffold workspaces + `packages/core` + `apps/vscode-extension` (FM config shapes)
-- [ ] `git mv` source into core/app; presentation/webview → core
-- [ ] Single `tsconfig.base.json` paths table; **TS 4.9 → 5.x**
-- [ ] Point webpack at the core webview entry; core `index.ts` barrel (named exports)
-- [ ] ESLint `no-restricted-imports` app→core boundary
-- [ ] `vsce package --no-dependencies`; resource-bundling mechanism settled
-- [ ] Final verify: typecheck + tests + build + package + **F5 smoke**
+- [x] Scaffold workspaces + `packages/core` + `apps/vscode-extension` — ✅ Wave 3
+- [x] `git mv` source into core/app; presentation/webview → core — ✅ Wave 3 (313 pure renames, `--follow` intact)
+- [x] Single `tsconfig.base.json` paths table (TS 5.x bumped in Wave 2) — ✅ Wave 3
+- [x] Point webpack at the core webview entry; core `index.ts` barrel (named exports) — ✅ Wave 3
+- [ ] ESLint `no-restricted-imports` app→core boundary — Wave 4
+- [ ] `vsce package --no-dependencies` (resource bundling settled = D22) — Wave 4
+- [ ] Final verify: typecheck + tests + build + package + **F5 smoke** — Wave 5
 
 ## Pass 2 — Facelift (after Stage 2)
 
