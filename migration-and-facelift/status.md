@@ -1,7 +1,7 @@
 # Status — Prose Minion Migration & Facelift
 
-**Branch:** `claude/funny-davinci-yqautn` (cut off `epic/monorepo-ports-and-adapters` @ `ae617df`) · **Last updated:** 2026-06-17
-**Health:** 🟢 green — **Stage 1 COMPLETE** (core is `vscode`-free) · **Stage 2 COMPLETE** (monorepo move, all 5 waves) · **PR #60 review fixups LANDED** (315 tests / 41 suites · 3 typechecks · build · lint 0-err · VSIX). **F5 now unblocked** (launch.json repointed — was the one thing that would have failed the smoke). **F5 smoke still pending the author.** Next: Pass 2 facelift.
+**Branch:** `epic/monorepo-ports-and-adapters` · **Last updated:** 2026-06-17
+**Health:** 🟢 green — **Stage 1 COMPLETE** (core is `vscode`-free) · **Stage 2 COMPLETE** (monorepo move, all 5 waves) · **PR #60 review fixups LANDED** (315 tests / 41 suites · 3 typechecks · build · lint 0-err · VSIX). **F5 smoke passed and caught one post-move Tailwind regression; that regression is fixed and now guarded by `verify-bundle`.** Current release target: VS Code app manifest `2.0.0`; `@prose-minion/core` is stamped `2.0.0` to match. Next: Pass 2 facelift.
 
 ## PR #60 review fixups (2026-06-17)
 
@@ -27,7 +27,7 @@ Multi-agent review (`docs/pr-reviews/pr-60-stage-2-monorepo-move-review.md`) —
 | 1 | Wave 4 — `ShellService` + `EditorContext` | ✅ done (`ConfigurationHandler` info-message → shell this wave) | — |
 | 1 | Wave 5 — Wiring (watcher→shell, post fn) | ✅ done | — |
 | 1 | Wave 6 — Tests + assert core `vscode`-free | ✅ done (boundary guard test green) | — |
-| P2 | Design facelift | ⬜ blocked (needs design HTML — but try fetching first, see tech-debt) | — |
+| P2 | Design facelift | ⬜ next (design refresh starting from this integration branch) | — |
 
 ## Stage 2 — wave tracker (resumable; pick up from the first ⬜)
 
@@ -45,7 +45,7 @@ Multi-agent review (`docs/pr-reviews/pr-60-stage-2-monorepo-move-review.md`) —
 
 **Wave 0 baseline (the diff target):** 313 tests / 40 suites · extension+webview typechecks CLEAN · webpack both bundles (`extension.js` + `webview.js` 484 KiB, size-warnings only) · `vsce package` deferred (not installed; `@vscode/vsce` added to app devDeps in Wave 3).
 
-**Stage 2 end-state (matches baseline):** 3 typechecks CLEAN (core host · core webview · app) · 313 tests / 40 suites · app webpack both bundles · `vsce package --no-dependencies` → `prose-minion-1.10.4.vsix` (128 files / 10.45 MB; `dist/` + `resources/` + `assets/`, `src/`-free) · `npm run lint` 0 errors. **F5 smoke checklist for the author:** sidebar loads · run an analysis · word-frequency report · dictionary lookup · save a report · settings overlay round-trip · API key store/clear · the right-click "Analyze/Word Lookup selection" editor commands · craft-guides/prompts load from the staged `resources/` (proves D22 packaging).
+**Stage 2 end-state (matches baseline):** 3 typechecks CLEAN (core host · core webview · app) · 313 tests / 40 suites · app webpack both bundles · `vsce package --no-dependencies` → clean VSIX (128 files / ~10.45 MB; `dist/` + `resources/` + `assets/`, `src/`-free) · `npm run lint` 0 errors. **F5 smoke passed locally:** sidebar loads · run an analysis · word-frequency report · dictionary lookup · save a report · settings overlay round-trip · API key store/clear · the right-click "Analyze/Word Lookup selection" editor commands · craft-guides/prompts load from the staged `resources/` (proves D22 packaging).
 
 ## Stage 1 complete — what closed it
 
@@ -66,9 +66,9 @@ This wave finished the last two `vscode` consumers in core:
 
 ## Verification
 
-- `npm test` → **304 / 304** (37 suites) · `npm run typecheck` (both) → clean ·
-  `webpack --mode production` (both bundles) → clean · `vsce package` → `prose-minion-1.10.4.vsix`
-  built clean (no `src/`, no tracking docs).
+- Historical Stage 1 gate: `npm test` → **304 / 304** (37 suites) · `npm run typecheck` (both) → clean ·
+  `webpack --mode production` (both bundles) → clean · `vsce package` built clean (no `src/`, no tracking docs).
+- Current Stage 2 gate: 315 tests / 41 suites · 3 typechecks · app build with `verify-bundle` · lint 0 errors · gated VSIX.
 - ✅ **F5 smoke PASSED** (author ran locally 2026-06-17) — sidebar, analysis, word-frequency,
   dictionary, save report, settings round-trip, API key store/clear all working, **and the
   Settings-UI → webview broadcast** (the relocated config watcher) confirmed. The containment
@@ -76,9 +76,10 @@ This wave finished the last two `vscode` consumers in core:
 
 ## Metrics
 
-- **vscode imports remaining in core:** **2 files** (was 37 at Stage-0) — `extension.ts` +
-  `ProseToolsViewProvider.ts`, both legitimately shell. **0 real** remaining. Guarded by a test.
-- **Tests:** 313 passing / 40 suites (incl. PR #59 review fixups)
+- **vscode imports remaining in core:** **0** (was 37 at Stage-0). VS Code imports now live only in
+  `apps/vscode-extension/src/extension.ts`, `ProseToolsViewProvider.ts`, and `platform/vscode/**`.
+  Guarded by `packages/core/src/__tests__/architecture/boundaries.test.ts`.
+- **Tests:** 315 passing / 41 suites (incl. PR #60 review fixups)
 - **Ports done:** all seven — `LogSink` ✅, `SecretStore` ✅, `SettingsStore` ✅, `FileSystem` ✅,
   `Workspace` ✅, `EditorContext` ✅, `ShellService` ✅
 - **Platform bundle:** assembled in `extension.ts`, threaded provider → MessageHandler
@@ -86,9 +87,9 @@ This wave finished the last two `vscode` consumers in core:
 ## Notes for the next session (resume point)
 
 - **Stage 2 is COMPLETE** (all 5 waves green + pushed; final verify matches the Wave-0
-  baseline). The one open item is the **author's F5 smoke** (checklist above) — there is no
-  interactive VS Code in CI, so it's handed off, exactly as Stage 1 was.
-- **Next: Pass 2 — Design Facelift** (still ⬜ blocked on the design artifacts). Per
+  baseline). The author F5 smoke is complete and found the Tailwind purge regression; the fix
+  landed with an automated `verify-bundle` witness.
+- **Next: Pass 2 — Design Facelift.** Start from this integration branch. Per
   `tech-debt-and-deferred.md`, the FIRST action when Pass 2 starts is to actually attempt the
   fetch of the "Prose Minion – Design Refresh" (share links / bundle / chat thread) via
   `WebFetch`/`WebSearch` before assuming it's auth-gated. React 17 → 18 rides with Pass 2.
@@ -109,6 +110,6 @@ This wave finished the last two `vscode` consumers in core:
 - **Behavior delta to note:** root `npm run build` now delegates to the app's webpack only
   (it no longer runs test+typecheck first, as the pre-move single-package `build` did). Run
   `npm test` + `npm run typecheck` explicitly (or in CI). Net coverage unchanged.
-- `git fetch` first; dev branch `claude/funny-davinci-yqautn` (off epic @ `ae617df`) is the
-  push target (run `npm install` on a fresh container — workspaces relink `@prose-minion/core`).
+- Push target is `epic/monorepo-ports-and-adapters` (run `npm install` on a fresh container —
+  workspaces relink `@prose-minion/core`).
 - Reference chassis: FrameMinion at `../frame-minion-vscode`.
