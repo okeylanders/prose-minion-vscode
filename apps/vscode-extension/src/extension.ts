@@ -44,12 +44,13 @@ export function activate(context: vscode.ExtensionContext): void {
   const outputChannel = vscode.window.createOutputChannel('Prose Minion');
   context.subscriptions.push(outputChannel);
 
+  const extensionInfo = context.extension.packageJSON as { version: string };
+
   outputChannel.appendLine('=== Prose Minion Extension Activated ===');
-  outputChannel.appendLine('>>> Version 1.10.4 <<<');
+  outputChannel.appendLine(`>>> Version ${extensionInfo.version} <<<`);
   outputChannel.appendLine(`Extension URI: ${context.extensionUri.fsPath}`);
 
-  console.log('Prose Minion extension is now active');
-  vscode.window.showInformationMessage('Prose Minion extension activated!');
+  // vscode.window.showInformationMessage('Prose Minion extension activated!');
 
   // SPRINT 01: Initialize infrastructure layer (dependency injection)
   const secretsService = new SecretStorageService(context.secrets);
