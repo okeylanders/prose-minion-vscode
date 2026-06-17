@@ -1,6 +1,13 @@
+const path = require('path');
+
 module.exports = {
+  // Absolute (root-anchored via __dirname) so content scanning is correct
+  // regardless of cwd: the webview build runs from apps/vscode-extension, but the
+  // webview source lives in packages/core. A cwd-relative glob (e.g. './packages/
+  // core/...') silently matches NOTHING from the app dir, so Tailwind purges every
+  // utility (w-full/h-32/etc.) and the layout breaks. Mirrors FrameMinion.
   content: [
-    './src/presentation/webview/**/*.{ts,tsx,js,jsx}'
+    path.join(__dirname, 'packages/core/src/presentation/webview/**/*.{ts,tsx,js,jsx}')
   ],
   theme: {
     extend: {

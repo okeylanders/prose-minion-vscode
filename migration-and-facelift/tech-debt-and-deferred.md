@@ -12,7 +12,8 @@ silent deferrals read as "done" when they aren't.
 | **TS 4.9 → 5.x upgrade** | Only needed for FM's single shared `paths` table; Stage 1 runs fine on 4.9. | Stage 2 (D10) |
 | **React 17 → 18** | Pass 1 is behavior-preserving; FM's components/design assume 18. | Pass 2 facelift |
 | **TS project references (`tsc -b` + `composite`)** | Would give compiler-level boundary enforcement + incremental builds, but is a dedicated change with its own footguns; eslint enforces the boundary and the incremental win is marginal at 2–3 projects. FM deferred it too. | Post-desktop |
-| **Resource bundling mechanism** | Prompts/guides load from `extensionUri/resources`; after the move they live in `packages/core/resources` and must still ship in the VSIX. Mechanism (copy vs. webpack-copy vs. app-dir) decided when the move happens. | Stage 2 |
+| ~~**Resource bundling mechanism**~~ | RESOLVED as **D22**: `packages/core/resources/` owns the source of truth; a build/package copy step stages them into `apps/vscode-extension/resources/` for the VSIX; runtime path unchanged. | ✅ Stage 2 |
+| **Logging + AI-alias pattern modernization (FM parity)** | PM predates FrameMinion and its patterns are more primitive. FM exposes a bare `@ai` barrel over its whole `infrastructure/ai/` suite (orchestrators + clients) and a `@logging` barrel over a richer `LoggingService` (leveled `debug/info/warn/error`). PM instead has granular `@services`/`@orchestration`/`@providers`/`@parsers` aliases under `infrastructure/api/`, no `@ai` barrel, and logging via the Stage-1 `LogSink` port with params still named `outputChannel` (cosmetic note below). Adopting FM's `LoggingService` wrapper + `@logging`/`@ai` barrels + `outputChannel`→`logger` rename is behavior-preserving *modernization*, but it's a rename/reorg that would muddy Stage 2's "moved byte-for-byte" diff + `git mv` history. Author flagged it 2026-06-17; deliberately NOT folded into the structural move. | Pass 2 (facelift) or a focused follow-up PR |
 
 ## Blocked
 
@@ -27,6 +28,8 @@ silent deferrals read as "done" when they aren't.
 | `.vscodeignore` did not exclude `migration-and-facelift/**` | Low | Added 2026-06-17 so root packaging never bundles tracking docs. Moot after Stage 2 (packaging moves into `apps/vscode-extension`). |
 | Long constructors (`MessageHandler` 12 params, `ProseToolsViewProvider` 11) | Low–Med | Adding ports risks 16+ params. Mitigation: thread a `Platform` bundle (Wave 5) rather than more individual params. |
 | `outputChannel`-named params now typed `LogSink` | Cosmetic | Param name kept to minimize Wave-1 churn; the name still reads "output channel" though the type is the narrower port. Rename opportunistically. |
+| Root `npm run build` no longer typechecks/tests (Stage-2 delta) | Low (mitigated) | The pre-move single-package `build` ran `test + typecheck + webpack`; the monorepo root `build` delegates to the app webpack only. **Mitigated** by the PR #60 fixups: root `prepackage` runs `typecheck && test` before any `npm run package`, and `.github/workflows/ci.yml` runs typecheck+test+lint+build on every push/PR. A bare `npm run build` still skips them by design (fast inner loop) — run them explicitly or rely on the gate. |
+| App `apps/*` jest root has no app-side `vscode` mock | Low | `jest.config.js` lists the app src as a root for future adapter tests, but the `vscode` mock is scoped to core's `setup.ts`. The first app-side adapter test that touches a `vscode` global must add an app-scoped mock seam (TODO noted in `jest.config.js`). No app tests today. |
 
 ## PR #59 review — deferred items (with rationale)
 

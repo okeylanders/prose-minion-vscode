@@ -1,0 +1,41 @@
+# Only dist/ (bundled JS), resources/ (staged from core), and runtime assets/ ship.
+# (vsce runs in this app dir; root-level docs/tracking dirs aren't here to exclude.)
+
+# Source (compiled into dist/)
+src/**
+**/*.ts
+**/*.map
+
+# Build configuration + scripts (build-time only)
+tsconfig.json
+webpack.config.js
+scripts/**
+.eslintrc.json
+.vscode/**
+
+# Dependencies (everything is webpack-bundled; packaged with --no-dependencies)
+node_modules/**
+package-lock.json
+
+# Build outputs we don't ship
+out/**
+coverage/**
+*.vsix
+
+# Git
+.git/**
+.gitignore
+
+# NOTE: assets/assistant-working-*.gif are intentionally SHIPPED — they're the
+# webview loading animation (referenced by ProseToolsViewProvider via extensionUri),
+# not bloat (PR #60 review #12). Only the README-only assets below are excluded.
+
+# README-only assets (not needed at runtime)
+assets/prose-minion-book-animated.gif
+assets/example-outputs/**
+assets/example-icon-from-the-bookening.svg
+assets/prose-minion-robot.svg
+assets/prose-minion-book-inverted.svg
+
+# OS metadata
+**/.DS_Store

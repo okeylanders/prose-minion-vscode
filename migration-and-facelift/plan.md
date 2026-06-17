@@ -62,21 +62,24 @@ no-logic relocation.
 - [x] **Wave 6 — Tests** — handler tests already inject fakes (Wave 3 pt 2); added the boundary guard
 - [x] **Assert core is `vscode`-free** — `coreVscodeFree.test.ts` (2 sanctioned shells only) + green build + `vsce package`
 
-## Stage 2 — Monorepo move
+## Stage 2 — Monorepo move ✅ COMPLETE (2026-06-17 — all waves green + pushed; author F5 smoke pending)
 
-- [ ] Scaffold workspaces + `packages/core` + `apps/vscode-extension` (FM config shapes)
-- [ ] **Extract `AppMessagePort` (webview-side)** — the ADR names it (renderer's lone
-  runtime touchpoint), but Stage-1 ports are host-side only. `useVSCodeApi.ts` still
-  declares `acquireVsCodeApi()` directly, so moving `presentation/webview` into core
-  carries a VS Code renderer assumption. Wrap the `{ postMessage, getState, setState }`
-  surface behind the port before/with the webview move (FM keeps it in
-  `presentation/webview/ports/` since the webview is a separate bundle). (Review finding — Marcus.)
-- [ ] `git mv` source into core/app; presentation/webview → core
-- [ ] Single `tsconfig.base.json` paths table; **TS 4.9 → 5.x**
-- [ ] Point webpack at the core webview entry; core `index.ts` barrel (named exports)
-- [ ] ESLint `no-restricted-imports` app→core boundary
-- [ ] `vsce package --no-dependencies`; resource-bundling mechanism settled
-- [ ] Final verify: typecheck + tests + build + package + **F5 smoke**
+- [x] **Extract `AppMessagePort` (webview-side)** — ✅ Wave 1. `presentation/webview/ports/AppMessagePort.ts`
+  is the canonical `{ postMessage, getState, setState }` seam; `VSCodeAPI extends AppMessagePort`
+  (27 consumers untouched); `useVSCodeApi` is the named VS Code adapter and the ONLY module
+  referencing the `acquireVsCodeApi()` global (index.tsx routes through its exported
+  `getVSCodeApi()`). Done *before* the move so `presentation/webview` carries no VS Code
+  renderer assumption into core. (Review finding — Marcus.)
+- [x] **TS 4.9 → 5.x** (✅ Wave 2, in-place) — bumped to `^5.3` (resolved 5.9.3) +
+  `ignoreDeprecations: "5.0"` in both tsconfigs; zero code changes; matrix green. Required
+  for the shared base paths table.
+- [x] Scaffold workspaces + `packages/core` + `apps/vscode-extension` — ✅ Wave 3
+- [x] `git mv` source into core/app; presentation/webview → core — ✅ Wave 3 (313 pure renames, `--follow` intact)
+- [x] Single `tsconfig.base.json` paths table (TS 5.x bumped in Wave 2) — ✅ Wave 3
+- [x] Point webpack at the core webview entry; core `index.ts` barrel (named exports) — ✅ Wave 3
+- [x] ESLint `no-restricted-imports` app→core boundary — ✅ Wave 4 (rule fires; lint 0 errors)
+- [x] `vsce package --no-dependencies` (resource bundling settled = D22) — ✅ Wave 4 (VSIX ships dist+resources+assets, src-free)
+- [x] Final verify: typecheck + tests + build + package — ✅ Wave 5 (3 typechecks · 313 tests · VSIX 128 files, matches Wave-0 baseline). **F5 smoke** handed to the author (no interactive VS Code in CI).
 
 ## Pass 2 — Facelift (after Stage 2)
 

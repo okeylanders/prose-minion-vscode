@@ -1,0 +1,20 @@
+{
+  "name": "@prose-minion/core",
+  "version": "1.10.4",
+  "private": true,
+  "description": "Prose Minion shared core: presentation (webview React), application handlers, domain, infrastructure (AI services, metrics, dictionary, publishing standards, word-frequency/NLP, resources), shared contracts, and the vscode-free platform ports. Consumed by apps/* shells via the public barrel src/index.ts. Never imports vscode or electron.",
+  "license": "SEE LICENSE IN ../../apps/vscode-extension/LICENSE",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "//sideEffects": "Core is a pure library EXCEPT its webview CSS imports (side-effectful via style-loader). NEVER set this to `false` — that would drop every webview stylesheet from the bundle.",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "dependencies": {
+    "marked": "^16.4.1",
+    "p-limit": "^7.2.0",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "wink-pos-tagger": "^2.2.2"
+  }
+}
