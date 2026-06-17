@@ -24,9 +24,9 @@
 
 | Wave | Scope | Status | Commit |
 |---|---|---|---|
-| 0 | Branch/baseline confirm; lock resource (D22) + logging-defer decisions | ✅ done | _this commit_ |
-| 1 | **AppMessagePort** (webview port, in-place, pre-move) — plan task #1 | ⬜ next | — |
-| 2 | **TS 4.9 → 5.x** (D10, in-place) | ⬜ todo | — |
+| 0 | Branch/baseline confirm; lock resource (D22) + logging-defer decisions | ✅ done | `d571959` |
+| 1 | **AppMessagePort** (webview port, in-place, pre-move) — plan task #1 | ✅ done | _this commit_ |
+| 2 | **TS 4.9 → 5.x** (D10, in-place) | ⬜ next | — |
 | 3 | **The move** — `git mv` core/app split; `tsconfig.base.json` paths; core barrel; shell imports→barrel; rewrite boundary guard; resources→`packages/core/resources` + copy script | ⬜ todo | — |
 | 4 | **Packaging + boundary** — `vsce package --no-dependencies` (D13, add `@vscode/vsce`); eslint `no-restricted-imports` app→core; verify VSIX ships resources | ⬜ todo | — |
 | 5 | **Final verify + docs** — full matrix vs Wave-0 baseline; F5 smoke handoff; doc tick | ⬜ todo | — |
@@ -71,11 +71,18 @@ This wave finished the last two `vscode` consumers in core:
 
 ## Notes for the next session (resume point)
 
-- **Resume at Stage 2 Wave 1 — `AppMessagePort`** (first ⬜ in the wave tracker above). The
-  webview `VSCodeAPI` interface is already the exact `{ postMessage, getState, setState }`
-  shape; `useVSCodeApi` is the single seam (27 consumers); only `webview/index.tsx`'s
-  bootstrap error-reporter also calls the global directly. Reseat behind
-  `presentation/webview/ports/AppMessagePort.ts` (FM's home) + adapter.
+- **Resume at Stage 2 Wave 2 — TS 4.9 → 5.x** (first ⬜ in the wave tracker above). Bump
+  `typescript` to `^5.3` (FM's version) in-place (still single-package), add
+  `ignoreDeprecations: "5.0"` to both tsconfigs, fix any new strictness/deprecation errors,
+  re-run the matrix. Isolating the bump *before* the move means a type regression is obvious,
+  not tangled in the structural churn. TS 5.0+ is required for the shared `tsconfig.base.json`
+  paths-relative-to-defining-file behavior the Wave-3 move depends on (D10).
+- **Wave 1 done (AppMessagePort):** `presentation/webview/ports/AppMessagePort.ts` is the
+  canonical seam; `VSCodeAPI extends AppMessagePort` (consumers untouched); `useVSCodeApi`
+  is the named VS Code adapter and the ONLY module referencing `acquireVsCodeApi()` (index.tsx
+  now routes through its exported `getVSCodeApi()`). Exposed a latent bug: index.tsx's bootstrap
+  error-reporter posted a non-`MessageEnvelope` diagnostic — now typed as the narrow
+  `AppMessagePort` so the wire shape stays byte-identical.
 - `git fetch` first; the dev branch `claude/funny-davinci-yqautn` is cut off the updated
   epic @ `ae617df` and is the push target (run `npm install` on a fresh container).
 - `extension.ts` + `ProseToolsViewProvider.ts` stay shell (keep `vscode`) — by design; they

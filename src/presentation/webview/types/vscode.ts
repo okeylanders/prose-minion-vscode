@@ -5,14 +5,19 @@
  */
 
 import { MessageEnvelope } from '@messages';
+import { AppMessagePort } from '../ports/AppMessagePort';
 
 /**
  * VSCode Webview API interface
  *
- * This interface provides type safety for the VSCode webview API,
- * ensuring that messages are properly typed and state management is explicit.
+ * The VS Code webview's ergonomically-typed view of the platform-neutral
+ * {@link AppMessagePort} (the renderer↔host seam). It `extends AppMessagePort`
+ * so a `VSCodeAPI` is always a valid `AppMessagePort`, while keeping the
+ * generic `postMessage<T>` + `any` get/setState that consumer code relies on.
+ * The desktop renderer will provide its own `AppMessagePort` implementation;
+ * core code should depend on the port, this typed view is VS-Code-specific.
  */
-export interface VSCodeAPI {
+export interface VSCodeAPI extends AppMessagePort {
   /**
    * Post a message to the extension host
    * @param message - Typed message envelope

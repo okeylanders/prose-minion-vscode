@@ -64,13 +64,14 @@ no-logic relocation.
 
 ## Stage 2 — Monorepo move
 
+- [x] **Extract `AppMessagePort` (webview-side)** — ✅ Wave 1. `presentation/webview/ports/AppMessagePort.ts`
+  is the canonical `{ postMessage, getState, setState }` seam; `VSCodeAPI extends AppMessagePort`
+  (27 consumers untouched); `useVSCodeApi` is the named VS Code adapter and the ONLY module
+  referencing the `acquireVsCodeApi()` global (index.tsx routes through its exported
+  `getVSCodeApi()`). Done *before* the move so `presentation/webview` carries no VS Code
+  renderer assumption into core. (Review finding — Marcus.)
+- [ ] **TS 4.9 → 5.x** (Wave 2, in-place) — required for the shared base paths table
 - [ ] Scaffold workspaces + `packages/core` + `apps/vscode-extension` (FM config shapes)
-- [ ] **Extract `AppMessagePort` (webview-side)** — the ADR names it (renderer's lone
-  runtime touchpoint), but Stage-1 ports are host-side only. `useVSCodeApi.ts` still
-  declares `acquireVsCodeApi()` directly, so moving `presentation/webview` into core
-  carries a VS Code renderer assumption. Wrap the `{ postMessage, getState, setState }`
-  surface behind the port before/with the webview move (FM keeps it in
-  `presentation/webview/ports/` since the webview is a separate bundle). (Review finding — Marcus.)
 - [ ] `git mv` source into core/app; presentation/webview → core
 - [ ] Single `tsconfig.base.json` paths table; **TS 4.9 → 5.x**
 - [ ] Point webpack at the core webview entry; core `index.ts` barrel (named exports)

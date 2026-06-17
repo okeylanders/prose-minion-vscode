@@ -14,14 +14,14 @@
  *      - src/application/providers/ProseToolsViewProvider.ts (WebviewViewProvider)
  *      - src/platform/vscode/**                              (the port adapters)
  *
- *    KNOWN GAP (tracked as the Stage-2 `AppMessagePort` item in
- *    migration-and-facelift/plan.md): the *webview* renderer still calls the
- *    `acquireVsCodeApi()` global in `src/presentation/webview/hooks/useVSCodeApi.ts`.
- *    That is a renderer runtime coupling, NOT an `import 'vscode'`, so this guard
- *    does not (and cannot, by import-scan) catch it. "Core is vscode-free" is true
- *    for the import graph today; the renderer global is closed when the webview
- *    moves behind `AppMessagePort` in Stage 2. Don't widen the "portable" claim
- *    past this guard until that lands.
+ *    RENDERER GLOBAL (Stage-2 Wave 1 — now sealed): the *webview* renderer's
+ *    runtime touchpoint is the `acquireVsCodeApi()` global. It is NOT an
+ *    `import 'vscode'`, so this import-scan guard never caught it. As of Wave 1
+ *    it is wrapped behind `AppMessagePort` (presentation/webview/ports/) and the
+ *    global is referenced in exactly ONE module — the VS Code adapter
+ *    `src/presentation/webview/hooks/useVSCodeApi.ts`. The desktop renderer will
+ *    swap in an IPC-backed `AppMessagePort` of the same shape. The import graph
+ *    is vscode-free; the renderer coupling is now a single, named adapter seam.
  */
 
 import * as fs from 'fs';
