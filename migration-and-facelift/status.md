@@ -1,7 +1,7 @@
 # Status — Prose Minion Migration & Facelift
 
 **Branch:** `claude/funny-davinci-yqautn` (cut off `epic/monorepo-ports-and-adapters` @ `ae617df`) · **Last updated:** 2026-06-17
-**Health:** 🟢 green — **Stage 1 COMPLETE** (core is `vscode`-free). **Stage 2 IN PROGRESS** (monorepo move). Baseline re-confirmed green at Wave 0.
+**Health:** 🟢 green — **Stage 1 COMPLETE** (core is `vscode`-free) · **Stage 2 COMPLETE** (monorepo move; all 5 waves green + pushed). Behavior-identical to the Wave-0 baseline. **F5 smoke pending the author** (no interactive VS Code in CI). Next: Pass 2 facelift.
 
 ## Pass / Stage tracker
 
@@ -29,9 +29,11 @@
 | 2 | **TS 4.9 → 5.x** (D10, in-place) | ✅ done (→ TS 5.9.3, zero code changes) | `41af823` |
 | 3 | **The move** — `git mv` core/app split; `tsconfig.base.json` paths; core barrel; shell imports→barrel; rewrite boundary guard; resources→`packages/core/resources` + copy script | ✅ done (A `fe0e6cb` pure-mv · B `7777119` wiring) | — |
 | 4 | **Packaging + boundary** — `vsce package --no-dependencies` (D13); eslint `no-restricted-imports` app→core; verify VSIX ships resources | ✅ done | _this commit_ |
-| 5 | **Final verify + docs** — full matrix vs Wave-0 baseline; F5 smoke handoff; doc tick | ⬜ next | — |
+| 5 | **Final verify + docs** — full matrix vs Wave-0 baseline; F5 smoke handoff; doc tick | ✅ done | _this commit_ |
 
 **Wave 0 baseline (the diff target):** 313 tests / 40 suites · extension+webview typechecks CLEAN · webpack both bundles (`extension.js` + `webview.js` 484 KiB, size-warnings only) · `vsce package` deferred (not installed; `@vscode/vsce` added to app devDeps in Wave 3).
+
+**Stage 2 end-state (matches baseline):** 3 typechecks CLEAN (core host · core webview · app) · 313 tests / 40 suites · app webpack both bundles · `vsce package --no-dependencies` → `prose-minion-1.10.4.vsix` (128 files / 10.45 MB; `dist/` + `resources/` + `assets/`, `src/`-free) · `npm run lint` 0 errors. **F5 smoke checklist for the author:** sidebar loads · run an analysis · word-frequency report · dictionary lookup · save a report · settings overlay round-trip · API key store/clear · the right-click "Analyze/Word Lookup selection" editor commands · craft-guides/prompts load from the staged `resources/` (proves D22 packaging).
 
 ## Stage 1 complete — what closed it
 
@@ -71,12 +73,15 @@ This wave finished the last two `vscode` consumers in core:
 
 ## Notes for the next session (resume point)
 
-- **Resume at Stage 2 Wave 5 — final verify + docs** (first ⬜ in the wave tracker above):
-  re-run the full matrix one more time as a single clean pass (both typechecks · 313 tests ·
-  app build · `vsce package`), write the changelog entries (`docs/CHANGELOG-DETAILED.md`; the
-  Marketplace `apps/vscode-extension/CHANGELOG.md` only if user-visible — this move is not),
-  flip status to **Stage 2 COMPLETE**, and hand the author the **F5 smoke** checklist (sidebar,
-  analysis, word-frequency, dictionary, save report, settings round-trip, API key store/clear).
+- **Stage 2 is COMPLETE** (all 5 waves green + pushed; final verify matches the Wave-0
+  baseline). The one open item is the **author's F5 smoke** (checklist above) — there is no
+  interactive VS Code in CI, so it's handed off, exactly as Stage 1 was.
+- **Next: Pass 2 — Design Facelift** (still ⬜ blocked on the design artifacts). Per
+  `tech-debt-and-deferred.md`, the FIRST action when Pass 2 starts is to actually attempt the
+  fetch of the "Prose Minion – Design Refresh" (share links / bundle / chat thread) via
+  `WebFetch`/`WebSearch` before assuming it's auth-gated. React 17 → 18 rides with Pass 2.
+- **Deferred (logged, not lost):** logging + AI-alias modernization (FM's `@ai`/`@logging`
+  barrels + `LoggingService` + `outputChannel`→`logger`) — Pass 2 or a focused follow-up.
 - **Wave 4 done — packaging + boundary verified.** `vsce package --no-dependencies` → clean
   `prose-minion-1.10.4.vsix` (128 files / 10.45 MB) shipping `dist/` + `resources/` (all 4
   subdirs, copy-staged from core) + runtime `assets/`, **`src/`-free**. `npm run lint` = 0

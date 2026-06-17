@@ -62,7 +62,7 @@ no-logic relocation.
 - [x] **Wave 6 — Tests** — handler tests already inject fakes (Wave 3 pt 2); added the boundary guard
 - [x] **Assert core is `vscode`-free** — `coreVscodeFree.test.ts` (2 sanctioned shells only) + green build + `vsce package`
 
-## Stage 2 — Monorepo move
+## Stage 2 — Monorepo move ✅ COMPLETE (2026-06-17 — all waves green + pushed; author F5 smoke pending)
 
 - [x] **Extract `AppMessagePort` (webview-side)** — ✅ Wave 1. `presentation/webview/ports/AppMessagePort.ts`
   is the canonical `{ postMessage, getState, setState }` seam; `VSCodeAPI extends AppMessagePort`
@@ -79,7 +79,7 @@ no-logic relocation.
 - [x] Point webpack at the core webview entry; core `index.ts` barrel (named exports) — ✅ Wave 3
 - [x] ESLint `no-restricted-imports` app→core boundary — ✅ Wave 4 (rule fires; lint 0 errors)
 - [x] `vsce package --no-dependencies` (resource bundling settled = D22) — ✅ Wave 4 (VSIX ships dist+resources+assets, src-free)
-- [ ] Final verify: typecheck + tests + build + package + **F5 smoke** — Wave 5
+- [x] Final verify: typecheck + tests + build + package — ✅ Wave 5 (3 typechecks · 313 tests · VSIX 128 files, matches Wave-0 baseline). **F5 smoke** handed to the author (no interactive VS Code in CI).
 
 ## Pass 2 — Facelift (after Stage 2)
 

@@ -5,6 +5,73 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Monorepo migration (Pass 1, Stage 2)
+
+### Overview
+
+Structural-only move to a workspace monorepo: one platform-agnostic
+`@prose-minion/core` consumed by a thin `apps/vscode-extension` shell, mirroring
+FrameMinion's chassis. **No behavior change** — the 313-test suite, all three
+typechecks, and both webpack bundles are green before and after, and the
+`vsce package` VSIX ships identical contents (`dist/` + `resources/` + `assets/`,
+`src/`-free). Builds on Stage 1 (ports-and-adapters; core was already vscode-free).
+
+**Branch:** `claude/funny-davinci-yqautn` (off `epic/monorepo-ports-and-adapters` @ `ae617df`)
+**Docs:** `migration-and-facelift/` · ADR `docs/adr/2026-06-16-monorepo-ports-and-adapters.md`
+
+### Changed — structure
+
+- **`src/` → `packages/core/src/`** via 313 pure `git mv` renames (`git log --follow`
+  history intact). The 7 VS Code shell files — `extension.ts`,
+  `application/providers/ProseToolsViewProvider.ts`, and the 5 `platform/vscode/*`
+  adapters — moved to `apps/vscode-extension/src/`. `packages/core` is now vscode-free
+  with NO sanctioned-shell exceptions.
+- **Single `tsconfig.base.json` paths table** — PM's own alias spellings (`@/`, `@shared`,
+  `@messages`, `@handlers`, `@services`, `@orchestration`, `@parsers`,
+  `@providers`→`api/providers`, `@components`, `@hooks`, `@utils`, `@formatters`, `@secrets`,
+  `@standards`) re-rooted into `packages/core/src`, plus `@prose-minion/core` + `@app/*`.
+  Every per-package tsconfig, the webpack `TsconfigPathsPlugin`, and the jest mapper derive
+  from it — no hand-mirrored copy to drift.
+- **`@prose-minion/core` barrel** (`packages/core/src/index.ts`) — curated NAMED re-exports
+  (13 services + `MessageHandler`) + bounded `export *` over `@shared/types` and `@/platform`.
+  The app imports core ONLY through it; the webview entry is pointed at directly, so the
+  barrel stays host-side (no React in the extension bundle).
+- **`AppMessagePort`** (`presentation/webview/ports/`) — the webview's `acquireVsCodeApi()`
+  global is sealed behind a port; `VSCodeAPI extends AppMessagePort`; `useVSCodeApi` is the
+  sole adapter touching the global (closed the last renderer coupling, pre-move). Exposed +
+  fixed a latent bug: the bootstrap error-reporter posted a non-`MessageEnvelope` diagnostic.
+- **TypeScript 4.9 → 5.9.3** (`ignoreDeprecations: "5.0"`) — required for the shared base
+  paths table (TS 5.0+ resolves an extended config's `paths` relative to its defining file);
+  zero source changes.
+- **Webpack** points at the core webview entry and transpiles core as first-party (resolved
+  to source, not the node_modules symlink). Preserves PM's `svg`-inline rule + `transpileOnly`.
+- **Resources owned by `packages/core/resources/`** (decision D22); a dependency-free copy
+  script (`apps/vscode-extension/scripts/copy-resources.js`) stages them into the app for the
+  VSIX on `build`/`watch`/`package`. Runtime path unchanged (`extensionPath/resources/...`);
+  the staged copy is gitignored.
+
+### Tooling
+
+- npm `workspaces` (`packages/*`, `apps/*`); root `package.json` is the orchestrator
+  (delegating `build`/`watch`/`package`, root `jest`/`typecheck`). Runtime deps
+  (`marked`, `p-limit`, `react`, `react-dom`, `wink-pos-tagger`) → core; build tooling +
+  `@types/vscode` + `@vscode/vsce` → app; test/lint tooling + `typescript` stay at root.
+- **eslint `no-restricted-imports`** enforces the app→core boundary (deep `@/`-aliases are an
+  error; rule verified to fire). `npm run lint` → 0 errors (469 pre-existing warnings).
+- `vsce package --no-dependencies` (D13) — webpack bundles everything, so the workspace dep
+  must not be traversed.
+- **Behavior delta:** root `npm run build` now delegates to the app webpack only (it no longer
+  runs test+typecheck first, as the pre-move single-package `build` did) — run `npm test` +
+  `npm run typecheck` explicitly. Net test/typecheck coverage unchanged.
+
+### Tests
+
+- `boundaries.test.ts` rewritten — asserts `packages/core/src` imports no `vscode` anywhere
+  (no shell exceptions). `wordSearchDefaultsSync.test.ts` repointed at the relocated app
+  manifest. 313 tests / 40 suites green before and after.
+
+---
+
 ## [1.10.4] - 2026-05-29
 
 ### Overview
