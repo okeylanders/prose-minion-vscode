@@ -25,9 +25,9 @@
 | Wave | Scope | Status | Commit |
 |---|---|---|---|
 | 0 | Branch/baseline confirm; lock resource (D22) + logging-defer decisions | ✅ done | `d571959` |
-| 1 | **AppMessagePort** (webview port, in-place, pre-move) — plan task #1 | ✅ done | _this commit_ |
-| 2 | **TS 4.9 → 5.x** (D10, in-place) | ⬜ next | — |
-| 3 | **The move** — `git mv` core/app split; `tsconfig.base.json` paths; core barrel; shell imports→barrel; rewrite boundary guard; resources→`packages/core/resources` + copy script | ⬜ todo | — |
+| 1 | **AppMessagePort** (webview port, in-place, pre-move) — plan task #1 | ✅ done | `874b4d5` |
+| 2 | **TS 4.9 → 5.x** (D10, in-place) | ✅ done (→ TS 5.9.3, zero code changes) | _this commit_ |
+| 3 | **The move** — `git mv` core/app split; `tsconfig.base.json` paths; core barrel; shell imports→barrel; rewrite boundary guard; resources→`packages/core/resources` + copy script | ⬜ next (👈 the risky one; author wants to eyeball) | — |
 | 4 | **Packaging + boundary** — `vsce package --no-dependencies` (D13, add `@vscode/vsce`); eslint `no-restricted-imports` app→core; verify VSIX ships resources | ⬜ todo | — |
 | 5 | **Final verify + docs** — full matrix vs Wave-0 baseline; F5 smoke handoff; doc tick | ⬜ todo | — |
 
@@ -71,21 +71,28 @@ This wave finished the last two `vscode` consumers in core:
 
 ## Notes for the next session (resume point)
 
-- **Resume at Stage 2 Wave 2 — TS 4.9 → 5.x** (first ⬜ in the wave tracker above). Bump
-  `typescript` to `^5.3` (FM's version) in-place (still single-package), add
-  `ignoreDeprecations: "5.0"` to both tsconfigs, fix any new strictness/deprecation errors,
-  re-run the matrix. Isolating the bump *before* the move means a type regression is obvious,
-  not tangled in the structural churn. TS 5.0+ is required for the shared `tsconfig.base.json`
-  paths-relative-to-defining-file behavior the Wave-3 move depends on (D10).
-- **Wave 1 done (AppMessagePort):** `presentation/webview/ports/AppMessagePort.ts` is the
-  canonical seam; `VSCodeAPI extends AppMessagePort` (consumers untouched); `useVSCodeApi`
-  is the named VS Code adapter and the ONLY module referencing `acquireVsCodeApi()` (index.tsx
-  now routes through its exported `getVSCodeApi()`). Exposed a latent bug: index.tsx's bootstrap
-  error-reporter posted a non-`MessageEnvelope` diagnostic — now typed as the narrow
-  `AppMessagePort` so the wire shape stays byte-identical.
-- `git fetch` first; the dev branch `claude/funny-davinci-yqautn` is cut off the updated
-  epic @ `ae617df` and is the push target (run `npm install` on a fresh container).
-- `extension.ts` + `ProseToolsViewProvider.ts` stay shell (keep `vscode`) — by design; they
-  move to `apps/vscode-extension/src/` in Wave 3.
+- **Resume at Stage 2 Wave 3 — THE MOVE** (first ⬜ in the wave tracker above). This is the
+  high-stakes step (author asked to eyeball before it runs). Shape (atomic, planned as two
+  commits so `git log --follow` stays clean):
+  - **Commit A — pure `git mv`** (no content edits; transiently red): `src` →
+    `packages/core/src`; the shell OUT of core → `apps/vscode-extension/src/` (`extension.ts`,
+    `application/providers/ProseToolsViewProvider.ts`, `platform/vscode/*`); `resources` →
+    `packages/core/resources`; `assets` + `README.md`/`CHANGELOG.md`/`LICENSE` → app dir.
+  - **Commit B — wire (green):** author `tsconfig.base.json` (single re-rooted paths table,
+    PM's own alias spellings), `packages/core/{package.json,tsconfig.json,tsconfig.webview.json}`,
+    `apps/vscode-extension/{package.json,tsconfig.json,webpack.config.js,.vscodeignore}`, root
+    `package.json` (workspaces + orchestration scripts), `packages/core/src/index.ts` barrel
+    (named exports for what the shell needs), root `jest.config.js` (generated mapper) +
+    `tsconfig.test.json`; repoint the moved shell files' relative `../X` imports → the
+    `@prose-minion/core` barrel; add `apps/vscode-extension/scripts/copy-resources.js` (D22);
+    rewrite `boundaries.test.ts` to scan `packages/core/src` (zero vscode, no allowed-shells);
+    repoint `wordSearchDefaultsSync.test.ts` at the app manifest. Add `@vscode/vsce` to app devDeps.
+  - **Why aliases make this low-churn:** core files move with ~zero content edits (the central
+    paths table redirects every `@`-alias); only the handful of shell files get relative→barrel
+    import fixes.
+- **Wave 2 done:** `typescript@^5.3` (resolved 5.9.3); `ignoreDeprecations: "5.0"` in both
+  tsconfigs; zero code changes needed. **Wave 1 done:** `AppMessagePort` seam in place.
+- `git fetch` first; dev branch `claude/funny-davinci-yqautn` (off epic @ `ae617df`) is the
+  push target (run `npm install` on a fresh container).
 - Reference chassis: FrameMinion at `../frame-minion-vscode` (`tsconfig.base.json`, the core
   `src/index.ts` barrel, `apps/vscode-extension/webpack.config.js`, `.eslintrc.json` boundary).

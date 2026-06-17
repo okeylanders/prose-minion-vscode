@@ -70,7 +70,9 @@ no-logic relocation.
   referencing the `acquireVsCodeApi()` global (index.tsx routes through its exported
   `getVSCodeApi()`). Done *before* the move so `presentation/webview` carries no VS Code
   renderer assumption into core. (Review finding — Marcus.)
-- [ ] **TS 4.9 → 5.x** (Wave 2, in-place) — required for the shared base paths table
+- [x] **TS 4.9 → 5.x** (✅ Wave 2, in-place) — bumped to `^5.3` (resolved 5.9.3) +
+  `ignoreDeprecations: "5.0"` in both tsconfigs; zero code changes; matrix green. Required
+  for the shared base paths table.
 - [ ] Scaffold workspaces + `packages/core` + `apps/vscode-extension` (FM config shapes)
 - [ ] `git mv` source into core/app; presentation/webview → core
 - [ ] Single `tsconfig.base.json` paths table; **TS 4.9 → 5.x**
