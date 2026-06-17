@@ -6,6 +6,12 @@
 import { UIHandler } from '@/application/handlers/domain/UIHandler';
 import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { MessageType } from '@/shared/types/messages';
+import {
+  createFakeEditorContext,
+  createFakeFileSystem,
+  createFakeShellService,
+  createFakeWorkspace,
+} from '../../../mocks/platform';
 
 describe('UIHandler', () => {
   let handler: UIHandler;
@@ -14,8 +20,11 @@ describe('UIHandler', () => {
   beforeEach(() => {
     handler = new UIHandler(
       jest.fn().mockResolvedValue(undefined) as any, // postMessage
-      {} as any, // outputChannel
-      {} as any  // extensionUri
+      {} as any, // outputChannel (LogSink)
+      createFakeFileSystem(),
+      createFakeWorkspace(),
+      createFakeShellService(),
+      createFakeEditorContext()
     );
     router = new MessageRouter();
   });

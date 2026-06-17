@@ -5,8 +5,7 @@
  * SPRINT 05 REFACTOR: Now injects AIResourceManager and analysis services directly (facade removed)
  */
 
-import * as vscode from 'vscode';
-import { LogSink, SettingsStore } from '@/platform';
+import { LogSink, SettingsStore, ShellService } from '@/platform';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { DictionaryService } from '@services/dictionary/DictionaryService';
@@ -32,6 +31,7 @@ import {
 import { MessageRouter } from '../MessageRouter';
 import { OpenRouterModels } from '@providers/OpenRouterModels';
 import { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
+import { WORD_SEARCH_DEFAULTS } from '@shared/constants/wordSearchDefaults';
 
 export class ConfigurationHandler {
   // Track webview-originated config updates to prevent echo-back
@@ -44,6 +44,7 @@ export class ConfigurationHandler {
     private readonly contextAssistantService: ContextAssistantService,
     private readonly secretsService: SecretStorageService,
     private readonly settings: SettingsStore,
+    private readonly shell: ShellService,
     private readonly postMessage: (message: any) => Promise<void>,
     private readonly outputChannel: LogSink,
     private readonly sharedResultCache: any,
@@ -71,10 +72,10 @@ export class ConfigurationHandler {
    */
   public getWordSearchSettings() {
     return {
-      contextWords: this.settings.get<number>('proseMinion', 'wordSearch.contextWords', 3),
-      clusterWindow: this.settings.get<number>('proseMinion', 'wordSearch.clusterWindow', 50),
-      minClusterSize: this.settings.get<number>('proseMinion', 'wordSearch.minClusterSize', 2),
-      caseSensitive: this.settings.get<boolean>('proseMinion', 'wordSearch.caseSensitive', false)
+      contextWords: this.settings.get<number>('proseMinion', 'wordSearch.contextWords', WORD_SEARCH_DEFAULTS.contextWords),
+      clusterWindow: this.settings.get<number>('proseMinion', 'wordSearch.clusterWindow', WORD_SEARCH_DEFAULTS.clusterWindow),
+      minClusterSize: this.settings.get<number>('proseMinion', 'wordSearch.minClusterSize', WORD_SEARCH_DEFAULTS.minClusterSize),
+      caseSensitive: this.settings.get<boolean>('proseMinion', 'wordSearch.caseSensitive', WORD_SEARCH_DEFAULTS.caseSensitive)
     };
   }
 
@@ -450,7 +451,7 @@ export class ConfigurationHandler {
       this.postMessage(response);
 
       // Show user notification
-      vscode.window.showInformationMessage('API key saved securely');
+      void this.shell.showInformationMessage('API key saved securely');
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[ConfigurationHandler] Error saving API key: ${msg}`);
@@ -478,7 +479,7 @@ export class ConfigurationHandler {
       this.postMessage(response);
 
       // Show user notification
-      vscode.window.showInformationMessage('API key cleared');
+      void this.shell.showInformationMessage('API key cleared');
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[ConfigurationHandler] Error deleting API key: ${msg}`);

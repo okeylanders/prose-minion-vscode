@@ -6,6 +6,7 @@
  */
 
 import { LogSink } from '@/platform';
+import { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
 import { WordSearchService } from '@services/search/WordSearchService';
 import { CategorySearchService } from '@services/search/CategorySearchService';
 import {
@@ -27,6 +28,7 @@ export class SearchHandler {
     private readonly wordSearchService: WordSearchService,
     private readonly postMessage: (message: any) => Promise<void>,
     private readonly outputChannel: LogSink,
+    private readonly textSourceResolver: TextSourceResolver,
     private readonly categorySearchService?: CategorySearchService
   ) {}
 
@@ -163,9 +165,7 @@ export class SearchHandler {
       }
       return { text: t };
     }
-    const { TextSourceResolver } = await import('@/infrastructure/text/TextSourceResolver');
-    const resolver = new TextSourceResolver(this.outputChannel);
-    const resolved = await resolver.resolve(payload.source);
+    const resolved = await this.textSourceResolver.resolve(payload.source);
     const text = (resolved.text ?? '').trim();
     if (!text) throw new Error('Resolved source contains no text.');
     const mode = payload.source?.mode;

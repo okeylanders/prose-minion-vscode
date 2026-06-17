@@ -23,6 +23,9 @@ export class VsCodeWorkspace implements Workspace {
     }));
   }
 
+  // NOTE: `Uri.file()` forces the `file:` scheme on the string-path boundary, so
+  // a non-`file://` workspace degrades here (the original scheme is not
+  // recoverable from `fsPath`). Faithful for `file://` workspaces (the norm).
   asRelativePath(absolutePath: string, includeWorkspaceFolder = false): string {
     return vscode.workspace.asRelativePath(vscode.Uri.file(absolutePath), includeWorkspaceFolder);
   }

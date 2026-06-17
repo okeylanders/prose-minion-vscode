@@ -45,8 +45,8 @@ describe('useWordSearchSettings', () => {
       const { result } = renderHook(() => useWordSearchSettings());
 
       expect(result.current.settings).toEqual({
-        contextWords: 7,
-        clusterWindow: 150,
+        contextWords: 3,
+        clusterWindow: 50,
         minClusterSize: 2,
         caseSensitive: false,
         enableAssistantExpansion: false
@@ -83,7 +83,7 @@ describe('useWordSearchSettings', () => {
 
       expect(result.current.settings).toEqual({
         contextWords: 15,          // From persisted state
-        clusterWindow: 150,         // Default
+        clusterWindow: 50,          // Default
         minClusterSize: 2,          // Default
         caseSensitive: false,       // Default
         enableAssistantExpansion: false // Default
@@ -97,8 +97,8 @@ describe('useWordSearchSettings', () => {
 
       expect(result.current.persistedState).toHaveProperty('wordSearchSettings');
       expect(result.current.persistedState.wordSearchSettings).toEqual({
-        contextWords: 7,
-        clusterWindow: 150,
+        contextWords: 3,
+        clusterWindow: 50,
         minClusterSize: 2,
         caseSensitive: false,
         enableAssistantExpansion: false
@@ -158,7 +158,7 @@ describe('useWordSearchSettings', () => {
 
       expect(result.current.settings).toEqual({
         contextWords: 10,           // Updated
-        clusterWindow: 150,          // Unchanged
+        clusterWindow: 50,           // Unchanged
         minClusterSize: 2,           // Unchanged
         caseSensitive: true,         // Updated
         enableAssistantExpansion: false // Unchanged
@@ -215,7 +215,7 @@ describe('useWordSearchSettings', () => {
 
       expect(result.current.settings).toEqual({
         contextWords: 10,           // From message
-        clusterWindow: 150,          // Default (preserved)
+        clusterWindow: 50,           // Default (preserved)
         minClusterSize: 2,           // Default (preserved)
         caseSensitive: false,        // Default (preserved)
         enableAssistantExpansion: false // Default (preserved)

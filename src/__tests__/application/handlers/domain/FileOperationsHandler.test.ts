@@ -6,6 +6,11 @@
 import { FileOperationsHandler } from '@/application/handlers/domain/FileOperationsHandler';
 import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { MessageType } from '@/shared/types/messages';
+import {
+  createFakeFileSystem,
+  createFakeShellService,
+  createFakeWorkspace,
+} from '../../../mocks/platform';
 
 describe('FileOperationsHandler', () => {
   let handler: FileOperationsHandler;
@@ -14,7 +19,13 @@ describe('FileOperationsHandler', () => {
   beforeEach(() => {
     const mockPostMessage = jest.fn().mockResolvedValue(undefined);
 
-    handler = new FileOperationsHandler(mockPostMessage);
+    handler = new FileOperationsHandler(
+      mockPostMessage,
+      createFakeFileSystem(),
+      createFakeWorkspace(),
+      createFakeShellService(),
+      { appendLine: jest.fn() } as any // outputChannel (LogSink)
+    );
     router = new MessageRouter();
   });
 

@@ -7,7 +7,6 @@
  * Now injects services directly into domain handlers
  */
 
-import * as vscode from 'vscode';
 import { LogSink, Platform } from '@/platform';
 import {
   WebviewToExtensionMessage,
@@ -41,6 +40,9 @@ import { SourcesHandler } from './domain/SourcesHandler';
 import { UIHandler } from './domain/UIHandler';
 import { FileOperationsHandler } from './domain/FileOperationsHandler';
 
+// Infrastructure shared across metrics + search handlers (built once, injected)
+import { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
+
 // SPRINT 05: Import services for direct injection
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { DictionaryService } from '@services/dictionary/DictionaryService';
@@ -68,7 +70,6 @@ interface ResultCache {
 const sharedResultCache: ResultCache = {};
 
 export class MessageHandler {
-  private readonly disposables: vscode.Disposable[] = [];
   private tokenTotals: TokenUsageTotals = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
 
   // Message router (Strategy pattern)
@@ -155,8 +156,11 @@ export class MessageHandler {
     private readonly standardsService: StandardsService,
     private readonly aiResourceManager: AIResourceManager,
     private readonly secretsService: any, // SecretStorageService
-    private readonly webview: vscode.Webview,
-    private readonly extensionUri: vscode.Uri,
+    // Raw webview transport (the shell binds it to `webview.postMessage`); keeps
+    // MessageHandler vscode-free. NOTE: domain handlers must receive the wrapped
+    // `this.postMessage` (logging + result cache), NOT this raw `transport` — the
+    // distinct name is deliberate so the unwrapped one isn't grabbed by accident.
+    private readonly transport: (message: ExtensionToWebviewMessage) => PromiseLike<unknown>,
     private readonly outputChannel: LogSink,
     private readonly platform: Platform
   ) {
@@ -170,68 +174,6 @@ export class MessageHandler {
     this.aiResourceManager.setTokenUsageCallback((usage) => {
       this.applyTokenUsage(usage);
     });
-
-    const configWatcher = vscode.workspace.onDidChangeConfiguration(event => {
-      // Log all proseMinion config changes for debugging
-      if (event.affectsConfiguration('proseMinion')) {
-        this.outputChannel.appendLine('[ConfigWatcher] Config change detected');
-      }
-
-      // Only refresh service if model configs changed
-      if (this.MODEL_KEYS.some(key => event.affectsConfiguration(key))) {
-        this.outputChannel.appendLine('[ConfigWatcher] Model config changed, refreshing service');
-        void this.refreshServiceConfiguration();
-
-        // Send MODEL_DATA if this change came from external source (VS Code Settings UI)
-        // handleSetModelSelection will send it for webview changes (with echo prevention)
-        const shouldBroadcast = this.shouldBroadcastModelSettings(event);
-        if (shouldBroadcast) {
-          this.outputChannel.appendLine('[ConfigWatcher] Model settings changed externally, sending MODEL_DATA after delay');
-          // Wait for VSCode's async config system to finish writing (same delay as handleSetModelSelection)
-          void (async () => {
-            await new Promise(resolve => setTimeout(resolve, 50));
-            await this.configurationHandler.sendModelData();
-          })();
-        } else {
-          this.outputChannel.appendLine('[ConfigWatcher] Model settings changed from webview, skipping MODEL_DATA (echo prevention)');
-        }
-      }
-
-      // Send MODEL_DATA for UI setting changes (not model changes)
-      // AND only if not webview-originated (prevent echo-back)
-      if (this.shouldBroadcastUISettings(event)) {
-        this.outputChannel.appendLine('[ConfigWatcher] UI settings changed, sending MODEL_DATA');
-        void this.configurationHandler.sendModelData();
-      }
-
-      // Send SETTINGS_DATA when any settings change (from VS Code settings panel)
-      // This ensures Settings Overlay reflects changes made outside the webview
-      const shouldBroadcastGeneral = this.shouldBroadcastGeneralSettings(event);
-      const shouldBroadcastWordSearch = this.shouldBroadcastWordSearchSettings(event);
-      const shouldBroadcastWordFreq = this.shouldBroadcastWordFrequencySettings(event);
-      const shouldBroadcastContextPath = this.shouldBroadcastContextPathSettings(event);
-      const shouldBroadcastPublishing = this.shouldBroadcastPublishingSettings(event);
-
-      if (shouldBroadcastGeneral || shouldBroadcastWordSearch || shouldBroadcastWordFreq ||
-          shouldBroadcastContextPath || shouldBroadcastPublishing) {
-        this.outputChannel.appendLine(
-          `[ConfigWatcher] Broadcasting SETTINGS_DATA (general:${shouldBroadcastGeneral}, ` +
-          `wordSearch:${shouldBroadcastWordSearch}, wordFreq:${shouldBroadcastWordFreq}, ` +
-          `contextPath:${shouldBroadcastContextPath}, publishing:${shouldBroadcastPublishing})`
-        );
-        void this.configurationHandler.handleRequestSettingsData({
-          type: MessageType.REQUEST_SETTINGS_DATA,
-          source: 'extension.config_watcher',
-          payload: {},
-          timestamp: Date.now()
-        });
-      } else if (event.affectsConfiguration('proseMinion')) {
-        // Config change detected but not broadcast - log for debugging
-        this.outputChannel.appendLine('[ConfigWatcher] Config change detected but not broadcasting (likely echo prevention)');
-      }
-    });
-
-    this.disposables.push(configWatcher);
 
     // SPRINT 05: Instantiate domain handlers with direct service injection
     // Token tracking is now centralized in AIResourceOrchestrator via setTokenUsageCallback
@@ -254,13 +196,25 @@ export class MessageHandler {
       this.postMessage.bind(this)
     );
 
+    // Build ONE stateless TextSourceResolver from the platform ports and share it
+    // across the metrics + search handlers (it was previously `new`-ed per call
+    // via dynamic import inside each handler).
+    const textSourceResolver = new TextSourceResolver(
+      this.platform.fileSystem,
+      this.platform.workspace,
+      this.platform.settings,
+      this.platform.editor,
+      outputChannel
+    );
+
     this.metricsHandler = new MetricsHandler(
       proseStatsService,
       styleFlagsService,
       wordFrequencyService,
       standardsService,
       this.postMessage.bind(this),
-      outputChannel
+      outputChannel,
+      textSourceResolver
     );
 
     const categorySearchService = new CategorySearchService(
@@ -276,6 +230,7 @@ export class MessageHandler {
       wordSearchService,
       this.postMessage.bind(this),
       outputChannel,
+      textSourceResolver,
       categorySearchService
     );
 
@@ -286,6 +241,7 @@ export class MessageHandler {
       contextAssistantService,
       this.secretsService,
       this.platform.settings,
+      this.platform.shell,
       this.postMessage.bind(this),
       outputChannel,
       sharedResultCache,
@@ -310,17 +266,25 @@ export class MessageHandler {
 
     this.sourcesHandler = new SourcesHandler(
       this.postMessage.bind(this),
-      this.platform.settings
+      this.platform.settings,
+      this.platform.editor
     );
 
     this.uiHandler = new UIHandler(
-      extensionUri,
       this.postMessage.bind(this),
-      outputChannel
+      outputChannel,
+      this.platform.fileSystem,
+      this.platform.workspace,
+      this.platform.shell,
+      this.platform.editor
     );
 
     this.fileOperationsHandler = new FileOperationsHandler(
-      this.postMessage.bind(this)
+      this.postMessage.bind(this),
+      this.platform.fileSystem,
+      this.platform.workspace,
+      this.platform.shell,
+      outputChannel
     );
 
     // Initialize message router and register handler routes
@@ -463,52 +427,130 @@ export class MessageHandler {
     }
   }
 
+  /**
+   * React to a host configuration change. The shell owns the `vscode`
+   * `onDidChangeConfiguration` registration and calls this with a vscode-free
+   * `affects(section)` predicate (bound to `event.affectsConfiguration`), so all
+   * the broadcast logic stays here without importing `vscode`.
+   */
+  handleConfigurationChange(affects: (section: string) => boolean): void {
+    // Log all proseMinion config changes for debugging
+    if (affects('proseMinion')) {
+      this.outputChannel.appendLine('[ConfigWatcher] Config change detected');
+    }
+
+    // Only refresh service if model configs changed
+    if (this.MODEL_KEYS.some(key => affects(key))) {
+      this.outputChannel.appendLine('[ConfigWatcher] Model config changed, refreshing service');
+      void this.refreshServiceConfiguration();
+
+      // Send MODEL_DATA if this change came from external source (VS Code Settings UI)
+      // handleSetModelSelection will send it for webview changes (with echo prevention)
+      const shouldBroadcast = this.shouldBroadcastModelSettings(affects);
+      if (shouldBroadcast) {
+        this.outputChannel.appendLine('[ConfigWatcher] Model settings changed externally, sending MODEL_DATA after delay');
+        // Wait for VSCode's async config system to finish writing (same delay as handleSetModelSelection)
+        void (async () => {
+          await new Promise(resolve => setTimeout(resolve, 50));
+          await this.configurationHandler.sendModelData();
+        })().catch(this.logBroadcastError('delayed sendModelData'));
+      } else {
+        this.outputChannel.appendLine('[ConfigWatcher] Model settings changed from webview, skipping MODEL_DATA (echo prevention)');
+      }
+    }
+
+    // Send MODEL_DATA for UI setting changes (not model changes)
+    // AND only if not webview-originated (prevent echo-back)
+    if (this.shouldBroadcastUISettings(affects)) {
+      this.outputChannel.appendLine('[ConfigWatcher] UI settings changed, sending MODEL_DATA');
+      void this.configurationHandler.sendModelData().catch(this.logBroadcastError('sendModelData'));
+    }
+
+    // Send SETTINGS_DATA when any settings change (from VS Code settings panel)
+    // This ensures Settings Overlay reflects changes made outside the webview
+    const shouldBroadcastGeneral = this.shouldBroadcastGeneralSettings(affects);
+    const shouldBroadcastWordSearch = this.shouldBroadcastWordSearchSettings(affects);
+    const shouldBroadcastWordFreq = this.shouldBroadcastWordFrequencySettings(affects);
+    const shouldBroadcastContextPath = this.shouldBroadcastContextPathSettings(affects);
+    const shouldBroadcastPublishing = this.shouldBroadcastPublishingSettings(affects);
+
+    if (shouldBroadcastGeneral || shouldBroadcastWordSearch || shouldBroadcastWordFreq ||
+        shouldBroadcastContextPath || shouldBroadcastPublishing) {
+      this.outputChannel.appendLine(
+        `[ConfigWatcher] Broadcasting SETTINGS_DATA (general:${shouldBroadcastGeneral}, ` +
+        `wordSearch:${shouldBroadcastWordSearch}, wordFreq:${shouldBroadcastWordFreq}, ` +
+        `contextPath:${shouldBroadcastContextPath}, publishing:${shouldBroadcastPublishing})`
+      );
+      void this.configurationHandler.handleRequestSettingsData({
+        type: MessageType.REQUEST_SETTINGS_DATA,
+        source: 'extension.config_watcher',
+        payload: {},
+        timestamp: Date.now()
+      }).catch(this.logBroadcastError('handleRequestSettingsData'));
+    } else if (affects('proseMinion')) {
+      // Config change detected but not broadcast - log for debugging
+      this.outputChannel.appendLine('[ConfigWatcher] Config change detected but not broadcasting (likely echo prevention)');
+    }
+  }
+
+  /**
+   * Returns a `.catch` handler that records a fire-and-forget config-broadcast
+   * rejection to the Output channel — so a "settings changed but the webview
+   * didn't update" is diagnosable instead of vanishing into a `void`.
+   */
+  private logBroadcastError(what: string): (err: unknown) => void {
+    return (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.outputChannel.appendLine(`[ConfigWatcher] ${what} failed: ${msg}`);
+    };
+  }
+
   // Semantic helper methods for config change broadcasting
-  private shouldBroadcastGeneralSettings(event: vscode.ConfigurationChangeEvent): boolean {
+  private shouldBroadcastGeneralSettings(affects: (section: string) => boolean): boolean {
     return this.GENERAL_SETTINGS_KEYS.some(key =>
-      event.affectsConfiguration(key) &&
+      affects(key) &&
       this.configurationHandler.shouldBroadcastConfigChange(key)
     );
   }
 
-  private shouldBroadcastWordSearchSettings(event: vscode.ConfigurationChangeEvent): boolean {
+  private shouldBroadcastWordSearchSettings(affects: (section: string) => boolean): boolean {
     return this.WORD_SEARCH_KEYS.some(key =>
-      event.affectsConfiguration(key) &&
+      affects(key) &&
       this.configurationHandler.shouldBroadcastConfigChange(key)
     );
   }
 
-  private shouldBroadcastWordFrequencySettings(event: vscode.ConfigurationChangeEvent): boolean {
+  private shouldBroadcastWordFrequencySettings(affects: (section: string) => boolean): boolean {
     return this.WORD_FREQUENCY_KEYS.some(key =>
-      event.affectsConfiguration(key) &&
+      affects(key) &&
       this.configurationHandler.shouldBroadcastConfigChange(key)
     );
   }
 
-  private shouldBroadcastContextPathSettings(event: vscode.ConfigurationChangeEvent): boolean {
+  private shouldBroadcastContextPathSettings(affects: (section: string) => boolean): boolean {
     return this.CONTEXT_PATH_KEYS.some(key =>
-      event.affectsConfiguration(key) &&
+      affects(key) &&
       this.configurationHandler.shouldBroadcastConfigChange(key)
     );
   }
 
-  private shouldBroadcastModelSettings(event: vscode.ConfigurationChangeEvent): boolean {
+  private shouldBroadcastModelSettings(affects: (section: string) => boolean): boolean {
     return this.MODEL_KEYS.some(key =>
-      event.affectsConfiguration(key) &&
+      affects(key) &&
       this.configurationHandler.shouldBroadcastConfigChange(key)
     );
   }
 
-  private shouldBroadcastUISettings(event: vscode.ConfigurationChangeEvent): boolean {
+  private shouldBroadcastUISettings(affects: (section: string) => boolean): boolean {
     return this.UI_KEYS.some(key =>
-      event.affectsConfiguration(key) &&
+      affects(key) &&
       this.configurationHandler.shouldBroadcastConfigChange(key)
     );
   }
 
-  private shouldBroadcastPublishingSettings(event: vscode.ConfigurationChangeEvent): boolean {
+  private shouldBroadcastPublishingSettings(affects: (section: string) => boolean): boolean {
     return this.PUBLISHING_STANDARDS_KEYS.some(key =>
-      event.affectsConfiguration(key) &&
+      affects(key) &&
       this.configurationHandler.shouldBroadcastConfigChange(key)
     );
   }
@@ -605,7 +647,7 @@ export class MessageHandler {
     );
 
     try {
-      await this.webview.postMessage(message);
+      await this.transport(message);
     } catch (error) {
       const messageText = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(
@@ -615,22 +657,13 @@ export class MessageHandler {
   }
 
   dispose(): void {
-    // SPRINT 05: Clear status callback on AIResourceManager to avoid stale references
+    // SPRINT 05: Clear status callback on AIResourceManager to avoid stale references.
+    // The config-change watcher is now owned + disposed by the shell (the provider),
+    // so MessageHandler holds no host disposables of its own.
     try {
       this.aiResourceManager.setStatusCallback(undefined as any);
     } catch {
       // noop
-    }
-    while (this.disposables.length > 0) {
-      const disposable = this.disposables.pop();
-      try {
-        disposable?.dispose();
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        this.outputChannel.appendLine(
-          `[MessageHandler] Error disposing resource: ${message}`
-        );
-      }
     }
   }
 }

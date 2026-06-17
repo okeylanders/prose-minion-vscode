@@ -10,6 +10,7 @@ import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
 import { MessageType } from '@shared/types';
 import { SettingsDataMessage } from '@messages';
+import { WORD_SEARCH_DEFAULTS } from '@shared/constants/wordSearchDefaults';
 
 export interface WordSearchSettings {
   contextWords: number;              // Context words around hits
@@ -61,13 +62,8 @@ export const useWordSearchSettings = (): UseWordSearchSettingsReturn => {
   const vscode = useVSCodeApi();
   const persisted = usePersistedState<{ wordSearchSettings?: WordSearchSettings }>();
 
-  const defaults: WordSearchSettings = {
-    contextWords: 7,                 // Context words around hits (changed from 3 to match ADR)
-    clusterWindow: 150,              // Cluster detection window (changed from 50 to match ADR)
-    minClusterSize: 2,               // ✅ Correct default (not 3)
-    caseSensitive: false,            // Case-sensitive matching
-    enableAssistantExpansion: false, // AI-based synonym expansion
-  };
+  // Single source of truth (mirrors package.json contributed defaults).
+  const defaults: WordSearchSettings = { ...WORD_SEARCH_DEFAULTS };
 
   const [settings, setSettings] = React.useState<WordSearchSettings>({
     ...defaults,

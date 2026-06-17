@@ -10,6 +10,7 @@
 
 import { SettingsStore } from '@/platform';
 import { AssistantFocus } from '@messages';
+import { WORD_SEARCH_DEFAULTS } from '@shared/constants/wordSearchDefaults';
 
 /**
  * Options for AI analysis tools (dialogue, prose, dictionary)
@@ -73,10 +74,10 @@ export class ToolOptionsProvider {
    */
   getWordSearchOptions(): WordSearchOptions {
     return {
-      contextWords: this.settings.get<number>('proseMinion', 'wordSearch.contextWords') ?? 7,
-      clusterWindow: this.settings.get<number>('proseMinion', 'wordSearch.clusterWindow') ?? 150,
-      minClusterSize: this.settings.get<number>('proseMinion', 'wordSearch.minClusterSize') ?? 3,
-      caseSensitive: this.settings.get<boolean>('proseMinion', 'wordSearch.caseSensitive') ?? false
+      contextWords: this.settings.get<number>('proseMinion', 'wordSearch.contextWords') ?? WORD_SEARCH_DEFAULTS.contextWords,
+      clusterWindow: this.settings.get<number>('proseMinion', 'wordSearch.clusterWindow') ?? WORD_SEARCH_DEFAULTS.clusterWindow,
+      minClusterSize: this.settings.get<number>('proseMinion', 'wordSearch.minClusterSize') ?? WORD_SEARCH_DEFAULTS.minClusterSize,
+      caseSensitive: this.settings.get<boolean>('proseMinion', 'wordSearch.caseSensitive') ?? WORD_SEARCH_DEFAULTS.caseSensitive
     };
   }
 

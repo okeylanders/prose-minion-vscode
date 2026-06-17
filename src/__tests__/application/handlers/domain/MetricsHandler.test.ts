@@ -13,12 +13,13 @@ describe('MetricsHandler', () => {
 
   beforeEach(() => {
     handler = new MetricsHandler(
+      {} as any, // proseStatsService
+      {} as any, // styleFlagsService
+      {} as any, // wordFrequencyService
+      {} as any, // standardsService
       jest.fn().mockResolvedValue(undefined) as any, // postMessage
       {} as any, // outputChannel
-      {} as any, // wordFrequency
-      {} as any, // proseStats
-      {} as any, // styleFlags
-      {} as any  // workspaceConfig
+      {} as any  // textSourceResolver
     );
     router = new MessageRouter();
   });

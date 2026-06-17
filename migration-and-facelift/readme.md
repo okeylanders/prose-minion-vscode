@@ -8,8 +8,13 @@ app — and re-skins it to match **FrameMinion**.
 
 - **Pass 1 — Monorepo + Ports** _(in progress)_: restructure into
   `packages/core` + `apps/vscode-extension`, with every VS Code API behind a
-  platform port so the domain logic is runtime-agnostic. Strictly
-  behavior-preserving — no visual or feature change.
+  platform port so the domain logic is runtime-agnostic. Behavior-preserving
+  on the `file://` single-root norm — **with two disclosed exceptions**: (1) the
+  saved-file toast drops the workspace-folder prefix in *multi-root* workspaces
+  (`asRelativePath(path, false)`, decision **D16**); (2) Stage-1's review added a
+  deliberate path-containment guard to `UIHandler`'s open-file joins, which now
+  *rejects* `..` traversal that previously opened (security hardening, review
+  #6/#7). Both are intentional and tracked, not silent drift.
 - **Pass 2 — Design Facelift** _(not started)_: apply the "Prose Minion – Design
   Refresh" to the sidebar to match FrameMinion's look. Needs the design HTML
   saved to disk (see [tech-debt-and-deferred.md](tech-debt-and-deferred.md)).

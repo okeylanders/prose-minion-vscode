@@ -37,7 +37,9 @@ Deltas from FM: **no** `StateStore`/`AssetUrlResolver` (unused); **added**
 - [x] Confirm baseline green (`npm run build` = test + typecheck + webpack)
 - [x] Write the ADR
 
-## Stage 1 — Extract ports in-place (behavior-preserving)
+## Stage 1 — Extract ports in-place (behavior-preserving) ✅ COMPLETE
+
+> Core is `vscode`-free (guarded by a test). 304 tests · both typechecks · both bundles · `vsce package` clean. F5 smoke deferred to the reviewer (no interactive VS Code in CI).
 
 Ports + adapters live in `src/platform/` / `src/platform/vscode/` (relative
 imports) while still a single package; the monorepo move (Stage 2) then becomes a
@@ -46,17 +48,29 @@ no-logic relocation.
 - [x] **Ports + adapters** authored, typecheck green
 - [x] **Wave 1 — `LogSink` + `SecretStore`** (structural swaps, ~24 files)
 - [x] **Wave 2 — `SettingsStore`** (replace `getConfiguration('proseMinion')`, 8 files) — `7b6809a`
-- [~] **Wave 3 — `FileSystem` + `Workspace`** (convert `vscode.Uri` ops → string paths)
-  — part 1 done (loaders + metrics/search reads, `9df924f`); part 2 = the 4 file-handling
-  handlers (see status.md "resume here")
-- [ ] **Wave 4 — `ShellService` + `EditorContext`** (dialogs/clipboard/open-in-editor + selection)
-- [ ] **Wave 5 — Wiring** (config-watcher → shell; `postMessage` → injected fn; assemble adapters in `extension.ts`)
-- [ ] **Wave 6 — Tests** inject in-memory fakes instead of vscode mocks
-- [ ] **Assert core is `vscode`-free** (grep guard) + green build
+- [x] **Wave 3 — `FileSystem` + `Workspace`** (convert `vscode.Uri` ops → string paths)
+  — part 1 (loaders + metrics/search reads, `9df924f`); part 2 = the 4 file-handling
+  handlers, converted FULLY (fs/workspace/shell/editor), `TextSourceResolver` now a
+  shared injected singleton
+- [x] **Wave 4 — `ShellService` + `EditorContext`** (dialogs/clipboard/open-in-editor + selection)
+  — `EditorContext` + most of `ShellService` rode Wave 3 pt 2; `ConfigurationHandler`'s one
+  `showInformationMessage` finished it
+- [x] **Wave 5 — Wiring** — `MessageHandler` config-watcher → shell (vscode-free `affects()`
+  predicate into `handleConfigurationChange`); `webview.postMessage` → injected `post` fn;
+  dead `extensionUri` param + `Disposable[]` field removed; provider owns the watcher.
+  `extension.ts` needed no change (platform already assembled there)
+- [x] **Wave 6 — Tests** — handler tests already inject fakes (Wave 3 pt 2); added the boundary guard
+- [x] **Assert core is `vscode`-free** — `coreVscodeFree.test.ts` (2 sanctioned shells only) + green build + `vsce package`
 
 ## Stage 2 — Monorepo move
 
 - [ ] Scaffold workspaces + `packages/core` + `apps/vscode-extension` (FM config shapes)
+- [ ] **Extract `AppMessagePort` (webview-side)** — the ADR names it (renderer's lone
+  runtime touchpoint), but Stage-1 ports are host-side only. `useVSCodeApi.ts` still
+  declares `acquireVsCodeApi()` directly, so moving `presentation/webview` into core
+  carries a VS Code renderer assumption. Wrap the `{ postMessage, getState, setState }`
+  surface behind the port before/with the webview move (FM keeps it in
+  `presentation/webview/ports/` since the webview is a separate bundle). (Review finding — Marcus.)
 - [ ] `git mv` source into core/app; presentation/webview → core
 - [ ] Single `tsconfig.base.json` paths table; **TS 4.9 → 5.x**
 - [ ] Point webpack at the core webview entry; core `index.ts` barrel (named exports)
