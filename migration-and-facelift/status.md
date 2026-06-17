@@ -40,10 +40,10 @@ This wave finished the last two `vscode` consumers in core:
 - `npm test` → **304 / 304** (37 suites) · `npm run typecheck` (both) → clean ·
   `webpack --mode production` (both bundles) → clean · `vsce package` → `prose-minion-1.10.4.vsix`
   built clean (no `src/`, no tracking docs).
-- ⚠️ **F5 smoke-test NOT run** — can't drive interactive VS Code in this environment. The
-  reviewer/author should F5 once: sidebar loads, analysis, word-frequency, dictionary, save
-  report, settings round-trip, API key store/clear, **and a settings change made in the VS Code
-  Settings UI broadcasts back to the webview** (exercises the relocated config watcher).
+- ✅ **F5 smoke PASSED** (author ran locally 2026-06-17) — sidebar, analysis, word-frequency,
+  dictionary, save report, settings round-trip, API key store/clear all working, **and the
+  Settings-UI → webview broadcast** (the relocated config watcher) confirmed. The containment
+  guard didn't break guide/resource opening. Stage 1 is fully verified and merge-ready.
 
 ## Metrics
 
