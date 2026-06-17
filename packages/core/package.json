@@ -13,8 +13,8 @@
   "dependencies": {
     "marked": "^16.4.1",
     "p-limit": "^7.2.0",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "wink-pos-tagger": "^2.2.2"
   }
 }

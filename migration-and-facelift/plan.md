@@ -83,8 +83,23 @@ no-logic relocation.
 
 ## Pass 2 — Facelift (after Stage 2)
 
-Apply the design refresh to the sidebar to match FrameMinion. Blocked on the
-design HTML being saved to disk.
+Apply the design refresh to the sidebar to match FrameMinion. The Claude Design
+link was attempted first and returned a Cloudflare/403 auth wall; the local
+handoff bundle in `.temp/Prose Minion-handoff.zip` unblocked the sidebar design
+inspection. The full VS Code tab remains out of scope until the design is ready.
+
+- [x] **Wave 0 — orient + fetch artifacts** — read migration docs; attempted the
+  Claude Design URL via tooling; inspected the local handoff bundle.
+- [x] **Wave 1 — React 18 foundation** — runtime `createRoot`, React 18 deps,
+  and test harness moved from `@testing-library/react-hooks` to
+  `@testing-library/react`.
+- [ ] **Wave 2 — account surface** — OpenRouter balance from real `/credits`
+  data plus last-request cost display from existing `TokenUsage.costUsd`.
+- [ ] **Wave 3 — sidebar reskin + tools picker** — FrameMinion-style header,
+  tab chrome, cards/results, and an All Tools modal that preserves existing PM
+  tool actions.
+- [ ] **Wave 4 — final verify + docs** — full gate, `verify:bundle`, package/CI
+  confidence, and F5 smoke handoff.
 
 ## Verification (every wave)
 

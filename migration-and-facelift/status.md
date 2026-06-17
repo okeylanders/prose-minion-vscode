@@ -1,7 +1,7 @@
 # Status — Prose Minion Migration & Facelift
 
-**Branch:** `epic/monorepo-ports-and-adapters` · **Last updated:** 2026-06-17
-**Health:** 🟢 green — **Stage 1 COMPLETE** (core is `vscode`-free) · **Stage 2 COMPLETE** (monorepo move, all 5 waves) · **PR #60 review fixups LANDED** (315 tests / 41 suites · 3 typechecks · build · lint 0-err · VSIX). **F5 smoke passed and caught one post-move Tailwind regression; that regression is fixed and now guarded by `verify-bundle`.** Current release target: VS Code app manifest `2.0.0`; `@prose-minion/core` is stamped `2.0.0` to match. Next: Pass 2 facelift.
+**Branch:** `pass-2/design-facelift` · **Last updated:** 2026-06-17
+**Health:** 🟢 green — **Stage 1 COMPLETE** (core is `vscode`-free) · **Stage 2 COMPLETE** (monorepo move, all 5 waves) · **PR #60 review fixups LANDED** (315 tests / 41 suites · 3 typechecks · build · lint 0-err · VSIX). **F5 smoke passed and caught one post-move Tailwind regression; that regression is fixed and now guarded by `verify-bundle`.** Current release target: VS Code app manifest `2.0.0`; `@prose-minion/core` is stamped `2.0.0` to match. Pass 2 facelift is underway; Wave 1 React 18 upgrade is green.
 
 ## PR #60 review fixups (2026-06-17)
 
@@ -27,7 +27,10 @@ Multi-agent review (`docs/pr-reviews/pr-60-stage-2-monorepo-move-review.md`) —
 | 1 | Wave 4 — `ShellService` + `EditorContext` | ✅ done (`ConfigurationHandler` info-message → shell this wave) | — |
 | 1 | Wave 5 — Wiring (watcher→shell, post fn) | ✅ done | — |
 | 1 | Wave 6 — Tests + assert core `vscode`-free | ✅ done (boundary guard test green) | — |
-| P2 | Design facelift | ⬜ next (design refresh starting from this integration branch) | — |
+| P2 | Wave 0 — orientation + design artifact fetch | ✅ done (Claude link 403/auth-gated; local handoff zip inspected) | — |
+| P2 | Wave 1 — React 17 → 18 + React 18 test harness | ✅ done (315 tests / 41 suites · 3 typechecks · build + verify:bundle) | _this commit_ |
+| P2 | Wave 2 — OpenRouter balance + last-request cost | ⬜ next | — |
+| P2 | Wave 3 — sidebar facelift + All Tools picker | ⬜ next | — |
 
 ## Stage 2 — wave tracker (resumable; pick up from the first ⬜)
 

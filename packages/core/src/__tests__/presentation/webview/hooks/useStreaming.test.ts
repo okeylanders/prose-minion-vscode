@@ -9,7 +9,7 @@
  * reset() (wipes content) vs endStreaming() (preserves content).
  */
 
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react';
 import { useStreaming } from '@hooks/useStreaming';
 
 describe('useStreaming', () => {

@@ -13,7 +13,7 @@
  * Also tests critical streaming cancellation behavior (content preservation).
  */
 
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react';
 import { AnalysisState, AnalysisActions, AnalysisPersistence, useAnalysis } from '@/presentation/webview/hooks/domain/useAnalysis';
 import { MessageType } from '@shared/types';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';

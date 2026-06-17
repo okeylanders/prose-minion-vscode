@@ -4,7 +4,7 @@
  */
 
 import * as React from 'react';
-import * as ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { MessageType } from '@shared/types';
 import { getVSCodeApi } from './hooks/useVSCodeApi';
@@ -16,11 +16,10 @@ try {
   if (!root) {
     throw new Error('Root element not found');
   }
-  ReactDOM.render(
+  createRoot(root).render(
     <React.StrictMode>
       <App />
-    </React.StrictMode>,
-    root
+    </React.StrictMode>
   );
 } catch (e: any) {
   const root = document.getElementById('root');

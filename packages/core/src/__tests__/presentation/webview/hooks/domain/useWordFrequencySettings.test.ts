@@ -9,7 +9,7 @@
  * Tests initialization, state updates, message handling, and persistence.
  */
 
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react';
 import { useWordFrequencySettings } from '@hooks/domain/useWordFrequencySettings';
 import { MessageType } from '@shared/types';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';

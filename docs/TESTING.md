@@ -140,7 +140,7 @@ All hook tests should follow this structure:
 ```typescript
 // src/tests/hooks/useWordSearchSettings.test.ts
 
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react';
 import { useWordSearchSettings } from '@/presentation/webview/hooks/domain/useWordSearchSettings';
 import { MessageType } from '@/shared/types/messages';
 
@@ -343,7 +343,7 @@ Test bidirectional sync between VSCode config and hook state:
 // src/tests/integration/settings-sync.test.ts
 
 import * as vscode from 'vscode';
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react';
 import { useWordSearchSettings } from '@/presentation/webview/hooks/domain/useWordSearchSettings';
 import { MessageType } from '@/shared/types/messages';
 
