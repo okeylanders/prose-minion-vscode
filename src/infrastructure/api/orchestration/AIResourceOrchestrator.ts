@@ -3,8 +3,7 @@
  * Orchestrates multi-turn conversations with agent capabilities (guide access, etc.)
  */
 
-import * as vscode from 'vscode';
-import { LogSink } from '@/platform';
+import { LogSink, SettingsStore } from '@/platform';
 import { OpenRouterClient, OpenRouterMessage } from '@providers/OpenRouterClient';
 import { GuideRegistry } from '@/infrastructure/guides/GuideRegistry';
 import { GuideLoader } from '@/tools/shared/guides';
@@ -57,6 +56,7 @@ export class AIResourceOrchestrator {
     private readonly conversationManager: ConversationManager,
     private readonly guideRegistry: GuideRegistry,
     private readonly guideLoader: GuideLoader,
+    private readonly settings: SettingsStore,
     private statusCallback?: StatusCallback,
     private readonly outputChannel?: LogSink,
     private tokenUsageCallback?: TokenUsageCallback
@@ -804,8 +804,7 @@ export class AIResourceOrchestrator {
     const lines = ['Here are the requested craft guides:', ''];
 
     // Check if trimming is enabled
-    const applyTrimming = vscode.workspace.getConfiguration('proseMinion')
-      .get<boolean>('applyContextWindowTrimming', true);
+    const applyTrimming = this.settings.get<boolean>('proseMinion', 'applyContextWindowTrimming', true);
 
     if (applyTrimming) {
       // For analysis agents: Limit total guide content to allow room for excerpt and context
@@ -863,8 +862,7 @@ export class AIResourceOrchestrator {
     const lines: string[] = ['Here are the requested project resources:', ''];
 
     // Check if trimming is enabled
-    const applyTrimming = vscode.workspace.getConfiguration('proseMinion')
-      .get<boolean>('applyContextWindowTrimming', true);
+    const applyTrimming = this.settings.get<boolean>('proseMinion', 'applyContextWindowTrimming', true);
 
     if (applyTrimming) {
       // For context agent: Limit total resource content

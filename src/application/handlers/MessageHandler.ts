@@ -8,7 +8,7 @@
  */
 
 import * as vscode from 'vscode';
-import { LogSink } from '@/platform';
+import { LogSink, Platform } from '@/platform';
 import {
   WebviewToExtensionMessage,
   MessageType,
@@ -157,7 +157,8 @@ export class MessageHandler {
     private readonly secretsService: any, // SecretStorageService
     private readonly webview: vscode.Webview,
     private readonly extensionUri: vscode.Uri,
-    private readonly outputChannel: LogSink
+    private readonly outputChannel: LogSink,
+    private readonly platform: Platform
   ) {
     // SPRINT 05: Set up status callback on AIResourceManager (not facade)
     this.aiResourceManager.setStatusCallback((message: string, tickerMessage?: string) => {
@@ -236,7 +237,8 @@ export class MessageHandler {
     // Token tracking is now centralized in AIResourceOrchestrator via setTokenUsageCallback
     this.analysisHandler = new AnalysisHandler(
       assistantToolService,
-      this.postMessage.bind(this)
+      this.postMessage.bind(this),
+      this.platform.settings
     );
 
     this.dictionaryHandler = new DictionaryHandler(
@@ -282,6 +284,7 @@ export class MessageHandler {
       dictionaryService,
       contextAssistantService,
       this.secretsService,
+      this.platform.settings,
       this.postMessage.bind(this),
       outputChannel,
       sharedResultCache,
@@ -299,11 +302,13 @@ export class MessageHandler {
 
     this.publishingHandler = new PublishingHandler(
       extensionUri,
-      this.postMessage.bind(this)
+      this.postMessage.bind(this),
+      this.platform.settings
     );
 
     this.sourcesHandler = new SourcesHandler(
-      this.postMessage.bind(this)
+      this.postMessage.bind(this),
+      this.platform.settings
     );
 
     this.uiHandler = new UIHandler(

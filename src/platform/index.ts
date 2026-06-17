@@ -13,3 +13,4 @@ export * from './SecretStore';
 export * from './SettingsStore';
 export * from './ShellService';
 export * from './Workspace';
+export * from './Platform';

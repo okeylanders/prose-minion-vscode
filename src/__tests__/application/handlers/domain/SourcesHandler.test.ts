@@ -6,6 +6,7 @@
 import { SourcesHandler } from '@/application/handlers/domain/SourcesHandler';
 import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { MessageType } from '@/shared/types/messages';
+import { createFakeSettings } from '../../../mocks/platform';
 
 describe('SourcesHandler', () => {
   let handler: SourcesHandler;
@@ -14,7 +15,7 @@ describe('SourcesHandler', () => {
   beforeEach(() => {
     const mockPostMessage = jest.fn().mockResolvedValue(undefined);
 
-    handler = new SourcesHandler(mockPostMessage);
+    handler = new SourcesHandler(mockPostMessage, createFakeSettings());
     router = new MessageRouter();
   });
 

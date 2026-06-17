@@ -29,6 +29,13 @@ import { DictionaryService } from '@services/dictionary/DictionaryService';
 import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 // SPRINT 04: Import search service
 import { WordSearchService } from '@services/search/WordSearchService';
+// Platform ports + VS Code adapters (composition root)
+import { Platform } from '@/platform';
+import { VsCodeSettingsStore } from '@/platform/vscode/VsCodeSettingsStore';
+import { VsCodeFileSystem } from '@/platform/vscode/VsCodeFileSystem';
+import { VsCodeWorkspace } from '@/platform/vscode/VsCodeWorkspace';
+import { VsCodeShellService } from '@/platform/vscode/VsCodeShellService';
+import { VsCodeEditorContext } from '@/platform/vscode/VsCodeEditorContext';
 
 let proseToolsViewProvider: ProseToolsViewProvider | undefined;
 
@@ -47,11 +54,24 @@ export function activate(context: vscode.ExtensionContext): void {
   // SPRINT 01: Initialize infrastructure layer (dependency injection)
   const secretsService = new SecretStorageService(context.secrets);
 
+  // Platform ports (ADR 2026-06-16). Assembled once at the composition root: the
+  // VS Code adapters translate to the vscode-free port shapes; the structural
+  // ports (log, secrets) are the native vscode objects passed directly.
+  const platform: Platform = {
+    log: outputChannel,
+    secrets: context.secrets,
+    settings: new VsCodeSettingsStore(),
+    fileSystem: new VsCodeFileSystem(),
+    workspace: new VsCodeWorkspace(context.extensionUri),
+    shell: new VsCodeShellService(),
+    editor: new VsCodeEditorContext()
+  };
+
   // SPRINT 01: Create resource services (foundation)
   const resourceLoader = new ResourceLoaderService(context.extensionUri, outputChannel);
-  const aiResourceManager = new AIResourceManager(resourceLoader, secretsService, outputChannel);
-  const standardsService = new StandardsService(context.extensionUri, outputChannel);
-  const toolOptions = new ToolOptionsProvider();
+  const aiResourceManager = new AIResourceManager(resourceLoader, secretsService, platform.settings, outputChannel);
+  const standardsService = new StandardsService(context.extensionUri, platform.settings, outputChannel);
+  const toolOptions = new ToolOptionsProvider(platform.settings);
 
   // SPRINT 02: Create measurement services
   const proseStatsService = new ProseStatsService(outputChannel);
@@ -104,7 +124,8 @@ export function activate(context: vscode.ExtensionContext): void {
     standardsService,
     aiResourceManager,
     secretsService,
-    outputChannel
+    outputChannel,
+    platform
   );
 
   // Register webview provider

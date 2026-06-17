@@ -6,7 +6,7 @@
  * SPRINT 03 (Sub-Epic 4): Added streaming + cancellation support
  */
 
-import * as vscode from 'vscode';
+import { SettingsStore } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import {
   AnalyzeDialogueMessage,
@@ -35,7 +35,8 @@ export class AnalysisHandler {
 
   constructor(
     private readonly assistantToolService: AssistantToolService,
-    private readonly postMessage: (message: any) => Promise<void>
+    private readonly postMessage: (message: any) => Promise<void>,
+    private readonly settings: SettingsStore
   ) {
     // Inject status emitter for guide loading notifications
     this.assistantToolService.setStatusEmitter((message, progress, tickerMessage) => {
@@ -192,8 +193,7 @@ export class AnalysisHandler {
     this.sendStreamStarted({ requestId, domain: 'analysis' });
 
     try {
-      const config = vscode.workspace.getConfiguration('proseMinion');
-      const includeCraftGuides = config.get<boolean>('includeCraftGuides') ?? true;
+      const includeCraftGuides = this.settings.get<boolean>('proseMinion', 'includeCraftGuides') ?? true;
 
       const loadingMessage = includeCraftGuides
         ? 'Loading prompts and craft guides...'
@@ -254,8 +254,7 @@ export class AnalysisHandler {
     this.sendStreamStarted({ requestId, domain: 'analysis' });
 
     try {
-      const config = vscode.workspace.getConfiguration('proseMinion');
-      const includeCraftGuides = config.get<boolean>('includeCraftGuides') ?? true;
+      const includeCraftGuides = this.settings.get<boolean>('proseMinion', 'includeCraftGuides') ?? true;
 
       const loadingMessage = includeCraftGuides
         ? 'Loading prompts and craft guides...'
@@ -315,8 +314,7 @@ export class AnalysisHandler {
     this.sendStreamStarted({ requestId, domain: 'analysis' });
 
     try {
-      const config = vscode.workspace.getConfiguration('proseMinion');
-      const includeCraftGuides = config.get<boolean>('includeCraftGuides') ?? true;
+      const includeCraftGuides = this.settings.get<boolean>('proseMinion', 'includeCraftGuides') ?? true;
 
       const loadingMessage = includeCraftGuides
         ? 'Loading prompts and craft guides...'

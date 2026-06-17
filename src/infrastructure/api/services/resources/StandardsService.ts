@@ -10,7 +10,7 @@
  */
 
 import * as vscode from 'vscode';
-import { LogSink } from '@/platform';
+import { LogSink, SettingsStore } from '@/platform';
 import { PublishingStandardsRepository } from '@/infrastructure/standards/PublishingStandardsRepository';
 import { StandardsComparisonService } from '@/application/services/StandardsComparisonService';
 import { Genre } from '@/domain/models/PublishingStandards';
@@ -21,6 +21,7 @@ export class StandardsService {
 
   constructor(
     private readonly extensionUri: vscode.Uri,
+    private readonly settings: SettingsStore,
     private readonly outputChannel?: LogSink
   ) {
     this.standardsComparer = new StandardsComparisonService();
@@ -44,8 +45,7 @@ export class StandardsService {
     try {
       if (!this.standardsRepo) return stats;
 
-      const config = vscode.workspace.getConfiguration('proseMinion');
-      const preset = (config.get<string>('publishingStandards.preset') || 'none').trim().toLowerCase();
+      const preset = (this.settings.get<string>('proseMinion', 'publishingStandards.preset') || 'none').trim().toLowerCase();
 
       if (preset === 'none') return stats;
 
@@ -66,7 +66,7 @@ export class StandardsService {
 
       if (!selectedGenre) return stats;
 
-      const pageSizeKey = (config.get<string>('publishingStandards.pageSizeKey') || '').trim();
+      const pageSizeKey = (this.settings.get<string>('proseMinion', 'publishingStandards.pageSizeKey') || '').trim();
       const comparer = this.standardsComparer;
 
       const items = [] as any[];

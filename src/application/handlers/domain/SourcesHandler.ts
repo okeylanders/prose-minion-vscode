@@ -4,6 +4,7 @@
  */
 
 import * as vscode from 'vscode';
+import { SettingsStore } from '@/platform';
 import {
   RequestActiveFileMessage,
   RequestManuscriptGlobsMessage,
@@ -19,7 +20,8 @@ import { MessageRouter } from '../MessageRouter';
 
 export class SourcesHandler {
   constructor(
-    private readonly postMessage: (message: any) => void
+    private readonly postMessage: (message: any) => void,
+    private readonly settings: SettingsStore
   ) {}
 
   /**
@@ -69,8 +71,7 @@ export class SourcesHandler {
 
   async handleRequestManuscriptGlobs(message: RequestManuscriptGlobsMessage): Promise<void> {
     try {
-      const config = vscode.workspace.getConfiguration('proseMinion');
-      const globs = config.get<string>('contextPaths.manuscript') || '';
+      const globs = this.settings.get<string>('proseMinion', 'contextPaths.manuscript') || '';
       const msg: ManuscriptGlobsMessage = {
         type: MessageType.MANUSCRIPT_GLOBS,
         source: 'extension.sources',
@@ -88,8 +89,7 @@ export class SourcesHandler {
 
   async handleRequestChapterGlobs(message: RequestChapterGlobsMessage): Promise<void> {
     try {
-      const config = vscode.workspace.getConfiguration('proseMinion');
-      const globs = config.get<string>('contextPaths.chapters') || '';
+      const globs = this.settings.get<string>('proseMinion', 'contextPaths.chapters') || '';
       const msg: ChapterGlobsMessage = {
         type: MessageType.CHAPTER_GLOBS,
         source: 'extension.sources',

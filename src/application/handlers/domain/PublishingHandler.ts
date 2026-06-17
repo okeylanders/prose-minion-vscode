@@ -4,6 +4,7 @@
  */
 
 import * as vscode from 'vscode';
+import { SettingsStore } from '@/platform';
 import {
   RequestPublishingStandardsDataMessage,
   SetPublishingPresetMessage,
@@ -20,7 +21,8 @@ import { MessageRouter } from '../MessageRouter';
 export class PublishingHandler {
   constructor(
     private readonly extensionUri: vscode.Uri,
-    private readonly postMessage: (message: any) => Promise<void>
+    private readonly postMessage: (message: any) => Promise<void>,
+    private readonly settings: SettingsStore
   ) {}
 
   /**
@@ -54,9 +56,8 @@ export class PublishingHandler {
     try {
       const repo = new PublishingStandardsRepository(this.extensionUri);
       const genres = await repo.getGenres();
-      const config = vscode.workspace.getConfiguration('proseMinion');
-      const preset = (config.get<string>('publishingStandards.preset') || 'none');
-      const pageSizeKey = (config.get<string>('publishingStandards.pageSizeKey') || '');
+      const preset = (this.settings.get<string>('proseMinion', 'publishingStandards.preset') || 'none');
+      const pageSizeKey = (this.settings.get<string>('proseMinion', 'publishingStandards.pageSizeKey') || '');
 
       const message: PublishingStandardsDataMessage = {
         type: MessageType.PUBLISHING_STANDARDS_DATA,
@@ -90,8 +91,7 @@ export class PublishingHandler {
   async handleSetPublishingPreset(message: SetPublishingPresetMessage): Promise<void> {
     try {
       const { preset } = message.payload;
-      const config = vscode.workspace.getConfiguration('proseMinion');
-      await config.update('publishingStandards.preset', preset, true);
+      await this.settings.update('proseMinion', 'publishingStandards.preset', preset);
       await this.handleRequestPublishingStandardsData({} as any);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -102,8 +102,7 @@ export class PublishingHandler {
   async handleSetPublishingTrim(message: SetPublishingTrimMessage): Promise<void> {
     try {
       const { pageSizeKey } = message.payload;
-      const config = vscode.workspace.getConfiguration('proseMinion');
-      await config.update('publishingStandards.pageSizeKey', pageSizeKey ?? '', true);
+      await this.settings.update('proseMinion', 'publishingStandards.pageSizeKey', pageSizeKey ?? '');
       await this.handleRequestPublishingStandardsData({} as any);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);

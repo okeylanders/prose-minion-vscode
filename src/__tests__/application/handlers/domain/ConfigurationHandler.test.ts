@@ -21,7 +21,8 @@ describe('ConfigurationHandler', () => {
       {} as any, // standardsService
       {} as any, // aiResourceManager
       {} as any, // workspaceConfig
-      {} as any  // secretStorage
+      {} as any, // secretStorage
+      {} as any  // settings port (ports refactor)
     );
     router = new MessageRouter();
   });

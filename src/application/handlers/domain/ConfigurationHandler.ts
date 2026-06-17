@@ -6,7 +6,7 @@
  */
 
 import * as vscode from 'vscode';
-import { LogSink } from '@/platform';
+import { LogSink, SettingsStore } from '@/platform';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { DictionaryService } from '@services/dictionary/DictionaryService';
@@ -43,6 +43,7 @@ export class ConfigurationHandler {
     private readonly dictionaryService: DictionaryService,
     private readonly contextAssistantService: ContextAssistantService,
     private readonly secretsService: SecretStorageService,
+    private readonly settings: SettingsStore,
     private readonly postMessage: (message: any) => Promise<void>,
     private readonly outputChannel: LogSink,
     private readonly sharedResultCache: any,
@@ -69,12 +70,11 @@ export class ConfigurationHandler {
    * Get word search settings with correct defaults
    */
   public getWordSearchSettings() {
-    const config = vscode.workspace.getConfiguration('proseMinion');
     return {
-      contextWords: config.get<number>('wordSearch.contextWords', 3),
-      clusterWindow: config.get<number>('wordSearch.clusterWindow', 50),
-      minClusterSize: config.get<number>('wordSearch.minClusterSize', 2),
-      caseSensitive: config.get<boolean>('wordSearch.caseSensitive', false)
+      contextWords: this.settings.get<number>('proseMinion', 'wordSearch.contextWords', 3),
+      clusterWindow: this.settings.get<number>('proseMinion', 'wordSearch.clusterWindow', 50),
+      minClusterSize: this.settings.get<number>('proseMinion', 'wordSearch.minClusterSize', 2),
+      caseSensitive: this.settings.get<boolean>('proseMinion', 'wordSearch.caseSensitive', false)
     };
   }
 
@@ -140,45 +140,44 @@ export class ConfigurationHandler {
 
   async handleRequestSettingsData(message: RequestSettingsDataMessage): Promise<void> {
     try {
-      const config = vscode.workspace.getConfiguration('proseMinion');
       const wordSearchSettings = this.getWordSearchSettings();
       const settings: Record<string, string | number | boolean> = {
         // Core (API key now in SecretStorage, not exposed here)
-        'includeCraftGuides': config.get<boolean>('includeCraftGuides') ?? true,
-        'temperature': config.get<number>('temperature') ?? 0.7,
-        'maxTokens': config.get<number>('maxTokens') ?? 10000,
-        'applyContextWindowTrimming': config.get<boolean>('applyContextWindowTrimming') ?? true,
-        'ui.showTokenWidget': config.get<boolean>('ui.showTokenWidget') ?? true,
+        'includeCraftGuides': this.settings.get<boolean>('proseMinion', 'includeCraftGuides') ?? true,
+        'temperature': this.settings.get<number>('proseMinion', 'temperature') ?? 0.7,
+        'maxTokens': this.settings.get<number>('proseMinion', 'maxTokens') ?? 10000,
+        'applyContextWindowTrimming': this.settings.get<boolean>('proseMinion', 'applyContextWindowTrimming') ?? true,
+        'ui.showTokenWidget': this.settings.get<boolean>('proseMinion', 'ui.showTokenWidget') ?? true,
         // Publishing standards
-        'publishingStandards.preset': config.get<string>('publishingStandards.preset') ?? 'none',
-        'publishingStandards.pageSizeKey': config.get<string>('publishingStandards.pageSizeKey') ?? '',
+        'publishingStandards.preset': this.settings.get<string>('proseMinion', 'publishingStandards.preset') ?? 'none',
+        'publishingStandards.pageSizeKey': this.settings.get<string>('proseMinion', 'publishingStandards.pageSizeKey') ?? '',
         // Word Frequency
-        'wordFrequency.topN': config.get<number>('wordFrequency.topN') ?? 100,
-        'wordFrequency.includeHapaxList': config.get<boolean>('wordFrequency.includeHapaxList') ?? true,
-        'wordFrequency.hapaxDisplayMax': config.get<number>('wordFrequency.hapaxDisplayMax') ?? 300,
-        'wordFrequency.includeStopwordsTable': config.get<boolean>('wordFrequency.includeStopwordsTable') ?? true,
-        'wordFrequency.contentWordsOnly': config.get<boolean>('wordFrequency.contentWordsOnly') ?? true,
-        'wordFrequency.posEnabled': config.get<boolean>('wordFrequency.posEnabled') ?? true,
-        'wordFrequency.includeBigrams': config.get<boolean>('wordFrequency.includeBigrams') ?? true,
-        'wordFrequency.includeTrigrams': config.get<boolean>('wordFrequency.includeTrigrams') ?? true,
-        'wordFrequency.enableLemmas': config.get<boolean>('wordFrequency.enableLemmas') ?? false,
-        'wordFrequency.lengthHistogramMaxChars': config.get<number>('wordFrequency.lengthHistogramMaxChars') ?? 10,
-        'wordFrequency.minCharacterLength': config.get<number>('wordFrequency.minCharacterLength') ?? 1,
+        'wordFrequency.topN': this.settings.get<number>('proseMinion', 'wordFrequency.topN') ?? 100,
+        'wordFrequency.includeHapaxList': this.settings.get<boolean>('proseMinion', 'wordFrequency.includeHapaxList') ?? true,
+        'wordFrequency.hapaxDisplayMax': this.settings.get<number>('proseMinion', 'wordFrequency.hapaxDisplayMax') ?? 300,
+        'wordFrequency.includeStopwordsTable': this.settings.get<boolean>('proseMinion', 'wordFrequency.includeStopwordsTable') ?? true,
+        'wordFrequency.contentWordsOnly': this.settings.get<boolean>('proseMinion', 'wordFrequency.contentWordsOnly') ?? true,
+        'wordFrequency.posEnabled': this.settings.get<boolean>('proseMinion', 'wordFrequency.posEnabled') ?? true,
+        'wordFrequency.includeBigrams': this.settings.get<boolean>('proseMinion', 'wordFrequency.includeBigrams') ?? true,
+        'wordFrequency.includeTrigrams': this.settings.get<boolean>('proseMinion', 'wordFrequency.includeTrigrams') ?? true,
+        'wordFrequency.enableLemmas': this.settings.get<boolean>('proseMinion', 'wordFrequency.enableLemmas') ?? false,
+        'wordFrequency.lengthHistogramMaxChars': this.settings.get<number>('proseMinion', 'wordFrequency.lengthHistogramMaxChars') ?? 10,
+        'wordFrequency.minCharacterLength': this.settings.get<number>('proseMinion', 'wordFrequency.minCharacterLength') ?? 1,
         // Word Search (using getWordSearchSettings method for consistency)
         'wordSearch.contextWords': wordSearchSettings.contextWords,
         'wordSearch.clusterWindow': wordSearchSettings.clusterWindow,
         'wordSearch.minClusterSize': wordSearchSettings.minClusterSize,
         'wordSearch.caseSensitive': wordSearchSettings.caseSensitive,
-        'wordSearch.enableAssistantExpansion': config.get<boolean>('wordSearch.enableAssistantExpansion') ?? false,
+        'wordSearch.enableAssistantExpansion': this.settings.get<boolean>('proseMinion', 'wordSearch.enableAssistantExpansion') ?? false,
         // Context resource paths
-        'contextPaths.characters': config.get<string>('contextPaths.characters') ?? '',
-        'contextPaths.locations': config.get<string>('contextPaths.locations') ?? '',
-        'contextPaths.themes': config.get<string>('contextPaths.themes') ?? '',
-        'contextPaths.things': config.get<string>('contextPaths.things') ?? '',
-        'contextPaths.chapters': config.get<string>('contextPaths.chapters') ?? '',
-        'contextPaths.manuscript': config.get<string>('contextPaths.manuscript') ?? '',
-        'contextPaths.projectBrief': config.get<string>('contextPaths.projectBrief') ?? '',
-        'contextPaths.general': config.get<string>('contextPaths.general') ?? ''
+        'contextPaths.characters': this.settings.get<string>('proseMinion', 'contextPaths.characters') ?? '',
+        'contextPaths.locations': this.settings.get<string>('proseMinion', 'contextPaths.locations') ?? '',
+        'contextPaths.themes': this.settings.get<string>('proseMinion', 'contextPaths.themes') ?? '',
+        'contextPaths.things': this.settings.get<string>('proseMinion', 'contextPaths.things') ?? '',
+        'contextPaths.chapters': this.settings.get<string>('proseMinion', 'contextPaths.chapters') ?? '',
+        'contextPaths.manuscript': this.settings.get<string>('proseMinion', 'contextPaths.manuscript') ?? '',
+        'contextPaths.projectBrief': this.settings.get<string>('proseMinion', 'contextPaths.projectBrief') ?? '',
+        'contextPaths.general': this.settings.get<string>('proseMinion', 'contextPaths.general') ?? ''
       };
 
       const message_out: SettingsDataMessage = {
@@ -216,8 +215,7 @@ export class ConfigurationHandler {
       // Mark this update as webview-originated to prevent echo-back
       this.markWebviewOriginatedUpdate(`proseMinion.${key}`);
 
-      const config = vscode.workspace.getConfiguration('proseMinion');
-      await config.update(key, value, true);
+      await this.settings.update('proseMinion', key, value);
 
       // Only send model data for UI-affecting settings (prevents overwriting settings overlay state during typing)
       if (key === 'ui.showTokenWidget') {
@@ -265,9 +263,8 @@ export class ConfigurationHandler {
       // Mark this update as webview-originated to prevent echo-back
       this.markWebviewOriginatedUpdate(`proseMinion.${configKey}`);
 
-      const config = vscode.workspace.getConfiguration('proseMinion');
 
-      await config.update(configKey, modelId, vscode.ConfigurationTarget.Global);
+      await this.settings.update('proseMinion', configKey, modelId);
       this.outputChannel.appendLine(
         `[ConfigurationHandler] Config saved: ${configKey} = ${modelId}`
       );
@@ -326,7 +323,6 @@ export class ConfigurationHandler {
         }
       });
 
-      const config = vscode.workspace.getConfiguration('proseMinion');
       const message: ModelDataMessage = {
         type: MessageType.MODEL_DATA,
         source: 'extension.handler',
@@ -334,7 +330,7 @@ export class ConfigurationHandler {
           options,
           selections,
           ui: {
-            showTokenWidget: config.get<boolean>('ui.showTokenWidget') ?? true
+            showTokenWidget: this.settings.get<boolean>('proseMinion', 'ui.showTokenWidget') ?? true
           }
         },
         timestamp: Date.now()
@@ -352,14 +348,13 @@ export class ConfigurationHandler {
   }
 
   private getEffectiveModelSelections(): Partial<Record<ModelScope, string>> {
-    const config = vscode.workspace.getConfiguration('proseMinion');
     const fallback = 'anthropic/claude-sonnet-4.5';
 
     const selections: Partial<Record<ModelScope, string>> = {
-      assistant: config.get<string>('assistantModel') || fallback,
-      dictionary: config.get<string>('dictionaryModel') || fallback,
-      context: config.get<string>('contextModel') || fallback,
-      category: config.get<string>('categoryModel') || fallback
+      assistant: this.settings.get<string>('proseMinion', 'assistantModel') || fallback,
+      dictionary: this.settings.get<string>('proseMinion', 'dictionaryModel') || fallback,
+      context: this.settings.get<string>('proseMinion', 'contextModel') || fallback,
+      category: this.settings.get<string>('proseMinion', 'categoryModel') || fallback
     };
 
     // SPRINT 05: Get resolved model selections from AIResourceManager

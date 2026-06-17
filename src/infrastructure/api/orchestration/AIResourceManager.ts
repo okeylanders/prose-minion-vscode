@@ -15,8 +15,7 @@
  * CRITICAL: This service must preserve exact behavior from ProseAnalysisService
  */
 
-import * as vscode from 'vscode';
-import { LogSink } from '@/platform';
+import { LogSink, SettingsStore } from '@/platform';
 import { OpenRouterClient } from '@providers/OpenRouterClient';
 import { AIResourceOrchestrator, StatusCallback, TokenUsageCallback } from './AIResourceOrchestrator';
 import { ConversationManager } from './ConversationManager';
@@ -54,6 +53,7 @@ export class AIResourceManager {
   constructor(
     private readonly resourceLoader: ResourceLoaderService,
     private readonly secretsService: SecretStorageService,
+    private readonly settings: SettingsStore,
     private readonly outputChannel?: LogSink
   ) {}
 
@@ -80,8 +80,7 @@ export class AIResourceManager {
 
       // Fallback to settings if not in SecretStorage (backward compatibility)
       if (!apiKey) {
-        const config = vscode.workspace.getConfiguration('proseMinion');
-        apiKey = config.get<string>('openRouterApiKey');
+        apiKey = this.settings.get<string>('proseMinion', 'openRouterApiKey');
       }
     }
 
@@ -96,12 +95,11 @@ export class AIResourceManager {
     }
 
     // Resolve model selections with fallbacks
-    const config = vscode.workspace.getConfiguration('proseMinion');
     const fallbackModel = modelConfig?.fallbackModel ?? 'anthropic/claude-sonnet-4.5';
-    const assistantModel = modelConfig?.assistantModel ?? config.get<string>('assistantModel') ?? fallbackModel;
-    const dictionaryModel = modelConfig?.dictionaryModel ?? config.get<string>('dictionaryModel') ?? fallbackModel;
-    const contextModel = modelConfig?.contextModel ?? config.get<string>('contextModel') ?? fallbackModel;
-    const categoryModel = modelConfig?.categoryModel ?? config.get<string>('categoryModel') ?? 'anthropic/claude-sonnet-4.5';
+    const assistantModel = modelConfig?.assistantModel ?? this.settings.get<string>('proseMinion', 'assistantModel') ?? fallbackModel;
+    const dictionaryModel = modelConfig?.dictionaryModel ?? this.settings.get<string>('proseMinion', 'dictionaryModel') ?? fallbackModel;
+    const contextModel = modelConfig?.contextModel ?? this.settings.get<string>('proseMinion', 'contextModel') ?? fallbackModel;
+    const categoryModel = modelConfig?.categoryModel ?? this.settings.get<string>('proseMinion', 'categoryModel') ?? 'anthropic/claude-sonnet-4.5';
 
     // Create AI resources for each scope
     const assistantResources = this.createResourceBundle(apiKey!, 'assistant', assistantModel);
@@ -243,6 +241,7 @@ export class AIResourceManager {
         conversationManager,
         guideRegistry,
         guideLoader,
+        this.settings,
         this.statusCallback,
         this.outputChannel,
         this.tokenUsageCallback

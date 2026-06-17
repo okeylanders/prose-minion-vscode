@@ -56,6 +56,7 @@ describe('AIResourceOrchestrator', () => {
       mockConversationManager,
       mockGuideRegistry,
       mockGuideLoader,
+      { get: (_s: string, _k: string, d?: unknown) => d, update: async () => undefined } as any, // settings
       undefined, // statusCallback
       mockOutputChannel as any
     );

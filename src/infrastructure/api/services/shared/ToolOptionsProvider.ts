@@ -8,7 +8,7 @@
  * and makes configuration logic easier to test and maintain.
  */
 
-import * as vscode from 'vscode';
+import { SettingsStore } from '@/platform';
 import { AssistantFocus } from '@messages';
 
 /**
@@ -49,6 +49,8 @@ export interface WordFrequencyOptions {
 }
 
 export class ToolOptionsProvider {
+  constructor(private readonly settings: SettingsStore) {}
+
   /**
    * Get options for AI analysis tools (dialogue, prose, dictionary)
    *
@@ -56,11 +58,10 @@ export class ToolOptionsProvider {
    * @returns Tool options with defaults applied
    */
   getOptions(focus?: AssistantFocus): ToolOptions {
-    const config = vscode.workspace.getConfiguration('proseMinion');
     return {
-      includeCraftGuides: config.get<boolean>('includeCraftGuides') ?? true,
-      temperature: config.get<number>('temperature') ?? 0.7,
-      maxTokens: config.get<number>('maxTokens') ?? 10000,
+      includeCraftGuides: this.settings.get<boolean>('proseMinion', 'includeCraftGuides') ?? true,
+      temperature: this.settings.get<number>('proseMinion', 'temperature') ?? 0.7,
+      maxTokens: this.settings.get<number>('proseMinion', 'maxTokens') ?? 10000,
       focus: focus ?? 'both'
     };
   }
@@ -71,12 +72,11 @@ export class ToolOptionsProvider {
    * @returns Word search options with defaults applied
    */
   getWordSearchOptions(): WordSearchOptions {
-    const config = vscode.workspace.getConfiguration('proseMinion');
     return {
-      contextWords: config.get<number>('wordSearch.contextWords') ?? 7,
-      clusterWindow: config.get<number>('wordSearch.clusterWindow') ?? 150,
-      minClusterSize: config.get<number>('wordSearch.minClusterSize') ?? 3,
-      caseSensitive: config.get<boolean>('wordSearch.caseSensitive') ?? false
+      contextWords: this.settings.get<number>('proseMinion', 'wordSearch.contextWords') ?? 7,
+      clusterWindow: this.settings.get<number>('proseMinion', 'wordSearch.clusterWindow') ?? 150,
+      minClusterSize: this.settings.get<number>('proseMinion', 'wordSearch.minClusterSize') ?? 3,
+      caseSensitive: this.settings.get<boolean>('proseMinion', 'wordSearch.caseSensitive') ?? false
     };
   }
 
@@ -86,19 +86,18 @@ export class ToolOptionsProvider {
    * @returns Word frequency options with defaults applied
    */
   getWordFrequencyOptions(): WordFrequencyOptions {
-    const config = vscode.workspace.getConfiguration('proseMinion');
     return {
-      topN: config.get<number>('wordFrequency.topN') ?? 100,
-      includeHapaxList: config.get<boolean>('wordFrequency.includeHapaxList') ?? true,
-      hapaxDisplayMax: config.get<number>('wordFrequency.hapaxDisplayMax') ?? 300,
-      includeStopwordsTable: config.get<boolean>('wordFrequency.includeStopwordsTable') ?? true,
-      contentWordsOnly: config.get<boolean>('wordFrequency.contentWordsOnly') ?? true,
-      posEnabled: config.get<boolean>('wordFrequency.posEnabled') ?? true,
-      includeBigrams: config.get<boolean>('wordFrequency.includeBigrams') ?? true,
-      includeTrigrams: config.get<boolean>('wordFrequency.includeTrigrams') ?? true,
-      enableLemmas: config.get<boolean>('wordFrequency.enableLemmas') ?? false,
-      lengthHistogramMaxChars: config.get<number>('wordFrequency.lengthHistogramMaxChars') ?? 10,
-      minCharacterLength: config.get<number>('wordFrequency.minCharacterLength') ?? 1
+      topN: this.settings.get<number>('proseMinion', 'wordFrequency.topN') ?? 100,
+      includeHapaxList: this.settings.get<boolean>('proseMinion', 'wordFrequency.includeHapaxList') ?? true,
+      hapaxDisplayMax: this.settings.get<number>('proseMinion', 'wordFrequency.hapaxDisplayMax') ?? 300,
+      includeStopwordsTable: this.settings.get<boolean>('proseMinion', 'wordFrequency.includeStopwordsTable') ?? true,
+      contentWordsOnly: this.settings.get<boolean>('proseMinion', 'wordFrequency.contentWordsOnly') ?? true,
+      posEnabled: this.settings.get<boolean>('proseMinion', 'wordFrequency.posEnabled') ?? true,
+      includeBigrams: this.settings.get<boolean>('proseMinion', 'wordFrequency.includeBigrams') ?? true,
+      includeTrigrams: this.settings.get<boolean>('proseMinion', 'wordFrequency.includeTrigrams') ?? true,
+      enableLemmas: this.settings.get<boolean>('proseMinion', 'wordFrequency.enableLemmas') ?? false,
+      lengthHistogramMaxChars: this.settings.get<number>('proseMinion', 'wordFrequency.lengthHistogramMaxChars') ?? 10,
+      minCharacterLength: this.settings.get<number>('proseMinion', 'wordFrequency.minCharacterLength') ?? 1
     };
   }
 }

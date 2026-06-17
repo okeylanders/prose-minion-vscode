@@ -9,6 +9,7 @@ import { AnalysisHandler } from '@/application/handlers/domain/AnalysisHandler';
 import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { MessageType, WebviewToExtensionMessage } from '@/shared/types/messages';
 import { AssistantToolService } from '@/infrastructure/api/services/analysis/AssistantToolService';
+import { createFakeSettings } from '../../../mocks/platform';
 
 // Test helper: Create test message
 function createTestMessage(type: MessageType, payload: any = {}): WebviewToExtensionMessage {
@@ -42,7 +43,7 @@ describe('AnalysisHandler', () => {
 
     mockPostMessage = jest.fn().mockResolvedValue(undefined);
 
-    handler = new AnalysisHandler(mockService, mockPostMessage);
+    handler = new AnalysisHandler(mockService, mockPostMessage, createFakeSettings());
     router = new MessageRouter();
   });
 

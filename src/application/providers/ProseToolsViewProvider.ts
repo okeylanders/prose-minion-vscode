@@ -9,6 +9,7 @@
 
 import * as vscode from 'vscode';
 import { MessageHandler } from '../handlers/MessageHandler';
+import { Platform } from '@/platform';
 import { MessageType, SelectionUpdatedMessage, OpenSettingsToggleMessage } from '@shared/types';
 import { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
@@ -40,7 +41,8 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
     private readonly standardsService: StandardsService,
     private readonly aiResourceManager: AIResourceManager,
     private readonly secretsService: SecretStorageService,
-    private readonly outputChannel: vscode.OutputChannel
+    private readonly outputChannel: vscode.OutputChannel,
+    private readonly platform: Platform
   ) {}
 
   public resolveWebviewView(
@@ -72,7 +74,8 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
       this.secretsService,
       webviewView.webview,
       this.extensionUri,
-      this.outputChannel
+      this.outputChannel,
+      this.platform
     );
 
     // Set up message listener
