@@ -66,6 +66,10 @@ export enum MessageType {
   // Token usage/cost updates
   TOKEN_USAGE_UPDATE = 'token_usage_update',
 
+  // OpenRouter account balance (credits + key limit)
+  REQUEST_ACCOUNT_BALANCE = 'request_account_balance',
+  ACCOUNT_BALANCE_DATA = 'account_balance_data',
+
   // Settings overlay and updates
   OPEN_SETTINGS = 'open_settings',
   OPEN_SETTINGS_TOGGLE = 'open_settings_toggle',

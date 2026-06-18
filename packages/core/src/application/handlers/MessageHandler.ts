@@ -39,9 +39,11 @@ import { PublishingHandler } from './domain/PublishingHandler';
 import { SourcesHandler } from './domain/SourcesHandler';
 import { UIHandler } from './domain/UIHandler';
 import { FileOperationsHandler } from './domain/FileOperationsHandler';
+import { AccountBalanceHandler } from './domain/AccountBalanceHandler';
 
 // Infrastructure shared across metrics + search handlers (built once, injected)
 import { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
+import { OpenRouterAccountClient, AccountBalanceService } from '@/infrastructure/account';
 
 // SPRINT 05: Import services for direct injection
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
@@ -70,7 +72,14 @@ interface ResultCache {
 const sharedResultCache: ResultCache = {};
 
 export class MessageHandler {
-  private tokenTotals: TokenUsageTotals = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+  // Shared token-tracking bag. Mutated in place + passed by reference to
+  // ConfigurationHandler (which zeroes it on RESET_TOKEN_USAGE). `costUsd` is
+  // cumulative; `lastRequestCostUsd` is the single most-recent request's cost.
+  private tokenTotals: TokenUsageTotals & { lastRequestCostUsd?: number } = {
+    promptTokens: 0,
+    completionTokens: 0,
+    totalTokens: 0
+  };
 
   // Message router (Strategy pattern)
   private readonly router: MessageRouter;
@@ -86,6 +95,13 @@ export class MessageHandler {
   private readonly sourcesHandler: SourcesHandler;
   private readonly uiHandler: UIHandler;
   private readonly fileOperationsHandler: FileOperationsHandler;
+  private readonly accountBalanceHandler: AccountBalanceHandler;
+
+  // OpenRouter account-balance service: TTL cache + debounced post-request
+  // refresh. Owned here (PM has one webview, unlike FM's shared-in-extension.ts
+  // setup) and disposed with the handler.
+  private readonly accountBalanceService: AccountBalanceService;
+  private readonly disposeBalanceListener: () => void;
 
   // Settings key constants for config watcher
   private readonly GENERAL_SETTINGS_KEYS = [
@@ -287,6 +303,23 @@ export class MessageHandler {
       outputChannel
     );
 
+    // OpenRouter account-balance slice. The client reads the key host-side from
+    // SecretStorage; only sanitized numbers/enums cross to the webview.
+    this.accountBalanceService = new AccountBalanceService(
+      new OpenRouterAccountClient(this.secretsService, outputChannel),
+      outputChannel
+    );
+    this.accountBalanceHandler = new AccountBalanceHandler(
+      this.postMessage.bind(this),
+      this.accountBalanceService,
+      outputChannel
+    );
+    // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)
+    // broadcasts fresh balances to the webview through the same handler.
+    this.disposeBalanceListener = this.accountBalanceService.addRefreshListener(
+      (payload) => this.accountBalanceHandler.post(payload)
+    );
+
     // Initialize message router and register handler routes
     this.router = new MessageRouter(outputChannel);
 
@@ -301,6 +334,7 @@ export class MessageHandler {
     this.sourcesHandler.registerRoutes(this.router);
     this.uiHandler.registerRoutes(this.router);
     this.fileOperationsHandler.registerRoutes(this.router);
+    this.accountBalanceHandler.registerRoutes(this.router);
 
     this.flushCachedResults();
   }
@@ -366,16 +400,33 @@ export class MessageHandler {
         this.tokenTotals.costUsd = (this.tokenTotals.costUsd || 0) + usage.costUsd;
       }
 
+      // A real completed request reports tokens; the activation/reset calls pass
+      // all-zeros and must not overwrite the last-request cost or trigger a
+      // billing refresh. `lastRequestCostUsd` may be undefined when the provider
+      // returned no cost — surfaced honestly as "—" rather than $0.000.
+      const isRealRequest = (usage.totalTokens || 0) > 0;
+      if (isRealRequest) {
+        this.tokenTotals.lastRequestCostUsd = usage.costUsd;
+      }
+
+      const { lastRequestCostUsd, ...totals } = this.tokenTotals;
       const message: TokenUsageUpdateMessage = {
         type: MessageType.TOKEN_USAGE_UPDATE,
         source: 'extension.handler',
         payload: {
-          totals: { ...this.tokenTotals }
+          totals: { ...totals },
+          lastRequestCostUsd
         },
         timestamp: Date.now()
       };
       sharedResultCache.tokenUsage = { ...message };
       void this.postMessage(message);
+
+      // Spend just happened → re-fetch the balance (debounced, since OpenRouter
+      // billing is eventually consistent). The service coalesces bursts.
+      if (isRealRequest) {
+        this.accountBalanceService.scheduleRefresh();
+      }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[MessageHandler] Failed to apply token usage update: ${msg}`);
@@ -662,6 +713,14 @@ export class MessageHandler {
     // so MessageHandler holds no host disposables of its own.
     try {
       this.aiResourceManager.setStatusCallback(undefined as any);
+    } catch {
+      // noop
+    }
+    // Cancel any armed balance refresh timer + drop the listener so a disposed
+    // handler can't fire a fetch/post after teardown.
+    try {
+      this.disposeBalanceListener();
+      this.accountBalanceService.dispose();
     } catch {
       // noop
     }

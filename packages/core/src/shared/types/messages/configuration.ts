@@ -97,6 +97,13 @@ export type TokenUsageTotals = TokenUsage;
 
 export interface TokenUsageUpdatePayload {
   totals: TokenUsageTotals;
+  /**
+   * Cost of the single most-recent AI request in USD, surfaced beneath the
+   * account balance ("Last request $0.014"). `undefined` when no request has
+   * completed this session, after a reset, or when the provider returned no
+   * cost for the last call. Distinct from `totals.costUsd` (cumulative).
+   */
+  lastRequestCostUsd?: number;
 }
 
 export interface TokenUsageUpdateMessage extends MessageEnvelope<TokenUsageUpdatePayload> {

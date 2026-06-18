@@ -74,6 +74,201 @@ body {
   color: var(--vscode-list-highlightForeground);
 }
 
+/* ============================================================
+   OpenRouter account-balance widget (Pass 2, Wave 2).
+   Collapsed pill discloses a detail panel. Themed with
+   --vscode-* vars now; the Wave-3 reskin restyles it.
+   ============================================================ */
+.pm-balance-widget {
+  position: relative;
+}
+
+.pm-balance-pill {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 3px 5px 3px 7px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: right;
+  transition: background 100ms, border-color 100ms;
+}
+.pm-balance-pill:hover,
+.pm-balance-pill.is-expanded {
+  background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.12));
+  border-color: var(--vscode-widget-border, rgba(128, 128, 128, 0.25));
+}
+
+.pm-balance-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-end;
+}
+.pm-balance-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.pm-balance-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--vscode-charts-blue, #5aa2f0);
+}
+.pm-balance-dot.ok {
+  background: var(--vscode-charts-green, #6fc98a);
+  box-shadow: 0 0 6px rgba(111, 201, 138, 0.5);
+}
+.pm-balance-dot.warn {
+  background: var(--vscode-charts-yellow, #d6a429);
+}
+.pm-balance-dot.muted {
+  background: var(--vscode-descriptionForeground, #888);
+}
+.pm-balance-label {
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+}
+.pm-balance-val {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  font-variant-numeric: tabular-nums;
+  min-width: 48px;
+  text-align: right;
+}
+.pm-balance-val.muted {
+  color: var(--vscode-descriptionForeground);
+  font-weight: 500;
+}
+.pm-balance-val.zero {
+  color: var(--vscode-errorForeground, #e06c5a);
+}
+.pm-balance-sub {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  text-align: right;
+}
+.pm-balance-sub b {
+  color: var(--vscode-foreground);
+  font-weight: 600;
+}
+.pm-balance-chev {
+  display: inline-flex;
+  color: var(--vscode-descriptionForeground);
+  margin-top: 1px;
+  transition: transform 150ms ease;
+}
+.pm-balance-pill.is-expanded .pm-balance-chev {
+  transform: rotate(180deg);
+}
+
+/* Disclosed detail panel — a right-anchored dropdown. */
+.pm-balance-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  min-width: 220px;
+  padding: 12px 14px;
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.3));
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  text-align: left;
+}
+.pm-balance-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.pm-balance-panel-title {
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground);
+}
+.pm-balance-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.pm-balance-refresh:hover:not(:disabled) {
+  background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.15));
+  color: var(--vscode-foreground);
+}
+.pm-balance-refresh:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+.pm-balance-refresh.spinning svg {
+  animation: pm-balance-spin 0.9s linear infinite;
+}
+@keyframes pm-balance-spin {
+  to { transform: rotate(360deg); }
+}
+
+.pm-balance-amount {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--vscode-foreground);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.pm-balance-amount.muted {
+  color: var(--vscode-descriptionForeground);
+  font-weight: 500;
+}
+.pm-balance-amount.zero {
+  color: var(--vscode-errorForeground, #e06c5a);
+}
+.pm-balance-of {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--vscode-descriptionForeground);
+}
+.pm-balance-amount-label {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  margin-top: 1px;
+}
+.pm-balance-sub-line {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  margin-top: 8px;
+}
+.pm-balance-note {
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+}
+.pm-balance-bar {
+  height: 4px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: var(--vscode-progressBar-background, rgba(128, 128, 128, 0.25));
+  overflow: hidden;
+}
+.pm-balance-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--vscode-charts-green, #6fc98a);
+}
+
 .app-main {
   flex: 1;
   overflow-y: auto;

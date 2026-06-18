@@ -10,6 +10,7 @@ export * from './base';
 export * from './error';
 export * from './status';
 export * from './tokenUsage';
+export * from './accountBalance';
 
 // Domain-specific messages
 export * from './analysis';
@@ -97,6 +98,10 @@ import {
 import { ErrorMessage } from './error';
 import { StatusMessage } from './status';
 import {
+  RequestAccountBalanceMessage,
+  AccountBalanceDataMessage
+} from './accountBalance';
+import {
   CopyResultMessage,
   SaveResultMessage,
   SaveResultSuccessMessage
@@ -140,6 +145,7 @@ export type WebviewToExtensionMessage =
   | RequestManuscriptGlobsMessage
   | RequestChapterGlobsMessage
   | ResetTokenUsageMessage
+  | RequestAccountBalanceMessage
   | RequestApiKeyMessage
   | UpdateApiKeyMessage
   | DeleteApiKeyMessage
@@ -171,6 +177,7 @@ export type ExtensionToWebviewMessage =
   | ChapterGlobsMessage
   | PublishingStandardsDataMessage
   | TokenUsageUpdateMessage
+  | AccountBalanceDataMessage
   | ApiKeyStatusMessage
   | FastGenerateDictionaryResultMessage
   | DictionaryGenerationProgressMessage

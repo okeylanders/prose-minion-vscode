@@ -14,6 +14,12 @@ import { usePersistedState } from '../usePersistence';
 
 export interface TokenTrackingState {
   usage: TokenUsage;
+  /**
+   * Cost of the single most-recent AI request in USD, or `undefined` when none
+   * has completed this session / after a reset / when the provider returned no
+   * cost. Surfaced as "Last request $X" beneath the account balance.
+   */
+  lastRequestCostUsd?: number;
 }
 
 export interface TokenTrackingActions {
@@ -87,17 +93,23 @@ export const useTokenTracking = (): UseTokenTrackingReturn => {
     ...(persistedSeed ?? {}),
   });
 
+  // Last-request cost is transient runtime state (not persisted): on reload it
+  // stays blank until the next request, which is honest about what we know.
+  const [lastRequestCostUsd, setLastRequestCostUsd] = React.useState<number | undefined>(undefined);
+
   // Handle TOKEN_USAGE_UPDATE messages
   const handleTokenUsageUpdate = React.useCallback((message: TokenUsageUpdateMessage) => {
     if (message.type === MessageType.TOKEN_USAGE_UPDATE) {
-      const { totals } = message.payload;
+      const { totals, lastRequestCostUsd: lastCost } = message.payload;
       setUsage(totals);
+      setLastRequestCostUsd(lastCost);
     }
   }, []);
 
   // Reset token usage to zero
   const resetTokens = React.useCallback(() => {
     setUsage(defaults);
+    setLastRequestCostUsd(undefined);
     vscode.postMessage({
       type: MessageType.RESET_TOKEN_USAGE,
       source: 'webview.hooks.useTokenTracking',
@@ -108,6 +120,7 @@ export const useTokenTracking = (): UseTokenTrackingReturn => {
 
   return {
     usage,
+    lastRequestCostUsd,
     handleTokenUsageUpdate,
     resetTokens,
     persistedState: { tokenTracking: usage }

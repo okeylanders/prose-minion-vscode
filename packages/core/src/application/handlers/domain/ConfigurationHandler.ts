@@ -48,7 +48,13 @@ export class ConfigurationHandler {
     private readonly postMessage: (message: any) => Promise<void>,
     private readonly outputChannel: LogSink,
     private readonly sharedResultCache: any,
-    private readonly tokenTotals: { promptTokens: number; completionTokens: number; totalTokens: number }
+    private readonly tokenTotals: {
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+      costUsd?: number;
+      lastRequestCostUsd?: number;
+    }
   ) {}
 
   /**
@@ -233,12 +239,18 @@ export class ConfigurationHandler {
       this.tokenTotals.promptTokens = 0;
       this.tokenTotals.completionTokens = 0;
       this.tokenTotals.totalTokens = 0;
+      // Reset clears cumulative cost AND the last-request cost so the widget
+      // returns to a clean slate, not a lingering "Last request $X".
+      this.tokenTotals.costUsd = 0;
+      this.tokenTotals.lastRequestCostUsd = undefined;
 
+      const { lastRequestCostUsd, ...totals } = this.tokenTotals;
       const message: TokenUsageUpdateMessage = {
         type: MessageType.TOKEN_USAGE_UPDATE,
         source: 'extension.handler',
         payload: {
-          totals: { ...this.tokenTotals }
+          totals: { ...totals },
+          lastRequestCostUsd
         },
         timestamp: Date.now()
       };

@@ -93,8 +93,13 @@ inspection. The full VS Code tab remains out of scope until the design is ready.
 - [x] **Wave 1 — React 18 foundation** — runtime `createRoot`, React 18 deps,
   and test harness moved from `@testing-library/react-hooks` to
   `@testing-library/react`.
-- [ ] **Wave 2 — account surface** — OpenRouter balance from real `/credits`
-  data plus last-request cost display from existing `TokenUsage.costUsd`.
+- [x] **Wave 2 — account surface** — OpenRouter balance from real `/credits`
+  + `/key` data plus last-request cost from `TokenUsage.costUsd`. Collapsed pill
+  (balance + last-request) discloses a panel with account balance + key
+  spend-limit + headroom bar and a refresh control; debounced auto-refresh after
+  each AI request. New vertical slice: `infrastructure/account/` (client +
+  service), `AccountBalanceHandler`, `useAccountBalance`, `AccountBalanceWidget`.
+  339 tests / 45 suites · 3 typechecks · build + verify:bundle · lint 0-err.
 - [ ] **Wave 3 — sidebar reskin + tools picker** — FrameMinion-style header,
   tab chrome, cards/results, and an All Tools modal that preserves existing PM
   tool actions.

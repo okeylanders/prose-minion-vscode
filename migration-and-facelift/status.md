@@ -1,7 +1,7 @@
 # Status — Prose Minion Migration & Facelift
 
 **Branch:** `pass-2/design-facelift` · **Last updated:** 2026-06-17
-**Health:** 🟢 green — **Stage 1 COMPLETE** (core is `vscode`-free) · **Stage 2 COMPLETE** (monorepo move, all 5 waves) · **PR #60 review fixups LANDED** (315 tests / 41 suites · 3 typechecks · build · lint 0-err · VSIX). **F5 smoke passed and caught one post-move Tailwind regression; that regression is fixed and now guarded by `verify-bundle`.** Current release target: VS Code app manifest `2.0.0`; `@prose-minion/core` is stamped `2.0.0` to match. Pass 2 facelift is underway; Wave 1 React 18 upgrade is green.
+**Health:** 🟢 green — **Stage 1 COMPLETE** (core is `vscode`-free) · **Stage 2 COMPLETE** (monorepo move, all 5 waves) · **PR #60 review fixups LANDED**. Current release target: VS Code app manifest `2.0.0`; `@prose-minion/core` is stamped `2.0.0` to match. **Pass 2 facelift underway: Wave 1 (React 18) ✅ + Wave 2 (account surface) ✅ green** — 339 tests / 45 suites · 3 typechecks · build + `verify:bundle` · lint 0-err. F5 smoke for Wave 2 (live balance fetch) handed to the author.
 
 ## PR #60 review fixups (2026-06-17)
 
@@ -14,6 +14,42 @@ Multi-agent review (`docs/pr-reviews/pr-60-stage-2-monorepo-move-review.md`) —
 - `export *` finding = no action (matches FM's actual barrel; recharacterized).
 
 **Post-smoke regression fix (F5 found it):** the F5 smoke caught a real Stage-2 regression the review missed — webview **Tailwind utilities were purged** (textareas lost `w-full`/`h-32`). Cause: the move changed the build cwd (root → app dir) and Tailwind resolves its config from `process.cwd()` → found none → default empty-content → purged everything (webpack still "compiled successfully"). Fixed: absolute `__dirname` content glob + explicit Tailwind config path in the webpack `postcss-loader` (`config: false`). **Guard added:** `scripts/verify-bundle.js` fails the production build + CI if sentinel utilities are absent from `webview.js`. Lesson 3 in action — the one unwitnessed delivery path (CSS) is where "behavior-identical" broke; now witnessed.
+
+## Pass 2 Wave 2 — account surface (2026-06-17)
+
+OpenRouter balance + last-request cost, built as a new vertical slice mirroring
+FrameMinion's ADR-010 chassis, trimmed to PM's reality (OpenRouter-only, single
+webview, `LogSink` not `LoggingService`). Author chose: **credits + key
+spend-limit** (collapsed pill discloses all limits with a refresh, per the design
+chevron) and **debounced auto-refresh** after each AI request.
+
+- **Infra (`packages/core/src/infrastructure/account/`):** `OpenRouterAccountClient`
+  (`/key` + `/credits`, `AbortSignal.timeout`, sanitized results — no key/raw body
+  escapes), `AccountBalanceService` (120s TTL cache, concurrent-fetch coalescing,
+  forced-refresh rate-limit, 10s trailing-debounce `scheduleRefresh` + listener
+  fan-out for OpenRouter's eventually-consistent billing).
+- **Messages:** `accountBalance.ts` (single-provider `OpenRouterBalance`),
+  `REQUEST_ACCOUNT_BALANCE` / `ACCOUNT_BALANCE_DATA`; `lastRequestCostUsd` added to
+  the `TOKEN_USAGE_UPDATE` payload (distinct from cumulative `totals.costUsd`).
+- **Handler/wiring:** `AccountBalanceHandler` (thin, never throws); `MessageHandler`
+  owns the service (PM has one webview), records last-request cost in
+  `applyTokenUsage`, arms the debounced refresh on real requests, and broadcasts
+  refreshed balances via a registered listener; disposed cleanly. Reset
+  (`ConfigurationHandler`) now also clears `costUsd` + `lastRequestCostUsd` (fixed a
+  latent cumulative-cost-not-reset gap while there).
+- **Webview:** `useAccountBalance` (mount fetch · refresh-on-key-configured ·
+  manual refresh), `AccountBalanceWidget` (collapsed pill + disclosed panel +
+  spinner refresh), `balanceFormat` headline helper; last-request cost threaded
+  from `useTokenTracking`. Themed with `--vscode-*` vars — **the Wave-3 reskin
+  moves it into the warm-brown FM design language + final header slot.**
+- **Tests (+4 suites / +24):** client (fetch-mocked parsing, no-key, 403,
+  malformed, timeout), service (cache/coalesce/partial-failure/no_key/debounce/
+  dispose), handler (routes + post + never-throw), hook (mount/refresh/data/
+  key-transition).
+- **F5 not run here** (no interactive VS Code / live OpenRouter key in this loop) —
+  handed to the author: open sidebar → confirm the balance widget fetches a real
+  number, expand it for the key-limit detail, run an analysis and watch the
+  balance tick down after ~10s, and check "Last request $X" updates per request.
 
 ## Pass / Stage tracker
 
@@ -28,8 +64,8 @@ Multi-agent review (`docs/pr-reviews/pr-60-stage-2-monorepo-move-review.md`) —
 | 1 | Wave 5 — Wiring (watcher→shell, post fn) | ✅ done | — |
 | 1 | Wave 6 — Tests + assert core `vscode`-free | ✅ done (boundary guard test green) | — |
 | P2 | Wave 0 — orientation + design artifact fetch | ✅ done (Claude link 403/auth-gated; local handoff zip inspected) | — |
-| P2 | Wave 1 — React 17 → 18 + React 18 test harness | ✅ done (315 tests / 41 suites · 3 typechecks · build + verify:bundle) | _this commit_ |
-| P2 | Wave 2 — OpenRouter balance + last-request cost | ⬜ next | — |
+| P2 | Wave 1 — React 17 → 18 + React 18 test harness | ✅ done (315 tests / 41 suites · 3 typechecks · build + verify:bundle) | `c79d8c7` |
+| P2 | Wave 2 — OpenRouter balance + last-request cost | ✅ done (339 tests / 45 suites · 3 typechecks · build + verify:bundle · lint 0-err) | _this commit_ |
 | P2 | Wave 3 — sidebar facelift + All Tools picker | ⬜ next | — |
 
 ## Stage 2 — wave tracker (resumable; pick up from the first ⬜)
@@ -82,20 +118,35 @@ This wave finished the last two `vscode` consumers in core:
 - **vscode imports remaining in core:** **0** (was 37 at Stage-0). VS Code imports now live only in
   `apps/vscode-extension/src/extension.ts`, `ProseToolsViewProvider.ts`, and `platform/vscode/**`.
   Guarded by `packages/core/src/__tests__/architecture/boundaries.test.ts`.
-- **Tests:** 315 passing / 41 suites (incl. PR #60 review fixups)
+- **Tests:** 339 passing / 45 suites (incl. PR #60 review fixups + Pass-2 Wave-2 account slice)
 - **Ports done:** all seven — `LogSink` ✅, `SecretStore` ✅, `SettingsStore` ✅, `FileSystem` ✅,
   `Workspace` ✅, `EditorContext` ✅, `ShellService` ✅
 - **Platform bundle:** assembled in `extension.ts`, threaded provider → MessageHandler
 
 ## Notes for the next session (resume point)
 
+- **NEXT: Pass 2 — Wave 3 (sidebar reskin + All Tools picker).** Adopt the FM warm-brown
+  design language from the handoff bundle (`.temp/Prose Minion-handoff.zip` → unzipped at
+  `/tmp/pm_handoff/`): `pm-mock.css` (chrome, tab cards, balance widget), `pm-frames-sidebar.js`
+  (markup shape), `icons.js`. **Fold the Wave-2 `AccountBalanceWidget` into the new header** —
+  it's currently themed with `--vscode-*` placeholders and rendered in `app-header-right`; the
+  design wants it top-right with the coral accent line + logo tile. **Author preference
+  (2026-06-17, after Wave-2 F5): rework the header layout to match FM, and make the balance
+  widget a full in-flow dropdown when clicked rather than the current absolutely-positioned
+  popup panel.** Build the "All Tools" modal (guide-style picker) preserving existing PM tool
+  actions. Full-tab Assistant directions (A/B/C) remain a separate, later decision (out of
+  Wave 3 scope per the handoff).
+- **Wave 2 done (account surface).** See the "Pass 2 Wave 2" section above. **Author F5 still
+  owed:** confirm the balance widget fetches a real number against a live OpenRouter key, the
+  panel shows the key-limit detail, the balance auto-refreshes ~10s after an analysis, and
+  "Last request $X" updates per request.
 - **Stage 2 is COMPLETE** (all 5 waves green + pushed; final verify matches the Wave-0
-  baseline). The author F5 smoke is complete and found the Tailwind purge regression; the fix
-  landed with an automated `verify-bundle` witness.
-- **Next: Pass 2 — Design Facelift.** Start from this integration branch. Per
-  `tech-debt-and-deferred.md`, the FIRST action when Pass 2 starts is to actually attempt the
-  fetch of the "Prose Minion – Design Refresh" (share links / bundle / chat thread) via
-  `WebFetch`/`WebSearch` before assuming it's auth-gated. React 17 → 18 rides with Pass 2.
+  baseline). The author F5 smoke found + fixed the Tailwind purge regression (guarded by
+  `verify-bundle`).
+- **Deferred (logged, not lost):** logging + AI-alias modernization (FM's `@ai`/`@logging`
+  barrels + `LoggingService` + `outputChannel`→`logger`) — Pass 2 or a focused follow-up. Note:
+  the Wave-2 account slice intentionally uses `LogSink` (no `LoggingService` yet), so it'll ride
+  that modernization when it lands.
 - **Deferred (logged, not lost):** logging + AI-alias modernization (FM's `@ai`/`@logging`
   barrels + `LoggingService` + `outputChannel`→`logger`) — Pass 2 or a focused follow-up.
 - **Wave 4 done — packaging + boundary verified.** `vsce package --no-dependencies` → clean
