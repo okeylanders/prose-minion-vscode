@@ -34,7 +34,19 @@ export interface AccountBalanceActions {
   handleAccountBalanceData: (message: AccountBalanceDataMessage) => void;
 }
 
-export type UseAccountBalanceReturn = AccountBalanceState & AccountBalanceActions;
+/**
+ * Intentionally empty: balances are ephemeral — re-fetched on mount and pushed
+ * by the host after each request — so persisting a credit number across reloads
+ * would only show a stale value. The empty `persistedState` keeps the tripartite
+ * hook shape (State & Actions & { persistedState }) every sibling hook honors,
+ * so App's usePersistence spread stays uniform and the next hook author has a
+ * compliant reference.
+ */
+export type AccountBalancePersistence = Record<string, never>;
+
+export type UseAccountBalanceReturn = AccountBalanceState & AccountBalanceActions & {
+  persistedState: AccountBalancePersistence;
+};
 
 export interface UseAccountBalanceArgs {
   apiKeyConfigured: boolean;
@@ -87,6 +99,7 @@ export function useAccountBalance({ apiKeyConfigured }: UseAccountBalanceArgs): 
     fetchedAt,
     isLoading,
     refresh,
-    handleAccountBalanceData
+    handleAccountBalanceData,
+    persistedState: {}
   };
 }

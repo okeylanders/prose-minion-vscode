@@ -6,9 +6,27 @@
  */
 import { OpenRouterBalance } from '@messages';
 
-/** USD-formatted dollars (OpenRouter is single-currency). */
+/**
+ * USD with the sign OUTSIDE the dollar mark, so a negative (overdrawn) balance
+ * reads as `-$0.50`, not `$-0.50`. OpenRouter is single-currency.
+ */
+function signedUsd(value: number, fractionDigits: number): string {
+  const sign = value < 0 ? '-' : '';
+  return `${sign}$${Math.abs(value).toFixed(fractionDigits)}`;
+}
+
+/** USD-formatted dollars (2dp) — the headline/balance metric. */
 export function fmtUsd(value: number): string {
-  return `$${value.toFixed(2)}`;
+  return signedUsd(value, 2);
+}
+
+/**
+ * USD with sub-cent precision (3dp) for tiny per-request costs (e.g. `$0.014`),
+ * routed through the same source of truth as `fmtUsd` so the "Last request" line
+ * and the balance can't drift on sign/format.
+ */
+export function fmtUsdMicro(value: number): string {
+  return signedUsd(value, 3);
 }
 
 /** Tone hint for the headline amount — drives muted/zero styling. */

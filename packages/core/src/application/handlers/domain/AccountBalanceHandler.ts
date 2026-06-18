@@ -22,7 +22,7 @@ export class AccountBalanceHandler {
   constructor(
     private readonly postMessage: (message: AccountBalanceDataMessage) => void,
     private readonly service: AccountBalanceService,
-    private readonly outputChannel?: LogSink
+    private readonly outputChannel: LogSink
   ) {}
 
   registerRoutes(router: MessageRouter): void {
@@ -36,7 +36,7 @@ export class AccountBalanceHandler {
       this.post(payload);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      this.outputChannel?.appendLine(`[AccountBalanceHandler] Failed to resolve balances: ${msg}`);
+      this.outputChannel.appendLine(`[AccountBalanceHandler] Failed to resolve balances: ${msg}`);
       this.post({
         openrouter: { status: 'unavailable', creditsStatus: 'unavailable', reason: 'Request failed.' },
         fetchedAt: Date.now()

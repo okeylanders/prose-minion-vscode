@@ -169,6 +169,18 @@ export class AccountBalanceService {
     }
 
     const overall: ProviderStatus = keyResult.ok || creditsResult.ok ? 'ok' : 'unavailable';
+
+    // Both sub-calls failed (and it wasn't the genuine no-key case handled above):
+    // log a single service-level summary so an on-call can tell "balance shows —"
+    // from a real outage. The per-TTL cache then serves this `unavailable` without
+    // re-hitting the client, so this transition line is the signal to look for.
+    if (overall === 'unavailable') {
+      this.log?.appendLine(
+        `[AccountBalanceService] Both /key and /credits failed — balance unavailable ` +
+        `(key: ${keyResult.ok ? 'ok' : keyResult.status}, credits: ${creditsResult.ok ? 'ok' : creditsResult.status})`
+      );
+    }
+
     return {
       status: overall,
       keyLimit: keyResult.ok ? keyResult.data : undefined,

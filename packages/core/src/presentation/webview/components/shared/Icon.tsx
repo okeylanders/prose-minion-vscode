@@ -83,6 +83,6 @@ export const Icon: React.FC<IconProps> = ({
     strokeLinejoin="round"
     className={className}
     aria-hidden={ariaHidden}
-    dangerouslySetInnerHTML={{ __html: PATHS[name] }}
+    dangerouslySetInnerHTML={{ __html: PATHS[name] ?? '' }}
   />
 );

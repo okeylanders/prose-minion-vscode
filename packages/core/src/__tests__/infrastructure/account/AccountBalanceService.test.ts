@@ -96,6 +96,25 @@ describe('AccountBalanceService', () => {
     expect(payload.openrouter.creditsStatus).toBe('unavailable');
   });
 
+  it('reports unavailable (not no_key) and logs once when both calls fail for non-key reasons', async () => {
+    const appendLine = jest.fn();
+    const { client } = makeClient({
+      fetchKeyLimit: jest.fn().mockResolvedValue({ ok: false, status: 'unavailable', reason: 'Key info unavailable (500).' }),
+      fetchCredits: jest.fn().mockResolvedValue({ ok: false, status: 'unavailable', reason: 'Account balance unavailable (500).' })
+    });
+    const service = new AccountBalanceService(client, { appendLine } as never);
+
+    const payload = await service.getBalances();
+
+    expect(payload.openrouter.status).toBe('unavailable');
+    expect(payload.openrouter.credits).toBeUndefined();
+    expect(payload.openrouter.keyLimit).toBeUndefined();
+    expect(payload.openrouter.reason).toBe('Key info unavailable (500).');
+    // A single service-level summary so a "balance shows —" report is diagnosable.
+    expect(appendLine).toHaveBeenCalledTimes(1);
+    expect(appendLine.mock.calls[0][0]).toContain('Both /key and /credits failed');
+  });
+
   it('reports no_key only when BOTH calls report no_key', async () => {
     const { client } = makeClient({
       fetchKeyLimit: jest.fn().mockResolvedValue({ ok: false, status: 'no_key', reason: 'x' }),

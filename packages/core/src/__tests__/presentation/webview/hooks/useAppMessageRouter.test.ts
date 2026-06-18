@@ -114,6 +114,39 @@ describe('buildAppMessageRoutes', () => {
     expect(deps.dictionary.handleStreamChunk).not.toHaveBeenCalled();
   });
 
+  // STATUS is source-routed (the docblock above names it a top refactor-risk spot):
+  // it dispatches to a different domain handler per `message.source`, with an
+  // analysis fallback for backward compatibility. Pin the dispatch, not just the route.
+  it('STATUS routes to the dictionary domain for source extension.dictionary', () => {
+    const deps = makeDeps();
+    buildAppMessageRoutes(deps)[MessageType.STATUS]!(
+      { type: MessageType.STATUS, source: 'extension.dictionary', payload: {} } as never
+    );
+    expect(deps.dictionary.handleStatusMessage).toHaveBeenCalled();
+    expect(deps.analysis.handleStatusMessage).not.toHaveBeenCalled();
+    expect(deps.search.handleStatusMessage).not.toHaveBeenCalled();
+  });
+
+  it('STATUS routes to the search domain for source extension.search', () => {
+    const deps = makeDeps();
+    buildAppMessageRoutes(deps)[MessageType.STATUS]!(
+      { type: MessageType.STATUS, source: 'extension.search', payload: {} } as never
+    );
+    expect(deps.search.handleStatusMessage).toHaveBeenCalled();
+    expect(deps.dictionary.handleStatusMessage).not.toHaveBeenCalled();
+    expect(deps.analysis.handleStatusMessage).not.toHaveBeenCalled();
+  });
+
+  it('STATUS falls back to the analysis domain for an unrecognized source', () => {
+    const deps = makeDeps();
+    buildAppMessageRoutes(deps)[MessageType.STATUS]!(
+      { type: MessageType.STATUS, source: 'extension.somethingElse', payload: {} } as never
+    );
+    expect(deps.analysis.handleStatusMessage).toHaveBeenCalled();
+    expect(deps.dictionary.handleStatusMessage).not.toHaveBeenCalled();
+    expect(deps.search.handleStatusMessage).not.toHaveBeenCalled();
+  });
+
   it('ERROR sets the message and clears only the erroring domain', () => {
     const deps = makeDeps();
     buildAppMessageRoutes(deps)[MessageType.ERROR]!({ payload: { source: 'dictionary', message: 'boom' } } as never);

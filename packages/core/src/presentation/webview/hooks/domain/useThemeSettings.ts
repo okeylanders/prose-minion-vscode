@@ -7,9 +7,9 @@ import { usePersistedState } from '../usePersistence';
 /**
  * Sidebar theme preference (UI-only).
  *
- * 'warm-dark' (default) pins Prose Minion's brand palette; 'follow-vscode'
- * re-anchors the surface ramp on the active VS Code theme (applied as
- * [data-pm-theme="follow"] on .app-container in App.tsx).
+ * 'follow-vscode' (default) re-anchors the surface ramp on the active VS Code
+ * theme (applied as [data-pm-theme="follow"] on .app-container in App.tsx);
+ * 'warm-dark' pins Prose Minion's brand palette.
  *
  * Mirrors useTokensSettings: seeds from webview persistence, syncs via
  * SETTINGS_DATA (key 'ui.sidebarTheme'), and writes back through UPDATE_SETTING

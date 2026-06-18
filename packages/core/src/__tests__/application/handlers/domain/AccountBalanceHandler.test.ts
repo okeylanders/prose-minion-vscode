@@ -9,6 +9,7 @@ import { AccountBalanceHandler } from '@/application/handlers/domain/AccountBala
 import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { MessageType } from '@/shared/types/messages';
 import type { AccountBalanceService } from '@/infrastructure/account';
+import type { LogSink } from '@/platform';
 import type { RequestAccountBalanceMessage, AccountBalancePayload } from '@messages';
 
 const fakePayload: AccountBalancePayload = {
@@ -25,14 +26,16 @@ const requestMessage = (forceRefresh?: boolean): RequestAccountBalanceMessage =>
 
 describe('AccountBalanceHandler', () => {
   let postMessage: jest.Mock;
+  let log: LogSink;
 
   beforeEach(() => {
     postMessage = jest.fn();
+    log = { appendLine: jest.fn() } as unknown as LogSink;
   });
 
   it('registers the REQUEST_ACCOUNT_BALANCE route', () => {
     const service = { getBalances: jest.fn() } as unknown as AccountBalanceService;
-    const handler = new AccountBalanceHandler(postMessage, service);
+    const handler = new AccountBalanceHandler(postMessage, service, log);
     const router = new MessageRouter();
 
     handler.registerRoutes(router);
@@ -42,7 +45,7 @@ describe('AccountBalanceHandler', () => {
 
   it('posts the sanitized balances from the service', async () => {
     const service = { getBalances: jest.fn().mockResolvedValue(fakePayload) } as unknown as AccountBalanceService;
-    const handler = new AccountBalanceHandler(postMessage, service);
+    const handler = new AccountBalanceHandler(postMessage, service, log);
 
     await handler.handleRequest(requestMessage(true));
 
@@ -56,7 +59,7 @@ describe('AccountBalanceHandler', () => {
 
   it('defaults forceRefresh to false when omitted', async () => {
     const service = { getBalances: jest.fn().mockResolvedValue(fakePayload) } as unknown as AccountBalanceService;
-    const handler = new AccountBalanceHandler(postMessage, service);
+    const handler = new AccountBalanceHandler(postMessage, service, log);
 
     await handler.handleRequest({ ...requestMessage(), payload: {} as any });
 
@@ -67,7 +70,7 @@ describe('AccountBalanceHandler', () => {
     const service = {
       getBalances: jest.fn().mockRejectedValue(new Error('boom'))
     } as unknown as AccountBalanceService;
-    const handler = new AccountBalanceHandler(postMessage, service);
+    const handler = new AccountBalanceHandler(postMessage, service, log);
 
     await expect(handler.handleRequest(requestMessage())).resolves.toBeUndefined();
 

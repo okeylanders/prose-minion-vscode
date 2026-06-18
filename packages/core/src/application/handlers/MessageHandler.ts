@@ -152,7 +152,8 @@ export class MessageHandler {
   ] as const;
 
   private readonly UI_KEYS = [
-    'proseMinion.ui.showTokenWidget'
+    'proseMinion.ui.showTokenWidget',
+    'proseMinion.ui.sidebarTheme'
   ] as const;
 
   private readonly PUBLISHING_STANDARDS_KEYS = [

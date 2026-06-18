@@ -131,6 +131,7 @@ export const App: React.FC = () => {
     ...tokenTracking.persistedState,
     ...contextPathsSettings.persistedState,
     ...modelsSettings.persistedState,
+    ...accountBalance.persistedState,
   });
 
   // Request initial model data on app mount
