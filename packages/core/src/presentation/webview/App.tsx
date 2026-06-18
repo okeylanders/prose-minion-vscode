@@ -312,18 +312,6 @@ export const App: React.FC = () => {
 
   return (
     <div className="app-container">
-      <div className="pm-strip">
-        <span className="pm-strip-title">Prose Minion · Writing Tools</span>
-        <button
-          type="button"
-          className="pm-strip-gear"
-          onClick={settings.toggle}
-          title="Settings"
-          aria-label="Settings"
-        >
-          <Icon name="gear" size={16} />
-        </button>
-      </div>
       <header className="app-header pm-header">
         <div className="pm-brand">
           <div className="pm-logo">
@@ -346,16 +334,6 @@ export const App: React.FC = () => {
         />
       </header>
       {balancesExpanded && <AccountBalanceStrip balance={accountBalance} />}
-      {tokensSettings.settings.showTokenWidget && (
-        <div className="token-widget" title="Session token usage (resets on reload)">
-          <span>
-            {(tokenTracking.usage?.totalTokens ?? 0).toLocaleString()} tokens
-            {typeof tokenTracking.usage?.costUsd === 'number'
-              ? ` | $${tokenTracking.usage.costUsd.toFixed(3)}`
-              : ''}
-          </span>
-        </div>
-      )}
 
       <TabBar
         tabs={tabs}
