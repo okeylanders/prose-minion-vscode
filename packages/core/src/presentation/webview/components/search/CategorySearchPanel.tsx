@@ -182,30 +182,30 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
 
         {/* Relevance selector */}
         <label className="block text-sm font-medium mb-2 mt-3">Relevance:</label>
-        <div className="tab-bar" style={{ marginBottom: '8px', padding: 0 }}>
+        <div className="pm-seg" style={{ marginBottom: '8px' }}>
           {CATEGORY_RELEVANCE_OPTIONS.map((level) => (
             <button
               key={level}
-              className={`tab-button ${search.categorySearch.relevance === level ? 'active' : ''}`}
+              className={`pm-seg-btn ${search.categorySearch.relevance === level ? 'active' : ''}`}
               onClick={() => search.setCategorySearchRelevance(level)}
               disabled={search.categorySearch.isLoading}
             >
-              <span className="tab-label">{level.charAt(0).toUpperCase() + level.slice(1)}</span>
+              <span className="pm-tab-label">{level.charAt(0).toUpperCase() + level.slice(1)}</span>
             </button>
           ))}
         </div>
 
         {/* Word limit selector */}
         <label className="block text-sm font-medium mb-2">Limit to:</label>
-        <div className="tab-bar" style={{ marginBottom: '8px', padding: 0 }}>
+        <div className="pm-seg" style={{ marginBottom: '8px' }}>
           {([20, 50, 75, 100, 250, 350, 500] as const).map((limit) => (
             <button
               key={limit}
-              className={`tab-button ${search.categorySearch.wordLimit === limit ? 'active' : ''}`}
+              className={`pm-seg-btn ${search.categorySearch.wordLimit === limit ? 'active' : ''}`}
               onClick={() => search.setCategorySearchWordLimit(limit)}
               disabled={search.categorySearch.isLoading}
             >
-              <span className="tab-label">{limit}</span>
+              <span className="pm-tab-label">{limit}</span>
             </button>
           ))}
         </div>
@@ -264,15 +264,15 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
 
         {/* N-gram mode selector */}
         <label className="block text-sm font-medium mb-2 mt-3">Search mode:</label>
-        <div className="tab-bar" style={{ marginBottom: '8px', padding: 0 }}>
+        <div className="pm-seg" style={{ marginBottom: '8px' }}>
           {NGRAM_MODE_OPTIONS.map((mode) => (
             <button
               key={mode}
-              className={`tab-button ${search.categorySearch.ngramMode === mode ? 'active' : ''}`}
+              className={`pm-seg-btn ${search.categorySearch.ngramMode === mode ? 'active' : ''}`}
               onClick={() => search.setCategorySearchNgramMode(mode)}
               disabled={search.categorySearch.isLoading}
             >
-              <span className="tab-label">{mode.charAt(0).toUpperCase() + mode.slice(1)}</span>
+              <span className="pm-tab-label">{mode.charAt(0).toUpperCase() + mode.slice(1)}</span>
             </button>
           ))}
         </div>
@@ -281,15 +281,15 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
         {search.categorySearch.ngramMode !== 'words' && (
           <>
             <label className="block text-sm font-medium mb-2">Min occurrences:</label>
-            <div className="tab-bar" style={{ marginBottom: '8px', padding: 0 }}>
+            <div className="pm-seg" style={{ marginBottom: '8px' }}>
               {MIN_OCCURRENCES_OPTIONS.map((min) => (
                 <button
                   key={min}
-                  className={`tab-button ${search.categorySearch.minOccurrences === min ? 'active' : ''}`}
+                  className={`pm-seg-btn ${search.categorySearch.minOccurrences === min ? 'active' : ''}`}
                   onClick={() => search.setCategorySearchMinOccurrences(min)}
                   disabled={search.categorySearch.isLoading}
                 >
-                  <span className="tab-label">{min}{min === 5 ? '+' : ''}</span>
+                  <span className="pm-tab-label">{min}{min === 5 ? '+' : ''}</span>
                 </button>
               ))}
             </div>
