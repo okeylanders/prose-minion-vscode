@@ -5,6 +5,7 @@
 
 import * as React from 'react';
 import { TabBar, Tab } from './components/shared/TabBar';
+import { ThemeToggle } from './components/shared/ThemeToggle';
 import { AnalysisTab } from './components/tabs/AnalysisTab';
 import { MetricsTab } from './components/tabs/MetricsTab';
 import { SuggestionsTab } from './components/tabs/SuggestionsTab';
@@ -33,6 +34,7 @@ import { usePublishingSettings } from './hooks/domain/usePublishingSettings';
 import { useWordSearchSettings } from './hooks/domain/useWordSearchSettings';
 import { useWordFrequencySettings } from './hooks/domain/useWordFrequencySettings';
 import { useTokensSettings } from './hooks/domain/useTokensSettings';
+import { useThemeSettings } from './hooks/domain/useThemeSettings';
 import { useTokenTracking } from './hooks/domain/useTokenTracking';
 import { useAccountBalance } from './hooks/domain/useAccountBalance';
 import { useContextPathsSettings } from './hooks/domain/useContextPathsSettings';
@@ -59,6 +61,7 @@ export const App: React.FC = () => {
   const tokenTracking = useTokenTracking();
   const contextPathsSettings = useContextPathsSettings();
   const modelsSettings = useModelsSettings();
+  const themeSettings = useThemeSettings();
   const accountBalance = useAccountBalance({ apiKeyConfigured: settings.hasSavedKey });
 
   // UI-only state
@@ -177,6 +180,7 @@ export const App: React.FC = () => {
       tokensSettings.handleSettingsData(msg);
       contextPathsSettings.handleSettingsData(msg);
       modelsSettings.handleSettingsData(msg);
+      themeSettings.handleSettingsData(msg);
     },
     [MessageType.API_KEY_STATUS]: settings.handleApiKeyStatus,
     [MessageType.MODEL_DATA]: (msg) => {
@@ -229,6 +233,7 @@ export const App: React.FC = () => {
   // Persistence - combine all domain state
   usePersistence({
     activeTab,
+    ...themeSettings.persistedState,
     ...selection.persistedState,
     ...analysis.persistedState,
     ...metrics.persistedState,
@@ -311,7 +316,10 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="app-container">
+    <div
+      className="app-container"
+      data-pm-theme={themeSettings.settings.sidebarTheme === 'follow-vscode' ? 'follow' : 'warm-dark'}
+    >
       <header className="app-header pm-header">
         <div className="pm-brand">
           <div className="pm-logo">
@@ -334,6 +342,13 @@ export const App: React.FC = () => {
         />
       </header>
       {balancesExpanded && <AccountBalanceStrip balance={accountBalance} />}
+
+      <ThemeToggle
+        following={themeSettings.settings.sidebarTheme === 'follow-vscode'}
+        onChange={(following) =>
+          themeSettings.updateSetting('sidebarTheme', following ? 'follow-vscode' : 'warm-dark')
+        }
+      />
 
       <TabBar
         tabs={tabs}

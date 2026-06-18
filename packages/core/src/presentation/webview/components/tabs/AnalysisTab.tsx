@@ -313,7 +313,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
             Excerpt For Assistance &amp; Analysis
           </label>
           <button
-            className="icon-button analysis-paste-button"
+            className="icon-button"
             onClick={handlePasteExcerpt}
             title="Paste excerpt from selection"
             aria-label="Paste excerpt"
@@ -350,36 +350,36 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
           <label className="text-sm font-medium">
             Context Brief (optional)
           </label>
-          <button
-            className="icon-button analysis-paste-button"
-            onClick={handlePasteContext}
-            title="Paste context from selection"
-            aria-label="Paste context"
-          >
-            <Icon name="clipboard" size={16} />
-          </button>
+          <div className="input-header-actions">
+            <button
+              className="context-assist-button"
+              onClick={handleGenerateContext}
+              disabled={context.loading || context.isStreaming || !text.trim()}
+              title="Let the context assistant build a briefing"
+              aria-label="Generate context with assistant"
+            >
+              {context.loading || context.isStreaming ? (
+                <div className="spinner spinner-small"></div>
+              ) : (
+                <Icon name="bot" size={16} />
+              )}
+            </button>
+            <button
+              className="icon-button"
+              onClick={handlePasteContext}
+              title="Paste context from selection"
+              aria-label="Paste context"
+            >
+              <Icon name="clipboard" size={16} />
+            </button>
+          </div>
         </div>
-        <div className="context-assist-row">
-          <textarea
-            className={`w-full h-28 resize-none${contextFlash ? ' context-flash' : ''}`}
-            value={context.contextText}
-            onChange={(e) => context.setContextText(e.target.value)}
-            placeholder="Summaries, goals, tone targets, or notes that help the AI stay grounded..."
-          />
-          <button
-            className="context-assist-button"
-            onClick={handleGenerateContext}
-            disabled={context.loading || context.isStreaming || !text.trim()}
-            title="Let the context assistant build a briefing"
-            aria-label="Generate context with assistant"
-          >
-            {context.loading || context.isStreaming ? (
-              <div className="spinner spinner-small"></div>
-            ) : (
-              <Icon name="bot" size={16} />
-            )}
-          </button>
-        </div>
+        <textarea
+          className={`w-full h-28 resize-none${contextFlash ? ' context-flash' : ''}`}
+          value={context.contextText}
+          onChange={(e) => context.setContextText(e.target.value)}
+          placeholder="Summaries, goals, tone targets, or notes that help the AI stay grounded..."
+        />
         {showContextPreview && context.contextText.trim() && (
           <div className="context-preview">
             <MarkdownRenderer content={context.contextText} />

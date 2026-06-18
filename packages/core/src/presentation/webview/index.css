@@ -13,14 +13,27 @@
 
 /* ============================================================
    Prose Minion design tokens — OWNED warm-dark palette.
+
    The surface ramp is derived from ONE anchor + a warm tint via
    color-mix, so the layers always separate — instead of renting them
    from --vscode-* (which collapsed into a single washed brown under
    warm themes). PINNED warm-dark is the default (matches the comp);
-   the "Follow VS Code theme" Settings toggle (wiring pending) re-points
-   --pm-anchor -> var(--vscode-editor-background) and text back to the
-   theme via the [data-pm-theme="follow"] override below — same ramp,
-   different anchor. Coral stays PM's fixed brand mark.
+   the header "theme" toggle (proseMinion.ui.sidebarTheme = follow-vscode)
+   adds [data-pm-theme="follow"] on .app-container, which re-points the
+   anchor to var(--vscode-editor-background) + text to the theme — same
+   ramp, different anchor. Coral stays PM's fixed brand mark.
+
+   HOW TO TWEAK THE COLORS — three dials, all just below:
+     • --pm-anchor : overall darkness (the near-black backdrop). Lighten
+                     or darken the whole sidebar from this one value.
+     • --pm-warm   : the warm hue mixed into surfaces + hairlines. Push it
+                     toward orange vs. a more neutral grey-brown.
+     • the mix %s  : per-surface separation. --pm-surface 90% / --pm-surface-2
+                     82% / --pm-inset 93% control how far cards / hover / input
+                     wells step off the anchor. LOWER % = MORE contrast.
+   The coral accent (--pm-accent & friends) is the brand mark — change it only
+   when rebranding, not theming. The follow-VS-Code overrides live in the
+   [data-pm-theme="follow"] block just after the .app-container layout rule.
    ============================================================ */
 .app-container {
   /* Anchor — the app backdrop. Everything below derives from this. */
@@ -138,6 +151,69 @@ body {
   --pm-primary:       var(--vscode-button-background, var(--pm-accent));
   --pm-primary-text:  var(--vscode-button-foreground, #fff);
   --pm-primary-hover: var(--vscode-button-hoverBackground, var(--pm-primary));
+}
+
+/* Header sidebar-theme toggle (pin warm-dark vs. follow VS Code) — sits just
+   below the balance pill. The thumb slider goes coral when following. */
+.pm-theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 6px 16px 0;
+  margin-bottom: 2px;
+}
+
+.pm-theme-toggle-label {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pm-dim);
+  user-select: none;
+}
+
+.pm-theme-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 34px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--pm-border-2);
+  border-radius: 999px;
+  background: var(--pm-inset);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.pm-theme-switch:hover {
+  border-color: var(--pm-accent-ring);
+}
+
+.pm-theme-switch:focus-visible {
+  outline: 2px solid var(--pm-accent-ring);
+  outline-offset: 2px;
+}
+
+.pm-theme-switch[aria-checked="true"] {
+  background: var(--pm-accent-soft);
+  border-color: var(--pm-accent-ring);
+}
+
+.pm-theme-thumb {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--pm-muted);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.pm-theme-switch[aria-checked="true"] .pm-theme-thumb {
+  transform: translateX(16px);
+  background: var(--pm-accent);
 }
 
 /* ---------- Header band (VS Code's native view title bar sits above) ---------- */
@@ -584,27 +660,28 @@ select:focus {
   align-items: center;
 }
 
-.context-assist-row {
+/* Inline action cluster on an input header (bot + paste, right-aligned). */
+.input-header-actions {
   display: flex;
-  gap: var(--spacing-sm);
-  align-items: stretch;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
 }
 
-.context-assist-row textarea {
-  flex: 1;
-}
-
+/* The context "generate" bot button: small (matches .icon-button dims) but
+   keeps the filled coral grad so it stays the prominent action next to the
+   soft-coral paste square. */
 .context-assist-button {
-  width: 48px;
-  min-width: 48px;
+  width: 34px;
+  height: 32px;
+  min-width: 34px;
   border: 1px solid color-mix(in oklab, var(--pm-primary) 80%, black);
   background: var(--pm-primary-grad);
   color: var(--pm-primary-text);
-  border-radius: var(--pm-r-input);
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
   cursor: pointer;
   transition: filter 0.15s ease, transform 0.1s ease;
 }
@@ -915,15 +992,6 @@ select:focus {
   color: var(--pm-text);
   filter: none;
 }
-
-/* Larger paste button to match context-assist-button dimensions */
-.analysis-paste-button {
-  width: 48px;
-  height: 48px;
-  min-width: 48px;
-  font-size: 1.5rem;
-}
-
 
 /* Loading indicator */
 .loading-indicator {
