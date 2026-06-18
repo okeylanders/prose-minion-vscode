@@ -6,17 +6,42 @@ This document provides guidance for AI agents (like Claude) working with the Pro
 
 Prose Minion is a VSCode extension that provides AI-powered prose analysis and writing assistance for creative writers. It uses OpenRouter API to access various LLMs for analyzing dialogue, prose, and providing writing metrics.
 
-## Architecture
+## Monorepo Layout (Ports & Adapters)
 
-The project follows **Clean Architecture** principles with clear separation of concerns:
+**As of [ADR 2026-06-16](docs/adr/2026-06-16-monorepo-ports-and-adapters.md), the project is an npm-workspaces monorepo split into a host-agnostic core and a thin VS Code adapter:**
 
 ```
-src/
+prose-minion-vscode/
+├── packages/core/          # Host-AGNOSTIC engine. ZERO `vscode` imports.
+│   ├── src/                # All domain/application/infrastructure/presentation logic
+│   ├── resources/          # system-prompts/ + craft-guides/
+│   └── tsconfig.json + tsconfig.webview.json
+└── apps/vscode-extension/  # The VS Code ADAPTER + composition root
+    └── src/
+        ├── extension.ts                      # Composition root: builds services + Platform, injects inward
+        ├── application/providers/             # ProseToolsViewProvider (webview shell)
+        └── platform/vscode/                   # VS Code implementations of the Platform ports
+```
+
+**The two rules that define this architecture:**
+- **`packages/core` never imports `vscode`.** It depends only on the `Platform` ports (`packages/core/src/platform/`: `LogSink`, `SecretStore`, `SettingsStore`, `FileSystem`, `Workspace`, `ShellService`, `EditorContext`). A non-VS-Code host (e.g. a console app) can reuse core by implementing these ports. **Verify before adding host-coupled code: no `from 'vscode'` in `packages/core/src`.**
+- **`apps/vscode-extension` is the only composition root.** `extension.ts` constructs concrete services + the VS Code Platform implementations and threads them inward. The app imports core *only* through the `@prose-minion/core` barrel (enforced via `eslint no-restricted-imports`); core never imports the app.
+
+> ⚠️ **Known drift being consolidated:** `MessageHandler` currently acts as a *second* composition root (it `new`s some services internally) and carries some `any`-typed seams. New feature slices must **not** copy this — build services at `extension.ts` and inject them. See [ADR 2026-06-18: MessageHandler Composition-Root Consolidation](docs/adr/2026-06-18-messagehandler-composition-root-consolidation.md).
+
+## Architecture (`packages/core/src`)
+
+The core follows **Clean Architecture** principles with clear separation of concerns:
+
+```
+packages/core/src/
+├── platform/           # Ports the host must implement (LogSink, SecretStore, FileSystem, …)
 ├── application/        # Application layer (orchestration)
-│   ├── providers/      # VSCode webview providers
+│   ├── services/       # Cross-domain application services (e.g. StandardsComparisonService)
 │   └── handlers/       # Message routing and domain handlers
 │       ├── MessageHandler.ts    # Main dispatcher (routes messages)
-│       └── domain/              # Domain-specific handlers
+│       ├── MessageRouter.ts     # Strategy registry (MessageType → handler)
+│       └── domain/              # Domain-specific handlers (11)
 │           ├── AnalysisHandler.ts
 │           ├── DictionaryHandler.ts
 │           ├── ContextHandler.ts
@@ -26,14 +51,18 @@ src/
 │           ├── PublishingHandler.ts
 │           ├── SourcesHandler.ts
 │           ├── UIHandler.ts
-│           └── FileOperationsHandler.ts
+│           ├── FileOperationsHandler.ts
+│           └── AccountBalanceHandler.ts   # OpenRouter account-balance slice
 ├── domain/            # Domain layer (business logic)
-│   ├── models/        # Domain models and entities
-│   └── services/      # Service interfaces
+│   └── models/        # Domain models and entities
 ├── infrastructure/    # Infrastructure layer (external integrations)
-│   └── api/          # OpenRouter API client and implementations
+│   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/
+│   ├── account/       # OpenRouter account-balance client + service
+│   ├── context/ guides/ secrets/ standards/ storage/ text/
 ├── presentation/      # Presentation layer (UI)
-│   └── webview/      # React components for the webview
+│   └── webview/      # React components + domain hooks for the webview
+├── tools/            # Assist + Measure tools (assist/ measure/ shared/ utility/)
+├── utils/            # Shared helpers
 └── shared/           # Shared types and utilities
     └── types/        # Shared type definitions
         └── messages/   # Message contracts (domain-organized)
@@ -46,6 +75,7 @@ src/
             ├── search.ts         # Word search
             ├── configuration.ts  # Settings, models, tokens
             ├── publishing.ts     # Publishing standards
+            ├── accountBalance.ts # OpenRouter account balance
             ├── sources.ts        # File/glob operations
             ├── ui.ts            # Tab changes, selections, guides
             └── results.ts       # Result messages
@@ -58,12 +88,15 @@ The presentation layer now mirrors backend domain organization via custom React 
 Structure:
 
 ```
-src/presentation/webview/
+packages/core/src/presentation/webview/
 ├── hooks/
 │   ├── useVSCodeApi.ts         # acquireVsCodeApi() wrapper (singleton via ref)
 │   ├── usePersistence.ts       # Compose domain persisted state into vscode.setState
 │   ├── useMessageRouter.ts     # Strategy: MessageType → handler; stable listener
+│   ├── useAppMessageRouter.ts  # Pure buildAppMessageRoutes() map (extracted from App.tsx)
 │   └── domain/
+│       ├── useAccountBalance.ts        # OpenRouter account balance (ephemeral; empty persistedState)
+│       ├── useThemeSettings.ts         # Sidebar palette (follow-vscode default)
 │       ├── useAnalysis.ts              # Analysis results, guides, status ticker
 │       ├── useContext.ts               # Context text, requested resources, loading/status
 │       ├── useContextPathsSettings.ts  # Context paths configuration
@@ -159,6 +192,7 @@ useMessageRouter({
 | useSettings | ConfigurationHandler | Settings, models, API keys |
 | usePublishing | PublishingHandler | Publishing standards |
 | useSelection | UIHandler | Selection/paste operations |
+| useAccountBalance | AccountBalanceHandler | OpenRouter account balance |
 
 **Benefits**:
 - ✅ Same domain boundaries on both sides
@@ -167,7 +201,7 @@ useMessageRouter({
 - ✅ Reduced context switching when working across layers
 
 #### 4. Tripartite Hook Interface Pattern
-**Location**: All domain hooks in `src/presentation/webview/hooks/domain/`
+**Location**: All domain hooks in `packages/core/src/presentation/webview/hooks/domain/`
 **Purpose**: Clear separation of concerns within each hook
 
 ```typescript
@@ -227,7 +261,7 @@ usePersistence({
 - ✅ Centralized - one place to manage all persistence
 
 #### 6. Infrastructure Hooks Pattern
-**Location**: `src/presentation/webview/hooks/`
+**Location**: `packages/core/src/presentation/webview/hooks/`
 **Purpose**: Abstract framework concerns from domain logic
 
 **Infrastructure Hooks**:
@@ -245,17 +279,17 @@ usePersistence({
 
 ### Key Components
 
-1. **Extension Entry Point** ([extension.ts](src/extension.ts))
+1. **Extension Entry Point** ([extension.ts](apps/vscode-extension/src/extension.ts)) — *the composition root*
    - Initializes the extension
-   - Sets up dependency injection
-   - Registers commands and providers
+   - Constructs concrete services + the VS Code `Platform` implementations
+   - Injects them inward; registers commands and providers
 
-2. **Webview Provider** ([ProseToolsViewProvider.ts](src/application/providers/ProseToolsViewProvider.ts))
-   - Manages the webview lifecycle
+2. **Webview Provider** ([ProseToolsViewProvider.ts](apps/vscode-extension/src/application/providers/ProseToolsViewProvider.ts))
+   - Manages the webview lifecycle (a thin shell — passes injected services through to `MessageHandler`)
    - Handles communication between extension and React UI
    - Routes messages to appropriate tools
 
-3. **Analysis Tools** (src/tools/)
+3. **Analysis Tools** (packages/core/src/tools/)
    - **Assist Tools**: AI-powered analysis tools
      - `dialogueMicrobeatAssistant`: Analyzes dialogue and suggests tags/action beats
      - `proseAssistant`: General prose analysis and improvement suggestions
@@ -264,19 +298,19 @@ usePersistence({
      - `styleFlags`: Identifies style patterns and issues
      - `wordFrequency`: Word usage patterns, Top 100, stopwords, hapax (list), POS via wink, bigrams/trigrams, length histogram, optional lemmas
 
-4. **OpenRouter Integration** ([OpenRouterClient.ts](src/infrastructure/api/providers/OpenRouterClient.ts))
+4. **OpenRouter Integration** ([OpenRouterClient.ts](packages/core/src/infrastructure/api/providers/OpenRouterClient.ts))
    - HTTP client for OpenRouter API
-   - Handles API key management from VSCode settings
+   - Reads the API key host-side from SecretStorage (via the `SecretStore` port)
    - Supports multiple AI models (Claude, GPT-4, Gemini)
    - Instantiated per model scope (assistant, dictionary, context)
 
-5. **Prompt System** ([prompts.ts](src/tools/shared/prompts.ts))
-   - Loads system prompts from `resources/system-prompts/`
+5. **Prompt System** ([prompts.ts](packages/core/src/tools/shared/prompts.ts))
+   - Loads system prompts from `packages/core/resources/system-prompts/`
    - Each tool has its own prompt directory with numbered markdown files
    - Prompts define the AI's behavior and instructions
 
-6. **Craft Guides** ([guides.ts](src/tools/shared/guides.ts))
-   - Optional writing craft guides from `resources/craft-guides/`
+6. **Craft Guides** ([guides.ts](packages/core/src/tools/shared/guides.ts))
+   - Optional writing craft guides from `packages/core/resources/craft-guides/`
    - Provides examples and best practices to the AI
    - Can be toggled via settings
 
@@ -286,18 +320,20 @@ usePersistence({
 
 #### Adding a New Analysis Tool
 
-1. **Define message types**: Add to appropriate domain file in `src/shared/types/messages/` (or create a new one)
+1. **Define message types**: Add to appropriate domain file in `packages/core/src/shared/types/messages/` (or create a new one)
    - Add message interface extending `BaseMessage`
    - Add to `MessageType` enum in `base.ts`
    - Export from `index.ts` barrel export
 
 2. **Add domain handler** (if new domain):
-   - Create new handler in `src/application/handlers/domain/`
+   - Create new handler in `packages/core/src/application/handlers/domain/`
    - Inject dependencies via constructor (service, helper methods)
+   - Type `postMessage` as `(message: ExtensionToWebviewMessage)` — not `any` (see `AccountBalanceHandler`)
+   - Require `outputChannel: LogSink` (every sibling does; don't make it optional)
    - Implement handler methods for the domain
 
 3. **Create service** (if needed):
-   - Create new service in `src/infrastructure/api/services/` under appropriate subdirectory:
+   - Create new service in `packages/core/src/infrastructure/api/services/` under appropriate subdirectory:
      - `analysis/` - Analysis tools (AssistantToolService, ContextAssistantService)
      - `dictionary/` - Dictionary services (DictionaryService)
      - `measurement/` - Metrics services (ProseStatsService, StyleFlagsService, WordFrequencyService)
@@ -308,16 +344,16 @@ usePersistence({
    - Inject dependencies via constructor
    - If extending existing functionality, add method to existing service instead
 
-4. **Update MessageHandler**:
-   - Instantiate service(s) in `MessageHandler` constructor (if new services)
-   - Inject required services into domain handler constructor
-   - Handler registers its routes via `registerRoutes()` method
+4. **Wire it up at the composition root**:
+   - Construct any new service(s) in `apps/vscode-extension/src/extension.ts` (the composition root) and inject them inward — do **not** `new` them inside `MessageHandler` (see [ADR 2026-06-18](docs/adr/2026-06-18-messagehandler-composition-root-consolidation.md))
+   - In `MessageHandler`, instantiate the domain handler with its injected services and call its `registerRoutes()`
+   - Bind any handler-method callbacks (status emitters, listeners) post-construction, per the `setStatusEmitter` pattern
 
-5. **Create system prompts** in `resources/system-prompts/[tool-name]/`
+5. **Create system prompts** in `packages/core/resources/system-prompts/[tool-name]/`
 
-6. **Add UI components** in `src/presentation/webview/components/`
+6. **Add UI components** in `packages/core/src/presentation/webview/components/`
 
-7. **Create corresponding domain hook** in `src/presentation/webview/hooks/domain/`
+7. **Create corresponding domain hook** in `packages/core/src/presentation/webview/hooks/domain/`
    - Follow Tripartite Hook Interface pattern (State, Actions, Persistence)
    - Mirror backend domain handler organization
    - Export all interfaces explicitly
@@ -339,7 +375,7 @@ usePersistence({
 
 #### Modifying AI Behavior
 
-1. Edit system prompts in `resources/system-prompts/`
+1. Edit system prompts in `packages/core/resources/system-prompts/`
 2. Each tool loads prompts from numbered markdown files (00-, 01-, etc.)
 3. Shared prompts apply to all tools
 4. Craft guides provide additional context (optional)
@@ -358,10 +394,10 @@ usePersistence({
 
 #### Message Type Organization
 
-Message contracts live in `src/shared/types/messages/` organized by domain:
+Message contracts live in `packages/core/src/shared/types/messages/` organized by domain:
 
 ```plaintext
-src/shared/types/messages/
+packages/core/src/shared/types/messages/
 ├── index.ts              # Barrel export (import from here)
 ├── base.ts              # MessageType enum, MessageEnvelope, common base types
 ├── error.ts             # Error suite (ErrorSource, ErrorPayload, ErrorMessage)
@@ -438,31 +474,35 @@ import { ApplicationService } from '@/application/services/ApplicationService';
 
 **Alias Reference Table:**
 
+All aliases now re-root into `packages/core/src`. The single source of truth for the path table is **`tsconfig.base.json`** ([ADR 2026-06-16](docs/adr/2026-06-16-monorepo-ports-and-adapters.md)); per-TS-5.x rules, `paths` resolve relative to that file regardless of which leaf config extends it.
+
 | Alias | Resolves To | Used In |
 |-------|-------------|---------|
-| `@messages` | `src/shared/types/messages/index.ts` | Both (barrel import) |
-| `@messages/*` | `src/shared/types/messages/*` | Both (specific files) |
-| `@shared/*` | `src/shared/*` | Both |
-| `@handlers/*` | `src/application/handlers/*` | Extension |
-| `@services/*` | `src/infrastructure/api/services/*` | Extension |
-| `@providers/*` | `src/infrastructure/api/providers/*` | Both |
-| `@orchestration/*` | `src/infrastructure/api/orchestration/*` | Extension |
-| `@parsers/*` | `src/infrastructure/api/parsers/*` | Extension |
-| `@standards` | `src/infrastructure/standards` | Extension |
-| `@secrets` | `src/infrastructure/secrets` | Extension |
-| `@components/*` | `src/presentation/webview/components/*` | Webview |
-| `@hooks/*` | `src/presentation/webview/hooks/*` | Webview |
-| `@utils/*` | `src/presentation/webview/utils/*` | Webview |
-| `@formatters` | `src/presentation/webview/utils/formatters` | Webview |
-| `@formatters/*` | `src/presentation/webview/utils/formatters/*` | Webview |
-| `@/*` | `src/*` | Both (universal fallback) |
+| `@prose-minion/core` | `packages/core/src/index.ts` | The app's ONLY entry into core (barrel) |
+| `@messages` | `packages/core/src/shared/types/messages/index.ts` | Both (barrel import) |
+| `@messages/*` | `packages/core/src/shared/types/messages/*` | Both (specific files) |
+| `@shared/*` | `packages/core/src/shared/*` | Both |
+| `@handlers/*` | `packages/core/src/application/handlers/*` | Core (backend) |
+| `@services/*` | `packages/core/src/infrastructure/api/services/*` | Core (backend) |
+| `@providers/*` | `packages/core/src/infrastructure/api/providers/*` | Both |
+| `@orchestration/*` | `packages/core/src/infrastructure/api/orchestration/*` | Core (backend) |
+| `@parsers/*` | `packages/core/src/infrastructure/api/parsers/*` | Core (backend) |
+| `@standards` | `packages/core/src/infrastructure/standards` | Core (backend) |
+| `@secrets` | `packages/core/src/infrastructure/secrets` | Core (backend) |
+| `@components/*` | `packages/core/src/presentation/webview/components/*` | Webview |
+| `@hooks/*` | `packages/core/src/presentation/webview/hooks/*` | Webview |
+| `@utils/*` | `packages/core/src/presentation/webview/utils/*` | Webview |
+| `@formatters` | `packages/core/src/presentation/webview/utils/formatters` | Webview |
+| `@formatters/*` | `packages/core/src/presentation/webview/utils/formatters/*` | Webview |
+| `@/*` | `packages/core/src/*` | Both (universal fallback) |
 
 **Configuration Files:**
 
-- `tsconfig.json` - Extension + test type resolution (includes webview aliases for tests)
-- `tsconfig.webview.json` - Webview type resolution (includes infrastructure for OpenRouterModels)
-- `webpack.config.js` - Both extension and webview module resolution
-- `jest.config.js` - Test module resolution (order-specific: most specific first)
+- `tsconfig.base.json` - **Single source of truth** for the alias `paths` table (shared by all packages)
+- `packages/core/tsconfig.json` - Core (backend) type resolution
+- `packages/core/tsconfig.webview.json` - Webview type resolution (DOM/JSX libs)
+- `apps/vscode-extension/tsconfig.json` - Adapter type resolution
+- `tsconfig.test.json` / `jest.config.js` - Test resolution (single-root jest across the workspace)
 
 **Best Practices:**
 
@@ -492,12 +532,13 @@ import { ApplicationService } from '@/application/services/ApplicationService';
 
 ### Important Files to Know
 
-- [package.json](package.json) - Extension manifest and configuration
-- [extension.ts](src/extension.ts) - Extension activation and setup
-- [MessageHandler.ts](src/application/handlers/MessageHandler.ts) - Main message dispatcher (routes to domain handlers)
-- [src/application/handlers/domain/](src/application/handlers/domain/) - Domain-specific handlers (10 handlers organized by feature)
-- [src/shared/types/messages/](src/shared/types/messages/) - Message contracts organized by domain (import from `index.ts` barrel export)
-- [OpenRouterModels.ts](src/infrastructure/api/OpenRouterModels.ts) - Available AI models
+- [apps/vscode-extension/package.json](apps/vscode-extension/package.json) - Extension manifest and configuration (`contributes.*`)
+- [extension.ts](apps/vscode-extension/src/extension.ts) - Composition root: activation, service construction, DI
+- [MessageHandler.ts](packages/core/src/application/handlers/MessageHandler.ts) - Main message dispatcher (routes to domain handlers)
+- [packages/core/src/application/handlers/domain/](packages/core/src/application/handlers/domain/) - Domain-specific handlers (11, organized by feature)
+- [packages/core/src/platform/](packages/core/src/platform/) - The host ports a non-VS-Code app must implement
+- [packages/core/src/shared/types/messages/](packages/core/src/shared/types/messages/) - Message contracts by domain (import from `@messages` barrel)
+- [OpenRouterModels.ts](packages/core/src/infrastructure/api/providers/OpenRouterModels.ts) - Available AI models
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) - Detailed architecture documentation
 
 ### Resource Files
@@ -545,18 +586,22 @@ When you discover issues out of scope for current work:
 
 The project uses **Jest** with **ts-jest** for automated testing. Tests follow an **Infrastructure-First Lightweight Testing** approach focusing on protecting core architectural patterns and business logic.
 
-**Test Organization**:
+**Test Organization** (single-root jest; `testMatch` is `**/__tests__/**/*.test.ts(x)`):
 ```
-src/__tests__/         # All tests in separate directory (mirrors src/ structure)
+packages/core/src/__tests__/   # All tests in a separate dir mirroring the source tree
 ├── setup.ts           # VSCode API mocks and global test setup
+├── architecture/      # Boundary/contract guards (e.g. boundaries.test.ts)
 ├── application/
-│   └── handlers/      # MessageRouter + domain handler tests
+│   ├── handlers/      # MessageRouter + domain handler tests
+│   └── services/      # Application service tests
 ├── presentation/
-│   └── webview/hooks/domain/  # Domain hook contract tests
+│   └── webview/{hooks,components}/  # Hook contract + pure-function tests (e.g. balanceFormat)
 ├── infrastructure/
+│   ├── account/       # Account-balance service + client tests
 │   ├── api/services/  # Business logic tests (word search, etc.)
-│   └── standards/     # Publishing standards tests
-└── tools/measure/     # Measurement tool tests (prose stats, etc.)
+│   ├── standards/     # Publishing standards tests
+│   ├── storage/ text/ # pathContainment, TextSourceResolver
+└── tools/measure/     # Measurement tool tests (prose stats, word frequency, etc.)
 ```
 
 **Running Tests**:
@@ -574,16 +619,14 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Coverage** (as of 2025-11-15):
-- 124 tests across 3 tiers
-- 43.1% statement coverage (target: 40%) ✅
-- 46.52% function coverage (target: 40%) ✅
-- 41.58% line coverage (target: 40%) ✅
+**Test Coverage** (as of 2026-06-18):
+- 47 suites / 359 tests (40% coverage targets held — see ADR-2025-11-15)
 - Coverage report saved to `coverage/` (gitignored)
+- Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
 **What's Tested**:
 - ✅ **Tier 1 - Infrastructure Patterns**: MessageRouter (Strategy pattern), domain hooks (Tripartite Interface), message routing
-- ✅ **Tier 2 - Domain Handlers**: Route registration for all 10 domain handlers
+- ✅ **Tier 2 - Domain Handlers**: Route registration for all 11 domain handlers
 - ✅ **Tier 3 - Business Logic**: Word clustering algorithm, publishing standards lookup, prose statistics calculations
 
 **What's NOT Tested** (intentionally deferred):
