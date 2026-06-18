@@ -12,32 +12,53 @@
 }
 
 /* ============================================================
-   Prose Minion design tokens (Pass 2, Wave 3 — FM design language).
-   Semantic --pm-* aliases derived from --vscode-* so the sidebar
-   tracks the user's theme (mirrors FrameMinion's sidebar-design-tokens).
-   Scoped to .app-container so they don't leak. The coral ACCENT is
-   PM's fixed brand mark (the skull-book) — the one element that stays
-   constant across themes, per the design comp's accent line + active-tab
-   ring + primary CTAs. Desktop app will map a Kimbie-style palette here.
+   Prose Minion design tokens — OWNED warm-dark palette.
+
+   The surface ramp is derived from ONE anchor + a warm tint via
+   color-mix, so the layers always separate — instead of renting them
+   from --vscode-* (which collapsed into a single washed brown under
+   warm themes). FOLLOW-VS-CODE is the DEFAULT (the header toggle's "Editor
+   theme", proseMinion.ui.sidebarTheme = follow-vscode): it adds
+   [data-pm-theme="follow"] on .app-container, re-pointing the anchor to
+   var(--vscode-editor-background) + text to the theme. Toggle OFF to pin the
+   warm-dark brand palette (matches the comp). Same ramp, different anchor;
+   coral stays PM's fixed brand mark.
+
+   HOW TO TWEAK THE COLORS — three dials, all just below:
+     • --pm-anchor : overall darkness (the near-black backdrop). Lighten
+                     or darken the whole sidebar from this one value.
+     • --pm-warm   : the warm hue mixed into surfaces + hairlines. Push it
+                     toward orange vs. a more neutral grey-brown.
+     • the mix %s  : per-surface separation. --pm-surface 90% / --pm-surface-2
+                     82% / --pm-inset 93% control how far cards / hover / input
+                     wells step off the anchor. LOWER % = MORE contrast.
+   The coral accent (--pm-accent & friends) is the brand mark — change it only
+   when rebranding, not theming. The follow-VS-Code overrides live in the
+   [data-pm-theme="follow"] block just after the .app-container layout rule.
    ============================================================ */
 .app-container {
-  /* Surfaces */
-  --pm-bg:          var(--vscode-sideBar-background, var(--vscode-editor-background));
-  --pm-surface:     var(--vscode-editorWidget-background, var(--pm-bg));
-  --pm-surface-2:   var(--vscode-list-hoverBackground, var(--pm-surface));
-  --pm-inset:       var(--vscode-input-background, var(--pm-bg));
+  /* Anchor — the app backdrop. Everything below derives from this. */
+  --pm-anchor: #1d1610;          /* near-black warm (the comp's backdrop) */
+  --pm-warm:   #cf9a57;          /* warm hue for surface lifts + hairlines */
 
-  /* Borders */
-  --pm-border:      var(--vscode-widget-border, var(--vscode-panel-border, rgba(128,128,128,0.25)));
-  --pm-border-soft: var(--vscode-editorWidget-border, var(--pm-border));
-  --pm-border-2:    var(--vscode-input-border, var(--pm-border));
+  /* Surfaces — a controlled ladder off the anchor (never trust theme separation) */
+  --pm-bg:          var(--pm-anchor);
+  --pm-surface:     color-mix(in oklab, var(--pm-anchor) 90%, var(--pm-warm));
+  --pm-surface-2:   color-mix(in oklab, var(--pm-anchor) 82%, var(--pm-warm));
+  --pm-inset:       color-mix(in oklab, var(--pm-anchor) 93%, #000);
 
-  /* Text */
-  --pm-text:   var(--vscode-foreground);
-  --pm-text-2: var(--vscode-foreground);
-  --pm-muted:  var(--vscode-descriptionForeground);
-  --pm-dim:    var(--vscode-disabledForeground, var(--vscode-descriptionForeground));
-  --pm-faint:  var(--vscode-disabledForeground, var(--vscode-descriptionForeground));
+  /* Borders — warm hairlines (alpha so they read on any anchor; srgb mix to
+     keep the hue stable when fading to transparent) */
+  --pm-border:      color-mix(in srgb, var(--pm-warm) 20%, transparent);
+  --pm-border-soft: color-mix(in srgb, var(--pm-warm) 12%, transparent);
+  --pm-border-2:    color-mix(in srgb, var(--pm-warm) 30%, transparent);
+
+  /* Text — warm off-white ladder */
+  --pm-text:   #efe6d6;
+  --pm-text-2: #e0d5c3;
+  --pm-muted:  #ab9c86;
+  --pm-dim:    #837359;
+  --pm-faint:  #6f6250;
 
   /* Coral brand accent (fixed across themes) */
   --pm-accent:      #e0673a;
@@ -47,23 +68,26 @@
   --pm-accent-ring: rgba(224, 103, 58, 0.30);
   --pm-accent-line: linear-gradient(90deg, #e8763f 0%, #d2592f 48%, rgba(210, 89, 47, 0) 100%);
 
-  /* Status (theme-native charts, with terminal-ansi fallbacks) */
-  --pm-green: var(--vscode-charts-green, var(--vscode-terminal-ansiGreen, #6fc98a));
-  --pm-blue:  var(--vscode-charts-blue, var(--vscode-terminal-ansiBlue, #5aa2f0));
-  --pm-amber: var(--vscode-charts-yellow, var(--vscode-terminal-ansiYellow, #e2b24a));
-  --pm-red:   var(--vscode-charts-red, var(--vscode-errorForeground, #e06c5a));
+  /* Status (pinned to the warm-dark palette) */
+  --pm-green: #8fce8a;
+  --pm-blue:  #5aa4f5;
+  --pm-amber: #d7a948;
+  --pm-red:   #ef7d66;
 
-  /* Buttons — primary CTAs FLOAT with the theme (a gradient derived from the
-     theme's button color), so coral stays a brand accent (header line, active
-     tab, logo) rather than being forced onto every button. */
-  --pm-btn:       var(--vscode-button-secondaryBackground, var(--pm-surface-2));
-  --pm-btn-text:  var(--vscode-button-secondaryForeground, var(--pm-text));
-  --pm-btn-hover: var(--vscode-button-secondaryHoverBackground, var(--pm-surface-2));
+  /* Links (pinned; a friendly blue still reads on warm-dark) */
+  --pm-link:       #79b8f2;
+  --pm-link-hover: #9ccbff;
 
-  --pm-primary:       var(--vscode-button-background, var(--pm-accent));
-  --pm-primary-text:  var(--vscode-button-foreground, #fff);
-  --pm-primary-hover: var(--vscode-button-hoverBackground, var(--pm-primary));
-  /* Subtle light→dark sheen over the theme's button color. */
+  /* Buttons — secondary is a subtle warm surface; the primary CTA is CORAL
+     (the brand), matching the comp's "Run Search" / "Generate" button. */
+  --pm-btn:       var(--pm-surface-2);
+  --pm-btn-text:  var(--pm-text);
+  --pm-btn-hover: var(--pm-surface-2);
+
+  --pm-primary:       var(--pm-accent);
+  --pm-primary-text:  #fff;
+  --pm-primary-hover: var(--pm-accent-hi);
+  /* Subtle light→dark sheen over the coral primary. */
   --pm-primary-grad: linear-gradient(
     180deg,
     color-mix(in oklab, var(--pm-primary) 90%, white),
@@ -109,6 +133,88 @@ body {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  background: var(--pm-bg);
+  color: var(--pm-text);
+}
+
+/* "Follow VS Code theme" mode (Settings toggle — wiring pending). Same ramp,
+   re-anchored on the editor background + theme text; surfaces/borders derive
+   from --pm-anchor automatically, so only the anchor + text + buttons swap. */
+.app-container[data-pm-theme="follow"] {
+  --pm-anchor: var(--vscode-editor-background, #1d1610);
+  --pm-text:   var(--vscode-foreground, #efe6d6);
+  --pm-text-2: var(--vscode-foreground, #e0d5c3);
+  --pm-muted:  var(--vscode-descriptionForeground, #ab9c86);
+  --pm-dim:    var(--vscode-disabledForeground, var(--vscode-descriptionForeground, #837359));
+  --pm-faint:  var(--vscode-disabledForeground, var(--vscode-descriptionForeground, #6f6250));
+  --pm-btn:           var(--vscode-button-secondaryBackground, var(--pm-surface-2));
+  --pm-btn-text:      var(--vscode-button-secondaryForeground, var(--pm-text));
+  --pm-primary:       var(--vscode-button-background, var(--pm-accent));
+  --pm-primary-text:  var(--vscode-button-foreground, #fff);
+  --pm-primary-hover: var(--vscode-button-hoverBackground, var(--pm-primary));
+}
+
+/* Header sidebar-theme toggle (pin warm-dark vs. follow VS Code) — sits just
+   below the balance pill. The thumb slider goes coral when following. */
+.pm-theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 6px 16px 0;
+  margin-bottom: 2px;
+}
+
+.pm-theme-toggle-label {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pm-dim);
+  user-select: none;
+}
+
+.pm-theme-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 34px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--pm-border-2);
+  border-radius: 999px;
+  background: var(--pm-inset);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.pm-theme-switch:hover {
+  border-color: var(--pm-accent-ring);
+}
+
+.pm-theme-switch:focus-visible {
+  outline: 2px solid var(--pm-accent-ring);
+  outline-offset: 2px;
+}
+
+.pm-theme-switch[aria-checked="true"] {
+  background: var(--pm-accent-soft);
+  border-color: var(--pm-accent-ring);
+}
+
+.pm-theme-thumb {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--pm-muted);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.pm-theme-switch[aria-checked="true"] .pm-theme-thumb {
+  transform: translateX(16px);
+  background: var(--pm-accent);
 }
 
 /* ---------- Header band (VS Code's native view title bar sits above) ---------- */
@@ -548,39 +654,41 @@ select:focus {
 .excerpt-meta {
   margin-bottom: var(--spacing-xs);
   font-size: 0.75rem;
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
 }
 
 .context-assist-header {
   align-items: center;
 }
 
-.context-assist-row {
+/* Inline action cluster on an input header (bot + paste, right-aligned). */
+.input-header-actions {
   display: flex;
-  gap: var(--spacing-sm);
-  align-items: stretch;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
 }
 
-.context-assist-row textarea {
-  flex: 1;
-}
-
+/* The context "generate" bot button: small (matches .icon-button dims) but
+   keeps the filled coral grad so it stays the prominent action next to the
+   soft-coral paste square. */
 .context-assist-button {
-  width: 48px;
-  min-width: 48px;
-  border: 1px solid var(--vscode-button-border);
-  background-color: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
+  width: 34px;
+  height: 32px;
+  min-width: 34px;
+  border: 1px solid color-mix(in oklab, var(--pm-primary) 80%, black);
+  background: var(--pm-primary-grad);
+  color: var(--pm-primary-text);
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: filter 0.15s ease, transform 0.1s ease;
 }
 
 .context-assist-button:hover:not(:disabled) {
-  background-color: var(--vscode-button-hoverBackground);
+  filter: brightness(1.07);
   transform: translateY(-1px);
 }
 
@@ -593,7 +701,7 @@ select:focus {
 .context-status {
   margin-top: var(--spacing-xs);
   font-size: 0.75rem;
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
 }
 
 .context-resource-summary {
@@ -603,7 +711,7 @@ select:focus {
 .context-resource-title {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
   margin-bottom: var(--spacing-xs);
 }
 
@@ -631,8 +739,8 @@ select:focus {
 }
 
 .context-resource-chip.clickable:hover {
-  background-color: var(--vscode-list-hoverBackground);
-  border-color: var(--vscode-focusBorder);
+  background-color: var(--pm-surface-2);
+  border-color: var(--pm-accent-ring);
 }
 
 .context-resource-chip.clickable:active {
@@ -641,8 +749,8 @@ select:focus {
 
 .model-selector-container {
   padding: var(--spacing-sm) var(--spacing-md);
-  background-color: var(--vscode-sideBar-background);
-  border-bottom: 1px solid var(--vscode-panel-border);
+  background-color: var(--pm-surface);
+  border-bottom: 1px solid var(--pm-border);
 }
 
 .model-selector {
@@ -651,11 +759,12 @@ select:focus {
 
 .model-selector-label {
   display: block;
-  font-size: 0.75rem;
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   margin-bottom: var(--spacing-xs);
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-dim);
 }
 
 .model-selector-dropdown {
@@ -672,7 +781,7 @@ select:focus {
 .model-selector-helper {
   margin-top: var(--spacing-xs);
   font-size: 0.75rem;
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
 }
 
 /* Buttons */
@@ -704,17 +813,19 @@ select:focus {
   transform: translateY(-1px);
 }
 
+/* Secondary buttons float with the theme (coral stays a brand accent, not a
+   per-button fill) — matches .action-button.secondary. */
 .btn-secondary {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  color: #ffffff;
-  border-color: #d97706;
+  background: var(--pm-btn);
+  color: var(--pm-btn-text);
+  border-color: var(--pm-border-2);
+  font-weight: 500;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-  border-color: #b45309;
+  background: var(--pm-surface-2);
+  border-color: var(--pm-border-2);
   transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.3);
 }
 
 .btn-alert {
@@ -742,9 +853,9 @@ select:focus {
   justify-content: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-md);
-  background-color: var(--vscode-sideBar-background);
-  border: 2px solid var(--vscode-panel-border);
-  border-radius: 0;
+  background-color: var(--pm-surface);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
 }
 
 /* Analysis buttons section with visual hierarchy */
@@ -812,36 +923,6 @@ select:focus {
 .focused-buttons {
   display: flex;
   gap: 8px;
-}
-
-/* Writing Tools grid layout with stacked icon/label buttons */
-.writing-tools-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  width: 100%;
-}
-
-.writing-tool-button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 4px !important;
-  min-width: 0;
-  gap: 4px;
-}
-
-.writing-tool-icon {
-  font-size: 1.2rem;
-  line-height: 1;
-}
-
-.writing-tool-label {
-  font-size: 0.7rem;
-  line-height: 1.2;
-  text-align: center;
-  white-space: nowrap;
 }
 
 .action-button.secondary {
@@ -913,22 +994,13 @@ select:focus {
   filter: none;
 }
 
-/* Larger paste button to match context-assist-button dimensions */
-.analysis-paste-button {
-  width: 48px;
-  height: 48px;
-  min-width: 48px;
-  font-size: 1.5rem;
-}
-
-
 /* Loading indicator */
 .loading-indicator {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
   padding: var(--spacing-md);
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
 }
 
 .loading-header {
@@ -962,26 +1034,26 @@ select:focus {
 .loading-credit {
   text-align: center;
   font-size: 0.85em;
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
   opacity: 0.7;
   margin-top: var(--spacing-sm);
 }
 
 .loading-credit a {
-  color: var(--vscode-textLink-foreground);
+  color: var(--pm-link);
   text-decoration: none;
 }
 
 .loading-credit a:hover {
-  color: var(--vscode-textLink-activeForeground);
+  color: var(--pm-link-hover);
   text-decoration: underline;
 }
 
 .spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid var(--vscode-progressBar-background);
-  border-top-color: transparent;
+  border: 2px solid var(--pm-surface-2);
+  border-top-color: var(--pm-accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   flex-shrink: 0;
@@ -1002,7 +1074,7 @@ select:focus {
 .progress-bar-container {
   width: 100%;
   height: 8px;
-  background-color: var(--vscode-progressBar-background);
+  background-color: var(--pm-surface-2);
   border-radius: 4px;
   margin-top: var(--spacing-sm);
   position: relative;
@@ -1011,12 +1083,7 @@ select:focus {
 
 .progress-bar {
   height: 100%;
-  background-color: var(--vscode-progressBar-background);
-  background-image: linear-gradient(
-    90deg,
-    var(--vscode-charts-blue) 0%,
-    var(--vscode-charts-green) 100%
-  );
+  background-image: linear-gradient(90deg, var(--pm-accent-lo), var(--pm-accent-hi));
   border-radius: 4px;
   transition: width 0.3s ease-out;
 }
@@ -1024,7 +1091,7 @@ select:focus {
 .progress-text {
   display: block;
   font-size: 11px;
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
   margin-top: var(--spacing-xs);
   text-align: center;
 }
@@ -1040,7 +1107,7 @@ select:focus {
 .guide-ticker {
   display: inline-block;
   font-size: 0.75rem;
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
   font-style: italic;
   white-space: nowrap;
   animation: ticker 15s linear infinite;
@@ -1241,13 +1308,15 @@ select:focus {
   color: var(--pm-accent-hi);
 }
 
-/* Error message */
+/* Error message — keeps the theme-native validation background (correct
+   semantic, no --pm equivalent); foreground falls back to --pm-text since this
+   box is also the App-level error surface. */
 .error-message {
   padding: var(--spacing-md);
   margin-bottom: var(--spacing-md);
-  background-color: var(--vscode-inputValidation-errorBackground);
-  border: 1px solid var(--vscode-inputValidation-errorBorder);
-  color: var(--vscode-inputValidation-errorForeground);
+  background-color: var(--vscode-inputValidation-errorBackground, var(--pm-accent-soft));
+  border: 1px solid var(--vscode-inputValidation-errorBorder, var(--pm-red));
+  color: var(--vscode-inputValidation-errorForeground, var(--pm-text));
   border-radius: var(--pm-r-input);
 }
 
@@ -1256,10 +1325,10 @@ select:focus {
   padding: var(--spacing-md);
   margin-top: var(--spacing-sm);
   margin-bottom: var(--spacing-md);
-  background-color: var(--vscode-inputValidation-warningBackground);
-  border: 1px solid var(--vscode-inputValidation-warningBorder);
-  color: var(--vscode-inputValidation-warningForeground, var(--vscode-foreground));
-  border-radius: 0;
+  background-color: var(--vscode-inputValidation-warningBackground, var(--pm-surface-2));
+  border: 1px solid var(--vscode-inputValidation-warningBorder, var(--pm-amber));
+  color: var(--vscode-inputValidation-warningForeground, var(--pm-text));
+  border-radius: var(--pm-r-input);
   font-size: 0.85em;
   line-height: 1.4;
 }
@@ -1277,20 +1346,20 @@ select:focus {
 
 /* Utility classes */
 .text-gray-500 {
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
 }
 
 /* Guides footer */
 .guides-footer {
   margin-top: var(--spacing-lg);
   padding-top: var(--spacing-lg);
-  border-top: 2px solid var(--vscode-panel-border);
+  border-top: 1px solid var(--pm-border);
 }
 
 .guides-footer-title {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--vscode-foreground);
+  color: var(--pm-text);
   margin-bottom: var(--spacing-sm);
 }
 
@@ -1331,8 +1400,8 @@ select:focus {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: var(--vscode-editor-background);
-  color: var(--vscode-editor-foreground);
+  background: var(--pm-bg);
+  color: var(--pm-text);
   overflow: auto;
   padding: var(--spacing-sm);
 }
@@ -1371,9 +1440,9 @@ select:focus {
 
 .settings-section {
   margin-top: var(--spacing-sm);
-  background: var(--vscode-editorWidget-background);
-  border: 1px solid var(--vscode-editorWidget-border);
-  border-radius: 6px;
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
   padding: var(--spacing-md);
 }
 
@@ -1382,8 +1451,8 @@ select:focus {
   margin-bottom: var(--spacing-md);
   font-size: 1.3em;
   font-weight: 600;
-  color: var(--vscode-foreground);
-  border-bottom: 1px solid var(--vscode-panel-border);
+  color: var(--pm-text);
+  border-bottom: 1px solid var(--pm-border-soft);
   padding-bottom: var(--spacing-xs);
 }
 
@@ -1400,10 +1469,10 @@ select:focus {
 .settings-input {
   width: 100%;
   padding: 6px 8px;
-  background: var(--vscode-input-background);
-  color: var(--vscode-input-foreground);
-  border: 1px solid var(--vscode-input-border);
-  border-radius: 4px;
+  background: var(--pm-inset);
+  color: var(--pm-text);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-input);
 }
 
 .settings-input-small {
@@ -1423,21 +1492,21 @@ select:focus {
   width: 100%;
   height: 68px;
   padding: 6px 8px;
-  background: var(--vscode-input-background);
-  color: var(--vscode-input-foreground);
-  border: 1px solid var(--vscode-input-border);
-  border-radius: 4px;
+  background: var(--pm-inset);
+  color: var(--pm-text);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-input);
 }
 
 .settings-description {
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
   margin-top: 4px;
   font-size: 0.9em;
   line-height: 1.4;
 }
 
 .settings-description a {
-  color: var(--vscode-textLink-foreground);
+  color: var(--pm-link);
   text-decoration: underline;
 }
 
@@ -1448,16 +1517,17 @@ select:focus {
 
 .settings-button {
   padding: 6px 10px;
-  background: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
+  background: var(--pm-primary);
+  color: var(--pm-primary-text);
   border: 1px solid var(--vscode-button-border, transparent);
-  border-radius: 4px;
+  border-radius: var(--pm-r-input);
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, filter 0.15s ease;
 }
 
 .settings-button:hover {
-  background: var(--vscode-button-hoverBackground);
+  background: var(--pm-primary-hover);
+  filter: brightness(1.05);
 }
 
 .settings-inline-group {
@@ -1481,15 +1551,15 @@ select:focus {
 }
 
 .word-counter-green {
-  color: var(--vscode-terminal-ansiGreen);
+  color: var(--pm-green);
 }
 
 .word-counter-yellow {
-  color: var(--vscode-terminal-ansiYellow);
+  color: var(--pm-amber);
 }
 
 .word-counter-red {
-  color: var(--vscode-errorForeground);
+  color: var(--pm-red);
   font-weight: 500;
 }
 
@@ -1507,7 +1577,7 @@ select:focus {
   align-items: center;
   gap: 6px;
   font-size: 0.9em;
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
 }
 
 .model-label {
@@ -1515,7 +1585,7 @@ select:focus {
 }
 
 .model-name {
-  color: var(--vscode-foreground);
+  color: var(--pm-text);
 }
 
 .model-settings-link {
@@ -1546,15 +1616,15 @@ select:focus {
   gap: 12px;
   margin: 12px 0;
   padding: 12px;
-  background-color: var(--vscode-editor-background);
-  border: 1px solid var(--vscode-panel-border);
-  border-radius: 4px;
+  background-color: var(--pm-inset);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
 }
 
 .word-length-filter-tabs .filter-label {
   font-size: 0.9em;
   font-weight: 500;
-  color: var(--vscode-foreground);
+  color: var(--pm-text);
   white-space: nowrap;
 }
 
@@ -1567,24 +1637,25 @@ select:focus {
 .word-length-filter-tabs .filter-tab {
   padding: 6px 12px;
   font-size: 0.9em;
-  border: 1px solid var(--vscode-panel-border);
-  background-color: var(--vscode-button-secondaryBackground);
-  color: var(--vscode-button-secondaryForeground);
-  border-radius: 4px;
+  border: 1px solid var(--pm-border-2);
+  background-color: var(--pm-btn);
+  color: var(--pm-btn-text);
+  border-radius: var(--pm-r-input);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   min-width: 40px;
 }
 
 .word-length-filter-tabs .filter-tab:hover:not(:disabled) {
-  background-color: var(--vscode-button-secondaryHoverBackground);
-  border-color: var(--vscode-focusBorder);
+  background-color: var(--pm-surface-2);
+  border-color: var(--pm-accent-ring);
 }
 
 .word-length-filter-tabs .filter-tab.active {
-  background-color: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-  border-color: var(--vscode-button-background);
+  background-color: var(--pm-surface-2);
+  color: var(--pm-text);
+  border-color: var(--pm-border-2);
+  box-shadow: 0 0 0 1px var(--pm-accent-ring);
   font-weight: 600;
 }
 
@@ -1606,9 +1677,9 @@ select:focus {
 .streaming-buffer {
   padding: var(--spacing-lg);
   text-align: center;
-  border: 1px solid var(--vscode-panel-border);
-  border-radius: 6px;
-  background: var(--vscode-editor-background);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
+  background: var(--pm-surface);
   margin: var(--spacing-md) 0;
 }
 
@@ -1622,13 +1693,13 @@ select:focus {
 
 .streaming-status {
   font-weight: 500;
-  color: var(--vscode-foreground);
+  color: var(--pm-text);
 }
 
 .streaming-hint {
   margin: 0;
   font-size: 0.85em;
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
 }
 
 /* Streaming content wrapper */
@@ -1642,8 +1713,8 @@ select:focus {
   align-items: center;
   justify-content: space-between;
   padding: var(--spacing-xs) var(--spacing-sm);
-  background: var(--vscode-badge-background);
-  border-radius: 4px;
+  background: var(--pm-surface-2);
+  border-radius: var(--pm-r-input);
   margin-bottom: var(--spacing-sm);
 }
 
@@ -1653,14 +1724,14 @@ select:focus {
   gap: var(--spacing-xs);
   font-size: 0.85em;
   font-weight: 500;
-  color: var(--vscode-badge-foreground);
+  color: var(--pm-text);
 }
 
 /* Pulsing dot animation */
 .streaming-dot {
   width: 8px;
   height: 8px;
-  background: var(--vscode-charts-green);
+  background: var(--pm-green);
   border-radius: 50%;
   animation: streaming-pulse 1.5s ease-in-out infinite;
 }
@@ -1680,9 +1751,9 @@ select:focus {
 .cancel-button {
   padding: 4px 8px;
   background: transparent;
-  border: 1px solid var(--vscode-panel-border);
-  color: var(--vscode-foreground);
-  border-radius: 4px;
+  border: 1px solid var(--pm-border-2);
+  color: var(--pm-text);
+  border-radius: var(--pm-r-input);
   cursor: pointer;
   font-size: 0.85em;
   transition: all 0.15s ease;
@@ -1696,8 +1767,8 @@ select:focus {
 }
 
 .cancel-button:hover {
-  background: var(--vscode-button-secondaryHoverBackground);
-  border-color: var(--vscode-focusBorder);
+  background: var(--pm-surface-2);
+  border-color: var(--pm-accent-ring);
 }
 
 .cancel-button:active {
@@ -1724,9 +1795,9 @@ select:focus {
 .context-preview {
   margin-top: var(--spacing-sm);
   padding: var(--spacing-sm);
-  border: 1px solid var(--vscode-panel-border);
-  border-radius: 6px;
-  background: var(--vscode-editor-background);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
+  background: var(--pm-surface);
 }
 
 /* Context preview toggle lip button */
@@ -1735,10 +1806,10 @@ select:focus {
   align-items: center;
   gap: 4px;
   padding: 2px 10px;
-  background: var(--vscode-button-secondaryBackground);
-  border: 1px solid var(--vscode-panel-border);
-  border-radius: 10px;
-  color: var(--vscode-descriptionForeground);
+  background: var(--pm-btn);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-pill);
+  color: var(--pm-muted);
   font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -1746,9 +1817,9 @@ select:focus {
 }
 
 .context-preview-toggle:hover {
-  background: var(--vscode-button-secondaryHoverBackground);
-  border-color: var(--vscode-focusBorder);
-  color: var(--vscode-foreground);
+  background: var(--pm-surface-2);
+  border-color: var(--pm-accent-ring);
+  color: var(--pm-text);
 }
 
 .preview-toggle-chevron {
@@ -1767,11 +1838,11 @@ select:focus {
 
 @keyframes context-flash-anim {
   0% {
-    box-shadow: 0 0 0 0 var(--vscode-focusBorder);
+    box-shadow: 0 0 0 0 var(--pm-accent);
   }
   30% {
-    box-shadow: 0 0 8px 3px var(--vscode-focusBorder);
-    border-color: var(--vscode-focusBorder);
+    box-shadow: 0 0 8px 3px var(--pm-accent-ring);
+    border-color: var(--pm-accent);
   }
   100% {
     box-shadow: 0 0 0 0 transparent;

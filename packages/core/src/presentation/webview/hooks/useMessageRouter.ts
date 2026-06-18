@@ -22,7 +22,7 @@ type MessageHandler = (message: ExtensionToWebviewMessage | any) => void;
  * Map of MessageType to handler functions
  * Allows partial implementation (not all message types required)
  */
-type MessageHandlerMap = Partial<Record<MessageType, MessageHandler>>;
+export type MessageHandlerMap = Partial<Record<MessageType, MessageHandler>>;
 
 /**
  * Hook that sets up message routing from extension to webview

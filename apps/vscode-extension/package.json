@@ -234,6 +234,17 @@
           "description": "Show the session token usage widget in the header (tokens and optional cost).",
           "order": 6
         },
+        "proseMinion.ui.sidebarTheme": {
+          "type": "string",
+          "enum": ["follow-vscode", "warm-dark"],
+          "enumDescriptions": [
+            "Follow your active VS Code color theme (default).",
+            "Prose Minion's pinned warm-dark brand palette."
+          ],
+          "default": "follow-vscode",
+          "description": "Sidebar palette: follow your active VS Code color theme (the default), or pin Prose Minion's warm-dark brand look. Also toggleable from the header.",
+          "order": 6
+        },
         "proseMinion.temperature": {
           "type": "number",
           "default": 0.7,
