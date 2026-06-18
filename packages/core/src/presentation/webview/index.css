@@ -12,32 +12,39 @@
 }
 
 /* ============================================================
-   Prose Minion design tokens (Pass 2, Wave 3 — FM design language).
-   Semantic --pm-* aliases derived from --vscode-* so the sidebar
-   tracks the user's theme (mirrors FrameMinion's sidebar-design-tokens).
-   Scoped to .app-container so they don't leak. The coral ACCENT is
-   PM's fixed brand mark (the skull-book) — the one element that stays
-   constant across themes, per the design comp's accent line + active-tab
-   ring + primary CTAs. Desktop app will map a Kimbie-style palette here.
+   Prose Minion design tokens — OWNED warm-dark palette.
+   The surface ramp is derived from ONE anchor + a warm tint via
+   color-mix, so the layers always separate — instead of renting them
+   from --vscode-* (which collapsed into a single washed brown under
+   warm themes). PINNED warm-dark is the default (matches the comp);
+   the "Follow VS Code theme" Settings toggle (wiring pending) re-points
+   --pm-anchor -> var(--vscode-editor-background) and text back to the
+   theme via the [data-pm-theme="follow"] override below — same ramp,
+   different anchor. Coral stays PM's fixed brand mark.
    ============================================================ */
 .app-container {
-  /* Surfaces */
-  --pm-bg:          var(--vscode-sideBar-background, var(--vscode-editor-background));
-  --pm-surface:     var(--vscode-editorWidget-background, var(--pm-bg));
-  --pm-surface-2:   var(--vscode-list-hoverBackground, var(--pm-surface));
-  --pm-inset:       var(--vscode-input-background, var(--pm-bg));
+  /* Anchor — the app backdrop. Everything below derives from this. */
+  --pm-anchor: #1d1610;          /* near-black warm (the comp's backdrop) */
+  --pm-warm:   #cf9a57;          /* warm hue for surface lifts + hairlines */
 
-  /* Borders */
-  --pm-border:      var(--vscode-widget-border, var(--vscode-panel-border, rgba(128,128,128,0.25)));
-  --pm-border-soft: var(--vscode-editorWidget-border, var(--pm-border));
-  --pm-border-2:    var(--vscode-input-border, var(--pm-border));
+  /* Surfaces — a controlled ladder off the anchor (never trust theme separation) */
+  --pm-bg:          var(--pm-anchor);
+  --pm-surface:     color-mix(in oklab, var(--pm-anchor) 90%, var(--pm-warm));
+  --pm-surface-2:   color-mix(in oklab, var(--pm-anchor) 82%, var(--pm-warm));
+  --pm-inset:       color-mix(in oklab, var(--pm-anchor) 93%, #000);
 
-  /* Text */
-  --pm-text:   var(--vscode-foreground);
-  --pm-text-2: var(--vscode-foreground);
-  --pm-muted:  var(--vscode-descriptionForeground);
-  --pm-dim:    var(--vscode-disabledForeground, var(--vscode-descriptionForeground));
-  --pm-faint:  var(--vscode-disabledForeground, var(--vscode-descriptionForeground));
+  /* Borders — warm hairlines (alpha so they read on any anchor; srgb mix to
+     keep the hue stable when fading to transparent) */
+  --pm-border:      color-mix(in srgb, var(--pm-warm) 20%, transparent);
+  --pm-border-soft: color-mix(in srgb, var(--pm-warm) 12%, transparent);
+  --pm-border-2:    color-mix(in srgb, var(--pm-warm) 30%, transparent);
+
+  /* Text — warm off-white ladder */
+  --pm-text:   #efe6d6;
+  --pm-text-2: #e0d5c3;
+  --pm-muted:  #ab9c86;
+  --pm-dim:    #837359;
+  --pm-faint:  #6f6250;
 
   /* Coral brand accent (fixed across themes) */
   --pm-accent:      #e0673a;
@@ -47,27 +54,26 @@
   --pm-accent-ring: rgba(224, 103, 58, 0.30);
   --pm-accent-line: linear-gradient(90deg, #e8763f 0%, #d2592f 48%, rgba(210, 89, 47, 0) 100%);
 
-  /* Status (theme-native charts, with terminal-ansi fallbacks) */
-  --pm-green: var(--vscode-charts-green, var(--vscode-terminal-ansiGreen, #6fc98a));
-  --pm-blue:  var(--vscode-charts-blue, var(--vscode-terminal-ansiBlue, #5aa2f0));
-  --pm-amber: var(--vscode-charts-yellow, var(--vscode-terminal-ansiYellow, #e2b24a));
-  --pm-red:   var(--vscode-charts-red, var(--vscode-errorForeground, #e06c5a));
+  /* Status (pinned to the warm-dark palette) */
+  --pm-green: #8fce8a;
+  --pm-blue:  #5aa4f5;
+  --pm-amber: #d7a948;
+  --pm-red:   #ef7d66;
 
-  /* Links (theme-native; the one place we don't recolor to coral) */
-  --pm-link:       var(--vscode-textLink-foreground);
-  --pm-link-hover: var(--vscode-textLink-activeForeground, var(--pm-link));
+  /* Links (pinned; a friendly blue still reads on warm-dark) */
+  --pm-link:       #79b8f2;
+  --pm-link-hover: #9ccbff;
 
-  /* Buttons — primary CTAs FLOAT with the theme (a gradient derived from the
-     theme's button color), so coral stays a brand accent (header line, active
-     tab, logo) rather than being forced onto every button. */
-  --pm-btn:       var(--vscode-button-secondaryBackground, var(--pm-surface-2));
-  --pm-btn-text:  var(--vscode-button-secondaryForeground, var(--pm-text));
-  --pm-btn-hover: var(--vscode-button-secondaryHoverBackground, var(--pm-surface-2));
+  /* Buttons — secondary is a subtle warm surface; the primary CTA is CORAL
+     (the brand), matching the comp's "Run Search" / "Generate" button. */
+  --pm-btn:       var(--pm-surface-2);
+  --pm-btn-text:  var(--pm-text);
+  --pm-btn-hover: var(--pm-surface-2);
 
-  --pm-primary:       var(--vscode-button-background, var(--pm-accent));
-  --pm-primary-text:  var(--vscode-button-foreground, #fff);
-  --pm-primary-hover: var(--vscode-button-hoverBackground, var(--pm-primary));
-  /* Subtle light→dark sheen over the theme's button color. */
+  --pm-primary:       var(--pm-accent);
+  --pm-primary-text:  #fff;
+  --pm-primary-hover: var(--pm-accent-hi);
+  /* Subtle light→dark sheen over the coral primary. */
   --pm-primary-grad: linear-gradient(
     180deg,
     color-mix(in oklab, var(--pm-primary) 90%, white),
@@ -113,6 +119,25 @@ body {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  background: var(--pm-bg);
+  color: var(--pm-text);
+}
+
+/* "Follow VS Code theme" mode (Settings toggle — wiring pending). Same ramp,
+   re-anchored on the editor background + theme text; surfaces/borders derive
+   from --pm-anchor automatically, so only the anchor + text + buttons swap. */
+.app-container[data-pm-theme="follow"] {
+  --pm-anchor: var(--vscode-editor-background, #1d1610);
+  --pm-text:   var(--vscode-foreground, #efe6d6);
+  --pm-text-2: var(--vscode-foreground, #e0d5c3);
+  --pm-muted:  var(--vscode-descriptionForeground, #ab9c86);
+  --pm-dim:    var(--vscode-disabledForeground, var(--vscode-descriptionForeground, #837359));
+  --pm-faint:  var(--vscode-disabledForeground, var(--vscode-descriptionForeground, #6f6250));
+  --pm-btn:           var(--vscode-button-secondaryBackground, var(--pm-surface-2));
+  --pm-btn-text:      var(--vscode-button-secondaryForeground, var(--pm-text));
+  --pm-primary:       var(--vscode-button-background, var(--pm-accent));
+  --pm-primary-text:  var(--vscode-button-foreground, #fff);
+  --pm-primary-hover: var(--vscode-button-hoverBackground, var(--pm-primary));
 }
 
 /* ---------- Header band (VS Code's native view title bar sits above) ---------- */
