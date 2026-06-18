@@ -376,7 +376,7 @@ export const App: React.FC = () => {
         {renderModelSelector()}
 
         {error && (
-          <div className="error-banner" style={{ padding: '10px', backgroundColor: '#f44336', color: 'white' }}>
+          <div className="error-message" role="alert">
             {error}
           </div>
         )}

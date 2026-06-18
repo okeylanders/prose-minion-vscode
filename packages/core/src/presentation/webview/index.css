@@ -53,6 +53,10 @@
   --pm-amber: var(--vscode-charts-yellow, var(--vscode-terminal-ansiYellow, #e2b24a));
   --pm-red:   var(--vscode-charts-red, var(--vscode-errorForeground, #e06c5a));
 
+  /* Links (theme-native; the one place we don't recolor to coral) */
+  --pm-link:       var(--vscode-textLink-foreground);
+  --pm-link-hover: var(--vscode-textLink-activeForeground, var(--pm-link));
+
   /* Buttons — primary CTAs FLOAT with the theme (a gradient derived from the
      theme's button color), so coral stays a brand accent (header line, active
      tab, logo) rather than being forced onto every button. */
@@ -548,7 +552,7 @@ select:focus {
 .excerpt-meta {
   margin-bottom: var(--spacing-xs);
   font-size: 0.75rem;
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
 }
 
 .context-assist-header {
@@ -568,19 +572,20 @@ select:focus {
 .context-assist-button {
   width: 48px;
   min-width: 48px;
-  border: 1px solid var(--vscode-button-border);
-  background-color: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
+  border: 1px solid color-mix(in oklab, var(--pm-primary) 80%, black);
+  background: var(--pm-primary-grad);
+  color: var(--pm-primary-text);
+  border-radius: var(--pm-r-input);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.5rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: filter 0.15s ease, transform 0.1s ease;
 }
 
 .context-assist-button:hover:not(:disabled) {
-  background-color: var(--vscode-button-hoverBackground);
+  filter: brightness(1.07);
   transform: translateY(-1px);
 }
 
@@ -593,7 +598,7 @@ select:focus {
 .context-status {
   margin-top: var(--spacing-xs);
   font-size: 0.75rem;
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
 }
 
 .context-resource-summary {
@@ -603,7 +608,7 @@ select:focus {
 .context-resource-title {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
   margin-bottom: var(--spacing-xs);
 }
 
@@ -631,8 +636,8 @@ select:focus {
 }
 
 .context-resource-chip.clickable:hover {
-  background-color: var(--vscode-list-hoverBackground);
-  border-color: var(--vscode-focusBorder);
+  background-color: var(--pm-surface-2);
+  border-color: var(--pm-accent-ring);
 }
 
 .context-resource-chip.clickable:active {
@@ -641,8 +646,8 @@ select:focus {
 
 .model-selector-container {
   padding: var(--spacing-sm) var(--spacing-md);
-  background-color: var(--vscode-sideBar-background);
-  border-bottom: 1px solid var(--vscode-panel-border);
+  background-color: var(--pm-surface);
+  border-bottom: 1px solid var(--pm-border);
 }
 
 .model-selector {
@@ -651,11 +656,12 @@ select:focus {
 
 .model-selector-label {
   display: block;
-  font-size: 0.75rem;
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   margin-bottom: var(--spacing-xs);
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-dim);
 }
 
 .model-selector-dropdown {
@@ -672,7 +678,7 @@ select:focus {
 .model-selector-helper {
   margin-top: var(--spacing-xs);
   font-size: 0.75rem;
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
 }
 
 /* Buttons */
@@ -704,17 +710,19 @@ select:focus {
   transform: translateY(-1px);
 }
 
+/* Secondary buttons float with the theme (coral stays a brand accent, not a
+   per-button fill) — matches .action-button.secondary. */
 .btn-secondary {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  color: #ffffff;
-  border-color: #d97706;
+  background: var(--pm-btn);
+  color: var(--pm-btn-text);
+  border-color: var(--pm-border-2);
+  font-weight: 500;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-  border-color: #b45309;
+  background: var(--pm-surface-2);
+  border-color: var(--pm-border-2);
   transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.3);
 }
 
 .btn-alert {
@@ -742,9 +750,9 @@ select:focus {
   justify-content: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-md);
-  background-color: var(--vscode-sideBar-background);
-  border: 2px solid var(--vscode-panel-border);
-  border-radius: 0;
+  background-color: var(--pm-surface);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
 }
 
 /* Analysis buttons section with visual hierarchy */
@@ -812,36 +820,6 @@ select:focus {
 .focused-buttons {
   display: flex;
   gap: 8px;
-}
-
-/* Writing Tools grid layout with stacked icon/label buttons */
-.writing-tools-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  width: 100%;
-}
-
-.writing-tool-button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 4px !important;
-  min-width: 0;
-  gap: 4px;
-}
-
-.writing-tool-icon {
-  font-size: 1.2rem;
-  line-height: 1;
-}
-
-.writing-tool-label {
-  font-size: 0.7rem;
-  line-height: 1.2;
-  text-align: center;
-  white-space: nowrap;
 }
 
 .action-button.secondary {
@@ -928,7 +906,7 @@ select:focus {
   flex-direction: column;
   gap: var(--spacing-lg);
   padding: var(--spacing-md);
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
 }
 
 .loading-header {
@@ -962,26 +940,26 @@ select:focus {
 .loading-credit {
   text-align: center;
   font-size: 0.85em;
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
   opacity: 0.7;
   margin-top: var(--spacing-sm);
 }
 
 .loading-credit a {
-  color: var(--vscode-textLink-foreground);
+  color: var(--pm-link);
   text-decoration: none;
 }
 
 .loading-credit a:hover {
-  color: var(--vscode-textLink-activeForeground);
+  color: var(--pm-link-hover);
   text-decoration: underline;
 }
 
 .spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid var(--vscode-progressBar-background);
-  border-top-color: transparent;
+  border: 2px solid var(--pm-surface-2);
+  border-top-color: var(--pm-accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   flex-shrink: 0;
@@ -1002,7 +980,7 @@ select:focus {
 .progress-bar-container {
   width: 100%;
   height: 8px;
-  background-color: var(--vscode-progressBar-background);
+  background-color: var(--pm-surface-2);
   border-radius: 4px;
   margin-top: var(--spacing-sm);
   position: relative;
@@ -1011,12 +989,7 @@ select:focus {
 
 .progress-bar {
   height: 100%;
-  background-color: var(--vscode-progressBar-background);
-  background-image: linear-gradient(
-    90deg,
-    var(--vscode-charts-blue) 0%,
-    var(--vscode-charts-green) 100%
-  );
+  background-image: linear-gradient(90deg, var(--pm-accent-lo), var(--pm-accent-hi));
   border-radius: 4px;
   transition: width 0.3s ease-out;
 }
@@ -1024,7 +997,7 @@ select:focus {
 .progress-text {
   display: block;
   font-size: 11px;
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
   margin-top: var(--spacing-xs);
   text-align: center;
 }
@@ -1040,7 +1013,7 @@ select:focus {
 .guide-ticker {
   display: inline-block;
   font-size: 0.75rem;
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
   font-style: italic;
   white-space: nowrap;
   animation: ticker 15s linear infinite;
@@ -1241,13 +1214,15 @@ select:focus {
   color: var(--pm-accent-hi);
 }
 
-/* Error message */
+/* Error message — keeps the theme-native validation background (correct
+   semantic, no --pm equivalent); foreground falls back to --pm-text since this
+   box is also the App-level error surface. */
 .error-message {
   padding: var(--spacing-md);
   margin-bottom: var(--spacing-md);
-  background-color: var(--vscode-inputValidation-errorBackground);
-  border: 1px solid var(--vscode-inputValidation-errorBorder);
-  color: var(--vscode-inputValidation-errorForeground);
+  background-color: var(--vscode-inputValidation-errorBackground, var(--pm-accent-soft));
+  border: 1px solid var(--vscode-inputValidation-errorBorder, var(--pm-red));
+  color: var(--vscode-inputValidation-errorForeground, var(--pm-text));
   border-radius: var(--pm-r-input);
 }
 
@@ -1256,10 +1231,10 @@ select:focus {
   padding: var(--spacing-md);
   margin-top: var(--spacing-sm);
   margin-bottom: var(--spacing-md);
-  background-color: var(--vscode-inputValidation-warningBackground);
-  border: 1px solid var(--vscode-inputValidation-warningBorder);
-  color: var(--vscode-inputValidation-warningForeground, var(--vscode-foreground));
-  border-radius: 0;
+  background-color: var(--vscode-inputValidation-warningBackground, var(--pm-surface-2));
+  border: 1px solid var(--vscode-inputValidation-warningBorder, var(--pm-amber));
+  color: var(--vscode-inputValidation-warningForeground, var(--pm-text));
+  border-radius: var(--pm-r-input);
   font-size: 0.85em;
   line-height: 1.4;
 }
@@ -1277,20 +1252,20 @@ select:focus {
 
 /* Utility classes */
 .text-gray-500 {
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
 }
 
 /* Guides footer */
 .guides-footer {
   margin-top: var(--spacing-lg);
   padding-top: var(--spacing-lg);
-  border-top: 2px solid var(--vscode-panel-border);
+  border-top: 1px solid var(--pm-border);
 }
 
 .guides-footer-title {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--vscode-foreground);
+  color: var(--pm-text);
   margin-bottom: var(--spacing-sm);
 }
 
@@ -1331,8 +1306,8 @@ select:focus {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: var(--vscode-editor-background);
-  color: var(--vscode-editor-foreground);
+  background: var(--pm-bg);
+  color: var(--pm-text);
   overflow: auto;
   padding: var(--spacing-sm);
 }
@@ -1371,9 +1346,9 @@ select:focus {
 
 .settings-section {
   margin-top: var(--spacing-sm);
-  background: var(--vscode-editorWidget-background);
-  border: 1px solid var(--vscode-editorWidget-border);
-  border-radius: 6px;
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
   padding: var(--spacing-md);
 }
 
@@ -1382,8 +1357,8 @@ select:focus {
   margin-bottom: var(--spacing-md);
   font-size: 1.3em;
   font-weight: 600;
-  color: var(--vscode-foreground);
-  border-bottom: 1px solid var(--vscode-panel-border);
+  color: var(--pm-text);
+  border-bottom: 1px solid var(--pm-border-soft);
   padding-bottom: var(--spacing-xs);
 }
 
@@ -1400,10 +1375,10 @@ select:focus {
 .settings-input {
   width: 100%;
   padding: 6px 8px;
-  background: var(--vscode-input-background);
-  color: var(--vscode-input-foreground);
-  border: 1px solid var(--vscode-input-border);
-  border-radius: 4px;
+  background: var(--pm-inset);
+  color: var(--pm-text);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-input);
 }
 
 .settings-input-small {
@@ -1423,21 +1398,21 @@ select:focus {
   width: 100%;
   height: 68px;
   padding: 6px 8px;
-  background: var(--vscode-input-background);
-  color: var(--vscode-input-foreground);
-  border: 1px solid var(--vscode-input-border);
-  border-radius: 4px;
+  background: var(--pm-inset);
+  color: var(--pm-text);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-input);
 }
 
 .settings-description {
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
   margin-top: 4px;
   font-size: 0.9em;
   line-height: 1.4;
 }
 
 .settings-description a {
-  color: var(--vscode-textLink-foreground);
+  color: var(--pm-link);
   text-decoration: underline;
 }
 
@@ -1448,16 +1423,17 @@ select:focus {
 
 .settings-button {
   padding: 6px 10px;
-  background: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
+  background: var(--pm-primary);
+  color: var(--pm-primary-text);
   border: 1px solid var(--vscode-button-border, transparent);
-  border-radius: 4px;
+  border-radius: var(--pm-r-input);
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, filter 0.15s ease;
 }
 
 .settings-button:hover {
-  background: var(--vscode-button-hoverBackground);
+  background: var(--pm-primary-hover);
+  filter: brightness(1.05);
 }
 
 .settings-inline-group {
@@ -1481,15 +1457,15 @@ select:focus {
 }
 
 .word-counter-green {
-  color: var(--vscode-terminal-ansiGreen);
+  color: var(--pm-green);
 }
 
 .word-counter-yellow {
-  color: var(--vscode-terminal-ansiYellow);
+  color: var(--pm-amber);
 }
 
 .word-counter-red {
-  color: var(--vscode-errorForeground);
+  color: var(--pm-red);
   font-weight: 500;
 }
 
@@ -1507,7 +1483,7 @@ select:focus {
   align-items: center;
   gap: 6px;
   font-size: 0.9em;
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
 }
 
 .model-label {
@@ -1515,7 +1491,7 @@ select:focus {
 }
 
 .model-name {
-  color: var(--vscode-foreground);
+  color: var(--pm-text);
 }
 
 .model-settings-link {
@@ -1546,15 +1522,15 @@ select:focus {
   gap: 12px;
   margin: 12px 0;
   padding: 12px;
-  background-color: var(--vscode-editor-background);
-  border: 1px solid var(--vscode-panel-border);
-  border-radius: 4px;
+  background-color: var(--pm-inset);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
 }
 
 .word-length-filter-tabs .filter-label {
   font-size: 0.9em;
   font-weight: 500;
-  color: var(--vscode-foreground);
+  color: var(--pm-text);
   white-space: nowrap;
 }
 
@@ -1567,24 +1543,25 @@ select:focus {
 .word-length-filter-tabs .filter-tab {
   padding: 6px 12px;
   font-size: 0.9em;
-  border: 1px solid var(--vscode-panel-border);
-  background-color: var(--vscode-button-secondaryBackground);
-  color: var(--vscode-button-secondaryForeground);
-  border-radius: 4px;
+  border: 1px solid var(--pm-border-2);
+  background-color: var(--pm-btn);
+  color: var(--pm-btn-text);
+  border-radius: var(--pm-r-input);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   min-width: 40px;
 }
 
 .word-length-filter-tabs .filter-tab:hover:not(:disabled) {
-  background-color: var(--vscode-button-secondaryHoverBackground);
-  border-color: var(--vscode-focusBorder);
+  background-color: var(--pm-surface-2);
+  border-color: var(--pm-accent-ring);
 }
 
 .word-length-filter-tabs .filter-tab.active {
-  background-color: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-  border-color: var(--vscode-button-background);
+  background-color: var(--pm-surface-2);
+  color: var(--pm-text);
+  border-color: var(--pm-border-2);
+  box-shadow: 0 0 0 1px var(--pm-accent-ring);
   font-weight: 600;
 }
 
@@ -1606,9 +1583,9 @@ select:focus {
 .streaming-buffer {
   padding: var(--spacing-lg);
   text-align: center;
-  border: 1px solid var(--vscode-panel-border);
-  border-radius: 6px;
-  background: var(--vscode-editor-background);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
+  background: var(--pm-surface);
   margin: var(--spacing-md) 0;
 }
 
@@ -1622,13 +1599,13 @@ select:focus {
 
 .streaming-status {
   font-weight: 500;
-  color: var(--vscode-foreground);
+  color: var(--pm-text);
 }
 
 .streaming-hint {
   margin: 0;
   font-size: 0.85em;
-  color: var(--vscode-descriptionForeground);
+  color: var(--pm-muted);
 }
 
 /* Streaming content wrapper */
@@ -1642,8 +1619,8 @@ select:focus {
   align-items: center;
   justify-content: space-between;
   padding: var(--spacing-xs) var(--spacing-sm);
-  background: var(--vscode-badge-background);
-  border-radius: 4px;
+  background: var(--pm-surface-2);
+  border-radius: var(--pm-r-input);
   margin-bottom: var(--spacing-sm);
 }
 
@@ -1653,14 +1630,14 @@ select:focus {
   gap: var(--spacing-xs);
   font-size: 0.85em;
   font-weight: 500;
-  color: var(--vscode-badge-foreground);
+  color: var(--pm-text);
 }
 
 /* Pulsing dot animation */
 .streaming-dot {
   width: 8px;
   height: 8px;
-  background: var(--vscode-charts-green);
+  background: var(--pm-green);
   border-radius: 50%;
   animation: streaming-pulse 1.5s ease-in-out infinite;
 }
@@ -1680,9 +1657,9 @@ select:focus {
 .cancel-button {
   padding: 4px 8px;
   background: transparent;
-  border: 1px solid var(--vscode-panel-border);
-  color: var(--vscode-foreground);
-  border-radius: 4px;
+  border: 1px solid var(--pm-border-2);
+  color: var(--pm-text);
+  border-radius: var(--pm-r-input);
   cursor: pointer;
   font-size: 0.85em;
   transition: all 0.15s ease;
@@ -1696,8 +1673,8 @@ select:focus {
 }
 
 .cancel-button:hover {
-  background: var(--vscode-button-secondaryHoverBackground);
-  border-color: var(--vscode-focusBorder);
+  background: var(--pm-surface-2);
+  border-color: var(--pm-accent-ring);
 }
 
 .cancel-button:active {
@@ -1724,9 +1701,9 @@ select:focus {
 .context-preview {
   margin-top: var(--spacing-sm);
   padding: var(--spacing-sm);
-  border: 1px solid var(--vscode-panel-border);
-  border-radius: 6px;
-  background: var(--vscode-editor-background);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
+  background: var(--pm-surface);
 }
 
 /* Context preview toggle lip button */
@@ -1735,10 +1712,10 @@ select:focus {
   align-items: center;
   gap: 4px;
   padding: 2px 10px;
-  background: var(--vscode-button-secondaryBackground);
-  border: 1px solid var(--vscode-panel-border);
-  border-radius: 10px;
-  color: var(--vscode-descriptionForeground);
+  background: var(--pm-btn);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-pill);
+  color: var(--pm-muted);
   font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -1746,9 +1723,9 @@ select:focus {
 }
 
 .context-preview-toggle:hover {
-  background: var(--vscode-button-secondaryHoverBackground);
-  border-color: var(--vscode-focusBorder);
-  color: var(--vscode-foreground);
+  background: var(--pm-surface-2);
+  border-color: var(--pm-accent-ring);
+  color: var(--pm-text);
 }
 
 .preview-toggle-chevron {
@@ -1767,11 +1744,11 @@ select:focus {
 
 @keyframes context-flash-anim {
   0% {
-    box-shadow: 0 0 0 0 var(--vscode-focusBorder);
+    box-shadow: 0 0 0 0 var(--pm-accent);
   }
   30% {
-    box-shadow: 0 0 8px 3px var(--vscode-focusBorder);
-    border-color: var(--vscode-focusBorder);
+    box-shadow: 0 0 8px 3px var(--pm-accent-ring);
+    border-color: var(--pm-accent);
   }
   100% {
     box-shadow: 0 0 0 0 transparent;

@@ -172,7 +172,7 @@ export const SettingsOverlay = React.memo<SettingsOverlayProps>(({
               });
             }}
             title="View recommended models documentation"
-            style={{ cursor: 'pointer', fontSize: '0.85em', fontWeight: 'normal', color: '#999' }}
+            style={{ cursor: 'pointer', fontSize: '0.85em', fontWeight: 'normal', color: 'var(--pm-muted)' }}
           >
             Click For Model Reference Guide → 📖
           </span>
