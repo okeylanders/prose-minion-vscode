@@ -155,7 +155,7 @@ export class ConfigurationHandler {
         'maxTokens': this.settings.get<number>('proseMinion', 'maxTokens') ?? 10000,
         'applyContextWindowTrimming': this.settings.get<boolean>('proseMinion', 'applyContextWindowTrimming') ?? true,
         'ui.showTokenWidget': this.settings.get<boolean>('proseMinion', 'ui.showTokenWidget') ?? true,
-        'ui.sidebarTheme': this.settings.get<string>('proseMinion', 'ui.sidebarTheme') ?? 'warm-dark',
+        'ui.sidebarTheme': this.settings.get<string>('proseMinion', 'ui.sidebarTheme') ?? 'follow-vscode',
         // Publishing standards
         'publishingStandards.preset': this.settings.get<string>('proseMinion', 'publishingStandards.preset') ?? 'none',
         'publishingStandards.pageSizeKey': this.settings.get<string>('proseMinion', 'publishingStandards.pageSizeKey') ?? '',

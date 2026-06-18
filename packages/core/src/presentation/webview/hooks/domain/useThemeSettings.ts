@@ -46,7 +46,7 @@ export const useThemeSettings = (): UseThemeSettingsReturn => {
   const vscode = useVSCodeApi();
   const persisted = usePersistedState<{ themeSettings?: ThemeSettings }>();
 
-  const defaults: ThemeSettings = { sidebarTheme: 'warm-dark' };
+  const defaults: ThemeSettings = { sidebarTheme: 'follow-vscode' };
 
   const [settings, setSettings] = React.useState<ThemeSettings>({
     ...defaults,

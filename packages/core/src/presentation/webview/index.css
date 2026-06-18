@@ -17,11 +17,12 @@
    The surface ramp is derived from ONE anchor + a warm tint via
    color-mix, so the layers always separate — instead of renting them
    from --vscode-* (which collapsed into a single washed brown under
-   warm themes). PINNED warm-dark is the default (matches the comp);
-   the header "theme" toggle (proseMinion.ui.sidebarTheme = follow-vscode)
-   adds [data-pm-theme="follow"] on .app-container, which re-points the
-   anchor to var(--vscode-editor-background) + text to the theme — same
-   ramp, different anchor. Coral stays PM's fixed brand mark.
+   warm themes). FOLLOW-VS-CODE is the DEFAULT (the header toggle's "Editor
+   theme", proseMinion.ui.sidebarTheme = follow-vscode): it adds
+   [data-pm-theme="follow"] on .app-container, re-pointing the anchor to
+   var(--vscode-editor-background) + text to the theme. Toggle OFF to pin the
+   warm-dark brand palette (matches the comp). Same ramp, different anchor;
+   coral stays PM's fixed brand mark.
 
    HOW TO TWEAK THE COLORS — three dials, all just below:
      • --pm-anchor : overall darkness (the near-black backdrop). Lighten

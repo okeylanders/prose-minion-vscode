@@ -236,13 +236,13 @@
         },
         "proseMinion.ui.sidebarTheme": {
           "type": "string",
-          "enum": ["warm-dark", "follow-vscode"],
+          "enum": ["follow-vscode", "warm-dark"],
           "enumDescriptions": [
-            "Prose Minion's pinned warm-dark palette (recommended).",
-            "Follow your active VS Code color theme."
+            "Follow your active VS Code color theme (default).",
+            "Prose Minion's pinned warm-dark brand palette."
           ],
-          "default": "warm-dark",
-          "description": "Sidebar palette: keep Prose Minion's warm-dark brand look, or follow your active VS Code color theme. Also toggleable from the header.",
+          "default": "follow-vscode",
+          "description": "Sidebar palette: follow your active VS Code color theme (the default), or pin Prose Minion's warm-dark brand look. Also toggleable from the header.",
           "order": 6
         },
         "proseMinion.temperature": {
