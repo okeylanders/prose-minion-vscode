@@ -10,3 +10,5 @@ export { WordLengthFilterTabs } from './WordLengthFilterTabs';
 export { MarkdownRenderer } from './MarkdownRenderer';
 export { ScopeBox } from './ScopeBox';
 export type { ScopeBoxProps } from './ScopeBox';
+export { Icon } from './Icon';
+export type { IconName, IconProps } from './Icon';

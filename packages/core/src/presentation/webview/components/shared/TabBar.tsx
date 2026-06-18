@@ -73,11 +73,18 @@ export interface Tab<T = string> {
   id: T;
   /** Display text shown on the tab */
   label: string;
-  /** Optional emoji/icon (e.g., '🤖', '🔎') - renders before label if provided */
-  icon?: string;
+  /** Optional icon — an emoji string OR a React node (e.g. <Icon name="bot" />). */
+  icon?: React.ReactNode;
   /** Optional specific aria-label for accessibility (falls back to label if not provided) */
   ariaLabel?: string;
 }
+
+/**
+ * Visual variant (Pass-2 Wave-3 FM design):
+ * - `cards`   — icon-above-label rounded cards in a grid (main navigation).
+ * - `segment` — horizontal segmented control (sub-tabs, scope, tools). Default.
+ */
+export type TabBarVariant = 'cards' | 'segment';
 
 /**
  * TabBar component props
@@ -96,6 +103,8 @@ export interface TabBarProps<T = string> {
   ariaLabel?: string;
   /** Optional - additional CSS class name for custom styling */
   className?: string;
+  /** Visual variant — `cards` (main nav) or `segment` (default). */
+  variant?: TabBarVariant;
 }
 
 export const TabBar = <T,>({
@@ -104,26 +113,31 @@ export const TabBar = <T,>({
   onTabChange,
   disabled = false,
   ariaLabel,
-  className = ''
+  className = '',
+  variant = 'segment'
 }: TabBarProps<T>) => {
+  const isCards = variant === 'cards';
+  const containerClass = isCards ? 'pm-tabs' : 'pm-seg';
+  const itemClass = isCards ? 'pm-tab' : 'pm-seg-btn';
+
   return (
     <div
-      className={`tab-bar ${className}`.trim()}
+      className={`${containerClass} ${className}`.trim()}
       role="tablist"
       aria-label={ariaLabel}
     >
       {tabs.map(tab => (
         <button
           key={String(tab.id)}
-          className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+          className={`${itemClass} ${activeTab === tab.id ? 'active' : ''}`.trim()}
           onClick={() => onTabChange(tab.id)}
           disabled={disabled}
           role="tab"
           aria-selected={activeTab === tab.id ? 'true' : 'false'}
           aria-label={tab.ariaLabel || tab.label}
         >
-          {tab.icon && <span className="tab-icon">{tab.icon}</span>}
-          <span className="tab-label">{tab.label}</span>
+          {tab.icon && <span className="pm-tab-icon">{tab.icon}</span>}
+          <span className="pm-tab-label">{tab.label}</span>
         </button>
       ))}
     </div>
