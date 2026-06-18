@@ -4,6 +4,7 @@
  */
 
 import * as React from 'react';
+import { Icon } from '../shared/Icon';
 import { MessageType } from '@shared/types';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { ErrorBoundary } from '../shared/ErrorBoundary';
@@ -318,7 +319,7 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
             title="Paste word or phrase from selection"
             aria-label="Paste word or phrase"
           >
-            📥
+            <Icon name="clipboard" size={16} />
           </button>
         </div>
         {dictionary.relativePath && (
@@ -344,7 +345,7 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
             title="Paste context from selection"
             aria-label="Paste word context"
           >
-            📥
+            <Icon name="clipboard" size={16} />
           </button>
         </div>
         <textarea
@@ -421,7 +422,7 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
               title="Copy dictionary entry"
               aria-label="Copy dictionary entry"
             >
-              📋
+              <Icon name="copy" size={14} />
             </button>
             <button
               className="icon-button"
@@ -430,7 +431,7 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
               title="Save dictionary entry"
               aria-label="Save dictionary entry"
             >
-              💾
+              <Icon name="save" size={14} />
             </button>
           </div>
           <ErrorBoundary

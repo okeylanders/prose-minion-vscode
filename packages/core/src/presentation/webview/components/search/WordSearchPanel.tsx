@@ -4,6 +4,7 @@
  */
 
 import * as React from 'react';
+import { Icon } from '../shared/Icon';
 import { MessageType } from '@messages';
 import { TextSourceMode } from '@shared/types';
 import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
@@ -140,7 +141,7 @@ export const WordSearchPanel: React.FC<WordSearchPanelProps> = ({
             aria-label="Expand word list"
             onClick={() => setExpandInfo('Auto expand search coming soon')}
           >
-            🤖
+            <Icon name="bot" size={16} />
           </button>
         </div>
         <textarea
@@ -237,7 +238,7 @@ export const WordSearchPanel: React.FC<WordSearchPanelProps> = ({
               title="Copy search results"
               aria-label="Copy search results"
             >
-              📋
+              <Icon name="copy" size={14} />
             </button>
             <button
               className="icon-button"
@@ -246,7 +247,7 @@ export const WordSearchPanel: React.FC<WordSearchPanelProps> = ({
               title="Save search results"
               aria-label="Save search results"
             >
-              💾
+              <Icon name="save" size={14} />
             </button>
           </div>
           <ErrorBoundary

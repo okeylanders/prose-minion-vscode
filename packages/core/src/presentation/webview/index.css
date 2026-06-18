@@ -53,10 +53,25 @@
   --pm-amber: var(--vscode-charts-yellow, var(--vscode-terminal-ansiYellow, #e2b24a));
   --pm-red:   var(--vscode-charts-red, var(--vscode-errorForeground, #e06c5a));
 
-  /* Buttons (theme-native secondary; primary is coral brand) */
+  /* Buttons — primary CTAs FLOAT with the theme (a gradient derived from the
+     theme's button color), so coral stays a brand accent (header line, active
+     tab, logo) rather than being forced onto every button. */
   --pm-btn:       var(--vscode-button-secondaryBackground, var(--pm-surface-2));
   --pm-btn-text:  var(--vscode-button-secondaryForeground, var(--pm-text));
   --pm-btn-hover: var(--vscode-button-secondaryHoverBackground, var(--pm-surface-2));
+
+  --pm-primary:       var(--vscode-button-background, var(--pm-accent));
+  --pm-primary-text:  var(--vscode-button-foreground, #fff);
+  --pm-primary-hover: var(--vscode-button-hoverBackground, var(--pm-primary));
+  /* Subtle light→dark sheen over the theme's button color. */
+  --pm-primary-grad: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--pm-primary) 90%, white),
+    color-mix(in oklab, var(--pm-primary) 92%, black)
+  );
+  /* Soft accent square (paste/bot) — tinted from the theme primary. */
+  --pm-primary-soft: color-mix(in srgb, var(--pm-primary) 16%, transparent);
+  --pm-primary-soft-border: color-mix(in srgb, var(--pm-primary) 38%, transparent);
 
   /* Typography is the design's identity (tight SF Pro / SF Mono), so we pin the
      stacks rather than inherit the editor/UI fonts — matches the comp regardless
@@ -719,13 +734,13 @@ select:focus {
 }
 
 .btn-primary {
-  background: linear-gradient(180deg, var(--pm-accent-hi), var(--pm-accent-lo));
-  color: #fff;
-  border-color: var(--pm-accent-lo);
+  background: var(--pm-primary-grad);
+  color: var(--pm-primary-text);
+  border-color: color-mix(in oklab, var(--pm-primary) 80%, black);
 }
 
 .btn-primary:hover:not(:disabled) {
-  filter: brightness(1.06);
+  filter: brightness(1.07);
   transform: translateY(-1px);
 }
 
@@ -823,13 +838,13 @@ select:focus {
 }
 
 .action-button.primary {
-  background: linear-gradient(180deg, var(--pm-accent-hi), var(--pm-accent-lo));
-  color: #fff;
-  border-color: var(--pm-accent-lo);
+  background: var(--pm-primary-grad);
+  color: var(--pm-primary-text);
+  border-color: color-mix(in oklab, var(--pm-primary) 80%, black);
 }
 
 .action-button.primary:hover:not(:disabled) {
-  filter: brightness(1.06);
+  filter: brightness(1.07);
   transform: translateY(-1px);
 }
 
@@ -897,16 +912,16 @@ select:focus {
   width: 34px;
   height: 32px;
   min-width: 34px;
-  border: 1px solid var(--pm-accent-ring);
-  background-color: var(--pm-accent-soft);
-  color: var(--pm-accent-hi);
+  border: 1px solid var(--pm-primary-soft-border);
+  background-color: var(--pm-primary-soft);
+  color: var(--pm-primary);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.05rem;
   cursor: pointer;
-  transition: filter 0.15s ease, transform 0.1s ease;
+  transition: filter 0.15s ease, transform 0.1s ease, background-color 0.15s ease;
 }
 
 .icon-button:hover:not(:disabled) {

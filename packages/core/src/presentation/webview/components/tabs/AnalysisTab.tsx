@@ -318,7 +318,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
             title="Paste excerpt from selection"
             aria-label="Paste excerpt"
           >
-            📥
+            <Icon name="clipboard" size={16} />
           </button>
         </div>
         {selection.selectedRelativePath && (
@@ -356,7 +356,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
             title="Paste context from selection"
             aria-label="Paste context"
           >
-            📥
+            <Icon name="clipboard" size={16} />
           </button>
         </div>
         <div className="context-assist-row">
@@ -376,7 +376,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
             {context.loading || context.isStreaming ? (
               <div className="spinner spinner-small"></div>
             ) : (
-              '🤖'
+              <Icon name="bot" size={16} />
             )}
           </button>
         </div>
@@ -547,7 +547,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
               title="Copy analysis to clipboard"
               aria-label="Copy analysis"
             >
-              📋
+              <Icon name="copy" size={14} />
             </button>
             <button
               className="icon-button"
@@ -556,7 +556,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
               title="Save analysis to workspace"
               aria-label="Save analysis"
             >
-              💾
+              <Icon name="save" size={14} />
             </button>
           </div>
           <ErrorBoundary

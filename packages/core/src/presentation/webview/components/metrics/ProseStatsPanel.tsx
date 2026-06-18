@@ -5,6 +5,7 @@
  */
 
 import * as React from 'react';
+import { Icon } from '../shared/Icon';
 import { MessageType } from '@messages';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { ErrorBoundary } from '../shared/ErrorBoundary';
@@ -147,7 +148,7 @@ export const ProseStatsPanel: React.FC<ProseStatsPanelProps> = ({
               title="Copy metrics to clipboard"
               aria-label="Copy metrics"
             >
-              📋
+              <Icon name="copy" size={14} />
             </button>
             <button
               className="icon-button"
@@ -156,7 +157,7 @@ export const ProseStatsPanel: React.FC<ProseStatsPanelProps> = ({
               title="Save metrics to workspace"
               aria-label="Save metrics"
             >
-              💾
+              <Icon name="save" size={14} />
             </button>
           </div>
           <ErrorBoundary

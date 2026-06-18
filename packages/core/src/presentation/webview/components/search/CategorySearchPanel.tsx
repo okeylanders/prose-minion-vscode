@@ -4,6 +4,7 @@
  */
 
 import * as React from 'react';
+import { Icon } from '../shared/Icon';
 import { MessageType, CATEGORY_RELEVANCE_OPTIONS, NGRAM_MODE_OPTIONS, MIN_OCCURRENCES_OPTIONS } from '@messages';
 import { TextSourceMode } from '@shared/types';
 import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
@@ -348,7 +349,7 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
               title="Copy category search results"
               aria-label="Copy category search results"
             >
-              📋
+              <Icon name="copy" size={14} />
             </button>
             <button
               className="icon-button"
@@ -357,7 +358,7 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
               title="Save category search results"
               aria-label="Save category search results"
             >
-              💾
+              <Icon name="save" size={14} />
             </button>
           </div>
           <ErrorBoundary
