@@ -1,7 +1,7 @@
 # Status — Prose Minion Migration & Facelift
 
 **Branch:** `pass-2/design-facelift` · **Last updated:** 2026-06-17
-**Health:** 🟢 green — **Stage 1 COMPLETE** (core is `vscode`-free) · **Stage 2 COMPLETE** (monorepo move, all 5 waves) · **PR #60 review fixups LANDED**. Current release target: VS Code app manifest `2.0.0`; `@prose-minion/core` is stamped `2.0.0` to match. **Pass 2 facelift underway: Wave 1 (React 18) ✅ + Wave 2 (account surface) ✅ green** — 339 tests / 45 suites · 3 typechecks · build + `verify:bundle` · lint 0-err. F5 smoke for Wave 2 (live balance fetch) handed to the author.
+**Health:** 🟢 green — **Stage 1 COMPLETE** (core is `vscode`-free) · **Stage 2 COMPLETE** (monorepo move, all 5 waves) · **PR #60 review fixups LANDED**. Current release target: VS Code app manifest `2.0.0`; `@prose-minion/core` is stamped `2.0.0` to match. **Pass 2 facelift: Wave 1 (React 18) ✅ + Wave 2 (account surface) ✅ + Wave 3 (sidebar reskin + All Tools picker) ✅ green** — 339 tests / 45 suites · 3 typechecks · build + `verify:bundle` · lint 0-err. F5 smoke for Wave 2 (live balance fetch) + Wave 3 (visual reskin) handed to the author.
 
 ## PR #60 review fixups (2026-06-17)
 
@@ -14,6 +14,43 @@ Multi-agent review (`docs/pr-reviews/pr-60-stage-2-monorepo-move-review.md`) —
 - `export *` finding = no action (matches FM's actual barrel; recharacterized).
 
 **Post-smoke regression fix (F5 found it):** the F5 smoke caught a real Stage-2 regression the review missed — webview **Tailwind utilities were purged** (textareas lost `w-full`/`h-32`). Cause: the move changed the build cwd (root → app dir) and Tailwind resolves its config from `process.cwd()` → found none → default empty-content → purged everything (webpack still "compiled successfully"). Fixed: absolute `__dirname` content glob + explicit Tailwind config path in the webpack `postcss-loader` (`config: false`). **Guard added:** `scripts/verify-bundle.js` fails the production build + CI if sentinel utilities are absent from `webview.js`. Lesson 3 in action — the one unwitnessed delivery path (CSS) is where "behavior-identical" broke; now witnessed.
+
+## Pass 2 Wave 3 — sidebar reskin + All Tools picker (2026-06-17)
+
+Adopted FrameMinion's design language from the handoff bundle. Author calls
+(2026-06-17): **theme-adaptive** (FM is the source of truth — `--pm-*` tokens
+derived from `--vscode-*`, like FM's `sidebar-design-tokens`; the desktop app
+will map a Kimbie-style palette later), coral kept as PM's one fixed brand
+accent; balance widget reworked to a **full in-flow dropdown** (pill→strip), not
+the Wave-2 popup; Assistant **decluttered** to 3 primary buttons + All Tools.
+Landed in three green sub-waves:
+
+- **3a — foundation + chrome** (`1b183bf`): `--pm-*` token layer (scoped to
+  `.app-container`); ported the handoff's Lucide icons to a typed `Icon`
+  component (38 glyphs); top utility strip (title + settings gear); FM header
+  band with white logo tile (coral skull mark) + coral accent line; balance
+  `AccountBalancePill` (header) + `AccountBalanceStrip` (in-flow, below header),
+  expand state lifted to App; `TabBar` gained `variant` ('cards' | 'segment') +
+  React-node icons — main nav is now icon-above-label coral-ringed cards, sub-tabs
+  a segmented control.
+- **3b — tab bodies** (`bf570bf`): retheme the existing class vocabulary onto
+  `--pm-*` (design brief = match visual output, not prototype structure) — inset
+  rounded mono inputs with coral focus, card containers, coral-gradient primary
+  buttons, accent-soft icon buttons, inset **monospace result panels** with FM
+  tables (mono, zebra, accent numerics), chips, metric rows, mono-eyebrow labels.
+- **3c — All Tools modal** (_this commit_): `AllToolsModal` guide-style picker
+  (grouped icon-tile cards) over PM's REAL tools — the 12 `WritingToolsFocus`
+  values + the 2 focused dialogue variants + prose, each wired to the existing
+  `handleAnalyzeDialogue`/`handleAnalyzeProse`/`handleAnalyzeWritingTools`
+  handlers (focus strings are compiler-guarded by the union types). Assistant now
+  shows 3 primary buttons + an "All tools" button; the full grid moved into the
+  modal.
+
+**No component tests** added — consistent with the project's lightweight ethos
+(React components deferred to v1.0); type-checking guards the tool→focus wiring.
+**F5 owed (visual):** confirm the reskin under both a light and a dark VS Code
+theme (the tokens are theme-adaptive), the balance pill→strip disclosure, the
+icon-above-label tab cards, and the All Tools modal launching each analysis.
 
 ## Pass 2 Wave 2 — account surface (2026-06-17)
 
@@ -65,8 +102,8 @@ chevron) and **debounced auto-refresh** after each AI request.
 | 1 | Wave 6 — Tests + assert core `vscode`-free | ✅ done (boundary guard test green) | — |
 | P2 | Wave 0 — orientation + design artifact fetch | ✅ done (Claude link 403/auth-gated; local handoff zip inspected) | — |
 | P2 | Wave 1 — React 17 → 18 + React 18 test harness | ✅ done (315 tests / 41 suites · 3 typechecks · build + verify:bundle) | `c79d8c7` |
-| P2 | Wave 2 — OpenRouter balance + last-request cost | ✅ done (339 tests / 45 suites · 3 typechecks · build + verify:bundle · lint 0-err) | _this commit_ |
-| P2 | Wave 3 — sidebar facelift + All Tools picker | ⬜ next | — |
+| P2 | Wave 2 — OpenRouter balance + last-request cost | ✅ done (339 tests / 45 suites · 3 typechecks · build + verify:bundle · lint 0-err) | `6f9710d` |
+| P2 | Wave 3 — sidebar facelift + All Tools picker | ✅ done (3a chrome `1b183bf` · 3b bodies `bf570bf` · 3c modal _this commit_) | — |
 
 ## Stage 2 — wave tracker (resumable; pick up from the first ⬜)
 
@@ -125,17 +162,18 @@ This wave finished the last two `vscode` consumers in core:
 
 ## Notes for the next session (resume point)
 
-- **NEXT: Pass 2 — Wave 3 (sidebar reskin + All Tools picker).** Adopt the FM warm-brown
-  design language from the handoff bundle (`.temp/Prose Minion-handoff.zip` → unzipped at
-  `/tmp/pm_handoff/`): `pm-mock.css` (chrome, tab cards, balance widget), `pm-frames-sidebar.js`
-  (markup shape), `icons.js`. **Fold the Wave-2 `AccountBalanceWidget` into the new header** —
-  it's currently themed with `--vscode-*` placeholders and rendered in `app-header-right`; the
-  design wants it top-right with the coral accent line + logo tile. **Author preference
-  (2026-06-17, after Wave-2 F5): rework the header layout to match FM, and make the balance
-  widget a full in-flow dropdown when clicked rather than the current absolutely-positioned
-  popup panel.** Build the "All Tools" modal (guide-style picker) preserving existing PM tool
-  actions. Full-tab Assistant directions (A/B/C) remain a separate, later decision (out of
-  Wave 3 scope per the handoff).
+- **NEXT: Pass 2 — Wave 4 (final verify + docs)** per [plan.md](plan.md): full gate vs the
+  baseline, `verify:bundle`, package/CI confidence, and the F5 smoke handoff (Wave 2 live
+  balance + Wave 3 reskin under light AND dark VS Code themes). Then the facelift is done.
+- **Deferred design follow-ups (not Wave 3):** the full-tab Assistant directions (A/B/C — the
+  "Assistant as a real editor tab" with conversation thread / split-pin / branch board) remain
+  a separate, later product decision per the handoff. Optional reskin polish not yet touched:
+  streaming/loading panels, context-preview, settings overlay still use `--vscode-*` directly
+  (functional, just not retokenized).
+- **Wave 3 done (sidebar reskin + All Tools picker).** See the "Pass 2 Wave 3" section above.
+  Author preferences honored: theme-adaptive `--pm-*` (FM as source of truth), balance widget
+  as a full in-flow pill→strip dropdown (not the popup), Assistant decluttered to 3 primary +
+  All Tools modal.
 - **Wave 2 done (account surface).** See the "Pass 2 Wave 2" section above. **Author F5 still
   owed:** confirm the balance widget fetches a real number against a live OpenRouter key, the
   panel shows the key-limit detail, the balance auto-refreshes ~10s after an analysis, and

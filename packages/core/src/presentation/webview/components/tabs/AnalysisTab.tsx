@@ -10,6 +10,8 @@ import { ErrorBoundary } from '../shared/ErrorBoundary';
 import { LoadingIndicator } from '../shared/LoadingIndicator';
 import { WordCounter } from '../shared/WordCounter';
 import { StreamingContent } from '../shared/StreamingContent';
+import { Icon } from '../shared/Icon';
+import { AllToolsModal } from './AllToolsModal';
 import { formatAnalysisAsMarkdown } from '../../utils/formatters';
 import { VSCodeAPI } from '../../types/vscode';
 import { UseAnalysisReturn } from '../../hooks/domain/useAnalysis';
@@ -38,6 +40,7 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
   const [text, setText] = React.useState(selection.selectedText);
   const [showContextPreview, setShowContextPreview] = React.useState(false);
   const [contextFlash, setContextFlash] = React.useState(false);
+  const [showAllTools, setShowAllTools] = React.useState(false);
   const wasStreamingRef = React.useRef(false);
 
   // Flash context box when streaming completes
@@ -469,145 +472,50 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
       </div>
 
       <div className="analysis-buttons-section">
-        <h4 className="analysis-section-header">Analyze & Suggest Improvements:</h4>
+        <div className="analysis-buttons-head">
+          <h4 className="analysis-section-header">Analyze &amp; Suggest Improvements</h4>
+          <button
+            className="btn ghost all-tools-button"
+            onClick={() => setShowAllTools(true)}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+            title="Browse every writing tool"
+          >
+            <Icon name="grid" size={14} /> All tools
+          </button>
+        </div>
         <div className="primary-buttons">
           <button
             className="action-button primary"
             onClick={() => handleAnalyzeDialogue('both')}
             disabled={!text.trim() || analysis.loading || analysis.isStreaming}
           >
-            🎭 Dialogue & Beats
+            <Icon name="dialogue" size={15} /> Dialogue &amp; Beats
           </button>
           <button
             className="action-button primary"
             onClick={handleAnalyzeProse}
             disabled={!text.trim() || analysis.loading || analysis.isStreaming}
           >
-            📝 Prose
+            <Icon name="pen" size={15} /> Prose
           </button>
           <button
             className="action-button primary"
             onClick={() => handleAnalyzeWritingTools('gestures')}
             disabled={!text.trim() || analysis.loading || analysis.isStreaming}
           >
-            🤌 Gestures
-          </button>
-        </div>
-
-        <h5 className="analysis-section-subheader">Focused:</h5>
-        <div className="focused-buttons">
-          <button
-            className="action-button secondary"
-            onClick={() => handleAnalyzeDialogue('dialogue')}
-            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
-          >
-            💬 Dialogue Only
-          </button>
-          <button
-            className="action-button secondary"
-            onClick={() => handleAnalyzeDialogue('microbeats')}
-            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
-          >
-            🎭 Microbeats Only
-          </button>
-        </div>
-
-        <h5 className="analysis-section-subheader">Craft & Voice:</h5>
-        <div className="focused-buttons writing-tools-grid">
-          <button
-            className="action-button secondary writing-tool-button"
-            onClick={() => handleAnalyzeWritingTools('cliche')}
-            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
-          >
-            <span className="writing-tool-icon">🔍</span>
-            <span className="writing-tool-label">Cliché</span>
-          </button>
-          <button
-            className="action-button secondary writing-tool-button"
-            onClick={() => handleAnalyzeWritingTools('repetition')}
-            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
-          >
-            <span className="writing-tool-icon">🔁</span>
-            <span className="writing-tool-label">Repetition</span>
-          </button>
-          <button
-            className="action-button secondary writing-tool-button"
-            onClick={() => handleAnalyzeWritingTools('decision-points')}
-            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
-          >
-            <span className="writing-tool-icon">🎯</span>
-            <span className="writing-tool-label">Decision Points</span>
-          </button>
-          <button
-            className="action-button secondary writing-tool-button"
-            onClick={() => handleAnalyzeWritingTools('show-and-tell')}
-            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
-          >
-            <span className="writing-tool-icon">⚖️</span>
-            <span className="writing-tool-label">Show & Tell</span>
-          </button>
-          <button
-            className="action-button secondary writing-tool-button"
-            onClick={() => handleAnalyzeWritingTools('choreography')}
-            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
-          >
-            <span className="writing-tool-icon">🎬</span>
-            <span className="writing-tool-label">Choreography</span>
-          </button>
-          <button
-            className="action-button secondary writing-tool-button"
-            onClick={() => handleAnalyzeWritingTools('stock-and-signature')}
-            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
-          >
-            <span className="writing-tool-icon">📊</span>
-            <span className="writing-tool-label">Stock & Signature</span>
-          </button>
-          <button
-            className="action-button secondary writing-tool-button"
-            onClick={() => handleAnalyzeWritingTools('placeholders')}
-            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
-          >
-            <span className="writing-tool-icon">🔍</span>
-            <span className="writing-tool-label">Placeholders</span>
-          </button>
-        </div>
-
-        <h5 className="analysis-section-subheader">Technical & Quality:</h5>
-        <div className="focused-buttons writing-tools-grid">
-          <button
-            className="action-button secondary writing-tool-button"
-            onClick={() => handleAnalyzeWritingTools('style')}
-            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
-          >
-            <span className="writing-tool-icon">🎨</span>
-            <span className="writing-tool-label">Style</span>
-          </button>
-          <button
-            className="action-button secondary writing-tool-button"
-            onClick={() => handleAnalyzeWritingTools('editor')}
-            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
-          >
-            <span className="writing-tool-icon">✏️</span>
-            <span className="writing-tool-label">Editor</span>
-          </button>
-          <button
-            className="action-button secondary writing-tool-button"
-            onClick={() => handleAnalyzeWritingTools('continuity')}
-            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
-          >
-            <span className="writing-tool-icon">🔗</span>
-            <span className="writing-tool-label">Continuity</span>
-          </button>
-          <button
-            className="action-button secondary writing-tool-button"
-            onClick={() => handleAnalyzeWritingTools('fresh')}
-            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
-          >
-            <span className="writing-tool-icon">🌱</span>
-            <span className="writing-tool-label">Fresh</span>
+            <Icon name="hand" size={15} /> Gestures
           </button>
         </div>
       </div>
+
+      <AllToolsModal
+        open={showAllTools}
+        disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+        onClose={() => setShowAllTools(false)}
+        onDialogue={handleAnalyzeDialogue}
+        onProse={handleAnalyzeProse}
+        onWritingTool={handleAnalyzeWritingTools}
+      />
 
       {analysis.isStreaming && (
         <StreamingContent

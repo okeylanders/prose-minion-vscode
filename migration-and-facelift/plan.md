@@ -100,9 +100,13 @@ inspection. The full VS Code tab remains out of scope until the design is ready.
   each AI request. New vertical slice: `infrastructure/account/` (client +
   service), `AccountBalanceHandler`, `useAccountBalance`, `AccountBalanceWidget`.
   339 tests / 45 suites · 3 typechecks · build + verify:bundle · lint 0-err.
-- [ ] **Wave 3 — sidebar reskin + tools picker** — FrameMinion-style header,
+- [x] **Wave 3 — sidebar reskin + tools picker** — FrameMinion-style header,
   tab chrome, cards/results, and an All Tools modal that preserves existing PM
-  tool actions.
+  tool actions. Landed in three green sub-waves: 3a foundation+chrome (--pm-*
+  tokens derived from --vscode-*, ported Lucide icon component, logo tile + coral accent
+  line, balance pill→in-flow strip, icon-above-label tab cards), 3b tab-body
+  reskin (cards/inputs/buttons/mono result panels/tables/chips), 3c All Tools
+  modal over PM's real 12 tools + Assistant decluttered to 3 primary + All Tools.
 - [ ] **Wave 4 — final verify + docs** — full gate, `verify:bundle`, package/CI
   confidence, and F5 smoke handoff.
 
