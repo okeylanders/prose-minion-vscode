@@ -124,6 +124,70 @@ Root `npm run build` delegates to the app webpack only — it no longer runs tes
 (the pre-move single-package `build` did). The `prepackage` gate + CI restore that net at the
 package/CI boundary; run `npm test` / `npm run typecheck` explicitly for a bare `build`.
 
+### Added — OpenRouter account balance (sidebar widget)
+
+A single-provider port of FrameMinion's ADR-010 balance feature — a sidebar widget showing
+the OpenRouter account's remaining credits, refreshed after each AI request.
+
+- New vertical slice: `infrastructure/account/{OpenRouterAccountClient,AccountBalanceService,accountTypes,index}`,
+  `application/handlers/domain/AccountBalanceHandler`, `shared/types/messages/accountBalance`,
+  `presentation/webview/hooks/domain/useAccountBalance`, and
+  `presentation/webview/components/balances/{AccountBalanceWidget,balanceFormat,index}`.
+- `OpenRouterAccountClient` parallelizes `/key` + `/credits` with **per-call fault isolation**
+  (a `/credits` failure can't lose `/key` data); both `total_credits` and `total_usage` are
+  finite-guarded — a malformed/absent value maps to `unavailable`, never a silent `0` that would
+  erase spend and overstate `remaining`.
+- `AccountBalanceService` owns the cache plus a post-AI-request **debounce** with
+  pending-coalescing and an abort timeout; a forced refresh is never coalesced into a non-forced
+  one (the "never serve pre-spend data" invariant).
+- The refresh is armed from `MessageHandler.applyTokenUsage` after a real spend. **Keys never
+  leave the host** — the webview boundary is structurally provable (no payload field can carry a key).
+
+### Changed — React 18 + App.tsx router extraction + palette facelift
+
+- **React 18** — `index.tsx` → `createRoot`; lockfile updated.
+- **`App.tsx` refactor** — the ~140-line inline message-router literal lifted into a pure
+  `buildAppMessageRoutes` in `hooks/useAppMessageRouter.ts` (behavior-preserving); the SVG logo
+  extracted to `PmLogo.tsx`.
+- **Theme/palette facelift** — new `useThemeSettings` + `ThemeToggle` + line-icon `Icon`,
+  reskinned `AllToolsModal`/`TabBar`, and a large `index.css` retokenization onto `--pm-*`. The
+  sidebar palette default flips to **`follow-vscode`** (track the editor theme), with a pinned
+  warm-dark option still available.
+
+### Review fixups (PR #60B — account balance + facelift, `docs/pr-reviews/pr-60B-…`)
+
+Multi-agent pass over the post-#60 work; no 🔴 blockers (every correctness path cleared). The one
+🟠 High: `proseMinion.ui.sidebarTheme` added to `MessageHandler.UI_KEYS` so a Settings-panel change
+broadcasts to the webview (parity with its sibling `ui.showTokenWidget`). All other Standards/Nits
+fixed except conscious deferrals (composition-root injection, `reason` closed-union, the
+key-transition floor edge, the sticky-last-cost product call). Added `balanceFormat.test.ts` (the
+previously-untested 6-branch headline logic) + behavioral STATUS-route + both-failed-service tests.
+Fixups in `19bbd99`.
+
+### Landing — PR #61 (epic → `main`)
+
+The aggregate landing PR for the whole ports-and-adapters epic (Stage-2 monorepo move + account
+balance + React 18 + router extraction + facelift). `main` was a strict ancestor, so this is a
+clean, conflict-free landing — opened as a PR rather than a fast-forward to give the review thread
+a surface. **377 files · +12,867 / −3,909 · 50 commits; migrations: none** — but ~95% is mechanical
+(the `src/**` → `packages/core/src/**` relocation, the `resources/` move, the lockfile, and the
+`index.css` retokenization).
+
+- Pre-merge multi-agent review: `docs/pr-reviews/pr-61-monorepo-ports-and-adapters-landing-review.md`
+  — no blockers; the one 🟠 High (`total_usage` zero-fallback) plus 8 Standards/Nits fixed on-branch
+  in `270974e`, 3 consciously deferred (one to the ADR 2026-06-18 consolidation epic, one
+  behavior-preserving `STATUS` unknown-source fallback, one symlink-aware containment per the file's
+  own deferred comment).
+- New defense-in-depth: `PromptLoader`/`GuideLoader` now reject any `promptPath`/`guidePath` that
+  escapes the bundled-resources root via `isPathWithinRoot`, **before** any FS access (+4 tests).
+- Post-fixup gate: **48 suites / 368 tests · 3 typechecks clean · `npm run lint` 0 errors**.
+- **Known follow-up (not in scope):** `MessageHandler` has drifted into a second composition root
+  (it `new`s some services internally, with a module-level result cache and a few `any`-typed
+  seams) — documented, not fixed here; lands as its own short epic per **ADR 2026-06-18**
+  (`docs/adr/2026-06-18-messagehandler-composition-root-consolidation.md`).
+
+**Landing:** PR #61 merges this epic into `main` as a **merge commit (no squash)**.
+
 ---
 
 ## [1.10.4] - 2026-05-29
