@@ -1,0 +1,18 @@
+{
+  "//": "ts-jest type-check config for the single root jest. Spans both packages, inherits base's full path table (incl. @prose-minion/core + @app/*). commonjs for the node test env; DOM lib + React-17 classic jsx are a safe superset so any imported webview .tsx transpiles. Tests are deliberately NOT in the per-package production tsconfigs (those prove core compiles standalone).",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "jsx": "react",
+    "allowSyntheticDefaultImports": true
+  },
+  "include": [
+    "packages/core/src/**/*.ts",
+    "packages/core/src/**/*.tsx",
+    "apps/vscode-extension/src/**/*.ts",
+    "apps/vscode-extension/src/**/*.tsx"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

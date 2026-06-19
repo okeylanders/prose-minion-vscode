@@ -1,0 +1,13 @@
+{
+  "//": "Core host (extension-host-side) type-check. PROVES core compiles vscode-free and standalone: no @types/vscode, and it excludes both the DOM webview tree (own config) and tests (type-checked by ts-jest). module/resolution mirror PM's pre-move host tsconfig (commonjs/node).",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "lib": ["ES2020"],
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "src/presentation/webview", "src/__tests__"]
+}

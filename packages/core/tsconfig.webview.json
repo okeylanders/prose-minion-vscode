@@ -1,0 +1,18 @@
+{
+  "//": "Core webview (renderer-side) type-check. The DOM/react half of core: presentation/webview + shared + the infrastructure types it imports. Mirrors PM's pre-move tsconfig.webview.json (esnext modules, node resolution, React 17 classic jsx). vscode-free.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "node",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "jsx": "react",
+    "allowSyntheticDefaultImports": true,
+    "rootDir": "src"
+  },
+  "include": [
+    "src/presentation/webview/**/*",
+    "src/shared/**/*",
+    "src/infrastructure/**/*",
+    "src/presentation/webview/types/**/*.d.ts"
+  ]
+}

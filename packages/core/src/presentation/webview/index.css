@@ -1,0 +1,2004 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* VS Code theme variables */
+:root {
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+}
+
+/* ============================================================
+   Prose Minion design tokens — OWNED warm-dark palette.
+
+   The surface ramp is derived from ONE anchor + a warm tint via
+   color-mix, so the layers always separate — instead of renting them
+   from --vscode-* (which collapsed into a single washed brown under
+   warm themes). FOLLOW-VS-CODE is the DEFAULT (the header toggle's "Editor
+   theme", proseMinion.ui.sidebarTheme = follow-vscode): it adds
+   [data-pm-theme="follow"] on .app-container, re-pointing the anchor to
+   var(--vscode-editor-background) + text to the theme. Toggle OFF to pin the
+   warm-dark brand palette (matches the comp). Same ramp, different anchor;
+   coral stays PM's fixed brand mark.
+
+   HOW TO TWEAK THE COLORS — three dials, all just below:
+     • --pm-anchor : overall darkness (the near-black backdrop). Lighten
+                     or darken the whole sidebar from this one value.
+     • --pm-warm   : the warm hue mixed into surfaces + hairlines. Push it
+                     toward orange vs. a more neutral grey-brown.
+     • the mix %s  : per-surface separation. --pm-surface 90% / --pm-surface-2
+                     82% / --pm-inset 93% control how far cards / hover / input
+                     wells step off the anchor. LOWER % = MORE contrast.
+   The coral accent (--pm-accent & friends) is the brand mark — change it only
+   when rebranding, not theming. The follow-VS-Code overrides live in the
+   [data-pm-theme="follow"] block just after the .app-container layout rule.
+   ============================================================ */
+.app-container {
+  /* Anchor — the app backdrop. Everything below derives from this. */
+  --pm-anchor: #1d1610;          /* near-black warm (the comp's backdrop) */
+  --pm-warm:   #cf9a57;          /* warm hue for surface lifts + hairlines */
+
+  /* Surfaces — a controlled ladder off the anchor (never trust theme separation) */
+  --pm-bg:          var(--pm-anchor);
+  --pm-surface:     color-mix(in oklab, var(--pm-anchor) 90%, var(--pm-warm));
+  --pm-surface-2:   color-mix(in oklab, var(--pm-anchor) 82%, var(--pm-warm));
+  --pm-inset:       color-mix(in oklab, var(--pm-anchor) 93%, #000);
+
+  /* Borders — warm hairlines (alpha so they read on any anchor; srgb mix to
+     keep the hue stable when fading to transparent) */
+  --pm-border:      color-mix(in srgb, var(--pm-warm) 20%, transparent);
+  --pm-border-soft: color-mix(in srgb, var(--pm-warm) 12%, transparent);
+  --pm-border-2:    color-mix(in srgb, var(--pm-warm) 30%, transparent);
+
+  /* Text — warm off-white ladder */
+  --pm-text:   #efe6d6;
+  --pm-text-2: #e0d5c3;
+  --pm-muted:  #ab9c86;
+  --pm-dim:    #837359;
+  --pm-faint:  #6f6250;
+
+  /* Coral brand accent (fixed across themes) */
+  --pm-accent:      #e0673a;
+  --pm-accent-hi:   #ee7d49;
+  --pm-accent-lo:   #c8552c;
+  --pm-accent-soft: rgba(224, 103, 58, 0.14);
+  --pm-accent-ring: rgba(224, 103, 58, 0.30);
+  --pm-accent-line: linear-gradient(90deg, #e8763f 0%, #d2592f 48%, rgba(210, 89, 47, 0) 100%);
+
+  /* Status (pinned to the warm-dark palette) */
+  --pm-green: #8fce8a;
+  --pm-blue:  #5aa4f5;
+  --pm-amber: #d7a948;
+  --pm-red:   #ef7d66;
+
+  /* Links (pinned; a friendly blue still reads on warm-dark) */
+  --pm-link:       #79b8f2;
+  --pm-link-hover: #9ccbff;
+
+  /* Buttons — secondary is a subtle warm surface; the primary CTA is CORAL
+     (the brand), matching the comp's "Run Search" / "Generate" button. */
+  --pm-btn:       var(--pm-surface-2);
+  --pm-btn-text:  var(--pm-text);
+  --pm-btn-hover: var(--pm-surface-2);
+
+  --pm-primary:       var(--pm-accent);
+  --pm-primary-text:  #fff;
+  --pm-primary-hover: var(--pm-accent-hi);
+  /* Subtle light→dark sheen over the coral primary. */
+  --pm-primary-grad: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--pm-primary) 90%, white),
+    color-mix(in oklab, var(--pm-primary) 92%, black)
+  );
+  /* Soft accent square (paste/bot) — tinted from the theme primary. */
+  --pm-primary-soft: color-mix(in srgb, var(--pm-primary) 16%, transparent);
+  --pm-primary-soft-border: color-mix(in srgb, var(--pm-primary) 38%, transparent);
+
+  /* Typography is the design's identity (tight SF Pro / SF Mono), so we pin the
+     stacks rather than inherit the editor/UI fonts — matches the comp regardless
+     of the user's VS Code font settings. */
+  --pm-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --pm-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, system-ui, sans-serif;
+
+  /* Radii match FrameMinion's SHIPPED scale (--fm-radius 6 / -sm 4), not the
+     static comp's looser 12/9/8 — the real FM reads much tighter. */
+  --pm-r-card: 8px;
+  --pm-r-tile: 6px;
+  --pm-r-input: 6px;
+  --pm-r-pill: 999px;
+}
+
+/* Base styles */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-foreground);
+  background-color: var(--vscode-editor-background);
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* App container */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--pm-bg);
+  color: var(--pm-text);
+}
+
+/* "Follow VS Code theme" mode (Settings toggle — wiring pending). Same ramp,
+   re-anchored on the editor background + theme text; surfaces/borders derive
+   from --pm-anchor automatically, so only the anchor + text + buttons swap. */
+.app-container[data-pm-theme="follow"] {
+  --pm-anchor: var(--vscode-editor-background, #1d1610);
+  --pm-text:   var(--vscode-foreground, #efe6d6);
+  --pm-text-2: var(--vscode-foreground, #e0d5c3);
+  --pm-muted:  var(--vscode-descriptionForeground, #ab9c86);
+  --pm-dim:    var(--vscode-disabledForeground, var(--vscode-descriptionForeground, #837359));
+  --pm-faint:  var(--vscode-disabledForeground, var(--vscode-descriptionForeground, #6f6250));
+  --pm-btn:           var(--vscode-button-secondaryBackground, var(--pm-surface-2));
+  --pm-btn-text:      var(--vscode-button-secondaryForeground, var(--pm-text));
+  --pm-primary:       var(--vscode-button-background, var(--pm-accent));
+  --pm-primary-text:  var(--vscode-button-foreground, #fff);
+  --pm-primary-hover: var(--vscode-button-hoverBackground, var(--pm-primary));
+}
+
+/* Header sidebar-theme toggle (pin warm-dark vs. follow VS Code) — sits just
+   below the balance pill. The thumb slider goes coral when following. */
+.pm-theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 6px 16px 0;
+  margin-bottom: 2px;
+}
+
+.pm-theme-toggle-label {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pm-dim);
+  user-select: none;
+}
+
+.pm-theme-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 34px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--pm-border-2);
+  border-radius: 999px;
+  background: var(--pm-inset);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.pm-theme-switch:hover {
+  border-color: var(--pm-accent-ring);
+}
+
+.pm-theme-switch:focus-visible {
+  outline: 2px solid var(--pm-accent-ring);
+  outline-offset: 2px;
+}
+
+.pm-theme-switch[aria-checked="true"] {
+  background: var(--pm-accent-soft);
+  border-color: var(--pm-accent-ring);
+}
+
+.pm-theme-thumb {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--pm-muted);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.pm-theme-switch[aria-checked="true"] .pm-theme-thumb {
+  transform: translateX(16px);
+  background: var(--pm-accent);
+}
+
+/* ---------- Header band (VS Code's native view title bar sits above) ---------- */
+.app-header.pm-header {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 16px 18px;
+}
+.app-header.pm-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--pm-accent-line);
+}
+.pm-brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+.pm-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 9px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+.pm-logo-mark {
+  width: 38px;
+  height: 38px;
+  color: var(--pm-accent);
+}
+.app-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.app-title h1,
+.app-title p,
+.pm-title,
+.pm-subtitle {
+  margin: 0;
+}
+.pm-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: var(--pm-text);
+}
+.pm-subtitle {
+  font-size: 12.5px;
+  color: var(--pm-muted);
+  margin-top: 3px;
+}
+
+/* ============================================================
+   OpenRouter account-balance (Pass 2, Wave 3 — FM design language).
+   A collapsed PILL in the header discloses a full in-flow STRIP
+   below the header (not a popup). Themed via --pm-* tokens.
+   ============================================================ */
+.pm-balance-pill {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 4px 6px 4px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--pm-r-input);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: right;
+  flex-shrink: 0;
+  transition: background 120ms, border-color 120ms;
+}
+.pm-balance-pill:hover,
+.pm-balance-pill.is-expanded {
+  background: var(--pm-surface);
+  border-color: var(--pm-border-soft);
+}
+
+.pm-balance-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-end;
+}
+.pm-balance-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.pm-balance-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--pm-blue);
+}
+.pm-balance-dot.ok {
+  background: var(--pm-green);
+  box-shadow: 0 0 6px color-mix(in oklab, var(--pm-green) 55%, transparent);
+}
+.pm-balance-dot.warn {
+  background: var(--pm-amber);
+}
+.pm-balance-dot.muted {
+  background: var(--pm-dim);
+}
+.pm-balance-label {
+  font-size: 12.5px;
+  color: var(--pm-muted);
+}
+.pm-balance-val {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pm-text);
+  font-variant-numeric: tabular-nums;
+  min-width: 50px;
+  text-align: right;
+}
+.pm-balance-val.muted {
+  color: var(--pm-dim);
+  font-weight: 500;
+}
+.pm-balance-val.zero {
+  color: var(--pm-red);
+}
+.pm-balance-sub {
+  font-size: 11px;
+  color: var(--pm-dim);
+  text-align: right;
+}
+.pm-balance-sub b {
+  color: var(--pm-muted);
+  font-weight: 600;
+}
+.pm-balance-chev {
+  display: inline-flex;
+  color: var(--pm-dim);
+  margin-top: 1px;
+  transition: transform 150ms ease;
+}
+.pm-balance-pill.is-expanded .pm-balance-chev {
+  transform: rotate(180deg);
+}
+
+/* Disclosed detail — a full-width in-flow strip below the header. */
+.pm-balance-strip {
+  padding: 12px 16px 14px;
+  background: var(--pm-surface);
+  border-bottom: 1px solid var(--pm-border-soft);
+}
+.pm-balance-strip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.pm-balance-strip-title {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pm-dim);
+}
+.pm-balance-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  color: var(--pm-muted);
+  border: none;
+  border-radius: var(--pm-r-input);
+  cursor: pointer;
+}
+.pm-balance-refresh:hover:not(:disabled) {
+  background: var(--pm-surface-2);
+  color: var(--pm-text);
+}
+.pm-balance-refresh:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+.pm-balance-refresh.spinning svg {
+  animation: pm-balance-spin 0.9s linear infinite;
+}
+@keyframes pm-balance-spin {
+  to { transform: rotate(360deg); }
+}
+
+.pm-balance-amount {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--pm-text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.pm-balance-amount.muted {
+  color: var(--pm-muted);
+  font-weight: 500;
+}
+.pm-balance-amount.zero {
+  color: var(--pm-red);
+}
+.pm-balance-of {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--pm-muted);
+}
+.pm-balance-amount-label {
+  font-size: 11px;
+  color: var(--pm-muted);
+  margin-top: 1px;
+}
+.pm-balance-sub-line {
+  font-size: 11px;
+  color: var(--pm-muted);
+  margin-top: 8px;
+}
+.pm-balance-note {
+  font-size: 12px;
+  color: var(--pm-muted);
+}
+.pm-balance-bar {
+  height: 4px;
+  margin-top: 5px;
+  border-radius: var(--pm-r-pill);
+  background: var(--pm-surface-2);
+  overflow: hidden;
+}
+.pm-balance-bar-fill {
+  height: 100%;
+  border-radius: var(--pm-r-pill);
+  background: linear-gradient(90deg, var(--pm-accent-lo), var(--pm-accent-hi));
+}
+
+.app-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-md);
+}
+
+/* Tab bar styles */
+/* ---------- Main navigation: icon-above-label cards (variant="cards") ---------- */
+.pm-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 14px 16px 4px;
+}
+.pm-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 13px 6px;
+  border-radius: var(--pm-r-tile);
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-border);
+  color: var(--pm-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.pm-tab .pm-tab-icon {
+  display: inline-flex;
+  line-height: 1;
+}
+.pm-tab .pm-tab-icon svg {
+  width: 21px;
+  height: 21px;
+}
+.pm-tab .pm-tab-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1;
+}
+.pm-tab:hover {
+  background: var(--pm-surface-2);
+  color: var(--pm-text);
+}
+.pm-tab.active {
+  background: var(--pm-surface-2);
+  border-color: var(--pm-border-2);
+  color: var(--pm-text);
+  box-shadow: 0 0 0 1px var(--pm-accent-ring), 0 6px 16px rgba(0, 0, 0, 0.18);
+}
+.pm-tab.active .pm-tab-icon {
+  color: var(--pm-accent);
+}
+.pm-tab:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---------- Sub-tabs / scope / tools: segmented control (default) ---------- */
+.pm-seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 6px;
+  background: var(--pm-inset);
+  border: 1px solid var(--pm-border);
+  border-radius: 8px;
+  padding: 5px;
+}
+.pm-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--pm-muted);
+  border-radius: 6px;
+  padding: 9px 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  font-family: var(--pm-sans);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.pm-seg-btn .pm-tab-icon {
+  display: inline-flex;
+}
+.pm-seg-btn:hover:not(:disabled) {
+  color: var(--pm-text);
+}
+.pm-seg-btn.active {
+  background: var(--pm-surface-2);
+  border-color: var(--pm-border-2);
+  color: var(--pm-text);
+  box-shadow: 0 0 0 1px var(--pm-accent-ring);
+}
+.pm-seg-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Tab content */
+.tab-content {
+  padding: var(--spacing-md) 0;
+}
+
+/* Tab section titles (e.g. "Prose Excerpt Assistant", "Search") */
+.tab-content > h2 {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 6px 0 14px;
+  color: var(--pm-text);
+}
+.tab-content > h3 {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 14px 0 8px;
+  color: var(--pm-text);
+}
+
+/* Field labels — mono uppercase eyebrow (FM language). Scoped to header/section
+   labels so checkbox labels in tool settings keep their normal sentence case. */
+.input-header label,
+.pm-field-label {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pm-dim);
+  font-weight: 500;
+}
+
+/* Form elements */
+textarea,
+input[type="text"],
+select {
+  background-color: var(--pm-inset);
+  color: var(--pm-text);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-input);
+  font-family: var(--pm-mono);
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 11px 12px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+textarea:focus,
+input[type="text"]:focus,
+select:focus {
+  outline: none;
+  border-color: var(--pm-accent);
+  box-shadow: 0 0 0 3px var(--pm-accent-soft);
+}
+
+.input-container {
+  padding: 15px;
+  background-color: var(--pm-surface);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
+  margin-bottom: 12px;
+}
+
+.input-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+.input-header label {
+  margin: 0;
+  flex: 1;
+}
+
+
+.input-header .icon-button {
+  flex-shrink: 0;
+}
+
+
+.excerpt-meta {
+  margin-bottom: var(--spacing-xs);
+  font-size: 0.75rem;
+  color: var(--pm-muted);
+}
+
+.context-assist-header {
+  align-items: center;
+}
+
+/* Inline action cluster on an input header (bot + paste, right-aligned). */
+.input-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+/* The context "generate" bot button: small (matches .icon-button dims) but
+   keeps the filled coral grad so it stays the prominent action next to the
+   soft-coral paste square. */
+.context-assist-button {
+  width: 34px;
+  height: 32px;
+  min-width: 34px;
+  border: 1px solid color-mix(in oklab, var(--pm-primary) 80%, black);
+  background: var(--pm-primary-grad);
+  color: var(--pm-primary-text);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+
+.context-assist-button:hover:not(:disabled) {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+}
+
+.context-assist-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.context-status {
+  margin-top: var(--spacing-xs);
+  font-size: 0.75rem;
+  color: var(--pm-muted);
+}
+
+.context-resource-summary {
+  margin-top: var(--spacing-sm);
+}
+
+.context-resource-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--pm-muted);
+  margin-bottom: var(--spacing-xs);
+}
+
+.context-resource-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.context-resource-chip {
+  display: inline-block;
+  padding: 5px 9px;
+  background-color: var(--pm-surface-2);
+  color: var(--pm-text);
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid var(--pm-border);
+}
+
+.context-resource-chip.clickable {
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
+}
+
+.context-resource-chip.clickable:hover {
+  background-color: var(--pm-surface-2);
+  border-color: var(--pm-accent-ring);
+}
+
+.context-resource-chip.clickable:active {
+  transform: translateY(1px);
+}
+
+.model-selector-container {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--pm-surface);
+  border-bottom: 1px solid var(--pm-border);
+}
+
+.model-selector {
+  width: 100%;
+}
+
+.model-selector-label {
+  display: block;
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: var(--spacing-xs);
+  color: var(--pm-dim);
+}
+
+.model-selector-dropdown {
+  width: 100%;
+  padding: 10px 12px;
+  font-family: var(--pm-mono);
+  font-size: 13px;
+  background-color: var(--pm-inset);
+  color: var(--pm-text);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-input);
+}
+
+.model-selector-helper {
+  margin-top: var(--spacing-xs);
+  font-size: 0.75rem;
+  color: var(--pm-muted);
+}
+
+/* Buttons */
+.btn {
+  padding: 11px 16px;
+  border: 1px solid var(--pm-border-2);
+  background: var(--pm-btn);
+  color: var(--pm-btn-text);
+  border-radius: var(--pm-r-input);
+  cursor: pointer;
+  font-family: var(--pm-sans);
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: filter 0.15s ease, background 0.15s ease, transform 0.1s ease;
+}
+
+.btn-primary {
+  background: var(--pm-primary-grad);
+  color: var(--pm-primary-text);
+  border-color: color-mix(in oklab, var(--pm-primary) 80%, black);
+}
+
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+}
+
+/* Secondary buttons float with the theme (coral stays a brand accent, not a
+   per-button fill) — matches .action-button.secondary. */
+.btn-secondary {
+  background: var(--pm-btn);
+  color: var(--pm-btn-text);
+  border-color: var(--pm-border-2);
+  font-weight: 500;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--pm-surface-2);
+  border-color: var(--pm-border-2);
+  transform: translateY(-1px);
+}
+
+.btn-alert {
+  background-color: var(--vscode-inputValidation-errorBackground, #5a1d1d);
+  color: var(--vscode-inputValidation-errorForeground, #f8d7da);
+  border-color: var(--vscode-inputValidation-errorBorder, #a94442);
+}
+
+.btn-alert:hover:not(:disabled) {
+  background-color: var(--vscode-inputValidation-errorBorder, #a94442);
+  border-color: var(--vscode-inputValidation-errorBorder, #a94442);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(169, 68, 66, 0.4);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.button-group {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background-color: var(--pm-surface);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
+}
+
+/* Analysis buttons section with visual hierarchy */
+.analysis-buttons-section {
+  padding: 15px;
+  background-color: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
+}
+
+.analysis-section-header {
+  margin: 0 0 12px 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--pm-text);
+}
+
+.analysis-section-subheader {
+  margin: 14px 0 7px 0;
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--pm-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* Primary buttons (prominent) */
+.primary-buttons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.action-button {
+  flex: 1;
+  padding: 11px 14px;
+  border: 1px solid var(--pm-border-2);
+  background: var(--pm-btn);
+  color: var(--pm-btn-text);
+  border-radius: var(--pm-r-input);
+  cursor: pointer;
+  font-family: var(--pm-sans);
+  font-size: 13px;
+  font-weight: 600;
+  transition: filter 0.15s ease, background 0.15s ease, transform 0.1s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.action-button.primary {
+  background: var(--pm-primary-grad);
+  color: var(--pm-primary-text);
+  border-color: color-mix(in oklab, var(--pm-primary) 80%, black);
+}
+
+.action-button.primary:hover:not(:disabled) {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+}
+
+/* Focused buttons (secondary, more subtle) */
+.focused-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.action-button.secondary {
+  background: var(--pm-btn);
+  color: var(--pm-btn-text);
+  border-color: var(--pm-border-2);
+  font-weight: 500;
+}
+
+.action-button.secondary:hover:not(:disabled) {
+  background: var(--pm-surface-2);
+}
+
+.action-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.result-action-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+.icon-button {
+  width: 34px;
+  height: 32px;
+  min-width: 34px;
+  border: 1px solid var(--pm-primary-soft-border);
+  background-color: var(--pm-primary-soft);
+  color: var(--pm-primary);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.1s ease, background-color 0.15s ease;
+}
+
+.icon-button:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.icon-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Result-panel copy/save are PLAIN accessory squares (the comp reserves the
+   coral fill for the paste-into-input buttons). Smaller + subtler than paste. */
+.result-action-bar .icon-button {
+  width: 30px;
+  height: 28px;
+  min-width: 30px;
+  border: 1px solid var(--pm-border);
+  background-color: var(--pm-surface-2);
+  color: var(--pm-muted);
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+.result-action-bar .icon-button:hover:not(:disabled) {
+  background-color: var(--pm-surface);
+  color: var(--pm-text);
+  filter: none;
+}
+
+/* Loading indicator */
+.loading-indicator {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-md);
+  color: var(--pm-muted);
+}
+
+.loading-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.loading-text {
+  text-align: center;
+  width: 100%;
+}
+
+.loading-vhs-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: var(--spacing-sm);
+}
+
+.loading-vhs-animation {
+  max-width: 500px;
+  width: 100%;
+  height: auto;
+  border-radius: var(--border-radius);
+  opacity: 0.85;
+  image-rendering: pixelated;
+}
+
+.loading-credit {
+  text-align: center;
+  font-size: 0.85em;
+  color: var(--pm-muted);
+  opacity: 0.7;
+  margin-top: var(--spacing-sm);
+}
+
+.loading-credit a {
+  color: var(--pm-link);
+  text-decoration: none;
+}
+
+.loading-credit a:hover {
+  color: var(--pm-link-hover);
+  text-decoration: underline;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--pm-surface-2);
+  border-top-color: var(--pm-accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.spinner-small {
+  width: 14px;
+  height: 14px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Progress bar for parallel generation */
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background-color: var(--pm-surface-2);
+  border-radius: 4px;
+  margin-top: var(--spacing-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background-image: linear-gradient(90deg, var(--pm-accent-lo), var(--pm-accent-hi));
+  border-radius: 4px;
+  transition: width 0.3s ease-out;
+}
+
+.progress-text {
+  display: block;
+  font-size: 11px;
+  color: var(--pm-muted);
+  margin-top: var(--spacing-xs);
+  text-align: center;
+}
+
+/* Guide ticker animation */
+.guide-ticker-container {
+  margin-top: var(--spacing-xs);
+  overflow: hidden;
+  max-width: 100%;
+  position: relative;
+}
+
+.guide-ticker {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: var(--pm-muted);
+  font-style: italic;
+  white-space: nowrap;
+  animation: ticker 15s linear infinite;
+}
+
+.guide-ticker.empty {
+  animation-play-state: paused;
+  opacity: 0;
+}
+
+@keyframes ticker {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+/* Result box — PM's monospace character on an inset panel (FM language) */
+.result-box {
+  margin-top: 12px;
+  padding: 18px;
+  background-color: var(--pm-inset);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
+}
+
+.result-content {
+  font-family: var(--pm-mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--pm-text-2);
+}
+
+/* Markdown content styling */
+.markdown-content {
+  font-family: var(--pm-mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--pm-text-2);
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4 {
+  color: var(--pm-text);
+  margin-top: 16px;
+  margin-bottom: 6px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+/* Tight, comp-matched result typography (px, not rem, so it doesn't scale with
+   the webview base font). The result title lands ~16px, not the old ~21px. */
+.markdown-content h1 {
+  font-size: 16px;
+  border-bottom: 1px solid var(--pm-border-soft);
+  padding-bottom: var(--spacing-sm);
+}
+
+.markdown-content h2 {
+  font-size: 15px;
+  border-bottom: 1px solid var(--pm-border-soft);
+  padding-bottom: var(--spacing-xs);
+}
+
+.markdown-content h3 {
+  font-size: 14px;
+}
+
+.markdown-content h4 {
+  font-size: 13.5px;
+  border-bottom: 1px solid var(--pm-border-soft);
+  padding-bottom: 8px;
+}
+
+.markdown-content p {
+  margin-bottom: 8px;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin-left: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+}
+
+.markdown-content li {
+  margin-bottom: var(--spacing-xs);
+}
+
+.markdown-content code {
+  background-color: var(--pm-surface-2);
+  color: var(--pm-accent-hi);
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-family: var(--pm-mono);
+  font-size: 0.9em;
+}
+
+.markdown-content pre {
+  background-color: var(--pm-surface-2);
+  padding: var(--spacing-md);
+  border-radius: var(--pm-r-input);
+  border: 1px solid var(--pm-border-soft);
+  overflow-x: auto;
+  margin-bottom: var(--spacing-md);
+  /* Enable word wrapping for prose content in code blocks */
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.markdown-content pre code {
+  background-color: transparent;
+  padding: 0;
+  /* Ensure code inherits wrapping behavior from pre */
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.markdown-content blockquote {
+  border-left: 2px solid var(--pm-accent);
+  padding-left: var(--spacing-md);
+  margin-left: 0;
+  color: var(--pm-muted);
+  font-style: italic;
+}
+
+.markdown-content strong {
+  font-weight: 700;
+  color: var(--pm-text);
+}
+
+.markdown-content em {
+  font-style: italic;
+  color: var(--pm-muted);
+}
+
+.markdown-content hr {
+  border: none;
+  border-top: 1px solid var(--pm-border-soft);
+  margin: var(--spacing-lg) 0;
+}
+
+/* Markdown tables fill available width (FM table styling) */
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+  font-family: var(--pm-mono);
+  font-size: 12.5px;
+}
+
+.markdown-content th,
+.markdown-content td {
+  border: 1px solid var(--pm-border-soft);
+  padding: 9px 11px;
+  color: var(--pm-text-2);
+}
+
+.markdown-content thead th {
+  background-color: var(--pm-surface-2);
+  color: var(--pm-text);
+  font-weight: 700;
+  text-align: left;
+  border-color: var(--pm-border);
+}
+
+.markdown-content tbody tr:nth-child(even) td {
+  background: rgba(127, 127, 127, 0.04);
+}
+
+/* Metrics grid */
+.metrics-grid {
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+.metric-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 9px 11px;
+  background-color: var(--pm-inset);
+  border: 1px solid var(--pm-border-soft);
+  border-radius: var(--pm-r-input);
+}
+
+.metric-label {
+  font-weight: 600;
+  margin-right: var(--spacing-md);
+  color: var(--pm-text-2);
+}
+
+.metric-value {
+  font-family: var(--pm-mono);
+  color: var(--pm-accent-hi);
+}
+
+/* Error message — keeps the theme-native validation background (correct
+   semantic, no --pm equivalent); foreground falls back to --pm-text since this
+   box is also the App-level error surface. */
+.error-message {
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  background-color: var(--vscode-inputValidation-errorBackground, var(--pm-accent-soft));
+  border: 1px solid var(--vscode-inputValidation-errorBorder, var(--pm-red));
+  color: var(--vscode-inputValidation-errorForeground, var(--pm-text));
+  border-radius: var(--pm-r-input);
+}
+
+/* Warning message */
+.warning-message {
+  padding: var(--spacing-md);
+  margin-top: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  background-color: var(--vscode-inputValidation-warningBackground, var(--pm-surface-2));
+  border: 1px solid var(--vscode-inputValidation-warningBorder, var(--pm-amber));
+  color: var(--vscode-inputValidation-warningForeground, var(--pm-text));
+  border-radius: var(--pm-r-input);
+  font-size: 0.85em;
+  line-height: 1.4;
+}
+
+.warning-message strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* Placeholder content */
+.placeholder-content {
+  padding: var(--spacing-xl);
+  text-align: center;
+}
+
+/* Utility classes */
+.text-gray-500 {
+  color: var(--pm-muted);
+}
+
+/* Guides footer */
+.guides-footer {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--pm-border);
+}
+
+.guides-footer-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--pm-text);
+  margin-bottom: var(--spacing-sm);
+}
+
+.guides-footer-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.guide-tag {
+  display: inline-block;
+  padding: 5px 9px;
+  background-color: var(--pm-surface-2);
+  color: var(--pm-text-2);
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid var(--pm-border);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  font-family: var(--pm-mono);
+}
+
+.guide-tag:hover {
+  background-color: var(--pm-surface);
+  color: var(--pm-text);
+  transform: translateY(-1px);
+  border-color: var(--pm-accent-ring);
+}
+
+.guide-tag:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Settings Overlay */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--pm-bg);
+  color: var(--pm-text);
+  overflow: auto;
+  padding: var(--spacing-sm);
+}
+
+.settings-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.settings-header-content {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+.settings-header .settings-button {
+  grid-column: 3;
+  justify-self: end;
+}
+
+/* Header layout: stack icon above title */
+.settings-header[data-header-layout="stack"] .settings-header-content {
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.settings-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.settings-section {
+  margin-top: var(--spacing-sm);
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
+  padding: var(--spacing-md);
+}
+
+.settings-section-title {
+  margin-top: 0;
+  margin-bottom: var(--spacing-md);
+  font-size: 1.3em;
+  font-weight: 600;
+  color: var(--pm-text);
+  border-bottom: 1px solid var(--pm-border-soft);
+  padding-bottom: var(--spacing-xs);
+}
+
+.settings-label {
+  display: block;
+  margin-bottom: var(--spacing-md);
+}
+
+.settings-label-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.settings-input {
+  width: 100%;
+  padding: 6px 8px;
+  background: var(--pm-inset);
+  color: var(--pm-text);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-input);
+}
+
+.settings-input-small {
+  width: 160px;
+}
+
+.settings-input-medium {
+  width: 220px;
+}
+
+.settings-input-large {
+  width: 100%;
+  max-width: 440px;
+}
+
+.settings-textarea {
+  width: 100%;
+  height: 68px;
+  padding: 6px 8px;
+  background: var(--pm-inset);
+  color: var(--pm-text);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-input);
+}
+
+.settings-description {
+  color: var(--pm-muted);
+  margin-top: 4px;
+  font-size: 0.9em;
+  line-height: 1.4;
+}
+
+.settings-description a {
+  color: var(--pm-link);
+  text-decoration: underline;
+}
+
+.settings-checkbox-label {
+  display: block;
+  margin-bottom: var(--spacing-sm);
+}
+
+.settings-button {
+  padding: 6px 10px;
+  background: var(--pm-primary);
+  color: var(--pm-primary-text);
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: var(--pm-r-input);
+  cursor: pointer;
+  transition: background 0.2s ease, filter 0.15s ease;
+}
+
+.settings-button:hover {
+  background: var(--pm-primary-hover);
+  filter: brightness(1.05);
+}
+
+.settings-inline-group {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.settings-footer-note {
+  opacity: 0.7;
+  margin-top: var(--spacing-md);
+  font-size: 0.9em;
+}
+
+/* Word counter styles */
+.word-counter {
+  font-size: 0.85em;
+  margin-top: 4px;
+  font-family: var(--vscode-font-family);
+  opacity: 0.85;
+}
+
+.word-counter-green {
+  color: var(--pm-green);
+}
+
+.word-counter-yellow {
+  color: var(--pm-amber);
+}
+
+.word-counter-red {
+  color: var(--pm-red);
+  font-weight: 500;
+}
+
+/* Context metadata row (word counter + model indicator) */
+.context-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+/* Model indicator styles */
+.model-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9em;
+  color: var(--pm-muted);
+}
+
+.model-label {
+  font-weight: 500;
+}
+
+.model-name {
+  color: var(--pm-text);
+}
+
+.model-settings-link {
+  cursor: pointer;
+  font-size: 1.1em;
+  opacity: 0.8;
+  transition: opacity 0.2s, transform 0.1s;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.model-settings-link:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.model-settings-link:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  border-radius: 3px;
+  opacity: 1;
+}
+
+/* Word Length Filter Tabs */
+.word-length-filter-tabs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+  padding: 12px;
+  background-color: var(--pm-inset);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
+}
+
+.word-length-filter-tabs .filter-label {
+  font-size: 0.9em;
+  font-weight: 500;
+  color: var(--pm-text);
+  white-space: nowrap;
+}
+
+.word-length-filter-tabs .filter-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.word-length-filter-tabs .filter-tab {
+  padding: 6px 12px;
+  font-size: 0.9em;
+  border: 1px solid var(--pm-border-2);
+  background-color: var(--pm-btn);
+  color: var(--pm-btn-text);
+  border-radius: var(--pm-r-input);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  min-width: 40px;
+}
+
+.word-length-filter-tabs .filter-tab:hover:not(:disabled) {
+  background-color: var(--pm-surface-2);
+  border-color: var(--pm-accent-ring);
+}
+
+.word-length-filter-tabs .filter-tab.active {
+  background-color: var(--pm-surface-2);
+  color: var(--pm-text);
+  border-color: var(--pm-border-2);
+  box-shadow: 0 0 0 1px var(--pm-accent-ring);
+  font-weight: 600;
+}
+
+.word-length-filter-tabs .filter-tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.word-length-filter-tabs .filter-tab:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+
+/* =========================================
+   Streaming Content Styles
+   ========================================= */
+
+/* Buffer phase indicator */
+.streaming-buffer {
+  padding: var(--spacing-lg);
+  text-align: center;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
+  background: var(--pm-surface);
+  margin: var(--spacing-md) 0;
+}
+
+.streaming-buffer-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.streaming-status {
+  font-weight: 500;
+  color: var(--pm-text);
+}
+
+.streaming-hint {
+  margin: 0;
+  font-size: 0.85em;
+  color: var(--pm-muted);
+}
+
+/* Streaming content wrapper */
+.streaming-content {
+  position: relative;
+}
+
+/* Streaming header with indicator */
+.streaming-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--pm-surface-2);
+  border-radius: var(--pm-r-input);
+  margin-bottom: var(--spacing-sm);
+}
+
+.streaming-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 0.85em;
+  font-weight: 500;
+  color: var(--pm-text);
+}
+
+/* Pulsing dot animation */
+.streaming-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--pm-green);
+  border-radius: 50%;
+  animation: streaming-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes streaming-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+}
+
+/* Cancel button (shared with LoadingIndicator) */
+.cancel-button {
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid var(--pm-border-2);
+  color: var(--pm-text);
+  border-radius: var(--pm-r-input);
+  cursor: pointer;
+  font-size: 0.85em;
+  transition: all 0.15s ease;
+}
+
+/* When cancel-button is combined with btn classes, let btn handle styling */
+.btn.cancel-button {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.85em;
+  flex-shrink: 0;
+}
+
+.cancel-button:hover {
+  background: var(--pm-surface-2);
+  border-color: var(--pm-accent-ring);
+}
+
+.cancel-button:active {
+  transform: scale(0.95);
+}
+
+.cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Context preview and header actions */
+.context-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.analysis-preview-button {
+  font-size: 14px;
+}
+
+.context-preview {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
+  background: var(--pm-surface);
+}
+
+/* Context preview toggle lip button */
+.context-preview-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  background: var(--pm-btn);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-pill);
+  color: var(--pm-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.context-preview-toggle:hover {
+  background: var(--pm-surface-2);
+  border-color: var(--pm-accent-ring);
+  color: var(--pm-text);
+}
+
+.preview-toggle-chevron {
+  font-size: 0.6rem;
+  line-height: 1;
+}
+
+.preview-toggle-text {
+  line-height: 1;
+}
+
+/* Context flash animation on stream complete */
+.context-flash {
+  animation: context-flash-anim 0.6s ease-out;
+}
+
+@keyframes context-flash-anim {
+  0% {
+    box-shadow: 0 0 0 0 var(--pm-accent);
+  }
+  30% {
+    box-shadow: 0 0 8px 3px var(--pm-accent-ring);
+    border-color: var(--pm-accent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+/* Streaming waiting area */
+.streaming-waiting {
+  margin-top: var(--spacing-sm);
+}
+
+.streaming-waiting-indicator .loading-vhs-container {
+  margin-top: 0;
+}
+
+/* ============================================================
+   All Tools modal + supporting bits (Pass 2, Wave 3c).
+   Guide-style picker; declutters the Assistant tab.
+   ============================================================ */
+.pm-eyebrow {
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pm-dim);
+}
+.pm-rule-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0 12px;
+}
+.pm-rule-row .pm-eyebrow {
+  white-space: nowrap;
+}
+.pm-rule-row hr {
+  flex: 1;
+  border: none;
+  border-top: 1px solid var(--pm-border-soft);
+}
+
+.btn.ghost {
+  background: transparent;
+  border-color: transparent;
+}
+.btn.ghost:hover:not(:disabled) {
+  background: var(--pm-surface-2);
+}
+
+.analysis-buttons-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.analysis-buttons-head .analysis-section-header {
+  margin: 0;
+}
+.all-tools-button {
+  padding: 6px 11px;
+  font-size: 12px;
+  color: var(--pm-muted);
+}
+
+/* Modal */
+.tm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  display: grid;
+  place-items: start center;
+  padding: 48px 20px;
+  overflow-y: auto;
+}
+.tm {
+  width: 100%;
+  max-width: 560px;
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-border-2);
+  border-radius: 12px;
+  padding: 22px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+.tm-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+.tm-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--pm-text);
+  margin-top: 6px;
+}
+.tm-subtitle {
+  font-size: 12.5px;
+  color: var(--pm-muted);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+.tm-close {
+  flex-shrink: 0;
+  padding: 8px 10px;
+}
+.tm-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.tm-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 0;
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  border-radius: 8px;
+  padding: 14px;
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease, transform 0.1s ease;
+}
+.tm-card:hover:not(:disabled) {
+  background: var(--pm-inset);
+  border-color: var(--pm-border-2);
+  transform: translateY(-2px);
+}
+.tm-card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.tm-ic {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 7px;
+  background: var(--pm-accent-soft);
+  border: 1px solid var(--pm-accent-ring);
+  color: var(--pm-accent-hi);
+  margin-bottom: 11px;
+}
+.tm-n {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--pm-text);
+  margin-bottom: 5px;
+}
+.tm-d {
+  font-size: 11.5px;
+  color: var(--pm-muted);
+  line-height: 1.45;
+}

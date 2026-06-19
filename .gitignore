@@ -7,3 +7,8 @@ dist/
 
 # Test coverage output
 coverage/
+
+# Staged resource copy (build artifact; source of truth is packages/core/resources — D22)
+apps/vscode-extension/resources/
+
+.temp/

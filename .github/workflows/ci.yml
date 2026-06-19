@@ -1,0 +1,30 @@
+name: CI
+
+# Restores the verification gate the monorepo move removed from `npm run build`
+# (PR #60 review #2). Runs on every push to the long-lived branches and every PR,
+# so a type error / red test / boundary violation can't reach a merge or a VSIX
+# unnoticed (webpack is transpileOnly; this is the type/test net).
+
+on:
+  push:
+    branches: [main, 'epic/**', 'claude/**']
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: npm
+      - run: npm ci
+      - name: Typecheck (core host + core webview + app shell)
+        run: npm run typecheck
+      - name: Tests
+        run: npm test
+      - name: Lint (incl. the app→core import boundary)
+        run: npm run lint
+      - name: Build (both webpack bundles)
+        run: npm run build

@@ -1,0 +1,34 @@
+{
+  "//": "Shared compiler options + the single source-of-truth path table for the monorepo (ADR 2026-06-16, D10/D22). `paths` are root-relative and, per TS 5.x, resolve relative to THIS file regardless of which package extends it. module/moduleResolution/lib/jsx differ per package and are set in each leaf config. Alias spellings are PM's own (unchanged from the pre-move single-package configs), now re-rooted into packages/core/src.",
+  "compilerOptions": {
+    "target": "ES2020",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "ignoreDeprecations": "5.0",
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@prose-minion/core": ["packages/core/src/index.ts"],
+      "@app/*": ["apps/vscode-extension/src/*"],
+      "@/*": ["packages/core/src/*"],
+      "@shared/*": ["packages/core/src/shared/*"],
+      "@messages": ["packages/core/src/shared/types/messages/index.ts"],
+      "@messages/*": ["packages/core/src/shared/types/messages/*"],
+      "@handlers/*": ["packages/core/src/application/handlers/*"],
+      "@services/*": ["packages/core/src/infrastructure/api/services/*"],
+      "@providers/*": ["packages/core/src/infrastructure/api/providers/*"],
+      "@orchestration/*": ["packages/core/src/infrastructure/api/orchestration/*"],
+      "@parsers/*": ["packages/core/src/infrastructure/api/parsers/*"],
+      "@standards": ["packages/core/src/infrastructure/standards"],
+      "@secrets": ["packages/core/src/infrastructure/secrets"],
+      "@components/*": ["packages/core/src/presentation/webview/components/*"],
+      "@hooks/*": ["packages/core/src/presentation/webview/hooks/*"],
+      "@utils/*": ["packages/core/src/presentation/webview/utils/*"],
+      "@formatters": ["packages/core/src/presentation/webview/utils/formatters"],
+      "@formatters/*": ["packages/core/src/presentation/webview/utils/formatters/*"]
+    }
+  }
+}
