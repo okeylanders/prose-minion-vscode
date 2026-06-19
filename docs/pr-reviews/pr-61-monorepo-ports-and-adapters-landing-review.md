@@ -3,7 +3,7 @@
 **Author:** okeylanders · PR #61 → `main`
 **Reviewed:** 2026-06-18 (pre-merge multi-agent pass — 10 reviewers + Sensei)
 **Base:** `main` (`828187d`) · **Head:** `epic/monorepo-ports-and-adapters` (`3d89140`)
-**Status:** ⏳ **Open — no blockers; merge-ready pending optional fixups.** Blake (correctness) cleared every traceable failure path; **zero 🔴 Blocking**. One 🟠 High (asymmetric `total_usage` zero-fallback that overstates the displayed balance) plus a tight cluster of Standards/Nits, several forming consensus on the same code regions. Quality gate already green (47 suites / 359 tests · 3 typechecks · lint 0). See **Status by item** + per-reviewer sections; flip rows to `✅ Fixed in <sha>` as fixups land.
+**Status:** ✅ **Fixups landed in `270974e`** — no blockers were raised; the 🟠 High and 8 of the actionable Standards/Nits are fixed on-branch, the remaining 3 consciously deferred with rationale (one to the ADR 2026-06-18 consolidation epic, one behavior-preserving, one matching the file's own deferred comment). Post-fixup: **48 suites / 368 tests · 3 typechecks clean · lint 0 errors** (+9 new tests). The original review below stands as the record; see **Resolution Status** at the bottom for per-item disposition.
 
 > ⚠️ **Aggregate landing PR.** 377 files / +12,867 / −3,909 / 50 commits, but **~95% is mechanical**: the `src/**` → `packages/core/src/**` relocation, `resources/` move (114 files), `package-lock.json` (React 18), and `index.css` retokenization. The constituent chunks were already multi-agent-reviewed with fixups merged — see [pr-59](pr-59-ports-and-adapters-core-vscode-free-review.md), [pr-60](pr-60-stage-2-monorepo-move-review.md), [pr-60B](pr-60B-account-balance-and-facelift-review.md). Agent attention was weighted to the **net-new logic surface** (~2,964 lines): the OpenRouter account-balance vertical slice, the `Platform` ports + VS Code adapters, the `App.tsx`→`useAppMessageRouter` extraction, and `MessageHandler`'s config-watcher seam. The **`MessageHandler` second-composition-root drift, `sharedResultCache` module singleton, and `any`-typed handler seams are consciously DEFERRED** per [ADR 2026-06-18](../adr/2026-06-18-messagehandler-composition-root-consolidation.md) and were excluded from scope — agents were instructed not to re-litigate them.
 
@@ -35,18 +35,18 @@
 
 | # | Severity | Finding | Reviewer(s) | Consensus | Status |
 |---|----------|---------|-------------|-----------|--------|
-| 1 | 🟠 High | `total_usage` absent/NaN → 0 overstates displayed `remaining` balance (asymmetric with guarded `total_credits`) | Sam | | ⏳ Open |
-| 2 | 🟡 Standard | `isRealRequest`/`scheduleRefresh` seam: untested gate + two-jobs-one-gate + debounce re-arm churn | Cal, Bria, Tim | 🎯🎯 Strong | ⏳ Open |
-| 3 | 🟡 Standard | Forced-over-non-forced coalescing branch untested (correct per Blake, but the one unpinned concurrency case) | Cal, Blake | 🎯 Consensus | ⏳ Open |
-| 4 | 🟡 Standard | `fmtUsdMicro` — misleading SI name (3dp ≠ micro) + omitted from `balances/index.ts` barrel | Parker, Stan | 🎯 Consensus | ⏳ Open |
-| 5 | 🟡 Standard | `AccountBalanceHandler.postMessage` typed `=> void` drops the transport Promise (siblings use `Promise<void>`) | Stan | | ⏳ Open |
-| 6 | 🟡 Standard | `PromptLoader`/`GuideLoader` `path.join(promptPath)` lacks the `isPathWithinRoot` guard `UIHandler` got | Patricia | | ⏳ Open |
-| 7 | 🟡 Standard | `runRefresh` catch returns without notifying listeners (stale widget; inconsistent with handler's `unavailable` post) | Oliver | | ⏳ Open |
-| 8 | 🟡 Standard | `Platform.secrets` declared + populated + threaded but never read; secrets flow via parallel `secretsService: any` | Marcus | | ⏳ Open |
-| 9 | 🟡 Standard | `STATUS` route falls back to `analysis` for unknown source (behavior preserved verbatim from the App.tsx lift) | Parker | | ⏳ Open |
-| 10 | 🟢 Nit | `pendingForced`/`forced`/`forceRefresh` — three spellings of one concept in 30 lines | Parker | | ⏳ Open |
-| 11 | 🟢 Nit | `isPathWithinRoot` not symlink-aware (matches the file's own deferred comment; FM uses a 2nd `realpath` layer) | Patricia | | ⏳ Open |
-| 12 | 🟢 Nit | `resolveWebviewView` clobbers prior `MessageHandler` without pre-dispose (safe today under `retainContextWhenHidden`) | Marcus, Blake | | ⏳ Open |
+| 1 | 🟠 High | `total_usage` absent/NaN → 0 overstates displayed `remaining` balance (asymmetric with guarded `total_credits`) | Sam | | ✅ Fixed in `270974e` |
+| 2 | 🟡 Standard | `isRealRequest`/`scheduleRefresh` seam: untested gate + two-jobs-one-gate + debounce re-arm churn | Cal, Bria, Tim | 🎯🎯 Strong | ◐ Partial in `270974e` |
+| 3 | 🟡 Standard | Forced-over-non-forced coalescing branch untested (correct per Blake, but the one unpinned concurrency case) | Cal, Blake | 🎯 Consensus | ✅ Fixed in `270974e` |
+| 4 | 🟡 Standard | `fmtUsdMicro` — misleading SI name (3dp ≠ micro) + omitted from `balances/index.ts` barrel | Parker, Stan | 🎯 Consensus | ✅ Fixed in `270974e` |
+| 5 | 🟡 Standard | `AccountBalanceHandler.postMessage` typed `=> void` drops the transport Promise (siblings use `Promise<void>`) | Stan | | ✅ Fixed in `270974e` |
+| 6 | 🟡 Standard | `PromptLoader`/`GuideLoader` `path.join(promptPath)` lacks the `isPathWithinRoot` guard `UIHandler` got | Patricia | | ✅ Fixed in `270974e` |
+| 7 | 🟡 Standard | `runRefresh` catch returns without notifying listeners (stale widget; inconsistent with handler's `unavailable` post) | Oliver | | ✅ Fixed in `270974e` |
+| 8 | 🟡 Standard | `Platform.secrets` declared + populated + threaded but never read; secrets flow via parallel `secretsService: any` | Marcus | | ↪ Deferred (ADR 2026-06-18) |
+| 9 | 🟡 Standard | `STATUS` route falls back to `analysis` for unknown source (behavior preserved verbatim from the App.tsx lift) | Parker | | ⏸️ Deferred (behavior-preserving) |
+| 10 | 🟢 Nit | `pendingForced`/`forced`/`forceRefresh` — three spellings of one concept in 30 lines | Parker | | ✅ Fixed in `270974e` |
+| 11 | 🟢 Nit | `isPathWithinRoot` not symlink-aware (matches the file's own deferred comment; FM uses a 2nd `realpath` layer) | Patricia | | ⏸️ Deferred (per file comment) |
+| 12 | 🟢 Nit | `resolveWebviewView` clobbers prior `MessageHandler` without pre-dispose (safe today under `retainContextWhenHidden`) | Marcus, Blake | | ✅ Fixed in `270974e` |
 | 13 | 🟢 Praise | Account-balance lifecycle/disposal + error isolation airtight | Blake | | ✅ |
 | 14 | 🟢 Praise | `/key`+`/credits` parallelized with per-call fault isolation | Tim | | ✅ |
 | 15 | 🟢 Praise | Key→webview boundary structurally provable — no payload field can hold a key | Patricia | | ✅ |
@@ -325,6 +325,33 @@ the monk re-tallies.
 ## Summary
 
 **Merge-ready, no blockers.** This is a clean landing of an epic whose chunks were already vetted three times over, and it shows — Blake cleared every correctness path, disposal is airtight, the key→webview boundary is structurally provable, and the `/key`+`/credits` slice is textbook fault-isolation. The one finding worth a fixup before or shortly after merge is the asymmetric `total_usage` zero-fallback (Item 1) — low real-world trigger, but it's a money number with a guarded twin three lines away. The rest is a coherent cluster of "one more guard / one more test / one clearer name" Standards on the account-balance seam, plus a defense-in-depth containment gap (Item 6) the codebase already knows how to close. Knock out Items 1–6 in a follow-up and this slice is exemplary.
+
+---
+
+## Resolution Status
+
+Fixups landed in **`270974e`** on `epic/monorepo-ports-and-adapters`. Post-fixup gate: **48 suites / 368 tests · 3 typechecks clean · lint 0 errors** (+9 tests).
+
+**✅ Fixed**
+
+- **#1 [Sam] `total_usage` zero-fallback** — `OpenRouterAccountClient.fetchCredits` now applies the SAME finite-number guard to `total_usage` as `total_credits`: a non-finite value maps to `unavailable` (malformed) instead of a silent `0` that erased spend and overstated `remaining`. +3 tests (absent / NaN-string / genuine `total_usage: 0` zero-spend account).
+- **#3 [Cal · Blake] Forced-coalescing branch** — added a test that drives `getBalances(false)` into flight, then `getBalances(true)` on top, asserting **two distinct fetches** (not coalesced) and that the forced caller receives the fresh post-spend data.
+- **#4 [Parker · Stan] `fmtUsdMicro`** — renamed to `fmtUsdPrecise` (the extra digit is milli-scale, not SI micro) and added to the `balances/index.ts` barrel; widget + test updated.
+- **#5 [Stan] handler postMessage type** — `AccountBalanceHandler.postMessage` is now `PromiseLike<unknown>` and `post()` voids the result with a `.catch` that logs a rejected transport, matching `AnalysisHandler`/`DictionaryHandler` and the "log failures" discipline.
+- **#6 [Patricia] loader containment** — `PromptLoader`/`GuideLoader` now reject any `promptPath`/`guidePath` that escapes the bundled resources root via `isPathWithinRoot` (the guard `UIHandler` already uses), **before** any FS access. +4 loader-containment tests (in-root loads; `../` traversal rejected with `readFile` never called).
+- **#7 [Oliver] silent `runRefresh` failure** — the catch now notifies listeners with the `unavailable` sentinel (the shape the handler's own catch posts) instead of returning silently, so the widget can't get stuck on stale data with only a log line.
+- **#10 [Parker] naming** — `pendingForced` → `pendingIsForced` (reads as an adjective at the `!this.pendingIsForced` site).
+- **#12 [Marcus · Blake] pre-dispose** — `resolveWebviewView` now calls `this.messageHandler?.dispose()` before re-assigning, mirroring the `configWatcher` guard so a re-resolve can't orphan the balance timer/listener.
+
+**◐ Partial**
+
+- **#2 [Cal · Bria · Tim] the `isRealRequest`/`scheduleRefresh` seam** — the **throwing-listener isolation** half is now tested (a throwing listener doesn't block siblings and is logged). The remaining two halves are **deferred**: (a) a unit test that the zero-token activation/reset call does NOT arm a refresh, and (b) Bria's semantic split (`scheduleRefresh` keyed on "real spend" / `costUsd !== undefined` rather than `totalTokens > 0`). Both need a seam to construct/observe `MessageHandler` in isolation, which is exactly what the **ADR 2026-06-18 composition-root consolidation** introduces — doing them now would either duplicate that work or change refresh-trigger behavior for a hypothetical flat-fee model with no current consumer. Tim's debounce-churn note is correct-at-scale and left as a documented assumption.
+
+**↪ / ⏸️ Deferred (with rationale)**
+
+- **#8 [Marcus] `Platform.secrets` unconsumed** — ↪ Deferred to the **ADR 2026-06-18** consolidation epic. The fix (route secrets through the port or delete the field) belongs with the broader `secretsService: any` typing + composition-root work that ADR already scopes; doing it piecemeal here would pre-empt that design.
+- **#9 [Parker] `STATUS` unknown-source fallback** — ⏸️ Deferred. The arm was lifted **verbatim** from the pre-extraction App.tsx inline router; changing the dispatch is a behavior change to a closed, known source set, out of scope for a behavior-preserving landing. Tracked for a follow-up that enumerates the legitimate analysis sources explicitly.
+- **#11 [Patricia] `isPathWithinRoot` not symlink-aware** — ⏸️ Deferred, consistent with the file's own comment ("Mirrors the FrameMinion `isPathWithinRoot`… when that shared helper lands this can fold into it"). The `fs.realpath` second layer folds in with the shared-helper consolidation; the string check closes the `../` vector that Item 6 actually exercises.
 
 ---
 
