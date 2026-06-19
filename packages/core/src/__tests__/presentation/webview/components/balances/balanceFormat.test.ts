@@ -8,7 +8,7 @@
  * guards) fails loudly. Pure functions — no React render needed.
  */
 
-import { fmtUsd, fmtUsdMicro, openRouterHeadline } from '@components/balances/balanceFormat';
+import { fmtUsd, fmtUsdPrecise, openRouterHeadline } from '@components/balances/balanceFormat';
 import type { OpenRouterBalance } from '@messages';
 
 const balance = (over: Partial<OpenRouterBalance>): OpenRouterBalance => ({
@@ -17,7 +17,7 @@ const balance = (over: Partial<OpenRouterBalance>): OpenRouterBalance => ({
   ...over
 });
 
-describe('fmtUsd / fmtUsdMicro', () => {
+describe('fmtUsd / fmtUsdPrecise', () => {
   it('formats positive dollars at 2dp', () => {
     expect(fmtUsd(12.4)).toBe('$12.40');
     expect(fmtUsd(0)).toBe('$0.00');
@@ -28,9 +28,9 @@ describe('fmtUsd / fmtUsdMicro', () => {
     expect(fmtUsd(-5)).toBe('-$5.00');
   });
 
-  it('fmtUsdMicro keeps sub-cent precision for tiny per-request costs', () => {
-    expect(fmtUsdMicro(0.014)).toBe('$0.014');
-    expect(fmtUsdMicro(0)).toBe('$0.000');
+  it('fmtUsdPrecise keeps sub-cent precision for tiny per-request costs', () => {
+    expect(fmtUsdPrecise(0.014)).toBe('$0.014');
+    expect(fmtUsdPrecise(0)).toBe('$0.000');
   });
 });
 

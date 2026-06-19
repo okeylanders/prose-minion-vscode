@@ -102,8 +102,18 @@ export class OpenRouterAccountClient {
         this.log?.appendLine('[OpenRouterAccountClient] /credits response missing total_credits');
         return { ok: false, status: 'unavailable', reason: 'Malformed credits response.' };
       }
+      // total_usage gets the SAME guard as its twin (not a silent-zero fallback):
+      // defaulting an absent/NaN usage to 0 would erase the user's spend and
+      // overstate `remaining` by the full usage amount — a misleading POSITIVE,
+      // the mirror of the total_credits misleading-negative. OpenRouter always
+      // returns total_usage (0 for a fresh account), so a non-finite value here
+      // means a malformed response, not a zero-spend account.
+      if (!isFiniteNumber(data.total_usage)) {
+        this.log?.appendLine('[OpenRouterAccountClient] /credits response missing total_usage');
+        return { ok: false, status: 'unavailable', reason: 'Malformed credits response.' };
+      }
       const totalCredits = data.total_credits as number;
-      const totalUsage = isFiniteNumber(data.total_usage) ? (data.total_usage as number) : 0;
+      const totalUsage = data.total_usage as number;
       return {
         ok: true,
         data: { totalCredits, totalUsage, remaining: totalCredits - totalUsage }

@@ -5,6 +5,7 @@
 
 import * as path from 'path';
 import { FileSystem } from '@/platform';
+import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 
 export class GuideLoader {
   constructor(
@@ -24,7 +25,15 @@ export class GuideLoader {
 
     // Use path as-is (from GuideRegistry); legacy simple names get .md appended.
     const relative = isFullPath ? guidePath : `${guidePath}.md`;
-    const fullPath = path.join(this.extensionPath, 'resources', 'craft-guides', relative);
+    const root = path.join(this.extensionPath, 'resources', 'craft-guides');
+    const fullPath = path.join(root, relative);
+
+    // `guidePath` can originate from tool-orchestration / AI-named files, so a
+    // `../` traversal must not escape the bundled craft-guides root (same guard
+    // UIHandler applies to its guide/docs/resource opens).
+    if (!isPathWithinRoot(root, fullPath)) {
+      throw new Error(`Failed to load guide: ${guidePath}`);
+    }
 
     try {
       const content = await this.fileSystem.readFile(fullPath);

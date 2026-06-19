@@ -158,4 +158,47 @@ describe('AccountBalanceService', () => {
 
     expect(mock.fetchCredits).not.toHaveBeenCalled();
   });
+
+  it('a forced request during a non-forced in-flight fetch waits, then starts a fresh forced fetch', async () => {
+    // The `forceRefresh && !this.pendingIsForced` branch: a forced caller must
+    // NOT share the in-flight non-forced promise (that could hand back pre-spend
+    // data after an AI request) — it awaits it, then fetches again.
+    let resolveFirst!: () => void;
+    const firstGate = new Promise<void>((r) => { resolveFirst = r; });
+    const { client, mock } = makeClient({
+      fetchCredits: jest
+        .fn()
+        .mockReturnValueOnce(firstGate.then(() => okCredits(10))) // non-forced (hangs)
+        .mockResolvedValue(okCredits(7))                          // forced re-fetch
+    });
+    const service = new AccountBalanceService(client);
+
+    const p1 = service.getBalances(false); // non-forced, now in flight
+    const p2 = service.getBalances(true);  // forced, arrives on top
+
+    resolveFirst();
+    const [r1, r2] = await Promise.all([p1, p2]);
+
+    expect(mock.fetchCredits).toHaveBeenCalledTimes(2); // two distinct fetches, not coalesced
+    expect(r1.openrouter.credits?.remaining).toBe(10);
+    expect(r2.openrouter.credits?.remaining).toBe(7);   // forced caller got the fresh data
+  });
+
+  it('a throwing listener does not block sibling listeners (and is logged)', async () => {
+    jest.useFakeTimers();
+    const appendLine = jest.fn();
+    const { client } = makeClient();
+    const service = new AccountBalanceService(client, { appendLine } as never);
+    const throwing = jest.fn(() => { throw new Error('boom'); });
+    const second = jest.fn();
+    service.addRefreshListener(throwing);
+    service.addRefreshListener(second);
+
+    service.scheduleRefresh();
+    await jest.advanceTimersByTimeAsync(10_000);
+
+    expect(throwing).toHaveBeenCalledTimes(1);
+    expect(second).toHaveBeenCalledTimes(1); // not blocked by the throw
+    expect(appendLine).toHaveBeenCalledWith(expect.stringContaining('listener threw'));
+  });
 });

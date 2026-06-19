@@ -23,9 +23,10 @@ export function fmtUsd(value: number): string {
 /**
  * USD with sub-cent precision (3dp) for tiny per-request costs (e.g. `$0.014`),
  * routed through the same source of truth as `fmtUsd` so the "Last request" line
- * and the balance can't drift on sign/format.
+ * and the balance can't drift on sign/format. Named `Precise` (not `Micro`): the
+ * extra digit is milli-scale (10⁻³), not SI micro (10⁻⁶).
  */
-export function fmtUsdMicro(value: number): string {
+export function fmtUsdPrecise(value: number): string {
   return signedUsd(value, 3);
 }
 

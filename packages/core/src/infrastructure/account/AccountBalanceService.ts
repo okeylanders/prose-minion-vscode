@@ -45,7 +45,7 @@ export type AccountBalanceRefreshListener = (payload: AccountBalancePayload) => 
 export class AccountBalanceService {
   private cache?: AccountBalancePayload;
   private pending?: Promise<AccountBalancePayload>;
-  private pendingForced = false;
+  private pendingIsForced = false;
   private refreshTimer?: ReturnType<typeof setTimeout>;
   private readonly listeners = new Set<AccountBalanceRefreshListener>();
 
@@ -72,7 +72,7 @@ export class AccountBalanceService {
       }
     }
     if (this.pending) {
-      if (forceRefresh && !this.pendingForced) {
+      if (forceRefresh && !this.pendingIsForced) {
         await this.pending.catch(() => undefined);
         return this.startFetch(true);
       }
@@ -82,7 +82,7 @@ export class AccountBalanceService {
   }
 
   private startFetch(forced: boolean): Promise<AccountBalancePayload> {
-    this.pendingForced = forced;
+    this.pendingIsForced = forced;
     this.pending = this.fetchAll()
       .then((payload) => {
         this.cache = payload;
@@ -90,7 +90,7 @@ export class AccountBalanceService {
       })
       .finally(() => {
         this.pending = undefined;
-        this.pendingForced = false;
+        this.pendingIsForced = false;
       });
     return this.pending;
   }
@@ -135,8 +135,16 @@ export class AccountBalanceService {
     try {
       payload = await this.getBalances(true);
     } catch (error) {
+      // Today `settle()` absorbs every throw so `getBalances` resolves; this is
+      // the backstop if that ever regresses. Notify with an `unavailable`
+      // sentinel (the SAME shape AccountBalanceHandler posts on its own catch)
+      // rather than returning silently — otherwise the widget keeps showing
+      // stale data with no signal that the refresh gave up.
       this.log?.appendLine(`[AccountBalanceService] Scheduled refresh failed: ${errMessage(error)}`);
-      return;
+      payload = {
+        openrouter: { status: 'unavailable', creditsStatus: 'unavailable', reason: 'Request failed.' },
+        fetchedAt: Date.now()
+      };
     }
     for (const listener of this.listeners) {
       try {

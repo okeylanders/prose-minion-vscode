@@ -66,7 +66,12 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.html = this.getHtmlForWebview(webviewView.webview);
 
-    // SPRINT 05: Initialize message handler with direct service injection
+    // SPRINT 05: Initialize message handler with direct service injection.
+    // Pre-dispose any prior handler before replacing it so a re-resolve can't
+    // orphan its AccountBalanceService timer/listener. Safe today (onDidDispose
+    // tears the prior one down under retainContextWhenHidden), but mirrors the
+    // configWatcher's guarded reassignment below so the invariant is explicit.
+    this.messageHandler?.dispose();
     this.messageHandler = new MessageHandler(
       this.assistantToolService,
       this.dictionaryService,

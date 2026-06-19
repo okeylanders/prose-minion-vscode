@@ -5,6 +5,7 @@
 
 import * as path from 'path';
 import { FileSystem } from '@/platform';
+import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 
 export class PromptLoader {
   constructor(
@@ -16,7 +17,15 @@ export class PromptLoader {
    * Load a system prompt from a markdown file
    */
   async loadPrompt(promptPath: string): Promise<string> {
-    const fullPath = path.join(this.extensionPath, 'resources', 'system-prompts', promptPath);
+    const root = path.join(this.extensionPath, 'resources', 'system-prompts');
+    const fullPath = path.join(root, promptPath);
+
+    // `promptPath` can originate from tool-orchestration / AI-named files, so a
+    // `../` traversal must not escape the bundled system-prompts root (same guard
+    // UIHandler applies to its guide/docs/resource opens).
+    if (!isPathWithinRoot(root, fullPath)) {
+      throw new Error(`Failed to load prompt: ${promptPath}`);
+    }
 
     try {
       const content = await this.fileSystem.readFile(fullPath);

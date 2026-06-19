@@ -13,7 +13,7 @@ import * as React from 'react';
 import { OpenRouterBalance, OpenRouterKeyLimit } from '@messages';
 import { UseAccountBalanceReturn } from '@hooks/domain/useAccountBalance';
 import { Icon } from '@components/shared/Icon';
-import { fmtUsd, fmtUsdMicro, openRouterHeadline } from './balanceFormat';
+import { fmtUsd, fmtUsdPrecise, openRouterHeadline } from './balanceFormat';
 
 const RESET_LABELS: Record<OpenRouterKeyLimit['resetWindow'], string> = {
   daily: 'Daily remaining',
@@ -66,7 +66,7 @@ export const AccountBalancePill: React.FC<AccountBalancePillProps> = ({
         </span>
         {typeof lastRequestCostUsd === 'number' && (
           <span className="pm-balance-sub">
-            Last request <b>{fmtUsdMicro(lastRequestCostUsd)}</b>
+            Last request <b>{fmtUsdPrecise(lastRequestCostUsd)}</b>
           </span>
         )}
       </span>

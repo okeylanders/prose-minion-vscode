@@ -71,6 +71,43 @@ describe('OpenRouterAccountClient', () => {
       if (!result.ok) expect(result.status).toBe('unavailable');
     });
 
+    it('treats a missing total_usage as unavailable (no silent zero — would overstate remaining)', async () => {
+      // total_credits present, total_usage absent: a silent 0 fallback would
+      // report remaining === total_credits, erasing the user's spend.
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(okResponse({ data: { total_credits: 20 } })) as unknown as typeof fetch;
+      const client = new OpenRouterAccountClient(makeSecrets('sk-test'));
+
+      const result = await client.fetchCredits();
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.status).toBe('unavailable');
+    });
+
+    it('treats a non-finite total_usage (NaN/string) as unavailable', async () => {
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(okResponse({ data: { total_credits: 20, total_usage: 'oops' } })) as unknown as typeof fetch;
+      const client = new OpenRouterAccountClient(makeSecrets('sk-test'));
+
+      const result = await client.fetchCredits();
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.status).toBe('unavailable');
+    });
+
+    it('accepts a genuine zero-spend account (total_usage: 0)', async () => {
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(okResponse({ data: { total_credits: 20, total_usage: 0 } })) as unknown as typeof fetch;
+      const client = new OpenRouterAccountClient(makeSecrets('sk-test'));
+
+      const result = await client.fetchCredits();
+
+      expect(result).toEqual({ ok: true, data: { totalCredits: 20, totalUsage: 0, remaining: 20 } });
+    });
+
     it('maps a 403 to unavailable (non-management key)', async () => {
       global.fetch = jest.fn().mockResolvedValue(errResponse(403)) as unknown as typeof fetch;
       const client = new OpenRouterAccountClient(makeSecrets('sk-test'));
