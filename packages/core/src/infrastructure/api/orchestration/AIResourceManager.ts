@@ -162,7 +162,7 @@ export class AIResourceManager {
    *
    * @param callback - Status callback function
    */
-  setStatusCallback(callback: StatusCallback): void {
+  setStatusCallback(callback?: StatusCallback): void {
     this.statusCallback = callback;
     Object.values(this.aiResources).forEach(resource => {
       resource?.orchestrator.setStatusCallback(callback);
@@ -177,7 +177,7 @@ export class AIResourceManager {
    *
    * @param callback - Token usage callback function
    */
-  setTokenUsageCallback(callback: TokenUsageCallback): void {
+  setTokenUsageCallback(callback?: TokenUsageCallback): void {
     this.tokenUsageCallback = callback;
     Object.values(this.aiResources).forEach(resource => {
       resource?.orchestrator.setTokenUsageCallback(callback);

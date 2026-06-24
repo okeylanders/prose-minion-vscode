@@ -10,20 +10,17 @@
 
 import {
   MessageType,
-  AccountBalanceDataMessage,
   AccountBalancePayload,
   RequestAccountBalanceMessage
 } from '@messages';
 import { LogSink } from '@/platform';
 import { AccountBalanceService } from '@/infrastructure/account';
+import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
 
 export class AccountBalanceHandler {
   constructor(
-    // Matches the sibling handlers' shape: the real transport returns a Promise
-    // (webview.postMessage), so typing it `void` would silently drop a failed
-    // post — `post()` voids it explicitly and logs the rejection instead.
-    private readonly postMessage: (message: AccountBalanceDataMessage) => PromiseLike<unknown>,
+    private readonly postMessage: MessageTransport,
     private readonly service: AccountBalanceService,
     private readonly outputChannel: LogSink
   ) {}

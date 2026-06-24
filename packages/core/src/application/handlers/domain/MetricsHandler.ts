@@ -22,6 +22,7 @@ import {
   MetricsResultMessage,
   ErrorMessage
 } from '@messages';
+import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
 
 export class MetricsHandler {
@@ -30,7 +31,7 @@ export class MetricsHandler {
     private readonly styleFlagsService: StyleFlagsService,
     private readonly wordFrequencyService: WordFrequencyService,
     private readonly standardsService: StandardsService,
-    private readonly postMessage: (message: any) => Promise<void>,
+    private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink,
     private readonly textSourceResolver: TextSourceResolver
   ) {}

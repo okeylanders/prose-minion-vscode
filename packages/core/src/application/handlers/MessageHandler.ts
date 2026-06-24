@@ -24,6 +24,11 @@ import {
   TokenUsageUpdateMessage,
   TokenUsageTotals
 } from '@messages';
+import {
+  CoreServices,
+  MessageTransport,
+  ResultCache
+} from '@handlers/MessageHandlerContracts';
 
 // Message routing
 import { MessageRouter } from './MessageRouter';
@@ -41,37 +46,9 @@ import { UIHandler } from './domain/UIHandler';
 import { FileOperationsHandler } from './domain/FileOperationsHandler';
 import { AccountBalanceHandler } from './domain/AccountBalanceHandler';
 
-// Infrastructure shared across metrics + search handlers (built once, injected)
-import { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
-import { OpenRouterAccountClient, AccountBalanceService } from '@/infrastructure/account';
-
-// SPRINT 05: Import services for direct injection
-import { AssistantToolService } from '@services/analysis/AssistantToolService';
-import { DictionaryService } from '@services/dictionary/DictionaryService';
-import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
-import { ProseStatsService } from '@services/measurement/ProseStatsService';
-import { StyleFlagsService } from '@services/measurement/StyleFlagsService';
-import { WordFrequencyService } from '@services/measurement/WordFrequencyService';
-import { WordSearchService } from '@services/search/WordSearchService';
-import { CategorySearchService } from '@services/search/CategorySearchService';
-import { StandardsService } from '@services/resources/StandardsService';
-import { AIResourceManager } from '@orchestration/AIResourceManager';
-
-interface ResultCache {
-  analysis?: AnalysisResultMessage;
-  dictionary?: DictionaryResultMessage;
-  context?: ContextResultMessage;
-  metrics?: MetricsResultMessage;
-  search?: SearchResultMessage;
-  categorySearch?: CategorySearchResultMessage;
-  status?: StatusMessage;
-  error?: ErrorMessage;
-  tokenUsage?: TokenUsageUpdateMessage;
-}
-
-const sharedResultCache: ResultCache = {};
-
 export class MessageHandler {
+  private readonly resultCache: ResultCache = {};
+
   // Shared token-tracking bag. Mutated in place + passed by reference to
   // ConfigurationHandler (which zeroes it on RESET_TOKEN_USAGE). `costUsd` is
   // cumulative; `lastRequestCostUsd` is the single most-recent request's cost.
@@ -97,10 +74,6 @@ export class MessageHandler {
   private readonly fileOperationsHandler: FileOperationsHandler;
   private readonly accountBalanceHandler: AccountBalanceHandler;
 
-  // OpenRouter account-balance service: TTL cache + debounced post-request
-  // refresh. Owned here (PM has one webview, unlike FM's shared-in-extension.ts
-  // setup) and disposed with the handler.
-  private readonly accountBalanceService: AccountBalanceService;
   private readonly disposeBalanceListener: () => void;
 
   // Settings key constants for config watcher
@@ -162,33 +135,38 @@ export class MessageHandler {
   ] as const;
 
   constructor(
-    // SPRINT 05: Inject services directly (facade removed)
-    private readonly assistantToolService: AssistantToolService,
-    private readonly dictionaryService: DictionaryService,
-    private readonly contextAssistantService: ContextAssistantService,
-    private readonly proseStatsService: ProseStatsService,
-    private readonly styleFlagsService: StyleFlagsService,
-    private readonly wordFrequencyService: WordFrequencyService,
-    private readonly wordSearchService: WordSearchService,
-    private readonly standardsService: StandardsService,
-    private readonly aiResourceManager: AIResourceManager,
-    private readonly secretsService: any, // SecretStorageService
+    private readonly services: CoreServices,
     // Raw webview transport (the shell binds it to `webview.postMessage`); keeps
     // MessageHandler vscode-free. NOTE: domain handlers must receive the wrapped
     // `this.postMessage` (logging + result cache), NOT this raw `transport` — the
     // distinct name is deliberate so the unwrapped one isn't grabbed by accident.
-    private readonly transport: (message: ExtensionToWebviewMessage) => PromiseLike<unknown>,
-    private readonly outputChannel: LogSink,
-    private readonly platform: Platform
+    private readonly transport: MessageTransport,
+    private readonly platform: Platform,
+    private readonly outputChannel: LogSink
   ) {
-    // SPRINT 05: Set up status callback on AIResourceManager (not facade)
-    this.aiResourceManager.setStatusCallback((message: string, tickerMessage?: string) => {
+    const {
+      assistantToolService,
+      dictionaryService,
+      contextAssistantService,
+      proseStatsService,
+      styleFlagsService,
+      wordFrequencyService,
+      wordSearchService,
+      standardsService,
+      aiResourceManager,
+      secretsService,
+      textSourceResolver,
+      categorySearchService,
+      accountBalanceService
+    } = services;
+
+    aiResourceManager.setStatusCallback((message: string, tickerMessage?: string) => {
       this.sendStatus(message, tickerMessage);
     });
 
     // Token tracking: centralized in AIResourceOrchestrator
     // This callback is called after each API call with usage data
-    this.aiResourceManager.setTokenUsageCallback((usage) => {
+    aiResourceManager.setTokenUsageCallback((usage) => {
       this.applyTokenUsage(usage);
     });
 
@@ -213,17 +191,6 @@ export class MessageHandler {
       this.postMessage.bind(this)
     );
 
-    // Build ONE stateless TextSourceResolver from the platform ports and share it
-    // across the metrics + search handlers (it was previously `new`-ed per call
-    // via dynamic import inside each handler).
-    const textSourceResolver = new TextSourceResolver(
-      this.platform.fileSystem,
-      this.platform.workspace,
-      this.platform.settings,
-      this.platform.editor,
-      outputChannel
-    );
-
     this.metricsHandler = new MetricsHandler(
       proseStatsService,
       styleFlagsService,
@@ -234,14 +201,7 @@ export class MessageHandler {
       textSourceResolver
     );
 
-    const categorySearchService = new CategorySearchService(
-      aiResourceManager,
-      wordSearchService,
-      this.platform.fileSystem,
-      this.platform.workspace.extensionPath,
-      outputChannel,
-      this.sendSearchStatus.bind(this)
-    );
+    categorySearchService.setStatusEmitter(this.sendSearchStatus.bind(this));
 
     this.searchHandler = new SearchHandler(
       wordSearchService,
@@ -256,12 +216,12 @@ export class MessageHandler {
       assistantToolService,
       dictionaryService,
       contextAssistantService,
-      this.secretsService,
+      secretsService,
       this.platform.settings,
       this.platform.shell,
       this.postMessage.bind(this),
       outputChannel,
-      sharedResultCache,
+      this.resultCache,
       this.tokenTotals
     );
 
@@ -275,8 +235,7 @@ export class MessageHandler {
     });
 
     this.publishingHandler = new PublishingHandler(
-      this.platform.fileSystem,
-      this.platform.workspace.extensionPath,
+      standardsService,
       this.postMessage.bind(this),
       this.platform.settings
     );
@@ -304,20 +263,14 @@ export class MessageHandler {
       outputChannel
     );
 
-    // OpenRouter account-balance slice. The client reads the key host-side from
-    // SecretStorage; only sanitized numbers/enums cross to the webview.
-    this.accountBalanceService = new AccountBalanceService(
-      new OpenRouterAccountClient(this.secretsService, outputChannel),
-      outputChannel
-    );
     this.accountBalanceHandler = new AccountBalanceHandler(
       this.postMessage.bind(this),
-      this.accountBalanceService,
+      accountBalanceService,
       outputChannel
     );
     // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)
     // broadcasts fresh balances to the webview through the same handler.
-    this.disposeBalanceListener = this.accountBalanceService.addRefreshListener(
+    this.disposeBalanceListener = accountBalanceService.addRefreshListener(
       (payload) => this.accountBalanceHandler.post(payload)
     );
 
@@ -369,7 +322,7 @@ export class MessageHandler {
       },
       timestamp: Date.now()
     };
-    sharedResultCache.status = { ...statusMessage };
+    this.resultCache.status = { ...statusMessage };
     void this.postMessage(statusMessage);
   }
 
@@ -384,10 +337,10 @@ export class MessageHandler {
       },
       timestamp: Date.now()
     };
-    sharedResultCache.error = { ...errorMessage };
-    sharedResultCache.analysis = undefined;
-    sharedResultCache.dictionary = undefined;
-    sharedResultCache.context = undefined;
+    this.resultCache.error = { ...errorMessage };
+    this.resultCache.analysis = undefined;
+    this.resultCache.dictionary = undefined;
+    this.resultCache.context = undefined;
     void this.postMessage(errorMessage);
     this.outputChannel.appendLine(`[MessageHandler] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`);
   }
@@ -420,13 +373,13 @@ export class MessageHandler {
         },
         timestamp: Date.now()
       };
-      sharedResultCache.tokenUsage = { ...message };
+      this.resultCache.tokenUsage = { ...message };
       void this.postMessage(message);
 
       // Spend just happened → re-fetch the balance (debounced, since OpenRouter
       // billing is eventually consistent). The service coalesces bursts.
       if (isRealRequest) {
-        this.accountBalanceService.scheduleRefresh();
+        this.services.accountBalanceService.scheduleRefresh();
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -467,10 +420,10 @@ export class MessageHandler {
   private async refreshServiceConfiguration(): Promise<void> {
     // SPRINT 05: Refresh configuration on all services that need it
     try {
-      await this.aiResourceManager.refreshConfiguration();
-      await this.assistantToolService.refreshConfiguration();
-      await this.dictionaryService.refreshConfiguration();
-      await this.contextAssistantService.refreshConfiguration();
+      await this.services.aiResourceManager.refreshConfiguration();
+      await this.services.assistantToolService.refreshConfiguration();
+      await this.services.dictionaryService.refreshConfiguration();
+      await this.services.contextAssistantService.refreshConfiguration();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(
@@ -609,40 +562,40 @@ export class MessageHandler {
 
   // Expose flushing so the provider can replay cached results when the view becomes visible again
   flushCachedResults(): void {
-    if (sharedResultCache.status) {
-      void this.postMessage(sharedResultCache.status);
+    if (this.resultCache.status) {
+      void this.postMessage(this.resultCache.status);
     }
 
-    if (sharedResultCache.analysis) {
-      void this.postMessage(sharedResultCache.analysis);
+    if (this.resultCache.analysis) {
+      void this.postMessage(this.resultCache.analysis);
     }
 
-    if (sharedResultCache.metrics) {
-      void this.postMessage(sharedResultCache.metrics);
+    if (this.resultCache.metrics) {
+      void this.postMessage(this.resultCache.metrics);
     }
 
-    if (sharedResultCache.search) {
-      void this.postMessage(sharedResultCache.search);
+    if (this.resultCache.search) {
+      void this.postMessage(this.resultCache.search);
     }
 
-    if (sharedResultCache.categorySearch) {
-      void this.postMessage(sharedResultCache.categorySearch);
+    if (this.resultCache.categorySearch) {
+      void this.postMessage(this.resultCache.categorySearch);
     }
 
-    if (sharedResultCache.context) {
-      void this.postMessage(sharedResultCache.context);
+    if (this.resultCache.context) {
+      void this.postMessage(this.resultCache.context);
     }
 
-    if (sharedResultCache.dictionary) {
-      void this.postMessage(sharedResultCache.dictionary);
+    if (this.resultCache.dictionary) {
+      void this.postMessage(this.resultCache.dictionary);
     }
 
-    if (sharedResultCache.error) {
-      void this.postMessage(sharedResultCache.error);
+    if (this.resultCache.error) {
+      void this.postMessage(this.resultCache.error);
     }
 
-    if (sharedResultCache.tokenUsage) {
-      void this.postMessage(sharedResultCache.tokenUsage);
+    if (this.resultCache.tokenUsage) {
+      void this.postMessage(this.resultCache.tokenUsage);
     }
   }
 
@@ -650,44 +603,44 @@ export class MessageHandler {
     // Spy on messages and update cache (orchestration concern, not domain concern)
     switch (message.type) {
       case MessageType.ANALYSIS_RESULT:
-        sharedResultCache.analysis = { ...message as AnalysisResultMessage };
-        sharedResultCache.error = undefined;
+        this.resultCache.analysis = { ...message as AnalysisResultMessage };
+        this.resultCache.error = undefined;
         break;
       case MessageType.DICTIONARY_RESULT:
-        sharedResultCache.dictionary = { ...message as DictionaryResultMessage };
-        sharedResultCache.error = undefined;
+        this.resultCache.dictionary = { ...message as DictionaryResultMessage };
+        this.resultCache.error = undefined;
         break;
       case MessageType.CONTEXT_RESULT:
-        sharedResultCache.context = { ...message as ContextResultMessage };
-        sharedResultCache.error = undefined;
+        this.resultCache.context = { ...message as ContextResultMessage };
+        this.resultCache.error = undefined;
         break;
       case MessageType.METRICS_RESULT:
-        sharedResultCache.metrics = { ...message as MetricsResultMessage };
+        this.resultCache.metrics = { ...message as MetricsResultMessage };
         break;
       case MessageType.SEARCH_RESULT:
-        sharedResultCache.search = { ...message as SearchResultMessage };
+        this.resultCache.search = { ...message as SearchResultMessage };
         break;
       case MessageType.CATEGORY_SEARCH_RESULT:
-        sharedResultCache.categorySearch = { ...message as CategorySearchResultMessage };
+        this.resultCache.categorySearch = { ...message as CategorySearchResultMessage };
         break;
       case MessageType.STATUS:
-        sharedResultCache.status = { ...message as StatusMessage };
+        this.resultCache.status = { ...message as StatusMessage };
         break;
       case MessageType.TOKEN_USAGE_UPDATE:
-        sharedResultCache.tokenUsage = { ...message as TokenUsageUpdateMessage };
+        this.resultCache.tokenUsage = { ...message as TokenUsageUpdateMessage };
         break;
       case MessageType.ERROR:
         const error = message as ErrorMessage;
-        sharedResultCache.error = { ...error };
+        this.resultCache.error = { ...error };
 
         // Clear only the relevant domain cache based on envelope source
         // This ensures domain independence - dictionary error shouldn't clear analysis results
         if (error.source === 'extension.analysis') {
-          sharedResultCache.analysis = undefined;
+          this.resultCache.analysis = undefined;
         } else if (error.source === 'extension.dictionary') {
-          sharedResultCache.dictionary = undefined;
+          this.resultCache.dictionary = undefined;
         } else if (error.source === 'extension.context') {
-          sharedResultCache.context = undefined;
+          this.resultCache.context = undefined;
         }
         // Metrics/Search don't cache results, so no clearing needed
         break;
@@ -713,7 +666,11 @@ export class MessageHandler {
     // The config-change watcher is now owned + disposed by the shell (the provider),
     // so MessageHandler holds no host disposables of its own.
     try {
-      this.aiResourceManager.setStatusCallback(undefined as any);
+      this.services.aiResourceManager.setStatusCallback(undefined);
+      this.services.aiResourceManager.setTokenUsageCallback(undefined);
+      this.services.assistantToolService.setStatusEmitter(undefined);
+      this.services.dictionaryService.setStatusEmitter(undefined);
+      this.services.categorySearchService.setStatusEmitter(undefined);
     } catch {
       // noop
     }
@@ -721,7 +678,7 @@ export class MessageHandler {
     // handler can't fire a fetch/post after teardown.
     try {
       this.disposeBalanceListener();
-      this.accountBalanceService.dispose();
+      this.services.accountBalanceService.dispose();
     } catch {
       // noop
     }

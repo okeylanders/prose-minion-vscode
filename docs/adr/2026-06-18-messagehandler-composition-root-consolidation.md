@@ -1,6 +1,6 @@
 # ADR 2026-06-18: MessageHandler Composition-Root Consolidation
 
-**Status:** Proposed
+**Status:** Accepted and implemented (2026-06-24)
 **Date:** 2026-06-18
 **Supersedes / extends:** [ADR 2026-06-16 — Monorepo Ports & Adapters](2026-06-16-monorepo-ports-and-adapters.md)
 **Epic:** Pre-feature foundation consolidation (Step 1 of 4 — see Sequencing)
@@ -151,3 +151,28 @@ This ADR is the keystone (Step 1). Siblings, tracked separately:
   `accountBalance.ts`, `preset` in `publishing.ts`, and the envelope `source`).
 
 Then build new functionality on a consolidated foundation rather than a drifting one.
+
+## Implementation outcome
+
+Implemented on `sprint/messagehandler-composition-root-consolidation`:
+
+- Added typed `CoreServices`, `MessageTransport`, `SecretsPort`, and
+  instance-bound `ResultCache` contracts.
+- Hoisted `TextSourceResolver`, `CategorySearchService`,
+  `OpenRouterAccountClient`, and `AccountBalanceService` construction into
+  `apps/vscode-extension/src/extension.ts`.
+- Reduced `ProseToolsViewProvider` and `MessageHandler` to bundle-based
+  injection.
+- Typed every domain handler's outgoing message seam.
+- Added lifecycle-safe callback attach/detach for category search, token usage,
+  assistant/dictionary status, and account-balance refresh.
+- Reused `StandardsService` from `PublishingHandler` instead of constructing a
+  repository per request.
+- Added the first `MessageHandler` assembly suite, including cache isolation and
+  the zero-token refresh guard.
+- Added an architecture witness that fails if infrastructure construction
+  returns to `MessageHandler`.
+
+Verification: **49 suites / 373 tests**, all three TypeScript projects clean,
+lint with zero errors, production bundles green, and the Tailwind bundle witness
+passing.

@@ -701,7 +701,7 @@ const wordSearchSettings = {
 
 ## State & Session Management
 
-- **Result Cache**: `MessageHandler` keeps the latest analysis/dictionary/metrics/status/error messages in memory so that a newly created webview can immediately replay the final state.
+- **Result Cache**: Each `MessageHandler` instance keeps the latest analysis/dictionary/metrics/status/error messages for replay while that webview instance is alive. The cache is deliberately instance-bound so disposed webviews cannot leak stale results into replacements.
 - **UI Persistence**: The React app mirrors all important state (active tab, last responses, model selections) to VS Code's webview storage, preserving context across focus changes and reloads. Dictionary inputs (word/context/edited flag) are lifted to App state to avoid unintended auto-fill and preserve user input across tab switches.
 - **Background Execution**: `AIResourceOrchestrator` continues running OpenRouter calls even if the webview is hidden. Once a response arrives it is cached and logged, ready for replay when the user returns.
 - **Context Retention**: The webview is registered with `retainContextWhenHidden` (with a polyfill cast for older API signatures) to minimize disposals during normal sidebar switching.
@@ -791,9 +791,9 @@ To add a new feature:
    - Register routes with MessageRouter
 
 4. **Update MessageHandler**:
-   - Add service instantiation in [extension.ts](src/extension.ts)
-   - Pass services to ProseToolsViewProvider
-   - ProseToolsViewProvider passes to MessageHandler
+   - Construct the service in `apps/vscode-extension/src/extension.ts`
+   - Add it to the typed `CoreServices` bundle
+   - `ProseToolsViewProvider` passes `CoreServices` to `MessageHandler`
    - MessageHandler instantiates domain handler with services
    - Register handler routes with MessageRouter
 

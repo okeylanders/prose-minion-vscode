@@ -21,12 +21,13 @@ import {
   StatusMessage,
   CancelCategorySearchRequestMessage
 } from '@messages';
+import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
 
 export class SearchHandler {
   constructor(
     private readonly wordSearchService: WordSearchService,
-    private readonly postMessage: (message: any) => Promise<void>,
+    private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink,
     private readonly textSourceResolver: TextSourceResolver,
     private readonly categorySearchService?: CategorySearchService

@@ -42,10 +42,19 @@ export class CategorySearchService {
     private readonly fileSystem: FileSystem,
     private readonly extensionPath: string,
     private readonly outputChannel?: LogSink,
-    private readonly statusEmitter?: StatusEmitter
+    private statusEmitter?: StatusEmitter
   ) {
     this.wordFrequency = new WordFrequency((msg) => this.outputChannel?.appendLine(msg));
     this.promptLoader = new PromptLoader(extensionPath, fileSystem);
+  }
+
+  /**
+   * Attach the current webview's status sink after construction. The service is
+   * built at the composition root; MessageHandler owns this lifecycle-bound
+   * callback.
+   */
+  setStatusEmitter(statusEmitter?: StatusEmitter): void {
+    this.statusEmitter = statusEmitter;
   }
 
   /**

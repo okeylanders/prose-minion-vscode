@@ -186,6 +186,23 @@ a surface. **377 files · +12,867 / −3,909 · 50 commits; migrations: none** �
   seams) — documented, not fixed here; lands as its own short epic per **ADR 2026-06-18**
   (`docs/adr/2026-06-18-messagehandler-composition-root-consolidation.md`).
 
+### Follow-up — composition-root consolidation
+
+- Restored `apps/vscode-extension/src/extension.ts` as the single construction
+  root through a typed `CoreServices` bundle.
+- Hoisted text-source, category-search, and account-balance infrastructure out
+  of `MessageHandler`; lifecycle callbacks remain attached by the handler.
+- Replaced the module-global replay cache with an instance-bound cache, closing
+  stale-result leakage across webview lifetimes.
+- Typed every domain-handler post-message seam plus the secrets/cache contracts.
+- `PublishingHandler` now reuses `StandardsService` instead of constructing a
+  second publishing repository.
+- Added `MessageHandler` assembly, cache-isolation, disposal, and zero-token
+  refresh tests plus an architecture guard against infrastructure construction
+  drift.
+- Post-change gate: **49 suites / 373 tests**, three typechecks clean, lint zero
+  errors, production build and Tailwind bundle witness green.
+
 **Landing:** PR #61 merges this epic into `main` as a **merge commit (no squash)**.
 
 ---

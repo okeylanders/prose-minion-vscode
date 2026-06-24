@@ -27,7 +27,11 @@ prose-minion-vscode/
 - **`packages/core` never imports `vscode`.** It depends only on the `Platform` ports (`packages/core/src/platform/`: `LogSink`, `SecretStore`, `SettingsStore`, `FileSystem`, `Workspace`, `ShellService`, `EditorContext`). A non-VS-Code host (e.g. a console app) can reuse core by implementing these ports. **Verify before adding host-coupled code: no `from 'vscode'` in `packages/core/src`.**
 - **`apps/vscode-extension` is the only composition root.** `extension.ts` constructs concrete services + the VS Code Platform implementations and threads them inward. The app imports core *only* through the `@prose-minion/core` barrel (enforced via `eslint no-restricted-imports`); core never imports the app.
 
-> ⚠️ **Known drift being consolidated:** `MessageHandler` currently acts as a *second* composition root (it `new`s some services internally) and carries some `any`-typed seams. New feature slices must **not** copy this — build services at `extension.ts` and inject them. See [ADR 2026-06-18: MessageHandler Composition-Root Consolidation](docs/adr/2026-06-18-messagehandler-composition-root-consolidation.md).
+`extension.ts` builds a typed `CoreServices` bundle alongside `Platform`.
+`ProseToolsViewProvider` threads both bundles into `MessageHandler`, which wires
+domain handlers and lifecycle callbacks but does not construct infrastructure.
+This single-composition-root invariant is guarded by architecture and assembly
+tests. See [ADR 2026-06-18: MessageHandler Composition-Root Consolidation](docs/adr/2026-06-18-messagehandler-composition-root-consolidation.md).
 
 ## Architecture (`packages/core/src`)
 
@@ -40,6 +44,7 @@ packages/core/src/
 │   ├── services/       # Cross-domain application services (e.g. StandardsComparisonService)
 │   └── handlers/       # Message routing and domain handlers
 │       ├── MessageHandler.ts    # Main dispatcher (routes messages)
+│       ├── MessageHandlerContracts.ts # CoreServices + typed transport/cache/secrets seams
 │       ├── MessageRouter.ts     # Strategy registry (MessageType → handler)
 │       └── domain/              # Domain-specific handlers (11)
 │           ├── AnalysisHandler.ts
@@ -281,7 +286,7 @@ usePersistence({
 
 1. **Extension Entry Point** ([extension.ts](apps/vscode-extension/src/extension.ts)) — *the composition root*
    - Initializes the extension
-   - Constructs concrete services + the VS Code `Platform` implementations
+   - Constructs concrete services as `CoreServices` + the VS Code `Platform` implementations
    - Injects them inward; registers commands and providers
 
 2. **Webview Provider** ([ProseToolsViewProvider.ts](apps/vscode-extension/src/application/providers/ProseToolsViewProvider.ts))
@@ -328,7 +333,7 @@ usePersistence({
 2. **Add domain handler** (if new domain):
    - Create new handler in `packages/core/src/application/handlers/domain/`
    - Inject dependencies via constructor (service, helper methods)
-   - Type `postMessage` as `(message: ExtensionToWebviewMessage)` — not `any` (see `AccountBalanceHandler`)
+   - Type `postMessage` as `MessageTransport` — never `any`
    - Require `outputChannel: LogSink` (every sibling does; don't make it optional)
    - Implement handler methods for the domain
 
@@ -345,7 +350,7 @@ usePersistence({
    - If extending existing functionality, add method to existing service instead
 
 4. **Wire it up at the composition root**:
-   - Construct any new service(s) in `apps/vscode-extension/src/extension.ts` (the composition root) and inject them inward — do **not** `new` them inside `MessageHandler` (see [ADR 2026-06-18](docs/adr/2026-06-18-messagehandler-composition-root-consolidation.md))
+   - Construct any new service(s) in `apps/vscode-extension/src/extension.ts` and add them to `CoreServices` — do **not** `new` infrastructure inside `MessageHandler` (see [ADR 2026-06-18](docs/adr/2026-06-18-messagehandler-composition-root-consolidation.md))
    - In `MessageHandler`, instantiate the domain handler with its injected services and call its `registerRoutes()`
    - Bind any handler-method callbacks (status emitters, listeners) post-construction, per the `setStatusEmitter` pattern
 
@@ -619,8 +624,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Coverage** (as of 2026-06-18):
-- 47 suites / 359 tests (40% coverage targets held — see ADR-2025-11-15)
+**Test Coverage** (as of 2026-06-24):
+- 49 suites / 373 tests (40% coverage targets held — see ADR-2025-11-15)
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 

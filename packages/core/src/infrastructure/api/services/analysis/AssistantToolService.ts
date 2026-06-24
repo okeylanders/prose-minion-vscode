@@ -64,8 +64,12 @@ export class AssistantToolService {
   /**
    * Set the status emitter for reporting guide loading progress
    */
-  setStatusEmitter(statusEmitter: StatusEmitter): void {
+  setStatusEmitter(statusEmitter?: StatusEmitter): void {
     this.statusEmitter = statusEmitter;
+    if (!statusEmitter) {
+      this.aiResourceManager.setStatusCallback(undefined);
+      return;
+    }
     // Propagate to AIResourceManager for guide loading notifications
     this.aiResourceManager.setStatusCallback((message: string, tickerMessage?: string) => {
       this.sendStatus(message, undefined, tickerMessage);

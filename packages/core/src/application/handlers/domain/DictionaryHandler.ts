@@ -22,6 +22,7 @@ import {
   StreamChunkMessage,
   StreamCompleteMessage
 } from '@messages';
+import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
 
 // Generate unique request IDs
@@ -34,7 +35,7 @@ export class DictionaryHandler {
 
   constructor(
     private readonly dictionaryService: DictionaryService,
-    private readonly postMessage: (message: any) => Promise<void>
+    private readonly postMessage: MessageTransport
   ) {}
 
   /**

@@ -43,6 +43,17 @@ const VSCODE_IMPORT = new RegExp(
   ].join('|')
 );
 
+const MESSAGE_HANDLER_PATH = path.join(
+  SRC_ROOT,
+  'application',
+  'handlers',
+  'MessageHandler.ts'
+);
+
+const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
+  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository)\b`
+);
+
 function collectSourceFiles(dir: string, acc: string[] = []): string[] {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
@@ -63,5 +74,11 @@ describe('architectural boundaries', () => {
       .map((file) => path.relative(SRC_ROOT, file));
 
     expect(offenders).toEqual([]);
+  });
+
+  it('MessageHandler does not construct infrastructure services', () => {
+    const source = fs.readFileSync(MESSAGE_HANDLER_PATH, 'utf8');
+
+    expect(source).not.toMatch(FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION);
   });
 });

@@ -15,11 +15,12 @@ import {
   ErrorSource,
   ErrorMessage
 } from '@messages';
+import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
 
 export class SourcesHandler {
   constructor(
-    private readonly postMessage: (message: any) => void,
+    private readonly postMessage: MessageTransport,
     private readonly settings: SettingsStore,
     private readonly editor: EditorContext
   ) {}
@@ -61,7 +62,7 @@ export class SourcesHandler {
         },
         timestamp: Date.now()
       };
-      this.postMessage(msg);
+      void this.postMessage(msg);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.sendError('sources.active_file', 'Failed to get active file', msg);
@@ -79,7 +80,7 @@ export class SourcesHandler {
         },
         timestamp: Date.now()
       };
-      this.postMessage(msg);
+      void this.postMessage(msg);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.sendError('sources.manuscript_globs', 'Failed to get manuscript globs', msg);
@@ -97,7 +98,7 @@ export class SourcesHandler {
         },
         timestamp: Date.now()
       };
-      this.postMessage(msg);
+      void this.postMessage(msg);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.sendError('sources.chapter_globs', 'Failed to get chapter globs', msg);

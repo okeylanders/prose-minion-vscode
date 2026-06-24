@@ -97,7 +97,7 @@ export class DictionaryService {
    * Set status callback for progress updates
    * Called by MessageHandler after construction
    */
-  setStatusEmitter(statusEmitter: StatusEmitter): void {
+  setStatusEmitter(statusEmitter?: StatusEmitter): void {
     this.statusEmitter = statusEmitter;
   }
 

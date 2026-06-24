@@ -11,20 +11,11 @@ import * as vscode from 'vscode';
 // All core symbols via the public barrel (ADR 2026-06-16 monorepo boundary).
 import {
   MessageHandler,
+  CoreServices,
   Platform,
   MessageType,
   SelectionUpdatedMessage,
   OpenSettingsToggleMessage,
-  SecretStorageService,
-  AssistantToolService,
-  DictionaryService,
-  ContextAssistantService,
-  ProseStatsService,
-  StyleFlagsService,
-  WordFrequencyService,
-  WordSearchService,
-  StandardsService,
-  AIResourceManager,
 } from '@prose-minion/core';
 
 export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
@@ -36,17 +27,7 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
 
   constructor(
     private readonly extensionUri: vscode.Uri,
-    // SPRINT 05: Inject all services directly
-    private readonly assistantToolService: AssistantToolService,
-    private readonly dictionaryService: DictionaryService,
-    private readonly contextAssistantService: ContextAssistantService,
-    private readonly proseStatsService: ProseStatsService,
-    private readonly styleFlagsService: StyleFlagsService,
-    private readonly wordFrequencyService: WordFrequencyService,
-    private readonly wordSearchService: WordSearchService,
-    private readonly standardsService: StandardsService,
-    private readonly aiResourceManager: AIResourceManager,
-    private readonly secretsService: SecretStorageService,
+    private readonly coreServices: CoreServices,
     private readonly outputChannel: vscode.OutputChannel,
     private readonly platform: Platform
   ) {}
@@ -73,19 +54,10 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
     // configWatcher's guarded reassignment below so the invariant is explicit.
     this.messageHandler?.dispose();
     this.messageHandler = new MessageHandler(
-      this.assistantToolService,
-      this.dictionaryService,
-      this.contextAssistantService,
-      this.proseStatsService,
-      this.styleFlagsService,
-      this.wordFrequencyService,
-      this.wordSearchService,
-      this.standardsService,
-      this.aiResourceManager,
-      this.secretsService,
+      this.coreServices,
       (message) => webviewView.webview.postMessage(message),
-      this.outputChannel,
-      this.platform
+      this.platform,
+      this.outputChannel
     );
 
     // Config-change watcher lives in the shell (keeps MessageHandler vscode-free).

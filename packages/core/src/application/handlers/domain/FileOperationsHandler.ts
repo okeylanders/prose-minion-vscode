@@ -15,6 +15,7 @@ import {
   ErrorMessage,
   StatusMessage
 } from '@messages';
+import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
 
 /**
@@ -34,7 +35,7 @@ const FILE_PREFIX_MAP: Record<string, string> = {
 
 export class FileOperationsHandler {
   constructor(
-    private readonly postMessage: (message: any) => Promise<void>,
+    private readonly postMessage: MessageTransport,
     private readonly fileSystem: FileSystem,
     private readonly workspace: Workspace,
     private readonly shell: ShellService,

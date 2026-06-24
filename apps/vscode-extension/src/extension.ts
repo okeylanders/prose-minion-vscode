@@ -29,6 +29,11 @@ import {
   DictionaryService,
   ContextAssistantService,
   WordSearchService,
+  CategorySearchService,
+  TextSourceResolver,
+  AccountBalanceService,
+  OpenRouterAccountClient,
+  CoreServices,
 } from '@prose-minion/core';
 // VS Code adapters (app-local; the composition root wires them into the ports)
 import { VsCodeSettingsStore } from './platform/vscode/VsCodeSettingsStore';
@@ -52,9 +57,6 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // vscode.window.showInformationMessage('Prose Minion extension activated!');
 
-  // SPRINT 01: Initialize infrastructure layer (dependency injection)
-  const secretsService = new SecretStorageService(context.secrets);
-
   // Platform ports (ADR 2026-06-16). Assembled once at the composition root: the
   // VS Code adapters translate to the vscode-free port shapes; the structural
   // ports (log, secrets) are the native vscode objects passed directly.
@@ -67,6 +69,9 @@ export function activate(context: vscode.ExtensionContext): void {
     shell: new VsCodeShellService(),
     editor: new VsCodeEditorContext()
   };
+
+  // SPRINT 01: Initialize infrastructure layer (dependency injection)
+  const secretsService = new SecretStorageService(platform.secrets);
 
   // SPRINT 01: Create resource services (foundation)
   const resourceLoader = new ResourceLoaderService(platform.workspace.extensionPath, platform.fileSystem, outputChannel);
@@ -110,16 +115,28 @@ export function activate(context: vscode.ExtensionContext): void {
     outputChannel
   );
 
-  // SPRINT 05: ProseAnalysisService facade removed
-  // Services now passed directly to ProseToolsViewProvider
+  // Shared infrastructure that previously leaked into MessageHandler. Build it
+  // once here so extension.ts remains the single composition root.
+  const textSourceResolver = new TextSourceResolver(
+    platform.fileSystem,
+    platform.workspace,
+    platform.settings,
+    platform.editor,
+    outputChannel
+  );
+  const categorySearchService = new CategorySearchService(
+    aiResourceManager,
+    wordSearchService,
+    platform.fileSystem,
+    platform.workspace.extensionPath,
+    outputChannel
+  );
+  const accountBalanceService = new AccountBalanceService(
+    new OpenRouterAccountClient(secretsService, outputChannel),
+    outputChannel
+  );
 
-  // Migrate API key from settings to SecretStorage if needed
-  void migrateApiKeyToSecrets(secretsService, outputChannel);
-
-  // Initialize application layer
-  proseToolsViewProvider = new ProseToolsViewProvider(
-    context.extensionUri,
-    // SPRINT 05: Inject all services directly
+  const coreServices: CoreServices = {
     assistantToolService,
     dictionaryService,
     contextAssistantService,
@@ -130,6 +147,18 @@ export function activate(context: vscode.ExtensionContext): void {
     standardsService,
     aiResourceManager,
     secretsService,
+    textSourceResolver,
+    categorySearchService,
+    accountBalanceService
+  };
+
+  // Migrate API key from settings to SecretStorage if needed
+  void migrateApiKeyToSecrets(secretsService, outputChannel);
+
+  // Initialize application layer
+  proseToolsViewProvider = new ProseToolsViewProvider(
+    context.extensionUri,
+    coreServices,
     outputChannel,
     platform
   );

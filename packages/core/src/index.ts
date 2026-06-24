@@ -26,6 +26,12 @@ export * from '@/platform';
 
 // --- Application: host message router ---
 export { MessageHandler } from '@/application/handlers/MessageHandler';
+export type {
+  CoreServices,
+  MessageTransport,
+  ResultCache,
+  SecretsPort
+} from '@/application/handlers/MessageHandlerContracts';
 
 // --- Infrastructure: secrets ---
 export { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
@@ -42,5 +48,11 @@ export { AssistantToolService } from '@services/analysis/AssistantToolService';
 export { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 export { DictionaryService } from '@services/dictionary/DictionaryService';
 export { WordSearchService } from '@services/search/WordSearchService';
+export { CategorySearchService } from '@services/search/CategorySearchService';
 export { StandardsService } from '@services/resources/StandardsService';
 export { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
+export { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
+export {
+  AccountBalanceService,
+  OpenRouterAccountClient
+} from '@/infrastructure/account';

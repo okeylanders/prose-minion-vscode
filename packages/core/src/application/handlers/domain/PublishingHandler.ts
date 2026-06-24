@@ -3,7 +3,7 @@
  * Handles publishing standards operations
  */
 
-import { FileSystem, SettingsStore } from '@/platform';
+import { SettingsStore } from '@/platform';
 import {
   RequestPublishingStandardsDataMessage,
   SetPublishingPresetMessage,
@@ -13,15 +13,14 @@ import {
   ErrorSource,
   ErrorMessage
 } from '@messages';
-import { PublishingStandardsRepository } from '@/infrastructure/standards/PublishingStandardsRepository';
-
+import { StandardsService } from '@services/resources/StandardsService';
+import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
 
 export class PublishingHandler {
   constructor(
-    private readonly fileSystem: FileSystem,
-    private readonly extensionPath: string,
-    private readonly postMessage: (message: any) => Promise<void>,
+    private readonly standardsService: StandardsService,
+    private readonly postMessage: MessageTransport,
     private readonly settings: SettingsStore
   ) {}
 
@@ -54,8 +53,7 @@ export class PublishingHandler {
 
   async handleRequestPublishingStandardsData(message: RequestPublishingStandardsDataMessage): Promise<void> {
     try {
-      const repo = new PublishingStandardsRepository(this.extensionPath, this.fileSystem);
-      const genres = await repo.getGenres();
+      const genres = await this.standardsService.getGenres();
       const preset = (this.settings.get<string>('proseMinion', 'publishingStandards.preset') || 'none');
       const pageSizeKey = (this.settings.get<string>('proseMinion', 'publishingStandards.pageSizeKey') || '');
 
@@ -81,7 +79,7 @@ export class PublishingHandler {
         timestamp: Date.now()
       };
 
-      this.postMessage(message);
+      void this.postMessage(message);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.sendError('publishing', 'Failed to load publishing standards', msg);

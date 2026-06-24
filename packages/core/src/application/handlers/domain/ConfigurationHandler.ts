@@ -28,9 +28,13 @@ import {
   ErrorSource,
   ErrorMessage
 } from '@messages';
+import {
+  MessageTransport,
+  ResultCache,
+  SecretsPort
+} from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
 import { OpenRouterModels } from '@providers/OpenRouterModels';
-import { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
 import { WORD_SEARCH_DEFAULTS } from '@shared/constants/wordSearchDefaults';
 
 export class ConfigurationHandler {
@@ -42,12 +46,12 @@ export class ConfigurationHandler {
     private readonly assistantToolService: AssistantToolService,
     private readonly dictionaryService: DictionaryService,
     private readonly contextAssistantService: ContextAssistantService,
-    private readonly secretsService: SecretStorageService,
+    private readonly secretsService: SecretsPort,
     private readonly settings: SettingsStore,
     private readonly shell: ShellService,
-    private readonly postMessage: (message: any) => Promise<void>,
+    private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink,
-    private readonly sharedResultCache: any,
+    private readonly resultCache: ResultCache,
     private readonly tokenTotals: {
       promptTokens: number;
       completionTokens: number;
@@ -255,8 +259,8 @@ export class ConfigurationHandler {
         },
         timestamp: Date.now()
       };
-      this.sharedResultCache.tokenUsage = { ...message };
-      this.postMessage(message);
+      this.resultCache.tokenUsage = { ...message };
+      void this.postMessage(message);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.sendError('settings.tokens', 'Failed to reset token usage', msg);
@@ -353,7 +357,7 @@ export class ConfigurationHandler {
       this.outputChannel.appendLine(
         `[ConfigurationHandler] Sending MODEL_DATA with ${options.length} options and selections: ${JSON.stringify(selections)}`
       );
-      this.postMessage(message);
+      void this.postMessage(message);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[ConfigurationHandler] Failed to load model data: ${message}`);

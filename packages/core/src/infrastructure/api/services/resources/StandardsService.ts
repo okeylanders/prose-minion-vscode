@@ -131,6 +131,16 @@ export class StandardsService {
   }
 
   /**
+   * Return all publishing genres from the repository this service already owns.
+   * Keeps repository construction at the composition root instead of repeating
+   * it inside PublishingHandler.
+   */
+  async getGenres(): Promise<Genre[]> {
+    if (!this.standardsRepo) return [];
+    return this.standardsRepo.getGenres();
+  }
+
+  /**
    * Load publishing standards repository
    *
    * This is called during construction to initialize the standards repository
