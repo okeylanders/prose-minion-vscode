@@ -1,10 +1,7 @@
 /**
  * Message handler - Application layer
  * Routes messages from webview to domain handlers
- * Refactored to use domain-specific handlers for better organization
- *
- * SPRINT 05 REFACTOR: ProseAnalysisService facade removed
- * Now injects services directly into domain handlers
+ * Wires injected services into domain-specific handlers.
  */
 
 import { LogSink, Platform } from '@/platform';
@@ -170,7 +167,6 @@ export class MessageHandler {
       this.applyTokenUsage(usage);
     });
 
-    // SPRINT 05: Instantiate domain handlers with direct service injection
     // Token tracking is now centralized in AIResourceOrchestrator via setTokenUsageCallback
     this.analysisHandler = new AnalysisHandler(
       assistantToolService,
@@ -418,7 +414,6 @@ export class MessageHandler {
   }
 
   private async refreshServiceConfiguration(): Promise<void> {
-    // SPRINT 05: Refresh configuration on all services that need it
     try {
       await this.services.aiResourceManager.refreshConfiguration();
       await this.services.assistantToolService.refreshConfiguration();
@@ -662,7 +657,7 @@ export class MessageHandler {
   }
 
   dispose(): void {
-    // SPRINT 05: Clear status callback on AIResourceManager to avoid stale references.
+    // Clear callbacks on shared services to avoid stale webview references.
     // The config-change watcher is now owned + disposed by the shell (the provider),
     // so MessageHandler holds no host disposables of its own.
     try {

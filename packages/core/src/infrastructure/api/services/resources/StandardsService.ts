@@ -15,17 +15,17 @@ import { StandardsComparisonService } from '@/application/services/StandardsComp
 import { Genre } from '@/domain/models/PublishingStandards';
 
 export class StandardsService {
-  private standardsRepo?: PublishingStandardsRepository;
-  private standardsComparer: StandardsComparisonService;
+  private readonly standardsRepo: PublishingStandardsRepository;
+  private readonly standardsComparer: StandardsComparisonService;
 
   constructor(
-    private readonly extensionPath: string,
-    private readonly fileSystem: FileSystem,
+    extensionPath: string,
+    fileSystem: FileSystem,
     private readonly settings: SettingsStore,
     private readonly outputChannel?: LogSink
   ) {
+    this.standardsRepo = new PublishingStandardsRepository(extensionPath, fileSystem);
     this.standardsComparer = new StandardsComparisonService();
-    this.loadStandards();
   }
 
   /**
@@ -43,8 +43,6 @@ export class StandardsService {
    */
   async enrichWithStandards(stats: any): Promise<any> {
     try {
-      if (!this.standardsRepo) return stats;
-
       const preset = (this.settings.get<string>('proseMinion', 'publishingStandards.preset') || 'none').trim().toLowerCase();
 
       if (preset === 'none') return stats;
@@ -126,7 +124,6 @@ export class StandardsService {
    * @returns Genre object if found, undefined otherwise
    */
   async findGenre(key: string): Promise<Genre | undefined> {
-    if (!this.standardsRepo) return undefined;
     return this.standardsRepo.findGenre(key);
   }
 
@@ -136,21 +133,6 @@ export class StandardsService {
    * it inside PublishingHandler.
    */
   async getGenres(): Promise<Genre[]> {
-    if (!this.standardsRepo) return [];
     return this.standardsRepo.getGenres();
-  }
-
-  /**
-   * Load publishing standards repository
-   *
-   * This is called during construction to initialize the standards repository
-   */
-  private loadStandards(): void {
-    try {
-      this.standardsRepo = new PublishingStandardsRepository(this.extensionPath, this.fileSystem);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.outputChannel?.appendLine(`[StandardsService] Failed to load standards repository: ${msg}`);
-    }
   }
 }

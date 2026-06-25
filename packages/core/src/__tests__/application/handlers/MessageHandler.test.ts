@@ -27,6 +27,7 @@ interface TestAssembly {
   log: LogSink;
   scheduleRefresh: jest.Mock;
   getBalances: jest.Mock;
+  accountAddRefreshListener: jest.Mock;
   disposeBalanceListener: jest.Mock;
   accountDispose: jest.Mock;
   categorySetStatusEmitter: jest.Mock;
@@ -63,6 +64,7 @@ function createTestAssembly(): TestAssembly {
     fetchedAt: 123
   });
   const disposeBalanceListener = jest.fn();
+  const accountAddRefreshListener = jest.fn(() => disposeBalanceListener);
   const accountDispose = jest.fn();
   const categorySetStatusEmitter = jest.fn();
 
@@ -104,7 +106,7 @@ function createTestAssembly(): TestAssembly {
     accountBalanceService: {
       getBalances,
       scheduleRefresh,
-      addRefreshListener: jest.fn(() => disposeBalanceListener),
+      addRefreshListener: accountAddRefreshListener,
       dispose: accountDispose
     }
   } as unknown as CoreServices;
@@ -115,6 +117,7 @@ function createTestAssembly(): TestAssembly {
     log,
     scheduleRefresh,
     getBalances,
+    accountAddRefreshListener,
     disposeBalanceListener,
     accountDispose,
     categorySetStatusEmitter,
@@ -205,18 +208,27 @@ describe('MessageHandler assembly', () => {
     );
   });
 
-  it('detaches lifecycle callbacks and disposes the account service', () => {
+  it('detaches lifecycle callbacks and re-subscribes shared services for the next handler', () => {
     const assembly = createTestAssembly();
-    const handler = createHandler(
+    const first = createHandler(
       assembly,
       jest.fn().mockResolvedValue(undefined)
     );
 
-    handler.dispose();
+    first.dispose();
 
     expect(assembly.disposeBalanceListener).toHaveBeenCalledTimes(1);
     expect(assembly.accountDispose).toHaveBeenCalledTimes(1);
     expect(assembly.categorySetStatusEmitter).toHaveBeenLastCalledWith(undefined);
     expect(assembly.tokenUsageCallback()).toBeUndefined();
+
+    createHandler(
+      assembly,
+      jest.fn().mockResolvedValue(undefined)
+    );
+
+    expect(assembly.accountAddRefreshListener).toHaveBeenCalledTimes(2);
+    expect(assembly.categorySetStatusEmitter).toHaveBeenLastCalledWith(expect.any(Function));
+    expect(assembly.tokenUsageCallback()).toEqual(expect.any(Function));
   });
 });
