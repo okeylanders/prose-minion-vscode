@@ -43,11 +43,10 @@ const VSCODE_IMPORT = new RegExp(
   ].join('|')
 );
 
-const MESSAGE_HANDLER_PATH = path.join(
+const HANDLERS_ROOT = path.join(
   SRC_ROOT,
   'application',
-  'handlers',
-  'MessageHandler.ts'
+  'handlers'
 );
 
 const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
@@ -58,7 +57,9 @@ function collectSourceFiles(dir: string, acc: string[] = []): string[] {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (SKIP_DIRS.has(full)) continue;
+      if (SKIP_DIRS.has(full)) {
+        continue;
+      }
       collectSourceFiles(full, acc);
     } else if (entry.isFile() && /\.tsx?$/.test(entry.name)) {
       acc.push(full);
@@ -76,9 +77,11 @@ describe('architectural boundaries', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('MessageHandler does not construct infrastructure services', () => {
-    const source = fs.readFileSync(MESSAGE_HANDLER_PATH, 'utf8');
+  it('application handlers do not construct infrastructure services', () => {
+    const offenders = collectSourceFiles(HANDLERS_ROOT)
+      .filter((file) => FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
 
-    expect(source).not.toMatch(FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION);
+    expect(offenders).toEqual([]);
   });
 });
