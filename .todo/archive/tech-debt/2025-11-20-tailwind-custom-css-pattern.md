@@ -1,5 +1,8 @@
 # Tailwind + Custom CSS Pattern Standardization
 
+**Status**: Superseded by Architecture Health Pass CSS Pattern Sprint
+**Archived**: 2026-06-25
+
 **Date Identified**: 2025-11-20
 **Identified During**: v1.1.0 - Adding docs link icon to Settings Overlay
 **Priority**: Low

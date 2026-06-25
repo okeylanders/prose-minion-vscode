@@ -1,34 +1,54 @@
-# Streaming Hook Duplication
+# Streaming Lifecycle Duplication
 
-**Date Identified**: 2025-03-01  
-**Identified During**: Streaming/cancel hardening review  
-**Priority**: Medium  
-**Estimated Effort**: 0.5-1 day
+**Date Identified**: 2025-12-05
+**Reviewed**: 2026-06-25
+**Status**: Identified
+**Priority**: Medium
+**Estimated Effort**: 1 day
 
 ## Problem
-Streaming orchestration logic (start events, requestId guards, ignore lists, cancel reset, shared state shape) is duplicated across `useAnalysis`, `useContext`, and `useDictionary`. This repetition increases maintenance overhead and raises the risk of divergence if we add another streaming domain or tweak the lifecycle.
 
-## Current Implementation
-- `src/presentation/webview/hooks/domain/useAnalysis.ts`
-- `src/presentation/webview/hooks/domain/useContext.ts`
-- `src/presentation/webview/hooks/domain/useDictionary.ts`
+`useStreaming` centralizes buffering, timers, and token accumulation, but
+request lifecycle orchestration remains duplicated across:
 
-Each hook independently implements:
-- `handleStreamStarted/chunk/complete` with similar requestId checks and ignore-set handling.
-- `currentRequestId` + `ignoredRequestIdsRef`.
-- Start/cancel wiring to `useStreaming`.
+- `useAnalysis`
+- `useContext`
+- `useDictionary`
+
+Each hook owns request correlation, ignored request IDs, preemption, stale-event
+guards, completion handling, and loading/status cleanup.
+
+The copies have diverged:
+
+- Analysis preserves partial output on cancellation
+- Context and dictionary discard partial output
+- Ignored request IDs are removed before an immediate ignored check in each
+  completion handler, making that check ineffective
+- Behavioral test depth differs substantially by domain
 
 ## Recommendation
-Extract a shared streaming helper/hook (e.g., `useDomainStreaming` or `createStreamingHandlers`) that:
-- Accepts `domain` and callbacks to clear/set domain-specific state.
-- Owns `currentRequestId`, ignored-set handling, and event guards.
-- Exposes `handleStreamStarted/chunk/complete`, `startStreaming`, `cancelStreaming`, and derived UI booleans.
-Ensure the helper remains lightweight and composable with existing domain state/persistence patterns.
 
-## Impact
-- Lower maintenance burden; consistent behavior across streaming domains.
-- Faster onboarding for future streaming domains.
-- Reduced risk of subtle divergence in cancel/guard behavior.
+Extract a lightweight domain-streaming lifecycle hook or helper that owns:
 
-## References
-- Current duplication: `useAnalysis.ts`, `useContext.ts`, `useDictionary.ts`
+- Current request correlation
+- Ignored/stale request guards
+- Preemption and cancellation wiring
+- Start/chunk/complete event filtering
+
+Keep result preservation and domain-specific loading/status behavior
+configurable and explicit.
+
+## Related Files
+
+- `packages/core/src/presentation/webview/hooks/useStreaming.ts`
+- `packages/core/src/presentation/webview/hooks/domain/useAnalysis.ts`
+- `packages/core/src/presentation/webview/hooks/domain/useContext.ts`
+- `packages/core/src/presentation/webview/hooks/domain/useDictionary.ts`
+
+## Completion Criteria
+
+- Shared request lifecycle logic has one implementation
+- Partial-content behavior is explicit per domain
+- Tests cover stale chunks, stale completion, preemption, cancellation, and
+  partial-content policy
+- Domain hooks retain only domain-specific state transitions

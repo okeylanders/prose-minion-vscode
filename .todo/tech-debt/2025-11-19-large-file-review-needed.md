@@ -1,84 +1,52 @@
-# Large Files Review Needed
+# Large-File Responsibility Review
 
 **Date Identified**: 2025-11-19
-**Identified During**: Shared Types Hygiene Analysis
+**Reviewed**: 2026-06-25
+**Status**: Deferred
 **Priority**: Low
-**Estimated Effort**: TBD (requires individual assessment)
+**Estimated Effort**: Assess per file
 
-## Problem
+## Context
 
-Several files exceed the recommended size limits (hooks < 200 lines, handlers < 150 lines, components < 400 lines) and may contain catch-all patterns or multiple responsibilities.
+The original inventory became stale after the Architecture Health Pass and the
+monorepo migration:
 
-## Current Implementation
+- `resultFormatter.ts` was decomposed and removed
+- `SearchTab.tsx` and `MetricsTab.tsx` became thin orchestrators
+- `App.tsx` was reduced
+- `MessageHandler` stopped constructing infrastructure and now receives
+  composition-root dependencies
 
-### Files Exceeding Size Guidelines
+File length alone is not an architectural defect. Review these files by
+responsibility, change pressure, and test seams rather than enforcing arbitrary
+line limits.
 
-| File | Lines | Concern |
-|------|-------|---------|
-| resultFormatter.ts | 763 | Formatting utilities catch-all? |
-| SettingsOverlay.tsx | 678 | Potential god component |
-| SearchTab.tsx | 666 | Potential god component |
-| MessageHandler.ts | 603 | Already refactored, still large |
-| AIResourceOrchestrator.ts | 600 | Orchestrator complexity |
-| AnalysisTab.tsx | 517 | Tab component size |
-| ConfigurationHandler.ts | 492 | Handler size |
-| App.tsx | 479 | Already refactored, monitoring |
-| WordSearchService.ts | 466 | Service complexity |
-| MetricsTab.tsx | 413 | Tab component size |
+## Current Review Candidates
 
-### Analysis Notes
+| File | Approx. lines | Review question |
+|---|---:|---|
+| `AIResourceOrchestrator.ts` | 973 | Can repeated execution mechanics be extracted without erasing meaningful guide/context differences? |
+| `SettingsOverlay.tsx` | 698 | Should domain-specific settings sections become focused components? |
+| `AnalysisTab.tsx` | 619 | Does the tab own too much analysis/context UI behavior? |
+| `ConfigurationHandler.ts` | 506 | Can settings groups or watcher behavior become narrower collaborators? |
 
-**resultFormatter.ts (763 lines)**
-- Likely contains multiple formatter functions for different result types
-- May benefit from splitting by result domain (analysis, metrics, search)
+Other large files should be added only when a concrete responsibility problem
+is identified.
 
-**SettingsOverlay.tsx (678 lines)**
-- Settings UI has grown with each new setting domain
-- May need to extract domain-specific settings panels
+## Review Questions
 
-**SearchTab.tsx (666 lines)**
-- Contains both Word Search and Category Search UI
-- May need to extract each search type into sub-components
-
-**MessageHandler.ts (603 lines)**
-- Already refactored with Strategy pattern (was 1,091 lines)
-- Contains service instantiation and route registration
-- May benefit from dependency injection container
-
-**AIResourceOrchestrator.ts (600 lines)**
-- Complex orchestration logic
-- May need domain-specific orchestrators
+- Does the file have more than one reason to change?
+- Is duplicated knowledge present, or merely similar syntax?
+- Would extraction create a clearer test seam?
+- Would a new abstraction make production debugging easier?
+- Is the file actively changing enough to justify the migration cost?
 
 ## Recommendation
 
-These files don't require immediate action but should be reviewed when:
-1. Adding new functionality to them
-2. Fixing bugs in them
-3. Performing architecture reviews
+Review opportunistically when adding behavior or fixing defects. Create a
+focused debt item or ADR for a specific extraction rather than treating this
+document as a standing instruction to split files.
 
-**Review Questions:**
-- Does this file have single responsibility?
-- Can it be split by domain/feature?
-- Are there extraction opportunities?
-
-## Impact
-
-### Benefits of Fixing (per file)
-
-- Improved maintainability
-- Better testability
-- Clearer responsibilities
-- Faster navigation
-
-### Risks of Not Fixing
-
-- Continued growth
-- Harder to understand
-- Higher bug risk
-- Difficult onboarding
-
-## References
-
-- Architecture guidelines in [.ai/central-agent-setup.md](../../.ai/central-agent-setup.md)
-- Size limits: hooks < 200 lines, handlers < 150 lines
-- [ADR: Presentation Layer Domain Hooks](../../docs/adr/2025-10-27-presentation-layer-domain-hooks.md)
+The existing
+[AIResourceOrchestrator loop debt](2025-11-25-ai-resource-orchestrator-loop-duplication.md)
+is one concrete child of this broader review.

@@ -1,5 +1,8 @@
 # Token Usage Centralization & Standardization
 
+**Status**: Resolved by Architecture Health Pass Sprint 02 / PR #41
+**Archived**: 2026-06-25
+
 **Date Identified**: 2025-11-18
 **Identified During**: Category Search Epic - Sprint 04
 **Priority**: Medium

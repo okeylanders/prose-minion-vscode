@@ -1,237 +1,67 @@
 # Settings Integration Tests
 
 **Date Identified**: 2025-11-06
-**Identified During**: Sprint 05 - Documentation & Testing
-**Priority**: High
-**Estimated Effort**: 4 hours
-
----
+**Reviewed**: 2026-06-25
+**Status**: Deferred
+**Priority**: Medium
+**Estimated Effort**: 4-6 hours
 
 ## Problem
 
-While unit tests verify individual hook behavior, integration tests are needed to verify end-to-end flows:
-- Bidirectional sync (VSCode config ↔ hook state ↔ components)
-- Persistence (webview state across reloads)
-- Echo prevention (no infinite update loops)
-- Message routing (correct handlers invoked)
+Settings hooks and message routing have solid unit coverage, but the repository
+does not verify the complete settings lifecycle:
 
-**Current State**: No automated integration tests. Manual testing only.
+`hook → UPDATE_SETTING → ConfigurationHandler → SettingsStore → config watcher → SETTINGS_DATA → router → hook`
 
----
+The timed echo-suppression behavior and real webview persistence composition
+also remain untested.
 
-## Current Implementation
+## Existing Coverage
 
-Integration testing is done manually:
-1. Change setting in SettingsOverlay → verify component updates
-2. Change setting in VSCode panel → verify SettingsOverlay updates
-3. Reload webview → verify settings persist
-4. Watch Output Channel → verify no echo loops
+- Six settings-hook suites cover persisted initialization, update messages, and
+  incoming settings data.
+- `useAppMessageRouter.test.ts` characterizes `SETTINGS_DATA` fan-out.
+- `App.tsx` composes domain persistence through `usePersistence`.
+- `ConfigurationHandler.test.ts` verifies route registration.
 
-**Manual Process**: Works but slow, not automated, requires human observation
+These tests are valuable but stop at unit boundaries.
 
----
+## Remaining Tests
 
-## Recommendation
+### Full Settings Round Trip
 
-Add automated integration tests for critical settings flows.
+- Drive a webview-originated update through `ConfigurationHandler`
+- Verify the settings store receives the correct key and value
+- Simulate the configuration watcher
+- Verify `SETTINGS_DATA` reaches the correct hook consumers
 
-### Test Suite 1: Settings Sync Integration
+### Echo Suppression
 
-**File**: `src/tests/integration/settings-sync.test.ts`
+- Exercise `markWebviewOriginatedUpdate()` and
+  `shouldBroadcastConfigChange()` with fake timers
+- Verify a webview-originated update is not immediately echoed
+- Verify a later external configuration change is broadcast normally
 
-**Test Cases**:
+### Persistence Composition and Restoration
 
-1. **VSCode Config → Webview**
-   ```typescript
-   it('should sync VSCode config changes to hook state', async () => {
-     // Simulate backend detecting config change
-     // Send SETTINGS_DATA message to hook
-     // Verify hook state updates
-   });
-   ```
+- Render the application composition and inspect the complete object passed to
+  `vscode.setState`
+- Restore representative multi-domain state through the real persistence seam
+- Verify partial state uses safe defaults
+- Clarify and test whether `activeTab` should restore or intentionally reset
 
-2. **Webview → VSCode Config**
-   ```typescript
-   it('should send UPDATE_SETTING when webview changes setting', () => {
-     // Call hook.updateSetting()
-     // Verify UPDATE_SETTING message posted
-     // Verify message contains correct key and value
-   });
-   ```
+## Related Files
 
-3. **Echo Prevention**
-   ```typescript
-   it('should not create infinite loop when updating from webview', () => {
-     // Update from webview
-     // Backend should track as webview-originated
-     // Next config change should NOT broadcast back
-     // Verify postMessage called exactly once
-   });
-   ```
+- `packages/core/src/application/handlers/domain/ConfigurationHandler.ts`
+- `packages/core/src/presentation/webview/App.tsx`
+- `packages/core/src/presentation/webview/hooks/usePersistence.ts`
+- `packages/core/src/presentation/webview/hooks/useAppMessageRouter.ts`
+- `packages/core/src/__tests__/presentation/webview/hooks/domain/`
 
-4. **Bidirectional Sync Chain**
-   ```typescript
-   it('should sync changes through full chain', async () => {
-     // SettingsOverlay → updateSetting()
-     // → UPDATE_SETTING message
-     // → Backend updates VSCode config
-     // → Config watcher broadcasts SETTINGS_DATA
-     // → Hook updates state
-     // → Component re-renders
-     // Verify entire flow works
-   });
-   ```
+## Completion Criteria
 
----
-
-### Test Suite 2: Persistence Integration
-
-**File**: `src/tests/integration/settings-persistence.test.ts`
-
-**Test Cases**:
-
-1. **Compose All Persistence**
-   ```typescript
-   it('should persist all domain hook state via usePersistence', () => {
-     // Render App.tsx (or equivalent composition)
-     // Verify vscode.setState called with correct shape
-     // Verify all 13 hooks included in persisted state
-   });
-   ```
-
-2. **Restore State on Reload**
-   ```typescript
-   it('should restore state on webview reload', () => {
-     // Mock vscode.getState to return previous state
-     // Render hooks
-     // Verify hooks initialize with persisted values (not defaults)
-   });
-   ```
-
-3. **Partial State Restore**
-   ```typescript
-   it('should handle missing persisted state gracefully', () => {
-     // Mock vscode.getState with partial state
-     // Verify hooks use defaults for missing values
-   });
-   ```
-
----
-
-### Test Suite 3: Message Routing Integration
-
-**File**: `src/tests/integration/message-routing.test.ts`
-
-**Test Cases**:
-
-1. **Strategy Pattern Routing**
-   ```typescript
-   it('should route SETTINGS_DATA to all settings hooks', () => {
-     // Trigger SETTINGS_DATA message
-     // Verify all 6 settings hooks' handleSettingsMessage called
-   });
-   ```
-
-2. **Domain-Specific Messages**
-   ```typescript
-   it('should route MODEL_DATA to useModelsSettings only', () => {
-     // Trigger MODEL_DATA message
-     // Verify only useModelsSettings.handleModelData called
-   });
-   ```
-
-3. **Message Filtering**
-   ```typescript
-   it('should not route messages to wrong handlers', () => {
-     // Send ANALYSIS_RESULT message
-     // Verify settings hooks NOT invoked
-   });
-   ```
-
----
-
-## Testing Framework & Mocks
-
-### VSCode API Mock
-
-```typescript
-// src/tests/mocks/vscode.ts
-export const createMockVSCode = () => ({
-  postMessage: jest.fn(),
-  getState: jest.fn(() => ({})),
-  setState: jest.fn()
-});
-```
-
-### Configuration Mock
-
-```typescript
-// src/tests/mocks/configuration.ts
-export const createMockConfig = (overrides = {}) => ({
-  get: jest.fn((key, defaultValue) => overrides[key] ?? defaultValue),
-  update: jest.fn(),
-  has: jest.fn(() => true),
-  inspect: jest.fn()
-});
-```
-
-### Message Envelope Mock
-
-```typescript
-// src/tests/mocks/messages.ts
-export const createSettingsDataMessage = (settings: any) => ({
-  type: MessageType.SETTINGS_DATA,
-  source: 'extension.handler.configuration',
-  payload: { settings },
-  timestamp: Date.now()
-});
-```
-
----
-
-## Impact
-
-**Benefits of Fixing**:
-- ✅ **Critical Flow Coverage**: Verify bidirectional sync works end-to-end
-- ✅ **Echo Prevention**: Automated verification (no manual Output Channel watching)
-- ✅ **Persistence**: Verify state restoration across reloads
-- ✅ **Regression Prevention**: Catch integration bugs before they reach users
-- ✅ **Confidence**: Safe to refactor message routing and persistence
-
-**Risks of Not Fixing**:
-- ⚠️ **Critical Bugs**: Echo loops, sync failures, persistence issues not caught
-- ⚠️ **Manual Testing Burden**: Every change requires full manual test checklist
-- ⚠️ **User Impact**: Integration bugs ship to users (worse than unit test failures)
-- ⚠️ **Refactoring Fear**: Can't safely refactor without breaking sync/persistence
-
-**Priority Justification**: HIGH because integration tests catch bugs that unit tests miss:
-- Unit tests verify `updateSetting()` sends message ✅
-- Integration tests verify entire sync chain works ✅ (more critical)
-
----
-
-## References
-
-- **Test Documentation**: [docs/TESTING.md](../../docs/TESTING.md) - Integration test examples and patterns
-- **Sprint**: [Sprint 05 - Documentation & Testing](../epics/epic-unified-settings-architecture-2025-11-03/sprints/05-documentation-testing.md)
-- **Architecture**: [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md#settings-management-architecture) - Bidirectional sync flow
-- **ADR**: [2025-11-03: Unified Settings Architecture](../../docs/adr/2025-11-03-unified-settings-architecture.md)
-
----
-
-**Status**: Deferred to future sprint
-**Next Steps**:
-1. Create integration test directory structure
-2. Write settings sync tests (3 test cases)
-3. Write persistence tests (3 test cases)
-4. Write message routing tests (3 test cases)
-5. Add to CI pipeline
-
-**Estimated Breakdown**:
-- Mocks and test utilities: 1 hour
-- Settings sync tests: 1.5 hours
-- Persistence tests: 1 hour
-- Message routing tests: 30 minutes
-- **Total**: 4 hours
-
-**Can be done in parallel with**: Hook unit tests (different test suites)
+- Full round-trip settings synchronization is tested
+- Echo suppression is covered with deterministic timers
+- Persistence composition and reload restoration are tested without mocking
+  away the integration boundary
+- Existing hook tests remain focused unit tests
