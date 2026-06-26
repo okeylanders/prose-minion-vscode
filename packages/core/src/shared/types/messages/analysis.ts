@@ -6,6 +6,17 @@
 import { MessageEnvelope, MessageType } from './base';
 
 /**
+ * Sentinel heading for the "no API key" onboarding warning that AI services
+ * return in place of a real result when no OpenRouter key is configured.
+ *
+ * This is shared, not duplicated: backend services prefix their warning copy
+ * with it, and the webview uses it to recognize a config warning so it never
+ * persists/redisplays that transient guidance as if it were a saved analysis
+ * result. Keep both sides referencing THIS constant.
+ */
+export const API_KEY_NOT_CONFIGURED_HEADING = '⚠️ OpenRouter API key not configured';
+
+/**
  * Focus modes for dialogue/microbeat analysis
  * - dialogue: Dialogue line refinement focus (word choice, subtext, character voice)
  * - microbeats: Action beats and physical grounding focus

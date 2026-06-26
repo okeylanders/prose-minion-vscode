@@ -72,6 +72,7 @@ export class MessageHandler {
   private readonly accountBalanceHandler: AccountBalanceHandler;
 
   private readonly disposeBalanceListener: () => void;
+  private readonly disposeSecretListener: () => void;
 
   // Settings key constants for config watcher
   private readonly GENERAL_SETTINGS_KEYS = [
@@ -269,6 +270,15 @@ export class MessageHandler {
     this.disposeBalanceListener = accountBalanceService.addRefreshListener(
       (payload) => this.accountBalanceHandler.post(payload)
     );
+    // Self-heal the AI services when the stored key changes (set / clear /
+    // first-launch migration). The balance widget already reads the key live;
+    // this gives the assistant, dictionary, and context paths the same recovery
+    // instead of staying disabled until a model-setting change or reload.
+    const secretSubscription = this.services.secretsService.onDidChange(() => {
+      this.outputChannel.appendLine('[MessageHandler] API key changed, refreshing AI services');
+      void this.refreshServiceConfiguration();
+    });
+    this.disposeSecretListener = () => secretSubscription.dispose();
 
     // Initialize message router and register handler routes
     this.router = new MessageRouter(outputChannel);
@@ -674,6 +684,13 @@ export class MessageHandler {
     try {
       this.disposeBalanceListener();
       this.services.accountBalanceService.dispose();
+    } catch {
+      // noop
+    }
+    // Drop the secret-change listener so a disposed handler can't trigger a
+    // service refresh after teardown.
+    try {
+      this.disposeSecretListener();
     } catch {
       // noop
     }
