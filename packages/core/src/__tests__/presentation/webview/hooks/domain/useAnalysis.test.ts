@@ -16,6 +16,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { AnalysisState, AnalysisActions, AnalysisPersistence, useAnalysis } from '@/presentation/webview/hooks/domain/useAnalysis';
 import { MessageType } from '@shared/types';
+import { API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 
 // Mock dependencies
@@ -226,5 +227,42 @@ describe('useAnalysis - Streaming Cancellation', () => {
     // No streamed content, so result stays cleared (expected — nothing to preserve)
     expect(result.current.result).toBe('');
     expect(result.current.loading).toBe(false);
+  });
+});
+
+describe('useAnalysis - Transient Warning Persistence', () => {
+  let mockVSCode: ReturnType<typeof createMockVSCode>;
+
+  beforeEach(() => {
+    mockVSCode = createMockVSCode();
+    (useVSCodeApi as jest.Mock).mockReturnValue(mockVSCode);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('does not seed or persist a stale API-key warning as an analysis result', () => {
+    (usePersistedState as jest.Mock).mockReturnValue({
+      analysisResult: `${API_KEY_NOT_CONFIGURED_HEADING}\n\nAdd your key to keep going.`,
+      analysisToolName: 'prose'
+    });
+
+    const { result } = renderHook(() => useAnalysis());
+
+    expect(result.current.result).toBe('');
+    expect(result.current.persistedState.analysisResult).toBe('');
+    expect(result.current.persistedState.analysisToolName).toBe('prose');
+  });
+
+  it('persists ordinary analysis results', () => {
+    (usePersistedState as jest.Mock).mockReturnValue({
+      analysisResult: 'This is a real analysis result.'
+    });
+
+    const { result } = renderHook(() => useAnalysis());
+
+    expect(result.current.result).toBe('This is a real analysis result.');
+    expect(result.current.persistedState.analysisResult).toBe('This is a real analysis result.');
   });
 });

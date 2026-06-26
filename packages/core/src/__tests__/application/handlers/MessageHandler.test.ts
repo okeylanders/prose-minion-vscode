@@ -20,6 +20,8 @@ import {
 } from '../../mocks/platform';
 
 type TokenUsageCallback = (usage: TokenUsageTotals) => void;
+const flushQueuedWork = (): Promise<void> =>
+  new Promise(resolve => setImmediate(resolve));
 
 interface TestAssembly {
   services: CoreServices;
@@ -248,9 +250,9 @@ describe('MessageHandler assembly', () => {
     // Fire the secret-change listener the handler registered.
     const onSecretChange = assembly.secretOnDidChange.mock.calls[0][0] as () => void;
     onSecretChange();
-    // refreshServiceConfiguration awaits four services in sequence; flush the
-    // full microtask queue so all of them have run before asserting.
-    await new Promise(resolve => setImmediate(resolve));
+    // The handler intentionally fire-and-forgets the refresh; let that queued
+    // work settle before asserting the services were refreshed.
+    await flushQueuedWork();
 
     expect(assembly.services.aiResourceManager.refreshConfiguration).toHaveBeenCalledTimes(1);
     expect(assembly.services.assistantToolService.refreshConfiguration).toHaveBeenCalledTimes(1);

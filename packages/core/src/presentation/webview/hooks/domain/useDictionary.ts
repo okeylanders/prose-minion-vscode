@@ -16,7 +16,8 @@ import {
   StatusMessage,
   StreamStartedMessage,
   StreamChunkMessage,
-  StreamCompleteMessage
+  StreamCompleteMessage,
+  isApiKeyNotConfiguredWarning
 } from '@messages';
 
 export interface FastGenerationMetadata {
@@ -129,7 +130,9 @@ export const useDictionary = (): UseDictionaryReturn => {
     dictionaryStatusMessage?: string;
   }>();
 
-  const [result, setResult] = React.useState<string>(persisted?.utilitiesResult ?? '');
+  const [result, setResult] = React.useState<string>(
+    isApiKeyNotConfiguredWarning(persisted?.utilitiesResult) ? '' : (persisted?.utilitiesResult ?? '')
+  );
   const [toolName, setToolName] = React.useState<string | undefined>(persisted?.dictionaryToolName);
   const [loading, setLoading] = React.useState<boolean>(false);
   const [word, setWord] = React.useState<string>(persisted?.dictionaryWord ?? '');
@@ -344,7 +347,7 @@ export const useDictionary = (): UseDictionaryReturn => {
 
     // Persistence
     persistedState: {
-      utilitiesResult: result,
+      utilitiesResult: isApiKeyNotConfiguredWarning(result) ? '' : result,
       dictionaryToolName: toolName,
       dictionaryWord: word,
       dictionaryContext: context,

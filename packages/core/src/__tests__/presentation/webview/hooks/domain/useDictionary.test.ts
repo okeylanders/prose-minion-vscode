@@ -1,10 +1,23 @@
 /**
+ * @jest-environment jsdom
+ */
+
+/**
  * useDictionary Contract Tests
  *
  * Validates Tripartite Interface pattern for dictionary operations.
  */
 
-import { DictionaryState, DictionaryActions, DictionaryPersistence } from '@/presentation/webview/hooks/domain/useDictionary';
+import { renderHook } from '@testing-library/react';
+import { DictionaryState, DictionaryActions, DictionaryPersistence, useDictionary } from '@/presentation/webview/hooks/domain/useDictionary';
+import { API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
+import { createMockVSCode } from '@/__tests__/mocks/vscode';
+
+jest.mock('../../../../../presentation/webview/hooks/useVSCodeApi');
+jest.mock('../../../../../presentation/webview/hooks/usePersistence');
+
+import { useVSCodeApi } from '@hooks/useVSCodeApi';
+import { usePersistedState } from '@hooks/usePersistence';
 
 describe('useDictionary - Type Contracts', () => {
   describe('Tripartite Interface Pattern', () => {
@@ -96,5 +109,42 @@ describe('useDictionary - Type Contracts', () => {
       expect(persistence).toHaveProperty('dictionaryContext');
       expect(persistence).toHaveProperty('dictionaryToolName');
     });
+  });
+});
+
+describe('useDictionary - Transient Warning Persistence', () => {
+  let mockVSCode: ReturnType<typeof createMockVSCode>;
+
+  beforeEach(() => {
+    mockVSCode = createMockVSCode();
+    (useVSCodeApi as jest.Mock).mockReturnValue(mockVSCode);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('does not seed or persist a stale API-key warning as a dictionary result', () => {
+    (usePersistedState as jest.Mock).mockReturnValue({
+      utilitiesResult: `${API_KEY_NOT_CONFIGURED_HEADING}\n\nAdd your key to look up words.`,
+      dictionaryToolName: 'dictionary_lookup'
+    });
+
+    const { result } = renderHook(() => useDictionary());
+
+    expect(result.current.result).toBe('');
+    expect(result.current.persistedState.utilitiesResult).toBe('');
+    expect(result.current.persistedState.dictionaryToolName).toBe('dictionary_lookup');
+  });
+
+  it('persists ordinary dictionary results', () => {
+    (usePersistedState as jest.Mock).mockReturnValue({
+      utilitiesResult: 'A real dictionary result.'
+    });
+
+    const { result } = renderHook(() => useDictionary());
+
+    expect(result.current.result).toBe('A real dictionary result.');
+    expect(result.current.persistedState.utilitiesResult).toBe('A real dictionary result.');
   });
 });

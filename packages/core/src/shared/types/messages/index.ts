@@ -11,6 +11,7 @@ export * from './error';
 export * from './status';
 export * from './tokenUsage';
 export * from './accountBalance';
+export * from './warnings';
 
 // Domain-specific messages
 export * from './analysis';

@@ -16,17 +16,8 @@ import {
   StreamStartedMessage,
   StreamChunkMessage,
   StreamCompleteMessage,
-  API_KEY_NOT_CONFIGURED_HEADING
+  isApiKeyNotConfiguredWarning
 } from '@messages';
-
-/**
- * The "no API key" warning is transient onboarding guidance the backend returns
- * in place of a result — not a saved analysis. We show it in-session, but never
- * seed from it or persist it, so a once-shown warning can't outlive the key being
- * configured and reappear on every reload (the stale-warning bug).
- */
-const isConfigWarning = (text: string | undefined): boolean =>
-  !!text && text.startsWith(API_KEY_NOT_CONFIGURED_HEADING);
 
 export interface AnalysisState {
   result: string;
@@ -106,7 +97,7 @@ export const useAnalysis = (): UseAnalysisReturn => {
   }>();
 
   const [result, setResult] = React.useState<string>(
-    isConfigWarning(persisted?.analysisResult) ? '' : (persisted?.analysisResult ?? '')
+    isApiKeyNotConfiguredWarning(persisted?.analysisResult) ? '' : (persisted?.analysisResult ?? '')
   );
   const [toolName, setToolName] = React.useState<string | undefined>(persisted?.analysisToolName);
   const [loading, setLoading] = React.useState<boolean>(false);
@@ -289,7 +280,7 @@ export const useAnalysis = (): UseAnalysisReturn => {
     // Persistence
     persistedState: {
       // Don't persist the transient "no API key" warning as a durable result.
-      analysisResult: isConfigWarning(result) ? '' : result,
+      analysisResult: isApiKeyNotConfiguredWarning(result) ? '' : result,
       analysisToolName: toolName,
       usedGuides,
       tickerMessage,
