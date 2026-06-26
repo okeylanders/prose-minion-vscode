@@ -157,6 +157,7 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
           options={modelsSettings.categoryModelOptions}
           value={modelsSettings.modelSelections.category}
           onChange={modelsSettings.setModelSelection}
+          onOpenBrowser={() => modelsSettings.requestModelData(true)}
           label="Category Model"
         />
       </div>

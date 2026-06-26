@@ -508,6 +508,14 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
           >
             <Icon name="hand" size={15} /> Gestures
           </button>
+          <button
+            className="action-button more-tools-wide"
+            onClick={() => setShowAllTools(true)}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+            title="Browse every writing tool"
+          >
+            <Icon name="grid" size={15} /> More Tools
+          </button>
         </div>
       </div>
 
