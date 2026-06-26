@@ -627,7 +627,6 @@ We welcome contributions! See the **[repository documentation](https://github.co
 - Development setup
 - Project architecture
 - Testing procedures
-- Publishing workflow
 
 ---
 

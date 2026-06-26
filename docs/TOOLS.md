@@ -1,359 +1,218 @@
-<p align="center">
-  <img src="../assets/prose-minion-book.png" alt="Prose Minion" width="120"/>
-</p>
+# Tools
 
-<p align="center">
-  <strong>Prose Minion Tools Guide</strong><br/>
-  Complete reference for all analysis and measurement tools
-</p>
-
----
-
-# Prose Minion Tools Guide
+> **Status**: Current as of v2.0.1. Tool implementations live in `packages/core/src/tools/` and supporting application services under `packages/core/src/infrastructure/api/services/`.
 
 ## Overview
 
-The extension includes **7 integrated prose analysis tools** organized in clean architecture:
+Prose Minion includes **9 integrated prose tools** organized in clean architecture — 5 AI-powered (require OpenRouter API key) and 4 deterministic (work offline, no API key).
 
 ### AI-Powered Tools (require OpenRouter API key)
-1. **Dialogue Microbeat Assistant** – Analyzes dialogue and suggests tags/beats (uses the Assistant model scope)
-2. **Prose Assistant** – General prose analysis and improvements (uses the Assistant model scope)
-3. **Context Assistant** – Project-aware insights using your reference materials (uses the Context model scope)
-4. **Dictionary Utility** – Generates rich fiction-focused dictionary entries (uses the Dictionary model scope)
 
-### Measurement Tools (work without API key)
-5. **Prose Statistics** – Word count, pacing, readability scores, lexical density, FKGL
-6. **Style Flags** – Identifies style patterns (placeholders, intensifiers, hedges, etc.)
-7. **Word Frequency** – Comprehensive word usage analysis with n-grams, POS tagging, hapax legomena
+| # | Tool | Model Scope | Location |
+|---|------|-------------|----------|
+| 1 | **Dialogue Microbeat Assistant** | Assistant | `tools/assist/dialogueMicrobeatAssistant.ts` |
+| 2 | **Prose Assistant** | Assistant | `tools/assist/proseAssistant.ts` |
+| 3 | **Context Assistant** | Context | `tools/assist/contextAssistant.ts` |
+| 4 | **Dictionary Utility** | Dictionary | `tools/utility/dictionaryUtility.ts` |
+| 5 | **Category Search** | Category Search | `infrastructure/api/services/search/CategorySearchService.ts` |
 
-## Project Structure
+### Measurement Tools (no API key required)
 
-```
-src/
-├── tools/                   # All analysis tools (clean separation)
-│   ├── assist/             # AI-powered assist tools
-│   │   ├── contextAssistant.ts
-│   │   ├── dialogueMicrobeatAssistant.ts
-│   │   └── proseAssistant.ts
-│   ├── measure/            # Deterministic measurement tools
-│   │   ├── passageProseStats/
-│   │   ├── styleFlags/
-│   │   └── wordFrequency/
-│   ├── utility/            # Utility tools
-│   │   └── dictionaryUtility.ts
-│   └── shared/             # Shared utilities
-│       ├── prompts.ts      # Prompt loading
-│       └── guides.ts       # Craft guide loading
-├── infrastructure/api/      # API clients and service implementation
-│   ├── OpenRouterClient.ts
-│   └── services/           # Service layer (11 focused services)
-│       ├── analysis/       # AssistantToolService, ContextAssistantService
-│       ├── dictionary/     # DictionaryService
-│       ├── measurement/    # ProseStatsService, StyleFlagsService, WordFrequencyService
-│       ├── search/         # WordSearchService, CategorySearchService
-│       ├── resources/      # StandardsService (publishing standards)
-│       └── shared/         # ToolOptionsProvider
-└── resources/              # Prompts and guides
-    ├── system-prompts/
-    └── craft-guides/
-```
+| # | Tool | Location |
+|---|------|----------|
+| 6 | **Prose Statistics** | `tools/measure/passageProseStats/index.ts` |
+| 7 | **Style Flags** | `tools/measure/styleFlags/index.ts` |
+| 8 | **Word Frequency** | `tools/measure/wordFrequency/index.ts` |
+| 9 | **Word Search** | `infrastructure/api/services/search/WordSearchService.ts` |
 
-## Quick Start
+---
 
-See [CLAUDE.md](../CLAUDE.md) for complete setup instructions, architecture overview, and development guidelines.
-
-## Tool Details
+## AI-Powered Tools
 
 ### 1. Dialogue Microbeat Assistant
 
-**Location**: [src/tools/assist/dialogueMicrobeatAssistant.ts](src/tools/assist/dialogueMicrobeatAssistant.ts)
+**Location**: `packages/core/src/tools/assist/dialogueMicrobeatAssistant.ts`
 
-**What it does**:
-- Analyzes dialogue passages
-- Suggests appropriate dialogue tags
-- Recommends action beats to show emotion
-- Helps with show vs. tell in dialogue
+Analyzes dialogue passages and suggests:
+- Appropriate dialogue tags
+- Action beats that show emotion through physical actions
+- Show-don't-tell improvements in dialogue
 
-**Example usage**:
-```
-Input: "I'm not going," she said.
-
-Output: Suggestions for action beats that show emotion through physical actions rather than telling.
-```
+Supports focus modes: dialogue only, microbeats only, or both.
 
 ### 2. Prose Assistant
 
-**Location**: [src/tools/assist/proseAssistant.ts](src/tools/assist/proseAssistant.ts)
+**Location**: `packages/core/src/tools/assist/proseAssistant.ts`
 
-**What it does**:
-- Strengthens narrative prose passages
-- Provides craft-grounded suggestions
-- Offers vocabulary palettes and focused rewrites
-- Analyzes pacing, imagery, and cadence
-- Recommends improvements based on writing craft principles
+Strengthens narrative prose with:
+- Craft-grounded suggestions and vocabulary palettes
+- Focus guidance (tone, imagery, cadence priorities)
+- POV, tense, and genre awareness via context
+- Pacing, imagery, and cadence analysis
+- Verbalized sampling for creative diversity
 
-**Features**:
-- Accepts optional focus guidance (tone, imagery, cadence priorities)
-- Uses context for POV, tense, genre awareness
-- Applies craft guides when enabled
-- Supports verbalized sampling for creative diversity
+Craft guides are included when `proseMinion.includeCraftGuides` is enabled.
 
 ### 3. Context Assistant
 
-**Location**: [src/tools/assist/contextAssistant.ts](src/tools/assist/contextAssistant.ts)
+**Location**: `packages/core/src/tools/assist/contextAssistant.ts`
 
-**What it does**:
-- Provides project-aware insights using your reference materials
-- Accesses Characters, Locations, Themes, and other project resources
-- Two-turn workflow for focused analysis
-- Includes full source document on first turn (when available)
-
-**Features**:
-- Configurable via Context Resource Paths (Settings overlay)
-- Uses glob patterns to discover reference files (`.md` and `.txt` only)
+Project-aware insights using your reference materials:
+- Two-turn workflow: first turn catalogs resources + includes full source document; second turn delivers analysis
+- Accesses Characters, Locations, Themes, Things, Manuscript, Drafts, and General reference paths
+- Configurable via Context Resource Paths (Settings Overlay)
+- Glob-based file discovery (`.md` and `.txt` only)
 - Dedicated model scope for cost/performance tuning
-- Reads and incorporates project structure automatically
-
-**Use Cases**:
-- "Who is this character and what's their arc?"
-- "What are the themes related to redemption in my story?"
-- "Summarize the setting described in my location notes"
-- "What's the tone and style guide for this project?"
 
 ### 4. Dictionary Utility
 
-**Location**: [src/tools/utility/dictionaryUtility.ts](src/tools/utility/dictionaryUtility.ts)
+**Location**: `packages/core/src/tools/utility/dictionaryUtility.ts`
 
-**What it does**:
-- Produces long-form dictionary entries tuned for fiction writers
+Long-form fiction-focused dictionary entries:
+- Definitions, connotations, tonal notes, usage examples
 - Adapts to optional context excerpts
-- Respects the Dictionary model selection for cost/performance tuning
+- Pronunciation (IPA, phonetic, syllables, stress)
+- Parts of speech, sense explorer, synonyms
+- Falls back to clipboard when no editor selection exists
+- Persists word/context across tabs and sessions
+- Suppresses auto-fill after manual edits
+
+### 5. Category Search
+
+Semantic word discovery by meaning, not exact match. Uses the Category Search model scope (`proseMinion.categoryModel`).
+
+- `[clothing]` → finds: coat, pants, jeans, shirt, jacket...
+- `[angry]` → finds: pissed, upset, furious, irate, seething...
+- `[color red]` → finds: crimson, scarlet, ruby, burgundy, rose...
 
 **Features**:
-- Falls back to clipboard when no editor selection exists
-- Displays source path when content came from an editor selection
-- Persists word/context across tabs and sessions
-- Suppresses auto-fill after manual edits (prevents unwanted overwrites)
-- Includes definitions, connotations, tonal notes, usage examples, and related words
+- Natural language category queries
+- N-gram mode (words, bigrams, trigrams)
+- Cancellation support with partial results
+- Full word search integration (occurrence counts, clusters, chapter locations)
+- Markdown export
 
 ---
 
 ## Measurement Tools (No API Key Required)
 
-### 5. Prose Statistics
+### 6. Prose Statistics
 
-**Location**: [src/tools/measure/passageProseStats/index.ts](src/tools/measure/passageProseStats/index.ts)
+**Location**: `packages/core/src/tools/measure/passageProseStats/index.ts`
 
-**Comprehensive prose metrics**:
-- **Basic counts**: Words, sentences, paragraphs
+Comprehensive prose metrics:
+- **Counts**: Words, sentences, paragraphs
 - **Averages**: Words/sentence, sentences/paragraph
-- **Dialogue analysis**: Percentage of text in quotes
-- **Lexical density**: Content word ratio (non-stopwords/total)
-- **Stopword ratio**: Function word percentage
-- **Vocabulary**: Unique words, Type-Token Ratio, Hapax count/percentage
-- **Readability**: Simplified Flesch Reading Ease, Flesch-Kincaid Grade Level
-- **Pacing**: Qualitative assessment based on sentence length
-- **Reading time**: Estimated minutes and hours
+- **Dialogue**: Percentage of text in quotes
+- **Lexical density**: Content-word ratio (non-stopwords/total × 100)
+- **Vocabulary**: Unique words, Type-Token Ratio, hapax count/percentage
+- **Readability**: Flesch Reading Ease, Flesch-Kincaid Grade Level
+- **Pacing**: Qualitative assessment from sentence length
+- **Reading time**: Estimated minutes/hours
 - **Word length distribution**: Percentage by character length
 
-**Additional Features**:
-- Chapter-by-chapter analysis for multi-file sources
+**Multi-file features**:
+- Chapter-by-chapter analysis
 - Publishing standards comparison (when preset selected)
 - Publishing format with trim size and page estimate
-- Detailed per-chapter breakdown tables (optional on save/copy)
+- Optional chapter breakdown tables on save/copy
 
-### 6. Style Flags
+### 7. Style Flags
 
-**Location**: [src/tools/measure/styleFlags/index.ts](src/tools/measure/styleFlags/index.ts)
+**Location**: `packages/core/src/tools/measure/styleFlags/index.ts`
 
-**Identifies style patterns**:
-- **Placeholders**: Generic descriptors needing specificity
-- **Intensifiers**: Overused emphasis words
-- **Hedges**: Uncertainty markers
-- **Noun fog**: Heavy nominalization
-- **Value labels**: Telling instead of showing
-- **Fillers**: Empty words adding no meaning
-- **Cognition tags**: Thought verbs vs. direct thought
+Identifies style patterns that need attention:
+- **Adverbs** (‑ly words)
+- **Weak verbs** (forms of "be", passive constructions)
+- **Filler words** (just, really, actually, basically, etc.)
+- **Repetitive words** (close-proximity repeats)
+- **Placeholder words** (draft markers)
+- **Intensifiers** (overused emphasis)
+- **Hedges** (uncertainty language)
+- **Noun fog** (heavy nominalization)
+- **Value labels** (telling instead of showing)
+- **Cognition tags** (thought verbs vs. direct thought)
 
-**Output**:
-- Count per category
-- Example sentences for each pattern found
-- Configurable max examples per category
+Output: count per category + example sentences.
 
-### 7. Word Frequency
+### 8. Word Frequency
 
-**Location**: [src/tools/measure/wordFrequency/index.ts](src/tools/measure/wordFrequency/index.ts)
+**Location**: `packages/core/src/tools/measure/wordFrequency/index.ts`
 
-**Comprehensive word usage analysis**:
-- **Top Words**: Most frequent content words (stopwords excluded by default)
-- **Stopwords Table**: Top function words with counts
-- **Hapax Legomena**: Words appearing exactly once (alphabetized list)
-- **Part-of-Speech**: Separate lists for nouns, verbs, adjectives, adverbs (via wink-pos-tagger)
-- **N-grams**: Top bigrams and trigrams for phrase patterns
-- **Word Length Histogram**: Visual distribution of word lengths (1-10+ characters)
-- **Lemmas** (optional): Groups inflected forms (running/ran/runs → run)
+Comprehensive word usage analysis:
+- **Top Words** — most frequent content words (stopwords excluded by default)
+- **Stopwords Table** — top function words with counts
+- **Hapax Legomena** — words appearing exactly once (alphabetized list)
+- **Parts of Speech** — nouns, verbs, adjectives, adverbs via `wink-pos-tagger`
+- **N-grams** — top bigrams and trigrams
+- **Word Length Histogram** — distribution of word lengths (1–10+ characters)
+- **Lemmas** (optional) — groups inflected forms (running/ran/runs → run)
 
-**Configurable Options** (via Settings):
-- `topN`: Number of words to display (default 100)
-- `includeHapaxList`: Show hapax section (default true)
-- `hapaxDisplayMax`: Max hapax words shown (default 300)
-- `includeStopwordsTable`: Show stopwords analysis (default true)
-- `contentWordsOnly`: Exclude stopwords from top words (default true)
-- `posEnabled`: Enable POS tagging (default true)
-- `includeBigrams/Trigrams`: Show n-gram analysis (default true)
-- `enableLemmas`: Group by lemma (default false)
-- `lengthHistogramMaxChars`: Max word length shown (default 10)
+Configurable via `proseMinion.wordFrequency.*` settings. POS tagging uses `wink-pos-tagger` bundled with the extension.
+
+### 9. Word Search
+
+Advanced word pattern matching with context windows and cluster detection.
+
+- **Scope options**: Active File, Manuscripts, Chapters, Selection
+- **Glob patterns**: Target specific folders (e.g., `Drafts/**/*.md`)
+- **Context window**: N words before/after each match
+- **Cluster detection**: Group nearby matches within a word-distance window
+- **Min cluster size**: Only report clusters with N+ hits
+- **Case sensitive**: Toggle exact case matching
+- **AI expansion** (optional): Use assistant model for synonym/inflection expansion
+
+Results: total occurrences, average gap, per-file breakdown, cluster locations.
+
+---
 
 ## Customization
 
-### Adding System Prompts
+### System Prompts
 
-Create markdown files in `resources/system-prompts/`:
-
-```
-resources/system-prompts/
-├── format.md           # Shared formatting instructions
-├── voice.md            # Shared voice guidelines
-├── style.md            # Shared style preferences
-└── dialog-microbeat-assistant/
-    ├── instructions.md # Tool-specific instructions
-    └── examples.md     # Tool-specific examples
-```
-
-### Adding Craft Guides
-
-Create markdown files in `resources/craft-guides/`:
+Tool-specific prompts live in `packages/core/resources/system-prompts/`:
 
 ```
-resources/craft-guides/
-├── dialogue-tags.md
-├── action-beats.md
-├── showing-emotion.md
-├── show-dont-tell.md
-├── pacing.md
-└── sensory-details.md
+system-prompts/
+├── category-search/
+├── context-assistant/
+├── dialog-microbeat-assistant/
+├── dictionary-fast/
+├── dictionary-utility/
+├── prose-assistant/
+└── writing-tools-assistant/
 ```
 
-These will be automatically loaded and included in AI prompts.
+Each directory contains numbered markdown files (00-, 01-, etc.) loaded by `packages/core/src/tools/shared/prompts.ts`.
 
-## Context Assistant Notes
+### Craft Guides
 
-- The first turn includes the full source document content (when available) in addition to the excerpt and the project resource catalog. This improves guide selection and thematic coherence.
-- Responses append a truncation notice when the model stops due to token limits.
+Optional writing craft guides in `packages/core/resources/craft-guides/`:
+- `descriptors-and-placeholders/` — sensory details, emotions, movements
+- `scene-example-guides/` — scene examples (campfire, basketball, etc.)
+
+Loaded by `packages/core/src/tools/shared/guides.ts` when `proseMinion.includeCraftGuides` is enabled.
+
+---
 
 ## Token Limits & Models
 
-- A unified `proseMinion.maxTokens` applies across all tools (default 10000). Increase if you routinely see truncation notices.
-- Models can be selected per scope via `assistantModel`, `dictionaryModel`, and `contextModel` (legacy `model` is a fallback).
+- A unified `proseMinion.maxTokens` applies across all tools (default 10,000). Responses hitting the cap show a truncation notice.
+- Models are scoped per feature: `assistantModel`, `dictionaryModel`, `contextModel`, `categoryModel`. See the in-app **Model Browser** for the full curated list.
+- Curated model IDs are defined in `packages/core/src/infrastructure/api/providers/OpenRouterModels.ts` and verified against the live OpenRouter API.
+
+---
 
 ## Session Persistence & Model Sync
 
-- Long-running OpenRouter calls continue even if you switch away from the Prose Minion view. When you return, cached status updates and final responses are replayed automatically.
-- Model selections made via the dropdown are written back to `settings.json` instantly. The assistant, dictionary, and (future) context scopes each remember the last model you chose.
-- UI state (active tab, latest results, status ticker) is restored on reload, so you can treat the panel like a focused workspace and pick up where you left off.
+- Long-running OpenRouter calls continue when you switch away from Prose Minion. Cached status updates and final responses are replayed on return.
+- Model selections are written back to `settings.json` instantly via the Domain Hooks sync.
+- UI state (active tab, latest results, status ticker) is restored on reload.
 
-## Architecture Benefits
+---
 
-### Clean Separation of Concerns
+## See Also
 
-Each tool is **self-contained**:
-- Input/Output interfaces defined
-- No dependencies on VS Code or UI
-- Easy to test and modify
-
-### Easy to Add New Tools
-
-To add a new tool:
-
-1. **Define message types**: Add to appropriate domain file in `src/shared/types/messages/` (or create new domain file)
-   - Add message interface extending `BaseMessage`
-   - Add to `MessageType` enum in `base.ts`
-   - Export from `index.ts` barrel export
-
-2. **Create service** (if needed):
-   - Create in `src/infrastructure/api/services/` under appropriate subdirectory:
-     - `analysis/` - Analysis tools (AssistantToolService, ContextAssistantService)
-     - `dictionary/` - Dictionary services (DictionaryService)
-     - `measurement/` - Metrics services (ProseStatsService, StyleFlagsService, WordFrequencyService)
-     - `search/` - Search services (WordSearchService, CategorySearchService)
-     - `resources/` - Resource management (StandardsService)
-   - Follow Single Responsibility Principle
-   - Inject dependencies via constructor
-
-3. **Add domain handler** (if new domain):
-   - Create in `src/application/handlers/domain/`
-   - Inject services via constructor
-   - Implement `registerRoutes()` method to register message handlers
-
-4. **Update MessageHandler**:
-   - Instantiate service(s) in constructor (if new services)
-   - Inject into domain handler constructor
-   - Handler auto-registers routes via `registerRoutes()`
-
-5. **Create frontend domain hook** in `src/presentation/webview/hooks/domain/`
-   - Follow Tripartite Hook Interface pattern (State, Actions, Persistence)
-   - Mirror backend domain handler organization
-
-6. **Wire into App.tsx**:
-   - Add message routing
-   - Compose persistence state
-
-### Testable
-
-Each tool can be tested independently:
-
-```typescript
-// Example test
-const stats = new PassageProseStats();
-const result = stats.analyze({ text: "Sample text." });
-expect(result.wordCount).toBe(2);
-```
-
-## OpenRouter API Details
-
-### Supported Models
-
-Recommended and curated models are defined in [OpenRouterModels.ts](src/infrastructure/api/providers/OpenRouterModels.ts). Choose models in Settings (`assistantModel`, `dictionaryModel`, `contextModel`) or via the UI dropdown; the selection is injected into the appropriate OpenRouter client on the next request.
-
-### API Costs
-
-- OpenRouter charges per token
-- Check current prices at https://openrouter.ai/docs#models
-- Claude 3.5 Sonnet is recommended for best results
-
-### Rate Limits
-
-OpenRouter has rate limits based on your plan. The extension handles errors gracefully if limits are exceeded.
-
-## Troubleshooting
-
-### "API key not configured" message
-
-- Check Settings → Prose Minion → OpenRouter API Key
-- Make sure the key is copied correctly (no extra spaces)
-- Restart the Extension Development Host after changing settings
-
-### AI tools not working
-
-1. Check Output → Extension Host for errors
-2. Verify API key is valid at https://openrouter.ai/
-3. Check your OpenRouter account has credits
-4. Look for network/firewall issues
-
-### Measurement tools work but show weird results
-
-- Check that your text is valid
-- Some metrics require minimum text length
-- Empty or very short text may give unexpected results
-
-## Next Steps
-
-1. **Test all tools** with sample text
-2. **Add system prompts** to customize AI behavior
-3. **Add craft guides** for better AI suggestions
-4. **Customize models** or temperature via Settings or the inline model picker
-5. **Add more tools** following the same patterns
-
-## Examples
-
-See [example-repos/prose-minion](example-repos/prose-minion) for reference implementations and prompt examples.
+- [ARCHITECTURE.md](ARCHITECTURE.md) — System design and patterns
+- [CONFIGURATION.md](CONFIGURATION.md) — Complete settings reference
+- [TESTING.md](TESTING.md) — Test strategy and commands

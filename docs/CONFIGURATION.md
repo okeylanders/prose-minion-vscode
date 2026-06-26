@@ -1,321 +1,170 @@
-<p align="center">
-  <img src="../assets/prose-minion-book.png" alt="Prose Minion" width="120"/>
-</p>
+# Configuration
 
-<p align="center">
-  <strong>Prose Minion Configuration Guide</strong><br/>
-  Complete settings reference and configuration options
-</p>
-
----
-
-# Configuration Guide
-
-## Overview
-
-Prose Minion offers extensive configuration options to customize AI behavior and optimize costs. Recent updates introduce scoped model selection per feature and a unified token limit.
+> **Status**: Current as of v2.0.1. Settings live in `apps/vscode-extension/package.json` under `contributes.configuration`.
 
 ## Accessing Settings
 
-1. Open VS Code Settings: `Cmd+,` (Mac) or `Ctrl+,` (Windows/Linux)
-2. Search for "Prose Minion"
-3. Configure the options below
+- **In-app**: Click the **gear icon** in the Prose Minion panel header to open the Settings Overlay.
+- **VS Code Settings**: `Cmd+,` (Mac) / `Ctrl+,` (Windows/Linux) and search "Prose Minion".
 
-## Configuration Options
-
-> **Architecture Note**: All settings follow the **domain hooks pattern** per [ADR-2025-11-03 (Unified Settings Architecture)](../docs/adr/2025-11-03-unified-settings-architecture.md). See [ARCHITECTURE.md](ARCHITECTURE.md) for implementation details.
-
-### 1. OpenRouter API Key (Required for AI Tools)
-
-**Setting**: Stored in OS-level **SecretStorage** (not `settings.json`)
-**Type**: Encrypted string (macOS Keychain, Windows Credential Manager, Linux libsecret)
-**Default**: `""` (empty)
-
-**How to get an API key**:
-1. Go to https://openrouter.ai/
-2. Sign up for an account
-3. Navigate to "API Keys"
-4. Create a new key
-5. Enter in Settings overlay (gear icon) → Save
-
-**Security Note**: Keys are encrypted via OS keychains and never appear in settings files. Automatic migration from legacy `proseMinion.openRouterApiKey` setting occurs once.
+All settings sync bidirectionally between the Settings Overlay and the VS Code Settings panel via the Domain Hooks pattern ([ADR 2025-11-03](adr/2025-11-03-unified-settings-architecture.md)).
 
 ---
 
-### 2. AI Model Selection
+## OpenRouter API Key (Required for AI Tools)
 
-**Scoped Models**: Configure different models per feature to optimize cost/quality.
+The API key is **not** stored in `settings.json`. It lives in VS Code's **SecretStorage** — OS-level encrypted storage (macOS Keychain, Windows Credential Manager, Linux libsecret).
 
-| Feature                      | Setting                         | UI Control            | Default         |
-| ---------------------------- | ------------------------------- | --------------------- | --------------- |
-| Dialogue & Prose Assistants  | `proseMinion.assistantModel`    | Analysis tab dropdown | `z-ai/glm-4.6`  |
-| Dictionary Utility           | `proseMinion.dictionaryModel`   | Utilities tab dropdown| `z-ai/glm-4.6`  |
-| Context Assistant            | `proseMinion.contextModel`      | Settings overlay      | `z-ai/glm-4.6`  |
+- **Setting**: `proseMinion.openRouterApiKey` (legacy, migrated once automatically)
+- **Storage**: SecretStorage via the `SecretStore` platform port
+- **How to set**: Settings Overlay → "OpenRouter API Key" field → Save
 
-> **Tip**: Use premium models (e.g., Claude Opus) for analysis while keeping dictionary on faster/cheaper models. Changes apply immediately—no reload required.
+**Get a key**: [openrouter.ai](https://openrouter.ai/) → Sign up → API Keys → Create key.
 
----
-
-### 3. Include Craft Guides
-
-**Setting**: `proseMinion.includeCraftGuides`
-**Type**: Checkbox
-**Default**: `true` (enabled)
-
-**What it does**:
-- When enabled: AI receives 68 craft guides with writing best practices
-- When disabled: AI uses only tool-specific prompts
-
-**Craft Guides Include**:
-- Descriptors catalogs (sensory details, emotions, movements)
-- Transformation guides (filler words, weak verbs, placeholders)
-- Scene examples (campfire, basketball game, etc.)
-- Writing techniques (show don't tell, pacing, etc.)
-
-**Trade-offs**:
-
-| Enabled | Disabled |
-|---------|----------|
-| ✅ More informed suggestions | ✅ Lower token cost |
-| ✅ Better adherence to craft | ✅ Faster responses |
-| ✅ Rich, detailed feedback | ✅ More concise output |
-| ❌ Higher token usage | ❌ Less context |
-| ❌ Slightly slower | ❌ May miss nuances |
-
-**Recommended**:
-- **Enable** for detailed analysis and learning
-- **Disable** for quick checks or budget constraints
+> **Note**: Measurement tools (Prose Statistics, Style Flags, Word Frequency) and Word Search work **without** an API key.
 
 ---
 
-### 4. Temperature (AI Creativity)
+## AI Model Selection
 
-**Setting**: `proseMinion.temperature`
-**Type**: Number (0.0 - 2.0)
-**Default**: `0.7`
+Scoped models per feature. Each scope can use a different model to balance cost and quality. The in-app **Model Browser** lets you search by provider, family, pricing, release date, and context window.
 
-**What it controls**:
-- How creative vs. focused the AI responses are
-- Lower = more deterministic, higher = more creative
+| Setting | Scope | Default | Used By |
+|---------|-------|---------|---------|
+| `proseMinion.assistantModel` | Assistant | `anthropic/claude-sonnet-4.6` | Prose & dialogue analysis |
+| `proseMinion.dictionaryModel` | Dictionary | `anthropic/claude-haiku-4.5` | Dictionary/utility lookups |
+| `proseMinion.contextModel` | Context | `openai/gpt-5.4` | Context assistant |
+| `proseMinion.categoryModel` | Category Search | `anthropic/claude-sonnet-4.6` | Semantic word discovery |
 
-**Recommended Values**:
-
-| Temperature | Use Case | Behavior |
-|-------------|----------|----------|
-| 0.0 - 0.3 | Technical analysis | Highly focused, consistent |
-| 0.4 - 0.7 | ⭐ General use | Balanced creativity |
-| 0.8 - 1.2 | Creative suggestions | More varied responses |
-| 1.3 - 2.0 | Experimental | Very creative, less predictable |
-
-**Examples**:
-- `0.3`: Strict adherence to guidelines, predictable suggestions
-- `0.7`: Good balance of creativity and consistency (recommended)
-- `1.0`: More creative alternatives, varied wording
-- `1.5`: Very creative, may be less focused
+Model IDs are curated and verified against the live OpenRouter API. See the Model Browser in the Settings Overlay for the full list.
 
 ---
 
-### 5. Max Tokens (Response Length)
+## General AI Settings
 
-**Setting**: `proseMinion.maxTokens`
-**Type**: Number (100 - 8000)
-**Default**: `10000` (applied uniformly across all tools)
-
-**What it controls**:
-- Maximum length of AI responses
-- Affects both cost and depth of analysis
-
-**Recommended Values**:
-
-| Tokens | Use Case | Response Size |
-|--------|----------|---------------|
-| 500 - 1000 | Quick checks | Brief feedback |
-| 1500 - 2500 | ⭐ Standard analysis | Detailed feedback |
-| 3000 - 5000 | Deep dives | Very detailed |
-| 6000+ | Comprehensive | Exhaustive analysis |
-
-**Cost Considerations**:
-- Higher token limits = higher costs
-- Most analyses work well with 2000 tokens
-- Only increase for very long passages or detailed analysis
-
-**Note**: The AI may use fewer tokens than the limit if it completes the response early. If a response is cut off, a “Response truncated” notice appears — increase Max Tokens to allow longer outputs.
-
-### 7. Context Assistance
-
-- When an excerpt comes from a real editor selection, the extension reads the full source document and includes it in the first turn of the context assistant. If the excerpt is pasted from the clipboard, no source is included.
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `proseMinion.temperature` | number (0–2) | `0.7` | AI creativity: 0 = focused, 2 = very creative |
+| `proseMinion.maxTokens` | number (100–100000) | `10000` | Max response length (applied uniformly across all tools). Responses hitting the cap show a truncation notice. |
+| `proseMinion.includeCraftGuides` | boolean | `true` | Include craft guides in AI prompts (writing best practices, sensory details, scene examples) |
+| `proseMinion.applyContextWindowTrimming` | boolean | `true` | Auto-trim large inputs to prevent context window errors |
 
 ---
 
-### 6. Publishing Standards Preset
+## UI Settings
 
-Control the standards used for comparison and publishing format in the Metrics tab.
-
-**Settings**:
-- `proseMinion.publishingStandards.preset`: `none` | `manuscript` | `genre:<slug|abbreviation|name>`
-- `proseMinion.publishingStandards.pageSizeKey`: Trim size key (uses `format` when available, else `WIDTHxHEIGHT`)
-
-**Behavior**:
-- When set to a `genre:<key>`, the Metrics tab will display a comparison table against that genre’s ranges and a Publishing Format summary (trim size, words/page, estimated page count).
-- When a genre has multiple `page_sizes`, the Trim Size dropdown appears; the selection is saved to `pageSizeKey`.
-
-**Notes**:
-- Lexical density is computed as content-word ratio (non-stopwords/total) × 100.
-- Type-Token Ratio is provided as a separate metric.
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `proseMinion.ui.showTokenWidget` | boolean | `true` | Show session token usage widget in header |
+| `proseMinion.ui.sidebarTheme` | string | `follow-vscode` | Sidebar palette: `follow-vscode` (default) or a warm-dark option |
 
 ---
 
-### 7. Reports
+## Word Search Settings
 
-Metrics reports saved via the Metrics tab are written to:
-
-`prose-minion/reports/prose-statistics-YYYYMMDD-HHmm.md`
-
-On Save/Copy, the extension prompts whether to include chapter-by-chapter breakdown tables (if available). Choosing “No” excludes the "## Chapter Details" section while preserving the summary chapter table.
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `proseMinion.wordSearch.contextWords` | number | `3` | Words shown around each match |
+| `proseMinion.wordSearch.clusterWindow` | number | `50` | Max word distance to group matches into a cluster |
+| `proseMinion.wordSearch.minClusterSize` | number | `2` | Min matches to form a cluster |
+| `proseMinion.wordSearch.caseSensitive` | boolean | `false` | Case-sensitive matching |
+| `proseMinion.wordSearch.enableAssistantExpansion` | boolean | `false` | AI-based expansion for target words (synonyms, inflections) |
 
 ---
 
-### 9. Word Frequency Settings
+## Word Frequency Settings
 
-Control the Word Frequency report in the Metrics tab.
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `proseMinion.wordFrequency.topN` | number | `100` | Top N words/lemmas to display |
+| `proseMinion.wordFrequency.includeHapaxList` | boolean | `true` | Show hapax (frequency=1) word list |
+| `proseMinion.wordFrequency.hapaxDisplayMax` | number | `300` | Max hapax words shown inline |
+| `proseMinion.wordFrequency.includeStopwordsTable` | boolean | `true` | Show top stopwords table |
+| `proseMinion.wordFrequency.contentWordsOnly` | boolean | `true` | Exclude stopwords from top words |
+| `proseMinion.wordFrequency.posEnabled` | boolean | `true` | Enable POS sections via wink-pos-tagger |
+| `proseMinion.wordFrequency.includeBigrams` | boolean | `true` | Show top bigrams |
+| `proseMinion.wordFrequency.includeTrigrams` | boolean | `true` | Show top trigrams |
+| `proseMinion.wordFrequency.enableLemmas` | boolean | `false` | Show lemmatized top words |
+| `proseMinion.wordFrequency.lengthHistogramMaxChars` | number | `10` | Max word length in histogram |
+| `proseMinion.wordFrequency.minCharacterLength` | number | `1` | Min word length filter (UI exposes 1+ through 6+ tabs) |
 
-Settings:
-- `proseMinion.wordFrequency.topN` (number, default 100): size of Top Words and Top Lemmas.
-- `proseMinion.wordFrequency.includeHapaxList` (boolean, default true): show the Hapax list section.
-- `proseMinion.wordFrequency.hapaxDisplayMax` (number, default 300): maximum hapax entries shown inline.
-- `proseMinion.wordFrequency.includeStopwordsTable` (boolean, default true): show Top Stopwords table and total stopword tokens.
-- `proseMinion.wordFrequency.contentWordsOnly` (boolean, default true): exclude stopwords from Top Words/Lemmas.
-- `proseMinion.wordFrequency.posEnabled` (boolean, default true): enable POS sections via wink-pos-tagger; if the tagger cannot initialize, sections show a short note.
-- `proseMinion.wordFrequency.includeBigrams` (boolean, default true): include Top Bigrams.
-- `proseMinion.wordFrequency.includeTrigrams` (boolean, default true): include Top Trigrams.
-- `proseMinion.wordFrequency.enableLemmas` (boolean, default false): show a “Top Lemmas” section.
-- `proseMinion.wordFrequency.lengthHistogramMaxChars` (number, default 10): max character length shown in the histogram.
+> POS tagging uses `wink-pos-tagger` bundled with the extension — no runtime downloads.
 
-Notes:
-- POS tagging uses `wink-pos-tagger` bundled with the extension; no runtime downloads. If unavailable, POS sections are marked as unavailable.
+---
 
-### 8. Context Resource Paths
+## Category Search Settings
 
-These can be edited either in VS Code Settings or in the in‑app Settings overlay under “Context Resource Paths” (bottom of the panel). Values update immediately and are picked up by the Context Assistant on the next run.
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `proseMinion.categorySearch.ngramMode` | string | `words` | Default mode: `words`, `bigrams`, or `trigrams` |
+| `proseMinion.categorySearch.minPhraseOccurrences` | number | `2` | Min phrase occurrences for n-gram searches |
 
-**Settings (comma-separated globs)**
+---
 
-| Group | Key | Default |
-|-------|-----|---------|
+## Context Resource Paths
+
+Comma-separated glob patterns for project reference files. Only `.md` and `.txt` files are indexed. Editable in the Settings Overlay under "Context Paths".
+
+| Group | Setting | Default |
+|-------|---------|---------|
 | Characters | `proseMinion.contextPaths.characters` | `characters/**/*,Characters/**/*` |
-| Locations & Settings | `proseMinion.contextPaths.locations` | `locations/**/*,Locations/**/*,Locations-Settings/**/*` |
+| Locations | `proseMinion.contextPaths.locations` | `locations/**/*,Locations/**/*,Locations-Settings/**/*` |
 | Themes | `proseMinion.contextPaths.themes` | `themes/**/*,Themes/**/*` |
 | Things / Props | `proseMinion.contextPaths.things` | `things/**/*,Things/**/*` |
 | Draft Chapters & Outlines | `proseMinion.contextPaths.chapters` | `drafts/**/*,Drafts/**/*,outlines/**/*,Outlines/**/*` |
 | Manuscript Chapters | `proseMinion.contextPaths.manuscript` | `manuscript/**/*,Manuscript/**/*` |
-| Project Brief Materials | `proseMinion.contextPaths.projectBrief` | `brief/**/*,Brief/**/*` |
+| Project Brief | `proseMinion.contextPaths.projectBrief` | `brief/**/*,Brief/**/*` |
 | General References | `proseMinion.contextPaths.general` | `research/**/*,Research/**/*,tone-and-style/**/*,Tone-And-Style/**/*,literary-devices/**/*,Literary-Devices/**/*,**/story-bible.md,**/synopsis.md,**/voice-and-tone.md,**/genre-conventions.md` |
 
-**How it works**
+Changes apply immediately — the next context request picks up the new patterns.
 
-- Patterns are evaluated against your workspace folders using VS Code glob syntax. Use `**` to search all subdirectories.
-- Only `.md` and `.txt` files are indexed; other file types are ignored automatically.
-- Separate multiple patterns with commas. For example: `characters/**/*,Characters/**/*,**/cast/*.md`.
-- The context assistant receives the catalog of matched files and can request specific ones during its two-turn workflow.
-- Update these settings at any time — the next context request will pick up the new patterns immediately.
+---
 
-> Tip: Point the `projectBrief` or `general` groups at synopsis files, tone guides, or world bibles so the context assistant can summarise them automatically.
+## Publishing Standards
+
+Used for Metrics tab comparison and publishing format estimates.
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `proseMinion.publishingStandards.preset` | string | `none` | `none`, `manuscript`, or `genre:<slug\|abbr\|name>` |
+| `proseMinion.publishingStandards.pageSizeKey` | string | `""` | Trim size key (uses `format` when available, else `WxH`) |
+
+> **Note**: Lexical density is the content-word ratio (non-stopwords/total) × 100. Type-Token Ratio (TTR) is a separate metric.
+
+---
+
+## Reports
+
+Metrics reports are saved to:
+
+```
+prose-minion/reports/prose-statistics-YYYYMMDD-HHmm.md
+```
+
+On save/copy, a modal prompt asks whether to include the "## Chapter Details" breakdown. The on-screen summary table is always preserved.
 
 ---
 
 ## Session Persistence
 
-The extension automatically persists analysis results, model selections, and UI state via domain hooks. Long-running API requests continue in the background; when you reopen the sidebar, cached responses are replayed automatically.
+The webview persists active tab, latest results, model selections, and UI state via VS Code webview storage. Long-running API requests continue in the background; cached responses are replayed when you return.
 
-## Cost Optimization Tips
-
-### 1. Disable Guides for Quick Checks
-- Turn off `includeCraftGuides` for simple questions
-- Re-enable for detailed analysis
-
-### 2. Use Appropriate Models
-- Haiku for spell checks and quick feedback
-- Sonnet for regular use
-- Opus only when you need the best
-
-### 3. Adjust Token Limits
-- Use 1000-1500 tokens for short passages
-- Reserve 3000+ for complex analysis
-
-### 4. Batch Your Work
-- Analyze multiple passages in one session
-- Reduces per-request overhead
-
-## Measurement Tools (Free)
-
-Remember: These tools work **without an API key**:
-- Prose Statistics
-- Style Flags
-- Word Frequency
-
-Use these for free analysis before invoking AI tools!
+---
 
 ## Troubleshooting
 
-### "API key not configured"
-- Check Settings → Prose Minion → OpenRouter API Key
-- Ensure no extra spaces in the key
-- Verify key is valid at https://openrouter.ai/
+| Symptom | Fix |
+|---------|-----|
+| "API key not configured" | Settings Overlay → paste key → Save. Verify at [openrouter.ai](https://openrouter.ai/) |
+| Responses truncated | Increase `proseMinion.maxTokens` |
+| Responses too creative | Lower `proseMinion.temperature` (try 0.3–0.5) |
+| High cost | Use cheaper models (e.g., Haiku for dictionary), disable craft guides, reduce max tokens, use free measurement tools first |
 
-### Responses are too short
-- Increase `maxTokens` setting
-- Check if passage is too long for model's context
+---
 
-### Responses are too creative/unfocused
-- Decrease `temperature` (try 0.5 or 0.3)
-- Ensure craft guides are enabled
+## See Also
 
-### High costs
-- Switch to Claude 3 Haiku
-- Disable craft guides
-- Reduce max tokens
-- Use measurement tools first
-
-## Advanced Configuration
-
-### Editing settings.json Directly
-
-For power users, you can edit `settings.json` directly:
-
-```json
-{
-  "proseMinion": {
-    "openRouterApiKey": "sk-or-...",
-    "model": "anthropic/claude-3.5-sonnet",
-    "includeCraftGuides": true,
-    "temperature": 0.7,
-    "maxTokens": 2000
-  }
-}
-```
-
-### Workspace vs User Settings
-
-- **User Settings**: Apply to all projects
-- **Workspace Settings**: Apply only to current project
-
-To use different settings per project:
-1. Open workspace settings (folder icon in settings)
-2. Configure Prose Minion settings
-3. These override user settings
-
-## Future Configuration Options
-
-Coming soon:
-- Custom craft guides
-- Model-specific presets
-- Analysis templates
-- Batch processing settings
-
-## Getting Help
-
-For configuration issues:
-1. Check this guide
-2. Review [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) for setup and development
-3. See [TOOLS.md](TOOLS.md) for tool-specific info
-4. Open an issue on GitHub for bugs or questions
+- [ARCHITECTURE.md](ARCHITECTURE.md) — System design, ports/adapters, composition root
+- [TOOLS.md](TOOLS.md) — Tool inventory and capabilities
+- [TESTING.md](TESTING.md) — Test strategy and commands
+- [Adding Settings Guide](guides/ADDING_SETTINGS.md) — How to add a new setting end-to-end
