@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/prose-minion-book.png" alt="Prose Minion" width="200"/>
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/apps/vscode-extension/assets/prose-minion-book.png" alt="Prose Minion" width="200"/>
 </p>
 
 <p align="center">
@@ -14,7 +14,7 @@
 
 ## What's New in v2.0.0
 
-> <img src="assets/frame-minion-icon.png" alt="FrameMinion" width="20" style="vertical-align: middle;"/> **Sister Extension: [FrameMinion](https://frameminion.video)** - AI video, image, and music-video workflow tools for VS Code. Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=OkeyLanders.frame-minion).
+> <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/apps/vscode-extension/assets/frame-minion-icon.png" alt="FrameMinion" width="20" style="vertical-align: middle;"/> **Sister Extension: [FrameMinion](https://frameminion.video)** - AI video, image, and music-video workflow tools for VS Code. Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=OkeyLanders.frame-minion).
 >
 > **Model Browser** - Model selection now opens a searchable browser with provider and family pivots, model descriptions, live OpenRouter metadata, pricing, release dates, and context windows.
 >
