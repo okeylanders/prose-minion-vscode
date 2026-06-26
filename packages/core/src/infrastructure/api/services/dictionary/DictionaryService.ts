@@ -17,6 +17,7 @@
  */
 
 import { LogSink } from '@/platform';
+import { API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
 import pLimit from 'p-limit';
 import { DictionaryUtility } from '@/tools/utility/dictionaryUtility';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
@@ -236,7 +237,7 @@ export class DictionaryService {
    * Get warning message for missing API key
    */
   private getApiKeyWarning(): string {
-    return `⚠️ OpenRouter API key not configured
+    return `${API_KEY_NOT_CONFIGURED_HEADING}
 
 To use AI-powered dictionary tools, you need to configure your OpenRouter API key:
 

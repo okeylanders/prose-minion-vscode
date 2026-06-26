@@ -22,7 +22,7 @@ import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
 import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
-import { DialogueFocus, WritingToolsFocus, StatusEmitter } from '@messages';
+import { DialogueFocus, WritingToolsFocus, StatusEmitter, API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
 import { StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
 
 /**
@@ -340,7 +340,7 @@ export class AssistantToolService {
    * Get warning message for missing API key
    */
   private getApiKeyWarning(): string {
-    return `⚠️ OpenRouter API key not configured
+    return `${API_KEY_NOT_CONFIGURED_HEADING}
 
 To use AI-powered analysis tools, you need to configure your OpenRouter API key:
 

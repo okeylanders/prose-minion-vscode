@@ -10,7 +10,13 @@ import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
 import { useStreaming } from '../useStreaming';
 import { MessageType } from '@shared/types';
-import { ContextResultMessage, StreamChunkMessage, StreamCompleteMessage, StreamStartedMessage } from '@messages';
+import {
+  ContextResultMessage,
+  StreamChunkMessage,
+  StreamCompleteMessage,
+  StreamStartedMessage,
+  isApiKeyNotConfiguredWarning
+} from '@messages';
 
 export interface ContextState {
   contextText: string;
@@ -81,7 +87,9 @@ export const useContext = (): UseContextReturn => {
     contextRequestedResources?: string[];
   }>();
 
-  const [contextText, setContextTextState] = React.useState<string>(persisted?.contextText ?? '');
+  const [contextText, setContextTextState] = React.useState<string>(
+    isApiKeyNotConfiguredWarning(persisted?.contextText) ? '' : (persisted?.contextText ?? '')
+  );
   const [loading, setLoading] = React.useState<boolean>(false);
   const [statusMessage, setStatusMessage] = React.useState<string>('');
   const [requestedResources, setRequestedResources] = React.useState<string[]>(
@@ -265,7 +273,7 @@ export const useContext = (): UseContextReturn => {
 
     // Persistence
     persistedState: {
-      contextText,
+      contextText: isApiKeyNotConfiguredWarning(contextText) ? '' : contextText,
       contextRequestedResources: requestedResources,
     },
   };

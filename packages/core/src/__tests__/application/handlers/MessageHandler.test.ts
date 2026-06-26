@@ -20,6 +20,8 @@ import {
 } from '../../mocks/platform';
 
 type TokenUsageCallback = (usage: TokenUsageTotals) => void;
+const flushQueuedWork = (): Promise<void> =>
+  new Promise(resolve => setImmediate(resolve));
 
 interface TestAssembly {
   services: CoreServices;
@@ -29,6 +31,8 @@ interface TestAssembly {
   getBalances: jest.Mock;
   accountAddRefreshListener: jest.Mock;
   disposeBalanceListener: jest.Mock;
+  disposeSecretListener: jest.Mock;
+  secretOnDidChange: jest.Mock;
   accountDispose: jest.Mock;
   categorySetStatusEmitter: jest.Mock;
   tokenUsageCallback: () => TokenUsageCallback | undefined;
@@ -65,6 +69,8 @@ function createTestAssembly(): TestAssembly {
   });
   const disposeBalanceListener = jest.fn();
   const accountAddRefreshListener = jest.fn(() => disposeBalanceListener);
+  const disposeSecretListener = jest.fn();
+  const secretOnDidChange = jest.fn(() => ({ dispose: disposeSecretListener }));
   const accountDispose = jest.fn();
   const categorySetStatusEmitter = jest.fn();
 
@@ -97,7 +103,8 @@ function createTestAssembly(): TestAssembly {
     secretsService: {
       getApiKey: jest.fn().mockResolvedValue(undefined),
       setApiKey: jest.fn().mockResolvedValue(undefined),
-      deleteApiKey: jest.fn().mockResolvedValue(undefined)
+      deleteApiKey: jest.fn().mockResolvedValue(undefined),
+      onDidChange: secretOnDidChange
     },
     textSourceResolver: {},
     categorySearchService: {
@@ -120,6 +127,8 @@ function createTestAssembly(): TestAssembly {
     accountAddRefreshListener,
     disposeBalanceListener,
     accountDispose,
+    disposeSecretListener,
+    secretOnDidChange,
     categorySetStatusEmitter,
     tokenUsageCallback: () => capturedTokenUsageCallback
   };
@@ -218,6 +227,7 @@ describe('MessageHandler assembly', () => {
     first.dispose();
 
     expect(assembly.disposeBalanceListener).toHaveBeenCalledTimes(1);
+    expect(assembly.disposeSecretListener).toHaveBeenCalledTimes(1);
     expect(assembly.accountDispose).toHaveBeenCalledTimes(1);
     expect(assembly.categorySetStatusEmitter).toHaveBeenLastCalledWith(undefined);
     expect(assembly.tokenUsageCallback()).toBeUndefined();
@@ -228,7 +238,25 @@ describe('MessageHandler assembly', () => {
     );
 
     expect(assembly.accountAddRefreshListener).toHaveBeenCalledTimes(2);
+    expect(assembly.secretOnDidChange).toHaveBeenCalledTimes(2);
     expect(assembly.categorySetStatusEmitter).toHaveBeenLastCalledWith(expect.any(Function));
     expect(assembly.tokenUsageCallback()).toEqual(expect.any(Function));
+  });
+
+  it('refreshes AI services when the stored API key changes (self-heal)', async () => {
+    const assembly = createTestAssembly();
+    createHandler(assembly, jest.fn().mockResolvedValue(undefined));
+
+    // Fire the secret-change listener the handler registered.
+    const onSecretChange = assembly.secretOnDidChange.mock.calls[0][0] as () => void;
+    onSecretChange();
+    // The handler intentionally fire-and-forgets the refresh; let that queued
+    // work settle before asserting the services were refreshed.
+    await flushQueuedWork();
+
+    expect(assembly.services.aiResourceManager.refreshConfiguration).toHaveBeenCalledTimes(1);
+    expect(assembly.services.assistantToolService.refreshConfiguration).toHaveBeenCalledTimes(1);
+    expect(assembly.services.dictionaryService.refreshConfiguration).toHaveBeenCalledTimes(1);
+    expect(assembly.services.contextAssistantService.refreshConfiguration).toHaveBeenCalledTimes(1);
   });
 });

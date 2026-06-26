@@ -22,6 +22,7 @@ import type { CategorySearchService } from '@services/search/CategorySearchServi
 import type { WordSearchService } from '@services/search/WordSearchService';
 import type { AccountBalanceService } from '@/infrastructure/account';
 import type { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
+import type { PlatformDisposable } from '@/platform';
 
 /**
  * Narrow application-facing secrets seam. The infrastructure implementation is
@@ -31,6 +32,8 @@ export interface SecretsPort {
   getApiKey(): Promise<string | undefined>;
   setApiKey(key: string): Promise<void>;
   deleteApiKey(): Promise<void>;
+  /** Fires when the stored key changes (set/clear/migration). */
+  onDidChange(listener: () => void): PlatformDisposable;
 }
 
 /** Raw host transport used to deliver a typed message to the webview. */

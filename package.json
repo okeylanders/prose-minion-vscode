@@ -1,7 +1,7 @@
 {
   "name": "prose-minion-monorepo",
   "private": true,
-  "version": "2.0.0",
+  "version": "2.0.1",
   "license": "SEE LICENSE IN apps/vscode-extension/LICENSE",
   "description": "Monorepo root for Prose Minion: one shared @prose-minion/core consumed by the VS Code extension (and a future desktop app). See migration-and-facelift/ + docs/adr/2026-06-16-monorepo-ports-and-adapters.md.",
   "repository": {

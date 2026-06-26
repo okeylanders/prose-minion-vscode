@@ -15,7 +15,8 @@ import {
   StatusMessage,
   StreamStartedMessage,
   StreamChunkMessage,
-  StreamCompleteMessage
+  StreamCompleteMessage,
+  isApiKeyNotConfiguredWarning
 } from '@messages';
 
 export interface AnalysisState {
@@ -95,7 +96,9 @@ export const useAnalysis = (): UseAnalysisReturn => {
     statusMessage?: string;
   }>();
 
-  const [result, setResult] = React.useState<string>(persisted?.analysisResult ?? '');
+  const [result, setResult] = React.useState<string>(
+    isApiKeyNotConfiguredWarning(persisted?.analysisResult) ? '' : (persisted?.analysisResult ?? '')
+  );
   const [toolName, setToolName] = React.useState<string | undefined>(persisted?.analysisToolName);
   const [loading, setLoading] = React.useState<boolean>(false);
   const [usedGuides, setUsedGuides] = React.useState<string[]>(persisted?.usedGuides ?? []);
@@ -276,7 +279,8 @@ export const useAnalysis = (): UseAnalysisReturn => {
 
     // Persistence
     persistedState: {
-      analysisResult: result,
+      // Don't persist the transient "no API key" warning as a durable result.
+      analysisResult: isApiKeyNotConfiguredWarning(result) ? '' : result,
       analysisToolName: toolName,
       usedGuides,
       tickerMessage,

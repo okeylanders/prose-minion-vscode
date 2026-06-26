@@ -18,6 +18,7 @@
 
 import { fileURLToPath } from 'url';
 import { FileSystem, LogSink, SettingsStore, Workspace } from '@/platform';
+import { API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
 import { ContextAssistant } from '@/tools/assist/contextAssistant';
 import { ContextResourceResolver } from '@/infrastructure/context/ContextResourceResolver';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
@@ -222,7 +223,7 @@ export class ContextAssistantService {
    * Get warning message for missing API key
    */
   private getApiKeyWarning(): string {
-    return `⚠️ OpenRouter API key not configured
+    return `${API_KEY_NOT_CONFIGURED_HEADING}
 
 To use AI-powered context generation, you need to configure your OpenRouter API key:
 
