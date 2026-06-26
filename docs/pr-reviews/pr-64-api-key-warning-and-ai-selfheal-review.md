@@ -3,7 +3,7 @@
 **Author:** okeylanders · PR #64 on `fix/api-key-warning-and-ai-selfheal`
 **Reviewed:** 2026-06-26 (multi-agent pass — 10 reviewers + Sensei)
 **Base:** `main` @ `8f8a51b8` · **Head:** `a0a506c7`
-**Status:** 🟡 **Changes recommended before merge — no blockers.** Blake walked every correctness path and nothing pages her: the self-heal listener mirrors the existing balance-listener lifecycle exactly, `dispose()` is symmetric, the `SecretsPort` contract is satisfied by the concrete `SecretStorageService`, the fire-and-forget `void refreshServiceConfiguration()` can't reject (it owns its own try/catch), and the `startsWith` sentinel can only ever swallow the warning it was built to swallow. Patricia clears the secret surface end-to-end. But the panel converged hard on one theme: **the fix is locally correct and globally incomplete.** The warning is produced by three services and persisted by three structurally-identical webview hooks — and only `useAnalysis` got the guard. **Nine of ten reviewers independently flagged that `useDictionary` and `useContext` still persist and reseed the exact warning this PR exists to kill.** The shared constant and the guard pattern both already exist; they simply weren't carried next door. Add to that: the headline guard ships without a regression test. None of this is a blocker — it's a fix that needs to finish the sentence it started.
+**Status:** 🟢 **Primary review findings addressed; remaining items tracked as follow-up debt.** Blake walked every correctness path and nothing pages her: the self-heal listener mirrors the existing balance-listener lifecycle exactly, `dispose()` is symmetric, `SecretsPort` is satisfied by the concrete `SecretStorageService`, the fire-and-forget `void refreshServiceConfiguration()` can't reject (it owns its own try/catch), and the warning sentinel can only ever swallow the warning it was built to swallow. Patricia clears the secret surface end-to-end. Follow-up commit `48fa3d1` finished the main pattern-level fix: the no-key warning sentinel/helper now lives in a neutral shared module, and `useAnalysis`, `useDictionary`, and `useContext` all refuse to seed from or persist that transient warning. Behavioral hook tests now cover all three surfaces. Deferred items below are intentionally kept as tech debt, not hidden as "done."
 
 > ℹ️ Small, tightly-scoped diff — **+80 / −8 across 8 files**, one commit, no new files, no migrations. Two threads braided together: (1) a **stale-warning persistence guard** (shared `API_KEY_NOT_CONFIGURED_HEADING` constant + `isConfigWarning` guard in `useAnalysis`, with the three backend services swapped to the constant), and (2) a **secret-change self-heal** (`SecretsPort.onDidChange` + a `MessageHandler` subscription that refreshes the AI services). Agents read the branch on disk at the PR head to trace every behavior claim, including the two untouched sibling hooks and the `refreshConfiguration` call chain.
 
@@ -36,21 +36,33 @@ Security sits high because the secret surface is genuinely clean — nothing log
 
 ## Findings at a glance
 
-| # | Severity | Finding | Reviewer(s) |
-|---|----------|---------|-------------|
-| 1 | 🟠 High 🎯🎯 | **`useDictionary` and `useContext` still persist + reseed the API-key warning** — the exact bug the PR fixes for `useAnalysis`, untouched in the two siblings | Marcus · Sam · Parker · Cal · Stan · Tim · Patricia · Oliver · Bria **Strong Consensus** |
-| 2 | 🟠 High | **The headline `isConfigWarning` guard ships with no test** — `useAnalysis.test.ts` is untouched; the only new test covers the self-heal wiring | Cal |
-| 3 | 🟡 Standard 🎯 | **Self-heal heals the backend, not the screen** — a mid-session key add refreshes the services but never clears the warning already rendered in-session | Sam · Oliver · Bria **Consensus** |
-| 4 | 🟡 Standard 🎯 | **The shared sentinel lives in the wrong room** — `API_KEY_NOT_CONFIGURED_HEADING` is cross-cutting but filed under `analysis.ts` | Marcus · Parker **Consensus** |
-| 5 | 🟡 Standard | **`refreshServiceConfiguration` wraps four services in one try/catch** — partial failure doesn't name the failing service, and success leaves no trail | Oliver |
-| 6 | 🟡 Standard | **`refreshServiceConfiguration` triggers `initializeResources()` four times** — negligible at the rare secret-change frequency; copies an existing redundancy | Tim |
-| 7 | 🟡 Standard | **`SecretsPort.onDidChange` discards the changed key** — fires for any secret write, encoding a "one secret forever" assumption as the interface grows | Marcus |
-| 8 | 🟡 Standard | **The self-heal test couples to async depth** — a single `setImmediate` flush assumes the exact sequential await-count of `refreshServiceConfiguration` | Cal |
-| 9 | 🟢 Nit | **`disposeSecretListener` is shaped differently from its sibling `disposeBalanceListener`** | Stan |
-| 10 | 🟢 Nit | **The self-heal constructor comment is prose-heavy** — motivation that belongs in the PR description | Parker |
-| 11 | 🟢 Nit | **`useContext` will need the `@messages` constant import** when the guard lands there | Stan |
-| P1 | 🟢 Praise | **Nothing blocks** — clean listener lifecycle, symmetric dispose, contract satisfied, no teardown race | Blake |
-| P2 | 🟢 Praise | **The key never reaches a log or `persistedState`** — and `onDidChange` narrows exposure by discarding the event | Patricia |
+| # | Status | Severity | Finding | Reviewer(s) |
+|---|--------|----------|---------|-------------|
+| 1 | ✅ Resolved in `48fa3d1` | 🟠 High 🎯🎯 | **`useDictionary` and `useContext` still persist + reseed the API-key warning** — all three hooks now scrub the warning on seed and persist | Marcus · Sam · Parker · Cal · Stan · Tim · Patricia · Oliver · Bria **Strong Consensus** |
+| 2 | ✅ Resolved in `48fa3d1` | 🟠 High | **The headline warning guard ships with no test** — behavioral hook tests now cover analysis, dictionary, and context warning scrubbing | Cal |
+| 3 | 🧾 Deferred debt | 🟡 Standard 🎯 | **Self-heal heals the backend, not the screen** — intentionally not changed; warning appears only after a user action, and live clearing needs an explicit UI message contract | Sam · Oliver · Bria **Consensus** |
+| 4 | ✅ Resolved in `48fa3d1` | 🟡 Standard 🎯 | **The shared sentinel lives in the wrong room** — moved to neutral `messages/warnings.ts` and exported through `@messages` | Marcus · Parker **Consensus** |
+| 5 | 🧾 Deferred debt | 🟡 Standard | **`refreshServiceConfiguration` wraps four services in one try/catch** — partial failure doesn't name the failing service, and success leaves no trail | Oliver |
+| 6 | 🧾 Deferred debt | 🟡 Standard | **`refreshServiceConfiguration` triggers `initializeResources()` four times** — negligible at the rare secret-change frequency; copies an existing redundancy | Tim |
+| 7 | 🧾 Deferred debt | 🟡 Standard | **`SecretsPort.onDidChange` discards the changed key** — fires for any secret write, encoding a "one secret forever" assumption as the interface grows | Marcus |
+| 8 | 🟨 Partially addressed in `48fa3d1` | 🟡 Standard | **The self-heal test couples to async depth** — helper/comment now describe queued fire-and-forget work honestly; directly awaitable refresh seam remains deferred | Cal |
+| 9 | 🧾 Deferred nit | 🟢 Nit | **`disposeSecretListener` is shaped differently from its sibling `disposeBalanceListener`** | Stan |
+| 10 | 🧾 Deferred nit | 🟢 Nit | **The self-heal constructor comment is prose-heavy** — motivation that belongs in the PR description | Parker |
+| 11 | ✅ Resolved in `48fa3d1` | 🟢 Nit | **`useContext` will need the `@messages` constant import** — `useContext` now imports the shared warning helper from `@messages` | Stan |
+| P1 | N/A | 🟢 Praise | **Nothing blocks** — clean listener lifecycle, symmetric dispose, contract satisfied, no teardown race | Blake |
+| P2 | N/A | 🟢 Praise | **The key never reaches a log or `persistedState`** — and `onDidChange` narrows exposure by discarding the event | Patricia |
+
+### Resolution Update — 2026-06-26
+
+Follow-up commit `48fa3d1` addressed the pattern-level stale-warning work:
+
+- Added `packages/core/src/shared/types/messages/warnings.ts` with `API_KEY_NOT_CONFIGURED_HEADING` and `isApiKeyNotConfiguredWarning`.
+- Moved the warning sentinel out of `analysis.ts` and kept it exported through the `@messages` barrel.
+- Applied the warning guard to `useAnalysis`, `useDictionary`, and `useContext` on both persisted-state seed and persisted-state output.
+- Added behavioral tests for all three hooks proving stale API-key warnings are dropped while ordinary results still persist.
+- Tightened the self-heal test helper/comment to avoid overstating what `setImmediate` guarantees.
+
+Still tracked as debt: live UI clearing after a key is added, per-service refresh logging, key-aware secret-change events, refresh de-duplication, and the small listener/comment nits.
 
 ---
 
