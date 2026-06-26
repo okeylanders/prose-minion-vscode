@@ -1,6 +1,33 @@
 # Changelog
 
-For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
+For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
+
+## [2.0.0] - 2026-06-26
+
+### Added
+
+- **Model Browser**: Model selectors now open a searchable browser with provider and family pivots, full descriptions, live OpenRouter metadata, pricing, release dates, and context windows.
+- **OpenRouter Account Balance**: Added a header widget that shows remaining OpenRouter credits and refreshes after AI requests.
+- **Debug Output Shortcut**: Added a title-bar bug icon that opens the Prose Minion Output channel for faster troubleshooting.
+- **Streaming Progress Stats**: AI streaming headers now show chunk count, elapsed time, first-chunk latency, and average chunks per second.
+- **Model Catalog Refresh**: Added GLM 5.2 and Qwen3.7 Plus, updated Category Search to Mistral Large 2512, and removed stale/deprioritized recommendations.
+
+### Changed
+
+- **Sidebar Refresh**: Prose Minion now follows the active VS Code theme by default while keeping the warm-dark palette as an option.
+- **Monorepo Ports-and-Adapters Architecture**: Moved the host-agnostic core into `packages/core` and kept VS Code-specific behavior in `apps/vscode-extension`.
+- **Composition Root Consolidation**: Centralized service construction in the VS Code extension shell and tightened core/app boundaries.
+- **All Tools Modal Copy**: Updated writing-tool descriptions to better match actual prompt behavior.
+- **Marketplace Documentation**: Reworked README links for the monorepo package root and replaced the sister-extension callout with FrameMinion.
+
+### Technical Details
+
+- React 18 webview runtime with refreshed presentation components.
+- Category Search setting enum synced with `CATEGORY_MODELS`.
+- Package contents verified from the app workspace VSIX root.
+- Validation run during release prep: typecheck, Jest, production build, lint, and VSIX packaging.
+
+---
 
 ## [1.10.4] - 2026-05-29
 

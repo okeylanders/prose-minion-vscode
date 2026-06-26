@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/prose-minion-book-animated.gif" alt="Prose Minion" width="200"/>
+  <img src="assets/prose-minion-book.png" alt="Prose Minion" width="200"/>
 </p>
 
 <p align="center">
@@ -9,6 +9,26 @@
 <p align="center">
   Bring professional-grade prose metrics, AI writing assistance, and contextual analysis directly into your VS Code workflow.
 </p>
+
+---
+
+## What's New in v2.0.0
+
+> <img src="assets/frame-minion-icon.png" alt="FrameMinion" width="20" style="vertical-align: middle;"/> **Sister Extension: [FrameMinion](https://frameminion.video)** - AI video, image, and music-video workflow tools for VS Code. Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=OkeyLanders.frame-minion).
+>
+> **Model Browser** - Model selection now opens a searchable browser with provider and family pivots, model descriptions, live OpenRouter metadata, pricing, release dates, and context windows.
+>
+> **Sidebar Refresh** - Prose Minion now follows your VS Code theme by default, adds a polished model/settings experience, and keeps the warm-dark palette available as an option.
+>
+> **Account Balance Widget** - See your OpenRouter credit balance in the header, with refreshes after AI requests.
+>
+> **Streaming Progress Stats** - AI responses now show honest live streaming stats: chunks received, elapsed time, first-chunk latency, and average chunks per second.
+>
+> **Debug Output Shortcut** - A new bug icon in the Prose Minion title bar opens the Prose Minion Output channel for faster troubleshooting.
+>
+> **Model Catalog Refresh** - Added GLM 5.2 and Qwen3.7 Plus, updated Category Search to Mistral Large 2512, and removed stale/deprioritized recommendations.
+>
+> **Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
 
 ---
 
@@ -104,15 +124,13 @@
 
 ## 🎉 What's New in v1.6.1
 
-> <img src="assets/pixel-minion-icon.png" alt="Pixel Minion" width="20" style="vertical-align: middle;"/> **Sister Extension: [Pixel Minion](https://marketplace.visualstudio.com/items?itemName=OkeyLanders.pixel-minion)** - Generate images and SVGs directly in VS Code using AI models like Flux, Recraft, and more via OpenRouter. [GitHub](https://github.com/okeylanders/pixel-minion-vscode)
->
 > **🤖 Gemini 3 Flash Preview Model** - New high-speed thinking model with near Pro-level reasoning at lower latency. Available in all model dropdowns.
 >
 > **📚 New Craft Guides** - Three new creative writing guides: Deep POV for immersive narration, Indirect Dialogue techniques, and Subtext & Implication patterns.
 >
 > **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
 >
-> **📚 New User Guides** - [Dictionary: Looking Up Phrases & Alternatives](docs/user-guides/dictionary-lookup-phrase-and-alternatives/README.md)
+> **📚 New User Guides** - [Dictionary: Looking Up Phrases & Alternatives](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/user-guides/dictionary-lookup-phrase-and-alternatives/README.md)
 
 ---
 
@@ -128,7 +146,7 @@ Prose Minion provides four powerful tool categories in a dedicated sidebar panel
 - **🔍 [Search](#-search-find-patterns-across-your-manuscript)** - Advanced word pattern matching, cluster detection, and **[AI-powered semantic discovery](#context-search-ai-powered)** (NEW: Context Search)
 - **📊 [Metrics](#-metrics-professional-prose-analysis)** - Comprehensive prose statistics, style flags, and word frequency analysis
 - **📖 [Dictionary](#-dictionary-fiction-focused-word-definitions)** - Fiction-focused word definitions with creative context
-- **⚙️ [Settings](#️-settings-complete-control)** - Full-screen overlay with model selection, API key management, and complete customization
+- **⚙️ [Settings](#️-settings-complete-control)** - Full-screen overlay with model browser, API key management, and complete customization
 
 > **💡 Tip:** For best experience, **widen your sidebar** to give Prose Minion room to display all its features comfortably.
 
@@ -141,7 +159,7 @@ Prose Minion provides four powerful tool categories in a dedicated sidebar panel
 1. Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=OkeyLanders.prose-minion)
 2. Open the Prose Minion panel from the activity bar (book/hexagon icon)
 3. Start using **Search** and **Metrics** immediately (no API key needed!)
-4. Configure OpenRouter API key for AI features (**Assistant** and **Dictionary**)
+4. Configure OpenRouter API key for AI features (**Assistant**, **Context Search**, **Context**, and **Dictionary**)
 
 ### Quick Start
 
@@ -154,7 +172,7 @@ Prose Minion provides four powerful tool categories in a dedicated sidebar panel
 
 Click the **gear icon** in the Prose Minion panel header to open the full-screen settings overlay:
 
-![Open Settings](screenshots/screenshot-click-to-open-settings.png)
+![Open Settings](https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/screenshot-click-to-open-settings.png)
 
 ---
 
@@ -181,14 +199,15 @@ Click the **gear icon** in the Prose Minion panel header to open the full-screen
    - Your key is securely stored in your OS keychain
    - Changes save automatically
 
-   ![Setting OpenRouter API Key](screenshots/screenshot-set-openrouter-api-key.png)
+   ![Setting OpenRouter API Key](https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/screenshot-set-openrouter-api-key.png)
 
 3. **Choose Your Models** (optional):
-   - Select different models for Assistant, Dictionary, and Context workflows
+   - Browse different models for Assistant, Dictionary, Context, and Category Search workflows
+   - Search by model, provider, family, description, price, release date, and context window
    - Balance cost vs. quality based on your needs
    - Default models work great out of the box
 
-   ![Models Selection](screenshots/screenshot-settings-models.png)
+   ![Models Selection](https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/screenshot-settings-models.png)
 
 4. **Configure AI Settings** (optional):
    - **Include Craft Guides** - Make beta craft guides available if requested by agent.
@@ -197,7 +216,7 @@ Click the **gear icon** in the Prose Minion panel header to open the full-screen
    - **Context Window Trimming** - Auto-trim large inputs to prevent errors
    - **Token Usage Widget** - Display running token totals in header
 
-   ![AI Model Controls](screenshots/screenshot-ai-model-controls.png)
+   ![AI Model Controls](https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/screenshot-ai-model-controls.png)
 
 ---
 
@@ -207,7 +226,7 @@ Click the **gear icon** in the Prose Minion panel header to open the full-screen
 
 Get intelligent, context-aware suggestions for your creative writing.
 
-![Prose Excerpt Assistant](screenshots/screenshot-assistant-dialogue-analysis.png)
+![Prose Excerpt Assistant](https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/screenshot-assistant-dialogue-analysis.png)
 
 **Key Features:**
 
@@ -237,7 +256,7 @@ Two powerful search modes: find specific words with **Word Search**, or discover
 
 Advanced word pattern matching with context windows and cluster detection.
 
-![Word Search Tool](screenshots/screenshot-search-word-search.png)
+![Word Search Tool](https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/screenshot-search-word-search.png)
 
 **Key Features:**
 
@@ -268,7 +287,7 @@ Advanced word pattern matching with context windows and cluster detection.
 
 Discover words by category, concept, or meaning using AI semantic analysis.
 
-![Context Search Tool](screenshots/screenshot-search-category-search.png)
+![Context Search Tool](https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/screenshot-search-category-search.png)
 
 **What It Does:**
 
@@ -326,7 +345,7 @@ Comprehensive statistics and style analysis without any AI or API requirements.
 
 #### Word Frequency Analysis
 
-![Word Frequency Metrics](screenshots/screenshot-metrics-word-frequency.png)
+![Word Frequency Metrics](https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/screenshot-metrics-word-frequency.png)
 
 **Includes:**
 - **Overview** - Total words, unique words, hapax count (%), stopword tokens, vocabulary diversity, lexical density
@@ -346,7 +365,7 @@ Comprehensive statistics and style analysis without any AI or API requirements.
 
 #### Prose Statistics & Publishing Standards
 
-![Prose Statistics](screenshots/screenshot-metrics-prose-statistics.png)
+![Prose Statistics](https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/screenshot-metrics-prose-statistics.png)
 
 **Prose Statistics Include:**
 - **📝 Word Count** - Total words in selection/file/scope
@@ -381,7 +400,7 @@ Comprehensive statistics and style analysis without any AI or API requirements.
 
 #### Style Flags: Identify Writing Patterns
 
-![Style Flags](screenshots/screenshot-metrics-style-flags.png)
+![Style Flags](https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/screenshot-metrics-style-flags.png)
 
 **Automatically Detects:**
 - **📘 Adverbs (-ly words)** - Count and examples (unnaturally, exactly, tightly, etc.)
@@ -405,7 +424,7 @@ Comprehensive statistics and style analysis without any AI or API requirements.
 
 Creative writer's dictionary with contextual definitions and usage guidance.
 
-![Dictionary Tool](screenshots/screenshot-dictionary-entry.png)
+![Dictionary Tool](https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/screenshot-dictionary-entry.png)
 
 **Features:**
 - **Target Word** - Enter any word (auto-fills from selection)
@@ -517,7 +536,7 @@ MyNovel/
 
 Click the **gear icon** in the Prose Minion header for comprehensive settings:
 
-![Settings Overlay](screenshots/screenshot-settings-pane.png)
+![Settings Overlay](https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/screenshot-settings-pane.png)
 
 ### General Settings
 - **OpenRouter API Key** - Securely stored in OS keychain
@@ -528,6 +547,8 @@ Click the **gear icon** in the Prose Minion header for comprehensive settings:
 - **Assistant Model** - For prose and dialogue analysis
 - **Dictionary Model** - For word definitions
 - **Context Model** - For context-aware generation
+- **Category Search Model** - For semantic word discovery
+- **Model Browser** - Search by provider or family, compare pricing, release date, context window, and full model descriptions
 - Each scope can use a different model to balance cost/quality
 
 ### Context Paths
@@ -600,7 +621,7 @@ Built with **Clean Architecture** principles:
 
 - **Secure API Key Storage** - Keys stored in OS keychain (Keychain Access, Credential Manager, libsecret) via VSCode SecretStorage
 - **Local-First Processing** - Metrics and Search run entirely offline
-- **API Calls** - Only Assistant and Dictionary use OpenRouter (you control model and privacy settings)
+- **API Calls** - Only AI-powered tools use OpenRouter: Assistant, Context Search, Context, and Dictionary
 - **No Logging** - Your writing stays in your workspace
 - **No Training** - Configure OpenRouter models to opt-out of training data
 
@@ -608,17 +629,17 @@ Built with **Clean Architecture** principles:
 
 - VS Code 1.75.0 or higher
 - Node.js 18+ (for development only)
-- OpenRouter API account (only for Assistant and Dictionary features)
+- OpenRouter API account (only for AI-powered features)
 
 ---
 
 ## 📖 Documentation
 
-- **[Developer Guide](docs/DEVELOPER_GUIDE.md)** - Setup, architecture, and development workflow
-- **[Architecture](docs/ARCHITECTURE.md)** - System design and principles
-- **[Configuration](docs/CONFIGURATION.md)** - Complete settings reference
-- **[Tools Reference](docs/TOOLS.md)** - Detailed tool documentation
-- **[Prose Stats](docs/PROSE_STATS.md)** - Metrics algorithms and legend
+- **[Architecture](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/ARCHITECTURE.md)** - System design and principles
+- **[Configuration](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CONFIGURATION.md)** - Complete settings reference
+- **[Tools Reference](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/TOOLS.md)** - Detailed tool documentation
+- **[Prose Stats](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/PROSE_STATS.md)** - Metrics algorithms and legend
+- **[Recommended Models](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/RECOMMENDED_MODELS.md)** - Model guidance for writing workflows
 
 ---
 
@@ -626,6 +647,11 @@ Built with **Clean Architecture** principles:
 
 ### Latest Features
 
+- **Model Browser** - Search and compare curated OpenRouter models by provider/family with live metadata
+- **OpenRouter Account Balance** - Header widget with remaining credit visibility
+- **Theme Refresh** - Follow VS Code theme by default, with warm-dark still available
+- **Streaming Progress Stats** - Live chunk count, elapsed time, first response latency, and throughput
+- **Debug Output Shortcut** - Title-bar action opens the Prose Minion Output channel
 - **Secure API Key Storage** - OS-level encryption via VSCode SecretStorage (automatic migration)
 - **Context Resource Paths** - Configure project structure via Settings overlay
 - **Clickable Resource Pills** - Open referenced files directly from UI
@@ -636,7 +662,7 @@ Built with **Clean Architecture** principles:
 
 ### Recent Improvements
 
-- Scoped model selection per tool role (assistant/dictionary/context)
+- Scoped model selection per tool role (assistant/dictionary/context/category search)
 - Verbalized sampling for creative, diverse AI suggestions
 - Chapter aggregation for multi-file manuscripts
 - Enhanced copy/save with optional chapter details
@@ -665,7 +691,7 @@ See [CHANGELOG.md](CHANGELOG.md) for complete version history.
 - ✅ **Configure glob patterns** - Let the extension discover your structure
 
 ### Cost Management
-- 💰 Metrics and Search are **free** (no API calls)
+- 💰 Metrics and Word Search are **free** (no API calls)
 - 💰 Use **cheaper models** for Dictionary (e.g., Claude Haiku)
 - 💰 Use **premium models** for Assistant (e.g., Claude Sonnet) when quality matters
 - 💰 Monitor token usage in the header widget
@@ -679,7 +705,7 @@ See [CHANGELOG.md](CHANGELOG.md) for complete version history.
 
 ## 🤝 Contributing
 
-We welcome contributions! See the **[Developer Guide](docs/DEVELOPER_GUIDE.md)** for:
+We welcome contributions! See the **[repository documentation](https://github.com/okeylanders/prose-minion-vscode/tree/main/docs)** for:
 - Development setup
 - Project architecture
 - Testing procedures
@@ -749,7 +775,7 @@ Development assisted by:
 
 <p align="center">
   <a href="https://marketplace.visualstudio.com/">Install from Marketplace</a> •
-  <a href="docs/DEVELOPER_GUIDE.md">Developer Guide</a> •
+  <a href="https://github.com/okeylanders/prose-minion-vscode/tree/main/docs">Documentation</a> •
   <a href="https://github.com/okeylanders/prose-minion-vscode/issues">Report Issue</a> •
   <a href="https://buymeacoffee.com/okeylanders">☕ Support Development</a>
 </p>

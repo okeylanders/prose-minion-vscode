@@ -104,6 +104,22 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/mistralai/mistral-medium-3-5
   - Mistral AI: https://mistral.ai/
 
+### Mistral Large 2512 — European Prose & Structured Critique
+
+- **Best For:** High-quality multilingual prose analysis and instruction-following critique
+- **Description:** Newer Mistral Large generation with improved reasoning and instruction following over 2411
+- **Links:**
+  - OpenRouter: https://openrouter.ai/mistralai/mistral-large-2512
+  - Mistral AI: https://mistral.ai/
+
+### GLM 5.2 — Long-Horizon Reasoning
+
+- **Best For:** Manuscript-scale critique, structured category matching, and reliable multi-step prose analysis
+- **Description:** Z.AI's latest flagship with 1M context and stronger long-horizon reasoning over GLM 5.1
+- **Links:**
+  - OpenRouter: https://openrouter.ai/z-ai/glm-5.2
+  - Z.AI: https://z.ai/
+
 ### Moonshot Kimi K2 — Plot Logic
 
 - **Best For:** Deep-dives into plot holes and character motivations
@@ -164,6 +180,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 - **Description:** Flagship Qwen3.7 model with 1M context and strong agent-centric instruction following
 - **Links:**
   - OpenRouter: https://openrouter.ai/qwen/qwen3.7-max
+  - Qwen: https://qwenlm.github.io/
+
+### Qwen3.7 Plus — High-Value Long Context
+
+- **Best For:** Lower-cost long-context prose analysis, dictionary rewrites, and structured edits
+- **Description:** Cost-effective Qwen3.7 sibling with 1M context and strong value for long-form writing workflows
+- **Links:**
+  - OpenRouter: https://openrouter.ai/qwen/qwen3.7-plus
   - Qwen: https://qwenlm.github.io/
 
 ### Google Gemini 3.1 Pro — Massive Context

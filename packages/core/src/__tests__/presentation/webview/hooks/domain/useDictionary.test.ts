@@ -27,7 +27,10 @@ describe('useDictionary - Type Contracts', () => {
         isStreaming: false,
         isBuffering: false,
         streamingContent: '',
-        streamingTokenCount: 0,
+        streamingChunkCount: 0,
+        streamingElapsedMs: 0,
+        streamingInitialLatencyMs: undefined,
+        streamingChunksPerSecond: 0,
         currentRequestId: null
       };
 

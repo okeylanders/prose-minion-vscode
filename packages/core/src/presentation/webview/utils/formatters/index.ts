@@ -13,3 +13,4 @@ export * from './styleFlagsFormatter';
 export * from './wordFrequencyFormatter';
 export * from './categorySearchFormatter';
 export * from './analysisFormatter';
+export * from './streamingStatsFormatter';

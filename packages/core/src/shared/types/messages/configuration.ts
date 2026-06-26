@@ -16,13 +16,29 @@ export interface ModelOption {
   id: string;
   label: string;
   description?: string;
+  family?: string;
+  provider?: string;
+  releaseDate?: string;
+  knowledgeCutoff?: string;
+  expirationDate?: string;
+  contextLength?: number;
+  pricing?: {
+    prompt: string;
+    completion: string;
+  };
+  pricingAvailable?: boolean;
+  liveDataAvailable?: boolean;
 }
 
 // ============================================================================
 // Request Messages (no payload)
 // ============================================================================
 
-export interface RequestModelDataMessage extends MessageEnvelope<Record<string, never>> {
+export interface RequestModelDataPayload {
+  refresh?: boolean;
+}
+
+export interface RequestModelDataMessage extends MessageEnvelope<RequestModelDataPayload> {
   type: MessageType.REQUEST_MODEL_DATA;
 }
 
@@ -57,6 +73,7 @@ export interface SetModelSelectionMessage extends MessageEnvelope<SetModelSelect
 
 export interface ModelDataPayload {
   options: ModelOption[];
+  categoryOptions?: ModelOption[];
   selections: Partial<Record<ModelScope, string>>;
   ui?: {
     showTokenWidget?: boolean;

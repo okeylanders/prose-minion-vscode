@@ -97,7 +97,8 @@
     "onView:prose-minion.toolsView",
     "onCommand:prose-minion.assistantSelection",
     "onCommand:prose-minion.wordLookupSelection",
-    "onCommand:prose-minion.analyzeSelection"
+    "onCommand:prose-minion.analyzeSelection",
+    "onCommand:prose-minion.showOutputChannel"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -132,6 +133,11 @@
         "command": "prose-minion.openSettingsOverlay",
         "title": "Prose Minion: Settings",
         "icon": "$(gear)"
+      },
+      {
+        "command": "prose-minion.showOutputChannel",
+        "title": "Prose Minion: Show Debug Output",
+        "icon": "$(bug)"
       }
     ],
     "menus": {
@@ -148,6 +154,11 @@
         }
       ],
       "view/title": [
+        {
+          "command": "prose-minion.showOutputChannel",
+          "when": "view == prose-minion.toolsView",
+          "group": "navigation@98"
+        },
         {
           "command": "prose-minion.openSettingsOverlay",
           "when": "view == prose-minion.toolsView",
@@ -214,10 +225,11 @@
             "openai/gpt-5.4-pro",
             "openai/gpt-chat-latest",
             "deepcogito/cogito-v2.1-671b",
-            "mistralai/mistral-large-2411",
+            "mistralai/mistral-large-2512",
             "z-ai/glm-4.7",
             "z-ai/glm-4.7-flash",
-            "z-ai/glm-5.1"
+            "z-ai/glm-5.1",
+            "z-ai/glm-5.2"
           ],
           "description": "AI model for Category Search (curated list, thinking models)",
           "order": 5

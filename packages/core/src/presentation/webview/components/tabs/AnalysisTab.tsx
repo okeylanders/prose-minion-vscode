@@ -432,7 +432,10 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
             content={context.streamingContent}
             isStreaming={context.isStreaming}
             isBuffering={context.isBuffering}
-            tokenCount={context.streamingTokenCount}
+            chunkCount={context.streamingChunkCount}
+            elapsedMs={context.streamingElapsedMs}
+            initialLatencyMs={context.streamingInitialLatencyMs}
+            chunksPerSecond={context.streamingChunksPerSecond}
             onCancel={context.currentRequestId ? handleCancelContextStreaming : undefined}
             cancelDisabled={!context.currentRequestId}
             className="context-streaming"
@@ -505,6 +508,14 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
           >
             <Icon name="hand" size={15} /> Gestures
           </button>
+          <button
+            className="action-button more-tools-wide"
+            onClick={() => setShowAllTools(true)}
+            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+            title="Browse every writing tool"
+          >
+            <Icon name="grid" size={15} /> More Tools
+          </button>
         </div>
       </div>
 
@@ -522,7 +533,10 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
           content={analysis.streamingContent}
           isStreaming={analysis.isStreaming}
           isBuffering={analysis.isBuffering}
-          tokenCount={analysis.streamingTokenCount}
+          chunkCount={analysis.streamingChunkCount}
+          elapsedMs={analysis.streamingElapsedMs}
+          initialLatencyMs={analysis.streamingInitialLatencyMs}
+          chunksPerSecond={analysis.streamingChunksPerSecond}
           onCancel={analysis.currentRequestId ? handleCancelAnalysisStreaming : undefined}
           cancelDisabled={!analysis.currentRequestId}
         />

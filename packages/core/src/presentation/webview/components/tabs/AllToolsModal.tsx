@@ -25,25 +25,25 @@ interface ToolDef {
 }
 
 const TOOLS: ToolDef[] = [
-  { group: 'Primary', name: 'Dialogue & Beats', icon: 'dialogue', desc: 'Cadence, subtext, and the microbeats between lines.', action: { kind: 'dialogue', focus: 'both' } },
-  { group: 'Primary', name: 'Prose', icon: 'pen', desc: 'Line-level rewrite suggestions for flow and clarity.', action: { kind: 'prose' } },
-  { group: 'Primary', name: 'Gestures', icon: 'hand', desc: 'Body language — variety, repetition, and intent.', action: { kind: 'writingTool', focus: 'gestures' } },
+  { group: 'Primary', name: 'Dialogue & Beats', icon: 'dialogue', desc: 'Dialogue quality and action beats in equal measure — what\'s said and how it\'s embodied.', action: { kind: 'dialogue', focus: 'both' } },
+  { group: 'Primary', name: 'Prose', icon: 'pen', desc: 'Diction, imagery, and cadence — with creative sampling across multiple stylistic approaches.', action: { kind: 'prose' } },
+  { group: 'Primary', name: 'Gestures', icon: 'hand', desc: 'Convert static conditions into live events — something happens, something changes, someone must respond.', action: { kind: 'writingTool', focus: 'gestures' } },
 
-  { group: 'Dialogue (focused)', name: 'Dialogue Only', icon: 'dialogue', desc: 'Just the spoken lines — tags, rhythm, and voice.', action: { kind: 'dialogue', focus: 'dialogue' } },
-  { group: 'Dialogue (focused)', name: 'Microbeats Only', icon: 'sparkle', desc: 'Just the action beats woven through the dialogue.', action: { kind: 'dialogue', focus: 'microbeats' } },
+  { group: 'Dialogue (focused)', name: 'Dialogue Only', icon: 'dialogue', desc: 'Just the spoken words — diction, character voice, subtext, and line rhythm. No beats.', action: { kind: 'dialogue', focus: 'dialogue' } },
+  { group: 'Dialogue (focused)', name: 'Microbeats Only', icon: 'sparkle', desc: 'Physical grounding only — beat placement, density, and spatial choreography. No dialogue changes.', action: { kind: 'dialogue', focus: 'microbeats' } },
 
-  { group: 'Craft & Voice', name: 'Cliché', icon: 'stamp', desc: 'Surface tired phrasings and stock images.', action: { kind: 'writingTool', focus: 'cliche' } },
-  { group: 'Craft & Voice', name: 'Repetition', icon: 'repeat', desc: 'Echoed words, structures, and tics across the passage.', action: { kind: 'writingTool', focus: 'repetition' } },
-  { group: 'Craft & Voice', name: 'Decision Points', icon: 'branch', desc: 'Moments where a character chooses — and the stakes.', action: { kind: 'writingTool', focus: 'decision-points' } },
-  { group: 'Craft & Voice', name: 'Show & Tell', icon: 'eye', desc: 'Where you summarize vs. dramatize on the page.', action: { kind: 'writingTool', focus: 'show-and-tell' } },
-  { group: 'Craft & Voice', name: 'Choreography', icon: 'move', desc: 'Spatial logic of movement through a scene.', action: { kind: 'writingTool', focus: 'choreography' } },
-  { group: 'Craft & Voice', name: 'Stock & Signature', icon: 'target', desc: 'Generic beats vs. your distinctive authorial moves.', action: { kind: 'writingTool', focus: 'stock-and-signature' } },
-  { group: 'Craft & Voice', name: 'Placeholders', icon: 'search', desc: 'Find TODOs, [brackets], and unfinished seams.', action: { kind: 'writingTool', focus: 'placeholders' } },
+  { group: 'Craft & Voice', name: 'Cliché', icon: 'stamp', desc: 'Dead metaphors, stock phrases, and over-elaborate purple prose — with priority triage.', action: { kind: 'writingTool', focus: 'cliche' } },
+  { group: 'Craft & Voice', name: 'Repetition', icon: 'repeat', desc: 'Echo words, action-beat tics, metaphor clusters, and sentence structure ruts.', action: { kind: 'writingTool', focus: 'repetition' } },
+  { group: 'Craft & Voice', name: 'Decision Points', icon: 'branch', desc: 'Middle-gradient word defaults and semantic airlocks — where prose stayed safe instead of committing.', action: { kind: 'writingTool', focus: 'decision-points' } },
+  { group: 'Craft & Voice', name: 'Show & Tell', icon: 'eye', desc: 'Dramatization balance — under-rendered peaks that should show; over-labored transitions that should tell.', action: { kind: 'writingTool', focus: 'show-and-tell' } },
+  { group: 'Craft & Voice', name: 'Choreography', icon: 'move', desc: 'Scene-wide movement audit — choreography defaults, zone-by-zone staging, and spatial continuity.', action: { kind: 'writingTool', focus: 'choreography' } },
+  { group: 'Craft & Voice', name: 'Stock & Signature', icon: 'target', desc: 'Cognitive economy — maps functional stock, decorated stock, and signature beats at the peaks.', action: { kind: 'writingTool', focus: 'stock-and-signature' } },
+  { group: 'Craft & Voice', name: 'Placeholders', icon: 'search', desc: 'Vague where it should commit (somethings, noun fog, weak gradients); over-precise where it should breathe (loud transitions, stacked modifiers).', action: { kind: 'writingTool', focus: 'placeholders' } },
 
-  { group: 'Technical', name: 'Style', icon: 'palette', desc: 'Weak verbs, adverbs, filler, and passive voice.', action: { kind: 'writingTool', focus: 'style' } },
-  { group: 'Technical', name: 'Editor', icon: 'list', desc: 'A holistic developmental editor pass.', action: { kind: 'writingTool', focus: 'editor' } },
-  { group: 'Technical', name: 'Continuity', icon: 'link', desc: 'Contradictions against characters and prior chapters.', action: { kind: 'writingTool', focus: 'continuity' } },
-  { group: 'Technical', name: 'Fresh', icon: 'sprout', desc: 'Fresh-eyes reactions, as a first-time reader.', action: { kind: 'writingTool', focus: 'fresh' } }
+  { group: 'Technical', name: 'Style', icon: 'palette', desc: 'Style consistency — tense drift, POV breaks, and register shifts within the passage.', action: { kind: 'writingTool', focus: 'style' } },
+  { group: 'Technical', name: 'Editor', icon: 'list', desc: 'Copyediting pass — grammar, spelling, dialogue punctuation, and mechanical consistency.', action: { kind: 'writingTool', focus: 'editor' } },
+  { group: 'Technical', name: 'Continuity', icon: 'link', desc: 'Internal scene logic — spatial impossibilities, vanishing props, timeline breaks, and info the character couldn\'t know.', action: { kind: 'writingTool', focus: 'continuity' } },
+  { group: 'Technical', name: 'Fresh', icon: 'sprout', desc: 'Engagement audit — character agency, stakes, and pacing calibrated to the scene\'s position in the story.', action: { kind: 'writingTool', focus: 'fresh' } }
 ];
 
 const GROUP_ORDER = ['Primary', 'Dialogue (focused)', 'Craft & Voice', 'Technical'];

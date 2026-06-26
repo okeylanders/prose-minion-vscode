@@ -34,7 +34,7 @@ import {
   SecretsPort
 } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
-import { OpenRouterModels } from '@providers/OpenRouterModels';
+import { CATEGORY_MODELS, CuratedOpenRouterModel, OpenRouterModel, OpenRouterModels } from '@providers/OpenRouterModels';
 import { WORD_SEARCH_DEFAULTS } from '@shared/constants/wordSearchDefaults';
 
 export class ConfigurationHandler {
@@ -291,7 +291,9 @@ export class ConfigurationHandler {
       await new Promise(resolve => setTimeout(resolve, 50));
 
       // Send MODEL_DATA with the updated selection
-      // (Config watcher will NOT send it to avoid race conditions)
+      // (Config watcher will NOT send it to avoid race conditions).
+      // Reuse the cached catalog — the refresh point is browser-open, not selection,
+      // so a pick doesn't trigger a second full ~500KB catalog re-fetch.
       await this.sendModelData();
       this.outputChannel.appendLine(
         `[ConfigurationHandler] Sent MODEL_DATA after model selection change`
@@ -308,35 +310,45 @@ export class ConfigurationHandler {
 
   async handleRequestModelData(message: RequestModelDataMessage): Promise<void> {
     try {
-      await this.sendModelData();
+      await this.sendModelData({ refreshCatalog: message.payload?.refresh === true });
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.sendError('settings.model', 'Failed to load model data', msg);
     }
   }
 
-  async sendModelData(): Promise<void> {
+  async sendModelData(options: { refreshCatalog?: boolean } = {}): Promise<void> {
     try {
+      if (options.refreshCatalog) {
+        OpenRouterModels.clearCache();
+      }
+
       const recommended = OpenRouterModels.getRecommendedModels();
-      const options: ModelOption[] = recommended.map(model => ({
-        id: model.id,
-        label: model.name,
-        description: model.description
-      }));
+      const liveModels = await OpenRouterModels.fetchModels(this.outputChannel);
+      const liveModelsById = new Map(liveModels.map(model => [model.id, model]));
+
+      // A catalog made entirely of fallback entries means the live fetch failed.
+      // Log the degraded state so the on-call sees WHY every card reads
+      // "pricing unavailable" instead of a success line that hides it.
+      const liveFetchDegraded = liveModels.length > 0 && liveModels.every(model => model.isFallback);
+      if (liveFetchDegraded) {
+        this.outputChannel.appendLine(
+          `[ConfigurationHandler] WARN: live OpenRouter catalog unavailable — all ${liveModels.length} models using offline fallback (pricing/context hidden). Reopen the model browser to retry.`
+        );
+      }
+
+      const modelOptions = this.buildModelOptions(recommended, liveModelsById);
+      const categoryOptions = this.buildModelOptions(CATEGORY_MODELS, liveModelsById);
 
       const selections = this.getEffectiveModelSelections();
       this.outputChannel.appendLine(
         `[ConfigurationHandler] sendModelData: selections = ${JSON.stringify(selections)}`
       );
 
-      const seen = new Set(options.map(option => option.id));
+      const seen = new Set(modelOptions.map(option => option.id));
       Object.values(selections).forEach(modelId => {
         if (modelId && !seen.has(modelId)) {
-          options.push({
-            id: modelId,
-            label: modelId,
-            description: 'Custom model (from settings)'
-          });
+          modelOptions.push(this.buildCustomModelOption(modelId, liveModelsById.get(modelId)));
           seen.add(modelId);
         }
       });
@@ -345,7 +357,8 @@ export class ConfigurationHandler {
         type: MessageType.MODEL_DATA,
         source: 'extension.handler',
         payload: {
-          options,
+          options: modelOptions,
+          categoryOptions,
           selections,
           ui: {
             showTokenWidget: this.settings.get<boolean>('proseMinion', 'ui.showTokenWidget') ?? true
@@ -355,7 +368,7 @@ export class ConfigurationHandler {
       };
 
       this.outputChannel.appendLine(
-        `[ConfigurationHandler] Sending MODEL_DATA with ${options.length} options and selections: ${JSON.stringify(selections)}`
+        `[ConfigurationHandler] Sending MODEL_DATA with ${modelOptions.length} options and selections: ${JSON.stringify(selections)}`
       );
       void this.postMessage(message);
     } catch (error) {
@@ -363,6 +376,73 @@ export class ConfigurationHandler {
       this.outputChannel.appendLine(`[ConfigurationHandler] Failed to load model data: ${message}`);
       this.sendError('settings.model', 'Failed to load model list', message);
     }
+  }
+
+  private buildModelOptions(
+    curatedModels: CuratedOpenRouterModel[],
+    liveModelsById: Map<string, OpenRouterModel>
+  ): ModelOption[] {
+    return curatedModels.map(model => this.buildModelOption(model, liveModelsById.get(model.id)));
+  }
+
+  private buildModelOption(curated: CuratedOpenRouterModel, live?: OpenRouterModel): ModelOption {
+    const pricingAvailable = this.hasLivePricing(live);
+
+    return {
+      id: curated.id,
+      label: curated.name,
+      description: curated.description,
+      family: curated.family,
+      provider: this.getProviderName(curated.id),
+      releaseDate: this.getReleaseDate(live),
+      knowledgeCutoff: live?.knowledge_cutoff,
+      expirationDate: live?.expiration_date,
+      contextLength: live && !live.isFallback ? live.context_length : undefined,
+      pricing: pricingAvailable ? live?.pricing : undefined,
+      pricingAvailable,
+      liveDataAvailable: Boolean(live && !live.isFallback)
+    };
+  }
+
+  private buildCustomModelOption(modelId: string, live?: OpenRouterModel): ModelOption {
+    const pricingAvailable = this.hasLivePricing(live);
+
+    return {
+      id: modelId,
+      label: live?.name ?? modelId,
+      description: live?.description ?? 'Custom model (from settings)',
+      family: live?.family,
+      provider: this.getProviderName(modelId),
+      releaseDate: this.getReleaseDate(live),
+      knowledgeCutoff: live?.knowledge_cutoff,
+      expirationDate: live?.expiration_date,
+      contextLength: live && !live.isFallback ? live.context_length : undefined,
+      pricing: pricingAvailable ? live?.pricing : undefined,
+      pricingAvailable,
+      liveDataAvailable: Boolean(live && !live.isFallback)
+    };
+  }
+
+  private hasLivePricing(live?: OpenRouterModel): boolean {
+    if (!live || live.isFallback) {
+      return false;
+    }
+
+    const prompt = Number(live.pricing?.prompt);
+    const completion = Number(live.pricing?.completion);
+    return Number.isFinite(prompt) && Number.isFinite(completion);
+  }
+
+  private getReleaseDate(live?: OpenRouterModel): string | undefined {
+    if (!live?.created || live.isFallback) {
+      return undefined;
+    }
+
+    return new Date(live.created * 1000).toISOString().slice(0, 10);
+  }
+
+  private getProviderName(modelId: string): string {
+    return modelId.split('/')[0] ?? 'custom';
   }
 
   private getEffectiveModelSelections(): Partial<Record<ModelScope, string>> {

@@ -29,7 +29,10 @@ export interface AnalysisState {
   isStreaming: boolean;
   isBuffering: boolean;
   streamingContent: string;
-  streamingTokenCount: number;
+  streamingChunkCount: number;
+  streamingElapsedMs: number;
+  streamingInitialLatencyMs?: number;
+  streamingChunksPerSecond: number;
   currentRequestId: string | null;
 }
 
@@ -252,7 +255,10 @@ export const useAnalysis = (): UseAnalysisReturn => {
     isStreaming: streaming.isStreaming,
     isBuffering: streaming.isBuffering,
     streamingContent: streaming.displayContent,
-    streamingTokenCount: streaming.tokenCount,
+    streamingChunkCount: streaming.chunkCount,
+    streamingElapsedMs: streaming.elapsedMs,
+    streamingInitialLatencyMs: streaming.initialLatencyMs,
+    streamingChunksPerSecond: streaming.chunksPerSecond,
     currentRequestId,
 
     // Actions

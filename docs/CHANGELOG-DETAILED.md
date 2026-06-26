@@ -5,18 +5,23 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — Monorepo migration (Pass 1, Stage 2)
+## [2.0.0] - 2026-06-26
 
 ### Overview
 
-Structural-only move to a workspace monorepo: one platform-agnostic
-`@prose-minion/core` consumed by a thin `apps/vscode-extension` shell, mirroring
-FrameMinion's chassis. **No behavior change** — the 313-test suite, all three
-typechecks, and both webpack bundles are green before and after, and the
-`vsce package` VSIX ships the **same file set** (`dist/` + `resources/` + `assets/`,
-`src/`-free) with identical runtime behavior (not a byte-reproducible build — the
-archive's internal root moved to the app dir). Builds on Stage 1 (ports-and-adapters;
-core was already vscode-free).
+Major architecture and user-experience release. Prose Minion now uses a workspace
+monorepo with a platform-agnostic `@prose-minion/core` consumed by a thin
+`apps/vscode-extension` shell, mirroring FrameMinion's chassis. The release also
+ships the React 18 sidebar facelift, follow-VS-Code theming, OpenRouter account
+balance widget, searchable model browser, title-bar debug output shortcut, live
+streaming progress stats, and a final model-catalog refresh.
+
+The original Stage-2 monorepo move was structural-only: the 313-test suite, all
+three typechecks, and both webpack bundles were green before and after, and the
+`vsce package` VSIX shipped the same runtime file classes (`dist/`, `resources/`,
+and `assets/`, `src`-free) with equivalent runtime behavior. Later v2 commits then
+layered the user-facing sidebar and release-prep improvements on top of that
+foundation.
 
 **Branch:** `claude/funny-davinci-yqautn` (off `epic/monorepo-ports-and-adapters` @ `ae617df`)
 **Docs:** `migration-and-facelift/` · ADR `docs/adr/2026-06-16-monorepo-ports-and-adapters.md`
@@ -204,6 +209,47 @@ a surface. **377 files · +12,867 / −3,909 · 50 commits; migrations: none** �
   errors, production build and Tailwind bundle witness green.
 
 **Landing:** PR #61 merges this epic into `main` as a **merge commit (no squash)**.
+
+### Final v2 release polish
+
+- **Model Browser Selector** — replaced compact model dropdown behavior with a
+  searchable browser modal reused across model scopes. Users can browse curated
+  model cards by provider or family, search names/IDs/descriptions, compare live
+  OpenRouter pricing, release dates, context windows, and full model blurbs, then
+  select the model for the active scope.
+- **Model metadata flow** — extended model options and settings messages so the
+  webview can display curated metadata joined with live OpenRouter catalog data.
+  The `/models` response remains the source of truth for volatile pricing/context
+  metadata; curated `family` values drive the Family pivot.
+- **Debug/output title-bar action** — added `prose-minion.showOutputChannel` with
+  a `$(bug)` icon immediately before Settings in the native VS Code view title.
+  The command reveals the existing Prose Minion Output channel and introduces no
+  new core/webview message path.
+- **Streaming progress stats** — `useStreaming` now tracks chunk count, elapsed
+  time, first-chunk latency, and average chunks/sec. The UI now labels live
+  output honestly as chunks rather than exact provider tokens.
+- **All Tools Modal copy audit** — updated all 16 writing-tool card descriptions
+  to match actual prompt behavior, including fixes for misleading Gestures,
+  Decision Points, Style, and Editor summaries.
+- **Model catalog refresh** — added `z-ai/glm-5.2` and `qwen/qwen3.7-plus`, moved
+  Category Search's Mistral option from `mistralai/mistral-large-2411` to
+  `mistralai/mistral-large-2512`, and removed/deprioritized
+  `deepseek/deepseek-v3.2-speciale`, `mistralai/mistral-large-2411`, and
+  `arcee-ai/maestro-reasoning` from recommendations.
+- **Marketplace docs repair** — because VSCE now packages from
+  `apps/vscode-extension`, Marketplace-facing docs are the app README and app
+  CHANGELOG. README image/doc links were changed away from package-root-relative
+  `screenshots/...` and `docs/...` paths; the README hero now uses a shipped PNG;
+  and the sister-extension callout now points to FrameMinion.
+
+### Final release validation
+
+- `npm run typecheck`
+- `npm test` — 50 suites / 392 tests during release prep
+- `npm run build`
+- `npm run lint` — 0 errors, existing warnings only
+- `npm run package` — app-workspace VSIX package produced and inspected for
+  Marketplace file contents
 
 ---
 

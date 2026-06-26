@@ -239,6 +239,10 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('prose-minion.assistantSelection', handleAssistantSelection),
     vscode.commands.registerCommand('prose-minion.analyzeSelection', handleAssistantSelection),
     vscode.commands.registerCommand('prose-minion.wordLookupSelection', handleWordLookupSelection),
+    vscode.commands.registerCommand('prose-minion.showOutputChannel', () => {
+      outputChannel.appendLine('[Command] Showing Prose Minion output channel');
+      outputChannel.show(true);
+    }),
     vscode.commands.registerCommand('prose-minion.openSettingsOverlay', () => {
       focusToolsView();
       proseToolsViewProvider?.openSettings();

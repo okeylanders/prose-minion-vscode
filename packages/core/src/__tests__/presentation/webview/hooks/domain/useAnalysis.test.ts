@@ -39,7 +39,10 @@ describe('useAnalysis - Type Contracts', () => {
         'isStreaming',
         'isBuffering',
         'streamingContent',
-        'streamingTokenCount',
+        'streamingChunkCount',
+        'streamingElapsedMs',
+        'streamingInitialLatencyMs',
+        'streamingChunksPerSecond',
         'currentRequestId'
       ];
 
@@ -55,7 +58,10 @@ describe('useAnalysis - Type Contracts', () => {
         isStreaming: false,
         isBuffering: false,
         streamingContent: '',
-        streamingTokenCount: 0,
+        streamingChunkCount: 0,
+        streamingElapsedMs: 0,
+        streamingInitialLatencyMs: undefined,
+        streamingChunksPerSecond: 0,
         currentRequestId: null
       };
 
@@ -133,7 +139,9 @@ describe('useAnalysis - Type Contracts', () => {
       // State properties (read-only) - including streaming state
       const stateProps: (keyof AnalysisState)[] = [
         'result', 'toolName', 'loading', 'usedGuides', 'tickerMessage', 'statusMessage',
-        'isStreaming', 'isBuffering', 'streamingContent', 'streamingTokenCount', 'currentRequestId'
+        'isStreaming', 'isBuffering', 'streamingContent',
+        'streamingChunkCount', 'streamingElapsedMs', 'streamingInitialLatencyMs',
+        'streamingChunksPerSecond', 'currentRequestId'
       ];
 
       // Actions (user-triggered operations) - including streaming actions

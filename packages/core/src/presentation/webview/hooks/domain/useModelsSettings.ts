@@ -28,12 +28,14 @@ export interface ModelsSettingsState {
   settings: ModelsSettings;
   modelOptions: ModelOption[];                          // Available models (full list)
   categoryModelOptions: ModelOption[];                  // Category models (curated list)
+  categoryOptionsReady: boolean;                        // True once live category options have arrived
   modelSelections: Partial<Record<ModelScope, string>>; // Current selections by scope
 }
 
 export interface ModelsSettingsActions {
   updateSetting: (key: keyof ModelsSettings, value: any) => void;
   setModelSelection: (scope: ModelScope, modelId: string) => void;
+  requestModelData: (refresh?: boolean) => void;
   handleSettingsData: (message: SettingsDataMessage) => void;
   handleModelData: (message: ModelDataMessage) => void;
 }
@@ -129,8 +131,15 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
 
   const [modelOptions, setModelOptions] = React.useState<ModelOption[]>([]);
   const [categoryModelOptions] = React.useState<ModelOption[]>(
-    CATEGORY_MODELS.map(m => ({ id: m.id, label: m.name }))
+    CATEGORY_MODELS.map(m => ({
+      id: m.id,
+      label: m.name,
+      family: m.family,
+      provider: m.id.split('/')[0],
+      description: m.description,
+    }))
   );
+  const [liveCategoryModelOptions, setLiveCategoryModelOptions] = React.useState<ModelOption[]>([]);
   const [modelSelections, setModelSelections] = React.useState<Partial<Record<ModelScope, string>>>(
     persisted?.modelSelections ?? {}
   );
@@ -183,6 +192,10 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
         setModelOptions(options);
       }
 
+      if (message.payload.categoryOptions) {
+        setLiveCategoryModelOptions(message.payload.categoryOptions);
+      }
+
       if (selections) {
         setModelSelections(prev => {
           const next = {
@@ -194,6 +207,17 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
       }
     }
   }, []);
+
+  const requestModelData = React.useCallback((refresh = false) => {
+    vscode.postMessage({
+      type: MessageType.REQUEST_MODEL_DATA,
+      source: 'webview.hooks.useModelsSettings',
+      payload: {
+        refresh,
+      },
+      timestamp: Date.now()
+    });
+  }, [vscode]);
 
   // Update a specific setting (send to backend with optimistic update)
   const updateSetting = React.useCallback((key: keyof ModelsSettings, value: any) => {
@@ -240,10 +264,12 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
   return {
     settings,
     modelOptions,
-    categoryModelOptions,
+    categoryModelOptions: liveCategoryModelOptions.length > 0 ? liveCategoryModelOptions : categoryModelOptions,
+    categoryOptionsReady: liveCategoryModelOptions.length > 0,
     modelSelections,
     updateSetting,
     setModelSelection,
+    requestModelData,
     handleSettingsData,
     handleModelData,
     persistedState: {
