@@ -199,9 +199,9 @@ export const CATEGORY_MODELS = [
     description: 'One of the strongest open models globally, matching frontier closed models'
   },
   {
-    id: 'mistralai/mistral-large-2411',
-    name: 'Mistral Large 2411',
-    description: 'Mistral large model'
+    id: 'mistralai/mistral-large-2512',
+    name: 'Mistral Large 2512',
+    description: 'Newest Mistral Large with improved reasoning and instruction following over 2411'
   },
   {
     id: 'z-ai/glm-4.7',
@@ -217,6 +217,11 @@ export const CATEGORY_MODELS = [
     id: 'z-ai/glm-5.1',
     name: 'GLM 5.1',
     description: 'Z.AI\'s newest flagship for predictable structured matching with improved reliability'
+  },
+  {
+    id: 'z-ai/glm-5.2',
+    name: 'GLM 5.2',
+    description: 'Z.AI\'s GLM 5.2 flagship with 1M context and stronger long-horizon reasoning for structured category matching'
   },
 ];
 
@@ -305,11 +310,6 @@ export const RECOMMENDED_MODELS = [
     id: 'deepseek/deepseek-v3.2',
     name: 'DeepSeek V3.2',
     description: 'Stable V3.2 release. Sparse-attention long-context model suited to manuscript-scale critique and consistency checks.'
-  },
-  {
-    id: 'deepseek/deepseek-v3.2-speciale',
-    name: 'DeepSeek V3.2 Speciale',
-    description: 'V3.2 variant tuned for long-form creative tasks. Useful for extended narrative reasoning over large context windows.'
   },
   {
     id: 'deepseek/deepseek-v4-pro',
@@ -405,6 +405,11 @@ export const RECOMMENDED_MODELS = [
     id: 'z-ai/glm-5.1',
     name: 'GLM 5.1',
     description: 'Z.AI\'s newest flagship. Refines GLM 5 with stronger long-context reasoning and more reliable multi-step prose generation.'
+  },
+  {
+    id: 'z-ai/glm-5.2',
+    name: 'GLM 5.2',
+    description: 'Z.AI\'s latest flagship (1M context). Builds on GLM 5.1 with stronger long-horizon reasoning for manuscript-scale critique and reliable multi-step prose generation.'
   },
   {
     id: 'openai/gpt-4.1',
@@ -532,11 +537,6 @@ export const RECOMMENDED_MODELS = [
     description: 'Long-horizon reasoning model with strong multimodal and agentic performance. Good for extended writing workflows and context-heavy critique.'
   },
   {
-    id: 'mistralai/mistral-large-2411',
-    name: 'Mistral Large 2411',
-    description: 'Flagship open-weight class. Excellent European-style prose quality and multilingual support.'
-  },
-  {
     id: 'mistralai/mistral-large-2512',
     name: 'Mistral Large 2512',
     description: 'Newest Mistral Large. Improved reasoning and instruction following over 2411 with strong multilingual prose.'
@@ -602,6 +602,11 @@ export const RECOMMENDED_MODELS = [
     description: 'Flagship Qwen3.7 model with 1M context. Strong agent-centric instruction following for long-context prose analysis, planning, and structured rewrites.'
   },
   {
+    id: 'qwen/qwen3.7-plus',
+    name: 'Qwen3.7 Plus',
+    description: 'Cost-effective Qwen3.7 sibling with 1M context. Strong value option for long-context prose analysis, dictionary rewrites, and structured edits at a fraction of 3.7 Max\'s price.'
+  },
+  {
     id: 'sao10k/l3.3-euryale-70b',
     name: 'Sao10K Euryale 70B',
     description: 'Roleplay specialist. Creative, non-restrictive, and great for unique character voices.'
@@ -630,11 +635,6 @@ export const RECOMMENDED_MODELS = [
     id: 'arcee-ai/virtuoso-large',
     name: 'Virtuoso Large',
     description: 'Cross-domain reasoning. Good balance of creative writing and enterprise-grade analysis.'
-  },
-  {
-    id: 'arcee-ai/maestro-reasoning',
-    name: 'Arcee Maestro Reasoning',
-    description: 'Reasoning specialist from Arcee. Good for structural critique, plot logic, and pacing analysis.'
   },
   {
     id: 'arcee-ai/trinity-large-thinking',

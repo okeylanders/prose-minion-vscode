@@ -122,6 +122,7 @@ Required:
   - Mention theme/follow-VS-Code facelift.
   - Mention debug/output title-bar action.
   - Mention streaming progress stats.
+  - Mention the final v2 model-catalog refresh.
   - Replace or repair every `screenshots/...` and `docs/...` relative link.
 - `apps/vscode-extension/CHANGELOG.md`
   - Add `## [2.0.0] - 2026-06-26` or final release date.
@@ -135,8 +136,34 @@ Required:
     - account balance widget
     - debug/output command
     - streaming stats
+    - model-catalog refresh
     - packaging/docs link fix
     - final validation commands
+
+## Pending Model Catalog Changes To Include
+
+Okey has an unstaged update in:
+
+- `packages/core/src/infrastructure/api/providers/OpenRouterModels.ts`
+
+Capture these in the v2 release notes/changelogs once finalized:
+
+- Added `z-ai/glm-5.2` to recommended models and category-search models.
+  - User-facing angle: latest GLM flagship, 1M context, stronger long-horizon reasoning for manuscript-scale critique and structured category matching.
+- Added `qwen/qwen3.7-plus` to recommended models.
+  - User-facing angle: lower-cost Qwen3.7 sibling with 1M context; good value for long-context prose analysis, dictionary rewrites, and structured edits.
+- Updated Category Search's Mistral option from `mistralai/mistral-large-2411` to `mistralai/mistral-large-2512`.
+  - User-facing angle: newer Mistral Large with improved reasoning/instruction following.
+- Removed/deprioritized stale or lower-priority recommendations:
+  - `deepseek/deepseek-v3.2-speciale`
+  - `mistralai/mistral-large-2411`
+  - `arcee-ai/maestro-reasoning`
+
+Release follow-up:
+
+- `apps/vscode-extension/package.json` `proseMinion.categoryModel.enum` was synced with `CATEGORY_MODELS` before committing the model refresh.
+- Update `docs/RECOMMENDED_MODELS.md` if it is still part of the release-facing docs set.
+- Mention the model refresh in README `What's New`, Marketplace changelog, and detailed changelog.
 
 Optional but likely useful:
 
