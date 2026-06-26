@@ -28,7 +28,7 @@
 >
 > **Model Catalog Refresh** - Added GLM 5.2 and Qwen3.7 Plus, updated Category Search to Mistral Large 2512, and removed stale/deprioritized recommendations.
 >
-> **Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
+> **Full Changelog** - See [CHANGELOG.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/CHANGELOG.md) for complete release notes and version history.
 
 ---
 
@@ -40,7 +40,7 @@
 >
 > **✅ Stale ID Check** - Confirmed all retained curated model IDs are still served by OpenRouter.
 >
-> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
+> **📋 Full Changelog** - See [CHANGELOG.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/CHANGELOG.md) for complete release notes and version history.
 
 ---
 
@@ -52,89 +52,7 @@
 >
 > **🧹 Stale Model Cleanup** - Removed `claude-3.7-sonnet` and four retired Grok IDs that OpenRouter no longer serves.
 >
-> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
-
----
-
-## 🎉 What's New in v1.10.2
-
-> **🤖 OpenRouter Model Refresh** - Updated the curated model catalog with recent OpenRouter additions for assistant, dictionary, context, and category search workflows.
->
-> **🧠 Aion 2.0 Is Worth a Spin** - Added `aion-labs/aion-2.0`, a storytelling-focused model that is interesting for narrative tension, character context, and rewrite exploration.
->
-> **🧹 Model List Cleanup** - Removed unavailable OpenRouter model IDs and aligned the webview dictionary default with the extension setting.
->
-> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
-
----
-
-## 🎉 What's New in v1.10.1
-
-> **🩹 Fast Dictionary Fix** - Batch fan-out dictionary lookups no longer repeat the `Special Focus` section across multiple blocks when you provide context.
->
-> **🧱 Assembly Guardrails** - Fast dictionary assembly now strips stray `Special Focus` output from non-focus blocks before combining the final entry.
->
-> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
-
----
-
-## 🎉 What's New in v1.10.0
-
-> **🎯 Dictionary Special Focus** - Dictionary lookups now add a dedicated Special Focus section when you supply context or author notes, so the response can address your exact scene or phrasing problem.
->
-> **⚡ Faster Context-Aware Dictionary Output** - The fast dictionary prompt set now includes a focused contextual block so parallel generation stays aligned with the richer standard lookup behavior.
->
-> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
-
----
-
-## 🎉 What's New in v1.9.0
-
-> **🧩 Placeholders Focus Tool** - New assistant focus for catching placeholder words, generic stand-ins, and vague descriptive shortcuts in your prose.
->
-> **🏃 Gestures Rework** - The Gestures focus now leans into choreographic events and scene-level physical action choices.
->
-> **🤖 Model Catalog Refresh** - Updated model ordering, Gemini category mappings, and default scoped model selections.
->
-> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
-
----
-
-## 🎉 What's New in v1.8.0
-
-> **🎯 Five New Focus Writing Tools** - Decision Points, Show & Tell, Gestures, Choreography, and Stock & Signature. Analyze character decisions, prose balance, body language, spatial movement, and cognitive economy in your scenes.
->
-> **🤖 Opus 4.6 Model** - Claude Opus 4.6 now available in all model dropdowns.
->
-> **🛠️ Streaming Fix** - Cancelling a streaming analysis now preserves already-received content instead of wiping it.
->
-> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
-
----
-
-## 🎉 What's New in v1.7.0
-
-> **🤖 Z.AI GLM 4.7 Model** - New Chinese-developed LLM now available in all model dropdowns. Competitive reasoning and language capabilities.
->
-> **🔄 Default Fallback Update** - Changed default fallback model to Claude Sonnet 4.5 for more reliable results when no model is explicitly selected.
->
-> **🗑️ Legacy Cleanup** - Removed deprecated `proseMinion.model` setting. Use the scoped settings (`assistantModel`, `dictionaryModel`, `contextModel`) for model configuration.
-
----
-
-## 🎉 What's New in v1.6.1
-
-> **🤖 Gemini 3 Flash Preview Model** - New high-speed thinking model with near Pro-level reasoning at lower latency. Available in all model dropdowns.
->
-> **📚 New Craft Guides** - Three new creative writing guides: Deep POV for immersive narration, Indirect Dialogue techniques, and Subtext & Implication patterns.
->
-> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.
->
-> **📚 New User Guides** - [Dictionary: Looking Up Phrases & Alternatives](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/user-guides/dictionary-lookup-phrase-and-alternatives/README.md)
-
----
-
-> **📜 Looking for older releases?** See [CHANGELOG.md](CHANGELOG.md) for complete version history including v1.3.0 (Phrase Lookup, Architecture Health Pass), v1.2.0 (Context Search, Fast Generate), and earlier releases.
+> **📋 Full Changelog** - See [CHANGELOG.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/CHANGELOG.md) for complete release notes and version history.
 
 ---
 
@@ -669,7 +587,7 @@ Built with **Clean Architecture** principles:
 - Persistent dictionary inputs with source metadata
 - Settings overlay with comprehensive inline help
 
-See [CHANGELOG.md](CHANGELOG.md) for complete version history.
+See [CHANGELOG.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/CHANGELOG.md) for complete version history.
 
 ---
 
@@ -723,7 +641,7 @@ This means:
 - ✅ Modify and share under the same terms
 - ❌ Cannot resell or create proprietary derivatives
 
-See [LICENSE](LICENSE) for complete terms. For commercial licensing inquiries, please open an issue.
+See [LICENSE](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/LICENSE) for complete terms. For commercial licensing inquiries, please open an issue.
 
 ---
 
