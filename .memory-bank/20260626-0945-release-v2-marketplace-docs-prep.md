@@ -2,7 +2,12 @@
 
 Date: 2026-06-26
 Branch: `release/2.0-prep`
-Feature commit: `e5215b9 Add output shortcut and streaming stats`
+Feature commits:
+
+- `e5215b9 Add output shortcut and streaming stats`
+- `7827d46 Add model browser selector`
+- `8dd7d76 Track model browser feature notes`
+- `3923f77 Update All Tools Modal descriptions to match actual prompt behavior`
 
 ## What Just Landed
 
@@ -17,6 +22,18 @@ Feature commit: `e5215b9 Add output shortcut and streaming stats`
   - renamed the user-facing streaming counter from exact "tokens" to honest "chunks"
   - shared across analysis, context, and standard dictionary streaming
   - formatter and hook coverage added
+- Added the Model Browser selector:
+  - model selectors now open a searchable modal instead of a flat dropdown
+  - users can browse by provider or family
+  - cards show curated descriptions plus live OpenRouter pricing, release dates, and context windows
+  - selection still flows through the existing scoped model-setting path
+- Updated All Tools Modal copy:
+  - audited all 16 writing-tool cards against their prompts
+  - corrected misleading summaries for Gestures, Decision Points, Style, and Editor
+- Refreshed the v2 model catalog:
+  - added GLM 5.2 and Qwen3.7 Plus
+  - moved Category Search from Mistral Large 2411 to Mistral Large 2512
+  - removed/deprioritized stale or lower-priority recommendations
 
 Validation performed before commit:
 
@@ -31,6 +48,16 @@ bundle verification, and created:
 - `apps/vscode-extension/prose-minion-2.0.0.vsix`
 
 That VSIX is ignored by `.vscodeignore` / git status and is not committed.
+
+After the docs/icon pass, `npm run package` was run again:
+
+- typecheck passed
+- Jest passed: 50 suites / 392 tests
+- production build passed with the existing webpack size warnings
+- bundle verification passed
+- generated VSIX includes `assets/frame-minion-icon.png`
+- generated VSIX excludes stale `assets/pixel-minion-icon.png`
+- generated VSIX size: 9.45 MB
 
 ## Marketplace Packaging Finding
 
@@ -111,42 +138,50 @@ Recommendation:
   - switch the hero to a shipped asset like `assets/prose-minion-book.png`, or
   - use an absolute GitHub raw URL.
 
+Decision taken in the docs pass:
+
+- Keep screenshots out of the VSIX and use `raw.githubusercontent.com` links in the Marketplace README.
+- Use normal GitHub `blob/main` links for repo docs.
+- Switch the README hero to shipped `assets/prose-minion-book.png`.
+- Replace the sister-extension callout with FrameMinion:
+  - site: `https://frameminion.video`
+  - Marketplace: `https://marketplace.visualstudio.com/items?itemName=OkeyLanders.frame-minion`
+  - icon copied from FrameMinion into `apps/vscode-extension/assets/frame-minion-icon.png`
+  - old unreferenced `assets/pixel-minion-icon.png` excluded from the VSIX
+
 ## Marketplace-Facing Docs To Update For v2.0
 
 Required:
 
 - `apps/vscode-extension/README.md`
-  - Add a new top `What's New in v2.0.0` section.
-  - Mention monorepo/facelift if user-facing enough.
-  - Mention OpenRouter account balance widget.
-  - Mention theme/follow-VS-Code facelift.
-  - Mention debug/output title-bar action.
-  - Mention streaming progress stats.
-  - Mention the final v2 model-catalog refresh.
-  - Replace or repair every `screenshots/...` and `docs/...` relative link.
+  - Added a new top `What's New in v2.0.0` section.
+  - Mentioned model browser, account balance widget, theme refresh, debug/output title-bar action, streaming progress stats, final v2 model-catalog refresh, and FrameMinion.
+  - Replaced `screenshots/...` image links with GitHub raw URLs.
+  - Replaced `docs/...` links with GitHub blob URLs or removed dead links.
 - `apps/vscode-extension/CHANGELOG.md`
-  - Add `## [2.0.0] - 2026-06-26` or final release date.
-  - Keep this Marketplace-friendly: concise user-facing changes plus a short technical section.
-  - Fix the top detailed changelog link because `docs/CHANGELOG-DETAILED.md` is not packaged.
+  - Added `## [2.0.0] - 2026-06-26`.
+  - Kept this Marketplace-friendly: concise user-facing changes plus a short technical section.
+  - Fixed the top detailed changelog link because `docs/CHANGELOG-DETAILED.md` is not packaged.
 - `docs/CHANGELOG-DETAILED.md`
-  - Add a detailed `2.0.0` entry covering:
+  - Updated the top detailed `2.0.0` entry covering:
     - monorepo ports-and-adapters migration
     - composition-root consolidation
     - React 18 / webview facelift
     - account balance widget
+    - model browser
     - debug/output command
     - streaming stats
     - model-catalog refresh
     - packaging/docs link fix
     - final validation commands
 
-## Pending Model Catalog Changes To Include
+## Model Catalog Changes Included
 
-Okey has an unstaged update in:
+The v2 model refresh landed in:
 
 - `packages/core/src/infrastructure/api/providers/OpenRouterModels.ts`
 
-Capture these in the v2 release notes/changelogs once finalized:
+Capture these in the v2 release notes/changelogs:
 
 - Added `z-ai/glm-5.2` to recommended models and category-search models.
   - User-facing angle: latest GLM flagship, 1M context, stronger long-horizon reasoning for manuscript-scale critique and structured category matching.
@@ -164,6 +199,7 @@ Release follow-up:
 - `apps/vscode-extension/package.json` `proseMinion.categoryModel.enum` was synced with `CATEGORY_MODELS` before committing the model refresh.
 - Update `docs/RECOMMENDED_MODELS.md` if it is still part of the release-facing docs set.
 - Mention the model refresh in README `What's New`, Marketplace changelog, and detailed changelog.
+- Updated `docs/RECOMMENDED_MODELS.md` with GLM 5.2, Qwen3.7 Plus, and Mistral Large 2512.
 
 Optional but likely useful:
 
@@ -174,12 +210,13 @@ Optional but likely useful:
 ## Remaining Release Checklist
 
 - Decide screenshot strategy: package curated screenshots under `apps/vscode-extension`, or use
-  release-tagged absolute GitHub URLs.
+  release-tagged absolute GitHub URLs. **Done:** use GitHub raw URLs.
 - Refresh screenshots if the v2.0 facelift materially changed the UI.
-- Fix README hero image packaging.
-- Update README `What's New` to v2.0.0.
-- Update Marketplace changelog.
-- Update detailed changelog.
-- Re-run `npm run package` and inspect VSIX file list.
-- Verify the packaged README renders with working images/links before publishing.
+- Fix README hero image packaging. **Done:** switched to shipped PNG.
+- Update README `What's New` to v2.0.0. **Done.**
+- Update Marketplace changelog. **Done.**
+- Update detailed changelog. **Done.**
+- Update recommended models guide. **Done.**
+- Re-run `npm run package` and inspect VSIX file list. **Done.**
+- Verify the packaged README renders with working images/links before publishing. **Partially done:** package file list is correct; Marketplace preview still needs a human visual check.
 - Publish from `apps/vscode-extension` package output only after docs and smoke checks are clean.
