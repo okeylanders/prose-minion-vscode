@@ -291,8 +291,10 @@ export class ConfigurationHandler {
       await new Promise(resolve => setTimeout(resolve, 50));
 
       // Send MODEL_DATA with the updated selection
-      // (Config watcher will NOT send it to avoid race conditions)
-      await this.sendModelData({ refreshCatalog: true });
+      // (Config watcher will NOT send it to avoid race conditions).
+      // Reuse the cached catalog — the refresh point is browser-open, not selection,
+      // so a pick doesn't trigger a second full ~500KB catalog re-fetch.
+      await this.sendModelData();
       this.outputChannel.appendLine(
         `[ConfigurationHandler] Sent MODEL_DATA after model selection change`
       );
@@ -322,8 +324,19 @@ export class ConfigurationHandler {
       }
 
       const recommended = OpenRouterModels.getRecommendedModels();
-      const liveModels = await OpenRouterModels.fetchModels();
+      const liveModels = await OpenRouterModels.fetchModels(this.outputChannel);
       const liveModelsById = new Map(liveModels.map(model => [model.id, model]));
+
+      // A catalog made entirely of fallback entries means the live fetch failed.
+      // Log the degraded state so the on-call sees WHY every card reads
+      // "pricing unavailable" instead of a success line that hides it.
+      const liveFetchDegraded = liveModels.length > 0 && liveModels.every(model => model.isFallback);
+      if (liveFetchDegraded) {
+        this.outputChannel.appendLine(
+          `[ConfigurationHandler] WARN: live OpenRouter catalog unavailable — all ${liveModels.length} models using offline fallback (pricing/context hidden). Reopen the model browser to retry.`
+        );
+      }
+
       const modelOptions = this.buildModelOptions(recommended, liveModelsById);
       const categoryOptions = this.buildModelOptions(CATEGORY_MODELS, liveModelsById);
 

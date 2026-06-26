@@ -3,6 +3,8 @@
  * Fetches and manages available models from OpenRouter API
  */
 
+import { LogSink } from '@/platform';
+
 export interface OpenRouterModel {
   id: string;
   name: string;
@@ -783,7 +785,7 @@ export class OpenRouterModels {
   /**
    * Fetch available models from OpenRouter API
    */
-  static async fetchModels(): Promise<OpenRouterModel[]> {
+  static async fetchModels(logSink?: LogSink): Promise<OpenRouterModel[]> {
     if (this.cachedModels) {
       return this.cachedModels;
     }
@@ -803,9 +805,16 @@ export class OpenRouterModels {
       this.cachedModels = data.data;
       return data.data;
     } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
       console.error('Error fetching OpenRouter models:', error);
-      // Return recommended models as fallback
-      return RECOMMENDED_MODELS.map(m => ({
+      // Surface the cause where a user can actually see it — the Output channel the
+      // debug command reveals — not only the host dev-console.
+      logSink?.appendLine(
+        `[OpenRouterModels] Live model catalog fetch failed (${reason}); using offline fallback — pricing/context unavailable until the next refresh.`
+      );
+      // Cache the fallback so repeated reads don't re-hit a known-bad network on every
+      // call. Reopening the model browser (clearCache + refetch) is the explicit retry path.
+      const fallback: OpenRouterModel[] = RECOMMENDED_MODELS.map(m => ({
         id: m.id,
         name: m.name,
         description: m.description,
@@ -814,6 +823,8 @@ export class OpenRouterModels {
         pricing: { prompt: '0', completion: '0' },
         context_length: 200000
       }));
+      this.cachedModels = fallback;
+      return fallback;
     }
   }
 

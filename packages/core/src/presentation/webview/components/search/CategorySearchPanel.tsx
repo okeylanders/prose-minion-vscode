@@ -154,7 +154,10 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
       <div style={{ margin: '16px 0' }}>
         <ModelSelector
           scope="category"
-          options={modelsSettings.categoryModelOptions}
+          // Hold the trigger disabled until live category options arrive, so the
+          // browser never opens on curated-only data that's indistinguishable from
+          // a live response with no pricing. Matches the other scopes' first paint.
+          options={modelsSettings.categoryOptionsReady ? modelsSettings.categoryModelOptions : []}
           value={modelsSettings.modelSelections.category}
           onChange={modelsSettings.setModelSelection}
           onOpenBrowser={() => modelsSettings.requestModelData(true)}

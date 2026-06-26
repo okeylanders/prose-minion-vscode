@@ -158,7 +158,11 @@ export const ModelBrowserModal: React.FC<ModelBrowserModalProps> = ({
     groupCounts.set(group, (groupCounts.get(group) ?? 0) + 1);
   });
 
-  const visibleGroups = activeGroup === 'All' ? groups : groups.filter(group => group === activeGroup);
+  // If a search (or pivot switch) leaves the selected group with no matches, fall
+  // back to showing every group rather than rendering a misleading "no models" empty
+  // state while matches sit one chip over. Derived during render — no flash, no setState.
+  const effectiveActiveGroup = activeGroup === 'All' || groups.includes(activeGroup) ? activeGroup : 'All';
+  const visibleGroups = effectiveActiveGroup === 'All' ? groups : groups.filter(group => group === effectiveActiveGroup);
 
   const selectModel = (modelId: string) => {
     onSelect(scope, modelId);
@@ -213,7 +217,7 @@ export const ModelBrowserModal: React.FC<ModelBrowserModalProps> = ({
         <div className="mb-chips" aria-label="Model groups">
           <button
             type="button"
-            className={`mb-chip ${activeGroup === 'All' ? 'active' : ''}`}
+            className={`mb-chip ${effectiveActiveGroup === 'All' ? 'active' : ''}`}
             onClick={() => setActiveGroup('All')}
           >
             All <span>{filteredModels.length}</span>
@@ -222,7 +226,7 @@ export const ModelBrowserModal: React.FC<ModelBrowserModalProps> = ({
             <button
               type="button"
               key={group}
-              className={`mb-chip ${activeGroup === group ? 'active' : ''}`}
+              className={`mb-chip ${effectiveActiveGroup === group ? 'active' : ''}`}
               onClick={() => setActiveGroup(group)}
             >
               {group} <span>{groupCounts.get(group) ?? 0}</span>

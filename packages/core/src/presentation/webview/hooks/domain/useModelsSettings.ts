@@ -28,6 +28,7 @@ export interface ModelsSettingsState {
   settings: ModelsSettings;
   modelOptions: ModelOption[];                          // Available models (full list)
   categoryModelOptions: ModelOption[];                  // Category models (curated list)
+  categoryOptionsReady: boolean;                        // True once live category options have arrived
   modelSelections: Partial<Record<ModelScope, string>>; // Current selections by scope
 }
 
@@ -264,6 +265,7 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
     settings,
     modelOptions,
     categoryModelOptions: liveCategoryModelOptions.length > 0 ? liveCategoryModelOptions : categoryModelOptions,
+    categoryOptionsReady: liveCategoryModelOptions.length > 0,
     modelSelections,
     updateSetting,
     setModelSelection,
