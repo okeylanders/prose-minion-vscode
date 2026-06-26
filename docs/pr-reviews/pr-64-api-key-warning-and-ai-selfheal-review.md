@@ -40,14 +40,14 @@ Security sits high because the secret surface is genuinely clean — nothing log
 |---|--------|----------|---------|-------------|
 | 1 | ✅ Resolved in `48fa3d1` | 🟠 High 🎯🎯 | **`useDictionary` and `useContext` still persist + reseed the API-key warning** — all three hooks now scrub the warning on seed and persist | Marcus · Sam · Parker · Cal · Stan · Tim · Patricia · Oliver · Bria **Strong Consensus** |
 | 2 | ✅ Resolved in `48fa3d1` | 🟠 High | **The headline warning guard ships with no test** — behavioral hook tests now cover analysis, dictionary, and context warning scrubbing | Cal |
-| 3 | 🧾 Deferred debt | 🟡 Standard 🎯 | **Self-heal heals the backend, not the screen** — intentionally not changed; warning appears only after a user action, and live clearing needs an explicit UI message contract | Sam · Oliver · Bria **Consensus** |
+| 3 | 🧾 [Deferred debt](../../.todo/tech-debt/2026-06-26-api-key-warning-live-clear.md) | 🟡 Standard 🎯 | **Self-heal heals the backend, not the screen** — intentionally not changed; warning appears only after a user action, and live clearing needs an explicit UI message contract | Sam · Oliver · Bria **Consensus** |
 | 4 | ✅ Resolved in `48fa3d1` | 🟡 Standard 🎯 | **The shared sentinel lives in the wrong room** — moved to neutral `messages/warnings.ts` and exported through `@messages` | Marcus · Parker **Consensus** |
-| 5 | 🧾 Deferred debt | 🟡 Standard | **`refreshServiceConfiguration` wraps four services in one try/catch** — partial failure doesn't name the failing service, and success leaves no trail | Oliver |
-| 6 | 🧾 Deferred debt | 🟡 Standard | **`refreshServiceConfiguration` triggers `initializeResources()` four times** — negligible at the rare secret-change frequency; copies an existing redundancy | Tim |
-| 7 | 🧾 Deferred debt | 🟡 Standard | **`SecretsPort.onDidChange` discards the changed key** — fires for any secret write, encoding a "one secret forever" assumption as the interface grows | Marcus |
-| 8 | 🟨 Partially addressed in `48fa3d1` | 🟡 Standard | **The self-heal test couples to async depth** — helper/comment now describe queued fire-and-forget work honestly; directly awaitable refresh seam remains deferred | Cal |
-| 9 | 🧾 Deferred nit | 🟢 Nit | **`disposeSecretListener` is shaped differently from its sibling `disposeBalanceListener`** | Stan |
-| 10 | 🧾 Deferred nit | 🟢 Nit | **The self-heal constructor comment is prose-heavy** — motivation that belongs in the PR description | Parker |
+| 5 | 🧾 [Deferred debt](../../.todo/tech-debt/2026-06-26-service-refresh-observability.md) | 🟡 Standard | **`refreshServiceConfiguration` wraps four services in one try/catch** — partial failure doesn't name the failing service, and success leaves no trail | Oliver |
+| 6 | 🧾 [Deferred debt](../../.todo/tech-debt/2026-06-26-ai-service-refresh-duplication.md) | 🟡 Standard | **`refreshServiceConfiguration` triggers `initializeResources()` four times** — negligible at the rare secret-change frequency; copies an existing redundancy | Tim |
+| 7 | 🧾 [Deferred debt](../../.todo/tech-debt/2026-06-26-secret-change-key-filtering.md) | 🟡 Standard | **`SecretsPort.onDidChange` discards the changed key** — fires for any secret write, encoding a "one secret forever" assumption as the interface grows | Marcus |
+| 8 | 🟨 [Partially addressed in `48fa3d1`](../../.todo/tech-debt/2026-06-26-messagehandler-self-heal-cleanup.md) | 🟡 Standard | **The self-heal test couples to async depth** — helper/comment now describe queued fire-and-forget work honestly; directly awaitable refresh seam remains deferred | Cal |
+| 9 | 🧾 [Deferred nit](../../.todo/tech-debt/2026-06-26-messagehandler-self-heal-cleanup.md) | 🟢 Nit | **`disposeSecretListener` is shaped differently from its sibling `disposeBalanceListener`** | Stan |
+| 10 | 🧾 [Deferred nit](../../.todo/tech-debt/2026-06-26-messagehandler-self-heal-cleanup.md) | 🟢 Nit | **The self-heal constructor comment is prose-heavy** — motivation that belongs in the PR description | Parker |
 | 11 | ✅ Resolved in `48fa3d1` | 🟢 Nit | **`useContext` will need the `@messages` constant import** — `useContext` now imports the shared warning helper from `@messages` | Stan |
 | P1 | N/A | 🟢 Praise | **Nothing blocks** — clean listener lifecycle, symmetric dispose, contract satisfied, no teardown race | Blake |
 | P2 | N/A | 🟢 Praise | **The key never reaches a log or `persistedState`** — and `onDidChange` narrows exposure by discarding the event | Patricia |
@@ -62,7 +62,7 @@ Follow-up commit `48fa3d1` addressed the pattern-level stale-warning work:
 - Added behavioral tests for all three hooks proving stale API-key warnings are dropped while ordinary results still persist.
 - Tightened the self-heal test helper/comment to avoid overstating what `setImmediate` guarantees.
 
-Still tracked as debt: live UI clearing after a key is added, per-service refresh logging, key-aware secret-change events, refresh de-duplication, and the small listener/comment nits.
+Still tracked as debt: [live UI clearing after a key is added](../../.todo/tech-debt/2026-06-26-api-key-warning-live-clear.md), [per-service refresh logging](../../.todo/tech-debt/2026-06-26-service-refresh-observability.md), [key-aware secret-change events](../../.todo/tech-debt/2026-06-26-secret-change-key-filtering.md), [refresh de-duplication](../../.todo/tech-debt/2026-06-26-ai-service-refresh-duplication.md), and [the small listener/comment/test nits](../../.todo/tech-debt/2026-06-26-messagehandler-self-heal-cleanup.md).
 
 ---
 

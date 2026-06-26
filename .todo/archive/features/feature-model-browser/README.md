@@ -1,6 +1,8 @@
 # Feature: Model Browser (replaces the model dropdown)
 
-**Status:** Design / not started
+**Status:** Archived / released
+**Released In:** 2.0.0 (Marketplace, 2026-06-25)
+**Archived:** 2026-06-26
 **Captured:** 2026-06-25
 **Priority:** Pre-release nice-to-have (small, additive)
 **Owner:** TBD
@@ -8,14 +10,14 @@
 ## Motivation
 
 The curated model list is now **82 models across 17 providers** (see
-[OpenRouterModels.ts](../../packages/core/src/infrastructure/api/providers/OpenRouterModels.ts)).
+[OpenRouterModels.ts](../../../../packages/core/src/infrastructure/api/providers/OpenRouterModels.ts)).
 That is well past the point where a flat `<select>` dropdown
-([ModelSelector.tsx](../../packages/core/src/presentation/webview/components/shared/ModelSelector.tsx))
+([ModelSelector.tsx](../../../../packages/core/src/presentation/webview/components/shared/ModelSelector.tsx))
 is a good browsing experience. Users can't see **cost**, **context window**, or the **full
 description** we already author — they just see a name.
 
 A **Model Browser** modal — designed to mirror the existing
-[AllToolsModal.tsx](../../packages/core/src/presentation/webview/components/tabs/AllToolsModal.tsx)
+[AllToolsModal.tsx](../../../../packages/core/src/presentation/webview/components/tabs/AllToolsModal.tsx)
 ("Writing Tools" picker) — gives those fields a home: a searchable, tabbed gallery of model
 cards. The dropdown can stay as the compact inline control; the browser is the "see everything"
 affordance behind it (same relationship the Assistant tab has with AllToolsModal today).
@@ -131,13 +133,13 @@ The browser must be explicit about **which list it edits/shows**. Two options:
 ## Implementation sketch (touch points)
 
 - **Data:** add `family` + `releaseDate` to all entries in
-  [OpenRouterModels.ts](../../packages/core/src/infrastructure/api/providers/OpenRouterModels.ts)
+  [OpenRouterModels.ts](../../../../packages/core/src/infrastructure/api/providers/OpenRouterModels.ts)
   (both arrays). Extend the curated TS type to include the two new optional-then-required fields.
 - **Component:** new `ModelBrowserModal.tsx` under
-  [components/tabs/](../../packages/core/src/presentation/webview/components/tabs/) (or `shared/`),
+  [components/tabs/](../../../../packages/core/src/presentation/webview/components/tabs/) (or `shared/`),
   cloned from `AllToolsModal` structure; add search state + tab state.
 - **Data hook:** extend
-  [useModelsSettings.ts](../../packages/core/src/presentation/webview/hooks/domain/useModelsSettings.ts)
+  [useModelsSettings.ts](../../../../packages/core/src/presentation/webview/hooks/domain/useModelsSettings.ts)
   to expose the joined model rows (curated ⨝ live pricing/context) and the realtime/refresh logic.
 - **Entry point:** an "browse all" affordance next to `ModelSelector` (button/icon), opening the
   modal; selection routes through the existing `SET_MODEL_SELECTION` message.
@@ -165,7 +167,7 @@ The browser must be explicit about **which list it edits/shows**. Two options:
 
 ## Related
 
-- Mirror target: [AllToolsModal.tsx](../../packages/core/src/presentation/webview/components/tabs/AllToolsModal.tsx)
-- Replaces/augments: [ModelSelector.tsx](../../packages/core/src/presentation/webview/components/shared/ModelSelector.tsx)
-- Data source: [OpenRouterModels.ts](../../packages/core/src/infrastructure/api/providers/OpenRouterModels.ts)
-- State: [useModelsSettings.ts](../../packages/core/src/presentation/webview/hooks/domain/useModelsSettings.ts)
+- Mirror target: [AllToolsModal.tsx](../../../../packages/core/src/presentation/webview/components/tabs/AllToolsModal.tsx)
+- Replaces/augments: [ModelSelector.tsx](../../../../packages/core/src/presentation/webview/components/shared/ModelSelector.tsx)
+- Data source: [OpenRouterModels.ts](../../../../packages/core/src/infrastructure/api/providers/OpenRouterModels.ts)
+- State: [useModelsSettings.ts](../../../../packages/core/src/presentation/webview/hooks/domain/useModelsSettings.ts)

@@ -1,7 +1,9 @@
 # Feature: Add Debug / Output Icon to Extension Title Bar
 
 **Created:** 2026-06-24  
-**Status:** Proposed  
+**Status:** Archived / released  
+**Released In:** 2.0.0 (Marketplace, 2026-06-25)  
+**Archived:** 2026-06-26  
 **Priority:** Low  
 **Type:** Developer-experience and supportability enhancement  
 **Area:** VS Code extension shell / view title actions  
@@ -240,4 +242,3 @@ Confirm the icon target:
 - **Show the Prose Minion Output channel** — assumed and recommended.
 - Open VS Code Developer Tools.
 - Perform another debug/support action.
-

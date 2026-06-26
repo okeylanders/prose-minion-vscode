@@ -55,6 +55,11 @@ elsewhere.
 | Low | [AIResourceOrchestrator loop duplication](2025-11-25-ai-resource-orchestrator-loop-duplication.md) | Identified |
 | Low | [Cancel-message duplication](2025-12-05-cancel-message-duplication.md) | Identified |
 | Medium | [Streaming lifecycle duplication](2025-12-05-streaming-hook-duplication.md) | Identified |
+| Low | [API-key warning live clear contract](2026-06-26-api-key-warning-live-clear.md) | Identified |
+| Medium | [Service refresh observability](2026-06-26-service-refresh-observability.md) | Identified |
+| Low | [AI service refresh duplication](2026-06-26-ai-service-refresh-duplication.md) | Identified |
+| Low | [Secret-change key filtering](2026-06-26-secret-change-key-filtering.md) | Identified |
+| Low | [MessageHandler self-heal cleanup](2026-06-26-messagehandler-self-heal-cleanup.md) | Identified |
 
 ## Review Guidance
 

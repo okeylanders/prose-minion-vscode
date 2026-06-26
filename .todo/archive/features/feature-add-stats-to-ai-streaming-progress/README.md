@@ -1,7 +1,9 @@
 # Feature: Add Live Stats to AI Streaming Progress
 
 **Created:** 2026-06-24  
-**Status:** Proposed  
+**Status:** Archived / released  
+**Released In:** 2.0.0 (Marketplace, 2026-06-25)  
+**Archived:** 2026-06-26  
 **Priority:** Medium  
 **Type:** UX enhancement  
 **Area:** AI streaming / progress feedback  
