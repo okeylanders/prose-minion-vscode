@@ -1712,6 +1712,8 @@ select:focus {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--spacing-sm);
+  container-type: inline-size;
   padding: var(--spacing-xs) var(--spacing-sm);
   background: var(--pm-surface-2);
   border-radius: var(--pm-r-input);
@@ -1725,6 +1727,24 @@ select:focus {
   font-size: 0.85em;
   font-weight: 500;
   color: var(--pm-text);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.streaming-status-text,
+.streaming-stat,
+.streaming-stat-separator {
+  flex-shrink: 0;
+}
+
+.streaming-stat {
+  color: var(--pm-muted);
+}
+
+.streaming-stat-separator {
+  color: var(--pm-muted);
+  opacity: 0.8;
 }
 
 /* Pulsing dot animation */
@@ -1757,6 +1777,7 @@ select:focus {
   cursor: pointer;
   font-size: 0.85em;
   transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
 /* When cancel-button is combined with btn classes, let btn handle styling */
@@ -1779,6 +1800,27 @@ select:focus {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+}
+
+@container (max-width: 360px) {
+  .streaming-stat-throughput,
+  .streaming-stat-separator-throughput {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .streaming-stat-throughput,
+  .streaming-stat-separator-throughput {
+    display: none;
+  }
+}
+
+@media (max-width: 300px) {
+  .streaming-stat-initialLatency,
+  .streaming-stat-separator-initialLatency {
+    display: none;
+  }
 }
 
 /* Context preview and header actions */

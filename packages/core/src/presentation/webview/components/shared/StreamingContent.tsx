@@ -9,6 +9,7 @@
 import * as React from 'react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { LoadingIndicator } from './LoadingIndicator';
+import { formatStreamingStats } from '@formatters';
 
 interface StreamingContentProps {
   /** Content to display (debounced from streaming hook) */
@@ -17,8 +18,14 @@ interface StreamingContentProps {
   isStreaming: boolean;
   /** Whether in the initial buffer phase */
   isBuffering: boolean;
-  /** Count of tokens received */
-  tokenCount: number;
+  /** Count of stream chunks received */
+  chunkCount: number;
+  /** Elapsed streaming time since request start */
+  elapsedMs: number;
+  /** Client-observed latency from stream start to the first chunk */
+  initialLatencyMs?: number;
+  /** Average chunks per second */
+  chunksPerSecond: number;
   /** Optional cancel callback */
   onCancel?: () => void;
   /** Disable cancel button (e.g., no requestId yet) */
@@ -33,19 +40,37 @@ export const StreamingContent: React.FC<StreamingContentProps> = ({
   content,
   isStreaming,
   isBuffering,
-  tokenCount,
+  chunkCount,
+  elapsedMs,
+  initialLatencyMs,
+  chunksPerSecond,
   onCancel,
   cancelDisabled,
-  waitingMessage = 'Waiting for first tokens…',
+  waitingMessage = 'Waiting for first chunks...',
   className = ''
 }) => {
+  const stats = formatStreamingStats({
+    chunkCount,
+    elapsedMs,
+    initialLatencyMs,
+    chunksPerSecond
+  });
+
   return (
     <div className={`streaming-content ${className}`}>
       {isStreaming && (
         <div className="streaming-header">
           <span className="streaming-indicator">
             <span className="streaming-dot" />
-            Streaming ({tokenCount} tokens)
+            <span className="streaming-status-text">Streaming</span>
+            {stats.map(stat => (
+              <React.Fragment key={stat.key}>
+                <span className={`streaming-stat-separator streaming-stat-separator-${stat.key}`}>·</span>
+                <span className={`streaming-stat streaming-stat-${stat.key}`}>
+                  {stat.label}
+                </span>
+              </React.Fragment>
+            ))}
           </span>
           {onCancel && (
             <button onClick={onCancel} className="cancel-button" title="Cancel" disabled={cancelDisabled}>
@@ -55,7 +80,7 @@ export const StreamingContent: React.FC<StreamingContentProps> = ({
         </div>
       )}
 
-      {tokenCount === 0 ? (
+      {chunkCount === 0 ? (
         <div className="streaming-waiting">
           <LoadingIndicator
             isLoading={true}

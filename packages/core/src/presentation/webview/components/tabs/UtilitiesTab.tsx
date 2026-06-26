@@ -384,7 +384,10 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
           content={dictionary.streamingContent}
           isStreaming={dictionary.isStreaming}
           isBuffering={dictionary.isBuffering}
-          tokenCount={dictionary.streamingTokenCount}
+          chunkCount={dictionary.streamingChunkCount}
+          elapsedMs={dictionary.streamingElapsedMs}
+          initialLatencyMs={dictionary.streamingInitialLatencyMs}
+          chunksPerSecond={dictionary.streamingChunksPerSecond}
           onCancel={dictionary.currentRequestId ? handleCancelStreaming : undefined}
           cancelDisabled={!dictionary.currentRequestId}
         />

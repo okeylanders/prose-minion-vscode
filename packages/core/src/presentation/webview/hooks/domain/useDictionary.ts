@@ -46,7 +46,10 @@ export interface DictionaryState {
   isStreaming: boolean;
   isBuffering: boolean;
   streamingContent: string;
-  streamingTokenCount: number;
+  streamingChunkCount: number;
+  streamingElapsedMs: number;
+  streamingInitialLatencyMs?: number;
+  streamingChunksPerSecond: number;
   currentRequestId: string | null;
 }
 
@@ -262,7 +265,7 @@ export const useDictionary = (): UseDictionaryReturn => {
   }, [currentRequestId, startStreaming, streaming]);
 
   const handleStreamComplete = React.useCallback((message: StreamCompleteMessage) => {
-    const { domain, content, cancelled, requestId } = message.payload;
+    const { domain, cancelled, requestId } = message.payload;
     // Only handle dictionary domain completion
     if (domain !== 'dictionary') return;
 
@@ -315,7 +318,10 @@ export const useDictionary = (): UseDictionaryReturn => {
     isStreaming: streaming.isStreaming,
     isBuffering: streaming.isBuffering,
     streamingContent: streaming.displayContent,
-    streamingTokenCount: streaming.tokenCount,
+    streamingChunkCount: streaming.chunkCount,
+    streamingElapsedMs: streaming.elapsedMs,
+    streamingInitialLatencyMs: streaming.initialLatencyMs,
+    streamingChunksPerSecond: streaming.chunksPerSecond,
     currentRequestId,
 
     // Actions
