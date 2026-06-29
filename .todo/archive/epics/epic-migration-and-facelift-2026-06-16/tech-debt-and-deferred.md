@@ -33,7 +33,7 @@ silent deferrals read as "done" when they aren't.
 
 ## PR #59 review — deferred items (with rationale)
 
-From the multi-agent review ([docs/pr-reviews/pr-59-…](../docs/pr-reviews/pr-59-ports-and-adapters-core-vscode-free-review.md)). Most findings were fixed on the branch; these were consciously deferred:
+From the multi-agent review ([docs/pr-reviews/pr-59-…](../../../../docs/pr-reviews/pr-59-ports-and-adapters-core-vscode-free-review.md)). Most findings were fixed on the branch; these were consciously deferred:
 
 | Finding | Why deferred | Revisit |
 |---|---|---|

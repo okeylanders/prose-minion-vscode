@@ -24,7 +24,7 @@ layered the user-facing sidebar and release-prep improvements on top of that
 foundation.
 
 **Branch:** `claude/funny-davinci-yqautn` (off `epic/monorepo-ports-and-adapters` @ `ae617df`)
-**Docs:** `migration-and-facelift/` · ADR `docs/adr/2026-06-16-monorepo-ports-and-adapters.md`
+**Docs:** `.todo/archive/epics/epic-migration-and-facelift-2026-06-16/` · ADR `docs/adr/2026-06-16-monorepo-ports-and-adapters.md`
 
 ### Changed — structure
 

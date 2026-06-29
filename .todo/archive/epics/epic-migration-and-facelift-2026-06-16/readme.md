@@ -1,5 +1,9 @@
 # Prose Minion — Migration & Facelift
 
+> **Archived 2026-06-29.** This folder is the historical execution record for
+> the v2.0.0 migration and facelift. Current follow-up work was split into
+> `.todo/features/` and `.todo/tech-debt/`; see `ARCHIVE.md` first.
+
 Tracking workspace for the two-pass overhaul that turns Prose Minion into a
 mono-repo — shippable as **both** a VS Code extension and a standalone desktop
 app — and re-skins it to match **FrameMinion**.
@@ -30,7 +34,7 @@ app — and re-skins it to match **FrameMinion**.
 
 ## Anchors
 
-- **Architecture rationale (record):** [ADR 2026-06-16 — Monorepo + Ports-and-Adapters](../docs/adr/2026-06-16-monorepo-ports-and-adapters.md)
+- **Architecture rationale (record):** [ADR 2026-06-16 — Monorepo + Ports-and-Adapters](../../../../docs/adr/2026-06-16-monorepo-ports-and-adapters.md)
 - **Reference implementation:** FrameMinion (`../frame-minion-vscode`), its ADR-012
 - **Branch:** `epic/monorepo-ports-and-adapters`
 

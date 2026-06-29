@@ -1,6 +1,6 @@
 # Plan — Prose Minion Migration & Facelift
 
-> Operational plan. For *why*, see the [ADR](../docs/adr/2026-06-16-monorepo-ports-and-adapters.md).
+> Operational plan. For *why*, see the [ADR](../../../../docs/adr/2026-06-16-monorepo-ports-and-adapters.md).
 > For *current state*, see [status.md](status.md).
 
 ## North star

@@ -1,170 +1,163 @@
 # .todo Directory Structure
 
-This directory tracks epics, sprints, and architecture debt for the Prose Minion VSCode extension.
+This directory tracks active product work, technical debt, and archived planning
+records for the Prose Minion VS Code extension.
 
 ## Directory Organization
 
-```
+```text
 .todo/
-├── epics/              # Active epics (work in progress)
-├── architecture-debt/  # Identified technical debt and improvements
-├── search-module/      # Active search specs (planning/backlog)
-├── metrics-module/     # Active metrics specs (planning/backlog)
-├── archived/           # Completed work (historical reference)
-│   ├── epics/         # Completed epic folders
-│   └── specs/         # Completed standalone specifications
-└── README.md          # This file
+├── epics/              # Active multi-sprint initiatives
+├── features/           # Active standalone feature ideas, one folder per feature
+├── tech-debt/          # Active maintenance concerns
+├── metrics-module/     # Active metrics specs and research
+├── archive/            # Completed or superseded work
+│   ├── epics/
+│   ├── features/
+│   ├── specs/
+│   └── tech-debt/
+└── README.md
 ```
 
-## Active Work
+## What Goes Where
 
-### Epics (`.todo/epics/`)
+### Epics
 
-Contains **active** epic folders for ongoing or planned work:
+Use `.todo/epics/` for multi-sprint initiatives with architecture, sequencing,
+or cross-cutting scope. Epics may contain sprint documents, decision notes,
+screenshots, fixtures, and completion summaries.
 
-- **epic-search-architecture-2025-10-19** - Partially complete (5/8 phases done)
-  - Phases 1-5: ✅ DONE (archived)
-  - Phases 6-7: 🟡 PENDING (architecture passes)
-  - Phase 8: 📋 PLANNING (context search)
+Create:
 
-- **epic-v1-polish-2025-11-02** - Mostly complete (3/4 sprints done)
-  - Sprints 01, 02, 04: ✅ DONE
-  - Sprint 03: Backlog (Tune Button refinements)
+```text
+.todo/epics/epic-short-name-YYYY-MM-DD/
+```
 
-### Active Specs
+### Features
 
-**search-module/** - Context search planning (Phase 8 of Search & Architecture epic)
-- `2025-10-24-context-search-component.md` - AI-assisted search expansion spec
+Use `.todo/features/` for standalone product or UX work that may need supporting
+artifacts. Features are always folders, even when the initial note is small,
+because they often grow screenshots, mockups, examples, review notes, or assets.
 
-**metrics-module/** - Metrics enhancements (research/planning)
-- `2025-11-02-hyphenated-compound-words-analysis.md` - Hyphenated compound words handling
+Create:
 
-### Architecture Debt (`.todo/architecture-debt/`)
+```text
+.todo/features/feature-short-name/
+├── README.md
+└── assets/             # Optional: screenshots, mockups, supporting docs
+```
 
-Contains documented technical debt and improvement opportunities:
+The feature README should include status, motivation, scope, open questions,
+acceptance criteria, and related files.
 
-1. **Settings Architecture Analysis** (HIGH priority)
-   - Mixed patterns (hooks vs messages)
-   - Hardcoded settings keys
-   - Inconsistent configuration strategy
+### Tech Debt
 
-2. **Settings Sync Registration** (MEDIUM priority)
-   - Duplication in refresh logic
-   - No single source of truth
+Use `.todo/tech-debt/` for concrete maintenance concerns with a specific failure
+mode or cleanup opportunity.
 
-3. **Configuration Strategy Inconsistency** (MEDIUM priority)
-   - Two patterns for managing config
-   - Needs unified approach
+Default to one Markdown file:
 
-4. **Word Counter UI Component Duplication** (LOW priority)
-   - UI component pattern duplicated across 3 locations
-   - Simple extraction opportunity
+```text
+.todo/tech-debt/YYYY-MM-DD-short-name.md
+```
 
-**Action**: These items are ready for epic creation when prioritized.
+Use a folder only when the debt needs supporting files such as screenshots,
+benchmark output, sample fixtures, or a multi-document investigation:
 
-## Archived Work (`.todo/archived/`)
+```text
+.todo/tech-debt/YYYY-MM-DD-short-name/
+├── README.md
+└── evidence/
+```
 
-Contains **completed** epics and specs for historical reference. Work is archived when:
+Each debt item should include the problem, recommendation, related files, risk,
+priority, status, and completion criteria.
 
-- All acceptance criteria met
-- PR merged to main branch
-- Memory bank entry created
-- No active development remaining
+### Archive
 
-### Archived Epics (`.todo/archived/epics/`)
+Use `.todo/archive/` for completed, released, resolved, or superseded work.
+Preserve enough history for future agents to understand why the work existed,
+but move still-active follow-ups into `.todo/epics`, `.todo/features`, or
+`.todo/tech-debt` before archiving.
 
-**7 completed epics** (Oct-Nov 2025):
+## Adding New Items
 
-1. **epic-verbalized-sampling-2025-10-26** (PR #4)
-   - Enhanced dialogue/prose suggestions with creative diversity
+1. Choose the smallest honest container: epic, feature folder, or tech-debt file.
+2. Give the item a stable name and date where useful.
+3. Link related ADRs, PR reviews, files, screenshots, and memory-bank entries.
+4. State the current status: `Planned`, `Identified`, `Deferred`, `In Progress`,
+   `Blocked`, `Resolved`, or `Archived`.
+5. Write completion criteria before implementation begins.
+6. If the item is discovered during unrelated work, capture it and keep moving
+   unless it blocks the current task.
 
-2. **epic-secure-storage-2025-10-27** (PR #11)
-   - API key storage via OS-level encryption (SecretStorage)
+## Archiving Rules
 
-3. **epic-presentation-refactor-2025-10-27** (PR #13)
-   - Domain hooks refactoring, App.tsx reduction (43%)
+Archive an item when:
 
-4. **epic-message-envelope-2025-10-28** (PR #12, #13)
-   - MessageHandler reduction (54%), strategy pattern routing
+- The work shipped, merged, or was explicitly superseded.
+- No active follow-up remains inside the item.
+- Any remaining work has been split into fresh `.todo` entries.
+- The item status says `Archived`, `Released`, `Resolved`, or equivalent.
+- A memory-bank entry exists for substantial completed work or release activity.
 
-5. **epic-context-window-safety-2025-11-02** (PR #14)
-   - Word counter UI, backend trimming, Output Channel logging
+Do not archive:
 
-6. **epic-clickable-resource-pills-2025-11-02** (PR #15)
-   - Resource pills now clickable in Context Assistant
+- Partially complete epics with unfinished sprints.
+- Product ideas that still need design decisions.
+- Tech debt that still describes a current problem.
+- Planning folders that still own active follow-up work.
 
-7. **epic-word-length-filter-metrics-2025-11-02** (PR #17)
-   - Tab-based word length filtering in metrics
+When archiving a large folder, add an `ARCHIVE.md` or update its README with:
 
-### Archived Specs (`.todo/archived/specs/`)
+- Archive date
+- Release or PR where it landed
+- Summary of what completed
+- Links to any follow-up items moved elsewhere
 
-**5 completed specification directories**:
+## Memory Bank
 
-1. **search-module/** - Phases 1-2 of Search & Architecture epic (DONE)
-   - `2025-10-24-move-word-search-component.md` - Word search relocation
+Use `.memory-bank/` for session continuity snapshots and release/completion
+records. File names use:
 
-2. **metrics-module/** - Phase 3 of Search & Architecture epic (DONE)
-   - `2025-10-24-metrics-module.md` - Metrics UX improvements
+```text
+YYYYMMDD-HHMM-short-title.md
+```
 
-3. **token-cost-widget/** - Phase 4 of Search & Architecture epic (DONE)
-   - Token usage tracking specs
-   - Cost display widget design
+Create or update a memory-bank entry when:
 
-4. **settings-module/** - Phase 5 of Search & Architecture epic (DONE)
-   - Settings overlay UI specs
-   - Configuration management design
+- A release is prepared or completed.
+- An epic or major feature is completed or archived.
+- Architecture changes land.
+- A long debugging session discovers important context future agents will need.
+- Work pauses in a state that would be expensive to reconstruct later.
 
-5. **v1-polish/** - Completed v1 polish items (DONE)
-   - Context model selector UI
-   - Word length filter metrics
-   - Context window trim limits
-   - Clickable resource pills
+Memory entries should capture facts, decisions, verification run, known follow-up
+work, and links back to `.todo`, ADRs, or PR reviews. Do not use memory-bank as a
+replacement for active work tracking; live tasks belong in `.todo`.
 
-## Working with This Structure
+## Current Active Inventory
 
-### Adding New Work
+### Active Epics
 
-1. **New Epic**: Create under `.todo/epics/epic-[name]-[YYYY-MM-DD]/`
-2. **Architecture Debt**: Document in `.todo/architecture-debt/`
-3. **Follow ADR pattern**: Create ADR first, then epic, then sprints
+- `.todo/epics/epic-architecture-health-pass-v1.3/`
 
-### Completing Work
+### Active Features
 
-When an epic or spec is complete:
+- `.todo/features/feature-full-tab-conversation-agent/`
+- `.todo/features/feature-desktop-shell-adapter/`
 
-1. ✅ Verify all acceptance criteria met
-2. ✅ PR merged to main
-3. ✅ Memory bank entry created
-4. ✅ Update epic status to "Complete"
-5. ✅ Move to `.todo/archived/epics/` or `.todo/archived/specs/`
+### Active Tech Debt
 
-### Archiving Criteria
-
-Archive work when:
-
-- **Epics**: All sprints complete, no pending items
-- **Specs**: Implemented and merged to main
-- **Architecture Debt**: Resolved or superseded
-
-**Do NOT archive**:
-
-- Partially complete epics (leave in `.todo/epics/` with updated status)
-- Active architecture debt (leave in `.todo/architecture-debt/`)
+See `.todo/tech-debt/README.md` for the active debt inventory.
 
 ## Related Documentation
 
-- **ADRs**: [docs/adr/](../docs/adr/) - Architecture Decision Records
-- **Memory Bank**: [.memory-bank/](../.memory-bank/) - Session continuity
-- **Agent Guide**: [.claude/CLAUDE.md](../.claude/CLAUDE.md) - AI agent instructions
-
-## Maintenance
-
-- **Weekly**: Review active epics, update statuses
-- **Monthly**: Archive completed work, audit stale items
-- **Quarterly**: Review architecture debt priorities
+- ADRs: `docs/adr/`
+- Architecture overview: `docs/ARCHITECTURE.md`
+- Memory bank: `.memory-bank/`
+- Agent setup: `.ai/central-agent-setup.md`
 
 ---
 
-**Last Updated**: 2025-11-03
-**Archived Items**: 7 epics, 5 spec directories
-**Active Items**: 2 epics, 4 architecture debt issues
+**Last Updated**: 2026-06-29

@@ -60,6 +60,13 @@ elsewhere.
 | Low | [AI service refresh duplication](2026-06-26-ai-service-refresh-duplication.md) | Identified |
 | Low | [Secret-change key filtering](2026-06-26-secret-change-key-filtering.md) | Identified |
 | Low | [MessageHandler self-heal cleanup](2026-06-26-messagehandler-self-heal-cleanup.md) | Identified |
+| Low | [Word Search defaults product decision](2026-06-29-word-search-defaults-product-decision.md) | Deferred |
+| Low | [TypeScript project references](2026-06-29-typescript-project-references.md) | Deferred |
+| Low | [Logging and AI alias modernization](2026-06-29-logging-and-ai-alias-modernization.md) | Deferred |
+| Low | [App-side VS Code Jest mock](2026-06-29-app-side-vscode-jest-mock.md) | Deferred |
+| Low | [Untitled document active file edge](2026-06-29-untitled-document-active-file-edge.md) | Deferred |
+| Low | [Manuscript read and boundary guard performance](2026-06-29-manuscript-read-and-boundary-guard-performance.md) | Deferred |
+| Low | [Build command gate semantics](2026-06-29-build-command-gate-semantics.md) | Deferred |
 
 ## Review Guidance
 

@@ -562,8 +562,9 @@ The `resources/` directory contains:
 |-----------|---------|
 | `docs/adr/` | Architecture Decision Records (ADRs) - document decisions before coding |
 | `.todo/epics/` | Active feature work with sprint breakdowns |
+| `.todo/features/` | Active standalone feature ideas; one folder per feature so screenshots/docs can live nearby |
 | `.todo/tech-debt/` | Tracked technical debt for future resolution |
-| `.todo/archive/` | Completed epics and specs |
+| `.todo/archive/` | Completed or superseded epics, features, specs, and tech debt |
 | `.memory-bank/` | Session continuity snapshots (format: `YYYYMMDD-HHMM-title.md`) |
 
 ### Development Flow
@@ -576,6 +577,29 @@ The `resources/` directory contains:
 
 **Branching**: `sprint/<epic-slug>-<NN>-<sprint-slug>` (e.g., `sprint/epic-message-envelope-01-structure`)
 
+### `.todo` Work Tracking
+
+Use `.todo` as the source of truth for active planned work. Pick the smallest
+honest container:
+
+- **Epic**: `.todo/epics/epic-short-name-YYYY-MM-DD/` for multi-sprint or
+  architecture-heavy work.
+- **Feature**: `.todo/features/feature-short-name/` for standalone product or UX
+  work. Features are folders by default so they can accumulate screenshots,
+  mockups, notes, fixtures, and supporting docs.
+- **Tech debt**: `.todo/tech-debt/YYYY-MM-DD-short-name.md` for focused cleanup
+  or maintenance concerns. Use a folder only when the item needs supporting
+  artifacts.
+
+Every new item should state status, priority, problem/motivation, related files,
+and completion criteria. If you discover out-of-scope work while implementing,
+capture it in `.todo` and continue unless it blocks the current task.
+
+Archive completed or superseded work under `.todo/archive/` only after any live
+follow-ups have been split into new `.todo` entries. For large folders, add an
+`ARCHIVE.md` or top-level README note with the archive date, release/PR, summary,
+and links to follow-up items.
+
 ### Architecture Debt
 
 When you discover issues out of scope for current work:
@@ -584,6 +608,21 @@ When you discover issues out of scope for current work:
 2. Assign priority (High/Medium/Low)
 3. Reference in sprint completion notes
 4. Continue sprint - don't let debt tracking block progress
+
+### Memory Bank
+
+Use `.memory-bank/YYYYMMDD-HHMM-short-title.md` for session continuity and
+completion records. Create or update a memory-bank entry when:
+
+- A release is prepared or completed.
+- An epic, major feature, or large archive pass completes.
+- An architecture change lands.
+- A debugging session uncovers context that would be expensive to reconstruct.
+- Work pauses with important state, decisions, or verification results.
+
+Memory-bank entries should record facts, decisions, verification run, known
+follow-up work, and links to `.todo`, ADRs, PR reviews, or release docs. Do not
+hide active work in memory-bank; active tasks belong in `.todo`.
 
 ## Testing and Development
 

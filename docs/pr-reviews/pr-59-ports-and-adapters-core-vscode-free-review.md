@@ -346,7 +346,7 @@ Fixups landed in **`32c7ed2`** on `claude/vigilant-cannon-jma748` (313 tests · 
 - **#16** — config-watcher relocation works end-to-end (Settings-UI change broadcasts back to the webview); guide/resource open confirms the new containment guard didn't break the happy path.
 - **#8** — happy-path clean; the untitled-buffer edge wasn't specifically exercised but is low-risk (the old `untitled:`-URI read likely also failed) — marked ◐, not a blocker.
 
-**⏸️ Deferred (with rationale — tracked in `migration-and-facelift/tech-debt-and-deferred.md`):**
+**⏸️ Deferred (with rationale — originally tracked in `.todo/archive/epics/epic-migration-and-facelift-2026-06-16/tech-debt-and-deferred.md`; active follow-ups now live in `.todo/tech-debt/` and `.todo/features/`):**
 - **#14** — public `handleConfigurationChange` → constructor-callback seam: do it at the **Stage-2 interface lock** (the provider↔handler wiring is being reshaped by the monorepo move anyway; in-process the provider is the only caller, so the wider seam is safe meanwhile).
 - **#19** — boundary-guard sync file reads: immeasurable at current scale; ripgrep-subprocess swap is a one-liner if the repo grows.
 
