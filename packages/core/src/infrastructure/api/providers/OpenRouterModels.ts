@@ -55,6 +55,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Anthropic\'s latest Sonnet model with stronger coding, agentic reliability, and long-context performance'
   },
   {
+    id: 'anthropic/claude-sonnet-5',
+    name: 'Claude Sonnet 5',
+    family: 'Claude Sonnet',
+    description: 'Anthropic\'s newest Sonnet model with 1M context, adaptive reasoning, and frontier performance for professional writing and agentic work'
+  },
+  {
     id: 'anthropic/claude-haiku-4.5',
     name: 'Claude Haiku 4.5',
     family: 'Claude Haiku',
@@ -309,6 +315,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Most capable Sonnet generation with improved coding, reasoning consistency, and 1M-context readiness for long workflows.'
   },
   {
+    id: 'anthropic/claude-sonnet-5',
+    name: 'Claude Sonnet 5',
+    family: 'Claude Sonnet',
+    description: 'Anthropic\'s newest Sonnet flagship. 1M context, adaptive reasoning, and frontier performance across prose analysis, coding, agents, and professional writing workflows.'
+  },
+  {
     id: 'anthropic/claude-opus-4.5',
     name: 'Claude Opus 4.5',
     family: 'Claude Opus',
@@ -319,12 +331,6 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Claude Opus 4.6',
     family: 'Claude Opus',
     description: 'Anthropic\'s strongest model for sustained knowledge work. Exceptional coherence across long outputs and extended sessions. Near-production-ready prose in a single pass with deep contextual understanding.'
-  },
-  {
-    id: 'anthropic/claude-opus-4.6-fast',
-    name: 'Claude Opus 4.6 Fast',
-    family: 'Claude Opus',
-    description: 'Lower-latency Opus 4.6 variant. Near-Opus prose quality at throughput closer to Sonnet — good for iterative chapter passes.'
   },
   {
     id: 'anthropic/claude-opus-4.7',

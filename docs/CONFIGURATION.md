@@ -31,10 +31,10 @@ Scoped models per feature. Each scope can use a different model to balance cost 
 
 | Setting | Scope | Default | Used By |
 |---------|-------|---------|---------|
-| `proseMinion.assistantModel` | Assistant | `anthropic/claude-sonnet-4.6` | Prose & dialogue analysis |
+| `proseMinion.assistantModel` | Assistant | `anthropic/claude-sonnet-5` | Prose & dialogue analysis |
 | `proseMinion.dictionaryModel` | Dictionary | `anthropic/claude-haiku-4.5` | Dictionary/utility lookups |
 | `proseMinion.contextModel` | Context | `openai/gpt-5.4` | Context assistant |
-| `proseMinion.categoryModel` | Category Search | `anthropic/claude-sonnet-4.6` | Semantic word discovery |
+| `proseMinion.categoryModel` | Category Search | `anthropic/claude-sonnet-5` | Semantic word discovery |
 
 Model IDs are curated and verified against the live OpenRouter API. See the Model Browser in the Settings Overlay for the full list.
 

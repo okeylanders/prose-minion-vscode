@@ -10,6 +10,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 
 **Best for:** Writing scenes, generating dialogue, style improvement, and avoiding "AI voice"
 
+### Claude Sonnet 5 — New Sonnet Flagship
+
+- **Best For:** Default high-quality prose analysis, long-context critique, and mixed writing + tooling workflows
+- **Description:** Anthropic's newest Sonnet model with 1M context, adaptive reasoning, and frontier performance across professional writing, coding, and agentic work
+- **Links:**
+  - OpenRouter: https://openrouter.ai/anthropic/claude-sonnet-5
+  - Anthropic: https://www.anthropic.com
+
 ### Claude Sonnet 4.5 — The Gold Standard
 
 - **Best For:** Top-tier powerhouse for all creative tasks

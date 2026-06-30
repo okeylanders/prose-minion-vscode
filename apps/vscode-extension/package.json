@@ -171,7 +171,7 @@
       "properties": {
         "proseMinion.assistantModel": {
           "type": "string",
-          "default": "anthropic/claude-sonnet-4.6",
+          "default": "anthropic/claude-sonnet-5",
           "description": "AI model for assistant tools (Prose/Dialogue analysis). See Settings Overlay for curated list, or enter any OpenRouter model ID.",
           "order": 2
         },
@@ -189,10 +189,11 @@
         },
         "proseMinion.categoryModel": {
           "type": "string",
-          "default": "anthropic/claude-sonnet-4.6",
+          "default": "anthropic/claude-sonnet-5",
           "enum": [
             "anthropic/claude-sonnet-4.5",
             "anthropic/claude-sonnet-4.6",
+            "anthropic/claude-sonnet-5",
             "anthropic/claude-haiku-4.5",
             "anthropic/claude-opus-4.5",
             "anthropic/claude-opus-4.6",
@@ -231,7 +232,7 @@
             "z-ai/glm-5.1",
             "z-ai/glm-5.2"
           ],
-          "description": "AI model for Category Search (curated list, thinking models)",
+          "description": "AI model for Category Search (curated list)",
           "order": 5
         },
         "proseMinion.includeCraftGuides": {

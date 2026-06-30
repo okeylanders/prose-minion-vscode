@@ -5,6 +5,14 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Refreshed the curated OpenRouter model catalog after a live audit on 2026-06-30.
+- Added `anthropic/claude-sonnet-5` to the recommended and category model lists, and promoted it to the Assistant and Category Search default.
+- Removed stale curated ID `anthropic/claude-opus-4.6-fast`, which is no longer returned by OpenRouter's `/models` endpoint.
+
 ## [2.0.0] - 2026-06-26
 
 ### Overview

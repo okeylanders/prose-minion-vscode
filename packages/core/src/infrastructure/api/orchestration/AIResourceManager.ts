@@ -95,11 +95,11 @@ export class AIResourceManager {
     }
 
     // Resolve model selections with fallbacks
-    const fallbackModel = modelConfig?.fallbackModel ?? 'anthropic/claude-sonnet-4.5';
+    const fallbackModel = modelConfig?.fallbackModel ?? 'anthropic/claude-sonnet-5';
     const assistantModel = modelConfig?.assistantModel ?? this.settings.get<string>('proseMinion', 'assistantModel') ?? fallbackModel;
     const dictionaryModel = modelConfig?.dictionaryModel ?? this.settings.get<string>('proseMinion', 'dictionaryModel') ?? fallbackModel;
     const contextModel = modelConfig?.contextModel ?? this.settings.get<string>('proseMinion', 'contextModel') ?? fallbackModel;
-    const categoryModel = modelConfig?.categoryModel ?? this.settings.get<string>('proseMinion', 'categoryModel') ?? 'anthropic/claude-sonnet-4.5';
+    const categoryModel = modelConfig?.categoryModel ?? this.settings.get<string>('proseMinion', 'categoryModel') ?? fallbackModel;
 
     // Create AI resources for each scope
     const assistantResources = this.createResourceBundle(apiKey!, 'assistant', assistantModel);

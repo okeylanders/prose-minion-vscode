@@ -446,7 +446,7 @@ export class ConfigurationHandler {
   }
 
   private getEffectiveModelSelections(): Partial<Record<ModelScope, string>> {
-    const fallback = 'anthropic/claude-sonnet-4.5';
+    const fallback = 'anthropic/claude-sonnet-5';
 
     const selections: Partial<Record<ModelScope, string>> = {
       assistant: this.settings.get<string>('proseMinion', 'assistantModel') || fallback,

@@ -109,10 +109,10 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
 
   const defaults: ModelsSettings = {
     // Model Selections
-    assistantModel: 'anthropic/claude-sonnet-4.6',
+    assistantModel: 'anthropic/claude-sonnet-5',
     dictionaryModel: 'anthropic/claude-haiku-4.5',
     contextModel: 'openai/gpt-5.4',
-    categoryModel: 'anthropic/claude-sonnet-4.6',
+    categoryModel: 'anthropic/claude-sonnet-5',
 
     // Agent Behavior
     includeCraftGuides: true,
