@@ -227,4 +227,28 @@ describe('useDictionary - Streaming Cancellation', () => {
     expect(result.current.loading).toBe(false);
     expect(result.current.isStreaming).toBe(false);
   });
+
+  it('keeps the result empty when cancelling before any dictionary chunks arrive', () => {
+    const { result } = renderHook(() => useDictionary());
+
+    act(() => {
+      result.current.handleDictionaryResult({
+        type: MessageType.DICTIONARY_RESULT,
+        source: 'extension.dictionary',
+        payload: {
+          result: 'Previous dictionary output.',
+          toolName: 'dictionary_lookup'
+        },
+        timestamp: Date.now()
+      });
+    });
+    expect(result.current.result).toBe('Previous dictionary output.');
+
+    act(() => result.current.startStreaming('dict-2'));
+    act(() => result.current.cancelStreaming());
+
+    expect(result.current.result).toBe('');
+    expect(result.current.loading).toBe(false);
+    expect(result.current.isStreaming).toBe(false);
+  });
 });

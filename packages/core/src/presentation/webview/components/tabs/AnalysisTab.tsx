@@ -19,7 +19,7 @@ import { UseContextReturn } from '../../hooks/domain/useContext';
 import { UseSelectionReturn } from '../../hooks/domain/useSelection';
 import { UseModelsSettingsReturn } from '../../hooks/domain/useModelsSettings';
 import { UseSettingsReturn } from '../../hooks/domain/useSettings';
-import { createCancelRequestMessage } from '@utils/streamingCancelMessages';
+import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
 
 interface AnalysisTabProps {
   vscode: VSCodeAPI;

@@ -7,7 +7,7 @@
  */
 
 import { LogSink } from '@/platform';
-import { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
+import { isTextSourceValidationError, TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
 import { ProseStatsService } from '@services/measurement/ProseStatsService';
 import { StyleFlagsService } from '@services/measurement/StyleFlagsService';
 import { WordFrequencyService } from '@services/measurement/WordFrequencyService';
@@ -104,6 +104,7 @@ export class MetricsHandler {
       this.sendMetricsResult(result.metrics, result.toolName);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[MetricsHandler] Prose stats error: ${msg}`);
       this.sendTextSourceError('metrics.prose_stats', msg);
     }
   }
@@ -117,6 +118,7 @@ export class MetricsHandler {
       this.sendMetricsResult(result.metrics, result.toolName);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[MetricsHandler] Style flags error: ${msg}`);
       this.sendTextSourceError('metrics.style_flags', msg);
     }
   }
@@ -130,6 +132,7 @@ export class MetricsHandler {
       this.sendMetricsResult(result.metrics, result.toolName);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[MetricsHandler] Word frequency error: ${msg}`);
       this.sendTextSourceError('metrics.word_frequency', msg);
     }
   }
@@ -165,23 +168,11 @@ export class MetricsHandler {
   }
 
   private sendTextSourceError(source: ErrorSource, message: string): void {
-    if (this.isTextSourceValidationError(message)) {
+    if (isTextSourceValidationError(message)) {
       this.sendError(source, message);
       return;
     }
 
     this.sendError(source, 'Invalid selection or path', message);
-  }
-
-  private isTextSourceValidationError(message: string): boolean {
-    return [
-      'Active file is not saved to disk.',
-      'No text selected.',
-      'No manuscript files matched',
-      'No chapter files matched',
-      'Invalid selection token.',
-      'Active file not found.',
-      'Resolved source contains no text.'
-    ].some(prefix => message.startsWith(prefix));
   }
 }

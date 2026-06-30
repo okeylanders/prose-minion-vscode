@@ -19,7 +19,7 @@ import {
   ClearTransientApiKeyWarningMessage,
   isApiKeyNotConfiguredWarning
 } from '@messages';
-import { createCancelRequestMessage } from '@utils/streamingCancelMessages';
+import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
 
 export interface AnalysisState {
   result: string;

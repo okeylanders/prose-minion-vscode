@@ -11,13 +11,15 @@ describe('SearchHandler', () => {
   let handler: SearchHandler;
   let router: MessageRouter;
   let postMessage: jest.Mock;
+  let outputChannel: { appendLine: jest.Mock };
 
   beforeEach(() => {
     postMessage = jest.fn().mockResolvedValue(undefined);
+    outputChannel = { appendLine: jest.fn() };
     handler = new SearchHandler(
       {} as any,  // wordSearchService
       postMessage as any, // postMessage
-      { appendLine: jest.fn() } as any, // outputChannel
+      outputChannel as any, // outputChannel
       {} as any, // textSourceResolver
       {} as any  // categorySearchService
     );
@@ -52,7 +54,7 @@ describe('SearchHandler', () => {
       handler = new SearchHandler(
         {} as any,
         postMessage as any,
-        { appendLine: jest.fn() } as any,
+        outputChannel as any,
         { resolve: jest.fn().mockRejectedValue(new Error(message)) } as any,
         {} as any
       );
@@ -76,6 +78,7 @@ describe('SearchHandler', () => {
           }
         })
       );
+      expect(outputChannel.appendLine).toHaveBeenCalledWith(`[SearchHandler] Word search error: ${message}`);
     });
   });
 });

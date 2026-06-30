@@ -16,7 +16,7 @@ import { VSCodeAPI } from '../../types/vscode';
 import { UseDictionaryReturn } from '../../hooks/domain/useDictionary';
 import { UseSelectionReturn } from '../../hooks/domain/useSelection';
 import { UseSettingsReturn } from '../../hooks/domain/useSettings';
-import { createCancelRequestMessage } from '@utils/streamingCancelMessages';
+import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
 
 interface UtilitiesTabProps {
   vscode: VSCodeAPI;

@@ -25,6 +25,8 @@ export function createCancelRequestMessage(
   requestId: string,
   source: string
 ): CancelRequestMessage {
+  // `type` comes from an exhaustive domain map; the cast narrows the union so
+  // callers receive the matching cancel-message shape without duplicating cases.
   return {
     type: cancelMessageTypes[domain],
     source,

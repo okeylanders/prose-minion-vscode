@@ -18,7 +18,7 @@ import { UseSearchReturn } from '@hooks/domain/useSearch';
 import { UseMetricsReturn } from '@hooks/domain/useMetrics';
 import { UseWordSearchSettingsReturn } from '@hooks/domain/useWordSearchSettings';
 import { UseModelsSettingsReturn } from '@hooks/domain/useModelsSettings';
-import { createCancelRequestMessage } from '@utils/streamingCancelMessages';
+import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
 
 interface CategorySearchPanelProps {
   vscode: VSCodeAPI;

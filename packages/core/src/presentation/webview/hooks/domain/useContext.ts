@@ -18,7 +18,7 @@ import {
   ClearTransientApiKeyWarningMessage,
   isApiKeyNotConfiguredWarning
 } from '@messages';
-import { createCancelRequestMessage } from '@utils/streamingCancelMessages';
+import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
 
 export interface ContextState {
   contextText: string;
@@ -236,7 +236,11 @@ export const useContext = (): UseContextReturn => {
     if (currentRequestId) {
       ignoredRequestIdsRef.current.add(currentRequestId);
     }
-    streaming.reset();
+    const partialContent = streaming.buffer;
+    streaming.endStreaming();
+    if (partialContent) {
+      setContextTextState(partialContent);
+    }
     setCurrentRequestId(null);
     setLoading(false);
     setStatusMessage('');

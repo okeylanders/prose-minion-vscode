@@ -7,7 +7,7 @@ import { TokenUsage } from '../index';
 import { MessageType, MessageEnvelope } from './base';
 
 /**
- * Domain types that support streaming
+ * Domain types that support streaming events or cancel requests.
  */
 export type StreamingDomain = 'analysis' | 'dictionary' | 'context' | 'search';
 

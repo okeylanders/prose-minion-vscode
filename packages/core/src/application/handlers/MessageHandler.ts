@@ -275,8 +275,7 @@ export class MessageHandler {
     // this gives the assistant, dictionary, and context paths the same recovery
     // instead of staying disabled until a model-setting change or reload.
     const secretSubscription = this.services.secretsService.onDidChange(() => {
-      this.outputChannel.appendLine('[MessageHandler] API key changed, refreshing AI services');
-      void this.refreshServiceConfiguration({ clearApiKeyWarningOnSuccess: true });
+      void this.refreshServiceConfigurationAfterSecretChange();
     });
     this.disposeSecretListener = () => secretSubscription.dispose();
 
@@ -423,7 +422,25 @@ export class MessageHandler {
     }
   }
 
-  private async refreshServiceConfiguration(options: { clearApiKeyWarningOnSuccess?: boolean } = {}): Promise<void> {
+  private async refreshServiceConfigurationAfterSecretChange(): Promise<void> {
+    this.outputChannel.appendLine('[MessageHandler] API key changed, refreshing AI services');
+    const clearTransientApiKeyWarning = await this.hasApiKeyForSecretRefresh();
+    await this.refreshServiceConfiguration({ clearTransientApiKeyWarning });
+  }
+
+  private async hasApiKeyForSecretRefresh(): Promise<boolean> {
+    try {
+      return !!(await this.services.secretsService.getApiKey());
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(
+        `[MessageHandler] Failed to inspect API key before service refresh: ${message}`
+      );
+      return false;
+    }
+  }
+
+  private async refreshServiceConfiguration(options: { clearTransientApiKeyWarning?: boolean } = {}): Promise<void> {
     const refreshSteps = [
       { name: 'AI resource manager', refresh: () => this.services.aiResourceManager.refreshConfiguration() },
       { name: 'assistant tool service', refresh: () => this.services.assistantToolService.refreshConfiguration() },
@@ -433,6 +450,8 @@ export class MessageHandler {
 
     this.outputChannel.appendLine('[MessageHandler] Service configuration refresh started');
 
+    // Keep these sequential so a failed foundational refresh leaves a clear
+    // skip list instead of four concurrent failures with ambiguous ownership.
     for (const [index, step] of refreshSteps.entries()) {
       try {
         await step.refresh();
@@ -448,36 +467,33 @@ export class MessageHandler {
             `[MessageHandler] Service configuration refresh skipped: ${skippedSteps.join(', ')}`
           );
         }
+        this.sendStatus(
+          'AI service refresh partially failed. Some tools may need a reload.',
+          `${step.name}: ${message}`
+        );
+        if (options.clearTransientApiKeyWarning) {
+          this.postClearTransientApiKeyWarning();
+        }
         return;
       }
     }
 
-    this.outputChannel.appendLine('[MessageHandler] Service configuration refresh completed');
+    this.outputChannel.appendLine(
+      `[MessageHandler] Service configuration refresh completed: ${refreshSteps.map(({ name }) => name).join(', ')}`
+    );
 
-    if (options.clearApiKeyWarningOnSuccess) {
-      await this.postClearTransientApiKeyWarningIfConfigured();
+    if (options.clearTransientApiKeyWarning) {
+      this.postClearTransientApiKeyWarning();
     }
   }
 
-  private async postClearTransientApiKeyWarningIfConfigured(): Promise<void> {
-    try {
-      const apiKey = await this.services.secretsService.getApiKey();
-      if (!apiKey) {
-        return;
-      }
-
-      void this.postMessage({
-        type: MessageType.CLEAR_TRANSIENT_API_KEY_WARNING,
-        source: 'extension.handler',
-        payload: {},
-        timestamp: Date.now()
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.outputChannel.appendLine(
-        `[MessageHandler] Failed to inspect API key after service refresh: ${message}`
-      );
-    }
+  private postClearTransientApiKeyWarning(): void {
+    void this.postMessage({
+      type: MessageType.CLEAR_TRANSIENT_API_KEY_WARNING,
+      source: 'extension.handler',
+      payload: {},
+      timestamp: Date.now()
+    });
   }
 
   /**

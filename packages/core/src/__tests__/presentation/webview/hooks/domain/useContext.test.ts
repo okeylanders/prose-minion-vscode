@@ -93,3 +93,41 @@ describe('useContext - Transient Warning Persistence', () => {
     expect(result.current.contextText).toBe('Real generated context.');
   });
 });
+
+describe('useContext - Streaming Cancellation', () => {
+  let mockVSCode: ReturnType<typeof createMockVSCode>;
+
+  beforeEach(() => {
+    mockVSCode = createMockVSCode();
+    (useVSCodeApi as jest.Mock).mockReturnValue(mockVSCode);
+    (usePersistedState as jest.Mock).mockReturnValue({});
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('preserves streamed context content when cancelling', () => {
+    const { result } = renderHook(() => useContext());
+
+    act(() => result.current.startStreaming('ctx-1'));
+    act(() => result.current.handleStreamChunk({
+      type: MessageType.STREAM_CHUNK,
+      source: 'extension.test',
+      payload: { domain: 'context', requestId: 'ctx-1', token: 'partial ' },
+      timestamp: Date.now()
+    }));
+    act(() => result.current.handleStreamChunk({
+      type: MessageType.STREAM_CHUNK,
+      source: 'extension.test',
+      payload: { domain: 'context', requestId: 'ctx-1', token: 'context' },
+      timestamp: Date.now()
+    }));
+
+    act(() => result.current.cancelStreaming());
+
+    expect(result.current.contextText).toBe('partial context');
+    expect(result.current.loading).toBe(false);
+    expect(result.current.isStreaming).toBe(false);
+  });
+});

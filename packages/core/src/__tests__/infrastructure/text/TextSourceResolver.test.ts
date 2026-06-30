@@ -117,7 +117,7 @@ describe('TextSourceResolver', () => {
       expect(result.text).toBe('Editor file body.');
     });
 
-    it('throws a clear error when the active editor is an untitled buffer', async () => {
+    it('throws a clear error when the active editor URI is an untitled buffer', async () => {
       const resolver = new TextSourceResolver(
         createFakeFileSystem(),
         createFakeWorkspace(),
@@ -125,6 +125,25 @@ describe('TextSourceResolver', () => {
         createFakeEditorContext({
           getActiveSelection: () => selectionOf({
             uriString: 'untitled:Untitled-1',
+            fsPath: '/ws/Untitled-1',
+            relativePath: 'Untitled-1'
+          })
+        })
+      );
+
+      await expect(resolver.resolve({ mode: 'activeFile' })).rejects.toThrow(
+        /Active file is not saved to disk/
+      );
+    });
+
+    it('throws a clear error when the active editor has no filesystem path', async () => {
+      const resolver = new TextSourceResolver(
+        createFakeFileSystem(),
+        createFakeWorkspace(),
+        createFakeSettings(),
+        createFakeEditorContext({
+          getActiveSelection: () => selectionOf({
+            uriString: 'file:///Untitled-1',
             fsPath: '',
             relativePath: 'Untitled-1'
           })
@@ -133,6 +152,22 @@ describe('TextSourceResolver', () => {
 
       await expect(resolver.resolve({ mode: 'activeFile' })).rejects.toThrow(
         /Active file is not saved to disk/
+      );
+    });
+
+    it('rejects absolute pathText outside open workspace folders', async () => {
+      const resolver = new TextSourceResolver(
+        createFakeFileSystem({}, { '/private/notes.md': 'Secret notes.' }),
+        createFakeWorkspace({
+          workspaceFolders: () => [{ path: '/ws', name: 'ws' }],
+          asRelativePath: (p: string) => p.replace('/ws/', ''),
+        }),
+        createFakeSettings(),
+        createFakeEditorContext()
+      );
+
+      await expect(resolver.resolve({ mode: 'activeFile', pathText: '/private/notes.md' })).rejects.toThrow(
+        /Text source path must be inside an open workspace folder/
       );
     });
   });

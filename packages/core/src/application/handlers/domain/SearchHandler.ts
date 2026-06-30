@@ -6,7 +6,7 @@
  */
 
 import { LogSink } from '@/platform';
-import { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
+import { isTextSourceValidationError, TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
 import { WordSearchService } from '@services/search/WordSearchService';
 import { CategorySearchService } from '@services/search/CategorySearchService';
 import {
@@ -112,6 +112,7 @@ export class SearchHandler {
       this.sendSearchResult(result.metrics, result.toolName);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[SearchHandler] Word search error: ${msg}`);
       this.sendTextSourceError('search', msg);
     }
   }
@@ -174,23 +175,11 @@ export class SearchHandler {
   }
 
   private sendTextSourceError(source: ErrorSource, message: string, fallback = 'Invalid selection or path'): void {
-    if (this.isTextSourceValidationError(message)) {
+    if (isTextSourceValidationError(message)) {
       this.sendError(source, message);
       return;
     }
 
     this.sendError(source, fallback, message);
-  }
-
-  private isTextSourceValidationError(message: string): boolean {
-    return [
-      'Active file is not saved to disk.',
-      'No text selected.',
-      'No manuscript files matched',
-      'No chapter files matched',
-      'Invalid selection token.',
-      'Active file not found.',
-      'Resolved source contains no text.'
-    ].some(prefix => message.startsWith(prefix));
   }
 }

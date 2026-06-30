@@ -1,5 +1,5 @@
 import { MessageType } from '@messages';
-import { createCancelRequestMessage } from '@/presentation/webview/utils/streamingCancelMessages';
+import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
 
 describe('createCancelRequestMessage', () => {
   beforeEach(() => {
