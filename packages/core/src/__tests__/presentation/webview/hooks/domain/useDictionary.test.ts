@@ -190,3 +190,41 @@ describe('useDictionary - Transient Warning Persistence', () => {
     expect(result.current.result).toBe('Real dictionary output.');
   });
 });
+
+describe('useDictionary - Streaming Cancellation', () => {
+  let mockVSCode: ReturnType<typeof createMockVSCode>;
+
+  beforeEach(() => {
+    mockVSCode = createMockVSCode();
+    (useVSCodeApi as jest.Mock).mockReturnValue(mockVSCode);
+    (usePersistedState as jest.Mock).mockReturnValue({});
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('preserves streamed dictionary content when cancelling', () => {
+    const { result } = renderHook(() => useDictionary());
+
+    act(() => result.current.startStreaming('dict-1'));
+    act(() => result.current.handleStreamChunk({
+      type: MessageType.STREAM_CHUNK,
+      source: 'extension.test',
+      payload: { domain: 'dictionary', requestId: 'dict-1', token: 'partial ' },
+      timestamp: Date.now()
+    }));
+    act(() => result.current.handleStreamChunk({
+      type: MessageType.STREAM_CHUNK,
+      source: 'extension.test',
+      payload: { domain: 'dictionary', requestId: 'dict-1', token: 'definition' },
+      timestamp: Date.now()
+    }));
+
+    act(() => result.current.cancelStreaming());
+
+    expect(result.current.result).toBe('partial definition');
+    expect(result.current.loading).toBe(false);
+    expect(result.current.isStreaming).toBe(false);
+  });
+});

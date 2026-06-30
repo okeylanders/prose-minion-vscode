@@ -10,14 +10,16 @@ import { MessageType } from '@/shared/types/messages';
 describe('MetricsHandler', () => {
   let handler: MetricsHandler;
   let router: MessageRouter;
+  let postMessage: jest.Mock;
 
   beforeEach(() => {
+    postMessage = jest.fn().mockResolvedValue(undefined);
     handler = new MetricsHandler(
       {} as any, // proseStatsService
       {} as any, // styleFlagsService
       {} as any, // wordFrequencyService
       {} as any, // standardsService
-      jest.fn().mockResolvedValue(undefined) as any, // postMessage
+      postMessage as any, // postMessage
       {} as any, // outputChannel
       {} as any  // textSourceResolver
     );
@@ -42,6 +44,40 @@ describe('MetricsHandler', () => {
     it('should register exactly 3 metrics routes', () => {
       handler.registerRoutes(router);
       expect(router.handlerCount).toBe(3);
+    });
+  });
+
+  describe('Text source errors', () => {
+    it('surfaces unsaved active-file guidance as the user-facing metrics error', async () => {
+      const message = 'Active file is not saved to disk. Save the file first or use selected text instead.';
+      handler = new MetricsHandler(
+        {} as any,
+        {} as any,
+        {} as any,
+        {} as any,
+        postMessage as any,
+        {} as any,
+        { resolve: jest.fn().mockRejectedValue(new Error(message)) } as any
+      );
+
+      await handler.handleMeasureStyleFlags({
+        type: MessageType.MEASURE_STYLE_FLAGS,
+        source: 'webview.metrics',
+        payload: {
+          source: { mode: 'activeFile' }
+        },
+        timestamp: Date.now()
+      } as any);
+
+      expect(postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: MessageType.ERROR,
+          payload: {
+            source: 'metrics.style_flags',
+            message
+          }
+        })
+      );
     });
   });
 });

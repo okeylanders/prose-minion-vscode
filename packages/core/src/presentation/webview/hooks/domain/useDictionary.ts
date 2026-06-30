@@ -298,7 +298,11 @@ export const useDictionary = (): UseDictionaryReturn => {
     if (currentRequestId) {
       ignoredRequestIdsRef.current.add(currentRequestId);
     }
-    streaming.reset();
+    const partialContent = streaming.buffer;
+    streaming.endStreaming();
+    if (partialContent) {
+      setResult(partialContent);
+    }
     setCurrentRequestId(null);
     setLoading(false);
     setStatusMessage('');
