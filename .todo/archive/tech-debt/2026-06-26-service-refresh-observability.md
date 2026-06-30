@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-06-26
 **Source**: PR #64 review, finding 5
-**Status**: Identified
+**Status**: Resolved
 **Priority**: Medium
 **Estimated Effort**: 2-3 hours
 
@@ -40,3 +40,9 @@ not what it changed to.
 - Successful refresh emits a completion line
 - Tests cover at least one named failure path
 - No API key or secret event payload is logged
+
+## Resolution
+
+Resolved on 2026-06-30 in `release-cleanup/pre-v2-low-hanging-fruit`.
+Service refresh now logs start, named failure, skipped remaining steps, and
+successful completion without logging secret material.

@@ -10,12 +10,16 @@ import { MessageType } from '@/shared/types/messages';
 describe('SearchHandler', () => {
   let handler: SearchHandler;
   let router: MessageRouter;
+  let postMessage: jest.Mock;
+  let outputChannel: { appendLine: jest.Mock };
 
   beforeEach(() => {
+    postMessage = jest.fn().mockResolvedValue(undefined);
+    outputChannel = { appendLine: jest.fn() };
     handler = new SearchHandler(
       {} as any,  // wordSearchService
-      jest.fn().mockResolvedValue(undefined) as any, // postMessage
-      {} as any, // outputChannel
+      postMessage as any, // postMessage
+      outputChannel as any, // outputChannel
       {} as any, // textSourceResolver
       {} as any  // categorySearchService
     );
@@ -41,6 +45,40 @@ describe('SearchHandler', () => {
     it('should register exactly 3 routes', () => {
       handler.registerRoutes(router);
       expect(router.handlerCount).toBe(3);
+    });
+  });
+
+  describe('Text source errors', () => {
+    it('surfaces unsaved active-file guidance as the user-facing search error', async () => {
+      const message = 'Active file is not saved to disk. Save the file first or use selected text instead.';
+      handler = new SearchHandler(
+        {} as any,
+        postMessage as any,
+        outputChannel as any,
+        { resolve: jest.fn().mockRejectedValue(new Error(message)) } as any,
+        {} as any
+      );
+
+      await handler.handleMeasureWordSearch({
+        type: MessageType.RUN_WORD_SEARCH,
+        source: 'webview.search.word',
+        payload: {
+          source: { mode: 'activeFile' },
+          options: {}
+        },
+        timestamp: Date.now()
+      } as any);
+
+      expect(postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: MessageType.ERROR,
+          payload: {
+            source: 'search',
+            message
+          }
+        })
+      );
+      expect(outputChannel.appendLine).toHaveBeenCalledWith(`[SearchHandler] Word search error: ${message}`);
     });
   });
 });

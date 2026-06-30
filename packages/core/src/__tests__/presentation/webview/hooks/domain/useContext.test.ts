@@ -6,9 +6,9 @@
  * useContext Behavioral Tests
  */
 
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { useContext } from '@/presentation/webview/hooks/domain/useContext';
-import { API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
+import { API_KEY_NOT_CONFIGURED_HEADING, ClearTransientApiKeyWarningMessage, MessageType } from '@messages';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 
 jest.mock('../../../../../presentation/webview/hooks/useVSCodeApi');
@@ -51,5 +51,83 @@ describe('useContext - Transient Warning Persistence', () => {
 
     expect(result.current.contextText).toBe('A real generated context result.');
     expect(result.current.persistedState.contextText).toBe('A real generated context result.');
+  });
+
+  it('clears a live API-key warning without clearing ordinary context text', () => {
+    (usePersistedState as jest.Mock).mockReturnValue({});
+
+    const { result } = renderHook(() => useContext());
+    const clearMessage: ClearTransientApiKeyWarningMessage = {
+      type: MessageType.CLEAR_TRANSIENT_API_KEY_WARNING,
+      source: 'extension.handler',
+      payload: {},
+      timestamp: 123
+    };
+
+    act(() => {
+      result.current.handleContextResult({
+        type: MessageType.CONTEXT_RESULT,
+        source: 'extension.context',
+        payload: {
+          result: `${API_KEY_NOT_CONFIGURED_HEADING}\n\nAdd your key to generate context.`,
+          toolName: 'context'
+        },
+        timestamp: 1
+      });
+    });
+    act(() => result.current.handleClearTransientApiKeyWarning(clearMessage));
+    expect(result.current.contextText).toBe('');
+
+    act(() => {
+      result.current.handleContextResult({
+        type: MessageType.CONTEXT_RESULT,
+        source: 'extension.context',
+        payload: {
+          result: 'Real generated context.',
+          toolName: 'context'
+        },
+        timestamp: 2
+      });
+    });
+    act(() => result.current.handleClearTransientApiKeyWarning(clearMessage));
+    expect(result.current.contextText).toBe('Real generated context.');
+  });
+});
+
+describe('useContext - Streaming Cancellation', () => {
+  let mockVSCode: ReturnType<typeof createMockVSCode>;
+
+  beforeEach(() => {
+    mockVSCode = createMockVSCode();
+    (useVSCodeApi as jest.Mock).mockReturnValue(mockVSCode);
+    (usePersistedState as jest.Mock).mockReturnValue({});
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('preserves streamed context content when cancelling', () => {
+    const { result } = renderHook(() => useContext());
+
+    act(() => result.current.startStreaming('ctx-1'));
+    act(() => result.current.handleStreamChunk({
+      type: MessageType.STREAM_CHUNK,
+      source: 'extension.test',
+      payload: { domain: 'context', requestId: 'ctx-1', token: 'partial ' },
+      timestamp: Date.now()
+    }));
+    act(() => result.current.handleStreamChunk({
+      type: MessageType.STREAM_CHUNK,
+      source: 'extension.test',
+      payload: { domain: 'context', requestId: 'ctx-1', token: 'context' },
+      timestamp: Date.now()
+    }));
+
+    act(() => result.current.cancelStreaming());
+
+    expect(result.current.contextText).toBe('partial context');
+    expect(result.current.loading).toBe(false);
+    expect(result.current.isStreaming).toBe(false);
   });
 });

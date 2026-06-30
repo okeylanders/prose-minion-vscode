@@ -98,6 +98,7 @@ import {
 } from './ui';
 import { ErrorMessage } from './error';
 import { StatusMessage } from './status';
+import { ClearTransientApiKeyWarningMessage } from './warnings';
 import {
   RequestAccountBalanceMessage,
   AccountBalanceDataMessage
@@ -180,6 +181,7 @@ export type ExtensionToWebviewMessage =
   | TokenUsageUpdateMessage
   | AccountBalanceDataMessage
   | ApiKeyStatusMessage
+  | ClearTransientApiKeyWarningMessage
   | FastGenerateDictionaryResultMessage
   | DictionaryGenerationProgressMessage
   | StreamStartedMessage

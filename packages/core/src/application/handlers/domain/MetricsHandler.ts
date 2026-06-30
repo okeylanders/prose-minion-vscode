@@ -7,7 +7,7 @@
  */
 
 import { LogSink } from '@/platform';
-import { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
+import { isTextSourceValidationError, TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
 import { ProseStatsService } from '@services/measurement/ProseStatsService';
 import { StyleFlagsService } from '@services/measurement/StyleFlagsService';
 import { WordFrequencyService } from '@services/measurement/WordFrequencyService';
@@ -104,7 +104,8 @@ export class MetricsHandler {
       this.sendMetricsResult(result.metrics, result.toolName);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('metrics.prose_stats', 'Invalid selection or path', msg);
+      this.outputChannel.appendLine(`[MetricsHandler] Prose stats error: ${msg}`);
+      this.sendTextSourceError('metrics.prose_stats', msg);
     }
   }
 
@@ -117,7 +118,8 @@ export class MetricsHandler {
       this.sendMetricsResult(result.metrics, result.toolName);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('metrics.style_flags', 'Invalid selection or path', msg);
+      this.outputChannel.appendLine(`[MetricsHandler] Style flags error: ${msg}`);
+      this.sendTextSourceError('metrics.style_flags', msg);
     }
   }
 
@@ -130,7 +132,8 @@ export class MetricsHandler {
       this.sendMetricsResult(result.metrics, result.toolName);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('metrics.word_frequency', 'Invalid selection or path', msg);
+      this.outputChannel.appendLine(`[MetricsHandler] Word frequency error: ${msg}`);
+      this.sendTextSourceError('metrics.word_frequency', msg);
     }
   }
 
@@ -162,5 +165,14 @@ export class MetricsHandler {
     if (!text) throw new Error('Resolved source contains no text.');
     const mode = payload.source?.mode;
     return { text, paths: resolved.relativePaths, mode };
+  }
+
+  private sendTextSourceError(source: ErrorSource, message: string): void {
+    if (isTextSourceValidationError(message)) {
+      this.sendError(source, message);
+      return;
+    }
+
+    this.sendError(source, 'Invalid selection or path', message);
   }
 }

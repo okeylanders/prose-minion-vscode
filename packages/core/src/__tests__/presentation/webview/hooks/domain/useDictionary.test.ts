@@ -8,9 +8,9 @@
  * Validates Tripartite Interface pattern for dictionary operations.
  */
 
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { DictionaryState, DictionaryActions, DictionaryPersistence, useDictionary } from '@/presentation/webview/hooks/domain/useDictionary';
-import { API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
+import { API_KEY_NOT_CONFIGURED_HEADING, ClearTransientApiKeyWarningMessage, MessageType } from '@messages';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 
 jest.mock('../../../../../presentation/webview/hooks/useVSCodeApi');
@@ -71,6 +71,7 @@ describe('useDictionary - Type Contracts', () => {
         setWordEdited: jest.fn(),
         setSource: jest.fn(),
         clearResult: jest.fn(),
+        handleClearTransientApiKeyWarning: jest.fn(),
         handleFastGenerateResult: jest.fn(),
         setFastGenerating: jest.fn(),
         // Streaming actions
@@ -84,6 +85,7 @@ describe('useDictionary - Type Contracts', () => {
       expect(typeof actions.handleDictionaryResult).toBe('function');
       expect(typeof actions.setWord).toBe('function');
       expect(typeof actions.clearResult).toBe('function');
+      expect(typeof actions.handleClearTransientApiKeyWarning).toBe('function');
       expect(typeof actions.handleFastGenerateResult).toBe('function');
       expect(typeof actions.setFastGenerating).toBe('function');
       expect(typeof actions.handleStreamStarted).toBe('function');
@@ -146,5 +148,107 @@ describe('useDictionary - Transient Warning Persistence', () => {
 
     expect(result.current.result).toBe('A real dictionary result.');
     expect(result.current.persistedState.utilitiesResult).toBe('A real dictionary result.');
+  });
+
+  it('clears a live API-key warning without clearing ordinary dictionary output', () => {
+    (usePersistedState as jest.Mock).mockReturnValue({});
+
+    const { result } = renderHook(() => useDictionary());
+    const clearMessage: ClearTransientApiKeyWarningMessage = {
+      type: MessageType.CLEAR_TRANSIENT_API_KEY_WARNING,
+      source: 'extension.handler',
+      payload: {},
+      timestamp: 123
+    };
+
+    act(() => {
+      result.current.handleDictionaryResult({
+        type: MessageType.DICTIONARY_RESULT,
+        source: 'extension.dictionary',
+        payload: {
+          result: `${API_KEY_NOT_CONFIGURED_HEADING}\n\nAdd your key to look up words.`,
+          toolName: 'dictionary_lookup'
+        },
+        timestamp: 1
+      });
+    });
+    act(() => result.current.handleClearTransientApiKeyWarning(clearMessage));
+    expect(result.current.result).toBe('');
+
+    act(() => {
+      result.current.handleDictionaryResult({
+        type: MessageType.DICTIONARY_RESULT,
+        source: 'extension.dictionary',
+        payload: {
+          result: 'Real dictionary output.',
+          toolName: 'dictionary_lookup'
+        },
+        timestamp: 2
+      });
+    });
+    act(() => result.current.handleClearTransientApiKeyWarning(clearMessage));
+    expect(result.current.result).toBe('Real dictionary output.');
+  });
+});
+
+describe('useDictionary - Streaming Cancellation', () => {
+  let mockVSCode: ReturnType<typeof createMockVSCode>;
+
+  beforeEach(() => {
+    mockVSCode = createMockVSCode();
+    (useVSCodeApi as jest.Mock).mockReturnValue(mockVSCode);
+    (usePersistedState as jest.Mock).mockReturnValue({});
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('preserves streamed dictionary content when cancelling', () => {
+    const { result } = renderHook(() => useDictionary());
+
+    act(() => result.current.startStreaming('dict-1'));
+    act(() => result.current.handleStreamChunk({
+      type: MessageType.STREAM_CHUNK,
+      source: 'extension.test',
+      payload: { domain: 'dictionary', requestId: 'dict-1', token: 'partial ' },
+      timestamp: Date.now()
+    }));
+    act(() => result.current.handleStreamChunk({
+      type: MessageType.STREAM_CHUNK,
+      source: 'extension.test',
+      payload: { domain: 'dictionary', requestId: 'dict-1', token: 'definition' },
+      timestamp: Date.now()
+    }));
+
+    act(() => result.current.cancelStreaming());
+
+    expect(result.current.result).toBe('partial definition');
+    expect(result.current.loading).toBe(false);
+    expect(result.current.isStreaming).toBe(false);
+  });
+
+  it('keeps the result empty when cancelling before any dictionary chunks arrive', () => {
+    const { result } = renderHook(() => useDictionary());
+
+    act(() => {
+      result.current.handleDictionaryResult({
+        type: MessageType.DICTIONARY_RESULT,
+        source: 'extension.dictionary',
+        payload: {
+          result: 'Previous dictionary output.',
+          toolName: 'dictionary_lookup'
+        },
+        timestamp: Date.now()
+      });
+    });
+    expect(result.current.result).toBe('Previous dictionary output.');
+
+    act(() => result.current.startStreaming('dict-2'));
+    act(() => result.current.cancelStreaming());
+
+    expect(result.current.result).toBe('');
+    expect(result.current.loading).toBe(false);
+    expect(result.current.isStreaming).toBe(false);
   });
 });

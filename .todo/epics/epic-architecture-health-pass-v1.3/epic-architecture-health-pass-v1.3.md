@@ -61,7 +61,6 @@ repository-wide visual rewrite.
 - [Settings integration tests](../../tech-debt/2025-11-06-settings-integration-tests.md)
 - [Large-file responsibility review](../../tech-debt/2025-11-19-large-file-review-needed.md)
 - [AIResourceOrchestrator loop duplication](../../tech-debt/2025-11-25-ai-resource-orchestrator-loop-duplication.md)
-- [Cancel-message duplication](../../tech-debt/2025-12-05-cancel-message-duplication.md)
 - [Streaming lifecycle duplication](../../tech-debt/2025-12-05-streaming-hook-duplication.md)
 
 These are follow-up debt, not unfinished acceptance criteria for the completed

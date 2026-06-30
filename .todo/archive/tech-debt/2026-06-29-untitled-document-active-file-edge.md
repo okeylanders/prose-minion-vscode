@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-06-29
 **Reviewed**: 2026-06-29
-**Status**: Deferred
+**Status**: Resolved
 **Priority**: Low
 **Estimated Effort**: Small
 
@@ -34,3 +34,10 @@ a direct text-source path for unsaved selections.
 - If needed, the user-facing message clearly explains that the buffer must be
   saved or selected text must be supplied directly.
 - Any behavior change has focused tests or a documented F5 smoke result.
+
+## Resolution
+
+Resolved on 2026-06-30 in `release-cleanup/pre-v2-low-hanging-fruit`.
+Selection mode remains supported for untitled buffers because it reads selected
+text directly. Active-file mode now fails with a clear "save the file first or
+use selected text" message, covered by resolver tests.

@@ -15,8 +15,10 @@ import {
   StreamChunkMessage,
   StreamCompleteMessage,
   StreamStartedMessage,
+  ClearTransientApiKeyWarningMessage,
   isApiKeyNotConfiguredWarning
 } from '@messages';
+import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
 
 export interface ContextState {
   contextText: string;
@@ -42,6 +44,7 @@ export interface ContextActions {
   setStatusMessage: (message: string) => void;
   requestContext: (payload: { excerpt: string; existingContext: string; sourceFileUri?: string }) => void;
   clearContext: () => void;
+  handleClearTransientApiKeyWarning: (message: ClearTransientApiKeyWarningMessage) => void;
   // Streaming actions
   handleStreamChunk: (message: StreamChunkMessage) => void;
   handleStreamComplete: (message: StreamCompleteMessage) => void;
@@ -156,17 +159,16 @@ export const useContext = (): UseContextReturn => {
     }
   }, []);
 
+  const handleClearTransientApiKeyWarning = React.useCallback((_message: ClearTransientApiKeyWarningMessage) => {
+    setContextTextState(current => isApiKeyNotConfiguredWarning(current) ? '' : current);
+  }, []);
+
   // Streaming handlers
   const startStreaming = React.useCallback((requestId: string) => {
     // Cancel any existing stream first
     if (currentRequestId) {
       // Notify backend to stop the old stream
-      vscode.postMessage({
-        type: MessageType.CANCEL_CONTEXT_REQUEST,
-        source: 'webview.context.preempt',
-        payload: { requestId: currentRequestId, domain: 'context' },
-        timestamp: Date.now()
-      });
+      vscode.postMessage(createCancelRequestMessage('context', currentRequestId, 'webview.context.preempt'));
 
       ignoredRequestIdsRef.current.add(currentRequestId);
       streaming.reset();
@@ -234,7 +236,11 @@ export const useContext = (): UseContextReturn => {
     if (currentRequestId) {
       ignoredRequestIdsRef.current.add(currentRequestId);
     }
-    streaming.reset();
+    const partialContent = streaming.buffer;
+    streaming.endStreaming();
+    if (partialContent) {
+      setContextTextState(partialContent);
+    }
     setCurrentRequestId(null);
     setLoading(false);
     setStatusMessage('');
@@ -264,6 +270,7 @@ export const useContext = (): UseContextReturn => {
     setStatusMessage,
     requestContext,
     clearContext,
+    handleClearTransientApiKeyWarning,
     // Streaming actions
     handleStreamStarted,
     handleStreamChunk,

@@ -18,6 +18,7 @@ import { UseSearchReturn } from '@hooks/domain/useSearch';
 import { UseMetricsReturn } from '@hooks/domain/useMetrics';
 import { UseWordSearchSettingsReturn } from '@hooks/domain/useWordSearchSettings';
 import { UseModelsSettingsReturn } from '@hooks/domain/useModelsSettings';
+import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
 
 interface CategorySearchPanelProps {
   vscode: VSCodeAPI;
@@ -118,15 +119,7 @@ export const CategorySearchPanel: React.FC<CategorySearchPanelProps> = ({
   };
 
   const handleCancelCategorySearch = () => {
-    vscode.postMessage({
-      type: MessageType.CANCEL_CATEGORY_SEARCH_REQUEST,
-      source: 'webview.search.category',
-      payload: {
-        requestId: 'category-search',
-        domain: 'search'
-      },
-      timestamp: Date.now()
-    });
+    vscode.postMessage(createCancelRequestMessage('search', 'category-search', 'webview.search.category'));
     search.cancelCategorySearch();
   };
 

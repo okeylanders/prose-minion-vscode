@@ -258,5 +258,86 @@ describe('MessageHandler assembly', () => {
     expect(assembly.services.assistantToolService.refreshConfiguration).toHaveBeenCalledTimes(1);
     expect(assembly.services.dictionaryService.refreshConfiguration).toHaveBeenCalledTimes(1);
     expect(assembly.services.contextAssistantService.refreshConfiguration).toHaveBeenCalledTimes(1);
+    expect(assembly.log.appendLine).toHaveBeenCalledWith(
+      '[MessageHandler] Service configuration refresh completed: AI resource manager, assistant tool service, dictionary service, context assistant service'
+    );
+  });
+
+  it('posts a transient API-key warning clear after successful key-backed self-heal', async () => {
+    const assembly = createTestAssembly();
+    (assembly.services.secretsService.getApiKey as jest.Mock).mockResolvedValue('configured-key');
+    const postMessage = jest.fn().mockResolvedValue(undefined);
+    createHandler(assembly, postMessage);
+    postMessage.mockClear();
+
+    const onSecretChange = assembly.secretOnDidChange.mock.calls[0][0] as () => void;
+    onSecretChange();
+    await flushQueuedWork();
+
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: MessageType.CLEAR_TRANSIENT_API_KEY_WARNING,
+        source: 'extension.handler',
+        payload: {}
+      })
+    );
+    expect(assembly.services.secretsService.getApiKey).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs the named refresh step and skipped services when API key self-heal fails', async () => {
+    const assembly = createTestAssembly();
+    (assembly.services.assistantToolService.refreshConfiguration as jest.Mock).mockRejectedValueOnce(
+      new Error('assistant refresh failed')
+    );
+    createHandler(assembly, jest.fn().mockResolvedValue(undefined));
+
+    const onSecretChange = assembly.secretOnDidChange.mock.calls[0][0] as () => void;
+    onSecretChange();
+    await flushQueuedWork();
+
+    expect(assembly.services.aiResourceManager.refreshConfiguration).toHaveBeenCalledTimes(1);
+    expect(assembly.services.assistantToolService.refreshConfiguration).toHaveBeenCalledTimes(1);
+    expect(assembly.services.dictionaryService.refreshConfiguration).not.toHaveBeenCalled();
+    expect(assembly.services.contextAssistantService.refreshConfiguration).not.toHaveBeenCalled();
+    expect(assembly.log.appendLine).toHaveBeenCalledWith(
+      '[MessageHandler] Service configuration refresh failed at assistant tool service: assistant refresh failed'
+    );
+    expect(assembly.log.appendLine).toHaveBeenCalledWith(
+      '[MessageHandler] Service configuration refresh skipped: dictionary service, context assistant service'
+    );
+  });
+
+  it('posts a partial-refresh status and clears stale API-key warnings when a key-backed self-heal partially fails', async () => {
+    const assembly = createTestAssembly();
+    (assembly.services.secretsService.getApiKey as jest.Mock).mockResolvedValue('configured-key');
+    (assembly.services.assistantToolService.refreshConfiguration as jest.Mock).mockRejectedValueOnce(
+      new Error('assistant refresh failed')
+    );
+    const postMessage = jest.fn().mockResolvedValue(undefined);
+    createHandler(assembly, postMessage);
+    postMessage.mockClear();
+
+    const onSecretChange = assembly.secretOnDidChange.mock.calls[0][0] as () => void;
+    onSecretChange();
+    await flushQueuedWork();
+
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: MessageType.STATUS,
+        source: 'extension.handler',
+        payload: {
+          message: 'AI service refresh partially failed. Some tools may need a reload.',
+          tickerMessage: 'assistant tool service: assistant refresh failed'
+        }
+      })
+    );
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: MessageType.CLEAR_TRANSIENT_API_KEY_WARNING,
+        source: 'extension.handler',
+        payload: {}
+      })
+    );
+    expect(assembly.services.secretsService.getApiKey).toHaveBeenCalledTimes(1);
   });
 });

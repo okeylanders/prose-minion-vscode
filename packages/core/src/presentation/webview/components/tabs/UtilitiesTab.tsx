@@ -16,6 +16,7 @@ import { VSCodeAPI } from '../../types/vscode';
 import { UseDictionaryReturn } from '../../hooks/domain/useDictionary';
 import { UseSelectionReturn } from '../../hooks/domain/useSelection';
 import { UseSettingsReturn } from '../../hooks/domain/useSettings';
+import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
 
 interface UtilitiesTabProps {
   vscode: VSCodeAPI;
@@ -232,15 +233,7 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
 
   const handleCancelStreaming = React.useCallback(() => {
     if (dictionary.currentRequestId) {
-      vscode.postMessage({
-        type: MessageType.CANCEL_DICTIONARY_REQUEST,
-        source: 'webview.utilities.tab',
-        payload: {
-          requestId: dictionary.currentRequestId,
-          domain: 'dictionary'
-        },
-        timestamp: Date.now()
-      });
+      vscode.postMessage(createCancelRequestMessage('dictionary', dictionary.currentRequestId, 'webview.utilities.tab'));
     }
     dictionary.cancelStreaming();
   }, [dictionary, vscode]);

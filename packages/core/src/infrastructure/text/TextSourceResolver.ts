@@ -11,7 +11,23 @@
 
 import * as path from 'path';
 import { EditorContext, FileSystem, FileType, LogSink, SettingsStore, Workspace } from '@/platform';
+import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 import { ResolvedTextSource, TextSourceSpec } from '@shared/types';
+
+const TEXT_SOURCE_VALIDATION_ERROR_PREFIXES = [
+  'Active file is not saved to disk.',
+  'Text source path must be inside an open workspace folder.',
+  'No text selected.',
+  'No manuscript files matched',
+  'No chapter files matched',
+  'Invalid selection token.',
+  'Active file not found.',
+  'Resolved source contains no text.'
+] as const;
+
+export function isTextSourceValidationError(message: string): boolean {
+  return TEXT_SOURCE_VALIDATION_ERROR_PREFIXES.some(prefix => message.startsWith(prefix));
+}
 
 export class TextSourceResolver {
   constructor(
@@ -141,7 +157,11 @@ export class TextSourceResolver {
 
       // Absolute
       if (path.isAbsolute(trimmed)) {
+        if (!this.isPathWithinOpenWorkspace(trimmed)) {
+          throw new Error('Text source path must be inside an open workspace folder.');
+        }
         if (await this.exists(trimmed)) return trimmed;
+        return undefined;
       }
 
       // Try as workspace-relative into each folder
@@ -164,9 +184,20 @@ export class TextSourceResolver {
     // Fallback to active editor
     const selection = this.editor.getActiveSelection();
     if (selection) {
+      if (this.isUnsavedEditorDocument(selection)) {
+        throw new Error('Active file is not saved to disk. Save the file first or use selected text instead.');
+      }
       return selection.fsPath;
     }
     return undefined;
+  }
+
+  private isUnsavedEditorDocument(selection: { uriString: string; fsPath: string }): boolean {
+    return selection.uriString.startsWith('untitled:') || selection.fsPath.trim().length === 0;
+  }
+
+  private isPathWithinOpenWorkspace(filePath: string): boolean {
+    return this.workspace.workspaceFolders().some(folder => isPathWithinRoot(folder.path, filePath));
   }
 
   private getManuscriptPatterns(pathText?: string): string[] {

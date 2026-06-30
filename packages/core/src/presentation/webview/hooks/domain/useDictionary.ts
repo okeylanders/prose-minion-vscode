@@ -17,8 +17,10 @@ import {
   StreamStartedMessage,
   StreamChunkMessage,
   StreamCompleteMessage,
+  ClearTransientApiKeyWarningMessage,
   isApiKeyNotConfiguredWarning
 } from '@messages';
+import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
 
 export interface FastGenerationMetadata {
   totalDuration: number;
@@ -63,6 +65,7 @@ export interface DictionaryActions {
   setWordEdited: (edited: boolean) => void;
   setSource: (uri?: string, relativePath?: string) => void;
   clearResult: () => void;
+  handleClearTransientApiKeyWarning: (message: ClearTransientApiKeyWarningMessage) => void;
   // Fast generation actions
   handleFastGenerateResult: (message: FastGenerateDictionaryResultMessage) => void;
   setFastGenerating: (isGenerating: boolean) => void;
@@ -196,6 +199,10 @@ export const useDictionary = (): UseDictionaryReturn => {
     setResult('');
   }, []);
 
+  const handleClearTransientApiKeyWarning = React.useCallback((_message: ClearTransientApiKeyWarningMessage) => {
+    setResult(current => isApiKeyNotConfiguredWarning(current) ? '' : current);
+  }, []);
+
   // Fast generation handlers
   const handleFastGenerateResult = React.useCallback((message: FastGenerateDictionaryResultMessage) => {
     const { result: content, metadata } = message.payload;
@@ -223,12 +230,7 @@ export const useDictionary = (): UseDictionaryReturn => {
     // Cancel any existing stream first
     if (currentRequestId) {
       // Notify backend to stop the old stream
-      vscode.postMessage({
-        type: MessageType.CANCEL_DICTIONARY_REQUEST,
-        source: 'webview.dictionary.preempt',
-        payload: { requestId: currentRequestId, domain: 'dictionary' },
-        timestamp: Date.now()
-      });
+      vscode.postMessage(createCancelRequestMessage('dictionary', currentRequestId, 'webview.dictionary.preempt'));
 
       ignoredRequestIdsRef.current.add(currentRequestId);
       streaming.reset();
@@ -296,7 +298,11 @@ export const useDictionary = (): UseDictionaryReturn => {
     if (currentRequestId) {
       ignoredRequestIdsRef.current.add(currentRequestId);
     }
-    streaming.reset();
+    const partialContent = streaming.buffer;
+    streaming.endStreaming();
+    if (partialContent) {
+      setResult(partialContent);
+    }
     setCurrentRequestId(null);
     setLoading(false);
     setStatusMessage('');
@@ -336,6 +342,7 @@ export const useDictionary = (): UseDictionaryReturn => {
     setWordEdited,
     setSource,
     clearResult,
+    handleClearTransientApiKeyWarning,
     handleFastGenerateResult,
     setFastGenerating,
     // Streaming actions

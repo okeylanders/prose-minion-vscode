@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-06-26
 **Source**: PR #64 review, finding 3
-**Status**: Identified
+**Status**: Resolved
 **Priority**: Low
 **Estimated Effort**: 2-4 hours
 
@@ -44,3 +44,10 @@ One safe shape:
 - All three result hooks handle the message safely
 - Only API-key warning output is cleared; user content is preserved
 - Tests cover live warning clear and non-warning preservation
+
+## Resolution
+
+Resolved on 2026-06-30 in `release-cleanup/pre-v2-low-hanging-fruit`.
+Added a typed `CLEAR_TRANSIENT_API_KEY_WARNING` message emitted only after a
+successful key-backed secret refresh. Analysis, dictionary, and context clear
+only the no-key warning sentinel and preserve ordinary output.

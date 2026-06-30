@@ -6,7 +6,7 @@
  */
 
 import { LogSink } from '@/platform';
-import { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
+import { isTextSourceValidationError, TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
 import { WordSearchService } from '@services/search/WordSearchService';
 import { CategorySearchService } from '@services/search/CategorySearchService';
 import {
@@ -112,7 +112,8 @@ export class SearchHandler {
       this.sendSearchResult(result.metrics, result.toolName);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      this.sendError('search', 'Invalid selection or path', msg);
+      this.outputChannel.appendLine(`[SearchHandler] Word search error: ${msg}`);
+      this.sendTextSourceError('search', msg);
     }
   }
 
@@ -144,7 +145,7 @@ export class SearchHandler {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[SearchHandler] Category search error: ${msg}`);
-      this.sendError('search', 'Category search failed', msg);
+      this.sendTextSourceError('search', msg, 'Category search failed');
     }
   }
 
@@ -171,5 +172,14 @@ export class SearchHandler {
     if (!text) throw new Error('Resolved source contains no text.');
     const mode = payload.source?.mode;
     return { text, paths: resolved.relativePaths, mode };
+  }
+
+  private sendTextSourceError(source: ErrorSource, message: string, fallback = 'Invalid selection or path'): void {
+    if (isTextSourceValidationError(message)) {
+      this.sendError(source, message);
+      return;
+    }
+
+    this.sendError(source, fallback, message);
   }
 }

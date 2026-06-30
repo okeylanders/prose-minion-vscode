@@ -37,6 +37,7 @@ const EXPECTED_ROUTES: MessageType[] = [
   MessageType.OPEN_SETTINGS_TOGGLE,
   MessageType.TOKEN_USAGE_UPDATE,
   MessageType.ACCOUNT_BALANCE_DATA,
+  MessageType.CLEAR_TRANSIENT_API_KEY_WARNING,
   MessageType.SAVE_RESULT_SUCCESS,
   MessageType.ERROR,
 ];
@@ -46,6 +47,7 @@ const makeDeps = () => {
     analysis: {
       handleAnalysisResult: jest.fn(), handleStreamStarted: jest.fn(), handleStreamChunk: jest.fn(),
       handleStreamComplete: jest.fn(), handleStatusMessage: jest.fn(), setLoading: jest.fn(),
+      handleClearTransientApiKeyWarning: jest.fn(),
     },
     metrics: {
       handleMetricsResult: jest.fn(), handleActiveFile: jest.fn(), handleManuscriptGlobs: jest.fn(),
@@ -54,11 +56,12 @@ const makeDeps = () => {
     dictionary: {
       handleDictionaryResult: jest.fn(), handleFastGenerateResult: jest.fn(), handleStreamStarted: jest.fn(),
       handleStreamChunk: jest.fn(), handleStreamComplete: jest.fn(), handleStatusMessage: jest.fn(),
-      setLoading: jest.fn(), setFastGenerating: jest.fn(),
+      handleClearTransientApiKeyWarning: jest.fn(), setLoading: jest.fn(), setFastGenerating: jest.fn(),
     },
     context: {
       handleStreamStarted: jest.fn(), handleStreamChunk: jest.fn(), handleStreamComplete: jest.fn(),
       handleContextResult: jest.fn(), setContextText: jest.fn(), setLoading: jest.fn(), loadingRef: { current: false },
+      handleClearTransientApiKeyWarning: jest.fn(),
     },
     search: {
       handleSearchResult: jest.fn(), handleCategorySearchResult: jest.fn(), handleStatusMessage: jest.fn(),
@@ -112,6 +115,22 @@ describe('buildAppMessageRoutes', () => {
     expect(deps.context.handleStreamChunk).toHaveBeenCalled();
     expect(deps.analysis.handleStreamChunk).not.toHaveBeenCalled();
     expect(deps.dictionary.handleStreamChunk).not.toHaveBeenCalled();
+  });
+
+  it('CLEAR_TRANSIENT_API_KEY_WARNING fans out to AI result domains', () => {
+    const deps = makeDeps();
+    const message = {
+      type: MessageType.CLEAR_TRANSIENT_API_KEY_WARNING,
+      source: 'extension.handler',
+      payload: {},
+      timestamp: 123
+    };
+
+    buildAppMessageRoutes(deps)[MessageType.CLEAR_TRANSIENT_API_KEY_WARNING]!(message as never);
+
+    expect(deps.analysis.handleClearTransientApiKeyWarning).toHaveBeenCalledWith(message);
+    expect(deps.dictionary.handleClearTransientApiKeyWarning).toHaveBeenCalledWith(message);
+    expect(deps.context.handleClearTransientApiKeyWarning).toHaveBeenCalledWith(message);
   });
 
   // STATUS is source-routed (the docblock above names it a top refactor-risk spot):
