@@ -12,10 +12,23 @@
 
 ---
 
-## What's New in v2.0.0
+## What's New in v2.0.1
 
 > <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/apps/vscode-extension/assets/frame-minion-icon.png" alt="FrameMinion" width="20" style="vertical-align: middle;"/> **Sister Extension: [FrameMinion](https://frameminion.video)** - AI video, image, and music-video workflow tools for VS Code. Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=OkeyLanders.frame-minion).
 >
+
+> **Claude Sonnet 5 by Default** - Assistant and Category Search now default to `anthropic/claude-sonnet-5`, with the curated catalog verified against OpenRouter's live model list.
+>
+> **API Key Warning Cleanup** - Saving an OpenRouter key now clears transient "no key" warnings cleanly, and AI services refresh when the stored secret changes.
+>
+> **Regression Hardening** - Expanded coverage around warning routing, streaming cancellation, source resolution, and tool-domain hooks to lock down the v2 sidebar behavior.
+>
+> **Full Changelog** - See [CHANGELOG.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/CHANGELOG.md) for complete release notes and version history.
+
+---
+
+## What's New in v2.0.0
+
 > **Model Browser** - Model selection now opens a searchable browser with provider and family pivots, model descriptions, live OpenRouter metadata, pricing, release dates, and context windows.
 >
 > **Sidebar Refresh** - Prose Minion now follows your VS Code theme by default, adds a polished model/settings experience, and keeps the warm-dark palette available as an option.

@@ -2,6 +2,22 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [2.0.1] - 2026-06-30
+
+### Added
+
+- **Claude Sonnet 5 Default**: Added `anthropic/claude-sonnet-5` to the curated OpenRouter model catalog and promoted it to the default Assistant and Category Search model.
+
+### Fixed
+
+- **API Key Warning Cleanup**: Transient "no API key" warnings now clear correctly after a key is saved instead of lingering in the webview.
+- **AI Service Refresh**: Assistant, Context, and Dictionary services now refresh when the OpenRouter secret changes, so newly saved or changed keys take effect without a reload.
+
+### Changed
+
+- **Model Catalog Audit**: Re-checked the curated model list against OpenRouter's live `/models` endpoint and removed stale `anthropic/claude-opus-4.6-fast`.
+- **Release Cleanup**: Tidied completed v2 planning docs, archived shipped work, and expanded regression coverage around warnings, streaming cancellation, source resolution, and tool-domain hooks.
+
 ## [2.0.0] - 2026-06-26
 
 ### Added
