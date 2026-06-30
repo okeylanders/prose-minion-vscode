@@ -16,8 +16,10 @@ import {
   StreamStartedMessage,
   StreamChunkMessage,
   StreamCompleteMessage,
+  ClearTransientApiKeyWarningMessage,
   isApiKeyNotConfiguredWarning
 } from '@messages';
+import { createCancelRequestMessage } from '@utils/streamingCancelMessages';
 
 export interface AnalysisState {
   result: string;
@@ -43,6 +45,7 @@ export interface AnalysisActions {
   setLoading: (loading: boolean) => void;
   clearResult: () => void;
   clearStatus: () => void;
+  handleClearTransientApiKeyWarning: (message: ClearTransientApiKeyWarningMessage) => void;
   // Streaming actions
   handleStreamChunk: (message: StreamChunkMessage) => void;
   handleStreamComplete: (message: StreamCompleteMessage) => void;
@@ -156,17 +159,16 @@ export const useAnalysis = (): UseAnalysisReturn => {
     setTickerMessage('');
   }, []);
 
+  const handleClearTransientApiKeyWarning = React.useCallback((_message: ClearTransientApiKeyWarningMessage) => {
+    setResult(current => isApiKeyNotConfiguredWarning(current) ? '' : current);
+  }, []);
+
   // Streaming handlers
   const startStreaming = React.useCallback((requestId: string) => {
     // Cancel any existing stream first
     if (currentRequestId) {
       // Notify backend to stop the old stream
-      vscode.postMessage({
-        type: MessageType.CANCEL_ANALYSIS_REQUEST,
-        source: 'webview.analysis.preempt',
-        payload: { requestId: currentRequestId, domain: 'analysis' },
-        timestamp: Date.now()
-      });
+      vscode.postMessage(createCancelRequestMessage('analysis', currentRequestId, 'webview.analysis.preempt'));
 
       ignoredRequestIdsRef.current.add(currentRequestId);
       streaming.reset();
@@ -270,6 +272,7 @@ export const useAnalysis = (): UseAnalysisReturn => {
     setLoading,
     clearResult,
     clearStatus,
+    handleClearTransientApiKeyWarning,
     // Streaming actions
     handleStreamStarted,
     handleStreamChunk,

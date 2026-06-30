@@ -82,8 +82,9 @@ export enum MessageType {
   REQUEST_API_KEY = 'request_api_key',
   API_KEY_STATUS = 'api_key_status',
   UPDATE_API_KEY = 'update_api_key',
-  DELETE_API_KEY = 'delete_api_key'
-  ,
+  DELETE_API_KEY = 'delete_api_key',
+  CLEAR_TRANSIENT_API_KEY_WARNING = 'clear_transient_api_key_warning',
+
   // Webview diagnostics
   WEBVIEW_ERROR = 'webview_error',
 

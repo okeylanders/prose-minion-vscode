@@ -8,9 +8,9 @@
  * Validates Tripartite Interface pattern for dictionary operations.
  */
 
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { DictionaryState, DictionaryActions, DictionaryPersistence, useDictionary } from '@/presentation/webview/hooks/domain/useDictionary';
-import { API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
+import { API_KEY_NOT_CONFIGURED_HEADING, ClearTransientApiKeyWarningMessage, MessageType } from '@messages';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 
 jest.mock('../../../../../presentation/webview/hooks/useVSCodeApi');
@@ -71,6 +71,7 @@ describe('useDictionary - Type Contracts', () => {
         setWordEdited: jest.fn(),
         setSource: jest.fn(),
         clearResult: jest.fn(),
+        handleClearTransientApiKeyWarning: jest.fn(),
         handleFastGenerateResult: jest.fn(),
         setFastGenerating: jest.fn(),
         // Streaming actions
@@ -84,6 +85,7 @@ describe('useDictionary - Type Contracts', () => {
       expect(typeof actions.handleDictionaryResult).toBe('function');
       expect(typeof actions.setWord).toBe('function');
       expect(typeof actions.clearResult).toBe('function');
+      expect(typeof actions.handleClearTransientApiKeyWarning).toBe('function');
       expect(typeof actions.handleFastGenerateResult).toBe('function');
       expect(typeof actions.setFastGenerating).toBe('function');
       expect(typeof actions.handleStreamStarted).toBe('function');
@@ -146,5 +148,45 @@ describe('useDictionary - Transient Warning Persistence', () => {
 
     expect(result.current.result).toBe('A real dictionary result.');
     expect(result.current.persistedState.utilitiesResult).toBe('A real dictionary result.');
+  });
+
+  it('clears a live API-key warning without clearing ordinary dictionary output', () => {
+    (usePersistedState as jest.Mock).mockReturnValue({});
+
+    const { result } = renderHook(() => useDictionary());
+    const clearMessage: ClearTransientApiKeyWarningMessage = {
+      type: MessageType.CLEAR_TRANSIENT_API_KEY_WARNING,
+      source: 'extension.handler',
+      payload: {},
+      timestamp: 123
+    };
+
+    act(() => {
+      result.current.handleDictionaryResult({
+        type: MessageType.DICTIONARY_RESULT,
+        source: 'extension.dictionary',
+        payload: {
+          result: `${API_KEY_NOT_CONFIGURED_HEADING}\n\nAdd your key to look up words.`,
+          toolName: 'dictionary_lookup'
+        },
+        timestamp: 1
+      });
+    });
+    act(() => result.current.handleClearTransientApiKeyWarning(clearMessage));
+    expect(result.current.result).toBe('');
+
+    act(() => {
+      result.current.handleDictionaryResult({
+        type: MessageType.DICTIONARY_RESULT,
+        source: 'extension.dictionary',
+        payload: {
+          result: 'Real dictionary output.',
+          toolName: 'dictionary_lookup'
+        },
+        timestamp: 2
+      });
+    });
+    act(() => result.current.handleClearTransientApiKeyWarning(clearMessage));
+    expect(result.current.result).toBe('Real dictionary output.');
   });
 });

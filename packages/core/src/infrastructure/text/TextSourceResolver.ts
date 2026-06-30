@@ -164,9 +164,16 @@ export class TextSourceResolver {
     // Fallback to active editor
     const selection = this.editor.getActiveSelection();
     if (selection) {
+      if (this.isUnsavedEditorDocument(selection)) {
+        throw new Error('Active file is not saved to disk. Save the file first or use selected text instead.');
+      }
       return selection.fsPath;
     }
     return undefined;
+  }
+
+  private isUnsavedEditorDocument(selection: { uriString: string; fsPath: string }): boolean {
+    return selection.uriString.startsWith('untitled:') || selection.fsPath.trim().length === 0;
   }
 
   private getManuscriptPatterns(pathText?: string): string[] {

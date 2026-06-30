@@ -168,6 +168,11 @@ export const buildAppMessageRoutes = (deps: AppMessageRouterDeps): MessageHandle
     [MessageType.OPEN_SETTINGS_TOGGLE]: settings.toggle,
     [MessageType.TOKEN_USAGE_UPDATE]: tokenTracking.handleTokenUsageUpdate,
     [MessageType.ACCOUNT_BALANCE_DATA]: accountBalance.handleAccountBalanceData,
+    [MessageType.CLEAR_TRANSIENT_API_KEY_WARNING]: (msg) => {
+      analysis.handleClearTransientApiKeyWarning(msg);
+      dictionary.handleClearTransientApiKeyWarning(msg);
+      context.handleClearTransientApiKeyWarning(msg);
+    },
     // The save itself is the user-visible feedback; there's no webview action on
     // success today. Intentionally received-and-ignored (was a stray console.log
     // promoted into a permanent module by the App.tsx lift — see PR-60B review).

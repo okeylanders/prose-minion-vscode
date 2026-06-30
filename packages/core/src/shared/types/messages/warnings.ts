@@ -2,6 +2,8 @@
  * Cross-domain warning sentinels.
  */
 
+import { MessageEnvelope, MessageType } from './base';
+
 /**
  * Sentinel heading for the "no API key" onboarding warning that AI services
  * return in place of a real result when no OpenRouter key is configured.
@@ -14,3 +16,7 @@ export const API_KEY_NOT_CONFIGURED_HEADING = '⚠️ OpenRouter API key not con
 
 export const isApiKeyNotConfiguredWarning = (text: string | undefined): boolean =>
   !!text && text.startsWith(API_KEY_NOT_CONFIGURED_HEADING);
+
+export interface ClearTransientApiKeyWarningMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.CLEAR_TRANSIENT_API_KEY_WARNING;
+}

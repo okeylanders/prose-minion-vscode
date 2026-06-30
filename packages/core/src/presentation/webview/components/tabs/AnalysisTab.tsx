@@ -19,6 +19,7 @@ import { UseContextReturn } from '../../hooks/domain/useContext';
 import { UseSelectionReturn } from '../../hooks/domain/useSelection';
 import { UseModelsSettingsReturn } from '../../hooks/domain/useModelsSettings';
 import { UseSettingsReturn } from '../../hooks/domain/useSettings';
+import { createCancelRequestMessage } from '@utils/streamingCancelMessages';
 
 interface AnalysisTabProps {
   vscode: VSCodeAPI;
@@ -214,30 +215,14 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
 
   const handleCancelAnalysisStreaming = React.useCallback(() => {
     if (analysis.currentRequestId) {
-      vscode.postMessage({
-        type: MessageType.CANCEL_ANALYSIS_REQUEST,
-        source: 'webview.analysis.tab',
-        payload: {
-          requestId: analysis.currentRequestId,
-          domain: 'analysis'
-        },
-        timestamp: Date.now()
-      });
+      vscode.postMessage(createCancelRequestMessage('analysis', analysis.currentRequestId, 'webview.analysis.tab'));
     }
     analysis.cancelStreaming();
   }, [analysis, vscode]);
 
   const handleCancelContextStreaming = React.useCallback(() => {
     if (context.currentRequestId) {
-      vscode.postMessage({
-        type: MessageType.CANCEL_CONTEXT_REQUEST,
-        source: 'webview.analysis.tab',
-        payload: {
-          requestId: context.currentRequestId,
-          domain: 'context'
-        },
-        timestamp: Date.now()
-      });
+      vscode.postMessage(createCancelRequestMessage('context', context.currentRequestId, 'webview.analysis.tab'));
     }
     context.cancelStreaming();
   }, [context, vscode]);

@@ -53,10 +53,7 @@ elsewhere.
 | Medium | [Settings integration tests](2025-11-06-settings-integration-tests.md) | Deferred |
 | Low | [Large-file responsibility review](2025-11-19-large-file-review-needed.md) | Deferred |
 | Low | [AIResourceOrchestrator loop duplication](2025-11-25-ai-resource-orchestrator-loop-duplication.md) | Identified |
-| Low | [Cancel-message duplication](2025-12-05-cancel-message-duplication.md) | Identified |
 | Medium | [Streaming lifecycle duplication](2025-12-05-streaming-hook-duplication.md) | Identified |
-| Low | [API-key warning live clear contract](2026-06-26-api-key-warning-live-clear.md) | Identified |
-| Medium | [Service refresh observability](2026-06-26-service-refresh-observability.md) | Identified |
 | Low | [AI service refresh duplication](2026-06-26-ai-service-refresh-duplication.md) | Identified |
 | Low | [Secret-change key filtering](2026-06-26-secret-change-key-filtering.md) | Identified |
 | Low | [MessageHandler self-heal cleanup](2026-06-26-messagehandler-self-heal-cleanup.md) | Identified |
@@ -64,7 +61,6 @@ elsewhere.
 | Low | [TypeScript project references](2026-06-29-typescript-project-references.md) | Deferred |
 | Low | [Logging and AI alias modernization](2026-06-29-logging-and-ai-alias-modernization.md) | Deferred |
 | Low | [App-side VS Code Jest mock](2026-06-29-app-side-vscode-jest-mock.md) | Deferred |
-| Low | [Untitled document active file edge](2026-06-29-untitled-document-active-file-edge.md) | Deferred |
 | Low | [Manuscript read and boundary guard performance](2026-06-29-manuscript-read-and-boundary-guard-performance.md) | Deferred |
 | Low | [Build command gate semantics](2026-06-29-build-command-gate-semantics.md) | Deferred |
 

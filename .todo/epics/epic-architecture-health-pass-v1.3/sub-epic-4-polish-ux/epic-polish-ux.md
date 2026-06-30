@@ -25,11 +25,10 @@ reference component.
 
 ## Follow-up Debt
 
-Streaming and cancellation shipped successfully, but exposed two separate
-maintenance concerns:
+Streaming and cancellation shipped successfully, but exposed a remaining
+maintenance concern:
 
-- [Cancel-message duplication](../../../tech-debt/2025-12-05-cancel-message-duplication.md)
 - [Streaming lifecycle duplication](../../../tech-debt/2025-12-05-streaming-hook-duplication.md)
 
-Those items remain valid follow-up debt and do not reopen the completed
+This item remains valid follow-up debt and does not reopen the completed
 streaming sprint.

@@ -276,7 +276,7 @@ export class MessageHandler {
     // instead of staying disabled until a model-setting change or reload.
     const secretSubscription = this.services.secretsService.onDidChange(() => {
       this.outputChannel.appendLine('[MessageHandler] API key changed, refreshing AI services');
-      void this.refreshServiceConfiguration();
+      void this.refreshServiceConfiguration({ clearApiKeyWarningOnSuccess: true });
     });
     this.disposeSecretListener = () => secretSubscription.dispose();
 
@@ -423,16 +423,59 @@ export class MessageHandler {
     }
   }
 
-  private async refreshServiceConfiguration(): Promise<void> {
+  private async refreshServiceConfiguration(options: { clearApiKeyWarningOnSuccess?: boolean } = {}): Promise<void> {
+    const refreshSteps = [
+      { name: 'AI resource manager', refresh: () => this.services.aiResourceManager.refreshConfiguration() },
+      { name: 'assistant tool service', refresh: () => this.services.assistantToolService.refreshConfiguration() },
+      { name: 'dictionary service', refresh: () => this.services.dictionaryService.refreshConfiguration() },
+      { name: 'context assistant service', refresh: () => this.services.contextAssistantService.refreshConfiguration() }
+    ] as const;
+
+    this.outputChannel.appendLine('[MessageHandler] Service configuration refresh started');
+
+    for (const [index, step] of refreshSteps.entries()) {
+      try {
+        await step.refresh();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.outputChannel.appendLine(
+          `[MessageHandler] Service configuration refresh failed at ${step.name}: ${message}`
+        );
+
+        const skippedSteps = refreshSteps.slice(index + 1).map(({ name }) => name);
+        if (skippedSteps.length > 0) {
+          this.outputChannel.appendLine(
+            `[MessageHandler] Service configuration refresh skipped: ${skippedSteps.join(', ')}`
+          );
+        }
+        return;
+      }
+    }
+
+    this.outputChannel.appendLine('[MessageHandler] Service configuration refresh completed');
+
+    if (options.clearApiKeyWarningOnSuccess) {
+      await this.postClearTransientApiKeyWarningIfConfigured();
+    }
+  }
+
+  private async postClearTransientApiKeyWarningIfConfigured(): Promise<void> {
     try {
-      await this.services.aiResourceManager.refreshConfiguration();
-      await this.services.assistantToolService.refreshConfiguration();
-      await this.services.dictionaryService.refreshConfiguration();
-      await this.services.contextAssistantService.refreshConfiguration();
+      const apiKey = await this.services.secretsService.getApiKey();
+      if (!apiKey) {
+        return;
+      }
+
+      void this.postMessage({
+        type: MessageType.CLEAR_TRANSIENT_API_KEY_WARNING,
+        source: 'extension.handler',
+        payload: {},
+        timestamp: Date.now()
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(
-        `[MessageHandler] Failed to refresh service configuration: ${message}`
+        `[MessageHandler] Failed to inspect API key after service refresh: ${message}`
       );
     }
   }

@@ -42,6 +42,27 @@ describe('TextSourceResolver', () => {
       expect(result.displayPath).toBe('scene.md');
     });
 
+    it('returns selected text from an untitled editor buffer', async () => {
+      const resolver = new TextSourceResolver(
+        createFakeFileSystem(),
+        createFakeWorkspace(),
+        createFakeSettings(),
+        createFakeEditorContext({
+          getActiveSelection: () => selectionOf({
+            text: 'draft selection',
+            uriString: 'untitled:Untitled-1',
+            fsPath: '',
+            relativePath: 'Untitled-1'
+          })
+        })
+      );
+
+      const result = await resolver.resolve({ mode: 'selection' });
+
+      expect(result.text).toBe('draft selection');
+      expect(result.displayPath).toBe('Untitled-1');
+    });
+
     it('throws when there is no active editor', async () => {
       const resolver = new TextSourceResolver(
         createFakeFileSystem(),
@@ -94,6 +115,25 @@ describe('TextSourceResolver', () => {
       const result = await resolver.resolve({ mode: 'activeFile' });
 
       expect(result.text).toBe('Editor file body.');
+    });
+
+    it('throws a clear error when the active editor is an untitled buffer', async () => {
+      const resolver = new TextSourceResolver(
+        createFakeFileSystem(),
+        createFakeWorkspace(),
+        createFakeSettings(),
+        createFakeEditorContext({
+          getActiveSelection: () => selectionOf({
+            uriString: 'untitled:Untitled-1',
+            fsPath: '',
+            relativePath: 'Untitled-1'
+          })
+        })
+      );
+
+      await expect(resolver.resolve({ mode: 'activeFile' })).rejects.toThrow(
+        /Active file is not saved to disk/
+      );
     });
   });
 

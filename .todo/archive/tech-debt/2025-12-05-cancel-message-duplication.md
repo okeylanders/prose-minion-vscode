@@ -2,7 +2,7 @@
 
 **Date Identified**: 2025-12-05
 **Reviewed**: 2026-06-25
-**Status**: Identified
+**Status**: Resolved
 **Priority**: Low
 **Estimated Effort**: Under half a day
 
@@ -43,3 +43,10 @@ Include category search explicitly rather than widening types through casts.
 - UI call sites no longer hand-build cancel envelopes
 - Search cancellation is represented by the shared contract
 - Mapping and envelope shape have focused tests
+
+## Resolution
+
+Resolved on 2026-06-30 in `release-cleanup/pre-v2-low-hanging-fruit`.
+Added a shared `createCancelRequestMessage()` helper, represented category
+search as the `search` streaming domain, and covered the mapping with focused
+tests.

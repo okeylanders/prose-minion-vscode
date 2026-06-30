@@ -16,7 +16,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { AnalysisState, AnalysisActions, AnalysisPersistence, useAnalysis } from '@/presentation/webview/hooks/domain/useAnalysis';
 import { MessageType } from '@shared/types';
-import { API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
+import { API_KEY_NOT_CONFIGURED_HEADING, ClearTransientApiKeyWarningMessage } from '@messages';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 
 // Mock dependencies
@@ -80,6 +80,7 @@ describe('useAnalysis - Type Contracts', () => {
         'setLoading',
         'clearResult',
         'clearStatus',
+        'handleClearTransientApiKeyWarning',
         // Streaming actions
         'handleStreamStarted',
         'handleStreamChunk',
@@ -95,6 +96,7 @@ describe('useAnalysis - Type Contracts', () => {
         setLoading: jest.fn(),
         clearResult: jest.fn(),
         clearStatus: jest.fn(),
+        handleClearTransientApiKeyWarning: jest.fn(),
         // Streaming actions
         handleStreamStarted: jest.fn(),
         handleStreamChunk: jest.fn(),
@@ -148,6 +150,7 @@ describe('useAnalysis - Type Contracts', () => {
       // Actions (user-triggered operations) - including streaming actions
       const actionProps: (keyof AnalysisActions)[] = [
         'handleAnalysisResult', 'handleStatusMessage', 'setLoading', 'clearResult', 'clearStatus',
+        'handleClearTransientApiKeyWarning',
         'handleStreamStarted', 'handleStreamChunk', 'handleStreamComplete', 'startStreaming', 'cancelStreaming'
       ];
 
@@ -264,5 +267,45 @@ describe('useAnalysis - Transient Warning Persistence', () => {
 
     expect(result.current.result).toBe('This is a real analysis result.');
     expect(result.current.persistedState.analysisResult).toBe('This is a real analysis result.');
+  });
+
+  it('clears a live API-key warning without clearing ordinary analysis output', () => {
+    (usePersistedState as jest.Mock).mockReturnValue({});
+
+    const { result } = renderHook(() => useAnalysis());
+    const clearMessage: ClearTransientApiKeyWarningMessage = {
+      type: MessageType.CLEAR_TRANSIENT_API_KEY_WARNING,
+      source: 'extension.handler',
+      payload: {},
+      timestamp: 123
+    };
+
+    act(() => {
+      result.current.handleAnalysisResult({
+        type: MessageType.ANALYSIS_RESULT,
+        source: 'extension.analysis',
+        payload: {
+          result: `${API_KEY_NOT_CONFIGURED_HEADING}\n\nAdd your key to keep going.`,
+          toolName: 'prose'
+        },
+        timestamp: 1
+      });
+    });
+    act(() => result.current.handleClearTransientApiKeyWarning(clearMessage));
+    expect(result.current.result).toBe('');
+
+    act(() => {
+      result.current.handleAnalysisResult({
+        type: MessageType.ANALYSIS_RESULT,
+        source: 'extension.analysis',
+        payload: {
+          result: 'Real analysis output.',
+          toolName: 'prose'
+        },
+        timestamp: 2
+      });
+    });
+    act(() => result.current.handleClearTransientApiKeyWarning(clearMessage));
+    expect(result.current.result).toBe('Real analysis output.');
   });
 });
