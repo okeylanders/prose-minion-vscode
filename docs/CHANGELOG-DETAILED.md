@@ -5,13 +5,57 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.0.1] - 2026-06-30
+
+### Overview
+
+Patch release stabilizing the v2 sidebar after marketplace launch. The release clears
+stale API-key warning behavior, refreshes AI services when the OpenRouter secret changes,
+adds Claude Sonnet 5 as the default Sonnet model, and folds the completed v2 planning
+workspace into the archive so active follow-up work is easier to see.
+
+**Branch:** `release/v2.0.1`
+**Previous Release:** `v2.0.0` (2026-06-26)
+**Commits Since Previous Release:** 19
+**PRs:** #64 API-key warning/self-heal, #65 pre-release cleanup debt
+
+### Fixed
+
+- **Transient API-key warnings clear live** — saving an OpenRouter key now clears the
+  webview's temporary "no key" warning state instead of leaving stale warning copy after
+  the configuration has been fixed.
+- **AI service secret-change self-heal** — Assistant, Context, and Dictionary services
+  refresh when the OpenRouter secret changes, so a newly saved or changed key takes effect
+  without requiring a VS Code reload.
+- **Streaming cancellation routing hardened** — shared streaming-cancel message helpers
+  now have broader regression coverage across Analysis, Context, and Dictionary paths.
+- **Smoke-test polish** — Metrics, Search, and Dictionary handlers received follow-up
+  behavioral fixes and tests from the pre-release cleanup review.
 
 ### Changed
 
-- Refreshed the curated OpenRouter model catalog after a live audit on 2026-06-30.
-- Added `anthropic/claude-sonnet-5` to the recommended and category model lists, and promoted it to the Assistant and Category Search default.
-- Removed stale curated ID `anthropic/claude-opus-4.6-fast`, which is no longer returned by OpenRouter's `/models` endpoint.
+- **Claude Sonnet 5 catalog refresh** — added `anthropic/claude-sonnet-5` to the
+  recommended and category model lists, promoted it to the Assistant and Category Search
+  default, and updated docs/configuration guidance.
+- **OpenRouter live audit** — verified the curated catalog against OpenRouter's live
+  `/models` endpoint on 2026-06-30; all retained curated IDs were present after cleanup.
+- **Removed stale curated ID** — dropped `anthropic/claude-opus-4.6-fast`, which is no
+  longer returned by OpenRouter's `/models` endpoint.
+- **Backlog/documentation hygiene** — archived the shipped migration/facelift planning
+  workspace, refreshed `.todo` guidance, and moved follow-up work into active feature or
+  tech-debt entries.
+- **Agent workflow cleanup** — removed obsolete checked-in prompt workflow files after the
+  release workflow moved to reusable skills/agent instructions.
+
+### Tests
+
+- Expanded tests for `MessageHandler`, warning messages, source resolution, streaming
+  cancellation, domain hooks, Metrics, Search, and Dictionary behavior.
+- Final release validation is recorded in the release preparation memory-bank checkpoint.
+
+### Breaking Changes
+
+- None.
 
 ## [2.0.0] - 2026-06-26
 
