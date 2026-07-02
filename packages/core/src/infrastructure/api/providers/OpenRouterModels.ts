@@ -324,7 +324,7 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     id: 'anthropic/claude-fable-5',
     name: 'Claude Fable 5',
     family: 'Claude Fable',
-    description: 'Anthropic\'s Mythos-class model for autonomous knowledge work and coding. 1M context with mandatory reasoning for deep prose analysis, manuscript-scale critique, and complex revision planning.'
+    description: 'Anthropic\'s Mythos-class model for autonomous knowledge work and coding. 1M context with reasoning support for deep prose analysis, manuscript-scale critique, and complex revision planning.'
   },
   {
     id: 'anthropic/claude-opus-4.5',

@@ -2,6 +2,21 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [2.0.2] - 2026-07-02
+
+### Added
+
+- **Claude Fable 5**: Added `anthropic/claude-fable-5` to the curated OpenRouter model catalog for long-context prose analysis, manuscript-scale critique, and revision planning.
+
+### Changed
+
+- **Marketplace README Refresh**: Rebuilt the Marketplace README around the current four-tool experience, updated screenshots, and pointed package homepage metadata to `https://proseminion.app`.
+- **VSIX Package Cleanup**: Excluded the README banner asset from the packaged extension because it is Marketplace documentation media, not runtime UI.
+
+### Fixed
+
+- **Catalog Preflight**: Verified Claude Fable 5 against its OpenRouter model page after the aggregate `/models` response did not include the new slug.
+
 ## [2.0.1] - 2026-06-30
 
 ### Added
