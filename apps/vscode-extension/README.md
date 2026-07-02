@@ -24,10 +24,11 @@
 
 ---
 
-## What's new in v2.0.1
+## What's new in v2.0.2
 
-- **Claude Sonnet 5 by default** — Assistant and Context Search now default to `anthropic/claude-sonnet-5`, verified against OpenRouter's live catalog.
-- **API key warning cleanup** — saving a key now clears stale "no key" warnings instead of leaving them stuck.
+- **Claude Fable 5 added** — the curated model catalog now includes `anthropic/claude-fable-5` for long-context critique and revision planning.
+- **Fresh Marketplace tour** — updated screenshots and setup copy now match the current four-tool sidebar.
+- **Cleaner package metadata** — the extension homepage now points to the Prose Minion website, and Marketplace-only banner art stays out of the runtime VSIX.
 - **Sister extension: [FrameMinion](https://frameminion.video)** — AI video, image, and music-video workflow tools for VS Code, same house style. [Install it too](https://marketplace.visualstudio.com/items?itemName=OkeyLanders.frame-minion).
 
 Full history → [CHANGELOG.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/CHANGELOG.md)

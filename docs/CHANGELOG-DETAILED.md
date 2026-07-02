@@ -5,6 +5,49 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.2] - 2026-07-02
+
+### Overview
+
+Patch release focused on Marketplace polish after the v2 launch. The release refreshes
+the public README and screenshot set for the current four-tool sidebar experience, points
+extension homepage metadata at `https://proseminion.app`, keeps documentation-only
+banner media out of the VSIX payload, and adds Claude Fable 5 to the curated OpenRouter catalog.
+
+**Branch:** `release/v2.0.2`
+**Previous Release:** `v2.0.1` (2026-06-30)
+**Commits Since Previous Release:** 3
+**PRs:** None returned by GitHub release analysis
+
+### Added
+
+- **Claude Fable 5 catalog entry** — added `anthropic/claude-fable-5` to
+  `RECOMMENDED_MODELS` with a prose-analysis-oriented description. The aggregate
+  OpenRouter `/models` response did not include the slug during release prep, but the
+  model-specific OpenRouter page confirmed the model is live.
+- **New Marketplace screenshots** — added refreshed README/gallery screenshots under
+  `screenshots/readme/` plus updated feature screenshots for the public listing.
+
+### Changed
+
+- **Marketplace README rewrite** — replaced the long feature-tour README with a tighter
+  first-run-oriented Marketplace page: setup path, tool table, updated screenshots,
+  privacy notes, support links, and FrameMinion cross-link.
+- **Package homepage metadata** — changed the VS Code extension package homepage from the
+  GitHub README anchor to `https://proseminion.app`.
+- **VSIX content hygiene** — added `assets/prose-minion-banner.png` to `.vscodeignore`
+  because the banner is loaded by the Marketplace README from GitHub raw content and is
+  not needed at runtime.
+
+### Fixed
+
+- **Model-catalog verification nuance recorded** — release prep now treats model-specific
+  OpenRouter pages as authoritative when the aggregate v1 model list lags a newly live model.
+
+### Breaking Changes
+
+- None.
+
 ## [2.0.1] - 2026-06-30
 
 ### Overview
