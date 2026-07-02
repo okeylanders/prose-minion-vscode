@@ -3,8 +3,6 @@
 </p>
 
 <p align="center">
-  <a href="https://marketplace.visualstudio.com/items?itemName=OkeyLanders.prose-minion"><img src="https://img.shields.io/visual-studio-marketplace/v/OkeyLanders.prose-minion?style=flat-square&label=Marketplace&color=c8552c" alt="Marketplace version"/></a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=OkeyLanders.prose-minion"><img src="https://img.shields.io/visual-studio-marketplace/i/OkeyLanders.prose-minion?style=flat-square&color=c8552c" alt="Installs"/></a>
   <a href="https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0--with--Commons--Clause-6b5b4a?style=flat-square" alt="License"/></a>
 </p>
 
@@ -18,6 +16,10 @@
   <a href="https://proseminion.app"><img src="https://img.shields.io/badge/Website-proseminion.app-c8552c?style=for-the-badge" alt="Website"/></a>
   <a href="https://proseminion.app/setup-guide"><img src="https://img.shields.io/badge/Setup%20Guide-no%20coding%20required-c8552c?style=for-the-badge" alt="Setup Guide"/></a>
   <a href="https://proseminion.app/examples"><img src="https://img.shields.io/badge/Examples-real%20output-c8552c?style=for-the-badge" alt="Examples"/></a>
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/hero-four-tools.png" alt="The four Prose Minion tools side by side: Assistant, Search, Metrics, and Dictionary" width="100%"/>
 </p>
 
 ---
@@ -36,7 +38,11 @@ Full history → [CHANGELOG.md](https://github.com/okeylanders/prose-minion-vsco
 
 1. **Install** from this Marketplace page, then open the Prose Minion panel from the activity bar.
 2. **Try Metrics or Word Search** right away — both run entirely offline, no API key needed.
-3. **Add an OpenRouter key** (gear icon → paste key, stored in your OS keychain) to unlock the Assistant, Context Search, and Dictionary.
+3. **Add an OpenRouter key** to unlock the Assistant, Context Search, and Dictionary.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/setup-three-steps.png" alt="Three setup steps: open settings, paste your OpenRouter key, pick models from the live catalog" width="100%"/>
+</p>
 
 Want a guided, no-code walkthrough — project folders, glob patterns, every setting explained? → **[Read the Setup Guide](https://proseminion.app/setup-guide)**
 
@@ -55,24 +61,49 @@ Curious what real output looks like on an actual manuscript? → **[Browse the E
 
 ---
 
-## Screenshots
+## The Assistant
+
+Pin an excerpt, attach a context brief built from your own characters and canon, and run a pass. The analysis respects what you've marked as intentional — and pushes on everything else.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/screenshot-assistant-dialogue-analysis.png" alt="Prose Excerpt Assistant with dialogue and microbeat analysis" width="720"/>
-  <br/><em>The Excerpt Assistant, mid-analysis.</em>
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/assistant-workflow.png" alt="Left: an excerpt with a context brief and referenced story-bible files. Right: the resulting dialogue and microbeat analysis." width="100%"/>
 </p>
+
+Fourteen focused passes, from Dialogue & Beats to Continuity — each one a single, opinionated read of your excerpt:
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/screenshot-metrics-prose-statistics.png" alt="Prose statistics compared against genre publishing standards" width="720"/>
-  <br/><em>Prose statistics, compared against genre publishing standards.</em>
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/writing-tools-grid.png" alt="The Writing Tools picker: fourteen analysis passes across Primary, Dialogue, Craft & Voice, and Technical groups" width="100%"/>
 </p>
+
+---
+
+## Search: by pattern, or by meaning
+
+Word Search finds every occurrence and flags clusters — free and offline. Context Search finds words by *meaning*: ask for "emotion verbs" and get `flinched`, `froze`, `hated` back with counts.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/screenshot-settings-pane.png" alt="Settings overlay with API key field and model browser" width="720"/>
-  <br/><em>One settings overlay: API key, model browser, context paths, publishing presets.</em>
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/search-duo.png" alt="Word Search results with per-line context next to a Context Search for emotion verbs" width="100%"/>
 </p>
 
-More — Word Frequency, Style Flags, Dictionary, Context Search — in the **[Examples gallery](https://proseminion.app/examples)**.
+---
+
+## Metrics: know your manuscript
+
+All offline, no key, no cost — from a single chapter to the whole draft, with publishing-standard comparisons by genre and trim size.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/metrics-triptych.png" alt="Prose Statistics, Style Flags, and Word Frequency reports side by side" width="100%"/>
+</p>
+
+---
+
+## A dictionary that writes fiction
+
+Not a definition lookup — a craft reference: connotation, register, sense explorer, soundplay, and character-voice variations for any word or phrase in your draft.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/dictionary-spread.png" alt="Dictionary lookup input with scene context next to the resulting writer-focused entry" width="100%"/>
+</p>
 
 ---
 
