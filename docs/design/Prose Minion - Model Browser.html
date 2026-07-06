@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prose Minion — Model Browser</title>
+<link rel="stylesheet" href="pm-mock.css">
+<link rel="stylesheet" href="pm-fulltab.css">
+<link rel="stylesheet" href="pm-model-browser.css">
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#15110d"/><rect x="26" y="22" width="48" height="56" rx="8" fill="#221a13" stroke="#3a2c1f"/><rect x="32" y="30" width="36" height="9" rx="3" fill="#2b2017"/><rect x="32" y="44" width="36" height="13" rx="4" fill="#36281b"/><rect x="32" y="61" width="24" height="9" rx="3" fill="#2b2017"/><circle cx="70" cy="44" r="6" fill="#e0673a"/></svg>
+</template>
+</head>
+<body>
+<div class="canvas">
+
+  <div class="canvas-head">
+    <div class="canvas-kicker">Prose Minion · Model picker</div>
+    <h1>Model Browser — replaces the model dropdown</h1>
+    <p>The dropdown could only show a name. This is a full <b>browse-and-pick</b> surface built in the same warm-brown language as the <b>Writing Tools</b> picker — but sized for the narrow sidebar column, so it drops in wherever the old <span class="mono">Claude Opus 4.8&nbsp;▾</span> control lived. Tall and scrollable; each model carries its <b>live price, context window, family, release date</b>, and a full description.</p>
+    <p class="note"><b>It's interactive:</b> toggle <b>By&nbsp;Provider / By&nbsp;Family</b>, filter with the chip row, search, and click a card to select it. Coral (not the generic VS&nbsp;Code blue) keeps it native to PM. Pricing &amp; counts mimic a live OpenRouter pull; the last card shows the offline/fallback state.</p>
+  </div>
+
+  <div class="sec">
+    <div class="row">
+      <div class="frame">
+        <div class="frame-label"><span class="t">Model Browser</span><span class="frame-tag accent">New</span><span class="d">opens in place of the dropdown</span></div>
+        <div class="device panel" id="mb-host"></div>
+      </div>
+
+      <div class="frame" style="max-width:380px">
+        <div class="frame-label"><span class="t">Anatomy &amp; decisions</span></div>
+        <ul class="annot">
+          <li><b>Header</b> — eyebrow → bold title → one-line subtitle, with a ghost close (✕) that returns you to the view, mirroring the Tools picker header exactly.</li>
+          <li><b>Search + two pivots</b> — <b>By&nbsp;Provider</b> and <b>By&nbsp;Family</b> re-group the list and swap the chip row. A leading <b>All&nbsp;(82)</b> chip is selected by default.</li>
+          <li><b>Price pill</b> — <span class="mono">$in / $out</span> with a <span class="mono">per&nbsp;1M</span> caption, right-aligned and tabular so columns of numbers stay legible.</li>
+          <li><b>Badges</b> — family, release date, and an accented <span class="mono">ctx</span> badge so the context window reads at a glance.</li>
+          <li><b>Full descriptions</b> — 2–3 lines, never truncated. This is where the browser beats the dropdown.</li>
+          <li><b>Selected state</b> — coral border, soft tint, and a corner check. Hover gives a quiet lift.</li>
+          <li><b>Offline case</b> — Kimi K2.5 shows a <b>dashed</b> price pill with no numbers when OpenRouter rates can't be fetched.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-foot">
+    <p class="muted">Next: tell me where this should appear (Assistant header, Dictionary, Metrics…), whether picking a model should close the panel and write back to that view, and if you want a “recently used” or “favorites” row pinned to the top.</p>
+  </div>
+
+</div>
+
+<script src="icons.js"></script>
+<script src="pm-model-browser.js"></script>
+<script>
+  mountModelBrowser('mb-host');
+</script>
+</body>
+</html>

@@ -1,0 +1,262 @@
+/* ============================================================
+   Prose Minion — Model Browser
+   Replaces the model dropdown. Lives in the narrow sidebar
+   webview column. Same warm-brown PM / Frame Minion language
+   as the Writing Tools picker.
+   ============================================================ */
+
+/* full-panel takeover inside the sidebar column */
+.mb-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg);
+  background-image: linear-gradient(180deg, var(--bg-grad-top) 0%, var(--bg) 240px);
+  font-family: var(--sans);
+  color: var(--text);
+}
+
+/* ---------- header ---------- */
+.mb-head {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 18px;
+  flex-shrink: 0;
+}
+.mb-head::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 2px;
+  background: var(--accent-line);
+}
+.mb-head .pm-eyebrow { margin: 0 0 6px; }
+.mb-head-title { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.12; }
+.mb-head-sub { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.45; max-width: 30ch; }
+.mb-x {
+  flex-shrink: 0;
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  display: grid; place-items: center;
+  cursor: pointer;
+  transition: all .14s ease;
+}
+.mb-x:hover { background: var(--surface-2); border-color: var(--border); color: var(--text); }
+
+/* ---------- controls (sticky) ---------- */
+.mb-controls {
+  padding: 14px 16px 12px;
+  flex-shrink: 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+/* search */
+.mb-search { position: relative; }
+.mb-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--dim); pointer-events: none; }
+.mb-search input {
+  width: 100%;
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: var(--r-input);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 11px 12px 11px 38px;
+  outline: none;
+  transition: border-color .14s ease, box-shadow .14s ease;
+}
+.mb-search input::placeholder { color: var(--faint); }
+.mb-search input:focus { border-color: var(--border-2); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* pivots — By Provider / By Family */
+.mb-pivots { margin-top: 11px; }
+
+/* filter chip row (horizontal scroll) */
+.mb-chiprow {
+  display: flex;
+  gap: 7px;
+  margin-top: 11px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 22px), transparent 100%);
+          mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 22px), transparent 100%);
+}
+.mb-chiprow::-webkit-scrollbar { display: none; }
+.mb-fchip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 11px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .14s ease;
+}
+.mb-fchip:hover { background: var(--surface-3); color: var(--text); }
+.mb-fchip .ct {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+.mb-fchip.active {
+  background: var(--accent-soft);
+  border-color: rgba(224,103,58,0.5);
+  color: var(--accent-hi);
+}
+.mb-fchip.active .ct { color: var(--accent-hi); opacity: 0.8; }
+
+/* ---------- scrollable model list ---------- */
+.mb-body { flex: 1; overflow-y: auto; padding: 6px 16px 22px; }
+.mb-body::-webkit-scrollbar { width: 9px; }
+.mb-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; border: 2px solid var(--bg); }
+.mb-body::-webkit-scrollbar-thumb:hover { background: var(--border-2); }
+
+/* group rule */
+.mb-group-rule { display: flex; align-items: center; gap: 12px; margin: 16px 0 11px; }
+.mb-group-rule .pm-eyebrow { margin: 0; white-space: nowrap; }
+.mb-group-rule .ct { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+.mb-group-rule hr { flex: 1; border: none; border-top: 1px solid var(--border-soft); }
+
+.mb-list { display: flex; flex-direction: column; gap: 9px; }
+
+/* ---------- model card ---------- */
+.mb-card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: 13px 14px;
+  cursor: pointer;
+  transition: transform .14s ease, border-color .14s ease, background .14s ease, box-shadow .14s ease;
+}
+.mb-card:hover {
+  background: var(--surface-2);
+  border-color: var(--border-2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(0,0,0,0.32);
+}
+.mb-card.selected {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, rgba(224,103,58,0.07), rgba(224,103,58,0.02));
+  box-shadow: 0 0 0 1px rgba(224,103,58,0.45), 0 8px 22px rgba(0,0,0,0.3);
+}
+
+/* selected check badge */
+.mb-check {
+  position: absolute;
+  top: -8px; right: -8px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--accent-hi), var(--accent-lo));
+  border: 2px solid var(--bg);
+  color: #fff;
+  display: grid; place-items: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+/* top row: name + price */
+.mb-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.mb-name { font-size: 14.5px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; padding-top: 1px; }
+
+.mb-price {
+  flex-shrink: 0;
+  text-align: right;
+  border: 1px solid var(--border-2);
+  background: var(--inset);
+  border-radius: 9px;
+  padding: 5px 9px 4px;
+  min-width: 70px;
+}
+.mb-price-val {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.mb-price-val .out { color: var(--muted); }
+.mb-price-cap {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-top: 2px;
+}
+/* offline / fallback pricing */
+.mb-price.unavail {
+  border-style: dashed;
+  border-color: var(--border-2);
+  background: transparent;
+}
+.mb-price.unavail .mb-price-val { color: var(--dim); letter-spacing: 0.04em; }
+.mb-price.unavail .mb-price-cap { color: var(--faint); }
+
+/* badges */
+.mb-badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 9px 0 9px; }
+.mb-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.mb-badge.fam { color: var(--text); border-color: var(--border-2); }
+.mb-badge.ctx { color: var(--accent-hi); border-color: rgba(224,103,58,0.32); background: var(--accent-soft); }
+
+.mb-desc {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0;
+  text-wrap: pretty;
+}
+
+/* empty state */
+.mb-empty {
+  text-align: center;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 48px 20px;
+}
+
+/* footer hint */
+.mb-foot {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border-soft);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--dim);
+  background: rgba(0,0,0,0.18);
+}
+.mb-foot .pm-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px rgba(111,201,138,0.6); }
+.mb-foot b { color: var(--muted); font-weight: 600; }
+
+/* presentation: narrow sidebar device */
+.device.panel { width: 384px; height: 884px; }

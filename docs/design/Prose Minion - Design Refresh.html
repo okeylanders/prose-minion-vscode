@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prose Minion — Frame Minion design language</title>
+<link rel="stylesheet" href="pm-mock.css">
+<link rel="stylesheet" href="pm-fulltab.css">
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#15110d"/><rect x="30" y="30" width="40" height="40" rx="9" fill="#fff"/><circle cx="50" cy="46" r="11" fill="#e0673a"/><rect x="38" y="58" width="24" height="10" rx="2" fill="#3a1f2e"/></svg>
+</template>
+</head>
+<body>
+<div class="canvas">
+
+  <div class="canvas-head">
+    <div class="canvas-kicker">Prose Minion · Design refresh</div>
+    <h1>Adopting the Frame Minion design language</h1>
+    <p>I reskinned Prose Minion's chrome and all four sidebar tabs to match the warmer, calmer Frame&nbsp;Minion system — soft browns, a coral accent line under the header, icon-above-label tab cards, and a real balance widget top-right (OpenRouter, with the last-request cost beneath it). Result panels keep their <b>monospace + emoji</b> character; everything around them is now clean sans.</p>
+    <p>Then the bigger bet: <b>the Assistant as a full VS&nbsp;Code editor tab</b> — room to keep a conversation going, with contextual one-tap actions that change with the analysis. I drafted three directions so we can pick a lane.</p>
+    <p class="note">These are <b>static hi-fi comps</b> — pixel-level look &amp; feel, not yet wired. Once you approve a direction I'll build it into a fully clickable prototype with mock streaming. Assumptions: PM uses OpenRouter only (no FAL.ai), so the widget shows one balance + last-request cost. Tool icons are Lucide-style placeholders; swap for your real set anytime.</p>
+  </div>
+
+  <!-- 1 — Chrome -->
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">01</span><div><h2>The chrome</h2><p>Header, balance widget, and the new tab cards.</p></div></div>
+    <div class="row">
+      <div class="frame">
+        <div class="frame-label"><span class="t">Sidebar header + tabs</span><span class="frame-tag accent">New</span></div>
+        <div class="device sidebar" style="height:330px" id="f-chrome"></div>
+      </div>
+      <div class="frame" style="max-width:360px">
+        <div class="frame-label"><span class="t">What changed</span></div>
+        <ul class="annot">
+          <li><b>Balance widget</b> — OpenRouter balance with a status dot + chevron, mirroring FM. <b>Last-request cost</b> sits just beneath, so a single lookup's spend is always visible.</li>
+          <li><b>Icon-above-label tabs</b> as rounded cards; the active one gets a coral ring + lift instead of the old flat highlight.</li>
+          <li><b>Coral accent line</b> under the header — the one bright edge in an otherwise quiet, warm-brown surface.</li>
+          <li><b>Logo tile</b> — the skull-book on a white chip, like FM's film-skull.</li>
+          <li><b>Sans chrome</b>; emoji + monospace are reserved for the result panels.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 — Tabs -->
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">02</span><div><h2>All four tabs, reskinned</h2><p>Assistant · Search · Metrics · Dictionary — same flows, new surface.</p></div></div>
+    <div class="row">
+      <div class="frame"><div class="frame-label"><span class="t">Assistant</span><span class="d">excerpt → tools → analysis</span></div><div class="device sidebar" id="f-assistant"></div></div>
+      <div class="frame"><div class="frame-label"><span class="t">Search</span><span class="d">word + category</span></div><div class="device sidebar" id="f-search"></div></div>
+      <div class="frame"><div class="frame-label"><span class="t">Metrics</span><span class="d">stats · flags · frequency</span></div><div class="device sidebar" id="f-metrics"></div></div>
+      <div class="frame"><div class="frame-label"><span class="t">Dictionary</span><span class="d">AI lookups</span></div><div class="device sidebar" id="f-dictionary"></div></div>
+    </div>
+  </div>
+
+  <!-- 3 — Tools modal -->
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">03</span><div><h2>Tools picker</h2><p>The “All tools” button opens a guide-style picker — bigger squares that say what each one does, à la FM's prompt guide.</p></div></div>
+    <div class="frame">
+      <div class="frame-label"><span class="t">Writing Tools modal</span><span class="frame-tag accent">New</span></div>
+      <div class="tm-frame" id="f-tools"></div>
+    </div>
+  </div>
+
+  <!-- 4 — Full-tab Assistant -->
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">04</span><div><h2>Full-tab Assistant — three directions</h2><p>Opened as a real editor tab. Keep chatting; act on the work. Pick a lane and I'll make it clickable.</p></div></div>
+
+    <div class="frame" style="margin-bottom:48px">
+      <div class="frame-label"><span class="t">Direction A — Conversation thread</span><span class="frame-tag">classic chat</span></div>
+      <p class="dir-note">The familiar one. Excerpt and analysis live in the thread; a <b>contextual action bar</b> sits above the composer and rewrites itself per analysis type. Lowest-friction, most recognizable.</p>
+      <div class="vscode" id="f-thread"></div>
+    </div>
+
+    <div class="frame" style="margin-bottom:48px">
+      <div class="frame-label"><span class="t">Direction B — Split &amp; pinned</span><span class="frame-tag amber">excerpt stays put</span></div>
+      <p class="dir-note">The excerpt, context, and a tool palette pin to a left rail so they never scroll out of reach; the conversation runs on the right. Best when you're iterating tightly on one passage.</p>
+      <div class="vscode" id="f-split"></div>
+    </div>
+
+    <div class="frame">
+      <div class="frame-label"><span class="t">Direction C — Branch board</span><span class="frame-tag accent">the wild one</span></div>
+      <p class="dir-note">Every analysis and rewrite is a card on a spine. <b>Branch</b> any card to explore variations in parallel — nothing touches your draft until you hit Apply. Non-linear, great for "show me options" energy.</p>
+      <div class="vscode" id="f-board"></div>
+    </div>
+  </div>
+
+  <div class="canvas-foot">
+    <p class="muted">Next: tell me which Assistant direction (or a hybrid) feels right, flag anything in the chrome to tune, and I'll wire it into a clickable prototype with mock streaming responses.</p>
+  </div>
+
+</div>
+
+<script src="icons.js"></script>
+<script src="pm-frames-sidebar.js"></script>
+<script src="pm-frames-fulltab.js"></script>
+<script>
+  document.getElementById('f-chrome').innerHTML = sidebarChrome('assistant', '');
+  document.getElementById('f-assistant').innerHTML = sidebarChrome('assistant', bodyAssistant());
+  document.getElementById('f-search').innerHTML = sidebarChrome('search', bodySearch());
+  document.getElementById('f-metrics').innerHTML = sidebarChrome('metrics', bodyMetrics());
+  document.getElementById('f-dictionary').innerHTML = sidebarChrome('dictionary', bodyDictionary());
+  document.getElementById('f-tools').innerHTML = toolsModal();
+  document.getElementById('f-thread').innerHTML = dirThread();
+  document.getElementById('f-split').innerHTML = dirSplit();
+  document.getElementById('f-board').innerHTML = dirBoard();
+</script>
+</body>
+</html>
