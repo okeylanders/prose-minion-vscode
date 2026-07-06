@@ -48,7 +48,25 @@ export class AIResourceManager {
   private aiResources: Partial<Record<ModelScope, AIResourceBundle>> = {};
   private resolvedModels: Partial<Record<ModelScope, string>> = {};
   private statusCallback?: StatusCallback;
-  private tokenUsageCallback?: TokenUsageCallback;
+  private readonly tokenUsageListeners = new Set<TokenUsageCallback>();
+
+  /**
+   * Single stable closure handed to every orchestrator: fans token usage out
+   * to all registered listeners — one per live webview MessageHandler, now
+   * that the sidebar and the Workshop panel share this manager (ADR
+   * 2026-07-03). Stable identity means re-initialized orchestrators can never
+   * hold a stale generation of listeners.
+   */
+  private readonly tokenUsageFanout: TokenUsageCallback = (usage) => {
+    for (const listener of [...this.tokenUsageListeners]) {
+      try {
+        listener(usage);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.outputChannel?.appendLine(`[AIResourceManager] Token usage listener threw: ${message}`);
+      }
+    }
+  };
 
   constructor(
     private readonly resourceLoader: ResourceLoaderService,
@@ -170,18 +188,18 @@ export class AIResourceManager {
   }
 
   /**
-   * Set the token usage callback for centralized token tracking
+   * Subscribe to per-request token usage (centralized token tracking).
    *
-   * This callback is propagated to all AIResourceOrchestrators
-   * and will be called after each API call with usage data
-   *
-   * @param callback - Token usage callback function
+   * Every orchestrator reports through one stable fan-out, so multiple
+   * webview MessageHandlers can track usage concurrently without stealing
+   * each other's callback slot. Returns an unsubscribe function — callers own
+   * their registration and MUST release it on dispose.
    */
-  setTokenUsageCallback(callback?: TokenUsageCallback): void {
-    this.tokenUsageCallback = callback;
-    Object.values(this.aiResources).forEach(resource => {
-      resource?.orchestrator.setTokenUsageCallback(callback);
-    });
+  addTokenUsageListener(listener: TokenUsageCallback): () => void {
+    this.tokenUsageListeners.add(listener);
+    return () => {
+      this.tokenUsageListeners.delete(listener);
+    };
   }
 
   /**
@@ -214,7 +232,7 @@ export class AIResourceManager {
     this.disposeResources();
     this.resolvedModels = {};
     this.statusCallback = undefined;
-    this.tokenUsageCallback = undefined;
+    this.tokenUsageListeners.clear();
   }
 
   /**
@@ -235,7 +253,7 @@ export class AIResourceManager {
       const guideLoader = this.resourceLoader.getGuideLoader();
 
       const client = new OpenRouterClient(apiKey, model, this.outputChannel);
-      const conversationManager = new ConversationManager();
+      const conversationManager = new ConversationManager(this.outputChannel);
       const orchestrator = new AIResourceOrchestrator(
         client,
         conversationManager,
@@ -244,7 +262,7 @@ export class AIResourceManager {
         this.settings,
         this.statusCallback,
         this.outputChannel,
-        this.tokenUsageCallback
+        this.tokenUsageFanout
       );
 
       this.outputChannel?.appendLine(

@@ -49,7 +49,7 @@ export class AssistantToolService {
   private dialogueAssistant?: DialogueMicrobeatAssistant;
   private proseAssistant?: ProseAssistant;
   private writingToolsAssistant?: WritingToolsAssistant;
-  private statusEmitter?: StatusEmitter;
+  private readonly statusListeners = new Set<StatusEmitter>();
 
   constructor(
     private readonly aiResourceManager: AIResourceManager,
@@ -57,39 +57,41 @@ export class AssistantToolService {
     private readonly toolOptions: ToolOptionsProvider,
     private readonly outputChannel?: LogSink
   ) {
+    // Bridge the manager's guide/resource-loading status into this service's
+    // listener set once, permanently. The manager slot is process-wide; the
+    // listeners are per-webview, added and removed as MessageHandlers come
+    // and go (sidebar + Workshop share this service, ADR 2026-07-03).
+    this.aiResourceManager.setStatusCallback((message: string, tickerMessage?: string) => {
+      this.emitStatus(message, undefined, tickerMessage);
+    });
     // Assistants will be initialized when AI resources are available
     void this.initializeAssistants();
   }
 
   /**
-   * Set the status emitter for reporting guide loading progress
+   * Subscribe to guide-loading status. Returns an unsubscribe function —
+   * handlers own their registration and MUST release it on dispose, so one
+   * webview's teardown can never blind another's.
    */
-  setStatusEmitter(statusEmitter?: StatusEmitter): void {
-    this.statusEmitter = statusEmitter;
-    if (!statusEmitter) {
-      this.aiResourceManager.setStatusCallback(undefined);
-      return;
-    }
-    // Propagate to AIResourceManager for guide loading notifications
-    this.aiResourceManager.setStatusCallback((message: string, tickerMessage?: string) => {
-      this.sendStatus(message, undefined, tickerMessage);
-    });
+  addStatusListener(listener: StatusEmitter): () => void {
+    this.statusListeners.add(listener);
+    return () => {
+      this.statusListeners.delete(listener);
+    };
   }
 
-  /**
-   * Send status message via StatusEmitter
-   *
-   * @param message - Main status message
-   * @param progress - Optional progress tracking
-   * @param tickerMessage - Optional scrolling ticker text (guide names, etc.)
-   */
-  private sendStatus(
+  private emitStatus(
     message: string,
     progress?: { current: number; total: number },
     tickerMessage?: string
   ): void {
-    if (this.statusEmitter) {
-      this.statusEmitter(message, progress, tickerMessage);
+    for (const listener of [...this.statusListeners]) {
+      try {
+        listener(message, progress, tickerMessage);
+      } catch (error) {
+        const details = error instanceof Error ? error.message : String(error);
+        this.outputChannel?.appendLine(`[AssistantToolService] Status listener threw: ${details}`);
+      }
     }
   }
 

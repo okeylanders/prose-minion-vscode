@@ -19,7 +19,8 @@ import {
   StatusMessage,
   ExtensionToWebviewMessage,
   TokenUsageUpdateMessage,
-  TokenUsageTotals
+  TokenUsageTotals,
+  WorkshopSessionStateMessage
 } from '@messages';
 import {
   CoreServices,
@@ -42,6 +43,7 @@ import { SourcesHandler } from './domain/SourcesHandler';
 import { UIHandler } from './domain/UIHandler';
 import { FileOperationsHandler } from './domain/FileOperationsHandler';
 import { AccountBalanceHandler } from './domain/AccountBalanceHandler';
+import { WorkshopHandler } from './domain/WorkshopHandler';
 
 export class MessageHandler {
   private readonly resultCache: ResultCache = {};
@@ -70,7 +72,14 @@ export class MessageHandler {
   private readonly uiHandler: UIHandler;
   private readonly fileOperationsHandler: FileOperationsHandler;
   private readonly accountBalanceHandler: AccountBalanceHandler;
+  private readonly workshopHandler: WorkshopHandler;
 
+  // Per-instance registrations on SHARED services (sidebar + Workshop panel
+  // each run a MessageHandler over the one CoreServices bundle). Dispose
+  // releases exactly these — never service-wide state another surface uses.
+  private readonly disposeTokenUsageListener: () => void;
+  private readonly disposeDictionaryStatusListener: () => void;
+  private readonly disposeSearchStatusListener: () => void;
   private readonly disposeBalanceListener: () => void;
   private readonly disposeSecretListener: () => void;
 
@@ -155,20 +164,17 @@ export class MessageHandler {
       secretsService,
       textSourceResolver,
       categorySearchService,
-      accountBalanceService
+      accountBalanceService,
+      workshopSessionService
     } = services;
 
-    aiResourceManager.setStatusCallback((message: string, tickerMessage?: string) => {
-      this.sendStatus(message, tickerMessage);
-    });
-
-    // Token tracking: centralized in AIResourceOrchestrator
-    // This callback is called after each API call with usage data
-    aiResourceManager.setTokenUsageCallback((usage) => {
+    // Token tracking: centralized in AIResourceOrchestrator. Listener-based so
+    // every live webview (sidebar + Workshop) tracks usage from ANY surface's
+    // requests; each MessageHandler keeps its own totals bag + replay cache.
+    this.disposeTokenUsageListener = aiResourceManager.addTokenUsageListener((usage) => {
       this.applyTokenUsage(usage);
     });
 
-    // Token tracking is now centralized in AIResourceOrchestrator via setTokenUsageCallback
     this.analysisHandler = new AnalysisHandler(
       assistantToolService,
       this.postMessage.bind(this),
@@ -180,8 +186,10 @@ export class MessageHandler {
       this.postMessage.bind(this)
     );
 
-    // Set status emitter for dictionary service (for fast generation progress)
-    dictionaryService.setStatusEmitter(this.sendDictionaryStatus.bind(this));
+    // Subscribe dictionary generation progress into this webview's status rail
+    this.disposeDictionaryStatusListener = dictionaryService.addStatusListener(
+      this.sendDictionaryStatus.bind(this)
+    );
 
     this.contextHandler = new ContextHandler(
       contextAssistantService,
@@ -198,7 +206,9 @@ export class MessageHandler {
       textSourceResolver
     );
 
-    categorySearchService.setStatusEmitter(this.sendSearchStatus.bind(this));
+    this.disposeSearchStatusListener = categorySearchService.addStatusListener(
+      this.sendSearchStatus.bind(this)
+    );
 
     this.searchHandler = new SearchHandler(
       wordSearchService,
@@ -265,6 +275,16 @@ export class MessageHandler {
       accountBalanceService,
       outputChannel
     );
+
+    // Workshop editor tab (ADR 2026-07-03) — the 12th domain, composed exactly
+    // like the other 11: injected services, nothing constructed here beyond
+    // the handler itself.
+    this.workshopHandler = new WorkshopHandler(
+      assistantToolService,
+      workshopSessionService,
+      this.postMessage.bind(this),
+      outputChannel
+    );
     // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)
     // broadcasts fresh balances to the webview through the same handler.
     this.disposeBalanceListener = accountBalanceService.addRefreshListener(
@@ -294,6 +314,7 @@ export class MessageHandler {
     this.uiHandler.registerRoutes(this.router);
     this.fileOperationsHandler.registerRoutes(this.router);
     this.accountBalanceHandler.registerRoutes(this.router);
+    this.workshopHandler.registerRoutes(this.router);
 
     this.flushCachedResults();
   }
@@ -661,6 +682,10 @@ export class MessageHandler {
     if (this.resultCache.tokenUsage) {
       void this.postMessage(this.resultCache.tokenUsage);
     }
+
+    if (this.resultCache.workshopSession) {
+      void this.postMessage(this.resultCache.workshopSession);
+    }
   }
 
   private async postMessage(message: ExtensionToWebviewMessage): Promise<void> {
@@ -692,6 +717,9 @@ export class MessageHandler {
         break;
       case MessageType.TOKEN_USAGE_UPDATE:
         this.resultCache.tokenUsage = { ...message as TokenUsageUpdateMessage };
+        break;
+      case MessageType.WORKSHOP_SESSION_STATE:
+        this.resultCache.workshopSession = { ...message as WorkshopSessionStateMessage };
         break;
       case MessageType.ERROR:
         const error = message as ErrorMessage;
@@ -726,23 +754,24 @@ export class MessageHandler {
   }
 
   dispose(): void {
-    // Clear callbacks on shared services to avoid stale webview references.
-    // The config-change watcher is now owned + disposed by the shell (the provider),
-    // so MessageHandler holds no host disposables of its own.
+    // Release ONLY this instance's registrations on the shared services. Two
+    // webviews (sidebar + Workshop panel) run MessageHandlers over the same
+    // CoreServices bundle, so service-wide teardown here would blind the
+    // surviving surface. Service lifecycle belongs to the composition root
+    // (extension.ts); the config-change watcher is owned by the shell.
     try {
-      this.services.aiResourceManager.setStatusCallback(undefined);
-      this.services.aiResourceManager.setTokenUsageCallback(undefined);
-      this.services.assistantToolService.setStatusEmitter(undefined);
-      this.services.dictionaryService.setStatusEmitter(undefined);
-      this.services.categorySearchService.setStatusEmitter(undefined);
+      this.disposeTokenUsageListener();
+      this.disposeDictionaryStatusListener();
+      this.disposeSearchStatusListener();
+      this.analysisHandler.dispose();
+      this.workshopHandler.dispose();
     } catch {
       // noop
     }
-    // Cancel any armed balance refresh timer + drop the listener so a disposed
-    // handler can't fire a fetch/post after teardown.
+    // Drop the balance refresh listener so a disposed handler can't post after
+    // teardown. The service's timer keeps running for other surfaces.
     try {
       this.disposeBalanceListener();
-      this.services.accountBalanceService.dispose();
     } catch {
       // noop
     }

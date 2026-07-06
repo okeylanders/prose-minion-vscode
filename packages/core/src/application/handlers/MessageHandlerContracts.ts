@@ -8,10 +8,12 @@ import type {
   MetricsResultMessage,
   SearchResultMessage,
   StatusMessage,
-  TokenUsageUpdateMessage
+  TokenUsageUpdateMessage,
+  WorkshopSessionStateMessage
 } from '@messages';
 import type { AIResourceManager } from '@orchestration/AIResourceManager';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
+import type { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
 import type { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import type { ProseStatsService } from '@services/measurement/ProseStatsService';
@@ -52,6 +54,7 @@ export interface ResultCache {
   status?: StatusMessage;
   error?: ErrorMessage;
   tokenUsage?: TokenUsageUpdateMessage;
+  workshopSession?: WorkshopSessionStateMessage;
 }
 
 /**
@@ -72,4 +75,10 @@ export interface CoreServices {
   textSourceResolver: TextSourceResolver;
   categorySearchService: CategorySearchService;
   accountBalanceService: AccountBalanceService;
+  /**
+   * Workshop session aggregate (ADR 2026-07-03). Composition-root-owned so the
+   * thread outlives any single webview's MessageHandler — reopening the panel
+   * or reloading its webview rehydrates from this one instance.
+   */
+  workshopSessionService: WorkshopSessionService;
 }

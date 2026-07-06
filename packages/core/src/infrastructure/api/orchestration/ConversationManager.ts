@@ -3,6 +3,7 @@
  * Manages multi-turn conversation state for AI tools
  */
 
+import { LogSink } from '@/platform';
 import { OpenRouterMessage } from '@providers/OpenRouterClient';
 
 export interface ConversationContext {
@@ -14,6 +15,8 @@ export interface ConversationContext {
 export class ConversationManager {
   private conversations: Map<string, ConversationContext> = new Map();
   private nextId = 1;
+
+  constructor(private readonly log?: LogSink) {}
 
   /**
    * Start a new conversation with a system message
@@ -104,7 +107,7 @@ export class ConversationManager {
     }
 
     if (idsToDelete.length > 0) {
-      console.log(`Cleared ${idsToDelete.length} old conversation(s)`);
+      this.log?.appendLine(`[ConversationManager] Cleared ${idsToDelete.length} old conversation(s)`);
     }
   }
 

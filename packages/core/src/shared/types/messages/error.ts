@@ -61,6 +61,10 @@ export type ErrorSource =
   | 'file_ops.copy'
   | 'file_ops.save'
 
+  // Workshop editor tab
+  | 'workshop'
+  | 'workshop.run_tool'
+
   // Unknown/legacy (fallback)
   | 'unknown';
 

@@ -7,22 +7,33 @@
  * retained while hidden so the panel survives tab switches (v1 persistence;
  * the WebviewPanelSerializer is explicitly out of scope).
  *
- * Sprint 1 (shell): the panel renders the static <WorkshopApp/> root from the
- * shared webview bundle — no domain messages, no session state. CoreServices
- * and Platform are injected NOW so Sprint 2 can hand them to a MessageHandler
- * without re-plumbing the constructor. Nothing is `new`-ed here (ADR
- * 2026-06-18 composition-root invariant; witnessed in __tests__/architecture).
+ * Sprint 2 (session spine): the panel gets its own MessageHandler — the ONE
+ * sanctioned `new` (the per-webview message seam, same as the sidebar) —
+ * built from the SAME injected CoreServices bundle constructed in
+ * extension.ts. Nothing else is `new`-ed here (ADR 2026-06-18 composition-
+ * root invariant; witnessed in __tests__/architecture, including the
+ * single-bundle assertion). Session state lives in the shared
+ * WorkshopSessionService inside that bundle, so closing and reopening the
+ * panel rehydrates the thread.
  */
 
 import * as vscode from 'vscode';
 // All core symbols via the public barrel (ADR 2026-06-16 monorepo boundary).
-import { CoreServices, Platform, SURFACE_WORKSHOP, coerceWebviewErrorText } from '@prose-minion/core';
+import {
+  CoreServices,
+  MessageHandler,
+  Platform,
+  SURFACE_WORKSHOP,
+  coerceWebviewErrorText,
+} from '@prose-minion/core';
 import { getWebviewHtml } from './webviewHtml';
 
 export class WorkshopPanelProvider implements vscode.Disposable {
   public static readonly viewType = 'prose-minion.workshop';
 
   private panel?: vscode.WebviewPanel;
+  private messageHandler?: MessageHandler;
+  private configWatcher?: vscode.Disposable;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -54,22 +65,54 @@ export class WorkshopPanelProvider implements vscode.Disposable {
     panel.iconPath = vscode.Uri.joinPath(this.extensionUri, 'assets', 'prose-minion-book.svg');
     panel.webview.html = getWebviewHtml(panel.webview, this.extensionUri, SURFACE_WORKSHOP);
 
-    // Sprint 1 has no domain message path (that is Sprint 2's WorkshopHandler).
-    // We only surface webview boot errors so a broken shell is diagnosable from
-    // the host side. Parsing goes through the shared coercer — the same one
-    // UIHandler uses for the sidebar — which validates the IPC payload as
-    // unknown, flattens newlines, and caps length. The `[WEBVIEW ERROR]`
-    // prefix is the greppable string the sidebar has always logged under;
-    // `(workshop)` marks the surface.
+    // The per-webview message seam, over the ONE injected CoreServices bundle.
+    // Two MessageHandlers may now be live (sidebar + Workshop); shared-service
+    // registrations are listener-based so neither steals the other's signals,
+    // and dispose releases only this instance's subscriptions.
+    this.messageHandler?.dispose();
+    this.messageHandler = new MessageHandler(
+      this.coreServices,
+      (message) => panel.webview.postMessage(message),
+      this.platform,
+      this.outputChannel
+    );
+
+    // Config-change watcher lives in the shell (keeps MessageHandler
+    // vscode-free), mirroring the sidebar provider's wiring.
+    this.configWatcher?.dispose();
+    this.configWatcher = vscode.workspace.onDidChangeConfiguration(event => {
+      this.messageHandler?.handleConfigurationChange(section => event.affectsConfiguration(section));
+    });
+
+    // Webview boot errors are logged HERE with the surface tag before the
+    // domain route would swallow them into the sidebar-identical UIHandler
+    // line. Parsing goes through the shared coercer — the same one UIHandler
+    // uses — never a fork of it. Everything else routes to the handler.
     const messageSubscription = panel.webview.onDidReceiveMessage((message: unknown) => {
       const text = coerceWebviewErrorText(message);
       if (text !== undefined) {
         this.outputChannel.appendLine(`[WEBVIEW ERROR] (workshop) ${text}`);
+        return;
+      }
+      void this.messageHandler?.handleMessage(message as Parameters<MessageHandler['handleMessage']>[0]);
+    });
+
+    // Messages posted while an editor tab is hidden can be dropped even under
+    // retainContextWhenHidden — replay the cache on re-reveal, exactly like
+    // the sidebar does on visibility change.
+    const viewStateSubscription = panel.onDidChangeViewState(() => {
+      if (panel.visible) {
+        this.messageHandler?.flushCachedResults?.();
       }
     });
 
     panel.onDidDispose(() => {
       messageSubscription.dispose();
+      viewStateSubscription.dispose();
+      this.configWatcher?.dispose();
+      this.configWatcher = undefined;
+      this.messageHandler?.dispose();
+      this.messageHandler = undefined;
       this.panel = undefined;
     });
 

@@ -76,7 +76,7 @@ export type ParallelGenerationProgressCallback = (progress: {
 
 export class DictionaryService {
   private dictionaryUtility?: DictionaryUtility;
-  private statusEmitter?: StatusEmitter;
+  private readonly statusListeners = new Set<StatusEmitter>();
 
   // Parallel generation constants
   private readonly CONCURRENCY_LIMIT = 7;
@@ -86,20 +86,22 @@ export class DictionaryService {
     private readonly aiResourceManager: AIResourceManager,
     private readonly resourceLoader: ResourceLoaderService,
     private readonly toolOptions: ToolOptionsProvider,
-    private readonly outputChannel?: LogSink,
-    statusEmitter?: StatusEmitter
+    private readonly outputChannel?: LogSink
   ) {
-    this.statusEmitter = statusEmitter;
     // Dictionary will be initialized when AI resources are available
     void this.initializeDictionary();
   }
 
   /**
-   * Set status callback for progress updates
-   * Called by MessageHandler after construction
+   * Subscribe to generation-progress status. Returns an unsubscribe function —
+   * each webview's MessageHandler owns its registration and releases it on
+   * dispose (the service is shared across webviews).
    */
-  setStatusEmitter(statusEmitter?: StatusEmitter): void {
-    this.statusEmitter = statusEmitter;
+  addStatusListener(listener: StatusEmitter): () => void {
+    this.statusListeners.add(listener);
+    return () => {
+      this.statusListeners.delete(listener);
+    };
   }
 
   /**
@@ -560,11 +562,16 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
   }
 
   /**
-   * Send status update via status emitter
+   * Send status update to every registered listener
    */
   private sendStatus(message: string, progress?: { current: number; total: number }, tickerMessage?: string): void {
-    if (this.statusEmitter) {
-      this.statusEmitter(message, progress, tickerMessage);
+    for (const listener of [...this.statusListeners]) {
+      try {
+        listener(message, progress, tickerMessage);
+      } catch (error) {
+        const details = error instanceof Error ? error.message : String(error);
+        this.outputChannel?.appendLine(`[DictionaryService] Status listener threw: ${details}`);
+      }
     }
   }
 

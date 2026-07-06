@@ -1,5 +1,6 @@
 import { MessageHandler } from '@/application/handlers/MessageHandler';
 import { CoreServices } from '@/application/handlers/MessageHandlerContracts';
+import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
 import {
   ExtensionToWebviewMessage,
   MessageType,
@@ -34,7 +35,10 @@ interface TestAssembly {
   disposeSecretListener: jest.Mock;
   secretOnDidChange: jest.Mock;
   accountDispose: jest.Mock;
-  categorySetStatusEmitter: jest.Mock;
+  categoryAddStatusListener: jest.Mock;
+  disposeCategoryStatusListener: jest.Mock;
+  disposeDictionaryStatusListener: jest.Mock;
+  disposeTokenUsageListener: jest.Mock;
   tokenUsageCallback: () => TokenUsageCallback | undefined;
 }
 
@@ -72,15 +76,21 @@ function createTestAssembly(): TestAssembly {
   const disposeSecretListener = jest.fn();
   const secretOnDidChange = jest.fn(() => ({ dispose: disposeSecretListener }));
   const accountDispose = jest.fn();
-  const categorySetStatusEmitter = jest.fn();
+  const categoryAddStatusListener = jest.fn(() => disposeCategoryStatusListener);
+  const disposeCategoryStatusListener = jest.fn();
+  const disposeDictionaryStatusListener = jest.fn();
+  const disposeTokenUsageListener = jest.fn(() => {
+    capturedTokenUsageCallback = undefined;
+  });
 
   const services = {
     assistantToolService: {
-      setStatusEmitter: jest.fn(),
+      // Registered twice per handler: AnalysisHandler + WorkshopHandler.
+      addStatusListener: jest.fn(() => jest.fn()),
       refreshConfiguration: jest.fn().mockResolvedValue(undefined)
     },
     dictionaryService: {
-      setStatusEmitter: jest.fn(),
+      addStatusListener: jest.fn(() => disposeDictionaryStatusListener),
       refreshConfiguration: jest.fn().mockResolvedValue(undefined)
     },
     contextAssistantService: {
@@ -94,9 +104,9 @@ function createTestAssembly(): TestAssembly {
       getGenres: jest.fn().mockResolvedValue([])
     },
     aiResourceManager: {
-      setStatusCallback: jest.fn(),
-      setTokenUsageCallback: jest.fn((callback?: TokenUsageCallback) => {
+      addTokenUsageListener: jest.fn((callback: TokenUsageCallback) => {
         capturedTokenUsageCallback = callback;
+        return disposeTokenUsageListener;
       }),
       refreshConfiguration: jest.fn().mockResolvedValue(undefined)
     },
@@ -108,14 +118,17 @@ function createTestAssembly(): TestAssembly {
     },
     textSourceResolver: {},
     categorySearchService: {
-      setStatusEmitter: categorySetStatusEmitter
+      addStatusListener: categoryAddStatusListener
     },
     accountBalanceService: {
       getBalances,
       scheduleRefresh,
       addRefreshListener: accountAddRefreshListener,
       dispose: accountDispose
-    }
+    },
+    // Real aggregate on purpose: it is pure/dependency-free, and using it makes
+    // the reload-safety test below exercise true session behavior.
+    workshopSessionService: new WorkshopSessionService()
   } as unknown as CoreServices;
 
   return {
@@ -129,7 +142,10 @@ function createTestAssembly(): TestAssembly {
     accountDispose,
     disposeSecretListener,
     secretOnDidChange,
-    categorySetStatusEmitter,
+    categoryAddStatusListener,
+    disposeCategoryStatusListener,
+    disposeDictionaryStatusListener,
+    disposeTokenUsageListener,
     tokenUsageCallback: () => capturedTokenUsageCallback
   };
 }
@@ -167,7 +183,57 @@ describe('MessageHandler assembly', () => {
         source: 'extension.account'
       })
     );
-    expect(assembly.categorySetStatusEmitter).toHaveBeenCalledWith(expect.any(Function));
+    expect(assembly.categoryAddStatusListener).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  it('routes workshop messages (12th domain) and rehydrates a new handler from the shared session aggregate', async () => {
+    const assembly = createTestAssembly();
+    const postMessage = jest.fn().mockResolvedValue(undefined);
+    const handler = createHandler(assembly, postMessage);
+    postMessage.mockClear();
+
+    await handler.handleMessage({
+      type: MessageType.WORKSHOP_SET_EXCERPT,
+      source: 'webview.workshop',
+      payload: { text: 'A line of prose worth keeping.' },
+      timestamp: Date.now()
+    });
+
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: MessageType.WORKSHOP_SESSION_STATE,
+        source: 'extension.workshop',
+        payload: expect.objectContaining({
+          session: expect.objectContaining({
+            excerpt: expect.objectContaining({ text: 'A line of prose worth keeping.' })
+          })
+        })
+      })
+    );
+
+    // Panel closed and reopened: a SECOND handler over the SAME bundle serves
+    // the same session back — the ADR's reload-safety criterion.
+    const secondPost = jest.fn().mockResolvedValue(undefined);
+    const second = createHandler(assembly, secondPost);
+    secondPost.mockClear();
+
+    await second.handleMessage({
+      type: MessageType.WORKSHOP_REQUEST_SESSION,
+      source: 'webview.workshop',
+      payload: {},
+      timestamp: Date.now()
+    });
+
+    expect(secondPost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: MessageType.WORKSHOP_SESSION_STATE,
+        payload: expect.objectContaining({
+          session: expect.objectContaining({
+            excerpt: expect.objectContaining({ text: 'A line of prose worth keeping.' })
+          })
+        })
+      })
+    );
   });
 
   it('does not arm a balance refresh for activation/reset token updates', () => {
@@ -226,11 +292,16 @@ describe('MessageHandler assembly', () => {
 
     first.dispose();
 
+    // Dispose releases ONLY this instance's registrations…
     expect(assembly.disposeBalanceListener).toHaveBeenCalledTimes(1);
     expect(assembly.disposeSecretListener).toHaveBeenCalledTimes(1);
-    expect(assembly.accountDispose).toHaveBeenCalledTimes(1);
-    expect(assembly.categorySetStatusEmitter).toHaveBeenLastCalledWith(undefined);
+    expect(assembly.disposeTokenUsageListener).toHaveBeenCalledTimes(1);
+    expect(assembly.disposeDictionaryStatusListener).toHaveBeenCalledTimes(1);
+    expect(assembly.disposeCategoryStatusListener).toHaveBeenCalledTimes(1);
     expect(assembly.tokenUsageCallback()).toBeUndefined();
+    // …and NEVER tears down the shared service: the other webview surface
+    // (sidebar ↔ Workshop panel) still depends on it (PR #66 review, Tim).
+    expect(assembly.accountDispose).not.toHaveBeenCalled();
 
     createHandler(
       assembly,
@@ -239,7 +310,7 @@ describe('MessageHandler assembly', () => {
 
     expect(assembly.accountAddRefreshListener).toHaveBeenCalledTimes(2);
     expect(assembly.secretOnDidChange).toHaveBeenCalledTimes(2);
-    expect(assembly.categorySetStatusEmitter).toHaveBeenLastCalledWith(expect.any(Function));
+    expect(assembly.categoryAddStatusListener).toHaveBeenCalledTimes(2);
     expect(assembly.tokenUsageCallback()).toEqual(expect.any(Function));
   });
 
