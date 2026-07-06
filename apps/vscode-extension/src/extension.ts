@@ -13,6 +13,7 @@
 
 import * as vscode from 'vscode';
 import { ProseToolsViewProvider } from './application/providers/ProseToolsViewProvider';
+import { WorkshopPanelProvider } from './application/providers/WorkshopPanelProvider';
 // Core services + the Platform port type — imported via the public barrel only
 // (ADR 2026-06-16 monorepo boundary; enforced by eslint no-restricted-imports).
 import {
@@ -43,6 +44,7 @@ import { VsCodeShellService } from './platform/vscode/VsCodeShellService';
 import { VsCodeEditorContext } from './platform/vscode/VsCodeEditorContext';
 
 let proseToolsViewProvider: ProseToolsViewProvider | undefined;
+let workshopPanelProvider: WorkshopPanelProvider | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
   // Create output channel for logging
@@ -178,6 +180,16 @@ export function activate(context: vscode.ExtensionContext): void {
   );
   console.log('Webview provider registered successfully');
 
+  // Workshop editor-tab surface (ADR 2026-07-03, Sprint 1: shell only).
+  // Same CoreServices bundle as the sidebar — the provider constructs nothing.
+  workshopPanelProvider = new WorkshopPanelProvider(
+    context.extensionUri,
+    coreServices,
+    outputChannel,
+    platform
+  );
+  context.subscriptions.push(workshopPanelProvider);
+
   const focusToolsView = () => {
     void vscode.commands.executeCommand('prose-minion.toolsView.focus');
   };
@@ -246,6 +258,9 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('prose-minion.openSettingsOverlay', () => {
       focusToolsView();
       proseToolsViewProvider?.openSettings();
+    }),
+    vscode.commands.registerCommand('prose-minion.openWorkshop', () => {
+      workshopPanelProvider?.openOrReveal();
     })
   );
 }

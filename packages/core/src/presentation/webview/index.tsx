@@ -1,11 +1,17 @@
 /**
  * Webview entry point
  * Bootstraps the React application
+ *
+ * One bundle, two roots (ADR 2026-07-03): the host stamps
+ * `data-pm-surface="workshop"` on #root for the Workshop editor tab; the
+ * sidebar stays unstamped. We branch on that flag here — no second build
+ * pipeline, just a second React root.
  */
 
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { WorkshopApp } from './WorkshopApp';
 import { MessageType } from '@shared/types';
 import { getVSCodeApi } from './hooks/useVSCodeApi';
 import { AppMessagePort } from './ports/AppMessagePort';
@@ -16,9 +22,10 @@ try {
   if (!root) {
     throw new Error('Root element not found');
   }
+  const surface = root.getAttribute('data-pm-surface');
   createRoot(root).render(
     <React.StrictMode>
-      <App />
+      {surface === 'workshop' ? <WorkshopApp /> : <App />}
     </React.StrictMode>
   );
 } catch (e: any) {

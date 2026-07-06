@@ -17,6 +17,7 @@ import {
   SelectionUpdatedMessage,
   OpenSettingsToggleMessage,
 } from '@prose-minion/core';
+import { getWebviewHtml } from './webviewHtml';
 
 export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'prose-minion.toolsView';
@@ -45,7 +46,7 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
     };
     webviewView.webview.options = webviewOptions;
 
-    webviewView.webview.html = this.getHtmlForWebview(webviewView.webview);
+    webviewView.webview.html = getWebviewHtml(webviewView.webview, this.extensionUri, 'sidebar');
 
     // SPRINT 05: Initialize message handler with direct service injection.
     // Pre-dispose any prior handler before replacing it so a re-resolve can't
@@ -131,71 +132,4 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private getHtmlForWebview(webview: vscode.Webview): string {
-    const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview.js')
-    );
-
-    const myWorldLoadingGifUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'assets', 'assistant-working-prose-minion-my-world-is-user-generated.gif')
-    );
-    const helloWorldLoadingGifUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'assets', 'assistant-working-prose-minion-hello-world.gif')
-    );
-
-    const nonce = this.getNonce();
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'nonce-${nonce}'; img-src ${webview.cspSource} https: data:;">
-  <title>Prose Minion Tools</title>
-</head>
-<body>
-  <div id="root" style="padding:8px;font-family:var(--vscode-font-family);color:var(--vscode-foreground)">Loading Prose Minion…</div>
-  <script nonce="${nonce}">
-    window.proseMinonAssets = {
-      vhsLoadingGif: "${myWorldLoadingGifUri}",
-      loadingGifs: [
-        "${myWorldLoadingGifUri}",
-        "${helloWorldLoadingGifUri}"
-      ],
-      // Enumerate available loading GIF filenames for credits management
-      loadingGifList: [
-        'assistant-working-prose-minion-my-world-is-user-generated.gif',
-        'assistant-working-prose-minion-hello-world.gif'
-      ],
-      // Map of filename -> credit info
-      loadingGifCredits: {
-        'assistant-working-prose-minion-my-world-is-user-generated.gif': 'Generated with Adobe Firefly',
-        'assistant-working-prose-minion-hello-world.gif': 'Generated with Adobe Firefly'
-      }
-    };
-  </script>
-  <script nonce="${nonce}">
-    console.log('[Prose Minion] Webview HTML loaded');
-    window.addEventListener('error', function (e) {
-      try {
-        const el = document.getElementById('root');
-        if (el) el.textContent = 'Webview error: ' + (e?.message || 'unknown');
-        // Forward to extension output channel if API is available
-        try { const vscode = acquireVsCodeApi && acquireVsCodeApi(); vscode && vscode.postMessage && vscode.postMessage({ type: 'webview_error', message: e?.message || 'unknown' }); } catch {}
-      } catch {}
-    });
-  </script>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
-</body>
-</html>`;
-  }
-
-  private getNonce(): string {
-    let text = '';
-    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    for (let i = 0; i < 32; i++) {
-      text += possible.charAt(Math.floor(Math.random() * possible.length));
-    }
-    return text;
-  }
 }

@@ -1,0 +1,411 @@
+/* ============================================================
+   Prose Minion — Workshop editor-tab surface (ADR 2026-07-03)
+
+   Frame Minion design language, ported from docs/design/pm-mock.css
+   (warm-brown tokens, coral accent) with layout adapted from the approved
+   Direction B prototype (pm-fulltab.css / pm-direction-b.css).
+
+   EVERYTHING here is scoped under [data-pm-surface="workshop"] — the #root
+   stamp the host writes for the Workshop panel — so the sidebar surface
+   (.app-container, styled in index.css) is untouched in both directions.
+   The two roots never nest, so the --pm-* token names can safely mirror the
+   sidebar's vocabulary while carrying the FM mock's fixed values: the
+   Workshop is pinned warm-dark in v1 (no follow-VS-Code mode).
+   ============================================================ */
+
+[data-pm-surface="workshop"] {
+  /* Warm dark browns (FM language — verbatim from pm-mock.css) */
+  --pm-bg:          #15110d;
+  --pm-bg-grad-top: #211910;
+  --pm-surface:     #221a13;
+  --pm-surface-2:   #2b2017;
+  --pm-surface-3:   #36281b;
+  --pm-inset:       #1b150f;
+  --pm-border:      #3a2c1f;
+  --pm-border-2:    #4d3a28;
+  --pm-border-soft: #2e231a;
+
+  --pm-text:        #f3ece1;
+  --pm-text-2:      #c9bbab;
+  --pm-muted:       #a4937f;
+  --pm-dim:         #7a6c5b;
+  --pm-faint:       #5c5044;
+
+  /* Accent — coral/orange (PM skull + FM brand) */
+  --pm-accent:      #e0673a;
+  --pm-accent-hi:   #ee7d49;
+  --pm-accent-lo:   #c8552c;
+  --pm-accent-soft: rgba(224, 103, 58, 0.14);
+  --pm-accent-line: linear-gradient(90deg, #e8763f 0%, #d2592f 48%, rgba(210, 89, 47, 0) 100%);
+
+  --pm-blue:   #5aa2f0;
+  --pm-green:  #6fc98a;
+  --pm-pink:   #e0589e;
+  --pm-amber:  #e2b24a;
+
+  --pm-r-card: 12px;
+  --pm-r-tile: 9px;
+  --pm-r-input: 8px;
+  --pm-r-pill: 999px;
+
+  --pm-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --pm-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, system-ui, sans-serif;
+}
+
+/* ---------- App shell ---------- */
+[data-pm-surface="workshop"] .pm-ws {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--pm-sans);
+  color: var(--pm-text);
+  background: var(--pm-bg);
+  background-image: linear-gradient(180deg, var(--pm-bg-grad-top) 0%, var(--pm-bg) 220px);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Disabled controls: the Sprint 1 shell is intentionally inert — keep the
+   designed look, just refuse the cursor. */
+[data-pm-surface="workshop"] button:disabled,
+[data-pm-surface="workshop"] input:disabled {
+  cursor: not-allowed;
+}
+
+/* ---------- Header ---------- */
+[data-pm-surface="workshop"] .pm-ws-header {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 28px 24px;
+  flex-shrink: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-header::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 2px;
+  background: var(--pm-accent-line);
+}
+
+[data-pm-surface="workshop"] .pm-ws-brand {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+}
+[data-pm-surface="workshop"] .pm-ws-logo {
+  width: 46px;
+  height: 46px;
+  border-radius: 11px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+[data-pm-surface="workshop"] .pm-ws-logo svg {
+  width: 40px;
+  height: 40px;
+  color: #15110d;
+}
+[data-pm-surface="workshop"] .pm-ws-title {
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  margin: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--pm-mono);
+  font-size: 12px;
+  color: var(--pm-muted);
+  margin: 3px 0 0;
+}
+
+[data-pm-surface="workshop"] .pm-ws-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+[data-pm-surface="workshop"] .pm-ws-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: transparent;
+  border: 1px solid var(--pm-border);
+  color: var(--pm-muted);
+  border-radius: var(--pm-r-input);
+  padding: 9px 11px;
+  font-size: 12.5px;
+  font-family: var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-model {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-input);
+  padding: 9px 12px;
+  font-size: 12.5px;
+  color: var(--pm-text);
+  font-family: var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-balance {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+[data-pm-surface="workshop"] .pm-ws-balance-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--pm-blue);
+  box-shadow: 0 0 7px rgba(90, 162, 240, 0.6);
+}
+[data-pm-surface="workshop"] .pm-ws-balance-label {
+  font-size: 12.5px;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="workshop"] .pm-ws-balance-val {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pm-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Shared bits ---------- */
+[data-pm-surface="workshop"] .pm-ws-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pm-dim);
+  margin: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-header-eyebrow {
+  margin-bottom: 4px;
+}
+[data-pm-surface="workshop"] .pm-ws-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: var(--pm-r-pill);
+  border: 1px solid var(--pm-border-2);
+  color: var(--pm-muted);
+}
+
+/* ---------- Split layout ---------- */
+[data-pm-surface="workshop"] .pm-ws-split {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 372px 1fr;
+}
+
+/* Left rail */
+[data-pm-surface="workshop"] .pm-ws-rail {
+  border-right: 1px solid var(--pm-border-soft);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: rgba(0, 0, 0, 0.14);
+  overflow-y: auto;
+  min-height: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-block {
+  display: flex;
+  flex-direction: column;
+}
+[data-pm-surface="workshop"] .pm-ws-block-grow {
+  flex: 1;
+}
+[data-pm-surface="workshop"] .pm-ws-block-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+[data-pm-surface="workshop"] .pm-ws-excerpt {
+  margin-top: 11px;
+  background: var(--pm-inset);
+  border: 1px solid var(--pm-border);
+  border-radius: 10px;
+  padding: 13px;
+  font-family: var(--pm-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--pm-text-2);
+  white-space: pre-wrap;
+}
+[data-pm-surface="workshop"] .pm-ws-excerpt-empty {
+  color: var(--pm-dim);
+  border-style: dashed;
+  white-space: normal;
+}
+[data-pm-surface="workshop"] .pm-ws-brief-empty {
+  font-size: 12.5px;
+  color: var(--pm-dim);
+  margin: 9px 0 0;
+}
+
+/* Tool palette */
+[data-pm-surface="workshop"] .pm-ws-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 10px;
+}
+[data-pm-surface="workshop"] .pm-ws-tool {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-family: var(--pm-sans);
+  color: var(--pm-text-2);
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-tile);
+  padding: 10px 12px;
+  text-align: left;
+}
+[data-pm-surface="workshop"] .pm-ws-tool-ghost {
+  color: var(--pm-dim);
+  background: transparent;
+  border-style: dashed;
+}
+
+/* ---------- Thread ---------- */
+[data-pm-surface="workshop"] .pm-ws-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-thread {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+[data-pm-surface="workshop"] .pm-ws-thread::-webkit-scrollbar,
+[data-pm-surface="workshop"] .pm-ws-rail::-webkit-scrollbar {
+  width: 10px;
+}
+[data-pm-surface="workshop"] .pm-ws-thread::-webkit-scrollbar-thumb,
+[data-pm-surface="workshop"] .pm-ws-rail::-webkit-scrollbar-thumb {
+  background: var(--pm-border-2);
+  border-radius: 6px;
+  border: 3px solid var(--pm-bg);
+}
+
+[data-pm-surface="workshop"] .pm-ws-thread-empty {
+  margin: auto;
+  max-width: 420px;
+  text-align: center;
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-thread-empty svg {
+  color: var(--pm-accent-hi);
+  opacity: 0.8;
+}
+[data-pm-surface="workshop"] .pm-ws-thread-empty-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--pm-muted);
+  margin: 12px 0 6px;
+}
+[data-pm-surface="workshop"] .pm-ws-thread-empty-sub {
+  font-size: 12.5px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ---------- Composer (present but disabled in Sprint 1) ---------- */
+[data-pm-surface="workshop"] .pm-ws-composer-wrap {
+  flex-shrink: 0;
+  padding: 14px 32px 22px;
+  background: var(--pm-bg);
+  border-top: 1px solid var(--pm-border-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-composer {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-border-2);
+  border-radius: 13px;
+  padding: 9px 11px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.32);
+}
+[data-pm-surface="workshop"] .pm-ws-comp-add {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--pm-r-tile);
+  background: var(--pm-surface-3);
+  border: 1px solid var(--pm-border);
+  color: var(--pm-muted);
+  display: grid;
+  place-items: center;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-family: var(--pm-sans);
+  color: var(--pm-text);
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 6px 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-input::placeholder {
+  color: var(--pm-faint);
+}
+[data-pm-surface="workshop"] .pm-ws-comp-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--pm-muted);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-pill);
+  padding: 6px 11px;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-send {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--pm-r-tile);
+  border: none;
+  background: linear-gradient(180deg, var(--pm-accent-hi), var(--pm-accent-lo));
+  color: #fff;
+  display: grid;
+  place-items: center;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-send:disabled {
+  filter: saturate(0.55) brightness(0.8);
+}
