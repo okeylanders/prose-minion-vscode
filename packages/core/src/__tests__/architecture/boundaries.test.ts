@@ -19,6 +19,11 @@
  *    (presentation/webview/ports/) and referenced in exactly ONE module — the
  *    VS Code adapter `presentation/webview/hooks/useVSCodeApi.ts`. It is NOT an
  *    `import 'vscode'`, so this import-scan guard does not (and need not) catch it.
+ *
+ *    APP-SHELL WITNESSES live on the other side of the split, next to the
+ *    adapter they verify: apps/vscode-extension/src/__tests__/architecture/.
+ *    This suite scans packages/core/src ONLY — core must never read the VS
+ *    Code shell's source, not even in tests (PR #66 review, Marcus).
  */
 
 import * as fs from 'fs';

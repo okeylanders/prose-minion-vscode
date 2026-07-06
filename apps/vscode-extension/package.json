@@ -98,7 +98,8 @@
     "onCommand:prose-minion.assistantSelection",
     "onCommand:prose-minion.wordLookupSelection",
     "onCommand:prose-minion.analyzeSelection",
-    "onCommand:prose-minion.showOutputChannel"
+    "onCommand:prose-minion.showOutputChannel",
+    "onCommand:prose-minion.openWorkshop"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -138,6 +139,10 @@
         "command": "prose-minion.showOutputChannel",
         "title": "Prose Minion: Show Debug Output",
         "icon": "$(bug)"
+      },
+      {
+        "command": "prose-minion.openWorkshop",
+        "title": "Prose Minion: Open Workshop"
       }
     ],
     "menus": {

@@ -1,0 +1,76 @@
+/**
+ * App-shell architecture witnesses (ADR 2026-06-18 composition root, ADR
+ * 2026-07-03 Workshop panel).
+ *
+ * These live app-side — next to the adapter source they verify — so core's
+ * boundary suite never reads across the monorepo split (PR #66 review,
+ * Marcus). Same scan idiom as core's boundaries.test.ts: fs + regex +
+ * empty-offenders-list. Pure file-content witnesses; no vscode API touched.
+ */
+
+import * as fs from 'fs';
+import * as path from 'path';
+
+// __dirname = apps/vscode-extension/src/__tests__/architecture -> app src root.
+const APP_SRC_ROOT = path.resolve(__dirname, '..', '..');
+const PROVIDERS_ROOT = path.join(APP_SRC_ROOT, 'application', 'providers');
+const EXTENSION_ENTRY = path.join(APP_SRC_ROOT, 'extension.ts');
+
+/**
+ * Providers assemble nothing: every service arrives via the CoreServices
+ * bundle built in extension.ts. `new MessageHandler` is the ONE sanctioned
+ * construction — the per-webview message seam. This is a suffix-convention
+ * net (it catches service-shaped class names, not arbitrary classes): Handler
+ * IS in the net, so a Sprint-2 `new WorkshopHandler(...)` inside a provider
+ * fails here rather than slipping through (PR #66 review, Cal).
+ */
+const FORBIDDEN_SERVICE_CONSTRUCTION = new RegExp(
+  String.raw`\bnew\s+(?!MessageHandler\b)[A-Z]\w*(?:Service|Manager|Client|Resolver|Repository|Provider|Orchestrator|Handler|Adapter|Cache|Gateway|Factory)\b`
+);
+
+function collectSourceFiles(dir: string, acc: string[] = []): string[] {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      // Skip ANY __tests__ dir in the walk so a future colocated fixture
+      // (e.g. a FakeSomethingService test double) can't trip the witness.
+      if (entry.name === '__tests__') {
+        continue;
+      }
+      collectSourceFiles(full, acc);
+    } else if (entry.isFile() && /\.tsx?$/.test(entry.name)) {
+      acc.push(full);
+    }
+  }
+  return acc;
+}
+
+describe('app-shell provider assembly', () => {
+  it('webview providers construct no services — CoreServices is injected, MessageHandler is the only sanctioned new', () => {
+    const offenders = collectSourceFiles(PROVIDERS_ROOT)
+      .filter((file) => FORBIDDEN_SERVICE_CONSTRUCTION.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(APP_SRC_ROOT, file));
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('WorkshopPanelProvider is wired from the composition root with the CoreServices bundle (ADR 2026-07-03)', () => {
+    const providerSource = fs.readFileSync(
+      path.join(PROVIDERS_ROOT, 'WorkshopPanelProvider.ts'),
+      'utf8'
+    );
+    // The provider receives the bundle; it does not build its own services.
+    expect(providerSource).toMatch(/coreServices:\s*CoreServices/);
+
+    const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
+    const start = extensionSource.indexOf('new WorkshopPanelProvider(');
+    expect(start).toBeGreaterThan(-1);
+    // Scan exactly the constructor call — bounded at its closing `);` — so
+    // the witness can't be satisfied by a `coreServices` mention in unrelated
+    // trailing code (PR #66 review, Cal).
+    const end = extensionSource.indexOf(');', start);
+    expect(end).toBeGreaterThan(start);
+    const constructionArgs = extensionSource.slice(start, end);
+    expect(constructionArgs).toContain('coreServices');
+  });
+});

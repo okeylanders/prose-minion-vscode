@@ -104,3 +104,47 @@ export interface WebviewErrorPayload {
 export interface WebviewErrorMessage extends MessageEnvelope<WebviewErrorPayload> {
   type: MessageType.WEBVIEW_ERROR;
 }
+
+/** Longest webview-supplied error text a host log line will carry verbatim. */
+export const WEBVIEW_ERROR_TEXT_MAX = 500;
+
+/**
+ * The ONE parser for `webview_error` wire traffic (PR #66 review, Oliver +
+ * Patricia). Two producer shapes exist by design: React error paths post the
+ * full envelope (`payload.message`), while the pre-React bootstrap scripts in
+ * webviewHtml.ts post a flat `{ type, message }` because they run before any
+ * envelope helper is loaded. Every consumer (UIHandler for the sidebar,
+ * WorkshopPanelProvider for the panel) goes through here so the shapes can't
+ * fork again.
+ *
+ * The input crosses the webview IPC boundary, so it is validated as `unknown`
+ * — TS annotations on the other side prove nothing at runtime — and the text
+ * is flattened (no newline forgery into the log) and length-capped.
+ *
+ * Returns undefined when the value is not a webview_error or carries no
+ * usable text.
+ */
+export function coerceWebviewErrorText(raw: unknown): string | undefined {
+  if (typeof raw !== 'object' || raw === null) {
+    return undefined;
+  }
+  const candidate = raw as { type?: unknown; message?: unknown; payload?: { message?: unknown } };
+  if (candidate.type !== MessageType.WEBVIEW_ERROR) {
+    return undefined;
+  }
+  const text = typeof candidate.payload?.message === 'string'
+    ? candidate.payload.message
+    : typeof candidate.message === 'string'
+      ? candidate.message
+      : undefined;
+  if (text === undefined) {
+    return undefined;
+  }
+  const flattened = text.replace(/\s+/g, ' ').trim();
+  if (flattened.length === 0) {
+    return undefined;
+  }
+  return flattened.length > WEBVIEW_ERROR_TEXT_MAX
+    ? `${flattened.slice(0, WEBVIEW_ERROR_TEXT_MAX)}…`
+    : flattened;
+}
