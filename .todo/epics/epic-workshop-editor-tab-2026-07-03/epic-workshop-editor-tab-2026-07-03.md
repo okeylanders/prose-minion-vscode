@@ -2,7 +2,7 @@
 
 **Created**: 2026-07-06
 **Status**: In Progress
-**Progress**: 0/4 sprints complete
+**Progress**: 1/4 sprints complete (Sprint 01 merged 2026-07-06, [PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66))
 **Design source**: [Direction B — Split & Pinned](../../design/Prose%20Minion%20-%20Assistant%20Tab.html)
 **ADR**: [2026-07-03 — Assistant as a Full Editor Tab](../../adr/2026-07-03-assistant-editor-tab.md)
 **Integration branch**: `epic/workshop-editor-tab`

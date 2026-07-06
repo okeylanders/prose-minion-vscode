@@ -64,7 +64,12 @@ tool a second time starts a fresh turn, not a continuation.
       tool appends a `user`+`assistant` turn pair, reset clears turns, active
       tool tracked. No React needed.
 
-### Carried from PR #66 review (Deferred pile — lands WITH this sprint, not after)
+### Carried from Sprint 01 / PR #66 review (lands WITH this sprint, not after)
+
+- [ ] **Sprint 01 leftover — F5 click-through**: confirm
+      `prose-minion.openWorkshop` opens the shell in a real extension host
+      (do this FIRST, before wiring anything — headless boot-checks covered
+      the bundle, never a live VS Code window).
 
 - [ ] **ErrorBoundary coverage in `WorkshopApp`** (#10, Sam): wrap rail /
       thread / composer sections the way `App.tsx` wraps its tabs — required

@@ -1,6 +1,6 @@
 # Sprint 01: Shell
 
-**Status**: In Review ([PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66))
+**Status**: Complete — merged into `epic/workshop-editor-tab` via [PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66) (2026-07-06)
 **Priority**: High
 **Branch**: `claude/sprint-01-workshop-editor-tab-u49fd5` → PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 1–2 days
@@ -59,7 +59,7 @@ that renders.
       against both `#root` stamps — workshop renders `<WorkshopApp/>` (rail,
       palette, disabled composer), sidebar still renders `<App/>`, no style
       leak either way, no boot errors. The F5 extension-host click-through
-      remains a manual step.*
+      remains a manual step — CARRIED into Sprint 02's kickoff checklist.*
 - [x] Run lint, typecheck, tests, production build, bundle verification.
 
 ## Verification notes (2026-07-06)
