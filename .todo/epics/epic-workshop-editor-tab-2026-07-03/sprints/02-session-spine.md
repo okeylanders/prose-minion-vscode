@@ -1,6 +1,6 @@
 # Sprint 02: Session Spine (single turn)
 
-**Status**: In Review
+**Status**: In Review ([PR #67](https://github.com/okeylanders/prose-minion-vscode/pull/67))
 **Priority**: High
 **Branch**: `claude/sprint-02-session-spine-skndyo` → PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 2–4 days
