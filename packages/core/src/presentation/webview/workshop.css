@@ -167,7 +167,18 @@
   font-size: 12.5px;
   font-family: var(--pm-sans);
 }
-[data-pm-surface="workshop"] .pm-ws-model {
+/* The shared ModelSelector (trigger + ModelBrowserModal — the same component
+   the sidebar uses), reskinned so the trigger reads as a workshop chip. The
+   modal itself keeps its index.css styling: one browser, both surfaces. */
+[data-pm-surface="workshop"] .pm-ws-header-actions .model-selector {
+  display: flex;
+  align-items: center;
+}
+[data-pm-surface="workshop"] .pm-ws-header-actions .model-selector-label {
+  /* Compact header: the trigger's aria-label already carries the scope name. */
+  display: none;
+}
+[data-pm-surface="workshop"] .pm-ws-header-actions .model-selector-trigger {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -178,9 +189,15 @@
   font-size: 12.5px;
   color: var(--pm-text);
   font-family: var(--pm-sans);
-  /* Now a real <select>: keep long model ids from blowing up the header. */
   max-width: 230px;
+}
+[data-pm-surface="workshop"] .pm-ws-header-actions .model-selector-current {
+  overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-pm-surface="workshop"] .pm-ws-header-actions .model-selector-trigger:not(:disabled):hover {
+  border-color: var(--pm-border-2);
 }
 [data-pm-surface="workshop"] .pm-ws-balance {
   display: flex;

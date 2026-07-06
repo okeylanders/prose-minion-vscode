@@ -160,10 +160,18 @@ tool a second time starts a fresh turn, not a continuation.
 5. **API-key warning stays out of the thread**: a run against a missing key
    surfaces through the error rail (`isApiKeyNotConfiguredWarning` reused);
    the session records only the attempted user turn.
-6. **Bundle delta (production build, Sprint-01 base → Sprint 02):**
-   `webview.js` 528,566 → 543,216 bytes (+14.3 KB, +2.8%); `extension.js`
-   2,230,883 → 2,240,792 bytes (+9.7 KB, +0.4%). Nowhere near needing the
-   entry split flagged in epic Known Risks.
+6. **Model browser pulled INTO this sprint** (Okey, post-F5 review): the
+   header's model chip is now the shared `ModelSelector` + `ModelBrowserModal`
+   — the exact component pair the sidebar uses, assistant scope, with only
+   the trigger reskinned in workshop.css. This was previously unscheduled
+   (the epic's "Model Browser" follow-up line covers the bigger standalone
+   feature, not this reuse). File-picker excerpt seeding from the same review
+   went to Sprint 3's task list, joining selection seeding.
+7. **Bundle delta (production build, Sprint-01 base → Sprint 02):**
+   `webview.js` 528,566 → 543,608 bytes (+14.7 KB, +2.8%); `extension.js`
+   2,230,883 → 2,240,792 bytes (+9.7 KB, +0.4%). The model-browser wiring
+   cost +392 bytes — the modal was already bundled via the sidebar. Nowhere
+   near needing the entry split flagged in epic Known Risks.
 
 ## F5 smoke recipe (run locally; remote env can't fetch VS Code)
 

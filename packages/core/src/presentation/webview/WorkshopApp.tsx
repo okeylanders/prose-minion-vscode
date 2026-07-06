@@ -24,8 +24,9 @@ import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { TabErrorFallback } from './components/shared/TabErrorFallback';
 import { MarkdownRenderer } from './components/shared/MarkdownRenderer';
 import { StreamingContent } from './components/shared/StreamingContent';
-import { MessageType, ModelScope } from '@shared/types';
+import { MessageType } from '@shared/types';
 import { ApiKeyStatusMessage, WorkshopToolId, WorkshopTurn } from '@messages';
+import { ModelSelector } from './components/shared/ModelSelector';
 import {
   WORKSHOP_TOOL_CATALOG,
   WorkshopToolDescriptor
@@ -269,31 +270,17 @@ export const WorkshopApp: React.FC = () => {
           >
             <Icon name="refresh" size={13} /> New session
           </button>
-          {/* Model select — assistant scope, the same MODEL_DATA rails as the sidebar */}
-          <select
-            className="pm-ws-model"
-            aria-label="Assistant model"
-            value={modelsSettings.modelSelections.assistant ?? ''}
-            onChange={(event) =>
-              modelsSettings.setModelSelection('assistant' as ModelScope, event.target.value)
-            }
-            disabled={modelsSettings.modelOptions.length === 0}
-          >
-            {modelsSettings.modelOptions.length === 0 && <option value="">Model…</option>}
-            {modelsSettings.modelSelections.assistant &&
-              !modelsSettings.modelOptions.some(
-                (option) => option.id === modelsSettings.modelSelections.assistant
-              ) && (
-                <option value={modelsSettings.modelSelections.assistant}>
-                  {modelsSettings.modelSelections.assistant}
-                </option>
-              )}
-            {modelsSettings.modelOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          {/* Model browser — the SAME ModelSelector + ModelBrowserModal the
+              sidebar uses (assistant scope, same MODEL_DATA rails); only the
+              trigger is reskinned to the workshop chip via workshop.css. */}
+          <ModelSelector
+            scope="assistant"
+            options={modelsSettings.modelOptions}
+            value={modelsSettings.modelSelections.assistant}
+            onChange={modelsSettings.setModelSelection}
+            onOpenBrowser={() => modelsSettings.requestModelData(true)}
+            label="Assistant Model"
+          />
           <div className="pm-ws-balance" title={balanceTitle}>
             <span
               className={`pm-ws-balance-dot ${
