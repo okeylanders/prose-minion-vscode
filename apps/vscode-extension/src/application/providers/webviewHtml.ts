@@ -12,6 +12,7 @@
  * cannot drift between surfaces.
  */
 
+import { randomBytes } from 'crypto';
 import * as vscode from 'vscode';
 // Surface contract + message type via the public barrel (ADR 2026-06-16):
 // the same symbols the webview entry point reads, so the stamp can't drift.
@@ -94,11 +95,12 @@ export function getWebviewHtml(
 </html>`;
 }
 
+/**
+ * CSP nonce from the CSPRNG (PR #66 review #15): `Math.random()` is
+ * predictable, and this string is the only thing standing between the CSP and
+ * an injected <script> once real model output renders in these documents.
+ * base64 stays within the token charset CSP nonces allow.
+ */
 function getNonce(): string {
-  let text = '';
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
+  return randomBytes(24).toString('base64');
 }

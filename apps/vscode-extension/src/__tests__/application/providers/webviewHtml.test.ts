@@ -9,7 +9,7 @@
  *   1. The sidebar surface's full output is PINNED by snapshot, so any
  *      Workshop-motivated edit that would silently reskin or break the
  *      sidebar fails CI. (The always-random nonce is made deterministic by
- *      pinning Math.random for the test.)
+ *      pinning crypto.randomBytes for the test.)
  *   2. The two surfaces differ ONLY by their documented deltas — <title> and
  *      the #root markup. Everything security-relevant (CSP, nonce wiring,
  *      scripts) is asserted identical.
@@ -25,6 +25,18 @@ jest.mock('p-limit', () => ({
   default: () => async (fn: () => Promise<unknown>) => fn()
 }));
 
+// Deterministic nonce: node's crypto exports are non-configurable (spyOn
+// cannot redefine them), so substitute randomBytes at the module boundary.
+// Fixed bytes -> a stable base64 token; the snapshot pins everything EXCEPT
+// the entropy source itself.
+jest.mock('crypto', () => {
+  const actual = jest.requireActual<typeof import('crypto')>('crypto');
+  return {
+    ...actual,
+    randomBytes: jest.fn((size: number) => Buffer.alloc(size, 0x42))
+  };
+});
+
 import type * as vscode from 'vscode';
 import { MessageType, PM_SURFACE_ATTR, SURFACE_WORKSHOP } from '@prose-minion/core';
 import { getWebviewHtml } from '../../../application/providers/webviewHtml';
@@ -37,16 +49,6 @@ const fakeWebview = {
 const extensionUri = { fsPath: '/ext', path: '/ext' } as unknown as vscode.Uri;
 
 describe('getWebviewHtml', () => {
-  let randomSpy: jest.SpyInstance<number, []>;
-
-  beforeEach(() => {
-    // Deterministic nonce: floor(0.42 * 62) = 26 -> 'a' for all 32 chars.
-    randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.42);
-  });
-
-  afterEach(() => {
-    randomSpy.mockRestore();
-  });
 
   it('pins the sidebar surface output — the extraction promised byte-identity, this keeps it', () => {
     const sidebar = getWebviewHtml(fakeWebview, extensionUri, 'sidebar');

@@ -47,9 +47,9 @@ describe('CategorySearchService', () => {
       wordSearchService,
       createFakeFileSystem(),
       '/ext',
-      outputChannel,
-      statusEmitter
+      outputChannel
     );
+    service.addStatusListener(statusEmitter);
 
     return { service, orchestrator, wordSearchService, statusEmitter };
   };

@@ -73,4 +73,37 @@ describe('app-shell provider assembly', () => {
     const constructionArgs = extensionSource.slice(start, end);
     expect(constructionArgs).toContain('coreServices');
   });
+
+  it('every MessageHandler in a provider is built over the ONE injected coreServices bundle (PR #66 review #12)', () => {
+    // The risk is not two panels — it is two independently-assembled service
+    // bundles (e.g. a second polling AccountBalanceService) hiding behind
+    // retainContextWhenHidden. Every `new MessageHandler(` in every provider
+    // must take `this.coreServices` as its first argument, verbatim.
+    const offenders: string[] = [];
+    for (const file of collectSourceFiles(PROVIDERS_ROOT)) {
+      const source = fs.readFileSync(file, 'utf8');
+      let cursor = 0;
+      for (;;) {
+        const start = source.indexOf('new MessageHandler(', cursor);
+        if (start === -1) {
+          break;
+        }
+        const end = source.indexOf(');', start);
+        const constructionArgs = source.slice(start, end === -1 ? source.length : end);
+        if (!/new MessageHandler\(\s*this\.coreServices\b/.test(constructionArgs)) {
+          offenders.push(path.relative(APP_SRC_ROOT, file));
+        }
+        cursor = start + 'new MessageHandler('.length;
+      }
+    }
+    expect(offenders).toEqual([]);
+
+    // And the Workshop provider actually HAS its per-webview seam now
+    // (Sprint 2) — the witness above must be guarding something real.
+    const workshopSource = fs.readFileSync(
+      path.join(PROVIDERS_ROOT, 'WorkshopPanelProvider.ts'),
+      'utf8'
+    );
+    expect(workshopSource).toContain('new MessageHandler(');
+  });
 });
