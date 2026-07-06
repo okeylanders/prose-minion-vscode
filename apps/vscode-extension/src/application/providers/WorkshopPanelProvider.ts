@@ -16,11 +16,11 @@
 
 import * as vscode from 'vscode';
 // All core symbols via the public barrel (ADR 2026-06-16 monorepo boundary).
-import { CoreServices, Platform } from '@prose-minion/core';
+import { CoreServices, Platform, SURFACE_WORKSHOP, coerceWebviewErrorText } from '@prose-minion/core';
 import { getWebviewHtml } from './webviewHtml';
 
 export class WorkshopPanelProvider implements vscode.Disposable {
-  public static readonly viewType = 'proseMinion.workshop';
+  public static readonly viewType = 'prose-minion.workshop';
 
   private panel?: vscode.WebviewPanel;
 
@@ -52,25 +52,29 @@ export class WorkshopPanelProvider implements vscode.Disposable {
       }
     );
     panel.iconPath = vscode.Uri.joinPath(this.extensionUri, 'assets', 'prose-minion-book.svg');
-    panel.webview.html = getWebviewHtml(panel.webview, this.extensionUri, 'workshop');
+    panel.webview.html = getWebviewHtml(panel.webview, this.extensionUri, SURFACE_WORKSHOP);
 
     // Sprint 1 has no domain message path (that is Sprint 2's WorkshopHandler).
-    // We only surface webview boot errors so a broken shell is diagnosable
-    // from the host side — same `webview_error` bridge the HTML shell posts on.
-    panel.webview.onDidReceiveMessage((message: { type?: string; message?: string }) => {
-      if (message?.type === 'webview_error') {
-        this.outputChannel.appendLine(`[Workshop] Webview error: ${message.message ?? 'unknown'}`);
+    // We only surface webview boot errors so a broken shell is diagnosable from
+    // the host side. Parsing goes through the shared coercer — the same one
+    // UIHandler uses for the sidebar — which validates the IPC payload as
+    // unknown, flattens newlines, and caps length. The `[WEBVIEW ERROR]`
+    // prefix is the greppable string the sidebar has always logged under;
+    // `(workshop)` marks the surface.
+    const messageSubscription = panel.webview.onDidReceiveMessage((message: unknown) => {
+      const text = coerceWebviewErrorText(message);
+      if (text !== undefined) {
+        this.outputChannel.appendLine(`[WEBVIEW ERROR] (workshop) ${text}`);
       }
     });
 
     panel.onDidDispose(() => {
+      messageSubscription.dispose();
       this.panel = undefined;
     });
 
     this.panel = panel;
-    this.outputChannel.appendLine(
-      `[Workshop] Panel opened (services wired: ${Object.keys(this.coreServices).length}, platform: ${this.platform ? 'ok' : 'missing'})`
-    );
+    this.outputChannel.appendLine('[Workshop] Panel opened');
   }
 
   public dispose(): void {

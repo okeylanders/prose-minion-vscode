@@ -13,8 +13,14 @@
  */
 
 import * as vscode from 'vscode';
-
-export type WebviewSurface = 'sidebar' | 'workshop';
+// Surface contract + message type via the public barrel (ADR 2026-06-16):
+// the same symbols the webview entry point reads, so the stamp can't drift.
+import {
+  MessageType,
+  PM_SURFACE_ATTR,
+  SURFACE_WORKSHOP,
+  WebviewSurface,
+} from '@prose-minion/core';
 
 export function getWebviewHtml(
   webview: vscode.Webview,
@@ -34,13 +40,13 @@ export function getWebviewHtml(
 
   const nonce = getNonce();
 
-  const title = surface === 'workshop' ? 'Prose Minion Workshop' : 'Prose Minion Tools';
+  const title = surface === SURFACE_WORKSHOP ? 'Prose Minion Workshop' : 'Prose Minion Tools';
 
   // The sidebar keeps its historical inline-padded #root. The Workshop stamps
   // the surface flag and carries the boot placeholder on a child <span>, so
   // the first React render leaves no stray inline styles on the layout root.
-  const rootDiv = surface === 'workshop'
-    ? `<div id="root" data-pm-surface="workshop"><span style="padding:8px;font-family:var(--vscode-font-family);color:var(--vscode-foreground)">Loading the Workshop…</span></div>`
+  const rootDiv = surface === SURFACE_WORKSHOP
+    ? `<div id="root" ${PM_SURFACE_ATTR}="${SURFACE_WORKSHOP}"><span style="padding:8px;font-family:var(--vscode-font-family);color:var(--vscode-foreground)">Loading the Workshop…</span></div>`
     : `<div id="root" style="padding:8px;font-family:var(--vscode-font-family);color:var(--vscode-foreground)">Loading Prose Minion…</div>`;
 
   return `<!DOCTYPE html>
@@ -79,7 +85,7 @@ export function getWebviewHtml(
         const el = document.getElementById('root');
         if (el) el.textContent = 'Webview error: ' + (e?.message || 'unknown');
         // Forward to extension output channel if API is available
-        try { const vscode = acquireVsCodeApi && acquireVsCodeApi(); vscode && vscode.postMessage && vscode.postMessage({ type: 'webview_error', message: e?.message || 'unknown' }); } catch {}
+        try { const vscode = acquireVsCodeApi && acquireVsCodeApi(); vscode && vscode.postMessage && vscode.postMessage({ type: '${MessageType.WEBVIEW_ERROR}', message: e?.message || 'unknown' }); } catch {}
       } catch {}
     });
   </script>

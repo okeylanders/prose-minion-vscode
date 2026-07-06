@@ -20,13 +20,10 @@
  *    VS Code adapter `presentation/webview/hooks/useVSCodeApi.ts`. It is NOT an
  *    `import 'vscode'`, so this import-scan guard does not (and need not) catch it.
  *
- * 2. Webview providers assemble nothing (ADR 2026-06-18 composition root;
- *    re-affirmed by ADR 2026-07-03 for the Workshop panel). Every service a
- *    provider touches arrives through the `CoreServices` bundle built in
- *    `extension.ts`. The ONLY sanctioned `new` inside
- *    `apps/vscode-extension/src/application/providers/` is `new MessageHandler`
- *    — the per-webview message seam. These witnesses read the app-shell source
- *    with fs (no vscode import, no app-side vscode mock needed).
+ *    APP-SHELL WITNESSES live on the other side of the split, next to the
+ *    adapter they verify: apps/vscode-extension/src/__tests__/architecture/.
+ *    This suite scans packages/core/src ONLY — core must never read the VS
+ *    Code shell's source, not even in tests (PR #66 review, Marcus).
  */
 
 import * as fs from 'fs';
@@ -61,16 +58,6 @@ const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
   String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository)\b`
 );
 
-// App-shell roots (witness 2). The repo root is three levels above core's src.
-const APP_SRC_ROOT = path.resolve(SRC_ROOT, '..', '..', '..', 'apps', 'vscode-extension', 'src');
-const APP_PROVIDERS_ROOT = path.join(APP_SRC_ROOT, 'application', 'providers');
-
-// Any service-shaped construction is forbidden inside webview providers;
-// `new MessageHandler` is the one sanctioned composition seam per webview.
-const FORBIDDEN_SERVICE_CONSTRUCTION_IN_PROVIDERS = new RegExp(
-  String.raw`\bnew\s+(?!MessageHandler\b)[A-Z]\w*(?:Service|Manager|Client|Resolver|Repository|Provider|Orchestrator)\b`
-);
-
 function collectSourceFiles(dir: string, acc: string[] = []): string[] {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
@@ -101,31 +88,5 @@ describe('architectural boundaries', () => {
       .map((file) => path.relative(SRC_ROOT, file));
 
     expect(offenders).toEqual([]);
-  });
-
-  it('webview providers construct no services — CoreServices is injected, MessageHandler is the only sanctioned new', () => {
-    const offenders = collectSourceFiles(APP_PROVIDERS_ROOT)
-      .filter((file) => FORBIDDEN_SERVICE_CONSTRUCTION_IN_PROVIDERS.test(fs.readFileSync(file, 'utf8')))
-      .map((file) => path.relative(APP_SRC_ROOT, file));
-
-    expect(offenders).toEqual([]);
-  });
-
-  it('WorkshopPanelProvider is wired from the composition root with the CoreServices bundle (ADR 2026-07-03)', () => {
-    const providerSource = fs.readFileSync(
-      path.join(APP_PROVIDERS_ROOT, 'WorkshopPanelProvider.ts'),
-      'utf8'
-    );
-    // The provider receives the bundle; it does not build its own services.
-    expect(providerSource).toMatch(/coreServices:\s*CoreServices/);
-
-    const extensionSource = fs.readFileSync(path.join(APP_SRC_ROOT, 'extension.ts'), 'utf8');
-    const constructionIdx = extensionSource.indexOf('new WorkshopPanelProvider(');
-    expect(constructionIdx).toBeGreaterThan(-1);
-    // The construction call site passes the same `coreServices` bundle the
-    // sidebar provider gets (argument list scanned as a source window so the
-    // witness survives reformatting).
-    const constructionWindow = extensionSource.slice(constructionIdx, constructionIdx + 300);
-    expect(constructionWindow).toContain('coreServices');
   });
 });

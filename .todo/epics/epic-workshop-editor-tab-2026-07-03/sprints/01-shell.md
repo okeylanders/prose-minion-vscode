@@ -1,8 +1,8 @@
 # Sprint 01: Shell
 
-**Status**: In Progress
+**Status**: In Review ([PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66))
 **Priority**: High
-**Branch**: `feat/workshop-s1-shell` → PR into `epic/workshop-editor-tab`
+**Branch**: `claude/sprint-01-workshop-editor-tab-u49fd5` → PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 1–2 days
 
 ## Goal
@@ -51,6 +51,9 @@ that renders.
       (New `workshop.css`, imported by `WorkshopApp.tsx`.)
 - [x] Extend the architecture/assembly tests (`__tests__/architecture/`) to
       assert the new provider is wired from `CoreServices` and `new`-s nothing.
+      (Per PR #66 review these live APP-SIDE — `apps/vscode-extension/src/
+      __tests__/architecture/providerAssembly.test.ts` — so core's boundary
+      suite never reads across the monorepo split.)
 - [ ] Confirm the panel opens via the command and renders in the extension host.
       *Partially verified headless: the production bundle was booted in Chromium
       against both `#root` stamps — workshop renders `<WorkshopApp/>` (rail,
@@ -70,6 +73,19 @@ that renders.
 - Production build + `verify-bundle` green.
 - `dist/webview.js`: 512,088 → 528,443 bytes (**+16.0 KB / +3.2%**) — noted
   per the ADR; nowhere near entry-split territory.
+
+## PR #66 review response (2026-07-06)
+
+Full findings + living resolution ledger:
+[docs/pr-reviews/pr-66-workshop-editor-tab-shell-review.md](../../../../docs/pr-reviews/pr-66-workshop-editor-tab-shell-review.md).
+All Open findings addressed on the sprint branch: witnesses relocated
+app-side with honest regexes, sidebar HTML pinned by snapshot (vscode mock
+grew `Uri.joinPath`), `webview_error` unified on one validated/bounded parser
+(fixing the sidebar's previously-broken flat-shape path), surface stamp +
+message type moved to shared symbols, kebab-case `viewType`, honest panel-open
+log, approved Direction B rail six, explicit listener disposal. Deferred items
+(#10 error boundaries, #12 single-services witness, #14 focus styles,
+#15 CSPRNG nonce) are carried into Sprint 02's task list.
 
 ## Acceptance Criteria
 

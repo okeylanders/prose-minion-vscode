@@ -28,7 +28,13 @@ jest.mock('vscode', () => ({
   },
   Uri: {
     file: jest.fn((path: string) => ({ fsPath: path, path })),
-    parse: jest.fn((path: string) => ({ fsPath: path, path }))
+    parse: jest.fn((path: string) => ({ fsPath: path, path })),
+    // Mirrors vscode.Uri.joinPath enough for tests: append segments to the
+    // base path. Needed by getWebviewHtml (script/asset URIs) — PR #66, Cal.
+    joinPath: jest.fn((base: { path?: string }, ...segments: string[]) => {
+      const joined = [base?.path ?? '', ...segments].join('/');
+      return { fsPath: joined, path: joined, toString: () => joined };
+    })
   },
   ViewColumn: {
     One: 1,

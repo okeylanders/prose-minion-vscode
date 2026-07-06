@@ -16,11 +16,13 @@ import {
 describe('UIHandler', () => {
   let handler: UIHandler;
   let router: MessageRouter;
+  let appendLine: jest.Mock;
 
   beforeEach(() => {
+    appendLine = jest.fn();
     handler = new UIHandler(
       jest.fn().mockResolvedValue(undefined) as any, // postMessage
-      {} as any, // outputChannel (LogSink)
+      { appendLine } as any, // outputChannel (LogSink)
       createFakeFileSystem(),
       createFakeWorkspace(),
       createFakeShellService(),
@@ -48,6 +50,35 @@ describe('UIHandler', () => {
     it('should register at least 4 routes', () => {
       handler.registerRoutes(router);
       expect(router.handlerCount).toBeGreaterThanOrEqual(4);
+    });
+  });
+
+  describe('webview_error', () => {
+    // Two producer shapes share this wire: React error paths post the full
+    // envelope; the pre-React bootstrap scripts post flat { type, message }.
+    // The flat shape used to throw (`payload.message` on undefined) and the
+    // real browser error was lost to a routing meta-error (PR #66, Oliver).
+
+    it('logs the envelope shape with message and details', async () => {
+      handler.registerRoutes(router);
+      await router.route({
+        type: MessageType.WEBVIEW_ERROR,
+        source: 'webview.error_boundary',
+        payload: { message: 'boom', details: 'component stack' },
+        timestamp: 0,
+      } as any);
+
+      expect(appendLine).toHaveBeenCalledWith('[WEBVIEW ERROR] boom');
+      expect(appendLine).toHaveBeenCalledWith('  Details: component stack');
+    });
+
+    it('logs the flat bootstrap shape instead of throwing', async () => {
+      handler.registerRoutes(router);
+      await expect(
+        router.route({ type: MessageType.WEBVIEW_ERROR, message: 'bundle 404' } as any)
+      ).resolves.not.toThrow();
+
+      expect(appendLine).toHaveBeenCalledWith('[WEBVIEW ERROR] bundle 404');
     });
   });
 });

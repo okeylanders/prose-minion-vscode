@@ -64,6 +64,26 @@ tool a second time starts a fresh turn, not a continuation.
       tool appends a `user`+`assistant` turn pair, reset clears turns, active
       tool tracked. No React needed.
 
+### Carried from PR #66 review (Deferred pile — lands WITH this sprint, not after)
+
+- [ ] **ErrorBoundary coverage in `WorkshopApp`** (#10, Sam): wrap rail /
+      thread / composer sections the way `App.tsx` wraps its tabs — required
+      the moment dynamic session data can throw mid-render. Static shell was
+      verifiably throw-free; this sprint isn't.
+- [ ] **Single-services witness** (#12, Tim): when the panel gets its
+      `MessageHandler`, assert the one `coreServices` bundle is reused — the
+      risk isn't two panels, it's two independently-polling
+      `AccountBalanceService`s under `retainContextWhenHidden`.
+- [ ] **Scoped `:focus` styles in `workshop.css`** (#14, Sam): the enabled
+      tool palette (and later composer) must not depend on index.css's
+      unscoped `input:focus` looking right by token-inheritance coincidence.
+- [ ] **CSPRNG nonce in `webviewHtml.ts`** (#15, Patricia): swap
+      `Math.random()` for `crypto` before real model content renders in
+      either surface.
+- [ ] *(Opportunistic, #11, Cal)*: a small fake-panel fixture would let
+      `WorkshopPanelProvider`'s reveal-if-exists / dispose lifecycle get real
+      behavior tests — none exist repo-wide for providers yet.
+
 ## Acceptance Criteria
 
 - Selecting a tool with a pinned excerpt streams a result into the thread as a

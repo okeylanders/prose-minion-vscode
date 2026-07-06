@@ -12,7 +12,7 @@ import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { WorkshopApp } from './WorkshopApp';
-import { MessageType } from '@shared/types';
+import { MessageType, PM_SURFACE_ATTR, SURFACE_WORKSHOP } from '@shared/types';
 import { getVSCodeApi } from './hooks/useVSCodeApi';
 import { AppMessagePort } from './ports/AppMessagePort';
 import './index.css';
@@ -22,10 +22,10 @@ try {
   if (!root) {
     throw new Error('Root element not found');
   }
-  const surface = root.getAttribute('data-pm-surface');
+  const surface = root.getAttribute(PM_SURFACE_ATTR);
   createRoot(root).render(
     <React.StrictMode>
-      {surface === 'workshop' ? <WorkshopApp /> : <App />}
+      {surface === SURFACE_WORKSHOP ? <WorkshopApp /> : <App />}
     </React.StrictMode>
   );
 } catch (e: any) {

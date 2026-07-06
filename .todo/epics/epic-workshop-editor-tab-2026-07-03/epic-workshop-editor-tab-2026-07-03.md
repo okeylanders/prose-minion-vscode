@@ -36,7 +36,7 @@ Each sprint is independently shippable behind the (initially unregistered)
 
 | # | Branch | Sprint | Proves |
 |---|--------|--------|--------|
-| 1 | `feat/workshop-s1-shell` | [Shell](sprints/01-shell.md) | The second surface exists and boots. Zero AI. |
+| 1 | `claude/sprint-01-workshop-editor-tab-u49fd5` ([PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66)) | [Shell](sprints/01-shell.md) | The second surface exists and boots. Zero AI. |
 | 2 | `feat/workshop-s2-session-spine` | [Session spine](sprints/02-session-spine.md) | Host-side session state + one streaming turn into the thread. |
 | 3 | `feat/workshop-s3-multiturn` | [Multi-turn](sprints/03-multiturn.md) | Follow-ups continue the same conversation. The "now tighten it" loop. |
 | 4 | `feat/workshop-s4-actions-polish` | [Actions & polish](sprints/04-actions-polish.md) | The approved prototype's feel: quick actions, cards, toasts. |

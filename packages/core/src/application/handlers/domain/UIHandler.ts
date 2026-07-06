@@ -16,7 +16,8 @@ import {
   ErrorSource,
   ErrorMessage,
   StatusMessage,
-  WebviewErrorMessage
+  WebviewErrorMessage,
+  coerceWebviewErrorText
 } from '@messages';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 
@@ -76,12 +77,20 @@ export class UIHandler {
   // Message handlers
 
   /**
-   * Handle webview error reports - log to output channel for debugging
+   * Handle webview error reports - log to output channel for debugging.
+   *
+   * Parses via the shared coercer because two producer shapes exist on this
+   * wire: React error paths post the typed envelope, but the pre-React
+   * bootstrap scripts post a flat `{ type, message }` — and the flat shape
+   * used to throw here (`payload.message` on undefined), replacing the real
+   * browser error with a meta-error about the reporter (PR #66, Oliver).
    */
   private async handleWebviewError(message: WebviewErrorMessage): Promise<void> {
-    this.outputChannel.appendLine(`[WEBVIEW ERROR] ${message.payload.message}`);
-    if (message.payload.details) {
-      this.outputChannel.appendLine(`  Details: ${message.payload.details}`);
+    const text = coerceWebviewErrorText(message);
+    this.outputChannel.appendLine(`[WEBVIEW ERROR] ${text ?? 'unknown'}`);
+    const details = message.payload?.details;
+    if (typeof details === 'string' && details.length > 0) {
+      this.outputChannel.appendLine(`  Details: ${details}`);
     }
   }
 

@@ -21,8 +21,8 @@ import './workshop.css';
 /**
  * The Workshop tool catalog — the design prototype's 14 tools, mapped 1:1
  * onto the EXISTING analysis contracts: `dialogue`, `prose`, and the twelve
- * WritingToolsFocus modes. Labels/grouping come from the approved Direction B
- * prototype (docs/design/pm-frames-fulltab.js); ids are the wire values the
+ * WritingToolsFocus modes. Labels/grouping come from the reference comp's
+ * TOOLS table (docs/design/pm-frames-fulltab.js); ids are the wire values the
  * Sprint 2 handler will route on. Deterministic, in code — the LLM never
  * names buttons (epic invariant).
  */
@@ -52,8 +52,26 @@ export const WORKSHOP_TOOLS: readonly WorkshopTool[] = [
   { id: 'fresh', label: 'Fresh', icon: 'sprout', group: 'Technical' },
 ];
 
-/** Rail shows the prototype's first six; the rest arrive with the Sprint 4 tools modal. */
-const RAIL_TOOL_COUNT = 6;
+/**
+ * The rail's six tools per the APPROVED Direction B prototype — which
+ * deliberately overrides the catalog order (pm-direction-b.js `railTools`:
+ * dialogue, prose, gestures, choreography, cliche, showtell), NOT a naive
+ * first-six slice of the reference comp (PR #66 review, Bria). The remaining
+ * eight arrive with the Sprint 4 tools modal.
+ */
+const RAIL_TOOL_IDS: readonly WorkshopToolId[] = [
+  'dialogue',
+  'prose',
+  'gestures',
+  'choreography',
+  'cliche',
+  'show-and-tell',
+];
+
+const RAIL_TOOLS: readonly WorkshopTool[] = RAIL_TOOL_IDS.flatMap((id) => {
+  const tool = WORKSHOP_TOOLS.find((entry) => entry.id === id);
+  return tool ? [tool] : [];
+});
 
 export const WorkshopApp: React.FC = () => {
   return (
@@ -111,7 +129,7 @@ export const WorkshopApp: React.FC = () => {
           <div className="pm-ws-block pm-ws-block-grow">
             <div className="pm-ws-eyebrow">Tools</div>
             <div className="pm-ws-tools" role="list">
-              {WORKSHOP_TOOLS.slice(0, RAIL_TOOL_COUNT).map((tool) => (
+              {RAIL_TOOLS.map((tool) => (
                 <button key={tool.id} className="pm-ws-tool" type="button" disabled role="listitem">
                   <Icon name={tool.icon} size={15} /> {tool.label}
                 </button>
