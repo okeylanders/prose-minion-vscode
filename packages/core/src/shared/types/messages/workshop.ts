@@ -1,14 +1,17 @@
 /**
- * Workshop domain messages (ADR 2026-07-03, Sprint 2 — session spine).
+ * Workshop domain messages (ADR 2026-07-03; Sprint 2 session spine, Sprint 3
+ * multi-turn).
  *
  * The Workshop editor tab runs the EXISTING analysis tools (dialogue, prose,
  * and the twelve WritingToolsFocus modes) against an excerpt pinned host-side
  * in WorkshopSessionService. These contracts carry tool ids and completed
  * turns — never raw model prompts and never the API key.
  *
- * Sprint 2 is single-turn: WORKSHOP_RUN_TOOL starts a fresh turn each time.
- * WORKSHOP_SEND_MESSAGE (free-text continuation) arrives in Sprint 3 and
- * WORKSHOP_QUICK_ACTION (deterministic chips) in Sprint 4.
+ * Sprint 3: WORKSHOP_SEND_MESSAGE continues the session's retained
+ * conversation (the "now tighten it" loop), WORKSHOP_PICK_EXCERPT_FILE seeds
+ * the excerpt from a host file picker, and CANCEL_WORKSHOP_REQUEST (in
+ * streaming.ts, beside its four siblings) stops the in-flight run.
+ * WORKSHOP_QUICK_ACTION (deterministic chips) arrives in Sprint 4.
  */
 
 import { MessageEnvelope, MessageType } from './base';
@@ -24,6 +27,18 @@ export type WorkshopToolId = 'dialogue' | 'prose' | WritingToolsFocus;
 
 export type WorkshopTurnRole = 'user' | 'assistant';
 
+/**
+ * Truncation provenance for a file-seeded excerpt: the host pinned a
+ * head-slice of a huge file rather than silently pinning a novel, and the UI
+ * says so (Sprint 3 file-picker guardrail).
+ */
+export interface WorkshopExcerptTruncation {
+  /** Words actually pinned (the head slice). */
+  pinnedWords: number;
+  /** Words in the full source file. */
+  totalWords: number;
+}
+
 /** The excerpt pinned in the left rail — the text every tool run works on. */
 export interface WorkshopExcerpt {
   text: string;
@@ -33,21 +48,27 @@ export interface WorkshopExcerpt {
   relativePath?: string;
   /** Epoch ms when the excerpt was pinned (host-stamped). */
   pinnedAt: number;
+  /** Present when the host head-sliced a huge file at pin time. */
+  truncation?: WorkshopExcerptTruncation;
 }
 
+/** What produced a turn: a deterministic tool run, or a free-text follow-up. */
+export type WorkshopTurnKind = 'tool_run' | 'message';
+
 /**
- * One completed entry in the session thread. User turns record the request
- * ("Run Dialogue & Beats"); assistant turns carry the streamed analysis.
- * Content is markdown. Ids are host-generated and stable across reloads.
+ * One completed entry in the session thread. Tool-run user turns record the
+ * request ("Run Dialogue & Beats"); message user turns carry the follow-up
+ * text; assistant turns carry the streamed analysis or reply. Content is
+ * markdown. Ids are host-generated and stable across reloads.
  */
 export interface WorkshopTurn {
   id: string;
   role: WorkshopTurnRole;
-  /** What produced this turn. Sprint 2: always a tool run. Sprint 3 adds free text. */
-  kind: 'tool_run';
-  toolId: WorkshopToolId;
+  kind: WorkshopTurnKind;
+  /** Tool for `tool_run` turns; absent on free-text `message` turns. */
+  toolId?: WorkshopToolId;
   /** Deterministic display label for the tool — never model-generated. */
-  toolLabel: string;
+  toolLabel?: string;
   content: string;
   /** Epoch ms when the turn was appended (host-stamped). */
   timestamp: number;
@@ -61,12 +82,27 @@ export interface WorkshopTurn {
  * Full host-side session aggregate, as exposed to the webview. This is the
  * reload-safety contract: a webview that (re)mounts requests this snapshot and
  * rebuilds the thread from it — React never owns the session.
+ *
+ * Snapshot payloads are BOUNDED (PR #67 review #12): `turns` carries at most
+ * the window of most-recent turns; `truncatedTurns` counts older turns that
+ * exist host-side but were left out of this snapshot. Live WORKSHOP_TURN
+ * increments are never dropped — the window only bites on reload of a
+ * marathon thread.
  */
 export interface WorkshopSessionSnapshot {
   excerpt?: WorkshopExcerpt;
-  /** Context-brief reference (seeded in Sprint 3; carried now so the shape is stable). */
+  /** Context-brief reference (carried for shape stability; feature lands later). */
   contextBrief?: string;
   turns: WorkshopTurn[];
+  /** Total turns held host-side (>= turns.length). */
+  totalTurns: number;
+  /** Older turns omitted from this snapshot's window. */
+  truncatedTurns: number;
+  /**
+   * True when the session holds a retained conversation a follow-up can
+   * continue — the composer's enablement signal.
+   */
+  hasConversation: boolean;
   /** Tool currently running, if any. */
   activeToolId?: WorkshopToolId;
   /** Streaming requestId of the in-flight run, if any (stream reattach after reload). */
@@ -86,6 +122,15 @@ export interface WorkshopRunToolMessage extends MessageEnvelope<WorkshopRunToolP
   type: MessageType.WORKSHOP_RUN_TOOL;
 }
 
+/** Free-text follow-up: continues the session's retained conversation. */
+export interface WorkshopSendMessagePayload {
+  text: string;
+}
+
+export interface WorkshopSendMessageMessage extends MessageEnvelope<WorkshopSendMessagePayload> {
+  type: MessageType.WORKSHOP_SEND_MESSAGE;
+}
+
 export interface WorkshopSetExcerptPayload {
   text: string;
   sourceUri?: string;
@@ -94,6 +139,15 @@ export interface WorkshopSetExcerptPayload {
 
 export interface WorkshopSetExcerptMessage extends MessageEnvelope<WorkshopSetExcerptPayload> {
   type: MessageType.WORKSHOP_SET_EXCERPT;
+}
+
+/**
+ * "Pin from file…": the host opens its file picker (ShellService.pickFile),
+ * reads the chosen file, head-slices if huge, and pins with full provenance.
+ * Zero payload — the dialog IS the input.
+ */
+export interface WorkshopPickExcerptFileMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.WORKSHOP_PICK_EXCERPT_FILE;
 }
 
 /**

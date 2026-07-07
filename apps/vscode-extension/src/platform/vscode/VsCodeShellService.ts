@@ -7,7 +7,7 @@
  * VS-Code-specific editor-layout concern, so it belongs in the adapter, not core.
  */
 import * as vscode from 'vscode';
-import { ShellService } from '@prose-minion/core';
+import { PickedFile, ShellService } from '@prose-minion/core';
 
 export class VsCodeShellService implements ShellService {
   showInformationMessage(message: string, ...actions: string[]): Promise<string | undefined> {
@@ -24,6 +24,17 @@ export class VsCodeShellService implements ShellService {
 
   readClipboard(): Promise<string> {
     return Promise.resolve(vscode.env.clipboard.readText());
+  }
+
+  async pickFile(options?: { title?: string; filters?: Record<string, string[]> }): Promise<PickedFile | undefined> {
+    const [chosen] = (await vscode.window.showOpenDialog({
+      canSelectMany: false,
+      canSelectFolders: false,
+      openLabel: 'Pin',
+      title: options?.title,
+      filters: options?.filters
+    })) ?? [];
+    return chosen ? { fsPath: chosen.fsPath, uri: chosen.toString() } : undefined;
   }
 
   async openFileInEditor(filePath: string, options?: { beside?: boolean }): Promise<void> {

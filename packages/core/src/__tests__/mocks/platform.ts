@@ -88,8 +88,9 @@ export function createFakeWorkspace(overrides: Partial<Workspace> = {}): Workspa
 }
 
 /**
- * A ShellService whose notifications return undefined (dialog dismissed) and
- * whose clipboard is empty by default; override any method to assert/feed values.
+ * A ShellService whose notifications return undefined (dialog dismissed), whose
+ * clipboard is empty, and whose file picker is dismissed by default; override
+ * any method to assert/feed values.
  */
 export function createFakeShellService(overrides: Partial<ShellService> = {}): ShellService {
   return {
@@ -98,6 +99,7 @@ export function createFakeShellService(overrides: Partial<ShellService> = {}): S
     copyToClipboard: async () => undefined,
     readClipboard: async () => '',
     openFileInEditor: async () => undefined,
+    pickFile: async () => undefined,
     ...overrides,
   };
 }
