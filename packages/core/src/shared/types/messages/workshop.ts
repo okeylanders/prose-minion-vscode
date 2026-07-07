@@ -96,16 +96,17 @@ export interface WorkshopSetExcerptMessage extends MessageEnvelope<WorkshopSetEx
   type: MessageType.WORKSHOP_SET_EXCERPT;
 }
 
-export interface WorkshopResetSessionPayload {}
-
-export interface WorkshopResetSessionMessage extends MessageEnvelope<WorkshopResetSessionPayload> {
+/**
+ * Zero-payload messages use the house `Record<string, never>` idiom directly
+ * (9 prior siblings; PR #67 review #9) — unlike an empty interface, it
+ * actually rejects smuggled fields.
+ */
+export interface WorkshopResetSessionMessage extends MessageEnvelope<Record<string, never>> {
   type: MessageType.WORKSHOP_RESET_SESSION;
 }
 
-export interface WorkshopRequestSessionPayload {}
-
 /** Sent on webview mount: "give me the session as the host knows it". */
-export interface WorkshopRequestSessionMessage extends MessageEnvelope<WorkshopRequestSessionPayload> {
+export interface WorkshopRequestSessionMessage extends MessageEnvelope<Record<string, never>> {
   type: MessageType.WORKSHOP_REQUEST_SESSION;
 }
 

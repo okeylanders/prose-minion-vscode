@@ -15,6 +15,7 @@
  */
 
 import { LogSink } from '@/platform';
+import { ListenerSet } from '@/utils/ListenerSet';
 import { DialogueMicrobeatAssistant } from '@/tools/assist/dialogueMicrobeatAssistant';
 import { ProseAssistant } from '@/tools/assist/proseAssistant';
 import { WritingToolsAssistant } from '@/tools/assist/writingToolsAssistant';
@@ -49,7 +50,7 @@ export class AssistantToolService {
   private dialogueAssistant?: DialogueMicrobeatAssistant;
   private proseAssistant?: ProseAssistant;
   private writingToolsAssistant?: WritingToolsAssistant;
-  private readonly statusListeners = new Set<StatusEmitter>();
+  private readonly statusListeners: ListenerSet<Parameters<StatusEmitter>>;
 
   constructor(
     private readonly aiResourceManager: AIResourceManager,
@@ -57,12 +58,16 @@ export class AssistantToolService {
     private readonly toolOptions: ToolOptionsProvider,
     private readonly outputChannel?: LogSink
   ) {
+    this.statusListeners = new ListenerSet(
+      '[AssistantToolService] Status listener',
+      outputChannel
+    );
     // Bridge the manager's guide/resource-loading status into this service's
     // listener set once, permanently. The manager slot is process-wide; the
     // listeners are per-webview, added and removed as MessageHandlers come
     // and go (sidebar + Workshop share this service, ADR 2026-07-03).
     this.aiResourceManager.setStatusCallback((message: string, tickerMessage?: string) => {
-      this.emitStatus(message, undefined, tickerMessage);
+      this.statusListeners.emit(message, undefined, tickerMessage);
     });
     // Assistants will be initialized when AI resources are available
     void this.initializeAssistants();
@@ -74,25 +79,7 @@ export class AssistantToolService {
    * webview's teardown can never blind another's.
    */
   addStatusListener(listener: StatusEmitter): () => void {
-    this.statusListeners.add(listener);
-    return () => {
-      this.statusListeners.delete(listener);
-    };
-  }
-
-  private emitStatus(
-    message: string,
-    progress?: { current: number; total: number },
-    tickerMessage?: string
-  ): void {
-    for (const listener of [...this.statusListeners]) {
-      try {
-        listener(message, progress, tickerMessage);
-      } catch (error) {
-        const details = error instanceof Error ? error.message : String(error);
-        this.outputChannel?.appendLine(`[AssistantToolService] Status listener threw: ${details}`);
-      }
-    }
+    return this.statusListeners.add(listener);
   }
 
   /**

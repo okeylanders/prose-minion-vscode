@@ -12,22 +12,22 @@ act before merge · **Deferred** = real issue, safe to punt for a stated reason 
 
 | # | Sev | Finding | Reviewers | Consensus | Status |
 |---|-----|---------|-----------|-----------|--------|
-| 1 | 🟠 High | `useWorkshop` is the only domain hook with zero tests — and it holds the webview half of reload-safety | Cal, Bria | 🎯 | **Open** |
-| 2 | 🟠 High | The multicast fix is never tested with two live handlers receiving concurrent delivery | Cal | — | **Open** |
-| 3 | 🟠 High | `handleSetExcerpt` has no active-run guard — mid-run re-pin silently misattributes the finished turn | Sam | — | **Open** |
-| 4 | 🟠 High | Preempted/reset/zombie runs leave no request- or tool-correlated log trail | Oliver | — | **Open** |
-| 5 | 🟡 Standard | Listener-set/unsubscribe/try-catch primitive hand-written 4× (5th prior-art copy already existed) | Marcus, Parker | 🎯 | **Open** |
-| 6 | 🟡 Standard | `WorkshopApp.tsx` monolith: extract turn bubble + excerpt panel; add memo boundary around the thread | Parker, Tim | 🎯 | **Open** |
-| 7 | 🟡 Standard | Streaming tests assert per-type counts, never cross-message order the webview handshake depends on | Cal | — | **Open** |
-| 8 | 🟡 Standard | Live-run identity tracked three ways at once in `useWorkshop` | Parker | — | **Deferred** — correct today; collapse to one ref when touching the hook (pairs with #16) |
-| 9 | 🟡 Standard | Zero-payload messages use `interface {}` against the 9-for-9 `Record<string, never>` house idiom | Stan | — | **Open** |
-| 10 | 🟡 Standard | ErrorBoundary `componentStack` silently dropped on the Workshop surface (sidebar keeps it) | Stan | — | **Open** |
-| 11 | 🟡 Standard | `countWords` re-splits the full excerpt on every streamed token | Tim | — | **Open** |
+| 1 | 🟠 High | `useWorkshop` is the only domain hook with zero tests — and it holds the webview half of reload-safety | Cal, Bria | 🎯 | **Addressed** — `useWorkshop.test.ts` (11 tests): mount request, snapshot rehydration incl. mid-run adoption, dedupe, stream lifecycle, settled handshake, source filters. 11-for-11 convention restored |
+| 2 | 🟠 High | The multicast fix is never tested with two live handlers receiving concurrent delivery | Cal | — | **Addressed** — MessageHandler fakes now hold a REAL listener Set; new test: usage fans to both surfaces, disposing one leaves the survivor receiving. `ListenerSet` has its own 6-test suite; idle gating capture-and-invoked in both handler suites |
+| 3 | 🟠 High | `handleSetExcerpt` has no active-run guard — mid-run re-pin silently misattributes the finished turn | Sam | — | **Addressed** — host-side guard rejects mid-run re-pin with a workshop error (closes the round-trip race the UI disable can't); test covers reject + post-run re-pin |
+| 4 | 🟠 High | Preempted/reset/zombie runs leave no request- or tool-correlated log trail | Oliver | — | **Addressed** — requestId+tool-correlated lines for preempt, cancel (the branch aborted runs actually resolve through), zombie-refused completion, and dispose-abort; asserted in tests |
+| 5 | 🟡 Standard | Listener-set/unsubscribe/try-catch primitive hand-written 4× (5th prior-art copy already existed) | Marcus, Parker | 🎯 | **Addressed** — `utils/ListenerSet.ts` is the one address; all five sites (AIRM, AssistantTool, Dictionary, CategorySearch, AccountBalance) consume it |
+| 6 | 🟡 Standard | `WorkshopApp.tsx` monolith: extract turn bubble + excerpt panel; add memo boundary around the thread | Parker, Tim | 🎯 | **Addressed** — `components/workshop/`: memoized `WorkshopTurnBubble` + `WorkshopThread` (turn history skips token-clock renders) + `ExcerptPanel` |
+| 7 | 🟡 Standard | Streaming tests assert per-type counts, never cross-message order the webview handshake depends on | Cal | — | **Addressed** — happy-path test pins the exact 10-message sequence (COMPLETE strictly before the assistant TURN) |
+| 8 | 🟡 Standard | Live-run identity tracked three ways at once in `useWorkshop` | Parker | — | **Deferred** — correct today (now under test); collapse to one ref when Sprint 3 touches the hook |
+| 9 | 🟡 Standard | Zero-payload messages use `interface {}` against the 9-for-9 `Record<string, never>` house idiom | Stan | — | **Addressed** — both messages extend `MessageEnvelope<Record<string, never>>` directly, 11-for-11 |
+| 10 | 🟡 Standard | ErrorBoundary `componentStack` silently dropped on the Workshop surface (sidebar keeps it) | Stan | — | **Addressed** — enveloped WEBVIEW_ERRORs route to UIHandler (text + Details, sidebar parity); only bare pre-React boot errors keep the panel-side `(workshop)`-tagged line |
+| 11 | 🟡 Standard | `countWords` re-splits the full excerpt on every streamed token | Tim | — | **Addressed** — memoized on excerpt text |
 | 12 | 🟡 Standard | Full-history snapshot re-cloned and re-broadcast on every mutation, uncapped | Tim | — | **Deferred** — non-issue at today's scale; cap/diff before Sprint 3 makes long threads normal |
-| 13 | 🟡 Standard | Untrusted model markdown → `dangerouslySetInnerHTML`, no sanitizer; `img-src https:` allows beacon exfil | Patricia | — | **Deferred** — inherited surface (sidebar identical); sanitize once in shared `MarkdownRenderer` as follow-up |
-| 14 | 🟡 Standard | Architecture witness regex never extended to `WorkshopSessionService` — "news nothing" unenforced | Bria | — | **Open** |
-| 15 | 🟡 Standard | Preempted run's `finally` fires ungated `sendStatus('')`, blanking the new run's ticker | Sam | — | **Open** |
-| 16 | 🟢 Nit | Bubble-retire effect deps on unstable `streaming` object — live bubble retires early (brief flicker) | Blake | — | **Open** |
+| 13 | 🟡 Standard | Untrusted model markdown → `dangerouslySetInnerHTML`, no sanitizer; `img-src https:` allows beacon exfil | Patricia | — | **Deferred** — inherited surface (sidebar identical); now tracked in epic Known Risks: sanitize once in shared `MarkdownRenderer` before the epic merges to main |
+| 14 | 🟡 Standard | Architecture witness regex never extended to `WorkshopSessionService` — "news nothing" unenforced | Bria | — | **Addressed** — `WorkshopSessionService` joins the forbidden-construction net in boundaries.test.ts |
+| 15 | 🟡 Standard | Preempted run's `finally` fires ungated `sendStatus('')`, blanking the new run's ticker | Sam | — | **Addressed** — status clear gated on no successor owning the slot; overlapping-run test asserts the survivor's ticker |
+| 16 | 🟢 Nit | Bubble-retire effect deps on unstable `streaming` object — live bubble retires early (brief flicker) | Blake | — | **Addressed** — deps are now `[turns, resetStreaming]` (stable callback); the settled-window survival is pinned by test |
 | 17 | 🟢 Praise | `CancellableStreamingDomain` — deferred scope enforced by the compiler, not a comment | Marcus | — | **N/A** — praise |
 | 18 | 🟢 Praise | WorkshopHandler lifecycle is a zero-drift mirror of AnalysisHandler's new pattern | Stan | — | **N/A** — praise |
 | 19 | 🟢 Praise | CSPRNG nonce carry-over (#15, PR 66) completely and correctly done, both surfaces | Patricia | — | **N/A** — praise |

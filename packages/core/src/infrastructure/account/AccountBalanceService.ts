@@ -23,6 +23,7 @@ import {
   ProviderStatus
 } from '@messages';
 import { LogSink } from '@/platform';
+import { ListenerSet } from '@/utils/ListenerSet';
 import { OpenRouterAccountClient } from './OpenRouterAccountClient';
 import { AccountCallResult } from './accountTypes';
 
@@ -47,12 +48,14 @@ export class AccountBalanceService {
   private pending?: Promise<AccountBalancePayload>;
   private pendingIsForced = false;
   private refreshTimer?: ReturnType<typeof setTimeout>;
-  private readonly listeners = new Set<AccountBalanceRefreshListener>();
+  private readonly listeners: ListenerSet<[AccountBalancePayload]>;
 
   constructor(
     private readonly openRouter: OpenRouterAccountClient,
     private readonly log?: LogSink
-  ) {}
+  ) {
+    this.listeners = new ListenerSet('[AccountBalanceService] Refresh listener', log);
+  }
 
   /**
    * Resolve current balances. Cached values are served when fresh and not
@@ -115,10 +118,7 @@ export class AccountBalanceService {
    * function. A thrown listener is logged but does not block other listeners.
    */
   addRefreshListener(listener: AccountBalanceRefreshListener): () => void {
-    this.listeners.add(listener);
-    return () => {
-      this.listeners.delete(listener);
-    };
+    return this.listeners.add(listener);
   }
 
   /** Cancel any armed refresh + drop listeners (call from handler dispose). */
@@ -146,13 +146,7 @@ export class AccountBalanceService {
         fetchedAt: Date.now()
       };
     }
-    for (const listener of this.listeners) {
-      try {
-        listener(payload);
-      } catch (error) {
-        this.log?.appendLine(`[AccountBalanceService] Refresh listener threw: ${errMessage(error)}`);
-      }
-    }
+    this.listeners.emit(payload);
   }
 
   private async fetchAll(): Promise<AccountBalancePayload> {

@@ -78,9 +78,16 @@ Final step after Sprint 4 merges: one PR `epic/workshop-editor-tab → main`.
   *supports* continuation (`startConversation` / `addMessage` / `getMessages`),
   but token budgeting across turns, system-prompt handling on continuation, and
   conversation disposal on reset are unproven. Sized in Sprint 3.
-- `ConversationManager` still logs via raw `console.*` (e.g. the cleanup log).
-  Migrate to the injected `LogSink` while we're in there — ADR 2026-06-18
-  Step-2 leftover.
+- ~~`ConversationManager` still logs via raw `console.*`~~ — migrated to the
+  injected `LogSink` in Sprint 02 (PR #67).
+- **Markdown sanitization (shared `MarkdownRenderer`)**: untrusted model
+  output renders via `marked()` + `dangerouslySetInnerHTML` with no
+  sanitizer, on BOTH surfaces, and the CSP's `img-src https:` permits the
+  classic markdown-image-beacon exfil for prompt-injected responses
+  (PR #67 review #13, Patricia). Inherited surface, deliberately not fixed
+  inside the Workshop sprints — sanitize ONCE in the shared renderer
+  (DOMPurify or disable raw-HTML passthrough) as its own follow-up before
+  the epic's final merge to main.
 
 ## Related
 

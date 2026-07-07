@@ -38,12 +38,17 @@ interface TestAssembly {
   categoryAddStatusListener: jest.Mock;
   disposeCategoryStatusListener: jest.Mock;
   disposeDictionaryStatusListener: jest.Mock;
-  disposeTokenUsageListener: jest.Mock;
-  tokenUsageCallback: () => TokenUsageCallback | undefined;
+  /** Fan a token-usage event out to every LIVE registration (real Set). */
+  emitTokenUsage: (usage: TokenUsageTotals) => void;
+  tokenUsageListenerCount: () => number;
 }
 
 function createTestAssembly(): TestAssembly {
-  let capturedTokenUsageCallback: TokenUsageCallback | undefined;
+  // A REAL listener set (not a single captured slot): the fakes must be able
+  // to distinguish handler A's registration from handler B's, or the
+  // dispose-blinds-the-survivor regression is structurally untestable
+  // (PR #67 review #2, Cal).
+  const tokenUsageListeners = new Set<TokenUsageCallback>();
 
   const log: LogSink = {
     appendLine: jest.fn(),
@@ -79,9 +84,6 @@ function createTestAssembly(): TestAssembly {
   const categoryAddStatusListener = jest.fn(() => disposeCategoryStatusListener);
   const disposeCategoryStatusListener = jest.fn();
   const disposeDictionaryStatusListener = jest.fn();
-  const disposeTokenUsageListener = jest.fn(() => {
-    capturedTokenUsageCallback = undefined;
-  });
 
   const services = {
     assistantToolService: {
@@ -105,8 +107,10 @@ function createTestAssembly(): TestAssembly {
     },
     aiResourceManager: {
       addTokenUsageListener: jest.fn((callback: TokenUsageCallback) => {
-        capturedTokenUsageCallback = callback;
-        return disposeTokenUsageListener;
+        tokenUsageListeners.add(callback);
+        return () => {
+          tokenUsageListeners.delete(callback);
+        };
       }),
       refreshConfiguration: jest.fn().mockResolvedValue(undefined)
     },
@@ -145,8 +149,12 @@ function createTestAssembly(): TestAssembly {
     categoryAddStatusListener,
     disposeCategoryStatusListener,
     disposeDictionaryStatusListener,
-    disposeTokenUsageListener,
-    tokenUsageCallback: () => capturedTokenUsageCallback
+    emitTokenUsage: (usage) => {
+      for (const listener of [...tokenUsageListeners]) {
+        listener(usage);
+      }
+    },
+    tokenUsageListenerCount: () => tokenUsageListeners.size
   };
 }
 
@@ -243,7 +251,7 @@ describe('MessageHandler assembly', () => {
 
     expect(assembly.scheduleRefresh).not.toHaveBeenCalled();
 
-    assembly.tokenUsageCallback()?.({
+    assembly.emitTokenUsage({
       promptTokens: 0,
       completionTokens: 0,
       totalTokens: 0,
@@ -251,13 +259,44 @@ describe('MessageHandler assembly', () => {
     });
     expect(assembly.scheduleRefresh).not.toHaveBeenCalled();
 
-    assembly.tokenUsageCallback()?.({
+    assembly.emitTokenUsage({
       promptTokens: 3,
       completionTokens: 2,
       totalTokens: 5,
       costUsd: 0.001
     });
     expect(assembly.scheduleRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('token usage fans out to BOTH live surfaces, and disposing one never blinds the survivor', () => {
+    const assembly = createTestAssembly();
+    const sidebarPost = jest.fn().mockResolvedValue(undefined);
+    const workshopPost = jest.fn().mockResolvedValue(undefined);
+    createHandler(assembly, sidebarPost); // the sidebar's handler
+    const workshop = createHandler(assembly, workshopPost); // the panel's handler
+    sidebarPost.mockClear();
+    workshopPost.mockClear();
+
+    const tokenUpdates = (post: jest.Mock) =>
+      post.mock.calls.map((c) => c[0]).filter((m) => m.type === MessageType.TOKEN_USAGE_UPDATE);
+
+    // One real request's usage reaches BOTH webviews — the load-bearing
+    // multicast behavior itself (PR #67 review #2).
+    assembly.emitTokenUsage({ promptTokens: 3, completionTokens: 2, totalTokens: 5, costUsd: 0.001 });
+    expect(tokenUpdates(sidebarPost)).toHaveLength(1);
+    expect(tokenUpdates(workshopPost)).toHaveLength(1);
+    expect(assembly.tokenUsageListenerCount()).toBe(2);
+
+    // Closing the Workshop panel releases ONLY its registration…
+    workshop.dispose();
+    expect(assembly.tokenUsageListenerCount()).toBe(1);
+    sidebarPost.mockClear();
+    workshopPost.mockClear();
+
+    // …so the sidebar keeps receiving after the panel is gone.
+    assembly.emitTokenUsage({ promptTokens: 1, completionTokens: 1, totalTokens: 2, costUsd: 0.0002 });
+    expect(tokenUpdates(workshopPost)).toHaveLength(0);
+    expect(tokenUpdates(sidebarPost)).toHaveLength(1);
   });
 
   it('keeps replay caches isolated between handler instances', async () => {
@@ -295,10 +334,9 @@ describe('MessageHandler assembly', () => {
     // Dispose releases ONLY this instance's registrations…
     expect(assembly.disposeBalanceListener).toHaveBeenCalledTimes(1);
     expect(assembly.disposeSecretListener).toHaveBeenCalledTimes(1);
-    expect(assembly.disposeTokenUsageListener).toHaveBeenCalledTimes(1);
     expect(assembly.disposeDictionaryStatusListener).toHaveBeenCalledTimes(1);
     expect(assembly.disposeCategoryStatusListener).toHaveBeenCalledTimes(1);
-    expect(assembly.tokenUsageCallback()).toBeUndefined();
+    expect(assembly.tokenUsageListenerCount()).toBe(0);
     // …and NEVER tears down the shared service: the other webview surface
     // (sidebar ↔ Workshop panel) still depends on it (PR #66 review, Tim).
     expect(assembly.accountDispose).not.toHaveBeenCalled();
@@ -311,7 +349,7 @@ describe('MessageHandler assembly', () => {
     expect(assembly.accountAddRefreshListener).toHaveBeenCalledTimes(2);
     expect(assembly.secretOnDidChange).toHaveBeenCalledTimes(2);
     expect(assembly.categoryAddStatusListener).toHaveBeenCalledTimes(2);
-    expect(assembly.tokenUsageCallback()).toEqual(expect.any(Function));
+    expect(assembly.tokenUsageListenerCount()).toBe(1);
   });
 
   it('refreshes AI services when the stored API key changes (self-heal)', async () => {

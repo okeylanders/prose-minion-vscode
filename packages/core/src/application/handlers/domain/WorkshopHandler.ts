@@ -49,7 +49,7 @@ const generateRequestId = (type: string) => `${type}-${Date.now()}-${++requestId
 
 export class WorkshopHandler {
   /** The single in-flight run — Sprint 2 semantics allow at most one. */
-  private activeRun?: { requestId: string; controller: AbortController };
+  private activeRun?: { requestId: string; toolId: WorkshopToolId; controller: AbortController };
 
   private readonly disposeStatusListener: () => void;
 
@@ -89,6 +89,9 @@ export class WorkshopHandler {
   dispose(): void {
     this.disposeStatusListener();
     if (this.activeRun) {
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Aborting in-flight run on dispose: ${this.activeRun.requestId}`
+      );
       this.activeRun.controller.abort();
       this.session.abandonToolRun(this.activeRun.requestId);
       this.activeRun = undefined;
@@ -117,7 +120,7 @@ export class WorkshopHandler {
     const toolLabel = workshopToolLabel(toolId);
     const requestId = generateRequestId(`workshop_${toolId}`);
     const controller = new AbortController();
-    this.activeRun = { requestId, controller };
+    this.activeRun = { requestId, toolId, controller };
 
     const userTurn = this.session.beginToolRun(toolId, requestId);
     this.postTurn(userTurn);
@@ -139,6 +142,14 @@ export class WorkshopHandler {
       const truncated = result.finishReason === 'length';
 
       if (cancelled) {
+        // A designed disappearance still leaves a named trail (PR #67 #4):
+        // this is the branch an aborted run actually resolves through — the
+        // orchestrator catches AbortError internally and returns partial
+        // content — so the requestId-correlated line lives HERE, not in the
+        // AbortError catch below.
+        this.outputChannel.appendLine(
+          `[WorkshopHandler] Run cancelled: ${requestId} (${toolLabel}, ${result.content.length} chars discarded)`
+        );
         this.session.abandonToolRun(requestId);
         this.sendStreamComplete(requestId, '', true);
       } else if (isApiKeyNotConfiguredWarning(result.content)) {
@@ -159,6 +170,10 @@ export class WorkshopHandler {
         // the aggregate already refused the turn, so the thread stays honest.
         if (assistantTurn) {
           this.postTurn(assistantTurn);
+        } else {
+          this.outputChannel.appendLine(
+            `[WorkshopHandler] Discarded zombie completion: ${requestId} (${toolLabel}) — session was reset or the run preempted mid-stream`
+          );
         }
       }
       this.postSessionState();
@@ -178,7 +193,12 @@ export class WorkshopHandler {
       if (this.activeRun?.requestId === requestId) {
         this.activeRun = undefined;
       }
-      this.sendStatus('');
+      // Only blank the ticker when NO successor owns the slot (PR #67 #15):
+      // a preempted run's late finally must not erase the new run's
+      // "Streaming…" status mid-stream.
+      if (!this.activeRun) {
+        this.sendStatus('');
+      }
     }
   }
 
@@ -187,6 +207,20 @@ export class WorkshopHandler {
 
     if (typeof text !== 'string' || text.trim().length === 0) {
       this.sendError('workshop', 'Cannot pin an empty excerpt.');
+      return;
+    }
+
+    // Mid-run re-pin guard (PR #67 review #3, Sam): the running analysis
+    // captured the OLD excerpt, and turns carry no excerpt provenance yet —
+    // a swap here would leave the finished turn silently describing text
+    // that's no longer pinned. The rail disables its buttons on isRunning,
+    // but that flag only lands after a message round-trip; this closes the
+    // race window at the source of truth.
+    if (this.activeRun) {
+      this.sendError(
+        'workshop',
+        'A tool is still running. Wait for it to finish (or start a new session) before replacing the excerpt.'
+      );
       return;
     }
 
@@ -243,6 +277,9 @@ export class WorkshopHandler {
 
   private preemptActiveRun(): void {
     if (this.activeRun) {
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Preempting in-flight run: ${this.activeRun.requestId} (${workshopToolLabel(this.activeRun.toolId)})`
+      );
       this.activeRun.controller.abort();
       this.session.abandonToolRun(this.activeRun.requestId);
       this.activeRun = undefined;

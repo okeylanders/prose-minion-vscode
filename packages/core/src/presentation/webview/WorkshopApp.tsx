@@ -22,11 +22,13 @@ import { Icon, IconName } from './components/shared/Icon';
 import { PmLogo } from './components/shared/PmLogo';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { TabErrorFallback } from './components/shared/TabErrorFallback';
-import { MarkdownRenderer } from './components/shared/MarkdownRenderer';
 import { StreamingContent } from './components/shared/StreamingContent';
 import { MessageType } from '@shared/types';
-import { ApiKeyStatusMessage, WorkshopToolId, WorkshopTurn } from '@messages';
+import { ApiKeyStatusMessage, WorkshopToolId } from '@messages';
 import { ModelSelector } from './components/shared/ModelSelector';
+import { ExcerptPanel } from './components/workshop/ExcerptPanel';
+import { WorkshopThread } from './components/workshop/WorkshopThread';
+import { WORKSHOP_TOOL_ICONS } from './components/workshop/workshopToolIcons';
 import {
   WORKSHOP_TOOL_CATALOG,
   WorkshopToolDescriptor
@@ -40,36 +42,18 @@ import { useTokenTracking } from './hooks/domain/useTokenTracking';
 import { useAccountBalance } from './hooks/domain/useAccountBalance';
 import './workshop.css';
 
-/**
- * Icons are presentation-only; ids/labels/grouping come from the shared
- * catalog (`@shared/constants/workshopTools`) so the palette and the
- * handler's turn labels can never drift (deterministic — the LLM never
- * names buttons, epic invariant).
- */
-const TOOL_ICONS: Record<WorkshopToolId, IconName> = {
-  dialogue: 'dialogue',
-  prose: 'pen',
-  gestures: 'hand',
-  cliche: 'stamp',
-  repetition: 'repeat',
-  'decision-points': 'branch',
-  'show-and-tell': 'eye',
-  choreography: 'move',
-  'stock-and-signature': 'target',
-  placeholders: 'search',
-  style: 'palette',
-  editor: 'list',
-  continuity: 'link',
-  fresh: 'sprout',
-};
-
 interface WorkshopTool extends WorkshopToolDescriptor {
   icon: IconName;
 }
 
-/** Catalog + icons; retained export shape from Sprint 1. */
+/**
+ * Catalog + icons; retained export shape from Sprint 1. Ids/labels/grouping
+ * come from the shared catalog (`@shared/constants/workshopTools`) so the
+ * palette and the handler's turn labels can never drift; icons stay
+ * presentation-side (`./components/workshop/workshopToolIcons`).
+ */
 export const WORKSHOP_TOOLS: readonly WorkshopTool[] = WORKSHOP_TOOL_CATALOG.map(
-  (tool) => ({ ...tool, icon: TOOL_ICONS[tool.id] })
+  (tool) => ({ ...tool, icon: WORKSHOP_TOOL_ICONS[tool.id] })
 );
 
 /**
@@ -109,10 +93,6 @@ export const WorkshopApp: React.FC = () => {
   const tokenTracking = useTokenTracking();
   const [hasSavedKey, setHasSavedKey] = React.useState(false);
   const accountBalance = useAccountBalance({ apiKeyConfigured: hasSavedKey });
-
-  // Excerpt editor (local UI state only — the pinned excerpt itself is host state)
-  const [draftExcerpt, setDraftExcerpt] = React.useState('');
-  const [editingExcerpt, setEditingExcerpt] = React.useState(false);
 
   const handleApiKeyStatus = React.useCallback((message: ApiKeyStatusMessage) => {
     setHasSavedKey(!!message.payload?.hasSavedKey);
@@ -182,19 +162,15 @@ export const WorkshopApp: React.FC = () => {
     }
   }, [workshop.turns, workshop.streamingContent, workshop.isRunning]);
 
-  const pinDraft = () => {
-    const text = draftExcerpt.trim();
-    if (!text) {return;}
-    workshop.pinExcerpt(draftExcerpt);
-    setEditingExcerpt(false);
-  };
-
-  const beginEditingExcerpt = () => {
-    setDraftExcerpt(workshop.excerpt?.text ?? '');
-    setEditingExcerpt(true);
-  };
-
   const toolsEnabled = !!workshop.excerpt && !workshop.isRunning && workshop.sessionReady;
+
+  // Recomputing a full word split per streamed token was O(excerpt) work on
+  // the token clock (PR #67 review #11) — the excerpt only changes on re-pin.
+  const excerptText = workshop.excerpt?.text;
+  const excerptWordCount = React.useMemo(() => {
+    const trimmed = excerptText?.trim() ?? '';
+    return trimmed.length === 0 ? 0 : trimmed.split(/\s+/).length;
+  }, [excerptText]);
 
   // Live run bubble: visible from run start until the assistant turn lands.
   const showLiveTurn = workshop.isRunning || workshop.isStreaming || workshop.streamingContent.length > 0;
@@ -214,34 +190,6 @@ export const WorkshopApp: React.FC = () => {
     return parts.join(' · ') || 'OpenRouter balance';
   })();
 
-  const renderTurn = (turn: WorkshopTurn) => {
-    if (turn.role === 'user') {
-      return (
-        <div key={turn.id} className="pm-ws-turn pm-ws-turn-user">
-          <span className="pm-ws-turn-chip">
-            <Icon name={TOOL_ICONS[turn.toolId] ?? 'bolt'} size={13} /> {turn.toolLabel}
-          </span>
-        </div>
-      );
-    }
-    return (
-      <div key={turn.id} className="pm-ws-turn pm-ws-turn-assistant">
-        <div className="pm-ws-turn-head">
-          <span className="pm-ws-eyebrow">
-            <Icon name="sparkle" size={12} /> {turn.toolLabel}
-          </span>
-          {turn.usage && (
-            <span className="pm-ws-turn-usage">{turn.usage.totalTokens.toLocaleString()} tokens</span>
-          )}
-        </div>
-        {turn.truncated && (
-          <p className="pm-ws-turn-truncated">Response hit the max-token limit and was truncated.</p>
-        )}
-        <MarkdownRenderer content={turn.content} className="pm-ws-turn-body" />
-      </div>
-    );
-  };
-
   return (
     <div className="pm-ws">
       <header className="pm-ws-header">
@@ -255,7 +203,7 @@ export const WorkshopApp: React.FC = () => {
             <p className="pm-ws-subtitle">
               <Icon name="doc" size={12} />{' '}
               {workshop.excerpt
-                ? `${workshop.excerpt.relativePath ?? 'Pinned excerpt'} · ${countWords(workshop.excerpt.text)} words`
+                ? `${workshop.excerpt.relativePath ?? 'Pinned excerpt'} · ${excerptWordCount} words`
                 : 'No excerpt pinned yet'}
             </p>
           </div>
@@ -307,60 +255,11 @@ export const WorkshopApp: React.FC = () => {
             }
             onError={handleBoundaryError}
           >
-            <div className="pm-ws-block">
-              <div className="pm-ws-block-head">
-                <div className="pm-ws-eyebrow">
-                  <Icon name="pin" size={12} /> Working Excerpt
-                </div>
-                {workshop.excerpt && !editingExcerpt ? (
-                  <span className="pm-ws-pill">Pinned</span>
-                ) : null}
-              </div>
-
-              {workshop.excerpt && !editingExcerpt ? (
-                <>
-                  <div className="pm-ws-excerpt">{workshop.excerpt.text}</div>
-                  <button
-                    className="pm-ws-excerpt-edit"
-                    type="button"
-                    onClick={beginEditingExcerpt}
-                    disabled={workshop.isRunning}
-                  >
-                    Replace excerpt…
-                  </button>
-                </>
-              ) : (
-                <>
-                  <textarea
-                    className="pm-ws-excerpt pm-ws-excerpt-input"
-                    value={draftExcerpt}
-                    onChange={(event) => setDraftExcerpt(event.target.value)}
-                    placeholder="Paste a passage to work on — it stays pinned here while you iterate. (Sending a selection from the editor arrives in Sprint 3.)"
-                    rows={7}
-                    aria-label="Excerpt to pin"
-                  />
-                  <div className="pm-ws-excerpt-actions">
-                    <button
-                      className="pm-ws-pin-btn"
-                      type="button"
-                      onClick={pinDraft}
-                      disabled={draftExcerpt.trim().length === 0}
-                    >
-                      <Icon name="pin" size={13} /> Pin excerpt
-                    </button>
-                    {editingExcerpt && (
-                      <button
-                        className="pm-ws-excerpt-edit"
-                        type="button"
-                        onClick={() => setEditingExcerpt(false)}
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
+            <ExcerptPanel
+              excerpt={workshop.excerpt}
+              isRunning={workshop.isRunning}
+              onPin={workshop.pinExcerpt}
+            />
 
             <div className="pm-ws-block">
               <div className="pm-ws-eyebrow">Context Brief</div>
@@ -428,7 +327,7 @@ export const WorkshopApp: React.FC = () => {
                 </div>
               )}
 
-              {workshop.turns.map(renderTurn)}
+              <WorkshopThread turns={workshop.turns} />
 
               {showLiveTurn && (
                 <div className="pm-ws-turn pm-ws-turn-assistant pm-ws-turn-live">

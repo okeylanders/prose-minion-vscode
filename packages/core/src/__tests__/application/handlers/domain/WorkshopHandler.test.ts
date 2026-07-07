@@ -90,6 +90,43 @@ describe('WorkshopHandler', () => {
     expect(postedOf(MessageType.WORKSHOP_SESSION_STATE)).toHaveLength(0);
   });
 
+  it('refuses a mid-run re-pin — the finished turn must describe the excerpt it ran on', async () => {
+    session.setExcerpt({ text: 'The original excerpt.' });
+
+    let releaseRun!: () => void;
+    mockService.analyzeProse.mockImplementation(async () => {
+      await new Promise<void>((resolve) => {
+        releaseRun = resolve;
+      });
+      return analysisResult('analysis of the original') as any;
+    });
+
+    const runPromise = handler.handleRunTool(
+      message(MessageType.WORKSHOP_RUN_TOOL, { toolId: 'prose' }) as any
+    );
+    await Promise.resolve(); // run is in flight
+
+    await handler.handleSetExcerpt(
+      message(MessageType.WORKSHOP_SET_EXCERPT, { text: 'A sneaky replacement.' }) as any
+    );
+
+    const errors = postedOf(MessageType.ERROR);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].payload.source).toBe('workshop');
+    expect(errors[0].payload.message).toMatch(/still running/i);
+    // The pinned excerpt is untouched — no silent misattribution window.
+    expect(session.getExcerpt()?.text).toBe('The original excerpt.');
+
+    releaseRun();
+    await runPromise;
+    expect(session.getSnapshot().turns.map((t) => t.role)).toEqual(['user', 'assistant']);
+    // Re-pin works again once the run has settled.
+    await handler.handleSetExcerpt(
+      message(MessageType.WORKSHOP_SET_EXCERPT, { text: 'A sneaky replacement.' }) as any
+    );
+    expect(session.getExcerpt()?.text).toBe('A sneaky replacement.');
+  });
+
   it('refuses to run a tool without a pinned excerpt', async () => {
     await handler.handleRunTool(
       message(MessageType.WORKSHOP_RUN_TOOL, { toolId: 'prose' }) as any
@@ -162,6 +199,130 @@ describe('WorkshopHandler', () => {
 
     // Snapshot broadcast keeps the replay cache fresh (mid-run + completion).
     expect(postedOf(MessageType.WORKSHOP_SESSION_STATE).length).toBeGreaterThanOrEqual(2);
+
+    // The EXACT cross-message order is the webview handshake contract
+    // (PR #67 review #7): useWorkshop keeps the live bubble alive until the
+    // assistant turn lands, so STREAM_COMPLETE must precede it, and both
+    // turns must bracket the stream. A refactor that reorders these should
+    // fail here, not in a user's thread.
+    expect(postedTypes()).toEqual([
+      MessageType.WORKSHOP_TURN, // user
+      MessageType.WORKSHOP_SESSION_STATE, // mid-run snapshot (reload adoption)
+      MessageType.STREAM_STARTED,
+      MessageType.STATUS, // "Streaming Cliché…"
+      MessageType.STREAM_CHUNK,
+      MessageType.STREAM_CHUNK,
+      MessageType.STREAM_COMPLETE,
+      MessageType.WORKSHOP_TURN, // assistant — strictly after COMPLETE
+      MessageType.WORKSHOP_SESSION_STATE, // completion snapshot
+      MessageType.STATUS // final '' clear
+    ]);
+  });
+
+  it('a preempted run cannot blank the successor\'s status, and its late result is refused', async () => {
+    session.setExcerpt({ text: 'Some prose.' });
+
+    let releaseFirst!: () => void;
+    mockService.analyzeProse.mockImplementation(async () => {
+      await new Promise<void>((resolve) => {
+        releaseFirst = resolve;
+      });
+      return analysisResult('first result — must never land') as any;
+    });
+    let releaseSecond!: () => void;
+    mockService.analyzeDialogue.mockImplementation(async () => {
+      await new Promise<void>((resolve) => {
+        releaseSecond = resolve;
+      });
+      return analysisResult('second result') as any;
+    });
+
+    const firstRun = handler.handleRunTool(
+      message(MessageType.WORKSHOP_RUN_TOOL, { toolId: 'prose' }) as any
+    );
+    await Promise.resolve();
+
+    const secondRun = handler.handleRunTool(
+      message(MessageType.WORKSHOP_RUN_TOOL, { toolId: 'dialogue' }) as any
+    );
+    await Promise.resolve();
+
+    // Preemption leaves a request-correlated trail (PR #67 review #4).
+    expect((log.appendLine as jest.Mock).mock.calls.flat().join('\n')).toMatch(
+      /Preempting in-flight run: workshop_prose-.*\(Prose\)/
+    );
+
+    // First run settles AFTER being preempted: its finally must NOT blank
+    // the second run's "Streaming…" ticker (PR #67 review #15).
+    releaseFirst();
+    await firstRun;
+
+    const statusesAfterFirstSettles = postedOf(MessageType.STATUS).map((s) => s.payload.message);
+    expect(statusesAfterFirstSettles[statusesAfterFirstSettles.length - 1]).toBe(
+      'Streaming Dialogue & Beats…'
+    );
+    // Its stream completed as cancelled, and the cancellation left a trail.
+    const firstComplete = postedOf(MessageType.STREAM_COMPLETE)[0];
+    expect(firstComplete.payload.cancelled).toBe(true);
+    expect((log.appendLine as jest.Mock).mock.calls.flat().join('\n')).toMatch(
+      /Run cancelled: workshop_prose-/
+    );
+
+    releaseSecond();
+    await secondRun;
+
+    // The thread records both attempts but only the survivor's analysis.
+    expect(session.getSnapshot().turns.map((t) => [t.role, t.toolId])).toEqual([
+      ['user', 'prose'],
+      ['user', 'dialogue'],
+      ['assistant', 'dialogue']
+    ]);
+    // And the second run's own finally does clear the ticker at the end.
+    const finalStatuses = postedOf(MessageType.STATUS).map((s) => s.payload.message);
+    expect(finalStatuses[finalStatuses.length - 1]).toBe('');
+  });
+
+  it('guide-loading status is forwarded only while a workshop run is in flight (idle gating)', async () => {
+    // Capture the listener the handler registered on the shared service.
+    let capturedListener: ((m: string, p?: unknown, t?: string) => void) | undefined;
+    const localService = {
+      ...mockService,
+      addStatusListener: jest.fn((listener) => {
+        capturedListener = listener;
+        return jest.fn();
+      })
+    } as unknown as jest.Mocked<AssistantToolService>;
+    const localPost = jest.fn().mockResolvedValue(undefined);
+    const localHandler = new WorkshopHandler(localService, session, localPost, log);
+    expect(capturedListener).toBeDefined();
+
+    // Idle: another surface's guide loading must not surface here.
+    capturedListener!('Loading requested craft guides...', undefined, 'guide.md');
+    expect(localPost).not.toHaveBeenCalled();
+
+    // In flight: the same signal IS this run's progress — forward it.
+    session.setExcerpt({ text: 'Some prose.' });
+    let releaseRun!: () => void;
+    (localService.analyzeProse as jest.Mock).mockImplementation(async () => {
+      await new Promise<void>((resolve) => {
+        releaseRun = resolve;
+      });
+      return analysisResult('done') as any;
+    });
+    const runPromise = localHandler.handleRunTool(
+      message(MessageType.WORKSHOP_RUN_TOOL, { toolId: 'prose' }) as any
+    );
+    await Promise.resolve();
+
+    capturedListener!('Loading requested craft guides...', undefined, 'guide.md');
+    const statuses = localPost.mock.calls
+      .map((c) => c[0])
+      .filter((m) => m.type === MessageType.STATUS)
+      .map((m) => m.payload.message);
+    expect(statuses).toContain('Loading requested craft guides...');
+
+    releaseRun();
+    await runPromise;
   });
 
   it('routes dialogue and prose ids to their dedicated service calls', async () => {
@@ -253,6 +414,11 @@ describe('WorkshopHandler', () => {
     expect(session.getSnapshot().turns).toEqual([]);
     const turnPosts = postedOf(MessageType.WORKSHOP_TURN).map((t) => t.payload.turn.role);
     expect(turnPosts).toEqual(['user']); // only the pre-reset user turn was ever posted
+
+    // Designed disappearances leave a request-correlated trail (PR #67 #4).
+    const logLines = (log.appendLine as jest.Mock).mock.calls.flat().join('\n');
+    expect(logLines).toMatch(/Preempting in-flight run: workshop_prose-/);
+    expect(logLines).toMatch(/Run cancelled: workshop_prose-/);
   });
 
   it('serves the session snapshot on request', async () => {

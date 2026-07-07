@@ -22,6 +22,7 @@ import * as vscode from 'vscode';
 import {
   CoreServices,
   MessageHandler,
+  MessageType,
   Platform,
   SURFACE_WORKSHOP,
   coerceWebviewErrorText,
@@ -84,14 +85,23 @@ export class WorkshopPanelProvider implements vscode.Disposable {
       this.messageHandler?.handleConfigurationChange(section => event.affectsConfiguration(section));
     });
 
-    // Webview boot errors are logged HERE with the surface tag before the
-    // domain route would swallow them into the sidebar-identical UIHandler
-    // line. Parsing goes through the shared coercer — the same one UIHandler
-    // uses — never a fork of it. Everything else routes to the handler.
+    // BOOT errors — the HTML bootstrap's bare `{type, message}` shape, no
+    // envelope — are logged HERE with the surface tag: a pre-React failure
+    // must say which surface died, and it can never reach the router
+    // usefully. ENVELOPED webview errors (React error boundaries, with
+    // `payload.details` carrying the componentStack) flow to the handler
+    // like every other message, so UIHandler logs the text AND the Details
+    // line exactly as it does for the sidebar (PR #67 review #10). Text
+    // parsing stays in the shared coercer in both paths — never a fork.
     const messageSubscription = panel.webview.onDidReceiveMessage((message: unknown) => {
-      const text = coerceWebviewErrorText(message);
-      if (text !== undefined) {
-        this.outputChannel.appendLine(`[WEBVIEW ERROR] (workshop) ${text}`);
+      const shape = message as { type?: unknown; payload?: unknown } | null;
+      const isBareBootError =
+        shape?.type === MessageType.WEBVIEW_ERROR && shape.payload === undefined;
+      if (isBareBootError) {
+        const text = coerceWebviewErrorText(message);
+        if (text !== undefined) {
+          this.outputChannel.appendLine(`[WEBVIEW ERROR] (workshop) ${text}`);
+        }
         return;
       }
       void this.messageHandler?.handleMessage(message as Parameters<MessageHandler['handleMessage']>[0]);

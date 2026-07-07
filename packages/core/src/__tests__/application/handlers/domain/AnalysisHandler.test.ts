@@ -128,6 +128,52 @@ describe('AnalysisHandler', () => {
     });
   });
 
+  describe('Shared-service status gating (PR #67 review)', () => {
+    it('forwards guide-loading status only while a request is in flight', async () => {
+      // Capture the listener registered on the SHARED AssistantToolService —
+      // with two webviews live, un-gated forwarding would strand the other
+      // surface's "Loading craft guides…" here with nothing to clear it.
+      let captured: ((m: string, p?: { current: number; total: number }, t?: string) => void) | undefined;
+      (mockService.addStatusListener as jest.Mock).mockImplementation((listener) => {
+        captured = listener;
+        return jest.fn();
+      });
+      const gatedHandler = new AnalysisHandler(mockService, mockPostMessage, createFakeSettings());
+      expect(captured).toBeDefined();
+
+      // Idle: another surface's run is loading guides — stay silent.
+      captured!('Loading requested craft guides...', undefined, 'guide.md');
+      expect(mockPostMessage).not.toHaveBeenCalled();
+
+      // In flight: activeRequests is populated synchronously at run start,
+      // before the handler's internal awaits — fire the shared-service event
+      // in that window, then let the run settle.
+      const runPromise = gatedHandler.handleAnalyzeProse(
+        createTestMessage(MessageType.ANALYZE_PROSE, { text: 'Some prose' }) as never
+      );
+
+      captured!('Loading requested craft guides...', undefined, 'guide.md');
+      const guideStatuses = mockPostMessage.mock.calls
+        .map((call) => call[0])
+        .filter(
+          (m) => m?.type === MessageType.STATUS && m.payload.message === 'Loading requested craft guides...'
+        );
+      expect(guideStatuses).toHaveLength(1);
+
+      await runPromise;
+    });
+
+    it('dispose releases the status subscription', () => {
+      const disposeListener = jest.fn();
+      (mockService.addStatusListener as jest.Mock).mockReturnValue(disposeListener);
+      const localHandler = new AnalysisHandler(mockService, mockPostMessage, createFakeSettings());
+
+      localHandler.dispose();
+
+      expect(disposeListener).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('Error Handling', () => {
     it('should handle service errors gracefully', async () => {
       mockService.analyzeDialogue.mockRejectedValue(new Error('Service failure'));

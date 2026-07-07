@@ -16,6 +16,8 @@
  */
 
 import { LogSink, SettingsStore } from '@/platform';
+import { ListenerSet } from '@/utils/ListenerSet';
+import { TokenUsage } from '@shared/types';
 import { OpenRouterClient } from '@providers/OpenRouterClient';
 import { AIResourceOrchestrator, StatusCallback, TokenUsageCallback } from './AIResourceOrchestrator';
 import { ConversationManager } from './ConversationManager';
@@ -48,7 +50,7 @@ export class AIResourceManager {
   private aiResources: Partial<Record<ModelScope, AIResourceBundle>> = {};
   private resolvedModels: Partial<Record<ModelScope, string>> = {};
   private statusCallback?: StatusCallback;
-  private readonly tokenUsageListeners = new Set<TokenUsageCallback>();
+  private readonly tokenUsageListeners: ListenerSet<[TokenUsage]>;
 
   /**
    * Single stable closure handed to every orchestrator: fans token usage out
@@ -58,14 +60,7 @@ export class AIResourceManager {
    * hold a stale generation of listeners.
    */
   private readonly tokenUsageFanout: TokenUsageCallback = (usage) => {
-    for (const listener of [...this.tokenUsageListeners]) {
-      try {
-        listener(usage);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        this.outputChannel?.appendLine(`[AIResourceManager] Token usage listener threw: ${message}`);
-      }
-    }
+    this.tokenUsageListeners.emit(usage);
   };
 
   constructor(
@@ -73,7 +68,12 @@ export class AIResourceManager {
     private readonly secretsService: SecretStorageService,
     private readonly settings: SettingsStore,
     private readonly outputChannel?: LogSink
-  ) {}
+  ) {
+    this.tokenUsageListeners = new ListenerSet(
+      '[AIResourceManager] Token usage listener',
+      outputChannel
+    );
+  }
 
   /**
    * Initialize AI resources for all model scopes
@@ -196,10 +196,7 @@ export class AIResourceManager {
    * their registration and MUST release it on dispose.
    */
   addTokenUsageListener(listener: TokenUsageCallback): () => void {
-    this.tokenUsageListeners.add(listener);
-    return () => {
-      this.tokenUsageListeners.delete(listener);
-    };
+    return this.tokenUsageListeners.add(listener);
   }
 
   /**

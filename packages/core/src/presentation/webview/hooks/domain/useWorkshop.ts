@@ -230,13 +230,18 @@ export const useWorkshop = (): UseWorkshopReturn => {
   );
 
   // Once the assistant turn for the settled stream is in the thread, the live
-  // bubble would double-render the same content — retire it.
+  // bubble would double-render the same content — retire it. Deps are the
+  // turns array + the STABLE reset callback, NOT the streaming object (fresh
+  // every render): keying on the object made this fire on endStreaming's own
+  // render and retire the bubble before the turn arrived — a visible
+  // text → spinner → turn flicker (PR #67 review #16, Blake).
+  const resetStreaming = streaming.reset;
   React.useEffect(() => {
     if (liveRunRef.current?.settled) {
       liveRunRef.current = null;
-      streaming.reset();
+      resetStreaming();
     }
-  }, [turns, streaming]);
+  }, [turns, resetStreaming]);
 
   const handleStatusMessage = React.useCallback((message: StatusMessage) => {
     // Only this domain's status: the shared services also feed dictionary /

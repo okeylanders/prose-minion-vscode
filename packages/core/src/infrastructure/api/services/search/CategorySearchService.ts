@@ -15,6 +15,7 @@
  */
 
 import { FileSystem, LogSink } from '@/platform';
+import { ListenerSet } from '@/utils/ListenerSet';
 import { WordSearchService } from './WordSearchService';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { WordFrequency } from '@/tools/measure/wordFrequency';
@@ -35,7 +36,7 @@ export class CategorySearchService {
   private readonly wordFrequency: WordFrequency;
   private readonly promptLoader: PromptLoader;
   private abortController: AbortController | null = null;
-  private readonly statusListeners = new Set<StatusEmitter>();
+  private readonly statusListeners: ListenerSet<Parameters<StatusEmitter>>;
 
   constructor(
     private readonly aiResourceManager: AIResourceManager,
@@ -46,6 +47,10 @@ export class CategorySearchService {
   ) {
     this.wordFrequency = new WordFrequency((msg) => this.outputChannel?.appendLine(msg));
     this.promptLoader = new PromptLoader(extensionPath, fileSystem);
+    this.statusListeners = new ListenerSet(
+      '[CategorySearchService] Status listener',
+      outputChannel
+    );
   }
 
   /**
@@ -54,10 +59,7 @@ export class CategorySearchService {
    * registration and releases it on dispose.
    */
   addStatusListener(listener: StatusEmitter): () => void {
-    this.statusListeners.add(listener);
-    return () => {
-      this.statusListeners.delete(listener);
-    };
+    return this.statusListeners.add(listener);
   }
 
   /**
@@ -497,14 +499,7 @@ export class CategorySearchService {
   }
 
   private sendStatus(message: string, progress?: { current: number; total: number }, tickerMessage?: string): void {
-    for (const listener of [...this.statusListeners]) {
-      try {
-        listener(message, progress, tickerMessage);
-      } catch (error) {
-        const details = error instanceof Error ? error.message : String(error);
-        this.outputChannel?.appendLine(`[CategorySearchService] Status listener threw: ${details}`);
-      }
-    }
+    this.statusListeners.emit(message, progress, tickerMessage);
   }
 
   /**
