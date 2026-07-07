@@ -153,3 +153,11 @@ structurally, surfaced visibly.**
 - Follow-up turns are plain single streaming turns — no guide-request
   detection loop; guides (if requested) were loaded during the conversation's
   opening tool run and live in its history.
+- **Field bug + fix (2026-07-06)**: the first follow-up died with
+  `ConversationNotFoundError` — the tool run used the orchestrator the
+  assistants CAPTURED at init, but `continueConversation` did a live
+  `getOrchestrator('assistant')` lookup, and sibling services rebuild all
+  bundles at startup (three generations). Fixed by capturing the generation
+  in `AssistantToolService` and routing continue/discard through it
+  (regression suite pins the symmetry). Underlying triple-rebuild wart filed
+  as [tech debt](../../../tech-debt/2026-07-06-triple-initializeresources-startup.md).
