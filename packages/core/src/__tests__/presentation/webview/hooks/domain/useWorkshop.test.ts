@@ -145,6 +145,26 @@ describe('useWorkshop', () => {
     expect(result.current.isRunning).toBe(false);
   });
 
+  it('restores the selected tool separately from the in-flight run', () => {
+    const { result } = renderHook(() => useWorkshop());
+
+    act(() => {
+      result.current.handleSessionState(
+        sessionState({
+          excerpt: { text: 'Pinned prose.', pinnedAt: 1 },
+          turns: [makeTurn({ id: 't1', toolId: 'gestures', toolLabel: 'Gestures' })],
+          selectedToolId: 'gestures',
+          hasConversation: true
+        })
+      );
+    });
+
+    expect(result.current.selectedToolId).toBe('gestures');
+    expect(result.current.activeToolId).toBeNull();
+    expect(result.current.isRunning).toBe(false);
+    expect(result.current.canFollowUp).toBe(true);
+  });
+
   it('adopts a mid-run request from the snapshot so post-reload chunks attach', () => {
     const { result } = renderHook(() => useWorkshop());
 
@@ -333,6 +353,7 @@ describe('useWorkshop', () => {
     act(() => {
       result.current.pinExcerpt('Some prose.', 'file:///ch1.md', 'ch1.md');
       result.current.runTool('gestures');
+      result.current.quickAction('gestures', '3 variations');
       result.current.resetSession();
       result.current.sendMessage('Now tighten variation two.');
       result.current.pinFromFile();
@@ -341,6 +362,10 @@ describe('useWorkshop', () => {
     const pin = posted(MessageType.WORKSHOP_SET_EXCERPT)[0];
     expect(pin.payload).toEqual({ text: 'Some prose.', sourceUri: 'file:///ch1.md', relativePath: 'ch1.md' });
     expect(posted(MessageType.WORKSHOP_RUN_TOOL)[0].payload).toEqual({ toolId: 'gestures' });
+    expect(posted(MessageType.WORKSHOP_QUICK_ACTION)[0].payload).toEqual({
+      toolId: 'gestures',
+      label: '3 variations'
+    });
     expect(posted(MessageType.WORKSHOP_RESET_SESSION)).toHaveLength(1);
     expect(posted(MessageType.WORKSHOP_SEND_MESSAGE)[0].payload).toEqual({
       text: 'Now tighten variation two.'

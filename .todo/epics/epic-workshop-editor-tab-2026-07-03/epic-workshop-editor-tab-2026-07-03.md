@@ -2,7 +2,7 @@
 
 **Created**: 2026-07-06
 **Status**: In Progress
-**Progress**: 2/4 sprints complete (Sprint 01 merged 2026-07-06, [PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66); Sprint 02 merged 2026-07-07, [PR #67](https://github.com/okeylanders/prose-minion-vscode/pull/67))
+**Progress**: 3/4 sprints merged; Sprint 04 complete on branch (Sprint 01 merged 2026-07-06, [PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66); Sprint 02 merged 2026-07-07, [PR #67](https://github.com/okeylanders/prose-minion-vscode/pull/67); Sprint 03 merged 2026-07-07, [PR #68](https://github.com/okeylanders/prose-minion-vscode/pull/68))
 **Design source**: [Direction B — Split & Pinned](../../design/Prose%20Minion%20-%20Assistant%20Tab.html)
 **ADR**: [2026-07-03 — Assistant as a Full Editor Tab](../../adr/2026-07-03-assistant-editor-tab.md)
 **Integration branch**: `epic/workshop-editor-tab`
@@ -38,7 +38,7 @@ Each sprint is independently shippable behind the (initially unregistered)
 |---|--------|--------|--------|
 | 1 | `claude/sprint-01-workshop-editor-tab-u49fd5` ([PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66)) | [Shell](sprints/01-shell.md) | The second surface exists and boots. Zero AI. |
 | 2 | `claude/sprint-02-session-spine-skndyo` ([PR #67](https://github.com/okeylanders/prose-minion-vscode/pull/67)) | [Session spine](sprints/02-session-spine.md) | Host-side session state + one streaming turn into the thread. |
-| 3 | `feat/workshop-s3-multiturn` | [Multi-turn](sprints/03-multiturn.md) | Follow-ups continue the same conversation. The "now tighten it" loop. |
+| 3 | `feat/workshop-s3-multiturn` ([PR #68](https://github.com/okeylanders/prose-minion-vscode/pull/68)) | [Multi-turn](sprints/03-multiturn.md) | Follow-ups continue the same conversation. The "now tighten it" loop. |
 | 4 | `feat/workshop-s4-actions-polish` | [Actions & polish](sprints/04-actions-polish.md) | The approved prototype's feel: quick actions, cards, toasts. |
 
 Final step after Sprint 4 merges: one PR `epic/workshop-editor-tab → main`.

@@ -171,6 +171,15 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
     });
   };
 
+  const handleOpenWorkshop = () => {
+    vscode.postMessage({
+      type: MessageType.OPEN_WORKSHOP,
+      source: 'webview.analysis.tab',
+      payload: {},
+      timestamp: Date.now()
+    });
+  };
+
   const handleGenerateContext = () => {
     if (!text.trim() || context.loading) {
       return;
@@ -462,14 +471,23 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
       <div className="analysis-buttons-section">
         <div className="analysis-buttons-head">
           <h4 className="analysis-section-header">Analyze &amp; Suggest Improvements</h4>
-          <button
-            className="btn ghost all-tools-button"
-            onClick={() => setShowAllTools(true)}
-            disabled={!text.trim() || analysis.loading || analysis.isStreaming}
-            title="Browse every writing tool"
-          >
-            <Icon name="grid" size={14} /> All tools
-          </button>
+          <div className="analysis-buttons-head-actions">
+            <button
+              className="btn ghost all-tools-button"
+              onClick={handleOpenWorkshop}
+              title="Open the Workshop editor tab"
+            >
+              <Icon name="panelRight" size={14} /> Workshop
+            </button>
+            <button
+              className="btn ghost all-tools-button"
+              onClick={() => setShowAllTools(true)}
+              disabled={!text.trim() || analysis.loading || analysis.isStreaming}
+              title="Browse every writing tool"
+            >
+              <Icon name="grid" size={14} /> All tools
+            </button>
+          </div>
         </div>
         <div className="primary-buttons">
           <button

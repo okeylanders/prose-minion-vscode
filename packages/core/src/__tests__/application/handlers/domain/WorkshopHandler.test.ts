@@ -81,18 +81,19 @@ describe('WorkshopHandler', () => {
   });
 
   describe('routing, excerpt pins, tool runs, and session controls', () => {
-  it('registers the seven workshop routes', () => {
+  it('registers the eight workshop routes', () => {
     const router = new MessageRouter();
     handler.registerRoutes(router);
 
     expect(router.hasHandler(MessageType.WORKSHOP_RUN_TOOL)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_QUICK_ACTION)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SEND_MESSAGE)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SET_EXCERPT)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_PICK_EXCERPT_FILE)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_RESET_SESSION)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_REQUEST_SESSION)).toBe(true);
     expect(router.hasHandler(MessageType.CANCEL_WORKSHOP_REQUEST)).toBe(true);
-    expect(router.handlerCount).toBe(7);
+    expect(router.handlerCount).toBe(8);
   });
 
   it('pins an excerpt and broadcasts the session snapshot', async () => {
@@ -647,6 +648,51 @@ describe('WorkshopHandler', () => {
       MessageType.WORKSHOP_SESSION_STATE,
       MessageType.STATUS // final '' clear
     ]);
+  });
+
+  it('a quick action resolves to a deterministic prompt and displays the clicked label', async () => {
+    session.setExcerpt({ text: 'Some prose.' });
+    await runToolToCompletion('dialogue', 'conv-1');
+    postMessage.mockClear();
+
+    mockService.continueConversation.mockResolvedValue(analysisResult('three variations') as any);
+
+    await handler.handleQuickAction(
+      message(MessageType.WORKSHOP_QUICK_ACTION, {
+        toolId: 'dialogue',
+        label: 'Generate 3 tighter variations'
+      }) as any
+    );
+
+    expect(mockService.continueConversation).toHaveBeenCalledWith(
+      'conv-1',
+      expect.stringContaining('Return exactly three options'),
+      expect.objectContaining({ signal: expect.anything(), onToken: expect.any(Function) })
+    );
+    expect(mockService.continueConversation.mock.calls[0][1]).toContain('Dialogue & Beats lens');
+
+    const turnMessages = postedOf(MessageType.WORKSHOP_TURN);
+    expect(turnMessages[0].payload.turn.content).toBe('Generate 3 tighter variations');
+    expect(turnMessages[0].payload.turn.kind).toBe('message');
+    expect(turnMessages[1].payload.turn.content).toBe('three variations');
+  });
+
+  it('rejects an unknown quick action label before continuing the conversation', async () => {
+    session.setExcerpt({ text: 'Some prose.' });
+    await runToolToCompletion('dialogue', 'conv-1');
+    postMessage.mockClear();
+
+    await handler.handleQuickAction(
+      message(MessageType.WORKSHOP_QUICK_ACTION, {
+        toolId: 'dialogue',
+        label: 'Invent a brand-new button'
+      }) as any
+    );
+
+    const [error] = postedOf(MessageType.ERROR);
+    expect(error.payload.source).toBe('workshop.quick_action');
+    expect(error.payload.message).toMatch(/Unknown Workshop quick action/);
+    expect(mockService.continueConversation).not.toHaveBeenCalled();
   });
 
   it('a lost conversation surfaces honestly: clears the reference, no silent restart', async () => {

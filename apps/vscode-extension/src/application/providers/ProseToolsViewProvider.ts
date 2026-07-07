@@ -30,7 +30,8 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
     private readonly extensionUri: vscode.Uri,
     private readonly coreServices: CoreServices,
     private readonly outputChannel: vscode.OutputChannel,
-    private readonly platform: Platform
+    private readonly platform: Platform,
+    private readonly uiActions: { openWorkshop?: () => void } = {}
   ) {}
 
   public resolveWebviewView(
@@ -58,7 +59,8 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
       this.coreServices,
       (message) => webviewView.webview.postMessage(message),
       this.platform,
-      this.outputChannel
+      this.outputChannel,
+      this.uiActions
     );
 
     // Config-change watcher lives in the shell (keeps MessageHandler vscode-free).

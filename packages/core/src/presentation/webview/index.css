@@ -1993,6 +1993,12 @@ select:focus {
 .analysis-buttons-head .analysis-section-header {
   margin: 0;
 }
+.analysis-buttons-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
 .all-tools-button {
   padding: 6px 11px;
   font-size: 12px;

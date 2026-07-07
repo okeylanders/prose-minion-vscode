@@ -63,6 +63,7 @@ export class WorkshopSessionService {
   private turns: WorkshopTurn[] = [];
   private activeRun?: ActiveRun;
   private conversationId?: string;
+  private selectedToolId?: WorkshopToolId;
   private turnCounter = 0;
 
   constructor(private readonly now: () => number = Date.now) {}
@@ -109,6 +110,7 @@ export class WorkshopSessionService {
       throw new Error('Cannot run a Workshop tool without a pinned excerpt');
     }
     const toolLabel = workshopToolLabel(toolId);
+    this.selectedToolId = toolId;
     const turn: WorkshopTurn = {
       id: this.nextTurnId('user'),
       role: 'user',
@@ -128,7 +130,7 @@ export class WorkshopSessionService {
    * turn and marks the run active. Throws without a retained conversation —
    * a follow-up needs something to follow.
    */
-  beginMessageRun(text: string, requestId: string): WorkshopTurn {
+  beginMessageRun(text: string, requestId: string, displayText = text): WorkshopTurn {
     if (!this.conversationId) {
       throw new Error('Cannot send a Workshop follow-up without an active conversation');
     }
@@ -136,7 +138,7 @@ export class WorkshopSessionService {
       id: this.nextTurnId('user'),
       role: 'user',
       kind: 'message',
-      content: text,
+      content: displayText,
       timestamp: this.now()
     };
     this.turns.push(turn);
@@ -206,6 +208,7 @@ export class WorkshopSessionService {
     this.turns = [];
     this.activeRun = undefined;
     this.contextBrief = undefined;
+    this.selectedToolId = undefined;
     return this.clearConversation();
   }
 
@@ -224,6 +227,7 @@ export class WorkshopSessionService {
       totalTurns: this.turns.length,
       truncatedTurns: this.turns.length - windowed.length,
       hasConversation: this.conversationId !== undefined,
+      selectedToolId: this.selectedToolId,
       activeToolId: this.activeRun?.toolId,
       activeRequestId: this.activeRun?.requestId
     };

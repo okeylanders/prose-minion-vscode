@@ -60,6 +60,8 @@ export interface WorkshopState {
   hasConversation: boolean;
   /** True when the composer can send right now. */
   canFollowUp: boolean;
+  /** Last selected tool/lens, retained after completion for reload restore. */
+  selectedToolId: WorkshopToolId | null;
   /** Tool of the in-flight run (host truth via session state / live events). */
   activeToolId: WorkshopToolId | null;
   /** True while a run is in flight (tool palette disables on this). */
@@ -82,6 +84,7 @@ export interface WorkshopActions {
   pinExcerpt: (text: string, sourceUri?: string, relativePath?: string) => void;
   pinFromFile: () => void;
   runTool: (toolId: WorkshopToolId) => void;
+  quickAction: (toolId: WorkshopToolId, label: string) => void;
   sendMessage: (text: string) => void;
   cancelRun: () => void;
   resetSession: () => void;
@@ -117,6 +120,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const [turns, setTurns] = React.useState<WorkshopTurn[]>([]);
   const [totalTurns, setTotalTurns] = React.useState(0);
   const [hasConversation, setHasConversation] = React.useState(false);
+  const [selectedToolId, setSelectedToolId] = React.useState<WorkshopToolId | null>(null);
   const [activeToolId, setActiveToolId] = React.useState<WorkshopToolId | null>(null);
   const [statusMessage, setStatusMessage] = React.useState('');
   const [tickerMessage, setTickerMessage] = React.useState('');
@@ -166,6 +170,14 @@ export const useWorkshop = (): UseWorkshopReturn => {
     [post]
   );
 
+  const quickAction = React.useCallback(
+    (toolId: WorkshopToolId, label: string) => {
+      setErrorMessage('');
+      post(MessageType.WORKSHOP_QUICK_ACTION, { toolId, label });
+    },
+    [post]
+  );
+
   const sendMessage = React.useCallback(
     (text: string) => {
       setErrorMessage('');
@@ -208,6 +220,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
       setExcerpt(session.excerpt ?? null);
       setTotalTurns(session.totalTurns);
       setHasConversation(session.hasConversation);
+      setSelectedToolId(session.selectedToolId ?? null);
       setActiveToolId(session.activeToolId ?? null);
       setTurns((prev) => {
         if (session.truncatedTurns === 0) {
@@ -332,6 +345,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     hiddenTurns,
     hasConversation,
     canFollowUp,
+    selectedToolId,
     activeToolId,
     isRunning,
     statusMessage,
@@ -350,6 +364,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     pinExcerpt,
     pinFromFile,
     runTool,
+    quickAction,
     sendMessage,
     cancelRun,
     resetSession,

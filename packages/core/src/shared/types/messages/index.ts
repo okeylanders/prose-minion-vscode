@@ -95,6 +95,7 @@ import {
   SelectionUpdatedMessage,
   OpenSettingsMessage,
   OpenSettingsToggleMessage,
+  OpenWorkshopMessage,
   WebviewErrorMessage
 } from './ui';
 import { ErrorMessage } from './error';
@@ -121,6 +122,7 @@ import {
 } from './streaming';
 import {
   WorkshopRunToolMessage,
+  WorkshopQuickActionMessage,
   WorkshopSendMessageMessage,
   WorkshopSetExcerptMessage,
   WorkshopPickExcerptFileMessage,
@@ -164,6 +166,7 @@ export type WebviewToExtensionMessage =
   | UpdateApiKeyMessage
   | DeleteApiKeyMessage
   | WebviewErrorMessage
+  | OpenWorkshopMessage
   | FastGenerateDictionaryMessage
   | CancelAnalysisRequestMessage
   | CancelDictionaryRequestMessage
@@ -171,6 +174,7 @@ export type WebviewToExtensionMessage =
   | CancelCategorySearchRequestMessage
   | CancelWorkshopRequestMessage
   | WorkshopRunToolMessage
+  | WorkshopQuickActionMessage
   | WorkshopSendMessageMessage
   | WorkshopSetExcerptMessage
   | WorkshopPickExcerptFileMessage

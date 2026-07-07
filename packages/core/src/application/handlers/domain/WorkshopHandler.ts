@@ -26,6 +26,7 @@ import { FileSystem, FileType, LogSink, ShellService, Workspace } from '@/platfo
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
 import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
+import { workshopQuickActionPrompt } from '@shared/constants/workshopQuickActions';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import {
   MessageType,
@@ -42,6 +43,7 @@ import {
   WorkshopPickExcerptFileMessage,
   WorkshopRequestSessionMessage,
   WorkshopResetSessionMessage,
+  WorkshopQuickActionMessage,
   WorkshopRunToolMessage,
   WorkshopSendMessageMessage,
   WorkshopSetExcerptMessage,
@@ -128,6 +130,7 @@ export class WorkshopHandler {
    */
   registerRoutes(router: MessageRouter): void {
     router.register(MessageType.WORKSHOP_RUN_TOOL, this.handleRunTool.bind(this));
+    router.register(MessageType.WORKSHOP_QUICK_ACTION, this.handleQuickAction.bind(this));
     router.register(MessageType.WORKSHOP_SEND_MESSAGE, this.handleSendMessage.bind(this));
     router.register(MessageType.WORKSHOP_SET_EXCERPT, this.handleSetExcerpt.bind(this));
     router.register(MessageType.WORKSHOP_PICK_EXCERPT_FILE, this.handlePickExcerptFile.bind(this));
@@ -283,6 +286,37 @@ export class WorkshopHandler {
       return;
     }
 
+    await this.executeFollowUp(text);
+  }
+
+  /**
+   * Deterministic Sprint 4 quick action: resolve the clicked label to a static
+   * prompt template, then run the SAME retained-conversation path as a typed
+   * free-text follow-up. Labels/prompts live in code; the model never invents
+   * UI affordances.
+   */
+  async handleQuickAction(message: WorkshopQuickActionMessage): Promise<void> {
+    const { toolId, label } = message.payload;
+
+    if (!isWorkshopToolId(toolId)) {
+      this.sendError('workshop.quick_action', `Unknown Workshop tool: ${String(toolId)}`);
+      return;
+    }
+
+    const actionLabel = typeof label === 'string' ? label.trim() : '';
+    const prompt = actionLabel ? workshopQuickActionPrompt(toolId, actionLabel) : undefined;
+    if (!prompt) {
+      this.sendError(
+        'workshop.quick_action',
+        `Unknown Workshop quick action for ${workshopToolLabel(toolId)}: ${actionLabel || '(empty)'}`
+      );
+      return;
+    }
+
+    await this.executeFollowUp(prompt, actionLabel);
+  }
+
+  private async executeFollowUp(text: string, displayText = text): Promise<void> {
     const conversationId = this.session.getConversationId();
     if (!conversationId) {
       this.sendError(
@@ -299,7 +333,7 @@ export class WorkshopHandler {
     const controller = new AbortController();
     this.activeRun = { requestId, label: FOLLOW_UP_LABEL, controller };
 
-    const userTurn = this.session.beginMessageRun(text, requestId);
+    const userTurn = this.session.beginMessageRun(text, requestId, displayText);
     this.postTurn(userTurn);
     this.postSessionState();
     this.sendStreamStarted(requestId);

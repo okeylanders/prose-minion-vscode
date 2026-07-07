@@ -149,7 +149,8 @@ export class MessageHandler {
     // distinct name is deliberate so the unwrapped one isn't grabbed by accident.
     private readonly transport: MessageTransport,
     private readonly platform: Platform,
-    private readonly outputChannel: LogSink
+    private readonly outputChannel: LogSink,
+    private readonly uiActions: { openWorkshop?: () => void } = {}
   ) {
     const {
       assistantToolService,
@@ -259,7 +260,8 @@ export class MessageHandler {
       this.platform.fileSystem,
       this.platform.workspace,
       this.platform.shell,
-      this.platform.editor
+      this.platform.editor,
+      this.uiActions.openWorkshop
     );
 
     this.fileOperationsHandler = new FileOperationsHandler(
