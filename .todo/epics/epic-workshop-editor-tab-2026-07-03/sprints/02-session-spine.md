@@ -1,6 +1,6 @@
 # Sprint 02: Session Spine (single turn)
 
-**Status**: In Review ([PR #67](https://github.com/okeylanders/prose-minion-vscode/pull/67))
+**Status**: Complete (merged 2026-07-07, [PR #67](https://github.com/okeylanders/prose-minion-vscode/pull/67) — review: all 14 Open findings addressed on-branch; Deferred #8/#12 carried into Sprint 03, #13 tracked in epic Known Risks)
 **Priority**: High
 **Branch**: `claude/sprint-02-session-spine-skndyo` → PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 2–4 days
