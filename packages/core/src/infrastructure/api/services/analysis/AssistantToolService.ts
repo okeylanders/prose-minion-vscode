@@ -24,7 +24,7 @@ import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
 import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
 import { DialogueFocus, WritingToolsFocus, StatusEmitter, API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
-import { StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
+import { AIResourceOrchestrator, StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
 
 /**
  * Options for streaming analysis operations
@@ -56,6 +56,18 @@ export class AssistantToolService {
   private dialogueAssistant?: DialogueMicrobeatAssistant;
   private proseAssistant?: ProseAssistant;
   private writingToolsAssistant?: WritingToolsAssistant;
+  /**
+   * The orchestrator GENERATION the assistants above were built from —
+   * captured in initializeAssistants alongside them. Conversations retained
+   * by a tool run live in THIS instance's ConversationManager, so the
+   * continuation path must use the same capture, never a live
+   * `getOrchestrator('assistant')` lookup: sibling services
+   * (DictionaryService, ContextAssistantService) rebuild ALL bundles via
+   * initializeResources() during their own startup/refresh, so the live
+   * lookup can be a newer generation whose manager never saw the
+   * conversation ("Conversation … not found" on the first follow-up).
+   */
+  private assistantOrchestrator?: AIResourceOrchestrator;
   private readonly statusListeners: ListenerSet<Parameters<StatusEmitter>>;
 
   constructor(
@@ -97,8 +109,11 @@ export class AssistantToolService {
     // Wait for AI resources to be initialized
     await this.aiResourceManager.initializeResources();
 
-    // Get assistant orchestrator from AIResourceManager
+    // Get assistant orchestrator from AIResourceManager and capture the
+    // generation — the assistants AND the continuation path must agree on
+    // one instance (see assistantOrchestrator).
     const orchestrator = this.aiResourceManager.getOrchestrator('assistant');
+    this.assistantOrchestrator = orchestrator;
 
     if (orchestrator) {
       const promptLoader = this.resourceLoader.getPromptLoader();
@@ -351,7 +366,9 @@ export class AssistantToolService {
     userMessage: string,
     streamingOptions?: AnalysisStreamingOptions
   ): Promise<AnalysisResult> {
-    const orchestrator = this.aiResourceManager.getOrchestrator('assistant');
+    // The CAPTURED generation, not a live lookup — the conversation lives in
+    // the manager of the orchestrator that ran the tool (see field docs).
+    const orchestrator = this.assistantOrchestrator;
     if (!orchestrator) {
       return AnalysisResultFactory.createAnalysisResult(
         'workshop_follow_up',
@@ -383,11 +400,12 @@ export class AssistantToolService {
 
   /**
    * Delete a retained conversation (workshop reset, or replacement by a new
-   * tool run). No-op when the orchestrator is gone or the id is unknown —
-   * disposal must be safe to call from any teardown path.
+   * tool run). Targets the CAPTURED orchestrator generation — the one whose
+   * manager actually holds the conversation. No-op when the orchestrator is
+   * gone or the id is unknown — disposal must be safe from any teardown path.
    */
   discardConversation(conversationId: string): void {
-    this.aiResourceManager.getOrchestrator('assistant')?.discardConversation(conversationId);
+    this.assistantOrchestrator?.discardConversation(conversationId);
   }
 
   /**

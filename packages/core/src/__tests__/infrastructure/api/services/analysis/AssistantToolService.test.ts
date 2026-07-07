@@ -1,0 +1,123 @@
+/**
+ * AssistantToolService tests — the continuation path's generation symmetry
+ * (Sprint 3 field bug).
+ *
+ * Sibling services (DictionaryService, ContextAssistantService) rebuild ALL
+ * AI resource bundles via initializeResources() during their own
+ * startup/refresh, so `getOrchestrator('assistant')` can return a NEWER
+ * generation than the one this service's assistants were built from. A tool
+ * run retains its conversation in the CAPTURED generation's
+ * ConversationManager — so continueConversation/discardConversation must use
+ * that same capture, never a live lookup, or the very first follow-up dies
+ * with "Conversation … not found".
+ */
+
+import { AssistantToolService } from '@services/analysis/AssistantToolService';
+import type { AIResourceManager } from '@orchestration/AIResourceManager';
+import type { AIResourceOrchestrator } from '@orchestration/AIResourceOrchestrator';
+import type { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
+import type { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
+import { API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
+
+const makeOrchestrator = (label: string) =>
+  ({
+    label,
+    continueConversation: jest.fn().mockResolvedValue({
+      content: `reply from ${label}`,
+      usedGuides: [],
+      usage: undefined,
+      finishReason: 'stop',
+      conversationId: 'conv-1'
+    }),
+    discardConversation: jest.fn()
+  }) as unknown as jest.Mocked<AIResourceOrchestrator> & { label: string };
+
+describe('AssistantToolService — continuation generation symmetry', () => {
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  const build = (manager: Partial<AIResourceManager>) => {
+    const resourceLoader = {
+      getPromptLoader: jest.fn().mockReturnValue({})
+    } as unknown as ResourceLoaderService;
+    const toolOptions = {
+      getOptions: jest.fn().mockReturnValue({ temperature: 0.7, maxTokens: 1000 })
+    } as unknown as ToolOptionsProvider;
+    return new AssistantToolService(
+      manager as AIResourceManager,
+      resourceLoader,
+      toolOptions,
+      { appendLine: jest.fn() } as never
+    );
+  };
+
+  it('continues and discards against the orchestrator CAPTURED at init, not a live lookup', async () => {
+    const generation1 = makeOrchestrator('gen-1');
+    const generation3 = makeOrchestrator('gen-3');
+    let liveOrchestrator: AIResourceOrchestrator = generation1;
+
+    const manager = {
+      initializeResources: jest.fn().mockResolvedValue(undefined),
+      getOrchestrator: jest.fn(() => liveOrchestrator),
+      setStatusCallback: jest.fn()
+    } as unknown as AIResourceManager;
+
+    const service = build(manager);
+    await flush(); // let the constructor's void initializeAssistants() settle
+
+    // A sibling service rebuilds the bundles: the live lookup now returns a
+    // newer generation whose ConversationManager never saw the conversation.
+    liveOrchestrator = generation3;
+
+    const result = await service.continueConversation('conv-1', 'now tighten it');
+    expect(generation1.continueConversation).toHaveBeenCalledWith(
+      'conv-1',
+      'now tighten it',
+      expect.anything()
+    );
+    expect(generation3.continueConversation).not.toHaveBeenCalled();
+    expect(result.content).toBe('reply from gen-1');
+
+    service.discardConversation('conv-1');
+    expect(generation1.discardConversation).toHaveBeenCalledWith('conv-1');
+    expect(generation3.discardConversation).not.toHaveBeenCalled();
+  });
+
+  it('a refresh re-captures: post-refresh continuations use the NEW generation', async () => {
+    const generation1 = makeOrchestrator('gen-1');
+    const generation2 = makeOrchestrator('gen-2');
+    let liveOrchestrator: AIResourceOrchestrator = generation1;
+
+    const manager = {
+      initializeResources: jest.fn().mockResolvedValue(undefined),
+      getOrchestrator: jest.fn(() => liveOrchestrator),
+      setStatusCallback: jest.fn()
+    } as unknown as AIResourceManager;
+
+    const service = build(manager);
+    await flush();
+
+    // A genuine config change: THIS service refreshes and re-captures.
+    liveOrchestrator = generation2;
+    await service.refreshConfiguration();
+
+    await service.continueConversation('conv-2', 'hello again');
+    expect(generation2.continueConversation).toHaveBeenCalled();
+    expect(generation1.continueConversation).not.toHaveBeenCalled();
+  });
+
+  it('returns the API-key warning when no orchestrator was captured', async () => {
+    const manager = {
+      initializeResources: jest.fn().mockResolvedValue(undefined),
+      getOrchestrator: jest.fn(() => undefined),
+      setStatusCallback: jest.fn()
+    } as unknown as AIResourceManager;
+
+    const service = build(manager);
+    await flush();
+
+    const result = await service.continueConversation('conv-1', 'anyone there?');
+    expect(result.content).toContain(API_KEY_NOT_CONFIGURED_HEADING);
+    // And discard is safe with nothing captured.
+    expect(() => service.discardConversation('conv-1')).not.toThrow();
+  });
+});
