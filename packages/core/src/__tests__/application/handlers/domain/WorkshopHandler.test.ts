@@ -14,12 +14,16 @@
  * handler↔aggregate contract is exactly what these sprints introduce.
  */
 
-import { WorkshopHandler, WORKSHOP_FILE_EXCERPT_MAX_WORDS } from '@/application/handlers/domain/WorkshopHandler';
+import {
+  WorkshopHandler,
+  WORKSHOP_FILE_EXCERPT_MAX_BYTES,
+  WORKSHOP_FILE_EXCERPT_MAX_WORDS
+} from '@/application/handlers/domain/WorkshopHandler';
 import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
 import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { MessageType, API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
-import type { FileSystem, LogSink, ShellService, Workspace } from '@/platform';
+import { FileType, type FileSystem, type LogSink, type ShellService, type Workspace } from '@/platform';
 import {
   createFakeFileSystem,
   createFakeShellService,
@@ -76,6 +80,7 @@ describe('WorkshopHandler', () => {
     handler = buildHandler();
   });
 
+  describe('routing, excerpt pins, tool runs, and session controls', () => {
   it('registers the seven workshop routes', () => {
     const router = new MessageRouter();
     handler.registerRoutes(router);
@@ -462,6 +467,7 @@ describe('WorkshopHandler', () => {
     expect(state.payload.session.excerpt.text).toBe('Some prose.');
     expect(postedTypes()).toEqual([MessageType.WORKSHOP_SESSION_STATE]);
   });
+  });
 
   // ── Sprint 3: conversation lifecycle (retain / continue / discard) ──────
 
@@ -476,6 +482,7 @@ describe('WorkshopHandler', () => {
     await handler.handleRunTool(message(MessageType.WORKSHOP_RUN_TOOL, { toolId }) as any);
   };
 
+  describe('conversation lifecycle', () => {
   it('asks the service to retain the conversation on every tool run', async () => {
     session.setExcerpt({ text: 'Some prose.' });
 
@@ -541,8 +548,29 @@ describe('WorkshopHandler', () => {
     expect(mockService.discardConversation).toHaveBeenCalledWith('conv-1');
   });
 
+  it('replacing the excerpt discards the retained conversation', async () => {
+    session.setExcerpt({ text: 'Some prose.' });
+    await runToolToCompletion('prose', 'conv-1');
+    postMessage.mockClear();
+
+    await handler.handleSetExcerpt(
+      message(MessageType.WORKSHOP_SET_EXCERPT, {
+        text: 'A different excerpt.',
+        relativePath: 'chapters/ch3.md'
+      }) as any
+    );
+
+    expect(session.getConversationId()).toBeUndefined();
+    expect(mockService.discardConversation).toHaveBeenCalledWith('conv-1');
+    expect(session.getExcerpt()?.text).toBe('A different excerpt.');
+    const [state] = postedOf(MessageType.WORKSHOP_SESSION_STATE);
+    expect(state.payload.session.hasConversation).toBe(false);
+  });
+  });
+
   // ── Sprint 3: free-text follow-ups (WORKSHOP_SEND_MESSAGE) ──────────────
 
+  describe('free-text follow-ups', () => {
   it('refuses a follow-up when no conversation exists', async () => {
     session.setExcerpt({ text: 'Some prose.' });
 
@@ -649,9 +677,11 @@ describe('WorkshopHandler', () => {
       ['user', 'message']
     ]);
   });
+  });
 
   // ── Sprint 3: the cancel wire (CANCEL_WORKSHOP_REQUEST) ─────────────────
 
+  describe('cancel wire', () => {
   it('cancel aborts the matching in-flight run, which resolves through the cancelled branch', async () => {
     session.setExcerpt({ text: 'Some prose.' });
 
@@ -689,6 +719,47 @@ describe('WorkshopHandler', () => {
     expect(logLines).toMatch(/Run cancelled: workshop_prose-/);
   });
 
+  it('cancel aborts a matching follow-up run and leaves no assistant reply', async () => {
+    session.setExcerpt({ text: 'Some prose.' });
+    await runToolToCompletion('prose', 'conv-1');
+    postMessage.mockClear();
+
+    let releaseFollowUp!: () => void;
+    let observedSignal: AbortSignal | undefined;
+    mockService.continueConversation.mockImplementation(async (_id, _text, streamingOptions) => {
+      observedSignal = streamingOptions?.signal;
+      await new Promise<void>((resolve) => {
+        releaseFollowUp = resolve;
+      });
+      return analysisResult('partial follow-up') as any;
+    });
+
+    const followUpPromise = handler.handleSendMessage(
+      message(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'What changes next?' }) as any
+    );
+    await Promise.resolve();
+
+    const requestId = session.getSnapshot().activeRequestId!;
+    await handler.handleCancelRequest(
+      message(MessageType.CANCEL_WORKSHOP_REQUEST, { requestId, domain: 'workshop' }) as any
+    );
+    expect(observedSignal?.aborted).toBe(true);
+
+    releaseFollowUp();
+    await followUpPromise;
+
+    const completes = postedOf(MessageType.STREAM_COMPLETE);
+    expect(completes[0].payload.cancelled).toBe(true);
+    expect(session.getSnapshot().turns.map((t) => [t.role, t.kind])).toEqual([
+      ['user', 'tool_run'],
+      ['assistant', 'tool_run'],
+      ['user', 'message']
+    ]);
+    const logLines = (log.appendLine as jest.Mock).mock.calls.flat().join('\n');
+    expect(logLines).toMatch(/Cancel requested: workshop_message-/);
+    expect(logLines).toMatch(/Run cancelled: workshop_message-/);
+  });
+
   it('cancel ignores other domains and stale request ids', async () => {
     session.setExcerpt({ text: 'Some prose.' });
 
@@ -715,14 +786,19 @@ describe('WorkshopHandler', () => {
       message(MessageType.CANCEL_WORKSHOP_REQUEST, { requestId: 'someone-else', domain: 'workshop' }) as any
     );
     expect(observedSignal?.aborted).toBe(false);
+    const logLinesBeforeSettle = (log.appendLine as jest.Mock).mock.calls.flat().join('\n');
+    expect(logLinesBeforeSettle).toMatch(/Cancel ignored: .*domain=analysis/);
+    expect(logLinesBeforeSettle).toMatch(/Cancel ignored: someone-else .*active=workshop_prose-/);
 
     releaseRun();
     await runPromise;
     expect(session.getSnapshot().turns.map((t) => t.role)).toEqual(['user', 'assistant']);
   });
+  });
 
   // ── Sprint 3: "Pin from file…" (WORKSHOP_PICK_EXCERPT_FILE) ─────────────
 
+  describe('file picker excerpt pins', () => {
   it('pins a picked file\'s content with full provenance', async () => {
     shell.pickFile = jest.fn().mockResolvedValue({
       fsPath: '/ws/chapters/ch2.md',
@@ -745,6 +821,25 @@ describe('WorkshopHandler', () => {
     expect(excerpt?.truncation).toBeUndefined();
     expect(postedOf(MessageType.WORKSHOP_SESSION_STATE)).toHaveLength(1);
     expect(postedOf(MessageType.ERROR)).toHaveLength(0);
+  });
+
+  it('redacts out-of-workspace picked paths from display metadata and logs', async () => {
+    shell.pickFile = jest.fn().mockResolvedValue({
+      fsPath: '/Users/okey/private/chapter.md',
+      uri: 'file:///Users/okey/private/chapter.md'
+    });
+    fileSystem = createFakeFileSystem({}, { '/Users/okey/private/chapter.md': 'External prose.' });
+    workspace = createFakeWorkspace({ asRelativePath: (p) => p });
+    handler = buildHandler();
+
+    await handler.handlePickExcerptFile(
+      message(MessageType.WORKSHOP_PICK_EXCERPT_FILE, {}) as any
+    );
+
+    expect(session.getExcerpt()?.relativePath).toBe('External file: chapter.md');
+    const logLines = (log.appendLine as jest.Mock).mock.calls.flat().join('\n');
+    expect(logLines).toContain('External file: chapter.md');
+    expect(logLines).not.toContain('/Users/okey/private/chapter.md');
   });
 
   it('a dismissed picker is a no-op, not an error', async () => {
@@ -781,6 +876,101 @@ describe('WorkshopHandler', () => {
     expect(logLines).toMatch(/head-sliced/);
   });
 
+  it('rejects an oversized file before reading or decoding it', async () => {
+    shell.pickFile = jest.fn().mockResolvedValue({ fsPath: '/ws/huge.log', uri: 'file:///ws/huge.log' });
+    const readFile = jest.fn();
+    fileSystem = createFakeFileSystem(
+      {
+        stat: async () => ({
+          type: FileType.File,
+          ctime: 0,
+          mtime: 0,
+          size: WORKSHOP_FILE_EXCERPT_MAX_BYTES + 1
+        }),
+        readFile
+      },
+      {}
+    );
+    workspace = createFakeWorkspace({ asRelativePath: (p) => p.replace('/ws/', '') });
+    handler = buildHandler();
+
+    await handler.handlePickExcerptFile(
+      message(MessageType.WORKSHOP_PICK_EXCERPT_FILE, {}) as any
+    );
+
+    expect(readFile).not.toHaveBeenCalled();
+    const [error] = postedOf(MessageType.ERROR);
+    expect(error.payload.message).toMatch(/too large/i);
+    expect(error.payload.details).toContain('huge.log');
+  });
+
+  it('logs which picked file was empty without exposing absolute external paths', async () => {
+    shell.pickFile = jest.fn().mockResolvedValue({
+      fsPath: '/Users/okey/private/empty.md',
+      uri: 'file:///Users/okey/private/empty.md'
+    });
+    fileSystem = createFakeFileSystem({}, { '/Users/okey/private/empty.md': '   ' });
+    workspace = createFakeWorkspace({ asRelativePath: (p) => p });
+    handler = buildHandler();
+
+    await handler.handlePickExcerptFile(
+      message(MessageType.WORKSHOP_PICK_EXCERPT_FILE, {}) as any
+    );
+
+    const [error] = postedOf(MessageType.ERROR);
+    expect(error.payload.details).toBe('External file: empty.md');
+    const logLines = (log.appendLine as jest.Mock).mock.calls.flat().join('\n');
+    expect(logLines).toContain('External file: empty.md');
+    expect(logLines).not.toContain('/Users/okey/private/empty.md');
+  });
+
+  it('refuses to replace the excerpt if a run starts while the picked file is being read', async () => {
+    session.setExcerpt({ text: 'The original excerpt.' });
+    shell.pickFile = jest.fn().mockResolvedValue({ fsPath: '/ws/chapter.md', uri: 'file:///ws/chapter.md' });
+
+    let releaseRead!: () => void;
+    const readStarted = new Promise<void>((resolve) => {
+      fileSystem = createFakeFileSystem({
+        stat: async () => ({ type: FileType.File, ctime: 0, mtime: 0, size: 20 }),
+        readFile: async () => {
+          resolve();
+          return new Promise<Uint8Array>((readResolve) => {
+            releaseRead = () => readResolve(new TextEncoder().encode('A late replacement.'));
+          });
+        }
+      });
+    });
+    workspace = createFakeWorkspace({ asRelativePath: (p) => p.replace('/ws/', '') });
+    handler = buildHandler();
+
+    const pickPromise = handler.handlePickExcerptFile(
+      message(MessageType.WORKSHOP_PICK_EXCERPT_FILE, {}) as any
+    );
+    await readStarted;
+
+    let releaseRun!: () => void;
+    mockService.analyzeProse.mockImplementation(async () => {
+      await new Promise<void>((resolve) => {
+        releaseRun = resolve;
+      });
+      return analysisResult('analysis') as any;
+    });
+    const runPromise = handler.handleRunTool(
+      message(MessageType.WORKSHOP_RUN_TOOL, { toolId: 'prose' }) as any
+    );
+    await Promise.resolve();
+
+    releaseRead();
+    await pickPromise;
+
+    const errors = postedOf(MessageType.ERROR);
+    expect(errors[0].payload.message).toMatch(/still running/i);
+    expect(session.getExcerpt()?.text).toBe('The original excerpt.');
+
+    releaseRun();
+    await runPromise;
+  });
+
   it('refuses to pick a file mid-run (same guard as re-pin)', async () => {
     session.setExcerpt({ text: 'The original excerpt.' });
     shell.pickFile = jest.fn();
@@ -810,7 +1000,9 @@ describe('WorkshopHandler', () => {
     releaseRun();
     await runPromise;
   });
+  });
 
+  describe('disposal', () => {
   it('dispose releases the status listener and aborts any in-flight run', async () => {
     const disposeListener = jest.fn();
     (mockService.addStatusListener as jest.Mock).mockReturnValue(disposeListener);
@@ -841,5 +1033,6 @@ describe('WorkshopHandler', () => {
     releaseRun();
     await runPromise;
     expect(session.getSnapshot().turns.map((t) => t.role)).toEqual(['user']);
+  });
   });
 });

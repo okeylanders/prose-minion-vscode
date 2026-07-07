@@ -129,6 +129,10 @@ export class AIResourceOrchestrator {
     };
   }
 
+  private isAborted(signal?: AbortSignal): boolean {
+    return signal?.aborted ?? false;
+  }
+
   /**
    * Execute an AI request with agent capabilities support
    * Handles multi-turn conversations for guide requests
@@ -292,15 +296,16 @@ export class AIResourceOrchestrator {
       // Clean up and return final response
       const cleanedResponse = ResourceRequestParser.stripResourceTags(last.content);
       const truncatedNote = this.appendTruncationNote(last.content, last.finishReason);
+      const visibleResponse = cleanedResponse + truncatedNote;
       this.outputChannel?.appendLine(`[AIResourceOrchestrator] Conversation complete. Used ${usedGuides.length} guides total\n`);
 
       // Retain only a COMPLETED exchange: an aborted run's partial content is
       // not a turn worth continuing (the workshop treats it as abandoned too).
-      const wasCancelled = (termination.signal?.aborted ?? false) || (options.signal?.aborted ?? false);
-      if (options.retainConversation && !wasCancelled) {
+      const wasAborted = this.isAborted(requestOptions.signal);
+      if (options.retainConversation && !wasAborted) {
         this.conversationManager.addMessage(conversationId, {
           role: 'assistant',
-          content: last.content
+          content: visibleResponse
         });
         retained = true;
         this.outputChannel?.appendLine(
@@ -309,7 +314,7 @@ export class AIResourceOrchestrator {
       }
 
       return {
-        content: cleanedResponse + truncatedNote,
+        content: visibleResponse,
         usedGuides,
         requestedResources: [],
         usage: totalUsage,
@@ -408,6 +413,13 @@ export class AIResourceOrchestrator {
         content = response.content;
         usage = response.usage;
         finishReason = response.finishReason;
+      }
+
+      if (!cancelled && this.isAborted(requestOptions.signal)) {
+        cancelled = true;
+        this.outputChannel?.appendLine(
+          `[AIResourceOrchestrator] Continuation cancelled after stream finished - preserving ${content.length} chars of partial response`
+        );
       }
 
       if (usage) {

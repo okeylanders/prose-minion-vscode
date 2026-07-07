@@ -22,7 +22,7 @@
  * in-flight one, reset aborts, and zombie completions are refused + logged.
  */
 
-import { FileSystem, LogSink, ShellService, Workspace } from '@/platform';
+import { FileSystem, FileType, LogSink, ShellService, Workspace } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
 import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
@@ -69,9 +69,26 @@ const FOLLOW_UP_LABEL = 'Follow-up';
  * pinned WITH a visible truncation notice, never silently.
  */
 export const WORKSHOP_FILE_EXCERPT_MAX_WORDS = 10000;
+export const WORKSHOP_FILE_EXCERPT_MAX_BYTES = 5 * 1024 * 1024;
 
 const MID_RUN_EXCERPT_GUARD_MESSAGE =
   'A tool is still running. Wait for it to finish (or start a new session) before replacing the excerpt.';
+
+const isAbsolutePath = (filePath: string): boolean =>
+  filePath.startsWith('/') || /^[A-Za-z]:[\\/]/.test(filePath) || filePath.startsWith('\\\\');
+
+const baseName = (filePath: string): string => filePath.split(/[\\/]/).filter(Boolean).pop() ?? filePath;
+
+const formatBytes = (bytes: number): string => {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  const kib = bytes / 1024;
+  if (kib < 1024) {
+    return `${kib.toFixed(1)} KiB`;
+  }
+  return `${(kib / 1024).toFixed(1)} MiB`;
+};
 
 export class WorkshopHandler {
   /** The single in-flight run — at most one; a new run preempts it. */
@@ -250,15 +267,7 @@ export class WorkshopHandler {
       }
       this.postSessionState();
     } finally {
-      if (this.activeRun?.requestId === requestId) {
-        this.activeRun = undefined;
-      }
-      // Only blank the ticker when NO successor owns the slot (PR #67 #15):
-      // a preempted run's late finally must not erase the new run's
-      // "Streaming…" status mid-stream.
-      if (!this.activeRun) {
-        this.sendStatus('');
-      }
+      this.settleActiveRun(requestId);
     }
   }
 
@@ -356,12 +365,7 @@ export class WorkshopHandler {
       }
       this.postSessionState();
     } finally {
-      if (this.activeRun?.requestId === requestId) {
-        this.activeRun = undefined;
-      }
-      if (!this.activeRun) {
-        this.sendStatus('');
-      }
+      this.settleActiveRun(requestId);
     }
   }
 
@@ -374,6 +378,9 @@ export class WorkshopHandler {
   async handleCancelRequest(message: CancelWorkshopRequestMessage): Promise<void> {
     const { requestId, domain } = message.payload;
     if (domain !== 'workshop') {
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Cancel ignored: ${requestId} (domain=${domain}, active=${this.activeRun?.requestId ?? 'none'})`
+      );
       return;
     }
     if (this.activeRun?.requestId === requestId) {
@@ -381,7 +388,11 @@ export class WorkshopHandler {
         `[WorkshopHandler] Cancel requested: ${requestId} (${this.activeRun.label})`
       );
       this.activeRun.controller.abort();
+      return;
     }
+    this.outputChannel.appendLine(
+      `[WorkshopHandler] Cancel ignored: ${requestId} (domain=${domain}, active=${this.activeRun?.requestId ?? 'none'})`
+    );
   }
 
   async handleSetExcerpt(message: WorkshopSetExcerptMessage): Promise<void> {
@@ -403,7 +414,7 @@ export class WorkshopHandler {
       return;
     }
 
-    this.session.setExcerpt({ text, sourceUri, relativePath });
+    this.replaceExcerpt({ text, sourceUri, relativePath });
     this.outputChannel.appendLine(
       `[WorkshopHandler] Excerpt pinned (${text.length} chars${relativePath ? `, ${relativePath}` : ''})`
     );
@@ -438,18 +449,57 @@ export class WorkshopHandler {
       return;
     }
 
+    const displayPath = this.toDisplayPath(picked.fsPath);
+    try {
+      const stat = await this.fileSystem.stat(picked.fsPath);
+      if (stat.type !== FileType.File) {
+        this.sendError('workshop', 'The selected path is not a file.', displayPath);
+        return;
+      }
+      if (stat.size > WORKSHOP_FILE_EXCERPT_MAX_BYTES) {
+        this.sendError(
+          'workshop',
+          `That file is too large to pin safely (max ${formatBytes(WORKSHOP_FILE_EXCERPT_MAX_BYTES)}).`,
+          `${displayPath} is ${formatBytes(stat.size)}`
+        );
+        return;
+      }
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      this.sendError('workshop', `Could not inspect the selected file.`, `${displayPath}: ${details}`);
+      return;
+    }
+
+    if (this.activeRun) {
+      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
+      return;
+    }
+
+    let raw: Uint8Array;
+    try {
+      raw = await this.fileSystem.readFile(picked.fsPath);
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      this.sendError('workshop', `Could not read the selected file.`, `${displayPath}: ${details}`);
+      return;
+    }
+
+    if (this.activeRun) {
+      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
+      return;
+    }
+
     let content: string;
     try {
-      const raw = await this.fileSystem.readFile(picked.fsPath);
       content = Buffer.from(raw).toString('utf8');
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
-      this.sendError('workshop', `Could not read the selected file.`, details);
+      this.sendError('workshop', `Could not decode the selected file as UTF-8.`, `${displayPath}: ${details}`);
       return;
     }
 
     if (content.trim().length === 0) {
-      this.sendError('workshop', 'That file is empty — nothing to pin.');
+      this.sendError('workshop', 'That file is empty — nothing to pin.', displayPath);
       return;
     }
 
@@ -463,14 +513,13 @@ export class WorkshopHandler {
       text = trimmed.trimmed;
       truncation = { pinnedWords: trimmed.trimmedWords, totalWords };
       this.outputChannel.appendLine(
-        `[WorkshopHandler] File excerpt head-sliced: ${trimmed.trimmedWords} of ${totalWords} words (${picked.fsPath})`
+        `[WorkshopHandler] File excerpt head-sliced: ${trimmed.trimmedWords} of ${totalWords} words (${displayPath})`
       );
     }
 
-    const relativePath = this.workspace.asRelativePath(picked.fsPath);
-    this.session.setExcerpt({ text, sourceUri: picked.uri, relativePath, truncation });
+    this.replaceExcerpt({ text, sourceUri: picked.uri, relativePath: displayPath, truncation });
     this.outputChannel.appendLine(
-      `[WorkshopHandler] Excerpt pinned from file (${text.length} chars, ${relativePath})`
+      `[WorkshopHandler] Excerpt pinned from file (${text.length} chars, ${displayPath})`
     );
     this.postSessionState();
   }
@@ -535,6 +584,42 @@ export class WorkshopHandler {
       this.session.abandonRun(this.activeRun.requestId);
       this.activeRun = undefined;
     }
+  }
+
+  private settleActiveRun(requestId: string): void {
+    if (this.activeRun?.requestId === requestId) {
+      this.activeRun = undefined;
+    }
+    // Only blank the ticker when NO successor owns the slot (PR #67 #15):
+    // a preempted run's late finally must not erase the new run's
+    // "Streaming…" status mid-stream.
+    if (!this.activeRun) {
+      this.sendStatus('');
+    }
+  }
+
+  private replaceExcerpt(input: {
+    text: string;
+    sourceUri?: string;
+    relativePath?: string;
+    truncation?: WorkshopExcerptTruncation;
+  }): void {
+    const discardedConversationId = this.session.clearConversation();
+    if (discardedConversationId) {
+      this.assistantToolService.discardConversation(discardedConversationId);
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Conversation discarded after excerpt replacement: ${discardedConversationId}`
+      );
+    }
+    this.session.setExcerpt(input);
+  }
+
+  private toDisplayPath(filePath: string): string {
+    const relativePath = this.workspace.asRelativePath(filePath);
+    if (relativePath === filePath || isAbsolutePath(relativePath)) {
+      return `External file: ${baseName(filePath)}`;
+    }
+    return relativePath;
   }
 
   // Message helpers (domain owns its message lifecycle)

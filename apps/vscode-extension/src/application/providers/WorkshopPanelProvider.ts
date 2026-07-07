@@ -145,7 +145,7 @@ export class WorkshopPanelProvider implements vscode.Disposable {
     this.openOrReveal();
     const message: WorkshopSetExcerptMessage = {
       type: MessageType.WORKSHOP_SET_EXCERPT,
-      source: 'extension.command.workshop_selection',
+      source: 'webview.workshop',
       payload,
       timestamp: Date.now()
     };

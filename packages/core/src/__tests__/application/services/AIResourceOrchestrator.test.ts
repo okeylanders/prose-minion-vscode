@@ -400,6 +400,28 @@ describe('AIResourceOrchestrator', () => {
       expect(realManager.hasConversation(conversationId)).toBe(true);
     });
 
+    it('retainConversation records the cleaned final assistant turn, not raw resource tags', async () => {
+      const guideRequestResponse = {
+        content: '<guide-request path=["endless-guide.md"] />',
+        finishReason: 'stop',
+        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 }
+      };
+      mockOpenRouterClient.createChatCompletion.mockResolvedValue(guideRequestResponse);
+      mockGuideLoader.loadGuide.mockResolvedValue('# Guide Content');
+
+      const result = await multiTurnOrchestrator.executeWithAgentCapabilities(
+        'workshop-prose',
+        'You are a prose assistant.',
+        'Analyze this excerpt.',
+        { includeCraftGuides: true, retainConversation: true }
+      );
+
+      expect(result.content).toBe('');
+      expect(result.conversationId).toBeDefined();
+      const messages = realManager.getMessages(result.conversationId!);
+      expect(messages[messages.length - 1]).toEqual({ role: 'assistant', content: '' });
+    });
+
     it('without retainConversation the conversation is deleted (single-shot default)', async () => {
       mockOpenRouterClient.createChatCompletion.mockResolvedValueOnce({
         content: 'One-shot analysis.',
@@ -474,6 +496,31 @@ describe('AIResourceOrchestrator', () => {
 
       expect(result.cancelled).toBe(true);
       // No dangling user message: the history is still [system, user, assistant].
+      expect(realManager.getMessages(conversationId)).toHaveLength(3);
+    });
+
+    it('a follow-up aborted as the stream finishes cleanly does not append invisible history', async () => {
+      const conversationId = await seedRetainedConversation();
+      const controller = new AbortController();
+
+      mockOpenRouterClient.createStreamingChatCompletion = jest.fn(async function* () {
+        yield { token: 'finished reply' };
+        controller.abort();
+        yield {
+          done: true,
+          finishReason: 'stop',
+          usage: { promptTokens: 120, completionTokens: 30, totalTokens: 150 }
+        };
+      }) as any;
+
+      const result = await multiTurnOrchestrator.continueConversation(
+        conversationId,
+        'Now tighten it.',
+        { signal: controller.signal, onToken: jest.fn() }
+      );
+
+      expect(result.cancelled).toBe(true);
+      expect(result.content).toBe('finished reply');
       expect(realManager.getMessages(conversationId)).toHaveLength(3);
     });
 
