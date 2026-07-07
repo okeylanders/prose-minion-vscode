@@ -24,7 +24,7 @@ import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
 import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
 import { DialogueFocus, WritingToolsFocus, StatusEmitter, API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
-import { StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
+import { AIResourceOrchestrator, StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
 
 /**
  * Options for streaming analysis operations
@@ -34,6 +34,12 @@ export interface AnalysisStreamingOptions {
   signal?: AbortSignal;
   /** Callback for streaming tokens (enables streaming mode) */
   onToken?: StreamingTokenCallback;
+  /**
+   * Retain the conversation after a successful run for multi-turn
+   * continuation (Workshop). The result carries the conversationId to
+   * continue via continueConversation(); single-shot callers omit this.
+   */
+  retainConversation?: boolean;
 }
 
 /**
@@ -50,6 +56,18 @@ export class AssistantToolService {
   private dialogueAssistant?: DialogueMicrobeatAssistant;
   private proseAssistant?: ProseAssistant;
   private writingToolsAssistant?: WritingToolsAssistant;
+  /**
+   * The orchestrator GENERATION the assistants above were built from —
+   * captured in initializeAssistants alongside them. Conversations retained
+   * by a tool run live in THIS instance's ConversationManager, so the
+   * continuation path must use the same capture, never a live
+   * `getOrchestrator('assistant')` lookup: sibling services
+   * (DictionaryService, ContextAssistantService) rebuild ALL bundles via
+   * initializeResources() during their own startup/refresh, so the live
+   * lookup can be a newer generation whose manager never saw the
+   * conversation ("Conversation … not found" on the first follow-up).
+   */
+  private assistantOrchestrator?: AIResourceOrchestrator;
   private readonly statusListeners: ListenerSet<Parameters<StatusEmitter>>;
 
   constructor(
@@ -91,8 +109,11 @@ export class AssistantToolService {
     // Wait for AI resources to be initialized
     await this.aiResourceManager.initializeResources();
 
-    // Get assistant orchestrator from AIResourceManager
+    // Get assistant orchestrator from AIResourceManager and capture the
+    // generation — the assistants AND the continuation path must agree on
+    // one instance (see assistantOrchestrator).
     const orchestrator = this.aiResourceManager.getOrchestrator('assistant');
+    this.assistantOrchestrator = orchestrator;
 
     if (orchestrator) {
       const promptLoader = this.resourceLoader.getPromptLoader();
@@ -176,7 +197,8 @@ export class AssistantToolService {
         {
           ...options,
           signal: streamingOptions?.signal,
-          onToken: streamingOptions?.onToken
+          onToken: streamingOptions?.onToken,
+          retainConversation: streamingOptions?.retainConversation
         }
       );
 
@@ -187,7 +209,8 @@ export class AssistantToolService {
         executionResult.content,
         executionResult.usedGuides,
         executionResult.usage,
-        executionResult.finishReason
+        executionResult.finishReason,
+        executionResult.conversationId
       );
     } catch (error) {
       // AbortError is now caught in the orchestrator, so this is only for other errors
@@ -242,7 +265,8 @@ export class AssistantToolService {
           temperature: options.temperature,
           maxTokens: options.maxTokens,
           signal: streamingOptions?.signal,
-          onToken: streamingOptions?.onToken
+          onToken: streamingOptions?.onToken,
+          retainConversation: streamingOptions?.retainConversation
         }
       );
 
@@ -252,7 +276,8 @@ export class AssistantToolService {
         executionResult.content,
         executionResult.usedGuides,
         executionResult.usage,
-        executionResult.finishReason
+        executionResult.finishReason,
+        executionResult.conversationId
       );
     } catch (error) {
       // AbortError is now caught in the orchestrator, so this is only for other errors
@@ -304,7 +329,8 @@ export class AssistantToolService {
         {
           ...options,
           signal: streamingOptions?.signal,
-          onToken: streamingOptions?.onToken
+          onToken: streamingOptions?.onToken,
+          retainConversation: streamingOptions?.retainConversation
         }
       );
 
@@ -314,7 +340,8 @@ export class AssistantToolService {
         executionResult.content,
         executionResult.usedGuides,
         executionResult.usage,
-        executionResult.finishReason
+        executionResult.finishReason,
+        executionResult.conversationId
       );
     } catch (error) {
       // AbortError is now caught in the orchestrator, so this is only for other errors
@@ -323,6 +350,62 @@ export class AssistantToolService {
         `Error: ${error instanceof Error ? error.message : String(error)}`
       );
     }
+  }
+
+  /**
+   * Continue a retained assistant-scope conversation with a free-text
+   * follow-up (Workshop multi-turn, ADR 2026-07-03 Sprint 3).
+   *
+   * Unlike the analyze* methods this does NOT catch errors into content
+   * strings: the Workshop handler owns the error UX (error rail vs thread)
+   * and needs ConversationNotFoundError to survive intact so it can tell
+   * "conversation expired" apart from a transport failure.
+   */
+  async continueConversation(
+    conversationId: string,
+    userMessage: string,
+    streamingOptions?: AnalysisStreamingOptions
+  ): Promise<AnalysisResult> {
+    // The CAPTURED generation, not a live lookup — the conversation lives in
+    // the manager of the orchestrator that ran the tool (see field docs).
+    const orchestrator = this.assistantOrchestrator;
+    if (!orchestrator) {
+      return AnalysisResultFactory.createAnalysisResult(
+        'workshop_follow_up',
+        this.getApiKeyWarning()
+      );
+    }
+
+    const options = this.toolOptions.getOptions();
+    this.outputChannel?.appendLine(
+      `[AssistantToolService] Continuing conversation ${conversationId} | Streaming: ${!!streamingOptions?.onToken}`
+    );
+
+    const executionResult = await orchestrator.continueConversation(conversationId, userMessage, {
+      temperature: options.temperature,
+      maxTokens: options.maxTokens,
+      signal: streamingOptions?.signal,
+      onToken: streamingOptions?.onToken
+    });
+
+    return AnalysisResultFactory.createAnalysisResult(
+      'workshop_follow_up',
+      executionResult.content,
+      executionResult.usedGuides,
+      executionResult.usage,
+      executionResult.finishReason,
+      executionResult.conversationId
+    );
+  }
+
+  /**
+   * Delete a retained conversation (workshop reset, or replacement by a new
+   * tool run). Targets the CAPTURED orchestrator generation — the one whose
+   * manager actually holds the conversation. No-op when the orchestrator is
+   * gone or the id is unknown — disposal must be safe from any teardown path.
+   */
+  discardConversation(conversationId: string): void {
+    this.assistantOrchestrator?.discardConversation(conversationId);
   }
 
   /**

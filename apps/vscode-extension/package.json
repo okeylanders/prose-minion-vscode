@@ -99,7 +99,8 @@
     "onCommand:prose-minion.wordLookupSelection",
     "onCommand:prose-minion.analyzeSelection",
     "onCommand:prose-minion.showOutputChannel",
-    "onCommand:prose-minion.openWorkshop"
+    "onCommand:prose-minion.openWorkshop",
+    "onCommand:prose-minion.workshopSelection"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -143,6 +144,10 @@
       {
         "command": "prose-minion.openWorkshop",
         "title": "Prose Minion: Open Workshop"
+      },
+      {
+        "command": "prose-minion.workshopSelection",
+        "title": "Prose Minion: Send Selection to Workshop"
       }
     ],
     "menus": {
@@ -151,6 +156,11 @@
           "when": "editorHasSelection",
           "command": "prose-minion.assistantSelection",
           "group": "prose-minion@1"
+        },
+        {
+          "when": "editorHasSelection",
+          "command": "prose-minion.workshopSelection",
+          "group": "prose-minion@2"
         },
         {
           "when": "editorHasSelection",

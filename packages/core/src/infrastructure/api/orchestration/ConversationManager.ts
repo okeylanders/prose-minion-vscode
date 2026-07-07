@@ -6,10 +6,26 @@
 import { LogSink } from '@/platform';
 import { OpenRouterMessage } from '@providers/OpenRouterClient';
 
+/**
+ * Thrown when a caller references a conversation id this manager no longer
+ * holds — typically after a config change rebuilt the AI resources (each
+ * rebuild gets a fresh manager) or an explicit delete. Multi-turn callers
+ * (WorkshopHandler) catch this by name to surface an honest "conversation
+ * expired" message instead of silently cold-restarting.
+ */
+export class ConversationNotFoundError extends Error {
+  constructor(conversationId: string) {
+    super(`Conversation ${conversationId} not found`);
+    this.name = 'ConversationNotFoundError';
+  }
+}
+
 export interface ConversationContext {
   toolName: string;
   messages: OpenRouterMessage[];
   lastActivity: number;
+  /** Pinned conversations survive clearOldConversations (multi-turn sessions). */
+  pinned?: boolean;
 }
 
 export class ConversationManager {
@@ -46,7 +62,7 @@ export class ConversationManager {
     const conversation = this.conversations.get(conversationId);
 
     if (!conversation) {
-      throw new Error(`Conversation ${conversationId} not found`);
+      throw new ConversationNotFoundError(conversationId);
     }
 
     conversation.messages.push(message);
@@ -60,10 +76,32 @@ export class ConversationManager {
     const conversation = this.conversations.get(conversationId);
 
     if (!conversation) {
-      throw new Error(`Conversation ${conversationId} not found`);
+      throw new ConversationNotFoundError(conversationId);
     }
 
     return [...conversation.messages]; // Return copy to prevent external mutation
+  }
+
+  /**
+   * Exempt a conversation from idle cleanup. A multi-turn session (Workshop)
+   * outlives the 5-minute reaper window by design — the user is thinking, not
+   * gone. Explicit deleteConversation always works regardless of pinning.
+   */
+  pinConversation(conversationId: string): void {
+    const conversation = this.conversations.get(conversationId);
+
+    if (!conversation) {
+      throw new ConversationNotFoundError(conversationId);
+    }
+
+    conversation.pinned = true;
+  }
+
+  /**
+   * True when the id names a conversation this manager currently holds.
+   */
+  hasConversation(conversationId: string): boolean {
+    return this.conversations.has(conversationId);
   }
 
   /**
@@ -97,7 +135,7 @@ export class ConversationManager {
     const idsToDelete: string[] = [];
 
     for (const [id, conversation] of this.conversations) {
-      if (now - conversation.lastActivity > maxAgeMs) {
+      if (!conversation.pinned && now - conversation.lastActivity > maxAgeMs) {
         idsToDelete.push(id);
       }
     }

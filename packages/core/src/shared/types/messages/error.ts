@@ -64,6 +64,7 @@ export type ErrorSource =
   // Workshop editor tab
   | 'workshop'
   | 'workshop.run_tool'
+  | 'workshop.send_message'
 
   // Unknown/legacy (fallback)
   | 'unknown';

@@ -101,10 +101,13 @@ export enum MessageType {
   CANCEL_DICTIONARY_REQUEST = 'cancel_dictionary_request',
   CANCEL_CONTEXT_REQUEST = 'cancel_context_request',
   CANCEL_CATEGORY_SEARCH_REQUEST = 'cancel_category_search_request',
+  CANCEL_WORKSHOP_REQUEST = 'cancel_workshop_request',
 
-  // Workshop editor tab (ADR 2026-07-03, Sprint 2 — session spine)
+  // Workshop editor tab (ADR 2026-07-03; Sprint 2 session spine, Sprint 3 multi-turn)
   WORKSHOP_RUN_TOOL = 'workshop_run_tool',
+  WORKSHOP_SEND_MESSAGE = 'workshop_send_message',
   WORKSHOP_SET_EXCERPT = 'workshop_set_excerpt',
+  WORKSHOP_PICK_EXCERPT_FILE = 'workshop_pick_excerpt_file',
   WORKSHOP_RESET_SESSION = 'workshop_reset_session',
   WORKSHOP_REQUEST_SESSION = 'workshop_request_session',
   WORKSHOP_TURN = 'workshop_turn',

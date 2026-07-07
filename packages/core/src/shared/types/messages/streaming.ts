@@ -95,3 +95,7 @@ export interface CancelContextRequestMessage extends MessageEnvelope<CancelReque
 export interface CancelCategorySearchRequestMessage extends MessageEnvelope<CancelRequestPayload> {
   type: MessageType.CANCEL_CATEGORY_SEARCH_REQUEST;
 }
+
+export interface CancelWorkshopRequestMessage extends MessageEnvelope<CancelRequestPayload> {
+  type: MessageType.CANCEL_WORKSHOP_REQUEST;
+}

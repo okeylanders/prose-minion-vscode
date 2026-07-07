@@ -1,15 +1,22 @@
 /**
- * WorkshopSessionService tests — the Sprint 2 session aggregate.
+ * WorkshopSessionService tests — the Sprint 2 session aggregate + the
+ * Sprint 3 conversation lifecycle.
  *
  * Behavior under test (sprint acceptance criteria):
  * - set-excerpt pins host-stamped excerpt state,
  * - a tool run appends a user+assistant turn pair and tracks the active tool,
+ * - a successful completion ADOPTS its retained conversation id; follow-up
+ *   message runs require it; reset returns-and-clears it (Sprint 3),
  * - reset clears the thread and active run (excerpt survives),
- * - stale completions (reset/preempt mid-stream) never corrupt the thread,
- * - snapshots are copies — mutating them cannot reach session truth.
+ * - stale completions (reset/preempt mid-stream) never corrupt the thread
+ *   and never adopt a conversation,
+ * - snapshots are copies, and are BOUNDED to the turn window (PR #67 #12).
  */
 
-import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
+import {
+  WorkshopSessionService,
+  WORKSHOP_SNAPSHOT_TURN_WINDOW
+} from '@/application/services/WorkshopSessionService';
 
 describe('WorkshopSessionService', () => {
   let clock: number;
@@ -42,7 +49,7 @@ describe('WorkshopSessionService', () => {
   it('appends a user+assistant turn pair across a begin/complete run', () => {
     pin();
     const userTurn = service.beginToolRun('dialogue', 'req-1');
-    const assistantTurn = service.completeToolRun(
+    const assistantTurn = service.completeRun(
       'req-1',
       'Beat analysis…',
       { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
@@ -78,7 +85,7 @@ describe('WorkshopSessionService', () => {
     expect(snapshot.activeToolId).toBe('cliche');
     expect(snapshot.activeRequestId).toBe('req-1');
 
-    service.completeToolRun('req-1', 'done');
+    service.completeRun('req-1', 'done');
     snapshot = service.getSnapshot();
     expect(snapshot.activeToolId).toBeUndefined();
     expect(snapshot.activeRequestId).toBeUndefined();
@@ -89,7 +96,7 @@ describe('WorkshopSessionService', () => {
     service.beginToolRun('prose', 'req-1');
     service.beginToolRun('gestures', 'req-2'); // fresh turn preempts req-1
 
-    expect(service.completeToolRun('req-1', 'late result')).toBeUndefined();
+    expect(service.completeRun('req-1', 'late result')).toBeUndefined();
 
     const { turns, activeRequestId } = service.getSnapshot();
     // Two user turns, no assistant turn from the stale completion.
@@ -100,7 +107,7 @@ describe('WorkshopSessionService', () => {
   it('abandon clears the active run but keeps the attempted user turn', () => {
     pin();
     service.beginToolRun('editor', 'req-1');
-    service.abandonToolRun('req-1');
+    service.abandonRun('req-1');
 
     const snapshot = service.getSnapshot();
     expect(snapshot.activeToolId).toBeUndefined();
@@ -108,13 +115,13 @@ describe('WorkshopSessionService', () => {
     expect(snapshot.turns[0].role).toBe('user');
 
     // Completion after abandon is stale too.
-    expect(service.completeToolRun('req-1', 'late')).toBeUndefined();
+    expect(service.completeRun('req-1', 'late')).toBeUndefined();
   });
 
   it('reset clears turns and the active run while the excerpt survives', () => {
     const excerpt = pin();
     service.beginToolRun('style', 'req-1');
-    service.completeToolRun('req-1', 'result');
+    service.completeRun('req-1', 'result');
     service.beginToolRun('fresh', 'req-2');
 
     service.reset();
@@ -126,14 +133,137 @@ describe('WorkshopSessionService', () => {
     expect(snapshot.excerpt).toEqual(excerpt);
 
     // The pre-reset run can no longer land a turn.
-    expect(service.completeToolRun('req-2', 'zombie result')).toBeUndefined();
+    expect(service.completeRun('req-2', 'zombie result')).toBeUndefined();
     expect(service.getSnapshot().turns).toEqual([]);
+  });
+
+  // ── Sprint 3: conversation lifecycle ────────────────────────────────────
+
+  it('adopts the retained conversation id on a successful completion', () => {
+    pin();
+    expect(service.getConversationId()).toBeUndefined();
+    expect(service.getSnapshot().hasConversation).toBe(false);
+
+    service.beginToolRun('dialogue', 'req-1');
+    service.completeRun('req-1', 'analysis', undefined, false, 'conv-1');
+
+    expect(service.getConversationId()).toBe('conv-1');
+    expect(service.getSnapshot().hasConversation).toBe(true);
+  });
+
+  it('a completion without a conversation id keeps the existing conversation', () => {
+    pin();
+    service.beginToolRun('dialogue', 'req-1');
+    service.completeRun('req-1', 'analysis', undefined, false, 'conv-1');
+
+    service.beginMessageRun('now tighten it', 'req-2');
+    service.completeRun('req-2', 'tightened');
+
+    expect(service.getConversationId()).toBe('conv-1');
+  });
+
+  it('a stale (zombie) completion never adopts its conversation', () => {
+    pin();
+    service.beginToolRun('prose', 'req-1');
+    service.beginToolRun('gestures', 'req-2'); // preempts req-1
+
+    expect(service.completeRun('req-1', 'late', undefined, false, 'conv-zombie')).toBeUndefined();
+    expect(service.getConversationId()).toBeUndefined();
+  });
+
+  it('a follow-up message run appends the user text and completes as a message turn', () => {
+    pin();
+    service.beginToolRun('dialogue', 'req-1');
+    service.completeRun('req-1', 'analysis', undefined, false, 'conv-1');
+
+    const userTurn = service.beginMessageRun('Now tighten variation two.', 'req-2');
+    expect(userTurn).toMatchObject({
+      role: 'user',
+      kind: 'message',
+      content: 'Now tighten variation two.'
+    });
+    expect(userTurn.toolId).toBeUndefined();
+    expect(service.getSnapshot().activeRequestId).toBe('req-2');
+    // No tool is running — a follow-up has no activeToolId.
+    expect(service.getSnapshot().activeToolId).toBeUndefined();
+
+    const assistantTurn = service.completeRun('req-2', 'Tightened version…', {
+      promptTokens: 100,
+      completionTokens: 50,
+      totalTokens: 150
+    });
+    expect(assistantTurn).toMatchObject({
+      role: 'assistant',
+      kind: 'message',
+      content: 'Tightened version…'
+    });
+    expect(assistantTurn?.toolLabel).toBeUndefined();
+    // The conversation id is stable across the follow-up.
+    expect(service.getConversationId()).toBe('conv-1');
+  });
+
+  it('refuses a message run without a conversation to continue', () => {
+    pin();
+    expect(() => service.beginMessageRun('hello?', 'req-1')).toThrow(/active conversation/);
+  });
+
+  it('reset clears and RETURNS the conversation id so the caller can discard it', () => {
+    pin();
+    service.beginToolRun('dialogue', 'req-1');
+    service.completeRun('req-1', 'analysis', undefined, false, 'conv-1');
+
+    expect(service.reset()).toBe('conv-1');
+    expect(service.getConversationId()).toBeUndefined();
+    expect(service.getSnapshot().hasConversation).toBe(false);
+    // A reset with no conversation returns undefined (nothing to discard).
+    expect(service.reset()).toBeUndefined();
+  });
+
+  it('a post-reset run adopts a fresh conversation id', () => {
+    pin();
+    service.beginToolRun('dialogue', 'req-1');
+    service.completeRun('req-1', 'analysis', undefined, false, 'conv-1');
+    service.reset();
+
+    service.beginToolRun('prose', 'req-2');
+    service.completeRun('req-2', 'fresh analysis', undefined, false, 'conv-2');
+
+    expect(service.getConversationId()).toBe('conv-2');
+  });
+
+  // ── Sprint 3: bounded snapshots (PR #67 review #12) ─────────────────────
+
+  it('windows snapshot turns and reports the total + truncated counts', () => {
+    pin();
+    const totalRuns = WORKSHOP_SNAPSHOT_TURN_WINDOW / 2 + 5; // > window in turns
+    for (let i = 0; i < totalRuns; i++) {
+      service.beginToolRun('prose', `req-${i}`);
+      service.completeRun(`req-${i}`, `analysis ${i}`);
+    }
+
+    const snapshot = service.getSnapshot();
+    const totalTurns = totalRuns * 2;
+    expect(snapshot.totalTurns).toBe(totalTurns);
+    expect(snapshot.turns).toHaveLength(WORKSHOP_SNAPSHOT_TURN_WINDOW);
+    expect(snapshot.truncatedTurns).toBe(totalTurns - WORKSHOP_SNAPSHOT_TURN_WINDOW);
+    // The window keeps the MOST RECENT turns.
+    expect(snapshot.turns[snapshot.turns.length - 1].content).toBe(`analysis ${totalRuns - 1}`);
+  });
+
+  it('reports zero truncation for a thread inside the window', () => {
+    pin();
+    service.beginToolRun('prose', 'req-1');
+    service.completeRun('req-1', 'analysis');
+
+    const snapshot = service.getSnapshot();
+    expect(snapshot.totalTurns).toBe(2);
+    expect(snapshot.truncatedTurns).toBe(0);
   });
 
   it('hands out copies — mutating a snapshot or returned turn never reaches session state', () => {
     pin();
     service.beginToolRun('prose', 'req-1');
-    const returned = service.completeToolRun('req-1', 'result', {
+    const returned = service.completeRun('req-1', 'result', {
       promptTokens: 1,
       completionTokens: 2,
       totalTokens: 3

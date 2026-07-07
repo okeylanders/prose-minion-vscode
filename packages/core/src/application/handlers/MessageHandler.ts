@@ -277,12 +277,16 @@ export class MessageHandler {
     );
 
     // Workshop editor tab (ADR 2026-07-03) — the 12th domain, composed exactly
-    // like the other 11: injected services, nothing constructed here beyond
-    // the handler itself.
+    // like the other 11: injected services + platform ports, nothing
+    // constructed here beyond the handler itself. Shell/fileSystem/workspace
+    // feed the Sprint 3 "Pin from file…" seam (picker → read → provenance).
     this.workshopHandler = new WorkshopHandler(
       assistantToolService,
       workshopSessionService,
       this.postMessage.bind(this),
+      this.platform.shell,
+      this.platform.fileSystem,
+      this.platform.workspace,
       outputChannel
     );
     // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)

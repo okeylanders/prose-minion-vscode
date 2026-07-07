@@ -1,5 +1,6 @@
 /**
- * WorkshopApp — the Workshop editor-tab React root (ADR 2026-07-03, Sprint 2).
+ * WorkshopApp — the Workshop editor-tab React root (ADR 2026-07-03;
+ * Sprint 2 session spine, Sprint 3 multi-turn).
  *
  * Session spine: the left rail pins an excerpt (host-side, via
  * WORKSHOP_SET_EXCERPT), the tool palette fires WORKSHOP_RUN_TOOL, and the
@@ -8,9 +9,10 @@
  * WorkshopSessionService on the host — this component renders snapshots, so
  * a webview reload rehydrates the thread (useWorkshop's mount request).
  *
- * Header placeholders are now live: model select on the `assistant` scope via
- * useModelsSettings, balance via useAccountBalance. The composer STAYS
- * disabled — free-text follow-ups are Sprint 3, quick-action chips Sprint 4.
+ * Sprint 3: the composer is LIVE — free-text follow-ups continue the
+ * session's retained conversation (WORKSHOP_SEND_MESSAGE), the send button
+ * becomes a stop affordance while a run streams (CANCEL_WORKSHOP_REQUEST),
+ * and the rail gains "Pin from file…". Quick-action chips stay Sprint 4.
  *
  * Each region (rail / thread / composer) is wrapped in an ErrorBoundary the
  * way App.tsx wraps its tabs — dynamic session data can throw mid-render now
@@ -27,6 +29,7 @@ import { MessageType } from '@shared/types';
 import { ApiKeyStatusMessage, WorkshopToolId } from '@messages';
 import { ModelSelector } from './components/shared/ModelSelector';
 import { ExcerptPanel } from './components/workshop/ExcerptPanel';
+import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopThread } from './components/workshop/WorkshopThread';
 import { WORKSHOP_TOOL_ICONS } from './components/workshop/workshopToolIcons';
 import {
@@ -229,6 +232,18 @@ export const WorkshopApp: React.FC = () => {
             onOpenBrowser={() => modelsSettings.requestModelData(true)}
             label="Assistant Model"
           />
+          {/* Multi-turn token rail (Sprint 3): follow-ups resend the whole
+              conversation, so prompt tokens grow every turn — this chip makes
+              that budget visible instead of burying it in the balance title. */}
+          <div
+            className="pm-ws-balance"
+            title={`Session tokens — prompt ${tokenTracking.usage.promptTokens.toLocaleString()} · completion ${tokenTracking.usage.completionTokens.toLocaleString()}. Follow-ups resend the conversation history, so prompt tokens grow with each turn.`}
+          >
+            <span className="pm-ws-balance-label">Tokens</span>
+            <span className="pm-ws-balance-val">
+              {tokenTracking.usage.totalTokens.toLocaleString()}
+            </span>
+          </div>
           <div className="pm-ws-balance" title={balanceTitle}>
             <span
               className={`pm-ws-balance-dot ${
@@ -259,6 +274,7 @@ export const WorkshopApp: React.FC = () => {
               excerpt={workshop.excerpt}
               isRunning={workshop.isRunning}
               onPin={workshop.pinExcerpt}
+              onPinFromFile={workshop.pinFromFile}
             />
 
             <div className="pm-ws-block">
@@ -288,7 +304,7 @@ export const WorkshopApp: React.FC = () => {
                     <Icon name={tool.icon} size={15} /> {tool.label}
                   </button>
                 ))}
-                <button className="pm-ws-tool pm-ws-tool-ghost" type="button" disabled>
+                <button className="pm-ws-tool pm-ws-tool-ghost" type="button" role="listitem" disabled>
                   <Icon name="grid" size={15} /> All {WORKSHOP_TOOLS.length} tools…
                 </button>
               </div>
@@ -327,6 +343,13 @@ export const WorkshopApp: React.FC = () => {
                 </div>
               )}
 
+              {workshop.hiddenTurns > 0 && (
+                <div className="pm-ws-thread-hidden">
+                  {workshop.hiddenTurns.toLocaleString()} earlier turn
+                  {workshop.hiddenTurns === 1 ? '' : 's'} from this session aren&apos;t shown
+                  after reload.
+                </div>
+              )}
               <WorkshopThread turns={workshop.turns} />
 
               {showLiveTurn && (
@@ -356,28 +379,14 @@ export const WorkshopApp: React.FC = () => {
             }
             onError={handleBoundaryError}
           >
-            <div className="pm-ws-composer-wrap">
-              <div className="pm-ws-composer">
-                <button className="pm-ws-comp-add" type="button" disabled title="Writing tools (Sprint 4)">
-                  <Icon name="plus" size={18} />
-                </button>
-                <input
-                  className="pm-ws-comp-input"
-                  type="text"
-                  disabled
-                  placeholder="Ask a follow-up, or pick a tool…"
-                  aria-label="Message the Workshop (available in Sprint 3)"
-                />
-                <div className="pm-ws-comp-right">
-                  <span className="pm-ws-comp-pill">
-                    <Icon name="grid" size={13} /> Tools
-                  </span>
-                  <button className="pm-ws-comp-send" type="button" disabled title="Send (Sprint 3)">
-                    <Icon name="send" size={16} />
-                  </button>
-                </div>
-              </div>
-            </div>
+            <WorkshopComposer
+              canFollowUp={workshop.canFollowUp}
+              hasConversation={workshop.hasConversation}
+              isRunning={workshop.isRunning}
+              sessionReady={workshop.sessionReady}
+              onSend={workshop.sendMessage}
+              onCancel={workshop.cancelRun}
+            />
           </ErrorBoundary>
         </section>
       </div>

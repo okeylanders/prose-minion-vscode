@@ -25,6 +25,7 @@ import {
   MessageType,
   Platform,
   SURFACE_WORKSHOP,
+  WorkshopSetExcerptMessage,
   coerceWebviewErrorText,
 } from '@prose-minion/core';
 import { getWebviewHtml } from './webviewHtml';
@@ -128,6 +129,27 @@ export class WorkshopPanelProvider implements vscode.Disposable {
 
     this.panel = panel;
     this.outputChannel.appendLine('[Workshop] Panel opened');
+  }
+
+  /**
+   * Seed the pinned excerpt from outside the webview (the editor context-menu
+   * command, Sprint 3). Opens/reveals the panel, then routes a synthetic
+   * WORKSHOP_SET_EXCERPT through the panel's OWN MessageHandler — the exact
+   * same path a webview pin takes, so the mid-run guard, provenance stamping,
+   * and session-state broadcast all apply identically (a parallel seeding
+   * mechanism would be a boundary smell — sprint guardrail). If the webview
+   * is still booting, its mount-time WORKSHOP_REQUEST_SESSION picks the
+   * excerpt up from the session snapshot — no race.
+   */
+  public seedExcerpt(payload: { text: string; sourceUri?: string; relativePath?: string }): void {
+    this.openOrReveal();
+    const message: WorkshopSetExcerptMessage = {
+      type: MessageType.WORKSHOP_SET_EXCERPT,
+      source: 'webview.workshop',
+      payload,
+      timestamp: Date.now()
+    };
+    void this.messageHandler?.handleMessage(message);
   }
 
   public dispose(): void {

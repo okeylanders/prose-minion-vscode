@@ -9,10 +9,19 @@
  *     to this shape.
  *
  * Scoped to exactly what Prose Minion's core uses: notifications (incl. a modal
- * Yes/No confirm), clipboard read+write, and opening a saved/reference file in an
- * editor. The editor-column logic for "open beside the webview" lives in the VS
- * Code adapter, not in core.
+ * Yes/No confirm), clipboard read+write, opening a saved/reference file in an
+ * editor, and a single-file open dialog (the Workshop's "Pin from file…" seam,
+ * ADR 2026-07-03 Sprint 3). The editor-column logic for "open beside the
+ * webview" lives in the VS Code adapter, not in core.
  */
+
+/** Result of a file-picker dialog: the chosen file, in both path and URI form. */
+export interface PickedFile {
+  /** Absolute filesystem path (feeds the FileSystem port). */
+  fsPath: string;
+  /** URI string (e.g. `file:///…`) for provenance display/linking. */
+  uri: string;
+}
 
 export interface ShellService {
   /** Non-modal notification with optional action buttons; resolves to the chosen action or undefined. */
@@ -28,4 +37,11 @@ export interface ShellService {
    * in the active column (the saved-report behavior).
    */
   openFileInEditor(filePath: string, options?: { beside?: boolean }): Promise<void>;
+  /**
+   * Open the host's single-file picker. Resolves to the chosen file, or
+   * undefined when the user dismisses the dialog (dismissal is not an error).
+   * `filters` maps display names to extension lists, mirroring
+   * `vscode.OpenDialogOptions.filters`.
+   */
+  pickFile(options?: { title?: string; filters?: Record<string, string[]> }): Promise<PickedFile | undefined>;
 }

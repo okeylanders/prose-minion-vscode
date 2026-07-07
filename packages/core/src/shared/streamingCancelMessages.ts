@@ -3,6 +3,7 @@ import {
   CancelCategorySearchRequestMessage,
   CancelContextRequestMessage,
   CancelDictionaryRequestMessage,
+  CancelWorkshopRequestMessage,
   MessageType,
   StreamingDomain
 } from '@messages';
@@ -11,21 +12,22 @@ export type CancelRequestMessage =
   | CancelAnalysisRequestMessage
   | CancelDictionaryRequestMessage
   | CancelContextRequestMessage
-  | CancelCategorySearchRequestMessage;
+  | CancelCategorySearchRequestMessage
+  | CancelWorkshopRequestMessage;
 
 /**
- * Domains with a webview-initiated cancel message. `workshop` streams have no
- * cancel wire yet — the host self-preempts on re-run/reset (Sprint 2); a UI
- * cancel affordance arrives with the composer work. Excluding it here makes
- * that a compile error instead of a silently ignored message.
+ * Every streaming domain now has a webview-initiated cancel message. (The
+ * Sprint 2 `Exclude<…, 'workshop'>` compile-time gate retired on schedule
+ * when Sprint 3 landed the workshop cancel wire.)
  */
-export type CancellableStreamingDomain = Exclude<StreamingDomain, 'workshop'>;
+export type CancellableStreamingDomain = StreamingDomain;
 
 const cancelMessageTypes: Record<CancellableStreamingDomain, CancelRequestMessage['type']> = {
   analysis: MessageType.CANCEL_ANALYSIS_REQUEST,
   dictionary: MessageType.CANCEL_DICTIONARY_REQUEST,
   context: MessageType.CANCEL_CONTEXT_REQUEST,
-  search: MessageType.CANCEL_CATEGORY_SEARCH_REQUEST
+  search: MessageType.CANCEL_CATEGORY_SEARCH_REQUEST,
+  workshop: MessageType.CANCEL_WORKSHOP_REQUEST
 };
 
 export function createCancelRequestMessage(

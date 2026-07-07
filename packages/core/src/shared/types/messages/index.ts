@@ -116,11 +116,14 @@ import {
   CancelAnalysisRequestMessage,
   CancelDictionaryRequestMessage,
   CancelContextRequestMessage,
-  CancelCategorySearchRequestMessage
+  CancelCategorySearchRequestMessage,
+  CancelWorkshopRequestMessage
 } from './streaming';
 import {
   WorkshopRunToolMessage,
+  WorkshopSendMessageMessage,
   WorkshopSetExcerptMessage,
+  WorkshopPickExcerptFileMessage,
   WorkshopResetSessionMessage,
   WorkshopRequestSessionMessage,
   WorkshopTurnMessage,
@@ -166,8 +169,11 @@ export type WebviewToExtensionMessage =
   | CancelDictionaryRequestMessage
   | CancelContextRequestMessage
   | CancelCategorySearchRequestMessage
+  | CancelWorkshopRequestMessage
   | WorkshopRunToolMessage
+  | WorkshopSendMessageMessage
   | WorkshopSetExcerptMessage
+  | WorkshopPickExcerptFileMessage
   | WorkshopResetSessionMessage
   | WorkshopRequestSessionMessage;
 

@@ -74,6 +74,16 @@ describe('app-shell provider assembly', () => {
     expect(constructionArgs).toContain('coreServices');
   });
 
+  it('WorkshopPanelProvider seeds excerpts through the webview workshop source convention', () => {
+    const providerSource = fs.readFileSync(
+      path.join(PROVIDERS_ROOT, 'WorkshopPanelProvider.ts'),
+      'utf8'
+    );
+
+    expect(providerSource).toContain("source: 'webview.workshop'");
+    expect(providerSource).not.toContain('extension.command.workshop_selection');
+  });
+
   it('every MessageHandler in a provider is built over the ONE injected coreServices bundle (PR #66 review #12)', () => {
     // The risk is not two panels — it is two independently-assembled service
     // bundles (e.g. a second polling AccountBalanceService) hiding behind
