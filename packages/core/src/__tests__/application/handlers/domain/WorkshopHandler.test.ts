@@ -1,21 +1,30 @@
 /**
- * WorkshopHandler Tests (ADR 2026-07-03, Sprint 2 — session spine).
+ * WorkshopHandler Tests (ADR 2026-07-03; Sprint 2 session spine, Sprint 3
+ * multi-turn).
  *
  * Behavior under test: route registration for the 12th domain; a tool run
  * streams under domain 'workshop' and appends a user+assistant turn pair to
  * the shared session; excerpt/reset/session-request mutate and serve the
  * aggregate; guard rails (no excerpt, unknown tool, missing API key) surface
- * errors without corrupting the thread. Uses the REAL WorkshopSessionService —
- * it is pure, and the handler↔aggregate contract is exactly what this sprint
- * introduces.
+ * errors without corrupting the thread. Sprint 3 pins the continuation
+ * contract: tool runs retain + the session adopts conversations, follow-ups
+ * continue them, reset/replacement discards them, the cancel wire aborts,
+ * and "Pin from file…" seeds through the shell/fileSystem/workspace ports.
+ * Uses the REAL WorkshopSessionService — it is pure, and the
+ * handler↔aggregate contract is exactly what these sprints introduce.
  */
 
-import { WorkshopHandler } from '@/application/handlers/domain/WorkshopHandler';
+import { WorkshopHandler, WORKSHOP_FILE_EXCERPT_MAX_WORDS } from '@/application/handlers/domain/WorkshopHandler';
 import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
 import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { MessageType, API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
-import type { LogSink } from '@/platform';
+import type { FileSystem, LogSink, ShellService, Workspace } from '@/platform';
+import {
+  createFakeFileSystem,
+  createFakeShellService,
+  createFakeWorkspace
+} from '../../../mocks/platform';
 
 const analysisResult = (content: string, extra: Record<string, unknown> = {}) => ({
   toolName: 'test_tool',
@@ -36,11 +45,17 @@ describe('WorkshopHandler', () => {
   let postMessage: jest.Mock;
   let log: LogSink;
   let mockService: jest.Mocked<AssistantToolService>;
+  let shell: ShellService;
+  let fileSystem: FileSystem;
+  let workspace: Workspace;
   let handler: WorkshopHandler;
 
   const postedTypes = () => postMessage.mock.calls.map((c) => c[0].type);
   const postedOf = (type: MessageType) =>
     postMessage.mock.calls.map((c) => c[0]).filter((m) => m.type === type);
+
+  const buildHandler = () =>
+    new WorkshopHandler(mockService, session, postMessage, shell, fileSystem, workspace, log);
 
   beforeEach(() => {
     session = new WorkshopSessionService();
@@ -50,21 +65,29 @@ describe('WorkshopHandler', () => {
       analyzeDialogue: jest.fn().mockResolvedValue(analysisResult('dialogue analysis')),
       analyzeProse: jest.fn().mockResolvedValue(analysisResult('prose analysis')),
       analyzeWritingTools: jest.fn().mockResolvedValue(analysisResult('tools analysis')),
+      continueConversation: jest.fn().mockResolvedValue(analysisResult('follow-up reply')),
+      discardConversation: jest.fn(),
       addStatusListener: jest.fn(() => jest.fn())
     } as unknown as jest.Mocked<AssistantToolService>;
+    shell = createFakeShellService();
+    fileSystem = createFakeFileSystem();
+    workspace = createFakeWorkspace();
 
-    handler = new WorkshopHandler(mockService, session, postMessage, log);
+    handler = buildHandler();
   });
 
-  it('registers the four workshop routes', () => {
+  it('registers the seven workshop routes', () => {
     const router = new MessageRouter();
     handler.registerRoutes(router);
 
     expect(router.hasHandler(MessageType.WORKSHOP_RUN_TOOL)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_SEND_MESSAGE)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SET_EXCERPT)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_PICK_EXCERPT_FILE)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_RESET_SESSION)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_REQUEST_SESSION)).toBe(true);
-    expect(router.handlerCount).toBe(4);
+    expect(router.hasHandler(MessageType.CANCEL_WORKSHOP_REQUEST)).toBe(true);
+    expect(router.handlerCount).toBe(7);
   });
 
   it('pins an excerpt and broadcasts the session snapshot', async () => {
@@ -293,7 +316,15 @@ describe('WorkshopHandler', () => {
       })
     } as unknown as jest.Mocked<AssistantToolService>;
     const localPost = jest.fn().mockResolvedValue(undefined);
-    const localHandler = new WorkshopHandler(localService, session, localPost, log);
+    const localHandler = new WorkshopHandler(
+      localService,
+      session,
+      localPost,
+      shell,
+      fileSystem,
+      workspace,
+      log
+    );
     expect(capturedListener).toBeDefined();
 
     // Idle: another surface's guide loading must not surface here.
@@ -432,10 +463,358 @@ describe('WorkshopHandler', () => {
     expect(postedTypes()).toEqual([MessageType.WORKSHOP_SESSION_STATE]);
   });
 
+  // ── Sprint 3: conversation lifecycle (retain / continue / discard) ──────
+
+  const runToolToCompletion = async (toolId: string, conversationId: string, content = 'analysis') => {
+    const method =
+      toolId === 'prose'
+        ? mockService.analyzeProse
+        : toolId === 'dialogue'
+          ? mockService.analyzeDialogue
+          : mockService.analyzeWritingTools;
+    method.mockResolvedValueOnce(analysisResult(content, { conversationId }) as any);
+    await handler.handleRunTool(message(MessageType.WORKSHOP_RUN_TOOL, { toolId }) as any);
+  };
+
+  it('asks the service to retain the conversation on every tool run', async () => {
+    session.setExcerpt({ text: 'Some prose.' });
+
+    await handler.handleRunTool(message(MessageType.WORKSHOP_RUN_TOOL, { toolId: 'prose' }) as any);
+
+    expect(mockService.analyzeProse).toHaveBeenCalledWith(
+      'Some prose.',
+      undefined,
+      undefined,
+      expect.objectContaining({ retainConversation: true })
+    );
+  });
+
+  it('adopts the run\'s conversation and discards the one it replaces', async () => {
+    session.setExcerpt({ text: 'Some prose.' });
+
+    await runToolToCompletion('prose', 'conv-1');
+    expect(session.getConversationId()).toBe('conv-1');
+    expect(mockService.discardConversation).not.toHaveBeenCalled();
+
+    await runToolToCompletion('dialogue', 'conv-2');
+    expect(session.getConversationId()).toBe('conv-2');
+    // One live conversation per session: the replaced one must not leak.
+    expect(mockService.discardConversation).toHaveBeenCalledTimes(1);
+    expect(mockService.discardConversation).toHaveBeenCalledWith('conv-1');
+  });
+
+  it('a zombie completion\'s retained conversation is discarded, never adopted', async () => {
+    session.setExcerpt({ text: 'Some prose.' });
+
+    let releaseRun!: () => void;
+    mockService.analyzeProse.mockImplementation(async () => {
+      await new Promise<void>((resolve) => {
+        releaseRun = resolve;
+      });
+      return analysisResult('late result', { conversationId: 'conv-zombie' }) as any;
+    });
+
+    const runPromise = handler.handleRunTool(
+      message(MessageType.WORKSHOP_RUN_TOOL, { toolId: 'prose' }) as any
+    );
+    await Promise.resolve();
+
+    // Reset the AGGREGATE directly (not via the handler, which would abort
+    // the signal and resolve through the cancelled branch instead): the run
+    // completes "successfully" but its requestId is stale.
+    session.reset();
+    releaseRun();
+    await runPromise;
+
+    expect(session.getConversationId()).toBeUndefined();
+    expect(mockService.discardConversation).toHaveBeenCalledWith('conv-zombie');
+    expect(session.getSnapshot().turns).toEqual([]);
+  });
+
+  it('reset discards the session conversation', async () => {
+    session.setExcerpt({ text: 'Some prose.' });
+    await runToolToCompletion('prose', 'conv-1');
+
+    await handler.handleResetSession(message(MessageType.WORKSHOP_RESET_SESSION, {}) as any);
+
+    expect(session.getConversationId()).toBeUndefined();
+    expect(mockService.discardConversation).toHaveBeenCalledWith('conv-1');
+  });
+
+  // ── Sprint 3: free-text follow-ups (WORKSHOP_SEND_MESSAGE) ──────────────
+
+  it('refuses a follow-up when no conversation exists', async () => {
+    session.setExcerpt({ text: 'Some prose.' });
+
+    await handler.handleSendMessage(
+      message(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'tighten it' }) as any
+    );
+
+    const [error] = postedOf(MessageType.ERROR);
+    expect(error.payload.source).toBe('workshop.send_message');
+    expect(error.payload.message).toMatch(/Run a tool first/i);
+    expect(mockService.continueConversation).not.toHaveBeenCalled();
+    expect(session.getSnapshot().turns).toEqual([]);
+  });
+
+  it('refuses an empty follow-up', async () => {
+    session.setExcerpt({ text: 'Some prose.' });
+    await runToolToCompletion('prose', 'conv-1');
+    postMessage.mockClear();
+
+    await handler.handleSendMessage(
+      message(MessageType.WORKSHOP_SEND_MESSAGE, { text: '   ' }) as any
+    );
+
+    const [error] = postedOf(MessageType.ERROR);
+    expect(error.payload.message).toMatch(/empty message/i);
+    expect(mockService.continueConversation).not.toHaveBeenCalled();
+  });
+
+  it('a follow-up continues the SAME conversation and appends a message turn pair in wire order', async () => {
+    session.setExcerpt({ text: 'Some prose.' });
+    await runToolToCompletion('prose', 'conv-1');
+    postMessage.mockClear();
+
+    mockService.continueConversation.mockImplementation(
+      async (_id, _text, streamingOptions) => {
+        streamingOptions?.onToken?.('tight');
+        streamingOptions?.onToken?.('ened');
+        return analysisResult('tightened version') as any;
+      }
+    );
+
+    await handler.handleSendMessage(
+      message(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Now tighten variation two.' }) as any
+    );
+
+    // Continuation, not restart: the session's conversation id is the target.
+    expect(mockService.continueConversation).toHaveBeenCalledWith(
+      'conv-1',
+      'Now tighten variation two.',
+      expect.objectContaining({ signal: expect.anything(), onToken: expect.any(Function) })
+    );
+    // The id is STABLE across the follow-up.
+    expect(session.getConversationId()).toBe('conv-1');
+
+    // Message-kind turn pair recorded.
+    const turnMessages = postedOf(MessageType.WORKSHOP_TURN);
+    expect(turnMessages.map((t) => [t.payload.turn.role, t.payload.turn.kind])).toEqual([
+      ['user', 'message'],
+      ['assistant', 'message']
+    ]);
+    expect(turnMessages[0].payload.turn.content).toBe('Now tighten variation two.');
+    expect(turnMessages[1].payload.turn.content).toBe('tightened version');
+
+    // Same wire-order contract as a tool run (PR #67 review #7).
+    expect(postedTypes()).toEqual([
+      MessageType.WORKSHOP_TURN, // user (message)
+      MessageType.WORKSHOP_SESSION_STATE,
+      MessageType.STREAM_STARTED,
+      MessageType.STATUS, // "Streaming follow-up…"
+      MessageType.STREAM_CHUNK,
+      MessageType.STREAM_CHUNK,
+      MessageType.STREAM_COMPLETE,
+      MessageType.WORKSHOP_TURN, // assistant — strictly after COMPLETE
+      MessageType.WORKSHOP_SESSION_STATE,
+      MessageType.STATUS // final '' clear
+    ]);
+  });
+
+  it('a lost conversation surfaces honestly: clears the reference, no silent restart', async () => {
+    session.setExcerpt({ text: 'Some prose.' });
+    await runToolToCompletion('prose', 'conv-1');
+    postMessage.mockClear();
+
+    const lost = new Error('Conversation conv-1 not found');
+    lost.name = 'ConversationNotFoundError';
+    mockService.continueConversation.mockRejectedValue(lost);
+
+    await handler.handleSendMessage(
+      message(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'still there?' }) as any
+    );
+
+    const [error] = postedOf(MessageType.ERROR);
+    expect(error.payload.source).toBe('workshop.send_message');
+    expect(error.payload.message).toMatch(/no longer available/i);
+    // Reference cleared so the composer disables (hasConversation: false).
+    expect(session.getConversationId()).toBeUndefined();
+    const states = postedOf(MessageType.WORKSHOP_SESSION_STATE);
+    expect(states[states.length - 1].payload.session.hasConversation).toBe(false);
+    // The stream unsticks and the attempted user turn stays in the thread.
+    expect(postedOf(MessageType.STREAM_COMPLETE)[0].payload.cancelled).toBe(true);
+    expect(session.getSnapshot().turns.map((t) => [t.role, t.kind])).toEqual([
+      ['user', 'tool_run'],
+      ['assistant', 'tool_run'],
+      ['user', 'message']
+    ]);
+  });
+
+  // ── Sprint 3: the cancel wire (CANCEL_WORKSHOP_REQUEST) ─────────────────
+
+  it('cancel aborts the matching in-flight run, which resolves through the cancelled branch', async () => {
+    session.setExcerpt({ text: 'Some prose.' });
+
+    let releaseRun!: () => void;
+    let observedSignal: AbortSignal | undefined;
+    mockService.analyzeProse.mockImplementation(async (_t, _c, _u, streamingOptions) => {
+      observedSignal = streamingOptions?.signal;
+      await new Promise<void>((resolve) => {
+        releaseRun = resolve;
+      });
+      return analysisResult('partial content') as any;
+    });
+
+    const runPromise = handler.handleRunTool(
+      message(MessageType.WORKSHOP_RUN_TOOL, { toolId: 'prose' }) as any
+    );
+    await Promise.resolve();
+
+    const requestId = session.getSnapshot().activeRequestId!;
+    await handler.handleCancelRequest(
+      message(MessageType.CANCEL_WORKSHOP_REQUEST, { requestId, domain: 'workshop' }) as any
+    );
+    expect(observedSignal?.aborted).toBe(true);
+
+    releaseRun();
+    await runPromise;
+
+    // Resolves exactly like a preemption-style abort: cancelled COMPLETE,
+    // user turn kept, no assistant turn, request-correlated log line.
+    const completes = postedOf(MessageType.STREAM_COMPLETE);
+    expect(completes[0].payload.cancelled).toBe(true);
+    expect(session.getSnapshot().turns.map((t) => t.role)).toEqual(['user']);
+    const logLines = (log.appendLine as jest.Mock).mock.calls.flat().join('\n');
+    expect(logLines).toMatch(/Cancel requested: workshop_prose-/);
+    expect(logLines).toMatch(/Run cancelled: workshop_prose-/);
+  });
+
+  it('cancel ignores other domains and stale request ids', async () => {
+    session.setExcerpt({ text: 'Some prose.' });
+
+    let releaseRun!: () => void;
+    let observedSignal: AbortSignal | undefined;
+    mockService.analyzeProse.mockImplementation(async (_t, _c, _u, streamingOptions) => {
+      observedSignal = streamingOptions?.signal;
+      await new Promise<void>((resolve) => {
+        releaseRun = resolve;
+      });
+      return analysisResult('content') as any;
+    });
+
+    const runPromise = handler.handleRunTool(
+      message(MessageType.WORKSHOP_RUN_TOOL, { toolId: 'prose' }) as any
+    );
+    await Promise.resolve();
+    const requestId = session.getSnapshot().activeRequestId!;
+
+    await handler.handleCancelRequest(
+      message(MessageType.CANCEL_WORKSHOP_REQUEST, { requestId, domain: 'analysis' }) as any
+    );
+    await handler.handleCancelRequest(
+      message(MessageType.CANCEL_WORKSHOP_REQUEST, { requestId: 'someone-else', domain: 'workshop' }) as any
+    );
+    expect(observedSignal?.aborted).toBe(false);
+
+    releaseRun();
+    await runPromise;
+    expect(session.getSnapshot().turns.map((t) => t.role)).toEqual(['user', 'assistant']);
+  });
+
+  // ── Sprint 3: "Pin from file…" (WORKSHOP_PICK_EXCERPT_FILE) ─────────────
+
+  it('pins a picked file\'s content with full provenance', async () => {
+    shell.pickFile = jest.fn().mockResolvedValue({
+      fsPath: '/ws/chapters/ch2.md',
+      uri: 'file:///ws/chapters/ch2.md'
+    });
+    fileSystem = createFakeFileSystem({}, { '/ws/chapters/ch2.md': 'The rain kept its own counsel.' });
+    workspace = createFakeWorkspace({ asRelativePath: (p) => p.replace('/ws/', '') });
+    handler = buildHandler();
+
+    await handler.handlePickExcerptFile(
+      message(MessageType.WORKSHOP_PICK_EXCERPT_FILE, {}) as any
+    );
+
+    const excerpt = session.getExcerpt();
+    expect(excerpt).toMatchObject({
+      text: 'The rain kept its own counsel.',
+      sourceUri: 'file:///ws/chapters/ch2.md',
+      relativePath: 'chapters/ch2.md'
+    });
+    expect(excerpt?.truncation).toBeUndefined();
+    expect(postedOf(MessageType.WORKSHOP_SESSION_STATE)).toHaveLength(1);
+    expect(postedOf(MessageType.ERROR)).toHaveLength(0);
+  });
+
+  it('a dismissed picker is a no-op, not an error', async () => {
+    shell.pickFile = jest.fn().mockResolvedValue(undefined);
+    handler = buildHandler();
+
+    await handler.handlePickExcerptFile(
+      message(MessageType.WORKSHOP_PICK_EXCERPT_FILE, {}) as any
+    );
+
+    expect(session.getExcerpt()).toBeUndefined();
+    expect(postedOf(MessageType.ERROR)).toHaveLength(0);
+    expect(postedOf(MessageType.WORKSHOP_SESSION_STATE)).toHaveLength(0);
+  });
+
+  it('head-slices a huge file and records the truncation on the excerpt', async () => {
+    const totalWords = WORKSHOP_FILE_EXCERPT_MAX_WORDS + 500;
+    const novel = Array.from({ length: totalWords }, (_, i) => `word${i}`).join(' ');
+    shell.pickFile = jest.fn().mockResolvedValue({ fsPath: '/ws/novel.md', uri: 'file:///ws/novel.md' });
+    fileSystem = createFakeFileSystem({}, { '/ws/novel.md': novel });
+    handler = buildHandler();
+
+    await handler.handlePickExcerptFile(
+      message(MessageType.WORKSHOP_PICK_EXCERPT_FILE, {}) as any
+    );
+
+    const excerpt = session.getExcerpt();
+    expect(excerpt?.truncation).toEqual({
+      pinnedWords: WORKSHOP_FILE_EXCERPT_MAX_WORDS,
+      totalWords
+    });
+    expect(excerpt?.text.split(/\s+/)).toHaveLength(WORKSHOP_FILE_EXCERPT_MAX_WORDS);
+    const logLines = (log.appendLine as jest.Mock).mock.calls.flat().join('\n');
+    expect(logLines).toMatch(/head-sliced/);
+  });
+
+  it('refuses to pick a file mid-run (same guard as re-pin)', async () => {
+    session.setExcerpt({ text: 'The original excerpt.' });
+    shell.pickFile = jest.fn();
+    handler = buildHandler();
+
+    let releaseRun!: () => void;
+    mockService.analyzeProse.mockImplementation(async () => {
+      await new Promise<void>((resolve) => {
+        releaseRun = resolve;
+      });
+      return analysisResult('analysis') as any;
+    });
+    const runPromise = handler.handleRunTool(
+      message(MessageType.WORKSHOP_RUN_TOOL, { toolId: 'prose' }) as any
+    );
+    await Promise.resolve();
+
+    await handler.handlePickExcerptFile(
+      message(MessageType.WORKSHOP_PICK_EXCERPT_FILE, {}) as any
+    );
+
+    const errors = postedOf(MessageType.ERROR);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].payload.message).toMatch(/still running/i);
+    expect(shell.pickFile).not.toHaveBeenCalled();
+
+    releaseRun();
+    await runPromise;
+  });
+
   it('dispose releases the status listener and aborts any in-flight run', async () => {
     const disposeListener = jest.fn();
     (mockService.addStatusListener as jest.Mock).mockReturnValue(disposeListener);
-    const local = new WorkshopHandler(mockService, session, postMessage, log);
+    const local = buildHandler();
 
     session.setExcerpt({ text: 'Some prose.' });
     let releaseRun!: () => void;
