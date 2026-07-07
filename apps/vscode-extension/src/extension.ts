@@ -249,6 +249,22 @@ export function activate(context: vscode.ExtensionContext): void {
     sendSelection('assistant', payload);
   };
 
+  // Workshop seeding (Sprint 3): same selection-payload path as the sidebar's
+  // assistant command, but the destination is the Workshop panel's session —
+  // seedExcerpt routes WORKSHOP_SET_EXCERPT through the panel's own
+  // MessageHandler, so guards and provenance match a webview pin exactly.
+  const handleWorkshopSelection = () => {
+    const payload = getSelectionPayload();
+    if (!payload) {
+      return;
+    }
+    workshopPanelProvider?.seedExcerpt({
+      text: payload.text,
+      sourceUri: payload.uri.toString(),
+      relativePath: payload.relativePath
+    });
+  };
+
   const handleWordLookupSelection = () => {
     const payload = getSelectionPayload();
     if (!payload) {
@@ -272,7 +288,8 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand('prose-minion.openWorkshop', () => {
       workshopPanelProvider?.openOrReveal();
-    })
+    }),
+    vscode.commands.registerCommand('prose-minion.workshopSelection', handleWorkshopSelection)
   );
 }
 
