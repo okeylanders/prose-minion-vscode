@@ -653,3 +653,42 @@
 [data-pm-surface="workshop"] .pm-ws-comp-send:disabled {
   filter: saturate(0.55) brightness(0.8);
 }
+/* Stop affordance (Sprint 3): the send slot flips to a stop button while a
+   run streams — same tile, amber instead of accent so the state reads at a
+   glance without introducing a new color. */
+[data-pm-surface="workshop"] .pm-ws-comp-stop {
+  background: var(--pm-amber);
+  color: #1c1610;
+}
+
+/* ---------- Sprint 3: free-text turns + bounded-snapshot divider ---------- */
+/* A follow-up user turn: the user's own words, right-aligned like the tool
+   chip but text-shaped and wrap-preserving. */
+[data-pm-surface="workshop"] .pm-ws-turn-message {
+  max-width: 640px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--pm-text);
+  background: var(--pm-surface-3);
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-card);
+  padding: 10px 14px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* Head-slice notice on a file-pinned excerpt (guardrail is visible, never silent). */
+[data-pm-surface="workshop"] .pm-ws-excerpt-truncated {
+  font-size: 11.5px;
+  color: var(--pm-amber);
+  margin: 6px 0 0;
+}
+/* Older turns exist host-side but fell outside the bounded snapshot window
+   (reload of a marathon thread). */
+[data-pm-surface="workshop"] .pm-ws-thread-hidden {
+  align-self: center;
+  font-size: 11.5px;
+  color: var(--pm-dim);
+  border: 1px dashed var(--pm-border-2);
+  border-radius: var(--pm-r-pill);
+  padding: 5px 12px;
+}

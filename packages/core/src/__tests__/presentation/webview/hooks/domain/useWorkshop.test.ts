@@ -37,12 +37,23 @@ jest.mock('../../../../../presentation/webview/hooks/useVSCodeApi');
 
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 
-const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessionStateMessage => ({
-  type: MessageType.WORKSHOP_SESSION_STATE,
-  source: 'extension.workshop',
-  payload: { session: { turns: [], ...session } },
-  timestamp: 0
-});
+const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessionStateMessage => {
+  const turns = session.turns ?? [];
+  return {
+    type: MessageType.WORKSHOP_SESSION_STATE,
+    source: 'extension.workshop',
+    payload: {
+      session: {
+        turns,
+        totalTurns: turns.length,
+        truncatedTurns: 0,
+        hasConversation: false,
+        ...session
+      }
+    },
+    timestamp: 0
+  };
+};
 
 const makeTurn = (overrides: Partial<WorkshopTurn>): WorkshopTurn => ({
   id: 'turn-1-user-1000',
@@ -323,11 +334,108 @@ describe('useWorkshop', () => {
       result.current.pinExcerpt('Some prose.', 'file:///ch1.md', 'ch1.md');
       result.current.runTool('gestures');
       result.current.resetSession();
+      result.current.sendMessage('Now tighten variation two.');
+      result.current.pinFromFile();
     });
 
     const pin = posted(MessageType.WORKSHOP_SET_EXCERPT)[0];
     expect(pin.payload).toEqual({ text: 'Some prose.', sourceUri: 'file:///ch1.md', relativePath: 'ch1.md' });
     expect(posted(MessageType.WORKSHOP_RUN_TOOL)[0].payload).toEqual({ toolId: 'gestures' });
     expect(posted(MessageType.WORKSHOP_RESET_SESSION)).toHaveLength(1);
+    expect(posted(MessageType.WORKSHOP_SEND_MESSAGE)[0].payload).toEqual({
+      text: 'Now tighten variation two.'
+    });
+    expect(posted(MessageType.WORKSHOP_PICK_EXCERPT_FILE)).toHaveLength(1);
+  });
+
+  // ── Sprint 3: composer enablement + cancel wire ──────────────────────────
+
+  it('canFollowUp tracks the session conversation and the run state', () => {
+    const { result } = renderHook(() => useWorkshop());
+    expect(result.current.canFollowUp).toBe(false);
+
+    act(() => {
+      result.current.handleSessionState(sessionState({ hasConversation: true }));
+    });
+    expect(result.current.hasConversation).toBe(true);
+    expect(result.current.canFollowUp).toBe(true);
+
+    // A live run suspends follow-ups without losing the conversation.
+    act(() => {
+      result.current.handleStreamStarted(streamStarted('req-1'));
+    });
+    expect(result.current.canFollowUp).toBe(false);
+    expect(result.current.hasConversation).toBe(true);
+  });
+
+  it('cancelRun posts the workshop cancel message for the live request only', () => {
+    const { result } = renderHook(() => useWorkshop());
+
+    // No live run: nothing posted.
+    act(() => {
+      result.current.cancelRun();
+    });
+    expect(posted(MessageType.CANCEL_WORKSHOP_REQUEST)).toHaveLength(0);
+
+    act(() => {
+      result.current.handleStreamStarted(streamStarted('req-1'));
+    });
+    act(() => {
+      result.current.cancelRun();
+    });
+    const cancels = posted(MessageType.CANCEL_WORKSHOP_REQUEST);
+    expect(cancels).toHaveLength(1);
+    expect(cancels[0].payload).toEqual({ requestId: 'req-1', domain: 'workshop' });
+
+    // Settled window (stream done, turn pending): nothing left to cancel.
+    act(() => {
+      result.current.handleStreamComplete(streamComplete('req-1', false, 'done'));
+    });
+    act(() => {
+      result.current.cancelRun();
+    });
+    expect(posted(MessageType.CANCEL_WORKSHOP_REQUEST)).toHaveLength(1);
+  });
+
+  // ── Sprint 3: bounded snapshots (PR #67 review #12) ──────────────────────
+
+  it('a truncated snapshot MERGES with held turns instead of shrinking the live thread', () => {
+    const { result } = renderHook(() => useWorkshop());
+    const t1 = makeTurn({ id: 't1' });
+    const t2 = makeTurn({ id: 't2', role: 'assistant', content: 'first analysis' });
+    const t3 = makeTurn({ id: 't3' });
+    const t4 = makeTurn({ id: 't4', role: 'assistant', content: 'second analysis' });
+
+    // The webview accumulated the whole thread live.
+    act(() => {
+      [t1, t2, t3, t4].forEach((t) => result.current.handleTurn(turnMessage(t)));
+    });
+
+    // Host snapshot windows to the last two turns (older two truncated).
+    act(() => {
+      result.current.handleSessionState(
+        sessionState({ turns: [t3, t4], totalTurns: 4, truncatedTurns: 2 })
+      );
+    });
+
+    // Nothing hidden — the webview still holds everything.
+    expect(result.current.turns.map((t) => t.id)).toEqual(['t1', 't2', 't3', 't4']);
+    expect(result.current.hiddenTurns).toBe(0);
+  });
+
+  it('a truncated snapshot on a FRESH mount reports the hidden turns', () => {
+    const { result } = renderHook(() => useWorkshop());
+    const t3 = makeTurn({ id: 't3' });
+    const t4 = makeTurn({ id: 't4', role: 'assistant', content: 'latest analysis' });
+
+    // Reload of a marathon thread: only the window arrives.
+    act(() => {
+      result.current.handleSessionState(
+        sessionState({ turns: [t3, t4], totalTurns: 4, truncatedTurns: 2 })
+      );
+    });
+
+    expect(result.current.turns.map((t) => t.id)).toEqual(['t3', 't4']);
+    expect(result.current.hiddenTurns).toBe(2);
   });
 });

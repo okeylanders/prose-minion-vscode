@@ -1,20 +1,31 @@
 /**
- * useWorkshop — Domain hook for the Workshop editor tab (ADR 2026-07-03,
- * Sprint 2 — session spine). Mirrors WorkshopHandler, the 12th domain.
+ * useWorkshop — Domain hook for the Workshop editor tab (ADR 2026-07-03;
+ * Sprint 2 session spine, Sprint 3 multi-turn). Mirrors WorkshopHandler, the
+ * 12th domain.
  *
  * The hook RENDERS the session; it never owns it. Host-side
  * WorkshopSessionService is the aggregate of record: on mount the hook
  * requests a snapshot (reload-safe rehydration), WORKSHOP_TURN increments the
- * thread live, WORKSHOP_SESSION_STATE reconciles it wholesale, and streaming
- * chunks under `domain: 'workshop'` paint the in-flight run. Sprint 2 is
- * single-turn: running a tool starts a fresh turn; free-text follow-ups are
- * Sprint 3.
+ * thread live, WORKSHOP_SESSION_STATE reconciles it, and streaming chunks
+ * under `domain: 'workshop'` paint the in-flight run. Sprint 3 adds the
+ * composer actions: sendMessage continues the retained conversation,
+ * cancelRun aborts the in-flight stream, pinFromFile asks the host to seed
+ * the excerpt from a file picker.
+ *
+ * Live-run identity is ONE concept (PR #67 review #8, Parker):
+ * `{ requestId, phase }` — `phase: 'streaming'` while the wire is open,
+ * `'settled'` in the window between STREAM_COMPLETE and the assistant turn
+ * landing (the bubble keeps painting so the thread never flashes empty).
+ * It lives in state (drives rendering) with a ref mirror updated through a
+ * single setter, so message handlers read current values without stale
+ * closures (StrictMode-safe). `currentRequestId` is DERIVED from it.
  */
 
 import * as React from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
 import { useStreaming } from '../useStreaming';
 import { MessageType } from '@shared/types';
+import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
 import {
   ErrorMessage,
   StatusMessage,
@@ -28,11 +39,27 @@ import {
   WorkshopTurnMessage
 } from '@messages';
 
+/** The one live-run tracker (PR #67 review #8). */
+interface LiveRun {
+  requestId: string;
+  /** 'streaming' = wire open; 'settled' = complete, awaiting the assistant turn. */
+  phase: 'streaming' | 'settled';
+}
+
 export interface WorkshopState {
   /** True once the first host snapshot has arrived (gate for "empty" UI). */
   sessionReady: boolean;
   excerpt: WorkshopExcerpt | null;
   turns: WorkshopTurn[];
+  /**
+   * Turns held host-side but not present in this webview (a bounded snapshot
+   * window bit on reload of a marathon thread). 0 in normal operation.
+   */
+  hiddenTurns: number;
+  /** True when the session holds a conversation a follow-up can continue. */
+  hasConversation: boolean;
+  /** True when the composer can send right now. */
+  canFollowUp: boolean;
   /** Tool of the in-flight run (host truth via session state / live events). */
   activeToolId: WorkshopToolId | null;
   /** True while a run is in flight (tool palette disables on this). */
@@ -53,7 +80,10 @@ export interface WorkshopState {
 
 export interface WorkshopActions {
   pinExcerpt: (text: string, sourceUri?: string, relativePath?: string) => void;
+  pinFromFile: () => void;
   runTool: (toolId: WorkshopToolId) => void;
+  sendMessage: (text: string) => void;
+  cancelRun: () => void;
   resetSession: () => void;
   requestSession: () => void;
   clearError: () => void;
@@ -85,19 +115,23 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const [sessionReady, setSessionReady] = React.useState(false);
   const [excerpt, setExcerpt] = React.useState<WorkshopExcerpt | null>(null);
   const [turns, setTurns] = React.useState<WorkshopTurn[]>([]);
+  const [totalTurns, setTotalTurns] = React.useState(0);
+  const [hasConversation, setHasConversation] = React.useState(false);
   const [activeToolId, setActiveToolId] = React.useState<WorkshopToolId | null>(null);
-  const [currentRequestId, setCurrentRequestId] = React.useState<string | null>(null);
   const [statusMessage, setStatusMessage] = React.useState('');
   const [tickerMessage, setTickerMessage] = React.useState('');
   const [errorMessage, setErrorMessage] = React.useState('');
 
-  // The streamed run whose bubble is still on screen. Survives STREAM_COMPLETE
-  // until the assistant turn (or the post-error session state) lands, so the
-  // thread never flashes empty between "stream done" and "turn arrived".
-  const liveRunRef = React.useRef<{ requestId: string; settled: boolean } | null>(null);
-  // Mirror of currentRequestId for handler logic — comparisons stay out of
-  // state updaters (StrictMode double-invokes those; side effects there leak).
-  const currentRequestIdRef = React.useRef<string | null>(null);
+  // The single live-run tracker: state drives rendering, the ref mirror lets
+  // handlers compare without stale closures (StrictMode double-invokes state
+  // updaters, so comparisons stay OUT of them). One setter keeps the pair in
+  // lockstep — there is exactly one write path.
+  const [liveRun, setLiveRunState] = React.useState<LiveRun | null>(null);
+  const liveRunRef = React.useRef<LiveRun | null>(null);
+  const setLiveRun = React.useCallback((next: LiveRun | null) => {
+    liveRunRef.current = next;
+    setLiveRunState(next);
+  }, []);
 
   const post = React.useCallback(
     (type: MessageType, payload: unknown) => {
@@ -120,6 +154,10 @@ export const useWorkshop = (): UseWorkshopReturn => {
     [post]
   );
 
+  const pinFromFile = React.useCallback(() => {
+    post(MessageType.WORKSHOP_PICK_EXCERPT_FILE, {});
+  }, [post]);
+
   const runTool = React.useCallback(
     (toolId: WorkshopToolId) => {
       setErrorMessage('');
@@ -127,6 +165,22 @@ export const useWorkshop = (): UseWorkshopReturn => {
     },
     [post]
   );
+
+  const sendMessage = React.useCallback(
+    (text: string) => {
+      setErrorMessage('');
+      post(MessageType.WORKSHOP_SEND_MESSAGE, { text });
+    },
+    [post]
+  );
+
+  const cancelRun = React.useCallback(() => {
+    const requestId =
+      liveRunRef.current?.phase === 'streaming' ? liveRunRef.current.requestId : null;
+    if (requestId) {
+      vscode.postMessage(createCancelRequestMessage('workshop', requestId, 'webview.workshop'));
+    }
+  }, [vscode]);
 
   const resetSession = React.useCallback(() => {
     setErrorMessage('');
@@ -152,34 +206,44 @@ export const useWorkshop = (): UseWorkshopReturn => {
       const { session } = message.payload;
       setSessionReady(true);
       setExcerpt(session.excerpt ?? null);
-      setTurns(session.turns);
+      setTotalTurns(session.totalTurns);
+      setHasConversation(session.hasConversation);
       setActiveToolId(session.activeToolId ?? null);
+      setTurns((prev) => {
+        if (session.truncatedTurns === 0) {
+          // Complete snapshot — authoritative wholesale replace.
+          return session.turns;
+        }
+        // Bounded snapshot (PR #67 review #12): the window carries only the
+        // most recent turns. Never shrink a live thread — keep the older
+        // turns this webview already holds, then reconcile the window.
+        const windowIds = new Set(session.turns.map((t) => t.id));
+        const older = prev.filter((t) => !windowIds.has(t.id));
+        return [...older, ...session.turns];
+      });
 
       const activeRequestId = session.activeRequestId ?? null;
       if (activeRequestId) {
         // A run is in flight (fresh snapshot mid-run, or reload mid-run).
         // Adopt it so incoming chunks attach; pre-reload chunks are gone, but
         // the completed turn arrives whole via WORKSHOP_TURN.
-        if (currentRequestIdRef.current !== activeRequestId) {
-          currentRequestIdRef.current = activeRequestId;
-          liveRunRef.current = { requestId: activeRequestId, settled: false };
-          setCurrentRequestId(activeRequestId);
+        if (liveRunRef.current?.requestId !== activeRequestId) {
+          setLiveRun({ requestId: activeRequestId, phase: 'streaming' });
           streaming.startStreaming();
         }
-      } else {
+      } else if (liveRunRef.current) {
         // No run in flight: this snapshot is authoritative — drop any live
         // bubble whose stream already ended (completion, error, or reset).
-        currentRequestIdRef.current = null;
-        setCurrentRequestId(null);
-        if (liveRunRef.current) {
-          liveRunRef.current = null;
-          streaming.reset();
-        }
+        setLiveRun(null);
+        streaming.reset();
       }
     },
-    [streaming]
+    [setLiveRun, streaming]
   );
 
+  // totalTurns is deliberately NOT bumped here: a snapshot with the
+  // authoritative count follows every host mutation, and a replay-cache dupe
+  // must not inflate the hidden-turns math.
   const handleTurn = React.useCallback((message: WorkshopTurnMessage) => {
     const { turn } = message.payload;
     setTurns((prev) => (prev.some((t) => t.id === turn.id) ? prev : [...prev, turn]));
@@ -189,12 +253,10 @@ export const useWorkshop = (): UseWorkshopReturn => {
     (message: StreamStartedMessage) => {
       const { domain, requestId } = message.payload;
       if (domain !== 'workshop') {return;}
-      currentRequestIdRef.current = requestId;
-      liveRunRef.current = { requestId, settled: false };
-      setCurrentRequestId(requestId);
+      setLiveRun({ requestId, phase: 'streaming' });
       streaming.startStreaming();
     },
-    [streaming]
+    [setLiveRun, streaming]
   );
 
   const handleStreamChunk = React.useCallback(
@@ -211,22 +273,19 @@ export const useWorkshop = (): UseWorkshopReturn => {
     (message: StreamCompleteMessage) => {
       const { domain, requestId, cancelled } = message.payload;
       if (domain !== 'workshop') {return;}
-      const liveRun = liveRunRef.current;
-      if (liveRun?.requestId !== requestId) {return;}
+      if (liveRunRef.current?.requestId !== requestId) {return;}
 
-      currentRequestIdRef.current = null;
-      setCurrentRequestId(null);
       if (cancelled) {
         // Preempted, reset, or failed — nothing more is coming for this run.
-        liveRunRef.current = null;
+        setLiveRun(null);
         streaming.reset();
       } else {
         // Keep the bubble (full buffer) until the assistant turn lands.
-        liveRun.settled = true;
+        setLiveRun({ requestId, phase: 'settled' });
         streaming.endStreaming();
       }
     },
-    [streaming]
+    [setLiveRun, streaming]
   );
 
   // Once the assistant turn for the settled stream is in the thread, the live
@@ -237,11 +296,11 @@ export const useWorkshop = (): UseWorkshopReturn => {
   // text → spinner → turn flicker (PR #67 review #16, Blake).
   const resetStreaming = streaming.reset;
   React.useEffect(() => {
-    if (liveRunRef.current?.settled) {
-      liveRunRef.current = null;
+    if (liveRunRef.current?.phase === 'settled') {
+      setLiveRun(null);
       resetStreaming();
     }
-  }, [turns, resetStreaming]);
+  }, [turns, setLiveRun, resetStreaming]);
 
   const handleStatusMessage = React.useCallback((message: StatusMessage) => {
     // Only this domain's status: the shared services also feed dictionary /
@@ -259,13 +318,20 @@ export const useWorkshop = (): UseWorkshopReturn => {
     setTickerMessage('');
   }, []);
 
+  // Derived (PR #67 review #8: one tracker, everything else computed).
+  const currentRequestId = liveRun?.phase === 'streaming' ? liveRun.requestId : null;
   const isRunning = currentRequestId !== null || activeToolId !== null;
+  const hiddenTurns = Math.max(0, totalTurns - turns.length);
+  const canFollowUp = hasConversation && !isRunning;
 
   return {
     // State
     sessionReady,
     excerpt,
     turns,
+    hiddenTurns,
+    hasConversation,
+    canFollowUp,
     activeToolId,
     isRunning,
     statusMessage,
@@ -282,7 +348,10 @@ export const useWorkshop = (): UseWorkshopReturn => {
 
     // Actions
     pinExcerpt,
+    pinFromFile,
     runTool,
+    sendMessage,
+    cancelRun,
     resetSession,
     requestSession,
     clearError,
