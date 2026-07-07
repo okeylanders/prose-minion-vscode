@@ -15,6 +15,7 @@
  */
 
 import { FileSystem, LogSink } from '@/platform';
+import { ListenerSet } from '@/utils/ListenerSet';
 import { WordSearchService } from './WordSearchService';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { WordFrequency } from '@/tools/measure/wordFrequency';
@@ -35,26 +36,30 @@ export class CategorySearchService {
   private readonly wordFrequency: WordFrequency;
   private readonly promptLoader: PromptLoader;
   private abortController: AbortController | null = null;
+  private readonly statusListeners: ListenerSet<Parameters<StatusEmitter>>;
 
   constructor(
     private readonly aiResourceManager: AIResourceManager,
     private readonly wordSearchService: WordSearchService,
     private readonly fileSystem: FileSystem,
     private readonly extensionPath: string,
-    private readonly outputChannel?: LogSink,
-    private statusEmitter?: StatusEmitter
+    private readonly outputChannel?: LogSink
   ) {
     this.wordFrequency = new WordFrequency((msg) => this.outputChannel?.appendLine(msg));
     this.promptLoader = new PromptLoader(extensionPath, fileSystem);
+    this.statusListeners = new ListenerSet(
+      '[CategorySearchService] Status listener',
+      outputChannel
+    );
   }
 
   /**
-   * Attach the current webview's status sink after construction. The service is
-   * built at the composition root; MessageHandler owns this lifecycle-bound
-   * callback.
+   * Subscribe the current webview's status sink. The service is built at the
+   * composition root and shared across webviews; each MessageHandler owns its
+   * registration and releases it on dispose.
    */
-  setStatusEmitter(statusEmitter?: StatusEmitter): void {
-    this.statusEmitter = statusEmitter;
+  addStatusListener(listener: StatusEmitter): () => void {
+    return this.statusListeners.add(listener);
   }
 
   /**
@@ -494,9 +499,7 @@ export class CategorySearchService {
   }
 
   private sendStatus(message: string, progress?: { current: number; total: number }, tickerMessage?: string): void {
-    if (this.statusEmitter) {
-      this.statusEmitter(message, progress, tickerMessage);
-    }
+    this.statusListeners.emit(message, progress, tickerMessage);
   }
 
   /**

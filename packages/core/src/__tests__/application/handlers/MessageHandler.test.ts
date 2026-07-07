@@ -1,5 +1,6 @@
 import { MessageHandler } from '@/application/handlers/MessageHandler';
 import { CoreServices } from '@/application/handlers/MessageHandlerContracts';
+import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
 import {
   ExtensionToWebviewMessage,
   MessageType,
@@ -34,12 +35,20 @@ interface TestAssembly {
   disposeSecretListener: jest.Mock;
   secretOnDidChange: jest.Mock;
   accountDispose: jest.Mock;
-  categorySetStatusEmitter: jest.Mock;
-  tokenUsageCallback: () => TokenUsageCallback | undefined;
+  categoryAddStatusListener: jest.Mock;
+  disposeCategoryStatusListener: jest.Mock;
+  disposeDictionaryStatusListener: jest.Mock;
+  /** Fan a token-usage event out to every LIVE registration (real Set). */
+  emitTokenUsage: (usage: TokenUsageTotals) => void;
+  tokenUsageListenerCount: () => number;
 }
 
 function createTestAssembly(): TestAssembly {
-  let capturedTokenUsageCallback: TokenUsageCallback | undefined;
+  // A REAL listener set (not a single captured slot): the fakes must be able
+  // to distinguish handler A's registration from handler B's, or the
+  // dispose-blinds-the-survivor regression is structurally untestable
+  // (PR #67 review #2, Cal).
+  const tokenUsageListeners = new Set<TokenUsageCallback>();
 
   const log: LogSink = {
     appendLine: jest.fn(),
@@ -72,15 +81,18 @@ function createTestAssembly(): TestAssembly {
   const disposeSecretListener = jest.fn();
   const secretOnDidChange = jest.fn(() => ({ dispose: disposeSecretListener }));
   const accountDispose = jest.fn();
-  const categorySetStatusEmitter = jest.fn();
+  const categoryAddStatusListener = jest.fn(() => disposeCategoryStatusListener);
+  const disposeCategoryStatusListener = jest.fn();
+  const disposeDictionaryStatusListener = jest.fn();
 
   const services = {
     assistantToolService: {
-      setStatusEmitter: jest.fn(),
+      // Registered twice per handler: AnalysisHandler + WorkshopHandler.
+      addStatusListener: jest.fn(() => jest.fn()),
       refreshConfiguration: jest.fn().mockResolvedValue(undefined)
     },
     dictionaryService: {
-      setStatusEmitter: jest.fn(),
+      addStatusListener: jest.fn(() => disposeDictionaryStatusListener),
       refreshConfiguration: jest.fn().mockResolvedValue(undefined)
     },
     contextAssistantService: {
@@ -94,9 +106,11 @@ function createTestAssembly(): TestAssembly {
       getGenres: jest.fn().mockResolvedValue([])
     },
     aiResourceManager: {
-      setStatusCallback: jest.fn(),
-      setTokenUsageCallback: jest.fn((callback?: TokenUsageCallback) => {
-        capturedTokenUsageCallback = callback;
+      addTokenUsageListener: jest.fn((callback: TokenUsageCallback) => {
+        tokenUsageListeners.add(callback);
+        return () => {
+          tokenUsageListeners.delete(callback);
+        };
       }),
       refreshConfiguration: jest.fn().mockResolvedValue(undefined)
     },
@@ -108,14 +122,17 @@ function createTestAssembly(): TestAssembly {
     },
     textSourceResolver: {},
     categorySearchService: {
-      setStatusEmitter: categorySetStatusEmitter
+      addStatusListener: categoryAddStatusListener
     },
     accountBalanceService: {
       getBalances,
       scheduleRefresh,
       addRefreshListener: accountAddRefreshListener,
       dispose: accountDispose
-    }
+    },
+    // Real aggregate on purpose: it is pure/dependency-free, and using it makes
+    // the reload-safety test below exercise true session behavior.
+    workshopSessionService: new WorkshopSessionService()
   } as unknown as CoreServices;
 
   return {
@@ -129,8 +146,15 @@ function createTestAssembly(): TestAssembly {
     accountDispose,
     disposeSecretListener,
     secretOnDidChange,
-    categorySetStatusEmitter,
-    tokenUsageCallback: () => capturedTokenUsageCallback
+    categoryAddStatusListener,
+    disposeCategoryStatusListener,
+    disposeDictionaryStatusListener,
+    emitTokenUsage: (usage) => {
+      for (const listener of [...tokenUsageListeners]) {
+        listener(usage);
+      }
+    },
+    tokenUsageListenerCount: () => tokenUsageListeners.size
   };
 }
 
@@ -167,7 +191,57 @@ describe('MessageHandler assembly', () => {
         source: 'extension.account'
       })
     );
-    expect(assembly.categorySetStatusEmitter).toHaveBeenCalledWith(expect.any(Function));
+    expect(assembly.categoryAddStatusListener).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  it('routes workshop messages (12th domain) and rehydrates a new handler from the shared session aggregate', async () => {
+    const assembly = createTestAssembly();
+    const postMessage = jest.fn().mockResolvedValue(undefined);
+    const handler = createHandler(assembly, postMessage);
+    postMessage.mockClear();
+
+    await handler.handleMessage({
+      type: MessageType.WORKSHOP_SET_EXCERPT,
+      source: 'webview.workshop',
+      payload: { text: 'A line of prose worth keeping.' },
+      timestamp: Date.now()
+    });
+
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: MessageType.WORKSHOP_SESSION_STATE,
+        source: 'extension.workshop',
+        payload: expect.objectContaining({
+          session: expect.objectContaining({
+            excerpt: expect.objectContaining({ text: 'A line of prose worth keeping.' })
+          })
+        })
+      })
+    );
+
+    // Panel closed and reopened: a SECOND handler over the SAME bundle serves
+    // the same session back — the ADR's reload-safety criterion.
+    const secondPost = jest.fn().mockResolvedValue(undefined);
+    const second = createHandler(assembly, secondPost);
+    secondPost.mockClear();
+
+    await second.handleMessage({
+      type: MessageType.WORKSHOP_REQUEST_SESSION,
+      source: 'webview.workshop',
+      payload: {},
+      timestamp: Date.now()
+    });
+
+    expect(secondPost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: MessageType.WORKSHOP_SESSION_STATE,
+        payload: expect.objectContaining({
+          session: expect.objectContaining({
+            excerpt: expect.objectContaining({ text: 'A line of prose worth keeping.' })
+          })
+        })
+      })
+    );
   });
 
   it('does not arm a balance refresh for activation/reset token updates', () => {
@@ -177,7 +251,7 @@ describe('MessageHandler assembly', () => {
 
     expect(assembly.scheduleRefresh).not.toHaveBeenCalled();
 
-    assembly.tokenUsageCallback()?.({
+    assembly.emitTokenUsage({
       promptTokens: 0,
       completionTokens: 0,
       totalTokens: 0,
@@ -185,13 +259,44 @@ describe('MessageHandler assembly', () => {
     });
     expect(assembly.scheduleRefresh).not.toHaveBeenCalled();
 
-    assembly.tokenUsageCallback()?.({
+    assembly.emitTokenUsage({
       promptTokens: 3,
       completionTokens: 2,
       totalTokens: 5,
       costUsd: 0.001
     });
     expect(assembly.scheduleRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('token usage fans out to BOTH live surfaces, and disposing one never blinds the survivor', () => {
+    const assembly = createTestAssembly();
+    const sidebarPost = jest.fn().mockResolvedValue(undefined);
+    const workshopPost = jest.fn().mockResolvedValue(undefined);
+    createHandler(assembly, sidebarPost); // the sidebar's handler
+    const workshop = createHandler(assembly, workshopPost); // the panel's handler
+    sidebarPost.mockClear();
+    workshopPost.mockClear();
+
+    const tokenUpdates = (post: jest.Mock) =>
+      post.mock.calls.map((c) => c[0]).filter((m) => m.type === MessageType.TOKEN_USAGE_UPDATE);
+
+    // One real request's usage reaches BOTH webviews — the load-bearing
+    // multicast behavior itself (PR #67 review #2).
+    assembly.emitTokenUsage({ promptTokens: 3, completionTokens: 2, totalTokens: 5, costUsd: 0.001 });
+    expect(tokenUpdates(sidebarPost)).toHaveLength(1);
+    expect(tokenUpdates(workshopPost)).toHaveLength(1);
+    expect(assembly.tokenUsageListenerCount()).toBe(2);
+
+    // Closing the Workshop panel releases ONLY its registration…
+    workshop.dispose();
+    expect(assembly.tokenUsageListenerCount()).toBe(1);
+    sidebarPost.mockClear();
+    workshopPost.mockClear();
+
+    // …so the sidebar keeps receiving after the panel is gone.
+    assembly.emitTokenUsage({ promptTokens: 1, completionTokens: 1, totalTokens: 2, costUsd: 0.0002 });
+    expect(tokenUpdates(workshopPost)).toHaveLength(0);
+    expect(tokenUpdates(sidebarPost)).toHaveLength(1);
   });
 
   it('keeps replay caches isolated between handler instances', async () => {
@@ -226,11 +331,15 @@ describe('MessageHandler assembly', () => {
 
     first.dispose();
 
+    // Dispose releases ONLY this instance's registrations…
     expect(assembly.disposeBalanceListener).toHaveBeenCalledTimes(1);
     expect(assembly.disposeSecretListener).toHaveBeenCalledTimes(1);
-    expect(assembly.accountDispose).toHaveBeenCalledTimes(1);
-    expect(assembly.categorySetStatusEmitter).toHaveBeenLastCalledWith(undefined);
-    expect(assembly.tokenUsageCallback()).toBeUndefined();
+    expect(assembly.disposeDictionaryStatusListener).toHaveBeenCalledTimes(1);
+    expect(assembly.disposeCategoryStatusListener).toHaveBeenCalledTimes(1);
+    expect(assembly.tokenUsageListenerCount()).toBe(0);
+    // …and NEVER tears down the shared service: the other webview surface
+    // (sidebar ↔ Workshop panel) still depends on it (PR #66 review, Tim).
+    expect(assembly.accountDispose).not.toHaveBeenCalled();
 
     createHandler(
       assembly,
@@ -239,8 +348,8 @@ describe('MessageHandler assembly', () => {
 
     expect(assembly.accountAddRefreshListener).toHaveBeenCalledTimes(2);
     expect(assembly.secretOnDidChange).toHaveBeenCalledTimes(2);
-    expect(assembly.categorySetStatusEmitter).toHaveBeenLastCalledWith(expect.any(Function));
-    expect(assembly.tokenUsageCallback()).toEqual(expect.any(Function));
+    expect(assembly.categoryAddStatusListener).toHaveBeenCalledTimes(2);
+    expect(assembly.tokenUsageListenerCount()).toBe(1);
   });
 
   it('refreshes AI services when the stored API key changes (self-heal)', async () => {

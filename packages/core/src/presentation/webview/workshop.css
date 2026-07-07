@@ -65,11 +65,33 @@
   text-rendering: optimizeLegibility;
 }
 
-/* Disabled controls: the Sprint 1 shell is intentionally inert — keep the
-   designed look, just refuse the cursor. */
+/* Disabled controls (composer until Sprint 3, palette without an excerpt):
+   keep the designed look, just refuse the cursor. */
 [data-pm-surface="workshop"] button:disabled,
-[data-pm-surface="workshop"] input:disabled {
+[data-pm-surface="workshop"] input:disabled,
+[data-pm-surface="workshop"] select:disabled,
+[data-pm-surface="workshop"] textarea:disabled {
   cursor: not-allowed;
+}
+
+/* ---------- Focus (scoped; PR #66 review #14) ----------
+   The Workshop surface owns its focus story: index.css's unscoped
+   `input:focus` must never be what makes these controls legible. Keyboard
+   focus gets the accent ring; pointer clicks stay clean via :focus-visible. */
+[data-pm-surface="workshop"] button:focus-visible,
+[data-pm-surface="workshop"] select:focus-visible,
+[data-pm-surface="workshop"] input:focus-visible,
+[data-pm-surface="workshop"] textarea:focus-visible {
+  outline: 2px solid var(--pm-accent-hi);
+  outline-offset: 1px;
+}
+[data-pm-surface="workshop"] .pm-ws-excerpt-input:focus {
+  border-color: var(--pm-accent-lo);
+  outline: none;
+}
+[data-pm-surface="workshop"] .pm-ws-excerpt-input:focus-visible {
+  outline: 2px solid var(--pm-accent-hi);
+  outline-offset: 1px;
 }
 
 /* ---------- Header ---------- */
@@ -94,6 +116,12 @@
   display: flex;
   gap: 13px;
   align-items: center;
+  /* Shrinkable flex child: a long pinned-file path clips here rather than
+     squeezing the actions row into wrapping. */
+  min-width: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-brand > div:last-child {
+  min-width: 0;
 }
 [data-pm-surface="workshop"] .pm-ws-logo {
   width: 46px;
@@ -126,12 +154,16 @@
   font-size: 12px;
   color: var(--pm-muted);
   margin: 3px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 [data-pm-surface="workshop"] .pm-ws-header-actions {
   display: flex;
   align-items: center;
   gap: 12px;
+  /* The actions row never squeezes: the brand side truncates instead. */
+  flex-shrink: 0;
 }
 [data-pm-surface="workshop"] .pm-ws-reset {
   display: inline-flex;
@@ -144,23 +176,55 @@
   padding: 9px 11px;
   font-size: 12.5px;
   font-family: var(--pm-sans);
+  white-space: nowrap;
 }
-[data-pm-surface="workshop"] .pm-ws-model {
+/* The shared ModelSelector (trigger + ModelBrowserModal — the same component
+   the sidebar uses), reskinned so the trigger reads as a workshop chip. The
+   modal itself keeps its index.css styling: one browser, both surfaces.
+   index.css sizes the selector for the sidebar's STACKED layout
+   (.model-selector { width:100% } / .model-selector-trigger { width:100%;
+   min-height:48px }) — inside a flex ROW that demands the whole row and
+   wraps every sibling, so width/height are explicitly re-neutralized here. */
+[data-pm-surface="workshop"] .pm-ws-header-actions .model-selector {
+  display: flex;
+  align-items: center;
+  width: auto;
+  flex: 0 0 auto;
+}
+[data-pm-surface="workshop"] .pm-ws-header-actions .model-selector-label {
+  /* Compact header: the trigger's aria-label already carries the scope name. */
+  display: none;
+}
+[data-pm-surface="workshop"] .pm-ws-header-actions .model-selector-trigger {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  width: auto;
+  min-height: 0;
   background: var(--pm-surface-2);
   border: 1px solid var(--pm-border);
   border-radius: var(--pm-r-input);
   padding: 9px 12px;
   font-size: 12.5px;
+  font-weight: 500;
   color: var(--pm-text);
   font-family: var(--pm-sans);
+  max-width: 230px;
+}
+[data-pm-surface="workshop"] .pm-ws-header-actions .model-selector-current {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-pm-surface="workshop"] .pm-ws-header-actions .model-selector-trigger:not(:disabled):hover {
+  border-color: var(--pm-border-2);
 }
 [data-pm-surface="workshop"] .pm-ws-balance {
   display: flex;
   align-items: center;
   gap: 7px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 [data-pm-surface="workshop"] .pm-ws-balance-dot {
   width: 7px;
@@ -169,6 +233,14 @@
   flex-shrink: 0;
   background: var(--pm-blue);
   box-shadow: 0 0 7px rgba(90, 162, 240, 0.6);
+}
+[data-pm-surface="workshop"] .pm-ws-balance-dot-ok {
+  background: var(--pm-green);
+  box-shadow: 0 0 7px rgba(111, 201, 138, 0.6);
+}
+[data-pm-surface="workshop"] .pm-ws-balance-dot-off {
+  background: var(--pm-faint);
+  box-shadow: none;
 }
 [data-pm-surface="workshop"] .pm-ws-balance-label {
   font-size: 12.5px;
@@ -339,7 +411,179 @@
   margin: 0;
 }
 
-/* ---------- Composer (present but disabled in Sprint 1) ---------- */
+/* ---------- Excerpt editor (Sprint 2: rail-driven pinning) ---------- */
+[data-pm-surface="workshop"] .pm-ws-excerpt {
+  max-height: 240px;
+  overflow-y: auto;
+}
+[data-pm-surface="workshop"] .pm-ws-excerpt-input {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  font-family: var(--pm-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--pm-text);
+  background: var(--pm-inset);
+  border: 1px solid var(--pm-border);
+  border-radius: 10px;
+}
+[data-pm-surface="workshop"] .pm-ws-excerpt-input::placeholder {
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-excerpt-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 9px;
+}
+[data-pm-surface="workshop"] .pm-ws-pin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: none;
+  border-radius: var(--pm-r-input);
+  padding: 8px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: var(--pm-sans);
+  color: #fff;
+  background: linear-gradient(180deg, var(--pm-accent-hi), var(--pm-accent-lo));
+}
+[data-pm-surface="workshop"] .pm-ws-pin-btn:disabled {
+  filter: saturate(0.55) brightness(0.8);
+}
+[data-pm-surface="workshop"] .pm-ws-excerpt-edit {
+  align-self: flex-start;
+  margin-top: 8px;
+  background: transparent;
+  border: none;
+  padding: 2px 0;
+  font-size: 12px;
+  font-family: var(--pm-sans);
+  color: var(--pm-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+[data-pm-surface="workshop"] .pm-ws-excerpt-edit:not(:disabled):hover {
+  color: var(--pm-text);
+}
+
+/* ---------- Turns (Sprint 2: the live thread) ---------- */
+[data-pm-surface="workshop"] .pm-ws-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-user {
+  align-items: flex-end;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pm-text);
+  background: var(--pm-surface-3);
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-pill);
+  padding: 7px 13px;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-assistant {
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-border-soft);
+  border-radius: var(--pm-r-card);
+  padding: 14px 16px;
+  max-width: 860px;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-usage {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-dim);
+  white-space: nowrap;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-truncated {
+  font-size: 11.5px;
+  color: var(--pm-amber);
+  margin: 2px 0 0;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-body {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="workshop"] .pm-ws-turn-body h1,
+[data-pm-surface="workshop"] .pm-ws-turn-body h2,
+[data-pm-surface="workshop"] .pm-ws-turn-body h3 {
+  color: var(--pm-text);
+  margin: 14px 0 6px;
+  line-height: 1.3;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-body p {
+  margin: 8px 0;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-body code {
+  font-family: var(--pm-mono);
+  font-size: 12px;
+  background: var(--pm-inset);
+  border: 1px solid var(--pm-border-soft);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-live {
+  border-style: dashed;
+  border-color: var(--pm-border-2);
+}
+
+/* Error banner (dismissible, role=alert) */
+[data-pm-surface="workshop"] .pm-ws-error {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--pm-text);
+  background: rgba(224, 103, 58, 0.12);
+  border: 1px solid var(--pm-accent-lo);
+  border-radius: var(--pm-r-tile);
+  padding: 10px 12px;
+}
+[data-pm-surface="workshop"] .pm-ws-error button {
+  background: transparent;
+  border: none;
+  color: var(--pm-muted);
+  padding: 1px;
+  flex-shrink: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-error button:hover {
+  color: var(--pm-text);
+}
+
+/* Tool palette states (enabled era) */
+[data-pm-surface="workshop"] .pm-ws-tool:not(:disabled):hover {
+  background: var(--pm-surface-3);
+  color: var(--pm-text);
+  border-color: var(--pm-border-2);
+}
+[data-pm-surface="workshop"] .pm-ws-tool-active {
+  color: var(--pm-text);
+  border-color: var(--pm-accent-lo);
+  background: var(--pm-accent-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-reset:not(:disabled):hover {
+  color: var(--pm-text);
+  border-color: var(--pm-border-2);
+}
+
+/* ---------- Composer (present but disabled until Sprint 3) ---------- */
 [data-pm-surface="workshop"] .pm-ws-composer-wrap {
   flex-shrink: 0;
   padding: 14px 32px 22px;

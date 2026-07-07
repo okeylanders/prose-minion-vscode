@@ -33,6 +33,9 @@ export type {
   SecretsPort
 } from '@/application/handlers/MessageHandlerContracts';
 
+// --- Application: Workshop session aggregate (ADR 2026-07-03) ---
+export { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
+
 // --- Infrastructure: secrets ---
 export { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
 

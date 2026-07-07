@@ -17,6 +17,7 @@
  */
 
 import { LogSink } from '@/platform';
+import { ListenerSet } from '@/utils/ListenerSet';
 import { API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
 import pLimit from 'p-limit';
 import { DictionaryUtility } from '@/tools/utility/dictionaryUtility';
@@ -76,7 +77,7 @@ export type ParallelGenerationProgressCallback = (progress: {
 
 export class DictionaryService {
   private dictionaryUtility?: DictionaryUtility;
-  private statusEmitter?: StatusEmitter;
+  private readonly statusListeners: ListenerSet<Parameters<StatusEmitter>>;
 
   // Parallel generation constants
   private readonly CONCURRENCY_LIMIT = 7;
@@ -86,20 +87,23 @@ export class DictionaryService {
     private readonly aiResourceManager: AIResourceManager,
     private readonly resourceLoader: ResourceLoaderService,
     private readonly toolOptions: ToolOptionsProvider,
-    private readonly outputChannel?: LogSink,
-    statusEmitter?: StatusEmitter
+    private readonly outputChannel?: LogSink
   ) {
-    this.statusEmitter = statusEmitter;
+    this.statusListeners = new ListenerSet(
+      '[DictionaryService] Status listener',
+      outputChannel
+    );
     // Dictionary will be initialized when AI resources are available
     void this.initializeDictionary();
   }
 
   /**
-   * Set status callback for progress updates
-   * Called by MessageHandler after construction
+   * Subscribe to generation-progress status. Returns an unsubscribe function —
+   * each webview's MessageHandler owns its registration and releases it on
+   * dispose (the service is shared across webviews).
    */
-  setStatusEmitter(statusEmitter?: StatusEmitter): void {
-    this.statusEmitter = statusEmitter;
+  addStatusListener(listener: StatusEmitter): () => void {
+    return this.statusListeners.add(listener);
   }
 
   /**
@@ -560,12 +564,10 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
   }
 
   /**
-   * Send status update via status emitter
+   * Send status update to every registered listener
    */
   private sendStatus(message: string, progress?: { current: number; total: number }, tickerMessage?: string): void {
-    if (this.statusEmitter) {
-      this.statusEmitter(message, progress, tickerMessage);
-    }
+    this.statusListeners.emit(message, progress, tickerMessage);
   }
 
   /**

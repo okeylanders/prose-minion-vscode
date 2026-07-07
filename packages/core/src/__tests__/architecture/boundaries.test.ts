@@ -54,8 +54,11 @@ const HANDLERS_ROOT = path.join(
   'handlers'
 );
 
+// WorkshopSessionService is in the net (PR #67 review #14): it is the
+// composition-root-owned reload-safety aggregate — a handler `new`-ing its
+// own copy would silently fork the session per webview.
 const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
-  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository)\b`
+  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService)\b`
 );
 
 function collectSourceFiles(dir: string, acc: string[] = []): string[] {

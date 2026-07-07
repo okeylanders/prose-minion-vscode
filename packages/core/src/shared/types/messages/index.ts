@@ -25,6 +25,7 @@ export * from './sources';
 export * from './ui';
 export * from './results';
 export * from './streaming';
+export * from './workshop';
 
 // Union types for message routing
 import {
@@ -117,6 +118,14 @@ import {
   CancelContextRequestMessage,
   CancelCategorySearchRequestMessage
 } from './streaming';
+import {
+  WorkshopRunToolMessage,
+  WorkshopSetExcerptMessage,
+  WorkshopResetSessionMessage,
+  WorkshopRequestSessionMessage,
+  WorkshopTurnMessage,
+  WorkshopSessionStateMessage
+} from './workshop';
 
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
@@ -156,7 +165,11 @@ export type WebviewToExtensionMessage =
   | CancelAnalysisRequestMessage
   | CancelDictionaryRequestMessage
   | CancelContextRequestMessage
-  | CancelCategorySearchRequestMessage;
+  | CancelCategorySearchRequestMessage
+  | WorkshopRunToolMessage
+  | WorkshopSetExcerptMessage
+  | WorkshopResetSessionMessage
+  | WorkshopRequestSessionMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
@@ -186,4 +199,6 @@ export type ExtensionToWebviewMessage =
   | DictionaryGenerationProgressMessage
   | StreamStartedMessage
   | StreamChunkMessage
-  | StreamCompleteMessage;
+  | StreamCompleteMessage
+  | WorkshopTurnMessage
+  | WorkshopSessionStateMessage;

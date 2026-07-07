@@ -6,12 +6,12 @@ exports[`getWebviewHtml pins the sidebar surface output — the extraction promi
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src https://test.csp-source 'unsafe-inline'; script-src https://test.csp-source 'nonce-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'; img-src https://test.csp-source https: data:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src https://test.csp-source 'unsafe-inline'; script-src https://test.csp-source 'nonce-QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJC'; img-src https://test.csp-source https: data:;">
   <title>Prose Minion Tools</title>
 </head>
 <body>
   <div id="root" style="padding:8px;font-family:var(--vscode-font-family);color:var(--vscode-foreground)">Loading Prose Minion…</div>
-  <script nonce="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">
+  <script nonce="QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJC">
     window.proseMinonAssets = {
       vhsLoadingGif: "https://webview.test/ext/assets/assistant-working-prose-minion-my-world-is-user-generated.gif",
       loadingGifs: [
@@ -30,7 +30,7 @@ exports[`getWebviewHtml pins the sidebar surface output — the extraction promi
       }
     };
   </script>
-  <script nonce="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">
+  <script nonce="QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJC">
     console.log('[Prose Minion] Webview HTML loaded');
     window.addEventListener('error', function (e) {
       try {
@@ -41,7 +41,7 @@ exports[`getWebviewHtml pins the sidebar surface output — the extraction promi
       } catch {}
     });
   </script>
-  <script nonce="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" src="https://webview.test/ext/dist/webview.js"></script>
+  <script nonce="QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJC" src="https://webview.test/ext/dist/webview.js"></script>
 </body>
 </html>"
 `;

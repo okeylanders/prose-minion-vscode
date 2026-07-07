@@ -23,10 +23,15 @@ reset) don't contaminate the session-state work.
   `getMessages`, `resetConversation`, `deleteConversation`,
   `getConversationInfo`. It **supports** multi-turn; no handler has ever driven
   it that way — today's handlers `startConversation` and stop.
-- It still logs via raw `console.*` (e.g. the old-conversation cleanup log ~line
-  107). ADR 2026-06-18 flagged migrating these to the injected `LogSink`.
+- ~~It still logs via raw `console.*`~~ **Done in Sprint 02** (PR #67): the
+  sink is constructor-injected and the cleanup log routes through it.
 - The sidebar already seeds an excerpt from the editor selection via a
   `handleAssistantSelection` path — reuse it, don't reinvent it.
+- The provenance plumbing already exists (Sprint 02): `WorkshopExcerpt` /
+  `WorkshopSetExcerptPayload` carry `sourceUri` + `relativePath`, the header
+  subtitle renders them, and `WorkshopHandler` passes `sourceUri` into the
+  tool calls. Both seeding mechanisms below are senders for fields that are
+  already wired end-to-end.
 
 ## Tasks
 
@@ -47,9 +52,22 @@ reset) don't contaminate the session-state work.
       `prose-minion.openWorkshop` (or a sibling command) that seeds the pinned
       excerpt from the current selection via the existing
       `handleAssistantSelection` seeding path → `WORKSHOP_SET_EXCERPT`.
-- [ ] Migrate `ConversationManager`'s `console.*` calls to the injected
-      `LogSink` (constructor-inject the sink; no behavior change). Clears the
-      ADR 2026-06-18 Step-2 leftover.
+- [ ] **File-picker seeding** (Okey, Sprint 02 review): a "Pin from file…"
+      affordance in the rail's excerpt block, next to paste-pinning, so both
+      paths exist. Shape: new `WORKSHOP_PICK_EXCERPT_FILE` message
+      (webview→ext) → host opens a file picker → reads the file → pins with
+      full provenance (`sourceUri` + `relativePath`) → posts
+      `WORKSHOP_SESSION_STATE`. The picker needs a host seam — handlers are
+      vscode-free, so either add a `pickFile()` method to the `shell`
+      platform port (VS Code adapter wraps `window.showOpenDialog`) or let
+      `WorkshopPanelProvider` own the dialog and forward the chosen path.
+      Prefer the port: it keeps the flow inside `WorkshopHandler` where the
+      session mutation lives. Guardrail: pin the file's CONTENT as the
+      excerpt; if the file is huge, take a sane head-slice and say so in the
+      UI rather than silently pinning a novel.
+- [x] ~~Migrate `ConversationManager`'s `console.*` calls to the injected
+      `LogSink`~~ **Done early, in Sprint 02** (PR #67 — it was on the same
+      seam as the multicast work). Nothing left here.
 - [ ] Multi-turn service tests: a follow-up appends to the same conversation
       (message count grows, id stable); reset disposes the conversation; a new
       run after reset starts a fresh id.
@@ -62,8 +80,10 @@ reset) don't contaminate the session-state work.
   on reset; a post-reset run starts a new conversation.
 - Opening the Workshop from an editor selection pins that selection as the
   excerpt.
-- `ConversationManager` no longer calls `console.*`; logs route through
-  `LogSink`. No behavior change beyond logging.
+- "Pin from file…" pins a picked file's content with `relativePath` shown in
+  the header subtitle and excerpt block — same provenance as selection
+  seeding.
+- ~~`ConversationManager` no longer calls `console.*`~~ (landed in Sprint 02).
 - Token tracking reflects multi-turn accumulation; the budgeting decision is
   documented.
 - Multi-turn service tests pass; lint, typecheck, tests, build, bundle green.

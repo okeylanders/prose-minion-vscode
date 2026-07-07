@@ -34,6 +34,7 @@ import {
   TextSourceResolver,
   AccountBalanceService,
   OpenRouterAccountClient,
+  WorkshopSessionService,
   CoreServices,
 } from '@prose-minion/core';
 // VS Code adapters (app-local; the composition root wires them into the ports)
@@ -137,6 +138,15 @@ export function activate(context: vscode.ExtensionContext): void {
     new OpenRouterAccountClient(secretsService, outputChannel),
     outputChannel
   );
+  // The balance service is shared by BOTH webview surfaces, so its lifecycle
+  // belongs here, not to any single MessageHandler's dispose (which would
+  // strip the surviving surface's refresh listeners).
+  context.subscriptions.push({ dispose: () => accountBalanceService.dispose() });
+
+  // Workshop session aggregate (ADR 2026-07-03): one instance, owned by the
+  // composition root, so the thread survives panel close/reopen and webview
+  // reloads — reload-safety lives HERE, not in React state.
+  const workshopSessionService = new WorkshopSessionService();
 
   const coreServices: CoreServices = {
     assistantToolService,
@@ -151,7 +161,8 @@ export function activate(context: vscode.ExtensionContext): void {
     secretsService,
     textSourceResolver,
     categorySearchService,
-    accountBalanceService
+    accountBalanceService,
+    workshopSessionService
   };
 
   // Migrate API key from settings to SecretStorage if needed
