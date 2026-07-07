@@ -34,6 +34,12 @@ export interface AnalysisStreamingOptions {
   signal?: AbortSignal;
   /** Callback for streaming tokens (enables streaming mode) */
   onToken?: StreamingTokenCallback;
+  /**
+   * Retain the conversation after a successful run for multi-turn
+   * continuation (Workshop). The result carries the conversationId to
+   * continue via continueConversation(); single-shot callers omit this.
+   */
+  retainConversation?: boolean;
 }
 
 /**
@@ -176,7 +182,8 @@ export class AssistantToolService {
         {
           ...options,
           signal: streamingOptions?.signal,
-          onToken: streamingOptions?.onToken
+          onToken: streamingOptions?.onToken,
+          retainConversation: streamingOptions?.retainConversation
         }
       );
 
@@ -187,7 +194,8 @@ export class AssistantToolService {
         executionResult.content,
         executionResult.usedGuides,
         executionResult.usage,
-        executionResult.finishReason
+        executionResult.finishReason,
+        executionResult.conversationId
       );
     } catch (error) {
       // AbortError is now caught in the orchestrator, so this is only for other errors
@@ -242,7 +250,8 @@ export class AssistantToolService {
           temperature: options.temperature,
           maxTokens: options.maxTokens,
           signal: streamingOptions?.signal,
-          onToken: streamingOptions?.onToken
+          onToken: streamingOptions?.onToken,
+          retainConversation: streamingOptions?.retainConversation
         }
       );
 
@@ -252,7 +261,8 @@ export class AssistantToolService {
         executionResult.content,
         executionResult.usedGuides,
         executionResult.usage,
-        executionResult.finishReason
+        executionResult.finishReason,
+        executionResult.conversationId
       );
     } catch (error) {
       // AbortError is now caught in the orchestrator, so this is only for other errors
@@ -304,7 +314,8 @@ export class AssistantToolService {
         {
           ...options,
           signal: streamingOptions?.signal,
-          onToken: streamingOptions?.onToken
+          onToken: streamingOptions?.onToken,
+          retainConversation: streamingOptions?.retainConversation
         }
       );
 
@@ -314,7 +325,8 @@ export class AssistantToolService {
         executionResult.content,
         executionResult.usedGuides,
         executionResult.usage,
-        executionResult.finishReason
+        executionResult.finishReason,
+        executionResult.conversationId
       );
     } catch (error) {
       // AbortError is now caught in the orchestrator, so this is only for other errors
@@ -323,6 +335,59 @@ export class AssistantToolService {
         `Error: ${error instanceof Error ? error.message : String(error)}`
       );
     }
+  }
+
+  /**
+   * Continue a retained assistant-scope conversation with a free-text
+   * follow-up (Workshop multi-turn, ADR 2026-07-03 Sprint 3).
+   *
+   * Unlike the analyze* methods this does NOT catch errors into content
+   * strings: the Workshop handler owns the error UX (error rail vs thread)
+   * and needs ConversationNotFoundError to survive intact so it can tell
+   * "conversation expired" apart from a transport failure.
+   */
+  async continueConversation(
+    conversationId: string,
+    userMessage: string,
+    streamingOptions?: AnalysisStreamingOptions
+  ): Promise<AnalysisResult> {
+    const orchestrator = this.aiResourceManager.getOrchestrator('assistant');
+    if (!orchestrator) {
+      return AnalysisResultFactory.createAnalysisResult(
+        'workshop_follow_up',
+        this.getApiKeyWarning()
+      );
+    }
+
+    const options = this.toolOptions.getOptions();
+    this.outputChannel?.appendLine(
+      `[AssistantToolService] Continuing conversation ${conversationId} | Streaming: ${!!streamingOptions?.onToken}`
+    );
+
+    const executionResult = await orchestrator.continueConversation(conversationId, userMessage, {
+      temperature: options.temperature,
+      maxTokens: options.maxTokens,
+      signal: streamingOptions?.signal,
+      onToken: streamingOptions?.onToken
+    });
+
+    return AnalysisResultFactory.createAnalysisResult(
+      'workshop_follow_up',
+      executionResult.content,
+      executionResult.usedGuides,
+      executionResult.usage,
+      executionResult.finishReason,
+      executionResult.conversationId
+    );
+  }
+
+  /**
+   * Delete a retained conversation (workshop reset, or replacement by a new
+   * tool run). No-op when the orchestrator is gone or the id is unknown —
+   * disposal must be safe to call from any teardown path.
+   */
+  discardConversation(conversationId: string): void {
+    this.aiResourceManager.getOrchestrator('assistant')?.discardConversation(conversationId);
   }
 
   /**

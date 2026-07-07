@@ -7,7 +7,7 @@ import { LogSink, SettingsStore } from '@/platform';
 import { OpenRouterClient, OpenRouterMessage } from '@providers/OpenRouterClient';
 import { GuideRegistry } from '@/infrastructure/guides/GuideRegistry';
 import { GuideLoader } from '@/tools/shared/guides';
-import { ConversationManager } from './ConversationManager';
+import { ConversationManager, ConversationNotFoundError } from './ConversationManager';
 import { ResourceRequestParser } from '@parsers/ResourceRequestParser';
 import { ContextResourceRequestParser } from '@parsers/ContextResourceRequestParser';
 import { ContextResourceContent, ContextResourceProvider, ContextResourceSummary } from '@/domain/models/ContextGeneration';
@@ -27,6 +27,15 @@ export interface AIOptions {
   timeoutMs?: number;
   /** When provided, enables streaming mode and calls this callback for each token */
   onToken?: StreamingTokenCallback;
+  /**
+   * Keep the conversation alive after a successful run instead of deleting it
+   * in the finally (the single-shot default). The final assistant message is
+   * recorded into the conversation, the conversation is pinned against idle
+   * cleanup, and its id is returned on the result so the caller can continue
+   * it via continueConversation(). Cancelled or failed runs are still deleted —
+   * only a completed exchange is worth continuing.
+   */
+  retainConversation?: boolean;
 }
 
 export interface ExecutionResult {
@@ -37,6 +46,8 @@ export interface ExecutionResult {
   finishReason?: string;
   /** True if the request was cancelled via AbortSignal - content contains partial response */
   cancelled?: boolean;
+  /** Id of the retained conversation (only when retainConversation was set and the run completed). */
+  conversationId?: string;
 }
 
 export type StatusCallback = (message: string, tickerMessage?: string) => void;
@@ -132,9 +143,14 @@ export class AIResourceOrchestrator {
       `\n[AIResourceOrchestrator] Starting conversation for ${toolName} (model: ${this.openRouterClient.getModel()})`
     );
     const conversationId = this.conversationManager.startConversation(toolName, systemMessage);
+    if (options.retainConversation) {
+      // Pin immediately: a long guide-fetch run must not be reaped mid-flight.
+      this.conversationManager.pinConversation(conversationId);
+    }
     const usedGuides: string[] = [];
     const termination = this.createTerminationContext(options);
     const requestOptions = this.withTerminationSignal(options, termination);
+    let retained = false;
 
     try {
       // Build first user message
@@ -278,18 +294,156 @@ export class AIResourceOrchestrator {
       const truncatedNote = this.appendTruncationNote(last.content, last.finishReason);
       this.outputChannel?.appendLine(`[AIResourceOrchestrator] Conversation complete. Used ${usedGuides.length} guides total\n`);
 
+      // Retain only a COMPLETED exchange: an aborted run's partial content is
+      // not a turn worth continuing (the workshop treats it as abandoned too).
+      const wasCancelled = (termination.signal?.aborted ?? false) || (options.signal?.aborted ?? false);
+      if (options.retainConversation && !wasCancelled) {
+        this.conversationManager.addMessage(conversationId, {
+          role: 'assistant',
+          content: last.content
+        });
+        retained = true;
+        this.outputChannel?.appendLine(
+          `[AIResourceOrchestrator] Conversation ${conversationId} retained for continuation`
+        );
+      }
+
       return {
         content: cleanedResponse + truncatedNote,
         usedGuides,
         requestedResources: [],
         usage: totalUsage,
-        finishReason: last.finishReason
+        finishReason: last.finishReason,
+        conversationId: retained ? conversationId : undefined
       };
     } finally {
-      // Clean up conversation after completion
+      // Clean up conversation after completion (unless a caller retained it)
       termination.dispose();
-      this.conversationManager.deleteConversation(conversationId);
+      if (!retained) {
+        this.conversationManager.deleteConversation(conversationId);
+      }
     }
+  }
+
+  /**
+   * Continue a retained conversation with one more user turn (the Workshop's
+   * follow-up loop, ADR 2026-07-03 Sprint 3).
+   *
+   * The request is built as [...history, user] WITHOUT mutating the stored
+   * conversation; user + assistant messages are appended atomically only after
+   * a completed (non-cancelled) response, so the stored history is always a
+   * well-formed [system, (user, assistant)+] sequence — a cancelled follow-up
+   * leaves no dangling user message.
+   *
+   * Full history is sent every turn (no windowing — the token-budgeting
+   * decision documented in the Sprint 3 notes): conversations are scoped to
+   * one tool run + its follow-ups, so growth is bounded by the session
+   * structure, and prompt-token accumulation stays visible in token tracking.
+   *
+   * Plain single streaming turn: no guide-request detection — guides were
+   * loaded (if requested) during the conversation's opening tool run.
+   *
+   * @throws ConversationNotFoundError when the id is no longer held (config
+   * change rebuilt the AI resources, or the conversation was deleted).
+   */
+  async continueConversation(
+    conversationId: string,
+    userMessage: string,
+    options: AIOptions = {}
+  ): Promise<ExecutionResult> {
+    if (!this.conversationManager.hasConversation(conversationId)) {
+      throw new ConversationNotFoundError(conversationId);
+    }
+
+    const isStreaming = !!options.onToken;
+    const history = this.conversationManager.getMessages(conversationId);
+    this.outputChannel?.appendLine(
+      `\n[AIResourceOrchestrator] Continuing conversation ${conversationId} ` +
+      `(${history.length} prior messages, model: ${this.openRouterClient.getModel()}, streaming: ${isStreaming})`
+    );
+
+    const userTurn: OpenRouterMessage = { role: 'user', content: userMessage };
+    const messages = [...history, userTurn];
+    const termination = this.createTerminationContext(options);
+    const requestOptions = this.withTerminationSignal(options, termination);
+
+    try {
+      let content = '';
+      let usage: TokenUsage | undefined;
+      let finishReason: string | undefined;
+      let cancelled = false;
+
+      if (options.onToken) {
+        try {
+          for await (const chunk of this.openRouterClient.createStreamingChatCompletion(messages, {
+            temperature: requestOptions.temperature,
+            maxTokens: requestOptions.maxTokens,
+            signal: requestOptions.signal
+          })) {
+            if (chunk.done) {
+              usage = chunk.usage;
+              finishReason = chunk.finishReason ?? finishReason;
+            } else if (chunk.token) {
+              content += chunk.token;
+              options.onToken(chunk.token);
+            }
+          }
+        } catch (error) {
+          // Preserve partial content on cancellation (sibling-path semantics)
+          if (error instanceof Error && error.name === 'AbortError') {
+            cancelled = true;
+            this.outputChannel?.appendLine(
+              `[AIResourceOrchestrator] Continuation cancelled - preserving ${content.length} chars of partial response`
+            );
+          } else {
+            throw error;
+          }
+        }
+      } else {
+        const response = await this.openRouterClient.createChatCompletion(messages, {
+          temperature: requestOptions.temperature,
+          maxTokens: requestOptions.maxTokens,
+          signal: requestOptions.signal
+        });
+        content = response.content;
+        usage = response.usage;
+        finishReason = response.finishReason;
+      }
+
+      if (usage) {
+        this.emitTokenUsage({ usage });
+      }
+
+      if (!cancelled) {
+        // Atomic append: the exchange enters the history only once complete.
+        this.conversationManager.addMessage(conversationId, userTurn);
+        this.conversationManager.addMessage(conversationId, { role: 'assistant', content });
+        this.outputChannel?.appendLine(
+          `[AIResourceOrchestrator] Continuation complete (${content.length} chars, ` +
+          `${this.conversationManager.getConversationInfo(conversationId)?.messageCount ?? '?'} messages in conversation)\n`
+        );
+      }
+
+      return {
+        content: content + this.appendTruncationNote(content, finishReason),
+        usedGuides: [],
+        requestedResources: [],
+        usage,
+        finishReason,
+        cancelled,
+        conversationId
+      };
+    } finally {
+      termination.dispose();
+    }
+  }
+
+  /**
+   * Delete a retained conversation (workshop reset, or replacement by a new
+   * tool run). Safe on unknown ids — deletion is idempotent.
+   */
+  discardConversation(conversationId: string): void {
+    this.conversationManager.deleteConversation(conversationId);
   }
 
   /**

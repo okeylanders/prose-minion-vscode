@@ -1,12 +1,15 @@
 import { AIResourceOrchestrator } from '@orchestration/AIResourceOrchestrator';
 import { OpenRouterClient } from '@providers/OpenRouterClient';
-import { ConversationManager } from '@orchestration/ConversationManager';
+import { ConversationManager, ConversationNotFoundError } from '@orchestration/ConversationManager';
 import { GuideRegistry } from '@/infrastructure/guides/GuideRegistry';
 import { GuideLoader } from '@/tools/shared/guides';
 
-// Mock dependencies
+// Mock dependencies. ConversationManager is deliberately NOT jest.mock'd: the
+// orchestrator receives it via constructor injection (each test passes its own
+// double or a real instance), and automocking the module would ALSO replace
+// ConversationNotFoundError — breaking the identity of errors the orchestrator
+// throws (the Sprint 3 continuation tests assert instanceof the real class).
 jest.mock('@providers/OpenRouterClient');
-jest.mock('@orchestration/ConversationManager');
 jest.mock('@/infrastructure/guides/GuideRegistry');
 jest.mock('@/tools/shared/guides');
 
@@ -337,6 +340,186 @@ describe('AIResourceOrchestrator', () => {
 
       expect(addMessageCalls[2][1].role).toBe('user');
       expect(addMessageCalls[2][1].content).toContain('Guide content');
+    });
+  });
+
+  describe('Multi-turn continuation (ADR 2026-07-03 Sprint 3) — REAL ConversationManager', () => {
+    // The continuation seam's whole point is what the store holds afterwards,
+    // so these tests run against the real ConversationManager (requireActual
+    // bypasses this file's jest.mock) instead of asserting on mock calls.
+    let realManager: ConversationManager;
+    let multiTurnOrchestrator: AIResourceOrchestrator;
+
+    beforeEach(() => {
+      realManager = new ConversationManager();
+      multiTurnOrchestrator = new AIResourceOrchestrator(
+        mockOpenRouterClient,
+        realManager,
+        mockGuideRegistry,
+        mockGuideLoader,
+        { get: (_s: string, _k: string, d?: unknown) => d, update: async () => undefined } as any,
+        undefined,
+        mockOutputChannel as any
+      );
+    });
+
+    afterEach(() => {
+      multiTurnOrchestrator.dispose();
+    });
+
+    const seedRetainedConversation = async (): Promise<string> => {
+      mockOpenRouterClient.createChatCompletion.mockResolvedValueOnce({
+        content: 'Opening analysis.',
+        finishReason: 'stop',
+        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 }
+      });
+      const result = await multiTurnOrchestrator.executeWithAgentCapabilities(
+        'workshop-prose',
+        'You are a prose assistant.',
+        'Analyze this excerpt.',
+        { includeCraftGuides: false, retainConversation: true }
+      );
+      expect(result.conversationId).toBeDefined();
+      return result.conversationId!;
+    };
+
+    it('retainConversation keeps the conversation alive with the final assistant turn recorded', async () => {
+      const conversationId = await seedRetainedConversation();
+
+      expect(realManager.hasConversation(conversationId)).toBe(true);
+      const messages = realManager.getMessages(conversationId);
+      expect(messages.map((m: { role: string }) => m.role)).toEqual([
+        'system',
+        'user',
+        'assistant'
+      ]);
+      expect(messages[2].content).toBe('Opening analysis.');
+
+      // Pinned: the idle reaper cannot eat it while the user thinks.
+      realManager.clearOldConversations(-1);
+      expect(realManager.hasConversation(conversationId)).toBe(true);
+    });
+
+    it('without retainConversation the conversation is deleted (single-shot default)', async () => {
+      mockOpenRouterClient.createChatCompletion.mockResolvedValueOnce({
+        content: 'One-shot analysis.',
+        finishReason: 'stop'
+      });
+
+      const result = await multiTurnOrchestrator.executeWithAgentCapabilities(
+        'sidebar-prose',
+        'System message',
+        'User message',
+        { includeCraftGuides: false }
+      );
+
+      expect(result.conversationId).toBeUndefined();
+      expect(realManager.getActiveConversationCount()).toBe(0);
+    });
+
+    it('a follow-up appends to the SAME conversation: message count grows, id stable', async () => {
+      const conversationId = await seedRetainedConversation();
+
+      mockOpenRouterClient.createChatCompletion.mockResolvedValueOnce({
+        content: 'Tightened version.',
+        finishReason: 'stop',
+        usage: { promptTokens: 200, completionTokens: 60, totalTokens: 260 }
+      });
+
+      const result = await multiTurnOrchestrator.continueConversation(
+        conversationId,
+        'Now tighten it.',
+        {}
+      );
+
+      expect(result.conversationId).toBe(conversationId);
+      expect(result.content).toBe('Tightened version.');
+
+      const messages = realManager.getMessages(conversationId);
+      expect(messages.map((m: { role: string }) => m.role)).toEqual([
+        'system',
+        'user',
+        'assistant',
+        'user',
+        'assistant'
+      ]);
+      expect(messages[3].content).toBe('Now tighten it.');
+      expect(messages[4].content).toBe('Tightened version.');
+
+      // And the REQUEST carried the full history + the new user turn.
+      const lastCall = mockOpenRouterClient.createChatCompletion.mock.calls.at(-1)!;
+      expect(lastCall[0].map((m: { role: string }) => m.role)).toEqual([
+        'system',
+        'user',
+        'assistant',
+        'user'
+      ]);
+    });
+
+    it('a cancelled follow-up leaves the stored conversation untouched (atomic append)', async () => {
+      const conversationId = await seedRetainedConversation();
+
+      mockOpenRouterClient.createStreamingChatCompletion = jest.fn(async function* () {
+        yield { token: 'partial ' };
+        const abort = new Error('aborted');
+        abort.name = 'AbortError';
+        throw abort;
+      }) as any;
+
+      const result = await multiTurnOrchestrator.continueConversation(
+        conversationId,
+        'Now tighten it.',
+        { onToken: jest.fn() }
+      );
+
+      expect(result.cancelled).toBe(true);
+      // No dangling user message: the history is still [system, user, assistant].
+      expect(realManager.getMessages(conversationId)).toHaveLength(3);
+    });
+
+    it('continuing a discarded (or never-known) conversation throws the typed error', async () => {
+      const conversationId = await seedRetainedConversation();
+      multiTurnOrchestrator.discardConversation(conversationId);
+
+      await expect(
+        multiTurnOrchestrator.continueConversation(conversationId, 'still there?', {})
+      ).rejects.toBeInstanceOf(ConversationNotFoundError);
+    });
+
+    it('a post-discard run retains a FRESH conversation id', async () => {
+      const first = await seedRetainedConversation();
+      multiTurnOrchestrator.discardConversation(first);
+
+      const second = await seedRetainedConversation();
+      expect(second).not.toBe(first);
+      expect(realManager.hasConversation(second)).toBe(true);
+      expect(realManager.getActiveConversationCount()).toBe(1);
+    });
+
+    it('an aborted tool run does NOT retain its conversation', async () => {
+      const controller = new AbortController();
+      mockOpenRouterClient.createStreamingChatCompletion = jest.fn(async function* () {
+        yield { token: 'partial ' };
+        controller.abort();
+        const abort = new Error('aborted');
+        abort.name = 'AbortError';
+        throw abort;
+      }) as any;
+
+      const result = await multiTurnOrchestrator.executeWithAgentCapabilities(
+        'workshop-prose',
+        'System message',
+        'User message',
+        {
+          includeCraftGuides: false,
+          retainConversation: true,
+          signal: controller.signal,
+          onToken: jest.fn()
+        }
+      );
+
+      expect(result.conversationId).toBeUndefined();
+      expect(realManager.getActiveConversationCount()).toBe(0);
     });
   });
 

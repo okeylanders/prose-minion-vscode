@@ -20,6 +20,8 @@ export interface ProseAssistantOptions {
   signal?: AbortSignal;
   /** Callback for streaming tokens (enables streaming mode) */
   onToken?: StreamingTokenCallback;
+  /** Retain the conversation after the run for multi-turn continuation (Workshop). */
+  retainConversation?: boolean;
 }
 
 export class ProseAssistant {
@@ -49,7 +51,8 @@ export class ProseAssistant {
         temperature: options?.temperature ?? 0.7,
         maxTokens: options?.maxTokens ?? 10000,
         signal: options?.signal,
-        onToken: options?.onToken
+        onToken: options?.onToken,
+        retainConversation: options?.retainConversation
       }
     );
   }

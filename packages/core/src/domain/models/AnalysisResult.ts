@@ -10,6 +10,8 @@ export interface AnalysisResult {
   readonly usedGuides?: string[];  // Array of guide paths that were used
   readonly usage?: TokenUsage;
   readonly finishReason?: string;
+  /** Retained conversation id, when the run asked for continuation (Workshop multi-turn). */
+  readonly conversationId?: string;
 }
 
 export interface MetricsResult {
@@ -19,14 +21,15 @@ export interface MetricsResult {
 }
 
 export class AnalysisResultFactory {
-  static createAnalysisResult(toolName: string, content: string, usedGuides?: string[], usage?: TokenUsage, finishReason?: string): AnalysisResult {
+  static createAnalysisResult(toolName: string, content: string, usedGuides?: string[], usage?: TokenUsage, finishReason?: string, conversationId?: string): AnalysisResult {
     return {
       toolName,
       content,
       timestamp: new Date(),
       usedGuides,
       usage,
-      finishReason
+      finishReason,
+      conversationId
     };
   }
 
