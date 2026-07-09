@@ -14,22 +14,22 @@ act before merge · **Deferred** = real issue, safe to punt for a stated reason 
 
 | # | Sev | Finding | Reviewers | Consensus | Status |
 |---|-----|---------|-----------|-----------|--------|
-| 1 | 🟠 High | Save fires two competing toasts; copy/save toast triggers substring-match free-text STATUS prose | Parker, Blake, Sam, Oliver | 🎯🎯 Strong | **Open** |
-| 2 | 🟠 High | `makeActions` picks prompts by sniffing display labels — load-bearing for the 7 fallback tools, zero invariant tests | Parker, Cal | 🎯 | **Open** |
-| 3 | 🟠 High | `openWorkshop` crosses the boundary as three anonymous type shapes while a `prose-minion.openWorkshop` command already does the same call | Marcus, Stan | 🎯 | **Open** |
-| 4 | 🟠 High | Stale-turn quick-action chips send an old tool's lens prompt into the current (different-tool) conversation | Bria | — | **Open** |
-| 5 | 🟠 High | A failed Workshop save/copy leaves no durable trace once the 2.2s toast fades (no log line, no banner) | Oliver | — | **Open** |
-| 6 | 🟠 High | `WorkshopThread`'s `currentToolId` walk goes blind past the 100-turn snapshot window — quick actions vanish, saves mislabeled `editor-*` | Sam | — | **Deferred** — needs a 100+-turn session *and* a reload; fix = fall back to the reload-safe `session.selectedToolId` |
-| 7 | 🟡 Standard | `OPEN_WORKSHOP` / `handleOpenWorkshop` untested on both branches; the `>=` route-count assertion silently tolerates it | Marcus, Cal | 🎯 | **Open** |
-| 8 | 🟡 Standard | `parseVariations` — the gate on the sprint's headline variation-cards feature — has zero tests | Cal | — | **Open** |
-| 9 | 🟡 Standard | Save `toolName` wire contract now lives in three places; `FILE_PREFIX_MAP` curates only half the 14 tools; `null` fabricates a `writing_tools_editor` identity | Marcus, Bria | 🎯 | **Open** |
-| 10 | 🟡 Standard | `SAVE_RESULT.toolName` reaches an unvalidated `path.join` host-side (traversal verified) — contained today only by the webview CSP | Patricia | — | **Deferred** — pre-existing seam unchanged by this PR; harden with a host-side allowlist as a follow-up |
-| 11 | 🟡 Standard | Empty-state quick-start list is a second, inline, uncommented tool list that can drift from `RAIL_TOOL_IDS` (the four tools do match the prototype — the gap is the missing name/rationale) | Parker | — | **Open** |
-| 12 | 🟡 Standard | `WorkshopToolsModal` skips the `open`-prop contract both existing modals follow (`AllToolsModal`, `ModelBrowserModal`) | Stan | — | **Open** |
-| 13 | 🟡 Standard | All three new components skip the file-header doc-comment convention every sibling carries | Stan | — | **Open** |
-| 14 | 🟡 Standard | `quickActionsDisabled` (whole-list boolean) punches the PR #67 memo boundary twice per run; `parseVariations` recomputed uncached | Tim | — | **Deferred** — microseconds at current scale; add `useMemo` on `parseVariations` as cheap insurance |
-| 15 | 🟡 Standard | Completion notes claim a "strict" variation format; the parser is deliberately permissive (`##`–`####`, `-` or `:`) | Bria | — | **Open** — wording fix or an intent decision, either is fine |
-| 16 | 🟢 Nit | Variation-card React key uses the model-supplied variation number — a repeated "Variation 1" collides | Blake, Sam | 🎯 | **Open** — key by map index |
+| 1 | 🟠 High | Save fires two competing toasts; copy/save toast triggers substring-match free-text STATUS prose | Parker, Blake, Sam, Oliver | 🎯🎯 Strong | **Addressed** — Workshop now listens to structured `COPY_RESULT_SUCCESS` / `SAVE_RESULT_SUCCESS`; save STATUS no longer clobbers the toast |
+| 2 | 🟠 High | `makeActions` picks prompts by sniffing display labels — load-bearing for the 7 fallback tools, zero invariant tests | Parker, Cal | 🎯 | **Addressed** — fallback prompts are explicit and map invariants are covered |
+| 3 | 🟠 High | `openWorkshop` crosses the boundary as three anonymous type shapes while a `prose-minion.openWorkshop` command already does the same call | Marcus, Stan | 🎯 | **Addressed** — kept adapter-owned execution but replaced anonymous shapes with named `WorkshopUiActions` |
+| 4 | 🟠 High | Stale-turn quick-action chips send an old tool's lens prompt into the current (different-tool) conversation | Bria | — | **Addressed** — stale tool bars still render as provenance, but disable when their tool differs from `session.selectedToolId` |
+| 5 | 🟠 High | A failed Workshop save/copy leaves no durable trace once the 2.2s toast fades (no log line, no banner) | Oliver | — | **Addressed** — file-ops errors now write to the output channel before posting the error toast |
+| 6 | 🟠 High | `WorkshopThread`'s `currentToolId` walk goes blind past the 100-turn snapshot window — quick actions vanish, saves mislabeled `editor-*` | Sam | — | **Addressed** — action tool lookup falls back to reload-safe `session.selectedToolId`; `null` no longer fabricates `writing_tools_editor` |
+| 7 | 🟡 Standard | `OPEN_WORKSHOP` / `handleOpenWorkshop` untested on both branches; the `>=` route-count assertion silently tolerates it | Marcus, Cal | 🎯 | **Addressed** — happy and fallback branches covered; route count pinned exactly |
+| 8 | 🟡 Standard | `parseVariations` — the gate on the sprint's headline variation-cards feature — has zero tests | Cal | — | **Addressed** — parser and variation-card copy/save wiring covered |
+| 9 | 🟡 Standard | Save `toolName` wire contract now lives in three places; `FILE_PREFIX_MAP` curates only half the 14 tools; `null` fabricates a `writing_tools_editor` identity | Marcus, Bria | 🎯 | **Addressed** — shared result tool-name/prefix contract covers all 14 Workshop tools |
+| 10 | 🟡 Standard | `SAVE_RESULT.toolName` reaches an unvalidated `path.join` host-side (traversal verified) — contained today only by the webview CSP | Patricia | — | **Addressed** — host-side save prefix selection is now a closed allowlist |
+| 11 | 🟡 Standard | Empty-state quick-start list is a second, inline, uncommented tool list that can drift from `RAIL_TOOL_IDS` (the four tools do match the prototype — the gap is the missing name/rationale) | Parker | — | **Addressed** — hoisted to `EMPTY_STATE_TOOL_IDS` with prototype rationale |
+| 12 | 🟡 Standard | `WorkshopToolsModal` skips the `open`-prop contract both existing modals follow (`AllToolsModal`, `ModelBrowserModal`) | Stan | — | **Addressed** |
+| 13 | 🟡 Standard | All three new components skip the file-header doc-comment convention every sibling carries | Stan | — | **Addressed** |
+| 14 | 🟡 Standard | `quickActionsDisabled` (whole-list boolean) punches the PR #67 memo boundary twice per run; `parseVariations` recomputed uncached | Tim | — | **Addressed** — `parseVariations` is memoized per turn content; stale-turn disabling is per tool |
+| 15 | 🟡 Standard | Completion notes claim a "strict" variation format; the parser is deliberately permissive (`##`–`####`, `-` or `:`) | Bria | — | **Addressed** — sprint notes now describe prompted format plus tolerant parsing |
+| 16 | 🟢 Nit | Variation-card React key uses the model-supplied variation number — a repeated "Variation 1" collides | Blake, Sam | 🎯 | **Addressed** — key and visible number are positional |
 | 17 | 🟢 Praise | Label-vs-prompt split threaded correctly through conversation history, pinned by tests | Blake | — | **N/A** |
 | 18 | 🟢 Praise | Quick-action labels validated against a closed, host-owned map — the "model never invents an affordance" guarantee holds at the boundary | Patricia | — | **N/A** |
 | 19 | 🟢 Praise | The PR #67 token-clock memo boundary holds — this PR adds zero per-token render cost | Tim | — | **N/A** |

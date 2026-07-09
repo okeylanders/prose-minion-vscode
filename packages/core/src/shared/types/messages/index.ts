@@ -107,6 +107,7 @@ import {
 } from './accountBalance';
 import {
   CopyResultMessage,
+  CopyResultSuccessMessage,
   SaveResultMessage,
   SaveResultSuccessMessage
 } from './results';
@@ -188,6 +189,7 @@ export type ExtensionToWebviewMessage =
   | CategorySearchResultMessage
   | DictionaryResultMessage
   | ContextResultMessage
+  | CopyResultSuccessMessage
   | SaveResultSuccessMessage
   | SettingsDataMessage
   | OpenSettingsMessage

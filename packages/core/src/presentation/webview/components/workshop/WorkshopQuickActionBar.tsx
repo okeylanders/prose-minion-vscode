@@ -1,3 +1,8 @@
+/**
+ * WorkshopQuickActionBar — deterministic follow-up chips owned by the static
+ * Workshop quick-action map, never by model output.
+ */
+
 import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
 import { WorkshopToolId } from '@messages';

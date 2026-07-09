@@ -299,7 +299,16 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
 
   return (
     <div className="tab-content">
-      <h2 className="text-lg font-semibold mb-4">Prose Excerpt Assistant</h2>
+      <div className="assistant-title-row">
+        <h2 className="text-lg font-semibold mb-4">Prose Excerpt Assistant</h2>
+        <button
+          className="btn btn-secondary workshop-launch-button"
+          onClick={handleOpenWorkshop}
+          title="Open the Workshop editor tab"
+        >
+          <Icon name="panelRight" size={14} /> Workshop
+        </button>
+      </div>
 
       <div className="input-container">
         <div className="input-header">
@@ -472,13 +481,6 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
         <div className="analysis-buttons-head">
           <h4 className="analysis-section-header">Analyze &amp; Suggest Improvements</h4>
           <div className="analysis-buttons-head-actions">
-            <button
-              className="btn ghost all-tools-button"
-              onClick={handleOpenWorkshop}
-              title="Open the Workshop editor tab"
-            >
-              <Icon name="panelRight" size={14} /> Workshop
-            </button>
             <button
               className="btn ghost all-tools-button"
               onClick={() => setShowAllTools(true)}

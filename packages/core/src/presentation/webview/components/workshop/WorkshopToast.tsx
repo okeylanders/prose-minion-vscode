@@ -1,3 +1,8 @@
+/**
+ * WorkshopToast — short-lived acknowledgements for Workshop copy/save/error
+ * actions. Durable error state stays in the thread banner or output log.
+ */
+
 import * as React from 'react';
 import { Icon, IconName } from '@components/shared/Icon';
 

@@ -40,7 +40,7 @@ interface ParsedVariations {
 
 const VARIATION_HEADING = /^#{2,4}\s*Variation\s+(\d+)(?:\s*[-:]\s*(.+))?\s*$/gim;
 
-const parseVariations = (content: string): ParsedVariations | null => {
+export const parseVariations = (content: string): ParsedVariations | null => {
   const matches = [...content.matchAll(VARIATION_HEADING)];
   if (matches.length < 2) {
     return null;
@@ -74,6 +74,8 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   onCopyVariation,
   onSaveVariation
 }) => {
+  const parsedVariations = React.useMemo(() => parseVariations(turn.content), [turn.content]);
+
   if (turn.role === 'user') {
     if (turn.kind === 'message') {
       return (
@@ -90,8 +92,6 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
       </div>
     );
   }
-
-  const parsedVariations = parseVariations(turn.content);
 
   return (
     <>
@@ -113,10 +113,10 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
               <MarkdownRenderer content={parsedVariations.intro} className="pm-ws-turn-body" />
             )}
             <div className="pm-ws-var-stack">
-              {parsedVariations.variations.map((variation) => (
-                <div className="pm-ws-var-card" key={`${turn.id}-${variation.number}`}>
+              {parsedVariations.variations.map((variation, index) => (
+                <div className="pm-ws-var-card" key={`${turn.id}-${index}`}>
                   <div className="pm-ws-var-head">
-                    <span className="pm-ws-var-number">Variation {variation.number}</span>
+                    <span className="pm-ws-var-number">Variation {index + 1}</span>
                     <span className="pm-ws-pill">{variation.label}</span>
                   </div>
                   <MarkdownRenderer content={variation.content} className="pm-ws-var-text" />

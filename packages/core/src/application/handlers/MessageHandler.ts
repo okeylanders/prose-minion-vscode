@@ -25,7 +25,8 @@ import {
 import {
   CoreServices,
   MessageTransport,
-  ResultCache
+  ResultCache,
+  WorkshopUiActions
 } from '@handlers/MessageHandlerContracts';
 
 // Message routing
@@ -150,7 +151,7 @@ export class MessageHandler {
     private readonly transport: MessageTransport,
     private readonly platform: Platform,
     private readonly outputChannel: LogSink,
-    private readonly uiActions: { openWorkshop?: () => void } = {}
+    private readonly uiActions: WorkshopUiActions = {}
   ) {
     const {
       assistantToolService,
@@ -261,7 +262,7 @@ export class MessageHandler {
       this.platform.workspace,
       this.platform.shell,
       this.platform.editor,
-      this.uiActions.openWorkshop
+      this.uiActions
     );
 
     this.fileOperationsHandler = new FileOperationsHandler(

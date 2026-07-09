@@ -38,6 +38,7 @@ export enum MessageType {
   SEARCH_RESULT = 'search_result',
   DICTIONARY_RESULT = 'dictionary_result',
   CONTEXT_RESULT = 'context_result',
+  COPY_RESULT_SUCCESS = 'copy_result_success',
   SAVE_RESULT_SUCCESS = 'save_result_success',
   SELECTION_DATA = 'selection_data',
   ERROR = 'error',

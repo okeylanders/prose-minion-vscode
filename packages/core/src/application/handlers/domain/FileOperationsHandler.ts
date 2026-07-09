@@ -6,6 +6,7 @@
 import * as path from 'path';
 import { FileSystem, FileType, LogSink, ShellService, Workspace } from '@/platform';
 import {
+  CopyResultSuccessMessage,
   CopyResultMessage,
   SaveResultMessage,
   SaveResultSuccessMessage,
@@ -16,22 +17,8 @@ import {
   StatusMessage
 } from '@messages';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
+import { assistantResultFilePrefix } from '@shared/constants/resultToolNames';
 import { MessageRouter } from '../MessageRouter';
-
-/**
- * File prefix mapping for assistant tools (Strategy pattern - Open/Closed Principle)
- * Adding new tools only requires a new map entry, not code changes
- */
-const FILE_PREFIX_MAP: Record<string, string> = {
-  'prose_analysis': 'excerpt-assistant-prose-',
-  'dialogue_analysis': 'excerpt-assistant-dialog-beats-',
-  'writing_tools_cliche': 'cliche-analysis-',
-  'writing_tools_continuity': 'continuity-check-',
-  'writing_tools_style': 'style-consistency-',
-  'writing_tools_editor': 'editor-',
-  'writing_tools_fresh': 'engagement-check-',
-  'writing_tools_repetition': 'repetition-analysis-'
-};
 
 export class FileOperationsHandler {
   constructor(
@@ -66,6 +53,9 @@ export class FileOperationsHandler {
   }
 
   private sendError(source: ErrorSource, message: string, details?: string): void {
+    this.outputChannel.appendLine(
+      `[FileOpsHandler] ERROR ${source}: ${message}${details ? ` — ${details}` : ''}`
+    );
     const errorMessage: ErrorMessage = {
       type: MessageType.ERROR,
       source: 'extension.file_ops',
@@ -99,6 +89,13 @@ export class FileOperationsHandler {
       }
 
       await this.shell.copyToClipboard(text);
+      const successMessage: CopyResultSuccessMessage = {
+        type: MessageType.COPY_RESULT_SUCCESS,
+        source: 'extension.file_ops',
+        payload: { toolName },
+        timestamp: Date.now()
+      };
+      this.postMessage(successMessage);
       this.sendStatus('Result copied to clipboard.');
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -181,12 +178,15 @@ export class FileOperationsHandler {
       await this.fileSystem.createDirectory(targetDir);
       fileName = `${sanitizedWord}.md`;
       fileContent = content.trim();
-    } else if (toolName === 'prose_analysis' || toolName === 'dialogue_analysis' || toolName.startsWith('writing_tools_')) {
+    } else if (assistantResultFilePrefix(toolName)) {
       targetDir = path.join(rootPath, 'prose-minion', 'assistant');
       await this.fileSystem.createDirectory(targetDir);
 
-      // Map tool names to file prefixes (Strategy pattern)
-      const prefix = FILE_PREFIX_MAP[toolName] ?? `${toolName.replace(/_/g, '-')}-`;
+      // Closed allowlist: webview toolName values must not become path pieces.
+      const prefix = assistantResultFilePrefix(toolName);
+      if (!prefix) {
+        throw new Error(`Saving results for tool "${toolName}" is not supported yet.`);
+      }
 
       const nextCount = await this.getNextSequentialNumber(targetDir, prefix);
       fileName = `${prefix}${nextCount}.md`;

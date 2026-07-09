@@ -1,3 +1,8 @@
+/**
+ * WorkshopToolsModal — the full 14-tool palette. Renders from the shared
+ * catalog so the modal cannot invent tools or drift from handler routing.
+ */
+
 import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
 import { WorkshopToolId } from '@messages';
@@ -11,6 +16,7 @@ import { WORKSHOP_TOOL_ICONS } from './workshopToolIcons';
 const TOOL_GROUPS: readonly WorkshopToolGroup[] = ['Primary', 'Craft & Voice', 'Technical'];
 
 interface WorkshopToolsModalProps {
+  open: boolean;
   activeToolId: WorkshopToolId | null;
   disabled?: boolean;
   onClose: () => void;
@@ -21,18 +27,22 @@ const groupedTools = (group: WorkshopToolGroup): readonly WorkshopToolDescriptor
   WORKSHOP_TOOL_CATALOG.filter((tool) => tool.group === group);
 
 export const WorkshopToolsModal: React.FC<WorkshopToolsModalProps> = ({
+  open,
   activeToolId,
   disabled = false,
   onClose,
   onSelect
 }) => {
-  const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
+  const handleBackdropClick = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) {
       onClose();
     }
-  };
+  }, [onClose]);
 
   React.useEffect(() => {
+    if (!open) {
+      return undefined;
+    }
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose();
@@ -40,7 +50,11 @@ export const WorkshopToolsModal: React.FC<WorkshopToolsModalProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [onClose, open]);
+
+  if (!open) {
+    return null;
+  }
 
   return (
     <div className="pm-ws-modal-backdrop" role="presentation" onMouseDown={handleBackdropClick}>

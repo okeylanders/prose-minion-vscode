@@ -63,8 +63,8 @@ Completed on `feat/workshop-s4-actions-polish` (2026-07-07).
   turns display the clicked label while the model receives the fuller prompt
   template.
 - Workshop UI now has contextual quick-action bars, the 14-tool modal/palette,
-  variation-card rendering for the strict `### Variation N - Label` markdown
-  format, Copy / Save to notes actions through existing file-ops messages,
+  variation-card rendering for the prompted `### Variation N - Label` markdown
+  format with tolerant parsing for model drift, Copy / Save to notes actions through existing file-ops messages,
   toasts, a richer welcome/empty state, and a visible status ticker.
 - Session snapshots now include `selectedToolId` so reload/reopen can restore
   the active lens without falsely marking a completed session as still running.

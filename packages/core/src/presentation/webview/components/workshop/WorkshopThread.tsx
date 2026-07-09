@@ -15,6 +15,7 @@ import { WorkshopTurnBubble } from './WorkshopTurnBubble';
 
 interface WorkshopThreadProps {
   turns: readonly WorkshopTurn[];
+  selectedToolId: WorkshopToolId | null;
   quickActionsDisabled?: boolean;
   onQuickAction: (toolId: WorkshopToolId, label: string) => void;
   onCopyVariation: (content: string, toolId: WorkshopToolId | null) => void;
@@ -23,6 +24,7 @@ interface WorkshopThreadProps {
 
 export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
   turns,
+  selectedToolId,
   quickActionsDisabled = false,
   onQuickAction,
   onCopyVariation,
@@ -37,13 +39,17 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
           currentToolId = turn.toolId;
         }
 
-        const actionToolId = turn.role === 'assistant' ? turn.toolId ?? currentToolId : null;
+        const actionToolId =
+          turn.role === 'assistant' ? turn.toolId ?? currentToolId ?? selectedToolId : null;
+        const turnActionsDisabled =
+          quickActionsDisabled ||
+          (actionToolId !== null && selectedToolId !== null && actionToolId !== selectedToolId);
         return (
           <WorkshopTurnBubble
             key={turn.id}
             turn={turn}
             quickActionToolId={actionToolId}
-            quickActionsDisabled={quickActionsDisabled}
+            quickActionsDisabled={turnActionsDisabled}
             onQuickAction={onQuickAction}
             onCopyVariation={onCopyVariation}
             onSaveVariation={onSaveVariation}

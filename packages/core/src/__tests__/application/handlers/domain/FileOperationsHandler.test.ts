@@ -15,16 +15,22 @@ import {
 describe('FileOperationsHandler', () => {
   let handler: FileOperationsHandler;
   let router: MessageRouter;
+  let mockPostMessage: jest.Mock;
+  let appendLine: jest.Mock;
 
   beforeEach(() => {
-    const mockPostMessage = jest.fn().mockResolvedValue(undefined);
+    mockPostMessage = jest.fn().mockResolvedValue(undefined);
+    appendLine = jest.fn();
 
     handler = new FileOperationsHandler(
       mockPostMessage,
       createFakeFileSystem(),
-      createFakeWorkspace(),
+      createFakeWorkspace({
+        workspaceFolders: () => [{ path: '/workspace', name: 'workspace', uriString: 'file:///workspace' }],
+        asRelativePath: (p) => p.replace('/workspace/', '')
+      }),
       createFakeShellService(),
-      { appendLine: jest.fn() } as any // outputChannel (LogSink)
+      { appendLine } as any // outputChannel (LogSink)
     );
     router = new MessageRouter();
   });
@@ -37,7 +43,65 @@ describe('FileOperationsHandler', () => {
 
     it('should register at least 1 route', () => {
       handler.registerRoutes(router);
-      expect(router.handlerCount).toBeGreaterThanOrEqual(1);
+      expect(router.handlerCount).toBe(2);
+    });
+  });
+
+  describe('copy_result', () => {
+    it('posts structured copy success instead of requiring status prose parsing', async () => {
+      handler.registerRoutes(router);
+
+      await router.route({
+        type: MessageType.COPY_RESULT,
+        source: 'webview.workshop',
+        payload: {
+          toolName: 'dialogue_analysis',
+          content: 'Copied text'
+        },
+        timestamp: 0
+      } as any);
+
+      expect(mockPostMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: MessageType.COPY_RESULT_SUCCESS,
+          source: 'extension.file_ops',
+          payload: { toolName: 'dialogue_analysis' }
+        })
+      );
+      expect(mockPostMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: MessageType.STATUS,
+          payload: expect.objectContaining({ message: 'Result copied to clipboard.' })
+        })
+      );
+    });
+  });
+
+  describe('save_result', () => {
+    it('rejects unsupported assistant tool names before they become file prefixes', async () => {
+      handler.registerRoutes(router);
+
+      await router.route({
+        type: MessageType.SAVE_RESULT,
+        source: 'webview.workshop',
+        payload: {
+          toolName: 'writing_tools_../../../../tmp/pwned',
+          content: 'Bad path'
+        },
+        timestamp: 0
+      } as any);
+
+      expect(mockPostMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: MessageType.ERROR,
+          payload: expect.objectContaining({
+            source: 'file_ops.save',
+            message: 'Failed to save result',
+            details: expect.stringContaining('not supported')
+          })
+        })
+      );
+      expect(appendLine).toHaveBeenCalledWith(expect.stringContaining('[FileOpsHandler] ERROR file_ops.save'));
     });
   });
 });

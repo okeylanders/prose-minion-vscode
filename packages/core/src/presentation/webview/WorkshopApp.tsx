@@ -28,6 +28,7 @@ import { StreamingContent } from './components/shared/StreamingContent';
 import { MessageType } from '@shared/types';
 import {
   ApiKeyStatusMessage,
+  CopyResultSuccessMessage,
   ErrorMessage,
   SaveResultSuccessMessage,
   StatusMessage,
@@ -44,6 +45,7 @@ import {
   WORKSHOP_TOOL_CATALOG,
   WorkshopToolDescriptor
 } from '@shared/constants/workshopTools';
+import { resultToolNameForWorkshopTool } from '@shared/constants/resultToolNames';
 import { useVSCodeApi } from './hooks/useVSCodeApi';
 import { usePersistence } from './hooks/usePersistence';
 import { useMessageRouter } from './hooks/useMessageRouter';
@@ -88,11 +90,21 @@ const RAIL_TOOLS: readonly WorkshopTool[] = RAIL_TOOL_IDS.flatMap((id) => {
   return tool ? [tool] : [];
 });
 
-const toolNameForResult = (toolId: WorkshopToolId | null): string => {
-  if (toolId === 'dialogue') {return 'dialogue_analysis';}
-  if (toolId === 'prose') {return 'prose_analysis';}
-  return toolId ? `writing_tools_${toolId}` : 'writing_tools_editor';
-};
+/**
+ * Matches the approved Direction B welcome quick starts. Kept named beside the
+ * rail override so prototype provenance is visible at both repeated lists.
+ */
+const EMPTY_STATE_TOOL_IDS: readonly WorkshopToolId[] = [
+  'dialogue',
+  'gestures',
+  'choreography',
+  'cliche',
+];
+
+const EMPTY_STATE_TOOLS: readonly WorkshopTool[] = EMPTY_STATE_TOOL_IDS.flatMap((id) => {
+  const tool = WORKSHOP_TOOLS.find((entry) => entry.id === id);
+  return tool ? [tool] : [];
+});
 
 export const WorkshopApp: React.FC = () => {
   const vscode = useVSCodeApi();
@@ -127,16 +139,8 @@ export const WorkshopApp: React.FC = () => {
   const handleStatusMessage = React.useCallback(
     (message: StatusMessage) => {
       workshop.handleStatusMessage(message);
-      if (message.source === 'extension.file_ops') {
-        const text = message.payload?.message ?? '';
-        if (text.includes('copied')) {
-          showToast({ message: 'Copied to clipboard', icon: 'copy' });
-        } else if (text.includes('Saved result')) {
-          showToast({ message: text, icon: 'save' });
-        }
-      }
     },
-    [showToast, workshop.handleStatusMessage]
+    [workshop.handleStatusMessage]
   );
 
   const handleErrorMessage = React.useCallback(
@@ -157,6 +161,13 @@ export const WorkshopApp: React.FC = () => {
     [showToast]
   );
 
+  const handleCopyResultSuccess = React.useCallback(
+    (_message: CopyResultSuccessMessage) => {
+      showToast({ message: 'Copied to clipboard', icon: 'copy' });
+    },
+    [showToast]
+  );
+
   useMessageRouter({
     [MessageType.WORKSHOP_SESSION_STATE]: workshop.handleSessionState,
     [MessageType.WORKSHOP_TURN]: workshop.handleTurn,
@@ -170,6 +181,7 @@ export const WorkshopApp: React.FC = () => {
     [MessageType.TOKEN_USAGE_UPDATE]: tokenTracking.handleTokenUsageUpdate,
     [MessageType.ACCOUNT_BALANCE_DATA]: accountBalance.handleAccountBalanceData,
     [MessageType.API_KEY_STATUS]: handleApiKeyStatus,
+    [MessageType.COPY_RESULT_SUCCESS]: handleCopyResultSuccess,
     [MessageType.SAVE_RESULT_SUCCESS]: handleSaveResultSuccess,
   });
 
@@ -247,26 +259,34 @@ export const WorkshopApp: React.FC = () => {
 
   const copyVariation = React.useCallback(
     (content: string, toolId: WorkshopToolId | null) => {
+      if (!toolId) {
+        showToast({ message: 'Choose a Workshop tool before copying this variation', icon: 'x', tone: 'error' });
+        return;
+      }
       vscode.postMessage({
         type: MessageType.COPY_RESULT,
         source: 'webview.workshop',
         payload: {
-          toolName: toolNameForResult(toolId),
+          toolName: resultToolNameForWorkshopTool(toolId),
           content
         },
         timestamp: Date.now(),
       });
     },
-    [vscode]
+    [showToast, vscode]
   );
 
   const saveVariation = React.useCallback(
     (content: string, toolId: WorkshopToolId | null) => {
+      if (!toolId) {
+        showToast({ message: 'Choose a Workshop tool before saving this variation', icon: 'x', tone: 'error' });
+        return;
+      }
       vscode.postMessage({
         type: MessageType.SAVE_RESULT,
         source: 'webview.workshop',
         payload: {
-          toolName: toolNameForResult(toolId),
+          toolName: resultToolNameForWorkshopTool(toolId),
           content,
           metadata: {
             excerpt: workshop.excerpt?.text,
@@ -278,7 +298,7 @@ export const WorkshopApp: React.FC = () => {
         timestamp: Date.now(),
       });
     },
-    [vscode, workshop.excerpt]
+    [showToast, vscode, workshop.excerpt]
   );
 
   const openrouter = accountBalance.openrouter;
@@ -457,21 +477,17 @@ export const WorkshopApp: React.FC = () => {
                   </p>
                   {workshop.excerpt && (
                     <div className="pm-ws-empty-actions">
-                      {(['dialogue', 'gestures', 'choreography', 'cliche'] as const).map((toolId) => {
-                        const tool = WORKSHOP_TOOLS.find((entry) => entry.id === toolId);
-                        if (!tool) {return null;}
-                        return (
-                          <button
-                            key={tool.id}
-                            className="pm-ws-qa"
-                            type="button"
-                            disabled={!toolsEnabled}
-                            onClick={() => workshop.runTool(tool.id)}
-                          >
-                            {tool.label}
-                          </button>
-                        );
-                      })}
+                      {EMPTY_STATE_TOOLS.map((tool) => (
+                        <button
+                          key={tool.id}
+                          className="pm-ws-qa"
+                          type="button"
+                          disabled={!toolsEnabled}
+                          onClick={() => workshop.runTool(tool.id)}
+                        >
+                          {tool.label}
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -486,6 +502,7 @@ export const WorkshopApp: React.FC = () => {
               )}
               <WorkshopThread
                 turns={workshop.turns}
+                selectedToolId={workshop.selectedToolId}
                 quickActionsDisabled={!workshop.canFollowUp}
                 onQuickAction={workshop.quickAction}
                 onCopyVariation={copyVariation}
@@ -538,14 +555,13 @@ export const WorkshopApp: React.FC = () => {
         </section>
       </div>
 
-      {toolsModalOpen && (
-        <WorkshopToolsModal
-          activeToolId={workshop.selectedToolId}
-          disabled={!toolsEnabled}
-          onClose={closeToolsModal}
-          onSelect={selectTool}
-        />
-      )}
+      <WorkshopToolsModal
+        open={toolsModalOpen}
+        activeToolId={workshop.selectedToolId}
+        disabled={!toolsEnabled}
+        onClose={closeToolsModal}
+        onSelect={selectTool}
+      />
       <WorkshopToast toast={toast} />
     </div>
   );

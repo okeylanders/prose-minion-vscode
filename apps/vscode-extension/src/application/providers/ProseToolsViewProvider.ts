@@ -13,6 +13,7 @@ import {
   MessageHandler,
   CoreServices,
   Platform,
+  WorkshopUiActions,
   MessageType,
   SelectionUpdatedMessage,
   OpenSettingsToggleMessage,
@@ -31,7 +32,7 @@ export class ProseToolsViewProvider implements vscode.WebviewViewProvider {
     private readonly coreServices: CoreServices,
     private readonly outputChannel: vscode.OutputChannel,
     private readonly platform: Platform,
-    private readonly uiActions: { openWorkshop?: () => void } = {}
+    private readonly uiActions: WorkshopUiActions = {}
   ) {}
 
   public resolveWebviewView(

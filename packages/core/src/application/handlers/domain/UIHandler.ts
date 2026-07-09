@@ -19,7 +19,7 @@ import {
   WebviewErrorMessage,
   coerceWebviewErrorText
 } from '@messages';
-import { MessageTransport } from '@handlers/MessageHandlerContracts';
+import { MessageTransport, WorkshopUiActions } from '@handlers/MessageHandlerContracts';
 
 import { MessageRouter } from '../MessageRouter';
 
@@ -31,7 +31,7 @@ export class UIHandler {
     private readonly workspace: Workspace,
     private readonly shell: ShellService,
     private readonly editor: EditorContext,
-    private readonly openWorkshop?: () => void
+    private readonly workshopUiActions: WorkshopUiActions = {}
   ) {}
 
   /**
@@ -228,11 +228,11 @@ export class UIHandler {
   }
 
   async handleOpenWorkshop(): Promise<void> {
-    if (!this.openWorkshop) {
+    if (!this.workshopUiActions.openWorkshop) {
       this.sendError('ui.workshop', 'Workshop is not available from this surface.');
       return;
     }
-    this.openWorkshop();
+    this.workshopUiActions.openWorkshop();
   }
 
   async handleSelectionRequest(message: RequestSelectionMessage): Promise<void> {

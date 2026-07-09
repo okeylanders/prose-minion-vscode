@@ -173,9 +173,10 @@ export const buildAppMessageRoutes = (deps: AppMessageRouterDeps): MessageHandle
       dictionary.handleClearTransientApiKeyWarning(msg);
       context.handleClearTransientApiKeyWarning(msg);
     },
-    // The save itself is the user-visible feedback; there's no webview action on
-    // success today. Intentionally received-and-ignored (was a stray console.log
-    // promoted into a permanent module by the App.tsx lift — see PR-60B review).
+    // Copy/save success are structured signals for surfaces that need them
+    // (Workshop toasts). The sidebar already reflects copy through STATUS and
+    // has no save action today. Intentionally received-and-ignored here.
+    [MessageType.COPY_RESULT_SUCCESS]: () => { /* no-op: sidebar copy success needs no webview action */ },
     [MessageType.SAVE_RESULT_SUCCESS]: () => { /* no-op: save success needs no webview action */ },
     [MessageType.ERROR]: (msg) => {
       const { source, message: errorMessage } = msg.payload;

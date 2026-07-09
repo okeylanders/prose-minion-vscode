@@ -40,11 +40,9 @@ const makeActions = (
     primary: index === 0,
     prompt:
       prompts[label] ??
-      (label.toLowerCase().includes('variation')
-        ? variationPrompt(toolId, label)
-        : label.toLowerCase() === 'keep as-is'
-          ? keepAsIsPrompt(toolId)
-          : `${label}. Stay in the ${workshopToolLabel(toolId)} lens and answer as a practical follow-up on the pinned excerpt.`)
+      (label === 'Keep as-is'
+        ? keepAsIsPrompt(toolId)
+        : `${label}. Stay in the ${workshopToolLabel(toolId)} lens and answer as a practical follow-up on the pinned excerpt.`)
   }));
 
 const SPECIFIC_ACTIONS: Partial<Record<WorkshopToolId, readonly WorkshopQuickAction[]>> = {
@@ -158,9 +156,19 @@ const SPECIFIC_ACTIONS: Partial<Record<WorkshopToolId, readonly WorkshopQuickAct
 
 const FALLBACK_LABELS = ['Generate 3 variations', 'Go deeper', 'Try another angle', 'Keep as-is'] as const;
 
+const fallbackPrompts = (toolId: WorkshopToolId): Record<typeof FALLBACK_LABELS[number], string> => ({
+  'Generate 3 variations': variationPrompt(toolId, 'Generate 3 variations'),
+  'Go deeper':
+    `Go deeper on the most important issue in this excerpt through the ${workshopToolLabel(toolId)} lens. Give one concrete revision path.`,
+  'Try another angle':
+    `Try another practical angle on this excerpt through the ${workshopToolLabel(toolId)} lens. Focus on a different craft move than your previous answer.`,
+  'Keep as-is': keepAsIsPrompt(toolId)
+});
+
 export const WORKSHOP_QUICK_ACTIONS_BY_TOOL: Readonly<Record<WorkshopToolId, readonly WorkshopQuickAction[]>> =
   WORKSHOP_TOOL_CATALOG.reduce((actionsByTool, tool) => {
-    actionsByTool[tool.id] = SPECIFIC_ACTIONS[tool.id] ?? makeActions(tool.id, FALLBACK_LABELS);
+    actionsByTool[tool.id] =
+      SPECIFIC_ACTIONS[tool.id] ?? makeActions(tool.id, FALLBACK_LABELS, fallbackPrompts(tool.id));
     return actionsByTool;
   }, {} as Record<WorkshopToolId, readonly WorkshopQuickAction[]>);
 
