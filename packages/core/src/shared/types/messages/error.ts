@@ -56,6 +56,7 @@ export type ErrorSource =
   | 'ui.docs'
   | 'ui.resource'
   | 'ui.selection'
+  | 'ui.workshop'
 
   // File operations
   | 'file_ops.copy'
@@ -64,6 +65,7 @@ export type ErrorSource =
   // Workshop editor tab
   | 'workshop'
   | 'workshop.run_tool'
+  | 'workshop.quick_action'
   | 'workshop.send_message'
 
   // Unknown/legacy (fallback)

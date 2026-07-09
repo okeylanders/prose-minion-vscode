@@ -103,6 +103,8 @@ export interface WorkshopSessionSnapshot {
    * continue — the composer's enablement signal.
    */
   hasConversation: boolean;
+  /** Last selected tool/lens, retained after a completed run for UI restore. */
+  selectedToolId?: WorkshopToolId;
   /** Tool currently running, if any. */
   activeToolId?: WorkshopToolId;
   /** Streaming requestId of the in-flight run, if any (stream reattach after reload). */
@@ -120,6 +122,22 @@ export interface WorkshopRunToolPayload {
 
 export interface WorkshopRunToolMessage extends MessageEnvelope<WorkshopRunToolPayload> {
   type: MessageType.WORKSHOP_RUN_TOOL;
+}
+
+export interface WorkshopQuickActionPayload {
+  /** Tool context that owns this deterministic action label. */
+  toolId: WorkshopToolId;
+  /** One of the static labels from WORKSHOP_QUICK_ACTIONS_BY_TOOL. */
+  label: string;
+}
+
+/**
+ * Deterministic quick action. The webview sends the label the user clicked;
+ * the handler resolves it to the static prompt template and runs the existing
+ * retained-conversation follow-up path.
+ */
+export interface WorkshopQuickActionMessage extends MessageEnvelope<WorkshopQuickActionPayload> {
+  type: MessageType.WORKSHOP_QUICK_ACTION;
 }
 
 /** Free-text follow-up: continues the session's retained conversation. */

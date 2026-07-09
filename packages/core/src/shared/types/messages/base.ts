@@ -38,6 +38,7 @@ export enum MessageType {
   SEARCH_RESULT = 'search_result',
   DICTIONARY_RESULT = 'dictionary_result',
   CONTEXT_RESULT = 'context_result',
+  COPY_RESULT_SUCCESS = 'copy_result_success',
   SAVE_RESULT_SUCCESS = 'save_result_success',
   SELECTION_DATA = 'selection_data',
   ERROR = 'error',
@@ -46,6 +47,7 @@ export enum MessageType {
   // UI state messages
   TAB_CHANGED = 'tab_changed',
   SELECTION_UPDATED = 'selection_updated',
+  OPEN_WORKSHOP = 'open_workshop',
 
   // Configuration messages
   REQUEST_MODEL_DATA = 'request_model_data',
@@ -105,6 +107,7 @@ export enum MessageType {
 
   // Workshop editor tab (ADR 2026-07-03; Sprint 2 session spine, Sprint 3 multi-turn)
   WORKSHOP_RUN_TOOL = 'workshop_run_tool',
+  WORKSHOP_QUICK_ACTION = 'workshop_quick_action',
   WORKSHOP_SEND_MESSAGE = 'workshop_send_message',
   WORKSHOP_SET_EXCERPT = 'workshop_set_excerpt',
   WORKSHOP_PICK_EXCERPT_FILE = 'workshop_pick_excerpt_file',

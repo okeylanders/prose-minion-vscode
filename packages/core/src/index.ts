@@ -30,7 +30,8 @@ export type {
   CoreServices,
   MessageTransport,
   ResultCache,
-  SecretsPort
+  SecretsPort,
+  WorkshopUiActions
 } from '@/application/handlers/MessageHandlerContracts';
 
 // --- Application: Workshop session aggregate (ADR 2026-07-03) ---

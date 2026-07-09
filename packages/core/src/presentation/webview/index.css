@@ -582,6 +582,26 @@ body {
   margin: 6px 0 14px;
   color: var(--pm-text);
 }
+.assistant-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0 14px;
+}
+.assistant-title-row > h2 {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: var(--pm-text);
+  min-width: 0;
+}
+.workshop-launch-button {
+  flex-shrink: 0;
+  padding: 7px 11px;
+  font-size: 12px;
+}
 .tab-content > h3 {
   font-size: 14px;
   font-weight: 700;
@@ -1992,6 +2012,12 @@ select:focus {
 }
 .analysis-buttons-head .analysis-section-header {
   margin: 0;
+}
+.analysis-buttons-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 .all-tools-button {
   padding: 6px 11px;

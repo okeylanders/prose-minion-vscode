@@ -43,6 +43,15 @@ export type MessageTransport = (
   message: ExtensionToWebviewMessage
 ) => PromiseLike<unknown>;
 
+/**
+ * UI capabilities owned by the host shell and exposed to core message handlers.
+ * Kept named so new cross-surface actions extend one contract instead of
+ * growing anonymous callback bags at each boundary.
+ */
+export interface WorkshopUiActions {
+  openWorkshop?: () => void;
+}
+
 /** Per-MessageHandler replay cache. Never share this across webview lifetimes. */
 export interface ResultCache {
   analysis?: AnalysisResultMessage;

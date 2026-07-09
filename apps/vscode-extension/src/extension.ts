@@ -173,7 +173,10 @@ export function activate(context: vscode.ExtensionContext): void {
     context.extensionUri,
     coreServices,
     outputChannel,
-    platform
+    platform,
+    {
+      openWorkshop: () => workshopPanelProvider?.openOrReveal()
+    }
   );
 
   // Register webview provider

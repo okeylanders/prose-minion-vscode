@@ -26,16 +26,26 @@ import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { TabErrorFallback } from './components/shared/TabErrorFallback';
 import { StreamingContent } from './components/shared/StreamingContent';
 import { MessageType } from '@shared/types';
-import { ApiKeyStatusMessage, WorkshopToolId } from '@messages';
+import {
+  ApiKeyStatusMessage,
+  CopyResultSuccessMessage,
+  ErrorMessage,
+  SaveResultSuccessMessage,
+  StatusMessage,
+  WorkshopToolId
+} from '@messages';
 import { ModelSelector } from './components/shared/ModelSelector';
 import { ExcerptPanel } from './components/workshop/ExcerptPanel';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopThread } from './components/workshop/WorkshopThread';
+import { WorkshopToolsModal } from './components/workshop/WorkshopToolsModal';
+import { WorkshopToast, WorkshopToastState } from './components/workshop/WorkshopToast';
 import { WORKSHOP_TOOL_ICONS } from './components/workshop/workshopToolIcons';
 import {
   WORKSHOP_TOOL_CATALOG,
   WorkshopToolDescriptor
 } from '@shared/constants/workshopTools';
+import { resultToolNameForWorkshopTool } from '@shared/constants/resultToolNames';
 import { useVSCodeApi } from './hooks/useVSCodeApi';
 import { usePersistence } from './hooks/usePersistence';
 import { useMessageRouter } from './hooks/useMessageRouter';
@@ -80,10 +90,21 @@ const RAIL_TOOLS: readonly WorkshopTool[] = RAIL_TOOL_IDS.flatMap((id) => {
   return tool ? [tool] : [];
 });
 
-const countWords = (text: string): number => {
-  const trimmed = text.trim();
-  return trimmed.length === 0 ? 0 : trimmed.split(/\s+/).length;
-};
+/**
+ * Matches the approved Direction B welcome quick starts. Kept named beside the
+ * rail override so prototype provenance is visible at both repeated lists.
+ */
+const EMPTY_STATE_TOOL_IDS: readonly WorkshopToolId[] = [
+  'dialogue',
+  'gestures',
+  'choreography',
+  'cliche',
+];
+
+const EMPTY_STATE_TOOLS: readonly WorkshopTool[] = EMPTY_STATE_TOOL_IDS.flatMap((id) => {
+  const tool = WORKSHOP_TOOLS.find((entry) => entry.id === id);
+  return tool ? [tool] : [];
+});
 
 export const WorkshopApp: React.FC = () => {
   const vscode = useVSCodeApi();
@@ -95,11 +116,57 @@ export const WorkshopApp: React.FC = () => {
   const modelsSettings = useModelsSettings();
   const tokenTracking = useTokenTracking();
   const [hasSavedKey, setHasSavedKey] = React.useState(false);
+  const [toolsModalOpen, setToolsModalOpen] = React.useState(false);
+  const [toast, setToast] = React.useState<WorkshopToastState | null>(null);
   const accountBalance = useAccountBalance({ apiKeyConfigured: hasSavedKey });
+
+  const showToast = React.useCallback((next: WorkshopToastState) => {
+    setToast(next);
+  }, []);
+
+  React.useEffect(() => {
+    if (!toast) {
+      return undefined;
+    }
+    const timer = window.setTimeout(() => setToast(null), 2200);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   const handleApiKeyStatus = React.useCallback((message: ApiKeyStatusMessage) => {
     setHasSavedKey(!!message.payload?.hasSavedKey);
   }, []);
+
+  const handleStatusMessage = React.useCallback(
+    (message: StatusMessage) => {
+      workshop.handleStatusMessage(message);
+    },
+    [workshop.handleStatusMessage]
+  );
+
+  const handleErrorMessage = React.useCallback(
+    (message: ErrorMessage) => {
+      workshop.handleErrorMessage(message);
+      const source = message.payload?.source;
+      if (typeof source === 'string' && source.startsWith('file_ops')) {
+        showToast({ message: message.payload.message, icon: 'x', tone: 'error' });
+      }
+    },
+    [showToast, workshop.handleErrorMessage]
+  );
+
+  const handleSaveResultSuccess = React.useCallback(
+    (message: SaveResultSuccessMessage) => {
+      showToast({ message: `Saved to ${message.payload.filePath}`, icon: 'save' });
+    },
+    [showToast]
+  );
+
+  const handleCopyResultSuccess = React.useCallback(
+    (_message: CopyResultSuccessMessage) => {
+      showToast({ message: 'Copied to clipboard', icon: 'copy' });
+    },
+    [showToast]
+  );
 
   useMessageRouter({
     [MessageType.WORKSHOP_SESSION_STATE]: workshop.handleSessionState,
@@ -107,13 +174,15 @@ export const WorkshopApp: React.FC = () => {
     [MessageType.STREAM_STARTED]: workshop.handleStreamStarted,
     [MessageType.STREAM_CHUNK]: workshop.handleStreamChunk,
     [MessageType.STREAM_COMPLETE]: workshop.handleStreamComplete,
-    [MessageType.STATUS]: workshop.handleStatusMessage,
-    [MessageType.ERROR]: workshop.handleErrorMessage,
+    [MessageType.STATUS]: handleStatusMessage,
+    [MessageType.ERROR]: handleErrorMessage,
     [MessageType.MODEL_DATA]: modelsSettings.handleModelData,
     [MessageType.SETTINGS_DATA]: modelsSettings.handleSettingsData,
     [MessageType.TOKEN_USAGE_UPDATE]: tokenTracking.handleTokenUsageUpdate,
     [MessageType.ACCOUNT_BALANCE_DATA]: accountBalance.handleAccountBalanceData,
     [MessageType.API_KEY_STATUS]: handleApiKeyStatus,
+    [MessageType.COPY_RESULT_SUCCESS]: handleCopyResultSuccess,
+    [MessageType.SAVE_RESULT_SUCCESS]: handleSaveResultSuccess,
   });
 
   usePersistence({
@@ -177,6 +246,60 @@ export const WorkshopApp: React.FC = () => {
 
   // Live run bubble: visible from run start until the assistant turn lands.
   const showLiveTurn = workshop.isRunning || workshop.isStreaming || workshop.streamingContent.length > 0;
+
+  const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
+  const closeToolsModal = React.useCallback(() => setToolsModalOpen(false), []);
+  const selectTool = React.useCallback(
+    (toolId: WorkshopToolId) => {
+      setToolsModalOpen(false);
+      workshop.runTool(toolId);
+    },
+    [workshop.runTool]
+  );
+
+  const copyVariation = React.useCallback(
+    (content: string, toolId: WorkshopToolId | null) => {
+      if (!toolId) {
+        showToast({ message: 'Choose a Workshop tool before copying this variation', icon: 'x', tone: 'error' });
+        return;
+      }
+      vscode.postMessage({
+        type: MessageType.COPY_RESULT,
+        source: 'webview.workshop',
+        payload: {
+          toolName: resultToolNameForWorkshopTool(toolId),
+          content
+        },
+        timestamp: Date.now(),
+      });
+    },
+    [showToast, vscode]
+  );
+
+  const saveVariation = React.useCallback(
+    (content: string, toolId: WorkshopToolId | null) => {
+      if (!toolId) {
+        showToast({ message: 'Choose a Workshop tool before saving this variation', icon: 'x', tone: 'error' });
+        return;
+      }
+      vscode.postMessage({
+        type: MessageType.SAVE_RESULT,
+        source: 'webview.workshop',
+        payload: {
+          toolName: resultToolNameForWorkshopTool(toolId),
+          content,
+          metadata: {
+            excerpt: workshop.excerpt?.text,
+            relativePath: workshop.excerpt?.relativePath,
+            sourceFileUri: workshop.excerpt?.sourceUri,
+            timestamp: Date.now()
+          }
+        },
+        timestamp: Date.now(),
+      });
+    },
+    [showToast, vscode, workshop.excerpt]
+  );
 
   const openrouter = accountBalance.openrouter;
   const remaining = openrouter?.credits?.remaining;
@@ -289,7 +412,7 @@ export const WorkshopApp: React.FC = () => {
                   <button
                     key={tool.id}
                     className={`pm-ws-tool ${
-                      workshop.activeToolId === tool.id ? 'pm-ws-tool-active' : ''
+                      workshop.selectedToolId === tool.id ? 'pm-ws-tool-active' : ''
                     }`}
                     type="button"
                     role="listitem"
@@ -304,7 +427,13 @@ export const WorkshopApp: React.FC = () => {
                     <Icon name={tool.icon} size={15} /> {tool.label}
                   </button>
                 ))}
-                <button className="pm-ws-tool pm-ws-tool-ghost" type="button" role="listitem" disabled>
+                <button
+                  className="pm-ws-tool pm-ws-tool-ghost"
+                  type="button"
+                  role="listitem"
+                  disabled={!workshop.sessionReady}
+                  onClick={openToolsModal}
+                >
                   <Icon name="grid" size={15} /> All {WORKSHOP_TOOLS.length} tools…
                 </button>
               </div>
@@ -336,10 +465,31 @@ export const WorkshopApp: React.FC = () => {
               {workshop.turns.length === 0 && !showLiveTurn && (
                 <div className="pm-ws-thread-empty">
                   <Icon name="sparkle" size={22} />
-                  <p className="pm-ws-thread-empty-title">The thread starts when you run a tool.</p>
-                  <p className="pm-ws-thread-empty-sub">
-                    Pin an excerpt on the left, pick a tool, and the analysis streams in here.
+                  <p className="pm-ws-thread-empty-title">
+                    {workshop.excerpt
+                      ? 'Your excerpt is pinned. Pick a lens.'
+                      : 'Pin an excerpt to start the Workshop.'}
                   </p>
+                  <p className="pm-ws-thread-empty-sub">
+                    {workshop.excerpt
+                      ? 'Run a tool from the rail, open the full palette, or use one of these quick starts.'
+                      : 'Paste text or pin a file on the left. The excerpt stays fixed while the conversation grows here.'}
+                  </p>
+                  {workshop.excerpt && (
+                    <div className="pm-ws-empty-actions">
+                      {EMPTY_STATE_TOOLS.map((tool) => (
+                        <button
+                          key={tool.id}
+                          className="pm-ws-qa"
+                          type="button"
+                          disabled={!toolsEnabled}
+                          onClick={() => workshop.runTool(tool.id)}
+                        >
+                          {tool.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -350,7 +500,14 @@ export const WorkshopApp: React.FC = () => {
                   after reload.
                 </div>
               )}
-              <WorkshopThread turns={workshop.turns} />
+              <WorkshopThread
+                turns={workshop.turns}
+                selectedToolId={workshop.selectedToolId}
+                quickActionsDisabled={!workshop.canFollowUp}
+                onQuickAction={workshop.quickAction}
+                onCopyVariation={copyVariation}
+                onSaveVariation={saveVariation}
+              />
 
               {showLiveTurn && (
                 <div className="pm-ws-turn pm-ws-turn-assistant pm-ws-turn-live">
@@ -386,10 +543,26 @@ export const WorkshopApp: React.FC = () => {
               sessionReady={workshop.sessionReady}
               onSend={workshop.sendMessage}
               onCancel={workshop.cancelRun}
+              onOpenTools={openToolsModal}
             />
+            {(workshop.tickerMessage || workshop.statusMessage) && (
+              <div className="pm-ws-status-ticker" role="status" aria-live="polite">
+                <Icon name="bolt" size={12} />
+                {workshop.tickerMessage || workshop.statusMessage}
+              </div>
+            )}
           </ErrorBoundary>
         </section>
       </div>
+
+      <WorkshopToolsModal
+        open={toolsModalOpen}
+        activeToolId={workshop.selectedToolId}
+        disabled={!toolsEnabled}
+        onClose={closeToolsModal}
+        onSelect={selectTool}
+      />
+      <WorkshopToast toast={toast} />
     </div>
   );
 };

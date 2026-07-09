@@ -9,8 +9,7 @@
  *
  * The draft is deliberately LOCAL state: it's unsent user input, not session
  * truth, so it doesn't belong in WorkshopSessionService (and losing it on a
- * webview reload is acceptable alpha behavior). The plus button and Tools
- * pill remain Sprint 4 placeholders.
+ * webview reload is acceptable alpha behavior).
  */
 
 import * as React from 'react';
@@ -27,6 +26,7 @@ interface WorkshopComposerProps {
   sessionReady: boolean;
   onSend: (text: string) => void;
   onCancel: () => void;
+  onOpenTools: () => void;
 }
 
 export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
@@ -35,7 +35,8 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   isRunning,
   sessionReady,
   onSend,
-  onCancel
+  onCancel,
+  onOpenTools
 }) => {
   const [draft, setDraft] = React.useState('');
 
@@ -58,7 +59,13 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   return (
     <div className="pm-ws-composer-wrap">
       <form className="pm-ws-composer" onSubmit={submit}>
-        <button className="pm-ws-comp-add" type="button" disabled title="Writing tools (Sprint 4)">
+        <button
+          className="pm-ws-comp-add"
+          type="button"
+          disabled={!sessionReady}
+          title="Writing tools"
+          onClick={onOpenTools}
+        >
           <Icon name="plus" size={18} />
         </button>
         <input
@@ -71,9 +78,14 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
           aria-label="Message the Workshop"
         />
         <div className="pm-ws-comp-right">
-          <span className="pm-ws-comp-pill">
+          <button
+            className="pm-ws-comp-pill"
+            type="button"
+            disabled={!sessionReady}
+            onClick={onOpenTools}
+          >
             <Icon name="grid" size={13} /> Tools
-          </span>
+          </button>
           {isRunning ? (
             <button
               className="pm-ws-comp-send pm-ws-comp-stop"

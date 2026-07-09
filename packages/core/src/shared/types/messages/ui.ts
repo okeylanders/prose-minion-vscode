@@ -95,6 +95,10 @@ export interface OpenSettingsToggleMessage extends MessageEnvelope<Record<string
   type: MessageType.OPEN_SETTINGS_TOGGLE;
 }
 
+export interface OpenWorkshopMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.OPEN_WORKSHOP;
+}
+
 // Webview diagnostics → extension output channel
 export interface WebviewErrorPayload {
   message: string;

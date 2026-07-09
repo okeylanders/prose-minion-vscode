@@ -19,7 +19,7 @@ import {
   WebviewErrorMessage,
   coerceWebviewErrorText
 } from '@messages';
-import { MessageTransport } from '@handlers/MessageHandlerContracts';
+import { MessageTransport, WorkshopUiActions } from '@handlers/MessageHandlerContracts';
 
 import { MessageRouter } from '../MessageRouter';
 
@@ -30,7 +30,8 @@ export class UIHandler {
     private readonly fileSystem: FileSystem,
     private readonly workspace: Workspace,
     private readonly shell: ShellService,
-    private readonly editor: EditorContext
+    private readonly editor: EditorContext,
+    private readonly workshopUiActions: WorkshopUiActions = {}
   ) {}
 
   /**
@@ -42,6 +43,7 @@ export class UIHandler {
     router.register(MessageType.OPEN_RESOURCE, this.handleOpenResource.bind(this));
     router.register(MessageType.REQUEST_SELECTION, this.handleSelectionRequest.bind(this));
     router.register(MessageType.WEBVIEW_ERROR, this.handleWebviewError.bind(this));
+    router.register(MessageType.OPEN_WORKSHOP, this.handleOpenWorkshop.bind(this));
     router.register(MessageType.TAB_CHANGED, async () => {}); // No-op handler for tab changes
   }
 
@@ -223,6 +225,14 @@ export class UIHandler {
         errorMsg
       );
     }
+  }
+
+  async handleOpenWorkshop(): Promise<void> {
+    if (!this.workshopUiActions.openWorkshop) {
+      this.sendError('ui.workshop', 'Workshop is not available from this surface.');
+      return;
+    }
+    this.workshopUiActions.openWorkshop();
   }
 
   async handleSelectionRequest(message: RequestSelectionMessage): Promise<void> {

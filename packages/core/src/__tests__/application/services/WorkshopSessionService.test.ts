@@ -82,11 +82,13 @@ describe('WorkshopSessionService', () => {
     service.beginToolRun('cliche', 'req-1');
 
     let snapshot = service.getSnapshot();
+    expect(snapshot.selectedToolId).toBe('cliche');
     expect(snapshot.activeToolId).toBe('cliche');
     expect(snapshot.activeRequestId).toBe('req-1');
 
     service.completeRun('req-1', 'done');
     snapshot = service.getSnapshot();
+    expect(snapshot.selectedToolId).toBe('cliche');
     expect(snapshot.activeToolId).toBeUndefined();
     expect(snapshot.activeRequestId).toBeUndefined();
   });
@@ -128,6 +130,7 @@ describe('WorkshopSessionService', () => {
 
     const snapshot = service.getSnapshot();
     expect(snapshot.turns).toEqual([]);
+    expect(snapshot.selectedToolId).toBeUndefined();
     expect(snapshot.activeToolId).toBeUndefined();
     expect(snapshot.activeRequestId).toBeUndefined();
     expect(snapshot.excerpt).toEqual(excerpt);
@@ -200,6 +203,22 @@ describe('WorkshopSessionService', () => {
     expect(assistantTurn?.toolLabel).toBeUndefined();
     // The conversation id is stable across the follow-up.
     expect(service.getConversationId()).toBe('conv-1');
+  });
+
+  it('a message run can display a short label while sending a fuller prompt', () => {
+    pin();
+    service.beginToolRun('dialogue', 'req-1');
+    service.completeRun('req-1', 'analysis', undefined, false, 'conv-1');
+
+    const userTurn = service.beginMessageRun(
+      'Generate three options with the strict variation-card markdown format.',
+      'req-2',
+      'Generate 3 tighter variations'
+    );
+
+    expect(userTurn.content).toBe('Generate 3 tighter variations');
+    const turns = service.getSnapshot().turns;
+    expect(turns[turns.length - 1]?.content).toBe('Generate 3 tighter variations');
   });
 
   it('refuses a message run without a conversation to continue', () => {

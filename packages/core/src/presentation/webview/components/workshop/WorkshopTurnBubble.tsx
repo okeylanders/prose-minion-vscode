@@ -14,14 +14,68 @@
 import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
 import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
-import { WorkshopTurn } from '@messages';
+import { WorkshopToolId, WorkshopTurn } from '@messages';
+import { WorkshopQuickActionBar } from './WorkshopQuickActionBar';
 import { workshopToolIcon } from './workshopToolIcons';
 
 interface WorkshopTurnBubbleProps {
   turn: WorkshopTurn;
+  quickActionToolId: WorkshopToolId | null;
+  quickActionsDisabled?: boolean;
+  onQuickAction: (toolId: WorkshopToolId, label: string) => void;
+  onCopyVariation: (content: string, toolId: WorkshopToolId | null) => void;
+  onSaveVariation: (content: string, toolId: WorkshopToolId | null) => void;
 }
 
-export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(({ turn }) => {
+interface ParsedVariation {
+  number: string;
+  label: string;
+  content: string;
+}
+
+interface ParsedVariations {
+  intro: string;
+  variations: ParsedVariation[];
+}
+
+const VARIATION_HEADING = /^#{2,4}\s*Variation\s+(\d+)(?:\s*[-:]\s*(.+))?\s*$/gim;
+
+export const parseVariations = (content: string): ParsedVariations | null => {
+  const matches = [...content.matchAll(VARIATION_HEADING)];
+  if (matches.length < 2) {
+    return null;
+  }
+
+  const variations = matches.map((match, index) => {
+    const start = (match.index ?? 0) + match[0].length;
+    const end = matches[index + 1]?.index ?? content.length;
+    return {
+      number: match[1],
+      label: match[2]?.trim() || `Option ${match[1]}`,
+      content: content.slice(start, end).trim()
+    };
+  }).filter((variation) => variation.content.length > 0);
+
+  if (variations.length < 2) {
+    return null;
+  }
+
+  return {
+    intro: content.slice(0, matches[0].index ?? 0).trim(),
+    variations
+  };
+};
+
+export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(({
+  turn,
+  quickActionToolId,
+  quickActionsDisabled = false,
+  onQuickAction,
+  onCopyVariation,
+  onSaveVariation
+}) => {
+  const parsedVariations = React.useMemo(() => parseVariations(turn.content), [turn.content]);
+
   if (turn.role === 'user') {
     if (turn.kind === 'message') {
       return (
@@ -40,20 +94,64 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   }
 
   return (
-    <div className="pm-ws-turn pm-ws-turn-assistant">
-      <div className="pm-ws-turn-head">
-        <span className="pm-ws-eyebrow">
-          <Icon name="sparkle" size={12} /> {turn.toolLabel ?? 'Follow-up'}
-        </span>
-        {turn.usage && (
-          <span className="pm-ws-turn-usage">{turn.usage.totalTokens.toLocaleString()} tokens</span>
+    <>
+      <div className="pm-ws-turn pm-ws-turn-assistant">
+        <div className="pm-ws-turn-head">
+          <span className="pm-ws-eyebrow">
+            <Icon name="sparkle" size={12} /> {turn.toolLabel ?? 'Follow-up'}
+          </span>
+          {turn.usage && (
+            <span className="pm-ws-turn-usage">{turn.usage.totalTokens.toLocaleString()} tokens</span>
+          )}
+        </div>
+        {turn.truncated && (
+          <p className="pm-ws-turn-truncated">Response hit the max-token limit and was truncated.</p>
+        )}
+        {parsedVariations ? (
+          <div className="pm-ws-turn-body">
+            {parsedVariations.intro && (
+              <MarkdownRenderer content={parsedVariations.intro} className="pm-ws-turn-body" />
+            )}
+            <div className="pm-ws-var-stack">
+              {parsedVariations.variations.map((variation, index) => (
+                <div className="pm-ws-var-card" key={`${turn.id}-${index}`}>
+                  <div className="pm-ws-var-head">
+                    <span className="pm-ws-var-number">Variation {index + 1}</span>
+                    <span className="pm-ws-pill">{variation.label}</span>
+                  </div>
+                  <MarkdownRenderer content={variation.content} className="pm-ws-var-text" />
+                  <div className="pm-ws-var-actions">
+                    <button
+                      className="pm-ws-var-action"
+                      type="button"
+                      onClick={() => onCopyVariation(variation.content, quickActionToolId)}
+                    >
+                      <Icon name="copy" size={13} /> Copy
+                    </button>
+                    <button
+                      className="pm-ws-var-action"
+                      type="button"
+                      onClick={() => onSaveVariation(variation.content, quickActionToolId)}
+                    >
+                      <Icon name="save" size={13} /> Save to notes
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <MarkdownRenderer content={turn.content} className="pm-ws-turn-body" />
         )}
       </div>
-      {turn.truncated && (
-        <p className="pm-ws-turn-truncated">Response hit the max-token limit and was truncated.</p>
+      {quickActionToolId && (
+        <WorkshopQuickActionBar
+          toolId={quickActionToolId}
+          disabled={quickActionsDisabled}
+          onAction={onQuickAction}
+        />
       )}
-      <MarkdownRenderer content={turn.content} className="pm-ws-turn-body" />
-    </div>
+    </>
   );
 });
 

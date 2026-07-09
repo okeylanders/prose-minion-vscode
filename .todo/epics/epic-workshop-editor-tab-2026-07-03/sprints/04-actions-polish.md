@@ -1,6 +1,6 @@
 # Sprint 04: Actions & Polish
 
-**Status**: Not Started
+**Status**: Complete
 **Priority**: Medium
 **Branch**: `feat/workshop-s4-actions-polish` → PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 2–4 days
@@ -27,31 +27,69 @@ not smuggled.
 
 ## Tasks
 
-- [ ] Add `WORKSHOP_QUICK_ACTION` to `workshop.ts`.
-- [ ] Static quick-action map in code: `toolId → action labels → prompt
+- [x] Add `WORKSHOP_QUICK_ACTION` to `workshop.ts`.
+- [x] Static quick-action map in code: `toolId → action labels → prompt
       templates`, ported from the prototype's `ASSIST` table. Deterministic
       routing; **no model-generated labels**.
-- [ ] Render the contextual quick-action bar beneath each assistant turn;
+- [x] Render the contextual quick-action bar beneath each assistant turn;
       a chip dispatches `WORKSHOP_QUICK_ACTION`, which routes through the
       Sprint-3 continuation path (a quick action is a templated follow-up).
-- [ ] Tools modal: a palette/modal for selecting the active tool from the 14.
-- [ ] Variation cards: render variations with Copy and "Save to notes" actions.
+- [x] Tools modal: a palette/modal for selecting the active tool from the 14.
+- [x] Variation cards: render variations with Copy and "Save to notes" actions.
       (No Apply-to-draft — filed as `.todo`.)
-- [ ] Toasts for copy / save / error acknowledgements.
-- [ ] Welcome / empty state for a fresh session (no excerpt, no turns).
-- [ ] Full status-ticker and token integration (`useAnalysis` status patterns,
+- [x] Toasts for copy / save / error acknowledgements.
+- [x] Welcome / empty state for a fresh session (no excerpt, no turns).
+- [x] Full status-ticker and token integration (`useAnalysis` status patterns,
       `useTokenTracking`).
-- [ ] Persistence hardening: confirm reload/reopen restores thread, excerpt,
+- [x] Persistence hardening: confirm reload/reopen restores thread, excerpt,
       active tool, and conversation id via the host-side aggregate +
       `retainContextWhenHidden`.
-- [ ] File `.todo` entries for the parked items:
+- [x] File `.todo` entries for the parked items:
       - `apply-to-draft` (write-back via `FileOperationsHandler`)
       - `WebviewPanelSerializer` (persistence across VS Code restarts)
       - sidebar reskin (Frame Minion across the sidebar)
       - Model Browser (header dropdown → full browser)
       - branch board (Direction C) on variation cards
-- [ ] Register the sidebar-Assistant button that opens the Workshop (the
+- [x] Register the sidebar-Assistant button that opens the Workshop (the
       user-facing entry point beyond the command palette).
+
+## Completion Notes
+
+Completed on `feat/workshop-s4-actions-polish` (2026-07-07).
+
+- Quick actions now live in a deterministic shared map
+  (`workshopQuickActions.ts`) and route through `WORKSHOP_QUICK_ACTION` into the
+  existing Sprint 03 retained-conversation follow-up path. Quick-action user
+  turns display the clicked label while the model receives the fuller prompt
+  template.
+- Workshop UI now has contextual quick-action bars, the 14-tool modal/palette,
+  variation-card rendering for the prompted `### Variation N - Label` markdown
+  format with tolerant parsing for model drift, Copy / Save to notes actions through existing file-ops messages,
+  toasts, a richer welcome/empty state, and a visible status ticker.
+- Session snapshots now include `selectedToolId` so reload/reopen can restore
+  the active lens without falsely marking a completed session as still running.
+- The sidebar Assistant tab has a Workshop button that opens the editor-tab
+  surface via an injected UI action; VS Code command execution remains in the
+  adapter/composition-root side.
+- Parked follow-ups filed:
+  `.todo/features/feature-workshop-apply-to-draft/README.md`,
+  `.todo/tech-debt/2026-07-07-workshop-webviewpanelserializer.md`,
+  `.todo/features/feature-sidebar-frame-minion-reskin/README.md`,
+  `.todo/features/feature-workshop-header-model-browser/README.md`,
+  `.todo/features/feature-workshop-branch-board/README.md`.
+
+## Verification
+
+- `npm test -- --runTestsByPath packages/core/src/__tests__/application/handlers/domain/WorkshopHandler.test.ts packages/core/src/__tests__/application/services/WorkshopSessionService.test.ts packages/core/src/__tests__/presentation/webview/hooks/domain/useWorkshop.test.ts` — pass (72 tests).
+- `npm run typecheck` — pass (core, webview, extension).
+- `npm test` — pass (61 suites / 541 tests).
+- `npm run build` — pass; includes `verify:bundle` pass. Webpack still reports
+  the existing webview asset-size warning.
+- `npm run lint` — pass with warnings only (0 errors; existing naming/curly
+  warnings remain).
+- `git diff --check` — pass.
+- Bundle delta vs Sprint 03 / PR #68 baseline: `dist/webview.js` 549,388 B →
+  568,879 B (**+19,491 B / +3.55%**). Current `dist/extension.js`: 2,260,176 B.
 
 ## Acceptance Criteria
 

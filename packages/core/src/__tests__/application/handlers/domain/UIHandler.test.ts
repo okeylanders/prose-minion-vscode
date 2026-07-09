@@ -16,12 +16,14 @@ import {
 describe('UIHandler', () => {
   let handler: UIHandler;
   let router: MessageRouter;
+  let postMessage: jest.Mock;
   let appendLine: jest.Mock;
 
   beforeEach(() => {
+    postMessage = jest.fn().mockResolvedValue(undefined);
     appendLine = jest.fn();
     handler = new UIHandler(
-      jest.fn().mockResolvedValue(undefined) as any, // postMessage
+      postMessage as any, // postMessage
       { appendLine } as any, // outputChannel (LogSink)
       createFakeFileSystem(),
       createFakeWorkspace(),
@@ -39,7 +41,8 @@ describe('UIHandler', () => {
         MessageType.TAB_CHANGED,
         MessageType.OPEN_GUIDE_FILE,
         MessageType.OPEN_RESOURCE,
-        MessageType.REQUEST_SELECTION
+        MessageType.REQUEST_SELECTION,
+        MessageType.OPEN_WORKSHOP
       ];
 
       expectedRoutes.forEach(route => {
@@ -49,7 +52,54 @@ describe('UIHandler', () => {
 
     it('should register at least 4 routes', () => {
       handler.registerRoutes(router);
-      expect(router.handlerCount).toBeGreaterThanOrEqual(4);
+      expect(router.handlerCount).toBe(7);
+    });
+  });
+
+  describe('open_workshop', () => {
+    it('delegates to the injected Workshop UI action', async () => {
+      const openWorkshop = jest.fn();
+      handler = new UIHandler(
+        postMessage as any,
+        { appendLine } as any,
+        createFakeFileSystem(),
+        createFakeWorkspace(),
+        createFakeShellService(),
+        createFakeEditorContext(),
+        { openWorkshop }
+      );
+      handler.registerRoutes(router);
+
+      await router.route({
+        type: MessageType.OPEN_WORKSHOP,
+        source: 'webview.analysis',
+        payload: {},
+        timestamp: 0,
+      } as any);
+
+      expect(openWorkshop).toHaveBeenCalledTimes(1);
+      expect(postMessage).not.toHaveBeenCalled();
+    });
+
+    it('reports a ui.workshop error when no Workshop action is available', async () => {
+      handler.registerRoutes(router);
+
+      await router.route({
+        type: MessageType.OPEN_WORKSHOP,
+        source: 'webview.analysis',
+        payload: {},
+        timestamp: 0,
+      } as any);
+
+      expect(postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: MessageType.ERROR,
+          payload: expect.objectContaining({
+            source: 'ui.workshop',
+            message: 'Workshop is not available from this surface.'
+          })
+        })
+      );
     });
   });
 
