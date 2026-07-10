@@ -81,7 +81,7 @@ or silently completes writer tasks.
 
 ## Related Files
 
-- `.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/06-tool-side-pass.md`
+- `.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/06b-tool-side-pass.md`
 - `packages/core/src/application/services/WorkshopSessionService.ts`
 - `packages/core/src/presentation/webview/WorkshopApp.tsx`
 - `packages/core/src/shared/types/messages/workshop.ts`

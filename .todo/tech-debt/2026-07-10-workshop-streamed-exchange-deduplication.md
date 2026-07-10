@@ -24,7 +24,7 @@ invocation and successful-result reconciliation.
 
 - `packages/core/src/application/handlers/domain/WorkshopHandler.ts`
 - `packages/core/src/__tests__/application/handlers/domain/WorkshopHandler.test.ts`
-- `.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/06-tool-side-pass.md`
+- `.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/06b-tool-side-pass.md`
 
 ## Completion Criteria
 
