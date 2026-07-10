@@ -4,7 +4,7 @@
 **Priority**: Medium
 **Branch**: `sprint/workshop-editor-tab-08-actionable-tool-todos` → PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 3–5 days
-**Depends on**: Sprint 06 tool-side-pass artifacts and host evidence handoff
+**Depends on**: Sprint 06A tool-side-pass artifacts/host evidence handoff and Sprint 06B agent-run engine
 
 ## Goal
 
@@ -39,6 +39,9 @@ or silently completes writer tasks.
 
 ### UI and interaction
 
+- [ ] Make the composer’s + button open the writer-controlled Context Selector
+      / project-file browser, not the Writing Tools modal. Keep the explicit
+      Tools button as the sole tool-browser entry point.
 - [ ] Render a compact To-do List below Workshop tool selection with counts,
       completion toggles, source attribution, and an empty state.
 - [ ] Let the writer promote an actionable finding into a task deliberately;
