@@ -195,7 +195,18 @@ export class WorkshopHandler {
     const controller = new AbortController();
     this.activeRun = { requestId, label: toolLabel, toolId, controller };
 
-    const userTurn = this.session.beginToolRun(toolId, requestId);
+    let userTurn;
+    try {
+      userTurn = this.session.beginToolRun(toolId, requestId);
+    } catch (error) {
+      this.activeRun = undefined;
+      this.sendError(
+        'workshop.run_tool',
+        'Integrated tool runs arrive in Sprint 06. Start a new session to run a tool before persona chat.',
+        error instanceof Error ? error.message : String(error)
+      );
+      return;
+    }
     this.postTurn(userTurn);
     // Snapshot after the user turn: keeps the replay cache fresh so a webview
     // that reloads mid-run rehydrates the attempt (and its active tool).
@@ -397,8 +408,8 @@ export class WorkshopHandler {
     this.activeRun = { requestId, label, toolId: target.kind === 'tool' ? target.toolId : undefined, controller };
 
     const userTurn = target.kind === 'host'
-      ? this.session.beginPersonaMessage(text, requestId, displayText)
-      : this.session.beginDirectToolMessage(target.toolId, text, requestId, displayText);
+      ? this.session.beginPersonaMessage(requestId, displayText)
+      : this.session.beginDirectToolMessage(target.toolId, requestId, displayText);
     this.postTurn(userTurn);
     this.postSessionState();
     this.sendStreamStarted(requestId);
@@ -448,7 +459,7 @@ export class WorkshopHandler {
         } else if (result.conversationId) {
           this.assistantToolService.discardConversation(result.conversationId);
           this.outputChannel.appendLine(
-            `[WorkshopHandler] Discarded zombie completion: ${requestId} (${label})`
+            `[WorkshopHandler] Discarded zombie completion: ${requestId} (${label}) — session was reset or the run preempted mid-stream`
           );
         }
       }
@@ -460,12 +471,15 @@ export class WorkshopHandler {
       if (error instanceof Error && error.name === 'ConversationNotFoundError') {
         // A configuration/resource rebuild invalidates the assistant
         // generation as a whole, not merely the id that happened to be used.
-        this.discardConversations(this.session.clearAllConversations());
-        this.outputChannel.appendLine(`[WorkshopHandler] Conversation generation lost: ${details}`);
+        const discardedConversationIds = this.session.clearAllConversations();
+        this.discardConversations(discardedConversationIds);
+        this.outputChannel.appendLine(
+          `[WorkshopHandler] Conversation generation lost (${discardedConversationIds.length} conversations discarded: ${discardedConversationIds.join(', ') || 'none'}): ${details}`
+        );
         this.sendError(
           'workshop.send_message',
           'This Workshop conversation is no longer available because settings changed. Send a new message to start the selected host again.',
-          details
+          'The retained conversation could not be found. Details were recorded in the Prose Minion output channel.'
         );
       } else if (error instanceof Error && error.name === 'AbortError') {
         this.sendStatus(`${label} cancelled`);

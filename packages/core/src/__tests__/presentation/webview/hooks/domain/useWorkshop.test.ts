@@ -167,7 +167,7 @@ describe('useWorkshop', () => {
     expect(result.current.selectedToolId).toBe('gestures');
     expect(result.current.activeToolId).toBeNull();
     expect(result.current.isRunning).toBe(false);
-    expect(result.current.canFollowUp).toBe(true);
+    expect(result.current.canMessage).toBe(true);
   });
 
   it('adopts a mid-run request from the snapshot so post-reload chunks attach', () => {
@@ -407,7 +407,7 @@ describe('useWorkshop', () => {
 
   it('enables the composer for a pinned excerpt before a host conversation starts', () => {
     const { result } = renderHook(() => useWorkshop());
-    expect(result.current.canFollowUp).toBe(false);
+    expect(result.current.canMessage).toBe(false);
 
     act(() => {
       result.current.handleSessionState(sessionState({
@@ -420,13 +420,13 @@ describe('useWorkshop', () => {
       }));
     });
     expect(result.current.hasHostConversation).toBe(false);
-    expect(result.current.canFollowUp).toBe(true);
+    expect(result.current.canMessage).toBe(true);
 
     // A live run suspends follow-ups without losing the conversation.
     act(() => {
       result.current.handleStreamStarted(streamStarted('req-1'));
     });
-    expect(result.current.canFollowUp).toBe(false);
+    expect(result.current.canMessage).toBe(false);
     expect(result.current.hasHostConversation).toBe(false);
   });
 

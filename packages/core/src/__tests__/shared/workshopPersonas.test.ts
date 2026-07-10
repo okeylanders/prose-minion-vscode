@@ -4,7 +4,8 @@ import {
   DEFAULT_WORKSHOP_PERSONA_ID,
   getWorkshopPersona,
   isWorkshopPersonaId,
-  WORKSHOP_PERSONA_CATALOG
+  WORKSHOP_PERSONA_CATALOG,
+  workshopPersonaLabel
 } from '@shared/constants/workshopPersonas';
 
 const PROMPTS_ROOT = path.resolve(__dirname, '..', '..', '..', 'resources', 'system-prompts');
@@ -16,7 +17,8 @@ describe('Workshop persona catalog and packaged prompts', () => {
     expect(DEFAULT_WORKSHOP_PERSONA_ID).toBe('jill');
     expect(isWorkshopPersonaId('quinn')).toBe(true);
     expect(isWorkshopPersonaId('tool')).toBe(false);
-    expect(getWorkshopPersona('wren').specialty).toBe('Line craft');
+    expect(getWorkshopPersona('wren')?.specialty).toBe('Line craft');
+    expect(workshopPersonaLabel('unknown-persona' as any)).toBe('unknown-persona');
   });
 
   it('uses unique, relative, contained prompt paths with non-empty curated prompt files', () => {

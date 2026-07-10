@@ -58,8 +58,6 @@ export interface WorkshopState {
    * window bit on reload of a marathon thread). 0 in normal operation.
    */
   hiddenTurns: number;
-  /** True when the session holds a conversation a follow-up can continue. */
-  hasConversation: boolean;
   /** True when the permanent host has started its retained conversation. */
   hasHostConversation: boolean;
   /** Selected permanent host; restored from the host snapshot on reload. */
@@ -68,8 +66,6 @@ export interface WorkshopState {
   chatTarget: WorkshopChatTarget;
   /** True when the composer can message the host or selected direct sidecar. */
   canMessage: boolean;
-  /** Legacy name retained for existing Workshop callers; equals canMessage. */
-  canFollowUp: boolean;
   /** Host selection becomes immutable once a host run/conversation exists. */
   isPersonaSelectionLocked: boolean;
   /** Last selected tool/lens, retained after completion for reload restore. */
@@ -133,7 +129,6 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const [excerpt, setExcerpt] = React.useState<WorkshopExcerpt | null>(null);
   const [turns, setTurns] = React.useState<WorkshopTurn[]>([]);
   const [totalTurns, setTotalTurns] = React.useState(0);
-  const [hasConversation, setHasConversation] = React.useState(false);
   const [hasHostConversation, setHasHostConversation] = React.useState(false);
   const [selectedPersonaId, setSelectedPersonaId] = React.useState<WorkshopPersonaId>('jill');
   const [chatTarget, setChatTargetState] = React.useState<WorkshopChatTarget>({ kind: 'host' });
@@ -252,7 +247,6 @@ export const useWorkshop = (): UseWorkshopReturn => {
       setSessionReady(true);
       setExcerpt(session.excerpt ?? null);
       setTotalTurns(session.totalTurns);
-      setHasConversation(session.hasConversation);
       setHasHostConversation(session.participants.host.hasConversation);
       setSelectedPersonaId(session.participants.host.personaId);
       setChatTargetState(session.participants.chatTarget);
@@ -372,7 +366,6 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const isRunning = currentRequestId !== null || activeToolId !== null;
   const hiddenTurns = Math.max(0, totalTurns - turns.length);
   const canMessage = sessionReady && !!excerpt?.text.trim() && !isRunning;
-  const canFollowUp = canMessage;
   const isPersonaSelectionLocked = hasHostConversation || isRunning;
 
   return {
@@ -381,12 +374,10 @@ export const useWorkshop = (): UseWorkshopReturn => {
     excerpt,
     turns,
     hiddenTurns,
-    hasConversation,
     hasHostConversation,
     selectedPersonaId,
     chatTarget,
     canMessage,
-    canFollowUp,
     isPersonaSelectionLocked,
     selectedToolId,
     activeToolId,

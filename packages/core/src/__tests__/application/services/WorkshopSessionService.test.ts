@@ -40,7 +40,7 @@ describe('WorkshopSessionService — Sprint 05 participants', () => {
 
   it('locks selection while a host request runs and after its retained conversation lands', () => {
     pin();
-    service.beginPersonaMessage('Does this POV drift?', 'host-1');
+    service.beginPersonaMessage('host-1', 'Does this POV drift?');
     expect(() => service.selectPersona('quinn')).toThrow(/Cannot change/);
 
     service.completeRun('host-1', 'The camera stays close.', undefined, false, 'host-conv');
@@ -49,12 +49,20 @@ describe('WorkshopSessionService — Sprint 05 participants', () => {
     expect(() => service.selectPersona('quinn')).toThrow(/Cannot change/);
   });
 
+  it('enforces the host-versus-tool-run invariant inside the aggregate', () => {
+    pin();
+    service.beginPersonaMessage('host-1', 'Stay with this scene.');
+    service.completeRun('host-1', 'I am here.', undefined, false, 'host-conv');
+
+    expect(() => service.beginToolRun('prose', 'tool-1')).toThrow(/persona host conversation/);
+  });
+
   it('attributes host turns to the selected persona and preserves its conversation on follow-up', () => {
     pin();
     service.selectPersona('wren');
-    service.beginPersonaMessage('Where does this line flatten?', 'host-1');
+    service.beginPersonaMessage('host-1', 'Where does this line flatten?');
     const first = service.completeRun('host-1', 'Show me her hands.', undefined, false, 'host-conv');
-    service.beginPersonaMessage('Give me another angle.', 'host-2');
+    service.beginPersonaMessage('host-2', 'Give me another angle.');
     const followUp = service.completeRun('host-2', 'Try the physical anchor.');
 
     expect(first).toMatchObject({ personaId: 'wren', personaLabel: 'Wren', toolId: undefined });
@@ -63,7 +71,7 @@ describe('WorkshopSessionService — Sprint 05 participants', () => {
   });
 
   it('requires a usable excerpt before starting a persona message', () => {
-    expect(() => service.beginPersonaMessage('Hello?', 'host-1')).toThrow(/pinned excerpt/);
+    expect(() => service.beginPersonaMessage('host-1', 'Hello?')).toThrow(/pinned excerpt/);
   });
 
   it('adopts a successful pre-host tool run into its sidecar and direct target', () => {
@@ -84,11 +92,11 @@ describe('WorkshopSessionService — Sprint 05 participants', () => {
     pin();
     service.beginToolRun('cliche', 'tool-1');
     service.completeRun('tool-1', 'One tired phrase.', undefined, false, 'tool-conv');
-    service.beginDirectToolMessage('cliche', 'What could replace it?', 'tool-2');
+    service.beginDirectToolMessage('cliche', 'tool-2', 'What could replace it?');
     const reply = service.completeRun('tool-2', 'Use the image already present.');
 
     expect(reply).toMatchObject({ toolId: 'cliche', toolLabel: 'Cliché', personaId: undefined });
-    expect(() => service.beginDirectToolMessage('prose', 'Hello?', 'tool-3')).toThrow(/without a retained sidecar/);
+    expect(() => service.beginDirectToolMessage('prose', 'tool-3', 'Hello?')).toThrow(/without a retained sidecar/);
   });
 
   it('replaces only the same tool sidecar and keeps other direct routes available', () => {
@@ -106,20 +114,14 @@ describe('WorkshopSessionService — Sprint 05 participants', () => {
     expect(service.getChatTarget()).toEqual({ kind: 'tool', toolId: 'continuity' });
   });
 
-  it('rejects a direct target whose sidecar is gone and clears a lost sidecar honestly', () => {
+  it('rejects a direct target whose sidecar is absent', () => {
     pin();
-    expect(service.setChatTarget({ kind: 'tool', toolId: 'style' })).toBe(false);
-
-    service.beginToolRun('style', 'style-1');
-    service.completeRun('style-1', 'Report.', undefined, false, 'style-conv');
-    expect(service.clearLostConversation({ kind: 'tool', toolId: 'style' })).toBe('style-conv');
-    expect(service.getChatTarget()).toEqual({ kind: 'host' });
     expect(service.setChatTarget({ kind: 'tool', toolId: 'style' })).toBe(false);
   });
 
   it('never adopts a zombie completion after preemption', () => {
     pin();
-    service.beginPersonaMessage('First question', 'host-1');
+    service.beginPersonaMessage('host-1', 'First question');
     service.abandonRun('host-1');
 
     expect(service.completeRun('host-1', 'late', undefined, false, 'zombie')).toBeUndefined();
@@ -129,10 +131,10 @@ describe('WorkshopSessionService — Sprint 05 participants', () => {
   it('reset disposes all participants, clears the thread, and returns to Jill while preserving the excerpt', () => {
     const excerpt = pin();
     service.selectPersona('theo');
-    service.beginPersonaMessage('Does this move?', 'host-1');
-    service.completeRun('host-1', 'It needs a turn.', undefined, false, 'host-conv');
     service.beginToolRun('prose', 'tool-1');
     service.completeRun('tool-1', 'Tool report.', undefined, false, 'tool-conv');
+    service.beginPersonaMessage('host-1', 'Does this move?');
+    service.completeRun('host-1', 'It needs a turn.', undefined, false, 'host-conv');
 
     expect(service.reset().sort()).toEqual(['host-conv', 'tool-conv']);
     expect(service.getSnapshot()).toMatchObject({

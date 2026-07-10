@@ -17,11 +17,11 @@ import { Icon } from '@components/shared/Icon';
 
 interface WorkshopComposerProps {
   /** A valid excerpt is pinned and no run is in flight — sending is possible. */
-  canFollowUp: boolean;
-  /** The selected host already has a retained conversation (drives copy). */
+  canMessage: boolean;
+  /** The current recipient already has a retained conversation (drives copy). */
   hasConversation: boolean;
-  /** Deterministic host label for visible, accessible composer language. */
-  personaLabel: string;
+  /** Deterministic current-recipient label for visible, accessible composer language. */
+  recipientLabel: string;
   /** A run is streaming — show stop instead of send. */
   isRunning: boolean;
   /** First host snapshot has arrived. */
@@ -32,9 +32,9 @@ interface WorkshopComposerProps {
 }
 
 export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
-  canFollowUp,
+  canMessage,
   hasConversation,
-  personaLabel,
+  recipientLabel,
   isRunning,
   sessionReady,
   onSend,
@@ -44,7 +44,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   const [draft, setDraft] = React.useState('');
 
   const trimmed = draft.trim();
-  const canSend = canFollowUp && trimmed.length > 0;
+  const canSend = canMessage && trimmed.length > 0;
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -56,8 +56,8 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   };
 
   const placeholder = hasConversation
-    ? `Continue with ${personaLabel}…`
-    : `Message ${personaLabel} about this excerpt…`;
+    ? `Continue with ${recipientLabel}…`
+    : `Message ${recipientLabel} about this excerpt…`;
 
   return (
     <div className="pm-ws-composer-wrap">
@@ -76,9 +76,9 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
           type="text"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          disabled={!sessionReady}
+          disabled={!canMessage}
           placeholder={placeholder}
-          aria-label={`Message ${personaLabel}`}
+          aria-label={`Message ${recipientLabel}`}
         />
         <div className="pm-ws-comp-right">
           <button
@@ -106,10 +106,10 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
               disabled={!canSend}
               title={
                 hasConversation
-                  ? `Continue with ${personaLabel}`
-                  : `Message ${personaLabel}`
+                  ? `Continue with ${recipientLabel}`
+                  : `Message ${recipientLabel}`
               }
-              aria-label={`Send message to ${personaLabel}`}
+              aria-label={`Send message to ${recipientLabel}`}
             >
               <Icon name="send" size={16} />
             </button>

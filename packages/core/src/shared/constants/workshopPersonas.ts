@@ -39,12 +39,9 @@ const PERSONAS_BY_ID: ReadonlyMap<WorkshopPersonaId, WorkshopPersonaDescriptor> 
 export const isWorkshopPersonaId = (value: unknown): value is WorkshopPersonaId =>
   typeof value === 'string' && PERSONAS_BY_ID.has(value as WorkshopPersonaId);
 
-export const getWorkshopPersona = (id: WorkshopPersonaId): WorkshopPersonaDescriptor => {
-  const persona = PERSONAS_BY_ID.get(id);
-  if (!persona) {
-    throw new Error(`Unknown Workshop persona: ${id}`);
-  }
-  return persona;
-};
+/** Returns undefined for an unknown id so display callers can fail soft. */
+export const getWorkshopPersona = (id: WorkshopPersonaId): WorkshopPersonaDescriptor | undefined =>
+  PERSONAS_BY_ID.get(id);
 
-export const workshopPersonaLabel = (id: WorkshopPersonaId): string => getWorkshopPersona(id).label;
+/** Display label for a persona id; falls back to the raw id for forward compat. */
+export const workshopPersonaLabel = (id: WorkshopPersonaId): string => getWorkshopPersona(id)?.label ?? id;

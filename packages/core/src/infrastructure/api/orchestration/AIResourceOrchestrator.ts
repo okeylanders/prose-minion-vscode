@@ -417,6 +417,11 @@ export class AIResourceOrchestrator {
 
       if (!cancelled && this.isAborted(requestOptions.signal)) {
         cancelled = true;
+        // A caller can preempt after the provider's final chunk but before we
+        // adopt the exchange. Treat that clean-finish race as cancelled too:
+        // no invisible retained history survives a cancelled Workshop run.
+        cancelled = cancelled || this.isAborted(requestOptions.signal);
+
         this.outputChannel?.appendLine(
           `[AIResourceOrchestrator] Continuation cancelled after stream finished - preserving ${content.length} chars of partial response`
         );
@@ -532,6 +537,11 @@ export class AIResourceOrchestrator {
           }
         }
 
+        // A caller can preempt after the provider's final chunk but before we
+        // adopt the exchange. Treat that clean-finish race as cancelled too:
+        // no invisible retained history survives a cancelled Workshop run.
+        cancelled = cancelled || this.isAborted(requestOptions.signal);
+
         this.outputChannel?.appendLine(
           `[AIResourceOrchestrator] Streaming ${cancelled ? 'cancelled' : 'complete'} (${fullContent.length} chars)\n`
         );
@@ -545,6 +555,9 @@ export class AIResourceOrchestrator {
         if (options.retainConversation && !cancelled && !this.isAborted(requestOptions.signal)) {
           this.conversationManager.addMessage(conversationId, { role: 'assistant', content });
           retained = true;
+          this.outputChannel?.appendLine(
+            `[AIResourceOrchestrator] Conversation ${conversationId} retained for continuation`
+          );
         }
 
         return {
@@ -574,6 +587,9 @@ export class AIResourceOrchestrator {
       if (options.retainConversation && !this.isAborted(requestOptions.signal)) {
         this.conversationManager.addMessage(conversationId, { role: 'assistant', content });
         retained = true;
+        this.outputChannel?.appendLine(
+          `[AIResourceOrchestrator] Conversation ${conversationId} retained for continuation`
+        );
       }
 
       return {

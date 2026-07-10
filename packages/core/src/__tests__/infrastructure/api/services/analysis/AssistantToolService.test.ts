@@ -168,4 +168,32 @@ describe('AssistantToolService — continuation generation symmetry', () => {
     expect(generation1.executeWithoutCapabilities.mock.calls[0][2]).toContain('<context-brief>');
     expect(result.conversationId).toBe('host-conv');
   });
+
+  it('discloses a direct-pinned excerpt head slice in the persona message', async () => {
+    const generation = makeOrchestrator('gen-1');
+    const manager = {
+      initializeResources: jest.fn().mockResolvedValue(undefined),
+      getOrchestrator: jest.fn(() => generation),
+      setStatusCallback: jest.fn()
+    } as unknown as AIResourceManager;
+    const service = new AssistantToolService(
+      manager,
+      { getPromptLoader: () => ({ loadPrompts: jest.fn().mockResolvedValue('system prompt') }) } as unknown as ResourceLoaderService,
+      { getOptions: jest.fn().mockReturnValue({ temperature: 0.7, maxTokens: 1000 }) } as unknown as ToolOptionsProvider,
+      { appendLine: jest.fn() } as never
+    );
+    await flush();
+    const excerpt = Array.from({ length: 10_001 }, (_, index) => `word${index}`).join(' ');
+
+    await service.startWorkshopPersonaConversation({
+      personaId: 'jill',
+      excerpt: { text: excerpt, pinnedAt: 1 },
+      message: 'Read this.'
+    });
+
+    const userMessage = generation.executeWithoutCapabilities.mock.calls[0][2];
+    expect(userMessage).toContain('Persona input is a head slice: 10000 of 10001 pinned words.');
+    expect(userMessage).toContain('word9999');
+    expect(userMessage).not.toContain('word10000');
+  });
 });

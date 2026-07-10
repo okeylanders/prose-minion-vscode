@@ -53,7 +53,8 @@ export interface WorkshopPersonaConversationInput {
   contextBrief?: string;
 }
 
-const WORKSHOP_PERSONA_EXCERPT_MAX_WORDS = 6_000;
+/** Matches the file-pin limit; direct pins disclose any further head slice. */
+const WORKSHOP_PERSONA_EXCERPT_MAX_WORDS = 10_000;
 const WORKSHOP_PERSONA_CONTEXT_BRIEF_MAX_WORDS = 1_200;
 
 /**
@@ -385,6 +386,9 @@ export class AssistantToolService {
     }
 
     const persona = getWorkshopPersona(input.personaId);
+    if (!persona) {
+      throw new Error(`Unknown Workshop persona: ${input.personaId}`);
+    }
     const options = this.toolOptions.getOptions();
     const promptLoader = this.resourceLoader.getPromptLoader();
     const systemPrompt = await promptLoader.loadPrompts([
@@ -477,7 +481,8 @@ export class AssistantToolService {
   }
 
   private buildWorkshopPersonaUserMessage(input: WorkshopPersonaConversationInput): string {
-    const excerpt = trimToWordLimit(input.excerpt.text, WORKSHOP_PERSONA_EXCERPT_MAX_WORDS).trimmed;
+    const trimmedExcerpt = trimToWordLimit(input.excerpt.text, WORKSHOP_PERSONA_EXCERPT_MAX_WORDS);
+    const excerpt = trimmedExcerpt.trimmed;
     const contextBrief = input.contextBrief?.trim()
       ? trimToWordLimit(input.contextBrief, WORKSHOP_PERSONA_CONTEXT_BRIEF_MAX_WORDS).trimmed
       : undefined;
@@ -485,6 +490,9 @@ export class AssistantToolService {
       input.excerpt.relativePath ? `Source: ${input.excerpt.relativePath}` : undefined,
       input.excerpt.truncation
         ? `Pinned excerpt is a head slice: ${input.excerpt.truncation.pinnedWords} of ${input.excerpt.truncation.totalWords} words.`
+        : undefined,
+      trimmedExcerpt.wasTrimmed
+        ? `Persona input is a head slice: ${trimmedExcerpt.trimmedWords} of ${trimmedExcerpt.originalWords} pinned words.`
         : undefined
     ].filter((line): line is string => !!line);
 

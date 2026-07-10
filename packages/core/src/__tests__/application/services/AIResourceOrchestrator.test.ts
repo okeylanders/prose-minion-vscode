@@ -599,6 +599,9 @@ describe('AIResourceOrchestrator', () => {
       });
       expect(mockConversationManager.deleteConversation).not.toHaveBeenCalled();
       expect(result.conversationId).toBe('conv-123');
+      expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+        '[AIResourceOrchestrator] Conversation conv-123 retained for continuation'
+      );
     });
 
     it('deletes a cancelled retained stream and never returns a partial conversation', async () => {
@@ -610,6 +613,28 @@ describe('AIResourceOrchestrator', () => {
         const abort = new Error('aborted');
         abort.name = 'AbortError';
         throw abort;
+      }) as any;
+
+      const result = await orchestrator.executeWithoutCapabilities(
+        'workshop_persona_jill',
+        'System',
+        'User',
+        { retainConversation: true, signal: controller.signal, onToken: jest.fn() }
+      );
+
+      expect(result.cancelled).toBe(true);
+      expect(result.conversationId).toBeUndefined();
+      expect(mockConversationManager.deleteConversation).toHaveBeenCalledWith('conv-123');
+      expect(mockConversationManager.addMessage).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not retain a host conversation when abort lands after its final streaming chunk', async () => {
+      const controller = new AbortController();
+      mockConversationManager.getMessages.mockReturnValue([]);
+      mockOpenRouterClient.createStreamingChatCompletion = jest.fn(async function* () {
+        yield { token: 'finished reply' };
+        controller.abort();
+        yield { done: true, finishReason: 'stop' };
       }) as any;
 
       const result = await orchestrator.executeWithoutCapabilities(

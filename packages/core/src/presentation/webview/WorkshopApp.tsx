@@ -48,7 +48,7 @@ import {
   WorkshopToolDescriptor,
   workshopToolLabel
 } from '@shared/constants/workshopTools';
-import { getWorkshopPersona } from '@shared/constants/workshopPersonas';
+import { DEFAULT_WORKSHOP_PERSONA_ID, getWorkshopPersona } from '@shared/constants/workshopPersonas';
 import { resultToolNameForWorkshopTool } from '@shared/constants/resultToolNames';
 import { useVSCodeApi } from './hooks/useVSCodeApi';
 import { usePersistence } from './hooks/usePersistence';
@@ -241,7 +241,11 @@ export const WorkshopApp: React.FC = () => {
 
   const toolsEnabled =
     !!workshop.excerpt && !workshop.isRunning && workshop.sessionReady && !workshop.hasHostConversation;
-  const activePersona = getWorkshopPersona(workshop.selectedPersonaId);
+  const activePersona = getWorkshopPersona(workshop.selectedPersonaId)
+    ?? getWorkshopPersona(DEFAULT_WORKSHOP_PERSONA_ID)!;
+  const chatTargetLabel = workshop.chatTarget.kind === 'tool'
+    ? workshopToolLabel(workshop.chatTarget.toolId)
+    : activePersona.label;
 
   // Recomputing a full word split per streamed token was O(excerpt) work on
   // the token clock (PR #67 review #11) — the excerpt only changes on re-pin.
@@ -361,7 +365,9 @@ export const WorkshopApp: React.FC = () => {
             onClick={openPersonaModal}
             title={
               workshop.isPersonaSelectionLocked
-                ? 'Start a new session to choose a different writing partner'
+                ? workshop.hasHostConversation
+                  ? 'Start a new session to choose a different writing partner'
+                  : 'Wait for the current run to finish before choosing a writing partner'
                 : 'Choose a writing partner'
             }
           >
@@ -542,7 +548,7 @@ export const WorkshopApp: React.FC = () => {
               <WorkshopThread
                 turns={workshop.turns}
                 selectedToolId={workshop.selectedToolId}
-                quickActionsDisabled={!workshop.canFollowUp}
+                quickActionsDisabled={!workshop.canMessage}
                 onQuickAction={workshop.quickAction}
                 onCopyVariation={copyVariation}
                 onSaveVariation={saveVariation}
@@ -582,9 +588,9 @@ export const WorkshopApp: React.FC = () => {
               </div>
             )}
             <WorkshopComposer
-              canFollowUp={workshop.canFollowUp}
-              hasConversation={workshop.hasHostConversation}
-              personaLabel={activePersona.label}
+              canMessage={workshop.canMessage}
+              hasConversation={workshop.chatTarget.kind === 'host' ? workshop.hasHostConversation : true}
+              recipientLabel={chatTargetLabel}
               isRunning={workshop.isRunning}
               sessionReady={workshop.sessionReady}
               onSend={workshop.sendMessage}

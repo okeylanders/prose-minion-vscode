@@ -141,6 +141,9 @@ export class WorkshopSessionService {
 
   beginToolRun(toolId: WorkshopToolId, requestId: string): WorkshopTurn {
     this.requireExcerpt();
+    if (this.hasHostConversation()) {
+      throw new Error('Cannot run a Workshop tool while a persona host conversation is active');
+    }
     this.selectedToolId = toolId;
     const turn: WorkshopTurn = {
       id: this.nextTurnId('user'),
@@ -157,22 +160,21 @@ export class WorkshopSessionService {
   }
 
   /** Begin a normal message to the selected permanent persona host. */
-  beginPersonaMessage(text: string, requestId: string, displayText = text): WorkshopTurn {
+  beginPersonaMessage(requestId: string, displayText: string): WorkshopTurn {
     this.requireExcerpt();
-    return this.beginMessage(text, requestId, displayText, 'host');
+    return this.beginMessage(requestId, displayText, 'host');
   }
 
   /** Begin a direct follow-up to a retained tool sidecar. */
   beginDirectToolMessage(
     toolId: WorkshopToolId,
-    text: string,
     requestId: string,
-    displayText = text
+    displayText: string
   ): WorkshopTurn {
     if (!this.participants.toolSidecars[toolId]) {
       throw new Error(`Cannot message Workshop tool ${toolId} without a retained sidecar`);
     }
-    return this.beginMessage(text, requestId, displayText, 'tool', toolId);
+    return this.beginMessage(requestId, displayText, 'tool', toolId);
   }
 
   /**
@@ -230,21 +232,6 @@ export class WorkshopSessionService {
     }
   }
 
-  /** Clear one known-lost participant and return its private id for disposal. */
-  clearLostConversation(target: WorkshopChatTarget): string | undefined {
-    if (target.kind === 'host') {
-      const conversationId = this.participants.host.conversationId;
-      this.participants.host.conversationId = undefined;
-      return conversationId;
-    }
-    const sidecar = this.participants.toolSidecars[target.toolId];
-    delete this.participants.toolSidecars[target.toolId];
-    if (this.participants.directToolTarget === target.toolId) {
-      this.participants.directToolTarget = undefined;
-    }
-    return sidecar?.conversationId;
-  }
-
   /** Clear every retained participant after an assistant-resource generation loss. */
   clearAllConversations(): string[] {
     const conversationIds = this.conversationIds();
@@ -285,7 +272,6 @@ export class WorkshopSessionService {
   }
 
   private beginMessage(
-    _text: string,
     requestId: string,
     displayText: string,
     target: 'host' | 'tool',

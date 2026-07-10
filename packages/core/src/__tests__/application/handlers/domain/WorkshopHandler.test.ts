@@ -3,6 +3,7 @@ import { WorkshopSessionService } from '@/application/services/WorkshopSessionSe
 import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { MessageType, API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
+import { FileType } from '@/platform';
 import type { FileSystem, LogSink, ShellService, Workspace } from '@/platform';
 import { createFakeFileSystem, createFakeShellService, createFakeWorkspace } from '../../../mocks/platform';
 
@@ -112,6 +113,33 @@ describe('WorkshopHandler — Sprint 05 host routing', () => {
     expect(posted(MessageType.ERROR)[0].payload.message).toMatch(/Unknown Workshop persona/);
   });
 
+  it('keeps tool-run boundary guardrails for unknown tools and missing excerpts', async () => {
+    await handler.handleRunTool(message(MessageType.WORKSHOP_RUN_TOOL, { toolId: 'not-a-tool' }) as any);
+    await handler.handleRunTool(message(MessageType.WORKSHOP_RUN_TOOL, { toolId: 'prose' }) as any);
+
+    expect(service.analyzeProse).not.toHaveBeenCalled();
+    expect(posted(MessageType.ERROR).map((entry) => entry.payload.message)).toEqual([
+      expect.stringMatching(/Unknown Workshop tool/),
+      'Pin an excerpt before running a tool.'
+    ]);
+  });
+
+  it('pins a picked text file with durable head-slice provenance', async () => {
+    const content = Array.from({ length: 10_001 }, (_, index) => `word${index}`).join(' ');
+    shell.pickFile = jest.fn().mockResolvedValue({ fsPath: '/chapter.md', uri: 'file:///chapter.md' });
+    fileSystem.stat = jest.fn().mockResolvedValue({ type: FileType.File, size: content.length });
+    fileSystem.readFile = jest.fn().mockResolvedValue(new TextEncoder().encode(content));
+
+    await handler.handlePickExcerptFile(message(MessageType.WORKSHOP_PICK_EXCERPT_FILE, {}) as any);
+
+    expect(session.getExcerpt()).toMatchObject({
+      relativePath: 'External file: chapter.md',
+      truncation: { pinnedWords: 10_000, totalWords: 10_001 }
+    });
+    expect(session.getExcerpt()!.text).toContain('word9999');
+    expect(session.getExcerpt()!.text).not.toContain('word10000');
+  });
+
   it('keeps a successful pre-host tool run as the explicit direct target', async () => {
     await pin();
     await handler.handleRunTool(message(MessageType.WORKSHOP_RUN_TOOL, { toolId: 'continuity' }) as any);
@@ -175,6 +203,24 @@ describe('WorkshopHandler — Sprint 05 host routing', () => {
     });
     expect(service.discardConversation).toHaveBeenCalledWith('host-conv');
     expect(service.discardConversation).toHaveBeenCalledWith('tool-conv');
+  });
+
+  it('clears the full participant generation for a lost direct-tool conversation without leaking its id', async () => {
+    await pin();
+    await handler.handleRunTool(message(MessageType.WORKSHOP_RUN_TOOL, { toolId: 'prose' }) as any);
+    service.continueConversation.mockRejectedValueOnce(
+      Object.assign(new Error('Conversation tool-conv not found'), { name: 'ConversationNotFoundError' })
+    );
+
+    await handler.handleSendMessage(message(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Try again.' }) as any);
+
+    expect(session.getSnapshot().participants).toEqual({
+      host: { personaId: 'jill', hasConversation: false },
+      toolSidecars: [],
+      chatTarget: { kind: 'host' }
+    });
+    expect(posted(MessageType.ERROR).at(-1).payload.details).not.toContain('tool-conv');
+    expect((log.appendLine as jest.Mock).mock.calls.flat().join('\n')).toContain('1 conversations discarded: tool-conv');
   });
 
   it('keeps API-key warnings out of the thread and leaves the host unadopted', async () => {

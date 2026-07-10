@@ -12,25 +12,25 @@ act before merge · **Deferred** = real issue, safe to punt for a stated reason 
 
 | # | Sev | Finding | Reviewers | Consensus | Status |
 |---|-----|---------|-----------|-----------|--------|
-| 1 | 🟠 High | Silent second truncation of the pinned excerpt at 6,000 words — undisclosed and untested | Sam, Bria, Cal | 🎯🎯 Strong | **Open** |
-| 2 | 🟠 High | Composer placeholder/title/aria-label name the persona while messages route to a direct tool | Sam | — | **Open** |
-| 3 | 🟠 High | Test rewrite deleted all handleRunTool guardrail tests and the entire Pin-from-file suite | Cal | — | **Open** |
-| 4 | 🟠 High | Provider conversation id leaks to the webview via `ConversationNotFoundError` details | Patricia | — | **Open** |
-| 5 | 🟠 High | "Conversation generation lost" log omits count/ids of wiped participants | Oliver | — | **Open** |
-| 6 | 🟠 High | Successful retain never logged in `executeWithoutCapabilities` (sibling method logs it) | Oliver | — | **Open** |
-| 7 | 🟡 Standard | ADR's tool-run-vs-host guard enforced only in the handler, not in `beginToolRun` | Marcus | — | **Open** |
-| 8 | 🟡 Standard | `canMessage`/`canFollowUp` dead legacy alias contradicts the alpha no-shims rule | Marcus, Stan | 🎯 | **Open** |
+| 1 | 🟠 High | Silent second truncation of the pinned excerpt at 6,000 words — undisclosed and untested | Sam, Bria, Cal | 🎯🎯 Strong | **Addressed** — cap aligned to 10,000 and any direct-pin slice now carries provenance + test |
+| 2 | 🟠 High | Composer placeholder/title/aria-label name the persona while messages route to a direct tool | Sam | — | **Addressed** — composer receives the resolved chat-target label |
+| 3 | 🟠 High | Test rewrite deleted all handleRunTool guardrail tests and the entire Pin-from-file suite | Cal | — | **Partially addressed** — restored boundary and durable file-slice coverage; retain the broader legacy error-path matrix as follow-up coverage |
+| 4 | 🟠 High | Provider conversation id leaks to the webview via `ConversationNotFoundError` details | Patricia | — | **Addressed** — webview receives a fixed detail while Output Channel retains diagnosis |
+| 5 | 🟠 High | "Conversation generation lost" log omits count/ids of wiped participants | Oliver | — | **Addressed** — Output Channel records discarded count and ids |
+| 6 | 🟠 High | Successful retain never logged in `executeWithoutCapabilities` (sibling method logs it) | Oliver | — | **Addressed** — streaming and single-shot retain paths log confirmation |
+| 7 | 🟡 Standard | ADR's tool-run-vs-host guard enforced only in the handler, not in `beginToolRun` | Marcus | — | **Addressed** — aggregate now rejects the illegal state with a direct test |
+| 8 | 🟡 Standard | `canMessage`/`canFollowUp` dead legacy alias contradicts the alpha no-shims rule | Marcus, Stan | 🎯 | **Addressed** — removed alias and migrated callers |
 | 9 | 🟡 Standard | Modal shell duplicated from `WorkshopToolsModal` with diverging a11y contract | Marcus, Stan | 🎯 | **Deferred** — extract the shared shell / backport focus-return as a follow-up (`.todo/tech-debt`) |
-| 10 | 🟡 Standard | Persona catalog lookup throws where the sibling tool catalog deliberately falls back | Stan | — | **Open** |
-| 11 | 🟡 Standard | Direct-tool `ConversationNotFoundError` full-nuke untested; `clearLostConversation` is dead code | Sam | — | **Open** |
-| 12 | 🟡 Standard | Clean-finish-but-aborted retention race untested for `executeWithoutCapabilities` | Cal | — | **Open** |
-| 13 | 🟡 Standard | Zombie-completion log in `executeMessage` dropped its explanatory clause | Oliver | — | **Open** |
-| 14 | 🟡 Standard | Persona-lock condition broader than the Acceptance Criteria wording; tooltip transiently false | Bria | — | **Open** |
-| 15 | 🟡 Standard | Composer input enabled pre-excerpt; Enter silently no-ops | Bria | — | **Open** |
+| 10 | 🟡 Standard | Persona catalog lookup throws where the sibling tool catalog deliberately falls back | Stan | — | **Addressed** — display label falls back to raw id; rendering has a safe default |
+| 11 | 🟡 Standard | Direct-tool `ConversationNotFoundError` full-nuke untested; `clearLostConversation` is dead code | Sam | — | **Addressed** — full-generation invalidation is tested for direct mode and dead narrower API removed |
+| 12 | 🟡 Standard | Clean-finish-but-aborted retention race untested for `executeWithoutCapabilities` | Cal | — | **Addressed** — race fixed and regression-tested |
+| 13 | 🟡 Standard | Zombie-completion log in `executeMessage` dropped its explanatory clause | Oliver | — | **Addressed** — explanatory clause restored |
+| 14 | 🟡 Standard | Persona-lock condition broader than the Acceptance Criteria wording; tooltip transiently false | Bria | — | **Addressed** — transient run lock now explains that it clears on completion |
+| 15 | 🟡 Standard | Composer input enabled pre-excerpt; Enter silently no-ops | Bria | — | **Addressed** — input shares the send gate and disables until an excerpt is ready |
 | 16 | 🟡 Standard | `</pinned-excerpt>` delimiter not structurally neutralized (prompt-injection defense-in-depth) | Patricia | — | **Deferred** — must land before Sprint 07 adds capabilities to the host conversation |
 | 17 | 🟡 Standard | `handleRunTool`/`executeMessage` duplicate ~80–100 lines of stream/cancel/zombie skeleton | Parker | — | **Deferred** — extract when Sprint 06 rewrites the tool-run path (report → host synthesis) |
-| 18 | 🟡 Standard | Dead `_text` parameter threaded through three `WorkshopSessionService` signatures | Parker | — | **Open** |
-| 19 | 🟡 Standard | `useWorkshop.hasConversation` exposed but never consumed | Parker | — | **Open** |
+| 18 | 🟡 Standard | Dead `_text` parameter threaded through three `WorkshopSessionService` signatures | Parker | — | **Addressed** — removed from public and private session APIs |
+| 19 | 🟡 Standard | `useWorkshop.hasConversation` exposed but never consumed | Parker | — | **Addressed** — removed unused hook state/API |
 | 20 | 🟢 Praise | Retained-conversation lifecycle is leak-free on every traced path | Blake | — | **None needed** |
 
 ---
