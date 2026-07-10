@@ -1,11 +1,11 @@
 /**
  * WorkshopComposer — the free-text follow-up bar (ADR 2026-07-03, Sprint 3).
  *
- * Sends WORKSHOP_SEND_MESSAGE through the callback (the host continues the
- * session's retained conversation); while a run streams, the send button
- * becomes a stop affordance wired to CANCEL_WORKSHOP_REQUEST. The composer
- * enables only when a conversation exists — the first tool run opens it —
- * and the placeholder says so instead of leaving a mystery-disabled input.
+ * Sends WORKSHOP_SEND_MESSAGE through the callback; the host decides whether
+ * that starts/continues the selected persona or an explicit direct-tool
+ * target. A pinned excerpt enables the first host message before any tool has
+ * run. While a run streams, the send button becomes a stop affordance wired
+ * to CANCEL_WORKSHOP_REQUEST.
  *
  * The draft is deliberately LOCAL state: it's unsent user input, not session
  * truth, so it doesn't belong in WorkshopSessionService (and losing it on a
@@ -16,10 +16,12 @@ import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
 
 interface WorkshopComposerProps {
-  /** A conversation exists and no run is in flight — sending is possible. */
+  /** A valid excerpt is pinned and no run is in flight — sending is possible. */
   canFollowUp: boolean;
-  /** A conversation exists (drives placeholder copy). */
+  /** The selected host already has a retained conversation (drives copy). */
   hasConversation: boolean;
+  /** Deterministic host label for visible, accessible composer language. */
+  personaLabel: string;
   /** A run is streaming — show stop instead of send. */
   isRunning: boolean;
   /** First host snapshot has arrived. */
@@ -32,6 +34,7 @@ interface WorkshopComposerProps {
 export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   canFollowUp,
   hasConversation,
+  personaLabel,
   isRunning,
   sessionReady,
   onSend,
@@ -53,8 +56,8 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   };
 
   const placeholder = hasConversation
-    ? 'Ask a follow-up — it continues this conversation…'
-    : 'Run a tool to start the conversation, then follow up here.';
+    ? `Continue with ${personaLabel}…`
+    : `Message ${personaLabel} about this excerpt…`;
 
   return (
     <div className="pm-ws-composer-wrap">
@@ -75,7 +78,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
           onChange={(event) => setDraft(event.target.value)}
           disabled={!sessionReady}
           placeholder={placeholder}
-          aria-label="Message the Workshop"
+          aria-label={`Message ${personaLabel}`}
         />
         <div className="pm-ws-comp-right">
           <button
@@ -103,10 +106,10 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
               disabled={!canSend}
               title={
                 hasConversation
-                  ? 'Send follow-up'
-                  : 'Run a tool first — follow-ups continue its conversation'
+                  ? `Continue with ${personaLabel}`
+                  : `Message ${personaLabel}`
               }
-              aria-label="Send follow-up"
+              aria-label={`Send message to ${personaLabel}`}
             >
               <Icon name="send" size={16} />
             </button>

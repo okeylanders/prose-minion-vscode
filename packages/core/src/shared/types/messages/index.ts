@@ -125,6 +125,8 @@ import {
   WorkshopRunToolMessage,
   WorkshopQuickActionMessage,
   WorkshopSendMessageMessage,
+  WorkshopSelectPersonaMessage,
+  WorkshopSetChatTargetMessage,
   WorkshopSetExcerptMessage,
   WorkshopPickExcerptFileMessage,
   WorkshopResetSessionMessage,
@@ -177,6 +179,8 @@ export type WebviewToExtensionMessage =
   | WorkshopRunToolMessage
   | WorkshopQuickActionMessage
   | WorkshopSendMessageMessage
+  | WorkshopSelectPersonaMessage
+  | WorkshopSetChatTargetMessage
   | WorkshopSetExcerptMessage
   | WorkshopPickExcerptFileMessage
   | WorkshopResetSessionMessage

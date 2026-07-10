@@ -85,4 +85,27 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(onCopyVariation).toHaveBeenCalledWith('Beta', 'prose');
     expect(onSaveVariation).toHaveBeenCalledWith('Alpha', 'prose');
   });
+
+  it('renders persona replies as conversation, never as inherited tool variation cards', () => {
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('### Variation 1 - One\nA\n\n### Variation 2 - Two\nB'),
+          kind: 'message',
+          toolId: undefined,
+          toolLabel: undefined,
+          personaId: 'jill',
+          personaLabel: 'Jill'
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onCopyVariation={jest.fn()}
+        onSaveVariation={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('Jill')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /copy/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /rewrite/i })).toBeNull();
+  });
 });

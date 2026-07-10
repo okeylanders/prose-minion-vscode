@@ -165,6 +165,34 @@
   /* The actions row never squeezes: the brand side truncates instead. */
   flex-shrink: 0;
 }
+[data-pm-surface="workshop"] .pm-ws-persona-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 6px 9px;
+  color: var(--pm-text);
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  border-radius: 7px;
+  font: 600 12px var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-persona-trigger:not(:disabled):hover {
+  border-color: var(--pm-accent-lo);
+  background: var(--pm-accent-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-persona-trigger-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: -5px;
+  color: var(--pm-accent-hi);
+  background: var(--pm-bg);
+  border: 1px solid var(--pm-border);
+  border-radius: 50%;
+}
 [data-pm-surface="workshop"] .pm-ws-reset {
   display: inline-flex;
   align-items: center;
@@ -840,6 +868,10 @@
   line-height: 1.45;
   margin: 0;
 }
+[data-pm-surface="workshop"] .pm-ws-tools-modal-notice {
+  margin-top: 10px;
+  color: var(--pm-accent-hi) !important;
+}
 [data-pm-surface="workshop"] .pm-ws-modal-close {
   width: 34px;
   height: 34px;
@@ -897,6 +929,48 @@
   font-size: 12px;
   line-height: 1.4;
   color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-persona-card {
+  min-height: 156px;
+}
+[data-pm-surface="workshop"] .pm-ws-persona-card-icons {
+  display: flex;
+  align-items: flex-end;
+  margin-bottom: 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-persona-focus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: -5px;
+  color: var(--pm-accent-hi);
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  border-radius: 50%;
+}
+[data-pm-surface="workshop"] .pm-ws-persona-specialty {
+  color: var(--pm-accent-hi);
+  font-size: 11px;
+  font-weight: 650;
+}
+[data-pm-surface="workshop"] .pm-ws-direct-mode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 32px 0;
+  color: var(--pm-muted);
+  font-size: 12px;
+}
+[data-pm-surface="workshop"] .pm-ws-direct-mode button {
+  color: var(--pm-accent-hi);
+  background: transparent;
+  border: 0;
+  padding: 2px 0;
+  font: inherit;
+  font-weight: 700;
 }
 
 /* Status + toast */

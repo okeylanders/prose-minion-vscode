@@ -74,7 +74,12 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   onCopyVariation,
   onSaveVariation
 }) => {
-  const parsedVariations = React.useMemo(() => parseVariations(turn.content), [turn.content]);
+  // Persona replies are editorial conversation, not a tool artifact. Never
+  // reinterpret their headings as tool variations with copy/save provenance.
+  const parsedVariations = React.useMemo(
+    () => turn.personaId ? null : parseVariations(turn.content),
+    [turn.content, turn.personaId]
+  );
 
   if (turn.role === 'user') {
     if (turn.kind === 'message') {
@@ -98,7 +103,8 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
       <div className="pm-ws-turn pm-ws-turn-assistant">
         <div className="pm-ws-turn-head">
           <span className="pm-ws-eyebrow">
-            <Icon name="sparkle" size={12} /> {turn.toolLabel ?? 'Follow-up'}
+            <Icon name={turn.personaId ? 'person' : 'sparkle'} size={12} />{' '}
+            {turn.personaLabel ?? turn.toolLabel ?? 'Follow-up'}
           </span>
           {turn.usage && (
             <span className="pm-ws-turn-usage">{turn.usage.totalTokens.toLocaleString()} tokens</span>

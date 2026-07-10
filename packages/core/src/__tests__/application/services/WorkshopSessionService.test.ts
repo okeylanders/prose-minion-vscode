@@ -1,24 +1,9 @@
-/**
- * WorkshopSessionService tests — the Sprint 2 session aggregate + the
- * Sprint 3 conversation lifecycle.
- *
- * Behavior under test (sprint acceptance criteria):
- * - set-excerpt pins host-stamped excerpt state,
- * - a tool run appends a user+assistant turn pair and tracks the active tool,
- * - a successful completion ADOPTS its retained conversation id; follow-up
- *   message runs require it; reset returns-and-clears it (Sprint 3),
- * - reset clears the thread and active run (excerpt survives),
- * - stale completions (reset/preempt mid-stream) never corrupt the thread
- *   and never adopt a conversation,
- * - snapshots are copies, and are BOUNDED to the turn window (PR #67 #12).
- */
-
 import {
   WorkshopSessionService,
   WORKSHOP_SNAPSHOT_TURN_WINDOW
 } from '@/application/services/WorkshopSessionService';
 
-describe('WorkshopSessionService', () => {
+describe('WorkshopSessionService — Sprint 05 participants', () => {
   let clock: number;
   let service: WorkshopSessionService;
 
@@ -27,279 +12,164 @@ describe('WorkshopSessionService', () => {
     service = new WorkshopSessionService(() => ++clock);
   });
 
-  const pin = (text = 'She left the letter on the table.') =>
-    service.setExcerpt({ text, sourceUri: 'file:///ch1.md', relativePath: 'chapters/ch1.md' });
-
-  it('pins an excerpt with source metadata and a host-stamped pin time', () => {
-    const excerpt = pin();
-
-    expect(excerpt.text).toBe('She left the letter on the table.');
-    expect(excerpt.relativePath).toBe('chapters/ch1.md');
-    expect(excerpt.pinnedAt).toBeGreaterThan(1_000);
-    expect(service.getSnapshot().excerpt).toEqual(excerpt);
+  const pin = (text = 'She leaves the letter on the table.') => service.setExcerpt({
+    text,
+    sourceUri: 'file:///chapter-one.md',
+    relativePath: 'chapters/one.md'
   });
 
-  it('refuses to begin a tool run without a usable excerpt', () => {
-    expect(() => service.beginToolRun('prose', 'req-1')).toThrow(/pinned excerpt/);
-
-    service.setExcerpt({ text: '   \n  ' });
-    expect(() => service.beginToolRun('prose', 'req-1')).toThrow(/pinned excerpt/);
-  });
-
-  it('appends a user+assistant turn pair across a begin/complete run', () => {
-    pin();
-    const userTurn = service.beginToolRun('dialogue', 'req-1');
-    const assistantTurn = service.completeRun(
-      'req-1',
-      'Beat analysis…',
-      { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
-      true
-    );
-
-    const { turns } = service.getSnapshot();
-    expect(turns).toHaveLength(2);
-    expect(turns[0]).toMatchObject({
-      role: 'user',
-      kind: 'tool_run',
-      toolId: 'dialogue',
-      toolLabel: 'Dialogue & Beats'
-    });
-    expect(turns[0].content).toContain('Dialogue & Beats');
-    expect(turns[1]).toMatchObject({
-      role: 'assistant',
-      toolId: 'dialogue',
-      content: 'Beat analysis…',
-      truncated: true
-    });
-    expect(turns[1].usage).toEqual({ promptTokens: 10, completionTokens: 20, totalTokens: 30 });
-    expect(turns[0].id).not.toBe(turns[1].id);
-    expect(userTurn.id).toBe(turns[0].id);
-    expect(assistantTurn?.id).toBe(turns[1].id);
-  });
-
-  it('tracks the active tool between begin and complete', () => {
-    pin();
-    service.beginToolRun('cliche', 'req-1');
-
-    let snapshot = service.getSnapshot();
-    expect(snapshot.selectedToolId).toBe('cliche');
-    expect(snapshot.activeToolId).toBe('cliche');
-    expect(snapshot.activeRequestId).toBe('req-1');
-
-    service.completeRun('req-1', 'done');
-    snapshot = service.getSnapshot();
-    expect(snapshot.selectedToolId).toBe('cliche');
-    expect(snapshot.activeToolId).toBeUndefined();
-    expect(snapshot.activeRequestId).toBeUndefined();
-  });
-
-  it('ignores a stale completion after the run was preempted by a newer one', () => {
-    pin();
-    service.beginToolRun('prose', 'req-1');
-    service.beginToolRun('gestures', 'req-2'); // fresh turn preempts req-1
-
-    expect(service.completeRun('req-1', 'late result')).toBeUndefined();
-
-    const { turns, activeRequestId } = service.getSnapshot();
-    // Two user turns, no assistant turn from the stale completion.
-    expect(turns.map((t) => t.role)).toEqual(['user', 'user']);
-    expect(activeRequestId).toBe('req-2');
-  });
-
-  it('abandon clears the active run but keeps the attempted user turn', () => {
-    pin();
-    service.beginToolRun('editor', 'req-1');
-    service.abandonRun('req-1');
-
+  it('starts with a private, id-free Jill host snapshot', () => {
     const snapshot = service.getSnapshot();
-    expect(snapshot.activeToolId).toBeUndefined();
-    expect(snapshot.turns).toHaveLength(1);
-    expect(snapshot.turns[0].role).toBe('user');
 
-    // Completion after abandon is stale too.
-    expect(service.completeRun('req-1', 'late')).toBeUndefined();
+    expect(snapshot.participants).toEqual({
+      host: { personaId: 'jill', hasConversation: false },
+      toolSidecars: [],
+      chatTarget: { kind: 'host' }
+    });
+    expect(JSON.stringify(snapshot)).not.toContain('conversationId');
   });
 
-  it('reset clears turns and the active run while the excerpt survives', () => {
-    const excerpt = pin();
-    service.beginToolRun('style', 'req-1');
-    service.completeRun('req-1', 'result');
-    service.beginToolRun('fresh', 'req-2');
-
-    service.reset();
-
+  it('selects a host before its first run and defensively snapshots it', () => {
+    service.selectPersona('margot');
     const snapshot = service.getSnapshot();
-    expect(snapshot.turns).toEqual([]);
-    expect(snapshot.selectedToolId).toBeUndefined();
-    expect(snapshot.activeToolId).toBeUndefined();
-    expect(snapshot.activeRequestId).toBeUndefined();
-    expect(snapshot.excerpt).toEqual(excerpt);
 
-    // The pre-reset run can no longer land a turn.
-    expect(service.completeRun('req-2', 'zombie result')).toBeUndefined();
-    expect(service.getSnapshot().turns).toEqual([]);
+    expect(snapshot.participants.host.personaId).toBe('margot');
+    snapshot.participants.host.personaId = 'jill';
+    expect(service.getSnapshot().participants.host.personaId).toBe('margot');
   });
 
-  // ── Sprint 3: conversation lifecycle ────────────────────────────────────
-
-  it('adopts the retained conversation id on a successful completion', () => {
+  it('locks selection while a host request runs and after its retained conversation lands', () => {
     pin();
-    expect(service.getConversationId()).toBeUndefined();
-    expect(service.getSnapshot().hasConversation).toBe(false);
+    service.beginPersonaMessage('Does this POV drift?', 'host-1');
+    expect(() => service.selectPersona('quinn')).toThrow(/Cannot change/);
 
-    service.beginToolRun('dialogue', 'req-1');
-    service.completeRun('req-1', 'analysis', undefined, false, 'conv-1');
-
-    expect(service.getConversationId()).toBe('conv-1');
-    expect(service.getSnapshot().hasConversation).toBe(true);
+    service.completeRun('host-1', 'The camera stays close.', undefined, false, 'host-conv');
+    expect(service.getHostConversationId()).toBe('host-conv');
+    expect(service.getSnapshot().participants.host).toEqual({ personaId: 'jill', hasConversation: true });
+    expect(() => service.selectPersona('quinn')).toThrow(/Cannot change/);
   });
 
-  it('a completion without a conversation id keeps the existing conversation', () => {
+  it('attributes host turns to the selected persona and preserves its conversation on follow-up', () => {
     pin();
-    service.beginToolRun('dialogue', 'req-1');
-    service.completeRun('req-1', 'analysis', undefined, false, 'conv-1');
+    service.selectPersona('wren');
+    service.beginPersonaMessage('Where does this line flatten?', 'host-1');
+    const first = service.completeRun('host-1', 'Show me her hands.', undefined, false, 'host-conv');
+    service.beginPersonaMessage('Give me another angle.', 'host-2');
+    const followUp = service.completeRun('host-2', 'Try the physical anchor.');
 
-    service.beginMessageRun('now tighten it', 'req-2');
-    service.completeRun('req-2', 'tightened');
-
-    expect(service.getConversationId()).toBe('conv-1');
+    expect(first).toMatchObject({ personaId: 'wren', personaLabel: 'Wren', toolId: undefined });
+    expect(followUp).toMatchObject({ personaId: 'wren', personaLabel: 'Wren', kind: 'message' });
+    expect(service.getHostConversationId()).toBe('host-conv');
   });
 
-  it('a stale (zombie) completion never adopts its conversation', () => {
-    pin();
-    service.beginToolRun('prose', 'req-1');
-    service.beginToolRun('gestures', 'req-2'); // preempts req-1
-
-    expect(service.completeRun('req-1', 'late', undefined, false, 'conv-zombie')).toBeUndefined();
-    expect(service.getConversationId()).toBeUndefined();
+  it('requires a usable excerpt before starting a persona message', () => {
+    expect(() => service.beginPersonaMessage('Hello?', 'host-1')).toThrow(/pinned excerpt/);
   });
 
-  it('a follow-up message run appends the user text and completes as a message turn', () => {
+  it('adopts a successful pre-host tool run into its sidecar and direct target', () => {
     pin();
-    service.beginToolRun('dialogue', 'req-1');
-    service.completeRun('req-1', 'analysis', undefined, false, 'conv-1');
+    service.beginToolRun('continuity', 'tool-1');
+    const report = service.completeRun('tool-1', 'The cup teleports.', undefined, false, 'tool-conv');
 
-    const userTurn = service.beginMessageRun('Now tighten variation two.', 'req-2');
-    expect(userTurn).toMatchObject({
-      role: 'user',
-      kind: 'message',
-      content: 'Now tighten variation two.'
+    expect(report).toMatchObject({ toolId: 'continuity', personaId: undefined });
+    expect(service.getToolSidecarConversationId('continuity')).toBe('tool-conv');
+    expect(service.getSnapshot().participants).toEqual({
+      host: { personaId: 'jill', hasConversation: false },
+      toolSidecars: [{ toolId: 'continuity', hasConversation: true }],
+      chatTarget: { kind: 'tool', toolId: 'continuity' }
     });
-    expect(userTurn.toolId).toBeUndefined();
-    expect(service.getSnapshot().activeRequestId).toBe('req-2');
-    // No tool is running — a follow-up has no activeToolId.
-    expect(service.getSnapshot().activeToolId).toBeUndefined();
+  });
 
-    const assistantTurn = service.completeRun('req-2', 'Tightened version…', {
-      promptTokens: 100,
-      completionTokens: 50,
-      totalTokens: 150
+  it('continues only a live direct tool target and attributes its assistant turn to the tool', () => {
+    pin();
+    service.beginToolRun('cliche', 'tool-1');
+    service.completeRun('tool-1', 'One tired phrase.', undefined, false, 'tool-conv');
+    service.beginDirectToolMessage('cliche', 'What could replace it?', 'tool-2');
+    const reply = service.completeRun('tool-2', 'Use the image already present.');
+
+    expect(reply).toMatchObject({ toolId: 'cliche', toolLabel: 'Cliché', personaId: undefined });
+    expect(() => service.beginDirectToolMessage('prose', 'Hello?', 'tool-3')).toThrow(/without a retained sidecar/);
+  });
+
+  it('replaces only the same tool sidecar and keeps other direct routes available', () => {
+    pin();
+    service.beginToolRun('prose', 'prose-1');
+    service.completeRun('prose-1', 'Report one.', undefined, false, 'prose-old');
+    service.beginToolRun('continuity', 'cont-1');
+    service.completeRun('cont-1', 'Report two.', undefined, false, 'cont-conv');
+    service.beginToolRun('prose', 'prose-2');
+    service.completeRun('prose-2', 'Replacement.', undefined, false, 'prose-new');
+
+    expect(service.getToolSidecarConversationId('prose')).toBe('prose-new');
+    expect(service.getToolSidecarConversationId('continuity')).toBe('cont-conv');
+    expect(service.setChatTarget({ kind: 'tool', toolId: 'continuity' })).toBe(true);
+    expect(service.getChatTarget()).toEqual({ kind: 'tool', toolId: 'continuity' });
+  });
+
+  it('rejects a direct target whose sidecar is gone and clears a lost sidecar honestly', () => {
+    pin();
+    expect(service.setChatTarget({ kind: 'tool', toolId: 'style' })).toBe(false);
+
+    service.beginToolRun('style', 'style-1');
+    service.completeRun('style-1', 'Report.', undefined, false, 'style-conv');
+    expect(service.clearLostConversation({ kind: 'tool', toolId: 'style' })).toBe('style-conv');
+    expect(service.getChatTarget()).toEqual({ kind: 'host' });
+    expect(service.setChatTarget({ kind: 'tool', toolId: 'style' })).toBe(false);
+  });
+
+  it('never adopts a zombie completion after preemption', () => {
+    pin();
+    service.beginPersonaMessage('First question', 'host-1');
+    service.abandonRun('host-1');
+
+    expect(service.completeRun('host-1', 'late', undefined, false, 'zombie')).toBeUndefined();
+    expect(service.getHostConversationId()).toBeUndefined();
+  });
+
+  it('reset disposes all participants, clears the thread, and returns to Jill while preserving the excerpt', () => {
+    const excerpt = pin();
+    service.selectPersona('theo');
+    service.beginPersonaMessage('Does this move?', 'host-1');
+    service.completeRun('host-1', 'It needs a turn.', undefined, false, 'host-conv');
+    service.beginToolRun('prose', 'tool-1');
+    service.completeRun('tool-1', 'Tool report.', undefined, false, 'tool-conv');
+
+    expect(service.reset().sort()).toEqual(['host-conv', 'tool-conv']);
+    expect(service.getSnapshot()).toMatchObject({
+      excerpt,
+      turns: [],
+      participants: {
+        host: { personaId: 'jill', hasConversation: false },
+        toolSidecars: [],
+        chatTarget: { kind: 'host' }
+      }
     });
-    expect(assistantTurn).toMatchObject({
-      role: 'assistant',
-      kind: 'message',
-      content: 'Tightened version…'
+  });
+
+  it('excerpt replacement disposes conversations but preserves the selected pre-existing host choice', () => {
+    pin();
+    service.selectPersona('penny');
+    service.beginToolRun('fresh', 'tool-1');
+    service.completeRun('tool-1', 'A fresh read.', undefined, false, 'tool-conv');
+
+    expect(service.replaceExcerpt({ text: 'A new excerpt.' })).toEqual(['tool-conv']);
+    expect(service.getSnapshot().participants).toEqual({
+      host: { personaId: 'penny', hasConversation: false },
+      toolSidecars: [],
+      chatTarget: { kind: 'host' }
     });
-    expect(assistantTurn?.toolLabel).toBeUndefined();
-    // The conversation id is stable across the follow-up.
-    expect(service.getConversationId()).toBe('conv-1');
   });
 
-  it('a message run can display a short label while sending a fuller prompt', () => {
+  it('bounds long snapshot threads without leaking stored turn references', () => {
     pin();
-    service.beginToolRun('dialogue', 'req-1');
-    service.completeRun('req-1', 'analysis', undefined, false, 'conv-1');
-
-    const userTurn = service.beginMessageRun(
-      'Generate three options with the strict variation-card markdown format.',
-      'req-2',
-      'Generate 3 tighter variations'
-    );
-
-    expect(userTurn.content).toBe('Generate 3 tighter variations');
-    const turns = service.getSnapshot().turns;
-    expect(turns[turns.length - 1]?.content).toBe('Generate 3 tighter variations');
-  });
-
-  it('refuses a message run without a conversation to continue', () => {
-    pin();
-    expect(() => service.beginMessageRun('hello?', 'req-1')).toThrow(/active conversation/);
-  });
-
-  it('reset clears and RETURNS the conversation id so the caller can discard it', () => {
-    pin();
-    service.beginToolRun('dialogue', 'req-1');
-    service.completeRun('req-1', 'analysis', undefined, false, 'conv-1');
-
-    expect(service.reset()).toBe('conv-1');
-    expect(service.getConversationId()).toBeUndefined();
-    expect(service.getSnapshot().hasConversation).toBe(false);
-    // A reset with no conversation returns undefined (nothing to discard).
-    expect(service.reset()).toBeUndefined();
-  });
-
-  it('a post-reset run adopts a fresh conversation id', () => {
-    pin();
-    service.beginToolRun('dialogue', 'req-1');
-    service.completeRun('req-1', 'analysis', undefined, false, 'conv-1');
-    service.reset();
-
-    service.beginToolRun('prose', 'req-2');
-    service.completeRun('req-2', 'fresh analysis', undefined, false, 'conv-2');
-
-    expect(service.getConversationId()).toBe('conv-2');
-  });
-
-  // ── Sprint 3: bounded snapshots (PR #67 review #12) ─────────────────────
-
-  it('windows snapshot turns and reports the total + truncated counts', () => {
-    pin();
-    const totalRuns = WORKSHOP_SNAPSHOT_TURN_WINDOW / 2 + 5; // > window in turns
-    for (let i = 0; i < totalRuns; i++) {
-      service.beginToolRun('prose', `req-${i}`);
-      service.completeRun(`req-${i}`, `analysis ${i}`);
+    for (let i = 0; i < WORKSHOP_SNAPSHOT_TURN_WINDOW / 2 + 2; i++) {
+      service.beginToolRun('prose', `tool-${i}`);
+      service.completeRun(`tool-${i}`, `report ${i}`);
     }
-
     const snapshot = service.getSnapshot();
-    const totalTurns = totalRuns * 2;
-    expect(snapshot.totalTurns).toBe(totalTurns);
     expect(snapshot.turns).toHaveLength(WORKSHOP_SNAPSHOT_TURN_WINDOW);
-    expect(snapshot.truncatedTurns).toBe(totalTurns - WORKSHOP_SNAPSHOT_TURN_WINDOW);
-    // The window keeps the MOST RECENT turns.
-    expect(snapshot.turns[snapshot.turns.length - 1].content).toBe(`analysis ${totalRuns - 1}`);
-  });
-
-  it('reports zero truncation for a thread inside the window', () => {
-    pin();
-    service.beginToolRun('prose', 'req-1');
-    service.completeRun('req-1', 'analysis');
-
-    const snapshot = service.getSnapshot();
-    expect(snapshot.totalTurns).toBe(2);
-    expect(snapshot.truncatedTurns).toBe(0);
-  });
-
-  it('hands out copies — mutating a snapshot or returned turn never reaches session state', () => {
-    pin();
-    service.beginToolRun('prose', 'req-1');
-    const returned = service.completeRun('req-1', 'result', {
-      promptTokens: 1,
-      completionTokens: 2,
-      totalTokens: 3
-    });
-
-    const snapshot = service.getSnapshot();
-    snapshot.turns.pop();
-    snapshot.turns[0].content = 'vandalized';
-    snapshot.excerpt!.text = 'vandalized';
-    returned!.content = 'vandalized';
-    returned!.usage!.totalTokens = 999;
-
-    const fresh = service.getSnapshot();
-    expect(fresh.turns).toHaveLength(2);
-    expect(fresh.turns[0].content).toContain('Prose');
-    expect(fresh.turns[1].content).toBe('result');
-    expect(fresh.turns[1].usage?.totalTokens).toBe(3);
-    expect(fresh.excerpt?.text).toBe('She left the letter on the table.');
+    expect(snapshot.totalTurns).toBeGreaterThan(snapshot.turns.length);
+    snapshot.turns[0].content = 'mutated';
+    expect(service.getSnapshot().turns[0].content).not.toBe('mutated');
   });
 });

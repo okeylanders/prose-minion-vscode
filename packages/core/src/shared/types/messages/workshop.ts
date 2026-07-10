@@ -7,11 +7,9 @@
  * in WorkshopSessionService. These contracts carry tool ids and completed
  * turns — never raw model prompts and never the API key.
  *
- * Sprint 3: WORKSHOP_SEND_MESSAGE continues the session's retained
- * conversation (the "now tighten it" loop), WORKSHOP_PICK_EXCERPT_FILE seeds
- * the excerpt from a host file picker, and CANCEL_WORKSHOP_REQUEST (in
- * streaming.ts, beside its four siblings) stops the in-flight run.
- * WORKSHOP_QUICK_ACTION (deterministic chips) arrives in Sprint 4.
+ * Sprint 05 adds a selected persona host and retained per-tool sidecars.
+ * WORKSHOP_SEND_MESSAGE starts/continues the host unless an explicit direct
+ * target is selected; provider ids remain host-private.
  */
 
 import { MessageEnvelope, MessageType } from './base';
@@ -24,6 +22,45 @@ import { TokenUsage } from '../index';
  * WritingToolsFocus modes. The handler routes on this; it never invents tools.
  */
 export type WorkshopToolId = 'dialogue' | 'prose' | WritingToolsFocus;
+
+/** Stable ids for the Writers' Room hosts packaged with Workshop. */
+export type WorkshopPersonaId =
+  | 'jill'
+  | 'agnes'
+  | 'cliff'
+  | 'dev'
+  | 'edna'
+  | 'felix'
+  | 'harper'
+  | 'margot'
+  | 'penny'
+  | 'quinn'
+  | 'theo'
+  | 'wren';
+
+/** The one explicit routing choice behind the Workshop composer. */
+export type WorkshopChatTarget =
+  | { kind: 'host' }
+  | { kind: 'tool'; toolId: WorkshopToolId };
+
+/** Metadata safe to expose for the permanent persona participant. */
+export interface WorkshopHostParticipantSnapshot {
+  personaId: WorkshopPersonaId;
+  hasConversation: boolean;
+}
+
+/** Metadata safe to expose for a retained tool sidecar. Never includes its id. */
+export interface WorkshopToolSidecarSnapshot {
+  toolId: WorkshopToolId;
+  hasConversation: true;
+}
+
+/** Public view of the session's private participant graph. */
+export interface WorkshopParticipantsSnapshot {
+  host: WorkshopHostParticipantSnapshot;
+  toolSidecars: WorkshopToolSidecarSnapshot[];
+  chatTarget: WorkshopChatTarget;
+}
 
 export type WorkshopTurnRole = 'user' | 'assistant';
 
@@ -65,10 +102,14 @@ export interface WorkshopTurn {
   id: string;
   role: WorkshopTurnRole;
   kind: WorkshopTurnKind;
-  /** Tool for `tool_run` turns; absent on free-text `message` turns. */
+  /** Tool for a tool run or an assistant reply from a direct tool sidecar. */
   toolId?: WorkshopToolId;
   /** Deterministic display label for the tool — never model-generated. */
   toolLabel?: string;
+  /** Persona attribution for host turns; tool turns deliberately omit this. */
+  personaId?: WorkshopPersonaId;
+  /** Deterministic display label for the persona — never model-generated. */
+  personaLabel?: string;
   content: string;
   /** Epoch ms when the turn was appended (host-stamped). */
   timestamp: number;
@@ -99,10 +140,12 @@ export interface WorkshopSessionSnapshot {
   /** Older turns omitted from this snapshot's window. */
   truncatedTurns: number;
   /**
-   * True when the session holds a retained conversation a follow-up can
-   * continue — the composer's enablement signal.
+   * True when any retained host or tool-sidecar conversation remains live.
+   * Composer enablement also requires a ready, non-empty pinned excerpt.
    */
   hasConversation: boolean;
+  /** The public participant graph. Conversation ids remain host-private. */
+  participants: WorkshopParticipantsSnapshot;
   /** Last selected tool/lens, retained after a completed run for UI restore. */
   selectedToolId?: WorkshopToolId;
   /** Tool currently running, if any. */
@@ -147,6 +190,19 @@ export interface WorkshopSendMessagePayload {
 
 export interface WorkshopSendMessageMessage extends MessageEnvelope<WorkshopSendMessagePayload> {
   type: MessageType.WORKSHOP_SEND_MESSAGE;
+}
+
+export interface WorkshopSelectPersonaPayload {
+  personaId: WorkshopPersonaId;
+}
+
+export interface WorkshopSelectPersonaMessage extends MessageEnvelope<WorkshopSelectPersonaPayload> {
+  type: MessageType.WORKSHOP_SELECT_PERSONA;
+}
+
+/** Payload is deliberately the target itself: no second routing envelope. */
+export interface WorkshopSetChatTargetMessage extends MessageEnvelope<WorkshopChatTarget> {
+  type: MessageType.WORKSHOP_SET_CHAT_TARGET;
 }
 
 export interface WorkshopSetExcerptPayload {

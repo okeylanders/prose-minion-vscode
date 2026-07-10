@@ -1,6 +1,6 @@
 # Sprint 05: Persona Host and Browser
 
-**Status**: Ready
+**Status**: In Progress — implementation and automated verification complete; interactive F5 smoke pending
 **Priority**: High
 **Branch**: `sprint/workshop-editor-tab-05-persona-chat` -> PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 4-6 days
@@ -84,102 +84,117 @@ conversation.
 
 ### Contracts and catalog
 
-- [ ] Add `WorkshopPersonaId` and participant snapshot types to
+- [x] Add `WorkshopPersonaId` and participant snapshot types to
       `shared/types/messages/workshop.ts`; export them through `@messages`.
-- [ ] Add `WORKSHOP_SELECT_PERSONA` to `MessageType`, its typed payload/message,
+- [x] Add `WORKSHOP_SELECT_PERSONA` to `MessageType`, its typed payload/message,
       the webview-to-extension union, router registration, and route-count tests.
-- [ ] Add `WorkshopChatTarget` and `WORKSHOP_SET_CHAT_TARGET` with the exact
+- [x] Add `WorkshopChatTarget` and `WORKSHOP_SET_CHAT_TARGET` with the exact
       host/tool discriminated payload above; validate live sidecar existence
       host-side rather than trusting the webview.
-- [ ] Add `packages/core/src/shared/constants/workshopPersonas.ts` with exactly
+- [x] Add `packages/core/src/shared/constants/workshopPersonas.ts` with exactly
       Jill plus `agnes`, `cliff`, `dev`, `edna`, `felix`, `harper`, `margot`,
       `penny`, `quinn`, `theo`, and `wren`.
-- [ ] Catalog entries contain id, label, specialty, concise description, and
+- [x] Catalog entries contain id, label, specialty, concise description, and
       relative prompt path. Export a `DEFAULT_WORKSHOP_PERSONA_ID` of `jill`, an
       `isWorkshopPersonaId` guard, and lookup helpers.
-- [ ] Keep React/icon types out of the shared catalog. Add `person` to the
+- [x] Keep React/icon types out of the shared catalog. Add `person` to the
       shared `IconName`/path set and put the focus mapping above in a
       presentation-only exhaustive map beside the Workshop components.
 
 ### Packaged prompts
 
-- [ ] Add `packages/core/resources/system-prompts/workshop-personas/base.md`
+- [x] Add `packages/core/resources/system-prompts/workshop-personas/base.md`
       plus one curated prompt per catalog entry.
-- [ ] The base prompt marks excerpt/context as quoted data, establishes the
+- [x] The base prompt marks excerpt/context as quoted data, establishes the
       Workshop host role, forbids invented project facts, and does not advertise
       Sprint 07 capabilities yet.
-- [ ] Curate rather than mechanically copy the external sources. Remove local
+- [x] Curate rather than mechanically copy the external sources. Remove local
       canon/tooling assumptions while preserving each persona's distinctive
       remit, boundaries, voice, and response behavior.
-- [ ] Extend resource/catalog tests to prove every catalog path is relative,
+- [x] Extend resource/catalog tests to prove every catalog path is relative,
       unique, path-contained, staged, loadable through the real `PromptLoader`,
       non-empty, and free of YAML skill frontmatter/known absolute source paths.
 
 ### Orchestration and session
 
-- [ ] Make `AIResourceOrchestrator.executeWithoutCapabilities` pin immediately
+- [x] Make `AIResourceOrchestrator.executeWithoutCapabilities` pin immediately
       when retention is requested, retain only a completed non-cancelled
       user/assistant exchange, return its id, and delete on cancel/error or when
       unretained. Mirror the proven agent-capabilities lifecycle.
-- [ ] Add `AssistantToolService.startWorkshopPersonaConversation(...)` on the
+- [x] Add `AssistantToolService.startWorkshopPersonaConversation(...)` on the
       captured assistant-orchestrator generation. It loads base + persona
       prompts, builds the bounded initial user message, streams, and returns an
       `AnalysisResult` with the retained conversation id.
-- [ ] Refactor `WorkshopSessionService` from one implicit tool-owned id to the
+- [x] Refactor `WorkshopSessionService` from one implicit tool-owned id to the
       participant structure: host `{ personaId, conversationId? }`, latest
       sidecar per tool, and optional direct target. Never expose ids in snapshots.
-- [ ] Add pure session operations for selecting the host, beginning a persona
+- [x] Add pure session operations for selecting the host, beginning a persona
       message, atomically adopting its successful conversation, clearing a lost
       conversation, reset-to-Jill, and excerpt replacement.
-- [ ] Add minimal sidecar/direct-target operations needed to migrate the current
+- [x] Add minimal sidecar/direct-target operations needed to migrate the current
       tool-first path without a legacy second model: adopt/replace a successful
       tool conversation, select/clear the direct target, and dispose all
       conversations on reset/excerpt replacement/resource loss.
-- [ ] Reject invalid persona ids and selection changes while any run or host
+- [x] Reject invalid persona ids and selection changes while any run or host
       conversation is active.
 
 ### Handler and presentation
 
-- [ ] Route `WORKSHOP_SEND_MESSAGE` to the direct tool when a direct target is
+- [x] Route `WORKSHOP_SEND_MESSAGE` to the direct tool when a direct target is
       set; otherwise start/continue the persona host. Preserve preemption,
       cancellation, API-key warning, zombie-completion, config-loss, stream
       ordering, status, token, and disposal semantics.
-- [ ] Attribute persona assistant turns with persona id/label. Persona turns do
+- [x] Attribute persona assistant turns with persona id/label. Persona turns do
       not inherit tool quick actions or tool save-name provenance.
-- [ ] Add `WorkshopPersonaBrowserModal` matching the tool browser's visual
+- [x] Add `WorkshopPersonaBrowserModal` matching the tool browser's visual
       language and accessibility contract. If the modal framing/keyboard code
       is truly identical, extract only a focused shared browser-modal shell.
-- [ ] Add the header trigger with person outline + focus badge + active persona
+- [x] Add the header trigger with person outline + focus badge + active persona
       name. The modal cards show focus badge, specialty, and description.
-- [ ] Enable the composer when the host snapshot is ready, a non-empty excerpt
+- [x] Enable the composer when the host snapshot is ready, a non-empty excerpt
       exists, and no run is active—even before a conversation exists. Update
       placeholder/title copy for “Message Jill” versus “Continue with Jill.”
-- [ ] Preserve the pre-host tool-first interaction as explicit direct mode:
+- [x] Preserve the pre-host tool-first interaction as explicit direct mode:
       show “Talking directly to <tool>” plus “Back to Jill.” Returning does not
       inject tool history yet; that bounded handoff belongs to Sprint 06.
-- [ ] Disable/lock persona selection after host conversation start and restore
+- [x] Disable/lock persona selection after host conversation start and restore
       the selected host correctly on webview reload.
-- [ ] Keep the transitional Sprint 05 tool guard honest: a crafted tool run
+- [x] Keep the transitional Sprint 05 tool guard honest: a crafted tool run
       cannot replace an active persona conversation, and the UI explains that
       integrated tool runs land in Sprint 06.
 
 ### Tests and documentation
 
-- [ ] Cover catalog completeness/uniqueness/default/resource loading.
-- [ ] Cover plain-conversation retention success, cancellation, error, discard,
+- [x] Cover catalog completeness/uniqueness/default/resource loading.
+- [x] Cover plain-conversation retention success, cancellation, error, discard,
       pinning, and continuation on the same captured orchestrator generation.
-- [ ] Cover session default/select/lock/adopt/loss/reset/excerpt lifecycle and
+- [x] Cover session default/select/lock/adopt/loss/reset/excerpt lifecycle and
       defensive snapshot copying, plus sidecar/direct-target replacement and
       disposal.
-- [ ] Cover handler start/follow-up/cancel/preempt/zombie/config-loss/API-key/
+- [x] Cover handler start/follow-up/cancel/preempt/zombie/config-loss/API-key/
       tool-guard/direct-tool/back-to-host behavior and exact message order.
-- [ ] Cover hook selection, reload, pre-conversation composer enablement,
+- [x] Cover hook selection, reload, pre-conversation composer enablement,
       persona attribution, and error reconciliation.
-- [ ] Cover browser rendering, icon/description/name, selection, disabled state,
+- [x] Cover browser rendering, icon/description/name, selection, disabled state,
       keyboard dismissal/focus return to the extent supported by the existing
       modal test harness.
-- [ ] Update architecture/session comments and `docs/ARCHITECTURE.md` where the
+- [x] Update architecture/session comments and `docs/ARCHITECTURE.md` where the
       former “last tool owns the conversation” policy is described.
+
+## Verification Notes — 2026-07-09
+
+- `npm test -- --runInBand`: 66 suites / 538 tests passed.
+- `npm run typecheck`: core, webview, and VS Code adapter passed.
+- `npm run lint`: 0 errors (the repository retains pre-existing warnings).
+- `npm run build`: resource staging, production webpack build, and
+  `verify:bundle` passed. Produced `extension.js` at 2,272,301 bytes and
+  `webview.js` at 579,100 bytes; the generated `dist/` directory is ignored.
+- `git diff --check`: passed.
+- Interactive F5 smoke remains pending. Launching VS Code in extension-dev
+  mode was blocked by the execution environment's usage-limit approval, not by
+  a build or test failure. When available, exercise Jill/specialist start,
+  follow-up, cancel, reload, reset, tool-first direct follow-up, Back to Jill,
+  and the guarded tool click.
 
 ## Acceptance Criteria
 

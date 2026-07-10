@@ -67,6 +67,8 @@ export type ErrorSource =
   | 'workshop.run_tool'
   | 'workshop.quick_action'
   | 'workshop.send_message'
+  | 'workshop.select_persona'
+  | 'workshop.set_chat_target'
 
   // Unknown/legacy (fallback)
   | 'unknown';
