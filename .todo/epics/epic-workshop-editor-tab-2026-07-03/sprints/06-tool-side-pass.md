@@ -1,11 +1,11 @@
-# Sprint 06: Retained Tool Sidecars and Direct Mode
+# Sprint 06B: Retained Tool Sidecars and Direct Mode
 
 **Status**: Planned
 **Priority**: High
-**Branch**: `sprint/workshop-editor-tab-06-tool-side-pass` -> PR into `epic/workshop-editor-tab`
+**Branch**: `sprint/workshop-editor-tab-06b-tool-side-pass` -> PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 4-6 days
-**Depends on**: Sprint 05
-**ADR**: [2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](../../../../docs/adr/2026-07-09-workshop-persona-hosted-conversations.md)
+**Depends on**: Sprint 06A
+**ADRs**: [2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](../../../../docs/adr/2026-07-09-workshop-persona-hosted-conversations.md), [2026-07-10 — Agent-Run Engine and Resource Catalog Policies](../../../../docs/adr/2026-07-10-agent-run-engine-and-resource-catalogs.md)
 
 ## Goal
 

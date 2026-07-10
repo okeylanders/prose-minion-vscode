@@ -4,7 +4,7 @@
 **Priority**: Medium
 **Branch**: `sprint/workshop-editor-tab-08-actionable-tool-todos` → PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 3–5 days
-**Depends on**: Sprint 06A tool-side-pass artifacts/host evidence handoff and Sprint 06B agent-run engine
+**Depends on**: Sprint 06A agent-run engine and Sprint 06B tool-side-pass artifacts/host evidence handoff
 
 ## Goal
 

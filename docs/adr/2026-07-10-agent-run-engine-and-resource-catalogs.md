@@ -38,7 +38,7 @@ During branch-local migration, current public methods may delegate to the new
 engine so callers can move in small reviewed steps. They are temporary adapters,
 not compatibility API: migrate every Assistant, Dictionary, Category Search,
 Context, and Workshop caller and delete the old duplicated methods before the
-06B integration branch merges into `epic/workshop-editor-tab`.
+06A integration branch merges into `epic/workshop-editor-tab`.
 
 ### Capability adapters and resource catalogs
 

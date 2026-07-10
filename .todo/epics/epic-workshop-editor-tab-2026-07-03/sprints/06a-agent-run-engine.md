@@ -1,10 +1,10 @@
-# Sprint 06B: Agent-Run Engine and Resource Catalogs
+# Sprint 06A: Agent-Run Engine and Resource Catalogs
 
 **Status**: Planned
 **Priority**: High
-**Branch**: `sprint/workshop-editor-tab-06b-agent-run-engine` → PR into `epic/workshop-editor-tab`
+**Branch**: `sprint/workshop-editor-tab-06a-agent-run-engine` → PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 5–8 days
-**Depends on**: Sprint 06 tool side-pass
+**Depends on**: Sprint 05 persona host and browser
 **ADR**: [2026-07-10 — Agent-Run Engine and Resource Catalog Policies](../../../../docs/adr/2026-07-10-agent-run-engine-and-resource-catalogs.md)
 
 ## Goal
@@ -27,7 +27,7 @@ visible behavior across the sidebar or Workshop.
 - Raw directives and full file content do not stream into visible chat by
   default. Compact attributed artifacts make loaded evidence inspectable.
 - No persona file-read or dictionary capability behavior lands in this sprint;
-  06B builds the seam Sprint 07 consumes.
+  06A builds the seam Sprint 07 consumes.
 
 ## Tasks
 
