@@ -79,6 +79,9 @@ export function activate(context: vscode.ExtensionContext): void {
   // SPRINT 01: Create resource services (foundation)
   const resourceLoader = new ResourceLoaderService(platform.workspace.extensionPath, platform.fileSystem, outputChannel);
   const aiResourceManager = new AIResourceManager(resourceLoader, secretsService, platform.settings, outputChannel);
+  // Lifecycle starts once at the composition root. Services only bind to the
+  // manager-owned generation; none may rebuild all model scopes on startup.
+  void aiResourceManager.ensureInitialized();
   const standardsService = new StandardsService(platform.workspace.extensionPath, platform.fileSystem, platform.settings, outputChannel);
   const toolOptions = new ToolOptionsProvider(platform.settings);
 

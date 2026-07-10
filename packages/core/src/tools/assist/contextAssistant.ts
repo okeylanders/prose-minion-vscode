@@ -3,7 +3,9 @@
  * Generates contextual briefings to accompany prose excerpts
  */
 
-import { AIResourceOrchestrator, StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
+import { AgentRunEngine } from '@orchestration/AgentRunEngine';
+import { AgentCapability, StreamingTokenCallback } from '@orchestration/AgentRunContracts';
+import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { PromptLoader } from '../shared/prompts';
 import { ContextPathGroup } from '@shared/types';
 import {
@@ -23,6 +25,7 @@ export interface ContextAssistantInput {
 
 export interface ContextAssistantOptions {
   resourceProvider: ContextResourceProvider;
+  capability: AgentCapability;
   temperature?: number;
   maxTokens?: number;
   /** AbortSignal for cancellation support */
@@ -41,7 +44,7 @@ export class ContextAssistant {
   private readonly MAX_RESOURCE_LIST = 100;
 
   constructor(
-    private readonly aiResourceOrchestrator: AIResourceOrchestrator,
+    private readonly agentRunEngine: AgentRunEngine,
     private readonly promptLoader: PromptLoader
   ) {}
 
@@ -67,19 +70,19 @@ export class ContextAssistant {
       groups
     });
 
-    const executionResult = await this.aiResourceOrchestrator.executeWithContextResources(
-      'context-assistant',
+    const executionResult = await this.agentRunEngine.runInitial({
+      toolName: 'context-assistant',
       systemMessage,
       userMessage,
-      options.resourceProvider,
-      resourceSummaries,
-      {
+      policy: AGENT_RUN_POLICIES.context,
+      capability: options.capability,
+      options: {
         temperature: options.temperature ?? 0.7,
         maxTokens: options.maxTokens ?? 10000,
         signal: options.signal,
         onToken: options.onToken
       }
-    );
+    });
 
     return {
       content: executionResult.content,

@@ -18,6 +18,7 @@ import { FileSystem, LogSink } from '@/platform';
 import { ListenerSet } from '@/utils/ListenerSet';
 import { WordSearchService } from './WordSearchService';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
+import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { WordFrequency } from '@/tools/measure/wordFrequency';
 import { PromptLoader } from '@/tools/shared/prompts';
 import {
@@ -363,9 +364,9 @@ export class CategorySearchService {
     matchedWords: string[];
     tokensUsed?: { prompt: number; completion: number; total: number; costUsd?: number };
   }> {
-    // Get orchestrator from AIResourceManager (uses 'category' model scope)
-    const orchestrator = this.aiResourceManager.getOrchestrator('category');
-    if (!orchestrator) {
+    // Category search explicitly selects no resource catalog.
+    const engine = this.aiResourceManager.getEngine('category');
+    if (!engine) {
       throw new Error('OpenRouter API key not configured. Please set your API key in settings.');
     }
 
@@ -397,16 +398,16 @@ export class CategorySearchService {
     }
     const userMessage = `Category: ${query}\n${itemLabel}: ${words.join(', ')}`;
 
-    // Call AI using orchestrator (single-turn, no guide capabilities needed)
-    const result = await orchestrator.executeWithoutCapabilities(
-      'category_search',
-      systemPrompt,
+    const result = await engine.runInitial({
+      toolName: 'category_search',
+      systemMessage: systemPrompt,
       userMessage,
-      {
+      policy: AGENT_RUN_POLICIES.categorySearch,
+      options: {
         temperature: 0.3, // Lower temperature for more consistent matching
         maxTokens: 7500 // Fixed token limit for category search
       }
-    );
+    });
 
     // Parse response and extract token usage
     const matchedWords = this.parseAIResponse(result.content);

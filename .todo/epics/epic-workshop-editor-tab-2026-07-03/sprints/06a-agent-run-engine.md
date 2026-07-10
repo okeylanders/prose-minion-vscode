@@ -1,6 +1,6 @@
 # Sprint 06A: Agent-Run Engine and Resource Catalogs
 
-**Status**: Planned
+**Status**: Implementation complete — automated verification complete; manual F5 route confirmation pending
 **Priority**: High
 **Branch**: `sprint/workshop-editor-tab-06a-agent-run-engine` → PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 5–8 days
@@ -33,39 +33,71 @@ visible behavior across the sidebar or Workshop.
 
 ### Lifecycle and route inventory
 
-- [ ] Characterize each existing caller and publish a route matrix: caller,
+- [x] Characterize each existing caller and publish a route matrix: caller,
       policy, resource catalog, retention, visible artifact, cleanup owner.
-- [ ] Move all bundle initialization/rebuild ownership into `AIResourceManager`;
+- [x] Move all bundle initialization/rebuild ownership into `AIResourceManager`;
       expose/test generation identity and config-change behavior.
-- [ ] Prove an unrelated service initialization cannot strand a retained
+- [x] Prove an unrelated service initialization cannot strand a retained
       Workshop or sidebar conversation.
+
+#### Caller-to-policy route matrix (implemented)
+
+| Caller | Policy | Catalog | Retention | Visible artifact | Cleanup owner |
+| --- | --- | --- | --- | --- | --- |
+| Sidebar dialogue, prose, and writing tools | `assistant` (`assistantWithoutResources` when guides are disabled) | `guides` or explicit `none` | Discard | Final analysis; guide loads stay in status/evidence | Engine |
+| Workshop tool run | `workshopTool` (`workshopToolWithoutResources` when guides are disabled) | `guides` or explicit `none` | Retain | Final tool report; guide loads stay in status/evidence | Workshop session |
+| Workshop persona-host start | `workshopHost` | `none` | Retain | Final host turn | Workshop session |
+| Dictionary lookup and parallel blocks | `dictionary` | `none` | Discard | Final dictionary result | Engine |
+| Category-search batches | `categorySearch` | `none` | Discard | Final matching result | Engine |
+| Context assistant | `context` | `projectContext` | Discard | Final context brief; configured-file loads stay in status/evidence | Engine |
+
+The executable source of truth is
+`infrastructure/api/orchestration/AgentRunPolicies.ts`; its matrix regression
+test prevents a caller from silently inheriting another route's catalog.
 
 ### Engine and catalog extraction
 
-- [ ] Define typed `RunPolicy`, `AgentCapability`, and resource-catalog policy
+- [x] Define typed `RunPolicy`, `AgentCapability`, and resource-catalog policy
       contracts in core without VS Code imports.
-- [ ] Extract one initial-run engine for request assembly, streaming,
+- [x] Extract one initial-run engine for request assembly, streaming,
       cancellation, retention, token accounting, cleanup, and bounded rounds.
-- [ ] Implement Guide and Context-file capability adapters with explicit parse,
+- [x] Implement Guide and Context-file capability adapters with explicit parse,
       fulfill, delivery, and limit policy differences.
-- [ ] Buffer candidate directives until validation and keep raw protocol/file
+- [x] Buffer candidate directives until validation and keep raw protocol/file
       contents out of visible streamed output.
 
 ### Migration and deletion
 
-- [ ] Migrate Assistant, Dictionary, Category Search, Context, and Workshop
+- [x] Migrate Assistant, Dictionary, Category Search, Context, and Workshop
       callers onto the engine and declare their catalog policies explicitly.
-- [ ] Preserve direct retained continuation as an explicit history operation.
-- [ ] Delete temporary adapters, duplicate loops, and obsolete tests before the
+- [x] Preserve direct retained continuation as an explicit history operation.
+- [x] Delete temporary adapters, duplicate loops, and obsolete tests before the
       branch merges into `epic/workshop-editor-tab`.
 
 ### Verification
 
-- [ ] Add a caller-to-policy regression matrix plus focused capability,
+- [x] Add a caller-to-policy regression matrix plus focused capability,
       lifecycle, streaming, cancellation, retention, and visibility tests.
-- [ ] Run full tests, typecheck, lint, build, bundle verification, and F5 smoke
-      for sidebar analysis/context/dictionary/category and Workshop host/tool
-      continuation paths.
+- [x] Run full tests, typecheck, lint, build, resource staging, and bundle
+      verification.
+- [ ] Manually confirm the F5 routes: sidebar analysis/context/dictionary/category
+      and Workshop host/tool continuation paths.
+
+#### Verification notes (2026-07-10)
+
+- Focused engine/capability/service/Workshop matrix: 9 suites / 38 tests passed.
+- Full Jest: 71 suites / 521 tests passed.
+- `npm run typecheck`: core, webview, and VS Code adapter passed.
+- `npm run lint`: 0 errors; 606 repository warnings remain (none introduced by
+  the implementation after correcting the new test warning).
+- `npm run build`: resource staging and `verify:bundle` passed. Produced
+  `extension.js` at 2.16 MiB and `webview.js` at 566 KiB (the latter retains
+  the existing webpack size warning).
+- `git diff --check`: passed.
+- VS Code was launched with the Extension Development Host arguments, but this
+  environment has no GUI inspection or input channel for the required manual
+  sidebar and Workshop click-through. Treat the F5 route checklist above as a
+  manual confirmation, not an implementation failure.
 
 ## Acceptance Criteria
 

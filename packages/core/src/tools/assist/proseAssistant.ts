@@ -4,7 +4,9 @@
  */
 
 import { PromptLoader } from '../shared/prompts';
-import { AIResourceOrchestrator, ExecutionResult, StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
+import { AgentRunEngine } from '@orchestration/AgentRunEngine';
+import { AgentCapability, ExecutionResult, StreamingTokenCallback } from '@orchestration/AgentRunContracts';
+import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 
 export interface ProseAssistantInput {
   text: string;
@@ -26,8 +28,9 @@ export interface ProseAssistantOptions {
 
 export class ProseAssistant {
   constructor(
-    private readonly aiResourceOrchestrator: AIResourceOrchestrator,
-    private readonly promptLoader: PromptLoader
+    private readonly agentRunEngine: AgentRunEngine,
+    private readonly promptLoader: PromptLoader,
+    private readonly guideCapability: AgentCapability
   ) {}
 
   async analyze(input: ProseAssistantInput, options?: ProseAssistantOptions): Promise<ExecutionResult> {
@@ -42,19 +45,22 @@ export class ProseAssistant {
     const userMessage = this.buildUserMessage(input);
 
     // Use orchestrator to execute with agent capabilities (guide support)
-    return await this.aiResourceOrchestrator.executeWithAgentCapabilities(
-      'prose-assistant',
+    const usesGuides = options?.includeCraftGuides !== false;
+    return this.agentRunEngine.runInitial({
+      toolName: 'prose-assistant',
       systemMessage,
       userMessage,
-      {
-        includeCraftGuides: options?.includeCraftGuides,
+      policy: usesGuides
+        ? options?.retainConversation ? AGENT_RUN_POLICIES.workshopTool : AGENT_RUN_POLICIES.assistant
+        : options?.retainConversation ? AGENT_RUN_POLICIES.workshopToolWithoutResources : AGENT_RUN_POLICIES.assistantWithoutResources,
+      capability: usesGuides ? this.guideCapability : undefined,
+      options: {
         temperature: options?.temperature ?? 0.7,
         maxTokens: options?.maxTokens ?? 10000,
         signal: options?.signal,
-        onToken: options?.onToken,
-        retainConversation: options?.retainConversation
+        onToken: options?.onToken
       }
-    );
+    });
   }
 
   private async loadToolPrompts(): Promise<string> {

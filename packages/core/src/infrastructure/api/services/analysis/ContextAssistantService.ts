@@ -31,7 +31,8 @@ import {
   DEFAULT_CONTEXT_GROUPS
 } from '@/domain/models/ContextGeneration';
 import { ContextPathGroup } from '@shared/types';
-import { StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
+import { ContextFileCapability } from '@orchestration/capabilities/ContextFileCapability';
+import { StreamingTokenCallback as AgentStreamingTokenCallback } from '@orchestration/AgentRunContracts';
 
 /**
  * Options for streaming context generation operations
@@ -40,7 +41,7 @@ export interface ContextStreamingOptions {
   /** AbortSignal for cancellation support */
   signal?: AbortSignal;
   /** Callback for streaming tokens (enables streaming mode) */
-  onToken?: StreamingTokenCallback;
+  onToken?: AgentStreamingTokenCallback;
 }
 
 /**
@@ -83,17 +84,15 @@ export class ContextAssistantService {
    * Called during construction and when configuration changes
    */
   private async initializeContextAssistant(): Promise<void> {
-    // Wait for AI resources to be initialized
-    await this.aiResourceManager.initializeResources();
+    await this.aiResourceManager.ensureInitialized();
 
-    // Get context orchestrator from AIResourceManager
-    const orchestrator = this.aiResourceManager.getOrchestrator('context');
+    const engine = this.aiResourceManager.getEngine('context');
 
-    if (orchestrator) {
+    if (engine) {
       const promptLoader = this.resourceLoader.getPromptLoader();
 
       // Initialize context assistant
-      this.contextAssistant = new ContextAssistant(orchestrator, promptLoader);
+      this.contextAssistant = new ContextAssistant(engine, promptLoader);
     } else {
       // No orchestrator available (no API key configured)
       this.contextAssistant = undefined;
@@ -142,6 +141,7 @@ export class ContextAssistantService {
 
       // Create resource provider for context groups
       const resourceProvider = await this.createContextResourceProvider(groups);
+      const capability = new ContextFileCapability(resourceProvider, this.settings, this.outputChannel);
 
       // Try to read the full source document if provided, to prime the model
       let sourceContent: string | undefined;
@@ -178,6 +178,7 @@ export class ContextAssistantService {
         },
         {
           resourceProvider,
+          capability,
           temperature: toolOptions.temperature,
           maxTokens: toolOptions.maxTokens,
           signal: streamingOptions?.signal,

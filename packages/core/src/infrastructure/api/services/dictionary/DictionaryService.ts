@@ -22,7 +22,8 @@ import { API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
 import pLimit from 'p-limit';
 import { DictionaryUtility } from '@/tools/utility/dictionaryUtility';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
-import { AIResourceOrchestrator } from '@orchestration/AIResourceOrchestrator';
+import { AgentRunEngine } from '@orchestration/AgentRunEngine';
+import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
 import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
@@ -32,7 +33,7 @@ import {
 } from '@messages/dictionary';
 import { TokenUsage } from '@messages/tokenUsage';
 import { StatusEmitter } from '@messages/status';
-import { StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
+import { StreamingTokenCallback } from '@orchestration/AgentRunContracts';
 
 /**
  * Service wrapper for AI-powered dictionary lookups
@@ -112,17 +113,17 @@ export class DictionaryService {
    * Called during construction and when configuration changes
    */
   private async initializeDictionary(): Promise<void> {
-    // Wait for AI resources to be initialized
-    await this.aiResourceManager.initializeResources();
+    await this.aiResourceManager.ensureInitialized();
 
-    // Get dictionary orchestrator from AIResourceManager
-    const orchestrator = this.aiResourceManager.getOrchestrator('dictionary');
+    // Bind to the manager-owned dictionary generation; service initialization
+    // must never rebuild sibling bundles.
+    const engine = this.aiResourceManager.getEngine('dictionary');
 
-    if (orchestrator) {
+    if (engine) {
       const promptLoader = this.resourceLoader.getPromptLoader();
 
       // Initialize dictionary utility
-      this.dictionaryUtility = new DictionaryUtility(orchestrator, promptLoader);
+      this.dictionaryUtility = new DictionaryUtility(engine, promptLoader);
     } else {
       // No orchestrator available (no API key configured)
       this.dictionaryUtility = undefined;
@@ -277,9 +278,8 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     const startTime = Date.now();
     this.outputChannel?.appendLine(`\n[DictionaryService] Starting parallel dictionary generation for "${word}"`);
 
-    // Get orchestrator
-    const orchestrator = this.aiResourceManager.getOrchestrator('dictionary');
-    if (!orchestrator) {
+    const engine = this.aiResourceManager.getEngine('dictionary');
+    if (!engine) {
       return {
         word,
         result: this.getApiKeyWarning(),
@@ -305,7 +305,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     const blockPromises = DICTIONARY_BLOCKS.map((blockName, index) =>
       limit(async () => {
         const result = await this.generateSingleBlock(
-          orchestrator,
+          engine,
           baseInstructions,
           blockName,
           index + 1,
@@ -346,7 +346,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
    * Generate a single dictionary block
    */
   private async generateSingleBlock(
-    orchestrator: AIResourceOrchestrator,
+    engine: AgentRunEngine,
     baseInstructions: string,
     blockName: DictionaryBlockName,
     blockNumber: number,
@@ -368,17 +368,18 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
 
       this.outputChannel?.appendLine(`[DictionaryService] Generating block: ${blockName}`);
 
-      // Execute with timeout surfaced through the orchestrator
-      const result = await orchestrator.executeWithoutCapabilities(
-        `dictionary-fast-${blockName}`,
+      // The dictionary route explicitly has no resource catalog.
+      const result = await engine.runInitial({
+        toolName: `dictionary-fast-${blockName}`,
         systemMessage,
         userMessage,
-        {
+        policy: AGENT_RUN_POLICIES.dictionary,
+        options: {
           temperature: 0.4,
           maxTokens: 3500, // Smaller max for individual blocks
           timeoutMs: this.BLOCK_TIMEOUT
         }
-      );
+      });
 
       const duration = Date.now() - startTime;
       this.outputChannel?.appendLine(`[DictionaryService] Block "${blockName}" completed in ${duration}ms`);
@@ -402,16 +403,17 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         const systemMessage = `${baseInstructions}\n\n---\n\n${blockPrompt}`;
         const userMessage = this.buildBlockUserMessage(blockName, word, context);
 
-        const result = await orchestrator.executeWithoutCapabilities(
-          `dictionary-fast-${blockName}-retry`,
+        const result = await engine.runInitial({
+          toolName: `dictionary-fast-${blockName}-retry`,
           systemMessage,
           userMessage,
-          {
+          policy: AGENT_RUN_POLICIES.dictionary,
+          options: {
             temperature: 0.4,
             maxTokens: 3500,
             timeoutMs: this.BLOCK_TIMEOUT
           }
-        );
+        });
 
         const retryDuration = Date.now() - startTime;
         this.outputChannel?.appendLine(`[DictionaryService] Block "${blockName}" retry succeeded in ${retryDuration}ms`);
