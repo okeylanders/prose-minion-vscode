@@ -52,6 +52,10 @@ lazily starts the host after the tool report is available.
 - Persona relay is not invoked for every direct-tool message. When returning to
   the host, the next host turn receives only the bounded tool exchanges not yet
   delivered to it.
+- Before Sprint 07 permits host capabilities, structurally neutralize reserved
+  excerpt-frame delimiters (including `</pinned-excerpt>`) before quoted writer
+  content is inserted into a persona prompt. Treating the excerpt as data in
+  prose is necessary but not sufficient at that trust boundary.
 - Bound that handoff to the newest 8 unseen direct-tool turns and 20,000
   characters, whichever limit is reached first. Include omitted-turn count and
   deterministic truncation provenance; advance the delivery cursor only after
@@ -98,6 +102,9 @@ lazily starts the host after the tool report is available.
 - [ ] If persona synthesis fails after a successful tool run, preserve the
       sidecar/report and surface the host failure honestly; never roll back the
       valid tool artifact.
+- [ ] Neutralize reserved persona-prompt delimiter text in quoted excerpts and
+      add regression tests proving writer content cannot close or forge the
+      `<pinned-excerpt>` frame. This is a Sprint 07 prerequisite.
 
 ### Direct-tool mode
 
@@ -135,6 +142,8 @@ lazily starts the host after the tool report is available.
       the report succeeds but persona synthesis fails.
 - [ ] Cover direct mode enter/send/cancel/back/host-name shortcut/lost sidecar
       and unseen-delta handoff without duplicate delivery.
+- [ ] Cover reserved-delimiter neutralization in direct and file-pinned excerpts
+      before any Sprint 07 capability path consumes host conversation content.
 - [ ] Cover preemption and zombie completion across both tool and host phases.
 - [ ] Cover reload snapshot restoration for host, sidecars, report artifacts,
       direct target, delivery cursor, and in-flight phase.
