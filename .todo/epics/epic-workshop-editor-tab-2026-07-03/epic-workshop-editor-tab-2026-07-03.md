@@ -2,9 +2,9 @@
 
 **Created**: 2026-07-06
 **Status**: In Progress
-**Progress**: 3/6 sprints merged; Sprint 04 complete on branch; Sprints 05-06 planned (Sprint 01 merged 2026-07-06, [PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66); Sprint 02 merged 2026-07-07, [PR #67](https://github.com/okeylanders/prose-minion-vscode/pull/67); Sprint 03 merged 2026-07-07, [PR #68](https://github.com/okeylanders/prose-minion-vscode/pull/68))
-**Design source**: [Direction B — Split & Pinned](../../design/Prose%20Minion%20-%20Assistant%20Tab.html)
-**ADR**: [2026-07-03 — Assistant as a Full Editor Tab](../../adr/2026-07-03-assistant-editor-tab.md)
+**Progress**: 4/7 sprints merged; Sprint 05 ready; Sprints 06-07 planned (Sprint 01 [PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66); Sprint 02 [PR #67](https://github.com/okeylanders/prose-minion-vscode/pull/67); Sprint 03 [PR #68](https://github.com/okeylanders/prose-minion-vscode/pull/68); Sprint 04 [PR #69](https://github.com/okeylanders/prose-minion-vscode/pull/69))
+**Design source**: [Direction B — Split & Pinned](../../../docs/design/Prose%20Minion%20-%20Assistant%20Tab.html)
+**ADRs**: [2026-07-03 — Assistant as a Full Editor Tab](../../../docs/adr/2026-07-03-assistant-editor-tab.md); [2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](../../../docs/adr/2026-07-09-workshop-persona-hosted-conversations.md)
 **Integration branch**: `epic/workshop-editor-tab`
 
 ## Goal
@@ -25,9 +25,10 @@ After Sprint 04, the Workshop expands from **tool-first conversation** to
 **persona-hosted conversation**. A user should be able to pin an excerpt, pick a
 Writers' Room host (Jill by default; Margot, Quinn, Wren, and the other
 specialists as sharper lenses), and start chatting before running a tool. Tool
-runs remain deterministic actions; when triggered inside a persona chat, their
-results should feed back into the active persona conversation as side-pass
-material instead of replacing the persona's voice.
+runs remain isolated deterministic actions; their verbatim reports feed back
+into the permanent persona host as side-pass evidence instead of replacing its
+voice. A writer may temporarily talk directly to a retained tool sidecar, and
+personas can later invoke bounded capabilities such as the Writer's Dictionary.
 
 ## Sequencing
 
@@ -47,11 +48,13 @@ Each sprint is independently shippable behind the (initially unregistered)
 | 1 | `claude/sprint-01-workshop-editor-tab-u49fd5` ([PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66)) | [Shell](sprints/01-shell.md) | The second surface exists and boots. Zero AI. |
 | 2 | `claude/sprint-02-session-spine-skndyo` ([PR #67](https://github.com/okeylanders/prose-minion-vscode/pull/67)) | [Session spine](sprints/02-session-spine.md) | Host-side session state + one streaming turn into the thread. |
 | 3 | `feat/workshop-s3-multiturn` ([PR #68](https://github.com/okeylanders/prose-minion-vscode/pull/68)) | [Multi-turn](sprints/03-multiturn.md) | Follow-ups continue the same conversation. The "now tighten it" loop. |
-| 4 | `feat/workshop-s4-actions-polish` | [Actions & polish](sprints/04-actions-polish.md) | The approved prototype's feel: quick actions, cards, toasts. |
-| 5 | `sprint/workshop-editor-tab-05-persona-chat` | [Persona-hosted chat](sprints/05-persona-chat.md) | The user can start a retained Workshop chat with Jill or a Writers' Room specialist before running a tool. |
-| 6 | `sprint/workshop-editor-tab-06-tool-side-pass` | [Tool side-pass integration](sprints/06-tool-side-pass.md) | Tool runs inside a persona chat become structured side-pass material injected back into the persona conversation. |
+| 4 | `feat/workshop-s4-actions-polish` ([PR #69](https://github.com/okeylanders/prose-minion-vscode/pull/69)) | [Actions & polish](sprints/04-actions-polish.md) | The approved prototype's feel: quick actions, cards, toasts. |
+| 5 | `sprint/workshop-editor-tab-05-persona-chat` | [Persona host and browser](sprints/05-persona-chat.md) | The user can browse/select Jill or a specialist and start a retained host conversation before running a tool. |
+| 6 | `sprint/workshop-editor-tab-06-tool-side-pass` | [Retained tool sidecars and direct mode](sprints/06-tool-side-pass.md) | Every tool run preserves a verbatim report, feeds the host, and remains available for explicit direct follow-up. |
+| 7 | `sprint/workshop-editor-tab-07-persona-capabilities` | [Persona-callable capabilities](sprints/07-persona-capabilities.md) | Personas autonomously invoke bounded Writer's Dictionary and analysis capabilities through a typed host boundary. |
 
-Final step after Sprint 6 merges: one PR `epic/workshop-editor-tab → main`.
+Final step after Sprint 7 merges: resolve the shared markdown-sanitization gate,
+then open one PR `epic/workshop-editor-tab → main`.
 
 ## Architectural Invariants (hold across every sprint)
 
@@ -67,11 +70,15 @@ Final step after Sprint 6 merges: one PR `epic/workshop-editor-tab → main`.
   templates` map in code. The LLM produces content, never button labels.
 - **Personas are deterministic lenses, not runtime filesystem dependencies.**
   Their catalog and packaged prompt resources live under this repo (for
-  example `packages/core/resources/workshop-personas/`), even if their source
-  material begins in Okey's `zsh-setup` prompt-library.
-- **Personas are not tools.** Tools remain structured actions mapped to the
-  existing analysis contracts; persona chat owns the conversational voice and
-  follow-up loop.
+  example `packages/core/resources/system-prompts/workshop-personas/`), even if
+  their source material begins in Okey's `zsh-setup` prompt-library.
+- **The persona is the permanent host; tools are isolated sidecars.** System
+  prompts are immutable per retained conversation. Tool reports render verbatim
+  before persona synthesis, and direct-tool routing is explicit UI state.
+- **Personas are not tools, but may invoke capabilities.** Persona-generated
+  requests cross a closed, typed, host-validated application boundary; they do
+  not call handlers, fabricate messages, or bypass existing tool/dictionary
+  services.
 - **Domain mirroring stays honest**: `useWorkshop` ↔ `WorkshopHandler`,
   registered in `MessageHandler` exactly like the other 11 domains (workshop
   is the 12th).
@@ -86,13 +93,13 @@ Final step after Sprint 6 merges: one PR `epic/workshop-editor-tab → main`.
 - **Sidebar reskin** and the **Model Browser** — separate follow-ups. A
   temporary look divergence between sidebar and Workshop is acceptable in alpha.
 
-## Planned Persona Expansion (Sprints 05-06)
+## Planned Persona Expansion (Sprints 05-07)
 
 The Writers' Room personas come from Okey's existing prompt-library source
 material:
 
-- Jill: `/Users/okey.landers/GitHub/zsh-setup/prompt-library/claude-personas/CLAUDE-Jill.md`
-- Specialists: `/Users/okey.landers/GitHub/zsh-setup/prompt-library/claude-skills/`
+- Jill: `/Users/okeylanders/Documents/GitHub/zsh-setup/prompt-library/claude-personas/CLAUDE-Jill.md`
+- Specialists: `/Users/okeylanders/Documents/GitHub/zsh-setup/prompt-library/claude-skills/`
   (`agnes`, `cliff`, `dev`, `edna`, `felix`, `harper`, `margot`, `penny`,
   `quinn`, `theo`, `wren`)
 
@@ -104,17 +111,24 @@ Target behavior:
 
 - A pinned excerpt plus selected persona can start a retained conversation
   before any tool has run.
-- Jill is the default general Workshop host; specialist personas are selected
-  from a dropdown when the writer wants a narrower craft lens.
+- Jill is the default general Workshop host; specialists are selected from a
+  tool-browser-style persona modal with a person outline, focus icon, specialty,
+  and description.
 - The composer is enabled when an excerpt is pinned and a persona is selected,
   even if `selectedToolId` is still empty.
-- Triggering a tool during persona chat does not replace the persona system
-  prompt. The tool result is presented to the active persona as structured
-  side-pass evidence, and the persona responds in the same conversation.
-- Context loading starts compact: pinned excerpt, source provenance, and a
-  concise context/catalog summary. Additional files should be loaded on demand
-  through existing resource-request patterns instead of eagerly stuffing the
-  prompt.
+- Triggering a tool never replaces the persona system prompt. The isolated tool
+  report renders verbatim, enters the host conversation as structured evidence,
+  and remains retained for an explicit temporary direct-tool mode.
+- Starting with a tool still uses the selected persona as host: deterministic
+  progress, verbatim tool report, then persona synthesis.
+- Personas may autonomously formulate Writer's Dictionary lookups/full entries
+  and analysis requests. The host validates a closed capability schema, applies
+  per-turn budgets, renders inspectable artifacts, and returns results to the
+  persona for synthesis.
+- Context starts compact: pinned excerpt, source provenance, and any existing
+  context brief. On-demand project-resource loading requires a retained variant
+  of the existing context-request pattern and is tracked separately in
+  [feature-workshop-persona-context-loading](../../features/feature-workshop-persona-context-loading/README.md); Sprint 05 does not advertise a catalog it cannot fulfill.
 
 ## Known Risks
 
@@ -125,13 +139,16 @@ Target behavior:
   *supports* continuation (`startConversation` / `addMessage` / `getMessages`),
   but token budgeting across turns, system-prompt handling on continuation, and
   conversation disposal on reset are unproven. Sized in Sprint 3.
-- Persona-first chat introduces a second valid conversation origin: a persona
-  prompt rather than a completed tool run. `WorkshopSessionService` must make
-  that origin explicit so follow-up enablement does not depend on
-  `selectedToolId`.
-- Tool side-pass integration can accidentally blur model roles if implemented
-  as "the persona pretends to be the tool." Keep tool execution deterministic
-  and inject the result as evidence into the active persona conversation.
+- Multiple retained participants require explicit ownership and disposal.
+  `WorkshopSessionService` must track the permanent host, latest sidecar per
+  tool, optional direct target, and delivery cursor without exposing
+  conversation ids to React.
+- Tool side-pass integration can blur model roles if implemented as “the
+  persona pretends to be the tool.” Preserve the exact report as an artifact,
+  then inject it as evidence into the host.
+- Autonomous capability calls can multiply cost/latency or loop. Sprint 07 must
+  enforce strict schemas, call/turn budgets, cancellation, nested usage
+  accounting, and visible progress from its first implementation.
 - ~~`ConversationManager` still logs via raw `console.*`~~ — migrated to the
   injected `LogSink` in Sprint 02 (PR #67).
 - **Markdown sanitization (shared `MarkdownRenderer`)**: untrusted model
@@ -145,6 +162,6 @@ Target behavior:
 
 ## Related
 
-- [ADR 2026-06-16 — Monorepo Ports & Adapters](../../adr/2026-06-16-monorepo-ports-and-adapters.md)
-- [ADR 2026-06-18 — MessageHandler Composition-Root Consolidation](../../adr/2026-06-18-messagehandler-composition-root-consolidation.md)
+- [ADR 2026-06-16 — Monorepo Ports & Adapters](../../../docs/adr/2026-06-16-monorepo-ports-and-adapters.md)
+- [ADR 2026-06-18 — MessageHandler Composition-Root Consolidation](../../../docs/adr/2026-06-18-messagehandler-composition-root-consolidation.md)
 - [feature-full-tab-conversation-agent](../../features/feature-full-tab-conversation-agent/README.md)

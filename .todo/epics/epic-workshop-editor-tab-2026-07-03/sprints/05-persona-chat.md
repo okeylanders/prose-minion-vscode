@@ -1,87 +1,237 @@
-# Sprint 05: Persona-Hosted Chat
+# Sprint 05: Persona Host and Browser
 
-**Status**: Planned
+**Status**: Ready
 **Priority**: High
 **Branch**: `sprint/workshop-editor-tab-05-persona-chat` -> PR into `epic/workshop-editor-tab`
-**Estimated Effort**: 2-4 days
-**Depends on**: Sprint 04
+**Estimated Effort**: 4-6 days
+**Depends on**: Sprint 04 ([PR #69](https://github.com/okeylanders/prose-minion-vscode/pull/69), merged into `epic/workshop-editor-tab`)
+**ADR**: [2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](../../../../docs/adr/2026-07-09-workshop-persona-hosted-conversations.md)
+**Readiness reviewed**: 2026-07-09 on `epic/workshop-editor-tab` (`2c9c31a`)
 
 ## Goal
 
-Let a writer start a Workshop conversation before running a tool. The flow is:
-pin an excerpt, choose a Writers' Room persona, then chat. Jill is the default
-Workshop host; specialists such as Margot, Quinn, Wren, Theo, and Dev provide
-narrower craft lenses.
+Give every Workshop session a Writers' Room host. A writer pins an excerpt,
+opens a persona browser, leaves Jill selected or chooses a specialist, and can
+start chatting before running a tool.
 
-Personas are conversation hosts, not tools. They own voice, judgment, and the
-retained conversation. The existing 14 tools remain deterministic actions.
+Sprint 05 establishes the host/persona foundation that Sprint 06 will extend
+with retained tool sidecars. Personas are conversation hosts, not tools. Their
+identity and system prompt stay stable for the life of their retained
+conversation.
 
 ## Current Reality
 
-- Sprint 03 added `WORKSHOP_SEND_MESSAGE`, but it only works after a successful
-  tool run creates a retained conversation.
-- `WorkshopSessionService` treats conversation identity as "the last successful
-  tool run." That is no longer enough once a persona can start the session.
-- The persona source material currently lives outside this repo:
-  - Jill: `/Users/okey.landers/GitHub/zsh-setup/prompt-library/claude-personas/CLAUDE-Jill.md`
-  - Specialists: `/Users/okey.landers/GitHub/zsh-setup/prompt-library/claude-skills/`
-- Runtime must not depend on those absolute paths. Curate/copy prompts into
-  packageable resources under this repo.
+- `WORKSHOP_SEND_MESSAGE` only works after a successful tool run creates a
+  retained conversation.
+- `WorkshopSessionService` stores one bare conversation id and assumes it came
+  from the last successful tool run.
+- `WorkshopApp` has a tools browser modal but no persona browser or host model.
+- `AIResourceOrchestrator.executeWithoutCapabilities` accepts
+  `retainConversation` in `AIOptions` but always deletes its conversation.
+- Sprint 04 is merged into the integration branch. At the readiness baseline,
+  64 suites / 553 tests, all three typechecks, lint (0 errors), production
+  build, resource staging, and bundle verification pass.
+- Persona authoring sources exist outside this repo:
+  - Jill: `/Users/okeylanders/Documents/GitHub/zsh-setup/prompt-library/claude-personas/CLAUDE-Jill.md`
+  - Specialists: `/Users/okeylanders/Documents/GitHub/zsh-setup/prompt-library/claude-skills/`
+- Runtime must not depend on those paths. Prompts need product-safe curation and
+  must travel through the existing staged-resource pipeline.
+
+## Locked Decisions
+
+- Jill is the default host. A writer can choose a different host before the
+  host conversation begins. New session preserves the excerpt and restores
+  Jill.
+- Persona selection uses a browser modal visually parallel to the tool browser,
+  not a native dropdown.
+- Each browser card shows a person-outline/avatar, a presentation-only focus
+  icon badge, persona name, specialty, and concise description.
+- Add a shared `person` glyph to the existing `Icon` set. Use this deterministic
+  v1 focus mapping unless the approved visual pass produces a clearer existing
+  glyph: Jill=`sparkle`, Agnes=`sparkle`, Cliff=`repeat`, Dev=`dialogue`,
+  Edna=`target`, Felix=`wave`, Harper=`sprout`, Margot=`eye`, Penny=`book`,
+  Quinn=`search`, Theo=`bolt`, Wren=`pen`.
+- `WorkshopPersonaId` remains separate from `WorkshopToolId`.
+- `WORKSHOP_SELECT_PERSONA` persists validated selection host-side.
+  `WORKSHOP_SEND_MESSAGE` starts the selected host when no host conversation
+  exists and continues it afterward. Do not add `WORKSHOP_START_CHAT`.
+- `WORKSHOP_SET_CHAT_TARGET` carries `{ kind: 'host' } | { kind: 'tool',
+  toolId }`; it is the single deterministic enter/exit direct-mode action.
+- The session participant contract is implemented now for one persona host,
+  latest sidecar per tool, and optional direct target. Conversation ids remain
+  private to the host.
+- Persona selection locks once a host run/conversation exists. Cross-persona
+  handoff is not part of v1; reset is the explicit switch boundary.
+- Sprint 05 preserves tool-first chat without a second temporary session model:
+  a successful pre-host tool run is adopted into its sidecar slot and becomes
+  the explicit direct target; composer follow-ups continue it. “Back to Jill”
+  clears the target and lets the next message start/continue the host. Sprint 05
+  does not yet inject the old report into Jill.
+- Once a persona conversation is active, new tool runs are disabled/rejected in
+  Sprint 05 so they cannot replace its prompt. Sprint 06 removes this guard and
+  adds universal report -> host synthesis plus bounded direct-mode handoff.
+- Runtime prompts live under
+  `packages/core/resources/system-prompts/workshop-personas/` and are assembled
+  from a shared base prompt plus one persona prompt through `PromptLoader`.
+- Prompt curation preserves voice/craft remit and removes skill frontmatter,
+  invocation/tooling directions, absolute paths, manuscript-specific canon,
+  and unavailable multi-agent choreography.
+- Initial context is pinned excerpt + compact provenance + writer message (+ an
+  existing context brief if present). Workspace resource requests remain the
+  separately tracked context-loading feature.
 
 ## Tasks
 
-- [ ] Add a deterministic persona catalog, likely
-      `packages/core/src/shared/constants/workshopPersonas.ts`, with ids,
-      labels, specialties, descriptions, and packaged prompt resource paths.
-- [ ] Add packaged persona prompt resources under a repo-owned directory such
-      as `packages/core/resources/workshop-personas/`.
-- [ ] Include Jill plus the Writers' Room specialists:
-      `agnes`, `cliff`, `dev`, `edna`, `felix`, `harper`, `margot`, `penny`,
-      `quinn`, `theo`, `wren`.
-- [ ] Add message contracts for selecting a persona and starting a chat, e.g.
-      `WORKSHOP_SELECT_PERSONA` and `WORKSHOP_START_CHAT`, or a single
-      start-chat payload carrying `personaId` and text.
-- [ ] Extend `WorkshopSessionService` so a session has an explicit
-      conversation origin (`persona` or `tool`) and selected persona id.
-- [ ] Add an `AssistantToolService`/orchestration entry point that starts and
-      retains a Workshop persona conversation from:
-      - persona system prompt
-      - pinned excerpt
-      - source provenance
-      - compact context/catalog summary
-      - initial user message
-- [ ] Enable the composer when an excerpt is pinned and a persona is selected,
-      even when no tool conversation exists yet.
-- [ ] Add a persona dropdown to the Workshop header/composer area. Default to
-      Jill for new sessions.
-- [ ] Persist selected persona in the host-side snapshot so reload/reopen
-      restores the active host.
-- [ ] Update status, stream, cancel, reset, and conversation-disposal paths for
-      persona-origin conversations.
-- [ ] Add tests for persona catalog invariants, session origin transitions,
-      start-chat handler behavior, reload snapshot behavior, and composer
-      enablement.
+### Contracts and catalog
+
+- [ ] Add `WorkshopPersonaId` and participant snapshot types to
+      `shared/types/messages/workshop.ts`; export them through `@messages`.
+- [ ] Add `WORKSHOP_SELECT_PERSONA` to `MessageType`, its typed payload/message,
+      the webview-to-extension union, router registration, and route-count tests.
+- [ ] Add `WorkshopChatTarget` and `WORKSHOP_SET_CHAT_TARGET` with the exact
+      host/tool discriminated payload above; validate live sidecar existence
+      host-side rather than trusting the webview.
+- [ ] Add `packages/core/src/shared/constants/workshopPersonas.ts` with exactly
+      Jill plus `agnes`, `cliff`, `dev`, `edna`, `felix`, `harper`, `margot`,
+      `penny`, `quinn`, `theo`, and `wren`.
+- [ ] Catalog entries contain id, label, specialty, concise description, and
+      relative prompt path. Export a `DEFAULT_WORKSHOP_PERSONA_ID` of `jill`, an
+      `isWorkshopPersonaId` guard, and lookup helpers.
+- [ ] Keep React/icon types out of the shared catalog. Add `person` to the
+      shared `IconName`/path set and put the focus mapping above in a
+      presentation-only exhaustive map beside the Workshop components.
+
+### Packaged prompts
+
+- [ ] Add `packages/core/resources/system-prompts/workshop-personas/base.md`
+      plus one curated prompt per catalog entry.
+- [ ] The base prompt marks excerpt/context as quoted data, establishes the
+      Workshop host role, forbids invented project facts, and does not advertise
+      Sprint 07 capabilities yet.
+- [ ] Curate rather than mechanically copy the external sources. Remove local
+      canon/tooling assumptions while preserving each persona's distinctive
+      remit, boundaries, voice, and response behavior.
+- [ ] Extend resource/catalog tests to prove every catalog path is relative,
+      unique, path-contained, staged, loadable through the real `PromptLoader`,
+      non-empty, and free of YAML skill frontmatter/known absolute source paths.
+
+### Orchestration and session
+
+- [ ] Make `AIResourceOrchestrator.executeWithoutCapabilities` pin immediately
+      when retention is requested, retain only a completed non-cancelled
+      user/assistant exchange, return its id, and delete on cancel/error or when
+      unretained. Mirror the proven agent-capabilities lifecycle.
+- [ ] Add `AssistantToolService.startWorkshopPersonaConversation(...)` on the
+      captured assistant-orchestrator generation. It loads base + persona
+      prompts, builds the bounded initial user message, streams, and returns an
+      `AnalysisResult` with the retained conversation id.
+- [ ] Refactor `WorkshopSessionService` from one implicit tool-owned id to the
+      participant structure: host `{ personaId, conversationId? }`, latest
+      sidecar per tool, and optional direct target. Never expose ids in snapshots.
+- [ ] Add pure session operations for selecting the host, beginning a persona
+      message, atomically adopting its successful conversation, clearing a lost
+      conversation, reset-to-Jill, and excerpt replacement.
+- [ ] Add minimal sidecar/direct-target operations needed to migrate the current
+      tool-first path without a legacy second model: adopt/replace a successful
+      tool conversation, select/clear the direct target, and dispose all
+      conversations on reset/excerpt replacement/resource loss.
+- [ ] Reject invalid persona ids and selection changes while any run or host
+      conversation is active.
+
+### Handler and presentation
+
+- [ ] Route `WORKSHOP_SEND_MESSAGE` to the direct tool when a direct target is
+      set; otherwise start/continue the persona host. Preserve preemption,
+      cancellation, API-key warning, zombie-completion, config-loss, stream
+      ordering, status, token, and disposal semantics.
+- [ ] Attribute persona assistant turns with persona id/label. Persona turns do
+      not inherit tool quick actions or tool save-name provenance.
+- [ ] Add `WorkshopPersonaBrowserModal` matching the tool browser's visual
+      language and accessibility contract. If the modal framing/keyboard code
+      is truly identical, extract only a focused shared browser-modal shell.
+- [ ] Add the header trigger with person outline + focus badge + active persona
+      name. The modal cards show focus badge, specialty, and description.
+- [ ] Enable the composer when the host snapshot is ready, a non-empty excerpt
+      exists, and no run is active—even before a conversation exists. Update
+      placeholder/title copy for “Message Jill” versus “Continue with Jill.”
+- [ ] Preserve the pre-host tool-first interaction as explicit direct mode:
+      show “Talking directly to <tool>” plus “Back to Jill.” Returning does not
+      inject tool history yet; that bounded handoff belongs to Sprint 06.
+- [ ] Disable/lock persona selection after host conversation start and restore
+      the selected host correctly on webview reload.
+- [ ] Keep the transitional Sprint 05 tool guard honest: a crafted tool run
+      cannot replace an active persona conversation, and the UI explains that
+      integrated tool runs land in Sprint 06.
+
+### Tests and documentation
+
+- [ ] Cover catalog completeness/uniqueness/default/resource loading.
+- [ ] Cover plain-conversation retention success, cancellation, error, discard,
+      pinning, and continuation on the same captured orchestrator generation.
+- [ ] Cover session default/select/lock/adopt/loss/reset/excerpt lifecycle and
+      defensive snapshot copying, plus sidecar/direct-target replacement and
+      disposal.
+- [ ] Cover handler start/follow-up/cancel/preempt/zombie/config-loss/API-key/
+      tool-guard/direct-tool/back-to-host behavior and exact message order.
+- [ ] Cover hook selection, reload, pre-conversation composer enablement,
+      persona attribution, and error reconciliation.
+- [ ] Cover browser rendering, icon/description/name, selection, disabled state,
+      keyboard dismissal/focus return to the extent supported by the existing
+      modal test harness.
+- [ ] Update architecture/session comments and `docs/ARCHITECTURE.md` where the
+      former “last tool owns the conversation” policy is described.
 
 ## Acceptance Criteria
 
-- A writer can pin an excerpt, leave the default persona as Jill, type a
-  message, and receive a streamed retained conversation response.
-- A writer can switch to a specialist persona before starting the chat.
-- Follow-up messages continue the persona conversation without requiring a
-  prior tool run.
-- Running reset clears the conversation while preserving the pinned excerpt
-  according to the current Workshop reset semantics.
-- Runtime persona prompts are loaded from this repo, not from Okey's absolute
-  `zsh-setup` paths.
-- Typecheck, focused Workshop tests, and bundle verification pass.
+- A writer can pin an excerpt, leave Jill selected, type a message, and receive
+  a streamed retained Jill response without running a tool first.
+- Before the conversation starts, the writer can open a tool-browser-style
+  persona modal and select any of the 12 deterministic persona entries.
+- Each persona card visibly combines a person outline, a focus icon, specialty,
+  and description; the header reflects the selected host.
+- Follow-ups continue the same persona conversation and system prompt.
+- Selection locks after host conversation start; New session preserves the
+  excerpt, disposes the conversation, clears the thread, and restores Jill.
+- Reload/reopen restores selected persona, host state, thread, and in-flight
+  request identity, sidecar availability, and direct target without exposing
+  conversation ids.
+- Persona turns never receive stale tool quick actions or tool result naming.
+- Runtime prompts are repo-owned, staged, path-contained, loadable, and contain
+  no skill frontmatter, absolute authoring paths, unavailable agent/tool
+  directions, or manuscript-specific canon assumptions.
+- Until Sprint 06, a live persona conversation cannot be silently replaced by
+  a tool run; the transitional UI/handler guard is explicit.
+- A tool-first run remains directly followable, and “Back to Jill” lets the next
+  message start the host without discarding the retained tool conversation.
+- Lint, typecheck, focused/full tests, build, bundle verification, resource
+  staging, and `git diff --check` pass. Record webview/extension bundle deltas.
 
-## Notes / Guardrails
+## Suggested Implementation Order
 
-- Do not model personas as `WorkshopToolId`. Keep `WorkshopPersonaId` separate.
-- Do not let the model generate persona dropdown labels.
-- Keep initial context compact. Do not eagerly pack a whole project or long
-  source stack into the first prompt.
-- If a persona asks for more context, route that through existing resource
-  request patterns rather than inventing a new file-loading loop.
-- Tool side-pass behavior is Sprint 06. This sprint may leave tool runs with
-  existing replacement semantics if needed, as long as the UI is honest.
+1. Wire types, catalog, icon map, and curated resources with invariant tests.
+2. Add plain-conversation retention to the orchestrator and persona-start seam
+   to `AssistantToolService`.
+3. Migrate the session aggregate to the participant shape and exhaust host,
+   sidecar, target, and disposal lifecycle tests.
+4. Add selection/start/continuation/direct-target/back-to-host/tool-guard paths.
+5. Build the persona browser/header/composer integration and hook tests.
+6. Run the full verification matrix and manual F5 smoke: Jill start, specialist
+   start, follow-up, cancel, reload, reset, tool-first direct follow-up, Back to
+   Jill, and guarded tool click during persona chat.
+
+## Handoff Notes for the Implementation Agent
+
+- Start from `epic/workshop-editor-tab` after the readiness-doc commit, not
+  `main` or the old Sprint 04 branch.
+- Preserve staged/user changes and keep the diff focused; do not begin Sprint
+  06 sidecar orchestration or Sprint 07 capability calls here.
+- Follow existing semantic aliases and `@messages` barrel imports. Core must
+  remain free of `vscode`; construction stays in `extension.ts`.
+- Do not place new workflow branching in `WorkshopApp`. Host policy belongs in
+  `WorkshopSessionService`; AI lifecycle belongs in orchestration/service;
+  `WorkshopHandler` translates messages and coordinates the use case.
+- Reuse the existing tool modal's conventions, but do not force tool/persona
+  cards through one abstraction if only their outer dialog shell is shared.
+- If prompt curation exposes a product/canon choice not covered above, stop and
+  document the exact ambiguity rather than silently preserving Okey-specific
+  assumptions.

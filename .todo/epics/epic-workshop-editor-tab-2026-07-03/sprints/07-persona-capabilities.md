@@ -1,0 +1,235 @@
+# Sprint 07: Persona-Callable Capabilities
+
+**Status**: Planned
+**Priority**: High
+**Branch**: `sprint/workshop-editor-tab-07-persona-capabilities` -> PR into `epic/workshop-editor-tab`
+**Estimated Effort**: 4-6 days
+**Depends on**: Sprint 06
+**ADR**: [2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](../../../../docs/adr/2026-07-09-workshop-persona-hosted-conversations.md)
+
+## Goal
+
+Let the active persona autonomously invoke bounded Workshop capabilities on the
+writer's behalf, inspect their structured results, and integrate them into the
+same retained host conversation. Begin with both Writer's Dictionary modes and
+then expose Sprint 06's analysis side-pass use case through the same typed
+boundary.
+
+A persona may formulate and call these capabilities without the user explicitly
+asking. The extension—not the model—validates what exists, enforces budgets,
+executes services, records provenance, and decides when the capability loop must
+stop.
+
+## Current Reality After Sprint 06
+
+- A permanent persona host owns the main retained conversation.
+- User-triggered analysis tools run as isolated retained sidecars; exact reports
+  feed back into the host, and direct-tool follow-ups work.
+- `DictionaryService.lookupWord` provides a focused single lookup.
+- `DictionaryService.generateParallelDictionary` produces the full Writer's
+  Dictionary entry with per-block timing, partial-failure, and aggregated usage
+  metadata.
+- Existing guide/context orchestrators already prove provider-neutral structured
+  request detection, bounded multi-turn fulfillment, and final-output forcing,
+  but retained persona follow-ups do not yet have a general capability loop.
+
+## Locked Decisions
+
+- Persona capabilities cross a typed application-layer boundary. Persona
+  prompts never call handlers, construct message envelopes, or know service
+  implementation classes.
+- Use a provider-neutral, strictly parsed structured request envelope compatible
+  with the existing resource-request pattern. Provider-native function calling
+  may replace the adapter later without changing application request/result
+  types.
+- The v1 wire is an entire assistant response of the form
+  `<workshop-capability-request>{"capability":..., ...}</workshop-capability-request>`.
+  After trimming, prose before/after the tag, multiple tags in one response, or
+  a tag found inside quoted user/excerpt content is not executable.
+- Initial allowlist:
+  - `dictionary.lookup` -> `DictionaryService.lookupWord`
+  - `dictionary.full-entry` -> `DictionaryService.generateParallelDictionary`
+  - `analysis.run` -> Sprint 06's tool-side-pass use case
+- Personas may invoke allowlisted capabilities without explicit confirmation.
+  Calls remain visible, cancellable, cost-accounted, runtime-validated, and
+  bounded.
+- V1 input ceilings are: `word` 100 characters, `context` 4,000 characters,
+  `purpose` 500 characters, and analysis `instructions` 1,000 characters.
+  Reject rather than silently truncate a model request that exceeds them.
+- Dictionary operations are single-shot capabilities, not retained participants.
+  Their result becomes an artifact/evidence item in the host conversation.
+- Analysis capability calls preserve the exact same isolated sidecar/provenance
+  semantics as user-selected tools. The persona cannot impersonate the tool.
+- A persona response containing a valid capability request is intermediate, not
+  final user-facing prose. Fulfill it, append a structured result, and let the
+  persona produce the final response within the turn budget.
+- Invalid, excessive, cancelled, or failed calls return structured failure
+  evidence. The persona must respond honestly from that failure and may not
+  invent a result.
+
+## Capability Contracts
+
+```typescript
+type WorkshopCapabilityRequest =
+  | {
+      capability: 'dictionary.lookup';
+      word: string;
+      context: string;
+      purpose: string;
+    }
+  | {
+      capability: 'dictionary.full-entry';
+      word: string;
+      context: string;
+      purpose: string;
+    }
+  | {
+      capability: 'analysis.run';
+      toolId: WorkshopToolId;
+      instructions?: string;
+    };
+
+interface WorkshopCapabilityResult {
+  capability: WorkshopCapabilityRequest['capability'];
+  status: 'success' | 'partial' | 'failed' | 'cancelled' | 'rejected';
+  requestSummary: string;
+  content?: string;
+  metadata?: Record<string, unknown>;
+  error?: string;
+}
+```
+
+Exact final types may narrow `metadata` by capability, but the discriminants and
+plain application-owned boundary are required.
+
+## Tasks
+
+### Application boundary and parser
+
+- [ ] Define capability request/result types in an application/shared contract
+      that imports no provider, React, or VS Code types.
+- [ ] Add a strict parser/serializer for the exact envelope above. Reject
+      malformed JSON,
+      unknown capability ids, unknown tool ids, extra dangerous fields,
+      oversized strings, duplicate calls, and tags embedded in quoted excerpt
+      content rather than an assistant response.
+- [ ] Add a focused capability orchestrator/use case injected with the existing
+      `DictionaryService` and Sprint 06 tool-side-pass boundary. Do not route
+      through `DictionaryHandler`, `WorkshopHandler`, or webview messages.
+- [ ] Keep capability dispatch closed/exhaustive so adding an enum/string alone
+      cannot expose a new service accidentally.
+
+### Turn loop and budgets
+
+- [ ] Extend persona start/continuation with a bounded capability loop:
+      model response -> parse -> validate -> execute -> append structured result
+      -> request final/next response.
+- [ ] Allow at most three capability calls per user turn, at most one
+      `dictionary.full-entry`, and at most one analysis side pass unless a later
+      measured policy justifies more.
+- [ ] Enforce the locked 100 / 4,000 / 500 / 1,000 character ceilings; use
+      pinned excerpt provenance rather than letting the model pass filesystem
+      paths/content.
+- [ ] Prevent recursive/unbounded calls and force a final response when the
+      maximum turn/call budget is reached, mirroring existing orchestrator
+      safety behavior.
+- [ ] Aggregate token/cost usage from persona, dictionary blocks, tool sidecar,
+      and final persona response exactly once.
+- [ ] Cascade cancellation across the active persona request and nested
+      capability; preserve already-completed artifacts honestly.
+
+### Writer's Dictionary capabilities
+
+- [ ] `dictionary.lookup`: pass the persona-formulated word plus bounded excerpt/
+      conversational context to `lookupWord`; preserve usage/truncation/error.
+- [ ] `dictionary.full-entry`: call `generateParallelDictionary`, preserve the
+      combined entry and structured timing/success/partial-failure metadata, and
+      enforce the one-per-turn budget.
+- [ ] Render a compact expandable artifact such as “Writer's Dictionary ·
+      liminal · requested by Jill” before/alongside persona integration.
+- [ ] Feed the exact dictionary result to the persona as structured evidence;
+      the persona may extract, compare, or recommend wording but not fabricate
+      omitted sections.
+
+### Persona-requested analysis
+
+- [ ] Expose `analysis.run` through the same deterministic `WorkshopToolId`
+      allowlist and Sprint 06 side-pass use case.
+- [ ] Render the verbatim report and retain/replace the tool sidecar exactly as
+      a user-triggered run would.
+- [ ] Return the report as capability evidence to the persona and continue to a
+      separate synthesis response.
+- [ ] Keep user-selected and persona-requested tool provenance distinguishable
+      in turns/status/logs without changing the tool's analysis contract.
+
+### Prompts, presentation, and observability
+
+- [ ] Extend the shared persona base prompt with the exact capability schema,
+      when each capability is appropriate, the autonomy granted, and the call
+      budget. Persona-specific prompts must not redefine the allowlist.
+- [ ] Show deterministic progress (“Jill is checking the Writer's Dictionary
+      for ‘liminal’…”) while hiding raw protocol tags/JSON from the thread.
+- [ ] Add accessible artifacts for dictionary lookup/full entry and reuse tool
+      artifacts for analysis calls.
+- [ ] Log request id, persona id, capability, bounded input summary, outcome,
+      duration, partial failures, and cancellation without logging API keys or
+      entire private excerpts.
+- [ ] Surface nested usage through the existing token rail.
+
+### Tests and documentation
+
+- [ ] Parser tests: every valid variant plus malformed, unknown, oversized,
+      injected/quoted, duplicate, and mixed prose/request cases.
+- [ ] Capability-dispatch tests proving direct service/use-case invocation and
+      exhaustive allowlist behavior.
+- [ ] Loop tests for no call, one call, multiple allowed calls, over-budget,
+      forced final response, cancellation, failure, and partial dictionary
+      result.
+- [ ] Writer's Dictionary tests for persona-formulated inputs, metadata/artifact
+      fidelity, and exact evidence returned to the host.
+- [ ] Analysis tests proving persona requests reuse sidecar semantics and never
+      replace/impersonate the host.
+- [ ] Token/status/logging tests across nested calls and reload snapshot tests
+      for completed artifacts.
+- [ ] Update architecture, prompt-resource, and Workshop session documentation.
+
+## Acceptance Criteria
+
+- Jill or any selected persona can decide a word merits a Writer's Dictionary
+  lookup, formulate the request from the excerpt/conversation, invoke it without
+  explicit user prompting, and integrate the returned result into the thread.
+- Both focused lookup and full parallel Writer's Dictionary entry are available;
+  full-entry metadata and partial failures remain inspectable.
+- The thread shows a compact attributed dictionary artifact plus the persona's
+  separate synthesis; raw protocol markup never appears.
+- A persona can request any allowlisted analysis tool; it runs as the same
+  isolated retained sidecar used by a user click and produces a verbatim report
+  before persona synthesis.
+- Unknown/malformed/oversized/over-budget requests never execute a service and
+  yield an honest bounded failure path.
+- Cancellation, token accounting, status, and logs include nested capability
+  work correctly.
+- No capability path imports VS Code/React/provider types into the application
+  contract or routes through another domain handler.
+- Lint, typecheck, focused/full tests, build, bundle verification, and
+  `git diff --check` pass. Record bundle deltas.
+
+## Suggested Implementation Order
+
+1. Capability contracts, parser, validation, and exhaustive dispatch tests.
+2. Bounded persona capability loop with cancellation/usage accounting.
+3. Focused and full Writer's Dictionary adapters/artifacts.
+4. Persona-requested analysis through the Sprint 06 side-pass use case.
+5. Prompt updates, observability, full tests, and F5 smoke.
+
+## Guardrails
+
+- The model proposes requests; the host validates and executes them.
+- Do not grant filesystem, shell, settings, secrets, or arbitrary message
+  capabilities through this broker.
+- Do not let dictionary or analysis results disappear into persona paraphrase;
+  preserve inspectable artifacts/provenance.
+- Do not add a generic reflection-based service registry. The three allowed
+  capabilities are an explicit closed dispatch table.
+- Do not combine this sprint with retained workspace-context loading. That
+  feature has different path-containment and privacy boundaries.

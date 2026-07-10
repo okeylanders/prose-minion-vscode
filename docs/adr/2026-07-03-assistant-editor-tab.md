@@ -1,9 +1,10 @@
 # ADR 2026-07-03: Assistant as a Full Editor Tab (the Workshop)
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-07-03
 **Design source:** [docs/design/Prose Minion - Assistant Tab.html](../design/Prose%20Minion%20-%20Assistant%20Tab.html) — the approved "Direction B (Split & Pinned)" interactive prototype, pulled from claude.ai/design project `1219f905-e11d-4b1a-9fc9-f72634b10f4c` on 2026-07-03 (see [docs/design/README.md](../design/README.md))
 **Builds on:** [ADR 2026-06-16 — Monorepo Ports & Adapters](2026-06-16-monorepo-ports-and-adapters.md), [ADR 2026-06-18 — MessageHandler Composition-Root Consolidation](2026-06-18-messagehandler-composition-root-consolidation.md)
+**Extended by:** [ADR 2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](2026-07-09-workshop-persona-hosted-conversations.md)
 
 ## Context
 
@@ -161,6 +162,11 @@ sidebar and Workshop is acceptable in alpha.
   ADR made that a mechanical, tested seam — this is the first real proof.
 
 ## Sequencing (proposed epic: `epic-workshop-editor-tab-2026-07-03`)
+
+Implementation split the original dense middle sprint and later added the
+persona-hosted conversation expansion. The live seven-sprint sequence is tracked
+in the [epic plan](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md); the three steps below preserve the
+original decision record.
 
 Each sprint independently shippable behind the command:
 
