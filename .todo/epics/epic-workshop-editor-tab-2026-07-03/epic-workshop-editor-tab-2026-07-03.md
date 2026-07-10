@@ -52,8 +52,9 @@ Each sprint is independently shippable behind the (initially unregistered)
 | 5 | `sprint/workshop-editor-tab-05-persona-chat` | [Persona host and browser](sprints/05-persona-chat.md) | The user can browse/select Jill or a specialist and start a retained host conversation before running a tool. |
 | 6 | `sprint/workshop-editor-tab-06-tool-side-pass` | [Retained tool sidecars and direct mode](sprints/06-tool-side-pass.md) | Every tool run preserves a verbatim report, feeds the host, and remains available for explicit direct follow-up. |
 | 7 | `sprint/workshop-editor-tab-07-persona-capabilities` | [Persona-callable capabilities](sprints/07-persona-capabilities.md) | Personas autonomously invoke bounded Writer's Dictionary and analysis capabilities through a typed host boundary. |
+| 8 | `sprint/workshop-editor-tab-08-actionable-tool-todos` | [Actionable tool To-do List](sprints/08-actionable-tool-todos.md) | Writers promote attributable tool findings into a durable task list the persona can see as bounded evidence. |
 
-Final step after Sprint 7 merges: resolve the shared markdown-sanitization gate,
+Final step after Sprint 8 merges: resolve the shared markdown-sanitization gate,
 then open one PR `epic/workshop-editor-tab → main`.
 
 ## Architectural Invariants (hold across every sprint)

@@ -723,7 +723,7 @@
 }
 [data-pm-surface="workshop"] .pm-ws-composer {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 11px;
   background: var(--pm-surface);
   border: 1px solid var(--pm-border-2);
@@ -745,7 +745,13 @@
 [data-pm-surface="workshop"] .pm-ws-comp-input {
   flex: 1;
   min-width: 0;
+  min-height: 72px;
+  max-height: 240px;
+  box-sizing: border-box;
+  resize: none;
+  overflow-y: auto;
   font-size: 14px;
+  line-height: 1.45;
   font-family: var(--pm-sans);
   color: var(--pm-text);
   background: transparent;
@@ -758,8 +764,15 @@
 }
 [data-pm-surface="workshop"] .pm-ws-comp-right {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 10px;
+}
+[data-pm-surface="workshop"] .pm-ws-composer-hint {
+  margin: 6px 2px 0;
+  color: var(--pm-faint);
+  font-size: 11px;
+  text-align: right;
 }
 [data-pm-surface="workshop"] .pm-ws-comp-pill {
   display: inline-flex;

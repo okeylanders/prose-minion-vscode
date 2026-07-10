@@ -42,18 +42,41 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   onOpenTools
 }) => {
   const [draft, setDraft] = React.useState('');
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   const trimmed = draft.trim();
   const canSend = canMessage && trimmed.length > 0;
 
-  const submit = (event: React.FormEvent) => {
-    event.preventDefault();
+  const sendDraft = () => {
     if (!canSend) {
       return;
     }
     onSend(trimmed);
     setDraft('');
   };
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    sendDraft();
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Enter sends; Shift+Enter remains native textarea behavior so writers can
+    // compose a deliberate multi-line prompt without fighting the form.
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      sendDraft();
+    }
+  };
+
+  React.useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      return;
+    }
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 240)}px`;
+  }, [draft]);
 
   const placeholder = hasConversation
     ? `Continue with ${recipientLabel}…`
@@ -71,11 +94,13 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
         >
           <Icon name="plus" size={18} />
         </button>
-        <input
+        <textarea
+          ref={textareaRef}
           className="pm-ws-comp-input"
-          type="text"
+          rows={3}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={handleKeyDown}
           disabled={!canMessage}
           placeholder={placeholder}
           aria-label={`Message ${recipientLabel}`}
@@ -116,6 +141,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
           )}
         </div>
       </form>
+      <p className="pm-ws-composer-hint">Enter to send · Shift+Enter for a new line</p>
     </div>
   );
 };
