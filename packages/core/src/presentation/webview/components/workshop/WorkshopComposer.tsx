@@ -1,11 +1,11 @@
 /**
  * WorkshopComposer — the free-text follow-up bar (ADR 2026-07-03, Sprint 3).
  *
- * Sends WORKSHOP_SEND_MESSAGE through the callback (the host continues the
- * session's retained conversation); while a run streams, the send button
- * becomes a stop affordance wired to CANCEL_WORKSHOP_REQUEST. The composer
- * enables only when a conversation exists — the first tool run opens it —
- * and the placeholder says so instead of leaving a mystery-disabled input.
+ * Sends WORKSHOP_SEND_MESSAGE through the callback; the host decides whether
+ * that starts/continues the selected persona or an explicit direct-tool
+ * target. A pinned excerpt enables the first host message before any tool has
+ * run. While a run streams, the send button becomes a stop affordance wired
+ * to CANCEL_WORKSHOP_REQUEST.
  *
  * The draft is deliberately LOCAL state: it's unsent user input, not session
  * truth, so it doesn't belong in WorkshopSessionService (and losing it on a
@@ -16,10 +16,12 @@ import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
 
 interface WorkshopComposerProps {
-  /** A conversation exists and no run is in flight — sending is possible. */
-  canFollowUp: boolean;
-  /** A conversation exists (drives placeholder copy). */
+  /** A valid excerpt is pinned and no run is in flight — sending is possible. */
+  canMessage: boolean;
+  /** The current recipient already has a retained conversation (drives copy). */
   hasConversation: boolean;
+  /** Deterministic current-recipient label for visible, accessible composer language. */
+  recipientLabel: string;
   /** A run is streaming — show stop instead of send. */
   isRunning: boolean;
   /** First host snapshot has arrived. */
@@ -30,8 +32,9 @@ interface WorkshopComposerProps {
 }
 
 export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
-  canFollowUp,
+  canMessage,
   hasConversation,
+  recipientLabel,
   isRunning,
   sessionReady,
   onSend,
@@ -39,12 +42,12 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   onOpenTools
 }) => {
   const [draft, setDraft] = React.useState('');
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   const trimmed = draft.trim();
-  const canSend = canFollowUp && trimmed.length > 0;
+  const canSend = canMessage && trimmed.length > 0;
 
-  const submit = (event: React.FormEvent) => {
-    event.preventDefault();
+  const sendDraft = () => {
     if (!canSend) {
       return;
     }
@@ -52,9 +55,32 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
     setDraft('');
   };
 
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    sendDraft();
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Enter sends; Shift+Enter remains native textarea behavior so writers can
+    // compose a deliberate multi-line prompt without fighting the form.
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      sendDraft();
+    }
+  };
+
+  React.useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      return;
+    }
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 240)}px`;
+  }, [draft]);
+
   const placeholder = hasConversation
-    ? 'Ask a follow-up — it continues this conversation…'
-    : 'Run a tool to start the conversation, then follow up here.';
+    ? `Continue with ${recipientLabel}…`
+    : `Message ${recipientLabel} about this excerpt…`;
 
   return (
     <div className="pm-ws-composer-wrap">
@@ -68,14 +94,16 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
         >
           <Icon name="plus" size={18} />
         </button>
-        <input
+        <textarea
+          ref={textareaRef}
           className="pm-ws-comp-input"
-          type="text"
+          rows={3}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          disabled={!sessionReady}
+          onKeyDown={handleKeyDown}
+          disabled={!canMessage}
           placeholder={placeholder}
-          aria-label="Message the Workshop"
+          aria-label={`Message ${recipientLabel}`}
         />
         <div className="pm-ws-comp-right">
           <button
@@ -103,16 +131,17 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
               disabled={!canSend}
               title={
                 hasConversation
-                  ? 'Send follow-up'
-                  : 'Run a tool first — follow-ups continue its conversation'
+                  ? `Continue with ${recipientLabel}`
+                  : `Message ${recipientLabel}`
               }
-              aria-label="Send follow-up"
+              aria-label={`Send message to ${recipientLabel}`}
             >
               <Icon name="send" size={16} />
             </button>
           )}
         </div>
       </form>
+      <p className="pm-ws-composer-hint">Enter to send · Shift+Enter for a new line</p>
     </div>
   );
 };

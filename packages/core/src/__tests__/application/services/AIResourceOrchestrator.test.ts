@@ -32,6 +32,7 @@ describe('AIResourceOrchestrator', () => {
 
     mockConversationManager = {
       startConversation: jest.fn().mockReturnValue('conv-123'),
+      pinConversation: jest.fn(),
       addMessage: jest.fn(),
       getMessages: jest.fn().mockReturnValue([]),
       deleteConversation: jest.fn(),
@@ -567,6 +568,110 @@ describe('AIResourceOrchestrator', () => {
 
       expect(result.conversationId).toBeUndefined();
       expect(realManager.getActiveConversationCount()).toBe(0);
+    });
+  });
+
+  describe('executeWithoutCapabilities retained lifecycle — Sprint 05 persona host', () => {
+    it('pins immediately, records only the completed exchange, and returns the retained id', async () => {
+      mockConversationManager.getMessages.mockReturnValue([
+        { role: 'system', content: 'System' },
+        { role: 'user', content: 'User' }
+      ] as any);
+      mockOpenRouterClient.createChatCompletion.mockResolvedValue({
+        content: 'A complete host reply.',
+        finishReason: 'stop',
+        usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 }
+      });
+
+      const result = await orchestrator.executeWithoutCapabilities(
+        'workshop_persona_jill',
+        'System',
+        'User',
+        { retainConversation: true }
+      );
+
+      expect(mockConversationManager.pinConversation).toHaveBeenCalledWith('conv-123');
+      expect(mockConversationManager.addMessage).toHaveBeenNthCalledWith(1, 'conv-123', {
+        role: 'user', content: 'User'
+      });
+      expect(mockConversationManager.addMessage).toHaveBeenNthCalledWith(2, 'conv-123', {
+        role: 'assistant', content: 'A complete host reply.'
+      });
+      expect(mockConversationManager.deleteConversation).not.toHaveBeenCalled();
+      expect(result.conversationId).toBe('conv-123');
+      expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+        '[AIResourceOrchestrator] Conversation conv-123 retained for continuation'
+      );
+    });
+
+    it('deletes a cancelled retained stream and never returns a partial conversation', async () => {
+      const controller = new AbortController();
+      mockConversationManager.getMessages.mockReturnValue([]);
+      mockOpenRouterClient.createStreamingChatCompletion = jest.fn(async function* () {
+        yield { token: 'partial ' };
+        controller.abort();
+        const abort = new Error('aborted');
+        abort.name = 'AbortError';
+        throw abort;
+      }) as any;
+
+      const result = await orchestrator.executeWithoutCapabilities(
+        'workshop_persona_jill',
+        'System',
+        'User',
+        { retainConversation: true, signal: controller.signal, onToken: jest.fn() }
+      );
+
+      expect(result.cancelled).toBe(true);
+      expect(result.conversationId).toBeUndefined();
+      expect(mockConversationManager.deleteConversation).toHaveBeenCalledWith('conv-123');
+      expect(mockConversationManager.addMessage).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not retain a host conversation when abort lands after its final streaming chunk', async () => {
+      const controller = new AbortController();
+      mockConversationManager.getMessages.mockReturnValue([]);
+      mockOpenRouterClient.createStreamingChatCompletion = jest.fn(async function* () {
+        yield { token: 'finished reply' };
+        controller.abort();
+        yield { done: true, finishReason: 'stop' };
+      }) as any;
+
+      const result = await orchestrator.executeWithoutCapabilities(
+        'workshop_persona_jill',
+        'System',
+        'User',
+        { retainConversation: true, signal: controller.signal, onToken: jest.fn() }
+      );
+
+      expect(result.cancelled).toBe(true);
+      expect(result.conversationId).toBeUndefined();
+      expect(mockConversationManager.deleteConversation).toHaveBeenCalledWith('conv-123');
+      expect(mockConversationManager.addMessage).toHaveBeenCalledTimes(1);
+    });
+
+    it('deletes a retained conversation when the provider errors before a completed exchange', async () => {
+      mockConversationManager.getMessages.mockReturnValue([]);
+      mockOpenRouterClient.createChatCompletion.mockRejectedValue(new Error('network failed'));
+
+      await expect(
+        orchestrator.executeWithoutCapabilities('workshop_persona_jill', 'System', 'User', { retainConversation: true })
+      ).rejects.toThrow('network failed');
+
+      expect(mockConversationManager.pinConversation).toHaveBeenCalledWith('conv-123');
+      expect(mockConversationManager.deleteConversation).toHaveBeenCalledWith('conv-123');
+      expect(mockConversationManager.addMessage).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps the existing single-shot deletion behavior when retention is omitted', async () => {
+      mockConversationManager.getMessages.mockReturnValue([]);
+      mockOpenRouterClient.createChatCompletion.mockResolvedValue({ content: 'One shot.' });
+
+      const result = await orchestrator.executeWithoutCapabilities('single', 'System', 'User');
+
+      expect(result.conversationId).toBeUndefined();
+      expect(mockConversationManager.pinConversation).not.toHaveBeenCalled();
+      expect(mockConversationManager.deleteConversation).toHaveBeenCalledWith('conv-123');
     });
   });
 

@@ -19,6 +19,7 @@ interface WorkshopToolsModalProps {
   open: boolean;
   activeToolId: WorkshopToolId | null;
   disabled?: boolean;
+  unavailableMessage?: string;
   onClose: () => void;
   onSelect: (toolId: WorkshopToolId) => void;
 }
@@ -30,6 +31,7 @@ export const WorkshopToolsModal: React.FC<WorkshopToolsModalProps> = ({
   open,
   activeToolId,
   disabled = false,
+  unavailableMessage,
   onClose,
   onSelect
 }) => {
@@ -64,6 +66,7 @@ export const WorkshopToolsModal: React.FC<WorkshopToolsModalProps> = ({
             <div className="pm-ws-eyebrow">Prose Excerpt Assistant</div>
             <h2 id="pm-ws-tools-title">Writing Tools</h2>
             <p>Pick an analysis. Each runs on your pinned excerpt with the context brief attached.</p>
+            {unavailableMessage && <p className="pm-ws-tools-modal-notice" role="status">{unavailableMessage}</p>}
           </div>
           <button className="pm-ws-modal-close" type="button" onClick={onClose} aria-label="Close tools">
             <Icon name="x" size={16} />

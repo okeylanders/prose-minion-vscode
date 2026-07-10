@@ -29,6 +29,13 @@ const makeOrchestrator = (label: string) =>
       finishReason: 'stop',
       conversationId: 'conv-1'
     }),
+    executeWithoutCapabilities: jest.fn().mockResolvedValue({
+      content: `started by ${label}`,
+      usedGuides: [],
+      usage: undefined,
+      finishReason: 'stop',
+      conversationId: 'host-conv'
+    }),
     discardConversation: jest.fn()
   }) as unknown as jest.Mocked<AIResourceOrchestrator> & { label: string };
 
@@ -119,5 +126,74 @@ describe('AssistantToolService — continuation generation symmetry', () => {
     expect(result.content).toContain(API_KEY_NOT_CONFIGURED_HEADING);
     // And discard is safe with nothing captured.
     expect(() => service.discardConversation('conv-1')).not.toThrow();
+  });
+
+  it('starts a persona with base + curated prompt on the captured generation', async () => {
+    const generation1 = makeOrchestrator('gen-1');
+    const generation2 = makeOrchestrator('gen-2');
+    let liveOrchestrator: AIResourceOrchestrator = generation1;
+    const loadPrompts = jest.fn().mockResolvedValue('assembled system prompt');
+    const manager = {
+      initializeResources: jest.fn().mockResolvedValue(undefined),
+      getOrchestrator: jest.fn(() => liveOrchestrator),
+      setStatusCallback: jest.fn()
+    } as unknown as AIResourceManager;
+    const service = new AssistantToolService(
+      manager,
+      { getPromptLoader: () => ({ loadPrompts }) } as unknown as ResourceLoaderService,
+      { getOptions: jest.fn().mockReturnValue({ temperature: 0.7, maxTokens: 1000 }) } as unknown as ToolOptionsProvider,
+      { appendLine: jest.fn() } as never
+    );
+    await flush();
+    liveOrchestrator = generation2;
+
+    const result = await service.startWorkshopPersonaConversation({
+      personaId: 'quinn',
+      excerpt: { text: 'The cup moves from the table to her hand.', relativePath: 'chapter.md', pinnedAt: 1 },
+      message: 'Track the cup.',
+      contextBrief: 'Mara has just entered the kitchen.'
+    });
+
+    expect(loadPrompts).toHaveBeenCalledWith([
+      'workshop-personas/base.md',
+      'workshop-personas/quinn.md'
+    ]);
+    expect(generation1.executeWithoutCapabilities).toHaveBeenCalledWith(
+      'workshop_persona_quinn',
+      'assembled system prompt',
+      expect.stringContaining('<pinned-excerpt>'),
+      expect.objectContaining({ retainConversation: true })
+    );
+    expect(generation2.executeWithoutCapabilities).not.toHaveBeenCalled();
+    expect(generation1.executeWithoutCapabilities.mock.calls[0][2]).toContain('<context-brief>');
+    expect(result.conversationId).toBe('host-conv');
+  });
+
+  it('discloses a direct-pinned excerpt head slice in the persona message', async () => {
+    const generation = makeOrchestrator('gen-1');
+    const manager = {
+      initializeResources: jest.fn().mockResolvedValue(undefined),
+      getOrchestrator: jest.fn(() => generation),
+      setStatusCallback: jest.fn()
+    } as unknown as AIResourceManager;
+    const service = new AssistantToolService(
+      manager,
+      { getPromptLoader: () => ({ loadPrompts: jest.fn().mockResolvedValue('system prompt') }) } as unknown as ResourceLoaderService,
+      { getOptions: jest.fn().mockReturnValue({ temperature: 0.7, maxTokens: 1000 }) } as unknown as ToolOptionsProvider,
+      { appendLine: jest.fn() } as never
+    );
+    await flush();
+    const excerpt = Array.from({ length: 10_001 }, (_, index) => `word${index}`).join(' ');
+
+    await service.startWorkshopPersonaConversation({
+      personaId: 'jill',
+      excerpt: { text: excerpt, pinnedAt: 1 },
+      message: 'Read this.'
+    });
+
+    const userMessage = generation.executeWithoutCapabilities.mock.calls[0][2];
+    expect(userMessage).toContain('Persona input is a head slice: 10000 of 10001 pinned words.');
+    expect(userMessage).toContain('word9999');
+    expect(userMessage).not.toContain('word10000');
   });
 });

@@ -17,6 +17,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { PromptLoader } from '@/tools/shared/prompts';
 import { FileSystem, FileType, FileStat } from '@/platform';
+import { WORKSHOP_PERSONA_CATALOG } from '@shared/constants/workshopPersonas';
 
 // Minimal Node-fs implementation of the FileSystem port. The loader only needs
 // readFile; the rest are implemented for interface honesty and double as a
@@ -79,6 +80,13 @@ describe('D22 — staged resources resolve through the runtime loader', () => {
     const loader = new PromptLoader(stageRoot, nodeFileSystem);
     const content = await loader.loadPrompt('dictionary-utility/00-dictionary-utility.md');
     expect(content.trim().length).toBeGreaterThan(0);
+  });
+
+  it('stages and loads the shared Workshop base plus every persona prompt through PromptLoader', async () => {
+    const loader = new PromptLoader(stageRoot, nodeFileSystem);
+    const paths = ['workshop-personas/base.md', ...WORKSHOP_PERSONA_CATALOG.map((persona) => persona.promptPath)];
+
+    await expect(loader.loadPrompts(paths)).resolves.toContain('Workshop host contract');
   });
 
   it('the staged tree mirrors the core source (the copy drops no files)', () => {

@@ -48,6 +48,11 @@ const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessio
         totalTurns: turns.length,
         truncatedTurns: 0,
         hasConversation: false,
+        participants: {
+          host: { personaId: 'jill', hasConversation: false },
+          toolSidecars: [],
+          chatTarget: { kind: 'host' }
+        },
         ...session
       }
     },
@@ -162,7 +167,7 @@ describe('useWorkshop', () => {
     expect(result.current.selectedToolId).toBe('gestures');
     expect(result.current.activeToolId).toBeNull();
     expect(result.current.isRunning).toBe(false);
-    expect(result.current.canFollowUp).toBe(true);
+    expect(result.current.canMessage).toBe(true);
   });
 
   it('adopts a mid-run request from the snapshot so post-reload chunks attach', () => {
@@ -373,24 +378,56 @@ describe('useWorkshop', () => {
     expect(posted(MessageType.WORKSHOP_PICK_EXCERPT_FILE)).toHaveLength(1);
   });
 
-  // ── Sprint 3: composer enablement + cancel wire ──────────────────────────
-
-  it('canFollowUp tracks the session conversation and the run state', () => {
+  it('posts persona selection and direct-target changes, then restores both from a host snapshot', () => {
     const { result } = renderHook(() => useWorkshop());
-    expect(result.current.canFollowUp).toBe(false);
 
     act(() => {
-      result.current.handleSessionState(sessionState({ hasConversation: true }));
+      result.current.selectPersona('quinn');
+      result.current.setChatTarget({ kind: 'tool', toolId: 'continuity' });
+      result.current.handleSessionState(sessionState({
+        excerpt: { text: 'A pinned excerpt.', pinnedAt: 1 },
+        participants: {
+          host: { personaId: 'quinn', hasConversation: true },
+          toolSidecars: [{ toolId: 'continuity', hasConversation: true }],
+          chatTarget: { kind: 'tool', toolId: 'continuity' }
+        },
+        hasConversation: true
+      }));
     });
-    expect(result.current.hasConversation).toBe(true);
-    expect(result.current.canFollowUp).toBe(true);
+
+    expect(posted(MessageType.WORKSHOP_SELECT_PERSONA)[0].payload).toEqual({ personaId: 'quinn' });
+    expect(posted(MessageType.WORKSHOP_SET_CHAT_TARGET)[0].payload).toEqual({ kind: 'tool', toolId: 'continuity' });
+    expect(result.current.selectedPersonaId).toBe('quinn');
+    expect(result.current.hasHostConversation).toBe(true);
+    expect(result.current.chatTarget).toEqual({ kind: 'tool', toolId: 'continuity' });
+    expect(result.current.isPersonaSelectionLocked).toBe(true);
+  });
+
+  // ── Sprint 05: composer enablement + cancel wire ─────────────────────────
+
+  it('enables the composer for a pinned excerpt before a host conversation starts', () => {
+    const { result } = renderHook(() => useWorkshop());
+    expect(result.current.canMessage).toBe(false);
+
+    act(() => {
+      result.current.handleSessionState(sessionState({
+        excerpt: { text: 'A pinned excerpt.', pinnedAt: 1 },
+        participants: {
+          host: { personaId: 'jill', hasConversation: false },
+          toolSidecars: [],
+          chatTarget: { kind: 'host' }
+        }
+      }));
+    });
+    expect(result.current.hasHostConversation).toBe(false);
+    expect(result.current.canMessage).toBe(true);
 
     // A live run suspends follow-ups without losing the conversation.
     act(() => {
       result.current.handleStreamStarted(streamStarted('req-1'));
     });
-    expect(result.current.canFollowUp).toBe(false);
-    expect(result.current.hasConversation).toBe(true);
+    expect(result.current.canMessage).toBe(false);
+    expect(result.current.hasHostConversation).toBe(false);
   });
 
   it('cancelRun posts the workshop cancel message for the live request only', () => {

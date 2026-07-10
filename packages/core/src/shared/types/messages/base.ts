@@ -109,6 +109,8 @@ export enum MessageType {
   WORKSHOP_RUN_TOOL = 'workshop_run_tool',
   WORKSHOP_QUICK_ACTION = 'workshop_quick_action',
   WORKSHOP_SEND_MESSAGE = 'workshop_send_message',
+  WORKSHOP_SELECT_PERSONA = 'workshop_select_persona',
+  WORKSHOP_SET_CHAT_TARGET = 'workshop_set_chat_target',
   WORKSHOP_SET_EXCERPT = 'workshop_set_excerpt',
   WORKSHOP_PICK_EXCERPT_FILE = 'workshop_pick_excerpt_file',
   WORKSHOP_RESET_SESSION = 'workshop_reset_session',

@@ -10,13 +10,13 @@
  * service (composition-root-owned, outlives this handler); the handler owns
  * only messaging, streaming, and run lifecycle.
  *
- * Sprint 3 turns the thread into a conversation: a successful tool run
- * RETAINS its orchestrator conversation (system prompt = that tool's prompt)
- * and the session adopts the id; WORKSHOP_SEND_MESSAGE continues it
- * (addMessage + re-request under the hood); WORKSHOP_RESET_SESSION and
- * replacement-by-new-tool-run discard it. CANCEL_WORKSHOP_REQUEST aborts the
- * in-flight run; WORKSHOP_PICK_EXCERPT_FILE seeds the excerpt from a host
- * file picker (ShellService.pickFile) with a head-slice guardrail.
+ * Sprint 05 makes the thread persona-hosted: WORKSHOP_SEND_MESSAGE starts or
+ * continues the selected host unless the session names a live tool sidecar as
+ * its explicit direct target. A pre-host tool run remains directly followable;
+ * once a host conversation begins, new tool runs are guarded until Sprint 06
+ * can perform a safe report-to-host side-pass. CANCEL_WORKSHOP_REQUEST aborts
+ * the in-flight run; WORKSHOP_PICK_EXCERPT_FILE seeds the excerpt through the
+ * ShellService port with a head-slice guardrail.
  *
  * Preemption semantics are unchanged from Sprint 2: a new run preempts any
  * in-flight one, reset aborts, and zombie completions are refused + logged.
@@ -26,6 +26,7 @@ import { FileSystem, FileType, LogSink, ShellService, Workspace } from '@/platfo
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
 import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
+import { isWorkshopPersonaId, workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopQuickActionPrompt } from '@shared/constants/workshopQuickActions';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import {
@@ -46,9 +47,12 @@ import {
   WorkshopQuickActionMessage,
   WorkshopRunToolMessage,
   WorkshopSendMessageMessage,
+  WorkshopSelectPersonaMessage,
+  WorkshopSetChatTargetMessage,
   WorkshopSetExcerptMessage,
   WorkshopSessionStateMessage,
   WorkshopToolId,
+  WorkshopChatTarget,
   WorkshopTurn,
   WorkshopTurnMessage,
   isApiKeyNotConfiguredWarning
@@ -61,9 +65,6 @@ import { MessageRouter } from '../MessageRouter';
 // Generate unique request IDs (module-scoped counter, same idiom as AnalysisHandler)
 let requestIdCounter = 0;
 const generateRequestId = (type: string) => `${type}-${Date.now()}-${++requestIdCounter}`;
-
-/** Display label for free-text follow-up runs (status ticker + log trail). */
-const FOLLOW_UP_LABEL = 'Follow-up';
 
 /**
  * Head-slice guardrail for "Pin from file…" (Sprint 3): pin at most this many
@@ -132,6 +133,8 @@ export class WorkshopHandler {
     router.register(MessageType.WORKSHOP_RUN_TOOL, this.handleRunTool.bind(this));
     router.register(MessageType.WORKSHOP_QUICK_ACTION, this.handleQuickAction.bind(this));
     router.register(MessageType.WORKSHOP_SEND_MESSAGE, this.handleSendMessage.bind(this));
+    router.register(MessageType.WORKSHOP_SELECT_PERSONA, this.handleSelectPersona.bind(this));
+    router.register(MessageType.WORKSHOP_SET_CHAT_TARGET, this.handleSetChatTarget.bind(this));
     router.register(MessageType.WORKSHOP_SET_EXCERPT, this.handleSetExcerpt.bind(this));
     router.register(MessageType.WORKSHOP_PICK_EXCERPT_FILE, this.handlePickExcerptFile.bind(this));
     router.register(MessageType.WORKSHOP_RESET_SESSION, this.handleResetSession.bind(this));
@@ -173,6 +176,17 @@ export class WorkshopHandler {
       return;
     }
 
+    // Sprint 05 deliberately keeps a host prompt immutable. Tool side-passes
+    // and host synthesis arrive together in Sprint 06; until then a crafted
+    // message must not replace or contaminate an active host conversation.
+    if (this.session.hasHostConversation()) {
+      this.sendError(
+        'workshop.run_tool',
+        'Integrated tool runs arrive in Sprint 06. Start a new session to run a tool before persona chat.'
+      );
+      return;
+    }
+
     // A new run preempts any in-flight one: fresh turn, never continuation.
     this.preemptActiveRun();
 
@@ -181,7 +195,18 @@ export class WorkshopHandler {
     const controller = new AbortController();
     this.activeRun = { requestId, label: toolLabel, toolId, controller };
 
-    const userTurn = this.session.beginToolRun(toolId, requestId);
+    let userTurn;
+    try {
+      userTurn = this.session.beginToolRun(toolId, requestId);
+    } catch (error) {
+      this.activeRun = undefined;
+      this.sendError(
+        'workshop.run_tool',
+        'Integrated tool runs arrive in Sprint 06. Start a new session to run a tool before persona chat.',
+        error instanceof Error ? error.message : String(error)
+      );
+      return;
+    }
     this.postTurn(userTurn);
     // Snapshot after the user turn: keeps the replay cache fresh so a webview
     // that reloads mid-run rehydrates the attempt (and its active tool).
@@ -195,7 +220,8 @@ export class WorkshopHandler {
         onToken: (token: string) => {
           this.sendStreamChunk(requestId, token);
         },
-        // Sprint 3: a tool run opens the conversation follow-ups continue.
+        // Sprint 05: a pre-host tool run becomes a retained sidecar that
+        // direct-mode follow-ups can continue without changing any host prompt.
         retainConversation: true
       });
 
@@ -213,6 +239,9 @@ export class WorkshopHandler {
           `[WorkshopHandler] Run cancelled: ${requestId} (${toolLabel}, ${result.content.length} chars discarded)`
         );
         this.session.abandonRun(requestId);
+        if (result.conversationId) {
+          this.assistantToolService.discardConversation(result.conversationId);
+        }
         this.sendStreamComplete(requestId, '', true);
       } else if (isApiKeyNotConfiguredWarning(result.content)) {
         // Config problem, not an analysis: keep the thread clean and surface
@@ -222,7 +251,7 @@ export class WorkshopHandler {
         this.sendError('workshop.run_tool', 'OpenRouter API key not configured.', result.content);
       } else {
         this.sendStreamComplete(requestId, result.content, false, result.usage, truncated);
-        const previousConversationId = this.session.getConversationId();
+        const previousConversationId = this.session.getToolSidecarConversationId(toolId);
         const assistantTurn = this.session.completeRun(
           requestId,
           result.content,
@@ -234,8 +263,8 @@ export class WorkshopHandler {
         // the aggregate already refused the turn, so the thread stays honest.
         if (assistantTurn) {
           this.postTurn(assistantTurn);
-          // The fresh conversation replaces the previous run's — one live
-          // conversation per session, and the old one must not leak.
+          // The latest run replaces only its matching tool sidecar; a direct
+          // follow-up to another tool remains valid and private to the host.
           if (
             result.conversationId &&
             previousConversationId &&
@@ -243,7 +272,7 @@ export class WorkshopHandler {
           ) {
             this.assistantToolService.discardConversation(previousConversationId);
             this.outputChannel.appendLine(
-              `[WorkshopHandler] Conversation replaced: ${previousConversationId} → ${result.conversationId} (${toolLabel})`
+              `[WorkshopHandler] Tool sidecar replaced: ${previousConversationId} → ${result.conversationId} (${toolLabel})`
             );
           }
         } else {
@@ -274,11 +303,7 @@ export class WorkshopHandler {
     }
   }
 
-  /**
-   * Free-text follow-up (Sprint 3's headline): append the user's message to
-   * the session's retained conversation and stream the reply — a genuine
-   * continuation with the prior turns in context, not a cold restart.
-   */
+  /** The one composer message: host start/continuation or explicit direct tool. */
   async handleSendMessage(message: WorkshopSendMessageMessage): Promise<void> {
     const text = typeof message.payload?.text === 'string' ? message.payload.text.trim() : '';
     if (text.length === 0) {
@@ -286,7 +311,42 @@ export class WorkshopHandler {
       return;
     }
 
-    await this.executeFollowUp(text);
+    await this.executeMessage(text);
+  }
+
+  async handleSelectPersona(message: WorkshopSelectPersonaMessage): Promise<void> {
+    const personaId = message.payload?.personaId;
+    if (!isWorkshopPersonaId(personaId)) {
+      this.sendError('workshop.select_persona', `Unknown Workshop persona: ${String(personaId)}`);
+      return;
+    }
+    try {
+      this.session.selectPersona(personaId);
+      this.postSessionState();
+    } catch (error) {
+      this.sendError(
+        'workshop.select_persona',
+        'Choose a different persona by starting a new Workshop session.',
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  }
+
+  async handleSetChatTarget(message: WorkshopSetChatTargetMessage): Promise<void> {
+    const target = message.payload;
+    if (!target || (target.kind !== 'host' && target.kind !== 'tool')) {
+      this.sendError('workshop.set_chat_target', 'Invalid Workshop chat target.');
+      return;
+    }
+    if (target.kind === 'tool' && !isWorkshopToolId(target.toolId)) {
+      this.sendError('workshop.set_chat_target', `Unknown Workshop tool: ${String(target.toolId)}`);
+      return;
+    }
+    if (!this.session.setChatTarget(target)) {
+      this.sendError('workshop.set_chat_target', 'That tool conversation is no longer available.');
+      return;
+    }
+    this.postSessionState();
   }
 
   /**
@@ -313,51 +373,73 @@ export class WorkshopHandler {
       return;
     }
 
-    await this.executeFollowUp(prompt, actionLabel);
+    if (!this.session.setChatTarget({ kind: 'tool', toolId })) {
+      this.sendError('workshop.quick_action', 'That tool conversation is no longer available.');
+      return;
+    }
+    await this.executeMessage(prompt, actionLabel);
   }
 
-  private async executeFollowUp(text: string, displayText = text): Promise<void> {
-    const conversationId = this.session.getConversationId();
-    if (!conversationId) {
-      this.sendError(
-        'workshop.send_message',
-        'Run a tool first — follow-ups continue that tool\'s conversation.'
-      );
+  /** Route the one composer action to the stable host or explicit tool target. */
+  private async executeMessage(text: string, displayText = text): Promise<void> {
+    const target = this.session.getChatTarget();
+    const personaId = this.session.getSelectedPersonaId();
+    const hostConversationId = this.session.getHostConversationId();
+    const conversationId = target.kind === 'host'
+      ? hostConversationId
+      : this.session.getToolSidecarConversationId(target.toolId);
+
+    if (target.kind === 'tool' && !conversationId) {
+      this.sendError('workshop.send_message', 'That tool conversation is no longer available.');
+      return;
+    }
+    const excerpt = this.session.getExcerpt();
+    if (!excerpt || excerpt.text.trim().length === 0) {
+      this.sendError('workshop.send_message', 'Pin an excerpt before messaging the Workshop.');
       return;
     }
 
-    // Same preemption contract as tool runs: the newest request owns the slot.
     this.preemptActiveRun();
-
-    const requestId = generateRequestId('workshop_message');
+    const label = target.kind === 'host'
+      ? workshopPersonaLabel(personaId)
+      : workshopToolLabel(target.toolId);
+    const requestId = generateRequestId(target.kind === 'host' ? 'workshop_host' : 'workshop_tool_message');
     const controller = new AbortController();
-    this.activeRun = { requestId, label: FOLLOW_UP_LABEL, controller };
+    this.activeRun = { requestId, label, toolId: target.kind === 'tool' ? target.toolId : undefined, controller };
 
-    const userTurn = this.session.beginMessageRun(text, requestId, displayText);
+    const userTurn = target.kind === 'host'
+      ? this.session.beginPersonaMessage(requestId, displayText)
+      : this.session.beginDirectToolMessage(target.toolId, requestId, displayText);
     this.postTurn(userTurn);
     this.postSessionState();
     this.sendStreamStarted(requestId);
-    this.sendStatus('Streaming follow-up…');
+    this.sendStatus(`Streaming ${label}…`);
 
     try {
-      const result = await this.assistantToolService.continueConversation(conversationId, text, {
-        signal: controller.signal,
-        onToken: (token: string) => {
-          this.sendStreamChunk(requestId, token);
-        }
-      });
+      const result = conversationId
+        ? await this.assistantToolService.continueConversation(conversationId, text, {
+            signal: controller.signal,
+            onToken: (token: string) => this.sendStreamChunk(requestId, token)
+          })
+        : await this.assistantToolService.startWorkshopPersonaConversation({
+            personaId,
+            excerpt,
+            message: text,
+            contextBrief: this.session.getContextBrief()
+          }, {
+            signal: controller.signal,
+            onToken: (token: string) => this.sendStreamChunk(requestId, token)
+          });
 
-      const cancelled = controller.signal.aborted;
       const truncated = result.finishReason === 'length';
-
-      if (cancelled) {
-        // The orchestrator left the stored conversation untouched (user +
-        // assistant messages append atomically on completion only), so the
-        // next follow-up continues from the last COMPLETED exchange.
+      if (controller.signal.aborted) {
         this.outputChannel.appendLine(
-          `[WorkshopHandler] Run cancelled: ${requestId} (${FOLLOW_UP_LABEL}, ${result.content.length} chars discarded)`
+          `[WorkshopHandler] Run cancelled: ${requestId} (${label}, ${result.content.length} chars discarded)`
         );
         this.session.abandonRun(requestId);
+        if (result.conversationId) {
+          this.assistantToolService.discardConversation(result.conversationId);
+        }
         this.sendStreamComplete(requestId, '', true);
       } else if (isApiKeyNotConfiguredWarning(result.content)) {
         this.session.abandonRun(requestId);
@@ -365,12 +447,19 @@ export class WorkshopHandler {
         this.sendError('workshop.send_message', 'OpenRouter API key not configured.', result.content);
       } else {
         this.sendStreamComplete(requestId, result.content, false, result.usage, truncated);
-        const assistantTurn = this.session.completeRun(requestId, result.content, result.usage, truncated);
+        const assistantTurn = this.session.completeRun(
+          requestId,
+          result.content,
+          result.usage,
+          truncated,
+          result.conversationId
+        );
         if (assistantTurn) {
           this.postTurn(assistantTurn);
-        } else {
+        } else if (result.conversationId) {
+          this.assistantToolService.discardConversation(result.conversationId);
           this.outputChannel.appendLine(
-            `[WorkshopHandler] Discarded zombie completion: ${requestId} (${FOLLOW_UP_LABEL}) — session was reset or the run preempted mid-stream`
+            `[WorkshopHandler] Discarded zombie completion: ${requestId} (${label}) — session was reset or the run preempted mid-stream`
           );
         }
       }
@@ -380,22 +469,22 @@ export class WorkshopHandler {
       this.session.abandonRun(requestId);
       this.sendStreamComplete(requestId, '', true);
       if (error instanceof Error && error.name === 'ConversationNotFoundError') {
-        // The conversation died under us (config change rebuilt the AI
-        // resources). Be honest instead of silently cold-restarting: clear
-        // the stale reference so the composer disables, and say why.
-        this.session.clearConversation();
+        // A configuration/resource rebuild invalidates the assistant
+        // generation as a whole, not merely the id that happened to be used.
+        const discardedConversationIds = this.session.clearAllConversations();
+        this.discardConversations(discardedConversationIds);
         this.outputChannel.appendLine(
-          `[WorkshopHandler] Conversation lost for follow-up ${requestId}: ${details}`
+          `[WorkshopHandler] Conversation generation lost (${discardedConversationIds.length} conversations discarded: ${discardedConversationIds.join(', ') || 'none'}): ${details}`
         );
         this.sendError(
           'workshop.send_message',
-          'This conversation is no longer available (settings changed). Run a tool to start a new one.',
-          details
+          'This Workshop conversation is no longer available because settings changed. Send a new message to start the selected host again.',
+          'The retained conversation could not be found. Details were recorded in the Prose Minion output channel.'
         );
       } else if (error instanceof Error && error.name === 'AbortError') {
-        this.sendStatus(`${FOLLOW_UP_LABEL} cancelled`);
+        this.sendStatus(`${label} cancelled`);
       } else {
-        this.sendError('workshop.send_message', 'Failed to send follow-up', details);
+        this.sendError('workshop.send_message', `Failed to message ${label}`, details);
       }
       this.postSessionState();
     } finally {
@@ -560,15 +649,9 @@ export class WorkshopHandler {
 
   async handleResetSession(_message: WorkshopResetSessionMessage): Promise<void> {
     this.preemptActiveRun();
-    const discardedConversationId = this.session.reset();
-    if (discardedConversationId) {
-      this.assistantToolService.discardConversation(discardedConversationId);
-    }
-    this.outputChannel.appendLine(
-      `[WorkshopHandler] Session reset${
-        discardedConversationId ? ` (conversation ${discardedConversationId} discarded)` : ''
-      }`
-    );
+    const discardedConversationIds = this.session.reset();
+    this.discardConversations(discardedConversationIds);
+    this.outputChannel.appendLine(`[WorkshopHandler] Session reset (${discardedConversationIds.length} conversations discarded)`);
     this.postSessionState();
   }
 
@@ -638,14 +721,19 @@ export class WorkshopHandler {
     relativePath?: string;
     truncation?: WorkshopExcerptTruncation;
   }): void {
-    const discardedConversationId = this.session.clearConversation();
-    if (discardedConversationId) {
-      this.assistantToolService.discardConversation(discardedConversationId);
+    const discardedConversationIds = this.session.replaceExcerpt(input);
+    this.discardConversations(discardedConversationIds);
+    if (discardedConversationIds.length > 0) {
       this.outputChannel.appendLine(
-        `[WorkshopHandler] Conversation discarded after excerpt replacement: ${discardedConversationId}`
+        `[WorkshopHandler] ${discardedConversationIds.length} conversations discarded after excerpt replacement`
       );
     }
-    this.session.setExcerpt(input);
+  }
+
+  private discardConversations(conversationIds: readonly string[]): void {
+    for (const conversationId of conversationIds) {
+      this.assistantToolService.discardConversation(conversationId);
+    }
   }
 
   private toDisplayPath(filePath: string): string {

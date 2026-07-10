@@ -39,12 +39,16 @@ import { ExcerptPanel } from './components/workshop/ExcerptPanel';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopThread } from './components/workshop/WorkshopThread';
 import { WorkshopToolsModal } from './components/workshop/WorkshopToolsModal';
+import { WorkshopPersonaBrowserModal } from './components/workshop/WorkshopPersonaBrowserModal';
 import { WorkshopToast, WorkshopToastState } from './components/workshop/WorkshopToast';
 import { WORKSHOP_TOOL_ICONS } from './components/workshop/workshopToolIcons';
+import { WORKSHOP_PERSONA_FOCUS_ICONS } from './components/workshop/workshopPersonaIcons';
 import {
   WORKSHOP_TOOL_CATALOG,
-  WorkshopToolDescriptor
+  WorkshopToolDescriptor,
+  workshopToolLabel
 } from '@shared/constants/workshopTools';
+import { DEFAULT_WORKSHOP_PERSONA_ID, getWorkshopPersona } from '@shared/constants/workshopPersonas';
 import { resultToolNameForWorkshopTool } from '@shared/constants/resultToolNames';
 import { useVSCodeApi } from './hooks/useVSCodeApi';
 import { usePersistence } from './hooks/usePersistence';
@@ -117,6 +121,7 @@ export const WorkshopApp: React.FC = () => {
   const tokenTracking = useTokenTracking();
   const [hasSavedKey, setHasSavedKey] = React.useState(false);
   const [toolsModalOpen, setToolsModalOpen] = React.useState(false);
+  const [personaModalOpen, setPersonaModalOpen] = React.useState(false);
   const [toast, setToast] = React.useState<WorkshopToastState | null>(null);
   const accountBalance = useAccountBalance({ apiKeyConfigured: hasSavedKey });
 
@@ -234,7 +239,13 @@ export const WorkshopApp: React.FC = () => {
     }
   }, [workshop.turns, workshop.streamingContent, workshop.isRunning]);
 
-  const toolsEnabled = !!workshop.excerpt && !workshop.isRunning && workshop.sessionReady;
+  const toolsEnabled =
+    !!workshop.excerpt && !workshop.isRunning && workshop.sessionReady && !workshop.hasHostConversation;
+  const activePersona = getWorkshopPersona(workshop.selectedPersonaId)
+    ?? getWorkshopPersona(DEFAULT_WORKSHOP_PERSONA_ID)!;
+  const chatTargetLabel = workshop.chatTarget.kind === 'tool'
+    ? workshopToolLabel(workshop.chatTarget.toolId)
+    : activePersona.label;
 
   // Recomputing a full word split per streamed token was O(excerpt) work on
   // the token clock (PR #67 review #11) — the excerpt only changes on re-pin.
@@ -256,6 +267,18 @@ export const WorkshopApp: React.FC = () => {
     },
     [workshop.runTool]
   );
+  const openPersonaModal = React.useCallback(() => setPersonaModalOpen(true), []);
+  const closePersonaModal = React.useCallback(() => setPersonaModalOpen(false), []);
+  const selectPersona = React.useCallback(
+    (personaId: typeof workshop.selectedPersonaId) => {
+      setPersonaModalOpen(false);
+      workshop.selectPersona(personaId);
+    },
+    [workshop.selectPersona]
+  );
+  const returnToHost = React.useCallback(() => {
+    workshop.setChatTarget({ kind: 'host' });
+  }, [workshop.setChatTarget]);
 
   const copyVariation = React.useCallback(
     (content: string, toolId: WorkshopToolId | null) => {
@@ -335,6 +358,25 @@ export const WorkshopApp: React.FC = () => {
           </div>
         </div>
         <div className="pm-ws-header-actions">
+          <button
+            className="pm-ws-persona-trigger"
+            type="button"
+            disabled={!workshop.sessionReady || workshop.isPersonaSelectionLocked}
+            onClick={openPersonaModal}
+            title={
+              workshop.isPersonaSelectionLocked
+                ? workshop.hasHostConversation
+                  ? 'Start a new session to choose a different writing partner'
+                  : 'Wait for the current run to finish before choosing a writing partner'
+                : 'Choose a writing partner'
+            }
+          >
+            <Icon name="person" size={15} />
+            <span className="pm-ws-persona-trigger-badge" aria-hidden="true">
+              <Icon name={WORKSHOP_PERSONA_FOCUS_ICONS[activePersona.id]} size={10} />
+            </span>
+            {activePersona.label}
+          </button>
           <button
             className="pm-ws-reset"
             type="button"
@@ -419,7 +461,9 @@ export const WorkshopApp: React.FC = () => {
                     disabled={!toolsEnabled}
                     onClick={() => workshop.runTool(tool.id)}
                     title={
-                      workshop.excerpt
+                      workshop.hasHostConversation
+                        ? 'Integrated tool runs arrive in Sprint 06. Start a new session to run a tool first.'
+                        : workshop.excerpt
                         ? `Run ${tool.label} on the pinned excerpt`
                         : 'Pin an excerpt first'
                     }
@@ -431,8 +475,9 @@ export const WorkshopApp: React.FC = () => {
                   className="pm-ws-tool pm-ws-tool-ghost"
                   type="button"
                   role="listitem"
-                  disabled={!workshop.sessionReady}
+                  disabled={!workshop.sessionReady || workshop.hasHostConversation}
                   onClick={openToolsModal}
+                  title={workshop.hasHostConversation ? 'Integrated tool runs arrive in Sprint 06.' : 'All writing tools'}
                 >
                   <Icon name="grid" size={15} /> All {WORKSHOP_TOOLS.length} tools…
                 </button>
@@ -467,12 +512,12 @@ export const WorkshopApp: React.FC = () => {
                   <Icon name="sparkle" size={22} />
                   <p className="pm-ws-thread-empty-title">
                     {workshop.excerpt
-                      ? 'Your excerpt is pinned. Pick a lens.'
+                      ? `Your excerpt is pinned. Message ${activePersona.label}.`
                       : 'Pin an excerpt to start the Workshop.'}
                   </p>
                   <p className="pm-ws-thread-empty-sub">
                     {workshop.excerpt
-                      ? 'Run a tool from the rail, open the full palette, or use one of these quick starts.'
+                      ? `Ask ${activePersona.label} directly, or run a tool before persona chat for a direct follow-up.`
                       : 'Paste text or pin a file on the left. The excerpt stays fixed while the conversation grows here.'}
                   </p>
                   {workshop.excerpt && (
@@ -503,7 +548,7 @@ export const WorkshopApp: React.FC = () => {
               <WorkshopThread
                 turns={workshop.turns}
                 selectedToolId={workshop.selectedToolId}
-                quickActionsDisabled={!workshop.canFollowUp}
+                quickActionsDisabled={!workshop.canMessage}
                 onQuickAction={workshop.quickAction}
                 onCopyVariation={copyVariation}
                 onSaveVariation={saveVariation}
@@ -536,9 +581,16 @@ export const WorkshopApp: React.FC = () => {
             }
             onError={handleBoundaryError}
           >
+            {workshop.chatTarget.kind === 'tool' && (
+              <div className="pm-ws-direct-mode" role="status">
+                <span>Talking directly to {workshopToolLabel(workshop.chatTarget.toolId)}</span>
+                <button type="button" onClick={returnToHost}>Back to {activePersona.label}</button>
+              </div>
+            )}
             <WorkshopComposer
-              canFollowUp={workshop.canFollowUp}
-              hasConversation={workshop.hasConversation}
+              canMessage={workshop.canMessage}
+              hasConversation={workshop.chatTarget.kind === 'host' ? workshop.hasHostConversation : true}
+              recipientLabel={chatTargetLabel}
               isRunning={workshop.isRunning}
               sessionReady={workshop.sessionReady}
               onSend={workshop.sendMessage}
@@ -559,8 +611,20 @@ export const WorkshopApp: React.FC = () => {
         open={toolsModalOpen}
         activeToolId={workshop.selectedToolId}
         disabled={!toolsEnabled}
+        unavailableMessage={
+          workshop.hasHostConversation
+            ? 'Integrated tool runs land in Sprint 06. Start a new session to run a tool before persona chat.'
+            : undefined
+        }
         onClose={closeToolsModal}
         onSelect={selectTool}
+      />
+      <WorkshopPersonaBrowserModal
+        open={personaModalOpen}
+        activePersonaId={workshop.selectedPersonaId}
+        disabled={workshop.isPersonaSelectionLocked}
+        onClose={closePersonaModal}
+        onSelect={selectPersona}
       />
       <WorkshopToast toast={toast} />
     </div>

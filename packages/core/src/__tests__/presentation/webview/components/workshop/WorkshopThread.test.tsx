@@ -66,4 +66,26 @@ describe('WorkshopThread quick-action scope', () => {
     expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Vary the gesture' }).disabled)
       .toBe(false);
   });
+
+  it('does not give persona assistant turns quick actions from a prior tool', () => {
+    render(
+      <WorkshopThread
+        turns={[
+          assistantTurn('tool-turn', 'Tool report', 'prose'),
+          {
+            ...assistantTurn('persona-turn', 'Jill weighs the report.'),
+            personaId: 'jill',
+            personaLabel: 'Jill'
+          }
+        ]}
+        selectedToolId="prose"
+        onQuickAction={noop}
+        onCopyVariation={noop}
+        onSaveVariation={noop}
+      />
+    );
+
+    expect(screen.getAllByRole('button', { name: 'Rewrite for flow' })).toHaveLength(1);
+    expect(screen.getByText('Jill')).toBeTruthy();
+  });
 });

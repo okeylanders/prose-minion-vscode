@@ -417,6 +417,11 @@ export class AIResourceOrchestrator {
 
       if (!cancelled && this.isAborted(requestOptions.signal)) {
         cancelled = true;
+        // A caller can preempt after the provider's final chunk but before we
+        // adopt the exchange. Treat that clean-finish race as cancelled too:
+        // no invisible retained history survives a cancelled Workshop run.
+        cancelled = cancelled || this.isAborted(requestOptions.signal);
+
         this.outputChannel?.appendLine(
           `[AIResourceOrchestrator] Continuation cancelled after stream finished - preserving ${content.length} chars of partial response`
         );
@@ -477,8 +482,15 @@ export class AIResourceOrchestrator {
       `\n[AIResourceOrchestrator] Starting single-turn request for ${toolName} (model: ${this.openRouterClient.getModel()}, streaming: ${isStreaming})`
     );
     const conversationId = this.conversationManager.startConversation(toolName, systemMessage);
+    if (options.retainConversation) {
+      // Match the capabilities lifecycle: a retained conversation is pinned
+      // before its first potentially long stream so idle cleanup cannot reap
+      // it between start and atomic adoption by the Workshop session.
+      this.conversationManager.pinConversation(conversationId);
+    }
     const termination = this.createTerminationContext(options);
     const requestOptions = this.withTerminationSignal(options, termination);
+    let retained = false;
 
     try {
       this.conversationManager.addMessage(conversationId, {
@@ -525,6 +537,11 @@ export class AIResourceOrchestrator {
           }
         }
 
+        // A caller can preempt after the provider's final chunk but before we
+        // adopt the exchange. Treat that clean-finish race as cancelled too:
+        // no invisible retained history survives a cancelled Workshop run.
+        cancelled = cancelled || this.isAborted(requestOptions.signal);
+
         this.outputChannel?.appendLine(
           `[AIResourceOrchestrator] Streaming ${cancelled ? 'cancelled' : 'complete'} (${fullContent.length} chars)\n`
         );
@@ -534,13 +551,23 @@ export class AIResourceOrchestrator {
           this.emitTokenUsage({ usage });
         }
 
+        const content = fullContent + this.appendTruncationNote(fullContent, finishReason);
+        if (options.retainConversation && !cancelled && !this.isAborted(requestOptions.signal)) {
+          this.conversationManager.addMessage(conversationId, { role: 'assistant', content });
+          retained = true;
+          this.outputChannel?.appendLine(
+            `[AIResourceOrchestrator] Conversation ${conversationId} retained for continuation`
+          );
+        }
+
         return {
-          content: fullContent + this.appendTruncationNote(fullContent, finishReason),
+          content,
           usedGuides: [],
           requestedResources: [],
           usage,
           finishReason,
-          cancelled
+          cancelled,
+          conversationId: retained ? conversationId : undefined
         };
       }
 
@@ -556,16 +583,28 @@ export class AIResourceOrchestrator {
       const usage = this.emitTokenUsage(response);
       const truncatedNote = this.appendTruncationNote(response.content, response.finishReason);
 
+      const content = response.content + truncatedNote;
+      if (options.retainConversation && !this.isAborted(requestOptions.signal)) {
+        this.conversationManager.addMessage(conversationId, { role: 'assistant', content });
+        retained = true;
+        this.outputChannel?.appendLine(
+          `[AIResourceOrchestrator] Conversation ${conversationId} retained for continuation`
+        );
+      }
+
       return {
-        content: response.content + truncatedNote,
+        content,
         usedGuides: [],
         requestedResources: [],
         usage,
-        finishReason: response.finishReason
+        finishReason: response.finishReason,
+        conversationId: retained ? conversationId : undefined
       };
     } finally {
       termination.dispose();
-      this.conversationManager.deleteConversation(conversationId);
+      if (!retained) {
+        this.conversationManager.deleteConversation(conversationId);
+      }
     }
   }
 

@@ -33,6 +33,8 @@ import {
   StreamCompleteMessage,
   StreamStartedMessage,
   WorkshopExcerpt,
+  WorkshopChatTarget,
+  WorkshopPersonaId,
   WorkshopSessionStateMessage,
   WorkshopToolId,
   WorkshopTurn,
@@ -56,10 +58,16 @@ export interface WorkshopState {
    * window bit on reload of a marathon thread). 0 in normal operation.
    */
   hiddenTurns: number;
-  /** True when the session holds a conversation a follow-up can continue. */
-  hasConversation: boolean;
-  /** True when the composer can send right now. */
-  canFollowUp: boolean;
+  /** True when the permanent host has started its retained conversation. */
+  hasHostConversation: boolean;
+  /** Selected permanent host; restored from the host snapshot on reload. */
+  selectedPersonaId: WorkshopPersonaId;
+  /** Explicit direct-tool mode, or ordinary host routing. */
+  chatTarget: WorkshopChatTarget;
+  /** True when the composer can message the host or selected direct sidecar. */
+  canMessage: boolean;
+  /** Host selection becomes immutable once a host run/conversation exists. */
+  isPersonaSelectionLocked: boolean;
   /** Last selected tool/lens, retained after completion for reload restore. */
   selectedToolId: WorkshopToolId | null;
   /** Tool of the in-flight run (host truth via session state / live events). */
@@ -86,6 +94,8 @@ export interface WorkshopActions {
   runTool: (toolId: WorkshopToolId) => void;
   quickAction: (toolId: WorkshopToolId, label: string) => void;
   sendMessage: (text: string) => void;
+  selectPersona: (personaId: WorkshopPersonaId) => void;
+  setChatTarget: (target: WorkshopChatTarget) => void;
   cancelRun: () => void;
   resetSession: () => void;
   requestSession: () => void;
@@ -119,7 +129,9 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const [excerpt, setExcerpt] = React.useState<WorkshopExcerpt | null>(null);
   const [turns, setTurns] = React.useState<WorkshopTurn[]>([]);
   const [totalTurns, setTotalTurns] = React.useState(0);
-  const [hasConversation, setHasConversation] = React.useState(false);
+  const [hasHostConversation, setHasHostConversation] = React.useState(false);
+  const [selectedPersonaId, setSelectedPersonaId] = React.useState<WorkshopPersonaId>('jill');
+  const [chatTarget, setChatTargetState] = React.useState<WorkshopChatTarget>({ kind: 'host' });
   const [selectedToolId, setSelectedToolId] = React.useState<WorkshopToolId | null>(null);
   const [activeToolId, setActiveToolId] = React.useState<WorkshopToolId | null>(null);
   const [statusMessage, setStatusMessage] = React.useState('');
@@ -186,6 +198,22 @@ export const useWorkshop = (): UseWorkshopReturn => {
     [post]
   );
 
+  const selectPersona = React.useCallback(
+    (personaId: WorkshopPersonaId) => {
+      setErrorMessage('');
+      post(MessageType.WORKSHOP_SELECT_PERSONA, { personaId });
+    },
+    [post]
+  );
+
+  const setChatTarget = React.useCallback(
+    (target: WorkshopChatTarget) => {
+      setErrorMessage('');
+      post(MessageType.WORKSHOP_SET_CHAT_TARGET, target);
+    },
+    [post]
+  );
+
   const cancelRun = React.useCallback(() => {
     const requestId =
       liveRunRef.current?.phase === 'streaming' ? liveRunRef.current.requestId : null;
@@ -219,7 +247,9 @@ export const useWorkshop = (): UseWorkshopReturn => {
       setSessionReady(true);
       setExcerpt(session.excerpt ?? null);
       setTotalTurns(session.totalTurns);
-      setHasConversation(session.hasConversation);
+      setHasHostConversation(session.participants.host.hasConversation);
+      setSelectedPersonaId(session.participants.host.personaId);
+      setChatTargetState(session.participants.chatTarget);
       setSelectedToolId(session.selectedToolId ?? null);
       setActiveToolId(session.activeToolId ?? null);
       setTurns((prev) => {
@@ -335,7 +365,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const currentRequestId = liveRun?.phase === 'streaming' ? liveRun.requestId : null;
   const isRunning = currentRequestId !== null || activeToolId !== null;
   const hiddenTurns = Math.max(0, totalTurns - turns.length);
-  const canFollowUp = hasConversation && !isRunning;
+  const canMessage = sessionReady && !!excerpt?.text.trim() && !isRunning;
+  const isPersonaSelectionLocked = hasHostConversation || isRunning;
 
   return {
     // State
@@ -343,8 +374,11 @@ export const useWorkshop = (): UseWorkshopReturn => {
     excerpt,
     turns,
     hiddenTurns,
-    hasConversation,
-    canFollowUp,
+    hasHostConversation,
+    selectedPersonaId,
+    chatTarget,
+    canMessage,
+    isPersonaSelectionLocked,
     selectedToolId,
     activeToolId,
     isRunning,
@@ -366,6 +400,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
     runTool,
     quickAction,
     sendMessage,
+    selectPersona,
+    setChatTarget,
     cancelRun,
     resetSession,
     requestSession,

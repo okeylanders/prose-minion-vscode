@@ -40,7 +40,9 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
         }
 
         const actionToolId =
-          turn.role === 'assistant' ? turn.toolId ?? currentToolId ?? selectedToolId : null;
+          turn.role === 'assistant' && !turn.personaId
+            ? turn.toolId ?? currentToolId ?? selectedToolId
+            : null;
         const turnActionsDisabled =
           quickActionsDisabled ||
           (actionToolId !== null && selectedToolId !== null && actionToolId !== selectedToolId);

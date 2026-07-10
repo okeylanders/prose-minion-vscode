@@ -63,7 +63,7 @@ packages/core/src/
 │       ├── MessageHandler.ts           # Main dispatcher
 │       ├── MessageHandlerContracts.ts  # CoreServices + typed transport/cache/seams
 │       ├── MessageRouter.ts            # Strategy registry (MessageType → handler)
-│       └── domain/                     # 11 domain handlers
+│       └── domain/                     # 12 domain handlers (including Workshop)
 ├── domain/             # Domain models
 │   └── models/
 ├── infrastructure/     # External integrations
@@ -146,6 +146,7 @@ Frontend hooks mirror backend handlers by domain:
 | `usePublishingSettings` | `PublishingHandler` | Publishing standards |
 | `useSelection` | `UIHandler` | Selection/paste operations |
 | `useAccountBalance` | `AccountBalanceHandler` | OpenRouter balance |
+| `useWorkshop` | `WorkshopHandler` | Pinned excerpt, persona host, and retained tool sidecars |
 
 ### 4. Tripartite Hook Interface
 
@@ -158,6 +159,31 @@ Each domain hook in `packages/core/src/presentation/webview/hooks/domain/` expor
 ### 5. Composed Persistence
 
 `App.tsx` composes each hook's `persistedState` into a single `usePersistence()` call that syncs to webview storage on every state change.
+
+### 6. Workshop Host and Retained Participants
+
+Workshop session truth lives in the composition-root-owned
+`WorkshopSessionService`, never in React. Its private participant graph has one
+selected persona host, the latest retained conversation for each tool, and an
+optional direct-tool target. Provider conversation ids never cross the
+extension/webview boundary; `WorkshopSessionSnapshot` exposes only host
+identity, sidecar availability, and the current target.
+
+`WORKSHOP_SEND_MESSAGE` is the only composer action. It starts or continues
+the selected persona host unless `WORKSHOP_SET_CHAT_TARGET` selects a live tool
+sidecar; the handler validates that sidecar rather than trusting the webview.
+Persona prompts are immutable for a retained conversation, assembled through
+`PromptLoader` from a shared base and one curated prompt under
+`packages/core/resources/system-prompts/workshop-personas/`. The deterministic
+persona catalog stays in shared code; presentation-only focus icons stay in
+the webview.
+
+Sprint 05 keeps an explicit migration guard: after a persona host starts,
+new tool runs are rejected until Sprint 06 adds report-to-host side-passes.
+Reset and excerpt replacement dispose every retained participant; reset also
+restores Jill as the selected host while preserving the pinned excerpt.
+
+**Reference**: [Workshop Persona Host, Tool Sidecars, and Capabilities (2026-07-09)](adr/2026-07-09-workshop-persona-hosted-conversations.md)
 
 ---
 
@@ -207,5 +233,6 @@ The VS Code adapter uses **dual webpack** (`apps/vscode-extension/webpack.config
 - [Unified Settings Architecture (2025-11-03)](adr/2025-11-03-unified-settings-architecture.md)
 - [Secure API Key Storage (2025-10-27)](adr/2025-10-27-secure-api-key-storage.md)
 - [Lightweight Testing Framework (2025-11-15)](adr/2025-11-15-lightweight-testing-framework.md)
+- [Workshop Persona Host, Tool Sidecars, and Capabilities (2026-07-09)](adr/2026-07-09-workshop-persona-hosted-conversations.md)
 
 See [TESTING.md](TESTING.md) for the test strategy, [CONFIGURATION.md](CONFIGURATION.md) for settings, and [TOOLS.md](TOOLS.md) for the tool inventory.
