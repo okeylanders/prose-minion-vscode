@@ -1,6 +1,6 @@
 # ADR 2026-07-10: Agent-Run Engine and Resource Catalog Policies
 
-**Status:** Accepted
+**Status:** Accepted (amended 2026-07-11)
 **Date:** 2026-07-10
 **Extends:** [ADR 2026-06-16 — Monorepo Ports and Adapters](2026-06-16-monorepo-ports-and-adapters.md), [ADR 2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](2026-07-09-workshop-persona-hosted-conversations.md)
 **Epic:** [Assistant as a Full Editor Tab](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md)
@@ -100,3 +100,53 @@ and can explicitly inspect more content when product UI permits it.
   seam and one XML transport rather than becoming new special-case loops.
 - The 06B branch has deliberate migration churn, but no legacy façade remains
   when it integrates.
+
+## Amendment 2026-07-11: Tolerant Parsing, Shared Gate, Per-Turn Loop
+
+Live-run hardening on the 06A branch (verified against Sonnet and Haiku)
+refined three parts of this decision.
+
+### Strict prompt, tolerant parse (Postel boundary)
+
+The original rule — "a capability request must be the entire assistant
+response (apart from whitespace)" — is retained as the *prompt-side*
+contract but relaxed at the *parser*. Faster models (Haiku) emitted valid,
+allow-listed calls garnished with a narrated preamble or a Markdown fence,
+were rejected on the garnish alone, and exhausted their single correction
+turn. The codec now discards everything before the first protocol marker
+plus one trailing fence close, then strictly SAX-parses the remaining tail
+as exactly one tool-call document. Any content after the closing tag still
+rejects, so protocol markup quoted mid-prose remains non-executable, and
+allow-list authorization is unchanged. Instructions keep demanding one bare
+XML document; the correction turn is reserved for genuinely invalid requests.
+
+### Shared request gate
+
+Allow-list inspection and correction wording were extracted into a shared
+`ResourceRequestGate` (codec + displayed-catalog allow-list + parameterized
+correction instruction). Capability adapters compose a gate and keep only
+catalog assembly, fulfillment, evidence, and provenance. New capabilities —
+including Sprint 07 persona operations where path allow-listing applies —
+compose a gate rather than re-implementing this arithmetic.
+
+### The capability loop becomes a per-turn concern (Sprint 07 direction)
+
+The original decision kept "direct retained continuation explicit because it
+has different history semantics." That asymmetry is now the limiting shape:
+the bounded capability loop lives only in the initial run, so a retained
+persona cannot invoke anything on follow-up turns. The locked direction for
+Sprint 07:
+
+- `start()` establishes the conversation, the capability contract (protocol
+  instruction and catalog enter history once, not per turn), and the policy.
+- Every turn — initial or follow-up — runs the same bounded loop: parse →
+  validate → fulfill → continue, with the capability budget **resetting per
+  user turn**. There is no unbounded "open" mode; long conversations get
+  renewable per-turn budgets with the existing forced-final backstop.
+- A policy with `maxCapabilityRounds: 0` makes a follow-up turn degenerate to
+  exactly the current history-only continuation, so the unification subsumes
+  `continueConversation` rather than adding a third mode.
+- Capability rounds (valid request → fulfill) and correction turns (invalid
+  request → retry) remain separate bounded policy numbers: a model burning
+  corrections is confused, a model burning rounds is thorough, and logs must
+  distinguish the two.
