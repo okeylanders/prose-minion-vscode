@@ -33,6 +33,43 @@ stop.
   request detection, bounded multi-turn fulfillment, and final-output forcing,
   but retained persona follow-ups do not yet have a general capability loop.
 
+## Engine Prerequisites (post-06A audit, 2026-07-11)
+
+A code audit after the 06A hardening pass confirmed the Workshop tab needed no
+adaptation to the consolidated engine (it is fully decoupled behind
+`AssistantToolService`), but found three engine-level gaps this sprint must
+close before the capability-loop tasks below are implementable:
+
+1. **`AgentRunEngine.continueConversation()` is history-only by explicit
+   design** — it never advertises catalogs, accepts a capability, or enters
+   the bounded round loop. Every retained persona follow-up turn routes
+   through it, so a persona cannot invoke anything on turn 2+. The loop that
+   today lives only in `runInitial` must become a per-turn concern: one
+   turn-execution path shared by start and continuation, with the policy
+   deciding whether capability requests are honored and how many rounds each
+   user turn gets. Prefer unifying the two methods over adding a third
+   capability-aware variant.
+2. **The `AgentCapability` contract is resource-read shaped** (`catalog`,
+   `appendCatalog`, `fulfill(paths)`, `ResourceReadInspection`). The
+   `WorkshopCapabilityRequest` union below is a discriminated operation set,
+   not a path read — generalize the inspection contract (or introduce a
+   sibling operation-capability abstraction) rather than forcing dictionary
+   lookups through path semantics. The shared `ResourceRequestGate`
+   (allowlist + correction wording) is the reusable piece; compose it where
+   path allowlisting applies.
+3. **`AGENT_RUN_POLICIES.workshopHost` has `maxCapabilityRounds: 0` and
+   catalog `'none'`** — even the first persona turn has no capability budget.
+   This sprint needs a persona policy with per-user-turn rounds (the locked
+   three-calls-per-turn budget) and `onCapabilityLimit: 'forceFinalResponse'`;
+   the forced-final + one-retry machinery in the engine already implements
+   the budget-exhaustion behavior required here.
+
+Housekeeping discovered in the same audit: `WorkshopHandler.handleRunTool`
+still carries a stale "Integrated tool runs arrive in Sprint 06" guard, and no
+test spans WorkshopHandler↔engine end-to-end (handler tests mock the service
+wholesale; engine tests cover the policies separately). Address both when the
+loop lands.
+
 ## Locked Decisions
 
 - Persona capabilities cross a typed application-layer boundary. Persona
