@@ -56,6 +56,13 @@ export interface AgentCapability {
   limitInstruction(): string;
 }
 
+/**
+ * Capabilities carry per-run allowlist state, so long-lived callers hold a
+ * factory and mint a fresh instance per run rather than sharing one whose
+ * catalog snapshot another concurrent run could overwrite.
+ */
+export type AgentCapabilityFactory = () => AgentCapability;
+
 export type StreamingTokenCallback = (token: string) => void;
 
 export interface AgentRunOptions {

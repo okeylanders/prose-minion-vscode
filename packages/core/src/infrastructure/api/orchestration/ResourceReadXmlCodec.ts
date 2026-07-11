@@ -34,6 +34,30 @@ export type ResourceReadInspection =
 const TOOL_CALL_ROOT = 'prose-minion-tool-call';
 const RESOURCE_READ_OPERATION = 'resource.read';
 
+/**
+ * Garnish (narrated preamble, fence opener, XML declaration) before a real
+ * call is short — live narrations run one or two sentences. A marker buried
+ * deeper than this is a final answer talking about the protocol, and an
+ * answer must never be discarded in favor of a correction turn.
+ */
+const MAX_TOLERATED_PREAMBLE_CHARS = 500;
+
+/**
+ * The first protocol marker that could be an invocation rather than a
+ * mention. A marker immediately preceded by a backtick is inline-code
+ * quotation — a genuine answer explaining the protocol — and is never
+ * executable. Returns -1 when only mentions (or nothing) exist.
+ */
+export const findExecutableMarkerIndex = (source: string): number => {
+  for (const match of source.matchAll(/<\s*\/?\s*prose-minion-tool-call\b/gi)) {
+    const index = match.index ?? 0;
+    if (index === 0 || source[index - 1] !== '`') {
+      return index;
+    }
+  }
+  return -1;
+};
+
 const escapeXmlText = (value: string): string => value
   .replace(/&/g, '&amp;')
   .replace(/</g, '&lt;')
@@ -93,20 +117,24 @@ export class ResourceReadXmlCodec {
       return { kind: 'none' };
     }
 
-    const toolCallMarker = /<\s*\/?\s*prose-minion-tool-call\b/i;
-    const markerMatch = toolCallMarker.exec(source);
-    if (!markerMatch) {
+    // Two structural anchors distinguish invoking the protocol from talking
+    // about it: backtick-quoted markers are mentions (skipped above), and a
+    // marker deeper than the garnish bound sits inside a real answer. Both
+    // classify as ordinary prose — an answer is never traded for a
+    // correction turn because it mentioned the tag.
+    const markerIndex = findExecutableMarkerIndex(source);
+    if (markerIndex === -1 || markerIndex > MAX_TOLERATED_PREAMBLE_CHARS) {
       return { kind: 'none' };
     }
 
     // The prompt demands one bare XML document, but faster models garnish
     // otherwise-compliant calls with a narrated preamble, an XML declaration,
     // or a Markdown fence. Tolerate exactly that garnish: discard everything
-    // before the first protocol marker plus one trailing fence close, then
+    // before the first executable marker plus one trailing fence close, then
     // require the remaining tail to be a single strict tool-call document.
     // Any content after the closing tag still rejects, so protocol markup
     // quoted mid-prose remains non-executable.
-    const segment = source.slice(markerMatch.index).replace(/\s*```\s*$/, '').trim();
+    const segment = source.slice(markerIndex).replace(/\s*```\s*$/, '').trim();
 
     const closingTag = '</prose-minion-tool-call>';
     const closingTagIndex = segment.toLowerCase().lastIndexOf(closingTag);
@@ -227,17 +255,18 @@ export class ResourceReadXmlCodec {
     return inspection.kind === 'request' ? inspection.request : undefined;
   }
 
-  /** The only content that is executable as a resource call is never visible. */
-  stripExactRequest(content: string): string {
+  /**
+   * A binary display gate, not a redactor: any protocol-shaped response —
+   * a valid call (kind 'request') or a failed attempt (kind 'invalid') —
+   * blanks to '' so no protocol markup or half-request reaches visible
+   * chat. Ordinary prose (kind 'none', including answers that merely quote
+   * the tag) passes through whole. Callers never receive a partial string.
+   */
+  hideIfProtocolShaped(content: string): string {
     const inspection = this.inspect(content);
     if (inspection.kind !== 'none') {
       return '';
     }
-
-    // An invalid or mixed response is not a call. Hide protocol-shaped markup
-    // rather than letting an unexecutable request become visible chat content.
-    // Structural parsing remains exclusively SAX-based above; this is a
-    // conservative display guard, not an XML parser.
     return content.trim();
   }
 }

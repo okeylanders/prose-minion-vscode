@@ -10,14 +10,14 @@
 import { LogSink } from '@/platform';
 import { PromptLoader } from '../shared/prompts';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
-import { AgentCapability, ExecutionResult, StreamingTokenCallback } from '@orchestration/AgentRunContracts';
+import { AgentCapabilityFactory, ExecutionResult, StreamingTokenCallback } from '@orchestration/AgentRunContracts';
 import { AssistantFocus, WritingToolsFocus } from '@messages';
 import {
   PassageAssistantInput,
   PassageAssistantOptions,
   PromptedPassageAssistant,
   PromptedPassageProfile
-} from './PromptedPassageAssistant';
+} from './promptedPassageAssistant';
 
 export type { WritingToolsFocus };
 
@@ -34,10 +34,10 @@ export class WritingToolsAssistant {
   constructor(
     agentRunEngine: AgentRunEngine,
     promptLoader: PromptLoader,
-    guideCapability: AgentCapability,
+    createGuideCapability: AgentCapabilityFactory,
     private readonly outputChannel?: LogSink
   ) {
-    this.runner = new PromptedPassageAssistant(agentRunEngine, promptLoader, guideCapability, outputChannel);
+    this.runner = new PromptedPassageAssistant(agentRunEngine, promptLoader, createGuideCapability, outputChannel);
   }
 
   analyze(input: WritingToolsInput, options: WritingToolsOptions): Promise<ExecutionResult> {

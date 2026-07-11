@@ -54,7 +54,7 @@ export class ResourceRequestGate {
   }
 
   stripToolCalls(content: string): string {
-    return this.codec.stripExactRequest(content);
+    return this.codec.hideIfProtocolShaped(content);
   }
 
   invalidRequestInstruction(rejection: Extract<ResourceReadInspection, { kind: 'invalid' }>): string {

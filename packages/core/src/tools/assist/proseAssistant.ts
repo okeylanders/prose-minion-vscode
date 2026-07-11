@@ -1,14 +1,14 @@
 /** Prose product profile over the neutral prompted-passage runner. */
 
 import { PromptLoader } from '../shared/prompts';
-import { AgentCapability, ExecutionResult } from '@orchestration/AgentRunContracts';
+import { AgentCapabilityFactory, ExecutionResult } from '@orchestration/AgentRunContracts';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import {
   PassageAssistantInput,
   PassageAssistantOptions,
   PromptedPassageAssistant,
   PromptedPassageProfile
-} from './PromptedPassageAssistant';
+} from './promptedPassageAssistant';
 
 type ProseFocus = 'prose';
 
@@ -56,8 +56,8 @@ Provide your analysis in clear sections:
 export class ProseAssistant {
   private readonly runner: PromptedPassageAssistant;
 
-  constructor(agentRunEngine: AgentRunEngine, promptLoader: PromptLoader, guideCapability: AgentCapability) {
-    this.runner = new PromptedPassageAssistant(agentRunEngine, promptLoader, guideCapability);
+  constructor(agentRunEngine: AgentRunEngine, promptLoader: PromptLoader, createGuideCapability: AgentCapabilityFactory) {
+    this.runner = new PromptedPassageAssistant(agentRunEngine, promptLoader, createGuideCapability);
   }
 
   analyze(input: ProseAssistantInput, options?: ProseAssistantOptions): Promise<ExecutionResult> {

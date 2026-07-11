@@ -32,4 +32,17 @@ describe('GuideCapability', () => {
     expect(fulfillment.artifacts).toEqual([expect.objectContaining({ path: 'dialogue.md', category: 'Craft' })]);
     expect(fulfillment.evidence).toContain('Guide body');
   });
+
+  it('reports a guide that fails to load in the model evidence instead of dropping it silently', async () => {
+    loader.loadGuide.mockRejectedValueOnce(new Error('EACCES: permission denied'));
+    const adapter = new GuideCapability(registry as never, loader as never, settings as never);
+    await adapter.appendCatalog('Analyze this.');
+
+    const fulfillment = await adapter.fulfill(['dialogue.md']);
+
+    expect(fulfillment.deliveredPaths).toEqual([]);
+    expect(fulfillment.artifacts).toEqual([]);
+    expect(fulfillment.evidence).toContain('dialogue.md');
+    expect(fulfillment.evidence).toContain('continue without');
+  });
 });

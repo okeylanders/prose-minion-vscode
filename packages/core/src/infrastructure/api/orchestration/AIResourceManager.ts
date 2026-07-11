@@ -25,6 +25,8 @@ import { ModelScope } from '@shared/types';
 import { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
 import { ResourceLoaderService } from './ResourceLoaderService';
 import { GuideCapability } from './capabilities/GuideCapability';
+import { ContextFileCapability } from './capabilities/ContextFileCapability';
+import { ContextResourceProvider } from '@/domain/models/ContextGeneration';
 
 /**
  * Bundle of AI resources for a specific model scope
@@ -94,15 +96,29 @@ export class AIResourceManager {
   async ensureInitialized(): Promise<void> {
     if (this.initialized) return;
     if (!this.initialization) {
-      this.initialization = this.rebuildResources();
+      this.initialization = this.startRebuild();
     }
     await this.initialization;
   }
 
   /** Rebuild only for an explicit configuration change. */
   async refreshConfiguration(): Promise<void> {
-    this.initialization = this.rebuildResources();
+    this.initialization = this.startRebuild();
     await this.initialization;
+  }
+
+  /**
+   * A failed build must not poison the singleton: clear the cached promise
+   * on rejection so the next call retries instead of re-awaiting the corpse.
+   */
+  private startRebuild(): Promise<void> {
+    return this.rebuildResources().catch(error => {
+      this.initialization = undefined;
+      this.outputChannel?.appendLine(
+        `[AIResourceManager] Resource build failed; will retry on next use: ${error instanceof Error ? error.message : String(error)}`
+      );
+      throw error;
+    });
   }
 
   private async rebuildResources(
@@ -186,6 +202,11 @@ export class AIResourceManager {
       this.settings,
       this.outputChannel
     );
+  }
+
+  /** Build the bounded project-context adapter used by context-scoped routes. */
+  createContextFileCapability(provider: ContextResourceProvider): ContextFileCapability {
+    return new ContextFileCapability(provider, this.settings, this.outputChannel);
   }
 
   /**
@@ -280,7 +301,8 @@ export class AIResourceManager {
         conversationManager,
         this.statusCallback,
         this.outputChannel,
-        this.tokenUsageFanout
+        this.tokenUsageFanout,
+        this.settings
       );
 
       this.outputChannel?.appendLine(

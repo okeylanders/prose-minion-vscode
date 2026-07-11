@@ -104,7 +104,9 @@ export class AssistantToolService {
       this.statusListeners.emit(message, undefined, tickerMessage);
     });
     // Assistants will be initialized when AI resources are available
-    void this.initializeAssistants();
+    this.initializeAssistants().catch(error => {
+      this.outputChannel?.appendLine(`[AssistantToolService] Startup initialization failed; retried on next use: ${error instanceof Error ? error.message : String(error)}`);
+    });
   }
 
   /**
@@ -132,13 +134,15 @@ export class AssistantToolService {
 
     if (engine) {
       const promptLoader = this.resourceLoader.getPromptLoader();
-      const guideCapability = this.aiResourceManager.createGuideCapability();
+      // Each run mints its own capability so concurrent runs (sidebar +
+      // Workshop, or back-to-back assists) never share allowlist state.
+      const createGuideCapability = () => this.aiResourceManager.createGuideCapability();
 
       // Initialize dialogue assistant
       this.dialogueAssistant = new DialogueMicrobeatAssistant(
         engine,
         promptLoader,
-        guideCapability,
+        createGuideCapability,
         this.outputChannel
       );
 
@@ -146,14 +150,14 @@ export class AssistantToolService {
       this.proseAssistant = new ProseAssistant(
         engine,
         promptLoader,
-        guideCapability
+        createGuideCapability
       );
 
       // Initialize writing tools assistant
       this.writingToolsAssistant = new WritingToolsAssistant(
         engine,
         promptLoader,
-        guideCapability,
+        createGuideCapability,
         this.outputChannel
       );
     } else {

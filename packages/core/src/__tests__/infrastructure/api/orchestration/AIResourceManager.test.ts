@@ -18,4 +18,20 @@ describe('AIResourceManager lifecycle', () => {
     expect(manager.getEngine('assistant')).not.toBe(first);
     manager.dispose();
   });
+
+  it('retries after a failed build instead of caching the rejection forever', async () => {
+    const getApiKey = jest.fn()
+      .mockRejectedValueOnce(new Error('keychain locked'))
+      .mockResolvedValue('key');
+    const manager = new AIResourceManager(
+      { getGuideRegistry: jest.fn(), getGuideLoader: jest.fn() } as never,
+      { getApiKey } as never,
+      { get: jest.fn((_section, _key, fallback) => fallback) } as never
+    );
+
+    await expect(manager.ensureInitialized()).rejects.toThrow('keychain locked');
+    await expect(manager.ensureInitialized()).resolves.toBeUndefined();
+    expect(manager.getEngine('assistant')).toBeDefined();
+    manager.dispose();
+  });
 });

@@ -15,7 +15,10 @@ export interface ContextAssistantInput {
   excerpt: string;
   existingContext?: string;
   sourceFileUri?: string;
+  /** Full or pre-bounded source document; the caller owns the word cap. */
   sourceContent?: string;
+  /** Why a configured source file could not be read — distinct from "no source". */
+  sourceUnavailableReason?: string;
   requestedGroups?: ContextPathGroup[];
 }
 
@@ -55,6 +58,7 @@ export class ContextAssistant {
       existingContext: input.existingContext,
       sourceFileUri: input.sourceFileUri,
       sourceContent: input.sourceContent,
+      sourceUnavailableReason: input.sourceUnavailableReason,
       groups
     });
 
@@ -100,9 +104,10 @@ export class ContextAssistant {
     existingContext?: string;
     sourceFileUri?: string;
     sourceContent?: string;
+    sourceUnavailableReason?: string;
     groups: ContextPathGroup[];
   }): string {
-    const { excerpt, existingContext, sourceFileUri, sourceContent, groups } = args;
+    const { excerpt, existingContext, sourceFileUri, sourceContent, sourceUnavailableReason, groups } = args;
     const lines: string[] = [];
 
     lines.push('# Excerpt');
@@ -127,6 +132,13 @@ export class ContextAssistant {
       lines.push('```markdown');
       lines.push(sourceContent);
       lines.push('```', '');
+    } else if (sourceFileUri && sourceUnavailableReason) {
+      lines.push('## Source Document');
+      lines.push(
+        `The configured source file could not be read (${sourceUnavailableReason}). ` +
+        'Note this gap in the briefing and continue using the excerpt and other evidence.',
+        ''
+      );
     }
 
     lines.push('## Context Groups Considered');

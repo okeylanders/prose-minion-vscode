@@ -1,4 +1,4 @@
-import { LogSink } from '@/platform';
+import { LogSink, SettingsStore } from '@/platform';
 import { OpenRouterClient, OpenRouterMessage } from '@providers/OpenRouterClient';
 import { ConversationManager, ConversationNotFoundError } from './ConversationManager';
 import {
@@ -9,7 +9,7 @@ import {
   ResourceArtifact,
   StreamingTokenCallback
 } from './AgentRunContracts';
-import { ResourceReadInspection, ResourceReadRequest } from './ResourceReadXmlCodec';
+import { findExecutableMarkerIndex, ResourceReadInspection, ResourceReadRequest } from './ResourceReadXmlCodec';
 import { TokenUsage } from '@shared/types';
 
 export type StatusCallback = (message: string, tickerMessage?: string) => void;
@@ -34,6 +34,13 @@ interface TurnResult {
 }
 
 const TOOL_CALL_OPEN = '<prose-minion-tool-call';
+/**
+ * How long a narrated-intent opener is held before streaming resumes. Live
+ * narrations before a call run one or two sentences; anything longer is a
+ * genuine answer that merely opened with "Let me check…", and holding it
+ * would silently defeat progressive streaming.
+ */
+const NARRATION_HOLD_CHARS = 300;
 const isProtocolPreambleOnly = (content: string): boolean =>
   /^\s*(?:```(?:xml)?|<\?xml\s+[^?]*\?>)?\s*$/i.test(content);
 const isNarratedResourceIntent = (content: string): boolean =>
@@ -50,13 +57,17 @@ class ToolCallStreamVisibilityGuard {
   private pending = '';
   private visible = '';
   private blocked = false;
+  private withheld = '';
 
   consume(token: string): string {
     if (this.blocked) {
+      this.withheld += token;
       return '';
     }
     this.pending += token;
-    const toolCallIndex = this.pending.toLowerCase().indexOf(TOOL_CALL_OPEN);
+    // Backtick-quoted markers are mentions, not calls, and keep streaming as
+    // ordinary text; only an executable marker starts withholding.
+    const toolCallIndex = findExecutableMarkerIndex(this.pending);
     if (toolCallIndex !== -1) {
       const safe = this.pending.slice(0, toolCallIndex);
       // A common invalid response copies the illustrative XML inside a
@@ -64,6 +75,7 @@ class ToolCallStreamVisibilityGuard {
       // withholding it lets the engine request a final prose recovery.
       const visibleSafe = isProtocolPreambleOnly(safe) || isNarratedResourceIntent(safe) ? '' : safe;
       this.visible += visibleSafe;
+      this.withheld = (visibleSafe ? '' : safe) + this.pending.slice(toolCallIndex);
       this.pending = '';
       this.blocked = true;
       return visibleSafe;
@@ -72,11 +84,13 @@ class ToolCallStreamVisibilityGuard {
     // Some models narrate their lookup decision before emitting the XML call.
     // Hold that short planning preamble so it can be discarded if a call
     // follows, while ordinary analysis prose keeps streaming as before.
-    if (this.pending.length <= 1_000 && isNarratedResourceIntent(this.pending)) {
+    if (this.pending.length <= NARRATION_HOLD_CHARS && isNarratedResourceIntent(this.pending)) {
       return '';
     }
 
-    const safeLength = Math.max(0, this.pending.length - TOOL_CALL_OPEN.length + 1);
+    // Retain one char beyond a full marker so a preceding backtick stays
+    // available for the mention check above.
+    const safeLength = Math.max(0, this.pending.length - TOOL_CALL_OPEN.length);
     const safe = this.pending.slice(0, safeLength);
     this.pending = this.pending.slice(safeLength);
     this.visible += safe;
@@ -91,6 +105,21 @@ class ToolCallStreamVisibilityGuard {
     this.pending = '';
     this.visible += safe;
     return safe;
+  }
+
+  /**
+   * Everything withheld since the marker. Called only when the completed
+   * turn classified as ordinary prose ('none'), so an answer that turned out
+   * to merely resemble the protocol is restored rather than truncated.
+   */
+  flushWithheld(): string {
+    const flushed = this.withheld;
+    this.withheld = '';
+    if (flushed) {
+      this.visible += flushed;
+      this.blocked = false;
+    }
+    return flushed;
   }
 
   get content(): string {
@@ -111,7 +140,8 @@ export class AgentRunEngine {
     private readonly conversationManager: ConversationManager,
     private statusCallback?: StatusCallback,
     private readonly outputChannel?: LogSink,
-    private tokenUsageCallback?: TokenUsageCallback
+    private tokenUsageCallback?: TokenUsageCallback,
+    private readonly settings?: SettingsStore
   ) {
     this.conversationCleanupInterval = setInterval(() => {
       this.conversationManager.clearOldConversations(300000);
@@ -143,23 +173,29 @@ export class AgentRunEngine {
         : request.userMessage;
       this.conversationManager.addMessage(conversationId, { role: 'user', content: firstUserMessage });
 
+      // The one shared turn-bookkeeping sequence: append the model's turn,
+      // append the host instruction/evidence, run the next turn, accumulate
+      // usage. Correction turns, capability rounds, and forced-final turns
+      // all go through here so the sequence cannot drift apart.
+      const runInstructedTurn = async (previous: TurnResult, instruction: string): Promise<TurnResult> => {
+        this.conversationManager.addMessage(conversationId, { role: 'assistant', content: previous.content });
+        this.conversationManager.addMessage(conversationId, { role: 'user', content: instruction });
+        const next = await this.executeTurn(
+          this.conversationManager.getMessages(conversationId),
+          runOptions,
+          capability
+        );
+        totalUsage = this.addUsage(totalUsage, next.usage);
+        return next;
+      };
+
       const recoverInvalidRequest = async (last: TurnResult): Promise<TurnResult> => {
         const rejection = last.invalidRequest;
         if (!capability || last.cancelled || !rejection) {
           return last;
         }
         this.outputChannel?.appendLine(`[AgentRunEngine] ${request.policy.id} is giving the model one correction turn after a rejected resource request.`);
-        this.conversationManager.addMessage(conversationId, { role: 'assistant', content: last.content });
-        this.conversationManager.addMessage(conversationId, {
-          role: 'user',
-          content: capability.invalidRequestInstruction(rejection)
-        });
-        const recovered = await this.executeTurn(
-          this.conversationManager.getMessages(conversationId),
-          runOptions,
-          capability
-        );
-        totalUsage = this.addUsage(totalUsage, recovered.usage);
+        const recovered = await runInstructedTurn(last, capability.invalidRequestInstruction(rejection));
         if (recovered.invalidRequest) {
           const fallback = 'The assistant could not produce a usable final response after its resource request was rejected. Please try again.';
           this.outputChannel?.appendLine(`[AgentRunEngine] ${request.policy.id} repeated an invalid resource request after its correction turn.`);
@@ -185,7 +221,6 @@ export class AgentRunEngine {
           capability.statusMessage(requestedPaths),
           capability.statusTicker?.(requestedPaths)
         );
-        this.conversationManager.addMessage(conversationId, { role: 'assistant', content: last.content });
         const fulfillment = await capability.fulfill(requestedPaths);
         this.outputChannel?.appendLine(
           `[AgentRunEngine] Delivered ${fulfillment.deliveredPaths.length}/${requestedPaths.length} ${capability.catalog} resource(s) ` +
@@ -194,36 +229,16 @@ export class AgentRunEngine {
         artifacts.push(...fulfillment.artifacts);
         if (capability.catalog === 'guides') usedGuides.push(...fulfillment.deliveredPaths);
         if (capability.catalog === 'projectContext') requestedResources.push(...fulfillment.deliveredPaths);
-        this.conversationManager.addMessage(conversationId, { role: 'user', content: fulfillment.evidence });
-        last = await this.executeTurn(
-          this.conversationManager.getMessages(conversationId),
-          runOptions,
-          capability
-        );
-        totalUsage = this.addUsage(totalUsage, last.usage);
+        last = await runInstructedTurn(last, fulfillment.evidence);
         last = await recoverInvalidRequest(last);
       }
 
       if (!last.cancelled && capability && last.exactRequest && request.policy.onCapabilityLimit === 'forceFinalResponse') {
         this.outputChannel?.appendLine(`[AgentRunEngine] ${request.policy.id} reached ${request.policy.maxCapabilityRounds} capability rounds; forcing final response.`);
-        this.conversationManager.addMessage(conversationId, { role: 'assistant', content: last.content });
-        this.conversationManager.addMessage(conversationId, { role: 'user', content: capability.limitInstruction() });
-        last = await this.executeTurn(
-          this.conversationManager.getMessages(conversationId),
-          runOptions,
-          capability
-        );
-        totalUsage = this.addUsage(totalUsage, last.usage);
+        last = await runInstructedTurn(last, capability.limitInstruction());
         if (this.needsForcedFinalRetry(last)) {
           this.outputChannel?.appendLine(`[AgentRunEngine] ${request.policy.id} returned another tool call during its forced final turn; retrying once without resources.`);
-          this.conversationManager.addMessage(conversationId, { role: 'assistant', content: last.content });
-          this.conversationManager.addMessage(conversationId, { role: 'user', content: capability.limitInstruction() });
-          last = await this.executeTurn(
-            this.conversationManager.getMessages(conversationId),
-            runOptions,
-            capability
-          );
-          totalUsage = this.addUsage(totalUsage, last.usage);
+          last = await runInstructedTurn(last, capability.limitInstruction());
         }
         last = await recoverInvalidRequest(last);
         if (this.needsForcedFinalRetry(last)) {
@@ -390,6 +405,12 @@ export class AgentRunEngine {
           }
           continue;
         }
+        // Deliberately a different mechanism from ToolCallStreamVisibilityGuard:
+        // capability-less turns (e.g. retained continuation) have no protocol
+        // to enforce, so this only smooths the stream — an angle-bracket
+        // opener buffers until validation, then the full content is revealed.
+        // The guard, by contrast, gates capability turns and never reveals
+        // executable protocol markup.
         if (classification === 'undecided') {
           const firstNonWhitespace = content.match(/\S/)?.[0];
           if (!firstNonWhitespace) continue;
@@ -412,6 +433,15 @@ export class AgentRunEngine {
     this.logCapabilityInspection(capability, inspection, content);
     const exactRequest = inspection?.kind === 'request' ? inspection.request : undefined;
     const invalidRequest = inspection?.kind === 'invalid' ? inspection : undefined;
+    if (visibilityGuard && inspection?.kind === 'none') {
+      // The guard withheld from the first marker-like sequence, but the
+      // completed turn is ordinary prose that mentions the protocol —
+      // restore the answer instead of truncating it.
+      const flushed = visibilityGuard.flushWithheld();
+      if (flushed) {
+        options.onToken(flushed);
+      }
+    }
     const trailingVisibleContent = visibilityGuard?.finish();
     if (trailingVisibleContent) {
       options.onToken(trailingVisibleContent);
@@ -471,11 +501,18 @@ export class AgentRunEngine {
       ? ''
       : `; paths=${inspection.pathCount}; allowlisted=${inspection.allowlistedPathCount ?? 'unknown'}`;
     this.outputChannel?.appendLine(
-      `[AgentRunEngine] Rejected ${capability.catalog} resource request: reason=${inspection.reason}${pathCounts}. ` +
-      'Full rejected assistant response follows; it may contain quoted user text.'
+      `[AgentRunEngine] Rejected ${capability.catalog} resource request: reason=${inspection.reason}${pathCounts}.`
     );
+    // The full dump may quote the writer's manuscript, and Output channels
+    // get pasted into public bug reports — so it is opt-in, not always-on.
+    if (!this.settings?.get<boolean>('proseMinion', 'debugLogging', false)) {
+      this.outputChannel?.appendLine(
+        '[AgentRunEngine] Enable the proseMinion.debugLogging setting to log full rejected responses (may contain manuscript text).'
+      );
+      return;
+    }
     this.outputChannel?.appendLine(
-      `[AgentRunEngine] BEGIN REJECTED RESOURCE RESPONSE (${content.length} chars)`
+      `[AgentRunEngine] BEGIN REJECTED RESOURCE RESPONSE (${content.length} chars; may contain quoted user text)`
     );
     this.outputChannel?.appendLine(content);
     this.outputChannel?.appendLine('[AgentRunEngine] END REJECTED RESOURCE RESPONSE');

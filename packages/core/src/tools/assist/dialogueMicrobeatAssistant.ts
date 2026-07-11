@@ -2,7 +2,7 @@
 
 import { LogSink } from '@/platform';
 import { PromptLoader } from '../shared/prompts';
-import { AgentCapability, ExecutionResult, StreamingTokenCallback } from '@orchestration/AgentRunContracts';
+import { AgentCapabilityFactory, ExecutionResult, StreamingTokenCallback } from '@orchestration/AgentRunContracts';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { DialogueFocus } from '@messages';
 import {
@@ -10,7 +10,7 @@ import {
   PassageAssistantOptions,
   PromptedPassageAssistant,
   PromptedPassageProfile
-} from './PromptedPassageAssistant';
+} from './promptedPassageAssistant';
 
 export interface DialogueMicrobeatInput extends PassageAssistantInput {}
 
@@ -64,10 +64,10 @@ export class DialogueMicrobeatAssistant {
   constructor(
     agentRunEngine: AgentRunEngine,
     promptLoader: PromptLoader,
-    guideCapability: AgentCapability,
+    createGuideCapability: AgentCapabilityFactory,
     outputChannel?: LogSink
   ) {
-    this.runner = new PromptedPassageAssistant(agentRunEngine, promptLoader, guideCapability, outputChannel);
+    this.runner = new PromptedPassageAssistant(agentRunEngine, promptLoader, createGuideCapability, outputChannel);
   }
 
   analyze(input: DialogueMicrobeatInput, options?: DialogueMicrobeatOptions): Promise<ExecutionResult> {

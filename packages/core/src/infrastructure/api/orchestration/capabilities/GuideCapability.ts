@@ -57,6 +57,10 @@ export class GuideCapability implements AgentCapability {
       try {
         loaded.push({ path, content: await this.guideLoader.loadGuide(path) });
       } catch (error) {
+        // A load failure joins the unavailable list so the model (and thus
+        // the writer's briefing) knows this guide dropped out — a dev-only
+        // log line would let it vanish silently.
+        unavailable.push(path);
         this.outputChannel?.appendLine(`[GuideCapability] Failed to load ${path}: ${String(error)}`);
       }
     }

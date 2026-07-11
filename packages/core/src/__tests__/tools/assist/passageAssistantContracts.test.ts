@@ -2,7 +2,7 @@ import { DialogueMicrobeatAssistant } from '@/tools/assist/dialogueMicrobeatAssi
 import { ProseAssistant } from '@/tools/assist/proseAssistant';
 import { WritingToolsAssistant, WritingToolsFocus } from '@/tools/assist/writingToolsAssistant';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
-import { resolvePassageRunPolicy } from '@/tools/assist/PromptedPassageAssistant';
+import { resolvePassageRunPolicy } from '@/tools/assist/promptedPassageAssistant';
 
 const passage = {
   text: 'Mara set the cup down.',
@@ -41,7 +41,7 @@ describe('passage assistant contracts', () => {
     ['both', 'both']
   ] as const)('keeps the Dialogue %s prompt profile and default run contract', async (focus, promptFocus) => {
     const { promptLoader, engine, guideCapability, output } = makeHarness();
-    const assistant = new DialogueMicrobeatAssistant(engine as never, promptLoader as never, guideCapability as never, output as never);
+    const assistant = new DialogueMicrobeatAssistant(engine as never, promptLoader as never, (() => guideCapability) as never, output as never);
 
     await assistant.analyze(passage, { focus });
 
@@ -70,7 +70,7 @@ describe('passage assistant contracts', () => {
 
   it('keeps the Prose prompt profile, message framing, and defaults', async () => {
     const { promptLoader, engine, guideCapability } = makeHarness();
-    const assistant = new ProseAssistant(engine as never, promptLoader as never, guideCapability as never);
+    const assistant = new ProseAssistant(engine as never, promptLoader as never, (() => guideCapability) as never);
 
     await assistant.analyze(passage);
 
@@ -109,7 +109,7 @@ describe('passage assistant contracts', () => {
 
   it.each(writingToolProfiles)('keeps the Writing Tools %s profile contract', async (focus, role, task) => {
     const { promptLoader, engine, guideCapability, output } = makeHarness();
-    const assistant = new WritingToolsAssistant(engine as never, promptLoader as never, guideCapability as never, output as never);
+    const assistant = new WritingToolsAssistant(engine as never, promptLoader as never, (() => guideCapability) as never, output as never);
 
     await assistant.analyze(passage, { focus });
 
@@ -134,7 +134,7 @@ describe('passage assistant contracts', () => {
 
   it('resolves guides and retained policies independently without changing the Dialogue profile', async () => {
     const { promptLoader, engine, guideCapability, output } = makeHarness();
-    const assistant = new DialogueMicrobeatAssistant(engine as never, promptLoader as never, guideCapability as never, output as never);
+    const assistant = new DialogueMicrobeatAssistant(engine as never, promptLoader as never, (() => guideCapability) as never, output as never);
     const controller = new AbortController();
     const onToken = jest.fn();
 
@@ -158,7 +158,7 @@ describe('passage assistant contracts', () => {
 
   it('uses the retained guide policy when a Writing Tools run keeps its conversation', async () => {
     const { engine, promptLoader, guideCapability, output } = makeHarness();
-    const assistant = new WritingToolsAssistant(engine as never, promptLoader as never, guideCapability as never, output as never);
+    const assistant = new WritingToolsAssistant(engine as never, promptLoader as never, (() => guideCapability) as never, output as never);
 
     await assistant.analyze(passage, { focus: 'editor', retainConversation: true });
 

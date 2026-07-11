@@ -124,6 +124,49 @@ describe('AgentRunEngine', () => {
     expect(result.content).toBe('Recovered final answer.');
   });
 
+  it('delivers an answer that quotes the protocol tag instead of trading it for a correction turn', async () => {
+    const guides = capability();
+    const quotingAnswer = 'The engine expects `<prose-minion-tool-call name="resource.read">` markup, ' +
+      'but no guides were needed. The dialogue reads cleanly and the beats are well placed.';
+    client.createStreamingChatCompletion
+      .mockReturnValueOnce(stream([
+        'The engine expects `<prose-minion-tool-call name="resource.read">` markup, ',
+        'but no guides were needed. The dialogue reads cleanly and the beats are well placed.'
+      ]));
+    const visible: string[] = [];
+
+    const result = await engine.runInitial({
+      toolName: 'dialogue', systemMessage: 'System', userMessage: 'Analyze this.',
+      policy: AGENT_RUN_POLICIES.assistant, capability: guides,
+      options: { onToken: token => visible.push(token) }
+    });
+
+    expect(guides.fulfill).not.toHaveBeenCalled();
+    expect(guides.invalidRequestInstruction).not.toHaveBeenCalled();
+    expect(client.createStreamingChatCompletion).toHaveBeenCalledTimes(1);
+    expect(visible.join('')).toBe(quotingAnswer);
+    expect(result.content).toBe(quotingAnswer);
+  });
+
+  it('streams a long answer progressively even when it opens with narrated-sounding intent', async () => {
+    const guides = capability();
+    const opener = 'Let me check the pacing in this scene before giving feedback: ';
+    const body = 'the paragraph rhythm holds steady and the dialogue beats are spaced well. '.repeat(8);
+    client.createStreamingChatCompletion
+      .mockReturnValueOnce(stream([opener, ...body.match(/.{1,80}/g)!]));
+    const visible: string[] = [];
+
+    const result = await engine.runInitial({
+      toolName: 'dialogue', systemMessage: 'System', userMessage: 'Analyze this.',
+      policy: AGENT_RUN_POLICIES.assistant, capability: guides,
+      options: { onToken: token => visible.push(token) }
+    });
+
+    expect(visible.length).toBeGreaterThan(2);
+    expect(visible.join('').trim()).toBe(`${opener}${body}`.trim());
+    expect(result.content).toBe(`${opener}${body}`.trim());
+  });
+
   it('accepts a narrated request preamble on the first turn without burning the correction turn', async () => {
     const guides = capability();
     const narratedRequest = `I need to access several craft guides before answering.\n${GUIDE_REQUEST}`;
@@ -188,10 +231,11 @@ describe('AgentRunEngine', () => {
     expect(logs).toContain('chars of evidence: dialogue.md');
   });
 
-  it('logs the full rejected assistant response between diagnostic delimiters', async () => {
+  it('logs the full rejected assistant response only when debug logging is opted in', async () => {
     const guides = capability();
     const output = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
-    const diagnosticEngine = new AgentRunEngine(client as never, conversations, undefined, output);
+    const debugSettings = { get: jest.fn().mockReturnValue(true) };
+    const diagnosticEngine = new AgentRunEngine(client as never, conversations, undefined, output, undefined, debugSettings as never);
     const invalid = '<prose-minion-tool-call name="resource.read"><paths><path>outside-catalog.md</path></paths></prose-minion-tool-call>';
     client.createStreamingChatCompletion
       .mockReturnValueOnce(stream([invalid]))
@@ -208,11 +252,49 @@ describe('AgentRunEngine', () => {
     }
 
     const logs = output.appendLine.mock.calls.flat().join('\n');
+    expect(debugSettings.get).toHaveBeenCalledWith('proseMinion', 'debugLogging', false);
     expect(logs).toContain('reason=path-not-allowlisted; paths=1; allowlisted=0');
-    expect(logs).toContain(`BEGIN REJECTED RESOURCE RESPONSE (${invalid.length} chars)`);
+    expect(logs).toContain('BEGIN REJECTED RESOURCE RESPONSE');
     expect(logs).toContain(invalid);
     expect(logs).toContain('END REJECTED RESOURCE RESPONSE');
     expect(logs).not.toContain('PRIVATE PASSAGE');
+  });
+
+  it('withholds the full rejected-response dump by default and says how to enable it', async () => {
+    const guides = capability();
+    const output = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
+    const quietEngine = new AgentRunEngine(client as never, conversations, undefined, output);
+    const invalid = '<prose-minion-tool-call name="resource.read"><paths><path>outside-catalog.md</path></paths></prose-minion-tool-call>';
+    client.createStreamingChatCompletion
+      .mockReturnValueOnce(stream([invalid]))
+      .mockReturnValueOnce(stream(['Safe final prose.']));
+
+    try {
+      await quietEngine.runInitial({
+        toolName: 'dialogue', systemMessage: 'System', userMessage: 'PRIVATE PASSAGE',
+        policy: AGENT_RUN_POLICIES.assistant, capability: guides,
+        options: { onToken: jest.fn() }
+      });
+    } finally {
+      quietEngine.dispose();
+    }
+
+    const logs = output.appendLine.mock.calls.flat().join('\n');
+    expect(logs).toContain('reason=path-not-allowlisted');
+    expect(logs).toContain('proseMinion.debugLogging');
+    expect(logs).not.toContain('BEGIN REJECTED RESOURCE RESPONSE');
+  });
+
+  it('appends the truncation notice when a run ends with finish_reason length', async () => {
+    client.createChatCompletion.mockResolvedValueOnce({ content: 'Partial analysis', finishReason: 'length' });
+
+    const result = await engine.runInitial({
+      toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopHost
+    });
+
+    expect(result.content).toContain('Partial analysis');
+    expect(result.content).toContain('⚠️ Response truncated. Increase Max Tokens in settings.');
   });
 
   it('accepts a Markdown-fenced XML request instead of burning the correction turn', async () => {

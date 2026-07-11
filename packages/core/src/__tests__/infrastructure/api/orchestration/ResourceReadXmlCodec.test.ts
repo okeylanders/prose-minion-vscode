@@ -52,6 +52,22 @@ describe('ResourceReadXmlCodec', () => {
     expect(codec.inspect('Ordinary final prose.')).toEqual({ kind: 'none' });
   });
 
+  it('classifies a genuine answer that mentions the protocol as prose, not a call', () => {
+    const quoted = 'The protocol expects `<prose-minion-tool-call name="resource.read">`, but none was ' +
+      'needed, so here is my analysis: the dialogue tags are strong and the beats land.';
+    expect(codec.inspect(quoted)).toEqual({ kind: 'none' });
+    expect(codec.hideIfProtocolShaped(quoted)).toBe(quoted);
+
+    const exact = request(path('story.md'));
+    const deepMarker = `${'This answer discusses pacing at length. '.repeat(15)}${exact}`;
+    expect(codec.inspect(deepMarker)).toEqual({ kind: 'none' });
+
+    const mentionThenCall = `The docs show \`<prose-minion-tool-call>\` syntax.\n${exact}`;
+    expect(codec.inspect(mentionThenCall)).toMatchObject({
+      kind: 'request', request: { paths: ['story.md'] }
+    });
+  });
+
   it.each([
     ['malformed XML', '<prose-minion-tool-call name="resource.read"><paths><path>story.md</path></paths>'],
     ['an unknown operation', request(path('story.md')).replace('resource.read', 'dictionary.lookup')],
@@ -68,8 +84,8 @@ describe('ResourceReadXmlCodec', () => {
 
   it('hides complete, garnished, and mixed protocol-shaped output from visible content', () => {
     const exact = request(path('story.md'));
-    expect(codec.stripExactRequest(exact)).toBe('');
-    expect(codec.stripExactRequest(`I need guides first.\n${exact}`)).toBe('');
-    expect(codec.stripExactRequest(`${exact} prose`)).toBe('');
+    expect(codec.hideIfProtocolShaped(exact)).toBe('');
+    expect(codec.hideIfProtocolShaped(`I need guides first.\n${exact}`)).toBe('');
+    expect(codec.hideIfProtocolShaped(`${exact} prose`)).toBe('');
   });
 });

@@ -81,7 +81,11 @@ export function activate(context: vscode.ExtensionContext): void {
   const aiResourceManager = new AIResourceManager(resourceLoader, secretsService, platform.settings, outputChannel);
   // Lifecycle starts once at the composition root. Services only bind to the
   // manager-owned generation; none may rebuild all model scopes on startup.
-  void aiResourceManager.ensureInitialized();
+  // Fire-and-forget, but never unobserved: the manager resets on rejection
+  // and the next use retries, so this log is the only trace of a bad start.
+  aiResourceManager.ensureInitialized().catch(error => {
+    outputChannel.appendLine(`[extension] Initial AI resource build failed: ${error instanceof Error ? error.message : String(error)}`);
+  });
   const standardsService = new StandardsService(platform.workspace.extensionPath, platform.fileSystem, platform.settings, outputChannel);
   const toolOptions = new ToolOptionsProvider(platform.settings);
 

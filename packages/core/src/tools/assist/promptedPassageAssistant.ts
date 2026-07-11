@@ -1,6 +1,6 @@
 import { LogSink } from '@/platform';
 import { PromptLoader } from '../shared/prompts';
-import { AgentCapability, ExecutionResult, StreamingTokenCallback } from '@orchestration/AgentRunContracts';
+import { AgentCapabilityFactory, ExecutionResult, StreamingTokenCallback } from '@orchestration/AgentRunContracts';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 
@@ -54,7 +54,7 @@ export class PromptedPassageAssistant {
   constructor(
     private readonly agentRunEngine: AgentRunEngine,
     private readonly promptLoader: PromptLoader,
-    private readonly guideCapability: AgentCapability,
+    private readonly createGuideCapability: AgentCapabilityFactory,
     private readonly outputChannel?: LogSink
   ) {}
 
@@ -73,7 +73,9 @@ export class PromptedPassageAssistant {
       systemMessage: this.buildSystemMessage(profile, focus, sharedPrompts, toolPrompts),
       userMessage: this.buildUserMessage(profile, focus, input),
       policy: resolvePassageRunPolicy(options.includeCraftGuides, options.retainConversation),
-      capability: usesGuides ? this.guideCapability : undefined,
+      // A fresh capability per run keeps the allowlist snapshot scoped to
+      // this request; concurrent runs never see each other's catalog.
+      capability: usesGuides ? this.createGuideCapability() : undefined,
       options: {
         temperature: options.temperature ?? 0.7,
         maxTokens: options.maxTokens ?? 10000,

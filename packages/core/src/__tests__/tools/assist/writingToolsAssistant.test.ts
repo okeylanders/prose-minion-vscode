@@ -16,7 +16,7 @@ describe('WritingToolsAssistant', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    assistant = new WritingToolsAssistant(engine as never, promptLoader as never, guides as never, output as never);
+    assistant = new WritingToolsAssistant(engine as never, promptLoader as never, (() => guides) as never, output as never);
   });
 
   it.each<WritingToolsFocus>(['cliche', 'continuity', 'style', 'editor', 'fresh', 'repetition'])(

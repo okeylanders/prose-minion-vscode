@@ -62,10 +62,10 @@ describe('capability-enabled assistant routes', () => {
         const input = { text: 'Mara set the cup down.', contextText: 'She has not slept.' };
         const options = { onToken: (token: string) => visible.push(token) };
         const result = route === 'Dialogue'
-          ? await new DialogueMicrobeatAssistant(engine, promptLoader as never, capability).analyze(input, { ...options, focus: 'both' })
+          ? await new DialogueMicrobeatAssistant(engine, promptLoader as never, () => capability).analyze(input, { ...options, focus: 'both' })
           : route === 'Prose'
-            ? await new ProseAssistant(engine, promptLoader as never, capability).analyze(input, options)
-            : await new WritingToolsAssistant(engine, promptLoader as never, capability).analyze(input, { ...options, focus: 'editor' });
+            ? await new ProseAssistant(engine, promptLoader as never, () => capability).analyze(input, options)
+            : await new WritingToolsAssistant(engine, promptLoader as never, () => capability).analyze(input, { ...options, focus: 'editor' });
 
         expect(result.content).toBe(finalResponse);
         expect(result.usedGuides).toEqual([guidePath]);
