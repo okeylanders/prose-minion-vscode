@@ -38,14 +38,24 @@ stop.
 - Persona capabilities cross a typed application-layer boundary. Persona
   prompts never call handlers, construct message envelopes, or know service
   implementation classes.
-- Use a provider-neutral, strictly parsed structured request envelope compatible
-  with the existing resource-request pattern. Provider-native function calling
-  may replace the adapter later without changing application request/result
-  types.
-- The v1 wire is an entire assistant response of the form
-  `<workshop-capability-request>{"capability":..., ...}</workshop-capability-request>`.
-  After trimming, prose before/after the tag, multiple tags in one response, or
-  a tag found inside quoted user/excerpt content is not executable.
+- Use the provider-neutral, strictly parsed, well-formed XML request envelope
+  introduced in Sprint 06A. Provider-native function calling may become an
+  optional adapter later without changing application request/result types;
+  XML remains the primary cross-model transport and routes do not split by
+  provider tool-call support.
+- The v1 wire is an entire assistant response with one
+  `<prose-minion-tool-call>` root and a quoted operation name, for example:
+
+  ```xml
+  <prose-minion-tool-call name="dictionary.lookup">
+    <word>liminal</word>
+    <context>The word appears in a quiet threshold scene.</context>
+    <purpose>Clarify its tone and connotations.</purpose>
+  </prose-minion-tool-call>
+  ```
+
+  After trimming, prose before/after the root, multiple roots/calls, malformed
+  XML, or a tag found inside quoted user/excerpt content is not executable.
 - Initial allowlist:
   - `dictionary.lookup` -> `DictionaryService.lookupWord`
   - `dictionary.full-entry` -> `DictionaryService.generateParallelDictionary`
@@ -108,8 +118,8 @@ plain application-owned boundary are required.
 
 - [ ] Define capability request/result types in an application/shared contract
       that imports no provider, React, or VS Code types.
-- [ ] Add a strict parser/serializer for the exact envelope above. Reject
-      malformed JSON,
+- [ ] Extend the shared XML codec/parser for the typed capability operations
+      above. Reject malformed XML,
       unknown capability ids, unknown tool ids, extra dangerous fields,
       oversized strings, duplicate calls, and tags embedded in quoted excerpt
       content rather than an assistant response.
@@ -164,7 +174,8 @@ plain application-owned boundary are required.
 
 ### Prompts, presentation, and observability
 
-- [ ] Extend the shared persona base prompt with the exact capability schema,
+- [ ] Extend the shared persona base prompt with the exact XML capability
+      operation schema,
       when each capability is appropriate, the autonomy granted, and the call
       budget. Persona-specific prompts must not redefine the allowlist.
 - [ ] Show deterministic progress (“Jill is checking the Writer's Dictionary

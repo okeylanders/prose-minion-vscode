@@ -54,10 +54,38 @@ an explicit resource-catalog policy, for example `guides`, `projectContext`, or
 the source of truth for project-context groups; the engine owns enumeration,
 validation, provenance, and delivery mechanics.
 
+### One uniform XML capability-request transport
+
+The provider-neutral capability wire is one well-formed XML envelope. The
+initial resource-read request is:
+
+```xml
+<prose-minion-tool-call name="resource.read">
+  <paths>
+    <path>scene-example-guides/campfire-stories.md</path>
+  </paths>
+</prose-minion-tool-call>
+```
+
+A capability request must be the entire assistant response (apart from
+whitespace). The host parses it with a standards-compliant XML parser, validates
+the typed operation and arguments, executes only the route's allow-listed
+capability, and returns bounded evidence before asking the model to continue.
+Malformed XML, multiple roots/calls, or prose before or after the root are not
+executable and never stream as raw user-visible output.
+
+`RunPolicy` continues to select the resource catalog. The model requests
+`resource.read` paths from the one catalog it was explicitly shown; it does not
+choose a catalog, cross a resource boundary, or receive every project resource.
+No model-specific capability matching or provider-native function-calling
+transport is required for this decision. A provider-native adapter may be added
+later behind the same typed request/result boundary, but XML is the primary
+cross-model wire.
+
 ### Visibility
 
-Candidate directives are buffered until exact validation succeeds. Raw
-directives and full loaded file contents become host/model evidence and
+Candidate tool requests are buffered until exact validation succeeds. Raw
+requests and full loaded file contents become host/model evidence and
 structured artifacts, not visible chat by default. The writer sees compact,
 attributed artifacts (safe display path, category, bounded size, and reason)
 and can explicitly inspect more content when product UI permits it.
@@ -69,6 +97,6 @@ and can explicitly inspect more content when product UI permits it.
 - Sidebar and Workshop share the same lifecycle/capability mechanics while
   retaining intentional differences in resource scope.
 - Persona file reading and dictionary capability work have a safe extension
-  seam rather than becoming new special-case loops.
+  seam and one XML transport rather than becoming new special-case loops.
 - The 06B branch has deliberate migration churn, but no legacy façade remains
   when it integrates.

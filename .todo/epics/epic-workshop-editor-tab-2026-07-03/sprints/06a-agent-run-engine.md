@@ -1,6 +1,6 @@
 # Sprint 06A: Agent-Run Engine and Resource Catalogs
 
-**Status**: Core implementation landed — load-bearing hardening remains before Sprint 06B; manual F5 route confirmation pending
+**Status**: Core implementation landed — load-bearing hardening and uniform XML capability transport remain before Sprint 06B; manual F5 route confirmation pending
 **Priority**: High
 **Branch**: `sprint/workshop-editor-tab-06a-agent-run-engine` → PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 5–8 days
@@ -33,9 +33,18 @@ visible behavior across the sidebar or Workshop.
   names, prompt assets, and Workshop ids stay stable while their duplicated
   internal runner is consolidated.
 - A capability owns its complete protocol surface: catalog enumeration and
-  ordering, exact directive instructions and validation, allow-listed reads,
+  ordering, exact XML tool-call instructions and validation, allow-listed reads,
   evidence formatting/trimming, provenance, status, and limit behavior. A
   tool builds only its semantic task input; it must not also append a catalog.
+- The cross-model capability wire is one well-formed XML envelope:
+  `<prose-minion-tool-call name="resource.read"><paths><path>…</path></paths></prose-minion-tool-call>`.
+  It must be the entire assistant response. `RunPolicy` selects the catalog;
+  the model requests paths only from its shown allow-list and never selects a
+  catalog or provider-specific protocol.
+- XML is the primary transport for every configured model. Do not split routes
+  by provider tool-call support in 06A; a future provider-native adapter must
+  sit behind the same typed request/result boundary rather than alter policy,
+  authorization, evidence, or visibility semantics.
 
 ## Tasks
 
@@ -74,6 +83,35 @@ test prevents a caller from silently inheriting another route's catalog.
 - [x] Buffer candidate directives until validation and keep raw protocol/file
       contents out of visible streamed output.
 
+### Uniform XML resource-request transport — required before Sprint 06B
+
+- [ ] Characterize the current guide and project-context request behavior,
+      including whole-response enforcement, streaming invisibility, bounded
+      rounds, allow-listed fulfillment, artifacts, and final-output forcing.
+- [ ] Replace `<guide-request path=["…"] />` and
+      `<context-request path=["…"] />` with one standards-compliant XML
+      envelope: `<prose-minion-tool-call name="resource.read"><paths><path>…</path></paths></prose-minion-tool-call>`.
+      Use a direct XML parser dependency rather than a hand-rolled regular
+      expression.
+- [ ] Add one shared typed XML codec. It returns a `resource.read` request with
+      paths; the selected `RunPolicy` and capability retain catalog ownership,
+      path authorization, fulfillment, evidence, provenance, and limits.
+      `AgentRunEngine` must not hard-code catalog-specific tag names.
+- [ ] Append the exact shared resource-read instruction beside every catalog,
+      so Dialogue, Prose, Writing Tools, and Context receive the same protocol
+      without duplicate prompt-specific variants. This explicitly enables WTA
+      guide requests, which are currently fulfillable but not taught.
+- [ ] Reject malformed XML, multiple roots/calls, unknown operation names,
+      duplicate or empty paths, mixed prose/call responses, and path values not
+      in the selected catalog. Keep raw XML and loaded content out of visible
+      output by default.
+- [ ] Delete the unreferenced legacy `ResourceRequestParser` and
+      `ContextResourceRequestParser` once their coverage is represented by the
+      shared codec and capabilities.
+- [ ] Do not add dictionary, persona, analysis, edit, or to-do execution in
+      this commit. Sprint 07+ adds those as closed typed operations using this
+      same transport.
+
 ### Migration and deletion
 
 - [x] Migrate Assistant, Dictionary, Category Search, Context, and Workshop
@@ -84,11 +122,12 @@ test prevents a caller from silently inheriting another route's catalog.
 
 ### Remaining load-bearing completion work — required before Sprint 06B
 
-The engine is in place, but two older shapes still duplicate responsibility:
-the three passage assistants independently assemble the same kind of run, and
-the Context assistant and `ContextFileCapability` both advertise project
-resources. Finish these as small, test-first steps. Do not bundle prompt
-behavior changes into the structural refactor.
+The engine is in place, but three load-bearing shapes remain: the three passage
+assistants independently assemble the same kind of run, the Context assistant
+and `ContextFileCapability` both advertise project resources, and resource
+reads use two invalid-XML, catalog-specific directives. Finish these as small,
+test-first steps. Do not bundle unrelated prompt behavior changes into the
+structural refactors.
 
 #### 1. Characterize the passage-assistant contract first
 
@@ -163,10 +202,10 @@ framework name for every kind of passage analysis.
 - [ ] Keep all prompt assets and generated messages byte-for-byte equivalent
       through the runner extraction. No guide, formatting, weighting, or
       response-shape change may hide in that commit.
-- [ ] Decide and test separately whether the WTA profiles should explicitly
-      teach the guide-request protocol. The capability is available today, but
-      WTA prompt assets do not explain that protocol as Dialogue and Prose do;
-      enabling it can change model behavior and cost.
+- [ ] Characterize and test the shared catalog-level `resource.read` protocol
+      for WTA alongside Dialogue and Prose. WTA currently receives the guide
+      catalog but no request instruction; the uniform XML transport makes that
+      instruction explicit and may change guide-loading behavior/cost.
 - [ ] Audit WTA prompt references to shared “Diversity & Creative Sampling”
       instructions. Several focus prompts refer to them while the WTA base
       prompt does not provide them. Either restore a deliberate shared section
@@ -180,20 +219,21 @@ framework name for every kind of passage analysis.
 #### 4. Make `ContextFileCapability` the sole project-catalog owner
 
 **Current overlap:** `ContextAssistant` calls `resourceProvider.listResources()`
-and formats a capped, `projectBrief`-first catalog plus directive instruction;
+and formats a capped, `projectBrief`-first catalog plus resource-request instruction;
 then `AgentRunEngine` calls `ContextFileCapability.appendCatalog()` and adds a
 second, differently formatted catalog. The duplicated model input wastes
 context and means policy/authorization presentation lives in two places.
 
 - [ ] First add characterization tests for the intended catalog contract:
       empty state; stable `projectBrief`-first ordering; exact path/label/group
-      formatting; 100-item cap and overflow message; one directive instruction;
+      formatting; 100-item cap and overflow message; one XML tool-call instruction;
       allowed-path-only fulfillment; provenance; trimming; missing paths; and
-      raw directive/file invisibility in streamed output.
+      raw XML request/file invisibility in streamed output.
 - [ ] Move **all** project-resource catalog construction into
       `ContextFileCapability.appendCatalog()`: enumeration, ordering, cap,
       empty state, labels/workspace provenance, and the exact
-      `<context-request path=[\"...\"] />` instruction. Keep its existing
+      `<prose-minion-tool-call name="resource.read">…</prose-minion-tool-call>`
+      instruction. Keep its existing
       parse/fulfill/evidence/limit behavior together with that catalog.
 - [ ] Reduce `ContextAssistant` to the semantic context-generation request:
       excerpt, user-provided context, source provenance, and considered group
@@ -208,7 +248,7 @@ context and means policy/authorization presentation lives in two places.
       should be removed; do not silently begin sending an unbounded full source
       document while fixing catalog duplication.
 - [ ] Verify the final context initial request contains exactly one project
-      catalog and one directive instruction, and that the engine/capability
+      catalog and one XML tool-call instruction, and that the engine/capability
       remains the sole allow-list and evidence/provenance boundary.
 
 **Boundary after completion:** Settings and `ContextResourceResolver` choose
@@ -225,7 +265,7 @@ without understanding a workspace path.
 - [ ] Manually confirm F5 routes for sidebar dialogue/prose/WTA/context and
       Workshop retained tool continuation. For context, confirm catalog text is
       not duplicated and that a requested configured file yields only compact
-      visible provenance/status rather than raw directive or file content.
+      visible provenance/status rather than raw XML request or file content.
 - [ ] Re-read the caller-to-policy matrix above against the final code. Any new
       route or policy must be added there and in the policy-matrix regression
       test before Sprint 06B begins.
@@ -269,8 +309,12 @@ without understanding a workspace path.
 - The profile characterization matrix covers every supported Dialogue and WTA
   focus plus Prose, both guide/retention policy axes, and service result mapping.
 - `ContextFileCapability` is the only project-resource catalog/protocol owner;
-  the initial context request contains one bounded catalog and one directive
-  instruction.
+  the initial context request contains one bounded catalog and one uniform XML
+  tool-call instruction.
+- One typed, well-formed XML capability envelope handles every current resource
+  read. Its validation/visibility tests prove malformed calls and raw protocol
+  content do not leak, while RunPolicy continues to constrain each route to its
+  chosen catalog.
 - No temporary public façade or duplicated execution/catalog loop remains at
   merge.
-- Visible chat never leaks raw directives or full loaded files by default.
+- Visible chat never leaks raw XML tool requests or full loaded files by default.
