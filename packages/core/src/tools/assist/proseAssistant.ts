@@ -1,119 +1,31 @@
-/**
- * Prose Assistant Tool
- * General prose analysis and improvement suggestions ( Prose Excerpt Assistant )
- */
+/** Prose product profile over the neutral prompted-passage runner. */
 
 import { PromptLoader } from '../shared/prompts';
+import { AgentCapability, ExecutionResult } from '@orchestration/AgentRunContracts';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
-import { AgentCapability, ExecutionResult, StreamingTokenCallback } from '@orchestration/AgentRunContracts';
-import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
+import {
+  PassageAssistantInput,
+  PassageAssistantOptions,
+  PromptedPassageAssistant,
+  PromptedPassageProfile
+} from './PromptedPassageAssistant';
 
-export interface ProseAssistantInput {
-  text: string;
-  contextText?: string;
-  sourceFileUri?: string;
-}
+type ProseFocus = 'prose';
 
-export interface ProseAssistantOptions {
-  includeCraftGuides?: boolean;
-  temperature?: number;
-  maxTokens?: number;
-  /** AbortSignal for cancellation support */
-  signal?: AbortSignal;
-  /** Callback for streaming tokens (enables streaming mode) */
-  onToken?: StreamingTokenCallback;
-  /** Retain the conversation after the run for multi-turn continuation (Workshop). */
-  retainConversation?: boolean;
-}
+export interface ProseAssistantInput extends PassageAssistantInput {}
+export interface ProseAssistantOptions extends Omit<PassageAssistantOptions<ProseFocus>, 'focus'> {}
 
-export class ProseAssistant {
-  constructor(
-    private readonly agentRunEngine: AgentRunEngine,
-    private readonly promptLoader: PromptLoader,
-    private readonly guideCapability: AgentCapability
-  ) {}
-
-  async analyze(input: ProseAssistantInput, options?: ProseAssistantOptions): Promise<ExecutionResult> {
-    // Load system prompts (tool-specific and shared)
-    const sharedPrompts = await this.promptLoader.loadSharedPrompts();
-    const toolPrompts = await this.loadToolPrompts();
-
-    // Build system message (prompts only, no guides yet)
-    const systemMessage = this.buildSystemMessage(sharedPrompts, toolPrompts);
-
-    // Build user message (just the prose text)
-    const userMessage = this.buildUserMessage(input);
-
-    // Use orchestrator to execute with agent capabilities (guide support)
-    const usesGuides = options?.includeCraftGuides !== false;
-    return this.agentRunEngine.runInitial({
-      toolName: 'prose-assistant',
-      systemMessage,
-      userMessage,
-      policy: usesGuides
-        ? options?.retainConversation ? AGENT_RUN_POLICIES.workshopTool : AGENT_RUN_POLICIES.assistant
-        : options?.retainConversation ? AGENT_RUN_POLICIES.workshopToolWithoutResources : AGENT_RUN_POLICIES.assistantWithoutResources,
-      capability: usesGuides ? this.guideCapability : undefined,
-      options: {
-        temperature: options?.temperature ?? 0.7,
-        maxTokens: options?.maxTokens ?? 10000,
-        signal: options?.signal,
-        onToken: options?.onToken
-      }
-    });
-  }
-
-  private async loadToolPrompts(): Promise<string> {
-    try {
-      return await this.promptLoader.loadPrompts([
-        'prose-assistant/00-prose-assistant.md'
-      ]);
-    } catch (error) {
-      // Fallback to default instructions
-      console.warn('Could not load prose assistant prompts, using defaults');
-      return this.getDefaultInstructions();
-    }
-  }
-
-  private buildSystemMessage(
-    sharedPrompts: string,
-    toolPrompts: string
-  ): string {
-    const parts = [
-      'You are a creative writing assistant specializing in prose analysis and improvement.',
-      toolPrompts || this.getDefaultInstructions(),
-      sharedPrompts
-    ].filter(Boolean);
-
-    return parts.join('\n\n---\n\n');
-  }
-
-  private buildUserMessage(input: ProseAssistantInput): string {
-    const lines: string[] = [
-      'Please analyze this prose passage and provide suggestions for improvement.',
-      '',
-      '### Prose Passage',
-      '```markdown',
-      input.text,
-      '```',
-      ''
-    ];
-
-    if (input.sourceFileUri) {
-      lines.push(`Source File: ${input.sourceFileUri}`, '');
-    }
-
-    if (input.contextText && input.contextText.trim().length > 0) {
-      lines.push('### Supplemental Context', input.contextText.trim(), '');
-    }
-
-    lines.push('Focus on voice, clarity, pacing, sensory detail, and opportunities to reinforce character or theme.');
-
-    return lines.join('\n');
-  }
-
-  private getDefaultInstructions(): string {
-    return `# Prose Assistant
+const PROSE_PROFILE: PromptedPassageProfile<ProseFocus> = {
+  name: 'ProseAssistant',
+  defaultFocus: 'prose',
+  toolName: () => 'prose-assistant',
+  promptPaths: () => ['prose-assistant/00-prose-assistant.md'],
+  roleDescription: () => 'You are a creative writing assistant specializing in prose analysis and improvement.',
+  taskInstruction: () => 'Please analyze this prose passage and provide suggestions for improvement.',
+  passageHeading: 'Prose Passage',
+  contextHeading: 'Supplemental Context',
+  closingInstruction: () => 'Focus on voice, clarity, pacing, sensory detail, and opportunities to reinforce character or theme.',
+  fallbackInstructions: () => `# Prose Assistant
 
 Your task is to analyze prose passages and provide constructive feedback on:
 
@@ -138,6 +50,17 @@ Provide your analysis in clear sections:
 1. Strengths of the passage
 2. Areas for improvement with specific examples
 3. Suggested revisions
-4. Overall recommendations`;
+4. Overall recommendations`
+};
+
+export class ProseAssistant {
+  private readonly runner: PromptedPassageAssistant;
+
+  constructor(agentRunEngine: AgentRunEngine, promptLoader: PromptLoader, guideCapability: AgentCapability) {
+    this.runner = new PromptedPassageAssistant(agentRunEngine, promptLoader, guideCapability);
+  }
+
+  analyze(input: ProseAssistantInput, options?: ProseAssistantOptions): Promise<ExecutionResult> {
+    return this.runner.analyze(PROSE_PROFILE, input, options);
   }
 }

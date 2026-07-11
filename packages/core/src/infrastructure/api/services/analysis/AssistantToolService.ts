@@ -215,6 +215,10 @@ export class AssistantToolService {
         },
         {
           ...options,
+          // ToolOptionsProvider serves several product profiles; this public
+          // route is already typed to DialogueFocus, so do not let a broader
+          // AssistantFocus reach the dialogue prompt registry.
+          focus: focus ?? 'both',
           signal: streamingOptions?.signal,
           onToken: streamingOptions?.onToken,
           retainConversation: streamingOptions?.retainConversation

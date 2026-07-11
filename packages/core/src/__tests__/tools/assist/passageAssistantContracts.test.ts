@@ -2,6 +2,7 @@ import { DialogueMicrobeatAssistant } from '@/tools/assist/dialogueMicrobeatAssi
 import { ProseAssistant } from '@/tools/assist/proseAssistant';
 import { WritingToolsAssistant, WritingToolsFocus } from '@/tools/assist/writingToolsAssistant';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
+import { resolvePassageRunPolicy } from '@/tools/assist/PromptedPassageAssistant';
 
 const passage = {
   text: 'Mara set the cup down.',
@@ -25,6 +26,15 @@ const makeHarness = () => {
 };
 
 describe('passage assistant contracts', () => {
+  it.each([
+    [undefined, undefined, AGENT_RUN_POLICIES.assistant],
+    [false, undefined, AGENT_RUN_POLICIES.assistantWithoutResources],
+    [true, true, AGENT_RUN_POLICIES.workshopTool],
+    [false, true, AGENT_RUN_POLICIES.workshopToolWithoutResources]
+  ] as const)('resolves guide and retention policy dimensions independently', (includeCraftGuides, retainConversation, expected) => {
+    expect(resolvePassageRunPolicy(includeCraftGuides, retainConversation)).toBe(expected);
+  });
+
   it.each([
     ['dialogue', 'dialogue'],
     ['microbeats', 'microbeats'],
