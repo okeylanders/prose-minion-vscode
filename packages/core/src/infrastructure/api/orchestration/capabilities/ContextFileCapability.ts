@@ -1,10 +1,11 @@
 import { LogSink, SettingsStore } from '@/platform';
-import { ContextResourceContent, ContextResourceProvider } from '@/domain/models/ContextGeneration';
+import { ContextResourceContent, ContextResourceProvider, ContextResourceSummary } from '@/domain/models/ContextGeneration';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import { AgentCapability, CapabilityFulfillment } from '../AgentRunContracts';
 import { ResourceReadRequest, ResourceReadXmlCodec, RESOURCE_READ_XML_INSTRUCTION } from '../ResourceReadXmlCodec';
 
 const MAX_CONTEXT_WORDS = 50_000;
+const MAX_CATALOG_ITEMS = 100;
 
 export class ContextFileCapability implements AgentCapability {
   readonly catalog = 'projectContext' as const;
@@ -20,18 +21,7 @@ export class ContextFileCapability implements AgentCapability {
   async appendCatalog(userMessage: string): Promise<string> {
     const catalog = this.provider.listResources();
     this.allowedPaths = new Set(catalog.map(item => item.path));
-    if (catalog.length === 0) {
-      return [userMessage, '## Available Project Resources\n\nNo configured project resources are available.', RESOURCE_READ_XML_INSTRUCTION].join('\n\n');
-    }
-    return [
-      userMessage,
-      '',
-      '## Available Project Resources',
-      '',
-      ...catalog.map(item => `- \`${item.path}\` (${item.group}) — ${item.label}`),
-      '',
-      RESOURCE_READ_XML_INSTRUCTION
-    ].join('\n');
+    return [userMessage, this.formatCatalog(catalog), RESOURCE_READ_XML_INSTRUCTION].join('\n\n');
   }
 
   parseExactRequest(candidate: string): ResourceReadRequest | undefined {
@@ -50,10 +40,13 @@ export class ContextFileCapability implements AgentCapability {
         artifacts: []
       };
     }
-    const loaded = await this.provider.loadResources([...new Set(requestedPaths)]);
+    const requested = [...new Set(requestedPaths)];
+    const requestedSet = new Set(requested);
+    const loaded = (await this.provider.loadResources(requested))
+      .filter(item => requestedSet.has(item.path) && this.allowedPaths.has(item.path));
     const delivered = new Set(loaded.map(item => item.path));
     const missing = requestedPaths.filter(path => !delivered.has(path));
-    this.outputChannel?.appendLine(`[ContextFileCapability] Fulfilled ${loaded.length}/${requestedPaths.length} configured resource request(s).`);
+    this.outputChannel?.appendLine(`[ContextFileCapability] Fulfilled ${loaded.length}/${requested.length} configured resource request(s).`);
     return {
       evidence: this.buildEvidence(loaded, missing),
       deliveredPaths: loaded.map(item => item.path),
@@ -78,6 +71,43 @@ export class ContextFileCapability implements AgentCapability {
 
   limitInstruction(): string {
     return 'You have reached the project-resource request limit. Produce the context briefing now using only evidence already received.';
+  }
+
+  private formatCatalog(catalog: readonly ContextResourceSummary[]): string {
+    if (catalog.length === 0) {
+      return '## Available Project Resources\n\nNo project references matched the configured path patterns. Continue using the excerpt and your knowledge of genre conventions.';
+    }
+
+    const ordered = catalog
+      .map((item, index) => ({ item, index }))
+      .sort((a, b) => this.catalogOrder(a.item, a.index) - this.catalogOrder(b.item, b.index))
+      .map(({ item }) => item);
+    const lines = [
+      '## Available Project Resources',
+      '',
+      '**IMPORTANT**: Items in `[projectBrief]` are your story bible/overview. Request ALL of them on your first turn.',
+      '',
+      'Use the exact path values when requesting files.',
+      ''
+    ];
+
+    for (const summary of ordered.slice(0, MAX_CATALOG_ITEMS)) {
+      const workspacePrefix = summary.workspaceFolder ? ` (workspace: ${summary.workspaceFolder})` : '';
+      const labelSuffix = summary.label && summary.label.toLowerCase() !== summary.path.toLowerCase()
+        ? ` — ${summary.label}`
+        : '';
+      lines.push(`- [${summary.group}] \`${summary.path}\`${labelSuffix}${workspacePrefix}`);
+    }
+
+    if (ordered.length > MAX_CATALOG_ITEMS) {
+      lines.push('', `...and ${ordered.length - MAX_CATALOG_ITEMS} additional resource(s) not listed to save tokens.`);
+    }
+
+    return lines.join('\n');
+  }
+
+  private catalogOrder(item: ContextResourceSummary, originalIndex: number): number {
+    return item.group === 'projectBrief' ? originalIndex - 1_000 : originalIndex;
   }
 
   private buildEvidence(resources: readonly ContextResourceContent[], missing: readonly string[]): string {

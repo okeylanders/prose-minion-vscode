@@ -126,10 +126,16 @@ export class PromptedPassageAssistant {
       '```',
       ''
     ];
-    if (input.sourceFileUri) lines.push(`Source File: ${input.sourceFileUri}`, '');
-    if (input.contextText?.trim()) lines.push(`### ${profile.contextHeading}`, input.contextText.trim(), '');
+    if (input.sourceFileUri) {
+      lines.push(`Source File: ${input.sourceFileUri}`, '');
+    }
+    if (input.contextText?.trim()) {
+      lines.push(`### ${profile.contextHeading}`, input.contextText.trim(), '');
+    }
     const closingInstruction = profile.closingInstruction?.(focus);
-    if (closingInstruction) lines.push(closingInstruction);
+    if (closingInstruction) {
+      lines.push(closingInstruction);
+    }
     return lines.join('\n');
   }
 }

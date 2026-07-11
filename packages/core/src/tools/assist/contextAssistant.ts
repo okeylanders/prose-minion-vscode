@@ -8,11 +8,7 @@ import { AgentCapability, StreamingTokenCallback } from '@orchestration/AgentRun
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { PromptLoader } from '../shared/prompts';
 import { ContextPathGroup } from '@shared/types';
-import {
-  ContextResourceProvider,
-  ContextResourceSummary,
-  DEFAULT_CONTEXT_GROUPS
-} from '@/domain/models/ContextGeneration';
+import { DEFAULT_CONTEXT_GROUPS } from '@/domain/models/ContextGeneration';
 import { TokenUsage } from '@shared/types';
 
 export interface ContextAssistantInput {
@@ -24,7 +20,6 @@ export interface ContextAssistantInput {
 }
 
 export interface ContextAssistantOptions {
-  resourceProvider: ContextResourceProvider;
   capability: AgentCapability;
   temperature?: number;
   maxTokens?: number;
@@ -41,8 +36,6 @@ export interface ContextAssistantExecutionResult {
 }
 
 export class ContextAssistant {
-  private readonly MAX_RESOURCE_LIST = 100;
-
   constructor(
     private readonly agentRunEngine: AgentRunEngine,
     private readonly promptLoader: PromptLoader
@@ -52,21 +45,16 @@ export class ContextAssistant {
     input: ContextAssistantInput,
     options: ContextAssistantOptions
   ): Promise<ContextAssistantExecutionResult> {
-    if (!options?.resourceProvider) {
-      throw new Error('ContextAssistant requires a resource provider to resolve project resources.');
-    }
-
     const groups = this.normalizeGroups(input.requestedGroups);
     const sharedPrompts = await this.promptLoader.loadSharedPrompts();
     const toolPrompts = await this.loadToolPrompts();
     const systemMessage = this.buildSystemMessage(toolPrompts, sharedPrompts);
 
-    const resourceSummaries = options.resourceProvider.listResources();
     const userMessage = this.buildUserMessage({
       excerpt: input.excerpt,
       existingContext: input.existingContext,
       sourceFileUri: input.sourceFileUri,
-      resourceSummaries,
+      sourceContent: input.sourceContent,
       groups
     });
 
@@ -112,10 +100,9 @@ export class ContextAssistant {
     existingContext?: string;
     sourceFileUri?: string;
     sourceContent?: string;
-    resourceSummaries: ContextResourceSummary[];
     groups: ContextPathGroup[];
   }): string {
-    const { excerpt, existingContext, sourceFileUri, sourceContent, resourceSummaries, groups } = args;
+    const { excerpt, existingContext, sourceFileUri, sourceContent, groups } = args;
     const lines: string[] = [];
 
     lines.push('# Excerpt');
@@ -135,64 +122,16 @@ export class ContextAssistant {
       lines.push(`The excerpt comes from: ${sourceFileUri}`, '');
     }
 
-    if (sourceContent && sourceContent.trim().length > 0) {
-      lines.push('## Source Document (full text)');
+    if (sourceContent !== undefined && sourceContent.length > 0) {
+      lines.push('## Source Document');
       lines.push('```markdown');
-      lines.push(sourceContent.trim());
+      lines.push(sourceContent);
       lines.push('```', '');
     }
 
     lines.push('## Context Groups Considered');
     lines.push(groups.map(group => `- ${group}`).join('\n') || '- (none)', '');
 
-    lines.push(this.formatResourceCatalog(resourceSummaries));
-
-    return lines.join('\n');
-  }
-
-  private formatResourceCatalog(resourceSummaries: ContextResourceSummary[]): string {
-    if (!resourceSummaries || resourceSummaries.length === 0) {
-      return '## Available Project Resources\nNo project references matched the configured path patterns. Continue using the excerpt and your knowledge of genre conventions.';
-    }
-
-    // Prioritize projectBrief items at the top of the catalog
-    const priorityGroups = ['projectBrief'];
-    const sorted = [...resourceSummaries].sort((a, b) => {
-      const aPriority = priorityGroups.indexOf(a.group);
-      const bPriority = priorityGroups.indexOf(b.group);
-      // Items in priority groups come first (lower index = higher priority)
-      if (aPriority !== -1 && bPriority === -1) return -1;
-      if (aPriority === -1 && bPriority !== -1) return 1;
-      if (aPriority !== -1 && bPriority !== -1) return aPriority - bPriority;
-      // Non-priority items maintain original order
-      return 0;
-    });
-
-    const lines: string[] = [
-      '## Available Project Resources',
-      '',
-      '**IMPORTANT**: Items in `[projectBrief]` are your story bible/overview. Request ALL of them on your first turn.',
-      '',
-      'Use the exact path values when requesting files.',
-      ''
-    ];
-
-    const limitedResources = sorted.slice(0, this.MAX_RESOURCE_LIST);
-
-    for (const summary of limitedResources) {
-      const workspacePrefix = summary.workspaceFolder ? ` (workspace: ${summary.workspaceFolder})` : '';
-      const labelSuffix = summary.label && summary.label.toLowerCase() !== summary.path.toLowerCase()
-        ? ` — ${summary.label}`
-        : '';
-      lines.push(`- [${summary.group}] \`${summary.path}\`${labelSuffix}${workspacePrefix}`);
-    }
-
-    if (resourceSummaries.length > this.MAX_RESOURCE_LIST) {
-      const remaining = resourceSummaries.length - this.MAX_RESOURCE_LIST;
-      lines.push('', `...and ${remaining} additional resource(s) not listed to save tokens.`);
-    }
-
-    lines.push('');
     return lines.join('\n');
   }
 

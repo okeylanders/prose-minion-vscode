@@ -23,4 +23,73 @@ describe('ContextFileCapability', () => {
     expect(fulfillment.artifacts).toEqual([expect.objectContaining({ catalog: 'projectContext', category: 'characters', path: 'characters/mara.md' })]);
     expect(fulfillment.evidence).toContain('Mara is tired.');
   });
+
+  it('owns stable projectBrief-first catalog ordering, labels, the cap, and one XML instruction', async () => {
+    const resources = [
+      { group: 'characters' as const, path: 'characters/mara.md', label: 'Mara', workspaceFolder: 'novel' },
+      { group: 'projectBrief' as const, path: 'story-overview.md', label: 'Story Overview' },
+      { group: 'general' as const, path: 'style.md', label: 'style.md' },
+      ...Array.from({ length: 99 }, (_, index) => ({
+        group: 'chapters' as const,
+        path: `chapters/${index}.md`,
+        label: `Chapter ${index}`
+      }))
+    ];
+    provider.listResources.mockReturnValueOnce(resources);
+    const adapter = new ContextFileCapability(provider as never, settings as never);
+
+    const catalog = await adapter.appendCatalog('Semantic context request');
+
+    expect(catalog.indexOf('story-overview.md')).toBeLessThan(catalog.indexOf('characters/mara.md'));
+    expect(catalog).toContain('- [characters] `characters/mara.md` — Mara (workspace: novel)');
+    expect(catalog.match(/- \[/g)).toHaveLength(100);
+    expect(catalog).toContain('...and 2 additional resource(s) not listed to save tokens.');
+    expect(catalog.match(/## Resource Request Protocol/g)).toHaveLength(1);
+    expect(catalog.match(/<prose-minion-tool-call name="resource.read">/g)).toHaveLength(1);
+  });
+
+  it('rejects paths outside its displayed catalog and never turns extra provider output into evidence', async () => {
+    const adapter = new ContextFileCapability(provider as never, settings as never);
+    await adapter.appendCatalog('Brief');
+
+    const rejected = await adapter.fulfill(['outside.md']);
+    expect(rejected.deliveredPaths).toEqual([]);
+    expect(rejected.evidence).toContain('rejected');
+    expect(provider.loadResources).not.toHaveBeenCalledWith(['outside.md']);
+
+    provider.loadResources.mockResolvedValueOnce([
+      { group: 'characters', path: 'characters/mara.md', label: 'Mara', content: 'Mara is tired.' },
+      { group: 'characters', path: 'outside.md', label: 'Outside', content: 'Never show this.' }
+    ]);
+    const fulfillment = await adapter.fulfill(['characters/mara.md']);
+    expect(fulfillment.deliveredPaths).toEqual(['characters/mara.md']);
+    expect(fulfillment.evidence).not.toContain('Never show this.');
+    expect(fulfillment.artifacts).toHaveLength(1);
+  });
+
+  it('describes an empty catalog and preserves missing-path and trimming limit behavior', async () => {
+    provider.listResources.mockReturnValueOnce([]);
+    const emptyAdapter = new ContextFileCapability(provider as never, settings as never);
+    const emptyCatalog = await emptyAdapter.appendCatalog('Brief');
+    expect(emptyCatalog).toContain('No project references matched');
+    expect(emptyCatalog.match(/## Resource Request Protocol/g)).toHaveLength(1);
+
+    const missingAdapter = new ContextFileCapability(provider as never, settings as never);
+    await missingAdapter.appendCatalog('Brief');
+    provider.loadResources.mockResolvedValueOnce([]);
+    await expect(missingAdapter.fulfill(['characters/mara.md'])).resolves.toMatchObject({
+      evidence: expect.stringContaining('characters/mara.md'),
+      deliveredPaths: []
+    });
+
+    const largeProvider = {
+      listResources: () => [{ group: 'general', path: 'large.md', label: 'Large' }],
+      loadResources: async () => [{ group: 'general', path: 'large.md', label: 'Large', content: 'word '.repeat(50_001) }]
+    };
+    const trimmingAdapter = new ContextFileCapability(largeProvider as never, settings as never);
+    await trimmingAdapter.appendCatalog('Brief');
+    const trimmed = await trimmingAdapter.fulfill(['large.md']);
+    expect(trimmed.evidence).toContain('combined evidence was trimmed to fit the context window');
+    expect(trimmed.artifacts).toEqual([expect.objectContaining({ path: 'large.md', size: 250_005 })]);
+  });
 });

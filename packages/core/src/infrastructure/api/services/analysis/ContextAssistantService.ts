@@ -177,7 +177,6 @@ export class ContextAssistantService {
           requestedGroups: groups
         },
         {
-          resourceProvider,
           capability,
           temperature: toolOptions.temperature,
           maxTokens: toolOptions.maxTokens,
