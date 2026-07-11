@@ -170,7 +170,7 @@ export class MessageHandler {
       workshopSessionService
     } = services;
 
-    // Token tracking: centralized in AIResourceOrchestrator. Listener-based so
+    // Token tracking: centralized in AgentRunEngine. Listener-based so
     // every live webview (sidebar + Workshop) tracks usage from ANY surface's
     // requests; each MessageHandler keeps its own totals bag + replay cache.
     this.disposeTokenUsageListener = aiResourceManager.addTokenUsageListener((usage) => {

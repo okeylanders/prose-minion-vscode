@@ -19,6 +19,7 @@
 import { fileURLToPath } from 'url';
 import { FileSystem, LogSink, SettingsStore, Workspace } from '@/platform';
 import { API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
+import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import { ContextAssistant } from '@/tools/assist/contextAssistant';
 import { ContextResourceResolver } from '@/infrastructure/context/ContextResourceResolver';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
@@ -31,7 +32,15 @@ import {
   DEFAULT_CONTEXT_GROUPS
 } from '@/domain/models/ContextGeneration';
 import { ContextPathGroup } from '@shared/types';
-import { StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
+import { StreamingTokenCallback as AgentStreamingTokenCallback } from '@orchestration/AgentRunContracts';
+
+/**
+ * The source document enters the prompt outside the capability seam, so it
+ * gets the same 50k-word bound the capability evidence paths enforce. The
+ * conversation resends the first user message on every capability round,
+ * which multiplies whatever lands here.
+ */
+const MAX_SOURCE_WORDS = 50_000;
 
 /**
  * Options for streaming context generation operations
@@ -40,7 +49,7 @@ export interface ContextStreamingOptions {
   /** AbortSignal for cancellation support */
   signal?: AbortSignal;
   /** Callback for streaming tokens (enables streaming mode) */
-  onToken?: StreamingTokenCallback;
+  onToken?: AgentStreamingTokenCallback;
 }
 
 /**
@@ -74,7 +83,9 @@ export class ContextAssistantService {
     );
 
     // Context assistant will be initialized when AI resources are available
-    void this.initializeContextAssistant();
+    this.initializeContextAssistant().catch(error => {
+      this.outputChannel?.appendLine(`[ContextAssistantService] Startup initialization failed; retried on next use: ${error instanceof Error ? error.message : String(error)}`);
+    });
   }
 
   /**
@@ -83,17 +94,15 @@ export class ContextAssistantService {
    * Called during construction and when configuration changes
    */
   private async initializeContextAssistant(): Promise<void> {
-    // Wait for AI resources to be initialized
-    await this.aiResourceManager.initializeResources();
+    await this.aiResourceManager.ensureInitialized();
 
-    // Get context orchestrator from AIResourceManager
-    const orchestrator = this.aiResourceManager.getOrchestrator('context');
+    const engine = this.aiResourceManager.getEngine('context');
 
-    if (orchestrator) {
+    if (engine) {
       const promptLoader = this.resourceLoader.getPromptLoader();
 
       // Initialize context assistant
-      this.contextAssistant = new ContextAssistant(orchestrator, promptLoader);
+      this.contextAssistant = new ContextAssistant(engine, promptLoader);
     } else {
       // No orchestrator available (no API key configured)
       this.contextAssistant = undefined;
@@ -142,16 +151,19 @@ export class ContextAssistantService {
 
       // Create resource provider for context groups
       const resourceProvider = await this.createContextResourceProvider(groups);
+      const capability = this.aiResourceManager.createContextFileCapability(resourceProvider);
 
       // Try to read the full source document if provided, to prime the model
       let sourceContent: string | undefined;
+      let sourceUnavailableReason: string | undefined;
       if (request.sourceFileUri) {
         try {
           const fsPath = fileURLToPath(request.sourceFileUri);
           const raw = await this.fileSystem.readFile(fsPath);
-          sourceContent = Buffer.from(raw).toString('utf8');
+          sourceContent = this.boundSourceContent(Buffer.from(raw).toString('utf8'));
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
+          sourceUnavailableReason = message;
           this.outputChannel?.appendLine(
             `[ContextAssistantService] Failed to read source file for context: ${message}`
           );
@@ -174,10 +186,11 @@ export class ContextAssistantService {
           existingContext: request.existingContext,
           sourceFileUri: request.sourceFileUri,
           sourceContent,
+          sourceUnavailableReason,
           requestedGroups: groups
         },
         {
-          resourceProvider,
+          capability,
           temperature: toolOptions.temperature,
           maxTokens: toolOptions.maxTokens,
           signal: streamingOptions?.signal,
@@ -205,6 +218,20 @@ export class ContextAssistantService {
         timestamp: new Date()
       };
     }
+  }
+
+  /**
+   * Bound the source document the same way sibling evidence paths do.
+   */
+  private boundSourceContent(content: string): string {
+    const applyTrimming = this.settings.get<boolean>('proseMinion', 'applyContextWindowTrimming', true);
+    if (!applyTrimming || countWords(content) <= MAX_SOURCE_WORDS) {
+      return content;
+    }
+    this.outputChannel?.appendLine(
+      `[ContextAssistantService] Source document exceeds ${MAX_SOURCE_WORDS} words; trimming to fit the context window.`
+    );
+    return `${trimToWordLimit(content, MAX_SOURCE_WORDS).trimmed}\n\n…(source document trimmed to ${MAX_SOURCE_WORDS} words to fit the context window)`;
   }
 
   /**

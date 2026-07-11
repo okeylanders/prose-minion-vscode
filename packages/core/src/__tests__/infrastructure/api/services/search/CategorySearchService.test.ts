@@ -18,14 +18,14 @@ describe('CategorySearchService', () => {
       orchestratorImpl?: any;
     }
   ) => {
-    const orchestrator = overrides?.orchestratorImpl || {
-      executeWithoutCapabilities: jest.fn().mockResolvedValue(
+    const engine = overrides?.orchestratorImpl || {
+      runInitial: jest.fn().mockResolvedValue(
         overrides?.orchestratorResponse || { content: '["apple","pear"]' }
       )
     };
 
     const aiResourceManager = {
-      getOrchestrator: jest.fn().mockReturnValue(orchestrator)
+      getEngine: jest.fn().mockReturnValue(engine)
     } as any;
 
     const statusEmitter = jest.fn();
@@ -51,7 +51,7 @@ describe('CategorySearchService', () => {
     );
     service.addStatusListener(statusEmitter);
 
-    return { service, orchestrator, wordSearchService, statusEmitter };
+    return { service, engine, wordSearchService, statusEmitter };
   };
 
   beforeEach(() => {
@@ -86,7 +86,7 @@ describe('CategorySearchService', () => {
   });
 
   it('chunks large unique word lists to avoid token overflows', async () => {
-    const { service, orchestrator, statusEmitter } = createService({
+    const { service, engine, statusEmitter } = createService({
       orchestratorResponse: { content: '["a","b"]', usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 } }
     });
 
@@ -102,7 +102,7 @@ describe('CategorySearchService', () => {
     const result = await service.searchByCategory('anything', largeText, undefined, 'selection');
 
     // 900 unique words with batch size 400 => 3 calls
-    expect(orchestrator.executeWithoutCapabilities).toHaveBeenCalledTimes(3);
+    expect(engine.runInitial).toHaveBeenCalledTimes(3);
     expect(result.tokensUsed?.total).toBe(45); // aggregated across batches
     expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('Total unique words: 900'), undefined, undefined);
     expect(statusEmitter).toHaveBeenCalledWith(expect.stringContaining('Batch 1/3'), { current: 1, total: 3 }, undefined);
@@ -122,12 +122,12 @@ describe('CategorySearchService', () => {
 
   it('includes warning when batches fail', async () => {
     const failingOrchestrator = {
-      executeWithoutCapabilities: jest.fn().mockRejectedValue(new Error('boom'))
+      runInitial: jest.fn().mockRejectedValue(new Error('boom'))
     };
     const { service } = createService({ orchestratorImpl: failingOrchestrator });
     const result = await service.searchByCategory('fruit', 'apple orange pear', undefined, 'selection');
 
-    expect(failingOrchestrator.executeWithoutCapabilities).toHaveBeenCalled();
+    expect(failingOrchestrator.runInitial).toHaveBeenCalled();
     expect(result.warnings).toEqual(['Some batches failed; results may be incomplete.']);
   });
 
@@ -154,7 +154,7 @@ describe('CategorySearchService', () => {
   it('returns partial results when search is cancelled', async () => {
     let callCount = 0;
     const slowOrchestrator = {
-      executeWithoutCapabilities: jest.fn().mockImplementation(async () => {
+      runInitial: jest.fn().mockImplementation(async () => {
         callCount++;
         if (callCount === 1) {
           // First batch returns matches quickly
@@ -194,7 +194,7 @@ describe('CategorySearchService', () => {
   });
 
   it('strips punctuation from n-grams during extraction', async () => {
-    const { service, orchestrator } = createService({
+    const { service, engine } = createService({
       orchestratorResponse: { content: '["cold night"]' },
       wordSearchResult: {
         metrics: {
@@ -220,9 +220,8 @@ describe('CategorySearchService', () => {
     );
 
     // Verify the AI was called with clean bigrams (no punctuation)
-    expect(orchestrator.executeWithoutCapabilities).toHaveBeenCalled();
-    const callArgs = orchestrator.executeWithoutCapabilities.mock.calls[0];
-    const userMessage = callArgs[2]; // Third argument is user message
+    expect(engine.runInitial).toHaveBeenCalled();
+    const userMessage = engine.runInitial.mock.calls[0][0].userMessage;
 
     // Punctuation should be stripped - "cold!" should become "cold"
     // The bigram "cold night" should appear without punctuation artifacts

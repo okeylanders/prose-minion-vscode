@@ -24,7 +24,9 @@ import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
 import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
 import { DialogueFocus, WritingToolsFocus, StatusEmitter, API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
-import { AIResourceOrchestrator, StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
+import { AgentRunEngine } from '@orchestration/AgentRunEngine';
+import { StreamingTokenCallback } from '@orchestration/AgentRunContracts';
+import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import type { WorkshopExcerpt, WorkshopPersonaId } from '@messages';
 import { getWorkshopPersona } from '@shared/constants/workshopPersonas';
 import { trimToWordLimit } from '@/utils/textUtils';
@@ -72,17 +74,16 @@ export class AssistantToolService {
   private proseAssistant?: ProseAssistant;
   private writingToolsAssistant?: WritingToolsAssistant;
   /**
-   * The orchestrator GENERATION the assistants above were built from —
+   * The engine generation the assistants above were built from —
    * captured in initializeAssistants alongside them. Conversations retained
    * by a tool run live in THIS instance's ConversationManager, so the
    * continuation path must use the same capture, never a live
-   * `getOrchestrator('assistant')` lookup: sibling services
-   * (DictionaryService, ContextAssistantService) rebuild ALL bundles via
-   * initializeResources() during their own startup/refresh, so the live
-   * lookup can be a newer generation whose manager never saw the
+   * `getEngine('assistant')` lookup during a run. AIResourceManager owns all
+   * rebuilds, so sibling service startup cannot replace the generation whose
+   * ConversationManager holds the retained conversation.
    * conversation ("Conversation … not found" on the first follow-up).
    */
-  private assistantOrchestrator?: AIResourceOrchestrator;
+  private assistantEngine?: AgentRunEngine;
   private readonly statusListeners: ListenerSet<Parameters<StatusEmitter>>;
 
   constructor(
@@ -103,7 +104,9 @@ export class AssistantToolService {
       this.statusListeners.emit(message, undefined, tickerMessage);
     });
     // Assistants will be initialized when AI resources are available
-    void this.initializeAssistants();
+    this.initializeAssistants().catch(error => {
+      this.outputChannel?.appendLine(`[AssistantToolService] Startup initialization failed; retried on next use: ${error instanceof Error ? error.message : String(error)}`);
+    });
   }
 
   /**
@@ -116,40 +119,45 @@ export class AssistantToolService {
   }
 
   /**
-   * Initialize assistant tools with AI orchestrators
+   * Bind assistant tools to the manager-owned engine generation.
    *
    * Called during construction and when configuration changes
    */
   private async initializeAssistants(): Promise<void> {
-    // Wait for AI resources to be initialized
-    await this.aiResourceManager.initializeResources();
+    await this.aiResourceManager.ensureInitialized();
 
-    // Get assistant orchestrator from AIResourceManager and capture the
+    // Get the manager-owned engine and capture the
     // generation — the assistants AND the continuation path must agree on
     // one instance (see assistantOrchestrator).
-    const orchestrator = this.aiResourceManager.getOrchestrator('assistant');
-    this.assistantOrchestrator = orchestrator;
+    const engine = this.aiResourceManager.getEngine('assistant');
+    this.assistantEngine = engine;
 
-    if (orchestrator) {
+    if (engine) {
       const promptLoader = this.resourceLoader.getPromptLoader();
+      // Each run mints its own capability so concurrent runs (sidebar +
+      // Workshop, or back-to-back assists) never share allowlist state.
+      const createGuideCapability = () => this.aiResourceManager.createGuideCapability();
 
       // Initialize dialogue assistant
       this.dialogueAssistant = new DialogueMicrobeatAssistant(
-        orchestrator,
+        engine,
         promptLoader,
+        createGuideCapability,
         this.outputChannel
       );
 
       // Initialize prose assistant
       this.proseAssistant = new ProseAssistant(
-        orchestrator,
-        promptLoader
+        engine,
+        promptLoader,
+        createGuideCapability
       );
 
       // Initialize writing tools assistant
       this.writingToolsAssistant = new WritingToolsAssistant(
-        orchestrator,
+        engine,
         promptLoader,
+        createGuideCapability,
         this.outputChannel
       );
     } else {
@@ -211,6 +219,10 @@ export class AssistantToolService {
         },
         {
           ...options,
+          // ToolOptionsProvider serves several product profiles; this public
+          // route is already typed to DialogueFocus, so do not let a broader
+          // AssistantFocus reach the dialogue prompt registry.
+          focus: focus ?? 'both',
           signal: streamingOptions?.signal,
           onToken: streamingOptions?.onToken,
           retainConversation: streamingOptions?.retainConversation
@@ -377,8 +389,8 @@ export class AssistantToolService {
     input: WorkshopPersonaConversationInput,
     streamingOptions?: AnalysisStreamingOptions
   ): Promise<AnalysisResult> {
-    const orchestrator = this.assistantOrchestrator;
-    if (!orchestrator) {
+    const engine = this.assistantEngine;
+    if (!engine) {
       return AnalysisResultFactory.createAnalysisResult(
         'workshop_persona',
         this.getApiKeyWarning()
@@ -401,18 +413,18 @@ export class AssistantToolService {
       `[AssistantToolService] Starting Workshop host ${persona.id} | Streaming: ${!!streamingOptions?.onToken}`
     );
 
-    const executionResult = await orchestrator.executeWithoutCapabilities(
-      `workshop_persona_${persona.id}`,
-      systemPrompt,
+    const executionResult = await engine.runInitial({
+      toolName: `workshop_persona_${persona.id}`,
+      systemMessage: systemPrompt,
       userMessage,
-      {
+      policy: AGENT_RUN_POLICIES.workshopHost,
+      options: {
         temperature: options.temperature,
         maxTokens: options.maxTokens,
         signal: streamingOptions?.signal,
-        onToken: streamingOptions?.onToken,
-        retainConversation: true
+        onToken: streamingOptions?.onToken
       }
-    );
+    });
 
     return AnalysisResultFactory.createAnalysisResult(
       'workshop_persona',
@@ -440,8 +452,8 @@ export class AssistantToolService {
   ): Promise<AnalysisResult> {
     // The CAPTURED generation, not a live lookup — the conversation lives in
     // the manager of the orchestrator that ran the tool (see field docs).
-    const orchestrator = this.assistantOrchestrator;
-    if (!orchestrator) {
+    const engine = this.assistantEngine;
+    if (!engine) {
       return AnalysisResultFactory.createAnalysisResult(
         'workshop_follow_up',
         this.getApiKeyWarning()
@@ -453,7 +465,7 @@ export class AssistantToolService {
       `[AssistantToolService] Continuing conversation ${conversationId} | Streaming: ${!!streamingOptions?.onToken}`
     );
 
-    const executionResult = await orchestrator.continueConversation(conversationId, userMessage, {
+    const executionResult = await engine.continueConversation(conversationId, userMessage, {
       temperature: options.temperature,
       maxTokens: options.maxTokens,
       signal: streamingOptions?.signal,
@@ -477,7 +489,7 @@ export class AssistantToolService {
    * gone or the id is unknown — disposal must be safe from any teardown path.
    */
   discardConversation(conversationId: string): void {
-    this.assistantOrchestrator?.discardConversation(conversationId);
+    this.assistantEngine?.discardConversation(conversationId);
   }
 
   private buildWorkshopPersonaUserMessage(input: WorkshopPersonaConversationInput): string {

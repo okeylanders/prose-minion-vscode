@@ -49,9 +49,10 @@ packages/core/src/__tests__/
 │   │   ├── MessageRouter.test.ts
 │   │   └── domain/                     # 11 domain handler tests
 │   └── services/
-│       └── AIResourceOrchestrator.test.ts
+│       └── AgentRunEngine.test.ts
 ├── infrastructure/
 │   ├── account/                        # Account balance client + service
+│   ├── api/orchestration/              # Resource lifecycle, catalogs, capabilities
 │   ├── api/services/                   # Dictionary, measurement, search, shared
 │   ├── standards/                      # PublishingStandardsRepository
 │   ├── storage/                        # pathContainment

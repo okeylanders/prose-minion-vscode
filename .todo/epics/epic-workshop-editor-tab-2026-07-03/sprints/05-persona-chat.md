@@ -1,6 +1,6 @@
 # Sprint 05: Persona Host and Browser
 
-**Status**: In Progress — implementation and automated verification complete; interactive F5 smoke pending
+**Status**: Complete — implementation, automated verification, and interactive F5 smoke complete
 **Priority**: High
 **Branch**: `sprint/workshop-editor-tab-05-persona-chat` -> PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 4-6 days
@@ -190,11 +190,9 @@ conversation.
   `verify:bundle` passed. Produced `extension.js` at 2,272,301 bytes and
   `webview.js` at 579,100 bytes; the generated `dist/` directory is ignored.
 - `git diff --check`: passed.
-- Interactive F5 smoke remains pending. Launching VS Code in extension-dev
-  mode was blocked by the execution environment's usage-limit approval, not by
-  a build or test failure. When available, exercise Jill/specialist start,
-  follow-up, cancel, reload, reset, tool-first direct follow-up, Back to Jill,
-  and the guarded tool click.
+- Interactive F5 smoke completed successfully before Sprint 06A began. That
+  behavior is the pre-refactor baseline; Sprint 06A verifies its affected
+  sidebar and Workshop routes after the engine migration.
 
 ## Acceptance Criteria
 

@@ -9,107 +9,56 @@
 
 import { LogSink } from '@/platform';
 import { PromptLoader } from '../shared/prompts';
-import { AIResourceOrchestrator, ExecutionResult, StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
+import { AgentRunEngine } from '@orchestration/AgentRunEngine';
+import { AgentCapabilityFactory, ExecutionResult, StreamingTokenCallback } from '@orchestration/AgentRunContracts';
 import { AssistantFocus, WritingToolsFocus } from '@messages';
+import {
+  PassageAssistantInput,
+  PassageAssistantOptions,
+  PromptedPassageAssistant,
+  PromptedPassageProfile
+} from './promptedPassageAssistant';
 
 export type { WritingToolsFocus };
 
-export interface WritingToolsInput {
-  text: string;
-  contextText?: string;
-  sourceFileUri?: string;
-}
+export interface WritingToolsInput extends PassageAssistantInput {}
 
-export interface WritingToolsOptions {
-  includeCraftGuides?: boolean;
-  temperature?: number;
-  maxTokens?: number;
+export interface WritingToolsOptions extends PassageAssistantOptions<WritingToolsFocus> {
   focus: WritingToolsFocus;
-  /** AbortSignal for cancellation support */
-  signal?: AbortSignal;
-  /** Callback for streaming tokens (enables streaming mode) */
   onToken?: StreamingTokenCallback;
-  /** Retain the conversation after the run for multi-turn continuation (Workshop). */
-  retainConversation?: boolean;
 }
 
 export class WritingToolsAssistant {
+  private readonly runner: PromptedPassageAssistant;
+
   constructor(
-    private readonly aiResourceOrchestrator: AIResourceOrchestrator,
-    private readonly promptLoader: PromptLoader,
+    agentRunEngine: AgentRunEngine,
+    promptLoader: PromptLoader,
+    createGuideCapability: AgentCapabilityFactory,
     private readonly outputChannel?: LogSink
-  ) {}
-
-  async analyze(input: WritingToolsInput, options: WritingToolsOptions): Promise<ExecutionResult> {
-    const { focus } = options;
-
-    // Load prompts: minimal base + focus-specific (which contains everything)
-    const sharedPrompts = await this.promptLoader.loadSharedPrompts();
-    const toolPrompts = await this.loadToolPrompts(focus);
-
-    // Build system message
-    const systemMessage = this.buildSystemMessage(sharedPrompts, toolPrompts, focus);
-
-    // Build user message
-    const userMessage = this.buildUserMessage(input, focus);
-
-    // Log for transparency
-    this.outputChannel?.appendLine(`[WritingToolsAssistant] Analyzing with focus="${focus}"`);
-
-    // Use orchestrator to execute with agent capabilities
-    return await this.aiResourceOrchestrator.executeWithAgentCapabilities(
-      `writing-tools-${focus}`,
-      systemMessage,
-      userMessage,
-      {
-        includeCraftGuides: options?.includeCraftGuides,
-        temperature: options?.temperature ?? 0.7,
-        maxTokens: options?.maxTokens ?? 10000,
-        signal: options?.signal,
-        onToken: options?.onToken,
-        retainConversation: options?.retainConversation
-      }
-    );
+  ) {
+    this.runner = new PromptedPassageAssistant(agentRunEngine, promptLoader, createGuideCapability, outputChannel);
   }
 
-  private async loadToolPrompts(focus: WritingToolsFocus): Promise<string> {
-    try {
-      // Load minimal base prompt + comprehensive focus prompt
-      const paths = [
-        'writing-tools-assistant/00-writing-tools-base.md',
-        `writing-tools-assistant/focus/${focus}.md`
-      ];
-
-      this.outputChannel?.appendLine(`[WritingToolsAssistant] Loading prompts:`);
-      paths.forEach((path, index) => {
-        this.outputChannel?.appendLine(`  ${index + 1}. ${path}`);
-      });
-
-      return await this.promptLoader.loadPrompts(paths);
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      this.outputChannel?.appendLine(
-        `[WritingToolsAssistant] Could not load prompts for focus="${focus}", using defaults: ${errorMsg}`
-      );
-      return this.getDefaultInstructions(focus);
-    }
+  analyze(input: WritingToolsInput, options: WritingToolsOptions): Promise<ExecutionResult> {
+    this.outputChannel?.appendLine(`[WritingToolsAssistant] Analyzing with focus="${options.focus}"`);
+    return this.runner.analyze(this.profile, input, options);
   }
 
-  private buildSystemMessage(
-    sharedPrompts: string,
-    toolPrompts: string,
-    focus: WritingToolsFocus
-  ): string {
-    const roleDescription = this.getRoleDescription(focus);
-
-    const parts = [
-      roleDescription,
-      toolPrompts || this.getDefaultInstructions(focus),
-      sharedPrompts
-    ].filter(Boolean);
-
-    return parts.join('\n\n---\n\n');
-  }
+  private readonly profile: PromptedPassageProfile<WritingToolsFocus> = {
+    name: 'WritingToolsAssistant',
+    defaultFocus: 'editor',
+    toolName: focus => `writing-tools-${focus}`,
+    promptPaths: focus => [
+      'writing-tools-assistant/00-writing-tools-base.md',
+      `writing-tools-assistant/focus/${focus}.md`
+    ],
+    roleDescription: focus => this.getRoleDescription(focus),
+    taskInstruction: focus => this.getAnalysisInstruction(focus),
+    passageHeading: 'Passage to Analyze',
+    contextHeading: 'Supplemental Context',
+    fallbackInstructions: focus => this.getDefaultInstructions(focus)
+  };
 
   private getRoleDescription(focus: WritingToolsFocus): string {
     const roles: Record<WritingToolsFocus, string> = {
@@ -127,30 +76,6 @@ export class WritingToolsAssistant {
       placeholders: 'You are a writing assistant specializing in bidirectional precision analysis—identifying placeholder language that needs sharpening (somethings, noun fog, filler, intensifiers, weak gradient choices) AND over-precise language that should be softened in background moments to preserve cognitive budget for peaks.'
     };
     return roles[focus];
-  }
-
-  private buildUserMessage(input: WritingToolsInput, focus: WritingToolsFocus): string {
-    const instructions = this.getAnalysisInstruction(focus);
-
-    const lines: string[] = [
-      instructions,
-      '',
-      '### Passage to Analyze',
-      '```markdown',
-      input.text,
-      '```',
-      ''
-    ];
-
-    if (input.sourceFileUri) {
-      lines.push(`Source File: ${input.sourceFileUri}`, '');
-    }
-
-    if (input.contextText && input.contextText.trim().length > 0) {
-      lines.push('### Supplemental Context', input.contextText.trim(), '');
-    }
-
-    return lines.join('\n');
   }
 
   private getAnalysisInstruction(focus: WritingToolsFocus): string {

@@ -1,137 +1,39 @@
-/**
- * Dialogue Microbeat Assistant Tool
- * Analyzes dialogue passages and suggests dialogue tags and action beats
- */
+/** Dialogue product profile over the neutral prompted-passage runner. */
 
 import { LogSink } from '@/platform';
 import { PromptLoader } from '../shared/prompts';
-import { AIResourceOrchestrator, ExecutionResult, StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
-import { AssistantFocus } from '@messages';
+import { AgentCapabilityFactory, ExecutionResult, StreamingTokenCallback } from '@orchestration/AgentRunContracts';
+import { AgentRunEngine } from '@orchestration/AgentRunEngine';
+import { DialogueFocus } from '@messages';
+import {
+  PassageAssistantInput,
+  PassageAssistantOptions,
+  PromptedPassageAssistant,
+  PromptedPassageProfile
+} from './promptedPassageAssistant';
 
-export interface DialogueMicrobeatInput {
-  text: string;
-  contextText?: string;
-  sourceFileUri?: string;
+export interface DialogueMicrobeatInput extends PassageAssistantInput {}
+
+export interface DialogueMicrobeatOptions extends PassageAssistantOptions<DialogueFocus> {
+  readonly focus?: DialogueFocus;
+  readonly onToken?: StreamingTokenCallback;
 }
 
-export interface DialogueMicrobeatOutput {
-  analysis: string;
-  suggestions: string;
-}
-
-export interface DialogueMicrobeatOptions {
-  includeCraftGuides?: boolean;
-  temperature?: number;
-  maxTokens?: number;
-  focus?: AssistantFocus;
-  /** AbortSignal for cancellation support */
-  signal?: AbortSignal;
-  /** Callback for streaming tokens (enables streaming mode) */
-  onToken?: StreamingTokenCallback;
-  /** Retain the conversation after the run for multi-turn continuation (Workshop). */
-  retainConversation?: boolean;
-}
-
-export class DialogueMicrobeatAssistant {
-  constructor(
-    private readonly aiResourceOrchestrator: AIResourceOrchestrator,
-    private readonly promptLoader: PromptLoader,
-    private readonly outputChannel?: LogSink
-  ) {}
-
-  async analyze(input: DialogueMicrobeatInput, options?: DialogueMicrobeatOptions): Promise<ExecutionResult> {
-    // Load system prompts (tool-specific and shared)
-    const sharedPrompts = await this.promptLoader.loadSharedPrompts();
-    const toolPrompts = await this.loadToolPrompts(options?.focus ?? 'both');
-
-    // Build system message (prompts only, no guides yet)
-    const systemMessage = this.buildSystemMessage(sharedPrompts, toolPrompts);
-
-    // Build user message (just the dialogue text)
-    const userMessage = this.buildUserMessage(input);
-
-    // Use orchestrator to execute with agent capabilities (guide support)
-    return await this.aiResourceOrchestrator.executeWithAgentCapabilities(
-      'dialogue-microbeat-assistant',
-      systemMessage,
-      userMessage,
-      {
-        includeCraftGuides: options?.includeCraftGuides,
-        temperature: options?.temperature ?? 0.7,
-        maxTokens: options?.maxTokens ?? 10000,
-        signal: options?.signal,
-        onToken: options?.onToken,
-        retainConversation: options?.retainConversation
-      }
-    );
-  }
-
-  private async loadToolPrompts(focus: AssistantFocus = 'both'): Promise<string> {
-    try {
-      // Always load base prompts
-      const basePaths = [
-        'dialog-microbeat-assistant/00-dialog-microbeat-assistant.md',
-        'dialog-microbeat-assistant/01-dialogue-tags-and-microbeats.md'
-      ];
-
-      // Add focus-specific prompt (appended to base)
-      const focusPath = `dialog-microbeat-assistant/focus/${focus}.md`;
-      const allPaths = [...basePaths, focusPath];
-
-      // Log loaded prompts for transparency
-      this.outputChannel?.appendLine(`[DialogueMicrobeatAssistant] Loading prompts with focus="${focus}":`);
-      allPaths.forEach((path, index) => {
-        this.outputChannel?.appendLine(`  ${index + 1}. ${path}`);
-      });
-
-      return await this.promptLoader.loadPrompts(allPaths);
-    } catch (error) {
-      // Fallback to default instructions if files don't exist
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      this.outputChannel?.appendLine(`[DialogueMicrobeatAssistant] Could not load prompts, using defaults: ${errorMsg}`);
-      return this.getDefaultInstructions();
-    }
-  }
-
-  private buildSystemMessage(
-    sharedPrompts: string,
-    toolPrompts: string
-  ): string {
-    const parts = [
-      'You are a creative writing assistant specializing in dialogue analysis.',
-      toolPrompts || this.getDefaultInstructions(),
-      sharedPrompts
-    ].filter(Boolean);
-
-    return parts.join('\n\n---\n\n');
-  }
-
-  private buildUserMessage(input: DialogueMicrobeatInput): string {
-    const lines: string[] = [
-      'Please analyze this dialogue passage and provide suggestions for dialogue tags and action beats.',
-      '',
-      '### Dialogue Passage',
-      '```markdown',
-      input.text,
-      '```',
-      ''
-    ];
-
-    if (input.sourceFileUri) {
-      lines.push(`Source File: ${input.sourceFileUri}`, '');
-    }
-
-    if (input.contextText && input.contextText.trim().length > 0) {
-      lines.push('### Additional Context', input.contextText.trim(), '');
-    }
-
-    lines.push('Focus on the emotional beats, speaker intentions, and body language cues that will make the dialogue feel grounded.');
-
-    return lines.join('\n');
-  }
-
-  private getDefaultInstructions(): string {
-    return `# Dialogue Microbeat Assistant
+const DIALOGUE_PROFILE: PromptedPassageProfile<DialogueFocus> = {
+  name: 'DialogueMicrobeatAssistant',
+  defaultFocus: 'both',
+  toolName: () => 'dialogue-microbeat-assistant',
+  promptPaths: focus => [
+    'dialog-microbeat-assistant/00-dialog-microbeat-assistant.md',
+    'dialog-microbeat-assistant/01-dialogue-tags-and-microbeats.md',
+    `dialog-microbeat-assistant/focus/${focus}.md`
+  ],
+  roleDescription: () => 'You are a creative writing assistant specializing in dialogue analysis.',
+  taskInstruction: () => 'Please analyze this dialogue passage and provide suggestions for dialogue tags and action beats.',
+  passageHeading: 'Dialogue Passage',
+  contextHeading: 'Additional Context',
+  closingInstruction: () => 'Focus on the emotional beats, speaker intentions, and body language cues that will make the dialogue feel grounded.',
+  fallbackInstructions: () => `# Dialogue Microbeat Assistant
 
 Your task is to analyze dialogue passages and provide suggestions for:
 
@@ -153,6 +55,22 @@ Provide your analysis in clear sections:
 1. Current dialogue assessment
 2. Suggested dialogue tags (if needed)
 3. Suggested action beats with specific examples
-4. Overall recommendations`;
+4. Overall recommendations`
+};
+
+export class DialogueMicrobeatAssistant {
+  private readonly runner: PromptedPassageAssistant;
+
+  constructor(
+    agentRunEngine: AgentRunEngine,
+    promptLoader: PromptLoader,
+    createGuideCapability: AgentCapabilityFactory,
+    outputChannel?: LogSink
+  ) {
+    this.runner = new PromptedPassageAssistant(agentRunEngine, promptLoader, createGuideCapability, outputChannel);
+  }
+
+  analyze(input: DialogueMicrobeatInput, options?: DialogueMicrobeatOptions): Promise<ExecutionResult> {
+    return this.runner.analyze(DIALOGUE_PROFILE, input, options);
   }
 }

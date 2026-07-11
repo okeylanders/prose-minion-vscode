@@ -33,19 +33,66 @@ stop.
   request detection, bounded multi-turn fulfillment, and final-output forcing,
   but retained persona follow-ups do not yet have a general capability loop.
 
+## Engine Prerequisites (post-06A audit, 2026-07-11)
+
+A code audit after the 06A hardening pass confirmed the Workshop tab needed no
+adaptation to the consolidated engine (it is fully decoupled behind
+`AssistantToolService`), but found three engine-level gaps this sprint must
+close before the capability-loop tasks below are implementable:
+
+1. **`AgentRunEngine.continueConversation()` is history-only by explicit
+   design** — it never advertises catalogs, accepts a capability, or enters
+   the bounded round loop. Every retained persona follow-up turn routes
+   through it, so a persona cannot invoke anything on turn 2+. The loop that
+   today lives only in `runInitial` must become a per-turn concern: one
+   turn-execution path shared by start and continuation, with the policy
+   deciding whether capability requests are honored and how many rounds each
+   user turn gets. Prefer unifying the two methods over adding a third
+   capability-aware variant.
+2. **The `AgentCapability` contract is resource-read shaped** (`catalog`,
+   `appendCatalog`, `fulfill(paths)`, `ResourceReadInspection`). The
+   `WorkshopCapabilityRequest` union below is a discriminated operation set,
+   not a path read — generalize the inspection contract (or introduce a
+   sibling operation-capability abstraction) rather than forcing dictionary
+   lookups through path semantics. The shared `ResourceRequestGate`
+   (allowlist + correction wording) is the reusable piece; compose it where
+   path allowlisting applies.
+3. **`AGENT_RUN_POLICIES.workshopHost` has `maxCapabilityRounds: 0` and
+   catalog `'none'`** — even the first persona turn has no capability budget.
+   This sprint needs a persona policy with per-user-turn rounds (the locked
+   three-calls-per-turn budget) and `onCapabilityLimit: 'forceFinalResponse'`;
+   the forced-final + one-retry machinery in the engine already implements
+   the budget-exhaustion behavior required here.
+
+Housekeeping discovered in the same audit: `WorkshopHandler.handleRunTool`
+still carries a stale "Integrated tool runs arrive in Sprint 06" guard, and no
+test spans WorkshopHandler↔engine end-to-end (handler tests mock the service
+wholesale; engine tests cover the policies separately). Address both when the
+loop lands.
+
 ## Locked Decisions
 
 - Persona capabilities cross a typed application-layer boundary. Persona
   prompts never call handlers, construct message envelopes, or know service
   implementation classes.
-- Use a provider-neutral, strictly parsed structured request envelope compatible
-  with the existing resource-request pattern. Provider-native function calling
-  may replace the adapter later without changing application request/result
-  types.
-- The v1 wire is an entire assistant response of the form
-  `<workshop-capability-request>{"capability":..., ...}</workshop-capability-request>`.
-  After trimming, prose before/after the tag, multiple tags in one response, or
-  a tag found inside quoted user/excerpt content is not executable.
+- Use the provider-neutral, strictly parsed, well-formed XML request envelope
+  introduced in Sprint 06A. Provider-native function calling may become an
+  optional adapter later without changing application request/result types;
+  XML remains the primary cross-model transport and routes do not split by
+  provider tool-call support.
+- The v1 wire is an entire assistant response with one
+  `<prose-minion-tool-call>` root and a quoted operation name, for example:
+
+  ```xml
+  <prose-minion-tool-call name="dictionary.lookup">
+    <word>liminal</word>
+    <context>The word appears in a quiet threshold scene.</context>
+    <purpose>Clarify its tone and connotations.</purpose>
+  </prose-minion-tool-call>
+  ```
+
+  After trimming, prose before/after the root, multiple roots/calls, malformed
+  XML, or a tag found inside quoted user/excerpt content is not executable.
 - Initial allowlist:
   - `dictionary.lookup` -> `DictionaryService.lookupWord`
   - `dictionary.full-entry` -> `DictionaryService.generateParallelDictionary`
@@ -108,8 +155,8 @@ plain application-owned boundary are required.
 
 - [ ] Define capability request/result types in an application/shared contract
       that imports no provider, React, or VS Code types.
-- [ ] Add a strict parser/serializer for the exact envelope above. Reject
-      malformed JSON,
+- [ ] Extend the shared XML codec/parser for the typed capability operations
+      above. Reject malformed XML,
       unknown capability ids, unknown tool ids, extra dangerous fields,
       oversized strings, duplicate calls, and tags embedded in quoted excerpt
       content rather than an assistant response.
@@ -164,7 +211,8 @@ plain application-owned boundary are required.
 
 ### Prompts, presentation, and observability
 
-- [ ] Extend the shared persona base prompt with the exact capability schema,
+- [ ] Extend the shared persona base prompt with the exact XML capability
+      operation schema,
       when each capability is appropriate, the autonomy granted, and the call
       budget. Persona-specific prompts must not redefine the allowlist.
 - [ ] Show deterministic progress (“Jill is checking the Writer's Dictionary

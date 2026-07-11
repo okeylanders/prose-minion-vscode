@@ -1,14 +1,14 @@
 /**
  * AIResourceManager
  *
- * Single Responsibility: Manage OpenRouterClient and AIResourceOrchestrator lifecycle per model scope
+ * Single Responsibility: Manage OpenRouterClient and AgentRunEngine lifecycle per model scope
  *
  * This is the most critical service in the refactor. It handles the complex lifecycle
  * of AI resources including:
  * - API key retrieval (SecretStorage with settings fallback)
  * - Model scope resolution (assistant, dictionary, context)
  * - OpenRouterClient creation per scope
- * - AIResourceOrchestrator lifecycle management
+ * - AgentRunEngine lifecycle management
  * - StatusCallback propagation
  * - Resource disposal and cleanup
  *
@@ -19,20 +19,22 @@ import { LogSink, SettingsStore } from '@/platform';
 import { ListenerSet } from '@/utils/ListenerSet';
 import { TokenUsage } from '@shared/types';
 import { OpenRouterClient } from '@providers/OpenRouterClient';
-import { AIResourceOrchestrator, StatusCallback, TokenUsageCallback } from './AIResourceOrchestrator';
+import { AgentRunEngine, StatusCallback, TokenUsageCallback } from './AgentRunEngine';
 import { ConversationManager } from './ConversationManager';
-import { GuideRegistry } from '@/infrastructure/guides/GuideRegistry';
-import { GuideLoader } from '@/tools/shared/guides';
 import { ModelScope } from '@shared/types';
 import { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
 import { ResourceLoaderService } from './ResourceLoaderService';
+import { GuideCapability } from './capabilities/GuideCapability';
+import { ContextFileCapability } from './capabilities/ContextFileCapability';
+import { ContextResourceProvider } from '@/domain/models/ContextGeneration';
 
 /**
  * Bundle of AI resources for a specific model scope
  */
 export interface AIResourceBundle {
   model: string;
-  orchestrator: AIResourceOrchestrator;
+  generation: number;
+  engine: AgentRunEngine;
 }
 
 /**
@@ -49,6 +51,9 @@ export interface ModelConfiguration {
 export class AIResourceManager {
   private aiResources: Partial<Record<ModelScope, AIResourceBundle>> = {};
   private resolvedModels: Partial<Record<ModelScope, string>> = {};
+  private generation = 0;
+  private initialized = false;
+  private initialization?: Promise<void>;
   private statusCallback?: StatusCallback;
   private readonly tokenUsageListeners: ListenerSet<[TokenUsage]>;
 
@@ -88,7 +93,35 @@ export class AIResourceManager {
    * @param apiKey - Optional API key override (if not provided, retrieves from storage)
    * @param modelConfig - Optional model configuration override
    */
-  async initializeResources(
+  async ensureInitialized(): Promise<void> {
+    if (this.initialized) return;
+    if (!this.initialization) {
+      this.initialization = this.startRebuild();
+    }
+    await this.initialization;
+  }
+
+  /** Rebuild only for an explicit configuration change. */
+  async refreshConfiguration(): Promise<void> {
+    this.initialization = this.startRebuild();
+    await this.initialization;
+  }
+
+  /**
+   * A failed build must not poison the singleton: clear the cached promise
+   * on rejection so the next call retries instead of re-awaiting the corpse.
+   */
+  private startRebuild(): Promise<void> {
+    return this.rebuildResources().catch(error => {
+      this.initialization = undefined;
+      this.outputChannel?.appendLine(
+        `[AIResourceManager] Resource build failed; will retry on next use: ${error instanceof Error ? error.message : String(error)}`
+      );
+      throw error;
+    });
+  }
+
+  private async rebuildResources(
     apiKey?: string,
     modelConfig?: ModelConfiguration
   ): Promise<void> {
@@ -104,11 +137,13 @@ export class AIResourceManager {
 
     // Dispose existing resources before creating new ones
     this.disposeResources();
+    this.generation += 1;
 
     // Check if API key is configured
     if (!OpenRouterClient.isConfigured(apiKey)) {
       this.outputChannel?.appendLine('[AIResourceManager] OpenRouter API key not configured. AI tools disabled.');
       this.resolvedModels = {};
+      this.initialized = true;
       return;
     }
 
@@ -142,16 +177,36 @@ export class AIResourceManager {
       context: contextModel,
       category: categoryModel
     };
+    this.initialized = true;
   }
 
   /**
-   * Get the AIResourceOrchestrator for a specific model scope
+   * Get the manager-owned agent-run engine for a specific model scope.
    *
    * @param scope - The model scope ('assistant', 'dictionary', 'context')
-   * @returns AIResourceOrchestrator if available, undefined otherwise
+   * @returns AgentRunEngine if available, undefined otherwise
    */
-  getOrchestrator(scope: ModelScope): AIResourceOrchestrator | undefined {
-    return this.aiResources[scope]?.orchestrator;
+  getEngine(scope: ModelScope): AgentRunEngine | undefined {
+    return this.aiResources[scope]?.engine;
+  }
+
+  getGeneration(scope: ModelScope): number | undefined {
+    return this.aiResources[scope]?.generation;
+  }
+
+  /** Build the bounded guides adapter used by explicitly guides-scoped routes. */
+  createGuideCapability(): GuideCapability {
+    return new GuideCapability(
+      this.resourceLoader.getGuideRegistry(),
+      this.resourceLoader.getGuideLoader(),
+      this.settings,
+      this.outputChannel
+    );
+  }
+
+  /** Build the bounded project-context adapter used by context-scoped routes. */
+  createContextFileCapability(provider: ContextResourceProvider): ContextFileCapability {
+    return new ContextFileCapability(provider, this.settings, this.outputChannel);
   }
 
   /**
@@ -176,21 +231,21 @@ export class AIResourceManager {
   /**
    * Set the status callback for guide loading notifications
    *
-   * This callback is propagated to all AIResourceOrchestrators
+   * This callback is propagated to all AgentRunEngines.
    *
    * @param callback - Status callback function
    */
   setStatusCallback(callback?: StatusCallback): void {
     this.statusCallback = callback;
     Object.values(this.aiResources).forEach(resource => {
-      resource?.orchestrator.setStatusCallback(callback);
+      resource?.engine.setStatusCallback(callback);
     });
   }
 
   /**
    * Subscribe to per-request token usage (centralized token tracking).
    *
-   * Every orchestrator reports through one stable fan-out, so multiple
+   * Every engine reports through one stable fan-out, so multiple
    * webview MessageHandlers can track usage concurrently without stealing
    * each other's callback slot. Returns an unsubscribe function — callers own
    * their registration and MUST release it on dispose.
@@ -200,22 +255,13 @@ export class AIResourceManager {
   }
 
   /**
-   * Refresh configuration by reinitializing all resources
-   *
-   * This is called when configuration changes (API key, model selections, etc.)
-   */
-  async refreshConfiguration(): Promise<void> {
-    await this.initializeResources();
-  }
-
-  /**
    * Dispose of all AI resources (cleanup)
    *
-   * This disposes all AIResourceOrchestrators and clears the resource map
+   * This disposes all AgentRunEngines and clears the resource map.
    */
   disposeResources(): void {
     Object.values(this.aiResources).forEach(resource => {
-      resource?.orchestrator.dispose();
+      resource?.engine.dispose();
     });
     this.aiResources = {};
   }
@@ -228,6 +274,8 @@ export class AIResourceManager {
   dispose(): void {
     this.disposeResources();
     this.resolvedModels = {};
+    this.initialized = false;
+    this.initialization = undefined;
     this.statusCallback = undefined;
     this.tokenUsageListeners.clear();
   }
@@ -246,29 +294,25 @@ export class AIResourceManager {
     model: string
   ): AIResourceBundle | undefined {
     try {
-      const guideRegistry = this.resourceLoader.getGuideRegistry();
-      const guideLoader = this.resourceLoader.getGuideLoader();
-
       const client = new OpenRouterClient(apiKey, model, this.outputChannel);
       const conversationManager = new ConversationManager(this.outputChannel);
-      const orchestrator = new AIResourceOrchestrator(
+      const engine = new AgentRunEngine(
         client,
         conversationManager,
-        guideRegistry,
-        guideLoader,
-        this.settings,
         this.statusCallback,
         this.outputChannel,
-        this.tokenUsageFanout
+        this.tokenUsageFanout,
+        this.settings
       );
 
       this.outputChannel?.appendLine(
-        `[AIResourceManager] Initialized ${scope} model: ${model}`
+        `[AIResourceManager] Initialized ${scope} model: ${model} (generation ${this.generation})`
       );
 
       return {
         model,
-        orchestrator
+        generation: this.generation,
+        engine
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
