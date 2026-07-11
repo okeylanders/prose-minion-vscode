@@ -3,14 +3,19 @@ import { GuideRegistry } from '@/infrastructure/guides/GuideRegistry';
 import { GuideLoader } from '@/tools/shared/guides';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import { AgentCapability, CapabilityFulfillment } from '../AgentRunContracts';
-import { createResourceReadXmlInstruction, ResourceReadInspection, ResourceReadXmlCodec } from '../ResourceReadXmlCodec';
+import { createResourceReadXmlInstruction, ResourceReadInspection } from '../ResourceReadXmlCodec';
+import { ResourceRequestGate } from './ResourceRequestGate';
 
 const MAX_GUIDE_WORDS = 50_000;
 
 export class GuideCapability implements AgentCapability {
   readonly catalog = 'guides' as const;
-  private readonly requestCodec = new ResourceReadXmlCodec();
-  private allowedPaths = new Set<string>();
+  private readonly gate = new ResourceRequestGate({
+    catalogLabel: 'craft-guide',
+    nothingLoaded: 'No guides were loaded.',
+    finalArtifactLabel: 'the final response',
+    evidenceLabel: 'guide'
+  });
 
   constructor(
     private readonly guideRegistry: GuideRegistry,
@@ -21,7 +26,7 @@ export class GuideCapability implements AgentCapability {
 
   async appendCatalog(userMessage: string): Promise<string> {
     const available = await this.guideRegistry.listAvailableGuides();
-    this.allowedPaths = new Set(available.map(guide => guide.path));
+    this.gate.setAllowedPaths(available.map(guide => guide.path));
     return [
       userMessage,
       this.guideRegistry.formatGuideListForPrompt(available),
@@ -30,27 +35,13 @@ export class GuideCapability implements AgentCapability {
   }
 
   inspectRequest(candidate: string): ResourceReadInspection {
-    const inspection = this.requestCodec.inspect(candidate);
-    if (inspection.kind !== 'request') {
-      return inspection;
-    }
-
-    const allowlistedPathCount = inspection.request.paths
-      .filter(path => this.allowedPaths.has(path)).length;
-    return allowlistedPathCount === inspection.request.paths.length
-      ? inspection
-      : {
-          kind: 'invalid',
-          reason: 'path-not-allowlisted',
-          pathCount: inspection.request.paths.length,
-          allowlistedPathCount
-        };
+    return this.gate.inspect(candidate);
   }
 
   async fulfill(requestedPaths: readonly string[]): Promise<CapabilityFulfillment> {
     const available = await this.guideRegistry.listAvailableGuides();
     const allowed = new Map(available.map(guide => [guide.path, guide]));
-    const rejected = requestedPaths.filter(path => !this.allowedPaths.has(path));
+    const rejected = requestedPaths.filter(path => !this.gate.allows(path));
     if (rejected.length > 0) {
       return {
         evidence: 'The resource request was rejected because it included a path outside the displayed craft-guide catalog. Continue without additional resources.',
@@ -89,7 +80,7 @@ export class GuideCapability implements AgentCapability {
   }
 
   stripToolCalls(content: string): string {
-    return this.requestCodec.stripExactRequest(content);
+    return this.gate.stripToolCalls(content);
   }
 
   statusMessage(): string {
@@ -108,10 +99,7 @@ export class GuideCapability implements AgentCapability {
   }
 
   invalidRequestInstruction(rejection: Extract<ResourceReadInspection, { kind: 'invalid' }>): string {
-    const correction = rejection.reason === 'path-not-allowlisted'
-      ? 'One or more path values did not exactly match a complete opaque key in the displayed craft-guide catalog.'
-      : `The resource request did not match the required bare XML envelope (${rejection.reason}).`;
-    return `${correction} No guides were loaded. Because you attempted a resource request, resubmit the intended request now as one bare XML document using only complete catalog keys. Do not narrate the request, use a Markdown fence, or provide the final response yet; wait for the requested guide evidence.`;
+    return this.gate.invalidRequestInstruction(rejection);
   }
 
   limitInstruction(): string {

@@ -2,15 +2,20 @@ import { LogSink, SettingsStore } from '@/platform';
 import { ContextResourceContent, ContextResourceProvider, ContextResourceSummary } from '@/domain/models/ContextGeneration';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import { AgentCapability, CapabilityFulfillment } from '../AgentRunContracts';
-import { createResourceReadXmlInstruction, ResourceReadInspection, ResourceReadXmlCodec } from '../ResourceReadXmlCodec';
+import { createResourceReadXmlInstruction, ResourceReadInspection } from '../ResourceReadXmlCodec';
+import { ResourceRequestGate } from './ResourceRequestGate';
 
 const MAX_CONTEXT_WORDS = 50_000;
 const MAX_CATALOG_ITEMS = 100;
 
 export class ContextFileCapability implements AgentCapability {
   readonly catalog = 'projectContext' as const;
-  private readonly requestCodec = new ResourceReadXmlCodec();
-  private allowedPaths = new Set<string>();
+  private readonly gate = new ResourceRequestGate({
+    catalogLabel: 'project-resource',
+    nothingLoaded: 'No project files were loaded.',
+    finalArtifactLabel: 'the context briefing',
+    evidenceLabel: 'project'
+  });
 
   constructor(
     private readonly provider: ContextResourceProvider,
@@ -21,7 +26,7 @@ export class ContextFileCapability implements AgentCapability {
   async appendCatalog(userMessage: string): Promise<string> {
     const catalog = this.provider.listResources();
     const displayedCatalog = this.orderCatalog(catalog).slice(0, MAX_CATALOG_ITEMS);
-    this.allowedPaths = new Set(displayedCatalog.map(item => item.path));
+    this.gate.setAllowedPaths(displayedCatalog.map(item => item.path));
     return [
       userMessage,
       this.formatCatalog(catalog),
@@ -30,25 +35,11 @@ export class ContextFileCapability implements AgentCapability {
   }
 
   inspectRequest(candidate: string): ResourceReadInspection {
-    const inspection = this.requestCodec.inspect(candidate);
-    if (inspection.kind !== 'request') {
-      return inspection;
-    }
-
-    const allowlistedPathCount = inspection.request.paths
-      .filter(path => this.allowedPaths.has(path)).length;
-    return allowlistedPathCount === inspection.request.paths.length
-      ? inspection
-      : {
-          kind: 'invalid',
-          reason: 'path-not-allowlisted',
-          pathCount: inspection.request.paths.length,
-          allowlistedPathCount
-        };
+    return this.gate.inspect(candidate);
   }
 
   async fulfill(requestedPaths: readonly string[]): Promise<CapabilityFulfillment> {
-    const rejected = requestedPaths.filter(path => !this.allowedPaths.has(path));
+    const rejected = requestedPaths.filter(path => !this.gate.allows(path));
     if (rejected.length > 0) {
       return {
         evidence: 'The resource request was rejected because it included a path outside the displayed project-resource catalog. Continue without additional resources.',
@@ -59,7 +50,7 @@ export class ContextFileCapability implements AgentCapability {
     const requested = [...new Set(requestedPaths)];
     const requestedSet = new Set(requested);
     const loaded = (await this.provider.loadResources(requested))
-      .filter(item => requestedSet.has(item.path) && this.allowedPaths.has(item.path));
+      .filter(item => requestedSet.has(item.path) && this.gate.allows(item.path));
     const delivered = new Set(loaded.map(item => item.path));
     const missing = requestedPaths.filter(path => !delivered.has(path));
     this.outputChannel?.appendLine(`[ContextFileCapability] Fulfilled ${loaded.length}/${requested.length} configured resource request(s).`);
@@ -78,7 +69,7 @@ export class ContextFileCapability implements AgentCapability {
   }
 
   stripToolCalls(content: string): string {
-    return this.requestCodec.stripExactRequest(content);
+    return this.gate.stripToolCalls(content);
   }
 
   statusMessage(): string {
@@ -86,10 +77,7 @@ export class ContextFileCapability implements AgentCapability {
   }
 
   invalidRequestInstruction(rejection: Extract<ResourceReadInspection, { kind: 'invalid' }>): string {
-    const correction = rejection.reason === 'path-not-allowlisted'
-      ? 'One or more path values did not exactly match a complete opaque key in the displayed project-resource catalog.'
-      : `The resource request did not match the required bare XML envelope (${rejection.reason}).`;
-    return `${correction} No project files were loaded. Because you attempted a resource request, resubmit the intended request now as one bare XML document using only complete catalog keys. Do not narrate the request, use a Markdown fence, or provide the context briefing yet; wait for the requested project evidence.`;
+    return this.gate.invalidRequestInstruction(rejection);
   }
 
   limitInstruction(): string {

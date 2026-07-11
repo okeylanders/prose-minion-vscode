@@ -2,7 +2,7 @@ import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { AgentCapability } from '@orchestration/AgentRunContracts';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { ConversationManager } from '@orchestration/ConversationManager';
-import { ResourceReadXmlCodec } from '@orchestration/ResourceReadXmlCodec';
+import { ResourceRequestGate } from '@orchestration/capabilities/ResourceRequestGate';
 
 const stream = async function* (tokens: string[], usage = { promptTokens: 3, completionTokens: 2, totalTokens: 5 }) {
   for (const token of tokens) {
@@ -13,30 +13,21 @@ const stream = async function* (tokens: string[], usage = { promptTokens: 3, com
 
 const GUIDE_REQUEST = '<prose-minion-tool-call name="resource.read"><paths><path>dialogue.md</path></paths></prose-minion-tool-call>';
 
-// The mock delegates inspection to the production codec plus a one-guide
+// The mock delegates inspection to the production gate with a one-guide
 // allowlist, mirroring GuideCapability, so these engine tests exercise the
 // real accept/reject contract instead of a simulated one.
-const guideCodec = new ResourceReadXmlCodec();
-const ALLOWED_GUIDES = new Set(['dialogue.md']);
+const guideGate = new ResourceRequestGate({
+  catalogLabel: 'craft-guide',
+  nothingLoaded: 'No guides were loaded.',
+  finalArtifactLabel: 'the final response',
+  evidenceLabel: 'guide'
+});
+guideGate.setAllowedPaths(['dialogue.md']);
 
 const capability = (): jest.Mocked<AgentCapability> => ({
   catalog: 'guides',
   appendCatalog: jest.fn(async message => `${message}\n\nGuide catalog`),
-  inspectRequest: jest.fn(candidate => {
-    const inspection = guideCodec.inspect(candidate);
-    if (inspection.kind !== 'request') {
-      return inspection;
-    }
-    const allowlistedPathCount = inspection.request.paths.filter(path => ALLOWED_GUIDES.has(path)).length;
-    return allowlistedPathCount === inspection.request.paths.length
-      ? inspection
-      : {
-          kind: 'invalid',
-          reason: 'path-not-allowlisted',
-          pathCount: inspection.request.paths.length,
-          allowlistedPathCount
-        };
-  }),
+  inspectRequest: jest.fn(candidate => guideGate.inspect(candidate)),
   fulfill: jest.fn(async paths => ({
     evidence: `Evidence for ${paths.join(', ')}`,
     deliveredPaths: [...paths],
