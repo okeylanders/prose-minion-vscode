@@ -35,10 +35,11 @@ const TOOL_CALL_ROOT = 'prose-minion-tool-call';
 const RESOURCE_READ_OPERATION = 'resource.read';
 
 /**
- * Garnish (narrated preamble, fence opener, XML declaration) before a real
- * call is short — live narrations run one or two sentences. A marker buried
- * deeper than this is a final answer talking about the protocol, and an
- * answer must never be discarded in favor of a correction turn.
+ * Disambiguates BROKEN protocol-shaped tails only; a valid tail call is
+ * accepted regardless of preamble length. Below this depth, unparseable
+ * tag-shaped text is a failed call attempt (correction turn); deeper, it is
+ * a genuine answer mentioning the protocol, and an answer must never be
+ * discarded in favor of a correction turn.
  */
 const MAX_TOLERATED_PREAMBLE_CHARS = 500;
 
@@ -117,23 +118,21 @@ export class ResourceReadXmlCodec {
       return { kind: 'none' };
     }
 
-    // Two structural anchors distinguish invoking the protocol from talking
-    // about it: backtick-quoted markers are mentions (skipped above), and a
-    // marker deeper than the garnish bound sits inside a real answer. Both
-    // classify as ordinary prose — an answer is never traded for a
-    // correction turn because it mentioned the tag.
+    // A backtick-quoted marker is a mention, never a call (skipped above).
     const markerIndex = findExecutableMarkerIndex(source);
-    if (markerIndex === -1 || markerIndex > MAX_TOLERATED_PREAMBLE_CHARS) {
+    if (markerIndex === -1) {
       return { kind: 'none' };
     }
 
-    // The prompt demands one bare XML document, but faster models garnish
-    // otherwise-compliant calls with a narrated preamble, an XML declaration,
-    // or a Markdown fence. Tolerate exactly that garnish: discard everything
-    // before the first executable marker plus one trailing fence close, then
-    // require the remaining tail to be a single strict tool-call document.
-    // Any content after the closing tag still rejects, so protocol markup
-    // quoted mid-prose remains non-executable.
+    // The prompt demands one bare XML document, but faster models narrate at
+    // length before complying. Tolerate exactly that garnish: discard
+    // everything before the first executable marker plus one trailing fence
+    // close, then parse the remaining tail as a single strict tool-call
+    // document. A VALID tail is accepted no matter how long the preamble —
+    // the complete well-formed document at the end of the response is itself
+    // the structural evidence of intent, and it heals in-turn without
+    // burning the correction budget. Any content after the closing tag still
+    // rejects, so protocol markup quoted mid-prose remains non-executable.
     const segment = source.slice(markerIndex).replace(/\s*```\s*$/, '').trim();
 
     const closingTag = '</prose-minion-tool-call>';
@@ -241,6 +240,14 @@ export class ResourceReadXmlCodec {
     }
 
     if (rejectionReason) {
+      // A broken protocol-shaped tail near the top of the response is a
+      // failed call attempt and earns the correction turn. The same broken
+      // markup deeper than any plausible narration is a genuine answer that
+      // happens to mention the protocol — classify it as prose so the
+      // answer is delivered rather than traded for a correction.
+      if (markerIndex > MAX_TOLERATED_PREAMBLE_CHARS) {
+        return { kind: 'none' };
+      }
       return { kind: 'invalid', reason: rejectionReason, pathCount: paths.length || undefined };
     }
 

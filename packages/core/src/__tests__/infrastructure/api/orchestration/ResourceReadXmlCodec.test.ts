@@ -58,13 +58,31 @@ describe('ResourceReadXmlCodec', () => {
     expect(codec.inspect(quoted)).toEqual({ kind: 'none' });
     expect(codec.hideIfProtocolShaped(quoted)).toBe(quoted);
 
-    const exact = request(path('story.md'));
-    const deepMarker = `${'This answer discusses pacing at length. '.repeat(15)}${exact}`;
-    expect(codec.inspect(deepMarker)).toEqual({ kind: 'none' });
+    const brokenDeepMarker = `${'This answer discusses pacing at length. '.repeat(15)}` +
+      '<prose-minion-tool-call name="resource.read"> is the tag the engine expects, and my analysis follows.';
+    expect(codec.inspect(brokenDeepMarker)).toEqual({ kind: 'none' });
 
+    const exact = request(path('story.md'));
     const mentionThenCall = `The docs show \`<prose-minion-tool-call>\` syntax.\n${exact}`;
     expect(codec.inspect(mentionThenCall)).toMatchObject({
       kind: 'request', request: { paths: ['story.md'] }
+    });
+  });
+
+  it('accepts a valid tail call after arbitrarily long narration without a correction turn', () => {
+    // The live Haiku shape that motivated tolerant parsing: extended
+    // self-talk, then a fully valid request. Preamble length must not
+    // matter when the tail document parses.
+    const longNarration = 'I need to pull some athletic and movement descriptors to ensure ' +
+      'character-specific physicality for Micah, Nate, and the group dynamics. '.repeat(12);
+    const exact = request(`${path('story.md')}${path('characters/mara.md')}`);
+    expect(longNarration.length).toBeGreaterThan(500);
+    expect(codec.inspect(`${longNarration}\n${exact}`)).toEqual({
+      kind: 'request',
+      request: { operation: 'resource.read', paths: ['story.md', 'characters/mara.md'] }
+    });
+    expect(codec.inspect(`${longNarration}\n\`\`\`xml\n${exact}\n\`\`\``)).toMatchObject({
+      kind: 'request'
     });
   });
 
