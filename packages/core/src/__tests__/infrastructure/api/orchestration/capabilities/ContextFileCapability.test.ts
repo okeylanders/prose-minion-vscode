@@ -14,9 +14,10 @@ describe('ContextFileCapability', () => {
     const catalog = await adapter.appendCatalog('Brief');
     expect(catalog).toContain('characters/mara.md');
     expect(catalog).toContain('<prose-minion-tool-call name="resource.read">');
-    expect(adapter.parseExactRequest('<prose-minion-tool-call name="resource.read"><paths><path>characters/mara.md</path></paths></prose-minion-tool-call>')).toEqual({ operation: 'resource.read', paths: ['characters/mara.md'] });
-    expect(adapter.parseExactRequest('<prose-minion-tool-call name="resource.read"><paths></paths></prose-minion-tool-call>')).toBeUndefined();
-    expect(adapter.parseExactRequest('<prose-minion-tool-call name="resource.read"><paths><path>characters/mara.md</path></paths></prose-minion-tool-call> Explain it')).toBeUndefined();
+    expect(catalog).toContain('<path>characters/mara.md</path>');
+    expect(adapter.inspectRequest('<prose-minion-tool-call name="resource.read"><paths><path>characters/mara.md</path></paths></prose-minion-tool-call>')).toEqual({ kind: 'request', request: { operation: 'resource.read', paths: ['characters/mara.md'] } });
+    expect(adapter.inspectRequest('<prose-minion-tool-call name="resource.read"><paths></paths></prose-minion-tool-call>')).toMatchObject({ kind: 'invalid', reason: 'empty-path' });
+    expect(adapter.inspectRequest('<prose-minion-tool-call name="resource.read"><paths><path>characters/mara.md</path></paths></prose-minion-tool-call> Explain it')).toMatchObject({ kind: 'invalid' });
 
     const fulfillment = await adapter.fulfill(['characters/mara.md']);
     expect(provider.loadResources).toHaveBeenCalledWith(['characters/mara.md']);
@@ -46,6 +47,10 @@ describe('ContextFileCapability', () => {
     expect(catalog).toContain('...and 2 additional resource(s) not listed to save tokens.');
     expect(catalog.match(/## Resource Request Protocol/g)).toHaveLength(1);
     expect(catalog.match(/<prose-minion-tool-call name="resource.read">/g)).toHaveLength(1);
+    expect(catalog).toContain('<path>story-overview.md</path>');
+    expect(adapter.inspectRequest('<prose-minion-tool-call name="resource.read"><paths><path>chapters/98.md</path></paths></prose-minion-tool-call>')).toEqual({
+      kind: 'invalid', reason: 'path-not-allowlisted', pathCount: 1, allowlistedPathCount: 0
+    });
   });
 
   it('rejects paths outside its displayed catalog and never turns extra provider output into evidence', async () => {

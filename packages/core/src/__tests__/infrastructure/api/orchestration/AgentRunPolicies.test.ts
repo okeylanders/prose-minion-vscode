@@ -10,8 +10,8 @@ describe('agent-run caller-to-policy matrix', () => {
       'CategorySearchService batches',
       'ContextAssistantService'
     ]);
-    expect(AGENT_RUN_POLICIES.assistant).toMatchObject({ resourceCatalog: 'guides', retention: 'discard', cleanupOwner: 'engine' });
-    expect(AGENT_RUN_POLICIES.workshopTool).toMatchObject({ resourceCatalog: 'guides', retention: 'retain', cleanupOwner: 'workshop-session' });
+    expect(AGENT_RUN_POLICIES.assistant).toMatchObject({ resourceCatalog: 'guides', retention: 'discard', cleanupOwner: 'engine', onCapabilityLimit: 'forceFinalResponse' });
+    expect(AGENT_RUN_POLICIES.workshopTool).toMatchObject({ resourceCatalog: 'guides', retention: 'retain', cleanupOwner: 'workshop-session', onCapabilityLimit: 'forceFinalResponse' });
     expect(AGENT_RUN_POLICIES.workshopHost).toMatchObject({ resourceCatalog: 'none', retention: 'retain', cleanupOwner: 'workshop-session' });
     expect(AGENT_RUN_POLICIES.dictionary).toMatchObject({ resourceCatalog: 'none', retention: 'discard' });
     expect(AGENT_RUN_POLICIES.categorySearch).toMatchObject({ resourceCatalog: 'none', retention: 'discard' });

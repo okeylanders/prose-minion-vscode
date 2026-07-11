@@ -9,7 +9,7 @@ const policy = (value: RunPolicy): RunPolicy => value;
 export const AGENT_RUN_POLICIES = {
   assistant: policy({
     id: 'assistant', resourceCatalog: 'guides', retention: 'discard',
-    maxCapabilityRounds: 2, onCapabilityLimit: 'returnLastResponse',
+    maxCapabilityRounds: 2, onCapabilityLimit: 'forceFinalResponse',
     visibleArtifact: 'final-response', cleanupOwner: 'engine'
   }),
   assistantWithoutResources: policy({
@@ -19,7 +19,7 @@ export const AGENT_RUN_POLICIES = {
   }),
   workshopTool: policy({
     id: 'workshop-tool', resourceCatalog: 'guides', retention: 'retain',
-    maxCapabilityRounds: 2, onCapabilityLimit: 'returnLastResponse',
+    maxCapabilityRounds: 2, onCapabilityLimit: 'forceFinalResponse',
     visibleArtifact: 'final-response', cleanupOwner: 'workshop-session'
   }),
   workshopToolWithoutResources: policy({

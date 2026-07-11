@@ -10,14 +10,22 @@ describe('GuideCapability', () => {
 
   beforeEach(() => jest.clearAllMocks());
 
-  it('accepts only whole allow-listed XML requests and fulfills guides with provenance', async () => {
+  it('accepts allow-listed tail-exact XML requests and fulfills guides with provenance', async () => {
     const adapter = new GuideCapability(registry as never, loader as never, settings as never);
     const catalog = await adapter.appendCatalog('Analyze this.');
     expect(catalog).toContain('<prose-minion-tool-call name="resource.read">');
-    expect(adapter.parseExactRequest('<prose-minion-tool-call name="resource.read"><paths><path>dialogue.md</path></paths></prose-minion-tool-call>')).toEqual({ operation: 'resource.read', paths: ['dialogue.md'] });
-    expect(adapter.parseExactRequest('<prose-minion-tool-call name="resource.read"><paths><path>../secrets.md</path></paths></prose-minion-tool-call>')).toBeUndefined();
-    expect(adapter.parseExactRequest('<prose-minion-tool-call name="resource.read"><paths></paths></prose-minion-tool-call>')).toBeUndefined();
-    expect(adapter.parseExactRequest('Need this: <prose-minion-tool-call name="resource.read"><paths><path>dialogue.md</path></paths></prose-minion-tool-call>')).toBeUndefined();
+    expect(catalog).toContain('<path>dialogue.md</path>');
+    expect(adapter.inspectRequest('<prose-minion-tool-call name="resource.read"><paths><path>dialogue.md</path></paths></prose-minion-tool-call>')).toEqual({ kind: 'request', request: { operation: 'resource.read', paths: ['dialogue.md'] } });
+    expect(adapter.inspectRequest('<prose-minion-tool-call name="resource.read"><paths><path>../secrets.md</path></paths></prose-minion-tool-call>')).toEqual({
+      kind: 'invalid', reason: 'path-not-allowlisted', pathCount: 1, allowlistedPathCount: 0
+    });
+    expect(adapter.inspectRequest('<prose-minion-tool-call name="resource.read"><paths></paths></prose-minion-tool-call>')).toMatchObject({ kind: 'invalid', reason: 'empty-path' });
+    expect(adapter.inspectRequest('Need this: <prose-minion-tool-call name="resource.read"><paths><path>dialogue.md</path></paths></prose-minion-tool-call>')).toMatchObject({ kind: 'request' });
+    expect(adapter.inspectRequest('<prose-minion-tool-call name="resource.read"><paths><path>dialogue.md</path></paths></prose-minion-tool-call> Then I will answer.')).toMatchObject({ kind: 'invalid', reason: 'mixed-content' });
+    expect(adapter.statusTicker(['scene-example-guides/campfire-stories.md', 'dialogue-tags.md']))
+      .toBe('Campfire Stories, Dialogue Tags');
+    expect(adapter.invalidRequestInstruction({ kind: 'invalid', reason: 'mixed-content', pathCount: 2 }))
+      .toContain('resubmit the intended request now as one bare XML document');
 
     const fulfillment = await adapter.fulfill(['dialogue.md']);
     expect(loader.loadGuide).toHaveBeenCalledWith('dialogue.md');

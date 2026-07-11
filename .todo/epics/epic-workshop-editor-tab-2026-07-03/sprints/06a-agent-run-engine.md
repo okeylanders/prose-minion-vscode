@@ -105,6 +105,14 @@ test prevents a caller from silently inheriting another route's catalog.
       duplicate or empty paths, mixed prose/call responses, and path values not
       in the selected catalog. Keep raw XML and loaded content out of visible
       output by default.
+      - Refined 2026-07-11: the prompt still demands one bare XML document,
+        but the codec now tolerates garnish around an otherwise exact call —
+        a narrated preamble, XML declaration, or Markdown fence before/around
+        the tool call is discarded and the tail is parsed strictly. Faster
+        models (Haiku) were emitting valid, allowlisted calls that failed on
+        `mixed-content`/`markdown-fence` alone and exhausting the correction
+        turn. Any content *after* the closing tag still rejects, so protocol
+        markup quoted mid-prose remains non-executable.
 - [x] Delete the unreferenced legacy `ResourceRequestParser` and
       `ContextResourceRequestParser` once their coverage is represented by the
       shared codec and capabilities.

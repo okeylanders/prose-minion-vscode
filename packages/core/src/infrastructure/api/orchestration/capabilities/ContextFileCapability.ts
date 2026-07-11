@@ -2,7 +2,7 @@ import { LogSink, SettingsStore } from '@/platform';
 import { ContextResourceContent, ContextResourceProvider, ContextResourceSummary } from '@/domain/models/ContextGeneration';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import { AgentCapability, CapabilityFulfillment } from '../AgentRunContracts';
-import { ResourceReadRequest, ResourceReadXmlCodec, RESOURCE_READ_XML_INSTRUCTION } from '../ResourceReadXmlCodec';
+import { createResourceReadXmlInstruction, ResourceReadInspection, ResourceReadXmlCodec } from '../ResourceReadXmlCodec';
 
 const MAX_CONTEXT_WORDS = 50_000;
 const MAX_CATALOG_ITEMS = 100;
@@ -20,15 +20,31 @@ export class ContextFileCapability implements AgentCapability {
 
   async appendCatalog(userMessage: string): Promise<string> {
     const catalog = this.provider.listResources();
-    this.allowedPaths = new Set(catalog.map(item => item.path));
-    return [userMessage, this.formatCatalog(catalog), RESOURCE_READ_XML_INSTRUCTION].join('\n\n');
+    const displayedCatalog = this.orderCatalog(catalog).slice(0, MAX_CATALOG_ITEMS);
+    this.allowedPaths = new Set(displayedCatalog.map(item => item.path));
+    return [
+      userMessage,
+      this.formatCatalog(catalog),
+      createResourceReadXmlInstruction(displayedCatalog[0]?.path)
+    ].join('\n\n');
   }
 
-  parseExactRequest(candidate: string): ResourceReadRequest | undefined {
-    const request = this.requestCodec.parseExactRequest(candidate);
-    return request && request.paths.every(path => this.allowedPaths.has(path))
-      ? request
-      : undefined;
+  inspectRequest(candidate: string): ResourceReadInspection {
+    const inspection = this.requestCodec.inspect(candidate);
+    if (inspection.kind !== 'request') {
+      return inspection;
+    }
+
+    const allowlistedPathCount = inspection.request.paths
+      .filter(path => this.allowedPaths.has(path)).length;
+    return allowlistedPathCount === inspection.request.paths.length
+      ? inspection
+      : {
+          kind: 'invalid',
+          reason: 'path-not-allowlisted',
+          pathCount: inspection.request.paths.length,
+          allowlistedPathCount
+        };
   }
 
   async fulfill(requestedPaths: readonly string[]): Promise<CapabilityFulfillment> {
@@ -69,6 +85,13 @@ export class ContextFileCapability implements AgentCapability {
     return 'Loading project reference files...';
   }
 
+  invalidRequestInstruction(rejection: Extract<ResourceReadInspection, { kind: 'invalid' }>): string {
+    const correction = rejection.reason === 'path-not-allowlisted'
+      ? 'One or more path values did not exactly match a complete opaque key in the displayed project-resource catalog.'
+      : `The resource request did not match the required bare XML envelope (${rejection.reason}).`;
+    return `${correction} No project files were loaded. Because you attempted a resource request, resubmit the intended request now as one bare XML document using only complete catalog keys. Do not narrate the request, use a Markdown fence, or provide the context briefing yet; wait for the requested project evidence.`;
+  }
+
   limitInstruction(): string {
     return 'You have reached the project-resource request limit. Produce the context briefing now using only evidence already received.';
   }
@@ -78,16 +101,13 @@ export class ContextFileCapability implements AgentCapability {
       return '## Available Project Resources\n\nNo project references matched the configured path patterns. Continue using the excerpt and your knowledge of genre conventions.';
     }
 
-    const ordered = catalog
-      .map((item, index) => ({ item, index }))
-      .sort((a, b) => this.catalogOrder(a.item, a.index) - this.catalogOrder(b.item, b.index))
-      .map(({ item }) => item);
+    const ordered = this.orderCatalog(catalog);
     const lines = [
       '## Available Project Resources',
       '',
-      '**IMPORTANT**: Items in `[projectBrief]` are your story bible/overview. Request ALL of them on your first turn.',
+      '**IMPORTANT**: Displayed items in `[projectBrief]` are your story bible/overview. Request all displayed items that are relevant on your first turn.',
       '',
-      'Use the exact path values when requesting files.',
+      'Each backticked path is one complete opaque key. Copy it exactly when requesting files.',
       ''
     ];
 
@@ -108,6 +128,13 @@ export class ContextFileCapability implements AgentCapability {
 
   private catalogOrder(item: ContextResourceSummary, originalIndex: number): number {
     return item.group === 'projectBrief' ? originalIndex - 1_000 : originalIndex;
+  }
+
+  private orderCatalog(catalog: readonly ContextResourceSummary[]): ContextResourceSummary[] {
+    return catalog
+      .map((item, index) => ({ item, index }))
+      .sort((a, b) => this.catalogOrder(a.item, a.index) - this.catalogOrder(b.item, b.index))
+      .map(({ item }) => item);
   }
 
   private buildEvidence(resources: readonly ContextResourceContent[], missing: readonly string[]): string {

@@ -1,5 +1,5 @@
 import { TokenUsage } from '@shared/types';
-import { ResourceReadRequest } from './ResourceReadXmlCodec';
+import { ResourceReadInspection } from './ResourceReadXmlCodec';
 
 /** A deliberately small, caller-selected view of resources an agent may request. */
 export type ResourceCatalog = 'guides' | 'projectContext' | 'none';
@@ -47,10 +47,12 @@ export interface CapabilityFulfillment {
 export interface AgentCapability {
   readonly catalog: Exclude<ResourceCatalog, 'none'>;
   appendCatalog(userMessage: string): Promise<string>;
-  parseExactRequest(candidate: string): ResourceReadRequest | undefined;
+  inspectRequest(candidate: string): ResourceReadInspection;
   fulfill(requestedPaths: readonly string[]): Promise<CapabilityFulfillment>;
   stripToolCalls(content: string): string;
   statusMessage(requestedPaths: readonly string[]): string;
+  statusTicker?(requestedPaths: readonly string[]): string | undefined;
+  invalidRequestInstruction(rejection: Extract<ResourceReadInspection, { kind: 'invalid' }>): string;
   limitInstruction(): string;
 }
 
