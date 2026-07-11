@@ -10,15 +10,17 @@ describe('GuideCapability', () => {
 
   beforeEach(() => jest.clearAllMocks());
 
-  it('accepts only whole directives and fulfills only catalog allow-listed guides with provenance', async () => {
+  it('accepts only whole allow-listed XML requests and fulfills guides with provenance', async () => {
     const adapter = new GuideCapability(registry as never, loader as never, settings as never);
-    expect(adapter.parseExactDirective('<guide-request path=["dialogue.md"] />')).toEqual(['dialogue.md']);
-    expect(adapter.parseExactDirective('<guide-request path=[] />')).toBeUndefined();
-    expect(adapter.parseExactDirective('Need this: <guide-request path=["dialogue.md"] />')).toBeUndefined();
+    const catalog = await adapter.appendCatalog('Analyze this.');
+    expect(catalog).toContain('<prose-minion-tool-call name="resource.read">');
+    expect(adapter.parseExactRequest('<prose-minion-tool-call name="resource.read"><paths><path>dialogue.md</path></paths></prose-minion-tool-call>')).toEqual({ operation: 'resource.read', paths: ['dialogue.md'] });
+    expect(adapter.parseExactRequest('<prose-minion-tool-call name="resource.read"><paths><path>../secrets.md</path></paths></prose-minion-tool-call>')).toBeUndefined();
+    expect(adapter.parseExactRequest('<prose-minion-tool-call name="resource.read"><paths></paths></prose-minion-tool-call>')).toBeUndefined();
+    expect(adapter.parseExactRequest('Need this: <prose-minion-tool-call name="resource.read"><paths><path>dialogue.md</path></paths></prose-minion-tool-call>')).toBeUndefined();
 
-    const fulfillment = await adapter.fulfill(['dialogue.md', '../secrets.md']);
+    const fulfillment = await adapter.fulfill(['dialogue.md']);
     expect(loader.loadGuide).toHaveBeenCalledWith('dialogue.md');
-    expect(loader.loadGuide).not.toHaveBeenCalledWith('../secrets.md');
     expect(fulfillment.artifacts).toEqual([expect.objectContaining({ path: 'dialogue.md', category: 'Craft' })]);
     expect(fulfillment.evidence).toContain('Guide body');
   });

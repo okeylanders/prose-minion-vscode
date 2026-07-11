@@ -9,6 +9,7 @@ import {
   ResourceArtifact,
   StreamingTokenCallback
 } from './AgentRunContracts';
+import { ResourceReadRequest } from './ResourceReadXmlCodec';
 import { TokenUsage } from '@shared/types';
 
 export type StatusCallback = (message: string, tickerMessage?: string) => void;
@@ -24,11 +25,9 @@ interface TurnResult {
   readonly finishReason?: string;
   readonly usage?: TokenUsage;
   readonly cancelled: boolean;
-  /** Candidate directives are withheld from visible streaming until validated. */
-  readonly exactDirective?: readonly string[];
+  /** Candidate XML tool calls are withheld from visible streaming until validated. */
+  readonly exactRequest?: ResourceReadRequest;
 }
-
-const ANY_CAPABILITY_DIRECTIVE = /<(?:guide-request|context-request)\s+path=\[.*?\]\s*\/>/gis;
 
 /**
  * The single internal initial-run engine. It owns transport, cancellation,
@@ -83,8 +82,8 @@ export class AgentRunEngine {
       totalUsage = this.addUsage(totalUsage, last.usage);
       let rounds = 0;
 
-      while (!last.cancelled && capability && last.exactDirective && rounds < request.policy.maxCapabilityRounds) {
-        const requestedPaths = last.exactDirective;
+      while (!last.cancelled && capability && last.exactRequest && rounds < request.policy.maxCapabilityRounds) {
+        const requestedPaths = last.exactRequest.paths;
         rounds += 1;
         this.statusCallback?.(capability.statusMessage(requestedPaths));
         this.conversationManager.addMessage(conversationId, { role: 'assistant', content: last.content });
@@ -101,7 +100,7 @@ export class AgentRunEngine {
         totalUsage = this.addUsage(totalUsage, last.usage);
       }
 
-      if (!last.cancelled && capability && last.exactDirective && request.policy.onCapabilityLimit === 'forceFinalResponse') {
+      if (!last.cancelled && capability && last.exactRequest && request.policy.onCapabilityLimit === 'forceFinalResponse') {
         this.outputChannel?.appendLine(`[AgentRunEngine] ${request.policy.id} reached ${request.policy.maxCapabilityRounds} capability rounds; forcing final response.`);
         this.conversationManager.addMessage(conversationId, { role: 'assistant', content: last.content });
         this.conversationManager.addMessage(conversationId, { role: 'user', content: capability.limitInstruction() });
@@ -224,7 +223,7 @@ export class AgentRunEngine {
           finishReason: response.finishReason,
           usage: response.usage,
           cancelled: this.isAborted(options.signal),
-          exactDirective: capability?.parseExactDirective(response.content)
+          exactRequest: capability?.parseExactRequest(response.content)
         };
       } catch (error) {
         if (this.isAbortError(error)) {
@@ -253,6 +252,12 @@ export class AgentRunEngine {
         }
         if (!chunk.token) continue;
         content += chunk.token;
+        if (capability) {
+          // A resource-enabled response can be a complete protocol envelope
+          // only after its final token. Buffer it so mixed prose/XML can never
+          // leak raw tool markup through an early streamed token.
+          continue;
+        }
         if (classification === 'undecided') {
           const firstNonWhitespace = content.match(/\S/)?.[0];
           if (!firstNonWhitespace) continue;
@@ -271,24 +276,27 @@ export class AgentRunEngine {
     }
 
     this.emitUsage(usage);
-    const exactDirective = capability?.parseExactDirective(content);
-    if (classification === 'candidate' && !exactDirective) {
-      // A malformed or accidental directive is never streamed raw. Reveal any
-      // remaining prose only after protocol stripping has completed.
-      const safe = this.stripAllDirectives(content, capability);
+    const exactRequest = capability?.parseExactRequest(content);
+    if (capability && !exactRequest) {
+      const safe = this.stripAllToolCalls(content, capability);
+      if (safe) options.onToken(safe);
+    } else if (classification === 'candidate' && !exactRequest) {
+      // Candidate XML is buffered until exact validation. A malformed request
+      // is not executable and its protocol markup never reaches visible chat.
+      const safe = this.stripAllToolCalls(content, capability);
       if (safe) options.onToken(safe);
     }
-    return { content, finishReason, usage, cancelled, exactDirective };
+    return { content, finishReason, usage, cancelled, exactRequest };
   }
 
   private toVisibleContent(content: string, finishReason?: string, capability?: AgentCapability): string {
-    const cleaned = this.stripAllDirectives(content, capability);
+    const cleaned = this.stripAllToolCalls(content, capability);
     return `${cleaned}${finishReason === 'length' ? '\n\n---\n\n⚠️ Response truncated. Increase Max Tokens in settings.' : ''}`;
   }
 
-  private stripAllDirectives(content: string, capability?: AgentCapability): string {
-    const capabilityClean = capability ? capability.stripDirectives(content) : content;
-    return capabilityClean.replace(ANY_CAPABILITY_DIRECTIVE, '').replace(/\n{3,}/g, '\n\n').trim();
+  private stripAllToolCalls(content: string, capability?: AgentCapability): string {
+    const capabilityClean = capability ? capability.stripToolCalls(content) : content;
+    return capabilityClean.replace(/\n{3,}/g, '\n\n').trim();
   }
 
   private addUsage(total: TokenUsage | undefined, usage: TokenUsage | undefined): TokenUsage | undefined {

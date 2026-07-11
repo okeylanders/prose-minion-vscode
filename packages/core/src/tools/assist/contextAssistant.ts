@@ -146,7 +146,6 @@ export class ContextAssistant {
     lines.push(groups.map(group => `- ${group}`).join('\n') || '- (none)', '');
 
     lines.push(this.formatResourceCatalog(resourceSummaries));
-    lines.push('Remember to use `<context-request path=["..."] />` if you need any of these files before drafting the final context.');
 
     return lines.join('\n');
   }
@@ -219,6 +218,6 @@ export class ContextAssistant {
   private getFallbackInstructions(): string {
     return `# Context Assistant Instructions
 
-You produce context briefs for creative writing excerpts. If you need project files, reply first with a <context-request /> tag that lists the paths you require. After receiving the files, craft a markdown briefing with sections for genre, tone-and-style, character details, excerpt context, freestyle comments, and recommendations.`;
+You produce context briefs for creative writing excerpts. If you need project files, use the shared resource-request protocol supplied beside the catalog. After receiving the files, craft a markdown briefing with sections for genre, tone-and-style, character details, excerpt context, freestyle comments, and recommendations.`;
   }
 }

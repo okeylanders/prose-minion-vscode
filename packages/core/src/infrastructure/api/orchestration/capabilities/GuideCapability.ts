@@ -3,12 +3,14 @@ import { GuideRegistry } from '@/infrastructure/guides/GuideRegistry';
 import { GuideLoader } from '@/tools/shared/guides';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import { AgentCapability, CapabilityFulfillment } from '../AgentRunContracts';
+import { ResourceReadRequest, ResourceReadXmlCodec, RESOURCE_READ_XML_INSTRUCTION } from '../ResourceReadXmlCodec';
 
-const GUIDE_DIRECTIVE = /<guide-request\s+path=\[(.*?)\]\s*\/>/gi;
 const MAX_GUIDE_WORDS = 50_000;
 
 export class GuideCapability implements AgentCapability {
   readonly catalog = 'guides' as const;
+  private readonly requestCodec = new ResourceReadXmlCodec();
+  private allowedPaths = new Set<string>();
 
   constructor(
     private readonly guideRegistry: GuideRegistry,
@@ -19,20 +21,30 @@ export class GuideCapability implements AgentCapability {
 
   async appendCatalog(userMessage: string): Promise<string> {
     const available = await this.guideRegistry.listAvailableGuides();
-    return `${userMessage}\n\n${this.guideRegistry.formatGuideListForPrompt(available)}`;
+    this.allowedPaths = new Set(available.map(guide => guide.path));
+    return [userMessage, this.guideRegistry.formatGuideListForPrompt(available), RESOURCE_READ_XML_INSTRUCTION].join('\n\n');
   }
 
-  parseExactDirective(candidate: string): readonly string[] | undefined {
-    if (!this.isOnlyDirectives(candidate)) return undefined;
-    const paths = this.parsePaths(candidate);
-    return paths.length > 0 ? paths : undefined;
+  parseExactRequest(candidate: string): ResourceReadRequest | undefined {
+    const request = this.requestCodec.parseExactRequest(candidate);
+    return request && request.paths.every(path => this.allowedPaths.has(path))
+      ? request
+      : undefined;
   }
 
   async fulfill(requestedPaths: readonly string[]): Promise<CapabilityFulfillment> {
     const available = await this.guideRegistry.listAvailableGuides();
     const allowed = new Map(available.map(guide => [guide.path, guide]));
+    const rejected = requestedPaths.filter(path => !this.allowedPaths.has(path));
+    if (rejected.length > 0) {
+      return {
+        evidence: 'The resource request was rejected because it included a path outside the displayed craft-guide catalog. Continue without additional resources.',
+        deliveredPaths: [],
+        artifacts: []
+      };
+    }
     const requested = [...new Set(requestedPaths)].filter(path => allowed.has(path));
-    const rejected = requestedPaths.filter(path => !allowed.has(path));
+    const unavailable = requestedPaths.filter(path => !allowed.has(path));
     const loaded: Array<{ path: string; content: string }> = [];
 
     for (const path of requested) {
@@ -43,7 +55,7 @@ export class GuideCapability implements AgentCapability {
       }
     }
 
-    const evidence = this.buildEvidence(loaded, rejected);
+    const evidence = this.buildEvidence(loaded, unavailable);
     return {
       evidence,
       deliveredPaths: loaded.map(item => item.path),
@@ -61,8 +73,8 @@ export class GuideCapability implements AgentCapability {
     };
   }
 
-  stripDirectives(content: string): string {
-    return content.replace(GUIDE_DIRECTIVE, '').replace(/\n{3,}/g, '\n\n').trim();
+  stripToolCalls(content: string): string {
+    return this.requestCodec.stripExactRequest(content);
   }
 
   statusMessage(): string {
@@ -71,24 +83,6 @@ export class GuideCapability implements AgentCapability {
 
   limitInstruction(): string {
     return 'No more craft guides can be loaded. Please provide your response using the evidence already received.';
-  }
-
-  private isOnlyDirectives(candidate: string): boolean {
-    GUIDE_DIRECTIVE.lastIndex = 0;
-    const withoutDirectives = candidate.replace(GUIDE_DIRECTIVE, '').trim();
-    GUIDE_DIRECTIVE.lastIndex = 0;
-    return withoutDirectives.length === 0 && Array.from(candidate.matchAll(GUIDE_DIRECTIVE)).length > 0;
-  }
-
-  private parsePaths(candidate: string): string[] {
-    GUIDE_DIRECTIVE.lastIndex = 0;
-    const paths: string[] = [];
-    for (const match of candidate.matchAll(GUIDE_DIRECTIVE)) {
-      for (const path of match[1].matchAll(/["']([^"']+)["']/g)) {
-        paths.push(path[1].trim());
-      }
-    }
-    return [...new Set(paths)];
   }
 
   private buildEvidence(loaded: readonly { path: string; content: string }[], rejected: readonly string[]): string {

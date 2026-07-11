@@ -1,4 +1,5 @@
 import { TokenUsage } from '@shared/types';
+import { ResourceReadRequest } from './ResourceReadXmlCodec';
 
 /** A deliberately small, caller-selected view of resources an agent may request. */
 export type ResourceCatalog = 'guides' | 'projectContext' | 'none';
@@ -39,16 +40,16 @@ export interface CapabilityFulfillment {
 }
 
 /**
- * A capability owns its protocol: catalog enumeration, exact directive
+ * A capability owns its protocol: catalog enumeration, exact XML request
  * validation, fulfillment, evidence formatting, and provenance. The engine
  * owns turn mechanics and never interprets a guide or workspace path itself.
  */
 export interface AgentCapability {
   readonly catalog: Exclude<ResourceCatalog, 'none'>;
   appendCatalog(userMessage: string): Promise<string>;
-  parseExactDirective(candidate: string): readonly string[] | undefined;
+  parseExactRequest(candidate: string): ResourceReadRequest | undefined;
   fulfill(requestedPaths: readonly string[]): Promise<CapabilityFulfillment>;
-  stripDirectives(content: string): string;
+  stripToolCalls(content: string): string;
   statusMessage(requestedPaths: readonly string[]): string;
   limitInstruction(): string;
 }

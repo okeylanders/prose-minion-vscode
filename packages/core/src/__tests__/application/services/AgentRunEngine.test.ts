@@ -13,16 +13,15 @@ const stream = async function* (tokens: string[], usage = { promptTokens: 3, com
 const capability = (): jest.Mocked<AgentCapability> => ({
   catalog: 'guides',
   appendCatalog: jest.fn(async message => `${message}\n\nGuide catalog`),
-  parseExactDirective: jest.fn(candidate => {
-    const match = /^\s*<guide-request path=\["([^"]+)"\] \/>\s*$/.exec(candidate);
-    return match ? [match[1]] : undefined;
-  }),
+  parseExactRequest: jest.fn(candidate => candidate === '<prose-minion-tool-call name="resource.read"><paths><path>dialogue.md</path></paths></prose-minion-tool-call>'
+    ? { operation: 'resource.read', paths: ['dialogue.md'] }
+    : undefined),
   fulfill: jest.fn(async paths => ({
     evidence: `Evidence for ${paths.join(', ')}`,
     deliveredPaths: [...paths],
     artifacts: [{ catalog: 'guides' as const, path: paths[0], label: 'Dialogue Tags', category: 'Dialogue', size: 22, reason: 'Requested craft guide' }]
   })),
-  stripDirectives: jest.fn(content => content.replace(/<guide-request path=\[.*?\] \/>/g, '').trim()),
+  stripToolCalls: jest.fn(content => content.includes('<prose-minion-tool-call') ? '' : content.trim()),
   statusMessage: jest.fn((_paths: readonly string[]) => 'Loading requested craft guides...'),
   limitInstruction: jest.fn(() => 'Produce the response.')
 } as unknown as jest.Mocked<AgentCapability>);
@@ -40,10 +39,10 @@ describe('AgentRunEngine', () => {
 
   afterEach(() => engine.dispose());
 
-  it('buffers exact guide directives, delivers attributable evidence, and streams only final output', async () => {
+  it('buffers exact XML requests, delivers attributable evidence, and streams only final output', async () => {
     const guides = capability();
     client.createStreamingChatCompletion
-      .mockReturnValueOnce(stream(['<guide-request path=["dialogue.md"] />']))
+      .mockReturnValueOnce(stream(['<prose-minion-tool-call name="resource.read"><paths><path>dialogue.md</path></paths></prose-minion-tool-call>']))
       .mockReturnValueOnce(stream(['Final', ' answer.']));
     const visible: string[] = [];
 
@@ -62,10 +61,10 @@ describe('AgentRunEngine', () => {
     expect(conversations.getActiveConversationCount()).toBe(0);
   });
 
-  it('does not fulfill or leak a malformed candidate directive into visible streaming', async () => {
+  it('does not fulfill or leak a malformed candidate tool call into visible streaming', async () => {
     const guides = capability();
     client.createStreamingChatCompletion.mockReturnValue(stream([
-      '<guide-request path=["dialogue.md"] />', ' Here is the actual answer.'
+      '<prose-minion-tool-call name="resource.read"><paths><path>dialogue.md</path></paths></prose-minion-tool-call>', ' Here is the actual answer.'
     ]));
     const visible: string[] = [];
 
@@ -76,8 +75,8 @@ describe('AgentRunEngine', () => {
     });
 
     expect(guides.fulfill).not.toHaveBeenCalled();
-    expect(visible.join('')).toBe('Here is the actual answer.');
-    expect(result.content).toBe('Here is the actual answer.');
+    expect(visible.join('')).toBe('');
+    expect(result.content).toBe('');
   });
 
   it('preserves partial cancellation but never retains an abandoned exchange', async () => {
@@ -103,11 +102,11 @@ describe('AgentRunEngine', () => {
     const initial = await engine.runInitial({
       toolName: 'host', systemMessage: 'System', userMessage: 'Hello', policy: AGENT_RUN_POLICIES.workshopHost
     });
-    client.createChatCompletion.mockResolvedValueOnce({ content: '<context-request path=["secret.md"] /> Continued reply', finishReason: 'stop' });
+    client.createChatCompletion.mockResolvedValueOnce({ content: '<prose-minion-tool-call name="resource.read"><paths><path>secret.md</path></paths></prose-minion-tool-call> Continued reply', finishReason: 'stop' });
 
     const result = await engine.continueConversation(initial.conversationId!, 'Follow up');
 
-    expect(result.content).toBe('Continued reply');
+    expect(result.content).toContain('Continued reply');
     expect(conversations.getConversationInfo(initial.conversationId!)?.messageCount).toBe(5);
   });
 
@@ -115,14 +114,16 @@ describe('AgentRunEngine', () => {
     const contextCapability = {
       ...capability(),
       catalog: 'projectContext' as const,
-      parseExactDirective: jest.fn((candidate: string) => candidate === '<context-request path=["mara.md"] />' ? ['mara.md'] : undefined),
+      parseExactRequest: jest.fn((candidate: string) => candidate === '<prose-minion-tool-call name="resource.read"><paths><path>mara.md</path></paths></prose-minion-tool-call>'
+        ? { operation: 'resource.read', paths: ['mara.md'] }
+        : undefined),
       fulfill: jest.fn().mockResolvedValue({ evidence: 'Mara evidence', deliveredPaths: ['mara.md'], artifacts: [] }),
       limitInstruction: jest.fn(() => 'Produce the briefing now.')
     } as unknown as jest.Mocked<AgentCapability>;
     client.createChatCompletion
-      .mockResolvedValueOnce({ content: '<context-request path=["mara.md"] />' })
-      .mockResolvedValueOnce({ content: '<context-request path=["mara.md"] />' })
-      .mockResolvedValueOnce({ content: '<context-request path=["mara.md"] />' })
+      .mockResolvedValueOnce({ content: '<prose-minion-tool-call name="resource.read"><paths><path>mara.md</path></paths></prose-minion-tool-call>' })
+      .mockResolvedValueOnce({ content: '<prose-minion-tool-call name="resource.read"><paths><path>mara.md</path></paths></prose-minion-tool-call>' })
+      .mockResolvedValueOnce({ content: '<prose-minion-tool-call name="resource.read"><paths><path>mara.md</path></paths></prose-minion-tool-call>' })
       .mockResolvedValueOnce({ content: 'Final briefing' });
 
     const result = await engine.runInitial({

@@ -11,10 +11,12 @@ describe('ContextFileCapability', () => {
 
   it('uses only configured project-context resources and records compact provenance', async () => {
     const adapter = new ContextFileCapability(provider as never, settings as never);
-    expect((await adapter.appendCatalog('Brief')).includes('characters/mara.md')).toBe(true);
-    expect(adapter.parseExactDirective('<context-request path=["characters/mara.md"] />')).toEqual(['characters/mara.md']);
-    expect(adapter.parseExactDirective('<context-request path=[] />')).toBeUndefined();
-    expect(adapter.parseExactDirective('<context-request path=["characters/mara.md"] /> Explain it')).toBeUndefined();
+    const catalog = await adapter.appendCatalog('Brief');
+    expect(catalog).toContain('characters/mara.md');
+    expect(catalog).toContain('<prose-minion-tool-call name="resource.read">');
+    expect(adapter.parseExactRequest('<prose-minion-tool-call name="resource.read"><paths><path>characters/mara.md</path></paths></prose-minion-tool-call>')).toEqual({ operation: 'resource.read', paths: ['characters/mara.md'] });
+    expect(adapter.parseExactRequest('<prose-minion-tool-call name="resource.read"><paths></paths></prose-minion-tool-call>')).toBeUndefined();
+    expect(adapter.parseExactRequest('<prose-minion-tool-call name="resource.read"><paths><path>characters/mara.md</path></paths></prose-minion-tool-call> Explain it')).toBeUndefined();
 
     const fulfillment = await adapter.fulfill(['characters/mara.md']);
     expect(provider.loadResources).toHaveBeenCalledWith(['characters/mara.md']);

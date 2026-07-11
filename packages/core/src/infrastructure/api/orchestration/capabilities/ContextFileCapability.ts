@@ -2,12 +2,14 @@ import { LogSink, SettingsStore } from '@/platform';
 import { ContextResourceContent, ContextResourceProvider } from '@/domain/models/ContextGeneration';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import { AgentCapability, CapabilityFulfillment } from '../AgentRunContracts';
+import { ResourceReadRequest, ResourceReadXmlCodec, RESOURCE_READ_XML_INSTRUCTION } from '../ResourceReadXmlCodec';
 
-const CONTEXT_DIRECTIVE = /<context-request\s+path=\[(.*?)\]\s*\/>/gi;
 const MAX_CONTEXT_WORDS = 50_000;
 
 export class ContextFileCapability implements AgentCapability {
   readonly catalog = 'projectContext' as const;
+  private readonly requestCodec = new ResourceReadXmlCodec();
+  private allowedPaths = new Set<string>();
 
   constructor(
     private readonly provider: ContextResourceProvider,
@@ -17,23 +19,37 @@ export class ContextFileCapability implements AgentCapability {
 
   async appendCatalog(userMessage: string): Promise<string> {
     const catalog = this.provider.listResources();
-    if (catalog.length === 0) return `${userMessage}\n\n## Available Project Resources\n\nNo configured project resources are available.`;
+    this.allowedPaths = new Set(catalog.map(item => item.path));
+    if (catalog.length === 0) {
+      return [userMessage, '## Available Project Resources\n\nNo configured project resources are available.', RESOURCE_READ_XML_INSTRUCTION].join('\n\n');
+    }
     return [
       userMessage,
       '',
       '## Available Project Resources',
       '',
-      ...catalog.map(item => `- \`${item.path}\` (${item.group}) — ${item.label}`)
+      ...catalog.map(item => `- \`${item.path}\` (${item.group}) — ${item.label}`),
+      '',
+      RESOURCE_READ_XML_INSTRUCTION
     ].join('\n');
   }
 
-  parseExactDirective(candidate: string): readonly string[] | undefined {
-    if (!this.isOnlyDirectives(candidate)) return undefined;
-    const paths = this.parsePaths(candidate);
-    return paths.length > 0 ? paths : undefined;
+  parseExactRequest(candidate: string): ResourceReadRequest | undefined {
+    const request = this.requestCodec.parseExactRequest(candidate);
+    return request && request.paths.every(path => this.allowedPaths.has(path))
+      ? request
+      : undefined;
   }
 
   async fulfill(requestedPaths: readonly string[]): Promise<CapabilityFulfillment> {
+    const rejected = requestedPaths.filter(path => !this.allowedPaths.has(path));
+    if (rejected.length > 0) {
+      return {
+        evidence: 'The resource request was rejected because it included a path outside the displayed project-resource catalog. Continue without additional resources.',
+        deliveredPaths: [],
+        artifacts: []
+      };
+    }
     const loaded = await this.provider.loadResources([...new Set(requestedPaths)]);
     const delivered = new Set(loaded.map(item => item.path));
     const missing = requestedPaths.filter(path => !delivered.has(path));
@@ -52,8 +68,8 @@ export class ContextFileCapability implements AgentCapability {
     };
   }
 
-  stripDirectives(content: string): string {
-    return content.replace(CONTEXT_DIRECTIVE, '').replace(/\n{3,}/g, '\n\n').trim();
+  stripToolCalls(content: string): string {
+    return this.requestCodec.stripExactRequest(content);
   }
 
   statusMessage(): string {
@@ -62,24 +78,6 @@ export class ContextFileCapability implements AgentCapability {
 
   limitInstruction(): string {
     return 'You have reached the project-resource request limit. Produce the context briefing now using only evidence already received.';
-  }
-
-  private isOnlyDirectives(candidate: string): boolean {
-    CONTEXT_DIRECTIVE.lastIndex = 0;
-    const withoutDirectives = candidate.replace(CONTEXT_DIRECTIVE, '').trim();
-    CONTEXT_DIRECTIVE.lastIndex = 0;
-    return withoutDirectives.length === 0 && Array.from(candidate.matchAll(CONTEXT_DIRECTIVE)).length > 0;
-  }
-
-  private parsePaths(candidate: string): string[] {
-    CONTEXT_DIRECTIVE.lastIndex = 0;
-    const paths: string[] = [];
-    for (const match of candidate.matchAll(CONTEXT_DIRECTIVE)) {
-      for (const path of match[1].matchAll(/["']([^"']+)["']/g)) {
-        paths.push(path[1].trim());
-      }
-    }
-    return [...new Set(paths)];
   }
 
   private buildEvidence(resources: readonly ContextResourceContent[], missing: readonly string[]): string {
