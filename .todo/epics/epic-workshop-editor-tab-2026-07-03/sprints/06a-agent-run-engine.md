@@ -1,6 +1,6 @@
 # Sprint 06A: Agent-Run Engine and Resource Catalogs
 
-**Status**: Implementation complete — automated verification complete; manual F5 route confirmation pending
+**Status**: Core implementation landed — load-bearing hardening remains before Sprint 06B; manual F5 route confirmation pending
 **Priority**: High
 **Branch**: `sprint/workshop-editor-tab-06a-agent-run-engine` → PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 5–8 days
@@ -28,6 +28,14 @@ visible behavior across the sidebar or Workshop.
   default. Compact attributed artifacts make loaded evidence inspectable.
 - No persona file-read or dictionary capability behavior lands in this sprint;
   06A builds the seam Sprint 07 consumes.
+- Dialogue, Prose, and Writing Tools are distinct **prompt/product profiles**,
+  not distinct execution engines. Their public message routes, tool/result
+  names, prompt assets, and Workshop ids stay stable while their duplicated
+  internal runner is consolidated.
+- A capability owns its complete protocol surface: catalog enumeration and
+  ordering, exact directive instructions and validation, allow-listed reads,
+  evidence formatting/trimming, provenance, status, and limit behavior. A
+  tool builds only its semantic task input; it must not also append a catalog.
 
 ## Tasks
 
@@ -74,6 +82,154 @@ test prevents a caller from silently inheriting another route's catalog.
 - [x] Delete temporary adapters, duplicate loops, and obsolete tests before the
       branch merges into `epic/workshop-editor-tab`.
 
+### Remaining load-bearing completion work — required before Sprint 06B
+
+The engine is in place, but two older shapes still duplicate responsibility:
+the three passage assistants independently assemble the same kind of run, and
+the Context assistant and `ContextFileCapability` both advertise project
+resources. Finish these as small, test-first steps. Do not bundle prompt
+behavior changes into the structural refactor.
+
+#### 1. Characterize the passage-assistant contract first
+
+- [ ] Add direct characterization coverage for every currently supported
+      passage profile before changing implementation:
+  - Dialogue focus: `dialogue`, `microbeats`, and `both`.
+  - Prose's single broad-revision profile.
+  - Every `WritingToolsFocus`: `cliche`, `continuity`, `style`, `editor`,
+    `fresh`, `repetition`, `decision-points`, `show-and-tell`, `gestures`,
+    `choreography`, `stock-and-signature`, and `placeholders`.
+- [ ] For each profile, use a fake `PromptLoader` and `AgentRunEngine` to
+      assert the exact ordered prompt paths, system-message ordering, stable
+      engine `toolName`, role/task framing, passage/context/source headings,
+      default temperature/max-token values, and streaming/abort forwarding.
+- [ ] Characterize both policy dimensions independently: craft guides select
+      `guides` plus `GuideCapability`; disabled guides select explicit `none`;
+      retained Workshop runs select the corresponding retained policy. Assert
+      that the resource capability never changes the tool's prompt profile.
+- [ ] Add service-boundary tests showing that `analyzeDialogue`,
+      `analyzeProse`, and `analyzeWritingTools` keep their current
+      `AnalysisResult` tool names, usage/cancellation/conversation-id mapping,
+      and public message/UI routes. The refactor is internal; callers must not
+      have to migrate.
+
+**Why first:** current direct coverage is WTA-only and covers only half its
+focuses. These tests make prompt bytes and execution policy observable before
+we remove the historical classes; they are the safety rail for tools writers
+already trust.
+
+#### 2. Consolidate passage execution as typed profiles, not as “WTA owns all”
+
+- [ ] Introduce a neutral internal runner — suggested name
+      `PromptedPassageAssistant` or `PassageAssistantRunner` — that owns only
+      the repeated mechanics: shared/tool prompt loading, system and user
+      message composition, common option forwarding, policy resolution, and
+      `AgentRunEngine.runInitial()`.
+- [ ] Drive that runner from a typed profile registry. Each profile declares
+      only creative/product semantics: stable engine `toolName`, legal focus
+      values/default, ordered prompt paths, fallback instructions, role/task
+      framing, and user-message headings. The profile must not know how to
+      stream, retain, fulfill a guide, or clean up a conversation.
+- [ ] Keep lifecycle policy separate from profile semantics through one tested
+      resolver for `includeCraftGuides` × `retainConversation`. That resolver
+      maps to the existing `AGENT_RUN_POLICIES`; retention remains explicit at
+      the `AssistantToolService` public boundary rather than becoming a prompt
+      profile decision.
+- [ ] Preserve the existing public seams during this change:
+      `ANALYZE_DIALOGUE`, `ANALYZE_PROSE`, `ANALYZE_WRITING_TOOLS`,
+      `AssistantToolService.analyzeDialogue/analyzeProse/analyzeWritingTools`,
+      current result ids, engine tool names, prompt resource paths, and the
+      Workshop catalog (`dialogue | prose | WritingToolsFocus`). Do **not**
+      rename or flatten those contracts merely because their implementation
+      shares a runner.
+- [ ] Make `DialogueMicrobeatAssistant` accept `DialogueFocus`, rather than
+      the broader `AssistantFocus`, so an unrelated WTA focus cannot silently
+      select a nonexistent dialogue prompt and fall back. Remove the unused
+      `DialogueMicrobeatOutput` only after the characterization tests confirm
+      it has no consumer.
+- [ ] Delete the now-redundant per-assistant run/prompt assembly once wrappers
+      or direct callers are fully migrated. A thin named profile wrapper is
+      acceptable for readable service construction; duplicated execution logic
+      is not.
+
+**Boundary after completion:** one engine owns run mechanics; one shared
+passage runner owns common prompt-to-run assembly; each typed profile owns
+creative intent; `AssistantToolService` owns public result mapping and the
+caller lifecycle. “Writing Tools” remains a useful product collection, not the
+framework name for every kind of passage analysis.
+
+#### 3. Audit prompt behavior explicitly after the structural refactor
+
+- [ ] Keep all prompt assets and generated messages byte-for-byte equivalent
+      through the runner extraction. No guide, formatting, weighting, or
+      response-shape change may hide in that commit.
+- [ ] Decide and test separately whether the WTA profiles should explicitly
+      teach the guide-request protocol. The capability is available today, but
+      WTA prompt assets do not explain that protocol as Dialogue and Prose do;
+      enabling it can change model behavior and cost.
+- [ ] Audit WTA prompt references to shared “Diversity & Creative Sampling”
+      instructions. Several focus prompts refer to them while the WTA base
+      prompt does not provide them. Either restore a deliberate shared section
+      with focused tests/manual comparison, or remove the stale references.
+- [ ] Run representative manual A/B comparisons for dialogue, prose, one
+      diagnostic WTA focus, and one generative WTA focus after any intentional
+      prompt behavior change. Record the chosen behavior and sample rationale
+      in this sprint document or a follow-up ADR; do not call a behavior change
+      a refactor.
+
+#### 4. Make `ContextFileCapability` the sole project-catalog owner
+
+**Current overlap:** `ContextAssistant` calls `resourceProvider.listResources()`
+and formats a capped, `projectBrief`-first catalog plus directive instruction;
+then `AgentRunEngine` calls `ContextFileCapability.appendCatalog()` and adds a
+second, differently formatted catalog. The duplicated model input wastes
+context and means policy/authorization presentation lives in two places.
+
+- [ ] First add characterization tests for the intended catalog contract:
+      empty state; stable `projectBrief`-first ordering; exact path/label/group
+      formatting; 100-item cap and overflow message; one directive instruction;
+      allowed-path-only fulfillment; provenance; trimming; missing paths; and
+      raw directive/file invisibility in streamed output.
+- [ ] Move **all** project-resource catalog construction into
+      `ContextFileCapability.appendCatalog()`: enumeration, ordering, cap,
+      empty state, labels/workspace provenance, and the exact
+      `<context-request path=[\"...\"] />` instruction. Keep its existing
+      parse/fulfill/evidence/limit behavior together with that catalog.
+- [ ] Reduce `ContextAssistant` to the semantic context-generation request:
+      excerpt, user-provided context, source provenance, and considered group
+      names. Remove its resource enumeration/catalog formatter and the
+      `resourceProvider` option that exists only to support that duplicate
+      work. `ContextAssistantService` constructs the provider and capability;
+      the assistant receives only the typed capability.
+- [ ] Audit the source-document input at the same boundary. It is currently
+      read by `ContextAssistantService` and carried on the assistant input, but
+      is not forwarded into `buildUserMessage`. Decide explicitly whether it
+      belongs in the semantic request (with a bounded, tested contract) or
+      should be removed; do not silently begin sending an unbounded full source
+      document while fixing catalog duplication.
+- [ ] Verify the final context initial request contains exactly one project
+      catalog and one directive instruction, and that the engine/capability
+      remains the sole allow-list and evidence/provenance boundary.
+
+**Boundary after completion:** Settings and `ContextResourceResolver` choose
+configured groups; `ContextAssistantService` assembles the provider and calls
+the tool; `ContextAssistant` describes the writing task; `ContextFileCapability`
+owns the entire project-resource protocol; `AgentRunEngine` runs bounded turns
+without understanding a workspace path.
+
+#### 5. Final 06A verification and handoff
+
+- [ ] Run the focused new profile, policy, capability, service-boundary, and
+      context-catalog suites; then run the full Jest suite, `npm run typecheck`,
+      `npm run lint`, `npm run build`, and `git diff --check`.
+- [ ] Manually confirm F5 routes for sidebar dialogue/prose/WTA/context and
+      Workshop retained tool continuation. For context, confirm catalog text is
+      not duplicated and that a requested configured file yields only compact
+      visible provenance/status rather than raw directive or file content.
+- [ ] Re-read the caller-to-policy matrix above against the final code. Any new
+      route or policy must be added there and in the policy-matrix regression
+      test before Sprint 06B begins.
+
 ### Verification
 
 - [x] Add a caller-to-policy regression matrix plus focused capability,
@@ -107,5 +263,14 @@ test prevents a caller from silently inheriting another route's catalog.
   retain their craft-guide scope; no caller sees an accidental union.
 - One lifecycle owner rebuilds resources, and retained conversations survive
   unrelated service activity.
-- No temporary public façade or duplicated orchestration loop remains at merge.
+- Passage analysis has one internal prompt-to-run path with typed profiles;
+  every public route, tool/result name, focus, and prompt behavior remains
+  stable unless a separately tested behavior decision says otherwise.
+- The profile characterization matrix covers every supported Dialogue and WTA
+  focus plus Prose, both guide/retention policy axes, and service result mapping.
+- `ContextFileCapability` is the only project-resource catalog/protocol owner;
+  the initial context request contains one bounded catalog and one directive
+  instruction.
+- No temporary public façade or duplicated execution/catalog loop remains at
+  merge.
 - Visible chat never leaks raw directives or full loaded files by default.
