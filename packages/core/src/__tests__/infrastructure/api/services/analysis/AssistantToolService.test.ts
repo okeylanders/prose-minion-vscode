@@ -13,6 +13,7 @@ const makeEngine = (label: string) => ({
   }),
   runInitial: jest.fn().mockResolvedValue({
     content: `started by ${label}`, usedGuides: [], requestedResources: [], artifacts: [],
+    usage: { promptTokens: 11, completionTokens: 7, totalTokens: 18, costUsd: 0.003 },
     finishReason: 'stop', conversationId: 'host-conv'
   }),
   discardConversation: jest.fn()
@@ -24,8 +25,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
   const build = (manager: Partial<AIResourceManager>, loadPrompts = jest.fn().mockResolvedValue('system prompt')) =>
     new AssistantToolService(
       manager as AIResourceManager,
-      { getPromptLoader: () => ({ loadPrompts }) } as unknown as ResourceLoaderService,
-      { getOptions: jest.fn().mockReturnValue({ temperature: 0.7, maxTokens: 1000 }) } as unknown as ToolOptionsProvider,
+      { getPromptLoader: () => ({ loadSharedPrompts: jest.fn().mockResolvedValue('shared prompts'), loadPrompts }) } as unknown as ResourceLoaderService,
+      { getOptions: jest.fn().mockReturnValue({ includeCraftGuides: true, temperature: 0.7, maxTokens: 1000 }) } as unknown as ToolOptionsProvider,
       { appendLine: jest.fn() } as never
     );
 
@@ -96,5 +97,34 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     await flush();
     const result = await service.continueConversation('missing', 'hello');
     expect(result.content).toContain(API_KEY_NOT_CONFIGURED_HEADING);
+  });
+
+  it.each([
+    ['dialogue', 'dialogue_analysis'],
+    ['prose', 'prose_analysis'],
+    ['writing tools', 'writing_tools_editor']
+  ] as const)('maps the public %s result without leaking its internal runner', async (route, expectedToolName) => {
+    const engine = makeEngine('public-contract');
+    const service = build(managerFor(() => engine));
+    const controller = new AbortController();
+    const onToken = jest.fn();
+    await flush();
+
+    const result = route === 'dialogue'
+      ? await service.analyzeDialogue('"Leave," Mara said.', 'The room is dark.', 'file:///dialogue.md', 'microbeats', { signal: controller.signal, onToken, retainConversation: true })
+      : route === 'prose'
+        ? await service.analyzeProse('The moon rose.', 'Night.', 'file:///prose.md', { signal: controller.signal, onToken, retainConversation: true })
+        : await service.analyzeWritingTools('Mara nodded.', 'She is anxious.', 'file:///editor.md', 'editor', { signal: controller.signal, onToken, retainConversation: true });
+
+    expect(result).toMatchObject({
+      toolName: expectedToolName,
+      content: 'started by public-contract',
+      usage: { promptTokens: 11, completionTokens: 7, totalTokens: 18, costUsd: 0.003 },
+      finishReason: 'stop',
+      conversationId: 'host-conv'
+    });
+    expect(engine.runInitial).toHaveBeenCalledWith(expect.objectContaining({
+      options: expect.objectContaining({ signal: controller.signal, onToken })
+    }));
   });
 });
