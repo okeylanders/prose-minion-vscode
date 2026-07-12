@@ -7,10 +7,11 @@
  */
 
 import { TokenUsage, WorkshopToolId, WorkshopTurn } from '@messages';
+import type { WorkshopPendingHostUpdates } from '@/application/services/WorkshopSessionService';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { neutralizeReservedPersonaPromptDelimiters } from '@/utils/workshopPromptFrames';
-import { trimToCharacterLimit } from '@/utils/textUtils';
+import { trimToCharacterLimit, trimToWordLimit } from '@/utils/textUtils';
 
 export { neutralizeReservedPersonaPromptDelimiters } from '@/utils/workshopPromptFrames';
 
@@ -44,6 +45,78 @@ export interface WorkshopToolEvidenceInput {
   report: string;
   usage?: TokenUsage;
   truncated?: boolean;
+}
+
+/**
+ * Build the trusted, bounded delta delivered to an already-retained host.
+ * The aggregate's tri-state context update is interpreted here, in the one
+ * place that owns the resulting prompt frame.
+ */
+export function buildWorkshopHostUpdateFrame(
+  updates?: WorkshopPendingHostUpdates
+): string | undefined {
+  if (!updates) {
+    return undefined;
+  }
+
+  const sections: string[] = [];
+  if (updates.excerpt) {
+    const excerptTrim = trimToWordLimit(
+      updates.excerpt.text,
+      PROMPT_BUDGETS.personaExcerpt.words
+    );
+    const provenance = [
+      updates.excerpt.relativePath
+        ? `Source: ${neutralizeReservedPersonaPromptDelimiters(updates.excerpt.relativePath)}`
+        : 'Source provenance was not provided.',
+      updates.excerpt.truncation
+        ? `Pinned excerpt is a head slice: ${updates.excerpt.truncation.pinnedWords} of ${updates.excerpt.truncation.totalWords} words.`
+        : undefined,
+      excerptTrim.wasTrimmed
+        ? `Persona input is a head slice: ${excerptTrim.trimmedWords} of ${excerptTrim.originalWords} pinned words.`
+        : undefined
+    ].filter((line): line is string => line !== undefined);
+    sections.push(
+      'The writer has revised the pinned excerpt. Earlier versions in this conversation are superseded.',
+      ...provenance,
+      `<pinned-excerpt version="${updates.excerpt.version}">`,
+      neutralizeReservedPersonaPromptDelimiters(excerptTrim.trimmed),
+      '</pinned-excerpt>'
+    );
+  }
+
+  if (updates.contextBrief) {
+    if (updates.contextBrief.text === undefined) {
+      sections.push('The writer cleared the project context brief. Do not rely on the earlier brief.');
+    } else {
+      const briefTrim = trimToWordLimit(
+        updates.contextBrief.text,
+        PROMPT_BUDGETS.contextBrief.words
+      );
+      sections.push(
+        'The writer updated the project context brief. This supersedes the earlier brief.',
+        briefTrim.wasTrimmed
+          ? `Context brief is a head slice: ${briefTrim.trimmedWords} of ${briefTrim.originalWords} words.`
+          : '',
+        '<context-brief>',
+        neutralizeReservedPersonaPromptDelimiters(briefTrim.trimmed),
+        '</context-brief>'
+      );
+    }
+  }
+
+  return sections.length > 0
+    ? ['<workshop-host-update>', ...sections.filter(Boolean), '</workshop-host-update>'].join('\n')
+    : undefined;
+}
+
+export function describeWorkshopPendingHostUpdates(
+  updates: WorkshopPendingHostUpdates
+): string {
+  return [
+    updates.excerpt ? `excerpt v${updates.excerpt.version}` : undefined,
+    updates.contextBrief ? `context brief r${updates.contextBrief.revision}` : undefined
+  ].filter((part): part is string => part !== undefined).join(' + ');
 }
 
 /** Build bounded, attributed evidence for the host synthesis turn. */
@@ -176,24 +249,30 @@ export function buildWorkshopDirectHandoff(
   };
 }
 
-/** Combine a pending direct-tool delta with the writer's ordinary host turn. */
+export interface WorkshopHostMessageOptions {
+  handoff?: WorkshopDirectHandoff;
+  writerMessageIsTrustedEnvelope?: boolean;
+  hostUpdate?: string;
+}
+
+/** Combine pending host context with the writer's ordinary host turn. */
 export function buildWorkshopHostMessage(
   writerMessage: string,
-  handoff?: WorkshopDirectHandoff,
-  writerMessageIsTrustedEnvelope = false,
-  hostUpdate?: string
+  options: WorkshopHostMessageOptions = {}
 ): string {
-  const safeWriterMessage = writerMessageIsTrustedEnvelope
+  const safeWriterMessage = options.writerMessageIsTrustedEnvelope
     ? writerMessage
     : neutralizeReservedPersonaPromptDelimiters(writerMessage);
-  if (!handoff && !hostUpdate) {
+  if (!options.handoff && !options.hostUpdate) {
     return safeWriterMessage;
   }
   return [
-    hostUpdate,
-    hostUpdate ? '' : undefined,
-    handoff ? neutralizeReservedPersonaPromptDelimiters(handoff.message) : undefined,
-    handoff ? '' : undefined,
+    options.hostUpdate,
+    options.hostUpdate ? '' : undefined,
+    options.handoff
+      ? neutralizeReservedPersonaPromptDelimiters(options.handoff.message)
+      : undefined,
+    options.handoff ? '' : undefined,
     'WRITER MESSAGE:',
     safeWriterMessage
   ].filter((line): line is string => line !== undefined).join('\n');

@@ -115,21 +115,45 @@ export class AIResourceManager {
   async refreshModelSelections(): Promise<void> {
     await this.ensureInitialized();
     const selections = this.resolveModelSelections();
-
-    for (const scope of Object.keys(selections) as ModelScope[]) {
-      const model = selections[scope];
+    const normalizedSelections = {} as Record<ModelScope, string>;
+    const changes = (Object.keys(selections) as ModelScope[]).flatMap((scope) => {
       const resource = this.aiResources[scope];
-      if (!resource || resource.model === model) {
-        continue;
+      const model = selections[scope].trim();
+      if (!model) {
+        const message = `Model hot-swap failed for ${scope}: OpenRouter model id cannot be empty`;
+        this.outputChannel?.appendLine(`[AIResourceManager] ${message}`);
+        throw new Error(message);
       }
-      const previousModel = resource.model;
-      resource.engine.setModel(model);
-      resource.model = model;
+      normalizedSelections[scope] = model;
+      return resource && resource.model !== model
+        ? [{ scope, resource, previousModel: resource.model, model }]
+        : [];
+    });
+
+    const applied: typeof changes = [];
+    try {
+      for (const change of changes) {
+        change.resource.engine.setModel(change.model);
+        change.resource.model = change.model;
+        applied.push(change);
+      }
+      this.resolvedModels = normalizedSelections;
+      for (const change of changes) {
+        this.outputChannel?.appendLine(
+          `[AIResourceManager] Hot-swapped ${change.scope} model: ${change.previousModel} → ${change.model} (generation ${change.resource.generation}; conversations preserved)`
+        );
+      }
+    } catch (error) {
+      const failedScope = changes[applied.length]?.scope ?? 'unknown';
+      for (const change of applied.reverse()) {
+        change.resource.engine.setModel(change.previousModel);
+        change.resource.model = change.previousModel;
+      }
       this.outputChannel?.appendLine(
-        `[AIResourceManager] Hot-swapped ${scope} model: ${previousModel} → ${model} (generation ${resource.generation}; conversations preserved)`
+        `[AIResourceManager] Model hot-swap failed for ${failedScope}; applied scopes rolled back: ${error instanceof Error ? error.message : String(error)}`
       );
+      throw error;
     }
-    this.resolvedModels = { ...selections };
   }
 
   /**

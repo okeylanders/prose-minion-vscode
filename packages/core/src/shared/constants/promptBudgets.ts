@@ -21,17 +21,17 @@ export interface PromptBudgets {
   readonly sourceDocument: Readonly<{ words: number }>;
 }
 
-export const PROMPT_BUDGETS: PromptBudgets = Object.freeze({
-  fileExcerpt: Object.freeze({ words: 10_000, bytes: 5 * 1024 * 1024 }),
-  personaExcerpt: Object.freeze({ words: 10_000 }),
-  contextBrief: Object.freeze({ words: 10_000 }),
-  toolEvidence: Object.freeze({ characters: 50_000 }),
-  directHandoff: Object.freeze({
+export const PROMPT_BUDGETS: PromptBudgets = {
+  fileExcerpt: { words: 10_000, bytes: 5 * 1024 * 1024 },
+  personaExcerpt: { words: 10_000 },
+  contextBrief: { words: 10_000 },
+  toolEvidence: { characters: 50_000 },
+  directHandoff: {
     turns: 8,
     characters: 20_000,
     headerAllowanceCharacters: 800
-  }),
-  contextFiles: Object.freeze({ words: 50_000, catalogItems: 100 }),
-  guides: Object.freeze({ words: 50_000 }),
-  sourceDocument: Object.freeze({ words: 50_000 })
-});
+  },
+  contextFiles: { words: 50_000, catalogItems: 100 },
+  guides: { words: 50_000 },
+  sourceDocument: { words: 50_000 }
+};

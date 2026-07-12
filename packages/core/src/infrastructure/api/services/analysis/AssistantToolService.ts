@@ -59,12 +59,6 @@ export interface WorkshopPersonaConversationInput {
   contextBrief?: string;
 }
 
-export interface WorkshopHostUpdateFrameInput {
-  revision?: WorkshopExcerpt;
-  /** Undefined means no brief update; null means the writer cleared it. */
-  contextBrief?: string | null;
-}
-
 /**
  * Service wrapper for AI-powered assistant analysis
  *
@@ -486,57 +480,6 @@ export class AssistantToolService {
       executionResult.finishReason,
       executionResult.conversationId
     );
-  }
-
-  /** Build the trusted, bounded frame delivered before the next host turn. */
-  buildWorkshopHostUpdateFrame(input: WorkshopHostUpdateFrameInput): string | undefined {
-    const sections: string[] = [];
-    if (input.revision) {
-      const excerptTrim = trimToWordLimit(
-        input.revision.text,
-        PROMPT_BUDGETS.personaExcerpt.words
-      );
-      const provenance = [
-        input.revision.relativePath
-          ? `Source: ${neutralizeReservedPersonaPromptDelimiters(input.revision.relativePath)}`
-          : 'Source provenance was not provided.',
-        input.revision.truncation
-          ? `Pinned excerpt is a head slice: ${input.revision.truncation.pinnedWords} of ${input.revision.truncation.totalWords} words.`
-          : undefined,
-        excerptTrim.wasTrimmed
-          ? `Persona input is a head slice: ${excerptTrim.trimmedWords} of ${excerptTrim.originalWords} pinned words.`
-          : undefined
-      ].filter((line): line is string => line !== undefined);
-      sections.push(
-        'The writer has revised the pinned excerpt. Earlier versions in this conversation are superseded.',
-        ...provenance,
-        `<pinned-excerpt version="${input.revision.version}">`,
-        neutralizeReservedPersonaPromptDelimiters(excerptTrim.trimmed),
-        '</pinned-excerpt>'
-      );
-    }
-
-    if (input.contextBrief !== undefined) {
-      if (input.contextBrief === null) {
-        sections.push('The writer cleared the project context brief. Do not rely on the earlier brief.');
-      } else {
-        const briefTrim = trimToWordLimit(input.contextBrief, PROMPT_BUDGETS.contextBrief.words);
-        sections.push(
-          'The writer updated the project context brief. This supersedes the earlier brief.',
-          briefTrim.wasTrimmed
-            ? `Context brief is a head slice: ${briefTrim.trimmedWords} of ${briefTrim.originalWords} words.`
-            : '',
-          '<context-brief>',
-          neutralizeReservedPersonaPromptDelimiters(briefTrim.trimmed),
-          '</context-brief>'
-        );
-      }
-    }
-
-    if (sections.length === 0) {
-      return undefined;
-    }
-    return ['<workshop-host-update>', ...sections.filter(Boolean), '</workshop-host-update>'].join('\n');
   }
 
   /**

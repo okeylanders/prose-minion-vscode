@@ -63,7 +63,7 @@ interface ActiveRun {
 }
 
 export interface WorkshopPendingHostUpdates {
-  revision?: WorkshopExcerpt;
+  excerpt?: WorkshopExcerpt;
   contextBrief?: {
     revision: number;
     text?: string;
@@ -180,8 +180,8 @@ export class WorkshopSessionService {
   }
 
   collectPendingHostUpdates(): WorkshopPendingHostUpdates | undefined {
-    const revision = this.pendingRevisionVersion === this.excerpt?.version
-      ? cloneExcerpt(this.excerpt!)
+    const excerpt = this.excerpt !== undefined && this.pendingRevisionVersion === this.excerpt.version
+      ? cloneExcerpt(this.excerpt)
       : undefined;
     const contextBrief = this.pendingContextBriefRevision !== undefined
       ? {
@@ -189,12 +189,12 @@ export class WorkshopSessionService {
           text: this.contextBrief
         }
       : undefined;
-    return revision || contextBrief ? { revision, contextBrief } : undefined;
+    return excerpt || contextBrief ? { excerpt, contextBrief } : undefined;
   }
 
   /** Clear only the exact update generation that a successful host turn shipped. */
   commitPendingHostUpdates(delivered: WorkshopPendingHostUpdates): void {
-    if (delivered.revision?.version === this.pendingRevisionVersion) {
+    if (delivered.excerpt?.version === this.pendingRevisionVersion) {
       this.pendingRevisionVersion = undefined;
     }
     if (delivered.contextBrief?.revision === this.pendingContextBriefRevision) {

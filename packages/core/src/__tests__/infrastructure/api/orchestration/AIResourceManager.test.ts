@@ -53,6 +53,62 @@ describe('AIResourceManager lifecycle', () => {
     manager.dispose();
   });
 
+  it('names an invalid scope and leaves every model unchanged when validation fails', async () => {
+    const configured: Record<string, string | undefined> = {};
+    const log = { appendLine: jest.fn() };
+    const manager = new AIResourceManager(
+      { getGuideRegistry: jest.fn(), getGuideLoader: jest.fn() } as never,
+      { getApiKey: jest.fn().mockResolvedValue('key') } as never,
+      { get: jest.fn((_section, key, fallback) => configured[key] ?? fallback) } as never,
+      log as never
+    );
+    await manager.ensureInitialized();
+    const originalAssistant = manager.getResolvedModel('assistant');
+    const originalContext = manager.getResolvedModel('context');
+    configured.assistantModel = 'openai/gpt-5.2';
+    configured.contextModel = '';
+
+    await expect(manager.refreshModelSelections()).rejects.toThrow(
+      'Model hot-swap failed for context'
+    );
+
+    expect(manager.getEngine('assistant')?.getModel()).toBe(originalAssistant);
+    expect(manager.getEngine('context')?.getModel()).toBe(originalContext);
+    expect(manager.getResolvedModel('assistant')).toBe(originalAssistant);
+    expect(log.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('failed for context')
+    );
+    manager.dispose();
+  });
+
+  it('rolls back earlier scopes when a later engine rejects a hot-swap', async () => {
+    const configured: Record<string, string | undefined> = {};
+    const log = { appendLine: jest.fn() };
+    const manager = new AIResourceManager(
+      { getGuideRegistry: jest.fn(), getGuideLoader: jest.fn() } as never,
+      { getApiKey: jest.fn().mockResolvedValue('key') } as never,
+      { get: jest.fn((_section, key, fallback) => configured[key] ?? fallback) } as never,
+      log as never
+    );
+    await manager.ensureInitialized();
+    const originalAssistant = manager.getResolvedModel('assistant')!;
+    const originalContext = manager.getResolvedModel('context')!;
+    configured.assistantModel = 'openai/gpt-5.2';
+    configured.contextModel = 'google/gemini-3.1-pro-preview';
+    jest.spyOn(manager.getEngine('context')!, 'setModel')
+      .mockImplementationOnce(() => { throw new Error('provider rejected model'); });
+
+    await expect(manager.refreshModelSelections()).rejects.toThrow('provider rejected model');
+
+    expect(manager.getEngine('assistant')?.getModel()).toBe(originalAssistant);
+    expect(manager.getEngine('context')?.getModel()).toBe(originalContext);
+    expect(manager.getResolvedModel('assistant')).toBe(originalAssistant);
+    expect(log.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('failed for context; applied scopes rolled back')
+    );
+    manager.dispose();
+  });
+
   it('retries after a failed build instead of caching the rejection forever', async () => {
     const getApiKey = jest.fn()
       .mockRejectedValueOnce(new Error('keychain locked'))

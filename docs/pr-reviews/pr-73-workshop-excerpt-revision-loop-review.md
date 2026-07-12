@@ -12,23 +12,23 @@ act before merge · **Deferred** = real issue, safe to punt for a stated reason 
 
 | # | Sev | Finding | Reviewers | Consensus | Status |
 |---|-----|---------|-----------|-----------|--------|
-| 1 | 🟠 High | Context brief trimmed on host path but sent **untrimmed** on every tool run (breaks the UI's "first 10,000 words" promise) | Tim, Sam | 🎯 | **Open** |
-| 2 | 🟠 High | Context brief delivered **twice** in one opening message after a failed/cancelled first host turn | Bria | — | **Open** |
-| 3 | 🟠 High | `collectPendingHostUpdates` throws `TypeError` in the no-excerpt state (`undefined === undefined` guard hole) | Blake | — | **Deferred** — unreachable today; fix the 1-line guard before Sprint 07 builds on this aggregate |
-| 4 | 🟠 High | Architecture guard regex has real evasion routes (`let`, un-`readonly` fields, `_MAX`/`_CAP`/`_CEILING`) | Cal | — | **Open** |
-| 5 | 🟠 High | Model hot-swap in-flight invariant ("keeps model captured at dispatch") has zero test coverage | Cal | — | **Deferred** — invariant holds today; add a regression test to lock it |
-| 6 | 🟠 High | Pending host-update transaction has **zero log trail** across its whole lifecycle | Oliver | — | **Open** |
-| 7 | 🟡 Standard | Pending-update → frame mapping block duplicated verbatim across two call sites (tri-state re-encoding undocumented at source) | Marcus, Parker | 🎯 | **Open** |
-| 8 | 🟡 Standard | Pure `buildWorkshopHostUpdateFrame` placed on infra service, not the `WorkshopPromptBuilder` module where its siblings live | Marcus | — | **Open** |
-| 9 | 🟡 Standard | `buildWorkshopHostMessage(text, handoff, false, frame)` — positional boolean/string param soup; wants an options object | Parker | — | **Open** |
-| 10 | 🟡 Standard | `ContextBriefPanel` silently discards keystrokes typed during the save round-trip (`useEffect([value])` clobber) | Sam | — | **Open** |
-| 11 | 🟡 Standard | Bare self-closing reserved tag (`<pinned-excerpt/>`) bypasses the delimiter neutralizer; one-char fix | Patricia | — | **Open** |
-| 12 | 🟡 Standard | Model hot-swap failure doesn't name the failing scope; mid-loop throw leaves `resolvedModels` stale (engine on B, UI reports A) | Oliver | — | **Open** |
-| 13 | 🟡 Standard | `buildWorkshopHostUpdateFrame` untested for the majority shape (revision present, brief absent) | Cal | — | **Open** |
-| 14 | 🟢 Nit | `WorkshopPendingHostUpdates.revision` (a whole excerpt) vs. `contextBrief.revision` (a counter) — same word, two shapes | Parker | — | **Open** |
-| 15 | 🟢 Nit | `promptBudgets.ts` is the only `shared/constants/` file using runtime `Object.freeze`; siblings use `readonly` | Stan | — | **Open** |
-| 16 | 🟢 Nit | `WorkshopTurnBubble` calls `useMemo` after a conditional early return (Rules-of-Hooks); repo eslint has no `react-hooks` plugin | Sam | — | **Open** |
-| 17 | 🟢 Nit | Centralized pin log dropped the char/word size the two prior log lines carried | Oliver | — | **Open** |
+| 1 | 🟠 High | Context brief trimmed on host path but sent **untrimmed** on every tool run (breaks the UI's "first 10,000 words" promise) | Tim, Sam | 🎯 | **Addressed** — tool side-passes now apply the shared context-brief word budget |
+| 2 | 🟠 High | Context brief delivered **twice** in one opening message after a failed/cancelled first host turn | Bria | — | **Addressed** — fresh hosts receive current state only through the initial envelope; pending generations still commit on success |
+| 3 | 🟠 High | `collectPendingHostUpdates` throws `TypeError` in the no-excerpt state (`undefined === undefined` guard hole) | Blake | — | **Addressed** — explicit excerpt-exists guard plus regression coverage |
+| 4 | 🟠 High | Architecture guard regex has real evasion routes (`let`, un-`readonly` fields, `_MAX`/`_CAP`/`_CEILING`) | Cal | — | **Addressed** — declaration/suffix coverage widened and locked with examples |
+| 5 | 🟠 High | Model hot-swap in-flight invariant ("keeps model captured at dispatch") has zero test coverage | Cal | — | **Addressed** — dispatch-time model capture now has a deferred-fetch regression test |
+| 6 | 🟠 High | Pending host-update transaction has **zero log trail** across its whole lifecycle | Oliver | — | **Addressed** — queue, prepare, commit, and retain-on-failure/cancel are logged |
+| 7 | 🟡 Standard | Pending-update → frame mapping block duplicated verbatim across two call sites (tri-state re-encoding undocumented at source) | Marcus, Parker | 🎯 | **Addressed** — one builder consumes the aggregate transaction directly |
+| 8 | 🟡 Standard | Pure `buildWorkshopHostUpdateFrame` placed on infra service, not the `WorkshopPromptBuilder` module where its siblings live | Marcus | — | **Addressed** — moved beside the other pure Workshop prompt builders |
+| 9 | 🟡 Standard | `buildWorkshopHostMessage(text, handoff, false, frame)` — positional boolean/string param soup; wants an options object | Parker | — | **Addressed** — call sites now use a typed options object |
+| 10 | 🟡 Standard | `ContextBriefPanel` silently discards keystrokes typed during the save round-trip (`useEffect([value])` clobber) | Sam | — | **Addressed** — persisted echoes hydrate only an otherwise-clean draft |
+| 11 | 🟡 Standard | Bare self-closing reserved tag (`<pinned-excerpt/>`) bypasses the delimiter neutralizer; one-char fix | Patricia | — | **Addressed** — `/` is recognized by the reserved-frame lookahead and tested |
+| 12 | 🟡 Standard | Model hot-swap failure doesn't name the failing scope; mid-loop throw leaves `resolvedModels` stale (engine on B, UI reports A) | Oliver | — | **Addressed** — swaps validate first, name the scope, and roll back partial application |
+| 13 | 🟡 Standard | `buildWorkshopHostUpdateFrame` untested for the majority shape (revision present, brief absent) | Cal | — | **Addressed** — revision-only frame coverage added |
+| 14 | 🟢 Nit | `WorkshopPendingHostUpdates.revision` (a whole excerpt) vs. `contextBrief.revision` (a counter) — same word, two shapes | Parker | — | **Addressed** — outer field renamed to `excerpt` |
+| 15 | 🟢 Nit | `promptBudgets.ts` is the only `shared/constants/` file using runtime `Object.freeze`; siblings use `readonly` | Stan | — | **Addressed** — aligned with the constants drawer's typed-readonly convention |
+| 16 | 🟢 Nit | `WorkshopTurnBubble` calls `useMemo` after a conditional early return (Rules-of-Hooks); repo eslint has no `react-hooks` plugin | Sam | — | **Addressed** — hook now runs before the divider return |
+| 17 | 🟢 Nit | Centralized pin log dropped the char/word size the two prior log lines carried | Oliver | — | **Addressed** — character count restored alongside version and retired-sidecar data |
 | 18 | 🟢 Nit | Token-floor after the contextBrief raise (~14.6k → ~26k tokens/host turn) — on record, not a defect | Tim | — | **N/A** — disclosed & intentional |
 | 19 | 🟢 Praise | Generation-safe pending transaction holds under independent tracing; no true blockers | Blake | — | **N/A** |
 | 20 | 🟢 Praise | The cancellation-keeps-pending test genuinely proves the hard path, not just the happy one | Cal | — | **N/A** |

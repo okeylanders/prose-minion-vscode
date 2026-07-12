@@ -2,12 +2,12 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as ts from 'typescript';
 
 const SRC_ROOT = path.resolve(__dirname, '..', '..');
 const BUDGET_MODULE = path.join(SRC_ROOT, 'shared', 'constants', 'promptBudgets.ts');
 const TEST_ROOT = path.join(SRC_ROOT, '__tests__');
-const CONSTANT_DECLARATION = /(?:const|readonly)\s+([A-Z][A-Z0-9_]*)/g;
-const LOOKS_LIKE_LIMIT = /(?:^MAX_|_MAX_|_LIMIT)/;
+const LOOKS_LIKE_LIMIT = /(?:^MAX(?:_|$)|_(?:MAX|LIMIT|CAP|CEILING|THRESHOLD)(?:_|$))/;
 
 // Existing bounds that are explicitly not prompt truncation: provider
 // concurrency and the webview-safe error display cap.
@@ -35,13 +35,50 @@ function collectTypeScriptFiles(dir: string, acc: string[] = []): string[] {
   return acc;
 }
 
+function collectLimitDeclarationNames(source: string, fileName = 'prompt-budget-scan.ts'): string[] {
+  const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true);
+  const declarations: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if ((ts.isVariableDeclaration(node) || ts.isPropertyDeclaration(node))
+      && ts.isIdentifier(node.name)
+      && /^[A-Z][A-Z0-9_]*$/.test(node.name.text)
+      && LOOKS_LIKE_LIMIT.test(node.name.text)) {
+      declarations.push(node.name.text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return declarations;
+}
+
 describe('prompt budgets', () => {
+  it('recognizes mutable, field, and suffix-style budget declarations', () => {
+    const source = [
+      'let MAX_WORDS = 10;',
+      'const PERSONA_BRIEF_MAX = 500;',
+      'const CONTEXT_CAP = 100;',
+      'class Limits {',
+      '  private static MAX_ITEMS = 5;',
+      '  readonly TOKEN_CEILING = 20;',
+      '  public BATCH_THRESHOLD = 3;',
+      '}'
+    ].join('\n');
+    const declarations = collectLimitDeclarationNames(source);
+
+    expect(declarations).toEqual([
+      'MAX_WORDS',
+      'PERSONA_BRIEF_MAX',
+      'CONTEXT_CAP',
+      'MAX_ITEMS',
+      'TOKEN_CEILING',
+      'BATCH_THRESHOLD'
+    ]);
+  });
+
   it('keeps prompt-side max and limit constants in the central budget table', () => {
     const offenders = collectTypeScriptFiles(SRC_ROOT).flatMap((file) => {
       const source = fs.readFileSync(file, 'utf8');
-      const declarations = [...source.matchAll(CONSTANT_DECLARATION)]
-        .map(match => match[1])
-        .filter(name => LOOKS_LIKE_LIMIT.test(name));
+      const declarations = collectLimitDeclarationNames(source, file);
       return declarations
         .map(name => `${path.relative(SRC_ROOT, file)}:${name}`)
         .filter(witness => !NON_PROMPT_LIMITS.has(witness));

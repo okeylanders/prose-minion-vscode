@@ -78,6 +78,13 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   onCopy,
   onSave
 }) => {
+  // Persona replies are editorial conversation, not a tool artifact. Never
+  // reinterpret their headings as tool variations with copy/save provenance.
+  const parsedVariations = React.useMemo(
+    () => turn.personaId ? null : parseVariations(turn.content),
+    [turn.content, turn.personaId]
+  );
+
   if (turn.artifact === 'excerpt_revision') {
     return (
       <div className="pm-ws-revision-divider" role="separator">
@@ -85,13 +92,6 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
       </div>
     );
   }
-
-  // Persona replies are editorial conversation, not a tool artifact. Never
-  // reinterpret their headings as tool variations with copy/save provenance.
-  const parsedVariations = React.useMemo(
-    () => turn.personaId ? null : parseVariations(turn.content),
-    [turn.content, turn.personaId]
-  );
 
   if (turn.role === 'user') {
     if (turn.kind === 'message') {

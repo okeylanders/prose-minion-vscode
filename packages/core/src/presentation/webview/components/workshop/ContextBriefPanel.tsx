@@ -17,9 +17,14 @@ export const ContextBriefPanel: React.FC<ContextBriefPanelProps> = ({
   onSave
 }) => {
   const [draft, setDraft] = React.useState(value);
+  const lastPersistedValue = React.useRef(value);
 
   React.useEffect(() => {
-    setDraft(value);
+    const previousValue = lastPersistedValue.current;
+    setDraft((currentDraft) =>
+      currentDraft.trim() === previousValue.trim() ? value : currentDraft
+    );
+    lastPersistedValue.current = value;
   }, [value]);
 
   const wordCount = React.useMemo(() => countWords(draft), [draft]);

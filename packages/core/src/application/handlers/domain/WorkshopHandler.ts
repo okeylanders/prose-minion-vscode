@@ -25,7 +25,9 @@ import { WorkshopSessionService } from '@/application/services/WorkshopSessionSe
 import { RunWorkshopToolSidePass } from '@/application/services/RunWorkshopToolSidePass';
 import {
   buildWorkshopDirectHandoff,
-  buildWorkshopHostMessage
+  buildWorkshopHostMessage,
+  buildWorkshopHostUpdateFrame,
+  describeWorkshopPendingHostUpdates
 } from '@/application/services/WorkshopPromptBuilder';
 import {
   completeWorkshopRun,
@@ -344,21 +346,26 @@ export class WorkshopHandler {
     const pendingHostUpdates = target.kind === 'host'
       ? this.session.collectPendingHostUpdates()
       : undefined;
-    const hostUpdateFrame = pendingHostUpdates
-      ? this.assistantToolService.buildWorkshopHostUpdateFrame({
-          revision: pendingHostUpdates.revision,
-          contextBrief: pendingHostUpdates.contextBrief
-            ? pendingHostUpdates.contextBrief.text ?? null
-            : undefined
-        })
+    // A fresh host already receives the current excerpt and brief through its
+    // initial envelope. Only retained conversations need a superseding delta.
+    const hostUpdateFrame = hostConversationId
+      ? buildWorkshopHostUpdateFrame(pendingHostUpdates)
       : undefined;
+    if (pendingHostUpdates) {
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Pending host update prepared (${describeWorkshopPendingHostUpdates(pendingHostUpdates)}; ${hostConversationId ? 'retained delta frame' : 'fresh-host initial envelope'})`
+      );
+    }
     if (handoff) {
       this.outputChannel.appendLine(
         `[WorkshopHandler] Direct handoff prepared: ${handoff.unseenTurns} unseen → ${handoff.includedTurns} included, ${handoff.omittedTurns} omitted, ${handoff.truncatedCharacters} chars truncated`
       );
     }
     const modelMessage = target.kind === 'host'
-      ? buildWorkshopHostMessage(text, handoff, false, hostUpdateFrame)
+      ? buildWorkshopHostMessage(text, {
+          handoff,
+          hostUpdate: hostUpdateFrame
+        })
       : text;
     const label = target.kind === 'host'
       ? workshopPersonaLabel(personaId)
@@ -421,11 +428,23 @@ export class WorkshopHandler {
       }
       if (assistantTurn && target.kind === 'host' && pendingHostUpdates) {
         this.session.commitPendingHostUpdates(pendingHostUpdates);
+        this.outputChannel.appendLine(
+          `[WorkshopHandler] Pending host update committed (${describeWorkshopPendingHostUpdates(pendingHostUpdates)})`
+        );
+      } else if (target.kind === 'host' && pendingHostUpdates) {
+        this.outputChannel.appendLine(
+          `[WorkshopHandler] Pending host update retained after incomplete delivery (${describeWorkshopPendingHostUpdates(pendingHostUpdates)})`
+        );
       }
       this.postSessionState();
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.session.abandonRun(requestId);
+      if (target.kind === 'host' && pendingHostUpdates) {
+        this.outputChannel.appendLine(
+          `[WorkshopHandler] Pending host update retained after failed delivery (${describeWorkshopPendingHostUpdates(pendingHostUpdates)}): ${details}`
+        );
+      }
       this.sendStreamComplete(requestId, '', true);
       if (error instanceof Error && error.name === 'ConversationNotFoundError') {
         // A configuration/resource rebuild invalidates the assistant
@@ -506,10 +525,17 @@ export class WorkshopHandler {
       this.sendError('workshop', 'Context brief must be text.');
       return;
     }
+    const previousBrief = this.session.getContextBrief();
     this.session.setContextBrief(rawText);
+    const pendingHostUpdates = this.session.collectPendingHostUpdates();
     this.outputChannel.appendLine(
       `[WorkshopHandler] Context brief ${rawText?.trim() ? 'updated' : 'cleared'} (${rawText?.trim().length ?? 0} chars, source=${message.source})`
     );
+    if (previousBrief !== this.session.getContextBrief() && pendingHostUpdates?.contextBrief) {
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Pending host update queued (${describeWorkshopPendingHostUpdates(pendingHostUpdates)})`
+      );
+    }
     this.postSessionState();
   }
 
@@ -660,8 +686,14 @@ export class WorkshopHandler {
       this.postTurn(replacement.dividerTurn);
     }
     this.outputChannel.appendLine(
-      `[WorkshopHandler] Excerpt v${replacement.excerpt.version} pinned (${replacement.excerpt.relativePath ?? 'pasted'}, ${replacement.retiredSidecarCount} sidecars retired)`
+      `[WorkshopHandler] Excerpt v${replacement.excerpt.version} pinned (${replacement.excerpt.relativePath ?? 'pasted'}, ${replacement.excerpt.text.length} chars, ${replacement.retiredSidecarCount} sidecars retired)`
     );
+    const pendingHostUpdates = this.session.collectPendingHostUpdates();
+    if (pendingHostUpdates?.excerpt) {
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Pending host update queued (${describeWorkshopPendingHostUpdates(pendingHostUpdates)})`
+      );
+    }
     if (replacement.replacementCount === 3) {
       this.sendStatus(
         'This session now carries three excerpt revisions. Consider a new session soon to keep context cost down.'

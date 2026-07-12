@@ -20,6 +20,10 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     relativePath: 'chapters/one.md'
   });
 
+  it('reports no pending host updates before an excerpt exists', () => {
+    expect(service.collectPendingHostUpdates()).toBeUndefined();
+  });
+
   const adoptReport = (
     toolId: 'prose' | 'continuity' = 'prose',
     requestId = `${toolId}-run`,
@@ -245,10 +249,10 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(service.getChatTarget()).toEqual({ kind: 'host' });
     expect(service.getSnapshot().participants.toolSidecars).toEqual([]);
     expect(proseReport.excerptVersion).toBe(1);
-    expect(service.collectPendingHostUpdates()?.revision?.version).toBe(2);
+    expect(service.collectPendingHostUpdates()?.excerpt?.version).toBe(2);
 
     service.replaceExcerpt({ text: 'Only the newest draft should ship.' });
-    expect(service.collectPendingHostUpdates()?.revision).toMatchObject({
+    expect(service.collectPendingHostUpdates()?.excerpt).toMatchObject({
       version: 3,
       text: 'Only the newest draft should ship.'
     });
@@ -275,7 +279,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     service.replaceExcerpt({ text: 'Revised text.' });
     expect(service.getContextBrief()).toBe('Newest changed brief.');
     const combinedDelivery = service.collectPendingHostUpdates()!;
-    expect(combinedDelivery.revision?.version).toBe(2);
+    expect(combinedDelivery.excerpt?.version).toBe(2);
     expect(combinedDelivery.contextBrief?.text).toBe('Newest changed brief.');
     service.commitPendingHostUpdates(combinedDelivery);
     expect(service.collectPendingHostUpdates()).toBeUndefined();

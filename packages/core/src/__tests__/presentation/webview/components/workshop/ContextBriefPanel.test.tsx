@@ -41,4 +41,21 @@ describe('ContextBriefPanel', () => {
 
     expect(onSave).toHaveBeenCalledWith(undefined);
   });
+
+  it('preserves keystrokes typed while a saved value is round-tripping', () => {
+    const onSave = jest.fn();
+    const { rerender } = render(
+      <ContextBriefPanel value="" pendingDelivery={false} onSave={onSave} />
+    );
+    const textarea = screen.getByLabelText<HTMLTextAreaElement>('Workshop context brief');
+
+    fireEvent.change(textarea, { target: { value: 'Hello' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save brief' }));
+    fireEvent.change(textarea, { target: { value: 'Hello world' } });
+    rerender(
+      <ContextBriefPanel value="Hello" pendingDelivery={false} onSave={onSave} />
+    );
+
+    expect(textarea.value).toBe('Hello world');
+  });
 });

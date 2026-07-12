@@ -53,12 +53,6 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       continueConversation: jest.fn().mockImplementation(async (conversationId: string) =>
         analysisResult('continued reply', { conversationId })
       ),
-      buildWorkshopHostUpdateFrame: jest.fn((input: any) => [
-        '<workshop-host-update>',
-        input.revision ? `revision-v${input.revision.version}:${input.revision.text}` : undefined,
-        input.contextBrief === null ? 'context-cleared' : input.contextBrief,
-        '</workshop-host-update>'
-      ].filter(Boolean).join('\n')),
       discardConversation: jest.fn(),
       addStatusListener: jest.fn(() => jest.fn())
     } as unknown as jest.Mocked<AssistantToolService>;
@@ -119,6 +113,39 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     });
   });
 
+  it('does not duplicate a brief when the first host attempt fails and is retried', async () => {
+    await pin();
+    let rejectFirst!: (error: Error) => void;
+    service.startWorkshopPersonaConversation.mockImplementationOnce(
+      async () => new Promise((_resolve, reject) => {
+        rejectFirst = reject;
+      })
+    );
+
+    const firstAttempt = handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Start host.' }
+    ) as any);
+    await Promise.resolve();
+    await handler.handleSetContextBrief(message(
+      MessageType.WORKSHOP_SET_CONTEXT_BRIEF,
+      { text: 'Mara is hiding her identity.' }
+    ) as any);
+    rejectFirst(new Error('temporary failure'));
+    await firstAttempt;
+
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Retry host.' }
+    ) as any);
+
+    const retryInput = service.startWorkshopPersonaConversation.mock.calls.at(-1)![0];
+    expect(retryInput.contextBrief).toBe('Mara is hiding her identity.');
+    expect(retryInput.message).toBe('Retry host.');
+    expect(retryInput.message).not.toContain('<workshop-host-update>');
+    expect(session.getSnapshot().pendingHostUpdate).toBeUndefined();
+  });
+
   it('delivers collapsed excerpt and context updates once after a successful host turn', async () => {
     await pin();
     await handler.handleSendMessage(message(
@@ -163,10 +190,17 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       { text: 'Try the comparison again.' }
     ) as any);
     const delivered = service.continueConversation.mock.calls.at(-1)![1];
-    expect(delivered).toContain('revision-v3:Newest version.');
+    expect(delivered).toContain('<pinned-excerpt version="3">');
+    expect(delivered).toContain('Newest version.');
     expect(delivered).not.toContain('Second version.');
     expect(delivered).toContain('The story is a winter mystery.');
     expect(session.getSnapshot().pendingHostUpdate).toBeUndefined();
+    expect(log.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('Pending host update prepared')
+    );
+    expect(log.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('Pending host update committed')
+    );
 
     await handler.handleSendMessage(message(
       MessageType.WORKSHOP_SEND_MESSAGE,
@@ -233,6 +267,22 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       expect.objectContaining({ contextBrief: 'Mara cannot read.' }),
       expect.anything()
     );
+  });
+
+  it('bounds the context brief before every tool pass', async () => {
+    await pin();
+    const longBrief = Array.from({ length: 10_001 }, (_, index) => `brief${index}`).join(' ');
+    await handler.handleSetContextBrief(message(
+      MessageType.WORKSHOP_SET_CONTEXT_BRIEF,
+      { text: longBrief }
+    ) as any);
+
+    await runProse();
+
+    const deliveredBrief = service.analyzeProse.mock.calls[0][1]!;
+    expect(deliveredBrief.split(/\s+/)).toHaveLength(10_000);
+    expect(deliveredBrief).toContain('brief9999');
+    expect(deliveredBrief).not.toContain('brief10000');
   });
 
   it('neutralizes reserved persona frames in retained host follow-ups', async () => {
