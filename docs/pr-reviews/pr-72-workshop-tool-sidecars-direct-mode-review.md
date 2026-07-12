@@ -12,18 +12,18 @@ act before merge · **Deferred** = real issue, safe to punt for a stated reason 
 
 | # | Sev | Finding | Reviewers | Consensus | Status |
 |---|-----|---------|-----------|-----------|--------|
-| 1 | 🟠 High | Per-tool handoff cursor committed even when the global 8-turn cap drops that tool's turns → silent, permanent context loss | Cal | — | **Open** |
-| 2 | 🟠 High | Same-tool re-run clobbers the sidecar cursor; prior direct exchanges become unreachable if that run's synthesis fails | Sam | — | **Open** |
-| 3 | 🟠 High | Truncation branch never spends `remaining`; final `.slice()` amputates the truncation marker + anti-hallucination instruction | Blake | — | **Open** |
-| 4 | 🟠 High | Delimiter neutralizer escapes only the first `<`/`>`; a second raw reserved-tag fragment survives into the persona prompt | Patricia | — | **Open** |
-| 5 | 🟠 High | Synthesis zombie/stale path is silent — no log, no error, can drop an API-billed turn | Oliver | — | **Open** |
-| 6 | 🟡 Standard | `prepareHostHandoff` is a 94-line four-job method; prompt formatting leaks into the pure aggregate (belongs in `WorkshopPromptBuilder`) | Marcus, Parker | 🎯 | **Open** |
-| 7 | 🟡 Standard | Run-completion state machine duplicated (handler inline vs. extracted) and **already drifted** — inline abort sends no status | Marcus | — | **Open** |
-| 8 | 🟡 Standard | Quick-action bar leaks onto direct-tool chat replies: gate uses `participant === 'tool'` where sibling correctly uses `artifact === 'tool_report'` | Parker | — | **Open** |
-| 9 | 🟡 Standard | Delimiter neutralization untested across the direct-handoff boundary; `workshopPromptFrames.ts` has zero unit tests | Cal, Patricia | 🎯 | **Open** |
-| 10 | 🟡 Standard | Tool-report zombie streams content to the webview before silently discarding it; discard log line omits the "why" | Oliver | — | **Open** |
-| 11 | 🟡 Standard | Handoff omission/truncation metrics (`omittedTurns`, `truncatedCharacters`) never reach the output channel | Oliver | — | **Open** |
-| 12 | 🟢 Nit | `activePhase` snapshot field has no webview consumer yet (dead field); `this.turns` grows unbounded until `reset()` | Cal, Tim | — | **Open** |
+| 1 | 🟠 High | Per-tool handoff cursor committed even when the global 8-turn cap drops that tool's turns → silent, permanent context loss | Cal | — | **Addressed** |
+| 2 | 🟠 High | Same-tool re-run clobbers the sidecar cursor; prior direct exchanges become unreachable if that run's synthesis fails | Sam | — | **Addressed** |
+| 3 | 🟠 High | Truncation branch never spends `remaining`; final `.slice()` amputates the truncation marker + anti-hallucination instruction | Blake | — | **Addressed** |
+| 4 | 🟠 High | Delimiter neutralizer escapes only the first `<`/`>`; a second raw reserved-tag fragment survives into the persona prompt | Patricia | — | **Addressed** |
+| 5 | 🟠 High | Synthesis zombie/stale path is silent — no log, no error, can drop an API-billed turn | Oliver | — | **Addressed** |
+| 6 | 🟡 Standard | `prepareHostHandoff` is a 94-line four-job method; prompt formatting leaks into the pure aggregate (belongs in `WorkshopPromptBuilder`) | Marcus, Parker | 🎯 | **Addressed** |
+| 7 | 🟡 Standard | Run-completion state machine duplicated (handler inline vs. extracted) and **already drifted** — inline abort sends no status | Marcus | — | **Addressed** |
+| 8 | 🟡 Standard | Quick-action bar leaks onto direct-tool chat replies: gate uses `participant === 'tool'` where sibling correctly uses `artifact === 'tool_report'` | Parker | — | **Addressed** |
+| 9 | 🟡 Standard | Delimiter neutralization untested across the direct-handoff boundary; `workshopPromptFrames.ts` has zero unit tests | Cal, Patricia | 🎯 | **Addressed** |
+| 10 | 🟡 Standard | Tool-report zombie streams content to the webview before silently discarding it; discard log line omits the "why" | Oliver | — | **Addressed** |
+| 11 | 🟡 Standard | Handoff omission/truncation metrics (`omittedTurns`, `truncatedCharacters`) never reach the output channel | Oliver | — | **Addressed** |
+| 12 | 🟢 Nit | `activePhase` snapshot field has no webview consumer yet (dead field); `this.turns` grows unbounded until `reset()` | Cal, Tim | — | **Partially addressed** |
 
 ---
 
@@ -254,6 +254,24 @@ Bugs don't live in the states you pictured while coding — they live where *plu
 ## Summary
 
 This is a strong, carefully-architected sprint — composition-root wiring is exactly right, the aggregate is genuinely pure for ~490 of 583 lines, the wire order and token accounting match the ticket, conventions are flawless, and a new integration test closes a prior sprint's audit gap. It is **not merge-ready as-is**: the direct-tool handoff cursor/truncation logic (`prepareHostHandoff`/`commitHostHandoff` + `completeToolReport`) carries three distinct, verified, silent-data-loss bugs plus a defeated delimiter-neutralization boundary and a silent synthesis-drop path — all in code the current single-tool/happy-path tests can't see. Fix findings #1–#5, add the two-tool + over-budget + mid-flight-failure tests they expose, and this earns its merge. The Standard-tier cleanups (decompose the 94-line method, dedupe the completion state machine, the quick-action gate, the observability gaps) are cheap on this branch and get materially more expensive once Sprint 09's guest catch-up reuses this same machinery.
+
+---
+
+## Resolution Pass — 2026-07-11
+
+All twelve findings worked on-branch. The five High findings shared one root design flaw the fixes remove together: **the cursor was computed from intent; it now derives from the shipped envelope.**
+
+- **#1 + #6 (cursor vs. window / decomposition)** — `prepareHostHandoff` is gone. `WorkshopSessionService.collectUnseenDirectExchanges()` is now a pure state query; the bounded envelope moved to `WorkshopPromptBuilder.buildWorkshopDirectHandoff()` (decomposed per Parker: `formatExchangeBlock` / `boundByCharacterBudget` / `formatHandoffMessage`), which returns `deliveredTurnIds` — exactly the turns whose content shipped. `commitHostHandoff(deliveredTurnIds)` advances each tool's cursor only to its newest *shipped* turn, forward-only. A tool whose exchanges were window- or budget-dropped keeps them unseen for the next handoff. New two-tool interleaved test proves it.
+- **#2 (re-run clobber)** — `completeToolReport` now inherits the prior sidecar's delivery cursor on replacement (adoption ≠ delivery), and collection no longer filters exchanges by `latestReportTurnId`, so exchanges under a replaced report stay claimable until a host turn actually ships them. New re-run-then-failed-synthesis test proves survival.
+- **#3 (budget lies)** — the truncated-first-block branch now spends the budget (`remaining = 0`); the trailing unconditional `.slice(20_000)` is deleted and the safety frame's bytes are reserved off the top (`HANDOFF_FRAME_RESERVE`), per Sensei's Lesson 2. Regression test asserts the truncation marker AND the anti-hallucination instruction survive an over-budget newest block, with no older block piggybacking.
+- **#4 (neutralizer bypass)** — `delimiter.replace(/</g, '&lt;').replace(/>/g, '&gt;')`; `workshopPromptFrames.test.ts` created, including Patricia's exact nested-fragment reproduction.
+- **#5 + #7 + #10 (silent drops / duplicated state machine)** — new `WorkshopRunCompletion.completeWorkshopRun()` is the single four-branch machine used by both `WorkshopHandler.executeMessage` and the side-pass synthesis leg. Both drift directions resolved (abort now statuses *and* logs everywhere); every zombie discard logs with the "why"; completion is adopted **before** content streams, so a zombie sends `cancelled: true` instead of phantom content — for the synthesis leg and the tool-report leg both. Unified discard predicate also fixes a latent bug the drift hid: the handler's zombie path could discard a conversation still owned by a live sidecar/host.
+- **#8** — `quickActionToolId` gates on `turn.artifact === 'tool_report'`; thread test adds a `direct_tool_response` fixture that owns the live sidecar.
+- **#9** — neutralization pinned across the boundary: forged reserved tags ride real exchange turns through `buildWorkshopDirectHandoff → buildWorkshopHostMessage` and are asserted encoded.
+- **#11** — both call sites log `unseen → included, omitted, chars truncated` to the output channel when a handoff is prepared.
+- **#12** — dead `activePhase` snapshot field removed (tests re-probe via `activeRequestId`); `this.turns` retention deferred per Tim's verdict → [.todo/tech-debt/2026-07-11-workshop-session-turn-retention.md](../../.todo/tech-debt/2026-07-11-workshop-session-turn-retention.md).
+
+Verification: full suite 82/82 suites, 627 tests green (was 49/373 at review time — the delta includes this pass's new suites); typecheck clean; eslint 0 errors, no new warnings in touched files.
 
 ---
 
