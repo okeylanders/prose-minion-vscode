@@ -30,6 +30,7 @@ import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import type { WorkshopExcerpt, WorkshopPersonaId } from '@messages';
 import { getWorkshopPersona } from '@shared/constants/workshopPersonas';
 import { trimToWordLimit } from '@/utils/textUtils';
+import { neutralizeReservedPersonaPromptDelimiters } from '@/utils/workshopPromptFrames';
 
 /**
  * Options for streaming analysis operations
@@ -52,6 +53,8 @@ export interface WorkshopPersonaConversationInput {
   personaId: WorkshopPersonaId;
   excerpt: WorkshopExcerpt;
   message: string;
+  /** True only for application-built envelopes whose dynamic fields are pre-encoded. */
+  messageIsTrustedEnvelope?: boolean;
   contextBrief?: string;
 }
 
@@ -494,9 +497,11 @@ export class AssistantToolService {
 
   private buildWorkshopPersonaUserMessage(input: WorkshopPersonaConversationInput): string {
     const trimmedExcerpt = trimToWordLimit(input.excerpt.text, WORKSHOP_PERSONA_EXCERPT_MAX_WORDS);
-    const excerpt = trimmedExcerpt.trimmed;
+    const excerpt = neutralizeReservedPersonaPromptDelimiters(trimmedExcerpt.trimmed);
     const contextBrief = input.contextBrief?.trim()
-      ? trimToWordLimit(input.contextBrief, WORKSHOP_PERSONA_CONTEXT_BRIEF_MAX_WORDS).trimmed
+      ? neutralizeReservedPersonaPromptDelimiters(
+          trimToWordLimit(input.contextBrief, WORKSHOP_PERSONA_CONTEXT_BRIEF_MAX_WORDS).trimmed
+        )
       : undefined;
     const provenance = [
       input.excerpt.relativePath ? `Source: ${input.excerpt.relativePath}` : undefined,
@@ -518,7 +523,9 @@ export class AssistantToolService {
       contextBrief ? ['<context-brief>', contextBrief, '</context-brief>'].join('\n') : undefined,
       '',
       '<writer-message>',
-      input.message,
+      input.messageIsTrustedEnvelope
+        ? input.message
+        : neutralizeReservedPersonaPromptDelimiters(input.message),
       '</writer-message>'
     ].filter((section): section is string => section !== undefined).join('\n');
   }

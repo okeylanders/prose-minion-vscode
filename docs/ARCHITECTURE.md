@@ -167,7 +167,8 @@ Workshop session truth lives in the composition-root-owned
 selected persona host, the latest retained conversation for each tool, and an
 optional direct-tool target. Provider conversation ids never cross the
 extension/webview boundary; `WorkshopSessionSnapshot` exposes only host
-identity, sidecar availability, and the current target.
+identity, each sidecar's latest report correlation/availability, the current
+target, and the in-flight phase.
 
 `WORKSHOP_SEND_MESSAGE` is the only composer action. It starts or continues
 the selected persona host unless `WORKSHOP_SET_CHAT_TARGET` selects a live tool
@@ -178,10 +179,21 @@ Persona prompts are immutable for a retained conversation, assembled through
 persona catalog stays in shared code; presentation-only focus icons stay in
 the webview.
 
-Sprint 05 keeps an explicit migration guard: after a persona host starts,
-new tool runs are rejected until Sprint 06 adds report-to-host side-passes.
-Reset and excerpt replacement dispose every retained participant; reset also
-restores Jill as the selected host while preserving the pinned excerpt.
+`RunWorkshopToolSidePass` is a composition-root-owned application use case.
+Every user-triggered tool run starts a fresh retained tool conversation,
+atomically adopts its exact report as the latest sidecar for that tool, and
+only then starts/continues the host with bounded structured evidence. The
+report and persona synthesis remain separately attributed turns; synthesis
+failure never rolls back the valid report. Reserved persona-frame delimiters
+inside quoted excerpts/evidence are encoded before prompt assembly.
+
+Direct-tool exchanges continue the report-owned sidecar without a persona
+relay call. Returning to the host prepares at most the newest 8 unseen turns
+and 20,000 characters; omission/truncation provenance is explicit, and the
+per-sidecar delivery cursors advance only after the host turn is successfully
+adopted. Quick actions carry the report turn id and are rejected once a newer
+run replaces that sidecar. Reset and excerpt replacement dispose every
+retained participant; reset also restores Jill while preserving the excerpt.
 
 **Reference**: [Workshop Persona Host, Tool Sidecars, and Capabilities (2026-07-09)](adr/2026-07-09-workshop-persona-hosted-conversations.md)
 

@@ -1,9 +1,10 @@
 /**
- * Host-owned Workshop session aggregate (ADR 2026-07-09, Sprint 05).
+ * Host-owned Workshop session aggregate (ADR 2026-07-09, Sprint 06B).
  *
- * The webview receives a defensive participant snapshot, never provider
- * conversation ids. The aggregate owns one stable persona host, the latest
- * retained sidecar for each tool, and one explicit direct-tool target.
+ * The aggregate owns one immutable persona host identity, the latest retained
+ * sidecar per tool, explicit composer routing, report correlation, and the
+ * transactional direct-tool delivery cursor. Provider conversation ids never
+ * cross the extension/webview boundary.
  */
 
 import {
@@ -15,6 +16,7 @@ import {
   WorkshopSessionSnapshot,
   WorkshopToolId,
   WorkshopTurn,
+  WorkshopTurnArtifact,
   WorkshopTurnKind
 } from '@messages';
 import { TokenUsage } from '@shared/types';
@@ -33,7 +35,7 @@ export const WORKSHOP_SNAPSHOT_TURN_WINDOW = 100;
 interface WorkshopToolSidecar {
   conversationId: string;
   latestReportTurnId: string;
-  deliveredToHostThroughTurnId?: string;
+  deliveredToHostThroughTurnId: string;
 }
 
 interface WorkshopParticipants {
@@ -46,11 +48,21 @@ interface WorkshopParticipants {
   directToolTarget?: WorkshopToolId;
 }
 
+type WorkshopActivePhase = 'tool_report' | 'persona_synthesis' | 'host_message' | 'direct_tool_message';
+
 interface ActiveRun {
   requestId: string;
   kind: WorkshopTurnKind;
+  artifact: WorkshopTurnArtifact;
+  phase: WorkshopActivePhase;
   target: 'host' | 'tool';
   toolId?: WorkshopToolId;
+  reportTurnId?: string;
+}
+
+export interface WorkshopToolReportCompletion {
+  turn: WorkshopTurn;
+  replacedConversationId?: string;
 }
 
 /** A pure aggregate: no I/O, no vscode, and only an injectable clock. */
@@ -87,7 +99,6 @@ export class WorkshopSessionService {
     return this.excerpt ? cloneExcerpt(this.excerpt) : undefined;
   }
 
-  /** Existing context loading can seed this later without leaking into React state. */
   getContextBrief(): string | undefined {
     return this.contextBrief;
   }
@@ -112,6 +123,10 @@ export class WorkshopSessionService {
 
   getToolSidecarConversationId(toolId: WorkshopToolId): string | undefined {
     return this.participants.toolSidecars[toolId]?.conversationId;
+  }
+
+  isLiveToolReport(toolId: WorkshopToolId, reportTurnId: string): boolean {
+    return this.participants.toolSidecars[toolId]?.latestReportTurnId === reportTurnId;
   }
 
   isPersonaSelectionLocked(): boolean {
@@ -139,24 +154,113 @@ export class WorkshopSessionService {
     return true;
   }
 
+  /** Start a fresh isolated tool sidecar run; the permanent host is untouched. */
   beginToolRun(toolId: WorkshopToolId, requestId: string): WorkshopTurn {
     this.requireExcerpt();
-    if (this.hasHostConversation()) {
-      throw new Error('Cannot run a Workshop tool while a persona host conversation is active');
-    }
     this.selectedToolId = toolId;
+    // A tool run always returns to host orchestration. Direct mode is entered
+    // only through the explicit report action after the side-pass completes.
+    this.participants.directToolTarget = undefined;
     const turn: WorkshopTurn = {
       id: this.nextTurnId('user'),
       role: 'user',
       kind: 'tool_run',
+      participant: 'writer',
+      artifact: 'tool_request',
       toolId,
       toolLabel: workshopToolLabel(toolId),
       content: `Run **${workshopToolLabel(toolId)}** on the pinned excerpt.`,
       timestamp: this.now()
     };
     this.turns.push(turn);
-    this.activeRun = { requestId, kind: 'tool_run', target: 'tool', toolId };
+    this.activeRun = {
+      requestId,
+      kind: 'tool_run',
+      artifact: 'tool_report',
+      phase: 'tool_report',
+      target: 'tool',
+      toolId
+    };
     return cloneTurn(turn);
+  }
+
+  /**
+   * Atomically append the verbatim report and adopt/replace its retained
+   * sidecar. A stale completion cannot mutate either the thread or registry.
+   */
+  completeToolReport(
+    requestId: string,
+    content: string,
+    conversationId: string,
+    usage?: TokenUsage,
+    truncated?: boolean
+  ): WorkshopToolReportCompletion | undefined {
+    const active = this.activeRun;
+    if (
+      active?.requestId !== requestId ||
+      active.phase !== 'tool_report' ||
+      active.target !== 'tool' ||
+      !active.toolId
+    ) {
+      return undefined;
+    }
+
+    this.activeRun = undefined;
+    const turnId = this.nextTurnId('assistant');
+    const turn: WorkshopTurn = {
+      id: turnId,
+      role: 'assistant',
+      kind: 'tool_run',
+      participant: 'tool',
+      artifact: 'tool_report',
+      toolId: active.toolId,
+      toolLabel: workshopToolLabel(active.toolId),
+      reportTurnId: turnId,
+      content,
+      timestamp: this.now(),
+      usage: usage ? { ...usage } : undefined,
+      truncated: truncated || undefined
+    };
+
+    const replaced = this.participants.toolSidecars[active.toolId];
+    this.participants.toolSidecars[active.toolId] = {
+      conversationId,
+      latestReportTurnId: turnId,
+      // The report itself goes to the host through the dedicated synthesis
+      // evidence path; this cursor tracks only direct exchanges. A replacement
+      // report INHERITS the prior cursor (PR #72 review #2): undelivered
+      // exchanges under the old report stay claimable until a successful host
+      // turn actually ships them — adoption is not delivery.
+      deliveredToHostThroughTurnId: replaced?.deliveredToHostThroughTurnId ?? turnId
+    };
+    this.turns.push(turn);
+
+    return {
+      turn: cloneTurn(turn),
+      replacedConversationId:
+        replaced?.conversationId && replaced.conversationId !== conversationId
+          ? replaced.conversationId
+          : undefined
+    };
+  }
+
+  /** Begin the host-only synthesis phase correlated to a visible report. */
+  beginPersonaSynthesis(requestId: string, reportTurnId: string): void {
+    const report = this.turns.find(
+      (turn) => turn.id === reportTurnId && turn.artifact === 'tool_report'
+    );
+    if (!report) {
+      throw new Error(`Cannot synthesize unknown Workshop report ${reportTurnId}`);
+    }
+    this.activeRun = {
+      requestId,
+      kind: 'tool_run',
+      artifact: 'persona_synthesis',
+      phase: 'persona_synthesis',
+      target: 'host',
+      toolId: report.toolId,
+      reportTurnId
+    };
   }
 
   /** Begin a normal message to the selected permanent persona host. */
@@ -177,10 +281,7 @@ export class WorkshopSessionService {
     return this.beginMessage(requestId, displayText, 'tool', toolId);
   }
 
-  /**
-   * Finish the currently active run. Adoption occurs only after the request id
-   * matches, so a cancelled or zombie completion cannot replace participants.
-   */
+  /** Finish an active host or direct-tool message/synthesis. */
   completeRun(
     requestId: string,
     content: string,
@@ -195,14 +296,20 @@ export class WorkshopSessionService {
     const active = this.activeRun;
     this.activeRun = undefined;
     const isHost = active.target === 'host';
+    const toolSidecar = active.toolId
+      ? this.participants.toolSidecars[active.toolId]
+      : undefined;
     const turn: WorkshopTurn = {
       id: this.nextTurnId('assistant'),
       role: 'assistant',
       kind: active.kind,
+      participant: isHost ? 'host' : 'tool',
+      artifact: active.artifact,
       toolId: !isHost ? active.toolId : undefined,
       toolLabel: !isHost && active.toolId ? workshopToolLabel(active.toolId) : undefined,
       personaId: isHost ? this.participants.host.personaId : undefined,
       personaLabel: isHost ? workshopPersonaLabel(this.participants.host.personaId) : undefined,
+      reportTurnId: active.reportTurnId ?? toolSidecar?.latestReportTurnId,
       content,
       timestamp: this.now(),
       usage: usage ? { ...usage } : undefined,
@@ -212,20 +319,82 @@ export class WorkshopSessionService {
     if (isHost && conversationId) {
       this.participants.host.conversationId = conversationId;
     }
-    if (!isHost && active.toolId && conversationId) {
-      this.participants.toolSidecars[active.toolId] = {
-        conversationId,
-        latestReportTurnId: turn.id
-      };
-      // Sprint 05 preserves the tool-first path as an honest direct mode.
-      this.participants.directToolTarget = active.toolId;
-    }
-
     this.turns.push(turn);
     return cloneTurn(turn);
   }
 
-  /** Cancel, preempt, or fail only the active request; keep its user turn. */
+  /**
+   * Collect the unseen direct-tool exchanges (writer message + tool response
+   * pairs) past every sidecar's delivery cursor, in thread order. A pure
+   * state query with no cursor movement: the bounded prompt envelope is
+   * WorkshopPromptBuilder's job, and cursors advance only through
+   * commitHostHandoff with the turn ids that actually shipped (PR #72
+   * reviews #1/#6).
+   */
+  collectUnseenDirectExchanges(): WorkshopTurn[] {
+    const turnIndexes = new Map(this.turns.map((turn, index) => [turn.id, index]));
+    const unseen: WorkshopTurn[] = [];
+
+    for (const [rawToolId, sidecar] of Object.entries(this.participants.toolSidecars)) {
+      if (!sidecar) {
+        continue;
+      }
+      const toolId = rawToolId as WorkshopToolId;
+      const deliveredIndex = turnIndexes.get(sidecar.deliveredToHostThroughTurnId) ?? -1;
+      for (let index = deliveredIndex + 1; index < this.turns.length; index += 1) {
+        const response = this.turns[index];
+        if (response.toolId !== toolId || response.artifact !== 'direct_tool_response') {
+          continue;
+        }
+        // Exchanges keep the reportTurnId of the report they followed; a
+        // replaced report does NOT orphan them — the cursor alone decides
+        // delivery (PR #72 review #2). The pair check only guards integrity.
+        const writerTurn = this.turns[index - 1];
+        if (
+          index - 1 > deliveredIndex &&
+          writerTurn?.toolId === toolId &&
+          writerTurn.artifact === 'direct_tool_message' &&
+          writerTurn.reportTurnId === response.reportTurnId
+        ) {
+          unseen.push(writerTurn);
+        }
+        unseen.push(response);
+      }
+    }
+
+    unseen.sort((left, right) =>
+      (turnIndexes.get(left.id) ?? 0) - (turnIndexes.get(right.id) ?? 0)
+    );
+    return unseen.map(cloneTurn);
+  }
+
+  /**
+   * Advance per-tool delivery cursors after a successful host turn, given the
+   * turn ids whose content actually shipped in the handoff envelope. Deriving
+   * the commit from the SHIPPED set — never from the unseen set — means
+   * windowing and character budgeting can only defer an exchange to the next
+   * handoff, not silently mark it delivered (PR #72 review #1). Cursors only
+   * move forward.
+   */
+  commitHostHandoff(deliveredTurnIds: readonly string[]): void {
+    const turnIndexes = new Map(this.turns.map((turn, index) => [turn.id, index]));
+    for (const [rawToolId, sidecar] of Object.entries(this.participants.toolSidecars)) {
+      if (!sidecar) {
+        continue;
+      }
+      const toolId = rawToolId as WorkshopToolId;
+      let cursorIndex = turnIndexes.get(sidecar.deliveredToHostThroughTurnId) ?? -1;
+      for (const turnId of deliveredTurnIds) {
+        const index = turnIndexes.get(turnId);
+        if (index !== undefined && index > cursorIndex && this.turns[index].toolId === toolId) {
+          cursorIndex = index;
+          sidecar.deliveredToHostThroughTurnId = turnId;
+        }
+      }
+    }
+  }
+
+  /** Cancel, preempt, or fail only the active request; keep visible turns. */
   abandonRun(requestId: string): void {
     if (this.activeRun?.requestId === requestId) {
       this.activeRun = undefined;
@@ -241,10 +410,7 @@ export class WorkshopSessionService {
     return conversationIds;
   }
 
-  /**
-   * Fresh session boundary: preserve the excerpt, clear thread and sidecars,
-   * and return Jill as the selected host.
-   */
+  /** Fresh session boundary: preserve excerpt, clear thread, sidecars, and host. */
   reset(): string[] {
     const conversationIds = this.clearAllConversations();
     this.turns = [];
@@ -277,15 +443,29 @@ export class WorkshopSessionService {
     target: 'host' | 'tool',
     toolId?: WorkshopToolId
   ): WorkshopTurn {
+    const sidecar = toolId ? this.participants.toolSidecars[toolId] : undefined;
     const turn: WorkshopTurn = {
       id: this.nextTurnId('user'),
       role: 'user',
       kind: 'message',
+      participant: 'writer',
+      artifact: target === 'host' ? 'persona_message' : 'direct_tool_message',
+      toolId: target === 'tool' ? toolId : undefined,
+      toolLabel: target === 'tool' && toolId ? workshopToolLabel(toolId) : undefined,
+      reportTurnId: sidecar?.latestReportTurnId,
       content: displayText,
       timestamp: this.now()
     };
     this.turns.push(turn);
-    this.activeRun = { requestId, kind: 'message', target, toolId };
+    this.activeRun = {
+      requestId,
+      kind: 'message',
+      artifact: target === 'host' ? 'persona_message' : 'direct_tool_response',
+      phase: target === 'host' ? 'host_message' : 'direct_tool_message',
+      target,
+      toolId,
+      reportTurnId: sidecar?.latestReportTurnId
+    };
     return cloneTurn(turn);
   }
 
@@ -312,7 +492,13 @@ export class WorkshopSessionService {
         hasConversation: this.hasHostConversation()
       },
       toolSidecars: Object.entries(this.participants.toolSidecars).flatMap(([toolId, sidecar]) =>
-        sidecar ? [{ toolId: toolId as WorkshopToolId, hasConversation: true as const }] : []
+        sidecar ? [{
+          toolId: toolId as WorkshopToolId,
+          hasConversation: true as const,
+          latestReportTurnId: sidecar.latestReportTurnId,
+          availableForDirectFollowUp: true,
+          activeTarget: this.participants.directToolTarget === toolId
+        }] : []
       ),
       chatTarget: this.getChatTarget()
     };

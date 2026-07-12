@@ -36,6 +36,7 @@ import {
   WorkshopChatTarget,
   WorkshopPersonaId,
   WorkshopSessionStateMessage,
+  WorkshopToolSidecarSnapshot,
   WorkshopToolId,
   WorkshopTurn,
   WorkshopTurnMessage
@@ -64,6 +65,8 @@ export interface WorkshopState {
   selectedPersonaId: WorkshopPersonaId;
   /** Explicit direct-tool mode, or ordinary host routing. */
   chatTarget: WorkshopChatTarget;
+  /** Public metadata for the latest retained sidecar per tool. */
+  toolSidecars: WorkshopToolSidecarSnapshot[];
   /** True when the composer can message the host or selected direct sidecar. */
   canMessage: boolean;
   /** Host selection becomes immutable once a host run/conversation exists. */
@@ -92,7 +95,7 @@ export interface WorkshopActions {
   pinExcerpt: (text: string, sourceUri?: string, relativePath?: string) => void;
   pinFromFile: () => void;
   runTool: (toolId: WorkshopToolId) => void;
-  quickAction: (toolId: WorkshopToolId, label: string) => void;
+  quickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
   sendMessage: (text: string) => void;
   selectPersona: (personaId: WorkshopPersonaId) => void;
   setChatTarget: (target: WorkshopChatTarget) => void;
@@ -132,6 +135,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const [hasHostConversation, setHasHostConversation] = React.useState(false);
   const [selectedPersonaId, setSelectedPersonaId] = React.useState<WorkshopPersonaId>('jill');
   const [chatTarget, setChatTargetState] = React.useState<WorkshopChatTarget>({ kind: 'host' });
+  const [toolSidecars, setToolSidecars] = React.useState<WorkshopToolSidecarSnapshot[]>([]);
   const [selectedToolId, setSelectedToolId] = React.useState<WorkshopToolId | null>(null);
   const [activeToolId, setActiveToolId] = React.useState<WorkshopToolId | null>(null);
   const [statusMessage, setStatusMessage] = React.useState('');
@@ -183,9 +187,9 @@ export const useWorkshop = (): UseWorkshopReturn => {
   );
 
   const quickAction = React.useCallback(
-    (toolId: WorkshopToolId, label: string) => {
+    (toolId: WorkshopToolId, reportTurnId: string, label: string) => {
       setErrorMessage('');
-      post(MessageType.WORKSHOP_QUICK_ACTION, { toolId, label });
+      post(MessageType.WORKSHOP_QUICK_ACTION, { toolId, reportTurnId, label });
     },
     [post]
   );
@@ -250,6 +254,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
       setHasHostConversation(session.participants.host.hasConversation);
       setSelectedPersonaId(session.participants.host.personaId);
       setChatTargetState(session.participants.chatTarget);
+      setToolSidecars(session.participants.toolSidecars);
       setSelectedToolId(session.selectedToolId ?? null);
       setActiveToolId(session.activeToolId ?? null);
       setTurns((prev) => {
@@ -377,6 +382,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     hasHostConversation,
     selectedPersonaId,
     chatTarget,
+    toolSidecars,
     canMessage,
     isPersonaSelectionLocked,
     selectedToolId,

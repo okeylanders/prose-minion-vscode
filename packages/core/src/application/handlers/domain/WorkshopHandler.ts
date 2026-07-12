@@ -10,13 +10,10 @@
  * service (composition-root-owned, outlives this handler); the handler owns
  * only messaging, streaming, and run lifecycle.
  *
- * Sprint 05 makes the thread persona-hosted: WORKSHOP_SEND_MESSAGE starts or
- * continues the selected host unless the session names a live tool sidecar as
- * its explicit direct target. A pre-host tool run remains directly followable;
- * once a host conversation begins, new tool runs are guarded until Sprint 06
- * can perform a safe report-to-host side-pass. CANCEL_WORKSHOP_REQUEST aborts
- * the in-flight run; WORKSHOP_PICK_EXCERPT_FILE seeds the excerpt through the
- * ShellService port with a head-slice guardrail.
+ * Sprint 06B makes every tool run an isolated retained sidecar: the exact tool
+ * report lands first, then the permanent persona host receives bounded
+ * evidence and synthesizes a separate attributed turn. Explicit direct-tool
+ * mode continues the sidecar without relaying through the host.
  *
  * Preemption semantics are unchanged from Sprint 2: a new run preempts any
  * in-flight one, reset aborts, and zombie completions are refused + logged.
@@ -25,6 +22,15 @@
 import { FileSystem, FileType, LogSink, ShellService, Workspace } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
+import { RunWorkshopToolSidePass } from '@/application/services/RunWorkshopToolSidePass';
+import {
+  buildWorkshopDirectHandoff,
+  buildWorkshopHostMessage
+} from '@/application/services/WorkshopPromptBuilder';
+import {
+  completeWorkshopRun,
+  workshopMessageCompletionCopy
+} from '@/application/services/WorkshopRunCompletion';
 import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
 import { isWorkshopPersonaId, workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopQuickActionPrompt } from '@shared/constants/workshopQuickActions';
@@ -54,11 +60,8 @@ import {
   WorkshopToolId,
   WorkshopChatTarget,
   WorkshopTurn,
-  WorkshopTurnMessage,
-  isApiKeyNotConfiguredWarning
+  WorkshopTurnMessage
 } from '@messages';
-import { AnalysisResult } from '@/domain/models/AnalysisResult';
-import { AnalysisStreamingOptions } from '@services/analysis/AssistantToolService';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
 
@@ -93,6 +96,15 @@ const formatBytes = (bytes: number): string => {
   return `${(kib / 1024).toFixed(1)} MiB`;
 };
 
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Optional direct-mode shortcut; explicit target state remains authoritative. */
+export const isWorkshopHostReturnShortcut = (text: string, personaLabel: string): boolean =>
+  new RegExp(
+    `^(?:hey|hi|hello)(?:\\s+|,\\s*)${escapeRegExp(personaLabel)}(?:\\b|(?=\\s*[,!:?—-]))`,
+    'i'
+  ).test(text.trim());
+
 export class WorkshopHandler {
   /** The single in-flight run — at most one; a new run preempts it. */
   private activeRun?: {
@@ -108,6 +120,7 @@ export class WorkshopHandler {
   constructor(
     private readonly assistantToolService: AssistantToolService,
     private readonly session: WorkshopSessionService,
+    private readonly runToolSidePass: RunWorkshopToolSidePass,
     private readonly postMessage: MessageTransport,
     private readonly shell: ShellService,
     private readonly fileSystem: FileSystem,
@@ -176,131 +189,30 @@ export class WorkshopHandler {
       return;
     }
 
-    // Sprint 05 deliberately keeps a host prompt immutable. Tool side-passes
-    // and host synthesis arrive together in Sprint 06; until then a crafted
-    // message must not replace or contaminate an active host conversation.
-    if (this.session.hasHostConversation()) {
-      this.sendError(
-        'workshop.run_tool',
-        'Integrated tool runs arrive in Sprint 06. Start a new session to run a tool before persona chat.'
-      );
-      return;
-    }
-
     // A new run preempts any in-flight one: fresh turn, never continuation.
     this.preemptActiveRun();
 
-    const toolLabel = workshopToolLabel(toolId);
-    const requestId = generateRequestId(`workshop_${toolId}`);
     const controller = new AbortController();
-    this.activeRun = { requestId, label: toolLabel, toolId, controller };
-
-    let userTurn;
-    try {
-      userTurn = this.session.beginToolRun(toolId, requestId);
-    } catch (error) {
-      this.activeRun = undefined;
-      this.sendError(
-        'workshop.run_tool',
-        'Integrated tool runs arrive in Sprint 06. Start a new session to run a tool before persona chat.',
-        error instanceof Error ? error.message : String(error)
-      );
-      return;
-    }
-    this.postTurn(userTurn);
-    // Snapshot after the user turn: keeps the replay cache fresh so a webview
-    // that reloads mid-run rehydrates the attempt (and its active tool).
-    this.postSessionState();
-    this.sendStreamStarted(requestId);
-    this.sendStatus(`Streaming ${toolLabel}…`);
-
-    try {
-      const result = await this.invokeTool(toolId, excerpt, {
-        signal: controller.signal,
-        onToken: (token: string) => {
-          this.sendStreamChunk(requestId, token);
-        },
-        // Sprint 05: a pre-host tool run becomes a retained sidecar that
-        // direct-mode follow-ups can continue without changing any host prompt.
-        retainConversation: true
-      });
-
-      const cancelled = controller.signal.aborted;
-      const truncated = result.finishReason === 'length';
-
-      if (cancelled) {
-        // A designed disappearance still leaves a named trail (PR #67 #4):
-        // this is the branch an aborted run actually resolves through — the
-        // orchestrator catches AbortError internally and returns partial
-        // content — so the requestId-correlated line lives HERE, not in the
-        // AbortError catch below. (An aborted run never retains its
-        // conversation — the orchestrator deletes it before returning.)
-        this.outputChannel.appendLine(
-          `[WorkshopHandler] Run cancelled: ${requestId} (${toolLabel}, ${result.content.length} chars discarded)`
-        );
-        this.session.abandonRun(requestId);
-        if (result.conversationId) {
-          this.assistantToolService.discardConversation(result.conversationId);
-        }
-        this.sendStreamComplete(requestId, '', true);
-      } else if (isApiKeyNotConfiguredWarning(result.content)) {
-        // Config problem, not an analysis: keep the thread clean and surface
-        // it through the error rail instead of appending an assistant turn.
-        this.session.abandonRun(requestId);
-        this.sendStreamComplete(requestId, '', true);
-        this.sendError('workshop.run_tool', 'OpenRouter API key not configured.', result.content);
-      } else {
-        this.sendStreamComplete(requestId, result.content, false, result.usage, truncated);
-        const previousConversationId = this.session.getToolSidecarConversationId(toolId);
-        const assistantTurn = this.session.completeRun(
+    await this.runToolSidePass.run(toolId, excerpt, controller, {
+      activatePhase: (requestId, label, activeToolId, activeController) => {
+        this.activeRun = {
           requestId,
-          result.content,
-          result.usage,
-          truncated,
-          result.conversationId
-        );
-        // Stale means the session was reset (or the run preempted) mid-stream;
-        // the aggregate already refused the turn, so the thread stays honest.
-        if (assistantTurn) {
-          this.postTurn(assistantTurn);
-          // The latest run replaces only its matching tool sidecar; a direct
-          // follow-up to another tool remains valid and private to the host.
-          if (
-            result.conversationId &&
-            previousConversationId &&
-            previousConversationId !== result.conversationId
-          ) {
-            this.assistantToolService.discardConversation(previousConversationId);
-            this.outputChannel.appendLine(
-              `[WorkshopHandler] Tool sidecar replaced: ${previousConversationId} → ${result.conversationId} (${toolLabel})`
-            );
-          }
-        } else {
-          // A refused zombie turn must not orphan its retained conversation.
-          if (result.conversationId) {
-            this.assistantToolService.discardConversation(result.conversationId);
-          }
-          this.outputChannel.appendLine(
-            `[WorkshopHandler] Discarded zombie completion: ${requestId} (${toolLabel}) — session was reset or the run preempted mid-stream`
-          );
-        }
-      }
-      this.postSessionState();
-    } catch (error) {
-      const details = error instanceof Error ? error.message : String(error);
-      this.session.abandonRun(requestId);
-      // Always complete the stream so the webview's streaming affordance
-      // unsticks; the ERROR message carries the diagnostics.
-      this.sendStreamComplete(requestId, '', true);
-      if (error instanceof Error && error.name === 'AbortError') {
-        this.sendStatus(`${toolLabel} cancelled`);
-      } else {
-        this.sendError('workshop.run_tool', `Failed to run ${toolLabel}`, details);
-      }
-      this.postSessionState();
-    } finally {
-      this.settleActiveRun(requestId);
-    }
+          label,
+          toolId: activeToolId,
+          controller: activeController
+        };
+      },
+      streamStarted: (requestId) => this.sendStreamStarted(requestId),
+      streamChunk: (requestId, token) => this.sendStreamChunk(requestId, token),
+      streamCompleted: (requestId, content, cancelled, usage, truncated) =>
+        this.sendStreamComplete(requestId, content, cancelled, usage, truncated),
+      turnCompleted: (turn) => this.postTurn(turn),
+      sessionChanged: () => this.postSessionState(),
+      status: (status) => this.sendStatus(status),
+      error: (errorMessage, details) =>
+        this.sendError('workshop.run_tool', errorMessage, details),
+      settled: (requestId) => this.settleActiveRun(requestId)
+    });
   }
 
   /** The one composer message: host start/continuation or explicit direct tool. */
@@ -309,6 +221,18 @@ export class WorkshopHandler {
     if (text.length === 0) {
       this.sendError('workshop.send_message', 'Cannot send an empty message.');
       return;
+    }
+
+    const target = this.session.getChatTarget();
+    if (
+      target.kind === 'tool' &&
+      isWorkshopHostReturnShortcut(
+        text,
+        workshopPersonaLabel(this.session.getSelectedPersonaId())
+      )
+    ) {
+      this.session.setChatTarget({ kind: 'host' });
+      this.postSessionState();
     }
 
     await this.executeMessage(text);
@@ -356,7 +280,7 @@ export class WorkshopHandler {
    * UI affordances.
    */
   async handleQuickAction(message: WorkshopQuickActionMessage): Promise<void> {
-    const { toolId, label } = message.payload;
+    const { toolId, reportTurnId, label } = message.payload;
 
     if (!isWorkshopToolId(toolId)) {
       this.sendError('workshop.quick_action', `Unknown Workshop tool: ${String(toolId)}`);
@@ -373,16 +297,26 @@ export class WorkshopHandler {
       return;
     }
 
-    if (!this.session.setChatTarget({ kind: 'tool', toolId })) {
-      this.sendError('workshop.quick_action', 'That tool conversation is no longer available.');
+    if (
+      typeof reportTurnId !== 'string' ||
+      !this.session.isLiveToolReport(toolId, reportTurnId)
+    ) {
+      this.sendError(
+        'workshop.quick_action',
+        'That report has been archived because a newer tool run replaced its conversation.'
+      );
       return;
     }
-    await this.executeMessage(prompt, actionLabel);
+    await this.executeMessage(prompt, actionLabel, { kind: 'tool', toolId });
   }
 
   /** Route the one composer action to the stable host or explicit tool target. */
-  private async executeMessage(text: string, displayText = text): Promise<void> {
-    const target = this.session.getChatTarget();
+  private async executeMessage(
+    text: string,
+    displayText = text,
+    targetOverride?: WorkshopChatTarget
+  ): Promise<void> {
+    const target = targetOverride ?? this.session.getChatTarget();
     const personaId = this.session.getSelectedPersonaId();
     const hostConversationId = this.session.getHostConversationId();
     const conversationId = target.kind === 'host'
@@ -400,6 +334,17 @@ export class WorkshopHandler {
     }
 
     this.preemptActiveRun();
+    const handoff = target.kind === 'host'
+      ? buildWorkshopDirectHandoff(this.session.collectUnseenDirectExchanges())
+      : undefined;
+    if (handoff) {
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Direct handoff prepared: ${handoff.unseenTurns} unseen → ${handoff.includedTurns} included, ${handoff.omittedTurns} omitted, ${handoff.truncatedCharacters} chars truncated`
+      );
+    }
+    const modelMessage = target.kind === 'host'
+      ? buildWorkshopHostMessage(text, handoff)
+      : text;
     const label = target.kind === 'host'
       ? workshopPersonaLabel(personaId)
       : workshopToolLabel(target.toolId);
@@ -413,55 +358,51 @@ export class WorkshopHandler {
     this.postTurn(userTurn);
     this.postSessionState();
     this.sendStreamStarted(requestId);
-    this.sendStatus(`Streaming ${label}…`);
+    this.sendStatus(
+      handoff
+        ? `Handing ${handoff.unseenTurns} unseen direct-tool turn${handoff.unseenTurns === 1 ? '' : 's'} back to ${label}…`
+        : target.kind === 'tool'
+          ? `Continuing directly with ${label}…`
+          : `Streaming ${label}…`
+    );
 
     try {
       const result = conversationId
-        ? await this.assistantToolService.continueConversation(conversationId, text, {
+        ? await this.assistantToolService.continueConversation(conversationId, modelMessage, {
             signal: controller.signal,
             onToken: (token: string) => this.sendStreamChunk(requestId, token)
           })
         : await this.assistantToolService.startWorkshopPersonaConversation({
             personaId,
             excerpt,
-            message: text,
+            message: modelMessage,
             contextBrief: this.session.getContextBrief()
           }, {
             signal: controller.signal,
             onToken: (token: string) => this.sendStreamChunk(requestId, token)
           });
 
-      const truncated = result.finishReason === 'length';
-      if (controller.signal.aborted) {
-        this.outputChannel.appendLine(
-          `[WorkshopHandler] Run cancelled: ${requestId} (${label}, ${result.content.length} chars discarded)`
-        );
-        this.session.abandonRun(requestId);
-        if (result.conversationId) {
-          this.assistantToolService.discardConversation(result.conversationId);
+      const assistantTurn = completeWorkshopRun({
+        session: this.session,
+        requestId,
+        label,
+        result,
+        aborted: controller.signal.aborted,
+        createsRetainedConversation: target.kind === 'host' && !hostConversationId,
+        copy: workshopMessageCompletionCopy(label),
+        discardConversation: (id) => this.assistantToolService.discardConversation(id),
+        log: (line) => this.outputChannel.appendLine(`[WorkshopHandler] ${line}`),
+        events: {
+          streamCompleted: (id, content, cancelled, usage, truncated) =>
+            this.sendStreamComplete(id, content, cancelled, usage, truncated),
+          turnCompleted: (turn) => this.postTurn(turn),
+          status: (status) => this.sendStatus(status),
+          error: (errorMessage, details) =>
+            this.sendError('workshop.send_message', errorMessage, details)
         }
-        this.sendStreamComplete(requestId, '', true);
-      } else if (isApiKeyNotConfiguredWarning(result.content)) {
-        this.session.abandonRun(requestId);
-        this.sendStreamComplete(requestId, '', true);
-        this.sendError('workshop.send_message', 'OpenRouter API key not configured.', result.content);
-      } else {
-        this.sendStreamComplete(requestId, result.content, false, result.usage, truncated);
-        const assistantTurn = this.session.completeRun(
-          requestId,
-          result.content,
-          result.usage,
-          truncated,
-          result.conversationId
-        );
-        if (assistantTurn) {
-          this.postTurn(assistantTurn);
-        } else if (result.conversationId) {
-          this.assistantToolService.discardConversation(result.conversationId);
-          this.outputChannel.appendLine(
-            `[WorkshopHandler] Discarded zombie completion: ${requestId} (${label}) — session was reset or the run preempted mid-stream`
-          );
-        }
+      });
+      if (assistantTurn && target.kind === 'host' && handoff) {
+        this.session.commitHostHandoff(handoff.deliveredTurnIds);
       }
       this.postSessionState();
     } catch (error) {
@@ -657,39 +598,6 @@ export class WorkshopHandler {
 
   async handleRequestSession(_message: WorkshopRequestSessionMessage): Promise<void> {
     this.postSessionState();
-  }
-
-  // Tool routing — maps the catalog ids onto the three existing service calls.
-
-  private invokeTool(
-    toolId: WorkshopToolId,
-    excerpt: WorkshopExcerpt,
-    streamingOptions: AnalysisStreamingOptions
-  ): Promise<AnalysisResult> {
-    if (toolId === 'dialogue') {
-      return this.assistantToolService.analyzeDialogue(
-        excerpt.text,
-        undefined,
-        excerpt.sourceUri,
-        undefined,
-        streamingOptions
-      );
-    }
-    if (toolId === 'prose') {
-      return this.assistantToolService.analyzeProse(
-        excerpt.text,
-        undefined,
-        excerpt.sourceUri,
-        streamingOptions
-      );
-    }
-    return this.assistantToolService.analyzeWritingTools(
-      excerpt.text,
-      undefined,
-      excerpt.sourceUri,
-      toolId,
-      streamingOptions
-    );
   }
 
   private preemptActiveRun(): void {

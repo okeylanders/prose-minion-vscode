@@ -22,8 +22,11 @@ const assistantTurn = (content: string): WorkshopTurn => ({
   id: 'turn-1',
   role: 'assistant',
   kind: 'tool_run',
+  participant: 'tool',
+  artifact: 'tool_report',
   toolId: 'prose',
   toolLabel: 'Prose',
+  reportTurnId: 'turn-1',
   content,
   timestamp: 0
 });
@@ -59,8 +62,8 @@ Third version.`);
 
 describe('WorkshopTurnBubble variation cards', () => {
   it('renders duplicate model numbers with stable positional labels and wires copy/save content', () => {
-    const onCopyVariation = jest.fn();
-    const onSaveVariation = jest.fn();
+    const onCopy = jest.fn();
+    const onSave = jest.fn();
 
     render(
       <WorkshopTurnBubble
@@ -68,8 +71,9 @@ describe('WorkshopTurnBubble variation cards', () => {
         quickActionToolId="prose"
         quickActionsDisabled
         onQuickAction={jest.fn()}
-        onCopyVariation={onCopyVariation}
-        onSaveVariation={onSaveVariation}
+        onTalkDirectly={jest.fn()}
+        onCopy={onCopy}
+        onSave={onSave}
       />
     );
 
@@ -82,8 +86,8 @@ describe('WorkshopTurnBubble variation cards', () => {
     fireEvent.click(copyButtons[1]);
     fireEvent.click(saveButtons[0]);
 
-    expect(onCopyVariation).toHaveBeenCalledWith('Beta', 'prose');
-    expect(onSaveVariation).toHaveBeenCalledWith('Alpha', 'prose');
+    expect(onCopy).toHaveBeenCalledWith('Beta', expect.objectContaining({ id: 'turn-1' }));
+    expect(onSave).toHaveBeenCalledWith('Alpha', expect.objectContaining({ id: 'turn-1' }));
   });
 
   it('renders persona replies as conversation, never as inherited tool variation cards', () => {
@@ -92,6 +96,8 @@ describe('WorkshopTurnBubble variation cards', () => {
         turn={{
           ...assistantTurn('### Variation 1 - One\nA\n\n### Variation 2 - Two\nB'),
           kind: 'message',
+          participant: 'host',
+          artifact: 'persona_message',
           toolId: undefined,
           toolLabel: undefined,
           personaId: 'jill',
@@ -99,13 +105,15 @@ describe('WorkshopTurnBubble variation cards', () => {
         }}
         quickActionToolId={null}
         onQuickAction={jest.fn()}
-        onCopyVariation={jest.fn()}
-        onSaveVariation={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
       />
     );
 
     expect(screen.getByText('Jill')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /copy/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /copy/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /save to notes/i })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /rewrite/i })).toBeNull();
   });
 });

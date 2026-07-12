@@ -7,7 +7,7 @@
  * in WorkshopSessionService. These contracts carry tool ids and completed
  * turns — never raw model prompts and never the API key.
  *
- * Sprint 05 adds a selected persona host and retained per-tool sidecars.
+ * Sprint 06B adds a selected persona host and retained per-tool sidecars.
  * WORKSHOP_SEND_MESSAGE starts/continues the host unless an explicit direct
  * target is selected; provider ids remain host-private.
  */
@@ -53,6 +53,12 @@ export interface WorkshopHostParticipantSnapshot {
 export interface WorkshopToolSidecarSnapshot {
   toolId: WorkshopToolId;
   hasConversation: true;
+  /** Stable correlation for the report that owns this retained sidecar. */
+  latestReportTurnId: string;
+  /** False only when the retained provider conversation has been lost. */
+  availableForDirectFollowUp: boolean;
+  /** Convenience flag for rendering the explicit composer target. */
+  activeTarget: boolean;
 }
 
 /** Public view of the session's private participant graph. */
@@ -63,6 +69,21 @@ export interface WorkshopParticipantsSnapshot {
 }
 
 export type WorkshopTurnRole = 'user' | 'assistant';
+
+/** The participant responsible for a visible Workshop turn. */
+export type WorkshopTurnParticipant = 'writer' | 'host' | 'tool';
+
+/**
+ * Semantic artifact carried by a turn. `kind` remains the coarse interaction
+ * shape; this field keeps report, synthesis, and direct exchanges honest.
+ */
+export type WorkshopTurnArtifact =
+  | 'tool_request'
+  | 'persona_message'
+  | 'tool_report'
+  | 'persona_synthesis'
+  | 'direct_tool_message'
+  | 'direct_tool_response';
 
 /**
  * Truncation provenance for a file-seeded excerpt: the host pinned a
@@ -102,6 +123,8 @@ export interface WorkshopTurn {
   id: string;
   role: WorkshopTurnRole;
   kind: WorkshopTurnKind;
+  participant: WorkshopTurnParticipant;
+  artifact: WorkshopTurnArtifact;
   /** Tool for a tool run or an assistant reply from a direct tool sidecar. */
   toolId?: WorkshopToolId;
   /** Deterministic display label for the tool — never model-generated. */
@@ -110,6 +133,8 @@ export interface WorkshopTurn {
   personaId?: WorkshopPersonaId;
   /** Deterministic display label for the persona — never model-generated. */
   personaLabel?: string;
+  /** Report/sidecar generation this turn belongs to, when applicable. */
+  reportTurnId?: string;
   content: string;
   /** Epoch ms when the turn was appended (host-stamped). */
   timestamp: number;
@@ -170,6 +195,8 @@ export interface WorkshopRunToolMessage extends MessageEnvelope<WorkshopRunToolP
 export interface WorkshopQuickActionPayload {
   /** Tool context that owns this deterministic action label. */
   toolId: WorkshopToolId;
+  /** The live report/sidecar generation the action was rendered beneath. */
+  reportTurnId: string;
   /** One of the static labels from WORKSHOP_QUICK_ACTIONS_BY_TOOL. */
   label: string;
 }

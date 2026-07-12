@@ -141,7 +141,12 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
           )}
         </div>
       </form>
-      <p className="pm-ws-composer-hint">Enter to send · Shift+Enter for a new line</p>
+      {/* Learn-once chrome, centered in the quiet zone below the input: the
+          accent on Shift+Enter does the noticing work, so the hint doesn't
+          need the prime band above the composer (composer-messaging v2). */}
+      <p className="pm-ws-composer-hint">
+        Enter to send · <span className="pm-ws-hint-key">Shift+Enter</span> for a new line
+      </p>
     </div>
   );
 };

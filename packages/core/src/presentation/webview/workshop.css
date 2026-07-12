@@ -576,6 +576,36 @@
   border-style: dashed;
   border-color: var(--pm-border-2);
 }
+/* Warm-up placeholder turn: the dashed live bubble holding the same pulsing
+   line as the gutter ticker (.pm-ws-ticker-live) while we wait for the first
+   token — compact, not the shared big loader. */
+[data-pm-surface="workshop"] .pm-ws-turn-waiting {
+  padding: 10px 14px;
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-turn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-input);
+  background: transparent;
+  color: var(--pm-muted);
+  padding: 6px 9px;
+  font: 12px var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-turn-actions button:not(:disabled):hover {
+  color: var(--pm-text);
+  border-color: var(--pm-border-2);
+}
 
 /* Quick actions */
 [data-pm-surface="workshop"] .pm-ws-qbar {
@@ -715,11 +745,13 @@
 }
 
 /* ---------- Composer (present but disabled until Sprint 3) ---------- */
+/* The thread/composer divider lives on the ALWAYS-MOUNTED status ticker
+   (border-bottom), not here — so the participant rail sits below the line,
+   visually grouped with the input it routes messages into. */
 [data-pm-surface="workshop"] .pm-ws-composer-wrap {
   flex-shrink: 0;
-  padding: 14px 32px 22px;
+  padding: 12px 32px 14px;
   background: var(--pm-bg);
-  border-top: 1px solid var(--pm-border-soft);
 }
 [data-pm-surface="workshop"] .pm-ws-composer {
   display: flex;
@@ -768,11 +800,18 @@
   align-items: center;
   gap: 10px;
 }
+/* Centered in the quiet zone below the input (composer-messaging v2):
+   learn-once chrome — the accent lands on the one token writers need to
+   learn; the rest stays muted so the accent is the point. */
 [data-pm-surface="workshop"] .pm-ws-composer-hint {
-  margin: 6px 2px 0;
+  margin: 8px 2px 0;
   color: var(--pm-faint);
   font-size: 11px;
-  text-align: right;
+  text-align: center;
+}
+[data-pm-surface="workshop"] .pm-ws-hint-key {
+  color: var(--pm-accent-hi);
+  font-weight: 600;
 }
 [data-pm-surface="workshop"] .pm-ws-comp-pill {
   display: inline-flex;
@@ -968,35 +1007,134 @@
   font-size: 11px;
   font-weight: 650;
 }
-[data-pm-surface="workshop"] .pm-ws-direct-mode {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 32px 0;
-  color: var(--pm-muted);
-  font-size: 12px;
-}
-[data-pm-surface="workshop"] .pm-ws-direct-mode button {
-  color: var(--pm-accent-hi);
-  background: transparent;
-  border: 0;
-  padding: 2px 0;
-  font: inherit;
-  font-weight: 700;
-}
+/* ---------- Composer band (composer-messaging v2) ----------
+   Each message gets its own zone: status ticker centered ABOVE the divider
+   (thread-side: it narrates the run, not the next message) → the divider
+   itself (the ticker's border-bottom) → participant rail BELOW the divider,
+   grouped with the input it routes into → text entry → keyboard hint
+   centered in the quiet zone underneath. */
 
-/* Status + toast */
+/* Status ticker: the slot is always mounted with a reserved line so messages
+   appearing/disappearing never jitter the band — which also keeps the
+   divider it carries from ever moving. */
 [data-pm-surface="workshop"] .pm-ws-status-ticker {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 33px 12px;
-  margin-top: -12px;
+  justify-content: center;
+  min-height: 15px;
+  padding: 6px 33px 8px;
+  border-bottom: 1px solid var(--pm-border-soft);
   color: var(--pm-muted);
   font-family: var(--pm-mono);
   font-size: 11px;
 }
+/* Live-status pulse (direct-mode-clarity): while displayed, the ticker slowly
+   breathes between muted and the accent so in-flight work reads as alive, not
+   stuck. The bolt icon rides along via currentColor. One tiny element — the
+   color/opacity keyframes are an acceptable paint cost. */
+[data-pm-surface="workshop"] .pm-ws-ticker-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  animation: pm-ws-ticker-pulse 2.8s ease-in-out infinite;
+}
+@keyframes pm-ws-ticker-pulse {
+  0%, 100% { color: var(--pm-muted); opacity: 0.7; }
+  50% { color: var(--pm-accent-hi); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-pm-surface="workshop"] .pm-ws-ticker-live {
+    animation: none;
+    /* Static-but-distinct fallback: still reads as a live state. */
+    color: var(--pm-accent-hi);
+  }
+}
+
+/* Participant rail (feature-workshop-participant-rail): who's in the room.
+   The active chip IS the direct-mode indicator — this rail replaced the
+   pm-ws-direct-mode banner. Chips wrap rather than scroll so up to 14 tool
+   sidecars stay reachable without hijacking horizontal scroll. */
+[data-pm-surface="workshop"] .pm-ws-participant-rail {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 10px 32px 0;
+}
+[data-pm-surface="workshop"] .pm-ws-rail-label {
+  color: var(--pm-faint);
+  font-size: 11px;
+}
+[data-pm-surface="workshop"] .pm-ws-participant-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-family: var(--pm-sans);
+  color: var(--pm-muted);
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-pill);
+  padding: 4px 11px;
+}
+[data-pm-surface="workshop"] .pm-ws-participant-chip:not(:disabled):hover {
+  color: var(--pm-text);
+  border-color: var(--pm-border-2);
+}
+[data-pm-surface="workshop"] .pm-ws-participant-chip:disabled {
+  opacity: 0.45;
+}
+/* Active chip: static accent treatment — this is the reduced-motion-safe
+   baseline that reads as "mode" even with the pulse disabled. */
+[data-pm-surface="workshop"] .pm-ws-chip-active {
+  color: var(--pm-accent-hi);
+  border-color: var(--pm-accent-lo);
+  background: var(--pm-accent-soft);
+  font-weight: 650;
+}
+/* Direct-tool mode gets the gentle live pulse on top (direct-mode-clarity):
+   messages are being re-routed away from the host, and that should read as a
+   live state, not static text. The ring lives on a pseudo-element and only
+   its OPACITY animates — compositor-friendly, no paint on the keyframe. */
+[data-pm-surface="workshop"] .pm-ws-chip-direct {
+  position: relative;
+}
+[data-pm-surface="workshop"] .pm-ws-chip-direct::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: 0 0 0 3px rgba(224, 103, 58, 0.22);
+  opacity: 0;
+  pointer-events: none;
+  animation: pm-ws-chip-pulse 2.6s ease-in-out infinite;
+}
+@keyframes pm-ws-chip-pulse {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-pm-surface="workshop"] .pm-ws-chip-direct::after {
+    animation: none;
+  }
+}
+
+/* Screen-reader-only text (rail's direct-mode announcement). */
+[data-pm-surface="workshop"] .pm-ws-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Toast */
 [data-pm-surface="workshop"] .pm-ws-toast {
   position: fixed;
   right: 24px;

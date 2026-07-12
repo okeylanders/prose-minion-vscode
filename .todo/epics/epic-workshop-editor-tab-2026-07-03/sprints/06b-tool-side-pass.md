@@ -1,6 +1,6 @@
 # Sprint 06B: Retained Tool Sidecars and Direct Mode
 
-**Status**: Planned
+**Status**: Complete
 **Priority**: High
 **Branch**: `sprint/workshop-editor-tab-06b-tool-side-pass` -> PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 4-6 days
@@ -67,88 +67,88 @@ lazily starts the host after the tool report is available.
 
 ### Session model and contracts
 
-- [ ] Harden the Sprint 05 sidecar map/direct target for universal persona-
+- [x] Harden the Sprint 05 sidecar map/direct target for universal persona-
       integrated tool runs rather than the legacy pre-host-only bridge.
-- [ ] Keep conversation ids private. Snapshot sidecars expose tool id, latest
+- [x] Keep conversation ids private. Snapshot sidecars expose tool id, latest
       report turn id, availability for direct follow-up, and active-target state.
-- [ ] Reuse/harden `WORKSHOP_SET_CHAT_TARGET`; do not add enter/exit variants or
+- [x] Reuse/harden `WORKSHOP_SET_CHAT_TARGET`; do not add enter/exit variants or
       a second free-text send message.
-- [ ] Extend `WorkshopTurn` with explicit participant/artifact metadata so the
+- [x] Extend `WorkshopTurn` with explicit participant/artifact metadata so the
       thread distinguishes host user/assistant turns, verbatim tool reports,
       persona synthesis, and direct-tool exchanges.
-- [ ] Add session operations for atomic sidecar adoption/replacement, report
+- [x] Add session operations for atomic sidecar adoption/replacement, report
       correlation, delivery cursor updates, target selection, target fallback,
       and bulk disposal on reset/excerpt replacement/resource loss.
 
 ### Tool side-pass orchestration
 
-- [ ] Extract a focused application use case if necessary (for example,
+- [x] Extract a focused application use case if necessary (for example,
       `RunWorkshopToolSidePass`) rather than growing a multi-agent workflow
       script inside `WorkshopHandler`.
-- [ ] Run the selected tool with its existing prompt and pinned excerpt in a
+- [x] Run the selected tool with its existing prompt and pinned excerpt in a
       fresh retained conversation. Preserve existing tool options, guides,
       streaming, cancellation, truncation, and token behavior.
-- [ ] Post deterministic host/tool progress, then render the exact completed
+- [x] Post deterministic host/tool progress, then render the exact completed
       tool report as an attributed artifact.
-- [ ] Adopt the new sidecar only after successful completion; dispose zombie,
+- [x] Adopt the new sidecar only after successful completion; dispose zombie,
       cancelled, failed, and superseded conversations without replacing the
       previous usable sidecar.
-- [ ] Inject a bounded evidence envelope into the host containing tool id/name,
+- [x] Inject a bounded evidence envelope into the host containing tool id/name,
       originating user request/action, exact report, truncation/usage metadata
       where relevant, and an instruction to evaluate rather than impersonate.
-- [ ] Start the persona host lazily from that evidence when the user began with
+- [x] Start the persona host lazily from that evidence when the user began with
       a tool; otherwise continue the retained host. Stream and append persona
       synthesis as its own turn.
-- [ ] If persona synthesis fails after a successful tool run, preserve the
+- [x] If persona synthesis fails after a successful tool run, preserve the
       sidecar/report and surface the host failure honestly; never roll back the
       valid tool artifact.
-- [ ] Neutralize reserved persona-prompt delimiter text in quoted excerpts and
+- [x] Neutralize reserved persona-prompt delimiter text in quoted excerpts and
       add regression tests proving writer content cannot close or forge the
       `<pinned-excerpt>` frame. This is a Sprint 07 prerequisite.
 
 ### Direct-tool mode
 
-- [ ] Add “Talk directly to <tool>” on reports whose retained sidecar is live.
-- [ ] Route composer sends to the direct target through the existing tool
+- [x] Add “Talk directly to <tool>” on reports whose retained sidecar is live.
+- [x] Route composer sends to the direct target through the existing tool
       sidecar's `continueConversation` path, preserving atomic cancellation and
       conversation-loss behavior.
-- [ ] Show an explicit composer target pill/state and deterministic “Back to
+- [x] Show an explicit composer target pill/state and deterministic “Back to
       <persona>” action; tool loss clears direct mode and returns to the host.
-- [ ] Track which direct-tool exchanges have been delivered to the host. On the
+- [x] Track which direct-tool exchanges have been delivered to the host. On the
       next host message after return, inject only unseen exchanges in a bounded
       structured handoff before the writer's message.
-- [ ] Add named/tested handoff constants (8 turns / 20,000 characters), omission
+- [x] Add named/tested handoff constants (8 turns / 20,000 characters), omission
       metadata, and atomic cursor advancement only after host completion.
-- [ ] Treat “Hey <active persona>” as an optional, narrowly matched shortcut to
+- [x] Treat “Hey <active persona>” as an optional, narrowly matched shortcut to
       exit direct mode, while keeping the visible action authoritative.
 
 ### Existing Workshop affordances
 
-- [ ] Quick actions on a tool report route to that report's live sidecar, not
+- [x] Quick actions on a tool report route to that report's live sidecar, not
       whichever tool was most recently selected globally. Archive/disable them
       when the sidecar has been replaced or lost.
-- [ ] Persona turns do not acquire tool quick actions by fallback.
-- [ ] Copy / Save to notes works for verbatim reports, direct-tool responses,
+- [x] Persona turns do not acquire tool quick actions by fallback.
+- [x] Copy / Save to notes works for verbatim reports, direct-tool responses,
       and persona synthesis with deterministic tool/persona provenance.
-- [ ] Status copy distinguishes running the tool, waiting for persona synthesis,
+- [x] Status copy distinguishes running the tool, waiting for persona synthesis,
       direct-tool continuation, handoff, cancellation, and partial failure.
-- [ ] Token totals include both tool and persona calls exactly once.
+- [x] Token totals include both tool and persona calls exactly once.
 
 ### Tests and documentation
 
-- [ ] Cover sidecar adoption/replacement/disposal and “latest per tool” bounds.
-- [ ] Cover tool-first lazy host start and persona-first side-pass behavior.
-- [ ] Cover exact report-before-synthesis wire order and partial failure where
+- [x] Cover sidecar adoption/replacement/disposal and “latest per tool” bounds.
+- [x] Cover tool-first lazy host start and persona-first side-pass behavior.
+- [x] Cover exact report-before-synthesis wire order and partial failure where
       the report succeeds but persona synthesis fails.
-- [ ] Cover direct mode enter/send/cancel/back/host-name shortcut/lost sidecar
+- [x] Cover direct mode enter/send/cancel/back/host-name shortcut/lost sidecar
       and unseen-delta handoff without duplicate delivery.
-- [ ] Cover reserved-delimiter neutralization in direct and file-pinned excerpts
+- [x] Cover reserved-delimiter neutralization in direct and file-pinned excerpts
       before any Sprint 07 capability path consumes host conversation content.
-- [ ] Cover preemption and zombie completion across both tool and host phases.
-- [ ] Cover reload snapshot restoration for host, sidecars, report artifacts,
+- [x] Cover preemption and zombie completion across both tool and host phases.
+- [x] Cover reload snapshot restoration for host, sidecars, report artifacts,
       direct target, delivery cursor, and in-flight phase.
-- [ ] Cover quick-action, Copy, Save, attribution, and archived-sidecar UI.
-- [ ] Update architecture and session-policy documentation.
+- [x] Cover quick-action, Copy, Save, attribution, and archived-sidecar UI.
+- [x] Update architecture and session-policy documentation.
 
 ## Acceptance Criteria
 
@@ -190,3 +190,35 @@ lazily starts the host after the tool report is available.
   07 owns that trust and cost boundary.
 - If orchestration no longer fits cleanly in the handler, extract the use case
   before adding more branches. The handler remains a transport adapter.
+
+## Completion Record (2026-07-11)
+
+- Added composition-root-owned `RunWorkshopToolSidePass`: isolated retained
+  tool run, atomic report adoption/replacement, then lazy-start/continuation of
+  the immutable persona host with bounded structured evidence.
+- `WorkshopSessionService` now owns explicit participant/artifact metadata,
+  report correlation, latest-per-tool sidecars, direct targeting, in-flight
+  phases, and transactional unseen-delta cursors.
+- Direct handoff is capped at the newest 8 completed exchange turns and 20,000
+  characters. Omission/truncation provenance is deterministic; cancelled
+  attempts are not delivered, and cursors commit only after host adoption.
+- Report-owned quick actions carry `reportTurnId`; replaced reports become
+  archived. Reports expose “Talk directly to <tool>,” while the composer keeps
+  the visible “Back to <persona>” control and narrow active-host greeting
+  shortcut.
+- Reserved Workshop persona-frame delimiters are encoded in direct-pinned and
+  file-pinned writer content before prompt assembly.
+- Closed Copy/Save provenance now covers tool reports, direct responses, and
+  persona synthesis (`workshop_persona` is an allow-listed result type).
+
+Verification:
+
+- `npm test -- --runInBand`: 78 suites / 603 tests passed.
+- `npm run typecheck`: core, webview, and extension passed.
+- `npm run lint`: 0 errors (repository baseline warnings only).
+- `npm run build`: extension/webview production builds, resource staging, and
+  bundle sentinel verification passed.
+- Bundles: `extension.js` 2,313,454 bytes (2.21 MiB) and `webview.js` 580,760
+  bytes (567 KiB). Versus Sprint 06A's rounded 2.19 MiB / 566 KiB record, the
+  approximate deltas are +20 KiB and +1 KiB respectively.
+- `git diff --check`: passed.

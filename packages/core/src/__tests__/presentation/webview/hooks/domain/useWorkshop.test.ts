@@ -64,6 +64,8 @@ const makeTurn = (overrides: Partial<WorkshopTurn>): WorkshopTurn => ({
   id: 'turn-1-user-1000',
   role: 'user',
   kind: 'tool_run',
+  participant: 'writer',
+  artifact: 'tool_request',
   toolId: 'prose',
   toolLabel: 'Prose',
   content: 'Run **Prose** on the pinned excerpt.',
@@ -358,7 +360,7 @@ describe('useWorkshop', () => {
     act(() => {
       result.current.pinExcerpt('Some prose.', 'file:///ch1.md', 'ch1.md');
       result.current.runTool('gestures');
-      result.current.quickAction('gestures', '3 variations');
+      result.current.quickAction('gestures', 'report-gestures', '3 variations');
       result.current.resetSession();
       result.current.sendMessage('Now tighten variation two.');
       result.current.pinFromFile();
@@ -369,6 +371,7 @@ describe('useWorkshop', () => {
     expect(posted(MessageType.WORKSHOP_RUN_TOOL)[0].payload).toEqual({ toolId: 'gestures' });
     expect(posted(MessageType.WORKSHOP_QUICK_ACTION)[0].payload).toEqual({
       toolId: 'gestures',
+      reportTurnId: 'report-gestures',
       label: '3 variations'
     });
     expect(posted(MessageType.WORKSHOP_RESET_SESSION)).toHaveLength(1);
@@ -388,7 +391,13 @@ describe('useWorkshop', () => {
         excerpt: { text: 'A pinned excerpt.', pinnedAt: 1 },
         participants: {
           host: { personaId: 'quinn', hasConversation: true },
-          toolSidecars: [{ toolId: 'continuity', hasConversation: true }],
+          toolSidecars: [{
+            toolId: 'continuity',
+            hasConversation: true,
+            latestReportTurnId: 'report-continuity',
+            availableForDirectFollowUp: true,
+            activeTarget: true
+          }],
           chatTarget: { kind: 'tool', toolId: 'continuity' }
         },
         hasConversation: true
@@ -403,7 +412,7 @@ describe('useWorkshop', () => {
     expect(result.current.isPersonaSelectionLocked).toBe(true);
   });
 
-  // ── Sprint 05: composer enablement + cancel wire ─────────────────────────
+  // ── Persona composer enablement + cancel wire ────────────────────────────
 
   it('enables the composer for a pinned excerpt before a host conversation starts', () => {
     const { result } = renderHook(() => useWorkshop());

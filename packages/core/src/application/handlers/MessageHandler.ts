@@ -167,7 +167,8 @@ export class MessageHandler {
       textSourceResolver,
       categorySearchService,
       accountBalanceService,
-      workshopSessionService
+      workshopSessionService,
+      workshopToolSidePass
     } = services;
 
     // Token tracking: centralized in AgentRunEngine. Listener-based so
@@ -286,6 +287,7 @@ export class MessageHandler {
     this.workshopHandler = new WorkshopHandler(
       assistantToolService,
       workshopSessionService,
+      workshopToolSidePass,
       this.postMessage.bind(this),
       this.platform.shell,
       this.platform.fileSystem,

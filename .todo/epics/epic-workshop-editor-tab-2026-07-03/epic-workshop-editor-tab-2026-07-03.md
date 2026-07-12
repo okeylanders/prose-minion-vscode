@@ -4,7 +4,7 @@
 **Status**: In Progress
 **Progress**: 4/7 sprints merged; Sprint 05 ready; Sprints 06-07 planned (Sprint 01 [PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66); Sprint 02 [PR #67](https://github.com/okeylanders/prose-minion-vscode/pull/67); Sprint 03 [PR #68](https://github.com/okeylanders/prose-minion-vscode/pull/68); Sprint 04 [PR #69](https://github.com/okeylanders/prose-minion-vscode/pull/69))
 **Design source**: [Direction B — Split & Pinned](../../../docs/design/Prose%20Minion%20-%20Assistant%20Tab.html)
-**ADRs**: [2026-07-03 — Assistant as a Full Editor Tab](../../../docs/adr/2026-07-03-assistant-editor-tab.md); [2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](../../../docs/adr/2026-07-09-workshop-persona-hosted-conversations.md)
+**ADRs**: [2026-07-03 — Assistant as a Full Editor Tab](../../../docs/adr/2026-07-03-assistant-editor-tab.md); [2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](../../../docs/adr/2026-07-09-workshop-persona-hosted-conversations.md); [2026-07-11 — Workshop Excerpt Revision and Room Memory](../../../docs/adr/2026-07-11-workshop-excerpt-revision-and-room-memory.md); [2026-07-11 — Workshop Guest Persona Sidecars](../../../docs/adr/2026-07-11-workshop-guest-persona-sidecars.md)
 **Integration branch**: `epic/workshop-editor-tab`
 
 ## Goal
@@ -52,10 +52,12 @@ Each sprint is independently shippable behind the (initially unregistered)
 | 5 | `sprint/workshop-editor-tab-05-persona-chat` | [Persona host and browser](sprints/05-persona-chat.md) | The user can browse/select Jill or a specialist and start a retained host conversation before running a tool. |
 | 6A | `sprint/workshop-editor-tab-06a-agent-run-engine` | [Agent-run engine and resource catalogs](sprints/06a-agent-run-engine.md) | Sidebar and Workshop routes share one lifecycle/capability engine while declaring deliberate resource policies. |
 | 6B | `sprint/workshop-editor-tab-06b-tool-side-pass` | [Retained tool sidecars and direct mode](sprints/06b-tool-side-pass.md) | Every tool run preserves a verbatim report, feeds the host, and remains available for explicit direct follow-up. |
+| 6C | `sprint/workshop-editor-tab-06c-excerpt-revision-loop` | [Excerpt revision loop and room memory](sprints/06c-excerpt-revision-loop.md) | Replacing the excerpt preserves host memory via versioned revision frames; tools stay stateless instruments. |
 | 7 | `sprint/workshop-editor-tab-07-persona-capabilities` | [Persona-callable capabilities](sprints/07-persona-capabilities.md) | Personas autonomously invoke bounded Writer's Dictionary and analysis capabilities through the proven typed host boundary. |
 | 8 | `sprint/workshop-editor-tab-08-actionable-tool-todos` | [Actionable tool To-do List](sprints/08-actionable-tool-todos.md) | Writers promote attributable tool findings into a durable task list the persona can see as bounded evidence. |
+| 9 | `sprint/workshop-editor-tab-09-persona-guest-sidecars` | [Guest persona sidecars](sprints/09-persona-guest-sidecars.md) | Writers summon a bounded second-opinion persona seeded with a labeled transcript snapshot and cursor-based catch-up. |
 
-Final step after Sprint 8 merges: resolve the shared markdown-sanitization gate,
+Final step after Sprint 9 merges: resolve the shared markdown-sanitization gate,
 then open one PR `epic/workshop-editor-tab → main`.
 
 ## Architectural Invariants (hold across every sprint)

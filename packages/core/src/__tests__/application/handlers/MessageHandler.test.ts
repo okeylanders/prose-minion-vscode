@@ -1,6 +1,8 @@
 import { MessageHandler } from '@/application/handlers/MessageHandler';
 import { CoreServices } from '@/application/handlers/MessageHandlerContracts';
 import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
+import { RunWorkshopToolSidePass } from '@/application/services/RunWorkshopToolSidePass';
+import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import {
   ExtensionToWebviewMessage,
   MessageType,
@@ -84,13 +86,15 @@ function createTestAssembly(): TestAssembly {
   const categoryAddStatusListener = jest.fn(() => disposeCategoryStatusListener);
   const disposeCategoryStatusListener = jest.fn();
   const disposeDictionaryStatusListener = jest.fn();
+  const assistantToolService = {
+    // Registered twice per handler: AnalysisHandler + WorkshopHandler.
+    addStatusListener: jest.fn(() => jest.fn()),
+    refreshConfiguration: jest.fn().mockResolvedValue(undefined)
+  } as unknown as AssistantToolService;
+  const workshopSessionService = new WorkshopSessionService();
 
   const services = {
-    assistantToolService: {
-      // Registered twice per handler: AnalysisHandler + WorkshopHandler.
-      addStatusListener: jest.fn(() => jest.fn()),
-      refreshConfiguration: jest.fn().mockResolvedValue(undefined)
-    },
+    assistantToolService,
     dictionaryService: {
       addStatusListener: jest.fn(() => disposeDictionaryStatusListener),
       refreshConfiguration: jest.fn().mockResolvedValue(undefined)
@@ -132,7 +136,12 @@ function createTestAssembly(): TestAssembly {
     },
     // Real aggregate on purpose: it is pure/dependency-free, and using it makes
     // the reload-safety test below exercise true session behavior.
-    workshopSessionService: new WorkshopSessionService()
+    workshopSessionService,
+    workshopToolSidePass: new RunWorkshopToolSidePass(
+      assistantToolService,
+      workshopSessionService,
+      log
+    )
   } as unknown as CoreServices;
 
   return {

@@ -78,6 +78,29 @@ describe('FileOperationsHandler', () => {
   });
 
   describe('save_result', () => {
+    it('saves attributed Workshop persona synthesis through the closed allowlist', async () => {
+      handler.registerRoutes(router);
+
+      await router.route({
+        type: MessageType.SAVE_RESULT,
+        source: 'webview.workshop',
+        payload: {
+          toolName: 'workshop_persona',
+          content: 'Jill synthesis',
+          metadata: { excerpt: 'Pinned prose', context: 'Jill · persona synthesis' }
+        },
+        timestamp: 0
+      } as any);
+
+      expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({
+        type: MessageType.SAVE_RESULT_SUCCESS,
+        payload: expect.objectContaining({
+          toolName: 'workshop_persona',
+          filePath: expect.stringContaining('workshop-persona-1.md')
+        })
+      }));
+    });
+
     it('rejects unsupported assistant tool names before they become file prefixes', async () => {
       handler.registerRoutes(router);
 
