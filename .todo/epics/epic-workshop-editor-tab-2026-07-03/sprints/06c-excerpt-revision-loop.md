@@ -7,7 +7,7 @@
 **Depends on**: Sprint 06B
 **Blocks (soft)**: Sprint 07 — the capability loop should build on the final host-turn memory model rather than retrofit it, and its input ceilings must be born in the central budget table
 **ADRs**: [2026-07-11 — Workshop Excerpt Revision and Room Memory](../../../../docs/adr/2026-07-11-workshop-excerpt-revision-and-room-memory.md)
-**Absorbs**: [.todo/tech-debt/2026-07-11-prompt-truncation-budget-centralization.md](../../../tech-debt/2026-07-11-prompt-truncation-budget-centralization.md) as Task 0
+**Absorbs**: [.todo/tech-debt/2026-07-11-prompt-truncation-budget-centralization.md](../../../tech-debt/2026-07-11-prompt-truncation-budget-centralization.md) as Task 0; the **paste-only slice** of [feature-workshop-context-selector](../../../features/feature-workshop-context-selector/README.md) (editable context brief — the selector modal stays in that entry)
 
 ## Goal
 
@@ -105,6 +105,35 @@ honestly.
 - [ ] Deterministic advisory (status rail, not modal) after the third
       replacement in one session suggesting a new session for cost.
 
+### Editable context brief (paste-only slice)
+
+Current reality: the Context Brief panel is a hardcoded placeholder
+(`WorkshopApp.tsx` "No context brief loaded."), while the downstream
+plumbing — `getContextBrief()` consumed by persona messages and tool side
+passes, framed as `<context-brief>` with the 1,200-word cap — is fully
+built. No setter exists anywhere; the field is born and stays `undefined`.
+
+- [ ] Session: add `setContextBrief(text: string | undefined)`; empty/
+      whitespace clears. The brief describes the project, not the excerpt —
+      it **survives excerpt replacement** and is cleared only by `reset()`
+      (which already does). Persist in the snapshot for reload.
+- [ ] Message: typed `WORKSHOP_SET_CONTEXT_BRIEF` route on
+      `WorkshopHandler`; envelope-sourced, validated, logged (length only,
+      never content).
+- [ ] Delivery: a brief set before the host conversation starts rides the
+      opening message (existing plumbing). A brief set or changed
+      mid-conversation queues a pending context update delivered with the
+      next host turn — **reuse the revision-notice delivery path**, same
+      collapse and clear-on-success rules. Tool runs need nothing: they
+      read `getContextBrief()` fresh per run.
+- [ ] UI: replace the placeholder with an editable textarea; live word
+      count against the `contextBrief` budget (from the Task 0 table) with
+      honest will-be-trimmed indication; clear control; a quiet hint when
+      an edit is pending delivery ("shared with your next message").
+- [ ] Scope guardrail: paste-only. No file browsing, categories, or
+      attachments (Context Selector modal feature) and no
+      persona-requested loading (post-Sprint-07 feature).
+
 ### Tests
 
 - [ ] Session: replacement preserves host id, disposes sidecars, bumps
@@ -117,6 +146,10 @@ honestly.
 - [ ] Rewrite (not delete) any test asserting host invalidation on
       replacement — the old behavior was load-bearing and the new one must
       be proven, not assumed.
+- [ ] Context brief: setter/clear/persistence semantics (survives excerpt
+      replacement, cleared by reset, restores on reload); opening-message
+      inclusion; mid-conversation pending update delivered exactly once via
+      the shared path; tool side pass reads the current brief.
 
 ### Documentation
 
@@ -132,6 +165,9 @@ honestly.
   (revision frame reuses `personaExcerpt`) come from the table.
 - Replacing the excerpt mid-conversation, then asking the host to compare
   against its earlier feedback, gets a memory-intact, version-aware answer.
+- The Context Brief box is editable; a pasted brief demonstrably reaches
+  the persona (opening message or next host turn) and tool runs; an empty
+  box sends no `<context-brief>` frame.
 - No API call fires at replacement time; the next host turn carries exactly
   one revision frame with the newest version.
 - Tool sidecars retire visibly at the divider; re-running a tool analyzes
