@@ -108,6 +108,55 @@ export class AIResourceManager {
   }
 
   /**
+   * Apply model-selection changes in place. Engines and their conversation
+   * managers survive; only future provider requests use the new model.
+   * Duplicate calls from multiple live webview surfaces are idempotent.
+   */
+  async refreshModelSelections(): Promise<void> {
+    await this.ensureInitialized();
+    const selections = this.resolveModelSelections();
+    const normalizedSelections = {} as Record<ModelScope, string>;
+    const changes = (Object.keys(selections) as ModelScope[]).flatMap((scope) => {
+      const resource = this.aiResources[scope];
+      const model = selections[scope].trim();
+      if (!model) {
+        const message = `Model hot-swap failed for ${scope}: OpenRouter model id cannot be empty`;
+        this.outputChannel?.appendLine(`[AIResourceManager] ${message}`);
+        throw new Error(message);
+      }
+      normalizedSelections[scope] = model;
+      return resource && resource.model !== model
+        ? [{ scope, resource, previousModel: resource.model, model }]
+        : [];
+    });
+
+    const applied: typeof changes = [];
+    try {
+      for (const change of changes) {
+        change.resource.engine.setModel(change.model);
+        change.resource.model = change.model;
+        applied.push(change);
+      }
+      this.resolvedModels = normalizedSelections;
+      for (const change of changes) {
+        this.outputChannel?.appendLine(
+          `[AIResourceManager] Hot-swapped ${change.scope} model: ${change.previousModel} → ${change.model} (generation ${change.resource.generation}; conversations preserved)`
+        );
+      }
+    } catch (error) {
+      const failedScope = changes[applied.length]?.scope ?? 'unknown';
+      for (const change of applied.reverse()) {
+        change.resource.engine.setModel(change.previousModel);
+        change.resource.model = change.previousModel;
+      }
+      this.outputChannel?.appendLine(
+        `[AIResourceManager] Model hot-swap failed for ${failedScope}; applied scopes rolled back: ${error instanceof Error ? error.message : String(error)}`
+      );
+      throw error;
+    }
+  }
+
+  /**
    * A failed build must not poison the singleton: clear the cached promise
    * on rejection so the next call retries instead of re-awaiting the corpse.
    */
@@ -148,11 +197,11 @@ export class AIResourceManager {
     }
 
     // Resolve model selections with fallbacks
-    const fallbackModel = modelConfig?.fallbackModel ?? 'anthropic/claude-sonnet-5';
-    const assistantModel = modelConfig?.assistantModel ?? this.settings.get<string>('proseMinion', 'assistantModel') ?? fallbackModel;
-    const dictionaryModel = modelConfig?.dictionaryModel ?? this.settings.get<string>('proseMinion', 'dictionaryModel') ?? fallbackModel;
-    const contextModel = modelConfig?.contextModel ?? this.settings.get<string>('proseMinion', 'contextModel') ?? fallbackModel;
-    const categoryModel = modelConfig?.categoryModel ?? this.settings.get<string>('proseMinion', 'categoryModel') ?? fallbackModel;
+    const selections = this.resolveModelSelections(modelConfig);
+    const assistantModel = selections.assistant;
+    const dictionaryModel = selections.dictionary;
+    const contextModel = selections.context;
+    const categoryModel = selections.category;
 
     // Create AI resources for each scope
     const assistantResources = this.createResourceBundle(apiKey!, 'assistant', assistantModel);
@@ -178,6 +227,24 @@ export class AIResourceManager {
       category: categoryModel
     };
     this.initialized = true;
+  }
+
+  private resolveModelSelections(modelConfig?: ModelConfiguration): Record<ModelScope, string> {
+    const fallbackModel = modelConfig?.fallbackModel ?? 'anthropic/claude-sonnet-5';
+    return {
+      assistant: modelConfig?.assistantModel
+        ?? this.settings.get<string>('proseMinion', 'assistantModel')
+        ?? fallbackModel,
+      dictionary: modelConfig?.dictionaryModel
+        ?? this.settings.get<string>('proseMinion', 'dictionaryModel')
+        ?? fallbackModel,
+      context: modelConfig?.contextModel
+        ?? this.settings.get<string>('proseMinion', 'contextModel')
+        ?? fallbackModel,
+      category: modelConfig?.categoryModel
+        ?? this.settings.get<string>('proseMinion', 'categoryModel')
+        ?? fallbackModel
+    };
   }
 
   /**

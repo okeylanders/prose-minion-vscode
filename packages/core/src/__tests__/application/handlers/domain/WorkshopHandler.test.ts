@@ -88,7 +88,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
     expect(router.hasHandler(MessageType.WORKSHOP_SET_CHAT_TARGET)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SEND_MESSAGE)).toBe(true);
-    expect(router.handlerCount).toBe(10);
+    expect(router.hasHandler(MessageType.WORKSHOP_SET_CONTEXT_BRIEF)).toBe(true);
+    expect(router.handlerCount).toBe(11);
   });
 
   it('starts Jill directly from the composer and retains the host conversation', async () => {
@@ -110,6 +111,178 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       artifact: 'persona_message',
       personaId: 'jill'
     });
+  });
+
+  it('does not duplicate a brief when the first host attempt fails and is retried', async () => {
+    await pin();
+    let rejectFirst!: (error: Error) => void;
+    service.startWorkshopPersonaConversation.mockImplementationOnce(
+      async () => new Promise((_resolve, reject) => {
+        rejectFirst = reject;
+      })
+    );
+
+    const firstAttempt = handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Start host.' }
+    ) as any);
+    await Promise.resolve();
+    await handler.handleSetContextBrief(message(
+      MessageType.WORKSHOP_SET_CONTEXT_BRIEF,
+      { text: 'Mara is hiding her identity.' }
+    ) as any);
+    rejectFirst(new Error('temporary failure'));
+    await firstAttempt;
+
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Retry host.' }
+    ) as any);
+
+    const retryInput = service.startWorkshopPersonaConversation.mock.calls.at(-1)![0];
+    expect(retryInput.contextBrief).toBe('Mara is hiding her identity.');
+    expect(retryInput.message).toBe('Retry host.');
+    expect(retryInput.message).not.toContain('<workshop-host-update>');
+    expect(session.getSnapshot().pendingHostUpdate).toBeUndefined();
+  });
+
+  it('delivers collapsed excerpt and context updates once after a successful host turn', async () => {
+    await pin();
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Read the first version.' }
+    ) as any);
+    service.continueConversation.mockClear();
+
+    await handler.handleSetContextBrief(message(
+      MessageType.WORKSHOP_SET_CONTEXT_BRIEF,
+      { text: 'The story is a winter mystery.' }
+    ) as any);
+    await handler.handleSetExcerpt(message(
+      MessageType.WORKSHOP_SET_EXCERPT,
+      { text: 'Second version.', relativePath: 'chapter-two.md' }
+    ) as any);
+    await handler.handleSetExcerpt(message(
+      MessageType.WORKSHOP_SET_EXCERPT,
+      { text: 'Newest version.', relativePath: 'chapter-three.md' }
+    ) as any);
+
+    expect(session.getHostConversationId()).toBe('host-conv');
+    expect(service.continueConversation).not.toHaveBeenCalled();
+    expect(session.getSnapshot().pendingHostUpdate).toEqual({
+      excerptVersion: 3,
+      contextBrief: true
+    });
+    expect(posted(MessageType.WORKSHOP_TURN).at(-1).payload.turn).toMatchObject({
+      artifact: 'excerpt_revision',
+      excerptVersion: 3
+    });
+
+    service.continueConversation.mockRejectedValueOnce(new Error('temporary failure'));
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Compare this revision.' }
+    ) as any);
+    expect(session.getSnapshot().pendingHostUpdate).toBeDefined();
+
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Try the comparison again.' }
+    ) as any);
+    const delivered = service.continueConversation.mock.calls.at(-1)![1];
+    expect(delivered).toContain('<pinned-excerpt version="3">');
+    expect(delivered).toContain('Newest version.');
+    expect(delivered).not.toContain('Second version.');
+    expect(delivered).toContain('The story is a winter mystery.');
+    expect(session.getSnapshot().pendingHostUpdate).toBeUndefined();
+    expect(log.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('Pending host update prepared')
+    );
+    expect(log.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('Pending host update committed')
+    );
+
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'One more thought.' }
+    ) as any);
+    expect(service.continueConversation.mock.calls.at(-1)![1]).toBe('One more thought.');
+  });
+
+  it('keeps a revision pending when its host delivery is cancelled', async () => {
+    await pin();
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Read the first version.' }
+    ) as any);
+    await handler.handleSetExcerpt(message(
+      MessageType.WORKSHOP_SET_EXCERPT,
+      { text: 'A revision awaiting delivery.' }
+    ) as any);
+    service.continueConversation.mockImplementationOnce(
+      async (_conversationId, _text, options) => new Promise((resolve) => {
+        options?.signal?.addEventListener('abort', () => resolve(
+          analysisResult('partial host response', { conversationId: 'host-conv' }) as any
+        ));
+      }) as any
+    );
+
+    const delivery = handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Compare it.' }
+    ) as any);
+    await Promise.resolve();
+    const requestId = session.getSnapshot().activeRequestId!;
+    await handler.handleCancelRequest(message(
+      MessageType.CANCEL_WORKSHOP_REQUEST,
+      { requestId, domain: 'workshop' }
+    ) as any);
+    await delivery;
+
+    expect(session.getSnapshot().pendingHostUpdate).toEqual({
+      excerptVersion: 2,
+      contextBrief: false
+    });
+    expect(session.getSnapshot().turns.some(
+      (turn) => turn.content === 'partial host response'
+    )).toBe(false);
+  });
+
+  it('feeds the current context brief to a fresh tool pass', async () => {
+    await pin();
+    await handler.handleSetContextBrief(message(
+      MessageType.WORKSHOP_SET_CONTEXT_BRIEF,
+      { text: 'Mara cannot read.' }
+    ) as any);
+
+    await runProse();
+
+    expect(service.analyzeProse).toHaveBeenCalledWith(
+      'A pinned excerpt.',
+      'Mara cannot read.',
+      undefined,
+      expect.anything()
+    );
+    expect(service.startWorkshopPersonaConversation).toHaveBeenCalledWith(
+      expect.objectContaining({ contextBrief: 'Mara cannot read.' }),
+      expect.anything()
+    );
+  });
+
+  it('bounds the context brief before every tool pass', async () => {
+    await pin();
+    const longBrief = Array.from({ length: 10_001 }, (_, index) => `brief${index}`).join(' ');
+    await handler.handleSetContextBrief(message(
+      MessageType.WORKSHOP_SET_CONTEXT_BRIEF,
+      { text: longBrief }
+    ) as any);
+
+    await runProse();
+
+    const deliveredBrief = service.analyzeProse.mock.calls[0][1]!;
+    expect(deliveredBrief.split(/\s+/)).toHaveLength(10_000);
+    expect(deliveredBrief).toContain('brief9999');
+    expect(deliveredBrief).not.toContain('brief10000');
   });
 
   it('neutralizes reserved persona frames in retained host follow-ups', async () => {

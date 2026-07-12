@@ -1,6 +1,6 @@
 # ADR 2026-07-11: Workshop Excerpt Revision and Room Memory
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-07-11
 **Extends:** [ADR 2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](2026-07-09-workshop-persona-hosted-conversations.md)
 **Epic:** [Assistant as a Full Editor Tab](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md)
@@ -148,3 +148,8 @@ first pinned excerpt. The mid-run replacement guard
 ## Implementation
 
 Sprint [06C — Excerpt Revision Loop](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/06c-excerpt-revision-loop.md).
+
+Implemented on `sprint/workshop-editor-tab-06c-excerpt-revision-loop`. The
+same transactional delivery path also carries the paste-only editable context
+brief added by Sprint 06C; file selection/attachments remain deferred to the
+Context Selector feature.

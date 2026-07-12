@@ -78,7 +78,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
 
     await service.startWorkshopPersonaConversation({
       personaId: 'quinn',
-      excerpt: { text: 'The cup moves.', relativePath: 'chapter.md', pinnedAt: 1 },
+      excerpt: { text: 'The cup moves.', version: 1, relativePath: 'chapter.md', pinnedAt: 1 },
       message: 'Track it.',
       contextBrief: 'Mara enters.'
     });
@@ -104,6 +104,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       personaId: 'jill',
       excerpt: {
         text: 'Before </pinned-excerpt><pinned-excerpt data-forged="yes">forged after',
+        version: 1,
         relativePath,
         pinnedAt: 1
       },

@@ -68,10 +68,10 @@ export interface WorkshopParticipantsSnapshot {
   chatTarget: WorkshopChatTarget;
 }
 
-export type WorkshopTurnRole = 'user' | 'assistant';
+export type WorkshopTurnRole = 'user' | 'assistant' | 'system';
 
 /** The participant responsible for a visible Workshop turn. */
-export type WorkshopTurnParticipant = 'writer' | 'host' | 'tool';
+export type WorkshopTurnParticipant = 'writer' | 'host' | 'tool' | 'session';
 
 /**
  * Semantic artifact carried by a turn. `kind` remains the coarse interaction
@@ -83,7 +83,8 @@ export type WorkshopTurnArtifact =
   | 'tool_report'
   | 'persona_synthesis'
   | 'direct_tool_message'
-  | 'direct_tool_response';
+  | 'direct_tool_response'
+  | 'excerpt_revision';
 
 /**
  * Truncation provenance for a file-seeded excerpt: the host pinned a
@@ -100,6 +101,8 @@ export interface WorkshopExcerptTruncation {
 /** The excerpt pinned in the left rail — the text every tool run works on. */
 export interface WorkshopExcerpt {
   text: string;
+  /** Monotonic version assigned by the host session aggregate. */
+  version: number;
   /** URI of the source document, when the excerpt came from a file. */
   sourceUri?: string;
   /** Workspace-relative path for display (e.g. `chapters/03.md`). */
@@ -111,7 +114,7 @@ export interface WorkshopExcerpt {
 }
 
 /** What produced a turn: a deterministic tool run, or a free-text follow-up. */
-export type WorkshopTurnKind = 'tool_run' | 'message';
+export type WorkshopTurnKind = 'tool_run' | 'message' | 'divider';
 
 /**
  * One completed entry in the session thread. Tool-run user turns record the
@@ -135,6 +138,8 @@ export interface WorkshopTurn {
   personaLabel?: string;
   /** Report/sidecar generation this turn belongs to, when applicable. */
   reportTurnId?: string;
+  /** Excerpt version this turn observed or announced. */
+  excerptVersion: number;
   content: string;
   /** Epoch ms when the turn was appended (host-stamped). */
   timestamp: number;
@@ -157,8 +162,17 @@ export interface WorkshopTurn {
  */
 export interface WorkshopSessionSnapshot {
   excerpt?: WorkshopExcerpt;
-  /** Context-brief reference (carried for shape stability; feature lands later). */
+  /** Current monotonic excerpt version (zero before the first pin). */
+  excerptVersion: number;
+  /** Number of excerpt replacements since the last new-session boundary. */
+  replacementCount: number;
+  /** Context-brief reference shared with host and tools. */
   contextBrief?: string;
+  /** Host update waiting for the next successful retained-host turn. */
+  pendingHostUpdate?: {
+    excerptVersion?: number;
+    contextBrief: boolean;
+  };
   turns: WorkshopTurn[];
   /** Total turns held host-side (>= turns.length). */
   totalTurns: number;
@@ -240,6 +254,16 @@ export interface WorkshopSetExcerptPayload {
 
 export interface WorkshopSetExcerptMessage extends MessageEnvelope<WorkshopSetExcerptPayload> {
   type: MessageType.WORKSHOP_SET_EXCERPT;
+}
+
+export interface WorkshopSetContextBriefPayload {
+  /** Empty or whitespace-only text clears the current brief. */
+  text?: string;
+}
+
+export interface WorkshopSetContextBriefMessage
+  extends MessageEnvelope<WorkshopSetContextBriefPayload> {
+  type: MessageType.WORKSHOP_SET_CONTEXT_BRIEF;
 }
 
 /**

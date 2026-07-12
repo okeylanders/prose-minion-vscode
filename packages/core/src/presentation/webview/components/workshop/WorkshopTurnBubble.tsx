@@ -85,6 +85,14 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
     [turn.content, turn.personaId]
   );
 
+  if (turn.artifact === 'excerpt_revision') {
+    return (
+      <div className="pm-ws-revision-divider" role="separator">
+        <span>{turn.content}</span>
+      </div>
+    );
+  }
+
   if (turn.role === 'user') {
     if (turn.kind === 'message') {
       return (

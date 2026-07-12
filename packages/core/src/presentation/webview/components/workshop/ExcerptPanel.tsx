@@ -55,7 +55,7 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
         <div className="pm-ws-eyebrow">
           <Icon name="pin" size={12} /> Working Excerpt
         </div>
-        {showPinned ? <span className="pm-ws-pill">Pinned</span> : null}
+        {showPinned ? <span className="pm-ws-pill">Pinned · v{excerpt.version}</span> : null}
       </div>
 
       {showPinned ? (

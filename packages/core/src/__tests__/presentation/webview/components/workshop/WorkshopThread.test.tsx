@@ -23,7 +23,8 @@ const report = (id: string, toolId: 'prose' | 'dialogue'): WorkshopTurn => ({
   toolLabel: toolId === 'prose' ? 'Prose' : 'Dialogue & Beats',
   reportTurnId: id,
   content: `${toolId} report`,
-  timestamp: 0
+  timestamp: 0,
+  excerptVersion: 1
 });
 
 describe('WorkshopThread sidecar-owned affordances', () => {
@@ -87,7 +88,8 @@ describe('WorkshopThread sidecar-owned affordances', () => {
       toolLabel: 'Prose',
       reportTurnId: 'report-1',
       content: 'Direct answer while talking to the tool.',
-      timestamp: 1
+      timestamp: 1,
+      excerptVersion: 1
     };
 
     render(
@@ -124,7 +126,8 @@ describe('WorkshopThread sidecar-owned affordances', () => {
       personaLabel: 'Jill',
       reportTurnId: 'report-1',
       content: 'Jill weighs the report.',
-      timestamp: 0
+      timestamp: 0,
+      excerptVersion: 1
     };
 
     render(

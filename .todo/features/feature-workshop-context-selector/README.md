@@ -2,19 +2,19 @@
 
 **Date Identified**: 2026-07-10
 **Source**: User request
-**Status**: Planned
+**Status**: Partially delivered — paste-only brief shipped in Sprint 06C; selector modal remains planned
 **Priority**: High
 **Estimated Effort**: Medium
 
 ## Problem
 
-Workshop currently shows a read-only “Context Brief” placeholder. A writer
-cannot paste context into that surface, inspect configured project-resource
-locations, or deliberately choose project files for a Workshop conversation.
+Workshop now has a bounded, editable paste-only Context Brief that reaches the
+host and tool runs. A writer still cannot inspect configured project-resource
+locations or deliberately choose project files for a Workshop conversation.
 
 ## Proposed Experience
 
-Add a Context Selector modal from the Workshop rail:
+Extend the existing Context Brief panel with a Context Selector modal:
 
 - Start with the official resource locations configured in Settings (characters,
   locations, themes, things, chapters, manuscript, project brief, and general).
@@ -22,8 +22,8 @@ Add a Context Selector modal from the Workshop rail:
   state.
 - Offer an explicit “Explore project folders…” escape hatch through the VS Code
   host; do not expose browser filesystem access from the webview.
-- Show selected files and pasted/manual context as inspectable attachments in
-  the Workshop rail, with size limits and remove controls.
+- Keep the shipped pasted/manual brief and show selected files as inspectable
+  attachments in the Workshop rail, with size limits and remove controls.
 
 ## Design Questions
 
@@ -37,6 +37,10 @@ Add a Context Selector modal from the Workshop rail:
   distinguished?
 
 ## Architecture Notes
+
+- Sprint 06C owns the shipped paste-only slice: `WORKSHOP_SET_CONTEXT_BRIEF`,
+  host-side session persistence, bounded prompt delivery, and the editable
+  textarea. Do not rebuild that state path inside the selector modal.
 
 - Keep enumeration and reads behind `FileSystem`, `Workspace`, and
   `ShellService` ports; `packages/core` remains VS Code-free.

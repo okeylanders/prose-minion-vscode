@@ -37,6 +37,7 @@ import {
 } from '@messages';
 import { ModelSelector } from './components/shared/ModelSelector';
 import { ExcerptPanel } from './components/workshop/ExcerptPanel';
+import { ContextBriefPanel } from './components/workshop/ContextBriefPanel';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopParticipantRail } from './components/workshop/WorkshopParticipantRail';
 import { WorkshopThread } from './components/workshop/WorkshopThread';
@@ -242,7 +243,12 @@ export const WorkshopApp: React.FC = () => {
     if (el) {
       el.scrollTop = el.scrollHeight;
     }
-  }, [workshop.turns, workshop.streamingContent, workshop.isRunning]);
+  }, [
+    workshop.turns,
+    workshop.streamingContent,
+    workshop.isRunning,
+    workshop.errorMessage
+  ]);
 
   const toolsEnabled = !!workshop.excerpt && !workshop.isRunning && workshop.sessionReady;
   const activePersona = getWorkshopPersona(workshop.selectedPersonaId)
@@ -350,7 +356,7 @@ export const WorkshopApp: React.FC = () => {
             <p className="pm-ws-subtitle">
               <Icon name="doc" size={12} />{' '}
               {workshop.excerpt
-                ? `${workshop.excerpt.relativePath ?? 'Pinned excerpt'} · ${excerptWordCount} words`
+                ? `${workshop.excerpt.relativePath ?? 'Pinned excerpt'} · v${workshop.excerpt.version} · ${excerptWordCount} words`
                 : 'No excerpt pinned yet'}
             </p>
           </div>
@@ -440,10 +446,11 @@ export const WorkshopApp: React.FC = () => {
               onPinFromFile={workshop.pinFromFile}
             />
 
-            <div className="pm-ws-block">
-              <div className="pm-ws-eyebrow">Context Brief</div>
-              <p className="pm-ws-brief-empty">No context brief loaded.</p>
-            </div>
+            <ContextBriefPanel
+              value={workshop.contextBrief}
+              pendingDelivery={workshop.contextBriefPending}
+              onSave={workshop.setContextBrief}
+            />
 
             <div className="pm-ws-block pm-ws-block-grow">
               <div className="pm-ws-eyebrow">Tools</div>
@@ -492,15 +499,6 @@ export const WorkshopApp: React.FC = () => {
             onError={handleBoundaryError}
           >
             <div className="pm-ws-thread" ref={threadRef}>
-              {workshop.errorMessage && (
-                <div className="pm-ws-error" role="alert">
-                  <span>{workshop.errorMessage}</span>
-                  <button type="button" onClick={workshop.clearError} aria-label="Dismiss error">
-                    <Icon name="x" size={13} />
-                  </button>
-                </div>
-              )}
-
               {workshop.turns.length === 0 && !showLiveTurn && (
                 <div className="pm-ws-thread-empty">
                   <Icon name="sparkle" size={22} />
@@ -574,6 +572,15 @@ export const WorkshopApp: React.FC = () => {
                     />
                   </div>
                 )
+              )}
+
+              {workshop.errorMessage && (
+                <div className="pm-ws-error" role="alert">
+                  <span>{workshop.errorMessage}</span>
+                  <button type="button" onClick={workshop.clearError} aria-label="Dismiss error">
+                    <Icon name="x" size={13} />
+                  </button>
+                </div>
               )}
             </div>
           </ErrorBoundary>

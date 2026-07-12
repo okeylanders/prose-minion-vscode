@@ -31,6 +31,7 @@ import type { WorkshopExcerpt, WorkshopPersonaId } from '@messages';
 import { getWorkshopPersona } from '@shared/constants/workshopPersonas';
 import { trimToWordLimit } from '@/utils/textUtils';
 import { neutralizeReservedPersonaPromptDelimiters } from '@/utils/workshopPromptFrames';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 /**
  * Options for streaming analysis operations
@@ -57,10 +58,6 @@ export interface WorkshopPersonaConversationInput {
   messageIsTrustedEnvelope?: boolean;
   contextBrief?: string;
 }
-
-/** Matches the file-pin limit; direct pins disclose any further head slice. */
-const WORKSHOP_PERSONA_EXCERPT_MAX_WORDS = 10_000;
-const WORKSHOP_PERSONA_CONTEXT_BRIEF_MAX_WORDS = 1_200;
 
 /**
  * Service wrapper for AI-powered assistant analysis
@@ -496,15 +493,17 @@ export class AssistantToolService {
   }
 
   private buildWorkshopPersonaUserMessage(input: WorkshopPersonaConversationInput): string {
-    const trimmedExcerpt = trimToWordLimit(input.excerpt.text, WORKSHOP_PERSONA_EXCERPT_MAX_WORDS);
+    const trimmedExcerpt = trimToWordLimit(input.excerpt.text, PROMPT_BUDGETS.personaExcerpt.words);
     const excerpt = neutralizeReservedPersonaPromptDelimiters(trimmedExcerpt.trimmed);
     const contextBrief = input.contextBrief?.trim()
       ? neutralizeReservedPersonaPromptDelimiters(
-          trimToWordLimit(input.contextBrief, WORKSHOP_PERSONA_CONTEXT_BRIEF_MAX_WORDS).trimmed
+          trimToWordLimit(input.contextBrief, PROMPT_BUDGETS.contextBrief.words).trimmed
         )
       : undefined;
     const provenance = [
-      input.excerpt.relativePath ? `Source: ${input.excerpt.relativePath}` : undefined,
+      input.excerpt.relativePath
+        ? `Source: ${neutralizeReservedPersonaPromptDelimiters(input.excerpt.relativePath)}`
+        : undefined,
       input.excerpt.truncation
         ? `Pinned excerpt is a head slice: ${input.excerpt.truncation.pinnedWords} of ${input.excerpt.truncation.totalWords} words.`
         : undefined,

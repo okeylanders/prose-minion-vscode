@@ -28,7 +28,8 @@ const assistantTurn = (content: string): WorkshopTurn => ({
   toolLabel: 'Prose',
   reportTurnId: 'turn-1',
   content,
-  timestamp: 0
+  timestamp: 0,
+  excerptVersion: 1
 });
 
 describe('parseVariations', () => {
@@ -115,5 +116,30 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(screen.getByRole('button', { name: /copy/i })).toBeTruthy();
     expect(screen.getByRole('button', { name: /save to notes/i })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /rewrite/i })).toBeNull();
+  });
+
+  it('renders excerpt revisions as participant-neutral thread dividers', () => {
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          id: 'revision-2',
+          role: 'system',
+          kind: 'divider',
+          participant: 'session',
+          artifact: 'excerpt_revision',
+          excerptVersion: 2,
+          content: 'Excerpt v2 pinned · chapter-two.md · retired: Cliché',
+          timestamp: 2
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(screen.getByRole('separator').textContent).toContain('Excerpt v2 pinned');
+    expect(screen.queryByRole('button')).toBeNull();
   });
 });

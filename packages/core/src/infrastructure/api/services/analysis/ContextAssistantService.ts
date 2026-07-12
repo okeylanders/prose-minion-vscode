@@ -33,6 +33,7 @@ import {
 } from '@/domain/models/ContextGeneration';
 import { ContextPathGroup } from '@shared/types';
 import { StreamingTokenCallback as AgentStreamingTokenCallback } from '@orchestration/AgentRunContracts';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 /**
  * The source document enters the prompt outside the capability seam, so it
@@ -40,8 +41,6 @@ import { StreamingTokenCallback as AgentStreamingTokenCallback } from '@orchestr
  * conversation resends the first user message on every capability round,
  * which multiplies whatever lands here.
  */
-const MAX_SOURCE_WORDS = 50_000;
-
 /**
  * Options for streaming context generation operations
  */
@@ -225,13 +224,13 @@ export class ContextAssistantService {
    */
   private boundSourceContent(content: string): string {
     const applyTrimming = this.settings.get<boolean>('proseMinion', 'applyContextWindowTrimming', true);
-    if (!applyTrimming || countWords(content) <= MAX_SOURCE_WORDS) {
+    if (!applyTrimming || countWords(content) <= PROMPT_BUDGETS.sourceDocument.words) {
       return content;
     }
     this.outputChannel?.appendLine(
-      `[ContextAssistantService] Source document exceeds ${MAX_SOURCE_WORDS} words; trimming to fit the context window.`
+      `[ContextAssistantService] Source document exceeds ${PROMPT_BUDGETS.sourceDocument.words} words; trimming to fit the context window.`
     );
-    return `${trimToWordLimit(content, MAX_SOURCE_WORDS).trimmed}\n\n…(source document trimmed to ${MAX_SOURCE_WORDS} words to fit the context window)`;
+    return `${trimToWordLimit(content, PROMPT_BUDGETS.sourceDocument.words).trimmed}\n\n…(source document trimmed to ${PROMPT_BUDGETS.sourceDocument.words} words to fit the context window)`;
   }
 
   /**

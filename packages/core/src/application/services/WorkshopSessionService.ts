@@ -3,8 +3,9 @@
  *
  * The aggregate owns one immutable persona host identity, the latest retained
  * sidecar per tool, explicit composer routing, report correlation, and the
- * transactional direct-tool delivery cursor. Provider conversation ids never
- * cross the extension/webview boundary.
+ * transactional direct-tool delivery cursor, versioned excerpt revisions, and
+ * pending host updates. Provider conversation ids never cross the
+ * extension/webview boundary.
  */
 
 import {
@@ -58,6 +59,15 @@ interface ActiveRun {
   target: 'host' | 'tool';
   toolId?: WorkshopToolId;
   reportTurnId?: string;
+  excerptVersion: number;
+}
+
+export interface WorkshopPendingHostUpdates {
+  excerpt?: WorkshopExcerpt;
+  contextBrief?: {
+    revision: number;
+    text?: string;
+  };
 }
 
 export interface WorkshopToolReportCompletion {
@@ -65,10 +75,23 @@ export interface WorkshopToolReportCompletion {
   replacedConversationId?: string;
 }
 
+export interface WorkshopExcerptReplacement {
+  excerpt: WorkshopExcerpt;
+  disposedConversationIds: string[];
+  dividerTurn?: WorkshopTurn;
+  retiredSidecarCount: number;
+  replacementCount: number;
+}
+
 /** A pure aggregate: no I/O, no vscode, and only an injectable clock. */
 export class WorkshopSessionService {
   private excerpt?: WorkshopExcerpt;
   private contextBrief?: string;
+  private excerptVersion = 0;
+  private replacementCount = 0;
+  private contextBriefRevision = 0;
+  private pendingRevisionVersion?: number;
+  private pendingContextBriefRevision?: number;
   private turns: WorkshopTurn[] = [];
   private activeRun?: ActiveRun;
   private participants: WorkshopParticipants = this.newParticipants();
@@ -78,8 +101,10 @@ export class WorkshopSessionService {
   constructor(private readonly now: () => number = Date.now) {}
 
   setExcerpt(input: WorkshopExcerptInput): WorkshopExcerpt {
+    this.excerptVersion += 1;
     this.excerpt = {
       text: input.text,
+      version: this.excerptVersion,
       sourceUri: input.sourceUri,
       relativePath: input.relativePath,
       truncation: input.truncation ? { ...input.truncation } : undefined,
@@ -88,11 +113,50 @@ export class WorkshopSessionService {
     return cloneExcerpt(this.excerpt);
   }
 
-  /** Replace the working text and invalidate every retained participant. */
-  replaceExcerpt(input: WorkshopExcerptInput): string[] {
-    const conversationIds = this.clearAllConversations();
-    this.setExcerpt(input);
-    return conversationIds;
+  /** Replace working text, preserve host memory, and retire stale tool sidecars. */
+  replaceExcerpt(input: WorkshopExcerptInput): WorkshopExcerptReplacement {
+    const previous = this.excerpt;
+    if (!previous) {
+      return {
+        excerpt: this.setExcerpt(input),
+        disposedConversationIds: [],
+        retiredSidecarCount: 0,
+        replacementCount: this.replacementCount
+      };
+    }
+
+    const retired = Object.entries(this.participants.toolSidecars)
+      .flatMap(([toolId, sidecar]) => sidecar ? [{ toolId: toolId as WorkshopToolId, ...sidecar }] : []);
+    const conversationIds = retired.map(sidecar => sidecar.conversationId);
+    this.participants.toolSidecars = {};
+    this.participants.directToolTarget = undefined;
+    const excerpt = this.setExcerpt(input);
+    this.replacementCount += 1;
+    if (this.hasHostConversation()) {
+      this.pendingRevisionVersion = excerpt.version;
+    }
+
+    const retiredLabels = retired.map(sidecar => workshopToolLabel(sidecar.toolId)).sort();
+    const source = excerpt.relativePath ?? 'Pasted excerpt';
+    const retiredText = retiredLabels.length > 0 ? retiredLabels.join(', ') : 'none';
+    const dividerTurn: WorkshopTurn = {
+      id: this.nextTurnId('system'),
+      role: 'system',
+      kind: 'divider',
+      participant: 'session',
+      artifact: 'excerpt_revision',
+      excerptVersion: excerpt.version,
+      content: `Excerpt v${excerpt.version} pinned · ${source} · retired: ${retiredText}`,
+      timestamp: this.now()
+    };
+    this.turns.push(dividerTurn);
+    return {
+      excerpt,
+      disposedConversationIds: conversationIds,
+      dividerTurn: cloneTurn(dividerTurn),
+      retiredSidecarCount: retired.length,
+      replacementCount: this.replacementCount
+    };
   }
 
   getExcerpt(): WorkshopExcerpt | undefined {
@@ -101,6 +165,41 @@ export class WorkshopSessionService {
 
   getContextBrief(): string | undefined {
     return this.contextBrief;
+  }
+
+  setContextBrief(text: string | undefined): void {
+    const normalized = text?.trim() || undefined;
+    if (normalized === this.contextBrief) {
+      return;
+    }
+    this.contextBrief = normalized;
+    this.contextBriefRevision += 1;
+    if (this.hasHostConversation() || this.activeRun?.target === 'host') {
+      this.pendingContextBriefRevision = this.contextBriefRevision;
+    }
+  }
+
+  collectPendingHostUpdates(): WorkshopPendingHostUpdates | undefined {
+    const excerpt = this.excerpt !== undefined && this.pendingRevisionVersion === this.excerpt.version
+      ? cloneExcerpt(this.excerpt)
+      : undefined;
+    const contextBrief = this.pendingContextBriefRevision !== undefined
+      ? {
+          revision: this.pendingContextBriefRevision,
+          text: this.contextBrief
+        }
+      : undefined;
+    return excerpt || contextBrief ? { excerpt, contextBrief } : undefined;
+  }
+
+  /** Clear only the exact update generation that a successful host turn shipped. */
+  commitPendingHostUpdates(delivered: WorkshopPendingHostUpdates): void {
+    if (delivered.excerpt?.version === this.pendingRevisionVersion) {
+      this.pendingRevisionVersion = undefined;
+    }
+    if (delivered.contextBrief?.revision === this.pendingContextBriefRevision) {
+      this.pendingContextBriefRevision = undefined;
+    }
   }
 
   getSelectedPersonaId(): WorkshopPersonaId {
@@ -170,7 +269,8 @@ export class WorkshopSessionService {
       toolId,
       toolLabel: workshopToolLabel(toolId),
       content: `Run **${workshopToolLabel(toolId)}** on the pinned excerpt.`,
-      timestamp: this.now()
+      timestamp: this.now(),
+      excerptVersion: this.excerptVersion
     };
     this.turns.push(turn);
     this.activeRun = {
@@ -179,7 +279,8 @@ export class WorkshopSessionService {
       artifact: 'tool_report',
       phase: 'tool_report',
       target: 'tool',
-      toolId
+      toolId,
+      excerptVersion: this.excerptVersion
     };
     return cloneTurn(turn);
   }
@@ -219,7 +320,8 @@ export class WorkshopSessionService {
       content,
       timestamp: this.now(),
       usage: usage ? { ...usage } : undefined,
-      truncated: truncated || undefined
+      truncated: truncated || undefined,
+      excerptVersion: active.excerptVersion
     };
 
     const replaced = this.participants.toolSidecars[active.toolId];
@@ -259,7 +361,8 @@ export class WorkshopSessionService {
       phase: 'persona_synthesis',
       target: 'host',
       toolId: report.toolId,
-      reportTurnId
+      reportTurnId,
+      excerptVersion: report.excerptVersion
     };
   }
 
@@ -313,7 +416,8 @@ export class WorkshopSessionService {
       content,
       timestamp: this.now(),
       usage: usage ? { ...usage } : undefined,
-      truncated: truncated || undefined
+      truncated: truncated || undefined,
+      excerptVersion: active.excerptVersion
     };
 
     if (isHost && conversationId) {
@@ -407,6 +511,8 @@ export class WorkshopSessionService {
     this.participants.host.conversationId = undefined;
     this.participants.toolSidecars = {};
     this.participants.directToolTarget = undefined;
+    this.pendingRevisionVersion = undefined;
+    this.pendingContextBriefRevision = undefined;
     return conversationIds;
   }
 
@@ -416,6 +522,7 @@ export class WorkshopSessionService {
     this.turns = [];
     this.activeRun = undefined;
     this.contextBrief = undefined;
+    this.replacementCount = 0;
     this.selectedToolId = undefined;
     this.participants = this.newParticipants();
     return conversationIds;
@@ -425,7 +532,15 @@ export class WorkshopSessionService {
     const windowed = this.turns.slice(-WORKSHOP_SNAPSHOT_TURN_WINDOW);
     return {
       excerpt: this.excerpt ? cloneExcerpt(this.excerpt) : undefined,
+      excerptVersion: this.excerptVersion,
+      replacementCount: this.replacementCount,
       contextBrief: this.contextBrief,
+      pendingHostUpdate: this.pendingRevisionVersion !== undefined || this.pendingContextBriefRevision !== undefined
+        ? {
+            excerptVersion: this.pendingRevisionVersion,
+            contextBrief: this.pendingContextBriefRevision !== undefined
+          }
+        : undefined,
       turns: windowed.map(cloneTurn),
       totalTurns: this.turns.length,
       truncatedTurns: this.turns.length - windowed.length,
@@ -454,7 +569,8 @@ export class WorkshopSessionService {
       toolLabel: target === 'tool' && toolId ? workshopToolLabel(toolId) : undefined,
       reportTurnId: sidecar?.latestReportTurnId,
       content: displayText,
-      timestamp: this.now()
+      timestamp: this.now(),
+      excerptVersion: this.excerptVersion
     };
     this.turns.push(turn);
     this.activeRun = {
@@ -464,7 +580,8 @@ export class WorkshopSessionService {
       phase: target === 'host' ? 'host_message' : 'direct_tool_message',
       target,
       toolId,
-      reportTurnId: sidecar?.latestReportTurnId
+      reportTurnId: sidecar?.latestReportTurnId,
+      excerptVersion: this.excerptVersion
     };
     return cloneTurn(turn);
   }
@@ -511,7 +628,7 @@ export class WorkshopSessionService {
     };
   }
 
-  private nextTurnId(role: 'user' | 'assistant'): string {
+  private nextTurnId(role: 'user' | 'assistant' | 'system'): string {
     return `turn-${++this.turnCounter}-${role}-${this.now()}`;
   }
 }

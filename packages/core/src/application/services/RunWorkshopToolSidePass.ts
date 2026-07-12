@@ -4,6 +4,8 @@ import { WorkshopSessionService } from '@/application/services/WorkshopSessionSe
 import {
   buildWorkshopDirectHandoff,
   buildWorkshopHostMessage,
+  buildWorkshopHostUpdateFrame,
+  describeWorkshopPendingHostUpdates,
   buildWorkshopToolEvidence
 } from '@/application/services/WorkshopPromptBuilder';
 import {
@@ -22,6 +24,8 @@ import {
   WorkshopToolId,
   WorkshopTurn
 } from '@messages';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { trimToWordLimit } from '@/utils/textUtils';
 
 let sidePassRequestCounter = 0;
 const createRequestId = (type: string) => `${type}-${Date.now()}-${++sidePassRequestCounter}`;
@@ -68,7 +72,18 @@ export class RunWorkshopToolSidePass {
     const toolRequestId = createRequestId(`workshop_${toolId}`);
     let currentRequestId = toolRequestId;
     let reportAdopted = false;
+    let hostDeliveryAttempted = false;
+    const hadHostConversation = this.session.hasHostConversation();
     const pendingHandoff = buildWorkshopDirectHandoff(this.session.collectUnseenDirectExchanges());
+    const pendingHostUpdates = this.session.collectPendingHostUpdates();
+    const hostUpdateFrame = hadHostConversation
+      ? buildWorkshopHostUpdateFrame(pendingHostUpdates)
+      : undefined;
+    if (pendingHostUpdates) {
+      this.outputChannel.appendLine(
+        `[RunWorkshopToolSidePass] Pending host update prepared for synthesis (${describeWorkshopPendingHostUpdates(pendingHostUpdates)}; ${hadHostConversation ? 'retained delta frame' : 'fresh-host initial envelope'})`
+      );
+    }
     if (pendingHandoff) {
       this.outputChannel.appendLine(
         `[RunWorkshopToolSidePass] Direct handoff prepared for synthesis: ${pendingHandoff.unseenTurns} unseen → ${pendingHandoff.includedTurns} included, ${pendingHandoff.omittedTurns} omitted, ${pendingHandoff.truncatedCharacters} chars truncated`
@@ -162,8 +177,13 @@ export class RunWorkshopToolSidePass {
         usage: result.usage,
         truncated
       });
-      const hostMessage = buildWorkshopHostMessage(evidence, pendingHandoff, true);
+      const hostMessage = buildWorkshopHostMessage(evidence, {
+        handoff: pendingHandoff,
+        writerMessageIsTrustedEnvelope: true,
+        hostUpdate: hostUpdateFrame
+      });
       const hostConversationId = this.session.getHostConversationId();
+      hostDeliveryAttempted = true;
       const synthesis = hostConversationId
         ? await this.assistantToolService.continueConversation(hostConversationId, hostMessage, {
             signal: controller.signal,
@@ -199,11 +219,26 @@ export class RunWorkshopToolSidePass {
       if (synthesisTurn && pendingHandoff) {
         this.session.commitHostHandoff(pendingHandoff.deliveredTurnIds);
       }
+      if (synthesisTurn && pendingHostUpdates) {
+        this.session.commitPendingHostUpdates(pendingHostUpdates);
+        this.outputChannel.appendLine(
+          `[RunWorkshopToolSidePass] Pending host update committed (${describeWorkshopPendingHostUpdates(pendingHostUpdates)})`
+        );
+      } else if (pendingHostUpdates) {
+        this.outputChannel.appendLine(
+          `[RunWorkshopToolSidePass] Pending host update retained after incomplete synthesis (${describeWorkshopPendingHostUpdates(pendingHostUpdates)})`
+        );
+      }
       events.sessionChanged();
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.session.abandonRun(currentRequestId);
       events.streamCompleted(currentRequestId, '', true);
+      if (hostDeliveryAttempted && pendingHostUpdates) {
+        this.outputChannel.appendLine(
+          `[RunWorkshopToolSidePass] Pending host update retained after failed synthesis (${describeWorkshopPendingHostUpdates(pendingHostUpdates)}): ${details}`
+        );
+      }
       if (error instanceof Error && error.name === 'AbortError') {
         events.status(
           reportAdopted
@@ -233,10 +268,14 @@ export class RunWorkshopToolSidePass {
     excerpt: WorkshopExcerpt,
     streamingOptions: AnalysisStreamingOptions
   ): Promise<AnalysisResult> {
+    const contextBrief = this.session.getContextBrief();
+    const boundedContextBrief = contextBrief
+      ? trimToWordLimit(contextBrief, PROMPT_BUDGETS.contextBrief.words).trimmed
+      : undefined;
     if (toolId === 'dialogue') {
       return this.assistantToolService.analyzeDialogue(
         excerpt.text,
-        undefined,
+        boundedContextBrief,
         excerpt.sourceUri,
         undefined,
         streamingOptions
@@ -245,14 +284,14 @@ export class RunWorkshopToolSidePass {
     if (toolId === 'prose') {
       return this.assistantToolService.analyzeProse(
         excerpt.text,
-        undefined,
+        boundedContextBrief,
         excerpt.sourceUri,
         streamingOptions
       );
     }
     return this.assistantToolService.analyzeWritingTools(
       excerpt.text,
-      undefined,
+      boundedContextBrief,
       excerpt.sourceUri,
       toolId,
       streamingOptions

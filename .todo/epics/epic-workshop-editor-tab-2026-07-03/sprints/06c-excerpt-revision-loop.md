@@ -1,13 +1,13 @@
 # Sprint 06C: Excerpt Revision Loop and Room Memory
 
-**Status**: Planned
+**Status**: Completed (2026-07-12)
 **Priority**: High
 **Branch**: `sprint/workshop-editor-tab-06c-excerpt-revision-loop` -> PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 3-4 days
 **Depends on**: Sprint 06B
 **Blocks (soft)**: Sprint 07 — the capability loop should build on the final host-turn memory model rather than retrofit it, and its input ceilings must be born in the central budget table
 **ADRs**: [2026-07-11 — Workshop Excerpt Revision and Room Memory](../../../../docs/adr/2026-07-11-workshop-excerpt-revision-and-room-memory.md)
-**Absorbs**: [.todo/tech-debt/2026-07-11-prompt-truncation-budget-centralization.md](../../../tech-debt/2026-07-11-prompt-truncation-budget-centralization.md) as Task 0; the **paste-only slice** of [feature-workshop-context-selector](../../../features/feature-workshop-context-selector/README.md) (editable context brief — the selector modal stays in that entry)
+**Absorbs**: [archived prompt-budget centralization debt](../../../archive/tech-debt/2026-07-11-prompt-truncation-budget-centralization.md) as Task 0; the **paste-only slice** of [feature-workshop-context-selector](../../../features/feature-workshop-context-selector/README.md) (editable context brief — the selector modal stays in that entry)
 
 ## Goal
 
@@ -52,57 +52,57 @@ honestly.
 
 ### Task 0: Prompt budget centralization (mechanical; first commits, zero behavior change)
 
-- [ ] Create the frozen, typed budget module
+- [x] Create the frozen, typed budget module
       (`packages/core/src/shared/constants/promptBudgets.ts`) covering every
       prompt-side bound in the tech-debt census: `fileExcerpt` (words +
       bytes), `personaExcerpt`, `contextBrief`, `toolEvidence` (chars),
       `directHandoff` (turns + chars + named header allowance — retiring the
       magic `- 800`), `contextFiles` (words + catalog items), `guides`,
       `sourceDocument`.
-- [ ] Migrate all seven sites to import from it; delete every module-local
+- [x] Migrate all seven sites to import from it; delete every module-local
       limit constant. **No limit value changes in this sprint.**
-- [ ] Add a char-based trim helper beside `trimToWordLimit` returning the
+- [x] Add a char-based trim helper beside `trimToWordLimit` returning the
       same `TrimResult`-style provenance; adopt it at the raw-`slice()`
       sites (`WorkshopPromptBuilder`, `WorkshopSessionService`).
-- [ ] Architecture guard test (sibling of `boundaries.test.ts`): fail on new
+- [x] Architecture guard test (sibling of `boundaries.test.ts`): fail on new
       module-local `*_MAX_*` / `*_LIMIT*` constants outside the budget
       module and tests.
-- [ ] These commits land before any revision-loop behavior work so the
+- [x] These commits land before any revision-loop behavior work so the
       refactor diff reviews clean.
 
 ### Session model
 
-- [ ] Add `excerptVersion` (monotonic per session) and stamp it into
+- [x] Add `excerptVersion` (monotonic per session) and stamp it into
       `WorkshopExcerpt`; expose it in the session snapshot.
-- [ ] Change `replaceExcerpt()` to preserve the host conversation id,
+- [x] Change `replaceExcerpt()` to preserve the host conversation id,
       dispose only tool sidecars + direct target, and set/overwrite the
       pending revision notice. Return disposed conversation ids.
-- [ ] Record a divider turn (participant-neutral) in `turns` at replacement
+- [x] Record a divider turn (participant-neutral) in `turns` at replacement
       with version, source path, and retired tool labels.
-- [ ] Persist pending-notice state in the snapshot so a webview reload
+- [x] Persist pending-notice state in the snapshot so a webview reload
       mid-pending rehydrates honestly.
-- [ ] `reset()` clears the pending notice along with everything else.
+- [x] `reset()` clears the pending notice along with everything else.
 
 ### Delivery on next host turn
 
-- [ ] Build the revision frame (`<pinned-excerpt version="N">` + provenance
+- [x] Build the revision frame (`<pinned-excerpt version="N">` + provenance
       + supersession preamble) in `AssistantToolService`, reusing the
       existing trim + neutralization helpers per frame.
-- [ ] Prepend the frame to the next host continuation message; clear the
+- [x] Prepend the frame to the next host continuation message; clear the
       pending notice only on turn success (mirror the 06B delivery-cursor
       adoption rule; cancellation/failure leaves it pending).
-- [ ] Collapse rule: a second replacement overwrites the pending notice;
+- [x] Collapse rule: a second replacement overwrites the pending notice;
       intermediate versions the host never saw are not delivered.
 
 ### Handler and UI
 
-- [ ] `handleSetExcerpt` / `handlePickExcerptFile`: same validation and
+- [x] `handleSetExcerpt` / `handlePickExcerptFile`: same validation and
       mid-run guard; on success post the divider turn and updated snapshot;
       log version, source, and retired sidecar count.
-- [ ] Render the divider in the thread ("Excerpt v2 pinned · ch-03.md ·
+- [x] Render the divider in the thread ("Excerpt v2 pinned · ch-03.md ·
       retired: Cliché, Continuity") and the current version in the excerpt
       panel/status.
-- [ ] Deterministic advisory (status rail, not modal) after the third
+- [x] Deterministic advisory (status rail, not modal) after the third
       replacement in one session suggesting a new session for cost.
 
 ### Editable context brief (paste-only slice)
@@ -110,52 +110,80 @@ honestly.
 Current reality: the Context Brief panel is a hardcoded placeholder
 (`WorkshopApp.tsx` "No context brief loaded."), while the downstream
 plumbing — `getContextBrief()` consumed by persona messages and tool side
-passes, framed as `<context-brief>` with the 1,200-word cap — is fully
+passes, framed as `<context-brief>` with the 10,000-word cap — is fully
 built. No setter exists anywhere; the field is born and stays `undefined`.
 
-- [ ] Session: add `setContextBrief(text: string | undefined)`; empty/
+- [x] Session: add `setContextBrief(text: string | undefined)`; empty/
       whitespace clears. The brief describes the project, not the excerpt —
       it **survives excerpt replacement** and is cleared only by `reset()`
       (which already does). Persist in the snapshot for reload.
-- [ ] Message: typed `WORKSHOP_SET_CONTEXT_BRIEF` route on
+- [x] Message: typed `WORKSHOP_SET_CONTEXT_BRIEF` route on
       `WorkshopHandler`; envelope-sourced, validated, logged (length only,
       never content).
-- [ ] Delivery: a brief set before the host conversation starts rides the
+- [x] Delivery: a brief set before the host conversation starts rides the
       opening message (existing plumbing). A brief set or changed
       mid-conversation queues a pending context update delivered with the
       next host turn — **reuse the revision-notice delivery path**, same
       collapse and clear-on-success rules. Tool runs need nothing: they
       read `getContextBrief()` fresh per run.
-- [ ] UI: replace the placeholder with an editable textarea; live word
+- [x] UI: replace the placeholder with an editable textarea; live word
       count against the `contextBrief` budget (from the Task 0 table) with
       honest will-be-trimmed indication; clear control; a quiet hint when
       an edit is pending delivery ("shared with your next message").
-- [ ] Scope guardrail: paste-only. No file browsing, categories, or
+- [x] Scope guardrail: paste-only. No file browsing, categories, or
       attachments (Context Selector modal feature) and no
       persona-requested loading (post-Sprint-07 feature).
 
 ### Tests
 
-- [ ] Session: replacement preserves host id, disposes sidecars, bumps
+- [x] Session: replacement preserves host id, disposes sidecars, bumps
       version, records divider, collapses double-replacement; reset clears
       pending state.
-- [ ] Delivery: notice rides the next host turn exactly once; survives
+- [x] Delivery: notice rides the next host turn exactly once; survives
       cancellation un-cleared; cleared on success; reload rehydration.
-- [ ] Frames: per-frame word cap with trim provenance; neutralization on
+- [x] Frames: per-frame word cap with trim provenance; neutralization on
       version frames and wrapper; version stamping on turns/artifacts.
-- [ ] Rewrite (not delete) any test asserting host invalidation on
+- [x] Rewrite (not delete) any test asserting host invalidation on
       replacement — the old behavior was load-bearing and the new one must
       be proven, not assumed.
-- [ ] Context brief: setter/clear/persistence semantics (survives excerpt
+- [x] Context brief: setter/clear/persistence semantics (survives excerpt
       replacement, cleared by reset, restores on reload); opening-message
       inclusion; mid-conversation pending update delivered exactly once via
       the shared path; tool side pass reads the current brief.
 
 ### Documentation
 
-- [ ] Update the Workshop session docs and ADR cross-links; note the
+- [x] Update the Workshop session docs and ADR cross-links; note the
       changed `replaceExcerpt()` contract in `docs/ARCHITECTURE.md` if it is
       described there.
+
+## Completion Record
+
+- Centralized all prompt input bounds in `PROMPT_BUDGETS`, added character
+  trim provenance, and archived the absorbed tech-debt item. The architecture
+  guard allowlists only established non-prompt batching/concurrency/UI bounds.
+- `WorkshopSessionService` now versions excerpts/turns, preserves the retained
+  host on replacement, retires tool sidecars, records dividers, and owns a
+  generation-safe pending host-update transaction for revisions and context.
+- Revision/context frames are bounded and delimiter-neutralized. Delivery is
+  success-only across ordinary host messages and tool-side-pass synthesis;
+  cancellation/failure keeps the exact update pending and replacements
+  collapse to the newest excerpt.
+- The Context Brief rail is editable with a live 10,000-word budget indicator,
+  trim disclosure, clear control, and pending-delivery hint. Tool runs read the
+  current brief at invocation time.
+- Pre-PR hardening: model-selection changes now hot-swap the existing engine's
+  transport model instead of rebuilding model scopes, so retained Workshop
+  host/tool conversations survive assistant, context, dictionary, and category
+  model changes. Workshop errors render at the thread tail and trigger
+  autoscroll rather than appearing above the conversation.
+- Verification: lint completed with 0 errors (603 pre-existing warnings);
+  typecheck passed; 84 suites / 643 tests passed; production build and bundle
+  sentinel verification passed; `git diff --check` passed.
+- Production bundles: `extension.js` 2,322,175 bytes; `webview.js` 590,206
+  bytes. The pre-build local artifacts were 4,440,463 and 2,160,985 bytes
+  respectively; those stale-artifact deltas (-2,118,288 / -1,570,779 bytes)
+  are recorded for completeness but are not attributable to this sprint.
 
 ## Acceptance Criteria
 

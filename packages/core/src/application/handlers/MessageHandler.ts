@@ -517,6 +517,21 @@ export class MessageHandler {
     }
   }
 
+  private async refreshModelSelections(): Promise<void> {
+    try {
+      await this.services.aiResourceManager.refreshModelSelections();
+      this.outputChannel.appendLine(
+        '[MessageHandler] Model selections hot-swapped; retained conversations preserved'
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(
+        `[MessageHandler] Model hot-swap failed: ${message}`
+      );
+      this.sendStatus('Model change failed. The previous model remains active.', message);
+    }
+  }
+
   private postClearTransientApiKeyWarning(): void {
     void this.postMessage({
       type: MessageType.CLEAR_TRANSIENT_API_KEY_WARNING,
@@ -540,8 +555,8 @@ export class MessageHandler {
 
     // Only refresh service if model configs changed
     if (this.MODEL_KEYS.some(key => affects(key))) {
-      this.outputChannel.appendLine('[ConfigWatcher] Model config changed, refreshing service');
-      void this.refreshServiceConfiguration();
+      this.outputChannel.appendLine('[ConfigWatcher] Model config changed, hot-swapping selection');
+      void this.refreshModelSelections();
 
       // Send MODEL_DATA if this change came from external source (VS Code Settings UI)
       // handleSetModelSelection will send it for webview changes (with echo prevention)

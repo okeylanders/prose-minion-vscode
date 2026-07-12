@@ -148,6 +148,15 @@ export class AgentRunEngine {
     }, 300000);
   }
 
+  /** Swap the transport model without disturbing retained conversation state. */
+  setModel(model: string): void {
+    this.openRouterClient.setModel(model);
+  }
+
+  getModel(): string {
+    return this.openRouterClient.getModel();
+  }
+
   async runInitial(request: InitialRunRequest): Promise<ExecutionResult> {
     const options = request.options ?? {};
     const capability = this.validateCapability(request);
