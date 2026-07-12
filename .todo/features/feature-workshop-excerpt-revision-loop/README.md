@@ -42,7 +42,7 @@ The Workshop's primary loop is: get feedback → revise the manuscript → ask
 for another look. Today that loop punishes the writer at the exact moment it
 should reward them: replacing the excerpt with the revised text silently
 destroys the host's memory of the feedback conversation and kills every
-"Talk directly to <Tool>" sidecar. You cannot ask Jill "did my revision fix
+"Talk directly to `<Tool>`" sidecar. You cannot ask Jill "did my revision fix
 what Cliché flagged?" — she no longer remembers Cliché, the flags, or the
 conversation, despite all of it being visible on screen.
 
@@ -64,6 +64,39 @@ tool sidecars on replace (they are cheap to re-run). Simplest correct slice.
 replacing ("Transcript stays visible, but the persona's memory resets") and
 render a thread divider: "Excerpt replaced — new conversation memory." Never
 let the UI imply continuity the model doesn't have.
+
+## Second ADR Question: Same-Tool Re-Run Semantics (added 2026-07-11)
+
+Two writer-model assertions to settle alongside the host question:
+
+1. *"A new tool run should see the current excerpt."* — **Already true, keep
+   it.** Every run calls `invokeTool(toolId, excerpt, …)` with a fresh
+   conversation pinned to the excerpt at run time.
+2. *"A re-run of the same tool should receive the updated excerpt in its
+   existing thread."* — **Not current behavior** (locked 06B decision: a new
+   run atomically replaces/disposes the old sidecar) and a real fork:
+   **tool-as-participant vs tool-as-instrument.** Reports are meant to be
+   reproducible full passes; a re-run inside a thread containing run 1's
+   findings anchors on them (grades v2 against its old answers instead of
+   reading clean), and the thread carries v1 excerpt + report + v2 excerpt
+   into every re-run on the hot path.
+
+Options for the ADR:
+
+- **R1 — Participant sidecars**: continue the sidecar thread with a
+  `<pinned-excerpt version="2">` frame plus an explicit "produce a complete
+  fresh analysis; do not assume prior findings persist" instruction. Enables
+  direct-mode "what changed?"; risks anchoring and doubles excerpt tokens.
+- **R2 — Fresh run, seeded comparison**: re-run stays a fresh conversation,
+  seeded with a *bounded summary* of the prior run's findings as evidence.
+  Clean full report + comparison capability, bounded cost.
+- **R3 — Stateless instruments, host is the room's memory (lean)**: keep
+  replace/dispose. If the host survives excerpt replacement (option A/B),
+  "did I fix what Cliché flagged?" is answered by the host, which holds the
+  old flags (handoff evidence) and the new report. Clean reports, cheap
+  re-runs; trade-off: direct-mode comparison questions go to the host, not
+  the tool. R2 remains the upgrade path if direct-tool comparison proves
+  wanted.
 
 ## Costs / Constraints for the ADR
 
@@ -89,6 +122,8 @@ let the UI imply continuity the model doesn't have.
 
 - [ ] ADR decides among A/B/C (or a staged path C → B → A) with token-cost
       bounds for retained versions.
+- [ ] ADR settles same-tool re-run semantics (R1/R2/R3) consistently with
+      the host decision — one memory model for the whole room.
 - [ ] Replacing the excerpt no longer silently orphans the visible
       transcript from the persona's memory — either memory survives (A/B) or
       the break is explicit and confirmed (C).
