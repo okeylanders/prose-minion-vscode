@@ -52,28 +52,40 @@ piece writers actually need to learn doesn't register.
   placement
 - Workshop webview stylesheet — hint/ticker classes
 
-## Completion Criteria
+## Design Revision — v2 (2026-07-11, after live screenshots)
 
-- [x] No messaging renders below the text entry.
-- [x] Keyboard hint sits above the composer with "Shift+Enter" in the theme
-      accent color; contrast verified in light and dark. *(The Workshop
-      surface is pinned warm-dark in v1 — one palette; `--pm-accent-hi`
-      #ee7d49 on the warm-dark band holds contrast comfortably.)*
-- [x] Status/ticker messages appear above the composer with unchanged
-      screen-reader semantics.
-- [x] Above-composer band has a stable stacking order; no layout jitter when
-      messages appear/disappear.
+The original proposal ("nothing below the composer") was drafted before the
+Shift+Enter accent existed. On a live look, the stacked above-composer band
+read as cluttered, and the accent changed the calculus: it does the noticing
+work, so the hint no longer needs the prime band. Revised layout gives each
+message its own zone:
+
+1. **Status ticker** — centered, thread-side, right above the divider (it
+   narrates the run, not the next message). The divider is the ticker's own
+   `border-bottom`, and the slot is always mounted, so the line never moves.
+2. **Participant rail** — below the divider, visually grouped with the
+   composer it routes messages into.
+3. **Text entry.**
+4. **Keyboard hint** — centered in the quiet zone below the input;
+   "Shift+Enter" keeps the theme accent.
+
+## Completion Criteria (v2)
+
+- [x] Each composer-band message occupies its own zone per the v2 order;
+      only the learn-once keyboard hint renders below the text entry.
+- [x] "Shift+Enter" carries the theme accent. *(The Workshop surface is
+      pinned warm-dark in v1 — one palette; `--pm-accent-hi` #ee7d49 holds
+      contrast comfortably.)*
+- [x] Status/ticker messages centered above the divider with unchanged
+      screen-reader semantics (`role="status"` / `aria-live="polite"`,
+      region mounted before its first announcement).
+- [x] Band has a stable stacking order; no layout jitter (reserved-height
+      ticker slot doubles as the stable divider).
 
 ## Implementation Notes (2026-07-11)
 
-- Stacking order landed exactly as suggested: status/ticker → participant
-  rail (which subsumed the direct-mode banner) → keyboard hint → text entry.
-- The ticker slot is now ALWAYS mounted with a reserved `min-height`, content
-  conditional — the band cannot jitter as messages come and go, and the
-  `role="status"` / `aria-live="polite"` region exists before its first
-  announcement (a small SR win over mount-on-message).
-- Hint moved inside `pm-ws-composer-wrap` above the form; "Shift+Enter" is
+- Hint lives inside `pm-ws-composer-wrap` below the form; "Shift+Enter" is
   wrapped in `.pm-ws-hint-key` (accent + 600 weight), rest stays muted.
 - Tests: `WorkshopComposer.test.tsx` asserts hint content, the accent span,
-  and hint-precedes-form document order. Remaining: manual visual pass in
+  and form-precedes-hint document order. Remaining: manual visual pass in
   the Extension Development Host.

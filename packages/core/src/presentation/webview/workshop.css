@@ -736,11 +736,13 @@
 }
 
 /* ---------- Composer (present but disabled until Sprint 3) ---------- */
+/* The thread/composer divider lives on the ALWAYS-MOUNTED status ticker
+   (border-bottom), not here — so the participant rail sits below the line,
+   visually grouped with the input it routes messages into. */
 [data-pm-surface="workshop"] .pm-ws-composer-wrap {
   flex-shrink: 0;
-  padding: 14px 32px 22px;
+  padding: 12px 32px 14px;
   background: var(--pm-bg);
-  border-top: 1px solid var(--pm-border-soft);
 }
 [data-pm-surface="workshop"] .pm-ws-composer {
   display: flex;
@@ -789,14 +791,14 @@
   align-items: center;
   gap: 10px;
 }
-/* Above the text entry (composer-messaging-placement): below the composer is
-   a dead zone the eye never visits. The accent lands on the one token writers
-   need to learn; the rest stays muted so the accent is the point. */
+/* Centered in the quiet zone below the input (composer-messaging v2):
+   learn-once chrome — the accent lands on the one token writers need to
+   learn; the rest stays muted so the accent is the point. */
 [data-pm-surface="workshop"] .pm-ws-composer-hint {
-  margin: 0 2px 6px;
+  margin: 8px 2px 0;
   color: var(--pm-faint);
   font-size: 11px;
-  text-align: right;
+  text-align: center;
 }
 [data-pm-surface="workshop"] .pm-ws-hint-key {
   color: var(--pm-accent-hi);
@@ -996,20 +998,25 @@
   font-size: 11px;
   font-weight: 650;
 }
-/* ---------- Above-composer band ----------
-   Deterministic stacking order (composer-messaging-placement feature):
-   status ticker → participant rail → keyboard hint → text entry. Nothing
-   renders below the composer. */
+/* ---------- Composer band (composer-messaging v2) ----------
+   Each message gets its own zone: status ticker centered ABOVE the divider
+   (thread-side: it narrates the run, not the next message) → the divider
+   itself (the ticker's border-bottom) → participant rail BELOW the divider,
+   grouped with the input it routes into → text entry → keyboard hint
+   centered in the quiet zone underneath. */
 
 /* Status ticker: the slot is always mounted with a reserved line so messages
-   appearing/disappearing never jitter the band. */
+   appearing/disappearing never jitter the band — which also keeps the
+   divider it carries from ever moving. */
 [data-pm-surface="workshop"] .pm-ws-status-ticker {
   flex-shrink: 0;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   min-height: 15px;
-  padding: 8px 33px 0;
+  padding: 6px 33px 8px;
+  border-bottom: 1px solid var(--pm-border-soft);
   color: var(--pm-muted);
   font-family: var(--pm-mono);
   font-size: 11px;
@@ -1025,7 +1032,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 7px;
-  padding: 8px 32px 0;
+  padding: 10px 32px 0;
 }
 [data-pm-surface="workshop"] .pm-ws-rail-label {
   color: var(--pm-faint);

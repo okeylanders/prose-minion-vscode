@@ -84,12 +84,6 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
 
   return (
     <div className="pm-ws-composer-wrap">
-      {/* Hint sits ABOVE the text entry (feature-workshop-composer-messaging-
-          placement): below the composer is a visual dead zone, and Shift+Enter
-          is the one binding writers actually need to learn — hence the accent. */}
-      <p className="pm-ws-composer-hint">
-        Enter to send · <span className="pm-ws-hint-key">Shift+Enter</span> for a new line
-      </p>
       <form className="pm-ws-composer" onSubmit={submit}>
         <button
           className="pm-ws-comp-add"
@@ -147,6 +141,12 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
           )}
         </div>
       </form>
+      {/* Learn-once chrome, centered in the quiet zone below the input: the
+          accent on Shift+Enter does the noticing work, so the hint doesn't
+          need the prime band above the composer (composer-messaging v2). */}
+      <p className="pm-ws-composer-hint">
+        Enter to send · <span className="pm-ws-hint-key">Shift+Enter</span> for a new line
+      </p>
     </div>
   );
 };

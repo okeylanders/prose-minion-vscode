@@ -576,12 +576,14 @@ export const WorkshopApp: React.FC = () => {
             }
             onError={handleBoundaryError}
           >
-            {/* Above-composer band (feature-workshop-composer-messaging-placement):
-                deterministic stacking order — ticker, participant rail, then the
-                composer (whose keyboard hint sits above the text entry). Nothing
-                renders below the composer. The ticker slot is ALWAYS mounted with
-                a reserved height so messages coming and going never jitter the
-                band, and the live region exists before its first announcement. */}
+            {/* Composer band (composer-messaging v2): ticker centered above the
+                divider (thread-side — it narrates the run), the divider on the
+                ticker's bottom edge, then the rail below it grouped with the
+                composer it routes into; the keyboard hint sits centered under
+                the text entry. The ticker slot is ALWAYS mounted with a
+                reserved height so messages coming and going never jitter the
+                band (or move the divider), and the live region exists before
+                its first announcement. */}
             <div className="pm-ws-status-ticker" role="status" aria-live="polite">
               {(workshop.tickerMessage || workshop.statusMessage) && (
                 <>

@@ -97,6 +97,9 @@ active-chip state plus a pill-styled persona chip.
   `useWorkshop().toolSidecars` + `chatTarget` — presentation-only over the
   snapshot, exactly as proposed. Rail hides until the first sidecar exists
   (host-only room is already named by the composer placeholder + header).
+- Placement (composer-messaging v2): the rail sits BELOW the thread/composer
+  divider, grouped with the input it routes into; the centered status ticker
+  sits above the divider.
 - The `pm-ws-direct-mode` banner (and its `returnToHost` link) is REMOVED —
   the rail's active chip is the mode indicator; a visually-hidden
   `role="status"` span preserves the screen-reader announcement.
