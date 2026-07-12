@@ -2,9 +2,14 @@
 
 import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
 import {
+  buildWorkshopDirectHandoff,
   buildWorkshopHostMessage,
   buildWorkshopToolEvidence
 } from '@/application/services/WorkshopPromptBuilder';
+import {
+  completeWorkshopRun,
+  workshopSynthesisCompletionCopy
+} from '@/application/services/WorkshopRunCompletion';
 import { AnalysisResult } from '@/domain/models/AnalysisResult';
 import { LogSink } from '@/platform';
 import { AssistantToolService, AnalysisStreamingOptions } from '@services/analysis/AssistantToolService';
@@ -63,7 +68,12 @@ export class RunWorkshopToolSidePass {
     const toolRequestId = createRequestId(`workshop_${toolId}`);
     let currentRequestId = toolRequestId;
     let reportAdopted = false;
-    const pendingHandoff = this.session.prepareHostHandoff();
+    const pendingHandoff = buildWorkshopDirectHandoff(this.session.collectUnseenDirectExchanges());
+    if (pendingHandoff) {
+      this.outputChannel.appendLine(
+        `[RunWorkshopToolSidePass] Direct handoff prepared for synthesis: ${pendingHandoff.unseenTurns} unseen → ${pendingHandoff.includedTurns} included, ${pendingHandoff.omittedTurns} omitted, ${pendingHandoff.truncatedCharacters} chars truncated`
+      );
+    }
 
     events.activatePhase(toolRequestId, toolLabel, toolId, controller);
     const userTurn = this.session.beginToolRun(toolId, toolRequestId);
@@ -107,7 +117,9 @@ export class RunWorkshopToolSidePass {
         return;
       }
 
-      events.streamCompleted(toolRequestId, result.content, false, result.usage, truncated);
+      // Adopt BEFORE announcing completion: a zombie report must not stream
+      // its full content to the webview as a finished turn that then never
+      // lands (PR #72 review #10).
       const completion = this.session.completeToolReport(
         toolRequestId,
         result.content,
@@ -118,12 +130,14 @@ export class RunWorkshopToolSidePass {
       if (!completion) {
         this.assistantToolService.discardConversation(result.conversationId);
         this.outputChannel.appendLine(
-          `[RunWorkshopToolSidePass] Discarded zombie tool completion: ${toolRequestId} (${toolLabel})`
+          `[RunWorkshopToolSidePass] Discarded zombie tool completion: ${toolRequestId} (${toolLabel}) — session was reset or the run preempted mid-stream`
         );
+        events.streamCompleted(toolRequestId, '', true);
         events.sessionChanged();
         return;
       }
 
+      events.streamCompleted(toolRequestId, result.content, false, result.usage, truncated);
       events.turnCompleted(completion.turn);
       reportAdopted = true;
       if (completion.replacedConversationId) {
@@ -165,17 +179,25 @@ export class RunWorkshopToolSidePass {
             signal: controller.signal,
             onToken: (token: string) => events.streamChunk(synthesisRequestId, token)
           });
-      const synthesisAdopted = this.completeSynthesis(
-        synthesis,
-        synthesisRequestId,
-        hostConversationId,
-        toolLabel,
-        personaLabel,
-        controller,
-        events
-      );
-      if (synthesisAdopted && pendingHandoff) {
-        this.session.commitHostHandoff(pendingHandoff);
+      const synthesisTurn = completeWorkshopRun({
+        session: this.session,
+        requestId: synthesisRequestId,
+        label: `${personaLabel} synthesis`,
+        result: synthesis,
+        aborted: controller.signal.aborted,
+        createsRetainedConversation: !hostConversationId,
+        copy: workshopSynthesisCompletionCopy(personaLabel, toolLabel),
+        discardConversation: (id) => this.assistantToolService.discardConversation(id),
+        log: (line) => this.outputChannel.appendLine(`[RunWorkshopToolSidePass] ${line}`),
+        events: {
+          streamCompleted: events.streamCompleted,
+          turnCompleted: events.turnCompleted,
+          status: events.status,
+          error: events.error
+        }
+      });
+      if (synthesisTurn && pendingHandoff) {
+        this.session.commitHostHandoff(pendingHandoff.deliveredTurnIds);
       }
       events.sessionChanged();
     } catch (error) {
@@ -204,61 +226,6 @@ export class RunWorkshopToolSidePass {
       events.sessionChanged();
       events.settled(currentRequestId);
     }
-  }
-
-  private completeSynthesis(
-    synthesis: AnalysisResult,
-    requestId: string,
-    hostConversationId: string | undefined,
-    toolLabel: string,
-    personaLabel: string,
-    controller: AbortController,
-    events: WorkshopToolSidePassEvents
-  ): boolean {
-    const truncated = synthesis.finishReason === 'length';
-    if (controller.signal.aborted) {
-      this.session.abandonRun(requestId);
-      if (!hostConversationId && synthesis.conversationId) {
-        this.assistantToolService.discardConversation(synthesis.conversationId);
-      }
-      events.streamCompleted(requestId, '', true);
-      events.status(`${personaLabel} synthesis cancelled; ${toolLabel}'s report remains available.`);
-      return false;
-    }
-    if (isApiKeyNotConfiguredWarning(synthesis.content)) {
-      this.session.abandonRun(requestId);
-      events.streamCompleted(requestId, '', true);
-      events.error(
-        `${toolLabel} completed, but ${personaLabel} could not synthesize it because the OpenRouter API key is not configured.`,
-        synthesis.content
-      );
-      return false;
-    }
-    if (!hostConversationId && !synthesis.conversationId) {
-      this.session.abandonRun(requestId);
-      events.streamCompleted(requestId, '', true);
-      events.error(
-        `${toolLabel} completed, but ${personaLabel} synthesis could not be retained.`,
-        'The host response did not return a retained conversation.'
-      );
-      return false;
-    }
-
-    events.streamCompleted(requestId, synthesis.content, false, synthesis.usage, truncated);
-    const synthesisTurn = this.session.completeRun(
-      requestId,
-      synthesis.content,
-      synthesis.usage,
-      truncated,
-      synthesis.conversationId
-    );
-    if (synthesisTurn) {
-      events.turnCompleted(synthesisTurn);
-      return true;
-    } else if (!hostConversationId && synthesis.conversationId) {
-      this.assistantToolService.discardConversation(synthesis.conversationId);
-    }
-    return false;
   }
 
   private invokeTool(

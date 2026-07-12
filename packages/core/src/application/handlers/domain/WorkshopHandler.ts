@@ -24,8 +24,13 @@ import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
 import { RunWorkshopToolSidePass } from '@/application/services/RunWorkshopToolSidePass';
 import {
+  buildWorkshopDirectHandoff,
   buildWorkshopHostMessage
 } from '@/application/services/WorkshopPromptBuilder';
+import {
+  completeWorkshopRun,
+  workshopMessageCompletionCopy
+} from '@/application/services/WorkshopRunCompletion';
 import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
 import { isWorkshopPersonaId, workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopQuickActionPrompt } from '@shared/constants/workshopQuickActions';
@@ -55,8 +60,7 @@ import {
   WorkshopToolId,
   WorkshopChatTarget,
   WorkshopTurn,
-  WorkshopTurnMessage,
-  isApiKeyNotConfiguredWarning
+  WorkshopTurnMessage
 } from '@messages';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
@@ -330,7 +334,14 @@ export class WorkshopHandler {
     }
 
     this.preemptActiveRun();
-    const handoff = target.kind === 'host' ? this.session.prepareHostHandoff() : undefined;
+    const handoff = target.kind === 'host'
+      ? buildWorkshopDirectHandoff(this.session.collectUnseenDirectExchanges())
+      : undefined;
+    if (handoff) {
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Direct handoff prepared: ${handoff.unseenTurns} unseen → ${handoff.includedTurns} included, ${handoff.omittedTurns} omitted, ${handoff.truncatedCharacters} chars truncated`
+      );
+    }
     const modelMessage = target.kind === 'host'
       ? buildWorkshopHostMessage(text, handoff)
       : text;
@@ -371,48 +382,27 @@ export class WorkshopHandler {
             onToken: (token: string) => this.sendStreamChunk(requestId, token)
           });
 
-      const truncated = result.finishReason === 'length';
-      if (controller.signal.aborted) {
-        this.outputChannel.appendLine(
-          `[WorkshopHandler] Run cancelled: ${requestId} (${label}, ${result.content.length} chars discarded)`
-        );
-        this.session.abandonRun(requestId);
-        if (target.kind === 'host' && !hostConversationId && result.conversationId) {
-          this.assistantToolService.discardConversation(result.conversationId);
+      const assistantTurn = completeWorkshopRun({
+        session: this.session,
+        requestId,
+        label,
+        result,
+        aborted: controller.signal.aborted,
+        createsRetainedConversation: target.kind === 'host' && !hostConversationId,
+        copy: workshopMessageCompletionCopy(label),
+        discardConversation: (id) => this.assistantToolService.discardConversation(id),
+        log: (line) => this.outputChannel.appendLine(`[WorkshopHandler] ${line}`),
+        events: {
+          streamCompleted: (id, content, cancelled, usage, truncated) =>
+            this.sendStreamComplete(id, content, cancelled, usage, truncated),
+          turnCompleted: (turn) => this.postTurn(turn),
+          status: (status) => this.sendStatus(status),
+          error: (errorMessage, details) =>
+            this.sendError('workshop.send_message', errorMessage, details)
         }
-        this.sendStreamComplete(requestId, '', true);
-      } else if (isApiKeyNotConfiguredWarning(result.content)) {
-        this.session.abandonRun(requestId);
-        this.sendStreamComplete(requestId, '', true);
-        this.sendError('workshop.send_message', 'OpenRouter API key not configured.', result.content);
-      } else if (target.kind === 'host' && !hostConversationId && !result.conversationId) {
-        this.session.abandonRun(requestId);
-        this.sendStreamComplete(requestId, '', true);
-        this.sendError(
-          'workshop.send_message',
-          `Failed to retain ${label}'s conversation.`,
-          'The host response did not return a retained conversation.'
-        );
-      } else {
-        this.sendStreamComplete(requestId, result.content, false, result.usage, truncated);
-        const assistantTurn = this.session.completeRun(
-          requestId,
-          result.content,
-          result.usage,
-          truncated,
-          result.conversationId
-        );
-        if (assistantTurn) {
-          this.postTurn(assistantTurn);
-          if (target.kind === 'host' && handoff) {
-            this.session.commitHostHandoff(handoff);
-          }
-        } else if (result.conversationId) {
-          this.assistantToolService.discardConversation(result.conversationId);
-          this.outputChannel.appendLine(
-            `[WorkshopHandler] Discarded zombie completion: ${requestId} (${label}) — session was reset or the run preempted mid-stream`
-          );
-        }
+      });
+      if (assistantTurn && target.kind === 'host' && handoff) {
+        this.session.commitHostHandoff(handoff.deliveredTurnIds);
       }
       this.postSessionState();
     } catch (error) {

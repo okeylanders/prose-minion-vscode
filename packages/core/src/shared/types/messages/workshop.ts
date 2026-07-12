@@ -177,8 +177,6 @@ export interface WorkshopSessionSnapshot {
   activeToolId?: WorkshopToolId;
   /** Streaming requestId of the in-flight run, if any (stream reattach after reload). */
   activeRequestId?: string;
-  /** Durable phase label for honest reload/status rendering. */
-  activePhase?: 'tool_report' | 'persona_synthesis' | 'host_message' | 'direct_tool_message';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

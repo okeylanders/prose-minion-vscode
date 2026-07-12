@@ -3,7 +3,10 @@ const RESERVED_PERSONA_FRAME =
   /<\/?(?:pinned-excerpt|context-brief|writer-message|workshop-tool-evidence)(?=\s|>)[^>]*>/gi;
 
 export function neutralizeReservedPersonaPromptDelimiters(value: string): string {
+  // Global escape: the frame's [^>]* filler admits nested '<' characters, so
+  // one matched delimiter can carry a second reserved-tag fragment inside it
+  // (PR #72 review #4). Every '<'/'>' in the match must be encoded.
   return value.replace(RESERVED_PERSONA_FRAME, (delimiter) =>
-    delimiter.replace('<', '&lt;').replace('>', '&gt;')
+    delimiter.replace(/</g, '&lt;').replace(/>/g, '&gt;')
   );
 }

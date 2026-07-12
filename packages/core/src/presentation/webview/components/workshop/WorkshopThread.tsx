@@ -37,10 +37,11 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
         turn.reportTurnId &&
         sidecar.latestReportTurnId === turn.reportTurnId
       );
+      // Gate on the precise artifact, not the coarse participant: a
+      // direct_tool_response is also participant 'tool' but must never grow a
+      // report-only quick-action bar (PR #72 review #8).
       const quickActionToolId =
-        turn.role === 'assistant' && turn.participant === 'tool' && turn.toolId
-          ? turn.toolId
-          : null;
+        turn.artifact === 'tool_report' && turn.toolId ? turn.toolId : null;
 
       return (
         <WorkshopTurnBubble

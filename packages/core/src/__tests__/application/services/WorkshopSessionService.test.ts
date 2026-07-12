@@ -1,9 +1,11 @@
 import {
   WorkshopSessionService,
-  WORKSHOP_DIRECT_HANDOFF_MAX_CHARS,
-  WORKSHOP_DIRECT_HANDOFF_MAX_TURNS,
   WORKSHOP_SNAPSHOT_TURN_WINDOW
 } from '@/application/services/WorkshopSessionService';
+import {
+  buildWorkshopDirectHandoff,
+  WORKSHOP_DIRECT_HANDOFF_MAX_TURNS
+} from '@/application/services/WorkshopPromptBuilder';
 
 describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', () => {
   let clock: number;
@@ -144,26 +146,70 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(service.getSnapshot().participants.toolSidecars[0].activeTarget).toBe(true);
   });
 
-  it('prepares the bounded unseen delta and advances cursors only after commit', () => {
+  it('collects the unseen delta and advances cursors only for shipped turns after commit', () => {
     pin();
     adoptReport('prose');
     for (let index = 0; index < 6; index += 1) {
       directExchange('prose', index);
     }
 
-    const first = service.prepareHostHandoff()!;
-    expect(first.unseenTurns).toBe(12);
-    expect(first.includedTurns).toBe(WORKSHOP_DIRECT_HANDOFF_MAX_TURNS);
-    expect(first.omittedTurns).toBe(4);
-    expect(first.message.length).toBeLessThanOrEqual(WORKSHOP_DIRECT_HANDOFF_MAX_CHARS);
+    const handoff = buildWorkshopDirectHandoff(service.collectUnseenDirectExchanges())!;
+    expect(handoff.unseenTurns).toBe(12);
+    expect(handoff.includedTurns).toBe(WORKSHOP_DIRECT_HANDOFF_MAX_TURNS);
+    expect(handoff.omittedTurns).toBe(4);
 
     // A failed/cancelled host turn does not consume the delta.
-    expect(service.prepareHostHandoff()?.unseenTurns).toBe(12);
-    service.commitHostHandoff(first);
-    expect(service.prepareHostHandoff()).toBeUndefined();
+    expect(service.collectUnseenDirectExchanges()).toHaveLength(12);
+    service.commitHostHandoff(handoff.deliveredTurnIds);
+    expect(service.collectUnseenDirectExchanges()).toHaveLength(0);
 
     directExchange('prose', 7);
-    expect(service.prepareHostHandoff()?.unseenTurns).toBe(2);
+    expect(service.collectUnseenDirectExchanges()).toHaveLength(2);
+  });
+
+  it('does not advance a cursor for a tool whose exchanges the turn window dropped (PR #72 #1)', () => {
+    pin();
+    adoptReport('prose');
+    directExchange('prose', 1, 'the oldest unseen exchange');
+    adoptReport('continuity');
+    for (let index = 0; index < 4; index += 1) {
+      directExchange('continuity', index);
+    }
+
+    const unseen = service.collectUnseenDirectExchanges();
+    expect(unseen).toHaveLength(10);
+    const handoff = buildWorkshopDirectHandoff(unseen)!;
+    // The newest-8 window is filled entirely by continuity turns.
+    expect(handoff.includedTurns).toBe(WORKSHOP_DIRECT_HANDOFF_MAX_TURNS);
+    expect(handoff.omittedTurns).toBe(2);
+    expect(handoff.message).not.toContain('the oldest unseen exchange');
+
+    service.commitHostHandoff(handoff.deliveredTurnIds);
+
+    // Continuity is caught up; prose's undelivered pair survives for the next handoff.
+    const stillUnseen = service.collectUnseenDirectExchanges();
+    expect(stillUnseen.map((turn) => turn.toolId)).toEqual(['prose', 'prose']);
+    expect(stillUnseen[1].content).toBe('the oldest unseen exchange');
+  });
+
+  it('keeps undelivered direct exchanges claimable across a same-tool re-run (PR #72 #2)', () => {
+    pin();
+    adoptReport('prose', 'first-run', 'first-conv');
+    directExchange('prose', 1, 'undelivered insight');
+
+    // Side-pass order: the pending delta is snapshotted, then the replacement
+    // report is adopted — and its synthesis fails, so nothing commits.
+    expect(service.collectUnseenDirectExchanges()).toHaveLength(2);
+    adoptReport('prose', 'second-run', 'second-conv');
+
+    const survivors = service.collectUnseenDirectExchanges();
+    expect(survivors.map((turn) => turn.content)).toEqual(['writer 1', 'undelivered insight']);
+
+    // A later successful host turn ships and commits them exactly once.
+    const handoff = buildWorkshopDirectHandoff(survivors)!;
+    expect(handoff.message).toContain('undelivered insight');
+    service.commitHostHandoff(handoff.deliveredTurnIds);
+    expect(service.collectUnseenDirectExchanges()).toHaveLength(0);
   });
 
   it('does not hand a cancelled direct attempt to the host as a completed exchange', () => {
@@ -172,18 +218,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     service.beginDirectToolMessage('prose', 'cancelled-direct', 'Never delivered');
     service.abandonRun('cancelled-direct');
 
-    expect(service.prepareHostHandoff()).toBeUndefined();
-  });
-
-  it('records deterministic character truncation provenance for an oversized exchange', () => {
-    pin();
-    adoptReport('prose');
-    directExchange('prose', 1, 'x'.repeat(WORKSHOP_DIRECT_HANDOFF_MAX_CHARS + 2_000));
-
-    const handoff = service.prepareHostHandoff()!;
-    expect(handoff.message.length).toBeLessThanOrEqual(WORKSHOP_DIRECT_HANDOFF_MAX_CHARS);
-    expect(handoff.truncatedCharacters).toBeGreaterThan(0);
-    expect(handoff.message).toContain('Direct exchange truncated');
+    expect(service.collectUnseenDirectExchanges()).toHaveLength(0);
   });
 
   it('reset disposes all participants and returns to Jill while preserving the excerpt', () => {

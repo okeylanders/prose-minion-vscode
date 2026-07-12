@@ -299,14 +299,14 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       MessageType.WORKSHOP_SEND_MESSAGE,
       { text: 'First host attempt.' }
     ) as any);
-    expect(session.prepareHostHandoff()?.unseenTurns).toBe(2);
+    expect(session.collectUnseenDirectExchanges()).toHaveLength(2);
 
     await handler.handleSendMessage(message(
       MessageType.WORKSHOP_SEND_MESSAGE,
       { text: 'Retry host.' }
     ) as any);
     expect(service.continueConversation.mock.calls.at(-1)![1]).toContain('Direct evidence.');
-    expect(session.prepareHostHandoff()).toBeUndefined();
+    expect(session.collectUnseenDirectExchanges()).toHaveLength(0);
   });
 
   it('includes pending direct exchanges when a new tool run is the next host turn', async () => {
@@ -332,7 +332,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       expect.stringContaining('Carry this direct exchange forward.'),
       expect.anything()
     );
-    expect(session.prepareHostHandoff()).toBeUndefined();
+    expect(session.collectUnseenDirectExchanges()).toHaveLength(0);
   });
 
   it('cancels a direct-tool continuation without losing its usable sidecar', async () => {
@@ -366,7 +366,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(session.getSnapshot().turns.some(
       (turn) => turn.content === 'partial direct response'
     )).toBe(false);
-    expect(session.prepareHostHandoff()).toBeUndefined();
+    expect(session.collectUnseenDirectExchanges()).toHaveLength(0);
   });
 
   it('uses a narrow active-persona greeting as an optional return shortcut', async () => {
@@ -402,7 +402,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     );
 
     const run = runProse();
-    for (let index = 0; index < 5 && session.getSnapshot().activePhase !== 'persona_synthesis'; index += 1) {
+    for (let index = 0; index < 5 && !session.getSnapshot().activeRequestId?.includes('synthesis'); index += 1) {
       await Promise.resolve();
     }
     const requestId = session.getSnapshot().activeRequestId!;
@@ -452,7 +452,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     );
 
     const toolRun = runProse();
-    for (let index = 0; index < 5 && session.getSnapshot().activePhase !== 'persona_synthesis'; index += 1) {
+    for (let index = 0; index < 5 && !session.getSnapshot().activeRequestId?.includes('synthesis'); index += 1) {
       await Promise.resolve();
     }
     await handler.handleSendMessage(message(
@@ -466,6 +466,15 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(session.getSnapshot().turns.some((turn) => turn.content === 'zombie synthesis')).toBe(false);
     expect(service.discardConversation).toHaveBeenCalledWith('zombie-host-conv');
     expect(session.getHostConversationId()).toBe('host-conv');
+    // PR #72 review #5: dropping the preempted synthesis leaves a log trail
+    // and never streams its content to the webview as a landed turn.
+    expect(log.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('Run cancelled')
+    );
+    expect(posted(MessageType.STREAM_COMPLETE).at(-1).payload).toMatchObject({
+      cancelled: true,
+      content: ''
+    });
   });
 
   it('clears host, sidecars, and direct mode when a retained generation is lost', async () => {

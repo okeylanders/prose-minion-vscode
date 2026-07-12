@@ -31,8 +31,6 @@ export interface WorkshopExcerptInput {
 }
 
 export const WORKSHOP_SNAPSHOT_TURN_WINDOW = 100;
-export const WORKSHOP_DIRECT_HANDOFF_MAX_TURNS = 8;
-export const WORKSHOP_DIRECT_HANDOFF_MAX_CHARS = 20_000;
 
 interface WorkshopToolSidecar {
   conversationId: string;
@@ -50,7 +48,7 @@ interface WorkshopParticipants {
   directToolTarget?: WorkshopToolId;
 }
 
-type WorkshopActivePhase = NonNullable<WorkshopSessionSnapshot['activePhase']>;
+type WorkshopActivePhase = 'tool_report' | 'persona_synthesis' | 'host_message' | 'direct_tool_message';
 
 interface ActiveRun {
   requestId: string;
@@ -65,17 +63,6 @@ interface ActiveRun {
 export interface WorkshopToolReportCompletion {
   turn: WorkshopTurn;
   replacedConversationId?: string;
-}
-
-/** Prepared but not yet delivered direct-tool delta. */
-export interface WorkshopHostHandoff {
-  message: string;
-  unseenTurns: number;
-  includedTurns: number;
-  omittedTurns: number;
-  truncatedCharacters: number;
-  /** Private commit markers. Never serialize this application-layer object. */
-  cursorUpdates: Partial<Record<WorkshopToolId, string>>;
 }
 
 /** A pure aggregate: no I/O, no vscode, and only an injectable clock. */
@@ -235,21 +222,24 @@ export class WorkshopSessionService {
       truncated: truncated || undefined
     };
 
-    const replacedConversationId = this.participants.toolSidecars[active.toolId]?.conversationId;
+    const replaced = this.participants.toolSidecars[active.toolId];
     this.participants.toolSidecars[active.toolId] = {
       conversationId,
       latestReportTurnId: turnId,
       // The report itself goes to the host through the dedicated synthesis
-      // evidence path; this cursor tracks only later direct exchanges.
-      deliveredToHostThroughTurnId: turnId
+      // evidence path; this cursor tracks only direct exchanges. A replacement
+      // report INHERITS the prior cursor (PR #72 review #2): undelivered
+      // exchanges under the old report stay claimable until a successful host
+      // turn actually ships them — adoption is not delivery.
+      deliveredToHostThroughTurnId: replaced?.deliveredToHostThroughTurnId ?? turnId
     };
     this.turns.push(turn);
 
     return {
       turn: cloneTurn(turn),
       replacedConversationId:
-        replacedConversationId && replacedConversationId !== conversationId
-          ? replacedConversationId
+        replaced?.conversationId && replaced.conversationId !== conversationId
+          ? replaced.conversationId
           : undefined
     };
   }
@@ -334,13 +324,16 @@ export class WorkshopSessionService {
   }
 
   /**
-   * Prepare the unseen direct-tool delta without advancing any cursor. The
-   * caller must commit the returned markers only after a successful host turn.
+   * Collect the unseen direct-tool exchanges (writer message + tool response
+   * pairs) past every sidecar's delivery cursor, in thread order. A pure
+   * state query with no cursor movement: the bounded prompt envelope is
+   * WorkshopPromptBuilder's job, and cursors advance only through
+   * commitHostHandoff with the turn ids that actually shipped (PR #72
+   * reviews #1/#6).
    */
-  prepareHostHandoff(): WorkshopHostHandoff | undefined {
+  collectUnseenDirectExchanges(): WorkshopTurn[] {
     const turnIndexes = new Map(this.turns.map((turn, index) => [turn.id, index]));
     const unseen: WorkshopTurn[] = [];
-    const cursorUpdates: Partial<Record<WorkshopToolId, string>> = {};
 
     for (const [rawToolId, sidecar] of Object.entries(this.participants.toolSidecars)) {
       if (!sidecar) {
@@ -348,105 +341,55 @@ export class WorkshopSessionService {
       }
       const toolId = rawToolId as WorkshopToolId;
       const deliveredIndex = turnIndexes.get(sidecar.deliveredToHostThroughTurnId) ?? -1;
-      const toolTurns: WorkshopTurn[] = [];
       for (let index = deliveredIndex + 1; index < this.turns.length; index += 1) {
         const response = this.turns[index];
-        if (
-          response.toolId !== toolId ||
-          response.reportTurnId !== sidecar.latestReportTurnId ||
-          response.artifact !== 'direct_tool_response'
-        ) {
+        if (response.toolId !== toolId || response.artifact !== 'direct_tool_response') {
           continue;
         }
+        // Exchanges keep the reportTurnId of the report they followed; a
+        // replaced report does NOT orphan them — the cursor alone decides
+        // delivery (PR #72 review #2). The pair check only guards integrity.
         const writerTurn = this.turns[index - 1];
         if (
+          index - 1 > deliveredIndex &&
           writerTurn?.toolId === toolId &&
-          writerTurn.reportTurnId === sidecar.latestReportTurnId &&
-          writerTurn.artifact === 'direct_tool_message'
+          writerTurn.artifact === 'direct_tool_message' &&
+          writerTurn.reportTurnId === response.reportTurnId
         ) {
-          toolTurns.push(writerTurn);
+          unseen.push(writerTurn);
         }
-        toolTurns.push(response);
+        unseen.push(response);
       }
-      if (toolTurns.length > 0) {
-        unseen.push(...toolTurns);
-        cursorUpdates[toolId] = toolTurns[toolTurns.length - 1].id;
-      }
-    }
-
-    if (unseen.length === 0) {
-      return undefined;
     }
 
     unseen.sort((left, right) =>
       (turnIndexes.get(left.id) ?? 0) - (turnIndexes.get(right.id) ?? 0)
     );
-    const newest = unseen.slice(-WORKSHOP_DIRECT_HANDOFF_MAX_TURNS);
-    let omittedTurns = unseen.length - newest.length;
-    let truncatedCharacters = 0;
-    const bodyBudget = WORKSHOP_DIRECT_HANDOFF_MAX_CHARS - 800;
-    const selectedBlocks: string[] = [];
-    let remaining = bodyBudget;
-
-    for (let index = newest.length - 1; index >= 0; index -= 1) {
-      const turn = newest[index];
-      const speaker = turn.participant === 'writer' ? 'Writer' : workshopToolLabel(turn.toolId!);
-      const block = `[${workshopToolLabel(turn.toolId!)} — ${speaker}]\n${turn.content}`;
-      const separatorLength = selectedBlocks.length > 0 ? 2 : 0;
-      if (block.length + separatorLength <= remaining) {
-        selectedBlocks.unshift(block);
-        remaining -= block.length + separatorLength;
-        continue;
-      }
-
-      if (selectedBlocks.length === 0) {
-        const marker = '\n[Direct exchange truncated by the 20,000-character handoff limit.]';
-        const keptLength = Math.max(0, remaining - marker.length);
-        selectedBlocks.unshift(`${block.slice(0, keptLength)}${marker}`);
-        truncatedCharacters += Math.max(0, block.length - keptLength);
-      } else {
-        omittedTurns += 1;
-        truncatedCharacters += block.length;
-      }
-    }
-
-    const message = [
-      'DIRECT-TOOL HANDOFF (structured conversation evidence; do not impersonate the tool)',
-      `Unseen turns: ${unseen.length}`,
-      `Included turns: ${selectedBlocks.length}`,
-      `Omitted turns: ${omittedTurns}`,
-      `Characters omitted by bound: ${truncatedCharacters}`,
-      '',
-      ...selectedBlocks.flatMap((block, index) => index === 0 ? [block] : ['', block]),
-      '',
-      'Use this bounded delta as context for the writer\'s next message. Do not claim you witnessed exchanges omitted by the bounds.'
-    ].join('\n');
-
-    return {
-      message: message.slice(0, WORKSHOP_DIRECT_HANDOFF_MAX_CHARS),
-      unseenTurns: unseen.length,
-      includedTurns: selectedBlocks.length,
-      omittedTurns,
-      truncatedCharacters,
-      cursorUpdates
-    };
+    return unseen.map(cloneTurn);
   }
 
-  /** Commit a prepared handoff after the host response has been adopted. */
-  commitHostHandoff(handoff: WorkshopHostHandoff): void {
-    for (const [rawToolId, turnId] of Object.entries(handoff.cursorUpdates)) {
-      if (!turnId) {
+  /**
+   * Advance per-tool delivery cursors after a successful host turn, given the
+   * turn ids whose content actually shipped in the handoff envelope. Deriving
+   * the commit from the SHIPPED set — never from the unseen set — means
+   * windowing and character budgeting can only defer an exchange to the next
+   * handoff, not silently mark it delivered (PR #72 review #1). Cursors only
+   * move forward.
+   */
+  commitHostHandoff(deliveredTurnIds: readonly string[]): void {
+    const turnIndexes = new Map(this.turns.map((turn, index) => [turn.id, index]));
+    for (const [rawToolId, sidecar] of Object.entries(this.participants.toolSidecars)) {
+      if (!sidecar) {
         continue;
       }
       const toolId = rawToolId as WorkshopToolId;
-      const sidecar = this.participants.toolSidecars[toolId];
-      const turn = this.turns.find((candidate) => candidate.id === turnId);
-      if (
-        sidecar &&
-        turn?.toolId === toolId &&
-        turn.reportTurnId === sidecar.latestReportTurnId
-      ) {
-        sidecar.deliveredToHostThroughTurnId = turnId;
+      let cursorIndex = turnIndexes.get(sidecar.deliveredToHostThroughTurnId) ?? -1;
+      for (const turnId of deliveredTurnIds) {
+        const index = turnIndexes.get(turnId);
+        if (index !== undefined && index > cursorIndex && this.turns[index].toolId === toolId) {
+          cursorIndex = index;
+          sidecar.deliveredToHostThroughTurnId = turnId;
+        }
       }
     }
   }
@@ -490,8 +433,7 @@ export class WorkshopSessionService {
       participants: this.snapshotParticipants(),
       selectedToolId: this.selectedToolId,
       activeToolId: this.activeRun?.target === 'tool' ? this.activeRun.toolId : undefined,
-      activeRequestId: this.activeRun?.requestId,
-      activePhase: this.activeRun?.phase
+      activeRequestId: this.activeRun?.requestId
     };
   }
 

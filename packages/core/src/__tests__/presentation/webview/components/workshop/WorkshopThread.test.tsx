@@ -76,6 +76,43 @@ describe('WorkshopThread sidecar-owned affordances', () => {
     expect(screen.getAllByRole('button', { name: 'Talk directly to Prose' })).toHaveLength(1);
   });
 
+  it('never grows a quick-action bar on a direct-tool chat reply (PR #72 #8)', () => {
+    const directReply: WorkshopTurn = {
+      id: 'direct-reply',
+      role: 'assistant',
+      kind: 'message',
+      participant: 'tool',
+      artifact: 'direct_tool_response',
+      toolId: 'prose',
+      toolLabel: 'Prose',
+      reportTurnId: 'report-1',
+      content: 'Direct answer while talking to the tool.',
+      timestamp: 1
+    };
+
+    render(
+      <WorkshopThread
+        turns={[report('report-1', 'prose'), directReply]}
+        toolSidecars={[{
+          toolId: 'prose',
+          hasConversation: true,
+          latestReportTurnId: 'report-1',
+          availableForDirectFollowUp: true,
+          activeTarget: true
+        }]}
+        onQuickAction={noop}
+        onTalkDirectly={noop}
+        onCopy={noop}
+        onSave={noop}
+      />
+    );
+
+    // The reply owns the live sidecar (same reportTurnId), so only the
+    // artifact gate keeps report-only quick actions off it.
+    expect(screen.getAllByRole('button', { name: 'Rewrite for flow' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Talk directly to Prose' })).toHaveLength(1);
+  });
+
   it('gives persona synthesis copy/save provenance but never tool quick actions', () => {
     const personaTurn: WorkshopTurn = {
       id: 'persona-turn',
