@@ -576,6 +576,15 @@
   border-style: dashed;
   border-color: var(--pm-border-2);
 }
+/* Warm-up placeholder turn: the dashed live bubble holding the same pulsing
+   line as the gutter ticker (.pm-ws-ticker-live) while we wait for the first
+   token — compact, not the shared big loader. */
+[data-pm-surface="workshop"] .pm-ws-turn-waiting {
+  padding: 10px 14px;
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  color: var(--pm-muted);
+}
 [data-pm-surface="workshop"] .pm-ws-turn-actions {
   display: flex;
   flex-wrap: wrap;

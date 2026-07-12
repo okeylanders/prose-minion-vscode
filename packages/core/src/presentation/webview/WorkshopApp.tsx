@@ -550,18 +550,30 @@ export const WorkshopApp: React.FC = () => {
               />
 
               {showLiveTurn && (
-                <div className="pm-ws-turn pm-ws-turn-assistant pm-ws-turn-live">
-                  <StreamingContent
-                    content={workshop.streamingContent}
-                    isStreaming={workshop.isStreaming}
-                    isBuffering={workshop.isBuffering}
-                    chunkCount={workshop.streamingChunkCount}
-                    elapsedMs={workshop.streamingElapsedMs}
-                    initialLatencyMs={workshop.streamingInitialLatencyMs}
-                    chunksPerSecond={workshop.streamingChunksPerSecond}
-                    waitingMessage={workshop.statusMessage || 'Warming up the minion…'}
-                  />
-                </div>
+                workshop.streamingChunkCount === 0 ? (
+                  /* Warm-up placeholder: the SAME pulsing live line as the
+                     gutter ticker (pm-ws-ticker-live), parked where the turn
+                     will land — not the shared big loader. It disappears at
+                     the first token; the gutter ticker stays, as usual. */
+                  <div className="pm-ws-turn pm-ws-turn-assistant pm-ws-turn-live pm-ws-turn-waiting">
+                    <span className="pm-ws-ticker-live">
+                      <Icon name="bolt" size={12} />
+                      {workshop.statusMessage || 'Warming up the minion…'}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="pm-ws-turn pm-ws-turn-assistant pm-ws-turn-live">
+                    <StreamingContent
+                      content={workshop.streamingContent}
+                      isStreaming={workshop.isStreaming}
+                      isBuffering={workshop.isBuffering}
+                      chunkCount={workshop.streamingChunkCount}
+                      elapsedMs={workshop.streamingElapsedMs}
+                      initialLatencyMs={workshop.streamingInitialLatencyMs}
+                      chunksPerSecond={workshop.streamingChunksPerSecond}
+                    />
+                  </div>
+                )
               )}
             </div>
           </ErrorBoundary>
