@@ -44,6 +44,9 @@ contract is required** — this is presentation-only over existing state.
   the persona chip is the return-to-host affordance, never a persona browser
   trigger while a conversation exists. Do not let the rail drift toward the
   "agent graph management" anti-pattern the ADR explicitly rejects.
+  (Deliberate v2 amendment tracked separately:
+  [feature-workshop-persona-guest-sidecars](../feature-workshop-persona-guest-sidecars/README.md)
+  would add *guest* chips without ever changing the host.)
 - Chips render only *live* sidecars (`hasConversation`). Disposal (reset,
   excerpt replacement, superseded run) must remove the chip on the next
   snapshot — no dead chips that fail on click.
