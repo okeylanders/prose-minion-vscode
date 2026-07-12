@@ -31,6 +31,7 @@ import type { WorkshopExcerpt, WorkshopPersonaId } from '@messages';
 import { getWorkshopPersona } from '@shared/constants/workshopPersonas';
 import { trimToWordLimit } from '@/utils/textUtils';
 import { neutralizeReservedPersonaPromptDelimiters } from '@/utils/workshopPromptFrames';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 /**
  * Options for streaming analysis operations
@@ -58,9 +59,11 @@ export interface WorkshopPersonaConversationInput {
   contextBrief?: string;
 }
 
-/** Matches the file-pin limit; direct pins disclose any further head slice. */
-const WORKSHOP_PERSONA_EXCERPT_MAX_WORDS = 10_000;
-const WORKSHOP_PERSONA_CONTEXT_BRIEF_MAX_WORDS = 1_200;
+export interface WorkshopHostUpdateFrameInput {
+  revision?: WorkshopExcerpt;
+  /** Undefined means no brief update; null means the writer cleared it. */
+  contextBrief?: string | null;
+}
 
 /**
  * Service wrapper for AI-powered assistant analysis
@@ -485,6 +488,57 @@ export class AssistantToolService {
     );
   }
 
+  /** Build the trusted, bounded frame delivered before the next host turn. */
+  buildWorkshopHostUpdateFrame(input: WorkshopHostUpdateFrameInput): string | undefined {
+    const sections: string[] = [];
+    if (input.revision) {
+      const excerptTrim = trimToWordLimit(
+        input.revision.text,
+        PROMPT_BUDGETS.personaExcerpt.words
+      );
+      const provenance = [
+        input.revision.relativePath
+          ? `Source: ${neutralizeReservedPersonaPromptDelimiters(input.revision.relativePath)}`
+          : 'Source provenance was not provided.',
+        input.revision.truncation
+          ? `Pinned excerpt is a head slice: ${input.revision.truncation.pinnedWords} of ${input.revision.truncation.totalWords} words.`
+          : undefined,
+        excerptTrim.wasTrimmed
+          ? `Persona input is a head slice: ${excerptTrim.trimmedWords} of ${excerptTrim.originalWords} pinned words.`
+          : undefined
+      ].filter((line): line is string => line !== undefined);
+      sections.push(
+        'The writer has revised the pinned excerpt. Earlier versions in this conversation are superseded.',
+        ...provenance,
+        `<pinned-excerpt version="${input.revision.version}">`,
+        neutralizeReservedPersonaPromptDelimiters(excerptTrim.trimmed),
+        '</pinned-excerpt>'
+      );
+    }
+
+    if (input.contextBrief !== undefined) {
+      if (input.contextBrief === null) {
+        sections.push('The writer cleared the project context brief. Do not rely on the earlier brief.');
+      } else {
+        const briefTrim = trimToWordLimit(input.contextBrief, PROMPT_BUDGETS.contextBrief.words);
+        sections.push(
+          'The writer updated the project context brief. This supersedes the earlier brief.',
+          briefTrim.wasTrimmed
+            ? `Context brief is a head slice: ${briefTrim.trimmedWords} of ${briefTrim.originalWords} words.`
+            : '',
+          '<context-brief>',
+          neutralizeReservedPersonaPromptDelimiters(briefTrim.trimmed),
+          '</context-brief>'
+        );
+      }
+    }
+
+    if (sections.length === 0) {
+      return undefined;
+    }
+    return ['<workshop-host-update>', ...sections.filter(Boolean), '</workshop-host-update>'].join('\n');
+  }
+
   /**
    * Delete a retained conversation (workshop reset, or replacement by a new
    * tool run). Targets the CAPTURED orchestrator generation — the one whose
@@ -496,15 +550,17 @@ export class AssistantToolService {
   }
 
   private buildWorkshopPersonaUserMessage(input: WorkshopPersonaConversationInput): string {
-    const trimmedExcerpt = trimToWordLimit(input.excerpt.text, WORKSHOP_PERSONA_EXCERPT_MAX_WORDS);
+    const trimmedExcerpt = trimToWordLimit(input.excerpt.text, PROMPT_BUDGETS.personaExcerpt.words);
     const excerpt = neutralizeReservedPersonaPromptDelimiters(trimmedExcerpt.trimmed);
     const contextBrief = input.contextBrief?.trim()
       ? neutralizeReservedPersonaPromptDelimiters(
-          trimToWordLimit(input.contextBrief, WORKSHOP_PERSONA_CONTEXT_BRIEF_MAX_WORDS).trimmed
+          trimToWordLimit(input.contextBrief, PROMPT_BUDGETS.contextBrief.words).trimmed
         )
       : undefined;
     const provenance = [
-      input.excerpt.relativePath ? `Source: ${input.excerpt.relativePath}` : undefined,
+      input.excerpt.relativePath
+        ? `Source: ${neutralizeReservedPersonaPromptDelimiters(input.excerpt.relativePath)}`
+        : undefined,
       input.excerpt.truncation
         ? `Pinned excerpt is a head slice: ${input.excerpt.truncation.pinnedWords} of ${input.excerpt.truncation.totalWords} words.`
         : undefined,

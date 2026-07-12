@@ -364,6 +364,30 @@
   color: var(--pm-dim);
   margin: 9px 0 0;
 }
+[data-pm-surface="workshop"] .pm-ws-brief-input {
+  margin-top: 9px;
+  min-height: 92px;
+  resize: vertical;
+  border: 1px solid var(--pm-border);
+  border-radius: 9px;
+  background: var(--pm-inset);
+  color: var(--pm-text-2);
+  padding: 10px 11px;
+  font: 12px/1.5 var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-brief-count {
+  color: var(--pm-dim);
+  font: 10px var(--pm-mono);
+}
+[data-pm-surface="workshop"] .pm-ws-brief-count-warn,
+[data-pm-surface="workshop"] .pm-ws-brief-note-warn {
+  color: var(--pm-warning, #d7a84a);
+}
+[data-pm-surface="workshop"] .pm-ws-brief-note {
+  margin: 6px 0 0;
+  color: var(--pm-dim);
+  font-size: 11px;
+}
 
 /* Tool palette */
 [data-pm-surface="workshop"] .pm-ws-tools {
@@ -422,6 +446,22 @@
   max-width: 420px;
   text-align: center;
   color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-revision-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--pm-dim);
+  font: 10px var(--pm-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+[data-pm-surface="workshop"] .pm-ws-revision-divider::before,
+[data-pm-surface="workshop"] .pm-ws-revision-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--pm-border-soft);
 }
 [data-pm-surface="workshop"] .pm-ws-thread-empty svg {
   color: var(--pm-accent-hi);
@@ -703,7 +743,7 @@
   border-color: var(--pm-border-2);
 }
 
-/* Error banner (dismissible, role=alert) */
+/* Thread-tail error message (dismissible, role=alert) */
 [data-pm-surface="workshop"] .pm-ws-error {
   display: flex;
   align-items: flex-start;

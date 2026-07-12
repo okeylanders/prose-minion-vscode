@@ -8,13 +8,11 @@
 
 import { TokenUsage, WorkshopToolId, WorkshopTurn } from '@messages';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { neutralizeReservedPersonaPromptDelimiters } from '@/utils/workshopPromptFrames';
+import { trimToCharacterLimit } from '@/utils/textUtils';
 
 export { neutralizeReservedPersonaPromptDelimiters } from '@/utils/workshopPromptFrames';
-
-export const WORKSHOP_TOOL_EVIDENCE_MAX_CHARS = 50_000;
-export const WORKSHOP_DIRECT_HANDOFF_MAX_TURNS = 8;
-export const WORKSHOP_DIRECT_HANDOFF_MAX_CHARS = 20_000;
 
 /**
  * Character budget reserved for the envelope's safety frame — the header
@@ -22,7 +20,6 @@ export const WORKSHOP_DIRECT_HANDOFF_MAX_CHARS = 20_000;
  * Reserved OFF THE TOP so content can never crowd out the frame that tells
  * the persona how to read it (PR #72 review #3).
  */
-const HANDOFF_FRAME_RESERVE = 800;
 const HANDOFF_TRUNCATION_MARKER =
   '\n[Direct exchange truncated by the 20,000-character handoff limit.]';
 
@@ -52,8 +49,9 @@ export interface WorkshopToolEvidenceInput {
 /** Build bounded, attributed evidence for the host synthesis turn. */
 export function buildWorkshopToolEvidence(input: WorkshopToolEvidenceInput): string {
   const safeReport = neutralizeReservedPersonaPromptDelimiters(input.report);
-  const boundedReport = safeReport.slice(0, WORKSHOP_TOOL_EVIDENCE_MAX_CHARS);
-  const omittedCharacters = safeReport.length - boundedReport.length;
+  const reportTrim = trimToCharacterLimit(safeReport, PROMPT_BUDGETS.toolEvidence.characters);
+  const boundedReport = reportTrim.trimmed;
+  const omittedCharacters = reportTrim.originalCharacters - reportTrim.trimmedCharacters;
   const usage = input.usage
     ? `${input.usage.promptTokens} prompt / ${input.usage.completionTokens} completion / ${input.usage.totalTokens} total tokens`
     : 'Provider usage unavailable';
@@ -100,7 +98,8 @@ function boundByCharacterBudget(newest: readonly WorkshopTurn[]): BoundedHandoff
   const deliveredTurnIds: string[] = [];
   let omittedTurns = 0;
   let truncatedCharacters = 0;
-  let remaining = WORKSHOP_DIRECT_HANDOFF_MAX_CHARS - HANDOFF_FRAME_RESERVE;
+  let remaining = PROMPT_BUDGETS.directHandoff.characters
+    - PROMPT_BUDGETS.directHandoff.headerAllowanceCharacters;
 
   for (let index = newest.length - 1; index >= 0; index -= 1) {
     const turn = newest[index];
@@ -118,7 +117,7 @@ function boundByCharacterBudget(newest: readonly WorkshopTurn[]): BoundedHandoff
       // explicit marker and SPEND THE BUDGET so no older block piggybacks
       // past the cap (PR #72 review #3).
       const keptLength = Math.max(0, remaining - HANDOFF_TRUNCATION_MARKER.length);
-      blocks.unshift(`${block.slice(0, keptLength)}${HANDOFF_TRUNCATION_MARKER}`);
+      blocks.unshift(`${trimToCharacterLimit(block, keptLength).trimmed}${HANDOFF_TRUNCATION_MARKER}`);
       deliveredTurnIds.push(turn.id);
       truncatedCharacters += Math.max(0, block.length - keptLength);
       remaining = 0;
@@ -162,7 +161,7 @@ export function buildWorkshopDirectHandoff(
     return undefined;
   }
 
-  const newest = unseen.slice(-WORKSHOP_DIRECT_HANDOFF_MAX_TURNS);
+  const newest = unseen.slice(-PROMPT_BUDGETS.directHandoff.turns);
   const windowOmittedTurns = unseen.length - newest.length;
   const body = boundByCharacterBudget(newest);
   const omittedTurns = windowOmittedTurns + body.omittedTurns;
@@ -181,18 +180,21 @@ export function buildWorkshopDirectHandoff(
 export function buildWorkshopHostMessage(
   writerMessage: string,
   handoff?: WorkshopDirectHandoff,
-  writerMessageIsTrustedEnvelope = false
+  writerMessageIsTrustedEnvelope = false,
+  hostUpdate?: string
 ): string {
   const safeWriterMessage = writerMessageIsTrustedEnvelope
     ? writerMessage
     : neutralizeReservedPersonaPromptDelimiters(writerMessage);
-  if (!handoff) {
+  if (!handoff && !hostUpdate) {
     return safeWriterMessage;
   }
   return [
-    neutralizeReservedPersonaPromptDelimiters(handoff.message),
-    '',
+    hostUpdate,
+    hostUpdate ? '' : undefined,
+    handoff ? neutralizeReservedPersonaPromptDelimiters(handoff.message) : undefined,
+    handoff ? '' : undefined,
     'WRITER MESSAGE:',
     safeWriterMessage
-  ].join('\n');
+  ].filter((line): line is string => line !== undefined).join('\n');
 }

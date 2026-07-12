@@ -1,6 +1,6 @@
 # Prompt Truncation Budgets Are Scattered (Centralize the Table, Not a Manager)
 
-**Status**: Scheduled — absorbed as Task 0 of [Sprint 06C](../epics/epic-workshop-editor-tab-2026-07-03/sprints/06c-excerpt-revision-loop.md) (2026-07-12); archive when 06C completes
+**Status**: Completed — absorbed and delivered as Task 0 of [Sprint 06C](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/06c-excerpt-revision-loop.md) (2026-07-12)
 **Priority**: Medium (rises to High before Sprint 09 lands — see multipliers)
 **Date**: 2026-07-11
 
@@ -75,11 +75,11 @@ anyway.)
 
 ## Completion Criteria
 
-- [ ] Every prompt-side truncation limit is imported from the single budget
+- [x] Every prompt-side truncation limit is imported from the single budget
       module; grep for `MAX_WORDS|MAX_CHARS|MAX_BYTES` outside it returns
       only the budget module and tests.
-- [ ] Char-trim helper with provenance replaces raw `.slice()` bounds at
+- [x] Char-trim helper with provenance replaces raw `.slice()` bounds at
       the evidence/handoff sites; the `- 800` allowance is a named budget
       field.
-- [ ] Architecture guard test enforces the invariant.
-- [ ] Sprint 07/09 docs reference the budget module for their new ceilings.
+- [x] Architecture guard test enforces the invariant.
+- [x] Sprint 07/09 docs reference the budget module for their new ceilings.

@@ -192,10 +192,32 @@ relay call. Returning to the host prepares at most the newest 8 unseen turns
 and 20,000 characters; omission/truncation provenance is explicit, and the
 per-sidecar delivery cursors advance only after the host turn is successfully
 adopted. Quick actions carry the report turn id and are rejected once a newer
-run replaces that sidecar. Reset and excerpt replacement dispose every
-retained participant; reset also restores Jill while preserving the excerpt.
+run replaces that sidecar.
 
-**Reference**: [Workshop Persona Host, Tool Sidecars, and Capabilities (2026-07-09)](adr/2026-07-09-workshop-persona-hosted-conversations.md)
+Excerpt replacement is a versioned host-memory transition. It preserves the
+retained persona conversation, retires only stale tool sidecars/direct mode,
+and records a participant-neutral divider. The newest replacement is queued as
+a bounded `<pinned-excerpt version="N">` update ahead of the next host turn;
+failure or cancellation leaves it pending, while successful adoption clears
+it. Multiple pre-delivery replacements collapse to the newest version. The
+editable project context brief uses the same pending-update transaction when
+changed after host start, survives excerpt replacement, and is read fresh by
+every tool run. Reset clears the thread, participants, brief, and pending
+updates while preserving the current excerpt.
+
+All static prompt-side input ceilings live in
+`packages/core/src/shared/constants/promptBudgets.ts`; word- and
+character-based trim helpers report provenance rather than hiding slices.
+
+Model selection is transport state, not conversation identity. A model-setting
+change hot-swaps the corresponding `OpenRouterClient` through the existing
+`AgentRunEngine`; engines, conversation managers, provider-independent message
+history, and Workshop participant ids remain intact. Full resource rebuilds
+are reserved for credential/lifecycle changes. An in-flight request uses the
+model captured when its HTTP request was dispatched; the next request uses the
+new selection.
+
+**References**: [Workshop Persona Host, Tool Sidecars, and Capabilities (2026-07-09)](adr/2026-07-09-workshop-persona-hosted-conversations.md), [Workshop Excerpt Revision and Room Memory (2026-07-11)](adr/2026-07-11-workshop-excerpt-revision-and-room-memory.md)
 
 ---
 

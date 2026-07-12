@@ -2,10 +2,8 @@ import {
   WorkshopSessionService,
   WORKSHOP_SNAPSHOT_TURN_WINDOW
 } from '@/application/services/WorkshopSessionService';
-import {
-  buildWorkshopDirectHandoff,
-  WORKSHOP_DIRECT_HANDOFF_MAX_TURNS
-} from '@/application/services/WorkshopPromptBuilder';
+import { buildWorkshopDirectHandoff } from '@/application/services/WorkshopPromptBuilder';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', () => {
   let clock: number;
@@ -155,7 +153,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
 
     const handoff = buildWorkshopDirectHandoff(service.collectUnseenDirectExchanges())!;
     expect(handoff.unseenTurns).toBe(12);
-    expect(handoff.includedTurns).toBe(WORKSHOP_DIRECT_HANDOFF_MAX_TURNS);
+    expect(handoff.includedTurns).toBe(PROMPT_BUDGETS.directHandoff.turns);
     expect(handoff.omittedTurns).toBe(4);
 
     // A failed/cancelled host turn does not consume the delta.
@@ -180,7 +178,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(unseen).toHaveLength(10);
     const handoff = buildWorkshopDirectHandoff(unseen)!;
     // The newest-8 window is filled entirely by continuity turns.
-    expect(handoff.includedTurns).toBe(WORKSHOP_DIRECT_HANDOFF_MAX_TURNS);
+    expect(handoff.includedTurns).toBe(PROMPT_BUDGETS.directHandoff.turns);
     expect(handoff.omittedTurns).toBe(2);
     expect(handoff.message).not.toContain('the oldest unseen exchange');
 
@@ -221,17 +219,87 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(service.collectUnseenDirectExchanges()).toHaveLength(0);
   });
 
+  it('preserves the host, retires sidecars, versions turns, and collapses replacement notices', () => {
+    pin();
+    service.beginPersonaMessage('host-1', 'Read this version.');
+    service.completeRun('host-1', 'I have it.', undefined, false, 'host-conv');
+    const proseReport = adoptReport('prose', 'prose-1', 'prose-conv');
+    adoptReport('continuity', 'continuity-1', 'continuity-conv');
+    service.setChatTarget({ kind: 'tool', toolId: 'prose' });
+
+    const first = service.replaceExcerpt({
+      text: 'The revised letter waits on the table.',
+      relativePath: 'chapters/two.md'
+    });
+
+    expect(first.disposedConversationIds.sort()).toEqual(['continuity-conv', 'prose-conv']);
+    expect(first.retiredSidecarCount).toBe(2);
+    expect(first.dividerTurn).toMatchObject({
+      role: 'system',
+      participant: 'session',
+      artifact: 'excerpt_revision',
+      excerptVersion: 2,
+      content: 'Excerpt v2 pinned · chapters/two.md · retired: Continuity, Prose'
+    });
+    expect(service.getHostConversationId()).toBe('host-conv');
+    expect(service.getChatTarget()).toEqual({ kind: 'host' });
+    expect(service.getSnapshot().participants.toolSidecars).toEqual([]);
+    expect(proseReport.excerptVersion).toBe(1);
+    expect(service.collectPendingHostUpdates()?.revision?.version).toBe(2);
+
+    service.replaceExcerpt({ text: 'Only the newest draft should ship.' });
+    expect(service.collectPendingHostUpdates()?.revision).toMatchObject({
+      version: 3,
+      text: 'Only the newest draft should ship.'
+    });
+    expect(service.getSnapshot()).toMatchObject({
+      excerptVersion: 3,
+      replacementCount: 2,
+      pendingHostUpdate: { excerptVersion: 3, contextBrief: false }
+    });
+  });
+
+  it('keeps project context across excerpt revisions and commits only the delivered generation', () => {
+    pin();
+    service.setContextBrief('A pre-conversation story brief.');
+    expect(service.collectPendingHostUpdates()).toBeUndefined();
+    service.beginPersonaMessage('host-1', 'Begin.');
+    service.completeRun('host-1', 'Ready.', undefined, false, 'host-conv');
+
+    service.setContextBrief('First changed brief.');
+    const firstDelivery = service.collectPendingHostUpdates()!;
+    service.setContextBrief('Newest changed brief.');
+    service.commitPendingHostUpdates(firstDelivery);
+    expect(service.collectPendingHostUpdates()?.contextBrief?.text).toBe('Newest changed brief.');
+
+    service.replaceExcerpt({ text: 'Revised text.' });
+    expect(service.getContextBrief()).toBe('Newest changed brief.');
+    const combinedDelivery = service.collectPendingHostUpdates()!;
+    expect(combinedDelivery.revision?.version).toBe(2);
+    expect(combinedDelivery.contextBrief?.text).toBe('Newest changed brief.');
+    service.commitPendingHostUpdates(combinedDelivery);
+    expect(service.collectPendingHostUpdates()).toBeUndefined();
+
+    service.setContextBrief('   ');
+    expect(service.getContextBrief()).toBeUndefined();
+    expect(service.collectPendingHostUpdates()?.contextBrief).toMatchObject({ text: undefined });
+  });
+
   it('reset disposes all participants and returns to Jill while preserving the excerpt', () => {
     const excerpt = pin();
     service.selectPersona('theo');
     adoptReport('prose', 'tool-1', 'tool-conv');
     service.beginPersonaSynthesis('host-1', service.getSnapshot().turns.at(-1)!.id);
     service.completeRun('host-1', 'It needs a turn.', undefined, false, 'host-conv');
+    service.setContextBrief('Temporary brief.');
 
     expect(service.reset().sort()).toEqual(['host-conv', 'tool-conv']);
     expect(service.getSnapshot()).toMatchObject({
       excerpt,
       turns: [],
+      contextBrief: undefined,
+      pendingHostUpdate: undefined,
+      replacementCount: 0,
       participants: {
         host: { personaId: 'jill', hasConversation: false },
         toolSidecars: [],

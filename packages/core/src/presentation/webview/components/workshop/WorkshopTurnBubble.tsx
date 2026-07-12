@@ -78,6 +78,14 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   onCopy,
   onSave
 }) => {
+  if (turn.artifact === 'excerpt_revision') {
+    return (
+      <div className="pm-ws-revision-divider" role="separator">
+        <span>{turn.content}</span>
+      </div>
+    );
+  }
+
   // Persona replies are editorial conversation, not a tool artifact. Never
   // reinterpret their headings as tool variations with copy/save provenance.
   const parsedVariations = React.useMemo(

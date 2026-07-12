@@ -44,6 +44,8 @@ const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessio
     source: 'extension.workshop',
     payload: {
       session: {
+        excerptVersion: 0,
+        replacementCount: 0,
         turns,
         totalTurns: turns.length,
         truncatedTurns: 0,
@@ -70,6 +72,7 @@ const makeTurn = (overrides: Partial<WorkshopTurn>): WorkshopTurn => ({
   toolLabel: 'Prose',
   content: 'Run **Prose** on the pinned excerpt.',
   timestamp: 1000,
+  excerptVersion: 1,
   ...overrides
 });
 
@@ -140,7 +143,9 @@ describe('useWorkshop', () => {
     act(() => {
       result.current.handleSessionState(
         sessionState({
-          excerpt: { text: 'Pinned prose.', relativePath: 'ch1.md', pinnedAt: 1 },
+          excerpt: { text: 'Pinned prose.', version: 1, relativePath: 'ch1.md', pinnedAt: 1 },
+          contextBrief: 'Mara is hiding her identity.',
+          pendingHostUpdate: { contextBrief: true },
           turns
         })
       );
@@ -148,6 +153,8 @@ describe('useWorkshop', () => {
 
     expect(result.current.sessionReady).toBe(true);
     expect(result.current.excerpt?.relativePath).toBe('ch1.md');
+    expect(result.current.contextBrief).toBe('Mara is hiding her identity.');
+    expect(result.current.contextBriefPending).toBe(true);
     expect(result.current.turns.map((t) => t.id)).toEqual(['t1', 't2']);
     expect(result.current.isRunning).toBe(false);
   });
@@ -158,7 +165,7 @@ describe('useWorkshop', () => {
     act(() => {
       result.current.handleSessionState(
         sessionState({
-          excerpt: { text: 'Pinned prose.', pinnedAt: 1 },
+          excerpt: { text: 'Pinned prose.', version: 1, pinnedAt: 1 },
           turns: [makeTurn({ id: 't1', toolId: 'gestures', toolLabel: 'Gestures' })],
           selectedToolId: 'gestures',
           hasConversation: true
@@ -178,7 +185,7 @@ describe('useWorkshop', () => {
     act(() => {
       result.current.handleSessionState(
         sessionState({
-          excerpt: { text: 'Pinned prose.', pinnedAt: 1 },
+          excerpt: { text: 'Pinned prose.', version: 1, pinnedAt: 1 },
           turns: [makeTurn({ id: 't1', toolId: 'cliche', toolLabel: 'Cliché' })],
           activeToolId: 'cliche',
           activeRequestId: 'req-live'
@@ -364,6 +371,7 @@ describe('useWorkshop', () => {
       result.current.resetSession();
       result.current.sendMessage('Now tighten variation two.');
       result.current.pinFromFile();
+      result.current.setContextBrief('Project context.');
     });
 
     const pin = posted(MessageType.WORKSHOP_SET_EXCERPT)[0];
@@ -379,6 +387,9 @@ describe('useWorkshop', () => {
       text: 'Now tighten variation two.'
     });
     expect(posted(MessageType.WORKSHOP_PICK_EXCERPT_FILE)).toHaveLength(1);
+    expect(posted(MessageType.WORKSHOP_SET_CONTEXT_BRIEF)[0].payload).toEqual({
+      text: 'Project context.'
+    });
   });
 
   it('posts persona selection and direct-target changes, then restores both from a host snapshot', () => {
@@ -388,7 +399,7 @@ describe('useWorkshop', () => {
       result.current.selectPersona('quinn');
       result.current.setChatTarget({ kind: 'tool', toolId: 'continuity' });
       result.current.handleSessionState(sessionState({
-        excerpt: { text: 'A pinned excerpt.', pinnedAt: 1 },
+        excerpt: { text: 'A pinned excerpt.', version: 1, pinnedAt: 1 },
         participants: {
           host: { personaId: 'quinn', hasConversation: true },
           toolSidecars: [{
@@ -420,7 +431,7 @@ describe('useWorkshop', () => {
 
     act(() => {
       result.current.handleSessionState(sessionState({
-        excerpt: { text: 'A pinned excerpt.', pinnedAt: 1 },
+        excerpt: { text: 'A pinned excerpt.', version: 1, pinnedAt: 1 },
         participants: {
           host: { personaId: 'jill', hasConversation: false },
           toolSidecars: [],

@@ -1,5 +1,9 @@
 # Sprint 09: Guest Persona Sidecars
 
+> **Budget invariant (Sprint 06C):** add join-snapshot and catch-up ceilings to
+> `packages/core/src/shared/constants/promptBudgets.ts`; do not introduce
+> module-local prompt limit constants.
+
 **Status**: Planned
 **Priority**: Medium
 **Branch**: `sprint/workshop-editor-tab-09-persona-guest-sidecars` -> PR into `epic/workshop-editor-tab`

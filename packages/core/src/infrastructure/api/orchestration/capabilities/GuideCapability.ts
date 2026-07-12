@@ -5,8 +5,7 @@ import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import { AgentCapability, CapabilityFulfillment } from '../AgentRunContracts';
 import { createResourceReadXmlInstruction, ResourceReadInspection } from '../ResourceReadXmlCodec';
 import { ResourceRequestGate } from './ResourceRequestGate';
-
-const MAX_GUIDE_WORDS = 50_000;
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 export class GuideCapability implements AgentCapability {
   readonly catalog = 'guides' as const;
@@ -117,8 +116,8 @@ export class GuideCapability implements AgentCapability {
 
     const combined = loaded.map(item => item.content).join('\n\n');
     const applyTrimming = this.settings.get<boolean>('proseMinion', 'applyContextWindowTrimming', true);
-    const trimmed = applyTrimming && countWords(combined) > MAX_GUIDE_WORDS
-      ? trimToWordLimit(combined, MAX_GUIDE_WORDS).trimmed
+    const trimmed = applyTrimming && countWords(combined) > PROMPT_BUDGETS.guides.words
+      ? trimToWordLimit(combined, PROMPT_BUDGETS.guides.words).trimmed
       : undefined;
     if (trimmed) {
       return ['Here are the requested craft guides (combined evidence was trimmed to fit the context window):', '', trimmed].join('\n');

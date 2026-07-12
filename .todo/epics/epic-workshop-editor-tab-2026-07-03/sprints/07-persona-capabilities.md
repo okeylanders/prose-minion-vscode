@@ -1,5 +1,9 @@
 # Sprint 07: Persona-Callable Capabilities
 
+> **Budget invariant (Sprint 06C):** add capability input ceilings to
+> `packages/core/src/shared/constants/promptBudgets.ts`; do not introduce
+> module-local prompt limit constants.
+
 **Status**: Planned
 **Priority**: High
 **Branch**: `sprint/workshop-editor-tab-07-persona-capabilities` -> PR into `epic/workshop-editor-tab`

@@ -53,6 +53,8 @@ export interface WorkshopState {
   /** True once the first host snapshot has arrived (gate for "empty" UI). */
   sessionReady: boolean;
   excerpt: WorkshopExcerpt | null;
+  contextBrief: string;
+  contextBriefPending: boolean;
   turns: WorkshopTurn[];
   /**
    * Turns held host-side but not present in this webview (a bounded snapshot
@@ -94,6 +96,7 @@ export interface WorkshopState {
 export interface WorkshopActions {
   pinExcerpt: (text: string, sourceUri?: string, relativePath?: string) => void;
   pinFromFile: () => void;
+  setContextBrief: (text?: string) => void;
   runTool: (toolId: WorkshopToolId) => void;
   quickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
   sendMessage: (text: string) => void;
@@ -130,6 +133,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
 
   const [sessionReady, setSessionReady] = React.useState(false);
   const [excerpt, setExcerpt] = React.useState<WorkshopExcerpt | null>(null);
+  const [contextBrief, setContextBriefState] = React.useState('');
+  const [contextBriefPending, setContextBriefPending] = React.useState(false);
   const [turns, setTurns] = React.useState<WorkshopTurn[]>([]);
   const [totalTurns, setTotalTurns] = React.useState(0);
   const [hasHostConversation, setHasHostConversation] = React.useState(false);
@@ -176,6 +181,10 @@ export const useWorkshop = (): UseWorkshopReturn => {
 
   const pinFromFile = React.useCallback(() => {
     post(MessageType.WORKSHOP_PICK_EXCERPT_FILE, {});
+  }, [post]);
+
+  const setContextBrief = React.useCallback((text?: string) => {
+    post(MessageType.WORKSHOP_SET_CONTEXT_BRIEF, { text });
   }, [post]);
 
   const runTool = React.useCallback(
@@ -250,6 +259,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
       const { session } = message.payload;
       setSessionReady(true);
       setExcerpt(session.excerpt ?? null);
+      setContextBriefState(session.contextBrief ?? '');
+      setContextBriefPending(session.pendingHostUpdate?.contextBrief ?? false);
       setTotalTurns(session.totalTurns);
       setHasHostConversation(session.participants.host.hasConversation);
       setSelectedPersonaId(session.participants.host.personaId);
@@ -377,6 +388,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
     // State
     sessionReady,
     excerpt,
+    contextBrief,
+    contextBriefPending,
     turns,
     hiddenTurns,
     hasHostConversation,
@@ -403,6 +416,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     // Actions
     pinExcerpt,
     pinFromFile,
+    setContextBrief,
     runTool,
     quickAction,
     sendMessage,

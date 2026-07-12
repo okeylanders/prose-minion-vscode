@@ -35,6 +35,7 @@ import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopT
 import { isWorkshopPersonaId, workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopQuickActionPrompt } from '@shared/constants/workshopQuickActions';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   MessageType,
   CancelWorkshopRequestMessage,
@@ -55,6 +56,7 @@ import {
   WorkshopSendMessageMessage,
   WorkshopSelectPersonaMessage,
   WorkshopSetChatTargetMessage,
+  WorkshopSetContextBriefMessage,
   WorkshopSetExcerptMessage,
   WorkshopSessionStateMessage,
   WorkshopToolId,
@@ -74,8 +76,6 @@ const generateRequestId = (type: string) => `${type}-${Date.now()}-${++requestId
  * words of a picked file — a long chapter fits whole; a novel gets its head
  * pinned WITH a visible truncation notice, never silently.
  */
-export const WORKSHOP_FILE_EXCERPT_MAX_WORDS = 10000;
-export const WORKSHOP_FILE_EXCERPT_MAX_BYTES = 5 * 1024 * 1024;
 
 const MID_RUN_EXCERPT_GUARD_MESSAGE =
   'A tool is still running. Wait for it to finish (or start a new session) before replacing the excerpt.';
@@ -149,6 +149,10 @@ export class WorkshopHandler {
     router.register(MessageType.WORKSHOP_SELECT_PERSONA, this.handleSelectPersona.bind(this));
     router.register(MessageType.WORKSHOP_SET_CHAT_TARGET, this.handleSetChatTarget.bind(this));
     router.register(MessageType.WORKSHOP_SET_EXCERPT, this.handleSetExcerpt.bind(this));
+    router.register(
+      MessageType.WORKSHOP_SET_CONTEXT_BRIEF,
+      this.handleSetContextBrief.bind(this)
+    );
     router.register(MessageType.WORKSHOP_PICK_EXCERPT_FILE, this.handlePickExcerptFile.bind(this));
     router.register(MessageType.WORKSHOP_RESET_SESSION, this.handleResetSession.bind(this));
     router.register(MessageType.WORKSHOP_REQUEST_SESSION, this.handleRequestSession.bind(this));
@@ -337,13 +341,24 @@ export class WorkshopHandler {
     const handoff = target.kind === 'host'
       ? buildWorkshopDirectHandoff(this.session.collectUnseenDirectExchanges())
       : undefined;
+    const pendingHostUpdates = target.kind === 'host'
+      ? this.session.collectPendingHostUpdates()
+      : undefined;
+    const hostUpdateFrame = pendingHostUpdates
+      ? this.assistantToolService.buildWorkshopHostUpdateFrame({
+          revision: pendingHostUpdates.revision,
+          contextBrief: pendingHostUpdates.contextBrief
+            ? pendingHostUpdates.contextBrief.text ?? null
+            : undefined
+        })
+      : undefined;
     if (handoff) {
       this.outputChannel.appendLine(
         `[WorkshopHandler] Direct handoff prepared: ${handoff.unseenTurns} unseen → ${handoff.includedTurns} included, ${handoff.omittedTurns} omitted, ${handoff.truncatedCharacters} chars truncated`
       );
     }
     const modelMessage = target.kind === 'host'
-      ? buildWorkshopHostMessage(text, handoff)
+      ? buildWorkshopHostMessage(text, handoff, false, hostUpdateFrame)
       : text;
     const label = target.kind === 'host'
       ? workshopPersonaLabel(personaId)
@@ -403,6 +418,9 @@ export class WorkshopHandler {
       });
       if (assistantTurn && target.kind === 'host' && handoff) {
         this.session.commitHostHandoff(handoff.deliveredTurnIds);
+      }
+      if (assistantTurn && target.kind === 'host' && pendingHostUpdates) {
+        this.session.commitPendingHostUpdates(pendingHostUpdates);
       }
       this.postSessionState();
     } catch (error) {
@@ -468,9 +486,9 @@ export class WorkshopHandler {
     }
 
     // Mid-run re-pin guard (PR #67 review #3, Sam): the running analysis
-    // captured the OLD excerpt, and turns carry no excerpt provenance yet —
-    // a swap here would leave the finished turn silently describing text
-    // that's no longer pinned. The rail disables its buttons on isRunning,
+    // captured the OLD excerpt. Turns now carry version provenance, but a swap
+    // would still make the visible working text diverge from the live stream.
+    // The rail disables its buttons on isRunning,
     // but that flag only lands after a message round-trip; this closes the
     // race window at the source of truth.
     if (this.activeRun) {
@@ -479,8 +497,18 @@ export class WorkshopHandler {
     }
 
     this.replaceExcerpt({ text, sourceUri, relativePath });
+    this.postSessionState();
+  }
+
+  async handleSetContextBrief(message: WorkshopSetContextBriefMessage): Promise<void> {
+    const rawText = message.payload?.text;
+    if (rawText !== undefined && typeof rawText !== 'string') {
+      this.sendError('workshop', 'Context brief must be text.');
+      return;
+    }
+    this.session.setContextBrief(rawText);
     this.outputChannel.appendLine(
-      `[WorkshopHandler] Excerpt pinned (${text.length} chars${relativePath ? `, ${relativePath}` : ''})`
+      `[WorkshopHandler] Context brief ${rawText?.trim() ? 'updated' : 'cleared'} (${rawText?.trim().length ?? 0} chars, source=${message.source})`
     );
     this.postSessionState();
   }
@@ -520,10 +548,10 @@ export class WorkshopHandler {
         this.sendError('workshop', 'The selected path is not a file.', displayPath);
         return;
       }
-      if (stat.size > WORKSHOP_FILE_EXCERPT_MAX_BYTES) {
+      if (stat.size > PROMPT_BUDGETS.fileExcerpt.bytes) {
         this.sendError(
           'workshop',
-          `That file is too large to pin safely (max ${formatBytes(WORKSHOP_FILE_EXCERPT_MAX_BYTES)}).`,
+          `That file is too large to pin safely (max ${formatBytes(PROMPT_BUDGETS.fileExcerpt.bytes)}).`,
           `${displayPath} is ${formatBytes(stat.size)}`
         );
         return;
@@ -572,8 +600,8 @@ export class WorkshopHandler {
     let text = content;
     let truncation: WorkshopExcerptTruncation | undefined;
     const totalWords = countWords(content);
-    if (totalWords > WORKSHOP_FILE_EXCERPT_MAX_WORDS) {
-      const trimmed = trimToWordLimit(content, WORKSHOP_FILE_EXCERPT_MAX_WORDS);
+    if (totalWords > PROMPT_BUDGETS.fileExcerpt.words) {
+      const trimmed = trimToWordLimit(content, PROMPT_BUDGETS.fileExcerpt.words);
       text = trimmed.trimmed;
       truncation = { pinnedWords: trimmed.trimmedWords, totalWords };
       this.outputChannel.appendLine(
@@ -582,9 +610,6 @@ export class WorkshopHandler {
     }
 
     this.replaceExcerpt({ text, sourceUri: picked.uri, relativePath: displayPath, truncation });
-    this.outputChannel.appendLine(
-      `[WorkshopHandler] Excerpt pinned from file (${text.length} chars, ${displayPath})`
-    );
     this.postSessionState();
   }
 
@@ -629,11 +654,17 @@ export class WorkshopHandler {
     relativePath?: string;
     truncation?: WorkshopExcerptTruncation;
   }): void {
-    const discardedConversationIds = this.session.replaceExcerpt(input);
-    this.discardConversations(discardedConversationIds);
-    if (discardedConversationIds.length > 0) {
-      this.outputChannel.appendLine(
-        `[WorkshopHandler] ${discardedConversationIds.length} conversations discarded after excerpt replacement`
+    const replacement = this.session.replaceExcerpt(input);
+    this.discardConversations(replacement.disposedConversationIds);
+    if (replacement.dividerTurn) {
+      this.postTurn(replacement.dividerTurn);
+    }
+    this.outputChannel.appendLine(
+      `[WorkshopHandler] Excerpt v${replacement.excerpt.version} pinned (${replacement.excerpt.relativePath ?? 'pasted'}, ${replacement.retiredSidecarCount} sidecars retired)`
+    );
+    if (replacement.replacementCount === 3) {
+      this.sendStatus(
+        'This session now carries three excerpt revisions. Consider a new session soon to keep context cost down.'
       );
     }
   }

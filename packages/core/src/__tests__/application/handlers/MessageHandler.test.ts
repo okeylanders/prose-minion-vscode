@@ -116,6 +116,7 @@ function createTestAssembly(): TestAssembly {
           tokenUsageListeners.delete(callback);
         };
       }),
+      refreshModelSelections: jest.fn().mockResolvedValue(undefined),
       refreshConfiguration: jest.fn().mockResolvedValue(undefined)
     },
     secretsService: {
@@ -378,6 +379,26 @@ describe('MessageHandler assembly', () => {
     expect(assembly.services.contextAssistantService.refreshConfiguration).toHaveBeenCalledTimes(1);
     expect(assembly.log.appendLine).toHaveBeenCalledWith(
       '[MessageHandler] Service configuration refresh completed: AI resource manager, assistant tool service, dictionary service, context assistant service'
+    );
+  });
+
+  it('hot-swaps model settings without rebuilding services or retained conversations', async () => {
+    const assembly = createTestAssembly();
+    const handler = createHandler(assembly, jest.fn().mockResolvedValue(undefined));
+    let contextModelChecks = 0;
+
+    handler.handleConfigurationChange(section =>
+      section === 'proseMinion.contextModel' && ++contextModelChecks === 1
+    );
+    await flushQueuedWork();
+
+    expect(assembly.services.aiResourceManager.refreshModelSelections).toHaveBeenCalledTimes(1);
+    expect(assembly.services.aiResourceManager.refreshConfiguration).not.toHaveBeenCalled();
+    expect(assembly.services.assistantToolService.refreshConfiguration).not.toHaveBeenCalled();
+    expect(assembly.services.dictionaryService.refreshConfiguration).not.toHaveBeenCalled();
+    expect(assembly.services.contextAssistantService.refreshConfiguration).not.toHaveBeenCalled();
+    expect(assembly.log.appendLine).toHaveBeenCalledWith(
+      '[MessageHandler] Model selections hot-swapped; retained conversations preserved'
     );
   });
 

@@ -4,9 +4,7 @@ import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import { AgentCapability, CapabilityFulfillment } from '../AgentRunContracts';
 import { createResourceReadXmlInstruction, ResourceReadInspection } from '../ResourceReadXmlCodec';
 import { ResourceRequestGate } from './ResourceRequestGate';
-
-const MAX_CONTEXT_WORDS = 50_000;
-const MAX_CATALOG_ITEMS = 100;
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 export class ContextFileCapability implements AgentCapability {
   readonly catalog = 'projectContext' as const;
@@ -25,7 +23,7 @@ export class ContextFileCapability implements AgentCapability {
 
   async appendCatalog(userMessage: string): Promise<string> {
     const catalog = this.provider.listResources();
-    const displayedCatalog = this.orderCatalog(catalog).slice(0, MAX_CATALOG_ITEMS);
+    const displayedCatalog = this.orderCatalog(catalog).slice(0, PROMPT_BUDGETS.contextFiles.catalogItems);
     this.gate.setAllowedPaths(displayedCatalog.map(item => item.path));
     return [
       userMessage,
@@ -99,7 +97,7 @@ export class ContextFileCapability implements AgentCapability {
       ''
     ];
 
-    for (const summary of ordered.slice(0, MAX_CATALOG_ITEMS)) {
+    for (const summary of ordered.slice(0, PROMPT_BUDGETS.contextFiles.catalogItems)) {
       const workspacePrefix = summary.workspaceFolder ? ` (workspace: ${summary.workspaceFolder})` : '';
       const labelSuffix = summary.label && summary.label.toLowerCase() !== summary.path.toLowerCase()
         ? ` — ${summary.label}`
@@ -107,8 +105,8 @@ export class ContextFileCapability implements AgentCapability {
       lines.push(`- [${summary.group}] \`${summary.path}\`${labelSuffix}${workspacePrefix}`);
     }
 
-    if (ordered.length > MAX_CATALOG_ITEMS) {
-      lines.push('', `...and ${ordered.length - MAX_CATALOG_ITEMS} additional resource(s) not listed to save tokens.`);
+    if (ordered.length > PROMPT_BUDGETS.contextFiles.catalogItems) {
+      lines.push('', `...and ${ordered.length - PROMPT_BUDGETS.contextFiles.catalogItems} additional resource(s) not listed to save tokens.`);
     }
 
     return lines.join('\n');
@@ -131,8 +129,8 @@ export class ContextFileCapability implements AgentCapability {
     }
     const combined = resources.map(item => item.content).join('\n\n');
     const applyTrimming = this.settings.get<boolean>('proseMinion', 'applyContextWindowTrimming', true);
-    const trimmed = applyTrimming && countWords(combined) > MAX_CONTEXT_WORDS
-      ? trimToWordLimit(combined, MAX_CONTEXT_WORDS).trimmed
+    const trimmed = applyTrimming && countWords(combined) > PROMPT_BUDGETS.contextFiles.words
+      ? trimToWordLimit(combined, PROMPT_BUDGETS.contextFiles.words).trimmed
       : undefined;
     if (trimmed) {
       return ['Here are the requested project resources (combined evidence was trimmed to fit the context window):', '', '```markdown', trimmed, '```'].join('\n');

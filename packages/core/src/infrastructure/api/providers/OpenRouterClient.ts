@@ -44,7 +44,7 @@ export interface OpenRouterResponse {
 export class OpenRouterClient {
   private readonly apiKey: string;
   private readonly baseUrl = 'https://openrouter.ai/api/v1';
-  private readonly model: string;
+  private model: string;
   private readonly outputChannel?: LogSink;
 
   constructor(apiKey: string, model?: string, outputChannel?: LogSink) {
@@ -55,6 +55,15 @@ export class OpenRouterClient {
 
   getModel(): string {
     return this.model;
+  }
+
+  /** Future requests use the new model; an already-dispatched fetch is unchanged. */
+  setModel(model: string): void {
+    const normalized = model.trim();
+    if (!normalized) {
+      throw new Error('OpenRouter model id cannot be empty');
+    }
+    this.model = normalized;
   }
 
   async createChatCompletion(

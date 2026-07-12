@@ -108,6 +108,31 @@ export class AIResourceManager {
   }
 
   /**
+   * Apply model-selection changes in place. Engines and their conversation
+   * managers survive; only future provider requests use the new model.
+   * Duplicate calls from multiple live webview surfaces are idempotent.
+   */
+  async refreshModelSelections(): Promise<void> {
+    await this.ensureInitialized();
+    const selections = this.resolveModelSelections();
+
+    for (const scope of Object.keys(selections) as ModelScope[]) {
+      const model = selections[scope];
+      const resource = this.aiResources[scope];
+      if (!resource || resource.model === model) {
+        continue;
+      }
+      const previousModel = resource.model;
+      resource.engine.setModel(model);
+      resource.model = model;
+      this.outputChannel?.appendLine(
+        `[AIResourceManager] Hot-swapped ${scope} model: ${previousModel} → ${model} (generation ${resource.generation}; conversations preserved)`
+      );
+    }
+    this.resolvedModels = { ...selections };
+  }
+
+  /**
    * A failed build must not poison the singleton: clear the cached promise
    * on rejection so the next call retries instead of re-awaiting the corpse.
    */
@@ -148,11 +173,11 @@ export class AIResourceManager {
     }
 
     // Resolve model selections with fallbacks
-    const fallbackModel = modelConfig?.fallbackModel ?? 'anthropic/claude-sonnet-5';
-    const assistantModel = modelConfig?.assistantModel ?? this.settings.get<string>('proseMinion', 'assistantModel') ?? fallbackModel;
-    const dictionaryModel = modelConfig?.dictionaryModel ?? this.settings.get<string>('proseMinion', 'dictionaryModel') ?? fallbackModel;
-    const contextModel = modelConfig?.contextModel ?? this.settings.get<string>('proseMinion', 'contextModel') ?? fallbackModel;
-    const categoryModel = modelConfig?.categoryModel ?? this.settings.get<string>('proseMinion', 'categoryModel') ?? fallbackModel;
+    const selections = this.resolveModelSelections(modelConfig);
+    const assistantModel = selections.assistant;
+    const dictionaryModel = selections.dictionary;
+    const contextModel = selections.context;
+    const categoryModel = selections.category;
 
     // Create AI resources for each scope
     const assistantResources = this.createResourceBundle(apiKey!, 'assistant', assistantModel);
@@ -178,6 +203,24 @@ export class AIResourceManager {
       category: categoryModel
     };
     this.initialized = true;
+  }
+
+  private resolveModelSelections(modelConfig?: ModelConfiguration): Record<ModelScope, string> {
+    const fallbackModel = modelConfig?.fallbackModel ?? 'anthropic/claude-sonnet-5';
+    return {
+      assistant: modelConfig?.assistantModel
+        ?? this.settings.get<string>('proseMinion', 'assistantModel')
+        ?? fallbackModel,
+      dictionary: modelConfig?.dictionaryModel
+        ?? this.settings.get<string>('proseMinion', 'dictionaryModel')
+        ?? fallbackModel,
+      context: modelConfig?.contextModel
+        ?? this.settings.get<string>('proseMinion', 'contextModel')
+        ?? fallbackModel,
+      category: modelConfig?.categoryModel
+        ?? this.settings.get<string>('proseMinion', 'categoryModel')
+        ?? fallbackModel
+    };
   }
 
   /**
