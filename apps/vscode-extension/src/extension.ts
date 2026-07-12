@@ -35,6 +35,7 @@ import {
   AccountBalanceService,
   OpenRouterAccountClient,
   WorkshopSessionService,
+  RunWorkshopToolSidePass,
   CoreServices,
 } from '@prose-minion/core';
 // VS Code adapters (app-local; the composition root wires them into the ports)
@@ -154,6 +155,11 @@ export function activate(context: vscode.ExtensionContext): void {
   // composition root, so the thread survives panel close/reopen and webview
   // reloads — reload-safety lives HERE, not in React state.
   const workshopSessionService = new WorkshopSessionService();
+  const workshopToolSidePass = new RunWorkshopToolSidePass(
+    assistantToolService,
+    workshopSessionService,
+    outputChannel
+  );
 
   const coreServices: CoreServices = {
     assistantToolService,
@@ -169,7 +175,8 @@ export function activate(context: vscode.ExtensionContext): void {
     textSourceResolver,
     categorySearchService,
     accountBalanceService,
-    workshopSessionService
+    workshopSessionService,
+    workshopToolSidePass
   };
 
   // Migrate API key from settings to SecretStorage if needed

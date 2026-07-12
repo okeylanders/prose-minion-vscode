@@ -22,9 +22,11 @@ interface WorkshopTurnBubbleProps {
   turn: WorkshopTurn;
   quickActionToolId: WorkshopToolId | null;
   quickActionsDisabled?: boolean;
-  onQuickAction: (toolId: WorkshopToolId, label: string) => void;
-  onCopyVariation: (content: string, toolId: WorkshopToolId | null) => void;
-  onSaveVariation: (content: string, toolId: WorkshopToolId | null) => void;
+  canTalkDirectly?: boolean;
+  onQuickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
+  onTalkDirectly: (toolId: WorkshopToolId) => void;
+  onCopy: (content: string, turn: WorkshopTurn) => void;
+  onSave: (content: string, turn: WorkshopTurn) => void;
 }
 
 interface ParsedVariation {
@@ -70,9 +72,11 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   turn,
   quickActionToolId,
   quickActionsDisabled = false,
+  canTalkDirectly = false,
   onQuickAction,
-  onCopyVariation,
-  onSaveVariation
+  onTalkDirectly,
+  onCopy,
+  onSave
 }) => {
   // Persona replies are editorial conversation, not a tool artifact. Never
   // reinterpret their headings as tool variations with copy/save provenance.
@@ -130,14 +134,14 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
                     <button
                       className="pm-ws-var-action"
                       type="button"
-                      onClick={() => onCopyVariation(variation.content, quickActionToolId)}
+                      onClick={() => onCopy(variation.content, turn)}
                     >
                       <Icon name="copy" size={13} /> Copy
                     </button>
                     <button
                       className="pm-ws-var-action"
                       type="button"
-                      onClick={() => onSaveVariation(variation.content, quickActionToolId)}
+                      onClick={() => onSave(variation.content, turn)}
                     >
                       <Icon name="save" size={13} /> Save to notes
                     </button>
@@ -149,12 +153,25 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
         ) : (
           <MarkdownRenderer content={turn.content} className="pm-ws-turn-body" />
         )}
+        <div className="pm-ws-turn-actions">
+          <button type="button" onClick={() => onCopy(turn.content, turn)}>
+            <Icon name="copy" size={13} /> Copy
+          </button>
+          <button type="button" onClick={() => onSave(turn.content, turn)}>
+            <Icon name="save" size={13} /> Save to notes
+          </button>
+          {canTalkDirectly && turn.toolId && (
+            <button type="button" onClick={() => onTalkDirectly(turn.toolId!)}>
+              <Icon name="dialogue" size={13} /> Talk directly to {turn.toolLabel}
+            </button>
+          )}
+        </div>
       </div>
       {quickActionToolId && (
         <WorkshopQuickActionBar
           toolId={quickActionToolId}
           disabled={quickActionsDisabled}
-          onAction={onQuickAction}
+          onAction={(toolId, label) => onQuickAction(toolId, turn.reportTurnId!, label)}
         />
       )}
     </>

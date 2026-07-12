@@ -1,6 +1,4 @@
-/**
- * @jest-environment jsdom
- */
+/** @jest-environment jsdom */
 
 import * as React from 'react';
 import { render, screen } from '@testing-library/react';
@@ -15,77 +13,97 @@ jest.mock('marked', () => {
 import { WorkshopThread } from '@components/workshop/WorkshopThread';
 import { WorkshopTurn } from '@messages';
 
-const assistantTurn = (
-  id: string,
-  content: string,
-  toolId?: WorkshopTurn['toolId']
-): WorkshopTurn => ({
+const report = (id: string, toolId: 'prose' | 'dialogue'): WorkshopTurn => ({
   id,
   role: 'assistant',
-  kind: toolId ? 'tool_run' : 'message',
+  kind: 'tool_run',
+  participant: 'tool',
+  artifact: 'tool_report',
   toolId,
-  toolLabel: toolId,
-  content,
+  toolLabel: toolId === 'prose' ? 'Prose' : 'Dialogue & Beats',
+  reportTurnId: id,
+  content: `${toolId} report`,
   timestamp: 0
 });
 
-describe('WorkshopThread quick-action scope', () => {
+describe('WorkshopThread sidecar-owned affordances', () => {
   const noop = jest.fn();
 
-  it('falls back to selectedToolId when the visible snapshot no longer carries a tool turn', () => {
+  it('offers quick actions and direct chat only on the report owning the live sidecar', () => {
     render(
       <WorkshopThread
-        turns={[assistantTurn('turn-1', 'Follow-up response')]}
-        selectedToolId="prose"
+        turns={[report('report-1', 'prose')]}
+        toolSidecars={[{
+          toolId: 'prose',
+          hasConversation: true,
+          latestReportTurnId: 'report-1',
+          availableForDirectFollowUp: true,
+          activeTarget: false
+        }]}
         onQuickAction={noop}
-        onCopyVariation={noop}
-        onSaveVariation={noop}
+        onTalkDirectly={noop}
+        onCopy={noop}
+        onSave={noop}
       />
     );
 
     expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Rewrite for flow' }).disabled)
       .toBe(false);
+    expect(screen.getByRole('button', { name: 'Talk directly to Prose' })).toBeTruthy();
   });
 
-  it('disables quick actions from stale tool turns after the session moves to another lens', () => {
+  it('archives stale report actions after the same tool sidecar is replaced', () => {
     render(
       <WorkshopThread
-        turns={[
-          assistantTurn('turn-1', 'Old dialogue response', 'dialogue'),
-          assistantTurn('turn-2', 'Current gestures response', 'gestures')
-        ]}
-        selectedToolId="gestures"
+        turns={[report('report-old', 'prose'), report('report-new', 'prose')]}
+        toolSidecars={[{
+          toolId: 'prose',
+          hasConversation: true,
+          latestReportTurnId: 'report-new',
+          availableForDirectFollowUp: true,
+          activeTarget: false
+        }]}
         onQuickAction={noop}
-        onCopyVariation={noop}
-        onSaveVariation={noop}
+        onTalkDirectly={noop}
+        onCopy={noop}
+        onSave={noop}
       />
     );
 
-    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Generate 3 tighter variations' }).disabled)
-      .toBe(true);
-    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Vary the gesture' }).disabled)
-      .toBe(false);
+    const rewriteButtons = screen.getAllByRole<HTMLButtonElement>('button', { name: 'Rewrite for flow' });
+    expect(rewriteButtons[0].disabled).toBe(true);
+    expect(rewriteButtons[1].disabled).toBe(false);
+    expect(screen.getAllByRole('button', { name: 'Talk directly to Prose' })).toHaveLength(1);
   });
 
-  it('does not give persona assistant turns quick actions from a prior tool', () => {
+  it('gives persona synthesis copy/save provenance but never tool quick actions', () => {
+    const personaTurn: WorkshopTurn = {
+      id: 'persona-turn',
+      role: 'assistant',
+      kind: 'tool_run',
+      participant: 'host',
+      artifact: 'persona_synthesis',
+      personaId: 'jill',
+      personaLabel: 'Jill',
+      reportTurnId: 'report-1',
+      content: 'Jill weighs the report.',
+      timestamp: 0
+    };
+
     render(
       <WorkshopThread
-        turns={[
-          assistantTurn('tool-turn', 'Tool report', 'prose'),
-          {
-            ...assistantTurn('persona-turn', 'Jill weighs the report.'),
-            personaId: 'jill',
-            personaLabel: 'Jill'
-          }
-        ]}
-        selectedToolId="prose"
+        turns={[personaTurn]}
+        toolSidecars={[]}
         onQuickAction={noop}
-        onCopyVariation={noop}
-        onSaveVariation={noop}
+        onTalkDirectly={noop}
+        onCopy={noop}
+        onSave={noop}
       />
     );
 
-    expect(screen.getAllByRole('button', { name: 'Rewrite for flow' })).toHaveLength(1);
     expect(screen.getByText('Jill')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Copy' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Save to notes' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /rewrite/i })).toBeNull();
   });
 });

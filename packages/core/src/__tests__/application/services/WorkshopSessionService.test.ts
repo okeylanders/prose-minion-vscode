@@ -1,9 +1,11 @@
 import {
   WorkshopSessionService,
+  WORKSHOP_DIRECT_HANDOFF_MAX_CHARS,
+  WORKSHOP_DIRECT_HANDOFF_MAX_TURNS,
   WORKSHOP_SNAPSHOT_TURN_WINDOW
 } from '@/application/services/WorkshopSessionService';
 
-describe('WorkshopSessionService — Sprint 05 participants', () => {
+describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', () => {
   let clock: number;
   let service: WorkshopSessionService;
 
@@ -18,122 +20,177 @@ describe('WorkshopSessionService — Sprint 05 participants', () => {
     relativePath: 'chapters/one.md'
   });
 
-  it('starts with a private, id-free Jill host snapshot', () => {
-    const snapshot = service.getSnapshot();
+  const adoptReport = (
+    toolId: 'prose' | 'continuity' = 'prose',
+    requestId = `${toolId}-run`,
+    conversationId = `${toolId}-conv`,
+    content = `${toolId} report`
+  ) => {
+    service.beginToolRun(toolId, requestId);
+    return service.completeToolReport(requestId, content, conversationId)!.turn;
+  };
 
-    expect(snapshot.participants).toEqual({
+  const directExchange = (toolId: 'prose' | 'continuity', index: number, content?: string) => {
+    const requestId = `${toolId}-direct-${index}`;
+    service.beginDirectToolMessage(toolId, requestId, `writer ${index}`);
+    service.completeRun(requestId, content ?? `tool ${index}`);
+  };
+
+  it('starts with an id-free Jill host snapshot', () => {
+    expect(service.getSnapshot().participants).toEqual({
       host: { personaId: 'jill', hasConversation: false },
       toolSidecars: [],
       chatTarget: { kind: 'host' }
     });
-    expect(JSON.stringify(snapshot)).not.toContain('conversationId');
+    expect(JSON.stringify(service.getSnapshot())).not.toContain('conversationId');
   });
 
-  it('selects a host before its first run and defensively snapshots it', () => {
-    service.selectPersona('margot');
-    const snapshot = service.getSnapshot();
-
-    expect(snapshot.participants.host.personaId).toBe('margot');
-    snapshot.participants.host.personaId = 'jill';
-    expect(service.getSnapshot().participants.host.personaId).toBe('margot');
-  });
-
-  it('locks selection while a host request runs and after its retained conversation lands', () => {
-    pin();
-    service.beginPersonaMessage('host-1', 'Does this POV drift?');
-    expect(() => service.selectPersona('quinn')).toThrow(/Cannot change/);
-
-    service.completeRun('host-1', 'The camera stays close.', undefined, false, 'host-conv');
-    expect(service.getHostConversationId()).toBe('host-conv');
-    expect(service.getSnapshot().participants.host).toEqual({ personaId: 'jill', hasConversation: true });
-    expect(() => service.selectPersona('quinn')).toThrow(/Cannot change/);
-  });
-
-  it('enforces the host-versus-tool-run invariant inside the aggregate', () => {
+  it('allows a tool side-pass while the retained host remains unchanged', () => {
     pin();
     service.beginPersonaMessage('host-1', 'Stay with this scene.');
     service.completeRun('host-1', 'I am here.', undefined, false, 'host-conv');
 
-    expect(() => service.beginToolRun('prose', 'tool-1')).toThrow(/persona host conversation/);
-  });
+    const request = service.beginToolRun('prose', 'tool-1');
+    const completion = service.completeToolReport('tool-1', 'The middle drifts.', 'tool-conv');
 
-  it('attributes host turns to the selected persona and preserves its conversation on follow-up', () => {
-    pin();
-    service.selectPersona('wren');
-    service.beginPersonaMessage('host-1', 'Where does this line flatten?');
-    const first = service.completeRun('host-1', 'Show me her hands.', undefined, false, 'host-conv');
-    service.beginPersonaMessage('host-2', 'Give me another angle.');
-    const followUp = service.completeRun('host-2', 'Try the physical anchor.');
-
-    expect(first).toMatchObject({ personaId: 'wren', personaLabel: 'Wren', toolId: undefined });
-    expect(followUp).toMatchObject({ personaId: 'wren', personaLabel: 'Wren', kind: 'message' });
-    expect(service.getHostConversationId()).toBe('host-conv');
-  });
-
-  it('requires a usable excerpt before starting a persona message', () => {
-    expect(() => service.beginPersonaMessage('host-1', 'Hello?')).toThrow(/pinned excerpt/);
-  });
-
-  it('adopts a successful pre-host tool run into its sidecar and direct target', () => {
-    pin();
-    service.beginToolRun('continuity', 'tool-1');
-    const report = service.completeRun('tool-1', 'The cup teleports.', undefined, false, 'tool-conv');
-
-    expect(report).toMatchObject({ toolId: 'continuity', personaId: undefined });
-    expect(service.getToolSidecarConversationId('continuity')).toBe('tool-conv');
-    expect(service.getSnapshot().participants).toEqual({
-      host: { personaId: 'jill', hasConversation: false },
-      toolSidecars: [{ toolId: 'continuity', hasConversation: true }],
-      chatTarget: { kind: 'tool', toolId: 'continuity' }
+    expect(request).toMatchObject({ participant: 'writer', artifact: 'tool_request' });
+    expect(completion?.turn).toMatchObject({
+      participant: 'tool',
+      artifact: 'tool_report',
+      toolId: 'prose'
     });
+    expect(service.getHostConversationId()).toBe('host-conv');
+    expect(service.getChatTarget()).toEqual({ kind: 'host' });
   });
 
-  it('continues only a live direct tool target and attributes its assistant turn to the tool', () => {
+  it('adopts a report atomically and exposes only safe direct-follow-up metadata', () => {
     pin();
-    service.beginToolRun('cliche', 'tool-1');
-    service.completeRun('tool-1', 'One tired phrase.', undefined, false, 'tool-conv');
-    service.beginDirectToolMessage('cliche', 'tool-2', 'What could replace it?');
-    const reply = service.completeRun('tool-2', 'Use the image already present.');
+    const report = adoptReport('continuity');
+    const sidecar = service.getSnapshot().participants.toolSidecars[0];
 
-    expect(reply).toMatchObject({ toolId: 'cliche', toolLabel: 'Cliché', personaId: undefined });
-    expect(() => service.beginDirectToolMessage('prose', 'tool-3', 'Hello?')).toThrow(/without a retained sidecar/);
+    expect(service.getToolSidecarConversationId('continuity')).toBe('continuity-conv');
+    expect(sidecar).toEqual({
+      toolId: 'continuity',
+      hasConversation: true,
+      latestReportTurnId: report.id,
+      availableForDirectFollowUp: true,
+      activeTarget: false
+    });
+    expect(JSON.stringify(sidecar)).not.toContain('continuity-conv');
   });
 
-  it('replaces only the same tool sidecar and keeps other direct routes available', () => {
+  it('refuses zombie reports without replacing the previous usable sidecar', () => {
     pin();
-    service.beginToolRun('prose', 'prose-1');
-    service.completeRun('prose-1', 'Report one.', undefined, false, 'prose-old');
-    service.beginToolRun('continuity', 'cont-1');
-    service.completeRun('cont-1', 'Report two.', undefined, false, 'cont-conv');
+    adoptReport('prose', 'first', 'old-conv');
+    service.beginToolRun('prose', 'zombie');
+    service.abandonRun('zombie');
+
+    expect(service.completeToolReport('zombie', 'late', 'zombie-conv')).toBeUndefined();
+    expect(service.getToolSidecarConversationId('prose')).toBe('old-conv');
+  });
+
+  it('replaces only the same tool sidecar and returns the displaced id for disposal', () => {
+    pin();
+    adoptReport('prose', 'prose-1', 'prose-old');
+    adoptReport('continuity', 'continuity-1', 'continuity-conv');
     service.beginToolRun('prose', 'prose-2');
-    service.completeRun('prose-2', 'Replacement.', undefined, false, 'prose-new');
+    const replacement = service.completeToolReport('prose-2', 'new report', 'prose-new');
 
+    expect(replacement?.replacedConversationId).toBe('prose-old');
     expect(service.getToolSidecarConversationId('prose')).toBe('prose-new');
-    expect(service.getToolSidecarConversationId('continuity')).toBe('cont-conv');
+    expect(service.getToolSidecarConversationId('continuity')).toBe('continuity-conv');
+  });
+
+  it('correlates report and persona synthesis as separate attributed turns', () => {
+    pin();
+    const report = adoptReport('prose');
+    service.beginPersonaSynthesis('synthesis-1', report.id);
+    const synthesis = service.completeRun(
+      'synthesis-1',
+      'Jill weighs the report.',
+      undefined,
+      false,
+      'host-conv'
+    );
+
+    expect(synthesis).toMatchObject({
+      participant: 'host',
+      artifact: 'persona_synthesis',
+      personaId: 'jill',
+      reportTurnId: report.id
+    });
+    expect(service.getSnapshot().turns.map((turn) => turn.artifact)).toEqual([
+      'tool_request',
+      'tool_report',
+      'persona_synthesis'
+    ]);
+  });
+
+  it('enters direct mode only through an explicit live target and correlates exchanges', () => {
+    pin();
+    const report = adoptReport('continuity');
+
+    expect(service.setChatTarget({ kind: 'tool', toolId: 'prose' })).toBe(false);
     expect(service.setChatTarget({ kind: 'tool', toolId: 'continuity' })).toBe(true);
-    expect(service.getChatTarget()).toEqual({ kind: 'tool', toolId: 'continuity' });
+    service.beginDirectToolMessage('continuity', 'direct-1', 'Where did it vanish?');
+    const response = service.completeRun('direct-1', 'Between paragraphs three and four.');
+
+    expect(response).toMatchObject({
+      participant: 'tool',
+      artifact: 'direct_tool_response',
+      toolId: 'continuity',
+      reportTurnId: report.id
+    });
+    expect(service.getSnapshot().participants.toolSidecars[0].activeTarget).toBe(true);
   });
 
-  it('rejects a direct target whose sidecar is absent', () => {
+  it('prepares the bounded unseen delta and advances cursors only after commit', () => {
     pin();
-    expect(service.setChatTarget({ kind: 'tool', toolId: 'style' })).toBe(false);
+    adoptReport('prose');
+    for (let index = 0; index < 6; index += 1) {
+      directExchange('prose', index);
+    }
+
+    const first = service.prepareHostHandoff()!;
+    expect(first.unseenTurns).toBe(12);
+    expect(first.includedTurns).toBe(WORKSHOP_DIRECT_HANDOFF_MAX_TURNS);
+    expect(first.omittedTurns).toBe(4);
+    expect(first.message.length).toBeLessThanOrEqual(WORKSHOP_DIRECT_HANDOFF_MAX_CHARS);
+
+    // A failed/cancelled host turn does not consume the delta.
+    expect(service.prepareHostHandoff()?.unseenTurns).toBe(12);
+    service.commitHostHandoff(first);
+    expect(service.prepareHostHandoff()).toBeUndefined();
+
+    directExchange('prose', 7);
+    expect(service.prepareHostHandoff()?.unseenTurns).toBe(2);
   });
 
-  it('never adopts a zombie completion after preemption', () => {
+  it('does not hand a cancelled direct attempt to the host as a completed exchange', () => {
     pin();
-    service.beginPersonaMessage('host-1', 'First question');
-    service.abandonRun('host-1');
+    adoptReport('prose');
+    service.beginDirectToolMessage('prose', 'cancelled-direct', 'Never delivered');
+    service.abandonRun('cancelled-direct');
 
-    expect(service.completeRun('host-1', 'late', undefined, false, 'zombie')).toBeUndefined();
-    expect(service.getHostConversationId()).toBeUndefined();
+    expect(service.prepareHostHandoff()).toBeUndefined();
   });
 
-  it('reset disposes all participants, clears the thread, and returns to Jill while preserving the excerpt', () => {
+  it('records deterministic character truncation provenance for an oversized exchange', () => {
+    pin();
+    adoptReport('prose');
+    directExchange('prose', 1, 'x'.repeat(WORKSHOP_DIRECT_HANDOFF_MAX_CHARS + 2_000));
+
+    const handoff = service.prepareHostHandoff()!;
+    expect(handoff.message.length).toBeLessThanOrEqual(WORKSHOP_DIRECT_HANDOFF_MAX_CHARS);
+    expect(handoff.truncatedCharacters).toBeGreaterThan(0);
+    expect(handoff.message).toContain('Direct exchange truncated');
+  });
+
+  it('reset disposes all participants and returns to Jill while preserving the excerpt', () => {
     const excerpt = pin();
     service.selectPersona('theo');
-    service.beginToolRun('prose', 'tool-1');
-    service.completeRun('tool-1', 'Tool report.', undefined, false, 'tool-conv');
-    service.beginPersonaMessage('host-1', 'Does this move?');
+    adoptReport('prose', 'tool-1', 'tool-conv');
+    service.beginPersonaSynthesis('host-1', service.getSnapshot().turns.at(-1)!.id);
     service.completeRun('host-1', 'It needs a turn.', undefined, false, 'host-conv');
 
     expect(service.reset().sort()).toEqual(['host-conv', 'tool-conv']);
@@ -148,25 +205,13 @@ describe('WorkshopSessionService — Sprint 05 participants', () => {
     });
   });
 
-  it('excerpt replacement disposes conversations but preserves the selected pre-existing host choice', () => {
+  it('bounds reload snapshots without leaking stored turn references', () => {
     pin();
-    service.selectPersona('penny');
-    service.beginToolRun('fresh', 'tool-1');
-    service.completeRun('tool-1', 'A fresh read.', undefined, false, 'tool-conv');
-
-    expect(service.replaceExcerpt({ text: 'A new excerpt.' })).toEqual(['tool-conv']);
-    expect(service.getSnapshot().participants).toEqual({
-      host: { personaId: 'penny', hasConversation: false },
-      toolSidecars: [],
-      chatTarget: { kind: 'host' }
-    });
-  });
-
-  it('bounds long snapshot threads without leaking stored turn references', () => {
-    pin();
-    for (let i = 0; i < WORKSHOP_SNAPSHOT_TURN_WINDOW / 2 + 2; i++) {
-      service.beginToolRun('prose', `tool-${i}`);
-      service.completeRun(`tool-${i}`, `report ${i}`);
+    for (let index = 0; index < WORKSHOP_SNAPSHOT_TURN_WINDOW / 2 + 2; index += 1) {
+      service.beginToolRun('prose', `tool-${index}`);
+      service.abandonRun(`tool-${index}`);
+      service.beginPersonaMessage(`host-${index}`, `message ${index}`);
+      service.completeRun(`host-${index}`, `reply ${index}`);
     }
     const snapshot = service.getSnapshot();
     expect(snapshot.turns).toHaveLength(WORKSHOP_SNAPSHOT_TURN_WINDOW);

@@ -36,6 +36,7 @@ export type {
 
 // --- Application: Workshop session aggregate (ADR 2026-07-03) ---
 export { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
+export { RunWorkshopToolSidePass } from '@/application/services/RunWorkshopToolSidePass';
 
 // --- Infrastructure: secrets ---
 export { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';

@@ -576,6 +576,27 @@
   border-style: dashed;
   border-color: var(--pm-border-2);
 }
+[data-pm-surface="workshop"] .pm-ws-turn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-input);
+  background: transparent;
+  color: var(--pm-muted);
+  padding: 6px 9px;
+  font: 12px var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-turn-actions button:not(:disabled):hover {
+  color: var(--pm-text);
+  border-color: var(--pm-border-2);
+}
 
 /* Quick actions */
 [data-pm-surface="workshop"] .pm-ws-qbar {

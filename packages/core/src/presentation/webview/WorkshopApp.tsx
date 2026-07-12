@@ -32,7 +32,8 @@ import {
   ErrorMessage,
   SaveResultSuccessMessage,
   StatusMessage,
-  WorkshopToolId
+  WorkshopToolId,
+  WorkshopTurn
 } from '@messages';
 import { ModelSelector } from './components/shared/ModelSelector';
 import { ExcerptPanel } from './components/workshop/ExcerptPanel';
@@ -49,7 +50,10 @@ import {
   workshopToolLabel
 } from '@shared/constants/workshopTools';
 import { DEFAULT_WORKSHOP_PERSONA_ID, getWorkshopPersona } from '@shared/constants/workshopPersonas';
-import { resultToolNameForWorkshopTool } from '@shared/constants/resultToolNames';
+import {
+  resultToolNameForWorkshopTool,
+  WORKSHOP_PERSONA_RESULT_TOOL_NAME
+} from '@shared/constants/resultToolNames';
 import { useVSCodeApi } from './hooks/useVSCodeApi';
 import { usePersistence } from './hooks/usePersistence';
 import { useMessageRouter } from './hooks/useMessageRouter';
@@ -239,8 +243,7 @@ export const WorkshopApp: React.FC = () => {
     }
   }, [workshop.turns, workshop.streamingContent, workshop.isRunning]);
 
-  const toolsEnabled =
-    !!workshop.excerpt && !workshop.isRunning && workshop.sessionReady && !workshop.hasHostConversation;
+  const toolsEnabled = !!workshop.excerpt && !workshop.isRunning && workshop.sessionReady;
   const activePersona = getWorkshopPersona(workshop.selectedPersonaId)
     ?? getWorkshopPersona(DEFAULT_WORKSHOP_PERSONA_ID)!;
   const chatTargetLabel = workshop.chatTarget.kind === 'tool'
@@ -280,39 +283,37 @@ export const WorkshopApp: React.FC = () => {
     workshop.setChatTarget({ kind: 'host' });
   }, [workshop.setChatTarget]);
 
-  const copyVariation = React.useCallback(
-    (content: string, toolId: WorkshopToolId | null) => {
-      if (!toolId) {
-        showToast({ message: 'Choose a Workshop tool before copying this variation', icon: 'x', tone: 'error' });
-        return;
-      }
+  const copyTurn = React.useCallback(
+    (content: string, turn: WorkshopTurn) => {
       vscode.postMessage({
         type: MessageType.COPY_RESULT,
         source: 'webview.workshop',
         payload: {
-          toolName: resultToolNameForWorkshopTool(toolId),
+          toolName: turn.toolId
+            ? resultToolNameForWorkshopTool(turn.toolId)
+            : WORKSHOP_PERSONA_RESULT_TOOL_NAME,
           content
         },
         timestamp: Date.now(),
       });
     },
-    [showToast, vscode]
+    [vscode]
   );
 
-  const saveVariation = React.useCallback(
-    (content: string, toolId: WorkshopToolId | null) => {
-      if (!toolId) {
-        showToast({ message: 'Choose a Workshop tool before saving this variation', icon: 'x', tone: 'error' });
-        return;
-      }
+  const saveTurn = React.useCallback(
+    (content: string, turn: WorkshopTurn) => {
+      const participantLabel = turn.personaLabel ?? turn.toolLabel ?? 'Workshop';
       vscode.postMessage({
         type: MessageType.SAVE_RESULT,
         source: 'webview.workshop',
         payload: {
-          toolName: resultToolNameForWorkshopTool(toolId),
+          toolName: turn.toolId
+            ? resultToolNameForWorkshopTool(turn.toolId)
+            : WORKSHOP_PERSONA_RESULT_TOOL_NAME,
           content,
           metadata: {
             excerpt: workshop.excerpt?.text,
+            context: `${participantLabel} · ${turn.artifact.replace(/_/g, ' ')}`,
             relativePath: workshop.excerpt?.relativePath,
             sourceFileUri: workshop.excerpt?.sourceUri,
             timestamp: Date.now()
@@ -321,7 +322,7 @@ export const WorkshopApp: React.FC = () => {
         timestamp: Date.now(),
       });
     },
-    [showToast, vscode, workshop.excerpt]
+    [vscode, workshop.excerpt]
   );
 
   const openrouter = accountBalance.openrouter;
@@ -460,13 +461,9 @@ export const WorkshopApp: React.FC = () => {
                     role="listitem"
                     disabled={!toolsEnabled}
                     onClick={() => workshop.runTool(tool.id)}
-                    title={
-                      workshop.hasHostConversation
-                        ? 'Integrated tool runs arrive in Sprint 06. Start a new session to run a tool first.'
-                        : workshop.excerpt
-                        ? `Run ${tool.label} on the pinned excerpt`
-                        : 'Pin an excerpt first'
-                    }
+                    title={workshop.excerpt
+                      ? `Have ${activePersona.label} ask ${tool.label} to inspect the pinned excerpt`
+                      : 'Pin an excerpt first'}
                   >
                     <Icon name={tool.icon} size={15} /> {tool.label}
                   </button>
@@ -475,9 +472,9 @@ export const WorkshopApp: React.FC = () => {
                   className="pm-ws-tool pm-ws-tool-ghost"
                   type="button"
                   role="listitem"
-                  disabled={!workshop.sessionReady || workshop.hasHostConversation}
+                  disabled={!toolsEnabled}
                   onClick={openToolsModal}
-                  title={workshop.hasHostConversation ? 'Integrated tool runs arrive in Sprint 06.' : 'All writing tools'}
+                  title="All writing tools"
                 >
                   <Icon name="grid" size={15} /> All {WORKSHOP_TOOLS.length} tools…
                 </button>
@@ -517,7 +514,7 @@ export const WorkshopApp: React.FC = () => {
                   </p>
                   <p className="pm-ws-thread-empty-sub">
                     {workshop.excerpt
-                      ? `Ask ${activePersona.label} directly, or run a tool before persona chat for a direct follow-up.`
+                      ? `Ask ${activePersona.label} directly, or run a tool for a verbatim report and a separate host synthesis.`
                       : 'Paste text or pin a file on the left. The excerpt stays fixed while the conversation grows here.'}
                   </p>
                   {workshop.excerpt && (
@@ -547,11 +544,12 @@ export const WorkshopApp: React.FC = () => {
               )}
               <WorkshopThread
                 turns={workshop.turns}
-                selectedToolId={workshop.selectedToolId}
+                toolSidecars={workshop.toolSidecars}
                 quickActionsDisabled={!workshop.canMessage}
                 onQuickAction={workshop.quickAction}
-                onCopyVariation={copyVariation}
-                onSaveVariation={saveVariation}
+                onTalkDirectly={(toolId) => workshop.setChatTarget({ kind: 'tool', toolId })}
+                onCopy={copyTurn}
+                onSave={saveTurn}
               />
 
               {showLiveTurn && (
@@ -611,11 +609,7 @@ export const WorkshopApp: React.FC = () => {
         open={toolsModalOpen}
         activeToolId={workshop.selectedToolId}
         disabled={!toolsEnabled}
-        unavailableMessage={
-          workshop.hasHostConversation
-            ? 'Integrated tool runs land in Sprint 06. Start a new session to run a tool before persona chat.'
-            : undefined
-        }
+        unavailableMessage={undefined}
         onClose={closeToolsModal}
         onSelect={selectTool}
       />

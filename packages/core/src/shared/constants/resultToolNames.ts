@@ -11,6 +11,7 @@ import { WORKSHOP_TOOL_CATALOG } from './workshopTools';
 
 export const PROSE_RESULT_TOOL_NAME = 'prose_analysis';
 export const DIALOGUE_RESULT_TOOL_NAME = 'dialogue_analysis';
+export const WORKSHOP_PERSONA_RESULT_TOOL_NAME = 'workshop_persona';
 
 export const WORKSHOP_RESULT_TOOL_NAMES: Readonly<Record<WorkshopToolId, string>> =
   WORKSHOP_TOOL_CATALOG.reduce((toolNames, tool) => {
@@ -37,7 +38,8 @@ export const ASSISTANT_RESULT_FILE_PREFIXES: Readonly<Record<string, string>> = 
   [WORKSHOP_RESULT_TOOL_NAMES.repetition]: 'repetition-analysis-',
   [WORKSHOP_RESULT_TOOL_NAMES['show-and-tell']]: 'show-and-tell-analysis-',
   [WORKSHOP_RESULT_TOOL_NAMES['stock-and-signature']]: 'stock-signature-analysis-',
-  [WORKSHOP_RESULT_TOOL_NAMES.style]: 'style-consistency-'
+  [WORKSHOP_RESULT_TOOL_NAMES.style]: 'style-consistency-',
+  [WORKSHOP_PERSONA_RESULT_TOOL_NAME]: 'workshop-persona-'
 };
 
 export function resultToolNameForWorkshopTool(toolId: WorkshopToolId): string {
