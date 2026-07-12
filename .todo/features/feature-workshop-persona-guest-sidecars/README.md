@@ -1,6 +1,6 @@
 # Feature: Workshop Guest Persona Sidecars (Second Opinions in the Room)
 
-**Status**: Proposed — **needs an ADR**; post-epic (v2 of the participant model)
+**Status**: Formalized — [ADR 2026-07-11 — Workshop Guest Persona Sidecars](../../../docs/adr/2026-07-11-workshop-guest-persona-sidecars.md) + [Sprint 09](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/09-persona-guest-sidecars.md); archive when Sprint 09 completes
 **Priority**: Medium
 **Date**: 2026-07-11
 **Origin**: Epic Workshop Editor Tab — "can the user sidecar another persona?"

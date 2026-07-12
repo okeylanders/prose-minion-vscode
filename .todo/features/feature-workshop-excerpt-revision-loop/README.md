@@ -1,6 +1,6 @@
 # Feature: Workshop Excerpt Revision Loop (Replace Without Amnesia)
 
-**Status**: Proposed — **needs an ADR before implementation**
+**Status**: Formalized — [ADR 2026-07-11 — Workshop Excerpt Revision and Room Memory](../../../docs/adr/2026-07-11-workshop-excerpt-revision-and-room-memory.md) + [Sprint 06C](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/06c-excerpt-revision-loop.md); archive when 06C completes
 **Priority**: High (the revision loop is the Workshop's core use case)
 **Date**: 2026-07-11
 **Origin**: Epic Workshop Editor Tab — "is pinning doing more harm than good?"
