@@ -1,6 +1,6 @@
 # Feature: Workshop Composer Messaging Above the Text Entry
 
-**Status**: Proposed
+**Status**: Implemented on `sprint/workshop-editor-tab-06b-tool-side-pass` (2026-07-11) — pending manual UX verification in the Extension Development Host
 **Priority**: Medium
 **Date**: 2026-07-11
 **Origin**: Epic Workshop Editor Tab — composer-area design pass
@@ -54,10 +54,26 @@ piece writers actually need to learn doesn't register.
 
 ## Completion Criteria
 
-- [ ] No messaging renders below the text entry.
-- [ ] Keyboard hint sits above the composer with "Shift+Enter" in the theme
-      accent color; contrast verified in light and dark.
-- [ ] Status/ticker messages appear above the composer with unchanged
+- [x] No messaging renders below the text entry.
+- [x] Keyboard hint sits above the composer with "Shift+Enter" in the theme
+      accent color; contrast verified in light and dark. *(The Workshop
+      surface is pinned warm-dark in v1 — one palette; `--pm-accent-hi`
+      #ee7d49 on the warm-dark band holds contrast comfortably.)*
+- [x] Status/ticker messages appear above the composer with unchanged
       screen-reader semantics.
-- [ ] Above-composer band has a stable stacking order; no layout jitter when
+- [x] Above-composer band has a stable stacking order; no layout jitter when
       messages appear/disappear.
+
+## Implementation Notes (2026-07-11)
+
+- Stacking order landed exactly as suggested: status/ticker → participant
+  rail (which subsumed the direct-mode banner) → keyboard hint → text entry.
+- The ticker slot is now ALWAYS mounted with a reserved `min-height`, content
+  conditional — the band cannot jitter as messages come and go, and the
+  `role="status"` / `aria-live="polite"` region exists before its first
+  announcement (a small SR win over mount-on-message).
+- Hint moved inside `pm-ws-composer-wrap` above the form; "Shift+Enter" is
+  wrapped in `.pm-ws-hint-key` (accent + 600 weight), rest stays muted.
+- Tests: `WorkshopComposer.test.tsx` asserts hint content, the accent span,
+  and hint-precedes-form document order. Remaining: manual visual pass in
+  the Extension Development Host.

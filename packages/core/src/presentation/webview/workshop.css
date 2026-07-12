@@ -789,11 +789,18 @@
   align-items: center;
   gap: 10px;
 }
+/* Above the text entry (composer-messaging-placement): below the composer is
+   a dead zone the eye never visits. The accent lands on the one token writers
+   need to learn; the rest stays muted so the accent is the point. */
 [data-pm-surface="workshop"] .pm-ws-composer-hint {
-  margin: 6px 2px 0;
+  margin: 0 2px 6px;
   color: var(--pm-faint);
   font-size: 11px;
   text-align: right;
+}
+[data-pm-surface="workshop"] .pm-ws-hint-key {
+  color: var(--pm-accent-hi);
+  font-weight: 600;
 }
 [data-pm-surface="workshop"] .pm-ws-comp-pill {
   display: inline-flex;
@@ -989,35 +996,109 @@
   font-size: 11px;
   font-weight: 650;
 }
-[data-pm-surface="workshop"] .pm-ws-direct-mode {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 32px 0;
-  color: var(--pm-muted);
-  font-size: 12px;
-}
-[data-pm-surface="workshop"] .pm-ws-direct-mode button {
-  color: var(--pm-accent-hi);
-  background: transparent;
-  border: 0;
-  padding: 2px 0;
-  font: inherit;
-  font-weight: 700;
-}
+/* ---------- Above-composer band ----------
+   Deterministic stacking order (composer-messaging-placement feature):
+   status ticker → participant rail → keyboard hint → text entry. Nothing
+   renders below the composer. */
 
-/* Status + toast */
+/* Status ticker: the slot is always mounted with a reserved line so messages
+   appearing/disappearing never jitter the band. */
 [data-pm-surface="workshop"] .pm-ws-status-ticker {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 0 33px 12px;
-  margin-top: -12px;
+  min-height: 15px;
+  padding: 8px 33px 0;
   color: var(--pm-muted);
   font-family: var(--pm-mono);
   font-size: 11px;
 }
+
+/* Participant rail (feature-workshop-participant-rail): who's in the room.
+   The active chip IS the direct-mode indicator — this rail replaced the
+   pm-ws-direct-mode banner. Chips wrap rather than scroll so up to 14 tool
+   sidecars stay reachable without hijacking horizontal scroll. */
+[data-pm-surface="workshop"] .pm-ws-participant-rail {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 8px 32px 0;
+}
+[data-pm-surface="workshop"] .pm-ws-rail-label {
+  color: var(--pm-faint);
+  font-size: 11px;
+}
+[data-pm-surface="workshop"] .pm-ws-participant-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-family: var(--pm-sans);
+  color: var(--pm-muted);
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-pill);
+  padding: 4px 11px;
+}
+[data-pm-surface="workshop"] .pm-ws-participant-chip:not(:disabled):hover {
+  color: var(--pm-text);
+  border-color: var(--pm-border-2);
+}
+[data-pm-surface="workshop"] .pm-ws-participant-chip:disabled {
+  opacity: 0.45;
+}
+/* Active chip: static accent treatment — this is the reduced-motion-safe
+   baseline that reads as "mode" even with the pulse disabled. */
+[data-pm-surface="workshop"] .pm-ws-chip-active {
+  color: var(--pm-accent-hi);
+  border-color: var(--pm-accent-lo);
+  background: var(--pm-accent-soft);
+  font-weight: 650;
+}
+/* Direct-tool mode gets the gentle live pulse on top (direct-mode-clarity):
+   messages are being re-routed away from the host, and that should read as a
+   live state, not static text. The ring lives on a pseudo-element and only
+   its OPACITY animates — compositor-friendly, no paint on the keyframe. */
+[data-pm-surface="workshop"] .pm-ws-chip-direct {
+  position: relative;
+}
+[data-pm-surface="workshop"] .pm-ws-chip-direct::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: 0 0 0 3px rgba(224, 103, 58, 0.22);
+  opacity: 0;
+  pointer-events: none;
+  animation: pm-ws-chip-pulse 2.6s ease-in-out infinite;
+}
+@keyframes pm-ws-chip-pulse {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-pm-surface="workshop"] .pm-ws-chip-direct::after {
+    animation: none;
+  }
+}
+
+/* Screen-reader-only text (rail's direct-mode announcement). */
+[data-pm-surface="workshop"] .pm-ws-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Toast */
 [data-pm-surface="workshop"] .pm-ws-toast {
   position: fixed;
   right: 24px;

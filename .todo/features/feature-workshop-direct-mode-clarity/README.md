@@ -1,6 +1,6 @@
 # Feature: Workshop Direct-Tool Mode Visual Clarity
 
-**Status**: Proposed
+**Status**: Subsumed by the participant rail (2026-07-11, `sprint/workshop-editor-tab-06b-tool-side-pass`) — the `pm-ws-direct-mode` banner no longer exists. The rail's active tool chip carries the pulse (compositor-only opacity animation; `prefers-reduced-motion` falls back to the static accent treatment), and the pill-shaped persona chip is the return-to-host affordance. See [feature-workshop-participant-rail](../feature-workshop-participant-rail/README.md) implementation notes; remaining work is the same manual UX pass.
 **Priority**: Medium
 **Date**: 2026-07-11
 **Origin**: Epic Workshop Editor Tab — UX observation while testing direct-tool mode

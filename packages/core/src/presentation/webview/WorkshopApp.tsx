@@ -38,6 +38,7 @@ import {
 import { ModelSelector } from './components/shared/ModelSelector';
 import { ExcerptPanel } from './components/workshop/ExcerptPanel';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
+import { WorkshopParticipantRail } from './components/workshop/WorkshopParticipantRail';
 import { WorkshopThread } from './components/workshop/WorkshopThread';
 import { WorkshopToolsModal } from './components/workshop/WorkshopToolsModal';
 import { WorkshopPersonaBrowserModal } from './components/workshop/WorkshopPersonaBrowserModal';
@@ -279,10 +280,6 @@ export const WorkshopApp: React.FC = () => {
     },
     [workshop.selectPersona]
   );
-  const returnToHost = React.useCallback(() => {
-    workshop.setChatTarget({ kind: 'host' });
-  }, [workshop.setChatTarget]);
-
   const copyTurn = React.useCallback(
     (content: string, turn: WorkshopTurn) => {
       vscode.postMessage({
@@ -579,12 +576,27 @@ export const WorkshopApp: React.FC = () => {
             }
             onError={handleBoundaryError}
           >
-            {workshop.chatTarget.kind === 'tool' && (
-              <div className="pm-ws-direct-mode" role="status">
-                <span>Talking directly to {workshopToolLabel(workshop.chatTarget.toolId)}</span>
-                <button type="button" onClick={returnToHost}>Back to {activePersona.label}</button>
-              </div>
-            )}
+            {/* Above-composer band (feature-workshop-composer-messaging-placement):
+                deterministic stacking order — ticker, participant rail, then the
+                composer (whose keyboard hint sits above the text entry). Nothing
+                renders below the composer. The ticker slot is ALWAYS mounted with
+                a reserved height so messages coming and going never jitter the
+                band, and the live region exists before its first announcement. */}
+            <div className="pm-ws-status-ticker" role="status" aria-live="polite">
+              {(workshop.tickerMessage || workshop.statusMessage) && (
+                <>
+                  <Icon name="bolt" size={12} />
+                  {workshop.tickerMessage || workshop.statusMessage}
+                </>
+              )}
+            </div>
+            <WorkshopParticipantRail
+              personaId={activePersona.id}
+              personaLabel={activePersona.label}
+              toolSidecars={workshop.toolSidecars}
+              chatTarget={workshop.chatTarget}
+              onSetChatTarget={workshop.setChatTarget}
+            />
             <WorkshopComposer
               canMessage={workshop.canMessage}
               hasConversation={workshop.chatTarget.kind === 'host' ? workshop.hasHostConversation : true}
@@ -595,12 +607,6 @@ export const WorkshopApp: React.FC = () => {
               onCancel={workshop.cancelRun}
               onOpenTools={openToolsModal}
             />
-            {(workshop.tickerMessage || workshop.statusMessage) && (
-              <div className="pm-ws-status-ticker" role="status" aria-live="polite">
-                <Icon name="bolt" size={12} />
-                {workshop.tickerMessage || workshop.statusMessage}
-              </div>
-            )}
           </ErrorBoundary>
         </section>
       </div>

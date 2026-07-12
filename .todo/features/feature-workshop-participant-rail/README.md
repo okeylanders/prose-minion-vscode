@@ -1,6 +1,6 @@
 # Feature: Workshop Participant Rail (Who's in the Room)
 
-**Status**: Proposed
+**Status**: Implemented on `sprint/workshop-editor-tab-06b-tool-side-pass` (2026-07-11) — pending manual UX verification in the Extension Development Host
 **Priority**: Medium-High
 **Date**: 2026-07-11
 **Origin**: Epic Workshop Editor Tab — UX observation while testing direct-tool mode with Cliché
@@ -82,11 +82,30 @@ active-chip state plus a pill-styled persona chip.
 
 ## Completion Criteria
 
-- [ ] Rail shows persona + all live tool sidecars; active target visually
+- [x] Rail shows persona + all live tool sidecars; active target visually
       unmistakable.
-- [ ] Clicking chips switches target both directions without hunting for
+- [x] Clicking chips switches target both directions without hunting for
       report artifacts.
-- [ ] Disposed sidecars disappear from the rail on next snapshot; no chip
+- [x] Disposed sidecars disappear from the rail on next snapshot; no chip
       ever targets a dead conversation.
-- [ ] Keyboard + screen-reader operable; reduced-motion respected.
-- [ ] Persona chip never opens persona selection mid-session.
+- [x] Keyboard + screen-reader operable; reduced-motion respected.
+- [x] Persona chip never opens persona selection mid-session.
+
+## Implementation Notes (2026-07-11)
+
+- New `WorkshopParticipantRail.tsx` renders directly off
+  `useWorkshop().toolSidecars` + `chatTarget` — presentation-only over the
+  snapshot, exactly as proposed. Rail hides until the first sidecar exists
+  (host-only room is already named by the composer placeholder + header).
+- The `pm-ws-direct-mode` banner (and its `returnToHost` link) is REMOVED —
+  the rail's active chip is the mode indicator; a visually-hidden
+  `role="status"` span preserves the screen-reader announcement.
+- Active tool chip pulses via a compositor-only opacity animation on a
+  pseudo-element ring; `prefers-reduced-motion` falls back to the static
+  accent treatment. Chips wrap (no horizontal scroll) for the 14-tool case.
+- A sidecar with `availableForDirectFollowUp: false` renders disabled with an
+  explanatory title, so a lost conversation can't be clicked into.
+- Tests: `WorkshopParticipantRail.test.tsx` (render order, both-direction
+  switching, active-target no-repost, unavailable-chip disable, status
+  announcement). Remaining: manual pass for visual treatment, focus behavior,
+  and reduced-motion in the Extension Development Host.

@@ -43,9 +43,18 @@ describe('WorkshopComposer', () => {
     expect((composer as HTMLTextAreaElement).value).toBe('First point\n');
   });
 
-  it('shows the multiline keyboard hint', () => {
+  it('shows the multiline keyboard hint above the text entry with Shift+Enter accented', () => {
     renderComposer();
 
-    expect(screen.getByText('Enter to send · Shift+Enter for a new line')).not.toBeNull();
+    const hint = document.querySelector('.pm-ws-composer-hint');
+    expect(hint?.textContent).toBe('Enter to send · Shift+Enter for a new line');
+    // The accent span is the point: the one binding writers must learn.
+    expect(hint?.querySelector('.pm-ws-hint-key')?.textContent).toBe('Shift+Enter');
+    // Placement contract (composer-messaging-placement): nothing renders
+    // below the form — the hint precedes the text entry in document order.
+    const form = document.querySelector('form.pm-ws-composer');
+    expect(hint && form
+      ? hint.compareDocumentPosition(form) & Node.DOCUMENT_POSITION_FOLLOWING
+      : 0).toBeTruthy();
   });
 });
