@@ -1,6 +1,6 @@
 # Feature: Workshop Direct-Tool Mode Visual Clarity
 
-**Status**: Subsumed by the participant rail (2026-07-11, `sprint/workshop-editor-tab-06b-tool-side-pass`) — the `pm-ws-direct-mode` banner no longer exists. The rail's active tool chip carries the pulse (compositor-only opacity animation; `prefers-reduced-motion` falls back to the static accent treatment), and the pill-shaped persona chip is the return-to-host affordance. See [feature-workshop-participant-rail](../feature-workshop-participant-rail/README.md) implementation notes; remaining work is the same manual UX pass.
+**Status**: Complete (2026-07-11, `sprint/workshop-editor-tab-06b-tool-side-pass`) — subsumed by the participant rail plus a live-status ticker pulse. The `pm-ws-direct-mode` banner no longer exists: the rail's active tool chip carries the direct-mode pulse (compositor-only opacity ring; `prefers-reduced-motion` falls back to the static accent treatment), the pill-shaped persona chip is the return-to-host affordance, and the status ticker (`pm-ws-ticker-live`) slowly breathes between muted and accent while a run streams so in-flight work reads as alive. See [feature-workshop-participant-rail](../feature-workshop-participant-rail/README.md) implementation notes.
 **Priority**: Medium
 **Date**: 2026-07-11
 **Origin**: Epic Workshop Editor Tab — UX observation while testing direct-tool mode
@@ -53,9 +53,14 @@ presentation tasks instead of running a separate pass.
 
 ## Completion Criteria
 
-- [ ] Direct-mode indicator animates (slow pulse) with a reduced-motion
-      fallback; theme-safe in light/dark.
-- [ ] "Back to [persona]" rendered as a pill button with hover/focus states
-      and keyboard accessibility preserved.
-- [ ] A writer glancing at the composer can tell within a second whether the
-      next message goes to the tool or the persona.
+- [x] Direct-mode indicator animates (slow pulse) with a reduced-motion
+      fallback; theme-safe in light/dark. *(Delivered as the rail's active
+      tool chip pulse + the live ticker's slow color/opacity breathe; the
+      Workshop surface is pinned warm-dark in v1, so one palette to verify.)*
+- [x] "Back to [persona]" rendered as a pill button with hover/focus states
+      and keyboard accessibility preserved. *(Delivered as the rail's
+      persona chip — pill-shaped, `aria-pressed`, focus ring per the
+      surface's scoped focus story.)*
+- [x] A writer glancing at the composer can tell within a second whether the
+      next message goes to the tool or the persona. *(The rail sits directly
+      above the input; the active chip is the mode.)*

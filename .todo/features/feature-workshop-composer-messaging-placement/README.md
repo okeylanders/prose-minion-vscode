@@ -4,7 +4,7 @@
 **Priority**: Medium
 **Date**: 2026-07-11
 **Origin**: Epic Workshop Editor Tab — composer-area design pass
-**Related**: [feature-workshop-direct-mode-clarity](../feature-workshop-direct-mode-clarity/README.md),
+**Related**: [feature-workshop-direct-mode-clarity](../../archive/features/feature-workshop-direct-mode-clarity/README.md),
 [feature-workshop-participant-rail](../feature-workshop-participant-rail/README.md)
 — all three form one composer-area design pass
 

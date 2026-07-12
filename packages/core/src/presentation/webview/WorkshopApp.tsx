@@ -586,10 +586,10 @@ export const WorkshopApp: React.FC = () => {
                 its first announcement. */}
             <div className="pm-ws-status-ticker" role="status" aria-live="polite">
               {(workshop.tickerMessage || workshop.statusMessage) && (
-                <>
+                <span className="pm-ws-ticker-live">
                   <Icon name="bolt" size={12} />
                   {workshop.tickerMessage || workshop.statusMessage}
-                </>
+                </span>
               )}
             </div>
             <WorkshopParticipantRail

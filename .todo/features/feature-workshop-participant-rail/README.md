@@ -5,7 +5,7 @@
 **Date**: 2026-07-11
 **Origin**: Epic Workshop Editor Tab — UX observation while testing direct-tool mode with Cliché
 **Related ADR**: [2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](../../../docs/adr/2026-07-09-workshop-persona-hosted-conversations.md) (§3 participants, §4 chat target)
-**Related**: [feature-workshop-direct-mode-clarity](../feature-workshop-direct-mode-clarity/README.md) — design these together
+**Related**: [feature-workshop-direct-mode-clarity](../../archive/features/feature-workshop-direct-mode-clarity/README.md) — design these together
 
 ## Problem / Motivation
 
@@ -26,7 +26,7 @@ banner sits today) showing everyone in the room:
 - **One chip per live tool sidecar** (e.g. Cliché, Continuity), in run order.
   Clicking a chip sends `WORKSHOP_SET_CHAT_TARGET { kind: 'tool', toolId }`.
 - **Active target** gets the highlighted/pulsing treatment from
-  [feature-workshop-direct-mode-clarity](../feature-workshop-direct-mode-clarity/README.md);
+  [feature-workshop-direct-mode-clarity](../../archive/features/feature-workshop-direct-mode-clarity/README.md);
   the rail *becomes* the mode indicator, likely subsuming the banner entirely.
 
 ### Why this is cheap

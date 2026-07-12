@@ -1013,13 +1013,33 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
   min-height: 15px;
   padding: 6px 33px 8px;
   border-bottom: 1px solid var(--pm-border-soft);
   color: var(--pm-muted);
   font-family: var(--pm-mono);
   font-size: 11px;
+}
+/* Live-status pulse (direct-mode-clarity): while displayed, the ticker slowly
+   breathes between muted and the accent so in-flight work reads as alive, not
+   stuck. The bolt icon rides along via currentColor. One tiny element — the
+   color/opacity keyframes are an acceptable paint cost. */
+[data-pm-surface="workshop"] .pm-ws-ticker-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  animation: pm-ws-ticker-pulse 2.8s ease-in-out infinite;
+}
+@keyframes pm-ws-ticker-pulse {
+  0%, 100% { color: var(--pm-muted); opacity: 0.7; }
+  50% { color: var(--pm-accent-hi); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-pm-surface="workshop"] .pm-ws-ticker-live {
+    animation: none;
+    /* Static-but-distinct fallback: still reads as a live state. */
+    color: var(--pm-accent-hi);
+  }
 }
 
 /* Participant rail (feature-workshop-participant-rail): who's in the room.
