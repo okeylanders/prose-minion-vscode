@@ -3,10 +3,11 @@
 **Status**: Planned
 **Priority**: High
 **Branch**: `sprint/workshop-editor-tab-06c-excerpt-revision-loop` -> PR into `epic/workshop-editor-tab`
-**Estimated Effort**: 2-3 days
+**Estimated Effort**: 3-4 days
 **Depends on**: Sprint 06B
-**Blocks (soft)**: Sprint 07 — the capability loop should build on the final host-turn memory model rather than retrofit it
+**Blocks (soft)**: Sprint 07 — the capability loop should build on the final host-turn memory model rather than retrofit it, and its input ceilings must be born in the central budget table
 **ADRs**: [2026-07-11 — Workshop Excerpt Revision and Room Memory](../../../../docs/adr/2026-07-11-workshop-excerpt-revision-and-room-memory.md)
+**Absorbs**: [.todo/tech-debt/2026-07-11-prompt-truncation-budget-centralization.md](../../../tech-debt/2026-07-11-prompt-truncation-budget-centralization.md) as Task 0
 
 ## Goal
 
@@ -48,6 +49,26 @@ honestly.
   wrapper. Mid-run replacement guard unchanged.
 
 ## Tasks
+
+### Task 0: Prompt budget centralization (mechanical; first commits, zero behavior change)
+
+- [ ] Create the frozen, typed budget module
+      (`packages/core/src/shared/constants/promptBudgets.ts`) covering every
+      prompt-side bound in the tech-debt census: `fileExcerpt` (words +
+      bytes), `personaExcerpt`, `contextBrief`, `toolEvidence` (chars),
+      `directHandoff` (turns + chars + named header allowance — retiring the
+      magic `- 800`), `contextFiles` (words + catalog items), `guides`,
+      `sourceDocument`.
+- [ ] Migrate all seven sites to import from it; delete every module-local
+      limit constant. **No limit value changes in this sprint.**
+- [ ] Add a char-based trim helper beside `trimToWordLimit` returning the
+      same `TrimResult`-style provenance; adopt it at the raw-`slice()`
+      sites (`WorkshopPromptBuilder`, `WorkshopSessionService`).
+- [ ] Architecture guard test (sibling of `boundaries.test.ts`): fail on new
+      module-local `*_MAX_*` / `*_LIMIT*` constants outside the budget
+      module and tests.
+- [ ] These commits land before any revision-loop behavior work so the
+      refactor diff reviews clean.
 
 ### Session model
 
@@ -105,6 +126,10 @@ honestly.
 
 ## Acceptance Criteria
 
+- Every prompt-side truncation limit imports from the budget module; the
+  guard test enforces it; grep for stray `MAX_WORDS|MAX_CHARS|MAX_BYTES`
+  outside the module returns only the module and tests. New 06C bounds
+  (revision frame reuses `personaExcerpt`) come from the table.
 - Replacing the excerpt mid-conversation, then asking the host to compare
   against its earlier feedback, gets a memory-intact, version-aware answer.
 - No API call fires at replacement time; the next host turn carries exactly
@@ -117,6 +142,9 @@ honestly.
 
 ## Guardrails
 
+- Task 0 commits are pure mechanical moves and land first; no limit value
+  changes and no behavior changes ride in them. Revision-loop behavior work
+  starts only after the budget table is in place.
 - Do not mutate retained histories — the revision frame is new content on
   the next turn, never an edit of turn 1.
 - Do not add a confirmation dialog; the divider is disclosure enough under

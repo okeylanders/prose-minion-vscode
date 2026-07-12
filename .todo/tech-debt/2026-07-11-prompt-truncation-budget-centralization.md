@@ -1,6 +1,6 @@
 # Prompt Truncation Budgets Are Scattered (Centralize the Table, Not a Manager)
 
-**Status**: Open
+**Status**: Scheduled — absorbed as Task 0 of [Sprint 06C](../epics/epic-workshop-editor-tab-2026-07-03/sprints/06c-excerpt-revision-loop.md) (2026-07-12); archive when 06C completes
 **Priority**: Medium (rises to High before Sprint 09 lands — see multipliers)
 **Date**: 2026-07-11
 
@@ -14,7 +14,7 @@ truncation notices.
 The *limits* are not. Module-local constants live in seven files:
 
 | Site | Limit | Mechanism |
-|---|---|---|
+| --- | --- | --- |
 | `WorkshopHandler` | `WORKSHOP_FILE_EXCERPT_MAX_WORDS` 10,000 / `…MAX_BYTES` 5 MB | `trimToWordLimit` + stat |
 | `AssistantToolService` | persona excerpt 10,000 words; context brief 1,200 | `trimToWordLimit` (private) |
 | `WorkshopPromptBuilder` | `WORKSHOP_TOOL_EVIDENCE_MAX_CHARS` 50,000 chars | raw `.slice(0, N)` |
@@ -67,9 +67,11 @@ batching, not truncation.)
 
 ## Sequencing
 
-Best landed as a small standalone pass **before Sprint 07** (or as 07's
-first commit): 07 and 09 otherwise mint five-plus new scattered constants
-that immediately become migration work.
+Resolved: absorbed as **Task 0 of Sprint 06C** — mechanical first commits,
+zero behavior change, landing before the revision-loop work and therefore
+before Sprints 07/09 mint new constants. (Original recommendation was
+"before Sprint 07"; 06C is earlier and touches most of the hot sites
+anyway.)
 
 ## Completion Criteria
 
