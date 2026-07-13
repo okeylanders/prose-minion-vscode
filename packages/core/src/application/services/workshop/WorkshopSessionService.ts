@@ -21,6 +21,10 @@ import {
   WorkshopTurnKind
 } from '@messages';
 import { TokenUsage } from '@shared/types';
+import {
+  WorkshopCapabilityArtifactDetails,
+  WorkshopCapabilityResult
+} from '@shared/types/workshopCapabilities';
 import { DEFAULT_WORKSHOP_PERSONA_ID, workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
 
@@ -73,6 +77,16 @@ export interface WorkshopPendingHostUpdates {
 export interface WorkshopToolReportCompletion {
   turn: WorkshopTurn;
   replacedConversationId?: string;
+}
+
+export interface WorkshopCapabilityArtifactInput {
+  hostRequestId: string;
+  excerptVersion: number;
+  details: WorkshopCapabilityArtifactDetails;
+  result: WorkshopCapabilityResult;
+  toolId?: WorkshopToolId;
+  conversationId?: string;
+  truncated?: boolean;
 }
 
 export interface WorkshopExcerptReplacement {
@@ -324,26 +338,71 @@ export class WorkshopSessionService {
       excerptVersion: active.excerptVersion
     };
 
-    const replaced = this.participants.toolSidecars[active.toolId];
-    this.participants.toolSidecars[active.toolId] = {
+    const replacedConversationId = this.adoptToolSidecar(
+      active.toolId,
       conversationId,
-      latestReportTurnId: turnId,
-      // The report itself goes to the host through the dedicated synthesis
-      // evidence path; this cursor tracks only direct exchanges. A replacement
-      // report INHERITS the prior cursor (PR #72 review #2): undelivered
-      // exchanges under the old report stay claimable until a successful host
-      // turn actually ships them — adoption is not delivery.
-      deliveredToHostThroughTurnId: replaced?.deliveredToHostThroughTurnId ?? turnId
-    };
+      turnId
+    );
     this.turns.push(turn);
 
     return {
       turn: cloneTurn(turn),
-      replacedConversationId:
-        replaced?.conversationId && replaced.conversationId !== conversationId
-          ? replaced.conversationId
-          : undefined
+      replacedConversationId
     };
+  }
+
+  /**
+   * Append completed nested capability evidence without replacing the active
+   * host run. A reset/preemption refuses the late artifact atomically.
+   */
+  recordCapabilityArtifact(
+    input: WorkshopCapabilityArtifactInput
+  ): WorkshopToolReportCompletion | undefined {
+    const active = this.activeRun;
+    if (
+      active?.requestId !== input.hostRequestId ||
+      active.target !== 'host' ||
+      active.excerptVersion !== input.excerptVersion
+    ) {
+      return undefined;
+    }
+
+    const isAnalysis = input.details.operation === 'analysis.run';
+    const turnId = this.nextTurnId('assistant');
+    const artifact: WorkshopTurnArtifact = isAnalysis
+      ? 'tool_report'
+      : input.details.operation === 'dictionary.lookup'
+        ? 'dictionary_lookup'
+        : 'dictionary_full_entry';
+    const turn: WorkshopTurn = {
+      id: turnId,
+      role: 'assistant',
+      kind: 'tool_run',
+      participant: 'tool',
+      artifact,
+      toolId: isAnalysis ? input.toolId : undefined,
+      toolLabel: isAnalysis && input.toolId
+        ? workshopToolLabel(input.toolId)
+        : 'Writer\'s Dictionary',
+      reportTurnId: isAnalysis && input.conversationId ? turnId : undefined,
+      capability: cloneCapabilityDetails(input.details),
+      content: input.result.content ?? input.result.error ?? 'No capability result was returned.',
+      timestamp: this.now(),
+      usage: input.result.usage ? { ...input.result.usage } : undefined,
+      truncated: input.truncated || undefined,
+      excerptVersion: input.excerptVersion
+    };
+
+    let replacedConversationId: string | undefined;
+    if (isAnalysis && input.toolId && input.conversationId) {
+      replacedConversationId = this.adoptToolSidecar(
+        input.toolId,
+        input.conversationId,
+        turnId
+      );
+    }
+    this.turns.push(turn);
+    return { turn: cloneTurn(turn), replacedConversationId };
   }
 
   /** Begin the host-only synthesis phase correlated to a visible report. */
@@ -586,6 +645,26 @@ export class WorkshopSessionService {
     return cloneTurn(turn);
   }
 
+  /** One replace-and-cursor policy for writer- and persona-requested reports. */
+  private adoptToolSidecar(
+    toolId: WorkshopToolId,
+    conversationId: string,
+    latestReportTurnId: string
+  ): string | undefined {
+    const replaced = this.participants.toolSidecars[toolId];
+    this.participants.toolSidecars[toolId] = {
+      conversationId,
+      latestReportTurnId,
+      // A replacement report inherits the prior cursor: undelivered direct
+      // exchanges remain claimable until a successful host turn ships them.
+      deliveredToHostThroughTurnId:
+        replaced?.deliveredToHostThroughTurnId ?? latestReportTurnId
+    };
+    return replaced?.conversationId && replaced.conversationId !== conversationId
+      ? replaced.conversationId
+      : undefined;
+  }
+
   private requireExcerpt(): void {
     if (!this.excerpt || this.excerpt.text.trim().length === 0) {
       throw new Error('Cannot run a Workshop conversation without a pinned excerpt');
@@ -634,7 +713,36 @@ export class WorkshopSessionService {
 }
 
 function cloneTurn(turn: WorkshopTurn): WorkshopTurn {
-  return { ...turn, usage: turn.usage ? { ...turn.usage } : undefined };
+  return {
+    ...turn,
+    usage: turn.usage ? { ...turn.usage } : undefined,
+    capability: turn.capability ? cloneCapabilityDetails(turn.capability) : undefined
+  };
+}
+
+function cloneCapabilityDetails(
+  details: WorkshopCapabilityArtifactDetails
+): WorkshopCapabilityArtifactDetails {
+  return {
+    ...details,
+    metadata: details.metadata
+      ? Object.fromEntries(
+          Object.entries(details.metadata).map(([key, value]) => [key, cloneMetadataValue(value)])
+        )
+      : undefined
+  };
+}
+
+function cloneMetadataValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(cloneMetadataValue);
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nested]) => [key, cloneMetadataValue(nested)])
+    );
+  }
+  return value;
 }
 
 function cloneExcerpt(excerpt: WorkshopExcerpt): WorkshopExcerpt {

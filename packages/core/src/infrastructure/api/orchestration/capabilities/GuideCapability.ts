@@ -3,11 +3,19 @@ import { GuideRegistry } from '@/infrastructure/guides/GuideRegistry';
 import { GuideLoader } from '@/tools/shared/guides';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import { AgentCapability, CapabilityFulfillment } from '../AgentRunContracts';
-import { createResourceReadXmlInstruction, ResourceReadInspection } from '../ResourceReadXmlCodec';
+import {
+  createResourceReadXmlInstruction,
+  ResourceReadInspection,
+  ResourceReadRequest,
+  summarizeResourceReadRequest
+} from '../ResourceReadXmlCodec';
 import { ResourceRequestGate } from './ResourceRequestGate';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
-export class GuideCapability implements AgentCapability {
+export class GuideCapability implements AgentCapability<
+  ResourceReadRequest,
+  Extract<ResourceReadInspection, { kind: 'invalid' }>
+> {
   readonly catalog = 'guides' as const;
   private readonly gate = new ResourceRequestGate({
     catalogLabel: 'craft-guide',
@@ -23,7 +31,7 @@ export class GuideCapability implements AgentCapability {
     private readonly outputChannel?: LogSink
   ) {}
 
-  async appendCatalog(userMessage: string): Promise<string> {
+  async appendContract(userMessage: string): Promise<string> {
     const available = await this.guideRegistry.listAvailableGuides();
     this.gate.setAllowedPaths(available.map(guide => guide.path));
     return [
@@ -37,14 +45,15 @@ export class GuideCapability implements AgentCapability {
     return this.gate.inspect(candidate);
   }
 
-  async fulfill(requestedPaths: readonly string[]): Promise<CapabilityFulfillment> {
+  async fulfill(request: ResourceReadRequest): Promise<CapabilityFulfillment> {
+    const requestedPaths = request.paths;
     const available = await this.guideRegistry.listAvailableGuides();
     const allowed = new Map(available.map(guide => [guide.path, guide]));
     const rejected = requestedPaths.filter(path => !this.gate.allows(path));
     if (rejected.length > 0) {
       return {
         evidence: 'The resource request was rejected because it included a path outside the displayed craft-guide catalog. Continue without additional resources.',
-        deliveredPaths: [],
+        deliveredItems: [],
         artifacts: []
       };
     }
@@ -67,12 +76,12 @@ export class GuideCapability implements AgentCapability {
     const evidence = this.buildEvidence(loaded, unavailable);
     return {
       evidence,
-      deliveredPaths: loaded.map(item => item.path),
+      deliveredItems: loaded.map(item => item.path),
       artifacts: loaded.map(item => {
         const guide = allowed.get(item.path)!;
         return {
           catalog: this.catalog,
-          path: item.path,
+          id: item.path,
           label: guide.displayName,
           category: guide.category,
           size: item.content.length,
@@ -90,7 +99,8 @@ export class GuideCapability implements AgentCapability {
     return 'Loading requested craft guides...';
   }
 
-  statusTicker(requestedPaths: readonly string[]): string {
+  statusTicker(request: ResourceReadRequest): string {
+    const requestedPaths = request.paths;
     return requestedPaths
       .map(path => path.split('/').pop() ?? path)
       .map(filename => filename.replace(/\.md$/i, ''))
@@ -99,6 +109,10 @@ export class GuideCapability implements AgentCapability {
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' '))
       .join(', ');
+  }
+
+  requestLogSummary(request: ResourceReadRequest): string {
+    return summarizeResourceReadRequest(request);
   }
 
   invalidRequestInstruction(rejection: Extract<ResourceReadInspection, { kind: 'invalid' }>): string {

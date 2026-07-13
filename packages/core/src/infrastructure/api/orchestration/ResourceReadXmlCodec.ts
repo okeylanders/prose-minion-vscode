@@ -5,6 +5,9 @@ export interface ResourceReadRequest {
   readonly paths: readonly string[];
 }
 
+export const summarizeResourceReadRequest = (request: ResourceReadRequest): string =>
+  `${request.paths.length} path(s): ${request.paths.join(', ')}`;
+
 export type ResourceReadRejectionReason =
   | 'xml-declaration'
   | 'processing-instruction'

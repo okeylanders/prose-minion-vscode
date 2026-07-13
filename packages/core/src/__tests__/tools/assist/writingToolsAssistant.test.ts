@@ -26,7 +26,7 @@ describe('WritingToolsAssistant', () => {
       expect(result.content).toBe('Analysis result content');
       expect(engine.runInitial).toHaveBeenCalledWith(expect.objectContaining({
         toolName: `writing-tools-${focus}`,
-        policy: expect.objectContaining({ resourceCatalog: 'guides' }),
+        policy: expect.objectContaining({ capabilityCatalog: 'guides' }),
         capability: guides
       }));
     }
@@ -35,7 +35,7 @@ describe('WritingToolsAssistant', () => {
   it('switches to the explicit none policy when guides are disabled', async () => {
     await assistant.analyze({ text: 'Test passage' }, { focus: 'editor', includeCraftGuides: false });
     expect(engine.runInitial).toHaveBeenCalledWith(expect.objectContaining({
-      policy: expect.objectContaining({ resourceCatalog: 'none' }),
+      policy: expect.objectContaining({ capabilityCatalog: 'none' }),
       capability: undefined
     }));
   });

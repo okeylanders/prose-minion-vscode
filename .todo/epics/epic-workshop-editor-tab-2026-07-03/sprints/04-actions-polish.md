@@ -80,7 +80,7 @@ Completed on `feat/workshop-s4-actions-polish` (2026-07-07).
 
 ## Verification
 
-- `npm test -- --runTestsByPath packages/core/src/__tests__/application/handlers/domain/WorkshopHandler.test.ts packages/core/src/__tests__/application/services/WorkshopSessionService.test.ts packages/core/src/__tests__/presentation/webview/hooks/domain/useWorkshop.test.ts` — pass (72 tests).
+- `npm test -- --runTestsByPath packages/core/src/__tests__/application/handlers/domain/WorkshopHandler.test.ts packages/core/src/__tests__/application/services/workshop/WorkshopSessionService.test.ts packages/core/src/__tests__/presentation/webview/hooks/domain/useWorkshop.test.ts` — pass (72 tests).
 - `npm run typecheck` — pass (core, webview, extension).
 - `npm test` — pass (61 suites / 541 tests).
 - `npm run build` — pass; includes `verify:bundle` pass. Webpack still reports

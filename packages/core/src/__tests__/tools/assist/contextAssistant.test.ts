@@ -33,7 +33,7 @@ describe('ContextAssistant', () => {
     expect(request.userMessage).not.toContain('## Available Project Resources');
     expect(request.userMessage).not.toContain('Resource Request Protocol');
 
-    const initialMessage = await capability.appendCatalog(request.userMessage);
+    const initialMessage = await capability.appendContract(request.userMessage);
     expect(initialMessage.match(/## Available Project Resources/g)).toHaveLength(1);
     expect(initialMessage.match(/## Resource Request Protocol/g)).toHaveLength(1);
     expect(initialMessage.match(/<prose-minion-tool-call name="resource.read">/g)).toHaveLength(1);

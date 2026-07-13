@@ -16,7 +16,7 @@ is registered for the Workshop panel.
 
 - `apps/vscode-extension/src/application/providers/WorkshopPanelProvider.ts`
 - `apps/vscode-extension/src/extension.ts`
-- `packages/core/src/application/services/WorkshopSessionService.ts`
+- `packages/core/src/application/services/workshop/WorkshopSessionService.ts`
 
 ## Completion Criteria
 

@@ -7,7 +7,7 @@
  */
 
 import { TokenUsage, WorkshopToolId, WorkshopTurn } from '@messages';
-import type { WorkshopPendingHostUpdates } from '@/application/services/WorkshopSessionService';
+import type { WorkshopPendingHostUpdates } from '@/application/services/workshop/WorkshopSessionService';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { neutralizeReservedPersonaPromptDelimiters } from '@/utils/workshopPromptFrames';

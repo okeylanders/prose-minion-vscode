@@ -150,3 +150,25 @@ Sprint 07:
   request → retry) remain separate bounded policy numbers: a model burning
   corrections is confused, a model burning rounds is thorough, and logs must
   distinguish the two.
+
+## Implementation Note 2026-07-12: Typed Operations and Transactional Turns
+
+Sprint 07 implemented the per-turn direction by generalizing
+`AgentCapability` from a path-list contract to a typed request/rejection pair.
+Resource adapters still compose `ResourceRequestGate`; the Workshop adapter
+uses a closed discriminated operation union and calls injected application
+services directly.
+
+Initial and retained turns now share one execution path. Intermediate assistant
+calls and host evidence are accumulated in a working transcript and committed
+to `ConversationManager` only with successful final prose. This preserves the
+atomic cancellation/error semantics required by retained Workshop pending
+frames while allowing completed visible capability artifacts to survive
+honestly.
+
+The tolerant preamble/fence behavior remains specific to `resource.read`, where
+it was validated against live provider drift. Workshop persona operations use
+the Sprint 07 trust-boundary rule instead: exactly one bare XML root, with
+mixed prose, fences, duplicate roots, and quoted excerpt injections rejected.
+Both transports continue to share the same root marker and engine visibility
+guard without weakening either operation's validation policy.

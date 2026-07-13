@@ -12,7 +12,7 @@
  */
 
 import { AnalysisResult } from '@/domain/models/AnalysisResult';
-import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { isApiKeyNotConfiguredWarning, TokenUsage, WorkshopTurn } from '@messages';
 
 export interface WorkshopRunCompletionCopy {

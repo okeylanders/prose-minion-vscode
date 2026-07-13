@@ -11,7 +11,7 @@ describe('ContextFileCapability', () => {
 
   it('uses only configured project-context resources and records compact provenance', async () => {
     const adapter = new ContextFileCapability(provider as never, settings as never);
-    const catalog = await adapter.appendCatalog('Brief');
+    const catalog = await adapter.appendContract('Brief');
     expect(catalog).toContain('characters/mara.md');
     expect(catalog).toContain('<prose-minion-tool-call name="resource.read">');
     expect(catalog).toContain('<path>characters/mara.md</path>');
@@ -19,9 +19,9 @@ describe('ContextFileCapability', () => {
     expect(adapter.inspectRequest('<prose-minion-tool-call name="resource.read"><paths></paths></prose-minion-tool-call>')).toMatchObject({ kind: 'invalid', reason: 'empty-path' });
     expect(adapter.inspectRequest('<prose-minion-tool-call name="resource.read"><paths><path>characters/mara.md</path></paths></prose-minion-tool-call> Explain it')).toMatchObject({ kind: 'invalid' });
 
-    const fulfillment = await adapter.fulfill(['characters/mara.md']);
+    const fulfillment = await adapter.fulfill({ operation: 'resource.read', paths: ['characters/mara.md'] });
     expect(provider.loadResources).toHaveBeenCalledWith(['characters/mara.md']);
-    expect(fulfillment.artifacts).toEqual([expect.objectContaining({ catalog: 'projectContext', category: 'characters', path: 'characters/mara.md' })]);
+    expect(fulfillment.artifacts).toEqual([expect.objectContaining({ catalog: 'projectContext', category: 'characters', id: 'characters/mara.md' })]);
     expect(fulfillment.evidence).toContain('Mara is tired.');
   });
 
@@ -39,7 +39,7 @@ describe('ContextFileCapability', () => {
     provider.listResources.mockReturnValueOnce(resources);
     const adapter = new ContextFileCapability(provider as never, settings as never);
 
-    const catalog = await adapter.appendCatalog('Semantic context request');
+    const catalog = await adapter.appendContract('Semantic context request');
 
     expect(catalog.indexOf('story-overview.md')).toBeLessThan(catalog.indexOf('characters/mara.md'));
     expect(catalog).toContain('- [characters] `characters/mara.md` — Mara (workspace: novel)');
@@ -55,10 +55,10 @@ describe('ContextFileCapability', () => {
 
   it('rejects paths outside its displayed catalog and never turns extra provider output into evidence', async () => {
     const adapter = new ContextFileCapability(provider as never, settings as never);
-    await adapter.appendCatalog('Brief');
+    await adapter.appendContract('Brief');
 
-    const rejected = await adapter.fulfill(['outside.md']);
-    expect(rejected.deliveredPaths).toEqual([]);
+    const rejected = await adapter.fulfill({ operation: 'resource.read', paths: ['outside.md'] });
+    expect(rejected.deliveredItems).toEqual([]);
     expect(rejected.evidence).toContain('rejected');
     expect(provider.loadResources).not.toHaveBeenCalledWith(['outside.md']);
 
@@ -66,8 +66,8 @@ describe('ContextFileCapability', () => {
       { group: 'characters', path: 'characters/mara.md', label: 'Mara', content: 'Mara is tired.' },
       { group: 'characters', path: 'outside.md', label: 'Outside', content: 'Never show this.' }
     ]);
-    const fulfillment = await adapter.fulfill(['characters/mara.md']);
-    expect(fulfillment.deliveredPaths).toEqual(['characters/mara.md']);
+    const fulfillment = await adapter.fulfill({ operation: 'resource.read', paths: ['characters/mara.md'] });
+    expect(fulfillment.deliveredItems).toEqual(['characters/mara.md']);
     expect(fulfillment.evidence).not.toContain('Never show this.');
     expect(fulfillment.artifacts).toHaveLength(1);
   });
@@ -75,16 +75,16 @@ describe('ContextFileCapability', () => {
   it('describes an empty catalog and preserves missing-path and trimming limit behavior', async () => {
     provider.listResources.mockReturnValueOnce([]);
     const emptyAdapter = new ContextFileCapability(provider as never, settings as never);
-    const emptyCatalog = await emptyAdapter.appendCatalog('Brief');
+    const emptyCatalog = await emptyAdapter.appendContract('Brief');
     expect(emptyCatalog).toContain('No project references matched');
     expect(emptyCatalog.match(/## Resource Request Protocol/g)).toHaveLength(1);
 
     const missingAdapter = new ContextFileCapability(provider as never, settings as never);
-    await missingAdapter.appendCatalog('Brief');
+    await missingAdapter.appendContract('Brief');
     provider.loadResources.mockResolvedValueOnce([]);
-    await expect(missingAdapter.fulfill(['characters/mara.md'])).resolves.toMatchObject({
+    await expect(missingAdapter.fulfill({ operation: 'resource.read', paths: ['characters/mara.md'] })).resolves.toMatchObject({
       evidence: expect.stringContaining('characters/mara.md'),
-      deliveredPaths: []
+      deliveredItems: []
     });
 
     const largeProvider = {
@@ -92,9 +92,9 @@ describe('ContextFileCapability', () => {
       loadResources: async () => [{ group: 'general', path: 'large.md', label: 'Large', content: 'word '.repeat(50_001) }]
     };
     const trimmingAdapter = new ContextFileCapability(largeProvider as never, settings as never);
-    await trimmingAdapter.appendCatalog('Brief');
-    const trimmed = await trimmingAdapter.fulfill(['large.md']);
+    await trimmingAdapter.appendContract('Brief');
+    const trimmed = await trimmingAdapter.fulfill({ operation: 'resource.read', paths: ['large.md'] });
     expect(trimmed.evidence).toContain('combined evidence was trimmed to fit the context window');
-    expect(trimmed.artifacts).toEqual([expect.objectContaining({ path: 'large.md', size: 250_005 })]);
+    expect(trimmed.artifacts).toEqual([expect.objectContaining({ id: 'large.md', size: 250_005 })]);
   });
 });

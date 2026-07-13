@@ -3,6 +3,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 const SRC_ROOT = path.resolve(__dirname, '..', '..');
 const BUDGET_MODULE = path.join(SRC_ROOT, 'shared', 'constants', 'promptBudgets.ts');
@@ -52,6 +53,18 @@ function collectLimitDeclarationNames(source: string, fileName = 'prompt-budget-
 }
 
 describe('prompt budgets', () => {
+  it('keeps the locked Workshop capability ceilings in the shared table', () => {
+    expect(PROMPT_BUDGETS.workshopCapability).toEqual({
+      wordCharacters: 100,
+      contextCharacters: 4_000,
+      purposeCharacters: 500,
+      instructionsCharacters: 1_000,
+      callsPerTurn: 3,
+      fullEntriesPerTurn: 1,
+      analysisRunsPerTurn: 1
+    });
+  });
+
   it('recognizes mutable, field, and suffix-style budget declarations', () => {
     const source = [
       'let MAX_WORDS = 10;',

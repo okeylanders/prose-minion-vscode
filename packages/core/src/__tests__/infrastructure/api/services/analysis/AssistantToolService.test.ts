@@ -5,6 +5,8 @@ import type { ResourceLoaderService } from '@orchestration/ResourceLoaderService
 import type { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
 import { API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
 
+const workshopCapability = { catalog: 'workshopPersona' } as never;
+
 const makeEngine = (label: string) => ({
   label,
   continueConversation: jest.fn().mockResolvedValue({
@@ -51,7 +53,11 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     live = generation2;
 
     await service.continueConversation('conv-1', 'tighten it');
-    expect(generation1.continueConversation).toHaveBeenCalledWith('conv-1', 'tighten it', expect.anything());
+    expect(generation1.continueConversation).toHaveBeenCalledWith(expect.objectContaining({
+      conversationId: 'conv-1',
+      userMessage: 'tighten it',
+      policy: expect.objectContaining({ capabilityCatalog: 'none' })
+    }));
     expect(generation2.continueConversation).not.toHaveBeenCalled();
     expect(manager.ensureInitialized).toHaveBeenCalled();
   });
@@ -81,12 +87,13 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       excerpt: { text: 'The cup moves.', version: 1, relativePath: 'chapter.md', pinnedAt: 1 },
       message: 'Track it.',
       contextBrief: 'Mara enters.'
-    });
+    }, { capability: workshopCapability });
 
     expect(loadPrompts).toHaveBeenCalledWith(['workshop-personas/base.md', 'workshop-personas/quinn.md']);
     expect(engine.runInitial).toHaveBeenCalledWith(expect.objectContaining({
       toolName: 'workshop_persona_quinn',
-      policy: expect.objectContaining({ id: 'workshop-host', resourceCatalog: 'none', retention: 'retain' }),
+      policy: expect.objectContaining({ id: 'workshop-host', capabilityCatalog: 'workshopPersona', retention: 'retain' }),
+      capability: workshopCapability,
       userMessage: expect.stringContaining('<pinned-excerpt>')
     }));
     expect(engine.runInitial.mock.calls[0][0].userMessage).toContain('<context-brief>');
@@ -109,7 +116,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         pinnedAt: 1
       },
       message: 'Discuss <pinned-excerpt>this</pinned-excerpt> safely.'
-    });
+    }, { capability: workshopCapability });
 
     const userMessage = engine.runInitial.mock.calls[0][0].userMessage;
     expect(userMessage.match(/<pinned-excerpt>/g)).toHaveLength(1);

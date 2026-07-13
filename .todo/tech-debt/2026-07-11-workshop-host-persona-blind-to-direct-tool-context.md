@@ -21,7 +21,7 @@ Jill what she thinks about the tool's results.
   turn receives any new tool exchanges that host has not yet seen as a
   bounded, structured handoff."
 - The plumbing exists but is inert: `WorkshopToolSidecar.deliveredToHostThroughTurnId`
-  is declared in `packages/core/src/application/services/WorkshopSessionService.ts:36`
+  is declared in `packages/core/src/application/services/workshop/WorkshopSessionService.ts:36`
   (epic branch) and referenced nowhere else — no code reads or advances the
   delivery cursor.
 - Sprint 06B (Status: Planned, depends on merged 06A) owns the implementation

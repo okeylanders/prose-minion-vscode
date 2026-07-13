@@ -111,7 +111,7 @@ Options for the ADR:
 
 ## Related Files (epic branch `epic/workshop-editor-tab`)
 
-- `packages/core/src/application/services/WorkshopSessionService.ts` —
+- `packages/core/src/application/services/workshop/WorkshopSessionService.ts` —
   `replaceExcerpt()`, `clearAllConversations()`, `reset()`
 - `packages/core/src/infrastructure/api/services/analysis/AssistantToolService.ts`
   — `buildWorkshopPersonaUserMessage()`, `WORKSHOP_PERSONA_EXCERPT_MAX_WORDS`

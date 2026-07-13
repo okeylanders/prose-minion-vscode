@@ -21,18 +21,19 @@
 
 import { FileSystem, FileType, LogSink, ShellService, Workspace } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
-import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
-import { RunWorkshopToolSidePass } from '@/application/services/RunWorkshopToolSidePass';
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
+import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import {
   buildWorkshopDirectHandoff,
   buildWorkshopHostMessage,
   buildWorkshopHostUpdateFrame,
   describeWorkshopPendingHostUpdates
-} from '@/application/services/WorkshopPromptBuilder';
+} from '@/application/services/workshop/WorkshopPromptBuilder';
 import {
   completeWorkshopRun,
   workshopMessageCompletionCopy
-} from '@/application/services/WorkshopRunCompletion';
+} from '@/application/services/workshop/WorkshopRunCompletion';
 import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
 import { isWorkshopPersonaId, workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopQuickActionPrompt } from '@shared/constants/workshopQuickActions';
@@ -123,6 +124,7 @@ export class WorkshopHandler {
     private readonly assistantToolService: AssistantToolService,
     private readonly session: WorkshopSessionService,
     private readonly runToolSidePass: RunWorkshopToolSidePass,
+    private readonly capabilityFactory: WorkshopPersonaCapabilityFactory,
     private readonly postMessage: MessageTransport,
     private readonly shell: ShellService,
     private readonly fileSystem: FileSystem,
@@ -214,7 +216,7 @@ export class WorkshopHandler {
         this.sendStreamComplete(requestId, content, cancelled, usage, truncated),
       turnCompleted: (turn) => this.postTurn(turn),
       sessionChanged: () => this.postSessionState(),
-      status: (status) => this.sendStatus(status),
+      status: (status, tickerMessage) => this.sendStatus(status, undefined, tickerMessage),
       error: (errorMessage, details) =>
         this.sendError('workshop.run_tool', errorMessage, details),
       settled: (requestId) => this.settleActiveRun(requestId)
@@ -377,6 +379,19 @@ export class WorkshopHandler {
     const userTurn = target.kind === 'host'
       ? this.session.beginPersonaMessage(requestId, displayText)
       : this.session.beginDirectToolMessage(target.toolId, requestId, displayText);
+    const hostCapability = target.kind === 'host'
+      ? this.capabilityFactory.create({
+          requestId,
+          personaId,
+          excerpt,
+          signal: controller.signal,
+          events: {
+            status: (message, tickerMessage) => this.sendStatus(message, undefined, tickerMessage),
+            turnCompleted: (turn) => this.postTurn(turn),
+            sessionChanged: () => this.postSessionState()
+          }
+        })
+      : undefined;
     this.postTurn(userTurn);
     this.postSessionState();
     this.sendStreamStarted(requestId);
@@ -392,7 +407,8 @@ export class WorkshopHandler {
       const result = conversationId
         ? await this.assistantToolService.continueConversation(conversationId, modelMessage, {
             signal: controller.signal,
-            onToken: (token: string) => this.sendStreamChunk(requestId, token)
+            onToken: (token: string) => this.sendStreamChunk(requestId, token),
+            capability: hostCapability
           })
         : await this.assistantToolService.startWorkshopPersonaConversation({
             personaId,
@@ -401,7 +417,8 @@ export class WorkshopHandler {
             contextBrief: this.session.getContextBrief()
           }, {
             signal: controller.signal,
-            onToken: (token: string) => this.sendStreamChunk(requestId, token)
+            onToken: (token: string) => this.sendStreamChunk(requestId, token),
+            capability: hostCapability!
           });
 
       const assistantTurn = completeWorkshopRun({

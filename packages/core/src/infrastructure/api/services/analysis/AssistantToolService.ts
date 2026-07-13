@@ -25,7 +25,10 @@ import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
 import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
 import { DialogueFocus, WritingToolsFocus, StatusEmitter, API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
-import { StreamingTokenCallback } from '@orchestration/AgentRunContracts';
+import {
+  AnyAgentCapability,
+  StreamingTokenCallback
+} from '@orchestration/AgentRunContracts';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import type { WorkshopExcerpt, WorkshopPersonaId } from '@messages';
 import { getWorkshopPersona } from '@shared/constants/workshopPersonas';
@@ -47,6 +50,12 @@ export interface AnalysisStreamingOptions {
    * continue via continueConversation(); single-shot callers omit this.
    */
   retainConversation?: boolean;
+  /** Per-turn Workshop host capability; absent for retained tool sidecars. */
+  capability?: AnyAgentCapability;
+}
+
+export interface WorkshopHostStreamingOptions extends AnalysisStreamingOptions {
+  capability: AnyAgentCapability;
 }
 
 /** Inputs that form the first retained exchange with a Workshop persona host. */
@@ -387,7 +396,7 @@ export class AssistantToolService {
    */
   async startWorkshopPersonaConversation(
     input: WorkshopPersonaConversationInput,
-    streamingOptions?: AnalysisStreamingOptions
+    streamingOptions: WorkshopHostStreamingOptions
   ): Promise<AnalysisResult> {
     const engine = this.assistantEngine;
     if (!engine) {
@@ -418,6 +427,7 @@ export class AssistantToolService {
       systemMessage: systemPrompt,
       userMessage,
       policy: AGENT_RUN_POLICIES.workshopHost,
+      capability: streamingOptions.capability,
       options: {
         temperature: options.temperature,
         maxTokens: options.maxTokens,
@@ -465,11 +475,20 @@ export class AssistantToolService {
       `[AssistantToolService] Continuing conversation ${conversationId} | Streaming: ${!!streamingOptions?.onToken}`
     );
 
-    const executionResult = await engine.continueConversation(conversationId, userMessage, {
-      temperature: options.temperature,
-      maxTokens: options.maxTokens,
-      signal: streamingOptions?.signal,
-      onToken: streamingOptions?.onToken
+    const capability = streamingOptions?.capability;
+    const executionResult = await engine.continueConversation({
+      conversationId,
+      userMessage,
+      policy: capability
+        ? AGENT_RUN_POLICIES.workshopHost
+        : AGENT_RUN_POLICIES.workshopToolWithoutResources,
+      capability,
+      options: {
+        temperature: options.temperature,
+        maxTokens: options.maxTokens,
+        signal: streamingOptions?.signal,
+        onToken: streamingOptions?.onToken
+      }
     });
 
     return AnalysisResultFactory.createAnalysisResult(

@@ -168,6 +168,7 @@ export class MessageHandler {
       categorySearchService,
       accountBalanceService,
       workshopSessionService,
+      workshopPersonaCapabilityFactory,
       workshopToolSidePass
     } = services;
 
@@ -288,6 +289,7 @@ export class MessageHandler {
       assistantToolService,
       workshopSessionService,
       workshopToolSidePass,
+      workshopPersonaCapabilityFactory,
       this.postMessage.bind(this),
       this.platform.shell,
       this.platform.fileSystem,

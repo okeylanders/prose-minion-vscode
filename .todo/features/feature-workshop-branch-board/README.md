@@ -16,7 +16,7 @@ and how a writer compares or returns to them.
 
 - `docs/design/Prose Minion - Design Refresh.html`
 - `docs/design/pm-frames-fulltab.js`
-- `packages/core/src/application/services/WorkshopSessionService.ts`
+- `packages/core/src/application/services/workshop/WorkshopSessionService.ts`
 - `packages/core/src/presentation/webview/WorkshopApp.tsx`
 
 ## Completion Criteria

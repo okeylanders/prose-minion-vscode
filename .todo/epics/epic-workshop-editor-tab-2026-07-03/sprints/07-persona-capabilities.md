@@ -4,11 +4,11 @@
 > `packages/core/src/shared/constants/promptBudgets.ts`; do not introduce
 > module-local prompt limit constants.
 
-**Status**: Planned
+**Status**: Complete (2026-07-12)
 **Priority**: High
 **Branch**: `sprint/workshop-editor-tab-07-persona-capabilities` -> PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 4-6 days
-**Depends on**: Sprint 06A and Sprint 06B
+**Depends on**: Sprint 06A, Sprint 06B, and Sprint 06C
 **ADRs**: [2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](../../../../docs/adr/2026-07-09-workshop-persona-hosted-conversations.md), [2026-07-10 — Agent-Run Engine and Resource Catalog Policies](../../../../docs/adr/2026-07-10-agent-run-engine-and-resource-catalogs.md)
 
 ## Goal
@@ -68,11 +68,11 @@ close before the capability-loop tasks below are implementable:
    the forced-final + one-retry machinery in the engine already implements
    the budget-exhaustion behavior required here.
 
-Housekeeping discovered in the same audit: `WorkshopHandler.handleRunTool`
-still carries a stale "Integrated tool runs arrive in Sprint 06" guard, and no
-test spans WorkshopHandler↔engine end-to-end (handler tests mock the service
-wholesale; engine tests cover the policies separately). Address both when the
-loop lands.
+Post-06C verification: the stale "Integrated tool runs arrive in Sprint 06"
+guard was already removed, and
+`WorkshopToolSidePass.integration.test.ts` already spans the
+WorkshopHandler↔engine assembly. Sprint 07 verified both and did not duplicate
+the landed housekeeping.
 
 ## Locked Decisions
 
@@ -157,93 +157,93 @@ plain application-owned boundary are required.
 
 ### Application boundary and parser
 
-- [ ] Define capability request/result types in an application/shared contract
+- [x] Define capability request/result types in an application/shared contract
       that imports no provider, React, or VS Code types.
-- [ ] Extend the shared XML codec/parser for the typed capability operations
+- [x] Extend the shared XML codec/parser for the typed capability operations
       above. Reject malformed XML,
       unknown capability ids, unknown tool ids, extra dangerous fields,
       oversized strings, duplicate calls, and tags embedded in quoted excerpt
       content rather than an assistant response.
-- [ ] Add a focused capability orchestrator/use case injected with the existing
+- [x] Add a focused capability orchestrator/use case injected with the existing
       `DictionaryService` and Sprint 06 tool-side-pass boundary. Do not route
       through `DictionaryHandler`, `WorkshopHandler`, or webview messages.
-- [ ] Keep capability dispatch closed/exhaustive so adding an enum/string alone
+- [x] Keep capability dispatch closed/exhaustive so adding an enum/string alone
       cannot expose a new service accidentally.
 
 ### Turn loop and budgets
 
-- [ ] Extend persona start/continuation with a bounded capability loop:
+- [x] Extend persona start/continuation with a bounded capability loop:
       model response -> parse -> validate -> execute -> append structured result
       -> request final/next response.
-- [ ] Allow at most three capability calls per user turn, at most one
+- [x] Allow at most three capability calls per user turn, at most one
       `dictionary.full-entry`, and at most one analysis side pass unless a later
       measured policy justifies more.
-- [ ] Enforce the locked 100 / 4,000 / 500 / 1,000 character ceilings; use
+- [x] Enforce the locked 100 / 4,000 / 500 / 1,000 character ceilings; use
       pinned excerpt provenance rather than letting the model pass filesystem
       paths/content.
-- [ ] Prevent recursive/unbounded calls and force a final response when the
+- [x] Prevent recursive/unbounded calls and force a final response when the
       maximum turn/call budget is reached, mirroring existing orchestrator
       safety behavior.
-- [ ] Aggregate token/cost usage from persona, dictionary blocks, tool sidecar,
+- [x] Aggregate token/cost usage from persona, dictionary blocks, tool sidecar,
       and final persona response exactly once.
-- [ ] Cascade cancellation across the active persona request and nested
+- [x] Cascade cancellation across the active persona request and nested
       capability; preserve already-completed artifacts honestly.
 
 ### Writer's Dictionary capabilities
 
-- [ ] `dictionary.lookup`: pass the persona-formulated word plus bounded excerpt/
+- [x] `dictionary.lookup`: pass the persona-formulated word plus bounded excerpt/
       conversational context to `lookupWord`; preserve usage/truncation/error.
-- [ ] `dictionary.full-entry`: call `generateParallelDictionary`, preserve the
+- [x] `dictionary.full-entry`: call `generateParallelDictionary`, preserve the
       combined entry and structured timing/success/partial-failure metadata, and
       enforce the one-per-turn budget.
-- [ ] Render a compact expandable artifact such as “Writer's Dictionary ·
+- [x] Render a compact expandable artifact such as “Writer's Dictionary ·
       liminal · requested by Jill” before/alongside persona integration.
-- [ ] Feed the exact dictionary result to the persona as structured evidence;
+- [x] Feed the exact dictionary result to the persona as structured evidence;
       the persona may extract, compare, or recommend wording but not fabricate
       omitted sections.
 
 ### Persona-requested analysis
 
-- [ ] Expose `analysis.run` through the same deterministic `WorkshopToolId`
+- [x] Expose `analysis.run` through the same deterministic `WorkshopToolId`
       allowlist and Sprint 06 side-pass use case.
-- [ ] Render the verbatim report and retain/replace the tool sidecar exactly as
+- [x] Render the verbatim report and retain/replace the tool sidecar exactly as
       a user-triggered run would.
-- [ ] Return the report as capability evidence to the persona and continue to a
+- [x] Return the report as capability evidence to the persona and continue to a
       separate synthesis response.
-- [ ] Keep user-selected and persona-requested tool provenance distinguishable
+- [x] Keep user-selected and persona-requested tool provenance distinguishable
       in turns/status/logs without changing the tool's analysis contract.
 
 ### Prompts, presentation, and observability
 
-- [ ] Extend the shared persona base prompt with the exact XML capability
+- [x] Extend the shared persona base prompt with the exact XML capability
       operation schema,
       when each capability is appropriate, the autonomy granted, and the call
       budget. Persona-specific prompts must not redefine the allowlist.
-- [ ] Show deterministic progress (“Jill is checking the Writer's Dictionary
+- [x] Show deterministic progress (“Jill is checking the Writer's Dictionary
       for ‘liminal’…”) while hiding raw protocol tags/JSON from the thread.
-- [ ] Add accessible artifacts for dictionary lookup/full entry and reuse tool
+- [x] Add accessible artifacts for dictionary lookup/full entry and reuse tool
       artifacts for analysis calls.
-- [ ] Log request id, persona id, capability, bounded input summary, outcome,
+- [x] Log request id, persona id, capability, bounded input summary, outcome,
       duration, partial failures, and cancellation without logging API keys or
       entire private excerpts.
-- [ ] Surface nested usage through the existing token rail.
+- [x] Surface nested usage through the existing token rail.
 
 ### Tests and documentation
 
-- [ ] Parser tests: every valid variant plus malformed, unknown, oversized,
+- [x] Parser tests: every valid variant plus malformed, unknown, oversized,
       injected/quoted, duplicate, and mixed prose/request cases.
-- [ ] Capability-dispatch tests proving direct service/use-case invocation and
+- [x] Capability-dispatch tests proving direct service/use-case invocation and
       exhaustive allowlist behavior.
-- [ ] Loop tests for no call, one call, multiple allowed calls, over-budget,
+- [x] Loop tests for no call, one call, multiple allowed calls, over-budget,
       forced final response, cancellation, failure, and partial dictionary
       result.
-- [ ] Writer's Dictionary tests for persona-formulated inputs, metadata/artifact
+- [x] Writer's Dictionary tests for persona-formulated inputs, metadata/artifact
       fidelity, and exact evidence returned to the host.
-- [ ] Analysis tests proving persona requests reuse sidecar semantics and never
+- [x] Analysis tests proving persona requests reuse sidecar semantics and never
       replace/impersonate the host.
-- [ ] Token/status/logging tests across nested calls and reload snapshot tests
+- [x] Token/status/logging tests across nested calls and reload snapshot tests
       for completed artifacts.
-- [ ] Update architecture, prompt-resource, and Workshop session documentation.
+- [x] Update architecture, prompt-resource, and Workshop session documentation.
 
 ## Acceptance Criteria
 
@@ -285,3 +285,26 @@ plain application-owned boundary are required.
   capabilities are an explicit closed dispatch table.
 - Do not combine this sprint with retained workspace-context loading. That
   feature has different path-containment and privacy boundaries.
+
+## Completion Record — 2026-07-12
+
+- Engine prerequisites completed: typed capability requests generalized beyond
+  path reads; initial and retained turns share one transactional per-turn loop;
+  Workshop host policy is three calls, one correction, then forced final prose.
+- Sprint 06C composition verified: pending host frames enter a capability turn
+  once, commit only with successful final prose, and remain pending on failure
+  or cancellation; all capability artifacts carry `excerptVersion`.
+- Housekeeping verified as already landed: no stale Sprint 06 guard, and
+  `WorkshopToolSidePass.integration.test.ts` covers handler↔engine assembly.
+- F5 smoke-test polish: persona-requested analysis now reports the nested
+  lifecycle explicitly (`Jill is asking…` → `Continuity is responding to
+  Jill…` with throttled `Streaming · N chunks` updates → `Jill is reviewing…`).
+  Nested report chunks remain status-only and never enter Jill's visible stream.
+- Verification: 88 Jest suites / 696 tests passed; core, webview, and extension
+  typechecks passed; ESLint passed with zero errors; production webpack build
+  passed; explicit `verify:bundle` passed; `git diff --check` passed.
+- Clean production bundle comparison against `origin/epic/workshop-editor-tab`
+  (`a2568b6`): `extension.js` 2,324,924 → 2,342,869 bytes
+  (+17,945 / +0.77%); `webview.js` 590,131 → 593,123 bytes
+  (+2,992 / +0.51%). Webpack's existing asset-size recommendations remain
+  warnings only.

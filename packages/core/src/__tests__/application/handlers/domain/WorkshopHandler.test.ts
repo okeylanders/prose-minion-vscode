@@ -2,8 +2,10 @@ import {
   isWorkshopHostReturnShortcut,
   WorkshopHandler
 } from '@/application/handlers/domain/WorkshopHandler';
-import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
-import { RunWorkshopToolSidePass } from '@/application/services/RunWorkshopToolSidePass';
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
+import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
+import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { MessageType, API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
@@ -34,6 +36,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   let fileSystem: FileSystem;
   let workspace: Workspace;
   let handler: WorkshopHandler;
+  let capabilityFactory: WorkshopPersonaCapabilityFactory;
 
   const posted = (type: MessageType) => postMessage.mock.calls
     .map(([entry]) => entry)
@@ -59,10 +62,21 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     shell = createFakeShellService();
     fileSystem = createFakeFileSystem();
     workspace = createFakeWorkspace();
+    capabilityFactory = {
+      create: jest.fn(() => ({ catalog: 'workshopPersona' }))
+    } as unknown as WorkshopPersonaCapabilityFactory;
+    const analysisSidePass = new WorkshopAnalysisSidePass(service, session, log);
     handler = new WorkshopHandler(
       service,
       session,
-      new RunWorkshopToolSidePass(service, session, log),
+      new RunWorkshopToolSidePass(
+        service,
+        analysisSidePass,
+        session,
+        capabilityFactory,
+        log
+      ),
+      capabilityFactory,
       postMessage,
       shell,
       fileSystem,
@@ -103,7 +117,11 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
     expect(service.startWorkshopPersonaConversation).toHaveBeenCalledWith(
       expect.objectContaining({ personaId: 'jill', message: 'Where does this scene turn?' }),
-      expect.objectContaining({ signal: expect.anything(), onToken: expect.any(Function) })
+      expect.objectContaining({
+        signal: expect.anything(),
+        onToken: expect.any(Function),
+        capability: expect.objectContaining({ catalog: 'workshopPersona' })
+      })
     );
     expect(session.getHostConversationId()).toBe('host-conv');
     expect(posted(MessageType.WORKSHOP_TURN).at(-1).payload.turn).toMatchObject({
@@ -190,10 +208,14 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       { text: 'Try the comparison again.' }
     ) as any);
     const delivered = service.continueConversation.mock.calls.at(-1)![1];
+    const deliveryOptions = service.continueConversation.mock.calls.at(-1)![2];
     expect(delivered).toContain('<pinned-excerpt version="3">');
     expect(delivered).toContain('Newest version.');
     expect(delivered).not.toContain('Second version.');
     expect(delivered).toContain('The story is a winter mystery.');
+    expect(deliveryOptions?.capability).toEqual(expect.objectContaining({
+      catalog: 'workshopPersona'
+    }));
     expect(session.getSnapshot().pendingHostUpdate).toBeUndefined();
     expect(log.appendLine).toHaveBeenCalledWith(
       expect.stringContaining('Pending host update prepared')
@@ -428,7 +450,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(service.continueConversation).toHaveBeenLastCalledWith(
       'tool-conv',
       'Why did you flag that sentence?',
-      expect.anything()
+      expect.objectContaining({ capability: undefined })
     );
 
     await handler.handleSetChatTarget(message(
@@ -440,9 +462,13 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       { text: 'What should I fix first?' }
     ) as any);
     const firstHostMessage = service.continueConversation.mock.calls.at(-1)![1];
+    const firstHostOptions = service.continueConversation.mock.calls.at(-1)![2];
     expect(firstHostMessage).toContain('DIRECT-TOOL HANDOFF');
     expect(firstHostMessage).toContain('Why did you flag that sentence?');
     expect(firstHostMessage).toContain('What should I fix first?');
+    expect(firstHostOptions?.capability).toEqual(expect.objectContaining({
+      catalog: 'workshopPersona'
+    }));
 
     await handler.handleSendMessage(message(
       MessageType.WORKSHOP_SEND_MESSAGE,

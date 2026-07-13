@@ -1,20 +1,21 @@
 /** Focused Sprint 06B use case: isolated tool report, then host synthesis. */
 
-import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
+import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import {
   buildWorkshopDirectHandoff,
   buildWorkshopHostMessage,
   buildWorkshopHostUpdateFrame,
   describeWorkshopPendingHostUpdates,
   buildWorkshopToolEvidence
-} from '@/application/services/WorkshopPromptBuilder';
+} from '@/application/services/workshop/WorkshopPromptBuilder';
 import {
   completeWorkshopRun,
   workshopSynthesisCompletionCopy
-} from '@/application/services/WorkshopRunCompletion';
-import { AnalysisResult } from '@/domain/models/AnalysisResult';
+} from '@/application/services/workshop/WorkshopRunCompletion';
 import { LogSink } from '@/platform';
-import { AssistantToolService, AnalysisStreamingOptions } from '@services/analysis/AssistantToolService';
+import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
 import {
@@ -24,8 +25,6 @@ import {
   WorkshopToolId,
   WorkshopTurn
 } from '@messages';
-import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { trimToWordLimit } from '@/utils/textUtils';
 
 let sidePassRequestCounter = 0;
 const createRequestId = (type: string) => `${type}-${Date.now()}-${++sidePassRequestCounter}`;
@@ -48,7 +47,7 @@ export interface WorkshopToolSidePassEvents {
   ) => void;
   turnCompleted: (turn: WorkshopTurn) => void;
   sessionChanged: () => void;
-  status: (message: string) => void;
+  status: (message: string, tickerMessage?: string) => void;
   error: (message: string, details?: string) => void;
   settled: (requestId: string) => void;
 }
@@ -56,7 +55,9 @@ export interface WorkshopToolSidePassEvents {
 export class RunWorkshopToolSidePass {
   constructor(
     private readonly assistantToolService: AssistantToolService,
+    private readonly analysisSidePass: WorkshopAnalysisSidePass,
     private readonly session: WorkshopSessionService,
+    private readonly capabilityFactory: WorkshopPersonaCapabilityFactory,
     private readonly outputChannel: LogSink
   ) {}
 
@@ -98,7 +99,7 @@ export class RunWorkshopToolSidePass {
     events.status(`${personaLabel} is having ${toolLabel} look at that now…`);
 
     try {
-      const result = await this.invokeTool(toolId, excerpt, {
+      const result = await this.analysisSidePass.run(toolId, excerpt, {
         signal: controller.signal,
         onToken: (token: string) => events.streamChunk(toolRequestId, token),
         retainConversation: true
@@ -135,13 +136,14 @@ export class RunWorkshopToolSidePass {
       // Adopt BEFORE announcing completion: a zombie report must not stream
       // its full content to the webview as a finished turn that then never
       // lands (PR #72 review #10).
-      const completion = this.session.completeToolReport(
-        toolRequestId,
-        result.content,
-        result.conversationId,
-        result.usage,
-        truncated
-      );
+      const completion = this.analysisSidePass.adoptWriterReport({
+        requestId: toolRequestId,
+        content: result.content,
+        conversationId: result.conversationId,
+        usage: result.usage,
+        truncated,
+        toolId
+      });
       if (!completion) {
         this.assistantToolService.discardConversation(result.conversationId);
         this.outputChannel.appendLine(
@@ -155,12 +157,6 @@ export class RunWorkshopToolSidePass {
       events.streamCompleted(toolRequestId, result.content, false, result.usage, truncated);
       events.turnCompleted(completion.turn);
       reportAdopted = true;
-      if (completion.replacedConversationId) {
-        this.assistantToolService.discardConversation(completion.replacedConversationId);
-        this.outputChannel.appendLine(
-          `[RunWorkshopToolSidePass] Tool sidecar replaced: ${completion.replacedConversationId} → ${result.conversationId} (${toolLabel})`
-        );
-      }
       events.sessionChanged();
 
       const synthesisRequestId = createRequestId(`workshop_${toolId}_synthesis`);
@@ -184,10 +180,22 @@ export class RunWorkshopToolSidePass {
       });
       const hostConversationId = this.session.getHostConversationId();
       hostDeliveryAttempted = true;
+      const hostCapability = this.capabilityFactory.create({
+        requestId: synthesisRequestId,
+        personaId,
+        excerpt,
+        signal: controller.signal,
+        events: {
+          status: events.status,
+          turnCompleted: events.turnCompleted,
+          sessionChanged: events.sessionChanged
+        }
+      });
       const synthesis = hostConversationId
         ? await this.assistantToolService.continueConversation(hostConversationId, hostMessage, {
             signal: controller.signal,
-            onToken: (token: string) => events.streamChunk(synthesisRequestId, token)
+            onToken: (token: string) => events.streamChunk(synthesisRequestId, token),
+            capability: hostCapability
           })
         : await this.assistantToolService.startWorkshopPersonaConversation({
             personaId,
@@ -197,7 +205,8 @@ export class RunWorkshopToolSidePass {
             contextBrief: this.session.getContextBrief()
           }, {
             signal: controller.signal,
-            onToken: (token: string) => events.streamChunk(synthesisRequestId, token)
+            onToken: (token: string) => events.streamChunk(synthesisRequestId, token),
+            capability: hostCapability
           });
       const synthesisTurn = completeWorkshopRun({
         session: this.session,
@@ -263,38 +272,4 @@ export class RunWorkshopToolSidePass {
     }
   }
 
-  private invokeTool(
-    toolId: WorkshopToolId,
-    excerpt: WorkshopExcerpt,
-    streamingOptions: AnalysisStreamingOptions
-  ): Promise<AnalysisResult> {
-    const contextBrief = this.session.getContextBrief();
-    const boundedContextBrief = contextBrief
-      ? trimToWordLimit(contextBrief, PROMPT_BUDGETS.contextBrief.words).trimmed
-      : undefined;
-    if (toolId === 'dialogue') {
-      return this.assistantToolService.analyzeDialogue(
-        excerpt.text,
-        boundedContextBrief,
-        excerpt.sourceUri,
-        undefined,
-        streamingOptions
-      );
-    }
-    if (toolId === 'prose') {
-      return this.assistantToolService.analyzeProse(
-        excerpt.text,
-        boundedContextBrief,
-        excerpt.sourceUri,
-        streamingOptions
-      );
-    }
-    return this.assistantToolService.analyzeWritingTools(
-      excerpt.text,
-      boundedContextBrief,
-      excerpt.sourceUri,
-      toolId,
-      streamingOptions
-    );
-  }
 }

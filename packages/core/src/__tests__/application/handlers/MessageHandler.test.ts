@@ -1,7 +1,8 @@
 import { MessageHandler } from '@/application/handlers/MessageHandler';
 import { CoreServices } from '@/application/handlers/MessageHandlerContracts';
-import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
-import { RunWorkshopToolSidePass } from '@/application/services/RunWorkshopToolSidePass';
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
+import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import {
   ExtensionToWebviewMessage,
@@ -138,11 +139,10 @@ function createTestAssembly(): TestAssembly {
     // Real aggregate on purpose: it is pure/dependency-free, and using it makes
     // the reload-safety test below exercise true session behavior.
     workshopSessionService,
-    workshopToolSidePass: new RunWorkshopToolSidePass(
-      assistantToolService,
-      workshopSessionService,
-      log
-    )
+    workshopPersonaCapabilityFactory: {
+      create: jest.fn(() => ({ catalog: 'workshopPersona' }))
+    } as unknown as WorkshopPersonaCapabilityFactory,
+    workshopToolSidePass: { run: jest.fn() } as unknown as RunWorkshopToolSidePass
   } as unknown as CoreServices;
 
   return {

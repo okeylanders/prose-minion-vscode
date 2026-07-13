@@ -76,6 +76,11 @@ export type ParallelGenerationProgressCallback = (progress: {
   totalBlocks: number;
 }) => void;
 
+export interface ParallelDictionaryOptions {
+  onProgress?: ParallelGenerationProgressCallback;
+  signal?: AbortSignal;
+}
+
 export class DictionaryService {
   private dictionaryUtility?: DictionaryUtility;
   private readonly statusListeners: ListenerSet<Parameters<StatusEmitter>>;
@@ -267,13 +272,13 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
    *
    * @param word - Word to look up
    * @param context - Optional context text
-   * @param onProgress - (Deprecated) Legacy callback for progress updates. Use STATUS messages instead.
+   * @param options - Optional progress and cancellation controls.
    * @returns Combined dictionary result with metadata
    */
   async generateParallelDictionary(
     word: string,
     context?: string,
-    onProgress?: ParallelGenerationProgressCallback
+    options: ParallelDictionaryOptions = {}
   ): Promise<FastGenerateDictionaryResultPayload> {
     const startTime = Date.now();
     this.outputChannel?.appendLine(`\n[DictionaryService] Starting parallel dictionary generation for "${word}"`);
@@ -310,7 +315,8 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
           blockName,
           index + 1,
           word,
-          context
+          context,
+          options.signal
         );
 
         // Update progress
@@ -323,8 +329,8 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
             { current: completedBlocks.length, total: totalBlocks }
           );
 
-          // Also call legacy callback if provided (for backward compatibility)
-          onProgress?.({
+          // Let nested Workshop capability runs surface deterministic progress.
+          options.onProgress?.({
             word,
             completedBlocks: [...completedBlocks],
             totalBlocks
@@ -351,7 +357,8 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     blockName: DictionaryBlockName,
     blockNumber: number,
     word: string,
-    context?: string
+    context?: string,
+    signal?: AbortSignal
   ): Promise<DictionaryBlockResult> {
     const startTime = Date.now();
     const paddedNumber = String(blockNumber).padStart(2, '0');
@@ -377,9 +384,13 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         options: {
           temperature: 0.4,
           maxTokens: 3500, // Smaller max for individual blocks
-          timeoutMs: this.BLOCK_TIMEOUT
+          timeoutMs: this.BLOCK_TIMEOUT,
+          signal
         }
       });
+      if (result.cancelled || signal?.aborted) {
+        throw this.abortError(signal);
+      }
 
       const duration = Date.now() - startTime;
       this.outputChannel?.appendLine(`[DictionaryService] Block "${blockName}" completed in ${duration}ms`);
@@ -391,6 +402,9 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         usage: result.usage
       };
     } catch (error) {
+      if (this.isAbortError(error) || signal?.aborted) {
+        throw this.abortError(signal);
+      }
       const duration = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -411,9 +425,13 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
           options: {
             temperature: 0.4,
             maxTokens: 3500,
-            timeoutMs: this.BLOCK_TIMEOUT
+            timeoutMs: this.BLOCK_TIMEOUT,
+            signal
           }
         });
+        if (result.cancelled || signal?.aborted) {
+          throw this.abortError(signal);
+        }
 
         const retryDuration = Date.now() - startTime;
         this.outputChannel?.appendLine(`[DictionaryService] Block "${blockName}" retry succeeded in ${retryDuration}ms`);
@@ -425,6 +443,9 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
           usage: result.usage
         };
       } catch (retryError) {
+        if (this.isAbortError(retryError) || signal?.aborted) {
+          throw this.abortError(signal);
+        }
         const retryDuration = Date.now() - startTime;
         const retryErrorMessage = retryError instanceof Error ? retryError.message : String(retryError);
 
@@ -438,6 +459,18 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         };
       }
     }
+  }
+
+  private abortError(signal?: AbortSignal): Error {
+    const error = signal?.reason instanceof Error
+      ? signal.reason
+      : new Error('Dictionary generation cancelled');
+    error.name = 'AbortError';
+    return error;
+  }
+
+  private isAbortError(error: unknown): boolean {
+    return error instanceof Error && error.name === 'AbortError';
   }
 
   /**
