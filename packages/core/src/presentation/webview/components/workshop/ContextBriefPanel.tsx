@@ -40,6 +40,7 @@ export const ContextBriefPanel: React.FC<ContextBriefPanelProps> = ({
         </span>
       </div>
       <textarea
+        id="pm-ws-context-brief-input"
         className="pm-ws-brief-input"
         value={draft}
         onChange={(event) => setDraft(event.target.value)}

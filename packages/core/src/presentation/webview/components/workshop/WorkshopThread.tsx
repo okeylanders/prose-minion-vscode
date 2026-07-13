@@ -4,6 +4,7 @@ import * as React from 'react';
 import {
   WorkshopToolId,
   WorkshopToolSidecarSnapshot,
+  WorkshopTodoItem,
   WorkshopTurn
 } from '@messages';
 import { WorkshopTurnBubble } from './WorkshopTurnBubble';
@@ -11,9 +12,11 @@ import { WorkshopTurnBubble } from './WorkshopTurnBubble';
 interface WorkshopThreadProps {
   turns: readonly WorkshopTurn[];
   toolSidecars: readonly WorkshopToolSidecarSnapshot[];
+  todos?: readonly WorkshopTodoItem[];
   quickActionsDisabled?: boolean;
   onQuickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
   onTalkDirectly: (toolId: WorkshopToolId) => void;
+  onAddTodo?: (reportTurnId: string, findingKey: string) => void;
   onCopy: (content: string, turn: WorkshopTurn) => void;
   onSave: (content: string, turn: WorkshopTurn) => void;
 }
@@ -21,9 +24,11 @@ interface WorkshopThreadProps {
 export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
   turns,
   toolSidecars,
+  todos = [],
   quickActionsDisabled = false,
   onQuickAction,
   onTalkDirectly,
+  onAddTodo = () => undefined,
   onCopy,
   onSave
 }) => (
@@ -50,8 +55,14 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
           quickActionToolId={quickActionToolId}
           quickActionsDisabled={quickActionsDisabled || !ownsLiveSidecar}
           canTalkDirectly={turn.artifact === 'tool_report' && ownsLiveSidecar}
+          promotedFindingKeys={new Set(
+            todos
+              .filter((todo) => todo.source.reportTurnId === turn.id)
+              .map((todo) => todo.source.findingKey)
+          )}
           onQuickAction={onQuickAction}
           onTalkDirectly={onTalkDirectly}
+          onAddTodo={onAddTodo}
           onCopy={onCopy}
           onSave={onSave}
         />

@@ -20,6 +20,11 @@ export interface PromptBudgets {
     analysisRunsPerTurn: number;
   }>;
   readonly toolEvidence: Readonly<{ characters: number }>;
+  readonly workshopTodos: Readonly<{
+    items: number;
+    characters: number;
+    headerAllowanceCharacters: number;
+  }>;
   readonly directHandoff: Readonly<{
     turns: number;
     characters: number;
@@ -44,6 +49,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     analysisRunsPerTurn: 1
   },
   toolEvidence: { characters: 50_000 },
+  workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   directHandoff: {
     turns: 8,
     characters: 20_000,

@@ -16,6 +16,7 @@ import { createFakeFileSystem, createFakeShellService, createFakeWorkspace } fro
 const analysisResult = (content: string, extra: Record<string, unknown> = {}) => ({
   toolName: 'workshop-test',
   content,
+  timestamp: new Date(0),
   usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
   ...extra
 });
@@ -103,7 +104,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_SET_CHAT_TARGET)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SEND_MESSAGE)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SET_CONTEXT_BRIEF)).toBe(true);
-    expect(router.handlerCount).toBe(11);
+    expect(router.hasHandler(MessageType.WORKSHOP_TODO_ACTION)).toBe(true);
+    expect(router.handlerCount).toBe(12);
   });
 
   it('starts Jill directly from the composer and retains the host conversation', async () => {
@@ -281,7 +283,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
     expect(service.analyzeProse).toHaveBeenCalledWith(
       'A pinned excerpt.',
-      'Mara cannot read.',
+      expect.stringContaining('Mara cannot read.'),
       undefined,
       expect.anything()
     );
@@ -289,6 +291,54 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       expect.objectContaining({ contextBrief: 'Mara cannot read.' }),
       expect.anything()
     );
+  });
+
+  it('promotes only a structured report finding and attributes it on the next host turn', async () => {
+    service.analyzeProse.mockResolvedValue(analysisResult(
+      'Report body.\n\n### Next steps\n- Tighten the first paragraph.',
+      { conversationId: 'tool-conv' }
+    ));
+    await pin();
+    await runProse();
+    const report = session.getSnapshot().turns.find((turn) => turn.artifact === 'tool_report')!;
+
+    await handler.handleTodoAction(message(MessageType.WORKSHOP_TODO_ACTION, {
+      action: 'add',
+      reportTurnId: report.id,
+      findingKey: 'finding-1'
+    }) as any);
+    const todo = session.getSnapshot().todos[0];
+    expect(todo).toMatchObject({
+      text: 'Tighten the first paragraph.',
+      source: { toolId: 'prose', reportTurnId: report.id }
+    });
+
+    service.continueConversation.mockClear();
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'What should we do next?' }
+    ) as any);
+    const delivered = service.continueConversation.mock.calls[0][1] as string;
+    expect(delivered).toContain('Task: Tighten the first paragraph.');
+    expect(delivered).toContain('Source tool: Prose (prose)');
+    expect(delivered).toContain(`Source report: ${report.id}`);
+    expect(delivered).toContain('Status: open');
+  });
+
+  it('rejects task promotion when the report did not expose the exact finding', async () => {
+    await pin();
+    await runProse();
+    const report = session.getSnapshot().turns.find((turn) => turn.artifact === 'tool_report')!;
+    postMessage.mockClear();
+
+    await handler.handleTodoAction(message(MessageType.WORKSHOP_TODO_ACTION, {
+      action: 'add',
+      reportTurnId: report.id,
+      findingKey: 'finding-1'
+    }) as any);
+
+    expect(session.getSnapshot().todos).toEqual([]);
+    expect(posted(MessageType.ERROR)[0].payload).toMatchObject({ source: 'workshop.todo' });
   });
 
   it('bounds the context brief before every tool pass', async () => {
@@ -302,9 +352,10 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     await runProse();
 
     const deliveredBrief = service.analyzeProse.mock.calls[0][1]!;
-    expect(deliveredBrief.split(/\s+/)).toHaveLength(10_000);
-    expect(deliveredBrief).toContain('brief9999');
-    expect(deliveredBrief).not.toContain('brief10000');
+    const boundedBrief = deliveredBrief.split('\n\n<workshop-actionable-findings-contract>')[0];
+    expect(boundedBrief.split(/\s+/)).toHaveLength(10_000);
+    expect(boundedBrief).toContain('brief9999');
+    expect(boundedBrief).not.toContain('brief10000');
   });
 
   it('neutralizes reserved persona frames in retained host follow-ups', async () => {

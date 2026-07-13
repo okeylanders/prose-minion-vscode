@@ -13,6 +13,10 @@ import {
   WorkshopCapabilityArtifactDetails,
   WorkshopCapabilityResult
 } from '@shared/types/workshopCapabilities';
+import {
+  extractWorkshopActionableFindings,
+  WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION
+} from './WorkshopActionableFindings';
 
 export interface PersonaAnalysisAdoption {
   turn: WorkshopTurn;
@@ -77,7 +81,8 @@ export class WorkshopAnalysisSidePass {
       input.content,
       input.conversationId,
       input.usage,
-      input.truncated
+      input.truncated,
+      extractWorkshopActionableFindings(input.content)
     );
     if (completion?.replacedConversationId) {
       this.assistantToolService.discardConversation(completion.replacedConversationId);
@@ -99,7 +104,10 @@ export class WorkshopAnalysisSidePass {
   }): PersonaAnalysisAdoption | undefined {
     const completion = this.session.recordCapabilityArtifact({
       ...input,
-      toolId: input.toolId
+      toolId: input.toolId,
+      actionableFindings: extractWorkshopActionableFindings(
+        input.result.content ?? input.result.error ?? ''
+      )
     });
     if (!completion) {
       if (input.conversationId) {
@@ -129,13 +137,18 @@ export class WorkshopAnalysisSidePass {
       ? trimToWordLimit(contextBrief, PROMPT_BUDGETS.contextBrief.words).trimmed
       : undefined;
     const instructions = personaInstructions?.trim();
-    if (!instructions) return boundedBrief;
+    if (!instructions) {
+      return [boundedBrief, WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION]
+        .filter((section): section is string => !!section)
+        .join('\n\n');
+    }
     const safeInstructions = instructions.replace(
       /<\/?persona-requested-analysis-focus\b[^>]*>/gi,
       (tag) => tag.replace(/</g, '&lt;').replace(/>/g, '&gt;')
     );
     return [
       boundedBrief,
+      WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION,
       '<persona-requested-analysis-focus>',
       safeInstructions,
       '</persona-requested-analysis-focus>'

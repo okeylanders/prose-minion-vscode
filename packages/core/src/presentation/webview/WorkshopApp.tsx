@@ -44,6 +44,7 @@ import { WorkshopThread } from './components/workshop/WorkshopThread';
 import { WorkshopToolsModal } from './components/workshop/WorkshopToolsModal';
 import { WorkshopPersonaBrowserModal } from './components/workshop/WorkshopPersonaBrowserModal';
 import { WorkshopToast, WorkshopToastState } from './components/workshop/WorkshopToast';
+import { WorkshopTodoList } from './components/workshop/WorkshopTodoList';
 import { WORKSHOP_TOOL_ICONS } from './components/workshop/workshopToolIcons';
 import { WORKSHOP_PERSONA_FOCUS_ICONS } from './components/workshop/workshopPersonaIcons';
 import {
@@ -269,6 +270,11 @@ export const WorkshopApp: React.FC = () => {
   const showLiveTurn = workshop.isRunning || workshop.isStreaming || workshop.streamingContent.length > 0;
 
   const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
+  const openContext = React.useCallback(() => {
+    const input = document.getElementById('pm-ws-context-brief-input') as HTMLTextAreaElement | null;
+    input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    input?.focus();
+  }, []);
   const closeToolsModal = React.useCallback(() => setToolsModalOpen(false), []);
   const selectTool = React.useCallback(
     (toolId: WorkshopToolId) => {
@@ -327,6 +333,16 @@ export const WorkshopApp: React.FC = () => {
     },
     [vscode, workshop.excerpt]
   );
+
+  const showTodoSource = React.useCallback((reportTurnId: string) => {
+    const report = document.querySelector<HTMLElement>(`[data-turn-id="${reportTurnId}"]`);
+    if (report) {
+      report.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      report.focus({ preventScroll: true });
+    } else {
+      showToast({ message: 'That source report is outside the current reload window.', icon: 'doc' });
+    }
+  }, [showToast]);
 
   const openrouter = accountBalance.openrouter;
   const remaining = openrouter?.credits?.remaining;
@@ -484,6 +500,12 @@ export const WorkshopApp: React.FC = () => {
                 </button>
               </div>
             </div>
+
+            <WorkshopTodoList
+              todos={workshop.todos}
+              onAction={workshop.todoAction}
+              onShowSource={showTodoSource}
+            />
           </ErrorBoundary>
         </aside>
 
@@ -540,9 +562,15 @@ export const WorkshopApp: React.FC = () => {
               <WorkshopThread
                 turns={workshop.turns}
                 toolSidecars={workshop.toolSidecars}
+                todos={workshop.todos}
                 quickActionsDisabled={!workshop.canMessage}
                 onQuickAction={workshop.quickAction}
                 onTalkDirectly={(toolId) => workshop.setChatTarget({ kind: 'tool', toolId })}
+                onAddTodo={(reportTurnId, findingKey) => workshop.todoAction({
+                  action: 'add',
+                  reportTurnId,
+                  findingKey
+                })}
                 onCopy={copyTurn}
                 onSave={saveTurn}
               />
@@ -626,6 +654,7 @@ export const WorkshopApp: React.FC = () => {
               sessionReady={workshop.sessionReady}
               onSend={workshop.sendMessage}
               onCancel={workshop.cancelRun}
+              onOpenContext={openContext}
               onOpenTools={openToolsModal}
             />
           </ErrorBoundary>

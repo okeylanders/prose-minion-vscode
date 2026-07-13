@@ -10,12 +10,14 @@
 
 import {
   WorkshopChatTarget,
+  WorkshopActionableFinding,
   WorkshopExcerpt,
   WorkshopExcerptTruncation,
   WorkshopPersonaId,
   WorkshopParticipantsSnapshot,
   WorkshopSessionSnapshot,
   WorkshopToolId,
+  WorkshopTodoItem,
   WorkshopTurn,
   WorkshopTurnArtifact,
   WorkshopTurnKind
@@ -27,6 +29,7 @@ import {
 } from '@shared/types/workshopCapabilities';
 import { DEFAULT_WORKSHOP_PERSONA_ID, workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
+import { WORKSHOP_TODO_BOUNDS } from './WorkshopActionableFindings';
 
 export interface WorkshopExcerptInput {
   text: string;
@@ -87,6 +90,7 @@ export interface WorkshopCapabilityArtifactInput {
   toolId?: WorkshopToolId;
   conversationId?: string;
   truncated?: boolean;
+  actionableFindings?: WorkshopActionableFinding[];
 }
 
 export interface WorkshopExcerptReplacement {
@@ -111,6 +115,8 @@ export class WorkshopSessionService {
   private participants: WorkshopParticipants = this.newParticipants();
   private selectedToolId?: WorkshopToolId;
   private turnCounter = 0;
+  private todoCounter = 0;
+  private todos: WorkshopTodoItem[] = [];
 
   constructor(private readonly now: () => number = Date.now) {}
 
@@ -308,7 +314,8 @@ export class WorkshopSessionService {
     content: string,
     conversationId: string,
     usage?: TokenUsage,
-    truncated?: boolean
+    truncated?: boolean,
+    actionableFindings: WorkshopActionableFinding[] = []
   ): WorkshopToolReportCompletion | undefined {
     const active = this.activeRun;
     if (
@@ -335,7 +342,10 @@ export class WorkshopSessionService {
       timestamp: this.now(),
       usage: usage ? { ...usage } : undefined,
       truncated: truncated || undefined,
-      excerptVersion: active.excerptVersion
+      excerptVersion: active.excerptVersion,
+      actionableFindings: actionableFindings.length > 0
+        ? cloneFindings(actionableFindings)
+        : undefined
     };
 
     const replacedConversationId = this.adoptToolSidecar(
@@ -390,7 +400,10 @@ export class WorkshopSessionService {
       timestamp: this.now(),
       usage: input.result.usage ? { ...input.result.usage } : undefined,
       truncated: input.truncated || undefined,
-      excerptVersion: input.excerptVersion
+      excerptVersion: input.excerptVersion,
+      actionableFindings: input.actionableFindings && input.actionableFindings.length > 0
+        ? cloneFindings(input.actionableFindings)
+        : undefined
     };
 
     let replacedConversationId: string | undefined;
@@ -557,6 +570,90 @@ export class WorkshopSessionService {
     }
   }
 
+  addTodoFromFinding(reportTurnId: string, findingKey: string): WorkshopTodoItem {
+    const report = this.turns.find(
+      (turn) => turn.id === reportTurnId && turn.artifact === 'tool_report' && turn.toolId
+    );
+    const finding = report?.actionableFindings?.find((candidate) => candidate.key === findingKey);
+    if (!report?.toolId || !finding) {
+      throw new Error('Cannot add a task from an unknown actionable finding');
+    }
+    if (report.excerptVersion !== this.excerptVersion) {
+      throw new Error('Cannot add a task from a stale excerpt report');
+    }
+    const existing = this.todos.find(
+      (todo) => todo.source.reportTurnId === reportTurnId && todo.source.findingKey === findingKey
+    );
+    if (existing) {
+      return cloneTodo(existing, this.excerptVersion);
+    }
+    if (this.todos.length >= WORKSHOP_TODO_BOUNDS.items) {
+      throw new Error(`Workshop task list is limited to ${WORKSHOP_TODO_BOUNDS.items} items`);
+    }
+    const todo: WorkshopTodoItem = {
+      id: `todo-${++this.todoCounter}-${this.now()}`,
+      text: finding.text,
+      status: 'open',
+      source: {
+        toolId: report.toolId,
+        toolLabel: report.toolLabel ?? workshopToolLabel(report.toolId),
+        reportTurnId,
+        findingKey,
+        findingText: finding.text,
+        excerptVersion: report.excerptVersion
+      },
+      createdAt: this.now(),
+      stale: report.excerptVersion !== this.excerptVersion
+    };
+    this.todos.push(todo);
+    return cloneTodo(todo, this.excerptVersion);
+  }
+
+  editTodo(todoId: string, text: string): WorkshopTodoItem {
+    const todo = this.requireTodo(todoId);
+    const normalized = text.trim();
+    if (
+      normalized.length === 0 ||
+      normalized.length > WORKSHOP_TODO_BOUNDS.textCharacters
+    ) {
+      throw new Error(
+        `Task text must contain 1–${WORKSHOP_TODO_BOUNDS.textCharacters} characters`
+      );
+    }
+    if (normalized !== todo.text) {
+      todo.text = normalized;
+      todo.writerEdit = {
+        originalText: todo.writerEdit?.originalText ?? todo.source.findingText,
+        editedAt: this.now()
+      };
+    }
+    return cloneTodo(todo, this.excerptVersion);
+  }
+
+  setTodoStatus(todoId: string, status: WorkshopTodoItem['status']): WorkshopTodoItem {
+    const todo = this.requireTodo(todoId);
+    todo.status = status;
+    return cloneTodo(todo, this.excerptVersion);
+  }
+
+  reorderTodo(todoId: string, direction: 'up' | 'down'): void {
+    const index = this.todos.findIndex((todo) => todo.id === todoId);
+    if (index < 0) {
+      throw new Error('Unknown Workshop task');
+    }
+    const target = direction === 'up' ? index - 1 : index + 1;
+    if (target < 0 || target >= this.todos.length) {
+      return;
+    }
+    [this.todos[index], this.todos[target]] = [this.todos[target], this.todos[index]];
+  }
+
+  collectOpenTodosForHost(): WorkshopTodoItem[] {
+    return this.todos
+      .filter((todo) => todo.status === 'open' && todo.source.excerptVersion === this.excerptVersion)
+      .map((todo) => cloneTodo(todo, this.excerptVersion));
+  }
+
   /** Cancel, preempt, or fail only the active request; keep visible turns. */
   abandonRun(requestId: string): void {
     if (this.activeRun?.requestId === requestId) {
@@ -583,6 +680,7 @@ export class WorkshopSessionService {
     this.contextBrief = undefined;
     this.replacementCount = 0;
     this.selectedToolId = undefined;
+    this.todos = [];
     this.participants = this.newParticipants();
     return conversationIds;
   }
@@ -600,6 +698,7 @@ export class WorkshopSessionService {
             contextBrief: this.pendingContextBriefRevision !== undefined
           }
         : undefined,
+      todos: this.todos.map((todo) => cloneTodo(todo, this.excerptVersion)),
       turns: windowed.map(cloneTurn),
       totalTurns: this.turns.length,
       truncatedTurns: this.turns.length - windowed.length,
@@ -671,6 +770,14 @@ export class WorkshopSessionService {
     }
   }
 
+  private requireTodo(todoId: string): WorkshopTodoItem {
+    const todo = this.todos.find((candidate) => candidate.id === todoId);
+    if (!todo) {
+      throw new Error('Unknown Workshop task');
+    }
+    return todo;
+  }
+
   private conversationIds(): string[] {
     const ids = this.participants.host.conversationId ? [this.participants.host.conversationId] : [];
     for (const sidecar of Object.values(this.participants.toolSidecars)) {
@@ -716,7 +823,23 @@ function cloneTurn(turn: WorkshopTurn): WorkshopTurn {
   return {
     ...turn,
     usage: turn.usage ? { ...turn.usage } : undefined,
-    capability: turn.capability ? cloneCapabilityDetails(turn.capability) : undefined
+    capability: turn.capability ? cloneCapabilityDetails(turn.capability) : undefined,
+    actionableFindings: turn.actionableFindings
+      ? cloneFindings(turn.actionableFindings)
+      : undefined
+  };
+}
+
+function cloneFindings(findings: readonly WorkshopActionableFinding[]): WorkshopActionableFinding[] {
+  return findings.map((finding) => ({ ...finding }));
+}
+
+function cloneTodo(todo: WorkshopTodoItem, excerptVersion: number): WorkshopTodoItem {
+  return {
+    ...todo,
+    source: { ...todo.source },
+    writerEdit: todo.writerEdit ? { ...todo.writerEdit } : undefined,
+    stale: todo.source.excerptVersion !== excerptVersion
   };
 }
 

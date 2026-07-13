@@ -49,6 +49,99 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(JSON.stringify(service.getSnapshot())).not.toContain('conversationId');
   });
 
+  it('owns the attributed task lifecycle without mutating the source report', () => {
+    pin();
+    service.beginToolRun('continuity', 'report-run');
+    const report = service.completeToolReport(
+      'report-run',
+      'Verbatim report.\n\n### Next steps\n- Put the cup back before Mara leaves.',
+      'continuity-conv',
+      undefined,
+      false,
+      [{ key: 'finding-1', ordinal: 1, text: 'Put the cup back before Mara leaves.' }]
+    )!.turn;
+
+    const added = service.addTodoFromFinding(report.id, 'finding-1');
+    expect(added).toMatchObject({
+      text: 'Put the cup back before Mara leaves.',
+      status: 'open',
+      stale: false,
+      source: {
+        toolId: 'continuity',
+        reportTurnId: report.id,
+        findingKey: 'finding-1',
+        excerptVersion: 1
+      }
+    });
+    expect(service.addTodoFromFinding(report.id, 'finding-1').id).toBe(added.id);
+
+    service.editTodo(added.id, 'Move the cup before Mara leaves.');
+    service.setTodoStatus(added.id, 'completed');
+    expect(service.collectOpenTodosForHost()).toEqual([]);
+    service.setTodoStatus(added.id, 'open');
+
+    const todo = service.getSnapshot().todos[0];
+    expect(todo).toMatchObject({
+      text: 'Move the cup before Mara leaves.',
+      status: 'open',
+      writerEdit: { originalText: 'Put the cup back before Mara leaves.' }
+    });
+    expect(service.getSnapshot().turns.find((turn) => turn.id === report.id)?.content).toBe(
+      'Verbatim report.\n\n### Next steps\n- Put the cup back before Mara leaves.'
+    );
+  });
+
+  it('preserves tasks as stale history on excerpt replacement and clears them on reset', () => {
+    pin();
+    service.beginToolRun('prose', 'report-run');
+    const report = service.completeToolReport(
+      'report-run',
+      'Report.',
+      'prose-conv',
+      undefined,
+      false,
+      [{ key: 'finding-1', ordinal: 1, text: 'Tighten the opening.' }]
+    )!.turn;
+    service.addTodoFromFinding(report.id, 'finding-1');
+
+    expect(service.collectOpenTodosForHost()).toHaveLength(1);
+    service.replaceExcerpt({ text: 'A new excerpt.' });
+
+    expect(service.getSnapshot().todos[0].stale).toBe(true);
+    expect(service.collectOpenTodosForHost()).toEqual([]);
+    expect(() => service.addTodoFromFinding(report.id, 'finding-1')).toThrow(
+      'Cannot add a task from a stale excerpt report'
+    );
+    service.clearAllConversations();
+    expect(service.getSnapshot().todos).toHaveLength(1);
+    service.reset();
+    expect(service.getSnapshot().todos).toEqual([]);
+  });
+
+  it('reorders and defensively clones task snapshots', () => {
+    pin();
+    service.beginToolRun('prose', 'report-run');
+    const report = service.completeToolReport(
+      'report-run',
+      'Report.',
+      'prose-conv',
+      undefined,
+      false,
+      [
+        { key: 'finding-1', ordinal: 1, text: 'First task.' },
+        { key: 'finding-2', ordinal: 2, text: 'Second task.' }
+      ]
+    )!.turn;
+    const first = service.addTodoFromFinding(report.id, 'finding-1');
+    const second = service.addTodoFromFinding(report.id, 'finding-2');
+
+    service.reorderTodo(second.id, 'up');
+    const snapshot = service.getSnapshot();
+    expect(snapshot.todos.map((todo) => todo.id)).toEqual([second.id, first.id]);
+    snapshot.todos[0].source.findingText = 'mutated outside';
+    expect(service.getSnapshot().todos[0].source.findingText).toBe('Second task.');
+  });
+
   it('allows a tool side-pass while the retained host remains unchanged', () => {
     pin();
     service.beginPersonaMessage('host-1', 'Stay with this scene.');

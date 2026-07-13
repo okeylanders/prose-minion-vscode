@@ -38,6 +38,8 @@ import {
   WorkshopSessionStateMessage,
   WorkshopToolSidecarSnapshot,
   WorkshopToolId,
+  WorkshopTodoAction,
+  WorkshopTodoItem,
   WorkshopTurn,
   WorkshopTurnMessage
 } from '@messages';
@@ -69,6 +71,7 @@ export interface WorkshopState {
   chatTarget: WorkshopChatTarget;
   /** Public metadata for the latest retained sidecar per tool. */
   toolSidecars: WorkshopToolSidecarSnapshot[];
+  todos: WorkshopTodoItem[];
   /** True when the composer can message the host or selected direct sidecar. */
   canMessage: boolean;
   /** Host selection becomes immutable once a host run/conversation exists. */
@@ -102,6 +105,7 @@ export interface WorkshopActions {
   sendMessage: (text: string) => void;
   selectPersona: (personaId: WorkshopPersonaId) => void;
   setChatTarget: (target: WorkshopChatTarget) => void;
+  todoAction: (action: WorkshopTodoAction) => void;
   cancelRun: () => void;
   resetSession: () => void;
   requestSession: () => void;
@@ -141,6 +145,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const [selectedPersonaId, setSelectedPersonaId] = React.useState<WorkshopPersonaId>('jill');
   const [chatTarget, setChatTargetState] = React.useState<WorkshopChatTarget>({ kind: 'host' });
   const [toolSidecars, setToolSidecars] = React.useState<WorkshopToolSidecarSnapshot[]>([]);
+  const [todos, setTodos] = React.useState<WorkshopTodoItem[]>([]);
   const [selectedToolId, setSelectedToolId] = React.useState<WorkshopToolId | null>(null);
   const [activeToolId, setActiveToolId] = React.useState<WorkshopToolId | null>(null);
   const [statusMessage, setStatusMessage] = React.useState('');
@@ -227,6 +232,14 @@ export const useWorkshop = (): UseWorkshopReturn => {
     [post]
   );
 
+  const todoAction = React.useCallback(
+    (action: WorkshopTodoAction) => {
+      setErrorMessage('');
+      post(MessageType.WORKSHOP_TODO_ACTION, action);
+    },
+    [post]
+  );
+
   const cancelRun = React.useCallback(() => {
     const requestId =
       liveRunRef.current?.phase === 'streaming' ? liveRunRef.current.requestId : null;
@@ -266,6 +279,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
       setSelectedPersonaId(session.participants.host.personaId);
       setChatTargetState(session.participants.chatTarget);
       setToolSidecars(session.participants.toolSidecars);
+      setTodos(session.todos);
       setSelectedToolId(session.selectedToolId ?? null);
       setActiveToolId(session.activeToolId ?? null);
       setTurns((prev) => {
@@ -396,6 +410,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     selectedPersonaId,
     chatTarget,
     toolSidecars,
+    todos,
     canMessage,
     isPersonaSelectionLocked,
     selectedToolId,
@@ -422,6 +437,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     sendMessage,
     selectPersona,
     setChatTarget,
+    todoAction,
     cancelRun,
     resetSession,
     requestSession,

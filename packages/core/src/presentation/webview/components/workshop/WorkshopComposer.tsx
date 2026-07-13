@@ -28,6 +28,7 @@ interface WorkshopComposerProps {
   sessionReady: boolean;
   onSend: (text: string) => void;
   onCancel: () => void;
+  onOpenContext?: () => void;
   onOpenTools: () => void;
 }
 
@@ -39,6 +40,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   sessionReady,
   onSend,
   onCancel,
+  onOpenContext,
   onOpenTools
 }) => {
   const [draft, setDraft] = React.useState('');
@@ -89,8 +91,9 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
           className="pm-ws-comp-add"
           type="button"
           disabled={!sessionReady}
-          title="Writing tools"
-          onClick={onOpenTools}
+          title="Add project context"
+          aria-label="Add project context"
+          onClick={onOpenContext ?? onOpenTools}
         >
           <Icon name="plus" size={18} />
         </button>

@@ -69,6 +69,42 @@ export interface WorkshopParticipantsSnapshot {
   chatTarget: WorkshopChatTarget;
 }
 
+/** A validated, deterministic item parsed from an exact tool-report section. */
+export interface WorkshopActionableFinding {
+  /** Stable only within its originating report; pair with reportTurnId. */
+  key: string;
+  text: string;
+  ordinal: number;
+}
+
+export type WorkshopTodoStatus = 'open' | 'completed' | 'dismissed';
+
+export interface WorkshopTodoWriterEdit {
+  /** Immutable first text promoted from the source finding. */
+  originalText: string;
+  editedAt: number;
+}
+
+/** Writer-owned planning item with immutable tool/report provenance. */
+export interface WorkshopTodoItem {
+  /** Opaque host-generated correlation key; never a provider conversation id. */
+  id: string;
+  text: string;
+  status: WorkshopTodoStatus;
+  source: {
+    toolId: WorkshopToolId;
+    toolLabel: string;
+    reportTurnId: string;
+    findingKey: string;
+    findingText: string;
+    excerptVersion: number;
+  };
+  createdAt: number;
+  writerEdit?: WorkshopTodoWriterEdit;
+  /** Derived from source excerpt version; stale tasks never enter host evidence. */
+  stale: boolean;
+}
+
 export type WorkshopTurnRole = 'user' | 'assistant' | 'system';
 
 /** The participant responsible for a visible Workshop turn. */
@@ -145,6 +181,8 @@ export interface WorkshopTurn {
   capability?: WorkshopCapabilityArtifactDetails;
   /** Excerpt version this turn observed or announced. */
   excerptVersion: number;
+  /** Strictly parsed actionable findings; present only on tool reports. */
+  actionableFindings?: WorkshopActionableFinding[];
   content: string;
   /** Epoch ms when the turn was appended (host-stamped). */
   timestamp: number;
@@ -178,6 +216,8 @@ export interface WorkshopSessionSnapshot {
     excerptVersion?: number;
     contextBrief: boolean;
   };
+  /** Host-owned, defensively copied writer task list in explicit order. */
+  todos: WorkshopTodoItem[];
   turns: WorkshopTurn[];
   /** Total turns held host-side (>= turns.length). */
   totalTurns: number;
@@ -269,6 +309,18 @@ export interface WorkshopSetContextBriefPayload {
 export interface WorkshopSetContextBriefMessage
   extends MessageEnvelope<WorkshopSetContextBriefPayload> {
   type: MessageType.WORKSHOP_SET_CONTEXT_BRIEF;
+}
+
+export type WorkshopTodoAction =
+  | { action: 'add'; reportTurnId: string; findingKey: string }
+  | { action: 'edit'; todoId: string; text: string }
+  | { action: 'complete'; todoId: string }
+  | { action: 'reopen'; todoId: string }
+  | { action: 'dismiss'; todoId: string }
+  | { action: 'reorder'; todoId: string; direction: 'up' | 'down' };
+
+export interface WorkshopTodoActionMessage extends MessageEnvelope<WorkshopTodoAction> {
+  type: MessageType.WORKSHOP_TODO_ACTION;
 }
 
 /**

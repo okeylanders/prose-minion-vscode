@@ -62,6 +62,51 @@ Third version.`);
 });
 
 describe('WorkshopTurnBubble variation cards', () => {
+  it('requires an explicit click to promote a structured finding', () => {
+    const onAddTodo = jest.fn();
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('Report.\n\n### Next steps\n- Tighten the opening.'),
+          actionableFindings: [
+            { key: 'finding-1', ordinal: 1, text: 'Tighten the opening.' }
+          ]
+        }}
+        quickActionToolId="prose"
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onAddTodo={onAddTodo}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(onAddTodo).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
+    expect(onAddTodo).toHaveBeenCalledWith('turn-1', 'finding-1');
+  });
+
+  it('shows already-promoted findings without adding them again', () => {
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('Report.'),
+          actionableFindings: [
+            { key: 'finding-1', ordinal: 1, text: 'Tighten the opening.' }
+          ]
+        }}
+        quickActionToolId={null}
+        promotedFindingKeys={new Set(['finding-1'])}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /added/i }).hasAttribute('disabled')).toBe(true);
+  });
+
   it('renders duplicate model numbers with stable positional labels and wires copy/save content', () => {
     const onCopy = jest.fn();
     const onSave = jest.fn();

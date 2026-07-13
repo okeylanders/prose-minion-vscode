@@ -415,6 +415,136 @@
   border-style: dashed;
 }
 
+/* Writer-owned task list */
+[data-pm-surface="workshop"] .pm-ws-todos {
+  gap: 9px;
+}
+[data-pm-surface="workshop"] .pm-ws-todos-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-todos-head > span,
+[data-pm-surface="workshop"] .pm-ws-todos-empty {
+  color: var(--pm-dim);
+  font: 10.5px/1.45 var(--pm-mono);
+}
+[data-pm-surface="workshop"] .pm-ws-todos-empty {
+  margin: 0;
+  padding: 10px;
+  border: 1px dashed var(--pm-border);
+  border-radius: var(--pm-r-tile);
+}
+[data-pm-surface="workshop"] .pm-ws-todo-items {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-todo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px;
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-tile);
+}
+[data-pm-surface="workshop"] .pm-ws-todo-main {
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+  gap: 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-todo-toggle {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+  display: grid;
+  place-items: center;
+  margin-top: 1px;
+  padding: 0;
+  border: 1px solid var(--pm-border-2);
+  border-radius: 5px;
+  background: var(--pm-inset);
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-todo-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+[data-pm-surface="workshop"] .pm-ws-todo-copy form,
+[data-pm-surface="workshop"] .pm-ws-todo-copy input {
+  width: 100%;
+  box-sizing: border-box;
+}
+[data-pm-surface="workshop"] .pm-ws-todo-copy input {
+  color: var(--pm-text);
+  background: var(--pm-inset);
+  border: 1px solid var(--pm-accent-lo);
+  border-radius: 5px;
+  padding: 4px 6px;
+  font: 12px var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-todo-text {
+  color: var(--pm-text-2);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="workshop"] .pm-ws-todo-source {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--pm-dim);
+  text-align: left;
+  font: 9.5px var(--pm-mono);
+}
+[data-pm-surface="workshop"] .pm-ws-todo-source:hover {
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-todo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+[data-pm-surface="workshop"] .pm-ws-todo-actions button {
+  width: 22px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-todo-actions button:not(:disabled):hover {
+  background: var(--pm-surface-3);
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-icon-up {
+  transform: rotate(180deg);
+}
+[data-pm-surface="workshop"] .pm-ws-todo-completed .pm-ws-todo-text,
+[data-pm-surface="workshop"] .pm-ws-todo-dismissed .pm-ws-todo-text {
+  color: var(--pm-dim);
+  text-decoration: line-through;
+}
+[data-pm-surface="workshop"] .pm-ws-todo-dismissed {
+  opacity: 0.58;
+}
+[data-pm-surface="workshop"] .pm-ws-todo-stale {
+  border-style: dashed;
+  opacity: 0.72;
+}
+
 /* ---------- Thread ---------- */
 [data-pm-surface="workshop"] .pm-ws-main {
   display: flex;
@@ -793,6 +923,45 @@
 [data-pm-surface="workshop"] .pm-ws-var-action:hover {
   color: var(--pm-text);
   border-color: var(--pm-border-2);
+}
+
+/* Deterministic promotion controls beneath verbatim report content. */
+[data-pm-surface="workshop"] .pm-ws-findings {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 14px;
+  padding: 11px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-tile);
+  background: var(--pm-inset);
+}
+[data-pm-surface="workshop"] .pm-ws-findings-title {
+  color: var(--pm-muted);
+  font: 600 10px var(--pm-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-finding {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--pm-text-2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+[data-pm-surface="workshop"] .pm-ws-finding button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  color: var(--pm-muted);
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-input);
+  padding: 4px 7px;
+  font-size: 11px;
 }
 
 /* Thread-tail error message (dismissible, role=alert) */

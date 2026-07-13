@@ -24,8 +24,10 @@ interface WorkshopTurnBubbleProps {
   quickActionToolId: WorkshopToolId | null;
   quickActionsDisabled?: boolean;
   canTalkDirectly?: boolean;
+  promotedFindingKeys?: ReadonlySet<string>;
   onQuickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
   onTalkDirectly: (toolId: WorkshopToolId) => void;
+  onAddTodo?: (reportTurnId: string, findingKey: string) => void;
   onCopy: (content: string, turn: WorkshopTurn) => void;
   onSave: (content: string, turn: WorkshopTurn) => void;
 }
@@ -93,8 +95,10 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   quickActionToolId,
   quickActionsDisabled = false,
   canTalkDirectly = false,
+  promotedFindingKeys = new Set(),
   onQuickAction,
   onTalkDirectly,
+  onAddTodo = () => undefined,
   onCopy,
   onSave
 }) => {
@@ -137,7 +141,11 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
 
   return (
     <>
-      <div className="pm-ws-turn pm-ws-turn-assistant">
+      <div
+        className="pm-ws-turn pm-ws-turn-assistant"
+        data-turn-id={turn.id}
+        tabIndex={-1}
+      >
         <div className="pm-ws-turn-head">
           <span className="pm-ws-eyebrow">
             <Icon name={turn.personaId ? 'person' : 'sparkle'} size={12} />{' '}
@@ -200,6 +208,27 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
           </div>
         ) : (
           <MarkdownRenderer content={turn.content} className="pm-ws-turn-body" />
+        )}
+        {turn.artifact === 'tool_report' && turn.actionableFindings && (
+          <div className="pm-ws-findings" aria-label="Actionable findings">
+            <div className="pm-ws-findings-title">Add a next step</div>
+            {turn.actionableFindings.map((finding) => {
+              const promoted = promotedFindingKeys.has(finding.key);
+              return (
+                <div className="pm-ws-finding" key={finding.key}>
+                  <span>{finding.text}</span>
+                  <button
+                    type="button"
+                    disabled={promoted}
+                    onClick={() => onAddTodo(turn.id, finding.key)}
+                  >
+                    <Icon name={promoted ? 'check' : 'plus'} size={12} />
+                    {promoted ? 'Added' : 'Add'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         )}
         <div className="pm-ws-turn-actions">
           <button type="button" onClick={() => onCopy(turn.content, turn)}>

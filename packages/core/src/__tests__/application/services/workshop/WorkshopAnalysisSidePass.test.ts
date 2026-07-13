@@ -8,7 +8,7 @@ describe('WorkshopAnalysisSidePass', () => {
     const service = {
       analyzeWritingTools: jest.fn().mockResolvedValue({
         toolName: 'writing_tools_continuity',
-        content: 'Verbatim continuity report.',
+        content: 'Verbatim continuity report.\n\n### Next steps\n- Put the cup back.',
         conversationId: 'continuity-conv'
       }),
       discardConversation: jest.fn()
@@ -58,9 +58,12 @@ describe('WorkshopAnalysisSidePass', () => {
     expect(adoption?.turn).toMatchObject({
       artifact: 'tool_report',
       toolId: 'continuity',
-      content: 'Verbatim continuity report.',
+      content: 'Verbatim continuity report.\n\n### Next steps\n- Put the cup back.',
       excerptVersion: 1,
-      capability: { operation: 'analysis.run', requestedByPersonaId: 'jill' }
+      capability: { operation: 'analysis.run', requestedByPersonaId: 'jill' },
+      actionableFindings: [
+        { key: 'finding-1', ordinal: 1, text: 'Put the cup back.' }
+      ]
     });
     expect(session.getToolSidecarConversationId('continuity')).toBe('continuity-conv');
     expect(session.getSnapshot().activeRequestId).toBe('host-turn');
