@@ -24,12 +24,11 @@
 
 ---
 
-## What's new in v2.0.2
+## What's new in v2.0.3
 
-- **Claude Fable 5 added** — the curated model catalog now includes `anthropic/claude-fable-5` for long-context critique and revision planning.
-- **Fresh Marketplace tour** — updated screenshots and setup copy now match the current four-tool sidebar.
-- **Cleaner package metadata** — the extension homepage now points to the Prose Minion website, and Marketplace-only banner art stays out of the runtime VSIX.
-- **Sister extension: [FrameMinion](https://frameminion.video)** — AI video, image, and music-video workflow tools for VS Code, same house style. [Install it too](https://marketplace.visualstudio.com/items?itemName=OkeyLanders.frame-minion).
+- **GPT-5.6 base tiers** — Luna, Terra, and Sol are now available in the curated model catalog, covering fast, balanced, and flagship 1M-context writing workflows.
+- **New Grok and Aion choices** — Grok 4.5 plus Aion 3.0 and Aion 3.0 Mini join the existing Grok and storytelling-model options.
+- **Catalog reliability** — removed the soon-to-expire `openai/gpt-5.2-chat` choice and added a guard that keeps Category Search settings synchronized with the curated list.
 
 Full history → [CHANGELOG.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/CHANGELOG.md)
 
