@@ -2,6 +2,21 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [Unreleased]
+
+### Added
+
+- **OpenRouter Catalog Refresh**: Added the GPT-5.6 base tiers (`Luna`, `Terra`, and `Sol`), Grok 4.5, Aion 3.0, and Aion 3.0 Mini to the curated Recommended catalog. The GPT-5.6 `-pro` variants are intentionally excluded because they are the same underlying models with a forced reasoning mode.
+
+### Removed
+
+- **Expiring OpenRouter ID**: Removed `openai/gpt-5.2-chat` from the Recommended and Category Search catalogs before its announced August 10, 2026 expiration.
+
+### Technical Details
+
+- Re-verified every retained curated ID against OpenRouter's live `/models` catalog; no other stale IDs were found.
+- Kept all scoped defaults unchanged and synchronized the Category Search manifest enum with `CATEGORY_MODELS`.
+
 ## [2.0.2] - 2026-07-02
 
 ### Added

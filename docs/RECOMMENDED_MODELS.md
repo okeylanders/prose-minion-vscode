@@ -50,6 +50,20 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/anthropic/claude-opus-4.8
   - Anthropic: https://www.anthropic.com
 
+### Aion 3.0 — Collaborative Storytelling
+
+- **Best For:** Narrative tension, character conflict, and exploratory scene work
+- **Description:** Premium multi-model storytelling system built on the GLM family; its collaborative generation is designed to strengthen narrative structure and conflict
+- **Links:**
+  - OpenRouter: https://openrouter.ai/aion-labs/aion-3.0
+
+### Aion 3.0 Mini — Value Storytelling
+
+- **Best For:** Cost-efficient scene exploration, character beats, and narrative tension
+- **Description:** A smaller multi-model storytelling system built on the DeepSeek family for compelling character-driven drafting
+- **Links:**
+  - OpenRouter: https://openrouter.ai/aion-labs/aion-3.0-mini
+
 ### Sao10K Euryale 70B — Roleplay & Voice
 
 - **Best For:** Capturing unique character voices
@@ -102,6 +116,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 - **Description:** Great for maintaining consistency across long narratives
 - **Links:**
   - OpenRouter: https://openrouter.ai/x-ai/grok-4.3
+  - xAI: https://x.ai/
+
+### xAI Grok 4.5 — Frontier Reasoning
+
+- **Best For:** Complex research-informed critique and knowledge-heavy editorial work
+- **Description:** xAI's newest Grok flagship with 500K context and frontier performance across coding, knowledge work, and STEM
+- **Links:**
+  - OpenRouter: https://openrouter.ai/x-ai/grok-4.5
   - xAI: https://x.ai/
 
 ### Mistral Medium 3.5 — Literary Analysis
@@ -180,6 +202,30 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 - **Description:** Highest-capability GPT-5.4 tier with deeper reasoning for complex multi-step workflows
 - **Links:**
   - OpenRouter: https://openrouter.ai/openai/gpt-5.4-pro
+  - OpenAI: https://openai.com/
+
+### OpenAI GPT-5.6 Luna — High-Volume Value
+
+- **Best For:** Fast assistant conversations, dictionary work, and lightweight editorial passes
+- **Description:** Cost-efficient GPT-5.6 tier with 1M context for latency-sensitive, high-volume writing workflows
+- **Links:**
+  - OpenRouter: https://openrouter.ai/openai/gpt-5.6-luna
+  - OpenAI: https://openai.com/
+
+### OpenAI GPT-5.6 Terra — Balanced Frontier Work
+
+- **Best For:** Everyday prose analysis, rewrites, and context-aware writing work
+- **Description:** Balanced GPT-5.6 tier with 1M context, positioned between the fast Luna and flagship Sol tiers
+- **Links:**
+  - OpenRouter: https://openrouter.ai/openai/gpt-5.6-terra
+  - OpenAI: https://openai.com/
+
+### OpenAI GPT-5.6 Sol — Flagship Reasoning
+
+- **Best For:** Difficult structural critique, complex reasoning, and multi-step revision planning
+- **Description:** Flagship GPT-5.6 tier with 1M context for the most demanding writing and analysis workflows
+- **Links:**
+  - OpenRouter: https://openrouter.ai/openai/gpt-5.6-sol
   - OpenAI: https://openai.com/
 
 ### Qwen3.7 Max — Open-Model Powerhouse

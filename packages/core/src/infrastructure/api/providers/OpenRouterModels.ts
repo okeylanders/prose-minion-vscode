@@ -211,12 +211,6 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Latest frontier-grade model with adaptive reasoning for dynamic complexity handling'
   },
   {
-    id: 'openai/gpt-5.2-chat',
-    name: 'GPT-5.2 Chat',
-    family: 'GPT-5.2',
-    description: 'Fast, lightweight model optimized for low-latency chat with adaptive reasoning'
-  },
-  {
     id: 'openai/gpt-5.2-pro',
     name: 'GPT-5.2 Pro',
     family: 'GPT-5.2',
@@ -549,12 +543,6 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Latest frontier-grade model with adaptive reasoning that allocates more depth to complex tasks. Consistent gains across math, coding, and tool calling with more coherent long-form answers. Great for creative writing.'
   },
   {
-    id: 'openai/gpt-5.2-chat',
-    name: 'GPT-5.2 Chat',
-    family: 'GPT-5.2',
-    description: 'Fast, warmer conversational model with selective "thinking" on harder queries. Optimized for high-throughput interactive workloads where responsiveness matters. Better instruction following and stable short-form reasoning.'
-  },
-  {
     id: 'openai/gpt-5.2-codex',
     name: 'GPT-5.2 Codex',
     family: 'GPT-5.2',
@@ -615,6 +603,24 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: '$$$ Premium GPT-5.5 variant for the deepest reasoning, longest context, and highest-stakes prose work.'
   },
   {
+    id: 'openai/gpt-5.6-luna',
+    name: 'GPT-5.6 Luna',
+    family: 'GPT-5.6',
+    description: 'Fast, cost-efficient GPT-5.6 tier with 1M context. Good for high-volume assistant conversations, dictionary checks, and lightweight editorial workflows.'
+  },
+  {
+    id: 'openai/gpt-5.6-terra',
+    name: 'GPT-5.6 Terra',
+    family: 'GPT-5.6',
+    description: 'Balanced GPT-5.6 tier with 1M context. Strong choice for everyday prose analysis, rewrites, and context-aware writing work.'
+  },
+  {
+    id: 'openai/gpt-5.6-sol',
+    name: 'GPT-5.6 Sol',
+    family: 'GPT-5.6',
+    description: 'Flagship GPT-5.6 tier with 1M context. Premium option for difficult structural critique, complex reasoning, and multi-step revision planning.'
+  },
+  {
     id: 'openai/gpt-chat-latest',
     name: 'GPT Chat Latest',
     family: 'GPT Chat',
@@ -637,6 +643,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Grok 4.3',
     family: 'Grok 4',
     description: 'Newest Grok deep-reasoning model. Premium tier for complex structural critique and consistency analysis.'
+  },
+  {
+    id: 'x-ai/grok-4.5',
+    name: 'Grok 4.5',
+    family: 'Grok 4',
+    description: 'xAI\'s newest Grok flagship with 500K context. Strong option for complex reasoning, knowledge work, and research-informed editorial tasks.'
   },
   {
     id: 'moonshotai/kimi-k2-0905',
@@ -757,6 +769,18 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Aion 2.0',
     family: 'Aion',
     description: 'Storytelling-focused model optimized for immersive roleplay, narrative tension, and character-driven rewrite exploration.'
+  },
+  {
+    id: 'aion-labs/aion-3.0-mini',
+    name: 'Aion 3.0 Mini',
+    family: 'Aion',
+    description: 'Cost-efficient multi-model storytelling system built on the DeepSeek family. Good for narrative tension, character conflict, and exploratory scene work.'
+  },
+  {
+    id: 'aion-labs/aion-3.0',
+    name: 'Aion 3.0',
+    family: 'Aion',
+    description: 'Premium multi-model storytelling system built on the GLM family. Uses collaborative generation for stronger narrative structure, tension, and conflict.'
   },
   {
     id: 'thedrummer/rocinante-12b',
