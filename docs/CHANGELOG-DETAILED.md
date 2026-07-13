@@ -5,11 +5,11 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.0.3] - 2026-07-13
 
 ### Overview
 
-Curated OpenRouter catalog refresh for the post-v2.0.2 release line. The update adds the newly available GPT-5.6 base tiers, Grok 4.5, and Aion 3.0 variants while preserving existing Grok and Aion choices. Defaults remain unchanged.
+Patch release refreshing the curated OpenRouter catalog. The update adds the newly available GPT-5.6 base tiers, Grok 4.5, and Aion 3.0 variants while preserving existing Grok and Aion choices. Defaults remain unchanged.
 
 ### Added
 
@@ -24,7 +24,7 @@ Curated OpenRouter catalog refresh for the post-v2.0.2 release line. The update 
 ### Verification
 
 - Live OpenRouter audit on 2026-07-13 returned 343 models. All retained curated IDs resolved; no other stale IDs were found.
-- Marketplace preflight confirmed that deployed version 2.0.2 matches `main` before this unreleased catalog commit.
+- Marketplace preflight confirmed that deployed version 2.0.2 matched `main` before release preparation.
 - Scoped defaults remain `anthropic/claude-sonnet-5` (Assistant and Category Search), `anthropic/claude-haiku-4.5` (Dictionary), and `openai/gpt-5.4` (Context).
 
 ## [2.0.2] - 2026-07-02
