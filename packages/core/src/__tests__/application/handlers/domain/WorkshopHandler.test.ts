@@ -304,13 +304,13 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
     await handler.handleTodoAction(message(MessageType.WORKSHOP_TODO_ACTION, {
       action: 'add',
-      reportTurnId: report.id,
+      sourceTurnId: report.id,
       findingKey: 'finding-1'
     }) as any);
     const todo = session.getSnapshot().todos[0];
     expect(todo).toMatchObject({
       text: 'Tighten the first paragraph.',
-      source: { toolId: 'prose', reportTurnId: report.id }
+      source: { kind: 'tool_report', toolId: 'prose', turnId: report.id }
     });
 
     service.continueConversation.mockClear();
@@ -320,9 +320,67 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     ) as any);
     const delivered = service.continueConversation.mock.calls[0][1] as string;
     expect(delivered).toContain('Task: Tighten the first paragraph.');
-    expect(delivered).toContain('Source tool: Prose (prose)');
-    expect(delivered).toContain(`Source report: ${report.id}`);
+    expect(delivered).toContain('Source participant: Prose');
+    expect(delivered).toContain('Source tool id: prose');
+    expect(delivered).toContain(`Source turn: ${report.id}`);
     expect(delivered).toContain('Status: open');
+  });
+
+  it('lets the host propose prioritized tasks from the full report with upstream provenance', async () => {
+    service.analyzeProse.mockResolvedValue(analysisResult(
+      'Priority assessment: HIGH replace the beacon; MEDIUM audit gravity.',
+      { conversationId: 'tool-conv' }
+    ));
+    service.startWorkshopPersonaConversation.mockResolvedValue(analysisResult([
+      'The report points to a clear revision order.',
+      '',
+      '### Next steps',
+      '- [high] Replace the beacon image.',
+      '- [medium] Audit the gravity metaphor.'
+    ].join('\n'), { conversationId: 'host-conv' }));
+    await pin();
+    await runProse();
+
+    const snapshot = session.getSnapshot();
+    const report = snapshot.turns.find((turn) => turn.artifact === 'tool_report')!;
+    const synthesis = snapshot.turns.find((turn) => turn.artifact === 'persona_synthesis')!;
+    expect(synthesis.actionableFindings).toEqual([
+      {
+        key: 'finding-1', ordinal: 1, priority: 'high',
+        text: 'Replace the beacon image.'
+      },
+      {
+        key: 'finding-2', ordinal: 2, priority: 'medium',
+        text: 'Audit the gravity metaphor.'
+      }
+    ]);
+
+    await handler.handleTodoAction(message(MessageType.WORKSHOP_TODO_ACTION, {
+      action: 'add',
+      sourceTurnId: synthesis.id,
+      findingKey: 'finding-1'
+    }) as any);
+    expect(session.getSnapshot().todos[0]).toMatchObject({
+      priority: 'high',
+      source: {
+        kind: 'host_turn',
+        turnId: synthesis.id,
+        participantLabel: 'Jill',
+        personaId: 'jill',
+        upstreamReportTurnId: report.id
+      }
+    });
+
+    service.continueConversation.mockClear();
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Which task comes first?' }
+    ) as any);
+    const evidence = service.continueConversation.mock.calls[0][1] as string;
+    expect(evidence).toContain('Source kind: host_turn');
+    expect(evidence).toContain('Source participant: Jill');
+    expect(evidence).toContain(`Source turn: ${synthesis.id}`);
+    expect(evidence).toContain(`Upstream tool report: ${report.id}`);
   });
 
   it('rejects task promotion when the report did not expose the exact finding', async () => {
@@ -333,7 +391,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
     await handler.handleTodoAction(message(MessageType.WORKSHOP_TODO_ACTION, {
       action: 'add',
-      reportTurnId: report.id,
+      sourceTurnId: report.id,
       findingKey: 'finding-1'
     }) as any);
 

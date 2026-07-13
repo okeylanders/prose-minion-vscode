@@ -10,9 +10,10 @@ const todo = (overrides: Partial<WorkshopTodoItem> = {}): WorkshopTodoItem => ({
   text: 'Fix the cup continuity.',
   status: 'open',
   source: {
+    kind: 'tool_report',
+    turnId: 'report-1',
+    participantLabel: 'Continuity',
     toolId: 'continuity',
-    toolLabel: 'Continuity',
-    reportTurnId: 'report-1',
     findingKey: 'finding-1',
     findingText: 'Fix the cup continuity.',
     excerptVersion: 1
@@ -73,5 +74,29 @@ describe('WorkshopTodoList', () => {
     );
     expect(screen.getByText(/stale/)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Reopen task' })).toBeTruthy();
+  });
+
+  it('keeps host provenance and declared priority visible', () => {
+    render(
+      <WorkshopTodoList
+        todos={[todo({
+          priority: 'high',
+          source: {
+            kind: 'host_turn',
+            turnId: 'host-turn-3',
+            participantLabel: 'Jill',
+            personaId: 'jill',
+            findingKey: 'finding-1',
+            findingText: 'Replace the beacon image.',
+            excerptVersion: 1
+          }
+        })]}
+        onAction={jest.fn()}
+        onShowSource={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('high')).toBeTruthy();
+    expect(screen.getByText(/Jill · excerpt v1/)).toBeTruthy();
   });
 });

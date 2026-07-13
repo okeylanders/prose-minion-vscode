@@ -16,7 +16,7 @@ interface WorkshopThreadProps {
   quickActionsDisabled?: boolean;
   onQuickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
   onTalkDirectly: (toolId: WorkshopToolId) => void;
-  onAddTodo?: (reportTurnId: string, findingKey: string) => void;
+  onAddTodo?: (sourceTurnId: string, findingKey: string) => void;
   onCopy: (content: string, turn: WorkshopTurn) => void;
   onSave: (content: string, turn: WorkshopTurn) => void;
 }
@@ -57,7 +57,7 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
           canTalkDirectly={turn.artifact === 'tool_report' && ownsLiveSidecar}
           promotedFindingKeys={new Set(
             todos
-              .filter((todo) => todo.source.reportTurnId === turn.id)
+              .filter((todo) => todo.source.turnId === turn.id)
               .map((todo) => todo.source.findingKey)
           )}
           onQuickAction={onQuickAction}

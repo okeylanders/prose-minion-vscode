@@ -69,15 +69,18 @@ export interface WorkshopParticipantsSnapshot {
   chatTarget: WorkshopChatTarget;
 }
 
-/** A validated, deterministic item parsed from an exact tool-report section. */
+/** A validated, deterministic item parsed from an exact next-steps section. */
 export interface WorkshopActionableFinding {
-  /** Stable only within its originating report; pair with reportTurnId. */
+  /** Stable only within its originating turn; pair with the source turn id. */
   key: string;
   text: string;
   ordinal: number;
+  /** Declared by the strict list prefix, when the source supports priority. */
+  priority?: WorkshopTodoPriority;
 }
 
 export type WorkshopTodoStatus = 'open' | 'completed' | 'dismissed';
+export type WorkshopTodoPriority = 'high' | 'medium' | 'low';
 
 export interface WorkshopTodoWriterEdit {
   /** Immutable first text promoted from the source finding. */
@@ -85,20 +88,34 @@ export interface WorkshopTodoWriterEdit {
   editedAt: number;
 }
 
-/** Writer-owned planning item with immutable tool/report provenance. */
+interface WorkshopTodoSourceBase {
+  turnId: string;
+  participantLabel: string;
+  findingKey: string;
+  findingText: string;
+  excerptVersion: number;
+}
+
+export type WorkshopTodoSource =
+  | (WorkshopTodoSourceBase & {
+      kind: 'tool_report';
+      toolId: WorkshopToolId;
+    })
+  | (WorkshopTodoSourceBase & {
+      kind: 'host_turn';
+      personaId: WorkshopPersonaId;
+      /** Tool report the host was synthesizing, when this proposal derived from one. */
+      upstreamReportTurnId?: string;
+    });
+
+/** Writer-owned planning item with immutable source-turn provenance. */
 export interface WorkshopTodoItem {
   /** Opaque host-generated correlation key; never a provider conversation id. */
   id: string;
   text: string;
   status: WorkshopTodoStatus;
-  source: {
-    toolId: WorkshopToolId;
-    toolLabel: string;
-    reportTurnId: string;
-    findingKey: string;
-    findingText: string;
-    excerptVersion: number;
-  };
+  priority?: WorkshopTodoPriority;
+  source: WorkshopTodoSource;
   createdAt: number;
   writerEdit?: WorkshopTodoWriterEdit;
   /** Derived from source excerpt version; stale tasks never enter host evidence. */
@@ -181,7 +198,7 @@ export interface WorkshopTurn {
   capability?: WorkshopCapabilityArtifactDetails;
   /** Excerpt version this turn observed or announced. */
   excerptVersion: number;
-  /** Strictly parsed actionable findings; present only on tool reports. */
+  /** Strictly parsed actionable findings proposed by a tool report or host turn. */
   actionableFindings?: WorkshopActionableFinding[];
   content: string;
   /** Epoch ms when the turn was appended (host-stamped). */
@@ -312,7 +329,7 @@ export interface WorkshopSetContextBriefMessage
 }
 
 export type WorkshopTodoAction =
-  | { action: 'add'; reportTurnId: string; findingKey: string }
+  | { action: 'add'; sourceTurnId: string; findingKey: string }
   | { action: 'edit'; todoId: string; text: string }
   | { action: 'complete'; todoId: string }
   | { action: 'reopen'; todoId: string }

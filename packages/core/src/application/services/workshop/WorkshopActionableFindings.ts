@@ -1,4 +1,4 @@
-/** Deterministic extraction of writer-promotable findings from tool reports. */
+/** Deterministic extraction of writer-promotable findings from Workshop turns. */
 
 import { WorkshopActionableFinding } from '@messages';
 
@@ -15,13 +15,14 @@ export const WORKSHOP_TODO_BOUNDS = Object.freeze({
 
 export const WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION = [
   '<workshop-actionable-findings-contract>',
-  'When your report contains concrete actions the writer could deliberately add to a task list, end with exactly `### Next steps` and one single-line `- ` list item per action.',
+  'When your report contains concrete actions the writer could deliberately add to a task list, end with exactly `### Next steps` and one single-line `- ` list item per action. You may prefix an item with exactly `[high]`, `[medium]`, or `[low]` when the report supports a priority.',
   'Keep each item specific and attributable to evidence in this report. Omit the section when there are no concrete actions. Do not use nested or multiline list items.',
   '</workshop-actionable-findings-contract>'
 ].join('\n');
 
 const NEXT_STEPS_HEADING = '### Next steps';
-const LIST_ITEM = /^[-*+]\s+(.+)$/;
+const LIST_ITEM = /^[-*+]\s+(?:\[(high|medium|low)\]\s+)?(.+)$/;
+const UNSUPPORTED_BRACKET_PREFIX = /^\[[^\]]*\]\s+/;
 const ANY_HEADING = /^#{1,6}\s+/;
 
 /**
@@ -66,16 +67,23 @@ export function extractWorkshopActionableFindings(
   const seen = new Set<string>();
   for (const line of meaningfulLines) {
     const match = LIST_ITEM.exec(line);
-    const text = match?.[1]?.trim();
+    const priority = match?.[1] as WorkshopActionableFinding['priority'];
+    const text = match?.[2]?.trim();
     if (
       !text ||
+      (!priority && UNSUPPORTED_BRACKET_PREFIX.test(text)) ||
       text.length > WORKSHOP_ACTIONABLE_FINDING_BOUNDS.itemCharacters ||
       seen.has(text)
     ) {
       return [];
     }
     const ordinal = findings.length + 1;
-    findings.push({ key: `finding-${ordinal}`, text, ordinal });
+    findings.push({
+      key: `finding-${ordinal}`,
+      text,
+      ordinal,
+      ...(priority ? { priority } : {})
+    });
     seen.add(text);
   }
 

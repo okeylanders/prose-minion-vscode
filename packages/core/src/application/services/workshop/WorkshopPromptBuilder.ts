@@ -74,12 +74,20 @@ export function buildWorkshopTodoEvidence(
       '<writer-owned-task>',
       `Task: ${neutralizeReservedPersonaPromptDelimiters(todo.text)}`,
       `Status: ${todo.status}`,
-      `Source tool: ${neutralizeReservedPersonaPromptDelimiters(todo.source.toolLabel)} (${todo.source.toolId})`,
-      `Source report: ${neutralizeReservedPersonaPromptDelimiters(todo.source.reportTurnId)}`,
+      `Priority: ${todo.priority ?? 'unspecified'}`,
+      `Source kind: ${todo.source.kind}`,
+      `Source participant: ${neutralizeReservedPersonaPromptDelimiters(todo.source.participantLabel)}`,
+      `Source turn: ${neutralizeReservedPersonaPromptDelimiters(todo.source.turnId)}`,
+      todo.source.kind === 'tool_report'
+        ? `Source tool id: ${todo.source.toolId}`
+        : `Source persona id: ${todo.source.personaId}`,
+      todo.source.kind === 'host_turn' && todo.source.upstreamReportTurnId
+        ? `Upstream tool report: ${neutralizeReservedPersonaPromptDelimiters(todo.source.upstreamReportTurnId)}`
+        : undefined,
       `Source excerpt version: ${todo.source.excerptVersion}`,
       `Source finding: ${neutralizeReservedPersonaPromptDelimiters(todo.source.findingText)}`,
       '</writer-owned-task>'
-    ].join('\n');
+    ].filter((line): line is string => line !== undefined).join('\n');
     const separator = blocks.length > 0 ? 2 : 0;
     if (usedCharacters + separator + block.length > contentCharacters) {
       break;

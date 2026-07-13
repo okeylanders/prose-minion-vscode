@@ -568,10 +568,10 @@ export class WorkshopHandler {
     try {
       switch (action?.action) {
         case 'add':
-          if (typeof action.reportTurnId !== 'string' || typeof action.findingKey !== 'string') {
-            throw new Error('Task source must identify a report and finding');
+          if (typeof action.sourceTurnId !== 'string' || typeof action.findingKey !== 'string') {
+            throw new Error('Task source must identify a turn and finding');
           }
-          this.session.addTodoFromFinding(action.reportTurnId, action.findingKey);
+          this.session.addTodoFromFinding(action.sourceTurnId, action.findingKey);
           break;
         case 'edit':
           if (typeof action.todoId !== 'string' || typeof action.text !== 'string') {

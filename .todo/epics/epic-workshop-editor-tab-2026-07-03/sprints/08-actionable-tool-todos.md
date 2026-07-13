@@ -8,20 +8,25 @@
 
 ## Goal
 
-Turn actionable findings from a Workshop tool report into an inspectable,
-writer-controlled To-do List below the tool selector. The active list is visible
-to the persona as bounded, attributed evidence, but the persona never invents
-or silently completes writer tasks.
+Turn actionable findings from a Workshop tool report or host synthesis into an
+inspectable, writer-controlled To-do List below the tool selector. The active
+list is visible to the persona as bounded, attributed evidence, but the persona
+never silently adds or completes writer tasks.
 
 ## Product Decisions
 
-- Tool reports remain the source artifact; tasks point back to the exact tool
-  report and finding that created them.
+- Tool reports remain the primary source artifact. A host may synthesize
+  prioritized proposals from the whole report or conversation; tasks point
+  back to the exact source turn and, for report-derived synthesis, the upstream
+  tool report.
 - Do not infer tasks from arbitrary prose with a heuristic. Extend the tool
   report contract with an optional structured `nextSteps` payload or a strictly
   parsed, deterministic `### Next steps` section.
 - The writer owns completion, dismissal, ordering, and edits. Persona text may
   suggest a task, but only an explicit UI action adds it to the list.
+- Host proposals use the same strict `### Next steps` contract and may carry
+  `high`, `medium`, or `low` priority. Unsupported labels are rejected rather
+  than guessed.
 - The persona receives a bounded snapshot of open tasks on host turns, with
   task text, source tool/report attribution, and completion state.
 
@@ -63,8 +68,12 @@ or silently completes writer tasks.
       completion toggles, source attribution, and an empty state.
 - [x] Let the writer promote an actionable finding into a task deliberately;
       do not create tasks merely because a model used imperative language.
+- [x] Let the host propose prioritized tasks from its full synthesis, with
+      explicit Add and Add all controls and immutable source-turn provenance.
 - [x] Preserve keyboard toggles, readable source labels, and clear
       completed/dismissed state.
+- [x] Preserve the reader's scroll position when a bubble action only updates
+      task state; auto-scroll only for a new/streaming conversation turn.
 
 ### Persona evidence
 
@@ -72,8 +81,8 @@ or silently completes writer tasks.
       Sprint 06 tool-report handoff; omit stale/dismissed items.
 - [x] Ensure the host treats tasks as writer-owned planning evidence, not
       instructions to perform file writes or hidden tool calls.
-- [x] Render the originating report verbatim even when a task is later edited
-      or completed.
+- [x] Render the originating report or host turn verbatim even when a task is
+      later edited or completed.
 
 ### Tests and verification
 
@@ -89,6 +98,8 @@ or silently completes writer tasks.
 
 - A writer can turn a concrete tool finding into a durable, attributed task and
   manage it without losing the original report.
+- A host can turn whole-report or conversational judgment into visible,
+  prioritized proposals, but cannot mutate the task list without writer input.
 - The To-do List is deterministic and writer-controlled, never an opaque model
   guess.
 - The persona can see bounded open tasks and their provenance on subsequent
@@ -122,13 +133,28 @@ or silently completes writer tasks.
 
 Verification:
 
-- `npm test -- --runInBand`: 91 suites / 720 tests passed.
+- `npm test -- --runInBand`: 92 suites / 728 tests passed.
 - `npm run typecheck`: core, webview, and extension passed.
 - `npm run lint`: 0 errors (repository warning baseline only).
 - `npm run build`: production extension/webview builds and bundle sentinel
-  passed. Bundles: `extension.js` 2,352,319 bytes and `webview.js` 602,888
+  passed. Bundles: `extension.js` 2,353,349 bytes and `webview.js` 604,516
   bytes; webpack retains its existing webview-size advisory.
 - `git diff --check`: passed.
 - Remaining before sprint completion: F5 smoke and the full configured
   project-file Context Selector (the separately tracked feature whose paste-
   only context path shipped in 06C). The `+` routing bug itself is fixed.
+
+## Host Proposal Follow-up (2026-07-13)
+
+- Jill now receives an output contract for an optional, exact `### Next steps`
+  footer with single-line `[high]`, `[medium]`, or `[low]` proposals. The same
+  bounded deterministic parser used for reports validates the footer.
+- Host proposals render on Jill's response with per-item Add and explicit Add
+  all controls. Adding remains a writer action; Jill cannot claim or perform a
+  hidden task-list mutation.
+- Todo provenance is a discriminated source contract. Direct findings cite the
+  tool report; synthesized findings cite Jill's turn, persona, and upstream
+  report when the synthesis followed one.
+- Todo-only session snapshots no longer trigger thread auto-scroll. A named
+  hook keys scrolling to actual turn/stream/error progression, with a regression
+  test proving an Add action leaves the reader at the source bubble.

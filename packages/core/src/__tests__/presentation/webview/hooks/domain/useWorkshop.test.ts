@@ -139,13 +139,13 @@ describe('useWorkshop', () => {
 
     act(() => result.current.todoAction({
       action: 'add',
-      reportTurnId: 'turn-report',
+      sourceTurnId: 'turn-report',
       findingKey: 'finding-1'
     }));
 
     expect(posted(MessageType.WORKSHOP_TODO_ACTION)[0].payload).toEqual({
       action: 'add',
-      reportTurnId: 'turn-report',
+      sourceTurnId: 'turn-report',
       findingKey: 'finding-1'
     });
   });
@@ -168,9 +168,10 @@ describe('useWorkshop', () => {
             text: 'Fix the cup continuity.',
             status: 'open',
             source: {
+              kind: 'tool_report',
+              turnId: 't2',
+              participantLabel: 'Continuity',
               toolId: 'continuity',
-              toolLabel: 'Continuity',
-              reportTurnId: 't2',
               findingKey: 'finding-1',
               findingText: 'Fix the cup continuity.',
               excerptVersion: 1

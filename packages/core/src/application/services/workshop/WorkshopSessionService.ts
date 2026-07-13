@@ -462,7 +462,8 @@ export class WorkshopSessionService {
     content: string,
     usage?: TokenUsage,
     truncated?: boolean,
-    conversationId?: string
+    conversationId?: string,
+    actionableFindings: WorkshopActionableFinding[] = []
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
@@ -489,7 +490,10 @@ export class WorkshopSessionService {
       timestamp: this.now(),
       usage: usage ? { ...usage } : undefined,
       truncated: truncated || undefined,
-      excerptVersion: active.excerptVersion
+      excerptVersion: active.excerptVersion,
+      actionableFindings: isHost && actionableFindings.length > 0
+        ? cloneFindings(actionableFindings)
+        : undefined
     };
 
     if (isHost && conversationId) {
@@ -570,19 +574,25 @@ export class WorkshopSessionService {
     }
   }
 
-  addTodoFromFinding(reportTurnId: string, findingKey: string): WorkshopTodoItem {
-    const report = this.turns.find(
-      (turn) => turn.id === reportTurnId && turn.artifact === 'tool_report' && turn.toolId
+  addTodoFromFinding(sourceTurnId: string, findingKey: string): WorkshopTodoItem {
+    const sourceTurn = this.turns.find(
+      (turn) =>
+        turn.id === sourceTurnId &&
+        (turn.artifact === 'tool_report' || turn.participant === 'host')
     );
-    const finding = report?.actionableFindings?.find((candidate) => candidate.key === findingKey);
-    if (!report?.toolId || !finding) {
+    const finding = sourceTurn?.actionableFindings?.find(
+      (candidate) => candidate.key === findingKey
+    );
+    const isToolReport = sourceTurn?.artifact === 'tool_report' && !!sourceTurn.toolId;
+    const isHostTurn = sourceTurn?.participant === 'host' && !!sourceTurn.personaId;
+    if (!sourceTurn || (!isToolReport && !isHostTurn) || !finding) {
       throw new Error('Cannot add a task from an unknown actionable finding');
     }
-    if (report.excerptVersion !== this.excerptVersion) {
-      throw new Error('Cannot add a task from a stale excerpt report');
+    if (sourceTurn.excerptVersion !== this.excerptVersion) {
+      throw new Error('Cannot add a task from a stale excerpt turn');
     }
     const existing = this.todos.find(
-      (todo) => todo.source.reportTurnId === reportTurnId && todo.source.findingKey === findingKey
+      (todo) => todo.source.turnId === sourceTurnId && todo.source.findingKey === findingKey
     );
     if (existing) {
       return cloneTodo(existing, this.excerptVersion);
@@ -590,20 +600,34 @@ export class WorkshopSessionService {
     if (this.todos.length >= WORKSHOP_TODO_BOUNDS.items) {
       throw new Error(`Workshop task list is limited to ${WORKSHOP_TODO_BOUNDS.items} items`);
     }
+    const source: WorkshopTodoItem['source'] = isToolReport
+      ? {
+          kind: 'tool_report',
+          turnId: sourceTurnId,
+          participantLabel: sourceTurn.toolLabel ?? workshopToolLabel(sourceTurn.toolId!),
+          toolId: sourceTurn.toolId!,
+          findingKey,
+          findingText: finding.text,
+          excerptVersion: sourceTurn.excerptVersion
+        }
+      : {
+          kind: 'host_turn',
+          turnId: sourceTurnId,
+          participantLabel: sourceTurn.personaLabel ?? workshopPersonaLabel(sourceTurn.personaId!),
+          personaId: sourceTurn.personaId!,
+          upstreamReportTurnId: sourceTurn.reportTurnId,
+          findingKey,
+          findingText: finding.text,
+          excerptVersion: sourceTurn.excerptVersion
+        };
     const todo: WorkshopTodoItem = {
       id: `todo-${++this.todoCounter}-${this.now()}`,
       text: finding.text,
       status: 'open',
-      source: {
-        toolId: report.toolId,
-        toolLabel: report.toolLabel ?? workshopToolLabel(report.toolId),
-        reportTurnId,
-        findingKey,
-        findingText: finding.text,
-        excerptVersion: report.excerptVersion
-      },
+      priority: finding.priority,
+      source,
       createdAt: this.now(),
-      stale: report.excerptVersion !== this.excerptVersion
+      stale: sourceTurn.excerptVersion !== this.excerptVersion
     };
     this.todos.push(todo);
     return cloneTodo(todo, this.excerptVersion);

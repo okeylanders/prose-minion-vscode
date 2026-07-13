@@ -942,6 +942,19 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+[data-pm-surface="workshop"] .pm-ws-findings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+[data-pm-surface="workshop"] .pm-ws-findings-add-all {
+  padding: 2px 7px;
+  border: 0;
+  background: transparent;
+  color: var(--pm-accent-hi);
+  font: 10px var(--pm-mono);
+}
 [data-pm-surface="workshop"] .pm-ws-finding {
   display: flex;
   align-items: flex-start;
@@ -962,6 +975,27 @@
   border-radius: var(--pm-r-input);
   padding: 4px 7px;
   font-size: 11px;
+}
+[data-pm-surface="workshop"] .pm-ws-priority {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 5px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-pill);
+  font: 8.5px var(--pm-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+[data-pm-surface="workshop"] .pm-ws-priority-high {
+  color: var(--pm-accent-hi);
+  border-color: var(--pm-accent-lo);
+}
+[data-pm-surface="workshop"] .pm-ws-priority-medium {
+  color: var(--pm-warning, #d7a84a);
+}
+[data-pm-surface="workshop"] .pm-ws-priority-low {
+  color: var(--pm-dim);
 }
 
 /* Thread-tail error message (dismissible, role=alert) */

@@ -19,6 +19,28 @@ describe('extractWorkshopActionableFindings', () => {
     ]);
   });
 
+  it('preserves strict host-declared priority prefixes', () => {
+    expect(extractWorkshopActionableFindings([
+      '### Next steps',
+      '- [high] Replace the sermon\'s opening image.',
+      '- [medium] Audit the gravity metaphor.',
+      '- [low] Consider tightening the conductor comparison.'
+    ].join('\n'))).toEqual([
+      {
+        key: 'finding-1', ordinal: 1, priority: 'high',
+        text: 'Replace the sermon\'s opening image.'
+      },
+      {
+        key: 'finding-2', ordinal: 2, priority: 'medium',
+        text: 'Audit the gravity metaphor.'
+      },
+      {
+        key: 'finding-3', ordinal: 3, priority: 'low',
+        text: 'Consider tightening the conductor comparison.'
+      }
+    ]);
+  });
+
   it.each([
     ['heuristic imperative prose', 'You should rewrite the opening.'],
     ['wrong heading case', '### Next Steps\n- Rewrite the opening.'],
@@ -26,6 +48,8 @@ describe('extractWorkshopActionableFindings', () => {
     ['non-list content', '### Next steps\nRewrite the opening.'],
     ['duplicate items', '### Next steps\n- One.\n- One.'],
     ['nested item', '### Next steps\n  - Nested.'],
+    ['unsupported priority', '### Next steps\n- [urgent] Rewrite this.'],
+    ['markdown checkbox', '### Next steps\n- [ ] Rewrite this.'],
     ['multiline item', '### Next steps\n- One.\n  Continued.']
   ])('rejects %s', (_label, report) => {
     expect(extractWorkshopActionableFindings(report)).toEqual([]);

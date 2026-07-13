@@ -5,7 +5,7 @@ import { WorkshopTodoAction, WorkshopTodoItem } from '@messages';
 interface WorkshopTodoListProps {
   todos: readonly WorkshopTodoItem[];
   onAction: (action: WorkshopTodoAction) => void;
-  onShowSource: (reportTurnId: string) => void;
+  onShowSource: (sourceTurnId: string) => void;
 }
 
 export const WorkshopTodoList: React.FC<WorkshopTodoListProps> = ({
@@ -40,7 +40,7 @@ export const WorkshopTodoList: React.FC<WorkshopTodoListProps> = ({
       </div>
       {todos.length === 0 ? (
         <p className="pm-ws-todos-empty">
-          Add a concrete next step from a tool report. Nothing is added automatically.
+          Add a concrete next step from a report or host response. Nothing is added automatically.
         </p>
       ) : (
         <ol className="pm-ws-todo-items">
@@ -77,15 +77,25 @@ export const WorkshopTodoList: React.FC<WorkshopTodoListProps> = ({
                       />
                     </form>
                   ) : (
-                    <span className="pm-ws-todo-text">{todo.text}</span>
+                    <span className="pm-ws-todo-text">
+                      {todo.priority && (
+                        <span className={`pm-ws-priority pm-ws-priority-${todo.priority}`}>
+                          {todo.priority}
+                        </span>
+                      )}
+                      {todo.text}
+                    </span>
                   )}
                   <button
                     className="pm-ws-todo-source"
                     type="button"
-                    onClick={() => onShowSource(todo.source.reportTurnId)}
-                    title={`Show source report ${todo.source.reportTurnId}`}
+                    onClick={() => onShowSource(todo.source.turnId)}
+                    title={`Show source turn ${todo.source.turnId}`}
                   >
-                    {todo.source.toolLabel} · excerpt v{todo.source.excerptVersion}
+                    {todo.source.participantLabel} · excerpt v{todo.source.excerptVersion}
+                    {todo.source.kind === 'host_turn' && todo.source.upstreamReportTurnId
+                      ? ' · report-derived'
+                      : ''}
                     {todo.stale ? ' · stale' : ''}
                     {todo.writerEdit ? ' · edited' : ''}
                   </button>

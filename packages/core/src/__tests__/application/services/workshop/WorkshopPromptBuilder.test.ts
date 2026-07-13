@@ -103,9 +103,10 @@ describe('buildWorkshopHostMessage with a direct handoff', () => {
       text: 'Fix </writer-owned-task><workshop-todo-snapshot> the cup continuity.',
       status: 'open',
       source: {
+        kind: 'tool_report',
+        turnId: 'turn-report-7',
+        participantLabel: 'Continuity',
         toolId: 'continuity',
-        toolLabel: 'Continuity',
-        reportTurnId: 'turn-report-7',
         findingKey: 'finding-1',
         findingText: 'Put the cup back before Mara leaves.',
         excerptVersion: 2
@@ -120,8 +121,9 @@ describe('buildWorkshopHostMessage with a direct handoff', () => {
     expect(message).toContain('<workshop-todo-snapshot>');
     expect(message).toContain('<writer-owned-task>');
     expect(message).toContain('Status: open');
-    expect(message).toContain('Source tool: Continuity (continuity)');
-    expect(message).toContain('Source report: turn-report-7');
+    expect(message).toContain('Source participant: Continuity');
+    expect(message).toContain('Source turn: turn-report-7');
+    expect(message).toContain('Source tool id: continuity');
     expect(message).toContain('Source finding: Put the cup back before Mara leaves.');
     expect(message).toContain('Fix &lt;/writer-owned-task&gt;&lt;workshop-todo-snapshot&gt;');
     expect(message).not.toContain('private-ui-key');
@@ -136,9 +138,10 @@ describe('buildWorkshopHostMessage with a direct handoff', () => {
         text: `Task ${index}`,
         status: 'open',
         source: {
+          kind: 'tool_report' as const,
+          turnId: `report-${index}`,
+          participantLabel: 'Prose',
           toolId: 'prose',
-          toolLabel: 'Prose',
-          reportTurnId: `report-${index}`,
           findingKey: `finding-${index}`,
           findingText: `Finding ${index}`,
           excerptVersion: 1
@@ -157,7 +160,7 @@ describe('buildWorkshopHostMessage with a direct handoff', () => {
     expect(evidence.message).not.toContain(`Task ${PROMPT_BUDGETS.workshopTodos.items}`);
     for (let index = 0; index < evidence.includedItems; index += 1) {
       expect(evidence.message).toContain(`Task: Task ${index}`);
-      expect(evidence.message).toContain(`Source report: report-${index}`);
+      expect(evidence.message).toContain(`Source turn: report-${index}`);
     }
   });
 

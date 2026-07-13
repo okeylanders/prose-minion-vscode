@@ -27,7 +27,7 @@ interface WorkshopTurnBubbleProps {
   promotedFindingKeys?: ReadonlySet<string>;
   onQuickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
   onTalkDirectly: (toolId: WorkshopToolId) => void;
-  onAddTodo?: (reportTurnId: string, findingKey: string) => void;
+  onAddTodo?: (sourceTurnId: string, findingKey: string) => void;
   onCopy: (content: string, turn: WorkshopTurn) => void;
   onSave: (content: string, turn: WorkshopTurn) => void;
 }
@@ -209,14 +209,38 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
         ) : (
           <MarkdownRenderer content={turn.content} className="pm-ws-turn-body" />
         )}
-        {turn.artifact === 'tool_report' && turn.actionableFindings && (
+        {turn.actionableFindings && (
           <div className="pm-ws-findings" aria-label="Actionable findings">
-            <div className="pm-ws-findings-title">Add a next step</div>
+            <div className="pm-ws-findings-head">
+              <div className="pm-ws-findings-title">Add a next step</div>
+              {turn.actionableFindings.some(
+                (finding) => !promotedFindingKeys.has(finding.key)
+              ) && (
+                <button
+                  className="pm-ws-findings-add-all"
+                  type="button"
+                  onClick={() => turn.actionableFindings?.forEach((finding) => {
+                    if (!promotedFindingKeys.has(finding.key)) {
+                      onAddTodo(turn.id, finding.key);
+                    }
+                  })}
+                >
+                  Add all
+                </button>
+              )}
+            </div>
             {turn.actionableFindings.map((finding) => {
               const promoted = promotedFindingKeys.has(finding.key);
               return (
                 <div className="pm-ws-finding" key={finding.key}>
-                  <span>{finding.text}</span>
+                  <span>
+                    {finding.priority && (
+                      <span className={`pm-ws-priority pm-ws-priority-${finding.priority}`}>
+                        {finding.priority}
+                      </span>
+                    )}
+                    {finding.text}
+                  </span>
                   <button
                     type="button"
                     disabled={promoted}

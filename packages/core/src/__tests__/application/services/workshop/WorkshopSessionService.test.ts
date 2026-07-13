@@ -67,8 +67,10 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       status: 'open',
       stale: false,
       source: {
+        kind: 'tool_report',
+        turnId: report.id,
+        participantLabel: 'Continuity',
         toolId: 'continuity',
-        reportTurnId: report.id,
         findingKey: 'finding-1',
         excerptVersion: 1
       }
@@ -110,7 +112,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(service.getSnapshot().todos[0].stale).toBe(true);
     expect(service.collectOpenTodosForHost()).toEqual([]);
     expect(() => service.addTodoFromFinding(report.id, 'finding-1')).toThrow(
-      'Cannot add a task from a stale excerpt report'
+      'Cannot add a task from a stale excerpt turn'
     );
     service.clearAllConversations();
     expect(service.getSnapshot().todos).toHaveLength(1);

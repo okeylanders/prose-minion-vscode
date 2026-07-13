@@ -107,6 +107,48 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(screen.getByRole('button', { name: /added/i }).hasAttribute('disabled')).toBe(true);
   });
 
+  it('offers prioritized host proposals with an explicit Add all action', () => {
+    const onAddTodo = jest.fn();
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('Here is the revision order.'),
+          participant: 'host',
+          artifact: 'persona_message',
+          toolId: undefined,
+          toolLabel: undefined,
+          reportTurnId: undefined,
+          personaId: 'jill',
+          personaLabel: 'Jill',
+          actionableFindings: [
+            {
+              key: 'finding-1', ordinal: 1, priority: 'high',
+              text: 'Replace the beacon image.'
+            },
+            {
+              key: 'finding-2', ordinal: 2, priority: 'medium',
+              text: 'Audit the gravity metaphor.'
+            }
+          ]
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onAddTodo={onAddTodo}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('high')).toBeTruthy();
+    expect(screen.getByText('medium')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Add all' }));
+    expect(onAddTodo.mock.calls).toEqual([
+      ['turn-1', 'finding-1'],
+      ['turn-1', 'finding-2']
+    ]);
+  });
+
   it('renders duplicate model numbers with stable positional labels and wires copy/save content', () => {
     const onCopy = jest.fn();
     const onSave = jest.fn();

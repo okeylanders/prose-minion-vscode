@@ -61,6 +61,7 @@ import { useVSCodeApi } from './hooks/useVSCodeApi';
 import { usePersistence } from './hooks/usePersistence';
 import { useMessageRouter } from './hooks/useMessageRouter';
 import { useWorkshop } from './hooks/domain/useWorkshop';
+import { useWorkshopThreadAutoscroll } from './hooks/useWorkshopThreadAutoscroll';
 import { useModelsSettings } from './hooks/domain/useModelsSettings';
 import { useTokenTracking } from './hooks/domain/useTokenTracking';
 import { useAccountBalance } from './hooks/domain/useAccountBalance';
@@ -237,19 +238,19 @@ export const WorkshopApp: React.FC = () => {
   const threadErrorRef = React.useRef<ErrorBoundary>(null);
   const composerErrorRef = React.useRef<ErrorBoundary>(null);
 
-  // Thread autoscroll: follow new turns and streaming paint.
+  // Thread autoscroll: follow NEW turns and streaming paint. Session-only
+  // mutations (for example adding several tasks from an older report) replace
+  // the snapshot's turns array without changing its newest turn; keying on the
+  // array would yank the writer back to the bottom after every bubble action.
   const threadRef = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => {
-    const el = threadRef.current;
-    if (el) {
-      el.scrollTop = el.scrollHeight;
-    }
-  }, [
-    workshop.turns,
-    workshop.streamingContent,
-    workshop.isRunning,
-    workshop.errorMessage
-  ]);
+  const latestTurnId = workshop.turns.at(-1)?.id;
+  useWorkshopThreadAutoscroll({
+    threadRef,
+    latestTurnId,
+    streamingContent: workshop.streamingContent,
+    isRunning: workshop.isRunning,
+    errorMessage: workshop.errorMessage
+  });
 
   const toolsEnabled = !!workshop.excerpt && !workshop.isRunning && workshop.sessionReady;
   const activePersona = getWorkshopPersona(workshop.selectedPersonaId)
@@ -334,13 +335,13 @@ export const WorkshopApp: React.FC = () => {
     [vscode, workshop.excerpt]
   );
 
-  const showTodoSource = React.useCallback((reportTurnId: string) => {
-    const report = document.querySelector<HTMLElement>(`[data-turn-id="${reportTurnId}"]`);
-    if (report) {
-      report.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      report.focus({ preventScroll: true });
+  const showTodoSource = React.useCallback((sourceTurnId: string) => {
+    const sourceTurn = document.querySelector<HTMLElement>(`[data-turn-id="${sourceTurnId}"]`);
+    if (sourceTurn) {
+      sourceTurn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      sourceTurn.focus({ preventScroll: true });
     } else {
-      showToast({ message: 'That source report is outside the current reload window.', icon: 'doc' });
+      showToast({ message: 'That source turn is outside the current reload window.', icon: 'doc' });
     }
   }, [showToast]);
 
@@ -566,9 +567,9 @@ export const WorkshopApp: React.FC = () => {
                 quickActionsDisabled={!workshop.canMessage}
                 onQuickAction={workshop.quickAction}
                 onTalkDirectly={(toolId) => workshop.setChatTarget({ kind: 'tool', toolId })}
-                onAddTodo={(reportTurnId, findingKey) => workshop.todoAction({
+                onAddTodo={(sourceTurnId, findingKey) => workshop.todoAction({
                   action: 'add',
-                  reportTurnId,
+                  sourceTurnId,
                   findingKey
                 })}
                 onCopy={copyTurn}
