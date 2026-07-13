@@ -35,8 +35,8 @@ export type {
 } from '@/application/handlers/MessageHandlerContracts';
 
 // --- Application: Workshop session aggregate (ADR 2026-07-03) ---
-export { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
-export { RunWorkshopToolSidePass } from '@/application/services/RunWorkshopToolSidePass';
+export { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+export { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 export { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 export { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 

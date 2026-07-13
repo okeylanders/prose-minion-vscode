@@ -1,6 +1,6 @@
 /** Focused Sprint 06B use case: isolated tool report, then host synthesis. */
 
-import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import {
@@ -9,11 +9,11 @@ import {
   buildWorkshopHostUpdateFrame,
   describeWorkshopPendingHostUpdates,
   buildWorkshopToolEvidence
-} from '@/application/services/WorkshopPromptBuilder';
+} from '@/application/services/workshop/WorkshopPromptBuilder';
 import {
   completeWorkshopRun,
   workshopSynthesisCompletionCopy
-} from '@/application/services/WorkshopRunCompletion';
+} from '@/application/services/workshop/WorkshopRunCompletion';
 import { LogSink } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';

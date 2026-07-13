@@ -67,6 +67,7 @@ const personaCapability = (fulfill = jest.fn().mockResolvedValue({
   statusMessage: jest.fn(() => 'Jill is checking the dictionary…'),
   statusTicker: jest.fn(() => 'Dictionary · liminal'),
   requestLogSummary: jest.fn(() => 'word="liminal"'),
+  inspectionLogContext: jest.fn(() => 'request=host-request persona=jill'),
   invalidRequestInstruction: jest.fn(() => 'Correct the call or answer without it.'),
   limitInstruction: jest.fn(() => 'Produce the final answer now.')
 } as unknown as jest.Mocked<AgentCapability<any, any>>);
@@ -454,6 +455,90 @@ describe('AgentRunEngine', () => {
     expect(result.content).toBe('Dictionary-backed follow-up.');
     expect(result.usage?.totalTokens).toBe(17);
     expect(conversations.getConversationInfo(initial.conversationId!)?.messageCount).toBe(7);
+  });
+
+  it('runs rejected-request correction through retained continuation', async () => {
+    client.createChatCompletion.mockResolvedValueOnce({ content: 'Host hello' });
+    const initial = await engine.runInitial({
+      toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopHost, capability: personaCapability()
+    });
+    const adapter = personaCapability();
+    const invalid = '<prose-minion-tool-call name="secrets.read"></prose-minion-tool-call>';
+    adapter.inspectRequest.mockImplementation(candidate => candidate === invalid
+      ? { kind: 'invalid', reason: 'unknown-capability' }
+      : { kind: 'none' });
+    client.createChatCompletion
+      .mockResolvedValueOnce({ content: invalid })
+      .mockResolvedValueOnce({ content: 'Corrected continuation answer.' });
+
+    const result = await engine.continueConversation({
+      conversationId: initial.conversationId!,
+      userMessage: 'Try that again.',
+      policy: AGENT_RUN_POLICIES.workshopHost,
+      capability: adapter
+    });
+
+    expect(adapter.invalidRequestInstruction).toHaveBeenCalledTimes(1);
+    expect(result.content).toBe('Corrected continuation answer.');
+  });
+
+  it('forces final prose after three capability calls on retained continuation', async () => {
+    client.createChatCompletion.mockResolvedValueOnce({ content: 'Host hello' });
+    const initial = await engine.runInitial({
+      toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopHost, capability: personaCapability()
+    });
+    const adapter = personaCapability();
+    client.createChatCompletion
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: 'Continuation final after three calls.' });
+
+    const result = await engine.continueConversation({
+      conversationId: initial.conversationId!,
+      userMessage: 'Use whatever evidence you need.',
+      policy: AGENT_RUN_POLICIES.workshopHost,
+      capability: adapter
+    });
+
+    expect(adapter.fulfill).toHaveBeenCalledTimes(3);
+    expect(adapter.limitInstruction).toHaveBeenCalledTimes(1);
+    expect(result.content).toBe('Continuation final after three calls.');
+  });
+
+  it('withholds rejected Workshop lookup narration and attributes the rejection log', async () => {
+    const output = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
+    const diagnosticEngine = new AgentRunEngine(client as never, conversations, undefined, output);
+    const adapter = personaCapability();
+    const narration = 'I want to look up that word first. ';
+    const mixed = `${narration}${PERSONA_REQUEST}`;
+    adapter.inspectRequest.mockImplementation(candidate => candidate === mixed
+      ? { kind: 'invalid', reason: 'mixed-content' }
+      : { kind: 'none' });
+    client.createStreamingChatCompletion
+      .mockReturnValueOnce(stream([narration, PERSONA_REQUEST]))
+      .mockReturnValueOnce(stream(['Recovered Workshop answer.']));
+    const visible: string[] = [];
+
+    try {
+      const result = await diagnosticEngine.runInitial({
+        toolName: 'host', systemMessage: 'System', userMessage: 'Help.',
+        policy: AGENT_RUN_POLICIES.workshopHost,
+        capability: adapter,
+        options: { onToken: token => visible.push(token) }
+      });
+
+      expect(visible.join('')).toBe('Recovered Workshop answer.');
+      expect(result.content).toBe('Recovered Workshop answer.');
+      expect(output.appendLine.mock.calls.flat().join('\n')).toContain(
+        'Rejected workshopPersona capability request request=host-request persona=jill: reason=mixed-content.'
+      );
+    } finally {
+      diagnosticEngine.dispose();
+    }
   });
 
   it('delivers a pending host frame once within capability rounds and commits nothing when cancelled', async () => {

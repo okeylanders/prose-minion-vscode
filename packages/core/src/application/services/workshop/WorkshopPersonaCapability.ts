@@ -1,5 +1,5 @@
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
-import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { LogSink } from '@/platform';
 import {
   AgentCapability,
@@ -103,7 +103,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       };
     }
 
-    const artifact = this.recordArtifact(request, result);
+    const completedTurn = this.recordCompletedTurn(request, result);
     const duration = Date.now() - startedAt;
     const partialFailures = Array.isArray(result.metadata?.partialFailures)
       ? result.metadata.partialFailures.length
@@ -111,16 +111,17 @@ export class WorkshopPersonaCapability implements AgentCapability<
     this.outputChannel.appendLine(
       `[WorkshopPersonaCapability] request=${this.turn.requestId} persona=${this.turn.personaId} ` +
       `capability=${request.capability} input=${this.requestLogSummary(request)} ` +
-      `outcome=${result.status} durationMs=${duration} partialFailures=${partialFailures}`
+      `outcome=${completedTurn ? result.status : 'discarded-stale-run'} ` +
+      `capabilityOutcome=${result.status} durationMs=${duration} partialFailures=${partialFailures}`
     );
     return {
       evidence: this.formatEvidence(result, this.turn.excerpt.version),
-      artifacts: artifact ? [{
+      artifacts: completedTurn ? [{
         catalog: this.catalog,
-        id: artifact.id,
-        label: artifact.toolLabel ?? request.capability,
+        id: completedTurn.id,
+        label: completedTurn.toolLabel ?? request.capability,
         category: request.capability,
-        size: artifact.content.length,
+        size: completedTurn.content.length,
         reason: `Requested by ${workshopPersonaLabel(this.turn.personaId)}`
       }] : [],
       deliveredItems: [`${request.capability}:${result.status}`],
@@ -150,6 +151,10 @@ export class WorkshopPersonaCapability implements AgentCapability<
     return request.capability === 'analysis.run'
       ? `tool=${request.toolId}; instructionsChars=${request.instructions?.length ?? 0}`
       : `word=${JSON.stringify(request.word)}; contextChars=${request.context.length}; purposeChars=${request.purpose.length}`;
+  }
+
+  inspectionLogContext(): string {
+    return `request=${this.turn.requestId} persona=${this.turn.personaId}`;
   }
 
   invalidRequestInstruction(
@@ -278,7 +283,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
     };
   }
 
-  private recordArtifact(
+  private recordCompletedTurn(
     request: WorkshopCapabilityRequest,
     result: WorkshopCapabilityResult
   ): WorkshopTurn | undefined {
@@ -307,16 +312,26 @@ export class WorkshopPersonaCapability implements AgentCapability<
         });
     this.analysisConversationId = undefined;
 
-    if (!completion) return undefined;
+    if (!completion) {
+      if (request.capability !== 'analysis.run') {
+        this.outputChannel.appendLine(
+          `[WorkshopPersonaCapability] Refused late persona-requested ${request.capability} result ` +
+          `for request=${this.turn.requestId} persona=${this.turn.personaId} excerptVersion=${this.turn.excerpt.version}.`
+        );
+      }
+      return undefined;
+    }
     this.turn.events.turnCompleted(completion.turn);
     this.turn.events.sessionChanged();
     return completion.turn;
   }
 
   private requestSummary(request: WorkshopCapabilityRequest): string {
-    return request.capability === 'analysis.run'
-      ? workshopToolLabel(request.toolId)
-      : request.word;
+    if (request.capability !== 'analysis.run') return request.word;
+    const instructions = request.instructions?.trim();
+    return instructions
+      ? `${instructions.slice(0, 77)}${instructions.length > 77 ? '…' : ''}`
+      : 'Pinned excerpt review';
   }
 
   private dictionaryContext(context: string, purpose: string): string {

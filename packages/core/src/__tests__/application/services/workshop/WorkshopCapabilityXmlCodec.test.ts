@@ -94,11 +94,24 @@ describe('WorkshopCapabilityXmlCodec', () => {
       kind: 'request',
       request: { capability: 'dictionary.lookup', word, context, purpose }
     });
+    const instructions = 'i'.repeat(PROMPT_BUDGETS.workshopCapability.instructionsCharacters);
+    expect(codec.inspect(
+      `<prose-minion-tool-call name="analysis.run"><toolId>prose</toolId><instructions>${instructions}</instructions></prose-minion-tool-call>`
+    )).toEqual({
+      kind: 'request',
+      request: { capability: 'analysis.run', toolId: 'prose', instructions }
+    });
   });
 
   it('classifies ordinary prose and backtick-quoted protocol names as non-calls', () => {
     expect(codec.inspect('The sentence works without a lookup.')).toEqual({ kind: 'none' });
     expect(codec.inspect('Use `<prose-minion-tool-call name="analysis.run">` only as documented.'))
       .toEqual({ kind: 'none' });
+    expect(codec.inspect('The literal <prose-minion-tool-call marker names the protocol.'))
+      .toEqual({ kind: 'none' });
+    expect(codec.inspect('The format is:\n> <prose-minion-tool-call name="analysis.run">\n> …'))
+      .toEqual({ kind: 'none' });
+    expect(codec.stripToolCalls('The literal <prose-minion-tool-call marker names the protocol.'))
+      .toBe('The literal <prose-minion-tool-call marker names the protocol.');
   });
 });

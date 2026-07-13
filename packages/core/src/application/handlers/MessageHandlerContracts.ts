@@ -13,8 +13,8 @@ import type {
 } from '@messages';
 import type { AIResourceManager } from '@orchestration/AIResourceManager';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
-import type { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
-import type { RunWorkshopToolSidePass } from '@/application/services/RunWorkshopToolSidePass';
+import type { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import type { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import type { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import type { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';

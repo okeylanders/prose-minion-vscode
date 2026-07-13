@@ -79,7 +79,18 @@ export class WorkshopCapabilityXmlCodec {
 
     const markerIndex = findExecutableMarkerIndex(source);
     if (markerIndex === -1) return { kind: 'none' };
-    if (markerIndex !== 0) return { kind: 'invalid', reason: 'mixed-content' };
+    if (markerIndex !== 0) {
+      const linePrefix = source.slice(source.lastIndexOf('\n', markerIndex - 1) + 1, markerIndex);
+      const isBlockquoteMention = /^\s*>\s*$/.test(linePrefix);
+      const hasCompleteCall = source.toLowerCase().indexOf(
+        '</prose-minion-tool-call>',
+        markerIndex
+      ) !== -1;
+      // An invocation after narration is rejected, but an ordinary answer
+      // may name the opening marker literally or quote it in a blockquote.
+      if (isBlockquoteMention || !hasCompleteCall) return { kind: 'none' };
+      return { kind: 'invalid', reason: 'mixed-content' };
+    }
     const openingCalls = source.match(/<\s*prose-minion-tool-call\b/gi) ?? [];
     if (openingCalls.length !== 1) return { kind: 'invalid', reason: 'mixed-content' };
     const closingTag = '</prose-minion-tool-call>';
@@ -161,7 +172,7 @@ export class WorkshopCapabilityXmlCodec {
   }
 
   stripToolCalls(content: string): string {
-    return findExecutableMarkerIndex(content.trim()) === -1 ? content.trim() : '';
+    return this.inspect(content).kind === 'none' ? content.trim() : '';
   }
 
   private dictionaryRequest(

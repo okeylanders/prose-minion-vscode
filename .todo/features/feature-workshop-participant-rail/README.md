@@ -69,7 +69,7 @@ contract is required** — this is presentation-only over existing state.
 
 - `packages/core/src/presentation/webview/WorkshopApp.tsx` — direct-mode
   banner + composer area
-- `packages/core/src/application/services/WorkshopSessionService.ts` —
+- `packages/core/src/application/services/workshop/WorkshopSessionService.ts` —
   `snapshotParticipants()`
 - `.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/06b-tool-side-pass.md`
   — hardens snapshot sidecar exposure ("availability for direct follow-up,

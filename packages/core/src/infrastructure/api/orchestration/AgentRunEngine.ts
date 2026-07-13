@@ -45,8 +45,8 @@ const TOOL_CALL_OPEN = '<prose-minion-tool-call';
 const NARRATION_HOLD_CHARS = 300;
 const isProtocolPreambleOnly = (content: string): boolean =>
   /^\s*(?:```(?:xml)?|<\?xml\s+[^?]*\?>)?\s*$/i.test(content);
-const isNarratedResourceIntent = (content: string): boolean =>
-  /^(?:i\s+(?:need|want|will|must|should|have)\b[\s\S]{0,120}\b(?:access|load|read|request|pull|consult|check|review|use)\b|let me\s+(?:access|load|read|request|pull|consult|check|review)\b)/i
+const isNarratedCapabilityIntent = (content: string): boolean =>
+  /^(?:i\s+(?:need|want|will|must|should|have)\b[\s\S]{0,120}\b(?:access|load|read|request|pull|consult|check|review|use|look\s+up|analy[sz]e|search)\b|let me\s+(?:access|load|read|request|pull|consult|check|review|look\s+up|analy[sz]e|search)\b)/i
     .test(content.trimStart());
 
 /**
@@ -75,7 +75,7 @@ class ToolCallStreamVisibilityGuard {
       // A common invalid response copies the illustrative XML inside a
       // Markdown fence. Do not leave that fence as the user's entire answer;
       // withholding it lets the engine request a final prose recovery.
-      const visibleSafe = isProtocolPreambleOnly(safe) || isNarratedResourceIntent(safe) ? '' : safe;
+      const visibleSafe = isProtocolPreambleOnly(safe) || isNarratedCapabilityIntent(safe) ? '' : safe;
       this.visible += visibleSafe;
       this.withheld = (visibleSafe ? '' : safe) + this.pending.slice(toolCallIndex);
       this.pending = '';
@@ -86,7 +86,7 @@ class ToolCallStreamVisibilityGuard {
     // Some models narrate their lookup decision before emitting the XML call.
     // Hold that short planning preamble so it can be discarded if a call
     // follows, while ordinary analysis prose keeps streaming as before.
-    if (this.pending.length <= NARRATION_HOLD_CHARS && isNarratedResourceIntent(this.pending)) {
+    if (this.pending.length <= NARRATION_HOLD_CHARS && isNarratedCapabilityIntent(this.pending)) {
       return '';
     }
 
@@ -531,15 +531,17 @@ export class AgentRunEngine {
     content: string
   ): void {
     if (!capability || !inspection || inspection.kind === 'none') return;
+    const context = capability.inspectionLogContext?.();
+    const attribution = context ? ` ${context}` : '';
     if (inspection.kind === 'request') {
       this.outputChannel?.appendLine(
-        `[AgentRunEngine] Accepted ${capability.catalog} capability request: ${capability.requestLogSummary(inspection.request)}`
+        `[AgentRunEngine] Accepted ${capability.catalog} capability request${attribution}: ${capability.requestLogSummary(inspection.request)}`
       );
       return;
     }
 
     this.outputChannel?.appendLine(
-      `[AgentRunEngine] Rejected ${capability.catalog} capability request: reason=${inspection.reason}.`
+      `[AgentRunEngine] Rejected ${capability.catalog} capability request${attribution}: reason=${inspection.reason}.`
     );
     // The full dump may quote the writer's manuscript, and Output channels
     // get pasted into public bug reports — so it is opt-in, not always-on.

@@ -1,4 +1,4 @@
-import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
@@ -103,7 +103,30 @@ describe('WorkshopPersonaCapability', () => {
       'request=host-request persona=jill capability=dictionary.lookup'
     ));
     expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining(
-      'contextChars=24; purposeChars=29 outcome=success durationMs='
+      'contextChars=24; purposeChars=29 outcome=success capabilityOutcome=success durationMs='
+    ));
+  });
+
+  it('logs and exposes no artifact when a dictionary result loses the active-run race', async () => {
+    dictionary.lookupWordStreaming.mockImplementationOnce(async () => {
+      session.reset();
+      return { toolName: 'dictionary_lookup', content: '# liminal\nThreshold-toned.', usage } as any;
+    });
+
+    const result = await capability().fulfill({
+      capability: 'dictionary.lookup',
+      word: 'liminal',
+      context: 'Threshold scene.',
+      purpose: 'Check it.'
+    });
+
+    expect(result.artifacts).toEqual([]);
+    expect(events.turnCompleted).not.toHaveBeenCalled();
+    expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining(
+      'Refused late persona-requested dictionary.lookup result'
+    ));
+    expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining(
+      'outcome=discarded-stale-run capabilityOutcome=success'
     ));
   });
 
@@ -149,6 +172,7 @@ describe('WorkshopPersonaCapability', () => {
       result: expect.objectContaining({ content: 'Verbatim continuity report.' })
     }));
     expect(result.evidence).toContain('Verbatim continuity report.');
+    expect(result.evidence).toContain('<request-summary>Track the cup.</request-summary>');
     expect(events.turnCompleted).toHaveBeenCalledWith(expect.objectContaining({
       participant: 'tool',
       artifact: 'tool_report'

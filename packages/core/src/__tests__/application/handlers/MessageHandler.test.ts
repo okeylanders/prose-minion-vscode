@@ -1,7 +1,7 @@
 import { MessageHandler } from '@/application/handlers/MessageHandler';
 import { CoreServices } from '@/application/handlers/MessageHandlerContracts';
-import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
-import { RunWorkshopToolSidePass } from '@/application/services/RunWorkshopToolSidePass';
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import {

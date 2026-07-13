@@ -1,7 +1,7 @@
 import { AnalysisResult } from '@/domain/models/AnalysisResult';
 import { LogSink } from '@/platform';
-import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
-import type { WorkshopToolReportCompletion } from '@/application/services/WorkshopSessionService';
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import type { WorkshopToolReportCompletion } from '@/application/services/workshop/WorkshopSessionService';
 import {
   AnalysisStreamingOptions,
   AssistantToolService

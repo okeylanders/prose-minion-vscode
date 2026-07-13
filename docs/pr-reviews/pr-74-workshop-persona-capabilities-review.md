@@ -12,21 +12,21 @@ act before merge · **Deferred** = real issue, safe to punt for a stated reason 
 
 | # | Sev | Finding | Reviewers | Consensus | Status |
 |---|-----|---------|-----------|-----------|--------|
-| 1 | 🔴 Blocking | Forged `<workshop-capability-result>` survives excerpt neutralization | Patricia | — | **Open** |
-| 2 | 🟠 High | Dictionary artifact silently discarded on stale run; log says success; guard untested | Oliver, Cal | 🎯 | **Open** |
-| 3 | 🟠 High | `application/services/workshop/` subfolder half-move; test tree no longer mirrors source | Stan, Marcus | 🎯 | **Open** |
-| 4 | 🟠 High | Streaming guard leaks rejected-request narration into visible chat | Sam | — | **Open** |
-| 5 | 🟠 High | Literal `<prose-minion-tool-call` mention in a legitimate answer discards the whole answer | Sam | — | **Open** |
-| 6 | 🟠 High | Correction/forced-final branches never tested through `continueConversation` | Cal | — | **Open** |
-| 7 | 🟡 Standard | `recordArtifact` returns a turn — "artifact" now has three meanings in one feature | Parker | — | **Open** |
-| 8 | 🟡 Standard | `WorkshopSessionService` grew +138 lines to 750 (God Component axis) | Parker | — | **Deferred** — split is a refactor, not a merge gate; track as tech-debt |
-| 9 | 🟡 Standard | `requestLogSummary` copy-pasted verbatim into both sibling capabilities | Parker | — | **Open** |
-| 10 | 🟡 Standard | Capability request type in `shared/types/` vs codec-colocated precedent | Stan | — | **Deferred** — defensible given `messages/workshop.ts` also consumes it; decide the convention once |
-| 11 | 🟡 Standard | `instructions` exact-1,000-char accept boundary untested | Cal | — | **Open** |
+| 1 | 🔴 Blocking | Forged `<workshop-capability-result>` survives excerpt neutralization | Patricia | — | **Addressed** — both trusted result and tool-call tags neutralized; regression added |
+| 2 | 🟠 High | Dictionary artifact silently discarded on stale run; log says success; guard untested | Oliver, Cal | 🎯 | **Addressed** — refusal and `discarded-stale-run` outcome logged; stale-version/race tests added |
+| 3 | 🟠 High | `application/services/workshop/` subfolder half-move; test tree no longer mirrors source | Stan, Marcus | 🎯 | **Addressed** — Workshop services consolidated and tests mirror the module |
+| 4 | 🟠 High | Streaming guard leaks rejected-request narration into visible chat | Sam | — | **Addressed** — Workshop lookup/analysis narration is withheld; streaming regression added |
+| 5 | 🟠 High | Literal `<prose-minion-tool-call` mention in a legitimate answer discards the whole answer | Sam | — | **Addressed** — literal and blockquote mentions classify as prose and survive cleanup |
+| 6 | 🟠 High | Correction/forced-final branches never tested through `continueConversation` | Cal | — | **Addressed** — both branches now exercised through retained continuation |
+| 7 | 🟡 Standard | `recordArtifact` returns a turn — "artifact" now has three meanings in one feature | Parker | — | **Addressed** — renamed to `recordCompletedTurn` |
+| 8 | 🟡 Standard | `WorkshopSessionService` grew +138 lines to 750 (God Component axis) | Parker | — | **Deferred** — tracked in [tech debt](../../.todo/tech-debt/2026-07-12-workshop-session-capability-artifact-extraction.md) |
+| 9 | 🟡 Standard | `requestLogSummary` copy-pasted verbatim into both sibling capabilities | Parker | — | **Addressed** — shared `summarizeResourceReadRequest` helper |
+| 10 | 🟡 Standard | Capability request type in `shared/types/` vs codec-colocated precedent | Stan | — | **Deferred** — convention decision tracked in [tech debt](../../.todo/tech-debt/2026-07-12-capability-request-type-location-convention.md) |
+| 11 | 🟡 Standard | `instructions` exact-1,000-char accept boundary untested | Cal | — | **Addressed** — exact-ceiling acceptance covered |
 | 12 | 🟡 Standard | Full-snapshot deep-clone re-render fires up to 4×/turn | Tim | — | **Deferred** — ≤~200ms worst case, dwarfed by LLM latency at current scale |
 | 13 | 🟡 Standard | Cumulative evidence resend ≈9–10k extra tokens on heaviest turn | Tim | — | **Deferred** — bounded by the hard 3-call cap; revisit if budgets grow |
-| 14 | 🟡 Standard | Rejected/malformed capability calls log without request or persona id | Oliver | — | **Open** |
-| 15 | 🟡 Standard | Analysis artifacts render "Continuity · Continuity · requested by Jill" | Bria | — | **Open** |
+| 14 | 🟡 Standard | Rejected/malformed capability calls log without request or persona id | Oliver | — | **Addressed** — capability inspection logs include Workshop request/persona attribution |
+| 15 | 🟡 Standard | Analysis artifacts render "Continuity · Continuity · requested by Jill" | Bria | — | **Addressed** — analysis summary is the requested focus or “Pinned excerpt review” |
 | 16 | 🟢 Praise | Transactional per-turn commit + cancellation atomicity verified end-to-end | Blake | — | **N/A** |
 | 17 | 🟢 Praise | Engine unification closes a real structural gap | Marcus | — | **N/A** |
 | 18 | 🟢 Praise | Parallel dictionary fan-out preserved through the capability path | Tim | — | **N/A** |

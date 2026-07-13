@@ -207,4 +207,31 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(screen.getByLabelText('Capability metadata').textContent).toContain('1.3s');
     expect(screen.getByLabelText('Capability metadata').textContent).toContain('soundplay-rhyme');
   });
+
+  it('renders an analysis focus instead of repeating the tool label', () => {
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('The cup remains on the table.'),
+          artifact: 'tool_report',
+          toolId: 'continuity',
+          toolLabel: 'Continuity',
+          capability: {
+            operation: 'analysis.run',
+            status: 'success',
+            requestSummary: 'Track the cup.',
+            requestedByPersonaId: 'jill'
+          }
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('Continuity · Track the cup. · requested by Jill')).toBeTruthy();
+    expect(document.body.textContent).not.toContain('Continuity · Continuity');
+  });
 });

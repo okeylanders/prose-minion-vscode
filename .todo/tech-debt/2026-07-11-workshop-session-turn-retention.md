@@ -26,7 +26,7 @@ the exact bug class PR #72 findings #1/#2 fixed.
 
 ## Related files
 
-- `packages/core/src/application/services/WorkshopSessionService.ts`
+- `packages/core/src/application/services/workshop/WorkshopSessionService.ts`
 
 ## Completion criteria
 

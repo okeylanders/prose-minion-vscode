@@ -2,8 +2,8 @@ import {
   isWorkshopHostReturnShortcut,
   WorkshopHandler
 } from '@/application/handlers/domain/WorkshopHandler';
-import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
-import { RunWorkshopToolSidePass } from '@/application/services/RunWorkshopToolSidePass';
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import { MessageRouter } from '@/application/handlers/MessageRouter';

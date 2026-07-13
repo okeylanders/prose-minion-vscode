@@ -2,7 +2,7 @@ import {
   buildWorkshopDirectHandoff,
   buildWorkshopHostMessage,
   buildWorkshopHostUpdateFrame
-} from '@/application/services/WorkshopPromptBuilder';
+} from '@/application/services/workshop/WorkshopPromptBuilder';
 import { WorkshopTurn } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 

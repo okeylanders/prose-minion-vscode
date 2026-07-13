@@ -5,7 +5,8 @@ import { AgentCapability, CapabilityFulfillment } from '../AgentRunContracts';
 import {
   createResourceReadXmlInstruction,
   ResourceReadInspection,
-  ResourceReadRequest
+  ResourceReadRequest,
+  summarizeResourceReadRequest
 } from '../ResourceReadXmlCodec';
 import { ResourceRequestGate } from './ResourceRequestGate';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -83,7 +84,7 @@ export class ContextFileCapability implements AgentCapability<
   }
 
   requestLogSummary(request: ResourceReadRequest): string {
-    return `${request.paths.length} path(s): ${request.paths.join(', ')}`;
+    return summarizeResourceReadRequest(request);
   }
 
   invalidRequestInstruction(rejection: Extract<ResourceReadInspection, { kind: 'invalid' }>): string {

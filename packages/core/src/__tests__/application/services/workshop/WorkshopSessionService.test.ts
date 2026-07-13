@@ -1,8 +1,8 @@
 import {
   WorkshopSessionService,
   WORKSHOP_SNAPSHOT_TURN_WINDOW
-} from '@/application/services/WorkshopSessionService';
-import { buildWorkshopDirectHandoff } from '@/application/services/WorkshopPromptBuilder';
+} from '@/application/services/workshop/WorkshopSessionService';
+import { buildWorkshopDirectHandoff } from '@/application/services/workshop/WorkshopPromptBuilder';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', () => {
@@ -347,6 +347,34 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     ]);
     snapshot.turns.at(-3)!.capability!.metadata = { mutated: true };
     expect(service.getSnapshot().turns.at(-3)!.capability?.metadata).not.toEqual({ mutated: true });
+  });
+
+  it('refuses a capability artifact stamped with a stale excerpt version', () => {
+    pin();
+    service.setExcerpt({ text: 'A revised excerpt.' });
+    service.beginPersonaMessage('host-capabilities', 'Check this word.');
+
+    const completion = service.recordCapabilityArtifact({
+      hostRequestId: 'host-capabilities',
+      excerptVersion: 1,
+      details: {
+        operation: 'dictionary.lookup',
+        status: 'success',
+        requestSummary: 'liminal',
+        requestedByPersonaId: 'jill'
+      },
+      result: {
+        capability: 'dictionary.lookup',
+        status: 'success',
+        requestSummary: 'liminal',
+        content: 'Stale evidence.'
+      }
+    });
+
+    expect(completion).toBeUndefined();
+    expect(service.getSnapshot().turns).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ content: 'Stale evidence.' })
+    ]));
   });
 
   it('reset disposes all participants and returns to Jill while preserving the excerpt', () => {

@@ -21,19 +21,19 @@
 
 import { FileSystem, FileType, LogSink, ShellService, Workspace } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
-import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
-import { RunWorkshopToolSidePass } from '@/application/services/RunWorkshopToolSidePass';
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import {
   buildWorkshopDirectHandoff,
   buildWorkshopHostMessage,
   buildWorkshopHostUpdateFrame,
   describeWorkshopPendingHostUpdates
-} from '@/application/services/WorkshopPromptBuilder';
+} from '@/application/services/workshop/WorkshopPromptBuilder';
 import {
   completeWorkshopRun,
   workshopMessageCompletionCopy
-} from '@/application/services/WorkshopRunCompletion';
+} from '@/application/services/workshop/WorkshopRunCompletion';
 import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
 import { isWorkshopPersonaId, workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopQuickActionPrompt } from '@shared/constants/workshopQuickActions';

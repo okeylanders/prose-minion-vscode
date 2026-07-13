@@ -1,4 +1,4 @@
-import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import type { LogSink } from '@/platform';

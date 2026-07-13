@@ -3,8 +3,8 @@ import {
   workshopMessageCompletionCopy,
   workshopSynthesisCompletionCopy,
   WorkshopRunCompletionEvents
-} from '@/application/services/WorkshopRunCompletion';
-import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
+} from '@/application/services/workshop/WorkshopRunCompletion';
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { AnalysisResult } from '@/domain/models/AnalysisResult';
 import { API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
 
