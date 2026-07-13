@@ -5,6 +5,28 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.3] - 2026-07-13
+
+### Overview
+
+Patch release refreshing the curated OpenRouter catalog. The update adds the newly available GPT-5.6 base tiers, Grok 4.5, and Aion 3.0 variants while preserving existing Grok and Aion choices. Defaults remain unchanged.
+
+### Added
+
+- **GPT-5.6 base tiers** — added `openai/gpt-5.6-luna`, `openai/gpt-5.6-terra`, and `openai/gpt-5.6-sol` to `RECOMMENDED_MODELS`. The three 1M-context options cover cost-efficient, balanced, and flagship use cases; their `-pro` variants are intentionally excluded because they are the same underlying models with a forced reasoning mode.
+- **Grok 4.5** — added `x-ai/grok-4.5` alongside the existing Grok 4.20, 4.20 Multi-Agent, and 4.3 entries.
+- **Aion 3.0 family** — added `aion-labs/aion-3.0-mini` and `aion-labs/aion-3.0` alongside the existing Aion 2.0 storytelling model.
+
+### Removed
+
+- **Expiring GPT-5.2 Chat** — removed `openai/gpt-5.2-chat` from `RECOMMENDED_MODELS`, `CATEGORY_MODELS`, and `proseMinion.categoryModel` before the OpenRouter-announced 2026-08-10 expiration.
+
+### Verification
+
+- Live OpenRouter audit on 2026-07-13 returned 343 models. All retained curated IDs resolved; no other stale IDs were found.
+- Marketplace preflight confirmed that deployed version 2.0.2 matched `main` before release preparation.
+- Scoped defaults remain `anthropic/claude-sonnet-5` (Assistant and Category Search), `anthropic/claude-haiku-4.5` (Dictionary), and `openai/gpt-5.4` (Context).
+
 ## [2.0.2] - 2026-07-02
 
 ### Overview
