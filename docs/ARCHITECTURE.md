@@ -187,6 +187,29 @@ report and persona synthesis remain separately attributed turns; synthesis
 failure never rolls back the valid report. Reserved persona-frame delimiters
 inside quoted excerpts/evidence are encoded before prompt assembly.
 
+Persona-callable operations use the same isolated analysis boundary through
+`WorkshopAnalysisSidePass`, but remain inside the active host turn. A fresh
+`WorkshopPersonaCapability` is minted per user turn from the
+composition-root-owned factory. Its strict single-root XML codec recognizes
+only `dictionary.lookup`, `dictionary.full-entry`, and `analysis.run`; runtime
+validation rejects unknown fields/tools and oversized values before any
+service executes. Dictionary services and the analysis side-pass are injected
+directly—capabilities never route through handlers or fabricate webview
+messages. Completed evidence becomes a separately attributed, expandable,
+reload-safe artifact stamped with the excerpt version it observed.
+
+`AgentRunEngine` treats capability work as a per-turn concern for both initial
+and retained conversations. The initial turn appends the capability contract
+to history once; every later host turn mints fresh validation/budget state.
+Initial and continuation paths share one bounded loop and one correction
+budget. They build a working transcript (writer message, capability calls,
+evidence, final prose) and commit it atomically only on success. Consequently a
+pending excerpt/context frame appears once across all capability rounds, while
+cancellation or transport failure leaves both retained history and pending
+delivery state untouched. The Workshop host permits three calls per user turn,
+at most one full dictionary entry and one analysis side pass, then forces final
+prose.
+
 Direct-tool exchanges continue the report-owned sidecar without a persona
 relay call. Returning to the host prepares at most the newest 8 unseen turns
 and 20,000 characters; omission/truncation provenance is explicit, and the
@@ -208,6 +231,9 @@ updates while preserving the current excerpt.
 All static prompt-side input ceilings live in
 `packages/core/src/shared/constants/promptBudgets.ts`; word- and
 character-based trim helpers report provenance rather than hiding slices.
+Workshop capability inputs are rejected rather than truncated at 100
+characters for `word`, 4,000 for `context`, 500 for `purpose`, and 1,000 for
+analysis `instructions`.
 
 Model selection is transport state, not conversation identity. A model-setting
 change hot-swaps the corresponding `OpenRouterClient` through the existing

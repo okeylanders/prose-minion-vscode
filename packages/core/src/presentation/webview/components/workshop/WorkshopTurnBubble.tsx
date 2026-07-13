@@ -17,6 +17,7 @@ import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
 import { WorkshopToolId, WorkshopTurn } from '@messages';
 import { WorkshopQuickActionBar } from './WorkshopQuickActionBar';
 import { workshopToolIcon } from './workshopToolIcons';
+import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 
 interface WorkshopTurnBubbleProps {
   turn: WorkshopTurn;
@@ -68,6 +69,25 @@ export const parseVariations = (content: string): ParsedVariations | null => {
   };
 };
 
+const capabilityMetadataRows = (turn: WorkshopTurn): string[] => {
+  const metadata = turn.capability?.metadata;
+  if (!metadata) return [];
+  const rows: string[] = [];
+  if (typeof metadata.successCount === 'number' && typeof metadata.totalBlocks === 'number') {
+    rows.push(`${metadata.successCount}/${metadata.totalBlocks} dictionary sections completed`);
+  }
+  if (typeof metadata.totalDuration === 'number') {
+    rows.push(`Completed in ${(metadata.totalDuration / 1000).toFixed(1)}s`);
+  }
+  if (Array.isArray(metadata.partialFailures) && metadata.partialFailures.length > 0) {
+    rows.push(`Partial failures: ${metadata.partialFailures.join(', ')}`);
+  }
+  if (metadata.truncated === true) {
+    rows.push('Result reached its response-token limit');
+  }
+  return rows;
+};
+
 export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(({
   turn,
   quickActionToolId,
@@ -81,9 +101,14 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   // Persona replies are editorial conversation, not a tool artifact. Never
   // reinterpret their headings as tool variations with copy/save provenance.
   const parsedVariations = React.useMemo(
-    () => turn.personaId ? null : parseVariations(turn.content),
-    [turn.content, turn.personaId]
+    () => turn.personaId || turn.capability ? null : parseVariations(turn.content),
+    [turn.capability, turn.content, turn.personaId]
   );
+
+  const capabilityLabel = turn.capability
+    ? `${turn.capability.operation.startsWith('dictionary.') ? "Writer's Dictionary" : turn.toolLabel ?? 'Analysis'} · ${turn.capability.requestSummary} · requested by ${workshopPersonaLabel(turn.capability.requestedByPersonaId)}`
+    : undefined;
+  const capabilityMetadata = capabilityMetadataRows(turn);
 
   if (turn.artifact === 'excerpt_revision') {
     return (
@@ -125,7 +150,22 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
         {turn.truncated && (
           <p className="pm-ws-turn-truncated">Response hit the max-token limit and was truncated.</p>
         )}
-        {parsedVariations ? (
+        {turn.capability ? (
+          <details className="pm-ws-capability-artifact">
+            <summary>
+              <span>{capabilityLabel}</span>
+              <span className={`pm-ws-capability-status pm-ws-capability-status-${turn.capability.status}`}>
+                {turn.capability.status}
+              </span>
+            </summary>
+            {capabilityMetadata.length > 0 && (
+              <ul className="pm-ws-capability-metadata" aria-label="Capability metadata">
+                {capabilityMetadata.map((row) => <li key={row}>{row}</li>)}
+              </ul>
+            )}
+            <MarkdownRenderer content={turn.content} className="pm-ws-turn-body" />
+          </details>
+        ) : parsedVariations ? (
           <div className="pm-ws-turn-body">
             {parsedVariations.intro && (
               <MarkdownRenderer content={parsedVariations.intro} className="pm-ws-turn-body" />

@@ -2,14 +2,16 @@ import { LogSink, SettingsStore } from '@/platform';
 import { OpenRouterClient, OpenRouterMessage } from '@providers/OpenRouterClient';
 import { ConversationManager, ConversationNotFoundError } from './ConversationManager';
 import {
-  AgentCapability,
+  AgentCapabilityRejection,
   AgentRunOptions,
+  AnyAgentCapability,
+  CapabilityArtifact,
+  ContinuationRunRequest,
   ExecutionResult,
   InitialRunRequest,
-  ResourceArtifact,
-  StreamingTokenCallback
+  RunPolicy
 } from './AgentRunContracts';
-import { findExecutableMarkerIndex, ResourceReadInspection, ResourceReadRequest } from './ResourceReadXmlCodec';
+import { findExecutableMarkerIndex } from './ResourceReadXmlCodec';
 import { TokenUsage } from '@shared/types';
 
 export type StatusCallback = (message: string, tickerMessage?: string) => void;
@@ -28,9 +30,9 @@ interface TurnResult {
   readonly usage?: TokenUsage;
   readonly cancelled: boolean;
   /** Candidate XML tool calls are withheld from visible streaming until validated. */
-  readonly exactRequest?: ResourceReadRequest;
+  readonly exactRequest?: unknown;
   /** A protocol-shaped response failed structural or allow-list validation. */
-  readonly invalidRequest?: Extract<ResourceReadInspection, { kind: 'invalid' }>;
+  readonly invalidRequest?: AgentCapabilityRejection;
 }
 
 const TOOL_CALL_OPEN = '<prose-minion-tool-call';
@@ -128,9 +130,9 @@ class ToolCallStreamVisibilityGuard {
 }
 
 /**
- * The single internal initial-run engine. It owns transport, cancellation,
- * retention, bounded capability rounds, output visibility, token accounting,
- * and cleanup. Capability adapters own resource-specific protocol and I/O.
+ * The single per-turn engine. It owns transport, cancellation, retention,
+ * bounded capability/correction rounds, output visibility, token accounting,
+ * and atomic history commits. Capability adapters own protocol and I/O.
  */
 export class AgentRunEngine {
   private readonly conversationCleanupInterval: NodeJS.Timeout;
@@ -158,117 +160,187 @@ export class AgentRunEngine {
   }
 
   async runInitial(request: InitialRunRequest): Promise<ExecutionResult> {
-    const options = request.options ?? {};
     const capability = this.validateCapability(request);
-    const termination = this.createTerminationContext(options);
-    const runOptions = { ...options, signal: termination.signal ?? options.signal };
     const conversationId = this.conversationManager.startConversation(request.toolName, request.systemMessage);
     const retainedRequested = request.policy.retention === 'retain';
     let retained = false;
-    const artifacts: ResourceArtifact[] = [];
-    const usedGuides: string[] = [];
-    const requestedResources: string[] = [];
-    let totalUsage: TokenUsage | undefined;
 
     if (retainedRequested) this.conversationManager.pinConversation(conversationId);
     this.outputChannel?.appendLine(
       `[AgentRunEngine] Starting ${request.policy.id} run for ${request.toolName} ` +
-      `(catalog: ${request.policy.resourceCatalog}, retention: ${request.policy.retention})`
+      `(capability: ${request.policy.capabilityCatalog}, retention: ${request.policy.retention})`
     );
 
     try {
       const firstUserMessage = capability
-        ? await capability.appendCatalog(request.userMessage)
+        ? await capability.appendContract(request.userMessage)
         : request.userMessage;
-      this.conversationManager.addMessage(conversationId, { role: 'user', content: firstUserMessage });
-
-      // The one shared turn-bookkeeping sequence: append the model's turn,
-      // append the host instruction/evidence, run the next turn, accumulate
-      // usage. Correction turns, capability rounds, and forced-final turns
-      // all go through here so the sequence cannot drift apart.
-      const runInstructedTurn = async (previous: TurnResult, instruction: string): Promise<TurnResult> => {
-        this.conversationManager.addMessage(conversationId, { role: 'assistant', content: previous.content });
-        this.conversationManager.addMessage(conversationId, { role: 'user', content: instruction });
-        const next = await this.executeTurn(
-          this.conversationManager.getMessages(conversationId),
-          runOptions,
-          capability
-        );
-        totalUsage = this.addUsage(totalUsage, next.usage);
-        return next;
-      };
-
-      const recoverInvalidRequest = async (last: TurnResult): Promise<TurnResult> => {
-        const rejection = last.invalidRequest;
-        if (!capability || last.cancelled || !rejection) {
-          return last;
-        }
-        this.outputChannel?.appendLine(`[AgentRunEngine] ${request.policy.id} is giving the model one correction turn after a rejected resource request.`);
-        const recovered = await runInstructedTurn(last, capability.invalidRequestInstruction(rejection));
-        if (recovered.invalidRequest) {
-          const fallback = 'The assistant could not produce a usable final response after its resource request was rejected. Please try again.';
-          this.outputChannel?.appendLine(`[AgentRunEngine] ${request.policy.id} repeated an invalid resource request after its correction turn.`);
-          runOptions.onToken?.(fallback);
-          return { ...recovered, content: fallback, visibleContent: fallback, invalidRequest: undefined };
-        }
-        return recovered;
-      };
-
-      let last = await this.executeTurn(
-        this.conversationManager.getMessages(conversationId),
-        runOptions,
-        capability
+      const result = await this.executeConversationTurn(
+        conversationId,
+        firstUserMessage,
+        request.policy,
+        capability,
+        request.options ?? {}
       );
+      retained = retainedRequested && !result.cancelled;
+      if (retained) {
+        this.outputChannel?.appendLine(`[AgentRunEngine] Retained conversation ${conversationId} for ${request.toolName}.`);
+      }
+      return { ...result, conversationId: retained ? conversationId : undefined };
+    } finally {
+      if (!retained) this.conversationManager.deleteConversation(conversationId);
+    }
+  }
+
+  /** Continue retained history through the same bounded per-turn engine. */
+  async continueConversation(request: ContinuationRunRequest): Promise<ExecutionResult> {
+    if (!this.conversationManager.hasConversation(request.conversationId)) {
+      throw new ConversationNotFoundError(request.conversationId);
+    }
+    const capability = this.validateCapability(request);
+    const result = await this.executeConversationTurn(
+      request.conversationId,
+      request.userMessage,
+      request.policy,
+      capability,
+      request.options ?? {}
+    );
+    if (!result.cancelled) {
+      this.outputChannel?.appendLine(`[AgentRunEngine] Continued conversation ${request.conversationId}.`);
+    }
+    return { ...result, conversationId: request.conversationId };
+  }
+
+  /**
+   * Execute one initial or retained user turn against a working transcript.
+   * Intermediate calls/evidence are committed together with final prose only
+   * after success, so cancellation and transport failure leave history clean.
+   */
+  private async executeConversationTurn(
+    conversationId: string,
+    userMessage: string,
+    policy: RunPolicy,
+    capability: AnyAgentCapability | undefined,
+    options: AgentRunOptions
+  ): Promise<ExecutionResult> {
+    const termination = this.createTerminationContext(options);
+    const runOptions = { ...options, signal: termination.signal ?? options.signal };
+    const history = this.conversationManager.getMessages(conversationId);
+    const pendingMessages: OpenRouterMessage[] = [{ role: 'user', content: userMessage }];
+    const artifacts: CapabilityArtifact[] = [];
+    const usedGuides: string[] = [];
+    const requestedResources: string[] = [];
+    let totalUsage: TokenUsage | undefined;
+    let correctionTurns = 0;
+
+    const currentMessages = (): OpenRouterMessage[] => [...history, ...pendingMessages];
+    const runInstructedTurn = async (
+      previous: TurnResult,
+      instruction: string
+    ): Promise<TurnResult> => {
+      pendingMessages.push(
+        { role: 'assistant', content: previous.content },
+        { role: 'user', content: instruction }
+      );
+      const next = await this.executeTurn(currentMessages(), runOptions, capability);
+      totalUsage = this.addUsage(totalUsage, next.usage);
+      return next;
+    };
+
+    const recoverInvalidRequest = async (last: TurnResult): Promise<TurnResult> => {
+      const rejection = last.invalidRequest;
+      if (!capability || last.cancelled || !rejection) {
+        return last;
+      }
+      if (correctionTurns >= policy.maxCorrectionTurns) {
+        const fallback = 'The assistant could not produce a usable final response after its capability request was rejected. Please try again.';
+        this.outputChannel?.appendLine(
+          `[AgentRunEngine] ${policy.id} exhausted ${policy.maxCorrectionTurns} correction turn(s).`
+        );
+        runOptions.onToken?.(fallback);
+        return { ...last, content: fallback, visibleContent: fallback, invalidRequest: undefined };
+      }
+      correctionTurns += 1;
+      this.outputChannel?.appendLine(
+        `[AgentRunEngine] ${policy.id} correction turn ${correctionTurns}/${policy.maxCorrectionTurns} after a rejected capability request.`
+      );
+      const recovered = await runInstructedTurn(
+        last,
+        capability.invalidRequestInstruction(rejection)
+      );
+      return recovered.invalidRequest ? recoverInvalidRequest(recovered) : recovered;
+    };
+
+    try {
+      let last = await this.executeTurn(currentMessages(), runOptions, capability);
       totalUsage = this.addUsage(totalUsage, last.usage);
       last = await recoverInvalidRequest(last);
       let rounds = 0;
 
-      while (!last.cancelled && capability && last.exactRequest && rounds < request.policy.maxCapabilityRounds) {
-        const requestedPaths = last.exactRequest.paths;
+      while (!last.cancelled && capability && last.exactRequest && rounds < policy.maxCapabilityRounds) {
+        const request = last.exactRequest;
         rounds += 1;
         this.statusCallback?.(
-          capability.statusMessage(requestedPaths),
-          capability.statusTicker?.(requestedPaths)
+          capability.statusMessage(request),
+          capability.statusTicker?.(request)
         );
-        const fulfillment = await capability.fulfill(requestedPaths);
-        this.outputChannel?.appendLine(
-          `[AgentRunEngine] Delivered ${fulfillment.deliveredPaths.length}/${requestedPaths.length} ${capability.catalog} resource(s) ` +
-          `as ${fulfillment.evidence.length} chars of evidence: ${fulfillment.deliveredPaths.join(', ') || 'none'}`
-        );
+        const fulfillment = await capability.fulfill(request);
+        totalUsage = this.addUsage(totalUsage, fulfillment.usage);
         artifacts.push(...fulfillment.artifacts);
-        if (capability.catalog === 'guides') usedGuides.push(...fulfillment.deliveredPaths);
-        if (capability.catalog === 'projectContext') requestedResources.push(...fulfillment.deliveredPaths);
+        if (capability.catalog === 'guides') usedGuides.push(...fulfillment.deliveredItems);
+        if (capability.catalog === 'projectContext') requestedResources.push(...fulfillment.deliveredItems);
+        this.outputChannel?.appendLine(
+          `[AgentRunEngine] Fulfilled ${capability.catalog} capability ${rounds}/${policy.maxCapabilityRounds} ` +
+          `(${capability.requestLogSummary(request)}): ${fulfillment.evidence.length} evidence chars; ` +
+          `delivered=${fulfillment.deliveredItems.join(', ') || 'none'}`
+        );
         last = await runInstructedTurn(last, fulfillment.evidence);
         last = await recoverInvalidRequest(last);
       }
 
-      if (!last.cancelled && capability && last.exactRequest && request.policy.onCapabilityLimit === 'forceFinalResponse') {
-        this.outputChannel?.appendLine(`[AgentRunEngine] ${request.policy.id} reached ${request.policy.maxCapabilityRounds} capability rounds; forcing final response.`);
+      if (!last.cancelled && capability && last.exactRequest && policy.onCapabilityLimit === 'forceFinalResponse') {
+        this.outputChannel?.appendLine(
+          `[AgentRunEngine] ${policy.id} reached ${policy.maxCapabilityRounds} capability rounds; forcing final response.`
+        );
         last = await runInstructedTurn(last, capability.limitInstruction());
         if (this.needsForcedFinalRetry(last)) {
-          this.outputChannel?.appendLine(`[AgentRunEngine] ${request.policy.id} returned another tool call during its forced final turn; retrying once without resources.`);
+          this.outputChannel?.appendLine(
+            `[AgentRunEngine] ${policy.id} returned another capability call during its forced-final turn; retrying once.`
+          );
           last = await runInstructedTurn(last, capability.limitInstruction());
         }
         last = await recoverInvalidRequest(last);
         if (this.needsForcedFinalRetry(last)) {
-          const fallback = 'The assistant exhausted its resource-request limit without returning a final response. Please try again.';
-          this.outputChannel?.appendLine(`[AgentRunEngine] ${request.policy.id} did not produce final prose after the forced-final retry.`);
+          const fallback = 'The assistant exhausted its capability-call limit without returning a final response. Please try again.';
+          this.outputChannel?.appendLine(
+            `[AgentRunEngine] ${policy.id} did not produce final prose after the forced-final retry.`
+          );
           runOptions.onToken?.(fallback);
-          last = { ...last, content: fallback, visibleContent: fallback, exactRequest: undefined, invalidRequest: undefined };
+          last = {
+            ...last,
+            content: fallback,
+            visibleContent: fallback,
+            exactRequest: undefined,
+            invalidRequest: undefined
+          };
         }
       }
 
-      let visibleContent = this.toVisibleContent(last.content, last.finishReason, capability, last.visibleContent);
+      let visibleContent = this.toVisibleContent(
+        last.content,
+        last.finishReason,
+        capability,
+        last.visibleContent
+      );
       const cancelled = last.cancelled || this.isAborted(runOptions.signal);
       if (!visibleContent && !cancelled) {
         visibleContent = 'The assistant returned no usable final response. Please try again.';
         runOptions.onToken?.(visibleContent);
-        this.outputChannel?.appendLine(`[AgentRunEngine] ${request.policy.id} completed with no visible final prose.`);
+        this.outputChannel?.appendLine(`[AgentRunEngine] ${policy.id} completed with no visible final prose.`);
       }
-      if (retainedRequested && !cancelled) {
-        this.conversationManager.addMessage(conversationId, { role: 'assistant', content: visibleContent });
-        retained = true;
-        this.outputChannel?.appendLine(`[AgentRunEngine] Retained conversation ${conversationId} for ${request.toolName}.`);
+      if (!cancelled) {
+        pendingMessages.push({ role: 'assistant', content: visibleContent });
+        this.conversationManager.addMessages(conversationId, pendingMessages);
       }
 
       return {
@@ -278,51 +350,7 @@ export class AgentRunEngine {
         artifacts,
         usage: totalUsage,
         finishReason: last.finishReason,
-        cancelled,
-        conversationId: retained ? conversationId : undefined
-      };
-    } finally {
-      termination.dispose();
-      if (!retained) this.conversationManager.deleteConversation(conversationId);
-    }
-  }
-
-  /**
-   * Retained continuation deliberately remains a history operation. It does
-   * not advertise catalogs, trigger capabilities, or enter initial-run loops.
-   */
-  async continueConversation(
-    conversationId: string,
-    userMessage: string,
-    options: AgentRunOptions = {}
-  ): Promise<ExecutionResult> {
-    if (!this.conversationManager.hasConversation(conversationId)) {
-      throw new ConversationNotFoundError(conversationId);
-    }
-    const termination = this.createTerminationContext(options);
-    const runOptions = { ...options, signal: termination.signal ?? options.signal };
-    const userTurn: OpenRouterMessage = { role: 'user', content: userMessage };
-    try {
-      const result = await this.executeTurn(
-        [...this.conversationManager.getMessages(conversationId), userTurn],
-        runOptions
-      );
-      const visibleContent = this.toVisibleContent(result.content, result.finishReason);
-      const cancelled = result.cancelled || this.isAborted(runOptions.signal);
-      if (!cancelled) {
-        this.conversationManager.addMessage(conversationId, userTurn);
-        this.conversationManager.addMessage(conversationId, { role: 'assistant', content: visibleContent });
-        this.outputChannel?.appendLine(`[AgentRunEngine] Continued conversation ${conversationId}.`);
-      }
-      return {
-        content: visibleContent,
-        usedGuides: [],
-        requestedResources: [],
-        artifacts: [],
-        usage: result.usage,
-        finishReason: result.finishReason,
-        cancelled,
-        conversationId
+        cancelled
       };
     } finally {
       termination.dispose();
@@ -345,13 +373,17 @@ export class AgentRunEngine {
     clearInterval(this.conversationCleanupInterval);
   }
 
-  private validateCapability(request: InitialRunRequest): AgentCapability | undefined {
-    if (request.policy.resourceCatalog === 'none') {
+  private validateCapability(
+    request: Pick<InitialRunRequest | ContinuationRunRequest, 'policy' | 'capability'>
+  ): AnyAgentCapability | undefined {
+    if (request.policy.capabilityCatalog === 'none') {
       if (request.capability) throw new Error(`Run policy ${request.policy.id} forbids a capability adapter.`);
       return undefined;
     }
-    if (!request.capability || request.capability.catalog !== request.policy.resourceCatalog) {
-      throw new Error(`Run policy ${request.policy.id} requires the ${request.policy.resourceCatalog} capability adapter.`);
+    if (!request.capability || request.capability.catalog !== request.policy.capabilityCatalog) {
+      throw new Error(
+        `Run policy ${request.policy.id} requires the ${request.policy.capabilityCatalog} capability adapter.`
+      );
     }
     return request.capability;
   }
@@ -359,7 +391,7 @@ export class AgentRunEngine {
   private async executeTurn(
     messages: OpenRouterMessage[],
     options: AgentRunOptions,
-    capability?: AgentCapability
+    capability?: AnyAgentCapability
   ): Promise<TurnResult> {
     if (!options.onToken) {
       try {
@@ -475,7 +507,7 @@ export class AgentRunEngine {
   private toVisibleContent(
     content: string,
     finishReason?: string,
-    capability?: AgentCapability,
+    capability?: AnyAgentCapability,
     streamedVisibleContent?: string
   ): string {
     const cleaned = (streamedVisibleContent ?? this.stripAllToolCalls(content, capability))
@@ -484,7 +516,7 @@ export class AgentRunEngine {
     return `${cleaned}${finishReason === 'length' ? '\n\n---\n\n⚠️ Response truncated. Increase Max Tokens in settings.' : ''}`;
   }
 
-  private stripAllToolCalls(content: string, capability?: AgentCapability): string {
+  private stripAllToolCalls(content: string, capability?: AnyAgentCapability): string {
     const capabilityClean = capability ? capability.stripToolCalls(content) : content;
     return capabilityClean.replace(/\n{3,}/g, '\n\n').trim();
   }
@@ -494,23 +526,20 @@ export class AgentRunEngine {
   }
 
   private logCapabilityInspection(
-    capability: AgentCapability | undefined,
-    inspection: ResourceReadInspection | undefined,
+    capability: AnyAgentCapability | undefined,
+    inspection: ReturnType<AnyAgentCapability['inspectRequest']> | undefined,
     content: string
   ): void {
     if (!capability || !inspection || inspection.kind === 'none') return;
     if (inspection.kind === 'request') {
       this.outputChannel?.appendLine(
-        `[AgentRunEngine] Accepted ${capability.catalog} resource request for ${inspection.request.paths.length} path(s): ${inspection.request.paths.join(', ')}`
+        `[AgentRunEngine] Accepted ${capability.catalog} capability request: ${capability.requestLogSummary(inspection.request)}`
       );
       return;
     }
 
-    const pathCounts = inspection.pathCount === undefined
-      ? ''
-      : `; paths=${inspection.pathCount}; allowlisted=${inspection.allowlistedPathCount ?? 'unknown'}`;
     this.outputChannel?.appendLine(
-      `[AgentRunEngine] Rejected ${capability.catalog} resource request: reason=${inspection.reason}${pathCounts}.`
+      `[AgentRunEngine] Rejected ${capability.catalog} capability request: reason=${inspection.reason}.`
     );
     // The full dump may quote the writer's manuscript, and Output channels
     // get pasted into public bug reports — so it is opt-in, not always-on.
@@ -521,10 +550,10 @@ export class AgentRunEngine {
       return;
     }
     this.outputChannel?.appendLine(
-      `[AgentRunEngine] BEGIN REJECTED RESOURCE RESPONSE (${content.length} chars; may contain quoted user text)`
+      `[AgentRunEngine] BEGIN REJECTED CAPABILITY RESPONSE (${content.length} chars; may contain quoted user text)`
     );
     this.outputChannel?.appendLine(content);
-    this.outputChannel?.appendLine('[AgentRunEngine] END REJECTED RESOURCE RESPONSE');
+    this.outputChannel?.appendLine('[AgentRunEngine] END REJECTED CAPABILITY RESPONSE');
   }
 
   private addUsage(total: TokenUsage | undefined, usage: TokenUsage | undefined): TokenUsage | undefined {

@@ -3,6 +3,7 @@ import { AgentCapability } from '@orchestration/AgentRunContracts';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { ConversationManager } from '@orchestration/ConversationManager';
 import { ResourceRequestGate } from '@orchestration/capabilities/ResourceRequestGate';
+import { ResourceReadRequest } from '@orchestration/ResourceReadXmlCodec';
 
 const stream = async function* (tokens: string[], usage = { promptTokens: 3, completionTokens: 2, totalTokens: 5 }) {
   for (const token of tokens) {
@@ -12,6 +13,7 @@ const stream = async function* (tokens: string[], usage = { promptTokens: 3, com
 };
 
 const GUIDE_REQUEST = '<prose-minion-tool-call name="resource.read"><paths><path>dialogue.md</path></paths></prose-minion-tool-call>';
+const PERSONA_REQUEST = '<prose-minion-tool-call name="dictionary.lookup"><word>liminal</word><context>threshold</context><purpose>tone</purpose></prose-minion-tool-call>';
 
 // The mock delegates inspection to the production gate with a one-guide
 // allowlist, mirroring GuideCapability, so these engine tests exercise the
@@ -24,21 +26,50 @@ const guideGate = new ResourceRequestGate({
 });
 guideGate.setAllowedPaths(['dialogue.md']);
 
-const capability = (): jest.Mocked<AgentCapability> => ({
+const capability = (): jest.Mocked<AgentCapability<ResourceReadRequest, any>> => ({
   catalog: 'guides',
-  appendCatalog: jest.fn(async message => `${message}\n\nGuide catalog`),
+  appendContract: jest.fn(async message => `${message}\n\nGuide catalog`),
   inspectRequest: jest.fn(candidate => guideGate.inspect(candidate)),
-  fulfill: jest.fn(async paths => ({
-    evidence: `Evidence for ${paths.join(', ')}`,
-    deliveredPaths: [...paths],
-    artifacts: [{ catalog: 'guides' as const, path: paths[0], label: 'Dialogue Tags', category: 'Dialogue', size: 22, reason: 'Requested craft guide' }]
+  fulfill: jest.fn(async request => ({
+    evidence: `Evidence for ${request.paths.join(', ')}`,
+    deliveredItems: [...request.paths],
+    artifacts: [{ catalog: 'guides' as const, id: request.paths[0], label: 'Dialogue Tags', category: 'Dialogue', size: 22, reason: 'Requested craft guide' }]
   })),
   stripToolCalls: jest.fn(content => content.includes('<prose-minion-tool-call') ? '' : content.trim()),
-  statusMessage: jest.fn((_paths: readonly string[]) => 'Loading requested craft guides...'),
-  statusTicker: jest.fn((_paths: readonly string[]) => 'Dialogue'),
+  statusMessage: jest.fn(() => 'Loading requested craft guides...'),
+  statusTicker: jest.fn(() => 'Dialogue'),
+  requestLogSummary: jest.fn(request => `${request.paths.length} path(s): ${request.paths.join(', ')}`),
   invalidRequestInstruction: jest.fn(() => 'The resource request was invalid. Correct it or provide the final response.'),
   limitInstruction: jest.fn(() => 'Produce the response.')
-} as unknown as jest.Mocked<AgentCapability>);
+} as unknown as jest.Mocked<AgentCapability<ResourceReadRequest, any>>);
+
+const personaCapability = (fulfill = jest.fn().mockResolvedValue({
+  evidence: 'Dictionary evidence',
+  deliveredItems: ['dictionary.lookup:success'],
+  artifacts: [],
+  usage: { promptTokens: 4, completionTokens: 3, totalTokens: 7 }
+})): jest.Mocked<AgentCapability<any, any>> => ({
+  catalog: 'workshopPersona',
+  appendContract: jest.fn(async message => `${message}\n\nWorkshop capability contract`),
+  inspectRequest: jest.fn(candidate => candidate === PERSONA_REQUEST
+    ? {
+        kind: 'request',
+        request: {
+          capability: 'dictionary.lookup',
+          word: 'liminal',
+          context: 'threshold',
+          purpose: 'tone'
+        }
+      }
+    : { kind: 'none' }),
+  fulfill,
+  stripToolCalls: jest.fn(content => content.includes('<prose-minion-tool-call') ? '' : content.trim()),
+  statusMessage: jest.fn(() => 'Jill is checking the dictionary…'),
+  statusTicker: jest.fn(() => 'Dictionary · liminal'),
+  requestLogSummary: jest.fn(() => 'word="liminal"'),
+  invalidRequestInstruction: jest.fn(() => 'Correct the call or answer without it.'),
+  limitInstruction: jest.fn(() => 'Produce the final answer now.')
+} as unknown as jest.Mocked<AgentCapability<any, any>>);
 
 describe('AgentRunEngine', () => {
   let client: { createChatCompletion: jest.Mock; createStreamingChatCompletion: jest.Mock };
@@ -71,14 +102,14 @@ describe('AgentRunEngine', () => {
       options: { onToken: token => visible.push(token) }
     });
 
-    expect(guides.fulfill).toHaveBeenCalledWith(['dialogue.md']);
+    expect(guides.fulfill).toHaveBeenCalledWith({ operation: 'resource.read', paths: ['dialogue.md'] });
     expect(statusCallback).toHaveBeenCalledWith('Loading requested craft guides...', 'Dialogue');
     expect(visible.join('')).toBe('Final answer begins with enough ordinary prose to clear the protocol guard. It continues as a separate streamed chunk.');
     expect(visible.length).toBeGreaterThan(1);
     expect(result.content).toBe('Final answer begins with enough ordinary prose to clear the protocol guard. It continues as a separate streamed chunk.');
     expect(result.usedGuides).toEqual(['dialogue.md']);
     expect(result.usage?.totalTokens).toBe(10);
-    expect(result.artifacts).toEqual([expect.objectContaining({ path: 'dialogue.md', reason: 'Requested craft guide' })]);
+    expect(result.artifacts).toEqual([expect.objectContaining({ id: 'dialogue.md', reason: 'Requested craft guide' })]);
     expect(conversations.getActiveConversationCount()).toBe(0);
   });
 
@@ -182,7 +213,7 @@ describe('AgentRunEngine', () => {
     });
 
     expect(guides.invalidRequestInstruction).not.toHaveBeenCalled();
-    expect(guides.fulfill).toHaveBeenCalledWith(['dialogue.md']);
+    expect(guides.fulfill).toHaveBeenCalledWith({ operation: 'resource.read', paths: ['dialogue.md'] });
     expect(visible.join('')).toBe('Guide-backed final response.');
     expect(result.content).toBe('Guide-backed final response.');
   });
@@ -226,9 +257,9 @@ describe('AgentRunEngine', () => {
     }
 
     const logs = output.appendLine.mock.calls.flat().join('\n');
-    expect(logs).toContain('Accepted guides resource request for 1 path(s): dialogue.md');
-    expect(logs).toContain('Delivered 1/1 guides resource(s)');
-    expect(logs).toContain('chars of evidence: dialogue.md');
+    expect(logs).toContain('Accepted guides capability request: 1 path(s): dialogue.md');
+    expect(logs).toContain('Fulfilled guides capability 1/2');
+    expect(logs).toContain('delivered=dialogue.md');
   });
 
   it('logs the full rejected assistant response only when debug logging is opted in', async () => {
@@ -253,10 +284,10 @@ describe('AgentRunEngine', () => {
 
     const logs = output.appendLine.mock.calls.flat().join('\n');
     expect(debugSettings.get).toHaveBeenCalledWith('proseMinion', 'debugLogging', false);
-    expect(logs).toContain('reason=path-not-allowlisted; paths=1; allowlisted=0');
-    expect(logs).toContain('BEGIN REJECTED RESOURCE RESPONSE');
+    expect(logs).toContain('reason=path-not-allowlisted');
+    expect(logs).toContain('BEGIN REJECTED CAPABILITY RESPONSE');
     expect(logs).toContain(invalid);
-    expect(logs).toContain('END REJECTED RESOURCE RESPONSE');
+    expect(logs).toContain('END REJECTED CAPABILITY RESPONSE');
     expect(logs).not.toContain('PRIVATE PASSAGE');
   });
 
@@ -282,7 +313,7 @@ describe('AgentRunEngine', () => {
     const logs = output.appendLine.mock.calls.flat().join('\n');
     expect(logs).toContain('reason=path-not-allowlisted');
     expect(logs).toContain('proseMinion.debugLogging');
-    expect(logs).not.toContain('BEGIN REJECTED RESOURCE RESPONSE');
+    expect(logs).not.toContain('BEGIN REJECTED CAPABILITY RESPONSE');
   });
 
   it('appends the truncation notice when a run ends with finish_reason length', async () => {
@@ -290,7 +321,7 @@ describe('AgentRunEngine', () => {
 
     const result = await engine.runInitial({
       toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
-      policy: AGENT_RUN_POLICIES.workshopHost
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
     });
 
     expect(result.content).toContain('Partial analysis');
@@ -311,7 +342,7 @@ describe('AgentRunEngine', () => {
       options: { onToken: token => visible.push(token) }
     });
 
-    expect(guides.fulfill).toHaveBeenCalledWith(['dialogue.md']);
+    expect(guides.fulfill).toHaveBeenCalledWith({ operation: 'resource.read', paths: ['dialogue.md'] });
     expect(guides.invalidRequestInstruction).not.toHaveBeenCalled();
     expect(visible.join('')).toBe('A guide-backed answer after the fenced request.');
     expect(result.content).toBe('A guide-backed answer after the fenced request.');
@@ -363,7 +394,7 @@ describe('AgentRunEngine', () => {
 
     const result = await engine.runInitial({
       toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
-      policy: AGENT_RUN_POLICIES.workshopHost,
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources,
       options: { onToken: jest.fn() }
     });
 
@@ -374,14 +405,106 @@ describe('AgentRunEngine', () => {
   it('keeps direct retained continuation as a history operation with no capability rounds', async () => {
     client.createChatCompletion.mockResolvedValueOnce({ content: 'Host hello', finishReason: 'stop' });
     const initial = await engine.runInitial({
-      toolName: 'host', systemMessage: 'System', userMessage: 'Hello', policy: AGENT_RUN_POLICIES.workshopHost
+      toolName: 'host', systemMessage: 'System', userMessage: 'Hello', policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
     });
     client.createChatCompletion.mockResolvedValueOnce({ content: '<prose-minion-tool-call name="resource.read"><paths><path>secret.md</path></paths></prose-minion-tool-call> Continued reply', finishReason: 'stop' });
 
-    const result = await engine.continueConversation(initial.conversationId!, 'Follow up');
+    const result = await engine.continueConversation({
+      conversationId: initial.conversationId!,
+      userMessage: 'Follow up',
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
+    });
 
     expect(result.content).toContain('Continued reply');
     expect(conversations.getConversationInfo(initial.conversationId!)?.messageCount).toBe(5);
+  });
+
+  it('runs the same bounded capability loop on retained continuation and aggregates nested usage once', async () => {
+    const initialCapability = personaCapability();
+    client.createChatCompletion.mockResolvedValueOnce({
+      content: 'Host hello', finishReason: 'stop',
+      usage: { promptTokens: 2, completionTokens: 3, totalTokens: 5 }
+    });
+    const initial = await engine.runInitial({
+      toolName: 'host',
+      systemMessage: 'System',
+      userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopHost,
+      capability: initialCapability
+    });
+
+    const followUpCapability = personaCapability();
+    client.createChatCompletion
+      .mockResolvedValueOnce({
+        content: PERSONA_REQUEST,
+        usage: { promptTokens: 2, completionTokens: 3, totalTokens: 5 }
+      })
+      .mockResolvedValueOnce({
+        content: 'Dictionary-backed follow-up.',
+        usage: { promptTokens: 2, completionTokens: 3, totalTokens: 5 }
+      });
+    const result = await engine.continueConversation({
+      conversationId: initial.conversationId!,
+      userMessage: 'Could this word work?',
+      policy: AGENT_RUN_POLICIES.workshopHost,
+      capability: followUpCapability
+    });
+
+    expect(followUpCapability.fulfill).toHaveBeenCalledTimes(1);
+    expect(result.content).toBe('Dictionary-backed follow-up.');
+    expect(result.usage?.totalTokens).toBe(17);
+    expect(conversations.getConversationInfo(initial.conversationId!)?.messageCount).toBe(7);
+  });
+
+  it('delivers a pending host frame once within capability rounds and commits nothing when cancelled', async () => {
+    client.createChatCompletion.mockResolvedValueOnce({ content: 'Host hello' });
+    const initial = await engine.runInitial({
+      toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopHost, capability: personaCapability()
+    });
+    const before = conversations.getConversationInfo(initial.conversationId!)?.messageCount;
+    const controller = new AbortController();
+    const fulfill = jest.fn().mockImplementation(async () => {
+      controller.abort(new Error('cancel after evidence'));
+      return { evidence: 'Completed evidence', deliveredItems: ['dictionary.lookup:success'], artifacts: [] };
+    });
+    client.createChatCompletion
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: 'This response is abandoned.' });
+    const pendingFrame = '<pinned-excerpt version="2">Revised once.</pinned-excerpt>\nWriter asks again.';
+
+    const result = await engine.continueConversation({
+      conversationId: initial.conversationId!,
+      userMessage: pendingFrame,
+      policy: AGENT_RUN_POLICIES.workshopHost,
+      capability: personaCapability(fulfill),
+      options: { signal: controller.signal }
+    });
+
+    const capabilityRoundMessages = client.createChatCompletion.mock.calls.at(-1)![0];
+    expect(capabilityRoundMessages.filter((message: { content: string }) =>
+      message.content.includes('<pinned-excerpt version="2">'))).toHaveLength(1);
+    expect(result.cancelled).toBe(true);
+    expect(conversations.getConversationInfo(initial.conversationId!)?.messageCount).toBe(before);
+  });
+
+  it('resets the three-call persona budget per user turn and forces final prose at the boundary', async () => {
+    client.createChatCompletion
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: 'Final after three calls.' });
+    const adapter = personaCapability();
+
+    const result = await engine.runInitial({
+      toolName: 'host', systemMessage: 'System', userMessage: 'Help.',
+      policy: AGENT_RUN_POLICIES.workshopHost, capability: adapter
+    });
+
+    expect(adapter.fulfill).toHaveBeenCalledTimes(3);
+    expect(adapter.limitInstruction).toHaveBeenCalledTimes(1);
+    expect(result.content).toBe('Final after three calls.');
   });
 
   it('bounds configured context-file capability rounds and forces a final response', async () => {
@@ -391,7 +514,7 @@ describe('AgentRunEngine', () => {
       inspectRequest: jest.fn((candidate: string) => candidate === '<prose-minion-tool-call name="resource.read"><paths><path>mara.md</path></paths></prose-minion-tool-call>'
         ? { kind: 'request', request: { operation: 'resource.read', paths: ['mara.md'] } }
         : { kind: 'none' }),
-      fulfill: jest.fn().mockResolvedValue({ evidence: 'Mara evidence', deliveredPaths: ['mara.md'], artifacts: [] }),
+      fulfill: jest.fn().mockResolvedValue({ evidence: 'Mara evidence', deliveredItems: ['mara.md'], artifacts: [] }),
       limitInstruction: jest.fn(() => 'Produce the briefing now.')
     } as unknown as jest.Mocked<AgentCapability>;
     client.createChatCompletion
@@ -462,6 +585,6 @@ describe('AgentRunEngine', () => {
     });
 
     expect(guides.fulfill).toHaveBeenCalledTimes(2);
-    expect(result.content).toContain('exhausted its resource-request limit');
+    expect(result.content).toContain('exhausted its capability-call limit');
   });
 });

@@ -142,4 +142,69 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(screen.getByRole('separator').textContent).toContain('Excerpt v2 pinned');
     expect(screen.queryByRole('button')).toBeNull();
   });
+
+  it('renders persona-requested dictionary evidence as a compact expandable artifact', () => {
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('# liminal\nThreshold-toned.'),
+          artifact: 'dictionary_lookup',
+          toolId: undefined,
+          toolLabel: "Writer's Dictionary",
+          reportTurnId: undefined,
+          capability: {
+            operation: 'dictionary.lookup',
+            status: 'success',
+            requestSummary: 'liminal',
+            requestedByPersonaId: 'jill'
+          }
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText("Writer's Dictionary · liminal · requested by Jill")).toBeTruthy();
+    expect(screen.getByText('success')).toBeTruthy();
+    expect(document.querySelector('details.pm-ws-capability-artifact')).toBeTruthy();
+    expect(document.body.textContent).not.toContain('prose-minion-tool-call');
+  });
+
+  it('keeps full-entry timing and partial failures inspectable', () => {
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('# Full entry'),
+          artifact: 'dictionary_full_entry',
+          toolId: undefined,
+          toolLabel: "Writer's Dictionary",
+          reportTurnId: undefined,
+          capability: {
+            operation: 'dictionary.full-entry',
+            status: 'partial',
+            requestSummary: 'liminal',
+            requestedByPersonaId: 'jill',
+            metadata: {
+              successCount: 14,
+              totalBlocks: 15,
+              totalDuration: 1_250,
+              partialFailures: ['soundplay-rhyme']
+            }
+          }
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText('Capability metadata').textContent).toContain('14/15');
+    expect(screen.getByLabelText('Capability metadata').textContent).toContain('1.3s');
+    expect(screen.getByLabelText('Capability metadata').textContent).toContain('soundplay-rhyme');
+  });
 });

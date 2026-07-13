@@ -289,6 +289,66 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(service.collectPendingHostUpdates()?.contextBrief).toMatchObject({ text: undefined });
   });
 
+  it('records nested capability artifacts without replacing the active host turn', () => {
+    pin();
+    service.beginPersonaMessage('host-capabilities', 'Check this word and continuity.');
+
+    const dictionary = service.recordCapabilityArtifact({
+      hostRequestId: 'host-capabilities',
+      excerptVersion: 1,
+      details: {
+        operation: 'dictionary.lookup',
+        status: 'success',
+        requestSummary: 'liminal',
+        requestedByPersonaId: 'jill'
+      },
+      result: {
+        capability: 'dictionary.lookup',
+        status: 'success',
+        requestSummary: 'liminal',
+        content: 'Threshold-toned.',
+        usage: { promptTokens: 1, completionTokens: 2, totalTokens: 3 }
+      }
+    });
+    const analysis = service.recordCapabilityArtifact({
+      hostRequestId: 'host-capabilities',
+      excerptVersion: 1,
+      toolId: 'continuity',
+      conversationId: 'persona-continuity-conv',
+      details: {
+        operation: 'analysis.run',
+        status: 'success',
+        requestSummary: 'Continuity',
+        requestedByPersonaId: 'jill',
+        metadata: { toolId: 'continuity' }
+      },
+      result: {
+        capability: 'analysis.run',
+        status: 'success',
+        requestSummary: 'Continuity',
+        content: 'The cup remains on the table.'
+      }
+    });
+
+    expect(dictionary?.turn).toMatchObject({
+      artifact: 'dictionary_lookup', excerptVersion: 1, capability: { requestedByPersonaId: 'jill' }
+    });
+    expect(analysis?.turn).toMatchObject({
+      artifact: 'tool_report', toolId: 'continuity', excerptVersion: 1,
+      capability: { operation: 'analysis.run' }
+    });
+    expect(service.getSnapshot().activeRequestId).toBe('host-capabilities');
+    expect(service.getToolSidecarConversationId('continuity')).toBe('persona-continuity-conv');
+
+    service.completeRun('host-capabilities', 'Here is my synthesis.', undefined, false, 'host-conv');
+    const snapshot = service.getSnapshot();
+    expect(snapshot.turns.slice(-3).map(turn => turn.artifact)).toEqual([
+      'dictionary_lookup', 'tool_report', 'persona_message'
+    ]);
+    snapshot.turns.at(-3)!.capability!.metadata = { mutated: true };
+    expect(service.getSnapshot().turns.at(-3)!.capability?.metadata).not.toEqual({ mutated: true });
+  });
+
   it('reset disposes all participants and returns to Jill while preserving the excerpt', () => {
     const excerpt = pin();
     service.selectPersona('theo');

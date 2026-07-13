@@ -54,6 +54,14 @@ const HANDLERS_ROOT = path.join(
   'handlers'
 );
 
+const WORKSHOP_CAPABILITY_BOUNDARY = [
+  path.join(SRC_ROOT, 'shared', 'types', 'workshopCapabilities.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopAnalysisSidePass.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopCapabilityXmlCodec.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopPersonaCapability.ts')
+];
+const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)|import\s+.*['"](?:vscode|react|@providers\/))/;
+
 // WorkshopSessionService is in the net (PR #67 review #14): it is the
 // composition-root-owned reload-safety aggregate — a handler `new`-ing its
 // own copy would silently fork the session per webview.
@@ -88,6 +96,14 @@ describe('architectural boundaries', () => {
   it('application handlers do not construct infrastructure services', () => {
     const offenders = collectSourceFiles(HANDLERS_ROOT)
       .filter((file) => FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('Workshop capability contracts and routes import no host, React, or provider types', () => {
+    const offenders = WORKSHOP_CAPABILITY_BOUNDARY
+      .filter((file) => HOST_OR_PRESENTATION_IMPORT.test(fs.readFileSync(file, 'utf8')))
       .map((file) => path.relative(SRC_ROOT, file));
 
     expect(offenders).toEqual([]);

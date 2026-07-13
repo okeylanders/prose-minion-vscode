@@ -28,7 +28,7 @@ describe('DictionaryUtility', () => {
     expect(systemMessage).toContain('context or author notes are provided');
     expect(userMessage).toContain('Contextual Excerpt:');
     expect(userMessage).toContain('Need a sound word for a pencil cup tipping over.');
-    expect(policy).toMatchObject({ id: 'dictionary', resourceCatalog: 'none' });
+    expect(policy).toMatchObject({ id: 'dictionary', capabilityCatalog: 'none' });
 
     warnSpy.mockRestore();
   });

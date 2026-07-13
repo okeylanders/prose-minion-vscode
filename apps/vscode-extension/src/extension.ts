@@ -36,6 +36,8 @@ import {
   OpenRouterAccountClient,
   WorkshopSessionService,
   RunWorkshopToolSidePass,
+  WorkshopAnalysisSidePass,
+  WorkshopPersonaCapabilityFactory,
   CoreServices,
 } from '@prose-minion/core';
 // VS Code adapters (app-local; the composition root wires them into the ports)
@@ -155,9 +157,22 @@ export function activate(context: vscode.ExtensionContext): void {
   // composition root, so the thread survives panel close/reopen and webview
   // reloads — reload-safety lives HERE, not in React state.
   const workshopSessionService = new WorkshopSessionService();
-  const workshopToolSidePass = new RunWorkshopToolSidePass(
+  const workshopAnalysisSidePass = new WorkshopAnalysisSidePass(
     assistantToolService,
     workshopSessionService,
+    outputChannel
+  );
+  const workshopPersonaCapabilityFactory = new WorkshopPersonaCapabilityFactory(
+    dictionaryService,
+    workshopAnalysisSidePass,
+    workshopSessionService,
+    outputChannel
+  );
+  const workshopToolSidePass = new RunWorkshopToolSidePass(
+    assistantToolService,
+    workshopAnalysisSidePass,
+    workshopSessionService,
+    workshopPersonaCapabilityFactory,
     outputChannel
   );
 
@@ -176,6 +191,7 @@ export function activate(context: vscode.ExtensionContext): void {
     categorySearchService,
     accountBalanceService,
     workshopSessionService,
+    workshopPersonaCapabilityFactory,
     workshopToolSidePass
   };
 

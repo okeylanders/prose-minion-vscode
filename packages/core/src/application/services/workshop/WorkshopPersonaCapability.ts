@@ -1,0 +1,377 @@
+import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
+import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
+import { LogSink } from '@/platform';
+import {
+  AgentCapability,
+  CapabilityFulfillment
+} from '@orchestration/AgentRunContracts';
+import { DictionaryService } from '@services/dictionary/DictionaryService';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
+import { workshopToolLabel } from '@shared/constants/workshopTools';
+import {
+  isApiKeyNotConfiguredWarning,
+  WorkshopExcerpt,
+  WorkshopPersonaId,
+  WorkshopTurn
+} from '@messages';
+import {
+  WorkshopCapabilityArtifactDetails,
+  WorkshopCapabilityRequest,
+  WorkshopCapabilityResult
+} from '@shared/types/workshopCapabilities';
+import {
+  createWorkshopCapabilityInstruction,
+  WorkshopCapabilityInspection,
+  WorkshopCapabilityXmlCodec
+} from './WorkshopCapabilityXmlCodec';
+
+export interface WorkshopCapabilityEvents {
+  status(message: string, tickerMessage?: string): void;
+  turnCompleted(turn: WorkshopTurn): void;
+  sessionChanged(): void;
+}
+
+export interface WorkshopPersonaCapabilityTurn {
+  requestId: string;
+  personaId: WorkshopPersonaId;
+  excerpt: WorkshopExcerpt;
+  signal: AbortSignal;
+  events: WorkshopCapabilityEvents;
+}
+
+/** Mints one stateful capability adapter per host user turn. */
+export class WorkshopPersonaCapabilityFactory {
+  constructor(
+    private readonly dictionaryService: DictionaryService,
+    private readonly analysisSidePass: WorkshopAnalysisSidePass,
+    private readonly session: WorkshopSessionService,
+    private readonly outputChannel: LogSink
+  ) {}
+
+  create(turn: WorkshopPersonaCapabilityTurn): WorkshopPersonaCapability {
+    return new WorkshopPersonaCapability(
+      this.dictionaryService,
+      this.analysisSidePass,
+      this.session,
+      this.outputChannel,
+      turn
+    );
+  }
+}
+
+export class WorkshopPersonaCapability implements AgentCapability<
+  WorkshopCapabilityRequest,
+  Extract<WorkshopCapabilityInspection, { kind: 'invalid' }>
+> {
+  readonly catalog = 'workshopPersona' as const;
+  private readonly codec = new WorkshopCapabilityXmlCodec();
+  private fullEntryCalls = 0;
+  private analysisCalls = 0;
+  private analysisConversationId?: string;
+
+  constructor(
+    private readonly dictionaryService: DictionaryService,
+    private readonly analysisSidePass: WorkshopAnalysisSidePass,
+    private readonly session: WorkshopSessionService,
+    private readonly outputChannel: LogSink,
+    private readonly turn: WorkshopPersonaCapabilityTurn
+  ) {}
+
+  async appendContract(userMessage: string): Promise<string> {
+    return [userMessage, createWorkshopCapabilityInstruction()].join('\n\n');
+  }
+
+  inspectRequest(candidate: string): WorkshopCapabilityInspection {
+    return this.codec.inspect(candidate);
+  }
+
+  async fulfill(request: WorkshopCapabilityRequest): Promise<CapabilityFulfillment> {
+    const startedAt = Date.now();
+    let result: WorkshopCapabilityResult;
+    try {
+      result = await this.dispatch(request);
+    } catch (error) {
+      const cancelled = this.turn.signal.aborted || this.isAbortError(error);
+      result = {
+        capability: request.capability,
+        status: cancelled ? 'cancelled' : 'failed',
+        requestSummary: this.requestSummary(request),
+        error: cancelled
+          ? 'The capability was cancelled before it completed.'
+          : error instanceof Error ? error.message : String(error)
+      };
+    }
+
+    const artifact = this.recordArtifact(request, result);
+    const duration = Date.now() - startedAt;
+    const partialFailures = Array.isArray(result.metadata?.partialFailures)
+      ? result.metadata.partialFailures.length
+      : 0;
+    this.outputChannel.appendLine(
+      `[WorkshopPersonaCapability] request=${this.turn.requestId} persona=${this.turn.personaId} ` +
+      `capability=${request.capability} input=${this.requestLogSummary(request)} ` +
+      `outcome=${result.status} durationMs=${duration} partialFailures=${partialFailures}`
+    );
+    return {
+      evidence: this.formatEvidence(result, this.turn.excerpt.version),
+      artifacts: artifact ? [{
+        catalog: this.catalog,
+        id: artifact.id,
+        label: artifact.toolLabel ?? request.capability,
+        category: request.capability,
+        size: artifact.content.length,
+        reason: `Requested by ${workshopPersonaLabel(this.turn.personaId)}`
+      }] : [],
+      deliveredItems: [`${request.capability}:${result.status}`],
+      usage: result.usage
+    };
+  }
+
+  stripToolCalls(content: string): string {
+    return this.codec.stripToolCalls(content);
+  }
+
+  statusMessage(request: WorkshopCapabilityRequest): string {
+    const persona = workshopPersonaLabel(this.turn.personaId);
+    if (request.capability === 'analysis.run') {
+      return `${persona} is having ${workshopToolLabel(request.toolId)} look at that now…`;
+    }
+    return `${persona} is checking the Writer's Dictionary for “${request.word}”…`;
+  }
+
+  statusTicker(request: WorkshopCapabilityRequest): string {
+    return request.capability === 'analysis.run'
+      ? workshopToolLabel(request.toolId)
+      : `Dictionary · ${request.word}`;
+  }
+
+  requestLogSummary(request: WorkshopCapabilityRequest): string {
+    return request.capability === 'analysis.run'
+      ? `tool=${request.toolId}; instructionsChars=${request.instructions?.length ?? 0}`
+      : `word=${JSON.stringify(request.word)}; contextChars=${request.context.length}; purposeChars=${request.purpose.length}`;
+  }
+
+  invalidRequestInstruction(
+    rejection: Extract<WorkshopCapabilityInspection, { kind: 'invalid' }>
+  ): string {
+    const field = rejection.field ? ` Field: ${rejection.field}.` : '';
+    return [
+      `Your Workshop capability request was rejected (${rejection.reason}).${field}`,
+      'Do not claim that the capability ran. Either send one corrected bare XML call using the documented closed schema, or answer honestly without it.'
+    ].join(' ');
+  }
+
+  limitInstruction(): string {
+    return 'You have reached the Workshop capability-call limit for this user turn. Do not send another tool call. Produce the final response now using only the evidence already received, and state any missing evidence honestly.';
+  }
+
+  private async dispatch(request: WorkshopCapabilityRequest): Promise<WorkshopCapabilityResult> {
+    if (this.turn.signal.aborted) throw this.abortError();
+    switch (request.capability) {
+      case 'dictionary.lookup':
+        return this.lookupDictionary(request);
+      case 'dictionary.full-entry':
+        if (this.fullEntryCalls >= PROMPT_BUDGETS.workshopCapability.fullEntriesPerTurn) {
+          return this.rejected(request, 'Only one full Writer\'s Dictionary entry is allowed per user turn.');
+        }
+        this.fullEntryCalls += 1;
+        return this.generateFullEntry(request);
+      case 'analysis.run':
+        if (this.analysisCalls >= PROMPT_BUDGETS.workshopCapability.analysisRunsPerTurn) {
+          return this.rejected(request, 'Only one analysis side pass is allowed per user turn.');
+        }
+        this.analysisCalls += 1;
+        return this.runAnalysis(request);
+      default:
+        return this.assertNever(request);
+    }
+  }
+
+  private async lookupDictionary(
+    request: Extract<WorkshopCapabilityRequest, { capability: 'dictionary.lookup' }>
+  ): Promise<WorkshopCapabilityResult> {
+    const lookup = await this.dictionaryService.lookupWordStreaming(
+      request.word,
+      this.dictionaryContext(request.context, request.purpose),
+      () => {},
+      this.turn.signal
+    );
+    if (this.turn.signal.aborted) throw this.abortError();
+    const failed = isApiKeyNotConfiguredWarning(lookup.content) || lookup.content.startsWith('Error:');
+    return {
+      capability: request.capability,
+      status: failed ? 'failed' : lookup.finishReason === 'length' ? 'partial' : 'success',
+      requestSummary: this.requestSummary(request),
+      content: lookup.content,
+      metadata: { truncated: lookup.finishReason === 'length' },
+      usage: lookup.usage,
+      error: failed ? lookup.content : undefined
+    };
+  }
+
+  private async generateFullEntry(
+    request: Extract<WorkshopCapabilityRequest, { capability: 'dictionary.full-entry' }>
+  ): Promise<WorkshopCapabilityResult> {
+    const entry = await this.dictionaryService.generateParallelDictionary(
+      request.word,
+      this.dictionaryContext(request.context, request.purpose),
+      {
+        signal: this.turn.signal,
+        onProgress: progress => this.turn.events.status(
+          `${workshopPersonaLabel(this.turn.personaId)} is building the Writer's Dictionary entry…`,
+          `${progress.completedBlocks.length}/${progress.totalBlocks} sections`
+        )
+      }
+    );
+    if (this.turn.signal.aborted) throw this.abortError();
+    const failed = isApiKeyNotConfiguredWarning(entry.result) || entry.metadata.successCount === 0;
+    const partial = !failed && entry.metadata.partialFailures.length > 0;
+    return {
+      capability: request.capability,
+      status: failed ? 'failed' : partial ? 'partial' : 'success',
+      requestSummary: this.requestSummary(request),
+      content: entry.result,
+      metadata: { ...entry.metadata },
+      usage: entry.usage,
+      error: failed ? entry.result : undefined
+    };
+  }
+
+  private async runAnalysis(
+    request: Extract<WorkshopCapabilityRequest, { capability: 'analysis.run' }>
+  ): Promise<WorkshopCapabilityResult> {
+    const analysis = await this.analysisSidePass.run(
+      request.toolId,
+      this.turn.excerpt,
+      { signal: this.turn.signal, retainConversation: true },
+      request.instructions
+    );
+    if (this.turn.signal.aborted) {
+      if (analysis.conversationId) {
+        this.analysisSidePass.discardConversation(analysis.conversationId);
+      }
+      throw this.abortError();
+    }
+    const failed =
+      isApiKeyNotConfiguredWarning(analysis.content) ||
+      analysis.content.startsWith('Error:') ||
+      !analysis.conversationId;
+    if (failed && analysis.conversationId) {
+      this.analysisSidePass.discardConversation(analysis.conversationId);
+    }
+    this.analysisConversationId = failed ? undefined : analysis.conversationId;
+    return {
+      capability: request.capability,
+      status: failed ? 'failed' : analysis.finishReason === 'length' ? 'partial' : 'success',
+      requestSummary: this.requestSummary(request),
+      content: analysis.content,
+      metadata: {
+        toolId: request.toolId,
+        truncated: analysis.finishReason === 'length',
+        retainedSidecar: !failed
+      },
+      usage: analysis.usage,
+      error: failed
+        ? analysis.content || `The ${workshopToolLabel(request.toolId)} sidecar could not be retained.`
+        : undefined
+    };
+  }
+
+  private recordArtifact(
+    request: WorkshopCapabilityRequest,
+    result: WorkshopCapabilityResult
+  ): WorkshopTurn | undefined {
+    const details: WorkshopCapabilityArtifactDetails = {
+      operation: request.capability,
+      status: result.status,
+      requestSummary: result.requestSummary,
+      requestedByPersonaId: this.turn.personaId,
+      metadata: result.metadata ? { ...result.metadata } : undefined
+    };
+    const completion = request.capability === 'analysis.run'
+      ? this.analysisSidePass.adoptPersonaReport({
+          hostRequestId: this.turn.requestId,
+          excerptVersion: this.turn.excerpt.version,
+          toolId: request.toolId,
+          details,
+          result,
+          conversationId: this.analysisConversationId,
+          truncated: result.metadata?.truncated === true
+        })
+      : this.session.recordCapabilityArtifact({
+          hostRequestId: this.turn.requestId,
+          excerptVersion: this.turn.excerpt.version,
+          details,
+          result
+        });
+    this.analysisConversationId = undefined;
+
+    if (!completion) return undefined;
+    this.turn.events.turnCompleted(completion.turn);
+    this.turn.events.sessionChanged();
+    return completion.turn;
+  }
+
+  private requestSummary(request: WorkshopCapabilityRequest): string {
+    return request.capability === 'analysis.run'
+      ? workshopToolLabel(request.toolId)
+      : request.word;
+  }
+
+  private dictionaryContext(context: string, purpose: string): string {
+    return [context, '', `Lookup purpose: ${purpose}`].join('\n');
+  }
+
+  private rejected(
+    request: WorkshopCapabilityRequest,
+    error: string
+  ): WorkshopCapabilityResult {
+    return {
+      capability: request.capability,
+      status: 'rejected',
+      requestSummary: this.requestSummary(request),
+      error
+    };
+  }
+
+  private formatEvidence(result: WorkshopCapabilityResult, excerptVersion: number): string {
+    const lines = [
+      `<workshop-capability-result name="${result.capability}" status="${result.status}" excerpt-version="${excerptVersion}">`,
+      `<request-summary>${this.escapeXml(result.requestSummary)}</request-summary>`
+    ];
+    if (result.content) lines.push(`<content>${this.escapeXml(result.content)}</content>`);
+    if (result.metadata) {
+      lines.push(`<metadata>${this.escapeXml(JSON.stringify(result.metadata))}</metadata>`);
+    }
+    if (result.error) lines.push(`<error>${this.escapeXml(result.error)}</error>`);
+    lines.push(
+      '</workshop-capability-result>',
+      'This is separately attributed capability evidence. Use only what it actually contains; do not invent omitted or failed results.'
+    );
+    return lines.join('\n');
+  }
+
+  private escapeXml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  private abortError(): Error {
+    const error = this.turn.signal.reason instanceof Error
+      ? this.turn.signal.reason
+      : new Error('Workshop capability cancelled');
+    error.name = 'AbortError';
+    return error;
+  }
+
+  private isAbortError(error: unknown): boolean {
+    return error instanceof Error && error.name === 'AbortError';
+  }
+
+  private assertNever(request: never): never {
+    throw new Error(`Unhandled Workshop capability: ${JSON.stringify(request)}`);
+  }
+}

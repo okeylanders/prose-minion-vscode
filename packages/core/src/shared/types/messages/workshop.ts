@@ -15,6 +15,7 @@
 import { MessageEnvelope, MessageType } from './base';
 import { WritingToolsFocus } from './analysis';
 import { TokenUsage } from '../index';
+import type { WorkshopCapabilityArtifactDetails } from '../workshopCapabilities';
 
 /**
  * Wire id for a Workshop tool — the design catalog's 14 tools mapped 1:1 onto
@@ -84,6 +85,8 @@ export type WorkshopTurnArtifact =
   | 'persona_synthesis'
   | 'direct_tool_message'
   | 'direct_tool_response'
+  | 'dictionary_lookup'
+  | 'dictionary_full_entry'
   | 'excerpt_revision';
 
 /**
@@ -138,6 +141,8 @@ export interface WorkshopTurn {
   personaLabel?: string;
   /** Report/sidecar generation this turn belongs to, when applicable. */
   reportTurnId?: string;
+  /** Persona-callable capability provenance; raw protocol never crosses this boundary. */
+  capability?: WorkshopCapabilityArtifactDetails;
   /** Excerpt version this turn observed or announced. */
   excerptVersion: number;
   content: string;

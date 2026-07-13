@@ -2,11 +2,18 @@ import { LogSink, SettingsStore } from '@/platform';
 import { ContextResourceContent, ContextResourceProvider, ContextResourceSummary } from '@/domain/models/ContextGeneration';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import { AgentCapability, CapabilityFulfillment } from '../AgentRunContracts';
-import { createResourceReadXmlInstruction, ResourceReadInspection } from '../ResourceReadXmlCodec';
+import {
+  createResourceReadXmlInstruction,
+  ResourceReadInspection,
+  ResourceReadRequest
+} from '../ResourceReadXmlCodec';
 import { ResourceRequestGate } from './ResourceRequestGate';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
-export class ContextFileCapability implements AgentCapability {
+export class ContextFileCapability implements AgentCapability<
+  ResourceReadRequest,
+  Extract<ResourceReadInspection, { kind: 'invalid' }>
+> {
   readonly catalog = 'projectContext' as const;
   private readonly gate = new ResourceRequestGate({
     catalogLabel: 'project-resource',
@@ -21,7 +28,7 @@ export class ContextFileCapability implements AgentCapability {
     private readonly outputChannel?: LogSink
   ) {}
 
-  async appendCatalog(userMessage: string): Promise<string> {
+  async appendContract(userMessage: string): Promise<string> {
     const catalog = this.provider.listResources();
     const displayedCatalog = this.orderCatalog(catalog).slice(0, PROMPT_BUDGETS.contextFiles.catalogItems);
     this.gate.setAllowedPaths(displayedCatalog.map(item => item.path));
@@ -36,12 +43,13 @@ export class ContextFileCapability implements AgentCapability {
     return this.gate.inspect(candidate);
   }
 
-  async fulfill(requestedPaths: readonly string[]): Promise<CapabilityFulfillment> {
+  async fulfill(request: ResourceReadRequest): Promise<CapabilityFulfillment> {
+    const requestedPaths = request.paths;
     const rejected = requestedPaths.filter(path => !this.gate.allows(path));
     if (rejected.length > 0) {
       return {
         evidence: 'The resource request was rejected because it included a path outside the displayed project-resource catalog. Continue without additional resources.',
-        deliveredPaths: [],
+        deliveredItems: [],
         artifacts: []
       };
     }
@@ -54,10 +62,10 @@ export class ContextFileCapability implements AgentCapability {
     this.outputChannel?.appendLine(`[ContextFileCapability] Fulfilled ${loaded.length}/${requested.length} configured resource request(s).`);
     return {
       evidence: this.buildEvidence(loaded, missing),
-      deliveredPaths: loaded.map(item => item.path),
+      deliveredItems: loaded.map(item => item.path),
       artifacts: loaded.map(item => ({
         catalog: this.catalog,
-        path: item.path,
+        id: item.path,
         label: item.label,
         category: item.group,
         size: item.content.length,
@@ -72,6 +80,10 @@ export class ContextFileCapability implements AgentCapability {
 
   statusMessage(): string {
     return 'Loading project reference files...';
+  }
+
+  requestLogSummary(request: ResourceReadRequest): string {
+    return `${request.paths.length} path(s): ${request.paths.join(', ')}`;
   }
 
   invalidRequestInstruction(rejection: Extract<ResourceReadInspection, { kind: 'invalid' }>): string {

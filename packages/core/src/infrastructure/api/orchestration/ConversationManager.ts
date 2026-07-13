@@ -70,6 +70,21 @@ export class ConversationManager {
   }
 
   /**
+   * Commit one completed user turn atomically from the engine's working
+   * transcript. No message from a cancelled or failed turn reaches history.
+   */
+  addMessages(conversationId: string, messages: readonly OpenRouterMessage[]): void {
+    const conversation = this.conversations.get(conversationId);
+
+    if (!conversation) {
+      throw new ConversationNotFoundError(conversationId);
+    }
+
+    conversation.messages.push(...messages);
+    conversation.lastActivity = Date.now();
+  }
+
+  /**
    * Get all messages for a conversation
    */
   getMessages(conversationId: string): OpenRouterMessage[] {

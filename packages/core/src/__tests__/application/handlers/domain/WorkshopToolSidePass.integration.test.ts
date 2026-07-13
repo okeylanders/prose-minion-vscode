@@ -1,6 +1,8 @@
 import { WorkshopHandler } from '@/application/handlers/domain/WorkshopHandler';
 import { WorkshopSessionService } from '@/application/services/WorkshopSessionService';
 import { RunWorkshopToolSidePass } from '@/application/services/RunWorkshopToolSidePass';
+import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
+import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import type { AIResourceManager } from '@orchestration/AIResourceManager';
 import type { AgentRunEngine } from '@orchestration/AgentRunEngine';
@@ -55,19 +57,27 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
 
     const session = new WorkshopSessionService(() => 1);
     const postMessage = jest.fn().mockResolvedValue(undefined);
+    const output = { appendLine: jest.fn() } as unknown as LogSink;
+    const analysisSidePass = new WorkshopAnalysisSidePass(assistantService, session, output);
+    const capabilityFactory = {
+      create: jest.fn(() => ({ catalog: 'workshopPersona' }))
+    } as unknown as WorkshopPersonaCapabilityFactory;
     const handler = new WorkshopHandler(
       assistantService,
       session,
       new RunWorkshopToolSidePass(
         assistantService,
+        analysisSidePass,
         session,
-        { appendLine: jest.fn() } as unknown as LogSink
+        capabilityFactory,
+        output
       ),
+      capabilityFactory,
       postMessage,
       createFakeShellService(),
       createFakeFileSystem(),
       createFakeWorkspace(),
-      { appendLine: jest.fn() } as unknown as LogSink
+      output
     );
     await handler.handleSetExcerpt({
       type: MessageType.WORKSHOP_SET_EXCERPT,
@@ -90,7 +100,13 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
     });
     expect(engine.runInitial.mock.calls[1][0]).toMatchObject({
       toolName: 'workshop_persona_jill',
-      policy: { id: 'workshop-host', retention: 'retain' }
+      policy: {
+        id: 'workshop-host',
+        capabilityCatalog: 'workshopPersona',
+        maxCapabilityRounds: 3,
+        retention: 'retain'
+      },
+      capability: { catalog: 'workshopPersona' }
     });
     expect(engine.runInitial.mock.calls[1][0].userMessage).toContain('verbatim engine report');
     expect(engine.runInitial.mock.calls[1][0].userMessage).toContain('<workshop-tool-evidence>');
