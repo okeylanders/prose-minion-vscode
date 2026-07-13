@@ -152,18 +152,27 @@ describe('WorkshopPersonaCapability', () => {
 
   it('routes analysis through the shared side-pass boundary and never through a handler', async () => {
     const adapter = capability();
-    const result = await adapter.fulfill({
+    const request = {
       capability: 'analysis.run',
-      toolId: 'continuity',
+      toolId: 'continuity' as const,
       instructions: 'Track the cup.'
-    });
+    } as const;
+    const result = await adapter.fulfill(request);
 
     expect(analysis.run).toHaveBeenCalledWith(
       'continuity',
       expect.objectContaining({ version: 1, text: 'The cup crossed the table.' }),
-      { signal: controller.signal, retainConversation: true },
+      expect.objectContaining({
+        signal: controller.signal,
+        retainConversation: true,
+        onToken: expect.any(Function)
+      }),
       'Track the cup.'
     );
+    expect(adapter.statusMessage(request)).toBe(
+      'Jill is asking Continuity to examine the excerpt…'
+    );
+    expect(adapter.statusTicker(request)).toBe('Waiting for first chunks…');
     expect(analysis.adoptPersonaReport).toHaveBeenCalledWith(expect.objectContaining({
       hostRequestId: 'host-request',
       excerptVersion: 1,
@@ -177,6 +186,30 @@ describe('WorkshopPersonaCapability', () => {
       participant: 'tool',
       artifact: 'tool_report'
     }));
+  });
+
+  it('reports nested analysis streaming progress without exposing report chunks', async () => {
+    analysis.run.mockImplementationOnce(async (_toolId, _excerpt, options) => {
+      for (let index = 0; index < 7; index += 1) {
+        options.onToken?.(`private report chunk ${index + 1}`);
+      }
+      return {
+        toolName: 'writing_tools_continuity',
+        content: 'Verbatim continuity report.',
+        timestamp: new Date('2026-07-13T00:00:00Z'),
+        usage,
+        conversationId: 'continuity-conv'
+      };
+    });
+
+    await capability().fulfill({ capability: 'analysis.run', toolId: 'continuity' });
+
+    expect(events.status.mock.calls).toEqual([
+      ['Continuity is responding to Jill…', 'Streaming · 1 chunk'],
+      ['Continuity is responding to Jill…', 'Streaming · 5 chunks'],
+      ['Jill is reviewing Continuity’s report…', '7 chunks received']
+    ]);
+    expect(events.status.mock.calls.flat().join(' ')).not.toContain('private report chunk');
   });
 
   it('rejects a second analysis call in the same user turn before invoking the side pass', async () => {

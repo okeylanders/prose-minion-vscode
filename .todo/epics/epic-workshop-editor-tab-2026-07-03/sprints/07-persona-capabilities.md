@@ -296,7 +296,11 @@ plain application-owned boundary are required.
   or cancellation; all capability artifacts carry `excerptVersion`.
 - Housekeeping verified as already landed: no stale Sprint 06 guard, and
   `WorkshopToolSidePass.integration.test.ts` covers handler↔engine assembly.
-- Verification: 88 Jest suites / 689 tests passed; core, webview, and extension
+- F5 smoke-test polish: persona-requested analysis now reports the nested
+  lifecycle explicitly (`Jill is asking…` → `Continuity is responding to
+  Jill…` with throttled `Streaming · N chunks` updates → `Jill is reviewing…`).
+  Nested report chunks remain status-only and never enter Jill's visible stream.
+- Verification: 88 Jest suites / 696 tests passed; core, webview, and extension
   typechecks passed; ESLint passed with zero errors; production webpack build
   passed; explicit `verify:bundle` passed; `git diff --check` passed.
 - Clean production bundle comparison against `origin/epic/workshop-editor-tab`

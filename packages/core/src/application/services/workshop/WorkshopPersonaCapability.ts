@@ -136,14 +136,14 @@ export class WorkshopPersonaCapability implements AgentCapability<
   statusMessage(request: WorkshopCapabilityRequest): string {
     const persona = workshopPersonaLabel(this.turn.personaId);
     if (request.capability === 'analysis.run') {
-      return `${persona} is having ${workshopToolLabel(request.toolId)} look at that now…`;
+      return `${persona} is asking ${workshopToolLabel(request.toolId)} to examine the excerpt…`;
     }
     return `${persona} is checking the Writer's Dictionary for “${request.word}”…`;
   }
 
   statusTicker(request: WorkshopCapabilityRequest): string {
     return request.capability === 'analysis.run'
-      ? workshopToolLabel(request.toolId)
+      ? 'Waiting for first chunks…'
       : `Dictionary · ${request.word}`;
   }
 
@@ -246,10 +246,28 @@ export class WorkshopPersonaCapability implements AgentCapability<
   private async runAnalysis(
     request: Extract<WorkshopCapabilityRequest, { capability: 'analysis.run' }>
   ): Promise<WorkshopCapabilityResult> {
+    const toolLabel = workshopToolLabel(request.toolId);
+    const personaLabel = workshopPersonaLabel(this.turn.personaId);
+    let chunkCount = 0;
     const analysis = await this.analysisSidePass.run(
       request.toolId,
       this.turn.excerpt,
-      { signal: this.turn.signal, retainConversation: true },
+      {
+        signal: this.turn.signal,
+        retainConversation: true,
+        onToken: () => {
+          chunkCount += 1;
+          // Match the sidebar's streaming vocabulary without sending one
+          // status envelope per provider chunk. The nested report remains
+          // status-only; it never enters Jill's visible response stream.
+          if (chunkCount === 1 || chunkCount % 5 === 0) {
+            this.turn.events.status(
+              `${toolLabel} is responding to ${personaLabel}…`,
+              `Streaming · ${chunkCount} ${chunkCount === 1 ? 'chunk' : 'chunks'}`
+            );
+          }
+        }
+      },
       request.instructions
     );
     if (this.turn.signal.aborted) {
@@ -264,6 +282,15 @@ export class WorkshopPersonaCapability implements AgentCapability<
       !analysis.conversationId;
     if (failed && analysis.conversationId) {
       this.analysisSidePass.discardConversation(analysis.conversationId);
+    }
+    if (!failed) {
+      const received = chunkCount > 0
+        ? `${chunkCount} ${chunkCount === 1 ? 'chunk' : 'chunks'} received`
+        : 'Report received';
+      this.turn.events.status(
+        `${personaLabel} is reviewing ${toolLabel}’s report…`,
+        received
+      );
     }
     this.analysisConversationId = failed ? undefined : analysis.conversationId;
     return {
