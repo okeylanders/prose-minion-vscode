@@ -9,17 +9,23 @@ import { WORKSHOP_PERSONA_FOCUS_ICONS } from './workshopPersonaIcons';
 interface WorkshopPersonaBrowserModalProps {
   open: boolean;
   activePersonaId: WorkshopPersonaId;
+  mode?: 'host' | 'guest';
+  invitedPersonaIds?: WorkshopPersonaId[];
   disabled?: boolean;
   onClose: () => void;
   onSelect: (personaId: WorkshopPersonaId) => void;
+  onInvite?: (personaId: WorkshopPersonaId) => void;
 }
 
 export const WorkshopPersonaBrowserModal: React.FC<WorkshopPersonaBrowserModalProps> = ({
   open,
   activePersonaId,
+  mode = 'host',
+  invitedPersonaIds = [],
   disabled = false,
   onClose,
-  onSelect
+  onSelect,
+  onInvite
 }) => {
   const returnFocusRef = React.useRef<HTMLElement | null>(null);
   const closeButtonRef = React.useRef<HTMLButtonElement>(null);
@@ -52,14 +58,20 @@ export const WorkshopPersonaBrowserModal: React.FC<WorkshopPersonaBrowserModalPr
     return null;
   }
 
+  const guestMode = mode === 'guest';
+
   return (
     <div className="pm-ws-modal-backdrop" role="presentation" onMouseDown={handleBackdropClick}>
       <div className="pm-ws-tools-modal pm-ws-persona-modal" role="dialog" aria-modal="true" aria-labelledby="pm-ws-persona-title">
         <div className="pm-ws-tools-modal-head">
           <div>
-            <div className="pm-ws-eyebrow">Workshop host</div>
-            <h2 id="pm-ws-persona-title">Choose your writing partner</h2>
-            <p>Choose a lens before the conversation begins. Start a new session to change hosts later.</p>
+            <div className="pm-ws-eyebrow">{guestMode ? 'Workshop guest' : 'Workshop host'}</div>
+            <h2 id="pm-ws-persona-title">{guestMode ? 'Invite another lens' : 'Choose your writing partner'}</h2>
+            <p>
+              {guestMode
+                ? 'Invite one of the packaged personas to read the current room. Guests stay beside the host and never replace it.'
+                : 'Choose a lens before the conversation begins. Start a new session to change hosts later.'}
+            </p>
           </div>
           <button ref={closeButtonRef} className="pm-ws-modal-close" type="button" onClick={onClose} aria-label="Close personas">
             <Icon name="x" size={16} />
@@ -69,11 +81,17 @@ export const WorkshopPersonaBrowserModal: React.FC<WorkshopPersonaBrowserModalPr
           {WORKSHOP_PERSONA_CATALOG.map((persona) => (
             <button
               key={persona.id}
-              className={`pm-ws-tools-card pm-ws-persona-card ${activePersonaId === persona.id ? 'pm-ws-tools-card-active' : ''}`}
+              className={`pm-ws-tools-card pm-ws-persona-card ${!guestMode && activePersonaId === persona.id ? 'pm-ws-tools-card-active' : ''}`}
               type="button"
-              disabled={disabled}
-              aria-pressed={activePersonaId === persona.id}
-              onClick={() => onSelect(persona.id)}
+              disabled={disabled || (guestMode && (persona.id === activePersonaId || invitedPersonaIds.includes(persona.id)))}
+              aria-pressed={!guestMode && activePersonaId === persona.id}
+              onClick={() => {
+                if (guestMode) {
+                  onInvite?.(persona.id);
+                } else {
+                  onSelect(persona.id);
+                }
+              }}
             >
               <span className="pm-ws-persona-card-icons" aria-hidden="true">
                 <span className="pm-ws-tools-card-icon"><Icon name="person" size={20} /></span>

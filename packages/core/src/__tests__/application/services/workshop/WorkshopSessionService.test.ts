@@ -615,6 +615,36 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     });
   });
 
+  it('adopts a fresh guest only when its invitation run completes', () => {
+    pin();
+    service.beginPersonaMessage('host-1', 'Host opening.');
+    service.completeRun('host-1', 'Host reply.', undefined, false, 'host-conv');
+
+    const invitation = service.beginPersonaGuestJoin(
+      'margot',
+      'guest-join-1',
+      'Read the room.'
+    );
+    expect(service.collectHostThreadTurns().map((turn) => turn.content)).toEqual([
+      'Host opening.',
+      'Host reply.'
+    ]);
+    expect(service.getSnapshot().participants.personaGuests).toEqual([]);
+
+    const reply = service.completeRun(
+      'guest-join-1',
+      'Margot has joined.',
+      undefined,
+      false,
+      'margot-conv'
+    )!;
+
+    expect(invitation.personaId).toBe('margot');
+    expect(reply.participant).toBe('guest');
+    expect(service.getPersonaGuestConversationId('margot')).toBe('margot-conv');
+    expect(service.getChatTarget()).toEqual({ kind: 'host' });
+  });
+
   it('refuses a late guest completion after dismissal', () => {
     pin();
     service.adoptPersonaGuest('margot', 'margot-conv');

@@ -35,6 +35,7 @@ import {
   WorkshopExcerpt,
   WorkshopChatTarget,
   WorkshopPersonaId,
+  WorkshopPersonaGuestSnapshot,
   WorkshopSessionStateMessage,
   WorkshopToolSidecarSnapshot,
   WorkshopToolId,
@@ -71,6 +72,8 @@ export interface WorkshopState {
   chatTarget: WorkshopChatTarget;
   /** Public metadata for the latest retained sidecar per tool. */
   toolSidecars: WorkshopToolSidecarSnapshot[];
+  /** Explicitly invited persona guests, including disposed history markers. */
+  personaGuests: WorkshopPersonaGuestSnapshot[];
   todos: WorkshopTodoItem[];
   /** True when the composer can message the host or selected direct sidecar. */
   canMessage: boolean;
@@ -104,6 +107,8 @@ export interface WorkshopActions {
   quickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
   sendMessage: (text: string) => void;
   selectPersona: (personaId: WorkshopPersonaId) => void;
+  inviteGuest: (personaId: WorkshopPersonaId) => void;
+  dismissGuest: (personaId: WorkshopPersonaId) => void;
   setChatTarget: (target: WorkshopChatTarget) => void;
   todoAction: (action: WorkshopTodoAction) => void;
   cancelRun: () => void;
@@ -145,6 +150,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const [selectedPersonaId, setSelectedPersonaId] = React.useState<WorkshopPersonaId>('jill');
   const [chatTarget, setChatTargetState] = React.useState<WorkshopChatTarget>({ kind: 'host' });
   const [toolSidecars, setToolSidecars] = React.useState<WorkshopToolSidecarSnapshot[]>([]);
+  const [personaGuests, setPersonaGuests] = React.useState<WorkshopPersonaGuestSnapshot[]>([]);
   const [todos, setTodos] = React.useState<WorkshopTodoItem[]>([]);
   const [selectedToolId, setSelectedToolId] = React.useState<WorkshopToolId | null>(null);
   const [activeToolId, setActiveToolId] = React.useState<WorkshopToolId | null>(null);
@@ -224,6 +230,22 @@ export const useWorkshop = (): UseWorkshopReturn => {
     [post]
   );
 
+  const inviteGuest = React.useCallback(
+    (personaId: WorkshopPersonaId) => {
+      setErrorMessage('');
+      post(MessageType.WORKSHOP_INVITE_GUEST, { personaId });
+    },
+    [post]
+  );
+
+  const dismissGuest = React.useCallback(
+    (personaId: WorkshopPersonaId) => {
+      setErrorMessage('');
+      post(MessageType.WORKSHOP_DISMISS_GUEST, { personaId });
+    },
+    [post]
+  );
+
   const setChatTarget = React.useCallback(
     (target: WorkshopChatTarget) => {
       setErrorMessage('');
@@ -279,6 +301,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
       setSelectedPersonaId(session.participants.host.personaId);
       setChatTargetState(session.participants.chatTarget);
       setToolSidecars(session.participants.toolSidecars);
+      setPersonaGuests(session.participants.personaGuests);
       setTodos(session.todos);
       setSelectedToolId(session.selectedToolId ?? null);
       setActiveToolId(session.activeToolId ?? null);
@@ -410,6 +433,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     selectedPersonaId,
     chatTarget,
     toolSidecars,
+    personaGuests,
     todos,
     canMessage,
     isPersonaSelectionLocked,
@@ -436,6 +460,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
     quickAction,
     sendMessage,
     selectPersona,
+    inviteGuest,
+    dismissGuest,
     setChatTarget,
     todoAction,
     cancelRun,

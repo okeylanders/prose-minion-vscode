@@ -306,6 +306,24 @@ export interface WorkshopSendMessageMessage extends MessageEnvelope<WorkshopSend
   type: MessageType.WORKSHOP_SEND_MESSAGE;
 }
 
+/** Explicit writer action: invite a second persona into a retained guest sidecar. */
+export interface WorkshopInviteGuestPayload {
+  personaId: WorkshopPersonaId;
+}
+
+export interface WorkshopInviteGuestMessage extends MessageEnvelope<WorkshopInviteGuestPayload> {
+  type: MessageType.WORKSHOP_INVITE_GUEST;
+}
+
+/** Explicit writer action: dispose a retained guest sidecar. */
+export interface WorkshopDismissGuestPayload {
+  personaId: WorkshopPersonaId;
+}
+
+export interface WorkshopDismissGuestMessage extends MessageEnvelope<WorkshopDismissGuestPayload> {
+  type: MessageType.WORKSHOP_DISMISS_GUEST;
+}
+
 export interface WorkshopSelectPersonaPayload {
   personaId: WorkshopPersonaId;
 }

@@ -26,6 +26,10 @@ import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWork
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import {
   buildWorkshopDirectHandoff,
+  buildWorkshopGuestCatchUp,
+  buildWorkshopGuestHandoff,
+  buildWorkshopGuestJoinMessage,
+  buildWorkshopGuestMessage,
   buildWorkshopHostMessage,
   buildWorkshopHostUpdateFrame,
   buildWorkshopTodoEvidence,
@@ -58,6 +62,8 @@ import {
   WorkshopQuickActionMessage,
   WorkshopRunToolMessage,
   WorkshopSendMessageMessage,
+  WorkshopInviteGuestMessage,
+  WorkshopDismissGuestMessage,
   WorkshopSelectPersonaMessage,
   WorkshopSetChatTargetMessage,
   WorkshopSetContextBriefMessage,
@@ -65,6 +71,7 @@ import {
   WorkshopTodoActionMessage,
   WorkshopSessionStateMessage,
   WorkshopToolId,
+  WorkshopPersonaId,
   WorkshopChatTarget,
   WorkshopTurn,
   WorkshopTurnMessage
@@ -84,6 +91,9 @@ const generateRequestId = (type: string) => `${type}-${Date.now()}-${++requestId
 
 const MID_RUN_EXCERPT_GUARD_MESSAGE =
   'A tool is still running. Wait for it to finish (or start a new session) before replacing the excerpt.';
+
+const DEFAULT_WORKSHOP_GUEST_OPENING =
+  'Read this room and give me your perspective on the pinned excerpt.';
 
 const isAbsolutePath = (filePath: string): boolean =>
   filePath.startsWith('/') || /^[A-Za-z]:[\\/]/.test(filePath) || filePath.startsWith('\\\\');
@@ -117,6 +127,7 @@ export class WorkshopHandler {
     /** Display label for logs/status ("Prose", "Follow-up", …). */
     label: string;
     toolId?: WorkshopToolId;
+    guestPersonaId?: WorkshopPersonaId;
     controller: AbortController;
   };
 
@@ -152,6 +163,8 @@ export class WorkshopHandler {
     router.register(MessageType.WORKSHOP_RUN_TOOL, this.handleRunTool.bind(this));
     router.register(MessageType.WORKSHOP_QUICK_ACTION, this.handleQuickAction.bind(this));
     router.register(MessageType.WORKSHOP_SEND_MESSAGE, this.handleSendMessage.bind(this));
+    router.register(MessageType.WORKSHOP_INVITE_GUEST, this.handleInviteGuest.bind(this));
+    router.register(MessageType.WORKSHOP_DISMISS_GUEST, this.handleDismissGuest.bind(this));
     router.register(MessageType.WORKSHOP_SELECT_PERSONA, this.handleSelectPersona.bind(this));
     router.register(MessageType.WORKSHOP_SET_CHAT_TARGET, this.handleSetChatTarget.bind(this));
     router.register(MessageType.WORKSHOP_SET_EXCERPT, this.handleSetExcerpt.bind(this));
@@ -267,6 +280,122 @@ export class WorkshopHandler {
     }
   }
 
+  /** Start a fresh retained guest sidecar from an explicit writer invitation. */
+  async handleInviteGuest(message: WorkshopInviteGuestMessage): Promise<void> {
+    const personaId = message.payload?.personaId;
+    if (!isWorkshopPersonaId(personaId)) {
+      this.sendError('workshop.invite_guest', `Unknown Workshop persona: ${String(personaId)}`);
+      return;
+    }
+
+    const excerpt = this.session.getExcerpt();
+    if (!excerpt || excerpt.text.trim().length === 0) {
+      this.sendError('workshop.invite_guest', 'Pin an excerpt before inviting a guest.');
+      return;
+    }
+
+    try {
+      this.session.validatePersonaGuestInvitation(personaId);
+      this.preemptActiveRun();
+
+      const requestId = generateRequestId('workshop_guest_join');
+      const controller = new AbortController();
+      const join = buildWorkshopGuestJoinMessage({
+        guestPersonaId: personaId,
+        excerpt,
+        hostTurns: this.session.collectHostThreadTurns(),
+        openingMessage: DEFAULT_WORKSHOP_GUEST_OPENING
+      });
+      const userTurn = this.session.beginPersonaGuestJoin(
+        personaId,
+        requestId,
+        DEFAULT_WORKSHOP_GUEST_OPENING
+      );
+      this.activeRun = {
+        requestId,
+        label: workshopPersonaLabel(personaId),
+        guestPersonaId: personaId,
+        controller
+      };
+
+      this.postTurn(userTurn);
+      this.postSessionState();
+      this.sendStreamStarted(requestId);
+      this.sendStatus(`Inviting ${workshopPersonaLabel(personaId)} into the room…`);
+
+      try {
+        const result = await this.assistantToolService.startWorkshopGuestConversation({
+          personaId,
+          message: join.message
+        }, {
+          signal: controller.signal,
+          onToken: (token: string) => this.sendStreamChunk(requestId, token)
+        });
+        const assistantTurn = completeWorkshopRun({
+          session: this.session,
+          requestId,
+          label: workshopPersonaLabel(personaId),
+          result,
+          aborted: controller.signal.aborted,
+          createsRetainedConversation: true,
+          copy: workshopMessageCompletionCopy(workshopPersonaLabel(personaId)),
+          discardConversation: (id) => this.assistantToolService.discardConversation(id),
+          log: (line) => this.outputChannel.appendLine(`[WorkshopHandler] ${line}`),
+          events: {
+            streamCompleted: (id, content, cancelled, usage, truncated) =>
+              this.sendStreamComplete(id, content, cancelled, usage, truncated),
+            turnCompleted: (turn) => this.postTurn(turn),
+            status: (status) => this.sendStatus(status),
+            error: (errorMessage, details) =>
+              this.sendError('workshop.invite_guest', errorMessage, details)
+          }
+        });
+        if (assistantTurn) {
+          this.session.setChatTarget({ kind: 'personaGuest', personaId });
+          this.sendStatus(`${workshopPersonaLabel(personaId)} joined the room.`);
+        }
+        this.postSessionState();
+      } catch (error) {
+        const details = error instanceof Error ? error.message : String(error);
+        this.session.abandonRun(requestId);
+        this.sendStreamComplete(requestId, '', true);
+        if (error instanceof Error && error.name === 'AbortError') {
+          this.sendStatus(`${workshopPersonaLabel(personaId)} invitation cancelled`);
+        } else {
+          this.sendError('workshop.invite_guest', `Failed to invite ${workshopPersonaLabel(personaId)}`, details);
+        }
+        this.postSessionState();
+      } finally {
+        this.settleActiveRun(requestId);
+      }
+    } catch (error) {
+      this.sendError(
+        'workshop.invite_guest',
+        error instanceof Error ? error.message : 'That guest cannot join the room.'
+      );
+    }
+  }
+
+  /** Dispose a guest explicitly and discard its provider-side conversation. */
+  async handleDismissGuest(message: WorkshopDismissGuestMessage): Promise<void> {
+    const personaId = message.payload?.personaId;
+    if (!isWorkshopPersonaId(personaId)) {
+      this.sendError('workshop.dismiss_guest', `Unknown Workshop persona: ${String(personaId)}`);
+      return;
+    }
+    if (this.activeRun?.guestPersonaId === personaId) {
+      this.preemptActiveRun();
+    }
+    const conversationId = this.session.dismissPersonaGuest(personaId);
+    if (!conversationId) {
+      this.sendError('workshop.dismiss_guest', `${workshopPersonaLabel(personaId)} is not an active guest.`);
+      return;
+    }
+    this.assistantToolService.discardConversation(conversationId);
+    this.sendStatus(`${workshopPersonaLabel(personaId)} left the room.`);
+    this.postSessionState();
+  }
+
   async handleSetChatTarget(message: WorkshopSetChatTargetMessage): Promise<void> {
     const target = message.payload;
     if (!target || !['host', 'tool', 'personaGuest'].includes(target.kind)) {
@@ -332,21 +461,21 @@ export class WorkshopHandler {
     targetOverride?: WorkshopChatTarget
   ): Promise<void> {
     const target = targetOverride ?? this.session.getChatTarget();
-    if (target.kind === 'personaGuest') {
-      this.sendError(
-        'workshop.send_message',
-        'Guest persona messaging is not available until the guest has joined the room.'
-      );
-      return;
-    }
     const personaId = this.session.getSelectedPersonaId();
     const hostConversationId = this.session.getHostConversationId();
     const conversationId = target.kind === 'host'
       ? hostConversationId
-      : this.session.getToolSidecarConversationId(target.toolId);
+      : target.kind === 'tool'
+        ? this.session.getToolSidecarConversationId(target.toolId)
+        : this.session.getPersonaGuestConversationId(target.personaId);
 
-    if (target.kind === 'tool' && !conversationId) {
-      this.sendError('workshop.send_message', 'That tool conversation is no longer available.');
+    if ((target.kind === 'tool' || target.kind === 'personaGuest') && !conversationId) {
+      this.sendError(
+        'workshop.send_message',
+        target.kind === 'tool'
+          ? 'That tool conversation is no longer available.'
+          : 'That guest conversation is no longer available.'
+      );
       return;
     }
     const excerpt = this.session.getExcerpt();
@@ -358,6 +487,12 @@ export class WorkshopHandler {
     this.preemptActiveRun();
     const handoff = target.kind === 'host'
       ? buildWorkshopDirectHandoff(this.session.collectUnseenDirectExchanges())
+      : undefined;
+    const guestHandoff = target.kind === 'host'
+      ? buildWorkshopGuestHandoff(this.session.collectUnseenGuestExchangesForHost())
+      : undefined;
+    const guestCatchUp = target.kind === 'personaGuest'
+      ? buildWorkshopGuestCatchUp(this.session.collectUnseenHostTurnsForGuest(target.personaId))
       : undefined;
     const pendingHostUpdates = target.kind === 'host'
       ? this.session.collectPendingHostUpdates()
@@ -383,20 +518,42 @@ export class WorkshopHandler {
     const modelMessage = target.kind === 'host'
       ? buildWorkshopHostMessage(text, {
           handoff,
+          guestHandoff,
           todoEvidence,
           hostUpdate: hostUpdateFrame
         })
-      : text;
+      : target.kind === 'personaGuest'
+        ? buildWorkshopGuestMessage(
+            text,
+            guestCatchUp
+          )
+        : text;
     const label = target.kind === 'host'
       ? workshopPersonaLabel(personaId)
-      : workshopToolLabel(target.toolId);
-    const requestId = generateRequestId(target.kind === 'host' ? 'workshop_host' : 'workshop_tool_message');
+      : target.kind === 'tool'
+        ? workshopToolLabel(target.toolId)
+        : workshopPersonaLabel(target.personaId);
+    const requestId = generateRequestId(
+      target.kind === 'host'
+        ? 'workshop_host'
+        : target.kind === 'tool'
+          ? 'workshop_tool_message'
+          : 'workshop_guest_message'
+    );
     const controller = new AbortController();
-    this.activeRun = { requestId, label, toolId: target.kind === 'tool' ? target.toolId : undefined, controller };
+    this.activeRun = {
+      requestId,
+      label,
+      toolId: target.kind === 'tool' ? target.toolId : undefined,
+      guestPersonaId: target.kind === 'personaGuest' ? target.personaId : undefined,
+      controller
+    };
 
     const userTurn = target.kind === 'host'
       ? this.session.beginPersonaMessage(requestId, displayText)
-      : this.session.beginDirectToolMessage(target.toolId, requestId, displayText);
+      : target.kind === 'tool'
+        ? this.session.beginDirectToolMessage(target.toolId, requestId, displayText)
+        : this.session.beginPersonaGuestMessage(target.personaId, requestId, displayText);
     const hostCapability = target.kind === 'host'
       ? this.capabilityFactory.create({
           requestId,
@@ -414,10 +571,14 @@ export class WorkshopHandler {
     this.postSessionState();
     this.sendStreamStarted(requestId);
     this.sendStatus(
-      handoff
-        ? `Handing ${handoff.unseenTurns} unseen direct-tool turn${handoff.unseenTurns === 1 ? '' : 's'} back to ${label}…`
-        : target.kind === 'tool'
-          ? `Continuing directly with ${label}…`
+        handoff
+          ? `Handing ${handoff.unseenTurns} unseen direct-tool turn${handoff.unseenTurns === 1 ? '' : 's'} back to ${label}…`
+          : target.kind === 'tool'
+            ? `Continuing directly with ${label}…`
+          : target.kind === 'personaGuest'
+            ? guestCatchUp
+              ? `Catching ${label} up on the room…`
+              : `Continuing with ${label}…`
           : `Streaming ${label}…`
     );
 
@@ -428,7 +589,9 @@ export class WorkshopHandler {
             onToken: (token: string) => this.sendStreamChunk(requestId, token),
             capability: hostCapability
           })
-        : await this.assistantToolService.startWorkshopPersonaConversation({
+        : target.kind === 'personaGuest'
+          ? await Promise.reject(new Error('Guest conversation is missing its retained provider id'))
+          : await this.assistantToolService.startWorkshopPersonaConversation({
             personaId,
             excerpt,
             message: modelMessage,
@@ -460,6 +623,12 @@ export class WorkshopHandler {
       });
       if (assistantTurn && target.kind === 'host' && handoff) {
         this.session.commitHostHandoff(handoff.deliveredTurnIds);
+      }
+      if (assistantTurn && target.kind === 'host' && guestHandoff) {
+        this.session.commitHostGuestHandoff(guestHandoff.deliveredTurnIds);
+      }
+      if (assistantTurn && target.kind === 'personaGuest') {
+        this.session.commitGuestCatchUp(target.personaId, guestCatchUp?.deliveredTurnIds ?? []);
       }
       if (assistantTurn && target.kind === 'host' && pendingHostUpdates) {
         this.session.commitPendingHostUpdates(pendingHostUpdates);

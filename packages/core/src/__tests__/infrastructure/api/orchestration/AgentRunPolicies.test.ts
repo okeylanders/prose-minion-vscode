@@ -6,6 +6,7 @@ describe('agent-run caller-to-policy matrix', () => {
       'AssistantToolService dialogue/prose/writing sidebar',
       'WorkshopHandler tool runs',
       'WorkshopHandler persona host turns',
+      'WorkshopHandler persona guest sidecars',
       'DictionaryService standard and parallel blocks',
       'CategorySearchService batches',
       'ContextAssistantService'

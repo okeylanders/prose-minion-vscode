@@ -52,6 +52,7 @@ export const AGENT_RUN_ROUTE_MATRIX = [
   { caller: 'AssistantToolService dialogue/prose/writing sidebar', policy: AGENT_RUN_POLICIES.assistant },
   { caller: 'WorkshopHandler tool runs', policy: AGENT_RUN_POLICIES.workshopTool },
   { caller: 'WorkshopHandler persona host turns', policy: AGENT_RUN_POLICIES.workshopHost },
+  { caller: 'WorkshopHandler persona guest sidecars', policy: AGENT_RUN_POLICIES.workshopToolWithoutResources },
   { caller: 'DictionaryService standard and parallel blocks', policy: AGENT_RUN_POLICIES.dictionary },
   { caller: 'CategorySearchService batches', policy: AGENT_RUN_POLICIES.categorySearch },
   { caller: 'ContextAssistantService', policy: AGENT_RUN_POLICIES.context }

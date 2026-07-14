@@ -342,7 +342,7 @@ export class WorkshopSessionService {
   }
 
   isPersonaSelectionLocked(): boolean {
-    return this.activeRun !== undefined || this.hasHostConversation();
+    return this.activeRun !== undefined || this.hasHostConversation() || this.participants.personaGuests.size > 0;
   }
 
   /** A selected host can change only before its first run or conversation. */
@@ -560,6 +560,17 @@ export class WorkshopSessionService {
     return this.beginMessage(requestId, displayText, 'personaGuest', undefined, personaId);
   }
 
+  /** Begin the first invitation turn before the provider conversation exists. */
+  beginPersonaGuestJoin(
+    personaId: WorkshopPersonaId,
+    requestId: string,
+    displayText: string
+  ): WorkshopTurn {
+    this.requireExcerpt();
+    this.validatePersonaGuestInvitation(personaId);
+    return this.beginMessage(requestId, displayText, 'personaGuest', undefined, personaId);
+  }
+
   /** Begin a direct follow-up to a retained tool sidecar. */
   beginDirectToolMessage(
     toolId: WorkshopToolId,
@@ -625,6 +636,9 @@ export class WorkshopSessionService {
       this.participants.host.conversationId = conversationId;
     }
     if (isGuest && active.guestPersonaId && conversationId) {
+      if (!this.participants.personaGuests.has(active.guestPersonaId)) {
+        this.adoptPersonaGuest(active.guestPersonaId, conversationId);
+      }
       const guest = this.participants.personaGuests.get(active.guestPersonaId);
       if (guest?.liveness === 'live') {
         guest.conversationId = conversationId;
@@ -719,6 +733,11 @@ export class WorkshopSessionService {
       .slice(cursorIndex + 1)
       .filter((turn) => this.isHostThreadTurn(turn))
       .map(cloneTurn);
+  }
+
+  /** Full host-room view used only to build a bounded guest join envelope. */
+  collectHostThreadTurns(): WorkshopTurn[] {
+    return this.turns.filter((turn) => this.isHostThreadTurn(turn)).map(cloneTurn);
   }
 
   /** Adopt only the host delta that actually reached a successful guest turn. */
@@ -1108,6 +1127,9 @@ export class WorkshopSessionService {
 
   private isHostThreadTurn(turn: WorkshopTurn): boolean {
     if (turn.participant === 'guest') {
+      return false;
+    }
+    if (turn.participant === 'writer' && turn.personaId) {
       return false;
     }
     if (turn.artifact === 'direct_tool_message' || turn.artifact === 'direct_tool_response') {

@@ -62,4 +62,22 @@ describe('WorkshopPersonaBrowserModal', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(trigger);
   });
+
+  it('supports an explicit guest invitation mode without changing the host', () => {
+    const onInvite = jest.fn();
+    render(
+      <WorkshopPersonaBrowserModal
+        open
+        activePersonaId="jill"
+        mode="guest"
+        onClose={jest.fn()}
+        onSelect={jest.fn()}
+        onInvite={onInvite}
+      />
+    );
+
+    expect(screen.getByText('Invite another lens')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Margot/ }));
+    expect(onInvite).toHaveBeenCalledWith('margot');
+  });
 });

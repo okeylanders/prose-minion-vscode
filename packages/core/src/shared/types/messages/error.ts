@@ -67,6 +67,8 @@ export type ErrorSource =
   | 'workshop.run_tool'
   | 'workshop.quick_action'
   | 'workshop.send_message'
+  | 'workshop.invite_guest'
+  | 'workshop.dismiss_guest'
   | 'workshop.select_persona'
   | 'workshop.set_chat_target'
   | 'workshop.todo'

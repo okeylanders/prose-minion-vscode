@@ -1381,6 +1381,37 @@
 [data-pm-surface="workshop"] .pm-ws-participant-chip:disabled {
   opacity: 0.45;
 }
+[data-pm-surface="workshop"] .pm-ws-participant-guest {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-pill);
+  background: var(--pm-surface);
+}
+[data-pm-surface="workshop"] .pm-ws-participant-guest .pm-ws-participant-chip {
+  border: 0;
+  background: transparent;
+}
+[data-pm-surface="workshop"] .pm-ws-participant-dismiss {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--pm-dim);
+  background: transparent;
+}
+[data-pm-surface="workshop"] .pm-ws-participant-dismiss:hover {
+  color: var(--pm-text);
+  background: var(--pm-surface-3);
+}
+[data-pm-surface="workshop"] .pm-ws-chip-invite {
+  color: var(--pm-accent-hi);
+  border-style: dashed;
+}
 /* Active chip: static accent treatment — this is the reduced-motion-safe
    baseline that reads as "mode" even with the pulse disabled. */
 [data-pm-surface="workshop"] .pm-ws-chip-active {

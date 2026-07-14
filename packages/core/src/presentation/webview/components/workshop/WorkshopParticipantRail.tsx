@@ -9,10 +9,9 @@
  * render only live sidecars; the host snapshot drops disposed ones, so a
  * chip can never target a dead conversation.
  *
- * Deliberately NOT a persona picker (ADR §1): the persona chip is the
- * return-to-host affordance, never a persona-browser trigger. The rail hides
- * until the first sidecar exists — with only the host in the room, the
- * composer placeholder and header already name the recipient.
+ * Deliberately NOT a host persona picker (ADR §1): the persona chip is the
+ * return-to-host affordance. The explicit Invite guest chip is the one
+ * discoverable entry point for adding a sidecar.
  */
 
 import * as React from 'react';
@@ -20,6 +19,7 @@ import { Icon } from '@components/shared/Icon';
 import {
   WorkshopChatTarget,
   WorkshopPersonaId,
+  WorkshopPersonaGuestSnapshot,
   WorkshopToolSidecarSnapshot
 } from '@messages';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
@@ -32,24 +32,36 @@ interface WorkshopParticipantRailProps {
   personaLabel: string;
   /** Live retained sidecars, in run order (host snapshot truth). */
   toolSidecars: WorkshopToolSidecarSnapshot[];
+  personaGuests?: WorkshopPersonaGuestSnapshot[];
   chatTarget: WorkshopChatTarget;
   onSetChatTarget: (target: WorkshopChatTarget) => void;
+  showInviteGuest?: boolean;
+  onInviteGuest?: () => void;
+  onDismissGuest?: (personaId: WorkshopPersonaId) => void;
 }
 
 export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = ({
   personaId,
   personaLabel,
   toolSidecars,
+  personaGuests = [],
   chatTarget,
-  onSetChatTarget
+  onSetChatTarget,
+  showInviteGuest = false,
+  onInviteGuest = () => undefined,
+  onDismissGuest = () => undefined
 }) => {
-  if (toolSidecars.length === 0) {
+  if (toolSidecars.length === 0 && personaGuests.length === 0 && !showInviteGuest) {
     return null;
   }
 
   const hostActive = chatTarget.kind === 'host';
   const activeToolLabel = chatTarget.kind === 'tool'
     ? workshopToolLabel(chatTarget.toolId)
+    : null;
+  const activeGuestLabel = chatTarget.kind === 'personaGuest'
+    ? personaGuests.find((guest) => guest.personaId === chatTarget.personaId)?.personaLabel
+      ?? chatTarget.personaId
     : null;
 
   return (
@@ -68,6 +80,42 @@ export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = (
       >
         <Icon name={WORKSHOP_PERSONA_FOCUS_ICONS[personaId]} size={12} /> {personaLabel}
       </button>
+      {personaGuests.map((guest) => {
+        const active = guest.activeTarget && guest.liveness === 'live';
+        const unavailable = guest.liveness !== 'live' || !guest.hasConversation;
+        return (
+          <span key={guest.personaId} className="pm-ws-participant-guest">
+            <button
+              className={`pm-ws-participant-chip ${active ? 'pm-ws-chip-active pm-ws-chip-guest' : ''}`}
+              type="button"
+              aria-pressed={active}
+              disabled={unavailable}
+              onClick={() => {
+                if (!active) {
+                  onSetChatTarget({ kind: 'personaGuest', personaId: guest.personaId });
+                }
+              }}
+              title={unavailable
+                ? `${guest.personaLabel}'s conversation is no longer available`
+                : active
+                  ? `Talking to ${guest.personaLabel}`
+                  : `Talk to ${guest.personaLabel}`}
+            >
+              <Icon name={WORKSHOP_PERSONA_FOCUS_ICONS[guest.personaId]} size={12} /> {guest.personaLabel}
+            </button>
+            {guest.liveness === 'live' && (
+              <button
+                className="pm-ws-participant-dismiss"
+                type="button"
+                aria-label={`Dismiss ${guest.personaLabel}`}
+                onClick={() => onDismissGuest(guest.personaId)}
+              >
+                <Icon name="x" size={10} />
+              </button>
+            )}
+          </span>
+        );
+      })}
       {toolSidecars.map((sidecar) => {
         const label = workshopToolLabel(sidecar.toolId);
         const active = sidecar.activeTarget;
@@ -96,12 +144,24 @@ export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = (
           </button>
         );
       })}
+      {showInviteGuest && (
+        <button
+          className="pm-ws-participant-chip pm-ws-chip-invite"
+          type="button"
+          onClick={onInviteGuest}
+          title="Invite a persona guest into the room"
+        >
+          <Icon name="person" size={12} /> Invite guest
+        </button>
+      )}
       {/* The banner this rail replaced was role="status" — keep direct-mode
           switches audible to screen readers, not just visible as chip state. */}
       <span className="pm-ws-visually-hidden" role="status">
         {activeToolLabel
           ? `Talking directly to ${activeToolLabel}`
-          : `Talking to ${personaLabel}`}
+          : activeGuestLabel
+            ? `Talking to ${activeGuestLabel}`
+            : `Talking to ${personaLabel}`}
       </span>
     </div>
   );

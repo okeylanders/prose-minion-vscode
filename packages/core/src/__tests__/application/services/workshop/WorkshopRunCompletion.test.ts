@@ -175,7 +175,7 @@ describe('completeWorkshopRun', () => {
     expect(turn).toBeUndefined();
     expect(events.error).toHaveBeenCalledWith(
       "Failed to retain Jill's conversation.",
-      'The host response did not return a retained conversation.'
+      'The participant response did not return a retained conversation.'
     );
   });
 

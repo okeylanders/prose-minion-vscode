@@ -116,7 +116,7 @@ describe('Workshop guest transcript and join envelopes', () => {
 
   it('labels the room deterministically and excludes direct-tool gossip', () => {
     const transcript = buildWorkshopGuestTranscript([
-      roomTurn({ id: 'writer-1', role: 'user', participant: 'writer', content: 'Writer question.' }),
+      roomTurn({ id: 'writer-1', role: 'user', participant: 'writer', personaId: undefined, personaLabel: undefined, content: 'Writer question.' }),
       roomTurn({ id: 'host-1', content: 'Jill answer.' }),
       roomTurn({
         id: 'report-1',
@@ -181,7 +181,7 @@ describe('Workshop guest transcript and join envelopes', () => {
       id: `catch-${index}`,
       content: `Catch-up ${index}`
     }));
-    const catchUp = buildWorkshopGuestCatchUp(turns);
+    const catchUp = buildWorkshopGuestCatchUp(turns)!;
 
     expect(catchUp.includedTurns).toBe(PROMPT_BUDGETS.guestCatchUp.turns);
     expect(catchUp.omittedTurns).toBe(1);

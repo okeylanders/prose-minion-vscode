@@ -84,8 +84,13 @@ export interface WorkshopTodoEvidence {
 const GUEST_TRANSCRIPT_TRUNCATION_MARKER =
   '\n[Workshop transcript turn truncated by the participant bound.]';
 
-function isGuestTranscriptTurn(turn: WorkshopTurn): boolean {
-  if (turn.participant === 'guest') {
+function isGuestTranscriptTurn(turn: WorkshopTurn, includeGuestTurns: boolean): boolean {
+  if (turn.participant === 'guest' || (turn.participant === 'writer' && turn.personaId)) {
+    if (!includeGuestTurns) {
+      return false;
+    }
+  }
+  if (turn.participant === 'guest' && !turn.personaId) {
     return false;
   }
   return turn.artifact !== 'direct_tool_message' && turn.artifact !== 'direct_tool_response';
@@ -93,11 +98,15 @@ function isGuestTranscriptTurn(turn: WorkshopTurn): boolean {
 
 function formatGuestTranscriptTurn(turn: WorkshopTurn): string {
   const speaker = turn.participant === 'writer'
-    ? 'Writer'
+    ? turn.personaId
+      ? `Writer → ${turn.personaLabel ?? workshopPersonaLabel(turn.personaId)}`
+      : 'Writer'
     : turn.participant === 'tool'
       ? `${turn.toolLabel ?? turn.toolId ?? 'Tool'} (report)`
       : turn.participant === 'host'
         ? turn.personaLabel ?? 'Host'
+        : turn.participant === 'guest'
+          ? turn.personaLabel ?? 'Guest'
         : turn.participant === 'session'
           ? 'Workshop'
           : turn.personaLabel ?? 'Participant';
@@ -107,9 +116,10 @@ function formatGuestTranscriptTurn(turn: WorkshopTurn): string {
 function buildGuestTranscriptFrame(
   turns: readonly WorkshopTurn[],
   budget: typeof PROMPT_BUDGETS.guestJoinSnapshot | typeof PROMPT_BUDGETS.guestCatchUp,
-  frameName: 'workshop-transcript' | 'workshop-guest-catch-up'
+  frameName: 'workshop-transcript' | 'workshop-guest-catch-up' | 'workshop-guest-handoff',
+  includeGuestTurns = false
 ): WorkshopTranscript {
-  const candidates = turns.filter(isGuestTranscriptTurn);
+  const candidates = turns.filter((turn) => isGuestTranscriptTurn(turn, includeGuestTurns));
   const newest = candidates.slice(-budget.turns);
   const windowOmittedTurns = candidates.length - newest.length;
   const blocks: string[] = [];
@@ -172,8 +182,42 @@ export function buildWorkshopGuestTranscript(
 /** Build the bounded host-room delta delivered before a guest reply. */
 export function buildWorkshopGuestCatchUp(
   turns: readonly WorkshopTurn[]
-): WorkshopTranscript {
-  return buildGuestTranscriptFrame(turns, PROMPT_BUDGETS.guestCatchUp, 'workshop-guest-catch-up');
+): WorkshopTranscript | undefined {
+  return turns.length > 0
+    ? buildGuestTranscriptFrame(turns, PROMPT_BUDGETS.guestCatchUp, 'workshop-guest-catch-up')
+    : undefined;
+}
+
+/** Build guest exchanges as bounded evidence for the permanent host. */
+export function buildWorkshopGuestHandoff(
+  turns: readonly WorkshopTurn[]
+): WorkshopTranscript | undefined {
+  return turns.length > 0
+    ? buildGuestTranscriptFrame(
+        turns,
+        PROMPT_BUDGETS.guestCatchUp,
+        'workshop-guest-handoff',
+        true
+      )
+    : undefined;
+}
+
+/** Compose a retained guest continuation with an optional room delta. */
+export function buildWorkshopGuestMessage(
+  writerMessage: string,
+  catchUp?: WorkshopTranscript
+): string {
+  const safeWriterMessage = neutralizeReservedPersonaPromptDelimiters(writerMessage);
+  if (!catchUp) {
+    return safeWriterMessage;
+  }
+  return [
+    catchUp.message,
+    '',
+    '<writer-message>',
+    safeWriterMessage,
+    '</writer-message>'
+  ].join('\n');
 }
 
 function buildGuestExcerptFrame(excerpt: WorkshopExcerpt): string {
@@ -483,6 +527,7 @@ export function buildWorkshopDirectHandoff(
 
 export interface WorkshopHostMessageOptions {
   handoff?: WorkshopDirectHandoff;
+  guestHandoff?: WorkshopTranscript;
   todoEvidence?: WorkshopTodoEvidence;
   writerMessageIsTrustedEnvelope?: boolean;
   hostUpdate?: string;
@@ -496,7 +541,7 @@ export function buildWorkshopHostMessage(
   const safeWriterMessage = options.writerMessageIsTrustedEnvelope
     ? writerMessage
     : neutralizeReservedPersonaPromptDelimiters(writerMessage);
-  if (!options.handoff && !options.hostUpdate && !options.todoEvidence) {
+  if (!options.handoff && !options.guestHandoff && !options.hostUpdate && !options.todoEvidence) {
     return safeWriterMessage;
   }
   return [
@@ -506,6 +551,8 @@ export function buildWorkshopHostMessage(
       ? neutralizeReservedPersonaPromptDelimiters(options.handoff.message)
       : undefined,
     options.handoff ? '' : undefined,
+    options.guestHandoff?.message,
+    options.guestHandoff ? '' : undefined,
     options.todoEvidence?.message,
     options.todoEvidence ? '' : undefined,
     'WRITER MESSAGE:',

@@ -155,8 +155,19 @@ host never changes.
 - Added focused session and prompt-builder coverage for guest lifecycle,
   cursor adoption, attribution, labels, bounds, and join-frame identity.
 
-Remaining work starts at the provider/handler transaction: launch and dismiss
-routes, fresh guest conversation creation, catch-up delivery/commit on
-successful turns, host handoff evidence, persona-browser invite mode, rail and
-composer UI, guest-specific logging/token attribution, reload/disposal
-integration, and the full validation/smoke bundle.
+### First testable slice (2026-07-14)
+
+- Added explicit `Invite guest` and `Dismiss guest` message routes. Invitation
+  is writer-initiated; the host never autonomously launches a guest.
+- Added a no-capability retained guest provider path using a separate guest
+  identity contract and the bounded join envelope. Successful first responses
+  adopt the guest conversation atomically and target it in the composer.
+- Added guest continuation routing, bounded host catch-up commit, and bounded
+  guest-to-host handoff evidence. Provider conversation ids remain host-side.
+- Added persona-browser invite mode, participant-rail guest chips, dismiss
+  affordance, composer recipient labels, and focused handler/provider/session/UI
+  coverage.
+
+Remaining work: guest-specific token/log evidence, reload/disposal integration
+coverage, richer excerpt-revision catch-up frames, and the final manual smoke
+bundle against a configured OpenRouter key.
