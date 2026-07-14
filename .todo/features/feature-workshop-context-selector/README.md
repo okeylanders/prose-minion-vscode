@@ -2,7 +2,13 @@
 
 **Date Identified**: 2026-07-10
 **Source**: User request
-**Status**: Partially delivered — paste-only brief shipped in Sprint 06C; selector modal remains planned
+**Status**: Partially delivered — paste-only brief shipped in Sprint 06C;
+remaining scope scheduled in [Sprint 12](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/12-context-excerpt-intake-polish.md)
+with a revised intake design (2026-07-14): the Context Brief panel becomes
+`[Add free text]` / `[Add file]` with **multiple typed attachments** of each
+kind (cards with size + remove, aggregate budget), the selector modal is the
+`[Add file]` path, and the composer's `+` opens the same modal mid-conversation.
+The single paste-only brief is replaced by the attachment list in that sprint.
 **Priority**: High
 **Estimated Effort**: Medium
 

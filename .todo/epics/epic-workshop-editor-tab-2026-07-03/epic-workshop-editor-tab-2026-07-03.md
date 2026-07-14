@@ -2,9 +2,9 @@
 
 **Created**: 2026-07-06
 **Status**: In Progress
-**Progress**: 4/7 sprints merged; Sprint 05 ready; Sprints 06-07 planned (Sprint 01 [PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66); Sprint 02 [PR #67](https://github.com/okeylanders/prose-minion-vscode/pull/67); Sprint 03 [PR #68](https://github.com/okeylanders/prose-minion-vscode/pull/68); Sprint 04 [PR #69](https://github.com/okeylanders/prose-minion-vscode/pull/69))
+**Progress**: Sprints 01–09 merged (Sprint 09 [PR #76](https://github.com/okeylanders/prose-minion-vscode/pull/76)); Sprints 10–12 planned (Sprint 01 [PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66); Sprint 02 [PR #67](https://github.com/okeylanders/prose-minion-vscode/pull/67); Sprint 03 [PR #68](https://github.com/okeylanders/prose-minion-vscode/pull/68); Sprint 04 [PR #69](https://github.com/okeylanders/prose-minion-vscode/pull/69))
 **Design source**: [Direction B — Split & Pinned](../../../docs/design/Prose%20Minion%20-%20Assistant%20Tab.html)
-**ADRs**: [2026-07-03 — Assistant as a Full Editor Tab](../../../docs/adr/2026-07-03-assistant-editor-tab.md); [2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](../../../docs/adr/2026-07-09-workshop-persona-hosted-conversations.md); [2026-07-11 — Workshop Excerpt Revision and Room Memory](../../../docs/adr/2026-07-11-workshop-excerpt-revision-and-room-memory.md); [2026-07-11 — Workshop Guest Persona Sidecars](../../../docs/adr/2026-07-11-workshop-guest-persona-sidecars.md)
+**ADRs**: [2026-07-03 — Assistant as a Full Editor Tab](../../../docs/adr/2026-07-03-assistant-editor-tab.md); [2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](../../../docs/adr/2026-07-09-workshop-persona-hosted-conversations.md); [2026-07-11 — Workshop Excerpt Revision and Room Memory](../../../docs/adr/2026-07-11-workshop-excerpt-revision-and-room-memory.md); [2026-07-11 — Workshop Guest Persona Sidecars](../../../docs/adr/2026-07-11-workshop-guest-persona-sidecars.md); [2026-07-14 — Workshop Session Persistence and the Session Browser](../../../docs/adr/2026-07-14-workshop-session-persistence.md)
 **Integration branch**: `epic/workshop-editor-tab`
 
 ## Goal
@@ -56,9 +56,13 @@ Each sprint is independently shippable behind the (initially unregistered)
 | 7 | `sprint/workshop-editor-tab-07-persona-capabilities` | [Persona-callable capabilities](sprints/07-persona-capabilities.md) | Personas autonomously invoke bounded Writer's Dictionary and analysis capabilities through the proven typed host boundary. |
 | 8 | `sprint/workshop-editor-tab-08-actionable-tool-todos` | [Actionable tool To-do List](sprints/08-actionable-tool-todos.md) | Writers promote attributable tool findings into a durable task list the persona can see as bounded evidence. |
 | 9 | `sprint/workshop-editor-tab-09-persona-guest-sidecars` | [Guest persona sidecars](sprints/09-persona-guest-sidecars.md) | Writers summon a bounded second-opinion persona seeded with a labeled transcript snapshot and cursor-based catch-up. |
+| 10 | `sprint/workshop-editor-tab-10-session-persistence` | [Session persistence, save, and browser](sprints/10-session-persistence.md) | Sessions survive VS Code restarts as workspace JSON records; a session browser reopens prior sessions with the full record and honestly fresh room memory. |
+| 11 | `sprint/workshop-editor-tab-11-persona-file-access` | [Persona file access](sprints/11-persona-file-access.md) | The host persona searches and reads allowlisted project resources through the Sprint 07 capability boundary — after the markdown-sanitization gate lands as its opening task. |
+| 12 | `sprint/workshop-editor-tab-12-context-excerpt-intake` | [Excerpt & context intake rework + polish](sprints/12-context-excerpt-intake-polish.md) | Intent-button intake replaces "pinning"; context becomes multiple visible attachments; final interface polish before main. |
 
-Final step after Sprint 9 merges: resolve the shared markdown-sanitization gate,
-then open one PR `epic/workshop-editor-tab → main`.
+The shared markdown-sanitization gate moves forward into Sprint 11's opening
+tasks (persona file access sharpens that risk — see Known Risks). Final step
+after Sprint 12 merges: open one PR `epic/workshop-editor-tab → main`.
 
 ## Architectural Invariants (hold across every sprint)
 
@@ -92,8 +96,8 @@ then open one PR `epic/workshop-editor-tab → main`.
 - **Apply to draft** (write-back into the source file) — needs its own design
   for ranges/dirty buffers; routes through `FileOperationsHandler` later.
 - **Branch board** (Direction C) and branching semantics on variation cards.
-- **Session persistence across VS Code restarts** (`WebviewPanelSerializer`) —
-  v1 persists within the window via host-side state + `retainContextWhenHidden`.
+- ~~**Session persistence across VS Code restarts** (`WebviewPanelSerializer`)~~ —
+  pulled back into scope as Sprint 10 ([ADR 2026-07-14](../../../docs/adr/2026-07-14-workshop-session-persistence.md)).
 - **Sidebar reskin** and the **Model Browser** — separate follow-ups. A
   temporary look divergence between sidebar and Workshop is acceptable in alpha.
 
@@ -160,9 +164,11 @@ Target behavior:
   sanitizer, on BOTH surfaces, and the CSP's `img-src https:` permits the
   classic markdown-image-beacon exfil for prompt-injected responses
   (PR #67 review #13, Patricia). Inherited surface, deliberately not fixed
-  inside the Workshop sprints — sanitize ONCE in the shared renderer
-  (DOMPurify or disable raw-HTML passthrough) as its own follow-up before
-  the epic's final merge to main.
+  inside the early Workshop sprints — sanitize ONCE in the shared renderer
+  (DOMPurify or disable raw-HTML passthrough). **Now scheduled as Sprint 11's
+  opening task**: persona file access turns injected-file-content →
+  image-beacon into a real exfil chain over anything the persona can read,
+  so the gate must land before that capability ships.
 
 ## Related
 

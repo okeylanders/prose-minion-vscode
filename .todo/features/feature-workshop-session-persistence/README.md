@@ -1,9 +1,15 @@
 # Feature: Workshop Session Persistence (Survive VS Code Restart)
 
-**Status**: Proposed — spec only; needs an ADR before coding (touches a new
-Platform port + composition root)
-**Priority**: Medium (quality-of-life; the excerpt + context brief are painful
-to lose, the conversation less so)
+**Status**: ADR drafted ([2026-07-14 — Workshop Session Persistence and the Session Browser](../../../docs/adr/2026-07-14-workshop-session-persistence.md));
+scheduled as [Sprint 10](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md).
+The ADR supersedes this README's storage direction: **JSON files under
+`prose-minion/sessions/` via the existing `FileSystem` port** (plus a small
+`delete()` port extension), not a `workspaceState` Memento/`KeyValueStore`
+port — the session-browser requirement made file storage the better fit.
+Ship shape = T2 + explicit save + browser. The snapshot inventory below
+predates Sprints 08–09: it must also include the **todo list** and **guest
+participant identities/turns**.
+**Priority**: High (promoted 2026-07-14 — restart data loss is a live pain point)
 **Date**: 2026-07-13
 **Origin**: "Is the Workshop editor supposed to remember anything between VS
 Code restarts?" — investigation on `sprint/workshop-editor-tab-07-persona-capabilities`

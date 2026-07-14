@@ -1,7 +1,13 @@
 # Feature: Workshop Persona Context Loading
 
-**Status**: Planned
-**Priority**: Medium
+**Status**: Scheduled as [Sprint 11](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/11-persona-file-access.md)
+— **direction updated (2026-07-14)**: fulfillment ships as `resource.catalog`
+/ `resource.search` / `resource.read` capabilities through the Sprint 07
+persona-capability boundary, not the retained `<context-request>` parsing
+path this README proposed (it predates Sprint 07). `ContextResourceResolver`,
+configured context groups, and path containment remain the reachability
+policy; the markdown-sanitization gate lands first in that sprint.
+**Priority**: High (promoted 2026-07-14)
 **Source**: Workshop persona-chat readiness review (2026-07-09)
 
 ## Problem
