@@ -14,6 +14,7 @@ jest.mock('marked', () => {
 
 import {
   parseVariations,
+  WORKSHOP_TURN_ID_ATTRIBUTE,
   WorkshopTurnBubble
 } from '@components/workshop/WorkshopTurnBubble';
 import { WorkshopTurn } from '@messages';
@@ -62,6 +63,94 @@ Third version.`);
 });
 
 describe('WorkshopTurnBubble variation cards', () => {
+  it('requires an explicit click to promote a structured finding', () => {
+    const onAddTodo = jest.fn();
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('Report.\n\n### Next steps\n- Tighten the opening.'),
+          actionableFindings: [
+            { key: 'finding-1', ordinal: 1, text: 'Tighten the opening.' }
+          ]
+        }}
+        quickActionToolId="prose"
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onAddTodo={onAddTodo}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(onAddTodo).not.toHaveBeenCalled();
+    expect(document.querySelector(`[${WORKSHOP_TURN_ID_ATTRIBUTE}="turn-1"]`)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
+    expect(onAddTodo).toHaveBeenCalledWith('turn-1', 'finding-1');
+  });
+
+  it('shows already-promoted findings without adding them again', () => {
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('Report.'),
+          actionableFindings: [
+            { key: 'finding-1', ordinal: 1, text: 'Tighten the opening.' }
+          ]
+        }}
+        quickActionToolId={null}
+        promotedFindingKeys={new Set(['finding-1'])}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /added/i }).hasAttribute('disabled')).toBe(true);
+  });
+
+  it('offers prioritized host proposals with an explicit Add all action', () => {
+    const onAddTodo = jest.fn();
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('Here is the revision order.'),
+          participant: 'host',
+          artifact: 'persona_message',
+          toolId: undefined,
+          toolLabel: undefined,
+          reportTurnId: undefined,
+          personaId: 'jill',
+          personaLabel: 'Jill',
+          actionableFindings: [
+            {
+              key: 'finding-1', ordinal: 1, priority: 'high',
+              text: 'Replace the beacon image.'
+            },
+            {
+              key: 'finding-2', ordinal: 2, priority: 'medium',
+              text: 'Audit the gravity metaphor.'
+            }
+          ]
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onAddTodo={onAddTodo}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('high')).toBeTruthy();
+    expect(screen.getByText('medium')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Add all' }));
+    expect(onAddTodo.mock.calls).toEqual([
+      ['turn-1', 'finding-1'],
+      ['turn-1', 'finding-2']
+    ]);
+  });
+
   it('renders duplicate model numbers with stable positional labels and wires copy/save content', () => {
     const onCopy = jest.fn();
     const onSave = jest.fn();

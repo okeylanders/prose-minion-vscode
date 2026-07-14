@@ -14,6 +14,7 @@
 import { AnalysisResult } from '@/domain/models/AnalysisResult';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { isApiKeyNotConfiguredWarning, TokenUsage, WorkshopTurn } from '@messages';
+import { inspectWorkshopActionableFindings } from './WorkshopActionableFindings';
 
 export interface WorkshopRunCompletionCopy {
   cancelledStatus: string;
@@ -115,7 +116,20 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   // preempted after dispatch) must not stream its full content to the webview
   // as if it landed, and it always leaves a log trail before the API-billed
   // turn evaporates.
-  const turn = session.completeRun(requestId, result.content, result.usage, truncated, result.conversationId);
+  const actionableFindings = inspectWorkshopActionableFindings(result.content);
+  if (actionableFindings.outcome !== 'absent') {
+    input.log(
+      `Actionable findings ${actionableFindings.outcome}: ${actionableFindings.findings.length} items (${label}${actionableFindings.outcome === 'rejected' ? `; reason=${actionableFindings.rejection}` : ''})`
+    );
+  }
+  const turn = session.completeRun(
+    requestId,
+    result.content,
+    result.usage,
+    truncated,
+    result.conversationId,
+    actionableFindings.findings
+  );
   if (!turn) {
     if (input.createsRetainedConversation && result.conversationId) {
       input.discardConversation(result.conversationId);

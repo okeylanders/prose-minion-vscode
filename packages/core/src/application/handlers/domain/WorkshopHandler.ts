@@ -28,6 +28,7 @@ import {
   buildWorkshopDirectHandoff,
   buildWorkshopHostMessage,
   buildWorkshopHostUpdateFrame,
+  buildWorkshopTodoEvidence,
   describeWorkshopPendingHostUpdates
 } from '@/application/services/workshop/WorkshopPromptBuilder';
 import {
@@ -61,6 +62,7 @@ import {
   WorkshopSetChatTargetMessage,
   WorkshopSetContextBriefMessage,
   WorkshopSetExcerptMessage,
+  WorkshopTodoActionMessage,
   WorkshopSessionStateMessage,
   WorkshopToolId,
   WorkshopChatTarget,
@@ -157,6 +159,7 @@ export class WorkshopHandler {
       MessageType.WORKSHOP_SET_CONTEXT_BRIEF,
       this.handleSetContextBrief.bind(this)
     );
+    router.register(MessageType.WORKSHOP_TODO_ACTION, this.handleTodoAction.bind(this));
     router.register(MessageType.WORKSHOP_PICK_EXCERPT_FILE, this.handlePickExcerptFile.bind(this));
     router.register(MessageType.WORKSHOP_RESET_SESSION, this.handleResetSession.bind(this));
     router.register(MessageType.WORKSHOP_REQUEST_SESSION, this.handleRequestSession.bind(this));
@@ -348,6 +351,9 @@ export class WorkshopHandler {
     const pendingHostUpdates = target.kind === 'host'
       ? this.session.collectPendingHostUpdates()
       : undefined;
+    const todoEvidence = target.kind === 'host'
+      ? buildWorkshopTodoEvidence(this.session.collectOpenTodosForHost())
+      : undefined;
     // A fresh host already receives the current excerpt and brief through its
     // initial envelope. Only retained conversations need a superseding delta.
     const hostUpdateFrame = hostConversationId
@@ -366,6 +372,7 @@ export class WorkshopHandler {
     const modelMessage = target.kind === 'host'
       ? buildWorkshopHostMessage(text, {
           handoff,
+          todoEvidence,
           hostUpdate: hostUpdateFrame
         })
       : text;
@@ -554,6 +561,80 @@ export class WorkshopHandler {
       );
     }
     this.postSessionState();
+  }
+
+  async handleTodoAction(message: WorkshopTodoActionMessage): Promise<void> {
+    const action = message.payload;
+    let apply: () => void;
+    let target: string;
+    switch (action?.action) {
+      case 'add':
+        if (typeof action.sourceTurnId !== 'string' || typeof action.findingKey !== 'string') {
+          this.sendError('workshop.todo', 'Task source must identify a turn and finding');
+          return;
+        }
+        apply = () => this.session.addTodoFromFinding(action.sourceTurnId, action.findingKey);
+        target = `sourceTurnId=${action.sourceTurnId}, findingKey=${action.findingKey}`;
+        break;
+      case 'edit':
+        if (typeof action.todoId !== 'string' || typeof action.text !== 'string') {
+          this.sendError('workshop.todo', 'Task edit must include an id and text');
+          return;
+        }
+        apply = () => this.session.editTodo(action.todoId, action.text);
+        target = `todoId=${action.todoId}`;
+        break;
+      case 'complete':
+        if (typeof action.todoId !== 'string') {
+          this.sendError('workshop.todo', 'Task action must include an id');
+          return;
+        }
+        apply = () => this.session.setTodoStatus(action.todoId, 'completed');
+        target = `todoId=${action.todoId}`;
+        break;
+      case 'reopen':
+        if (typeof action.todoId !== 'string') {
+          this.sendError('workshop.todo', 'Task action must include an id');
+          return;
+        }
+        apply = () => this.session.setTodoStatus(action.todoId, 'open');
+        target = `todoId=${action.todoId}`;
+        break;
+      case 'dismiss':
+        if (typeof action.todoId !== 'string') {
+          this.sendError('workshop.todo', 'Task action must include an id');
+          return;
+        }
+        apply = () => this.session.setTodoStatus(action.todoId, 'dismissed');
+        target = `todoId=${action.todoId}`;
+        break;
+      case 'reorder':
+        if (
+          typeof action.todoId !== 'string' ||
+          (action.direction !== 'up' && action.direction !== 'down')
+        ) {
+          this.sendError('workshop.todo', 'Task reorder must include an id and direction');
+          return;
+        }
+        apply = () => this.session.reorderTodo(action.todoId, action.direction);
+        target = `todoId=${action.todoId}, direction=${action.direction}`;
+        break;
+      default:
+        this.sendError('workshop.todo', 'Unknown Workshop task action');
+        return;
+    }
+    try {
+      apply();
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Task action applied (${action.action}, ${target}, source=${message.source})`
+      );
+      this.postSessionState();
+    } catch (error) {
+      this.sendError(
+        'workshop.todo',
+        error instanceof Error ? error.message : 'Could not update Workshop task'
+      );
+    }
   }
 
   /**

@@ -17,6 +17,7 @@ describe('WorkshopComposer', () => {
         sessionReady
         onSend={onSend}
         onCancel={jest.fn()}
+        onOpenContext={jest.fn()}
         onOpenTools={jest.fn()}
       />
     );
@@ -56,5 +57,30 @@ describe('WorkshopComposer', () => {
     expect(form && hint
       ? form.compareDocumentPosition(hint) & Node.DOCUMENT_POSITION_FOLLOWING
       : 0).toBeTruthy();
+  });
+
+  it('keeps context and tool browsing on separate explicit buttons', () => {
+    const onOpenContext = jest.fn();
+    const onOpenTools = jest.fn();
+    render(
+      <WorkshopComposer
+        canMessage
+        hasConversation
+        recipientLabel="Jill"
+        isRunning={false}
+        sessionReady
+        onSend={jest.fn()}
+        onCancel={jest.fn()}
+        onOpenContext={onOpenContext}
+        onOpenTools={onOpenTools}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add project context' }));
+    expect(onOpenContext).toHaveBeenCalledTimes(1);
+    expect(onOpenTools).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tools' }));
+    expect(onOpenTools).toHaveBeenCalledTimes(1);
   });
 });

@@ -46,6 +46,7 @@ const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessio
       session: {
         excerptVersion: 0,
         replacementCount: 0,
+        todos: [],
         turns,
         totalTurns: turns.length,
         truncatedTurns: 0,
@@ -133,6 +134,22 @@ describe('useWorkshop', () => {
     expect(requests[0].source).toBe('webview.workshop');
   });
 
+  it('posts explicit writer-owned task actions', () => {
+    const { result } = renderHook(() => useWorkshop());
+
+    act(() => result.current.todoAction({
+      action: 'add',
+      sourceTurnId: 'turn-report',
+      findingKey: 'finding-1'
+    }));
+
+    expect(posted(MessageType.WORKSHOP_TODO_ACTION)[0].payload).toEqual({
+      action: 'add',
+      sourceTurnId: 'turn-report',
+      findingKey: 'finding-1'
+    });
+  });
+
   it('rehydrates the whole thread from a session snapshot', () => {
     const { result } = renderHook(() => useWorkshop());
     const turns = [
@@ -146,6 +163,22 @@ describe('useWorkshop', () => {
           excerpt: { text: 'Pinned prose.', version: 1, relativePath: 'ch1.md', pinnedAt: 1 },
           contextBrief: 'Mara is hiding her identity.',
           pendingHostUpdate: { contextBrief: true },
+          todos: [{
+            id: 'todo-1',
+            text: 'Fix the cup continuity.',
+            status: 'open',
+            source: {
+              kind: 'tool_report',
+              turnId: 't2',
+              participantLabel: 'Continuity',
+              toolId: 'continuity',
+              findingKey: 'finding-1',
+              findingText: 'Fix the cup continuity.',
+              excerptVersion: 1
+            },
+            createdAt: 1,
+            stale: false
+          }],
           turns
         })
       );
@@ -156,6 +189,7 @@ describe('useWorkshop', () => {
     expect(result.current.contextBrief).toBe('Mara is hiding her identity.');
     expect(result.current.contextBriefPending).toBe(true);
     expect(result.current.turns.map((t) => t.id)).toEqual(['t1', 't2']);
+    expect(result.current.todos[0]).toMatchObject({ id: 'todo-1', status: 'open' });
     expect(result.current.isRunning).toBe(false);
   });
 

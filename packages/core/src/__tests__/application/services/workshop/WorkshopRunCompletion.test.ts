@@ -71,6 +71,56 @@ describe('completeWorkshopRun', () => {
     expect(session.getHostConversationId()).toBe('host-conv');
   });
 
+  it('attaches strict prioritized proposals to a completed host turn', () => {
+    session.beginPersonaMessage('req-1', 'Turn the review into tasks.');
+
+    const turn = settle({
+      requestId: 'req-1',
+      result: result([
+        'The sermon has two revision targets.',
+        '',
+        '### Next steps',
+        '- [high] Replace the beacon image.',
+        '- [medium] Audit the gravity metaphor.'
+      ].join('\n'), { conversationId: 'host-conv' })
+    })!;
+
+    expect(turn.actionableFindings).toEqual([
+      {
+        key: 'finding-1', ordinal: 1, priority: 'high',
+        text: 'Replace the beacon image.'
+      },
+      {
+        key: 'finding-2', ordinal: 2, priority: 'medium',
+        text: 'Audit the gravity metaphor.'
+      }
+    ]);
+    const todo = session.addTodoFromFinding(turn.id, 'finding-1');
+    expect(todo).toMatchObject({
+      priority: 'high',
+      source: {
+        kind: 'host_turn',
+        turnId: turn.id,
+        participantLabel: 'Jill',
+        personaId: 'jill'
+      }
+    });
+  });
+
+  it('logs a whole-section rejection without adopting any malformed proposals', () => {
+    session.beginPersonaMessage('req-1', 'Turn the review into tasks.');
+
+    const turn = settle({
+      requestId: 'req-1',
+      result: result('Advice.\n\n### Next steps\n- [ ] Rewrite the opening.', { conversationId: 'host-conv' })
+    })!;
+
+    expect(turn.actionableFindings).toBeUndefined();
+    expect(log).toHaveBeenCalledWith(
+      'Actionable findings rejected: 0 items (Jill; reason=invalid_item)'
+    );
+  });
+
   it('cancelled: discards only a conversation this run created, sends status, and logs', () => {
     session.beginPersonaMessage('req-1', 'Hello');
 

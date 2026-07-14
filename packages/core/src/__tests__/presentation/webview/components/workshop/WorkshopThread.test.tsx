@@ -41,6 +41,7 @@ describe('WorkshopThread sidecar-owned affordances', () => {
           availableForDirectFollowUp: true,
           activeTarget: false
         }]}
+        currentExcerptVersion={1}
         onQuickAction={noop}
         onTalkDirectly={noop}
         onCopy={noop}
@@ -64,6 +65,7 @@ describe('WorkshopThread sidecar-owned affordances', () => {
           availableForDirectFollowUp: true,
           activeTarget: false
         }]}
+        currentExcerptVersion={1}
         onQuickAction={noop}
         onTalkDirectly={noop}
         onCopy={noop}
@@ -102,6 +104,7 @@ describe('WorkshopThread sidecar-owned affordances', () => {
           availableForDirectFollowUp: true,
           activeTarget: true
         }]}
+        currentExcerptVersion={1}
         onQuickAction={noop}
         onTalkDirectly={noop}
         onCopy={noop}
@@ -134,6 +137,7 @@ describe('WorkshopThread sidecar-owned affordances', () => {
       <WorkshopThread
         turns={[personaTurn]}
         toolSidecars={[]}
+        currentExcerptVersion={1}
         onQuickAction={noop}
         onTalkDirectly={noop}
         onCopy={noop}
@@ -145,5 +149,33 @@ describe('WorkshopThread sidecar-owned affordances', () => {
     expect(screen.getByRole('button', { name: 'Copy' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Save to notes' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /rewrite/i })).toBeNull();
+  });
+
+  it('disables task promotion from a superseded excerpt before the host rejects it', () => {
+    const staleReport: WorkshopTurn = {
+      ...report('report-old', 'prose'),
+      actionableFindings: [
+        { key: 'finding-1', ordinal: 1, text: 'Tighten the opening.' }
+      ]
+    };
+
+    render(
+      <WorkshopThread
+        turns={[staleReport]}
+        toolSidecars={[]}
+        todos={[]}
+        currentExcerptVersion={2}
+        onQuickAction={noop}
+        onTalkDirectly={noop}
+        onAddTodo={noop}
+        onCopy={noop}
+        onSave={noop}
+      />
+    );
+
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Stale' }).disabled).toBe(true);
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Add all' }).disabled).toBe(true);
+    expect(screen.getByRole('button', { name: 'Stale' }).getAttribute('title'))
+      .toContain('superseded excerpt');
   });
 });

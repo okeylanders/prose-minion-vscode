@@ -37,13 +37,18 @@ import {
 } from '@messages';
 import { ModelSelector } from './components/shared/ModelSelector';
 import { ExcerptPanel } from './components/workshop/ExcerptPanel';
-import { ContextBriefPanel } from './components/workshop/ContextBriefPanel';
+import {
+  ContextBriefPanel,
+  WORKSHOP_CONTEXT_BRIEF_INPUT_ID
+} from './components/workshop/ContextBriefPanel';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopParticipantRail } from './components/workshop/WorkshopParticipantRail';
 import { WorkshopThread } from './components/workshop/WorkshopThread';
+import { WORKSHOP_TURN_ID_ATTRIBUTE } from './components/workshop/WorkshopTurnBubble';
 import { WorkshopToolsModal } from './components/workshop/WorkshopToolsModal';
 import { WorkshopPersonaBrowserModal } from './components/workshop/WorkshopPersonaBrowserModal';
 import { WorkshopToast, WorkshopToastState } from './components/workshop/WorkshopToast';
+import { WorkshopTodoList } from './components/workshop/WorkshopTodoList';
 import { WORKSHOP_TOOL_ICONS } from './components/workshop/workshopToolIcons';
 import { WORKSHOP_PERSONA_FOCUS_ICONS } from './components/workshop/workshopPersonaIcons';
 import {
@@ -60,6 +65,7 @@ import { useVSCodeApi } from './hooks/useVSCodeApi';
 import { usePersistence } from './hooks/usePersistence';
 import { useMessageRouter } from './hooks/useMessageRouter';
 import { useWorkshop } from './hooks/domain/useWorkshop';
+import { useWorkshopThreadAutoscroll } from './hooks/useWorkshopThreadAutoscroll';
 import { useModelsSettings } from './hooks/domain/useModelsSettings';
 import { useTokenTracking } from './hooks/domain/useTokenTracking';
 import { useAccountBalance } from './hooks/domain/useAccountBalance';
@@ -236,19 +242,19 @@ export const WorkshopApp: React.FC = () => {
   const threadErrorRef = React.useRef<ErrorBoundary>(null);
   const composerErrorRef = React.useRef<ErrorBoundary>(null);
 
-  // Thread autoscroll: follow new turns and streaming paint.
+  // Thread autoscroll: follow NEW turns and streaming paint. Session-only
+  // mutations (for example adding several tasks from an older report) replace
+  // the snapshot's turns array without changing its newest turn; keying on the
+  // array would yank the writer back to the bottom after every bubble action.
   const threadRef = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => {
-    const el = threadRef.current;
-    if (el) {
-      el.scrollTop = el.scrollHeight;
-    }
-  }, [
-    workshop.turns,
-    workshop.streamingContent,
-    workshop.isRunning,
-    workshop.errorMessage
-  ]);
+  const latestTurnId = workshop.turns.at(-1)?.id;
+  useWorkshopThreadAutoscroll({
+    threadRef,
+    latestTurnId,
+    streamingContent: workshop.streamingContent,
+    isRunning: workshop.isRunning,
+    errorMessage: workshop.errorMessage
+  });
 
   const toolsEnabled = !!workshop.excerpt && !workshop.isRunning && workshop.sessionReady;
   const activePersona = getWorkshopPersona(workshop.selectedPersonaId)
@@ -269,6 +275,15 @@ export const WorkshopApp: React.FC = () => {
   const showLiveTurn = workshop.isRunning || workshop.isStreaming || workshop.streamingContent.length > 0;
 
   const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
+  const openContext = React.useCallback(() => {
+    const input = document.getElementById(WORKSHOP_CONTEXT_BRIEF_INPUT_ID) as HTMLTextAreaElement | null;
+    if (!input) {
+      showToast({ message: 'The Workshop context brief is not available right now.', icon: 'x', tone: 'error' });
+      return;
+    }
+    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    input.focus();
+  }, [showToast]);
   const closeToolsModal = React.useCallback(() => setToolsModalOpen(false), []);
   const selectTool = React.useCallback(
     (toolId: WorkshopToolId) => {
@@ -327,6 +342,18 @@ export const WorkshopApp: React.FC = () => {
     },
     [vscode, workshop.excerpt]
   );
+
+  const showTodoSource = React.useCallback((sourceTurnId: string) => {
+    const sourceTurn = document.querySelector<HTMLElement>(
+      `[${WORKSHOP_TURN_ID_ATTRIBUTE}="${sourceTurnId}"]`
+    );
+    if (sourceTurn) {
+      sourceTurn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      sourceTurn.focus({ preventScroll: true });
+    } else {
+      showToast({ message: 'That source turn is outside the current reload window.', icon: 'doc' });
+    }
+  }, [showToast]);
 
   const openrouter = accountBalance.openrouter;
   const remaining = openrouter?.credits?.remaining;
@@ -484,6 +511,12 @@ export const WorkshopApp: React.FC = () => {
                 </button>
               </div>
             </div>
+
+            <WorkshopTodoList
+              todos={workshop.todos}
+              onAction={workshop.todoAction}
+              onShowSource={showTodoSource}
+            />
           </ErrorBoundary>
         </aside>
 
@@ -540,9 +573,16 @@ export const WorkshopApp: React.FC = () => {
               <WorkshopThread
                 turns={workshop.turns}
                 toolSidecars={workshop.toolSidecars}
+                todos={workshop.todos}
+                currentExcerptVersion={workshop.excerpt?.version ?? 0}
                 quickActionsDisabled={!workshop.canMessage}
                 onQuickAction={workshop.quickAction}
                 onTalkDirectly={(toolId) => workshop.setChatTarget({ kind: 'tool', toolId })}
+                onAddTodo={(sourceTurnId, findingKey) => workshop.todoAction({
+                  action: 'add',
+                  sourceTurnId,
+                  findingKey
+                })}
                 onCopy={copyTurn}
                 onSave={saveTurn}
               />
@@ -626,6 +666,7 @@ export const WorkshopApp: React.FC = () => {
               sessionReady={workshop.sessionReady}
               onSend={workshop.sendMessage}
               onCancel={workshop.cancelRun}
+              onOpenContext={openContext}
               onOpenTools={openToolsModal}
             />
           </ErrorBoundary>

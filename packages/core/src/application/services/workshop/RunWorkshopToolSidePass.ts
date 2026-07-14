@@ -7,6 +7,7 @@ import {
   buildWorkshopDirectHandoff,
   buildWorkshopHostMessage,
   buildWorkshopHostUpdateFrame,
+  buildWorkshopTodoEvidence,
   describeWorkshopPendingHostUpdates,
   buildWorkshopToolEvidence
 } from '@/application/services/workshop/WorkshopPromptBuilder';
@@ -77,6 +78,7 @@ export class RunWorkshopToolSidePass {
     const hadHostConversation = this.session.hasHostConversation();
     const pendingHandoff = buildWorkshopDirectHandoff(this.session.collectUnseenDirectExchanges());
     const pendingHostUpdates = this.session.collectPendingHostUpdates();
+    const todoEvidence = buildWorkshopTodoEvidence(this.session.collectOpenTodosForHost());
     const hostUpdateFrame = hadHostConversation
       ? buildWorkshopHostUpdateFrame(pendingHostUpdates)
       : undefined;
@@ -175,6 +177,7 @@ export class RunWorkshopToolSidePass {
       });
       const hostMessage = buildWorkshopHostMessage(evidence, {
         handoff: pendingHandoff,
+        todoEvidence,
         writerMessageIsTrustedEnvelope: true,
         hostUpdate: hostUpdateFrame
       });

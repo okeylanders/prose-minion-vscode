@@ -13,6 +13,10 @@ import {
   WorkshopCapabilityArtifactDetails,
   WorkshopCapabilityResult
 } from '@shared/types/workshopCapabilities';
+import {
+  inspectWorkshopActionableFindings,
+  WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION
+} from './WorkshopActionableFindings';
 
 export interface PersonaAnalysisAdoption {
   turn: WorkshopTurn;
@@ -72,12 +76,17 @@ export class WorkshopAnalysisSidePass {
     truncated?: boolean;
     toolId: WorkshopToolId;
   }): WorkshopToolReportCompletion | undefined {
+    const actionableFindings = this.inspectActionableFindings(
+      input.content,
+      `${input.toolId} writer-requested report`
+    );
     const completion = this.session.completeToolReport(
       input.requestId,
       input.content,
       input.conversationId,
       input.usage,
-      input.truncated
+      input.truncated,
+      actionableFindings
     );
     if (completion?.replacedConversationId) {
       this.assistantToolService.discardConversation(completion.replacedConversationId);
@@ -97,9 +106,14 @@ export class WorkshopAnalysisSidePass {
     conversationId?: string;
     truncated?: boolean;
   }): PersonaAnalysisAdoption | undefined {
+    const actionableFindings = this.inspectActionableFindings(
+      input.result.content ?? input.result.error ?? '',
+      `${input.toolId} persona-requested report`
+    );
     const completion = this.session.recordCapabilityArtifact({
       ...input,
-      toolId: input.toolId
+      toolId: input.toolId,
+      actionableFindings
     });
     if (!completion) {
       if (input.conversationId) {
@@ -123,19 +137,34 @@ export class WorkshopAnalysisSidePass {
     this.assistantToolService.discardConversation(conversationId);
   }
 
+  private inspectActionableFindings(content: string, context: string) {
+    const inspection = inspectWorkshopActionableFindings(content);
+    if (inspection.outcome !== 'absent') {
+      this.outputChannel.appendLine(
+        `[WorkshopAnalysisSidePass] Actionable findings ${inspection.outcome} (${context}; ${inspection.findings.length} items${inspection.outcome === 'rejected' ? `; reason=${inspection.rejection}` : ''})`
+      );
+    }
+    return inspection.findings;
+  }
+
   private buildContext(personaInstructions?: string): string | undefined {
     const contextBrief = this.session.getContextBrief();
     const boundedBrief = contextBrief
       ? trimToWordLimit(contextBrief, PROMPT_BUDGETS.contextBrief.words).trimmed
       : undefined;
     const instructions = personaInstructions?.trim();
-    if (!instructions) return boundedBrief;
+    if (!instructions) {
+      return [boundedBrief, WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION]
+        .filter((section): section is string => !!section)
+        .join('\n\n');
+    }
     const safeInstructions = instructions.replace(
       /<\/?persona-requested-analysis-focus\b[^>]*>/gi,
       (tag) => tag.replace(/</g, '&lt;').replace(/>/g, '&gt;')
     );
     return [
       boundedBrief,
+      WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION,
       '<persona-requested-analysis-focus>',
       safeInstructions,
       '</persona-requested-analysis-focus>'
