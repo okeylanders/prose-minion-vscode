@@ -824,6 +824,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(session.getSnapshot().participants).toEqual({
       host: { personaId: 'jill', hasConversation: false },
       toolSidecars: [],
+      personaGuests: [],
       chatTarget: { kind: 'host' }
     });
     expect(service.discardConversation).toHaveBeenCalledWith('host-conv');

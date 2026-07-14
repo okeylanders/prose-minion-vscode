@@ -4,7 +4,7 @@
 > `packages/core/src/shared/constants/promptBudgets.ts`; do not introduce
 > module-local prompt limit constants.
 
-**Status**: Planned
+**Status**: In progress (2026-07-14)
 **Priority**: Medium
 **Branch**: `sprint/workshop-editor-tab-09-persona-guest-sidecars` -> PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 4-6 days
@@ -139,3 +139,24 @@ host never changes.
   that is an explicit future ADR decision.
 - Do not let the rail become a routing topology editor; guests join the
   room, the writer talks to one participant at a time.
+
+## Kickoff Implementation Record (2026-07-14)
+
+- Started `sprint/workshop-editor-tab-09-persona-guest-sidecars` from the
+  merged Sprint 08 tip on `epic/workshop-editor-tab`.
+- Extended the host-owned session aggregate with bounded guest capacity,
+  duplicate/host rejection, live/disposed guest snapshots, guest target
+  validation, disposal, guest turn attribution, and two-way delivery cursors.
+- Added central `guestJoinSnapshot` (20 turns / 24,000 characters) and
+  `guestCatchUp` (8 turns / 20,000 characters) prompt budgets. The transcript
+  and join builders preserve omitted-turn provenance and neutralize reserved
+  Workshop frame delimiters; direct-tool exchanges remain excluded from guest
+  room history.
+- Added focused session and prompt-builder coverage for guest lifecycle,
+  cursor adoption, attribution, labels, bounds, and join-frame identity.
+
+Remaining work starts at the provider/handler transaction: launch and dismiss
+routes, fresh guest conversation creation, catch-up delivery/commit on
+successful turns, host handoff evidence, persona-browser invite mode, rail and
+composer UI, guest-specific logging/token attribution, reload/disposal
+integration, and the full validation/smoke bundle.

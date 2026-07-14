@@ -30,6 +30,16 @@ export interface PromptBudgets {
     characters: number;
     headerAllowanceCharacters: number;
   }>;
+  readonly guestJoinSnapshot: Readonly<{
+    turns: number;
+    characters: number;
+    headerAllowanceCharacters: number;
+  }>;
+  readonly guestCatchUp: Readonly<{
+    turns: number;
+    characters: number;
+    headerAllowanceCharacters: number;
+  }>;
   readonly contextFiles: Readonly<{ words: number; catalogItems: number }>;
   readonly guides: Readonly<{ words: number }>;
   readonly sourceDocument: Readonly<{ words: number }>;
@@ -51,6 +61,16 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   toolEvidence: { characters: 50_000 },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   directHandoff: {
+    turns: 8,
+    characters: 20_000,
+    headerAllowanceCharacters: 800
+  },
+  guestJoinSnapshot: {
+    turns: 20,
+    characters: 24_000,
+    headerAllowanceCharacters: 1_200
+  },
+  guestCatchUp: {
     turns: 8,
     characters: 20_000,
     headerAllowanceCharacters: 800

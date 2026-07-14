@@ -269,7 +269,7 @@ export class WorkshopHandler {
 
   async handleSetChatTarget(message: WorkshopSetChatTargetMessage): Promise<void> {
     const target = message.payload;
-    if (!target || (target.kind !== 'host' && target.kind !== 'tool')) {
+    if (!target || !['host', 'tool', 'personaGuest'].includes(target.kind)) {
       this.sendError('workshop.set_chat_target', 'Invalid Workshop chat target.');
       return;
     }
@@ -277,8 +277,12 @@ export class WorkshopHandler {
       this.sendError('workshop.set_chat_target', `Unknown Workshop tool: ${String(target.toolId)}`);
       return;
     }
+    if (target.kind === 'personaGuest' && !isWorkshopPersonaId(target.personaId)) {
+      this.sendError('workshop.set_chat_target', `Unknown Workshop guest: ${String(target.personaId)}`);
+      return;
+    }
     if (!this.session.setChatTarget(target)) {
-      this.sendError('workshop.set_chat_target', 'That tool conversation is no longer available.');
+      this.sendError('workshop.set_chat_target', 'That Workshop participant is no longer available.');
       return;
     }
     this.postSessionState();
@@ -328,6 +332,13 @@ export class WorkshopHandler {
     targetOverride?: WorkshopChatTarget
   ): Promise<void> {
     const target = targetOverride ?? this.session.getChatTarget();
+    if (target.kind === 'personaGuest') {
+      this.sendError(
+        'workshop.send_message',
+        'Guest persona messaging is not available until the guest has joined the room.'
+      );
+      return;
+    }
     const personaId = this.session.getSelectedPersonaId();
     const hostConversationId = this.session.getHostConversationId();
     const conversationId = target.kind === 'host'

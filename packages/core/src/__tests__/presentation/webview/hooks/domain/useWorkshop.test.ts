@@ -54,6 +54,7 @@ const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessio
         participants: {
           host: { personaId: 'jill', hasConversation: false },
           toolSidecars: [],
+          personaGuests: [],
           chatTarget: { kind: 'host' }
         },
         ...session
@@ -443,6 +444,7 @@ describe('useWorkshop', () => {
             availableForDirectFollowUp: true,
             activeTarget: true
           }],
+          personaGuests: [],
           chatTarget: { kind: 'tool', toolId: 'continuity' }
         },
         hasConversation: true
@@ -469,6 +471,7 @@ describe('useWorkshop', () => {
         participants: {
           host: { personaId: 'jill', hasConversation: false },
           toolSidecars: [],
+          personaGuests: [],
           chatTarget: { kind: 'host' }
         }
       }));
