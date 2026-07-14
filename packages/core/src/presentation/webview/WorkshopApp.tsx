@@ -37,10 +37,14 @@ import {
 } from '@messages';
 import { ModelSelector } from './components/shared/ModelSelector';
 import { ExcerptPanel } from './components/workshop/ExcerptPanel';
-import { ContextBriefPanel } from './components/workshop/ContextBriefPanel';
+import {
+  ContextBriefPanel,
+  WORKSHOP_CONTEXT_BRIEF_INPUT_ID
+} from './components/workshop/ContextBriefPanel';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopParticipantRail } from './components/workshop/WorkshopParticipantRail';
 import { WorkshopThread } from './components/workshop/WorkshopThread';
+import { WORKSHOP_TURN_ID_ATTRIBUTE } from './components/workshop/WorkshopTurnBubble';
 import { WorkshopToolsModal } from './components/workshop/WorkshopToolsModal';
 import { WorkshopPersonaBrowserModal } from './components/workshop/WorkshopPersonaBrowserModal';
 import { WorkshopToast, WorkshopToastState } from './components/workshop/WorkshopToast';
@@ -272,10 +276,14 @@ export const WorkshopApp: React.FC = () => {
 
   const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
   const openContext = React.useCallback(() => {
-    const input = document.getElementById('pm-ws-context-brief-input') as HTMLTextAreaElement | null;
-    input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    input?.focus();
-  }, []);
+    const input = document.getElementById(WORKSHOP_CONTEXT_BRIEF_INPUT_ID) as HTMLTextAreaElement | null;
+    if (!input) {
+      showToast({ message: 'The Workshop context brief is not available right now.', icon: 'x', tone: 'error' });
+      return;
+    }
+    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    input.focus();
+  }, [showToast]);
   const closeToolsModal = React.useCallback(() => setToolsModalOpen(false), []);
   const selectTool = React.useCallback(
     (toolId: WorkshopToolId) => {
@@ -336,7 +344,9 @@ export const WorkshopApp: React.FC = () => {
   );
 
   const showTodoSource = React.useCallback((sourceTurnId: string) => {
-    const sourceTurn = document.querySelector<HTMLElement>(`[data-turn-id="${sourceTurnId}"]`);
+    const sourceTurn = document.querySelector<HTMLElement>(
+      `[${WORKSHOP_TURN_ID_ATTRIBUTE}="${sourceTurnId}"]`
+    );
     if (sourceTurn) {
       sourceTurn.scrollIntoView({ behavior: 'smooth', block: 'center' });
       sourceTurn.focus({ preventScroll: true });
@@ -564,6 +574,7 @@ export const WorkshopApp: React.FC = () => {
                 turns={workshop.turns}
                 toolSidecars={workshop.toolSidecars}
                 todos={workshop.todos}
+                currentExcerptVersion={workshop.excerpt?.version ?? 0}
                 quickActionsDisabled={!workshop.canMessage}
                 onQuickAction={workshop.quickAction}
                 onTalkDirectly={(toolId) => workshop.setChatTarget({ kind: 'tool', toolId })}

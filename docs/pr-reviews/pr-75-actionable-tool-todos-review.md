@@ -13,29 +13,44 @@ act before merge · **Deferred** = real issue, safe to punt for a stated reason 
 
 | # | Sev | Finding | Reviewers | Consensus | Status |
 |---|-----|---------|-----------|-----------|--------|
-| 1 | 🟠 High | Stale-excerpt findings keep an enabled "Add" button whose click can only ever throw | Sam, Bria | 🎯 | **Open** |
-| 2 | 🟠 High | Wholesale `### Next steps` rejection is invisible — no log at any of the 3 call sites | Oliver | — | **Open** |
-| 3 | 🟠 High | Character-budget truncation branch in `buildWorkshopTodoEvidence` is never exercised by tests | Cal | — | **Open** |
+| 1 | 🟠 High | Stale-excerpt findings keep an enabled "Add" button whose click can only ever throw | Sam, Bria | 🎯 | **Addressed** — stale report findings and Add all now disable with a superseded-excerpt explanation |
+| 2 | 🟠 High | Wholesale `### Next steps` rejection is invisible — no log at any of the 3 call sites | Oliver | — | **Addressed** — each completion path logs accepted/rejected exact-section parsing with a rejection reason |
+| 3 | 🟠 High | Character-budget truncation branch in `buildWorkshopTodoEvidence` is never exercised by tests | Cal | — | **Addressed** — max-sized task/source fixtures reach the character break before the item cap |
 | 4 | 🟡 Standard | Findings extraction is caller discipline across 3 files, not a structural invariant of the aggregate | Marcus | — | **Deferred** — holds today; revisit when a fourth completion path is added |
 | 5 | 🟡 Standard | `WorkshopSessionService` at ~897 lines (guideline < 500); todo lifecycle is a natural extraction | Marcus | — | **Deferred** — extraction candidate for a follow-up sprint |
-| 6 | 🟡 Standard | Stored `stale` field is dead on arrival; `cloneTodo` is the only honest source of truth | Parker | — | **Open** |
-| 7 | 🟡 Standard | DOM-query coupling via hardcoded `data-turn-id` / element id with no shared constant | Parker | — | **Open** |
-| 8 | 🟡 Standard | 200-item `WORKSHOP_TODO_BOUNDS.items` cap is untested | Cal | — | **Open** |
-| 9 | 🟡 Standard | 6,000-char section-length rejection path is untested (blank-line padding case) | Cal | — | **Open** |
-| 10 | 🟡 Standard | Edit/Save task buttons missing the `aria-label` every sibling icon-button carries | Stan | — | **Open** |
-| 11 | 🟡 Standard | `handleTodoAction` folds input validation and session errors into one try/catch, unlike sibling guard-clause shape | Stan | — | **Open** |
+| 6 | 🟡 Standard | Stored `stale` field is dead on arrival; `cloneTodo` is the only honest source of truth | Parker | — | **Addressed** — private todo records omit `stale`; snapshot cloning derives it from provenance |
+| 7 | 🟡 Standard | DOM-query coupling via hardcoded `data-turn-id` / element id with no shared constant | Parker | — | **Addressed** — producer and consumer now share exported turn/context DOM identifiers |
+| 8 | 🟡 Standard | 200-item `WORKSHOP_TODO_BOUNDS.items` cap is untested | Cal | — | **Addressed** — a 201st finding promotion is rejected at the explicit bound |
+| 9 | 🟡 Standard | 6,000-char section-length rejection path is untested (blank-line padding case) | Cal | — | **Addressed** — padded valid items exercise the independent section-character rejection |
+| 10 | 🟡 Standard | Edit/Save task buttons missing the `aria-label` every sibling icon-button carries | Stan | — | **Addressed** — both icon buttons now expose their action to assistive technology |
+| 11 | 🟡 Standard | `handleTodoAction` folds input validation and session errors into one try/catch, unlike sibling guard-clause shape | Stan | — | **Addressed** — malformed messages return through guard clauses; only session mutation failures reach the catch |
 | 12 | 🟡 Standard | "Add all" fans out into N sequential IPC round trips + N full-snapshot broadcasts | Tim | — | **Deferred** — fine at N ≤ 12; batch if the findings bound grows |
-| 13 | 🟡 Standard | Todo-action success log omits which task was touched (`todoId`/`findingKey`) | Oliver | — | **Open** |
-| 14 | 🟡 Standard | `openContext` silently no-ops on missing DOM node while sibling `showTodoSource` toasts | Oliver | — | **Open** |
-| 15 | 🟡 Standard | `onOpenContext` optional with `onOpenTools` fallback — the fixed `+` bug is one missing prop from returning | Bria | — | **Open** |
-| 16 | 🟢 Nit | `WORKSHOP_TODO_BOUNDS` (a session bound) declared in the parser module | Stan | — | **Open** |
-| 17 | 🟢 Nit | Nested ternary re-derives the action→status mapping the switch already established | Parker | — | **Open** |
+| 13 | 🟡 Standard | Todo-action success log omits which task was touched (`todoId`/`findingKey`) | Oliver | — | **Addressed** — success logs include the task id or immutable finding source |
+| 14 | 🟡 Standard | `openContext` silently no-ops on missing DOM node while sibling `showTodoSource` toasts | Oliver | — | **Addressed** — missing context input surfaces an error toast |
+| 15 | 🟡 Standard | `onOpenContext` optional with `onOpenTools` fallback — the fixed `+` bug is one missing prop from returning | Bria | — | **Addressed** — context opening is required and the tools fallback is deleted |
+| 16 | 🟢 Nit | `WORKSHOP_TODO_BOUNDS` (a session bound) declared in the parser module | Stan | — | **Addressed** — bound now lives beside the session-owned collection |
+| 17 | 🟢 Nit | Nested ternary re-derives the action→status mapping the switch already established | Parker | — | **Addressed** — explicit action cases own their status literal |
 | 18 | 🟢 Nit | Per-turn `Set` construction re-scans all todos per render (sub-ms today) | Tim | — | **Deferred** — free fix, no present cost |
-| 19 | 🟢 Nit | Sprint checklist `+`-routing box left unchecked despite shipped implementation | Bria | — | **Open** — confirm deliberate scope-narrowing |
+| 19 | 🟢 Nit | Sprint checklist `+`-routing box left unchecked despite shipped implementation | Bria | — | **N/A** — deliberate scope-narrowing: `+` focuses the shipped Context Brief, while the full project-file browser remains separately tracked |
 | 20 | 🟢 Praise | Todo evidence builder reuses established budget-packing machinery + registers new frame tags | Marcus | — | **N/A** |
 | 21 | 🟢 Praise | Todo aggregate guards the stale/idempotency/provenance invariants that cause 3am pages | Blake | — | **N/A** |
 
 ---
+
+## Resolution (2026-07-14)
+
+- Addressed the three high findings: stale findings now disclose that their
+  excerpt was superseded before a click can fail, every exact-section parse is
+  traceable at its completion boundary, and the persona-evidence character
+  budget has a genuine boundary fixture.
+- Completed the scoped standard/nit polish: derived staleness has one source
+  of truth, DOM identities are shared, task actions validate before mutating,
+  icon-only controls are labelled, and context opening reports a missing node.
+- Added coverage for the 200-task cap, section-character padding, stale
+  promotion controls, parser-rejection logs, and task evidence truncation.
+- Retained #4, #5, #12, and #18 as their documented, bounded deferrals. #19
+  is intentionally unchecked in the sprint checklist because the full Context
+  Selector/project-file browser is not part of this delivery.
 
 ## Blast Radius
 
@@ -60,13 +75,14 @@ act before merge · **Deferred** = real issue, safe to punt for a stated reason 
 
 ## Executive Briefing
 
-No blockers. Three 🟠 High items, one with panel consensus:
+No blockers. All merge-required findings are addressed; the following records
+the three 🟠 High fixes, including the panel-consensus UX gap:
 
-🟠 **[Sam + Bria · 🎯 Consensus]** Stale-excerpt "Add" always throws — after an excerpt replacement, old report bubbles keep fully enabled Add/Add-all buttons; the aggregate's stale guard means the click can only ever produce a generic error toast. The invariant holds; the affordance lies.
+🟠 **[Sam + Bria · 🎯 Consensus]** Stale-excerpt "Add" always threw — superseded report findings now render as disabled before the click, with an explanation that the excerpt has moved on.
 
-🟠 **[Oliver]** Wholesale rejection is invisible — a slightly malformed `### Next steps` footer (checkbox syntax, one duplicate, one nested line) yields "no Add button appeared" with categorically nothing in the Output Channel to explain why. One trace line at the three extraction call sites makes it diagnosable.
+🟠 **[Oliver]** Wholesale rejection was invisible — each exact-section completion now logs whether findings were accepted or rejected, including the deterministic rejection reason.
 
-🟠 **[Cal]** The truncation branch is theater — the evidence-budget test's tiny fixture text means the 12-item cap always engages before the 12,000-char budget; realistic ~1,100-char blocks would hit the character break first, and that branch has never run under test.
+🟠 **[Cal]** The truncation branch is now exercised — max-size task/source fixtures hit the character budget before the 12-item cap.
 
 ---
 
@@ -288,7 +304,11 @@ None of these are unknown patterns — the aria-label convention, the guard-clau
 
 ## Summary
 
-Nearly there — no blockers, and the two reviewers who hunt catastrophe (Blake on correctness, Patricia on the injection surface) both returned clean passes with explicit praise for the aggregate's invariants and the prompt-boundary neutralization. The work before merge is concentrated in one consensus UX gap (stale-excerpt Add buttons that can only fail), one observability hole (silently rejected `### Next steps` sections), and one test that never actually reaches the boundary it claims to protect. Everything else is polish and well-reasoned deferrals. Fix the three 🟠 items and this ships with confidence.
+Ready for merge from the review’s perspective: every originally Open finding is
+resolved or, for #19, explicitly confirmed as deliberate scope separation. The
+four bounded deferrals remain recorded in the ledger. Blake and Patricia’s
+clean passes still stand, while the three former high findings now have both a
+code fix and direct regression coverage.
 
 ---
 

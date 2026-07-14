@@ -29,7 +29,7 @@ import {
 } from '@shared/types/workshopCapabilities';
 import { DEFAULT_WORKSHOP_PERSONA_ID, workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
-import { WORKSHOP_TODO_BOUNDS } from './WorkshopActionableFindings';
+import { WORKSHOP_ACTIONABLE_FINDING_BOUNDS } from './WorkshopActionableFindings';
 
 export interface WorkshopExcerptInput {
   text: string;
@@ -39,6 +39,10 @@ export interface WorkshopExcerptInput {
 }
 
 export const WORKSHOP_SNAPSHOT_TURN_WINDOW = 100;
+export const WORKSHOP_TODO_BOUNDS = Object.freeze({
+  items: 200,
+  textCharacters: WORKSHOP_ACTIONABLE_FINDING_BOUNDS.itemCharacters
+});
 
 interface WorkshopToolSidecar {
   conversationId: string;
@@ -101,6 +105,8 @@ export interface WorkshopExcerptReplacement {
   replacementCount: number;
 }
 
+type StoredWorkshopTodoItem = Omit<WorkshopTodoItem, 'stale'>;
+
 /** A pure aggregate: no I/O, no vscode, and only an injectable clock. */
 export class WorkshopSessionService {
   private excerpt?: WorkshopExcerpt;
@@ -116,7 +122,8 @@ export class WorkshopSessionService {
   private selectedToolId?: WorkshopToolId;
   private turnCounter = 0;
   private todoCounter = 0;
-  private todos: WorkshopTodoItem[] = [];
+  /** Staleness is derived at snapshot time from immutable source provenance. */
+  private todos: StoredWorkshopTodoItem[] = [];
 
   constructor(private readonly now: () => number = Date.now) {}
 
@@ -620,14 +627,13 @@ export class WorkshopSessionService {
           findingText: finding.text,
           excerptVersion: sourceTurn.excerptVersion
         };
-    const todo: WorkshopTodoItem = {
+    const todo: StoredWorkshopTodoItem = {
       id: `todo-${++this.todoCounter}-${this.now()}`,
       text: finding.text,
       status: 'open',
       priority: finding.priority,
       source,
-      createdAt: this.now(),
-      stale: sourceTurn.excerptVersion !== this.excerptVersion
+      createdAt: this.now()
     };
     this.todos.push(todo);
     return cloneTodo(todo, this.excerptVersion);
@@ -794,7 +800,7 @@ export class WorkshopSessionService {
     }
   }
 
-  private requireTodo(todoId: string): WorkshopTodoItem {
+  private requireTodo(todoId: string): StoredWorkshopTodoItem {
     const todo = this.todos.find((candidate) => candidate.id === todoId);
     if (!todo) {
       throw new Error('Unknown Workshop task');
@@ -858,7 +864,7 @@ function cloneFindings(findings: readonly WorkshopActionableFinding[]): Workshop
   return findings.map((finding) => ({ ...finding }));
 }
 
-function cloneTodo(todo: WorkshopTodoItem, excerptVersion: number): WorkshopTodoItem {
+function cloneTodo(todo: StoredWorkshopTodoItem, excerptVersion: number): WorkshopTodoItem {
   return {
     ...todo,
     source: { ...todo.source },

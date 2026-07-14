@@ -28,7 +28,7 @@ interface WorkshopComposerProps {
   sessionReady: boolean;
   onSend: (text: string) => void;
   onCancel: () => void;
-  onOpenContext?: () => void;
+  onOpenContext: () => void;
   onOpenTools: () => void;
 }
 
@@ -93,7 +93,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
           disabled={!sessionReady}
           title="Add project context"
           aria-label="Add project context"
-          onClick={onOpenContext ?? onOpenTools}
+          onClick={onOpenContext}
         >
           <Icon name="plus" size={18} />
         </button>

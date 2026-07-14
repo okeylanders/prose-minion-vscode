@@ -107,6 +107,20 @@ describe('completeWorkshopRun', () => {
     });
   });
 
+  it('logs a whole-section rejection without adopting any malformed proposals', () => {
+    session.beginPersonaMessage('req-1', 'Turn the review into tasks.');
+
+    const turn = settle({
+      requestId: 'req-1',
+      result: result('Advice.\n\n### Next steps\n- [ ] Rewrite the opening.', { conversationId: 'host-conv' })
+    })!;
+
+    expect(turn.actionableFindings).toBeUndefined();
+    expect(log).toHaveBeenCalledWith(
+      'Actionable findings rejected: 0 items (Jill; reason=invalid_item)'
+    );
+  });
+
   it('cancelled: discards only a conversation this run created, sends status, and logs', () => {
     session.beginPersonaMessage('req-1', 'Hello');
 

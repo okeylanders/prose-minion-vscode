@@ -312,6 +312,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       text: 'Tighten the first paragraph.',
       source: { kind: 'tool_report', toolId: 'prose', turnId: report.id }
     });
+    expect(log.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining(`Task action applied (add, sourceTurnId=${report.id}, findingKey=finding-1`)
+    );
 
     service.continueConversation.mockClear();
     await handler.handleSendMessage(message(
@@ -397,6 +400,26 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
     expect(session.getSnapshot().todos).toEqual([]);
     expect(posted(MessageType.ERROR)[0].payload).toMatchObject({ source: 'workshop.todo' });
+  });
+
+  it('rejects malformed task actions before attempting a session mutation', async () => {
+    postMessage.mockClear();
+    (log.appendLine as jest.Mock).mockClear();
+
+    await handler.handleTodoAction(message(MessageType.WORKSHOP_TODO_ACTION, {
+      action: 'complete'
+    }) as any);
+
+    expect(posted(MessageType.ERROR)[0].payload).toMatchObject({
+      source: 'workshop.todo',
+      message: 'Task action must include an id'
+    });
+    expect(log.appendLine).toHaveBeenCalledWith(
+      '[WorkshopHandler] ERROR [workshop.todo]: Task action must include an id'
+    );
+    expect(log.appendLine).not.toHaveBeenCalledWith(
+      expect.stringContaining('Task action applied')
+    );
   });
 
   it('bounds the context brief before every tool pass', async () => {

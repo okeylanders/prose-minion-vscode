@@ -25,6 +25,7 @@ interface WorkshopTurnBubbleProps {
   quickActionsDisabled?: boolean;
   canTalkDirectly?: boolean;
   promotedFindingKeys?: ReadonlySet<string>;
+  findingsStale?: boolean;
   onQuickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
   onTalkDirectly: (toolId: WorkshopToolId) => void;
   onAddTodo?: (sourceTurnId: string, findingKey: string) => void;
@@ -44,6 +45,7 @@ interface ParsedVariations {
 }
 
 const VARIATION_HEADING = /^#{2,4}\s*Variation\s+(\d+)(?:\s*[-:]\s*(.+))?\s*$/gim;
+export const WORKSHOP_TURN_ID_ATTRIBUTE = 'data-turn-id';
 
 export const parseVariations = (content: string): ParsedVariations | null => {
   const matches = [...content.matchAll(VARIATION_HEADING)];
@@ -96,6 +98,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   quickActionsDisabled = false,
   canTalkDirectly = false,
   promotedFindingKeys = new Set(),
+  findingsStale = false,
   onQuickAction,
   onTalkDirectly,
   onAddTodo = () => undefined,
@@ -113,6 +116,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
     ? `${turn.capability.operation.startsWith('dictionary.') ? "Writer's Dictionary" : turn.toolLabel ?? 'Analysis'} · ${turn.capability.requestSummary} · requested by ${workshopPersonaLabel(turn.capability.requestedByPersonaId)}`
     : undefined;
   const capabilityMetadata = capabilityMetadataRows(turn);
+  const turnIdentity = { [WORKSHOP_TURN_ID_ATTRIBUTE]: turn.id };
 
   if (turn.artifact === 'excerpt_revision') {
     return (
@@ -143,7 +147,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
     <>
       <div
         className="pm-ws-turn pm-ws-turn-assistant"
-        data-turn-id={turn.id}
+        {...turnIdentity}
         tabIndex={-1}
       >
         <div className="pm-ws-turn-head">
@@ -213,12 +217,12 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
           <div className="pm-ws-findings" aria-label="Actionable findings">
             <div className="pm-ws-findings-head">
               <div className="pm-ws-findings-title">Add a next step</div>
-              {turn.actionableFindings.some(
-                (finding) => !promotedFindingKeys.has(finding.key)
-              ) && (
+              {turn.actionableFindings.some((finding) => !promotedFindingKeys.has(finding.key)) && (
                 <button
                   className="pm-ws-findings-add-all"
                   type="button"
+                  disabled={findingsStale}
+                  title={findingsStale ? 'These findings belong to a superseded excerpt.' : undefined}
                   onClick={() => turn.actionableFindings?.forEach((finding) => {
                     if (!promotedFindingKeys.has(finding.key)) {
                       onAddTodo(turn.id, finding.key);
@@ -231,6 +235,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
             </div>
             {turn.actionableFindings.map((finding) => {
               const promoted = promotedFindingKeys.has(finding.key);
+              const disabled = promoted || findingsStale;
               return (
                 <div className="pm-ws-finding" key={finding.key}>
                   <span>
@@ -243,11 +248,12 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
                   </span>
                   <button
                     type="button"
-                    disabled={promoted}
+                    disabled={disabled}
+                    title={findingsStale ? 'This finding belongs to a superseded excerpt.' : undefined}
                     onClick={() => onAddTodo(turn.id, finding.key)}
                   >
                     <Icon name={promoted ? 'check' : 'plus'} size={12} />
-                    {promoted ? 'Added' : 'Add'}
+                    {promoted ? 'Added' : findingsStale ? 'Stale' : 'Add'}
                   </button>
                 </div>
               );

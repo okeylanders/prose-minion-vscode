@@ -5,6 +5,8 @@ import { Icon } from '@components/shared/Icon';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { countWords } from '@/utils/textUtils';
 
+export const WORKSHOP_CONTEXT_BRIEF_INPUT_ID = 'pm-ws-context-brief-input';
+
 interface ContextBriefPanelProps {
   value: string;
   pendingDelivery: boolean;
@@ -40,7 +42,7 @@ export const ContextBriefPanel: React.FC<ContextBriefPanelProps> = ({
         </span>
       </div>
       <textarea
-        id="pm-ws-context-brief-input"
+        id={WORKSHOP_CONTEXT_BRIEF_INPUT_ID}
         className="pm-ws-brief-input"
         value={draft}
         onChange={(event) => setDraft(event.target.value)}

@@ -13,6 +13,7 @@ interface WorkshopThreadProps {
   turns: readonly WorkshopTurn[];
   toolSidecars: readonly WorkshopToolSidecarSnapshot[];
   todos?: readonly WorkshopTodoItem[];
+  currentExcerptVersion: number;
   quickActionsDisabled?: boolean;
   onQuickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
   onTalkDirectly: (toolId: WorkshopToolId) => void;
@@ -25,6 +26,7 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
   turns,
   toolSidecars,
   todos = [],
+  currentExcerptVersion,
   quickActionsDisabled = false,
   onQuickAction,
   onTalkDirectly,
@@ -60,6 +62,7 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
               .filter((todo) => todo.source.turnId === turn.id)
               .map((todo) => todo.source.findingKey)
           )}
+          findingsStale={turn.excerptVersion !== currentExcerptVersion}
           onQuickAction={onQuickAction}
           onTalkDirectly={onTalkDirectly}
           onAddTodo={onAddTodo}

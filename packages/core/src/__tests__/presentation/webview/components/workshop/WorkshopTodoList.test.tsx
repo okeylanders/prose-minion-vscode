@@ -43,10 +43,11 @@ describe('WorkshopTodoList', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Mark task complete' })[0]);
     expect(onAction).toHaveBeenCalledWith({ action: 'complete', todoId: 'todo-1' });
 
-    fireEvent.click(screen.getAllByTitle('Edit task')[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit task' })[0]);
     fireEvent.change(screen.getByRole('textbox', { name: 'Edit task text' }), {
       target: { value: 'Clarify the cup continuity.' }
     });
+    expect(screen.getByRole('button', { name: 'Save task' })).toBeTruthy();
     fireEvent.submit(screen.getByRole('textbox', { name: 'Edit task text' }).closest('form')!);
     expect(onAction).toHaveBeenCalledWith({
       action: 'edit',

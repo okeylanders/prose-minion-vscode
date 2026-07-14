@@ -103,11 +103,21 @@ export const WorkshopTodoList: React.FC<WorkshopTodoListProps> = ({
               </div>
               <div className="pm-ws-todo-actions">
                 {editingId === todo.id ? (
-                  <button type="button" onClick={() => saveEdit(todo.id)} title="Save task">
+                  <button
+                    type="button"
+                    onClick={() => saveEdit(todo.id)}
+                    title="Save task"
+                    aria-label="Save task"
+                  >
                     <Icon name="check" size={12} />
                   </button>
                 ) : (
-                  <button type="button" onClick={() => beginEdit(todo)} title="Edit task">
+                  <button
+                    type="button"
+                    onClick={() => beginEdit(todo)}
+                    title="Edit task"
+                    aria-label="Edit task"
+                  >
                     <Icon name="pen" size={12} />
                   </button>
                 )}

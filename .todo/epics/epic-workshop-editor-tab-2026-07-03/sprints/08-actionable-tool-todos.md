@@ -64,6 +64,9 @@ never silently adds or completes writer tasks.
 - [ ] Make the composer’s + button open the writer-controlled Context Selector
       / project-file browser, not the Writing Tools modal. Keep the explicit
       Tools button as the sole tool-browser entry point.
+      Current delivery deliberately stops at focusing the writable Context
+      Brief; the configured project-file browser remains in the separately
+      tracked Context Selector feature.
 - [x] Render a compact To-do List below Workshop tool selection with counts,
       completion toggles, source attribution, and an empty state.
 - [x] Let the writer promote an actionable finding into a task deliberately;

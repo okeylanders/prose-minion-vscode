@@ -1,6 +1,7 @@
 import {
   WorkshopSessionService,
-  WORKSHOP_SNAPSHOT_TURN_WINDOW
+  WORKSHOP_SNAPSHOT_TURN_WINDOW,
+  WORKSHOP_TODO_BOUNDS
 } from '@/application/services/workshop/WorkshopSessionService';
 import { buildWorkshopDirectHandoff } from '@/application/services/workshop/WorkshopPromptBuilder';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -142,6 +143,31 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(snapshot.todos.map((todo) => todo.id)).toEqual([second.id, first.id]);
     snapshot.todos[0].source.findingText = 'mutated outside';
     expect(service.getSnapshot().todos[0].source.findingText).toBe('Second task.');
+  });
+
+  it('refuses the 201st writer-promoted task at the session bound', () => {
+    pin();
+    service.beginToolRun('prose', 'report-run');
+    const findings = Array.from(
+      { length: WORKSHOP_TODO_BOUNDS.items + 1 },
+      (_, index) => ({ key: `finding-${index}`, ordinal: index + 1, text: `Task ${index}.` })
+    );
+    const report = service.completeToolReport(
+      'report-run',
+      'Report.',
+      'prose-conv',
+      undefined,
+      false,
+      findings
+    )!.turn;
+
+    for (let index = 0; index < WORKSHOP_TODO_BOUNDS.items; index += 1) {
+      service.addTodoFromFinding(report.id, `finding-${index}`);
+    }
+
+    expect(service.getSnapshot().todos).toHaveLength(WORKSHOP_TODO_BOUNDS.items);
+    expect(() => service.addTodoFromFinding(report.id, `finding-${WORKSHOP_TODO_BOUNDS.items}`))
+      .toThrow(`Workshop task list is limited to ${WORKSHOP_TODO_BOUNDS.items} items`);
   });
 
   it('allows a tool side-pass while the retained host remains unchanged', () => {

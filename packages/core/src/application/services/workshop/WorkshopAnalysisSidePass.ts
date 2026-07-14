@@ -14,7 +14,7 @@ import {
   WorkshopCapabilityResult
 } from '@shared/types/workshopCapabilities';
 import {
-  extractWorkshopActionableFindings,
+  inspectWorkshopActionableFindings,
   WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION
 } from './WorkshopActionableFindings';
 
@@ -76,13 +76,17 @@ export class WorkshopAnalysisSidePass {
     truncated?: boolean;
     toolId: WorkshopToolId;
   }): WorkshopToolReportCompletion | undefined {
+    const actionableFindings = this.inspectActionableFindings(
+      input.content,
+      `${input.toolId} writer-requested report`
+    );
     const completion = this.session.completeToolReport(
       input.requestId,
       input.content,
       input.conversationId,
       input.usage,
       input.truncated,
-      extractWorkshopActionableFindings(input.content)
+      actionableFindings
     );
     if (completion?.replacedConversationId) {
       this.assistantToolService.discardConversation(completion.replacedConversationId);
@@ -102,12 +106,14 @@ export class WorkshopAnalysisSidePass {
     conversationId?: string;
     truncated?: boolean;
   }): PersonaAnalysisAdoption | undefined {
+    const actionableFindings = this.inspectActionableFindings(
+      input.result.content ?? input.result.error ?? '',
+      `${input.toolId} persona-requested report`
+    );
     const completion = this.session.recordCapabilityArtifact({
       ...input,
       toolId: input.toolId,
-      actionableFindings: extractWorkshopActionableFindings(
-        input.result.content ?? input.result.error ?? ''
-      )
+      actionableFindings
     });
     if (!completion) {
       if (input.conversationId) {
@@ -129,6 +135,16 @@ export class WorkshopAnalysisSidePass {
 
   discardConversation(conversationId: string): void {
     this.assistantToolService.discardConversation(conversationId);
+  }
+
+  private inspectActionableFindings(content: string, context: string) {
+    const inspection = inspectWorkshopActionableFindings(content);
+    if (inspection.outcome !== 'absent') {
+      this.outputChannel.appendLine(
+        `[WorkshopAnalysisSidePass] Actionable findings ${inspection.outcome} (${context}; ${inspection.findings.length} items${inspection.outcome === 'rejected' ? `; reason=${inspection.rejection}` : ''})`
+      );
+    }
+    return inspection.findings;
   }
 
   private buildContext(personaInstructions?: string): string | undefined {

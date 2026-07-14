@@ -68,4 +68,49 @@ describe('WorkshopAnalysisSidePass', () => {
     expect(session.getToolSidecarConversationId('continuity')).toBe('continuity-conv');
     expect(session.getSnapshot().activeRequestId).toBe('host-turn');
   });
+
+  it('logs malformed findings from both writer and persona-requested reports', () => {
+    const service = {
+      discardConversation: jest.fn()
+    } as unknown as jest.Mocked<AssistantToolService>;
+    const session = new WorkshopSessionService(() => 3);
+    session.setExcerpt({ text: 'The cup moves.' });
+    const outputChannel = { appendLine: jest.fn() } as unknown as LogSink;
+    const sidePass = new WorkshopAnalysisSidePass(service, session, outputChannel);
+    const malformed = 'Report.\n\n### Next steps\n- [ ] Rewrite the opening.';
+
+    session.beginToolRun('prose', 'writer-run');
+    sidePass.adoptWriterReport({
+      requestId: 'writer-run',
+      content: malformed,
+      conversationId: 'writer-conv',
+      toolId: 'prose'
+    });
+
+    session.beginPersonaMessage('host-run', 'Check the report.');
+    sidePass.adoptPersonaReport({
+      hostRequestId: 'host-run',
+      excerptVersion: 1,
+      toolId: 'prose',
+      details: {
+        operation: 'analysis.run',
+        status: 'success',
+        requestSummary: 'Prose',
+        requestedByPersonaId: 'jill'
+      },
+      result: {
+        capability: 'analysis.run',
+        status: 'success',
+        requestSummary: 'Prose',
+        content: malformed
+      }
+    });
+
+    expect((outputChannel.appendLine as jest.Mock).mock.calls).toEqual(
+      expect.arrayContaining([
+        [expect.stringContaining('Actionable findings rejected (prose writer-requested report; 0 items; reason=invalid_item)')],
+        [expect.stringContaining('Actionable findings rejected (prose persona-requested report; 0 items; reason=invalid_item)')]
+      ])
+    );
+  });
 });

@@ -17,6 +17,7 @@ describe('WorkshopComposer', () => {
         sessionReady
         onSend={onSend}
         onCancel={jest.fn()}
+        onOpenContext={jest.fn()}
         onOpenTools={jest.fn()}
       />
     );

@@ -565,49 +565,68 @@ export class WorkshopHandler {
 
   async handleTodoAction(message: WorkshopTodoActionMessage): Promise<void> {
     const action = message.payload;
+    let apply: () => void;
+    let target: string;
+    switch (action?.action) {
+      case 'add':
+        if (typeof action.sourceTurnId !== 'string' || typeof action.findingKey !== 'string') {
+          this.sendError('workshop.todo', 'Task source must identify a turn and finding');
+          return;
+        }
+        apply = () => this.session.addTodoFromFinding(action.sourceTurnId, action.findingKey);
+        target = `sourceTurnId=${action.sourceTurnId}, findingKey=${action.findingKey}`;
+        break;
+      case 'edit':
+        if (typeof action.todoId !== 'string' || typeof action.text !== 'string') {
+          this.sendError('workshop.todo', 'Task edit must include an id and text');
+          return;
+        }
+        apply = () => this.session.editTodo(action.todoId, action.text);
+        target = `todoId=${action.todoId}`;
+        break;
+      case 'complete':
+        if (typeof action.todoId !== 'string') {
+          this.sendError('workshop.todo', 'Task action must include an id');
+          return;
+        }
+        apply = () => this.session.setTodoStatus(action.todoId, 'completed');
+        target = `todoId=${action.todoId}`;
+        break;
+      case 'reopen':
+        if (typeof action.todoId !== 'string') {
+          this.sendError('workshop.todo', 'Task action must include an id');
+          return;
+        }
+        apply = () => this.session.setTodoStatus(action.todoId, 'open');
+        target = `todoId=${action.todoId}`;
+        break;
+      case 'dismiss':
+        if (typeof action.todoId !== 'string') {
+          this.sendError('workshop.todo', 'Task action must include an id');
+          return;
+        }
+        apply = () => this.session.setTodoStatus(action.todoId, 'dismissed');
+        target = `todoId=${action.todoId}`;
+        break;
+      case 'reorder':
+        if (
+          typeof action.todoId !== 'string' ||
+          (action.direction !== 'up' && action.direction !== 'down')
+        ) {
+          this.sendError('workshop.todo', 'Task reorder must include an id and direction');
+          return;
+        }
+        apply = () => this.session.reorderTodo(action.todoId, action.direction);
+        target = `todoId=${action.todoId}, direction=${action.direction}`;
+        break;
+      default:
+        this.sendError('workshop.todo', 'Unknown Workshop task action');
+        return;
+    }
     try {
-      switch (action?.action) {
-        case 'add':
-          if (typeof action.sourceTurnId !== 'string' || typeof action.findingKey !== 'string') {
-            throw new Error('Task source must identify a turn and finding');
-          }
-          this.session.addTodoFromFinding(action.sourceTurnId, action.findingKey);
-          break;
-        case 'edit':
-          if (typeof action.todoId !== 'string' || typeof action.text !== 'string') {
-            throw new Error('Task edit must include an id and text');
-          }
-          this.session.editTodo(action.todoId, action.text);
-          break;
-        case 'complete':
-        case 'reopen':
-        case 'dismiss':
-          if (typeof action.todoId !== 'string') {
-            throw new Error('Task action must include an id');
-          }
-          this.session.setTodoStatus(
-            action.todoId,
-            action.action === 'complete'
-              ? 'completed'
-              : action.action === 'dismiss'
-                ? 'dismissed'
-                : 'open'
-          );
-          break;
-        case 'reorder':
-          if (
-            typeof action.todoId !== 'string' ||
-            (action.direction !== 'up' && action.direction !== 'down')
-          ) {
-            throw new Error('Task reorder must include an id and direction');
-          }
-          this.session.reorderTodo(action.todoId, action.direction);
-          break;
-        default:
-          throw new Error('Unknown Workshop task action');
-      }
+      apply();
       this.outputChannel.appendLine(
-        `[WorkshopHandler] Task action applied (${action.action}, source=${message.source})`
+        `[WorkshopHandler] Task action applied (${action.action}, ${target}, source=${message.source})`
       );
       this.postSessionState();
     } catch (error) {

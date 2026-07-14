@@ -1,5 +1,6 @@
 import {
   extractWorkshopActionableFindings,
+  inspectWorkshopActionableFindings,
   WORKSHOP_ACTIONABLE_FINDING_BOUNDS
 } from '@/application/services/workshop/WorkshopActionableFindings';
 
@@ -69,5 +70,19 @@ describe('extractWorkshopActionableFindings', () => {
 
     expect(extractWorkshopActionableFindings(oversized)).toEqual([]);
     expect(extractWorkshopActionableFindings(tooMany)).toEqual([]);
+  });
+
+  it('rejects a blank-line-padded section above the section-character bound', () => {
+    const padded = [
+      '### Next steps',
+      '- Tighten the opening.',
+      '\n'.repeat(WORKSHOP_ACTIONABLE_FINDING_BOUNDS.sectionCharacters + 1)
+    ].join('\n');
+
+    expect(inspectWorkshopActionableFindings(padded)).toEqual({
+      outcome: 'rejected',
+      findings: [],
+      rejection: 'section_too_large'
+    });
   });
 });

@@ -2,7 +2,10 @@
 
 import * as React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { ContextBriefPanel } from '@components/workshop/ContextBriefPanel';
+import {
+  ContextBriefPanel,
+  WORKSHOP_CONTEXT_BRIEF_INPUT_ID
+} from '@components/workshop/ContextBriefPanel';
 
 describe('ContextBriefPanel', () => {
   it('shows the persisted brief and its pending-delivery state', () => {
@@ -16,6 +19,7 @@ describe('ContextBriefPanel', () => {
 
     expect(screen.getByLabelText<HTMLTextAreaElement>('Workshop context brief').value)
       .toBe('Mara is hiding her identity.');
+    expect(document.getElementById(WORKSHOP_CONTEXT_BRIEF_INPUT_ID)).toBeTruthy();
     expect(screen.getByText('5 / 10,000 words')).toBeTruthy();
     expect(screen.getByText('Shared with your next host message.')).toBeTruthy();
   });

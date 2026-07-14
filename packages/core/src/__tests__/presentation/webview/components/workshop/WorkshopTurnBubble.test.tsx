@@ -14,6 +14,7 @@ jest.mock('marked', () => {
 
 import {
   parseVariations,
+  WORKSHOP_TURN_ID_ATTRIBUTE,
   WorkshopTurnBubble
 } from '@components/workshop/WorkshopTurnBubble';
 import { WorkshopTurn } from '@messages';
@@ -82,6 +83,7 @@ describe('WorkshopTurnBubble variation cards', () => {
     );
 
     expect(onAddTodo).not.toHaveBeenCalled();
+    expect(document.querySelector(`[${WORKSHOP_TURN_ID_ATTRIBUTE}="turn-1"]`)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
     expect(onAddTodo).toHaveBeenCalledWith('turn-1', 'finding-1');
   });
