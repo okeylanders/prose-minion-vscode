@@ -323,4 +323,41 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(screen.getByText('Continuity · Track the cup. · requested by Jill')).toBeTruthy();
     expect(document.body.textContent).not.toContain('Continuity · Continuity');
   });
+
+  it('renders project-resource provenance and bounds as an inspectable artifact', () => {
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('## Project resource · Raven\nSafe evidence.'),
+          artifact: 'resource_read',
+          toolId: undefined,
+          toolLabel: 'Project Resources',
+          reportTurnId: undefined,
+          capability: {
+            operation: 'resource.read',
+            status: 'success',
+            requestSummary: 'characters/raven.md',
+            requestedByPersonaId: 'jill',
+            metadata: {
+              group: 'characters',
+              path: 'characters/raven.md',
+              bytes: 128,
+              totalBytes: 512,
+              truncated: true
+            }
+          }
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('Project Resources · characters/raven.md · requested by Jill')).toBeTruthy();
+    expect(screen.getByLabelText('Capability metadata').textContent).toContain('128 of 512 bytes read');
+    expect(screen.getByLabelText('Capability metadata').textContent).toContain('project-resource limits');
+    expect(screen.queryByRole('button', { name: /talk directly/i })).toBeNull();
+  });
 });

@@ -2,7 +2,7 @@
 
 **Created**: 2026-07-06
 **Status**: In Progress
-**Progress**: Sprints 01–09 merged (Sprint 09 [PR #76](https://github.com/okeylanders/prose-minion-vscode/pull/76)); Sprints 10–12 planned (Sprint 01 [PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66); Sprint 02 [PR #67](https://github.com/okeylanders/prose-minion-vscode/pull/67); Sprint 03 [PR #68](https://github.com/okeylanders/prose-minion-vscode/pull/68); Sprint 04 [PR #69](https://github.com/okeylanders/prose-minion-vscode/pull/69))
+**Progress**: Sprints 01–09 merged (Sprint 09 [PR #76](https://github.com/okeylanders/prose-minion-vscode/pull/76)); Sprint 11 implementation complete; execution continues with Sprint 12, then the final Sprint 10 persistence pass (Sprint 01 [PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66); Sprint 02 [PR #67](https://github.com/okeylanders/prose-minion-vscode/pull/67); Sprint 03 [PR #68](https://github.com/okeylanders/prose-minion-vscode/pull/68); Sprint 04 [PR #69](https://github.com/okeylanders/prose-minion-vscode/pull/69))
 **Design source**: [Direction B — Split & Pinned](../../../docs/design/Prose%20Minion%20-%20Assistant%20Tab.html)
 **ADRs**: [2026-07-03 — Assistant as a Full Editor Tab](../../../docs/adr/2026-07-03-assistant-editor-tab.md); [2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](../../../docs/adr/2026-07-09-workshop-persona-hosted-conversations.md); [2026-07-11 — Workshop Excerpt Revision and Room Memory](../../../docs/adr/2026-07-11-workshop-excerpt-revision-and-room-memory.md); [2026-07-11 — Workshop Guest Persona Sidecars](../../../docs/adr/2026-07-11-workshop-guest-persona-sidecars.md); [2026-07-14 — Workshop Session Persistence and the Session Browser](../../../docs/adr/2026-07-14-workshop-session-persistence.md)
 **Integration branch**: `epic/workshop-editor-tab`
@@ -141,9 +141,9 @@ Target behavior:
   per-turn budgets, renders inspectable artifacts, and returns results to the
   persona for synthesis.
 - Context starts compact: pinned excerpt, source provenance, and any existing
-  context brief. On-demand project-resource loading requires a retained variant
-  of the existing context-request pattern and is tracked separately in
-  [feature-workshop-persona-context-loading](../../features/feature-workshop-persona-context-loading/README.md); Sprint 05 does not advertise a catalog it cannot fulfill.
+  context brief. Sprint 11 added on-demand allowlisted project-resource catalog,
+  search, and read operations through the retained host capability boundary;
+  empty catalogs remain honestly unavailable.
 
 ## Known Risks
 
@@ -166,16 +166,12 @@ Target behavior:
   accounting, and visible progress from its first implementation.
 - ~~`ConversationManager` still logs via raw `console.*`~~ — migrated to the
   injected `LogSink` in Sprint 02 (PR #67).
-- **Markdown sanitization (shared `MarkdownRenderer`)**: untrusted model
-  output renders via `marked()` + `dangerouslySetInnerHTML` with no
-  sanitizer, on BOTH surfaces, and the CSP's `img-src https:` permits the
-  classic markdown-image-beacon exfil for prompt-injected responses
-  (PR #67 review #13, Patricia). Inherited surface, deliberately not fixed
-  inside the early Workshop sprints — sanitize ONCE in the shared renderer
-  (DOMPurify or disable raw-HTML passthrough). **Now scheduled as Sprint 11's
-  opening task**: persona file access turns injected-file-content →
-  image-beacon into a real exfil chain over anything the persona can read,
-  so the gate must land before that capability ships.
+- **Markdown sanitization (resolved in Sprint 11, 2026-07-15)**: the shared
+  renderer now sanitizes model/workspace Markdown through DOMPurify's HTML-only
+  profile, removes images and executable markup, and the shared webview CSP no
+  longer permits bare `https:` under `img-src`. This closes PR #67 review #13's
+  injected-file-content → image-beacon exfil chain before persona file access
+  ships.
 
 ## Related
 

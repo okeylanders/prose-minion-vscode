@@ -3,11 +3,13 @@
  * Discovers and loads workspace files for the context assistant.
  */
 
-import { FileSystem, LogSink, SettingsStore, Workspace } from '@/platform';
+import { FileSystem, FileType, LogSink, SettingsStore, Workspace } from '@/platform';
 import * as path from 'path';
 import { ContextPathGroup } from '@shared/types';
+import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 import {
   ContextResourceContent,
+  ContextResourceProviderFactory,
   ContextResourceProvider,
   ContextResourceSummary
 } from '@/domain/models/ContextGeneration';
@@ -23,7 +25,7 @@ interface InternalContextResource {
 /**
  * Provides access to project reference materials based on user-configured glob patterns.
  */
-export class ContextResourceResolver {
+export class ContextResourceResolver implements ContextResourceProviderFactory {
   constructor(
     private readonly settings: SettingsStore,
     private readonly fileSystem: FileSystem,
@@ -53,7 +55,9 @@ export class ContextResourceResolver {
           const resource = resourceMap.get(normalizedKey);
 
           if (!resource) {
-            this.outputChannel?.appendLine(`[ContextResourceResolver] Resource not found for request: ${requestedPath}`);
+            this.outputChannel?.appendLine(
+              '[ContextResourceResolver] Resource request did not match the configured catalog.'
+            );
             continue;
           }
 
@@ -118,7 +122,11 @@ export class ContextResourceResolver {
           }
 
           for (const match of matches) {
-            const relativePath = this.workspace.asRelativePath(match, false);
+            if (!await this.isSafeWorkspaceResource(workspaceFolder.path, match)) {
+              continue;
+            }
+
+            const relativePath = path.relative(workspaceFolder.path, match).replace(/\\/g, '/');
             const normalizedKey = this.normalizeKey(relativePath);
 
             if (seenPaths.has(normalizedKey)) {
@@ -204,6 +212,41 @@ export class ContextResourceResolver {
   private isSupportedFile(filePath: string): boolean {
     const extension = path.extname(filePath).toLowerCase();
     return extension === '.md' || extension === '.txt';
+  }
+
+  /**
+   * `findFiles` is still an outer adapter result, not a trust boundary. Reject
+   * lexical escapes and any symlink in the workspace-relative ancestor chain
+   * before a model-visible key can enter the configured catalog.
+   */
+  private async isSafeWorkspaceResource(root: string, candidate: string): Promise<boolean> {
+    if (!isPathWithinRoot(root, candidate)) {
+      this.outputChannel?.appendLine(
+        '[ContextResourceResolver] Skipped a configured-resource match outside its workspace root.'
+      );
+      return false;
+    }
+
+    const relativePath = path.relative(root, candidate);
+    let currentPath = root;
+    for (const segment of relativePath.split(path.sep).filter(Boolean)) {
+      currentPath = path.join(currentPath, segment);
+      try {
+        const stat = await this.fileSystem.stat(currentPath);
+        if ((stat.type & FileType.SymbolicLink) !== 0) {
+          this.outputChannel?.appendLine(
+            `[ContextResourceResolver] Skipped symbolic-link resource: ${relativePath.replace(/\\/g, '/')}`
+          );
+          return false;
+        }
+      } catch {
+        this.outputChannel?.appendLine(
+          `[ContextResourceResolver] Skipped unreadable configured resource: ${relativePath.replace(/\\/g, '/')}`
+        );
+        return false;
+      }
+    }
+    return true;
   }
 
   private deriveLabel(filePath: string): string {

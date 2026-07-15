@@ -6,7 +6,7 @@ exports[`getWebviewHtml pins the sidebar surface output — the extraction promi
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src https://test.csp-source 'unsafe-inline'; script-src https://test.csp-source 'nonce-QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJC'; img-src https://test.csp-source https: data:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src https://test.csp-source 'unsafe-inline'; script-src https://test.csp-source 'nonce-QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJC'; img-src https://test.csp-source data:;">
   <title>Prose Minion Tools</title>
 </head>
 <body>

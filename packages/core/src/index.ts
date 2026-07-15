@@ -59,6 +59,7 @@ export { CategorySearchService } from '@services/search/CategorySearchService';
 export { StandardsService } from '@services/resources/StandardsService';
 export { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
 export { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
+export { ContextResourceResolver } from '@/infrastructure/context/ContextResourceResolver';
 export {
   AccountBalanceService,
   OpenRouterAccountClient

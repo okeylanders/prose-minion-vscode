@@ -76,6 +76,17 @@ describe('getWebviewHtml', () => {
     expect(normalize(workshop)).toBe(normalize(sidebar));
   });
 
+  it('blocks remote image beacons on both shared webview surfaces', () => {
+    const sidebar = getWebviewHtml(fakeWebview, extensionUri, 'sidebar');
+    const workshop = getWebviewHtml(fakeWebview, extensionUri, 'workshop');
+
+    for (const html of [sidebar, workshop]) {
+      const csp = html.match(/Content-Security-Policy" content="([^"]+)"/)?.[1];
+      expect(csp).toContain('img-src https://test.csp-source data:;');
+      expect(csp).not.toContain('img-src https://test.csp-source https:');
+    }
+  });
+
   it('bootstrap error bridge posts the shared MessageType, not a hand-synced literal', () => {
     const workshop = getWebviewHtml(fakeWebview, extensionUri, 'workshop');
     expect(workshop).toContain(`postMessage({ type: '${MessageType.WEBVIEW_ERROR}'`);

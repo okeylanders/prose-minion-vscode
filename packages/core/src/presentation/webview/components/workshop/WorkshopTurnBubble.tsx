@@ -87,7 +87,23 @@ const capabilityMetadataRows = (turn: WorkshopTurn): string[] => {
     rows.push(`Partial failures: ${metadata.partialFailures.join(', ')}`);
   }
   if (metadata.truncated === true) {
-    rows.push('Result reached its response-token limit');
+    rows.push(turn.capability?.operation.startsWith('resource.')
+      ? 'Result was bounded by the project-resource limits'
+      : 'Result reached its response-token limit');
+  }
+  if (typeof metadata.fileCount === 'number') {
+    rows.push(`${metadata.fileCount} configured ${metadata.fileCount === 1 ? 'file' : 'files'} listed`);
+  }
+  if (typeof metadata.filesScanned === 'number') {
+    rows.push(`${metadata.filesScanned} configured ${metadata.filesScanned === 1 ? 'file' : 'files'} searched`);
+  }
+  if (typeof metadata.matchCount === 'number') {
+    rows.push(`${metadata.matchCount} ${metadata.matchCount === 1 ? 'match' : 'matches'} found`);
+  }
+  if (typeof metadata.bytes === 'number' && typeof metadata.totalBytes === 'number') {
+    rows.push(`${metadata.bytes.toLocaleString()} of ${metadata.totalBytes.toLocaleString()} bytes read`);
+  } else if (typeof metadata.bytesScanned === 'number') {
+    rows.push(`${metadata.bytesScanned.toLocaleString()} bytes searched`);
   }
   return rows;
 };
@@ -113,7 +129,11 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   );
 
   const capabilityLabel = turn.capability
-    ? `${turn.capability.operation.startsWith('dictionary.') ? "Writer's Dictionary" : turn.toolLabel ?? 'Analysis'} · ${turn.capability.requestSummary} · requested by ${workshopPersonaLabel(turn.capability.requestedByPersonaId)}`
+    ? `${turn.capability.operation.startsWith('dictionary.')
+      ? "Writer's Dictionary"
+      : turn.capability.operation.startsWith('resource.')
+        ? 'Project Resources'
+        : turn.toolLabel ?? 'Analysis'} · ${turn.capability.requestSummary} · requested by ${workshopPersonaLabel(turn.capability.requestedByPersonaId)}`
     : undefined;
   const capabilityMetadata = capabilityMetadataRows(turn);
   const turnIdentity = { [WORKSHOP_TURN_ID_ATTRIBUTE]: turn.id };

@@ -1,7 +1,7 @@
 # Feature: Workshop Persona Context Loading
 
-**Status**: Scheduled as [Sprint 11](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/11-persona-file-access.md)
-— **direction updated (2026-07-14)**: fulfillment ships as `resource.catalog`
+**Status**: Implemented in [Sprint 11](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/11-persona-file-access.md)
+— **landed on the sprint branch (2026-07-15)**: fulfillment ships as `resource.catalog`
 / `resource.search` / `resource.read` capabilities through the Sprint 07
 persona-capability boundary, not the retained `<context-request>` parsing
 path this README proposed (it predates Sprint 07). `ContextResourceResolver`,
@@ -24,8 +24,9 @@ path would invite the model to ask for files the runtime cannot deliver.
 
 ## Direction
 
-- Reuse `ContextResourceResolver`, `ContextResourceRequestParser`, configured
-  context groups, and path-containment checks.
+- Reuse `ContextResourceResolver`, configured context groups, and
+  path-containment checks through the Sprint 07 capability boundary; the older
+  `ContextResourceRequestParser` direction is superseded.
 - Define retained-conversation semantics for resource requests on both the
   opening persona turn and later follow-ups.
 - Keep the assistant model/persona system prompt as the conversation owner;
@@ -48,5 +49,6 @@ path would invite the model to ask for files the runtime cannot deliver.
   a later follow-up and continue under the same persona system prompt.
 - Unknown, disallowed, oversized, and excessive requests fail safely and leave
   an observable trail.
-- Loaded paths are recorded in host-side session state and restore on reload.
+- Loaded paths are recorded in host-side session state; Sprint 10 owns final
+  cross-restart serialization and restored-session action inertness.
 - Focused orchestration, handler, session, and path-containment tests pass.

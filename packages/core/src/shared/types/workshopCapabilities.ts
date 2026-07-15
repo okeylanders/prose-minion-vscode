@@ -1,10 +1,14 @@
 import type { TokenUsage } from './messages/tokenUsage';
 import type { WorkshopPersonaId, WorkshopToolId } from './messages/workshop';
+import type { ContextPathGroup } from './context';
 
 export type WorkshopCapabilityOperation =
   | 'dictionary.lookup'
   | 'dictionary.full-entry'
-  | 'analysis.run';
+  | 'analysis.run'
+  | 'resource.catalog'
+  | 'resource.search'
+  | 'resource.read';
 
 export type WorkshopCapabilityRequest =
   | {
@@ -23,6 +27,20 @@ export type WorkshopCapabilityRequest =
       capability: 'analysis.run';
       toolId: WorkshopToolId;
       instructions?: string;
+    }
+  | {
+      capability: 'resource.catalog';
+      group?: ContextPathGroup;
+    }
+  | {
+      capability: 'resource.search';
+      query: string;
+      group?: ContextPathGroup;
+    }
+  | {
+      capability: 'resource.read';
+      group: ContextPathGroup;
+      path: string;
     };
 
 export type WorkshopCapabilityStatus =

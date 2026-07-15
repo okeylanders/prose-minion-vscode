@@ -5,7 +5,7 @@
 > `packages/core/src/shared/constants/promptBudgets.ts`; no module-local
 > limit constants.
 
-**Status**: Planned
+**Status**: Complete (implementation ready 2026-07-15)
 **Priority**: High (the epic's biggest remaining capability gap: personas are
 blind to the project beyond the pinned excerpt)
 **Branch**: `sprint/workshop-editor-tab-11-persona-file-access` -> PR into `epic/workshop-editor-tab`
@@ -44,10 +44,10 @@ project file* can steer the persona, and the unsanitized renderer +
 read. The shared-renderer sanitization gate therefore lands **at the start of
 this sprint**, not before the final merge:
 
-- [ ] Sanitize once in the shared `MarkdownRenderer` (DOMPurify or disable
+- [x] Sanitize once in the shared `MarkdownRenderer` (DOMPurify or disable
       raw-HTML passthrough) — both surfaces inherit the fix.
-- [ ] Tighten the webview CSP `img-src` away from bare `https:`.
-- [ ] Regression tests: raw HTML/script/image-beacon markdown renders inert.
+- [x] Tighten the webview CSP `img-src` away from bare `https:`.
+- [x] Regression tests: raw HTML/script/image-beacon markdown renders inert.
 
 ## Locked Decisions
 
@@ -82,41 +82,41 @@ this sprint**, not before the final merge:
 
 ### Capability schema and engine
 
-- [ ] Extend the closed capability schema with the three request/response
+- [x] Extend the closed capability schema with the three request/response
       shapes; host-side validation rejects unknown fields and un-cataloged
       paths (follow the type-location convention — see tech-debt
       2026-07-12-capability-request-type-location-convention).
-- [ ] Wire fulfillment in the capability engine: resolver + containment +
+- [x] Wire fulfillment in the capability engine: resolver + containment +
       budgets + truncation provenance; deterministic failure artifacts for
       disallowed/oversized/over-budget requests.
 
 ### Resolution and search
 
-- [ ] Catalog builder over configured context groups (bounded, display-safe).
-- [ ] Search over group files via existing text services; match cap +
+- [x] Catalog builder over configured context groups (bounded, display-safe).
+- [x] Search over group files via existing text services; match cap +
       per-match context lines; stable ordering.
-- [ ] Read with byte cap + head-slice + truncation notice (mirror the
+- [x] Read with byte cap + head-slice + truncation notice (mirror the
       excerpt pin-from-file slicing behavior).
 
 ### Prompts, UI, observability
 
-- [ ] Persona prompt section describing the capabilities, their bounds, and
+- [x] Persona prompt section describing the capabilities, their bounds, and
       when to use them; catalog-aware (never advertise an empty catalog as
       browsable).
-- [ ] Artifact rendering for catalog/search/read results in the thread, with
+- [x] Artifact rendering for catalog/search/read results in the thread, with
       explicit provenance and action metadata. Sprint 10 owns the final
       restored-session rule that makes conversation-backed actions inert.
-- [ ] Logs: request id, capability, group, display-safe path, sizes,
+- [x] Logs: request id, capability, group, display-safe path, sizes,
       truncation, budget state. Token rail attributes capability usage.
 
 ### Tests
 
-- [ ] Containment: traversal, symlink, absolute-path, and outside-group
+- [x] Containment: traversal, symlink, absolute-path, and outside-group
       requests rejected (extend `pathContainment` suites).
-- [ ] Budgets: per-turn call cap, round cap, byte/match caps, cancellation
+- [x] Budgets: per-turn call cap, round cap, byte/match caps, cancellation
       mid-chain.
-- [ ] Schema: unknown capability/fields rejected; failure artifacts recorded.
-- [ ] Sanitizer: beacon-markdown inert on both surfaces.
+- [x] Schema: unknown capability/fields rejected; failure artifacts recorded.
+- [x] Sanitizer: beacon-markdown inert on both surfaces.
 
 ## Acceptance Criteria
 
@@ -140,3 +140,36 @@ this sprint**, not before the final merge:
   attributed evidence with provenance, same as tool reports.
 - No streaming file contents into the thread beyond the read cap; truncation
   is stated, never silent.
+
+## Completion Record — 2026-07-15
+
+- Added the closed `resource.catalog`, `resource.search`, and `resource.read`
+  operations to the Sprint 07 persona capability boundary. The application
+  service owns exact group/path validation and never passes a model-authored
+  path to filesystem I/O unless the same turn's catalog or search disclosed it.
+- Reused `ContextResourceResolver` as the configured-context reachability seam.
+  Resolver results now receive lexical workspace containment, ancestor-symlink,
+  supported-file, and readability checks before entering the model-visible
+  catalog. Search stays in-process over resolver-provided text; no shell or
+  workspace-wide grep path was added.
+- Centralized catalog, query/path, search-file/byte/match/context, and read-byte
+  ceilings in `PROMPT_BUDGETS.workshopResource`. The existing Workshop host
+  policy remains the three-round per-turn cap, so catalog → search → read chains
+  terminate deterministically and nested provider usage continues through the
+  existing token rail.
+- Made catalog/search/read attempts visible as attributable Project Resources
+  turns, including rejected schema/containment attempts, display-safe
+  provenance, counts, sizes, and truncation. Guests remain on the no-capability
+  provider path.
+- Sanitized the shared Markdown renderer with DOMPurify's HTML-only profile,
+  removed images/raw executable markup and inline styles, and tightened both
+  webview surfaces from `img-src ... https: data:` to `img-src ... data:`.
+- Verification: 95 Jest suites / 783 tests passed; core, webview, and extension
+  typechecks passed; ESLint passed with zero errors (the existing warning set
+  remains); production webpack build and `verify:bundle` passed;
+  `git diff --check` passed.
+- Production bundles compared with the pre-sprint build:
+  `extension.js` 2,369,397 → 2,386,934 bytes (+17,537 / +0.74%);
+  `webview.js` 608,340 → 639,610 bytes (+31,270 / +5.14%). The webview increase
+  is primarily the shared DOMPurify sanitizer; webpack's existing asset-size
+  recommendations remain warnings only.

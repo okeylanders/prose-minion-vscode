@@ -63,6 +63,17 @@ describe('prompt budgets', () => {
       fullEntriesPerTurn: 1,
       analysisRunsPerTurn: 1
     });
+    expect(PROMPT_BUDGETS.workshopResource).toEqual({
+      queryCharacters: 200,
+      pathCharacters: 500,
+      catalogItems: 100,
+      searchFiles: 100,
+      searchMatches: 20,
+      searchContextLines: 1,
+      searchFileBytes: 256 * 1024,
+      searchTotalBytes: 2 * 1024 * 1024,
+      readBytes: 64 * 1024
+    });
   });
 
   it('recognizes mutable, field, and suffix-style budget declarations', () => {

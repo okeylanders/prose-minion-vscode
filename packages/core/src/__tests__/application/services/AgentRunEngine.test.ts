@@ -221,6 +221,10 @@ describe('AgentRunEngine', () => {
 
   it('recovers from an invalid protocol-only response with a final answer instead of a blank result', async () => {
     const guides = capability();
+    guides.handleInvalidRequest = jest.fn(() => [{
+      catalog: 'guides', id: 'rejected-1', label: 'Rejected guide request',
+      category: 'rejected', size: 0, reason: 'Invalid path'
+    }]);
     const invalid = '<prose-minion-tool-call name="resource.read"><paths><path>outside-catalog.md</path></paths></prose-minion-tool-call>';
     client.createStreamingChatCompletion
       .mockReturnValueOnce(stream([invalid]))
@@ -234,7 +238,9 @@ describe('AgentRunEngine', () => {
     });
 
     expect(guides.fulfill).not.toHaveBeenCalled();
+    expect(guides.handleInvalidRequest).toHaveBeenCalledTimes(1);
     expect(guides.invalidRequestInstruction).toHaveBeenCalledTimes(1);
+    expect(result.artifacts).toEqual([expect.objectContaining({ id: 'rejected-1' })]);
     expect(visible.join('')).toBe('A final answer after the rejected request.');
     expect(result.content).toBe('A final answer after the rejected request.');
   });
@@ -490,6 +496,10 @@ describe('AgentRunEngine', () => {
       policy: AGENT_RUN_POLICIES.workshopHost, capability: personaCapability()
     });
     const adapter = personaCapability();
+    adapter.handleCapabilityLimit = jest.fn(() => [{
+      catalog: 'workshopPersona', id: 'limit-1', label: 'Rejected resource request',
+      category: 'resource.read', size: 0, reason: 'Round cap'
+    }]);
     client.createChatCompletion
       .mockResolvedValueOnce({ content: PERSONA_REQUEST })
       .mockResolvedValueOnce({ content: PERSONA_REQUEST })
@@ -505,7 +515,9 @@ describe('AgentRunEngine', () => {
     });
 
     expect(adapter.fulfill).toHaveBeenCalledTimes(3);
+    expect(adapter.handleCapabilityLimit).toHaveBeenCalledTimes(1);
     expect(adapter.limitInstruction).toHaveBeenCalledTimes(1);
+    expect(result.artifacts).toEqual([expect.objectContaining({ id: 'limit-1' })]);
     expect(result.content).toBe('Continuation final after three calls.');
   });
 

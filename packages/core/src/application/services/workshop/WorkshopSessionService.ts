@@ -486,11 +486,17 @@ export class WorkshopSessionService {
 
     const isAnalysis = input.details.operation === 'analysis.run';
     const turnId = this.nextTurnId('assistant');
-    const artifact: WorkshopTurnArtifact = isAnalysis
-      ? 'tool_report'
-      : input.details.operation === 'dictionary.lookup'
-        ? 'dictionary_lookup'
-        : 'dictionary_full_entry';
+    const artifact: WorkshopTurnArtifact = (() => {
+      switch (input.details.operation) {
+        case 'analysis.run': return 'tool_report';
+        case 'dictionary.lookup': return 'dictionary_lookup';
+        case 'dictionary.full-entry': return 'dictionary_full_entry';
+        case 'resource.catalog': return 'resource_catalog';
+        case 'resource.search': return 'resource_search';
+        case 'resource.read': return 'resource_read';
+      }
+    })();
+    const isResource = input.details.operation.startsWith('resource.');
     const turn: WorkshopTurn = {
       id: turnId,
       role: 'assistant',
@@ -500,7 +506,7 @@ export class WorkshopSessionService {
       toolId: isAnalysis ? input.toolId : undefined,
       toolLabel: isAnalysis && input.toolId
         ? workshopToolLabel(input.toolId)
-        : 'Writer\'s Dictionary',
+        : isResource ? 'Project Resources' : 'Writer\'s Dictionary',
       reportTurnId: isAnalysis && input.conversationId ? turnId : undefined,
       capability: cloneCapabilityDetails(input.details),
       content: input.result.content ?? input.result.error ?? 'No capability result was returned.',

@@ -19,6 +19,17 @@ export interface PromptBudgets {
     fullEntriesPerTurn: number;
     analysisRunsPerTurn: number;
   }>;
+  readonly workshopResource: Readonly<{
+    queryCharacters: number;
+    pathCharacters: number;
+    catalogItems: number;
+    searchFiles: number;
+    searchMatches: number;
+    searchContextLines: number;
+    searchFileBytes: number;
+    searchTotalBytes: number;
+    readBytes: number;
+  }>;
   readonly toolEvidence: Readonly<{ characters: number }>;
   readonly workshopTodos: Readonly<{
     items: number;
@@ -58,6 +69,17 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     callsPerTurn: 3,
     fullEntriesPerTurn: 1,
     analysisRunsPerTurn: 1
+  },
+  workshopResource: {
+    queryCharacters: 200,
+    pathCharacters: 500,
+    catalogItems: 100,
+    searchFiles: 100,
+    searchMatches: 20,
+    searchContextLines: 1,
+    searchFileBytes: 256 * 1024,
+    searchTotalBytes: 2 * 1024 * 1024,
+    readBytes: 64 * 1024
   },
   toolEvidence: { characters: 50_000 },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },

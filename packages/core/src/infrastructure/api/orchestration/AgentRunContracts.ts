@@ -74,6 +74,10 @@ export interface AgentCapability<
   requestLogSummary(request: Request): string;
   /** Stable per-turn identifiers added to accept/reject logs when available. */
   inspectionLogContext?(): string;
+  /** Optional visible provenance for structurally rejected requests. */
+  handleInvalidRequest?(rejection: Rejection): readonly CapabilityArtifact[];
+  /** Optional visible provenance when a valid request exceeds the round cap. */
+  handleCapabilityLimit?(request: Request): readonly CapabilityArtifact[];
   invalidRequestInstruction(rejection: Rejection): string;
   limitInstruction(): string;
 }
