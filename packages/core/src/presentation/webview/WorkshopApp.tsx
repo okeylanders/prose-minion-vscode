@@ -33,6 +33,7 @@ import {
   SaveResultSuccessMessage,
   StatusMessage,
   WorkshopToolId,
+  WorkshopPersonaId,
   WorkshopTurn
 } from '@messages';
 import { ModelSelector } from './components/shared/ModelSelector';
@@ -56,7 +57,11 @@ import {
   WorkshopToolDescriptor,
   workshopToolLabel
 } from '@shared/constants/workshopTools';
-import { DEFAULT_WORKSHOP_PERSONA_ID, getWorkshopPersona } from '@shared/constants/workshopPersonas';
+import {
+  DEFAULT_WORKSHOP_PERSONA_ID,
+  WORKSHOP_GUEST_CAPACITY,
+  getWorkshopPersona
+} from '@shared/constants/workshopPersonas';
 import {
   resultToolNameForWorkshopTool,
   WORKSHOP_PERSONA_RESULT_TOOL_NAME
@@ -134,6 +139,7 @@ export const WorkshopApp: React.FC = () => {
   const [hasSavedKey, setHasSavedKey] = React.useState(false);
   const [toolsModalOpen, setToolsModalOpen] = React.useState(false);
   const [personaModalOpen, setPersonaModalOpen] = React.useState(false);
+  const [personaModalMode, setPersonaModalMode] = React.useState<'host' | 'guest'>('host');
   const [toast, setToast] = React.useState<WorkshopToastState | null>(null);
   const accountBalance = useAccountBalance({ apiKeyConfigured: hasSavedKey });
 
@@ -259,9 +265,16 @@ export const WorkshopApp: React.FC = () => {
   const toolsEnabled = !!workshop.excerpt && !workshop.isRunning && workshop.sessionReady;
   const activePersona = getWorkshopPersona(workshop.selectedPersonaId)
     ?? getWorkshopPersona(DEFAULT_WORKSHOP_PERSONA_ID)!;
+  const guestTargetPersonaId = workshop.chatTarget.kind === 'personaGuest'
+    ? workshop.chatTarget.personaId
+    : undefined;
   const chatTargetLabel = workshop.chatTarget.kind === 'tool'
     ? workshopToolLabel(workshop.chatTarget.toolId)
-    : activePersona.label;
+    : workshop.chatTarget.kind === 'personaGuest'
+      ? workshop.personaGuests.find((guest) => guest.personaId === guestTargetPersonaId)?.personaLabel
+        ?? guestTargetPersonaId
+        ?? 'Guest'
+      : activePersona.label;
 
   // Recomputing a full word split per streamed token was O(excerpt) work on
   // the token clock (PR #67 review #11) — the excerpt only changes on re-pin.
@@ -292,7 +305,14 @@ export const WorkshopApp: React.FC = () => {
     },
     [workshop.runTool]
   );
-  const openPersonaModal = React.useCallback(() => setPersonaModalOpen(true), []);
+  const openPersonaModal = React.useCallback(() => {
+    setPersonaModalMode('host');
+    setPersonaModalOpen(true);
+  }, []);
+  const openGuestModal = React.useCallback(() => {
+    setPersonaModalMode('guest');
+    setPersonaModalOpen(true);
+  }, []);
   const closePersonaModal = React.useCallback(() => setPersonaModalOpen(false), []);
   const selectPersona = React.useCallback(
     (personaId: typeof workshop.selectedPersonaId) => {
@@ -300,6 +320,13 @@ export const WorkshopApp: React.FC = () => {
       workshop.selectPersona(personaId);
     },
     [workshop.selectPersona]
+  );
+  const inviteGuest = React.useCallback(
+    (personaId: WorkshopPersonaId, openingMessage: string) => {
+      setPersonaModalOpen(false);
+      workshop.inviteGuest(personaId, openingMessage);
+    },
+    [workshop.inviteGuest]
   );
   const copyTurn = React.useCallback(
     (content: string, turn: WorkshopTurn) => {
@@ -655,8 +682,18 @@ export const WorkshopApp: React.FC = () => {
               personaId={activePersona.id}
               personaLabel={activePersona.label}
               toolSidecars={workshop.toolSidecars}
+              personaGuests={workshop.personaGuests}
               chatTarget={workshop.chatTarget}
               onSetChatTarget={workshop.setChatTarget}
+              showInviteGuest={
+                !!workshop.excerpt
+                && workshop.sessionReady
+                && !workshop.isRunning
+                && workshop.personaGuests.filter((guest) => guest.liveness === 'live').length
+                  < WORKSHOP_GUEST_CAPACITY
+              }
+              onInviteGuest={openGuestModal}
+              onDismissGuest={workshop.dismissGuest}
             />
             <WorkshopComposer
               canMessage={workshop.canMessage}
@@ -684,9 +721,14 @@ export const WorkshopApp: React.FC = () => {
       <WorkshopPersonaBrowserModal
         open={personaModalOpen}
         activePersonaId={workshop.selectedPersonaId}
-        disabled={workshop.isPersonaSelectionLocked}
+        mode={personaModalMode}
+        invitedPersonaIds={workshop.personaGuests
+          .filter((guest) => guest.liveness === 'live')
+          .map((guest) => guest.personaId)}
+        disabled={personaModalMode === 'host' ? workshop.isPersonaSelectionLocked : workshop.isRunning}
         onClose={closePersonaModal}
         onSelect={selectPersona}
+        onInvite={inviteGuest}
       />
       <WorkshopToast toast={toast} />
     </div>

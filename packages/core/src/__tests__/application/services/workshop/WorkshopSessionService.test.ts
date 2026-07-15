@@ -3,7 +3,10 @@ import {
   WORKSHOP_SNAPSHOT_TURN_WINDOW,
   WORKSHOP_TODO_BOUNDS
 } from '@/application/services/workshop/WorkshopSessionService';
-import { buildWorkshopDirectHandoff } from '@/application/services/workshop/WorkshopPromptBuilder';
+import {
+  buildWorkshopDirectHandoff,
+  buildWorkshopGuestHandoff
+} from '@/application/services/workshop/WorkshopPromptBuilder';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', () => {
@@ -45,6 +48,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(service.getSnapshot().participants).toEqual({
       host: { personaId: 'jill', hasConversation: false },
       toolSidecars: [],
+      personaGuests: [],
       chatTarget: { kind: 'host' }
     });
     expect(JSON.stringify(service.getSnapshot())).not.toContain('conversationId');
@@ -516,9 +520,201 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       participants: {
         host: { personaId: 'jill', hasConversation: false },
         toolSidecars: [],
+        personaGuests: [],
         chatTarget: { kind: 'host' }
       }
     });
+  });
+
+  it('enforces guest identity/capacity rules and exposes honest guest liveness', () => {
+    pin();
+    service.beginPersonaMessage('host-1', 'The room is open.');
+    service.completeRun('host-1', 'Let us begin.', undefined, false, 'host-conv');
+
+    expect(() => service.adoptPersonaGuest('jill', 'jill-guest-conv')).toThrow(
+      'The Workshop host is already in the room'
+    );
+    service.adoptPersonaGuest('margot', 'margot-conv');
+    service.adoptPersonaGuest('quinn', 'quinn-conv');
+    expect(() => service.adoptPersonaGuest('margot', 'duplicate-conv')).toThrow(
+      'Margot is already in the room'
+    );
+    expect(() => service.adoptPersonaGuest('wren', 'wren-conv')).toThrow(
+      'Workshop supports at most 2 live guests'
+    );
+
+    expect(service.getSnapshot().participants.personaGuests).toEqual([
+      {
+        personaId: 'margot',
+        personaLabel: 'Margot',
+        hasConversation: true,
+        liveness: 'live',
+        activeTarget: false
+      },
+      {
+        personaId: 'quinn',
+        personaLabel: 'Quinn',
+        hasConversation: true,
+        liveness: 'live',
+        activeTarget: false
+      }
+    ]);
+  });
+
+  it('tracks guest cursors in both directions and stamps guest turns', () => {
+    pin();
+    service.beginPersonaMessage('host-1', 'Host opening.');
+    service.completeRun('host-1', 'Host reply.', undefined, false, 'host-conv');
+    service.adoptPersonaGuest('margot', 'margot-conv');
+
+    service.beginPersonaMessage('host-2', 'A later host question.');
+    const hostReply = service.completeRun('host-2', 'A later host answer.')!;
+    const missed = service.collectUnseenHostTurnsForGuest('margot');
+    expect(missed.map((turn) => turn.content)).toEqual([
+      'A later host question.',
+      'A later host answer.'
+    ]);
+    service.commitGuestCatchUp('margot', [hostReply.id]);
+    expect(service.collectUnseenHostTurnsForGuest('margot')).toEqual([]);
+
+    expect(service.setChatTarget({ kind: 'personaGuest', personaId: 'margot' })).toBe(true);
+    const guestMessage = service.beginPersonaGuestMessage(
+      'margot',
+      'guest-1',
+      'What do you hear in the point of view?'
+    );
+    const guestReply = service.completeRun(
+      'guest-1',
+      'The distance slips in the second paragraph.',
+      undefined,
+      false,
+      'margot-conv'
+    )!;
+
+    expect(guestMessage).toMatchObject({
+      participant: 'writer',
+      personaId: 'margot',
+      personaLabel: 'Margot',
+      artifact: 'persona_message'
+    });
+    expect(guestReply).toMatchObject({
+      participant: 'guest',
+      personaId: 'margot',
+      personaLabel: 'Margot',
+      artifact: 'persona_message'
+    });
+
+    const guestEvidence = service.collectUnseenGuestExchangesForHost();
+    expect(guestEvidence.map((turn) => turn.id)).toEqual([guestMessage.id, guestReply.id]);
+    service.commitHostGuestHandoff([guestMessage.id, guestReply.id]);
+    expect(service.collectUnseenGuestExchangesForHost()).toEqual([]);
+
+    expect(service.dismissPersonaGuest('margot')).toBe('margot-conv');
+    expect(service.getChatTarget()).toEqual({ kind: 'host' });
+    expect(service.getSnapshot().participants.personaGuests[0]).toMatchObject({
+      personaId: 'margot',
+      hasConversation: false,
+      liveness: 'disposed'
+    });
+  });
+
+  it('returns composer routing to the host when a tool run begins', () => {
+    pin();
+    service.adoptPersonaGuest('margot', 'margot-conv');
+    expect(service.setChatTarget({ kind: 'personaGuest', personaId: 'margot' })).toBe(true);
+
+    service.beginToolRun('prose', 'tool-run');
+
+    expect(service.getChatTarget()).toEqual({ kind: 'host' });
+  });
+
+  it('retains dismissed guest evidence, permits re-invitation, and unlocks host selection', () => {
+    pin();
+    service.adoptPersonaGuest('margot', 'margot-conv');
+    const writerTurn = service.beginPersonaGuestMessage('margot', 'guest-1', 'What do you see?');
+    const guestTurn = service.completeRun('guest-1', 'The narrative distance drifts.')!;
+
+    expect(service.dismissPersonaGuest('margot')).toBe('margot-conv');
+    expect(service.collectUnseenGuestExchangesForHost().map((turn) => turn.id)).toEqual([
+      writerTurn.id,
+      guestTurn.id
+    ]);
+    service.commitHostGuestHandoff([writerTurn.id, guestTurn.id]);
+    expect(service.collectUnseenGuestExchangesForHost()).toEqual([]);
+
+    service.beginPersonaGuestJoin('margot', 'guest-rejoin', 'Take another look.');
+    service.completeRun('guest-rejoin', 'I see one more distance shift.', undefined, false, 'margot-conv-2');
+    expect(service.getPersonaGuestConversationId('margot')).toBe('margot-conv-2');
+    expect(service.dismissPersonaGuest('margot')).toBe('margot-conv-2');
+    expect(() => service.selectPersona('theo')).not.toThrow();
+    expect(service.getSelectedPersonaId()).toBe('theo');
+  });
+
+  it('interleaves two guests in thread order and advances each handoff cursor', () => {
+    pin();
+    service.adoptPersonaGuest('margot', 'margot-conv');
+    service.adoptPersonaGuest('quinn', 'quinn-conv');
+
+    const margotWriter = service.beginPersonaGuestMessage('margot', 'margot-1', 'Read the voice.');
+    const margotReply = service.completeRun('margot-1', 'The voice pulls away here.')!;
+    const quinnWriter = service.beginPersonaGuestMessage('quinn', 'quinn-1', 'Check the cup.');
+    const quinnReply = service.completeRun('quinn-1', 'The cup changes hands twice.')!;
+
+    const unseen = service.collectUnseenGuestExchangesForHost();
+    expect(unseen.map((turn) => turn.id)).toEqual([
+      margotWriter.id,
+      margotReply.id,
+      quinnWriter.id,
+      quinnReply.id
+    ]);
+    const handoff = buildWorkshopGuestHandoff(unseen)!;
+    expect(handoff.message).toContain('Margot:\nThe voice pulls away here.');
+    expect(handoff.message).toContain('Quinn:\nThe cup changes hands twice.');
+
+    service.commitHostGuestHandoff(handoff.deliveredTurnIds);
+
+    expect(service.collectUnseenGuestExchangesForHost()).toEqual([]);
+  });
+
+  it('adopts a fresh guest only when its invitation run completes', () => {
+    pin();
+    service.beginPersonaMessage('host-1', 'Host opening.');
+    service.completeRun('host-1', 'Host reply.', undefined, false, 'host-conv');
+
+    const invitation = service.beginPersonaGuestJoin(
+      'margot',
+      'guest-join-1',
+      'Read the room.'
+    );
+    expect(service.collectHostThreadTurns().map((turn) => turn.content)).toEqual([
+      'Host opening.',
+      'Host reply.'
+    ]);
+    expect(service.getSnapshot().participants.personaGuests).toEqual([]);
+
+    const reply = service.completeRun(
+      'guest-join-1',
+      'Margot has joined.',
+      undefined,
+      false,
+      'margot-conv'
+    )!;
+
+    expect(invitation.personaId).toBe('margot');
+    expect(reply.participant).toBe('guest');
+    expect(service.getPersonaGuestConversationId('margot')).toBe('margot-conv');
+    expect(service.getChatTarget()).toEqual({ kind: 'host' });
+  });
+
+  it('refuses a late guest completion after dismissal', () => {
+    pin();
+    service.adoptPersonaGuest('margot', 'margot-conv');
+    service.beginPersonaGuestMessage('margot', 'guest-run', 'Read this.');
+    service.dismissPersonaGuest('margot');
+
+    expect(service.completeRun('guest-run', 'Late guest response.', undefined, false, 'margot-conv'))
+      .toBeUndefined();
+    expect(service.getSnapshot().turns).toHaveLength(1);
   });
 
   it('bounds reload snapshots without leaking stored turn references', () => {

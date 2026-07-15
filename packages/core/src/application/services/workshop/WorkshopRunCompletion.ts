@@ -107,7 +107,7 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     events.streamCompleted(requestId, '', true);
     events.error(
       copy.retentionFailedError,
-      'The host response did not return a retained conversation.'
+      'The participant response did not return a retained conversation.'
     );
     return undefined;
   }

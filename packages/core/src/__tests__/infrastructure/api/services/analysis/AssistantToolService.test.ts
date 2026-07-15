@@ -99,6 +99,30 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     expect(engine.runInitial.mock.calls[0][0].userMessage).toContain('<context-brief>');
   });
 
+  it('starts a guest with the no-capability policy and the handler-owned room envelope', async () => {
+    const engine = makeEngine('guest');
+    const loadPrompts = jest.fn().mockResolvedValue('guest system prompt');
+    const service = build(managerFor(() => engine), loadPrompts);
+    await flush();
+
+    await service.startWorkshopGuestConversation({
+      personaId: 'margot',
+      message: '<workshop-transcript>\nWriter:\nThe room is tense.\n</workshop-transcript>'
+    });
+
+    expect(loadPrompts).toHaveBeenCalledWith([
+      'workshop-personas/guest-base.md',
+      'workshop-personas/margot.md'
+    ]);
+    expect(engine.runInitial).toHaveBeenCalledWith(expect.objectContaining({
+      toolName: 'workshop_guest_margot',
+      systemMessage: 'guest system prompt',
+      userMessage: expect.stringContaining('<workshop-transcript>'),
+      policy: expect.objectContaining({ id: 'workshop-tool-no-resources', capabilityCatalog: 'none', retention: 'retain' }),
+    }));
+    expect(engine.runInitial.mock.calls[0][0]).not.toHaveProperty('capability');
+  });
+
   it.each([
     ['direct-pinned', undefined],
     ['file-pinned', 'chapters/one.md']

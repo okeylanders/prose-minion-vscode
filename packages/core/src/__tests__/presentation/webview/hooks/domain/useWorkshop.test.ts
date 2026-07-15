@@ -54,6 +54,7 @@ const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessio
         participants: {
           host: { personaId: 'jill', hasConversation: false },
           toolSidecars: [],
+          personaGuests: [],
           chatTarget: { kind: 'host' }
         },
         ...session
@@ -443,6 +444,7 @@ describe('useWorkshop', () => {
             availableForDirectFollowUp: true,
             activeTarget: true
           }],
+          personaGuests: [],
           chatTarget: { kind: 'tool', toolId: 'continuity' }
         },
         hasConversation: true
@@ -457,6 +459,17 @@ describe('useWorkshop', () => {
     expect(result.current.isPersonaSelectionLocked).toBe(true);
   });
 
+  it('posts the writer-authored opening when inviting a guest', () => {
+    const { result } = renderHook(() => useWorkshop());
+
+    act(() => result.current.inviteGuest('margot', 'Where does the viewpoint drift?'));
+
+    expect(posted(MessageType.WORKSHOP_INVITE_GUEST)[0].payload).toEqual({
+      personaId: 'margot',
+      openingMessage: 'Where does the viewpoint drift?'
+    });
+  });
+
   // ── Persona composer enablement + cancel wire ────────────────────────────
 
   it('enables the composer for a pinned excerpt before a host conversation starts', () => {
@@ -469,6 +482,7 @@ describe('useWorkshop', () => {
         participants: {
           host: { personaId: 'jill', hasConversation: false },
           toolSidecars: [],
+          personaGuests: [],
           chatTarget: { kind: 'host' }
         }
       }));

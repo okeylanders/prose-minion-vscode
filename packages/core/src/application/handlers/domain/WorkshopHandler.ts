@@ -26,6 +26,10 @@ import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWork
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import {
   buildWorkshopDirectHandoff,
+  buildWorkshopGuestCatchUp,
+  buildWorkshopGuestHandoff,
+  buildWorkshopGuestJoinMessage,
+  buildWorkshopGuestMessage,
   buildWorkshopHostMessage,
   buildWorkshopHostUpdateFrame,
   buildWorkshopTodoEvidence,
@@ -36,7 +40,10 @@ import {
   workshopMessageCompletionCopy
 } from '@/application/services/workshop/WorkshopRunCompletion';
 import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
-import { isWorkshopPersonaId, workshopPersonaLabel } from '@shared/constants/workshopPersonas';
+import {
+  isWorkshopPersonaId,
+  workshopPersonaLabel
+} from '@shared/constants/workshopPersonas';
 import { workshopQuickActionPrompt } from '@shared/constants/workshopQuickActions';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -58,6 +65,8 @@ import {
   WorkshopQuickActionMessage,
   WorkshopRunToolMessage,
   WorkshopSendMessageMessage,
+  WorkshopInviteGuestMessage,
+  WorkshopDismissGuestMessage,
   WorkshopSelectPersonaMessage,
   WorkshopSetChatTargetMessage,
   WorkshopSetContextBriefMessage,
@@ -65,6 +74,7 @@ import {
   WorkshopTodoActionMessage,
   WorkshopSessionStateMessage,
   WorkshopToolId,
+  WorkshopPersonaId,
   WorkshopChatTarget,
   WorkshopTurn,
   WorkshopTurnMessage
@@ -117,6 +127,7 @@ export class WorkshopHandler {
     /** Display label for logs/status ("Prose", "Follow-up", …). */
     label: string;
     toolId?: WorkshopToolId;
+    guestPersonaId?: WorkshopPersonaId;
     controller: AbortController;
   };
 
@@ -152,6 +163,8 @@ export class WorkshopHandler {
     router.register(MessageType.WORKSHOP_RUN_TOOL, this.handleRunTool.bind(this));
     router.register(MessageType.WORKSHOP_QUICK_ACTION, this.handleQuickAction.bind(this));
     router.register(MessageType.WORKSHOP_SEND_MESSAGE, this.handleSendMessage.bind(this));
+    router.register(MessageType.WORKSHOP_INVITE_GUEST, this.handleInviteGuest.bind(this));
+    router.register(MessageType.WORKSHOP_DISMISS_GUEST, this.handleDismissGuest.bind(this));
     router.register(MessageType.WORKSHOP_SELECT_PERSONA, this.handleSelectPersona.bind(this));
     router.register(MessageType.WORKSHOP_SET_CHAT_TARGET, this.handleSetChatTarget.bind(this));
     router.register(MessageType.WORKSHOP_SET_EXCERPT, this.handleSetExcerpt.bind(this));
@@ -267,9 +280,140 @@ export class WorkshopHandler {
     }
   }
 
+  /** Start a fresh retained guest sidecar from an explicit writer invitation. */
+  async handleInviteGuest(message: WorkshopInviteGuestMessage): Promise<void> {
+    const personaId = message.payload?.personaId;
+    if (!isWorkshopPersonaId(personaId)) {
+      this.sendError('workshop.invite_guest', `Unknown Workshop persona: ${String(personaId)}`);
+      return;
+    }
+    const openingMessage = message.payload?.openingMessage?.trim();
+    if (!openingMessage) {
+      this.sendError('workshop.invite_guest', 'Write an opening message for the guest.');
+      return;
+    }
+    if (openingMessage.length > PROMPT_BUDGETS.guestOpening.characters) {
+      this.sendError(
+        'workshop.invite_guest',
+        `Guest opening messages are limited to ${PROMPT_BUDGETS.guestOpening.characters.toLocaleString()} characters.`
+      );
+      return;
+    }
+
+    const excerpt = this.session.getExcerpt();
+    if (!excerpt || excerpt.text.trim().length === 0) {
+      this.sendError('workshop.invite_guest', 'Pin an excerpt before inviting a guest.');
+      return;
+    }
+
+    try {
+      this.session.validatePersonaGuestInvitation(personaId);
+      this.preemptActiveRun();
+
+      const requestId = generateRequestId('workshop_guest_join');
+      const controller = new AbortController();
+      const join = buildWorkshopGuestJoinMessage({
+        guestPersonaId: personaId,
+        excerpt,
+        hostTurns: this.session.collectHostThreadTurns(),
+        openingMessage
+      });
+      const userTurn = this.session.beginPersonaGuestJoin(
+        personaId,
+        requestId,
+        openingMessage
+      );
+      this.activeRun = {
+        requestId,
+        label: workshopPersonaLabel(personaId),
+        guestPersonaId: personaId,
+        controller
+      };
+
+      this.postTurn(userTurn);
+      this.postSessionState();
+      this.sendStreamStarted(requestId);
+      this.sendStatus(`Inviting ${workshopPersonaLabel(personaId)} into the room…`);
+
+      try {
+        const result = await this.assistantToolService.startWorkshopGuestConversation({
+          personaId,
+          message: join.message
+        }, {
+          signal: controller.signal,
+          onToken: (token: string) => this.sendStreamChunk(requestId, token)
+        });
+        const assistantTurn = completeWorkshopRun({
+          session: this.session,
+          requestId,
+          label: workshopPersonaLabel(personaId),
+          result,
+          aborted: controller.signal.aborted,
+          createsRetainedConversation: true,
+          copy: workshopMessageCompletionCopy(workshopPersonaLabel(personaId)),
+          discardConversation: (id) => this.assistantToolService.discardConversation(id),
+          log: (line) => this.outputChannel.appendLine(`[WorkshopHandler] ${line}`),
+          events: {
+            streamCompleted: (id, content, cancelled, usage, truncated) =>
+              this.sendStreamComplete(id, content, cancelled, usage, truncated),
+            turnCompleted: (turn) => this.postTurn(turn),
+            status: (status) => this.sendStatus(status),
+            error: (errorMessage, details) =>
+              this.sendError('workshop.invite_guest', errorMessage, details)
+          }
+        });
+        if (assistantTurn) {
+          this.session.setChatTarget({ kind: 'personaGuest', personaId });
+          this.sendStatus(`${workshopPersonaLabel(personaId)} joined the room.`);
+        }
+        this.postSessionState();
+      } catch (error) {
+        const details = error instanceof Error ? error.message : String(error);
+        this.session.abandonRun(requestId);
+        this.sendStreamComplete(requestId, '', true);
+        if (error instanceof Error && error.name === 'AbortError') {
+          this.sendStatus(`${workshopPersonaLabel(personaId)} invitation cancelled`);
+        } else {
+          this.sendError('workshop.invite_guest', `Failed to invite ${workshopPersonaLabel(personaId)}`, details);
+        }
+        this.postSessionState();
+      } finally {
+        this.settleActiveRun(requestId);
+      }
+    } catch (error) {
+      this.sendError(
+        'workshop.invite_guest',
+        error instanceof Error ? error.message : 'That guest cannot join the room.'
+      );
+    }
+  }
+
+  /** Dispose a guest explicitly and discard its provider-side conversation. */
+  async handleDismissGuest(message: WorkshopDismissGuestMessage): Promise<void> {
+    const personaId = message.payload?.personaId;
+    if (!isWorkshopPersonaId(personaId)) {
+      this.sendError('workshop.dismiss_guest', `Unknown Workshop persona: ${String(personaId)}`);
+      return;
+    }
+    if (this.activeRun?.guestPersonaId === personaId) {
+      this.preemptActiveRun();
+    }
+    const conversationId = this.session.dismissPersonaGuest(personaId);
+    if (!conversationId) {
+      this.sendError('workshop.dismiss_guest', `${workshopPersonaLabel(personaId)} is not an active guest.`);
+      return;
+    }
+    this.assistantToolService.discardConversation(conversationId);
+    this.outputChannel.appendLine(
+      `[WorkshopHandler] Guest dismissed (persona=${personaId}, conversation=${conversationId})`
+    );
+    this.sendStatus(`${workshopPersonaLabel(personaId)} left the room.`);
+    this.postSessionState();
+  }
+
   async handleSetChatTarget(message: WorkshopSetChatTargetMessage): Promise<void> {
     const target = message.payload;
-    if (!target || (target.kind !== 'host' && target.kind !== 'tool')) {
+    if (!target || !['host', 'tool', 'personaGuest'].includes(target.kind)) {
       this.sendError('workshop.set_chat_target', 'Invalid Workshop chat target.');
       return;
     }
@@ -277,8 +421,12 @@ export class WorkshopHandler {
       this.sendError('workshop.set_chat_target', `Unknown Workshop tool: ${String(target.toolId)}`);
       return;
     }
+    if (target.kind === 'personaGuest' && !isWorkshopPersonaId(target.personaId)) {
+      this.sendError('workshop.set_chat_target', `Unknown Workshop guest: ${String(target.personaId)}`);
+      return;
+    }
     if (!this.session.setChatTarget(target)) {
-      this.sendError('workshop.set_chat_target', 'That tool conversation is no longer available.');
+      this.sendError('workshop.set_chat_target', 'That Workshop participant is no longer available.');
       return;
     }
     this.postSessionState();
@@ -330,12 +478,40 @@ export class WorkshopHandler {
     const target = targetOverride ?? this.session.getChatTarget();
     const personaId = this.session.getSelectedPersonaId();
     const hostConversationId = this.session.getHostConversationId();
-    const conversationId = target.kind === 'host'
-      ? hostConversationId
-      : this.session.getToolSidecarConversationId(target.toolId);
+    const targetDetails = (() => {
+      switch (target.kind) {
+        case 'host':
+          return {
+            conversationId: hostConversationId,
+            label: workshopPersonaLabel(personaId),
+            requestType: 'workshop_host',
+            toolId: undefined,
+            guestPersonaId: undefined,
+            missingConversationMessage: undefined
+          };
+        case 'tool':
+          return {
+            conversationId: this.session.getToolSidecarConversationId(target.toolId),
+            label: workshopToolLabel(target.toolId),
+            requestType: 'workshop_tool_message',
+            toolId: target.toolId,
+            guestPersonaId: undefined,
+            missingConversationMessage: 'That tool conversation is no longer available.'
+          };
+        case 'personaGuest':
+          return {
+            conversationId: this.session.getPersonaGuestConversationId(target.personaId),
+            label: workshopPersonaLabel(target.personaId),
+            requestType: 'workshop_guest_message',
+            toolId: undefined,
+            guestPersonaId: target.personaId,
+            missingConversationMessage: 'That guest conversation is no longer available.'
+          };
+      }
+    })();
 
-    if (target.kind === 'tool' && !conversationId) {
-      this.sendError('workshop.send_message', 'That tool conversation is no longer available.');
+    if (targetDetails.missingConversationMessage && !targetDetails.conversationId) {
+      this.sendError('workshop.send_message', targetDetails.missingConversationMessage);
       return;
     }
     const excerpt = this.session.getExcerpt();
@@ -347,6 +523,12 @@ export class WorkshopHandler {
     this.preemptActiveRun();
     const handoff = target.kind === 'host'
       ? buildWorkshopDirectHandoff(this.session.collectUnseenDirectExchanges())
+      : undefined;
+    const guestHandoff = target.kind === 'host'
+      ? buildWorkshopGuestHandoff(this.session.collectUnseenGuestExchangesForHost())
+      : undefined;
+    const guestCatchUp = target.kind === 'personaGuest'
+      ? buildWorkshopGuestCatchUp(this.session.collectUnseenHostTurnsForGuest(target.personaId))
       : undefined;
     const pendingHostUpdates = target.kind === 'host'
       ? this.session.collectPendingHostUpdates()
@@ -369,23 +551,49 @@ export class WorkshopHandler {
         `[WorkshopHandler] Direct handoff prepared: ${handoff.unseenTurns} unseen → ${handoff.includedTurns} included, ${handoff.omittedTurns} omitted, ${handoff.truncatedCharacters} chars truncated`
       );
     }
-    const modelMessage = target.kind === 'host'
-      ? buildWorkshopHostMessage(text, {
+    if (guestHandoff) {
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Guest handoff prepared: ${guestHandoff.includedTurns} included, ${guestHandoff.omittedTurns} omitted, ${guestHandoff.truncatedCharacters} chars truncated`
+      );
+    }
+    if (guestCatchUp && target.kind === 'personaGuest') {
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Guest catch-up prepared (persona=${target.personaId}): ${guestCatchUp.includedTurns} included, ${guestCatchUp.omittedTurns} omitted, ${guestCatchUp.truncatedCharacters} chars truncated`
+      );
+    }
+    const { conversationId, label, requestType, toolId, guestPersonaId } = targetDetails;
+    const requestId = generateRequestId(requestType);
+    const controller = new AbortController();
+    let modelMessage: string;
+    let userTurn: WorkshopTurn;
+    let statusMessage: string;
+    switch (target.kind) {
+      case 'host':
+        modelMessage = buildWorkshopHostMessage(text, {
           handoff,
+          guestHandoff,
           todoEvidence,
           hostUpdate: hostUpdateFrame
-        })
-      : text;
-    const label = target.kind === 'host'
-      ? workshopPersonaLabel(personaId)
-      : workshopToolLabel(target.toolId);
-    const requestId = generateRequestId(target.kind === 'host' ? 'workshop_host' : 'workshop_tool_message');
-    const controller = new AbortController();
-    this.activeRun = { requestId, label, toolId: target.kind === 'tool' ? target.toolId : undefined, controller };
-
-    const userTurn = target.kind === 'host'
-      ? this.session.beginPersonaMessage(requestId, displayText)
-      : this.session.beginDirectToolMessage(target.toolId, requestId, displayText);
+        });
+        userTurn = this.session.beginPersonaMessage(requestId, displayText);
+        statusMessage = handoff
+          ? `Handing ${handoff.unseenTurns} unseen direct-tool turn${handoff.unseenTurns === 1 ? '' : 's'} back to ${label}…`
+          : `Streaming ${label}…`;
+        break;
+      case 'tool':
+        modelMessage = text;
+        userTurn = this.session.beginDirectToolMessage(target.toolId, requestId, displayText);
+        statusMessage = `Continuing directly with ${label}…`;
+        break;
+      case 'personaGuest':
+        modelMessage = buildWorkshopGuestMessage(text, guestCatchUp);
+        userTurn = this.session.beginPersonaGuestMessage(target.personaId, requestId, displayText);
+        statusMessage = guestCatchUp
+          ? `Catching ${label} up on the room…`
+          : `Continuing with ${label}…`;
+        break;
+    }
+    this.activeRun = { requestId, label, toolId, guestPersonaId, controller };
     const hostCapability = target.kind === 'host'
       ? this.capabilityFactory.create({
           requestId,
@@ -402,13 +610,7 @@ export class WorkshopHandler {
     this.postTurn(userTurn);
     this.postSessionState();
     this.sendStreamStarted(requestId);
-    this.sendStatus(
-      handoff
-        ? `Handing ${handoff.unseenTurns} unseen direct-tool turn${handoff.unseenTurns === 1 ? '' : 's'} back to ${label}…`
-        : target.kind === 'tool'
-          ? `Continuing directly with ${label}…`
-          : `Streaming ${label}…`
-    );
+    this.sendStatus(statusMessage);
 
     try {
       const result = conversationId
@@ -449,6 +651,12 @@ export class WorkshopHandler {
       });
       if (assistantTurn && target.kind === 'host' && handoff) {
         this.session.commitHostHandoff(handoff.deliveredTurnIds);
+      }
+      if (assistantTurn && target.kind === 'host' && guestHandoff) {
+        this.session.commitHostGuestHandoff(guestHandoff.deliveredTurnIds);
+      }
+      if (assistantTurn && target.kind === 'personaGuest') {
+        this.session.commitGuestCatchUp(target.personaId, guestCatchUp?.deliveredTurnIds ?? []);
       }
       if (assistantTurn && target.kind === 'host' && pendingHostUpdates) {
         this.session.commitPendingHostUpdates(pendingHostUpdates);

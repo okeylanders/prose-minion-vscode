@@ -68,6 +68,13 @@ export interface WorkshopPersonaConversationInput {
   contextBrief?: string;
 }
 
+/** Inputs for the first retained exchange with an explicitly invited guest. */
+export interface WorkshopGuestConversationInput {
+  personaId: WorkshopPersonaId;
+  /** Deterministic, bounded room envelope built by the Workshop handler. */
+  message: string;
+}
+
 /**
  * Service wrapper for AI-powered assistant analysis
  *
@@ -438,6 +445,61 @@ export class AssistantToolService {
 
     return AnalysisResultFactory.createAnalysisResult(
       'workshop_persona',
+      executionResult.content,
+      executionResult.usedGuides,
+      executionResult.usage,
+      executionResult.finishReason,
+      executionResult.conversationId
+    );
+  }
+
+  /**
+   * Start an isolated, no-capability Workshop guest sidecar. The handler owns
+   * the bounded room snapshot; this service owns only prompt assembly and the
+   * retained provider conversation.
+   */
+  async startWorkshopGuestConversation(
+    input: WorkshopGuestConversationInput,
+    streamingOptions: AnalysisStreamingOptions = {}
+  ): Promise<AnalysisResult> {
+    const engine = this.assistantEngine;
+    if (!engine) {
+      return AnalysisResultFactory.createAnalysisResult(
+        'workshop_guest',
+        this.getApiKeyWarning()
+      );
+    }
+
+    const persona = getWorkshopPersona(input.personaId);
+    if (!persona) {
+      throw new Error(`Unknown Workshop persona: ${input.personaId}`);
+    }
+    const options = this.toolOptions.getOptions();
+    const promptLoader = this.resourceLoader.getPromptLoader();
+    const systemPrompt = await promptLoader.loadPrompts([
+      'workshop-personas/guest-base.md',
+      persona.promptPath
+    ]);
+
+    this.outputChannel?.appendLine(
+      `[AssistantToolService] Starting Workshop guest ${persona.id} | Streaming: ${!!streamingOptions.onToken}`
+    );
+
+    const executionResult = await engine.runInitial({
+      toolName: `workshop_guest_${persona.id}`,
+      systemMessage: systemPrompt,
+      userMessage: input.message,
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources,
+      options: {
+        temperature: options.temperature,
+        maxTokens: options.maxTokens,
+        signal: streamingOptions.signal,
+        onToken: streamingOptions.onToken
+      }
+    });
+
+    return AnalysisResultFactory.createAnalysisResult(
+      'workshop_guest',
       executionResult.content,
       executionResult.usedGuides,
       executionResult.usage,

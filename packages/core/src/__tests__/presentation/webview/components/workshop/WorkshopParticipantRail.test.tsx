@@ -5,7 +5,7 @@
 import * as React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { WorkshopParticipantRail } from '@components/workshop/WorkshopParticipantRail';
-import { WorkshopChatTarget, WorkshopToolSidecarSnapshot } from '@messages';
+import { WorkshopChatTarget, WorkshopPersonaGuestSnapshot, WorkshopToolSidecarSnapshot } from '@messages';
 
 const sidecar = (
   toolId: WorkshopToolSidecarSnapshot['toolId'],
@@ -94,5 +94,36 @@ describe('WorkshopParticipantRail', () => {
     expect((chip as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(chip);
     expect(onSetChatTarget).not.toHaveBeenCalled();
+  });
+
+  it('exposes the explicit guest invitation and routes a live guest', () => {
+    const guest: WorkshopPersonaGuestSnapshot = {
+      personaId: 'margot',
+      personaLabel: 'Margot',
+      hasConversation: true,
+      liveness: 'live',
+      activeTarget: false
+    };
+    const onSetChatTarget = jest.fn();
+    const onInviteGuest = jest.fn();
+    render(
+      <WorkshopParticipantRail
+        personaId="jill"
+        personaLabel="Jill"
+        toolSidecars={[]}
+        personaGuests={[guest]}
+        chatTarget={{ kind: 'host' }}
+        onSetChatTarget={onSetChatTarget}
+        showInviteGuest
+        onInviteGuest={onInviteGuest}
+        onDismissGuest={jest.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Invite guest/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Margot' }));
+
+    expect(onInviteGuest).toHaveBeenCalledTimes(1);
+    expect(onSetChatTarget).toHaveBeenCalledWith({ kind: 'personaGuest', personaId: 'margot' });
   });
 });

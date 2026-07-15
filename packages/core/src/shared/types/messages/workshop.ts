@@ -42,7 +42,8 @@ export type WorkshopPersonaId =
 /** The one explicit routing choice behind the Workshop composer. */
 export type WorkshopChatTarget =
   | { kind: 'host' }
-  | { kind: 'tool'; toolId: WorkshopToolId };
+  | { kind: 'tool'; toolId: WorkshopToolId }
+  | { kind: 'personaGuest'; personaId: WorkshopPersonaId };
 
 /** Metadata safe to expose for the permanent persona participant. */
 export interface WorkshopHostParticipantSnapshot {
@@ -62,10 +63,20 @@ export interface WorkshopToolSidecarSnapshot {
   activeTarget: boolean;
 }
 
+/** Public view of a guest persona retained beside the immutable host. */
+export interface WorkshopPersonaGuestSnapshot {
+  personaId: WorkshopPersonaId;
+  personaLabel: string;
+  hasConversation: boolean;
+  liveness: 'live' | 'disposed';
+  activeTarget: boolean;
+}
+
 /** Public view of the session's private participant graph. */
 export interface WorkshopParticipantsSnapshot {
   host: WorkshopHostParticipantSnapshot;
   toolSidecars: WorkshopToolSidecarSnapshot[];
+  personaGuests: WorkshopPersonaGuestSnapshot[];
   chatTarget: WorkshopChatTarget;
 }
 
@@ -125,7 +136,7 @@ export interface WorkshopTodoItem {
 export type WorkshopTurnRole = 'user' | 'assistant' | 'system';
 
 /** The participant responsible for a visible Workshop turn. */
-export type WorkshopTurnParticipant = 'writer' | 'host' | 'tool' | 'session';
+export type WorkshopTurnParticipant = 'writer' | 'host' | 'guest' | 'tool' | 'session';
 
 /**
  * Semantic artifact carried by a turn. `kind` remains the coarse interaction
@@ -293,6 +304,25 @@ export interface WorkshopSendMessagePayload {
 
 export interface WorkshopSendMessageMessage extends MessageEnvelope<WorkshopSendMessagePayload> {
   type: MessageType.WORKSHOP_SEND_MESSAGE;
+}
+
+/** Explicit writer action: invite a second persona into a retained guest sidecar. */
+export interface WorkshopInviteGuestPayload {
+  personaId: WorkshopPersonaId;
+  openingMessage: string;
+}
+
+export interface WorkshopInviteGuestMessage extends MessageEnvelope<WorkshopInviteGuestPayload> {
+  type: MessageType.WORKSHOP_INVITE_GUEST;
+}
+
+/** Explicit writer action: dispose a retained guest sidecar. */
+export interface WorkshopDismissGuestPayload {
+  personaId: WorkshopPersonaId;
+}
+
+export interface WorkshopDismissGuestMessage extends MessageEnvelope<WorkshopDismissGuestPayload> {
+  type: MessageType.WORKSHOP_DISMISS_GUEST;
 }
 
 export interface WorkshopSelectPersonaPayload {

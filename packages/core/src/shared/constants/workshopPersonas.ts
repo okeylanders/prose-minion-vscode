@@ -17,6 +17,11 @@ export interface WorkshopPersonaDescriptor {
 
 export const DEFAULT_WORKSHOP_PERSONA_ID: WorkshopPersonaId = 'jill';
 
+export const DEFAULT_WORKSHOP_GUEST_OPENING =
+  'Read this room and give me your perspective on the pinned excerpt.';
+
+export const WORKSHOP_GUEST_CAPACITY = 2;
+
 export const WORKSHOP_PERSONA_CATALOG: readonly WorkshopPersonaDescriptor[] = [
   { id: 'jill', label: 'Jill', specialty: 'Creative writing partner', description: 'Warm developmental and line-level craft support for the work in front of you.', promptPath: 'workshop-personas/jill.md' },
   { id: 'agnes', label: 'Sister Agnes', specialty: 'Theme & symbolism', description: 'Keeps themes embodied, symbols intentional, and insight earned on the page.', promptPath: 'workshop-personas/agnes.md' },

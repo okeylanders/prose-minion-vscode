@@ -54,6 +54,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       startWorkshopPersonaConversation: jest.fn().mockResolvedValue(
         analysisResult('Jill synthesis', { conversationId: 'host-conv' })
       ),
+      startWorkshopGuestConversation: jest.fn().mockResolvedValue(
+        analysisResult('Margot guest read', { conversationId: 'guest-conv' })
+      ),
       continueConversation: jest.fn().mockImplementation(async (conversationId: string) =>
         analysisResult('continued reply', { conversationId })
       ),
@@ -105,7 +108,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_SEND_MESSAGE)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SET_CONTEXT_BRIEF)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_TODO_ACTION)).toBe(true);
-    expect(router.handlerCount).toBe(12);
+    expect(router.handlerCount).toBe(14);
   });
 
   it('starts Jill directly from the composer and retains the host conversation', async () => {
@@ -131,6 +134,92 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       artifact: 'persona_message',
       personaId: 'jill'
     });
+  });
+
+  it('invites an explicit guest with the bounded room envelope and routes to its retained sidecar', async () => {
+    await pin();
+
+    await handler.handleInviteGuest(message(
+      MessageType.WORKSHOP_INVITE_GUEST,
+      { personaId: 'margot', openingMessage: 'Tell me where the point of view slips.' }
+    ) as any);
+
+    expect(service.startWorkshopGuestConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        personaId: 'margot',
+        message: expect.stringContaining('<writer-message>\nTell me where the point of view slips.\n</writer-message>')
+      }),
+      expect.objectContaining({
+        signal: expect.anything(),
+        onToken: expect.any(Function)
+      })
+    );
+    expect((service.startWorkshopGuestConversation.mock.calls[0]?.[1] as any).capability).toBeUndefined();
+    expect(session.getPersonaGuestConversationId('margot')).toBe('guest-conv');
+    expect(session.getChatTarget()).toEqual({ kind: 'personaGuest', personaId: 'margot' });
+    expect(session.getSnapshot().turns).toEqual(expect.arrayContaining([
+      expect.objectContaining({ participant: 'writer', personaId: 'margot' }),
+      expect.objectContaining({ participant: 'guest', personaId: 'margot', content: 'Margot guest read' })
+    ]));
+  });
+
+  it('disposes a guest and discards its provider conversation', async () => {
+    await pin();
+    await handler.handleInviteGuest(message(
+      MessageType.WORKSHOP_INVITE_GUEST,
+      { personaId: 'margot', openingMessage: 'Read the room.' }
+    ) as any);
+
+    await handler.handleDismissGuest(message(
+      MessageType.WORKSHOP_DISMISS_GUEST,
+      { personaId: 'margot' }
+    ) as any);
+
+    expect(service.discardConversation).toHaveBeenCalledWith('guest-conv');
+    expect(log.appendLine).toHaveBeenCalledWith(
+      '[WorkshopHandler] Guest dismissed (persona=margot, conversation=guest-conv)'
+    );
+    expect(session.getSnapshot().participants.personaGuests).toEqual([
+      expect.objectContaining({ personaId: 'margot', liveness: 'disposed', hasConversation: false })
+    ]);
+    expect(session.getChatTarget()).toEqual({ kind: 'host' });
+  });
+
+  it('continues the guest without capabilities and hands guest evidence back to the host', async () => {
+    await pin();
+    await handler.handleInviteGuest(message(
+      MessageType.WORKSHOP_INVITE_GUEST,
+      { personaId: 'margot', openingMessage: 'Read the room.' }
+    ) as any);
+    service.continueConversation.mockClear();
+
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'What changes the point of view here?' }
+    ) as any);
+
+    expect(service.continueConversation).toHaveBeenCalledWith(
+      'guest-conv',
+      'What changes the point of view here?',
+      expect.objectContaining({ capability: undefined })
+    );
+    expect(session.getSnapshot().turns.at(-1)).toMatchObject({
+      participant: 'guest',
+      personaId: 'margot'
+    });
+
+    await handler.handleSetChatTarget(message(
+      MessageType.WORKSHOP_SET_CHAT_TARGET,
+      { kind: 'host' }
+    ) as any);
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'What should I revise?' }
+    ) as any);
+
+    const hostMessage = service.startWorkshopPersonaConversation.mock.calls.at(-1)![0].message;
+    expect(hostMessage).toContain('<workshop-guest-handoff>');
+    expect(hostMessage).toContain('Margot guest read');
   });
 
   it('does not duplicate a brief when the first host attempt fails and is retried', async () => {
@@ -824,6 +913,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(session.getSnapshot().participants).toEqual({
       host: { personaId: 'jill', hasConversation: false },
       toolSidecars: [],
+      personaGuests: [],
       chatTarget: { kind: 'host' }
     });
     expect(service.discardConversation).toHaveBeenCalledWith('host-conv');
