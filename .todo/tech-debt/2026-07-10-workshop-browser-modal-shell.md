@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-07-10
 **Source**: PR #70 review, finding 9
-**Status**: Deferred
+**Status**: Scheduled — Sprint 12 context/excerpt intake rework
 **Priority**: Medium
 **Estimated Effort**: Small
 
@@ -19,6 +19,10 @@ contracts.
 Extract the shared dialog shell, or backport the persona browser's focus-return
 behavior to the tool browser before extracting it. Keep persona and tool cards
 separate; only the genuinely identical dialog mechanics should be shared.
+
+Sprint 12 owns the extraction because its Context Selector is the first new
+consumer. The final Sprint 10 persistence pass then reuses the same shell for
+the session browser; persistence must not introduce a parallel modal framework.
 
 ## Related Files
 

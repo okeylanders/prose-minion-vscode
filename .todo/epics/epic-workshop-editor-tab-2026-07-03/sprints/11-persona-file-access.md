@@ -10,7 +10,8 @@
 blind to the project beyond the pinned excerpt)
 **Branch**: `sprint/workshop-editor-tab-11-persona-file-access` -> PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 4-6 days
-**Depends on**: Sprint 07 (capability boundary). Independent of Sprint 10.
+**Depends on**: Sprint 07 (capability boundary). Executes before Sprint 12 and
+the final Sprint 10 persistence pass.
 **ADRs**: [2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](../../../../docs/adr/2026-07-09-workshop-persona-hosted-conversations.md) (§ capabilities)
 **Feature**: [feature-workshop-persona-context-loading](../../../features/feature-workshop-persona-context-loading/README.md)
 
@@ -102,8 +103,9 @@ this sprint**, not before the final merge:
 - [ ] Persona prompt section describing the capabilities, their bounds, and
       when to use them; catalog-aware (never advertise an empty catalog as
       browsable).
-- [ ] Artifact rendering for catalog/search/read results in the thread;
-      restored-session rendering stays inert (Sprint 10 interplay).
+- [ ] Artifact rendering for catalog/search/read results in the thread, with
+      explicit provenance and action metadata. Sprint 10 owns the final
+      restored-session rule that makes conversation-backed actions inert.
 - [ ] Logs: request id, capability, group, display-safe path, sizes,
       truncation, budget state. Token rail attributes capability usage.
 

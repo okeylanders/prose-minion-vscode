@@ -4,12 +4,12 @@
 > caps live in `packages/core/src/shared/constants/promptBudgets.ts`.
 
 **Status**: Planned
-**Priority**: High (final sprint before the epic merges to main)
+**Priority**: High (final live-session-shape and interface sprint before persistence)
 **Branch**: `sprint/workshop-editor-tab-12-context-excerpt-intake` -> PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 4-6 days
-**Depends on**: Sprint 10 (persistence schema gains attachments; restored-session
-UX polished here). Benefits from Sprint 11 (shared file-browsing concepts) but
-does not require it.
+**Depends on**: Sprint 11 in execution order so its configured-resource and
+file-browsing concepts can be reused. Executes before the final Sprint 10
+persistence pass.
 **Feature**: [feature-workshop-context-selector](../../../features/feature-workshop-context-selector/README.md)
 **Design source**: Okey's intake direction, 2026-07-14 (screenshot review of the live left rail)
 
@@ -35,7 +35,8 @@ verification passes from 06B.
 - **Excerpt source is recorded** as part of session state:
   `{ kind: 'pasted' } | { kind: 'file'; sourceUri }` — the session already
   tracks `sourceUri` for file pins; this makes the pasted/file distinction
-  first-class and serialized (Sprint 10 schema, additive field).
+  first-class in the live aggregate and in Sprint 10's eventual persisted
+  schema.
 - **Locked once the session starts** (`hasHostConversation()`): the editing
   affordance becomes **`[Update text…]`** (pasted) or **`[Re-read from file]`**
   (file-backed). Both route through the existing `replaceExcerpt` revision-
@@ -70,14 +71,14 @@ verification passes from 06B.
   a file mid-conversation without scrolling back to the rail. Same attachment
   list, same budgets, same visibility rules.
 
-### Message and schema changes
+### Message, session-shape, and persistence handoff
 
 - `WORKSHOP_SET_CONTEXT_BRIEF` is replaced by add/remove/update-attachment
   messages (alpha: remove the old route in the same PR).
-- Sprint 10's snapshot schema gains `excerptSource` and `contextAttachments`
-  (additive). **Named saves from schema v1 hydrate tolerantly**: a v1
-  `contextBrief` string becomes a single free-text attachment — do not orphan
-  writers' saved sessions over a shape change (ADR 2026-07-14 §4).
+- This sprint establishes `excerptSource` and `contextAttachments` as the final
+  live aggregate shape. Sprint 10 then includes them in the first persisted
+  `WorkshopSessionSnapshotV1`; no pre-attachment persisted schema ships, so no
+  v1 → v2 migration is required.
 
 ## Tasks
 
@@ -85,7 +86,7 @@ verification passes from 06B.
 
 - [ ] Two-button empty state; remove the pin action; textarea path keeps
       word-count + confirm; file path reuses the existing picker route.
-- [ ] First-class `excerptSource` in session state + snapshot (additive);
+- [ ] First-class `excerptSource` in session state + live session snapshot;
       stamped on set/replace from either path.
 - [ ] Locked-state affordances: `Update text…` / `Re-read from file` per
       source kind, both driving `replaceExcerpt`; re-read no-op detection with
@@ -97,9 +98,11 @@ verification passes from 06B.
       file guard); session aggregate stores the ordered list.
 - [ ] `ContextBriefPanel` → attachment list UI: two add buttons, cards with
       size + remove, aggregate budget meter (replaces the single counter).
-- [ ] Context Selector modal on the shared browser-modal shell (Sprint 10):
-      category-grouped configured paths, explore escape hatch, selection state,
-      display-safe paths only.
+- [ ] Extract the shared browser-modal shell from the persona/tools modals
+      (resolves tech-debt 2026-07-10-workshop-browser-modal-shell), then build
+      the Context Selector on it: category-grouped configured paths, explore
+      escape hatch, selection state, display-safe paths only. Sprint 10's
+      session browser reuses this shell.
 - [ ] Prompt assembly: labeled per-attachment frames with provenance for host
       turns and tool runs; delimiter neutralization; truncation notices.
 - [ ] Mid-session visibility: session event turn on add/remove after the
@@ -110,18 +113,18 @@ verification passes from 06B.
 - [ ] `+` opens the Context Selector modal; resulting attachments appear in
       the rail list and the event turn.
 
-### Persistence interplay
+### Persistence handoff
 
-- [ ] Snapshot schema: additive `excerptSource` + `contextAttachments`;
-      tolerant v1 hydrate (brief → single text attachment); round-trip tests.
+- [ ] Keep `excerptSource`, `contextAttachments`, and context event turns as
+      plain aggregate-owned data with explicit types; update Sprint 10's final
+      serializer inventory if implementation details sharpen during this
+      sprint. Do not introduce persistence or a transitional schema here.
 
 ### Polish and verification
 
 - [ ] Manual UX pass owed from 06B: participant rail (visual treatment, focus
       behavior, reduced-motion) and composer messaging zones in the Extension
       Development Host — record results in the feature READMEs.
-- [ ] Restored-session UX review (Sprint 10 divider, disabled sidecar chips,
-      re-unlocked persona picker) in the same manual pass.
 - [ ] Sweep stale "pin" language from UI copy, tooltips, and docs.
 
 ### Tests
@@ -132,7 +135,8 @@ verification passes from 06B.
       assembly, mid-session event turns.
 - [ ] Modal: category grouping from configured paths, explore path, no raw
       path leakage.
-- [ ] Persistence: v1 → v2 tolerant hydrate; round-trip with attachments.
+- [ ] Live session snapshots include excerpt source, ordered attachments, and
+      context event turns without exposing mutable aggregate internals.
 
 ## Acceptance Criteria
 
@@ -146,7 +150,6 @@ verification passes from 06B.
   receives all of them with provenance.
 - Adding a file from the composer `+` mid-conversation shows an event turn and
   reaches the host on the next turn.
-- A schema-v1 saved session opens with its brief intact as one text attachment.
 - 06B manual verification recorded; lint, typecheck, focused/full tests,
   build, bundle verification pass. Record bundle deltas.
 
@@ -162,4 +165,5 @@ verification passes from 06B.
   through `FileSystem`/`Workspace`/`ShellService` ports; display-safe paths in
   the UI.
 - Don't gold-plate the modal (search-within-modal, previews, multi-root
-  workspaces can wait); this sprint closes the epic.
+  workspaces can wait); this sprint closes the live session shape, and Sprint
+  10 closes the epic by persisting it.

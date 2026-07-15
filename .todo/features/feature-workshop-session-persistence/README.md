@@ -1,14 +1,19 @@
 # Feature: Workshop Session Persistence (Survive VS Code Restart)
 
 **Status**: ADR drafted ([2026-07-14 — Workshop Session Persistence and the Session Browser](../../../docs/adr/2026-07-14-workshop-session-persistence.md));
-scheduled as [Sprint 10](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md).
+scheduled as [Sprint 10](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md),
+but intentionally executed last after Sprints 11 and 12. Sprint numbers and
+branch names remain unchanged; remaining execution order is **11 → 12 → 10**.
 The ADR supersedes this README's storage direction: **JSON files under
 `prose-minion/sessions/` via the existing `FileSystem` port** (plus a small
 `delete()` port extension), not a `workspaceState` Memento/`KeyValueStore`
 port — the session-browser requirement made file storage the better fit.
-Ship shape = T2 + explicit save + browser. The snapshot inventory below
-predates Sprints 08–09: it must also include the **todo list** and **guest
-participant identities/turns**.
+Ship shape = T2 + explicit save + browser. The first persisted snapshot is
+defined only after the Workshop session shape stabilizes and includes the
+**todo list**, **guest participant identities/turns**, Sprint 11 capability
+artifacts, and Sprint 12's `excerptSource` + typed context attachments. The
+dated investigation below is retained as history; the ADR and sprint doc are
+the implementation sources of truth wherever it differs.
 **Priority**: High (promoted 2026-07-14 — restart data loss is a live pain point)
 **Date**: 2026-07-13
 **Origin**: "Is the Workshop editor supposed to remember anything between VS
@@ -72,7 +77,7 @@ day) — and all of it is gone: the excerpt they have to re-paste, the context
 brief they have to re-type, and the transcript they can no longer refer back to.
 The excerpt and brief are pure writer inputs; losing them is the sharpest papercut.
 
-## Design Directions (tiered — recommend shipping T1, then reassessing)
+## Historical Design Directions (superseded by the ADR)
 
 ### T1 — Persist writer inputs only (lean, recommended first slice)
 Save **excerpt + context brief** (+ `selectedPersonaId` *if* still unlocked).
@@ -100,7 +105,7 @@ question: do writers *want* multi-day retained rooms, or is a fresh start with
 the transcript visible (T2) the better default? Gate behind that decision; T2 is
 the honest interim and the upgrade path is clean.
 
-## Architecture (all tiers)
+## Historical Architecture Sketch (superseded by the ADR)
 
 **New Platform port — core must never import `vscode`.** Mirror
 [`SettingsStore`](../../../packages/core/src/platform/SettingsStore.ts) /
@@ -162,7 +167,7 @@ without it (rehydrate on the next manual open); it's a UX nicety, not a blocker.
 - `apps/vscode-extension/src/application/providers/WorkshopPanelProvider.ts`
   — optional `WebviewPanelSerializer` registration (T2/T3)
 
-## Completion Criteria
+## Historical Completion Criteria (superseded by the ADR)
 
 - [ ] ADR picks the starting tier (recommend T1) and settles the T3 question
       (does the Workshop want cross-restart *memory*, or transcript-only?).

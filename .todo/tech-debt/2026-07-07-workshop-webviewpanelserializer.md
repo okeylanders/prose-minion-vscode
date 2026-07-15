@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-07-07
 **Source**: Workshop editor-tab Sprint 04 parked item
-**Status**: Parked
+**Status**: Scheduled — Sprint 10 session persistence (executed last after Sprints 11–12)
 **Priority**: Medium
 
 ## Problem
@@ -23,6 +23,7 @@ is registered for the Workshop panel.
 - Register a Workshop `WebviewPanelSerializer` in the VS Code adapter.
 - Decide which session state persists across VS Code restart and where it is
   stored.
-- Rehydration preserves pinned excerpt, selected tool, thread, and conversation
-  affordance honestly, or explicitly marks any lost conversation as unavailable.
+- Rehydration preserves excerpt provenance, context attachments, todos, full
+  thread, and participant identities while explicitly marking provider-backed
+  conversation actions unavailable until a fresh conversation starts.
 - Tests cover serializer registration and restore behavior.

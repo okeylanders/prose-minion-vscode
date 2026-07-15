@@ -56,13 +56,19 @@ Each sprint is independently shippable behind the (initially unregistered)
 | 7 | `sprint/workshop-editor-tab-07-persona-capabilities` | [Persona-callable capabilities](sprints/07-persona-capabilities.md) | Personas autonomously invoke bounded Writer's Dictionary and analysis capabilities through the proven typed host boundary. |
 | 8 | `sprint/workshop-editor-tab-08-actionable-tool-todos` | [Actionable tool To-do List](sprints/08-actionable-tool-todos.md) | Writers promote attributable tool findings into a durable task list the persona can see as bounded evidence. |
 | 9 | `sprint/workshop-editor-tab-09-persona-guest-sidecars` | [Guest persona sidecars](sprints/09-persona-guest-sidecars.md) | Writers summon a bounded second-opinion persona seeded with a labeled transcript snapshot and cursor-based catch-up. |
-| 10 | `sprint/workshop-editor-tab-10-session-persistence` | [Session persistence, save, and browser](sprints/10-session-persistence.md) | Sessions survive VS Code restarts as workspace JSON records; a session browser reopens prior sessions with the full record and honestly fresh room memory. |
+| 10 | `sprint/workshop-editor-tab-10-session-persistence` | [Session persistence, save, and browser](sprints/10-session-persistence.md) | The final persistence pass: sessions survive VS Code restarts as workspace JSON records; a session browser reopens prior sessions with the full record and honestly fresh room memory. |
 | 11 | `sprint/workshop-editor-tab-11-persona-file-access` | [Persona file access](sprints/11-persona-file-access.md) | The host persona searches and reads allowlisted project resources through the Sprint 07 capability boundary — after the markdown-sanitization gate lands as its opening task. |
-| 12 | `sprint/workshop-editor-tab-12-context-excerpt-intake` | [Excerpt & context intake rework + polish](sprints/12-context-excerpt-intake-polish.md) | Intent-button intake replaces "pinning"; context becomes multiple visible attachments; final interface polish before main. |
+| 12 | `sprint/workshop-editor-tab-12-context-excerpt-intake` | [Excerpt & context intake rework + polish](sprints/12-context-excerpt-intake-polish.md) | Intent-button intake replaces "pinning"; context becomes multiple visible attachments; the live session shape and shared browser shell stabilize before persistence. |
+
+**Execution order for the remaining numbered sprints is 11 → 12 → 10.** The
+numbers and branch names remain stable planning identities; Sprint 10 runs last
+so persistence serializes the completed Workshop session and turn contracts
+once instead of chasing changes introduced by file-access artifacts and context
+attachments.
 
 The shared markdown-sanitization gate moves forward into Sprint 11's opening
 tasks (persona file access sharpens that risk — see Known Risks). Final step
-after Sprint 12 merges: open one PR `epic/workshop-editor-tab → main`.
+after Sprint 10 merges: open one PR `epic/workshop-editor-tab → main`.
 
 ## Architectural Invariants (hold across every sprint)
 
@@ -97,7 +103,8 @@ after Sprint 12 merges: open one PR `epic/workshop-editor-tab → main`.
   for ranges/dirty buffers; routes through `FileOperationsHandler` later.
 - **Branch board** (Direction C) and branching semantics on variation cards.
 - ~~**Session persistence across VS Code restarts** (`WebviewPanelSerializer`)~~ —
-  pulled back into scope as Sprint 10 ([ADR 2026-07-14](../../../docs/adr/2026-07-14-workshop-session-persistence.md)).
+  pulled back into scope as Sprint 10 and intentionally executed after Sprints
+  11–12 ([ADR 2026-07-14](../../../docs/adr/2026-07-14-workshop-session-persistence.md)).
 - **Sidebar reskin** and the **Model Browser** — separate follow-ups. A
   temporary look divergence between sidebar and Workshop is acceptable in alpha.
 

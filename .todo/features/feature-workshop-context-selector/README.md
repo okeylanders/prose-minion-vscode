@@ -9,6 +9,8 @@ with a revised intake design (2026-07-14): the Context Brief panel becomes
 kind (cards with size + remove, aggregate budget), the selector modal is the
 `[Add file]` path, and the composer's `+` opens the same modal mid-conversation.
 The single paste-only brief is replaced by the attachment list in that sprint.
+Sprint 12 also extracts the shared browser-modal shell for this selector; the
+final Sprint 10 session browser reuses it.
 **Priority**: High
 **Estimated Effort**: Medium
 

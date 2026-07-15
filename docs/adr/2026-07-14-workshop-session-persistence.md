@@ -11,7 +11,7 @@
 The Workshop session is one in-memory aggregate (`WorkshopSessionService`) plus
 provider conversation histories in `ConversationManager`'s in-memory `Map`.
 Reload/reopen inside one VS Code window survives via host-side rehydration;
-a process restart loses everything: the pinned excerpt, the context brief, the
+a process restart loses everything: the excerpt, writer-supplied context, the
 transcript, the Sprint 08 todo list, and every retained conversation.
 
 The feature investigation (2026-07-13) established the two facts that shape
@@ -39,6 +39,12 @@ The investigation proposed a `workspaceState` Memento behind a new
 fights the browser: Mementos have no natural enumeration story, are invisible
 to the writer, and multiple saved sessions × 10k-word excerpts is exactly the
 payload Mementos are not meant for.
+
+The sprint number remains Sprint 10, but implementation intentionally follows
+Sprints 11 and 12. File-access capabilities add artifact-turn variants, and the
+intake rework replaces the single brief with typed context attachments. Building
+the persistence boundary last lets its first schema describe the completed
+aggregate instead of requiring an immediate migration.
 
 ## Decision
 
@@ -75,15 +81,16 @@ workspace folder.
 `WorkshopSessionService` gains `serialize(): WorkshopSessionSnapshotV1` and
 `static hydrate(snapshot, now)`. This snapshot is **complete** — the full turn
 list (no 100-turn window), the todo list, excerpt text + `sourceUri` +
-`excerptVersion` + `replacementCount` + `turnCounter`, context brief, and
-participant *identities* (host persona id, tool sidecar ids, guest persona
-ids). It is a distinct type from the webview projection and must never be
-built from `getSnapshot()`.
+`excerptSource` + `excerptVersion` + `replacementCount` + `turnCounter`, the
+ordered context attachments, all turn variants (including capability artifacts
+and context event turns), and participant *identities* (host persona id, tool
+sidecar ids, guest persona ids). It is a distinct type from the webview
+projection and must never be built from `getSnapshot()`.
 
 - **Autosave** writes through to `current.json` on every mutation seam —
-  `setExcerpt`/`replaceExcerpt`, `setContextBrief`, turn completion, todo
-  mutations, guest lifecycle — debounced host-side. `reset()` deletes the
-  blob: no stale session resurrecting on next launch.
+  `setExcerpt`/`replaceExcerpt`, context attachment add/update/remove, turn
+  completion, todo mutations, guest lifecycle — debounced host-side. `reset()`
+  deletes the blob: no stale session resurrecting on next launch.
 - **Save session** copies the current serialized state to a timestamped file
   and reports the saved name as a deterministic status line. Saved files are
   immutable records; continuing to work mutates only `current.json`.
@@ -99,7 +106,7 @@ the handler (ADR 2026-06-18).
 Opening a session — via restart recovery or the browser — restores:
 
 - the excerpt (live, editable, version counters intact),
-- the context brief (live),
+- the context attachments (live),
 - the todo list (live — todos are writer-owned data, not model memory),
 - the **entire transcript as read-only history**, capped with the existing
   divider-turn mechanism: *"Previous session restored — transcript preserved,
@@ -125,20 +132,19 @@ leaves room for it (a future `schemaVersion` bump).
 
 Every file carries `schemaVersion`. Unknown or malformed files are skipped by
 the browser listing and ignored by restart recovery — surfaced as a log line,
-never a crash. Within the alpha, breaking schema changes are free **for the
-autosave blob**; for *named saves* (writer-created records), prefer additive
-fields and cheap tolerant reads over discard — Sprint 12's context-attachment
-model change, for example, should hydrate a v1 `contextBrief` string as a
-single free-text attachment rather than orphan the writer's saved sessions.
+never a crash. `WorkshopSessionSnapshotV1` is implemented only after Sprint 12
+establishes the attachment-based session shape, so there is no pre-attachment
+v1 and no v1 → v2 migration. For future *named saves* (writer-created records),
+prefer additive fields and cheap tolerant reads over discard when the cost is
+small; the autosave blob may still reset on a breaking alpha schema change.
 
 ### 5. The session browser reuses the modal shell; the panel comes back on restart
 
 The browser lists `prose-minion/sessions/*.json` newest-first (title, saved
 date, persona, turn count, excerpt word count) with open and delete actions,
-built on the shared browser-modal shell (extracting it from the persona/tools
-modals resolves tech-debt 2026-07-10-workshop-browser-modal-shell). Opening a
-session replaces the current one behind the same confirmation used by
-"New session".
+built on the shared browser-modal shell extracted by Sprint 12 (which resolves
+tech-debt 2026-07-10-workshop-browser-modal-shell). Opening a session replaces
+the current one behind the same confirmation used by "New session".
 
 A `WebviewPanelSerializer` is registered for the Workshop panel (resolving
 tech-debt 2026-07-07): after a restart VS Code reopens the tab, and the
@@ -151,7 +157,7 @@ the JSON file is the single source of truth.
 **Gains**
 
 - A restart or crash no longer destroys writer work; re-pasting the manuscript
-  and re-typing the brief — the sharpest papercut — is gone.
+  and rebuilding context attachments — the sharpest papercut — is gone.
 - Sessions become durable, inspectable writer artifacts with a browsing UI.
 - Zero new platform ports; one method added to `FileSystem`.
 - The dangling-conversation-id hazard is structurally impossible, not merely
@@ -182,5 +188,5 @@ the JSON file is the single source of truth.
 
 ## Implementation
 
-Sprint 10 of the Workshop epic:
+Sprint 10 of the Workshop epic, intentionally executed after Sprints 11 and 12:
 [.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md).
