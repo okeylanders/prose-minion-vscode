@@ -77,7 +77,10 @@ describe('WorkshopPersonaBrowserModal', () => {
     );
 
     expect(screen.getByText('Invite another lens')).not.toBeNull();
+    fireEvent.change(screen.getByLabelText('Your opening message'), {
+      target: { value: 'Where does the voice drift?' }
+    });
     fireEvent.click(screen.getByRole('button', { name: /Margot/ }));
-    expect(onInvite).toHaveBeenCalledWith('margot');
+    expect(onInvite).toHaveBeenCalledWith('margot', 'Where does the voice drift?');
   });
 });

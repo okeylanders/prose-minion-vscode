@@ -3,7 +3,11 @@
 import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
 import type { WorkshopPersonaId } from '@messages';
-import { WORKSHOP_PERSONA_CATALOG } from '@shared/constants/workshopPersonas';
+import {
+  DEFAULT_WORKSHOP_GUEST_OPENING,
+  WORKSHOP_PERSONA_CATALOG
+} from '@shared/constants/workshopPersonas';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WORKSHOP_PERSONA_FOCUS_ICONS } from './workshopPersonaIcons';
 
 interface WorkshopPersonaBrowserModalProps {
@@ -14,7 +18,7 @@ interface WorkshopPersonaBrowserModalProps {
   disabled?: boolean;
   onClose: () => void;
   onSelect: (personaId: WorkshopPersonaId) => void;
-  onInvite?: (personaId: WorkshopPersonaId) => void;
+  onInvite?: (personaId: WorkshopPersonaId, openingMessage: string) => void;
 }
 
 export const WorkshopPersonaBrowserModal: React.FC<WorkshopPersonaBrowserModalProps> = ({
@@ -27,8 +31,16 @@ export const WorkshopPersonaBrowserModal: React.FC<WorkshopPersonaBrowserModalPr
   onSelect,
   onInvite
 }) => {
+  const guestMode = mode === 'guest';
   const returnFocusRef = React.useRef<HTMLElement | null>(null);
   const closeButtonRef = React.useRef<HTMLButtonElement>(null);
+  const [openingMessage, setOpeningMessage] = React.useState(DEFAULT_WORKSHOP_GUEST_OPENING);
+
+  React.useEffect(() => {
+    if (open && guestMode) {
+      setOpeningMessage(DEFAULT_WORKSHOP_GUEST_OPENING);
+    }
+  }, [guestMode, open]);
 
   React.useEffect(() => {
     if (!open) {
@@ -58,8 +70,6 @@ export const WorkshopPersonaBrowserModal: React.FC<WorkshopPersonaBrowserModalPr
     return null;
   }
 
-  const guestMode = mode === 'guest';
-
   return (
     <div className="pm-ws-modal-backdrop" role="presentation" onMouseDown={handleBackdropClick}>
       <div className="pm-ws-tools-modal pm-ws-persona-modal" role="dialog" aria-modal="true" aria-labelledby="pm-ws-persona-title">
@@ -77,17 +87,37 @@ export const WorkshopPersonaBrowserModal: React.FC<WorkshopPersonaBrowserModalPr
             <Icon name="x" size={16} />
           </button>
         </div>
+        {guestMode && (
+          <label className="pm-ws-guest-opening">
+            <span>Your opening message</span>
+            <textarea
+              aria-label="Your opening message"
+              value={openingMessage}
+              maxLength={PROMPT_BUDGETS.guestOpening.characters}
+              rows={3}
+              onChange={(event) => setOpeningMessage(event.target.value)}
+            />
+            <small>{openingMessage.length.toLocaleString()} / {PROMPT_BUDGETS.guestOpening.characters.toLocaleString()} characters</small>
+          </label>
+        )}
         <div className="pm-ws-tools-modal-grid pm-ws-persona-grid">
           {WORKSHOP_PERSONA_CATALOG.map((persona) => (
             <button
               key={persona.id}
               className={`pm-ws-tools-card pm-ws-persona-card ${!guestMode && activePersonaId === persona.id ? 'pm-ws-tools-card-active' : ''}`}
               type="button"
-              disabled={disabled || (guestMode && (persona.id === activePersonaId || invitedPersonaIds.includes(persona.id)))}
+              disabled={
+                disabled
+                || (guestMode && (
+                  !openingMessage.trim()
+                  || persona.id === activePersonaId
+                  || invitedPersonaIds.includes(persona.id)
+                ))
+              }
               aria-pressed={!guestMode && activePersonaId === persona.id}
               onClick={() => {
                 if (guestMode) {
-                  onInvite?.(persona.id);
+                  onInvite?.(persona.id, openingMessage.trim());
                 } else {
                   onSelect(persona.id);
                 }

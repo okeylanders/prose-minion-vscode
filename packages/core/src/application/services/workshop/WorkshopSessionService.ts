@@ -28,7 +28,11 @@ import {
   WorkshopCapabilityArtifactDetails,
   WorkshopCapabilityResult
 } from '@shared/types/workshopCapabilities';
-import { DEFAULT_WORKSHOP_PERSONA_ID, workshopPersonaLabel } from '@shared/constants/workshopPersonas';
+import {
+  DEFAULT_WORKSHOP_PERSONA_ID,
+  WORKSHOP_GUEST_CAPACITY,
+  workshopPersonaLabel
+} from '@shared/constants/workshopPersonas';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
 import { WORKSHOP_ACTIONABLE_FINDING_BOUNDS } from './WorkshopActionableFindings';
 
@@ -58,10 +62,7 @@ interface WorkshopParticipants {
   };
   toolSidecars: Partial<Record<WorkshopToolId, WorkshopToolSidecar>>;
   personaGuests: Map<WorkshopPersonaId, WorkshopPersonaGuest>;
-  /** Undefined represents the ordinary host route. */
-  directToolTarget?: WorkshopToolId;
-  /** Undefined represents the ordinary host/tool route. */
-  personaGuestTarget?: WorkshopPersonaId;
+  chatTarget: WorkshopChatTarget;
 }
 
 interface WorkshopPersonaGuest {
@@ -71,8 +72,6 @@ interface WorkshopPersonaGuest {
   deliveredToHostThroughTurnId?: string;
   liveness: 'live' | 'disposed';
 }
-
-export const WORKSHOP_GUEST_CAPACITY = 2;
 
 type WorkshopActivePhase =
   | 'tool_report'
@@ -176,7 +175,9 @@ export class WorkshopSessionService {
       .flatMap(([toolId, sidecar]) => sidecar ? [{ toolId: toolId as WorkshopToolId, ...sidecar }] : []);
     const conversationIds = retired.map(sidecar => sidecar.conversationId);
     this.participants.toolSidecars = {};
-    this.participants.directToolTarget = undefined;
+    if (this.participants.chatTarget.kind === 'tool') {
+      this.participants.chatTarget = { kind: 'host' };
+    }
     const excerpt = this.setExcerpt(input);
     this.replacementCount += 1;
     if (this.hasHostConversation()) {
@@ -262,15 +263,14 @@ export class WorkshopSessionService {
   }
 
   getChatTarget(): WorkshopChatTarget {
-    if (this.participants.directToolTarget) {
-      return { kind: 'tool', toolId: this.participants.directToolTarget };
+    switch (this.participants.chatTarget.kind) {
+      case 'host':
+        return { kind: 'host' };
+      case 'tool':
+        return { kind: 'tool', toolId: this.participants.chatTarget.toolId };
+      case 'personaGuest':
+        return { kind: 'personaGuest', personaId: this.participants.chatTarget.personaId };
     }
-    const guestPersonaId = this.participants.personaGuestTarget;
-    if (guestPersonaId && this.isLivePersonaGuest(guestPersonaId)) {
-      return { kind: 'personaGuest', personaId: guestPersonaId };
-    }
-    this.participants.personaGuestTarget = undefined;
-    return { kind: 'host' };
   }
 
   getToolSidecarConversationId(toolId: WorkshopToolId): string | undefined {
@@ -297,7 +297,7 @@ export class WorkshopSessionService {
     if (personaId === this.participants.host.personaId) {
       throw new Error('The Workshop host is already in the room');
     }
-    if (this.participants.personaGuests.has(personaId)) {
+    if (this.participants.personaGuests.get(personaId)?.liveness === 'live') {
       throw new Error(`${workshopPersonaLabel(personaId)} is already in the room`);
     }
     const liveGuests = [...this.participants.personaGuests.values()]
@@ -314,11 +314,13 @@ export class WorkshopSessionService {
       throw new Error('Cannot retain a guest without a conversation id');
     }
     const cursor = this.latestHostThreadTurnId();
+    const previousDeliveryCursor = this.participants.personaGuests.get(personaId)
+      ?.deliveredToHostThroughTurnId;
     this.participants.personaGuests.set(personaId, {
       personaId,
       conversationId,
       lastSeenHostTurnId: cursor,
-      deliveredToHostThroughTurnId: cursor,
+      deliveredToHostThroughTurnId: previousDeliveryCursor ?? cursor,
       liveness: 'live'
     });
   }
@@ -335,14 +337,19 @@ export class WorkshopSessionService {
     if (this.activeRun?.target === 'personaGuest' && this.activeRun.guestPersonaId === personaId) {
       this.activeRun = undefined;
     }
-    if (this.participants.personaGuestTarget === personaId) {
-      this.participants.personaGuestTarget = undefined;
+    if (
+      this.participants.chatTarget.kind === 'personaGuest'
+      && this.participants.chatTarget.personaId === personaId
+    ) {
+      this.participants.chatTarget = { kind: 'host' };
     }
     return conversationId;
   }
 
   isPersonaSelectionLocked(): boolean {
-    return this.activeRun !== undefined || this.hasHostConversation() || this.participants.personaGuests.size > 0;
+    const hasLiveGuest = [...this.participants.personaGuests.values()]
+      .some((guest) => guest.liveness === 'live');
+    return this.activeRun !== undefined || this.hasHostConversation() || hasLiveGuest;
   }
 
   /** A selected host can change only before its first run or conversation. */
@@ -356,23 +363,20 @@ export class WorkshopSessionService {
   /** Host target is always valid; sidecar targets must name a live participant. */
   setChatTarget(target: WorkshopChatTarget): boolean {
     if (target.kind === 'host') {
-      this.participants.directToolTarget = undefined;
-      this.participants.personaGuestTarget = undefined;
+      this.participants.chatTarget = { kind: 'host' };
       return true;
     }
     if (target.kind === 'tool') {
       if (!this.participants.toolSidecars[target.toolId]) {
         return false;
       }
-      this.participants.directToolTarget = target.toolId;
-      this.participants.personaGuestTarget = undefined;
+      this.participants.chatTarget = { kind: 'tool', toolId: target.toolId };
       return true;
     }
     if (!this.isLivePersonaGuest(target.personaId)) {
       return false;
     }
-    this.participants.directToolTarget = undefined;
-    this.participants.personaGuestTarget = target.personaId;
+    this.participants.chatTarget = { kind: 'personaGuest', personaId: target.personaId };
     return true;
   }
 
@@ -382,7 +386,7 @@ export class WorkshopSessionService {
     this.selectedToolId = toolId;
     // A tool run always returns to host orchestration. Direct mode is entered
     // only through the explicit report action after the side-pass completes.
-    this.participants.directToolTarget = undefined;
+    this.participants.chatTarget = { kind: 'host' };
     const turn: WorkshopTurn = {
       id: this.nextTurnId('user'),
       role: 'user',
@@ -636,7 +640,7 @@ export class WorkshopSessionService {
       this.participants.host.conversationId = conversationId;
     }
     if (isGuest && active.guestPersonaId && conversationId) {
-      if (!this.participants.personaGuests.has(active.guestPersonaId)) {
+      if (!this.isLivePersonaGuest(active.guestPersonaId)) {
         this.adoptPersonaGuest(active.guestPersonaId, conversationId);
       }
       const guest = this.participants.personaGuests.get(active.guestPersonaId);
@@ -765,12 +769,12 @@ export class WorkshopSessionService {
 
   /** Collect guest exchanges that the host has not yet received as evidence. */
   collectUnseenGuestExchangesForHost(): WorkshopTurn[] {
+    if (this.participants.personaGuests.size === 0) {
+      return [];
+    }
     const turnIndexes = new Map(this.turns.map((turn, index) => [turn.id, index]));
     const unseen: WorkshopTurn[] = [];
     for (const guest of this.participants.personaGuests.values()) {
-      if (guest.liveness !== 'live') {
-        continue;
-      }
       const cursorIndex = guest.deliveredToHostThroughTurnId
         ? turnIndexes.get(guest.deliveredToHostThroughTurnId) ?? -1
         : -1;
@@ -799,11 +803,11 @@ export class WorkshopSessionService {
 
   /** Advance guest-to-host cursors only after the host turn succeeds. */
   commitHostGuestHandoff(deliveredTurnIds: readonly string[]): void {
+    if (deliveredTurnIds.length === 0 || this.participants.personaGuests.size === 0) {
+      return;
+    }
     const turnIndexes = new Map(this.turns.map((turn, index) => [turn.id, index]));
     for (const guest of this.participants.personaGuests.values()) {
-      if (guest.liveness !== 'live') {
-        continue;
-      }
       let newestIndex = guest.deliveredToHostThroughTurnId
         ? turnIndexes.get(guest.deliveredToHostThroughTurnId) ?? -1
         : -1;
@@ -942,8 +946,7 @@ export class WorkshopSessionService {
     const conversationIds = this.conversationIds();
     this.participants.host.conversationId = undefined;
     this.participants.toolSidecars = {};
-    this.participants.directToolTarget = undefined;
-    this.participants.personaGuestTarget = undefined;
+    this.participants.chatTarget = { kind: 'host' };
     for (const guest of this.participants.personaGuests.values()) {
       guest.conversationId = undefined;
       guest.liveness = 'disposed';
@@ -1099,7 +1102,8 @@ export class WorkshopSessionService {
           hasConversation: true as const,
           latestReportTurnId: sidecar.latestReportTurnId,
           availableForDirectFollowUp: true,
-          activeTarget: this.participants.directToolTarget === toolId
+          activeTarget: this.participants.chatTarget.kind === 'tool'
+            && this.participants.chatTarget.toolId === toolId
         }] : []
       ),
       personaGuests: [...this.participants.personaGuests.values()].map<WorkshopPersonaGuestSnapshot>((guest) => ({
@@ -1107,7 +1111,8 @@ export class WorkshopSessionService {
         personaLabel: workshopPersonaLabel(guest.personaId),
         hasConversation: guest.liveness === 'live' && guest.conversationId !== undefined,
         liveness: guest.liveness,
-        activeTarget: this.participants.personaGuestTarget === guest.personaId
+        activeTarget: this.participants.chatTarget.kind === 'personaGuest'
+          && this.participants.chatTarget.personaId === guest.personaId
       })),
       chatTarget: this.getChatTarget()
     };
@@ -1117,12 +1122,18 @@ export class WorkshopSessionService {
     return {
       host: { personaId: DEFAULT_WORKSHOP_PERSONA_ID },
       toolSidecars: {},
-      personaGuests: new Map()
+      personaGuests: new Map(),
+      chatTarget: { kind: 'host' }
     };
   }
 
   private latestHostThreadTurnId(): string | undefined {
-    return [...this.turns].reverse().find((turn) => this.isHostThreadTurn(turn))?.id;
+    for (let index = this.turns.length - 1; index >= 0; index -= 1) {
+      if (this.isHostThreadTurn(this.turns[index])) {
+        return this.turns[index].id;
+      }
+    }
+    return undefined;
   }
 
   private isHostThreadTurn(turn: WorkshopTurn): boolean {

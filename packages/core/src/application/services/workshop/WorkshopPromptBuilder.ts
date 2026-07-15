@@ -81,6 +81,16 @@ export interface WorkshopTodoEvidence {
   omittedItems: number;
 }
 
+function neutralizeGuestHandoffEnvelope(message: string): string {
+  const opening = '<workshop-guest-handoff>';
+  const closing = '</workshop-guest-handoff>';
+  if (!message.startsWith(opening) || !message.endsWith(closing)) {
+    return neutralizeReservedPersonaPromptDelimiters(message);
+  }
+  const body = message.slice(opening.length, -closing.length);
+  return `${opening}${neutralizeReservedPersonaPromptDelimiters(body)}${closing}`;
+}
+
 const GUEST_TRANSCRIPT_TRUNCATION_MARKER =
   '\n[Workshop transcript turn truncated by the participant bound.]';
 
@@ -97,19 +107,26 @@ function isGuestTranscriptTurn(turn: WorkshopTurn, includeGuestTurns: boolean): 
 }
 
 function formatGuestTranscriptTurn(turn: WorkshopTurn): string {
-  const speaker = turn.participant === 'writer'
-    ? turn.personaId
-      ? `Writer → ${turn.personaLabel ?? workshopPersonaLabel(turn.personaId)}`
-      : 'Writer'
-    : turn.participant === 'tool'
-      ? `${turn.toolLabel ?? turn.toolId ?? 'Tool'} (report)`
-      : turn.participant === 'host'
-        ? turn.personaLabel ?? 'Host'
-        : turn.participant === 'guest'
-          ? turn.personaLabel ?? 'Guest'
-        : turn.participant === 'session'
-          ? 'Workshop'
-          : turn.personaLabel ?? 'Participant';
+  let speaker: string;
+  switch (turn.participant) {
+    case 'writer':
+      speaker = turn.personaId
+        ? `Writer → ${turn.personaLabel ?? workshopPersonaLabel(turn.personaId)}`
+        : 'Writer';
+      break;
+    case 'tool':
+      speaker = `${turn.toolLabel ?? turn.toolId ?? 'Tool'} (report)`;
+      break;
+    case 'host':
+      speaker = turn.personaLabel ?? 'Host';
+      break;
+    case 'guest':
+      speaker = turn.personaLabel ?? 'Guest';
+      break;
+    case 'session':
+      speaker = 'Workshop';
+      break;
+  }
   return `${speaker}:\n${neutralizeReservedPersonaPromptDelimiters(turn.content)}`;
 }
 
@@ -551,7 +568,9 @@ export function buildWorkshopHostMessage(
       ? neutralizeReservedPersonaPromptDelimiters(options.handoff.message)
       : undefined,
     options.handoff ? '' : undefined,
-    options.guestHandoff?.message,
+    options.guestHandoff
+      ? neutralizeGuestHandoffEnvelope(options.guestHandoff.message)
+      : undefined,
     options.guestHandoff ? '' : undefined,
     options.todoEvidence?.message,
     options.todoEvidence ? '' : undefined,

@@ -309,6 +309,7 @@ export interface WorkshopSendMessageMessage extends MessageEnvelope<WorkshopSend
 /** Explicit writer action: invite a second persona into a retained guest sidecar. */
 export interface WorkshopInviteGuestPayload {
   personaId: WorkshopPersonaId;
+  openingMessage: string;
 }
 
 export interface WorkshopInviteGuestMessage extends MessageEnvelope<WorkshopInviteGuestPayload> {

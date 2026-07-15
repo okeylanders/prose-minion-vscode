@@ -1219,6 +1219,29 @@
   margin-top: 10px;
   color: var(--pm-accent-hi) !important;
 }
+[data-pm-surface="workshop"] .pm-ws-guest-opening {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 18px;
+  color: var(--pm-text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+[data-pm-surface="workshop"] .pm-ws-guest-opening textarea {
+  min-height: 72px;
+  resize: vertical;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-input);
+  background: var(--pm-inset);
+  color: var(--pm-text-2);
+  padding: 9px 10px;
+  font: 12px/1.5 var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-guest-opening small {
+  color: var(--pm-dim);
+  font: 10px var(--pm-mono);
+  text-align: right;
+}
 [data-pm-surface="workshop"] .pm-ws-modal-close {
   width: 34px;
   height: 34px;

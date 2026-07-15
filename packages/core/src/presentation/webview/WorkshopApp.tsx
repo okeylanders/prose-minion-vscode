@@ -57,7 +57,11 @@ import {
   WorkshopToolDescriptor,
   workshopToolLabel
 } from '@shared/constants/workshopTools';
-import { DEFAULT_WORKSHOP_PERSONA_ID, getWorkshopPersona } from '@shared/constants/workshopPersonas';
+import {
+  DEFAULT_WORKSHOP_PERSONA_ID,
+  WORKSHOP_GUEST_CAPACITY,
+  getWorkshopPersona
+} from '@shared/constants/workshopPersonas';
 import {
   resultToolNameForWorkshopTool,
   WORKSHOP_PERSONA_RESULT_TOOL_NAME
@@ -318,9 +322,9 @@ export const WorkshopApp: React.FC = () => {
     [workshop.selectPersona]
   );
   const inviteGuest = React.useCallback(
-    (personaId: WorkshopPersonaId) => {
+    (personaId: WorkshopPersonaId, openingMessage: string) => {
       setPersonaModalOpen(false);
-      workshop.inviteGuest(personaId);
+      workshop.inviteGuest(personaId, openingMessage);
     },
     [workshop.inviteGuest]
   );
@@ -681,7 +685,13 @@ export const WorkshopApp: React.FC = () => {
               personaGuests={workshop.personaGuests}
               chatTarget={workshop.chatTarget}
               onSetChatTarget={workshop.setChatTarget}
-              showInviteGuest={!!workshop.excerpt && workshop.sessionReady && !workshop.isRunning}
+              showInviteGuest={
+                !!workshop.excerpt
+                && workshop.sessionReady
+                && !workshop.isRunning
+                && workshop.personaGuests.filter((guest) => guest.liveness === 'live').length
+                  < WORKSHOP_GUEST_CAPACITY
+              }
               onInviteGuest={openGuestModal}
               onDismissGuest={workshop.dismissGuest}
             />
@@ -712,7 +722,9 @@ export const WorkshopApp: React.FC = () => {
         open={personaModalOpen}
         activePersonaId={workshop.selectedPersonaId}
         mode={personaModalMode}
-        invitedPersonaIds={workshop.personaGuests.map((guest) => guest.personaId)}
+        invitedPersonaIds={workshop.personaGuests
+          .filter((guest) => guest.liveness === 'live')
+          .map((guest) => guest.personaId)}
         disabled={personaModalMode === 'host' ? workshop.isPersonaSelectionLocked : workshop.isRunning}
         onClose={closePersonaModal}
         onSelect={selectPersona}

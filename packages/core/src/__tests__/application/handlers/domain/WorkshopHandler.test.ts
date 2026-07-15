@@ -141,13 +141,13 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
     await handler.handleInviteGuest(message(
       MessageType.WORKSHOP_INVITE_GUEST,
-      { personaId: 'margot' }
+      { personaId: 'margot', openingMessage: 'Tell me where the point of view slips.' }
     ) as any);
 
     expect(service.startWorkshopGuestConversation).toHaveBeenCalledWith(
       expect.objectContaining({
         personaId: 'margot',
-        message: expect.stringContaining('<workshop-transcript>')
+        message: expect.stringContaining('<writer-message>\nTell me where the point of view slips.\n</writer-message>')
       }),
       expect.objectContaining({
         signal: expect.anything(),
@@ -167,7 +167,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     await pin();
     await handler.handleInviteGuest(message(
       MessageType.WORKSHOP_INVITE_GUEST,
-      { personaId: 'margot' }
+      { personaId: 'margot', openingMessage: 'Read the room.' }
     ) as any);
 
     await handler.handleDismissGuest(message(
@@ -176,6 +176,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     ) as any);
 
     expect(service.discardConversation).toHaveBeenCalledWith('guest-conv');
+    expect(log.appendLine).toHaveBeenCalledWith(
+      '[WorkshopHandler] Guest dismissed (persona=margot, conversation=guest-conv)'
+    );
     expect(session.getSnapshot().participants.personaGuests).toEqual([
       expect.objectContaining({ personaId: 'margot', liveness: 'disposed', hasConversation: false })
     ]);
@@ -186,7 +189,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     await pin();
     await handler.handleInviteGuest(message(
       MessageType.WORKSHOP_INVITE_GUEST,
-      { personaId: 'margot' }
+      { personaId: 'margot', openingMessage: 'Read the room.' }
     ) as any);
     service.continueConversation.mockClear();
 

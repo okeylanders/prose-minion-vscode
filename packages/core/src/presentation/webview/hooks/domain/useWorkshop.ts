@@ -107,7 +107,7 @@ export interface WorkshopActions {
   quickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
   sendMessage: (text: string) => void;
   selectPersona: (personaId: WorkshopPersonaId) => void;
-  inviteGuest: (personaId: WorkshopPersonaId) => void;
+  inviteGuest: (personaId: WorkshopPersonaId, openingMessage: string) => void;
   dismissGuest: (personaId: WorkshopPersonaId) => void;
   setChatTarget: (target: WorkshopChatTarget) => void;
   todoAction: (action: WorkshopTodoAction) => void;
@@ -231,9 +231,9 @@ export const useWorkshop = (): UseWorkshopReturn => {
   );
 
   const inviteGuest = React.useCallback(
-    (personaId: WorkshopPersonaId) => {
+    (personaId: WorkshopPersonaId, openingMessage: string) => {
       setErrorMessage('');
-      post(MessageType.WORKSHOP_INVITE_GUEST, { personaId });
+      post(MessageType.WORKSHOP_INVITE_GUEST, { personaId, openingMessage });
     },
     [post]
   );

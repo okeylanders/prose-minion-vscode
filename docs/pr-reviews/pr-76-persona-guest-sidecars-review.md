@@ -16,20 +16,27 @@ act before merge · **Deferred** = real issue, safe to punt for a stated reason 
 
 | # | Sev | Finding | Reviewers | Consensus | Status |
 |---|-----|---------|-----------|-----------|--------|
-| 1 | 🔴 Blocking | `workshop-guest-handoff` missing from `RESERVED_PERSONA_FRAME` — guest output can forge host framing (+ re-neutralize `guestHandoff.message` at the embed site) | Patricia, Cal, Stan | 🎯🎯 Strong | **Open** |
-| 2 | 🔴 Blocking | `beginToolRun` clears `directToolTarget` but not `personaGuestTarget` — a tool run silently strands the next message on the guest | Marcus | — | **Open** |
-| 3 | 🟠 High | Dismissing a guest silently drops its un-relayed exchanges from the host handoff | Blake, Sam | 🎯 | **Open** |
-| 4 | 🟠 High | Dismissed guest can never be re-invited, and `isPersonaSelectionLocked` also locks the host persona for the session | Bria, Cal, Sam | 🎯🎯 Strong | **Open** |
-| 5 | 🟡 Standard | `getChatTarget()` mutates `personaGuestTarget` on read (command-in-query); the self-heal branch is currently unreachable | Marcus | — | **Open** |
-| 6 | 🟡 Standard | Dead `Promise.reject` branch shaped like a live fallback; the `target.kind` three-way split re-derived 6×; two nested ternaries whose indentation misstates their nesting | Parker | — | **Open** |
-| 7 | 🟡 Standard | Guest opening message is a hardcoded constant; ADR §2 lists "the writer's opening message to the guest" as a co-equal envelope part | Bria | — | **Open** — confirm intent |
-| 8 | 🟡 Standard | Multi-guest handoff cursor interleaving (shared budget, per-guest cursors) is exercised only with a single guest | Cal | — | **Open** |
-| 9 | 🟡 Standard | Guest handoff/catch-up construction and guest dismissal leave no output-channel log, unlike every sibling disposal/handoff path | Oliver | — | **Deferred** — PR's own "remaining work" names guest log evidence |
-| 10 | 🟡 Standard | Guest capacity (2) enforced only at the data layer; the invite UI never reflects "room full" — writer bounces off a rejection toast | Bria | — | **Deferred** — functionally safe UX polish |
-| 11 | 🟡 Standard | Guest transcript/catch-up/handoff packer duplicates the pre-existing direct-tool handoff bounded-packing algorithm (already diverges `push`/`unshift`) | Marcus | — | **Deferred** — refactor before it calcifies |
-| 12 | 🟡 Standard | Four cursor methods rebuild a full turn-index `Map` on every host send even with no live guests; free O(n)→O(1) short-circuit | Tim | — | **Deferred** — no impact at current scale |
-| 13 | 🟢 Nit | `latestHostThreadTurnId` copies + reverses the whole array to find one element | Tim | — | **Deferred** |
+| 1 | 🔴 Blocking | `workshop-guest-handoff` missing from `RESERVED_PERSONA_FRAME` — guest output can forge host framing (+ re-neutralize `guestHandoff.message` at the embed site) | Patricia, Cal, Stan | 🎯🎯 Strong | **Addressed** — registered, safely re-neutralized inside the trusted outer frame, and regression-tested |
+| 2 | 🔴 Blocking | `beginToolRun` clears `directToolTarget` but not `personaGuestTarget` — a tool run silently strands the next message on the guest | Marcus | — | **Addressed** — replaced the dual pointers with one discriminated `chatTarget`; tool runs set it to host |
+| 3 | 🟠 High | Dismissing a guest silently drops its un-relayed exchanges from the host handoff | Blake, Sam | 🎯 | **Addressed** — disposed guests retain evidence until a successful host handoff commits it |
+| 4 | 🟠 High | Dismissed guest can never be re-invited, and `isPersonaSelectionLocked` also locks the host persona for the session | Bria, Cal, Sam | 🎯🎯 Strong | **Addressed** — duplicate/lock checks now use live guests; re-invitation preserves any pending delivery cursor |
+| 5 | 🟡 Standard | `getChatTarget()` mutates `personaGuestTarget` on read (command-in-query); the self-heal branch is currently unreachable | Marcus | — | **Addressed** — getter is a pure read of the single routing field |
+| 6 | 🟡 Standard | Dead `Promise.reject` branch shaped like a live fallback; the `target.kind` three-way split re-derived 6×; two nested ternaries whose indentation misstates their nesting | Parker | — | **Addressed** — dead fallback removed; target metadata and execution use explicit switches |
+| 7 | 🟡 Standard | Guest opening message is a hardcoded constant; ADR §2 lists "the writer's opening message to the guest" as a co-equal envelope part | Bria | — | **Addressed** — invite modal now carries a bounded, writer-editable opening through the typed message contract |
+| 8 | 🟡 Standard | Multi-guest handoff cursor interleaving (shared budget, per-guest cursors) is exercised only with a single guest | Cal | — | **Addressed** — two-guest ordering, attribution, shared packing, and per-guest cursor commit are covered |
+| 9 | 🟡 Standard | Guest handoff/catch-up construction and guest dismissal leave no output-channel log, unlike every sibling disposal/handoff path | Oliver | — | **Addressed** — bounded handoff/catch-up counts and dismissal identity are logged |
+| 10 | 🟡 Standard | Guest capacity (2) enforced only at the data layer; the invite UI never reflects "room full" — writer bounces off a rejection toast | Bria | — | **Addressed** — invite affordance is hidden at the shared live-guest capacity |
+| 11 | 🟡 Standard | Guest transcript/catch-up/handoff packer duplicates the pre-existing direct-tool handoff bounded-packing algorithm (already diverges `push`/`unshift`) | Marcus | — | **Deferred** — tracked in [Workshop bounded turn packer](../../.todo/tech-debt/2026-07-14-workshop-bounded-turn-packer.md) |
+| 12 | 🟡 Standard | Four cursor methods rebuild a full turn-index `Map` on every host send even with no live guests; free O(n)→O(1) short-circuit | Tim | — | **Addressed** — empty guest/delivery paths now return before indexing; disposed guests with pending evidence intentionally remain eligible |
+| 13 | 🟢 Nit | `latestHostThreadTurnId` copies + reverses the whole array to find one element | Tim | — | **Addressed** — reverse index walk avoids allocation |
 | 14 | 🟢 Praise | Guests × turns loop is O(n), not O(n²), because live-guest capacity is hard-capped at 2 | Tim | — | **N/A** |
+
+## Resolution update (2026-07-14)
+
+All merge-blocking, high, and open standard findings are addressed. The only
+remaining deferred item is #11, the shared bounded-packer extraction; it is a
+maintainability refactor with no current correctness gap and remains explicitly
+tracked here before a third implementation appears.
 
 ---
 
@@ -44,7 +51,7 @@ act before merge · **Deferred** = real issue, safe to punt for a stated reason 
 
 ---
 
-## Report Card
+## Initial Report Card
 
 | Category | Grade |
 | --- | --- |
@@ -59,7 +66,7 @@ act before merge · **Deferred** = real issue, safe to punt for a stated reason 
 
 ---
 
-## Executive Briefing
+## Initial Executive Briefing
 
 🔴 **[Patricia · Cal · Stan]** Frame-injection gap *(🎯🎯 Strong Consensus)* — `workshop-guest-handoff` is the one new frame name left out of the neutralization regex. A guest's own model output containing `</workshop-guest-handoff>` closes the evidence frame early inside the **host** prompt (the only participant with tool capabilities), escaping the "context, not instructions" boundary. One-line fix + a mirror test.
 
@@ -341,9 +348,15 @@ Nearly every finding here traces to one invariant maintained by scattered discip
 
 ---
 
-## Summary
+## Final Resolution Summary
 
-This is strong, security-minded feature work — clean handler → session → assistant layering, host-owned lifecycle, bounded prompt envelopes, and genuinely honest happy-path/identity/capacity tests. It is **not merge-ready yet**, but the gap is narrow and the fixes are small. Two blockers: the `workshop-guest-handoff` frame name is missing from the neutralization regex (a 3-agent Strong Consensus prompt-injection gap that lets guest output forge host framing — one line + a mirror test), and `beginToolRun` forgets to clear `personaGuestTarget` (an empirically-reproduced silent misroute of the writer's next message to the guest). Two consensus Highs cluster around dismiss semantics: dismissing a guest both silently drops her un-relayed evidence from the host and permanently locks re-invitation *and* host-persona selection for the session. The through-line, as Sensei names it, is a single shape — every blocker is a pattern extended to all-but-one of its sites, and the missed site was never random. Fix the four boundary issues (ideally by collapsing the dual pointers into one routing field and deriving the neutralizer set from the frame registry so the N−1 bug can't recur), add the two missing tests, and this slice is ready.
+The reviewed slice is now merge-ready from this panel's perspective. The frame
+injection and silent-routing blockers are closed, dismissed guest evidence is
+delivered transactionally, live/disposed lifecycle checks permit safe
+re-invitation, and routing now has one discriminated source of truth. The
+writer-authored opener, room-capacity UI, guest logs, and multi-guest regression
+coverage also landed. Finding #11 remains as explicit low-priority tech debt;
+it is a shared-packer extraction, not an open behavior or trust-boundary gap.
 
 ---
 
