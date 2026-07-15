@@ -103,6 +103,13 @@ const capabilityMetadataRows = (turn: WorkshopTurn): string[] => {
   if (typeof metadata.matchCount === 'number') {
     rows.push(`${metadata.matchCount} ${metadata.matchCount === 1 ? 'match' : 'matches'} found`);
   }
+  if (
+    typeof metadata.startLine === 'number' &&
+    typeof metadata.endLine === 'number' &&
+    typeof metadata.totalLines === 'number'
+  ) {
+    rows.push(`lines ${metadata.startLine}–${metadata.endLine} of ${metadata.totalLines}`);
+  }
   if (typeof metadata.bytes === 'number' && typeof metadata.totalBytes === 'number') {
     rows.push(`${metadata.bytes.toLocaleString()} of ${metadata.totalBytes.toLocaleString()} bytes read`);
   } else if (typeof metadata.bytesScanned === 'number' && metadata.bytesScanned > 0) {

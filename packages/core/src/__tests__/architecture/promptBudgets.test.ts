@@ -72,6 +72,7 @@ describe('prompt budgets', () => {
       searchContextLines: 1,
       searchFileBytes: 256 * 1024,
       searchTotalBytes: 2 * 1024 * 1024,
+      readDefaultLines: 400,
       readBytes: 64 * 1024
     });
   });

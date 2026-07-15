@@ -28,6 +28,7 @@ export interface PromptBudgets {
     searchContextLines: number;
     searchFileBytes: number;
     searchTotalBytes: number;
+    readDefaultLines: number;
     readBytes: number;
   }>;
   readonly toolEvidence: Readonly<{ characters: number }>;
@@ -79,6 +80,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     searchContextLines: 1,
     searchFileBytes: 256 * 1024,
     searchTotalBytes: 2 * 1024 * 1024,
+    readDefaultLines: 400,
     readBytes: 64 * 1024
   },
   toolEvidence: { characters: 50_000 },

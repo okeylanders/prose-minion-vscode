@@ -53,6 +53,9 @@ describe('Workshop persona catalog and packaged prompts', () => {
     );
 
     expect(base).toContain('autonomously search and read configured project resources');
+    expect(base).toContain('Before treating important context as unavailable');
+    expect(base).toContain('inspect neighboring chapters');
+    expect(base).toContain('project-bible facts');
     expect(base).toContain('do not need the writer to paste a path');
     expect(base).toContain('search directly instead of requesting the full catalog');
     expect(base).not.toContain('the three Workshop capabilities');

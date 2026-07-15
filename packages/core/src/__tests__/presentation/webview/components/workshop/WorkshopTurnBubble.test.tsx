@@ -341,6 +341,9 @@ describe('WorkshopTurnBubble variation cards', () => {
             metadata: {
               group: 'characters',
               path: 'characters/raven.md',
+              startLine: 41,
+              endLine: 80,
+              totalLines: 300,
               bytes: 128,
               totalBytes: 512,
               truncated: true
@@ -356,6 +359,7 @@ describe('WorkshopTurnBubble variation cards', () => {
     );
 
     expect(screen.getByText('Project Resources · characters/raven.md · requested by Jill')).toBeTruthy();
+    expect(screen.getByLabelText('Capability metadata').textContent).toContain('lines 41–80 of 300');
     expect(screen.getByLabelText('Capability metadata').textContent).toContain('128 of 512 bytes read');
     expect(screen.getByLabelText('Capability metadata').textContent).toContain('project-resource limits');
     expect(screen.queryByRole('button', { name: /talk directly/i })).toBeNull();

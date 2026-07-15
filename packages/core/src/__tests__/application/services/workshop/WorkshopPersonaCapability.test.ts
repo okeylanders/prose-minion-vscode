@@ -340,20 +340,21 @@ describe('WorkshopPersonaCapability', () => {
     ));
   });
 
-  it('records a rejected artifact when a read path was not revealed first', async () => {
+  it('records a direct configured read without requiring prior discovery', async () => {
     const summary = { group: 'characters' as const, path: 'characters/raven.md', label: 'Raven' };
     listResources.mockReturnValue([summary]);
+    loadResources.mockResolvedValue([{ ...summary, content: 'Raven waits.' }]);
     const result = await capability().fulfill({
       capability: 'resource.read',
       group: 'characters',
       path: 'characters/raven.md'
     });
 
-    expect(loadResources).not.toHaveBeenCalled();
-    expect(result.evidence).toContain('not returned by this turn');
+    expect(loadResources).toHaveBeenCalledWith(['characters/raven.md']);
+    expect(result.evidence).toContain('Raven waits.');
     expect(session.getSnapshot().turns.at(-1)).toMatchObject({
       artifact: 'resource_read',
-      capability: { operation: 'resource.read', status: 'rejected' }
+      capability: { operation: 'resource.read', status: 'success' }
     });
   });
 

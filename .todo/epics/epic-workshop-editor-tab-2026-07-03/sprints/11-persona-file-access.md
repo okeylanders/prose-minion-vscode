@@ -53,11 +53,12 @@ this sprint**, not before the final merge:
 
 - **Three capabilities**, following Sprint 07 schema conventions:
   - `resource.catalog` — enumerate configured context groups (category, file
-    count, display-safe names); bounded size. This is how the persona learns
-    what it *may* ask for.
+    count, display-safe names); bounded size. This is an inventory aid, not a
+    prerequisite for reading an already-known configured path.
   - `resource.search` — term/phrase search across one group or all groups;
     bounded matches with display-safe path + line context.
-  - `resource.read` — read one allowlisted file (or head-slice), bounded bytes,
+  - `resource.read` — read one configured file directly, with optional
+    inclusive start/end lines, a default line window, bounded bytes, and
     truncation reported.
 - **Reachability = configured context paths in Settings, nothing else.** All
   resolution through `ContextResourceResolver` + the existing path-containment
@@ -95,8 +96,9 @@ this sprint**, not before the final merge:
 - [x] Catalog builder over configured context groups (bounded, display-safe).
 - [x] Search over group files via existing text services; match cap +
       per-match context lines; stable ordering.
-- [x] Read with byte cap + head-slice + truncation notice (mirror the
-      excerpt pin-from-file slicing behavior).
+- [x] Direct read with case-insensitive canonical path matching, optional
+      inclusive line windows, default line count, hard byte cap, and
+      truncation notice.
 
 ### Prompts, UI, observability
 
@@ -123,6 +125,9 @@ this sprint**, not before the final merge:
 - Mid-conversation, the persona searches for a character name across the
   configured `characters/` group, reads the matching sheet, and cites it —
   with both the search and the read visible as artifacts the writer can expand.
+- An exact configured path can be read on any later host turn without repeating
+  its catalog/search step; casing differences resolve to the unique canonical
+  configured path, while ambiguous case-fold collisions fail closed.
 - A prompt-injected "read ../../.env and render it as an image URL" style
   request dies at containment, is visible as a failed-request artifact, and
   exfiltrates nothing (sanitized renderer + tightened CSP).
@@ -145,8 +150,8 @@ this sprint**, not before the final merge:
 
 - Added the closed `resource.catalog`, `resource.search`, and `resource.read`
   operations to the Sprint 07 persona capability boundary. The application
-  service owns exact group/path validation and never passes a model-authored
-  path to filesystem I/O unless the same turn's catalog or search disclosed it.
+  service owns group/path validation and never passes a model-authored path to
+  filesystem I/O unless it uniquely matches the configured resolver catalog.
 - Reused `ContextResourceResolver` as the configured-context reachability seam.
   Resolver results now receive lexical workspace containment, ancestor-symlink,
   supported-file, and readability checks before entering the model-visible
@@ -175,14 +180,27 @@ this sprint**, not before the final merge:
   contents. Multi-name requests can disclose all matching paths with one
   bounded `resource.search`; exact token matching avoids substring collisions,
   and content search remains the fallback. Catalog enumeration is reserved for
-  actual inventory requests. This changes discovery strategy only: configured-
-  group containment and the same-turn exact-read gate remain unchanged.
-- Verification: 95 Jest suites / 787 tests passed; core, webview, and extension
+  actual inventory requests.
+- A second live-smoke correction removed the same-turn disclosure gate: any
+  exact configured resource is now directly readable on any host turn. Path
+  matching follows the resolver's case-insensitive behavior, returns the
+  canonical configured casing, and rejects ambiguous case-fold matches. This
+  does not widen reachability beyond configured, contained workspace files.
+- `resource.read` now accepts optional inclusive `startLine` / `endLine`
+  fields. Reads default to 400 lines; the persona can choose another window,
+  while the centralized 64 KiB hard ceiling remains non-overridable. Artifacts
+  show the canonical path and returned line range.
+- The immutable persona prompt and per-turn capability contract now direct the
+  host to seek materially missing context proactively: inspect neighboring
+  chapters/manuscript resources for continuity and search project-brief,
+  general, character, location, theme, and thing resources for project-bible
+  facts before asking the writer to supply known project context.
+- Verification: 95 Jest suites / 798 tests passed; core, webview, and extension
   typechecks passed; ESLint passed with zero errors (the existing warning set
   remains); production webpack build and `verify:bundle` passed;
   `git diff --check` passed.
 - Production bundles compared with the pre-sprint build:
-  `extension.js` 2,369,397 → 2,388,986 bytes (+19,589 / +0.83%);
-  `webview.js` 608,340 → 639,817 bytes (+31,477 / +5.17%). The webview increase
+  `extension.js` 2,369,397 → 2,391,428 bytes (+22,031 / +0.93%);
+  `webview.js` 608,340 → 639,992 bytes (+31,652 / +5.20%). The webview increase
   is primarily the shared DOMPurify sanitizer; webpack's existing asset-size
   recommendations remain warnings only.

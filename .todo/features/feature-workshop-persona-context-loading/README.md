@@ -33,7 +33,15 @@ path would invite the model to ask for files the runtime cannot deliver.
   do not silently move the chat to the context-model orchestrator.
 - Keep loading status and delivered-resource provenance visible in the
   Workshop thread/session snapshot.
-- Bound catalog size, resource count, file size, and request rounds.
+- Allow direct reads of any exact configured resource without requiring a
+  catalog/search preflight; resolve unique casing differences to the canonical
+  configured path and fail closed on ambiguity.
+- Support inclusive line-window reads with a model-selectable window, a shared
+  default line count, and a non-overridable hard byte ceiling.
+- Prompt hosts to seek materially missing context proactively in neighboring
+  chapters, manuscript resources, and project-bible groups.
+- Bound catalog size, resource count, line windows, file bytes, and request
+  rounds.
 
 ## Related files
 
@@ -47,6 +55,8 @@ path would invite the model to ask for files the runtime cannot deliver.
 
 - A persona can request an allowlisted project resource on the opening turn or
   a later follow-up and continue under the same persona system prompt.
+- A later turn can directly reread a configured path already visible in the
+  conversation, regardless of path casing, without repeating discovery.
 - Unknown, disallowed, oversized, and excessive requests fail safely and leave
   an observable trail.
 - Loaded paths are recorded in host-side session state; Sprint 10 owns final

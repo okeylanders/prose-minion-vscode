@@ -155,7 +155,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
         reason: `Requested by ${workshopPersonaLabel(this.turn.personaId)}`
       }] : [],
       deliveredItems: request.capability === 'resource.read' && result.status === 'success'
-        ? [request.path]
+        ? [typeof result.metadata?.path === 'string' ? result.metadata.path : request.path]
         : [`${request.capability}:${result.status}`],
       usage: result.usage
     };
@@ -205,7 +205,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
     if (request.capability === 'resource.search') {
       return `group=${request.group ?? 'all'}; query=${JSON.stringify(request.query)}`;
     }
-    return `group=${request.group}; path=${JSON.stringify(request.path)}`;
+    return `group=${request.group}; path=${JSON.stringify(request.path)}; ` +
+      `lines=${request.startLine ?? 'default'}-${request.endLine ?? 'default'}`;
   }
 
   inspectionLogContext(): string {
@@ -575,6 +576,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
     const values = [
       `group=${typeof metadata.group === 'string' ? metadata.group : 'n/a'}`,
       `path=${typeof metadata.path === 'string' ? JSON.stringify(metadata.path) : 'n/a'}`,
+      `lines=${typeof metadata.startLine === 'number' ? metadata.startLine : 'n/a'}-${typeof metadata.endLine === 'number' ? metadata.endLine : 'n/a'}`,
       `searchMode=${typeof metadata.searchMode === 'string' ? metadata.searchMode : 'n/a'}`,
       `catalogEntries=${typeof metadata.catalogEntriesScanned === 'number' ? metadata.catalogEntriesScanned : 'n/a'}`,
       `files=${typeof metadata.filesScanned === 'number' ? metadata.filesScanned : typeof metadata.fileCount === 'number' ? metadata.fileCount : 'n/a'}`,

@@ -44,8 +44,6 @@ export interface WorkshopResourceTurnContext {
 
 export class WorkshopResourceCapability {
   private providerPromise?: Promise<ContextResourceProvider>;
-  /** Paths become readable only after this turn's catalog/search exposed them. */
-  private readonly allowedReads = new Set<string>();
 
   constructor(
     private readonly providerFactory: ContextResourceProviderFactory,
@@ -85,7 +83,6 @@ export class WorkshopResourceCapability {
     const resources = (await this.resources())
       .filter(resource => !request.group || resource.group === request.group);
     const displayed = resources.slice(0, budgets.catalogItems);
-    displayed.forEach(resource => this.allowedReads.add(this.resourceKey(resource)));
     const truncated = displayed.length < resources.length;
     const groupLabel = request.group ?? 'all configured groups';
     const content = displayed.length === 0
@@ -129,7 +126,6 @@ export class WorkshopResourceCapability {
 
     if (catalogMatches.length > 0) {
       const displayed = catalogMatches.slice(0, budgets.searchMatches);
-      displayed.forEach(resource => this.allowedReads.add(this.resourceKey(resource)));
       const truncated = displayed.length < catalogMatches.length;
       const matches: ResourceSearchMatch[] = displayed.map(resource => ({
         group: resource.group,
@@ -202,7 +198,6 @@ export class WorkshopResourceCapability {
           line: index + 1,
           context: lines.slice(start, end).join('\n').trim()
         });
-        this.allowedReads.add(this.resourceKey(resource));
         if (matches.length >= budgets.searchMatches) break;
       }
     }
@@ -237,55 +232,109 @@ export class WorkshopResourceCapability {
     request: Extract<ResourceRequest, { capability: 'resource.read' }>
   ): Promise<WorkshopCapabilityResult> {
     const catalog = await this.resources();
-    const resource = catalog.find(item =>
+    const exactResource = catalog.find(item =>
       item.group === request.group && item.path === request.path
     );
-    if (!resource || !this.allowedReads.has(this.resourceKey(request))) {
+    const caseFoldedResources = exactResource ? [] : catalog.filter(item =>
+      item.group === request.group &&
+      this.normalizeResourcePath(item.path) === this.normalizeResourcePath(request.path)
+    );
+    if (caseFoldedResources.length > 1) {
       return this.rejected(
         request,
-        'The requested path was not returned by this turn\'s configured resource catalog or search evidence.'
+        'The requested path matches more than one configured resource when letter case is ignored.'
+      );
+    }
+    const resource = exactResource ?? caseFoldedResources[0];
+    if (!resource) {
+      return this.rejected(
+        request,
+        'The requested path is not one of the configured project resources in that group.'
       );
     }
 
-    const loaded = (await this.provider().then(provider => provider.loadResources([request.path])))
-      .find(item => item.path === request.path && item.group === request.group);
+    const loaded = (await this.provider().then(provider => provider.loadResources([resource.path])))
+      .find(item =>
+        item.group === resource.group &&
+        this.normalizeResourcePath(item.path) === this.normalizeResourcePath(resource.path)
+      );
     this.throwIfAborted();
     if (!loaded) {
       return {
         capability: request.capability,
         status: 'failed',
-        requestSummary: request.path,
+        requestSummary: resource.path,
         error: 'The configured project resource could not be read.',
-        metadata: { group: request.group, path: request.path }
+        metadata: { group: resource.group, path: resource.path }
       };
     }
 
-    const sliced = this.sliceUtf8(loaded.content, PROMPT_BUDGETS.workshopResource.readBytes);
+    const budgets = PROMPT_BUDGETS.workshopResource;
+    const lines = loaded.content.split(/\r?\n/);
+    const totalLines = lines.length;
+    const startLine = request.startLine ?? 1;
+    if (startLine > totalLines) {
+      return {
+        capability: request.capability,
+        status: 'failed',
+        requestSummary: resource.path,
+        error: `The requested start line ${startLine} is beyond the file's ${totalLines} lines.`,
+        metadata: {
+          group: loaded.group,
+          path: loaded.path,
+          workspaceFolder: loaded.workspaceFolder,
+          startLine,
+          totalLines
+        }
+      };
+    }
+    const defaultEndLine = Math.min(
+      Number.MAX_SAFE_INTEGER,
+      startLine + budgets.readDefaultLines - 1
+    );
+    const requestedEndLine = request.endLine ?? defaultEndLine;
+    const selectedEndLine = Math.min(requestedEndLine, totalLines);
+    const selectedContent = lines.slice(startLine - 1, selectedEndLine).join('\n');
+    const sliced = this.sliceUtf8(selectedContent, budgets.readBytes);
+    const returnedLineCount = sliced.truncated
+      ? sliced.content.split(/\r?\n/).length
+      : selectedEndLine - startLine + 1;
+    const endLine = Math.min(selectedEndLine, startLine + returnedLineCount - 1);
+    const totalBytes = Buffer.byteLength(loaded.content, 'utf8');
     const content = [
       `## Project resource · ${loaded.label}`,
       `Group: ${loaded.group}`,
       `Path: ${loaded.path}`,
       loaded.workspaceFolder ? `Workspace: ${loaded.workspaceFolder}` : undefined,
+      `Lines: ${startLine}-${endLine} of ${totalLines}.`,
       sliced.truncated
-        ? `Read head slice: ${sliced.bytes} of ${sliced.totalBytes} UTF-8 bytes.`
-        : `Read size: ${sliced.totalBytes} UTF-8 bytes.`,
+        ? `Requested through line ${selectedEndLine}; stopped at the ${budgets.readBytes}-byte ceiling.`
+        : request.endLine === undefined && selectedEndLine < totalLines
+          ? `Default window: up to ${budgets.readDefaultLines} lines.`
+          : `Read size: ${sliced.bytes} UTF-8 bytes.`,
       '',
       '```markdown',
-      this.neutralizeFence(sliced.content.trim()),
+      this.neutralizeFence(sliced.content),
       '```'
     ].filter((line): line is string => line !== undefined).join('\n');
 
     return {
       capability: request.capability,
       status: 'success',
-      requestSummary: request.path,
+      requestSummary: resource.path,
       content,
       metadata: {
         group: loaded.group,
         path: loaded.path,
         workspaceFolder: loaded.workspaceFolder,
+        startLine,
+        endLine,
+        requestedEndLine: request.endLine,
+        totalLines,
+        defaultLineWindow: request.endLine === undefined,
         bytes: sliced.bytes,
-        totalBytes: sliced.totalBytes,
+        totalBytes,
+        windowBytes: sliced.totalBytes,
         truncated: sliced.truncated
       }
     };
@@ -341,7 +390,11 @@ export class WorkshopResourceCapability {
   }
 
   private resourceKey(resource: Pick<ContextResourceSummary, 'group' | 'path'>): string {
-    return `${resource.group}\0${resource.path}`;
+    return `${resource.group}\0${this.normalizeResourcePath(resource.path)}`;
+  }
+
+  private normalizeResourcePath(resourcePath: string): string {
+    return resourcePath.toLowerCase();
   }
 
   private sliceUtf8(

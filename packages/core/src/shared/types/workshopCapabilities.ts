@@ -41,6 +41,8 @@ export type WorkshopCapabilityRequest =
       capability: 'resource.read';
       group: ContextPathGroup;
       path: string;
+      startLine?: number;
+      endLine?: number;
     };
 
 export type WorkshopCapabilityStatus =

@@ -47,7 +47,7 @@ describe('WorkshopResourceCapability', () => {
     expect(catalog.metadata).toMatchObject({ fileCount: 2, group: 'characters', truncated: false });
   });
 
-  it('caps literal search matches and makes only returned paths readable', async () => {
+  it('caps literal search matches and reads returned paths', async () => {
     const lines = Array.from({ length: PROMPT_BUDGETS.workshopResource.searchMatches + 5 },
       (_, index) => `Threshold match ${index + 1}`
     ).join('\n');
@@ -74,6 +74,45 @@ describe('WorkshopResourceCapability', () => {
     });
     expect(read.status).toBe('success');
     expect(loadResources).toHaveBeenLastCalledWith(['characters/raven.md']);
+  });
+
+  it('reads any configured path directly and resolves unique path casing canonically', async () => {
+    const canonical = {
+      group: 'characters' as const,
+      path: 'Characters/Micah/micah-voice-guide.md',
+      label: 'Micah Voice Guide'
+    };
+    listResources.mockReturnValue([canonical]);
+    loadResources.mockResolvedValue([{ ...canonical, content: 'Dude is conversational punctuation.' }]);
+
+    const result = await capability.fulfill({
+      capability: 'resource.read',
+      group: 'characters',
+      path: 'characters/Micah/micah-voice-guide.md'
+    });
+
+    expect(result.status).toBe('success');
+    expect(result.requestSummary).toBe(canonical.path);
+    expect(result.metadata).toMatchObject({ path: canonical.path });
+    expect(result.content).toContain('Dude is conversational punctuation.');
+    expect(loadResources).toHaveBeenCalledWith([canonical.path]);
+  });
+
+  it('rejects an ambiguous case-insensitive path instead of choosing one', async () => {
+    listResources.mockReturnValue([
+      { ...summary, path: 'Characters/Micah.md' },
+      { ...summary, path: 'characters/micah.md' }
+    ]);
+
+    const result = await capability.fulfill({
+      capability: 'resource.read',
+      group: 'characters',
+      path: 'CHARACTERS/MICAH.MD'
+    });
+
+    expect(result).toMatchObject({ status: 'rejected' });
+    expect(result.error).toContain('more than one configured resource');
+    expect(loadResources).not.toHaveBeenCalled();
   });
 
   it('searches catalog paths and labels directly without loading the full group', async () => {
@@ -147,10 +186,12 @@ describe('WorkshopResourceCapability', () => {
     expect(loadResources.mock.calls[0][0]).toHaveLength(PROMPT_BUDGETS.workshopResource.searchFiles);
   });
 
-  it('head-slices reads at the shared byte limit and reports truncation provenance', async () => {
-    const largeContent = 'a'.repeat(PROMPT_BUDGETS.workshopResource.readBytes + 50);
-    loadResources.mockResolvedValue([{ ...summary, content: largeContent }]);
-    await capability.fulfill({ capability: 'resource.catalog', group: 'characters' });
+  it('applies the default line window before the hard byte limit', async () => {
+    const content = Array.from(
+      { length: PROMPT_BUDGETS.workshopResource.readDefaultLines + 5 },
+      (_, index) => `Line ${index + 1}`
+    ).join('\n');
+    loadResources.mockResolvedValue([{ ...summary, content }]);
 
     const result = await capability.fulfill({
       capability: 'resource.read',
@@ -159,20 +200,70 @@ describe('WorkshopResourceCapability', () => {
     });
 
     expect(result.metadata).toMatchObject({
+      startLine: 1,
+      endLine: PROMPT_BUDGETS.workshopResource.readDefaultLines,
+      totalLines: PROMPT_BUDGETS.workshopResource.readDefaultLines + 5,
+      defaultLineWindow: true,
+      truncated: false
+    });
+    expect(result.content).toContain(`Line ${PROMPT_BUDGETS.workshopResource.readDefaultLines}`);
+    expect(result.content).not.toContain(`Line ${PROMPT_BUDGETS.workshopResource.readDefaultLines + 1}`);
+  });
+
+  it('reads an inclusive requested line window', async () => {
+    const content = Array.from({ length: 100 }, (_, index) => `Line ${index + 1}`).join('\n');
+    loadResources.mockResolvedValue([{ ...summary, content }]);
+
+    const result = await capability.fulfill({
+      capability: 'resource.read',
+      group: 'characters',
+      path: 'characters/raven.md',
+      startLine: 41,
+      endLine: 45
+    });
+
+    expect(result.metadata).toMatchObject({
+      startLine: 41,
+      endLine: 45,
+      requestedEndLine: 45,
+      totalLines: 100,
+      defaultLineWindow: false,
+      truncated: false
+    });
+    expect(result.content).toContain('Line 41');
+    expect(result.content).toContain('Line 45');
+    expect(result.content).not.toContain('Line 40');
+    expect(result.content).not.toContain('Line 46');
+  });
+
+  it('enforces the shared byte ceiling even when a larger line window is requested', async () => {
+    const largeContent = 'a'.repeat(PROMPT_BUDGETS.workshopResource.readBytes + 50);
+    loadResources.mockResolvedValue([{ ...summary, content: largeContent }]);
+
+    const result = await capability.fulfill({
+      capability: 'resource.read',
+      group: 'characters',
+      path: 'characters/raven.md',
+      startLine: 1,
+      endLine: 2_000
+    });
+
+    expect(result.metadata).toMatchObject({
       bytes: PROMPT_BUDGETS.workshopResource.readBytes,
       totalBytes: PROMPT_BUDGETS.workshopResource.readBytes + 50,
       truncated: true
     });
-    expect(result.content).toContain(`Read head slice: ${PROMPT_BUDGETS.workshopResource.readBytes}`);
+    expect(result.content).toContain(`${PROMPT_BUDGETS.workshopResource.readBytes}-byte ceiling`);
   });
 
-  it('rejects guessed paths and ignores provider output outside the configured catalog', async () => {
-    const guessed = await capability.fulfill({
+  it('rejects paths outside the configured catalog and ignores unrequested provider output', async () => {
+    const unknown = await capability.fulfill({
       capability: 'resource.read',
       group: 'characters',
-      path: 'characters/raven.md'
+      path: 'characters/unknown.md'
     });
-    expect(guessed).toMatchObject({ status: 'rejected' });
+    expect(unknown).toMatchObject({ status: 'rejected' });
+    expect(unknown.error).toContain('configured project resources');
     expect(loadResources).not.toHaveBeenCalled();
 
     loadResources.mockResolvedValue([
