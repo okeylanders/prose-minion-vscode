@@ -49,13 +49,13 @@ describe('WorkshopResourceCapability', () => {
 
   it('caps literal search matches and makes only returned paths readable', async () => {
     const lines = Array.from({ length: PROMPT_BUDGETS.workshopResource.searchMatches + 5 },
-      (_, index) => `Raven match ${index + 1}`
+      (_, index) => `Threshold match ${index + 1}`
     ).join('\n');
     loadResources.mockResolvedValue([{ ...summary, content: lines }]);
 
     const search = await capability.fulfill({
       capability: 'resource.search',
-      query: 'Raven',
+      query: 'Threshold',
       group: 'characters'
     });
     expect(search.metadata).toMatchObject({
@@ -74,6 +74,49 @@ describe('WorkshopResourceCapability', () => {
     });
     expect(read.status).toBe('success');
     expect(loadResources).toHaveBeenLastCalledWith(['characters/raven.md']);
+  });
+
+  it('searches catalog paths and labels directly without loading the full group', async () => {
+    const summaries = ['Micah', 'Jasper', 'Ava', 'Nate', 'Raven', 'Savannah'].map(label => ({
+      group: 'characters' as const,
+      path: `characters/${label.toLowerCase()}.md`,
+      label
+    }));
+    listResources.mockReturnValue(summaries);
+    loadResources.mockResolvedValue([{ ...summaries[0], content: 'Micah deflects with humor.' }]);
+
+    const search = await capability.fulfill({
+      capability: 'resource.search',
+      query: 'Micah, Jasper, Ava, and Nate character guides',
+      group: 'characters'
+    });
+
+    expect(search).toMatchObject({
+      status: 'success',
+      metadata: {
+        searchMode: 'catalog',
+        catalogEntriesScanned: 6,
+        filesScanned: 0,
+        bytesScanned: 0,
+        matchCount: 4,
+        truncated: false
+      }
+    });
+    expect(search.content).toContain('characters/micah.md');
+    expect(search.content).toContain('characters/jasper.md');
+    expect(search.content).toContain('characters/ava.md');
+    expect(search.content).toContain('characters/nate.md');
+    expect(search.content).not.toContain('characters/raven.md');
+    expect(search.content).not.toContain('characters/savannah.md');
+    expect(loadResources).not.toHaveBeenCalled();
+
+    const read = await capability.fulfill({
+      capability: 'resource.read',
+      group: 'characters',
+      path: 'characters/micah.md'
+    });
+    expect(read.status).toBe('success');
+    expect(loadResources).toHaveBeenCalledWith(['characters/micah.md']);
   });
 
   it('reports omitted configured files when the search-file cap is reached', async () => {
@@ -154,7 +197,7 @@ describe('WorkshopResourceCapability', () => {
       return [{ ...summary, content: 'Raven waits.' }];
     });
 
-    await expect(capability.fulfill({ capability: 'resource.search', query: 'Raven' }))
+    await expect(capability.fulfill({ capability: 'resource.search', query: 'waits' }))
       .rejects.toMatchObject({ name: 'AbortError' });
     expect(loadResources).toHaveBeenCalledTimes(1);
   });

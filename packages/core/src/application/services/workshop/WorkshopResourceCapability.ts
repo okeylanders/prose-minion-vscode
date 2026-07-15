@@ -24,9 +24,17 @@ interface ResourceSearchMatch {
   readonly group: ContextPathGroup;
   readonly path: string;
   readonly label: string;
-  readonly line: number;
+  readonly source: 'catalog' | 'content';
+  readonly line?: number;
   readonly context: string;
 }
+
+const CATALOG_SEARCH_STOP_WORDS = new Set([
+  'a', 'about', 'an', 'and', 'chapter', 'chapters', 'character', 'characters',
+  'file', 'files', 'for', 'guide', 'guides', 'info', 'information', 'location',
+  'locations', 'md', 'note', 'notes', 'or', 'profile', 'profiles', 'project',
+  'scene', 'scenes', 'sheet', 'sheets', 'the', 'txt'
+]);
 
 export interface WorkshopResourceTurnContext {
   readonly requestId: string;
@@ -111,6 +119,45 @@ export class WorkshopResourceCapability {
     const budgets = PROMPT_BUDGETS.workshopResource;
     const matchingResources = (await this.resources())
       .filter(resource => !request.group || resource.group === request.group);
+    const catalogTerms = this.catalogSearchTerms(request.query);
+    const catalogMatches = matchingResources.filter(resource => {
+      const searchableTerms = new Set(
+        `${resource.path}\n${resource.label}`.toLowerCase().match(/[\p{L}\p{N}_'-]+/gu) ?? []
+      );
+      return catalogTerms.some(term => searchableTerms.has(term));
+    });
+
+    if (catalogMatches.length > 0) {
+      const displayed = catalogMatches.slice(0, budgets.searchMatches);
+      displayed.forEach(resource => this.allowedReads.add(this.resourceKey(resource)));
+      const truncated = displayed.length < catalogMatches.length;
+      const matches: ResourceSearchMatch[] = displayed.map(resource => ({
+        group: resource.group,
+        path: resource.path,
+        label: resource.label,
+        source: 'catalog',
+        context: `Matched configured path or label term(s): ${catalogTerms.join(', ')}`
+      }));
+      return {
+        capability: request.capability,
+        status: truncated ? 'partial' : 'success',
+        requestSummary: request.group
+          ? `“${request.query}” in ${request.group}`
+          : `“${request.query}” across configured resources`,
+        content: this.formatSearchContent(request, matches, truncated),
+        metadata: {
+          group: request.group ?? 'all',
+          searchMode: 'catalog',
+          catalogEntriesScanned: matchingResources.length,
+          filesScanned: 0,
+          configuredFiles: matchingResources.length,
+          bytesScanned: 0,
+          matchCount: matches.length,
+          truncated
+        }
+      };
+    }
+
     const catalog = matchingResources.slice(0, budgets.searchFiles);
     const loaded = await this.provider().then(provider =>
       provider.loadResources(catalog.map(resource => resource.path))
@@ -151,6 +198,7 @@ export class WorkshopResourceCapability {
           group: resource.group,
           path: resource.path,
           label: resource.label,
+          source: 'content',
           line: index + 1,
           context: lines.slice(start, end).join('\n').trim()
         });
@@ -163,19 +211,7 @@ export class WorkshopResourceCapability {
     const truncated = inputTruncated || omittedFiles > 0 || matches.length >= budgets.searchMatches;
     const content = matches.length === 0
       ? `No configured project-resource matches were found for “${request.query}”${request.group ? ` in ${request.group}` : ''}.`
-      : [
-          `## Project resource search · “${request.query}”`,
-          request.group ? `Group: ${request.group}` : 'Group: all configured groups',
-          '',
-          ...matches.flatMap(match => [
-            `### [${match.group}] ${match.path}:${match.line} — ${match.label}`,
-            '```text',
-            this.neutralizeFence(match.context),
-            '```',
-            ''
-          ]),
-          ...(truncated ? ['Search results were bounded; additional content may not have been scanned or shown.'] : [])
-        ].join('\n');
+      : this.formatSearchContent(request, matches, truncated);
 
     return {
       capability: request.capability,
@@ -186,6 +222,8 @@ export class WorkshopResourceCapability {
       content,
       metadata: {
         group: request.group ?? 'all',
+        searchMode: 'content',
+        catalogEntriesScanned: matchingResources.length,
         filesScanned,
         configuredFiles: matchingResources.length,
         bytesScanned,
@@ -267,6 +305,39 @@ export class WorkshopResourceCapability {
   private formatCatalogEntry(resource: ContextResourceSummary): string {
     const workspace = resource.workspaceFolder ? ` · workspace: ${resource.workspaceFolder}` : '';
     return `- [${resource.group}] \`${resource.path}\` — ${resource.label}${workspace}`;
+  }
+
+  private catalogSearchTerms(query: string): string[] {
+    return (query.toLowerCase().match(/[\p{L}\p{N}_'-]+/gu) ?? [])
+      .filter(term => !CATALOG_SEARCH_STOP_WORDS.has(term));
+  }
+
+  private formatSearchContent(
+    request: Extract<ResourceRequest, { capability: 'resource.search' }>,
+    matches: readonly ResourceSearchMatch[],
+    truncated: boolean
+  ): string {
+    return [
+      `## Project resource search · “${request.query}”`,
+      request.group ? `Group: ${request.group}` : 'Group: all configured groups',
+      '',
+      ...matches.flatMap(match => match.source === 'catalog'
+        ? [
+            `### [${match.group}] ${match.path} — ${match.label}`,
+            match.context,
+            ''
+          ]
+        : [
+            `### [${match.group}] ${match.path}:${match.line} — ${match.label}`,
+            '```text',
+            this.neutralizeFence(match.context),
+            '```',
+            ''
+          ]),
+      ...(truncated
+        ? ['Search results were bounded; additional configured matches may not have been shown.']
+        : [])
+    ].join('\n');
   }
 
   private resourceKey(resource: Pick<ContextResourceSummary, 'group' | 'path'>): string {

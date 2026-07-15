@@ -4,6 +4,7 @@ import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { ConversationManager } from '@orchestration/ConversationManager';
 import { ResourceRequestGate } from '@orchestration/capabilities/ResourceRequestGate';
 import { ResourceReadRequest } from '@orchestration/ResourceReadXmlCodec';
+import { WorkshopCapabilityXmlCodec } from '@/application/services/workshop/WorkshopCapabilityXmlCodec';
 
 const stream = async function* (tokens: string[], usage = { promptTokens: 3, completionTokens: 2, totalTokens: 5 }) {
   for (const token of tokens) {
@@ -217,6 +218,36 @@ describe('AgentRunEngine', () => {
     expect(guides.fulfill).toHaveBeenCalledWith({ operation: 'resource.read', paths: ['dialogue.md'] });
     expect(visible.join('')).toBe('Guide-backed final response.');
     expect(result.content).toBe('Guide-backed final response.');
+  });
+
+  it('accepts a narrated Workshop resource search without burning its correction turn', async () => {
+    const adapter = personaCapability();
+    const codec = new WorkshopCapabilityXmlCodec();
+    adapter.inspectRequest.mockImplementation(candidate => codec.inspect(candidate));
+    const resourceSearch = [
+      'I should search the character files before answering.',
+      '<prose-minion-tool-call name="resource.search">',
+      '<query>Micah</query>',
+      '<group>characters</group>',
+      '</prose-minion-tool-call>'
+    ].join('\n');
+    client.createStreamingChatCompletion
+      .mockReturnValueOnce(stream([resourceSearch]))
+      .mockReturnValueOnce(stream(['Micah-backed final response.']));
+    const visible: string[] = [];
+
+    const result = await engine.runInitial({
+      toolName: 'host', systemMessage: 'System', userMessage: 'Read Micah\'s guide.',
+      policy: AGENT_RUN_POLICIES.workshopHost, capability: adapter,
+      options: { onToken: token => visible.push(token) }
+    });
+
+    expect(adapter.invalidRequestInstruction).not.toHaveBeenCalled();
+    expect(adapter.fulfill).toHaveBeenCalledWith({
+      capability: 'resource.search', query: 'Micah', group: 'characters'
+    });
+    expect(visible.join('')).toBe('Micah-backed final response.');
+    expect(result.content).toBe('Micah-backed final response.');
   });
 
   it('recovers from an invalid protocol-only response with a final answer instead of a blank result', async () => {

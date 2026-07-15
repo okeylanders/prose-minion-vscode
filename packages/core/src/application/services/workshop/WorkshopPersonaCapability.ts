@@ -575,6 +575,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
     const values = [
       `group=${typeof metadata.group === 'string' ? metadata.group : 'n/a'}`,
       `path=${typeof metadata.path === 'string' ? JSON.stringify(metadata.path) : 'n/a'}`,
+      `searchMode=${typeof metadata.searchMode === 'string' ? metadata.searchMode : 'n/a'}`,
+      `catalogEntries=${typeof metadata.catalogEntriesScanned === 'number' ? metadata.catalogEntriesScanned : 'n/a'}`,
       `files=${typeof metadata.filesScanned === 'number' ? metadata.filesScanned : typeof metadata.fileCount === 'number' ? metadata.fileCount : 'n/a'}`,
       `matches=${typeof metadata.matchCount === 'number' ? metadata.matchCount : 'n/a'}`,
       `bytes=${typeof metadata.bytes === 'number' ? metadata.bytes : typeof metadata.bytesScanned === 'number' ? metadata.bytesScanned : 'n/a'}`,

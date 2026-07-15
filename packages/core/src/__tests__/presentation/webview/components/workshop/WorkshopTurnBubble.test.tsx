@@ -360,4 +360,44 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(screen.getByLabelText('Capability metadata').textContent).toContain('project-resource limits');
     expect(screen.queryByRole('button', { name: /talk directly/i })).toBeNull();
   });
+
+  it('distinguishes catalog-path search from file-content search', () => {
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('## Project resource search · “Micah”'),
+          artifact: 'resource_search',
+          toolId: undefined,
+          toolLabel: 'Project Resources',
+          reportTurnId: undefined,
+          capability: {
+            operation: 'resource.search',
+            status: 'success',
+            requestSummary: '“Micah” in characters',
+            requestedByPersonaId: 'jill',
+            metadata: {
+              group: 'characters',
+              searchMode: 'catalog',
+              catalogEntriesScanned: 98,
+              filesScanned: 0,
+              bytesScanned: 0,
+              matchCount: 1,
+              truncated: false
+            }
+          }
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    const metadata = screen.getByLabelText('Capability metadata').textContent;
+    expect(metadata).toContain('98 configured paths searched');
+    expect(metadata).toContain('1 match found');
+    expect(metadata).not.toContain('0 configured files searched');
+    expect(metadata).not.toContain('0 bytes searched');
+  });
 });

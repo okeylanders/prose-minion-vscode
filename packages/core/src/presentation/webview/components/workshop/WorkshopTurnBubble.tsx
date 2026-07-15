@@ -94,7 +94,10 @@ const capabilityMetadataRows = (turn: WorkshopTurn): string[] => {
   if (typeof metadata.fileCount === 'number') {
     rows.push(`${metadata.fileCount} configured ${metadata.fileCount === 1 ? 'file' : 'files'} listed`);
   }
-  if (typeof metadata.filesScanned === 'number') {
+  if (metadata.searchMode === 'catalog' && typeof metadata.catalogEntriesScanned === 'number') {
+    rows.push(`${metadata.catalogEntriesScanned} configured ${metadata.catalogEntriesScanned === 1 ? 'path' : 'paths'} searched`);
+  }
+  if (typeof metadata.filesScanned === 'number' && metadata.filesScanned > 0) {
     rows.push(`${metadata.filesScanned} configured ${metadata.filesScanned === 1 ? 'file' : 'files'} searched`);
   }
   if (typeof metadata.matchCount === 'number') {
@@ -102,7 +105,7 @@ const capabilityMetadataRows = (turn: WorkshopTurn): string[] => {
   }
   if (typeof metadata.bytes === 'number' && typeof metadata.totalBytes === 'number') {
     rows.push(`${metadata.bytes.toLocaleString()} of ${metadata.totalBytes.toLocaleString()} bytes read`);
-  } else if (typeof metadata.bytesScanned === 'number') {
+  } else if (typeof metadata.bytesScanned === 'number' && metadata.bytesScanned > 0) {
     rows.push(`${metadata.bytesScanned.toLocaleString()} bytes searched`);
   }
   return rows;

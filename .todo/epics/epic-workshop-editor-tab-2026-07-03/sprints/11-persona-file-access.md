@@ -164,12 +164,25 @@ this sprint**, not before the final merge:
 - Sanitized the shared Markdown renderer with DOMPurify's HTML-only profile,
   removed images/raw executable markup and inline styles, and tightened both
   webview surfaces from `img-src ... https: data:` to `img-src ... data:`.
-- Verification: 95 Jest suites / 783 tests passed; core, webview, and extension
+- Live smoke testing exposed two host-behavior conflicts after the first
+  implementation pass: the immutable base prompt still denied project-file
+  access, and the capability decoder rejected a valid call when the persona
+  narrated before it. The base prompt now truthfully grants autonomous access
+  to configured resources, and the decoder accepts ordinary narration or a
+  single XML fence before one valid tail call while continuing to reject
+  trailing prose, multiple calls, and markup-bearing preambles.
+- Named lookups now search catalog paths and labels before loading file
+  contents. Multi-name requests can disclose all matching paths with one
+  bounded `resource.search`; exact token matching avoids substring collisions,
+  and content search remains the fallback. Catalog enumeration is reserved for
+  actual inventory requests. This changes discovery strategy only: configured-
+  group containment and the same-turn exact-read gate remain unchanged.
+- Verification: 95 Jest suites / 787 tests passed; core, webview, and extension
   typechecks passed; ESLint passed with zero errors (the existing warning set
   remains); production webpack build and `verify:bundle` passed;
   `git diff --check` passed.
 - Production bundles compared with the pre-sprint build:
-  `extension.js` 2,369,397 → 2,386,934 bytes (+17,537 / +0.74%);
-  `webview.js` 608,340 → 639,610 bytes (+31,270 / +5.14%). The webview increase
+  `extension.js` 2,369,397 → 2,388,986 bytes (+19,589 / +0.83%);
+  `webview.js` 608,340 → 639,817 bytes (+31,477 / +5.17%). The webview increase
   is primarily the shared DOMPurify sanitizer; webpack's existing asset-size
   recommendations remain warnings only.

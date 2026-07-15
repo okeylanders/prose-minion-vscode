@@ -45,4 +45,16 @@ describe('Workshop persona catalog and packaged prompts', () => {
       expect(content).not.toMatch(/\b(?:Codex|Claude)\b.*\b(?:skill|subagent|agent)\b/i);
     }
   });
+
+  it('gives hosts truthful autonomous access to configured project resources', () => {
+    const base = fs.readFileSync(
+      path.resolve(PROMPTS_ROOT, 'workshop-personas/base.md'),
+      'utf8'
+    );
+
+    expect(base).toContain('autonomously search and read configured project resources');
+    expect(base).toContain('do not need the writer to paste a path');
+    expect(base).toContain('search directly instead of requesting the full catalog');
+    expect(base).not.toContain('the three Workshop capabilities');
+  });
 });

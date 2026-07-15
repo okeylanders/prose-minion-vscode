@@ -98,7 +98,9 @@ export const createWorkshopCapabilityInstruction = (
     '',
     'Configured project resources are available through the following closed operations.',
     `Available groups and file counts: ${groupSummary}.`,
-    'List the bounded file catalog (optionally restrict it to one available group):',
+    'When the writer names one or more characters, locations, chapters, or files, search directly. You do not need a path or a prior catalog.',
+    'Search checks configured paths and labels before file contents, so a named lookup can disclose an exact readable path without loading the full group.',
+    'Do not request the catalog first for a named lookup. List the bounded catalog only when the writer wants an inventory or you lack a useful search term:',
     '<prose-minion-tool-call name="resource.catalog">',
     '  <group>characters</group>',
     '</prose-minion-tool-call>',
@@ -141,15 +143,23 @@ export class WorkshopCapabilityXmlCodec {
       // An invocation after narration is rejected, but an ordinary answer
       // may name the opening marker literally or quote it in a blockquote.
       if (isBlockquoteMention || !hasCompleteCall) return { kind: 'none' };
-      return { kind: 'invalid', reason: 'mixed-content' };
+      const preamble = source.slice(0, markerIndex).trim();
+      const isMarkdownFence = /^```(?:xml)?$/i.test(preamble);
+      // Tolerate ordinary narration or fence garnish before one valid tail
+      // call, matching the established ResourceReadXmlCodec behavior. Markup
+      // before the call remains invalid rather than becoming executable.
+      if (!isMarkdownFence && /[<>]/.test(preamble)) {
+        return { kind: 'invalid', reason: 'mixed-content' };
+      }
     }
-    const openingCalls = source.match(/<\s*prose-minion-tool-call\b/gi) ?? [];
+    const segment = source.slice(markerIndex).replace(/\s*```\s*$/, '').trim();
+    const openingCalls = segment.match(/<\s*prose-minion-tool-call\b/gi) ?? [];
     if (openingCalls.length !== 1) return { kind: 'invalid', reason: 'mixed-content' };
     const closingTag = '</prose-minion-tool-call>';
-    const closingIndex = source.toLowerCase().lastIndexOf(closingTag);
+    const closingIndex = segment.toLowerCase().lastIndexOf(closingTag);
     if (
       closingIndex !== -1 &&
-      source.slice(closingIndex + closingTag.length).trim().length > 0
+      segment.slice(closingIndex + closingTag.length).trim().length > 0
     ) {
       return { kind: 'invalid', reason: 'mixed-content' };
     }
@@ -205,7 +215,7 @@ export class WorkshopCapabilityXmlCodec {
     });
 
     try {
-      parser.write(source).close();
+      parser.write(segment).close();
     } catch {
       reject('malformed-xml');
     }
