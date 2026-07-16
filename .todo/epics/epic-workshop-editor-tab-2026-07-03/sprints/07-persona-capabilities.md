@@ -63,8 +63,9 @@ close before the capability-loop tasks below are implementable:
    path allowlisting applies.
 3. **`AGENT_RUN_POLICIES.workshopHost` has `maxCapabilityRounds: 0` and
    catalog `'none'`** — even the first persona turn has no capability budget.
-   This sprint needs a persona policy with per-user-turn rounds (the locked
-   three-calls-per-turn budget) and `onCapabilityLimit: 'forceFinalResponse'`;
+   This sprint needs a persona policy with per-user-turn rounds (originally
+   three calls; amended to five after Sprint 11 live evidence) and
+   `onCapabilityLimit: 'forceFinalResponse'`;
    the forced-final + one-retry machinery in the engine already implements
    the budget-exhaustion behavior required here.
 
@@ -175,9 +176,10 @@ plain application-owned boundary are required.
 - [x] Extend persona start/continuation with a bounded capability loop:
       model response -> parse -> validate -> execute -> append structured result
       -> request final/next response.
-- [x] Allow at most three capability calls per user turn, at most one
-      `dictionary.full-entry`, and at most one analysis side pass unless a later
-      measured policy justifies more.
+- [x] Allow at most five capability calls per user turn, at most one
+      `dictionary.full-entry`, and at most one analysis side pass. The shared
+      cap was raised from three after Sprint 11 live evidence; the operation-
+      specific subcaps remain unchanged.
 - [x] Enforce the locked 100 / 4,000 / 500 / 1,000 character ceilings; use
       pinned excerpt provenance rather than letting the model pass filesystem
       paths/content.
@@ -290,7 +292,8 @@ plain application-owned boundary are required.
 
 - Engine prerequisites completed: typed capability requests generalized beyond
   path reads; initial and retained turns share one transactional per-turn loop;
-  Workshop host policy is three calls, one correction, then forced final prose.
+  Workshop host policy originally shipped at three calls, one correction, then
+  forced final prose.
 - Sprint 06C composition verified: pending host frames enter a capability turn
   once, commit only with successful final prose, and remain pending on failure
   or cancellation; all capability artifacts carry `excerptVersion`.
@@ -308,3 +311,14 @@ plain application-owned boundary are required.
   (+17,945 / +0.77%); `webview.js` 590,131 → 593,123 bytes
   (+2,992 / +0.51%). Webpack's existing asset-size recommendations remain
   warnings only.
+
+## Budget Amendment — 2026-07-16
+
+Sprint 11 live file-access evidence showed that a valid two-profile comparison
+can require `search -> read -> search -> read`. The original three-call ceiling
+rejected the fourth request before the host could read the second profile.
+`PROMPT_BUDGETS.workshopCapability.callsPerTurn` is therefore five: the four-
+call demonstrated workflow plus one recovery/discovery slot. Six was rejected
+until context observability provides evidence for another full-history resend.
+The one-full-entry and one-analysis-run subcaps remain unchanged, and the
+engine still forces final prose at the shared boundary.

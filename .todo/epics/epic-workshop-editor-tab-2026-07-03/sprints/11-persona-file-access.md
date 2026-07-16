@@ -158,10 +158,12 @@ this sprint**, not before the final merge:
   catalog. Search stays in-process over resolver-provided text; no shell or
   workspace-wide grep path was added.
 - Centralized catalog, query/path, search-file/byte/match/context, and read-byte
-  ceilings in `PROMPT_BUDGETS.workshopResource`. The existing Workshop host
-  policy remains the three-round per-turn cap, so catalog → search → read chains
-  terminate deterministically and nested provider usage continues through the
-  existing token rail.
+  ceilings in `PROMPT_BUDGETS.workshopResource`. Post-review live evidence
+  raised the shared Workshop host policy from three to five calls per turn: a
+  two-profile `search -> read -> search -> read` chain now fits with one spare
+  recovery/discovery slot. Per-operation subcaps remain unchanged, the engine
+  still forces final prose at the boundary, and nested provider usage continues
+  through the existing token rail.
 - Made catalog/search/read attempts visible as attributable Project Resources
   turns, including rejected schema/containment attempts, display-safe
   provenance, counts, sizes, and truncation. Guests remain on the no-capability
@@ -179,8 +181,9 @@ this sprint**, not before the final merge:
 - Named lookups now search catalog paths and labels before loading file
   contents. Multi-name requests can disclose all matching paths with one
   bounded `resource.search`; exact token matching avoids substring collisions,
-  and content search remains the fallback. Catalog enumeration is reserved for
-  actual inventory requests.
+  then the same bounded search continues through configured file contents so a
+  filename hit cannot hide cross-file prose matches. Catalog enumeration is
+  reserved for actual inventory requests.
 - A second live-smoke correction removed the same-turn disclosure gate: any
   exact configured resource is now directly readable on any host turn. Path
   matching follows the resolver's case-insensitive behavior, returns the
@@ -195,12 +198,13 @@ this sprint**, not before the final merge:
   chapters/manuscript resources for continuity and search project-brief,
   general, character, location, theme, and thing resources for project-bible
   facts before asking the writer to supply known project context.
-- Verification: 95 Jest suites / 798 tests passed; core, webview, and extension
-  typechecks passed; ESLint passed with zero errors (the existing warning set
-  remains); production webpack build and `verify:bundle` passed;
-  `git diff --check` passed.
+- Final verification after review remediation and the five-call budget
+  amendment: focused 9 suites / 109 tests; full 95 Jest suites / 806 tests and
+  1 snapshot; core, webview, and extension typechecks passed; ESLint passed
+  with zero errors (661 existing warnings); production webpack build and
+  `verify:bundle` passed; `git diff --check` passed.
 - Production bundles compared with the pre-sprint build:
-  `extension.js` 2,369,397 → 2,391,428 bytes (+22,031 / +0.93%);
-  `webview.js` 608,340 → 639,992 bytes (+31,652 / +5.20%). The webview increase
+  `extension.js` 2,369,397 → 2,392,575 bytes (+23,178 / +0.98%);
+  `webview.js` 608,340 → 640,016 bytes (+31,676 / +5.21%). The webview increase
   is primarily the shared DOMPurify sanitizer; webpack's existing asset-size
   recommendations remain warnings only.

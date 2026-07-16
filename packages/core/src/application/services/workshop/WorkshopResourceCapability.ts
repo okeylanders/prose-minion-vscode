@@ -123,101 +123,97 @@ export class WorkshopResourceCapability {
       );
       return catalogTerms.some(term => searchableTerms.has(term));
     });
-
-    if (catalogMatches.length > 0) {
-      const displayed = catalogMatches.slice(0, budgets.searchMatches);
-      const truncated = displayed.length < catalogMatches.length;
-      const matches: ResourceSearchMatch[] = displayed.map(resource => ({
+    const matches: ResourceSearchMatch[] = catalogMatches
+      .slice(0, budgets.searchMatches)
+      .map(resource => ({
         group: resource.group,
         path: resource.path,
         label: resource.label,
         source: 'catalog',
         context: `Matched configured path or label term(s): ${catalogTerms.join(', ')}`
       }));
-      return {
-        capability: request.capability,
-        status: truncated ? 'partial' : 'success',
-        requestSummary: request.group
-          ? `“${request.query}” in ${request.group}`
-          : `“${request.query}” across configured resources`,
-        content: this.formatSearchContent(request, matches, truncated),
-        metadata: {
-          group: request.group ?? 'all',
-          searchMode: 'catalog',
-          catalogEntriesScanned: matchingResources.length,
-          filesScanned: 0,
-          configuredFiles: matchingResources.length,
-          bytesScanned: 0,
-          matchCount: matches.length,
-          truncated
-        }
-      };
-    }
-
-    const catalog = matchingResources.slice(0, budgets.searchFiles);
-    const loaded = await this.provider().then(provider =>
-      provider.loadResources(catalog.map(resource => resource.path))
-    );
-    this.throwIfAborted();
-
-    const loadedByKey = new Map(
-      loaded.map(resource => [this.resourceKey(resource), resource] as const)
-    );
-
     const query = request.query.toLowerCase();
-    const matches: ResourceSearchMatch[] = [];
     let bytesScanned = 0;
     let filesScanned = 0;
     let inputTruncated = false;
+    let matchOverflow = catalogMatches.length > matches.length;
+    const contentCatalog = matchingResources.slice(0, budgets.searchFiles);
+    const contentSearchAttempted = !matchOverflow && contentCatalog.length > 0;
 
-    for (const catalogEntry of catalog) {
-      if (matches.length >= budgets.searchMatches || bytesScanned >= budgets.searchTotalBytes) {
-        break;
-      }
-      this.throwIfAborted();
-      const resource = loadedByKey.get(this.resourceKey(catalogEntry));
-      if (!resource) continue;
+    if (!matchOverflow) {
+      for (const catalogEntry of contentCatalog) {
+        if (bytesScanned >= budgets.searchTotalBytes) {
+          inputTruncated = true;
+          break;
+        }
+        this.throwIfAborted();
+        const remainingBytes = budgets.searchTotalBytes - bytesScanned;
+        const fileByteLimit = Math.min(budgets.searchFileBytes, remainingBytes);
+        if (catalogEntry.sizeBytes > fileByteLimit) {
+          inputTruncated = true;
+          continue;
+        }
 
-      const remainingBytes = budgets.searchTotalBytes - bytesScanned;
-      const fileByteLimit = Math.min(budgets.searchFileBytes, remainingBytes);
-      const sliced = this.sliceUtf8(resource.content, fileByteLimit);
-      bytesScanned += sliced.bytes;
-      filesScanned += 1;
-      inputTruncated ||= sliced.truncated;
-      const lines = sliced.content.split(/\r?\n/);
+        const loaded = await this.provider().then(provider =>
+          provider.loadResources([catalogEntry.path])
+        );
+        this.throwIfAborted();
+        const resource = loaded.find(item =>
+          this.resourceKey(item) === this.resourceKey(catalogEntry)
+        );
+        if (!resource) {
+          inputTruncated = true;
+          continue;
+        }
 
-      for (let index = 0; index < lines.length; index += 1) {
-        if (!lines[index].toLowerCase().includes(query)) continue;
-        const start = Math.max(0, index - budgets.searchContextLines);
-        const end = Math.min(lines.length, index + budgets.searchContextLines + 1);
-        matches.push({
-          group: resource.group,
-          path: resource.path,
-          label: resource.label,
-          source: 'content',
-          line: index + 1,
-          context: lines.slice(start, end).join('\n').trim()
-        });
-        if (matches.length >= budgets.searchMatches) break;
+        const sliced = this.sliceUtf8(resource.content, fileByteLimit);
+        bytesScanned += sliced.bytes;
+        filesScanned += 1;
+        inputTruncated ||= sliced.truncated;
+        const lines = sliced.content.split(/\r?\n/);
+
+        for (let index = 0; index < lines.length; index += 1) {
+          if (!lines[index].toLowerCase().includes(query)) continue;
+          if (matches.length >= budgets.searchMatches) {
+            matchOverflow = true;
+            break;
+          }
+          const start = Math.max(0, index - budgets.searchContextLines);
+          const end = Math.min(lines.length, index + budgets.searchContextLines + 1);
+          matches.push({
+            group: resource.group,
+            path: resource.path,
+            label: resource.label,
+            source: 'content',
+            line: index + 1,
+            context: lines.slice(start, end).join('\n').trim()
+          });
+        }
+        if (matchOverflow) break;
       }
     }
 
-    const omittedFiles = Math.max(0, matchingResources.length - filesScanned);
-    const truncated = inputTruncated || omittedFiles > 0 || matches.length >= budgets.searchMatches;
+    const truncated = matchOverflow || inputTruncated || filesScanned < matchingResources.length;
+    const noMatches = `No configured project-resource matches were found for “${request.query}”${request.group ? ` in ${request.group}` : ''}.`;
     const content = matches.length === 0
-      ? `No configured project-resource matches were found for “${request.query}”${request.group ? ` in ${request.group}` : ''}.`
+      ? truncated
+        ? `${noMatches}\n\nSearch was bounded; one or more configured file contents were not fully scanned.`
+        : noMatches
       : this.formatSearchContent(request, matches, truncated);
+    const searchMode = catalogMatches.length === 0
+      ? 'content'
+      : contentSearchAttempted ? 'catalog+content' : 'catalog';
 
     return {
       capability: request.capability,
-      status: filesScanned < matchingResources.length ? 'partial' : 'success',
+      status: truncated ? 'partial' : 'success',
       requestSummary: request.group
         ? `“${request.query}” in ${request.group}`
         : `“${request.query}” across configured resources`,
       content,
       metadata: {
         group: request.group ?? 'all',
-        searchMode: 'content',
+        searchMode,
         catalogEntriesScanned: matchingResources.length,
         filesScanned,
         configuredFiles: matchingResources.length,
@@ -253,6 +249,22 @@ export class WorkshopResourceCapability {
       );
     }
 
+    const budgets = PROMPT_BUDGETS.workshopResource;
+    if (resource.sizeBytes > budgets.readSourceBytes) {
+      return {
+        capability: request.capability,
+        status: 'failed',
+        requestSummary: resource.path,
+        error: `The configured project resource exceeds the ${budgets.readSourceBytes}-byte source-read ceiling.`,
+        metadata: {
+          group: resource.group,
+          path: resource.path,
+          sourceBytes: resource.sizeBytes,
+          sourceByteCeiling: budgets.readSourceBytes
+        }
+      };
+    }
+
     const loaded = (await this.provider().then(provider => provider.loadResources([resource.path])))
       .find(item =>
         item.group === resource.group &&
@@ -269,7 +281,23 @@ export class WorkshopResourceCapability {
       };
     }
 
-    const budgets = PROMPT_BUDGETS.workshopResource;
+    const loadedBytes = Buffer.byteLength(loaded.content, 'utf8');
+    if (loadedBytes > budgets.readSourceBytes) {
+      return {
+        capability: request.capability,
+        status: 'failed',
+        requestSummary: resource.path,
+        error: `The configured project resource changed beyond the ${budgets.readSourceBytes}-byte source-read ceiling.`,
+        metadata: {
+          group: loaded.group,
+          path: loaded.path,
+          workspaceFolder: loaded.workspaceFolder,
+          sourceBytes: loadedBytes,
+          sourceByteCeiling: budgets.readSourceBytes
+        }
+      };
+    }
+
     const lines = loaded.content.split(/\r?\n/);
     const totalLines = lines.length;
     const startLine = request.startLine ?? 1;
@@ -288,19 +316,16 @@ export class WorkshopResourceCapability {
         }
       };
     }
-    const defaultEndLine = Math.min(
-      Number.MAX_SAFE_INTEGER,
-      startLine + budgets.readDefaultLines - 1
-    );
+    const defaultEndLine = startLine + budgets.readDefaultLines - 1;
     const requestedEndLine = request.endLine ?? defaultEndLine;
     const selectedEndLine = Math.min(requestedEndLine, totalLines);
     const selectedContent = lines.slice(startLine - 1, selectedEndLine).join('\n');
     const sliced = this.sliceUtf8(selectedContent, budgets.readBytes);
     const returnedLineCount = sliced.truncated
-      ? sliced.content.split(/\r?\n/).length
+      ? this.returnedLineCount(sliced.content)
       : selectedEndLine - startLine + 1;
     const endLine = Math.min(selectedEndLine, startLine + returnedLineCount - 1);
-    const totalBytes = Buffer.byteLength(loaded.content, 'utf8');
+    const totalBytes = Buffer.byteLength(lines.join('\n'), 'utf8');
     const content = [
       `## Project resource · ${loaded.label}`,
       `Group: ${loaded.group}`,
@@ -401,17 +426,24 @@ export class WorkshopResourceCapability {
     content: string,
     maxBytes: number
   ): { content: string; bytes: number; totalBytes: number; truncated: boolean } {
-    const encoded = Buffer.from(content, 'utf8');
-    if (encoded.length <= maxBytes) {
-      return { content, bytes: encoded.length, totalBytes: encoded.length, truncated: false };
+    const totalBytes = Buffer.byteLength(content, 'utf8');
+    if (totalBytes <= maxBytes) {
+      return { content, bytes: totalBytes, totalBytes, truncated: false };
     }
+    const encoded = Buffer.from(content, 'utf8');
     const sliced = encoded.subarray(0, maxBytes).toString('utf8').replace(/\uFFFD$/, '');
     return {
       content: sliced,
       bytes: Buffer.byteLength(sliced, 'utf8'),
-      totalBytes: encoded.length,
+      totalBytes,
       truncated: true
     };
+  }
+
+  private returnedLineCount(content: string): number {
+    if (content.length === 0) return 0;
+    const newlines = content.match(/\n/g)?.length ?? 0;
+    return newlines + (content.endsWith('\n') ? 0 : 1);
   }
 
   private neutralizeFence(value: string): string {

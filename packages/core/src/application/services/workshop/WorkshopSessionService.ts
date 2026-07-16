@@ -36,6 +36,10 @@ import {
 import { workshopToolLabel } from '@shared/constants/workshopTools';
 import { WORKSHOP_ACTIONABLE_FINDING_BOUNDS } from './WorkshopActionableFindings';
 
+const assertNever = (value: never): never => {
+  throw new Error(`Unhandled Workshop capability operation: ${JSON.stringify(value)}`);
+};
+
 export interface WorkshopExcerptInput {
   text: string;
   sourceUri?: string;
@@ -494,6 +498,7 @@ export class WorkshopSessionService {
         case 'resource.catalog': return 'resource_catalog';
         case 'resource.search': return 'resource_search';
         case 'resource.read': return 'resource_read';
+        default: return assertNever(input.details.operation);
       }
     })();
     const isResource = input.details.operation.startsWith('resource.');

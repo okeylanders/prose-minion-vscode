@@ -46,12 +46,14 @@ describe('ContextResourceResolver configured-resource boundary', () => {
       group: 'characters',
       path: 'characters/raven.md',
       label: 'Raven',
+      sizeBytes: files['/ws/characters/raven.md'].length,
       workspaceFolder: 'novel'
     }]);
     await expect(provider.loadResources(['characters/raven.md'])).resolves.toEqual([{
       group: 'characters',
       path: 'characters/raven.md',
       label: 'Raven',
+      sizeBytes: files['/ws/characters/raven.md'].length,
       workspaceFolder: 'novel',
       content: 'Raven is cautious.'
     }]);
@@ -61,6 +63,7 @@ describe('ContextResourceResolver configured-resource boundary', () => {
 
   it('never turns an absolute, traversal, or unknown requested key into a filesystem read', async () => {
     const readFile = jest.fn().mockResolvedValue(new TextEncoder().encode('safe'));
+    const log = { appendLine: jest.fn() } as unknown as LogSink;
     const resolver = new ContextResourceResolver(
       createFakeSettings({ 'contextPaths.general': 'notes/*.md' }),
       createFakeFileSystem({
@@ -72,7 +75,8 @@ describe('ContextResourceResolver configured-resource boundary', () => {
       createFakeWorkspace({
         workspaceFolders: () => [{ path: '/ws', name: 'novel' }],
         findFiles: async () => ['/ws/notes/safe.md']
-      })
+      }),
+      log
     );
     const provider = await resolver.createProvider(['general']);
 
@@ -83,5 +87,36 @@ describe('ContextResourceResolver configured-resource boundary', () => {
       'notes/unknown.md'
     ])).resolves.toEqual([]);
     expect(readFile).not.toHaveBeenCalled();
+    expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining('catalogSize=1'));
+  });
+
+  it('fails closed when an ancestor stat throws during catalog admission', async () => {
+    const readFile = jest.fn();
+    const log = { appendLine: jest.fn() } as unknown as LogSink;
+    const resolver = new ContextResourceResolver(
+      createFakeSettings({ 'contextPaths.characters': 'characters/**/*.md' }),
+      createFakeFileSystem({
+        readFile,
+        stat: async (filePath: string) => {
+          if (filePath === '/ws/characters') {
+            throw new Error('permission denied');
+          }
+          return stat(FileType.File, 20);
+        }
+      }),
+      createFakeWorkspace({
+        workspaceFolders: () => [{ path: '/ws', name: 'novel' }],
+        findFiles: async () => ['/ws/characters/raven.md']
+      }),
+      log
+    );
+
+    const provider = await resolver.createProvider(['characters']);
+
+    expect(provider.listResources()).toEqual([]);
+    expect(readFile).not.toHaveBeenCalled();
+    expect(log.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('Skipped unreadable configured resource')
+    );
   });
 });

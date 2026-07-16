@@ -59,7 +59,7 @@ describe('prompt budgets', () => {
       contextCharacters: 4_000,
       purposeCharacters: 500,
       instructionsCharacters: 1_000,
-      callsPerTurn: 3,
+      callsPerTurn: 5,
       fullEntriesPerTurn: 1,
       analysisRunsPerTurn: 1
     });
@@ -73,6 +73,7 @@ describe('prompt budgets', () => {
       searchFileBytes: 256 * 1024,
       searchTotalBytes: 2 * 1024 * 1024,
       readDefaultLines: 400,
+      readSourceBytes: 2 * 1024 * 1024,
       readBytes: 64 * 1024
     });
   });

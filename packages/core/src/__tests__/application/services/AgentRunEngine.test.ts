@@ -520,7 +520,7 @@ describe('AgentRunEngine', () => {
     expect(result.content).toBe('Corrected continuation answer.');
   });
 
-  it('forces final prose after three capability calls on retained continuation', async () => {
+  it('forces final prose after five capability calls on retained continuation', async () => {
     client.createChatCompletion.mockResolvedValueOnce({ content: 'Host hello' });
     const initial = await engine.runInitial({
       toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
@@ -536,7 +536,9 @@ describe('AgentRunEngine', () => {
       .mockResolvedValueOnce({ content: PERSONA_REQUEST })
       .mockResolvedValueOnce({ content: PERSONA_REQUEST })
       .mockResolvedValueOnce({ content: PERSONA_REQUEST })
-      .mockResolvedValueOnce({ content: 'Continuation final after three calls.' });
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: 'Continuation final after five calls.' });
 
     const result = await engine.continueConversation({
       conversationId: initial.conversationId!,
@@ -545,11 +547,11 @@ describe('AgentRunEngine', () => {
       capability: adapter
     });
 
-    expect(adapter.fulfill).toHaveBeenCalledTimes(3);
+    expect(adapter.fulfill).toHaveBeenCalledTimes(5);
     expect(adapter.handleCapabilityLimit).toHaveBeenCalledTimes(1);
     expect(adapter.limitInstruction).toHaveBeenCalledTimes(1);
     expect(result.artifacts).toEqual([expect.objectContaining({ id: 'limit-1' })]);
-    expect(result.content).toBe('Continuation final after three calls.');
+    expect(result.content).toBe('Continuation final after five calls.');
   });
 
   it('withholds rejected Workshop lookup narration and attributes the rejection log', async () => {
@@ -616,13 +618,15 @@ describe('AgentRunEngine', () => {
     expect(conversations.getConversationInfo(initial.conversationId!)?.messageCount).toBe(before);
   });
 
-  it('resets the three-call persona budget per user turn and forces final prose at the boundary', async () => {
+  it('resets the five-call persona budget per user turn and forces final prose at the boundary', async () => {
     client.createChatCompletion
       .mockResolvedValueOnce({ content: PERSONA_REQUEST })
       .mockResolvedValueOnce({ content: PERSONA_REQUEST })
       .mockResolvedValueOnce({ content: PERSONA_REQUEST })
       .mockResolvedValueOnce({ content: PERSONA_REQUEST })
-      .mockResolvedValueOnce({ content: 'Final after three calls.' });
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: 'Final after five calls.' });
     const adapter = personaCapability();
 
     const result = await engine.runInitial({
@@ -630,9 +634,9 @@ describe('AgentRunEngine', () => {
       policy: AGENT_RUN_POLICIES.workshopHost, capability: adapter
     });
 
-    expect(adapter.fulfill).toHaveBeenCalledTimes(3);
+    expect(adapter.fulfill).toHaveBeenCalledTimes(5);
     expect(adapter.limitInstruction).toHaveBeenCalledTimes(1);
-    expect(result.content).toBe('Final after three calls.');
+    expect(result.content).toBe('Final after five calls.');
   });
 
   it('bounds configured context-file capability rounds and forces a final response', async () => {

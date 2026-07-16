@@ -7,9 +7,9 @@
 **Priority**: High (final live-session-shape and interface sprint before persistence)
 **Branch**: `sprint/workshop-editor-tab-12-context-excerpt-intake` -> PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 4-6 days
-**Depends on**: Sprint 11 in execution order so its configured-resource and
-file-browsing concepts can be reused. Executes before the final Sprint 10
-persistence pass.
+**Depends on**: Sprint 11 for configured-resource/file-browsing concepts and
+Sprint 11B for honest context-budget telemetry before attachments add prompt
+material. Executes before the final Sprint 10 persistence pass.
 **Feature**: [feature-workshop-context-selector](../../../features/feature-workshop-context-selector/README.md)
 **Design source**: Okey's intake direction, 2026-07-14 (screenshot review of
 the live left rail), sharpened 2026-07-16 with verified pasted-selection
@@ -172,6 +172,9 @@ verification passes from 06B.
 
 - [ ] `+` opens the Context Selector modal; resulting attachments appear in
       the rail list and the event turn.
+- [ ] Preserve Sprint 11B's active-participant context widget in the band below
+      the participant rail and above the composer; attachment UX must not
+      relabel processed traffic as context or duplicate telemetry state.
 
 ### Persistence handoff
 

@@ -2,9 +2,9 @@
 
 **Created**: 2026-07-06
 **Status**: In Progress
-**Progress**: Sprints 01–09 merged (Sprint 09 [PR #76](https://github.com/okeylanders/prose-minion-vscode/pull/76)); Sprint 11 implementation complete; execution continues with Sprint 12, then the final Sprint 10 persistence pass (Sprint 01 [PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66); Sprint 02 [PR #67](https://github.com/okeylanders/prose-minion-vscode/pull/67); Sprint 03 [PR #68](https://github.com/okeylanders/prose-minion-vscode/pull/68); Sprint 04 [PR #69](https://github.com/okeylanders/prose-minion-vscode/pull/69))
+**Progress**: Sprints 01–09 merged (Sprint 09 [PR #76](https://github.com/okeylanders/prose-minion-vscode/pull/76)); Sprint 11 implementation and review remediation complete; execution continues with Sprint 11B context observability, Sprint 12 intake/polish, then the final Sprint 10 persistence pass (Sprint 01 [PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66); Sprint 02 [PR #67](https://github.com/okeylanders/prose-minion-vscode/pull/67); Sprint 03 [PR #68](https://github.com/okeylanders/prose-minion-vscode/pull/68); Sprint 04 [PR #69](https://github.com/okeylanders/prose-minion-vscode/pull/69))
 **Design source**: [Direction B — Split & Pinned](../../../docs/design/Prose%20Minion%20-%20Assistant%20Tab.html)
-**ADRs**: [2026-07-03 — Assistant as a Full Editor Tab](../../../docs/adr/2026-07-03-assistant-editor-tab.md); [2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](../../../docs/adr/2026-07-09-workshop-persona-hosted-conversations.md); [2026-07-11 — Workshop Excerpt Revision and Room Memory](../../../docs/adr/2026-07-11-workshop-excerpt-revision-and-room-memory.md); [2026-07-11 — Workshop Guest Persona Sidecars](../../../docs/adr/2026-07-11-workshop-guest-persona-sidecars.md); [2026-07-14 — Workshop Session Persistence and the Session Browser](../../../docs/adr/2026-07-14-workshop-session-persistence.md)
+**ADRs**: [2026-07-03 — Assistant as a Full Editor Tab](../../../docs/adr/2026-07-03-assistant-editor-tab.md); [2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](../../../docs/adr/2026-07-09-workshop-persona-hosted-conversations.md); [2026-07-11 — Workshop Excerpt Revision and Room Memory](../../../docs/adr/2026-07-11-workshop-excerpt-revision-and-room-memory.md); [2026-07-11 — Workshop Guest Persona Sidecars](../../../docs/adr/2026-07-11-workshop-guest-persona-sidecars.md); [2026-07-14 — Workshop Session Persistence and the Session Browser](../../../docs/adr/2026-07-14-workshop-session-persistence.md); [2026-07-16 — Universal Inference Context Observability](../../../docs/adr/2026-07-16-inference-context-observability.md)
 **Integration branch**: `epic/workshop-editor-tab`
 
 ## Goal
@@ -58,13 +58,15 @@ Each sprint is independently shippable behind the (initially unregistered)
 | 9 | `sprint/workshop-editor-tab-09-persona-guest-sidecars` | [Guest persona sidecars](sprints/09-persona-guest-sidecars.md) | Writers summon a bounded second-opinion persona seeded with a labeled transcript snapshot and cursor-based catch-up. |
 | 10 | `sprint/workshop-editor-tab-10-session-persistence` | [Session persistence, save, and browser](sprints/10-session-persistence.md) | The final persistence pass: sessions survive VS Code restarts as workspace JSON records; a session browser reopens prior sessions with the full record and honestly fresh room memory. |
 | 11 | `sprint/workshop-editor-tab-11-persona-file-access` | [Persona file access](sprints/11-persona-file-access.md) | The host persona searches and reads allowlisted project resources through the Sprint 07 capability boundary — after the markdown-sanitization gate lands as its opening task. |
+| 11B | `sprint/workshop-editor-tab-11b-context-budget-visibility` | [Context budget visibility and inference telemetry](sprints/11b-context-budget-visibility.md) | Sidebar and Workshop distinguish per-request context pressure from multi-call turn traffic and cumulative processed usage; the Workshop gauge follows the active host, guest, or tool conversation. |
 | 12 | `sprint/workshop-editor-tab-12-context-excerpt-intake` | [Excerpt & context intake rework + polish](sprints/12-context-excerpt-intake-polish.md) | Intent-button intake replaces "pinning"; context becomes multiple visible attachments; the live session shape and shared browser shell stabilize before persistence. |
 
-**Execution order for the remaining numbered sprints is 11 → 12 → 10.** The
+**Execution order for the remaining work is 11 → 11B → 12 → 10.** The
 numbers and branch names remain stable planning identities; Sprint 10 runs last
 so persistence serializes the completed Workshop session and turn contracts
 once instead of chasing changes introduced by file-access artifacts and context
-attachments.
+attachments. Sprint 11B lands before those attachments so context pressure is
+measured honestly before the app intentionally adds more prompt material.
 
 The shared markdown-sanitization gate moves forward into Sprint 11's opening
 tasks (persona file access sharpens that risk — see Known Risks). Final step
@@ -144,6 +146,10 @@ Target behavior:
   context brief. Sprint 11 added on-demand allowlisted project-resource catalog,
   search, and read operations through the retained host capability boundary;
   empty catalogs remain honestly unavailable.
+- Context-window pressure is measured per provider request, not inferred from
+  cumulative processed traffic. Sprint 11B gives sidebar runs and each
+  independent Workshop host/guest/tool conversation the same provider-neutral
+  telemetry semantics before Sprint 12 expands context intake.
 
 ## Known Risks
 
@@ -164,6 +170,10 @@ Target behavior:
 - Autonomous capability calls can multiply cost/latency or loop. Sprint 07 must
   enforce strict schemas, call/turn budgets, cancellation, nested usage
   accounting, and visible progress from its first implementation.
+- Cumulative usage and logical-turn totals currently double-count resent
+  history and therefore cannot represent context-window pressure. Sprint 11B
+  separates last-request context, turn processed traffic, cumulative processed
+  usage, and provider compression disclosure across both webview surfaces.
 - ~~`ConversationManager` still logs via raw `console.*`~~ — migrated to the
   injected `LogSink` in Sprint 02 (PR #67).
 - **Markdown sanitization (resolved in Sprint 11, 2026-07-15)**: the shared

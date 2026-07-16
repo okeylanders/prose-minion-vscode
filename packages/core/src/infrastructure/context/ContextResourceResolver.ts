@@ -18,6 +18,7 @@ interface InternalContextResource {
   group: ContextPathGroup;
   path: string;
   label: string;
+  sizeBytes: number;
   workspaceFolder?: string;
   absolutePath: string;
 }
@@ -56,7 +57,8 @@ export class ContextResourceResolver implements ContextResourceProviderFactory {
 
           if (!resource) {
             this.outputChannel?.appendLine(
-              '[ContextResourceResolver] Resource request did not match the configured catalog.'
+              '[ContextResourceResolver] Resource request did not match the configured catalog; ' +
+              `catalogSize=${resourceMap.size}.`
             );
             continue;
           }
@@ -69,6 +71,7 @@ export class ContextResourceResolver implements ContextResourceProviderFactory {
               group: resource.group,
               path: resource.path,
               label: resource.label,
+              sizeBytes: resource.sizeBytes,
               workspaceFolder: resource.workspaceFolder,
               content
             });
@@ -122,7 +125,8 @@ export class ContextResourceResolver implements ContextResourceProviderFactory {
           }
 
           for (const match of matches) {
-            if (!await this.isSafeWorkspaceResource(workspaceFolder.path, match)) {
+            const sizeBytes = await this.safeWorkspaceResourceSize(workspaceFolder.path, match);
+            if (sizeBytes === undefined) {
               continue;
             }
 
@@ -143,6 +147,7 @@ export class ContextResourceResolver implements ContextResourceProviderFactory {
               group,
               path: relativePath,
               label: this.deriveLabel(match),
+              sizeBytes,
               workspaceFolder: workspaceFolder.name,
               absolutePath: match
             });
@@ -171,6 +176,7 @@ export class ContextResourceResolver implements ContextResourceProviderFactory {
       group: resource.group,
       path: resource.path,
       label: resource.label,
+      sizeBytes: resource.sizeBytes,
       workspaceFolder: resource.workspaceFolder
     };
   }
@@ -219,34 +225,36 @@ export class ContextResourceResolver implements ContextResourceProviderFactory {
    * lexical escapes and any symlink in the workspace-relative ancestor chain
    * before a model-visible key can enter the configured catalog.
    */
-  private async isSafeWorkspaceResource(root: string, candidate: string): Promise<boolean> {
+  private async safeWorkspaceResourceSize(root: string, candidate: string): Promise<number | undefined> {
     if (!isPathWithinRoot(root, candidate)) {
       this.outputChannel?.appendLine(
         '[ContextResourceResolver] Skipped a configured-resource match outside its workspace root.'
       );
-      return false;
+      return undefined;
     }
 
     const relativePath = path.relative(root, candidate);
     let currentPath = root;
+    let sizeBytes = 0;
     for (const segment of relativePath.split(path.sep).filter(Boolean)) {
       currentPath = path.join(currentPath, segment);
       try {
         const stat = await this.fileSystem.stat(currentPath);
+        sizeBytes = stat.size;
         if ((stat.type & FileType.SymbolicLink) !== 0) {
           this.outputChannel?.appendLine(
             `[ContextResourceResolver] Skipped symbolic-link resource: ${relativePath.replace(/\\/g, '/')}`
           );
-          return false;
+          return undefined;
         }
       } catch {
         this.outputChannel?.appendLine(
           `[ContextResourceResolver] Skipped unreadable configured resource: ${relativePath.replace(/\\/g, '/')}`
         );
-        return false;
+        return undefined;
       }
     }
-    return true;
+    return sizeBytes;
   }
 
   private deriveLabel(filePath: string): string {

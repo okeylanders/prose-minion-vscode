@@ -52,7 +52,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
       'utf8'
     );
 
-    expect(base).toContain('autonomously search and read configured project resources');
+    expect(base).toContain('when the turn contract advertises them, autonomously search and read configured project resources');
     expect(base).toContain('Before treating important context as unavailable');
     expect(base).toContain('inspect neighboring chapters');
     expect(base).toContain('project-bible facts');

@@ -167,46 +167,58 @@ export class WorkshopPersonaCapability implements AgentCapability<
 
   statusMessage(request: WorkshopCapabilityRequest): string {
     const persona = workshopPersonaLabel(this.turn.personaId);
-    if (request.capability === 'analysis.run') {
-      return `${persona} is asking ${workshopToolLabel(request.toolId)} to examine the excerpt…`;
+    switch (request.capability) {
+      case 'analysis.run':
+        return `${persona} is asking ${workshopToolLabel(request.toolId)} to examine the excerpt…`;
+      case 'dictionary.lookup':
+      case 'dictionary.full-entry':
+        return `${persona} is checking the Writer's Dictionary for “${request.word}”…`;
+      case 'resource.catalog':
+        return `${persona} is checking the configured project-resource catalog…`;
+      case 'resource.search':
+        return `${persona} is searching configured project resources for “${request.query}”…`;
+      case 'resource.read':
+        return `${persona} is reading ${request.path}…`;
+      default:
+        return this.assertNever(request);
     }
-    if (request.capability === 'dictionary.lookup' || request.capability === 'dictionary.full-entry') {
-      return `${persona} is checking the Writer's Dictionary for “${request.word}”…`;
-    }
-    if (request.capability === 'resource.catalog') {
-      return `${persona} is checking the configured project-resource catalog…`;
-    }
-    if (request.capability === 'resource.search') {
-      return `${persona} is searching configured project resources for “${request.query}”…`;
-    }
-    return `${persona} is reading ${request.path}…`;
   }
 
   statusTicker(request: WorkshopCapabilityRequest): string {
-    if (request.capability === 'analysis.run') return 'Waiting for first chunks…';
-    if (request.capability === 'dictionary.lookup' || request.capability === 'dictionary.full-entry') {
-      return `Dictionary · ${request.word}`;
+    switch (request.capability) {
+      case 'analysis.run':
+        return 'Waiting for first chunks…';
+      case 'dictionary.lookup':
+      case 'dictionary.full-entry':
+        return `Dictionary · ${request.word}`;
+      case 'resource.catalog':
+        return `Resources · ${request.group ?? 'all groups'}`;
+      case 'resource.search':
+        return `Search · ${request.group ?? 'all groups'}`;
+      case 'resource.read':
+        return `Read · ${request.group}`;
+      default:
+        return this.assertNever(request);
     }
-    if (request.capability === 'resource.catalog') return `Resources · ${request.group ?? 'all groups'}`;
-    if (request.capability === 'resource.search') return `Search · ${request.group ?? 'all groups'}`;
-    return `Read · ${request.group}`;
   }
 
   requestLogSummary(request: WorkshopCapabilityRequest): string {
-    if (request.capability === 'analysis.run') {
-      return `tool=${request.toolId}; instructionsChars=${request.instructions?.length ?? 0}`;
+    switch (request.capability) {
+      case 'analysis.run':
+        return `tool=${request.toolId}; instructionsChars=${request.instructions?.length ?? 0}`;
+      case 'dictionary.lookup':
+      case 'dictionary.full-entry':
+        return `word=${JSON.stringify(request.word)}; contextChars=${request.context.length}; purposeChars=${request.purpose.length}`;
+      case 'resource.catalog':
+        return `group=${request.group ?? 'all'}`;
+      case 'resource.search':
+        return `group=${request.group ?? 'all'}; query=${JSON.stringify(request.query)}`;
+      case 'resource.read':
+        return `group=${request.group}; path=${JSON.stringify(request.path)}; ` +
+          `lines=${request.startLine ?? 'default'}-${request.endLine ?? 'default'}`;
+      default:
+        return this.assertNever(request);
     }
-    if (request.capability === 'dictionary.lookup' || request.capability === 'dictionary.full-entry') {
-      return `word=${JSON.stringify(request.word)}; contextChars=${request.context.length}; purposeChars=${request.purpose.length}`;
-    }
-    if (request.capability === 'resource.catalog') {
-      return `group=${request.group ?? 'all'}`;
-    }
-    if (request.capability === 'resource.search') {
-      return `group=${request.group ?? 'all'}; query=${JSON.stringify(request.query)}`;
-    }
-    return `group=${request.group}; path=${JSON.stringify(request.path)}; ` +
-      `lines=${request.startLine ?? 'default'}-${request.endLine ?? 'default'}`;
   }
 
   inspectionLogContext(): string {
@@ -500,20 +512,25 @@ export class WorkshopPersonaCapability implements AgentCapability<
   }
 
   private requestSummary(request: WorkshopCapabilityRequest): string {
-    if (request.capability === 'dictionary.lookup' || request.capability === 'dictionary.full-entry') {
-      return request.word;
+    switch (request.capability) {
+      case 'analysis.run': {
+        const instructions = request.instructions?.trim();
+        return instructions
+          ? `${instructions.slice(0, 77)}${instructions.length > 77 ? '…' : ''}`
+          : 'Pinned excerpt review';
+      }
+      case 'dictionary.lookup':
+      case 'dictionary.full-entry':
+        return request.word;
+      case 'resource.catalog':
+        return request.group ? `${request.group} catalog` : 'configured resource catalog';
+      case 'resource.search':
+        return request.group ? `“${request.query}” in ${request.group}` : `“${request.query}”`;
+      case 'resource.read':
+        return request.path;
+      default:
+        return this.assertNever(request);
     }
-    if (request.capability === 'resource.catalog') {
-      return request.group ? `${request.group} catalog` : 'configured resource catalog';
-    }
-    if (request.capability === 'resource.search') {
-      return request.group ? `“${request.query}” in ${request.group}` : `“${request.query}”`;
-    }
-    if (request.capability === 'resource.read') return request.path;
-    const instructions = request.instructions?.trim();
-    return instructions
-      ? `${instructions.slice(0, 77)}${instructions.length > 77 ? '…' : ''}`
-      : 'Pinned excerpt review';
   }
 
   private dictionaryContext(context: string, purpose: string): string {

@@ -123,6 +123,7 @@ export const createWorkshopCapabilityInstruction = (
     '</prose-minion-tool-call>',
     '',
     `Resource ceilings are ${resourceBudgets.catalogItems} catalog entries, ${resourceBudgets.searchMatches} search matches, and ${resourceBudgets.readBytes} read bytes.`,
+    `Search scans at most ${resourceBudgets.searchFiles} files, ${resourceBudgets.searchFileBytes} source bytes per file, and ${resourceBudgets.searchTotalBytes} source bytes total; larger or omitted inputs are reported as bounded. Reads refuse source files larger than ${resourceBudgets.readSourceBytes} bytes before loading them.`,
     `Reads use a ${resourceBudgets.readDefaultLines}-line default window. Optional inclusive startLine/endLine fields may select another window, but the ${resourceBudgets.readBytes}-byte hard ceiling cannot be overridden; request another window when needed.`,
     `Search queries may contain at most ${resourceBudgets.queryCharacters} characters and paths at most ${resourceBudgets.pathCharacters} characters.`,
     'Use only available groups and workspace-relative configured paths. Never absolutize or traverse a path.',
@@ -152,8 +153,8 @@ export class WorkshopCapabilityXmlCodec {
       const preamble = source.slice(0, markerIndex).trim();
       const isMarkdownFence = /^```(?:xml)?$/i.test(preamble);
       // Tolerate ordinary narration or fence garnish before one valid tail
-      // call, matching the established ResourceReadXmlCodec behavior. Markup
-      // before the call remains invalid rather than becoming executable.
+      // call. Unlike ResourceReadXmlCodec's length heuristic, this stricter
+      // contract rejects markup-bearing preambles as mixed executable content.
       if (!isMarkdownFence && /[<>]/.test(preamble)) {
         return { kind: 'invalid', reason: 'mixed-content' };
       }

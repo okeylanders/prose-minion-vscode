@@ -8,6 +8,7 @@ describe('WorkshopResourceCapability', () => {
     group: 'characters' as const,
     path: 'characters/raven.md',
     label: 'Raven',
+    sizeBytes: Buffer.byteLength('Raven waits.', 'utf8'),
     workspaceFolder: 'novel'
   };
   let listResources: jest.Mock;
@@ -115,14 +116,18 @@ describe('WorkshopResourceCapability', () => {
     expect(loadResources).not.toHaveBeenCalled();
   });
 
-  it('searches catalog paths and labels directly without loading the full group', async () => {
+  it('searches catalog paths and labels before bounded file contents', async () => {
     const summaries = ['Micah', 'Jasper', 'Ava', 'Nate', 'Raven', 'Savannah'].map(label => ({
       group: 'characters' as const,
       path: `characters/${label.toLowerCase()}.md`,
-      label
+      label,
+      sizeBytes: 32
     }));
     listResources.mockReturnValue(summaries);
-    loadResources.mockResolvedValue([{ ...summaries[0], content: 'Micah deflects with humor.' }]);
+    loadResources.mockImplementation(async (paths: string[]) => paths.map(resourcePath => {
+      const resource = summaries.find(item => item.path === resourcePath)!;
+      return { ...resource, content: `${resource.label} has a standalone guide.` };
+    }));
 
     const search = await capability.fulfill({
       capability: 'resource.search',
@@ -133,10 +138,9 @@ describe('WorkshopResourceCapability', () => {
     expect(search).toMatchObject({
       status: 'success',
       metadata: {
-        searchMode: 'catalog',
+        searchMode: 'catalog+content',
         catalogEntriesScanned: 6,
-        filesScanned: 0,
-        bytesScanned: 0,
+        filesScanned: 6,
         matchCount: 4,
         truncated: false
       }
@@ -147,7 +151,7 @@ describe('WorkshopResourceCapability', () => {
     expect(search.content).toContain('characters/nate.md');
     expect(search.content).not.toContain('characters/raven.md');
     expect(search.content).not.toContain('characters/savannah.md');
-    expect(loadResources).not.toHaveBeenCalled();
+    expect(loadResources).toHaveBeenCalledTimes(6);
 
     const read = await capability.fulfill({
       capability: 'resource.read',
@@ -156,6 +160,60 @@ describe('WorkshopResourceCapability', () => {
     });
     expect(read.status).toBe('success');
     expect(loadResources).toHaveBeenCalledWith(['characters/micah.md']);
+  });
+
+  it('does not let a filename hit suppress a content match in another configured file', async () => {
+    const chapter = {
+      group: 'chapters' as const,
+      path: 'chapters/01.md',
+      label: 'Chapter 1',
+      sizeBytes: 22
+    };
+    listResources.mockReturnValue([summary, chapter]);
+    loadResources.mockImplementation(async (paths: string[]) => paths.map(resourcePath =>
+      resourcePath === summary.path
+        ? { ...summary, content: 'Character profile.' }
+        : { ...chapter, content: 'Raven appears at dusk.' }
+    ));
+
+    const result = await capability.fulfill({ capability: 'resource.search', query: 'Raven' });
+
+    expect(result).toMatchObject({
+      status: 'success',
+      metadata: {
+        searchMode: 'catalog+content',
+        filesScanned: 2,
+        matchCount: 2,
+        truncated: false
+      }
+    });
+    expect(result.content).toContain('characters/raven.md');
+    expect(result.content).toContain('chapters/01.md:1');
+  });
+
+  it('does not claim truncation when exhaustive content search lands exactly on the match cap', async () => {
+    const content = Array.from(
+      { length: PROMPT_BUDGETS.workshopResource.searchMatches },
+      (_, index) => `Threshold match ${index + 1}`
+    ).join('\n');
+    listResources.mockReturnValue([{ ...summary, sizeBytes: Buffer.byteLength(content, 'utf8') }]);
+    loadResources.mockResolvedValue([{ ...summary, content }]);
+
+    const result = await capability.fulfill({
+      capability: 'resource.search',
+      query: 'Threshold',
+      group: 'characters'
+    });
+
+    expect(result).toMatchObject({
+      status: 'success',
+      metadata: {
+        filesScanned: 1,
+        matchCount: PROMPT_BUDGETS.workshopResource.searchMatches,
+        truncated: false
+      }
+    });
+    expect(result.content).not.toContain('additional configured matches may not have been shown');
   });
 
   it('reports omitted configured files when the search-file cap is reached', async () => {
@@ -183,7 +241,10 @@ describe('WorkshopResourceCapability', () => {
         truncated: true
       }
     });
-    expect(loadResources.mock.calls[0][0]).toHaveLength(PROMPT_BUDGETS.workshopResource.searchFiles);
+    expect(loadResources).toHaveBeenCalledTimes(PROMPT_BUDGETS.workshopResource.searchFiles);
+    expect(loadResources.mock.calls.flatMap(([paths]) => paths)).toHaveLength(
+      PROMPT_BUDGETS.workshopResource.searchFiles
+    );
   });
 
   it('applies the default line window before the hard byte limit', async () => {
@@ -254,6 +315,93 @@ describe('WorkshopResourceCapability', () => {
       truncated: true
     });
     expect(result.content).toContain(`${PROMPT_BUDGETS.workshopResource.readBytes}-byte ceiling`);
+  });
+
+  it.each([
+    ['LF', '\n'],
+    ['CRLF', '\r\n']
+  ])('recounts the returned line range after multi-line %s truncation', async (_label, separator) => {
+    const first = 'a'.repeat(40_000);
+    const second = 'b'.repeat(40_000);
+    const content = [first, second, 'third'].join(separator);
+    listResources.mockReturnValue([{ ...summary, sizeBytes: Buffer.byteLength(content, 'utf8') }]);
+    loadResources.mockResolvedValue([{ ...summary, content }]);
+
+    const result = await capability.fulfill({
+      capability: 'resource.read',
+      group: 'characters',
+      path: 'characters/raven.md',
+      startLine: 1,
+      endLine: 3
+    });
+
+    expect(result.metadata).toMatchObject({
+      startLine: 1,
+      endLine: 2,
+      totalLines: 3,
+      bytes: PROMPT_BUDGETS.workshopResource.readBytes,
+      truncated: true
+    });
+    expect(result.content).toContain('Lines: 1-2 of 3.');
+  });
+
+  it('measures complete CRLF reads on the same normalized basis', async () => {
+    const content = 'First\r\nSecond\r\nThird';
+    const normalizedBytes = Buffer.byteLength('First\nSecond\nThird', 'utf8');
+    listResources.mockReturnValue([{ ...summary, sizeBytes: Buffer.byteLength(content, 'utf8') }]);
+    loadResources.mockResolvedValue([{ ...summary, content }]);
+
+    const result = await capability.fulfill({
+      capability: 'resource.read',
+      group: 'characters',
+      path: 'characters/raven.md',
+      endLine: 3
+    });
+
+    expect(result.metadata).toMatchObject({
+      endLine: 3,
+      bytes: normalizedBytes,
+      totalBytes: normalizedBytes,
+      windowBytes: normalizedBytes,
+      truncated: false
+    });
+  });
+
+  it('refuses an oversized read source before provider I/O', async () => {
+    listResources.mockReturnValue([{
+      ...summary,
+      sizeBytes: PROMPT_BUDGETS.workshopResource.readSourceBytes + 1
+    }]);
+
+    const result = await capability.fulfill({
+      capability: 'resource.read',
+      group: 'characters',
+      path: 'characters/raven.md'
+    });
+
+    expect(result).toMatchObject({ status: 'failed' });
+    expect(result.error).toContain('source-read ceiling');
+    expect(loadResources).not.toHaveBeenCalled();
+  });
+
+  it('skips oversized search sources before provider I/O and reports the partial scan', async () => {
+    listResources.mockReturnValue([{
+      ...summary,
+      sizeBytes: PROMPT_BUDGETS.workshopResource.searchFileBytes + 1
+    }]);
+
+    const result = await capability.fulfill({
+      capability: 'resource.search',
+      query: 'Threshold',
+      group: 'characters'
+    });
+
+    expect(result).toMatchObject({
+      status: 'partial',
+      metadata: { filesScanned: 0, truncated: true }
+    });
+    expect(result.content).toContain('Search was bounded');
+    expect(loadResources).not.toHaveBeenCalled();
   });
 
   it('rejects paths outside the configured catalog and ignores unrequested provider output', async () => {

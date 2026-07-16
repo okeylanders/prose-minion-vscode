@@ -23,6 +23,8 @@ export interface ContextResourceSummary {
   readonly group: ContextPathGroup;
   readonly path: string;
   readonly label: string;
+  /** Byte size observed while admitting the file to the configured catalog. */
+  readonly sizeBytes: number;
   readonly workspaceFolder?: string;
 }
 
