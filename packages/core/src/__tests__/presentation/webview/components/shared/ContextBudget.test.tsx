@@ -30,8 +30,12 @@ describe('ContextBudget', () => {
       cumulativeProcessedTokens={429_000}
     />);
 
-    expect(screen.getByText('Context 42K / 190K · 22%')).toBeTruthy();
+    // The compact row splits numbers and percent; the accessible sentence
+    // still carries the full locked phrasing in one place.
+    expect(screen.getByLabelText(/Jill context\. Context 42K \/ 190K · 22%/)).toBeTruthy();
+    expect(screen.getByText('22%')).toBeTruthy();
     expect(screen.getByLabelText(/Jill context.*5 calls this turn.*172,000 tokens processed/i)).toBeTruthy();
+    expect(screen.getByText(/keeps\s+its own conversation; switching targets never resets it/)).toBeTruthy();
     expect(screen.getByText('5 calls · 172,000 processed')).toBeTruthy();
     expect(screen.getByText('429,000 processed')).toBeTruthy();
     expect(screen.getByText('42,000')).toBeTruthy();
@@ -48,7 +52,7 @@ describe('ContextBudget', () => {
       modelOptions={[]}
       cumulativeProcessedTokens={0}
     />);
-    expect(screen.getByText('Not measured yet')).toBeTruthy();
+    expect(screen.getByText(/Not measured yet — updates after the first reply/)).toBeTruthy();
 
     rerender(<ContextBudget
       label="Quinn context"

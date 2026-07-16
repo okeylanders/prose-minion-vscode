@@ -1,7 +1,8 @@
 import {
   contextBudgetTone,
   contextBudgetView,
-  formatCompactTokens
+  formatCompactTokens,
+  participantDotIndex
 } from '@utils/contextBudget';
 import { ContextBudgetSnapshot, ModelOption } from '@shared/types';
 
@@ -48,5 +49,13 @@ describe('context budget formatting', () => {
   it('formats compact token values without relabeling their meaning', () => {
     expect(formatCompactTokens(38_181)).toBe('38.2K');
     expect(formatCompactTokens(190_000)).toBe('190K');
+  });
+
+  it('assigns each participant label a stable identity-dot slot', () => {
+    const jill = participantDotIndex('Jill context');
+    expect(jill).toBe(participantDotIndex('Jill context'));
+    expect(jill).toBeGreaterThanOrEqual(0);
+    expect(jill).toBeLessThan(5);
+    expect(participantDotIndex('')).toBe(0);
   });
 });
