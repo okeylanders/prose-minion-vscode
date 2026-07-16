@@ -151,6 +151,9 @@ export type WorkshopTurnArtifact =
   | 'direct_tool_response'
   | 'dictionary_lookup'
   | 'dictionary_full_entry'
+  | 'resource_catalog'
+  | 'resource_search'
+  | 'resource_read'
   | 'excerpt_revision';
 
 /**

@@ -7,11 +7,13 @@
 **Priority**: High (final live-session-shape and interface sprint before persistence)
 **Branch**: `sprint/workshop-editor-tab-12-context-excerpt-intake` -> PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 4-6 days
-**Depends on**: Sprint 11 in execution order so its configured-resource and
-file-browsing concepts can be reused. Executes before the final Sprint 10
-persistence pass.
+**Depends on**: Sprint 11 for configured-resource/file-browsing concepts and
+Sprint 11B for honest context-budget telemetry before attachments add prompt
+material. Executes before the final Sprint 10 persistence pass.
 **Feature**: [feature-workshop-context-selector](../../../features/feature-workshop-context-selector/README.md)
-**Design source**: Okey's intake direction, 2026-07-14 (screenshot review of the live left rail)
+**Design source**: Okey's intake direction, 2026-07-14 (screenshot review of
+the live left rail), sharpened 2026-07-16 with verified pasted-selection
+provenance and source-aware context discovery.
 
 ## Goal
 
@@ -32,11 +34,28 @@ verification passes from 06B.
   provenance — this seam already exists and is reused, not rebuilt).
 - **The "Pin" button is removed.** Setting an excerpt *is* pinning; the
   PINNED · V1 status chip remains the state indicator.
-- **Excerpt source is recorded** as part of session state:
-  `{ kind: 'pasted' } | { kind: 'file'; sourceUri }` — the session already
-  tracks `sourceUri` for file pins; this makes the pasted/file distinction
-  first-class in the live aggregate and in Sprint 10's eventual persisted
-  schema.
+- **Excerpt source is recorded** as part of session state. Intake method and
+  source provenance are not the same fact: pasted text may be a verified
+  editor selection. Use a closed source shape along these lines:
+  `{ kind: 'manual' } | { kind: 'editor-selection'; sourceUri; relativePath;
+  startLine; endLine; configuredResource? } | { kind: 'file'; sourceUri;
+  relativePath; configuredResource? }`. `configuredResource`, when present,
+  is the resolver's canonical `{ group, path }` key; raw absolute paths never
+  enter the webview or model-visible frame.
+- **Paste verification reuses the proven selection seam.** On textarea paste,
+  request the active editor selection and stamp `editor-selection` provenance
+  only when its text exactly matches the pasted text. The sidebar already does
+  this through `assistant_excerpt_verify`; Workshop gets its own typed target
+  rather than sharing React state across webview roots. Clipboard/manual text
+  that cannot be verified remains honestly `{ kind: 'manual' }`.
+- **Selection provenance includes a 1-based inclusive line range.** Extend the
+  host-agnostic `EditorContext` selection result and `SELECTION_DATA` payload;
+  keep the range optional at transport boundaries for non-editor hosts, but
+  stamp it whenever VS Code supplies one.
+- **The source is visible under the excerpt**, for example
+  `From chapters/chapter-5.md · lines 143–151` or `Pasted or typed · source
+  unknown`. This is provenance, not a context attachment and not a claim that
+  the full source file was loaded.
 - **Locked once the session starts** (`hasHostConversation()`): the editing
   affordance becomes **`[Update text…]`** (pasted) or **`[Re-read from file]`**
   (file-backed). Both route through the existing `replaceExcerpt` revision-
@@ -65,6 +84,30 @@ verification passes from 06B.
   ("Added context: character-sheet-raven.md · 412 words"), and the updated
   context reaches the host on its next turn — no invisible prompt mutation.
 
+### Source-aware context discovery
+
+- Deliver a structured, delimiter-neutralized excerpt-source frame alongside
+  the excerpt on the host's opening turn, revision updates, guest join frames,
+  and every initial tool-sidepass run. Use display-safe `relativePath`, line
+  range, and canonical configured-resource key; do not put a raw `file:` URI or
+  absolute filesystem path into model-visible prompt text.
+- The host may use Sprint 11 access to read the full canonical source resource,
+  search the `chapters` / `manuscript` groups for adjacent chapters, and consult
+  project-bible resources when that context would materially improve its
+  answer. Source metadata makes this discoverable; it does not silently load a
+  whole chapter into every turn.
+- **Current tool-agent gap must be closed, not hand-waved:** Workshop analysis
+  sidepasses currently receive `sourceUri`, but their initial `resource.read`
+  capability is the craft-guide catalog only. A URI in prompt text cannot read
+  the project file. Add one bounded initial-read adapter that composes relevant
+  configured project resources (source first, neighboring chapters next) with
+  the existing craft-guide catalog under the proven closed resource-read
+  protocol. Do not give tools arbitrary filesystem access or silently preload
+  full chapters.
+- Tool-requested source reads remain attributable and bounded. The tool report
+  should state which source/neighbor resources it actually received; missing,
+  unconfigured, or over-budget source context stays explicit.
+
 ### Composer
 
 - The composer's **`+` button opens the same Context Selector modal** — adding
@@ -88,6 +131,9 @@ verification passes from 06B.
       word-count + confirm; file path reuses the existing picker route.
 - [ ] First-class `excerptSource` in session state + live session snapshot;
       stamped on set/replace from either path.
+- [ ] Wire exact paste-to-active-selection verification into the Workshop
+      textarea; extend selection transport with source line range; render the
+      display-safe source tag and preserve honest unknown-source fallback.
 - [ ] Locked-state affordances: `Update text…` / `Re-read from file` per
       source kind, both driving `replaceExcerpt`; re-read no-op detection with
       status line; unchanged revision-frame semantics (no new memory model).
@@ -108,10 +154,27 @@ verification passes from 06B.
 - [ ] Mid-session visibility: session event turn on add/remove after the
       conversation starts.
 
+### Source-aware prompt and tool delivery
+
+- [ ] Add one shared excerpt-source prompt frame used by initial host, host
+      revision, guest join/catch-up where applicable, and initial tool runs;
+      cover delimiter neutralization and display-safe provenance.
+- [ ] Resolve verified selection/file provenance to a canonical configured
+      `{ group, path }` when possible so Sprint 11 reads do not depend on the
+      model reconstructing a path or guessing its case.
+- [ ] Give Workshop tool initial runs a bounded composite resource catalog:
+      relevant configured source/neighbor resources plus existing craft
+      guides, one closed read protocol, source-first ordering, and explicit
+      delivered-resource provenance. Preserve the sidebar tools' existing
+      guide-only behavior.
+
 ### Composer
 
 - [ ] `+` opens the Context Selector modal; resulting attachments appear in
       the rail list and the event turn.
+- [ ] Preserve Sprint 11B's active-participant context widget in the band below
+      the participant rail and above the composer; attachment UX must not
+      relabel processed traffic as context or duplicate telemetry state.
 
 ### Persistence handoff
 
@@ -130,13 +193,17 @@ verification passes from 06B.
 ### Tests
 
 - [ ] Excerpt: source stamping both paths; locked-state affordance switching;
-      re-read replace + no-op; pin-button absence.
+      exact verified-paste match/mismatch, line-range propagation, visible
+      source tag, re-read replace + no-op, pin-button absence.
 - [ ] Attachments: caps, duplicate guard, remove, ordering, prompt-frame
       assembly, mid-session event turns.
 - [ ] Modal: category grouping from configured paths, explore path, no raw
       path leakage.
 - [ ] Live session snapshots include excerpt source, ordered attachments, and
       context event turns without exposing mutable aggregate internals.
+- [ ] Prompt/capability: host, guest, and tool source frames agree; a tool can
+      request the configured source/neighbor on its initial run; unconfigured
+      or ambiguous sources fail safely; no absolute path reaches the prompt.
 
 ## Acceptance Criteria
 
@@ -145,6 +212,11 @@ verification passes from 06B.
 - After the first message to the host, the excerpt is visibly locked; a
   file-backed excerpt offers `Re-read from file` and picks up on-disk edits as
   a v2 revision the host acknowledges; a pasted excerpt offers `Update text…`.
+- Pasting the active editor selection from chapter 5 labels the excerpt with
+  its display-safe file and line range. The host can autonomously read that
+  configured chapter and discover adjacent chapters; an initial tool run can
+  request the same bounded source context. Pasting unrelated clipboard text
+  shows source unknown and never borrows the active editor's provenance.
 - Context holds e.g. two free-text notes + three project files, each
   removable, with the aggregate budget visible; the persona demonstrably
   receives all of them with provenance.
@@ -159,6 +231,9 @@ verification passes from 06B.
   semantics, room-memory rules, and tool statelessness are untouched.
 - The modal is the writer-controlled attachment path — no model-assisted file
   selection here (that is Sprint 11's separate, capability-bounded lane).
+- Verified excerpt provenance may guide a model-requested read, but it never
+  bypasses configured-resource membership, workspace containment, or the
+  capability's byte/round limits.
 - No attachment content enters the prompt without a labeled frame and a rail
   artifact the writer can inspect; no silent context mutation mid-session.
 - Webview never touches the filesystem: all browsing/enumeration host-side

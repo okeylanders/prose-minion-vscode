@@ -32,6 +32,7 @@ import {
   WordSearchService,
   CategorySearchService,
   TextSourceResolver,
+  ContextResourceResolver,
   AccountBalanceService,
   OpenRouterAccountClient,
   WorkshopSessionService,
@@ -137,6 +138,12 @@ export function activate(context: vscode.ExtensionContext): void {
     platform.editor,
     outputChannel
   );
+  const contextResourceResolver = new ContextResourceResolver(
+    platform.settings,
+    platform.fileSystem,
+    platform.workspace,
+    outputChannel
+  );
   const categorySearchService = new CategorySearchService(
     aiResourceManager,
     wordSearchService,
@@ -165,6 +172,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const workshopPersonaCapabilityFactory = new WorkshopPersonaCapabilityFactory(
     dictionaryService,
     workshopAnalysisSidePass,
+    contextResourceResolver,
     workshopSessionService,
     outputChannel
   );

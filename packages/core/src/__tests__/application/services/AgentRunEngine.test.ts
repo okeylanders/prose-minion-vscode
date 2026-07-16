@@ -4,6 +4,7 @@ import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { ConversationManager } from '@orchestration/ConversationManager';
 import { ResourceRequestGate } from '@orchestration/capabilities/ResourceRequestGate';
 import { ResourceReadRequest } from '@orchestration/ResourceReadXmlCodec';
+import { WorkshopCapabilityXmlCodec } from '@/application/services/workshop/WorkshopCapabilityXmlCodec';
 
 const stream = async function* (tokens: string[], usage = { promptTokens: 3, completionTokens: 2, totalTokens: 5 }) {
   for (const token of tokens) {
@@ -219,8 +220,42 @@ describe('AgentRunEngine', () => {
     expect(result.content).toBe('Guide-backed final response.');
   });
 
+  it('accepts a narrated Workshop resource search without burning its correction turn', async () => {
+    const adapter = personaCapability();
+    const codec = new WorkshopCapabilityXmlCodec();
+    adapter.inspectRequest.mockImplementation(candidate => codec.inspect(candidate));
+    const resourceSearch = [
+      'I should search the character files before answering.',
+      '<prose-minion-tool-call name="resource.search">',
+      '<query>Micah</query>',
+      '<group>characters</group>',
+      '</prose-minion-tool-call>'
+    ].join('\n');
+    client.createStreamingChatCompletion
+      .mockReturnValueOnce(stream([resourceSearch]))
+      .mockReturnValueOnce(stream(['Micah-backed final response.']));
+    const visible: string[] = [];
+
+    const result = await engine.runInitial({
+      toolName: 'host', systemMessage: 'System', userMessage: 'Read Micah\'s guide.',
+      policy: AGENT_RUN_POLICIES.workshopHost, capability: adapter,
+      options: { onToken: token => visible.push(token) }
+    });
+
+    expect(adapter.invalidRequestInstruction).not.toHaveBeenCalled();
+    expect(adapter.fulfill).toHaveBeenCalledWith({
+      capability: 'resource.search', query: 'Micah', group: 'characters'
+    });
+    expect(visible.join('')).toBe('Micah-backed final response.');
+    expect(result.content).toBe('Micah-backed final response.');
+  });
+
   it('recovers from an invalid protocol-only response with a final answer instead of a blank result', async () => {
     const guides = capability();
+    guides.handleInvalidRequest = jest.fn(() => [{
+      catalog: 'guides', id: 'rejected-1', label: 'Rejected guide request',
+      category: 'rejected', size: 0, reason: 'Invalid path'
+    }]);
     const invalid = '<prose-minion-tool-call name="resource.read"><paths><path>outside-catalog.md</path></paths></prose-minion-tool-call>';
     client.createStreamingChatCompletion
       .mockReturnValueOnce(stream([invalid]))
@@ -234,7 +269,9 @@ describe('AgentRunEngine', () => {
     });
 
     expect(guides.fulfill).not.toHaveBeenCalled();
+    expect(guides.handleInvalidRequest).toHaveBeenCalledTimes(1);
     expect(guides.invalidRequestInstruction).toHaveBeenCalledTimes(1);
+    expect(result.artifacts).toEqual([expect.objectContaining({ id: 'rejected-1' })]);
     expect(visible.join('')).toBe('A final answer after the rejected request.');
     expect(result.content).toBe('A final answer after the rejected request.');
   });
@@ -483,19 +520,25 @@ describe('AgentRunEngine', () => {
     expect(result.content).toBe('Corrected continuation answer.');
   });
 
-  it('forces final prose after three capability calls on retained continuation', async () => {
+  it('forces final prose after five capability calls on retained continuation', async () => {
     client.createChatCompletion.mockResolvedValueOnce({ content: 'Host hello' });
     const initial = await engine.runInitial({
       toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
       policy: AGENT_RUN_POLICIES.workshopHost, capability: personaCapability()
     });
     const adapter = personaCapability();
+    adapter.handleCapabilityLimit = jest.fn(() => [{
+      catalog: 'workshopPersona', id: 'limit-1', label: 'Rejected resource request',
+      category: 'resource.read', size: 0, reason: 'Round cap'
+    }]);
     client.createChatCompletion
       .mockResolvedValueOnce({ content: PERSONA_REQUEST })
       .mockResolvedValueOnce({ content: PERSONA_REQUEST })
       .mockResolvedValueOnce({ content: PERSONA_REQUEST })
       .mockResolvedValueOnce({ content: PERSONA_REQUEST })
-      .mockResolvedValueOnce({ content: 'Continuation final after three calls.' });
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: 'Continuation final after five calls.' });
 
     const result = await engine.continueConversation({
       conversationId: initial.conversationId!,
@@ -504,9 +547,11 @@ describe('AgentRunEngine', () => {
       capability: adapter
     });
 
-    expect(adapter.fulfill).toHaveBeenCalledTimes(3);
+    expect(adapter.fulfill).toHaveBeenCalledTimes(5);
+    expect(adapter.handleCapabilityLimit).toHaveBeenCalledTimes(1);
     expect(adapter.limitInstruction).toHaveBeenCalledTimes(1);
-    expect(result.content).toBe('Continuation final after three calls.');
+    expect(result.artifacts).toEqual([expect.objectContaining({ id: 'limit-1' })]);
+    expect(result.content).toBe('Continuation final after five calls.');
   });
 
   it('withholds rejected Workshop lookup narration and attributes the rejection log', async () => {
@@ -573,13 +618,15 @@ describe('AgentRunEngine', () => {
     expect(conversations.getConversationInfo(initial.conversationId!)?.messageCount).toBe(before);
   });
 
-  it('resets the three-call persona budget per user turn and forces final prose at the boundary', async () => {
+  it('resets the five-call persona budget per user turn and forces final prose at the boundary', async () => {
     client.createChatCompletion
       .mockResolvedValueOnce({ content: PERSONA_REQUEST })
       .mockResolvedValueOnce({ content: PERSONA_REQUEST })
       .mockResolvedValueOnce({ content: PERSONA_REQUEST })
       .mockResolvedValueOnce({ content: PERSONA_REQUEST })
-      .mockResolvedValueOnce({ content: 'Final after three calls.' });
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: 'Final after five calls.' });
     const adapter = personaCapability();
 
     const result = await engine.runInitial({
@@ -587,9 +634,9 @@ describe('AgentRunEngine', () => {
       policy: AGENT_RUN_POLICIES.workshopHost, capability: adapter
     });
 
-    expect(adapter.fulfill).toHaveBeenCalledTimes(3);
+    expect(adapter.fulfill).toHaveBeenCalledTimes(5);
     expect(adapter.limitInstruction).toHaveBeenCalledTimes(1);
-    expect(result.content).toBe('Final after three calls.');
+    expect(result.content).toBe('Final after five calls.');
   });
 
   it('bounds configured context-file capability rounds and forces a final response', async () => {

@@ -2,7 +2,7 @@
  * Domain models for the context assistant workflow
  */
 
-import { ContextPathGroup } from '@shared/types';
+import { CONTEXT_PATH_GROUPS, ContextPathGroup } from '@shared/types';
 
 export interface ContextGenerationRequest {
   readonly excerpt: string;
@@ -23,6 +23,8 @@ export interface ContextResourceSummary {
   readonly group: ContextPathGroup;
   readonly path: string;
   readonly label: string;
+  /** Byte size observed while admitting the file to the configured catalog. */
+  readonly sizeBytes: number;
   readonly workspaceFolder?: string;
 }
 
@@ -35,14 +37,10 @@ export interface ContextResourceProvider {
   loadResources(paths: string[]): Promise<ContextResourceContent[]>;
 }
 
-export const DEFAULT_CONTEXT_GROUPS: ContextPathGroup[] = [
-  'characters',
-  'locations',
-  'themes',
-  'things',
-  'chapters',
-  'manuscript',
-  'projectBrief',
-  'general'
-];
+/** Application-facing factory seam implemented by ContextResourceResolver. */
+export interface ContextResourceProviderFactory {
+  createProvider(groups: ContextPathGroup[]): Promise<ContextResourceProvider>;
+}
+
+export const DEFAULT_CONTEXT_GROUPS: ContextPathGroup[] = [...CONTEXT_PATH_GROUPS];
 import { TokenUsage } from '@shared/types';

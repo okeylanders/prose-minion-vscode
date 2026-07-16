@@ -103,7 +103,7 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
       policy: {
         id: 'workshop-host',
         capabilityCatalog: 'workshopPersona',
-        maxCapabilityRounds: 3,
+        maxCapabilityRounds: 5,
         retention: 'retain'
       },
       capability: { catalog: 'workshopPersona' }

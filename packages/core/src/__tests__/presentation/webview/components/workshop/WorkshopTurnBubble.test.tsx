@@ -323,4 +323,85 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(screen.getByText('Continuity · Track the cup. · requested by Jill')).toBeTruthy();
     expect(document.body.textContent).not.toContain('Continuity · Continuity');
   });
+
+  it('renders project-resource provenance and bounds as an inspectable artifact', () => {
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('## Project resource · Raven\nSafe evidence.'),
+          artifact: 'resource_read',
+          toolId: undefined,
+          toolLabel: 'Project Resources',
+          reportTurnId: undefined,
+          capability: {
+            operation: 'resource.read',
+            status: 'success',
+            requestSummary: 'characters/raven.md',
+            requestedByPersonaId: 'jill',
+            metadata: {
+              group: 'characters',
+              path: 'characters/raven.md',
+              startLine: 41,
+              endLine: 80,
+              totalLines: 300,
+              bytes: 128,
+              totalBytes: 512,
+              truncated: true
+            }
+          }
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('Project Resources · characters/raven.md · requested by Jill')).toBeTruthy();
+    expect(screen.getByLabelText('Capability metadata').textContent).toContain('lines 41–80 of 300');
+    expect(screen.getByLabelText('Capability metadata').textContent).toContain('128 of 512 bytes read');
+    expect(screen.getByLabelText('Capability metadata').textContent).toContain('project-resource limits');
+    expect(screen.queryByRole('button', { name: /talk directly/i })).toBeNull();
+  });
+
+  it('distinguishes catalog-path search from file-content search', () => {
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('## Project resource search · “Micah”'),
+          artifact: 'resource_search',
+          toolId: undefined,
+          toolLabel: 'Project Resources',
+          reportTurnId: undefined,
+          capability: {
+            operation: 'resource.search',
+            status: 'success',
+            requestSummary: '“Micah” in characters',
+            requestedByPersonaId: 'jill',
+            metadata: {
+              group: 'characters',
+              searchMode: 'catalog',
+              catalogEntriesScanned: 98,
+              filesScanned: 0,
+              bytesScanned: 0,
+              matchCount: 1,
+              truncated: false
+            }
+          }
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    const metadata = screen.getByLabelText('Capability metadata').textContent;
+    expect(metadata).toContain('98 configured paths searched');
+    expect(metadata).toContain('1 match found');
+    expect(metadata).not.toContain('0 configured files searched');
+    expect(metadata).not.toContain('0 bytes searched');
+  });
 });

@@ -252,6 +252,7 @@ export class AgentRunEngine {
       if (!capability || last.cancelled || !rejection) {
         return last;
       }
+      artifacts.push(...(capability.handleInvalidRequest?.(rejection) ?? []));
       if (correctionTurns >= policy.maxCorrectionTurns) {
         const fallback = 'The assistant could not produce a usable final response after its capability request was rejected. Please try again.';
         this.outputChannel?.appendLine(
@@ -299,6 +300,7 @@ export class AgentRunEngine {
       }
 
       if (!last.cancelled && capability && last.exactRequest && policy.onCapabilityLimit === 'forceFinalResponse') {
+        artifacts.push(...(capability.handleCapabilityLimit?.(last.exactRequest) ?? []));
         this.outputChannel?.appendLine(
           `[AgentRunEngine] ${policy.id} reached ${policy.maxCapabilityRounds} capability rounds; forcing final response.`
         );

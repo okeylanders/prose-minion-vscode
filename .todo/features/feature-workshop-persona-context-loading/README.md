@@ -1,7 +1,7 @@
 # Feature: Workshop Persona Context Loading
 
-**Status**: Scheduled as [Sprint 11](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/11-persona-file-access.md)
-— **direction updated (2026-07-14)**: fulfillment ships as `resource.catalog`
+**Status**: Implemented in [Sprint 11](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/11-persona-file-access.md)
+— **landed on the sprint branch (2026-07-15)**: fulfillment ships as `resource.catalog`
 / `resource.search` / `resource.read` capabilities through the Sprint 07
 persona-capability boundary, not the retained `<context-request>` parsing
 path this README proposed (it predates Sprint 07). `ContextResourceResolver`,
@@ -24,15 +24,24 @@ path would invite the model to ask for files the runtime cannot deliver.
 
 ## Direction
 
-- Reuse `ContextResourceResolver`, `ContextResourceRequestParser`, configured
-  context groups, and path-containment checks.
+- Reuse `ContextResourceResolver`, configured context groups, and
+  path-containment checks through the Sprint 07 capability boundary; the older
+  `ContextResourceRequestParser` direction is superseded.
 - Define retained-conversation semantics for resource requests on both the
   opening persona turn and later follow-ups.
 - Keep the assistant model/persona system prompt as the conversation owner;
   do not silently move the chat to the context-model orchestrator.
 - Keep loading status and delivered-resource provenance visible in the
   Workshop thread/session snapshot.
-- Bound catalog size, resource count, file size, and request rounds.
+- Allow direct reads of any exact configured resource without requiring a
+  catalog/search preflight; resolve unique casing differences to the canonical
+  configured path and fail closed on ambiguity.
+- Support inclusive line-window reads with a model-selectable window, a shared
+  default line count, and a non-overridable hard byte ceiling.
+- Prompt hosts to seek materially missing context proactively in neighboring
+  chapters, manuscript resources, and project-bible groups.
+- Bound catalog size, resource count, line windows, file bytes, and request
+  rounds.
 
 ## Related files
 
@@ -46,7 +55,10 @@ path would invite the model to ask for files the runtime cannot deliver.
 
 - A persona can request an allowlisted project resource on the opening turn or
   a later follow-up and continue under the same persona system prompt.
+- A later turn can directly reread a configured path already visible in the
+  conversation, regardless of path casing, without repeating discovery.
 - Unknown, disallowed, oversized, and excessive requests fail safely and leave
   an observable trail.
-- Loaded paths are recorded in host-side session state and restore on reload.
+- Loaded paths are recorded in host-side session state; Sprint 10 owns final
+  cross-restart serialization and restored-session action inertness.
 - Focused orchestration, handler, session, and path-containment tests pass.

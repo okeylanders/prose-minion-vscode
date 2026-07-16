@@ -4,11 +4,12 @@
 **Priority**: High (live pain point — restart loses the manuscript excerpt and context)
 **Branch**: `sprint/workshop-editor-tab-10-session-persistence` -> PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 4-6 days
-**Execution order**: Runs last in the epic, after Sprints 11 and 12. The sprint
-number and branch name remain unchanged.
+**Execution order**: Runs last in the epic, after Sprints 11, 11B, and 12. The
+sprint number and branch name remain unchanged.
 **Depends on**: Sprint 12, which completes the live session shape and extracts
 the shared browser-modal shell. This transitively includes Sprint 11's
-file-access artifact turns and Sprint 09's guest sidecars.
+file-access artifact turns, Sprint 11B's context-telemetry lifecycle decisions,
+and Sprint 09's guest sidecars.
 **ADRs**: [2026-07-14 — Workshop Session Persistence and the Session Browser](../../../../docs/adr/2026-07-14-workshop-session-persistence.md)
 **Feature**: [feature-workshop-session-persistence](../../../features/feature-workshop-session-persistence/README.md)
 

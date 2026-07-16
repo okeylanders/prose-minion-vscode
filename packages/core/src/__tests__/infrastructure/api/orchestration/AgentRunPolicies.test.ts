@@ -16,7 +16,7 @@ describe('agent-run caller-to-policy matrix', () => {
     expect(AGENT_RUN_POLICIES.workshopHost).toMatchObject({
       capabilityCatalog: 'workshopPersona',
       retention: 'retain',
-      maxCapabilityRounds: 3,
+      maxCapabilityRounds: 5,
       maxCorrectionTurns: 1,
       onCapabilityLimit: 'forceFinalResponse',
       cleanupOwner: 'workshop-session'

@@ -206,7 +206,7 @@ budget. They build a working transcript (writer message, capability calls,
 evidence, final prose) and commit it atomically only on success. Consequently a
 pending excerpt/context frame appears once across all capability rounds, while
 cancellation or transport failure leaves both retained history and pending
-delivery state untouched. The Workshop host permits three calls per user turn,
+delivery state untouched. The Workshop host permits five calls per user turn,
 at most one full dictionary entry and one analysis side pass, then forces final
 prose.
 

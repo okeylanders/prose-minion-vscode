@@ -3,11 +3,13 @@
  * Discovers and loads workspace files for the context assistant.
  */
 
-import { FileSystem, LogSink, SettingsStore, Workspace } from '@/platform';
+import { FileSystem, FileType, LogSink, SettingsStore, Workspace } from '@/platform';
 import * as path from 'path';
 import { ContextPathGroup } from '@shared/types';
+import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 import {
   ContextResourceContent,
+  ContextResourceProviderFactory,
   ContextResourceProvider,
   ContextResourceSummary
 } from '@/domain/models/ContextGeneration';
@@ -16,6 +18,7 @@ interface InternalContextResource {
   group: ContextPathGroup;
   path: string;
   label: string;
+  sizeBytes: number;
   workspaceFolder?: string;
   absolutePath: string;
 }
@@ -23,7 +26,7 @@ interface InternalContextResource {
 /**
  * Provides access to project reference materials based on user-configured glob patterns.
  */
-export class ContextResourceResolver {
+export class ContextResourceResolver implements ContextResourceProviderFactory {
   constructor(
     private readonly settings: SettingsStore,
     private readonly fileSystem: FileSystem,
@@ -53,7 +56,10 @@ export class ContextResourceResolver {
           const resource = resourceMap.get(normalizedKey);
 
           if (!resource) {
-            this.outputChannel?.appendLine(`[ContextResourceResolver] Resource not found for request: ${requestedPath}`);
+            this.outputChannel?.appendLine(
+              '[ContextResourceResolver] Resource request did not match the configured catalog; ' +
+              `catalogSize=${resourceMap.size}.`
+            );
             continue;
           }
 
@@ -65,6 +71,7 @@ export class ContextResourceResolver {
               group: resource.group,
               path: resource.path,
               label: resource.label,
+              sizeBytes: resource.sizeBytes,
               workspaceFolder: resource.workspaceFolder,
               content
             });
@@ -118,7 +125,12 @@ export class ContextResourceResolver {
           }
 
           for (const match of matches) {
-            const relativePath = this.workspace.asRelativePath(match, false);
+            const sizeBytes = await this.safeWorkspaceResourceSize(workspaceFolder.path, match);
+            if (sizeBytes === undefined) {
+              continue;
+            }
+
+            const relativePath = path.relative(workspaceFolder.path, match).replace(/\\/g, '/');
             const normalizedKey = this.normalizeKey(relativePath);
 
             if (seenPaths.has(normalizedKey)) {
@@ -135,6 +147,7 @@ export class ContextResourceResolver {
               group,
               path: relativePath,
               label: this.deriveLabel(match),
+              sizeBytes,
               workspaceFolder: workspaceFolder.name,
               absolutePath: match
             });
@@ -163,6 +176,7 @@ export class ContextResourceResolver {
       group: resource.group,
       path: resource.path,
       label: resource.label,
+      sizeBytes: resource.sizeBytes,
       workspaceFolder: resource.workspaceFolder
     };
   }
@@ -204,6 +218,43 @@ export class ContextResourceResolver {
   private isSupportedFile(filePath: string): boolean {
     const extension = path.extname(filePath).toLowerCase();
     return extension === '.md' || extension === '.txt';
+  }
+
+  /**
+   * `findFiles` is still an outer adapter result, not a trust boundary. Reject
+   * lexical escapes and any symlink in the workspace-relative ancestor chain
+   * before a model-visible key can enter the configured catalog.
+   */
+  private async safeWorkspaceResourceSize(root: string, candidate: string): Promise<number | undefined> {
+    if (!isPathWithinRoot(root, candidate)) {
+      this.outputChannel?.appendLine(
+        '[ContextResourceResolver] Skipped a configured-resource match outside its workspace root.'
+      );
+      return undefined;
+    }
+
+    const relativePath = path.relative(root, candidate);
+    let currentPath = root;
+    let sizeBytes = 0;
+    for (const segment of relativePath.split(path.sep).filter(Boolean)) {
+      currentPath = path.join(currentPath, segment);
+      try {
+        const stat = await this.fileSystem.stat(currentPath);
+        sizeBytes = stat.size;
+        if ((stat.type & FileType.SymbolicLink) !== 0) {
+          this.outputChannel?.appendLine(
+            `[ContextResourceResolver] Skipped symbolic-link resource: ${relativePath.replace(/\\/g, '/')}`
+          );
+          return undefined;
+        }
+      } catch {
+        this.outputChannel?.appendLine(
+          `[ContextResourceResolver] Skipped unreadable configured resource: ${relativePath.replace(/\\/g, '/')}`
+        );
+        return undefined;
+      }
+    }
+    return sizeBytes;
   }
 
   private deriveLabel(filePath: string): string {
