@@ -26,6 +26,7 @@ describe('WorkshopCapabilityXmlCodec', () => {
     expect(instruction).toContain('name="dictionary.full-entry"');
     expect(instruction).toContain('name="analysis.run"');
     expect(instruction).toContain('at most 5 capability calls');
+    expect(instruction).toContain('allowance resets with every new writer message');
     expect(instruction).toContain('word 100 characters, context 4000, purpose 500, and instructions 1000');
     expect(instruction).toContain('Never include excerpt text or a filesystem path');
     expect(instruction).toContain('Project resource access is unavailable');

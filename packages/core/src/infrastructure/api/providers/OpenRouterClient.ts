@@ -4,7 +4,13 @@
  */
 
 import { LogSink } from '@/platform';
-import { TokenUsage } from '@shared/types';
+import {
+  ContextCompressionState,
+  InferenceRequestObservation,
+  TokenUsage
+} from '@shared/types';
+
+const FALLBACK_OUTPUT_RESERVE_TOKENS = 10000;
 
 export interface OpenRouterMessage {
   role: 'system' | 'user' | 'assistant';
@@ -39,7 +45,23 @@ export interface OpenRouterResponse {
       upstream_inference_cost?: number;
     }
   };
+  openrouter_metadata?: unknown;
 }
+
+/** Normalize only the material context-compression fact; discard all raw router metadata. */
+export const normalizeContextCompression = (metadata: unknown): ContextCompressionState => {
+  if (metadata === undefined || metadata === null) return 'unknown';
+  if (typeof metadata !== 'object' || Array.isArray(metadata)) return 'unknown';
+  const pipeline = (metadata as { pipeline?: unknown }).pipeline;
+  if (pipeline === undefined) return 'not-applied';
+  if (!Array.isArray(pipeline)) return 'unknown';
+  return pipeline.some(stage => (
+    typeof stage === 'object' &&
+    stage !== null &&
+    !Array.isArray(stage) &&
+    (stage as { type?: unknown }).type === 'context_compression'
+  )) ? 'applied' : 'not-applied';
+};
 
 export class OpenRouterClient {
   private readonly apiKey: string;
@@ -73,21 +95,30 @@ export class OpenRouterClient {
       maxTokens?: number;
       signal?: AbortSignal;
     }
-  ): Promise<{ content: string; finishReason?: string; usage?: TokenUsage; id?: string }> {
+  ): Promise<{
+    content: string;
+    finishReason?: string;
+    usage?: TokenUsage;
+    observation?: InferenceRequestObservation;
+    id?: string;
+  }> {
+    const requestedModel = this.model;
+    const requestedMaxOutputTokens = options?.maxTokens ?? FALLBACK_OUTPUT_RESERVE_TOKENS;
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.apiKey}`,
         'HTTP-Referer': 'https://github.com/okeylanders/prose-minion-vscode',
-        'X-Title': 'Prose Minion VS Code Extension'
+        'X-Title': 'Prose Minion VS Code Extension',
+        'X-OpenRouter-Metadata': 'enabled'
       },
       signal: options?.signal,
       body: JSON.stringify({
-        model: this.model,
+        model: requestedModel,
         messages,
         temperature: options?.temperature ?? 0.7,
-        max_tokens: options?.maxTokens ?? 10000,
+        max_tokens: requestedMaxOutputTokens,
         usage: { include: true }
       })
     });
@@ -103,25 +134,19 @@ export class OpenRouterClient {
       throw new Error('No response from OpenRouter API');
     }
 
+    const usage = this.toTokenUsage(data.usage);
     return {
       id: data.id,
       content: data.choices[0].message.content,
       finishReason: data.choices[0]?.finish_reason,
-      usage: data.usage
-        ? {
-            promptTokens: data.usage.prompt_tokens,
-            completionTokens: data.usage.completion_tokens,
-            totalTokens: data.usage.total_tokens,
-            costUsd: (() => {
-              const rawCost =
-                (data.usage as any).cost ??
-                (data.usage as any).costUsd ??
-                (data.usage as any).cost_usd;
-              const costNum = rawCost !== undefined && rawCost !== null ? Number(rawCost) : undefined;
-              return Number.isFinite(costNum) ? costNum : undefined;
-            })()
-          }
-        : undefined
+      usage,
+      observation: usage ? this.toObservation(
+        data.model || requestedModel,
+        requestedMaxOutputTokens,
+        usage,
+        data.choices[0]?.finish_reason,
+        data.openrouter_metadata
+      ) : undefined
     };
   }
 
@@ -137,22 +162,31 @@ export class OpenRouterClient {
       maxTokens?: number;
       signal?: AbortSignal;
     }
-  ): AsyncGenerator<{ token: string; done: boolean; usage?: TokenUsage; finishReason?: string }> {
+  ): AsyncGenerator<{
+    token: string;
+    done: boolean;
+    usage?: TokenUsage;
+    finishReason?: string;
+    observation?: InferenceRequestObservation;
+  }> {
+    const requestedModel = this.model;
+    const requestedMaxOutputTokens = options?.maxTokens ?? FALLBACK_OUTPUT_RESERVE_TOKENS;
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.apiKey}`,
         'HTTP-Referer': 'https://github.com/okeylanders/prose-minion-vscode',
-        'X-Title': 'Prose Minion VS Code Extension'
+        'X-Title': 'Prose Minion VS Code Extension',
+        'X-OpenRouter-Metadata': 'enabled'
       },
       signal: options?.signal,
       body: JSON.stringify({
-        model: this.model,
+        model: requestedModel,
         messages,
         stream: true,
         temperature: options?.temperature ?? 0.7,
-        max_tokens: options?.maxTokens ?? 10000,
+        max_tokens: requestedMaxOutputTokens,
         stream_options: { include_usage: true }
       })
     });
@@ -172,6 +206,23 @@ export class OpenRouterClient {
 
     try {
       let finishReason: string | undefined;
+      let usage: TokenUsage | undefined;
+      let responseModel = requestedModel;
+      let routerMetadata: unknown;
+      let terminalEmitted = false;
+      const terminal = () => ({
+        token: '',
+        done: true,
+        usage,
+        finishReason,
+        observation: usage ? this.toObservation(
+          responseModel,
+          requestedMaxOutputTokens,
+          usage,
+          finishReason,
+          routerMetadata
+        ) : undefined
+      });
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -188,6 +239,8 @@ export class OpenRouterClient {
 
           const data = trimmedLine.slice(6);
           if (data === '[DONE]') {
+            terminalEmitted = true;
+            yield terminal();
             return;
           }
 
@@ -196,33 +249,19 @@ export class OpenRouterClient {
             const delta = parsed.choices?.[0]?.delta;
             const token = delta?.content || '';
             const finish = parsed.choices?.[0]?.finish_reason;
-            const usage = parsed.usage;
+            const chunkUsage = this.toTokenUsage(parsed.usage);
 
             if (finish) {
               finishReason = finish;
             }
+            if (chunkUsage) usage = chunkUsage;
+            if (typeof parsed.model === 'string' && parsed.model) responseModel = parsed.model;
+            if (parsed.openrouter_metadata !== undefined) routerMetadata = parsed.openrouter_metadata;
 
             if (token) {
               yield { token, done: false };
             }
 
-            if (finish || usage) {
-              yield {
-                token: '',
-                done: true,
-                usage: usage ? {
-                  promptTokens: usage.prompt_tokens,
-                  completionTokens: usage.completion_tokens,
-                  totalTokens: usage.total_tokens,
-                  costUsd: (() => {
-                    const rawCost = usage.cost ?? usage.costUsd ?? usage.cost_usd;
-                    const costNum = rawCost !== undefined && rawCost !== null ? Number(rawCost) : undefined;
-                    return Number.isFinite(costNum) ? costNum : undefined;
-                  })()
-                } : undefined,
-                finishReason
-              };
-            }
           } catch (error) {
             // Log for debugging but don't fail the stream
             this.outputChannel?.appendLine(
@@ -231,6 +270,7 @@ export class OpenRouterClient {
           }
         }
       }
+      if (!terminalEmitted && (finishReason || usage)) yield terminal();
     } catch (error) {
       // Cancel the underlying stream body on abort
       if (response.body) {
@@ -247,5 +287,43 @@ export class OpenRouterClient {
    */
   static isConfigured(apiKey?: string): boolean {
     return Boolean(apiKey && apiKey.trim().length > 0);
+  }
+
+  private toTokenUsage(raw: any): TokenUsage | undefined {
+    if (!raw) return undefined;
+    const cost = raw.cost ?? raw.costUsd ?? raw.cost_usd;
+    const costNum = cost !== undefined && cost !== null ? Number(cost) : undefined;
+    return {
+      promptTokens: Number(raw.prompt_tokens) || 0,
+      completionTokens: Number(raw.completion_tokens) || 0,
+      totalTokens: Number(raw.total_tokens) || 0,
+      costUsd: Number.isFinite(costNum) ? costNum : undefined
+    };
+  }
+
+  private toObservation(
+    modelId: string,
+    requestedMaxOutputTokens: number,
+    usage: TokenUsage,
+    finishReason: string | undefined,
+    routerMetadata: unknown
+  ): InferenceRequestObservation {
+    const contextCompression = normalizeContextCompression(routerMetadata);
+    if (routerMetadata !== undefined && contextCompression === 'unknown') {
+      this.outputChannel?.appendLine(
+        '[OpenRouterClient] Router metadata schema did not contain a readable pipeline; context compression is unknown.'
+      );
+    }
+    return {
+      modelId,
+      promptTokens: usage.promptTokens,
+      completionTokens: usage.completionTokens,
+      totalTokens: usage.totalTokens,
+      costUsd: usage.costUsd,
+      requestedMaxOutputTokens,
+      finishReason,
+      contextCompression,
+      measuredAt: Date.now()
+    };
   }
 }

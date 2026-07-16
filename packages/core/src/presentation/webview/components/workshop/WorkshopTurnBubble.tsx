@@ -186,7 +186,12 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
             {turn.personaLabel ?? turn.toolLabel ?? 'Follow-up'}
           </span>
           {turn.usage && (
-            <span className="pm-ws-turn-usage">{turn.usage.totalTokens.toLocaleString()} tokens</span>
+            <span
+              className="pm-ws-turn-usage"
+              title={`${turn.usage.totalTokens.toLocaleString()} tokens processed across ${turn.usage.requestCount ?? 1} ${(turn.usage.requestCount ?? 1) === 1 ? 'call' : 'calls'}`}
+            >
+              {turn.usage.totalTokens.toLocaleString()} processed
+            </span>
           )}
         </div>
         {turn.truncated && (

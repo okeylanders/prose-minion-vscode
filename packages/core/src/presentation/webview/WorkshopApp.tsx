@@ -44,6 +44,7 @@ import {
 } from './components/workshop/ContextBriefPanel';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopParticipantRail } from './components/workshop/WorkshopParticipantRail';
+import { ContextBudget } from './components/shared/ContextBudget';
 import { WorkshopThread } from './components/workshop/WorkshopThread';
 import { WORKSHOP_TURN_ID_ATTRIBUTE } from './components/workshop/WorkshopTurnBubble';
 import { WorkshopToolsModal } from './components/workshop/WorkshopToolsModal';
@@ -455,14 +456,12 @@ export const WorkshopApp: React.FC = () => {
             onOpenBrowser={() => modelsSettings.requestModelData(true)}
             label="Assistant Model"
           />
-          {/* Multi-turn token rail (Sprint 3): follow-ups resend the whole
-              conversation, so prompt tokens grow every turn — this chip makes
-              that budget visible instead of burying it in the balance title. */}
+          {/* Cumulative processed traffic is cost/activity, not context size. */}
           <div
             className="pm-ws-balance"
-            title={`Session tokens — prompt ${tokenTracking.usage.promptTokens.toLocaleString()} · completion ${tokenTracking.usage.completionTokens.toLocaleString()}. Follow-ups resend the conversation history, so prompt tokens grow with each turn.`}
+            title={`Cumulative processed traffic — prompt ${tokenTracking.usage.promptTokens.toLocaleString()} · completion ${tokenTracking.usage.completionTokens.toLocaleString()}. Retained history may be processed again across calls.`}
           >
-            <span className="pm-ws-balance-label">Tokens</span>
+            <span className="pm-ws-balance-label">Processed</span>
             <span className="pm-ws-balance-val">
               {tokenTracking.usage.totalTokens.toLocaleString()}
             </span>
@@ -694,6 +693,12 @@ export const WorkshopApp: React.FC = () => {
               }
               onInviteGuest={openGuestModal}
               onDismissGuest={workshop.dismissGuest}
+            />
+            <ContextBudget
+              label={workshop.contextBudget?.label ?? `${chatTargetLabel} context`}
+              snapshot={workshop.contextBudget?.snapshot}
+              modelOptions={modelsSettings.modelOptions}
+              cumulativeProcessedTokens={tokenTracking.usage.totalTokens}
             />
             <WorkshopComposer
               canMessage={workshop.canMessage}

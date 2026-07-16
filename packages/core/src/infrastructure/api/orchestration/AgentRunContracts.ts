@@ -65,6 +65,8 @@ export interface AgentCapability<
   readonly catalog: Exclude<CapabilityCatalog, 'none'>;
   /** Enter the protocol/catalog contract into history on the initial turn. */
   appendContract(userMessage: string): Promise<string>;
+  /** Optional compact reminder added to each retained continuation turn. */
+  appendTurnContract?(userMessage: string): Promise<string>;
   inspectRequest(candidate: string): AgentCapabilityInspection<Request, Rejection>;
   fulfill(request: Request): Promise<CapabilityFulfillment>;
   stripToolCalls(content: string): string;

@@ -2,6 +2,88 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Shared styles for the Workshop provider-measured context gauge. */
+.pm-context-budget {
+  margin-top: 8px;
+  border: 1px solid var(--pm-border-soft);
+  border-left: 3px solid var(--pm-green);
+  border-radius: var(--pm-r-tile);
+  background: var(--pm-inset);
+  color: var(--pm-text-2);
+  font-family: var(--pm-sans);
+  font-size: 11px;
+}
+
+.pm-context-budget-watch { border-left-color: var(--pm-amber); }
+.pm-context-budget-high { border-left-color: var(--pm-accent); }
+.pm-context-budget-critical { border-left-color: var(--pm-red); }
+.pm-context-budget-unknown,
+.pm-context-budget-empty { border-left-color: var(--pm-dim); }
+
+.pm-context-budget > summary,
+.pm-context-budget-empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+}
+
+.pm-context-budget > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.pm-context-budget > summary::-webkit-details-marker { display: none; }
+.pm-context-budget > summary:focus-visible {
+  outline: 2px solid var(--pm-accent-ring);
+  outline-offset: 1px;
+}
+
+.pm-context-budget-label {
+  color: var(--pm-muted);
+  font-family: var(--pm-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pm-context-budget-primary {
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pm-context-budget-details {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0 10px 10px;
+  border-top: 1px solid var(--pm-border-soft);
+}
+
+.pm-context-budget-details > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 5px;
+}
+
+.pm-context-budget-details dt { color: var(--pm-muted); }
+.pm-context-budget-details dd {
+  margin: 0;
+  text-align: right;
+}
+
+[data-pm-surface="workshop"] .pm-context-budget {
+  margin: 0 28px 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pm-context-budget { scroll-behavior: auto; }
+}
+
 /* VS Code theme variables */
 :root {
   --spacing-xs: 0.25rem;

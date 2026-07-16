@@ -44,6 +44,11 @@ export interface WorkshopResourceGroupAvailability {
   readonly fileCount: number;
 }
 
+export const createWorkshopCapabilityTurnReminder = (): string =>
+  `This writer message starts a new user turn with a fresh allowance of ` +
+  `${PROMPT_BUDGETS.workshopCapability.callsPerTurn} capability calls. ` +
+  'A limit reached in an earlier turn does not carry forward. Use the available calls when fresh evidence would materially improve the answer.';
+
 export const createWorkshopCapabilityInstruction = (
   resourceGroups: readonly WorkshopResourceGroupAvailability[] = []
 ): string => {
@@ -55,6 +60,7 @@ export const createWorkshopCapabilityInstruction = (
     '',
     `You may make at most ${budgets.callsPerTurn} capability calls during this user turn. ` +
       `You may request dictionary.full-entry at most ${budgets.fullEntriesPerTurn} time and analysis.run at most ${budgets.analysisRunsPerTurn} time.`,
+    'This allowance resets with every new writer message. Never carry an exhausted capability budget forward from an earlier turn.',
     'A capability call must be your entire response: one bare, well-formed XML document with no prose, Markdown fence, second call, or characters before or after it.',
     '',
     'Focused Writer\'s Dictionary lookup:',

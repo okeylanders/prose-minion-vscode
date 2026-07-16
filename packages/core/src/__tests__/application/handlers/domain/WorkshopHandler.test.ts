@@ -7,7 +7,7 @@ import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWork
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import { MessageRouter } from '@/application/handlers/MessageRouter';
-import { MessageType, API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
+import { ContextBudgetSnapshot, MessageType, API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { FileType } from '@/platform';
 import type { FileSystem, LogSink, ShellService, Workspace } from '@/platform';
@@ -38,13 +38,30 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   let workspace: Workspace;
   let handler: WorkshopHandler;
   let capabilityFactory: WorkshopPersonaCapabilityFactory;
+  let contextBudgets: Map<string, ContextBudgetSnapshot>;
 
   const posted = (type: MessageType) => postMessage.mock.calls
     .map(([entry]) => entry)
     .filter((entry) => entry.type === type);
 
+  const storeContext = (key: string, promptTokens: number, completionTokens = 2) => {
+    contextBudgets.set(key, {
+      modelId: 'model/a',
+      contextTokens: promptTokens + completionTokens,
+      promptTokens,
+      completionTokens,
+      peakPromptTokensThisTurn: promptTokens,
+      requestedMaxOutputTokens: 10_000,
+      callsThisTurn: 1,
+      turnProcessedTokens: promptTokens + completionTokens,
+      contextCompression: 'unknown',
+      measuredAt: promptTokens
+    });
+  };
+
   beforeEach(() => {
     session = new WorkshopSessionService(() => 1);
+    contextBudgets = new Map();
     postMessage = jest.fn().mockResolvedValue(undefined);
     log = { appendLine: jest.fn() } as unknown as LogSink;
     service = {
@@ -60,7 +77,12 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       continueConversation: jest.fn().mockImplementation(async (conversationId: string) =>
         analysisResult('continued reply', { conversationId })
       ),
-      discardConversation: jest.fn(),
+      discardConversation: jest.fn((conversationId: string) => {
+        contextBudgets.delete(conversationId);
+      }),
+      getConversationContextBudget: jest.fn((conversationId: string | undefined) =>
+        conversationId ? contextBudgets.get(conversationId) : undefined
+      ),
       addStatusListener: jest.fn(() => jest.fn())
     } as unknown as jest.Mocked<AssistantToolService>;
     shell = createFakeShellService();
@@ -163,12 +185,51 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     ]));
   });
 
+  it('projects independent Jill, guest, and tool context readings without exposing conversation ids', async () => {
+    const readProjected = async () => {
+      postMessage.mockClear();
+      await handler.handleRequestSession(message(MessageType.WORKSHOP_REQUEST_SESSION, {}) as any);
+      return posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload.session.contextBudget;
+    };
+
+    await pin();
+    await handler.handleSendMessage(message(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Host read.' }) as any);
+    storeContext('host-conv', 30);
+    expect(await readProjected()).toMatchObject({ label: 'Jill context', snapshot: { contextTokens: 32 } });
+
+    await handler.handleInviteGuest(message(
+      MessageType.WORKSHOP_INVITE_GUEST,
+      { personaId: 'margot', openingMessage: 'Guest read.' }
+    ) as any);
+    storeContext('guest-conv', 20);
+    expect(await readProjected()).toMatchObject({ label: 'Margot context', snapshot: { contextTokens: 22 } });
+
+    await runProse();
+    storeContext('tool-conv', 10);
+    await handler.handleSetChatTarget(message(
+      MessageType.WORKSHOP_SET_CHAT_TARGET,
+      { kind: 'tool', toolId: 'prose' }
+    ) as any);
+    expect(await readProjected()).toMatchObject({ label: 'Prose context', snapshot: { contextTokens: 12 } });
+
+    await handler.handleSetChatTarget(message(
+      MessageType.WORKSHOP_SET_CHAT_TARGET,
+      { kind: 'host' }
+    ) as any);
+    const jillAgain = await readProjected();
+    expect(jillAgain).toMatchObject({ label: 'Jill context', snapshot: { contextTokens: 32 } });
+    expect(JSON.stringify(jillAgain)).not.toContain('host-conv');
+    expect(JSON.stringify(jillAgain)).not.toContain('guest-conv');
+    expect(JSON.stringify(jillAgain)).not.toContain('tool-conv');
+  });
+
   it('disposes a guest and discards its provider conversation', async () => {
     await pin();
     await handler.handleInviteGuest(message(
       MessageType.WORKSHOP_INVITE_GUEST,
       { personaId: 'margot', openingMessage: 'Read the room.' }
     ) as any);
+    storeContext('guest-conv', 20);
 
     await handler.handleDismissGuest(message(
       MessageType.WORKSHOP_DISMISS_GUEST,
@@ -176,6 +237,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     ) as any);
 
     expect(service.discardConversation).toHaveBeenCalledWith('guest-conv');
+    expect(contextBudgets.get('guest-conv')).toBeUndefined();
+    expect(posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload.session.contextBudget)
+      .toEqual({ label: 'Jill context' });
     expect(log.appendLine).toHaveBeenCalledWith(
       '[WorkshopHandler] Guest dismissed (persona=margot, conversation=guest-conv)'
     );
@@ -617,6 +681,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   it('replaces and disposes only the prior sidecar for the same tool', async () => {
     await pin();
     await runProse();
+    storeContext('tool-conv', 10);
     service.analyzeProse.mockResolvedValueOnce(
       analysisResult('replacement report', { conversationId: 'tool-conv-2' }) as any
     );
@@ -625,6 +690,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
     expect(session.getToolSidecarConversationId('prose')).toBe('tool-conv-2');
     expect(service.discardConversation).toHaveBeenCalledWith('tool-conv');
+    expect(contextBudgets.get('tool-conv')).toBeUndefined();
     expect(session.getSnapshot().turns.filter((turn) => turn.artifact === 'tool_report')).toHaveLength(2);
   });
 
@@ -950,10 +1016,15 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   it('disposes all retained participants on reset and returns to Jill', async () => {
     await pin();
     await runProse();
+    for (const key of ['host-conv', 'tool-conv']) {
+      storeContext(key, 10);
+    }
     await handler.handleResetSession(message(MessageType.WORKSHOP_RESET_SESSION, {}) as any);
 
     expect(service.discardConversation).toHaveBeenCalledWith('tool-conv');
     expect(service.discardConversation).toHaveBeenCalledWith('host-conv');
+    expect(contextBudgets.get('tool-conv')).toBeUndefined();
+    expect(contextBudgets.get('host-conv')).toBeUndefined();
     expect(session.getSnapshot().participants.host.personaId).toBe('jill');
     expect(session.getSnapshot().turns).toEqual([]);
   });

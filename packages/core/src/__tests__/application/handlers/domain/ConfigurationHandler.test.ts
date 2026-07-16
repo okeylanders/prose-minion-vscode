@@ -23,9 +23,7 @@ describe('ConfigurationHandler', () => {
       {} as any, // settings port
       {} as any, // shell port
       jest.fn().mockResolvedValue(undefined) as any, // postMessage
-      {} as any, // outputChannel
-      {} as any, // sharedResultCache
-      {} as any  // tokenTotals
+      {} as any // outputChannel
     );
     router = new MessageRouter();
   });
@@ -87,9 +85,7 @@ describe('ConfigurationHandler', () => {
         settings as any,
         {} as any,
         postMessage as any,
-        { appendLine, show: jest.fn(), clear: jest.fn() } as any,
-        {} as any,
-        {} as any
+        { appendLine, show: jest.fn(), clear: jest.fn() } as any
       );
       return { handler: built, postMessage, appendLine };
     };

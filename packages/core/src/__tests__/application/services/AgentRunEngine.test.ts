@@ -52,6 +52,7 @@ const personaCapability = (fulfill = jest.fn().mockResolvedValue({
 })): jest.Mocked<AgentCapability<any, any>> => ({
   catalog: 'workshopPersona',
   appendContract: jest.fn(async message => `${message}\n\nWorkshop capability contract`),
+  appendTurnContract: jest.fn(async message => `${message}\n\nFresh capability budget for this user turn.`),
   inspectRequest: jest.fn(candidate => candidate === PERSONA_REQUEST
     ? {
         kind: 'request',
@@ -87,6 +88,47 @@ describe('AgentRunEngine', () => {
   });
 
   afterEach(() => engine.dispose());
+
+  it('commits current retained context separately from multi-call processed traffic', async () => {
+    const guides = capability();
+    guides.fulfill.mockResolvedValueOnce({
+      evidence: 'Evidence',
+      deliveredItems: ['dialogue.md'],
+      artifacts: [],
+      usage: { promptTokens: 20, completionTokens: 5, totalTokens: 25, requestCount: 2 }
+    });
+    client.createChatCompletion
+      .mockResolvedValueOnce({
+        content: GUIDE_REQUEST,
+        usage: { promptTokens: 38, completionTokens: 2, totalTokens: 40 },
+        observation: {
+          modelId: 'model/a', promptTokens: 38, completionTokens: 2, totalTokens: 40,
+          requestedMaxOutputTokens: 10_000, finishReason: 'stop', contextCompression: 'unknown', measuredAt: 1
+        }
+      })
+      .mockResolvedValueOnce({
+        content: 'Final response.',
+        usage: { promptTokens: 41, completionTokens: 3, totalTokens: 44 },
+        observation: {
+          modelId: 'model/a', promptTokens: 41, completionTokens: 3, totalTokens: 44,
+          requestedMaxOutputTokens: 10_000, finishReason: 'stop', contextCompression: 'not-applied', measuredAt: 2
+        }
+      });
+
+    const result = await engine.runInitial({
+      toolName: 'dialogue', systemMessage: 'System', userMessage: 'Analyze.',
+      policy: { ...AGENT_RUN_POLICIES.assistant, retention: 'retain' }, capability: guides
+    });
+    expect(result.usage).toMatchObject({ totalTokens: 109, requestCount: 4 });
+    expect(conversations.getContextBudget(result.conversationId)).toMatchObject({
+      contextTokens: 44,
+      promptTokens: 41,
+      completionTokens: 3,
+      peakPromptTokensThisTurn: 41,
+      callsThisTurn: 4,
+      turnProcessedTokens: 109
+    });
+  });
 
   it('buffers an exact XML request, then progressively streams the final answer', async () => {
     const guides = capability();
@@ -440,6 +482,16 @@ describe('AgentRunEngine', () => {
     expect(conversations.getActiveConversationCount()).toBe(0);
   });
 
+  it('does not invent telemetry or retain history when transport fails before completion', async () => {
+    client.createChatCompletion.mockRejectedValueOnce(new Error('network unavailable'));
+
+    await expect(engine.runInitial({
+      toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
+    })).rejects.toThrow('network unavailable');
+    expect(conversations.getActiveConversationCount()).toBe(0);
+  });
+
   it('keeps direct retained continuation as a history operation with no capability rounds', async () => {
     client.createChatCompletion.mockResolvedValueOnce({ content: 'Host hello', finishReason: 'stop' });
     const initial = await engine.runInitial({
@@ -491,6 +543,13 @@ describe('AgentRunEngine', () => {
     expect(followUpCapability.fulfill).toHaveBeenCalledTimes(1);
     expect(result.content).toBe('Dictionary-backed follow-up.');
     expect(result.usage?.totalTokens).toBe(17);
+    expect(result.usage?.requestCount).toBe(3);
+    expect(client.createChatCompletion.mock.calls.at(-2)?.[0]).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        role: 'user',
+        content: expect.stringContaining('Fresh capability budget for this user turn.')
+      })
+    ]));
     expect(conversations.getConversationInfo(initial.conversationId!)?.messageCount).toBe(7);
   });
 
@@ -587,20 +646,42 @@ describe('AgentRunEngine', () => {
   });
 
   it('delivers a pending host frame once within capability rounds and commits nothing when cancelled', async () => {
-    client.createChatCompletion.mockResolvedValueOnce({ content: 'Host hello' });
+    client.createChatCompletion.mockResolvedValueOnce({
+      content: 'Host hello',
+      usage: { promptTokens: 10, completionTokens: 2, totalTokens: 12 },
+      observation: {
+        modelId: 'model/a', promptTokens: 10, completionTokens: 2, totalTokens: 12,
+        requestedMaxOutputTokens: 10_000, finishReason: 'stop', contextCompression: 'unknown', measuredAt: 1
+      }
+    });
     const initial = await engine.runInitial({
       toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
       policy: AGENT_RUN_POLICIES.workshopHost, capability: personaCapability()
     });
     const before = conversations.getConversationInfo(initial.conversationId!)?.messageCount;
+    const contextBefore = conversations.getContextBudget(initial.conversationId!);
     const controller = new AbortController();
     const fulfill = jest.fn().mockImplementation(async () => {
       controller.abort(new Error('cancel after evidence'));
       return { evidence: 'Completed evidence', deliveredItems: ['dictionary.lookup:success'], artifacts: [] };
     });
     client.createChatCompletion
-      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
-      .mockResolvedValueOnce({ content: 'This response is abandoned.' });
+      .mockResolvedValueOnce({
+        content: PERSONA_REQUEST,
+        usage: { promptTokens: 20, completionTokens: 2, totalTokens: 22 },
+        observation: {
+          modelId: 'model/a', promptTokens: 20, completionTokens: 2, totalTokens: 22,
+          requestedMaxOutputTokens: 10_000, finishReason: 'stop', contextCompression: 'unknown', measuredAt: 2
+        }
+      })
+      .mockResolvedValueOnce({
+        content: 'This response is abandoned.',
+        usage: { promptTokens: 30, completionTokens: 3, totalTokens: 33 },
+        observation: {
+          modelId: 'model/a', promptTokens: 30, completionTokens: 3, totalTokens: 33,
+          requestedMaxOutputTokens: 10_000, finishReason: 'stop', contextCompression: 'unknown', measuredAt: 3
+        }
+      });
     const pendingFrame = '<pinned-excerpt version="2">Revised once.</pinned-excerpt>\nWriter asks again.';
 
     const result = await engine.continueConversation({
@@ -616,6 +697,7 @@ describe('AgentRunEngine', () => {
       message.content.includes('<pinned-excerpt version="2">'))).toHaveLength(1);
     expect(result.cancelled).toBe(true);
     expect(conversations.getConversationInfo(initial.conversationId!)?.messageCount).toBe(before);
+    expect(conversations.getContextBudget(initial.conversationId!)).toEqual(contextBefore);
   });
 
   it('resets the five-call persona budget per user turn and forces final prose at the boundary', async () => {

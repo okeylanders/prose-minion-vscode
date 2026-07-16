@@ -52,6 +52,7 @@ function createTestAssembly(): TestAssembly {
   // dispose-blinds-the-survivor regression is structurally untestable
   // (PR #67 review #2, Cal).
   const tokenUsageListeners = new Set<TokenUsageCallback>();
+  const tokenUsageResetListeners = new Set<() => void>();
 
   const log: LogSink = {
     appendLine: jest.fn(),
@@ -90,6 +91,7 @@ function createTestAssembly(): TestAssembly {
   const assistantToolService = {
     // Registered twice per handler: AnalysisHandler + WorkshopHandler.
     addStatusListener: jest.fn(() => jest.fn()),
+    getConversationContextBudget: jest.fn(),
     refreshConfiguration: jest.fn().mockResolvedValue(undefined)
   } as unknown as AssistantToolService;
   const workshopSessionService = new WorkshopSessionService();
@@ -116,6 +118,15 @@ function createTestAssembly(): TestAssembly {
         return () => {
           tokenUsageListeners.delete(callback);
         };
+      }),
+      addTokenUsageResetListener: jest.fn((callback: () => void) => {
+        tokenUsageResetListeners.add(callback);
+        return () => tokenUsageResetListeners.delete(callback);
+      }),
+      resetTokenUsage: jest.fn(() => {
+        for (const callback of [...tokenUsageResetListeners]) {
+          callback();
+        }
       }),
       refreshModelSelections: jest.fn().mockResolvedValue(undefined),
       refreshConfiguration: jest.fn().mockResolvedValue(undefined)

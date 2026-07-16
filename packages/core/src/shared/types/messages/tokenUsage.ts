@@ -11,6 +11,8 @@ export interface TokenUsage {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
+  /** Number of provider requests represented by an aggregated logical-turn usage. */
+  requestCount?: number;
   costUsd?: number;
   isEstimate?: boolean;
 }

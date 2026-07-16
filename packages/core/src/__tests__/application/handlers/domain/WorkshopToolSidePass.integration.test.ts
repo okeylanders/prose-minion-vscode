@@ -29,7 +29,8 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
         conversationId: toolName === 'prose-assistant' ? 'engine-tool-conv' : 'engine-host-conv'
       })),
       continueConversation: jest.fn(),
-      discardConversation: jest.fn()
+      discardConversation: jest.fn(),
+      getConversationContextBudget: jest.fn()
     } as unknown as jest.Mocked<AgentRunEngine>;
     const manager = {
       ensureInitialized: jest.fn().mockResolvedValue(undefined),

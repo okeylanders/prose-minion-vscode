@@ -56,6 +56,7 @@ export class AIResourceManager {
   private initialization?: Promise<void>;
   private statusCallback?: StatusCallback;
   private readonly tokenUsageListeners: ListenerSet<[TokenUsage]>;
+  private readonly tokenUsageResetListeners: ListenerSet<[]>;
 
   /**
    * Single stable closure handed to every orchestrator: fans token usage out
@@ -76,6 +77,10 @@ export class AIResourceManager {
   ) {
     this.tokenUsageListeners = new ListenerSet(
       '[AIResourceManager] Token usage listener',
+      outputChannel
+    );
+    this.tokenUsageResetListeners = new ListenerSet(
+      '[AIResourceManager] Token usage reset listener',
       outputChannel
     );
   }
@@ -321,6 +326,15 @@ export class AIResourceManager {
     return this.tokenUsageListeners.add(listener);
   }
 
+  /** Reset every live webview's cumulative processed-usage meter together. */
+  resetTokenUsage(): void {
+    this.tokenUsageResetListeners.emit();
+  }
+
+  addTokenUsageResetListener(listener: () => void): () => void {
+    return this.tokenUsageResetListeners.add(listener);
+  }
+
   /**
    * Dispose of all AI resources (cleanup)
    *
@@ -345,6 +359,7 @@ export class AIResourceManager {
     this.initialization = undefined;
     this.statusCallback = undefined;
     this.tokenUsageListeners.clear();
+    this.tokenUsageResetListeners.clear();
   }
 
   /**

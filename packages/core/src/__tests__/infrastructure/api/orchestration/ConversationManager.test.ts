@@ -38,10 +38,11 @@ describe('ConversationManager', () => {
     manager.pinConversation(pinned);
 
     // maxAgeMs of -1 makes every conversation "idle" — the pin is the only shield.
-    manager.clearOldConversations(-1);
+    const retired = manager.clearOldConversations(-1);
 
     expect(manager.hasConversation(reapable)).toBe(false);
     expect(manager.hasConversation(pinned)).toBe(true);
+    expect(retired).toEqual([reapable]);
   });
 
   it('explicit deletion always works, pinned or not', () => {
@@ -81,5 +82,30 @@ describe('ConversationManager', () => {
 
     messages.push({ role: 'user', content: 'smuggled' });
     expect(manager.getMessages(id)).toHaveLength(3);
+  });
+
+  it('owns committed context telemetry beside the retained thread', () => {
+    const id = start();
+    const snapshot = {
+      modelId: 'model/a',
+      contextTokens: 110,
+      promptTokens: 100,
+      completionTokens: 10,
+      peakPromptTokensThisTurn: 100,
+      requestedMaxOutputTokens: 10_000,
+      callsThisTurn: 1,
+      turnProcessedTokens: 110,
+      contextCompression: 'unknown' as const,
+      measuredAt: 1
+    };
+
+    manager.setContextBudget(id, snapshot);
+    const returned = manager.getContextBudget(id)!;
+    expect(returned).toEqual(snapshot);
+    returned.contextTokens = 999;
+    expect(manager.getContextBudget(id)?.contextTokens).toBe(110);
+
+    manager.resetConversation(id);
+    expect(manager.getContextBudget(id)).toBeUndefined();
   });
 });

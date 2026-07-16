@@ -26,6 +26,7 @@ import {
 } from '@shared/types/workshopCapabilities';
 import {
   createWorkshopCapabilityInstruction,
+  createWorkshopCapabilityTurnReminder,
   WorkshopResourceGroupAvailability,
   WorkshopCapabilityInspection,
   WorkshopCapabilityXmlCodec
@@ -109,6 +110,10 @@ export class WorkshopPersonaCapability implements AgentCapability<
       );
     }
     return [userMessage, createWorkshopCapabilityInstruction(resourceGroups)].join('\n\n');
+  }
+
+  async appendTurnContract(userMessage: string): Promise<string> {
+    return [userMessage, createWorkshopCapabilityTurnReminder()].join('\n\n');
   }
 
   inspectRequest(candidate: string): WorkshopCapabilityInspection {
