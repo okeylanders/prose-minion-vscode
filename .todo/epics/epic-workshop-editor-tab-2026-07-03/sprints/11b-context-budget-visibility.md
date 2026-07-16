@@ -305,3 +305,20 @@ Compression          Not applied
   `extension.js` 2,392,575 -> 2,396,555 bytes (+3,980 / +0.17%);
   `webview.js` 640,016 -> 645,669 bytes (+5,653 / +0.88%). Webpack's existing
   webview asset-size recommendations remain warnings only.
+
+## Post-completion addendum — 2026-07-16 review pass
+
+- Review fixes landed on the sprint branch: router metadata without a
+  readable pipeline now normalizes to `unknown` (only an explicit pipeline
+  that omits the stage proves `not-applied`); utilization percent is rounded
+  once in the shared view helper so the displayed label and warning tone
+  agree at threshold boundaries; the engine logs every committed context
+  snapshot so a moving gauge can be diagnosed from the output channel.
+- The gauge was restyled to the Claude Design "Context Bar v2" comp:
+  identity dot + participant name, tone-colored budget track, compact
+  numbers/percent, drawer, dashed not-measured state, and a footer naming
+  the per-participant reading. Locked tone thresholds are unchanged.
+- The comp's "In context" sources section and Compress/Compact memory
+  actions are NOT part of 11B: the per-conversation source manifest
+  (including host-fetched resources and host-triggered tool evidence) is
+  specified in Sprint 12, and compaction still requires its own ADR.
