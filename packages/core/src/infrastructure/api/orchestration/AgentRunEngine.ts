@@ -358,9 +358,16 @@ export class AgentRunEngine {
         pendingMessages.push({ role: 'assistant', content: visibleContent });
         this.conversationManager.addMessages(conversationId, pendingMessages);
         if (latestObservation && totalUsage) {
-          this.conversationManager.setContextBudget(
-            conversationId,
-            this.toContextBudgetSnapshot(latestObservation, peakPromptTokens, totalUsage)
+          const snapshot = this.toContextBudgetSnapshot(latestObservation, peakPromptTokens, totalUsage);
+          this.conversationManager.setContextBudget(conversationId, snapshot);
+          // One line per committed reading, so a moving gauge can be diagnosed
+          // from the log: a different conversation id means a target switch,
+          // the same id shrinking means the provider re-measured or compressed.
+          this.outputChannel?.appendLine(
+            `[AgentRunEngine] Context snapshot committed for ${conversationId}: ` +
+            `context=${snapshot.contextTokens} (prompt ${snapshot.promptTokens} + completion ${snapshot.completionTokens}), ` +
+            `model=${snapshot.modelId}, calls=${snapshot.callsThisTurn}, processed=${snapshot.turnProcessedTokens}, ` +
+            `compression=${snapshot.contextCompression}`
           );
         }
       }

@@ -27,7 +27,7 @@ describe('OpenRouter context-compression metadata', () => {
     ['missing metadata', undefined, 'unknown'],
     ['unrelated pipeline stage', { pipeline: [{ type: 'guardrail' }] }, 'not-applied'],
     ['material compression stage', { pipeline: [{ type: 'context_compression' }] }, 'applied'],
-    ['empty metadata', {}, 'not-applied'],
+    ['metadata without a readable pipeline', {}, 'unknown'],
     ['unparseable pipeline', { pipeline: 'changed' }, 'unknown']
   ])('normalizes %s', (_label, metadata, expected) => {
     expect(normalizeContextCompression(metadata)).toBe(expected);

@@ -52,8 +52,9 @@ export interface OpenRouterResponse {
 export const normalizeContextCompression = (metadata: unknown): ContextCompressionState => {
   if (metadata === undefined || metadata === null) return 'unknown';
   if (typeof metadata !== 'object' || Array.isArray(metadata)) return 'unknown';
+  // Only an explicit pipeline that omits the stage proves "not applied";
+  // metadata without a readable pipeline is schema drift, not evidence.
   const pipeline = (metadata as { pipeline?: unknown }).pipeline;
-  if (pipeline === undefined) return 'not-applied';
   if (!Array.isArray(pipeline)) return 'unknown';
   return pipeline.some(stage => (
     typeof stage === 'object' &&
