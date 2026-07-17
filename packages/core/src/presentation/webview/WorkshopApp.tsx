@@ -287,6 +287,11 @@ export const WorkshopApp: React.FC = () => {
 
   // Live run bubble: visible from run start until the assistant turn lands.
   const showLiveTurn = workshop.isRunning || workshop.isStreaming || workshop.streamingContent.length > 0;
+  // Invite appears once context is ready and the room has an open guest seat.
+  const canInviteGuest = !!workshop.excerpt
+    && workshop.sessionReady
+    && workshop.personaGuests.filter((guest) => guest.liveness === 'live').length
+      < WORKSHOP_GUEST_CAPACITY;
 
   const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
   const openContext = React.useCallback(() => {
@@ -684,13 +689,8 @@ export const WorkshopApp: React.FC = () => {
               personaGuests={workshop.personaGuests}
               chatTarget={workshop.chatTarget}
               onSetChatTarget={workshop.setChatTarget}
-              disabled={workshop.isRunning}
-              showInviteGuest={
-                !!workshop.excerpt
-                && workshop.sessionReady
-                && workshop.personaGuests.filter((guest) => guest.liveness === 'live').length
-                  < WORKSHOP_GUEST_CAPACITY
-              }
+              disabled={showLiveTurn}
+              showInviteGuest={canInviteGuest}
               onInviteGuest={openGuestModal}
               onDismissGuest={workshop.dismissGuest}
             />

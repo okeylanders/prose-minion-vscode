@@ -8,6 +8,8 @@
  * IS the mode indicator — this rail subsumes the direct-mode banner. Chips
  * render only live sidecars; the host snapshot drops disposed ones, so a
  * chip can never target a dead conversation.
+ * During an active response, the rail stays mounted as a stable participant
+ * map while every routing control is temporarily locked.
  *
  * Deliberately NOT a host persona picker (ADR §1): the persona chip is the
  * return-to-host affordance. The explicit Invite guest chip is the one
@@ -35,7 +37,7 @@ interface WorkshopParticipantRailProps {
   personaGuests?: WorkshopPersonaGuestSnapshot[];
   chatTarget: WorkshopChatTarget;
   onSetChatTarget: (target: WorkshopChatTarget) => void;
-  /** Keep the participant map visible while a run temporarily locks routing. */
+  /** Disables every rail control without changing whether the rail renders. */
   disabled?: boolean;
   showInviteGuest?: boolean;
   onInviteGuest?: () => void;
@@ -54,6 +56,14 @@ export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = (
   onInviteGuest = () => undefined,
   onDismissGuest = () => undefined
 }) => {
+  const railRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (disabled && railRef.current?.contains(document.activeElement)) {
+      railRef.current.focus();
+    }
+  }, [disabled]);
+
   if (toolSidecars.length === 0 && personaGuests.length === 0 && !showInviteGuest) {
     return null;
   }
@@ -66,9 +76,16 @@ export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = (
     ? personaGuests.find((guest) => guest.personaId === chatTarget.personaId)?.personaLabel
       ?? chatTarget.personaId
     : null;
+  const lockedControlTitle = 'Available once the response finishes';
 
   return (
-    <div className="pm-ws-participant-rail" role="toolbar" aria-label="Conversation participants">
+    <div
+      ref={railRef}
+      className="pm-ws-participant-rail"
+      role="toolbar"
+      aria-label="Conversation participants"
+      tabIndex={-1}
+    >
       <span className="pm-ws-rail-label" aria-hidden="true">Talking to</span>
       <button
         className={`pm-ws-participant-chip ${hostActive ? 'pm-ws-chip-active' : ''}`}
@@ -80,7 +97,11 @@ export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = (
             onSetChatTarget({ kind: 'host' });
           }
         }}
-        title={hostActive ? `Messages go to ${personaLabel}` : `Back to ${personaLabel}`}
+        title={disabled
+          ? lockedControlTitle
+          : hostActive
+            ? `Messages go to ${personaLabel}`
+            : `Back to ${personaLabel}`}
       >
         <Icon name={WORKSHOP_PERSONA_FOCUS_ICONS[personaId]} size={12} /> {personaLabel}
       </button>
@@ -101,9 +122,11 @@ export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = (
               }}
               title={unavailable
                 ? `${guest.personaLabel}'s conversation is no longer available`
-                : active
-                  ? `Talking to ${guest.personaLabel}`
-                  : `Talk to ${guest.personaLabel}`}
+                : disabled
+                  ? lockedControlTitle
+                  : active
+                    ? `Talking to ${guest.personaLabel}`
+                    : `Talk to ${guest.personaLabel}`}
             >
               <Icon name={WORKSHOP_PERSONA_FOCUS_ICONS[guest.personaId]} size={12} /> {guest.personaLabel}
             </button>
@@ -111,7 +134,9 @@ export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = (
               <button
                 className="pm-ws-participant-dismiss"
                 type="button"
-                aria-label={`Dismiss ${guest.personaLabel}`}
+                aria-label={disabled
+                  ? `Dismiss ${guest.personaLabel} — available once the response finishes`
+                  : `Dismiss ${guest.personaLabel}`}
                 disabled={disabled}
                 onClick={() => onDismissGuest(guest.personaId)}
               >
@@ -140,9 +165,11 @@ export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = (
             title={
               unavailable
                 ? `${label}'s conversation is no longer available`
-                : active
-                  ? `Talking directly to ${label}`
-                  : `Talk directly to ${label} about its latest report`
+                : disabled
+                  ? lockedControlTitle
+                  : active
+                    ? `Talking directly to ${label}`
+                    : `Talk directly to ${label} about its latest report`
             }
           >
             <Icon name={workshopToolIcon(sidecar.toolId)} size={12} /> {label}
@@ -155,7 +182,7 @@ export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = (
           type="button"
           disabled={disabled}
           onClick={onInviteGuest}
-          title="Invite a persona guest into the room"
+          title={disabled ? lockedControlTitle : 'Invite a persona guest into the room'}
         >
           <Icon name="person" size={12} /> Invite guest
         </button>

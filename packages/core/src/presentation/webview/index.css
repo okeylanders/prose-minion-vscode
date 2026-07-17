@@ -170,6 +170,7 @@ summary.pm-context-budget-row:hover .pm-context-budget-chev {
 .pm-context-budget-foot b { color: var(--pm-dim); font-weight: 500; }
 
 [data-pm-surface="workshop"] .pm-context-budget {
+  /* Stable ticker-to-budget gap, whether the participant rail above is mounted or not. */
   margin: 22px 28px 10px;
 }
 
