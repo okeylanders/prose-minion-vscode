@@ -17,6 +17,7 @@ import { WritingToolsFocus } from './analysis';
 import { TokenUsage } from '../index';
 import type { LabeledContextBudgetSnapshot } from './inferenceContext';
 import type { WorkshopCapabilityArtifactDetails } from '../workshopCapabilities';
+import { ContextPathGroup, isContextPathGroup } from '../context';
 
 /**
  * Wire id for a Workshop tool — the design catalog's 14 tools mapped 1:1 onto
@@ -169,15 +170,125 @@ export interface WorkshopExcerptTruncation {
   totalWords: number;
 }
 
-/** The excerpt pinned in the left rail — the text every tool run works on. */
+/**
+ * Canonical configured-resource key from the context-path resolver, stamped
+ * during source resolution so model-requested reads can cite `{ group, path }`
+ * instead of reconstructing a path (Sprint 12).
+ */
+export interface WorkshopConfiguredResourceRef {
+  group: ContextPathGroup;
+  path: string;
+}
+
+/**
+ * Where the excerpt text actually came from (Sprint 12). Intake method and
+ * provenance are different facts: pasted text that exactly matches the active
+ * editor selection earns `editor-selection`; anything unverifiable stays
+ * honestly `manual`. The union is closed — locked-state affordances
+ * (`Update text…` vs `Re-read from file`) switch on `kind` alone.
+ */
+export type WorkshopExcerptSource =
+  | { kind: 'manual' }
+  | {
+      kind: 'editor-selection';
+      /** `document.uri.toString()` of the verified source document. */
+      sourceUri: string;
+      /** Workspace-relative display path (e.g. `chapters/03.md`). */
+      relativePath: string;
+      /** 1-based inclusive selection lines, when the host editor supplied them. */
+      startLine?: number;
+      endLine?: number;
+      configuredResource?: WorkshopConfiguredResourceRef;
+    }
+  | {
+      kind: 'file';
+      sourceUri: string;
+      relativePath: string;
+      configuredResource?: WorkshopConfiguredResourceRef;
+    };
+
+/** Display path for a sourced excerpt; undefined for manual text. */
+export function workshopExcerptSourcePath(source: WorkshopExcerptSource): string | undefined {
+  return source.kind === 'manual' ? undefined : source.relativePath;
+}
+
+/** Source document URI for a sourced excerpt; undefined for manual text. */
+export function workshopExcerptSourceUri(source: WorkshopExcerptSource): string | undefined {
+  return source.kind === 'manual' ? undefined : source.sourceUri;
+}
+
+const isSelectionLine = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 1;
+
+const isNonEmptyString = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim().length > 0;
+
+function coerceConfiguredResource(raw: unknown): WorkshopConfiguredResourceRef | undefined {
+  if (typeof raw !== 'object' || raw === null) {
+    return undefined;
+  }
+  const candidate = raw as { group?: unknown; path?: unknown };
+  return typeof candidate.group === 'string' &&
+    isContextPathGroup(candidate.group) &&
+    isNonEmptyString(candidate.path)
+    ? { group: candidate.group, path: candidate.path }
+    : undefined;
+}
+
+/**
+ * The ONE parser for excerpt-source wire traffic. The payload crosses the
+ * webview IPC boundary, so it is validated as `unknown` — a claim that cannot
+ * prove its shape degrades to `{ kind: 'manual' }` rather than borrowing a
+ * source it cannot demonstrate. An invalid line range is dropped (the kind
+ * survives); an invalid configuredResource claim is dropped (re-derivable).
+ */
+export function coerceWorkshopExcerptSource(raw: unknown): WorkshopExcerptSource {
+  if (typeof raw !== 'object' || raw === null) {
+    return { kind: 'manual' };
+  }
+  const candidate = raw as {
+    kind?: unknown;
+    sourceUri?: unknown;
+    relativePath?: unknown;
+    startLine?: unknown;
+    endLine?: unknown;
+    configuredResource?: unknown;
+  };
+  if (candidate.kind !== 'editor-selection' && candidate.kind !== 'file') {
+    return { kind: 'manual' };
+  }
+  if (!isNonEmptyString(candidate.sourceUri) || !isNonEmptyString(candidate.relativePath)) {
+    return { kind: 'manual' };
+  }
+  const configuredResource = coerceConfiguredResource(candidate.configuredResource);
+  if (candidate.kind === 'file') {
+    return {
+      kind: 'file',
+      sourceUri: candidate.sourceUri,
+      relativePath: candidate.relativePath,
+      ...(configuredResource ? { configuredResource } : {})
+    };
+  }
+  const hasLineRange =
+    isSelectionLine(candidate.startLine) &&
+    isSelectionLine(candidate.endLine) &&
+    candidate.endLine >= candidate.startLine;
+  return {
+    kind: 'editor-selection',
+    sourceUri: candidate.sourceUri,
+    relativePath: candidate.relativePath,
+    ...(hasLineRange ? { startLine: candidate.startLine as number, endLine: candidate.endLine as number } : {}),
+    ...(configuredResource ? { configuredResource } : {})
+  };
+}
+
+/** The excerpt set in the left rail — the text every tool run works on. */
 export interface WorkshopExcerpt {
   text: string;
   /** Monotonic version assigned by the host session aggregate. */
   version: number;
-  /** URI of the source document, when the excerpt came from a file. */
-  sourceUri?: string;
-  /** Workspace-relative path for display (e.g. `chapters/03.md`). */
-  relativePath?: string;
+  /** Provenance of the text — the single source of truth (no flat sourceUri/relativePath). */
+  source: WorkshopExcerptSource;
   /** Epoch ms when the excerpt was pinned (host-stamped). */
   pinnedAt: number;
   /** Present when the host head-sliced a huge file at pin time. */
@@ -346,8 +457,11 @@ export interface WorkshopSetChatTargetMessage extends MessageEnvelope<WorkshopCh
 
 export interface WorkshopSetExcerptPayload {
   text: string;
-  sourceUri?: string;
-  relativePath?: string;
+  /**
+   * Provenance claim. Absent or unprovable shapes degrade to
+   * `{ kind: 'manual' }` host-side via `coerceWorkshopExcerptSource`.
+   */
+  source?: WorkshopExcerptSource;
 }
 
 export interface WorkshopSetExcerptMessage extends MessageEnvelope<WorkshopSetExcerptPayload> {

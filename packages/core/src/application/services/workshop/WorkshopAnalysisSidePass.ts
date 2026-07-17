@@ -8,7 +8,7 @@ import {
 } from '@services/analysis/AssistantToolService';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { trimToWordLimit } from '@/utils/textUtils';
-import { WorkshopExcerpt, WorkshopToolId, WorkshopTurn } from '@messages';
+import { WorkshopExcerpt, WorkshopToolId, WorkshopTurn, workshopExcerptSourceUri } from '@messages';
 import {
   WorkshopCapabilityArtifactDetails,
   WorkshopCapabilityResult
@@ -46,7 +46,7 @@ export class WorkshopAnalysisSidePass {
       return this.assistantToolService.analyzeDialogue(
         excerpt.text,
         context,
-        excerpt.sourceUri,
+        workshopExcerptSourceUri(excerpt.source),
         undefined,
         streamingOptions
       );
@@ -55,14 +55,14 @@ export class WorkshopAnalysisSidePass {
       return this.assistantToolService.analyzeProse(
         excerpt.text,
         context,
-        excerpt.sourceUri,
+        workshopExcerptSourceUri(excerpt.source),
         streamingOptions
       );
     }
     return this.assistantToolService.analyzeWritingTools(
       excerpt.text,
       context,
-      excerpt.sourceUri,
+      workshopExcerptSourceUri(excerpt.source),
       toolId,
       streamingOptions
     );

@@ -114,7 +114,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   const pin = async () => handler.handleSetExcerpt(
     message(MessageType.WORKSHOP_SET_EXCERPT, {
       text: 'A pinned excerpt.',
-      relativePath: 'chapter-one.md'
+      source: { kind: 'file', sourceUri: 'file:///chapter-one.md', relativePath: 'chapter-one.md' }
     }) as any
   );
 
@@ -333,11 +333,17 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     ) as any);
     await handler.handleSetExcerpt(message(
       MessageType.WORKSHOP_SET_EXCERPT,
-      { text: 'Second version.', relativePath: 'chapter-two.md' }
+      {
+        text: 'Second version.',
+        source: { kind: 'file', sourceUri: 'file:///chapter-two.md', relativePath: 'chapter-two.md' }
+      }
     ) as any);
     await handler.handleSetExcerpt(message(
       MessageType.WORKSHOP_SET_EXCERPT,
-      { text: 'Newest version.', relativePath: 'chapter-three.md' }
+      {
+        text: 'Newest version.',
+        source: { kind: 'file', sourceUri: 'file:///chapter-three.md', relativePath: 'chapter-three.md' }
+      }
     ) as any);
 
     expect(session.getHostConversationId()).toBe('host-conv');
@@ -437,7 +443,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(service.analyzeProse).toHaveBeenCalledWith(
       'A pinned excerpt.',
       expect.stringContaining('Mara cannot read.'),
-      undefined,
+      'file:///chapter-one.md',
       expect.anything()
     );
     expect(service.startWorkshopPersonaConversation).toHaveBeenCalledWith(
@@ -1008,7 +1014,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     await handler.handlePickExcerptFile(message(MessageType.WORKSHOP_PICK_EXCERPT_FILE, {}) as any);
 
     expect(session.getExcerpt()).toMatchObject({
-      relativePath: 'External file: chapter.md',
+      source: { kind: 'file', relativePath: 'External file: chapter.md' },
       truncation: { pinnedWords: 10_000, totalWords: 10_001 }
     });
   });

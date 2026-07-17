@@ -33,6 +33,7 @@ import {
   StreamCompleteMessage,
   StreamStartedMessage,
   WorkshopExcerpt,
+  WorkshopExcerptSource,
   WorkshopChatTarget,
   WorkshopPersonaId,
   WorkshopPersonaGuestSnapshot,
@@ -102,7 +103,7 @@ export interface WorkshopState {
 }
 
 export interface WorkshopActions {
-  pinExcerpt: (text: string, sourceUri?: string, relativePath?: string) => void;
+  pinExcerpt: (text: string, source?: WorkshopExcerptSource) => void;
   pinFromFile: () => void;
   setContextBrief: (text?: string) => void;
   runTool: (toolId: WorkshopToolId) => void;
@@ -187,8 +188,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
   // Actions (webview → extension)
 
   const pinExcerpt = React.useCallback(
-    (text: string, sourceUri?: string, relativePath?: string) => {
-      post(MessageType.WORKSHOP_SET_EXCERPT, { text, sourceUri, relativePath });
+    (text: string, source?: WorkshopExcerptSource) => {
+      post(MessageType.WORKSHOP_SET_EXCERPT, { text, source });
     },
     [post]
   );

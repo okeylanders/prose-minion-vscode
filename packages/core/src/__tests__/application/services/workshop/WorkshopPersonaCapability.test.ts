@@ -20,7 +20,7 @@ describe('WorkshopPersonaCapability', () => {
 
   beforeEach(() => {
     session = new WorkshopSessionService(() => 7);
-    const excerpt = session.setExcerpt({ text: 'The cup crossed the table.' });
+    const excerpt = session.setExcerpt({ text: 'The cup crossed the table.', source: { kind: 'manual' } });
     session.beginPersonaMessage('host-request', 'Help me revise this.');
     dictionary = {
       lookupWordStreaming: jest.fn().mockResolvedValue({

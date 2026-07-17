@@ -21,6 +21,7 @@ export type SelectionTarget =
   | 'assistant_excerpt'
   | 'assistant_context'
   | 'assistant_excerpt_verify'  // For Ctrl+V paste verification - compares, doesn't overwrite
+  | 'workshop_excerpt_verify'   // Workshop panel's own verify lane (Sprint 12) - same compare-only contract
   | 'dictionary_word'
   | 'dictionary_context';
 
@@ -69,6 +70,13 @@ export interface SelectionDataPayload {
   content: string;
   sourceUri?: string;
   relativePath?: string;
+  /**
+   * 1-based inclusive selection lines. Present only when the content came from
+   * a live editor selection (never for the clipboard fallback) and the host
+   * editor supplied a range.
+   */
+  startLine?: number;
+  endLine?: number;
 }
 
 export interface SelectionDataMessage extends MessageEnvelope<SelectionDataPayload> {

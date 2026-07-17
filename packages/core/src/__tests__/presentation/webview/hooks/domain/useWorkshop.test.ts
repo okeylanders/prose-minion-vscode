@@ -161,7 +161,12 @@ describe('useWorkshop', () => {
     act(() => {
       result.current.handleSessionState(
         sessionState({
-          excerpt: { text: 'Pinned prose.', version: 1, relativePath: 'ch1.md', pinnedAt: 1 },
+          excerpt: {
+            text: 'Pinned prose.',
+            version: 1,
+            source: { kind: 'file', sourceUri: 'file:///ch1.md', relativePath: 'ch1.md' },
+            pinnedAt: 1
+          },
           contextBrief: 'Mara is hiding her identity.',
           pendingHostUpdate: { contextBrief: true },
           todos: [{
@@ -186,7 +191,11 @@ describe('useWorkshop', () => {
     });
 
     expect(result.current.sessionReady).toBe(true);
-    expect(result.current.excerpt?.relativePath).toBe('ch1.md');
+    expect(result.current.excerpt?.source).toEqual({
+      kind: 'file',
+      sourceUri: 'file:///ch1.md',
+      relativePath: 'ch1.md'
+    });
     expect(result.current.contextBrief).toBe('Mara is hiding her identity.');
     expect(result.current.contextBriefPending).toBe(true);
     expect(result.current.turns.map((t) => t.id)).toEqual(['t1', 't2']);
@@ -200,7 +209,7 @@ describe('useWorkshop', () => {
     act(() => {
       result.current.handleSessionState(
         sessionState({
-          excerpt: { text: 'Pinned prose.', version: 1, pinnedAt: 1 },
+          excerpt: { text: 'Pinned prose.', version: 1, source: { kind: 'manual' }, pinnedAt: 1 },
           turns: [makeTurn({ id: 't1', toolId: 'gestures', toolLabel: 'Gestures' })],
           selectedToolId: 'gestures',
           hasConversation: true
@@ -220,7 +229,7 @@ describe('useWorkshop', () => {
     act(() => {
       result.current.handleSessionState(
         sessionState({
-          excerpt: { text: 'Pinned prose.', version: 1, pinnedAt: 1 },
+          excerpt: { text: 'Pinned prose.', version: 1, source: { kind: 'manual' }, pinnedAt: 1 },
           turns: [makeTurn({ id: 't1', toolId: 'cliche', toolLabel: 'Cliché' })],
           activeToolId: 'cliche',
           activeRequestId: 'req-live'
@@ -400,7 +409,13 @@ describe('useWorkshop', () => {
     const { result } = renderHook(() => useWorkshop());
 
     act(() => {
-      result.current.pinExcerpt('Some prose.', 'file:///ch1.md', 'ch1.md');
+      result.current.pinExcerpt('Some prose.', {
+        kind: 'editor-selection',
+        sourceUri: 'file:///ch1.md',
+        relativePath: 'ch1.md',
+        startLine: 12,
+        endLine: 18
+      });
       result.current.runTool('gestures');
       result.current.quickAction('gestures', 'report-gestures', '3 variations');
       result.current.resetSession();
@@ -410,7 +425,16 @@ describe('useWorkshop', () => {
     });
 
     const pin = posted(MessageType.WORKSHOP_SET_EXCERPT)[0];
-    expect(pin.payload).toEqual({ text: 'Some prose.', sourceUri: 'file:///ch1.md', relativePath: 'ch1.md' });
+    expect(pin.payload).toEqual({
+      text: 'Some prose.',
+      source: {
+        kind: 'editor-selection',
+        sourceUri: 'file:///ch1.md',
+        relativePath: 'ch1.md',
+        startLine: 12,
+        endLine: 18
+      }
+    });
     expect(posted(MessageType.WORKSHOP_RUN_TOOL)[0].payload).toEqual({ toolId: 'gestures' });
     expect(posted(MessageType.WORKSHOP_QUICK_ACTION)[0].payload).toEqual({
       toolId: 'gestures',
@@ -434,7 +458,7 @@ describe('useWorkshop', () => {
       result.current.selectPersona('quinn');
       result.current.setChatTarget({ kind: 'tool', toolId: 'continuity' });
       result.current.handleSessionState(sessionState({
-        excerpt: { text: 'A pinned excerpt.', version: 1, pinnedAt: 1 },
+        excerpt: { text: 'A pinned excerpt.', version: 1, source: { kind: 'manual' }, pinnedAt: 1 },
         participants: {
           host: { personaId: 'quinn', hasConversation: true },
           toolSidecars: [{
@@ -478,7 +502,7 @@ describe('useWorkshop', () => {
 
     act(() => {
       result.current.handleSessionState(sessionState({
-        excerpt: { text: 'A pinned excerpt.', version: 1, pinnedAt: 1 },
+        excerpt: { text: 'A pinned excerpt.', version: 1, source: { kind: 'manual' }, pinnedAt: 1 },
         participants: {
           host: { personaId: 'jill', hasConversation: false },
           toolSidecars: [],

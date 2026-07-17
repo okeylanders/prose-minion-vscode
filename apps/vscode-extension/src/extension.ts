@@ -40,6 +40,7 @@ import {
   WorkshopAnalysisSidePass,
   WorkshopPersonaCapabilityFactory,
   CoreServices,
+  toInclusiveLineRange,
 } from '@prose-minion/core';
 // VS Code adapters (app-local; the composition root wires them into the ports)
 import { VsCodeSettingsStore } from './platform/vscode/VsCodeSettingsStore';
@@ -263,8 +264,13 @@ export function activate(context: vscode.ExtensionContext): void {
 
     const uri = editor.document.uri;
     const relativePath = vscode.workspace.asRelativePath(uri, false);
+    const lineRange = toInclusiveLineRange({
+      startLine: selection.start.line,
+      endLine: selection.end.line,
+      endCharacter: selection.end.character
+    });
 
-    return { text, uri, relativePath };
+    return { text, uri, relativePath, lineRange };
   };
 
   const sendSelection = (
@@ -301,8 +307,13 @@ export function activate(context: vscode.ExtensionContext): void {
     }
     workshopPanelProvider?.seedExcerpt({
       text: payload.text,
-      sourceUri: payload.uri.toString(),
-      relativePath: payload.relativePath
+      source: {
+        kind: 'editor-selection',
+        sourceUri: payload.uri.toString(),
+        relativePath: payload.relativePath,
+        startLine: payload.lineRange.startLine,
+        endLine: payload.lineRange.endLine
+      }
     });
   };
 

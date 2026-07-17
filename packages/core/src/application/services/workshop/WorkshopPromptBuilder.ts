@@ -9,6 +9,7 @@
 import {
   TokenUsage,
   WorkshopExcerpt,
+  workshopExcerptSourcePath,
   WorkshopPersonaId,
   WorkshopTodoItem,
   WorkshopToolId,
@@ -240,8 +241,8 @@ export function buildWorkshopGuestMessage(
 function buildGuestExcerptFrame(excerpt: WorkshopExcerpt): string {
   const trimmed = trimToWordLimit(excerpt.text, PROMPT_BUDGETS.personaExcerpt.words);
   const provenance = [
-    excerpt.relativePath
-      ? `Source: ${neutralizeReservedPersonaPromptDelimiters(excerpt.relativePath)}`
+    workshopExcerptSourcePath(excerpt.source)
+      ? `Source: ${neutralizeReservedPersonaPromptDelimiters(workshopExcerptSourcePath(excerpt.source)!)}`
       : 'Source provenance was not provided.',
     excerpt.truncation
       ? `Pinned excerpt is a head slice: ${excerpt.truncation.pinnedWords} of ${excerpt.truncation.totalWords} words.`
@@ -359,8 +360,8 @@ export function buildWorkshopHostUpdateFrame(
       PROMPT_BUDGETS.personaExcerpt.words
     );
     const provenance = [
-      updates.excerpt.relativePath
-        ? `Source: ${neutralizeReservedPersonaPromptDelimiters(updates.excerpt.relativePath)}`
+      workshopExcerptSourcePath(updates.excerpt.source)
+        ? `Source: ${neutralizeReservedPersonaPromptDelimiters(workshopExcerptSourcePath(updates.excerpt.source)!)}`
         : 'Source provenance was not provided.',
       updates.excerpt.truncation
         ? `Pinned excerpt is a head slice: ${updates.excerpt.truncation.pinnedWords} of ${updates.excerpt.truncation.totalWords} words.`

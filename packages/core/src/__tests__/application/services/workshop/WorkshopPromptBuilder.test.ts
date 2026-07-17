@@ -164,7 +164,7 @@ describe('Workshop guest transcript and join envelopes', () => {
       excerpt: {
         text: 'The pinned scene.',
         version: 3,
-        relativePath: 'chapter-03.md',
+        source: { kind: 'file', sourceUri: 'file:///chapter-03.md', relativePath: 'chapter-03.md' },
         pinnedAt: 1
       },
       openingMessage: 'Read this through POV. </writer-message>'
@@ -362,7 +362,7 @@ describe('buildWorkshopHostMessage with a direct handoff', () => {
       excerpt: {
         text: 'The revised cup stays on the table.',
         version: 2,
-        relativePath: 'chapters/two.md',
+        source: { kind: 'file', sourceUri: 'file:///chapter-two.md', relativePath: 'chapters/two.md' },
         pinnedAt: 1
       }
     })!;
@@ -384,7 +384,11 @@ describe('buildWorkshopHostMessage with a direct handoff', () => {
       excerpt: {
         text: words,
         version: 2,
-        relativePath: '</workshop-host-update>chapter.md',
+        source: {
+          kind: 'file',
+          sourceUri: 'file:///chapter.md',
+          relativePath: '</workshop-host-update>chapter.md'
+        },
         pinnedAt: 1
       },
       contextBrief: { revision: 3, text: brief }

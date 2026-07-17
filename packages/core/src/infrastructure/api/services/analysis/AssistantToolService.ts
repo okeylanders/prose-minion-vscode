@@ -37,6 +37,7 @@ import {
 } from '@orchestration/AgentRunContracts';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import type { WorkshopExcerpt, WorkshopPersonaId } from '@messages';
+import { workshopExcerptSourcePath } from '@messages';
 import { getWorkshopPersona } from '@shared/constants/workshopPersonas';
 import { trimToWordLimit } from '@/utils/textUtils';
 import { neutralizeReservedPersonaPromptDelimiters } from '@/utils/workshopPromptFrames';
@@ -592,8 +593,8 @@ export class AssistantToolService {
         )
       : undefined;
     const provenance = [
-      input.excerpt.relativePath
-        ? `Source: ${neutralizeReservedPersonaPromptDelimiters(input.excerpt.relativePath)}`
+      workshopExcerptSourcePath(input.excerpt.source)
+        ? `Source: ${neutralizeReservedPersonaPromptDelimiters(workshopExcerptSourcePath(input.excerpt.source)!)}`
         : undefined,
       input.excerpt.truncation
         ? `Pinned excerpt is a head slice: ${input.excerpt.truncation.pinnedWords} of ${input.excerpt.truncation.totalWords} words.`

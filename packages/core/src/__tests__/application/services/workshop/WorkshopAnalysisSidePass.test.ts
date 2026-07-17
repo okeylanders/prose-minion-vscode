@@ -14,7 +14,7 @@ describe('WorkshopAnalysisSidePass', () => {
       discardConversation: jest.fn()
     } as unknown as jest.Mocked<AssistantToolService>;
     const session = new WorkshopSessionService(() => 3);
-    const excerpt = session.setExcerpt({ text: 'The cup moves.' });
+    const excerpt = session.setExcerpt({ text: 'The cup moves.', source: { kind: 'manual' } });
     session.setContextBrief('Mara cannot see the cup.');
     session.beginPersonaMessage('host-turn', 'Check continuity.');
     const sidePass = new WorkshopAnalysisSidePass(
@@ -74,7 +74,7 @@ describe('WorkshopAnalysisSidePass', () => {
       discardConversation: jest.fn()
     } as unknown as jest.Mocked<AssistantToolService>;
     const session = new WorkshopSessionService(() => 3);
-    session.setExcerpt({ text: 'The cup moves.' });
+    session.setExcerpt({ text: 'The cup moves.', source: { kind: 'manual' } });
     const outputChannel = { appendLine: jest.fn() } as unknown as LogSink;
     const sidePass = new WorkshopAnalysisSidePass(service, session, outputChannel);
     const malformed = 'Report.\n\n### Next steps\n- [ ] Rewrite the opening.';

@@ -24,6 +24,41 @@ export interface ActiveSelectionInfo {
   fsPath: string;
   /** `workspace.asRelativePath(uri, false)` — display/source path. */
   relativePath: string;
+  /**
+   * 1-based inclusive selection lines (Sprint 12 provenance). Optional at this
+   * boundary: a non-editor host may not have line positions; adapters that do
+   * must normalize through `toInclusiveLineRange` so every host reports the
+   * same range for the same selection. Absent when `isEmpty`.
+   */
+  startLine?: number;
+  endLine?: number;
+}
+
+/** 1-based inclusive line range, as carried by selection provenance. */
+export interface SelectionLineRange {
+  startLine: number;
+  endLine: number;
+}
+
+/**
+ * Normalize a zero-based host-editor selection into the 1-based INCLUSIVE
+ * range provenance carries. A selection ending at character 0 of a later line
+ * contains no text from that line, so the range honestly stops on the
+ * previous one.
+ */
+export function toInclusiveLineRange(input: {
+  /** Zero-based line the selection starts on. */
+  startLine: number;
+  /** Zero-based line the selection ends on. */
+  endLine: number;
+  /** Zero-based character offset of the selection end within its line. */
+  endCharacter: number;
+}): SelectionLineRange {
+  const endsAtLineStart = input.endCharacter === 0 && input.endLine > input.startLine;
+  return {
+    startLine: input.startLine + 1,
+    endLine: endsAtLineStart ? input.endLine : input.endLine + 1
+  };
 }
 
 export interface EditorContext {

@@ -58,7 +58,10 @@ import {
   StreamCompleteMessage,
   TokenUsage,
   WorkshopExcerpt,
+  WorkshopExcerptSource,
   WorkshopExcerptTruncation,
+  coerceWorkshopExcerptSource,
+  workshopExcerptSourcePath,
   WorkshopPickExcerptFileMessage,
   WorkshopRequestSessionMessage,
   WorkshopResetSessionMessage,
@@ -730,7 +733,7 @@ export class WorkshopHandler {
   }
 
   async handleSetExcerpt(message: WorkshopSetExcerptMessage): Promise<void> {
-    const { text, sourceUri, relativePath } = message.payload;
+    const { text } = message.payload;
 
     if (typeof text !== 'string' || text.trim().length === 0) {
       this.sendError('workshop', 'Cannot pin an empty excerpt.');
@@ -748,7 +751,7 @@ export class WorkshopHandler {
       return;
     }
 
-    this.replaceExcerpt({ text, sourceUri, relativePath });
+    this.replaceExcerpt({ text, source: coerceWorkshopExcerptSource(message.payload.source) });
     this.postSessionState();
   }
 
@@ -942,7 +945,11 @@ export class WorkshopHandler {
       );
     }
 
-    this.replaceExcerpt({ text, sourceUri: picked.uri, relativePath: displayPath, truncation });
+    this.replaceExcerpt({
+      text,
+      source: { kind: 'file', sourceUri: picked.uri, relativePath: displayPath },
+      truncation
+    });
     this.postSessionState();
   }
 
@@ -983,8 +990,7 @@ export class WorkshopHandler {
 
   private replaceExcerpt(input: {
     text: string;
-    sourceUri?: string;
-    relativePath?: string;
+    source: WorkshopExcerptSource;
     truncation?: WorkshopExcerptTruncation;
   }): void {
     const replacement = this.session.replaceExcerpt(input);
@@ -993,7 +999,7 @@ export class WorkshopHandler {
       this.postTurn(replacement.dividerTurn);
     }
     this.outputChannel.appendLine(
-      `[WorkshopHandler] Excerpt v${replacement.excerpt.version} pinned (${replacement.excerpt.relativePath ?? 'pasted'}, ${replacement.excerpt.text.length} chars, ${replacement.retiredSidecarCount} sidecars retired)`
+      `[WorkshopHandler] Excerpt v${replacement.excerpt.version} pinned (${workshopExcerptSourcePath(replacement.excerpt.source) ?? 'pasted'}, ${replacement.excerpt.text.length} chars, ${replacement.retiredSidecarCount} sidecars retired)`
     );
     const pendingHostUpdates = this.session.collectPendingHostUpdates();
     if (pendingHostUpdates?.excerpt) {

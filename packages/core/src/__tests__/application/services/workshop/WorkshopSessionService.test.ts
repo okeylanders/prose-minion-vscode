@@ -20,12 +20,67 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
 
   const pin = (text = 'She leaves the letter on the table.') => service.setExcerpt({
     text,
-    sourceUri: 'file:///chapter-one.md',
-    relativePath: 'chapters/one.md'
+    source: { kind: 'file', sourceUri: 'file:///chapter-one.md', relativePath: 'chapters/one.md' }
   });
 
   it('reports no pending host updates before an excerpt exists', () => {
     expect(service.collectPendingHostUpdates()).toBeUndefined();
+  });
+
+  it('stamps provenance verbatim for all three source kinds (Sprint 12)', () => {
+    expect(service.setExcerpt({ text: 'Typed.', source: { kind: 'manual' } }).source)
+      .toEqual({ kind: 'manual' });
+
+    const selection = {
+      kind: 'editor-selection' as const,
+      sourceUri: 'file:///chapters/05.md',
+      relativePath: 'chapters/05.md',
+      startLine: 143,
+      endLine: 151
+    };
+    expect(service.replaceExcerpt({ text: 'Pasted from editor.', source: selection }).excerpt.source)
+      .toEqual(selection);
+
+    const file = {
+      kind: 'file' as const,
+      sourceUri: 'file:///chapters/05.md',
+      relativePath: 'chapters/05.md',
+      configuredResource: { group: 'chapters' as const, path: 'chapters/05.md' }
+    };
+    expect(service.replaceExcerpt({ text: 'Read from file.', source: file }).excerpt.source)
+      .toEqual(file);
+  });
+
+  it('isolates stamped provenance from caller mutation', () => {
+    const input = {
+      kind: 'file' as const,
+      sourceUri: 'file:///chapters/05.md',
+      relativePath: 'chapters/05.md',
+      configuredResource: { group: 'chapters' as const, path: 'chapters/05.md' }
+    };
+    service.setExcerpt({ text: 'Read from file.', source: input });
+    input.configuredResource.path = 'mutated.md';
+    (input as { relativePath: string }).relativePath = 'mutated.md';
+
+    const stored = service.getExcerpt()!;
+    expect(stored.source).toEqual({
+      kind: 'file',
+      sourceUri: 'file:///chapters/05.md',
+      relativePath: 'chapters/05.md',
+      configuredResource: { group: 'chapters', path: 'chapters/05.md' }
+    });
+  });
+
+  it('names the source path in the revision divider, falling back for manual text', () => {
+    pin();
+    const sourced = service.replaceExcerpt({
+      text: 'Revision two.',
+      source: { kind: 'file', sourceUri: 'file:///chapters/two.md', relativePath: 'chapters/two.md' }
+    });
+    expect(sourced.dividerTurn?.content).toContain('chapters/two.md');
+
+    const manual = service.replaceExcerpt({ text: 'Revision three.', source: { kind: 'manual' } });
+    expect(manual.dividerTurn?.content).toContain('Pasted excerpt');
   });
 
   const adoptReport = (
@@ -112,7 +167,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     service.addTodoFromFinding(report.id, 'finding-1');
 
     expect(service.collectOpenTodosForHost()).toHaveLength(1);
-    service.replaceExcerpt({ text: 'A new excerpt.' });
+    service.replaceExcerpt({ text: 'A new excerpt.', source: { kind: 'manual' } });
 
     expect(service.getSnapshot().todos[0].stale).toBe(true);
     expect(service.collectOpenTodosForHost()).toEqual([]);
@@ -358,7 +413,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
 
     const first = service.replaceExcerpt({
       text: 'The revised letter waits on the table.',
-      relativePath: 'chapters/two.md'
+      source: { kind: 'file', sourceUri: 'file:///chapter-two.md', relativePath: 'chapters/two.md' }
     });
 
     expect(first.disposedConversationIds.sort()).toEqual(['continuity-conv', 'prose-conv']);
@@ -376,7 +431,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(proseReport.excerptVersion).toBe(1);
     expect(service.collectPendingHostUpdates()?.excerpt?.version).toBe(2);
 
-    service.replaceExcerpt({ text: 'Only the newest draft should ship.' });
+    service.replaceExcerpt({ text: 'Only the newest draft should ship.', source: { kind: 'manual' } });
     expect(service.collectPendingHostUpdates()?.excerpt).toMatchObject({
       version: 3,
       text: 'Only the newest draft should ship.'
@@ -401,7 +456,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     service.commitPendingHostUpdates(firstDelivery);
     expect(service.collectPendingHostUpdates()?.contextBrief?.text).toBe('Newest changed brief.');
 
-    service.replaceExcerpt({ text: 'Revised text.' });
+    service.replaceExcerpt({ text: 'Revised text.', source: { kind: 'manual' } });
     expect(service.getContextBrief()).toBe('Newest changed brief.');
     const combinedDelivery = service.collectPendingHostUpdates()!;
     expect(combinedDelivery.excerpt?.version).toBe(2);
@@ -476,7 +531,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
 
   it('refuses a capability artifact stamped with a stale excerpt version', () => {
     pin();
-    service.setExcerpt({ text: 'A revised excerpt.' });
+    service.setExcerpt({ text: 'A revised excerpt.', source: { kind: 'manual' } });
     service.beginPersonaMessage('host-capabilities', 'Check this word.');
 
     const completion = service.recordCapabilityArtifact({

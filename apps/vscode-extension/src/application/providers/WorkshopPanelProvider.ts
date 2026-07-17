@@ -25,6 +25,7 @@ import {
   MessageType,
   Platform,
   SURFACE_WORKSHOP,
+  WorkshopExcerptSource,
   WorkshopSetExcerptMessage,
   coerceWebviewErrorText,
 } from '@prose-minion/core';
@@ -141,7 +142,7 @@ export class WorkshopPanelProvider implements vscode.Disposable {
    * is still booting, its mount-time WORKSHOP_REQUEST_SESSION picks the
    * excerpt up from the session snapshot — no race.
    */
-  public seedExcerpt(payload: { text: string; sourceUri?: string; relativePath?: string }): void {
+  public seedExcerpt(payload: { text: string; source?: WorkshopExcerptSource }): void {
     this.openOrReveal();
     const message: WorkshopSetExcerptMessage = {
       type: MessageType.WORKSHOP_SET_EXCERPT,

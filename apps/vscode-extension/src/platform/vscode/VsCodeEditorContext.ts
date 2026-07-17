@@ -6,7 +6,7 @@
  * so core never touches `vscode.Uri` or the editor object.
  */
 import * as vscode from 'vscode';
-import { ActiveSelectionInfo, EditorContext } from '@prose-minion/core';
+import { ActiveSelectionInfo, EditorContext, toInclusiveLineRange } from '@prose-minion/core';
 
 export class VsCodeEditorContext implements EditorContext {
   getActiveSelection(): ActiveSelectionInfo | undefined {
@@ -16,12 +16,22 @@ export class VsCodeEditorContext implements EditorContext {
     }
     const selection = editor.selection;
     const text = editor.document.getText(selection);
+    const isEmpty = selection.isEmpty || text.length === 0;
+    const lineRange = isEmpty
+      ? undefined
+      : toInclusiveLineRange({
+          startLine: selection.start.line,
+          endLine: selection.end.line,
+          endCharacter: selection.end.character
+        });
     return {
       text,
-      isEmpty: selection.isEmpty || text.length === 0,
+      isEmpty,
       uriString: editor.document.uri.toString(),
       fsPath: editor.document.uri.fsPath,
       relativePath: vscode.workspace.asRelativePath(editor.document.uri, false),
+      startLine: lineRange?.startLine,
+      endLine: lineRange?.endLine,
     };
   }
 }

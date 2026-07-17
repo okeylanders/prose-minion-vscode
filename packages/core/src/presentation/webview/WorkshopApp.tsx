@@ -34,7 +34,9 @@ import {
   StatusMessage,
   WorkshopToolId,
   WorkshopPersonaId,
-  WorkshopTurn
+  WorkshopTurn,
+  workshopExcerptSourcePath,
+  workshopExcerptSourceUri
 } from '@messages';
 import { ModelSelector } from './components/shared/ModelSelector';
 import { ExcerptPanel } from './components/workshop/ExcerptPanel';
@@ -365,8 +367,8 @@ export const WorkshopApp: React.FC = () => {
           metadata: {
             excerpt: workshop.excerpt?.text,
             context: `${participantLabel} · ${turn.artifact.replace(/_/g, ' ')}`,
-            relativePath: workshop.excerpt?.relativePath,
-            sourceFileUri: workshop.excerpt?.sourceUri,
+            relativePath: workshop.excerpt ? workshopExcerptSourcePath(workshop.excerpt.source) : undefined,
+            sourceFileUri: workshop.excerpt ? workshopExcerptSourceUri(workshop.excerpt.source) : undefined,
             timestamp: Date.now()
           }
         },
@@ -416,7 +418,7 @@ export const WorkshopApp: React.FC = () => {
             <p className="pm-ws-subtitle">
               <Icon name="doc" size={12} />{' '}
               {workshop.excerpt
-                ? `${workshop.excerpt.relativePath ?? 'Pinned excerpt'} · v${workshop.excerpt.version} · ${excerptWordCount} words`
+                ? `${workshopExcerptSourcePath(workshop.excerpt.source) ?? 'Pinned excerpt'} · v${workshop.excerpt.version} · ${excerptWordCount} words`
                 : 'No excerpt pinned yet'}
             </p>
           </div>

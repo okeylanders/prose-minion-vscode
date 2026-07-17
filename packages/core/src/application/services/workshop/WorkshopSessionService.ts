@@ -12,7 +12,9 @@ import {
   WorkshopChatTarget,
   WorkshopActionableFinding,
   WorkshopExcerpt,
+  WorkshopExcerptSource,
   WorkshopExcerptTruncation,
+  workshopExcerptSourcePath,
   WorkshopPersonaId,
   WorkshopPersonaGuestSnapshot,
   WorkshopParticipantsSnapshot,
@@ -42,8 +44,8 @@ const assertNever = (value: never): never => {
 
 export interface WorkshopExcerptInput {
   text: string;
-  sourceUri?: string;
-  relativePath?: string;
+  /** Validated provenance — callers coerce IPC claims before reaching the aggregate. */
+  source: WorkshopExcerptSource;
   truncation?: WorkshopExcerptTruncation;
 }
 
@@ -155,8 +157,7 @@ export class WorkshopSessionService {
     this.excerpt = {
       text: input.text,
       version: this.excerptVersion,
-      sourceUri: input.sourceUri,
-      relativePath: input.relativePath,
+      source: cloneExcerptSource(input.source),
       truncation: input.truncation ? { ...input.truncation } : undefined,
       pinnedAt: this.now()
     };
@@ -189,7 +190,7 @@ export class WorkshopSessionService {
     }
 
     const retiredLabels = retired.map(sidecar => workshopToolLabel(sidecar.toolId)).sort();
-    const source = excerpt.relativePath ?? 'Pasted excerpt';
+    const source = workshopExcerptSourcePath(excerpt.source) ?? 'Pasted excerpt';
     const retiredText = retiredLabels.length > 0 ? retiredLabels.join(', ') : 'none';
     const dividerTurn: WorkshopTurn = {
       id: this.nextTurnId('system'),
@@ -1217,6 +1218,20 @@ function cloneMetadataValue(value: unknown): unknown {
   return value;
 }
 
+function cloneExcerptSource(source: WorkshopExcerptSource): WorkshopExcerptSource {
+  if (source.kind === 'manual') {
+    return { kind: 'manual' };
+  }
+  return {
+    ...source,
+    configuredResource: source.configuredResource ? { ...source.configuredResource } : undefined
+  };
+}
+
 function cloneExcerpt(excerpt: WorkshopExcerpt): WorkshopExcerpt {
-  return { ...excerpt, truncation: excerpt.truncation ? { ...excerpt.truncation } : undefined };
+  return {
+    ...excerpt,
+    source: cloneExcerptSource(excerpt.source),
+    truncation: excerpt.truncation ? { ...excerpt.truncation } : undefined
+  };
 }
