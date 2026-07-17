@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prose Minion — Excerpt &amp; Context Intake (Sprint 12)</title>
+<style>
+:root{
+  --bg:#15110d;--surface:#221a13;--surface-2:#2b2017;--inset:#1b150f;
+  --border:#3a2c1f;--border-2:#4d3a28;--border-soft:#2e231a;
+  --text:#f3ece1;--text-2:#c9bbab;--muted:#a4937f;--dim:#7a6c5b;--faint:#5c5044;
+  --accent:#e0673a;--accent-hi:#ee7d49;--accent-soft:rgba(224,103,58,0.14);
+  --green:#6fc98a;--amber:#e2b24a;--red:#e05a4e;--blue:#5aa2f0;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);background-image:linear-gradient(180deg,#211910 0%,var(--bg) 260px);font-family:var(--sans);color:var(--text);-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px 60px}
+a{color:var(--accent-hi)}a:hover{color:var(--text)}
+button{font-family:var(--sans)}
+:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px;border-radius:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.demo{width:min(760px,100%)}
+.demo-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:600;margin:0 2px 10px}
+.scen{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.scen-label{font-size:12px;color:var(--dim);margin-right:2px}
+.chip{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface-2);color:var(--text-2);font-size:12.5px;font-weight:500;cursor:pointer}
+.chip.active{border-color:var(--accent);background:var(--accent-soft);color:var(--text)}
+.stagewrap{display:flex;gap:26px;align-items:flex-start}
+.stage{background:var(--surface);border:1px solid var(--border-soft);border-radius:14px;padding:16px;box-shadow:0 20px 50px rgba(0,0,0,.35);width:344px;flex:none;display:flex;flex-direction:column;gap:12px}
+.stage-cap{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);font-weight:600;text-align:center;padding:4px 0 0}
+.hint{flex:1;font-size:12px;color:var(--dim);line-height:1.7;padding-top:4px}
+.hint code{font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--surface-2);padding:1px 5px;border-radius:4px}
+.hint p{margin:0 0 10px}
+
+/* shared card bits */
+.card{border:1px solid var(--border-soft);background:var(--inset);border-radius:10px;padding:12px;display:flex;flex-direction:column;min-height:290px}
+.card-h{display:flex;align-items:center;gap:8px;margin-bottom:10px;min-height:22px}
+.card-title{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:var(--dim)}
+.stat-chip{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--accent-hi);border:1px solid rgba(224,103,58,.4);background:var(--accent-soft);border-radius:5px;padding:2px 7px;white-space:nowrap}
+.stat-chip.lock{color:var(--amber);border-color:rgba(226,178,74,.35);background:rgba(226,178,74,.08)}
+.card-sub{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+.caption{font-size:11.5px;color:var(--dim);line-height:1.55;text-align:center;padding:0 8px}
+.bigbtn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;flex:1;border:1px dashed var(--border-2);background:var(--surface-2);border-radius:9px;color:var(--text-2);font-size:13px;font-weight:500;cursor:pointer;padding:14px}
+.bigbtn:hover{border-color:var(--accent);color:var(--text);border-style:solid}
+.bigbtn svg{width:18px;height:18px;color:var(--muted)}
+.bigbtn:hover svg{color:var(--accent-hi)}
+.bigbtn .sub{font-size:10.5px;color:var(--faint);font-weight:400}
+.btnstack{display:flex;flex-direction:column;gap:8px;flex:1}
+.smallbtns{display:flex;gap:7px;flex-wrap:wrap}
+.sbtn{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:500;color:var(--text-2);background:var(--surface-2);border:1px solid var(--border);border-radius:7px;padding:5px 10px;cursor:pointer}
+.sbtn:hover{border-color:var(--border-2);color:var(--text)}
+.sbtn svg{width:12px;height:12px;color:var(--muted);flex:none}
+.sbtn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.sbtn.primary:hover{background:var(--accent-hi)}
+.sbtn.primary svg{color:#fff}
+.sbtn:disabled{opacity:.45;cursor:not-allowed}
+.notice{display:flex;gap:7px;align-items:flex-start;font-size:11px;line-height:1.5;border-radius:7px;padding:7px 9px;border:1px solid var(--border-soft);background:var(--surface-2);color:var(--text-2)}
+.notice.warn{border-color:rgba(226,178,74,.35);color:var(--amber);background:rgba(226,178,74,.06)}
+.notice.err{border-color:rgba(224,90,78,.4);color:var(--red);background:rgba(224,90,78,.06)}
+.notice.ok{border-color:rgba(111,201,138,.3);color:var(--green);background:rgba(111,201,138,.05)}
+.notice svg{width:12px;height:12px;flex:none;margin-top:1px}
+.statusline{font-size:11px;color:var(--faint);font-style:italic}
+.statusline b{color:var(--dim);font-weight:500;font-style:normal}
+
+/* ============ EXCERPT WIDGET (.exq) ============ */
+.exq textarea{width:100%;flex:1;min-height:120px;resize:none;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:12px;line-height:1.6;padding:10px;outline:none}
+.exq textarea:focus{border-color:var(--accent)}
+.exq-count{display:flex;align-items:baseline;gap:6px;font-family:var(--mono);font-size:10.5px;color:var(--dim);margin:7px 0}
+.exq-count b{color:var(--text-2);font-weight:500}
+.exq-count .cap{margin-left:auto;color:var(--faint)}
+.exq-verify{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--green);border:1px solid rgba(111,201,138,.3);background:rgba(111,201,138,.05);border-radius:7px;padding:6px 9px;margin-bottom:8px}
+.exq-verify svg{width:12px;height:12px;flex:none}
+.exq-verify .p{font-family:var(--mono);font-size:10.5px;color:var(--text-2)}
+.exq-body{flex:1;display:flex;flex-direction:column;min-height:0}
+.exq-set-title{font-size:13.5px;font-weight:600;color:var(--text);margin:2px 0 3px}
+.exq-set-meta{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.exq-prov{display:flex;align-items:center;gap:7px;margin-top:9px;font-size:11.5px;color:var(--text-2)}
+.exq-prov svg{width:13px;height:13px;flex:none;color:var(--blue)}
+.exq-prov.unknown svg{color:var(--dim)}
+.exq-prov.unknown{color:var(--muted)}
+.exq-prov .pp{font-family:var(--mono);font-size:11px}
+.exq-preview{flex:1;margin-top:10px;border:1px solid var(--border-soft);border-radius:8px;background:var(--surface-2);padding:9px 11px;font-family:var(--mono);font-size:11px;line-height:1.65;color:var(--muted);overflow:hidden;position:relative;min-height:64px}
+.exq-preview::after{content:"";position:absolute;inset:auto 0 0 0;height:34px;background:linear-gradient(transparent,var(--surface-2))}
+.exq-foot{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+
+/* ============ CONTEXT WIDGET (.ctxq) ============ */
+.ctxq-pills{display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start}
+.pill{display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--surface-2);border-radius:999px;padding:4px 6px 4px 9px;font-size:11.5px;color:var(--text-2);max-width:100%}
+.pill svg{width:12px;height:12px;flex:none;color:var(--blue)}
+.pill.text svg{color:var(--muted)}
+.pill.wizard svg{color:var(--accent-hi)}
+.pill .pl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.pill .ps{font-family:var(--mono);font-size:10px;color:var(--faint);white-space:nowrap}
+.pill .px{width:16px;height:16px;border-radius:50%;border:0;background:none;color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none;padding:0}
+.pill .px:hover{background:rgba(224,90,78,.15);color:var(--red)}
+.pill .px svg{width:9px;height:9px;color:inherit}
+.meter{margin-top:auto;padding-top:10px}
+.meter-row{display:flex;align-items:center;gap:9px}
+.meter-track{flex:1;height:5px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.meter-fill{height:100%;border-radius:999px;background:var(--accent);transition:width .45s cubic-bezier(.3,.8,.3,1),background .3s}
+.meter.warn .meter-fill{background:var(--amber)}
+.meter.hot .meter-fill{background:var(--red)}
+.meter-nums{font-family:var(--mono);font-size:10.5px;color:var(--muted);white-space:nowrap}
+.meter-nums b{color:var(--text-2);font-weight:500}
+.meter.warn .meter-nums b{color:var(--amber)}
+.meter.hot .meter-nums b{color:var(--red)}
+.meter-cap{font-size:10px;color:var(--faint);margin-top:4px}
+@keyframes meterflash{0%,100%{background:var(--surface-2)}30%{background:rgba(224,90,78,.4)}}
+.meter.flash .meter-track{animation:meterflash .7s ease 2}
+.ctxq textarea{width:100%;min-height:74px;resize:none;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:11.5px;line-height:1.55;padding:9px;outline:none}
+.ctxq textarea:focus{border-color:var(--accent)}
+.wiz-row{display:flex;align-items:center;gap:8px;border:1px solid rgba(224,103,58,.35);background:var(--accent-soft);border-radius:7px;padding:7px 10px;font-size:11.5px;color:var(--text-2)}
+.wiz-row .spin{width:12px;height:12px;border-radius:50%;border:2px solid rgba(238,125,73,.25);border-top-color:var(--accent-hi);animation:spin .8s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.wiz-row .spin{border-top-color:var(--accent-hi);opacity:.8}}
+.wiz-row b{color:var(--accent-hi);font-weight:600}
+
+/* ============ CONTEXT SELECTOR MODAL (.ctxsel) ============ */
+.ctxsel-overlay{position:fixed;inset:0;background:rgba(10,7,4,.66);display:none;align-items:center;justify-content:center;padding:24px;z-index:50}
+.ctxsel-overlay.open{display:flex}
+.ctxsel{width:min(540px,100%);max-height:min(640px,90vh);background:var(--surface);border:1px solid var(--border-2);border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.6);display:flex;flex-direction:column;overflow:hidden}
+.ctxsel-h{padding:16px 18px 12px;border-bottom:1px solid var(--border-soft)}
+.ctxsel-kicker{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:var(--dim);margin-bottom:4px}
+.ctxsel-title-row{display:flex;align-items:center;gap:10px}
+.ctxsel-title{font-size:16px;font-weight:600;color:var(--text)}
+.ctxsel-close{margin-left:auto;width:26px;height:26px;border-radius:7px;border:1px solid var(--border);background:var(--surface-2);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.ctxsel-close:hover{color:var(--text);border-color:var(--border-2)}
+.ctxsel-sub{font-size:12px;color:var(--dim);margin-top:5px;line-height:1.5}
+.ctxsel-body{overflow-y:auto;padding:8px 10px;flex:1}
+.ctxsel-group{margin:6px 0 2px}
+.ctxsel-gh{display:flex;align-items:baseline;gap:8px;padding:6px 8px 4px}
+.ctxsel-gname{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--dim)}
+.ctxsel-gcount{font-family:var(--mono);font-size:10px;color:var(--faint)}
+.ctxsel-file{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:0;border-radius:7px;padding:7px 8px;cursor:pointer;color:var(--text-2);font-size:12.5px}
+.ctxsel-file:hover{background:rgba(255,255,255,.03)}
+.ctxsel-file .cb{width:15px;height:15px;border-radius:4px;border:1.5px solid var(--border-2);flex:none;display:flex;align-items:center;justify-content:center;background:var(--inset)}
+.ctxsel-file .cb svg{width:9px;height:9px;color:#fff;display:none}
+.ctxsel-file.sel .cb{background:var(--accent);border-color:var(--accent)}
+.ctxsel-file.sel .cb svg{display:block}
+.ctxsel-file.sel{color:var(--text)}
+.ctxsel-file .fp{font-family:var(--mono);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+.ctxsel-file .fw{font-family:var(--mono);font-size:10.5px;color:var(--faint);white-space:nowrap}
+.ctxsel-file .tag{font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--blue);border:1px solid rgba(90,162,240,.35);border-radius:4px;padding:1px 5px;flex:none}
+.ctxsel-file.attached{opacity:.45;cursor:not-allowed}
+.ctxsel-file.attached .fw{color:var(--dim)}
+.ctxsel-explore{display:flex;align-items:center;gap:9px;width:calc(100% - 4px);margin:8px 2px 4px;border:1px dashed var(--border-2);background:none;border-radius:8px;padding:9px 10px;color:var(--muted);font-size:12px;cursor:pointer;text-align:left}
+.ctxsel-explore:hover{border-color:var(--accent);color:var(--text)}
+.ctxsel-explore svg{width:14px;height:14px;flex:none;color:var(--dim)}
+.ctxsel-cats{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px 4px 2px}
+.ctxsel-cat{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:7px;border:1px solid var(--border);background:var(--surface-2);border-radius:10px;padding:12px;cursor:pointer;text-align:left;color:var(--text-2)}
+.ctxsel-cat:hover{border-color:var(--accent);color:var(--text)}
+.ctxsel-cat .ci{width:26px;height:26px;border-radius:7px;background:var(--inset);border:1px solid var(--border-soft);display:flex;align-items:center;justify-content:center;color:var(--accent-hi)}
+.ctxsel-cat .ci svg{width:14px;height:14px}
+.ctxsel-cat .cn{font-size:12.5px;font-weight:600;color:var(--text);line-height:1.3}
+.ctxsel-cat .cm{font-family:var(--mono);font-size:10px;color:var(--faint)}
+.ctxsel-cat .csel{position:absolute;top:10px;right:10px;font-family:var(--mono);font-size:9.5px;font-weight:600;color:var(--accent-hi);border:1px solid rgba(224,103,58,.4);background:var(--accent-soft);border-radius:4px;padding:1px 5px}
+.ctxsel-nav{display:flex;align-items:center;gap:9px;padding:6px 4px 8px}
+.ctxsel-back{display:flex;align-items:center;gap:5px;border:1px solid var(--border);background:var(--surface-2);border-radius:7px;padding:4px 9px 4px 7px;font-size:11.5px;color:var(--text-2);cursor:pointer}
+.ctxsel-back:hover{border-color:var(--border-2);color:var(--text)}
+.ctxsel-back svg{width:11px;height:11px}
+.ctxsel-crumb{font-family:var(--mono);font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctxsel-crumb b{color:var(--text-2);font-weight:500}
+.ctxsel-folderbtn{display:flex;align-items:center;gap:9px;width:calc(100% - 4px);margin:0 2px 6px;border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:9px 11px;font-size:12.5px;font-weight:500;color:var(--text-2);cursor:pointer;text-align:left}
+.ctxsel-folderbtn:hover{border-color:var(--accent);color:var(--text)}
+.ctxsel-folderbtn>svg{width:14px;height:14px;color:var(--amber);flex:none}
+.ctxsel-folderbtn .fm{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+.ctxsel-folderbtn .chev{width:11px;height:11px;color:var(--dim);flex:none}
+.ctxsel-f{border-top:1px solid var(--border-soft);padding:12px 18px;display:flex;align-items:center;gap:12px}
+.ctxsel-total{font-size:11.5px;color:var(--dim)}
+.ctxsel-total b{font-family:var(--mono);color:var(--text-2);font-weight:500}
+.ctxsel-total.over b{color:var(--red)}
+.ctxsel-f .spacer{flex:1}
+.ctxsel-overmsg{font-size:11px;color:var(--red)}
+</style>
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#15110d"/><rect x="22" y="18" width="56" height="28" rx="6" fill="#2b2017" stroke="#e0673a" stroke-width="2"/><rect x="22" y="54" width="26" height="12" rx="6" fill="#2b2017"/><rect x="52" y="54" width="26" height="12" rx="6" fill="#2b2017"/><rect x="22" y="72" width="56" height="6" rx="3" fill="#2b2017"/><rect x="22" y="72" width="24" height="6" rx="3" fill="#e0673a"/></svg>
+</template>
+</head>
+<body>
+<div class="demo">
+  <div class="demo-label">Excerpt &amp; context intake — Sprint 12</div>
+  <div class="scen" id="scen" role="tablist" aria-label="Demo scenarios">
+    <span class="scen-label">Scenario</span>
+    <button class="chip active" data-s="fresh">Fresh session</button>
+    <button class="chip" data-s="drafting">Drafting</button>
+    <button class="chip" data-s="set">Set + populated</button>
+    <button class="chip" data-s="locked">Locked mid-session</button>
+    <button class="chip" data-s="modal">Modal open</button>
+  </div>
+  <div class="stagewrap">
+    <div class="stage">
+      <div class="card exq" id="exq" aria-label="Excerpt panel"></div>
+      <div class="card ctxq" id="ctxq" aria-label="Context panel"></div>
+      <div class="stage-cap">Left rail · thread begins below</div>
+    </div>
+    <div class="hint">
+      <p><b>Excerpt</b> — exactly one, versioned. Empty state is two intent buttons; setting it <i>is</i> the commitment (no extra confirm step, no special vocabulary). Pasting the active editor selection stamps verified provenance; anything else stays honestly <code>source unknown</code>. Once the session starts, the card locks: replace routes become <code>Update text…</code> (typed origin) or <code>Re-read from file</code> (file origin), both bumping the version.</p>
+      <p><b>Context</b> — an ordered, removable list. Text rounds and files each mint a pill (icon = kind; wand = wizard-suggested). One aggregate 10,000-word meter across all attachments, same tone language as the context bar. The wizard streams as a status row, one run at a time; its results land as ordinary pills. Duplicate adds and over-budget adds are rejected inline; mid-session adds post a visible event turn.</p>
+      <p><b>Try it:</b> buttons are live — type &amp; confirm an excerpt, add a text note, remove pills, run the wizard, open the selector (also reachable from the composer's <code>+</code>). In the modal, pick files and watch the running total; the confirm disables past budget.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CONTEXT SELECTOR MODAL ============ -->
+<div class="ctxsel-overlay" id="ctxsel-overlay">
+  <div class="ctxsel" role="dialog" aria-modal="true" aria-labelledby="ctxsel-title">
+    <div class="ctxsel-h">
+      <div class="ctxsel-kicker">Add context</div>
+      <div class="ctxsel-title-row">
+        <span class="ctxsel-title" id="ctxsel-title">Choose from project</span>
+        <button class="ctxsel-close" id="ctxsel-close" aria-label="Close">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+        </button>
+      </div>
+      <div class="ctxsel-sub" id="ctxsel-sub">Your configured resource categories. Files chosen through Explore are tagged — they aren't part of a configured group.</div>
+    </div>
+    <div class="ctxsel-body" id="ctxsel-body"></div>
+    <div class="ctxsel-f">
+      <span class="ctxsel-total" id="ctxsel-total"></span>
+      <span class="spacer"></span>
+      <span class="ctxsel-overmsg" id="ctxsel-overmsg" hidden>Over the 10,000-word context budget</span>
+      <button class="sbtn" id="ctxsel-cancel">Cancel</button>
+      <button class="sbtn primary" id="ctxsel-add">Add 0 files</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- shared ---------- */
+const BUDGET = 10000;
+const fmt = n => n.toLocaleString('en-US');
+const wc = t => (t.trim().match(/\S+/g)||[]).length;
+const ICO = {
+  file:'<svg viewBox="0 0 16 16" fill="none"><path d="M4 1.5h5L13 5.5v9a1 1 0 01-1 1H4a1 1 0 01-1-1v-12a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4"/><path d="M9 1.5V6h4" stroke="currentColor" stroke-width="1.4"/></svg>',
+  text:'<svg viewBox="0 0 16 16" fill="none"><path d="M3 3.5h10M3 7h10M3 10.5h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  wizard:'<svg viewBox="0 0 16 16" fill="none"><path d="M2 14L10.5 5.5M12 2l.6 1.9L14.5 4.5l-1.9.6L12 7l-.6-1.9L9.5 4.5l1.9-.6L12 2z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  folder:'<svg viewBox="0 0 16 16" fill="none"><path d="M1.5 4a1 1 0 011-1H6l1.5 2h6a1 1 0 011 1v6.5a1 1 0 01-1 1h-11a1 1 0 01-1-1V4z" stroke="currentColor" stroke-width="1.4"/></svg>',
+  check:'<svg viewBox="0 0 16 16" fill="none"><path d="M2.5 8.5L6 12l7.5-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  x:'<svg viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+  paste:'<svg viewBox="0 0 16 16" fill="none"><rect x="3.5" y="2.5" width="9" height="12" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M6 1.5h4v2.5H6z" stroke="currentColor" stroke-width="1.4"/><path d="M6 8h4M6 11h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  refresh:'<svg viewBox="0 0 16 16" fill="none"><path d="M13.5 8a5.5 5.5 0 11-1.6-3.9M13.5 1.5v3h-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  pen:'<svg viewBox="0 0 16 16" fill="none"><path d="M11.5 2l2.5 2.5L5.5 13 2 14l1-3.5L11.5 2z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>'
+};
+const SAMPLE = '"Nate! Ava! Are you in here? Help!" Kayla\'s panicked voice cut through the darkness, unable to see anything in the pitch-black room.\n\n"We\'re here!" Nate called out, recognizing his sister\'s voice immediately. "What\'s wrong?!"';
+
+/* configured resource categories for the modal (category → folders → files) */
+const CATS = [
+  {id:'characters', name:'Characters', icon:'person', root:{folders:[
+    {name:'Kayla', files:[{path:'Characters/Kayla/character-sheet-kayla.md',words:1105},{path:'Characters/Kayla/kayla-voice-guide.md',words:980}]},
+    {name:'Raven', files:[{path:'Characters/Raven/character-sheet-raven.md',words:1240},{path:'Characters/Raven/raven-arc-notes.md',words:560}]}],
+    files:[{path:'Characters/voice-cheat-sheet.md',words:430}]}},
+  {id:'locations', name:'Locations & Settings', icon:'pin', root:{folders:[],files:[
+    {path:'Locations/prom-gym.md',words:620},{path:'Locations/blackout-town.md',words:1480}]}},
+  {id:'themes', name:'Themes', icon:'spark', root:{folders:[],files:[
+    {path:'Themes/thematic-structure.md',words:1150},{path:'Themes/literary-devices.md',words:730}]}},
+  {id:'things', name:'Things / Props', icon:'box', root:{folders:[],files:[
+    {path:'Things/marked-tokens.md',words:410}]}},
+  {id:'drafts', name:'Drafts & Outlines', icon:'pen', root:{folders:[],files:[
+    {path:'Drafts/chapter-6-draft.md',words:3270},{path:'Drafts/marked-ones-outline.md',words:1850},{path:'Drafts/revision-notes.md',words:940}]}},
+  {id:'manuscript', name:'Manuscript Chapters', icon:'book', root:{folders:[],files:[
+    {path:'Manuscripts/chapter-4.md',words:5120},{path:'Manuscripts/chapter-5.md',words:4890}]}},
+  {id:'brief', name:'Project Brief Materials', icon:'doc', root:{folders:[],files:[
+    {path:'story-overview.md',words:780},{path:'storytelling-framework-guide.md',words:1320}]}},
+  {id:'refs', name:'General References', icon:'ref', root:{folders:[],files:[
+    {path:'Research/timeline.md',words:2300},{path:'Research/world-rules.md',words:3150}]}}
+];
+Object.assign(ICO, {
+  person:'<svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="2.6" stroke="currentColor" stroke-width="1.4"/><path d="M2.8 14c.7-2.7 2.8-4 5.2-4s4.5 1.3 5.2 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  pin:'<svg viewBox="0 0 16 16" fill="none"><path d="M8 14.5S3 9.9 3 6.5a5 5 0 1110 0c0 3.4-5 8-5 8z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="8" cy="6.5" r="1.7" stroke="currentColor" stroke-width="1.4"/></svg>',
+  spark:'<svg viewBox="0 0 16 16" fill="none"><path d="M8 1.5l1.4 4.1 4.1 1.4-4.1 1.4L8 12.5 6.6 8.4 2.5 7l4.1-1.4L8 1.5zM13 11l.5 1.5L15 13l-1.5.5L13 15l-.5-1.5L11 13l1.5-.5L13 11z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
+  box:'<svg viewBox="0 0 16 16" fill="none"><path d="M2.5 5L8 2l5.5 3v6L8 14l-5.5-3V5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M2.5 5L8 8l5.5-3M8 8v6" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>',
+  book:'<svg viewBox="0 0 16 16" fill="none"><path d="M8 3.5C6.8 2.6 5 2.5 2.5 2.5v10c2.5 0 4.3.1 5.5 1 1.2-.9 3-1 5.5-1v-10C11 2.5 9.2 2.6 8 3.5zM8 3.5v10" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>',
+  doc:'<svg viewBox="0 0 16 16" fill="none"><path d="M4 1.5h5L13 5.5v9a1 1 0 01-1 1H4a1 1 0 01-1-1v-12a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4"/><path d="M5.5 8.5h5M5.5 11h3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  ref:'<svg viewBox="0 0 16 16" fill="none"><path d="M4 1.5h8v13l-4-2.7-4 2.7v-13z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>',
+  chevR:'<svg viewBox="0 0 16 16" fill="none"><path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  chevL:'<svg viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+});
+
+/* ============================================================
+   EXCERPT WIDGET (.exq) — render(state)
+   state: { mode:'empty'|'typing'|'set', locked, version, title, words,
+     source:{kind:'manual'|'editor-selection'|'file', path?, lines?},
+     truncation:{kept,total}?, status?, text?, verified?:{path,lines} }
+   ============================================================ */
+const Excerpt = (() => {
+  const el = document.getElementById('exq');
+  let s = {mode:'empty'};
+  function provLine(src){
+    if (!src || src.kind === 'manual')
+      return '<div class="exq-prov unknown">' + ICO.text.replace('viewBox','width="13" height="13" viewBox') + '<span>Pasted or typed · <span class="pp">source unknown</span></span></div>';
+    const verb = src.kind === 'file' ? 'From' : 'From';
+    return '<div class="exq-prov">' + ICO.file + '<span>' + verb + ' <span class="pp">' + src.path + '</span>' + (src.lines ? ' · <span class="pp">lines ' + src.lines + '</span>' : '') + '</span></div>';
+  }
+  function render(st){
+    if (st) s = st;
+    let h = '';
+    if (s.mode === 'empty'){
+      h = '<div class="card-h"><span class="card-title">Excerpt</span></div>' +
+        '<div class="btnstack">' +
+        '<button class="bigbtn" data-a="type">' + ICO.pen + 'Paste or type<span class="sub">verified if it matches your editor selection</span></button>' +
+        '<button class="bigbtn" data-a="pickfile">' + ICO.file + 'Choose from project…<span class="sub">reads the file, head-slices past 10,000 words</span></button>' +
+        '</div>' +
+        '<div class="caption" style="margin-top:10px">The excerpt is the text this room is workshopping.</div>';
+    } else if (s.mode === 'typing'){
+      const n = wc(s.text||'');
+      const over = n > BUDGET;
+      h = '<div class="card-h"><span class="card-title">Excerpt</span><span class="card-sub">draft</span></div>' +
+        '<div class="exq-body">' +
+        '<textarea id="exq-ta" aria-label="Excerpt text" placeholder="Paste or type the passage to workshop…">' + (s.text||'') + '</textarea>' +
+        '<div class="exq-count"><b id="exq-wc">' + fmt(n) + '</b> words<span class="cap">budget ' + fmt(BUDGET) + ' words · 5 MB</span></div>' +
+        (over ? '<div class="notice warn" style="margin-bottom:8px">' + ICO.text + '<span>Over budget — keeping the first ' + fmt(BUDGET) + ' words. Nothing is trimmed silently.</span></div>' : '') +
+        (s.verified ? '<div class="exq-verify">' + ICO.check + '<span>Matches <span class="p">' + s.verified.path + '</span> · <span class="p">lines ' + s.verified.lines + '</span></span></div>' : '') +
+        '<div class="smallbtns"><button class="sbtn primary" data-a="confirm">' + ICO.check + 'Confirm</button><button class="sbtn" data-a="cancel">Cancel</button></div>' +
+        '</div>';
+    } else { /* set */
+      h = '<div class="card-h"><span class="card-title">Excerpt</span>' +
+        '<span class="stat-chip">EXCERPT · V' + s.version + '</span>' +
+        (s.locked ? '<span class="stat-chip lock">SESSION LIVE</span>' : '') +
+        '</div>' +
+        '<div class="exq-set-title">' + s.title + '</div>' +
+        '<div class="exq-set-meta">' + fmt(s.words) + ' words</div>' +
+        provLine(s.source) +
+        '<div class="exq-preview">' + (s.text || SAMPLE).slice(0, 260).replace(/\n/g,'<br>') + '</div>' +
+        '<div class="exq-foot">' +
+        (s.truncation ? '<div class="notice warn">' + ICO.text + '<span>Head slice: ' + fmt(s.truncation.kept) + ' of last ' + fmt(s.truncation.total) + ' words. The rest is not in context.</span></div>' : '') +
+        (s.status ? '<div class="statusline" id="exq-status">' + s.status + '</div>' : '') +
+        '<div class="smallbtns">' +
+        (s.locked
+          ? (s.source && s.source.kind === 'file'
+              ? '<button class="sbtn" data-a="reread">' + ICO.refresh + 'Re-read from file</button>'
+              : '<button class="sbtn" data-a="type">' + ICO.pen + 'Update text…</button>')
+          : '<button class="sbtn" data-a="type">' + ICO.pen + 'Paste or type</button><button class="sbtn" data-a="pickfile">' + ICO.file + 'Choose from project…</button>') +
+        '</div></div>';
+    }
+    el.innerHTML = h;
+    const ta = el.querySelector('#exq-ta');
+    if (ta){
+      ta.addEventListener('input', () => {
+        s.text = ta.value;
+        el.querySelector('#exq-wc').textContent = fmt(wc(ta.value));
+      });
+      ta.focus();
+    }
+  }
+  el.addEventListener('click', e => {
+    const b = e.target.closest('[data-a]'); if (!b) return;
+    const a = b.dataset.a;
+    if (a === 'type') render({mode:'typing', text: s.mode==='set' ? '' : (s.text||''), verified:null, prev:s});
+    if (a === 'cancel') render(s.prev && s.prev.mode==='set' ? s.prev : {mode:'empty'});
+    if (a === 'confirm'){
+      const t = (s.text||'').trim();
+      if (!t) return;
+      const v = (s.prev && s.prev.version) ? s.prev.version + 1 : 1;
+      render({mode:'set', version:v, locked:false, title:'Marked Ones — prom scene', words:Math.min(wc(t),BUDGET), text:t,
+        source: s.verified ? {kind:'editor-selection', path:s.verified.path, lines:s.verified.lines} : {kind:'manual'}});
+    }
+    if (a === 'pickfile'){
+      const v = (s.version||0) + 1;
+      render({mode:'set', version:v, locked:s.locked||false, title:'Marked Ones — prom scene', words:4890, text:SAMPLE,
+        source:{kind:'file', path:'chapters/chapter-5.md'}});
+    }
+    if (a === 'reread'){
+      s.status = 'Unchanged on disk · checked just now';
+      render(s);
+    }
+  });
+  return { render, get:()=>s };
+})();
+
+/* ============================================================
+   CONTEXT WIDGET (.ctxq) — render(state)
+   state: { attachments:[{kind:'text'|'file'|'wizard', label, words}],
+     adding, addText, wizardRunning, midSession, notice:{cls,html}? }
+   ============================================================ */
+const Ctx = (() => {
+  const el = document.getElementById('ctxq');
+  let s = {attachments:[]};
+  const total = () => s.attachments.reduce((a,x)=>a+x.words,0);
+  function meterHTML(extra){
+    const t = total();
+    const pct = Math.min(100, Math.round(100*t/BUDGET));
+    const tone = pct >= 100 ? ' hot' : pct >= 70 ? ' warn' : '';
+    return '<div class="meter' + tone + (extra||'') + '" id="ctx-meter"><div class="meter-row"><div class="meter-track"><div class="meter-fill" style="width:' + Math.max(pct, t?2:0) + '%"></div></div>' +
+      '<span class="meter-nums"><b>' + fmt(t) + '</b> / ' + fmt(BUDGET) + ' words</span></div>' +
+      '<div class="meter-cap">One budget across all attachments' + (pct>=100?' · at cap — remove something to add more':(pct>=70?' · getting close to the cap':'')) + '</div></div>';
+  }
+  function pillHTML(x,i){
+    return '<span class="pill ' + x.kind + '">' + ICO[x.kind === 'file' ? 'file' : x.kind === 'wizard' ? 'wizard' : 'text'] +
+      '<span class="pl">' + x.label + '</span><span class="ps">' + fmt(x.words) + ' words</span>' +
+      '<button class="px" data-rm="' + i + '" aria-label="Remove ' + x.label + '">' + ICO.x + '</button></span>';
+  }
+  function render(st){
+    if (st) s = st;
+    const has = s.attachments.length > 0;
+    let h = '<div class="card-h"><span class="card-title">Context</span>' +
+      (has ? '<span class="card-sub">' + s.attachments.length + ' attachment' + (s.attachments.length===1?'':'s') + '</span>' : '') + '</div>';
+    if (!has && !s.adding && !s.wizardRunning){
+      h += '<div class="btnstack">' +
+        '<button class="bigbtn" data-a="addtext">' + ICO.text + 'Add text<span class="sub">notes, character sheets, anything typed</span></button>' +
+        '<button class="bigbtn" data-a="addfile">' + ICO.folder + 'Add from project…<span class="sub">your configured resource folders</span></button>' +
+        '<button class="bigbtn" data-a="wizard">' + ICO.wizard + 'Context wizard<span class="sub">suggests project context — results are yours to keep or remove</span></button>' +
+        '</div><div class="caption" style="margin-top:10px">Context rides along with every message, to every participant.</div>';
+    } else {
+      h += '<div class="ctxq-pills" id="ctx-pills">' + s.attachments.map(pillHTML).join('') + '</div>';
+      if (s.notice) h += '<div class="notice ' + s.notice.cls + '" style="margin-top:8px">' + (s.notice.cls==='ok'?ICO.check:ICO.text) + '<span>' + s.notice.html + '</span></div>';
+      if (s.adding){
+        h += '<div style="margin-top:9px"><textarea id="ctx-ta" aria-label="Context text" placeholder="Paste or type a context note…">' + (s.addText||'') + '</textarea>' +
+          '<div class="exq-count"><b id="ctx-wc">' + fmt(wc(s.addText||'')) + '</b> words</div>' +
+          '<div class="smallbtns"><button class="sbtn primary" data-a="confirmtext">' + ICO.check + 'Add</button><button class="sbtn" data-a="canceltext">Cancel</button></div></div>';
+      } else {
+        h += '<div class="smallbtns" style="margin-top:10px">' +
+          '<button class="sbtn" data-a="addtext">' + ICO.text + 'Add text</button>' +
+          '<button class="sbtn" data-a="addfile">' + ICO.folder + 'Add from project…</button>' +
+          (s.wizardRunning ? '' : '<button class="sbtn" data-a="wizard">' + ICO.wizard + 'Context wizard</button>') +
+          '</div>';
+      }
+      if (s.wizardRunning) h += '<div class="wiz-row" style="margin-top:9px" role="status"><span class="spin" aria-hidden="true"></span><span><b>Wizard</b> is reading your project… one run at a time</span></div>';
+    }
+    h += meterHTML();
+    el.innerHTML = h;
+    const ta = el.querySelector('#ctx-ta');
+    if (ta){
+      ta.addEventListener('input', () => { s.addText = ta.value; el.querySelector('#ctx-wc').textContent = fmt(wc(ta.value)); });
+      ta.focus();
+    }
+  }
+  function reject(html){
+    s.notice = {cls:'err', html};
+    render(s);
+    const m = el.querySelector('#ctx-meter'); if (m) m.classList.add('flash');
+    setTimeout(() => { if (s.notice && s.notice.cls==='err'){ s.notice = null; render(s); } }, 3200);
+  }
+  function eventTurn(label, words){
+    if (s.midSession) s.notice = {cls:'ok', html:'Posted to thread: <b>Added context: ' + label + ' · ' + fmt(words) + ' words</b>'};
+  }
+  function add(att){
+    if (att.kind === 'file' && s.attachments.some(x => x.kind !== 'text' && x.label === att.label)){
+      reject('Already attached: <b>' + att.label + '</b>'); return false;
+    }
+    if (total() + att.words > BUDGET){
+      reject('Won\u2019t fit: <b>' + att.label + '</b> (' + fmt(att.words) + ' words) would pass the ' + fmt(BUDGET) + '-word budget.'); return false;
+    }
+    s.attachments.push(att);
+    eventTurn(att.label, att.words);
+    render(s);
+    return true;
+  }
+  el.addEventListener('click', e => {
+    const rm = e.target.closest('[data-rm]');
+    if (rm){
+      const x = s.attachments.splice(+rm.dataset.rm, 1)[0];
+      if (s.midSession) s.notice = {cls:'ok', html:'Posted to thread: <b>Removed context: ' + x.label + '</b>'};
+      render(s); return;
+    }
+    const b = e.target.closest('[data-a]'); if (!b) return;
+    const a = b.dataset.a;
+    if (a === 'addtext'){ s.adding = true; s.addText = ''; s.notice = null; render(s); }
+    if (a === 'canceltext'){ s.adding = false; render(s); }
+    if (a === 'confirmtext'){
+      const t = (s.addText||'').trim(); if (!t) return;
+      s.adding = false;
+      add({kind:'text', label: t.split(/\s+/).slice(0,3).join(' ') + '…', words: wc(t)});
+    }
+    if (a === 'addfile'){ Selector.open(); }
+    if (a === 'wizard'){
+      s.wizardRunning = true; s.notice = null; render(s);
+      setTimeout(() => {
+        s.wizardRunning = false;
+        const picks = [
+          {kind:'wizard', label:'character-sheet-kayla.md', words:1105},
+          {kind:'wizard', label:'timeline.md', words:2300}
+        ].filter(p => !s.attachments.some(x => x.label === p.label) && total() + p.words <= BUDGET);
+        picks.forEach(p => { s.attachments.push(p); eventTurn(p.label, p.words); });
+        if (!picks.length) s.notice = {cls:'ok', html:'Wizard finished — nothing new fit the budget.'};
+        render(s);
+      }, 2600);
+    }
+  });
+  return { render, add, get:()=>s, total };
+})();
+
+/* ============================================================
+   CONTEXT SELECTOR MODAL (.ctxsel)
+   ============================================================ */
+const Selector = (() => {
+  const ov = document.getElementById('ctxsel-overlay');
+  const body = document.getElementById('ctxsel-body');
+  let sel = new Set(), explored = [], lastFocus = null;
+  let view = {cat:null, folder:null}; // root → category → folder
+  function attachedSet(){ return new Set(Ctx.get().attachments.filter(x=>x.kind!=='text').map(x=>x.label)); }
+  function base(p){ return p.split('/').pop(); }
+  function catFiles(c){ return c.root.files.concat(...c.root.folders.map(f => f.files)); }
+  function fileRow(f, isExplored){
+    const att = attachedSet().has(base(f.path));
+    const isSel = sel.has(f.path);
+    return '<button class="ctxsel-file' + (isSel?' sel':'') + (att?' attached':'') + '" data-f="' + f.path + '" data-w="' + f.words + '"' + (att?' disabled aria-disabled="true"':'') + ' role="checkbox" aria-checked="' + isSel + '">' +
+      '<span class="cb">' + ICO.check + '</span><span class="fp">' + f.path + '</span>' +
+      (isExplored ? '<span class="tag">explored</span>' : '') +
+      '<span class="fw">' + (att ? 'attached' : fmt(f.words) + ' words') + '</span></button>';
+  }
+  function render(){
+    let h = '';
+    if (!view.cat){
+      h = '<div class="ctxsel-cats">' + CATS.map(c => {
+        const files = catFiles(c);
+        const nSel = files.filter(f => sel.has(f.path)).length;
+        return '<button class="ctxsel-cat" data-cat="' + c.id + '"><span class="ci">' + ICO[c.icon] + '</span><span class="cn">' + c.name + '</span><span class="cm">' + files.length + ' file' + (files.length===1?'':'s') + ' · ' + fmt(files.reduce((a,f)=>a+f.words,0)) + ' words</span>' + (nSel ? '<span class="csel">' + nSel + ' selected</span>' : '') + '</button>';
+      }).join('') + '</div>' +
+      (explored.length ? '<div class="ctxsel-group"><div class="ctxsel-gh"><span class="ctxsel-gname">Explored</span><span class="ctxsel-gcount">outside configured categories</span></div>' + explored.map(f => fileRow(f,true)).join('') + '</div>' : '') +
+      '<button class="ctxsel-explore" id="ctxsel-explore">' + ICO.folder + '<span>Explore project folders… <span style="color:var(--faint)">opens the system picker; picks land here tagged</span></span></button>';
+    } else {
+      const c = CATS.find(x => x.id === view.cat);
+      const crumb = '<b>' + c.name + '</b>' + (view.folder ? ' / <b>' + view.folder + '</b>' : '');
+      h = '<div class="ctxsel-nav"><button class="ctxsel-back" data-back="1">' + ICO.chevL + 'Back</button><span class="ctxsel-crumb">' + crumb + '</span></div>';
+      if (!view.folder){
+        h += c.root.folders.map(f =>
+          '<button class="ctxsel-folderbtn" data-folder="' + f.name + '">' + ICO.folder + '<span>' + f.name + '</span><span class="fm">' + f.files.length + ' file' + (f.files.length===1?'':'s') + ' · ' + fmt(f.files.reduce((a,x)=>a+x.words,0)) + ' words' + (f.files.some(x=>sel.has(x.path)) ? ' · ' + f.files.filter(x=>sel.has(x.path)).length + ' selected' : '') + '</span><span class="chev">' + ICO.chevR + '</span></button>'
+        ).join('') + c.root.files.map(f => fileRow(f,false)).join('');
+      } else {
+        h += c.root.folders.find(f => f.name === view.folder).files.map(f => fileRow(f,false)).join('');
+      }
+    }
+    body.innerHTML = h;
+    const words = [...sel].reduce((a,p) => a + findWords(p), 0);
+    const n = sel.size;
+    const over = Ctx.total() + words > BUDGET;
+    const totalEl = document.getElementById('ctxsel-total');
+    totalEl.className = 'ctxsel-total' + (over?' over':'');
+    totalEl.innerHTML = n ? '<b>' + fmt(words) + '</b> words selected · <b>' + fmt(Ctx.total()) + '</b> already attached' : 'Nothing selected';
+    document.getElementById('ctxsel-overmsg').hidden = !over;
+    const addBtn = document.getElementById('ctxsel-add');
+    addBtn.textContent = 'Add ' + n + ' file' + (n===1?'':'s');
+    addBtn.disabled = !n || over;
+  }
+  function findWords(p){
+    for (const c of CATS) for (const f of catFiles(c)) if (f.path === p) return f.words;
+    const e = explored.find(f => f.path === p); return e ? e.words : 0;
+  }
+  function open(){
+    lastFocus = document.activeElement;
+    sel = new Set(); view = {cat:null, folder:null}; render();
+    ov.classList.add('open');
+    document.getElementById('ctxsel-close').focus();
+  }
+  function close(){
+    ov.classList.remove('open');
+    if (lastFocus && lastFocus.isConnected) lastFocus.focus();
+  }
+  body.addEventListener('click', e => {
+    const cat = e.target.closest('[data-cat]');
+    if (cat){ view = {cat:cat.dataset.cat, folder:null}; render(); return; }
+    const fold = e.target.closest('[data-folder]');
+    if (fold){ view.folder = fold.dataset.folder; render(); return; }
+    if (e.target.closest('[data-back]')){
+      view = view.folder ? {cat:view.cat, folder:null} : {cat:null, folder:null};
+      render(); return;
+    }
+    if (e.target.closest('#ctxsel-explore')){
+      const f = {path:'notes/beach-scene-fragment.md', words:640};
+      if (!explored.some(x => x.path === f.path)) explored.push(f);
+      sel.add(f.path); render(); return;
+    }
+    const row = e.target.closest('.ctxsel-file');
+    if (!row || row.disabled) return;
+    sel.has(row.dataset.f) ? sel.delete(row.dataset.f) : sel.add(row.dataset.f);
+    render();
+  });
+  document.getElementById('ctxsel-add').addEventListener('click', () => {
+    const picks = [...sel];
+    close();
+    picks.forEach(p => Ctx.add({kind:'file', label: base(p), words: findWords(p)}));
+  });
+  document.getElementById('ctxsel-close').addEventListener('click', close);
+  document.getElementById('ctxsel-cancel').addEventListener('click', close);
+  ov.addEventListener('click', e => { if (e.target === ov) close(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && ov.classList.contains('open')) close(); });
+  return { open, close, preselect:(paths)=>{ sel = new Set(paths); view = {cat:null, folder:null}; render(); } };
+})();
+
+/* ---------- demo scenarios ---------- */
+const SCEN = {
+  fresh: () => {
+    Excerpt.render({mode:'empty'});
+    Ctx.render({attachments:[], midSession:false});
+    Selector.close();
+  },
+  drafting: () => {
+    Excerpt.render({mode:'typing', text:SAMPLE, verified:{path:'chapters/chapter-5.md', lines:'143–151'}});
+    Ctx.render({attachments:[], midSession:false});
+    Selector.close();
+  },
+  set: () => {
+    Excerpt.render({mode:'set', version:1, locked:false, title:'Marked Ones — prom scene', words:2046, text:SAMPLE,
+      source:{kind:'editor-selection', path:'chapters/chapter-5.md', lines:'143–151'}});
+    Ctx.render({midSession:false, attachments:[
+      {kind:'file', label:'character-sheet-raven.md', words:1240},
+      {kind:'text', label:'Timeline notes', words:412},
+      {kind:'wizard', label:'kayla-voice-guide.md', words:980},
+      {kind:'file', label:'revision-notes.md', words:940}
+    ]});
+    Selector.close();
+  },
+  locked: () => {
+    Excerpt.render({mode:'set', version:2, locked:true, title:'Marked Ones — full chapter 5', words:10000, text:SAMPLE,
+      source:{kind:'file', path:'chapters/chapter-5.md'},
+      truncation:{kept:10000, total:23410}, status:'Unchanged on disk · checked just now'});
+    Ctx.render({midSession:true, wizardRunning:true, attachments:[
+      {kind:'file', label:'world-rules.md', words:3150},
+      {kind:'file', label:'timeline.md', words:2300},
+      {kind:'file', label:'character-sheet-raven.md', words:1240},
+      {kind:'wizard', label:'character-sheet-kayla.md', words:1105},
+      {kind:'text', label:'Setting notes', words:705}
+    ]});
+    Selector.close();
+  },
+  modal: () => {
+    SCEN.set();
+    Selector.open();
+    Selector.preselect(['Manuscripts/chapter-4.md','Research/timeline.md']);
+  }
+};
+document.getElementById('scen').addEventListener('click', e => {
+  const chip = e.target.closest('.chip[data-s]'); if (!chip) return;
+  document.querySelectorAll('#scen .chip').forEach(c => c.classList.toggle('active', c === chip));
+  SCEN[chip.dataset.s]();
+});
+SCEN.fresh();
+</script>
+</body>
+</html>

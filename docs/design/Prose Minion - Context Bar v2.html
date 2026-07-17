@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prose Minion — Context Bar Widget v2</title>
+<style>
+:root{
+  --bg:#15110d;--surface:#221a13;--surface-2:#2b2017;--inset:#1b150f;
+  --border:#3a2c1f;--border-2:#4d3a28;--border-soft:#2e231a;
+  --text:#f3ece1;--text-2:#c9bbab;--muted:#a4937f;--dim:#7a6c5b;--faint:#5c5044;
+  --accent:#e0673a;--accent-hi:#ee7d49;--accent-soft:rgba(224,103,58,0.14);
+  --green:#6fc98a;--amber:#e2b24a;--red:#e05a4e;--blue:#5aa2f0;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);background-image:linear-gradient(180deg,#211910 0%,var(--bg) 260px);font-family:var(--sans);color:var(--text);-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px}
+a{color:var(--accent-hi)}a:hover{color:var(--text)}
+.demo{width:min(720px,100%)}
+.demo-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:600;margin:0 2px 10px}
+.stage{background:var(--surface);border:1px solid var(--border-soft);border-radius:14px;padding:18px 18px 16px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+
+/* demo participant rail (context only — not part of the widget) */
+.rail{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.rail-label{font-size:12px;color:var(--dim);margin-right:2px}
+.chip{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface-2);color:var(--text-2);font-size:12.5px;font-weight:500;cursor:pointer;font-family:var(--sans)}
+.chip .dot{width:7px;height:7px;border-radius:50%}
+.chip.active{border-color:var(--accent);background:var(--accent-soft);color:var(--text)}
+.chip.ghost{border-style:dashed;color:var(--dim)}
+
+/* ============================================================
+   CONTEXT BAR WIDGET  (.ctxbar) — the isolated component
+   ============================================================ */
+.ctxbar{position:relative;border:1px solid var(--border-soft);background:var(--inset);border-radius:10px;font-family:var(--sans);user-select:none}
+.ctxbar-row{display:flex;align-items:center;gap:12px;height:38px;padding:0 8px 0 12px;cursor:pointer}
+.ctxbar-row:hover{background:rgba(255,255,255,0.02)}
+.ctxbar-who{display:flex;align-items:center;gap:7px;min-width:0}
+.ctxbar-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
+.ctxbar-name{font-size:12.5px;font-weight:600;color:var(--text-2);white-space:nowrap}
+.ctxbar-name b{color:var(--text);font-weight:600}
+.ctxbar-track{flex:1;height:5px;border-radius:999px;background:var(--surface-2);overflow:hidden;position:relative;min-width:60px}
+.ctxbar-fill{height:100%;border-radius:999px;background:var(--accent);transition:width .45s cubic-bezier(.3,.8,.3,1),background .3s}
+.ctxbar.warn .ctxbar-fill{background:var(--amber)}
+.ctxbar.hot .ctxbar-fill{background:var(--red)}
+.ctxbar-nums{font-family:var(--mono);font-size:11.5px;color:var(--muted);white-space:nowrap}
+.ctxbar-nums b{color:var(--text-2);font-weight:500}
+.ctxbar-pct{font-family:var(--mono);font-size:11.5px;color:var(--dim);width:34px;text-align:right}
+.ctxbar.warn .ctxbar-pct{color:var(--amber)}
+.ctxbar.hot .ctxbar-pct{color:var(--red)}
+.ctxbar-chev{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--dim);flex:none;transition:transform .25s}
+.ctxbar-row:hover .ctxbar-chev{color:var(--muted);background:rgba(255,255,255,0.04)}
+.ctxbar.open .ctxbar-chev{transform:rotate(180deg)}
+/* unmeasured state */
+.ctxbar.empty .ctxbar-track{background:repeating-linear-gradient(90deg,var(--surface-2) 0 5px,transparent 5px 9px)}
+.ctxbar.empty .ctxbar-fill{width:0!important}
+.ctxbar.empty .ctxbar-nums{color:var(--faint);font-style:italic;font-family:var(--sans);font-size:11.5px}
+.ctxbar.empty .ctxbar-pct{visibility:hidden}
+/* details drawer */
+.ctxbar-details{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s cubic-bezier(.3,.8,.3,1)}
+.ctxbar.open .ctxbar-details{grid-template-rows:1fr}
+.ctxbar-details-in{overflow:hidden}
+.ctxbar-grid{border-top:1px solid var(--border-soft);padding:10px 14px 12px;display:grid;grid-template-columns:1fr 1fr;gap:5px 28px}
+.ctx-kv{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font-size:11.5px}
+.ctx-kv .k{color:var(--dim)}
+.ctx-kv .v{font-family:var(--mono);color:var(--text-2)}
+.ctx-kv .v.ok{color:var(--green)}
+.ctx-kv .v.warn{color:var(--amber)}
+.ctxbar-foot{grid-column:1 / -1;margin-top:5px;padding-top:8px;border-top:1px dashed var(--border-soft);font-size:11px;color:var(--faint)}
+.ctxbar-foot b{color:var(--dim);font-weight:500}
+/* sources list */
+.ctx-sec{grid-column:1 / -1;margin-top:8px;padding-top:9px;border-top:1px solid var(--border-soft)}
+.ctx-sec-h{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+.ctx-sec-title{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--dim)}
+.ctx-sec-sub{font-size:10.5px;color:var(--faint);font-family:var(--mono)}
+.ctx-src{display:flex;align-items:center;gap:8px;padding:4px 6px;margin:0 -6px;border-radius:6px;font-size:11.5px}
+.ctx-src:hover{background:rgba(255,255,255,0.03)}
+.ctx-src .si{width:15px;height:15px;border-radius:4px;display:flex;align-items:center;justify-content:center;flex:none;color:var(--muted)}
+.ctx-src .si svg{width:11px;height:11px}
+.ctx-src .si.file{color:var(--blue)}
+.ctx-src .si.tool{color:var(--green)}
+.ctx-src .si.pin{color:var(--accent-hi)}
+.ctx-src .sn{color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+.ctx-src .sm{font-family:var(--mono);font-size:10.5px;color:var(--faint);white-space:nowrap}
+.ctx-src.stale .sn,.ctx-src.stale .si{opacity:.45}
+.ctx-src .tag{font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);border:1px solid var(--border-soft);border-radius:4px;padding:1px 5px}
+/* memory actions */
+.ctx-actions{grid-column:1 / -1;margin-top:8px;padding-top:9px;border-top:1px solid var(--border-soft);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ctx-actions-label{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--dim);margin-right:2px}
+.ctx-act{position:relative}
+.ctx-btn{display:flex;align-items:center;gap:6px;font-family:var(--sans);font-size:11.5px;font-weight:500;color:var(--text-2);background:var(--surface-2);border:1px solid var(--border);border-radius:7px;padding:5px 10px;cursor:pointer}
+.ctx-btn:hover{border-color:var(--border-2);color:var(--text)}
+.ctx-btn svg{width:12px;height:12px;color:var(--muted)}
+.ctx-btn .cv{font-family:var(--mono);font-size:10.5px;color:var(--dim)}
+.ctx-menu{position:absolute;bottom:calc(100% + 6px);left:0;min-width:190px;background:var(--surface-2);border:1px solid var(--border-2);border-radius:9px;padding:5px;box-shadow:0 12px 30px rgba(0,0,0,.5);display:none;z-index:5}
+.ctx-act.open .ctx-menu{display:block}
+.ctx-menu button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;background:none;border:0;border-radius:6px;padding:6px 8px;font-family:var(--sans);font-size:11.5px;color:var(--text-2);cursor:pointer;text-align:left}
+.ctx-menu button:hover{background:rgba(255,255,255,0.05);color:var(--text)}
+.ctx-menu button .d{font-size:10px;color:var(--faint)}
+.ctx-menu button.sel{color:var(--accent-hi)}
+.ctx-est{font-size:11px;color:var(--faint);margin-left:auto}
+.ctx-est b{color:var(--green);font-weight:500;font-family:var(--mono)}
+@media (max-width:560px){.ctxbar-grid{grid-template-columns:1fr}}
+
+/* demo composer stub */
+.composer{display:flex;align-items:center;gap:10px;margin-top:10px;border:1px solid var(--border);background:var(--surface-2);border-radius:10px;padding:11px 14px;color:var(--faint);font-size:13.5px}
+.composer .send{margin-left:auto;width:28px;height:28px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex:none}
+.hint{margin-top:22px;font-size:12px;color:var(--dim);line-height:1.7}
+.hint code{font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--surface-2);padding:1px 5px;border-radius:4px}
+</style>
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#15110d"/><rect x="20" y="42" width="60" height="16" rx="8" fill="#2b2017"/><rect x="20" y="42" width="34" height="16" rx="8" fill="#e0673a"/></svg>
+</template>
+</head>
+<body>
+<div class="demo">
+  <div class="demo-label">Context bar v2 — sources + compress / compact</div>
+  <div class="stage">
+    <div class="rail" id="rail">
+      <span class="rail-label">Talking to</span>
+      <button class="chip active" data-p="jill"><span class="dot" style="background:#e0673a"></span>Jill</button>
+      <button class="chip" data-p="quinn"><span class="dot" style="background:#5aa2f0"></span>Quinn</button>
+      <button class="chip" data-p="continuity"><span class="dot" style="background:#6fc98a"></span>Continuity</button>
+      <button class="chip" data-p="newguest"><span class="dot" style="background:#7a6c5b"></span>New guest</button>
+      <button class="chip ghost">+ Invite guest</button>
+    </div>
+
+    <!-- ===== widget ===== -->
+    <div class="ctxbar" id="ctxbar">
+      <div class="ctxbar-row" id="ctxrow" title="Context on last call — click for details">
+        <div class="ctxbar-who"><span class="ctxbar-dot" id="cb-dot"></span><span class="ctxbar-name" id="cb-name"><b>Jill</b>&nbsp;context</span></div>
+        <div class="ctxbar-track"><div class="ctxbar-fill" id="cb-fill"></div></div>
+        <div class="ctxbar-nums" id="cb-nums"><b>15.5K</b> / 150K</div>
+        <div class="ctxbar-pct" id="cb-pct">10%</div>
+        <div class="ctxbar-chev"><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+      </div>
+      <div class="ctxbar-details"><div class="ctxbar-details-in">
+        <div class="ctxbar-grid" id="cb-grid"></div>
+      </div></div>
+    </div>
+    <!-- ===== /widget ===== -->
+
+    <div class="composer"><span>+</span><span id="cb-ph">Continue with Jill…</span><span class="send"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 8h11M9 4l4 4-4 4" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></span></div>
+  </div>
+  <p class="hint">Click the bar to expand. New in v2: a <code>Sources</code> list showing every file, pin, and tool output currently in this sidecar's context (stale items dim), and a <code>Memory</code> row with <code>Compress</code> (middle-out / head / tail truncation) and <code>Compact</code> (agent-written summary) — each opens a small strategy menu and shows an estimated post-op size. State shape gains <code>sources:[{kind,name,meta,stale}]</code> and the demo wires <code>onCompress</code>/<code>onCompact</code> callbacks.</p>
+</div>
+
+<script>
+/* ============================================================
+   ContextBar — isolated widget logic
+   render(state) with:
+   { name, color, lastPrompt, window, outputReserved, modelWindow,
+     turnProcessed, turnCalls, sessionProcessed, compression, measured }
+   ============================================================ */
+const ContextBar = (() => {
+  const el = document.getElementById('ctxbar');
+  const fmtK = n => n >= 1000 ? (n/1000).toFixed(n < 10000 ? 1 : 0).replace(/\.0$/,'') + 'K' : String(n);
+  function render(s){
+    document.getElementById('cb-dot').style.background = s.color;
+    document.getElementById('cb-name').innerHTML = '<b>' + s.name + '</b>&nbsp;context';
+    el.classList.toggle('empty', !s.measured);
+    if (!s.measured){
+      document.getElementById('cb-nums').textContent = 'Not measured yet — updates after the first reply';
+      document.getElementById('cb-fill').style.width = '0%';
+      el.classList.remove('warn','hot');
+    } else {
+      const pct = Math.round(100 * s.lastPrompt / s.window);
+      document.getElementById('cb-nums').innerHTML = '<b>' + fmtK(s.lastPrompt) + '</b> / ' + fmtK(s.window);
+      document.getElementById('cb-pct').textContent = pct + '%';
+      document.getElementById('cb-fill').style.width = Math.max(pct, 1.5) + '%';
+      el.classList.toggle('warn', pct >= 70 && pct < 90);
+      el.classList.toggle('hot', pct >= 90);
+    }
+    const kv = (k,v,cls) => '<div class="ctx-kv"><span class="k">' + k + '</span><span class="v ' + (cls||'') + '">' + v + '</span></div>';
+    const m = s.measured;
+    const ICO = {
+      file:'<svg viewBox="0 0 16 16" fill="none"><path d="M4 1.5h5L13 5.5v9a1 1 0 01-1 1H4a1 1 0 01-1-1v-12a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4"/><path d="M9 1.5V6h4" stroke="currentColor" stroke-width="1.4"/></svg>',
+      tool:'<svg viewBox="0 0 16 16" fill="none"><path d="M6 12l-3.5 2 2-3.5L2 8l4-.5L8 4l2 3.5L14 8l-2.5 2.5 2 3.5L10 12l-2 2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+      pin:'<svg viewBox="0 0 16 16" fill="none"><path d="M9.5 2l4.5 4.5-2 .5-2.5 4-1-1L4 14.5 1.5 12 6 7.5l-1-1 4-2.5.5-2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>'
+    };
+    const srcRows = (s.sources||[]).map(x =>
+      '<div class="ctx-src' + (x.stale ? ' stale' : '') + '"><span class="si ' + x.kind + '">' + ICO[x.kind] + '</span><span class="sn">' + x.name + '</span>' + (x.stale ? '<span class="tag">stale</span>' : '') + '<span class="sm">' + x.meta + '</span></div>'
+    ).join('');
+    const srcTotal = (s.sources||[]).length;
+    const menu = (id,label,ico,opts,val) =>
+      '<div class="ctx-act" data-menu="' + id + '"><button class="ctx-btn" data-toggle="' + id + '">' + ico + label + '<span class="cv">' + val + '</span><svg viewBox="0 0 16 16" fill="none"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
+      '<div class="ctx-menu">' + opts.map(o => '<button data-opt="' + id + ':' + o.id + '"' + (o.id===val?' class="sel"':'') + '><span>' + o.label + '</span><span class="d">' + o.d + '</span></button>').join('') + '</div></div>';
+    const iCompress = '<svg viewBox="0 0 16 16" fill="none"><path d="M2 4h12M5 8h6M7 12h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+    const iCompact = '<svg viewBox="0 0 16 16" fill="none"><path d="M8 2v5m0 0L5.5 4.5M8 7l2.5-2.5M3 10.5h10M3 13.5h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    document.getElementById('cb-grid').innerHTML =
+      kv('Model window', fmtK(s.modelWindow)) +
+      kv('This turn', m ? fmtK(s.turnProcessed) + ' across ' + s.turnCalls + ' call' + (s.turnCalls===1?'':'s') : '—') +
+      kv('Output reserved', fmtK(s.outputReserved)) +
+      kv('Session processed', fmtK(s.sessionProcessed)) +
+      kv('Last prompt', m ? fmtK(s.lastPrompt) : '—') +
+      kv('Compression', s.compression ? 'Detected' : 'Not detected', s.compression ? 'warn' : 'ok') +
+      (srcTotal ? '<div class="ctx-sec"><div class="ctx-sec-h"><span class="ctx-sec-title">In context</span><span class="ctx-sec-sub">' + srcTotal + ' source' + (srcTotal===1?'':'s') + '</span></div>' + srcRows + '</div>' : '') +
+      (m ? '<div class="ctx-actions"><span class="ctx-actions-label">Memory</span>' +
+        menu('compress','Compress',iCompress,[
+          {id:'middle-out',label:'Middle out',d:'keep head + tail'},
+          {id:'head',label:'Head',d:'keep oldest'},
+          {id:'tail',label:'Tail',d:'keep newest'}], s.compressMode||'middle-out') +
+        menu('compact','Compact',iCompact,[
+          {id:'summarize',label:'Agent summarize',d:'rewrite as summary'}], 'summarize') +
+        '<span class="ctx-est">est. after: <b>' + fmtK(Math.round(s.lastPrompt*0.35)) + '</b></span></div>' : '') +
+      '<div class="ctxbar-foot">Context measured on <b>' + s.name + '</b>\u2019s last call. Each participant keeps its own conversation; switching never resets it.</div>';
+  }
+  document.getElementById('cb-grid').addEventListener('click', e => {
+    const t = e.target.closest('[data-toggle]');
+    const o = e.target.closest('[data-opt]');
+    if (t){ const act = t.parentElement; const was = act.classList.contains('open');
+      document.querySelectorAll('.ctx-act.open').forEach(a => a.classList.remove('open'));
+      if (!was) act.classList.add('open'); e.stopPropagation(); return; }
+    if (o){ const [id,opt] = o.dataset.opt.split(':');
+      document.querySelectorAll('.ctx-act.open').forEach(a => a.classList.remove('open'));
+      if (cb['on' + id[0].toUpperCase() + id.slice(1)]) cb['on' + id[0].toUpperCase() + id.slice(1)](opt);
+      e.stopPropagation(); return; }
+    e.stopPropagation();
+  });
+  const cb = {};
+  document.addEventListener('click', () => document.querySelectorAll('.ctx-act.open').forEach(a => a.classList.remove('open')));
+  document.getElementById('ctxrow').addEventListener('click', () => el.classList.toggle('open'));
+  return { render, on:(name,fn)=>{cb[name]=fn} };
+})();
+
+/* ---- demo data + rail wiring (not part of the widget) ---- */
+const DEMO = {
+  jill:      { name:'Jill', color:'#e0673a', measured:true, lastPrompt:15500, window:150000, modelWindow:200000, outputReserved:10000, turnProcessed:172000, turnCalls:5, sessionProcessed:429000, compression:false, compressMode:'middle-out', sources:[
+    {kind:'pin', name:'Pinned excerpt — “Pentecost” v1', meta:'1.5K'},
+    {kind:'file', name:'chapter-5.6.md', meta:'4.2K'},
+    {kind:'file', name:'chapter-5.7.md', meta:'3.8K'},
+    {kind:'file', name:'chapter-5.8-rewrite.md', meta:'4.1K'},
+    {kind:'tool', name:'Dialogue & Beats · report on 5.8', meta:'1.9K'}
+  ]},
+  quinn:     { name:'Quinn', color:'#5aa2f0', measured:true, lastPrompt:21000, window:190000, modelWindow:200000, outputReserved:10000, turnProcessed:38000, turnCalls:2, sessionProcessed:429000, compression:false, compressMode:'middle-out', sources:[
+    {kind:'pin', name:'Pinned excerpt — “Pentecost” v1', meta:'1.5K'},
+    {kind:'file', name:'workshop-persona-2.md', meta:'2.3K'},
+    {kind:'tool', name:'Prose · line pass on 5.8', meta:'5.6K'},
+    {kind:'file', name:'chapter-5.4.md', meta:'3.9K', stale:true}
+  ]},
+  continuity:{ name:'Continuity', color:'#6fc98a', measured:true, lastPrompt:141000, window:190000, modelWindow:200000, outputReserved:10000, turnProcessed:284000, turnCalls:9, sessionProcessed:429000, compression:true, compressMode:'tail', sources:[
+    {kind:'file', name:'story-bible.md', meta:'22K'},
+    {kind:'file', name:'chapters 1.1 – 5.8 (14 files)', meta:'96K'},
+    {kind:'tool', name:'Continuity sweep · full pass', meta:'18K'},
+    {kind:'tool', name:'Timeline extract', meta:'2.4K', stale:true}
+  ]},
+  newguest:  { name:'Marcus', color:'#e0589e', measured:false, lastPrompt:0, window:190000, modelWindow:200000, outputReserved:10000, turnProcessed:0, turnCalls:0, sessionProcessed:429000, compression:false, sources:[] }
+};
+let current = DEMO.jill;
+ContextBar.on('onCompress', mode => { current.compressMode = mode; current.compression = true; current.lastPrompt = Math.round(current.lastPrompt*0.35); ContextBar.render(current); });
+ContextBar.on('onCompact', () => { current.compression = true; current.lastPrompt = Math.round(current.lastPrompt*0.25); current.sources = [{kind:'tool', name:'Compacted summary of earlier conversation', meta:fmtDemo(current.lastPrompt)}].concat(current.sources.filter(x=>x.kind!=='tool')); ContextBar.render(current); });
+function fmtDemo(n){ return n>=1000 ? Math.round(n/1000)+'K' : String(n); }
+document.getElementById('rail').addEventListener('click', e => {
+  const chip = e.target.closest('.chip[data-p]');
+  if (!chip) return;
+  document.querySelectorAll('.chip[data-p]').forEach(c => c.classList.toggle('active', c === chip));
+  const s = DEMO[chip.dataset.p];
+  current = s;
+  ContextBar.render(s);
+  document.getElementById('cb-ph').textContent = 'Continue with ' + s.name + '…';
+});
+ContextBar.render(DEMO.jill);
+</script>
+</body>
+</html>
