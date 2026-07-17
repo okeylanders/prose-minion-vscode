@@ -226,6 +226,13 @@ autonomously is context the writer is paying for and must not be invisible.
 - [ ] Project `sources` through `LabeledContextBudgetSnapshot` and render the
       Context Bar's "In context" section: grouped rows, sizes, origin
       attribution, stale dimming; display-safe labels only.
+- [ ] Draft the context compaction ADR during this sprint: decision
+      framework, candidate mechanisms (compress vs. compact vs. stale-
+      evidence eviction, informed by what the manifest shows dominates real
+      sessions), and what retained-history surgery means for the atomic
+      commit and snapshot semantics. The epic ships as one release, so the
+      post-launch fast-follow must be implementation, not design.
+      Implementation itself stays out of Sprint 12.
 
 ### Composer
 
