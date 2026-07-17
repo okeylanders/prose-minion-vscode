@@ -170,7 +170,7 @@ summary.pm-context-budget-row:hover .pm-context-budget-chev {
 .pm-context-budget-foot b { color: var(--pm-dim); font-weight: 500; }
 
 [data-pm-surface="workshop"] .pm-context-budget {
-  margin: 0 28px 10px;
+  margin: 22px 28px 10px;
 }
 
 @media (max-width: 560px) {

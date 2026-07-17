@@ -35,6 +35,8 @@ interface WorkshopParticipantRailProps {
   personaGuests?: WorkshopPersonaGuestSnapshot[];
   chatTarget: WorkshopChatTarget;
   onSetChatTarget: (target: WorkshopChatTarget) => void;
+  /** Keep the participant map visible while a run temporarily locks routing. */
+  disabled?: boolean;
   showInviteGuest?: boolean;
   onInviteGuest?: () => void;
   onDismissGuest?: (personaId: WorkshopPersonaId) => void;
@@ -47,6 +49,7 @@ export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = (
   personaGuests = [],
   chatTarget,
   onSetChatTarget,
+  disabled = false,
   showInviteGuest = false,
   onInviteGuest = () => undefined,
   onDismissGuest = () => undefined
@@ -71,6 +74,7 @@ export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = (
         className={`pm-ws-participant-chip ${hostActive ? 'pm-ws-chip-active' : ''}`}
         type="button"
         aria-pressed={hostActive}
+        disabled={disabled}
         onClick={() => {
           if (!hostActive) {
             onSetChatTarget({ kind: 'host' });
@@ -89,7 +93,7 @@ export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = (
               className={`pm-ws-participant-chip ${active ? 'pm-ws-chip-active pm-ws-chip-guest' : ''}`}
               type="button"
               aria-pressed={active}
-              disabled={unavailable}
+              disabled={disabled || unavailable}
               onClick={() => {
                 if (!active) {
                   onSetChatTarget({ kind: 'personaGuest', personaId: guest.personaId });
@@ -108,6 +112,7 @@ export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = (
                 className="pm-ws-participant-dismiss"
                 type="button"
                 aria-label={`Dismiss ${guest.personaLabel}`}
+                disabled={disabled}
                 onClick={() => onDismissGuest(guest.personaId)}
               >
                 <Icon name="x" size={10} />
@@ -126,7 +131,7 @@ export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = (
             className={`pm-ws-participant-chip ${active ? 'pm-ws-chip-active pm-ws-chip-direct' : ''}`}
             type="button"
             aria-pressed={active}
-            disabled={unavailable}
+            disabled={disabled || unavailable}
             onClick={() => {
               if (!active) {
                 onSetChatTarget({ kind: 'tool', toolId: sidecar.toolId });
@@ -148,6 +153,7 @@ export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = (
         <button
           className="pm-ws-participant-chip pm-ws-chip-invite"
           type="button"
+          disabled={disabled}
           onClick={onInviteGuest}
           title="Invite a persona guest into the room"
         >

@@ -684,10 +684,10 @@ export const WorkshopApp: React.FC = () => {
               personaGuests={workshop.personaGuests}
               chatTarget={workshop.chatTarget}
               onSetChatTarget={workshop.setChatTarget}
+              disabled={workshop.isRunning}
               showInviteGuest={
                 !!workshop.excerpt
                 && workshop.sessionReady
-                && !workshop.isRunning
                 && workshop.personaGuests.filter((guest) => guest.liveness === 'live').length
                   < WORKSHOP_GUEST_CAPACITY
               }

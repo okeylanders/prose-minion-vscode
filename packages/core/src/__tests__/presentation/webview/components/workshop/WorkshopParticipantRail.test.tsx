@@ -96,6 +96,26 @@ describe('WorkshopParticipantRail', () => {
     expect(onSetChatTarget).not.toHaveBeenCalled();
   });
 
+  it('keeps the rail visible but disables every control while routing is locked', () => {
+    render(
+      <WorkshopParticipantRail
+        personaId="jill"
+        personaLabel="Jill"
+        toolSidecars={[sidecar('cliche')]}
+        chatTarget={{ kind: 'host' }}
+        onSetChatTarget={jest.fn()}
+        disabled
+        showInviteGuest
+      />
+    );
+
+    expect(screen.getByRole('toolbar')).toBeTruthy();
+    expect(screen.getAllByRole('button')).toHaveLength(3);
+    screen.getAllByRole('button').forEach((button) => {
+      expect((button as HTMLButtonElement).disabled).toBe(true);
+    });
+  });
+
   it('exposes the explicit guest invitation and routes a live guest', () => {
     const guest: WorkshopPersonaGuestSnapshot = {
       personaId: 'margot',
