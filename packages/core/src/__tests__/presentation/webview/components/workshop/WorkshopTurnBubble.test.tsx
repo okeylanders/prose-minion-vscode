@@ -207,6 +207,31 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(screen.queryByRole('button', { name: /rewrite/i })).toBeNull();
   });
 
+  it('labels logical-turn traffic as processed across provider calls', () => {
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('A measured reply.'),
+          usage: {
+            promptTokens: 160_000,
+            completionTokens: 12_000,
+            totalTokens: 172_000,
+            requestCount: 5
+          }
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('172,000 processed').getAttribute('title'))
+      .toBe('172,000 tokens processed across 5 calls');
+    expect(document.body.textContent).not.toContain('172,000 tokens');
+  });
+
   it('renders excerpt revisions as participant-neutral thread dividers', () => {
     render(
       <WorkshopTurnBubble

@@ -53,6 +53,26 @@ describe('AIResourceManager lifecycle', () => {
     manager.dispose();
   });
 
+  it('fans explicit processed-usage resets out to every live surface', () => {
+    const manager = new AIResourceManager(
+      { getGuideRegistry: jest.fn(), getGuideLoader: jest.fn() } as never,
+      { getApiKey: jest.fn() } as never,
+      { get: jest.fn() } as never
+    );
+    const first = jest.fn();
+    const second = jest.fn();
+    const disposeFirst = manager.addTokenUsageResetListener(first);
+    manager.addTokenUsageResetListener(second);
+
+    manager.resetTokenUsage();
+    disposeFirst();
+    manager.resetTokenUsage();
+
+    expect(first).toHaveBeenCalledTimes(1);
+    expect(second).toHaveBeenCalledTimes(2);
+    manager.dispose();
+  });
+
   it('names an invalid scope and leaves every model unchanged when validation fails', async () => {
     const configured: Record<string, string | undefined> = {};
     const log = { appendLine: jest.fn() };

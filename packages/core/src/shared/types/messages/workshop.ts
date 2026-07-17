@@ -15,6 +15,7 @@
 import { MessageEnvelope, MessageType } from './base';
 import { WritingToolsFocus } from './analysis';
 import { TokenUsage } from '../index';
+import type { LabeledContextBudgetSnapshot } from './inferenceContext';
 import type { WorkshopCapabilityArtifactDetails } from '../workshopCapabilities';
 
 /**
@@ -261,6 +262,8 @@ export interface WorkshopSessionSnapshot {
   hasConversation: boolean;
   /** The public participant graph. Conversation ids remain host-private. */
   participants: WorkshopParticipantsSnapshot;
+  /** Active-target context telemetry, already stripped of private conversation identity. */
+  contextBudget?: LabeledContextBudgetSnapshot;
   /** Last selected tool/lens, retained after a completed run for UI restore. */
   selectedToolId?: WorkshopToolId;
   /** Tool currently running, if any. */

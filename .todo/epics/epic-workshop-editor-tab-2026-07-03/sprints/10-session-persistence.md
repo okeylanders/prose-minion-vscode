@@ -37,6 +37,10 @@ honestly marked as restored history with fresh room memory.
   read-only behind a divider turn ("Previous session restored — transcript preserved, room
   memory not retained"); persona selection re-unlocked; first new turn starts
   a fresh conversation. T3 (real cross-restart memory) stays deferred.
+- **Inference telemetry is never restored as live memory**: persisted snapshots
+  contain neither provider conversation ids nor context-budget readings. A T2
+  restore shows `Not measured yet` until a fresh provider request completes;
+  archived transcript token history is not a current model-context claim.
 - **Schema-versioned, tolerant-forward**: `schemaVersion` on every file;
   malformed/unknown files skipped with a log line, never a crash.
 - Autosave and named saves share the serializer and differ only in filename

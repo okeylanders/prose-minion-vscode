@@ -16,7 +16,7 @@ import { ModelSelector } from './components/shared/ModelSelector';
 import { SettingsOverlay } from './components/SettingsOverlay';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { TabErrorFallback } from './components/shared/TabErrorFallback';
-import { TabId, MessageType, ModelScope } from '@shared/types';
+import { TabId, MessageType } from '@shared/types';
 
 // Infrastructure hooks
 import { useVSCodeApi } from './hooks/useVSCodeApi';

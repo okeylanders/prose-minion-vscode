@@ -13,7 +13,9 @@ material. Executes before the final Sprint 10 persistence pass.
 **Feature**: [feature-workshop-context-selector](../../../features/feature-workshop-context-selector/README.md)
 **Design source**: Okey's intake direction, 2026-07-14 (screenshot review of
 the live left rail), sharpened 2026-07-16 with verified pasted-selection
-provenance and source-aware context discovery.
+provenance and source-aware context discovery, plus the Context Bar v2 comp
+(Claude Design, 2026-07-16) whose "In context" sources panel this sprint
+feeds.
 
 ## Goal
 
@@ -108,6 +110,45 @@ verification passes from 06B.
   should state which source/neighbor resources it actually received; missing,
   unconfigured, or over-budget source context stays explicit.
 
+### Context source manifest (the Context Bar's "In context" panel)
+
+The Context Bar v2 comp reserves an "In context" section in the expanded
+gauge (the 11B bar landed without it). This sprint supplies its data: one
+manifest per retained conversation listing what that participant is actually
+carrying — regardless of who put it there. A file the host fetched
+autonomously is context the writer is paying for and must not be invisible.
+
+- **Every entry origin is covered.** Writer-declared material (pinned excerpt
+  with version, each context attachment) AND model-fetched material: host
+  `resource.read` deliveries from the Sprint 11 persona lane, host-triggered
+  `analysis.run` tool evidence and dictionary evidence frames, and a tool
+  sidecar's own delivered source/neighbor/guide reads from this sprint's
+  composite catalog.
+- **Entry shape** (closed, display-safe): `{ kind: 'pin' | 'attachment' |
+  'resource' | 'tool-evidence' | 'dictionary'; origin: 'writer' | 'host' |
+  'tool'; label; configuredResource?: { group, path }; sizeChars;
+  promptTokensDelta?; isEstimate; excerptVersion?; stale?; deliveredAt }`.
+  Raw absolute paths and conversation ids never enter the manifest.
+- **Cost is provider-measured where possible.** The engine already records
+  one `InferenceRequestObservation` per capability round; the prompt-token
+  delta between consecutive rounds is attributed to the evidence delivered
+  between them. `sizeChars` remains the honest fallback with
+  `isEstimate: true`. `ConversationManager` still never tokenizes (11B
+  guardrail preserved).
+- **Same ownership and lifecycle as the context snapshot.** The engine
+  collects entries during the turn and commits them beside `contextBudget`
+  only after the atomic history commit; cancellation and transport failure
+  preserve the prior manifest; reset, deletion, idle expiry, tool
+  replacement, and guest dismissal clear or replace it with its
+  conversation. Writer-origin entries are stamped by the session service at
+  attach/pin time.
+- **Stale, not deleted.** An excerpt revision marks prior-version pin entries
+  stale (the comp's dimmed rows with a STALE tag); re-reading the same
+  canonical resource replaces its entry instead of duplicating it.
+- **Projection.** `LabeledContextBudgetSnapshot` gains `sources`; the v2
+  drawer renders them grouped with sizes and origin attribution. The manifest
+  observes — it never gates, edits, or trims prompt content.
+
 ### Composer
 
 - The composer's **`+` button opens the same Context Selector modal** — adding
@@ -168,6 +209,31 @@ verification passes from 06B.
       delivered-resource provenance. Preserve the sidebar tools' existing
       guide-only behavior.
 
+### Context source manifest
+
+- [ ] Add the manifest entry type to the semantic layer and store the
+      committed manifest in `ConversationManager` beside `contextBudget`,
+      inheriting the same commit/cancel/reset/delete/expiry semantics.
+- [ ] Collect per-round delivered items in `AgentRunEngine` (resource reads,
+      analysis and dictionary evidence) with provider-measured prompt-token
+      deltas per capability round; fall back to char sizes marked as
+      estimates.
+- [ ] Stamp writer-origin entries (excerpt version, each attachment) from the
+      session service; mark prior-version pins stale on revision; replace
+      superseded same-resource reads instead of duplicating them.
+- [ ] Give tool sidecars the same manifest for their own delivered
+      source/neighbor/guide reads.
+- [ ] Project `sources` through `LabeledContextBudgetSnapshot` and render the
+      Context Bar's "In context" section: grouped rows, sizes, origin
+      attribution, stale dimming; display-safe labels only.
+- [ ] Draft the context compaction ADR during this sprint: decision
+      framework, candidate mechanisms (compress vs. compact vs. stale-
+      evidence eviction, informed by what the manifest shows dominates real
+      sessions), and what retained-history surgery means for the atomic
+      commit and snapshot semantics. The epic ships as one release, so the
+      post-launch fast-follow must be implementation, not design.
+      Implementation itself stays out of Sprint 12.
+
 ### Composer
 
 - [ ] `+` opens the Context Selector modal; resulting attachments appear in
@@ -204,6 +270,13 @@ verification passes from 06B.
 - [ ] Prompt/capability: host, guest, and tool source frames agree; a tool can
       request the configured source/neighbor on its initial run; unconfigured
       or ambiguous sources fail safely; no absolute path reaches the prompt.
+- [ ] Manifest: a host resource read, a host-triggered analysis side pass,
+      and writer attachments appear with correct kind/origin and measured or
+      honestly estimated sizes; cancelled turns preserve the prior manifest;
+      reset, guest dismissal, and tool replacement clear it with the
+      conversation; prompt-token deltas match the pinned multi-round
+      observation fixtures; no absolute path or conversation id crosses the
+      webview contract.
 
 ## Acceptance Criteria
 
@@ -222,6 +295,11 @@ verification passes from 06B.
   receives all of them with provenance.
 - Adding a file from the composer `+` mid-conversation shows an event turn and
   reaches the host on the next turn.
+- After Jill autonomously reads two persona files and triggers a Dialogue
+  side pass, expanding the context bar lists those three sources with origin
+  attribution ("Requested by Jill") and measured or honestly estimated sizes,
+  alongside the pinned excerpt and writer attachments. Dismissing a guest or
+  replacing a tool removes its manifest with its conversation.
 - 06B manual verification recorded; lint, typecheck, focused/full tests,
   build, bundle verification pass. Record bundle deltas.
 
@@ -236,6 +314,8 @@ verification passes from 06B.
   capability's byte/round limits.
 - No attachment content enters the prompt without a labeled frame and a rail
   artifact the writer can inspect; no silent context mutation mid-session.
+- The source manifest observes; it never gates, edits, trims, or reorders
+  prompt content, and it stores labels and sizes, never raw content.
 - Webview never touches the filesystem: all browsing/enumeration host-side
   through `FileSystem`/`Workspace`/`ShellService` ports; display-safe paths in
   the UI.

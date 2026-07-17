@@ -44,6 +44,7 @@ import {
   WorkshopTurn,
   WorkshopTurnMessage
 } from '@messages';
+import { LabeledContextBudgetSnapshot } from '@messages';
 
 /** The one live-run tracker (PR #67 review #8). */
 interface LiveRun {
@@ -74,6 +75,7 @@ export interface WorkshopState {
   toolSidecars: WorkshopToolSidecarSnapshot[];
   /** Explicitly invited persona guests, including disposed history markers. */
   personaGuests: WorkshopPersonaGuestSnapshot[];
+  contextBudget?: LabeledContextBudgetSnapshot;
   todos: WorkshopTodoItem[];
   /** True when the composer can message the host or selected direct sidecar. */
   canMessage: boolean;
@@ -151,6 +153,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const [chatTarget, setChatTargetState] = React.useState<WorkshopChatTarget>({ kind: 'host' });
   const [toolSidecars, setToolSidecars] = React.useState<WorkshopToolSidecarSnapshot[]>([]);
   const [personaGuests, setPersonaGuests] = React.useState<WorkshopPersonaGuestSnapshot[]>([]);
+  const [contextBudget, setContextBudget] = React.useState<LabeledContextBudgetSnapshot | undefined>();
   const [todos, setTodos] = React.useState<WorkshopTodoItem[]>([]);
   const [selectedToolId, setSelectedToolId] = React.useState<WorkshopToolId | null>(null);
   const [activeToolId, setActiveToolId] = React.useState<WorkshopToolId | null>(null);
@@ -302,6 +305,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
       setChatTargetState(session.participants.chatTarget);
       setToolSidecars(session.participants.toolSidecars);
       setPersonaGuests(session.participants.personaGuests);
+      setContextBudget(session.contextBudget);
       setTodos(session.todos);
       setSelectedToolId(session.selectedToolId ?? null);
       setActiveToolId(session.activeToolId ?? null);
@@ -434,6 +438,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     chatTarget,
     toolSidecars,
     personaGuests,
+    contextBudget,
     todos,
     canMessage,
     isPersonaSelectionLocked,

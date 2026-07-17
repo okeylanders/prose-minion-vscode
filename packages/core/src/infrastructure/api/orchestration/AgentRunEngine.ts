@@ -12,7 +12,7 @@ import {
   RunPolicy
 } from './AgentRunContracts';
 import { findExecutableMarkerIndex } from './ResourceReadXmlCodec';
-import { TokenUsage } from '@shared/types';
+import { ContextBudgetSnapshot, InferenceRequestObservation, TokenUsage } from '@shared/types';
 
 export type StatusCallback = (message: string, tickerMessage?: string) => void;
 export type TokenUsageCallback = (usage: TokenUsage) => void;
@@ -28,6 +28,7 @@ interface TurnResult {
   readonly visibleContent?: string;
   readonly finishReason?: string;
   readonly usage?: TokenUsage;
+  readonly observation?: InferenceRequestObservation;
   readonly cancelled: boolean;
   /** Candidate XML tool calls are withheld from visible streaming until validated. */
   readonly exactRequest?: unknown;
@@ -198,9 +199,12 @@ export class AgentRunEngine {
       throw new ConversationNotFoundError(request.conversationId);
     }
     const capability = this.validateCapability(request);
+    const userMessage = capability?.appendTurnContract
+      ? await capability.appendTurnContract(request.userMessage)
+      : request.userMessage;
     const result = await this.executeConversationTurn(
       request.conversationId,
-      request.userMessage,
+      userMessage,
       request.policy,
       capability,
       request.options ?? {}
@@ -231,7 +235,15 @@ export class AgentRunEngine {
     const usedGuides: string[] = [];
     const requestedResources: string[] = [];
     let totalUsage: TokenUsage | undefined;
+    let latestObservation: InferenceRequestObservation | undefined;
+    let peakPromptTokens = 0;
     let correctionTurns = 0;
+
+    const recordObservation = (observation?: InferenceRequestObservation): void => {
+      if (!observation) return;
+      latestObservation = observation;
+      peakPromptTokens = Math.max(peakPromptTokens, observation.promptTokens);
+    };
 
     const currentMessages = (): OpenRouterMessage[] => [...history, ...pendingMessages];
     const runInstructedTurn = async (
@@ -243,6 +255,7 @@ export class AgentRunEngine {
         { role: 'user', content: instruction }
       );
       const next = await this.executeTurn(currentMessages(), runOptions, capability);
+      recordObservation(next.observation);
       totalUsage = this.addUsage(totalUsage, next.usage);
       return next;
     };
@@ -274,6 +287,7 @@ export class AgentRunEngine {
 
     try {
       let last = await this.executeTurn(currentMessages(), runOptions, capability);
+      recordObservation(last.observation);
       totalUsage = this.addUsage(totalUsage, last.usage);
       last = await recoverInvalidRequest(last);
       let rounds = 0;
@@ -343,6 +357,19 @@ export class AgentRunEngine {
       if (!cancelled) {
         pendingMessages.push({ role: 'assistant', content: visibleContent });
         this.conversationManager.addMessages(conversationId, pendingMessages);
+        if (latestObservation && totalUsage) {
+          const snapshot = this.toContextBudgetSnapshot(latestObservation, peakPromptTokens, totalUsage);
+          this.conversationManager.setContextBudget(conversationId, snapshot);
+          // One line per committed reading, so a moving gauge can be diagnosed
+          // from the log: a different conversation id means a target switch,
+          // the same id shrinking means the provider re-measured or compressed.
+          this.outputChannel?.appendLine(
+            `[AgentRunEngine] Context snapshot committed for ${conversationId}: ` +
+            `context=${snapshot.contextTokens} (prompt ${snapshot.promptTokens} + completion ${snapshot.completionTokens}), ` +
+            `model=${snapshot.modelId}, calls=${snapshot.callsThisTurn}, processed=${snapshot.turnProcessedTokens}, ` +
+            `compression=${snapshot.contextCompression}`
+          );
+        }
       }
 
       return {
@@ -361,6 +388,10 @@ export class AgentRunEngine {
 
   discardConversation(conversationId: string): void {
     this.conversationManager.deleteConversation(conversationId);
+  }
+
+  getConversationContextBudget(conversationId: string | undefined): ContextBudgetSnapshot | undefined {
+    return this.conversationManager.getContextBudget(conversationId);
   }
 
   setStatusCallback(callback?: StatusCallback): void {
@@ -409,6 +440,7 @@ export class AgentRunEngine {
           content: response.content,
           finishReason: response.finishReason,
           usage: response.usage,
+          observation: response.observation,
           cancelled: this.isAborted(options.signal),
           exactRequest: inspection?.kind === 'request' ? inspection.request : undefined,
           invalidRequest: inspection?.kind === 'invalid' ? inspection : undefined
@@ -424,6 +456,7 @@ export class AgentRunEngine {
     let content = '';
     let usage: TokenUsage | undefined;
     let finishReason: string | undefined;
+    let observation: InferenceRequestObservation | undefined;
     let cancelled = false;
     let classification: 'undecided' | 'text' | 'candidate' = 'undecided';
     const visibilityGuard = capability ? new ToolCallStreamVisibilityGuard() : undefined;
@@ -435,8 +468,9 @@ export class AgentRunEngine {
         signal: options.signal
       })) {
         if (chunk.done) {
-          usage = chunk.usage;
+          usage = chunk.usage ?? usage;
           finishReason = chunk.finishReason ?? finishReason;
+          observation = chunk.observation ?? observation;
           continue;
         }
         if (!chunk.token) continue;
@@ -500,6 +534,7 @@ export class AgentRunEngine {
       visibleContent: visibilityGuard?.content,
       finishReason,
       usage,
+      observation,
       cancelled,
       exactRequest,
       invalidRequest
@@ -562,11 +597,12 @@ export class AgentRunEngine {
 
   private addUsage(total: TokenUsage | undefined, usage: TokenUsage | undefined): TokenUsage | undefined {
     if (!usage) return total;
-    if (!total) return { ...usage };
+    if (!total) return { ...usage, requestCount: usage.requestCount ?? 1 };
     return {
       promptTokens: total.promptTokens + usage.promptTokens,
       completionTokens: total.completionTokens + usage.completionTokens,
       totalTokens: total.totalTokens + usage.totalTokens,
+      requestCount: (total.requestCount ?? 1) + (usage.requestCount ?? 1),
       costUsd: typeof total.costUsd === 'number' || typeof usage.costUsd === 'number'
         ? (total.costUsd ?? 0) + (usage.costUsd ?? 0)
         : undefined
@@ -575,6 +611,25 @@ export class AgentRunEngine {
 
   private emitUsage(usage?: TokenUsage): void {
     if (usage) this.tokenUsageCallback?.(usage);
+  }
+
+  private toContextBudgetSnapshot(
+    observation: InferenceRequestObservation,
+    peakPromptTokensThisTurn: number,
+    turnUsage: TokenUsage
+  ): ContextBudgetSnapshot {
+    return {
+      modelId: observation.modelId,
+      contextTokens: observation.promptTokens + observation.completionTokens,
+      promptTokens: observation.promptTokens,
+      completionTokens: observation.completionTokens,
+      peakPromptTokensThisTurn,
+      requestedMaxOutputTokens: observation.requestedMaxOutputTokens,
+      callsThisTurn: turnUsage.requestCount ?? 1,
+      turnProcessedTokens: turnUsage.totalTokens,
+      contextCompression: observation.contextCompression,
+      measuredAt: observation.measuredAt
+    };
   }
 
   private createTerminationContext(options: AgentRunOptions): TerminationContext {

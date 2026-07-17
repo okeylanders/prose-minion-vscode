@@ -10,6 +10,7 @@ export * from './base';
 export * from './error';
 export * from './status';
 export * from './tokenUsage';
+export * from './inferenceContext';
 export * from './accountBalance';
 export * from './warnings';
 

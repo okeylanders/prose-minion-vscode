@@ -5,6 +5,7 @@
 
 import { LogSink } from '@/platform';
 import { OpenRouterMessage } from '@providers/OpenRouterClient';
+import { ContextBudgetSnapshot } from '@shared/types';
 
 /**
  * Thrown when a caller references a conversation id this manager no longer
@@ -26,6 +27,8 @@ export interface ConversationContext {
   lastActivity: number;
   /** Pinned conversations survive clearOldConversations (multi-turn sessions). */
   pinned?: boolean;
+  /** Provider-measured context after the latest atomically committed turn. */
+  contextBudget?: ContextBudgetSnapshot;
 }
 
 export class ConversationManager {
@@ -131,7 +134,23 @@ export class ConversationManager {
 
     // Keep only the system message (first message)
     conversation.messages = conversation.messages.slice(0, 1);
+    conversation.contextBudget = undefined;
     conversation.lastActivity = Date.now();
+  }
+
+  /** Store provider-measured context only after its matching turn commits. */
+  setContextBudget(conversationId: string, snapshot: ContextBudgetSnapshot): void {
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation) {
+      throw new ConversationNotFoundError(conversationId);
+    }
+    conversation.contextBudget = { ...snapshot };
+  }
+
+  getContextBudget(conversationId: string | undefined): ContextBudgetSnapshot | undefined {
+    if (!conversationId) return undefined;
+    const snapshot = this.conversations.get(conversationId)?.contextBudget;
+    return snapshot ? { ...snapshot } : undefined;
   }
 
   /**
@@ -145,7 +164,7 @@ export class ConversationManager {
    * Clear old conversations that haven't been active recently
    * @param maxAgeMs Maximum age in milliseconds (default: 5 minutes)
    */
-  clearOldConversations(maxAgeMs: number = 300000): void {
+  clearOldConversations(maxAgeMs: number = 300000): string[] {
     const now = Date.now();
     const idsToDelete: string[] = [];
 
@@ -162,6 +181,7 @@ export class ConversationManager {
     if (idsToDelete.length > 0) {
       this.log?.appendLine(`[ConversationManager] Cleared ${idsToDelete.length} old conversation(s)`);
     }
+    return idsToDelete;
   }
 
   /**

@@ -76,6 +76,7 @@ import {
   WorkshopToolId,
   WorkshopPersonaId,
   WorkshopChatTarget,
+  LabeledContextBudgetSnapshot,
   WorkshopTurn,
   WorkshopTurnMessage
 } from '@messages';
@@ -1034,13 +1035,41 @@ export class WorkshopHandler {
   }
 
   private postSessionState(): void {
+    const session = this.session.getSnapshot();
+    session.contextBudget = this.activeContextBudget();
     const message: WorkshopSessionStateMessage = {
       type: MessageType.WORKSHOP_SESSION_STATE,
       source: 'extension.workshop',
-      payload: { session: this.session.getSnapshot() },
+      payload: { session },
       timestamp: Date.now()
     };
     void this.postMessage(message);
+  }
+
+  private activeContextBudget(): LabeledContextBudgetSnapshot {
+    const target = this.session.getChatTarget();
+    if (target.kind === 'tool') {
+      return {
+        label: `${workshopToolLabel(target.toolId)} context`,
+        snapshot: this.assistantToolService.getConversationContextBudget(
+          this.session.getToolSidecarConversationId(target.toolId)
+        )
+      };
+    }
+    if (target.kind === 'personaGuest') {
+      return {
+        label: `${workshopPersonaLabel(target.personaId)} context`,
+        snapshot: this.assistantToolService.getConversationContextBudget(
+          this.session.getPersonaGuestConversationId(target.personaId)
+        )
+      };
+    }
+    return {
+      label: `${workshopPersonaLabel(this.session.getSelectedPersonaId())} context`,
+      snapshot: this.assistantToolService.getConversationContextBudget(
+        this.session.getHostConversationId()
+      )
+    };
   }
 
   private sendStreamStarted(requestId: string): void {

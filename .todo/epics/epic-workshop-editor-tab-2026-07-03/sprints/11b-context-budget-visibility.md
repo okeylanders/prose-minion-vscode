@@ -1,22 +1,24 @@
-# Sprint 11B: Context Budget Visibility and Inference Telemetry
+# Sprint 11B: Workshop Context Budget Visibility and Inference Telemetry
 
-**Status**: Planned
-**Priority**: High (the current token UI misrepresents processed traffic as
-conversation size, immediately before Sprint 12 adds more prompt context)
+**Status**: Complete (implementation ready 2026-07-16)
+**Priority**: High (processed traffic was being mistaken for retained context
+immediately before Sprint 12 adds more prompt material)
 **Branch**: `sprint/workshop-editor-tab-11b-context-budget-visibility` -> PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 3-5 days
 **Depends on**: Sprint 11. Executes before Sprint 12 and the final Sprint 10
 persistence pass.
-**ADR**: [2026-07-16 — Universal Inference Context Observability](../../../../docs/adr/2026-07-16-inference-context-observability.md)
+**ADR**: [2026-07-16 — Workshop Retained-Context Observability](../../../../docs/adr/2026-07-16-inference-context-observability.md)
 
 ## Goal
 
-Replace ambiguous token counters with honest, universal inference telemetry.
-Writers can distinguish one request's context-window pressure from one turn's
-multi-call traffic and the app's cumulative processed usage. In Workshop, the
-context gauge follows whichever independent host, guest, or tool conversation
-the composer is addressing. The sidebar consumes the same provider-neutral
-tracking seam.
+Give Workshop writers an honest view of the context retained by the active
+host, guest, or tool conversation. Keep that reading distinct from the repeated
+provider traffic processed across a capability-heavy user turn and from
+cumulative app activity.
+
+Context visibility is Workshop-only. Sidebar tools do not expose user-driven
+retained chat turns, so a “latest sidebar context” gauge would describe an
+arbitrary one-shot request rather than a conversation the writer can continue.
 
 This sprint measures and names reality. It does not trim, summarize, or silently
 compress conversations.
@@ -26,43 +28,39 @@ compress conversations.
 Sprint 11's live persona-file smoke exposed two adjacent truths:
 
 - a valid two-profile lookup can require `search -> read -> search -> read`, so
-  capability-heavy turns make several provider calls and the per-turn token
-  total can greatly exceed any individual prompt;
-- the header's cumulative `Tokens` chip and bubble totals are naturally read as
-  context size even though they repeatedly count the same retained history.
+  one logical writer turn may make several provider calls;
+- turn and cumulative totals repeatedly count retained history and therefore
+  cannot represent how much context the Workshop conversation currently holds.
 
-The file-access PR remains scoped to file access and its review remediation.
-This work changes universal request contracts, lifecycle attribution, model
-metadata, and both presentation surfaces. It deserves its own reviewed branch.
-It also needs to land before Sprint 12 adds multiple context attachments, so
-that attachment UX is designed against visible context pressure rather than an
-ambiguous cumulative meter.
+This work changes provider response contracts, retained-conversation lifecycle,
+model metadata, Workshop projection, and token terminology. It lands before
+Sprint 12 expands context intake so those attachments are added against a
+visible context budget.
 
 ## Locked semantics
 
 ### Three numbers, three names
 
-- **Last prompt**: provider-reported prompt tokens for one completed model
-  request. This is the context gauge numerator.
-- **Turn processed**: prompt + completion tokens summed across every provider
-  request in one logical user turn. This is cost/traffic, not context size.
+- **Current context**: final provider-reported prompt tokens plus final response
+  completion tokens from the latest successfully committed Workshop turn. This
+  is the retained conversation immediately after the reply; it excludes the
+  next not-yet-sent writer message.
+- **Turn processed**: prompt plus completion tokens summed across every provider
+  request in one logical writer turn. This is work/cost, not retained context.
 - **Cumulative processed**: all completed provider traffic since the explicit
-  usage reset. This remains an account/activity meter, not session context.
+  usage reset. This is activity, not session context.
 
 No UI label uses bare `Tokens` where more than one interpretation is possible.
-The turn bubble may remain compact, but its tooltip/copy says `processed across
-N calls`.
+The expanded context view may expose **Last request prompt** as a diagnostic,
+but it is not the primary value.
 
 ### Context denominator
 
-- `usable input = live model contextLength - request maxTokens`.
-- The live catalog is the only denominator source. Missing/fallback catalog
-  metadata renders `Context window unavailable`; no hardcoded 128K/200K
-  assumption.
-- A reading is tied to the model that measured it. Changing models leaves the
-  old reading labeled as old until the next request completes.
-- The primary label is `Last prompt` or `Context on last call`, never an exact
-  `Current`/`Next prompt` claim.
+- `usable input = live measured-model contextLength - request maxTokens`.
+- The live catalog is the only denominator source. Missing or fallback metadata
+  renders `Window unavailable`; no hardcoded 128K/200K assumption.
+- A reading remains tied to the model that measured it until a later successful
+  turn replaces it.
 
 ### Warning thresholds
 
@@ -71,44 +69,50 @@ N calls`.
 - High: 85% through 94%.
 - Critical: 95% and above.
 
-Warnings are informational. No threshold triggers hidden message deletion,
-provider switching, summarization, or compression.
+Warnings are informational. They never trigger hidden deletion, model
+switching, summarization, or compression.
 
 ### Compression disclosure
 
 - Opt into OpenRouter router metadata and normalize only whether a
   `context_compression` pipeline stage materially ran.
-- Render `Applied`, `Not applied`, or `Unknown`; missing metadata is never
-  interpreted as proof that compression did not run.
-- Do not override account/organization plugin settings in this sprint.
+- Render `Applied`, `Not applied`, or `Unknown`; missing metadata is not proof
+  that compression did not run.
 - Do not retain or log raw router metadata, messages, or manuscript content.
+- Do not override account or organization compression settings.
 
 ## Architecture boundary
 
 ### Provider adapter: facts, not ownership
 
-Extend `OpenRouterClient` to return a provider-neutral per-request observation
-for streaming and non-streaming calls: model, request max output, usage, finish
-reason, and normalized compression state. The adapter parses OpenRouter fields
-but owns no cumulative/session state.
+`OpenRouterClient` returns a provider-neutral observation for completed
+streaming and non-streaming calls: measured model, prompt/completion/total
+usage, requested output reserve, finish reason, and normalized compression
+state. It owns no conversation or UI state.
 
-### Application service: universal attribution and lifecycle
+### Retained conversation: lifecycle owner
 
-Add an application-layer `InferenceContextTracker` (final name may sharpen in
-implementation) and inject it from `extension.ts` through the existing
-composition root. `AgentRunEngine` records every completed provider request
-before aggregating the logical turn.
+`ConversationManager` already owns every retained transcript. It stores the
+matching `ContextBudgetSnapshot` beside that transcript and clears it through
+the same reset/delete/expiry lifecycle.
 
-The tracker keys retained work by opaque conversation key and one-shot work by
-opaque run key. It exposes safe snapshots and cleanup operations; it knows no
-React, VS Code, or Workshop persona/tool types.
+`AgentRunEngine` collects observations and processed usage locally during a
+turn. Only after the final response and all pending transcript messages commit
+atomically does it update the conversation snapshot. A cancelled or failed turn
+leaves both history and the prior context measurement untouched.
+
+The manager does not estimate tokens from message strings. It lacks model
+tokenizers and provider transforms; the engine supplies the provider-measured
+facts at the commit boundary.
 
 Minimum snapshot fields:
 
 ```ts
 interface ContextBudgetSnapshot {
   modelId: string;
+  contextTokens: number;
   promptTokens: number;
+  completionTokens: number;
   peakPromptTokensThisTurn: number;
   requestedMaxOutputTokens: number;
   callsThisTurn: number;
@@ -118,153 +122,148 @@ interface ContextBudgetSnapshot {
 }
 ```
 
-Context length and utilization may be joined from `ModelOption` in the
-presentation path, but the measured `modelId` must travel with the snapshot so
-an old reading is never reinterpreted against a newly selected model.
+No standalone universal tracker, one-shot registry, sidebar query/update
+contract, or React-owned inference state is needed.
 
-### Presentation: shared component, surface-specific placement
+### Workshop presentation
 
-Create one context-budget component and pure formatting/threshold helpers.
-
-- **Workshop:** render below the participant rail/direct-target band and above
-  the composer. Label it with the active target (`Jill context`, `Quinn
-  context`, `Continuity context`). The host maps the private `chatTarget` to the
-  tracker; conversation ids never reach React.
-- **Sidebar:** render the same component in the active tool/model control band.
-  It follows the latest applicable one-shot/run scope and contains no Workshop
-  participant language.
-- **Header:** rename the existing cumulative chip to `Processed`; keep account
-  balance and model selection global.
+The shared context-budget component and pure utilization helpers are rendered
+only in Workshop, below the participant/target rail and above the composer.
+`WorkshopHandler` maps the active private conversation to a safe labeled
+snapshot (`Jill context`, `Quinn context`, `Continuity context`); conversation
+ids never reach React.
 
 Compact example:
 
 ```text
-Jill context   Last prompt 38K / 190K   20%
+Jill context   Context 42K / 190K · 22%
 ```
 
 Expanded details:
 
 ```text
-Model window       200K
-Output reserved     10K
-Last prompt         38K
-Peak this turn      41K
-This turn            5 calls · 172K processed
-Cumulative          429K processed
-Compression         Not applied
+Measured model      Claude Haiku 4.5
+Model window        200K
+Usable input        190K
+Output reserved      10K
+Current context      42K
+Last request prompt  38K
+Last response         4K
+Peak this turn       41K
+This turn             5 calls · 172K processed
+Cumulative           429K processed
+Compression          Not applied
 ```
 
 ## Participant and lifecycle rules
 
 - Host, each live guest, and each current tool sidecar keep separate readings.
-- Changing `WorkshopChatTarget` swaps the visible reading immediately; it does
-  not reset or merge participant telemetry.
-- A participant without a completed call shows `Not measured yet`.
-- A new run of the same tool replaces that tool's prior live conversation and
-  gauge, matching `adoptToolSidecar`.
-- Dismissing a guest retires its live tracker key and returns the widget to the
-  host target.
-- Bounded handoff/catch-up frames may increase the recipient's next measured
-  prompt, but never merge two histories or gauges.
-- New Session retires all Workshop conversation readings. It does not reset
-  cumulative processed usage; only the existing explicit usage reset does.
-- AI-resource generation rebuild/expiry clears readings that no longer map to
-  a live provider conversation.
+- Changing `WorkshopChatTarget` swaps the visible reading without resetting or
+  merging histories.
+- A participant without a successfully completed retained turn shows `Not
+  measured yet`.
+- Running the same tool again replaces the tool conversation and its reading.
+- Dismissing a guest deletes its conversation and reading together.
+- New Session deletes all Workshop conversations/readings but does not reset
+  cumulative processed usage.
+- Cancellation and transport failure preserve the prior committed reading.
+- A model change leaves the old measured model attached until a new turn
+  commits.
 - Sprint 10 restored T2 sessions begin `Not measured yet`; archived transcript
-  history is not live model memory.
+  history is not live provider memory.
 
 ## Tasks
 
 ### Characterize before changing
 
-- [ ] Add engine characterization proving one logical-turn total is the sum of
-      several request usages while `last prompt` and `peak prompt` remain
-      individual-call values.
-- [ ] Pin streaming terminal-usage behavior so telemetry emits once even when
-      finish reason and usage arrive in separate chunks.
-- [ ] Characterize current global reset/New Session/model-change behavior and
-      name each desired boundary explicitly.
-- [ ] Add OpenRouter fixtures with no metadata, unrelated pipeline stages, and
-      applied context compression.
+- [x] Prove one logical-turn total may sum several request usages while retained
+      context comes from the final successfully committed request and reply.
+- [x] Pin streaming terminal usage when usage, model, metadata, and finish reason
+      arrive in separate chunks.
+- [x] Characterize reset, target switch, model change, cancellation, transport
+      failure, and conversation deletion boundaries.
+- [x] Add metadata fixtures for missing, unrelated, applied, and unreadable
+      compression pipelines.
 
-### Contracts and application service
+### Contracts and conversation ownership
 
-- [ ] Add provider-neutral request-observation and context-budget snapshot
-      types in the core semantic type layer; export through the barrel.
-- [ ] Implement the application tracker with retained-conversation and
-      one-shot-run keys, bounded per-turn trace, latest/peak lookup, retirement,
-      and resource-generation cleanup.
-- [ ] Construct/inject the tracker from `extension.ts`; no service construction
-      inside `MessageHandler`, handlers, providers, or React.
-- [ ] Feed observations from every `AgentRunEngine` provider call before
-      logical-turn aggregation. Preserve existing aggregate usage/cost exactly
-      once.
+- [x] Add provider-neutral observation, compression, and context-snapshot types
+      to the core semantic type layer.
+- [x] Store the latest committed snapshot in `ConversationManager`, with
+      defensive reads and reset/delete/expiry cleanup inherited from the
+      transcript lifecycle.
+- [x] Have `AgentRunEngine` gather per-call facts locally and update the snapshot
+      only after its atomic history commit.
+- [x] Preserve existing logical-turn usage and cost aggregation exactly once.
 
 ### Provider metadata
 
-- [ ] Request `X-OpenRouter-Metadata: enabled` for streaming and non-streaming
+- [x] Request `X-OpenRouter-Metadata: enabled` for streaming and non-streaming
       calls.
-- [ ] Normalize only the context-compression pipeline fact and discard the raw
-      metadata object after observation creation.
-- [ ] Treat absent/unparseable metadata as `unknown`; log schema drift without
-      prompt/message content.
+- [x] Normalize only the compression-stage fact and discard raw metadata after
+      observation creation.
+- [x] Treat absent or unreadable metadata as `unknown` and log schema drift
+      without prompt or manuscript content.
 
-### Message and surface integration
+### Workshop surface
 
-- [ ] Add one typed telemetry update/query contract usable by both webview
-      roots; no ad-hoc window messages.
-- [ ] Rename global and per-turn labels/tooltips to `processed` semantics on
-      sidebar and Workshop.
-- [ ] Build the shared context-budget component, utilization helper, accessible
-      textual status, theme-safe warning states, and unknown/empty states.
-- [ ] Workshop maps active host/guest/tool target to a safe participant-labeled
-      snapshot and renders it below the participant rail, above the composer.
-- [ ] Sidebar renders the latest applicable run/model reading using the same
-      component and terminology.
+- [x] Rename cumulative and per-turn copy to explicit `processed` semantics.
+- [x] Build context utilization helpers and an accessible expandable gauge with
+      empty, unavailable, and warning states.
+- [x] Project the active host/guest/tool conversation as a safe labeled snapshot
+      and render it above the Workshop composer.
+- [x] Keep context UI and telemetry routing out of the sidebar.
+- [x] Keep processed-usage reset fanout shared between the sidebar and Workshop.
 
-### Lifecycle
+### Prompt behavior
 
-- [ ] Switching host/guest/tool targets restores independent readings.
-- [ ] Tool replacement, guest dismissal, New Session, conversation expiry, and
-      resource-manager rebuild retire only the affected live readings.
-- [ ] Model changes preserve the old measured model label and move to the new
-      denominator only after a new request.
-- [ ] Update Sprint 10's persistence inventory: no conversation id or live
-      context reading is restored as provider memory.
+- [x] State in the immutable Workshop persona prompt that every new writer
+      message starts a fresh capability-call allowance.
+- [x] Append a compact reset reminder to every retained continuation turn so an
+      exhausted earlier-turn limit is never treated as permanent.
+
+### Lifecycle and persistence
+
+- [x] Restore independent readings when switching host/guest/tool targets.
+- [x] Remove readings automatically with tool replacement, guest dismissal, New
+      Session, idle expiry, and resource-manager replacement.
+- [x] Preserve the previous snapshot on cancellation or transport failure.
+- [x] Update Sprint 10: restored sessions never claim an archived context
+      reading as live provider memory.
 
 ## Tests
 
-- [ ] Unit: request observation normalization, output reserve math, threshold
-      boundaries (69/70/84/85/94/95), unknown context length, compression
-      tri-state.
-- [ ] Engine: one-call, five-call, correction, forced-final retry, streaming,
-      cancellation, and transport failure; no usage double-counting.
-- [ ] Workshop aggregate: Jill -> guest -> tool -> Jill switches restore three
-      distinct readings; raw conversation ids absent from snapshots/messages.
-- [ ] Lifecycle: guest dismissal, same-tool replacement, New Session, model
-      change, and generation rebuild.
-- [ ] Webview: shared widget semantics on both roots, active-target label,
-      processed-copy regression, keyboard/screen-reader text, reduced motion.
-- [ ] Architecture: core remains free of `vscode`; app remains the only
-      composition root; universal tracker imports no Workshop/presentation
-      types.
+- [x] Unit: output reserve math, warning boundaries
+      (69/70/84/85/94/95), unknown model windows, compact formatting, and
+      compression tri-state.
+- [x] Engine/conversation: multi-call aggregation, retained current-context
+      calculation, defensive snapshot ownership, atomic commit, cancellation,
+      transport failure, reset, and deletion.
+- [x] Workshop: Jill -> guest -> tool -> Jill restores independent readings;
+      raw conversation ids remain absent from webview projections.
+- [x] Lifecycle: guest dismissal, same-tool replacement, New Session, model
+      hot-swap, idle expiry, and resource-generation rebuild.
+- [x] Webview: active-target label, current-context and processed copy,
+      measured-model association, keyboard/screen-reader text, and unknown
+      states.
+- [x] Architecture: core remains free of `vscode`; the app remains the sole
+      composition root; telemetry contracts contain no Workshop ids or raw
+      OpenRouter metadata.
 
 ## Acceptance Criteria
 
 - A five-call Jill resource turn may show `172K processed across 5 calls` while
-  the context widget independently shows, for example, `Last prompt 38K /
-  190K`; neither value is labeled simply `Tokens`.
-- Switching Jill -> Quinn -> Continuity -> Jill displays each independent last
-  prompt and restores Jill's original reading when returning.
-- The same selected model/window is shared where appropriate, but no
-  participant inherits another participant's numerator or processed turn
-  count.
-- OpenRouter-applied context compression produces a visible `Applied` state;
-  unavailable metadata produces `Unknown`, not a false assurance.
-- A custom/offline-catalog model with no live context length shows an honest
-  unavailable denominator and never assumes 200K.
-- New Session clears active participant readings but leaves cumulative
-  processed usage unchanged until explicit reset.
+  the Workshop gauge independently shows `Context 42K / 190K`; neither value is
+  labeled simply `Tokens` or `Last prompt`.
+- The 42K retained context is computed from the final request's 38K prompt plus
+  the retained 4K assistant reply.
+- Switching Jill -> Quinn -> Continuity -> Jill restores each independent
+  retained-conversation snapshot.
+- The sidebar shows no context gauge.
+- Compression `Applied`, `Not applied`, and `Unknown` remain distinguishable.
+- Missing live model-window data never falls back to an invented denominator.
+- New Session clears conversation readings but leaves cumulative processed
+  usage unchanged until explicit reset.
 - Focused/full tests, typecheck, lint, production build, `verify:bundle`, and
   `git diff --check` pass. Record bundle deltas.
 
@@ -274,11 +273,52 @@ Compression         Not applied
   compression-policy override in 11B.
 - No raw conversation ids, router metadata, messages, or manuscript text cross
   the webview telemetry contract.
-- No exact `current`/`next` context claim from a backward-looking provider
-  measurement.
-- Do not make `WorkshopSessionService` the universal telemetry store or make
-  `OpenRouterClient` the participant/session owner.
-- Preserve existing billing totals; relabeling must not change cost arithmetic.
-- If implementation reveals a need for preflight tokenization or context
-  compaction, capture it as a separate ADR/todo rather than smuggling it into
-  this observability sprint.
+- Do not describe processed traffic as retained context.
+- Do not estimate exact tokens inside `ConversationManager`; it owns lifecycle,
+  while the provider supplies measurement through `AgentRunEngine`.
+- Do not add a sidebar gauge until a sidebar feature owns a real user-retained
+  chat thread.
+- Preserve billing totals; copy changes must not alter cost arithmetic.
+- Preflight tokenization or context compaction requires a separate ADR/todo.
+
+## Completion Record — 2026-07-16
+
+- Added provider-neutral observations for streaming and non-streaming OpenRouter
+  requests. Only the normalized `context_compression` fact survives; terminal
+  fields may arrive separately but emit one completed observation.
+- Made `ConversationManager` the retained-context snapshot owner. The engine
+  records `final prompt + final completion` only after committing the matching
+  transcript turn, so deletion and failure semantics cannot drift.
+- Added the expandable context gauge only to Workshop. It follows the active
+  host, guest, or tool conversation, uses the measured model's live catalog
+  window, and keeps last-request prompt and multi-call processed traffic as
+  explicitly separate details.
+- Updated the Workshop persona base prompt, initial capability contract, and
+  every continuation reminder to state that the resource/capability allowance
+  resets with each new writer message.
+- Renamed aggregate UI copy to `Processed`, including per-turn call counts, and
+  preserved explicit processed-usage reset across both webview roots.
+- Verification: 97 Jest suites / 830 tests and 1 snapshot passed; all three
+  typechecks passed; ESLint passed with zero errors; production webpack and
+  `verify:bundle` passed; `git diff --check` passed.
+- Production bundles compared with the Sprint 11 build:
+  `extension.js` 2,392,575 -> 2,396,555 bytes (+3,980 / +0.17%);
+  `webview.js` 640,016 -> 645,669 bytes (+5,653 / +0.88%). Webpack's existing
+  webview asset-size recommendations remain warnings only.
+
+## Post-completion addendum — 2026-07-16 review pass
+
+- Review fixes landed on the sprint branch: router metadata without a
+  readable pipeline now normalizes to `unknown` (only an explicit pipeline
+  that omits the stage proves `not-applied`); utilization percent is rounded
+  once in the shared view helper so the displayed label and warning tone
+  agree at threshold boundaries; the engine logs every committed context
+  snapshot so a moving gauge can be diagnosed from the output channel.
+- The gauge was restyled to the Claude Design "Context Bar v2" comp:
+  identity dot + participant name, tone-colored budget track, compact
+  numbers/percent, drawer, dashed not-measured state, and a footer naming
+  the per-participant reading. Locked tone thresholds are unchanged.
+- The comp's "In context" sources section and Compress/Compact memory
+  actions are NOT part of 11B: the per-conversation source manifest
+  (including host-fetched resources and host-triggered tool evidence) is
+  specified in Sprint 12, and compaction still requires its own ADR.

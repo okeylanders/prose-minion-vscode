@@ -2,6 +2,186 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   Workshop context bar (Claude Design "Context Bar v2").
+   One row — identity dot + participant name + budget track + compact
+   numbers + percent + chevron — over a <details> drawer, so keyboard
+   and AT semantics come from the platform. Tones keep the LOCKED
+   thresholds (normal <70, watch 70–84, high 85–94, critical ≥95);
+   the design's two elevated colors map on as watch=amber and
+   high/critical=red, with critical also tinting the container border
+   so the top two tones stay distinguishable.
+   ============================================================ */
+.pm-context-budget {
+  margin-top: 8px;
+  border: 1px solid var(--pm-border-soft);
+  border-radius: 10px;
+  background: var(--pm-inset);
+  color: var(--pm-text-2);
+  font-family: var(--pm-sans);
+  font-size: 11.5px;
+  user-select: none;
+}
+
+.pm-context-budget-critical { border-color: color-mix(in srgb, var(--pm-red) 45%, transparent); }
+
+.pm-context-budget-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 38px;
+  padding: 0 8px 0 12px;
+}
+
+summary.pm-context-budget-row {
+  cursor: pointer;
+  list-style: none;
+  border-radius: 9px;
+}
+
+summary.pm-context-budget-row::-webkit-details-marker { display: none; }
+summary.pm-context-budget-row:hover { background: rgba(255, 255, 255, 0.02); }
+summary.pm-context-budget-row:focus-visible {
+  outline: 2px solid var(--pm-accent-ring);
+  outline-offset: 1px;
+}
+
+.pm-context-budget-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--pm-dim);
+}
+.pm-context-budget-dot-0 { background: var(--pm-accent); }
+.pm-context-budget-dot-1 { background: var(--pm-blue); }
+.pm-context-budget-dot-2 { background: var(--pm-green); }
+.pm-context-budget-dot-3 { background: var(--pm-amber); }
+.pm-context-budget-dot-4 { background: var(--pm-link); }
+
+.pm-context-budget-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pm-text-2);
+  white-space: nowrap;
+}
+.pm-context-budget-name b { color: var(--pm-text); font-weight: 600; }
+
+.pm-context-budget-track {
+  flex: 1;
+  min-width: 60px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--pm-surface-2);
+  overflow: hidden;
+}
+
+.pm-context-budget-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--pm-accent);
+  transition: width .45s cubic-bezier(.3, .8, .3, 1), background .3s;
+}
+.pm-context-budget-watch .pm-context-budget-fill { background: var(--pm-amber); }
+.pm-context-budget-high .pm-context-budget-fill,
+.pm-context-budget-critical .pm-context-budget-fill { background: var(--pm-red); }
+
+.pm-context-budget-nums {
+  font-family: var(--pm-mono);
+  font-size: 11.5px;
+  color: var(--pm-muted);
+  white-space: nowrap;
+}
+.pm-context-budget-nums b { color: var(--pm-text-2); font-weight: 500; }
+
+.pm-context-budget-pct {
+  font-family: var(--pm-mono);
+  font-size: 11.5px;
+  color: var(--pm-dim);
+  width: 34px;
+  text-align: right;
+}
+.pm-context-budget-watch .pm-context-budget-pct { color: var(--pm-amber); }
+.pm-context-budget-high .pm-context-budget-pct,
+.pm-context-budget-critical .pm-context-budget-pct { color: var(--pm-red); }
+
+.pm-context-budget-chev {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pm-dim);
+  flex: none;
+  transition: transform .25s;
+}
+summary.pm-context-budget-row:hover .pm-context-budget-chev {
+  color: var(--pm-muted);
+  background: rgba(255, 255, 255, 0.04);
+}
+.pm-context-budget[open] .pm-context-budget-chev { transform: rotate(180deg); }
+
+/* Unmeasured participants get a dashed, empty track — never a fake zero. */
+.pm-context-budget-empty .pm-context-budget-track {
+  background: repeating-linear-gradient(90deg, var(--pm-surface-2) 0 5px, transparent 5px 9px);
+}
+.pm-context-budget-empty .pm-context-budget-nums {
+  font-family: var(--pm-sans);
+  font-style: italic;
+  color: var(--pm-faint);
+}
+
+.pm-context-budget-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px 28px;
+  margin: 0;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--pm-border-soft);
+}
+
+.pm-context-budget-details > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pm-context-budget-details dt { color: var(--pm-dim); }
+.pm-context-budget-details dd {
+  margin: 0;
+  text-align: right;
+  font-family: var(--pm-mono);
+  color: var(--pm-text-2);
+}
+.pm-context-budget-details dd.pm-ctx-ok { color: var(--pm-green); }
+.pm-context-budget-details dd.pm-ctx-warn { color: var(--pm-amber); }
+.pm-context-budget-details dd.pm-ctx-dim { color: var(--pm-dim); }
+
+.pm-context-budget-foot {
+  margin: 0 14px;
+  padding: 8px 0 10px;
+  border-top: 1px dashed var(--pm-border-soft);
+  font-size: 11px;
+  color: var(--pm-faint);
+}
+.pm-context-budget-foot b { color: var(--pm-dim); font-weight: 500; }
+
+[data-pm-surface="workshop"] .pm-context-budget {
+  margin: 0 28px 10px;
+}
+
+@media (max-width: 560px) {
+  .pm-context-budget-details { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pm-context-budget-fill,
+  .pm-context-budget-chev { transition: none; }
+}
+
 /* VS Code theme variables */
 :root {
   --spacing-xs: 0.25rem;

@@ -23,7 +23,13 @@ import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
 import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
-import { DialogueFocus, WritingToolsFocus, StatusEmitter, API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
+import {
+  API_KEY_NOT_CONFIGURED_HEADING,
+  ContextBudgetSnapshot,
+  DialogueFocus,
+  StatusEmitter,
+  WritingToolsFocus
+} from '@messages';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import {
   AnyAgentCapability,
@@ -571,6 +577,10 @@ export class AssistantToolService {
    */
   discardConversation(conversationId: string): void {
     this.assistantEngine?.discardConversation(conversationId);
+  }
+
+  getConversationContextBudget(conversationId: string | undefined): ContextBudgetSnapshot | undefined {
+    return this.assistantEngine?.getConversationContextBudget(conversationId);
   }
 
   private buildWorkshopPersonaUserMessage(input: WorkshopPersonaConversationInput): string {

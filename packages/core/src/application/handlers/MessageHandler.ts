@@ -79,6 +79,7 @@ export class MessageHandler {
   // each run a MessageHandler over the one CoreServices bundle). Dispose
   // releases exactly these — never service-wide state another surface uses.
   private readonly disposeTokenUsageListener: () => void;
+  private readonly disposeProcessedUsageResetListener: () => void;
   private readonly disposeDictionaryStatusListener: () => void;
   private readonly disposeSearchStatusListener: () => void;
   private readonly disposeBalanceListener: () => void;
@@ -178,6 +179,9 @@ export class MessageHandler {
     this.disposeTokenUsageListener = aiResourceManager.addTokenUsageListener((usage) => {
       this.applyTokenUsage(usage);
     });
+    this.disposeProcessedUsageResetListener = aiResourceManager.addTokenUsageResetListener(
+      () => this.resetTokenUsageTotals()
+    );
 
     this.analysisHandler = new AnalysisHandler(
       assistantToolService,
@@ -231,9 +235,7 @@ export class MessageHandler {
       this.platform.settings,
       this.platform.shell,
       this.postMessage.bind(this),
-      outputChannel,
-      this.resultCache,
-      this.tokenTotals
+      outputChannel
     );
 
     // Ensure token totals are reset on activation/startup so the webview does not
@@ -422,6 +424,29 @@ export class MessageHandler {
       const msg = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[MessageHandler] Failed to apply token usage update: ${msg}`);
     }
+  }
+
+  private resetTokenUsageTotals(): void {
+    this.tokenTotals.promptTokens = 0;
+    this.tokenTotals.completionTokens = 0;
+    this.tokenTotals.totalTokens = 0;
+    this.tokenTotals.costUsd = 0;
+    this.tokenTotals.lastRequestCostUsd = undefined;
+    const message: TokenUsageUpdateMessage = {
+      type: MessageType.TOKEN_USAGE_UPDATE,
+      source: 'extension.handler',
+      payload: {
+        totals: {
+          promptTokens: 0,
+          completionTokens: 0,
+          totalTokens: 0,
+          costUsd: 0
+        }
+      },
+      timestamp: Date.now()
+    };
+    this.resultCache.tokenUsage = { ...message };
+    void this.postMessage(message);
   }
 
   private sendSearchStatus(message: string, progress?: { current: number; total: number }): void {
@@ -787,6 +812,7 @@ export class MessageHandler {
     // (extension.ts); the config-change watcher is owned by the shell.
     try {
       this.disposeTokenUsageListener();
+      this.disposeProcessedUsageResetListener();
       this.disposeDictionaryStatusListener();
       this.disposeSearchStatusListener();
       this.analysisHandler.dispose();
