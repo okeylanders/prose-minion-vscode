@@ -1428,9 +1428,12 @@
   color: var(--pm-dim);
   background: transparent;
 }
-[data-pm-surface="workshop"] .pm-ws-participant-dismiss:hover {
+[data-pm-surface="workshop"] .pm-ws-participant-dismiss:not(:disabled):hover {
   color: var(--pm-text);
   background: var(--pm-surface-3);
+}
+[data-pm-surface="workshop"] .pm-ws-participant-dismiss:disabled {
+  opacity: 0.45;
 }
 [data-pm-surface="workshop"] .pm-ws-chip-invite {
   color: var(--pm-accent-hi);

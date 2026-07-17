@@ -19,6 +19,14 @@ const sidecar = (
   ...overrides
 });
 
+const guest: WorkshopPersonaGuestSnapshot = {
+  personaId: 'margot',
+  personaLabel: 'Margot',
+  hasConversation: true,
+  liveness: 'live',
+  activeTarget: false
+};
+
 describe('WorkshopParticipantRail', () => {
   const renderRail = (
     toolSidecars: WorkshopToolSidecarSnapshot[],
@@ -96,14 +104,72 @@ describe('WorkshopParticipantRail', () => {
     expect(onSetChatTarget).not.toHaveBeenCalled();
   });
 
-  it('exposes the explicit guest invitation and routes a live guest', () => {
-    const guest: WorkshopPersonaGuestSnapshot = {
-      personaId: 'margot',
-      personaLabel: 'Margot',
-      hasConversation: true,
-      liveness: 'live',
-      activeTarget: false
+  it('keeps the rail visible but disables every control while routing is locked', () => {
+    render(
+      <WorkshopParticipantRail
+        personaId="jill"
+        personaLabel="Jill"
+        toolSidecars={[sidecar('cliche')]}
+        personaGuests={[guest]}
+        chatTarget={{ kind: 'host' }}
+        onSetChatTarget={jest.fn()}
+        disabled
+        showInviteGuest
+        onDismissGuest={jest.fn()}
+      />
+    );
+
+    expect(screen.getByRole('toolbar')).toBeTruthy();
+    expect(screen.getAllByRole('button')).toHaveLength(5);
+    screen.getAllByRole('button').forEach((button) => {
+      expect((button as HTMLButtonElement).disabled).toBe(true);
+    });
+    expect(screen.getAllByTitle('Available once the response finishes')).toHaveLength(4);
+    expect(screen.getByRole('button', { name: 'Margot' }).title)
+      .toBe('Available once the response finishes');
+    expect(screen.getByRole('button', { name: /Dismiss Margot/ }).getAttribute('aria-label'))
+      .toContain('available once the response finishes');
+  });
+
+  it('keeps the invite-only Jill rail mounted and locked during a response', () => {
+    render(
+      <WorkshopParticipantRail
+        personaId="jill"
+        personaLabel="Jill"
+        toolSidecars={[]}
+        personaGuests={[]}
+        chatTarget={{ kind: 'host' }}
+        onSetChatTarget={jest.fn()}
+        disabled
+        showInviteGuest
+      />
+    );
+
+    expect(screen.getByRole('toolbar')).toBeTruthy();
+    expect(screen.getAllByRole('button')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: /Invite guest/ }).title)
+      .toBe('Available once the response finishes');
+  });
+
+  it('moves focus to the rail when a focused control becomes disabled', () => {
+    const props = {
+      personaId: 'jill' as const,
+      personaLabel: 'Jill',
+      toolSidecars: [] as WorkshopToolSidecarSnapshot[],
+      personaGuests: [] as WorkshopPersonaGuestSnapshot[],
+      chatTarget: { kind: 'host' } as WorkshopChatTarget,
+      onSetChatTarget: jest.fn(),
+      showInviteGuest: true
     };
+    const { rerender } = render(<WorkshopParticipantRail {...props} />);
+    screen.getByRole('button', { name: /Invite guest/ }).focus();
+
+    rerender(<WorkshopParticipantRail {...props} disabled />);
+
+    expect(document.activeElement).toBe(screen.getByRole('toolbar'));
+  });
+
+  it('exposes the explicit guest invitation and routes a live guest', () => {
     const onSetChatTarget = jest.fn();
     const onInviteGuest = jest.fn();
     render(
