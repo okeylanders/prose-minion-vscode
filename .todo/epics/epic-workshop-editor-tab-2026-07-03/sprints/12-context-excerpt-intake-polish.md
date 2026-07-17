@@ -15,7 +15,10 @@ material. Executes before the final Sprint 10 persistence pass.
 the live left rail), sharpened 2026-07-16 with verified pasted-selection
 provenance and source-aware context discovery, plus the Context Bar v2 comp
 (Claude Design, 2026-07-16) whose "In context" sources panel this sprint
-feeds.
+feeds, and the Intake Widgets comp (Claude Design, pulled 2026-07-17 into
+`docs/design/`) — the interactive source of truth for the excerpt/context
+cards, the Context Selector modal, and the Context wizard (added to scope
+2026-07-17).
 
 ## Goal
 
@@ -78,6 +81,16 @@ verification passes from 06B.
   configured context-resource paths grouped by category; an explicit
   "Explore project folders…" escape hatch through the host picker; configured
   vs. explored files visibly distinguished.
+- **`[Context wizard]` (scope added 2026-07-17, per the Intake Widgets
+  comp):** a third intake button that reuses the sidebar Context tool's
+  generation lane (`ContextAssistantService`, `contextModel` scope, closed
+  `projectContext` resource-read protocol) behind Workshop-scoped routes with
+  a distinct streaming domain so the two lanes never cross-consume chunks or
+  results. One run at a time (explicit guard, visible status row per the
+  comp). A run's requested resources land as wizard-tagged *file attachments*
+  and its generated brief as a wizard-tagged *text attachment* — all subject
+  to the same aggregate budget, duplicate guard, remove controls, and
+  mid-session event turns as writer-added attachments.
 - **Prompt assembly**: attachments are delivered in labeled frames with
   provenance (reusing the delimiter-neutralization conventions), replacing the
   single-brief injection. Tool runs receive the same assembled context.
@@ -194,6 +207,10 @@ autonomously is context the writer is paying for and must not be invisible.
       turns and tool runs; delimiter neutralization; truncation notices.
 - [ ] Mid-session visibility: session event turn on add/remove after the
       conversation starts.
+- [ ] Context wizard: Workshop-scoped generate/cancel routes reusing
+      `ContextAssistantService` (new streaming domain + one-run-at-a-time
+      guard); wizard results land as wizard-tagged attachments through the
+      standard add path (budget + duplicate guards); status row per the comp.
 
 ### Source-aware prompt and tool delivery
 
@@ -263,6 +280,10 @@ autonomously is context the writer is paying for and must not be invisible.
       source tag, re-read replace + no-op, pin-button absence.
 - [ ] Attachments: caps, duplicate guard, remove, ordering, prompt-frame
       assembly, mid-session event turns.
+- [ ] Wizard: streaming-domain separation from the sidebar Context lane (no
+      cross-consumed chunks/results), one-run guard, results-to-attachment
+      mapping honors caps/duplicates, cancel mid-run leaves attachments
+      unchanged.
 - [ ] Modal: category grouping from configured paths, explore path, no raw
       path leakage.
 - [ ] Live session snapshots include excerpt source, ordered attachments, and
@@ -295,6 +316,10 @@ autonomously is context the writer is paying for and must not be invisible.
   receives all of them with provenance.
 - Adding a file from the composer `+` mid-conversation shows an event turn and
   reaches the host on the next turn.
+- The Context wizard runs at most once at a time, streams a visible status
+  row, and its picks arrive as removable wizard-tagged attachments that
+  respect the aggregate budget; a concurrent sidebar Context run is
+  unaffected by a Workshop wizard run and vice versa.
 - After Jill autonomously reads two persona files and triggers a Dialogue
   side pass, expanding the context bar lists those three sources with origin
   attribution ("Requested by Jill") and measured or honestly estimated sizes,
@@ -307,8 +332,11 @@ autonomously is context the writer is paying for and must not be invisible.
 
 - Intake rework changes *intake*, not memory: `replaceExcerpt` revision
   semantics, room-memory rules, and tool statelessness are untouched.
-- The modal is the writer-controlled attachment path — no model-assisted file
-  selection here (that is Sprint 11's separate, capability-bounded lane).
+- The modal is the writer-controlled attachment path. The Context wizard is
+  the one model-assisted intake lane, and it is bounded: it reuses the
+  sidebar Context lane's closed `projectContext` read protocol, runs one at a
+  time, and its picks land as ordinary, visible, removable attachments —
+  never silent context mutation.
 - Verified excerpt provenance may guide a model-requested read, but it never
   bypasses configured-resource membership, workspace containment, or the
   capability's byte/round limits.
