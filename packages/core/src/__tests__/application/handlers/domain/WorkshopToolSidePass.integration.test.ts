@@ -30,7 +30,8 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
       })),
       continueConversation: jest.fn(),
       discardConversation: jest.fn(),
-      getConversationContextBudget: jest.fn()
+      getConversationContextBudget: jest.fn(),
+      getConversationContextSources: jest.fn().mockReturnValue([])
     } as unknown as jest.Mocked<AgentRunEngine>;
     const manager = {
       ensureInitialized: jest.fn().mockResolvedValue(undefined),

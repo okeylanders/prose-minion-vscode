@@ -6,8 +6,10 @@ import { LogSink } from '@/platform';
 import {
   AgentCapability,
   CapabilityArtifact,
+  CapabilityDeliveredSource,
   CapabilityFulfillment
 } from '@orchestration/AgentRunContracts';
+import { isContextPathGroup } from '@shared/types/context';
 import { DictionaryService } from '@services/dictionary/DictionaryService';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
@@ -162,8 +164,50 @@ export class WorkshopPersonaCapability implements AgentCapability<
       deliveredItems: request.capability === 'resource.read' && result.status === 'success'
         ? [typeof result.metadata?.path === 'string' ? result.metadata.path : request.path]
         : [`${request.capability}:${result.status}`],
+      deliveredSources: this.toDeliveredSources(request, result),
       usage: result.usage
     };
+  }
+
+  /**
+   * Manifest rows for what this call put into the HOST's context (Phase 7):
+   * resource reads, analysis reports, and dictionary evidence — the material
+   * classes the sprint enumerates. Failed/rejected/cancelled calls delivered
+   * nothing and contribute nothing.
+   */
+  private toDeliveredSources(
+    request: WorkshopCapabilityRequest,
+    result: WorkshopCapabilityResult
+  ): CapabilityDeliveredSource[] {
+    if (result.status !== 'success' && result.status !== 'partial') {
+      return [];
+    }
+    const sizeChars = result.content?.length ?? 0;
+    switch (request.capability) {
+      case 'analysis.run':
+        return [{ kind: 'tool-evidence', label: workshopToolLabel(request.toolId), sizeChars }];
+      case 'dictionary.lookup':
+      case 'dictionary.full-entry':
+        return [{ kind: 'dictionary', label: request.word, sizeChars }];
+      case 'resource.read': {
+        const path = typeof result.metadata?.path === 'string' ? result.metadata.path : request.path;
+        const group = typeof result.metadata?.group === 'string' && isContextPathGroup(result.metadata.group)
+          ? result.metadata.group
+          : isContextPathGroup(request.group) ? request.group : undefined;
+        return [{
+          kind: 'resource',
+          label: path,
+          configuredResource: group ? { group, path } : undefined,
+          sizeChars
+        }];
+      }
+      case 'resource.catalog':
+      case 'resource.search':
+        // Bounded listings/snippets, not carried source material.
+        return [];
+      default:
+        return this.assertNever(request);
+    }
   }
 
   stripToolCalls(content: string): string {

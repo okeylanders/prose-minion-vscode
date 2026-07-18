@@ -41,6 +41,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   let handler: WorkshopHandler;
   let capabilityFactory: WorkshopPersonaCapabilityFactory;
   let contextBudgets: Map<string, ContextBudgetSnapshot>;
+  let contextSources: Map<string, import('@messages').ContextSourceEntry[]>;
   let resourceFiles: Array<{ group: string; path: string; label: string; sizeBytes: number; absolutePath: string; content: string }>;
   let resourceProviderFactory: { createProvider: jest.Mock };
 
@@ -66,6 +67,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   beforeEach(() => {
     session = new WorkshopSessionService(() => 1);
     contextBudgets = new Map();
+    contextSources = new Map();
     postMessage = jest.fn().mockResolvedValue(undefined);
     log = { appendLine: jest.fn() } as unknown as LogSink;
     service = {
@@ -86,6 +88,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       }),
       getConversationContextBudget: jest.fn((conversationId: string | undefined) =>
         conversationId ? contextBudgets.get(conversationId) : undefined
+      ),
+      getConversationContextSources: jest.fn((conversationId: string | undefined) =>
+        conversationId ? contextSources.get(conversationId) ?? [] : []
       ),
       addStatusListener: jest.fn(() => jest.fn())
     } as unknown as jest.Mocked<AssistantToolService>;
@@ -1504,6 +1509,76 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       ) as any);
 
       expect(session.getSnapshot().pendingMessageAttachments).toHaveLength(0);
+    });
+  });
+
+  describe('In-context manifest projection (Phase 7)', () => {
+    it('projects writer rows and fetched rows for the active target without leaking conversation ids', async () => {
+      await pin();
+      await handler.handleAddContextText(message(
+        MessageType.WORKSHOP_ADD_CONTEXT_TEXT,
+        { text: 'Mara cannot read.' }
+      ) as any);
+      contextSources.set('host-conv', [{
+        kind: 'resource',
+        origin: 'host',
+        label: 'Characters/raven.md',
+        configuredResource: { group: 'characters', path: 'Characters/raven.md' },
+        sizeChars: 46,
+        promptTokensDelta: 120,
+        isEstimate: false,
+        deliveredAt: 5
+      }]);
+
+      await handler.handleSendMessage(message(
+        MessageType.WORKSHOP_SEND_MESSAGE,
+        { text: 'What does Raven want?' }
+      ) as any);
+
+      const state = posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload;
+      const sources = state.session.contextBudget?.sources ?? [];
+      expect(sources).toEqual([
+        expect.objectContaining({ kind: 'pin', origin: 'writer', excerptVersion: 1 }),
+        expect.objectContaining({ kind: 'attachment', origin: 'writer', label: expect.stringContaining('Mara') }),
+        expect.objectContaining({
+          kind: 'resource',
+          origin: 'host',
+          label: 'Characters/raven.md',
+          promptTokensDelta: 120,
+          isEstimate: false
+        })
+      ]);
+      // The webview contract never carries conversation ids or absolute paths.
+      const wire = JSON.stringify(state);
+      expect(wire).not.toContain('host-conv');
+      expect(wire).not.toContain('/ws/');
+    });
+
+    it('drops a replaced tool sidecar\u2019s manifest with its conversation', async () => {
+      await pin();
+      await runProse();
+      contextSources.set('tool-conv', [{
+        kind: 'resource', origin: 'tool', label: 'chapters/ch-04.md',
+        sizeChars: 100, isEstimate: true, deliveredAt: 4
+      }]);
+      await handler.handleSetChatTarget(message(
+        MessageType.WORKSHOP_SET_CHAT_TARGET,
+        { kind: 'tool', toolId: 'prose' }
+      ) as any);
+      const withTool = posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload.session.contextBudget;
+      expect(withTool?.sources).toEqual(expect.arrayContaining([
+        expect.objectContaining({ kind: 'resource', origin: 'tool', label: 'chapters/ch-04.md' })
+      ]));
+
+      // Replacement: a new run discards the old conversation and its manifest.
+      service.analyzeProse.mockResolvedValue(analysisResult('second report', { conversationId: 'tool-conv-2' }));
+      await runProse();
+      await handler.handleSetChatTarget(message(
+        MessageType.WORKSHOP_SET_CHAT_TARGET,
+        { kind: 'tool', toolId: 'prose' }
+      ) as any);
+      const replaced = posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload.session.contextBudget;
+      expect(JSON.stringify(replaced?.sources ?? [])).not.toContain('ch-04.md');
     });
   });
 });

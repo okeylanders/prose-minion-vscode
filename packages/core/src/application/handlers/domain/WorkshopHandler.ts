@@ -789,7 +789,7 @@ export class WorkshopHandler {
         // A failed/cancelled turn falls through to the catch, which leaves
         // the staged artifacts pending — the pills survive and a retry
         // ships the same ids.
-        this.session.commitMessageAttachments(messageAttachments.map((a) => a.id));
+        this.session.commitMessageAttachments(messageAttachments.map((a) => a.id), target);
         this.outputChannel.appendLine(
           `[WorkshopHandler] Message attachments shipped (${messageAttachments.map((a) => a.id).join(', ')})`
         );
@@ -2004,27 +2004,31 @@ export class WorkshopHandler {
 
   private activeContextBudget(): LabeledContextBudgetSnapshot {
     const target = this.session.getChatTarget();
-    if (target.kind === 'tool') {
-      return {
-        label: `${workshopToolLabel(target.toolId)} context`,
-        snapshot: this.assistantToolService.getConversationContextBudget(
-          this.session.getToolSidecarConversationId(target.toolId)
-        )
-      };
-    }
-    if (target.kind === 'personaGuest') {
-      return {
-        label: `${workshopPersonaLabel(target.personaId)} context`,
-        snapshot: this.assistantToolService.getConversationContextBudget(
-          this.session.getPersonaGuestConversationId(target.personaId)
-        )
-      };
-    }
+    const { label, conversationId } = target.kind === 'tool'
+      ? {
+          label: `${workshopToolLabel(target.toolId)} context`,
+          conversationId: this.session.getToolSidecarConversationId(target.toolId)
+        }
+      : target.kind === 'personaGuest'
+        ? {
+            label: `${workshopPersonaLabel(target.personaId)} context`,
+            conversationId: this.session.getPersonaGuestConversationId(target.personaId)
+          }
+        : {
+            label: `${workshopPersonaLabel(this.session.getSelectedPersonaId())} context`,
+            conversationId: this.session.getHostConversationId()
+          };
+    // The Phase 7 manifest: writer-declared rows first, then this
+    // conversation's agent-fetched deliveries in delivery order. Both sides
+    // are display-safe; the conversation id never leaves this method.
+    const sources = [
+      ...this.session.collectWriterSources(target),
+      ...this.assistantToolService.getConversationContextSources(conversationId)
+    ];
     return {
-      label: `${workshopPersonaLabel(this.session.getSelectedPersonaId())} context`,
-      snapshot: this.assistantToolService.getConversationContextBudget(
-        this.session.getHostConversationId()
-      )
+      label,
+      snapshot: this.assistantToolService.getConversationContextBudget(conversationId),
+      sources: sources.length > 0 ? sources : undefined
     };
   }
 

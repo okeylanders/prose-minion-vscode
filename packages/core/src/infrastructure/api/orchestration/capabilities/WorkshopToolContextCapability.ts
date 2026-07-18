@@ -9,7 +9,12 @@ import { GuideMetadata, GuideRegistry } from '@/infrastructure/guides/GuideRegis
 import { GuideLoader } from '@/tools/shared/guides';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import { WorkshopConfiguredResourceRef } from '@messages';
-import { AgentCapability, CapabilityArtifact, CapabilityFulfillment } from '../AgentRunContracts';
+import {
+  AgentCapability,
+  CapabilityArtifact,
+  CapabilityDeliveredSource,
+  CapabilityFulfillment
+} from '../AgentRunContracts';
 import {
   createResourceReadXmlInstruction,
   ResourceReadInspection,
@@ -109,6 +114,7 @@ export class WorkshopToolContextCapability implements AgentCapability<
     const requestedKeys = [...new Set(request.paths)];
     const unavailable: string[] = [];
     const artifacts: CapabilityArtifact[] = [];
+    const deliveredSources: CapabilityDeliveredSource[] = [];
     const sections: string[] = [];
     const deliveredItems: string[] = [];
 
@@ -130,6 +136,12 @@ export class WorkshopToolContextCapability implements AgentCapability<
         category: entry.summary.group,
         size: loaded.length,
         reason: entry.role === 'source' ? 'Excerpt source resource' : 'Neighboring chapter'
+      });
+      deliveredSources.push({
+        kind: 'resource',
+        label: entry.summary.path,
+        configuredResource: { group: entry.summary.group, path: entry.summary.path },
+        sizeChars: loaded.length
       });
       sections.push([
         `### Project resource: ${entry.summary.path}`,
@@ -157,6 +169,11 @@ export class WorkshopToolContextCapability implements AgentCapability<
           size: content.length,
           reason: 'Requested craft guide'
         });
+        deliveredSources.push({
+          kind: 'resource',
+          label: guide.displayName,
+          sizeChars: content.length
+        });
         sections.push([`### Guide: ${guide.path}`, '', content].join('\n'));
       } catch (error) {
         unavailable.push(key);
@@ -169,7 +186,8 @@ export class WorkshopToolContextCapability implements AgentCapability<
     return {
       evidence: this.buildEvidence(sections, unavailable),
       deliveredItems,
-      artifacts
+      artifacts,
+      deliveredSources
     };
   }
 

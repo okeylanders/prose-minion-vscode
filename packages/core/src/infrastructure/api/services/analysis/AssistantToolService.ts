@@ -26,6 +26,7 @@ import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisR
 import {
   API_KEY_NOT_CONFIGURED_HEADING,
   ContextBudgetSnapshot,
+  ContextSourceEntry,
   DialogueFocus,
   StatusEmitter,
   WritingToolsFocus
@@ -619,6 +620,11 @@ export class AssistantToolService {
 
   getConversationContextBudget(conversationId: string | undefined): ContextBudgetSnapshot | undefined {
     return this.assistantEngine?.getConversationContextBudget(conversationId);
+  }
+
+  /** Agent-fetched manifest rows for a retained conversation (Phase 7). */
+  getConversationContextSources(conversationId: string | undefined): ContextSourceEntry[] {
+    return this.assistantEngine?.getConversationContextSources(conversationId) ?? [];
   }
 
   /**

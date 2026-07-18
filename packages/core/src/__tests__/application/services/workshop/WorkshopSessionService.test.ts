@@ -915,3 +915,128 @@ describe('message attachments — one-shot thread-artifacts (Phase 6B)', () => {
     expect(session.getSnapshot().pendingMessageAttachments).toHaveLength(1);
   });
 });
+
+describe('writer-origin context sources (Phase 7)', () => {
+  const pinned = (session: WorkshopSessionService) => session.setExcerpt({
+    text: 'The cup moves.',
+    source: {
+      kind: 'file',
+      sourceUri: 'file:///ws/chapters/ch-04.md',
+      relativePath: 'chapters/ch-04.md',
+      configuredResource: { group: 'chapters', path: 'chapters/ch-04.md' }
+    }
+  });
+
+  it('stamps the host pin at first adoption and derives live standing attachments', () => {
+    const session = new WorkshopSessionService(() => 7);
+    pinned(session);
+    session.addContextAttachment({
+      kind: 'text', origin: 'writer', label: 'Mara note\u2026', words: 5,
+      content: 'Mara cannot see the cup.'
+    });
+
+    // Before any host conversation, nothing writer-stamped is carried yet
+    // except the live attachment derivation for the (future) host.
+    session.beginPersonaMessage('req-1', 'Hello');
+    session.completeRun('req-1', 'Hi.', undefined, undefined, 'host-conv');
+
+    const sources = session.collectWriterSources({ kind: 'host' });
+    expect(sources[0]).toMatchObject({
+      kind: 'pin',
+      origin: 'writer',
+      label: 'chapters/ch-04.md',
+      configuredResource: { group: 'chapters', path: 'chapters/ch-04.md' },
+      excerptVersion: 1
+    });
+    expect(sources[1]).toMatchObject({ kind: 'attachment', label: 'Mara note\u2026' });
+    // A second successful host turn does not duplicate the pin row.
+    session.beginPersonaMessage('req-2', 'Again');
+    session.completeRun('req-2', 'Sure.', undefined, undefined, 'host-conv');
+    expect(session.collectWriterSources({ kind: 'host' }).filter((s) => s.kind === 'pin')).toHaveLength(1);
+  });
+
+  it('marks prior pin rows stale only when the revision frame actually ships', () => {
+    const session = new WorkshopSessionService(() => 7);
+    pinned(session);
+    session.beginPersonaMessage('req-1', 'Hello');
+    session.completeRun('req-1', 'Hi.', undefined, undefined, 'host-conv');
+
+    session.replaceExcerpt({ text: 'The cup vanishes.', source: { kind: 'manual' } });
+    // Not delivered yet: the old pin is still the honest live row.
+    const livePins = session.collectWriterSources({ kind: 'host' }).filter((s) => s.kind === 'pin');
+    expect(livePins).toEqual([expect.objectContaining({ excerptVersion: 1 })]);
+    expect(livePins[0].stale).toBeUndefined();
+
+    const pending = session.collectPendingHostUpdates()!;
+    session.commitPendingHostUpdates(pending);
+    const pins = session.collectWriterSources({ kind: 'host' }).filter((s) => s.kind === 'pin');
+    expect(pins).toEqual([
+      expect.objectContaining({ excerptVersion: 1, stale: true }),
+      expect.objectContaining({ excerptVersion: 2, label: 'Pasted excerpt' })
+    ]);
+  });
+
+  it('snapshots tool manifests at adoption, replaces them on re-adoption, and retires them on revision', () => {
+    const session = new WorkshopSessionService(() => 7);
+    pinned(session);
+    session.addContextAttachment({
+      kind: 'text', origin: 'writer', label: 'Note\u2026', words: 2, content: 'A note.'
+    });
+
+    session.beginToolRun('prose', 'run-1');
+    session.completeToolReport('run-1', 'Report.', 'tool-conv-1');
+    const toolSources = session.collectWriterSources({ kind: 'tool', toolId: 'prose' });
+    expect(toolSources.map((s) => s.kind)).toEqual(['pin', 'attachment']);
+
+    // Standing-list changes after adoption never reach a retained sidecar.
+    session.addContextAttachment({
+      kind: 'text', origin: 'writer', label: 'Late note\u2026', words: 2, content: 'Too late.'
+    });
+    expect(session.collectWriterSources({ kind: 'tool', toolId: 'prose' })).toHaveLength(2);
+    // ...but the host derivation sees the live list.
+    expect(session.collectWriterSources({ kind: 'host' }).filter((s) => s.kind === 'attachment')).toHaveLength(2);
+
+    session.replaceExcerpt({ text: 'Revised.', source: { kind: 'manual' } });
+    expect(session.collectWriterSources({ kind: 'tool', toolId: 'prose' })).toEqual([]);
+  });
+
+  it('stamps guests at join, clears them on dismissal, and routes shipped message attachments by target', () => {
+    const session = new WorkshopSessionService(() => 7);
+    pinned(session);
+    session.adoptPersonaGuest('margot', 'guest-conv');
+    expect(session.collectWriterSources({ kind: 'personaGuest', personaId: 'margot' })).toEqual([
+      expect.objectContaining({ kind: 'pin', excerptVersion: 1 })
+    ]);
+
+    session.addMessageAttachment({
+      label: 'raven.md', content: 'Raven keeps the token.', words: 4,
+      relativePath: 'Characters/raven.md',
+      configuredResource: { group: 'characters', path: 'Characters/raven.md' }
+    });
+    session.commitMessageAttachments(['ta-1'], { kind: 'personaGuest', personaId: 'margot' });
+    expect(session.collectWriterSources({ kind: 'personaGuest', personaId: 'margot' })).toEqual([
+      expect.objectContaining({ kind: 'pin' }),
+      expect.objectContaining({
+        kind: 'message-attachment',
+        origin: 'writer',
+        label: 'raven.md',
+        sizeChars: 'Raven keeps the token.'.length
+      })
+    ]);
+    expect(session.getSnapshot().pendingMessageAttachments).toEqual([]);
+
+    session.dismissPersonaGuest('margot');
+    expect(session.collectWriterSources({ kind: 'personaGuest', personaId: 'margot' })).toEqual([]);
+  });
+
+  it('clears every writer-origin manifest with the conversations on reset', () => {
+    const session = new WorkshopSessionService(() => 7);
+    pinned(session);
+    session.beginPersonaMessage('req-1', 'Hello');
+    session.completeRun('req-1', 'Hi.', undefined, undefined, 'host-conv');
+    expect(session.collectWriterSources({ kind: 'host' })).not.toEqual([]);
+
+    session.reset();
+    expect(session.collectWriterSources({ kind: 'host' })).toEqual([]);
+  });
+});

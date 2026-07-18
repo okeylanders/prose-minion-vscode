@@ -92,6 +92,7 @@ function createTestAssembly(): TestAssembly {
     // Registered twice per handler: AnalysisHandler + WorkshopHandler.
     addStatusListener: jest.fn(() => jest.fn()),
     getConversationContextBudget: jest.fn(),
+    getConversationContextSources: jest.fn().mockReturnValue([]),
     refreshConfiguration: jest.fn().mockResolvedValue(undefined)
   } as unknown as AssistantToolService;
   const workshopSessionService = new WorkshopSessionService();

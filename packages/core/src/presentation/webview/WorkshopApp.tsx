@@ -728,6 +728,8 @@ export const WorkshopApp: React.FC = () => {
               snapshot={workshop.contextBudget?.snapshot}
               modelOptions={modelsSettings.modelOptions}
               cumulativeProcessedTokens={tokenTracking.usage.totalTokens}
+              sources={workshop.contextBudget?.sources}
+              requesterLabel={activePersona.label}
             />
             <WorkshopComposer
               canMessage={workshop.canMessage}
