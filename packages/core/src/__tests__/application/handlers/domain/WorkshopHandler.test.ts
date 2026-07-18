@@ -130,7 +130,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_SEND_MESSAGE)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SET_CONTEXT_BRIEF)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_TODO_ACTION)).toBe(true);
-    expect(router.handlerCount).toBe(14);
+    expect(router.hasHandler(MessageType.WORKSHOP_REREAD_EXCERPT)).toBe(true);
+    expect(router.handlerCount).toBe(15);
   });
 
   it('starts Jill directly from the composer and retains the host conversation', async () => {
@@ -1016,6 +1017,53 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(session.getExcerpt()).toMatchObject({
       source: { kind: 'file', relativePath: 'External file: chapter.md' },
       truncation: { pinnedWords: 10_000, totalWords: 10_001 }
+    });
+  });
+
+  describe('re-read from file (Sprint 12)', () => {
+    const seedFileExcerpt = async (content: string) => {
+      shell.pickFile = jest.fn().mockResolvedValue({ fsPath: '/chapter.md', uri: 'file:///chapter.md' });
+      fileSystem.stat = jest.fn().mockResolvedValue({ type: FileType.File, size: content.length });
+      fileSystem.readFile = jest.fn().mockResolvedValue(new TextEncoder().encode(content));
+      await handler.handlePickExcerptFile(message(MessageType.WORKSHOP_PICK_EXCERPT_FILE, {}) as any);
+    };
+
+    const reread = () =>
+      handler.handleRereadExcerpt(message(MessageType.WORKSHOP_REREAD_EXCERPT, {}) as any);
+
+    it('refuses when the excerpt is not file-backed', async () => {
+      await pin();
+      session.setExcerpt({ text: 'Typed text.', source: { kind: 'manual' } });
+
+      await reread();
+
+      expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/file-backed/i);
+    });
+
+    it('no-ops with a status line when the file is unchanged on disk', async () => {
+      await seedFileExcerpt('The sea returns to the shore.');
+      const dividersBefore = posted(MessageType.WORKSHOP_TURN).length;
+
+      await reread();
+
+      expect(session.getExcerpt()?.version).toBe(1);
+      expect(posted(MessageType.WORKSHOP_TURN)).toHaveLength(dividersBefore);
+      expect(posted(MessageType.STATUS).at(-1).payload.message).toMatch(/unchanged/i);
+    });
+
+    it('lands on-disk edits as a revision that keeps the original source', async () => {
+      await seedFileExcerpt('The sea returns to the shore.');
+      fileSystem.readFile = jest.fn().mockResolvedValue(
+        new TextEncoder().encode('The sea forgets the shore entirely.')
+      );
+
+      await reread();
+
+      expect(session.getExcerpt()).toMatchObject({
+        version: 2,
+        text: 'The sea forgets the shore entirely.',
+        source: { kind: 'file', sourceUri: 'file:///chapter.md', relativePath: 'External file: chapter.md' }
+      });
     });
   });
 

@@ -500,6 +500,17 @@ export interface WorkshopPickExcerptFileMessage extends MessageEnvelope<Record<s
 }
 
 /**
+ * "Re-read from file" (Sprint 12): re-run the original read + head-slice
+ * against the file-backed excerpt's stored sourceUri. Unchanged content
+ * no-ops with a status line; changed content lands as a normal revision
+ * (version bump, revision frame, no memory reset). Zero payload — the
+ * host's own session state IS the input.
+ */
+export interface WorkshopRereadExcerptMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.WORKSHOP_REREAD_EXCERPT;
+}
+
+/**
  * Zero-payload messages use the house `Record<string, never>` idiom directly
  * (9 prior siblings; PR #67 review #9) — unlike an empty interface, it
  * actually rejects smuggled fields.

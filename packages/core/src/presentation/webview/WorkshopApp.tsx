@@ -73,6 +73,7 @@ import { useVSCodeApi } from './hooks/useVSCodeApi';
 import { usePersistence } from './hooks/usePersistence';
 import { useMessageRouter } from './hooks/useMessageRouter';
 import { useWorkshop } from './hooks/domain/useWorkshop';
+import { useWorkshopExcerptVerify } from './hooks/domain/useWorkshopExcerptVerify';
 import { useWorkshopThreadAutoscroll } from './hooks/useWorkshopThreadAutoscroll';
 import { useModelsSettings } from './hooks/domain/useModelsSettings';
 import { useTokenTracking } from './hooks/domain/useTokenTracking';
@@ -137,6 +138,7 @@ export const WorkshopApp: React.FC = () => {
   // reinvention). Balance/models/tokens arrive through this webview's own
   // MessageHandler.
   const workshop = useWorkshop();
+  const excerptVerify = useWorkshopExcerptVerify();
   const modelsSettings = useModelsSettings();
   const tokenTracking = useTokenTracking();
   const [hasSavedKey, setHasSavedKey] = React.useState(false);
@@ -197,6 +199,7 @@ export const WorkshopApp: React.FC = () => {
   useMessageRouter({
     [MessageType.WORKSHOP_SESSION_STATE]: workshop.handleSessionState,
     [MessageType.WORKSHOP_TURN]: workshop.handleTurn,
+    [MessageType.SELECTION_DATA]: excerptVerify.handleSelectionData,
     [MessageType.STREAM_STARTED]: workshop.handleStreamStarted,
     [MessageType.STREAM_CHUNK]: workshop.handleStreamChunk,
     [MessageType.STREAM_COMPLETE]: workshop.handleStreamComplete,
@@ -502,8 +505,12 @@ export const WorkshopApp: React.FC = () => {
             <ExcerptPanel
               excerpt={workshop.excerpt}
               isRunning={workshop.isRunning}
-              onPin={workshop.pinExcerpt}
-              onPinFromFile={workshop.pinFromFile}
+              locked={workshop.hasHostConversation}
+              verified={excerptVerify.verified}
+              onSet={workshop.pinExcerpt}
+              onChooseFile={workshop.pinFromFile}
+              onRereadFile={workshop.rereadExcerpt}
+              onPasteVerify={excerptVerify.requestVerify}
             />
 
             <ContextBriefPanel

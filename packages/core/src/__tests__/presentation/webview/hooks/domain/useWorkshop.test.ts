@@ -421,6 +421,7 @@ describe('useWorkshop', () => {
       result.current.resetSession();
       result.current.sendMessage('Now tighten variation two.');
       result.current.pinFromFile();
+      result.current.rereadExcerpt();
       result.current.setContextBrief('Project context.');
     });
 
@@ -446,6 +447,7 @@ describe('useWorkshop', () => {
       text: 'Now tighten variation two.'
     });
     expect(posted(MessageType.WORKSHOP_PICK_EXCERPT_FILE)).toHaveLength(1);
+    expect(posted(MessageType.WORKSHOP_REREAD_EXCERPT)).toHaveLength(1);
     expect(posted(MessageType.WORKSHOP_SET_CONTEXT_BRIEF)[0].payload).toEqual({
       text: 'Project context.'
     });

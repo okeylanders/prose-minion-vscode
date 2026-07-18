@@ -105,6 +105,7 @@ export interface WorkshopState {
 export interface WorkshopActions {
   pinExcerpt: (text: string, source?: WorkshopExcerptSource) => void;
   pinFromFile: () => void;
+  rereadExcerpt: () => void;
   setContextBrief: (text?: string) => void;
   runTool: (toolId: WorkshopToolId) => void;
   quickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
@@ -196,6 +197,10 @@ export const useWorkshop = (): UseWorkshopReturn => {
 
   const pinFromFile = React.useCallback(() => {
     post(MessageType.WORKSHOP_PICK_EXCERPT_FILE, {});
+  }, [post]);
+
+  const rereadExcerpt = React.useCallback(() => {
+    post(MessageType.WORKSHOP_REREAD_EXCERPT, {});
   }, [post]);
 
   const setContextBrief = React.useCallback((text?: string) => {
@@ -461,6 +466,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     // Actions
     pinExcerpt,
     pinFromFile,
+    rereadExcerpt,
     setContextBrief,
     runTool,
     quickAction,

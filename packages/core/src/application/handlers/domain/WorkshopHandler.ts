@@ -46,6 +46,7 @@ import {
 } from '@shared/constants/workshopPersonas';
 import { workshopQuickActionPrompt } from '@shared/constants/workshopQuickActions';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
+import { fileURLToPath } from 'url';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   MessageType,
@@ -63,6 +64,7 @@ import {
   coerceWorkshopExcerptSource,
   workshopExcerptSourcePath,
   WorkshopPickExcerptFileMessage,
+  WorkshopRereadExcerptMessage,
   WorkshopRequestSessionMessage,
   WorkshopResetSessionMessage,
   WorkshopQuickActionMessage,
@@ -178,6 +180,7 @@ export class WorkshopHandler {
     );
     router.register(MessageType.WORKSHOP_TODO_ACTION, this.handleTodoAction.bind(this));
     router.register(MessageType.WORKSHOP_PICK_EXCERPT_FILE, this.handlePickExcerptFile.bind(this));
+    router.register(MessageType.WORKSHOP_REREAD_EXCERPT, this.handleRereadExcerpt.bind(this));
     router.register(MessageType.WORKSHOP_RESET_SESSION, this.handleResetSession.bind(this));
     router.register(MessageType.WORKSHOP_REQUEST_SESSION, this.handleRequestSession.bind(this));
     router.register(MessageType.CANCEL_WORKSHOP_REQUEST, this.handleCancelRequest.bind(this));
@@ -878,11 +881,86 @@ export class WorkshopHandler {
     }
 
     const displayPath = this.toDisplayPath(picked.fsPath);
+    const loaded = await this.loadExcerptFromDisk(picked.fsPath, displayPath);
+    if (!loaded) {
+      return;
+    }
+
+    if (this.activeRun) {
+      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
+      return;
+    }
+
+    this.replaceExcerpt({
+      text: loaded.text,
+      source: { kind: 'file', sourceUri: picked.uri, relativePath: displayPath },
+      truncation: loaded.truncation
+    });
+    this.postSessionState();
+  }
+
+  /**
+   * "Re-read from file" (Sprint 12): a file-backed excerpt picks up on-disk
+   * edits as a normal revision. Unchanged content no-ops with a status line —
+   * no version bump, no divider, no retired sidecars.
+   */
+  async handleRereadExcerpt(_message: WorkshopRereadExcerptMessage): Promise<void> {
+    if (this.activeRun) {
+      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
+      return;
+    }
+
+    const excerpt = this.session.getExcerpt();
+    if (!excerpt || excerpt.source.kind !== 'file') {
+      this.sendError('workshop', 'Only a file-backed excerpt can be re-read from disk.');
+      return;
+    }
+    const source = excerpt.source;
+
+    let fsPath: string;
     try {
-      const stat = await this.fileSystem.stat(picked.fsPath);
+      fsPath = fileURLToPath(source.sourceUri);
+    } catch {
+      this.sendError('workshop', 'The excerpt’s source location is no longer readable.', source.relativePath);
+      return;
+    }
+
+    const loaded = await this.loadExcerptFromDisk(fsPath, source.relativePath);
+    if (!loaded) {
+      return;
+    }
+
+    if (this.activeRun) {
+      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
+      return;
+    }
+
+    if (loaded.text === excerpt.text) {
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Excerpt re-read: unchanged on disk (${source.relativePath})`
+      );
+      this.sendStatus(`Excerpt unchanged on disk · ${source.relativePath}`);
+      return;
+    }
+
+    this.replaceExcerpt({ text: loaded.text, source, truncation: loaded.truncation });
+    this.postSessionState();
+  }
+
+  /**
+   * Shared disk pipeline for file-backed excerpts (pick + re-read): stat,
+   * size cap, read, UTF-8 decode, empty check, head-slice guardrail. Sends
+   * the user-facing error itself and returns undefined on any failure.
+   */
+  private async loadExcerptFromDisk(
+    fsPath: string,
+    displayPath: string
+  ): Promise<{ text: string; truncation?: WorkshopExcerptTruncation } | undefined> {
+    try {
+      const stat = await this.fileSystem.stat(fsPath);
       if (stat.type !== FileType.File) {
         this.sendError('workshop', 'The selected path is not a file.', displayPath);
-        return;
+        return undefined;
       }
       if (stat.size > PROMPT_BUDGETS.fileExcerpt.bytes) {
         this.sendError(
@@ -890,31 +968,21 @@ export class WorkshopHandler {
           `That file is too large to pin safely (max ${formatBytes(PROMPT_BUDGETS.fileExcerpt.bytes)}).`,
           `${displayPath} is ${formatBytes(stat.size)}`
         );
-        return;
+        return undefined;
       }
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.sendError('workshop', `Could not inspect the selected file.`, `${displayPath}: ${details}`);
-      return;
-    }
-
-    if (this.activeRun) {
-      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
-      return;
+      return undefined;
     }
 
     let raw: Uint8Array;
     try {
-      raw = await this.fileSystem.readFile(picked.fsPath);
+      raw = await this.fileSystem.readFile(fsPath);
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.sendError('workshop', `Could not read the selected file.`, `${displayPath}: ${details}`);
-      return;
-    }
-
-    if (this.activeRun) {
-      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
-      return;
+      return undefined;
     }
 
     let content: string;
@@ -923,12 +991,12 @@ export class WorkshopHandler {
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.sendError('workshop', `Could not decode the selected file as UTF-8.`, `${displayPath}: ${details}`);
-      return;
+      return undefined;
     }
 
     if (content.trim().length === 0) {
       this.sendError('workshop', 'That file is empty — nothing to pin.', displayPath);
-      return;
+      return undefined;
     }
 
     // Head-slice guardrail: pin a sane head of a huge file and SAY SO —
@@ -945,12 +1013,7 @@ export class WorkshopHandler {
       );
     }
 
-    this.replaceExcerpt({
-      text,
-      source: { kind: 'file', sourceUri: picked.uri, relativePath: displayPath },
-      truncation
-    });
-    this.postSessionState();
+    return { text, truncation };
   }
 
   async handleResetSession(_message: WorkshopResetSessionMessage): Promise<void> {

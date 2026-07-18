@@ -61,7 +61,7 @@ export const ContextBriefPanel: React.FC<ContextBriefPanelProps> = ({
       )}
       <div className="pm-ws-excerpt-actions">
         <button
-          className="pm-ws-pin-btn"
+          className="pm-ws-primary-btn"
           type="button"
           disabled={!isDirty}
           onClick={() => onSave(draft.trim() || undefined)}

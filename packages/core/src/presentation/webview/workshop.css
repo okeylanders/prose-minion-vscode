@@ -643,7 +643,7 @@
   gap: 10px;
   margin-top: 9px;
 }
-[data-pm-surface="workshop"] .pm-ws-pin-btn {
+[data-pm-surface="workshop"] .pm-ws-primary-btn {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -656,7 +656,7 @@
   color: #fff;
   background: linear-gradient(180deg, var(--pm-accent-hi), var(--pm-accent-lo));
 }
-[data-pm-surface="workshop"] .pm-ws-pin-btn:disabled {
+[data-pm-surface="workshop"] .pm-ws-primary-btn:disabled {
   filter: saturate(0.55) brightness(0.8);
 }
 [data-pm-surface="workshop"] .pm-ws-excerpt-edit {
@@ -673,6 +673,92 @@
 }
 [data-pm-surface="workshop"] .pm-ws-excerpt-edit:not(:disabled):hover {
   color: var(--pm-text);
+}
+
+/* ---------- Excerpt & context intake (Sprint 12) ---------- */
+[data-pm-surface="workshop"] .pm-ws-intake-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-intake-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px dashed var(--pm-border-2);
+  background: var(--pm-surface-2);
+  border-radius: var(--pm-r-input);
+  color: var(--pm-text-2);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--pm-sans);
+  cursor: pointer;
+  padding: 14px;
+}
+[data-pm-surface="workshop"] .pm-ws-intake-btn:not(:disabled):hover {
+  border-color: var(--pm-accent-hi);
+  border-style: solid;
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-intake-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+[data-pm-surface="workshop"] .pm-ws-intake-sub {
+  font-size: 10.5px;
+  color: var(--pm-faint, var(--pm-muted));
+  font-weight: 400;
+}
+[data-pm-surface="workshop"] .pm-ws-intake-caption {
+  margin: 10px 0 0;
+  font-size: 11.5px;
+  color: var(--pm-muted);
+  line-height: 1.55;
+  text-align: center;
+}
+[data-pm-surface="workshop"] .pm-ws-provenance {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 2px 0 8px;
+  font-size: 11.5px;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="workshop"] .pm-ws-excerpt-count {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-muted);
+  margin-top: 7px;
+}
+[data-pm-surface="workshop"] .pm-ws-excerpt-count b {
+  color: var(--pm-text);
+  font-weight: 500;
+}
+[data-pm-surface="workshop"] .pm-ws-excerpt-count-cap {
+  margin-left: auto;
+  color: var(--pm-faint, var(--pm-muted));
+}
+[data-pm-surface="workshop"] .pm-ws-verify {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--pm-ok, #6fc98a);
+  border: 1px solid color-mix(in srgb, var(--pm-ok, #6fc98a) 30%, transparent);
+  background: color-mix(in srgb, var(--pm-ok, #6fc98a) 6%, transparent);
+  border-radius: var(--pm-r-input);
+  padding: 6px 9px;
+  margin-top: 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-pill-lock {
+  color: var(--pm-warn, #e2b24a);
+  border-color: color-mix(in srgb, var(--pm-warn, #e2b24a) 35%, transparent);
+  background: color-mix(in srgb, var(--pm-warn, #e2b24a) 8%, transparent);
 }
 
 /* ---------- Turns (Sprint 2: the live thread) ---------- */

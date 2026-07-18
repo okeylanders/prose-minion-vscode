@@ -117,6 +117,7 @@ export enum MessageType {
   WORKSHOP_SET_CONTEXT_BRIEF = 'workshop_set_context_brief',
   WORKSHOP_TODO_ACTION = 'workshop_todo_action',
   WORKSHOP_PICK_EXCERPT_FILE = 'workshop_pick_excerpt_file',
+  WORKSHOP_REREAD_EXCERPT = 'workshop_reread_excerpt',
   WORKSHOP_RESET_SESSION = 'workshop_reset_session',
   WORKSHOP_REQUEST_SESSION = 'workshop_request_session',
   WORKSHOP_TURN = 'workshop_turn',
