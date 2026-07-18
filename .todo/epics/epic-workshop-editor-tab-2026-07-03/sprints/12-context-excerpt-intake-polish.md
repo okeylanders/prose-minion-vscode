@@ -33,7 +33,7 @@ with its tests; full suite + typecheck + lint green at every commit.
 | 3 | Context attachments replace the brief: aggregate-owned list (budget, duplicate guard, head-slice), add/remove routes, pills + meter UI, ONE `<context-attachments>` frame builder for host/update/tool delivery, mid-session `context_change` event turns | **Done** | `99d2f41` |
 | 4 | `WorkshopModalShell` (tech-debt 2026-07-10 resolved) + Context Selector modal: category browse, Names / Names+content search (client names, bounded host content search), filter pills, explore hatch; composer `+` + panel both open it; excerpt "Choose from project…" opens it in single-select mode with honest `sourceUri` (summaries carry host-only `absolutePath`) | **Done** | `9f3a06b`, `858bf46` |
 | 5 | Context wizard (scope added 2026-07-17): reuses `ContextAssistantService` under its own `workshop-context` streaming domain, one-run guard, cancellable; brief attaches FIRST, results land as wizard-tagged attachments through the standard budget path; text pills expand to readable notes | **Done** | `c1f5973`, `5eb2183` |
-| 6 | Source-aware prompt frames (host/guest/tool excerpt-source frame, provenance → canonical `{ group, path }`) + bounded composite tool catalog (source + neighbors + guides) | Pending | — |
+| 6 | Source-aware prompt frames (host/guest/tool excerpt-source frame, provenance → canonical `{ group, path }`) + bounded composite tool catalog (source + neighbors + guides) + artifact-taxonomy framing: context-artifacts vs thread-artifacts vs agent-fetched evidence, stable artifact ids on delivered evidence entries (per ADR 2026-07-18 draft) | Pending | — |
 | 7 | Context source manifest: engine per-round instrumentation, `ConversationManager` storage beside `contextBudget`, writer-entry stamping, `sources` on `LabeledContextBudgetSnapshot`, Context Bar v2 "In context" panel | Pending | — |
 | 8 | Pin-language sweep (wire contracts included), compaction ADR draft, 06B manual UX pass, bundle verification + deltas | Pending | — |
 
@@ -244,6 +244,13 @@ autonomously is context the writer is paying for and must not be invisible.
 - [ ] Resolve verified selection/file provenance to a canonical configured
       `{ group, path }` when possible so Sprint 11 reads do not depend on the
       model reconstructing a path or guessing its case.
+- [ ] Frame taxonomy (ADR 2026-07-18 draft): keep the three artifact kinds
+      separately identifiable in prompt material — standing context-artifacts
+      (`<context-attachments>`), writer thread-artifacts (`<thread-artifact
+      id=…>`, one-shot message attachments — composer affordance may land
+      post-sprint but the frame contract is fixed now), and agent-fetched
+      evidence entries, which gain STABLE ARTIFACT IDS at injection so the
+      Phase 7 manifest and future tombstone surgery can address them.
 - [ ] Give Workshop tool initial runs a bounded composite resource catalog:
       relevant configured source/neighbor resources plus existing craft
       guides, one closed read protocol, source-first ordering, and explicit
@@ -267,7 +274,9 @@ autonomously is context the writer is paying for and must not be invisible.
 - [ ] Project `sources` through `LabeledContextBudgetSnapshot` and render the
       Context Bar's "In context" section: grouped rows, sizes, origin
       attribution, stale dimming; display-safe labels only.
-- [ ] Draft the context compaction ADR during this sprint: decision
+- [ ] Flesh out the compaction ADR (skeleton drafted 2026-07-18:
+      docs/adr/2026-07-18-workshop-thread-artifacts-and-context-compaction.md):
+      decision
       framework, candidate mechanisms (compress vs. compact vs. stale-
       evidence eviction, informed by what the manifest shows dominates real
       sessions), and what retained-history surgery means for the atomic
