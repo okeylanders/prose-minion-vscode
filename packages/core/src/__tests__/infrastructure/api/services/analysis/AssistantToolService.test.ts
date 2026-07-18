@@ -36,6 +36,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     ensureInitialized: jest.fn().mockResolvedValue(undefined),
     getEngine: jest.fn(getEngine),
     createGuideCapability: jest.fn().mockReturnValue({ catalog: 'guides' }),
+    createWorkshopToolContextCapability: jest.fn().mockReturnValue({ catalog: 'workshopToolContext' }),
     setStatusCallback: jest.fn()
   });
 

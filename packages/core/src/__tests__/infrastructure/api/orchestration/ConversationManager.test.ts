@@ -108,4 +108,16 @@ describe('ConversationManager', () => {
     manager.resetConversation(id);
     expect(manager.getContextBudget(id)).toBeUndefined();
   });
+
+  it('mints monotonic per-conversation artifact ids and never reuses one (ADR 2026-07-18)', () => {
+    const manager = new ConversationManager();
+    const first = manager.startConversation('host', 'System');
+    const second = manager.startConversation('tool', 'System');
+
+    expect(manager.nextArtifactId(first)).toBe('art-1');
+    expect(manager.nextArtifactId(first)).toBe('art-2');
+    // Independent conversations mint independently.
+    expect(manager.nextArtifactId(second)).toBe('art-1');
+    expect(() => manager.nextArtifactId('missing')).toThrow('not found');
+  });
 });

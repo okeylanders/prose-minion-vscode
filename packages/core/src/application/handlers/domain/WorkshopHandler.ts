@@ -31,6 +31,7 @@ import { WorkshopPersonaCapabilityFactory } from '@/application/services/worksho
 import {
   buildWorkshopContextAttachmentsFrame,
   buildWorkshopDirectHandoff,
+  buildWorkshopExcerptSourceFrame,
   buildWorkshopGuestCatchUp,
   buildWorkshopGuestHandoff,
   buildWorkshopGuestJoinMessage,
@@ -54,6 +55,7 @@ import {
 import { workshopQuickActionPrompt } from '@shared/constants/workshopQuickActions';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import { fileURLToPath, pathToFileURL } from 'url';
+import * as path from 'path';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   MessageType,
@@ -679,7 +681,8 @@ export class WorkshopHandler {
             message: modelMessage,
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
               this.session.getContextAttachments()
-            )
+            ),
+            excerptSourceFrame: buildWorkshopExcerptSourceFrame(excerpt.source)
           }, {
             signal: controller.signal,
             onToken: (token: string) => this.sendStreamChunk(requestId, token),
@@ -810,7 +813,15 @@ export class WorkshopHandler {
       return;
     }
 
-    this.replaceExcerpt({ text, source: coerceWorkshopExcerptSource(message.payload.source) });
+    const source = await this.withConfiguredResource(
+      coerceWorkshopExcerptSource(message.payload.source)
+    );
+    // Resolution awaited on catalog I/O; re-check the guard it may have raced.
+    if (this.activeRun) {
+      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
+      return;
+    }
+    this.replaceExcerpt({ text, source });
     this.postSessionState();
   }
 
@@ -1467,6 +1478,12 @@ export class WorkshopHandler {
       return;
     }
 
+    const source = await this.withConfiguredResource({
+      kind: 'file',
+      sourceUri: picked.uri,
+      relativePath: displayPath
+    });
+
     if (this.activeRun) {
       this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
       return;
@@ -1474,7 +1491,7 @@ export class WorkshopHandler {
 
     this.replaceExcerpt({
       text: loaded.text,
-      source: { kind: 'file', sourceUri: picked.uri, relativePath: displayPath },
+      source,
       truncation: loaded.truncation
     });
     this.postSessionState();
@@ -1524,7 +1541,15 @@ export class WorkshopHandler {
       return;
     }
 
-    this.replaceExcerpt({ text: loaded.text, source, truncation: loaded.truncation });
+    // Re-derive the canonical key on every re-read so configuration changes
+    // since the original pin are honored in the revision's provenance.
+    const resolvedSource = await this.withConfiguredResource(source);
+    if (this.activeRun) {
+      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
+      return;
+    }
+
+    this.replaceExcerpt({ text: loaded.text, source: resolvedSource, truncation: loaded.truncation });
     this.postSessionState();
   }
 
@@ -1630,6 +1655,71 @@ export class WorkshopHandler {
     if (!this.activeRun) {
       this.sendStatus('');
     }
+  }
+
+  /**
+   * Resolve verified selection/file provenance to the resolver's canonical
+   * `{ group, path }` key (Sprint 12 Phase 6). Comparison happens host-side
+   * against summaries' HOST-ONLY absolutePath — that path never crosses to
+   * the webview or a prompt; only the canonical key is stamped. Webview
+   * configuredResource claims are always re-derived here, never trusted.
+   * Any failure (unparseable URI, unreadable catalog, ambiguous case-folded
+   * match) fails safe: the source stays honest with no configured key.
+   */
+  private async withConfiguredResource(
+    source: WorkshopExcerptSource
+  ): Promise<WorkshopExcerptSource> {
+    if (source.kind === 'manual') {
+      return source;
+    }
+    const unstamped: Extract<WorkshopExcerptSource, { kind: 'editor-selection' | 'file' }> = source.kind === 'file'
+      ? { kind: 'file', sourceUri: source.sourceUri, relativePath: source.relativePath }
+      : {
+          kind: 'editor-selection',
+          sourceUri: source.sourceUri,
+          relativePath: source.relativePath,
+          ...(source.startLine !== undefined && source.endLine !== undefined
+            ? { startLine: source.startLine, endLine: source.endLine }
+            : {})
+        };
+    let fsPath: string;
+    try {
+      fsPath = path.normalize(fileURLToPath(source.sourceUri));
+    } catch {
+      return unstamped;
+    }
+    let summaries;
+    try {
+      const provider = await this.resourceProviderFactory.createProvider([...DEFAULT_CONTEXT_GROUPS]);
+      summaries = provider.listResources();
+    } catch (error) {
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Excerpt-source resolution skipped — catalog unreadable: ${error instanceof Error ? error.message : String(error)}`
+      );
+      return unstamped;
+    }
+    const exact = summaries.filter(
+      (summary) => path.normalize(summary.absolutePath) === fsPath
+    );
+    const caseFolded = exact.length > 0 ? exact : summaries.filter(
+      (summary) => path.normalize(summary.absolutePath).toLowerCase() === fsPath.toLowerCase()
+    );
+    if (caseFolded.length !== 1) {
+      if (caseFolded.length > 1) {
+        this.outputChannel.appendLine(
+          `[WorkshopHandler] Excerpt source matched ${caseFolded.length} configured resources when letter case is ignored; leaving it unstamped.`
+        );
+      }
+      return unstamped;
+    }
+    const summary = caseFolded[0];
+    this.outputChannel.appendLine(
+      `[WorkshopHandler] Excerpt source resolved to configured resource [${summary.group}] ${summary.path}`
+    );
+    return {
+      ...unstamped,
+      configuredResource: { group: summary.group, path: summary.path }
+    };
   }
 
   private replaceExcerpt(input: {

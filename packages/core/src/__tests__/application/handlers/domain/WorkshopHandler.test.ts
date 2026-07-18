@@ -487,15 +487,21 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
     await runProse();
 
+    // Phase 6: the display-safe source frame replaces the raw file: URI — no
+    // absolute path or URI may reach model-visible prompt text.
     expect(service.analyzeProse).toHaveBeenCalledWith(
       'A pinned excerpt.',
       expect.stringContaining('Mara cannot read.'),
-      'file:///chapter-one.md',
+      undefined,
       expect.anything()
     );
+    const [, toolContext] = service.analyzeProse.mock.calls[0];
+    expect(toolContext).toContain('<workshop-excerpt-source>');
+    expect(toolContext).not.toContain('file:///');
     expect(service.startWorkshopPersonaConversation).toHaveBeenCalledWith(
       expect.objectContaining({
-        contextAttachmentsFrame: expect.stringContaining('Mara cannot read.')
+        contextAttachmentsFrame: expect.stringContaining('Mara cannot read.'),
+        excerptSourceFrame: expect.stringContaining('<workshop-excerpt-source>')
       }),
       expect.anything()
     );
@@ -1309,5 +1315,80 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(contextBudgets.get('host-conv')).toBeUndefined();
     expect(session.getSnapshot().participants.host.personaId).toBe('jill');
     expect(session.getSnapshot().turns).toEqual([]);
+  });
+
+  describe('excerpt-source canonical resolution (Phase 6)', () => {
+    it('re-derives configuredResource host-side from the resolver\u2019s absolutePath, overriding webview claims', async () => {
+      await handler.handleSetExcerpt(message(MessageType.WORKSHOP_SET_EXCERPT, {
+        text: 'Raven keeps the token.',
+        source: {
+          kind: 'editor-selection',
+          sourceUri: 'file:///ws/Characters/raven.md',
+          relativePath: 'Characters/raven.md',
+          startLine: 4,
+          endLine: 9,
+          // A forged claim from the webview must not survive re-derivation.
+          configuredResource: { group: 'themes', path: 'Themes/echoes.md' }
+        }
+      }) as any);
+
+      expect(session.getSnapshot().excerpt?.source).toMatchObject({
+        kind: 'editor-selection',
+        relativePath: 'Characters/raven.md',
+        startLine: 4,
+        endLine: 9,
+        configuredResource: { group: 'characters', path: 'Characters/raven.md' }
+      });
+    });
+
+    it('leaves a source outside the configured catalog honestly unstamped', async () => {
+      await pin();
+
+      expect(session.getSnapshot().excerpt?.source).toMatchObject({
+        kind: 'file',
+        relativePath: 'chapter-one.md'
+      });
+      expect((session.getSnapshot().excerpt?.source as { configuredResource?: unknown }).configuredResource).toBeUndefined();
+    });
+
+    it('fails safe on an ambiguous case-folded match instead of guessing', async () => {
+      resourceFiles.push({
+        group: 'characters',
+        path: 'Characters/RAVEN.md',
+        label: 'RAVEN',
+        sizeBytes: 120,
+        absolutePath: '/ws/Characters/RAVEN.md',
+        content: 'Duplicate-cased sibling.'
+      });
+
+      await handler.handleSetExcerpt(message(MessageType.WORKSHOP_SET_EXCERPT, {
+        text: 'Raven keeps the token.',
+        source: {
+          kind: 'file',
+          sourceUri: 'file:///ws/characters/raven.md',
+          relativePath: 'characters/raven.md'
+        }
+      }) as any);
+
+      expect((session.getSnapshot().excerpt?.source as { configuredResource?: unknown }).configuredResource).toBeUndefined();
+      expect((log.appendLine as jest.Mock).mock.calls.flat().join('\n'))
+        .toContain('letter case is ignored');
+    });
+
+    it('survives an unreadable catalog by pinning without a canonical key', async () => {
+      resourceProviderFactory.createProvider.mockRejectedValueOnce(new Error('glob failed'));
+
+      await handler.handleSetExcerpt(message(MessageType.WORKSHOP_SET_EXCERPT, {
+        text: 'Raven keeps the token.',
+        source: {
+          kind: 'file',
+          sourceUri: 'file:///ws/Characters/raven.md',
+          relativePath: 'Characters/raven.md'
+        }
+      }) as any);
+
+      expect(session.getSnapshot().excerpt?.text).toBe('Raven keeps the token.');
+      expect((session.getSnapshot().excerpt?.source as { configuredResource?: unknown }).configuredResource).toBeUndefined();
+    });
   });
 });

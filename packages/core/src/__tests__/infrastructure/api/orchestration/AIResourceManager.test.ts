@@ -5,7 +5,8 @@ describe('AIResourceManager lifecycle', () => {
     const manager = new AIResourceManager(
       { getGuideRegistry: jest.fn(), getGuideLoader: jest.fn() } as never,
       { getApiKey: jest.fn().mockResolvedValue('key') } as never,
-      { get: jest.fn((_section, _key, fallback) => fallback) } as never
+      { get: jest.fn((_section, _key, fallback) => fallback) } as never,
+      { createProvider: jest.fn() } as never
     );
 
     await Promise.all([manager.ensureInitialized(), manager.ensureInitialized()]);
@@ -26,7 +27,8 @@ describe('AIResourceManager lifecycle', () => {
       { getApiKey: jest.fn().mockResolvedValue('key') } as never,
       {
         get: jest.fn((_section, key, fallback) => configured[key] ?? fallback)
-      } as never
+      } as never,
+      { createProvider: jest.fn() } as never
     );
     await manager.ensureInitialized();
     const engines = {
@@ -57,7 +59,8 @@ describe('AIResourceManager lifecycle', () => {
     const manager = new AIResourceManager(
       { getGuideRegistry: jest.fn(), getGuideLoader: jest.fn() } as never,
       { getApiKey: jest.fn() } as never,
-      { get: jest.fn() } as never
+      { get: jest.fn() } as never,
+      { createProvider: jest.fn() } as never
     );
     const first = jest.fn();
     const second = jest.fn();
@@ -80,6 +83,7 @@ describe('AIResourceManager lifecycle', () => {
       { getGuideRegistry: jest.fn(), getGuideLoader: jest.fn() } as never,
       { getApiKey: jest.fn().mockResolvedValue('key') } as never,
       { get: jest.fn((_section, key, fallback) => configured[key] ?? fallback) } as never,
+      { createProvider: jest.fn() } as never,
       log as never
     );
     await manager.ensureInitialized();
@@ -108,6 +112,7 @@ describe('AIResourceManager lifecycle', () => {
       { getGuideRegistry: jest.fn(), getGuideLoader: jest.fn() } as never,
       { getApiKey: jest.fn().mockResolvedValue('key') } as never,
       { get: jest.fn((_section, key, fallback) => configured[key] ?? fallback) } as never,
+      { createProvider: jest.fn() } as never,
       log as never
     );
     await manager.ensureInitialized();
@@ -136,7 +141,8 @@ describe('AIResourceManager lifecycle', () => {
     const manager = new AIResourceManager(
       { getGuideRegistry: jest.fn(), getGuideLoader: jest.fn() } as never,
       { getApiKey } as never,
-      { get: jest.fn((_section, _key, fallback) => fallback) } as never
+      { get: jest.fn((_section, _key, fallback) => fallback) } as never,
+      { createProvider: jest.fn() } as never
     );
 
     await expect(manager.ensureInitialized()).rejects.toThrow('keychain locked');

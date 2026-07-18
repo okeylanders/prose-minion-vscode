@@ -8,6 +8,8 @@ export interface AnalysisResult {
   readonly content: string;
   readonly timestamp: Date;
   readonly usedGuides?: string[];  // Array of guide paths that were used
+  /** Display-safe configured-resource paths delivered to the run (Sprint 12 Phase 6). */
+  readonly requestedResources?: string[];
   readonly usage?: TokenUsage;
   readonly finishReason?: string;
   /** Retained conversation id, when the run asked for continuation (Workshop multi-turn). */
@@ -21,12 +23,13 @@ export interface MetricsResult {
 }
 
 export class AnalysisResultFactory {
-  static createAnalysisResult(toolName: string, content: string, usedGuides?: string[], usage?: TokenUsage, finishReason?: string, conversationId?: string): AnalysisResult {
+  static createAnalysisResult(toolName: string, content: string, usedGuides?: string[], usage?: TokenUsage, finishReason?: string, conversationId?: string, requestedResources?: string[]): AnalysisResult {
     return {
       toolName,
       content,
       timestamp: new Date(),
       usedGuides,
+      requestedResources,
       usage,
       finishReason,
       conversationId

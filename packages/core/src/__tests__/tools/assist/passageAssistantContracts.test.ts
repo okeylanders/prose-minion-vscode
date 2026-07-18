@@ -27,12 +27,13 @@ const makeHarness = () => {
 
 describe('passage assistant contracts', () => {
   it.each([
-    [undefined, undefined, AGENT_RUN_POLICIES.assistant],
-    [false, undefined, AGENT_RUN_POLICIES.assistantWithoutResources],
-    [true, true, AGENT_RUN_POLICIES.workshopTool],
-    [false, true, AGENT_RUN_POLICIES.workshopToolWithoutResources]
-  ] as const)('resolves guide and retention policy dimensions independently', (includeCraftGuides, retainConversation, expected) => {
-    expect(resolvePassageRunPolicy(includeCraftGuides, retainConversation)).toBe(expected);
+    [undefined, undefined, false, AGENT_RUN_POLICIES.assistant],
+    [false, undefined, false, AGENT_RUN_POLICIES.assistantWithoutResources],
+    [true, true, true, AGENT_RUN_POLICIES.workshopTool],
+    [true, true, false, AGENT_RUN_POLICIES.workshopToolWithoutResources],
+    [false, true, false, AGENT_RUN_POLICIES.workshopToolWithoutResources]
+  ] as const)('resolves guide, retention, and workshop-capability policy dimensions independently', (includeCraftGuides, retainConversation, hasWorkshopCapability, expected) => {
+    expect(resolvePassageRunPolicy(includeCraftGuides, retainConversation, hasWorkshopCapability)).toBe(expected);
   });
 
   it.each([
@@ -156,15 +157,34 @@ describe('passage assistant contracts', () => {
     }));
   });
 
-  it('uses the retained guide policy when a Writing Tools run keeps its conversation', async () => {
+  it('uses the composite workshop policy when a retained run carries a minted workshop capability', async () => {
     const { engine, promptLoader, guideCapability, output } = makeHarness();
     const assistant = new WritingToolsAssistant(engine as never, promptLoader as never, (() => guideCapability) as never, output as never);
+    const workshopCapability = { catalog: 'workshopToolContext' as const };
 
-    await assistant.analyze(passage, { focus: 'editor', retainConversation: true });
+    await assistant.analyze(passage, {
+      focus: 'editor',
+      retainConversation: true,
+      workshopCapability: workshopCapability as never
+    });
 
     expect(engine.runInitial).toHaveBeenCalledWith(expect.objectContaining({
       policy: AGENT_RUN_POLICIES.workshopTool,
-      capability: guideCapability
+      capability: workshopCapability
+    }));
+  });
+
+  it('never mints the sidebar guide capability for a retained run without a workshop capability', async () => {
+    const { engine, promptLoader, guideCapability, output } = makeHarness();
+    const createGuideCapability = jest.fn(() => guideCapability);
+    const assistant = new WritingToolsAssistant(engine as never, promptLoader as never, createGuideCapability as never, output as never);
+
+    await assistant.analyze(passage, { focus: 'editor', retainConversation: true });
+
+    expect(createGuideCapability).not.toHaveBeenCalled();
+    expect(engine.runInitial).toHaveBeenCalledWith(expect.objectContaining({
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources,
+      capability: undefined
     }));
   });
 });

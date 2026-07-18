@@ -16,7 +16,7 @@ export const AGENT_RUN_POLICIES = {
     onCapabilityLimit: 'returnLastResponse', visibleArtifact: 'final-response', cleanupOwner: 'engine'
   }),
   workshopTool: policy({
-    id: 'workshop-tool', capabilityCatalog: 'guides', retention: 'retain',
+    id: 'workshop-tool', capabilityCatalog: 'workshopToolContext', retention: 'retain',
     maxCapabilityRounds: 2, maxCorrectionTurns: 1,
     onCapabilityLimit: 'forceFinalResponse', visibleArtifact: 'final-response', cleanupOwner: 'workshop-session'
   }),

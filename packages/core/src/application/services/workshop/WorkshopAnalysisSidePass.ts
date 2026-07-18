@@ -1,7 +1,10 @@
 import { AnalysisResult } from '@/domain/models/AnalysisResult';
 import { LogSink } from '@/platform';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
-import { buildWorkshopContextAttachmentsFrame } from '@/application/services/workshop/WorkshopPromptBuilder';
+import {
+  buildWorkshopContextAttachmentsFrame,
+  buildWorkshopExcerptSourceFrame
+} from '@/application/services/workshop/WorkshopPromptBuilder';
 import type { WorkshopToolReportCompletion } from '@/application/services/workshop/WorkshopSessionService';
 import {
   AnalysisStreamingOptions,
@@ -9,7 +12,7 @@ import {
 } from '@services/analysis/AssistantToolService';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { trimToWordLimit } from '@/utils/textUtils';
-import { WorkshopExcerpt, WorkshopToolId, WorkshopTurn, workshopExcerptSourceUri } from '@messages';
+import { WorkshopExcerpt, WorkshopToolId, WorkshopTurn } from '@messages';
 import {
   WorkshopCapabilityArtifactDetails,
   WorkshopCapabilityResult
@@ -36,37 +39,67 @@ export class WorkshopAnalysisSidePass {
     private readonly outputChannel: LogSink
   ) {}
 
-  run(
+  /**
+   * The raw `file:` sourceUri deliberately never reaches this prompt path
+   * (Sprint 12 Phase 6): the display-safe `<workshop-excerpt-source>` frame
+   * carries provenance, and the composite tool catalog carries read access.
+   */
+  async run(
     toolId: WorkshopToolId,
     excerpt: WorkshopExcerpt,
     streamingOptions: AnalysisStreamingOptions,
     personaInstructions?: string
   ): Promise<AnalysisResult> {
-    const context = this.buildContext(personaInstructions);
-    if (toolId === 'dialogue') {
-      return this.assistantToolService.analyzeDialogue(
-        excerpt.text,
-        context,
-        workshopExcerptSourceUri(excerpt.source),
-        undefined,
-        streamingOptions
-      );
+    const context = this.buildContext(excerpt, personaInstructions);
+    const options: AnalysisStreamingOptions = {
+      ...streamingOptions,
+      workshopSource: excerpt.source.kind !== 'manual'
+        ? excerpt.source.configuredResource
+        : undefined
+    };
+    const result = toolId === 'dialogue'
+      ? await this.assistantToolService.analyzeDialogue(
+          excerpt.text,
+          context,
+          undefined,
+          undefined,
+          options
+        )
+      : toolId === 'prose'
+        ? await this.assistantToolService.analyzeProse(
+            excerpt.text,
+            context,
+            undefined,
+            options
+          )
+        : await this.assistantToolService.analyzeWritingTools(
+            excerpt.text,
+            context,
+            undefined,
+            toolId,
+            options
+          );
+    return this.withDeliveredContextProvenance(result);
+  }
+
+  /**
+   * Deterministic delivered-resource provenance in the visible report
+   * (Sprint 12 Phase 6): what the run actually received is stated by the
+   * host, never claimed by the model. The footer opens with its own heading
+   * so the strict `### Next steps` section scan is terminated, not polluted.
+   */
+  private withDeliveredContextProvenance(result: AnalysisResult): AnalysisResult {
+    const resources = result.requestedResources ?? [];
+    const guides = result.usedGuides ?? [];
+    if (resources.length === 0 && guides.length === 0) {
+      return result;
     }
-    if (toolId === 'prose') {
-      return this.assistantToolService.analyzeProse(
-        excerpt.text,
-        context,
-        workshopExcerptSourceUri(excerpt.source),
-        streamingOptions
-      );
-    }
-    return this.assistantToolService.analyzeWritingTools(
-      excerpt.text,
-      context,
-      workshopExcerptSourceUri(excerpt.source),
-      toolId,
-      streamingOptions
-    );
+    const footer = [
+      '### Context delivered to this run',
+      ...(resources.length > 0 ? [`- Project resources: ${resources.join(', ')}`] : []),
+      ...(guides.length > 0 ? [`- Craft guides: ${guides.join(', ')}`] : [])
+    ].join('\n');
+    return { ...result, content: `${result.content}\n\n${footer}` };
   }
 
   adoptWriterReport(input: {
@@ -148,13 +181,17 @@ export class WorkshopAnalysisSidePass {
     return inspection.findings;
   }
 
-  private buildContext(personaInstructions?: string): string | undefined {
+  private buildContext(
+    excerpt: WorkshopExcerpt,
+    personaInstructions?: string
+  ): string | undefined {
+    const sourceFrame = buildWorkshopExcerptSourceFrame(excerpt.source);
     const attachmentsFrame = buildWorkshopContextAttachmentsFrame(
       this.session.getContextAttachments()
     );
     const instructions = personaInstructions?.trim();
     if (!instructions) {
-      return [attachmentsFrame, WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION]
+      return [sourceFrame, attachmentsFrame, WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION]
         .filter((section): section is string => !!section)
         .join('\n\n');
     }
@@ -163,6 +200,7 @@ export class WorkshopAnalysisSidePass {
       (tag) => tag.replace(/</g, '&lt;').replace(/>/g, '&gt;')
     );
     return [
+      sourceFrame,
       attachmentsFrame,
       WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION,
       '<persona-requested-analysis-focus>',

@@ -801,4 +801,55 @@ describe('AgentRunEngine', () => {
     expect(guides.fulfill).toHaveBeenCalledTimes(2);
     expect(result.content).toContain('exhausted its capability-call limit');
   });
+
+  it('stamps stable art-N ids on retained capability evidence at injection (ADR 2026-07-18)', async () => {
+    const persona = personaCapability();
+    client.createChatCompletion
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: 'Dictionary-backed answer.' });
+
+    const result = await engine.runInitial({
+      toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopHost, capability: persona
+    });
+
+    const history = conversations.getMessages(result.conversationId!);
+    const evidenceEntry = history.find(message => message.content.includes('Dictionary evidence'));
+    expect(evidenceEntry).toMatchObject({
+      role: 'user',
+      content: '<agent-artifact id="art-1">\nDictionary evidence\n</agent-artifact>'
+    });
+
+    // A second capability round in the SAME conversation mints the next id.
+    const followUp = personaCapability();
+    client.createChatCompletion
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: 'Second answer.' });
+    await engine.continueConversation({
+      conversationId: result.conversationId!,
+      userMessage: 'Again?',
+      policy: AGENT_RUN_POLICIES.workshopHost,
+      capability: followUp
+    });
+    const artifactIds = conversations.getMessages(result.conversationId!)
+      .flatMap(message => [...message.content.matchAll(/<agent-artifact id="(art-\d+)">/g)].map(m => m[1]));
+    expect(artifactIds).toEqual(['art-1', 'art-2']);
+  });
+
+  it('leaves discard-run evidence unstamped — no address is needed for history that never persists', async () => {
+    const guides = capability();
+    client.createChatCompletion
+      .mockResolvedValueOnce({ content: GUIDE_REQUEST })
+      .mockResolvedValueOnce({ content: 'Guide-backed answer.' });
+
+    await engine.runInitial({
+      toolName: 'dialogue', systemMessage: 'System', userMessage: 'Analyze.',
+      policy: AGENT_RUN_POLICIES.assistant, capability: guides
+    });
+
+    const evidenceTurnMessages = client.createChatCompletion.mock.calls[1][0] as Array<{ role: string; content: string }>;
+    const evidenceEntry = evidenceTurnMessages.find(message => message.content.includes('Evidence for dialogue.md'));
+    expect(evidenceEntry?.content).toBe('Evidence for dialogue.md');
+    expect(evidenceEntry?.content).not.toContain('<agent-artifact');
+  });
 });

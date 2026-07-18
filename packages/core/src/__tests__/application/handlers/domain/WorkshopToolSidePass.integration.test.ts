@@ -36,6 +36,8 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
       ensureInitialized: jest.fn().mockResolvedValue(undefined),
       getEngine: jest.fn().mockReturnValue(engine),
       createGuideCapability: jest.fn(),
+      // Guides disabled + no configured source → the real manager mints nothing.
+      createWorkshopToolContextCapability: jest.fn().mockReturnValue(undefined),
       setStatusCallback: jest.fn()
     } as unknown as AIResourceManager;
     const promptLoader = {

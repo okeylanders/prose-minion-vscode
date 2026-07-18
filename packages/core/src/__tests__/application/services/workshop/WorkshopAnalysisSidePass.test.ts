@@ -116,4 +116,106 @@ describe('WorkshopAnalysisSidePass', () => {
       ])
     );
   });
+
+  it('threads the configured source and shares the excerpt-source frame with tool runs (Phase 6)', async () => {
+    const service = {
+      analyzeProse: jest.fn().mockResolvedValue({
+        toolName: 'prose_analysis',
+        content: 'Prose report.',
+        conversationId: 'prose-conv'
+      }),
+      discardConversation: jest.fn()
+    } as unknown as jest.Mocked<AssistantToolService>;
+    const session = new WorkshopSessionService(() => 3);
+    const excerpt = session.setExcerpt({
+      text: 'The cup moves.',
+      source: {
+        kind: 'editor-selection',
+        sourceUri: 'file:///abs/chapters/ch-05.md',
+        relativePath: 'chapters/ch-05.md',
+        startLine: 3,
+        endLine: 9,
+        configuredResource: { group: 'chapters', path: 'chapters/ch-05.md' }
+      }
+    });
+    const sidePass = new WorkshopAnalysisSidePass(
+      service,
+      session,
+      { appendLine: jest.fn() } as unknown as LogSink
+    );
+
+    await sidePass.run('prose', excerpt, { retainConversation: true });
+
+    const [text, context, sourceFileUri, options] = service.analyzeProse.mock.calls[0];
+    expect(text).toBe('The cup moves.');
+    // The raw file: URI never reaches prompt text; the frame carries provenance.
+    expect(sourceFileUri).toBeUndefined();
+    expect(context).toContain('<workshop-excerpt-source>');
+    expect(context).toContain('Configured resource: [chapters] chapters/ch-05.md');
+    expect(context).not.toContain('file://');
+    expect(options).toMatchObject({
+      retainConversation: true,
+      workshopSource: { group: 'chapters', path: 'chapters/ch-05.md' }
+    });
+  });
+
+  it('appends heading-led delivered-context provenance without corrupting Next steps parsing (Phase 6)', async () => {
+    const service = {
+      analyzeProse: jest.fn().mockResolvedValue({
+        toolName: 'prose_analysis',
+        content: 'Report body.\n\n### Next steps\n- Tighten the opening.',
+        conversationId: 'prose-conv',
+        usedGuides: ['craft/dialogue.md'],
+        requestedResources: ['chapters/ch-05.md', 'chapters/ch-06.md']
+      }),
+      discardConversation: jest.fn()
+    } as unknown as jest.Mocked<AssistantToolService>;
+    const session = new WorkshopSessionService(() => 3);
+    const excerpt = session.setExcerpt({ text: 'The cup moves.', source: { kind: 'manual' } });
+    const sidePass = new WorkshopAnalysisSidePass(
+      service,
+      session,
+      { appendLine: jest.fn() } as unknown as LogSink
+    );
+
+    const result = await sidePass.run('prose', excerpt, { retainConversation: true });
+
+    expect(result.content).toContain('### Context delivered to this run');
+    expect(result.content).toContain('- Project resources: chapters/ch-05.md, chapters/ch-06.md');
+    expect(result.content).toContain('- Craft guides: craft/dialogue.md');
+    // The footer's own heading terminates the strict Next-steps section, so
+    // the finding still parses and the footer lines never become tasks.
+    session.beginToolRun('prose', 'writer-run');
+    const completion = sidePass.adoptWriterReport({
+      requestId: 'writer-run',
+      content: result.content,
+      conversationId: 'prose-conv',
+      toolId: 'prose'
+    });
+    expect(completion?.turn.actionableFindings).toEqual([
+      expect.objectContaining({ text: 'Tighten the opening.' })
+    ]);
+  });
+
+  it('leaves reports without delivered context untouched (Phase 6)', async () => {
+    const service = {
+      analyzeProse: jest.fn().mockResolvedValue({
+        toolName: 'prose_analysis',
+        content: 'Plain report.',
+        conversationId: 'prose-conv'
+      }),
+      discardConversation: jest.fn()
+    } as unknown as jest.Mocked<AssistantToolService>;
+    const session = new WorkshopSessionService(() => 3);
+    const excerpt = session.setExcerpt({ text: 'The cup moves.', source: { kind: 'manual' } });
+    const sidePass = new WorkshopAnalysisSidePass(
+      service,
+      session,
+      { appendLine: jest.fn() } as unknown as LogSink
+    );
+
+    const result = await sidePass.run('prose', excerpt, { retainConversation: true });
+
+    expect(result.content).toBe('Plain report.');
+  });
 });

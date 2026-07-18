@@ -6,6 +6,7 @@ import { WorkshopPersonaCapabilityFactory } from '@/application/services/worksho
 import {
   buildWorkshopContextAttachmentsFrame,
   buildWorkshopDirectHandoff,
+  buildWorkshopExcerptSourceFrame,
   buildWorkshopHostMessage,
   buildWorkshopHostUpdateFrame,
   buildWorkshopTodoEvidence,
@@ -208,7 +209,8 @@ export class RunWorkshopToolSidePass {
             messageIsTrustedEnvelope: true,
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
               this.session.getContextAttachments()
-            )
+            ),
+            excerptSourceFrame: buildWorkshopExcerptSourceFrame(excerpt.source)
           }, {
             signal: controller.signal,
             onToken: (token: string) => events.streamChunk(synthesisRequestId, token),

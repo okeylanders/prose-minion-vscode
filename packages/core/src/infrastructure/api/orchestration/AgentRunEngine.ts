@@ -12,6 +12,7 @@ import {
   RunPolicy
 } from './AgentRunContracts';
 import { findExecutableMarkerIndex } from './ResourceReadXmlCodec';
+import { wrapAgentFetchedArtifactEvidence } from '@/utils/workshopPromptFrames';
 import { ContextBudgetSnapshot, InferenceRequestObservation, TokenUsage } from '@shared/types';
 
 export type StatusCallback = (message: string, tickerMessage?: string) => void;
@@ -304,12 +305,29 @@ export class AgentRunEngine {
         artifacts.push(...fulfillment.artifacts);
         if (capability.catalog === 'guides') usedGuides.push(...fulfillment.deliveredItems);
         if (capability.catalog === 'projectContext') requestedResources.push(...fulfillment.deliveredItems);
+        if (capability.catalog === 'workshopToolContext') {
+          // The composite catalog delivers both kinds in one round; each
+          // artifact already declares which side it came from.
+          for (const artifact of fulfillment.artifacts) {
+            (artifact.catalog === 'guides' ? usedGuides : requestedResources).push(artifact.id);
+          }
+        }
+        // Retained-history evidence gets a stable `art-N` address at injection
+        // (ADR 2026-07-18): the Phase 7 manifest and tombstone surgery target
+        // stored entries by this id. Discarded runs need no address.
+        const artifactId = policy.retention === 'retain'
+          ? this.conversationManager.nextArtifactId(conversationId)
+          : undefined;
+        const evidence = artifactId
+          ? wrapAgentFetchedArtifactEvidence(artifactId, fulfillment.evidence)
+          : fulfillment.evidence;
         this.outputChannel?.appendLine(
           `[AgentRunEngine] Fulfilled ${capability.catalog} capability ${rounds}/${policy.maxCapabilityRounds} ` +
           `(${capability.requestLogSummary(request)}): ${fulfillment.evidence.length} evidence chars; ` +
-          `delivered=${fulfillment.deliveredItems.join(', ') || 'none'}`
+          `delivered=${fulfillment.deliveredItems.join(', ') || 'none'}` +
+          (artifactId ? `; artifactId=${artifactId}` : '')
         );
-        last = await runInstructedTurn(last, fulfillment.evidence);
+        last = await runInstructedTurn(last, evidence);
         last = await recoverInvalidRequest(last);
       }
 

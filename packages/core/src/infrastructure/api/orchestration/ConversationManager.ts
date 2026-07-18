@@ -29,6 +29,12 @@ export interface ConversationContext {
   pinned?: boolean;
   /** Provider-measured context after the latest atomically committed turn. */
   contextBudget?: ContextBudgetSnapshot;
+  /**
+   * Monotonic mint for agent-fetched artifact ids (`art-N`, ADR 2026-07-18).
+   * Never reused within a conversation — cancelled turns may skip numbers,
+   * which keeps ids stable without densifying them.
+   */
+  nextArtifactNumber?: number;
 }
 
 export class ConversationManager {
@@ -136,6 +142,20 @@ export class ConversationManager {
     conversation.messages = conversation.messages.slice(0, 1);
     conversation.contextBudget = undefined;
     conversation.lastActivity = Date.now();
+  }
+
+  /**
+   * Mint the next stable agent-artifact id for evidence injected into this
+   * conversation (ADR 2026-07-18). Ids address stored entries for the Phase 7
+   * manifest and future tombstone surgery; indices shift, ids never do.
+   */
+  nextArtifactId(conversationId: string): string {
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation) {
+      throw new ConversationNotFoundError(conversationId);
+    }
+    conversation.nextArtifactNumber = (conversation.nextArtifactNumber ?? 0) + 1;
+    return `art-${conversation.nextArtifactNumber}`;
   }
 
   /** Store provider-measured context only after its matching turn commits. */

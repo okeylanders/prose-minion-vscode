@@ -1,7 +1,12 @@
 import { TokenUsage } from '@shared/types';
 
 /** The caller-selected capability surface available to one agent turn. */
-export type CapabilityCatalog = 'guides' | 'projectContext' | 'workshopPersona' | 'none';
+export type CapabilityCatalog =
+  | 'guides'
+  | 'projectContext'
+  | 'workshopPersona'
+  | 'workshopToolContext'
+  | 'none';
 
 export type ConversationRetention = 'retain' | 'discard';
 

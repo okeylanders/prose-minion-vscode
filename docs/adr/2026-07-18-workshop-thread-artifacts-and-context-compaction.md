@@ -25,20 +25,28 @@ Three kinds of prompt material, each with distinct lifecycle and framing:
    `<workshop-host-update>` on the next turn after any change, with
    supersede semantics. Removable from the standing list; historical copies
    remain until compaction. Budgeted (aggregate word cap).
-2. **Thread-artifacts** (one-shot, writer-added via chat): NOT YET BUILT.
-   A file/note attached to a single message rides ONE user turn as its own
-   array entry (`<thread-artifact id=… name=…>`), then becomes ordinary
+2. **Thread-artifacts** (one-shot, writer-added via chat): frame contract
+   FIXED in Sprint 12 Phase 6 (`buildWorkshopThreadArtifactFrame`); the
+   composer affordance is still unbuilt. A file/note attached to a single
+   message rides ONE user turn as its own array entry, then becomes ordinary
    history — never re-shipped, no standing budget, visible in the manifest.
-   The composer `+` would offer "attach to this message" beside "add to
+   Contract: `<thread-artifact id="ta-N">` with the host-minted id as the
+   ONLY attribute; the writer-controlled name rides as a neutralized
+   `Name:` header line per the house rule (never an attribute value), and
+   `thread-artifact` is a reserved delimiter in the neutralizer. The
+   composer `+` would offer "attach to this message" beside "add to
    standing context".
 3. **Agent-fetched artifacts** (capability evidence): resource reads, tool
    run reports, dictionary evidence. ALREADY separate user-role array
    entries injected per capability round by `AgentRunEngine`, already
    identifiable by their closed frames (`<workshop-capability-result>`,
-   `<workshop-tool-evidence>`, …). For surgery they additionally need
-   **stable artifact ids** stamped at injection and registered in the
-   Phase 7 manifest. They are thread-artifacts in lifecycle terms:
-   one-shot, history-resident, surgery-addressable.
+   `<workshop-tool-evidence>`, …). Since Sprint 12 Phase 6, retained-run
+   injections are additionally wrapped in `<agent-artifact id="art-N">`
+   (ids minted per conversation by `ConversationManager.nextArtifactId`,
+   monotonic and never reused; cancelled turns may skip numbers) so the
+   Phase 7 manifest and tombstone surgery can address the stored entry.
+   They are thread-artifacts in lifecycle terms: one-shot,
+   history-resident, surgery-addressable.
 
 ## Surgery mechanism: tombstones, not deletion
 

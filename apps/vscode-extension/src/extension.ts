@@ -85,7 +85,15 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // SPRINT 01: Create resource services (foundation)
   const resourceLoader = new ResourceLoaderService(platform.workspace.extensionPath, platform.fileSystem, outputChannel);
-  const aiResourceManager = new AIResourceManager(resourceLoader, secretsService, platform.settings, outputChannel);
+  // Built before the AI resource manager: the Workshop composite tool catalog
+  // (Sprint 12 Phase 6) resolves configured resources through this factory.
+  const contextResourceResolver = new ContextResourceResolver(
+    platform.settings,
+    platform.fileSystem,
+    platform.workspace,
+    outputChannel
+  );
+  const aiResourceManager = new AIResourceManager(resourceLoader, secretsService, platform.settings, contextResourceResolver, outputChannel);
   // Lifecycle starts once at the composition root. Services only bind to the
   // manager-owned generation; none may rebuild all model scopes on startup.
   // Fire-and-forget, but never unobserved: the manager resets on rejection
@@ -139,12 +147,6 @@ export function activate(context: vscode.ExtensionContext): void {
     platform.workspace,
     platform.settings,
     platform.editor,
-    outputChannel
-  );
-  const contextResourceResolver = new ContextResourceResolver(
-    platform.settings,
-    platform.fileSystem,
-    platform.workspace,
     outputChannel
   );
   const categorySearchService = new CategorySearchService(

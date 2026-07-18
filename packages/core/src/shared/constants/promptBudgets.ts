@@ -57,6 +57,13 @@ export interface PromptBudgets {
   readonly contextFiles: Readonly<{ words: number; catalogItems: number }>;
   readonly guides: Readonly<{ words: number }>;
   readonly sourceDocument: Readonly<{ words: number }>;
+  /**
+   * Workshop tool initial runs' composite catalog (Sprint 12 Phase 6): the
+   * excerpt's configured source resource plus at most `neighborItems`
+   * same-group neighbors, with one combined evidence word cap across
+   * everything a run loads.
+   */
+  readonly workshopToolCatalog: Readonly<{ neighborItems: number; words: number }>;
 }
 
 export const PROMPT_BUDGETS: PromptBudgets = {
@@ -107,5 +114,6 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   guestOpening: { characters: 2_000 },
   contextFiles: { words: 50_000, catalogItems: 100 },
   guides: { words: 50_000 },
-  sourceDocument: { words: 50_000 }
+  sourceDocument: { words: 50_000 },
+  workshopToolCatalog: { neighborItems: 4, words: 50_000 }
 };
