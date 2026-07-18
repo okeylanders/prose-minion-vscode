@@ -15,6 +15,7 @@ import * as React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ContextPanel } from '@components/workshop/ContextPanel';
 import { WorkshopContextAttachmentSnapshot } from '@messages';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 const attachment = (
   overrides: Partial<WorkshopContextAttachmentSnapshot> = {}
@@ -90,14 +91,15 @@ describe('ContextPanel', () => {
   });
 
   it('sums the meter across attachments and warns near the cap', () => {
+    const nearCap = Math.ceil(PROMPT_BUDGETS.contextAttachments.words * 0.8);
     const { container } = renderPanel({
       attachments: [
-        attachment({ words: 6_000 }),
+        attachment({ words: nearCap - 2_000 }),
         attachment({ id: 'ctx-2', words: 2_000 })
       ]
     });
 
-    expect(screen.getByText('8,000')).toBeTruthy();
+    expect(screen.getByText(nearCap.toLocaleString())).toBeTruthy();
     expect(container.querySelector('.pm-ws-meter-warn')).toBeTruthy();
     expect(screen.getByText(/getting close to the cap/)).toBeTruthy();
   });

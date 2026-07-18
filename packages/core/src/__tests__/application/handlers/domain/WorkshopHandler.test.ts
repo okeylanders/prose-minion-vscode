@@ -12,6 +12,7 @@ import type { AssistantToolService } from '@services/analysis/AssistantToolServi
 import { FileType } from '@/platform';
 import type { FileSystem, LogSink, ShellService, Workspace } from '@/platform';
 import { createFakeFileSystem, createFakeShellService, createFakeWorkspace } from '../../../mocks/platform';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 const analysisResult = (content: string, extra: Record<string, unknown> = {}) => ({
   toolName: 'workshop-test',
@@ -631,7 +632,10 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
   it('rejects an over-budget text note at attach time — nothing over-budget reaches a tool pass', async () => {
     await pin();
-    const longNote = Array.from({ length: 10_001 }, (_, index) => `note${index}`).join(' ');
+    const longNote = Array.from(
+      { length: PROMPT_BUDGETS.contextAttachments.words + 1 },
+      (_, index) => `note${index}`
+    ).join(' ');
     await handler.handleAddContextText(message(
       MessageType.WORKSHOP_ADD_CONTEXT_TEXT,
       { text: longNote }
@@ -1254,7 +1258,11 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       await pin();
       // A near-full budget: room for the 40-word brief, not the 8-word file.
       session.addContextAttachment({
-        kind: 'text', origin: 'writer', label: 'Big note\u2026', words: 9_955, content: 'x'
+        kind: 'text',
+        origin: 'writer',
+        label: 'Big note\u2026',
+        words: PROMPT_BUDGETS.contextAttachments.words - 45,
+        content: 'x'
       });
       contextAssistant.generateContext.mockResolvedValueOnce({
         toolName: 'context_assistant',

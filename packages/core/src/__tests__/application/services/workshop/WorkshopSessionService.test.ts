@@ -477,13 +477,14 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       content: 'x', sourceUri, relativePath: 'chapters/chapter.md'
     });
 
-    expect(file('file:///a.md', 6_000).ok).toBe(true);
+    const budget = PROMPT_BUDGETS.contextAttachments.words;
+    expect(file('file:///a.md', budget - 4_000).ok).toBe(true);
     expect(file('file:///a.md', 100)).toMatchObject({ ok: false, reason: 'duplicate' });
     expect(file('file:///b.md', 5_000)).toMatchObject({
       ok: false, reason: 'over-budget', remainingWords: 4_000
     });
     expect(file('file:///b.md', 4_000).ok).toBe(true);
-    expect(service.contextWordsUsed()).toBe(10_000);
+    expect(service.contextWordsUsed()).toBe(budget);
   });
 
   it('posts event turns for mid-session changes only, and removal drops the entry', () => {
