@@ -33,7 +33,7 @@ with its tests; full suite + typecheck + lint green at every commit.
 | 3 | Context attachments replace the brief: aggregate-owned list (budget, duplicate guard, head-slice), add/remove routes, pills + meter UI, ONE `<context-attachments>` frame builder for host/update/tool delivery, mid-session `context_change` event turns | **Done** | `99d2f41` |
 | 4 | `WorkshopModalShell` (tech-debt 2026-07-10 resolved) + Context Selector modal: category browse, Names / Names+content search (client names, bounded host content search), filter pills, explore hatch; composer `+` + panel both open it; excerpt "Choose from project…" opens it in single-select mode with honest `sourceUri` (summaries carry host-only `absolutePath`) | **Done** | `9f3a06b`, `858bf46` |
 | 5 | Context wizard (scope added 2026-07-17): reuses `ContextAssistantService` under its own `workshop-context` streaming domain, one-run guard, cancellable; brief attaches FIRST, results land as wizard-tagged attachments through the standard budget path; text pills expand to readable notes | **Done** | `c1f5973`, `5eb2183` |
-| 6 | Source-aware prompt frames (host/guest/tool excerpt-source frame, provenance → canonical `{ group, path }`) + bounded composite tool catalog (source + neighbors + guides) + artifact-taxonomy framing: context-artifacts vs thread-artifacts vs agent-fetched evidence, stable artifact ids on delivered evidence entries (per ADR 2026-07-18 draft) | Pending | — |
+| 6 | Source-aware prompt frames (host/guest/tool excerpt-source frame, provenance → canonical `{ group, path }`) + bounded composite tool catalog (source + neighbors + guides) + artifact-taxonomy framing: context-artifacts vs thread-artifacts vs agent-fetched evidence, stable artifact ids on delivered evidence entries (per ADR 2026-07-18 draft) | **Done** | `9b6ad4f` |
 | 7 | Context source manifest: engine per-round instrumentation, `ConversationManager` storage beside `contextBudget`, writer-entry stamping, `sources` on `LabeledContextBudgetSnapshot`, Context Bar v2 "In context" panel | Pending | — |
 | 8 | Pin-language sweep (wire contracts included), compaction ADR draft, 06B manual UX pass, bundle verification + deltas | Pending | — |
 
@@ -238,24 +238,33 @@ autonomously is context the writer is paying for and must not be invisible.
 
 ### Source-aware prompt and tool delivery
 
-- [ ] Add one shared excerpt-source prompt frame used by initial host, host
+- [x] Add one shared excerpt-source prompt frame used by initial host, host
       revision, guest join/catch-up where applicable, and initial tool runs;
       cover delimiter neutralization and display-safe provenance.
-- [ ] Resolve verified selection/file provenance to a canonical configured
+      (`buildWorkshopExcerptSourceFrame`; the raw file: URI no longer reaches
+      any Workshop prompt path.)
+- [x] Resolve verified selection/file provenance to a canonical configured
       `{ group, path }` when possible so Sprint 11 reads do not depend on the
       model reconstructing a path or guessing its case.
-- [ ] Frame taxonomy (ADR 2026-07-18 draft): keep the three artifact kinds
+      (`WorkshopHandler.withConfiguredResource` — host-side absolutePath
+      match; webview claims re-derived, ambiguity fails safe.)
+- [x] Frame taxonomy (ADR 2026-07-18 draft): keep the three artifact kinds
       separately identifiable in prompt material — standing context-artifacts
       (`<context-attachments>`), writer thread-artifacts (`<thread-artifact
       id=…>`, one-shot message attachments — composer affordance may land
       post-sprint but the frame contract is fixed now), and agent-fetched
       evidence entries, which gain STABLE ARTIFACT IDS at injection so the
       Phase 7 manifest and future tombstone surgery can address them.
-- [ ] Give Workshop tool initial runs a bounded composite resource catalog:
+      (`buildWorkshopThreadArtifactFrame`; `<agent-artifact id="art-N">`
+      wrapped by AgentRunEngine on retained runs, ids minted per conversation
+      by `ConversationManager.nextArtifactId`.)
+- [x] Give Workshop tool initial runs a bounded composite resource catalog:
       relevant configured source/neighbor resources plus existing craft
       guides, one closed read protocol, source-first ordering, and explicit
       delivered-resource provenance. Preserve the sidebar tools' existing
-      guide-only behavior.
+      guide-only behavior. (`WorkshopToolContextCapability` behind the new
+      `workshopToolContext` catalog; deterministic "Context delivered to this
+      run" footer in the visible report.)
 
 ### Context source manifest
 
