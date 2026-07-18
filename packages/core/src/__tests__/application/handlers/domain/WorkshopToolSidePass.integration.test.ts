@@ -65,6 +65,7 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
     } as unknown as WorkshopPersonaCapabilityFactory;
     const handler = new WorkshopHandler(
       assistantService,
+      { generateContext: jest.fn() } as never,
       session,
       new RunWorkshopToolSidePass(
         assistantService,

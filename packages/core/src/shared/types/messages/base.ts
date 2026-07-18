@@ -123,6 +123,7 @@ export enum MessageType {
   WORKSHOP_CONTEXT_SEARCH_RESULTS = 'workshop_context_search_results',
   WORKSHOP_ADD_CONTEXT_RESOURCES = 'workshop_add_context_resources',
   WORKSHOP_SET_EXCERPT_RESOURCE = 'workshop_set_excerpt_resource',
+  WORKSHOP_RUN_CONTEXT_WIZARD = 'workshop_run_context_wizard',
   WORKSHOP_TODO_ACTION = 'workshop_todo_action',
   WORKSHOP_PICK_EXCERPT_FILE = 'workshop_pick_excerpt_file',
   WORKSHOP_REREAD_EXCERPT = 'workshop_reread_excerpt',

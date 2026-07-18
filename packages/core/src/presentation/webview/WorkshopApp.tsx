@@ -530,6 +530,9 @@ export const WorkshopApp: React.FC = () => {
               onAddText={workshop.addContextText}
               onAddFile={openAttachSelector}
               onRemove={workshop.removeContextAttachment}
+              wizardRunning={workshop.wizardRunning}
+              onRunWizard={workshop.runContextWizard}
+              onCancelWizard={workshop.cancelContextWizard}
             />
 
             <div className="pm-ws-block pm-ws-block-grow">

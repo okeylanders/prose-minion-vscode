@@ -37,6 +37,9 @@ const renderPanel = (overrides: Partial<React.ComponentProps<typeof ContextPanel
     onAddText: jest.fn(),
     onAddFile: jest.fn(),
     onRemove: jest.fn(),
+    wizardRunning: false,
+    onRunWizard: jest.fn(),
+    onCancelWizard: jest.fn(),
     ...overrides
   };
   return { ...render(<ContextPanel {...props} />), props };
@@ -97,6 +100,17 @@ describe('ContextPanel', () => {
     expect(screen.getByText('8,000')).toBeTruthy();
     expect(container.querySelector('.pm-ws-meter-warn')).toBeTruthy();
     expect(screen.getByText(/getting close to the cap/)).toBeTruthy();
+  });
+
+  it('offers the Context wizard and swaps it for a cancellable status row while running', () => {
+    const { props, rerender } = renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: /context wizard/i }));
+    expect(props.onRunWizard).toHaveBeenCalled();
+
+    rerender(<ContextPanel {...props} wizardRunning />);
+    expect(screen.getByRole('status').textContent).toContain('Wizard');
+    fireEvent.click(screen.getByRole('button', { name: /cancel the context wizard/i }));
+    expect(props.onCancelWizard).toHaveBeenCalled();
   });
 
   it('notes pending delivery to the next host message', () => {

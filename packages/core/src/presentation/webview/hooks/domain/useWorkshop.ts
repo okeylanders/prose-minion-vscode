@@ -70,6 +70,8 @@ export interface WorkshopState {
   contextCatalog: WorkshopContextCatalogEntry[] | null;
   /** Latest content-search results for the Context Selector, if any. */
   contextSearch: WorkshopContextSearchResultsPayload | null;
+  /** True while the Context wizard streams under 'workshop-context'. */
+  wizardRunning: boolean;
   turns: WorkshopTurn[];
   /**
    * Turns held host-side but not present in this webview (a bounded snapshot
@@ -124,6 +126,8 @@ export interface WorkshopActions {
   clearContextSearch: () => void;
   addContextResources: (items: WorkshopConfiguredResourceRef[]) => void;
   setExcerptResource: (item: WorkshopConfiguredResourceRef) => void;
+  runContextWizard: () => void;
+  cancelContextWizard: () => void;
   handleContextCatalog: (message: WorkshopContextCatalogMessage) => void;
   handleContextSearchResults: (message: WorkshopContextSearchResultsMessage) => void;
   runTool: (toolId: WorkshopToolId) => void;
@@ -168,6 +172,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const [contextAttachments, setContextAttachments] = React.useState<WorkshopContextAttachmentSnapshot[]>([]);
   const [contextPending, setContextPending] = React.useState(false);
   const [contextCatalog, setContextCatalog] = React.useState<WorkshopContextCatalogEntry[] | null>(null);
+  const [wizardRun, setWizardRun] = React.useState<string | null>(null);
   const [contextSearch, setContextSearch] = React.useState<WorkshopContextSearchResultsPayload | null>(null);
   const [turns, setTurns] = React.useState<WorkshopTurn[]>([]);
   const [totalTurns, setTotalTurns] = React.useState(0);
@@ -257,6 +262,18 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const setExcerptResource = React.useCallback((item: WorkshopConfiguredResourceRef) => {
     post(MessageType.WORKSHOP_SET_EXCERPT_RESOURCE, item);
   }, [post]);
+
+  const runContextWizard = React.useCallback(() => {
+    post(MessageType.WORKSHOP_RUN_CONTEXT_WIZARD, {});
+  }, [post]);
+
+  const cancelContextWizard = React.useCallback(() => {
+    if (wizardRun) {
+      vscode.postMessage(
+        createCancelRequestMessage('workshop-context', wizardRun, 'webview.workshop.context')
+      );
+    }
+  }, [vscode, wizardRun]);
 
   const handleContextCatalog = React.useCallback((message: WorkshopContextCatalogMessage) => {
     setContextCatalog(message.payload.entries);
@@ -417,6 +434,10 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const handleStreamStarted = React.useCallback(
     (message: StreamStartedMessage) => {
       const { domain, requestId } = message.payload;
+      if (domain === 'workshop-context') {
+        setWizardRun(requestId);
+        return;
+      }
       if (domain !== 'workshop') {return;}
       setLiveRun({ requestId, phase: 'streaming' });
       streaming.startStreaming();
@@ -437,6 +458,10 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const handleStreamComplete = React.useCallback(
     (message: StreamCompleteMessage) => {
       const { domain, requestId, cancelled } = message.payload;
+      if (domain === 'workshop-context') {
+        setWizardRun((current) => (current === requestId ? null : current));
+        return;
+      }
       if (domain !== 'workshop') {return;}
       if (liveRunRef.current?.requestId !== requestId) {return;}
 
@@ -498,6 +523,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     contextPending,
     contextCatalog,
     contextSearch,
+    wizardRunning: wizardRun !== null,
     turns,
     hiddenTurns,
     hasHostConversation,
@@ -536,6 +562,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
     clearContextSearch,
     addContextResources,
     setExcerptResource,
+    runContextWizard,
+    cancelContextWizard,
     handleContextCatalog,
     handleContextSearchResults,
     runTool,

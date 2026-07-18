@@ -9,9 +9,9 @@
  * guard) lives in the aggregate, and mid-session changes surface as visible
  * event turns in the thread, never silent prompt mutation.
  *
- * The "Add from project…" button currently opens the host file picker; the
- * Context Selector modal (Phase 4) repoints it and keeps the picker as its
- * "Explore project folders…" escape hatch.
+ * "Add from project…" opens the Context Selector modal (which keeps the OS
+ * picker as its explore escape hatch). The Context wizard reuses the sidebar
+ * Context lane host-side; its picks land as ordinary wizard-tagged pills.
  */
 
 import * as React from 'react';
@@ -28,9 +28,13 @@ interface ContextPanelProps {
   pendingDelivery: boolean;
   isRunning: boolean;
   onAddText: (text: string) => void;
-  /** Ask the host to open its file picker and attach the chosen file. */
+  /** Open the Context Selector modal. */
   onAddFile: () => void;
   onRemove: (id: string) => void;
+  /** Context wizard lane (Sprint 12): one run at a time, results are pills. */
+  wizardRunning: boolean;
+  onRunWizard: () => void;
+  onCancelWizard: () => void;
 }
 
 const meterTone = (used: number, budget: number): string => {
@@ -47,7 +51,10 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   isRunning,
   onAddText,
   onAddFile,
-  onRemove
+  onRemove,
+  wizardRunning,
+  onRunWizard,
+  onCancelWizard
 }) => {
   const [adding, setAdding] = React.useState(false);
   const [draft, setDraft] = React.useState('');
@@ -158,6 +165,16 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
           >
             <Icon name="doc" size={12} /> Add from project…
           </button>
+          {wizardRunning ? null : (
+            <button
+              className="pm-ws-action-btn"
+              type="button"
+              onClick={onRunWizard}
+              disabled={isRunning}
+            >
+              <Icon name="sparkle" size={12} /> Context wizard
+            </button>
+          )}
         </div>
       ) : (
         <>
@@ -182,6 +199,18 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
               Add from project…
               <span className="pm-ws-intake-sub">attach project files to every message</span>
             </button>
+            <button
+              className="pm-ws-intake-btn"
+              type="button"
+              onClick={onRunWizard}
+              disabled={isRunning || wizardRunning}
+            >
+              <Icon name="sparkle" size={16} />
+              Context wizard
+              <span className="pm-ws-intake-sub">
+                suggests project context — results are yours to keep or remove
+              </span>
+            </button>
           </div>
           <p className="pm-ws-intake-caption">
             Context rides along with every message, to every participant.
@@ -189,6 +218,22 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
         </>
       )}
 
+      {wizardRunning ? (
+        <div className="pm-ws-wizard-row" role="status">
+          <span className="pm-ws-wizard-spin" aria-hidden="true" />
+          <span>
+            <b>Wizard</b> is reading your project… one run at a time
+          </span>
+          <button
+            className="pm-ws-ctx-pill-remove"
+            type="button"
+            aria-label="Cancel the Context wizard"
+            onClick={onCancelWizard}
+          >
+            <Icon name="x" size={9} />
+          </button>
+        </div>
+      ) : null}
       <div className={`pm-ws-meter${meterTone(used, budget)}`}>
         <div className="pm-ws-meter-row">
           <div className="pm-ws-meter-track">

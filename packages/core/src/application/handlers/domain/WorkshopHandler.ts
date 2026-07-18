@@ -21,6 +21,7 @@
 
 import { FileSystem, FileType, LogSink, ShellService, Workspace } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
+import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 import {
   WorkshopContextAttachmentInput,
   WorkshopSessionService
@@ -56,6 +57,7 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   MessageType,
+  API_KEY_NOT_CONFIGURED_HEADING,
   CancelWorkshopRequestMessage,
   ErrorMessage,
   ErrorSource,
@@ -69,6 +71,7 @@ import {
   WorkshopExcerptTruncation,
   coerceWorkshopExcerptSource,
   workshopExcerptSourcePath,
+  workshopExcerptSourceUri,
   WorkshopPickExcerptFileMessage,
   WorkshopRereadExcerptMessage,
   WorkshopRequestSessionMessage,
@@ -90,6 +93,7 @@ import {
   WorkshopContextSearchResultsMessage,
   WorkshopAddContextResourcesMessage,
   WorkshopSetExcerptResourceMessage,
+  WorkshopRunContextWizardMessage,
   WorkshopConfiguredResourceRef,
   WorkshopSetExcerptMessage,
   WorkshopTodoActionMessage,
@@ -155,8 +159,12 @@ export class WorkshopHandler {
 
   private readonly disposeStatusListener: () => void;
 
+  /** The single in-flight Context wizard run — independent of activeRun. */
+  private wizardRun?: { requestId: string; controller: AbortController };
+
   constructor(
     private readonly assistantToolService: AssistantToolService,
+    private readonly contextAssistantService: ContextAssistantService,
     private readonly session: WorkshopSessionService,
     private readonly runToolSidePass: RunWorkshopToolSidePass,
     private readonly capabilityFactory: WorkshopPersonaCapabilityFactory,
@@ -212,6 +220,10 @@ export class WorkshopHandler {
     router.register(
       MessageType.WORKSHOP_SET_EXCERPT_RESOURCE,
       this.handleSetExcerptResource.bind(this)
+    );
+    router.register(
+      MessageType.WORKSHOP_RUN_CONTEXT_WIZARD,
+      this.handleRunContextWizard.bind(this)
     );
     router.register(MessageType.WORKSHOP_TODO_ACTION, this.handleTodoAction.bind(this));
     router.register(MessageType.WORKSHOP_PICK_EXCERPT_FILE, this.handlePickExcerptFile.bind(this));
@@ -754,6 +766,13 @@ export class WorkshopHandler {
    */
   async handleCancelRequest(message: CancelWorkshopRequestMessage): Promise<void> {
     const { requestId, domain } = message.payload;
+    if (domain === 'workshop-context') {
+      if (this.wizardRun?.requestId === requestId) {
+        this.outputChannel.appendLine(`[WorkshopHandler] Wizard cancel requested: ${requestId}`);
+        this.wizardRun.controller.abort();
+      }
+      return;
+    }
     if (domain !== 'workshop') {
       this.outputChannel.appendLine(
         `[WorkshopHandler] Cancel ignored: ${requestId} (domain=${domain}, active=${this.activeRun?.requestId ?? 'none'})`
@@ -1090,6 +1109,167 @@ export class WorkshopHandler {
       },
       truncation
     });
+    this.postSessionState();
+  }
+
+  /**
+   * Context wizard (Sprint 12): reuse the sidebar Context lane's generation
+   * pipeline — contextModel scope, closed projectContext read protocol —
+   * behind the Workshop's own streaming domain so the two lanes never
+   * cross-consume events. One run at a time; every result lands as a
+   * wizard-tagged attachment through the standard budget/duplicate path, so
+   * nothing the wizard does is silent or exempt.
+   */
+  async handleRunContextWizard(_message: WorkshopRunContextWizardMessage): Promise<void> {
+    if (this.wizardRun) {
+      this.sendError('workshop', 'The Context wizard is already running — one run at a time.');
+      return;
+    }
+    const excerpt = this.session.getExcerpt();
+    if (!excerpt) {
+      this.sendError('workshop', 'Set an excerpt first — the wizard reads your project around it.');
+      return;
+    }
+
+    const requestId = generateRequestId('workshop-wizard');
+    const controller = new AbortController();
+    this.wizardRun = { requestId, controller };
+    const started: StreamStartedMessage = {
+      type: MessageType.STREAM_STARTED,
+      source: 'extension.workshop',
+      payload: { requestId, domain: 'workshop-context' },
+      timestamp: Date.now()
+    };
+    void this.postMessage(started);
+
+    let cancelled = false;
+    try {
+      const attachments = this.session.getContextAttachments();
+      const existingContext = attachments.length > 0
+        ? `Context already attached (do not re-request these): ${attachments.map((entry) => entry.label).join(', ')}`
+        : undefined;
+      const result = await this.contextAssistantService.generateContext(
+        {
+          excerpt: excerpt.text,
+          existingContext,
+          sourceFileUri: workshopExcerptSourceUri(excerpt.source)
+        },
+        { signal: controller.signal }
+      );
+      cancelled = controller.signal.aborted;
+      if (!cancelled) {
+        await this.adoptWizardResult(result.content, result.requestedResources ?? []);
+      }
+    } catch (error) {
+      cancelled = controller.signal.aborted;
+      if (!cancelled) {
+        const details = error instanceof Error ? error.message : String(error);
+        this.sendError('workshop', 'The Context wizard failed.', details);
+      }
+    } finally {
+      this.wizardRun = undefined;
+      const complete: StreamCompleteMessage = {
+        type: MessageType.STREAM_COMPLETE,
+        source: 'extension.workshop',
+        payload: { requestId, domain: 'workshop-context', content: '', cancelled },
+        timestamp: Date.now()
+      };
+      void this.postMessage(complete);
+    }
+  }
+
+  /** Land wizard output as ordinary wizard-tagged attachments; say what fit. */
+  private async adoptWizardResult(brief: string, requestedResources: string[]): Promise<void> {
+    let attached = 0;
+    let skipped = 0;
+
+    if (requestedResources.length > 0) {
+      let provider;
+      try {
+        provider = await this.resourceProviderFactory.createProvider([...DEFAULT_CONTEXT_GROUPS]);
+      } catch {
+        provider = undefined;
+      }
+      if (provider) {
+        const summaries = provider.listResources();
+        for (const path of requestedResources) {
+          const summary = summaries.find((resource) => resource.path === path);
+          if (!summary) {
+            skipped += 1;
+            continue;
+          }
+          let content: string | undefined;
+          try {
+            content = (await provider.loadResources([summary.path]))[0]?.content;
+          } catch {
+            content = undefined;
+          }
+          if (!content || content.trim().length === 0) {
+            skipped += 1;
+            continue;
+          }
+          let text = content;
+          let words = countWords(content);
+          let truncation: { keptWords: number; totalWords: number } | undefined;
+          if (words > PROMPT_BUDGETS.contextAttachments.words) {
+            const trimmed = trimToWordLimit(content, PROMPT_BUDGETS.contextAttachments.words);
+            truncation = { keptWords: trimmed.trimmedWords, totalWords: words };
+            text = trimmed.trimmed;
+            words = trimmed.trimmedWords;
+          }
+          const result = this.session.addContextAttachment({
+            kind: 'file',
+            origin: 'wizard',
+            label: baseName(summary.path),
+            content: text,
+            words,
+            sourceUri: pathToFileURL(summary.absolutePath).toString(),
+            relativePath: summary.path,
+            configuredResource: { group: summary.group, path: summary.path },
+            truncation
+          });
+          if (result.ok) {
+            attached += 1;
+            if (result.eventTurn) {
+              this.postTurn(result.eventTurn);
+            }
+          } else {
+            skipped += 1;
+          }
+        }
+      } else {
+        skipped += requestedResources.length;
+      }
+    }
+
+    const briefText = brief.trim();
+    if (briefText.length > 0 && !briefText.startsWith(API_KEY_NOT_CONFIGURED_HEADING)) {
+      const words = countWords(briefText);
+      const result = this.session.addContextAttachment({
+        kind: 'text',
+        origin: 'wizard',
+        label: 'Wizard brief\u2026',
+        content: briefText,
+        words
+      });
+      if (result.ok) {
+        attached += 1;
+        if (result.eventTurn) {
+          this.postTurn(result.eventTurn);
+        }
+      } else {
+        skipped += 1;
+      }
+    }
+
+    this.outputChannel.appendLine(
+      `[WorkshopHandler] Wizard finished (${attached} attached, ${skipped} skipped)`
+    );
+    this.sendStatus(
+      attached > 0
+        ? `Wizard attached ${attached} item${attached === 1 ? '' : 's'}${skipped > 0 ? ` \u00b7 ${skipped} didn\u2019t fit` : ''} \u2014 yours to keep or remove.`
+        : 'Wizard finished \u2014 nothing new fit the budget.'
+    );
     this.postSessionState();
   }
 

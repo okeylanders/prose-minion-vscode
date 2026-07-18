@@ -33,6 +33,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   let postMessage: jest.Mock;
   let log: LogSink;
   let service: jest.Mocked<AssistantToolService>;
+  let contextAssistant: { generateContext: jest.Mock };
   let shell: ShellService;
   let fileSystem: FileSystem;
   let workspace: Workspace;
@@ -87,6 +88,14 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       ),
       addStatusListener: jest.fn(() => jest.fn())
     } as unknown as jest.Mocked<AssistantToolService>;
+    contextAssistant = {
+      generateContext: jest.fn().mockResolvedValue({
+        toolName: 'context_assistant',
+        content: 'Wizard brief body.',
+        timestamp: new Date(0),
+        requestedResources: ['Characters/raven.md']
+      })
+    };
     shell = createFakeShellService();
     fileSystem = createFakeFileSystem();
     workspace = createFakeWorkspace();
@@ -121,6 +130,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     const analysisSidePass = new WorkshopAnalysisSidePass(service, session, log);
     handler = new WorkshopHandler(
       service,
+      contextAssistant as never,
       session,
       new RunWorkshopToolSidePass(
         service,
@@ -165,7 +175,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_SEARCH_CONTEXT_RESOURCES)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SET_EXCERPT_RESOURCE)).toBe(true);
-    expect(router.handlerCount).toBe(21);
+    expect(router.hasHandler(MessageType.WORKSHOP_RUN_CONTEXT_WIZARD)).toBe(true);
+    expect(router.handlerCount).toBe(22);
   });
 
   it('starts Jill directly from the composer and retains the host conversation', async () => {
@@ -1182,6 +1193,76 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
       expect(session.getContextAttachments()).toEqual([]);
       expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/no longer in the configured catalog/i);
+    });
+  });
+
+  describe('Context wizard (Sprint 12 Phase 5)', () => {
+    const runWizard = () =>
+      handler.handleRunContextWizard(message(MessageType.WORKSHOP_RUN_CONTEXT_WIZARD, {}) as any);
+
+    it('requires an excerpt before it will read the project', async () => {
+      await runWizard();
+      expect(contextAssistant.generateContext).not.toHaveBeenCalled();
+      expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/set an excerpt first/i);
+    });
+
+    it('runs under its own streaming domain and lands results as wizard-tagged attachments', async () => {
+      await pin();
+      await runWizard();
+
+      const started = posted(MessageType.STREAM_STARTED).at(-1).payload;
+      const complete = posted(MessageType.STREAM_COMPLETE).at(-1).payload;
+      expect(started.domain).toBe('workshop-context');
+      expect(complete).toMatchObject({ domain: 'workshop-context', cancelled: false });
+
+      const attachments = session.getContextAttachments();
+      expect(attachments).toEqual([
+        expect.objectContaining({
+          kind: 'file',
+          origin: 'wizard',
+          label: 'raven.md',
+          configuredResource: { group: 'characters', path: 'Characters/raven.md' }
+        }),
+        expect.objectContaining({ kind: 'text', origin: 'wizard', label: 'Wizard brief\u2026' })
+      ]);
+      expect(contextAssistant.generateContext).toHaveBeenCalledWith(
+        expect.objectContaining({
+          excerpt: 'A pinned excerpt.',
+          sourceFileUri: 'file:///chapter-one.md'
+        }),
+        expect.objectContaining({ signal: expect.anything() })
+      );
+    });
+
+    it('refuses a second run while one is in flight', async () => {
+      await pin();
+      let release!: (value: unknown) => void;
+      contextAssistant.generateContext.mockReturnValueOnce(
+        new Promise((resolve) => { release = resolve; })
+      );
+
+      const first = runWizard();
+      await Promise.resolve();
+      await runWizard();
+      expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/already running/i);
+
+      release({ toolName: 'context_assistant', content: '', timestamp: new Date(0), requestedResources: [] });
+      await first;
+    });
+
+    it('says so when nothing fits instead of silently attaching nothing', async () => {
+      await pin();
+      contextAssistant.generateContext.mockResolvedValueOnce({
+        toolName: 'context_assistant',
+        content: '   ',
+        timestamp: new Date(0),
+        requestedResources: ['Characters/ghost.md']
+      });
+
+      await runWizard();
+
+      expect(session.getContextAttachments()).toEqual([]);
+      expect(posted(MessageType.STATUS).at(-1).payload.message).toMatch(/nothing new fit/i);
     });
   });
 

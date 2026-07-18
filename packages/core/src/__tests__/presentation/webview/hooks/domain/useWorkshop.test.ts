@@ -128,6 +128,31 @@ describe('useWorkshop', () => {
   const posted = (type: MessageType) =>
     mockVSCode.postMessage.mock.calls.map((c) => c[0]).filter((m) => m.type === type);
 
+  it('tracks the Context wizard under its own streaming domain', () => {
+    const { result } = renderHook(() => useWorkshop());
+    expect(result.current.wizardRunning).toBe(false);
+
+    act(() => result.current.runContextWizard());
+    expect(posted(MessageType.WORKSHOP_RUN_CONTEXT_WIZARD)).toHaveLength(1);
+
+    act(() => result.current.handleStreamStarted(streamStarted('wiz-1', 'workshop-context')));
+    expect(result.current.wizardRunning).toBe(true);
+    // The wizard never paints the thread's live bubble.
+    expect(result.current.isStreaming).toBe(false);
+
+    act(() => result.current.cancelContextWizard());
+    const cancel = posted(MessageType.CANCEL_WORKSHOP_REQUEST).at(-1);
+    expect(cancel.payload).toMatchObject({ requestId: 'wiz-1', domain: 'workshop-context' });
+
+    act(() => result.current.handleStreamComplete({
+      type: MessageType.STREAM_COMPLETE,
+      source: 'extension.workshop',
+      payload: { requestId: 'wiz-1', domain: 'workshop-context' as never, content: '', cancelled: true },
+      timestamp: 0
+    }));
+    expect(result.current.wizardRunning).toBe(false);
+  });
+
   it('requests the host session on mount (reload rehydration entry point)', () => {
     renderHook(() => useWorkshop());
 

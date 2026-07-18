@@ -601,6 +601,16 @@ export interface WorkshopSetExcerptResourceMessage
   type: MessageType.WORKSHOP_SET_EXCERPT_RESOURCE;
 }
 
+/**
+ * Run the Context wizard (Sprint 12): the sidebar Context lane's generation
+ * pipeline behind Workshop-scoped routes and the 'workshop-context' streaming
+ * domain. One run at a time; results land as wizard-tagged attachments
+ * through the standard add path. Zero payload — session state IS the input.
+ */
+export interface WorkshopRunContextWizardMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.WORKSHOP_RUN_CONTEXT_WIZARD;
+}
+
 export interface WorkshopAddContextResourcesMessage
   extends MessageEnvelope<WorkshopAddContextResourcesPayload> {
   type: MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES;

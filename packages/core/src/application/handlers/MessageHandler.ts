@@ -290,6 +290,7 @@ export class MessageHandler {
     // feed the Sprint 3 "Pin from file…" seam (picker → read → provenance).
     this.workshopHandler = new WorkshopHandler(
       assistantToolService,
+      contextAssistantService,
       workshopSessionService,
       workshopToolSidePass,
       workshopPersonaCapabilityFactory,
