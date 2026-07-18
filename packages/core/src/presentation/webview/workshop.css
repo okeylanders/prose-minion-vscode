@@ -718,6 +718,28 @@
   line-height: 1.55;
   text-align: center;
 }
+[data-pm-surface="workshop"] .pm-ws-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  font-family: var(--pm-sans);
+  color: var(--pm-text-2);
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-input);
+  padding: 6px 11px;
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-action-btn:not(:disabled):hover {
+  border-color: var(--pm-accent-hi);
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 [data-pm-surface="workshop"] .pm-ws-provenance {
   display: flex;
   align-items: center;

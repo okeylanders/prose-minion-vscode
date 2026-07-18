@@ -68,6 +68,8 @@ export function activate(context: vscode.ExtensionContext): void {
   // Platform ports (ADR 2026-06-16). Assembled once at the composition root: the
   // VS Code adapters translate to the vscode-free port shapes; the structural
   // ports (log, secrets) are the native vscode objects passed directly.
+  const editorContext = new VsCodeEditorContext();
+  context.subscriptions.push(editorContext);
   const platform: Platform = {
     log: outputChannel,
     secrets: context.secrets,
@@ -75,7 +77,7 @@ export function activate(context: vscode.ExtensionContext): void {
     fileSystem: new VsCodeFileSystem(),
     workspace: new VsCodeWorkspace(context.extensionUri),
     shell: new VsCodeShellService(),
-    editor: new VsCodeEditorContext()
+    editor: editorContext
   };
 
   // SPRINT 01: Initialize infrastructure layer (dependency injection)

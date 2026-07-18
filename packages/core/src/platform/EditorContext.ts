@@ -63,10 +63,17 @@ export function toInclusiveLineRange(input: {
 
 export interface EditorContext {
   /**
-   * The active editor's current selection, or `undefined` when there is NO
-   * active text editor. When an editor is open but nothing is selected, returns
-   * info with `isEmpty: true` and `text: ''` (callers distinguish "no editor"
-   * from "no selection").
+   * The active editor's current selection. When an editor is open but nothing
+   * is selected, returns info with `isEmpty: true` and `text: ''` (callers
+   * distinguish "no editor" from "no selection").
+   *
+   * When NO text editor is focused — e.g. a webview panel like the Workshop
+   * tab holds focus — adapters SHOULD fall back to the most recent real
+   * editor selection rather than returning `undefined` (Sprint 12): paste
+   * verification compares exactly, so a remembered selection that doesn't
+   * match the pasted text verifies nothing, and one that does is precisely
+   * the provenance being claimed. Returns `undefined` only when there is no
+   * active editor and no remembered selection.
    */
   getActiveSelection(): ActiveSelectionInfo | undefined;
 }

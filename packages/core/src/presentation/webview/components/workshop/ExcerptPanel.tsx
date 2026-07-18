@@ -148,7 +148,7 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
               <Icon name="check" size={13} /> Confirm
             </button>
             <button
-              className="pm-ws-excerpt-edit"
+              className="pm-ws-action-btn"
               type="button"
               onClick={() => setEditing(false)}
             >
@@ -171,7 +171,7 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
             {locked ? (
               fileBacked ? (
                 <button
-                  className="pm-ws-excerpt-edit"
+                  className="pm-ws-action-btn"
                   type="button"
                   onClick={onRereadFile}
                   disabled={isRunning}
@@ -181,7 +181,7 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
                 </button>
               ) : (
                 <button
-                  className="pm-ws-excerpt-edit"
+                  className="pm-ws-action-btn"
                   type="button"
                   onClick={beginTyping}
                   disabled={isRunning}
@@ -193,7 +193,7 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
             ) : (
               <>
                 <button
-                  className="pm-ws-excerpt-edit"
+                  className="pm-ws-action-btn"
                   type="button"
                   onClick={beginTyping}
                   disabled={isRunning}
@@ -201,7 +201,7 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
                   <Icon name="pen" size={12} /> Paste or type
                 </button>
                 <button
-                  className="pm-ws-excerpt-edit"
+                  className="pm-ws-action-btn"
                   type="button"
                   onClick={onChooseFile}
                   disabled={isRunning}
