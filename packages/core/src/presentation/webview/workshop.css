@@ -2042,3 +2042,101 @@
   border-color: var(--pm-accent-lo);
   background: #3a1c16;
 }
+
+/* ── Message attachments (Phase 6B): composer add-menu, staged pills, turn chips ── */
+[data-pm-surface="workshop"] .pm-ws-comp-add-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-add-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border-radius: var(--pm-r-tile);
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border-2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+[data-pm-surface="workshop"] .pm-ws-comp-add-menu button {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: calc(var(--pm-r-tile) - 2px);
+  background: transparent;
+  color: var(--pm-text);
+  text-align: left;
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-add-menu button:hover {
+  background: var(--pm-surface-3);
+}
+[data-pm-surface="workshop"] .pm-ws-comp-add-menu button small {
+  display: block;
+  color: var(--pm-muted);
+  font-size: 10.5px;
+  margin-top: 1px;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 0 2px 6px;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px 3px 8px;
+  border-radius: 999px;
+  background: var(--pm-surface-3);
+  border: 1px solid var(--pm-border);
+  font-size: 11px;
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-comp-attachment-size {
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-comp-attachment-remove {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--pm-muted);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-attachment-remove:hover {
+  color: var(--pm-text);
+  background: var(--pm-surface-2);
+}
+[data-pm-surface="workshop"] .pm-ws-comp-attachment-hint {
+  font-size: 10.5px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-turn-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pm-surface-3) 70%, transparent);
+  border: 1px solid var(--pm-border);
+  font-size: 10.5px;
+  color: var(--pm-muted);
+}

@@ -7,13 +7,20 @@
  * run. While a run streams, the send button becomes a stop affordance wired
  * to CANCEL_WORKSHOP_REQUEST.
  *
+ * Phase 6B: the `+` button opens a two-item menu — add to STANDING context
+ * (re-shipped, budgeted) or attach to THIS message (a one-shot
+ * thread-artifact). Staged message attachments render as removable pills
+ * above the input and ride the next send only.
+ *
  * The draft is deliberately LOCAL state: it's unsent user input, not session
  * truth, so it doesn't belong in WorkshopSessionService (and losing it on a
- * webview reload is acceptable alpha behavior).
+ * webview reload is acceptable alpha behavior). Staged attachments are HOST
+ * state — they survive reloads with the session snapshot.
  */
 
 import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
+import { WorkshopMessageAttachmentSnapshot } from '@messages';
 
 interface WorkshopComposerProps {
   /** A valid excerpt is pinned and no run is in flight — sending is possible. */
@@ -26,9 +33,13 @@ interface WorkshopComposerProps {
   isRunning: boolean;
   /** First host snapshot has arrived. */
   sessionReady: boolean;
+  /** Staged one-shot attachments for the NEXT message (host truth). */
+  messageAttachments: WorkshopMessageAttachmentSnapshot[];
   onSend: (text: string) => void;
   onCancel: () => void;
   onOpenContext: () => void;
+  onAttachToMessage: () => void;
+  onRemoveMessageAttachment: (id: string) => void;
   onOpenTools: () => void;
 }
 
@@ -38,13 +49,18 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   recipientLabel,
   isRunning,
   sessionReady,
+  messageAttachments,
   onSend,
   onCancel,
   onOpenContext,
+  onAttachToMessage,
+  onRemoveMessageAttachment,
   onOpenTools
 }) => {
   const [draft, setDraft] = React.useState('');
+  const [addMenuOpen, setAddMenuOpen] = React.useState(false);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const addMenuRef = React.useRef<HTMLDivElement>(null);
 
   const trimmed = draft.trim();
   const canSend = canMessage && trimmed.length > 0;
@@ -80,23 +96,104 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
     textarea.style.height = `${Math.min(textarea.scrollHeight, 240)}px`;
   }, [draft]);
 
+  // Close the add menu on any outside click or Escape.
+  React.useEffect(() => {
+    if (!addMenuOpen) {
+      return undefined;
+    }
+    const onPointerDown = (event: MouseEvent) => {
+      if (!addMenuRef.current?.contains(event.target as Node)) {
+        setAddMenuOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setAddMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [addMenuOpen]);
+
+  const chooseAdd = (action: () => void) => {
+    setAddMenuOpen(false);
+    action();
+  };
+
   const placeholder = hasConversation
     ? `Continue with ${recipientLabel}…`
     : `Message ${recipientLabel} about this excerpt…`;
 
   return (
     <div className="pm-ws-composer-wrap">
+      {messageAttachments.length > 0 && (
+        <div className="pm-ws-comp-attachments" aria-label="Attachments for this message">
+          {messageAttachments.map((attachment) => (
+            <span key={attachment.id} className="pm-ws-comp-attachment" title={attachment.relativePath ?? attachment.label}>
+              <Icon name="doc" size={11} />
+              <span className="pm-ws-comp-attachment-label">{attachment.label}</span>
+              <span className="pm-ws-comp-attachment-size">
+                {attachment.words.toLocaleString()} words{attachment.truncation ? ' · head slice' : ''}
+              </span>
+              <button
+                type="button"
+                className="pm-ws-comp-attachment-remove"
+                title={`Remove ${attachment.label} from this message`}
+                aria-label={`Remove ${attachment.label} from this message`}
+                onClick={() => onRemoveMessageAttachment(attachment.id)}
+              >
+                <Icon name="x" size={10} />
+              </button>
+            </span>
+          ))}
+          <span className="pm-ws-comp-attachment-hint">rides the next message only</span>
+        </div>
+      )}
       <form className="pm-ws-composer" onSubmit={submit}>
-        <button
-          className="pm-ws-comp-add"
-          type="button"
-          disabled={!sessionReady}
-          title="Add project context"
-          aria-label="Add project context"
-          onClick={onOpenContext}
-        >
-          <Icon name="plus" size={18} />
-        </button>
+        <div className="pm-ws-comp-add-wrap" ref={addMenuRef}>
+          <button
+            className="pm-ws-comp-add"
+            type="button"
+            disabled={!sessionReady}
+            title="Add context"
+            aria-label="Add context"
+            aria-haspopup="menu"
+            aria-expanded={addMenuOpen}
+            onClick={() => setAddMenuOpen((open) => !open)}
+          >
+            <Icon name="plus" size={18} />
+          </button>
+          {addMenuOpen && (
+            <div className="pm-ws-comp-add-menu" role="menu" aria-label="Add context options">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => chooseAdd(onAttachToMessage)}
+              >
+                <Icon name="doc" size={13} />
+                <span>
+                  Attach to this message
+                  <small>rides one message, then becomes history</small>
+                </span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => chooseAdd(onOpenContext)}
+              >
+                <Icon name="pin" size={13} />
+                <span>
+                  Add to standing context
+                  <small>stays attached for the whole session</small>
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
         <textarea
           ref={textareaRef}
           className="pm-ws-comp-input"

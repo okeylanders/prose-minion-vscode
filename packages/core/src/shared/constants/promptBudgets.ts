@@ -64,6 +64,12 @@ export interface PromptBudgets {
    * everything a run loads.
    */
   readonly workshopToolCatalog: Readonly<{ neighborItems: number; words: number }>;
+  /**
+   * One-shot writer message attachments (Sprint 12 Phase 6B; ADR 2026-07-18
+   * thread-artifacts). Per-artifact head-slice word cap and a per-message
+   * item cap — thread artifacts ride one turn and have NO standing budget.
+   */
+  readonly workshopThreadArtifacts: Readonly<{ itemsPerMessage: number; words: number }>;
 }
 
 export const PROMPT_BUDGETS: PromptBudgets = {
@@ -115,5 +121,6 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   contextFiles: { words: 50_000, catalogItems: 100 },
   guides: { words: 50_000 },
   sourceDocument: { words: 50_000 },
-  workshopToolCatalog: { neighborItems: 4, words: 50_000 }
+  workshopToolCatalog: { neighborItems: 4, words: 50_000 },
+  workshopThreadArtifacts: { itemsPerMessage: 3, words: 10_000 }
 };

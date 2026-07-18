@@ -160,6 +160,17 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
     if (turn.kind === 'message') {
       return (
         <div className="pm-ws-turn pm-ws-turn-user">
+          {turn.messageAttachments && turn.messageAttachments.length > 0 && (
+            <div className="pm-ws-turn-attachments" aria-label="Message attachments">
+              {turn.messageAttachments.map((attachment) => (
+                <span key={attachment.id} className="pm-ws-turn-attachment" title={attachment.relativePath ?? attachment.label}>
+                  <Icon name="doc" size={11} /> {attachment.label} ·{' '}
+                  {attachment.words.toLocaleString()} words
+                  {attachment.truncation ? ' (head slice)' : ''}
+                </span>
+              ))}
+            </div>
+          )}
           <div className="pm-ws-turn-message">{turn.content}</div>
         </div>
       );

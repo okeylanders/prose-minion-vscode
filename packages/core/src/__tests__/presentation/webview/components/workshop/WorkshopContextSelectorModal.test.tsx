@@ -164,4 +164,30 @@ describe('WorkshopContextSelectorModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /Characters/ }));
     expect(container.textContent).not.toMatch(/file:\/\/|\/Users\/|[A-Z]:\\/);
   });
+
+  it('message mode confirms one-shot refs, caps by remaining slots, and marks staged files (Phase 6B)', () => {
+    const { props } = renderModal({
+      mode: 'message',
+      pendingMessageAttachments: [
+        { id: 'ta-1', label: 'echoes.md', words: 120, relativePath: 'Themes/echoes.md', configuredResource: { group: 'themes', path: 'Themes/echoes.md' } },
+        { id: 'ta-2', label: 'kayla.md', words: 80, relativePath: 'Characters/kayla.md', configuredResource: { group: 'characters', path: 'Characters/kayla.md' } }
+      ]
+    });
+
+    expect(screen.getByText('Attach to message')).toBeTruthy();
+    expect(screen.getByText(/1 attachment slot left on this message/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /Characters/ }));
+    // Already-staged files read as attached and stay disabled in this mode.
+    const kayla = screen.getByRole('checkbox', { name: /kayla/ }) as HTMLButtonElement;
+    expect(kayla.disabled).toBe(true);
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /raven/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Attach 1 to message/ }));
+
+    expect(props.onConfirm).toHaveBeenCalledWith([
+      { group: 'characters', path: 'Characters/raven.md' }
+    ]);
+    expect(props.onClose).toHaveBeenCalled();
+  });
 });

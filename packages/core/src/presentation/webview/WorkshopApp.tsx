@@ -144,7 +144,7 @@ export const WorkshopApp: React.FC = () => {
   const [toolsModalOpen, setToolsModalOpen] = React.useState(false);
   const [personaModalOpen, setPersonaModalOpen] = React.useState(false);
   const [contextSelectorOpen, setContextSelectorOpen] = React.useState(false);
-  const [contextSelectorMode, setContextSelectorMode] = React.useState<'attach' | 'excerpt'>('attach');
+  const [contextSelectorMode, setContextSelectorMode] = React.useState<'attach' | 'excerpt' | 'message'>('attach');
   const [personaModalMode, setPersonaModalMode] = React.useState<'host' | 'guest'>('host');
   const [toast, setToast] = React.useState<WorkshopToastState | null>(null);
   const accountBalance = useAccountBalance({ apiKeyConfigured: hasSavedKey });
@@ -302,7 +302,7 @@ export const WorkshopApp: React.FC = () => {
       < WORKSHOP_GUEST_CAPACITY;
 
   const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
-  const openContextSelector = React.useCallback((mode: 'attach' | 'excerpt' = 'attach') => {
+  const openContextSelector = React.useCallback((mode: 'attach' | 'excerpt' | 'message' = 'attach') => {
     workshop.requestContextCatalog();
     setContextSelectorMode(mode);
     setContextSelectorOpen(true);
@@ -314,6 +314,10 @@ export const WorkshopApp: React.FC = () => {
   );
   const openAttachSelector = React.useCallback(
     () => openContextSelector('attach'),
+    [openContextSelector]
+  );
+  const openMessageAttachSelector = React.useCallback(
+    () => openContextSelector('message'),
     [openContextSelector]
   );
 
@@ -731,9 +735,12 @@ export const WorkshopApp: React.FC = () => {
               recipientLabel={chatTargetLabel}
               isRunning={workshop.isRunning}
               sessionReady={workshop.sessionReady}
+              messageAttachments={workshop.pendingMessageAttachments}
               onSend={workshop.sendMessage}
               onCancel={workshop.cancelRun}
               onOpenContext={openContext}
+              onAttachToMessage={openMessageAttachSelector}
+              onRemoveMessageAttachment={workshop.removeMessageAttachment}
               onOpenTools={openToolsModal}
             />
           </ErrorBoundary>
@@ -753,6 +760,7 @@ export const WorkshopApp: React.FC = () => {
           mode={contextSelectorMode}
           catalog={workshop.contextCatalog}
           attachments={workshop.contextAttachments}
+          pendingMessageAttachments={workshop.pendingMessageAttachments}
           searchResults={workshop.contextSearch}
           remainingWords={Math.max(
             0,
@@ -761,9 +769,15 @@ export const WorkshopApp: React.FC = () => {
           )}
           onSearch={workshop.searchContextResources}
           onClearSearch={workshop.clearContextSearch}
-          onConfirm={workshop.addContextResources}
+          onConfirm={contextSelectorMode === 'message'
+            ? workshop.attachMessageResources
+            : workshop.addContextResources}
           onPickExcerpt={workshop.setExcerptResource}
-          onExplore={contextSelectorMode === 'excerpt' ? workshop.pinFromFile : workshop.addContextFile}
+          onExplore={contextSelectorMode === 'excerpt'
+            ? workshop.pinFromFile
+            : contextSelectorMode === 'message'
+              ? workshop.attachMessageFile
+              : workshop.addContextFile}
           onClose={() => setContextSelectorOpen(false)}
         />
       <WorkshopPersonaBrowserModal

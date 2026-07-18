@@ -39,17 +39,24 @@ Three kinds of prompt material, each with distinct lifecycle and framing:
    (one full-price call) in exchange for permanent window relief — the
    right trade for prose (token-heavy files, 35k lists, window pressure,
    provider caching varies on OpenRouter anyway).
-2. **Thread-artifacts** (one-shot, writer-added via chat): frame contract
-   FIXED in Sprint 12 Phase 6 (`buildWorkshopThreadArtifactFrame`); the
-   composer affordance is still unbuilt. A file/note attached to a single
-   message rides ONE user turn as its own array entry, then becomes ordinary
-   history — never re-shipped, no standing budget, visible in the manifest.
-   Contract: `<thread-artifact id="ta-N">` with the host-minted id as the
-   ONLY attribute; the writer-controlled name rides as a neutralized
-   `Name:` header line per the house rule (never an attribute value), and
-   `thread-artifact` is a reserved delimiter in the neutralizer. The
-   composer `+` would offer "attach to this message" beside "add to
-   standing context".
+2. **Thread-artifacts** (one-shot, writer-added via chat): BUILT in Sprint 12
+   Phase 6B. The composer `+` offers "Attach to this message" beside "Add to
+   standing context"; staged attachments live host-side
+   (`WorkshopSessionService.pendingMessageAttachments`, ids minted `ta-N`,
+   per-message item cap + per-artifact head-slice in
+   `promptBudgets.workshopThreadArtifacts`), render as removable composer
+   pills, ride exactly one send, and are committed off the pending list only
+   after that turn succeeds (failed/cancelled sends retain them). The turn
+   records display-safe refs (`WorkshopTurn.messageAttachments`) — the
+   manifest's Phase 7 hook. Contract: `<thread-artifact id="ta-N">` with the
+   host-minted id as the ONLY attribute; writer-controlled name/source/slice
+   provenance ride as neutralized header lines per the house rule, and
+   `thread-artifact` is a reserved delimiter in the neutralizer.
+   Storage note: today the frame rides WITHIN the send's one user entry
+   (wire shape unchanged; the id-delimited frame span is the surgery
+   address); the separate-array-entry storage + send-time coalescing
+   described under Engineering caveats arrives with the surgery
+   fast-follow, and new artifacts get their own entries then.
 3. **Agent-fetched artifacts** (capability evidence): resource reads, tool
    run reports, dictionary evidence. ALREADY separate user-role array
    entries injected per capability round by `AgentRunEngine`, already

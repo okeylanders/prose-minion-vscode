@@ -283,6 +283,36 @@ export function coerceWorkshopExcerptSource(raw: unknown): WorkshopExcerptSource
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Message attachments — one-shot writer thread-artifacts (Sprint 12 Phase 6B;
+// ADR 2026-07-18). They ride exactly ONE user turn inside a
+// `<thread-artifact id="ta-N">` frame, then become ordinary history: never
+// re-shipped, no standing budget, addressable by their stable host-minted id.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** A message attachment carries a head slice past its cap, and the UI says so. */
+export interface WorkshopMessageAttachmentTruncation {
+  keptWords: number;
+  totalWords: number;
+}
+
+/**
+ * Display-safe pending/shipped message-attachment metadata. Content stays
+ * host-side; the pill (and later the manifest row) is the inspectable
+ * artifact. The id is the ADR's `ta-N` surgery/manifest address.
+ */
+export interface WorkshopMessageAttachmentSnapshot {
+  /** Host-minted stable thread-artifact id (`ta-N`). */
+  id: string;
+  /** Display label: file basename. */
+  label: string;
+  words: number;
+  /** Workspace-relative display path (never absolute). */
+  relativePath?: string;
+  configuredResource?: WorkshopConfiguredResourceRef;
+  truncation?: WorkshopMessageAttachmentTruncation;
+}
+
 /** The excerpt set in the left rail — the text every tool run works on. */
 export interface WorkshopExcerpt {
   text: string;
@@ -368,6 +398,11 @@ export interface WorkshopTurn {
   excerptVersion: number;
   /** Strictly parsed actionable findings proposed by a tool report or host turn. */
   actionableFindings?: WorkshopActionableFinding[];
+  /**
+   * One-shot thread-artifacts that rode THIS writer turn (Sprint 12 Phase 6B).
+   * Display-safe refs only; ids are the `ta-N` manifest/surgery addresses.
+   */
+  messageAttachments?: WorkshopMessageAttachmentSnapshot[];
   content: string;
   /** Epoch ms when the turn was appended (host-stamped). */
   timestamp: number;
@@ -396,6 +431,11 @@ export interface WorkshopSessionSnapshot {
   replacementCount: number;
   /** Ordered context attachments shared with host and tools (Sprint 12). */
   contextAttachments: WorkshopContextAttachmentSnapshot[];
+  /**
+   * Attachments staged for the writer's NEXT composer message (Phase 6B).
+   * They ride that one message as thread-artifacts, then leave this list.
+   */
+  pendingMessageAttachments: WorkshopMessageAttachmentSnapshot[];
   /** Host update waiting for the next successful retained-host turn. */
   pendingHostUpdate?: {
     excerptVersion?: number;
@@ -620,6 +660,36 @@ export interface WorkshopRunContextWizardMessage extends MessageEnvelope<Record<
 export interface WorkshopAddContextResourcesMessage
   extends MessageEnvelope<WorkshopAddContextResourcesPayload> {
   type: MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES;
+}
+
+/**
+ * Stage configured resources as attachments for the writer's next composer
+ * message (Phase 6B): one-shot thread-artifacts, NOT standing context.
+ */
+export interface WorkshopAttachMessageResourcesPayload {
+  items: WorkshopConfiguredResourceRef[];
+}
+
+export interface WorkshopAttachMessageResourcesMessage
+  extends MessageEnvelope<WorkshopAttachMessageResourcesPayload> {
+  type: MessageType.WORKSHOP_ATTACH_MESSAGE_RESOURCES;
+}
+
+/**
+ * Stage an explored file (host picker) as a next-message attachment
+ * (Phase 6B). Zero payload — the dialog IS the input.
+ */
+export interface WorkshopAttachMessageFileMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.WORKSHOP_ATTACH_MESSAGE_FILE;
+}
+
+export interface WorkshopRemoveMessageAttachmentPayload {
+  id: string;
+}
+
+export interface WorkshopRemoveMessageAttachmentMessage
+  extends MessageEnvelope<WorkshopRemoveMessageAttachmentPayload> {
+  type: MessageType.WORKSHOP_REMOVE_MESSAGE_ATTACHMENT;
 }
 
 export type WorkshopTodoAction =

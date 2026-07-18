@@ -5,6 +5,7 @@ import {
   buildWorkshopGuestCatchUp,
   buildWorkshopGuestHandoff,
   buildWorkshopGuestJoinMessage,
+  buildWorkshopGuestMessage,
   buildWorkshopGuestTranscript,
   buildWorkshopHostMessage,
   buildWorkshopHostUpdateFrame,
@@ -593,5 +594,41 @@ describe('buildWorkshopThreadArtifactFrame (ADR 2026-07-18 contract)', () => {
       .toThrow('ta-<n>');
     expect(() => buildWorkshopThreadArtifactFrame({ id: 'ta-1" evil="1', name: 'x', content: 'y' }))
       .toThrow('ta-<n>');
+  });
+});
+
+describe('thread-artifact send assembly (Phase 6B)', () => {
+  const frame = buildWorkshopThreadArtifactFrame({
+    id: 'ta-1',
+    name: 'ch-04.md',
+    sourcePath: 'chapters/ch-04.md',
+    truncation: { keptWords: 10_000, totalWords: 18_240 },
+    content: 'Chapter four body.'
+  });
+
+  it('carries source and head-slice provenance as neutralized header lines', () => {
+    expect(frame).toContain('Source: chapters/ch-04.md');
+    expect(frame).toContain('Head slice: 10,000 of 18,240 words.');
+  });
+
+  it('places frames after host evidence and immediately before the writer message', () => {
+    const hostMessage = buildWorkshopHostMessage('Does chapter four earn its ending?', {
+      threadArtifactFrames: [frame]
+    });
+
+    expect(hostMessage).toContain('<thread-artifact id="ta-1">');
+    expect(hostMessage.indexOf('</thread-artifact>'))
+      .toBeLessThan(hostMessage.indexOf('WRITER MESSAGE:'));
+    expect(hostMessage).toContain('Does chapter four earn its ending?');
+  });
+
+  it('wraps guest sends in the writer-message envelope whenever frames ride along', () => {
+    const guestMessage = buildWorkshopGuestMessage('Your read?', undefined, [frame]);
+
+    expect(guestMessage).toContain('<thread-artifact id="ta-1">');
+    expect(guestMessage).toContain('<writer-message>\nYour read?\n</writer-message>');
+
+    // Without frames or a catch-up the plain contract is unchanged.
+    expect(buildWorkshopGuestMessage('Your read?')).toBe('Your read?');
   });
 });

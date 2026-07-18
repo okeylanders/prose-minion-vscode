@@ -16,6 +16,7 @@ import {
   WorkshopExcerptSource,
   WorkshopExcerptTruncation,
   workshopExcerptSourcePath,
+  WorkshopMessageAttachmentSnapshot,
   WorkshopPersonaId,
   WorkshopPersonaGuestSnapshot,
   WorkshopParticipantsSnapshot,
@@ -117,6 +118,23 @@ export type WorkshopContextAttachmentResult =
   | { ok: true; attachment: WorkshopContextAttachment; eventTurn?: WorkshopTurn }
   | { ok: false; reason: 'duplicate' | 'over-budget'; remainingWords: number };
 
+/**
+ * Full host-side message attachment (Phase 6B): the display-safe snapshot
+ * plus the content that enters exactly one `<thread-artifact>` frame.
+ * Content never crosses to the webview.
+ */
+export interface WorkshopMessageAttachment extends WorkshopMessageAttachmentSnapshot {
+  content: string;
+  /** Host-private (duplicate guard only). */
+  sourceUri?: string;
+}
+
+export type WorkshopMessageAttachmentInput = Omit<WorkshopMessageAttachment, 'id'>;
+
+export type WorkshopMessageAttachmentResult =
+  | { ok: true; attachment: WorkshopMessageAttachment }
+  | { ok: false; reason: 'duplicate' | 'limit' };
+
 export interface WorkshopPendingHostUpdates {
   excerpt?: WorkshopExcerpt;
   contextAttachments?: {
@@ -161,6 +179,9 @@ export class WorkshopSessionService {
   private pendingRevisionVersion?: number;
   private pendingContextRevision?: number;
   private attachmentCounter = 0;
+  private pendingMessageAttachments: WorkshopMessageAttachment[] = [];
+  /** Monotonic `ta-N` mint — never reused within a session (surgery address). */
+  private threadArtifactCounter = 0;
   private turns: WorkshopTurn[] = [];
   private activeRun?: ActiveRun;
   private participants: WorkshopParticipants = this.newParticipants();
@@ -290,6 +311,69 @@ export class WorkshopSessionService {
     const [removed] = this.contextAttachments.splice(index, 1);
     const eventTurn = this.recordContextChange(`Removed context: ${removed.label}`);
     return { removed: cloneAttachment(removed), eventTurn };
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Message attachments (Phase 6B) — staged thread-artifacts for the NEXT
+  // composer message. No event turns: the message turn itself is the visible
+  // artifact, and nothing here mutates any retained prompt until send.
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Stage validated content for the next composer message. Per-message item
+   * cap and a duplicate guard on the canonical source; word bounding
+   * (head-slice + truncation provenance) happens at read time in the handler.
+   */
+  addMessageAttachment(input: WorkshopMessageAttachmentInput): WorkshopMessageAttachmentResult {
+    const duplicates = (existing: WorkshopMessageAttachment): boolean => {
+      if (input.sourceUri !== undefined && existing.sourceUri === input.sourceUri) {
+        return true;
+      }
+      return input.configuredResource !== undefined &&
+        existing.configuredResource?.group === input.configuredResource.group &&
+        existing.configuredResource?.path === input.configuredResource.path;
+    };
+    // Duplicate outranks the cap: "already attached" is the actionable error
+    // even when the list is also full.
+    if (this.pendingMessageAttachments.some(duplicates)) {
+      return { ok: false, reason: 'duplicate' };
+    }
+    if (this.pendingMessageAttachments.length >= PROMPT_BUDGETS.workshopThreadArtifacts.itemsPerMessage) {
+      return { ok: false, reason: 'limit' };
+    }
+    this.threadArtifactCounter += 1;
+    const attachment: WorkshopMessageAttachment = {
+      ...cloneMessageAttachmentInput(input),
+      id: `ta-${this.threadArtifactCounter}`
+    };
+    this.pendingMessageAttachments.push(attachment);
+    return { ok: true, attachment: cloneMessageAttachment(attachment) };
+  }
+
+  removeMessageAttachment(id: string): WorkshopMessageAttachment | undefined {
+    const index = this.pendingMessageAttachments.findIndex((attachment) => attachment.id === id);
+    if (index === -1) {
+      return undefined;
+    }
+    const [removed] = this.pendingMessageAttachments.splice(index, 1);
+    return cloneMessageAttachment(removed);
+  }
+
+  /** Pure read for send assembly — nothing is consumed until the turn succeeds. */
+  collectMessageAttachments(): WorkshopMessageAttachment[] {
+    return this.pendingMessageAttachments.map(cloneMessageAttachment);
+  }
+
+  /**
+   * Clear exactly the attachments a successful send actually shipped
+   * (mirrors commitPendingHostUpdates): a failed or cancelled turn retains
+   * them, so the pills survive and a retry ships the same artifacts.
+   */
+  commitMessageAttachments(shippedIds: readonly string[]): void {
+    const shipped = new Set(shippedIds);
+    this.pendingMessageAttachments = this.pendingMessageAttachments.filter(
+      (attachment) => !shipped.has(attachment.id)
+    );
   }
 
   /** Bump the revision, queue host delivery, and mint the visible event turn mid-session. */
@@ -639,22 +723,27 @@ export class WorkshopSessionService {
   }
 
   /** Begin a normal message to the selected permanent persona host. */
-  beginPersonaMessage(requestId: string, displayText: string): WorkshopTurn {
+  beginPersonaMessage(
+    requestId: string,
+    displayText: string,
+    messageAttachments?: readonly WorkshopMessageAttachmentSnapshot[]
+  ): WorkshopTurn {
     this.requireExcerpt();
-    return this.beginMessage(requestId, displayText, 'host');
+    return this.beginMessage(requestId, displayText, 'host', undefined, undefined, messageAttachments);
   }
 
   /** Begin a message to a live guest; guests never receive host capabilities. */
   beginPersonaGuestMessage(
     personaId: WorkshopPersonaId,
     requestId: string,
-    displayText: string
+    displayText: string,
+    messageAttachments?: readonly WorkshopMessageAttachmentSnapshot[]
   ): WorkshopTurn {
     this.requireExcerpt();
     if (!this.isLivePersonaGuest(personaId)) {
       throw new Error(`Cannot message Workshop guest ${workshopPersonaLabel(personaId)} without a live sidecar`);
     }
-    return this.beginMessage(requestId, displayText, 'personaGuest', undefined, personaId);
+    return this.beginMessage(requestId, displayText, 'personaGuest', undefined, personaId, messageAttachments);
   }
 
   /** Begin the first invitation turn before the provider conversation exists. */
@@ -672,12 +761,13 @@ export class WorkshopSessionService {
   beginDirectToolMessage(
     toolId: WorkshopToolId,
     requestId: string,
-    displayText: string
+    displayText: string,
+    messageAttachments?: readonly WorkshopMessageAttachmentSnapshot[]
   ): WorkshopTurn {
     if (!this.participants.toolSidecars[toolId]) {
       throw new Error(`Cannot message Workshop tool ${toolId} without a retained sidecar`);
     }
-    return this.beginMessage(requestId, displayText, 'tool', toolId);
+    return this.beginMessage(requestId, displayText, 'tool', toolId, undefined, messageAttachments);
   }
 
   /** Finish an active host or direct-tool message/synthesis. */
@@ -1055,6 +1145,7 @@ export class WorkshopSessionService {
     this.turns = [];
     this.activeRun = undefined;
     this.contextAttachments = [];
+    this.pendingMessageAttachments = [];
     this.pendingContextRevision = undefined;
     this.replacementCount = 0;
     this.selectedToolId = undefined;
@@ -1070,6 +1161,7 @@ export class WorkshopSessionService {
       excerptVersion: this.excerptVersion,
       replacementCount: this.replacementCount,
       contextAttachments: this.contextAttachments.map(attachmentSnapshot),
+      pendingMessageAttachments: this.pendingMessageAttachments.map(messageAttachmentSnapshot),
       pendingHostUpdate: this.pendingRevisionVersion !== undefined || this.pendingContextRevision !== undefined
         ? {
             excerptVersion: this.pendingRevisionVersion,
@@ -1093,7 +1185,8 @@ export class WorkshopSessionService {
     displayText: string,
     target: 'host' | 'tool' | 'personaGuest',
     toolId?: WorkshopToolId,
-    guestPersonaId?: WorkshopPersonaId
+    guestPersonaId?: WorkshopPersonaId,
+    messageAttachments?: readonly WorkshopMessageAttachmentSnapshot[]
   ): WorkshopTurn {
     const sidecar = toolId ? this.participants.toolSidecars[toolId] : undefined;
     const guest = guestPersonaId ? this.participants.personaGuests.get(guestPersonaId) : undefined;
@@ -1110,6 +1203,9 @@ export class WorkshopSessionService {
         ? workshopPersonaLabel(guestPersonaId)
         : undefined,
       reportTurnId: target === 'tool' ? sidecar?.latestReportTurnId : undefined,
+      messageAttachments: messageAttachments && messageAttachments.length > 0
+        ? messageAttachments.map(cloneMessageAttachmentSnapshot)
+        : undefined,
       content: displayText,
       timestamp: this.now(),
       excerptVersion: this.excerptVersion
@@ -1258,8 +1354,47 @@ function cloneTurn(turn: WorkshopTurn): WorkshopTurn {
     capability: turn.capability ? cloneCapabilityDetails(turn.capability) : undefined,
     actionableFindings: turn.actionableFindings
       ? cloneFindings(turn.actionableFindings)
+      : undefined,
+    messageAttachments: turn.messageAttachments
+      ? turn.messageAttachments.map(cloneMessageAttachmentSnapshot)
       : undefined
   };
+}
+
+function cloneMessageAttachmentSnapshot(
+  snapshot: WorkshopMessageAttachmentSnapshot
+): WorkshopMessageAttachmentSnapshot {
+  return {
+    ...snapshot,
+    configuredResource: snapshot.configuredResource ? { ...snapshot.configuredResource } : undefined,
+    truncation: snapshot.truncation ? { ...snapshot.truncation } : undefined
+  };
+}
+
+function cloneMessageAttachmentInput(
+  input: WorkshopMessageAttachmentInput
+): WorkshopMessageAttachmentInput {
+  return {
+    ...input,
+    configuredResource: input.configuredResource ? { ...input.configuredResource } : undefined,
+    truncation: input.truncation ? { ...input.truncation } : undefined
+  };
+}
+
+function cloneMessageAttachment(attachment: WorkshopMessageAttachment): WorkshopMessageAttachment {
+  return {
+    ...attachment,
+    configuredResource: attachment.configuredResource ? { ...attachment.configuredResource } : undefined,
+    truncation: attachment.truncation ? { ...attachment.truncation } : undefined
+  };
+}
+
+/** Webview projection: strips content and the host-private sourceUri. */
+function messageAttachmentSnapshot(
+  attachment: WorkshopMessageAttachment
+): WorkshopMessageAttachmentSnapshot {
+  const { content: _content, sourceUri: _sourceUri, ...snapshot } = cloneMessageAttachment(attachment);
+  return snapshot;
 }
 
 function cloneFindings(findings: readonly WorkshopActionableFinding[]): WorkshopActionableFinding[] {

@@ -177,7 +177,10 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SET_EXCERPT_RESOURCE)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_RUN_CONTEXT_WIZARD)).toBe(true);
-    expect(router.handlerCount).toBe(22);
+    expect(router.hasHandler(MessageType.WORKSHOP_ATTACH_MESSAGE_RESOURCES)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_ATTACH_MESSAGE_FILE)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_REMOVE_MESSAGE_ATTACHMENT)).toBe(true);
+    expect(router.handlerCount).toBe(25);
   });
 
   it('starts Jill directly from the composer and retains the host conversation', async () => {
@@ -1389,6 +1392,118 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
       expect(session.getSnapshot().excerpt?.text).toBe('Raven keeps the token.');
       expect((session.getSnapshot().excerpt?.source as { configuredResource?: unknown }).configuredResource).toBeUndefined();
+    });
+  });
+
+  describe('message attachments — one-shot thread-artifacts (Phase 6B)', () => {
+    const attachRaven = () => handler.handleAttachMessageResources(message(
+      MessageType.WORKSHOP_ATTACH_MESSAGE_RESOURCES,
+      { items: [{ group: 'characters', path: 'Characters/raven.md' }] }
+    ) as any);
+
+    it('stages a configured resource with a ta-N id and a display-safe snapshot', async () => {
+      await attachRaven();
+
+      const pending = session.getSnapshot().pendingMessageAttachments;
+      expect(pending).toHaveLength(1);
+      expect(pending[0]).toMatchObject({
+        id: 'ta-1',
+        label: 'raven.md',
+        configuredResource: { group: 'characters', path: 'Characters/raven.md' }
+      });
+      expect(pending[0]).not.toHaveProperty('content');
+      expect(pending[0]).not.toHaveProperty('sourceUri');
+    });
+
+    it('ships staged artifacts inside one send, stamps the turn, and clears pending on success', async () => {
+      await pin();
+      await attachRaven();
+
+      await handler.handleSendMessage(message(
+        MessageType.WORKSHOP_SEND_MESSAGE,
+        { text: 'Does Raven read as seventeen here?' }
+      ) as any);
+
+      const [input] = service.startWorkshopPersonaConversation.mock.calls[0];
+      expect(input.message).toContain('<thread-artifact id="ta-1">');
+      expect(input.message).toContain('Name: raven.md');
+      expect(input.message).toContain('Raven is seventeen and keeps the marked token.');
+      expect(input.message.indexOf('</thread-artifact>'))
+        .toBeLessThan(input.message.indexOf('WRITER MESSAGE:'));
+
+      const userTurn = posted(MessageType.WORKSHOP_TURN)
+        .map((entry) => entry.payload.turn)
+        .find((turn) => turn.artifact === 'persona_message' && turn.role === 'user');
+      expect(userTurn?.messageAttachments).toEqual([
+        expect.objectContaining({ id: 'ta-1', label: 'raven.md' })
+      ]);
+      expect(session.getSnapshot().pendingMessageAttachments).toHaveLength(0);
+    });
+
+    it('retains staged artifacts when the send fails, so a retry ships the same ids', async () => {
+      await pin();
+      await attachRaven();
+      service.startWorkshopPersonaConversation.mockRejectedValueOnce(new Error('transport down'));
+
+      await handler.handleSendMessage(message(
+        MessageType.WORKSHOP_SEND_MESSAGE,
+        { text: 'First try.' }
+      ) as any);
+
+      expect(session.getSnapshot().pendingMessageAttachments).toEqual([
+        expect.objectContaining({ id: 'ta-1' })
+      ]);
+    });
+
+    it('never lets a deterministic quick action consume staged message attachments', async () => {
+      await pin();
+      await runProse();
+      await attachRaven();
+      const reportTurnId = session.getSnapshot().participants.toolSidecars[0].latestReportTurnId;
+      service.continueConversation.mockClear();
+
+      await handler.handleQuickAction(message(MessageType.WORKSHOP_QUICK_ACTION, {
+        toolId: 'prose',
+        reportTurnId,
+        label: 'Rewrite for flow'
+      }) as any);
+
+      const [, quickActionMessage] = service.continueConversation.mock.calls[0];
+      expect(quickActionMessage).not.toContain('<thread-artifact');
+      expect(session.getSnapshot().pendingMessageAttachments).toHaveLength(1);
+    });
+
+    it('enforces the per-message item cap and the duplicate guard at staging time', async () => {
+      resourceFiles.push(
+        { group: 'themes', path: 'Themes/water.md', label: 'water', sizeBytes: 40, absolutePath: '/ws/Themes/water.md', content: 'Water motif.' },
+        { group: 'themes', path: 'Themes/fire.md', label: 'fire', sizeBytes: 40, absolutePath: '/ws/Themes/fire.md', content: 'Fire motif.' }
+      );
+
+      await handler.handleAttachMessageResources(message(
+        MessageType.WORKSHOP_ATTACH_MESSAGE_RESOURCES,
+        { items: [
+          { group: 'characters', path: 'Characters/raven.md' },
+          { group: 'themes', path: 'Themes/echoes.md' },
+          { group: 'themes', path: 'Themes/water.md' },
+          { group: 'themes', path: 'Themes/fire.md' }
+        ] }
+      ) as any);
+      expect(session.getSnapshot().pendingMessageAttachments).toHaveLength(3);
+      expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/at most 3/);
+
+      await attachRaven();
+      expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/already attached/);
+    });
+
+    it('removes a staged artifact by id', async () => {
+      await attachRaven();
+
+      await handler.handleRemoveMessageAttachment(message(
+        MessageType.WORKSHOP_REMOVE_MESSAGE_ATTACHMENT,
+        { id: 'ta-1' }
+      ) as any);
+
+      expect(session.getSnapshot().pendingMessageAttachments).toHaveLength(0);
     });
   });
 });

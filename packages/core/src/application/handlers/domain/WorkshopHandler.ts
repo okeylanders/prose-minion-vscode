@@ -24,6 +24,7 @@ import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 import {
   WorkshopContextAttachmentInput,
+  WorkshopMessageAttachmentInput,
   WorkshopSessionService
 } from '@/application/services/workshop/WorkshopSessionService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
@@ -38,6 +39,7 @@ import {
   buildWorkshopGuestMessage,
   buildWorkshopHostMessage,
   buildWorkshopHostUpdateFrame,
+  buildWorkshopThreadArtifactFrame,
   buildWorkshopTodoEvidence,
   describeWorkshopPendingHostUpdates
 } from '@/application/services/workshop/WorkshopPromptBuilder';
@@ -94,6 +96,9 @@ import {
   WorkshopSearchContextResourcesMessage,
   WorkshopContextSearchResultsMessage,
   WorkshopAddContextResourcesMessage,
+  WorkshopAttachMessageResourcesMessage,
+  WorkshopAttachMessageFileMessage,
+  WorkshopRemoveMessageAttachmentMessage,
   WorkshopSetExcerptResourceMessage,
   WorkshopRunContextWizardMessage,
   WorkshopConfiguredResourceRef,
@@ -220,6 +225,18 @@ export class WorkshopHandler {
       this.handleAddContextResources.bind(this)
     );
     router.register(
+      MessageType.WORKSHOP_ATTACH_MESSAGE_RESOURCES,
+      this.handleAttachMessageResources.bind(this)
+    );
+    router.register(
+      MessageType.WORKSHOP_ATTACH_MESSAGE_FILE,
+      this.handleAttachMessageFile.bind(this)
+    );
+    router.register(
+      MessageType.WORKSHOP_REMOVE_MESSAGE_ATTACHMENT,
+      this.handleRemoveMessageAttachment.bind(this)
+    );
+    router.register(
       MessageType.WORKSHOP_SET_EXCERPT_RESOURCE,
       this.handleSetExcerptResource.bind(this)
     );
@@ -315,7 +332,7 @@ export class WorkshopHandler {
       this.postSessionState();
     }
 
-    await this.executeMessage(text);
+    await this.executeMessage(text, text, undefined, { includeMessageAttachments: true });
   }
 
   async handleSelectPersona(message: WorkshopSelectPersonaMessage): Promise<void> {
@@ -529,7 +546,14 @@ export class WorkshopHandler {
   private async executeMessage(
     text: string,
     displayText = text,
-    targetOverride?: WorkshopChatTarget
+    targetOverride?: WorkshopChatTarget,
+    executeOptions?: {
+      /**
+       * Explicit composer sends ship the staged message attachments;
+       * deterministic quick actions never consume them (Phase 6B).
+       */
+      includeMessageAttachments?: boolean;
+    }
   ): Promise<void> {
     const target = targetOverride ?? this.session.getChatTarget();
     const personaId = this.session.getSelectedPersonaId();
@@ -620,6 +644,27 @@ export class WorkshopHandler {
     const { conversationId, label, requestType, toolId, guestPersonaId } = targetDetails;
     const requestId = generateRequestId(requestType);
     const controller = new AbortController();
+    // Staged one-shot thread-artifacts ride THIS message only (Phase 6B).
+    const messageAttachments = executeOptions?.includeMessageAttachments
+      ? this.session.collectMessageAttachments()
+      : [];
+    const threadArtifactFrames = messageAttachments.map((attachment) =>
+      buildWorkshopThreadArtifactFrame({
+        id: attachment.id,
+        name: attachment.label,
+        sourcePath: attachment.relativePath,
+        truncation: attachment.truncation,
+        content: attachment.content
+      })
+    );
+    const attachmentRefs = messageAttachments.map(
+      ({ content: _content, sourceUri: _sourceUri, ...ref }) => ref
+    );
+    if (messageAttachments.length > 0) {
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Message attachments riding this send: ${messageAttachments.map((a) => a.id).join(', ')}`
+      );
+    }
     let modelMessage: string;
     let userTurn: WorkshopTurn;
     let statusMessage: string;
@@ -629,21 +674,34 @@ export class WorkshopHandler {
           handoff,
           guestHandoff,
           todoEvidence,
-          hostUpdate: hostUpdateFrame
+          hostUpdate: hostUpdateFrame,
+          threadArtifactFrames
         });
-        userTurn = this.session.beginPersonaMessage(requestId, displayText);
+        userTurn = this.session.beginPersonaMessage(requestId, displayText, attachmentRefs);
         statusMessage = handoff
           ? `Handing ${handoff.unseenTurns} unseen direct-tool turn${handoff.unseenTurns === 1 ? '' : 's'} back to ${label}…`
           : `Streaming ${label}…`;
         break;
       case 'tool':
-        modelMessage = text;
-        userTurn = this.session.beginDirectToolMessage(target.toolId, requestId, displayText);
+        modelMessage = threadArtifactFrames.length > 0
+          ? [...threadArtifactFrames.flatMap((frame) => [frame, '']), text].join('\n')
+          : text;
+        userTurn = this.session.beginDirectToolMessage(
+          target.toolId,
+          requestId,
+          displayText,
+          attachmentRefs
+        );
         statusMessage = `Continuing directly with ${label}…`;
         break;
       case 'personaGuest':
-        modelMessage = buildWorkshopGuestMessage(text, guestCatchUp);
-        userTurn = this.session.beginPersonaGuestMessage(target.personaId, requestId, displayText);
+        modelMessage = buildWorkshopGuestMessage(text, guestCatchUp, threadArtifactFrames);
+        userTurn = this.session.beginPersonaGuestMessage(
+          target.personaId,
+          requestId,
+          displayText,
+          attachmentRefs
+        );
         statusMessage = guestCatchUp
           ? `Catching ${label} up on the room…`
           : `Continuing with ${label}…`;
@@ -725,6 +783,15 @@ export class WorkshopHandler {
       } else if (target.kind === 'host' && pendingHostUpdates) {
         this.outputChannel.appendLine(
           `[WorkshopHandler] Pending host update retained after incomplete delivery (${describeWorkshopPendingHostUpdates(pendingHostUpdates)})`
+        );
+      }
+      if (assistantTurn && messageAttachments.length > 0) {
+        // A failed/cancelled turn falls through to the catch, which leaves
+        // the staged artifacts pending — the pills survive and a retry
+        // ships the same ids.
+        this.session.commitMessageAttachments(messageAttachments.map((a) => a.id));
+        this.outputChannel.appendLine(
+          `[WorkshopHandler] Message attachments shipped (${messageAttachments.map((a) => a.id).join(', ')})`
         );
       }
       this.postSessionState();
@@ -1036,6 +1103,155 @@ export class WorkshopHandler {
         truncation
       });
     }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Message attachments (Phase 6B): stage one-shot thread-artifacts for the
+  // writer's next composer message. Staging mutates no prompt — the artifact
+  // ships inside exactly one send, then leaves the pending list.
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /** Stage configured resources picked in the modal's message-attach mode. */
+  async handleAttachMessageResources(message: WorkshopAttachMessageResourcesMessage): Promise<void> {
+    const items = Array.isArray(message.payload?.items) ? message.payload.items : [];
+    const validated = items.flatMap((item) => {
+      const candidate = item as { group?: unknown; path?: unknown };
+      return typeof candidate.group === 'string' &&
+        isContextPathGroup(candidate.group) &&
+        typeof candidate.path === 'string' &&
+        candidate.path.trim().length > 0
+        ? [{ group: candidate.group, path: candidate.path }]
+        : [];
+    });
+    if (validated.length === 0) {
+      this.sendError('workshop', 'No valid configured resources to attach to the message.');
+      return;
+    }
+
+    let provider;
+    try {
+      provider = await this.resourceProviderFactory.createProvider([...DEFAULT_CONTEXT_GROUPS]);
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      this.sendError('workshop', 'Could not read the configured resource catalog.', details);
+      return;
+    }
+    const summaries = provider.listResources();
+
+    for (const item of validated) {
+      const summary = summaries.find(
+        (resource) => resource.group === item.group && resource.path === item.path
+      );
+      if (!summary) {
+        this.sendError('workshop', 'That resource is no longer in the configured catalog.', item.path);
+        continue;
+      }
+      let content: string | undefined;
+      try {
+        content = (await provider.loadResources([summary.path]))[0]?.content;
+      } catch (error) {
+        const details = error instanceof Error ? error.message : String(error);
+        this.sendError('workshop', 'Could not read the selected resource.', `${item.path}: ${details}`);
+        continue;
+      }
+      if (!content || content.trim().length === 0) {
+        this.sendError('workshop', 'That resource is empty — nothing to attach.', item.path);
+        continue;
+      }
+      const bounded = this.boundThreadArtifact(content);
+      this.stageMessageAttachment({
+        label: baseName(item.path),
+        content: bounded.text,
+        words: bounded.words,
+        relativePath: item.path,
+        configuredResource: { group: item.group, path: item.path },
+        sourceUri: pathToFileURL(summary.absolutePath).toString(),
+        truncation: bounded.truncation
+      });
+    }
+  }
+
+  /** Stage an explored file (host picker) as a next-message attachment. */
+  async handleAttachMessageFile(_message: WorkshopAttachMessageFileMessage): Promise<void> {
+    const picked = await this.shell.pickFile({
+      title: 'Attach file to this message',
+      filters: { 'Text files': ['md', 'markdown', 'txt'], 'All files': ['*'] }
+    });
+    if (!picked) {
+      return;
+    }
+    const displayPath = this.toDisplayPath(picked.fsPath);
+    const loaded = await this.loadContextFileFromDisk(picked.fsPath, displayPath);
+    if (!loaded) {
+      return;
+    }
+    const totalWords = loaded.truncation?.totalWords ?? loaded.words;
+    const bounded = this.boundThreadArtifact(loaded.text, totalWords);
+    this.stageMessageAttachment({
+      label: baseName(picked.fsPath),
+      content: bounded.text,
+      words: bounded.words,
+      relativePath: displayPath,
+      sourceUri: picked.uri,
+      truncation: bounded.truncation
+    });
+  }
+
+  async handleRemoveMessageAttachment(
+    message: WorkshopRemoveMessageAttachmentMessage
+  ): Promise<void> {
+    const id = message.payload?.id;
+    if (typeof id !== 'string' || id.length === 0) {
+      this.sendError('workshop', 'Message-attachment removal must identify an attachment.');
+      return;
+    }
+    const removed = this.session.removeMessageAttachment(id);
+    if (!removed) {
+      this.sendError('workshop', 'That message attachment no longer exists.');
+      return;
+    }
+    this.outputChannel.appendLine(
+      `[WorkshopHandler] Message attachment removed (${removed.id}, ${removed.label})`
+    );
+    this.postSessionState();
+  }
+
+  private stageMessageAttachment(input: WorkshopMessageAttachmentInput): void {
+    const result = this.session.addMessageAttachment(input);
+    if (!result.ok) {
+      if (result.reason === 'duplicate') {
+        this.sendError('workshop', `${input.label} is already attached to this message.`);
+      } else {
+        this.sendError(
+          'workshop',
+          `A message carries at most ${PROMPT_BUDGETS.workshopThreadArtifacts.itemsPerMessage} attachments.`,
+          'Send the message, or remove a staged attachment to make room.'
+        );
+      }
+      return;
+    }
+    this.outputChannel.appendLine(
+      `[WorkshopHandler] Message attachment staged (${result.attachment.id}, ${result.attachment.label}, ${result.attachment.words} words)`
+    );
+    this.postSessionState();
+  }
+
+  /** Head-slice one thread artifact to its per-artifact cap, with provenance. */
+  private boundThreadArtifact(
+    content: string,
+    knownTotalWords?: number
+  ): { text: string; words: number; truncation?: { keptWords: number; totalWords: number } } {
+    const totalWords = knownTotalWords ?? countWords(content);
+    const cap = PROMPT_BUDGETS.workshopThreadArtifacts.words;
+    if (totalWords <= cap && countWords(content) <= cap) {
+      return { text: content, words: countWords(content) };
+    }
+    const trimmed = trimToWordLimit(content, cap);
+    return {
+      text: trimmed.trimmed,
+      words: trimmed.trimmedWords,
+      truncation: { keptWords: trimmed.trimmedWords, totalWords }
+    };
   }
 
   /**

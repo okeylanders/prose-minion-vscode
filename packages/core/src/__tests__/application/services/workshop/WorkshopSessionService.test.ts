@@ -851,3 +851,67 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(service.getSnapshot().turns[0].content).not.toBe('mutated');
   });
 });
+
+describe('message attachments — one-shot thread-artifacts (Phase 6B)', () => {
+  const attachment = (path: string, overrides: Record<string, unknown> = {}) => ({
+    label: path.split('/').pop()!,
+    content: `Content of ${path}`,
+    words: 3,
+    relativePath: path,
+    configuredResource: { group: 'chapters' as const, path },
+    ...overrides
+  });
+
+  it('mints monotonic ta-N ids, guards duplicates before the cap, and enforces the item cap', () => {
+    const session = new WorkshopSessionService(() => 1);
+
+    expect(session.addMessageAttachment(attachment('chapters/a.md'))).toMatchObject({
+      ok: true, attachment: { id: 'ta-1' }
+    });
+    expect(session.addMessageAttachment(attachment('chapters/b.md'))).toMatchObject({
+      ok: true, attachment: { id: 'ta-2' }
+    });
+    expect(session.addMessageAttachment(attachment('chapters/a.md'))).toEqual({
+      ok: false, reason: 'duplicate'
+    });
+    expect(session.addMessageAttachment(attachment('chapters/c.md'))).toMatchObject({
+      ok: true, attachment: { id: 'ta-3' }
+    });
+    expect(session.addMessageAttachment(attachment('chapters/d.md'))).toEqual({
+      ok: false, reason: 'limit'
+    });
+    // Removal frees a slot, and the freed id is never reused.
+    expect(session.removeMessageAttachment('ta-2')?.id).toBe('ta-2');
+    expect(session.addMessageAttachment(attachment('chapters/d.md'))).toMatchObject({
+      ok: true, attachment: { id: 'ta-4' }
+    });
+  });
+
+  it('commits only the shipped ids and clears everything on reset', () => {
+    const session = new WorkshopSessionService(() => 1);
+    session.addMessageAttachment(attachment('chapters/a.md'));
+    session.addMessageAttachment(attachment('chapters/b.md'));
+
+    session.commitMessageAttachments(['ta-1']);
+    expect(session.getSnapshot().pendingMessageAttachments.map((a) => a.id)).toEqual(['ta-2']);
+
+    session.reset();
+    expect(session.getSnapshot().pendingMessageAttachments).toEqual([]);
+  });
+
+  it('stamps display-safe refs on the writer turn and strips content/sourceUri from snapshots', () => {
+    const session = new WorkshopSessionService(() => 1);
+    session.setExcerpt({ text: 'The cup moves.', source: { kind: 'manual' } });
+    session.addMessageAttachment(attachment('chapters/a.md', { sourceUri: 'file:///ws/chapters/a.md' }));
+    const refs = session.getSnapshot().pendingMessageAttachments;
+    expect(refs[0]).not.toHaveProperty('content');
+    expect(refs[0]).not.toHaveProperty('sourceUri');
+
+    const turn = session.beginPersonaMessage('req-1', 'Look at this chapter.', refs);
+    expect(turn.messageAttachments).toEqual([
+      expect.objectContaining({ id: 'ta-1', label: 'a.md', relativePath: 'chapters/a.md' })
+    ]);
+    // The staged list is untouched by beginMessage — only commit clears it.
+    expect(session.getSnapshot().pendingMessageAttachments).toHaveLength(1);
+  });
+});

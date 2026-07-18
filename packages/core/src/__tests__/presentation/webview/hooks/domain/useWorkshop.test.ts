@@ -47,6 +47,7 @@ const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessio
         excerptVersion: 0,
         replacementCount: 0,
         contextAttachments: [],
+        pendingMessageAttachments: [],
         todos: [],
         turns,
         totalTurns: turns.length,
