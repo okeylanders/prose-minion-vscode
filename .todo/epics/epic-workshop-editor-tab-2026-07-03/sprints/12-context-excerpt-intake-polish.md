@@ -34,7 +34,8 @@ with its tests; full suite + typecheck + lint green at every commit.
 | 4 | `WorkshopModalShell` (tech-debt 2026-07-10 resolved) + Context Selector modal: category browse, Names / Names+content search (client names, bounded host content search), filter pills, explore hatch; composer `+` + panel both open it; excerpt "Choose from project…" opens it in single-select mode with honest `sourceUri` (summaries carry host-only `absolutePath`) | **Done** | `9f3a06b`, `858bf46` |
 | 5 | Context wizard (scope added 2026-07-17): reuses `ContextAssistantService` under its own `workshop-context` streaming domain, one-run guard, cancellable; brief attaches FIRST, results land as wizard-tagged attachments through the standard budget path; text pills expand to readable notes | **Done** | `c1f5973`, `5eb2183` |
 | 6 | Source-aware prompt frames (host/guest/tool excerpt-source frame, provenance → canonical `{ group, path }`) + bounded composite tool catalog (source + neighbors + guides) + artifact-taxonomy framing: context-artifacts vs thread-artifacts vs agent-fetched evidence, stable artifact ids on delivered evidence entries (per ADR 2026-07-18 draft) | **Done** | `9b6ad4f` |
-| 7 | Context source manifest: engine per-round instrumentation, `ConversationManager` storage beside `contextBudget`, writer-entry stamping, `sources` on `LabeledContextBudgetSnapshot`, Context Bar v2 "In context" panel | Pending | — |
+| 6B | Writer thread-artifacts (scope pulled forward 2026-07-18, Okey — land before Phase 7 so the manifest treats `message-attachment` as a first-class origin): composer `+` menu (attach-to-message beside standing context), modal `message` mode, host-side pending list with `ta-N` ids + item cap + head-slice, frames ride ONE send (host/guest/direct-tool) with commit-on-success, turn-stamped display-safe refs, quick actions never consume | **Done** | `d05eeb8` |
+| 7 | Context source manifest: engine per-round instrumentation, `ConversationManager` storage beside `contextBudget`, writer-entry stamping, `sources` on `LabeledContextBudgetSnapshot`, Context Bar v2 "In context" panel — now INCLUDING thread-artifact entries (`WorkshopTurn.messageAttachments` refs) shown as their own parenthetical kind beside context files / agent resources / tool calls | Pending | — |
 | 8 | Pin-language sweep (wire contracts included), compaction ADR draft, 06B manual UX pass, bundle verification + deltas | Pending | — |
 
 Also landed: design comps pulled to `docs/design/` (`34cb79a`), wizard folded
@@ -307,6 +308,9 @@ autonomously is context the writer is paying for and must not be invisible.
       plain aggregate-owned data with explicit types; update Sprint 10's final
       serializer inventory if implementation details sharpen during this
       sprint. Do not introduce persistence or a transitional schema here.
+      (Phase 6B additions to that inventory: `pendingMessageAttachments`
+      (host-side staged thread-artifacts, content included) and
+      `WorkshopTurn.messageAttachments` display-safe refs.)
 
 ### Polish and verification
 
