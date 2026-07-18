@@ -78,6 +78,7 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
       createFakeShellService(),
       createFakeFileSystem(),
       createFakeWorkspace(),
+      { createProvider: jest.fn(async () => ({ listResources: () => [], loadResources: async () => [] })) } as never,
       output
     );
     await handler.handleSetExcerpt({

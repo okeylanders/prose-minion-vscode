@@ -252,8 +252,18 @@ export class WorkshopSessionService {
    */
   addContextAttachment(input: WorkshopContextAttachmentInput): WorkshopContextAttachmentResult {
     const remainingWords = PROMPT_BUDGETS.contextAttachments.words - this.contextWordsUsed();
-    if (input.kind === 'file' && input.sourceUri !== undefined &&
-        this.contextAttachments.some((existing) => existing.sourceUri === input.sourceUri)) {
+    const duplicates = (existing: WorkshopContextAttachment): boolean => {
+      if (input.kind !== 'file') {
+        return false;
+      }
+      if (input.sourceUri !== undefined && existing.sourceUri === input.sourceUri) {
+        return true;
+      }
+      return input.configuredResource !== undefined &&
+        existing.configuredResource?.group === input.configuredResource.group &&
+        existing.configuredResource?.path === input.configuredResource.path;
+    };
+    if (this.contextAttachments.some(duplicates)) {
       return { ok: false, reason: 'duplicate', remainingWords };
     }
     if (input.words > remainingWords) {

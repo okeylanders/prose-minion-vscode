@@ -1,3 +1,4 @@
+import { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
 import type {
   AnalysisResultMessage,
   CategorySearchResultMessage,
@@ -94,4 +95,6 @@ export interface CoreServices {
   workshopSessionService: WorkshopSessionService;
   workshopPersonaCapabilityFactory: WorkshopPersonaCapabilityFactory;
   workshopToolSidePass: RunWorkshopToolSidePass;
+  /** Configured-resource browsing for the Context Selector modal (Sprint 12). */
+  contextResourceProviderFactory: ContextResourceProviderFactory;
 }

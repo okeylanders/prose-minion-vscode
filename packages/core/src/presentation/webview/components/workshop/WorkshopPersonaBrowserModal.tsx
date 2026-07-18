@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
+import { WorkshopModalShell } from './WorkshopModalShell';
 import type { WorkshopPersonaId } from '@messages';
 import {
   DEFAULT_WORKSHOP_GUEST_OPENING,
@@ -32,8 +33,6 @@ export const WorkshopPersonaBrowserModal: React.FC<WorkshopPersonaBrowserModalPr
   onInvite
 }) => {
   const guestMode = mode === 'guest';
-  const returnFocusRef = React.useRef<HTMLElement | null>(null);
-  const closeButtonRef = React.useRef<HTMLButtonElement>(null);
   const [openingMessage, setOpeningMessage] = React.useState(DEFAULT_WORKSHOP_GUEST_OPENING);
 
   React.useEffect(() => {
@@ -42,37 +41,14 @@ export const WorkshopPersonaBrowserModal: React.FC<WorkshopPersonaBrowserModalPr
     }
   }, [guestMode, open]);
 
-  React.useEffect(() => {
-    if (!open) {
-      return undefined;
-    }
-    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    closeButtonRef.current?.focus();
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      returnFocusRef.current?.focus();
-    };
-  }, [onClose, open]);
-
-  const handleBackdropClick = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) {
-      onClose();
-    }
-  }, [onClose]);
-
-  if (!open) {
-    return null;
-  }
-
   return (
-    <div className="pm-ws-modal-backdrop" role="presentation" onMouseDown={handleBackdropClick}>
-      <div className="pm-ws-tools-modal pm-ws-persona-modal" role="dialog" aria-modal="true" aria-labelledby="pm-ws-persona-title">
+    <WorkshopModalShell
+      open={open}
+      titleId="pm-ws-persona-title"
+      closeLabel="Close personas"
+      className="pm-ws-persona-modal"
+      onClose={onClose}
+    >
         <div className="pm-ws-tools-modal-head">
           <div>
             <div className="pm-ws-eyebrow">{guestMode ? 'Workshop guest' : 'Workshop host'}</div>
@@ -83,9 +59,7 @@ export const WorkshopPersonaBrowserModal: React.FC<WorkshopPersonaBrowserModalPr
                 : 'Choose a lens before the conversation begins. Start a new session to change hosts later.'}
             </p>
           </div>
-          <button ref={closeButtonRef} className="pm-ws-modal-close" type="button" onClick={onClose} aria-label="Close personas">
-            <Icon name="x" size={16} />
-          </button>
+          <WorkshopModalShell.CloseButton />
         </div>
         {guestMode && (
           <label className="pm-ws-guest-opening">
@@ -133,7 +107,6 @@ export const WorkshopPersonaBrowserModal: React.FC<WorkshopPersonaBrowserModalPr
             </button>
           ))}
         </div>
-      </div>
-    </div>
+    </WorkshopModalShell>
   );
 };

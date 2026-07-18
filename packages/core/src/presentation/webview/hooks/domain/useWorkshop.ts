@@ -32,7 +32,12 @@ import {
   StreamChunkMessage,
   StreamCompleteMessage,
   StreamStartedMessage,
+  WorkshopConfiguredResourceRef,
   WorkshopContextAttachmentSnapshot,
+  WorkshopContextCatalogEntry,
+  WorkshopContextCatalogMessage,
+  WorkshopContextSearchResultsMessage,
+  WorkshopContextSearchResultsPayload,
   WorkshopExcerpt,
   WorkshopExcerptSource,
   WorkshopChatTarget,
@@ -61,6 +66,10 @@ export interface WorkshopState {
   excerpt: WorkshopExcerpt | null;
   contextAttachments: WorkshopContextAttachmentSnapshot[];
   contextPending: boolean;
+  /** Configured resource catalog for the Context Selector; null until requested. */
+  contextCatalog: WorkshopContextCatalogEntry[] | null;
+  /** Latest content-search results for the Context Selector, if any. */
+  contextSearch: WorkshopContextSearchResultsPayload | null;
   turns: WorkshopTurn[];
   /**
    * Turns held host-side but not present in this webview (a bounded snapshot
@@ -110,6 +119,12 @@ export interface WorkshopActions {
   addContextText: (text: string) => void;
   addContextFile: () => void;
   removeContextAttachment: (id: string) => void;
+  requestContextCatalog: () => void;
+  searchContextResources: (query: string) => void;
+  clearContextSearch: () => void;
+  addContextResources: (items: WorkshopConfiguredResourceRef[]) => void;
+  handleContextCatalog: (message: WorkshopContextCatalogMessage) => void;
+  handleContextSearchResults: (message: WorkshopContextSearchResultsMessage) => void;
   runTool: (toolId: WorkshopToolId) => void;
   quickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
   sendMessage: (text: string) => void;
@@ -151,6 +166,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const [excerpt, setExcerpt] = React.useState<WorkshopExcerpt | null>(null);
   const [contextAttachments, setContextAttachments] = React.useState<WorkshopContextAttachmentSnapshot[]>([]);
   const [contextPending, setContextPending] = React.useState(false);
+  const [contextCatalog, setContextCatalog] = React.useState<WorkshopContextCatalogEntry[] | null>(null);
+  const [contextSearch, setContextSearch] = React.useState<WorkshopContextSearchResultsPayload | null>(null);
   const [turns, setTurns] = React.useState<WorkshopTurn[]>([]);
   const [totalTurns, setTotalTurns] = React.useState(0);
   const [hasHostConversation, setHasHostConversation] = React.useState(false);
@@ -217,6 +234,32 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const removeContextAttachment = React.useCallback((id: string) => {
     post(MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT, { id });
   }, [post]);
+
+  const requestContextCatalog = React.useCallback(() => {
+    post(MessageType.WORKSHOP_REQUEST_CONTEXT_CATALOG, {});
+  }, [post]);
+
+  const searchContextResources = React.useCallback((query: string) => {
+    post(MessageType.WORKSHOP_SEARCH_CONTEXT_RESOURCES, { query });
+  }, [post]);
+
+  const clearContextSearch = React.useCallback(() => {
+    setContextSearch(null);
+  }, []);
+
+  const addContextResources = React.useCallback((items: WorkshopConfiguredResourceRef[]) => {
+    if (items.length > 0) {
+      post(MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES, { items });
+    }
+  }, [post]);
+
+  const handleContextCatalog = React.useCallback((message: WorkshopContextCatalogMessage) => {
+    setContextCatalog(message.payload.entries);
+  }, []);
+
+  const handleContextSearchResults = React.useCallback((message: WorkshopContextSearchResultsMessage) => {
+    setContextSearch(message.payload);
+  }, []);
 
   const runTool = React.useCallback(
     (toolId: WorkshopToolId) => {
@@ -448,6 +491,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
     excerpt,
     contextAttachments,
     contextPending,
+    contextCatalog,
+    contextSearch,
     turns,
     hiddenTurns,
     hasHostConversation,
@@ -481,6 +526,12 @@ export const useWorkshop = (): UseWorkshopReturn => {
     addContextText,
     addContextFile,
     removeContextAttachment,
+    requestContextCatalog,
+    searchContextResources,
+    clearContextSearch,
+    addContextResources,
+    handleContextCatalog,
+    handleContextSearchResults,
     runTool,
     quickAction,
     sendMessage,

@@ -44,6 +44,8 @@ import {
   workshopMessageCompletionCopy
 } from '@/application/services/workshop/WorkshopRunCompletion';
 import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
+import { isContextPathGroup } from '@shared/types/context';
+import { ContextResourceProviderFactory, DEFAULT_CONTEXT_GROUPS } from '@/domain/models/ContextGeneration';
 import {
   isWorkshopPersonaId,
   workshopPersonaLabel
@@ -81,6 +83,13 @@ import {
   WorkshopAddContextTextMessage,
   WorkshopAddContextFileMessage,
   WorkshopRemoveContextAttachmentMessage,
+  WorkshopRequestContextCatalogMessage,
+  WorkshopContextCatalogMessage,
+  WorkshopContextCatalogEntry,
+  WorkshopSearchContextResourcesMessage,
+  WorkshopContextSearchResultsMessage,
+  WorkshopAddContextResourcesMessage,
+  WorkshopConfiguredResourceRef,
   WorkshopSetExcerptMessage,
   WorkshopTodoActionMessage,
   WorkshopSessionStateMessage,
@@ -154,6 +163,7 @@ export class WorkshopHandler {
     private readonly shell: ShellService,
     private readonly fileSystem: FileSystem,
     private readonly workspace: Workspace,
+    private readonly resourceProviderFactory: ContextResourceProviderFactory,
     private readonly outputChannel: LogSink
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
@@ -185,6 +195,18 @@ export class WorkshopHandler {
     router.register(
       MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT,
       this.handleRemoveContextAttachment.bind(this)
+    );
+    router.register(
+      MessageType.WORKSHOP_REQUEST_CONTEXT_CATALOG,
+      this.handleRequestContextCatalog.bind(this)
+    );
+    router.register(
+      MessageType.WORKSHOP_SEARCH_CONTEXT_RESOURCES,
+      this.handleSearchContextResources.bind(this)
+    );
+    router.register(
+      MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES,
+      this.handleAddContextResources.bind(this)
     );
     router.register(MessageType.WORKSHOP_TODO_ACTION, this.handleTodoAction.bind(this));
     router.register(MessageType.WORKSHOP_PICK_EXCERPT_FILE, this.handlePickExcerptFile.bind(this));
@@ -835,6 +857,149 @@ export class WorkshopHandler {
       `[WorkshopHandler] Context attachment removed (${removed.label}, ${removed.words} words)`
     );
     this.postSessionState();
+  }
+
+  /** Context Selector modal (Phase 4): the configured catalog, display-safe. */
+  async handleRequestContextCatalog(_message: WorkshopRequestContextCatalogMessage): Promise<void> {
+    try {
+      const provider = await this.resourceProviderFactory.createProvider([...DEFAULT_CONTEXT_GROUPS]);
+      const entries: WorkshopContextCatalogEntry[] = provider.listResources().map((resource) => ({
+        group: resource.group,
+        path: resource.path,
+        label: resource.label,
+        sizeBytes: resource.sizeBytes
+      }));
+      const message: WorkshopContextCatalogMessage = {
+        type: MessageType.WORKSHOP_CONTEXT_CATALOG,
+        source: 'extension.workshop',
+        payload: { entries },
+        timestamp: Date.now()
+      };
+      void this.postMessage(message);
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      this.sendError('workshop', 'Could not read the configured resource catalog.', details);
+    }
+  }
+
+  /**
+   * Content search for the modal, under the SAME bounds as the persona
+   * capability's resource.search (file count + per-file/total bytes). Name
+   * matching stays client-side — the webview already holds the catalog.
+   */
+  async handleSearchContextResources(message: WorkshopSearchContextResourcesMessage): Promise<void> {
+    const rawQuery = typeof message.payload?.query === 'string' ? message.payload.query.trim() : '';
+    if (rawQuery.length === 0) {
+      return;
+    }
+    const query = rawQuery.slice(0, PROMPT_BUDGETS.workshopResource.queryCharacters).toLowerCase();
+    const budgets = PROMPT_BUDGETS.workshopResource;
+    try {
+      const provider = await this.resourceProviderFactory.createProvider([...DEFAULT_CONTEXT_GROUPS]);
+      const candidates = provider.listResources();
+      const scannable = candidates.slice(0, budgets.searchFiles);
+      let bounded = candidates.length > scannable.length;
+      let bytesScanned = 0;
+      const matches: WorkshopConfiguredResourceRef[] = [];
+      for (const candidate of scannable) {
+        if (bytesScanned >= budgets.searchTotalBytes) {
+          bounded = true;
+          break;
+        }
+        if (candidate.sizeBytes > Math.min(budgets.searchFileBytes, budgets.searchTotalBytes - bytesScanned)) {
+          bounded = true;
+          continue;
+        }
+        const [loaded] = await provider.loadResources([candidate.path]);
+        if (!loaded) {
+          continue;
+        }
+        bytesScanned += candidate.sizeBytes;
+        if (loaded.content.toLowerCase().includes(query)) {
+          matches.push({ group: candidate.group, path: candidate.path });
+        }
+      }
+      const results: WorkshopContextSearchResultsMessage = {
+        type: MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS,
+        source: 'extension.workshop',
+        payload: { query: rawQuery, matches, bounded },
+        timestamp: Date.now()
+      };
+      void this.postMessage(results);
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      this.sendError('workshop', 'Context search failed.', details);
+    }
+  }
+
+  /** Attach selected configured resources by canonical { group, path }. */
+  async handleAddContextResources(message: WorkshopAddContextResourcesMessage): Promise<void> {
+    const items = Array.isArray(message.payload?.items) ? message.payload.items : [];
+    const validated = items.flatMap((item) => {
+      const candidate = item as { group?: unknown; path?: unknown };
+      return typeof candidate.group === 'string' &&
+        isContextPathGroup(candidate.group) &&
+        typeof candidate.path === 'string' &&
+        candidate.path.trim().length > 0
+        ? [{ group: candidate.group, path: candidate.path }]
+        : [];
+    });
+    if (validated.length === 0) {
+      this.sendError('workshop', 'No valid configured resources to attach.');
+      return;
+    }
+
+    let provider;
+    try {
+      provider = await this.resourceProviderFactory.createProvider([...DEFAULT_CONTEXT_GROUPS]);
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      this.sendError('workshop', 'Could not read the configured resource catalog.', details);
+      return;
+    }
+    const summaries = provider.listResources();
+
+    for (const item of validated) {
+      const summary = summaries.find(
+        (resource) => resource.group === item.group && resource.path === item.path
+      );
+      if (!summary) {
+        this.sendError('workshop', 'That resource is no longer in the configured catalog.', item.path);
+        continue;
+      }
+      let content: string | undefined;
+      try {
+        content = (await provider.loadResources([summary.path]))[0]?.content;
+      } catch (error) {
+        const details = error instanceof Error ? error.message : String(error);
+        this.sendError('workshop', 'Could not read the selected resource.', `${item.path}: ${details}`);
+        continue;
+      }
+      if (!content || content.trim().length === 0) {
+        this.sendError('workshop', 'That resource is empty — nothing to attach.', item.path);
+        continue;
+      }
+
+      let text = content;
+      let words = countWords(content);
+      let truncation: { keptWords: number; totalWords: number } | undefined;
+      if (words > PROMPT_BUDGETS.contextAttachments.words) {
+        const trimmed = trimToWordLimit(content, PROMPT_BUDGETS.contextAttachments.words);
+        truncation = { keptWords: trimmed.trimmedWords, totalWords: words };
+        text = trimmed.trimmed;
+        words = trimmed.trimmedWords;
+      }
+      this.applyContextAttachment({
+        kind: 'file',
+        origin: 'writer',
+        label: baseName(item.path),
+        content: text,
+        words,
+        relativePath: item.path,
+        configuredResource: { group: item.group, path: item.path },
+        truncation
+      });
+    }
   }
 
   /** Shared attach tail: aggregate validation, event turn, logging, broadcast. */

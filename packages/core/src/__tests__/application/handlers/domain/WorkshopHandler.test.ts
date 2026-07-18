@@ -39,6 +39,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   let handler: WorkshopHandler;
   let capabilityFactory: WorkshopPersonaCapabilityFactory;
   let contextBudgets: Map<string, ContextBudgetSnapshot>;
+  let resourceFiles: Array<{ group: string; path: string; label: string; sizeBytes: number; content: string }>;
+  let resourceProviderFactory: { createProvider: jest.Mock };
 
   const posted = (type: MessageType) => postMessage.mock.calls
     .map(([entry]) => entry)
@@ -91,6 +93,29 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     capabilityFactory = {
       create: jest.fn(() => ({ catalog: 'workshopPersona' }))
     } as unknown as WorkshopPersonaCapabilityFactory;
+    resourceFiles = [
+      {
+        group: 'characters',
+        path: 'Characters/raven.md',
+        label: 'raven',
+        sizeBytes: 120,
+        content: 'Raven is seventeen and keeps the marked token.'
+      },
+      {
+        group: 'themes',
+        path: 'Themes/echoes.md',
+        label: 'echoes',
+        sizeBytes: 80,
+        content: 'Echo: sacred breaks into terror.'
+      }
+    ];
+    resourceProviderFactory = {
+      createProvider: jest.fn(async () => ({
+        listResources: () => resourceFiles.map(({ content: _content, ...summary }) => summary),
+        loadResources: async (paths: string[]) =>
+          resourceFiles.filter((file) => paths.includes(file.path))
+      }))
+    };
     const analysisSidePass = new WorkshopAnalysisSidePass(service, session, log);
     handler = new WorkshopHandler(
       service,
@@ -107,6 +132,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       shell,
       fileSystem,
       workspace,
+      resourceProviderFactory as never,
       log
     );
   });
@@ -133,7 +159,10 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_TODO_ACTION)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_REREAD_EXCERPT)).toBe(true);
-    expect(router.handlerCount).toBe(17);
+    expect(router.hasHandler(MessageType.WORKSHOP_REQUEST_CONTEXT_CATALOG)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_SEARCH_CONTEXT_RESOURCES)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES)).toBe(true);
+    expect(router.handlerCount).toBe(20);
   });
 
   it('starts Jill directly from the composer and retains the host conversation', async () => {
@@ -1066,6 +1095,62 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         text: 'The sea forgets the shore entirely.',
         source: { kind: 'file', sourceUri: 'file:///chapter.md', relativePath: 'External file: chapter.md' }
       });
+    });
+  });
+
+  describe('Context Selector routes (Sprint 12 Phase 4)', () => {
+    it('posts the display-safe configured catalog', async () => {
+      await handler.handleRequestContextCatalog(
+        message(MessageType.WORKSHOP_REQUEST_CONTEXT_CATALOG, {}) as any
+      );
+
+      const catalog = posted(MessageType.WORKSHOP_CONTEXT_CATALOG).at(-1).payload;
+      expect(catalog.entries).toEqual([
+        { group: 'characters', path: 'Characters/raven.md', label: 'raven', sizeBytes: 120 },
+        { group: 'themes', path: 'Themes/echoes.md', label: 'echoes', sizeBytes: 80 }
+      ]);
+      expect(JSON.stringify(catalog)).not.toContain('content');
+    });
+
+    it('content-searches under bounds and returns canonical refs', async () => {
+      await handler.handleSearchContextResources(
+        message(MessageType.WORKSHOP_SEARCH_CONTEXT_RESOURCES, { query: 'marked token' }) as any
+      );
+
+      const results = posted(MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS).at(-1).payload;
+      expect(results.matches).toEqual([{ group: 'characters', path: 'Characters/raven.md' }]);
+      expect(results.bounded).toBe(false);
+    });
+
+    it('attaches selected resources with configuredResource provenance and blocks duplicates', async () => {
+      const add = () => handler.handleAddContextResources(message(
+        MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES,
+        { items: [{ group: 'characters', path: 'Characters/raven.md' }] }
+      ) as any);
+
+      await add();
+      expect(session.getContextAttachments()).toEqual([
+        expect.objectContaining({
+          kind: 'file',
+          label: 'raven.md',
+          relativePath: 'Characters/raven.md',
+          configuredResource: { group: 'characters', path: 'Characters/raven.md' }
+        })
+      ]);
+
+      await add();
+      expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/already attached/i);
+      expect(session.getContextAttachments()).toHaveLength(1);
+    });
+
+    it('rejects unknown or malformed resource requests without attaching', async () => {
+      await handler.handleAddContextResources(message(
+        MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES,
+        { items: [{ group: 'characters', path: 'Characters/ghost.md' }, { group: 'nope', path: 'x' }] }
+      ) as any);
+
+      expect(session.getContextAttachments()).toEqual([]);
+      expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/no longer in the configured catalog/i);
     });
   });
 

@@ -40,10 +40,7 @@ import {
 } from '@messages';
 import { ModelSelector } from './components/shared/ModelSelector';
 import { ExcerptPanel } from './components/workshop/ExcerptPanel';
-import {
-  ContextPanel,
-  WORKSHOP_CONTEXT_PANEL_ID
-} from './components/workshop/ContextPanel';
+import { ContextPanel } from './components/workshop/ContextPanel';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopParticipantRail } from './components/workshop/WorkshopParticipantRail';
 import { ContextBudget } from './components/shared/ContextBudget';
@@ -51,6 +48,8 @@ import { WorkshopThread } from './components/workshop/WorkshopThread';
 import { WORKSHOP_TURN_ID_ATTRIBUTE } from './components/workshop/WorkshopTurnBubble';
 import { WorkshopToolsModal } from './components/workshop/WorkshopToolsModal';
 import { WorkshopPersonaBrowserModal } from './components/workshop/WorkshopPersonaBrowserModal';
+import { WorkshopContextSelectorModal } from './components/workshop/WorkshopContextSelectorModal';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WorkshopToast, WorkshopToastState } from './components/workshop/WorkshopToast';
 import { WorkshopTodoList } from './components/workshop/WorkshopTodoList';
 import { WORKSHOP_TOOL_ICONS } from './components/workshop/workshopToolIcons';
@@ -144,6 +143,7 @@ export const WorkshopApp: React.FC = () => {
   const [hasSavedKey, setHasSavedKey] = React.useState(false);
   const [toolsModalOpen, setToolsModalOpen] = React.useState(false);
   const [personaModalOpen, setPersonaModalOpen] = React.useState(false);
+  const [contextSelectorOpen, setContextSelectorOpen] = React.useState(false);
   const [personaModalMode, setPersonaModalMode] = React.useState<'host' | 'guest'>('host');
   const [toast, setToast] = React.useState<WorkshopToastState | null>(null);
   const accountBalance = useAccountBalance({ apiKeyConfigured: hasSavedKey });
@@ -200,6 +200,8 @@ export const WorkshopApp: React.FC = () => {
     [MessageType.WORKSHOP_SESSION_STATE]: workshop.handleSessionState,
     [MessageType.WORKSHOP_TURN]: workshop.handleTurn,
     [MessageType.SELECTION_DATA]: excerptVerify.handleSelectionData,
+    [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshop.handleContextCatalog,
+    [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshop.handleContextSearchResults,
     [MessageType.STREAM_STARTED]: workshop.handleStreamStarted,
     [MessageType.STREAM_CHUNK]: workshop.handleStreamChunk,
     [MessageType.STREAM_COMPLETE]: workshop.handleStreamComplete,
@@ -299,15 +301,12 @@ export const WorkshopApp: React.FC = () => {
       < WORKSHOP_GUEST_CAPACITY;
 
   const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
-  const openContext = React.useCallback(() => {
-    const panel = document.getElementById(WORKSHOP_CONTEXT_PANEL_ID);
-    if (!panel) {
-      showToast({ message: 'The Workshop context panel is not available right now.', icon: 'x', tone: 'error' });
-      return;
-    }
-    panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    panel.querySelector<HTMLButtonElement>('button')?.focus();
-  }, [showToast]);
+  const openContextSelector = React.useCallback(() => {
+    workshop.requestContextCatalog();
+    setContextSelectorOpen(true);
+  }, [workshop.requestContextCatalog]);
+
+  const openContext = openContextSelector;
   const closeToolsModal = React.useCallback(() => setToolsModalOpen(false), []);
   const selectTool = React.useCallback(
     (toolId: WorkshopToolId) => {
@@ -518,7 +517,7 @@ export const WorkshopApp: React.FC = () => {
               pendingDelivery={workshop.contextPending}
               isRunning={workshop.isRunning}
               onAddText={workshop.addContextText}
-              onAddFile={workshop.addContextFile}
+              onAddFile={openContextSelector}
               onRemove={workshop.removeContextAttachment}
             />
 
@@ -735,6 +734,22 @@ export const WorkshopApp: React.FC = () => {
         onClose={closeToolsModal}
         onSelect={selectTool}
       />
+        <WorkshopContextSelectorModal
+          open={contextSelectorOpen}
+          catalog={workshop.contextCatalog}
+          attachments={workshop.contextAttachments}
+          searchResults={workshop.contextSearch}
+          remainingWords={Math.max(
+            0,
+            PROMPT_BUDGETS.contextAttachments.words -
+              workshop.contextAttachments.reduce((total, attachment) => total + attachment.words, 0)
+          )}
+          onSearch={workshop.searchContextResources}
+          onClearSearch={workshop.clearContextSearch}
+          onConfirm={workshop.addContextResources}
+          onExplore={workshop.addContextFile}
+          onClose={() => setContextSelectorOpen(false)}
+        />
       <WorkshopPersonaBrowserModal
         open={personaModalOpen}
         activePersonaId={workshop.selectedPersonaId}

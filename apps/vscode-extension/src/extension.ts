@@ -203,7 +203,8 @@ export function activate(context: vscode.ExtensionContext): void {
     accountBalanceService,
     workshopSessionService,
     workshopPersonaCapabilityFactory,
-    workshopToolSidePass
+    workshopToolSidePass,
+    contextResourceProviderFactory: contextResourceResolver
   };
 
   // Migrate API key from settings to SecretStorage if needed

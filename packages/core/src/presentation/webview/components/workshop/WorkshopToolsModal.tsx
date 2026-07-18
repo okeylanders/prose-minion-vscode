@@ -5,6 +5,7 @@
 
 import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
+import { WorkshopModalShell } from './WorkshopModalShell';
 import { WorkshopToolId } from '@messages';
 import {
   WORKSHOP_TOOL_CATALOG,
@@ -35,42 +36,16 @@ export const WorkshopToolsModal: React.FC<WorkshopToolsModalProps> = ({
   onClose,
   onSelect
 }) => {
-  const handleBackdropClick = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) {
-      onClose();
-    }
-  }, [onClose]);
-
-  React.useEffect(() => {
-    if (!open) {
-      return undefined;
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, open]);
-
-  if (!open) {
-    return null;
-  }
-
   return (
-    <div className="pm-ws-modal-backdrop" role="presentation" onMouseDown={handleBackdropClick}>
-      <div className="pm-ws-tools-modal" role="dialog" aria-modal="true" aria-labelledby="pm-ws-tools-title">
+    <WorkshopModalShell open={open} titleId="pm-ws-tools-title" closeLabel="Close tools" onClose={onClose}>
         <div className="pm-ws-tools-modal-head">
           <div>
             <div className="pm-ws-eyebrow">Prose Excerpt Assistant</div>
             <h2 id="pm-ws-tools-title">Writing Tools</h2>
-            <p>Pick an analysis. Each runs on your pinned excerpt with the context brief attached.</p>
+            <p>Pick an analysis. Each runs on your pinned excerpt with your context attachments included.</p>
             {unavailableMessage && <p className="pm-ws-tools-modal-notice" role="status">{unavailableMessage}</p>}
           </div>
-          <button className="pm-ws-modal-close" type="button" onClick={onClose} aria-label="Close tools">
-            <Icon name="x" size={16} />
-          </button>
+          <WorkshopModalShell.CloseButton />
         </div>
 
         {TOOL_GROUPS.map((group) => (
@@ -100,7 +75,6 @@ export const WorkshopToolsModal: React.FC<WorkshopToolsModalProps> = ({
             </div>
           </section>
         ))}
-      </div>
-    </div>
+    </WorkshopModalShell>
   );
 };

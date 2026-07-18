@@ -134,6 +134,11 @@ import {
   WorkshopAddContextTextMessage,
   WorkshopAddContextFileMessage,
   WorkshopRemoveContextAttachmentMessage,
+  WorkshopRequestContextCatalogMessage,
+  WorkshopContextCatalogMessage,
+  WorkshopSearchContextResourcesMessage,
+  WorkshopContextSearchResultsMessage,
+  WorkshopAddContextResourcesMessage,
   WorkshopTodoActionMessage,
   WorkshopPickExcerptFileMessage,
   WorkshopResetSessionMessage,
@@ -194,6 +199,11 @@ export type WebviewToExtensionMessage =
   | WorkshopAddContextTextMessage
   | WorkshopAddContextFileMessage
   | WorkshopRemoveContextAttachmentMessage
+  | WorkshopRequestContextCatalogMessage
+  | WorkshopContextCatalogMessage
+  | WorkshopSearchContextResourcesMessage
+  | WorkshopContextSearchResultsMessage
+  | WorkshopAddContextResourcesMessage
   | WorkshopTodoActionMessage
   | WorkshopPickExcerptFileMessage
   | WorkshopResetSessionMessage
@@ -230,4 +240,6 @@ export type ExtensionToWebviewMessage =
   | StreamChunkMessage
   | StreamCompleteMessage
   | WorkshopTurnMessage
-  | WorkshopSessionStateMessage;
+  | WorkshopSessionStateMessage
+  | WorkshopContextCatalogMessage
+  | WorkshopContextSearchResultsMessage;

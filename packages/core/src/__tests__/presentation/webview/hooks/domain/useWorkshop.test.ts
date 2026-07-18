@@ -435,6 +435,9 @@ describe('useWorkshop', () => {
       result.current.addContextText('Project context.');
       result.current.addContextFile();
       result.current.removeContextAttachment('ctx-1');
+      result.current.requestContextCatalog();
+      result.current.searchContextResources('raven');
+      result.current.addContextResources([{ group: 'characters', path: 'Characters/raven.md' }]);
     });
 
     const pin = posted(MessageType.WORKSHOP_SET_EXCERPT)[0];
@@ -463,6 +466,11 @@ describe('useWorkshop', () => {
     expect(posted(MessageType.WORKSHOP_ADD_CONTEXT_TEXT)[0].payload).toEqual({ text: 'Project context.' });
     expect(posted(MessageType.WORKSHOP_ADD_CONTEXT_FILE)).toHaveLength(1);
     expect(posted(MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT)[0].payload).toEqual({ id: 'ctx-1' });
+    expect(posted(MessageType.WORKSHOP_REQUEST_CONTEXT_CATALOG)).toHaveLength(1);
+    expect(posted(MessageType.WORKSHOP_SEARCH_CONTEXT_RESOURCES)[0].payload).toEqual({ query: 'raven' });
+    expect(posted(MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES)[0].payload).toEqual({
+      items: [{ group: 'characters', path: 'Characters/raven.md' }]
+    });
   });
 
   it('posts persona selection and direct-target changes, then restores both from a host snapshot', () => {

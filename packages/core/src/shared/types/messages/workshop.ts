@@ -533,6 +533,73 @@ export interface WorkshopRemoveContextAttachmentMessage
   type: MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Context Selector modal (Sprint 12 Phase 4) — browse/search the configured
+// resource catalog and attach by canonical { group, path }. Display-safe
+// resolver paths only; no absolute path ever crosses this contract.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** One configured resource as the modal browses it. */
+export interface WorkshopContextCatalogEntry {
+  group: ContextPathGroup;
+  /** Resolver's display-safe workspace-relative path — the canonical key. */
+  path: string;
+  label: string;
+  /** Byte size from catalog admission; word counts happen at attach time. */
+  sizeBytes: number;
+}
+
+/** Sent on modal open: "give me the configured resource catalog". */
+export interface WorkshopRequestContextCatalogMessage
+  extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.WORKSHOP_REQUEST_CONTEXT_CATALOG;
+}
+
+export interface WorkshopContextCatalogPayload {
+  entries: WorkshopContextCatalogEntry[];
+}
+
+export interface WorkshopContextCatalogMessage
+  extends MessageEnvelope<WorkshopContextCatalogPayload> {
+  type: MessageType.WORKSHOP_CONTEXT_CATALOG;
+}
+
+/**
+ * Content search over the configured catalog (name matching is client-side —
+ * the webview already holds the catalog). Runs under the same byte/file
+ * bounds as the persona capability's resource.search.
+ */
+export interface WorkshopSearchContextResourcesPayload {
+  query: string;
+}
+
+export interface WorkshopSearchContextResourcesMessage
+  extends MessageEnvelope<WorkshopSearchContextResourcesPayload> {
+  type: MessageType.WORKSHOP_SEARCH_CONTEXT_RESOURCES;
+}
+
+export interface WorkshopContextSearchResultsPayload {
+  query: string;
+  matches: WorkshopConfiguredResourceRef[];
+  /** True when a file/byte bound stopped the scan early. */
+  bounded: boolean;
+}
+
+export interface WorkshopContextSearchResultsMessage
+  extends MessageEnvelope<WorkshopContextSearchResultsPayload> {
+  type: MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS;
+}
+
+/** Attach selected configured resources, in the writer's selection order. */
+export interface WorkshopAddContextResourcesPayload {
+  items: WorkshopConfiguredResourceRef[];
+}
+
+export interface WorkshopAddContextResourcesMessage
+  extends MessageEnvelope<WorkshopAddContextResourcesPayload> {
+  type: MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES;
+}
+
 export type WorkshopTodoAction =
   | { action: 'add'; sourceTurnId: string; findingKey: string }
   | { action: 'edit'; todoId: string; text: string }
