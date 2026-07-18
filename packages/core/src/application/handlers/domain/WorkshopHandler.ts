@@ -1178,10 +1178,34 @@ export class WorkshopHandler {
     }
   }
 
-  /** Land wizard output as ordinary wizard-tagged attachments; say what fit. */
+  /**
+   * Land wizard output as ordinary wizard-tagged attachments; say what fit.
+   * The BRIEF attaches first — it is the wizard's distilled output and must
+   * never lose the budget race to the raw files it happened to read.
+   */
   private async adoptWizardResult(brief: string, requestedResources: string[]): Promise<void> {
     let attached = 0;
     let skipped = 0;
+
+    const briefText = brief.trim();
+    if (briefText.length > 0 && !briefText.startsWith(API_KEY_NOT_CONFIGURED_HEADING)) {
+      const words = countWords(briefText);
+      const result = this.session.addContextAttachment({
+        kind: 'text',
+        origin: 'wizard',
+        label: 'Wizard brief\u2026',
+        content: briefText,
+        words
+      });
+      if (result.ok) {
+        attached += 1;
+        if (result.eventTurn) {
+          this.postTurn(result.eventTurn);
+        }
+      } else {
+        skipped += 1;
+      }
+    }
 
     if (requestedResources.length > 0) {
       let provider;
@@ -1239,26 +1263,6 @@ export class WorkshopHandler {
         }
       } else {
         skipped += requestedResources.length;
-      }
-    }
-
-    const briefText = brief.trim();
-    if (briefText.length > 0 && !briefText.startsWith(API_KEY_NOT_CONFIGURED_HEADING)) {
-      const words = countWords(briefText);
-      const result = this.session.addContextAttachment({
-        kind: 'text',
-        origin: 'wizard',
-        label: 'Wizard brief\u2026',
-        content: briefText,
-        words
-      });
-      if (result.ok) {
-        attached += 1;
-        if (result.eventTurn) {
-          this.postTurn(result.eventTurn);
-        }
-      } else {
-        skipped += 1;
       }
     }
 

@@ -1217,13 +1217,13 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
       const attachments = session.getContextAttachments();
       expect(attachments).toEqual([
+        expect.objectContaining({ kind: 'text', origin: 'wizard', label: 'Wizard brief\u2026' }),
         expect.objectContaining({
           kind: 'file',
           origin: 'wizard',
           label: 'raven.md',
           configuredResource: { group: 'characters', path: 'Characters/raven.md' }
-        }),
-        expect.objectContaining({ kind: 'text', origin: 'wizard', label: 'Wizard brief\u2026' })
+        })
       ]);
       expect(contextAssistant.generateContext).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1248,6 +1248,27 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
       release({ toolName: 'context_assistant', content: '', timestamp: new Date(0), requestedResources: [] });
       await first;
+    });
+
+    it('attaches the brief FIRST so raw files never win the budget race', async () => {
+      await pin();
+      // A near-full budget: room for the 40-word brief, not the 8-word file.
+      session.addContextAttachment({
+        kind: 'text', origin: 'writer', label: 'Big note\u2026', words: 9_955, content: 'x'
+      });
+      contextAssistant.generateContext.mockResolvedValueOnce({
+        toolName: 'context_assistant',
+        content: Array.from({ length: 40 }, (_, index) => `brief${index}`).join(' '),
+        timestamp: new Date(0),
+        requestedResources: ['Characters/raven.md']
+      });
+
+      await runWizard();
+
+      const labels = session.getContextAttachments().map((entry) => entry.label);
+      expect(labels).toContain('Wizard brief\u2026');
+      expect(labels).not.toContain('raven.md');
+      expect(posted(MessageType.STATUS).at(-1).payload.message).toMatch(/1 didn.t fit/i);
     });
 
     it('says so when nothing fits instead of silently attaching nothing', async () => {

@@ -1316,10 +1316,14 @@ function cloneAttachment(attachment: WorkshopContextAttachment): WorkshopContext
   };
 }
 
-/** Webview projection: everything BUT content and the host-private sourceUri. */
+/**
+ * Webview projection: strips the host-private sourceUri always, and content
+ * for FILE attachments (re-readable from disk, potentially large). Text
+ * attachments keep their content — the pill is the note's only home.
+ */
 function attachmentSnapshot(attachment: WorkshopContextAttachment): WorkshopContextAttachmentSnapshot {
-  const { content: _content, sourceUri: _sourceUri, ...snapshot } = cloneAttachment(attachment);
-  return snapshot;
+  const { content, sourceUri: _sourceUri, ...snapshot } = cloneAttachment(attachment);
+  return attachment.kind === 'text' ? { ...snapshot, content } : snapshot;
 }
 
 function cloneExcerptSource(source: WorkshopExcerptSource): WorkshopExcerptSource {

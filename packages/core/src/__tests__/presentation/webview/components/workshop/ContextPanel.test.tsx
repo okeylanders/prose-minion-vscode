@@ -102,6 +102,25 @@ describe('ContextPanel', () => {
     expect(screen.getByText(/getting close to the cap/)).toBeTruthy();
   });
 
+  it('lets the writer read a text note by expanding its pill', () => {
+    renderPanel({
+      attachments: [attachment({
+        id: 'ctx-2',
+        kind: 'text',
+        origin: 'wizard',
+        label: 'Wizard brief…',
+        words: 320,
+        relativePath: undefined,
+        content: 'Genre: YA supernatural. Nate is learning to read the marks.'
+      })]
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Wizard brief…' }));
+    expect(screen.getByRole('note').textContent).toContain('Nate is learning to read the marks.');
+    fireEvent.click(screen.getByRole('button', { name: 'Wizard brief…' }));
+    expect(screen.queryByRole('note')).toBeNull();
+  });
+
   it('offers the Context wizard and swaps it for a cancellable status row while running', () => {
     const { props, rerender } = renderPanel();
     fireEvent.click(screen.getByRole('button', { name: /context wizard/i }));

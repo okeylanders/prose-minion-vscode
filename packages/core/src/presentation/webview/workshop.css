@@ -1066,6 +1066,36 @@
   color: var(--pm-muted);
   white-space: nowrap;
 }
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-expand {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-note {
+  flex-basis: 100%;
+  border: 1px solid var(--pm-border-2);
+  background: var(--pm-surface-2);
+  border-radius: var(--pm-r-input);
+  padding: 9px 11px;
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--pm-text-2);
+  white-space: pre-wrap;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
 [data-pm-surface="workshop"] .pm-ws-ctx-pill-remove {
   width: 16px;
   height: 16px;

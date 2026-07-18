@@ -519,6 +519,17 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(snapshot).not.toHaveProperty('sourceUri');
   });
 
+  it('ships text-note content in the snapshot — the pill is the note\u2019s only home', () => {
+    pin();
+    service.addContextAttachment({
+      kind: 'text', origin: 'writer', label: 'Note\u2026', words: 3, content: 'Prom happens Friday.'
+    });
+
+    const [snapshot] = service.getSnapshot().contextAttachments;
+    expect(snapshot).toMatchObject({ kind: 'text', content: 'Prom happens Friday.' });
+    expect(snapshot).not.toHaveProperty('sourceUri');
+  });
+
   it('records nested capability artifacts without replacing the active host turn', () => {
     pin();
     service.beginPersonaMessage('host-capabilities', 'Check this word and continuity.');

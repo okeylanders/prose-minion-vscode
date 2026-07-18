@@ -58,6 +58,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
 }) => {
   const [adding, setAdding] = React.useState(false);
   const [draft, setDraft] = React.useState('');
+  const [expandedId, setExpandedId] = React.useState<string | null>(null);
 
   const budget = PROMPT_BUDGETS.contextAttachments.words;
   const used = attachments.reduce((total, attachment) => total + attachment.words, 0);
@@ -88,35 +89,57 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
 
       {hasAttachments ? (
         <div className="pm-ws-ctx-pills">
-          {attachments.map((attachment) => (
-            <span
-              key={attachment.id}
-              className={`pm-ws-ctx-pill${attachment.origin === 'wizard' ? ' pm-ws-ctx-pill-wizard' : ''}`}
-              title={
-                attachment.truncation
-                  ? `${attachment.label} — head slice: ${attachment.truncation.keptWords.toLocaleString()} of ${attachment.truncation.totalWords.toLocaleString()} words`
-                  : attachment.relativePath ?? attachment.label
-              }
-            >
-              <Icon
-                name={attachment.origin === 'wizard' ? 'sparkle' : attachment.kind === 'file' ? 'doc' : 'pen'}
-                size={12}
-              />
-              <span className="pm-ws-ctx-pill-label">{attachment.label}</span>
-              <span className="pm-ws-ctx-pill-size">
-                {attachment.words.toLocaleString()} words
-              </span>
-              <button
-                className="pm-ws-ctx-pill-remove"
-                type="button"
-                aria-label={`Remove ${attachment.label}`}
-                onClick={() => onRemove(attachment.id)}
-                disabled={isRunning}
-              >
-                <Icon name="x" size={9} />
-              </button>
-            </span>
-          ))}
+          {attachments.map((attachment) => {
+            const inspectable = attachment.kind === 'text' && attachment.content !== undefined;
+            const expanded = inspectable && expandedId === attachment.id;
+            return (
+              <React.Fragment key={attachment.id}>
+                <span
+                  className={`pm-ws-ctx-pill${attachment.origin === 'wizard' ? ' pm-ws-ctx-pill-wizard' : ''}`}
+                  title={
+                    attachment.truncation
+                      ? `${attachment.label} — head slice: ${attachment.truncation.keptWords.toLocaleString()} of ${attachment.truncation.totalWords.toLocaleString()} words`
+                      : attachment.relativePath ?? attachment.label
+                  }
+                >
+                  <Icon
+                    name={attachment.origin === 'wizard' ? 'sparkle' : attachment.kind === 'file' ? 'doc' : 'pen'}
+                    size={12}
+                  />
+                  {inspectable ? (
+                    <button
+                      className="pm-ws-ctx-pill-label pm-ws-ctx-pill-expand"
+                      type="button"
+                      aria-expanded={expanded}
+                      title={`${attachment.label} — click to ${expanded ? 'hide' : 'read'}`}
+                      onClick={() => setExpandedId(expanded ? null : attachment.id)}
+                    >
+                      {attachment.label}
+                    </button>
+                  ) : (
+                    <span className="pm-ws-ctx-pill-label">{attachment.label}</span>
+                  )}
+                  <span className="pm-ws-ctx-pill-size">
+                    {attachment.words.toLocaleString()} words
+                  </span>
+                  <button
+                    className="pm-ws-ctx-pill-remove"
+                    type="button"
+                    aria-label={`Remove ${attachment.label}`}
+                    onClick={() => onRemove(attachment.id)}
+                    disabled={isRunning}
+                  >
+                    <Icon name="x" size={9} />
+                  </button>
+                </span>
+                {expanded ? (
+                  <div className="pm-ws-ctx-note" role="note" aria-label={`${attachment.label} content`}>
+                    {attachment.content}
+                  </div>
+                ) : null}
+              </React.Fragment>
+            );
+          })}
         </div>
       ) : null}
 

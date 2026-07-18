@@ -330,6 +330,12 @@ export interface WorkshopContextAttachmentSnapshot {
   relativePath?: string;
   configuredResource?: WorkshopConfiguredResourceRef;
   truncation?: WorkshopContextAttachmentTruncation;
+  /**
+   * Text-kind ONLY: the note's full content, so the pill is inspectable —
+   * typed notes and wizard briefs have no on-disk home to re-read. File
+   * content stays host-side (re-readable, potentially large).
+   */
+  content?: string;
   /** Epoch ms when attached (host-stamped). */
   addedAt: number;
 }
