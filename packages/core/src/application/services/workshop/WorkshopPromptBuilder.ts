@@ -15,7 +15,10 @@ import {
   WorkshopToolId,
   WorkshopTurn
 } from '@messages';
-import type { WorkshopPendingHostUpdates } from '@/application/services/workshop/WorkshopSessionService';
+import type {
+  WorkshopContextAttachment,
+  WorkshopPendingHostUpdates
+} from '@/application/services/workshop/WorkshopSessionService';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -342,6 +345,47 @@ export function buildWorkshopTodoEvidence(
 }
 
 /**
+ * Assemble the labeled per-attachment context frame (Sprint 12) — the ONE
+ * builder every delivery path uses (initial host turn, host update delta,
+ * tool runs). Provenance rides as plain header lines inside each attachment
+ * frame (house style — never writer-controlled attribute values), and both
+ * headers and content are delimiter-neutralized so content cannot forge a
+ * frame boundary. Aggregate word budget is enforced at attach time, so this
+ * builder never trims.
+ */
+export function buildWorkshopContextAttachmentsFrame(
+  attachments: readonly WorkshopContextAttachment[]
+): string | undefined {
+  if (attachments.length === 0) {
+    return undefined;
+  }
+  const frames = attachments.map((attachment) => {
+    const sliceNote = attachment.truncation
+      ? ` (head slice: ${attachment.truncation.keptWords.toLocaleString('en-US')} of ${attachment.truncation.totalWords.toLocaleString('en-US')} words)`
+      : '';
+    const header = [
+      `Label: ${neutralizeReservedPersonaPromptDelimiters(attachment.label)}`,
+      attachment.relativePath
+        ? `Source: ${neutralizeReservedPersonaPromptDelimiters(attachment.relativePath)}`
+        : undefined,
+      `Words: ${attachment.words.toLocaleString('en-US')}${sliceNote}`
+    ].filter((line): line is string => line !== undefined);
+    return [
+      `<context-attachment kind="${attachment.kind}">`,
+      ...header,
+      '---',
+      neutralizeReservedPersonaPromptDelimiters(attachment.content),
+      '</context-attachment>'
+    ].join('\n');
+  });
+  return [
+    `<context-attachments count="${attachments.length}">`,
+    ...frames,
+    '</context-attachments>'
+  ].join('\n');
+}
+
+/**
  * Build the trusted, bounded delta delivered to an already-retained host.
  * The aggregate's tri-state context update is interpreted here, in the one
  * place that owns the resulting prompt frame.
@@ -379,22 +423,16 @@ export function buildWorkshopHostUpdateFrame(
     );
   }
 
-  if (updates.contextBrief) {
-    if (updates.contextBrief.text === undefined) {
-      sections.push('The writer cleared the project context brief. Do not rely on the earlier brief.');
-    } else {
-      const briefTrim = trimToWordLimit(
-        updates.contextBrief.text,
-        PROMPT_BUDGETS.contextBrief.words
-      );
+  if (updates.contextAttachments) {
+    const frame = buildWorkshopContextAttachmentsFrame(updates.contextAttachments.attachments);
+    if (frame === undefined) {
       sections.push(
-        'The writer updated the project context brief. This supersedes the earlier brief.',
-        briefTrim.wasTrimmed
-          ? `Context brief is a head slice: ${briefTrim.trimmedWords} of ${briefTrim.originalWords} words.`
-          : '',
-        '<context-brief>',
-        neutralizeReservedPersonaPromptDelimiters(briefTrim.trimmed),
-        '</context-brief>'
+        'The writer removed all context attachments. Do not rely on earlier attached context.'
+      );
+    } else {
+      sections.push(
+        'The writer changed the context attachments. This list supersedes any earlier attached context.',
+        frame
       );
     }
   }
@@ -409,7 +447,9 @@ export function describeWorkshopPendingHostUpdates(
 ): string {
   return [
     updates.excerpt ? `excerpt v${updates.excerpt.version}` : undefined,
-    updates.contextBrief ? `context brief r${updates.contextBrief.revision}` : undefined
+    updates.contextAttachments
+      ? `context r${updates.contextAttachments.revision} (${updates.contextAttachments.attachments.length} attachments)`
+      : undefined
   ].filter((part): part is string => part !== undefined).join(' + ');
 }
 

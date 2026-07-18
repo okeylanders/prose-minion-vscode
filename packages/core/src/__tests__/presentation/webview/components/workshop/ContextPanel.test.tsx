@@ -1,0 +1,106 @@
+/**
+ * @jest-environment jsdom
+ */
+
+/**
+ * ContextPanel — Sprint 12 attachment list. Behavior under test:
+ * - two-button empty state (no textarea, no Save brief),
+ * - inline add-text flow posts the note and resets,
+ * - pills render label/size, wizard origin gets the wand treatment, remove
+ *   posts the id,
+ * - the aggregate meter reflects usage and tone thresholds.
+ */
+
+import * as React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { ContextPanel } from '@components/workshop/ContextPanel';
+import { WorkshopContextAttachmentSnapshot } from '@messages';
+
+const attachment = (
+  overrides: Partial<WorkshopContextAttachmentSnapshot> = {}
+): WorkshopContextAttachmentSnapshot => ({
+  id: 'ctx-1',
+  kind: 'file',
+  origin: 'writer',
+  label: 'character-sheet-raven.md',
+  words: 1_240,
+  relativePath: 'Characters/Raven/character-sheet-raven.md',
+  addedAt: 1,
+  ...overrides
+});
+
+const renderPanel = (overrides: Partial<React.ComponentProps<typeof ContextPanel>> = {}) => {
+  const props: React.ComponentProps<typeof ContextPanel> = {
+    attachments: [],
+    pendingDelivery: false,
+    isRunning: false,
+    onAddText: jest.fn(),
+    onAddFile: jest.fn(),
+    onRemove: jest.fn(),
+    ...overrides
+  };
+  return { ...render(<ContextPanel {...props} />), props };
+};
+
+describe('ContextPanel', () => {
+  it('opens with two intent buttons and an honest zero meter', () => {
+    renderPanel();
+
+    expect(screen.getByRole('button', { name: /add text/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /add from project/i })).toBeTruthy();
+    expect(screen.queryByLabelText('Context text')).toBeNull();
+    expect(screen.getByText('0')).toBeTruthy();
+  });
+
+  it('adds a text note through the inline flow', () => {
+    const { props } = renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: /add text/i }));
+    fireEvent.change(screen.getByLabelText('Context text'), {
+      target: { value: '  Prom happens Friday.  ' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
+
+    expect(props.onAddText).toHaveBeenCalledWith('Prom happens Friday.');
+    expect(screen.queryByLabelText('Context text')).toBeNull();
+  });
+
+  it('routes the file button to the host', () => {
+    const { props } = renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: /add from project/i }));
+    expect(props.onAddFile).toHaveBeenCalled();
+  });
+
+  it('renders pills with label and size, and remove posts the id', () => {
+    const { props } = renderPanel({
+      attachments: [
+        attachment(),
+        attachment({ id: 'ctx-2', kind: 'text', origin: 'wizard', label: 'Timeline notes…', words: 412 })
+      ]
+    });
+
+    expect(screen.getByText('2 attachments')).toBeTruthy();
+    expect(screen.getByText('character-sheet-raven.md')).toBeTruthy();
+    expect(screen.getByText('412 words')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove character-sheet-raven.md' }));
+    expect(props.onRemove).toHaveBeenCalledWith('ctx-1');
+  });
+
+  it('sums the meter across attachments and warns near the cap', () => {
+    const { container } = renderPanel({
+      attachments: [
+        attachment({ words: 6_000 }),
+        attachment({ id: 'ctx-2', words: 2_000 })
+      ]
+    });
+
+    expect(screen.getByText('8,000')).toBeTruthy();
+    expect(container.querySelector('.pm-ws-meter-warn')).toBeTruthy();
+    expect(screen.getByText(/getting close to the cap/)).toBeTruthy();
+  });
+
+  it('notes pending delivery to the next host message', () => {
+    renderPanel({ attachments: [attachment()], pendingDelivery: true });
+    expect(screen.getByText('Shared with your next host message.')).toBeTruthy();
+  });
+});

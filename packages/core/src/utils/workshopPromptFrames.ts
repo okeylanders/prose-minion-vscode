@@ -1,6 +1,6 @@
 /** Encode reserved Workshop persona frame markers inside quoted content. */
 const RESERVED_PERSONA_FRAME =
-  /<\/?(?:pinned-excerpt|context-brief|writer-message|workshop-tool-evidence|workshop-host-update|workshop-todo-snapshot|writer-owned-task|workshop-capability-result|workshop-transcript|workshop-guest-catch-up|workshop-guest-handoff|prose-minion-tool-call)(?=[\s/]|>)[^>]*>/gi;
+  /<\/?(?:pinned-excerpt|context-attachments?|writer-message|workshop-tool-evidence|workshop-host-update|workshop-todo-snapshot|writer-owned-task|workshop-capability-result|workshop-transcript|workshop-guest-catch-up|workshop-guest-handoff|prose-minion-tool-call)(?=[\s/]|>)[^>]*>/gi;
 
 export function neutralizeReservedPersonaPromptDelimiters(value: string): string {
   // Global escape: the frame's [^>]* filler admits nested '<' characters, so

@@ -15,7 +15,10 @@ describe('WorkshopAnalysisSidePass', () => {
     } as unknown as jest.Mocked<AssistantToolService>;
     const session = new WorkshopSessionService(() => 3);
     const excerpt = session.setExcerpt({ text: 'The cup moves.', source: { kind: 'manual' } });
-    session.setContextBrief('Mara cannot see the cup.');
+    session.addContextAttachment({
+      kind: 'text', origin: 'writer', label: 'Mara note\u2026', words: 6,
+      content: 'Mara cannot see the cup.'
+    });
     session.beginPersonaMessage('host-turn', 'Check continuity.');
     const sidePass = new WorkshopAnalysisSidePass(
       service,

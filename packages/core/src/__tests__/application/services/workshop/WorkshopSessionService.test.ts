@@ -439,34 +439,84 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(service.getSnapshot()).toMatchObject({
       excerptVersion: 3,
       replacementCount: 2,
-      pendingHostUpdate: { excerptVersion: 3, contextBrief: false }
+      pendingHostUpdate: { excerptVersion: 3, context: false }
     });
   });
 
-  it('keeps project context across excerpt revisions and commits only the delivered generation', () => {
+  const textAttachment = (label: string, words = 10, content = 'A context note.') =>
+    service.addContextAttachment({ kind: 'text', origin: 'writer', label, words, content });
+
+  it('keeps attachments across excerpt revisions and commits only the delivered generation', () => {
     pin();
-    service.setContextBrief('A pre-conversation story brief.');
+    expect(textAttachment('Pre-conversation note\u2026').ok).toBe(true);
+    // Pre-conversation adds are visible immediately — nothing pending, no event turn.
     expect(service.collectPendingHostUpdates()).toBeUndefined();
     service.beginPersonaMessage('host-1', 'Begin.');
     service.completeRun('host-1', 'Ready.', undefined, false, 'host-conv');
 
-    service.setContextBrief('First changed brief.');
+    expect(textAttachment('First change\u2026').ok).toBe(true);
     const firstDelivery = service.collectPendingHostUpdates()!;
-    service.setContextBrief('Newest changed brief.');
+    expect(textAttachment('Second change\u2026').ok).toBe(true);
     service.commitPendingHostUpdates(firstDelivery);
-    expect(service.collectPendingHostUpdates()?.contextBrief?.text).toBe('Newest changed brief.');
+    // The newer generation stays pending and ships the FULL current list.
+    expect(service.collectPendingHostUpdates()?.contextAttachments?.attachments).toHaveLength(3);
 
     service.replaceExcerpt({ text: 'Revised text.', source: { kind: 'manual' } });
-    expect(service.getContextBrief()).toBe('Newest changed brief.');
+    expect(service.getContextAttachments()).toHaveLength(3);
     const combinedDelivery = service.collectPendingHostUpdates()!;
     expect(combinedDelivery.excerpt?.version).toBe(2);
-    expect(combinedDelivery.contextBrief?.text).toBe('Newest changed brief.');
+    expect(combinedDelivery.contextAttachments?.attachments).toHaveLength(3);
     service.commitPendingHostUpdates(combinedDelivery);
     expect(service.collectPendingHostUpdates()).toBeUndefined();
+  });
 
-    service.setContextBrief('   ');
-    expect(service.getContextBrief()).toBeUndefined();
-    expect(service.collectPendingHostUpdates()?.contextBrief).toMatchObject({ text: undefined });
+  it('enforces the aggregate budget and the duplicate-file guard (Sprint 12)', () => {
+    pin();
+    const file = (sourceUri: string, words: number) => service.addContextAttachment({
+      kind: 'file', origin: 'writer', label: 'chapter.md', words,
+      content: 'x', sourceUri, relativePath: 'chapters/chapter.md'
+    });
+
+    expect(file('file:///a.md', 6_000).ok).toBe(true);
+    expect(file('file:///a.md', 100)).toMatchObject({ ok: false, reason: 'duplicate' });
+    expect(file('file:///b.md', 5_000)).toMatchObject({
+      ok: false, reason: 'over-budget', remainingWords: 4_000
+    });
+    expect(file('file:///b.md', 4_000).ok).toBe(true);
+    expect(service.contextWordsUsed()).toBe(10_000);
+  });
+
+  it('posts event turns for mid-session changes only, and removal drops the entry', () => {
+    pin();
+    const before = textAttachment('Quiet add\u2026');
+    expect(before.ok && before.eventTurn).toBeFalsy();
+
+    service.beginPersonaMessage('host-1', 'Begin.');
+    service.completeRun('host-1', 'Ready.', undefined, false, 'host-conv');
+
+    const added = textAttachment('Loud add\u2026', 412);
+    expect(added.ok && added.eventTurn?.content).toContain('Added context: Loud add\u2026 · 412 words');
+    expect(added.ok && added.eventTurn?.artifact).toBe('context_change');
+
+    const id = service.getContextAttachments().at(-1)!.id;
+    const { removed, eventTurn } = service.removeContextAttachment(id);
+    expect(removed?.label).toBe('Loud add\u2026');
+    expect(eventTurn?.content).toContain('Removed context: Loud add\u2026');
+    expect(service.getContextAttachments().map((entry) => entry.label)).toEqual(['Quiet add\u2026']);
+    expect(service.removeContextAttachment('ctx-nope')).toEqual({});
+  });
+
+  it('keeps content and sourceUri out of the webview snapshot', () => {
+    pin();
+    service.addContextAttachment({
+      kind: 'file', origin: 'writer', label: 'chapter.md', words: 10,
+      content: 'Secret body.', sourceUri: 'file:///a.md', relativePath: 'chapters/chapter.md'
+    });
+
+    const [snapshot] = service.getSnapshot().contextAttachments;
+    expect(snapshot).toMatchObject({ kind: 'file', label: 'chapter.md', words: 10 });
+    expect(snapshot).not.toHaveProperty('content');
+    expect(snapshot).not.toHaveProperty('sourceUri');
   });
 
   it('records nested capability artifacts without replacing the active host turn', () => {
@@ -563,13 +613,15 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     adoptReport('prose', 'tool-1', 'tool-conv');
     service.beginPersonaSynthesis('host-1', service.getSnapshot().turns.at(-1)!.id);
     service.completeRun('host-1', 'It needs a turn.', undefined, false, 'host-conv');
-    service.setContextBrief('Temporary brief.');
+    service.addContextAttachment({
+      kind: 'text', origin: 'writer', label: 'Temporary\u2026', words: 2, content: 'Temporary note.'
+    });
 
     expect(service.reset().sort()).toEqual(['host-conv', 'tool-conv']);
     expect(service.getSnapshot()).toMatchObject({
       excerpt,
       turns: [],
-      contextBrief: undefined,
+      contextAttachments: [],
       pendingHostUpdate: undefined,
       replacementCount: 0,
       participants: {

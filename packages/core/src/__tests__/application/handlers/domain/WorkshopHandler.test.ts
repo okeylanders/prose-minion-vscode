@@ -128,10 +128,12 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
     expect(router.hasHandler(MessageType.WORKSHOP_SET_CHAT_TARGET)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SEND_MESSAGE)).toBe(true);
-    expect(router.hasHandler(MessageType.WORKSHOP_SET_CONTEXT_BRIEF)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_ADD_CONTEXT_TEXT)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_ADD_CONTEXT_FILE)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_TODO_ACTION)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_REREAD_EXCERPT)).toBe(true);
-    expect(router.handlerCount).toBe(15);
+    expect(router.handlerCount).toBe(17);
   });
 
   it('starts Jill directly from the composer and retains the host conversation', async () => {
@@ -301,8 +303,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       { text: 'Start host.' }
     ) as any);
     await Promise.resolve();
-    await handler.handleSetContextBrief(message(
-      MessageType.WORKSHOP_SET_CONTEXT_BRIEF,
+    await handler.handleAddContextText(message(
+      MessageType.WORKSHOP_ADD_CONTEXT_TEXT,
       { text: 'Mara is hiding her identity.' }
     ) as any);
     rejectFirst(new Error('temporary failure'));
@@ -314,7 +316,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     ) as any);
 
     const retryInput = service.startWorkshopPersonaConversation.mock.calls.at(-1)![0];
-    expect(retryInput.contextBrief).toBe('Mara is hiding her identity.');
+    expect(retryInput.contextAttachmentsFrame).toContain('Mara is hiding her identity.');
     expect(retryInput.message).toBe('Retry host.');
     expect(retryInput.message).not.toContain('<workshop-host-update>');
     expect(session.getSnapshot().pendingHostUpdate).toBeUndefined();
@@ -328,8 +330,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     ) as any);
     service.continueConversation.mockClear();
 
-    await handler.handleSetContextBrief(message(
-      MessageType.WORKSHOP_SET_CONTEXT_BRIEF,
+    await handler.handleAddContextText(message(
+      MessageType.WORKSHOP_ADD_CONTEXT_TEXT,
       { text: 'The story is a winter mystery.' }
     ) as any);
     await handler.handleSetExcerpt(message(
@@ -351,7 +353,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(service.continueConversation).not.toHaveBeenCalled();
     expect(session.getSnapshot().pendingHostUpdate).toEqual({
       excerptVersion: 3,
-      contextBrief: true
+      context: true
     });
     expect(posted(MessageType.WORKSHOP_TURN).at(-1).payload.turn).toMatchObject({
       artifact: 'excerpt_revision',
@@ -425,17 +427,17 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
     expect(session.getSnapshot().pendingHostUpdate).toEqual({
       excerptVersion: 2,
-      contextBrief: false
+      context: false
     });
     expect(session.getSnapshot().turns.some(
       (turn) => turn.content === 'partial host response'
     )).toBe(false);
   });
 
-  it('feeds the current context brief to a fresh tool pass', async () => {
+  it('feeds the current context attachments to a fresh tool pass', async () => {
     await pin();
-    await handler.handleSetContextBrief(message(
-      MessageType.WORKSHOP_SET_CONTEXT_BRIEF,
+    await handler.handleAddContextText(message(
+      MessageType.WORKSHOP_ADD_CONTEXT_TEXT,
       { text: 'Mara cannot read.' }
     ) as any);
 
@@ -448,7 +450,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       expect.anything()
     );
     expect(service.startWorkshopPersonaConversation).toHaveBeenCalledWith(
-      expect.objectContaining({ contextBrief: 'Mara cannot read.' }),
+      expect.objectContaining({
+        contextAttachmentsFrame: expect.stringContaining('Mara cannot read.')
+      }),
       expect.anything()
     );
   });
@@ -582,21 +586,19 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     );
   });
 
-  it('bounds the context brief before every tool pass', async () => {
+  it('rejects an over-budget text note at attach time — nothing over-budget reaches a tool pass', async () => {
     await pin();
-    const longBrief = Array.from({ length: 10_001 }, (_, index) => `brief${index}`).join(' ');
-    await handler.handleSetContextBrief(message(
-      MessageType.WORKSHOP_SET_CONTEXT_BRIEF,
-      { text: longBrief }
+    const longNote = Array.from({ length: 10_001 }, (_, index) => `note${index}`).join(' ');
+    await handler.handleAddContextText(message(
+      MessageType.WORKSHOP_ADD_CONTEXT_TEXT,
+      { text: longNote }
     ) as any);
 
-    await runProse();
+    expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/won.t fit/i);
+    expect(session.getContextAttachments()).toEqual([]);
 
-    const deliveredBrief = service.analyzeProse.mock.calls[0][1]!;
-    const boundedBrief = deliveredBrief.split('\n\n<workshop-actionable-findings-contract>')[0];
-    expect(boundedBrief.split(/\s+/)).toHaveLength(10_000);
-    expect(boundedBrief).toContain('brief9999');
-    expect(boundedBrief).not.toContain('brief10000');
+    await runProse();
+    expect(service.analyzeProse.mock.calls[0][1]).not.toContain('note0');
   });
 
   it('neutralizes reserved persona frames in retained host follow-ups', async () => {

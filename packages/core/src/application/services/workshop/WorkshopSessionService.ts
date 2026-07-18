@@ -11,6 +11,7 @@
 import {
   WorkshopChatTarget,
   WorkshopActionableFinding,
+  WorkshopContextAttachmentSnapshot,
   WorkshopExcerpt,
   WorkshopExcerptSource,
   WorkshopExcerptTruncation,
@@ -36,6 +37,7 @@ import {
   workshopPersonaLabel
 } from '@shared/constants/workshopPersonas';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WORKSHOP_ACTIONABLE_FINDING_BOUNDS } from './WorkshopActionableFindings';
 
 const assertNever = (value: never): never => {
@@ -98,11 +100,28 @@ interface ActiveRun {
   excerptVersion: number;
 }
 
+/**
+ * Full host-side attachment (Sprint 12): snapshot metadata plus the content
+ * that enters prompt frames. Content never crosses to the webview — the
+ * snapshot projection strips it.
+ */
+export interface WorkshopContextAttachment extends WorkshopContextAttachmentSnapshot {
+  content: string;
+  /** File kind only; host-private (used for duplicate guard + re-reads). */
+  sourceUri?: string;
+}
+
+export type WorkshopContextAttachmentInput = Omit<WorkshopContextAttachment, 'id' | 'addedAt'>;
+
+export type WorkshopContextAttachmentResult =
+  | { ok: true; attachment: WorkshopContextAttachment; eventTurn?: WorkshopTurn }
+  | { ok: false; reason: 'duplicate' | 'over-budget'; remainingWords: number };
+
 export interface WorkshopPendingHostUpdates {
   excerpt?: WorkshopExcerpt;
-  contextBrief?: {
+  contextAttachments?: {
     revision: number;
-    text?: string;
+    attachments: WorkshopContextAttachment[];
   };
 }
 
@@ -135,12 +154,13 @@ type StoredWorkshopTodoItem = Omit<WorkshopTodoItem, 'stale'>;
 /** A pure aggregate: no I/O, no vscode, and only an injectable clock. */
 export class WorkshopSessionService {
   private excerpt?: WorkshopExcerpt;
-  private contextBrief?: string;
+  private contextAttachments: WorkshopContextAttachment[] = [];
   private excerptVersion = 0;
   private replacementCount = 0;
-  private contextBriefRevision = 0;
+  private contextRevision = 0;
   private pendingRevisionVersion?: number;
-  private pendingContextBriefRevision?: number;
+  private pendingContextRevision?: number;
+  private attachmentCounter = 0;
   private turns: WorkshopTurn[] = [];
   private activeRun?: ActiveRun;
   private participants: WorkshopParticipants = this.newParticipants();
@@ -216,33 +236,84 @@ export class WorkshopSessionService {
     return this.excerpt ? cloneExcerpt(this.excerpt) : undefined;
   }
 
-  getContextBrief(): string | undefined {
-    return this.contextBrief;
+  getContextAttachments(): WorkshopContextAttachment[] {
+    return this.contextAttachments.map(cloneAttachment);
   }
 
-  setContextBrief(text: string | undefined): void {
-    const normalized = text?.trim() || undefined;
-    if (normalized === this.contextBrief) {
-      return;
+  contextWordsUsed(): number {
+    return this.contextAttachments.reduce((total, attachment) => total + attachment.words, 0);
+  }
+
+  /**
+   * Attach validated content to the ordered list (Sprint 12). The aggregate
+   * owns the invariants: one word budget across all attachments, and a
+   * duplicate guard on the canonical source for file attachments. Mid-session
+   * changes surface as a visible event turn — never a silent prompt mutation.
+   */
+  addContextAttachment(input: WorkshopContextAttachmentInput): WorkshopContextAttachmentResult {
+    const remainingWords = PROMPT_BUDGETS.contextAttachments.words - this.contextWordsUsed();
+    if (input.kind === 'file' && input.sourceUri !== undefined &&
+        this.contextAttachments.some((existing) => existing.sourceUri === input.sourceUri)) {
+      return { ok: false, reason: 'duplicate', remainingWords };
     }
-    this.contextBrief = normalized;
-    this.contextBriefRevision += 1;
-    if (this.hasHostConversation() || this.activeRun?.target === 'host') {
-      this.pendingContextBriefRevision = this.contextBriefRevision;
+    if (input.words > remainingWords) {
+      return { ok: false, reason: 'over-budget', remainingWords };
     }
+    this.attachmentCounter += 1;
+    const attachment: WorkshopContextAttachment = {
+      ...cloneAttachmentInput(input),
+      id: `ctx-${this.attachmentCounter}`,
+      addedAt: this.now()
+    };
+    this.contextAttachments.push(attachment);
+    const eventTurn = this.recordContextChange(
+      `Added context: ${attachment.label} · ${attachment.words.toLocaleString('en-US')} words`
+    );
+    return { ok: true, attachment: cloneAttachment(attachment), eventTurn };
+  }
+
+  removeContextAttachment(id: string): { removed?: WorkshopContextAttachment; eventTurn?: WorkshopTurn } {
+    const index = this.contextAttachments.findIndex((attachment) => attachment.id === id);
+    if (index === -1) {
+      return {};
+    }
+    const [removed] = this.contextAttachments.splice(index, 1);
+    const eventTurn = this.recordContextChange(`Removed context: ${removed.label}`);
+    return { removed: cloneAttachment(removed), eventTurn };
+  }
+
+  /** Bump the revision, queue host delivery, and mint the visible event turn mid-session. */
+  private recordContextChange(content: string): WorkshopTurn | undefined {
+    this.contextRevision += 1;
+    if (!this.hasHostConversation() && this.activeRun?.target !== 'host') {
+      return undefined;
+    }
+    this.pendingContextRevision = this.contextRevision;
+    const eventTurn: WorkshopTurn = {
+      id: this.nextTurnId('system'),
+      role: 'system',
+      kind: 'divider',
+      participant: 'session',
+      artifact: 'context_change',
+      excerptVersion: this.excerptVersion,
+      content,
+      timestamp: this.now()
+    };
+    this.turns.push(eventTurn);
+    return cloneTurn(eventTurn);
   }
 
   collectPendingHostUpdates(): WorkshopPendingHostUpdates | undefined {
     const excerpt = this.excerpt !== undefined && this.pendingRevisionVersion === this.excerpt.version
       ? cloneExcerpt(this.excerpt)
       : undefined;
-    const contextBrief = this.pendingContextBriefRevision !== undefined
+    const contextAttachments = this.pendingContextRevision !== undefined
       ? {
-          revision: this.pendingContextBriefRevision,
-          text: this.contextBrief
+          revision: this.pendingContextRevision,
+          attachments: this.getContextAttachments()
         }
       : undefined;
-    return excerpt || contextBrief ? { excerpt, contextBrief } : undefined;
+    return excerpt || contextAttachments ? { excerpt, contextAttachments } : undefined;
   }
 
   /** Clear only the exact update generation that a successful host turn shipped. */
@@ -250,8 +321,8 @@ export class WorkshopSessionService {
     if (delivered.excerpt?.version === this.pendingRevisionVersion) {
       this.pendingRevisionVersion = undefined;
     }
-    if (delivered.contextBrief?.revision === this.pendingContextBriefRevision) {
-      this.pendingContextBriefRevision = undefined;
+    if (delivered.contextAttachments?.revision === this.pendingContextRevision) {
+      this.pendingContextRevision = undefined;
     }
   }
 
@@ -964,7 +1035,7 @@ export class WorkshopSessionService {
       guest.liveness = 'disposed';
     }
     this.pendingRevisionVersion = undefined;
-    this.pendingContextBriefRevision = undefined;
+    this.pendingContextRevision = undefined;
     return conversationIds;
   }
 
@@ -973,7 +1044,8 @@ export class WorkshopSessionService {
     const conversationIds = this.clearAllConversations();
     this.turns = [];
     this.activeRun = undefined;
-    this.contextBrief = undefined;
+    this.contextAttachments = [];
+    this.pendingContextRevision = undefined;
     this.replacementCount = 0;
     this.selectedToolId = undefined;
     this.todos = [];
@@ -987,11 +1059,11 @@ export class WorkshopSessionService {
       excerpt: this.excerpt ? cloneExcerpt(this.excerpt) : undefined,
       excerptVersion: this.excerptVersion,
       replacementCount: this.replacementCount,
-      contextBrief: this.contextBrief,
-      pendingHostUpdate: this.pendingRevisionVersion !== undefined || this.pendingContextBriefRevision !== undefined
+      contextAttachments: this.contextAttachments.map(attachmentSnapshot),
+      pendingHostUpdate: this.pendingRevisionVersion !== undefined || this.pendingContextRevision !== undefined
         ? {
             excerptVersion: this.pendingRevisionVersion,
-            contextBrief: this.pendingContextBriefRevision !== undefined
+            context: this.pendingContextRevision !== undefined
           }
         : undefined,
       todos: this.todos.map((todo) => cloneTodo(todo, this.excerptVersion)),
@@ -1216,6 +1288,28 @@ function cloneMetadataValue(value: unknown): unknown {
     );
   }
   return value;
+}
+
+function cloneAttachmentInput(input: WorkshopContextAttachmentInput): WorkshopContextAttachmentInput {
+  return {
+    ...input,
+    configuredResource: input.configuredResource ? { ...input.configuredResource } : undefined,
+    truncation: input.truncation ? { ...input.truncation } : undefined
+  };
+}
+
+function cloneAttachment(attachment: WorkshopContextAttachment): WorkshopContextAttachment {
+  return {
+    ...attachment,
+    configuredResource: attachment.configuredResource ? { ...attachment.configuredResource } : undefined,
+    truncation: attachment.truncation ? { ...attachment.truncation } : undefined
+  };
+}
+
+/** Webview projection: everything BUT content and the host-private sourceUri. */
+function attachmentSnapshot(attachment: WorkshopContextAttachment): WorkshopContextAttachmentSnapshot {
+  const { content: _content, sourceUri: _sourceUri, ...snapshot } = cloneAttachment(attachment);
+  return snapshot;
 }
 
 function cloneExcerptSource(source: WorkshopExcerptSource): WorkshopExcerptSource {

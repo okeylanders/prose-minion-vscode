@@ -91,7 +91,16 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         pinnedAt: 1
       },
       message: 'Track it.',
-      contextBrief: 'Mara enters.'
+      contextAttachmentsFrame: [
+        '<context-attachments count="1">',
+        '<context-attachment kind="text">',
+        'Label: Mara note\u2026',
+        'Words: 2',
+        '---',
+        'Mara enters.',
+        '</context-attachment>',
+        '</context-attachments>'
+      ].join('\n')
     }, { capability: workshopCapability });
 
     expect(loadPrompts).toHaveBeenCalledWith(['workshop-personas/base.md', 'workshop-personas/quinn.md']);
@@ -101,7 +110,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       capability: workshopCapability,
       userMessage: expect.stringContaining('<pinned-excerpt>')
     }));
-    expect(engine.runInitial.mock.calls[0][0].userMessage).toContain('<context-brief>');
+    expect(engine.runInitial.mock.calls[0][0].userMessage).toContain('<context-attachments count="1">');
   });
 
   it('starts a guest with the no-capability policy and the handler-owned room envelope', async () => {

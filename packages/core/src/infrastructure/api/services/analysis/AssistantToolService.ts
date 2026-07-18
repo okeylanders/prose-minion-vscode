@@ -72,7 +72,12 @@ export interface WorkshopPersonaConversationInput {
   message: string;
   /** True only for application-built envelopes whose dynamic fields are pre-encoded. */
   messageIsTrustedEnvelope?: boolean;
-  contextBrief?: string;
+  /**
+   * Pre-assembled `<context-attachments>` frame from
+   * buildWorkshopContextAttachmentsFrame — already neutralized and within the
+   * aggregate budget; embedded verbatim (Sprint 12).
+   */
+  contextAttachmentsFrame?: string;
 }
 
 /** Inputs for the first retained exchange with an explicitly invited guest. */
@@ -587,11 +592,6 @@ export class AssistantToolService {
   private buildWorkshopPersonaUserMessage(input: WorkshopPersonaConversationInput): string {
     const trimmedExcerpt = trimToWordLimit(input.excerpt.text, PROMPT_BUDGETS.personaExcerpt.words);
     const excerpt = neutralizeReservedPersonaPromptDelimiters(trimmedExcerpt.trimmed);
-    const contextBrief = input.contextBrief?.trim()
-      ? neutralizeReservedPersonaPromptDelimiters(
-          trimToWordLimit(input.contextBrief, PROMPT_BUDGETS.contextBrief.words).trimmed
-        )
-      : undefined;
     const provenance = [
       workshopExcerptSourcePath(input.excerpt.source)
         ? `Source: ${neutralizeReservedPersonaPromptDelimiters(workshopExcerptSourcePath(input.excerpt.source)!)}`
@@ -611,7 +611,7 @@ export class AssistantToolService {
       '<pinned-excerpt>',
       excerpt,
       '</pinned-excerpt>',
-      contextBrief ? ['<context-brief>', contextBrief, '</context-brief>'].join('\n') : undefined,
+      input.contextAttachmentsFrame,
       '',
       '<writer-message>',
       input.messageIsTrustedEnvelope

@@ -156,7 +156,8 @@ export type WorkshopTurnArtifact =
   | 'resource_catalog'
   | 'resource_search'
   | 'resource_read'
-  | 'excerpt_revision';
+  | 'excerpt_revision'
+  | 'context_change';
 
 /**
  * Truncation provenance for a file-seeded excerpt: the host pinned a
@@ -298,6 +299,41 @@ export interface WorkshopExcerpt {
 /** What produced a turn: a deterministic tool run, or a free-text follow-up. */
 export type WorkshopTurnKind = 'tool_run' | 'message' | 'divider';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Context attachments (Sprint 12) — the ordered, removable list that replaced
+// the single paste-only context brief.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Who put this attachment in the list. Wizard picks render with a wand. */
+export type WorkshopContextAttachmentOrigin = 'writer' | 'wizard';
+
+/** A file attachment carries a head slice, and the UI says so durably. */
+export interface WorkshopContextAttachmentTruncation {
+  keptWords: number;
+  totalWords: number;
+}
+
+/**
+ * Display-safe attachment metadata as exposed to the webview. Content stays
+ * host-side — the pill is the inspectable artifact (label, kind, size,
+ * remove control), never a second copy of the text.
+ */
+export interface WorkshopContextAttachmentSnapshot {
+  /** Host-generated stable id; remove routes address this. */
+  id: string;
+  kind: 'text' | 'file';
+  origin: WorkshopContextAttachmentOrigin;
+  /** Display label: file basename, or the first words of a text note. */
+  label: string;
+  words: number;
+  /** Workspace-relative display path (file kind only; never absolute). */
+  relativePath?: string;
+  configuredResource?: WorkshopConfiguredResourceRef;
+  truncation?: WorkshopContextAttachmentTruncation;
+  /** Epoch ms when attached (host-stamped). */
+  addedAt: number;
+}
+
 /**
  * One completed entry in the session thread. Tool-run user turns record the
  * request ("Run Dialogue & Beats"); message user turns carry the follow-up
@@ -352,12 +388,13 @@ export interface WorkshopSessionSnapshot {
   excerptVersion: number;
   /** Number of excerpt replacements since the last new-session boundary. */
   replacementCount: number;
-  /** Context-brief reference shared with host and tools. */
-  contextBrief?: string;
+  /** Ordered context attachments shared with host and tools (Sprint 12). */
+  contextAttachments: WorkshopContextAttachmentSnapshot[];
   /** Host update waiting for the next successful retained-host turn. */
   pendingHostUpdate?: {
     excerptVersion?: number;
-    contextBrief: boolean;
+    /** True when the attachment list changed since the host last saw it. */
+    context: boolean;
   };
   /** Host-owned, defensively copied writer task list in explicit order. */
   todos: WorkshopTodoItem[];
@@ -468,14 +505,32 @@ export interface WorkshopSetExcerptMessage extends MessageEnvelope<WorkshopSetEx
   type: MessageType.WORKSHOP_SET_EXCERPT;
 }
 
-export interface WorkshopSetContextBriefPayload {
-  /** Empty or whitespace-only text clears the current brief. */
-  text?: string;
+/** Add a typed/pasted context note; the host derives the label and word count. */
+export interface WorkshopAddContextTextPayload {
+  text: string;
 }
 
-export interface WorkshopSetContextBriefMessage
-  extends MessageEnvelope<WorkshopSetContextBriefPayload> {
-  type: MessageType.WORKSHOP_SET_CONTEXT_BRIEF;
+export interface WorkshopAddContextTextMessage
+  extends MessageEnvelope<WorkshopAddContextTextPayload> {
+  type: MessageType.WORKSHOP_ADD_CONTEXT_TEXT;
+}
+
+/**
+ * Add a file attachment via the host's file picker (Sprint 12; the Context
+ * Selector modal's "Explore project folders…" escape hatch reuses this
+ * route). Zero payload — the dialog IS the input.
+ */
+export interface WorkshopAddContextFileMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.WORKSHOP_ADD_CONTEXT_FILE;
+}
+
+export interface WorkshopRemoveContextAttachmentPayload {
+  id: string;
+}
+
+export interface WorkshopRemoveContextAttachmentMessage
+  extends MessageEnvelope<WorkshopRemoveContextAttachmentPayload> {
+  type: MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT;
 }
 
 export type WorkshopTodoAction =

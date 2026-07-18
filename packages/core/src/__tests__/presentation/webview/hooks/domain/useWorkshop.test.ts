@@ -46,6 +46,7 @@ const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessio
       session: {
         excerptVersion: 0,
         replacementCount: 0,
+        contextAttachments: [],
         todos: [],
         turns,
         totalTurns: turns.length,
@@ -167,8 +168,15 @@ describe('useWorkshop', () => {
             source: { kind: 'file', sourceUri: 'file:///ch1.md', relativePath: 'ch1.md' },
             pinnedAt: 1
           },
-          contextBrief: 'Mara is hiding her identity.',
-          pendingHostUpdate: { contextBrief: true },
+          contextAttachments: [{
+            id: 'ctx-1',
+            kind: 'text' as const,
+            origin: 'writer' as const,
+            label: 'Mara note\u2026',
+            words: 6,
+            addedAt: 1
+          }],
+          pendingHostUpdate: { context: true },
           todos: [{
             id: 'todo-1',
             text: 'Fix the cup continuity.',
@@ -196,8 +204,10 @@ describe('useWorkshop', () => {
       sourceUri: 'file:///ch1.md',
       relativePath: 'ch1.md'
     });
-    expect(result.current.contextBrief).toBe('Mara is hiding her identity.');
-    expect(result.current.contextBriefPending).toBe(true);
+    expect(result.current.contextAttachments).toEqual([
+      expect.objectContaining({ id: 'ctx-1', label: 'Mara note\u2026', words: 6 })
+    ]);
+    expect(result.current.contextPending).toBe(true);
     expect(result.current.turns.map((t) => t.id)).toEqual(['t1', 't2']);
     expect(result.current.todos[0]).toMatchObject({ id: 'todo-1', status: 'open' });
     expect(result.current.isRunning).toBe(false);
@@ -422,7 +432,9 @@ describe('useWorkshop', () => {
       result.current.sendMessage('Now tighten variation two.');
       result.current.pinFromFile();
       result.current.rereadExcerpt();
-      result.current.setContextBrief('Project context.');
+      result.current.addContextText('Project context.');
+      result.current.addContextFile();
+      result.current.removeContextAttachment('ctx-1');
     });
 
     const pin = posted(MessageType.WORKSHOP_SET_EXCERPT)[0];
@@ -448,9 +460,9 @@ describe('useWorkshop', () => {
     });
     expect(posted(MessageType.WORKSHOP_PICK_EXCERPT_FILE)).toHaveLength(1);
     expect(posted(MessageType.WORKSHOP_REREAD_EXCERPT)).toHaveLength(1);
-    expect(posted(MessageType.WORKSHOP_SET_CONTEXT_BRIEF)[0].payload).toEqual({
-      text: 'Project context.'
-    });
+    expect(posted(MessageType.WORKSHOP_ADD_CONTEXT_TEXT)[0].payload).toEqual({ text: 'Project context.' });
+    expect(posted(MessageType.WORKSHOP_ADD_CONTEXT_FILE)).toHaveLength(1);
+    expect(posted(MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT)[0].payload).toEqual({ id: 'ctx-1' });
   });
 
   it('posts persona selection and direct-target changes, then restores both from a host snapshot', () => {

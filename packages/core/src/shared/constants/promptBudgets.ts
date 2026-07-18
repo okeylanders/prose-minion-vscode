@@ -9,7 +9,7 @@
 export interface PromptBudgets {
   readonly fileExcerpt: Readonly<{ words: number; bytes: number }>;
   readonly personaExcerpt: Readonly<{ words: number }>;
-  readonly contextBrief: Readonly<{ words: number }>;
+  readonly contextAttachments: Readonly<{ words: number; fileBytes: number }>;
   readonly workshopCapability: Readonly<{
     wordCharacters: number;
     contextCharacters: number;
@@ -62,7 +62,7 @@ export interface PromptBudgets {
 export const PROMPT_BUDGETS: PromptBudgets = {
   fileExcerpt: { words: 10_000, bytes: 5 * 1024 * 1024 },
   personaExcerpt: { words: 10_000 },
-  contextBrief: { words: 10_000 },
+  contextAttachments: { words: 10_000, fileBytes: 5 * 1024 * 1024 },
   workshopCapability: {
     wordCharacters: 100,
     contextCharacters: 4_000,

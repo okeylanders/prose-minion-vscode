@@ -21,10 +21,14 @@
 
 import { FileSystem, FileType, LogSink, ShellService, Workspace } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
-import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import {
+  WorkshopContextAttachmentInput,
+  WorkshopSessionService
+} from '@/application/services/workshop/WorkshopSessionService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import {
+  buildWorkshopContextAttachmentsFrame,
   buildWorkshopDirectHandoff,
   buildWorkshopGuestCatchUp,
   buildWorkshopGuestHandoff,
@@ -74,7 +78,9 @@ import {
   WorkshopDismissGuestMessage,
   WorkshopSelectPersonaMessage,
   WorkshopSetChatTargetMessage,
-  WorkshopSetContextBriefMessage,
+  WorkshopAddContextTextMessage,
+  WorkshopAddContextFileMessage,
+  WorkshopRemoveContextAttachmentMessage,
   WorkshopSetExcerptMessage,
   WorkshopTodoActionMessage,
   WorkshopSessionStateMessage,
@@ -174,9 +180,11 @@ export class WorkshopHandler {
     router.register(MessageType.WORKSHOP_SELECT_PERSONA, this.handleSelectPersona.bind(this));
     router.register(MessageType.WORKSHOP_SET_CHAT_TARGET, this.handleSetChatTarget.bind(this));
     router.register(MessageType.WORKSHOP_SET_EXCERPT, this.handleSetExcerpt.bind(this));
+    router.register(MessageType.WORKSHOP_ADD_CONTEXT_TEXT, this.handleAddContextText.bind(this));
+    router.register(MessageType.WORKSHOP_ADD_CONTEXT_FILE, this.handleAddContextFile.bind(this));
     router.register(
-      MessageType.WORKSHOP_SET_CONTEXT_BRIEF,
-      this.handleSetContextBrief.bind(this)
+      MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT,
+      this.handleRemoveContextAttachment.bind(this)
     );
     router.register(MessageType.WORKSHOP_TODO_ACTION, this.handleTodoAction.bind(this));
     router.register(MessageType.WORKSHOP_PICK_EXCERPT_FILE, this.handlePickExcerptFile.bind(this));
@@ -630,7 +638,9 @@ export class WorkshopHandler {
             personaId,
             excerpt,
             message: modelMessage,
-            contextBrief: this.session.getContextBrief()
+            contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
+              this.session.getContextAttachments()
+            )
           }, {
             signal: controller.signal,
             onToken: (token: string) => this.sendStreamChunk(requestId, token),
@@ -758,24 +768,155 @@ export class WorkshopHandler {
     this.postSessionState();
   }
 
-  async handleSetContextBrief(message: WorkshopSetContextBriefMessage): Promise<void> {
-    const rawText = message.payload?.text;
-    if (rawText !== undefined && typeof rawText !== 'string') {
-      this.sendError('workshop', 'Context brief must be text.');
+  async handleAddContextText(message: WorkshopAddContextTextMessage): Promise<void> {
+    const text = typeof message.payload?.text === 'string' ? message.payload.text.trim() : '';
+    if (text.length === 0) {
+      this.sendError('workshop', 'Cannot attach empty context text.');
       return;
     }
-    const previousBrief = this.session.getContextBrief();
-    this.session.setContextBrief(rawText);
-    const pendingHostUpdates = this.session.collectPendingHostUpdates();
-    this.outputChannel.appendLine(
-      `[WorkshopHandler] Context brief ${rawText?.trim() ? 'updated' : 'cleared'} (${rawText?.trim().length ?? 0} chars, source=${message.source})`
-    );
-    if (previousBrief !== this.session.getContextBrief() && pendingHostUpdates?.contextBrief) {
-      this.outputChannel.appendLine(
-        `[WorkshopHandler] Pending host update queued (${describeWorkshopPendingHostUpdates(pendingHostUpdates)})`
-      );
+    const words = countWords(text);
+    const label = `${text.split(/\s+/).slice(0, 3).join(' ')}\u2026`;
+    this.applyContextAttachment({
+      kind: 'text',
+      origin: 'writer',
+      label,
+      content: text,
+      words
+    });
+  }
+
+  /**
+   * "Explore project folders…" path (Sprint 12): host picker → read →
+   * head-slice to the aggregate cap → attach. The Context Selector modal's
+   * configured-resource path arrives in Phase 4.
+   */
+  async handleAddContextFile(_message: WorkshopAddContextFileMessage): Promise<void> {
+    const picked = await this.shell.pickFile({
+      title: 'Add context from file',
+      filters: { 'Text files': ['md', 'markdown', 'txt'], 'All files': ['*'] }
+    });
+    if (!picked) {
+      return;
     }
+    const displayPath = this.toDisplayPath(picked.fsPath);
+    const loaded = await this.loadContextFileFromDisk(picked.fsPath, displayPath);
+    if (!loaded) {
+      return;
+    }
+    this.applyContextAttachment({
+      kind: 'file',
+      origin: 'writer',
+      label: baseName(picked.fsPath),
+      content: loaded.text,
+      words: loaded.words,
+      sourceUri: picked.uri,
+      relativePath: displayPath,
+      truncation: loaded.truncation
+    });
+  }
+
+  async handleRemoveContextAttachment(
+    message: WorkshopRemoveContextAttachmentMessage
+  ): Promise<void> {
+    const id = message.payload?.id;
+    if (typeof id !== 'string' || id.length === 0) {
+      this.sendError('workshop', 'Context removal must identify an attachment.');
+      return;
+    }
+    const { removed, eventTurn } = this.session.removeContextAttachment(id);
+    if (!removed) {
+      this.sendError('workshop', 'That context attachment no longer exists.');
+      return;
+    }
+    if (eventTurn) {
+      this.postTurn(eventTurn);
+    }
+    this.outputChannel.appendLine(
+      `[WorkshopHandler] Context attachment removed (${removed.label}, ${removed.words} words)`
+    );
     this.postSessionState();
+  }
+
+  /** Shared attach tail: aggregate validation, event turn, logging, broadcast. */
+  private applyContextAttachment(input: WorkshopContextAttachmentInput): void {
+    const result = this.session.addContextAttachment(input);
+    if (!result.ok) {
+      if (result.reason === 'duplicate') {
+        this.sendError('workshop', `Already attached: ${input.label}`);
+      } else {
+        this.sendError(
+          'workshop',
+          `Won\u2019t fit: ${input.label} (${input.words.toLocaleString('en-US')} words) would pass the ${PROMPT_BUDGETS.contextAttachments.words.toLocaleString('en-US')}-word context budget.`,
+          `${result.remainingWords.toLocaleString('en-US')} words remain \u2014 remove an attachment to make room.`
+        );
+      }
+      return;
+    }
+    if (result.eventTurn) {
+      this.postTurn(result.eventTurn);
+    }
+    this.outputChannel.appendLine(
+      `[WorkshopHandler] Context attached (${result.attachment.kind}, ${result.attachment.label}, ${result.attachment.words} words)`
+    );
+    this.postSessionState();
+  }
+
+  /**
+   * Context-file disk pipeline: same guardrails as excerpts, but head-sliced
+   * to the AGGREGATE context budget — a single file can never carry more
+   * than the whole list is allowed to hold.
+   */
+  private async loadContextFileFromDisk(
+    fsPath: string,
+    displayPath: string
+  ): Promise<{ text: string; words: number; truncation?: { keptWords: number; totalWords: number } } | undefined> {
+    try {
+      const stat = await this.fileSystem.stat(fsPath);
+      if (stat.type !== FileType.File) {
+        this.sendError('workshop', 'The selected path is not a file.', displayPath);
+        return undefined;
+      }
+      if (stat.size > PROMPT_BUDGETS.contextAttachments.fileBytes) {
+        this.sendError(
+          'workshop',
+          `That file is too large to attach safely (max ${formatBytes(PROMPT_BUDGETS.contextAttachments.fileBytes)}).`,
+          `${displayPath} is ${formatBytes(stat.size)}`
+        );
+        return undefined;
+      }
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      this.sendError('workshop', `Could not inspect the selected file.`, `${displayPath}: ${details}`);
+      return undefined;
+    }
+
+    let content: string;
+    try {
+      content = Buffer.from(await this.fileSystem.readFile(fsPath)).toString('utf8');
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      this.sendError('workshop', `Could not read the selected file.`, `${displayPath}: ${details}`);
+      return undefined;
+    }
+
+    if (content.trim().length === 0) {
+      this.sendError('workshop', 'That file is empty \u2014 nothing to attach.', displayPath);
+      return undefined;
+    }
+
+    const totalWords = countWords(content);
+    if (totalWords > PROMPT_BUDGETS.contextAttachments.words) {
+      const trimmed = trimToWordLimit(content, PROMPT_BUDGETS.contextAttachments.words);
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Context file head-sliced: ${trimmed.trimmedWords} of ${totalWords} words (${displayPath})`
+      );
+      return {
+        text: trimmed.trimmed,
+        words: trimmed.trimmedWords,
+        truncation: { keptWords: trimmed.trimmedWords, totalWords }
+      };
+    }
+    return { text: content, words: totalWords };
   }
 
   async handleTodoAction(message: WorkshopTodoActionMessage): Promise<void> {

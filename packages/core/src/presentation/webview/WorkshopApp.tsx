@@ -41,9 +41,9 @@ import {
 import { ModelSelector } from './components/shared/ModelSelector';
 import { ExcerptPanel } from './components/workshop/ExcerptPanel';
 import {
-  ContextBriefPanel,
-  WORKSHOP_CONTEXT_BRIEF_INPUT_ID
-} from './components/workshop/ContextBriefPanel';
+  ContextPanel,
+  WORKSHOP_CONTEXT_PANEL_ID
+} from './components/workshop/ContextPanel';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopParticipantRail } from './components/workshop/WorkshopParticipantRail';
 import { ContextBudget } from './components/shared/ContextBudget';
@@ -300,13 +300,13 @@ export const WorkshopApp: React.FC = () => {
 
   const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
   const openContext = React.useCallback(() => {
-    const input = document.getElementById(WORKSHOP_CONTEXT_BRIEF_INPUT_ID) as HTMLTextAreaElement | null;
-    if (!input) {
-      showToast({ message: 'The Workshop context brief is not available right now.', icon: 'x', tone: 'error' });
+    const panel = document.getElementById(WORKSHOP_CONTEXT_PANEL_ID);
+    if (!panel) {
+      showToast({ message: 'The Workshop context panel is not available right now.', icon: 'x', tone: 'error' });
       return;
     }
-    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    input.focus();
+    panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    panel.querySelector<HTMLButtonElement>('button')?.focus();
   }, [showToast]);
   const closeToolsModal = React.useCallback(() => setToolsModalOpen(false), []);
   const selectTool = React.useCallback(
@@ -513,10 +513,13 @@ export const WorkshopApp: React.FC = () => {
               onPasteVerify={excerptVerify.requestVerify}
             />
 
-            <ContextBriefPanel
-              value={workshop.contextBrief}
-              pendingDelivery={workshop.contextBriefPending}
-              onSave={workshop.setContextBrief}
+            <ContextPanel
+              attachments={workshop.contextAttachments}
+              pendingDelivery={workshop.contextPending}
+              isRunning={workshop.isRunning}
+              onAddText={workshop.addContextText}
+              onAddFile={workshop.addContextFile}
+              onRemove={workshop.removeContextAttachment}
             />
 
             <div className="pm-ws-block pm-ws-block-grow">

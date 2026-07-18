@@ -32,6 +32,7 @@ import {
   StreamChunkMessage,
   StreamCompleteMessage,
   StreamStartedMessage,
+  WorkshopContextAttachmentSnapshot,
   WorkshopExcerpt,
   WorkshopExcerptSource,
   WorkshopChatTarget,
@@ -58,8 +59,8 @@ export interface WorkshopState {
   /** True once the first host snapshot has arrived (gate for "empty" UI). */
   sessionReady: boolean;
   excerpt: WorkshopExcerpt | null;
-  contextBrief: string;
-  contextBriefPending: boolean;
+  contextAttachments: WorkshopContextAttachmentSnapshot[];
+  contextPending: boolean;
   turns: WorkshopTurn[];
   /**
    * Turns held host-side but not present in this webview (a bounded snapshot
@@ -106,7 +107,9 @@ export interface WorkshopActions {
   pinExcerpt: (text: string, source?: WorkshopExcerptSource) => void;
   pinFromFile: () => void;
   rereadExcerpt: () => void;
-  setContextBrief: (text?: string) => void;
+  addContextText: (text: string) => void;
+  addContextFile: () => void;
+  removeContextAttachment: (id: string) => void;
   runTool: (toolId: WorkshopToolId) => void;
   quickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
   sendMessage: (text: string) => void;
@@ -146,8 +149,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
 
   const [sessionReady, setSessionReady] = React.useState(false);
   const [excerpt, setExcerpt] = React.useState<WorkshopExcerpt | null>(null);
-  const [contextBrief, setContextBriefState] = React.useState('');
-  const [contextBriefPending, setContextBriefPending] = React.useState(false);
+  const [contextAttachments, setContextAttachments] = React.useState<WorkshopContextAttachmentSnapshot[]>([]);
+  const [contextPending, setContextPending] = React.useState(false);
   const [turns, setTurns] = React.useState<WorkshopTurn[]>([]);
   const [totalTurns, setTotalTurns] = React.useState(0);
   const [hasHostConversation, setHasHostConversation] = React.useState(false);
@@ -203,8 +206,16 @@ export const useWorkshop = (): UseWorkshopReturn => {
     post(MessageType.WORKSHOP_REREAD_EXCERPT, {});
   }, [post]);
 
-  const setContextBrief = React.useCallback((text?: string) => {
-    post(MessageType.WORKSHOP_SET_CONTEXT_BRIEF, { text });
+  const addContextText = React.useCallback((text: string) => {
+    post(MessageType.WORKSHOP_ADD_CONTEXT_TEXT, { text });
+  }, [post]);
+
+  const addContextFile = React.useCallback(() => {
+    post(MessageType.WORKSHOP_ADD_CONTEXT_FILE, {});
+  }, [post]);
+
+  const removeContextAttachment = React.useCallback((id: string) => {
+    post(MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT, { id });
   }, [post]);
 
   const runTool = React.useCallback(
@@ -303,8 +314,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
       const { session } = message.payload;
       setSessionReady(true);
       setExcerpt(session.excerpt ?? null);
-      setContextBriefState(session.contextBrief ?? '');
-      setContextBriefPending(session.pendingHostUpdate?.contextBrief ?? false);
+      setContextAttachments(session.contextAttachments ?? []);
+      setContextPending(session.pendingHostUpdate?.context ?? false);
       setTotalTurns(session.totalTurns);
       setHasHostConversation(session.participants.host.hasConversation);
       setSelectedPersonaId(session.participants.host.personaId);
@@ -435,8 +446,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
     // State
     sessionReady,
     excerpt,
-    contextBrief,
-    contextBriefPending,
+    contextAttachments,
+    contextPending,
     turns,
     hiddenTurns,
     hasHostConversation,
@@ -467,7 +478,9 @@ export const useWorkshop = (): UseWorkshopReturn => {
     pinExcerpt,
     pinFromFile,
     rereadExcerpt,
-    setContextBrief,
+    addContextText,
+    addContextFile,
+    removeContextAttachment,
     runTool,
     quickAction,
     sendMessage,

@@ -1,6 +1,7 @@
 import { AnalysisResult } from '@/domain/models/AnalysisResult';
 import { LogSink } from '@/platform';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { buildWorkshopContextAttachmentsFrame } from '@/application/services/workshop/WorkshopPromptBuilder';
 import type { WorkshopToolReportCompletion } from '@/application/services/workshop/WorkshopSessionService';
 import {
   AnalysisStreamingOptions,
@@ -148,13 +149,12 @@ export class WorkshopAnalysisSidePass {
   }
 
   private buildContext(personaInstructions?: string): string | undefined {
-    const contextBrief = this.session.getContextBrief();
-    const boundedBrief = contextBrief
-      ? trimToWordLimit(contextBrief, PROMPT_BUDGETS.contextBrief.words).trimmed
-      : undefined;
+    const attachmentsFrame = buildWorkshopContextAttachmentsFrame(
+      this.session.getContextAttachments()
+    );
     const instructions = personaInstructions?.trim();
     if (!instructions) {
-      return [boundedBrief, WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION]
+      return [attachmentsFrame, WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION]
         .filter((section): section is string => !!section)
         .join('\n\n');
     }
@@ -163,7 +163,7 @@ export class WorkshopAnalysisSidePass {
       (tag) => tag.replace(/</g, '&lt;').replace(/>/g, '&gt;')
     );
     return [
-      boundedBrief,
+      attachmentsFrame,
       WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION,
       '<persona-requested-analysis-focus>',
       safeInstructions,

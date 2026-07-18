@@ -4,6 +4,7 @@ import { WorkshopSessionService } from '@/application/services/workshop/Workshop
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import {
+  buildWorkshopContextAttachmentsFrame,
   buildWorkshopDirectHandoff,
   buildWorkshopHostMessage,
   buildWorkshopHostUpdateFrame,
@@ -205,7 +206,9 @@ export class RunWorkshopToolSidePass {
             excerpt,
             message: hostMessage,
             messageIsTrustedEnvelope: true,
-            contextBrief: this.session.getContextBrief()
+            contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
+              this.session.getContextAttachments()
+            )
           }, {
             signal: controller.signal,
             onToken: (token: string) => events.streamChunk(synthesisRequestId, token),
