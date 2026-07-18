@@ -20,6 +20,30 @@ feeds, and the Intake Widgets comp (Claude Design, pulled 2026-07-17 into
 cards, the Context Selector modal, and the Context wizard (added to scope
 2026-07-17).
 
+## Sprint status (updated 2026-07-18)
+
+Implementation runs as eight phases on
+`sprint/workshop-editor-tab-12-context-excerpt-intake`. Each phase lands
+with its tests; full suite + typecheck + lint green at every commit.
+
+| Phase | Scope | Status | Key commits |
+|---|---|---|---|
+| 1 | Foundations: `WorkshopExcerptSource` union (single source of truth, coerced at IPC), selection line-range transport (`EditorContext` + `SELECTION_DATA`), `workshop_excerpt_verify` target | **Done** | `70d83d2` |
+| 2 | Excerpt panel rework: intent buttons, verified paste (exact-match gating), locked `Update text…`/`Re-read from file`, re-read no-op; + webview-panel verify fallback (adapter remembers last editor selection) and boxed action buttons | **Done** | `650a5e3`, `898e684` |
+| 3 | Context attachments replace the brief: aggregate-owned list (budget, duplicate guard, head-slice), add/remove routes, pills + meter UI, ONE `<context-attachments>` frame builder for host/update/tool delivery, mid-session `context_change` event turns | **Done** | `99d2f41` |
+| 4 | `WorkshopModalShell` (tech-debt 2026-07-10 resolved) + Context Selector modal: category browse, Names / Names+content search (client names, bounded host content search), filter pills, explore hatch; composer `+` + panel both open it; excerpt "Choose from project…" opens it in single-select mode with honest `sourceUri` (summaries carry host-only `absolutePath`) | **Done** | `9f3a06b`, `858bf46` |
+| 5 | Context wizard (scope added 2026-07-17): reuses `ContextAssistantService` under its own `workshop-context` streaming domain, one-run guard, cancellable; brief attaches FIRST, results land as wizard-tagged attachments through the standard budget path; text pills expand to readable notes | **Done** | `c1f5973`, `5eb2183` |
+| 6 | Source-aware prompt frames (host/guest/tool excerpt-source frame, provenance → canonical `{ group, path }`) + bounded composite tool catalog (source + neighbors + guides) | Pending | — |
+| 7 | Context source manifest: engine per-round instrumentation, `ConversationManager` storage beside `contextBudget`, writer-entry stamping, `sources` on `LabeledContextBudgetSnapshot`, Context Bar v2 "In context" panel | Pending | — |
+| 8 | Pin-language sweep (wire contracts included), compaction ADR draft, 06B manual UX pass, bundle verification + deltas | Pending | — |
+
+Also landed: design comps pulled to `docs/design/` (`34cb79a`), wizard folded
+into this doc (`f944646`), context budget interim bump 10k → 35k with the
+setting tracked in
+`.todo/tech-debt/2026-07-17-context-attachment-budget-setting.md` (`c0cfbe9`).
+Manual EDH verification by Okey through Phase 5: verified paste, re-read,
+attachments/meter, selector + search, wizard.
+
 ## Goal
 
 The left rail stops asking writers to understand "pinning." The excerpt and
