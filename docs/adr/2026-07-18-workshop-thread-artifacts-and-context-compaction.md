@@ -20,11 +20,25 @@ therefore an edit to OUR stored array between turns — no API support needed.
 Three kinds of prompt material, each with distinct lifecycle and framing:
 
 1. **Context-artifacts** (standing): the Sprint 12 attachment list.
-   Live in the session aggregate; serialized into the initial host message
-   and re-shipped WHOLE (full content, changed and unchanged) inside
-   `<workshop-host-update>` on the next turn after any change, with
-   supersede semantics. Removable from the standing list; historical copies
-   remain until compaction. Budgeted (aggregate word cap).
+   Live in the session aggregate; budgeted (aggregate word cap).
+   **Decided direction (2026-07-18, Okey): canonical-entry edit-in-place
+   replaces full-list supersede.** The shipped Sprint 12 behavior (re-ship
+   the WHOLE list inside `<workshop-host-update>` after any change) has an
+   absurd consequence: removing context GROWS the next prompt. Instead,
+   standing context becomes its OWN dedicated array entry near the front of
+   the conversation — one addressable region, coalesced at send time for
+   alternation-strict providers. Changes edit that entry in place: removals
+   tombstone (id/name survive), additions insert. The next user message
+   carries a small `<context-edited>` heads-up frame listing deltas
+   (names/ids only, NO content) so nothing mutates silently and the model
+   has a temporal marker for content that now appears "always present".
+   Pending semantics simplify: edits apply to the canonical entry
+   immediately (nothing ships until the next call anyway); the heads-up
+   lists deltas since the last delivered turn. Cost trade, eyes open:
+   every churn invalidates provider prompt cache from the entry forward
+   (one full-price call) in exchange for permanent window relief — the
+   right trade for prose (token-heavy files, 35k lists, window pressure,
+   provider caching varies on OpenRouter anyway).
 2. **Thread-artifacts** (one-shot, writer-added via chat): frame contract
    FIXED in Sprint 12 Phase 6 (`buildWorkshopThreadArtifactFrame`); the
    composer affordance is still unbuilt. A file/note attached to a single
@@ -93,9 +107,14 @@ guest catch-ups) and evict the dominant class first.
 
 ## Open questions for the full ADR
 
-- Delta-shipping context-artifact additions (vs. full-list supersede) —
-  removals still need full-list semantics; is a hybrid worth the model-
-  reliability risk?
+- ~~Delta-shipping context-artifact additions vs. full-list supersede~~ —
+  RESOLVED 2026-07-18 by canonical-entry edit-in-place (taxonomy item 1):
+  no re-shipping in either direction; the heads-up frame carries deltas by
+  name/id only.
+- Migration: retire the `<workshop-host-update>` context section and the
+  initial-message embedding in favor of the dedicated standing-context
+  entry + send-time coalescing; ensure ConversationManager's atomic commit
+  covers the in-place entry edit.
 - Snapshot semantics: how surgered history serializes into Sprint 10's
   `WorkshopSessionSnapshotV1`.
 - Budget interaction: do tombstoned words return to the standing budget?
