@@ -438,6 +438,7 @@ describe('useWorkshop', () => {
       result.current.requestContextCatalog();
       result.current.searchContextResources('raven');
       result.current.addContextResources([{ group: 'characters', path: 'Characters/raven.md' }]);
+      result.current.setExcerptResource({ group: 'chapters', path: 'Drafts/chapter-5.9.md' });
     });
 
     const pin = posted(MessageType.WORKSHOP_SET_EXCERPT)[0];
@@ -470,6 +471,10 @@ describe('useWorkshop', () => {
     expect(posted(MessageType.WORKSHOP_SEARCH_CONTEXT_RESOURCES)[0].payload).toEqual({ query: 'raven' });
     expect(posted(MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES)[0].payload).toEqual({
       items: [{ group: 'characters', path: 'Characters/raven.md' }]
+    });
+    expect(posted(MessageType.WORKSHOP_SET_EXCERPT_RESOURCE)[0].payload).toEqual({
+      group: 'chapters',
+      path: 'Drafts/chapter-5.9.md'
     });
   });
 

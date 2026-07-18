@@ -595,6 +595,12 @@ export interface WorkshopAddContextResourcesPayload {
   items: WorkshopConfiguredResourceRef[];
 }
 
+/** Set the excerpt from ONE configured resource picked in the modal. */
+export interface WorkshopSetExcerptResourceMessage
+  extends MessageEnvelope<WorkshopConfiguredResourceRef> {
+  type: MessageType.WORKSHOP_SET_EXCERPT_RESOURCE;
+}
+
 export interface WorkshopAddContextResourcesMessage
   extends MessageEnvelope<WorkshopAddContextResourcesPayload> {
   type: MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES;

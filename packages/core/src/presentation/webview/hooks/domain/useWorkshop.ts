@@ -123,6 +123,7 @@ export interface WorkshopActions {
   searchContextResources: (query: string) => void;
   clearContextSearch: () => void;
   addContextResources: (items: WorkshopConfiguredResourceRef[]) => void;
+  setExcerptResource: (item: WorkshopConfiguredResourceRef) => void;
   handleContextCatalog: (message: WorkshopContextCatalogMessage) => void;
   handleContextSearchResults: (message: WorkshopContextSearchResultsMessage) => void;
   runTool: (toolId: WorkshopToolId) => void;
@@ -251,6 +252,10 @@ export const useWorkshop = (): UseWorkshopReturn => {
     if (items.length > 0) {
       post(MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES, { items });
     }
+  }, [post]);
+
+  const setExcerptResource = React.useCallback((item: WorkshopConfiguredResourceRef) => {
+    post(MessageType.WORKSHOP_SET_EXCERPT_RESOURCE, item);
   }, [post]);
 
   const handleContextCatalog = React.useCallback((message: WorkshopContextCatalogMessage) => {
@@ -530,6 +535,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     searchContextResources,
     clearContextSearch,
     addContextResources,
+    setExcerptResource,
     handleContextCatalog,
     handleContextSearchResults,
     runTool,

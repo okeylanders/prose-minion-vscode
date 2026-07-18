@@ -125,6 +125,33 @@ describe('WorkshopContextSelectorModal', () => {
     expect(screen.getByRole('checkbox', { name: /Themes\/echoes\.md/ })).toBeTruthy();
   });
 
+  it('excerpt mode picks ONE file immediately and keeps attached files selectable', () => {
+    const onPickExcerpt = jest.fn();
+    const { props } = renderModal({
+      mode: 'excerpt',
+      onPickExcerpt,
+      attachments: [{
+        id: 'ctx-1',
+        kind: 'file',
+        origin: 'writer',
+        label: 'raven.md',
+        words: 200,
+        relativePath: 'Characters/raven.md',
+        configuredResource: { group: 'characters', path: 'Characters/raven.md' },
+        addedAt: 1
+      }]
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Characters/ }));
+    const row = screen.getByRole('button', { name: /Characters\/raven\.md/ });
+    expect((row as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(row);
+
+    expect(onPickExcerpt).toHaveBeenCalledWith({ group: 'characters', path: 'Characters/raven.md' });
+    expect(props.onConfirm).not.toHaveBeenCalled();
+    expect(props.onClose).toHaveBeenCalled();
+  });
+
   it('routes the explore escape hatch to the host picker and closes', () => {
     const { props } = renderModal();
     fireEvent.click(screen.getByRole('button', { name: /explore project folders/i }));

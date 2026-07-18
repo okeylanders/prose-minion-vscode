@@ -39,7 +39,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   let handler: WorkshopHandler;
   let capabilityFactory: WorkshopPersonaCapabilityFactory;
   let contextBudgets: Map<string, ContextBudgetSnapshot>;
-  let resourceFiles: Array<{ group: string; path: string; label: string; sizeBytes: number; content: string }>;
+  let resourceFiles: Array<{ group: string; path: string; label: string; sizeBytes: number; absolutePath: string; content: string }>;
   let resourceProviderFactory: { createProvider: jest.Mock };
 
   const posted = (type: MessageType) => postMessage.mock.calls
@@ -99,6 +99,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         path: 'Characters/raven.md',
         label: 'raven',
         sizeBytes: 120,
+        absolutePath: '/ws/Characters/raven.md',
         content: 'Raven is seventeen and keeps the marked token.'
       },
       {
@@ -106,6 +107,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         path: 'Themes/echoes.md',
         label: 'echoes',
         sizeBytes: 80,
+        absolutePath: '/ws/Themes/echoes.md',
         content: 'Echo: sacred breaks into terror.'
       }
     ];
@@ -162,7 +164,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_REQUEST_CONTEXT_CATALOG)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SEARCH_CONTEXT_RESOURCES)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES)).toBe(true);
-    expect(router.handlerCount).toBe(20);
+    expect(router.hasHandler(MessageType.WORKSHOP_SET_EXCERPT_RESOURCE)).toBe(true);
+    expect(router.handlerCount).toBe(21);
   });
 
   it('starts Jill directly from the composer and retains the host conversation', async () => {
@@ -1099,6 +1102,34 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   });
 
   describe('Context Selector routes (Sprint 12 Phase 4)', () => {
+    it('sets the excerpt from one configured resource with canonical provenance', async () => {
+      await handler.handleSetExcerptResource(message(
+        MessageType.WORKSHOP_SET_EXCERPT_RESOURCE,
+        { group: 'characters', path: 'Characters/raven.md' }
+      ) as any);
+
+      expect(session.getExcerpt()).toMatchObject({
+        version: 1,
+        text: 'Raven is seventeen and keeps the marked token.',
+        source: {
+          kind: 'file',
+          sourceUri: 'file:///ws/Characters/raven.md',
+          relativePath: 'Characters/raven.md',
+          configuredResource: { group: 'characters', path: 'Characters/raven.md' }
+        }
+      });
+    });
+
+    it('refuses an excerpt resource outside the configured catalog', async () => {
+      await handler.handleSetExcerptResource(message(
+        MessageType.WORKSHOP_SET_EXCERPT_RESOURCE,
+        { group: 'characters', path: 'Characters/ghost.md' }
+      ) as any);
+
+      expect(session.getExcerpt()).toBeUndefined();
+      expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/no longer in the configured catalog/i);
+    });
+
     it('posts the display-safe configured catalog', async () => {
       await handler.handleRequestContextCatalog(
         message(MessageType.WORKSHOP_REQUEST_CONTEXT_CATALOG, {}) as any

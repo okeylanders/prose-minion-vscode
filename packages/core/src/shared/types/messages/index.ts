@@ -139,6 +139,7 @@ import {
   WorkshopSearchContextResourcesMessage,
   WorkshopContextSearchResultsMessage,
   WorkshopAddContextResourcesMessage,
+  WorkshopSetExcerptResourceMessage,
   WorkshopTodoActionMessage,
   WorkshopPickExcerptFileMessage,
   WorkshopResetSessionMessage,
@@ -204,6 +205,7 @@ export type WebviewToExtensionMessage =
   | WorkshopSearchContextResourcesMessage
   | WorkshopContextSearchResultsMessage
   | WorkshopAddContextResourcesMessage
+  | WorkshopSetExcerptResourceMessage
   | WorkshopTodoActionMessage
   | WorkshopPickExcerptFileMessage
   | WorkshopResetSessionMessage

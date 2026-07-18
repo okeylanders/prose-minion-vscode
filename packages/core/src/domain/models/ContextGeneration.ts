@@ -25,6 +25,11 @@ export interface ContextResourceSummary {
   readonly label: string;
   /** Byte size observed while admitting the file to the configured catalog. */
   readonly sizeBytes: number;
+  /**
+   * HOST-SIDE ONLY. Never crosses the webview or a prompt — consumers that
+   * project summaries outward map display-safe fields explicitly.
+   */
+  readonly absolutePath: string;
   readonly workspaceFolder?: string;
 }
 

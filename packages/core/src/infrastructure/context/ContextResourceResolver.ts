@@ -72,6 +72,7 @@ export class ContextResourceResolver implements ContextResourceProviderFactory {
               path: resource.path,
               label: resource.label,
               sizeBytes: resource.sizeBytes,
+              absolutePath: resource.absolutePath,
               workspaceFolder: resource.workspaceFolder,
               content
             });
@@ -177,6 +178,7 @@ export class ContextResourceResolver implements ContextResourceProviderFactory {
       path: resource.path,
       label: resource.label,
       sizeBytes: resource.sizeBytes,
+      absolutePath: resource.absolutePath,
       workspaceFolder: resource.workspaceFolder
     };
   }

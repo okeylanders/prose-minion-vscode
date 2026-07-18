@@ -52,7 +52,7 @@ import {
 } from '@shared/constants/workshopPersonas';
 import { workshopQuickActionPrompt } from '@shared/constants/workshopQuickActions';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   MessageType,
@@ -89,6 +89,7 @@ import {
   WorkshopSearchContextResourcesMessage,
   WorkshopContextSearchResultsMessage,
   WorkshopAddContextResourcesMessage,
+  WorkshopSetExcerptResourceMessage,
   WorkshopConfiguredResourceRef,
   WorkshopSetExcerptMessage,
   WorkshopTodoActionMessage,
@@ -207,6 +208,10 @@ export class WorkshopHandler {
     router.register(
       MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES,
       this.handleAddContextResources.bind(this)
+    );
+    router.register(
+      MessageType.WORKSHOP_SET_EXCERPT_RESOURCE,
+      this.handleSetExcerptResource.bind(this)
     );
     router.register(MessageType.WORKSHOP_TODO_ACTION, this.handleTodoAction.bind(this));
     router.register(MessageType.WORKSHOP_PICK_EXCERPT_FILE, this.handlePickExcerptFile.bind(this));
@@ -995,11 +1000,97 @@ export class WorkshopHandler {
         label: baseName(item.path),
         content: text,
         words,
+        sourceUri: pathToFileURL(summary.absolutePath).toString(),
         relativePath: item.path,
         configuredResource: { group: item.group, path: item.path },
         truncation
       });
     }
+  }
+
+  /**
+   * "Choose from project…" for the EXCERPT (Sprint 12): one configured
+   * resource picked in the modal becomes the working excerpt, with canonical
+   * provenance and an honest sourceUri so Re-read from file keeps working.
+   */
+  async handleSetExcerptResource(message: WorkshopSetExcerptResourceMessage): Promise<void> {
+    if (this.activeRun) {
+      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
+      return;
+    }
+    const candidate = message.payload as { group?: unknown; path?: unknown };
+    if (
+      typeof candidate?.group !== 'string' ||
+      !isContextPathGroup(candidate.group) ||
+      typeof candidate.path !== 'string' ||
+      candidate.path.trim().length === 0
+    ) {
+      this.sendError('workshop', 'Excerpt selection must name a configured resource.');
+      return;
+    }
+    const item = { group: candidate.group, path: candidate.path };
+
+    let provider;
+    try {
+      provider = await this.resourceProviderFactory.createProvider([...DEFAULT_CONTEXT_GROUPS]);
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      this.sendError('workshop', 'Could not read the configured resource catalog.', details);
+      return;
+    }
+    const summary = provider.listResources().find(
+      (resource) => resource.group === item.group && resource.path === item.path
+    );
+    if (!summary) {
+      this.sendError('workshop', 'That resource is no longer in the configured catalog.', item.path);
+      return;
+    }
+    if (summary.sizeBytes > PROMPT_BUDGETS.fileExcerpt.bytes) {
+      this.sendError(
+        'workshop',
+        `That file is too large to pin safely (max ${formatBytes(PROMPT_BUDGETS.fileExcerpt.bytes)}).`,
+        `${item.path} is ${formatBytes(summary.sizeBytes)}`
+      );
+      return;
+    }
+
+    let content: string | undefined;
+    try {
+      content = (await provider.loadResources([summary.path]))[0]?.content;
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      this.sendError('workshop', 'Could not read the selected resource.', `${item.path}: ${details}`);
+      return;
+    }
+    if (!content || content.trim().length === 0) {
+      this.sendError('workshop', 'That resource is empty — nothing to pin.', item.path);
+      return;
+    }
+
+    let text = content;
+    let truncation: WorkshopExcerptTruncation | undefined;
+    const totalWords = countWords(content);
+    if (totalWords > PROMPT_BUDGETS.fileExcerpt.words) {
+      const trimmed = trimToWordLimit(content, PROMPT_BUDGETS.fileExcerpt.words);
+      text = trimmed.trimmed;
+      truncation = { pinnedWords: trimmed.trimmedWords, totalWords };
+    }
+
+    if (this.activeRun) {
+      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
+      return;
+    }
+    this.replaceExcerpt({
+      text,
+      source: {
+        kind: 'file',
+        sourceUri: pathToFileURL(summary.absolutePath).toString(),
+        relativePath: item.path,
+        configuredResource: item
+      },
+      truncation
+    });
+    this.postSessionState();
   }
 
   /** Shared attach tail: aggregate validation, event turn, logging, broadcast. */
