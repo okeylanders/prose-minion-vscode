@@ -423,6 +423,19 @@ const DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR = {
 } as const;
 ```
 
+The complete writer-selected object is persisted in VS Code Settings under
+`proseMinion.workshop.conversationBehavior`. Activation validates the stored
+object as one closed value and seeds the host aggregate from it, so response
+style, expression level, current-message reactivity, and the session-cue toggle
+survive extension and editor restarts. A successful modal Apply first completes
+any required retained-prompt replacement and commits the room object, then
+writes that same complete object to settings.
+
+This durable product preference is distinct from cross-session attunement
+memory. Persisting the writer's explicit toggles does not store inferred cues,
+temporary emotion, or a model-derived interaction profile; those remain
+session-scoped unless the future opt-in memory contract is implemented.
+
 The webview submits the modal draft as one closed message:
 
 ```ts
@@ -1224,21 +1237,18 @@ truth.
    authoring guide, or also feed an offline corpus evaluator?
 7. Can personal aperture be sufficiently bounded without making self-reference
    feel mechanically rationed?
-8. Should a future user preference remember the last selected behavior object
-   or only the last selected mode across new sessions, or should every new room
-   begin in the product default?
-9. Which bounded preference vocabulary and expiry rules belong in the first
+8. Which bounded preference vocabulary and expiry rules belong in the first
    session-attunement snapshot?
-10. If Living Room state supplies an unusually strong persona mood, should the
+9. If Living Room state supplies an unusually strong persona mood, should the
     UI reveal a compact state cue or keep all modulation implicit?
-11. What measured reduction in subtle-profile leakage or increase in full-profile
+10. What measured reduction in subtle-profile leakage or increase in full-profile
     quality would justify conditional overlay assembly and cache invalidation?
-12. If conditional assembly is adopted, should an expression change replace the
+11. If conditional assembly is adopted, should an expression change replace the
     retained system message immediately or apply only when the writer starts a
     new Workshop session?
-13. Should `ConversationManager` record a non-content system-prompt version or
+12. Should `ConversationManager` record a non-content system-prompt version or
     hash for diagnostics without logging the prompt itself?
-14. Should the UI expose the cache/replacement consequence of a mode change, or
+13. Should the UI expose the cache/replacement consequence of a mode change, or
     is the brief `Conversation style is updating` state sufficient?
 
 ## Decision checkpoints before implementation

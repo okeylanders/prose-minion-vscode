@@ -20,6 +20,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { useWorkshop } from '@hooks/domain/useWorkshop';
 import { MessageType } from '@shared/types';
+import { DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR } from '@messages';
 import type {
   ErrorMessage,
   StatusMessage,
@@ -59,6 +60,7 @@ const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessio
           personaGuests: [],
           chatTarget: { kind: 'host' }
         },
+        conversationBehavior: { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR },
         ...session
       }
     },
@@ -160,6 +162,24 @@ describe('useWorkshop', () => {
     const requests = posted(MessageType.WORKSHOP_REQUEST_SESSION);
     expect(requests).toHaveLength(1);
     expect(requests[0].source).toBe('webview.workshop');
+  });
+
+  it('submits one complete conversation behavior object without optimistic state', () => {
+    const { result } = renderHook(() => useWorkshop());
+    const selected = {
+      interactionMode: 'analysis' as const,
+      expressionLevel: 'subtle' as const,
+      reactToCurrentMessage: false,
+      carryCuesThroughSession: false
+    };
+
+    act(() => result.current.setConversationBehavior(selected));
+
+    expect(posted(MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR).at(-1).payload)
+      .toEqual({ behavior: selected });
+    expect(result.current.conversationBehavior).toEqual(
+      DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
+    );
   });
 
   it('posts explicit writer-owned task actions', () => {

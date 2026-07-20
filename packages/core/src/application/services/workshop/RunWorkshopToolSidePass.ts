@@ -9,6 +9,8 @@ import {
   buildWorkshopExcerptSourceFrame,
   buildWorkshopHostMessage,
   buildWorkshopHostUpdateFrame,
+  buildWorkshopInteractionFrame,
+  buildWorkshopInteractionTransitionFrame,
   buildWorkshopTodoEvidence,
   describeWorkshopPendingHostUpdates,
   buildWorkshopToolEvidence
@@ -177,13 +179,23 @@ export class RunWorkshopToolSidePass {
         usage: result.usage,
         truncated
       });
+      const behaviorMetadata = this.session.getPersonaBehaviorMetadata();
+      const behaviorFrames = {
+        interactionFrame: behaviorMetadata.behavior
+          ? buildWorkshopInteractionFrame(behaviorMetadata.behavior)
+          : undefined,
+        transitionFrame: behaviorMetadata.behaviorTransition
+          ? buildWorkshopInteractionTransitionFrame(behaviorMetadata.behaviorTransition)
+          : undefined
+      };
+      const hostConversationId = this.session.getHostConversationId();
       const hostMessage = buildWorkshopHostMessage(evidence, {
         handoff: pendingHandoff,
         todoEvidence,
         writerMessageIsTrustedEnvelope: true,
-        hostUpdate: hostUpdateFrame
+        hostUpdate: hostUpdateFrame,
+        ...(hostConversationId ? behaviorFrames : {})
       });
-      const hostConversationId = this.session.getHostConversationId();
       hostDeliveryAttempted = true;
       const hostCapability = this.capabilityFactory.create({
         requestId: synthesisRequestId,
@@ -206,7 +218,9 @@ export class RunWorkshopToolSidePass {
             personaId,
             excerpt,
             message: hostMessage,
+            interactionMode: behaviorMetadata.behavior!.interactionMode,
             messageIsTrustedEnvelope: true,
+            ...behaviorFrames,
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
               this.session.getContextAttachments()
             ),

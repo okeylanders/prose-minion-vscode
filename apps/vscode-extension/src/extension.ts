@@ -40,6 +40,8 @@ import {
   WorkshopAnalysisSidePass,
   WorkshopPersonaCapabilityFactory,
   CoreServices,
+  WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
+  coerceWorkshopConversationBehavior,
   toInclusiveLineRange,
 } from '@prose-minion/core';
 // VS Code adapters (app-local; the composition root wires them into the ports)
@@ -168,7 +170,15 @@ export function activate(context: vscode.ExtensionContext): void {
   // Workshop session aggregate (ADR 2026-07-03): one instance, owned by the
   // composition root, so the thread survives panel close/reopen and webview
   // reloads — reload-safety lives HERE, not in React state.
-  const workshopSessionService = new WorkshopSessionService();
+  const workshopSessionService = new WorkshopSessionService(
+    Date.now,
+    coerceWorkshopConversationBehavior(
+      platform.settings.get<unknown>(
+        WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.section,
+        WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.key
+      )
+    )
+  );
   const workshopAnalysisSidePass = new WorkshopAnalysisSidePass(
     assistantToolService,
     workshopSessionService,

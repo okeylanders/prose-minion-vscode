@@ -336,6 +336,44 @@
           "description": "Comma-separated glob patterns for general reference material (only .md and .txt files are used).",
           "order": 16
         },
+        "proseMinion.workshop.conversationBehavior": {
+          "type": "object",
+          "default": {
+            "interactionMode": "balanced",
+            "expressionLevel": "full",
+            "reactToCurrentMessage": true,
+            "carryCuesThroughSession": true
+          },
+          "properties": {
+            "interactionMode": {
+              "type": "string",
+              "enum": ["analysis", "balanced", "conversational"],
+              "description": "Default Workshop response style."
+            },
+            "expressionLevel": {
+              "type": "string",
+              "enum": ["subtle", "full"],
+              "description": "How audibly the selected persona expresses their authored voice."
+            },
+            "reactToCurrentMessage": {
+              "type": "boolean",
+              "description": "Allow personas to adapt delivery to observable cues in the current message."
+            },
+            "carryCuesThroughSession": {
+              "type": "boolean",
+              "description": "Allow demonstrated interaction preferences to shape later turns in the current Workshop session."
+            }
+          },
+          "required": [
+            "interactionMode",
+            "expressionLevel",
+            "reactToCurrentMessage",
+            "carryCuesThroughSession"
+          ],
+          "additionalProperties": false,
+          "description": "Durable defaults for Workshop conversation behavior. These explicit choices survive restart; inferred conversation-cue memory remains session-scoped.",
+          "order": 50
+        },
         "proseMinion.publishingStandards.preset": {
           "type": "string",
           "default": "none",

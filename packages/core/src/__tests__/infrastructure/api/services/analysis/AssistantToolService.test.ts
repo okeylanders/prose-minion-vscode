@@ -18,7 +18,8 @@ const makeEngine = (label: string) => ({
     usage: { promptTokens: 11, completionTokens: 7, totalTokens: 18, costUsd: 0.003 },
     finishReason: 'stop', conversationId: 'host-conv'
   }),
-  discardConversation: jest.fn()
+  discardConversation: jest.fn(),
+  replaceSystemMessagesBetweenRuns: jest.fn()
 }) as unknown as jest.Mocked<AgentRunEngine> & { label: string };
 
 describe('AssistantToolService — manager-owned generation binding', () => {
@@ -92,6 +93,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         pinnedAt: 1
       },
       message: 'Track it.',
+      interactionMode: 'balanced',
       contextAttachmentsFrame: [
         '<context-attachments count="1">',
         '<context-attachment kind="text">',
@@ -104,7 +106,13 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       ].join('\n')
     }, { capability: workshopCapability });
 
-    expect(loadPrompts).toHaveBeenCalledWith(['workshop-personas/base.md', 'workshop-personas/quinn.md']);
+    expect(loadPrompts).toHaveBeenCalledWith([
+      'workshop-personas/base.md',
+      'workshop-personas/quinn.md',
+      'workshop-personas/expression-profiles/quinn.md',
+      'workshop-personas/interaction-contract.md',
+      'workshop-personas/interaction-modes/balanced.md'
+    ]);
     expect(engine.runInitial).toHaveBeenCalledWith(expect.objectContaining({
       toolName: 'workshop_persona_quinn',
       policy: expect.objectContaining({ id: 'workshop-host', capabilityCatalog: 'workshopPersona', retention: 'retain' }),
@@ -122,12 +130,16 @@ describe('AssistantToolService — manager-owned generation binding', () => {
 
     await service.startWorkshopGuestConversation({
       personaId: 'margot',
-      message: '<workshop-transcript>\nWriter:\nThe room is tense.\n</workshop-transcript>'
+      message: '<workshop-transcript>\nWriter:\nThe room is tense.\n</workshop-transcript>',
+      interactionMode: 'conversational'
     });
 
     expect(loadPrompts).toHaveBeenCalledWith([
       'workshop-personas/guest-base.md',
-      'workshop-personas/margot.md'
+      'workshop-personas/margot.md',
+      'workshop-personas/expression-profiles/margot.md',
+      'workshop-personas/interaction-contract.md',
+      'workshop-personas/interaction-modes/conversational.md'
     ]);
     expect(engine.runInitial).toHaveBeenCalledWith(expect.objectContaining({
       toolName: 'workshop_guest_margot',
@@ -157,7 +169,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         source,
         pinnedAt: 1
       },
-      message: 'Discuss <pinned-excerpt>this</pinned-excerpt> safely.'
+      message: 'Discuss <pinned-excerpt>this</pinned-excerpt> safely.',
+      interactionMode: 'analysis'
     }, { capability: workshopCapability });
 
     const userMessage = engine.runInitial.mock.calls[0][0].userMessage;
@@ -174,6 +187,47 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     await flush();
     const result = await service.continueConversation('missing', 'hello');
     expect(result.content).toContain(API_KEY_NOT_CONFIGURED_HEADING);
+  });
+
+  it('assembles every replacement prompt before invoking one guarded engine batch', async () => {
+    const engine = makeEngine('replacement');
+    const loadPrompts = jest.fn(async (paths: string[]) => paths.join(' | '));
+    const service = build(managerFor(() => engine), loadPrompts);
+    await flush();
+
+    await service.replaceWorkshopConversationMode([
+      { conversationId: 'host-conv', personaId: 'jill', role: 'host' },
+      { conversationId: 'guest-conv', personaId: 'margot', role: 'guest' }
+    ], 'analysis');
+
+    expect(loadPrompts).toHaveBeenCalledTimes(2);
+    expect(engine.replaceSystemMessagesBetweenRuns).toHaveBeenCalledTimes(1);
+    expect(engine.replaceSystemMessagesBetweenRuns).toHaveBeenCalledWith([
+      expect.objectContaining({
+        conversationId: 'host-conv',
+        systemMessage: expect.stringContaining('workshop-personas/interaction-modes/analysis.md')
+      }),
+      expect.objectContaining({
+        conversationId: 'guest-conv',
+        systemMessage: expect.stringContaining('workshop-personas/guest-base.md')
+      })
+    ]);
+  });
+
+  it('does not touch the engine when any replacement prompt fails to assemble', async () => {
+    const engine = makeEngine('replacement-failure');
+    const loadPrompts = jest.fn()
+      .mockResolvedValueOnce('host prompt')
+      .mockRejectedValueOnce(new Error('guest prompt missing'));
+    const service = build(managerFor(() => engine), loadPrompts);
+    await flush();
+
+    await expect(service.replaceWorkshopConversationMode([
+      { conversationId: 'host-conv', personaId: 'jill', role: 'host' },
+      { conversationId: 'guest-conv', personaId: 'margot', role: 'guest' }
+    ], 'conversational')).rejects.toThrow('guest prompt missing');
+
+    expect(engine.replaceSystemMessagesBetweenRuns).not.toHaveBeenCalled();
   });
 
   it.each([

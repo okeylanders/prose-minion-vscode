@@ -11,7 +11,9 @@
 import {
   WorkshopChatTarget,
   WorkshopActionableFinding,
+  WorkshopConversationBehavior,
   WorkshopContextAttachmentSnapshot,
+  DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
   WorkshopExcerpt,
   WorkshopExcerptSource,
   WorkshopExcerptTruncation,
@@ -21,6 +23,7 @@ import {
   WorkshopPersonaGuestSnapshot,
   WorkshopParticipantsSnapshot,
   WorkshopSessionSnapshot,
+  WorkshopInteractionModeTransition,
   WorkshopToolId,
   WorkshopTodoItem,
   WorkshopTurn,
@@ -99,6 +102,9 @@ interface ActiveRun {
   guestPersonaId?: WorkshopPersonaId;
   reportTurnId?: string;
   excerptVersion: number;
+  /** Behavior captured when a persona run begins; settings cannot change mid-run. */
+  behavior?: WorkshopConversationBehavior;
+  behaviorTransition?: WorkshopInteractionModeTransition;
 }
 
 /**
@@ -190,8 +196,35 @@ export class WorkshopSessionService {
   private todoCounter = 0;
   /** Staleness is derived at snapshot time from immutable source provenance. */
   private todos: StoredWorkshopTodoItem[] = [];
+  private behavior: WorkshopConversationBehavior;
+  /** The mode that actually governed the latest successfully committed persona reply. */
+  private lastCommittedPersonaMode?: WorkshopConversationBehavior['interactionMode'];
 
-  constructor(private readonly now: () => number = Date.now) {}
+  constructor(
+    private readonly now: () => number = Date.now,
+    initialBehavior: WorkshopConversationBehavior = DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
+  ) {
+    this.behavior = { ...initialBehavior };
+  }
+
+  getConversationBehavior(): WorkshopConversationBehavior {
+    return { ...this.behavior };
+  }
+
+  /**
+   * Commit one complete writer-owned behavior object. Prompt replacement, run
+   * guards, and IPC validation remain application-layer concerns; the pure
+   * aggregate owns only the accepted room state and per-turn provenance.
+   */
+  setConversationBehavior(behavior: WorkshopConversationBehavior): WorkshopConversationBehavior {
+    this.behavior = { ...behavior };
+    return this.getConversationBehavior();
+  }
+
+  /** Current metadata for a persona call that has no visible writer turn (tool synthesis). */
+  getPersonaBehaviorMetadata(): Pick<WorkshopTurn, 'behavior' | 'behaviorTransition'> {
+    return this.currentPersonaBehaviorMetadata();
+  }
 
   setExcerpt(input: WorkshopExcerptInput): WorkshopExcerpt {
     this.excerptVersion += 1;
@@ -710,6 +743,7 @@ export class WorkshopSessionService {
     if (!report) {
       throw new Error(`Cannot synthesize unknown Workshop report ${reportTurnId}`);
     }
+    const behaviorMetadata = this.currentPersonaBehaviorMetadata();
     this.activeRun = {
       requestId,
       kind: 'tool_run',
@@ -718,7 +752,8 @@ export class WorkshopSessionService {
       target: 'host',
       toolId: report.toolId,
       reportTurnId,
-      excerptVersion: report.excerptVersion
+      excerptVersion: report.excerptVersion,
+      ...behaviorMetadata
     };
   }
 
@@ -816,6 +851,9 @@ export class WorkshopSessionService {
       excerptVersion: active.excerptVersion,
       actionableFindings: isHost && actionableFindings.length > 0
         ? cloneFindings(actionableFindings)
+        : undefined,
+      behavior: (isHost || isGuest) && active.behavior
+        ? { ...active.behavior }
         : undefined
     };
 
@@ -832,6 +870,9 @@ export class WorkshopSessionService {
       }
     }
     this.turns.push(turn);
+    if ((isHost || isGuest) && active.behavior) {
+      this.lastCommittedPersonaMode = active.behavior.interactionMode;
+    }
     return cloneTurn(turn);
   }
 
@@ -1150,6 +1191,7 @@ export class WorkshopSessionService {
     this.replacementCount = 0;
     this.selectedToolId = undefined;
     this.todos = [];
+    this.lastCommittedPersonaMode = undefined;
     this.participants = this.newParticipants();
     return conversationIds;
   }
@@ -1191,6 +1233,9 @@ export class WorkshopSessionService {
   ): WorkshopTurn {
     const sidecar = toolId ? this.participants.toolSidecars[toolId] : undefined;
     const guest = guestPersonaId ? this.participants.personaGuests.get(guestPersonaId) : undefined;
+    const behaviorMetadata = target === 'host' || target === 'personaGuest'
+      ? this.currentPersonaBehaviorMetadata()
+      : {};
     const turn: WorkshopTurn = {
       id: this.nextTurnId('user'),
       role: 'user',
@@ -1209,7 +1254,8 @@ export class WorkshopSessionService {
         : undefined,
       content: displayText,
       timestamp: this.now(),
-      excerptVersion: this.excerptVersion
+      excerptVersion: this.excerptVersion,
+      ...behaviorMetadata
     };
     this.turns.push(turn);
     this.activeRun = {
@@ -1227,7 +1273,8 @@ export class WorkshopSessionService {
       toolId,
       guestPersonaId,
       reportTurnId: target === 'tool' ? sidecar?.latestReportTurnId : undefined,
-      excerptVersion: this.excerptVersion
+      excerptVersion: this.excerptVersion,
+      ...behaviorMetadata
     };
     return cloneTurn(turn);
   }
@@ -1264,6 +1311,19 @@ export class WorkshopSessionService {
       throw new Error('Unknown Workshop task');
     }
     return todo;
+  }
+
+  private currentPersonaBehaviorMetadata(): Pick<WorkshopTurn, 'behavior' | 'behaviorTransition'> {
+    const behavior = this.getConversationBehavior();
+    const behaviorTransition = this.lastCommittedPersonaMode !== undefined
+      && this.lastCommittedPersonaMode !== behavior.interactionMode
+      ? {
+          from: this.lastCommittedPersonaMode,
+          to: behavior.interactionMode,
+          reason: 'writer-selected' as const
+        }
+      : undefined;
+    return { behavior, behaviorTransition };
   }
 
   private conversationIds(): string[] {
@@ -1351,6 +1411,8 @@ export class WorkshopSessionService {
 function cloneTurn(turn: WorkshopTurn): WorkshopTurn {
   return {
     ...turn,
+    behavior: turn.behavior ? { ...turn.behavior } : undefined,
+    behaviorTransition: turn.behaviorTransition ? { ...turn.behaviorTransition } : undefined,
     usage: turn.usage ? { ...turn.usage } : undefined,
     capability: turn.capability ? cloneCapabilityDetails(turn.capability) : undefined,
     actionableFindings: turn.actionableFindings

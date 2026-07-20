@@ -4,7 +4,10 @@ import {
   DEFAULT_WORKSHOP_PERSONA_ID,
   getWorkshopPersona,
   isWorkshopPersonaId,
+  WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
+  WORKSHOP_INTERACTION_MODE_PROMPT_PATHS,
   WORKSHOP_PERSONA_CATALOG,
+  workshopPersonaSystemPromptPaths,
   workshopPersonaLabel
 } from '@shared/constants/workshopPersonas';
 
@@ -34,8 +37,16 @@ describe('Workshop persona catalog and packaged prompts', () => {
   });
 
   it('uses unique, relative, contained prompt paths with non-empty curated prompt files', () => {
-    const paths = WORKSHOP_PERSONA_CATALOG.map((persona) => persona.promptPath);
-    expect(new Set(paths).size).toBe(WORKSHOP_PERSONA_CATALOG.length);
+    const foundationPaths = WORKSHOP_PERSONA_CATALOG.map((persona) => persona.promptPath);
+    const expressionPaths = WORKSHOP_PERSONA_CATALOG.map((persona) => persona.expressionProfilePath);
+    const paths = [
+      ...foundationPaths,
+      ...expressionPaths,
+      WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
+      ...Object.values(WORKSHOP_INTERACTION_MODE_PROMPT_PATHS)
+    ];
+    expect(new Set(foundationPaths).size).toBe(WORKSHOP_PERSONA_CATALOG.length);
+    expect(new Set(expressionPaths).size).toBe(WORKSHOP_PERSONA_CATALOG.length);
 
     for (const promptPath of paths) {
       expect(path.isAbsolute(promptPath)).toBe(false);
@@ -44,6 +55,32 @@ describe('Workshop persona catalog and packaged prompts', () => {
       expect(absolute.startsWith(`${PROMPTS_ROOT}${path.sep}`)).toBe(true);
       expect(fs.existsSync(absolute)).toBe(true);
       expect(fs.readFileSync(absolute, 'utf8').trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it('keeps every full-expression overlay reviewable and assembles exactly one selected mode', () => {
+    for (const persona of WORKSHOP_PERSONA_CATALOG) {
+      const expression = fs.readFileSync(
+        path.resolve(PROMPTS_ROOT, persona.expressionProfilePath),
+        'utf8'
+      );
+      expect(expression).toContain('## Your trait tensions');
+      expect(expression).toContain('## Your verbal palette');
+
+      const paths = workshopPersonaSystemPromptPaths(
+        'workshop-personas/base.md',
+        persona,
+        'conversational'
+      );
+      expect(paths).toEqual([
+        'workshop-personas/base.md',
+        persona.promptPath,
+        persona.expressionProfilePath,
+        WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
+        WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational
+      ]);
+      expect(paths).not.toContain(WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.analysis);
+      expect(paths).not.toContain(WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.balanced);
     }
   });
 

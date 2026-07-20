@@ -19,7 +19,7 @@
  * in-flight one, reset aborts, and zombie completions are refused + logged.
  */
 
-import { FileSystem, FileType, LogSink, ShellService, Workspace } from '@/platform';
+import { FileSystem, FileType, LogSink, SettingsStore, ShellService, Workspace } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 import {
@@ -39,6 +39,8 @@ import {
   buildWorkshopGuestMessage,
   buildWorkshopHostMessage,
   buildWorkshopHostUpdateFrame,
+  buildWorkshopInteractionFrame,
+  buildWorkshopInteractionTransitionFrame,
   buildWorkshopThreadArtifactFrame,
   buildWorkshopTodoEvidence,
   describeWorkshopPendingHostUpdates
@@ -103,6 +105,7 @@ import {
   WorkshopRunContextWizardMessage,
   WorkshopConfiguredResourceRef,
   WorkshopSetExcerptMessage,
+  WorkshopSetConversationBehaviorMessage,
   WorkshopTodoActionMessage,
   WorkshopSessionStateMessage,
   WorkshopToolId,
@@ -110,7 +113,9 @@ import {
   WorkshopChatTarget,
   LabeledContextBudgetSnapshot,
   WorkshopTurn,
-  WorkshopTurnMessage
+  WorkshopTurnMessage,
+  coerceWorkshopConversationBehavior,
+  WORKSHOP_CONVERSATION_BEHAVIOR_SETTING
 } from '@messages';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
@@ -146,6 +151,17 @@ const formatBytes = (bytes: number): string => {
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+const behaviorFramesFor = (
+  metadata: Pick<WorkshopTurn, 'behavior' | 'behaviorTransition'>
+): { interactionFrame?: string; transitionFrame?: string } => ({
+  interactionFrame: metadata.behavior
+    ? buildWorkshopInteractionFrame(metadata.behavior)
+    : undefined,
+  transitionFrame: metadata.behaviorTransition
+    ? buildWorkshopInteractionTransitionFrame(metadata.behaviorTransition)
+    : undefined
+});
+
 /** Optional direct-mode shortcut; explicit target state remains authoritative. */
 export const isWorkshopHostReturnShortcut = (text: string, personaLabel: string): boolean =>
   new RegExp(
@@ -180,6 +196,7 @@ export class WorkshopHandler {
     private readonly fileSystem: FileSystem,
     private readonly workspace: Workspace,
     private readonly resourceProviderFactory: ContextResourceProviderFactory,
+    private readonly settings: SettingsStore,
     private readonly outputChannel: LogSink
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
@@ -205,6 +222,10 @@ export class WorkshopHandler {
     router.register(MessageType.WORKSHOP_DISMISS_GUEST, this.handleDismissGuest.bind(this));
     router.register(MessageType.WORKSHOP_SELECT_PERSONA, this.handleSelectPersona.bind(this));
     router.register(MessageType.WORKSHOP_SET_CHAT_TARGET, this.handleSetChatTarget.bind(this));
+    router.register(
+      MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR,
+      this.handleSetConversationBehavior.bind(this)
+    );
     router.register(MessageType.WORKSHOP_SET_EXCERPT, this.handleSetExcerpt.bind(this));
     router.register(MessageType.WORKSHOP_ADD_CONTEXT_TEXT, this.handleAddContextText.bind(this));
     router.register(MessageType.WORKSHOP_ADD_CONTEXT_FILE, this.handleAddContextFile.bind(this));
@@ -312,6 +333,94 @@ export class WorkshopHandler {
     });
   }
 
+  async handleSetConversationBehavior(
+    message: WorkshopSetConversationBehaviorMessage
+  ): Promise<void> {
+    if (this.activeRun) {
+      this.sendError(
+        'workshop',
+        'A Workshop response is still running. Wait for it to finish before changing conversation behavior.'
+      );
+      this.postSessionState();
+      return;
+    }
+
+    const previous = this.session.getConversationBehavior();
+    const next = coerceWorkshopConversationBehavior(message.payload?.behavior);
+    const changed = previous.interactionMode !== next.interactionMode
+      || previous.expressionLevel !== next.expressionLevel
+      || previous.reactToCurrentMessage !== next.reactToCurrentMessage
+      || previous.carryCuesThroughSession !== next.carryCuesThroughSession;
+    if (!changed) {
+      this.postSessionState();
+      return;
+    }
+
+    try {
+      if (previous.interactionMode !== next.interactionMode) {
+        const targets: Array<{
+          conversationId: string;
+          personaId: WorkshopPersonaId;
+          role: 'host' | 'guest';
+        }> = [];
+        const hostConversationId = this.session.getHostConversationId();
+        if (hostConversationId) {
+          targets.push({
+            conversationId: hostConversationId,
+            personaId: this.session.getSelectedPersonaId(),
+            role: 'host'
+          });
+        }
+        for (const guest of this.session.getSnapshot().participants.personaGuests) {
+          const conversationId = this.session.getPersonaGuestConversationId(guest.personaId);
+          if (guest.liveness === 'live' && conversationId) {
+            targets.push({ conversationId, personaId: guest.personaId, role: 'guest' });
+          }
+        }
+        await this.assistantToolService.replaceWorkshopConversationMode(
+          targets,
+          next.interactionMode
+        );
+      }
+
+      this.session.setConversationBehavior(next);
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Conversation behavior committed ` +
+        `(mode=${next.interactionMode}, expression=${next.expressionLevel}, ` +
+        `react=${next.reactToCurrentMessage}, carry=${next.carryCuesThroughSession})`
+      );
+      try {
+        await this.settings.update(
+          WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.section,
+          WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.key,
+          next
+        );
+      } catch (error) {
+        const details = error instanceof Error ? error.message : String(error);
+        this.outputChannel.appendLine(
+          `[WorkshopHandler] Conversation behavior is active but could not be persisted: ${details}`
+        );
+        this.sendError(
+          'workshop',
+          'Conversation behavior changed for this session, but VS Code could not save it for restart.',
+          details
+        );
+      }
+      this.postSessionState();
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Conversation behavior change rejected; prior behavior retained: ${details}`
+      );
+      this.sendError(
+        'workshop',
+        'Could not change conversation behavior. The previous settings are still active.',
+        details
+      );
+      this.postSessionState();
+    }
+  }
+
   /** The one composer message: host start/continuation or explicit direct tool. */
   async handleSendMessage(message: WorkshopSendMessageMessage): Promise<void> {
     const text = typeof message.payload?.text === 'string' ? message.payload.text.trim() : '';
@@ -385,17 +494,18 @@ export class WorkshopHandler {
 
       const requestId = generateRequestId('workshop_guest_join');
       const controller = new AbortController();
-      const join = buildWorkshopGuestJoinMessage({
-        guestPersonaId: personaId,
-        excerpt,
-        hostTurns: this.session.collectHostThreadTurns(),
-        openingMessage
-      });
       const userTurn = this.session.beginPersonaGuestJoin(
         personaId,
         requestId,
         openingMessage
       );
+      const join = buildWorkshopGuestJoinMessage({
+        guestPersonaId: personaId,
+        excerpt,
+        hostTurns: this.session.collectHostThreadTurns(),
+        openingMessage,
+        ...behaviorFramesFor(userTurn)
+      });
       this.activeRun = {
         requestId,
         label: workshopPersonaLabel(personaId),
@@ -411,7 +521,8 @@ export class WorkshopHandler {
       try {
         const result = await this.assistantToolService.startWorkshopGuestConversation({
           personaId,
-          message: join.message
+          message: join.message,
+          interactionMode: userTurn.behavior!.interactionMode
         }, {
           signal: controller.signal,
           onToken: (token: string) => this.sendStreamChunk(requestId, token)
@@ -668,16 +779,19 @@ export class WorkshopHandler {
     let modelMessage: string;
     let userTurn: WorkshopTurn;
     let statusMessage: string;
+    let personaBehaviorFrames: { interactionFrame?: string; transitionFrame?: string } = {};
     switch (target.kind) {
       case 'host':
+        userTurn = this.session.beginPersonaMessage(requestId, displayText, attachmentRefs);
+        personaBehaviorFrames = behaviorFramesFor(userTurn);
         modelMessage = buildWorkshopHostMessage(text, {
           handoff,
           guestHandoff,
           todoEvidence,
           hostUpdate: hostUpdateFrame,
-          threadArtifactFrames
+          threadArtifactFrames,
+          ...(conversationId ? personaBehaviorFrames : {})
         });
-        userTurn = this.session.beginPersonaMessage(requestId, displayText, attachmentRefs);
         statusMessage = handoff
           ? `Handing ${handoff.unseenTurns} unseen direct-tool turn${handoff.unseenTurns === 1 ? '' : 's'} back to ${label}…`
           : `Streaming ${label}…`;
@@ -695,12 +809,18 @@ export class WorkshopHandler {
         statusMessage = `Continuing directly with ${label}…`;
         break;
       case 'personaGuest':
-        modelMessage = buildWorkshopGuestMessage(text, guestCatchUp, threadArtifactFrames);
         userTurn = this.session.beginPersonaGuestMessage(
           target.personaId,
           requestId,
           displayText,
           attachmentRefs
+        );
+        personaBehaviorFrames = behaviorFramesFor(userTurn);
+        modelMessage = buildWorkshopGuestMessage(
+          text,
+          guestCatchUp,
+          threadArtifactFrames,
+          personaBehaviorFrames
         );
         statusMessage = guestCatchUp
           ? `Catching ${label} up on the room…`
@@ -737,6 +857,9 @@ export class WorkshopHandler {
             personaId,
             excerpt,
             message: modelMessage,
+            interactionMode: userTurn.behavior!.interactionMode,
+            messageIsTrustedEnvelope: true,
+            ...personaBehaviorFrames,
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
               this.session.getContextAttachments()
             ),

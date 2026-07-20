@@ -5,7 +5,10 @@
 import * as React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { WorkshopComposer } from '@components/workshop/WorkshopComposer';
-import { WorkshopMessageAttachmentSnapshot } from '@messages';
+import {
+  DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
+  WorkshopMessageAttachmentSnapshot
+} from '@messages';
 
 describe('WorkshopComposer', () => {
   const renderComposer = (
@@ -17,6 +20,7 @@ describe('WorkshopComposer', () => {
       recipientLabel: 'Choreography',
       isRunning: false,
       sessionReady: true,
+      conversationBehavior: { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR },
       messageAttachments: [] as WorkshopMessageAttachmentSnapshot[],
       onSend: jest.fn(),
       onCancel: jest.fn(),
@@ -24,6 +28,7 @@ describe('WorkshopComposer', () => {
       onAttachToMessage: jest.fn(),
       onRemoveMessageAttachment: jest.fn(),
       onOpenTools: jest.fn(),
+      onOpenConversationSettings: jest.fn(),
       ...overrides
     };
     render(<WorkshopComposer {...props} />);
@@ -63,6 +68,23 @@ describe('WorkshopComposer', () => {
     expect(form && hint
       ? form.compareDocumentPosition(hint) & Node.DOCUMENT_POSITION_FOLLOWING
       : 0).toBeTruthy();
+  });
+
+  it('shows the committed room behavior beside Tools and opens its modal', () => {
+    const { onOpenConversationSettings } = renderComposer({
+      conversationBehavior: {
+        interactionMode: 'conversational',
+        expressionLevel: 'subtle',
+        reactToCurrentMessage: true,
+        carryCuesThroughSession: false
+      }
+    });
+
+    const behavior = screen.getByRole('button', { name: 'Conversation settings' });
+    expect(behavior.textContent).toContain('Converse');
+    expect(behavior.textContent).toContain('SUBTLE');
+    fireEvent.click(behavior);
+    expect(onOpenConversationSettings).toHaveBeenCalledTimes(1);
   });
 
   it('offers standing context and message attachment as two explicit menu choices (Phase 6B)', () => {

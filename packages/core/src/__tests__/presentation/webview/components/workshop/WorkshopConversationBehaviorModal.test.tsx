@@ -146,6 +146,26 @@ describe('WorkshopConversationBehaviorModal', () => {
     expect(screen.getByRole('button', { name: /Analyze/ }).getAttribute('aria-pressed')).toBe('true');
   });
 
+  it('releases a pending Apply when the host rejects the change', () => {
+    const { props, view } = renderModal();
+
+    fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply to next turn' }));
+    expect(screen.getByText('Conversation style is updating…')).not.toBeNull();
+
+    view.rerender(
+      <WorkshopConversationBehaviorModal
+        {...props}
+        errorMessage="Could not change conversation behavior."
+      />
+    );
+
+    expect(screen.queryByText('Conversation style is updating…')).toBeNull();
+    expect(
+      (screen.getByRole('button', { name: 'Apply to next turn' }) as HTMLButtonElement).disabled
+    ).toBe(false);
+  });
+
   it('Cancel discards the draft without applying; reopening reseeds from the committed object', () => {
     const { props, view } = renderModal();
 

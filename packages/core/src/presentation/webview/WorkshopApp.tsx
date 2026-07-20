@@ -768,6 +768,7 @@ export const WorkshopApp: React.FC = () => {
         open={behaviorModalOpen}
         behavior={workshop.conversationBehavior}
         isRunning={workshop.isRunning}
+        errorMessage={workshop.errorMessage}
         onApply={workshop.setConversationBehavior}
         onClose={closeBehaviorModal}
       />

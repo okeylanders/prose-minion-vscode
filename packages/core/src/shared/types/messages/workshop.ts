@@ -84,6 +84,12 @@ export const DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR: Readonly<WorkshopConversati
     carryCuesThroughSession: true
   });
 
+/** Durable host preference; inferred cue/attunement memory is intentionally separate. */
+export const WORKSHOP_CONVERSATION_BEHAVIOR_SETTING = Object.freeze({
+  section: 'proseMinion',
+  key: 'workshop.conversationBehavior'
+});
+
 /** Code-owned deterministic UI labels — never model-generated. */
 export const WORKSHOP_INTERACTION_MODE_LABELS: Readonly<Record<WorkshopInteractionMode, string>> =
   Object.freeze({
@@ -110,6 +116,15 @@ export function isWorkshopPersonaExpressionLevel(
  */
 export function coerceWorkshopConversationBehavior(raw: unknown): WorkshopConversationBehavior {
   if (typeof raw !== 'object' || raw === null) {
+    return { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR };
+  }
+  const allowedKeys = new Set([
+    'interactionMode',
+    'expressionLevel',
+    'reactToCurrentMessage',
+    'carryCuesThroughSession'
+  ]);
+  if (Object.keys(raw).some((key) => !allowedKeys.has(key))) {
     return { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR };
   }
   const candidate = raw as {

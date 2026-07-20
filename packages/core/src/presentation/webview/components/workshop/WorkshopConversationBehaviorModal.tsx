@@ -125,6 +125,8 @@ interface WorkshopConversationBehaviorModalProps {
   behavior: WorkshopConversationBehavior;
   /** A response is streaming — Apply locks; inspection stays available. */
   isRunning: boolean;
+  /** Host rejection details; a new error releases a pending Apply for retry. */
+  errorMessage?: string;
   onApply: (behavior: WorkshopConversationBehavior) => void;
   onClose: () => void;
 }
@@ -133,6 +135,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
   open,
   behavior,
   isRunning,
+  errorMessage,
   onApply,
   onClose
 }) => {
@@ -168,6 +171,12 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
       setPending(null);
     }
   }, [behavior, onClose, open, pending]);
+
+  React.useEffect(() => {
+    if (pending && errorMessage) {
+      setPending(null);
+    }
+  }, [errorMessage, pending]);
 
   const editingLocked = pending !== null;
   const applyLocked = isRunning || editingLocked;

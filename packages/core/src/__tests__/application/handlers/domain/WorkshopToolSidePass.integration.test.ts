@@ -12,6 +12,7 @@ import { MessageType } from '@messages';
 import type { LogSink } from '@/platform';
 import {
   createFakeFileSystem,
+  createFakeSettings,
   createFakeShellService,
   createFakeWorkspace
 } from '../../../mocks/platform';
@@ -82,6 +83,7 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
       createFakeFileSystem(),
       createFakeWorkspace(),
       { createProvider: jest.fn(async () => ({ listResources: () => [], loadResources: async () => [] })) } as never,
+      createFakeSettings(),
       output
     );
     await handler.handleSetExcerpt({
@@ -115,6 +117,10 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
     });
     expect(engine.runInitial.mock.calls[1][0].userMessage).toContain('verbatim engine report');
     expect(engine.runInitial.mock.calls[1][0].userMessage).toContain('<workshop-tool-evidence>');
+    expect(engine.runInitial.mock.calls[1][0].userMessage).toContain('<workshop-interaction');
+    expect(promptLoader.loadPrompts.mock.calls[1][0]).toContain(
+      'workshop-personas/interaction-modes/balanced.md'
+    );
     expect(session.getToolSidecarConversationId('prose')).toBe('engine-tool-conv');
     expect(session.getHostConversationId()).toBe('engine-host-conv');
     expect(session.getSnapshot().turns.map((turn) => turn.artifact)).toEqual([
@@ -122,5 +128,9 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
       'tool_report',
       'persona_synthesis'
     ]);
+    expect(session.getSnapshot().turns.at(-1)?.behavior).toMatchObject({
+      interactionMode: 'balanced',
+      expressionLevel: 'full'
+    });
   });
 });

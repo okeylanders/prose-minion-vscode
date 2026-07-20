@@ -109,6 +109,94 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(JSON.stringify(service.getSnapshot())).not.toContain('conversationId');
   });
 
+  it('owns a defensive room behavior object and stamps persona turns, not tool turns', () => {
+    expect(service.getConversationBehavior()).toEqual({
+      interactionMode: 'balanced',
+      expressionLevel: 'full',
+      reactToCurrentMessage: true,
+      carryCuesThroughSession: true
+    });
+    pin();
+
+    const opening = service.beginPersonaMessage('host-open', 'Start here.');
+    expect(opening.behavior).toEqual(service.getConversationBehavior());
+    expect(opening.behaviorTransition).toBeUndefined();
+    const openingReply = service.completeRun(
+      'host-open',
+      'Ready.',
+      undefined,
+      false,
+      'host-conv'
+    )!;
+    expect(openingReply.behavior).toEqual(service.getConversationBehavior());
+
+    const selected = {
+      interactionMode: 'conversational' as const,
+      expressionLevel: 'subtle' as const,
+      reactToCurrentMessage: false,
+      carryCuesThroughSession: false
+    };
+    service.setConversationBehavior(selected);
+    selected.interactionMode = 'analysis' as never;
+    expect(service.getConversationBehavior().interactionMode).toBe('conversational');
+
+    const writerTurn = service.beginPersonaMessage('host-next', 'Keep it brief.');
+    expect(writerTurn).toMatchObject({
+      behavior: { interactionMode: 'conversational', expressionLevel: 'subtle' },
+      behaviorTransition: {
+        from: 'balanced',
+        to: 'conversational',
+        reason: 'writer-selected'
+      }
+    });
+    const reply = service.completeRun('host-next', 'Yes.')!;
+    expect(reply.behavior).toMatchObject({ interactionMode: 'conversational' });
+
+    const toolTurn = service.beginToolRun('prose', 'tool-run');
+    expect(toolTurn.behavior).toBeUndefined();
+    expect(toolTurn.behaviorTransition).toBeUndefined();
+  });
+
+  it('starts from a validated remembered preference and preserves it across a new room reset', () => {
+    const remembered = new WorkshopSessionService(() => 1, {
+      interactionMode: 'analysis',
+      expressionLevel: 'subtle',
+      reactToCurrentMessage: false,
+      carryCuesThroughSession: false
+    });
+
+    expect(remembered.getConversationBehavior()).toMatchObject({
+      interactionMode: 'analysis',
+      expressionLevel: 'subtle'
+    });
+    remembered.reset();
+    expect(remembered.getConversationBehavior()).toMatchObject({
+      interactionMode: 'analysis',
+      expressionLevel: 'subtle'
+    });
+  });
+
+  it('coalesces mode selection against the last committed persona reply', () => {
+    pin();
+    service.beginPersonaMessage('host-open', 'Start.');
+    service.completeRun('host-open', 'Balanced reply.', undefined, false, 'host-conv');
+
+    service.setConversationBehavior({
+      ...service.getConversationBehavior(),
+      interactionMode: 'analysis'
+    });
+    service.setConversationBehavior({
+      ...service.getConversationBehavior(),
+      interactionMode: 'conversational'
+    });
+
+    expect(service.beginPersonaMessage('host-next', 'Final choice.').behaviorTransition).toEqual({
+      from: 'balanced',
+      to: 'conversational',
+      reason: 'writer-selected'
+    });
+  });
+
   it('owns the attributed task lifecycle without mutating the source report', () => {
     pin();
     service.beginToolRun('continuity', 'report-run');

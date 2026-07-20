@@ -299,6 +299,7 @@ export class MessageHandler {
       this.platform.fileSystem,
       this.platform.workspace,
       contextResourceProviderFactory,
+      this.platform.settings,
       outputChannel
     );
     // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)
