@@ -121,6 +121,8 @@ There will not be 36 persona-mode prompt files.
    weakening the immutable persona identity contract.
 9. Give any retained attunement state an explicit lifetime, inspection path,
    and deletion path rather than treating model reasoning as storage.
+10. Preserve a prompt-assembly seam that can later trade cache reuse for
+    stronger expression-level separation if evaluation shows a quality gain.
 
 ## Non-goals
 
@@ -132,7 +134,8 @@ There will not be 36 persona-mode prompt files.
 - Allowing persona flaws to justify cruelty, manipulation, fabrication, or
   unusable feedback.
 - Giving deterministic tools or tool sidecars conversational modes.
-- Swapping a retained conversation's system prompt when the mode changes.
+- Swapping a retained conversation's system prompt when behavior changes in
+  the initial implementation.
 - Generating a separate prompt file for every persona-mode combination.
 - Forcing preferred words into replies regardless of meaning.
 - Solving Living Room generation, Room Ledger persistence, or day-card state in
@@ -282,12 +285,22 @@ persona turns use the same current settings, interpreted through their own
 stable profiles. Per-participant settings would add state and UI without
 establishing a useful first contract.
 
-The full expression profile remains inside the immutable persona system prompt
-in both expression levels. `subtle` is a delivery instruction that reduces
-surface stylization, self-reference, metaphor saturation, and shadow-trait
-visibility. It does not remove the persona's craft jurisdiction, reasoning
-method, values, or identity. A literal on/off profile swap would either mutate
-the system prompt or create two retained identities and is therefore rejected.
+The subtle persona foundation and the full expression overlay are separate
+packaged resources. In the initial implementation both are assembled into the
+immutable persona system prompt for both expression levels. `subtle` is then a
+delivery instruction that reduces surface stylization, self-reference,
+metaphor saturation, and shadow-trait visibility. It does not remove the
+persona's craft jurisdiction, reasoning method, values, or identity.
+
+This cache-stable initial path is not assumed to be the permanent quality
+optimum. A future implementation may conditionally add or omit the full
+expression overlay according to the writer's toggle. Changing that choice for
+an active retained conversation would require rebuilding the provider
+conversation with the newly assembled system prompt, invalidating the shared
+prompt prefix/cache, and preserving only transcript state that can be replayed
+honestly. That tradeoff remains intentionally available if evaluation shows
+that frame-only suppression leaves too much full-profile influence in `subtle`
+responses or weakens `full` responses relative to conditional assembly.
 
 ## 3. Session and persistence shape
 
@@ -426,19 +439,40 @@ does not, unless an approved persona-state artifact supplied it.
 
 ## 5. Stable expression profiles
 
-The persona prompt remains the source of truth for stable identity. Extend the
-specialist authoring schema with two concise sections:
+Persona authoring uses two packaged resources per person:
+
+```text
+workshop-personas/<persona-id>.md
+workshop-personas/expression-profiles/<persona-id>.md
+```
+
+The existing persona resource is the immutable subtle foundation. It remains
+the source of truth for identity, craft jurisdiction, reasoning procedure,
+values, baseline voice, factual boundaries, and the minimum behavior required
+for the person to remain recognizable without overt stylization.
+
+The separate full-expression resource amplifies rather than replaces that
+foundation. It contains the richer trait tensions, taste biases, turn-taking
+signature, personal aperture, verbal palette, lexical saturation, and bounded
+shadow behavior that become most audible in `Full`. Its authoring schema
+includes two concise sections:
 
 ```text
 ## Your trait tensions
 ## Your verbal palette
 ```
 
-Do not create separate per-persona psychology or vocabulary files in v1.
-Keeping identity, tensions, and language together prevents drift between two
-sources claiming to describe the same person. Jill remains the documented
-schema exception and receives equivalent guidance in the shape natural to her
-existing prompt.
+This is one expression overlay per person, not separate psychology, vocabulary,
+mode, mood, and taste fragments. Keeping the amplification concerns together
+prevents another file matrix and makes the future conditional-assembly seam
+explicit. There are still no persona-by-mode prompt variants. Jill remains the
+documented base-schema exception but receives a full-expression overlay in the
+shape natural to her existing prompt.
+
+The base and overlay may not contradict each other. The base answers who the
+person is and how they reason at minimum volume; the overlay answers how much
+more of that person becomes audible when given room. Static authoring checks
+and pairwise evaluation protect this boundary.
 
 The writer-facing expression control uses `Subtle | Full`, not an identity
 on/off switch:
@@ -453,6 +487,13 @@ on/off switch:
 The internal product nickname `Personality Boost` may remain useful during
 design, but `Persona expression` is the user-facing modal label. It describes
 the actual control without suggesting that an off state would erase the person.
+
+For the initial cache-stable implementation, both resources are always included
+when the retained persona conversation is created. The active behavior frame
+selects `Subtle` or `Full`. Separating the files now is still valuable: it keeps
+the immutable foundation honest, makes full expression independently
+reviewable, and permits conditional system-prompt assembly later without first
+having to untangle the persona source.
 
 Mode and expression-level semantics stay in the shared
 `interaction-contract.md` resource. Each persona adds only brief mode
@@ -681,7 +722,8 @@ The persona system prompt is assembled once per retained persona conversation:
 
 ```text
 host base or guest base
-    + selected persona prompt
+    + selected persona foundation
+    + selected full-expression overlay (always included in initial implementation)
     + shared interaction-contract prompt
     + optional validated, session-frozen Living Room context
 ```
@@ -691,8 +733,9 @@ the existing `AgentCapability` seam beside the initial or continued user
 message. They do not move into the immutable persona system prompt as part of
 this decision.
 
-Stable expression-profile guidance remains inside the selected persona prompt.
-The interaction resource contains no persona names and no duplicated specialist
+Stable identity and subtle expression remain inside the selected persona
+foundation. Full-expression guidance lives in the matching overlay. The
+interaction resource contains no persona names and no duplicated specialist
 instructions. The active behavior frame rides each persona-directed writer
 turn. When session attunement is enabled and non-empty, a separate reserved
 extension-authored frame supplies the current validated snapshot; writer text
@@ -700,11 +743,32 @@ cannot manufacture or alter it.
 
 This preserves:
 
-- one packaged persona file per person;
+- one packaged foundation and one full-expression overlay per person;
 - one shared interaction-contract definition;
 - one immutable system prompt per retained conversation;
 - deterministic writer ownership of active conversation behavior;
 - no runtime filesystem dependency outside packaged resources.
+
+### Future conditional assembly
+
+The resource boundary is deliberately stronger than the first runtime use of
+it. If frame-controlled evaluation cannot produce sufficient separation, a
+future version may assemble:
+
+```text
+Subtle = host/guest base + persona foundation + interaction contract
+Full   = host/guest base + persona foundation + full-expression overlay
+         + interaction contract
+```
+
+This path prioritizes response quality and expectation matching over prompt
+prefix reuse. A mid-session expression change cannot silently mutate the system
+prompt of the existing provider conversation. The host must make the rebuild
+visible as an interaction-setting transition, construct a new retained
+conversation, replay only supported transcript state, and record the effective
+expression level on subsequent turns. The implementation must measure cache-hit
+loss, latency, token cost, replay fidelity, and behavioral gain before adopting
+this path.
 
 ## 11. UI direction
 
@@ -859,6 +923,10 @@ stochastic personality quality.
 
 - Prompt assembly includes the interaction-contract resource exactly once for
   hosts and guests.
+- Prompt assembly includes the selected persona foundation and its matching
+  full-expression overlay exactly once in the initial implementation.
+- Static resource checks require every persona foundation to have exactly one
+  matching full-expression overlay and reject orphaned or mismatched ids.
 - Every persona-directed writer turn includes one valid active-behavior frame.
 - Writer text cannot close or manufacture reserved behavior or attunement
   frames.
@@ -876,7 +944,7 @@ stochastic personality quality.
 - Packaged-resource and VSIX witnesses include the shared interaction-contract
   resource.
 - Static prompt-schema tests require concise trait-tension and verbal-palette
-  guidance once the specialist migration begins.
+  guidance in each full-expression overlay once the migration begins.
 
 Qualitative harnesses may calculate mode/persona recognition and lexical
 distribution, but those results are evaluation evidence rather than unit-test
@@ -886,21 +954,26 @@ truth.
 
 1. Build a small frozen evaluation corpus before changing prompts.
 2. Finalize the behavior-frame and bounded session-attunement schemas.
-3. Add the shared interaction-contract resource and prompt-assembly tests.
-4. Add the host-owned transactional behavior object, turn stamping, and modal.
-5. Run the three modes and two expression levels against Jill plus a small
+3. Split the initial evaluation personas into subtle foundations and matching
+   full-expression overlays.
+4. Add the shared interaction-contract resource and prompt-assembly tests.
+5. Add the host-owned transactional behavior object, turn stamping, and modal.
+6. Run the three modes and two expression levels against Jill plus a small
    collision-prone specialist set before migrating every persona.
-6. Add trait tensions, turn-taking signatures, personal aperture, and verbal
+7. Compare always-assembled/frame-controlled expression against conditional
+   overlay assembly on the frozen corpus, including cache reuse, latency, cost,
+   subtle-profile leakage, full-profile strength, and overall usefulness.
+8. Add trait tensions, turn-taking signatures, personal aperture, and verbal
    palettes one behavioral axis at a time; rerun pairwise evaluations after each
    pass.
-7. Expand to all specialists only after conversational mode preserves blind
+9. Expand to all specialists only after conversational mode preserves blind
    identity and craft usefulness.
-8. Validate the approved `balanced` default before release; revise the decision
-   if the frozen evaluation shows a material usefulness regression.
-9. Integrate Living Room state only after modes and stable expression profiles
-   work without it. Dynamic lore should color an established person, not rescue
-   a generic one.
-10. Implement cross-session preferences or shared room history only through
+10. Validate the approved `balanced` default before release; revise the decision
+    if the frozen evaluation shows a material usefulness regression.
+11. Integrate Living Room state only after modes and stable expression profiles
+    work without it. Dynamic lore should color an established person, not rescue
+    a generic one.
+12. Implement cross-session preferences or shared room history only through
     their explicit retention, inspection, correction, and deletion contracts.
 
 ## Consequences
@@ -926,6 +999,12 @@ truth.
 
 - The shared persona system prompt grows because all three mode meanings must be
   available inside one immutable conversation.
+- The initial cache-stable path includes the full-expression overlay even for
+  `Subtle`, so some expressive influence may leak through frame suppression.
+- A future conditional-assembly path invalidates the shared prompt prefix and
+  may increase latency, processed tokens, cost, and transcript-replay risk.
+- A foundation and overlay can drift or contradict each other if ownership is
+  not kept sharp.
 - A three-state control may imply sharper behavioral boundaries than models can
   consistently maintain.
 - Conversational mode may reduce craft usefulness or encourage self-involved
@@ -950,6 +1029,12 @@ truth.
 - Preserve explicit writer intent and product constraints above mode defaults.
 - Use sparse causal trait tensions with regulators and caricature boundaries.
 - Treat lexical palettes as probability gradients with a neutral baseline.
+- Keep identity, reasoning, and minimum recognizable voice in the foundation;
+  keep only amplification behavior in the full-expression overlay.
+- Require a one-to-one foundation/overlay resource map and review both files
+  together when persona behavior changes.
+- Decide conditional assembly from measured behavioral gain versus cache,
+  latency, cost, and replay evidence rather than assuming either path wins.
 - Evaluate persona collisions and mode collapse on a frozen corpus.
 - Roll out to a small representative persona set before changing all prompts.
 - Present reactivity and attunement as one adaptation hierarchy with explicit
@@ -983,6 +1068,11 @@ truth.
    session-attunement snapshot?
 10. If Living Room state supplies an unusually strong persona mood, should the
     UI reveal a compact state cue or keep all modulation implicit?
+11. What measured reduction in subtle-profile leakage or increase in full-profile
+    quality would justify conditional overlay assembly and cache invalidation?
+12. If conditional assembly is adopted, should an expression change rebuild the
+    retained provider conversation immediately or apply only when the writer
+    starts a new Workshop session?
 
 ## Decision checkpoints before implementation
 
@@ -991,6 +1081,8 @@ attunement boundary, and expression-profile authoring direction were approved
 on 2026-07-20. This ADR remains Draft until:
 
 - the reserved behavior-frame and session-attunement schemas are approved;
+- the subtle-foundation/full-expression-overlay authoring boundary is validated
+  on the initial persona set;
 - the trait-tension and verbal-palette copy is tested on the initial personas;
 - the first evaluation persona set and frozen scenarios are selected;
 - the interaction with Sprint 10 or a later persisted schema is scheduled
