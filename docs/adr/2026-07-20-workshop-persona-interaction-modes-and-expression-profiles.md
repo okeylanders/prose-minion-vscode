@@ -1,12 +1,14 @@
 # ADR: Workshop Persona Interaction Modes and Expression Profiles
 
-- **Status:** Draft — architecture, defaults, and UI direction accepted
-  2026-07-20; implementation is not part of Sprint 12 or Sprint 10 until
-  promoted into an explicit sprint
+- **Status:** Draft — architecture, defaults, UI direction, and the guarded
+  between-run system-message replacement boundary accepted 2026-07-20;
+  implementation is not part of Sprint 12 or Sprint 10 until promoted into an
+  explicit sprint
 - **Date:** 2026-07-20
 - **Deciders:** Okey Landers, Ada Forge
 - **Related:**
   - [Workshop Persona-Hosted Conversations](2026-07-09-workshop-persona-hosted-conversations.md)
+    — Section 2 refines its lifetime-wide system-prompt immutability rule
   - [Workshop Excerpt Revision and Room Memory](2026-07-11-workshop-excerpt-revision-and-room-memory.md)
   - [Workshop Guest Persona Sidecars](2026-07-11-workshop-guest-persona-sidecars.md)
   - [Workshop Session Persistence](2026-07-14-workshop-session-persistence.md)
@@ -95,9 +97,11 @@ The layers have different ownership and lifetimes:
 | Cross-session preferences | Writer | Future, explicit opt-in only | Yes; inspectable and deletable |
 | Living Room/persona state | Validated product context | Frozen session snapshot | Only in a new session snapshot |
 
-Interaction modes are defined once in a shared prompt resource. They are not
-forked into persona-specific prompt files. Each persona prompt describes only
-how that stable person naturally inflects the shared modes.
+Each interaction mode is defined once in its own shared prompt resource. The
+selected mode resource is concatenated into the system prompt independently of
+persona identity. Modes are not forked into persona-specific prompt files. Each
+persona prompt describes only how that stable person naturally inflects the
+shared modes.
 
 The design deliberately avoids a twelve-persona by three-mode prompt matrix.
 There will not be 36 persona-mode prompt files.
@@ -123,6 +127,8 @@ There will not be 36 persona-mode prompt files.
    and deletion path rather than treating model reasoning as storage.
 10. Preserve a prompt-assembly seam that can later trade cache reuse for
     stronger expression-level separation if evaluation shows a quality gain.
+11. Give the selected interaction mode system-prompt priority while preserving
+    trusted historical frames that explain mode changes across a retained chat.
 
 ## Non-goals
 
@@ -134,8 +140,9 @@ There will not be 36 persona-mode prompt files.
 - Allowing persona flaws to justify cruelty, manipulation, fabrication, or
   unusable feedback.
 - Giving deterministic tools or tool sidecars conversational modes.
-- Swapping a retained conversation's system prompt when behavior changes in
-  the initial implementation.
+- Replacing a retained system message during an active run.
+- Replacing system messages for frame-only expression, reactivity, or
+  attunement changes in the initial implementation.
 - Generating a separate prompt file for every persona-mode combination.
 - Forcing preferred words into replies regardless of meaning.
 - Solving Living Room generation, Room Ledger persistence, or day-card state in
@@ -235,22 +242,40 @@ The mode supplies a default posture, not a content firewall.
 - A host's synthesis of a completed tool report uses the active persona mode;
   the verbatim tool artifact never does.
 
-## 2. Conversation-behavior changes do not mutate system prompts
+## 2. Mode changes replace retained system messages between runs
 
-The accepted persona architecture forbids changing the system prompt of a
-retained conversation. Interaction mode, expression level, and reactivity
-changes must preserve that invariant.
+The selected interaction mode belongs at system-prompt priority because it is a
+foundational response contract, not merely a turn-level tone hint. This decision
+qualifies the earlier persona-hosted conversation invariant that treated a
+retained conversation's system prompt as immutable for its entire lifetime.
 
-Add one shared resource, provisionally:
+The actual retained conversation is extension-owned state in
+`ConversationManager`: a local id maps to a message array whose first entry is
+the system message. OpenRouter receives the current array on each inference.
+The necessary invariant is therefore narrower and more honest:
+
+> A retained system message may be replaced atomically between runs. It must
+> never change while a run is reading or committing that conversation.
+
+Use one shared invariant resource and three separate mode resources:
 
 ```text
 packages/core/resources/system-prompts/workshop-personas/interaction-contract.md
+packages/core/resources/system-prompts/workshop-personas/interaction-modes/analysis.md
+packages/core/resources/system-prompts/workshop-personas/interaction-modes/balanced.md
+packages/core/resources/system-prompts/workshop-personas/interaction-modes/conversational.md
 ```
 
-That resource defines all three modes, expression-level semantics, reactivity
-and attunement boundaries, their precedence, and the invariant product
-constraints. It is assembled once into every persona host or guest system
-prompt beside the existing base/guest contract and the selected persona file.
+`interaction-contract.md` defines precedence, explicit-writer-intent rules,
+expression-level semantics, reactivity and attunement boundaries, historical
+frame interpretation, and invariant product constraints. It does not contain
+the full definitions of all three response styles. Exactly one selected mode
+resource is concatenated into each persona host or guest system prompt.
+
+Mode resources contain no persona names or specialist instructions. This adds
+three shared prompts, not a persona-by-mode matrix. Jill, Quinn, and every other
+persona consume the same selected mode contract through their own identity and
+expression resources.
 
 Every persona-targeted writer turn carries a small extension-authored frame:
 
@@ -263,22 +288,84 @@ Every persona-targeted writer turn carries a small extension-authored frame:
 />
 ```
 
-The frame contains closed, validated values only. The system prompt owns their
-meaning. The frame is reserved in the Workshop delimiter neutralizer, cannot be
-supplied by writer text, and is included on every applicable turn so effective
-behavior is explicit rather than inferred from old conversation history.
+The frame contains closed, validated values only. It is reserved in the
+Workshop delimiter neutralizer, cannot be supplied by writer text, and is
+included on every applicable turn. Historical frames remain attached to their
+committed writer turns while history is retained or reconstructed after restore.
+They explain why an earlier persona reply may use a different response style
+even though that earlier mode resource is no longer present in the current
+system prompt.
 
-Conversation-behavior changes:
+When the writer changes modes, add a trusted transition frame before the next
+persona-directed writer message:
 
-- are accepted only between active runs;
-- update host-owned session state;
-- do not trigger a model call by themselves;
-- do not clear, fork, or recreate a retained conversation;
-- apply to the next host or guest turn;
-- do not alter tool-sidecar prompts or behavior;
-- are applied atomically from the modal rather than field by field; and
-- leave the active mode visible near the composer so the current posture is
-  never hidden.
+```xml
+<workshop-interaction-transition
+  from="balanced"
+  to="conversational"
+  reason="writer-selected"
+/>
+```
+
+The transition is extension-authored metadata, not writer prose and not a
+standalone model call. It tells the model that variation in the retained chat
+is an intentional contract change rather than persona drift. The ordinary
+active behavior frame remains present on the same turn and is authoritative
+for that turn.
+
+If the writer changes modes more than once before sending another persona turn,
+coalesce the pending transition from the mode that governed the last committed
+persona reply to the final selected mode. A mode that never governed a model
+turn does not become fictional transcript history.
+
+A mode change:
+
+- is accepted only between active runs;
+- assembles replacement system prompts containing the newly selected mode
+  resource for the host and every live persona guest;
+- validates all affected conversation ids and replacement prompts before
+  mutation;
+- replaces only the first system message of each affected persona conversation
+  as one synchronous batch;
+- preserves the same conversation ids, committed non-system history, pinned
+  state, and monotonic artifact numbering;
+- clears each affected provider-measured context-budget snapshot because it was
+  measured against the previous system prompt;
+- commits the room behavior object only after prompt assembly and batch
+  validation succeed;
+- does not trigger a model completion by itself;
+- does not replace or alter deterministic tool-sidecar system messages;
+- leaves historical behavior frames in place so earlier response-style changes
+  remain legible even though only the current mode has system-prompt priority;
+  and
+- applies to the next host or guest turn while leaving the active mode visible
+  near the composer.
+
+Add a narrow atomic primitive to `ConversationManager`, provisionally:
+
+```ts
+interface ConversationSystemMessageReplacement {
+  conversationId: string;
+  systemMessage: string;
+}
+
+replaceSystemMessages(
+  replacements: readonly ConversationSystemMessageReplacement[]
+): void;
+```
+
+The method rejects duplicate ids, missing conversations, blank replacements,
+and any conversation whose first message is not the sole leading system entry.
+It validates the complete batch before changing any conversation. Replacement
+uses a new message array rather than mutating the previous system-message
+object. It updates `lastActivity`, clears `contextBudget`, and preserves all
+other conversation metadata.
+
+`AgentRunEngine` exposes a guarded wrapper that rejects replacement for an
+active conversation. `AssistantToolService`, which already owns Workshop prompt
+assembly, prepares the host/guest replacement prompts and invokes the batch.
+`WorkshopHandler` coordinates the room-level behavior change through that seam;
+it does not receive `ConversationManager` or mutate message arrays directly.
 
 The behavior settings are room-level writer preferences in v1. Host and guest
 persona turns use the same current settings, interpreted through their own
@@ -287,20 +374,28 @@ establishing a useful first contract.
 
 The subtle persona foundation and the full expression overlay are separate
 packaged resources. In the initial implementation both are assembled into the
-immutable persona system prompt for both expression levels. `subtle` is then a
+current persona system message for both expression levels. `subtle` is then a
 delivery instruction that reduces surface stylization, self-reference,
 metaphor saturation, and shadow-trait visibility. It does not remove the
 persona's craft jurisdiction, reasoning method, values, or identity.
 
-This cache-stable initial path is not assumed to be the permanent quality
+The expression-level path is cache-stable in the initial implementation, but
+the mode path intentionally is not: switching mode changes the system-prompt
+suffix in the retained persona conversations. Prefix caching may still reuse
+the common host/persona/interaction prefix and subsequent turns within the same
+mode, but the design does not promise a cache hit across a mode change. Keeping
+the same local conversation id does not preserve a provider cache entry whose
+prompt prefix changed.
+
+The cache-stable expression path is not assumed to be the permanent quality
 optimum. A future implementation may conditionally add or omit the full
 expression overlay according to the writer's toggle. Changing that choice for
-an active retained conversation would require rebuilding the provider
-conversation with the newly assembled system prompt, invalidating the shared
-prompt prefix/cache, and preserving only transcript state that can be replayed
-honestly. That tradeoff remains intentionally available if evaluation shows
-that frame-only suppression leaves too much full-profile influence in `subtle`
-responses or weakens `full` responses relative to conditional assembly.
+an active retained conversation could use the same guarded system-message
+replacement seam, invalidating the changed prompt prefix/cache while preserving
+the local handle and committed history. That tradeoff remains intentionally
+available if evaluation shows that frame-only suppression leaves too much
+full-profile influence in `subtle` responses or weakens `full` responses
+relative to conditional assembly.
 
 ## 3. Session and persistence shape
 
@@ -342,10 +437,24 @@ unknown, or absent data fails safely to the complete approved default at
 IPC/hydration boundaries; the host never constructs a partially defaulted
 combination whose behavior was not designed.
 
+If the validated draft changes `interactionMode`, the application service first
+assembles and validates the host/guest system-message batch described in
+Section 2. It replaces the messages and commits the new behavior object without
+changing any conversation id. A failure leaves the prior object and all system
+messages active. Changes limited to expression level, current-turn reactivity,
+or session attunement remain frame-controlled in the initial implementation and
+do not replace system messages.
+
 The effective behavior is stamped onto persona-directed writer turns and their
 corresponding persona replies. This makes a restored transcript honest when the
 writer changed settings during the session. The live session snapshot also
 exposes the current object for the composer control and modal.
+
+Mode-transition metadata is persisted with the next committed writer turn, not
+as a synthetic visible chat message. The retained message history and the
+extension-owned turn ledger keep their trusted frames; orchestration
+conversation ids remain ephemeral across persisted session restore even though
+an in-memory mode change preserves them.
 
 If `carryCuesThroughSession` is enabled, the host may maintain a compact,
 structured attunement snapshot for the current Workshop session. Turning the
@@ -407,9 +516,9 @@ interaction preferences that help later turns feel continuous, such as:
 - a correction to how the persona has been addressing or interpreting them;
 - a short-lived conversational need, with provenance and expiry.
 
-This state belongs to the extension, not to hidden model reasoning. A retained
-provider conversation and its private thinking are neither durable nor
-inspectable product storage. Whether a candidate update is extracted
+This state belongs to the extension, not to hidden model reasoning. Retained
+orchestration history and provider-private thinking are neither durable nor
+inspectable as product storage. Whether a candidate update is extracted
 deterministically or proposed by a model, the host validates the bounded shape,
 owns its lifetime, supplies it explicitly on later turns, and can clear it.
 
@@ -718,34 +827,41 @@ These are design sketches, not final prompt copy.
 
 ## 10. Prompt assembly
 
-The persona system prompt is assembled once per retained persona conversation:
+The persona system message is assembled when a retained persona conversation is
+created and reassembled when a selected system-level control changes:
 
 ```text
 host base or guest base
     + selected persona foundation
     + selected full-expression overlay (always included in initial implementation)
     + shared interaction-contract prompt
+    + exactly one selected interaction-mode prompt
     + optional validated, session-frozen Living Room context
 ```
 
 Capability schemas remain extension-authored turn material appended through
 the existing `AgentCapability` seam beside the initial or continued user
-message. They do not move into the immutable persona system prompt as part of
-this decision.
+message. They do not move into the persona system message as part of this
+decision or the between-run replacement operation.
 
 Stable identity and subtle expression remain inside the selected persona
 foundation. Full-expression guidance lives in the matching overlay. The
-interaction resource contains no persona names and no duplicated specialist
-instructions. The active behavior frame rides each persona-directed writer
-turn. When session attunement is enabled and non-empty, a separate reserved
-extension-authored frame supplies the current validated snapshot; writer text
-cannot manufacture or alter it.
+interaction resources contain no persona names and no duplicated specialist
+instructions. The shared contract supplies invariants; the selected mode file
+supplies the active response-style contract at system priority. The active
+behavior frame rides each persona-directed writer turn, and a transition frame
+is added when the selected mode changes. When session attunement is enabled and
+non-empty, a separate reserved extension-authored frame supplies the current
+validated snapshot; writer text cannot manufacture or alter any of these
+frames.
 
 This preserves:
 
 - one packaged foundation and one full-expression overlay per person;
 - one shared interaction-contract definition;
-- one immutable system prompt per retained conversation;
+- three shared mode definitions, exactly one selected per persona conversation;
+- one system entry per retained orchestration conversation, replaceable only
+  through the guarded between-run batch operation;
 - deterministic writer ownership of active conversation behavior;
 - no runtime filesystem dependency outside packaged resources.
 
@@ -757,18 +873,18 @@ future version may assemble:
 
 ```text
 Subtle = host/guest base + persona foundation + interaction contract
+         + selected mode
 Full   = host/guest base + persona foundation + full-expression overlay
-         + interaction contract
+         + interaction contract + selected mode
 ```
 
 This path prioritizes response quality and expectation matching over prompt
 prefix reuse. A mid-session expression change cannot silently mutate the system
-prompt of the existing provider conversation. The host must make the rebuild
-visible as an interaction-setting transition, construct a new retained
-conversation, replay only supported transcript state, and record the effective
-expression level on subsequent turns. The implementation must measure cache-hit
-loss, latency, token cost, replay fidelity, and behavioral gain before adopting
-this path.
+prompt during an active run. Between runs, the host can use the same guarded
+batch replacement while retaining conversation ids and committed history. The
+implementation must record the effective expression level on subsequent turns
+and measure cache-hit loss, latency, token cost, and behavioral gain before
+adopting this path.
 
 ## 11. UI direction
 
@@ -841,10 +957,13 @@ through their own profiles. Deterministic tool runs and direct tool-sidecar
 conversation remain unchanged; the modal says so rather than silently appearing
 to control tools.
 
-Changing the mode produces no standalone chat turn in v1. The effective mode is
-recorded on the next writer/persona exchange and may appear as a small turn
-annotation if transcript testing shows that mode transitions otherwise feel
-mysterious.
+Changing the mode produces no standalone generated chat turn. While replacement
+prompts are assembled and validated, the chip keeps the previously committed
+value and the modal reports that the conversation style is updating. After the
+atomic system-message replacement, the new mode becomes visible and applies to
+the next writer/persona exchange. Its transition frame is stored with that next
+writer turn and may appear as a small transcript annotation if testing shows
+that transitions otherwise feel mysterious.
 
 ## 12. Evaluation strategy
 
@@ -916,6 +1035,11 @@ attunement independently disabled. Verify that explicit writer instructions
 still win, session cues do not leak after clearing or reset, and temporary
 emotion is not converted into a durable preference.
 
+Also switch modes after at least two committed turns. Compare system-message
+replacement against a frame-only switch: verify that system-priority mode
+assembly improves contract adherence, and that retained frames make earlier
+response-shape differences legible without destabilizing persona identity.
+
 ## 13. Automated verification
 
 Automated tests should protect deterministic contracts, not pretend to prove
@@ -923,26 +1047,43 @@ stochastic personality quality.
 
 - Prompt assembly includes the interaction-contract resource exactly once for
   hosts and guests.
+- Prompt assembly includes exactly one selected interaction-mode resource and
+  excludes the two inactive mode resources.
 - Prompt assembly includes the selected persona foundation and its matching
   full-expression overlay exactly once in the initial implementation.
 - Static resource checks require every persona foundation to have exactly one
   matching full-expression overlay and reject orphaned or mismatched ids.
 - Every persona-directed writer turn includes one valid active-behavior frame.
+- The first committed writer turn after a mode change includes one reserved
+  transition frame with the validated old and new modes.
+- Multiple mode selections before the next persona turn coalesce to one
+  transition from the last committed mode to the final selected mode.
 - Writer text cannot close or manufacture reserved behavior or attunement
   frames.
 - Unknown or partial behavior objects fail closed to the complete documented
   default.
 - Modal changes apply atomically and are rejected while a response is active.
+- A mode change batch-replaces the host and every live persona guest system
+  message with the newly selected mode prompt while preserving conversation
+  ids, committed history, trusted historical frames, pinning, and artifact
+  numbering.
+- A failed batch preserves every previous system message, conversation id, and
+  the previous behavior object.
+- Replacement is rejected while any affected conversation has an active run.
+- Successful replacement clears affected context-budget snapshots so the UI
+  does not present measurements from the prior system prompt as current.
+- Frame-only behavior changes do not replace system messages in the initial
+  implementation.
 - Tool sidecars never receive persona conversation-behavior instructions.
 - Host synthesis after a tool report receives the current behavior object.
 - Snapshots and persisted sessions preserve current and per-turn effective
-  behavior without provider conversation ids.
+  behavior without ephemeral orchestration conversation ids.
 - Disabling session attunement or starting a new session clears its derived
   snapshot.
 - Cross-session storage cannot activate without explicit consent and an
   inspection/deletion surface.
 - Packaged-resource and VSIX witnesses include the shared interaction-contract
-  resource.
+  resource and all three mode resources.
 - Static prompt-schema tests require concise trait-tension and verbal-palette
   guidance in each full-expression overlay once the migration begins.
 
@@ -956,24 +1097,32 @@ truth.
 2. Finalize the behavior-frame and bounded session-attunement schemas.
 3. Split the initial evaluation personas into subtle foundations and matching
    full-expression overlays.
-4. Add the shared interaction-contract resource and prompt-assembly tests.
-5. Add the host-owned transactional behavior object, turn stamping, and modal.
-6. Run the three modes and two expression levels against Jill plus a small
+4. Add the shared interaction-contract resource, the three mode resources, and
+   prompt-assembly tests proving that exactly one mode is selected.
+5. Add the guarded `ConversationManager` system-message batch replacement,
+   engine active-run check, context-budget invalidation, and service-owned
+   prompt assembly.
+6. Add the host-owned transactional behavior object, per-turn and transition
+   frames, and modal.
+7. Run the three modes and two expression levels against Jill plus a small
    collision-prone specialist set before migrating every persona.
-7. Compare always-assembled/frame-controlled expression against conditional
+8. Compare system-assembled mode switching against frame-only mode switching on
+   the frozen corpus, including adherence, cache reuse, latency, cost, and
+   retained-history continuity.
+9. Compare always-assembled/frame-controlled expression against conditional
    overlay assembly on the frozen corpus, including cache reuse, latency, cost,
    subtle-profile leakage, full-profile strength, and overall usefulness.
-8. Add trait tensions, turn-taking signatures, personal aperture, and verbal
+10. Add trait tensions, turn-taking signatures, personal aperture, and verbal
    palettes one behavioral axis at a time; rerun pairwise evaluations after each
    pass.
-9. Expand to all specialists only after conversational mode preserves blind
-   identity and craft usefulness.
-10. Validate the approved `balanced` default before release; revise the decision
+11. Expand to all specialists only after conversational mode preserves blind
+    identity and craft usefulness.
+12. Validate the approved `balanced` default before release; revise the decision
     if the frozen evaluation shows a material usefulness regression.
-11. Integrate Living Room state only after modes and stable expression profiles
+13. Integrate Living Room state only after modes and stable expression profiles
     work without it. Dynamic lore should color an established person, not rescue
     a generic one.
-12. Implement cross-session preferences or shared room history only through
+14. Implement cross-session preferences or shared room history only through
     their explicit retention, inspection, correction, and deletion contracts.
 
 ## Consequences
@@ -986,8 +1135,10 @@ truth.
 - Multi-turn behavior becomes a first-class source of distinction.
 - Lexical choice gains persona-specific gravity without rigid vocabulary
   injection.
-- Interaction modes remain one shared product contract rather than 36 prompt
-  variants.
+- Interaction modes remain three shared product contracts rather than 36
+  persona-mode prompt variants.
+- Each active mode receives system-prompt priority, while historical frames
+  preserve the reason for response-style changes across retained chat.
 - The active mode stays visible without permanently occupying the composer with
   a full segmented control.
 - Reactivity, session attunement, and cross-session memory have distinct consent
@@ -997,12 +1148,15 @@ truth.
 
 ### Costs and risks
 
-- The shared persona system prompt grows because all three mode meanings must be
-  available inside one immutable conversation.
+- A mode change replaces the system entry of every retained persona
+  conversation in the room and invalidates the prior mode-specific prompt
+  suffix.
+- Multi-participant replacement adds batch validation, active-run exclusion,
+  and context-budget invalidation complexity.
 - The initial cache-stable path includes the full-expression overlay even for
   `Subtle`, so some expressive influence may leak through frame suppression.
 - A future conditional-assembly path invalidates the shared prompt prefix and
-  may increase latency, processed tokens, cost, and transcript-replay risk.
+  may increase latency, processed tokens, and cost.
 - A foundation and overlay can drift or contradict each other if ownership is
   not kept sharp.
 - A three-state control may imply sharper behavioral boundaries than models can
@@ -1027,6 +1181,14 @@ truth.
 
 - Keep mode definitions operational and contrastive.
 - Preserve explicit writer intent and product constraints above mode defaults.
+- Keep system-message replacement in orchestration, expose a narrow atomic
+  batch operation to Workshop, and never mutate `ConversationManager` internals
+  from the handler.
+- Validate the complete host/guest batch before replacing any system entry.
+- Preserve committed history and trusted extension frames by leaving all
+  non-system messages untouched.
+- Reject replacement during an active run and clear stale provider-measured
+  context budgets after a successful batch.
 - Use sparse causal trait tensions with regulators and caricature boundaries.
 - Treat lexical palettes as probability gradients with a neutral baseline.
 - Keep identity, reasoning, and minimum recognizable voice in the foundation;
@@ -1034,7 +1196,8 @@ truth.
 - Require a one-to-one foundation/overlay resource map and review both files
   together when persona behavior changes.
 - Decide conditional assembly from measured behavioral gain versus cache,
-  latency, cost, and replay evidence rather than assuming either path wins.
+  latency, cost, and history-continuity evidence rather than assuming either
+  path wins.
 - Evaluate persona collisions and mode collapse on a frozen corpus.
 - Roll out to a small representative persona set before changing all prompts.
 - Present reactivity and attunement as one adaptation hierarchy with explicit
@@ -1070,9 +1233,13 @@ truth.
     UI reveal a compact state cue or keep all modulation implicit?
 11. What measured reduction in subtle-profile leakage or increase in full-profile
     quality would justify conditional overlay assembly and cache invalidation?
-12. If conditional assembly is adopted, should an expression change rebuild the
-    retained provider conversation immediately or apply only when the writer
-    starts a new Workshop session?
+12. If conditional assembly is adopted, should an expression change replace the
+    retained system message immediately or apply only when the writer starts a
+    new Workshop session?
+13. Should `ConversationManager` record a non-content system-prompt version or
+    hash for diagnostics without logging the prompt itself?
+14. Should the UI expose the cache/replacement consequence of a mode change, or
+    is the brief `Conversation style is updating` state sufficient?
 
 ## Decision checkpoints before implementation
 
@@ -1081,6 +1248,8 @@ attunement boundary, and expression-profile authoring direction were approved
 on 2026-07-20. This ADR remains Draft until:
 
 - the reserved behavior-frame and session-attunement schemas are approved;
+- the three mode-resource schemas and atomic system-message replacement
+  contract are approved;
 - the subtle-foundation/full-expression-overlay authoring boundary is validated
   on the initial persona set;
 - the trait-tension and verbal-palette copy is tested on the initial personas;
