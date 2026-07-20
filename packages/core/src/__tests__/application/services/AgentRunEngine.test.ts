@@ -13,6 +13,19 @@ const stream = async function* (tokens: string[], usage = { promptTokens: 3, com
   yield { token: '', done: true, usage, finishReason: 'stop' };
 };
 
+/**
+ * A non-streaming provider turn the test resolves by hand, so a run can be
+ * held in flight while the between-run replacement guard is probed
+ * (ADR 2026-07-20).
+ */
+const deferredTurn = () => {
+  let resolve!: (value: { content: string; finishReason?: string }) => void;
+  const promise = new Promise<{ content: string; finishReason?: string }>(res => {
+    resolve = res;
+  });
+  return { promise, resolve };
+};
+
 const GUIDE_REQUEST = '<prose-minion-tool-call name="resource.read"><paths><path>dialogue.md</path></paths></prose-minion-tool-call>';
 const PERSONA_REQUEST = '<prose-minion-tool-call name="dictionary.lookup"><word>liminal</word><context>threshold</context><purpose>tone</purpose></prose-minion-tool-call>';
 
@@ -851,5 +864,154 @@ describe('AgentRunEngine', () => {
     const evidenceEntry = evidenceTurnMessages.find(message => message.content.includes('Evidence for dialogue.md'));
     expect(evidenceEntry?.content).toBe('Evidence for dialogue.md');
     expect(evidenceEntry?.content).not.toContain('<agent-artifact');
+  });
+
+  it('replaces a settled retained system message between runs and the next turn runs against it (ADR 2026-07-20)', async () => {
+    client.createChatCompletion.mockResolvedValueOnce({ content: 'Host hello', finishReason: 'stop' });
+    const initial = await engine.runInitial({
+      toolName: 'host', systemMessage: 'Old system', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
+    });
+    const conversationId = initial.conversationId!;
+
+    expect(engine.isConversationActive(conversationId)).toBe(false);
+    engine.replaceSystemMessagesBetweenRuns([{ conversationId, systemMessage: 'New mode system' }]);
+
+    expect(conversations.getMessages(conversationId)[0]).toEqual({ role: 'system', content: 'New mode system' });
+    // The replacement governs the very next inference, not some later one.
+    client.createChatCompletion.mockResolvedValueOnce({ content: 'Mode-governed reply', finishReason: 'stop' });
+    await engine.continueConversation({
+      conversationId, userMessage: 'Again', policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
+    });
+    expect(client.createChatCompletion.mock.calls.at(-1)?.[0][0]).toEqual({ role: 'system', content: 'New mode system' });
+  });
+
+  it('rejects replacement while the target run is in flight, then accepts it after settlement (ADR 2026-07-20)', async () => {
+    client.createChatCompletion.mockResolvedValueOnce({ content: 'Host hello', finishReason: 'stop' });
+    const initial = await engine.runInitial({
+      toolName: 'host', systemMessage: 'Old system', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
+    });
+    const conversationId = initial.conversationId!;
+
+    const turn = deferredTurn();
+    client.createChatCompletion.mockReturnValueOnce(turn.promise);
+    const pending = engine.continueConversation({
+      conversationId, userMessage: 'Follow up', policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
+    });
+
+    // The id is marked synchronously, before the engine reads history.
+    expect(engine.isConversationActive(conversationId)).toBe(true);
+    expect(() => engine.replaceSystemMessagesBetweenRuns([
+      { conversationId, systemMessage: 'Mid-flight replacement' }
+    ])).toThrow(conversationId);
+    expect(conversations.getMessages(conversationId)[0]).toEqual({ role: 'system', content: 'Old system' });
+
+    turn.resolve({ content: 'Late reply', finishReason: 'stop' });
+    await pending;
+
+    expect(engine.isConversationActive(conversationId)).toBe(false);
+    engine.replaceSystemMessagesBetweenRuns([{ conversationId, systemMessage: 'Between-run replacement' }]);
+    expect(conversations.getMessages(conversationId)[0]).toEqual({ role: 'system', content: 'Between-run replacement' });
+  });
+
+  it('holds the initial run active from conversation creation until settlement (ADR 2026-07-20)', async () => {
+    const startSpy = jest.spyOn(conversations, 'startConversation');
+    const turn = deferredTurn();
+    client.createChatCompletion.mockReturnValueOnce(turn.promise);
+    const pending = engine.runInitial({
+      toolName: 'host', systemMessage: 'Old system', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
+    });
+    const conversationId = startSpy.mock.results[0]!.value as string;
+
+    // The first turn is committed to this conversation the moment it exists.
+    expect(engine.isConversationActive(conversationId)).toBe(true);
+    expect(() => engine.replaceSystemMessagesBetweenRuns([
+      { conversationId, systemMessage: 'Too early' }
+    ])).toThrow(conversationId);
+    expect(conversations.getMessages(conversationId)[0]).toEqual({ role: 'system', content: 'Old system' });
+
+    turn.resolve({ content: 'First reply', finishReason: 'stop' });
+    const result = await pending;
+
+    expect(result.conversationId).toBe(conversationId);
+    expect(engine.isConversationActive(conversationId)).toBe(false);
+  });
+
+  it('rejects the whole batch when any target is active and leaves idle targets untouched (ADR 2026-07-20)', async () => {
+    client.createChatCompletion
+      .mockResolvedValueOnce({ content: 'Host hello', finishReason: 'stop' })
+      .mockResolvedValueOnce({ content: 'Guest hello', finishReason: 'stop' });
+    const host = await engine.runInitial({
+      toolName: 'host', systemMessage: 'Host system', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
+    });
+    const guest = await engine.runInitial({
+      toolName: 'guest', systemMessage: 'Guest system', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
+    });
+    const turn = deferredTurn();
+    client.createChatCompletion.mockReturnValueOnce(turn.promise);
+    const pending = engine.continueConversation({
+      conversationId: guest.conversationId!, userMessage: 'Busy', policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
+    });
+
+    let thrown: Error | undefined;
+    try {
+      engine.replaceSystemMessagesBetweenRuns([
+        { conversationId: host.conversationId!, systemMessage: 'New host system' },
+        { conversationId: guest.conversationId!, systemMessage: 'New guest system' }
+      ]);
+    } catch (error) {
+      thrown = error as Error;
+    }
+
+    // The error names the offending id only, and the idle host is not
+    // half-applied — a mode change is one batch or none.
+    expect(thrown?.message).toContain(guest.conversationId!);
+    expect(thrown?.message).not.toContain(host.conversationId!);
+    expect(conversations.getMessages(host.conversationId!)[0]).toEqual({ role: 'system', content: 'Host system' });
+    expect(conversations.getMessages(guest.conversationId!)[0]).toEqual({ role: 'system', content: 'Guest system' });
+
+    turn.resolve({ content: 'Late guest reply', finishReason: 'stop' });
+    await pending;
+
+    engine.replaceSystemMessagesBetweenRuns([
+      { conversationId: host.conversationId!, systemMessage: 'New host system' },
+      { conversationId: guest.conversationId!, systemMessage: 'New guest system' }
+    ]);
+    expect(conversations.getMessages(host.conversationId!)[0]).toEqual({ role: 'system', content: 'New host system' });
+    expect(conversations.getMessages(guest.conversationId!)[0]).toEqual({ role: 'system', content: 'New guest system' });
+  });
+
+  it('releases the active mark after cancellation and transport failure (ADR 2026-07-20)', async () => {
+    client.createChatCompletion.mockResolvedValueOnce({ content: 'Host hello', finishReason: 'stop' });
+    const initial = await engine.runInitial({
+      toolName: 'host', systemMessage: 'Old system', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
+    });
+    const conversationId = initial.conversationId!;
+
+    // Cancellation surfaces as a cancelled result, not a throw — and releases.
+    const abortError = new Error('aborted');
+    abortError.name = 'AbortError';
+    client.createChatCompletion.mockRejectedValueOnce(abortError);
+    const cancelled = await engine.continueConversation({
+      conversationId, userMessage: 'Cancelled turn', policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
+    });
+    expect(cancelled.cancelled).toBe(true);
+    expect(engine.isConversationActive(conversationId)).toBe(false);
+
+    // Transport failure propagates — and still releases.
+    client.createChatCompletion.mockRejectedValueOnce(new Error('network unavailable'));
+    await expect(engine.continueConversation({
+      conversationId, userMessage: 'Failing turn', policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
+    })).rejects.toThrow('network unavailable');
+    expect(engine.isConversationActive(conversationId)).toBe(false);
+
+    // A settled (even unhappy) conversation accepts between-run replacement.
+    engine.replaceSystemMessagesBetweenRuns([{ conversationId, systemMessage: 'Post-failure replacement' }]);
+    expect(conversations.getMessages(conversationId)[0]).toEqual({ role: 'system', content: 'Post-failure replacement' });
   });
 });

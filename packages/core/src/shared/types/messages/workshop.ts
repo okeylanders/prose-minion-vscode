@@ -47,6 +47,105 @@ export type WorkshopChatTarget =
   | { kind: 'tool'; toolId: WorkshopToolId }
   | { kind: 'personaGuest'; personaId: WorkshopPersonaId };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Conversation behavior (ADR 2026-07-20) — the writer-owned, room-level
+// interaction contract. One transactional object; persona identity never
+// changes with it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Writer-selected interaction posture for persona conversations. */
+export type WorkshopInteractionMode = 'analysis' | 'balanced' | 'conversational';
+
+/** Writer-selected persona expression volume — never an identity switch. */
+export type WorkshopPersonaExpressionLevel = 'subtle' | 'full';
+
+/**
+ * Room-level conversation behavior. Host and guest persona turns interpret the
+ * same current object through their own stable profiles; deterministic tool
+ * runs and tool sidecars never receive it.
+ */
+export interface WorkshopConversationBehavior {
+  interactionMode: WorkshopInteractionMode;
+  expressionLevel: WorkshopPersonaExpressionLevel;
+  reactToCurrentMessage: boolean;
+  carryCuesThroughSession: boolean;
+}
+
+/**
+ * The approved complete default (ADR 2026-07-20 §3). Fail-closed target for
+ * every IPC/hydration boundary — the host never constructs a partially
+ * defaulted combination whose behavior was not designed.
+ */
+export const DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR: Readonly<WorkshopConversationBehavior> =
+  Object.freeze({
+    interactionMode: 'balanced',
+    expressionLevel: 'full',
+    reactToCurrentMessage: true,
+    carryCuesThroughSession: true
+  });
+
+/** Code-owned deterministic UI labels — never model-generated. */
+export const WORKSHOP_INTERACTION_MODE_LABELS: Readonly<Record<WorkshopInteractionMode, string>> =
+  Object.freeze({
+    analysis: 'Analyze',
+    balanced: 'Balanced',
+    conversational: 'Converse'
+  });
+
+export function isWorkshopInteractionMode(value: unknown): value is WorkshopInteractionMode {
+  return value === 'analysis' || value === 'balanced' || value === 'conversational';
+}
+
+export function isWorkshopPersonaExpressionLevel(
+  value: unknown
+): value is WorkshopPersonaExpressionLevel {
+  return value === 'subtle' || value === 'full';
+}
+
+/**
+ * The ONE parser for conversation-behavior wire traffic. The object is
+ * validated as a whole: a missing, unknown, or mistyped field fails the
+ * COMPLETE object closed to the approved default rather than inventing a
+ * per-field fallback combination.
+ */
+export function coerceWorkshopConversationBehavior(raw: unknown): WorkshopConversationBehavior {
+  if (typeof raw !== 'object' || raw === null) {
+    return { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR };
+  }
+  const candidate = raw as {
+    interactionMode?: unknown;
+    expressionLevel?: unknown;
+    reactToCurrentMessage?: unknown;
+    carryCuesThroughSession?: unknown;
+  };
+  if (
+    !isWorkshopInteractionMode(candidate.interactionMode) ||
+    !isWorkshopPersonaExpressionLevel(candidate.expressionLevel) ||
+    typeof candidate.reactToCurrentMessage !== 'boolean' ||
+    typeof candidate.carryCuesThroughSession !== 'boolean'
+  ) {
+    return { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR };
+  }
+  return {
+    interactionMode: candidate.interactionMode,
+    expressionLevel: candidate.expressionLevel,
+    reactToCurrentMessage: candidate.reactToCurrentMessage,
+    carryCuesThroughSession: candidate.carryCuesThroughSession
+  };
+}
+
+/**
+ * Trusted transition metadata: the room's mode changed between the last
+ * committed persona reply and the writer turn this rides with. Multiple
+ * selections before the next persona turn coalesce into one transition;
+ * a mode that never governed a committed turn is not transcript history.
+ */
+export interface WorkshopInteractionModeTransition {
+  from: WorkshopInteractionMode;
+  to: WorkshopInteractionMode;
+  reason: 'writer-selected';
+}
+
 /** Metadata safe to expose for the permanent persona participant. */
 export interface WorkshopHostParticipantSnapshot {
   personaId: WorkshopPersonaId;
@@ -410,6 +509,17 @@ export interface WorkshopTurn {
   usage?: TokenUsage;
   /** True when the response stopped at the max-token limit (assistant turns). */
   truncated?: boolean;
+  /**
+   * Effective conversation behavior stamped on persona-directed writer turns
+   * and their persona replies (ADR 2026-07-20 §3) — keeps a restored
+   * transcript honest when settings changed mid-session. Tool turns omit it.
+   */
+  behavior?: WorkshopConversationBehavior;
+  /**
+   * Coalesced writer-selected mode transition persisted with the first
+   * committed writer turn after a mode change. Never a synthetic chat message.
+   */
+  behaviorTransition?: WorkshopInteractionModeTransition;
 }
 
 /**
@@ -456,6 +566,8 @@ export interface WorkshopSessionSnapshot {
   hasConversation: boolean;
   /** The public participant graph. Conversation ids remain host-private. */
   participants: WorkshopParticipantsSnapshot;
+  /** The room's current writer-owned conversation behavior (ADR 2026-07-20). */
+  conversationBehavior: WorkshopConversationBehavior;
   /** Active-target context telemetry, already stripped of private conversation identity. */
   contextBudget?: LabeledContextBudgetSnapshot;
   /** Last selected tool/lens, retained after a completed run for UI restore. */
@@ -536,6 +648,21 @@ export interface WorkshopSelectPersonaMessage extends MessageEnvelope<WorkshopSe
 /** Payload is deliberately the target itself: no second routing envelope. */
 export interface WorkshopSetChatTargetMessage extends MessageEnvelope<WorkshopChatTarget> {
   type: MessageType.WORKSHOP_SET_CHAT_TARGET;
+}
+
+/**
+ * Atomic submission of the Conversation behavior modal's complete draft
+ * (ADR 2026-07-20 §3). The handler validates the whole object, rejects it
+ * during an active response, and commits it only after any required
+ * system-message replacement batch succeeds.
+ */
+export interface WorkshopSetConversationBehaviorPayload {
+  behavior: WorkshopConversationBehavior;
+}
+
+export interface WorkshopSetConversationBehaviorMessage
+  extends MessageEnvelope<WorkshopSetConversationBehaviorPayload> {
+  type: MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR;
 }
 
 export interface WorkshopSetExcerptPayload {

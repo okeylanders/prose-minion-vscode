@@ -27,6 +27,7 @@ import { useStreaming } from '../useStreaming';
 import { MessageType } from '@shared/types';
 import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
 import {
+  DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
   ErrorMessage,
   StatusMessage,
   StreamChunkMessage,
@@ -38,6 +39,7 @@ import {
   WorkshopContextCatalogMessage,
   WorkshopContextSearchResultsMessage,
   WorkshopContextSearchResultsPayload,
+  WorkshopConversationBehavior,
   WorkshopExcerpt,
   WorkshopExcerptSource,
   WorkshopMessageAttachmentSnapshot,
@@ -50,7 +52,8 @@ import {
   WorkshopTodoAction,
   WorkshopTodoItem,
   WorkshopTurn,
-  WorkshopTurnMessage
+  WorkshopTurnMessage,
+  coerceWorkshopConversationBehavior
 } from '@messages';
 import { LabeledContextBudgetSnapshot } from '@messages';
 
@@ -87,6 +90,13 @@ export interface WorkshopState {
   selectedPersonaId: WorkshopPersonaId;
   /** Explicit direct-tool mode, or ordinary host routing. */
   chatTarget: WorkshopChatTarget;
+  /**
+   * The room's COMMITTED conversation behavior (ADR 2026-07-20 §3) — host
+   * truth mirrored from the session snapshot, never a webview draft. The
+   * composer chip and modal read this; edits live in modal-local draft state
+   * until the host round-trips the applied object.
+   */
+  conversationBehavior: WorkshopConversationBehavior;
   /** Public metadata for the latest retained sidecar per tool. */
   toolSidecars: WorkshopToolSidecarSnapshot[];
   /** Explicitly invited persona guests, including disposed history markers. */
@@ -143,6 +153,7 @@ export interface WorkshopActions {
   inviteGuest: (personaId: WorkshopPersonaId, openingMessage: string) => void;
   dismissGuest: (personaId: WorkshopPersonaId) => void;
   setChatTarget: (target: WorkshopChatTarget) => void;
+  setConversationBehavior: (behavior: WorkshopConversationBehavior) => void;
   todoAction: (action: WorkshopTodoAction) => void;
   cancelRun: () => void;
   resetSession: () => void;
@@ -186,6 +197,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const [hasHostConversation, setHasHostConversation] = React.useState(false);
   const [selectedPersonaId, setSelectedPersonaId] = React.useState<WorkshopPersonaId>('jill');
   const [chatTarget, setChatTargetState] = React.useState<WorkshopChatTarget>({ kind: 'host' });
+  const [conversationBehavior, setConversationBehaviorState] =
+    React.useState<WorkshopConversationBehavior>({ ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR });
   const [toolSidecars, setToolSidecars] = React.useState<WorkshopToolSidecarSnapshot[]>([]);
   const [personaGuests, setPersonaGuests] = React.useState<WorkshopPersonaGuestSnapshot[]>([]);
   const [contextBudget, setContextBudget] = React.useState<LabeledContextBudgetSnapshot | undefined>();
@@ -360,6 +373,18 @@ export const useWorkshop = (): UseWorkshopReturn => {
     [post]
   );
 
+  // Deliberately NO optimistic local update (ADR 2026-07-20 §11): the chip
+  // shows the committed value only, so while the handler assembles/validates
+  // the system-message replacement batch the old mode stays visible. The new
+  // object arrives with the next WORKSHOP_SESSION_STATE.
+  const setConversationBehavior = React.useCallback(
+    (behavior: WorkshopConversationBehavior) => {
+      setErrorMessage('');
+      post(MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR, { behavior });
+    },
+    [post]
+  );
+
   const todoAction = React.useCallback(
     (action: WorkshopTodoAction) => {
       setErrorMessage('');
@@ -407,6 +432,9 @@ export const useWorkshop = (): UseWorkshopReturn => {
       setHasHostConversation(session.participants.host.hasConversation);
       setSelectedPersonaId(session.participants.host.personaId);
       setChatTargetState(session.participants.chatTarget);
+      // Fail-closed hydration (ADR 2026-07-20 §3): an unprovable object
+      // degrades to the COMPLETE approved default, never a per-field blend.
+      setConversationBehaviorState(coerceWorkshopConversationBehavior(session.conversationBehavior));
       setToolSidecars(session.participants.toolSidecars);
       setPersonaGuests(session.participants.personaGuests);
       setContextBudget(session.contextBudget);
@@ -552,6 +580,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     hasHostConversation,
     selectedPersonaId,
     chatTarget,
+    conversationBehavior,
     toolSidecars,
     personaGuests,
     contextBudget,
@@ -599,6 +628,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     inviteGuest,
     dismissGuest,
     setChatTarget,
+    setConversationBehavior,
     todoAction,
     cancelRun,
     resetSession,

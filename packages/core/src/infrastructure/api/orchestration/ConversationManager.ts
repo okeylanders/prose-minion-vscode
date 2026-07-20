@@ -37,6 +37,16 @@ export interface ConversationContext {
   nextArtifactNumber?: number;
 }
 
+/**
+ * One entry in a between-run system-message replacement batch (ADR
+ * 2026-07-20): the retained conversation to retarget and the fully assembled
+ * system prompt it carries from the next run onward.
+ */
+export interface ConversationSystemMessageReplacement {
+  conversationId: string;
+  systemMessage: string;
+}
+
 export class ConversationManager {
   private conversations: Map<string, ConversationContext> = new Map();
   private nextId = 1;
@@ -142,6 +152,60 @@ export class ConversationManager {
     conversation.messages = conversation.messages.slice(0, 1);
     conversation.contextBudget = undefined;
     conversation.lastActivity = Date.now();
+  }
+
+  /**
+   * Replace each listed conversation's retained system message as one atomic
+   * batch (ADR 2026-07-20). A mode change swaps the system prompt of the host
+   * and every live persona guest between runs, so the complete batch is
+   * validated before any conversation changes — a bad final entry leaves
+   * every earlier entry's system message, history, and context snapshot
+   * exactly as they were. An empty batch is a valid no-op.
+   *
+   * Application builds a new messages array around a new system entry rather
+   * than mutating the old object, so copies handed out by getMessages keep
+   * showing the content their turns actually ran against. contextBudget is
+   * cleared because it was measured against the previous system prompt;
+   * conversation ids, pinning, committed non-system history, and monotonic
+   * artifact numbering all survive the swap.
+   */
+  replaceSystemMessages(replacements: readonly ConversationSystemMessageReplacement[]): void {
+    const seen = new Set<string>();
+    for (const { conversationId, systemMessage } of replacements) {
+      if (seen.has(conversationId)) {
+        throw new Error(`Duplicate conversation ${conversationId} in system-message replacement batch`);
+      }
+      seen.add(conversationId);
+      const conversation = this.conversations.get(conversationId);
+      if (!conversation) {
+        throw new ConversationNotFoundError(conversationId);
+      }
+      if (!systemMessage.trim()) {
+        throw new Error(`Blank replacement system message for conversation ${conversationId}`);
+      }
+      // The primitive only ever swaps a sole leading system entry. Any other
+      // shape — missing, displaced, or duplicated system message — is
+      // corrupted state this method fails closed on rather than silently
+      // repairing into something no run has ever seen.
+      const messages = conversation.messages;
+      const holdsSoleLeadingSystemMessage =
+        messages.length > 0 &&
+        messages[0].role === 'system' &&
+        !messages.some((message, index) => index > 0 && message.role === 'system');
+      if (!holdsSoleLeadingSystemMessage) {
+        throw new Error(`Conversation ${conversationId} does not hold a sole leading system message`);
+      }
+    }
+
+    for (const { conversationId, systemMessage } of replacements) {
+      const conversation = this.conversations.get(conversationId)!;
+      conversation.messages = [
+        { role: 'system', content: systemMessage },
+        ...conversation.messages.slice(1)
+      ];
+      conversation.contextBudget = undefined;
+      conversation.lastActivity = Date.now();
+    }
   }
 
   /**

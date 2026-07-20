@@ -49,6 +49,7 @@ import { WORKSHOP_TURN_ID_ATTRIBUTE } from './components/workshop/WorkshopTurnBu
 import { WorkshopToolsModal } from './components/workshop/WorkshopToolsModal';
 import { WorkshopPersonaBrowserModal } from './components/workshop/WorkshopPersonaBrowserModal';
 import { WorkshopContextSelectorModal } from './components/workshop/WorkshopContextSelectorModal';
+import { WorkshopConversationBehaviorModal } from './components/workshop/WorkshopConversationBehaviorModal';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WorkshopToast, WorkshopToastState } from './components/workshop/WorkshopToast';
 import { WorkshopTodoList } from './components/workshop/WorkshopTodoList';
@@ -142,6 +143,7 @@ export const WorkshopApp: React.FC = () => {
   const tokenTracking = useTokenTracking();
   const [hasSavedKey, setHasSavedKey] = React.useState(false);
   const [toolsModalOpen, setToolsModalOpen] = React.useState(false);
+  const [behaviorModalOpen, setBehaviorModalOpen] = React.useState(false);
   const [personaModalOpen, setPersonaModalOpen] = React.useState(false);
   const [contextSelectorOpen, setContextSelectorOpen] = React.useState(false);
   const [contextSelectorMode, setContextSelectorMode] = React.useState<'attach' | 'excerpt' | 'message'>('attach');
@@ -302,6 +304,8 @@ export const WorkshopApp: React.FC = () => {
       < WORKSHOP_GUEST_CAPACITY;
 
   const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
+  const openBehaviorModal = React.useCallback(() => setBehaviorModalOpen(true), []);
+  const closeBehaviorModal = React.useCallback(() => setBehaviorModalOpen(false), []);
   const openContextSelector = React.useCallback((mode: 'attach' | 'excerpt' | 'message' = 'attach') => {
     workshop.requestContextCatalog();
     setContextSelectorMode(mode);
@@ -735,12 +739,14 @@ export const WorkshopApp: React.FC = () => {
               recipientLabel={chatTargetLabel}
               isRunning={workshop.isRunning}
               sessionReady={workshop.sessionReady}
+              conversationBehavior={workshop.conversationBehavior}
               messageAttachments={workshop.pendingMessageAttachments}
               onSend={workshop.sendMessage}
               onCancel={workshop.cancelRun}
               onOpenContext={openContext}
               onAttachToMessage={openMessageAttachSelector}
               onRemoveMessageAttachment={workshop.removeMessageAttachment}
+              onOpenConversationSettings={openBehaviorModal}
               onOpenTools={openToolsModal}
             />
           </ErrorBoundary>
@@ -754,6 +760,16 @@ export const WorkshopApp: React.FC = () => {
         unavailableMessage={undefined}
         onClose={closeToolsModal}
         onSelect={selectTool}
+      />
+      {/* Conversation behavior (ADR 2026-07-20 §11): behavior is the COMMITTED
+          object from the session snapshot — the modal drafts locally and waits
+          for the host round-trip, so no optimistic state lives here either. */}
+      <WorkshopConversationBehaviorModal
+        open={behaviorModalOpen}
+        behavior={workshop.conversationBehavior}
+        isRunning={workshop.isRunning}
+        onApply={workshop.setConversationBehavior}
+        onClose={closeBehaviorModal}
       />
         <WorkshopContextSelectorModal
           open={contextSelectorOpen}

@@ -2140,3 +2140,221 @@
   font-size: 10.5px;
   color: var(--pm-muted);
 }
+
+/* ---------- Conversation behavior (ADR 2026-07-20 §11) ---------- */
+/* Mode chip: the composer's current-state chip beside Tools. Accent-tinted so
+   the ACTIVE mode reads at the point it affects the next message; the label is
+   the state (Analyze/Balanced/Converse), never the phrase "Interaction Mode". */
+[data-pm-surface="workshop"] .pm-ws-mode-chip {
+  border-color: color-mix(in srgb, var(--pm-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--pm-accent) 8%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-mode-chip svg {
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-mode-chip:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--pm-accent) 60%, transparent);
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-mode-chip-label {
+  color: var(--pm-text);
+  font-weight: 600;
+}
+/* Expression sub-tag (SUBTLE/FULL), split off by a hairline divider. */
+[data-pm-surface="workshop"] .pm-ws-mode-chip-sub {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--pm-dim);
+  border-left: 1px solid var(--pm-border);
+  padding-left: 7px;
+  margin-left: 1px;
+}
+
+/* Conversation behavior modal — narrower than the tools palette (one column
+   of settings, not a 14-card grid); everything else rides the shell chrome. */
+[data-pm-surface="workshop"] .pm-ws-behavior-modal {
+  width: min(560px, 100%);
+}
+/* Segmented option cards (Response style / Persona expression). */
+[data-pm-surface="workshop"] .pm-ws-behavior-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-cards-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  text-align: left;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-tile);
+  background: var(--pm-surface-2);
+  font-family: var(--pm-sans);
+  padding: 11px 12px;
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-card:not(:disabled):hover {
+  border-color: var(--pm-border-2);
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-card-selected,
+[data-pm-surface="workshop"] .pm-ws-behavior-card-selected:not(:disabled):hover {
+  background: var(--pm-accent-soft);
+  border-color: color-mix(in srgb, var(--pm-accent) 50%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-card-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-card-selected .pm-ws-behavior-card-top {
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-card-selected .pm-ws-behavior-card-name {
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-card-desc {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-card-selected .pm-ws-behavior-card-desc {
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-note {
+  margin: 9px 0 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--pm-dim);
+}
+/* Adaptation toggle rows. */
+[data-pm-surface="workshop"] .pm-ws-behavior-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 11px 12px;
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-tile);
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-row + .pm-ws-behavior-row {
+  margin-top: 8px;
+}
+/* Future rows are honestly dimmed, never a live-looking dead switch. */
+[data-pm-surface="workshop"] .pm-ws-behavior-row-future {
+  opacity: 0.55;
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-row-text {
+  flex: 1;
+  min-width: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-row-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-row-desc {
+  margin-top: 3px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--pm-dim);
+}
+/* Thumb switch (the sidebar ThemeToggle idiom at row scale). */
+[data-pm-surface="workshop"] .pm-ws-behavior-toggle {
+  position: relative;
+  flex-shrink: 0;
+  width: 36px;
+  height: 21px;
+  margin-top: 2px;
+  border-radius: var(--pm-r-pill);
+  background: var(--pm-surface-3);
+  border: 1px solid var(--pm-border-2);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--pm-muted);
+  transition: left 0.15s, background 0.15s;
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-toggle-on {
+  background: var(--pm-accent);
+  border-color: var(--pm-accent-lo);
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-toggle-on .pm-ws-behavior-toggle-thumb {
+  left: 17px;
+  background: #fff;
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-toggle-locked {
+  cursor: not-allowed;
+}
+/* Future/Coming-later tag (section header and future row name). */
+[data-pm-surface="workshop"] .pm-ws-behavior-ftag {
+  font-family: var(--pm-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--pm-faint);
+  border: 1px solid var(--pm-border-soft);
+  border-radius: var(--pm-r-pill);
+  padding: 2px 8px;
+}
+/* Room memory: dashed, non-interactive — a future home, not a control. */
+[data-pm-surface="workshop"] .pm-ws-behavior-room-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  background: var(--pm-inset);
+  border: 1px dashed var(--pm-border);
+  border-radius: var(--pm-r-tile);
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-room-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-room-desc {
+  margin-top: 3px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--pm-faint);
+}
+/* Footer: note + Cancel + Apply. The note flips amber while a response is
+   in flight (Apply locked) and while the applied draft awaits its host
+   round-trip ("Conversation style is updating…"). */
+[data-pm-surface="workshop"] .pm-ws-behavior-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--pm-border-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-foot-note {
+  flex: 1;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--pm-faint);
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-foot-note-busy {
+  color: var(--pm-amber);
+}

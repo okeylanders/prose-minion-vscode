@@ -20,7 +20,11 @@
 
 import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
-import { WorkshopMessageAttachmentSnapshot } from '@messages';
+import {
+  WORKSHOP_INTERACTION_MODE_LABELS,
+  WorkshopConversationBehavior,
+  WorkshopMessageAttachmentSnapshot
+} from '@messages';
 
 interface WorkshopComposerProps {
   /** A valid excerpt is pinned and no run is in flight — sending is possible. */
@@ -33,6 +37,8 @@ interface WorkshopComposerProps {
   isRunning: boolean;
   /** First host snapshot has arrived. */
   sessionReady: boolean;
+  /** COMMITTED room behavior (host truth) — the mode chip renders this. */
+  conversationBehavior: WorkshopConversationBehavior;
   /** Staged one-shot attachments for the NEXT message (host truth). */
   messageAttachments: WorkshopMessageAttachmentSnapshot[];
   onSend: (text: string) => void;
@@ -40,8 +46,25 @@ interface WorkshopComposerProps {
   onOpenContext: () => void;
   onAttachToMessage: () => void;
   onRemoveMessageAttachment: (id: string) => void;
+  onOpenConversationSettings: () => void;
   onOpenTools: () => void;
 }
+
+/**
+ * The mode chip's diamond, inlined from the approved comp (Conversation
+ * Behavior design) — the shared Icon set has no diamond glyph, and single-use
+ * comp svgs stay local to their component (ContextBudget's chevron precedent).
+ */
+const ModeChipDiamond: React.FC = () => (
+  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <path
+      d="M8 1.5L14.5 8 8 14.5 1.5 8 8 1.5z"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   canMessage,
@@ -49,12 +72,14 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   recipientLabel,
   isRunning,
   sessionReady,
+  conversationBehavior,
   messageAttachments,
   onSend,
   onCancel,
   onOpenContext,
   onAttachToMessage,
   onRemoveMessageAttachment,
+  onOpenConversationSettings,
   onOpenTools
 }) => {
   const [draft, setDraft] = React.useState('');
@@ -206,6 +231,26 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
           aria-label={`Message ${recipientLabel}`}
         />
         <div className="pm-ws-comp-right">
+          {/* Current-mode chip (ADR 2026-07-20 §11): the visible label is the
+              ACTIVE state, never the phrase "Interaction Mode"; the accessible
+              name is the action it performs. Stays enabled while a response
+              streams — the modal is open for inspection; only Apply locks. */}
+          <button
+            className="pm-ws-comp-pill pm-ws-mode-chip"
+            type="button"
+            disabled={!sessionReady}
+            title="Conversation settings"
+            aria-label="Conversation settings"
+            onClick={onOpenConversationSettings}
+          >
+            <ModeChipDiamond />
+            <span className="pm-ws-mode-chip-label">
+              {WORKSHOP_INTERACTION_MODE_LABELS[conversationBehavior.interactionMode]}
+            </span>
+            <span className="pm-ws-mode-chip-sub">
+              {conversationBehavior.expressionLevel.toUpperCase()}
+            </span>
+          </button>
           <button
             className="pm-ws-comp-pill"
             type="button"

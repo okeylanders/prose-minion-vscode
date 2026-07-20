@@ -1174,6 +1174,7 @@ export class WorkshopSessionService {
       truncatedTurns: this.turns.length - windowed.length,
       hasConversation: this.conversationIds().length > 0,
       participants: this.snapshotParticipants(),
+      conversationBehavior: { ...this.behavior },
       selectedToolId: this.selectedToolId,
       activeToolId: this.activeRun?.target === 'tool' ? this.activeRun.toolId : undefined,
       activeRequestId: this.activeRun?.requestId

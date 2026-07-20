@@ -5,7 +5,7 @@
  * prompt path is relative to PromptLoader's system-prompts root.
  */
 
-import type { WorkshopPersonaId } from '@messages';
+import type { WorkshopInteractionMode, WorkshopPersonaId } from '@messages';
 
 export interface WorkshopPersonaDescriptor {
   id: WorkshopPersonaId;
@@ -13,6 +13,12 @@ export interface WorkshopPersonaDescriptor {
   specialty: string;
   description: string;
   promptPath: string;
+  /**
+   * Full-expression overlay paired 1:1 with the foundation prompt
+   * (ADR 2026-07-20 §5). Always assembled beside `promptPath` in the initial
+   * cache-stable implementation; the behavior frame selects Subtle/Full.
+   */
+  expressionProfilePath: string;
 }
 
 export const DEFAULT_WORKSHOP_PERSONA_ID: WorkshopPersonaId = 'jill';
@@ -23,19 +29,57 @@ export const DEFAULT_WORKSHOP_GUEST_OPENING =
 export const WORKSHOP_GUEST_CAPACITY = 2;
 
 export const WORKSHOP_PERSONA_CATALOG: readonly WorkshopPersonaDescriptor[] = [
-  { id: 'jill', label: 'Jill', specialty: 'Creative writing partner', description: 'Warm developmental and line-level craft support for the work in front of you.', promptPath: 'workshop-personas/jill.md' },
-  { id: 'agnes', label: 'Sister Agnes', specialty: 'Theme & symbolism', description: 'Keeps themes embodied, symbols intentional, and insight earned on the page.', promptPath: 'workshop-personas/agnes.md' },
-  { id: 'cliff', label: 'Cliff', specialty: 'Cliché & repetition', description: 'Finds tired phrasing, echo words, and accidental patterns without mistaking motifs for tics.', promptPath: 'workshop-personas/cliff.md' },
-  { id: 'dev', label: 'Dev', specialty: 'Dialogue & microbeats', description: 'Listens for distinct voices, subtext, purposeful tags, and physical beats that reveal character.', promptPath: 'workshop-personas/dev.md' },
-  { id: 'edna', label: 'Edna', specialty: 'Reader-breaking logic', description: 'Flags only contradictions, impossible scene logic, and trust-breaking information errors.', promptPath: 'workshop-personas/edna.md' },
-  { id: 'felix', label: 'Felix', specialty: 'Rhythm & pacing', description: 'Reads for sentence music, white space, pace, and the moments prose needs a rest.', promptPath: 'workshop-personas/felix.md' },
-  { id: 'harper', label: 'Harper', specialty: 'Craft mentorship', description: 'Turns visible patterns into durable writing principles and practical habits.', promptPath: 'workshop-personas/harper.md' },
-  { id: 'margot', label: 'Margot', specialty: 'Voice & POV', description: 'Tracks narrative distance, point of view, tense, and whether the narration stays in character.', promptPath: 'workshop-personas/margot.md' },
-  { id: 'penny', label: 'Penny', specialty: 'Reader experience', description: 'Responds as an attentive young reader who knows only what the page has earned.', promptPath: 'workshop-personas/penny.md' },
-  { id: 'quinn', label: 'Quinn', specialty: 'Continuity', description: 'Traces props, blocking, timeline, weather, and character state through the scene.', promptPath: 'workshop-personas/quinn.md' },
-  { id: 'theo', label: 'Theo', specialty: 'Stakes & engagement', description: 'Tests a scene’s engine: goals, obstacles, turns, consequences, and forward pull.', promptPath: 'workshop-personas/theo.md' },
-  { id: 'wren', label: 'Wren', specialty: 'Line craft', description: 'Strengthens specific sentences through vivid detail, precise verbs, and cleaner distance.', promptPath: 'workshop-personas/wren.md' }
+  { id: 'jill', label: 'Jill', specialty: 'Creative writing partner', description: 'Warm developmental and line-level craft support for the work in front of you.', promptPath: 'workshop-personas/jill.md', expressionProfilePath: 'workshop-personas/expression-profiles/jill.md' },
+  { id: 'agnes', label: 'Sister Agnes', specialty: 'Theme & symbolism', description: 'Keeps themes embodied, symbols intentional, and insight earned on the page.', promptPath: 'workshop-personas/agnes.md', expressionProfilePath: 'workshop-personas/expression-profiles/agnes.md' },
+  { id: 'cliff', label: 'Cliff', specialty: 'Cliché & repetition', description: 'Finds tired phrasing, echo words, and accidental patterns without mistaking motifs for tics.', promptPath: 'workshop-personas/cliff.md', expressionProfilePath: 'workshop-personas/expression-profiles/cliff.md' },
+  { id: 'dev', label: 'Dev', specialty: 'Dialogue & microbeats', description: 'Listens for distinct voices, subtext, purposeful tags, and physical beats that reveal character.', promptPath: 'workshop-personas/dev.md', expressionProfilePath: 'workshop-personas/expression-profiles/dev.md' },
+  { id: 'edna', label: 'Edna', specialty: 'Reader-breaking logic', description: 'Flags only contradictions, impossible scene logic, and trust-breaking information errors.', promptPath: 'workshop-personas/edna.md', expressionProfilePath: 'workshop-personas/expression-profiles/edna.md' },
+  { id: 'felix', label: 'Felix', specialty: 'Rhythm & pacing', description: 'Reads for sentence music, white space, pace, and the moments prose needs a rest.', promptPath: 'workshop-personas/felix.md', expressionProfilePath: 'workshop-personas/expression-profiles/felix.md' },
+  { id: 'harper', label: 'Harper', specialty: 'Craft mentorship', description: 'Turns visible patterns into durable writing principles and practical habits.', promptPath: 'workshop-personas/harper.md', expressionProfilePath: 'workshop-personas/expression-profiles/harper.md' },
+  { id: 'margot', label: 'Margot', specialty: 'Voice & POV', description: 'Tracks narrative distance, point of view, tense, and whether the narration stays in character.', promptPath: 'workshop-personas/margot.md', expressionProfilePath: 'workshop-personas/expression-profiles/margot.md' },
+  { id: 'penny', label: 'Penny', specialty: 'Reader experience', description: 'Responds as an attentive young reader who knows only what the page has earned.', promptPath: 'workshop-personas/penny.md', expressionProfilePath: 'workshop-personas/expression-profiles/penny.md' },
+  { id: 'quinn', label: 'Quinn', specialty: 'Continuity', description: 'Traces props, blocking, timeline, weather, and character state through the scene.', promptPath: 'workshop-personas/quinn.md', expressionProfilePath: 'workshop-personas/expression-profiles/quinn.md' },
+  { id: 'theo', label: 'Theo', specialty: 'Stakes & engagement', description: 'Tests a scene’s engine: goals, obstacles, turns, consequences, and forward pull.', promptPath: 'workshop-personas/theo.md', expressionProfilePath: 'workshop-personas/expression-profiles/theo.md' },
+  { id: 'wren', label: 'Wren', specialty: 'Line craft', description: 'Strengthens specific sentences through vivid detail, precise verbs, and cleaner distance.', promptPath: 'workshop-personas/wren.md', expressionProfilePath: 'workshop-personas/expression-profiles/wren.md' }
 ];
+
+/**
+ * Shared interaction resources (ADR 2026-07-20 §2). One contract, three mode
+ * definitions — exactly one selected mode is assembled per persona
+ * conversation. Mode resources contain no persona names; personas are never
+ * forked into per-mode prompt files.
+ */
+export const WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH =
+  'workshop-personas/interaction-contract.md';
+
+export const WORKSHOP_INTERACTION_MODE_PROMPT_PATHS: Readonly<
+  Record<WorkshopInteractionMode, string>
+> = Object.freeze({
+  analysis: 'workshop-personas/interaction-modes/analysis.md',
+  balanced: 'workshop-personas/interaction-modes/balanced.md',
+  conversational: 'workshop-personas/interaction-modes/conversational.md'
+});
+
+/**
+ * The ONE definition of the persona system-prompt assembly chain
+ * (ADR 2026-07-20 §10): host/guest base, persona foundation, full-expression
+ * overlay (always included in the cache-stable initial implementation), the
+ * shared interaction contract, then exactly one selected mode resource. Both
+ * the initial assembly and the between-run replacement batch call this.
+ */
+export function workshopPersonaSystemPromptPaths(
+  basePromptPath: string,
+  persona: WorkshopPersonaDescriptor,
+  interactionMode: WorkshopInteractionMode
+): string[] {
+  return [
+    basePromptPath,
+    persona.promptPath,
+    persona.expressionProfilePath,
+    WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
+    WORKSHOP_INTERACTION_MODE_PROMPT_PATHS[interactionMode]
+  ];
+}
 
 const PERSONAS_BY_ID: ReadonlyMap<WorkshopPersonaId, WorkshopPersonaDescriptor> = new Map(
   WORKSHOP_PERSONA_CATALOG.map((persona) => [persona.id, persona])

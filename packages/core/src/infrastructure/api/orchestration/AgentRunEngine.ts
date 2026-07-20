@@ -1,6 +1,10 @@
 import { LogSink, SettingsStore } from '@/platform';
 import { OpenRouterClient, OpenRouterMessage } from '@providers/OpenRouterClient';
-import { ConversationManager, ConversationNotFoundError } from './ConversationManager';
+import {
+  ConversationManager,
+  ConversationNotFoundError,
+  ConversationSystemMessageReplacement
+} from './ConversationManager';
 import {
   AgentCapabilityRejection,
   AgentRunOptions,
@@ -138,6 +142,13 @@ class ToolCallStreamVisibilityGuard {
  */
 export class AgentRunEngine {
   private readonly conversationCleanupInterval: NodeJS.Timeout;
+  /**
+   * Conversation ids with an in-flight run, marked for the entire span in
+   * which a run reads or commits history (ADR 2026-07-20). The between-run
+   * system-message replacement seam consults this set, so a mode change can
+   * never swap a system prompt out from under a run that already read it.
+   */
+  private readonly activeConversationIds = new Set<string>();
 
   constructor(
     private readonly openRouterClient: OpenRouterClient,
@@ -164,6 +175,10 @@ export class AgentRunEngine {
   async runInitial(request: InitialRunRequest): Promise<ExecutionResult> {
     const capability = this.validateCapability(request);
     const conversationId = this.conversationManager.startConversation(request.toolName, request.systemMessage);
+    // Active from creation: the first turn is already committed to reading
+    // and committing this conversation, so no between-run replacement may
+    // interleave with it (ADR 2026-07-20).
+    this.activeConversationIds.add(conversationId);
     const retainedRequested = request.policy.retention === 'retain';
     let retained = false;
 
@@ -190,6 +205,9 @@ export class AgentRunEngine {
       }
       return { ...result, conversationId: retained ? conversationId : undefined };
     } finally {
+      // Success, cancellation, and transport failure all settle through here,
+      // so an id can never stay active after its run is over.
+      this.activeConversationIds.delete(conversationId);
       if (!retained) this.conversationManager.deleteConversation(conversationId);
     }
   }
@@ -200,20 +218,27 @@ export class AgentRunEngine {
       throw new ConversationNotFoundError(request.conversationId);
     }
     const capability = this.validateCapability(request);
-    const userMessage = capability?.appendTurnContract
-      ? await capability.appendTurnContract(request.userMessage)
-      : request.userMessage;
-    const result = await this.executeConversationTurn(
-      request.conversationId,
-      userMessage,
-      request.policy,
-      capability,
-      request.options ?? {}
-    );
-    if (!result.cancelled) {
-      this.outputChannel?.appendLine(`[AgentRunEngine] Continued conversation ${request.conversationId}.`);
+    // Active before the first history read; released in the finally so that
+    // cancellation and transport failure cannot leak the mark (ADR 2026-07-20).
+    this.activeConversationIds.add(request.conversationId);
+    try {
+      const userMessage = capability?.appendTurnContract
+        ? await capability.appendTurnContract(request.userMessage)
+        : request.userMessage;
+      const result = await this.executeConversationTurn(
+        request.conversationId,
+        userMessage,
+        request.policy,
+        capability,
+        request.options ?? {}
+      );
+      if (!result.cancelled) {
+        this.outputChannel?.appendLine(`[AgentRunEngine] Continued conversation ${request.conversationId}.`);
+      }
+      return { ...result, conversationId: request.conversationId };
+    } finally {
+      this.activeConversationIds.delete(request.conversationId);
     }
-    return { ...result, conversationId: request.conversationId };
   }
 
   /**
@@ -406,6 +431,30 @@ export class AgentRunEngine {
 
   discardConversation(conversationId: string): void {
     this.conversationManager.deleteConversation(conversationId);
+  }
+
+  /** True while a run is reading or committing this conversation's history. */
+  isConversationActive(conversationId: string): boolean {
+    return this.activeConversationIds.has(conversationId);
+  }
+
+  /**
+   * Guarded between-run seam for the mode-change batch (ADR 2026-07-20). A
+   * retained system message may be replaced atomically between runs but never
+   * while a run is reading or committing that conversation, so any active
+   * target rejects the whole batch here before the manager even validates it
+   * — no conversation changes, active or idle.
+   */
+  replaceSystemMessagesBetweenRuns(replacements: readonly ConversationSystemMessageReplacement[]): void {
+    const activeTargets = replacements
+      .map(replacement => replacement.conversationId)
+      .filter(conversationId => this.activeConversationIds.has(conversationId));
+    if (activeTargets.length > 0) {
+      throw new Error(
+        `Cannot replace system messages while a run is active for conversation(s): ${[...new Set(activeTargets)].join(', ')}`
+      );
+    }
+    this.conversationManager.replaceSystemMessages(replacements);
   }
 
   getConversationContextBudget(conversationId: string | undefined): ContextBudgetSnapshot | undefined {

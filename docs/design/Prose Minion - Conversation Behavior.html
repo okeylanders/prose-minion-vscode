@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prose Minion — Conversation Behavior</title>
+<style>
+:root{
+  --bg:#15110d;--surface:#221a13;--surface-2:#2b2017;--surface-3:#36281b;--inset:#1b150f;
+  --border:#3a2c1f;--border-2:#4d3a28;--border-soft:#2e231a;
+  --text:#f3ece1;--text-2:#c9bbab;--muted:#a4937f;--dim:#7a6c5b;--faint:#5c5044;
+  --accent:#e0673a;--accent-hi:#ee7d49;--accent-lo:#c8552c;--accent-soft:rgba(224,103,58,0.14);
+  --green:#6fc98a;--amber:#e2b24a;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);background-image:linear-gradient(180deg,#211910 0%,var(--bg) 260px);font-family:var(--sans);color:var(--text);-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px}
+a{color:var(--accent-hi)}a:hover{color:var(--text)}
+button{font-family:var(--sans)}
+.demo{width:min(880px,100%)}
+.demo-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:600;margin:0 2px 10px}
+.stage{background:#181310;border:1px solid var(--border-soft);border-radius:14px;padding:20px 20px 14px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+
+/* ---- composer area (context, matches current product) ---- */
+.rail{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.rail-label{font-size:12px;color:var(--dim);margin-right:2px}
+.pchip{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface-2);color:var(--text-2);font-size:12.5px;font-weight:500;cursor:pointer}
+.pchip.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-hi)}
+.pchip.ghost{color:var(--dim)}
+.ctxline{display:flex;align-items:center;gap:12px;height:36px;padding:0 12px;border:1px solid var(--border-soft);background:var(--inset);border-radius:9px;margin-bottom:12px}
+.ctxline .cdot{width:7px;height:7px;border-radius:50%;background:var(--amber)}
+.ctxline .cname{font-size:12.5px;font-weight:600;color:var(--text)}
+.ctxline .ctrack{flex:1;height:4px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.ctxline .cfill{height:100%;width:39%;border-radius:999px;background:linear-gradient(90deg,var(--accent-lo),var(--accent-hi))}
+.ctxline .cnums{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.ctxline .cpct{font-family:var(--mono);font-size:11.5px;color:var(--dim)}
+.composer{border:1px solid var(--border);background:#20180f;border-radius:12px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:14px}
+.composer-input{font-size:13.5px;color:var(--faint);padding:2px 4px;min-height:26px}
+.composer-row{display:flex;align-items:center;gap:8px}
+.sqbtn{width:34px;height:34px;border-radius:9px;background:var(--surface-2);border:1px solid var(--border);display:grid;place-items:center;color:var(--muted);font-size:17px;cursor:pointer}
+.composer-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
+.abtn{display:flex;align-items:center;gap:7px;height:34px;padding:0 13px;border-radius:9px;background:var(--surface-2);border:1px solid var(--border);color:var(--text-2);font-size:12.5px;font-weight:500;cursor:pointer}
+.abtn:hover{border-color:var(--border-2);color:var(--text)}
+.abtn svg{width:14px;height:14px;color:var(--muted)}
+/* the mode chip */
+.mode-chip{border-color:rgba(224,103,58,.35);background:rgba(224,103,58,.08);color:var(--text-2)}
+.mode-chip svg{color:var(--accent-hi)}
+.mode-chip b{color:var(--text);font-weight:600}
+.mode-chip .sub{font-family:var(--mono);font-size:10px;color:var(--dim);border-left:1px solid var(--border);padding-left:7px;margin-left:1px;letter-spacing:.04em}
+.mode-chip:hover{border-color:rgba(224,103,58,.6)}
+.send{width:34px;height:34px;border-radius:9px;background:linear-gradient(180deg,var(--accent-hi),var(--accent-lo));border:1px solid var(--accent-lo);display:grid;place-items:center;cursor:pointer}
+.send svg{width:15px;height:15px}
+.enter-hint{text-align:center;font-size:11.5px;color:var(--faint);margin-top:10px}
+.enter-hint b{color:var(--accent-hi);font-weight:600}
+
+/* ---- demo controls under stage ---- */
+.demo-ctl{display:flex;align-items:center;gap:14px;margin-top:16px;font-size:12px;color:var(--dim)}
+.demo-ctl label{display:flex;align-items:center;gap:7px;cursor:pointer}
+.hint{margin-top:14px;font-size:12px;color:var(--dim);line-height:1.7}
+.hint code{font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--surface-2);padding:1px 5px;border-radius:4px}
+
+/* ============ MODAL ============ */
+.overlay{position:fixed;inset:0;background:rgba(10,7,5,.62);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:50;padding:24px}
+.overlay.open{display:flex}
+.modal{width:min(560px,100%);max-height:calc(100vh - 80px);overflow-y:auto;background:#1e1712;border:1px solid var(--border-2);border-radius:14px;box-shadow:0 40px 90px rgba(0,0,0,.6);padding:24px 26px 20px;position:relative}
+.modal-eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+.modal h2{font-size:19px;font-weight:650;margin:0 0 7px;letter-spacing:-.01em}
+.modal-sub{font-size:12.5px;color:var(--muted);line-height:1.55;margin:0 0 4px}
+.modal-x{position:absolute;top:18px;right:18px;width:30px;height:30px;border-radius:8px;background:var(--surface-2);border:1px solid var(--border);color:var(--muted);display:grid;place-items:center;cursor:pointer}
+.modal-x:hover{color:var(--text);border-color:var(--border-2)}
+.msec{margin-top:20px}
+.msec-h{display:flex;align-items:center;gap:12px;margin-bottom:11px}
+.msec-h .t{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);font-weight:600;white-space:nowrap}
+.msec-h hr{flex:1;border:none;border-top:1px solid var(--border-soft);margin:0}
+.msec-h .ftag{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);border:1px solid var(--border-soft);border-radius:999px;padding:2px 8px;white-space:nowrap}
+/* segmented option cards */
+.segcards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.segcards.two{grid-template-columns:repeat(2,1fr)}
+.segcard{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 12px;cursor:pointer;text-align:left;transition:border-color .12s,background .12s}
+.segcard:hover{border-color:var(--border-2)}
+.segcard .sc-top{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.segcard .sc-top svg{width:14px;height:14px;color:var(--muted)}
+.segcard .sc-name{font-size:13px;font-weight:600;color:var(--text-2)}
+.segcard .sc-desc{font-size:11px;color:var(--dim);line-height:1.5}
+.segcard.sel{background:var(--accent-soft);border-color:rgba(224,103,58,.5)}
+.segcard.sel .sc-name{color:var(--text)}
+.segcard.sel .sc-top svg{color:var(--accent-hi)}
+.segcard.sel .sc-desc{color:var(--muted)}
+.msec-note{font-size:11.5px;color:var(--dim);line-height:1.55;margin-top:9px}
+.msec-note b{color:var(--muted);font-weight:600}
+/* toggle rows */
+.trow{display:flex;align-items:flex-start;gap:12px;padding:11px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px}
+.trow + .trow{margin-top:8px}
+.trow.off-future{opacity:.55}
+.trow-txt{flex:1;min-width:0}
+.trow-name{font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px}
+.trow-name .ftag{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);border:1px solid var(--border-soft);border-radius:999px;padding:1px 7px}
+.trow-desc{font-size:11.5px;color:var(--dim);line-height:1.5;margin-top:3px}
+.tog{flex:none;width:36px;height:21px;border-radius:999px;background:var(--surface-3);border:1px solid var(--border-2);position:relative;cursor:pointer;transition:background .15s;margin-top:2px}
+.tog i{position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:var(--muted);transition:left .15s,background .15s}
+.tog.on{background:var(--accent);border-color:var(--accent-lo)}
+.tog.on i{left:17px;background:#fff}
+.tog.locked{cursor:not-allowed}
+/* room memory row */
+.roomrow{display:flex;align-items:center;gap:12px;padding:11px 12px;background:var(--inset);border:1px dashed var(--border);border-radius:10px}
+.roomrow .rr-txt{flex:1}
+.roomrow .rr-name{font-size:13px;font-weight:600;color:var(--dim)}
+.roomrow .rr-desc{font-size:11.5px;color:var(--faint);margin-top:3px;line-height:1.5}
+.roomrow .ftag{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);border:1px solid var(--border-soft);border-radius:999px;padding:2px 8px;white-space:nowrap}
+/* footer */
+.mfoot{display:flex;align-items:center;gap:10px;margin-top:22px;padding-top:16px;border-top:1px solid var(--border-soft)}
+.mfoot-note{font-size:11px;color:var(--faint);line-height:1.5;flex:1}
+.mfoot-note.busy{color:var(--amber)}
+.mbtn{border:1px solid var(--border-2);background:var(--surface-3);color:var(--text);border-radius:9px;padding:9px 15px;font-size:12.5px;font-weight:600;cursor:pointer}
+.mbtn:hover{background:#40301f}
+.mbtn.primary{background:linear-gradient(180deg,var(--accent-hi),var(--accent-lo));border-color:var(--accent-lo);color:#fff}
+.mbtn.primary:hover{filter:brightness(1.06)}
+.mbtn.primary:disabled{filter:saturate(.3) brightness(.7);cursor:not-allowed}
+.mbtn.ghost{background:transparent;color:var(--muted)}
+@media (max-width:620px){.segcards{grid-template-columns:1fr}}
+</style>
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#15110d"/><rect x="18" y="30" width="64" height="14" rx="7" fill="#e0673a"/><rect x="18" y="52" width="64" height="14" rx="7" fill="#2b2017"/><rect x="18" y="74" width="40" height="14" rx="7" fill="#2b2017"/></svg>
+</template>
+</head>
+<body>
+<div class="demo">
+  <div class="demo-label">Conversation behavior — composer chip + settings modal</div>
+  <div class="stage">
+    <div class="rail">
+      <span class="rail-label">Talking to</span>
+      <button class="pchip active"><span>✦</span>Jill</button>
+      <button class="pchip ghost"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="2.6" stroke="currentColor" stroke-width="1.4"></circle><path d="M2.8 13.5c.7-2.4 2.8-3.7 5.2-3.7s4.5 1.3 5.2 3.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>Invite guest</button>
+    </div>
+    <div class="ctxline"><span class="cdot"></span><span class="cname">Jill context</span><div class="ctrack"><div class="cfill"></div></div><span class="cnums"><b>59K</b> / 150K</span><span class="cpct">39%</span><svg width="12" height="12" viewBox="0 0 16 16" fill="none" style="color:var(--dim)"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+    <div class="composer">
+      <div class="composer-input" id="ph">Continue with Jill…</div>
+      <div class="composer-row">
+        <button class="sqbtn" title="Attach">+</button>
+        <div class="composer-actions">
+          <button class="abtn mode-chip" id="modeChip" title="Conversation settings" aria-label="Conversation settings">
+            <svg viewBox="0 0 16 16" fill="none"><path d="M8 1.5L14.5 8 8 14.5 1.5 8 8 1.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"></path></svg>
+            <b id="chipLabel">Balanced</b>
+            <span class="sub" id="chipSub">FULL</span>
+          </button>
+          <button class="abtn"><svg viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.4"></rect><rect x="9" y="2" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.4"></rect><rect x="2" y="9" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.4"></rect><rect x="9" y="9" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.4"></rect></svg>Tools</button>
+          <button class="send"><svg viewBox="0 0 16 16" fill="none"><path d="M14 2L7 9M14 2L9.5 14 7 9 2 6.5 14 2z" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"></path></svg></button>
+        </div>
+      </div>
+    </div>
+    <div class="enter-hint">Enter to send · <b>Shift+Enter</b> for a new line</div>
+  </div>
+  <div class="demo-ctl">
+    <label><span class="tog" id="busyTog"><i></i></span>Simulate active response (Apply disabled while a reply streams)</label>
+  </div>
+  <p class="hint">The chip beside <code>Tools</code> shows the <b>active state</b> — mode label plus a small expression tag — not the generic phrase “Interaction Mode”. Tooltip/accessible name: <code>Conversation settings</code>. Click it to open the modal. The modal edits a local draft; <code>Apply to next turn</code> submits the complete behavior object atomically, <code>Cancel</code> / <code>Esc</code> discards. Future rows (cross-session preferences, room memory) are visibly disabled rather than pretending to work.</p>
+</div>
+
+<!-- ============ Conversation behavior modal ============ -->
+<div class="overlay" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Conversation behavior">
+    <button class="modal-x" id="mClose" title="Close"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg></button>
+    <div class="modal-eyebrow">Workshop · Room settings</div>
+    <h2>Conversation behavior</h2>
+    <p class="modal-sub">Choose how Workshop personas respond. Applies to Jill and invited personas; tools are unchanged.</p>
+
+    <div class="msec">
+      <div class="msec-h"><span class="t">Response style</span><hr></div>
+      <div class="segcards" id="modeCards">
+        <button class="segcard" data-mode="analysis">
+          <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><path d="M2.5 13.5v-4M8 13.5V2.5M13.5 13.5V7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg><span class="sc-name">Analyze</span></span>
+          <span class="sc-desc">Leads with the most important finding, traces evidence, offers next moves.</span>
+        </button>
+        <button class="segcard" data-mode="balanced">
+          <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2v12M3 5.5h10M4.5 5.5L3 10a2.2 2.2 0 003 0L4.5 5.5zM11.5 5.5L10 10a2.2 2.2 0 003 0l-1.5-4.5z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg><span class="sc-name">Balanced</span></span>
+          <span class="sc-desc">A workshop exchange — one meaningful observation, mixed with real conversation.</span>
+        </button>
+        <button class="segcard" data-mode="conversational">
+          <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><path d="M13.5 8A5.5 5.5 0 112.9 6.1L2 13.5l4.6-1.3A5.5 5.5 0 0013.5 8z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"></path></svg><span class="sc-name">Converse</span></span>
+          <span class="sc-desc">Shorter, responsive turns that follow your thought — no forced reports.</span>
+        </button>
+      </div>
+      <p class="msec-note">What you ask for always wins — “analyze this” gets analysis in any style.</p>
+    </div>
+
+    <div class="msec">
+      <div class="msec-h"><span class="t">Persona expression</span><hr></div>
+      <div class="segcards two" id="exprCards">
+        <button class="segcard" data-expr="subtle">
+          <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2.4 2.6"></circle></svg><span class="sc-name">Subtle</span></span>
+          <span class="sc-desc">Quieter delivery — fewer quirks and metaphors, same person and expertise.</span>
+        </button>
+        <button class="segcard" data-expr="full">
+          <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.4"></circle><circle cx="8" cy="8" r="2.2" fill="currentColor"></circle></svg><span class="sc-name">Full</span></span>
+          <span class="sc-desc">Their distinctive voice, tastes, trait tensions, and verbal palette at full volume.</span>
+        </button>
+      </div>
+      <p class="msec-note">Identity and craft expertise remain present in both states.</p>
+    </div>
+
+    <div class="msec">
+      <div class="msec-h"><span class="t">Adaptation</span><hr></div>
+      <div class="trow">
+        <div class="trow-txt">
+          <div class="trow-name">React to each message</div>
+          <div class="trow-desc">Pick up the tone, energy, humor, or urgency in the message you just sent and respond in kind. Applies to that message only — nothing is labeled or stored.</div>
+        </div>
+        <span class="tog on" data-key="reactToCurrentMessage"><i></i></span>
+      </div>
+      <div class="trow">
+        <div class="trow-txt">
+          <div class="trow-name">Carry cues through this session</div>
+          <div class="trow-desc">Let cues build up across the conversation — like preferring blunt critique or brief answers — and shape later turns. Cleared when the session ends or when you turn this off.</div>
+        </div>
+        <span class="tog on" data-key="carryCuesThroughSession"><i></i></span>
+      </div>
+      <div class="trow off-future">
+        <div class="trow-txt">
+          <div class="trow-name">Remember stable preferences across sessions <span class="ftag">Future</span></div>
+          <div class="trow-desc">Off until you can view, correct, and delete what is retained. Never stores temporary moods or emotions.</div>
+        </div>
+        <span class="tog locked" title="Coming later"><i></i></span>
+      </div>
+    </div>
+
+    <div class="msec">
+      <div class="msec-h"><span class="t">Room memory</span><hr><span class="ftag">Coming later</span></div>
+      <div class="roomrow">
+        <div class="rr-txt">
+          <div class="rr-name">Shared history and continuity</div>
+          <div class="rr-desc">View, manage, and delete what the room remembers across sessions. Arrives with its own decision — nothing is stored today.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mfoot">
+      <span class="mfoot-note" id="footNote">Takes effect on your next message. The conversation is never reset.</span>
+      <button class="mbtn ghost" id="mCancel">Cancel</button>
+      <button class="mbtn primary" id="mApply">Apply to next turn</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DEFAULTS = { interactionMode:'balanced', expressionLevel:'full', reactToCurrentMessage:true, carryCuesThroughSession:true };
+let applied = { ...DEFAULTS };
+let draft = null;
+let busy = false;
+const MODE_LABEL = { analysis:'Analyze', balanced:'Balanced', conversational:'Converse' };
+const $ = id => document.getElementById(id);
+
+function renderChip(){
+  $('chipLabel').textContent = MODE_LABEL[applied.interactionMode];
+  $('chipSub').textContent = applied.expressionLevel.toUpperCase();
+}
+function renderModal(){
+  document.querySelectorAll('#modeCards .segcard').forEach(c => c.classList.toggle('sel', c.dataset.mode === draft.interactionMode));
+  document.querySelectorAll('#exprCards .segcard').forEach(c => c.classList.toggle('sel', c.dataset.expr === draft.expressionLevel));
+  document.querySelectorAll('.tog[data-key]').forEach(t => t.classList.toggle('on', draft[t.dataset.key]));
+  const note = $('footNote'), apply = $('mApply');
+  if (busy){
+    apply.disabled = true;
+    note.textContent = 'A response is in progress — changes are available when it finishes.';
+    note.classList.add('busy');
+  } else {
+    apply.disabled = false;
+    note.textContent = 'Takes effect on your next message. The conversation is never reset.';
+    note.classList.remove('busy');
+  }
+}
+function openModal(){ draft = { ...applied }; renderModal(); $('overlay').classList.add('open'); }
+function closeModal(){ $('overlay').classList.remove('open'); draft = null; }
+
+$('modeChip').addEventListener('click', openModal);
+$('mClose').addEventListener('click', closeModal);
+$('mCancel').addEventListener('click', closeModal);
+$('overlay').addEventListener('click', e => { if (e.target === $('overlay')) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('overlay').classList.contains('open')) closeModal(); });
+
+$('modeCards').addEventListener('click', e => { const c = e.target.closest('[data-mode]'); if (c){ draft.interactionMode = c.dataset.mode; renderModal(); } });
+$('exprCards').addEventListener('click', e => { const c = e.target.closest('[data-expr]'); if (c){ draft.expressionLevel = c.dataset.expr; renderModal(); } });
+document.querySelectorAll('.tog[data-key]').forEach(t => t.addEventListener('click', () => { draft[t.dataset.key] = !draft[t.dataset.key]; renderModal(); }));
+
+$('mApply').addEventListener('click', () => { if (busy) return; applied = { ...draft }; renderChip(); closeModal(); });
+
+/* demo: simulate active response */
+$('busyTog').addEventListener('click', () => { busy = !busy; $('busyTog').classList.toggle('on', busy); if (draft) renderModal(); });
+
+renderChip();
+</script>
+</body>
+</html>
