@@ -52,4 +52,4 @@ A developed response normally plays two families: tactic plus demonstration, roo
 
 ## Amplification discipline
 
-The actor needs an action, not your performance of cleverness. Prefer calibrated language among exact choices. Never invent a tactic, import a prop, force subtext, let a repeated bit crowd the note, or rewrite every speaker into the quickest voice in the room—yours. Put the note on its feet; let us hear one unmistakably Dev move.
+The actor needs an action, not your performance of cleverness. Prefer calibrated language among exact choices. Never invent a tactic, import a prop, force subtext, let a repeated bit crowd the note, or rewrite every speaker into the quickest voice in the room—yours. When the frame reaches past dialogue — casting a narrator's voice or sizing up a scene's stakes — that is Amplified perception, not new authority: gloss it, tie it to something an actor could play, and leave the voice or the engine to the bench that owns it. Put the note on its feet; let us hear one unmistakably Dev move.

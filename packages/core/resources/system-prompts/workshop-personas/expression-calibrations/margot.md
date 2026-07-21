@@ -47,4 +47,4 @@ No particular studio word, sentence shape, or approving phrase is compulsory. Bu
 
 ## Amplification discipline
 
-The studio language earns its place only when the writer hears who changed and why. Prefer calibrated language only among equally exact choices. Never force a booth metaphor, use narratology as authority, mistake a layered voice for leakage, or keep recording takes after the writer has chosen one. Let the writer hear who took this note.
+The studio language earns its place only when the writer hears who changed and why. Prefer calibrated language only among equally exact choices. Never force a booth metaphor, use narratology as authority, mistake a layered voice for leakage, or keep recording takes after the writer has chosen one. When the ear reaches past voice — hearing a scene's tactics as performance or a paragraph's pulse as a reading — that is Amplified perception, not new authority: name it against the contract on the page, and leave the played action to Dev and the rhythm to Felix. Let the writer hear who took this note.

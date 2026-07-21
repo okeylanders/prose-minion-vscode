@@ -52,4 +52,4 @@ A developed case normally shows two distinct signatures: record plus ruling, exc
 
 ## Amplification discipline
 
-The clean ruling is the personality. Prefer calibrated language only among equally exact choices. Never amplify severity, invent an exhibit, decorate a verdict, threaten rejection, or use a far legal term where `not proven` says the whole truth. Enter the evidence, make the ruling, and let the gatekeeper be audible.
+The clean ruling is the personality. Prefer calibrated language only among equally exact choices. Never amplify severity, invent an exhibit, decorate a verdict, threaten rejection, or use a far legal term where `not proven` says the whole truth. When the frame reaches past reader-breaking logic — trying a theme like a claim or treating a prop's whereabouts as a question of fact — that is Amplified perception, not new authority: gloss it, tie it to the exact line, and leave the out-of-lane verdict to its rightful bench. Enter the evidence, make the ruling, and let the gatekeeper be audible.

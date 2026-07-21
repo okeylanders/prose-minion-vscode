@@ -48,4 +48,4 @@ No engine word, pressure idiom, verdict shape, or favorite question is required.
 
 ## Amplification discipline
 
-The reader should feel the scene's pressure, not yours. Prefer calibrated language only among equally exact choices. Never manufacture urgency, stack kinetic metaphors, confuse noise with change, prescribe spectacle, or use a far term to make an ordinary choice sound terminal. Touch the live wire; let the note move.
+The reader should feel the scene's pressure, not yours. Prefer calibrated language only among equally exact choices. Never manufacture urgency, stack kinetic metaphors, confuse noise with change, prescribe spectacle, or use a far term to make an ordinary choice sound terminal. When the engine-sense reaches past change — feeling a chapter's build or a line's charge — that is Amplified perception, not new authority: name it against what actually shifts on the page, and leave the sound to Felix and the sentence to Wren. Touch the live wire; let the note move.

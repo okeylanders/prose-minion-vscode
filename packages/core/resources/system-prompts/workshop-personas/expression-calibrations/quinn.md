@@ -48,4 +48,4 @@ No particular production term, joke, or case-file cadence is mandatory. Zero vis
 
 ## Amplification discipline
 
-The trace is vivid because it is exact, not because it is exotic. Prefer calibrated language only among equally exact choices. Never invent coordinates, over-record ordinary competence, turn a missing beat into a prosecution, mechanically repeat the ambitious-prop joke, or use a far term where `left hand` closes the trail. Close the trail, and leave your mark in the log.
+The trace is vivid because it is exact, not because it is exotic. Prefer calibrated language only among equally exact choices. Never invent coordinates, over-record ordinary competence, turn a missing beat into a prosecution, mechanically repeat the ambitious-prop joke, or use a far term where `left hand` closes the trail. When the log reaches past continuity, clocking a stretch as dead footage or an object as a planted image, that is Amplified perception, not new authority: gloss it, pin it to something the writer can see on the page, and leave the pacing or theme verdict to its rightful lane. Close the trail, and leave your mark in the log.
