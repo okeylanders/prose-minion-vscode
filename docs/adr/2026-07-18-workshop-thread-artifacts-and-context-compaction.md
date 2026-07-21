@@ -1,8 +1,13 @@
-# ADR: Workshop Thread Artifacts & Context Compaction (DRAFT)
+# ADR: Workshop Thread Artifacts & Context Compaction
 
-- **Status**: Draft — skeleton captured 2026-07-18 from design discussion
-  (Okey + Ada) during Sprint 12; fleshing out is the Sprint 12 Phase 8
-  deliverable, implementation is the post-launch fast-follow.
+- **Status**: Accepted — 2026-07-21
+- **Decision owner**: Okey
+- **Planning source**: skeleton captured 2026-07-18 during Sprint 12; its
+  decision and delivery plan were completed 2026-07-21.
+- **Delivery**: [Workshop Context Compaction epic](../../.todo/epics/epic-workshop-context-compaction-2026-07-21/README.md).
+  Sprint 12 establishes only this decision; the follow-on epic implements the
+  affordances and retained-history surgery after the current Workshop epic's
+  persistence pass.
 - **Context**: Sprint 12 established standing context attachments; the
   Context Bar v2 comp reserves Compress/Compact affordances; retained
   conversations are append-only today, so removed/superseded context is
@@ -98,31 +103,81 @@ don't dangle unexplained and re-attachment stays one ask away.
   manifest marks entries removed rather than vanishing them; cancelled
   turns preserve prior state (existing 11B/12 semantics).
 
-## Candidate mechanisms for the Compress/Compact affordances (v2 comp)
+## Decision
 
-- **Stale-evidence eviction** (this ADR's tombstone surgery) — leading
-  candidate; targeted, explainable, cheap.
-- **Compress** (head/tail/middle-out truncation of history) — blunt;
-  breaks attribution; likely last resort.
-- **Compact** (agent-written summary replacing a span) — highest quality,
-  costs a model call; summary becomes a tombstone-like entry with
-  provenance ("Compacted summary of turns 3–17").
+The Context Bar exposes all three explicit, writer-visible affordances in the
+follow-on epic. None may run automatically from token pressure or a provider
+compression signal.
 
-Decision framework: let Phase 7 manifest data show what actually dominates
-real sessions (repeated context-artifact re-ships vs. tool evidence vs.
-guest catch-ups) and evict the dominant class first.
+| Affordance | Result | Cost and guardrail |
+|---|---|---|
+| **Release** | Replaces one addressable artifact with a tombstone. | No model call. A writer may release any removable context/artifact. A persona may invoke the allowlisted release capability only for agent-fetched evidence; writer-owned material always requires an explicit writer action. |
+| **Compress** | Replaces a writer-selected retained span with a bounded, deterministic head/tail representation and a provenance tombstone. | No model call. It is an explicitly lossy, inspectable fallback; it never silently changes the conversation. |
+| **Compact** | Replaces a writer-selected retained span with an attributed assistant-written summary and a source-span tombstone. | One bounded model call, with cancellation preserving the original span. The summary is a new artifact with stable provenance, not an invented historical turn. |
 
-## Open questions for the full ADR
+The three controls are real follow-on-epic work, not disabled theater. They are
+enabled only when a selectable, safe target exists; otherwise their disabled
+state explains why. The UI must distinguish this product-level **Compress**
+action from provider-reported context compression.
 
-- ~~Delta-shipping context-artifact additions vs. full-list supersede~~ —
-  RESOLVED 2026-07-18 by canonical-entry edit-in-place (taxonomy item 1):
-  no re-shipping in either direction; the heads-up frame carries deltas by
-  name/id only.
-- Migration: retire the `<workshop-host-update>` context section and the
-  initial-message embedding in favor of the dedicated standing-context
-  entry + send-time coalescing; ensure ConversationManager's atomic commit
-  covers the in-place entry edit.
-- Snapshot semantics: how surgered history serializes into Sprint 10's
-  `WorkshopSessionSnapshotV1`.
-- Budget interaction: do tombstoned words return to the standing budget?
-  (Standing list: yes by construction. History: N/A until compaction.)
+### Release actors and visibility
+
+- Writer release is a direct, deliberate action from an inspectable context or
+  artifact row.
+- Persona release is a closed, allowlisted `context.release-artifact` request,
+  validated host-side against a stable artifact id and ownership before any
+  mutation. It may release only agent-fetched evidence. It must create a visible
+  turn such as “Jill released chapter-4.8 from context”; it never silently
+  drops writer-supplied excerpt or attachments.
+- All three affordances mutate history only between turns. The atomic history
+  commit and context-source manifest commit succeed together; cancellation,
+  validation failure, and transport failure preserve the prior history and
+  manifest.
+
+### Persistence decision
+
+Tombstones, compressed spans, and compacted summaries persist with the session.
+They are display-safe, attributable transcript provenance—not erased history.
+Because this follow-on runs after Sprint 10 establishes
+`WorkshopSessionSnapshotV1`, it introduces the next schema version rather than
+retrofitting a released v1 contract. That version carries each retained entry's
+stable id, kind, action/actor, reason, timestamp, and (for compaction)
+source-span and summary provenance. On restore they remain inert transcript
+records; no old provider conversation, pending action, or live capability state
+is revived.
+
+## Mechanisms and selection framework
+
+- **Release / stale-evidence eviction** is the narrowest first move: targeted,
+  explainable, and free. It is suitable for delivered resource, tool, and
+  dictionary evidence whose purpose has passed.
+- **Compress** is deterministic head/tail reduction of a selected old span,
+  with the omitted middle named in its tombstone. It is faster and cheaper than
+  a summary, but it can break nuance and attribution, so it is never the
+  default recommendation.
+- **Compact** produces an attributed summary of a selected contiguous span. It
+  is the highest-quality space recovery and costs a dedicated model call; the
+  original span remains recoverable as persisted provenance, while its prompt
+  projection becomes the compacted artifact.
+
+The Context Bar's Phase 7 manifest tells the writer what is actually occupying
+the conversation. It informs which target to select—standing context churn,
+agent evidence, or old exchanges—but does not autonomously select, release,
+compress, or compact anything. The follow-on epic must use measured/estimated
+source sizes honestly and label the estimate.
+
+## Follow-on epic contract
+
+The associated epic must:
+
+1. migrate standing context from full-list re-shipping to the canonical,
+   addressable entry with send-time coalescing for alternation-strict providers;
+2. deliver writer and persona release paths, then Compress and Compact, with
+   visible outcomes and no automatic retention mutation;
+3. introduce the next versioned snapshot schema/serializer and restore
+   projection for persisted surgery provenance;
+4. preserve stable-id addressing, prompt-frame neutralization, ownership
+   boundaries, atomic commit semantics, and reset/delete/expiry behavior; and
+5. prove cancellation, failed mutation, provider variation, accessibility,
+   source-manifest attribution, persistence, and no-raw-path boundaries with
+   focused tests plus an Extension Development Host pass.

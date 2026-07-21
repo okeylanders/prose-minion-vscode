@@ -36,7 +36,7 @@ with its tests; full suite + typecheck + lint green at every commit.
 | 6 | Source-aware prompt frames (host/guest/tool excerpt-source frame, provenance → canonical `{ group, path }`) + bounded composite tool catalog (source + neighbors + guides) + artifact-taxonomy framing: context-artifacts vs thread-artifacts vs agent-fetched evidence, stable artifact ids on delivered evidence entries (per ADR 2026-07-18 draft) | **Done** | `9b6ad4f` |
 | 6B | Writer thread-artifacts (scope pulled forward 2026-07-18, Okey — land before Phase 7 so the manifest treats `message-attachment` as a first-class origin): composer `+` menu (attach-to-message beside standing context), modal `message` mode, host-side pending list with `ta-N` ids + item cap + head-slice, frames ride ONE send (host/guest/direct-tool) with commit-on-success, turn-stamped display-safe refs, quick actions never consume | **Done** | `d05eeb8` |
 | 7 | Context source manifest: engine per-round instrumentation, `ConversationManager` storage beside `contextBudget`, writer-entry stamping, `sources` on `LabeledContextBudgetSnapshot`, Context Bar v2 "In context" panel — now INCLUDING thread-artifact entries (`message-attachment` kind, stamped at ship time) shown as their own parenthetical kind beside context files / agent resources / tool calls | **Done** | `01e7b52` |
-| 8 | Pin-language sweep (wire contracts included), compaction ADR draft, 06B manual UX pass, bundle verification + deltas | Pending | — |
+| 8 | Pin-language sweep (wire contracts included), compaction ADR, 06B manual UX pass, bundle verification + deltas | **In progress** — ADR accepted; closeout remains | — |
 
 Also landed: design comps pulled to `docs/design/` (`34cb79a`), wizard folded
 into this doc (`f944646`), context budget interim bump 10k → 35k with the
@@ -295,14 +295,11 @@ autonomously is context the writer is paying for and must not be invisible.
 - [x] Project `sources` through `LabeledContextBudgetSnapshot` and render the
       Context Bar's "In context" section: grouped rows, sizes, origin
       attribution, stale dimming; display-safe labels only.
-- [ ] Flesh out the compaction ADR (skeleton drafted 2026-07-18:
-      docs/adr/2026-07-18-workshop-thread-artifacts-and-context-compaction.md):
-      decision
-      framework, candidate mechanisms (compress vs. compact vs. stale-
-      evidence eviction, informed by what the manifest shows dominates real
-      sessions), and what retained-history surgery means for the atomic
-      commit and snapshot semantics. The epic ships as one release, so the
-      post-launch fast-follow must be implementation, not design.
+- [x] Flesh out the compaction ADR:
+      [2026-07-18 Workshop Thread Artifacts & Context Compaction](../../../../docs/adr/2026-07-18-workshop-thread-artifacts-and-context-compaction.md).
+      The accepted decision covers writer and persona release paths, real
+      Release/Compress/Compact affordances in the associated follow-on epic,
+      atomic surgery semantics, and persisted tombstone/compaction provenance.
       Implementation itself stays out of Sprint 12.
 
 ### Composer
