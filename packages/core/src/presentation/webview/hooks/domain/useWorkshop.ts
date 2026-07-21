@@ -32,7 +32,15 @@ import {
   StreamChunkMessage,
   StreamCompleteMessage,
   StreamStartedMessage,
-  WorkshopExcerpt,
+  WorkshopConfiguredResourceRef,
+  WorkshopContextAttachmentSnapshot,
+  WorkshopContextCatalogEntry,
+  WorkshopContextCatalogMessage,
+  WorkshopContextSearchResultsMessage,
+  WorkshopContextSearchResultsPayload,
+  WorkshopExcerptSnapshot,
+  WorkshopExcerptSource,
+  WorkshopMessageAttachmentSnapshot,
   WorkshopChatTarget,
   WorkshopPersonaId,
   WorkshopPersonaGuestSnapshot,
@@ -56,9 +64,17 @@ interface LiveRun {
 export interface WorkshopState {
   /** True once the first host snapshot has arrived (gate for "empty" UI). */
   sessionReady: boolean;
-  excerpt: WorkshopExcerpt | null;
-  contextBrief: string;
-  contextBriefPending: boolean;
+  excerpt: WorkshopExcerptSnapshot | null;
+  contextAttachments: WorkshopContextAttachmentSnapshot[];
+  /** Staged one-shot attachments for the writer's next message (Phase 6B). */
+  pendingMessageAttachments: WorkshopMessageAttachmentSnapshot[];
+  contextPending: boolean;
+  /** Configured resource catalog for the Context Selector; null until requested. */
+  contextCatalog: WorkshopContextCatalogEntry[] | null;
+  /** Latest content-search results for the Context Selector, if any. */
+  contextSearch: WorkshopContextSearchResultsPayload | null;
+  /** True while the Context wizard streams under 'workshop-context'. */
+  wizardRunning: boolean;
   turns: WorkshopTurn[];
   /**
    * Turns held host-side but not present in this webview (a bounded snapshot
@@ -102,9 +118,24 @@ export interface WorkshopState {
 }
 
 export interface WorkshopActions {
-  pinExcerpt: (text: string, sourceUri?: string, relativePath?: string) => void;
+  pinExcerpt: (text: string, source?: WorkshopExcerptSource) => void;
   pinFromFile: () => void;
-  setContextBrief: (text?: string) => void;
+  rereadExcerpt: () => void;
+  addContextText: (text: string) => void;
+  addContextFile: () => void;
+  removeContextAttachment: (id: string) => void;
+  requestContextCatalog: () => void;
+  searchContextResources: (query: string) => void;
+  clearContextSearch: () => void;
+  addContextResources: (items: WorkshopConfiguredResourceRef[]) => void;
+  attachMessageResources: (items: WorkshopConfiguredResourceRef[]) => void;
+  attachMessageFile: () => void;
+  removeMessageAttachment: (id: string) => void;
+  setExcerptResource: (item: WorkshopConfiguredResourceRef) => void;
+  runContextWizard: () => void;
+  cancelContextWizard: () => void;
+  handleContextCatalog: (message: WorkshopContextCatalogMessage) => void;
+  handleContextSearchResults: (message: WorkshopContextSearchResultsMessage) => void;
   runTool: (toolId: WorkshopToolId) => void;
   quickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
   sendMessage: (text: string) => void;
@@ -143,9 +174,13 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const streaming = useStreaming();
 
   const [sessionReady, setSessionReady] = React.useState(false);
-  const [excerpt, setExcerpt] = React.useState<WorkshopExcerpt | null>(null);
-  const [contextBrief, setContextBriefState] = React.useState('');
-  const [contextBriefPending, setContextBriefPending] = React.useState(false);
+  const [excerpt, setExcerpt] = React.useState<WorkshopExcerptSnapshot | null>(null);
+  const [contextAttachments, setContextAttachments] = React.useState<WorkshopContextAttachmentSnapshot[]>([]);
+  const [pendingMessageAttachments, setPendingMessageAttachments] = React.useState<WorkshopMessageAttachmentSnapshot[]>([]);
+  const [contextPending, setContextPending] = React.useState(false);
+  const [contextCatalog, setContextCatalog] = React.useState<WorkshopContextCatalogEntry[] | null>(null);
+  const [wizardRun, setWizardRun] = React.useState<string | null>(null);
+  const [contextSearch, setContextSearch] = React.useState<WorkshopContextSearchResultsPayload | null>(null);
   const [turns, setTurns] = React.useState<WorkshopTurn[]>([]);
   const [totalTurns, setTotalTurns] = React.useState(0);
   const [hasHostConversation, setHasHostConversation] = React.useState(false);
@@ -187,8 +222,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
   // Actions (webview → extension)
 
   const pinExcerpt = React.useCallback(
-    (text: string, sourceUri?: string, relativePath?: string) => {
-      post(MessageType.WORKSHOP_SET_EXCERPT, { text, sourceUri, relativePath });
+    (text: string, source?: WorkshopExcerptSource) => {
+      post(MessageType.WORKSHOP_SET_EXCERPT, { text, source });
     },
     [post]
   );
@@ -197,9 +232,77 @@ export const useWorkshop = (): UseWorkshopReturn => {
     post(MessageType.WORKSHOP_PICK_EXCERPT_FILE, {});
   }, [post]);
 
-  const setContextBrief = React.useCallback((text?: string) => {
-    post(MessageType.WORKSHOP_SET_CONTEXT_BRIEF, { text });
+  const rereadExcerpt = React.useCallback(() => {
+    post(MessageType.WORKSHOP_REREAD_EXCERPT, {});
   }, [post]);
+
+  const addContextText = React.useCallback((text: string) => {
+    post(MessageType.WORKSHOP_ADD_CONTEXT_TEXT, { text });
+  }, [post]);
+
+  const addContextFile = React.useCallback(() => {
+    post(MessageType.WORKSHOP_ADD_CONTEXT_FILE, {});
+  }, [post]);
+
+  const removeContextAttachment = React.useCallback((id: string) => {
+    post(MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT, { id });
+  }, [post]);
+
+  const requestContextCatalog = React.useCallback(() => {
+    post(MessageType.WORKSHOP_REQUEST_CONTEXT_CATALOG, {});
+  }, [post]);
+
+  const searchContextResources = React.useCallback((query: string) => {
+    post(MessageType.WORKSHOP_SEARCH_CONTEXT_RESOURCES, { query });
+  }, [post]);
+
+  const clearContextSearch = React.useCallback(() => {
+    setContextSearch(null);
+  }, []);
+
+  const addContextResources = React.useCallback((items: WorkshopConfiguredResourceRef[]) => {
+    if (items.length > 0) {
+      post(MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES, { items });
+    }
+  }, [post]);
+
+  const setExcerptResource = React.useCallback((item: WorkshopConfiguredResourceRef) => {
+    post(MessageType.WORKSHOP_SET_EXCERPT_RESOURCE, item);
+  }, [post]);
+
+  const attachMessageResources = React.useCallback((items: WorkshopConfiguredResourceRef[]) => {
+    if (items.length > 0) {
+      post(MessageType.WORKSHOP_ATTACH_MESSAGE_RESOURCES, { items });
+    }
+  }, [post]);
+
+  const attachMessageFile = React.useCallback(() => {
+    post(MessageType.WORKSHOP_ATTACH_MESSAGE_FILE, {});
+  }, [post]);
+
+  const removeMessageAttachment = React.useCallback((id: string) => {
+    post(MessageType.WORKSHOP_REMOVE_MESSAGE_ATTACHMENT, { id });
+  }, [post]);
+
+  const runContextWizard = React.useCallback(() => {
+    post(MessageType.WORKSHOP_RUN_CONTEXT_WIZARD, {});
+  }, [post]);
+
+  const cancelContextWizard = React.useCallback(() => {
+    if (wizardRun) {
+      vscode.postMessage(
+        createCancelRequestMessage('workshop-context', wizardRun, 'webview.workshop.context')
+      );
+    }
+  }, [vscode, wizardRun]);
+
+  const handleContextCatalog = React.useCallback((message: WorkshopContextCatalogMessage) => {
+    setContextCatalog(message.payload.entries);
+  }, []);
+
+  const handleContextSearchResults = React.useCallback((message: WorkshopContextSearchResultsMessage) => {
+    setContextSearch(message.payload);
+  }, []);
 
   const runTool = React.useCallback(
     (toolId: WorkshopToolId) => {
@@ -297,8 +400,9 @@ export const useWorkshop = (): UseWorkshopReturn => {
       const { session } = message.payload;
       setSessionReady(true);
       setExcerpt(session.excerpt ?? null);
-      setContextBriefState(session.contextBrief ?? '');
-      setContextBriefPending(session.pendingHostUpdate?.contextBrief ?? false);
+      setContextAttachments(session.contextAttachments ?? []);
+      setPendingMessageAttachments(session.pendingMessageAttachments ?? []);
+      setContextPending(session.pendingHostUpdate?.context ?? false);
       setTotalTurns(session.totalTurns);
       setHasHostConversation(session.participants.host.hasConversation);
       setSelectedPersonaId(session.participants.host.personaId);
@@ -352,6 +456,10 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const handleStreamStarted = React.useCallback(
     (message: StreamStartedMessage) => {
       const { domain, requestId } = message.payload;
+      if (domain === 'workshop-context') {
+        setWizardRun(requestId);
+        return;
+      }
       if (domain !== 'workshop') {return;}
       setLiveRun({ requestId, phase: 'streaming' });
       streaming.startStreaming();
@@ -372,6 +480,10 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const handleStreamComplete = React.useCallback(
     (message: StreamCompleteMessage) => {
       const { domain, requestId, cancelled } = message.payload;
+      if (domain === 'workshop-context') {
+        setWizardRun((current) => (current === requestId ? null : current));
+        return;
+      }
       if (domain !== 'workshop') {return;}
       if (liveRunRef.current?.requestId !== requestId) {return;}
 
@@ -429,8 +541,12 @@ export const useWorkshop = (): UseWorkshopReturn => {
     // State
     sessionReady,
     excerpt,
-    contextBrief,
-    contextBriefPending,
+    contextAttachments,
+    pendingMessageAttachments,
+    contextPending,
+    contextCatalog,
+    contextSearch,
+    wizardRunning: wizardRun !== null,
     turns,
     hiddenTurns,
     hasHostConversation,
@@ -460,7 +576,22 @@ export const useWorkshop = (): UseWorkshopReturn => {
     // Actions
     pinExcerpt,
     pinFromFile,
-    setContextBrief,
+    rereadExcerpt,
+    addContextText,
+    addContextFile,
+    removeContextAttachment,
+    requestContextCatalog,
+    searchContextResources,
+    clearContextSearch,
+    addContextResources,
+    attachMessageResources,
+    attachMessageFile,
+    removeMessageAttachment,
+    setExcerptResource,
+    runContextWizard,
+    cancelContextWizard,
+    handleContextCatalog,
+    handleContextSearchResults,
     runTool,
     quickAction,
     sendMessage,

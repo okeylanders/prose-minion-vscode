@@ -10,19 +10,22 @@ styles, scripts, and assets — no build step.
 - **Project:** "Prose Minion" — claude.ai/design project
   `1219f905-e11d-4b1a-9fc9-f72634b10f4c` (owner: Okey Landers).
 - **Pulled via:** the `claude_design` MCP (`DesignSync` tool) + `/design-login`,
-  2026-07-03.
+  2026-07-03; Workshop intake + context-bar comps re-pulled 2026-07-17.
 - **Sync policy:** this folder is a snapshot, kept in sync by re-pulling from
   the design project (never hand-edit these files to change the design — edit
   in Claude Design, then re-pull). Local hand-edits are allowed only for
   repo-housekeeping (this README).
 
-## The three designs
+## The designs
 
 | File | What it is | Status |
 |------|------------|--------|
 | `Prose Minion - Assistant Tab.html` | **Interactive prototype** of the full-tab Assistant, Direction B ("Split & pinned"): pinned excerpt + context rail on the left, chat thread with contextual quick-actions on the right, model dropdown, tools modal, toasts, localStorage-persisted thread. | **Approved direction — to implement** |
 | `Prose Minion - Design Refresh.html` | The presentation canvas: Frame Minion design language applied to the sidebar chrome + all four tabs, the Writing Tools picker modal, and static comps of all three full-tab Assistant directions (A thread / B split / C branch board). | Reference / catalog |
 | `Prose Minion - Model Browser.html` | Sidebar-width model picker that replaces the model dropdown: search, By Provider / By Family pivots, filter chips, price + ctx badges, selected/offline states. | Designed, not implemented |
+| `Prose Minion - Intake Widgets.html` | **Interactive prototype** of the Sprint 12 excerpt & context intake: excerpt card (two-button empty state, verified paste provenance, locked-state `Update text…` / `Re-read from file`), context attachment pills + aggregate budget meter, and the category-grouped Context Selector modal with explore escape hatch. Self-contained (no `pm-*` support files). | **Approved — Sprint 12 source of truth** |
+| `Prose Minion - Context Bar v2.html` | Context Bar with the "In context" sources panel (per-participant manifest rows with stale dimming) and a Memory row (Compress / Compact strategy menus). Sprint 12 supplies the sources data; Compress/Compact is the post-launch compaction ADR's scope. Self-contained. | **Approved — Sprint 12 renders `sources`** |
+| `Prose Minion - Context Bar.html` | Context Bar v1 — the per-participant context gauge as shipped by Sprint 11B (expandable details grid, unmeasured state, amber/red thresholds). Kept for reference; superseded by v2. | Implemented (11B) / superseded |
 
 ## Support files
 

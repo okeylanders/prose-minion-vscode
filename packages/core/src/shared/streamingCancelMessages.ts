@@ -27,7 +27,8 @@ const cancelMessageTypes: Record<CancellableStreamingDomain, CancelRequestMessag
   dictionary: MessageType.CANCEL_DICTIONARY_REQUEST,
   context: MessageType.CANCEL_CONTEXT_REQUEST,
   search: MessageType.CANCEL_CATEGORY_SEARCH_REQUEST,
-  workshop: MessageType.CANCEL_WORKSHOP_REQUEST
+  workshop: MessageType.CANCEL_WORKSHOP_REQUEST,
+  'workshop-context': MessageType.CANCEL_WORKSHOP_REQUEST
 };
 
 export function createCancelRequestMessage(

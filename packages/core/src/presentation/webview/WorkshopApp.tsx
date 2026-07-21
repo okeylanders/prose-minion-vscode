@@ -34,14 +34,12 @@ import {
   StatusMessage,
   WorkshopToolId,
   WorkshopPersonaId,
-  WorkshopTurn
+  WorkshopTurn,
+  workshopExcerptSourcePath
 } from '@messages';
 import { ModelSelector } from './components/shared/ModelSelector';
 import { ExcerptPanel } from './components/workshop/ExcerptPanel';
-import {
-  ContextBriefPanel,
-  WORKSHOP_CONTEXT_BRIEF_INPUT_ID
-} from './components/workshop/ContextBriefPanel';
+import { ContextPanel } from './components/workshop/ContextPanel';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopParticipantRail } from './components/workshop/WorkshopParticipantRail';
 import { ContextBudget } from './components/shared/ContextBudget';
@@ -49,6 +47,8 @@ import { WorkshopThread } from './components/workshop/WorkshopThread';
 import { WORKSHOP_TURN_ID_ATTRIBUTE } from './components/workshop/WorkshopTurnBubble';
 import { WorkshopToolsModal } from './components/workshop/WorkshopToolsModal';
 import { WorkshopPersonaBrowserModal } from './components/workshop/WorkshopPersonaBrowserModal';
+import { WorkshopContextSelectorModal } from './components/workshop/WorkshopContextSelectorModal';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WorkshopToast, WorkshopToastState } from './components/workshop/WorkshopToast';
 import { WorkshopTodoList } from './components/workshop/WorkshopTodoList';
 import { WORKSHOP_TOOL_ICONS } from './components/workshop/workshopToolIcons';
@@ -71,6 +71,7 @@ import { useVSCodeApi } from './hooks/useVSCodeApi';
 import { usePersistence } from './hooks/usePersistence';
 import { useMessageRouter } from './hooks/useMessageRouter';
 import { useWorkshop } from './hooks/domain/useWorkshop';
+import { useWorkshopExcerptVerify } from './hooks/domain/useWorkshopExcerptVerify';
 import { useWorkshopThreadAutoscroll } from './hooks/useWorkshopThreadAutoscroll';
 import { useModelsSettings } from './hooks/domain/useModelsSettings';
 import { useTokenTracking } from './hooks/domain/useTokenTracking';
@@ -135,11 +136,14 @@ export const WorkshopApp: React.FC = () => {
   // reinvention). Balance/models/tokens arrive through this webview's own
   // MessageHandler.
   const workshop = useWorkshop();
+  const excerptVerify = useWorkshopExcerptVerify();
   const modelsSettings = useModelsSettings();
   const tokenTracking = useTokenTracking();
   const [hasSavedKey, setHasSavedKey] = React.useState(false);
   const [toolsModalOpen, setToolsModalOpen] = React.useState(false);
   const [personaModalOpen, setPersonaModalOpen] = React.useState(false);
+  const [contextSelectorOpen, setContextSelectorOpen] = React.useState(false);
+  const [contextSelectorMode, setContextSelectorMode] = React.useState<'attach' | 'excerpt' | 'message'>('attach');
   const [personaModalMode, setPersonaModalMode] = React.useState<'host' | 'guest'>('host');
   const [toast, setToast] = React.useState<WorkshopToastState | null>(null);
   const accountBalance = useAccountBalance({ apiKeyConfigured: hasSavedKey });
@@ -195,6 +199,9 @@ export const WorkshopApp: React.FC = () => {
   useMessageRouter({
     [MessageType.WORKSHOP_SESSION_STATE]: workshop.handleSessionState,
     [MessageType.WORKSHOP_TURN]: workshop.handleTurn,
+    [MessageType.SELECTION_DATA]: excerptVerify.handleSelectionData,
+    [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshop.handleContextCatalog,
+    [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshop.handleContextSearchResults,
     [MessageType.STREAM_STARTED]: workshop.handleStreamStarted,
     [MessageType.STREAM_CHUNK]: workshop.handleStreamChunk,
     [MessageType.STREAM_COMPLETE]: workshop.handleStreamComplete,
@@ -211,6 +218,7 @@ export const WorkshopApp: React.FC = () => {
 
   usePersistence({
     ...workshop.persistedState,
+    ...excerptVerify.persistedState,
     ...modelsSettings.persistedState,
     ...tokenTracking.persistedState,
     ...accountBalance.persistedState,
@@ -294,15 +302,26 @@ export const WorkshopApp: React.FC = () => {
       < WORKSHOP_GUEST_CAPACITY;
 
   const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
-  const openContext = React.useCallback(() => {
-    const input = document.getElementById(WORKSHOP_CONTEXT_BRIEF_INPUT_ID) as HTMLTextAreaElement | null;
-    if (!input) {
-      showToast({ message: 'The Workshop context brief is not available right now.', icon: 'x', tone: 'error' });
-      return;
-    }
-    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    input.focus();
-  }, [showToast]);
+  const openContextSelector = React.useCallback((mode: 'attach' | 'excerpt' | 'message' = 'attach') => {
+    workshop.requestContextCatalog();
+    setContextSelectorMode(mode);
+    setContextSelectorOpen(true);
+  }, [workshop.requestContextCatalog]);
+
+  const openExcerptSelector = React.useCallback(
+    () => openContextSelector('excerpt'),
+    [openContextSelector]
+  );
+  const openAttachSelector = React.useCallback(
+    () => openContextSelector('attach'),
+    [openContextSelector]
+  );
+  const openMessageAttachSelector = React.useCallback(
+    () => openContextSelector('message'),
+    [openContextSelector]
+  );
+
+  const openContext = openAttachSelector;
   const closeToolsModal = React.useCallback(() => setToolsModalOpen(false), []);
   const selectTool = React.useCallback(
     (toolId: WorkshopToolId) => {
@@ -365,8 +384,8 @@ export const WorkshopApp: React.FC = () => {
           metadata: {
             excerpt: workshop.excerpt?.text,
             context: `${participantLabel} · ${turn.artifact.replace(/_/g, ' ')}`,
-            relativePath: workshop.excerpt?.relativePath,
-            sourceFileUri: workshop.excerpt?.sourceUri,
+            relativePath: workshop.excerpt ? workshopExcerptSourcePath(workshop.excerpt.source) : undefined,
+            sourceFileUri: undefined,
             timestamp: Date.now()
           }
         },
@@ -416,7 +435,7 @@ export const WorkshopApp: React.FC = () => {
             <p className="pm-ws-subtitle">
               <Icon name="doc" size={12} />{' '}
               {workshop.excerpt
-                ? `${workshop.excerpt.relativePath ?? 'Pinned excerpt'} · v${workshop.excerpt.version} · ${excerptWordCount} words`
+                ? `${workshopExcerptSourcePath(workshop.excerpt.source) ?? 'Pinned excerpt'} · v${workshop.excerpt.version} · ${excerptWordCount} words`
                 : 'No excerpt pinned yet'}
             </p>
           </div>
@@ -499,15 +518,25 @@ export const WorkshopApp: React.FC = () => {
           >
             <ExcerptPanel
               excerpt={workshop.excerpt}
-              isRunning={workshop.isRunning}
-              onPin={workshop.pinExcerpt}
-              onPinFromFile={workshop.pinFromFile}
+              isRunning={workshop.isRunning || workshop.wizardRunning}
+              locked={workshop.hasHostConversation}
+              verified={excerptVerify.verified}
+              onSet={workshop.pinExcerpt}
+              onChooseFile={openExcerptSelector}
+              onRereadFile={workshop.rereadExcerpt}
+              onPasteVerify={excerptVerify.requestVerify}
             />
 
-            <ContextBriefPanel
-              value={workshop.contextBrief}
-              pendingDelivery={workshop.contextBriefPending}
-              onSave={workshop.setContextBrief}
+            <ContextPanel
+              attachments={workshop.contextAttachments}
+              pendingDelivery={workshop.contextPending}
+              isRunning={workshop.isRunning}
+              onAddText={workshop.addContextText}
+              onAddFile={openAttachSelector}
+              onRemove={workshop.removeContextAttachment}
+              wizardRunning={workshop.wizardRunning}
+              onRunWizard={workshop.runContextWizard}
+              onCancelWizard={workshop.cancelContextWizard}
             />
 
             <div className="pm-ws-block pm-ws-block-grow">
@@ -699,6 +728,8 @@ export const WorkshopApp: React.FC = () => {
               snapshot={workshop.contextBudget?.snapshot}
               modelOptions={modelsSettings.modelOptions}
               cumulativeProcessedTokens={tokenTracking.usage.totalTokens}
+              sources={workshop.contextBudget?.sources}
+              requesterLabel={activePersona.label}
             />
             <WorkshopComposer
               canMessage={workshop.canMessage}
@@ -706,9 +737,12 @@ export const WorkshopApp: React.FC = () => {
               recipientLabel={chatTargetLabel}
               isRunning={workshop.isRunning}
               sessionReady={workshop.sessionReady}
+              messageAttachments={workshop.pendingMessageAttachments}
               onSend={workshop.sendMessage}
               onCancel={workshop.cancelRun}
               onOpenContext={openContext}
+              onAttachToMessage={openMessageAttachSelector}
+              onRemoveMessageAttachment={workshop.removeMessageAttachment}
               onOpenTools={openToolsModal}
             />
           </ErrorBoundary>
@@ -723,6 +757,31 @@ export const WorkshopApp: React.FC = () => {
         onClose={closeToolsModal}
         onSelect={selectTool}
       />
+        <WorkshopContextSelectorModal
+          open={contextSelectorOpen}
+          mode={contextSelectorMode}
+          catalog={workshop.contextCatalog}
+          attachments={workshop.contextAttachments}
+          pendingMessageAttachments={workshop.pendingMessageAttachments}
+          searchResults={workshop.contextSearch}
+          remainingWords={Math.max(
+            0,
+            PROMPT_BUDGETS.contextAttachments.words -
+              workshop.contextAttachments.reduce((total, attachment) => total + attachment.words, 0)
+          )}
+          onSearch={workshop.searchContextResources}
+          onClearSearch={workshop.clearContextSearch}
+          onConfirm={contextSelectorMode === 'message'
+            ? workshop.attachMessageResources
+            : workshop.addContextResources}
+          onPickExcerpt={workshop.setExcerptResource}
+          onExplore={contextSelectorMode === 'excerpt'
+            ? workshop.pinFromFile
+            : contextSelectorMode === 'message'
+              ? workshop.attachMessageFile
+              : workshop.addContextFile}
+          onClose={() => setContextSelectorOpen(false)}
+        />
       <WorkshopPersonaBrowserModal
         open={personaModalOpen}
         activePersonaId={workshop.selectedPersonaId}

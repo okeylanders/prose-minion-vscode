@@ -39,7 +39,9 @@ import {
   RunWorkshopToolSidePass,
   WorkshopAnalysisSidePass,
   WorkshopPersonaCapabilityFactory,
+  WorkshopContextResourceService,
   CoreServices,
+  toInclusiveLineRange,
 } from '@prose-minion/core';
 // VS Code adapters (app-local; the composition root wires them into the ports)
 import { VsCodeSettingsStore } from './platform/vscode/VsCodeSettingsStore';
@@ -67,6 +69,8 @@ export function activate(context: vscode.ExtensionContext): void {
   // Platform ports (ADR 2026-06-16). Assembled once at the composition root: the
   // VS Code adapters translate to the vscode-free port shapes; the structural
   // ports (log, secrets) are the native vscode objects passed directly.
+  const editorContext = new VsCodeEditorContext();
+  context.subscriptions.push(editorContext);
   const platform: Platform = {
     log: outputChannel,
     secrets: context.secrets,
@@ -74,7 +78,7 @@ export function activate(context: vscode.ExtensionContext): void {
     fileSystem: new VsCodeFileSystem(),
     workspace: new VsCodeWorkspace(context.extensionUri),
     shell: new VsCodeShellService(),
-    editor: new VsCodeEditorContext()
+    editor: editorContext
   };
 
   // SPRINT 01: Initialize infrastructure layer (dependency injection)
@@ -82,7 +86,15 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // SPRINT 01: Create resource services (foundation)
   const resourceLoader = new ResourceLoaderService(platform.workspace.extensionPath, platform.fileSystem, outputChannel);
-  const aiResourceManager = new AIResourceManager(resourceLoader, secretsService, platform.settings, outputChannel);
+  // Built before the AI resource manager: the Workshop composite tool catalog
+  // (Sprint 12 Phase 6) resolves configured resources through this factory.
+  const contextResourceResolver = new ContextResourceResolver(
+    platform.settings,
+    platform.fileSystem,
+    platform.workspace,
+    outputChannel
+  );
+  const aiResourceManager = new AIResourceManager(resourceLoader, secretsService, platform.settings, contextResourceResolver, outputChannel);
   // Lifecycle starts once at the composition root. Services only bind to the
   // manager-owned generation; none may rebuild all model scopes on startup.
   // Fire-and-forget, but never unobserved: the manager resets on rejection
@@ -138,12 +150,6 @@ export function activate(context: vscode.ExtensionContext): void {
     platform.editor,
     outputChannel
   );
-  const contextResourceResolver = new ContextResourceResolver(
-    platform.settings,
-    platform.fileSystem,
-    platform.workspace,
-    outputChannel
-  );
   const categorySearchService = new CategorySearchService(
     aiResourceManager,
     wordSearchService,
@@ -183,6 +189,7 @@ export function activate(context: vscode.ExtensionContext): void {
     workshopPersonaCapabilityFactory,
     outputChannel
   );
+  const workshopContextResourceService = new WorkshopContextResourceService(contextResourceResolver);
 
   const coreServices: CoreServices = {
     assistantToolService,
@@ -200,7 +207,8 @@ export function activate(context: vscode.ExtensionContext): void {
     accountBalanceService,
     workshopSessionService,
     workshopPersonaCapabilityFactory,
-    workshopToolSidePass
+    workshopToolSidePass,
+    workshopContextResourceService
   };
 
   // Migrate API key from settings to SecretStorage if needed
@@ -263,8 +271,13 @@ export function activate(context: vscode.ExtensionContext): void {
 
     const uri = editor.document.uri;
     const relativePath = vscode.workspace.asRelativePath(uri, false);
+    const lineRange = toInclusiveLineRange({
+      startLine: selection.start.line,
+      endLine: selection.end.line,
+      endCharacter: selection.end.character
+    });
 
-    return { text, uri, relativePath };
+    return { text, uri, relativePath, lineRange };
   };
 
   const sendSelection = (
@@ -301,8 +314,13 @@ export function activate(context: vscode.ExtensionContext): void {
     }
     workshopPanelProvider?.seedExcerpt({
       text: payload.text,
-      sourceUri: payload.uri.toString(),
-      relativePath: payload.relativePath
+      source: {
+        kind: 'editor-selection',
+        sourceUri: payload.uri.toString(),
+        relativePath: payload.relativePath,
+        startLine: payload.lineRange.startLine,
+        endLine: payload.lineRange.endLine
+      }
     });
   };
 

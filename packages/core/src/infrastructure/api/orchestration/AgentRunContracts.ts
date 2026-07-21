@@ -1,7 +1,12 @@
-import { TokenUsage } from '@shared/types';
+import { ContextPathGroup, TokenUsage } from '@shared/types';
 
 /** The caller-selected capability surface available to one agent turn. */
-export type CapabilityCatalog = 'guides' | 'projectContext' | 'workshopPersona' | 'none';
+export type CapabilityCatalog =
+  | 'guides'
+  | 'projectContext'
+  | 'workshopPersona'
+  | 'workshopToolContext'
+  | 'none';
 
 export type ConversationRetention = 'retain' | 'discard';
 
@@ -44,11 +49,26 @@ export type AgentCapabilityInspection<Request, Rejection extends AgentCapability
   | { readonly kind: 'request'; readonly request: Request }
   | Rejection;
 
+/**
+ * A capability's manifest contribution for ONE delivered item (Sprint 12
+ * Phase 7). The capability owns kind/label/canonical-key provenance; the
+ * engine adds origin, per-round prompt-token attribution, and timestamps.
+ * Display-safe only — never an absolute path.
+ */
+export interface CapabilityDeliveredSource {
+  readonly kind: 'resource' | 'tool-evidence' | 'dictionary';
+  readonly label: string;
+  readonly configuredResource?: { readonly group: ContextPathGroup; readonly path: string };
+  readonly sizeChars: number;
+}
+
 export interface CapabilityFulfillment {
   readonly evidence: string;
   readonly artifacts: readonly CapabilityArtifact[];
   /** Log-safe identifiers delivered by this call (paths, operation labels, etc.). */
   readonly deliveredItems: readonly string[];
+  /** Manifest rows for what this call actually delivered (Phase 7). */
+  readonly deliveredSources?: readonly CapabilityDeliveredSource[];
   /** Nested provider usage, aggregated into the enclosing turn exactly once. */
   readonly usage?: TokenUsage;
 }

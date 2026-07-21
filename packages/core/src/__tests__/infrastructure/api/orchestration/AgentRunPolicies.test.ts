@@ -12,7 +12,7 @@ describe('agent-run caller-to-policy matrix', () => {
       'ContextAssistantService'
     ]);
     expect(AGENT_RUN_POLICIES.assistant).toMatchObject({ capabilityCatalog: 'guides', retention: 'discard', cleanupOwner: 'engine', onCapabilityLimit: 'forceFinalResponse' });
-    expect(AGENT_RUN_POLICIES.workshopTool).toMatchObject({ capabilityCatalog: 'guides', retention: 'retain', cleanupOwner: 'workshop-session', onCapabilityLimit: 'forceFinalResponse' });
+    expect(AGENT_RUN_POLICIES.workshopTool).toMatchObject({ capabilityCatalog: 'workshopToolContext', retention: 'retain', cleanupOwner: 'workshop-session', onCapabilityLimit: 'forceFinalResponse' });
     expect(AGENT_RUN_POLICIES.workshopHost).toMatchObject({
       capabilityCatalog: 'workshopPersona',
       retention: 'retain',

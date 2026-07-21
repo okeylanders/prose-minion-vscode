@@ -243,11 +243,15 @@ export class UIHandler {
       let content: string | undefined;
       let sourceUri: string | undefined;
       let relativePath: string | undefined;
+      let startLine: number | undefined;
+      let endLine: number | undefined;
 
       if (selection && !selection.isEmpty) {
         content = selection.text;
         sourceUri = selection.uriString;
         relativePath = selection.relativePath;
+        startLine = selection.startLine;
+        endLine = selection.endLine;
       } else {
         // Fallback to clipboard if no selection
         try {
@@ -270,7 +274,9 @@ export class UIHandler {
           target,
           content,
           sourceUri,
-          relativePath
+          relativePath,
+          startLine,
+          endLine
         },
         timestamp: Date.now()
       };

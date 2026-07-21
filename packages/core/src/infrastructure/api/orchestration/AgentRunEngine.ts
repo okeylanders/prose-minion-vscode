@@ -6,13 +6,20 @@ import {
   AgentRunOptions,
   AnyAgentCapability,
   CapabilityArtifact,
+  CapabilityDeliveredSource,
   ContinuationRunRequest,
   ExecutionResult,
   InitialRunRequest,
   RunPolicy
 } from './AgentRunContracts';
 import { findExecutableMarkerIndex } from './ResourceReadXmlCodec';
-import { ContextBudgetSnapshot, InferenceRequestObservation, TokenUsage } from '@shared/types';
+import { wrapAgentFetchedArtifactEvidence } from '@/utils/workshopPromptFrames';
+import {
+  ContextBudgetSnapshot,
+  ContextSourceEntry,
+  InferenceRequestObservation,
+  TokenUsage
+} from '@shared/types';
 
 export type StatusCallback = (message: string, tickerMessage?: string) => void;
 export type TokenUsageCallback = (usage: TokenUsage) => void;
@@ -234,6 +241,7 @@ export class AgentRunEngine {
     const artifacts: CapabilityArtifact[] = [];
     const usedGuides: string[] = [];
     const requestedResources: string[] = [];
+    const collectedSources: ContextSourceEntry[] = [];
     let totalUsage: TokenUsage | undefined;
     let latestObservation: InferenceRequestObservation | undefined;
     let peakPromptTokens = 0;
@@ -299,17 +307,47 @@ export class AgentRunEngine {
           capability.statusMessage(request),
           capability.statusTicker?.(request)
         );
+        // Provider-measured cost attribution (Phase 7): the prompt-token
+        // delta between this round's observation and the next one belongs
+        // to the evidence delivered between them.
+        const promptTokensBeforeEvidence = latestObservation?.promptTokens;
         const fulfillment = await capability.fulfill(request);
         totalUsage = this.addUsage(totalUsage, fulfillment.usage);
         artifacts.push(...fulfillment.artifacts);
         if (capability.catalog === 'guides') usedGuides.push(...fulfillment.deliveredItems);
         if (capability.catalog === 'projectContext') requestedResources.push(...fulfillment.deliveredItems);
+        if (capability.catalog === 'workshopToolContext') {
+          // The composite catalog delivers both kinds in one round; each
+          // artifact already declares which side it came from.
+          for (const artifact of fulfillment.artifacts) {
+            (artifact.catalog === 'guides' ? usedGuides : requestedResources).push(artifact.id);
+          }
+        }
+        // Retained-history evidence gets a stable `art-N` address at injection
+        // (ADR 2026-07-18): the Phase 7 manifest and tombstone surgery target
+        // stored entries by this id. Discarded runs need no address.
+        const artifactId = policy.retention === 'retain'
+          ? this.conversationManager.nextArtifactId(conversationId)
+          : undefined;
+        const evidence = artifactId
+          ? wrapAgentFetchedArtifactEvidence(artifactId, fulfillment.evidence)
+          : fulfillment.evidence;
         this.outputChannel?.appendLine(
           `[AgentRunEngine] Fulfilled ${capability.catalog} capability ${rounds}/${policy.maxCapabilityRounds} ` +
           `(${capability.requestLogSummary(request)}): ${fulfillment.evidence.length} evidence chars; ` +
-          `delivered=${fulfillment.deliveredItems.join(', ') || 'none'}`
+          `delivered=${fulfillment.deliveredItems.join(', ') || 'none'}` +
+          (artifactId ? `; artifactId=${artifactId}` : '')
         );
-        last = await runInstructedTurn(last, fulfillment.evidence);
+        last = await runInstructedTurn(last, evidence);
+        if (policy.retention === 'retain' && fulfillment.deliveredSources?.length) {
+          collectedSources.push(...this.toContextSourceEntries(
+            fulfillment.deliveredSources,
+            capability.catalog === 'workshopPersona' ? 'host' : 'tool',
+            promptTokensBeforeEvidence,
+            latestObservation?.promptTokens,
+            artifactId
+          ));
+        }
         last = await recoverInvalidRequest(last);
       }
 
@@ -357,6 +395,17 @@ export class AgentRunEngine {
       if (!cancelled) {
         pendingMessages.push({ role: 'assistant', content: visibleContent });
         this.conversationManager.addMessages(conversationId, pendingMessages);
+        if (collectedSources.length > 0) {
+          // Manifest rows commit ONLY beside a committed turn (Phase 7):
+          // cancellation and transport failure preserve the prior manifest.
+          this.conversationManager.appendContextSources(conversationId, collectedSources);
+          this.outputChannel?.appendLine(
+            `[AgentRunEngine] Context sources committed for ${conversationId}: ` +
+            collectedSources.map((entry) =>
+              `${entry.kind}:${entry.label}${entry.promptTokensDelta !== undefined ? ` (+${entry.promptTokensDelta} prompt tokens)` : ' (size estimate)'}`
+            ).join(', ')
+          );
+        }
         if (latestObservation && totalUsage) {
           const snapshot = this.toContextBudgetSnapshot(latestObservation, peakPromptTokens, totalUsage);
           this.conversationManager.setContextBudget(conversationId, snapshot);
@@ -392,6 +441,48 @@ export class AgentRunEngine {
 
   getConversationContextBudget(conversationId: string | undefined): ContextBudgetSnapshot | undefined {
     return this.conversationManager.getContextBudget(conversationId);
+  }
+
+  getConversationContextSources(conversationId: string | undefined): ContextSourceEntry[] {
+    return this.conversationManager.getContextSources(conversationId);
+  }
+
+  /**
+   * Attribute one capability round's provider-measured prompt-token delta to
+   * the sources it delivered (Phase 7). A single-source round gets the exact
+   * delta; multi-source rounds apportion by size share and stay estimates;
+   * missing observations fall back to size-only rows.
+   */
+  private toContextSourceEntries(
+    delivered: readonly CapabilityDeliveredSource[],
+    origin: 'host' | 'tool',
+    promptTokensBefore: number | undefined,
+    promptTokensAfter: number | undefined,
+    artifactId: string | undefined
+  ): ContextSourceEntry[] {
+    const roundDelta = promptTokensBefore !== undefined &&
+      promptTokensAfter !== undefined &&
+      promptTokensAfter > promptTokensBefore
+      ? promptTokensAfter - promptTokensBefore
+      : undefined;
+    const totalChars = delivered.reduce((total, source) => total + source.sizeChars, 0);
+    return delivered.map((source) => {
+      const exact = roundDelta !== undefined && delivered.length === 1;
+      const apportioned = roundDelta !== undefined && delivered.length > 1
+        ? Math.round(roundDelta * (totalChars > 0 ? source.sizeChars / totalChars : 1 / delivered.length))
+        : undefined;
+      return {
+        kind: source.kind,
+        origin,
+        label: source.label,
+        configuredResource: source.configuredResource ? { ...source.configuredResource } : undefined,
+        sizeChars: source.sizeChars,
+        promptTokensDelta: exact ? roundDelta : apportioned,
+        isEstimate: !exact,
+        artifactId,
+        deliveredAt: Date.now()
+      };
+    });
   }
 
   setStatusCallback(callback?: StatusCallback): void {

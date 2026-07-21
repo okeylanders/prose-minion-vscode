@@ -26,7 +26,14 @@ import { SecretStorageService } from '@/infrastructure/secrets/SecretStorageServ
 import { ResourceLoaderService } from './ResourceLoaderService';
 import { GuideCapability } from './capabilities/GuideCapability';
 import { ContextFileCapability } from './capabilities/ContextFileCapability';
-import { ContextResourceProvider } from '@/domain/models/ContextGeneration';
+import {
+  WorkshopToolContextCapability,
+  WorkshopToolContextCapabilityInput
+} from './capabilities/WorkshopToolContextCapability';
+import {
+  ContextResourceProvider,
+  ContextResourceProviderFactory
+} from '@/domain/models/ContextGeneration';
 
 /**
  * Bundle of AI resources for a specific model scope
@@ -73,6 +80,7 @@ export class AIResourceManager {
     private readonly resourceLoader: ResourceLoaderService,
     private readonly secretsService: SecretStorageService,
     private readonly settings: SettingsStore,
+    private readonly contextResourceProviderFactory: ContextResourceProviderFactory,
     private readonly outputChannel?: LogSink
   ) {
     this.tokenUsageListeners = new ListenerSet(
@@ -279,6 +287,28 @@ export class AIResourceManager {
   /** Build the bounded project-context adapter used by context-scoped routes. */
   createContextFileCapability(provider: ContextResourceProvider): ContextFileCapability {
     return new ContextFileCapability(provider, this.settings, this.outputChannel);
+  }
+
+  /**
+   * Build the composite source+neighbors+guides catalog for one Workshop tool
+   * initial run (Sprint 12 Phase 6). Returns undefined when the run has
+   * nothing to offer — guides disabled AND no resolved configured source —
+   * so the caller falls back to the capability-free policy.
+   */
+  createWorkshopToolContextCapability(
+    input: WorkshopToolContextCapabilityInput
+  ): WorkshopToolContextCapability | undefined {
+    if (!input.includeGuides && !input.source) {
+      return undefined;
+    }
+    return new WorkshopToolContextCapability(
+      this.resourceLoader.getGuideRegistry(),
+      this.resourceLoader.getGuideLoader(),
+      this.contextResourceProviderFactory,
+      this.settings,
+      input,
+      this.outputChannel
+    );
   }
 
   /**

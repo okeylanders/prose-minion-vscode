@@ -170,7 +170,8 @@ export class MessageHandler {
       accountBalanceService,
       workshopSessionService,
       workshopPersonaCapabilityFactory,
-      workshopToolSidePass
+      workshopToolSidePass,
+      workshopContextResourceService
     } = services;
 
     // Token tracking: centralized in AgentRunEngine. Listener-based so
@@ -289,6 +290,7 @@ export class MessageHandler {
     // feed the Sprint 3 "Pin from file…" seam (picker → read → provenance).
     this.workshopHandler = new WorkshopHandler(
       assistantToolService,
+      contextAssistantService,
       workshopSessionService,
       workshopToolSidePass,
       workshopPersonaCapabilityFactory,
@@ -296,6 +298,7 @@ export class MessageHandler {
       this.platform.shell,
       this.platform.fileSystem,
       this.platform.workspace,
+      workshopContextResourceService,
       outputChannel
     );
     // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)

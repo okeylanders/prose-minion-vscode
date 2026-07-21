@@ -15,7 +15,35 @@ material. Executes before the final Sprint 10 persistence pass.
 the live left rail), sharpened 2026-07-16 with verified pasted-selection
 provenance and source-aware context discovery, plus the Context Bar v2 comp
 (Claude Design, 2026-07-16) whose "In context" sources panel this sprint
-feeds.
+feeds, and the Intake Widgets comp (Claude Design, pulled 2026-07-17 into
+`docs/design/`) — the interactive source of truth for the excerpt/context
+cards, the Context Selector modal, and the Context wizard (added to scope
+2026-07-17).
+
+## Sprint status (updated 2026-07-18)
+
+Implementation runs as eight phases on
+`sprint/workshop-editor-tab-12-context-excerpt-intake`. Each phase lands
+with its tests; full suite + typecheck + lint green at every commit.
+
+| Phase | Scope | Status | Key commits |
+|---|---|---|---|
+| 1 | Foundations: `WorkshopExcerptSource` union (single source of truth, coerced at IPC), selection line-range transport (`EditorContext` + `SELECTION_DATA`), `workshop_excerpt_verify` target | **Done** | `70d83d2` |
+| 2 | Excerpt panel rework: intent buttons, verified paste (exact-match gating), locked `Update text…`/`Re-read from file`, re-read no-op; + webview-panel verify fallback (adapter remembers last editor selection) and boxed action buttons | **Done** | `650a5e3`, `898e684` |
+| 3 | Context attachments replace the brief: aggregate-owned list (budget, duplicate guard, head-slice), add/remove routes, pills + meter UI, ONE `<context-attachments>` frame builder for host/update/tool delivery, mid-session `context_change` event turns | **Done** | `99d2f41` |
+| 4 | `WorkshopModalShell` (tech-debt 2026-07-10 resolved) + Context Selector modal: category browse, Names / Names+content search (client names, bounded host content search), filter pills, explore hatch; composer `+` + panel both open it; excerpt "Choose from project…" opens it in single-select mode with honest `sourceUri` (summaries carry host-only `absolutePath`) | **Done** | `9f3a06b`, `858bf46` |
+| 5 | Context wizard (scope added 2026-07-17): reuses `ContextAssistantService` under its own `workshop-context` streaming domain, one-run guard, cancellable; brief attaches FIRST, results land as wizard-tagged attachments through the standard budget path; text pills expand to readable notes | **Done** | `c1f5973`, `5eb2183` |
+| 6 | Source-aware prompt frames (host/guest/tool excerpt-source frame, provenance → canonical `{ group, path }`) + bounded composite tool catalog (source + neighbors + guides) + artifact-taxonomy framing: context-artifacts vs thread-artifacts vs agent-fetched evidence, stable artifact ids on delivered evidence entries (per ADR 2026-07-18 draft) | **Done** | `9b6ad4f` |
+| 6B | Writer thread-artifacts (scope pulled forward 2026-07-18, Okey — land before Phase 7 so the manifest treats `message-attachment` as a first-class origin): composer `+` menu (attach-to-message beside standing context), modal `message` mode, host-side pending list with `ta-N` ids + item cap + head-slice, frames ride ONE send (host/guest/direct-tool) with commit-on-success, turn-stamped display-safe refs, quick actions never consume | **Done** | `d05eeb8` |
+| 7 | Context source manifest: engine per-round instrumentation, `ConversationManager` storage beside `contextBudget`, writer-entry stamping, `sources` on `LabeledContextBudgetSnapshot`, Context Bar v2 "In context" panel — now INCLUDING thread-artifact entries (`message-attachment` kind, stamped at ship time) shown as their own parenthetical kind beside context files / agent resources / tool calls | **Done** | `01e7b52` |
+| 8 | Pin-language sweep (wire contracts included), compaction ADR, 06B manual UX pass, bundle verification + deltas | **In progress** — ADR accepted; closeout remains | — |
+
+Also landed: design comps pulled to `docs/design/` (`34cb79a`), wizard folded
+into this doc (`f944646`), context budget interim bump 10k → 35k with the
+setting tracked in
+`.todo/tech-debt/2026-07-17-context-attachment-budget-setting.md` (`c0cfbe9`).
+Manual EDH verification by Okey through Phase 5: verified paste, re-read,
+attachments/meter, selector + search, wizard.
 
 ## Goal
 
@@ -78,6 +106,16 @@ verification passes from 06B.
   configured context-resource paths grouped by category; an explicit
   "Explore project folders…" escape hatch through the host picker; configured
   vs. explored files visibly distinguished.
+- **`[Context wizard]` (scope added 2026-07-17, per the Intake Widgets
+  comp):** a third intake button that reuses the sidebar Context tool's
+  generation lane (`ContextAssistantService`, `contextModel` scope, closed
+  `projectContext` resource-read protocol) behind Workshop-scoped routes with
+  a distinct streaming domain so the two lanes never cross-consume chunks or
+  results. One run at a time (explicit guard, visible status row per the
+  comp). A run's requested resources land as wizard-tagged *file attachments*
+  and its generated brief as a wizard-tagged *text attachment* — all subject
+  to the same aggregate budget, duplicate guard, remove controls, and
+  mid-session event turns as writer-added attachments.
 - **Prompt assembly**: attachments are delivered in labeled frames with
   provenance (reusing the delimiter-neutralization conventions), replacing the
   single-brief injection. Tool runs receive the same assembled context.
@@ -194,44 +232,74 @@ autonomously is context the writer is paying for and must not be invisible.
       turns and tool runs; delimiter neutralization; truncation notices.
 - [ ] Mid-session visibility: session event turn on add/remove after the
       conversation starts.
+- [ ] Context wizard: Workshop-scoped generate/cancel routes reusing
+      `ContextAssistantService` (new streaming domain + one-run-at-a-time
+      guard); wizard results land as wizard-tagged attachments through the
+      standard add path (budget + duplicate guards); status row per the comp.
 
 ### Source-aware prompt and tool delivery
 
-- [ ] Add one shared excerpt-source prompt frame used by initial host, host
+- [x] Add one shared excerpt-source prompt frame used by initial host, host
       revision, guest join/catch-up where applicable, and initial tool runs;
       cover delimiter neutralization and display-safe provenance.
-- [ ] Resolve verified selection/file provenance to a canonical configured
+      (`buildWorkshopExcerptSourceFrame`; the raw file: URI no longer reaches
+      any Workshop prompt path.)
+- [x] Resolve verified selection/file provenance to a canonical configured
       `{ group, path }` when possible so Sprint 11 reads do not depend on the
       model reconstructing a path or guessing its case.
-- [ ] Give Workshop tool initial runs a bounded composite resource catalog:
+      (`WorkshopHandler.withConfiguredResource` — host-side absolutePath
+      match; webview claims re-derived, ambiguity fails safe.)
+- [x] Frame taxonomy (ADR 2026-07-18 draft): keep the three artifact kinds
+      separately identifiable in prompt material — standing context-artifacts
+      (`<context-attachments>`), writer thread-artifacts (`<thread-artifact
+      id=…>`, one-shot message attachments — composer affordance may land
+      post-sprint but the frame contract is fixed now), and agent-fetched
+      evidence entries, which gain STABLE ARTIFACT IDS at injection so the
+      Phase 7 manifest and future tombstone surgery can address them.
+      (`buildWorkshopThreadArtifactFrame`; `<agent-artifact id="art-N">`
+      wrapped by AgentRunEngine on retained runs, ids minted per conversation
+      by `ConversationManager.nextArtifactId`.)
+- [x] Give Workshop tool initial runs a bounded composite resource catalog:
       relevant configured source/neighbor resources plus existing craft
       guides, one closed read protocol, source-first ordering, and explicit
       delivered-resource provenance. Preserve the sidebar tools' existing
-      guide-only behavior.
+      guide-only behavior. (`WorkshopToolContextCapability` behind the new
+      `workshopToolContext` catalog; deterministic "Context delivered to this
+      run" footer in the visible report.)
 
 ### Context source manifest
 
-- [ ] Add the manifest entry type to the semantic layer and store the
+- [x] Add the manifest entry type to the semantic layer and store the
       committed manifest in `ConversationManager` beside `contextBudget`,
       inheriting the same commit/cancel/reset/delete/expiry semantics.
-- [ ] Collect per-round delivered items in `AgentRunEngine` (resource reads,
+      (`ContextSourceEntry` in inferenceContext;
+      `ConversationManager.appendContextSources` with replace-superseded
+      keys, committed only beside the atomic history commit.)
+- [x] Collect per-round delivered items in `AgentRunEngine` (resource reads,
       analysis and dictionary evidence) with provider-measured prompt-token
       deltas per capability round; fall back to char sizes marked as
-      estimates.
-- [ ] Stamp writer-origin entries (excerpt version, each attachment) from the
+      estimates. (Capabilities declare `deliveredSources`; single-source
+      rounds get the exact round delta, multi-source rounds apportion by
+      size share as estimates.)
+- [x] Stamp writer-origin entries (excerpt version, each attachment) from the
       session service; mark prior-version pins stale on revision; replace
       superseded same-resource reads instead of duplicating them.
-- [ ] Give tool sidecars the same manifest for their own delivered
-      source/neighbor/guide reads.
-- [ ] Project `sources` through `LabeledContextBudgetSnapshot` and render the
+      (Pin stamped at first host adoption; stale marked only when the
+      revision frame actually ships via `commitPendingHostUpdates`;
+      message attachments stamp into the receiving target's bucket at
+      ship time.)
+- [x] Give tool sidecars the same manifest for their own delivered
+      source/neighbor/guide reads. (Composite-catalog `deliveredSources`
+      commit to the sidecar's conversation; writer rows snapshot at
+      adoption since retained sidecars never receive later list changes.)
+- [x] Project `sources` through `LabeledContextBudgetSnapshot` and render the
       Context Bar's "In context" section: grouped rows, sizes, origin
       attribution, stale dimming; display-safe labels only.
-- [ ] Draft the context compaction ADR during this sprint: decision
-      framework, candidate mechanisms (compress vs. compact vs. stale-
-      evidence eviction, informed by what the manifest shows dominates real
-      sessions), and what retained-history surgery means for the atomic
-      commit and snapshot semantics. The epic ships as one release, so the
-      post-launch fast-follow must be implementation, not design.
+- [x] Flesh out the compaction ADR:
+      [2026-07-18 Workshop Thread Artifacts & Context Compaction](../../../../docs/adr/2026-07-18-workshop-thread-artifacts-and-context-compaction.md).
+      The accepted decision covers writer and persona release paths, real
+      Release/Compress/Compact affordances in the associated follow-on epic,
+      atomic surgery semantics, and persisted tombstone/compaction provenance.
       Implementation itself stays out of Sprint 12.
 
 ### Composer
@@ -248,6 +316,9 @@ autonomously is context the writer is paying for and must not be invisible.
       plain aggregate-owned data with explicit types; update Sprint 10's final
       serializer inventory if implementation details sharpen during this
       sprint. Do not introduce persistence or a transitional schema here.
+      (Phase 6B additions to that inventory: `pendingMessageAttachments`
+      (host-side staged thread-artifacts, content included) and
+      `WorkshopTurn.messageAttachments` display-safe refs.)
 
 ### Polish and verification
 
@@ -263,6 +334,10 @@ autonomously is context the writer is paying for and must not be invisible.
       source tag, re-read replace + no-op, pin-button absence.
 - [ ] Attachments: caps, duplicate guard, remove, ordering, prompt-frame
       assembly, mid-session event turns.
+- [ ] Wizard: streaming-domain separation from the sidebar Context lane (no
+      cross-consumed chunks/results), one-run guard, results-to-attachment
+      mapping honors caps/duplicates, cancel mid-run leaves attachments
+      unchanged.
 - [ ] Modal: category grouping from configured paths, explore path, no raw
       path leakage.
 - [ ] Live session snapshots include excerpt source, ordered attachments, and
@@ -295,6 +370,10 @@ autonomously is context the writer is paying for and must not be invisible.
   receives all of them with provenance.
 - Adding a file from the composer `+` mid-conversation shows an event turn and
   reaches the host on the next turn.
+- The Context wizard runs at most once at a time, streams a visible status
+  row, and its picks arrive as removable wizard-tagged attachments that
+  respect the aggregate budget; a concurrent sidebar Context run is
+  unaffected by a Workshop wizard run and vice versa.
 - After Jill autonomously reads two persona files and triggers a Dialogue
   side pass, expanding the context bar lists those three sources with origin
   attribution ("Requested by Jill") and measured or honestly estimated sizes,
@@ -307,8 +386,11 @@ autonomously is context the writer is paying for and must not be invisible.
 
 - Intake rework changes *intake*, not memory: `replaceExcerpt` revision
   semantics, room-memory rules, and tool statelessness are untouched.
-- The modal is the writer-controlled attachment path — no model-assisted file
-  selection here (that is Sprint 11's separate, capability-bounded lane).
+- The modal is the writer-controlled attachment path. The Context wizard is
+  the one model-assisted intake lane, and it is bounded: it reuses the
+  sidebar Context lane's closed `projectContext` read protocol, runs one at a
+  time, and its picks land as ordinary, visible, removable attachments —
+  never silent context mutation.
 - Verified excerpt provenance may guide a model-requested read, but it never
   bypasses configured-resource membership, workspace containment, or the
   capability's byte/round limits.

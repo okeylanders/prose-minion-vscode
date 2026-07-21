@@ -47,6 +47,7 @@ describe('ContextResourceResolver configured-resource boundary', () => {
       path: 'characters/raven.md',
       label: 'Raven',
       sizeBytes: files['/ws/characters/raven.md'].length,
+      absolutePath: '/ws/characters/raven.md',
       workspaceFolder: 'novel'
     }]);
     await expect(provider.loadResources(['characters/raven.md'])).resolves.toEqual([{
@@ -54,6 +55,7 @@ describe('ContextResourceResolver configured-resource boundary', () => {
       path: 'characters/raven.md',
       label: 'Raven',
       sizeBytes: files['/ws/characters/raven.md'].length,
+      absolutePath: '/ws/characters/raven.md',
       workspaceFolder: 'novel',
       content: 'Raven is cautious.'
     }]);

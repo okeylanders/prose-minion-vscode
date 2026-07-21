@@ -10,6 +10,18 @@ import {
 
 const PROMPTS_ROOT = path.resolve(__dirname, '..', '..', '..', 'resources', 'system-prompts');
 const EXPECTED_IDS = ['jill', 'agnes', 'cliff', 'dev', 'edna', 'felix', 'harper', 'margot', 'penny', 'quinn', 'theo', 'wren'];
+const SPECIALIST_SECTION_ORDER = [
+  '## Who you are',
+  '## Your craft jurisdiction',
+  '## How you think',
+  '## How you use your thinking space',
+  '## How you sound',
+  '## How you behave across turns',
+  '## What you do not sound like',
+  '## Voice in practice',
+  '## Your shelf',
+  '## Colleagues'
+] as const;
 
 describe('Workshop persona catalog and packaged prompts', () => {
   it('contains exactly the deterministic host roster with Jill as its default', () => {
@@ -43,6 +55,25 @@ describe('Workshop persona catalog and packaged prompts', () => {
       expect(content).not.toContain('/Users/okeylanders');
       expect(content).not.toContain('zsh-setup');
       expect(content).not.toMatch(/\b(?:Codex|Claude)\b.*\b(?:skill|subagent|agent)\b/i);
+    }
+  });
+
+  it('keeps every specialist prompt on the normalized persona schema', () => {
+    for (const persona of WORKSHOP_PERSONA_CATALOG.filter(({ id }) => id !== 'jill')) {
+      const content = fs.readFileSync(path.resolve(PROMPTS_ROOT, persona.promptPath), 'utf8');
+      let previousSectionIndex = -1;
+
+      for (const section of SPECIALIST_SECTION_ORDER) {
+        const sectionIndex = content.indexOf(section);
+        expect(sectionIndex).toBeGreaterThan(previousSectionIndex);
+        previousSectionIndex = sectionIndex;
+      }
+
+      const voiceExamples = content.slice(
+        content.indexOf('## Voice in practice'),
+        content.indexOf('## Your shelf')
+      );
+      expect(voiceExamples.match(/^### /gm)).toHaveLength(3);
     }
   });
 

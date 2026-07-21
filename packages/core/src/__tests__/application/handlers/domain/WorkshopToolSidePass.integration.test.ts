@@ -1,5 +1,6 @@
 import { WorkshopHandler } from '@/application/handlers/domain/WorkshopHandler';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
@@ -30,12 +31,15 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
       })),
       continueConversation: jest.fn(),
       discardConversation: jest.fn(),
-      getConversationContextBudget: jest.fn()
+      getConversationContextBudget: jest.fn(),
+      getConversationContextSources: jest.fn().mockReturnValue([])
     } as unknown as jest.Mocked<AgentRunEngine>;
     const manager = {
       ensureInitialized: jest.fn().mockResolvedValue(undefined),
       getEngine: jest.fn().mockReturnValue(engine),
       createGuideCapability: jest.fn(),
+      // Guides disabled + no configured source → the real manager mints nothing.
+      createWorkshopToolContextCapability: jest.fn().mockReturnValue(undefined),
       setStatusCallback: jest.fn()
     } as unknown as AIResourceManager;
     const promptLoader = {
@@ -65,6 +69,7 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
     } as unknown as WorkshopPersonaCapabilityFactory;
     const handler = new WorkshopHandler(
       assistantService,
+      { generateContext: jest.fn() } as never,
       session,
       new RunWorkshopToolSidePass(
         assistantService,
@@ -78,6 +83,9 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
       createFakeShellService(),
       createFakeFileSystem(),
       createFakeWorkspace(),
+      new WorkshopContextResourceService({
+        createProvider: jest.fn(async () => ({ listResources: () => [], loadResources: async () => [] }))
+      } as never),
       output
     );
     await handler.handleSetExcerpt({

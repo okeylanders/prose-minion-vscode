@@ -1,5 +1,11 @@
 import * as React from 'react';
-import { ContextBudgetSnapshot, ModelOption } from '@shared/types';
+import {
+  ContextBudgetSnapshot,
+  ContextSourceEntry,
+  ContextSourceKind,
+  ContextSourceOrigin,
+  ModelOption
+} from '@shared/types';
 import {
   contextBudgetView,
   formatCompactTokens,
@@ -11,7 +17,62 @@ interface ContextBudgetProps {
   snapshot?: ContextBudgetSnapshot;
   modelOptions: readonly ModelOption[];
   cumulativeProcessedTokens: number;
+  /** The active participant's context-source manifest (Sprint 12 Phase 7). */
+  sources?: readonly ContextSourceEntry[];
+  /** Host persona label for origin attribution ("Requested by Jill"). */
+  requesterLabel?: string;
 }
+
+/** The parenthetical kind label (Phase 7): what each row IS. */
+const kindLabel = (kind: ContextSourceKind): string => ({
+  pin: 'pinned excerpt',
+  attachment: 'standing context',
+  'message-attachment': 'message attachment',
+  resource: 'project resource',
+  'tool-evidence': 'tool report',
+  dictionary: 'dictionary'
+})[kind];
+
+const originLabel = (origin: ContextSourceOrigin, requesterLabel?: string): string => ({
+  writer: 'added by you',
+  host: `requested by ${requesterLabel ?? 'the host'}`,
+  tool: 'fetched by the tool'
+})[origin];
+
+const formatSizeChars = (sizeChars: number): string =>
+  sizeChars < 1000 ? `${sizeChars} chars` : `${(sizeChars / 1000).toFixed(1)}k chars`;
+
+/** Measured cost when the engine attributed a round; honest size estimate otherwise. */
+const sourceCost = (entry: ContextSourceEntry): string =>
+  entry.promptTokensDelta !== undefined
+    ? `${formatCompactTokens(entry.promptTokensDelta)} tokens${entry.isEstimate ? ' est.' : ''}`
+    : `~${formatSizeChars(entry.sizeChars)}`;
+
+const InContextSources: React.FC<{
+  sources: readonly ContextSourceEntry[];
+  requesterLabel?: string;
+}> = ({ sources, requesterLabel }) => (
+  <div className="pm-context-sources">
+    <div className="pm-context-sources-head">In context</div>
+    <ul className="pm-context-sources-list" aria-label="Material in this participant's context">
+      {sources.map((entry, index) => (
+        <li
+          key={`${entry.kind}-${entry.label}-${entry.excerptVersion ?? index}`}
+          className={`pm-context-source${entry.stale ? ' pm-context-source-stale' : ''}`}
+        >
+          <span className="pm-context-source-label" title={entry.configuredResource?.path ?? entry.label}>
+            {entry.label}
+            {entry.excerptVersion !== undefined ? ` · v${entry.excerptVersion}` : ''}
+            {entry.stale ? <span className="pm-context-source-stale-tag">STALE</span> : null}
+          </span>
+          <span className="pm-context-source-meta">
+            {sourceCost(entry)} · ({kindLabel(entry.kind)}) · {originLabel(entry.origin, requesterLabel)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  </div>
+);
 
 const compressionLabel = (value: ContextBudgetSnapshot['contextCompression']): string => ({
   applied: 'Applied',
@@ -54,7 +115,9 @@ export const ContextBudget: React.FC<ContextBudgetProps> = ({
   label,
   snapshot,
   modelOptions,
-  cumulativeProcessedTokens
+  cumulativeProcessedTokens,
+  sources,
+  requesterLabel
 }) => {
   if (!snapshot) {
     return (
@@ -131,6 +194,9 @@ export const ContextBudget: React.FC<ContextBudgetProps> = ({
           <dd className={compressionValueClass(snapshot.contextCompression)}>{compressionLabel(snapshot.contextCompression)}</dd>
         </div>
       </dl>
+      {sources && sources.length > 0 && (
+        <InContextSources sources={sources} requesterLabel={requesterLabel} />
+      )}
       <div className="pm-context-budget-foot">
         Context measured on <b>{participantName(label)}</b>&rsquo;s last committed reply. Each participant keeps
         its own conversation; switching targets never resets it.

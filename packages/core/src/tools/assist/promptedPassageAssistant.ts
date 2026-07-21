@@ -1,6 +1,11 @@
 import { LogSink } from '@/platform';
 import { PromptLoader } from '../shared/prompts';
-import { AgentCapabilityFactory, ExecutionResult, StreamingTokenCallback } from '@orchestration/AgentRunContracts';
+import {
+  AgentCapabilityFactory,
+  AnyAgentCapability,
+  ExecutionResult,
+  StreamingTokenCallback
+} from '@orchestration/AgentRunContracts';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 
@@ -18,6 +23,12 @@ export interface PassageAssistantOptions<Focus extends string> {
   readonly signal?: AbortSignal;
   readonly onToken?: StreamingTokenCallback;
   readonly retainConversation?: boolean;
+  /**
+   * Retained Workshop tool runs ONLY: the pre-minted composite
+   * source+neighbors+guides capability (Sprint 12 Phase 6). Sidebar runs
+   * never set it and keep the guide-only capability minted per run here.
+   */
+  readonly workshopCapability?: AnyAgentCapability;
 }
 
 /** Product-only prompt semantics; it never owns transport or lifecycle. */
@@ -36,13 +47,18 @@ export interface PromptedPassageProfile<Focus extends string> {
 
 export const resolvePassageRunPolicy = (
   includeCraftGuides: boolean | undefined,
-  retainConversation: boolean | undefined
+  retainConversation: boolean | undefined,
+  hasWorkshopCapability: boolean
 ) => {
-  if (includeCraftGuides !== false) {
-    return retainConversation ? AGENT_RUN_POLICIES.workshopTool : AGENT_RUN_POLICIES.assistant;
+  if (retainConversation) {
+    // Retained runs are Workshop tool sidecars: the composite catalog rides
+    // when the caller minted one; otherwise the run has no capability rounds.
+    return hasWorkshopCapability
+      ? AGENT_RUN_POLICIES.workshopTool
+      : AGENT_RUN_POLICIES.workshopToolWithoutResources;
   }
-  return retainConversation
-    ? AGENT_RUN_POLICIES.workshopToolWithoutResources
+  return includeCraftGuides !== false
+    ? AGENT_RUN_POLICIES.assistant
     : AGENT_RUN_POLICIES.assistantWithoutResources;
 };
 
@@ -66,16 +82,26 @@ export class PromptedPassageAssistant {
     const focus = options.focus ?? profile.defaultFocus;
     const sharedPrompts = await this.promptLoader.loadSharedPrompts();
     const toolPrompts = await this.loadToolPrompts(profile, focus);
+    const retained = options.retainConversation === true;
     const usesGuides = options.includeCraftGuides !== false;
+    // Retained (Workshop) runs use the caller-minted composite catalog;
+    // sidebar runs mint a fresh guide capability per run so the allowlist
+    // snapshot stays scoped to this request and concurrent runs never see
+    // each other's catalog.
+    const capability = retained
+      ? options.workshopCapability
+      : usesGuides ? this.createGuideCapability() : undefined;
 
     return this.agentRunEngine.runInitial({
       toolName: profile.toolName(focus),
       systemMessage: this.buildSystemMessage(profile, focus, sharedPrompts, toolPrompts),
       userMessage: this.buildUserMessage(profile, focus, input),
-      policy: resolvePassageRunPolicy(options.includeCraftGuides, options.retainConversation),
-      // A fresh capability per run keeps the allowlist snapshot scoped to
-      // this request; concurrent runs never see each other's catalog.
-      capability: usesGuides ? this.createGuideCapability() : undefined,
+      policy: resolvePassageRunPolicy(
+        options.includeCraftGuides,
+        options.retainConversation,
+        options.workshopCapability !== undefined
+      ),
+      capability,
       options: {
         temperature: options.temperature ?? 0.7,
         maxTokens: options.maxTokens ?? 10000,

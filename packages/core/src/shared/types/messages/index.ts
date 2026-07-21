@@ -131,9 +131,22 @@ import {
   WorkshopSelectPersonaMessage,
   WorkshopSetChatTargetMessage,
   WorkshopSetExcerptMessage,
-  WorkshopSetContextBriefMessage,
+  WorkshopAddContextTextMessage,
+  WorkshopAddContextFileMessage,
+  WorkshopRemoveContextAttachmentMessage,
+  WorkshopRequestContextCatalogMessage,
+  WorkshopContextCatalogMessage,
+  WorkshopSearchContextResourcesMessage,
+  WorkshopContextSearchResultsMessage,
+  WorkshopAddContextResourcesMessage,
+  WorkshopAttachMessageResourcesMessage,
+  WorkshopAttachMessageFileMessage,
+  WorkshopRemoveMessageAttachmentMessage,
+  WorkshopSetExcerptResourceMessage,
+  WorkshopRunContextWizardMessage,
   WorkshopTodoActionMessage,
   WorkshopPickExcerptFileMessage,
+  WorkshopRereadExcerptMessage,
   WorkshopResetSessionMessage,
   WorkshopRequestSessionMessage,
   WorkshopTurnMessage,
@@ -189,9 +202,22 @@ export type WebviewToExtensionMessage =
   | WorkshopSelectPersonaMessage
   | WorkshopSetChatTargetMessage
   | WorkshopSetExcerptMessage
-  | WorkshopSetContextBriefMessage
+  | WorkshopAddContextTextMessage
+  | WorkshopAddContextFileMessage
+  | WorkshopRemoveContextAttachmentMessage
+  | WorkshopRequestContextCatalogMessage
+  | WorkshopContextCatalogMessage
+  | WorkshopSearchContextResourcesMessage
+  | WorkshopContextSearchResultsMessage
+  | WorkshopAddContextResourcesMessage
+  | WorkshopAttachMessageResourcesMessage
+  | WorkshopAttachMessageFileMessage
+  | WorkshopRemoveMessageAttachmentMessage
+  | WorkshopSetExcerptResourceMessage
+  | WorkshopRunContextWizardMessage
   | WorkshopTodoActionMessage
   | WorkshopPickExcerptFileMessage
+  | WorkshopRereadExcerptMessage
   | WorkshopResetSessionMessage
   | WorkshopRequestSessionMessage;
 
@@ -226,4 +252,6 @@ export type ExtensionToWebviewMessage =
   | StreamChunkMessage
   | StreamCompleteMessage
   | WorkshopTurnMessage
-  | WorkshopSessionStateMessage;
+  | WorkshopSessionStateMessage
+  | WorkshopContextCatalogMessage
+  | WorkshopContextSearchResultsMessage;

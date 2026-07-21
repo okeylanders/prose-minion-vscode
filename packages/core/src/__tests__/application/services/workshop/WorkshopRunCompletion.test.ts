@@ -46,7 +46,7 @@ describe('completeWorkshopRun', () => {
 
   beforeEach(() => {
     session = new WorkshopSessionService(() => 1);
-    session.setExcerpt({ text: 'A pinned excerpt.' });
+    session.setExcerpt({ text: 'A pinned excerpt.', source: { kind: 'manual' } });
     events = {
       streamCompleted: jest.fn(),
       turnCompleted: jest.fn(),

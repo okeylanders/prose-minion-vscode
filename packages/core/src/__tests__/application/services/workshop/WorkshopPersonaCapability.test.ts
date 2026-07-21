@@ -20,7 +20,7 @@ describe('WorkshopPersonaCapability', () => {
 
   beforeEach(() => {
     session = new WorkshopSessionService(() => 7);
-    const excerpt = session.setExcerpt({ text: 'The cup crossed the table.' });
+    const excerpt = session.setExcerpt({ text: 'The cup crossed the table.', source: { kind: 'manual' } });
     session.beginPersonaMessage('host-request', 'Help me revise this.');
     dictionary = {
       lookupWordStreaming: jest.fn().mockResolvedValue({
@@ -406,5 +406,63 @@ describe('WorkshopPersonaCapability', () => {
       content: expect.stringContaining('per-turn capability-call limit')
     });
     expect(loadResources).not.toHaveBeenCalled();
+  });
+
+  describe('deliveredSources (Phase 7 manifest contributions)', () => {
+    it('classifies dictionary, analysis, and resource reads by manifest kind', async () => {
+      const adapter = capability();
+      const lookup = await adapter.fulfill({
+        capability: 'dictionary.lookup',
+        word: 'liminal',
+        context: 'Threshold scene.',
+        purpose: 'Check it.'
+      });
+      expect(lookup.deliveredSources).toEqual([
+        expect.objectContaining({ kind: 'dictionary', label: 'liminal' })
+      ]);
+
+      const analysisRun = await capability().fulfill({ capability: 'analysis.run', toolId: 'continuity' });
+      expect(analysisRun.deliveredSources).toEqual([
+        expect.objectContaining({
+          kind: 'tool-evidence',
+          label: 'Continuity',
+          sizeChars: 'Verbatim continuity report.'.length
+        })
+      ]);
+
+      listResources.mockReturnValue([{
+        group: 'characters', path: 'Characters/raven.md', label: 'Raven',
+        sizeBytes: 60, absolutePath: '/ws/Characters/raven.md'
+      }]);
+      loadResources.mockResolvedValue([{
+        group: 'characters', path: 'Characters/raven.md', label: 'Raven',
+        sizeBytes: 60, absolutePath: '/ws/Characters/raven.md',
+        content: 'Raven keeps the marked token.'
+      }]);
+      const read = await capability().fulfill({
+        capability: 'resource.read',
+        group: 'characters',
+        path: 'Characters/raven.md'
+      });
+      expect(read.deliveredSources).toEqual([
+        expect.objectContaining({
+          kind: 'resource',
+          label: 'Characters/raven.md',
+          configuredResource: { group: 'characters', path: 'Characters/raven.md' }
+        })
+      ]);
+    });
+
+    it('contributes nothing for rejected calls or bounded listings', async () => {
+      const catalog = await capability().fulfill({ capability: 'resource.catalog' });
+      expect(catalog.deliveredSources).toEqual([]);
+
+      const missingRead = await capability().fulfill({
+        capability: 'resource.read',
+        group: 'characters',
+        path: 'Characters/unknown.md'
+      });
+      expect(missingRead.deliveredSources).toEqual([]);
+    });
   });
 });

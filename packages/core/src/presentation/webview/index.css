@@ -2577,3 +2577,53 @@ select:focus {
     justify-self: start;
   }
 }
+
+/* ── Context source manifest — the "In context" panel (Sprint 12 Phase 7) ── */
+.pm-context-sources {
+  border-top: 1px solid var(--pm-border, rgba(128, 128, 128, 0.25));
+  padding: 8px 12px 4px;
+}
+.pm-context-sources-head {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pm-muted, var(--vscode-descriptionForeground));
+  margin-bottom: 6px;
+}
+.pm-context-sources-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.pm-context-source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.pm-context-source-label {
+  color: var(--pm-text, var(--vscode-foreground));
+  overflow-wrap: anywhere;
+}
+.pm-context-source-meta {
+  color: var(--pm-muted, var(--vscode-descriptionForeground));
+  margin-left: auto;
+  white-space: nowrap;
+}
+.pm-context-source-stale {
+  opacity: 0.55;
+}
+.pm-context-source-stale-tag {
+  margin-left: 6px;
+  padding: 0 4px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+}

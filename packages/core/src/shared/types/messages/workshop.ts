@@ -17,6 +17,7 @@ import { WritingToolsFocus } from './analysis';
 import { TokenUsage } from '../index';
 import type { LabeledContextBudgetSnapshot } from './inferenceContext';
 import type { WorkshopCapabilityArtifactDetails } from '../workshopCapabilities';
+import { ContextPathGroup, isContextPathGroup } from '../context';
 
 /**
  * Wire id for a Workshop tool — the design catalog's 14 tools mapped 1:1 onto
@@ -155,7 +156,8 @@ export type WorkshopTurnArtifact =
   | 'resource_catalog'
   | 'resource_search'
   | 'resource_read'
-  | 'excerpt_revision';
+  | 'excerpt_revision'
+  | 'context_change';
 
 /**
  * Truncation provenance for a file-seeded excerpt: the host pinned a
@@ -169,23 +171,229 @@ export interface WorkshopExcerptTruncation {
   totalWords: number;
 }
 
-/** The excerpt pinned in the left rail — the text every tool run works on. */
+/**
+ * Canonical configured-resource key from the context-path resolver, stamped
+ * during source resolution so model-requested reads can cite `{ group, path }`
+ * instead of reconstructing a path (Sprint 12).
+ */
+export interface WorkshopConfiguredResourceRef {
+  group: ContextPathGroup;
+  path: string;
+}
+
+/**
+ * Where the excerpt text actually came from (Sprint 12). Intake method and
+ * provenance are different facts: pasted text that exactly matches the active
+ * editor selection earns `editor-selection`; anything unverifiable stays
+ * honestly `manual`. The union is closed — locked-state affordances
+ * (`Update text…` vs `Re-read from file`) switch on `kind` alone.
+ */
+export type WorkshopExcerptSource =
+  | { kind: 'manual' }
+  | {
+      kind: 'editor-selection';
+      /** `document.uri.toString()` of the verified source document. */
+      sourceUri: string;
+      /** Workspace-relative display path (e.g. `chapters/03.md`). */
+      relativePath: string;
+      /** 1-based inclusive selection lines, when the host editor supplied them. */
+      startLine?: number;
+      endLine?: number;
+      configuredResource?: WorkshopConfiguredResourceRef;
+    }
+  | {
+      kind: 'file';
+      sourceUri: string;
+      relativePath: string;
+      configuredResource?: WorkshopConfiguredResourceRef;
+    };
+
+/** Display-safe source provenance for the session snapshot; never exposes a host URI. */
+export type WorkshopExcerptSourceSnapshot =
+  | { kind: 'manual' }
+  | {
+      kind: 'editor-selection';
+      relativePath: string;
+      startLine?: number;
+      endLine?: number;
+      configuredResource?: WorkshopConfiguredResourceRef;
+    }
+  | {
+      kind: 'file';
+      relativePath: string;
+      configuredResource?: WorkshopConfiguredResourceRef;
+    };
+
+/** Display path for a sourced excerpt; undefined for manual text. */
+export function workshopExcerptSourcePath(
+  source: WorkshopExcerptSource | WorkshopExcerptSourceSnapshot
+): string | undefined {
+  return source.kind === 'manual' ? undefined : source.relativePath;
+}
+
+/** Source document URI for a sourced excerpt; undefined for manual text. */
+export function workshopExcerptSourceUri(source: WorkshopExcerptSource): string | undefined {
+  return source.kind === 'manual' ? undefined : source.sourceUri;
+}
+
+const isSelectionLine = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 1;
+
+const isNonEmptyString = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim().length > 0;
+
+function coerceConfiguredResource(raw: unknown): WorkshopConfiguredResourceRef | undefined {
+  if (typeof raw !== 'object' || raw === null) {
+    return undefined;
+  }
+  const candidate = raw as { group?: unknown; path?: unknown };
+  return typeof candidate.group === 'string' &&
+    isContextPathGroup(candidate.group) &&
+    isNonEmptyString(candidate.path)
+    ? { group: candidate.group, path: candidate.path }
+    : undefined;
+}
+
+/**
+ * The ONE parser for excerpt-source wire traffic. The payload crosses the
+ * webview IPC boundary, so it is validated as `unknown` — a claim that cannot
+ * prove its shape degrades to `{ kind: 'manual' }` rather than borrowing a
+ * source it cannot demonstrate. An invalid line range is dropped (the kind
+ * survives); an invalid configuredResource claim is dropped (re-derivable).
+ */
+export function coerceWorkshopExcerptSource(raw: unknown): WorkshopExcerptSource {
+  if (typeof raw !== 'object' || raw === null) {
+    return { kind: 'manual' };
+  }
+  const candidate = raw as {
+    kind?: unknown;
+    sourceUri?: unknown;
+    relativePath?: unknown;
+    startLine?: unknown;
+    endLine?: unknown;
+    configuredResource?: unknown;
+  };
+  if (candidate.kind !== 'editor-selection' && candidate.kind !== 'file') {
+    return { kind: 'manual' };
+  }
+  if (!isNonEmptyString(candidate.sourceUri) || !isNonEmptyString(candidate.relativePath)) {
+    return { kind: 'manual' };
+  }
+  const configuredResource = coerceConfiguredResource(candidate.configuredResource);
+  if (candidate.kind === 'file') {
+    return {
+      kind: 'file',
+      sourceUri: candidate.sourceUri,
+      relativePath: candidate.relativePath,
+      ...(configuredResource ? { configuredResource } : {})
+    };
+  }
+  const hasLineRange =
+    isSelectionLine(candidate.startLine) &&
+    isSelectionLine(candidate.endLine) &&
+    candidate.endLine >= candidate.startLine;
+  return {
+    kind: 'editor-selection',
+    sourceUri: candidate.sourceUri,
+    relativePath: candidate.relativePath,
+    ...(hasLineRange ? { startLine: candidate.startLine as number, endLine: candidate.endLine as number } : {}),
+    ...(configuredResource ? { configuredResource } : {})
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Message attachments — one-shot writer thread-artifacts (Sprint 12 Phase 6B;
+// ADR 2026-07-18). They ride exactly ONE user turn inside a
+// `<thread-artifact id="ta-N">` frame, then become ordinary history: never
+// re-shipped, no standing budget, addressable by their stable host-minted id.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** A message attachment carries a head slice past its cap, and the UI says so. */
+export interface WorkshopMessageAttachmentTruncation {
+  keptWords: number;
+  totalWords: number;
+}
+
+/**
+ * Display-safe pending/shipped message-attachment metadata. Content stays
+ * host-side; the pill (and later the manifest row) is the inspectable
+ * artifact. The id is the ADR's `ta-N` surgery/manifest address.
+ */
+export interface WorkshopMessageAttachmentSnapshot {
+  /** Host-minted stable thread-artifact id (`ta-N`). */
+  id: string;
+  /** Display label: file basename. */
+  label: string;
+  words: number;
+  /** Workspace-relative display path (never absolute). */
+  relativePath?: string;
+  configuredResource?: WorkshopConfiguredResourceRef;
+  truncation?: WorkshopMessageAttachmentTruncation;
+}
+
+/** The excerpt set in the left rail — the text every tool run works on. */
 export interface WorkshopExcerpt {
   text: string;
   /** Monotonic version assigned by the host session aggregate. */
   version: number;
-  /** URI of the source document, when the excerpt came from a file. */
-  sourceUri?: string;
-  /** Workspace-relative path for display (e.g. `chapters/03.md`). */
-  relativePath?: string;
+  /** Provenance of the text — the single source of truth (no flat sourceUri/relativePath). */
+  source: WorkshopExcerptSource;
   /** Epoch ms when the excerpt was pinned (host-stamped). */
   pinnedAt: number;
   /** Present when the host head-sliced a huge file at pin time. */
   truncation?: WorkshopExcerptTruncation;
+  /** SHA-256 of the original source bytes, used only to detect file revisions. */
+  sourceFingerprint?: string;
 }
+
+/** Webview projection of an excerpt. Source URIs remain host-private. */
+export type WorkshopExcerptSnapshot = Omit<WorkshopExcerpt, 'source' | 'sourceFingerprint'> & {
+  source: WorkshopExcerptSourceSnapshot;
+};
 
 /** What produced a turn: a deterministic tool run, or a free-text follow-up. */
 export type WorkshopTurnKind = 'tool_run' | 'message' | 'divider';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Context attachments (Sprint 12) — the ordered, removable list that replaced
+// the single paste-only context brief.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Who put this attachment in the list. Wizard picks render with a wand. */
+export type WorkshopContextAttachmentOrigin = 'writer' | 'wizard';
+
+/** A file attachment carries a head slice, and the UI says so durably. */
+export interface WorkshopContextAttachmentTruncation {
+  keptWords: number;
+  totalWords: number;
+}
+
+/**
+ * Display-safe attachment metadata as exposed to the webview. Content stays
+ * host-side — the pill is the inspectable artifact (label, kind, size,
+ * remove control), never a second copy of the text.
+ */
+export interface WorkshopContextAttachmentSnapshot {
+  /** Host-generated stable id; remove routes address this. */
+  id: string;
+  kind: 'text' | 'file';
+  origin: WorkshopContextAttachmentOrigin;
+  /** Display label: file basename, or the first words of a text note. */
+  label: string;
+  words: number;
+  /** Workspace-relative display path (file kind only; never absolute). */
+  relativePath?: string;
+  configuredResource?: WorkshopConfiguredResourceRef;
+  truncation?: WorkshopContextAttachmentTruncation;
+  /**
+   * Text-kind ONLY: the note's full content, so the pill is inspectable —
+   * typed notes and wizard briefs have no on-disk home to re-read. File
+   * content stays host-side (re-readable, potentially large).
+   */
+  content?: string;
+  /** Epoch ms when attached (host-stamped). */
+  addedAt: number;
+}
 
 /**
  * One completed entry in the session thread. Tool-run user turns record the
@@ -215,6 +423,11 @@ export interface WorkshopTurn {
   excerptVersion: number;
   /** Strictly parsed actionable findings proposed by a tool report or host turn. */
   actionableFindings?: WorkshopActionableFinding[];
+  /**
+   * One-shot thread-artifacts that rode THIS writer turn (Sprint 12 Phase 6B).
+   * Display-safe refs only; ids are the `ta-N` manifest/surgery addresses.
+   */
+  messageAttachments?: WorkshopMessageAttachmentSnapshot[];
   content: string;
   /** Epoch ms when the turn was appended (host-stamped). */
   timestamp: number;
@@ -236,17 +449,23 @@ export interface WorkshopTurn {
  * marathon thread.
  */
 export interface WorkshopSessionSnapshot {
-  excerpt?: WorkshopExcerpt;
+  excerpt?: WorkshopExcerptSnapshot;
   /** Current monotonic excerpt version (zero before the first pin). */
   excerptVersion: number;
   /** Number of excerpt replacements since the last new-session boundary. */
   replacementCount: number;
-  /** Context-brief reference shared with host and tools. */
-  contextBrief?: string;
+  /** Ordered context attachments shared with host and tools (Sprint 12). */
+  contextAttachments: WorkshopContextAttachmentSnapshot[];
+  /**
+   * Attachments staged for the writer's NEXT composer message (Phase 6B).
+   * They ride that one message as thread-artifacts, then leave this list.
+   */
+  pendingMessageAttachments: WorkshopMessageAttachmentSnapshot[];
   /** Host update waiting for the next successful retained-host turn. */
   pendingHostUpdate?: {
     excerptVersion?: number;
-    contextBrief: boolean;
+    /** True when the attachment list changed since the host last saw it. */
+    context: boolean;
   };
   /** Host-owned, defensively copied writer task list in explicit order. */
   todos: WorkshopTodoItem[];
@@ -346,22 +565,156 @@ export interface WorkshopSetChatTargetMessage extends MessageEnvelope<WorkshopCh
 
 export interface WorkshopSetExcerptPayload {
   text: string;
-  sourceUri?: string;
-  relativePath?: string;
+  /**
+   * Provenance claim. Absent or unprovable shapes degrade to
+   * `{ kind: 'manual' }` host-side via `coerceWorkshopExcerptSource`.
+   */
+  source?: WorkshopExcerptSource;
 }
 
 export interface WorkshopSetExcerptMessage extends MessageEnvelope<WorkshopSetExcerptPayload> {
   type: MessageType.WORKSHOP_SET_EXCERPT;
 }
 
-export interface WorkshopSetContextBriefPayload {
-  /** Empty or whitespace-only text clears the current brief. */
-  text?: string;
+/** Add a typed/pasted context note; the host derives the label and word count. */
+export interface WorkshopAddContextTextPayload {
+  text: string;
 }
 
-export interface WorkshopSetContextBriefMessage
-  extends MessageEnvelope<WorkshopSetContextBriefPayload> {
-  type: MessageType.WORKSHOP_SET_CONTEXT_BRIEF;
+export interface WorkshopAddContextTextMessage
+  extends MessageEnvelope<WorkshopAddContextTextPayload> {
+  type: MessageType.WORKSHOP_ADD_CONTEXT_TEXT;
+}
+
+/**
+ * Add a file attachment via the host's file picker (Sprint 12; the Context
+ * Selector modal's "Explore project folders…" escape hatch reuses this
+ * route). Zero payload — the dialog IS the input.
+ */
+export interface WorkshopAddContextFileMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.WORKSHOP_ADD_CONTEXT_FILE;
+}
+
+export interface WorkshopRemoveContextAttachmentPayload {
+  id: string;
+}
+
+export interface WorkshopRemoveContextAttachmentMessage
+  extends MessageEnvelope<WorkshopRemoveContextAttachmentPayload> {
+  type: MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Context Selector modal (Sprint 12 Phase 4) — browse/search the configured
+// resource catalog and attach by canonical { group, path }. Display-safe
+// resolver paths only; no absolute path ever crosses this contract.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** One configured resource as the modal browses it. */
+export interface WorkshopContextCatalogEntry {
+  group: ContextPathGroup;
+  /** Resolver's display-safe workspace-relative path — the canonical key. */
+  path: string;
+  label: string;
+  /** Byte size from catalog admission; word counts happen at attach time. */
+  sizeBytes: number;
+}
+
+/** Sent on modal open: "give me the configured resource catalog". */
+export interface WorkshopRequestContextCatalogMessage
+  extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.WORKSHOP_REQUEST_CONTEXT_CATALOG;
+}
+
+export interface WorkshopContextCatalogPayload {
+  entries: WorkshopContextCatalogEntry[];
+}
+
+export interface WorkshopContextCatalogMessage
+  extends MessageEnvelope<WorkshopContextCatalogPayload> {
+  type: MessageType.WORKSHOP_CONTEXT_CATALOG;
+}
+
+/**
+ * Content search over the configured catalog (name matching is client-side —
+ * the webview already holds the catalog). Runs under the same byte/file
+ * bounds as the persona capability's resource.search.
+ */
+export interface WorkshopSearchContextResourcesPayload {
+  query: string;
+}
+
+export interface WorkshopSearchContextResourcesMessage
+  extends MessageEnvelope<WorkshopSearchContextResourcesPayload> {
+  type: MessageType.WORKSHOP_SEARCH_CONTEXT_RESOURCES;
+}
+
+export interface WorkshopContextSearchResultsPayload {
+  query: string;
+  matches: WorkshopConfiguredResourceRef[];
+  /** True when a file/byte bound stopped the scan early. */
+  bounded: boolean;
+}
+
+export interface WorkshopContextSearchResultsMessage
+  extends MessageEnvelope<WorkshopContextSearchResultsPayload> {
+  type: MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS;
+}
+
+/** Attach selected configured resources, in the writer's selection order. */
+export interface WorkshopAddContextResourcesPayload {
+  items: WorkshopConfiguredResourceRef[];
+}
+
+/** Set the excerpt from ONE configured resource picked in the modal. */
+export interface WorkshopSetExcerptResourceMessage
+  extends MessageEnvelope<WorkshopConfiguredResourceRef> {
+  type: MessageType.WORKSHOP_SET_EXCERPT_RESOURCE;
+}
+
+/**
+ * Run the Context wizard (Sprint 12): the sidebar Context lane's generation
+ * pipeline behind Workshop-scoped routes and the 'workshop-context' streaming
+ * domain. One run at a time; results land as wizard-tagged attachments
+ * through the standard add path. Zero payload — session state IS the input.
+ */
+export interface WorkshopRunContextWizardMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.WORKSHOP_RUN_CONTEXT_WIZARD;
+}
+
+export interface WorkshopAddContextResourcesMessage
+  extends MessageEnvelope<WorkshopAddContextResourcesPayload> {
+  type: MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES;
+}
+
+/**
+ * Stage configured resources as attachments for the writer's next composer
+ * message (Phase 6B): one-shot thread-artifacts, NOT standing context.
+ */
+export interface WorkshopAttachMessageResourcesPayload {
+  items: WorkshopConfiguredResourceRef[];
+}
+
+export interface WorkshopAttachMessageResourcesMessage
+  extends MessageEnvelope<WorkshopAttachMessageResourcesPayload> {
+  type: MessageType.WORKSHOP_ATTACH_MESSAGE_RESOURCES;
+}
+
+/**
+ * Stage an explored file (host picker) as a next-message attachment
+ * (Phase 6B). Zero payload — the dialog IS the input.
+ */
+export interface WorkshopAttachMessageFileMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.WORKSHOP_ATTACH_MESSAGE_FILE;
+}
+
+export interface WorkshopRemoveMessageAttachmentPayload {
+  id: string;
+}
+
+export interface WorkshopRemoveMessageAttachmentMessage
+  extends MessageEnvelope<WorkshopRemoveMessageAttachmentPayload> {
+  type: MessageType.WORKSHOP_REMOVE_MESSAGE_ATTACHMENT;
 }
 
 export type WorkshopTodoAction =
@@ -383,6 +736,17 @@ export interface WorkshopTodoActionMessage extends MessageEnvelope<WorkshopTodoA
  */
 export interface WorkshopPickExcerptFileMessage extends MessageEnvelope<Record<string, never>> {
   type: MessageType.WORKSHOP_PICK_EXCERPT_FILE;
+}
+
+/**
+ * "Re-read from file" (Sprint 12): re-run the original read + head-slice
+ * against the file-backed excerpt's stored sourceUri. Unchanged content
+ * no-ops with a status line; changed content lands as a normal revision
+ * (version bump, revision frame, no memory reset). Zero payload — the
+ * host's own session state IS the input.
+ */
+export interface WorkshopRereadExcerptMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.WORKSHOP_REREAD_EXCERPT;
 }
 
 /**

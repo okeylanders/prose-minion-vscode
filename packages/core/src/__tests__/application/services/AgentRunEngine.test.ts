@@ -801,4 +801,156 @@ describe('AgentRunEngine', () => {
     expect(guides.fulfill).toHaveBeenCalledTimes(2);
     expect(result.content).toContain('exhausted its capability-call limit');
   });
+
+  it('stamps stable art-N ids on retained capability evidence at injection (ADR 2026-07-18)', async () => {
+    const persona = personaCapability();
+    client.createChatCompletion
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: 'Dictionary-backed answer.' });
+
+    const result = await engine.runInitial({
+      toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopHost, capability: persona
+    });
+
+    const history = conversations.getMessages(result.conversationId!);
+    const evidenceEntry = history.find(message => message.content.includes('Dictionary evidence'));
+    expect(evidenceEntry).toMatchObject({
+      role: 'user',
+      content: '<agent-artifact id="art-1">\nDictionary evidence\n</agent-artifact>'
+    });
+
+    // A second capability round in the SAME conversation mints the next id.
+    const followUp = personaCapability();
+    client.createChatCompletion
+      .mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValueOnce({ content: 'Second answer.' });
+    await engine.continueConversation({
+      conversationId: result.conversationId!,
+      userMessage: 'Again?',
+      policy: AGENT_RUN_POLICIES.workshopHost,
+      capability: followUp
+    });
+    const artifactIds = conversations.getMessages(result.conversationId!)
+      .flatMap(message => [...message.content.matchAll(/<agent-artifact id="(art-\d+)">/g)].map(m => m[1]));
+    expect(artifactIds).toEqual(['art-1', 'art-2']);
+  });
+
+  it('leaves discard-run evidence unstamped — no address is needed for history that never persists', async () => {
+    const guides = capability();
+    client.createChatCompletion
+      .mockResolvedValueOnce({ content: GUIDE_REQUEST })
+      .mockResolvedValueOnce({ content: 'Guide-backed answer.' });
+
+    await engine.runInitial({
+      toolName: 'dialogue', systemMessage: 'System', userMessage: 'Analyze.',
+      policy: AGENT_RUN_POLICIES.assistant, capability: guides
+    });
+
+    const evidenceTurnMessages = client.createChatCompletion.mock.calls[1][0] as Array<{ role: string; content: string }>;
+    const evidenceEntry = evidenceTurnMessages.find(message => message.content.includes('Evidence for dialogue.md'));
+    expect(evidenceEntry?.content).toBe('Evidence for dialogue.md');
+    expect(evidenceEntry?.content).not.toContain('<agent-artifact');
+  });
+
+  describe('context-source manifest collection (Phase 7)', () => {
+    const observation = (promptTokens: number, measuredAt: number) => ({
+      modelId: 'model/a', promptTokens, completionTokens: 2, totalTokens: promptTokens + 2,
+      requestedMaxOutputTokens: 10_000, finishReason: 'stop', contextCompression: 'unknown' as const, measuredAt
+    });
+
+    it('commits a measured per-round delta for a single delivered source', async () => {
+      const guides = capability();
+      guides.fulfill.mockResolvedValueOnce({
+        evidence: 'Evidence',
+        deliveredItems: ['dialogue.md'],
+        artifacts: [],
+        deliveredSources: [{ kind: 'resource', label: 'Dialogue Tags', sizeChars: 480 }]
+      });
+      client.createChatCompletion
+        .mockResolvedValueOnce({ content: GUIDE_REQUEST, observation: observation(38, 1) })
+        .mockResolvedValueOnce({ content: 'Final response.', observation: observation(41, 2) });
+
+      const result = await engine.runInitial({
+        toolName: 'dialogue', systemMessage: 'System', userMessage: 'Analyze.',
+        policy: { ...AGENT_RUN_POLICIES.assistant, retention: 'retain' }, capability: guides
+      });
+
+      expect(conversations.getContextSources(result.conversationId)).toEqual([
+        expect.objectContaining({
+          kind: 'resource',
+          origin: 'tool',
+          label: 'Dialogue Tags',
+          sizeChars: 480,
+          promptTokensDelta: 3,
+          isEstimate: false,
+          artifactId: 'art-1'
+        })
+      ]);
+    });
+
+    it('apportions a multi-source round by size share and stays an estimate', async () => {
+      const guides = capability();
+      guides.fulfill.mockResolvedValueOnce({
+        evidence: 'Evidence',
+        deliveredItems: ['a', 'b'],
+        artifacts: [],
+        deliveredSources: [
+          { kind: 'resource', label: 'ch-04.md', sizeChars: 300, configuredResource: { group: 'chapters', path: 'chapters/ch-04.md' } },
+          { kind: 'resource', label: 'Pacing', sizeChars: 100 }
+        ]
+      });
+      client.createChatCompletion
+        .mockResolvedValueOnce({ content: GUIDE_REQUEST, observation: observation(100, 1) })
+        .mockResolvedValueOnce({ content: 'Final.', observation: observation(140, 2) });
+
+      const result = await engine.runInitial({
+        toolName: 'dialogue', systemMessage: 'System', userMessage: 'Analyze.',
+        policy: { ...AGENT_RUN_POLICIES.assistant, retention: 'retain' }, capability: guides
+      });
+
+      expect(conversations.getContextSources(result.conversationId)).toEqual([
+        expect.objectContaining({ label: 'ch-04.md', promptTokensDelta: 30, isEstimate: true, artifactId: 'art-1' }),
+        expect.objectContaining({ label: 'Pacing', promptTokensDelta: 10, isEstimate: true, artifactId: 'art-1' })
+      ]);
+    });
+
+    it('preserves the prior manifest when a later turn fails before committing', async () => {
+      const guides = capability();
+      guides.fulfill.mockResolvedValue({
+        evidence: 'Evidence',
+        deliveredItems: ['dialogue.md'],
+        artifacts: [],
+        deliveredSources: [{ kind: 'resource', label: 'Dialogue Tags', sizeChars: 480 }]
+      });
+      client.createChatCompletion
+        .mockResolvedValueOnce({ content: GUIDE_REQUEST, observation: observation(38, 1) })
+        .mockResolvedValueOnce({ content: 'First final.', observation: observation(41, 2) });
+      const initial = await engine.runInitial({
+        toolName: 'dialogue', systemMessage: 'System', userMessage: 'Analyze.',
+        policy: { ...AGENT_RUN_POLICIES.assistant, retention: 'retain' }, capability: guides
+      });
+      const before = conversations.getContextSources(initial.conversationId);
+      expect(before).toHaveLength(1);
+
+      const followUp = capability();
+      followUp.fulfill.mockResolvedValueOnce({
+        evidence: 'More evidence',
+        deliveredItems: ['dialogue.md'],
+        artifacts: [],
+        deliveredSources: [{ kind: 'resource', label: 'Second Guide', sizeChars: 100 }]
+      });
+      client.createChatCompletion
+        .mockResolvedValueOnce({ content: GUIDE_REQUEST, observation: observation(50, 3) })
+        .mockRejectedValueOnce(new Error('network unavailable'));
+      await expect(engine.continueConversation({
+        conversationId: initial.conversationId!,
+        userMessage: 'Again.',
+        policy: { ...AGENT_RUN_POLICIES.assistant, retention: 'retain' },
+        capability: followUp
+      })).rejects.toThrow('network unavailable');
+
+      expect(conversations.getContextSources(initial.conversationId)).toEqual(before);
+    });
+  });
 });
