@@ -48,6 +48,7 @@ import { WorkshopThread } from './components/workshop/WorkshopThread';
 import { WORKSHOP_TURN_ID_ATTRIBUTE } from './components/workshop/WorkshopTurnBubble';
 import { WorkshopToolsModal } from './components/workshop/WorkshopToolsModal';
 import { WorkshopPersonaBrowserModal } from './components/workshop/WorkshopPersonaBrowserModal';
+import { WorkshopPersonaSchematicModal } from './components/workshop/schematic/WorkshopPersonaSchematicModal';
 import { WorkshopContextSelectorModal } from './components/workshop/WorkshopContextSelectorModal';
 import { WorkshopConversationBehaviorModal } from './components/workshop/WorkshopConversationBehaviorModal';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -79,6 +80,7 @@ import { useModelsSettings } from './hooks/domain/useModelsSettings';
 import { useTokenTracking } from './hooks/domain/useTokenTracking';
 import { useAccountBalance } from './hooks/domain/useAccountBalance';
 import './workshop.css';
+import './components/workshop/schematic/schematic.css';
 
 interface WorkshopTool extends WorkshopToolDescriptor {
   icon: IconName;
@@ -145,6 +147,7 @@ export const WorkshopApp: React.FC = () => {
   const [toolsModalOpen, setToolsModalOpen] = React.useState(false);
   const [behaviorModalOpen, setBehaviorModalOpen] = React.useState(false);
   const [personaModalOpen, setPersonaModalOpen] = React.useState(false);
+  const [schematicPersonaId, setSchematicPersonaId] = React.useState<WorkshopPersonaId | null>(null);
   const [contextSelectorOpen, setContextSelectorOpen] = React.useState(false);
   const [contextSelectorMode, setContextSelectorMode] = React.useState<'attach' | 'excerpt' | 'message'>('attach');
   const [personaModalMode, setPersonaModalMode] = React.useState<'host' | 'guest'>('host');
@@ -343,6 +346,14 @@ export const WorkshopApp: React.FC = () => {
     setPersonaModalOpen(true);
   }, []);
   const closePersonaModal = React.useCallback(() => setPersonaModalOpen(false), []);
+  const openSchematic = React.useCallback((personaId: WorkshopPersonaId) => {
+    setSchematicPersonaId(personaId);
+    setPersonaModalOpen(false);
+  }, []);
+  const backToPersonas = React.useCallback(() => {
+    setSchematicPersonaId(null);
+    setPersonaModalOpen(true);
+  }, []);
   const selectPersona = React.useCallback(
     (personaId: typeof workshop.selectedPersonaId) => {
       setPersonaModalOpen(false);
@@ -808,7 +819,9 @@ export const WorkshopApp: React.FC = () => {
         onClose={closePersonaModal}
         onSelect={selectPersona}
         onInvite={inviteGuest}
+        onMoreInfo={openSchematic}
       />
+      <WorkshopPersonaSchematicModal personaId={schematicPersonaId} onBack={backToPersonas} />
       <WorkshopToast toast={toast} />
     </div>
   );

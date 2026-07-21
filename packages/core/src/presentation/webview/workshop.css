@@ -1859,6 +1859,44 @@
   font-size: 11px;
   font-weight: 650;
 }
+/* Persona card + its "More info" schematic trigger (State A → B). The wrapper
+   is the grid cell; the card stays a self-contained select/invite button so no
+   interactive element nests inside another. */
+[data-pm-surface="workshop"] .pm-ws-persona-card-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+[data-pm-surface="workshop"] .pm-ws-persona-card-wrap .pm-ws-persona-card {
+  flex: 1;
+  width: 100%;
+}
+[data-pm-surface="workshop"] .pm-ws-persona-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin: 0;
+  padding: 5px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--pm-dim);
+  font-family: var(--pm-sans);
+  font-size: 11.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-persona-more:hover {
+  color: var(--pm-accent-hi);
+  background: var(--pm-accent-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-persona-more svg {
+  transition: transform 0.15s ease;
+}
+[data-pm-surface="workshop"] .pm-ws-persona-more:hover svg {
+  transform: translateX(2px);
+}
 /* ---------- Composer band (composer-messaging v2) ----------
    Each message gets its own zone: status ticker centered ABOVE the divider
    (thread-side: it narrates the run, not the next message) → the divider

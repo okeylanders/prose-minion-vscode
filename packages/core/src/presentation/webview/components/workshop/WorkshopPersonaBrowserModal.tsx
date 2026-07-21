@@ -20,6 +20,8 @@ interface WorkshopPersonaBrowserModalProps {
   onClose: () => void;
   onSelect: (personaId: WorkshopPersonaId) => void;
   onInvite?: (personaId: WorkshopPersonaId, openingMessage: string) => void;
+  /** Open the persona's read-only configuration schematic (State B). */
+  onMoreInfo?: (personaId: WorkshopPersonaId) => void;
 }
 
 export const WorkshopPersonaBrowserModal: React.FC<WorkshopPersonaBrowserModalProps> = ({
@@ -30,7 +32,8 @@ export const WorkshopPersonaBrowserModal: React.FC<WorkshopPersonaBrowserModalPr
   disabled = false,
   onClose,
   onSelect,
-  onInvite
+  onInvite,
+  onMoreInfo
 }) => {
   const guestMode = mode === 'guest';
   const [openingMessage, setOpeningMessage] = React.useState(DEFAULT_WORKSHOP_GUEST_OPENING);
@@ -76,35 +79,47 @@ export const WorkshopPersonaBrowserModal: React.FC<WorkshopPersonaBrowserModalPr
         )}
         <div className="pm-ws-tools-modal-grid pm-ws-persona-grid">
           {WORKSHOP_PERSONA_CATALOG.map((persona) => (
-            <button
-              key={persona.id}
-              className={`pm-ws-tools-card pm-ws-persona-card ${!guestMode && activePersonaId === persona.id ? 'pm-ws-tools-card-active' : ''}`}
-              type="button"
-              disabled={
-                disabled
-                || (guestMode && (
-                  !openingMessage.trim()
-                  || persona.id === activePersonaId
-                  || invitedPersonaIds.includes(persona.id)
-                ))
-              }
-              aria-pressed={!guestMode && activePersonaId === persona.id}
-              onClick={() => {
-                if (guestMode) {
-                  onInvite?.(persona.id, openingMessage.trim());
-                } else {
-                  onSelect(persona.id);
+            <div className="pm-ws-persona-card-wrap" key={persona.id}>
+              <button
+                className={`pm-ws-tools-card pm-ws-persona-card ${!guestMode && activePersonaId === persona.id ? 'pm-ws-tools-card-active' : ''}`}
+                type="button"
+                disabled={
+                  disabled
+                  || (guestMode && (
+                    !openingMessage.trim()
+                    || persona.id === activePersonaId
+                    || invitedPersonaIds.includes(persona.id)
+                  ))
                 }
-              }}
-            >
-              <span className="pm-ws-persona-card-icons" aria-hidden="true">
-                <span className="pm-ws-tools-card-icon"><Icon name="person" size={20} /></span>
-                <span className="pm-ws-persona-focus"><Icon name={WORKSHOP_PERSONA_FOCUS_ICONS[persona.id]} size={12} /></span>
-              </span>
-              <span className="pm-ws-tools-card-name">{persona.label}</span>
-              <span className="pm-ws-persona-specialty">{persona.specialty}</span>
-              <span className="pm-ws-tools-card-desc">{persona.description}</span>
-            </button>
+                aria-pressed={!guestMode && activePersonaId === persona.id}
+                onClick={() => {
+                  if (guestMode) {
+                    onInvite?.(persona.id, openingMessage.trim());
+                  } else {
+                    onSelect(persona.id);
+                  }
+                }}
+              >
+                <span className="pm-ws-persona-card-icons" aria-hidden="true">
+                  <span className="pm-ws-tools-card-icon"><Icon name="person" size={20} /></span>
+                  <span className="pm-ws-persona-focus"><Icon name={WORKSHOP_PERSONA_FOCUS_ICONS[persona.id]} size={12} /></span>
+                </span>
+                <span className="pm-ws-tools-card-name">{persona.label}</span>
+                <span className="pm-ws-persona-specialty">{persona.specialty}</span>
+                <span className="pm-ws-tools-card-desc">{persona.description}</span>
+              </button>
+              {onMoreInfo && (
+                <button
+                  className="pm-ws-persona-more"
+                  type="button"
+                  onClick={() => onMoreInfo(persona.id)}
+                  aria-label={`More info about ${persona.label}`}
+                >
+                  More info
+                  <Icon name="chevRight" size={12} />
+                </button>
+              )}
+            </div>
           ))}
         </div>
     </WorkshopModalShell>
