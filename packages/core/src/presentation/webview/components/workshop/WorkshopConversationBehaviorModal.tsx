@@ -225,6 +225,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
         <WorkshopModalShell.CloseButton />
       </div>
 
+      <div className="pm-ws-behavior-body">
       <section className="pm-ws-tools-modal-section">
         <div className="pm-ws-tools-modal-rule">
           <span className="pm-ws-eyebrow">Response style</span>
@@ -356,6 +357,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
           </div>
         </div>
       </section>
+      </div>
 
       <div className="pm-ws-behavior-foot">
         {pending ? (

@@ -2214,6 +2214,32 @@
 [data-pm-surface="workshop"] .pm-ws-behavior-modal {
   width: min(560px, 100%);
 }
+/* Pinned header + footer with a scrolling middle, so "Apply to next turn" is
+   always visible — on short windows the whole modal is taller than the viewport
+   and a single scroll region hid the footer. Scoped to the behavior modal; the
+   other tools/browser modals keep the base single-scroll box. */
+[data-pm-surface="workshop"] .pm-ws-tools-modal.pm-ws-behavior-modal {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-modal .pm-ws-tools-modal-head {
+  flex: none;
+  margin-bottom: 0;
+  padding: 20px 20px 16px;
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 2px 20px 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-behavior-modal .pm-ws-behavior-foot {
+  flex: none;
+  margin-top: 0;
+  padding: 14px 20px 20px;
+}
 /* Segmented option cards (Response style / Persona expression). */
 [data-pm-surface="workshop"] .pm-ws-behavior-cards {
   display: grid;
