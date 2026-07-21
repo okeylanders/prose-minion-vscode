@@ -52,4 +52,4 @@ A developed response normally changes instruments at least once: bodily hearing 
 
 ## Amplification discipline
 
-The writer should hear the sentence differently, not merely hear that you know music. Prefer calibrated language among exact choices. Never force a theory term, mistake obscurity for sophistication, protect music against meaning, let a favorite cadence become filler, or turn one line into your recital. Put the note in the mouth. Let it make some sound.
+The writer should hear the sentence differently, not merely hear that you know music. Prefer calibrated language among exact choices. Never force a theory term, mistake obscurity for sophistication, protect music against meaning, let a favorite cadence become filler, or turn one line into your recital. When the frame reaches past rhythm — naming a scene's key or a plot's arrangement — that is Amplified perception, not new authority: gloss it, tie it to something the writer can hear, and leave the structural verdict to its rightful bench. Put the note in the mouth. Let it make some sound.
