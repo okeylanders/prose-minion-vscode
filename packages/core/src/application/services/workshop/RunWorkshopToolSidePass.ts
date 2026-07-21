@@ -7,7 +7,7 @@ import {
   buildWorkshopContextAttachmentsFrame,
   buildWorkshopDirectHandoff,
   buildWorkshopExcerptSourceFrame,
-  buildWorkshopExpressionAmplificationFrame,
+  buildWorkshopBehaviorActivationFrame,
   buildWorkshopHostMessage,
   buildWorkshopHostUpdateFrame,
   buildWorkshopInteractionFrame,
@@ -185,8 +185,8 @@ export class RunWorkshopToolSidePass {
         interactionFrame: behaviorMetadata.behavior
           ? buildWorkshopInteractionFrame(behaviorMetadata.behavior)
           : undefined,
-        expressionFrame: behaviorMetadata.behavior
-          ? buildWorkshopExpressionAmplificationFrame(behaviorMetadata.behavior)
+        activationFrame: behaviorMetadata.behavior
+          ? buildWorkshopBehaviorActivationFrame(behaviorMetadata.behavior)
           : undefined,
         transitionFrame: behaviorMetadata.behaviorTransition
           ? buildWorkshopInteractionTransitionFrame(behaviorMetadata.behaviorTransition)

@@ -25,7 +25,7 @@ and Apply action to disappear on shorter editor surfaces.
 - `Subtle` assembles the persona foundation without the full-expression overlay.
 - `Full` assembles foundation plus the existing full-expression overlay.
 - `Amplified` adds the full overlay, the persona's required reviewed calibration,
-  and a short hidden reminder on every persona-directed turn.
+  and an expression floor inside the combined per-turn behavior activation.
 - Mode and expression changes rebuild all retained host/live-guest system
   messages as one guarded batch; reactivity-only changes remain frame-only.
 - Transition provenance records both mode and expression.
@@ -34,6 +34,19 @@ and Apply action to disappear on shorter editor surfaces.
 - Each reviewed calibration includes a compact concept-to-language field map
   derived from richer dictionary-style authoring, with a neutral literal
   baseline and explicit protection against shared-assistant vocabulary tics.
+- Each calibration defines persona-specific signature families and a nonzero
+  expression floor: every substantive Amplified reply visibly uses at least
+  one authored move, while no individual word, reference, or catchphrase is
+  compulsory.
+- Persona-specific expression resources assemble after the shared contract and
+  mode. A combined activation restates the selected mode on every turn and adds
+  the Amplified signature floor when selected; it rides immediately before the
+  writer message rather than before large excerpts or transcript handoffs.
+- Converse treats a broad `what do you think?` as one live opening, not an
+  automatic complete review, and does not turn its own recommendations into
+  task candidates before the writer chooses or asks to track work.
+- Until durable persona history exists, harmless off-page color and running
+  bits are allowed as explicitly noncanonical, session-bounded improv.
 - The third expression level is selectable and persists through the existing
   `proseMinion.workshop.conversationBehavior` setting.
 
@@ -50,19 +63,43 @@ the four-persona collision set. Record:
 - displacement of shared-assistant defaults such as architectural metaphors
   without merely replacing them with persona-specific catchphrases;
 - turn length, metaphor density, and communication-style separation; and
+- mode adherence and `### Next steps` frequency across model families;
+- exact seed-phrase reuse versus fresh phrases from the same field;
+- whether session-bounded improv stays playful without being treated as stored
+  biography; and
 - behavior after disagreement and on the third or fourth retained turn.
 
 Penny is the negative-color control: stronger amplification should make her
 plainer and more immediate, not more ornamental.
 
+## Future Experiments
+
+These are evaluation branches, not requirements for the current activation
+fix:
+
+1. Rewrite each persona's profile and calibration in that persona's own
+   language, as though they authored the operating notes themselves. Compare
+   adherence and blind recognition against the current mixed operational voice;
+   watch for instructions becoming roleplayed decoration.
+2. Give personas distinct Balanced response approaches—different openings,
+   evidence motion, transitions, and ways of handing the floor back—while
+   keeping Analyze closer to a common evidence/diagnosis/action chassis for
+   comparability.
+3. Compare the distilled lexical field map with a bounded full Writer's
+   Dictionary entry appended to the calibration. Measure vernacular range,
+   prompt cost, semantic distortion, and replacement tics rather than assuming
+   more vocabulary automatically produces more personhood.
+
 ## Remaining Work
 
 1. Review qualitative results and revise the shared calibration schema if the
    roster exposes collisions, caricature, or replacement lexical tics.
-2. Convert the behavior modal to fixed header / scrollable center / fixed
+2. Verify the combined mode-plus-expression activation across Analyze,
+   Balanced, and Converse on Sonnet, Opus, and Terra-class models.
+3. Convert the behavior modal to fixed header / scrollable center / fixed
    footer rows so Apply remains visible at short viewport heights.
-3. Add responsive behavior for the three expression cards and footer actions.
-4. Run a visual smoke at narrow width and approximately 600–768 px height.
+4. Add responsive behavior for the three expression cards and footer actions.
+5. Run a visual smoke at narrow width and approximately 600–768 px height.
 
 ## Completion Criteria
 
@@ -73,6 +110,8 @@ plainer and more immediate, not more ornamental.
 - Subtle materially reduces full-profile leakage.
 - No calibration treats seed words as mandatory or changes meaning to preserve
   voice.
+- Converse remains conversational across supported model families unless the
+  writer explicitly requests analysis or trackable work.
 - The modal header and actions remain visible while only its center content
   scrolls.
 - Focused tests, full test suite, typecheck, lint, and production build pass.

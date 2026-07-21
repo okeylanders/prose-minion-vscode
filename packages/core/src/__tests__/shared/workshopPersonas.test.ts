@@ -71,6 +71,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
       );
       expect(expression).toContain('## Your trait tensions');
       expect(expression).toContain('## Your verbal palette');
+      expect(expression).toContain('At Full these behaviors reach their authored saturation');
 
       const subtlePaths = workshopPersonaSystemPromptPaths(
         'workshop-personas/base.md',
@@ -92,9 +93,9 @@ describe('Workshop persona catalog and packaged prompts', () => {
       expect(fullPaths).toEqual([
         'workshop-personas/base.md',
         persona.promptPath,
-        persona.expressionProfilePath,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
-        WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational
+        WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
+        persona.expressionProfilePath
       ]);
       expect(fullPaths).not.toContain(WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.analysis);
       expect(fullPaths).not.toContain(WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.balanced);
@@ -107,10 +108,10 @@ describe('Workshop persona catalog and packaged prompts', () => {
       expect(amplifiedPaths).toEqual([
         'workshop-personas/base.md',
         persona.promptPath,
-        persona.expressionProfilePath,
-        persona.expressionCalibrationPath,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
-        WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational
+        WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
+        persona.expressionProfilePath,
+        persona.expressionCalibrationPath
       ]);
     }
   });
@@ -127,12 +128,45 @@ describe('Workshop persona catalog and packaged prompts', () => {
       expect(calibration).toContain('## Lexical gravity');
       expect(calibration).toContain('## Lexical field map');
       expect(calibration).toContain('**Neutral baseline:**');
+      expect(calibration).toContain('## Signature activation');
+      expect(calibration).toMatch(/substantive/i);
+      expect(calibration).toMatch(/at least one/i);
       expect(calibration).toContain('## Communication gradients');
       expect(calibration).toContain('## Trait pressure');
       expect(calibration).toContain('## Amplification discipline');
       expect(calibration).toMatch(/Default:/);
       expect(calibration).toMatch(/(?:ceiling|closed|outside the range)/i);
     }
+  });
+
+  it('requires visible Amplified identity while bounding persona improv to the session', () => {
+    const contract = fs.readFileSync(
+      path.resolve(PROMPTS_ROOT, WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH),
+      'utf8'
+    );
+    const jillProfile = fs.readFileSync(
+      path.resolve(PROMPTS_ROOT, 'workshop-personas/expression-profiles/jill.md'),
+      'utf8'
+    );
+    const jillCalibration = fs.readFileSync(
+      path.resolve(PROMPTS_ROOT, 'workshop-personas/expression-calibrations/jill.md'),
+      'utf8'
+    );
+
+    expect(contract).toContain('Full is the natural complete personality');
+    expect(contract).toContain('Trait tensions are alive, not preemptive brakes');
+    expect(contract).toContain('Every substantive reply makes at least one authored signature move visible');
+    expect(contract).toContain('zero signature is under-expression');
+    expect(contract).toContain('Persona improv before durable history');
+    expect(contract).toContain('This is play, not hidden memory');
+    expect(contract).toContain('noncanonical and session-bounded');
+    expect(contract).toContain('not durable relationship canon');
+    expect(contract).toContain('Harmless tics, awkward jokes, repeated phrases');
+    expect(contract).not.toContain('do not invent one to seem alive');
+    expect(jillProfile).toContain('Pop and YA shorthand');
+    expect(jillProfile).toContain('Idiomatic pressure');
+    expect(jillCalibration).toContain('Pop and YA memory');
+    expect(jillCalibration).toContain('Mild cringe');
   });
 
   it('keeps runtime prompts product-safe rather than shipping authoring skills', () => {

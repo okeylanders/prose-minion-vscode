@@ -119,8 +119,8 @@ There will not be 36 persona-mode prompt files.
    forcing rare words, purple prose, catchphrases, or Mad Libs.
 6. Keep modes, personality, and lexical flavor testable through prompt assembly
    tests and repeatable qualitative evaluation.
-7. Preserve writer ownership, factual honesty, capability limits, provenance,
-   and task-extraction contracts in every mode.
+7. Preserve writer ownership, project factual honesty, capability limits,
+   session boundaries, and task-extraction contracts in every mode.
 8. Let the writer control persona-expression strength and adaptation without
    weakening the immutable persona identity contract.
 9. Give any retained attunement state an explicit lifetime, inspection path,
@@ -129,6 +129,9 @@ There will not be 36 persona-mode prompt files.
     stronger expression-level separation if evaluation shows a quality gain.
 11. Give the selected interaction mode system-prompt priority while preserving
     trusted historical frames that explain mode changes across a retained chat.
+12. Restate mode and expression together beside each writer message so neither
+    long evidence nor persona-specific resources can make one control mute the
+    other.
 
 ## Non-goals
 
@@ -218,12 +221,16 @@ Conversational mode treats the Workshop as an actual continuing dialogue.
 - Prefer shorter, responsive turns unless the writer explicitly asks for depth.
 - Follow the writer's immediate thought instead of automatically broadening the
   scope.
+- Treat a broad invitation such as `what do you think?` as one conversational
+  opening or pressure point, not permission to perform a complete review.
 - Ask a real question when another turn would produce a better answer than an
   unsolicited lecture.
 - React, wonder, disagree, encourage, joke, or make a bounded personal
   connection in the persona's own manner.
 - Do not force critique, headings, a recap, or `### Next steps` merely because
-  an excerpt is present.
+  an excerpt is present or the persona generated a recommendation. Tasks become
+  trackable when the writer asks, explicitly chooses a revision, or the exchange
+  has already settled concrete work.
 - Remain capable of precise analysis when the writer requests it.
 
 Conversational mode is not ambient roleplay. The writer and their pages remain
@@ -387,20 +394,31 @@ collision slice—Penny, Wren, Cliff, and Harper—established the schema before
 was extended across the roster. Calibration paths are now required catalog
 metadata; Amplified never silently falls back to Full plus a reminder.
 
-An amplified persona-directed turn also carries one short reserved reminder:
+Every persona-directed turn also carries one short combined behavior
+activation. The mode line is always present; the Amplified signature floor is
+included only when selected:
 
 ```xml
-<workshop-expression-amplification>
-Prefer equally exact phrasing from your calibrated register and lexical field
-map, not shared-assistant defaults. Never force seed words, repeat signature
-imagery, or trade meaning for voice.
-</workshop-expression-amplification>
+<workshop-behavior-activation mode="conversational" expression="amplified">
+Respond as an actual continuing conversation. Prefer one live reaction or
+pressure point and a real opening for the writer. Do not turn your own
+recommendations into a report or task list unless the writer requests analysis,
+asks to track work, explicitly chooses a revision, or the exchange has already
+settled concrete work.
+For Amplified expression, make at least one authored signature move visible in
+every substantive reply; longer replies normally carry two different signature
+families, not two seed phrases. No seed is mandatory, but zero signature is
+under-expression. Protect meaning and the writer's need.
+</workshop-behavior-activation>
 ```
 
-This reminder reinforces the system-priority calibration over long retained
+This activation reinforces both system-priority controls over long retained
 threads. It is extension-authored, hidden from the visible transcript, and
-cannot grant authority or override writer intent. It expresses probability
-gradients, never mandatory vocabulary.
+cannot grant authority or override writer intent. It expresses the selected
+response motion plus, at Amplified, probability gradients and a nonzero identity
+floor—never mandatory vocabulary. It rides immediately before the current
+writer message so large excerpts, handoffs, and context artifacts cannot
+separate last-mile behavior from the turn it governs.
 
 Switching mode or expression changes the retained persona system prompt and may
 invalidate provider prompt-prefix caching. Prefix caching may still reuse the
@@ -558,18 +576,25 @@ decisions, or knowledge shared across participants and sessions. It does not
 silently inherit permission from session attunement, and this ADR does not
 define its generation or storage contract.
 
-### Persona state remains distinct
+### Persona improv remains distinct from durable history
 
 Optional Living Room state is different from inferred writer attunement. A
 validated, session-frozen Day Card may color the persona's patience, energy,
 available metaphor, or conversational temperature. It cannot override the
 selected mode, craft jurisdiction, host contract, or writer need.
 
-Without supplied Living Room state, a persona does not invent a free-floating
-daily mood merely to seem alive. They may become amused, concerned, challenged,
-or encouraged in response to something that actually happened in the visible
-conversation. That state has conversational provenance. "I woke up irritable"
-does not, unless an approved persona-state artifact supplied it.
+Authored baseline temperament, tastes, humor, history, idioms, opinions, and
+relationships remain stable identity. Until durable persona history exists, a
+persona may also improvise harmless off-page color: a cup of tea, an inconvenient
+Monday, a passing mood, a ridiculous domestic detail, or a running bit inside
+the visible session. This is explicitly noncanonical play, not hidden memory.
+
+With session cue carry enabled, improvised color may recur or evolve as a
+visible-session bit; otherwise it expires with the turn. It cannot become
+project evidence, a capability claim, professional credential, consequential
+trauma or identity, a fact about the writer, or a fact about the writer's world.
+It cannot override authored biography or promise cross-session continuity. A
+later validated Day Card outranks conflicting improv within its stated lifetime.
 
 ## 5. Stable expression profiles
 
@@ -601,12 +626,21 @@ includes two concise sections:
 The amplified calibration is narrower and more operational. It supplies
 lexical neighborhoods, a compact lexical field map, verb and adjective
 gradients, analogy fields, communication-style ranges, selected trait-pressure
-ranges, authored defaults, and explicit ceilings. The field map translates
+ranges, authored defaults, explicit ceilings, and a short persona-specific
+signature-activation section. The field map translates
 common concepts into candidate nouns, verbs, textures, and analogy
 neighborhoods so the model does not have to invent the persona's semantic
 options on every turn. It does not add biography, authority, craft
 jurisdiction, or a second personality. Gradient examples and field seeds are
 probability anchors rather than required vocabulary.
+
+Amplified has a nonzero expression floor. Every substantive reply visibly uses
+at least one authored signature move; a developed reply normally uses two from
+different families. A signature may be syntax, rhythm, idiom, association,
+metaphor field, reference, interruption, self-correction, or another calibrated
+behavior. No individual seed is mandatory, but choosing none at all is
+under-expression. This distinction prevents both silent Full-equivalence and
+Mad Lib caricature.
 
 This remains one foundation and one expression stack per person, not separate
 psychology, mode, mood, and taste fragments. There are still no persona-by-mode
@@ -624,12 +658,15 @@ identity on/off switch:
 - `Subtle` preserves the same reasoning identity and craft lens while reducing
   occupational metaphor, self-reference, overt quirks, and shadow-trait
   expression by omitting the full-expression overlay.
-- `Full` adds the profile's natural trait tensions, tastes, turn-taking
-  signature, personal aperture, and verbal palette without deliberately
-  maximizing stylistic differentiation.
-- `Amplified` adds the persona's reviewed calibration and a short per-turn
-  reminder so the strongest useful version of that person's own register wins
-  when several phrasings are equally exact.
+- `Full` adds the profile's trait tensions, tastes, turn-taking signature,
+  personal aperture, and verbal palette at their authored saturation. It is the
+  complete natural personality, not a restrained midpoint created to make the
+  next setting look stronger.
+- `Amplified` keeps Full at authored saturation, then adds the persona's
+  reviewed calibration and a short per-turn reminder. It increases lexical and
+  gradient gravity while allowing spontaneity, harmless tics, occasional
+  repetition, and bounded excess. A substantive Amplified reply cannot satisfy
+  the contract by remaining entirely inside the neutral baseline.
 
 `Amplified`, rather than `Saturated`, is the user-facing name. Some personas'
 strongest authored expression is plainer, flatter, or less metaphorical than
@@ -698,6 +735,14 @@ making the writer manage her ego is not."
 
 A flaw must have a cost, a trigger, and a repair path. Otherwise it is either a
 decorative quirk or permission for bad behavior.
+
+The shadow and regulator are not standing brakes. The useful strength is the
+default behavior; the regulator activates when its named trigger or observable
+overreach is actually costing the exchange. Preemptively muting delight,
+conviction, curiosity, playfulness, or taste to avoid their possible shadows
+produces immaculate but flattened personas. Caricature boundaries prevent
+persistent distortion and harm, not every awkward joke, repeated phrase, or
+moment of excess. Real personality includes some recoverable mess.
 
 ### Opinionated taste must remain evidence-bounded
 
@@ -882,10 +927,10 @@ created and reassembled when a selected system-level control changes:
 ```text
 host base or guest base
     + selected persona foundation
-    + full-expression overlay when Full or Amplified
-    + required persona calibration when Amplified
     + shared interaction-contract prompt
     + exactly one selected interaction-mode prompt
+    + full-expression overlay when Full or Amplified
+    + required persona calibration when Amplified
     + optional validated, session-frozen Living Room context
 ```
 
@@ -898,10 +943,13 @@ Stable identity and subtle expression remain inside the selected persona
 foundation. Full-expression guidance lives in the matching overlay. The
 interaction resources contain no persona names and no duplicated specialist
 instructions. The shared contract supplies invariants; the selected mode file
-supplies the active response-style contract at system priority. The active
-behavior frame rides each persona-directed writer turn, the short amplification
-reminder additionally rides Amplified turns, and a transition frame is added
-when the selected mode or expression changes. When session attunement is enabled and
+supplies the active response-style contract at system priority. Persona-specific
+expression resources follow the shared resources so the narrowest calibration
+is the final system-prompt language without changing contract precedence. The
+active interaction frame leads each persona-directed writer turn, and one
+combined mode-plus-expression activation rides immediately before the writer
+message on every turn. A transition frame is added when the selected mode or
+expression changes. When session attunement is enabled and
 non-empty, a separate reserved extension-authored frame supplies the current
 validated snapshot; writer text cannot manufacture or alter any of these
 frames.
@@ -925,8 +973,7 @@ reliably enough. The accepted assembly is:
 ```text
 Subtle = host/guest base + persona foundation + interaction contract
          + selected mode
-Full   = host/guest base + persona foundation + full-expression overlay
-         + interaction contract + selected mode
+Full   = Subtle + full-expression overlay
 Amplified = Full + required persona calibration
 ```
 
@@ -1110,9 +1157,12 @@ stochastic personality quality.
   in `Amplified`.
 - Static resource checks require every persona foundation to have exactly one
   matching full-expression overlay and reject orphaned or mismatched ids.
-- Every persona-directed writer turn includes one valid active-behavior frame.
-- Every Amplified persona-directed turn includes one reserved, hidden
-  amplification reminder; Subtle and Full turns include none.
+- Every persona-directed writer turn includes one valid active interaction
+  frame and one reserved, hidden behavior activation immediately before the
+  writer message.
+- Every behavior activation includes the selected mode's motion. Amplified
+  activations additionally include the signature floor; Subtle and Full
+  activations do not.
 - The first committed writer turn after a mode or expression change includes
   one reserved transition frame with the validated old and new pairs.
 - Multiple behavior selections before the next persona turn coalesce to one
@@ -1233,6 +1283,8 @@ truth.
   are not clear.
 - Model-assisted attunement can over-infer from ordinary tone or preserve a
   temporary cue longer than the writer expects.
+- Session-bounded improv can accidentally look like durable biography if the
+  UI and future history system fail to keep the noncanonical boundary clear.
 - A future memory switch without inspection and deletion would create a user
   trust and privacy failure.
 
@@ -1289,6 +1341,14 @@ truth.
     hash for diagnostics without logging the prompt itself?
 10. Should the UI expose the cache/replacement consequence of a behavior change, or
     is the brief `Conversation style is updating` state sufficient?
+11. Does writing each persona's profile and calibration in that persona's own
+    language increase adherence and recognition, or does it blur instruction
+    with performed voice?
+12. Should Balanced permit persona-authored response shapes while Analyze keeps
+    a more comparable evidence/diagnosis/action chassis?
+13. Does appending a bounded full Writer's Dictionary entry materially improve
+    vernacular retrieval beyond the distilled field map, and what prompt-budget
+    or caricature cost appears when it does?
 
 ## Accepted implementation checkpoint
 

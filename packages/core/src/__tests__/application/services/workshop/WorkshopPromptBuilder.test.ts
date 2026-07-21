@@ -2,7 +2,7 @@ import {
   buildWorkshopContextAttachmentsFrame,
   buildWorkshopDirectHandoff,
   buildWorkshopExcerptSourceFrame,
-  buildWorkshopExpressionAmplificationFrame,
+  buildWorkshopBehaviorActivationFrame,
   buildWorkshopGuestCatchUp,
   buildWorkshopGuestHandoff,
   buildWorkshopGuestJoinMessage,
@@ -644,23 +644,41 @@ describe('Workshop conversation behavior frames', () => {
     carryCuesThroughSession: true
   };
 
-  it('emits the Amplified reminder only at the Amplified expression level', () => {
-    expect(buildWorkshopExpressionAmplificationFrame(fullBehavior)).toBeUndefined();
+  it('emits mode activation at every expression level and adds the Amplified floor only when selected', () => {
+    const fullFrame = buildWorkshopBehaviorActivationFrame(fullBehavior);
+    expect(fullFrame).toContain('<workshop-behavior-activation mode="balanced" expression="full">');
+    expect(fullFrame).toContain('workshop exchange, not a comprehensive report');
+    expect(fullFrame).not.toContain('zero signature is under-expression');
 
-    const frame = buildWorkshopExpressionAmplificationFrame({
+    const frame = buildWorkshopBehaviorActivationFrame({
       ...fullBehavior,
       expressionLevel: 'amplified'
     });
-    expect(frame).toContain('<workshop-expression-amplification>');
-    expect(frame).toContain('equally exact phrasing');
-    expect(frame).toContain('not shared-assistant defaults');
-    expect(frame).toContain('Never force seed words');
+    expect(frame).toContain('<workshop-behavior-activation mode="balanced" expression="amplified">');
+    expect(frame).toContain('at least one authored signature move');
+    expect(frame).toContain('two different signature families, not two seed phrases');
+    expect(frame).toContain('No seed is mandatory, but zero signature is under-expression');
+    expect(frame).toContain('Protect meaning');
+  });
+
+  it('makes Converse a continuing dialogue instead of a self-generated report', () => {
+    const frame = buildWorkshopBehaviorActivationFrame({
+      ...fullBehavior,
+      interactionMode: 'conversational',
+      expressionLevel: 'amplified'
+    });
+
+    expect(frame).toContain('actual continuing conversation');
+    expect(frame).toContain('one live reaction or pressure point');
+    expect(frame).toContain('does not by itself request a complete review');
+    expect(frame).toContain('Do not turn your own recommendations into a report or `### Next steps`');
+    expect(frame).toContain('at least one authored signature move');
   });
 
   it('assembles complete behavior and transition provenance without exposing frames as writer text', () => {
     const amplified = { ...fullBehavior, expressionLevel: 'amplified' as const };
     const interactionFrame = buildWorkshopInteractionFrame(amplified);
-    const expressionFrame = buildWorkshopExpressionAmplificationFrame(amplified);
+    const activationFrame = buildWorkshopBehaviorActivationFrame(amplified);
     const transitionFrame = buildWorkshopInteractionTransitionFrame({
       from: { interactionMode: 'analysis', expressionLevel: 'full' },
       to: { interactionMode: 'balanced', expressionLevel: 'amplified' },
@@ -669,13 +687,105 @@ describe('Workshop conversation behavior frames', () => {
 
     const message = buildWorkshopHostMessage('Read this.', {
       interactionFrame,
-      expressionFrame,
+      activationFrame,
       transitionFrame
     });
     expect(message).toContain('from-mode="analysis"');
     expect(message).toContain('to-expression="amplified"');
-    expect(message).toContain('<workshop-expression-amplification>');
-    expect(message.indexOf('<workshop-expression-amplification>'))
+    expect(message).toContain('<workshop-behavior-activation');
+    expect(message.indexOf('<workshop-behavior-activation'))
       .toBeLessThan(message.indexOf('WRITER MESSAGE:'));
+  });
+
+  it('places the expression floor after host evidence and immediately before the writer message', () => {
+    const activationFrame = buildWorkshopBehaviorActivationFrame({
+      ...fullBehavior,
+      expressionLevel: 'amplified'
+    })!;
+    const artifactFrame = buildWorkshopThreadArtifactFrame({
+      id: 'ta-7',
+      name: 'voice-notes.md',
+      content: 'Character voice notes.'
+    });
+    const message = buildWorkshopHostMessage('What feels alive?', {
+      hostUpdate: '<workshop-host-update>new context</workshop-host-update>',
+      threadArtifactFrames: [artifactFrame],
+      interactionFrame: buildWorkshopInteractionFrame({
+        ...fullBehavior,
+        expressionLevel: 'amplified'
+      }),
+      activationFrame
+    });
+
+    expect(message.indexOf('<workshop-interaction'))
+      .toBeLessThan(message.indexOf('<workshop-host-update>'));
+    expect(message.indexOf('</workshop-host-update>'))
+      .toBeLessThan(message.indexOf('<thread-artifact'));
+    expect(message.indexOf('</thread-artifact>'))
+      .toBeLessThan(message.indexOf('<workshop-behavior-activation'));
+    expect(message).toContain(`${activationFrame}\n\nWRITER MESSAGE:\nWhat feels alive?`);
+  });
+
+  it('places the expression floor after guest transcript evidence and before the writer message', () => {
+    const activationFrame = buildWorkshopBehaviorActivationFrame({
+      ...fullBehavior,
+      expressionLevel: 'amplified'
+    })!;
+    const catchUp = buildWorkshopGuestCatchUp([{
+      id: 'host-catch-up',
+      role: 'assistant',
+      kind: 'message',
+      participant: 'host',
+      artifact: 'persona_message',
+      personaId: 'jill',
+      personaLabel: 'Jill',
+      content: 'The room noticed a continuity break.',
+      timestamp: 1,
+      excerptVersion: 1
+    }])!;
+    const artifactFrame = buildWorkshopThreadArtifactFrame({
+      id: 'ta-8',
+      name: 'scene.md',
+      content: 'The revised scene.'
+    });
+    const continuation = buildWorkshopGuestMessage(
+      'Does that change your read?',
+      catchUp,
+      [artifactFrame],
+      { activationFrame }
+    );
+
+    expect(continuation.indexOf('</workshop-guest-catch-up>'))
+      .toBeLessThan(continuation.indexOf('<thread-artifact'));
+    expect(continuation.indexOf('</thread-artifact>'))
+      .toBeLessThan(continuation.indexOf('<workshop-behavior-activation'));
+    expect(continuation).toContain(
+      `${activationFrame}\n\n<writer-message>\nDoes that change your read?`
+    );
+  });
+
+  it('places the expression floor after the initial guest snapshot and excerpt', () => {
+    const activationFrame = buildWorkshopBehaviorActivationFrame({
+      ...fullBehavior,
+      expressionLevel: 'amplified'
+    })!;
+    const join = buildWorkshopGuestJoinMessage({
+      guestPersonaId: 'penny',
+      hostTurns: [],
+      excerpt: {
+        text: 'A door opened in the empty house.',
+        version: 1,
+        source: { kind: 'manual' },
+        pinnedAt: 1
+      },
+      openingMessage: 'Read this cold.',
+      activationFrame
+    });
+
+    expect(join.message.indexOf('</workshop-transcript>'))
+      .toBeLessThan(join.message.indexOf('</pinned-excerpt>'));
+    expect(join.message.indexOf('</pinned-excerpt>'))
+      .toBeLessThan(join.message.indexOf('<workshop-behavior-activation'));
+    expect(join.message).toContain(`${activationFrame}\n\n<writer-message>\nRead this cold.`);
   });
 });

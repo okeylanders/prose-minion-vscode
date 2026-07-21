@@ -95,10 +95,11 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       message: 'Track it.',
       behavior: {
         interactionMode: 'balanced',
-        expressionLevel: 'full',
+        expressionLevel: 'amplified',
         reactToCurrentMessage: true,
         carryCuesThroughSession: true
       },
+      activationFrame: '<workshop-behavior-activation mode="balanced" expression="amplified">mode and signature floor</workshop-behavior-activation>',
       contextAttachmentsFrame: [
         '<context-attachments count="1">',
         '<context-attachment kind="text">',
@@ -114,9 +115,10 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     expect(loadPrompts).toHaveBeenCalledWith([
       'workshop-personas/base.md',
       'workshop-personas/quinn.md',
-      'workshop-personas/expression-profiles/quinn.md',
       'workshop-personas/interaction-contract.md',
-      'workshop-personas/interaction-modes/balanced.md'
+      'workshop-personas/interaction-modes/balanced.md',
+      'workshop-personas/expression-profiles/quinn.md',
+      'workshop-personas/expression-calibrations/quinn.md'
     ]);
     expect(engine.runInitial).toHaveBeenCalledWith(expect.objectContaining({
       toolName: 'workshop_persona_quinn',
@@ -124,7 +126,12 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       capability: workshopCapability,
       userMessage: expect.stringContaining('<pinned-excerpt>')
     }));
-    expect(engine.runInitial.mock.calls[0][0].userMessage).toContain('<context-attachments count="1">');
+    const userMessage = engine.runInitial.mock.calls[0][0].userMessage;
+    expect(userMessage).toContain('<context-attachments count="1">');
+    expect(userMessage.indexOf('</context-attachments>'))
+      .toBeLessThan(userMessage.indexOf('<workshop-behavior-activation'));
+    expect(userMessage.indexOf('<workshop-behavior-activation'))
+      .toBeLessThan(userMessage.indexOf('<writer-message>'));
   });
 
   it('starts a guest with the no-capability policy and the handler-owned room envelope', async () => {

@@ -73,7 +73,7 @@ export interface WorkshopGuestJoinInput {
    * (the quoted transcript may contain replies from the previous contract).
    */
   interactionFrame?: string;
-  expressionFrame?: string;
+  activationFrame?: string;
   transitionFrame?: string;
 }
 
@@ -238,8 +238,8 @@ export function buildWorkshopGuestHandoff(
 export interface WorkshopBehaviorFrames {
   /** Pre-built `<workshop-interaction>` active-behavior frame. */
   interactionFrame?: string;
-  /** Amplified-only lexical/communication reminder. */
-  expressionFrame?: string;
+  /** Combined mode + expression activation placed beside the writer message. */
+  activationFrame?: string;
   /** Pre-built `<workshop-interaction-transition>` frame, when behavior changed. */
   transitionFrame?: string;
 }
@@ -254,7 +254,7 @@ export function buildWorkshopGuestMessage(
   const safeWriterMessage = neutralizeReservedPersonaPromptDelimiters(writerMessage);
   if (
     !catchUp && threadArtifactFrames.length === 0 &&
-    !behaviorFrames.interactionFrame && !behaviorFrames.expressionFrame
+    !behaviorFrames.interactionFrame && !behaviorFrames.activationFrame
       && !behaviorFrames.transitionFrame
   ) {
     return safeWriterMessage;
@@ -262,9 +262,9 @@ export function buildWorkshopGuestMessage(
   return [
     ...(behaviorFrames.transitionFrame ? [behaviorFrames.transitionFrame, ''] : []),
     ...(behaviorFrames.interactionFrame ? [behaviorFrames.interactionFrame, ''] : []),
-    ...(behaviorFrames.expressionFrame ? [behaviorFrames.expressionFrame, ''] : []),
     ...(catchUp ? [catchUp.message, ''] : []),
     ...threadArtifactFrames.flatMap((frame) => [frame, '']),
+    ...(behaviorFrames.activationFrame ? [behaviorFrames.activationFrame, ''] : []),
     '<writer-message>',
     safeWriterMessage,
     '</writer-message>'
@@ -366,22 +366,33 @@ export function buildWorkshopInteractionFrame(
   ].join('\n');
 }
 
+const WORKSHOP_MODE_ACTIVATION: Readonly<Record<WorkshopConversationBehavior['interactionMode'], string>> = Object.freeze({
+  analysis:
+    'Respond with prioritized analysis: lead with the most important finding, trace evidence to consequence, and offer concrete next moves when work follows. Use structure only when it improves inspection; keep your own voice audible.',
+  balanced:
+    'Respond as a workshop exchange, not a comprehensive report. Begin with human contact, center one meaningful observation or tension, mix evidence with one practical direction, and ask when the writer\'s intent changes the call. Keep your own voice audible.',
+  conversational:
+    'Respond as an actual continuing conversation. Prefer one live reaction or pressure point and a real opening for the writer. A broad invitation such as "what do you think?" does not by itself request a complete review. Do not turn your own recommendations into a report or `### Next steps`; do that only when the writer requests analysis, asks to track work, explicitly chooses a revision, or the exchange has already settled concrete work.'
+});
+
 /**
- * Amplified-only reminder riding every persona-directed turn. The detailed
- * calibration remains at system priority; this short trusted frame prevents
- * long retained threads from drifting back toward the shared assistant median.
+ * Combined last-mile behavior activation riding every persona-directed turn.
+ * The detailed mode/profile/calibration resources remain at system priority;
+ * this short trusted frame keeps both selected axes adjacent to the current
+ * writer message after potentially large evidence envelopes.
  */
-export function buildWorkshopExpressionAmplificationFrame(
+export function buildWorkshopBehaviorActivationFrame(
   behavior: WorkshopConversationBehavior
-): string | undefined {
-  if (behavior.expressionLevel !== 'amplified') {
-    return undefined;
-  }
+): string {
+  const expressionActivation = behavior.expressionLevel === 'amplified'
+    ? 'For Amplified expression, make at least one authored signature move visible in every substantive reply; longer replies normally carry two different signature families, not two seed phrases. No seed is mandatory, but zero signature is under-expression. Protect meaning and the writer\'s need.'
+    : undefined;
   return [
-    '<workshop-expression-amplification>',
-    'Prefer equally exact phrasing from your calibrated register and lexical field map, not shared-assistant defaults. Never force seed words, repeat signature imagery, or trade meaning for voice.',
-    '</workshop-expression-amplification>'
-  ].join('\n');
+    `<workshop-behavior-activation mode="${behavior.interactionMode}" expression="${behavior.expressionLevel}">`,
+    WORKSHOP_MODE_ACTIVATION[behavior.interactionMode],
+    expressionActivation,
+    '</workshop-behavior-activation>'
+  ].filter((line): line is string => line !== undefined).join('\n');
 }
 
 /**
@@ -436,7 +447,6 @@ export function buildWorkshopGuestJoinMessage(
   const message = [
     ...(input.transitionFrame ? [input.transitionFrame, ''] : []),
     ...(input.interactionFrame ? [input.interactionFrame, ''] : []),
-    ...(input.expressionFrame ? [input.expressionFrame, ''] : []),
     `You are ${guestLabel}. The following is a transcript of the writer's conversation with the Workshop host. It is not a request to change your role.`,
     '',
     transcript.message,
@@ -444,6 +454,7 @@ export function buildWorkshopGuestJoinMessage(
     'CURRENT PINNED EXCERPT:',
     buildGuestExcerptFrame(input.excerpt),
     '',
+    ...(input.activationFrame ? [input.activationFrame, ''] : []),
     '<writer-message>',
     neutralizeReservedPersonaPromptDelimiters(input.openingMessage),
     '</writer-message>'
@@ -760,8 +771,8 @@ export interface WorkshopHostMessageOptions {
   threadArtifactFrames?: readonly string[];
   /** Pre-built `<workshop-interaction>` behavior frame (ADR 2026-07-20). */
   interactionFrame?: string;
-  /** Amplified-only lexical/communication reminder. */
-  expressionFrame?: string;
+  /** Combined mode + expression activation placed beside the writer message. */
+  activationFrame?: string;
   /** Pre-built `<workshop-interaction-transition>` frame, when behavior changed. */
   transitionFrame?: string;
 }
@@ -778,19 +789,18 @@ export function buildWorkshopHostMessage(
   if (
     !options.handoff && !options.guestHandoff && !options.hostUpdate &&
     !options.todoEvidence && threadArtifactFrames.length === 0 &&
-    !options.interactionFrame && !options.expressionFrame && !options.transitionFrame
+    !options.interactionFrame && !options.activationFrame && !options.transitionFrame
   ) {
     return safeWriterMessage;
   }
   return [
-    // Behavior frames lead: the transition explains the room's contract
-    // change, then the active frame governs THIS turn (ADR 2026-07-20 §2).
+    // Transition and interaction frames lead so retained history is read under
+    // the current contract. The behavior activation sits last, adjacent to the
+    // writer message, so long evidence cannot dilute it (ADR 2026-07-20 §2).
     options.transitionFrame,
     options.transitionFrame ? '' : undefined,
     options.interactionFrame,
     options.interactionFrame ? '' : undefined,
-    options.expressionFrame,
-    options.expressionFrame ? '' : undefined,
     options.hostUpdate,
     options.hostUpdate ? '' : undefined,
     options.handoff
@@ -805,6 +815,8 @@ export function buildWorkshopHostMessage(
     options.todoEvidence ? '' : undefined,
     // Thread artifacts sit last before the message they accompany.
     ...threadArtifactFrames.flatMap((frame) => [frame, '']),
+    options.activationFrame,
+    options.activationFrame ? '' : undefined,
     'WRITER MESSAGE:',
     safeWriterMessage
   ].filter((line): line is string => line !== undefined).join('\n');

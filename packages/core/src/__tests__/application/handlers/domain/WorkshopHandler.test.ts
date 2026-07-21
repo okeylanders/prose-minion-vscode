@@ -394,7 +394,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(prompt).toContain('from-expression="full"');
     expect(prompt).toContain('to-expression="amplified"');
     expect(prompt).toContain('expression="amplified"');
-    expect(prompt).toContain('<workshop-expression-amplification>');
+    expect(prompt).toContain('<workshop-behavior-activation mode="conversational" expression="amplified">');
     expect(session.getSnapshot().turns.at(-2)).toMatchObject({
       behavior: { interactionMode: 'conversational', expressionLevel: 'amplified' },
       behaviorTransition: {

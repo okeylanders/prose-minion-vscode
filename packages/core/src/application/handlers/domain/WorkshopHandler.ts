@@ -39,7 +39,7 @@ import {
   buildWorkshopGuestMessage,
   buildWorkshopHostMessage,
   buildWorkshopHostUpdateFrame,
-  buildWorkshopExpressionAmplificationFrame,
+  buildWorkshopBehaviorActivationFrame,
   buildWorkshopInteractionFrame,
   buildWorkshopInteractionTransitionFrame,
   buildWorkshopThreadArtifactFrame,
@@ -154,12 +154,12 @@ const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\
 
 const behaviorFramesFor = (
   metadata: Pick<WorkshopTurn, 'behavior' | 'behaviorTransition'>
-): { interactionFrame?: string; expressionFrame?: string; transitionFrame?: string } => ({
+): { interactionFrame?: string; activationFrame?: string; transitionFrame?: string } => ({
   interactionFrame: metadata.behavior
     ? buildWorkshopInteractionFrame(metadata.behavior)
     : undefined,
-  expressionFrame: metadata.behavior
-    ? buildWorkshopExpressionAmplificationFrame(metadata.behavior)
+  activationFrame: metadata.behavior
+    ? buildWorkshopBehaviorActivationFrame(metadata.behavior)
     : undefined,
   transitionFrame: metadata.behaviorTransition
     ? buildWorkshopInteractionTransitionFrame(metadata.behaviorTransition)
