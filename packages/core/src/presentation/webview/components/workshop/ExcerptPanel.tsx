@@ -17,13 +17,19 @@
 
 import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
-import { WorkshopExcerpt, WorkshopExcerptSource, workshopExcerptSourcePath } from '@messages';
+import {
+  WorkshopExcerptSnapshot,
+  WorkshopExcerptSource,
+  WorkshopExcerptSourceSnapshot,
+  workshopExcerptSourcePath
+} from '@messages';
 import { WorkshopVerifiedExcerpt } from '@hooks/domain/useWorkshopExcerptVerify';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
-export const EXCERPT_WORD_BUDGET = 10_000;
+export const EXCERPT_WORD_BUDGET = PROMPT_BUDGETS.fileExcerpt.words;
 
 interface ExcerptPanelProps {
-  excerpt: WorkshopExcerpt | null;
+  excerpt: WorkshopExcerptSnapshot | null;
   /** Disables intake while a run is in flight (host guards too). */
   isRunning: boolean;
   /** True once the host conversation exists — switches to locked affordances. */
@@ -41,7 +47,7 @@ interface ExcerptPanelProps {
 
 const countWords = (text: string): number => text.trim().match(/\S+/g)?.length ?? 0;
 
-const sourceLine = (source: WorkshopExcerptSource): React.ReactNode => {
+const sourceLine = (source: WorkshopExcerptSource | WorkshopExcerptSourceSnapshot): React.ReactNode => {
   if (source.kind === 'manual') {
     return (
       <>

@@ -191,7 +191,7 @@ describe('useWorkshop', () => {
           excerpt: {
             text: 'Pinned prose.',
             version: 1,
-            source: { kind: 'file', sourceUri: 'file:///ch1.md', relativePath: 'ch1.md' },
+            source: { kind: 'file', relativePath: 'ch1.md' },
             pinnedAt: 1
           },
           contextAttachments: [{
@@ -227,7 +227,6 @@ describe('useWorkshop', () => {
     expect(result.current.sessionReady).toBe(true);
     expect(result.current.excerpt?.source).toEqual({
       kind: 'file',
-      sourceUri: 'file:///ch1.md',
       relativePath: 'ch1.md'
     });
     expect(result.current.contextAttachments).toEqual([

@@ -344,7 +344,8 @@ export class AgentRunEngine {
             fulfillment.deliveredSources,
             capability.catalog === 'workshopPersona' ? 'host' : 'tool',
             promptTokensBeforeEvidence,
-            latestObservation?.promptTokens
+            latestObservation?.promptTokens,
+            artifactId
           ));
         }
         last = await recoverInvalidRequest(last);
@@ -456,7 +457,8 @@ export class AgentRunEngine {
     delivered: readonly CapabilityDeliveredSource[],
     origin: 'host' | 'tool',
     promptTokensBefore: number | undefined,
-    promptTokensAfter: number | undefined
+    promptTokensAfter: number | undefined,
+    artifactId: string | undefined
   ): ContextSourceEntry[] {
     const roundDelta = promptTokensBefore !== undefined &&
       promptTokensAfter !== undefined &&
@@ -477,6 +479,7 @@ export class AgentRunEngine {
         sizeChars: source.sizeChars,
         promptTokensDelta: exact ? roundDelta : apportioned,
         isEstimate: !exact,
+        artifactId,
         deliveredAt: Date.now()
       };
     });

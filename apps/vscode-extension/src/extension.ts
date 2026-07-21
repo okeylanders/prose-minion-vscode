@@ -39,6 +39,7 @@ import {
   RunWorkshopToolSidePass,
   WorkshopAnalysisSidePass,
   WorkshopPersonaCapabilityFactory,
+  WorkshopContextResourceService,
   CoreServices,
   toInclusiveLineRange,
 } from '@prose-minion/core';
@@ -188,6 +189,7 @@ export function activate(context: vscode.ExtensionContext): void {
     workshopPersonaCapabilityFactory,
     outputChannel
   );
+  const workshopContextResourceService = new WorkshopContextResourceService(contextResourceResolver);
 
   const coreServices: CoreServices = {
     assistantToolService,
@@ -206,7 +208,7 @@ export function activate(context: vscode.ExtensionContext): void {
     workshopSessionService,
     workshopPersonaCapabilityFactory,
     workshopToolSidePass,
-    contextResourceProviderFactory: contextResourceResolver
+    workshopContextResourceService
   };
 
   // Migrate API key from settings to SecretStorage if needed

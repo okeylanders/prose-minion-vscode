@@ -507,7 +507,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(service.removeContextAttachment('ctx-nope')).toEqual({});
   });
 
-  it('keeps content and sourceUri out of the webview snapshot', () => {
+  it('keeps content and every host-private sourceUri out of the webview snapshot', () => {
     pin();
     service.addContextAttachment({
       kind: 'file', origin: 'writer', label: 'chapter.md', words: 10,
@@ -518,6 +518,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(snapshot).toMatchObject({ kind: 'file', label: 'chapter.md', words: 10 });
     expect(snapshot).not.toHaveProperty('content');
     expect(snapshot).not.toHaveProperty('sourceUri');
+    expect(service.getSnapshot().excerpt?.source).not.toHaveProperty('sourceUri');
   });
 
   it('ships text-note content in the snapshot — the pill is the note\u2019s only home', () => {
@@ -631,7 +632,11 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
 
     expect(service.reset().sort()).toEqual(['host-conv', 'tool-conv']);
     expect(service.getSnapshot()).toMatchObject({
-      excerpt,
+      excerpt: {
+        text: excerpt.text,
+        version: excerpt.version,
+        source: { kind: 'file', relativePath: 'chapters/one.md' }
+      },
       turns: [],
       contextAttachments: [],
       pendingHostUpdate: undefined,
@@ -974,6 +979,26 @@ describe('writer-origin context sources (Phase 7)', () => {
       expect.objectContaining({ excerptVersion: 1, stale: true }),
       expect.objectContaining({ excerptVersion: 2, label: 'Pasted excerpt' })
     ]);
+  });
+
+  it('keeps only the latest delivered host pin live across successive revisions', () => {
+    const session = new WorkshopSessionService(() => 7);
+    pinned(session);
+    session.beginPersonaMessage('req-1', 'Hello');
+    session.completeRun('req-1', 'Hi.', undefined, undefined, 'host-conv');
+
+    for (const text of ['Revision two.', 'Revision three.']) {
+      session.replaceExcerpt({ text, source: { kind: 'manual' } });
+      session.commitPendingHostUpdates(session.collectPendingHostUpdates()!);
+    }
+
+    const pins = session.collectWriterSources({ kind: 'host' }).filter((source) => source.kind === 'pin');
+    expect(pins).toEqual([
+      expect.objectContaining({ excerptVersion: 1, stale: true }),
+      expect.objectContaining({ excerptVersion: 2, stale: true }),
+      expect.objectContaining({ excerptVersion: 3 })
+    ]);
+    expect(pins[2].stale).toBeUndefined();
   });
 
   it('snapshots tool manifests at adoption, replaces them on re-adoption, and retires them on revision', () => {

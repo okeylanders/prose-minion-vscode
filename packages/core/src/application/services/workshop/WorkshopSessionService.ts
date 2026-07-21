@@ -14,6 +14,7 @@ import {
   WorkshopActionableFinding,
   WorkshopContextAttachmentSnapshot,
   WorkshopExcerpt,
+  WorkshopExcerptSnapshot,
   WorkshopExcerptSource,
   WorkshopExcerptTruncation,
   workshopExcerptSourcePath,
@@ -51,6 +52,7 @@ export interface WorkshopExcerptInput {
   /** Validated provenance — callers coerce IPC claims before reaching the aggregate. */
   source: WorkshopExcerptSource;
   truncation?: WorkshopExcerptTruncation;
+  sourceFingerprint?: string;
 }
 
 export const WORKSHOP_SNAPSHOT_TURN_WINDOW = 100;
@@ -193,6 +195,8 @@ export class WorkshopSessionService {
    * never receive later changes.
    */
   private hostWriterSources: ContextSourceEntry[] = [];
+  /** The one pin revision still live in the host manifest, if any. */
+  private activeHostPin?: ContextSourceEntry;
   private toolWriterSources: Partial<Record<WorkshopToolId, ContextSourceEntry[]>> = {};
   private guestWriterSources = new Map<WorkshopPersonaId, ContextSourceEntry[]>();
   private turns: WorkshopTurn[] = [];
@@ -213,6 +217,7 @@ export class WorkshopSessionService {
       version: this.excerptVersion,
       source: cloneExcerptSource(input.source),
       truncation: input.truncation ? { ...input.truncation } : undefined,
+      sourceFingerprint: input.sourceFingerprint,
       pinnedAt: this.now()
     };
     return cloneExcerpt(this.excerpt);
@@ -460,17 +465,11 @@ export class WorkshopSessionService {
   commitPendingHostUpdates(delivered: WorkshopPendingHostUpdates): void {
     if (delivered.excerpt?.version === this.pendingRevisionVersion) {
       this.pendingRevisionVersion = undefined;
-      // The revision frame actually reached the host: prior pin rows go
-      // stale (dimmed, never vanished — Phase 7) and the delivered version
-      // is stamped as the live pin.
-      for (const entry of this.hostWriterSources) {
-        if (entry.kind === 'pin') {
-          entry.stale = true;
-        }
-      }
+      // The revision frame actually reached the host: only the one live pin
+      // can change state. Earlier rows were made stale at their own revision.
       const pin = this.pinEntry();
       if (pin) {
-        this.hostWriterSources.push(pin);
+        this.appendHostPin(pin);
       }
     }
     if (delivered.contextAttachments?.revision === this.pendingContextRevision) {
@@ -513,6 +512,18 @@ export class WorkshopSessionService {
       excerptVersion: this.excerpt.version,
       deliveredAt: this.excerpt.pinnedAt
     };
+  }
+
+  /**
+   * Add the next delivered host pin without revisiting historical revisions.
+   * Superseded rows remain for Phase 7's dimmed-history display.
+   */
+  private appendHostPin(pin: ContextSourceEntry): void {
+    if (this.activeHostPin) {
+      this.activeHostPin.stale = true;
+    }
+    this.hostWriterSources.push(pin);
+    this.activeHostPin = pin;
   }
 
   private attachmentEntry(attachment: WorkshopContextAttachment): ContextSourceEntry {
@@ -936,7 +947,7 @@ export class WorkshopSessionService {
         // pin — stamp it as the host's first writer-origin manifest row.
         const pin = this.pinEntry();
         if (pin) {
-          this.hostWriterSources.push(pin);
+          this.appendHostPin(pin);
         }
       }
       this.participants.host.conversationId = conversationId;
@@ -1257,6 +1268,7 @@ export class WorkshopSessionService {
     this.pendingContextRevision = undefined;
     // Manifests live and die with their conversations (Phase 7).
     this.hostWriterSources = [];
+    this.activeHostPin = undefined;
     this.toolWriterSources = {};
     this.guestWriterSources.clear();
     return conversationIds;
@@ -1280,7 +1292,7 @@ export class WorkshopSessionService {
   getSnapshot(): WorkshopSessionSnapshot {
     const windowed = this.turns.slice(-WORKSHOP_SNAPSHOT_TURN_WINDOW);
     return {
-      excerpt: this.excerpt ? cloneExcerpt(this.excerpt) : undefined,
+      excerpt: this.excerpt ? excerptSnapshot(this.excerpt) : undefined,
       excerptVersion: this.excerptVersion,
       replacementCount: this.replacementCount,
       contextAttachments: this.contextAttachments.map(attachmentSnapshot),
@@ -1614,5 +1626,21 @@ function cloneExcerpt(excerpt: WorkshopExcerpt): WorkshopExcerpt {
     ...excerpt,
     source: cloneExcerptSource(excerpt.source),
     truncation: excerpt.truncation ? { ...excerpt.truncation } : undefined
+  };
+}
+
+/** Snapshot boundary: sourceUri is an internal file-read capability, never webview data. */
+function excerptSnapshot(excerpt: WorkshopExcerpt): WorkshopExcerptSnapshot {
+  const { sourceFingerprint: _sourceFingerprint, source, ...snapshot } = excerpt;
+  if (source.kind === 'manual') {
+    return { ...snapshot, source: { kind: 'manual' } };
+  }
+  const { sourceUri: _sourceUri, ...displaySource } = source;
+  return {
+    ...snapshot,
+    source: {
+      ...displaySource,
+      configuredResource: source.configuredResource ? { ...source.configuredResource } : undefined
+    }
   };
 }

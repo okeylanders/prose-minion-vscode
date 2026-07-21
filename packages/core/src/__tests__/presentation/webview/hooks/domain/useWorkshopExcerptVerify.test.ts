@@ -55,6 +55,12 @@ describe('useWorkshopExcerptVerify', () => {
     );
   });
 
+  it('keeps the standard persistence shape while persisting no verification claim', () => {
+    const { result } = renderHook(() => useWorkshopExcerptVerify());
+
+    expect(result.current.persistedState).toEqual({});
+  });
+
   it('stamps editor-selection provenance with line range on an exact match', () => {
     const { result } = renderHook(() => useWorkshopExcerptVerify());
 

@@ -43,6 +43,8 @@ export interface ContextSourceEntry {
   excerptVersion?: number;
   /** Superseded by a later excerpt revision; rendered dimmed, never vanished. */
   stale?: boolean;
+  /** Host-minted retained artifact that delivered this source, when applicable. */
+  artifactId?: string;
   /** Epoch ms when the material entered this participant's context. */
   deliveredAt: number;
 }

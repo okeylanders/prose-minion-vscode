@@ -883,7 +883,8 @@ describe('AgentRunEngine', () => {
           label: 'Dialogue Tags',
           sizeChars: 480,
           promptTokensDelta: 3,
-          isEstimate: false
+          isEstimate: false,
+          artifactId: 'art-1'
         })
       ]);
     });
@@ -909,8 +910,8 @@ describe('AgentRunEngine', () => {
       });
 
       expect(conversations.getContextSources(result.conversationId)).toEqual([
-        expect.objectContaining({ label: 'ch-04.md', promptTokensDelta: 30, isEstimate: true }),
-        expect.objectContaining({ label: 'Pacing', promptTokensDelta: 10, isEstimate: true })
+        expect.objectContaining({ label: 'ch-04.md', promptTokensDelta: 30, isEstimate: true, artifactId: 'art-1' }),
+        expect.objectContaining({ label: 'Pacing', promptTokensDelta: 10, isEstimate: true, artifactId: 'art-1' })
       ]);
     });
 

@@ -139,10 +139,14 @@ import {
   WorkshopSearchContextResourcesMessage,
   WorkshopContextSearchResultsMessage,
   WorkshopAddContextResourcesMessage,
+  WorkshopAttachMessageResourcesMessage,
+  WorkshopAttachMessageFileMessage,
+  WorkshopRemoveMessageAttachmentMessage,
   WorkshopSetExcerptResourceMessage,
   WorkshopRunContextWizardMessage,
   WorkshopTodoActionMessage,
   WorkshopPickExcerptFileMessage,
+  WorkshopRereadExcerptMessage,
   WorkshopResetSessionMessage,
   WorkshopRequestSessionMessage,
   WorkshopTurnMessage,
@@ -206,10 +210,14 @@ export type WebviewToExtensionMessage =
   | WorkshopSearchContextResourcesMessage
   | WorkshopContextSearchResultsMessage
   | WorkshopAddContextResourcesMessage
+  | WorkshopAttachMessageResourcesMessage
+  | WorkshopAttachMessageFileMessage
+  | WorkshopRemoveMessageAttachmentMessage
   | WorkshopSetExcerptResourceMessage
   | WorkshopRunContextWizardMessage
   | WorkshopTodoActionMessage
   | WorkshopPickExcerptFileMessage
+  | WorkshopRereadExcerptMessage
   | WorkshopResetSessionMessage
   | WorkshopRequestSessionMessage;
 
