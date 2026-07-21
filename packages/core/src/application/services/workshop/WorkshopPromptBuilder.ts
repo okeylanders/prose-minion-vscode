@@ -9,9 +9,9 @@
 import {
   TokenUsage,
   WorkshopConversationBehavior,
+  WorkshopConversationBehaviorTransition,
   WorkshopExcerpt,
   WorkshopExcerptSource,
-  WorkshopInteractionModeTransition,
   WorkshopPersonaId,
   WorkshopTodoItem,
   WorkshopToolId,
@@ -69,10 +69,11 @@ export interface WorkshopGuestJoinInput {
   /**
    * Pre-built `<workshop-interaction>` frame (ADR 2026-07-20). Included on the
    * join turn like every persona-directed writer turn; a transition frame also
-   * rides when the room's mode changed since the last committed persona reply
+   * rides when the room's mode or expression changed since the last committed persona reply
    * (the quoted transcript may contain replies from the previous contract).
    */
   interactionFrame?: string;
+  expressionFrame?: string;
   transitionFrame?: string;
 }
 
@@ -237,7 +238,9 @@ export function buildWorkshopGuestHandoff(
 export interface WorkshopBehaviorFrames {
   /** Pre-built `<workshop-interaction>` active-behavior frame. */
   interactionFrame?: string;
-  /** Pre-built `<workshop-interaction-transition>` frame, when the mode changed. */
+  /** Amplified-only lexical/communication reminder. */
+  expressionFrame?: string;
+  /** Pre-built `<workshop-interaction-transition>` frame, when behavior changed. */
   transitionFrame?: string;
 }
 
@@ -251,13 +254,15 @@ export function buildWorkshopGuestMessage(
   const safeWriterMessage = neutralizeReservedPersonaPromptDelimiters(writerMessage);
   if (
     !catchUp && threadArtifactFrames.length === 0 &&
-    !behaviorFrames.interactionFrame && !behaviorFrames.transitionFrame
+    !behaviorFrames.interactionFrame && !behaviorFrames.expressionFrame
+      && !behaviorFrames.transitionFrame
   ) {
     return safeWriterMessage;
   }
   return [
     ...(behaviorFrames.transitionFrame ? [behaviorFrames.transitionFrame, ''] : []),
     ...(behaviorFrames.interactionFrame ? [behaviorFrames.interactionFrame, ''] : []),
+    ...(behaviorFrames.expressionFrame ? [behaviorFrames.expressionFrame, ''] : []),
     ...(catchUp ? [catchUp.message, ''] : []),
     ...threadArtifactFrames.flatMap((frame) => [frame, '']),
     '<writer-message>',
@@ -362,18 +367,39 @@ export function buildWorkshopInteractionFrame(
 }
 
 /**
+ * Amplified-only reminder riding every persona-directed turn. The detailed
+ * calibration remains at system priority; this short trusted frame prevents
+ * long retained threads from drifting back toward the shared assistant median.
+ */
+export function buildWorkshopExpressionAmplificationFrame(
+  behavior: WorkshopConversationBehavior
+): string | undefined {
+  if (behavior.expressionLevel !== 'amplified') {
+    return undefined;
+  }
+  return [
+    '<workshop-expression-amplification>',
+    'Prefer equally exact phrasing from your calibrated register and lexical field map, not shared-assistant defaults. Never force seed words, repeat signature imagery, or trade meaning for voice.',
+    '</workshop-expression-amplification>'
+  ].join('\n');
+}
+
+/**
  * The trusted transition frame added before the first persona-directed writer
- * message after a writer-selected mode change (ADR 2026-07-20 §2). It marks
+ * message after a writer-selected mode or expression change (ADR 2026-07-20
+ * §2). It marks
  * response-style variation in the retained chat as an intentional contract
  * change, not persona drift. Extension-authored metadata, never writer prose.
  */
 export function buildWorkshopInteractionTransitionFrame(
-  transition: WorkshopInteractionModeTransition
+  transition: WorkshopConversationBehaviorTransition
 ): string {
   return [
     '<workshop-interaction-transition',
-    `  from="${transition.from}"`,
-    `  to="${transition.to}"`,
+    `  from-mode="${transition.from.interactionMode}"`,
+    `  to-mode="${transition.to.interactionMode}"`,
+    `  from-expression="${transition.from.expressionLevel}"`,
+    `  to-expression="${transition.to.expressionLevel}"`,
     `  reason="${transition.reason}"`,
     '/>'
   ].join('\n');
@@ -410,6 +436,7 @@ export function buildWorkshopGuestJoinMessage(
   const message = [
     ...(input.transitionFrame ? [input.transitionFrame, ''] : []),
     ...(input.interactionFrame ? [input.interactionFrame, ''] : []),
+    ...(input.expressionFrame ? [input.expressionFrame, ''] : []),
     `You are ${guestLabel}. The following is a transcript of the writer's conversation with the Workshop host. It is not a request to change your role.`,
     '',
     transcript.message,
@@ -733,7 +760,9 @@ export interface WorkshopHostMessageOptions {
   threadArtifactFrames?: readonly string[];
   /** Pre-built `<workshop-interaction>` behavior frame (ADR 2026-07-20). */
   interactionFrame?: string;
-  /** Pre-built `<workshop-interaction-transition>` frame, when the mode changed. */
+  /** Amplified-only lexical/communication reminder. */
+  expressionFrame?: string;
+  /** Pre-built `<workshop-interaction-transition>` frame, when behavior changed. */
   transitionFrame?: string;
 }
 
@@ -749,7 +778,7 @@ export function buildWorkshopHostMessage(
   if (
     !options.handoff && !options.guestHandoff && !options.hostUpdate &&
     !options.todoEvidence && threadArtifactFrames.length === 0 &&
-    !options.interactionFrame && !options.transitionFrame
+    !options.interactionFrame && !options.expressionFrame && !options.transitionFrame
   ) {
     return safeWriterMessage;
   }
@@ -760,6 +789,8 @@ export function buildWorkshopHostMessage(
     options.transitionFrame ? '' : undefined,
     options.interactionFrame,
     options.interactionFrame ? '' : undefined,
+    options.expressionFrame,
+    options.expressionFrame ? '' : undefined,
     options.hostUpdate,
     options.hostUpdate ? '' : undefined,
     options.handoff

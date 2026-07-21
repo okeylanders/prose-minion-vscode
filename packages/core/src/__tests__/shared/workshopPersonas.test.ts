@@ -39,14 +39,19 @@ describe('Workshop persona catalog and packaged prompts', () => {
   it('uses unique, relative, contained prompt paths with non-empty curated prompt files', () => {
     const foundationPaths = WORKSHOP_PERSONA_CATALOG.map((persona) => persona.promptPath);
     const expressionPaths = WORKSHOP_PERSONA_CATALOG.map((persona) => persona.expressionProfilePath);
+    const calibrationPaths = WORKSHOP_PERSONA_CATALOG.map(
+      (persona) => persona.expressionCalibrationPath
+    );
     const paths = [
       ...foundationPaths,
       ...expressionPaths,
+      ...calibrationPaths,
       WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
       ...Object.values(WORKSHOP_INTERACTION_MODE_PROMPT_PATHS)
     ];
     expect(new Set(foundationPaths).size).toBe(WORKSHOP_PERSONA_CATALOG.length);
     expect(new Set(expressionPaths).size).toBe(WORKSHOP_PERSONA_CATALOG.length);
+    expect(new Set(calibrationPaths).size).toBe(calibrationPaths.length);
 
     for (const promptPath of paths) {
       expect(path.isAbsolute(promptPath)).toBe(false);
@@ -58,7 +63,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
     }
   });
 
-  it('keeps every full-expression overlay reviewable and assembles exactly one selected mode', () => {
+  it('conditionally assembles expression resources and exactly one selected mode', () => {
     for (const persona of WORKSHOP_PERSONA_CATALOG) {
       const expression = fs.readFileSync(
         path.resolve(PROMPTS_ROOT, persona.expressionProfilePath),
@@ -67,20 +72,66 @@ describe('Workshop persona catalog and packaged prompts', () => {
       expect(expression).toContain('## Your trait tensions');
       expect(expression).toContain('## Your verbal palette');
 
-      const paths = workshopPersonaSystemPromptPaths(
+      const subtlePaths = workshopPersonaSystemPromptPaths(
         'workshop-personas/base.md',
         persona,
-        'conversational'
+        { interactionMode: 'conversational', expressionLevel: 'subtle' }
       );
-      expect(paths).toEqual([
+      expect(subtlePaths).toEqual([
+        'workshop-personas/base.md',
+        persona.promptPath,
+        WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
+        WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational
+      ]);
+
+      const fullPaths = workshopPersonaSystemPromptPaths(
+        'workshop-personas/base.md',
+        persona,
+        { interactionMode: 'conversational', expressionLevel: 'full' }
+      );
+      expect(fullPaths).toEqual([
         'workshop-personas/base.md',
         persona.promptPath,
         persona.expressionProfilePath,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational
       ]);
-      expect(paths).not.toContain(WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.analysis);
-      expect(paths).not.toContain(WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.balanced);
+      expect(fullPaths).not.toContain(WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.analysis);
+      expect(fullPaths).not.toContain(WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.balanced);
+
+      const amplifiedPaths = workshopPersonaSystemPromptPaths(
+        'workshop-personas/base.md',
+        persona,
+        { interactionMode: 'conversational', expressionLevel: 'amplified' }
+      );
+      expect(amplifiedPaths).toEqual([
+        'workshop-personas/base.md',
+        persona.promptPath,
+        persona.expressionProfilePath,
+        persona.expressionCalibrationPath,
+        WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
+        WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational
+      ]);
+    }
+  });
+
+  it('ships reviewed Amplified calibrations for the complete persona roster', () => {
+    const calibrated = WORKSHOP_PERSONA_CATALOG;
+    expect(calibrated.map((persona) => persona.id)).toEqual(EXPECTED_IDS);
+
+    for (const persona of calibrated) {
+      const calibration = fs.readFileSync(
+        path.resolve(PROMPTS_ROOT, persona.expressionCalibrationPath),
+        'utf8'
+      );
+      expect(calibration).toContain('## Lexical gravity');
+      expect(calibration).toContain('## Lexical field map');
+      expect(calibration).toContain('**Neutral baseline:**');
+      expect(calibration).toContain('## Communication gradients');
+      expect(calibration).toContain('## Trait pressure');
+      expect(calibration).toContain('## Amplification discipline');
+      expect(calibration).toMatch(/Default:/);
+      expect(calibration).toMatch(/(?:ceiling|closed|outside the range)/i);
     }
   });
 

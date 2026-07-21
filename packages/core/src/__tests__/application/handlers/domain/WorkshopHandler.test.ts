@@ -87,7 +87,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       continueConversation: jest.fn().mockImplementation(async (conversationId: string) =>
         analysisResult('continued reply', { conversationId })
       ),
-      replaceWorkshopConversationMode: jest.fn().mockResolvedValue(undefined),
+      replaceWorkshopConversationBehavior: jest.fn().mockResolvedValue(undefined),
       discardConversation: jest.fn((conversationId: string) => {
         contextBudgets.delete(conversationId);
       }),
@@ -196,28 +196,28 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(router.handlerCount).toBe(26);
   });
 
-  it('commits frame-only behavior changes without rebuilding absent conversations', async () => {
+  it('commits reactivity-only behavior changes without rebuilding persona prompts', async () => {
     await handler.handleSetConversationBehavior(message(
       MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR,
       {
         behavior: {
           interactionMode: 'balanced',
-          expressionLevel: 'subtle',
+          expressionLevel: 'full',
           reactToCurrentMessage: false,
           carryCuesThroughSession: false
         }
       }
     ) as any);
 
-    expect(service.replaceWorkshopConversationMode).not.toHaveBeenCalled();
+    expect(service.replaceWorkshopConversationBehavior).not.toHaveBeenCalled();
     expect(settings.update).toHaveBeenCalledWith(
       'proseMinion',
       'workshop.conversationBehavior',
-      expect.objectContaining({ expressionLevel: 'subtle' })
+      expect.objectContaining({ expressionLevel: 'full' })
     );
     expect(session.getConversationBehavior()).toEqual({
       interactionMode: 'balanced',
-      expressionLevel: 'subtle',
+      expressionLevel: 'full',
       reactToCurrentMessage: false,
       carryCuesThroughSession: false
     });
@@ -225,7 +225,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       .toEqual(session.getConversationBehavior());
   });
 
-  it('rebuilds every live persona prompt before atomically committing a mode change', async () => {
+  it('rebuilds every live persona prompt once for a combined mode and expression change', async () => {
     await pin();
     await handler.handleSendMessage(message(
       MessageType.WORKSHOP_SEND_MESSAGE,
@@ -241,20 +241,50 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       {
         behavior: {
           interactionMode: 'conversational',
-          expressionLevel: 'full',
+          expressionLevel: 'amplified',
           reactToCurrentMessage: true,
           carryCuesThroughSession: true
         }
       }
     ) as any);
 
-    expect(service.replaceWorkshopConversationMode).toHaveBeenCalledWith([
+    expect(service.replaceWorkshopConversationBehavior).toHaveBeenCalledWith([
       { conversationId: 'host-conv', personaId: 'jill', role: 'host' },
       { conversationId: 'guest-conv', personaId: 'margot', role: 'guest' }
-    ], 'conversational');
-    expect(service.replaceWorkshopConversationMode.mock.invocationCallOrder[0])
+    ], {
+      interactionMode: 'conversational',
+      expressionLevel: 'amplified',
+      reactToCurrentMessage: true,
+      carryCuesThroughSession: true
+    });
+    expect(service.replaceWorkshopConversationBehavior.mock.invocationCallOrder[0])
       .toBeLessThan((settings.update as jest.Mock).mock.invocationCallOrder[0]);
     expect(session.getConversationBehavior().interactionMode).toBe('conversational');
+    expect(session.getConversationBehavior().expressionLevel).toBe('amplified');
+  });
+
+  it('rebuilds a retained persona prompt for an expression-only change', async () => {
+    await pin();
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Open the room.' }
+    ) as any);
+
+    await handler.handleSetConversationBehavior(message(
+      MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR,
+      {
+        behavior: {
+          interactionMode: 'balanced',
+          expressionLevel: 'subtle',
+          reactToCurrentMessage: true,
+          carryCuesThroughSession: true
+        }
+      }
+    ) as any);
+
+    expect(service.replaceWorkshopConversationBehavior).toHaveBeenCalledWith([
+      { conversationId: 'host-conv', personaId: 'jill', role: 'host' }
+    ], expect.objectContaining({ interactionMode: 'balanced', expressionLevel: 'subtle' }));
   });
 
   it('keeps the previous behavior when retained prompt replacement fails', async () => {
@@ -263,7 +293,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       MessageType.WORKSHOP_SEND_MESSAGE,
       { text: 'Open the room.' }
     ) as any);
-    service.replaceWorkshopConversationMode.mockRejectedValueOnce(new Error('prompt missing'));
+    service.replaceWorkshopConversationBehavior.mockRejectedValueOnce(new Error('prompt missing'));
 
     await handler.handleSetConversationBehavior(message(
       MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR,
@@ -326,14 +356,14 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     ) as any);
 
     expect(session.getConversationBehavior().interactionMode).toBe('balanced');
-    expect(service.replaceWorkshopConversationMode).not.toHaveBeenCalled();
+    expect(service.replaceWorkshopConversationBehavior).not.toHaveBeenCalled();
     expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/still running/i);
 
     finish(analysisResult('Finished.', { conversationId: 'host-conv' }));
     await running;
   });
 
-  it('sends active and transition frames after a committed mode change', async () => {
+  it('sends active, amplification, and transition frames after a behavior change', async () => {
     await pin();
     await handler.handleSendMessage(message(
       MessageType.WORKSHOP_SEND_MESSAGE,
@@ -344,7 +374,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       {
         behavior: {
           interactionMode: 'conversational',
-          expressionLevel: 'subtle',
+          expressionLevel: 'amplified',
           reactToCurrentMessage: true,
           carryCuesThroughSession: false
         }
@@ -359,15 +389,21 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
     const prompt = service.continueConversation.mock.calls[0][1];
     expect(prompt).toContain('<workshop-interaction-transition');
-    expect(prompt).toContain('from="balanced"');
-    expect(prompt).toContain('to="conversational"');
-    expect(prompt).toContain('expression="subtle"');
+    expect(prompt).toContain('from-mode="balanced"');
+    expect(prompt).toContain('to-mode="conversational"');
+    expect(prompt).toContain('from-expression="full"');
+    expect(prompt).toContain('to-expression="amplified"');
+    expect(prompt).toContain('expression="amplified"');
+    expect(prompt).toContain('<workshop-expression-amplification>');
     expect(session.getSnapshot().turns.at(-2)).toMatchObject({
-      behavior: { interactionMode: 'conversational', expressionLevel: 'subtle' },
-      behaviorTransition: { from: 'balanced', to: 'conversational' }
+      behavior: { interactionMode: 'conversational', expressionLevel: 'amplified' },
+      behaviorTransition: {
+        from: { interactionMode: 'balanced', expressionLevel: 'full' },
+        to: { interactionMode: 'conversational', expressionLevel: 'amplified' }
+      }
     });
     expect(session.getSnapshot().turns.at(-1)).toMatchObject({
-      behavior: { interactionMode: 'conversational', expressionLevel: 'subtle' }
+      behavior: { interactionMode: 'conversational', expressionLevel: 'amplified' }
     });
   });
 

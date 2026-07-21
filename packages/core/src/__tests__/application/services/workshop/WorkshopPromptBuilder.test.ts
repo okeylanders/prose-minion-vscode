@@ -2,6 +2,7 @@ import {
   buildWorkshopContextAttachmentsFrame,
   buildWorkshopDirectHandoff,
   buildWorkshopExcerptSourceFrame,
+  buildWorkshopExpressionAmplificationFrame,
   buildWorkshopGuestCatchUp,
   buildWorkshopGuestHandoff,
   buildWorkshopGuestJoinMessage,
@@ -9,6 +10,8 @@ import {
   buildWorkshopGuestTranscript,
   buildWorkshopHostMessage,
   buildWorkshopHostUpdateFrame,
+  buildWorkshopInteractionFrame,
+  buildWorkshopInteractionTransitionFrame,
   buildWorkshopThreadArtifactFrame,
   buildWorkshopTodoEvidence
 } from '@/application/services/workshop/WorkshopPromptBuilder';
@@ -630,5 +633,49 @@ describe('thread-artifact send assembly (Phase 6B)', () => {
 
     // Without frames or a catch-up the plain contract is unchanged.
     expect(buildWorkshopGuestMessage('Your read?')).toBe('Your read?');
+  });
+});
+
+describe('Workshop conversation behavior frames', () => {
+  const fullBehavior = {
+    interactionMode: 'balanced' as const,
+    expressionLevel: 'full' as const,
+    reactToCurrentMessage: true,
+    carryCuesThroughSession: true
+  };
+
+  it('emits the Amplified reminder only at the Amplified expression level', () => {
+    expect(buildWorkshopExpressionAmplificationFrame(fullBehavior)).toBeUndefined();
+
+    const frame = buildWorkshopExpressionAmplificationFrame({
+      ...fullBehavior,
+      expressionLevel: 'amplified'
+    });
+    expect(frame).toContain('<workshop-expression-amplification>');
+    expect(frame).toContain('equally exact phrasing');
+    expect(frame).toContain('not shared-assistant defaults');
+    expect(frame).toContain('Never force seed words');
+  });
+
+  it('assembles complete behavior and transition provenance without exposing frames as writer text', () => {
+    const amplified = { ...fullBehavior, expressionLevel: 'amplified' as const };
+    const interactionFrame = buildWorkshopInteractionFrame(amplified);
+    const expressionFrame = buildWorkshopExpressionAmplificationFrame(amplified);
+    const transitionFrame = buildWorkshopInteractionTransitionFrame({
+      from: { interactionMode: 'analysis', expressionLevel: 'full' },
+      to: { interactionMode: 'balanced', expressionLevel: 'amplified' },
+      reason: 'writer-selected'
+    });
+
+    const message = buildWorkshopHostMessage('Read this.', {
+      interactionFrame,
+      expressionFrame,
+      transitionFrame
+    });
+    expect(message).toContain('from-mode="analysis"');
+    expect(message).toContain('to-expression="amplified"');
+    expect(message).toContain('<workshop-expression-amplification>');
+    expect(message.indexOf('<workshop-expression-amplification>'))
+      .toBeLessThan(message.indexOf('WRITER MESSAGE:'));
   });
 });

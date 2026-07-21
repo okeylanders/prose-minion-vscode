@@ -59,7 +59,7 @@ describe('WorkshopConversationBehaviorModal', () => {
       screen.getByText('What you ask for always wins — “analyze this” gets analysis in any style.')
     ).not.toBeNull();
     expect(
-      screen.getByText('Identity and craft expertise remain present in both states.')
+      screen.getByText('Identity and craft expertise remain present at every level.')
     ).not.toBeNull();
   });
 
@@ -72,8 +72,9 @@ describe('WorkshopConversationBehaviorModal', () => {
     expect(screen.getByRole('button', { name: /Balanced/ }).getAttribute('aria-pressed')).toBe('false');
 
     expect(screen.getByRole('button', { name: /Full/ }).getAttribute('aria-pressed')).toBe('true');
-    fireEvent.click(screen.getByRole('button', { name: /Subtle/ }));
-    expect(screen.getByRole('button', { name: /Subtle/ }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: /Amplified/ }));
+    expect(screen.getByRole('button', { name: /Amplified/ }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: /Full/ }).getAttribute('aria-pressed')).toBe('false');
 
     // Draft only — nothing was applied.
     expect(props.onApply).not.toHaveBeenCalled();

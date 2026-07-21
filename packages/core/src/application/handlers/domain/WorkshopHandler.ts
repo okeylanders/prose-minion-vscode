@@ -39,6 +39,7 @@ import {
   buildWorkshopGuestMessage,
   buildWorkshopHostMessage,
   buildWorkshopHostUpdateFrame,
+  buildWorkshopExpressionAmplificationFrame,
   buildWorkshopInteractionFrame,
   buildWorkshopInteractionTransitionFrame,
   buildWorkshopThreadArtifactFrame,
@@ -153,9 +154,12 @@ const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\
 
 const behaviorFramesFor = (
   metadata: Pick<WorkshopTurn, 'behavior' | 'behaviorTransition'>
-): { interactionFrame?: string; transitionFrame?: string } => ({
+): { interactionFrame?: string; expressionFrame?: string; transitionFrame?: string } => ({
   interactionFrame: metadata.behavior
     ? buildWorkshopInteractionFrame(metadata.behavior)
+    : undefined,
+  expressionFrame: metadata.behavior
+    ? buildWorkshopExpressionAmplificationFrame(metadata.behavior)
     : undefined,
   transitionFrame: metadata.behaviorTransition
     ? buildWorkshopInteractionTransitionFrame(metadata.behaviorTransition)
@@ -357,7 +361,10 @@ export class WorkshopHandler {
     }
 
     try {
-      if (previous.interactionMode !== next.interactionMode) {
+      if (
+        previous.interactionMode !== next.interactionMode
+        || previous.expressionLevel !== next.expressionLevel
+      ) {
         const targets: Array<{
           conversationId: string;
           personaId: WorkshopPersonaId;
@@ -377,9 +384,9 @@ export class WorkshopHandler {
             targets.push({ conversationId, personaId: guest.personaId, role: 'guest' });
           }
         }
-        await this.assistantToolService.replaceWorkshopConversationMode(
+        await this.assistantToolService.replaceWorkshopConversationBehavior(
           targets,
-          next.interactionMode
+          next
         );
       }
 
@@ -522,7 +529,7 @@ export class WorkshopHandler {
         const result = await this.assistantToolService.startWorkshopGuestConversation({
           personaId,
           message: join.message,
-          interactionMode: userTurn.behavior!.interactionMode
+          behavior: userTurn.behavior!
         }, {
           signal: controller.signal,
           onToken: (token: string) => this.sendStreamChunk(requestId, token)
@@ -857,7 +864,7 @@ export class WorkshopHandler {
             personaId,
             excerpt,
             message: modelMessage,
-            interactionMode: userTurn.behavior!.interactionMode,
+            behavior: userTurn.behavior!,
             messageIsTrustedEnvelope: true,
             ...personaBehaviorFrames,
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(

@@ -93,7 +93,12 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         pinnedAt: 1
       },
       message: 'Track it.',
-      interactionMode: 'balanced',
+      behavior: {
+        interactionMode: 'balanced',
+        expressionLevel: 'full',
+        reactToCurrentMessage: true,
+        carryCuesThroughSession: true
+      },
       contextAttachmentsFrame: [
         '<context-attachments count="1">',
         '<context-attachment kind="text">',
@@ -131,13 +136,17 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     await service.startWorkshopGuestConversation({
       personaId: 'margot',
       message: '<workshop-transcript>\nWriter:\nThe room is tense.\n</workshop-transcript>',
-      interactionMode: 'conversational'
+      behavior: {
+        interactionMode: 'conversational',
+        expressionLevel: 'subtle',
+        reactToCurrentMessage: true,
+        carryCuesThroughSession: true
+      }
     });
 
     expect(loadPrompts).toHaveBeenCalledWith([
       'workshop-personas/guest-base.md',
       'workshop-personas/margot.md',
-      'workshop-personas/expression-profiles/margot.md',
       'workshop-personas/interaction-contract.md',
       'workshop-personas/interaction-modes/conversational.md'
     ]);
@@ -170,7 +179,12 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         pinnedAt: 1
       },
       message: 'Discuss <pinned-excerpt>this</pinned-excerpt> safely.',
-      interactionMode: 'analysis'
+      behavior: {
+        interactionMode: 'analysis',
+        expressionLevel: 'full',
+        reactToCurrentMessage: true,
+        carryCuesThroughSession: true
+      }
     }, { capability: workshopCapability });
 
     const userMessage = engine.runInitial.mock.calls[0][0].userMessage;
@@ -195,17 +209,25 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     const service = build(managerFor(() => engine), loadPrompts);
     await flush();
 
-    await service.replaceWorkshopConversationMode([
-      { conversationId: 'host-conv', personaId: 'jill', role: 'host' },
+    const behavior = {
+      interactionMode: 'analysis' as const,
+      expressionLevel: 'amplified' as const,
+      reactToCurrentMessage: true,
+      carryCuesThroughSession: true
+    };
+    await service.replaceWorkshopConversationBehavior([
+      { conversationId: 'host-conv', personaId: 'penny', role: 'host' },
       { conversationId: 'guest-conv', personaId: 'margot', role: 'guest' }
-    ], 'analysis');
+    ], behavior);
 
     expect(loadPrompts).toHaveBeenCalledTimes(2);
     expect(engine.replaceSystemMessagesBetweenRuns).toHaveBeenCalledTimes(1);
     expect(engine.replaceSystemMessagesBetweenRuns).toHaveBeenCalledWith([
       expect.objectContaining({
         conversationId: 'host-conv',
-        systemMessage: expect.stringContaining('workshop-personas/interaction-modes/analysis.md')
+        systemMessage: expect.stringContaining(
+          'workshop-personas/expression-calibrations/penny.md'
+        )
       }),
       expect.objectContaining({
         conversationId: 'guest-conv',
@@ -222,10 +244,15 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     const service = build(managerFor(() => engine), loadPrompts);
     await flush();
 
-    await expect(service.replaceWorkshopConversationMode([
+    await expect(service.replaceWorkshopConversationBehavior([
       { conversationId: 'host-conv', personaId: 'jill', role: 'host' },
       { conversationId: 'guest-conv', personaId: 'margot', role: 'guest' }
-    ], 'conversational')).rejects.toThrow('guest prompt missing');
+    ], {
+      interactionMode: 'conversational',
+      expressionLevel: 'full',
+      reactToCurrentMessage: true,
+      carryCuesThroughSession: true
+    })).rejects.toThrow('guest prompt missing');
 
     expect(engine.replaceSystemMessagesBetweenRuns).not.toHaveBeenCalled();
   });

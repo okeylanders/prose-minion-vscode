@@ -57,7 +57,7 @@ export type WorkshopChatTarget =
 export type WorkshopInteractionMode = 'analysis' | 'balanced' | 'conversational';
 
 /** Writer-selected persona expression volume — never an identity switch. */
-export type WorkshopPersonaExpressionLevel = 'subtle' | 'full';
+export type WorkshopPersonaExpressionLevel = 'subtle' | 'full' | 'amplified';
 
 /**
  * Room-level conversation behavior. Host and guest persona turns interpret the
@@ -105,7 +105,7 @@ export function isWorkshopInteractionMode(value: unknown): value is WorkshopInte
 export function isWorkshopPersonaExpressionLevel(
   value: unknown
 ): value is WorkshopPersonaExpressionLevel {
-  return value === 'subtle' || value === 'full';
+  return value === 'subtle' || value === 'full' || value === 'amplified';
 }
 
 /**
@@ -150,14 +150,15 @@ export function coerceWorkshopConversationBehavior(raw: unknown): WorkshopConver
 }
 
 /**
- * Trusted transition metadata: the room's mode changed between the last
- * committed persona reply and the writer turn this rides with. Multiple
- * selections before the next persona turn coalesce into one transition;
- * a mode that never governed a committed turn is not transcript history.
+ * Trusted transition metadata: the room's system-prompt behavior changed
+ * between the last committed persona reply and the writer turn this rides
+ * with. Multiple selections before the next persona turn coalesce into one
+ * transition; a selection that never governed a committed turn is not
+ * transcript history.
  */
-export interface WorkshopInteractionModeTransition {
-  from: WorkshopInteractionMode;
-  to: WorkshopInteractionMode;
+export interface WorkshopConversationBehaviorTransition {
+  from: Pick<WorkshopConversationBehavior, 'interactionMode' | 'expressionLevel'>;
+  to: Pick<WorkshopConversationBehavior, 'interactionMode' | 'expressionLevel'>;
   reason: 'writer-selected';
 }
 
@@ -531,10 +532,11 @@ export interface WorkshopTurn {
    */
   behavior?: WorkshopConversationBehavior;
   /**
-   * Coalesced writer-selected mode transition persisted with the first
-   * committed writer turn after a mode change. Never a synthetic chat message.
+   * Coalesced writer-selected behavior transition persisted with the first
+   * committed writer turn after a mode or expression change. Never a
+   * synthetic chat message.
    */
-  behaviorTransition?: WorkshopInteractionModeTransition;
+  behaviorTransition?: WorkshopConversationBehaviorTransition;
 }
 
 /**

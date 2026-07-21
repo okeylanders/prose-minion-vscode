@@ -7,6 +7,7 @@ import {
   buildWorkshopContextAttachmentsFrame,
   buildWorkshopDirectHandoff,
   buildWorkshopExcerptSourceFrame,
+  buildWorkshopExpressionAmplificationFrame,
   buildWorkshopHostMessage,
   buildWorkshopHostUpdateFrame,
   buildWorkshopInteractionFrame,
@@ -184,6 +185,9 @@ export class RunWorkshopToolSidePass {
         interactionFrame: behaviorMetadata.behavior
           ? buildWorkshopInteractionFrame(behaviorMetadata.behavior)
           : undefined,
+        expressionFrame: behaviorMetadata.behavior
+          ? buildWorkshopExpressionAmplificationFrame(behaviorMetadata.behavior)
+          : undefined,
         transitionFrame: behaviorMetadata.behaviorTransition
           ? buildWorkshopInteractionTransitionFrame(behaviorMetadata.behaviorTransition)
           : undefined
@@ -218,7 +222,7 @@ export class RunWorkshopToolSidePass {
             personaId,
             excerpt,
             message: hostMessage,
-            interactionMode: behaviorMetadata.behavior!.interactionMode,
+            behavior: behaviorMetadata.behavior!,
             messageIsTrustedEnvelope: true,
             ...behaviorFrames,
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(

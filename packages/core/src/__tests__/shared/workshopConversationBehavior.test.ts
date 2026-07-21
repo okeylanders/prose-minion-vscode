@@ -15,6 +15,17 @@ describe('Workshop conversation behavior validation', () => {
     expect(coerceWorkshopConversationBehavior(behavior)).toEqual(behavior);
   });
 
+  it('accepts Amplified as the third closed expression level', () => {
+    const behavior = {
+      interactionMode: 'conversational',
+      expressionLevel: 'amplified',
+      reactToCurrentMessage: true,
+      carryCuesThroughSession: false
+    } as const;
+
+    expect(coerceWorkshopConversationBehavior(behavior)).toEqual(behavior);
+  });
+
   it.each([
     undefined,
     {},

@@ -352,8 +352,8 @@
             },
             "expressionLevel": {
               "type": "string",
-              "enum": ["subtle", "full"],
-              "description": "How audibly the selected persona expresses their authored voice."
+              "enum": ["subtle", "full", "amplified"],
+              "description": "How audibly the selected persona expresses their authored voice, from quiet to deliberately amplified."
             },
             "reactToCurrentMessage": {
               "type": "boolean",

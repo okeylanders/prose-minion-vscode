@@ -144,8 +144,8 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(writerTurn).toMatchObject({
       behavior: { interactionMode: 'conversational', expressionLevel: 'subtle' },
       behaviorTransition: {
-        from: 'balanced',
-        to: 'conversational',
+        from: { interactionMode: 'balanced', expressionLevel: 'full' },
+        to: { interactionMode: 'conversational', expressionLevel: 'subtle' },
         reason: 'writer-selected'
       }
     });
@@ -191,8 +191,25 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     });
 
     expect(service.beginPersonaMessage('host-next', 'Final choice.').behaviorTransition).toEqual({
-      from: 'balanced',
-      to: 'conversational',
+      from: { interactionMode: 'balanced', expressionLevel: 'full' },
+      to: { interactionMode: 'conversational', expressionLevel: 'full' },
+      reason: 'writer-selected'
+    });
+  });
+
+  it('records an expression-only transition against the last committed persona reply', () => {
+    pin();
+    service.beginPersonaMessage('host-open', 'Start.');
+    service.completeRun('host-open', 'Full reply.', undefined, false, 'host-conv');
+
+    service.setConversationBehavior({
+      ...service.getConversationBehavior(),
+      expressionLevel: 'amplified'
+    });
+
+    expect(service.beginPersonaMessage('host-next', 'Turn it up.').behaviorTransition).toEqual({
+      from: { interactionMode: 'balanced', expressionLevel: 'full' },
+      to: { interactionMode: 'balanced', expressionLevel: 'amplified' },
       reason: 'writer-selected'
     });
   });

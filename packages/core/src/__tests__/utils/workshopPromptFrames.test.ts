@@ -40,6 +40,8 @@ describe('neutralizeReservedPersonaPromptDelimiters', () => {
       '<Writer-Message from="me">',
       '</workshop-tool-evidence>',
       '</workshop-guest-handoff>',
+      '<workshop-expression-amplification>',
+      '</workshop-expression-amplification>',
       '<workshop-capability-result status="success">',
       '<prose-minion-tool-call name="analysis.run">'
     ].join(' body ');

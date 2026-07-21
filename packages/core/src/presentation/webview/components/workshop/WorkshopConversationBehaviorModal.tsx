@@ -60,7 +60,12 @@ const EXPRESSION_CARDS: ReadonlyArray<{
   {
     level: 'full',
     name: 'Full',
-    description: 'Their distinctive voice, tastes, trait tensions, and verbal palette at full volume.'
+    description: 'Their natural voice, tastes, trait tensions, and verbal palette without muting.'
+  },
+  {
+    level: 'amplified',
+    name: 'Amplified',
+    description: 'Strongest authored differentiation — calibrated language and communication pressure.'
   }
 ];
 
@@ -93,10 +98,16 @@ const ExpressionGlyph: React.FC<{ level: WorkshopPersonaExpressionLevel }> = ({ 
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
     {level === 'subtle' ? (
       <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.4" strokeDasharray="2.4 2.6" />
-    ) : (
+    ) : level === 'full' ? (
       <>
         <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.4" />
         <circle cx="8" cy="8" r="2.2" fill="currentColor" />
+      </>
+    ) : (
+      <>
+        <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.2" />
+        <circle cx="8" cy="8" r="4.2" stroke="currentColor" strokeWidth="1.2" />
+        <circle cx="8" cy="8" r="1.8" fill="currentColor" />
       </>
     )}
   </svg>
@@ -251,7 +262,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
           <span className="pm-ws-eyebrow">Persona expression</span>
           <hr />
         </div>
-        <div className="pm-ws-behavior-cards pm-ws-behavior-cards-two">
+        <div className="pm-ws-behavior-cards">
           {EXPRESSION_CARDS.map((card) => (
             <button
               key={card.level}
@@ -272,7 +283,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
           ))}
         </div>
         <p className="pm-ws-behavior-note">
-          Identity and craft expertise remain present in both states.
+          Identity and craft expertise remain present at every level.
         </p>
       </section>
 

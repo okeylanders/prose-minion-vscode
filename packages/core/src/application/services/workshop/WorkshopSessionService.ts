@@ -12,6 +12,7 @@ import {
   WorkshopChatTarget,
   WorkshopActionableFinding,
   WorkshopConversationBehavior,
+  WorkshopConversationBehaviorTransition,
   WorkshopContextAttachmentSnapshot,
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
   WorkshopExcerpt,
@@ -23,7 +24,6 @@ import {
   WorkshopPersonaGuestSnapshot,
   WorkshopParticipantsSnapshot,
   WorkshopSessionSnapshot,
-  WorkshopInteractionModeTransition,
   WorkshopToolId,
   WorkshopTodoItem,
   WorkshopTurn,
@@ -104,7 +104,7 @@ interface ActiveRun {
   excerptVersion: number;
   /** Behavior captured when a persona run begins; settings cannot change mid-run. */
   behavior?: WorkshopConversationBehavior;
-  behaviorTransition?: WorkshopInteractionModeTransition;
+  behaviorTransition?: WorkshopConversationBehaviorTransition;
 }
 
 /**
@@ -197,8 +197,11 @@ export class WorkshopSessionService {
   /** Staleness is derived at snapshot time from immutable source provenance. */
   private todos: StoredWorkshopTodoItem[] = [];
   private behavior: WorkshopConversationBehavior;
-  /** The mode that actually governed the latest successfully committed persona reply. */
-  private lastCommittedPersonaMode?: WorkshopConversationBehavior['interactionMode'];
+  /** System-prompt behavior that governed the latest committed persona reply. */
+  private lastCommittedPersonaBehavior?: Pick<
+    WorkshopConversationBehavior,
+    'interactionMode' | 'expressionLevel'
+  >;
 
   constructor(
     private readonly now: () => number = Date.now,
@@ -871,7 +874,10 @@ export class WorkshopSessionService {
     }
     this.turns.push(turn);
     if ((isHost || isGuest) && active.behavior) {
-      this.lastCommittedPersonaMode = active.behavior.interactionMode;
+      this.lastCommittedPersonaBehavior = {
+        interactionMode: active.behavior.interactionMode,
+        expressionLevel: active.behavior.expressionLevel
+      };
     }
     return cloneTurn(turn);
   }
@@ -1191,7 +1197,7 @@ export class WorkshopSessionService {
     this.replacementCount = 0;
     this.selectedToolId = undefined;
     this.todos = [];
-    this.lastCommittedPersonaMode = undefined;
+    this.lastCommittedPersonaBehavior = undefined;
     this.participants = this.newParticipants();
     return conversationIds;
   }
@@ -1315,11 +1321,17 @@ export class WorkshopSessionService {
 
   private currentPersonaBehaviorMetadata(): Pick<WorkshopTurn, 'behavior' | 'behaviorTransition'> {
     const behavior = this.getConversationBehavior();
-    const behaviorTransition = this.lastCommittedPersonaMode !== undefined
-      && this.lastCommittedPersonaMode !== behavior.interactionMode
+    const behaviorTransition = this.lastCommittedPersonaBehavior !== undefined
+      && (
+        this.lastCommittedPersonaBehavior.interactionMode !== behavior.interactionMode
+        || this.lastCommittedPersonaBehavior.expressionLevel !== behavior.expressionLevel
+      )
       ? {
-          from: this.lastCommittedPersonaMode,
-          to: behavior.interactionMode,
+          from: { ...this.lastCommittedPersonaBehavior },
+          to: {
+            interactionMode: behavior.interactionMode,
+            expressionLevel: behavior.expressionLevel
+          },
           reason: 'writer-selected' as const
         }
       : undefined;
