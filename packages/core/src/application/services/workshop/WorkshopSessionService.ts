@@ -9,6 +9,7 @@
  */
 
 import {
+  ContextSourceEntry,
   WorkshopChatTarget,
   WorkshopActionableFinding,
   WorkshopConversationBehavior,
@@ -16,6 +17,7 @@ import {
   WorkshopContextAttachmentSnapshot,
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
   WorkshopExcerpt,
+  WorkshopExcerptSnapshot,
   WorkshopExcerptSource,
   WorkshopExcerptTruncation,
   workshopExcerptSourcePath,
@@ -53,6 +55,7 @@ export interface WorkshopExcerptInput {
   /** Validated provenance — callers coerce IPC claims before reaching the aggregate. */
   source: WorkshopExcerptSource;
   truncation?: WorkshopExcerptTruncation;
+  sourceFingerprint?: string;
 }
 
 export const WORKSHOP_SNAPSHOT_TURN_WINDOW = 100;
@@ -188,6 +191,20 @@ export class WorkshopSessionService {
   private pendingMessageAttachments: WorkshopMessageAttachment[] = [];
   /** Monotonic `ta-N` mint — never reused within a session (surgery address). */
   private threadArtifactCounter = 0;
+  /**
+   * Writer-origin manifest rows per retained participant (Phase 7): pins
+   * stamped at delivery (stale-marked on revision), tool/guest rows stamped
+   * at sidecar adoption, message attachments stamped at ship time. Standing
+   * attachments for the HOST are derived live at collect time — the host
+   * receives list changes via update frames, so the live list is what it
+   * carries; tools snapshot the list at adoption because retained sidecars
+   * never receive later changes.
+   */
+  private hostWriterSources: ContextSourceEntry[] = [];
+  /** The one pin revision still live in the host manifest, if any. */
+  private activeHostPin?: ContextSourceEntry;
+  private toolWriterSources: Partial<Record<WorkshopToolId, ContextSourceEntry[]>> = {};
+  private guestWriterSources = new Map<WorkshopPersonaId, ContextSourceEntry[]>();
   private turns: WorkshopTurn[] = [];
   private activeRun?: ActiveRun;
   private participants: WorkshopParticipants = this.newParticipants();
@@ -236,6 +253,7 @@ export class WorkshopSessionService {
       version: this.excerptVersion,
       source: cloneExcerptSource(input.source),
       truncation: input.truncation ? { ...input.truncation } : undefined,
+      sourceFingerprint: input.sourceFingerprint,
       pinnedAt: this.now()
     };
     return cloneExcerpt(this.excerpt);
@@ -257,6 +275,8 @@ export class WorkshopSessionService {
       .flatMap(([toolId, sidecar]) => sidecar ? [{ toolId: toolId as WorkshopToolId, ...sidecar }] : []);
     const conversationIds = retired.map(sidecar => sidecar.conversationId);
     this.participants.toolSidecars = {};
+    // Retired sidecars take their manifests with them (Phase 7).
+    this.toolWriterSources = {};
     if (this.participants.chatTarget.kind === 'tool') {
       this.participants.chatTarget = { kind: 'host' };
     }
@@ -403,10 +423,41 @@ export class WorkshopSessionService {
   /**
    * Clear exactly the attachments a successful send actually shipped
    * (mirrors commitPendingHostUpdates): a failed or cancelled turn retains
-   * them, so the pills survive and a retry ships the same artifacts.
+   * them, so the pills survive and a retry ships the same artifacts. The
+   * shipped artifacts are stamped into the receiving participant's
+   * writer-origin manifest (Phase 7) before leaving the pending list.
    */
-  commitMessageAttachments(shippedIds: readonly string[]): void {
+  commitMessageAttachments(
+    shippedIds: readonly string[],
+    target: WorkshopChatTarget = { kind: 'host' }
+  ): void {
     const shipped = new Set(shippedIds);
+    const entries = this.pendingMessageAttachments
+      .filter((attachment) => shipped.has(attachment.id))
+      .map((attachment): ContextSourceEntry => ({
+        kind: 'message-attachment',
+        origin: 'writer',
+        label: attachment.label,
+        configuredResource: attachment.configuredResource ? { ...attachment.configuredResource } : undefined,
+        sizeChars: attachment.content.length,
+        isEstimate: true,
+        deliveredAt: this.now()
+      }));
+    if (entries.length > 0) {
+      if (target.kind === 'tool') {
+        this.toolWriterSources[target.toolId] = [
+          ...(this.toolWriterSources[target.toolId] ?? []),
+          ...entries
+        ];
+      } else if (target.kind === 'personaGuest') {
+        this.guestWriterSources.set(target.personaId, [
+          ...(this.guestWriterSources.get(target.personaId) ?? []),
+          ...entries
+        ]);
+      } else {
+        this.hostWriterSources.push(...entries);
+      }
+    }
     this.pendingMessageAttachments = this.pendingMessageAttachments.filter(
       (attachment) => !shipped.has(attachment.id)
     );
@@ -450,10 +501,77 @@ export class WorkshopSessionService {
   commitPendingHostUpdates(delivered: WorkshopPendingHostUpdates): void {
     if (delivered.excerpt?.version === this.pendingRevisionVersion) {
       this.pendingRevisionVersion = undefined;
+      // The revision frame actually reached the host: only the one live pin
+      // can change state. Earlier rows were made stale at their own revision.
+      const pin = this.pinEntry();
+      if (pin) {
+        this.appendHostPin(pin);
+      }
     }
     if (delivered.contextAttachments?.revision === this.pendingContextRevision) {
       this.pendingContextRevision = undefined;
     }
+  }
+
+  /**
+   * The active participant's writer-origin manifest rows (Phase 7).
+   * Display-safe clones only.
+   */
+  collectWriterSources(target: WorkshopChatTarget): ContextSourceEntry[] {
+    if (target.kind === 'tool') {
+      return (this.toolWriterSources[target.toolId] ?? []).map(cloneSourceEntry);
+    }
+    if (target.kind === 'personaGuest') {
+      return (this.guestWriterSources.get(target.personaId) ?? []).map(cloneSourceEntry);
+    }
+    return [
+      ...this.hostWriterSources.map(cloneSourceEntry),
+      ...this.contextAttachments.map((attachment) => this.attachmentEntry(attachment))
+    ];
+  }
+
+  /** The current pin as a manifest row; undefined before the first pin. */
+  private pinEntry(): ContextSourceEntry | undefined {
+    if (!this.excerpt) {
+      return undefined;
+    }
+    const source = this.excerpt.source;
+    return {
+      kind: 'pin',
+      origin: 'writer',
+      label: workshopExcerptSourcePath(source) ?? 'Pasted excerpt',
+      configuredResource: source.kind !== 'manual' && source.configuredResource
+        ? { ...source.configuredResource }
+        : undefined,
+      sizeChars: this.excerpt.text.length,
+      isEstimate: true,
+      excerptVersion: this.excerpt.version,
+      deliveredAt: this.excerpt.pinnedAt
+    };
+  }
+
+  /**
+   * Add the next delivered host pin without revisiting historical revisions.
+   * Superseded rows remain for Phase 7's dimmed-history display.
+   */
+  private appendHostPin(pin: ContextSourceEntry): void {
+    if (this.activeHostPin) {
+      this.activeHostPin.stale = true;
+    }
+    this.hostWriterSources.push(pin);
+    this.activeHostPin = pin;
+  }
+
+  private attachmentEntry(attachment: WorkshopContextAttachment): ContextSourceEntry {
+    return {
+      kind: 'attachment',
+      origin: 'writer',
+      label: attachment.label,
+      configuredResource: attachment.configuredResource ? { ...attachment.configuredResource } : undefined,
+      sizeChars: attachment.content.length,
+      isEstimate: true,
+      deliveredAt: attachment.addedAt
+    };
   }
 
   getSelectedPersonaId(): WorkshopPersonaId {
@@ -529,6 +647,9 @@ export class WorkshopSessionService {
       deliveredToHostThroughTurnId: previousDeliveryCursor ?? cursor,
       liveness: 'live'
     });
+    // The join envelope delivered the current pin (Phase 7).
+    const pin = this.pinEntry();
+    this.guestWriterSources.set(personaId, pin ? [pin] : []);
   }
 
   /** Dispose one guest while preserving its historical thread attribution. */
@@ -540,6 +661,7 @@ export class WorkshopSessionService {
     const conversationId = guest.conversationId;
     guest.conversationId = undefined;
     guest.liveness = 'disposed';
+    this.guestWriterSources.delete(personaId);
     if (this.activeRun?.target === 'personaGuest' && this.activeRun.guestPersonaId === personaId) {
       this.activeRun = undefined;
     }
@@ -861,6 +983,14 @@ export class WorkshopSessionService {
     };
 
     if (isHost && conversationId) {
+      if (this.participants.host.conversationId === undefined) {
+        // First host adoption: the initial envelope delivered the current
+        // pin — stamp it as the host's first writer-origin manifest row.
+        const pin = this.pinEntry();
+        if (pin) {
+          this.appendHostPin(pin);
+        }
+      }
       this.participants.host.conversationId = conversationId;
     }
     if (isGuest && active.guestPersonaId && conversationId) {
@@ -1183,6 +1313,11 @@ export class WorkshopSessionService {
     }
     this.pendingRevisionVersion = undefined;
     this.pendingContextRevision = undefined;
+    // Manifests live and die with their conversations (Phase 7).
+    this.hostWriterSources = [];
+    this.activeHostPin = undefined;
+    this.toolWriterSources = {};
+    this.guestWriterSources.clear();
     return conversationIds;
   }
 
@@ -1205,7 +1340,7 @@ export class WorkshopSessionService {
   getSnapshot(): WorkshopSessionSnapshot {
     const windowed = this.turns.slice(-WORKSHOP_SNAPSHOT_TURN_WINDOW);
     return {
-      excerpt: this.excerpt ? cloneExcerpt(this.excerpt) : undefined,
+      excerpt: this.excerpt ? excerptSnapshot(this.excerpt) : undefined,
       excerptVersion: this.excerptVersion,
       replacementCount: this.replacementCount,
       contextAttachments: this.contextAttachments.map(attachmentSnapshot),
@@ -1300,6 +1435,14 @@ export class WorkshopSessionService {
       deliveredToHostThroughTurnId:
         replaced?.deliveredToHostThroughTurnId ?? latestReportTurnId
     };
+    // A sidecar is a fresh conversation on adoption: its writer-origin rows
+    // are exactly the pin + standing attachments its run received (Phase 7).
+    // Replacement replaces the manifest with the conversation.
+    const pin = this.pinEntry();
+    this.toolWriterSources[toolId] = [
+      ...(pin ? [pin] : []),
+      ...this.contextAttachments.map((attachment) => this.attachmentEntry(attachment))
+    ];
     return replaced?.conversationId && replaced.conversationId !== conversationId
       ? replaced.conversationId
       : undefined;
@@ -1436,6 +1579,13 @@ function cloneTurn(turn: WorkshopTurn): WorkshopTurn {
   };
 }
 
+function cloneSourceEntry(entry: ContextSourceEntry): ContextSourceEntry {
+  return {
+    ...entry,
+    configuredResource: entry.configuredResource ? { ...entry.configuredResource } : undefined
+  };
+}
+
 function cloneMessageAttachmentSnapshot(
   snapshot: WorkshopMessageAttachmentSnapshot
 ): WorkshopMessageAttachmentSnapshot {
@@ -1551,5 +1701,21 @@ function cloneExcerpt(excerpt: WorkshopExcerpt): WorkshopExcerpt {
     ...excerpt,
     source: cloneExcerptSource(excerpt.source),
     truncation: excerpt.truncation ? { ...excerpt.truncation } : undefined
+  };
+}
+
+/** Snapshot boundary: sourceUri is an internal file-read capability, never webview data. */
+function excerptSnapshot(excerpt: WorkshopExcerpt): WorkshopExcerptSnapshot {
+  const { sourceFingerprint: _sourceFingerprint, source, ...snapshot } = excerpt;
+  if (source.kind === 'manual') {
+    return { ...snapshot, source: { kind: 'manual' } };
+  }
+  const { sourceUri: _sourceUri, ...displaySource } = source;
+  return {
+    ...snapshot,
+    source: {
+      ...displaySource,
+      configuredResource: source.configuredResource ? { ...source.configuredResource } : undefined
+    }
   };
 }

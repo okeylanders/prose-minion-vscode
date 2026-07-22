@@ -296,4 +296,38 @@ describe('ConversationManager', () => {
       ])).toThrow(`Conversation ${id} does not hold a sole leading system message`);
     });
   });
+
+  it('replaces superseded same-resource manifest rows and clears them on reset (Phase 7)', () => {
+    const manager = new ConversationManager();
+    const id = manager.startConversation('host', 'System');
+    const entry = (sizeChars: number, deliveredAt: number) => ({
+      kind: 'resource' as const,
+      origin: 'host' as const,
+      label: 'chapters/ch-04.md',
+      configuredResource: { group: 'chapters' as const, path: 'chapters/ch-04.md' },
+      sizeChars,
+      isEstimate: true,
+      deliveredAt
+    });
+
+    manager.appendContextSources(id, [entry(400, 1)]);
+    // Re-reading the same canonical resource REPLACES its row.
+    manager.appendContextSources(id, [entry(520, 2)]);
+    manager.appendContextSources(id, [{
+      kind: 'dictionary', origin: 'host', label: 'liminal', sizeChars: 90, isEstimate: true, deliveredAt: 3
+    }]);
+
+    const sources = manager.getContextSources(id);
+    expect(sources).toHaveLength(2);
+    expect(sources[0]).toMatchObject({ label: 'chapters/ch-04.md', sizeChars: 520, deliveredAt: 2 });
+
+    // Returned rows are clones — external mutation cannot reach storage.
+    sources[0].sizeChars = 9999;
+    expect(manager.getContextSources(id)[0].sizeChars).toBe(520);
+
+    manager.resetConversation(id);
+    expect(manager.getContextSources(id)).toEqual([]);
+    expect(manager.getContextSources('missing')).toEqual([]);
+    expect(() => manager.appendContextSources('missing', [entry(1, 1)])).toThrow('not found');
+  });
 });

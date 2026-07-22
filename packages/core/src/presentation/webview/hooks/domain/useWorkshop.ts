@@ -40,7 +40,7 @@ import {
   WorkshopContextSearchResultsMessage,
   WorkshopContextSearchResultsPayload,
   WorkshopConversationBehavior,
-  WorkshopExcerpt,
+  WorkshopExcerptSnapshot,
   WorkshopExcerptSource,
   WorkshopMessageAttachmentSnapshot,
   WorkshopChatTarget,
@@ -67,7 +67,7 @@ interface LiveRun {
 export interface WorkshopState {
   /** True once the first host snapshot has arrived (gate for "empty" UI). */
   sessionReady: boolean;
-  excerpt: WorkshopExcerpt | null;
+  excerpt: WorkshopExcerptSnapshot | null;
   contextAttachments: WorkshopContextAttachmentSnapshot[];
   /** Staged one-shot attachments for the writer's next message (Phase 6B). */
   pendingMessageAttachments: WorkshopMessageAttachmentSnapshot[];
@@ -185,7 +185,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const streaming = useStreaming();
 
   const [sessionReady, setSessionReady] = React.useState(false);
-  const [excerpt, setExcerpt] = React.useState<WorkshopExcerpt | null>(null);
+  const [excerpt, setExcerpt] = React.useState<WorkshopExcerptSnapshot | null>(null);
   const [contextAttachments, setContextAttachments] = React.useState<WorkshopContextAttachmentSnapshot[]>([]);
   const [pendingMessageAttachments, setPendingMessageAttachments] = React.useState<WorkshopMessageAttachmentSnapshot[]>([]);
   const [contextPending, setContextPending] = React.useState(false);

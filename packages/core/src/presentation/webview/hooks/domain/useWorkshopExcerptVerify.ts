@@ -39,8 +39,13 @@ export interface WorkshopExcerptVerifyActions {
   clearVerified: () => void;
 }
 
+/** Empty by design: a verification claim is valid only for the live page. */
+export type WorkshopExcerptVerifyPersistence = Record<string, never>;
+
 export type UseWorkshopExcerptVerifyReturn =
-  WorkshopExcerptVerifyState & WorkshopExcerptVerifyActions;
+  WorkshopExcerptVerifyState & WorkshopExcerptVerifyActions & {
+    persistedState: WorkshopExcerptVerifyPersistence;
+  };
 
 export const useWorkshopExcerptVerify = (): UseWorkshopExcerptVerifyReturn => {
   const vscode = useVSCodeApi();
@@ -82,5 +87,5 @@ export const useWorkshopExcerptVerify = (): UseWorkshopExcerptVerifyReturn => {
     setVerified(null);
   }, []);
 
-  return { verified, requestVerify, handleSelectionData, clearVerified };
+  return { verified, requestVerify, handleSelectionData, clearVerified, persistedState: {} };
 };

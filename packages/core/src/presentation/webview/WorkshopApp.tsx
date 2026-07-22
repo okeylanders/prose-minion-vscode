@@ -35,8 +35,7 @@ import {
   WorkshopToolId,
   WorkshopPersonaId,
   WorkshopTurn,
-  workshopExcerptSourcePath,
-  workshopExcerptSourceUri
+  workshopExcerptSourcePath
 } from '@messages';
 import { ModelSelector } from './components/shared/ModelSelector';
 import { ExcerptPanel } from './components/workshop/ExcerptPanel';
@@ -224,6 +223,7 @@ export const WorkshopApp: React.FC = () => {
 
   usePersistence({
     ...workshop.persistedState,
+    ...excerptVerify.persistedState,
     ...modelsSettings.persistedState,
     ...tokenTracking.persistedState,
     ...accountBalance.persistedState,
@@ -400,7 +400,7 @@ export const WorkshopApp: React.FC = () => {
             excerpt: workshop.excerpt?.text,
             context: `${participantLabel} · ${turn.artifact.replace(/_/g, ' ')}`,
             relativePath: workshop.excerpt ? workshopExcerptSourcePath(workshop.excerpt.source) : undefined,
-            sourceFileUri: workshop.excerpt ? workshopExcerptSourceUri(workshop.excerpt.source) : undefined,
+            sourceFileUri: undefined,
             timestamp: Date.now()
           }
         },
@@ -533,7 +533,7 @@ export const WorkshopApp: React.FC = () => {
           >
             <ExcerptPanel
               excerpt={workshop.excerpt}
-              isRunning={workshop.isRunning}
+              isRunning={workshop.isRunning || workshop.wizardRunning}
               locked={workshop.hasHostConversation}
               verified={excerptVerify.verified}
               onSet={workshop.pinExcerpt}
@@ -743,6 +743,8 @@ export const WorkshopApp: React.FC = () => {
               snapshot={workshop.contextBudget?.snapshot}
               modelOptions={modelsSettings.modelOptions}
               cumulativeProcessedTokens={tokenTracking.usage.totalTokens}
+              sources={workshop.contextBudget?.sources}
+              requesterLabel={activePersona.label}
             />
             <WorkshopComposer
               canMessage={workshop.canMessage}

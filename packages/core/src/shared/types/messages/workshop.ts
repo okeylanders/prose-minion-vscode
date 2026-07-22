@@ -323,8 +323,26 @@ export type WorkshopExcerptSource =
       configuredResource?: WorkshopConfiguredResourceRef;
     };
 
+/** Display-safe source provenance for the session snapshot; never exposes a host URI. */
+export type WorkshopExcerptSourceSnapshot =
+  | { kind: 'manual' }
+  | {
+      kind: 'editor-selection';
+      relativePath: string;
+      startLine?: number;
+      endLine?: number;
+      configuredResource?: WorkshopConfiguredResourceRef;
+    }
+  | {
+      kind: 'file';
+      relativePath: string;
+      configuredResource?: WorkshopConfiguredResourceRef;
+    };
+
 /** Display path for a sourced excerpt; undefined for manual text. */
-export function workshopExcerptSourcePath(source: WorkshopExcerptSource): string | undefined {
+export function workshopExcerptSourcePath(
+  source: WorkshopExcerptSource | WorkshopExcerptSourceSnapshot
+): string | undefined {
   return source.kind === 'manual' ? undefined : source.relativePath;
 }
 
@@ -439,7 +457,14 @@ export interface WorkshopExcerpt {
   pinnedAt: number;
   /** Present when the host head-sliced a huge file at pin time. */
   truncation?: WorkshopExcerptTruncation;
+  /** SHA-256 of the original source bytes, used only to detect file revisions. */
+  sourceFingerprint?: string;
 }
+
+/** Webview projection of an excerpt. Source URIs remain host-private. */
+export type WorkshopExcerptSnapshot = Omit<WorkshopExcerpt, 'source' | 'sourceFingerprint'> & {
+  source: WorkshopExcerptSourceSnapshot;
+};
 
 /** What produced a turn: a deterministic tool run, or a free-text follow-up. */
 export type WorkshopTurnKind = 'tool_run' | 'message' | 'divider';
@@ -551,7 +576,7 @@ export interface WorkshopTurn {
  * marathon thread.
  */
 export interface WorkshopSessionSnapshot {
-  excerpt?: WorkshopExcerpt;
+  excerpt?: WorkshopExcerptSnapshot;
   /** Current monotonic excerpt version (zero before the first pin). */
   excerptVersion: number;
   /** Number of excerpt replacements since the last new-session boundary. */

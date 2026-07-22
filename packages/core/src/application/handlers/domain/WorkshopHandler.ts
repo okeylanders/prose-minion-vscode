@@ -28,6 +28,10 @@ import {
   WorkshopSessionService
 } from '@/application/services/workshop/WorkshopSessionService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
+import {
+  WorkshopConfiguredResourceLoadResult,
+  WorkshopContextResourceService
+} from '@/application/services/workshop/WorkshopContextResourceService';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import {
   buildWorkshopContextAttachmentsFrame,
@@ -52,7 +56,6 @@ import {
 } from '@/application/services/workshop/WorkshopRunCompletion';
 import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
 import { isContextPathGroup } from '@shared/types/context';
-import { ContextResourceProviderFactory, DEFAULT_CONTEXT_GROUPS } from '@/domain/models/ContextGeneration';
 import {
   isWorkshopPersonaId,
   workshopPersonaLabel
@@ -60,6 +63,7 @@ import {
 import { workshopQuickActionPrompt } from '@shared/constants/workshopQuickActions';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import { fileURLToPath, pathToFileURL } from 'url';
+import { createHash } from 'crypto';
 import * as path from 'path';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
@@ -133,6 +137,8 @@ const generateRequestId = (type: string) => `${type}-${Date.now()}-${++requestId
 
 const MID_RUN_EXCERPT_GUARD_MESSAGE =
   'A tool is still running. Wait for it to finish (or start a new session) before replacing the excerpt.';
+const MID_WIZARD_EXCERPT_GUARD_MESSAGE =
+  'The Context wizard is still running. Wait for it to finish or cancel it before replacing the excerpt.';
 
 const isAbsolutePath = (filePath: string): boolean =>
   filePath.startsWith('/') || /^[A-Za-z]:[\\/]/.test(filePath) || filePath.startsWith('\\\\');
@@ -187,7 +193,7 @@ export class WorkshopHandler {
   private readonly disposeStatusListener: () => void;
 
   /** The single in-flight Context wizard run — independent of activeRun. */
-  private wizardRun?: { requestId: string; controller: AbortController };
+  private wizardRun?: { requestId: string; excerptVersion: number; controller: AbortController };
 
   constructor(
     private readonly assistantToolService: AssistantToolService,
@@ -199,7 +205,7 @@ export class WorkshopHandler {
     private readonly shell: ShellService,
     private readonly fileSystem: FileSystem,
     private readonly workspace: Workspace,
-    private readonly resourceProviderFactory: ContextResourceProviderFactory,
+    private readonly contextResourceService: WorkshopContextResourceService,
     private readonly settings: SettingsStore,
     private readonly outputChannel: LogSink
   ) {
@@ -293,6 +299,7 @@ export class WorkshopHandler {
       this.session.abandonRun(this.activeRun.requestId);
       this.activeRun = undefined;
     }
+    this.cancelWizardRun('dispose');
   }
 
   // Message handlers
@@ -919,7 +926,7 @@ export class WorkshopHandler {
         // A failed/cancelled turn falls through to the catch, which leaves
         // the staged artifacts pending — the pills survive and a retry
         // ships the same ids.
-        this.session.commitMessageAttachments(messageAttachments.map((a) => a.id));
+        this.session.commitMessageAttachments(messageAttachments.map((a) => a.id), target);
         this.outputChannel.appendLine(
           `[WorkshopHandler] Message attachments shipped (${messageAttachments.map((a) => a.id).join(', ')})`
         );
@@ -1005,8 +1012,7 @@ export class WorkshopHandler {
     // The rail disables its buttons on isRunning,
     // but that flag only lands after a message round-trip; this closes the
     // race window at the source of truth.
-    if (this.activeRun) {
-      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
+    if (this.rejectExcerptMutationWhileRunning()) {
       return;
     }
 
@@ -1014,8 +1020,7 @@ export class WorkshopHandler {
       coerceWorkshopExcerptSource(message.payload.source)
     );
     // Resolution awaited on catalog I/O; re-check the guard it may have raced.
-    if (this.activeRun) {
-      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
+    if (this.rejectExcerptMutationWhileRunning()) {
       return;
     }
     this.replaceExcerpt({ text, source });
@@ -1094,8 +1099,8 @@ export class WorkshopHandler {
   /** Context Selector modal (Phase 4): the configured catalog, display-safe. */
   async handleRequestContextCatalog(_message: WorkshopRequestContextCatalogMessage): Promise<void> {
     try {
-      const provider = await this.resourceProviderFactory.createProvider([...DEFAULT_CONTEXT_GROUPS]);
-      const entries: WorkshopContextCatalogEntry[] = provider.listResources().map((resource) => ({
+      const catalog = await this.contextResourceService.openCatalog();
+      const entries: WorkshopContextCatalogEntry[] = catalog.entries().map((resource) => ({
         group: resource.group,
         path: resource.path,
         label: resource.label,
@@ -1127,8 +1132,8 @@ export class WorkshopHandler {
     const query = rawQuery.slice(0, PROMPT_BUDGETS.workshopResource.queryCharacters).toLowerCase();
     const budgets = PROMPT_BUDGETS.workshopResource;
     try {
-      const provider = await this.resourceProviderFactory.createProvider([...DEFAULT_CONTEXT_GROUPS]);
-      const candidates = provider.listResources();
+      const catalog = await this.contextResourceService.openCatalog();
+      const candidates = catalog.entries();
       const scannable = candidates.slice(0, budgets.searchFiles);
       let bounded = candidates.length > scannable.length;
       let bytesScanned = 0;
@@ -1142,12 +1147,18 @@ export class WorkshopHandler {
           bounded = true;
           continue;
         }
-        const [loaded] = await provider.loadResources([candidate.path]);
-        if (!loaded) {
+        const loaded = await catalog.load(
+          { group: candidate.group, path: candidate.path },
+          {
+            maxBytes: Math.min(budgets.searchFileBytes, budgets.searchTotalBytes - bytesScanned),
+            maxWords: Number.MAX_SAFE_INTEGER
+          }
+        );
+        if (loaded.kind !== 'loaded') {
           continue;
         }
         bytesScanned += candidate.sizeBytes;
-        if (loaded.content.toLowerCase().includes(query)) {
+        if (loaded.resource.text.toLowerCase().includes(query)) {
           matches.push({ group: candidate.group, path: candidate.path });
         }
       }
@@ -1181,56 +1192,33 @@ export class WorkshopHandler {
       return;
     }
 
-    let provider;
+    let catalog;
     try {
-      provider = await this.resourceProviderFactory.createProvider([...DEFAULT_CONTEXT_GROUPS]);
+      catalog = await this.contextResourceService.openCatalog();
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.sendError('workshop', 'Could not read the configured resource catalog.', details);
       return;
     }
-    const summaries = provider.listResources();
-
     for (const item of validated) {
-      const summary = summaries.find(
-        (resource) => resource.group === item.group && resource.path === item.path
-      );
-      if (!summary) {
-        this.sendError('workshop', 'That resource is no longer in the configured catalog.', item.path);
+      const loaded = await catalog.load(item, {
+        maxBytes: PROMPT_BUDGETS.contextAttachments.fileBytes,
+        maxWords: PROMPT_BUDGETS.contextAttachments.words
+      });
+      if (!this.reportConfiguredResourceLoadFailure(loaded, 'attach')) {
         continue;
       }
-      let content: string | undefined;
-      try {
-        content = (await provider.loadResources([summary.path]))[0]?.content;
-      } catch (error) {
-        const details = error instanceof Error ? error.message : String(error);
-        this.sendError('workshop', 'Could not read the selected resource.', `${item.path}: ${details}`);
-        continue;
-      }
-      if (!content || content.trim().length === 0) {
-        this.sendError('workshop', 'That resource is empty — nothing to attach.', item.path);
-        continue;
-      }
-
-      let text = content;
-      let words = countWords(content);
-      let truncation: { keptWords: number; totalWords: number } | undefined;
-      if (words > PROMPT_BUDGETS.contextAttachments.words) {
-        const trimmed = trimToWordLimit(content, PROMPT_BUDGETS.contextAttachments.words);
-        truncation = { keptWords: trimmed.trimmedWords, totalWords: words };
-        text = trimmed.trimmed;
-        words = trimmed.trimmedWords;
-      }
+      const { resource } = loaded;
       this.applyContextAttachment({
         kind: 'file',
         origin: 'writer',
         label: baseName(item.path),
-        content: text,
-        words,
-        sourceUri: pathToFileURL(summary.absolutePath).toString(),
+        content: resource.text,
+        words: resource.words,
+        sourceUri: pathToFileURL(resource.summary.absolutePath).toString(),
         relativePath: item.path,
         configuredResource: { group: item.group, path: item.path },
-        truncation
+        truncation: resource.truncation
       });
     }
   }
@@ -1258,45 +1246,31 @@ export class WorkshopHandler {
       return;
     }
 
-    let provider;
+    let catalog;
     try {
-      provider = await this.resourceProviderFactory.createProvider([...DEFAULT_CONTEXT_GROUPS]);
+      catalog = await this.contextResourceService.openCatalog();
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.sendError('workshop', 'Could not read the configured resource catalog.', details);
       return;
     }
-    const summaries = provider.listResources();
-
     for (const item of validated) {
-      const summary = summaries.find(
-        (resource) => resource.group === item.group && resource.path === item.path
-      );
-      if (!summary) {
-        this.sendError('workshop', 'That resource is no longer in the configured catalog.', item.path);
+      const loaded = await catalog.load(item, {
+        maxBytes: PROMPT_BUDGETS.contextAttachments.fileBytes,
+        maxWords: PROMPT_BUDGETS.workshopThreadArtifacts.words
+      });
+      if (!this.reportConfiguredResourceLoadFailure(loaded, 'attach')) {
         continue;
       }
-      let content: string | undefined;
-      try {
-        content = (await provider.loadResources([summary.path]))[0]?.content;
-      } catch (error) {
-        const details = error instanceof Error ? error.message : String(error);
-        this.sendError('workshop', 'Could not read the selected resource.', `${item.path}: ${details}`);
-        continue;
-      }
-      if (!content || content.trim().length === 0) {
-        this.sendError('workshop', 'That resource is empty — nothing to attach.', item.path);
-        continue;
-      }
-      const bounded = this.boundThreadArtifact(content);
+      const { resource } = loaded;
       this.stageMessageAttachment({
         label: baseName(item.path),
-        content: bounded.text,
-        words: bounded.words,
+        content: resource.text,
+        words: resource.words,
         relativePath: item.path,
         configuredResource: { group: item.group, path: item.path },
-        sourceUri: pathToFileURL(summary.absolutePath).toString(),
-        truncation: bounded.truncation
+        sourceUri: pathToFileURL(resource.summary.absolutePath).toString(),
+        truncation: resource.truncation
       });
     }
   }
@@ -1390,8 +1364,7 @@ export class WorkshopHandler {
    * provenance and an honest sourceUri so Re-read from file keeps working.
    */
   async handleSetExcerptResource(message: WorkshopSetExcerptResourceMessage): Promise<void> {
-    if (this.activeRun) {
-      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
+    if (this.rejectExcerptMutationWhileRunning()) {
       return;
     }
     const candidate = message.payload as { group?: unknown; path?: unknown };
@@ -1406,65 +1379,38 @@ export class WorkshopHandler {
     }
     const item = { group: candidate.group, path: candidate.path };
 
-    let provider;
+    let catalog;
     try {
-      provider = await this.resourceProviderFactory.createProvider([...DEFAULT_CONTEXT_GROUPS]);
+      catalog = await this.contextResourceService.openCatalog();
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.sendError('workshop', 'Could not read the configured resource catalog.', details);
       return;
     }
-    const summary = provider.listResources().find(
-      (resource) => resource.group === item.group && resource.path === item.path
-    );
-    if (!summary) {
-      this.sendError('workshop', 'That resource is no longer in the configured catalog.', item.path);
+    const loaded = await catalog.load(item, {
+      maxBytes: PROMPT_BUDGETS.fileExcerpt.bytes,
+      maxWords: PROMPT_BUDGETS.fileExcerpt.words
+    });
+    if (!this.reportConfiguredResourceLoadFailure(loaded, 'pin', PROMPT_BUDGETS.fileExcerpt.bytes)) {
       return;
     }
-    if (summary.sizeBytes > PROMPT_BUDGETS.fileExcerpt.bytes) {
-      this.sendError(
-        'workshop',
-        `That file is too large to pin safely (max ${formatBytes(PROMPT_BUDGETS.fileExcerpt.bytes)}).`,
-        `${item.path} is ${formatBytes(summary.sizeBytes)}`
-      );
-      return;
-    }
+    const { resource } = loaded;
 
-    let content: string | undefined;
-    try {
-      content = (await provider.loadResources([summary.path]))[0]?.content;
-    } catch (error) {
-      const details = error instanceof Error ? error.message : String(error);
-      this.sendError('workshop', 'Could not read the selected resource.', `${item.path}: ${details}`);
-      return;
-    }
-    if (!content || content.trim().length === 0) {
-      this.sendError('workshop', 'That resource is empty — nothing to pin.', item.path);
-      return;
-    }
-
-    let text = content;
-    let truncation: WorkshopExcerptTruncation | undefined;
-    const totalWords = countWords(content);
-    if (totalWords > PROMPT_BUDGETS.fileExcerpt.words) {
-      const trimmed = trimToWordLimit(content, PROMPT_BUDGETS.fileExcerpt.words);
-      text = trimmed.trimmed;
-      truncation = { pinnedWords: trimmed.trimmedWords, totalWords };
-    }
-
-    if (this.activeRun) {
-      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
+    if (this.rejectExcerptMutationWhileRunning()) {
       return;
     }
     this.replaceExcerpt({
-      text,
+      text: resource.text,
       source: {
         kind: 'file',
-        sourceUri: pathToFileURL(summary.absolutePath).toString(),
+        sourceUri: pathToFileURL(resource.summary.absolutePath).toString(),
         relativePath: item.path,
         configuredResource: item
       },
-      truncation
+      truncation: resource.truncation
+        ? { pinnedWords: resource.truncation.keptWords, totalWords: resource.truncation.totalWords }
+        : undefined,
+      sourceFingerprint: resource.sourceFingerprint
     });
     this.postSessionState();
   }
@@ -1490,7 +1436,7 @@ export class WorkshopHandler {
 
     const requestId = generateRequestId('workshop-wizard');
     const controller = new AbortController();
-    this.wizardRun = { requestId, controller };
+    this.wizardRun = { requestId, excerptVersion: excerpt.version, controller };
     const started: StreamStartedMessage = {
       type: MessageType.STREAM_STARTED,
       source: 'extension.workshop',
@@ -1514,8 +1460,17 @@ export class WorkshopHandler {
         { signal: controller.signal }
       );
       cancelled = controller.signal.aborted;
-      if (!cancelled) {
+      if (
+        !cancelled &&
+        this.wizardRun?.requestId === requestId &&
+        this.wizardRun.excerptVersion === this.session.getExcerpt()?.version
+      ) {
         await this.adoptWizardResult(result.content, result.requestedResources ?? []);
+      } else if (!cancelled) {
+        this.outputChannel.appendLine(
+          `[WorkshopHandler] Context wizard ${requestId} discarded because excerpt v${excerpt.version} is no longer current`
+        );
+        this.sendStatus('Context wizard result was discarded because the excerpt changed.');
       }
     } catch (error) {
       cancelled = controller.signal.aborted;
@@ -1524,7 +1479,9 @@ export class WorkshopHandler {
         this.sendError('workshop', 'The Context wizard failed.', details);
       }
     } finally {
-      this.wizardRun = undefined;
+      if (this.wizardRun?.requestId === requestId) {
+        this.wizardRun = undefined;
+      }
       const complete: StreamCompleteMessage = {
         type: MessageType.STREAM_COMPLETE,
         source: 'extension.workshop',
@@ -1543,6 +1500,7 @@ export class WorkshopHandler {
   private async adoptWizardResult(brief: string, requestedResources: string[]): Promise<void> {
     let attached = 0;
     let skipped = 0;
+    let failed = 0;
 
     const briefText = brief.trim();
     if (briefText.length > 0 && !briefText.startsWith(API_KEY_NOT_CONFIGURED_HEADING)) {
@@ -1565,49 +1523,51 @@ export class WorkshopHandler {
     }
 
     if (requestedResources.length > 0) {
-      let provider;
+      let catalog;
       try {
-        provider = await this.resourceProviderFactory.createProvider([...DEFAULT_CONTEXT_GROUPS]);
-      } catch {
-        provider = undefined;
+        catalog = await this.contextResourceService.openCatalog();
+      } catch (error) {
+        this.outputChannel.appendLine(
+          `[WorkshopHandler] Context wizard could not read the configured resource catalog: ${error instanceof Error ? error.message : String(error)}`
+        );
+        failed += requestedResources.length;
       }
-      if (provider) {
-        const summaries = provider.listResources();
+      if (catalog) {
         for (const path of requestedResources) {
-          const summary = summaries.find((resource) => resource.path === path);
+          const summary = catalog.entries().find((resource) => resource.path === path);
           if (!summary) {
             skipped += 1;
             continue;
           }
-          let content: string | undefined;
-          try {
-            content = (await provider.loadResources([summary.path]))[0]?.content;
-          } catch {
-            content = undefined;
+          const loaded = await catalog.load(
+            { group: summary.group, path: summary.path },
+            {
+              maxBytes: PROMPT_BUDGETS.contextAttachments.fileBytes,
+              maxWords: PROMPT_BUDGETS.contextAttachments.words
+            }
+          );
+          if (loaded.kind === 'unreadable') {
+            this.outputChannel.appendLine(
+              `[WorkshopHandler] Context wizard could not read ${summary.path}: ${loaded.details}`
+            );
+            failed += 1;
+            continue;
           }
-          if (!content || content.trim().length === 0) {
+          if (!this.reportConfiguredResourceLoadFailure(loaded, 'attach')) {
             skipped += 1;
             continue;
           }
-          let text = content;
-          let words = countWords(content);
-          let truncation: { keptWords: number; totalWords: number } | undefined;
-          if (words > PROMPT_BUDGETS.contextAttachments.words) {
-            const trimmed = trimToWordLimit(content, PROMPT_BUDGETS.contextAttachments.words);
-            truncation = { keptWords: trimmed.trimmedWords, totalWords: words };
-            text = trimmed.trimmed;
-            words = trimmed.trimmedWords;
-          }
+          const { resource } = loaded;
           const result = this.session.addContextAttachment({
             kind: 'file',
             origin: 'wizard',
             label: baseName(summary.path),
-            content: text,
-            words,
+            content: resource.text,
+            words: resource.words,
             sourceUri: pathToFileURL(summary.absolutePath).toString(),
             relativePath: summary.path,
             configuredResource: { group: summary.group, path: summary.path },
-            truncation
+            truncation: resource.truncation
           });
           if (result.ok) {
             attached += 1;
@@ -1618,18 +1578,18 @@ export class WorkshopHandler {
             skipped += 1;
           }
         }
-      } else {
-        skipped += requestedResources.length;
       }
     }
 
     this.outputChannel.appendLine(
-      `[WorkshopHandler] Wizard finished (${attached} attached, ${skipped} skipped)`
+      `[WorkshopHandler] Wizard finished (${attached} attached, ${skipped} skipped, ${failed} failed)`
     );
     this.sendStatus(
       attached > 0
-        ? `Wizard attached ${attached} item${attached === 1 ? '' : 's'}${skipped > 0 ? ` \u00b7 ${skipped} didn\u2019t fit` : ''} \u2014 yours to keep or remove.`
-        : 'Wizard finished \u2014 nothing new fit the budget.'
+        ? `Wizard attached ${attached} item${attached === 1 ? '' : 's'}${skipped > 0 ? ` \u00b7 ${skipped} didn\u2019t fit` : ''}${failed > 0 ? ` \u00b7 ${failed} couldn\u2019t be loaded` : ''} \u2014 yours to keep or remove.`
+        : failed > 0
+          ? `Wizard finished \u2014 ${failed} requested item${failed === 1 ? '' : 's'} couldn\u2019t be loaded.`
+          : 'Wizard finished \u2014 nothing new fit the budget.'
     );
     this.postSessionState();
   }
@@ -1798,8 +1758,7 @@ export class WorkshopHandler {
   async handlePickExcerptFile(_message: WorkshopPickExcerptFileMessage): Promise<void> {
     // Same source-of-truth guard as handleSetExcerpt — a picker dialog takes
     // long enough that "wasn't running when I clicked" proves nothing.
-    if (this.activeRun) {
-      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
+    if (this.rejectExcerptMutationWhileRunning()) {
       return;
     }
 
@@ -1813,8 +1772,7 @@ export class WorkshopHandler {
     }
 
     // The dialog was open for arbitrarily long; re-check the guard.
-    if (this.activeRun) {
-      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
+    if (this.rejectExcerptMutationWhileRunning()) {
       return;
     }
 
@@ -1830,15 +1788,15 @@ export class WorkshopHandler {
       relativePath: displayPath
     });
 
-    if (this.activeRun) {
-      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
+    if (this.rejectExcerptMutationWhileRunning()) {
       return;
     }
 
     this.replaceExcerpt({
       text: loaded.text,
       source,
-      truncation: loaded.truncation
+      truncation: loaded.truncation,
+      sourceFingerprint: loaded.sourceFingerprint
     });
     this.postSessionState();
   }
@@ -1849,8 +1807,7 @@ export class WorkshopHandler {
    * no version bump, no divider, no retired sidecars.
    */
   async handleRereadExcerpt(_message: WorkshopRereadExcerptMessage): Promise<void> {
-    if (this.activeRun) {
-      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
+    if (this.rejectExcerptMutationWhileRunning()) {
       return;
     }
 
@@ -1864,7 +1821,10 @@ export class WorkshopHandler {
     let fsPath: string;
     try {
       fsPath = fileURLToPath(source.sourceUri);
-    } catch {
+    } catch (error) {
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Excerpt source URI could not be converted to a file path: ${error instanceof Error ? error.message : String(error)}`
+      );
       this.sendError('workshop', 'The excerpt’s source location is no longer readable.', source.relativePath);
       return;
     }
@@ -1874,12 +1834,15 @@ export class WorkshopHandler {
       return;
     }
 
-    if (this.activeRun) {
-      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
+    if (this.rejectExcerptMutationWhileRunning()) {
       return;
     }
 
-    if (loaded.text === excerpt.text) {
+    const unchanged = excerpt.sourceFingerprint !== undefined
+      ? loaded.sourceFingerprint === excerpt.sourceFingerprint
+      : loaded.text === excerpt.text &&
+        loaded.truncation?.totalWords === excerpt.truncation?.totalWords;
+    if (unchanged) {
       this.outputChannel.appendLine(
         `[WorkshopHandler] Excerpt re-read: unchanged on disk (${source.relativePath})`
       );
@@ -1890,12 +1853,16 @@ export class WorkshopHandler {
     // Re-derive the canonical key on every re-read so configuration changes
     // since the original pin are honored in the revision's provenance.
     const resolvedSource = await this.withConfiguredResource(source);
-    if (this.activeRun) {
-      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
+    if (this.rejectExcerptMutationWhileRunning()) {
       return;
     }
 
-    this.replaceExcerpt({ text: loaded.text, source: resolvedSource, truncation: loaded.truncation });
+    this.replaceExcerpt({
+      text: loaded.text,
+      source: resolvedSource,
+      truncation: loaded.truncation,
+      sourceFingerprint: loaded.sourceFingerprint
+    });
     this.postSessionState();
   }
 
@@ -1907,7 +1874,7 @@ export class WorkshopHandler {
   private async loadExcerptFromDisk(
     fsPath: string,
     displayPath: string
-  ): Promise<{ text: string; truncation?: WorkshopExcerptTruncation } | undefined> {
+  ): Promise<{ text: string; truncation?: WorkshopExcerptTruncation; sourceFingerprint: string } | undefined> {
     try {
       const stat = await this.fileSystem.stat(fsPath);
       if (stat.type !== FileType.File) {
@@ -1965,11 +1932,12 @@ export class WorkshopHandler {
       );
     }
 
-    return { text, truncation };
+    return { text, truncation, sourceFingerprint: createHash('sha256').update(raw).digest('hex') };
   }
 
   async handleResetSession(_message: WorkshopResetSessionMessage): Promise<void> {
     this.preemptActiveRun();
+    this.cancelWizardRun('session reset');
     const discardedConversationIds = this.session.reset();
     this.discardConversations(discardedConversationIds);
     this.outputChannel.appendLine(`[WorkshopHandler] Session reset (${discardedConversationIds.length} conversations discarded)`);
@@ -1988,6 +1956,57 @@ export class WorkshopHandler {
       this.activeRun.controller.abort();
       this.session.abandonRun(this.activeRun.requestId);
       this.activeRun = undefined;
+    }
+  }
+
+  /** Prevent an excerpt mutation from invalidating an active tool or wizard result. */
+  private rejectExcerptMutationWhileRunning(): boolean {
+    if (this.activeRun) {
+      this.sendError('workshop', MID_RUN_EXCERPT_GUARD_MESSAGE);
+      return true;
+    }
+    if (this.wizardRun) {
+      this.sendError('workshop', MID_WIZARD_EXCERPT_GUARD_MESSAGE);
+      return true;
+    }
+    return false;
+  }
+
+  private cancelWizardRun(reason: string): void {
+    if (!this.wizardRun) {
+      return;
+    }
+    this.outputChannel.appendLine(
+      `[WorkshopHandler] Aborting Context wizard ${this.wizardRun.requestId} on ${reason}`
+    );
+    this.wizardRun.controller.abort();
+    this.wizardRun = undefined;
+  }
+
+  private reportConfiguredResourceLoadFailure(
+    result: WorkshopConfiguredResourceLoadResult,
+    action: string,
+    maxBytes = PROMPT_BUDGETS.contextAttachments.fileBytes
+  ): result is Extract<WorkshopConfiguredResourceLoadResult, { kind: 'loaded' }> {
+    switch (result.kind) {
+      case 'loaded':
+        return true;
+      case 'missing':
+        this.sendError('workshop', 'That resource is no longer in the configured catalog.');
+        return false;
+      case 'too-large':
+        this.sendError(
+          'workshop',
+          `That file is too large to ${action} safely (max ${formatBytes(maxBytes)}).`,
+          `${result.summary.path} is ${formatBytes(result.summary.sizeBytes)}`
+        );
+        return false;
+      case 'empty':
+        this.sendError('workshop', `That resource is empty — nothing to ${action}.`, result.summary.path);
+        return false;
+      case 'unreadable':
+        this.sendError('workshop', `Could not read the selected resource to ${action}.`, `${result.summary.path}: ${result.details}`);
+        return false;
     }
   }
 
@@ -2031,13 +2050,15 @@ export class WorkshopHandler {
     let fsPath: string;
     try {
       fsPath = path.normalize(fileURLToPath(source.sourceUri));
-    } catch {
+    } catch (error) {
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Excerpt-source resolution skipped — URI unreadable: ${error instanceof Error ? error.message : String(error)}`
+      );
       return unstamped;
     }
     let summaries;
     try {
-      const provider = await this.resourceProviderFactory.createProvider([...DEFAULT_CONTEXT_GROUPS]);
-      summaries = provider.listResources();
+      summaries = (await this.contextResourceService.openCatalog()).entries();
     } catch (error) {
       this.outputChannel.appendLine(
         `[WorkshopHandler] Excerpt-source resolution skipped — catalog unreadable: ${error instanceof Error ? error.message : String(error)}`
@@ -2072,6 +2093,7 @@ export class WorkshopHandler {
     text: string;
     source: WorkshopExcerptSource;
     truncation?: WorkshopExcerptTruncation;
+    sourceFingerprint?: string;
   }): void {
     const replacement = this.session.replaceExcerpt(input);
     this.discardConversations(replacement.disposedConversationIds);
@@ -2134,27 +2156,31 @@ export class WorkshopHandler {
 
   private activeContextBudget(): LabeledContextBudgetSnapshot {
     const target = this.session.getChatTarget();
-    if (target.kind === 'tool') {
-      return {
-        label: `${workshopToolLabel(target.toolId)} context`,
-        snapshot: this.assistantToolService.getConversationContextBudget(
-          this.session.getToolSidecarConversationId(target.toolId)
-        )
-      };
-    }
-    if (target.kind === 'personaGuest') {
-      return {
-        label: `${workshopPersonaLabel(target.personaId)} context`,
-        snapshot: this.assistantToolService.getConversationContextBudget(
-          this.session.getPersonaGuestConversationId(target.personaId)
-        )
-      };
-    }
+    const { label, conversationId } = target.kind === 'tool'
+      ? {
+          label: `${workshopToolLabel(target.toolId)} context`,
+          conversationId: this.session.getToolSidecarConversationId(target.toolId)
+        }
+      : target.kind === 'personaGuest'
+        ? {
+            label: `${workshopPersonaLabel(target.personaId)} context`,
+            conversationId: this.session.getPersonaGuestConversationId(target.personaId)
+          }
+        : {
+            label: `${workshopPersonaLabel(this.session.getSelectedPersonaId())} context`,
+            conversationId: this.session.getHostConversationId()
+          };
+    // The Phase 7 manifest: writer-declared rows first, then this
+    // conversation's agent-fetched deliveries in delivery order. Both sides
+    // are display-safe; the conversation id never leaves this method.
+    const sources = [
+      ...this.session.collectWriterSources(target),
+      ...this.assistantToolService.getConversationContextSources(conversationId)
+    ];
     return {
-      label: `${workshopPersonaLabel(this.session.getSelectedPersonaId())} context`,
-      snapshot: this.assistantToolService.getConversationContextBudget(
-        this.session.getHostConversationId()
-      )
+      label,
+      snapshot: this.assistantToolService.getConversationContextBudget(conversationId),
+      sources: sources.length > 0 ? sources : undefined
     };
   }
 

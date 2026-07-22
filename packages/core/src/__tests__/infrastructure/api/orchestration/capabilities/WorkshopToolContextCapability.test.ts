@@ -170,4 +170,24 @@ describe('WorkshopToolContextCapability (Sprint 12 Phase 6)', () => {
     expect(fulfillment.deliveredItems).toEqual(['project:chapters/ch-04.md']);
     expect(fulfillment.evidence).toContain('unavailable: guide:craft/dialogue.md');
   });
+
+  it('contributes manifest rows per delivered item — canonical keys for project files (Phase 7)', async () => {
+    const adapter = build({ source: { group: 'chapters', path: 'chapters/ch-04.md' }, includeGuides: true });
+    await adapter.appendContract('Analyze.');
+
+    const fulfillment = await adapter.fulfill({
+      operation: 'resource.read',
+      paths: ['project:chapters/ch-04.md', 'guide:craft/dialogue.md']
+    });
+
+    expect(fulfillment.deliveredSources).toEqual([
+      {
+        kind: 'resource',
+        label: 'chapters/ch-04.md',
+        configuredResource: { group: 'chapters', path: 'chapters/ch-04.md' },
+        sizeChars: 'Content of chapters/ch-04.md'.length
+      },
+      { kind: 'resource', label: 'Dialogue', sizeChars: 'Guide body'.length }
+    ]);
+  });
 });

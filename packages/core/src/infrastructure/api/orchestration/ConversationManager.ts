@@ -5,7 +5,7 @@
 
 import { LogSink } from '@/platform';
 import { OpenRouterMessage } from '@providers/OpenRouterClient';
-import { ContextBudgetSnapshot } from '@shared/types';
+import { ContextBudgetSnapshot, ContextSourceEntry } from '@shared/types';
 
 /**
  * Thrown when a caller references a conversation id this manager no longer
@@ -30,6 +30,12 @@ export interface ConversationContext {
   /** Provider-measured context after the latest atomically committed turn. */
   contextBudget?: ContextBudgetSnapshot;
   /**
+   * Agent-fetched manifest rows committed beside contextBudget (Sprint 12
+   * Phase 7): what this conversation is carrying. Same lifecycle — written
+   * only after an atomic turn commit, cleared with reset/delete.
+   */
+  contextSources?: ContextSourceEntry[];
+  /**
    * Monotonic mint for agent-fetched artifact ids (`art-N`, ADR 2026-07-18).
    * Never reused within a conversation — cancelled turns may skip numbers,
    * which keeps ids stable without densifying them.
@@ -46,6 +52,16 @@ export interface ConversationSystemMessageReplacement {
   conversationId: string;
   systemMessage: string;
 }
+
+/**
+ * Supersede identity for a manifest row: re-delivering the same canonical
+ * resource (or same-kind/same-label item) REPLACES its entry instead of
+ * duplicating it (Sprint 12 Phase 7).
+ */
+const contextSourceKey = (entry: ContextSourceEntry): string =>
+  `${entry.kind}${entry.origin}${entry.configuredResource
+    ? `${entry.configuredResource.group}:${entry.configuredResource.path}`
+    : `label:${entry.label}`}`;
 
 export class ConversationManager {
   private conversations: Map<string, ConversationContext> = new Map();
@@ -151,6 +167,7 @@ export class ConversationManager {
     // Keep only the system message (first message)
     conversation.messages = conversation.messages.slice(0, 1);
     conversation.contextBudget = undefined;
+    conversation.contextSources = undefined;
     conversation.lastActivity = Date.now();
   }
 
@@ -206,6 +223,43 @@ export class ConversationManager {
       conversation.contextBudget = undefined;
       conversation.lastActivity = Date.now();
     }
+  }
+
+  /**
+   * Commit agent-fetched manifest rows for an atomically committed turn
+   * (Sprint 12 Phase 7). Re-delivered canonical resources replace their
+   * prior row. Callers commit only after history commits — a cancelled turn
+   * never reaches this, so the prior manifest survives it.
+   */
+  appendContextSources(conversationId: string, entries: readonly ContextSourceEntry[]): void {
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation) {
+      throw new ConversationNotFoundError(conversationId);
+    }
+    conversation.contextSources ??= [];
+    for (const entry of entries) {
+      const key = contextSourceKey(entry);
+      const existingIndex = conversation.contextSources.findIndex(
+        (existing) => contextSourceKey(existing) === key
+      );
+      const stored = {
+        ...entry,
+        configuredResource: entry.configuredResource ? { ...entry.configuredResource } : undefined
+      };
+      if (existingIndex === -1) {
+        conversation.contextSources.push(stored);
+      } else {
+        conversation.contextSources[existingIndex] = stored;
+      }
+    }
+  }
+
+  getContextSources(conversationId: string | undefined): ContextSourceEntry[] {
+    if (!conversationId) return [];
+    return (this.conversations.get(conversationId)?.contextSources ?? []).map((entry) => ({
+      ...entry,
+      configuredResource: entry.configuredResource ? { ...entry.configuredResource } : undefined
+    }));
   }
 
   /**

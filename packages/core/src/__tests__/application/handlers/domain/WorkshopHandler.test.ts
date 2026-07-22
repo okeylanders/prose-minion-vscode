@@ -3,6 +3,7 @@ import {
   WorkshopHandler
 } from '@/application/handlers/domain/WorkshopHandler';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
@@ -47,6 +48,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   let handler: WorkshopHandler;
   let capabilityFactory: WorkshopPersonaCapabilityFactory;
   let contextBudgets: Map<string, ContextBudgetSnapshot>;
+  let contextSources: Map<string, import('@messages').ContextSourceEntry[]>;
   let resourceFiles: Array<{ group: string; path: string; label: string; sizeBytes: number; absolutePath: string; content: string }>;
   let resourceProviderFactory: { createProvider: jest.Mock };
 
@@ -72,6 +74,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   beforeEach(() => {
     session = new WorkshopSessionService(() => 1);
     contextBudgets = new Map();
+    contextSources = new Map();
     postMessage = jest.fn().mockResolvedValue(undefined);
     log = { appendLine: jest.fn() } as unknown as LogSink;
     service = {
@@ -93,6 +96,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       }),
       getConversationContextBudget: jest.fn((conversationId: string | undefined) =>
         conversationId ? contextBudgets.get(conversationId) : undefined
+      ),
+      getConversationContextSources: jest.fn((conversationId: string | undefined) =>
+        conversationId ? contextSources.get(conversationId) ?? [] : []
       ),
       addStatusListener: jest.fn(() => jest.fn())
     } as unknown as jest.Mocked<AssistantToolService>;
@@ -156,7 +162,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       shell,
       fileSystem,
       workspace,
-      resourceProviderFactory as never,
+      new WorkshopContextResourceService(resourceProviderFactory as never),
       settings,
       log
     );
@@ -1347,6 +1353,22 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         source: { kind: 'file', sourceUri: 'file:///chapter.md', relativePath: 'External file: chapter.md' }
       });
     });
+
+    it('revises a head-sliced excerpt when only content beyond the visible head changed', async () => {
+      const original = Array.from({ length: 10_001 }, (_, index) => `word${index}`).join(' ');
+      const revised = `${Array.from({ length: 10_000 }, (_, index) => `word${index}`).join(' ')} changed-ending`;
+      await seedFileExcerpt(original);
+      const pinnedText = session.getExcerpt()!.text;
+      fileSystem.readFile = jest.fn().mockResolvedValue(new TextEncoder().encode(revised));
+
+      await reread();
+
+      expect(session.getExcerpt()).toMatchObject({
+        version: 2,
+        text: pinnedText,
+        truncation: { pinnedWords: 10_000, totalWords: 10_001 }
+      });
+    });
   });
 
   describe('Context Selector routes (Sprint 12 Phase 4)', () => {
@@ -1422,6 +1444,18 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       expect(session.getContextAttachments()).toHaveLength(1);
     });
 
+    it('rejects an oversized configured resource before loading it', async () => {
+      resourceFiles[0].sizeBytes = PROMPT_BUDGETS.contextAttachments.fileBytes + 1;
+
+      await handler.handleAddContextResources(message(
+        MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES,
+        { items: [{ group: 'characters', path: 'Characters/raven.md' }] }
+      ) as any);
+
+      expect(session.getContextAttachments()).toEqual([]);
+      expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/too large to attach safely/i);
+    });
+
     it('rejects unknown or malformed resource requests without attaching', async () => {
       await handler.handleAddContextResources(message(
         MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES,
@@ -1471,11 +1505,11 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       );
     });
 
-    it('refuses a second run while one is in flight', async () => {
+    it('refuses a second run while one is in flight and reports a failed first run', async () => {
       await pin();
-      let release!: (value: unknown) => void;
+      let reject!: (reason: unknown) => void;
       contextAssistant.generateContext.mockReturnValueOnce(
-        new Promise((resolve) => { release = resolve; })
+        new Promise((_resolve, rejectRun) => { reject = rejectRun; })
       );
 
       const first = runWizard();
@@ -1483,8 +1517,51 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       await runWizard();
       expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/already running/i);
 
-      release({ toolName: 'context_assistant', content: '', timestamp: new Date(0), requestedResources: [] });
+      reject(new Error('wizard provider failed'));
       await first;
+      expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/wizard failed/i);
+    });
+
+    it('cancels a wizard without attaching its eventual result', async () => {
+      await pin();
+      let reject!: (reason: unknown) => void;
+      contextAssistant.generateContext.mockReturnValueOnce(
+        new Promise((_resolve, rejectRun) => { reject = rejectRun; })
+      );
+
+      const run = runWizard();
+      await Promise.resolve();
+      const requestId = posted(MessageType.STREAM_STARTED).at(-1).payload.requestId;
+      await handler.handleCancelRequest(message(MessageType.CANCEL_WORKSHOP_REQUEST, {
+        requestId,
+        domain: 'workshop-context'
+      }) as any);
+      reject(Object.assign(new Error('cancelled'), { name: 'AbortError' }));
+      await run;
+
+      expect(session.getContextAttachments()).toEqual([]);
+      expect(posted(MessageType.STREAM_COMPLETE).at(-1).payload).toMatchObject({
+        requestId,
+        domain: 'workshop-context',
+        cancelled: true
+      });
+    });
+
+    it('aborts a wizard when the session resets', async () => {
+      await pin();
+      let reject!: (reason: unknown) => void;
+      let signal!: AbortSignal;
+      contextAssistant.generateContext.mockImplementationOnce((_input: unknown, options: { signal: AbortSignal }) => {
+        signal = options.signal;
+        return new Promise((_resolve, rejectRun) => { reject = rejectRun; });
+      });
+
+      const run = runWizard();
+      await Promise.resolve();
+      await handler.handleResetSession(message(MessageType.WORKSHOP_RESET_SESSION, {}) as any);
+      expect(signal.aborted).toBe(true);
+      reject(Object.assign(new Error('cancelled'), { name: 'AbortError' }));
+      await run;
     });
 
     it('attaches the brief FIRST so raw files never win the budget race', async () => {
@@ -1525,6 +1602,34 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
       expect(session.getContextAttachments()).toEqual([]);
       expect(posted(MessageType.STATUS).at(-1).payload.message).toMatch(/nothing new fit/i);
+    });
+
+    it('records resource-load failures and tells the writer they were not budget skips', async () => {
+      await pin();
+      contextAssistant.generateContext.mockResolvedValueOnce({
+        toolName: 'context_assistant',
+        content: 'Wizard brief body.',
+        timestamp: new Date(0),
+        requestedResources: ['Characters/raven.md']
+      });
+      resourceProviderFactory.createProvider.mockRejectedValueOnce(new Error('workspace unavailable'));
+
+      await runWizard();
+
+      expect(log.appendLine).toHaveBeenCalledWith(expect.stringMatching(/workspace unavailable/));
+      expect(posted(MessageType.STATUS).at(-1).payload.message).toMatch(/couldn.t be loaded/i);
+    });
+
+    it('rejects an oversized wizard-requested resource before loading it', async () => {
+      await pin();
+      resourceFiles[0].sizeBytes = PROMPT_BUDGETS.contextAttachments.fileBytes + 1;
+
+      await runWizard();
+
+      expect(session.getContextAttachments()).toEqual([
+        expect.objectContaining({ kind: 'text', origin: 'wizard', label: 'Wizard brief\u2026' })
+      ]);
+      expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/too large to attach safely/i);
     });
   });
 
@@ -1639,6 +1744,15 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       expect(pending[0]).not.toHaveProperty('sourceUri');
     });
 
+    it('rejects an oversized configured resource before staging a message attachment', async () => {
+      resourceFiles[0].sizeBytes = PROMPT_BUDGETS.contextAttachments.fileBytes + 1;
+
+      await attachRaven();
+
+      expect(session.getSnapshot().pendingMessageAttachments).toEqual([]);
+      expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/too large to attach safely/i);
+    });
+
     it('ships staged artifacts inside one send, stamps the turn, and clears pending on success', async () => {
       await pin();
       await attachRaven();
@@ -1677,6 +1791,15 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       expect(session.getSnapshot().pendingMessageAttachments).toEqual([
         expect.objectContaining({ id: 'ta-1' })
       ]);
+
+      await handler.handleSendMessage(message(
+        MessageType.WORKSHOP_SEND_MESSAGE,
+        { text: 'Second try.' }
+      ) as any);
+
+      const [retryInput] = service.startWorkshopPersonaConversation.mock.calls[1];
+      expect(retryInput.message).toContain('<thread-artifact id="ta-1">');
+      expect(session.getSnapshot().pendingMessageAttachments).toEqual([]);
     });
 
     it('never lets a deterministic quick action consume staged message attachments', async () => {
@@ -1728,6 +1851,76 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       ) as any);
 
       expect(session.getSnapshot().pendingMessageAttachments).toHaveLength(0);
+    });
+  });
+
+  describe('In-context manifest projection (Phase 7)', () => {
+    it('projects writer rows and fetched rows for the active target without leaking conversation ids', async () => {
+      await pin();
+      await handler.handleAddContextText(message(
+        MessageType.WORKSHOP_ADD_CONTEXT_TEXT,
+        { text: 'Mara cannot read.' }
+      ) as any);
+      contextSources.set('host-conv', [{
+        kind: 'resource',
+        origin: 'host',
+        label: 'Characters/raven.md',
+        configuredResource: { group: 'characters', path: 'Characters/raven.md' },
+        sizeChars: 46,
+        promptTokensDelta: 120,
+        isEstimate: false,
+        deliveredAt: 5
+      }]);
+
+      await handler.handleSendMessage(message(
+        MessageType.WORKSHOP_SEND_MESSAGE,
+        { text: 'What does Raven want?' }
+      ) as any);
+
+      const state = posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload;
+      const sources = state.session.contextBudget?.sources ?? [];
+      expect(sources).toEqual([
+        expect.objectContaining({ kind: 'pin', origin: 'writer', excerptVersion: 1 }),
+        expect.objectContaining({ kind: 'attachment', origin: 'writer', label: expect.stringContaining('Mara') }),
+        expect.objectContaining({
+          kind: 'resource',
+          origin: 'host',
+          label: 'Characters/raven.md',
+          promptTokensDelta: 120,
+          isEstimate: false
+        })
+      ]);
+      // The webview contract never carries conversation ids or absolute paths.
+      const wire = JSON.stringify(state);
+      expect(wire).not.toContain('host-conv');
+      expect(wire).not.toContain('/ws/');
+    });
+
+    it('drops a replaced tool sidecar\u2019s manifest with its conversation', async () => {
+      await pin();
+      await runProse();
+      contextSources.set('tool-conv', [{
+        kind: 'resource', origin: 'tool', label: 'chapters/ch-04.md',
+        sizeChars: 100, isEstimate: true, deliveredAt: 4
+      }]);
+      await handler.handleSetChatTarget(message(
+        MessageType.WORKSHOP_SET_CHAT_TARGET,
+        { kind: 'tool', toolId: 'prose' }
+      ) as any);
+      const withTool = posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload.session.contextBudget;
+      expect(withTool?.sources).toEqual(expect.arrayContaining([
+        expect.objectContaining({ kind: 'resource', origin: 'tool', label: 'chapters/ch-04.md' })
+      ]));
+
+      // Replacement: a new run discards the old conversation and its manifest.
+      service.analyzeProse.mockResolvedValue(analysisResult('second report', { conversationId: 'tool-conv-2' }));
+      await runProse();
+      await handler.handleSetChatTarget(message(
+        MessageType.WORKSHOP_SET_CHAT_TARGET,
+        { kind: 'tool', toolId: 'prose' }
+      ) as any);
+      const replaced = posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload.session.contextBudget;
+      expect(JSON.stringify(replaced?.sources ?? [])).not.toContain('ch-04.md');
     });
   });
 });
