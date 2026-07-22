@@ -375,6 +375,34 @@
           "description": "Durable defaults for Workshop conversation behavior. These explicit choices survive restart; inferred conversation-cue memory remains session-scoped.",
           "order": 50
         },
+        "proseMinion.workshop.writerProfile": {
+          "type": "object",
+          "default": {
+            "enabled": false,
+            "preferredAddress": "",
+            "bio": ""
+          },
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Share this profile with Workshop personas. Empty profiles remain inactive."
+            },
+            "preferredAddress": {
+              "type": "string",
+              "maxLength": 80,
+              "description": "How Workshop personas should address you."
+            },
+            "bio": {
+              "type": "string",
+              "maxLength": 1000,
+              "description": "Short writer-authored context for Workshop personas. Stored globally; do not include sensitive information."
+            }
+          },
+          "required": ["enabled", "preferredAddress", "bio"],
+          "additionalProperties": false,
+          "description": "Optional global writer profile shared only with Workshop personas. It is not session memory and is not copied into project data.",
+          "order": 51
+        },
         "proseMinion.publishingStandards.preset": {
           "type": "string",
           "default": "none",

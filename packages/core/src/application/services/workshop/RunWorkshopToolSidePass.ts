@@ -3,6 +3,7 @@
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
+import { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
 import {
   buildWorkshopContextAttachmentsFrame,
   buildWorkshopDirectHandoff,
@@ -64,7 +65,8 @@ export class RunWorkshopToolSidePass {
     private readonly analysisSidePass: WorkshopAnalysisSidePass,
     private readonly session: WorkshopSessionService,
     private readonly capabilityFactory: WorkshopPersonaCapabilityFactory,
-    private readonly outputChannel: LogSink
+    private readonly outputChannel: LogSink,
+    private readonly writerProfileService: WorkshopWriterProfileService
   ) {}
 
   async run(
@@ -223,6 +225,7 @@ export class RunWorkshopToolSidePass {
             excerpt,
             message: hostMessage,
             behavior: behaviorMetadata.behavior!,
+            writerProfile: this.writerProfileService.getProfile(),
             messageIsTrustedEnvelope: true,
             ...behaviorFrames,
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(

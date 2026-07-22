@@ -1,8 +1,9 @@
 import { WorkshopConversationBehaviorService } from '@/application/services/workshop/WorkshopConversationBehaviorService';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import type { LogSink, SettingsStore } from '@/platform';
-import type { WorkshopConversationBehavior } from '@messages';
+import { DEFAULT_WORKSHOP_WRITER_PROFILE, type WorkshopConversationBehavior } from '@messages';
 
 const balanced: WorkshopConversationBehavior = {
   interactionMode: 'balanced',
@@ -38,13 +39,14 @@ describe('WorkshopConversationBehaviorService', () => {
       update: jest.fn().mockResolvedValue(undefined)
     } as unknown as jest.Mocked<SettingsStore>;
     assistant = {
-      replaceWorkshopConversationBehavior: jest.fn().mockResolvedValue(undefined)
+      replaceWorkshopConversationSettings: jest.fn().mockResolvedValue(undefined)
     } as unknown as jest.Mocked<AssistantToolService>;
     service = new WorkshopConversationBehaviorService(
       session,
       assistant,
       settings,
-      { appendLine: jest.fn() } as unknown as LogSink
+      { appendLine: jest.fn() } as unknown as LogSink,
+      new WorkshopWriterProfileService(settings)
     );
   });
 
@@ -59,12 +61,13 @@ describe('WorkshopConversationBehaviorService', () => {
       deferred: false
     });
 
-    expect(assistant.replaceWorkshopConversationBehavior).toHaveBeenCalledWith(
+    expect(assistant.replaceWorkshopConversationSettings).toHaveBeenCalledWith(
       [
         { conversationId: 'host-conv', personaId: 'jill', role: 'host' },
         { conversationId: 'guest-conv', personaId: 'margot', role: 'guest' }
       ],
-      analysis
+      analysis,
+      DEFAULT_WORKSHOP_WRITER_PROFILE
     );
     expect(session.getConversationBehavior()).toEqual(analysis);
     expect(settings.update).not.toHaveBeenCalled();
@@ -76,7 +79,7 @@ describe('WorkshopConversationBehaviorService', () => {
     session.completeRun('host-open', 'Ready.', undefined, false, 'host-conv');
 
     let releaseFirst!: () => void;
-    assistant.replaceWorkshopConversationBehavior.mockImplementationOnce(
+    assistant.replaceWorkshopConversationSettings.mockImplementationOnce(
       () => new Promise<void>((resolve) => {
         releaseFirst = resolve;
       })
@@ -90,19 +93,21 @@ describe('WorkshopConversationBehaviorService', () => {
 
     await Promise.all([first, second]);
     expect(session.getConversationBehavior()).toEqual(conversational);
-    expect(assistant.replaceWorkshopConversationBehavior).toHaveBeenNthCalledWith(
+    expect(assistant.replaceWorkshopConversationSettings).toHaveBeenNthCalledWith(
       1,
       [{ conversationId: 'host-conv', personaId: 'jill', role: 'host' }],
-      analysis
+      analysis,
+      DEFAULT_WORKSHOP_WRITER_PROFILE
     );
-    expect(assistant.replaceWorkshopConversationBehavior).toHaveBeenNthCalledWith(
+    expect(assistant.replaceWorkshopConversationSettings).toHaveBeenNthCalledWith(
       2,
       [{ conversationId: 'host-conv', personaId: 'jill', role: 'host' }],
-      conversational
+      conversational,
+      DEFAULT_WORKSHOP_WRITER_PROFILE
     );
 
     await service.syncFromSettings();
-    expect(assistant.replaceWorkshopConversationBehavior).toHaveBeenCalledTimes(2);
+    expect(assistant.replaceWorkshopConversationSettings).toHaveBeenCalledTimes(2);
   });
 
   it('defers an external setting during a run and applies the latest value after settlement', async () => {
@@ -127,10 +132,10 @@ describe('WorkshopConversationBehaviorService', () => {
   it('keeps an applied modal choice live while reporting a persistence failure', async () => {
     settings.update.mockRejectedValueOnce(new Error('disk full'));
 
-    await expect(service.applyFromWebview(analysis)).resolves.toEqual({
+    await expect(service.applyFromWebview(analysis, DEFAULT_WORKSHOP_WRITER_PROFILE)).resolves.toEqual({
       changed: true,
       deferred: false,
-      persistenceError: 'disk full'
+      persistenceError: 'behavior: disk full'
     });
     expect(session.getConversationBehavior()).toEqual(analysis);
   });
@@ -144,14 +149,15 @@ describe('WorkshopConversationBehaviorService', () => {
       relationalDepth: 'reflective'
     };
 
-    await expect(service.applyFromWebview(reflective)).resolves.toEqual({
+    await expect(service.applyFromWebview(reflective, DEFAULT_WORKSHOP_WRITER_PROFILE)).resolves.toEqual({
       changed: true,
       deferred: false
     });
 
-    expect(assistant.replaceWorkshopConversationBehavior).toHaveBeenCalledWith(
+    expect(assistant.replaceWorkshopConversationSettings).toHaveBeenCalledWith(
       [{ conversationId: 'host-conv', personaId: 'jill', role: 'host' }],
-      reflective
+      reflective,
+      DEFAULT_WORKSHOP_WRITER_PROFILE
     );
   });
 
@@ -161,12 +167,43 @@ describe('WorkshopConversationBehaviorService', () => {
       carryCuesThroughSession: false
     };
 
-    await expect(service.applyFromWebview(withoutCarry)).resolves.toEqual({
+    await expect(service.applyFromWebview(withoutCarry, DEFAULT_WORKSHOP_WRITER_PROFILE)).resolves.toEqual({
       changed: true,
       deferred: false
     });
 
-    expect(assistant.replaceWorkshopConversationBehavior).not.toHaveBeenCalled();
+    expect(assistant.replaceWorkshopConversationSettings).not.toHaveBeenCalled();
     expect(session.getConversationBehavior()).toEqual(withoutCarry);
+  });
+
+  it('replaces persona prompts once and persists separately when only the profile changes', async () => {
+    session.setExcerpt({ text: 'Excerpt', source: { kind: 'manual' } });
+    session.beginPersonaMessage('host-open', 'Start.');
+    session.completeRun('host-open', 'Ready.', undefined, false, 'host-conv');
+    const profile = {
+      enabled: true,
+      preferredAddress: 'Okey',
+      bio: 'I write fiction.'
+    };
+
+    await expect(service.applyFromWebview(balanced, profile)).resolves.toEqual({
+      changed: true,
+      deferred: false
+    });
+
+    expect(assistant.replaceWorkshopConversationSettings).toHaveBeenCalledWith(
+      [{ conversationId: 'host-conv', personaId: 'jill', role: 'host' }],
+      balanced,
+      profile
+    );
+    expect(settings.update).toHaveBeenCalledTimes(1);
+    expect(settings.update).toHaveBeenCalledWith(
+      'proseMinion',
+      'workshop.writerProfile',
+      profile
+    );
+    expect(service.getWriterProfile()).toEqual(profile);
+    expect(JSON.stringify(session.getSnapshot())).not.toContain('Okey');
+    expect(JSON.stringify(session.getSnapshot())).not.toContain('I write fiction.');
   });
 });

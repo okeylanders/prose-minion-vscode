@@ -40,6 +40,8 @@ interface WorkshopComposerProps {
   sessionReady: boolean;
   /** COMMITTED room behavior (host truth) — the mode chip renders this. */
   conversationBehavior: WorkshopConversationBehavior;
+  /** True when the current global profile contributes persona prompt context. */
+  writerProfileShared: boolean;
   /** Staged one-shot attachments for the NEXT message (host truth). */
   messageAttachments: WorkshopMessageAttachmentSnapshot[];
   onSend: (text: string) => void;
@@ -74,6 +76,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   isRunning,
   sessionReady,
   conversationBehavior,
+  writerProfileShared,
   messageAttachments,
   onSend,
   onCancel,
@@ -240,11 +243,12 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
             className="pm-ws-comp-pill pm-ws-mode-chip"
             type="button"
             disabled={!sessionReady}
-            title={`Conversation settings: ${WORKSHOP_INTERACTION_MODE_LABELS[conversationBehavior.interactionMode]}, ${conversationBehavior.expressionLevel}, ${WORKSHOP_RELATIONAL_DEPTH_LABELS[conversationBehavior.relationalDepth]}`}
-            aria-label={`Conversation settings: ${WORKSHOP_INTERACTION_MODE_LABELS[conversationBehavior.interactionMode]}, ${conversationBehavior.expressionLevel}, ${WORKSHOP_RELATIONAL_DEPTH_LABELS[conversationBehavior.relationalDepth]}`}
+            title={`Conversation settings: ${WORKSHOP_INTERACTION_MODE_LABELS[conversationBehavior.interactionMode]}, ${conversationBehavior.expressionLevel}, ${WORKSHOP_RELATIONAL_DEPTH_LABELS[conversationBehavior.relationalDepth]}, profile ${writerProfileShared ? 'shared' : 'not shared'}`}
+            aria-label={`Conversation settings: ${WORKSHOP_INTERACTION_MODE_LABELS[conversationBehavior.interactionMode]}, ${conversationBehavior.expressionLevel}, ${WORKSHOP_RELATIONAL_DEPTH_LABELS[conversationBehavior.relationalDepth]}, profile ${writerProfileShared ? 'shared' : 'not shared'}`}
             onClick={onOpenConversationSettings}
           >
             <ModeChipDiamond />
+            {writerProfileShared && <span className="pm-ws-mode-chip-profile-dot" aria-hidden="true" />}
             <span className="pm-ws-mode-chip-label">
               {WORKSHOP_INTERACTION_MODE_LABELS[conversationBehavior.interactionMode]}
             </span>

@@ -130,7 +130,7 @@ import {
   WorkshopDismissGuestMessage,
   WorkshopSelectPersonaMessage,
   WorkshopSetChatTargetMessage,
-  WorkshopSetConversationBehaviorMessage,
+  WorkshopSetConversationSettingsMessage,
   WorkshopSetExcerptMessage,
   WorkshopAddContextTextMessage,
   WorkshopAddContextFileMessage,
@@ -202,7 +202,7 @@ export type WebviewToExtensionMessage =
   | WorkshopDismissGuestMessage
   | WorkshopSelectPersonaMessage
   | WorkshopSetChatTargetMessage
-  | WorkshopSetConversationBehaviorMessage
+  | WorkshopSetConversationSettingsMessage
   | WorkshopSetExcerptMessage
   | WorkshopAddContextTextMessage
   | WorkshopAddContextFileMessage

@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-07-22
 **Source**: Writer follow-up to Workshop Relational Depth
-**Status**: Planned — product direction accepted; implementation not scheduled
+**Status**: Implemented — automated validation complete; awaiting merge
 **Priority**: High
 **Estimated Effort**: Medium
 **Related ADR**: [Workshop Persona Interaction Modes and Expression Profiles](../../../docs/adr/2026-07-20-workshop-persona-interaction-modes-and-expression-profiles.md#16-accepted-amendment-workshop-writer-profile-2026-07-22)
@@ -232,13 +232,37 @@ Reflective with multiple personas. Check that:
 - Focused tests, full test suite, typecheck, lint, build, prompt packaging, and
   `git diff --check` pass.
 
+## Implementation Notes
+
+- `WorkshopWriterProfileService` owns the current global profile independently
+  of `WorkshopSessionService`; session snapshots and future workspace session
+  serialization therefore have no raw profile field to copy.
+- Conversation Settings submits Behavior and About You together. The existing
+  serialized behavior coordinator validates both drafts and performs at most
+  one guarded retained-system-message replacement batch before committing the
+  live room.
+- VS Code persists the two settings keys independently, so durable writes are
+  best-effort rather than transactionally atomic. A partial persistence failure
+  leaves the already validated live-room commit active and reports the restart
+  risk; the UI does not promise atomic storage.
+- The webview receives the profile beside the session snapshot payload, not
+  inside the session aggregate. The composer exposes only an active/inactive
+  indicator; it never displays profile content.
+- Initial host, host synthesis, and invited-guest prompt assembly append one
+  bounded system-level profile frame. Deterministic tools and tool sidecars do
+  not receive it.
+- The shared delimiter neutralizer reserves `workshop-writer-profile`, and
+  focused tests cover disabled/empty omission, closed validation, all three
+  relational depths, forged frame delimiters, global manifest bounds, modal
+  draft/clear behavior, and one-batch replacement.
+
 ## Related Files
 
 - `docs/adr/2026-07-20-workshop-persona-interaction-modes-and-expression-profiles.md`
 - `apps/vscode-extension/package.json`
 - `apps/vscode-extension/src/platform/vscode/VsCodeSettingsStore.ts`
 - `packages/core/src/shared/types/messages/workshop.ts`
-- `packages/core/src/application/services/workshop/WorkshopWriterProfileService.ts` (planned)
+- `packages/core/src/application/services/workshop/WorkshopWriterProfileService.ts`
 - `packages/core/src/application/services/workshop/WorkshopPromptBuilder.ts`
 - `packages/core/src/application/services/workshop/WorkshopSessionService.ts`
 - `packages/core/src/presentation/webview/components/workshop/WorkshopConversationBehaviorModal.tsx`

@@ -21,6 +21,7 @@ describe('WorkshopComposer', () => {
       isRunning: false,
       sessionReady: true,
       conversationBehavior: { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR },
+      writerProfileShared: false,
       messageAttachments: [] as WorkshopMessageAttachmentSnapshot[],
       onSend: jest.fn(),
       onCancel: jest.fn(),
@@ -81,13 +82,21 @@ describe('WorkshopComposer', () => {
     });
 
     const behavior = screen.getByRole('button', {
-      name: 'Conversation settings: Converse, subtle, Attuned'
+      name: 'Conversation settings: Converse, subtle, Attuned, profile not shared'
     });
     expect(behavior.textContent).toContain('Converse');
     expect(behavior.textContent).toContain('SUBTLE');
     expect(behavior.getAttribute('title')).toContain('Attuned');
     fireEvent.click(behavior);
     expect(onOpenConversationSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('announces and marks an active shared profile without exposing its content', () => {
+    renderComposer({ writerProfileShared: true });
+
+    const settings = screen.getByRole('button', { name: /profile shared$/ });
+    expect(settings.querySelector('.pm-ws-mode-chip-profile-dot')).not.toBeNull();
+    expect(settings.textContent).not.toContain('Okey');
   });
 
   it('offers standing context and message attachment as two explicit menu choices (Phase 6B)', () => {

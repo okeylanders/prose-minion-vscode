@@ -28,6 +28,7 @@ import { MessageType } from '@shared/types';
 import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
 import {
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
+  DEFAULT_WORKSHOP_WRITER_PROFILE,
   ErrorMessage,
   StatusMessage,
   StreamChunkMessage,
@@ -53,7 +54,9 @@ import {
   WorkshopTodoItem,
   WorkshopTurn,
   WorkshopTurnMessage,
-  coerceWorkshopConversationBehavior
+  WorkshopWriterProfile,
+  coerceWorkshopConversationBehavior,
+  coerceWorkshopWriterProfile
 } from '@messages';
 import { LabeledContextBudgetSnapshot } from '@messages';
 
@@ -97,6 +100,8 @@ export interface WorkshopState {
    * until the host round-trips the applied object.
    */
   conversationBehavior: WorkshopConversationBehavior;
+  /** Global profile mirrored beside, never inside, the host session snapshot. */
+  writerProfile: WorkshopWriterProfile;
   /** Public metadata for the latest retained sidecar per tool. */
   toolSidecars: WorkshopToolSidecarSnapshot[];
   /** Explicitly invited persona guests, including disposed history markers. */
@@ -153,7 +158,10 @@ export interface WorkshopActions {
   inviteGuest: (personaId: WorkshopPersonaId, openingMessage: string) => void;
   dismissGuest: (personaId: WorkshopPersonaId) => void;
   setChatTarget: (target: WorkshopChatTarget) => void;
-  setConversationBehavior: (behavior: WorkshopConversationBehavior) => void;
+  setConversationSettings: (
+    behavior: WorkshopConversationBehavior,
+    writerProfile: WorkshopWriterProfile
+  ) => void;
   todoAction: (action: WorkshopTodoAction) => void;
   cancelRun: () => void;
   resetSession: () => void;
@@ -199,6 +207,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const [chatTarget, setChatTargetState] = React.useState<WorkshopChatTarget>({ kind: 'host' });
   const [conversationBehavior, setConversationBehaviorState] =
     React.useState<WorkshopConversationBehavior>({ ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR });
+  const [writerProfile, setWriterProfile] =
+    React.useState<WorkshopWriterProfile>({ ...DEFAULT_WORKSHOP_WRITER_PROFILE });
   const [toolSidecars, setToolSidecars] = React.useState<WorkshopToolSidecarSnapshot[]>([]);
   const [personaGuests, setPersonaGuests] = React.useState<WorkshopPersonaGuestSnapshot[]>([]);
   const [contextBudget, setContextBudget] = React.useState<LabeledContextBudgetSnapshot | undefined>();
@@ -377,10 +387,13 @@ export const useWorkshop = (): UseWorkshopReturn => {
   // shows the committed value only, so while the handler assembles/validates
   // the system-message replacement batch the old mode stays visible. The new
   // object arrives with the next WORKSHOP_SESSION_STATE.
-  const setConversationBehavior = React.useCallback(
-    (behavior: WorkshopConversationBehavior) => {
+  const setConversationSettings = React.useCallback(
+    (behavior: WorkshopConversationBehavior, profile: WorkshopWriterProfile) => {
       setErrorMessage('');
-      post(MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR, { behavior });
+      post(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS, {
+        behavior,
+        writerProfile: profile
+      });
     },
     [post]
   );
@@ -435,6 +448,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
       // Fail-closed hydration (ADR 2026-07-20 §3): an unprovable object
       // degrades to the COMPLETE approved default, never a per-field blend.
       setConversationBehaviorState(coerceWorkshopConversationBehavior(session.conversationBehavior));
+      setWriterProfile(coerceWorkshopWriterProfile(message.payload.writerProfile));
       setToolSidecars(session.participants.toolSidecars);
       setPersonaGuests(session.participants.personaGuests);
       setContextBudget(session.contextBudget);
@@ -581,6 +595,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     selectedPersonaId,
     chatTarget,
     conversationBehavior,
+    writerProfile,
     toolSidecars,
     personaGuests,
     contextBudget,
@@ -628,7 +643,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     inviteGuest,
     dismissGuest,
     setChatTarget,
-    setConversationBehavior,
+    setConversationSettings,
     todoAction,
     cancelRun,
     resetSession,

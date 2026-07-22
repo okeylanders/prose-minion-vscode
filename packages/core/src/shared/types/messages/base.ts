@@ -113,7 +113,7 @@ export enum MessageType {
   WORKSHOP_DISMISS_GUEST = 'workshop_dismiss_guest',
   WORKSHOP_SELECT_PERSONA = 'workshop_select_persona',
   WORKSHOP_SET_CHAT_TARGET = 'workshop_set_chat_target',
-  WORKSHOP_SET_CONVERSATION_BEHAVIOR = 'workshop_set_conversation_behavior',
+  WORKSHOP_SET_CONVERSATION_SETTINGS = 'workshop_set_conversation_settings',
   WORKSHOP_SET_EXCERPT = 'workshop_set_excerpt',
   WORKSHOP_ADD_CONTEXT_TEXT = 'workshop_add_context_text',
   WORKSHOP_ADD_CONTEXT_FILE = 'workshop_add_context_file',

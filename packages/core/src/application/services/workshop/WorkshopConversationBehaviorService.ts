@@ -1,11 +1,14 @@
 import { LogSink, SettingsStore } from '@/platform';
 import { WorkshopSessionService } from './WorkshopSessionService';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
+import { WorkshopWriterProfileService } from './WorkshopWriterProfileService';
 import {
   coerceWorkshopConversationBehavior,
+  coerceWorkshopWriterProfile,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
   WorkshopConversationBehavior,
-  WorkshopPersonaId
+  WorkshopPersonaId,
+  WorkshopWriterProfile
 } from '@messages';
 
 export interface WorkshopConversationBehaviorUpdate {
@@ -14,11 +17,19 @@ export interface WorkshopConversationBehaviorUpdate {
   persistenceError?: string;
 }
 
+interface WorkshopConversationSettingsApplyResult extends WorkshopConversationBehaviorUpdate {
+  behaviorChanged: boolean;
+  profileChanged: boolean;
+}
+
 /**
- * Composition-root-owned coordinator for the room's durable behavior setting.
+ * Composition-root-owned coordinator for the Conversation Settings surface.
+ * Behavior remains session-owned while the injected profile service owns the
+ * separate global Writer Profile; this class gives their live prompt effects
+ * one serialized, guarded commit boundary.
  *
  * Both webview surfaces own a MessageHandler and therefore observe the same VS
- * Code configuration event. Serializing here keeps those duplicate callbacks
+ * Code configuration events. Serializing here keeps those duplicate callbacks
  * idempotent, prevents rapid external edits from committing out of order, and
  * preserves the between-run system-message replacement invariant.
  */
@@ -30,32 +41,49 @@ export class WorkshopConversationBehaviorService {
     private readonly session: WorkshopSessionService,
     private readonly assistantToolService: AssistantToolService,
     private readonly settings: SettingsStore,
-    private readonly outputChannel: LogSink
+    private readonly outputChannel: LogSink,
+    private readonly writerProfileService: WorkshopWriterProfileService
   ) {}
 
-  /** Apply a validated webview submission and persist the complete object. */
-  applyFromWebview(raw: unknown): Promise<WorkshopConversationBehaviorUpdate> {
-    const next = coerceWorkshopConversationBehavior(raw);
+  /** Apply and persist the modal's complete Behavior + About You submission. */
+  applyFromWebview(
+    rawBehavior: unknown,
+    rawWriterProfile: unknown
+  ): Promise<WorkshopConversationBehaviorUpdate> {
+    const nextBehavior = coerceWorkshopConversationBehavior(rawBehavior);
+    const nextProfile = coerceWorkshopWriterProfile(rawWriterProfile);
     return this.serialize(async () => {
       this.assertBetweenRuns();
-      const result = await this.apply(next);
+      const result = await this.apply(nextBehavior, nextProfile);
       this.externalSyncPending = false;
       if (!result.changed) {
-        return result;
+        return this.publicResult(result);
       }
-      try {
-        await this.settings.update(
-          WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.section,
-          WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.key,
-          next
-        );
-        return result;
-      } catch (error) {
-        return {
-          ...result,
-          persistenceError: error instanceof Error ? error.message : String(error)
-        };
+
+      const persistenceErrors: string[] = [];
+      if (result.behaviorChanged) {
+        try {
+          await this.settings.update(
+            WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.section,
+            WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.key,
+            nextBehavior
+          );
+        } catch (error) {
+          persistenceErrors.push(`behavior: ${this.errorMessage(error)}`);
+        }
       }
+      if (result.profileChanged) {
+        try {
+          await this.writerProfileService.persist(nextProfile);
+        } catch (error) {
+          persistenceErrors.push(`writer profile: ${this.errorMessage(error)}`);
+        }
+      }
+      return this.publicResult(
+        persistenceErrors.length > 0
+          ? { ...result, persistenceError: persistenceErrors.join('; ') }
+          : result
+      );
     });
   }
 
@@ -73,9 +101,12 @@ export class WorkshopConversationBehaviorService {
         );
         return { changed: false, deferred: true };
       }
-      const result = await this.apply(this.readSetting());
+      const result = await this.apply(
+        this.readBehaviorSetting(),
+        this.writerProfileService.readSetting()
+      );
       this.externalSyncPending = false;
-      return result;
+      return this.publicResult(result);
     });
   }
 
@@ -88,38 +119,58 @@ export class WorkshopConversationBehaviorService {
       if (this.hasActiveRun()) {
         return { changed: false, deferred: true };
       }
-      const result = await this.apply(this.readSetting());
+      const result = await this.apply(
+        this.readBehaviorSetting(),
+        this.writerProfileService.readSetting()
+      );
       this.externalSyncPending = false;
-      return result;
+      return this.publicResult(result);
     });
   }
 
   private async apply(
-    next: WorkshopConversationBehavior
-  ): Promise<WorkshopConversationBehaviorUpdate> {
-    const previous = this.session.getConversationBehavior();
-    if (this.equals(previous, next)) {
-      return { changed: false, deferred: false };
+    nextBehavior: WorkshopConversationBehavior,
+    nextProfile: WorkshopWriterProfile
+  ): Promise<WorkshopConversationSettingsApplyResult> {
+    const previousBehavior = this.session.getConversationBehavior();
+    const previousProfile = this.writerProfileService.getProfile();
+    const behaviorChanged = !this.behaviorEquals(previousBehavior, nextBehavior);
+    const profileChanged = !this.profileEquals(previousProfile, nextProfile);
+    if (!behaviorChanged && !profileChanged) {
+      return {
+        changed: false,
+        deferred: false,
+        behaviorChanged: false,
+        profileChanged: false
+      };
     }
 
     if (
-      previous.interactionMode !== next.interactionMode
-      || previous.expressionLevel !== next.expressionLevel
-      || previous.relationalDepth !== next.relationalDepth
+      profileChanged
+      || previousBehavior.interactionMode !== nextBehavior.interactionMode
+      || previousBehavior.expressionLevel !== nextBehavior.expressionLevel
+      || previousBehavior.relationalDepth !== nextBehavior.relationalDepth
     ) {
-      await this.assistantToolService.replaceWorkshopConversationBehavior(
+      await this.assistantToolService.replaceWorkshopConversationSettings(
         this.replacementTargets(),
-        next
+        nextBehavior,
+        nextProfile
       );
     }
 
-    this.session.setConversationBehavior(next);
+    this.session.setConversationBehavior(nextBehavior);
+    this.writerProfileService.commit(nextProfile);
     this.outputChannel.appendLine(
-      `[WorkshopConversationBehaviorService] Conversation behavior committed ` +
-      `(mode=${next.interactionMode}, expression=${next.expressionLevel}, ` +
-      `relationalDepth=${next.relationalDepth}, carry=${next.carryCuesThroughSession})`
+      `[WorkshopConversationBehaviorService] Conversation settings committed ` +
+      `(mode=${nextBehavior.interactionMode}, expression=${nextBehavior.expressionLevel}, ` +
+      `relationalDepth=${nextBehavior.relationalDepth}, carry=${nextBehavior.carryCuesThroughSession}, ` +
+      `profileEnabled=${nextProfile.enabled}, profileHasContent=${nextProfile.preferredAddress.length > 0 || nextProfile.bio.length > 0})`
     );
-    return { changed: true, deferred: false };
+    return { changed: true, deferred: false, behaviorChanged, profileChanged };
+  }
+
+  getWriterProfile(): WorkshopWriterProfile {
+    return this.writerProfileService.getProfile();
   }
 
   private replacementTargets(): Array<{
@@ -149,7 +200,7 @@ export class WorkshopConversationBehaviorService {
     return targets;
   }
 
-  private readSetting(): WorkshopConversationBehavior {
+  private readBehaviorSetting(): WorkshopConversationBehavior {
     return coerceWorkshopConversationBehavior(
       this.settings.get<unknown>(
         WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.section,
@@ -168,7 +219,7 @@ export class WorkshopConversationBehaviorService {
     return this.session.getSnapshot().activeRequestId !== undefined;
   }
 
-  private equals(
+  private behaviorEquals(
     left: WorkshopConversationBehavior,
     right: WorkshopConversationBehavior
   ): boolean {
@@ -176,6 +227,26 @@ export class WorkshopConversationBehaviorService {
       && left.expressionLevel === right.expressionLevel
       && left.relationalDepth === right.relationalDepth
       && left.carryCuesThroughSession === right.carryCuesThroughSession;
+  }
+
+  private profileEquals(left: WorkshopWriterProfile, right: WorkshopWriterProfile): boolean {
+    return left.enabled === right.enabled
+      && left.preferredAddress === right.preferredAddress
+      && left.bio === right.bio;
+  }
+
+  private errorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+  }
+
+  private publicResult(
+    result: WorkshopConversationSettingsApplyResult
+  ): WorkshopConversationBehaviorUpdate {
+    return {
+      changed: result.changed,
+      deferred: result.deferred,
+      ...(result.persistenceError ? { persistenceError: result.persistenceError } : {})
+    };
   }
 
   private serialize<T>(operation: () => Promise<T>): Promise<T> {

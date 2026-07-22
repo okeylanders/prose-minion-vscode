@@ -35,6 +35,7 @@ import {
   WorkshopToolId,
   WorkshopPersonaId,
   WorkshopTurn,
+  isWorkshopWriterProfileActive,
   workshopExcerptSourcePath
 } from '@messages';
 import { ModelSelector } from './components/shared/ModelSelector';
@@ -753,6 +754,7 @@ export const WorkshopApp: React.FC = () => {
               isRunning={workshop.isRunning}
               sessionReady={workshop.sessionReady}
               conversationBehavior={workshop.conversationBehavior}
+              writerProfileShared={isWorkshopWriterProfileActive(workshop.writerProfile)}
               messageAttachments={workshop.pendingMessageAttachments}
               onSend={workshop.sendMessage}
               onCancel={workshop.cancelRun}
@@ -780,9 +782,10 @@ export const WorkshopApp: React.FC = () => {
       <WorkshopConversationBehaviorModal
         open={behaviorModalOpen}
         behavior={workshop.conversationBehavior}
+        writerProfile={workshop.writerProfile}
         isRunning={workshop.isRunning}
         errorMessage={workshop.errorMessage}
-        onApply={workshop.setConversationBehavior}
+        onApply={workshop.setConversationSettings}
         onClose={closeBehaviorModal}
       />
         <WorkshopContextSelectorModal

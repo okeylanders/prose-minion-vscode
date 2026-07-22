@@ -93,6 +93,68 @@ export const WORKSHOP_CONVERSATION_BEHAVIOR_SETTING = Object.freeze({
   key: 'workshop.conversationBehavior'
 });
 
+/** Writer-authored global context shared only with Workshop personas. */
+export interface WorkshopWriterProfile {
+  enabled: boolean;
+  preferredAddress: string;
+  bio: string;
+}
+
+export const DEFAULT_WORKSHOP_WRITER_PROFILE: Readonly<WorkshopWriterProfile> = Object.freeze({
+  enabled: false,
+  preferredAddress: '',
+  bio: ''
+});
+
+export const WORKSHOP_WRITER_PROFILE_LIMITS = Object.freeze({
+  preferredAddress: 80,
+  bio: 1_000
+});
+
+export const WORKSHOP_WRITER_PROFILE_SETTING = Object.freeze({
+  section: 'proseMinion',
+  key: 'workshop.writerProfile'
+});
+
+/**
+ * Validate the complete profile and normalize its outer whitespace. Partial,
+ * overlong, unknown-key, or mistyped objects fail closed to disabled/empty.
+ */
+export function coerceWorkshopWriterProfile(raw: unknown): WorkshopWriterProfile {
+  if (typeof raw !== 'object' || raw === null) {
+    return { ...DEFAULT_WORKSHOP_WRITER_PROFILE };
+  }
+  const allowedKeys = new Set(['enabled', 'preferredAddress', 'bio']);
+  if (Object.keys(raw).some((key) => !allowedKeys.has(key))) {
+    return { ...DEFAULT_WORKSHOP_WRITER_PROFILE };
+  }
+  const candidate = raw as {
+    enabled?: unknown;
+    preferredAddress?: unknown;
+    bio?: unknown;
+  };
+  if (
+    typeof candidate.enabled !== 'boolean'
+    || typeof candidate.preferredAddress !== 'string'
+    || typeof candidate.bio !== 'string'
+  ) {
+    return { ...DEFAULT_WORKSHOP_WRITER_PROFILE };
+  }
+  const preferredAddress = candidate.preferredAddress.trim();
+  const bio = candidate.bio.trim();
+  if (
+    preferredAddress.length > WORKSHOP_WRITER_PROFILE_LIMITS.preferredAddress
+    || bio.length > WORKSHOP_WRITER_PROFILE_LIMITS.bio
+  ) {
+    return { ...DEFAULT_WORKSHOP_WRITER_PROFILE };
+  }
+  return { enabled: candidate.enabled, preferredAddress, bio };
+}
+
+export function isWorkshopWriterProfileActive(profile: WorkshopWriterProfile): boolean {
+  return profile.enabled && (profile.preferredAddress.length > 0 || profile.bio.length > 0);
+}
+
 /** Code-owned deterministic UI labels — never model-generated. */
 export const WORKSHOP_INTERACTION_MODE_LABELS: Readonly<Record<WorkshopInteractionMode, string>> =
   Object.freeze({
@@ -713,18 +775,18 @@ export interface WorkshopSetChatTargetMessage extends MessageEnvelope<WorkshopCh
 }
 
 /**
- * Atomic submission of the Conversation behavior modal's complete draft
- * (ADR 2026-07-20 §3). The handler validates the whole object, rejects it
- * during an active response, and commits it only after any required
- * system-message replacement batch succeeds.
+ * One submission of the Conversation Settings modal's complete draft. The
+ * profile remains a separate persisted object, but both values enter the live
+ * room only after the single guarded system-message replacement batch succeeds.
  */
-export interface WorkshopSetConversationBehaviorPayload {
+export interface WorkshopSetConversationSettingsPayload {
   behavior: WorkshopConversationBehavior;
+  writerProfile: WorkshopWriterProfile;
 }
 
-export interface WorkshopSetConversationBehaviorMessage
-  extends MessageEnvelope<WorkshopSetConversationBehaviorPayload> {
-  type: MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR;
+export interface WorkshopSetConversationSettingsMessage
+  extends MessageEnvelope<WorkshopSetConversationSettingsPayload> {
+  type: MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS;
 }
 
 export interface WorkshopSetExcerptPayload {
@@ -942,12 +1004,14 @@ export interface WorkshopTurnMessage extends MessageEnvelope<WorkshopTurnPayload
 
 export interface WorkshopSessionStatePayload {
   session: WorkshopSessionSnapshot;
+  /** Global writer setting, deliberately outside the serializable session aggregate. */
+  writerProfile: WorkshopWriterProfile;
 }
 
 /**
- * Full session snapshot. Posted in reply to WORKSHOP_REQUEST_SESSION and after
- * host-side mutations (set-excerpt, reset, completed run) so the webview can
- * always reconcile to the aggregate instead of accumulating drift.
+ * Full session snapshot plus the current global profile beside it. Posted in
+ * reply to WORKSHOP_REQUEST_SESSION and after host-side mutations so the
+ * webview can reconcile without ever making profile data part of the session.
  */
 export interface WorkshopSessionStateMessage extends MessageEnvelope<WorkshopSessionStatePayload> {
   type: MessageType.WORKSHOP_SESSION_STATE;

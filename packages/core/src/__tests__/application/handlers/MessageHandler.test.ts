@@ -158,7 +158,12 @@ function createTestAssembly(): TestAssembly {
     workshopConversationBehaviorService: {
       applyFromWebview: jest.fn().mockResolvedValue({ changed: false, deferred: false }),
       syncFromSettings: jest.fn().mockResolvedValue({ changed: false, deferred: false }),
-      flushDeferredSettingsSync: jest.fn().mockResolvedValue({ changed: false, deferred: false })
+      flushDeferredSettingsSync: jest.fn().mockResolvedValue({ changed: false, deferred: false }),
+      getWriterProfile: jest.fn().mockReturnValue({
+        enabled: false,
+        preferredAddress: '',
+        bio: ''
+      })
     }
   } as unknown as CoreServices;
 
@@ -419,12 +424,15 @@ describe('MessageHandler assembly', () => {
     );
   });
 
-  it('pulls external Workshop conversation-behavior settings into the live room', async () => {
+  it.each([
+    'proseMinion.workshop.conversationBehavior',
+    'proseMinion.workshop.writerProfile'
+  ])('pulls external Workshop setting %s into the live room', async (changedKey) => {
     const assembly = createTestAssembly();
     const handler = createHandler(assembly, jest.fn().mockResolvedValue(undefined));
 
     handler.handleConfigurationChange(
-      section => section === 'proseMinion.workshop.conversationBehavior'
+      section => section === changedKey
     );
     await flushQueuedWork();
 

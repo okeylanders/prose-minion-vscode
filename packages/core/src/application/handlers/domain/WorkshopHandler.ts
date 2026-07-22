@@ -111,7 +111,7 @@ import {
   WorkshopRunContextWizardMessage,
   WorkshopConfiguredResourceRef,
   WorkshopSetExcerptMessage,
-  WorkshopSetConversationBehaviorMessage,
+  WorkshopSetConversationSettingsMessage,
   WorkshopTodoActionMessage,
   WorkshopSessionStateMessage,
   WorkshopToolId,
@@ -232,8 +232,8 @@ export class WorkshopHandler {
     router.register(MessageType.WORKSHOP_SELECT_PERSONA, this.handleSelectPersona.bind(this));
     router.register(MessageType.WORKSHOP_SET_CHAT_TARGET, this.handleSetChatTarget.bind(this));
     router.register(
-      MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR,
-      this.handleSetConversationBehavior.bind(this)
+      MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS,
+      this.handleSetConversationSettings.bind(this)
     );
     router.register(MessageType.WORKSHOP_SET_EXCERPT, this.handleSetExcerpt.bind(this));
     router.register(MessageType.WORKSHOP_ADD_CONTEXT_TEXT, this.handleAddContextText.bind(this));
@@ -343,8 +343,8 @@ export class WorkshopHandler {
     });
   }
 
-  async handleSetConversationBehavior(
-    message: WorkshopSetConversationBehaviorMessage
+  async handleSetConversationSettings(
+    message: WorkshopSetConversationSettingsMessage
   ): Promise<void> {
     if (this.activeRun) {
       this.sendError(
@@ -357,15 +357,16 @@ export class WorkshopHandler {
 
     try {
       const result = await this.conversationBehaviorService.applyFromWebview(
-        message.payload?.behavior
+        message.payload?.behavior,
+        message.payload?.writerProfile
       );
       if (result.persistenceError) {
         this.outputChannel.appendLine(
-          `[WorkshopHandler] Conversation behavior is active but could not be persisted: ${result.persistenceError}`
+          `[WorkshopHandler] Conversation settings are active but could not be persisted: ${result.persistenceError}`
         );
         this.sendError(
           'workshop',
-          'Conversation behavior changed for this session, but VS Code could not save it for restart.',
+          'Conversation settings changed for this session, but VS Code could not save them for restart.',
           result.persistenceError
         );
       }
@@ -373,11 +374,11 @@ export class WorkshopHandler {
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(
-        `[WorkshopHandler] Conversation behavior change rejected; prior behavior retained: ${details}`
+        `[WorkshopHandler] Conversation settings change rejected; prior settings retained: ${details}`
       );
       this.sendError(
         'workshop',
-        'Could not change conversation behavior. The previous settings are still active.',
+        'Could not change conversation settings. The previous settings are still active.',
         details
       );
       this.postSessionState();
@@ -505,7 +506,8 @@ export class WorkshopHandler {
         const result = await this.assistantToolService.startWorkshopGuestConversation({
           personaId,
           message: join.message,
-          behavior: userTurn.behavior!
+          behavior: userTurn.behavior!,
+          writerProfile: this.conversationBehaviorService.getWriterProfile()
         }, {
           signal: controller.signal,
           onToken: (token: string) => this.sendStreamChunk(requestId, token)
@@ -841,6 +843,7 @@ export class WorkshopHandler {
             excerpt,
             message: modelMessage,
             behavior: userTurn.behavior!,
+            writerProfile: this.conversationBehaviorService.getWriterProfile(),
             messageIsTrustedEnvelope: true,
             ...personaBehaviorFrames,
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
@@ -2142,7 +2145,10 @@ export class WorkshopHandler {
     const message: WorkshopSessionStateMessage = {
       type: MessageType.WORKSHOP_SESSION_STATE,
       source: 'extension.workshop',
-      payload: { session },
+      payload: {
+        session,
+        writerProfile: this.conversationBehaviorService.getWriterProfile()
+      },
       timestamp: Date.now()
     };
     void this.postMessage(message);
