@@ -154,7 +154,12 @@ function createTestAssembly(): TestAssembly {
     workshopPersonaCapabilityFactory: {
       create: jest.fn(() => ({ catalog: 'workshopPersona' }))
     } as unknown as WorkshopPersonaCapabilityFactory,
-    workshopToolSidePass: { run: jest.fn() } as unknown as RunWorkshopToolSidePass
+    workshopToolSidePass: { run: jest.fn() } as unknown as RunWorkshopToolSidePass,
+    workshopConversationBehaviorService: {
+      applyFromWebview: jest.fn().mockResolvedValue({ changed: false, deferred: false }),
+      syncFromSettings: jest.fn().mockResolvedValue({ changed: false, deferred: false }),
+      flushDeferredSettingsSync: jest.fn().mockResolvedValue({ changed: false, deferred: false })
+    }
   } as unknown as CoreServices;
 
   return {
@@ -412,6 +417,20 @@ describe('MessageHandler assembly', () => {
     expect(assembly.log.appendLine).toHaveBeenCalledWith(
       '[MessageHandler] Model selections hot-swapped; retained conversations preserved'
     );
+  });
+
+  it('pulls external Workshop conversation-behavior settings into the live room', async () => {
+    const assembly = createTestAssembly();
+    const handler = createHandler(assembly, jest.fn().mockResolvedValue(undefined));
+
+    handler.handleConfigurationChange(
+      section => section === 'proseMinion.workshop.conversationBehavior'
+    );
+    await flushQueuedWork();
+
+    expect(
+      assembly.services.workshopConversationBehaviorService.syncFromSettings
+    ).toHaveBeenCalledTimes(1);
   });
 
   it('posts a transient API-key warning clear after successful key-backed self-heal', async () => {

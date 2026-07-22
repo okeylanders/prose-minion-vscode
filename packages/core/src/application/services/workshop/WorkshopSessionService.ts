@@ -1567,7 +1567,13 @@ function cloneTurn(turn: WorkshopTurn): WorkshopTurn {
   return {
     ...turn,
     behavior: turn.behavior ? { ...turn.behavior } : undefined,
-    behaviorTransition: turn.behaviorTransition ? { ...turn.behaviorTransition } : undefined,
+    behaviorTransition: turn.behaviorTransition
+      ? {
+          ...turn.behaviorTransition,
+          from: { ...turn.behaviorTransition.from },
+          to: { ...turn.behaviorTransition.to }
+        }
+      : undefined,
     usage: turn.usage ? { ...turn.usage } : undefined,
     capability: turn.capability ? cloneCapabilityDetails(turn.capability) : undefined,
     actionableFindings: turn.actionableFindings

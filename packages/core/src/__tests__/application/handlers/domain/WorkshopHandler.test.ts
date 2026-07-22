@@ -4,6 +4,7 @@ import {
 } from '@/application/handlers/domain/WorkshopHandler';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
+import { WorkshopConversationBehaviorService } from '@/application/services/workshop/WorkshopConversationBehaviorService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
@@ -163,7 +164,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       fileSystem,
       workspace,
       new WorkshopContextResourceService(resourceProviderFactory as never),
-      settings,
+      new WorkshopConversationBehaviorService(session, service, settings, log),
       log
     );
   });

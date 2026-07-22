@@ -1,6 +1,7 @@
 import { WorkshopHandler } from '@/application/handlers/domain/WorkshopHandler';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
+import { WorkshopConversationBehaviorService } from '@/application/services/workshop/WorkshopConversationBehaviorService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
@@ -68,6 +69,7 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
     const capabilityFactory = {
       create: jest.fn(() => ({ catalog: 'workshopPersona' }))
     } as unknown as WorkshopPersonaCapabilityFactory;
+    const settings = createFakeSettings();
     const handler = new WorkshopHandler(
       assistantService,
       { generateContext: jest.fn() } as never,
@@ -87,7 +89,7 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
       new WorkshopContextResourceService({
         createProvider: jest.fn(async () => ({ listResources: () => [], loadResources: async () => [] }))
       } as never),
-      createFakeSettings(),
+      new WorkshopConversationBehaviorService(session, assistantService, settings, output),
       output
     );
     await handler.handleSetExcerpt({

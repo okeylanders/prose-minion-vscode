@@ -17,6 +17,7 @@ import type { WorkshopSessionService } from '@/application/services/workshop/Wor
 import type { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import type { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import type { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
+import type { WorkshopConversationBehaviorService } from '@/application/services/workshop/WorkshopConversationBehaviorService';
 import type { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import type { ProseStatsService } from '@services/measurement/ProseStatsService';
@@ -97,4 +98,6 @@ export interface CoreServices {
   workshopToolSidePass: RunWorkshopToolSidePass;
   /** Configured-resource intake for Workshop's context selector flows (Sprint 12). */
   workshopContextResourceService: WorkshopContextResourceService;
+  /** Serialized live/persisted conversation-behavior coordination across webview surfaces. */
+  workshopConversationBehaviorService: WorkshopConversationBehaviorService;
 }

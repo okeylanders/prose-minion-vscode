@@ -149,6 +149,12 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
         reason: 'writer-selected'
       }
     });
+    writerTurn.behaviorTransition!.from.interactionMode = 'analysis';
+    const storedTransition = service.getSnapshot().turns.at(-1)!.behaviorTransition!;
+    expect(storedTransition.from.interactionMode).toBe('balanced');
+    storedTransition.to.interactionMode = 'analysis';
+    expect(service.getSnapshot().turns.at(-1)!.behaviorTransition!.to.interactionMode)
+      .toBe('conversational');
     const reply = service.completeRun('host-next', 'Yes.')!;
     expect(reply.behavior).toMatchObject({ interactionMode: 'conversational' });
 

@@ -19,7 +19,7 @@
  * in-flight one, reset aborts, and zombie completions are refused + logged.
  */
 
-import { FileSystem, FileType, LogSink, SettingsStore, ShellService, Workspace } from '@/platform';
+import { FileSystem, FileType, LogSink, ShellService, Workspace } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 import {
@@ -32,6 +32,7 @@ import {
   WorkshopConfiguredResourceLoadResult,
   WorkshopContextResourceService
 } from '@/application/services/workshop/WorkshopContextResourceService';
+import { WorkshopConversationBehaviorService } from '@/application/services/workshop/WorkshopConversationBehaviorService';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import {
   buildWorkshopContextAttachmentsFrame,
@@ -119,8 +120,6 @@ import {
   LabeledContextBudgetSnapshot,
   WorkshopTurn,
   WorkshopTurnMessage,
-  coerceWorkshopConversationBehavior,
-  WORKSHOP_CONVERSATION_BEHAVIOR_SETTING
 } from '@messages';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
@@ -206,7 +205,7 @@ export class WorkshopHandler {
     private readonly fileSystem: FileSystem,
     private readonly workspace: Workspace,
     private readonly contextResourceService: WorkshopContextResourceService,
-    private readonly settings: SettingsStore,
+    private readonly conversationBehaviorService: WorkshopConversationBehaviorService,
     private readonly outputChannel: LogSink
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
@@ -356,68 +355,18 @@ export class WorkshopHandler {
       return;
     }
 
-    const previous = this.session.getConversationBehavior();
-    const next = coerceWorkshopConversationBehavior(message.payload?.behavior);
-    const changed = previous.interactionMode !== next.interactionMode
-      || previous.expressionLevel !== next.expressionLevel
-      || previous.reactToCurrentMessage !== next.reactToCurrentMessage
-      || previous.carryCuesThroughSession !== next.carryCuesThroughSession;
-    if (!changed) {
-      this.postSessionState();
-      return;
-    }
-
     try {
-      if (
-        previous.interactionMode !== next.interactionMode
-        || previous.expressionLevel !== next.expressionLevel
-      ) {
-        const targets: Array<{
-          conversationId: string;
-          personaId: WorkshopPersonaId;
-          role: 'host' | 'guest';
-        }> = [];
-        const hostConversationId = this.session.getHostConversationId();
-        if (hostConversationId) {
-          targets.push({
-            conversationId: hostConversationId,
-            personaId: this.session.getSelectedPersonaId(),
-            role: 'host'
-          });
-        }
-        for (const guest of this.session.getSnapshot().participants.personaGuests) {
-          const conversationId = this.session.getPersonaGuestConversationId(guest.personaId);
-          if (guest.liveness === 'live' && conversationId) {
-            targets.push({ conversationId, personaId: guest.personaId, role: 'guest' });
-          }
-        }
-        await this.assistantToolService.replaceWorkshopConversationBehavior(
-          targets,
-          next
-        );
-      }
-
-      this.session.setConversationBehavior(next);
-      this.outputChannel.appendLine(
-        `[WorkshopHandler] Conversation behavior committed ` +
-        `(mode=${next.interactionMode}, expression=${next.expressionLevel}, ` +
-        `react=${next.reactToCurrentMessage}, carry=${next.carryCuesThroughSession})`
+      const result = await this.conversationBehaviorService.applyFromWebview(
+        message.payload?.behavior
       );
-      try {
-        await this.settings.update(
-          WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.section,
-          WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.key,
-          next
-        );
-      } catch (error) {
-        const details = error instanceof Error ? error.message : String(error);
+      if (result.persistenceError) {
         this.outputChannel.appendLine(
-          `[WorkshopHandler] Conversation behavior is active but could not be persisted: ${details}`
+          `[WorkshopHandler] Conversation behavior is active but could not be persisted: ${result.persistenceError}`
         );
         this.sendError(
           'workshop',
           'Conversation behavior changed for this session, but VS Code could not save it for restart.',
-          details
+          result.persistenceError
         );
       }
       this.postSessionState();
@@ -432,6 +381,26 @@ export class WorkshopHandler {
         details
       );
       this.postSessionState();
+    }
+  }
+
+  /** Pull an external VS Code Settings/settings.json edit into the live room. */
+  async syncConversationBehaviorFromSettings(): Promise<void> {
+    try {
+      const result = await this.conversationBehaviorService.syncFromSettings();
+      if (!result.deferred) {
+        this.postSessionState();
+      }
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] External conversation behavior sync failed: ${details}`
+      );
+      this.sendError(
+        'workshop',
+        'Could not apply the conversation behavior changed in VS Code Settings.',
+        details
+      );
     }
   }
 
@@ -1940,11 +1909,13 @@ export class WorkshopHandler {
     this.cancelWizardRun('session reset');
     const discardedConversationIds = this.session.reset();
     this.discardConversations(discardedConversationIds);
+    await this.flushDeferredConversationBehavior();
     this.outputChannel.appendLine(`[WorkshopHandler] Session reset (${discardedConversationIds.length} conversations discarded)`);
     this.postSessionState();
   }
 
   async handleRequestSession(_message: WorkshopRequestSessionMessage): Promise<void> {
+    await this.flushDeferredConversationBehavior();
     this.postSessionState();
   }
 
@@ -2019,6 +1990,29 @@ export class WorkshopHandler {
     // "Streaming…" status mid-stream.
     if (!this.activeRun) {
       this.sendStatus('');
+      void this.flushDeferredConversationBehavior().then((changed) => {
+        if (changed) {
+          this.postSessionState();
+        }
+      });
+    }
+  }
+
+  private async flushDeferredConversationBehavior(): Promise<boolean> {
+    try {
+      const result = await this.conversationBehaviorService.flushDeferredSettingsSync();
+      return result.changed;
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Deferred conversation behavior sync failed: ${details}`
+      );
+      this.sendError(
+        'workshop',
+        'Could not apply the deferred conversation behavior from VS Code Settings.',
+        details
+      );
+      return false;
     }
   }
 

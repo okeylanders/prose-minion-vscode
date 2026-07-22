@@ -40,6 +40,7 @@ export { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWork
 export { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 export { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 export { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
+export { WorkshopConversationBehaviorService } from '@/application/services/workshop/WorkshopConversationBehaviorService';
 
 // --- Infrastructure: secrets ---
 export { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';

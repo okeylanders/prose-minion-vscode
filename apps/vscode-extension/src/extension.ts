@@ -40,6 +40,7 @@ import {
   WorkshopAnalysisSidePass,
   WorkshopPersonaCapabilityFactory,
   WorkshopContextResourceService,
+  WorkshopConversationBehaviorService,
   CoreServices,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
   coerceWorkshopConversationBehavior,
@@ -200,6 +201,12 @@ export function activate(context: vscode.ExtensionContext): void {
     outputChannel
   );
   const workshopContextResourceService = new WorkshopContextResourceService(contextResourceResolver);
+  const workshopConversationBehaviorService = new WorkshopConversationBehaviorService(
+    workshopSessionService,
+    assistantToolService,
+    platform.settings,
+    outputChannel
+  );
 
   const coreServices: CoreServices = {
     assistantToolService,
@@ -218,7 +225,8 @@ export function activate(context: vscode.ExtensionContext): void {
     workshopSessionService,
     workshopPersonaCapabilityFactory,
     workshopToolSidePass,
-    workshopContextResourceService
+    workshopContextResourceService,
+    workshopConversationBehaviorService
   };
 
   // Migrate API key from settings to SecretStorage if needed

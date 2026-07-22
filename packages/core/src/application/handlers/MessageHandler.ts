@@ -20,7 +20,8 @@ import {
   ExtensionToWebviewMessage,
   TokenUsageUpdateMessage,
   TokenUsageTotals,
-  WorkshopSessionStateMessage
+  WorkshopSessionStateMessage,
+  WORKSHOP_CONVERSATION_BEHAVIOR_SETTING
 } from '@messages';
 import {
   CoreServices,
@@ -171,7 +172,8 @@ export class MessageHandler {
       workshopSessionService,
       workshopPersonaCapabilityFactory,
       workshopToolSidePass,
-      workshopContextResourceService
+      workshopContextResourceService,
+      workshopConversationBehaviorService
     } = services;
 
     // Token tracking: centralized in AgentRunEngine. Listener-based so
@@ -299,7 +301,7 @@ export class MessageHandler {
       this.platform.fileSystem,
       this.platform.workspace,
       workshopContextResourceService,
-      this.platform.settings,
+      workshopConversationBehaviorService,
       outputChannel
     );
     // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)
@@ -582,6 +584,12 @@ export class MessageHandler {
     // Log all proseMinion config changes for debugging
     if (affects('proseMinion')) {
       this.outputChannel.appendLine('[ConfigWatcher] Config change detected');
+    }
+
+    const workshopBehaviorKey = `${WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.section}.` +
+      WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.key;
+    if (affects(workshopBehaviorKey)) {
+      void this.workshopHandler.syncConversationBehaviorFromSettings();
     }
 
     // Only refresh service if model configs changed
