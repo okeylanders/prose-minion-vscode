@@ -640,21 +640,22 @@ describe('Workshop conversation behavior frames', () => {
   const fullBehavior = {
     interactionMode: 'balanced' as const,
     expressionLevel: 'full' as const,
-    reactToCurrentMessage: true,
+    relationalDepth: 'attuned' as const,
     carryCuesThroughSession: true
   };
 
   it('emits mode activation at every expression level and adds the Amplified floor only when selected', () => {
     const fullFrame = buildWorkshopBehaviorActivationFrame(fullBehavior);
-    expect(fullFrame).toContain('<workshop-behavior-activation mode="balanced" expression="full">');
+    expect(fullFrame).toContain('<workshop-behavior-activation mode="balanced" expression="full" relational-depth="attuned">');
     expect(fullFrame).toContain('workshop exchange, not a comprehensive report');
+    expect(fullFrame).toContain('Use high emotional intelligence');
     expect(fullFrame).not.toContain('zero signature is under-expression');
 
     const frame = buildWorkshopBehaviorActivationFrame({
       ...fullBehavior,
       expressionLevel: 'amplified'
     });
-    expect(frame).toContain('<workshop-behavior-activation mode="balanced" expression="amplified">');
+    expect(frame).toContain('<workshop-behavior-activation mode="balanced" expression="amplified" relational-depth="attuned">');
     expect(frame).toContain('at least one authored signature move');
     expect(frame).toContain('two different signature families, not two seed phrases');
     expect(frame).toContain('No seed is mandatory, but zero signature is under-expression');
@@ -680,8 +681,16 @@ describe('Workshop conversation behavior frames', () => {
     const interactionFrame = buildWorkshopInteractionFrame(amplified);
     const activationFrame = buildWorkshopBehaviorActivationFrame(amplified);
     const transitionFrame = buildWorkshopInteractionTransitionFrame({
-      from: { interactionMode: 'analysis', expressionLevel: 'full' },
-      to: { interactionMode: 'balanced', expressionLevel: 'amplified' },
+      from: {
+        interactionMode: 'analysis',
+        expressionLevel: 'full',
+        relationalDepth: 'reserved'
+      },
+      to: {
+        interactionMode: 'balanced',
+        expressionLevel: 'amplified',
+        relationalDepth: 'reflective'
+      },
       reason: 'writer-selected'
     });
 
@@ -692,9 +701,27 @@ describe('Workshop conversation behavior frames', () => {
     });
     expect(message).toContain('from-mode="analysis"');
     expect(message).toContain('to-expression="amplified"');
+    expect(message).toContain('from-relational-depth="reserved"');
+    expect(message).toContain('to-relational-depth="reflective"');
     expect(message).toContain('<workshop-behavior-activation');
     expect(message.indexOf('<workshop-behavior-activation'))
       .toBeLessThan(message.indexOf('WRITER MESSAGE:'));
+  });
+
+  it('restates distinct Reserved and Reflective permission at the last mile', () => {
+    const reserved = buildWorkshopBehaviorActivationFrame({
+      ...fullBehavior,
+      relationalDepth: 'reserved'
+    });
+    const reflective = buildWorkshopBehaviorActivationFrame({
+      ...fullBehavior,
+      relationalDepth: 'reflective'
+    });
+
+    expect(reserved).toContain('Do not volunteer interpretations');
+    expect(reserved).not.toContain('life experience the writer explicitly supplied');
+    expect(reflective).toContain('life experience the writer explicitly supplied');
+    expect(reflective).toContain('invite confirmation or rejection');
   });
 
   it('places the expression floor after host evidence and immediately before the writer message', () => {

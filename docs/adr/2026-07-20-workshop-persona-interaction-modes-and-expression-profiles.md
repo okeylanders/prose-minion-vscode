@@ -3,10 +3,10 @@
 - **Status:** Accepted — the core behavior controls and guarded between-run
   system-message replacement landed 2026-07-20; conditional expression
   assembly and the full-roster Amplified calibration set were accepted
-  2026-07-20; the Relational Depth product amendment was accepted 2026-07-22
-  with implementation pending; the Writer Profile amendment was accepted
-  2026-07-22 with implementation pending; qualitative evaluation remains in
-  progress
+  2026-07-20; the Relational Depth amendment was implemented and automatically
+  validated on its feature branch 2026-07-22, with live qualitative scoring
+  pending; the Writer Profile amendment was accepted 2026-07-22 with
+  implementation pending; broader qualitative evaluation remains in progress
 - **Date:** 2026-07-20
 - **Deciders:** Okey Landers, Ada Forge
 - **Related:**
@@ -70,10 +70,9 @@ conditions that awaken it, and the person's way of regulating or repairing it.
 
 ## Decision summary
 
-Section 15's accepted Relational Depth amendment supersedes the binary
-current-turn reactivity layer in the target design. The diagram below reflects
-that target; the binary `reactToCurrentMessage` field remains the implemented
-baseline until the linked feature lands.
+Section 15's accepted Relational Depth amendment supersedes the original binary
+current-turn reactivity layer. The diagram below reflects the implemented
+feature-branch contract.
 
 Workshop persona behavior will be designed as a layered control stack:
 
@@ -134,7 +133,7 @@ There will not be 36 persona-mode prompt files.
    tests and repeatable qualitative evaluation.
 7. Preserve writer ownership, project factual honesty, capability limits,
    session boundaries, and task-extraction contracts in every mode.
-8. Let the writer control persona-expression strength and adaptation without
+8. Let the writer control persona-expression strength and relational depth without
    weakening the immutable persona identity contract.
 9. Give any retained attunement state an explicit lifetime, inspection path,
    and deletion path rather than treating model reasoning as storage.
@@ -142,9 +141,9 @@ There will not be 36 persona-mode prompt files.
     stronger expression-level separation if evaluation shows a quality gain.
 11. Give the selected interaction mode system-prompt priority while preserving
     trusted historical frames that explain mode changes across a retained chat.
-12. Restate mode and expression together beside each writer message so neither
-    long evidence nor persona-specific resources can make one control mute the
-    other.
+12. Restate mode, expression, and relational depth together beside each writer
+    message so neither long evidence nor persona-specific resources can make a
+    control mute the others.
 
 ## Non-goals
 
@@ -267,7 +266,8 @@ The mode supplies a default posture, not a content firewall.
 
 ## 2. System-prompt behavior changes replace retained system messages between runs
 
-The selected interaction mode and expression-resource set belong at
+The selected interaction mode, expression-resource set, and relational-depth
+resource belong at
 system-prompt priority because they are foundational response contracts, not
 merely turn-level tone hints. This decision qualifies the earlier
 persona-hosted conversation invariant that treated a retained conversation's
@@ -307,7 +307,7 @@ Every persona-targeted writer turn carries a small extension-authored frame:
 <workshop-interaction
   mode="balanced"
   expression="full"
-  react-to-current-message="true"
+  relational-depth="attuned"
   carry-cues-through-session="true"
 />
 ```
@@ -320,7 +320,8 @@ They explain why an earlier persona reply may use a different response style
 even though that earlier mode resource is no longer present in the current
 system prompt.
 
-When the writer changes mode or expression, add a trusted transition frame
+When the writer changes mode, expression, or relational depth, add a trusted
+transition frame
 before the next persona-directed writer message:
 
 ```xml
@@ -329,6 +330,8 @@ before the next persona-directed writer message:
   to-mode="conversational"
   from-expression="full"
   to-expression="amplified"
+  from-relational-depth="reserved"
+  to-relational-depth="reflective"
   reason="writer-selected"
 />
 ```
@@ -340,15 +343,17 @@ active behavior frame remains present on the same turn and is authoritative
 for that turn.
 
 If the writer changes behavior more than once before sending another persona
-turn, coalesce the pending transition from the mode and expression that governed
-the last committed persona reply to the final selected pair. A selection that
+turn, coalesce the pending transition from the mode, expression, and relational
+depth that governed the last committed persona reply to the final selected
+triple. A selection that
 never governed a model turn does not become fictional transcript history.
 
 A system-prompt behavior change:
 
 - is accepted only between active runs;
 - assembles replacement system prompts containing the newly selected mode and
-  expression resources for the host and every live persona guest;
+  mode, expression, and relational-depth resources for the host and every live
+  persona guest;
 - validates all affected conversation ids and replacement prompts before
   mutation;
 - replaces only the first system message of each affected persona conversation
@@ -416,12 +421,15 @@ activation. The mode line is always present; the Amplified signature floor is
 included only when selected:
 
 ```xml
-<workshop-behavior-activation mode="conversational" expression="amplified">
+<workshop-behavior-activation mode="conversational" expression="amplified" relational-depth="reflective">
 Respond as an actual continuing conversation. Prefer one live reaction or
 pressure point and a real opening for the writer. Do not turn your own
 recommendations into a report or task list unless the writer requests analysis,
 asks to track work, explicitly chooses a revision, or the exchange has already
 settled concrete work.
+You may explore grounded connections among the work, recurring project themes,
+and life experience the writer explicitly supplied. Distinguish observation
+from interpretation and invite confirmation or rejection.
 For Amplified expression, make at least one authored signature move visible in
 every substantive reply; longer replies normally carry two different signature
 families, not two seed phrases. No seed is mandatory, but zero signature is
@@ -429,15 +437,16 @@ under-expression. Protect meaning and the writer's need.
 </workshop-behavior-activation>
 ```
 
-This activation reinforces both system-priority controls over long retained
+This activation reinforces all three system-priority controls over long retained
 threads. It is extension-authored, hidden from the visible transcript, and
 cannot grant authority or override writer intent. It expresses the selected
-response motion plus, at Amplified, probability gradients and a nonzero identity
-floor—never mandatory vocabulary. It rides immediately before the current
+response motion, relational permission, and, at Amplified, probability
+gradients and a nonzero identity floor—never mandatory vocabulary. It rides immediately before the current
 writer message so large excerpts, handoffs, and context artifacts cannot
 separate last-mile behavior from the turn it governs.
 
-Switching mode or expression changes the retained persona system prompt and may
+Switching mode, expression, or relational depth changes the retained persona
+system prompt and may
 invalidate provider prompt-prefix caching. Prefix caching may still reuse the
 unchanged leading resources, and subsequent turns within one behavior remain
 stable. Keeping the same local conversation id does not promise a cache hit
@@ -445,10 +454,8 @@ when its system message changed; preserving honest behavior takes precedence.
 
 ## 3. Session and persistence shape
 
-This section records the implemented behavior-object baseline. Section 15
-defines the accepted target replacement of `reactToCurrentMessage` with
-`relationalDepth`; implementation and settings must continue using the baseline
-shape until that feature lands atomically.
+This section records the implemented behavior-object contract, including
+Section 15's Relational Depth amendment.
 
 The host aggregate owns one transactional behavior object:
 
@@ -458,7 +465,7 @@ export type WorkshopPersonaExpressionLevel = 'subtle' | 'full' | 'amplified';
 export interface WorkshopConversationBehavior {
   interactionMode: WorkshopInteractionMode;
   expressionLevel: WorkshopPersonaExpressionLevel;
-  reactToCurrentMessage: boolean;
+  relationalDepth: WorkshopRelationalDepth;
   carryCuesThroughSession: boolean;
 }
 ```
@@ -469,7 +476,7 @@ Its approved default is:
 const DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR = {
   interactionMode: 'balanced',
   expressionLevel: 'full',
-  reactToCurrentMessage: true,
+  relationalDepth: 'attuned',
   carryCuesThroughSession: true
 } as const;
 ```
@@ -477,7 +484,7 @@ const DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR = {
 The complete writer-selected object is persisted in VS Code Settings under
 `proseMinion.workshop.conversationBehavior`. Activation validates the stored
 object as one closed value and seeds the host aggregate from it, so response
-style, expression level, current-message reactivity, and the session-cue toggle
+style, expression level, relational depth, and the session-cue toggle
 survive extension and editor restarts. A successful modal Apply first completes
 any required retained-prompt replacement and commits the room object, then
 writes that same complete object to settings.
@@ -501,14 +508,15 @@ unknown, or absent data fails safely to the complete approved default at
 IPC/hydration boundaries; the host never constructs a partially defaulted
 combination whose behavior was not designed.
 
-If the validated draft changes `interactionMode` or `expressionLevel`, the
+If the validated draft changes `interactionMode`, `expressionLevel`, or
+`relationalDepth`, the
 application service first assembles and validates the final host/guest
-system-message batch described in Section 2. A combined mode-and-expression
-change is one batch, never two partial replacements. It replaces the messages
-and commits the new behavior object without changing any conversation id. A
-failure leaves the prior object and all system messages active. Changes limited
-to current-turn reactivity or session attunement remain frame-controlled and do
-not replace system messages.
+system-message batch described in Section 2. A combined behavior change is one
+batch, never a sequence of partial replacements. It replaces the messages and
+commits the new behavior object without changing any conversation id. A failure
+leaves the prior object and all system messages active. A change limited to
+session attunement remains frame-controlled and does not replace system
+messages.
 
 The effective behavior is stamped onto persona-directed writer turns and their
 corresponding persona replies. This makes a restored transcript honest when the
@@ -531,49 +539,20 @@ When this feature is scheduled, its persisted shape belongs in the then-current
 Workshop session schema. Do not add a speculative optional field to Sprint 10
 before the implementation is authorized merely to reserve space.
 
-## 4. Reactivity and attunement have separate lifetimes
+## 4. Relational depth and attunement have separate lifetimes
 
-This section records the implemented binary-reactivity baseline. Section 15's
-accepted amendment replaces that binary target with Reserved, Attuned, and
-Reflective Relational Depth while preserving session attunement as a separate
-lifetime control.
+Relational Depth is an explicit, writer-owned permission ceiling. Reserved
+responds to stated feelings and needs without unsolicited interpretation;
+Attuned may tentatively infer immediate affect or interaction need from visible
+cues; Reflective may additionally connect the work to life experience the
+writer explicitly supplied. Section 15 defines the complete epistemic and
+safety contract.
 
-Interaction mode and expression level are explicit. Adaptation has two bounded
-layers that the UI presents together but the runtime does not conflate.
-
-### Current-turn reactivity
-
-When `reactToCurrentMessage` is enabled, a persona may adapt delivery to
-observable conversational cues in the writer's current message, including:
-
-- playful or joking language;
-- curiosity and exploratory uncertainty;
-- excitement about a discovery;
-- frustration with a passage or tool result;
-- discouragement or vulnerability;
-- urgency and a request for brevity;
-- a direct challenge to the persona's prior advice.
-
-The persona does not assign a hidden mood label, diagnose the writer, report a
-confidence score, write mood telemetry, or persist an emotional profile. It
-simply adapts its delivery within the selected mode and its own stable identity.
-Reactivity means responding, not mirroring: it never requires copying the
-writer's slang, hostility, panic, grandiosity, or unsupported certainty.
-
-Examples:
-
-- Analysis plus discouragement remains structured but narrows to the one change
-  with the largest payoff and names what already works.
-- Conversational plus urgency becomes brief and direct rather than playful.
-- Balanced plus writer excitement may become more energetic without inventing
-  praise.
-- A hostile challenge never causes the persona to mirror hostility or abandon
-  evidence.
-
-When current-turn reactivity is disabled, explicit requests such as "keep this
-brief" still govern the answer. The toggle suppresses inferred tonal and
-interaction-style adaptation; it does not authorize the persona to ignore the
-writer's instructions.
+The selected depth governs contextual interpretation in the present exchange.
+It does not itself persist an inferred mood, motive, or preference. Explicit
+requests such as "keep this brief" continue to govern at every level, and no
+level requires mirroring the writer or forcing a personal reading into a craft
+turn.
 
 ### Session attunement
 
@@ -1014,9 +993,8 @@ gain before expanding the calibration set beyond the initial four personas.
 
 ## 11. UI direction
 
-This section records the landed binary-reactivity modal. Section 15 defines the
-accepted target UI in which Relational Depth replaces `React to this message`;
-the two controls must not coexist in the implemented modal.
+This section records the landed Relational Depth modal. The superseded binary
+React control does not coexist with it.
 
 The Workshop surfaces have separate conceptual jobs:
 
@@ -1035,7 +1013,7 @@ turn-level room behavior.
 Place a compact current-mode chip immediately beside `Tools` in the composer
 action cluster. The visible label is the active state (`Analyze`, `Balanced`,
 or `Converse`), not the generic phrase `Interaction Mode`. Its tooltip and
-accessible name are `Conversation settings`. This keeps the state visible at
+accessible name expose response style, expression, and relational depth. This keeps the state visible at
 the point where it affects the next message without crowding the composer with
 an always-expanded three-way control.
 
@@ -1051,9 +1029,11 @@ The modal contains these sections:
    with concise contrastive descriptions.
 2. **Persona expression** — a `Subtle | Full | Amplified` control explaining
    that identity and craft expertise remain present in every state.
-3. **Adaptation** — `React to this message` and `Carry cues through this
-   session` toggles with the lifetimes defined in Section 4.
-4. **Cross-session preferences** — a future, default-off control that is not
+3. **Relational depth** — a `Reserved | Attuned | Reflective` card group whose
+   descriptions make the permission ceiling and explicit-life-context boundary
+   visible.
+4. **Session continuity** — the separate `Carry cues through this session`
+   toggle plus a future cross-session preference control that is not
    enabled until inspection, correction, and deletion exist.
 5. **Room memory** — a future home for shared-history generation and storage
    from the separate ADR. Hide it until implementation is near, or show it as
@@ -1077,7 +1057,7 @@ The approved new-session defaults are:
 |---|---|
 | Response style | `Balanced` |
 | Persona expression | `Full` |
-| React to this message | On |
+| Relational depth | `Attuned` |
 | Carry cues through this session | On |
 | Remember stable preferences across sessions | Off / future |
 | Shared room history storage | Off / future |
@@ -1163,10 +1143,11 @@ Use at least:
 Track both blind identification and craft usefulness. Recognition without
 usefulness is caricature. Usefulness without recognition is a generic expert.
 
-Repeat the multi-turn scenarios with current-turn reactivity and session
+Repeat the multi-turn scenarios at all three relational depths and with session
 attunement independently disabled. Verify that explicit writer instructions
-still win, session cues do not leak after clearing or reset, and temporary
-emotion is not converted into a durable preference.
+still win, Reserved stays warm without unsolicited inference, Reflective does
+not force disclosure, session cues do not leak after clearing or reset, and
+temporary emotion is not converted into a durable preference.
 
 Also switch modes after at least two committed turns. Compare system-message
 replacement against a frame-only switch: verify that system-priority mode
@@ -1193,17 +1174,19 @@ stochastic personality quality.
   writer message.
 - Every behavior activation includes the selected mode's motion. Amplified
   activations additionally include the signature floor; Subtle and Full
-  activations do not.
-- The first committed writer turn after a mode or expression change includes
-  one reserved transition frame with the validated old and new pairs.
+  activations do not. Every activation also restates the selected relational
+  permission.
+- The first committed writer turn after a mode, expression, or relational-depth
+  change includes one reserved transition frame with the validated old and new
+  triples.
 - Multiple behavior selections before the next persona turn coalesce to one
-  transition from the last committed pair to the final selected pair.
+  transition from the last committed triple to the final selected triple.
 - Writer text cannot close or manufacture reserved behavior or attunement
   frames.
 - Unknown or partial behavior objects fail closed to the complete documented
   default.
 - Modal changes apply atomically and are rejected while a response is active.
-- A mode or expression change batch-replaces the host and every live persona
+- A mode, expression, or relational-depth change batch-replaces the host and every live persona
   guest system message with the final selected prompt while preserving conversation
   ids, committed history, trusted historical frames, pinning, and artifact
   numbering.
@@ -1212,7 +1195,8 @@ stochastic personality quality.
 - Replacement is rejected while any affected conversation has an active run.
 - Successful replacement clears affected context-budget snapshots so the UI
   does not present measurements from the prior system prompt as current.
-- Reactivity-only and session-cue-only changes do not replace system messages.
+- Relational-depth-only changes replace persona system messages; session-cue-only
+  changes do not.
 - Tool sidecars never receive persona conversation-behavior instructions.
 - Host synthesis after a tool report receives the current behavior object.
 - Snapshots and persisted sessions preserve current and per-turn effective
@@ -1221,8 +1205,12 @@ stochastic personality quality.
   snapshot.
 - Cross-session storage cannot activate without explicit consent and an
   inspection/deletion surface.
-- Packaged-resource and VSIX witnesses include the shared interaction-contract
-  resource and all three mode resources.
+- Packaged-resource and VSIX witnesses include the shared interaction and
+  relational contracts, all three mode resources, and all three relational
+  depth resources.
+- Static prompt-schema tests require Reserved, Attuned, and Reflective
+  signatures in every persona foundation without allowing those signatures to
+  select their own ceiling.
 - Static prompt-schema tests require concise trait-tension and verbal-palette
   guidance in each full-expression overlay once the migration begins.
 
@@ -1282,14 +1270,14 @@ truth.
   preserve the reason for response-style changes across retained chat.
 - The active mode stays visible without permanently occupying the composer with
   a full segmented control.
-- Reactivity, session attunement, and cross-session memory have distinct consent
+- Relational depth, session attunement, and cross-session memory have distinct consent
   and retention boundaries.
 - Future Living Room state has a defined modulation layer instead of leaking
   unpredictably into craft behavior.
 
 ### Costs and risks
 
-- A mode or expression change replaces the system entry of every retained
+- A mode, expression, or relational-depth change replaces the system entry of every retained
   persona conversation in the room and invalidates the prior behavior-specific
   prompt suffix.
 - Multi-participant replacement adds batch validation, active-run exclusion,
@@ -1444,9 +1432,8 @@ export interface WorkshopConversationBehavior {
 The approved default is `attuned`. The complete object remains an explicit
 writer preference persisted under
 `proseMinion.workshop.conversationBehavior`, validated and committed atomically.
-Until the feature lands, the existing binary control remains the implemented
-runtime truth; documentation and implementation must not claim the new field is
-live prematurely.
+The feature-branch implementation removes the binary field atomically; partial
+or unknown stored objects fail closed to the documented Attuned default.
 
 The level is a **permission ceiling, not a performance quota**. The writer
 chooses how deeply the room may interpret. Each persona decides whether and how
@@ -1568,7 +1555,7 @@ behavior axes. Apply remains atomic and unavailable during an active run.
 
 Delivery is tracked in
 [Workshop Relational Depth](../../.todo/features/feature-workshop-relational-depth/README.md).
-Implementation must include a frozen qualitative corpus spanning useful
+Implementation includes a frozen qualitative corpus spanning useful
 attunement, false inference, correction, vulnerability, project/life resonance,
 refusal, and boundary-setting across multiple personas and interaction modes.
 The corpus also compares blind samples across all twelve personas at each depth
@@ -1578,6 +1565,13 @@ Success means Reserved is warm without unsolicited interpretation, Attuned is
 socially perceptive without confident invention, and Reflective creates grounded
 personal resonance without generic therapy language, compulsory disclosure, or
 pseudo-psychological certainty.
+
+The feature-branch implementation replaces the binary React control throughout
+the closed settings contract, modal, session aggregate, prompt assembly,
+between-run replacement, behavior activation, and persisted turn-transition
+provenance. All twelve persona foundations now carry voice-specific signatures.
+Automated validation proves those deterministic boundaries; the frozen corpus
+remains the gate for claims about output quality.
 
 ## 16. Accepted amendment: Workshop Writer Profile (2026-07-22)
 

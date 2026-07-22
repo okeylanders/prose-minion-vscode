@@ -341,7 +341,7 @@
           "default": {
             "interactionMode": "balanced",
             "expressionLevel": "full",
-            "reactToCurrentMessage": true,
+            "relationalDepth": "attuned",
             "carryCuesThroughSession": true
           },
           "properties": {
@@ -355,9 +355,10 @@
               "enum": ["subtle", "full", "amplified"],
               "description": "How audibly the selected persona expresses their authored voice, from quiet to deliberately amplified."
             },
-            "reactToCurrentMessage": {
-              "type": "boolean",
-              "description": "Allow personas to adapt delivery to observable cues in the current message."
+            "relationalDepth": {
+              "type": "string",
+              "enum": ["reserved", "attuned", "reflective"],
+              "description": "How deeply Workshop personas may interpret and respond to emotional cues and explicitly shared personal context."
             },
             "carryCuesThroughSession": {
               "type": "boolean",
@@ -367,7 +368,7 @@
           "required": [
             "interactionMode",
             "expressionLevel",
-            "reactToCurrentMessage",
+            "relationalDepth",
             "carryCuesThroughSession"
           ],
           "additionalProperties": false,

@@ -45,7 +45,8 @@ The sprint number remains Sprint 10, but implementation intentionally follows
 Sprints 11 and 12 plus the accepted Relational Depth and Writer Profile work.
 File-access capabilities add artifact-turn variants, the intake rework replaces
 the single brief with typed context attachments, and Relational Depth replaces
-the binary reactivity field stamped onto persona turns. Building the persistence
+the former binary reactivity field with the `relationalDepth` value now stamped
+onto persona turns. Building the persistence
 boundary last lets its first schema describe the completed aggregate instead of
 requiring an immediate migration.
 

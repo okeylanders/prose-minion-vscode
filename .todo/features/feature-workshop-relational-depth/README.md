@@ -2,7 +2,8 @@
 
 **Date Identified**: 2026-07-22
 **Source**: Writer evaluation of the Workshop persona/conversation controls
-**Status**: Planned — product direction accepted; implementation not scheduled
+**Status**: Implemented on feature branch — automated validation and frozen
+corpus complete; live qualitative scoring pending
 **Priority**: High
 **Estimated Effort**: Medium
 **Related ADR**: [Workshop Persona Interaction Modes and Expression Profiles](../../../docs/adr/2026-07-20-workshop-persona-interaction-modes-and-expression-profiles.md#15-accepted-amendment-relational-depth-2026-07-22)
@@ -235,9 +236,9 @@ expression, and relational depth.
    guarded between-run replacement.
 7. Restate effective depth in the behavior activation frame and register any
    new reserved framing with the neutralizer.
-8. Build a frozen qualitative evaluation corpus covering useful emotional
-   intelligence, false inference, correction, vulnerability, personal-project
-   resonance, and boundary-setting.
+8. Use the frozen [Relational Depth Evaluation Corpus](relational-depth-evaluation-corpus.md)
+   covering useful emotional intelligence, false inference, correction,
+   vulnerability, personal-project resonance, refusal, and boundary-setting.
 
 ## Out of Scope
 
@@ -301,3 +302,4 @@ Run the same writer turns through all three levels and multiple personas. Check:
 - `packages/core/src/presentation/webview/components/workshop/WorkshopComposer.tsx`
 - `packages/core/resources/system-prompts/workshop-personas/`
 - `packages/core/src/utils/workshopPromptFrames.ts`
+- `.todo/features/feature-workshop-relational-depth/relational-depth-evaluation-corpus.md`

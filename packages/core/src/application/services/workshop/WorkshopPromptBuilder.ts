@@ -69,7 +69,7 @@ export interface WorkshopGuestJoinInput {
   /**
    * Pre-built `<workshop-interaction>` frame (ADR 2026-07-20). Included on the
    * join turn like every persona-directed writer turn; a transition frame also
-   * rides when the room's mode or expression changed since the last committed persona reply
+   * rides when the room's mode, expression, or relational depth changed since the last committed persona reply
    * (the quoted transcript may contain replies from the previous contract).
    */
   interactionFrame?: string;
@@ -360,7 +360,7 @@ export function buildWorkshopInteractionFrame(
     '<workshop-interaction',
     `  mode="${behavior.interactionMode}"`,
     `  expression="${behavior.expressionLevel}"`,
-    `  react-to-current-message="${behavior.reactToCurrentMessage}"`,
+    `  relational-depth="${behavior.relationalDepth}"`,
     `  carry-cues-through-session="${behavior.carryCuesThroughSession}"`,
     '/>'
   ].join('\n');
@@ -375,10 +375,21 @@ const WORKSHOP_MODE_ACTIVATION: Readonly<Record<WorkshopConversationBehavior['in
     'Respond as an actual continuing conversation. Prefer one live reaction or pressure point and a real opening for the writer. A broad invitation such as "what do you think?" does not by itself request a complete review. Do not turn your own recommendations into a report or `### Next steps`; do that only when the writer requests analysis, asks to track work, explicitly chooses a revision, or the exchange has already settled concrete work.'
 });
 
+const WORKSHOP_RELATIONAL_ACTIVATION: Readonly<
+  Record<WorkshopConversationBehavior['relationalDepth'], string>
+> = Object.freeze({
+  reserved:
+    'Respond to feelings, personal context, and delivery needs the writer states explicitly. Do not volunteer interpretations of unstated mood, motive, biography, or personal resonance. Remain warm and recognizably yourself.',
+  attuned:
+    'Use high emotional intelligence in the immediate exchange. Adapt to likely affect, motivation, or conversational need from observable cues; name an inference only when useful, keep it tentative, and make correction easy.',
+  reflective:
+    'You may explore grounded connections among the work, recurring project themes, and life experience the writer explicitly supplied. Distinguish observation from interpretation, invite confirmation or rejection, and do not force personal depth into every turn.'
+});
+
 /**
  * Combined last-mile behavior activation riding every persona-directed turn.
  * The detailed mode/profile/calibration resources remain at system priority;
- * this short trusted frame keeps both selected axes adjacent to the current
+ * this short trusted frame keeps all selected behavior axes adjacent to the current
  * writer message after potentially large evidence envelopes.
  */
 export function buildWorkshopBehaviorActivationFrame(
@@ -388,8 +399,9 @@ export function buildWorkshopBehaviorActivationFrame(
     ? 'For Amplified expression, make at least one authored signature move visible in every substantive reply; longer replies normally carry two different signature families, not two seed phrases. No seed is mandatory, but zero signature is under-expression. Protect meaning and the writer\'s need.'
     : undefined;
   return [
-    `<workshop-behavior-activation mode="${behavior.interactionMode}" expression="${behavior.expressionLevel}">`,
+    `<workshop-behavior-activation mode="${behavior.interactionMode}" expression="${behavior.expressionLevel}" relational-depth="${behavior.relationalDepth}">`,
     WORKSHOP_MODE_ACTIVATION[behavior.interactionMode],
+    WORKSHOP_RELATIONAL_ACTIVATION[behavior.relationalDepth],
     expressionActivation,
     '</workshop-behavior-activation>'
   ].filter((line): line is string => line !== undefined).join('\n');
@@ -397,7 +409,7 @@ export function buildWorkshopBehaviorActivationFrame(
 
 /**
  * The trusted transition frame added before the first persona-directed writer
- * message after a writer-selected mode or expression change (ADR 2026-07-20
+ * message after a writer-selected mode, expression, or relational-depth change (ADR 2026-07-20
  * §2). It marks
  * response-style variation in the retained chat as an intentional contract
  * change, not persona drift. Extension-authored metadata, never writer prose.
@@ -411,6 +423,8 @@ export function buildWorkshopInteractionTransitionFrame(
     `  to-mode="${transition.to.interactionMode}"`,
     `  from-expression="${transition.from.expressionLevel}"`,
     `  to-expression="${transition.to.expressionLevel}"`,
+    `  from-relational-depth="${transition.from.relationalDepth}"`,
+    `  to-relational-depth="${transition.to.relationalDepth}"`,
     `  reason="${transition.reason}"`,
     '/>'
   ].join('\n');

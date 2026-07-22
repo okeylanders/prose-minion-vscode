@@ -7,7 +7,7 @@ import type { WorkshopConversationBehavior } from '@messages';
 const balanced: WorkshopConversationBehavior = {
   interactionMode: 'balanced',
   expressionLevel: 'full',
-  reactToCurrentMessage: true,
+  relationalDepth: 'attuned',
   carryCuesThroughSession: true
 };
 
@@ -133,5 +133,40 @@ describe('WorkshopConversationBehaviorService', () => {
       persistenceError: 'disk full'
     });
     expect(session.getConversationBehavior()).toEqual(analysis);
+  });
+
+  it('replaces live persona prompts when only relational depth changes', async () => {
+    session.setExcerpt({ text: 'Excerpt', source: { kind: 'manual' } });
+    session.beginPersonaMessage('host-open', 'Start.');
+    session.completeRun('host-open', 'Ready.', undefined, false, 'host-conv');
+    const reflective: WorkshopConversationBehavior = {
+      ...balanced,
+      relationalDepth: 'reflective'
+    };
+
+    await expect(service.applyFromWebview(reflective)).resolves.toEqual({
+      changed: true,
+      deferred: false
+    });
+
+    expect(assistant.replaceWorkshopConversationBehavior).toHaveBeenCalledWith(
+      [{ conversationId: 'host-conv', personaId: 'jill', role: 'host' }],
+      reflective
+    );
+  });
+
+  it('does not rebuild persona prompts when only carry-cues continuity changes', async () => {
+    const withoutCarry: WorkshopConversationBehavior = {
+      ...balanced,
+      carryCuesThroughSession: false
+    };
+
+    await expect(service.applyFromWebview(withoutCarry)).resolves.toEqual({
+      changed: true,
+      deferred: false
+    });
+
+    expect(assistant.replaceWorkshopConversationBehavior).not.toHaveBeenCalled();
+    expect(session.getConversationBehavior()).toEqual(withoutCarry);
   });
 });

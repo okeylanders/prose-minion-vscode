@@ -59,6 +59,9 @@ export type WorkshopInteractionMode = 'analysis' | 'balanced' | 'conversational'
 /** Writer-selected persona expression volume — never an identity switch. */
 export type WorkshopPersonaExpressionLevel = 'subtle' | 'full' | 'amplified';
 
+/** Writer-selected ceiling for contextual emotional and personal inference. */
+export type WorkshopRelationalDepth = 'reserved' | 'attuned' | 'reflective';
+
 /**
  * Room-level conversation behavior. Host and guest persona turns interpret the
  * same current object through their own stable profiles; deterministic tool
@@ -67,7 +70,7 @@ export type WorkshopPersonaExpressionLevel = 'subtle' | 'full' | 'amplified';
 export interface WorkshopConversationBehavior {
   interactionMode: WorkshopInteractionMode;
   expressionLevel: WorkshopPersonaExpressionLevel;
-  reactToCurrentMessage: boolean;
+  relationalDepth: WorkshopRelationalDepth;
   carryCuesThroughSession: boolean;
 }
 
@@ -80,7 +83,7 @@ export const DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR: Readonly<WorkshopConversati
   Object.freeze({
     interactionMode: 'balanced',
     expressionLevel: 'full',
-    reactToCurrentMessage: true,
+    relationalDepth: 'attuned',
     carryCuesThroughSession: true
   });
 
@@ -98,6 +101,13 @@ export const WORKSHOP_INTERACTION_MODE_LABELS: Readonly<Record<WorkshopInteracti
     conversational: 'Converse'
   });
 
+export const WORKSHOP_RELATIONAL_DEPTH_LABELS: Readonly<Record<WorkshopRelationalDepth, string>> =
+  Object.freeze({
+    reserved: 'Reserved',
+    attuned: 'Attuned',
+    reflective: 'Reflective'
+  });
+
 export function isWorkshopInteractionMode(value: unknown): value is WorkshopInteractionMode {
   return value === 'analysis' || value === 'balanced' || value === 'conversational';
 }
@@ -106,6 +116,10 @@ export function isWorkshopPersonaExpressionLevel(
   value: unknown
 ): value is WorkshopPersonaExpressionLevel {
   return value === 'subtle' || value === 'full' || value === 'amplified';
+}
+
+export function isWorkshopRelationalDepth(value: unknown): value is WorkshopRelationalDepth {
+  return value === 'reserved' || value === 'attuned' || value === 'reflective';
 }
 
 /**
@@ -121,7 +135,7 @@ export function coerceWorkshopConversationBehavior(raw: unknown): WorkshopConver
   const allowedKeys = new Set([
     'interactionMode',
     'expressionLevel',
-    'reactToCurrentMessage',
+    'relationalDepth',
     'carryCuesThroughSession'
   ]);
   if (Object.keys(raw).some((key) => !allowedKeys.has(key))) {
@@ -130,13 +144,13 @@ export function coerceWorkshopConversationBehavior(raw: unknown): WorkshopConver
   const candidate = raw as {
     interactionMode?: unknown;
     expressionLevel?: unknown;
-    reactToCurrentMessage?: unknown;
+    relationalDepth?: unknown;
     carryCuesThroughSession?: unknown;
   };
   if (
     !isWorkshopInteractionMode(candidate.interactionMode) ||
     !isWorkshopPersonaExpressionLevel(candidate.expressionLevel) ||
-    typeof candidate.reactToCurrentMessage !== 'boolean' ||
+    !isWorkshopRelationalDepth(candidate.relationalDepth) ||
     typeof candidate.carryCuesThroughSession !== 'boolean'
   ) {
     return { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR };
@@ -144,7 +158,7 @@ export function coerceWorkshopConversationBehavior(raw: unknown): WorkshopConver
   return {
     interactionMode: candidate.interactionMode,
     expressionLevel: candidate.expressionLevel,
-    reactToCurrentMessage: candidate.reactToCurrentMessage,
+    relationalDepth: candidate.relationalDepth,
     carryCuesThroughSession: candidate.carryCuesThroughSession
   };
 }
@@ -157,8 +171,14 @@ export function coerceWorkshopConversationBehavior(raw: unknown): WorkshopConver
  * transcript history.
  */
 export interface WorkshopConversationBehaviorTransition {
-  from: Pick<WorkshopConversationBehavior, 'interactionMode' | 'expressionLevel'>;
-  to: Pick<WorkshopConversationBehavior, 'interactionMode' | 'expressionLevel'>;
+  from: Pick<
+    WorkshopConversationBehavior,
+    'interactionMode' | 'expressionLevel' | 'relationalDepth'
+  >;
+  to: Pick<
+    WorkshopConversationBehavior,
+    'interactionMode' | 'expressionLevel' | 'relationalDepth'
+  >;
   reason: 'writer-selected';
 }
 
@@ -558,8 +578,8 @@ export interface WorkshopTurn {
   behavior?: WorkshopConversationBehavior;
   /**
    * Coalesced writer-selected behavior transition persisted with the first
-   * committed writer turn after a mode or expression change. Never a
-   * synthetic chat message.
+   * committed writer turn after a mode, expression, or relational-depth
+   * change. Never a synthetic chat message.
    */
   behaviorTransition?: WorkshopConversationBehaviorTransition;
 }

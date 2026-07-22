@@ -2240,7 +2240,7 @@
   margin-top: 0;
   padding: 14px 20px 20px;
 }
-/* Segmented option cards (Response style / Persona expression). */
+/* Segmented option cards (Response style / Persona expression / Relational depth). */
 [data-pm-surface="workshop"] .pm-ws-behavior-cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

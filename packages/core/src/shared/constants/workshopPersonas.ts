@@ -5,7 +5,12 @@
  * prompt path is relative to PromptLoader's system-prompts root.
  */
 
-import type { WorkshopConversationBehavior, WorkshopInteractionMode, WorkshopPersonaId } from '@messages';
+import type {
+  WorkshopConversationBehavior,
+  WorkshopInteractionMode,
+  WorkshopPersonaId,
+  WorkshopRelationalDepth
+} from '@messages';
 
 export interface WorkshopPersonaDescriptor {
   id: WorkshopPersonaId;
@@ -63,11 +68,23 @@ export const WORKSHOP_INTERACTION_MODE_PROMPT_PATHS: Readonly<
   conversational: 'workshop-personas/interaction-modes/conversational.md'
 });
 
+export const WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH =
+  'workshop-personas/relational-contract.md';
+
+export const WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS: Readonly<
+  Record<WorkshopRelationalDepth, string>
+> = Object.freeze({
+  reserved: 'workshop-personas/relational-depth/reserved.md',
+  attuned: 'workshop-personas/relational-depth/attuned.md',
+  reflective: 'workshop-personas/relational-depth/reflective.md'
+});
+
 /**
  * The ONE definition of the persona system-prompt assembly chain
  * (ADR 2026-07-20 §10): host/guest base, persona foundation, the shared
- * interaction contract, exactly one selected mode resource, then the
- * persona-specific Full overlay and Amplified calibration when selected.
+ * interaction contract, exactly one selected mode resource, the relational
+ * invariant plus exactly one selected depth resource, then the persona-specific
+ * Full overlay and Amplified calibration when selected.
  * Keeping the most specific expression layer last gives it the final word
  * without duplicating the shared product contract. Both initial assembly and
  * between-run replacement call this.
@@ -75,13 +92,18 @@ export const WORKSHOP_INTERACTION_MODE_PROMPT_PATHS: Readonly<
 export function workshopPersonaSystemPromptPaths(
   basePromptPath: string,
   persona: WorkshopPersonaDescriptor,
-  behavior: Pick<WorkshopConversationBehavior, 'interactionMode' | 'expressionLevel'>
+  behavior: Pick<
+    WorkshopConversationBehavior,
+    'interactionMode' | 'expressionLevel' | 'relationalDepth'
+  >
 ): string[] {
   return [
     basePromptPath,
     persona.promptPath,
     WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
     WORKSHOP_INTERACTION_MODE_PROMPT_PATHS[behavior.interactionMode],
+    WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
+    WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS[behavior.relationalDepth],
     ...(behavior.expressionLevel === 'subtle' ? [] : [persona.expressionProfilePath]),
     ...(behavior.expressionLevel === 'amplified' ? [persona.expressionCalibrationPath] : [])
   ];

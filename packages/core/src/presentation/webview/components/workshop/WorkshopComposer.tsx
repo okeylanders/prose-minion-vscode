@@ -22,6 +22,7 @@ import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
 import {
   WORKSHOP_INTERACTION_MODE_LABELS,
+  WORKSHOP_RELATIONAL_DEPTH_LABELS,
   WorkshopConversationBehavior,
   WorkshopMessageAttachmentSnapshot
 } from '@messages';
@@ -239,8 +240,8 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
             className="pm-ws-comp-pill pm-ws-mode-chip"
             type="button"
             disabled={!sessionReady}
-            title="Conversation settings"
-            aria-label="Conversation settings"
+            title={`Conversation settings: ${WORKSHOP_INTERACTION_MODE_LABELS[conversationBehavior.interactionMode]}, ${conversationBehavior.expressionLevel}, ${WORKSHOP_RELATIONAL_DEPTH_LABELS[conversationBehavior.relationalDepth]}`}
+            aria-label={`Conversation settings: ${WORKSHOP_INTERACTION_MODE_LABELS[conversationBehavior.interactionMode]}, ${conversationBehavior.expressionLevel}, ${WORKSHOP_RELATIONAL_DEPTH_LABELS[conversationBehavior.relationalDepth]}`}
             onClick={onOpenConversationSettings}
           >
             <ModeChipDiamond />

@@ -75,14 +75,17 @@ describe('WorkshopComposer', () => {
       conversationBehavior: {
         interactionMode: 'conversational',
         expressionLevel: 'subtle',
-        reactToCurrentMessage: true,
+        relationalDepth: 'attuned',
         carryCuesThroughSession: false
       }
     });
 
-    const behavior = screen.getByRole('button', { name: 'Conversation settings' });
+    const behavior = screen.getByRole('button', {
+      name: 'Conversation settings: Converse, subtle, Attuned'
+    });
     expect(behavior.textContent).toContain('Converse');
     expect(behavior.textContent).toContain('SUBTLE');
+    expect(behavior.getAttribute('title')).toContain('Attuned');
     fireEvent.click(behavior);
     expect(onOpenConversationSettings).toHaveBeenCalledTimes(1);
   });
