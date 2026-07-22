@@ -96,7 +96,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       behavior: {
         interactionMode: 'balanced',
         expressionLevel: 'amplified',
-        reactToCurrentMessage: true,
+        relationalDepth: 'attuned',
         carryCuesThroughSession: true
       },
       activationFrame: '<workshop-behavior-activation mode="balanced" expression="amplified">mode and signature floor</workshop-behavior-activation>',
@@ -117,6 +117,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       'workshop-personas/quinn.md',
       'workshop-personas/interaction-contract.md',
       'workshop-personas/interaction-modes/balanced.md',
+      'workshop-personas/relational-contract.md',
+      'workshop-personas/relational-depth/attuned.md',
       'workshop-personas/expression-profiles/quinn.md',
       'workshop-personas/expression-calibrations/quinn.md'
     ]);
@@ -146,7 +148,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       behavior: {
         interactionMode: 'conversational',
         expressionLevel: 'subtle',
-        reactToCurrentMessage: true,
+        relationalDepth: 'attuned',
         carryCuesThroughSession: true
       }
     });
@@ -155,7 +157,9 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       'workshop-personas/guest-base.md',
       'workshop-personas/margot.md',
       'workshop-personas/interaction-contract.md',
-      'workshop-personas/interaction-modes/conversational.md'
+      'workshop-personas/interaction-modes/conversational.md',
+      'workshop-personas/relational-contract.md',
+      'workshop-personas/relational-depth/attuned.md'
     ]);
     expect(engine.runInitial).toHaveBeenCalledWith(expect.objectContaining({
       toolName: 'workshop_guest_margot',
@@ -189,7 +193,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       behavior: {
         interactionMode: 'analysis',
         expressionLevel: 'full',
-        reactToCurrentMessage: true,
+        relationalDepth: 'attuned',
         carryCuesThroughSession: true
       }
     }, { capability: workshopCapability });
@@ -219,7 +223,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     const behavior = {
       interactionMode: 'analysis' as const,
       expressionLevel: 'amplified' as const,
-      reactToCurrentMessage: true,
+      relationalDepth: 'attuned' as const,
       carryCuesThroughSession: true
     };
     await service.replaceWorkshopConversationBehavior([
@@ -257,7 +261,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     ], {
       interactionMode: 'conversational',
       expressionLevel: 'full',
-      reactToCurrentMessage: true,
+      relationalDepth: 'attuned',
       carryCuesThroughSession: true
     })).rejects.toThrow('guest prompt missing');
 

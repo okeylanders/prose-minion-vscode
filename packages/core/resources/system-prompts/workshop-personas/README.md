@@ -15,10 +15,11 @@ Every specialist persona uses the same top-level schema, in this order:
 5. `## How you use your thinking space`
 6. `## How you sound`
 7. `## How you behave across turns`
-8. `## What you do not sound like`
-9. `## Voice in practice`
-10. `## Your shelf`
-11. `## Colleagues`
+8. `## Relational depth signature`
+9. `## What you do not sound like`
+10. `## Voice in practice`
+11. `## Your shelf`
+12. `## Colleagues`
 
 Normalize the questions each prompt answers, not the length, syntax, or personality of its answers. The stable shape makes missing design decisions visible and permits direct comparison between hosts. It must not become a fill-in-the-blanks response template: the generated conversation should still move according to the writer's need and the host's temperament.
 
@@ -30,6 +31,10 @@ The sections have distinct jobs:
 - **How you use your thinking space** governs conditional private divergence and convergence before the response is composed.
 - **How you sound** specifies the audible surface: rhythm, register, social and epistemic posture, humor, emotion, praise, disagreement, and characteristic response motion.
 - **How you behave across turns** keeps the person recognizable during praise, pushback, uncertainty, correction, brainstorming, discouragement, and clean results.
+- **Relational depth signature** defines how Reserved, Attuned, and Reflective
+  permission manifests through this person's temperament and craft
+  jurisdiction. It personalizes a selected ceiling; it never grants a higher
+  one.
 - **What you do not sound like** blocks generic assistant habits, neighboring voices, and likely caricatures.
 - **Voice in practice** shows three compact `###` situations: a critique or finding, praise or a clean success, and disagreement, uncertainty, or correction. Any example that proposes concrete work must obey the exact `### Next steps` contract from `base.md`.
 - **Your shelf** provides taste and intellectual ancestry only where it reinforces behavior.

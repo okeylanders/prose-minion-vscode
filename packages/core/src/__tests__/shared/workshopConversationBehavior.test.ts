@@ -8,7 +8,7 @@ describe('Workshop conversation behavior validation', () => {
     const behavior = {
       interactionMode: 'analysis',
       expressionLevel: 'subtle',
-      reactToCurrentMessage: false,
+      relationalDepth: 'reserved',
       carryCuesThroughSession: true
     };
 
@@ -19,7 +19,7 @@ describe('Workshop conversation behavior validation', () => {
     const behavior = {
       interactionMode: 'conversational',
       expressionLevel: 'amplified',
-      reactToCurrentMessage: true,
+      relationalDepth: 'reflective',
       carryCuesThroughSession: false
     } as const;
 
@@ -33,19 +33,19 @@ describe('Workshop conversation behavior validation', () => {
     {
       interactionMode: 'invented',
       expressionLevel: 'full',
-      reactToCurrentMessage: true,
+      relationalDepth: 'attuned',
       carryCuesThroughSession: true
     },
     {
       interactionMode: 'balanced',
       expressionLevel: 'full',
-      reactToCurrentMessage: 'yes',
+      relationalDepth: 'intrusive',
       carryCuesThroughSession: true
     },
     {
       interactionMode: 'balanced',
       expressionLevel: 'full',
-      reactToCurrentMessage: true,
+      relationalDepth: 'attuned',
       carryCuesThroughSession: true,
       inferredMood: 'do-not-persist'
     }

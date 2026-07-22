@@ -6,7 +6,7 @@
  * WorkshopConversationBehaviorModal tests (ADR 2026-07-20 §11).
  *
  * Behavior under test:
- * - the four sections render with the approved copy (exact subtitle),
+ * - the five sections render with the approved copy (exact subtitle),
  * - cards and switches edit a LOCAL draft (aria-pressed / aria-checked),
  * - Apply submits the COMPLETE draft once, then waits in a pending state
  *   until the host round-trips the committed object (close on match),
@@ -52,7 +52,13 @@ describe('WorkshopConversationBehaviorModal', () => {
       )
     ).not.toBeNull();
 
-    for (const section of ['Response style', 'Persona expression', 'Adaptation', 'Room memory']) {
+    for (const section of [
+      'Response style',
+      'Persona expression',
+      'Relational depth',
+      'Session continuity',
+      'Room memory'
+    ]) {
       expect(screen.getByText(section)).not.toBeNull();
     }
     expect(
@@ -80,20 +86,19 @@ describe('WorkshopConversationBehaviorModal', () => {
     expect(props.onApply).not.toHaveBeenCalled();
   });
 
-  it('adaptation switches flip in the draft', () => {
+  it('relational depth cards and session continuity edit the draft', () => {
     renderModal();
 
-    const react = screen.getByRole('switch', { name: 'React to each message' });
+    expect(screen.getByRole('button', { name: /Attuned/ }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: /Reflective/ }));
+    expect(screen.getByRole('button', { name: /Reflective/ }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: /Attuned/ }).getAttribute('aria-pressed')).toBe('false');
+
     const carry = screen.getByRole('switch', { name: 'Carry cues through this session' });
-    expect(react.getAttribute('aria-checked')).toBe('true');
     expect(carry.getAttribute('aria-checked')).toBe('true');
 
-    fireEvent.click(react);
-    expect(react.getAttribute('aria-checked')).toBe('false');
     fireEvent.click(carry);
     expect(carry.getAttribute('aria-checked')).toBe('false');
-    fireEvent.click(react);
-    expect(react.getAttribute('aria-checked')).toBe('true');
   });
 
   it('Apply submits the COMPLETE edited object once, waits pending, and closes on the host round-trip', () => {
@@ -101,13 +106,14 @@ describe('WorkshopConversationBehaviorModal', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
     fireEvent.click(screen.getByRole('button', { name: /Subtle/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Reserved/ }));
     fireEvent.click(screen.getByRole('switch', { name: 'Carry cues through this session' }));
     fireEvent.click(screen.getByRole('button', { name: 'Apply to next turn' }));
 
     const submitted: WorkshopConversationBehavior = {
       interactionMode: 'analysis',
       expressionLevel: 'subtle',
-      reactToCurrentMessage: true,
+      relationalDepth: 'reserved',
       carryCuesThroughSession: false
     };
     expect(props.onApply).toHaveBeenCalledTimes(1);

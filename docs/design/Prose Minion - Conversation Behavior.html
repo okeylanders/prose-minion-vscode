@@ -139,7 +139,7 @@ button{font-family:var(--sans)}
       <div class="composer-row">
         <button class="sqbtn" title="Attach">+</button>
         <div class="composer-actions">
-          <button class="abtn mode-chip" id="modeChip" title="Conversation settings" aria-label="Conversation settings">
+          <button class="abtn mode-chip" id="modeChip" title="Conversation settings: Balanced, full, Attuned" aria-label="Conversation settings: Balanced, full, Attuned">
             <svg viewBox="0 0 16 16" fill="none"><path d="M8 1.5L14.5 8 8 14.5 1.5 8 8 1.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"></path></svg>
             <b id="chipLabel">Balanced</b>
             <span class="sub" id="chipSub">FULL</span>
@@ -154,7 +154,7 @@ button{font-family:var(--sans)}
   <div class="demo-ctl">
     <label><span class="tog" id="busyTog"><i></i></span>Simulate active response (Apply disabled while a reply streams)</label>
   </div>
-  <p class="hint">The chip beside <code>Tools</code> shows the <b>active state</b> — mode label plus a small expression tag — not the generic phrase “Interaction Mode”. Tooltip/accessible name: <code>Conversation settings</code>. Click it to open the modal. The modal edits a local draft; <code>Apply to next turn</code> submits the complete behavior object atomically, <code>Cancel</code> / <code>Esc</code> discards. Future rows (cross-session preferences, room memory) are visibly disabled rather than pretending to work.</p>
+  <p class="hint">The chip beside <code>Tools</code> shows the <b>active state</b> — mode label plus a small expression tag — not the generic phrase “Interaction Mode”. Its tooltip and accessible name include response style, expression, and relational depth. Click it to open the modal. The modal edits a local draft; <code>Apply to next turn</code> submits the complete behavior object atomically, <code>Cancel</code> / <code>Esc</code> discards. Future rows (cross-session preferences, room memory) are visibly disabled rather than pretending to work.</p>
 </div>
 
 <!-- ============ Conversation behavior modal ============ -->
@@ -186,32 +186,48 @@ button{font-family:var(--sans)}
 
     <div class="msec">
       <div class="msec-h"><span class="t">Persona expression</span><hr></div>
-      <div class="segcards two" id="exprCards">
+      <div class="segcards" id="exprCards">
         <button class="segcard" data-expr="subtle">
           <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2.4 2.6"></circle></svg><span class="sc-name">Subtle</span></span>
           <span class="sc-desc">Quieter delivery — fewer quirks and metaphors, same person and expertise.</span>
         </button>
         <button class="segcard" data-expr="full">
           <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.4"></circle><circle cx="8" cy="8" r="2.2" fill="currentColor"></circle></svg><span class="sc-name">Full</span></span>
-          <span class="sc-desc">Their distinctive voice, tastes, trait tensions, and verbal palette at full volume.</span>
+          <span class="sc-desc">Their natural voice, tastes, trait tensions, and verbal palette without muting.</span>
+        </button>
+        <button class="segcard" data-expr="amplified">
+          <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2"></circle><circle cx="8" cy="8" r="4.2" stroke="currentColor" stroke-width="1.2"></circle><circle cx="8" cy="8" r="1.8" fill="currentColor"></circle></svg><span class="sc-name">Amplified</span></span>
+          <span class="sc-desc">Strongest authored differentiation — calibrated language and communication pressure.</span>
         </button>
       </div>
-      <p class="msec-note">Identity and craft expertise remain present in both states.</p>
+      <p class="msec-note">Identity and craft expertise remain present at every level.</p>
     </div>
 
     <div class="msec">
-      <div class="msec-h"><span class="t">Adaptation</span><hr></div>
-      <div class="trow">
-        <div class="trow-txt">
-          <div class="trow-name">React to each message</div>
-          <div class="trow-desc">Pick up the tone, energy, humor, or urgency in the message you just sent and respond in kind. Applies to that message only — nothing is labeled or stored.</div>
-        </div>
-        <span class="tog on" data-key="reactToCurrentMessage"><i></i></span>
+      <div class="msec-h"><span class="t">Relational depth</span><hr></div>
+      <div class="segcards" id="depthCards">
+        <button class="segcard" data-depth="reserved">
+          <span class="sc-top"><span class="sc-name">Reserved</span></span>
+          <span class="sc-desc">Responds to feelings and needs you state directly without unsolicited personal interpretation.</span>
+        </button>
+        <button class="segcard" data-depth="attuned">
+          <span class="sc-top"><span class="sc-name">Attuned</span></span>
+          <span class="sc-desc">Uses high emotional intelligence to notice likely immediate cues and adapt with humility.</span>
+        </button>
+        <button class="segcard" data-depth="reflective">
+          <span class="sc-top"><span class="sc-name">Reflective</span></span>
+          <span class="sc-desc">May connect the work with life experience you explicitly shared and invite deeper reflection.</span>
+        </button>
       </div>
+      <p class="msec-note">This is a permission ceiling, not a requirement. Each persona decides when depth helps.</p>
+    </div>
+
+    <div class="msec">
+      <div class="msec-h"><span class="t">Session continuity</span><hr></div>
       <div class="trow">
         <div class="trow-txt">
           <div class="trow-name">Carry cues through this session</div>
-          <div class="trow-desc">Let cues build up across the conversation — like preferring blunt critique or brief answers — and shape later turns. Cleared when the session ends or when you turn this off.</div>
+          <div class="trow-desc">Let demonstrated interaction preferences—like preferring blunt critique or brief answers—shape later turns. Cleared when the session ends or when you turn this off.</div>
         </div>
         <span class="tog on" data-key="carryCuesThroughSession"><i></i></span>
       </div>
@@ -243,20 +259,25 @@ button{font-family:var(--sans)}
 </div>
 
 <script>
-const DEFAULTS = { interactionMode:'balanced', expressionLevel:'full', reactToCurrentMessage:true, carryCuesThroughSession:true };
+const DEFAULTS = { interactionMode:'balanced', expressionLevel:'full', relationalDepth:'attuned', carryCuesThroughSession:true };
 let applied = { ...DEFAULTS };
 let draft = null;
 let busy = false;
 const MODE_LABEL = { analysis:'Analyze', balanced:'Balanced', conversational:'Converse' };
+const DEPTH_LABEL = { reserved:'Reserved', attuned:'Attuned', reflective:'Reflective' };
 const $ = id => document.getElementById(id);
 
 function renderChip(){
   $('chipLabel').textContent = MODE_LABEL[applied.interactionMode];
   $('chipSub').textContent = applied.expressionLevel.toUpperCase();
+  const description = `Conversation settings: ${MODE_LABEL[applied.interactionMode]}, ${applied.expressionLevel}, ${DEPTH_LABEL[applied.relationalDepth]}`;
+  $('modeChip').title = description;
+  $('modeChip').setAttribute('aria-label', description);
 }
 function renderModal(){
   document.querySelectorAll('#modeCards .segcard').forEach(c => c.classList.toggle('sel', c.dataset.mode === draft.interactionMode));
   document.querySelectorAll('#exprCards .segcard').forEach(c => c.classList.toggle('sel', c.dataset.expr === draft.expressionLevel));
+  document.querySelectorAll('#depthCards .segcard').forEach(c => c.classList.toggle('sel', c.dataset.depth === draft.relationalDepth));
   document.querySelectorAll('.tog[data-key]').forEach(t => t.classList.toggle('on', draft[t.dataset.key]));
   const note = $('footNote'), apply = $('mApply');
   if (busy){
@@ -280,6 +301,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('overlay
 
 $('modeCards').addEventListener('click', e => { const c = e.target.closest('[data-mode]'); if (c){ draft.interactionMode = c.dataset.mode; renderModal(); } });
 $('exprCards').addEventListener('click', e => { const c = e.target.closest('[data-expr]'); if (c){ draft.expressionLevel = c.dataset.expr; renderModal(); } });
+$('depthCards').addEventListener('click', e => { const c = e.target.closest('[data-depth]'); if (c){ draft.relationalDepth = c.dataset.depth; renderModal(); } });
 document.querySelectorAll('.tog[data-key]').forEach(t => t.addEventListener('click', () => { draft[t.dataset.key] = !draft[t.dataset.key]; renderModal(); }));
 
 $('mApply').addEventListener('click', () => { if (busy) return; applied = { ...draft }; renderChip(); closeModal(); });

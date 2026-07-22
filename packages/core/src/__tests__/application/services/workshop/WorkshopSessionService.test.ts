@@ -113,7 +113,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(service.getConversationBehavior()).toEqual({
       interactionMode: 'balanced',
       expressionLevel: 'full',
-      reactToCurrentMessage: true,
+      relationalDepth: 'attuned',
       carryCuesThroughSession: true
     });
     pin();
@@ -133,7 +133,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     const selected = {
       interactionMode: 'conversational' as const,
       expressionLevel: 'subtle' as const,
-      reactToCurrentMessage: false,
+      relationalDepth: 'reserved' as const,
       carryCuesThroughSession: false
     };
     service.setConversationBehavior(selected);
@@ -142,10 +142,22 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
 
     const writerTurn = service.beginPersonaMessage('host-next', 'Keep it brief.');
     expect(writerTurn).toMatchObject({
-      behavior: { interactionMode: 'conversational', expressionLevel: 'subtle' },
+      behavior: {
+        interactionMode: 'conversational',
+        expressionLevel: 'subtle',
+        relationalDepth: 'reserved'
+      },
       behaviorTransition: {
-        from: { interactionMode: 'balanced', expressionLevel: 'full' },
-        to: { interactionMode: 'conversational', expressionLevel: 'subtle' },
+        from: {
+          interactionMode: 'balanced',
+          expressionLevel: 'full',
+          relationalDepth: 'attuned'
+        },
+        to: {
+          interactionMode: 'conversational',
+          expressionLevel: 'subtle',
+          relationalDepth: 'reserved'
+        },
         reason: 'writer-selected'
       }
     });
@@ -167,7 +179,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     const remembered = new WorkshopSessionService(() => 1, {
       interactionMode: 'analysis',
       expressionLevel: 'subtle',
-      reactToCurrentMessage: false,
+      relationalDepth: 'reserved',
       carryCuesThroughSession: false
     });
 
@@ -197,8 +209,16 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     });
 
     expect(service.beginPersonaMessage('host-next', 'Final choice.').behaviorTransition).toEqual({
-      from: { interactionMode: 'balanced', expressionLevel: 'full' },
-      to: { interactionMode: 'conversational', expressionLevel: 'full' },
+      from: {
+        interactionMode: 'balanced',
+        expressionLevel: 'full',
+        relationalDepth: 'attuned'
+      },
+      to: {
+        interactionMode: 'conversational',
+        expressionLevel: 'full',
+        relationalDepth: 'attuned'
+      },
       reason: 'writer-selected'
     });
   });
@@ -214,8 +234,41 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     });
 
     expect(service.beginPersonaMessage('host-next', 'Turn it up.').behaviorTransition).toEqual({
-      from: { interactionMode: 'balanced', expressionLevel: 'full' },
-      to: { interactionMode: 'balanced', expressionLevel: 'amplified' },
+      from: {
+        interactionMode: 'balanced',
+        expressionLevel: 'full',
+        relationalDepth: 'attuned'
+      },
+      to: {
+        interactionMode: 'balanced',
+        expressionLevel: 'amplified',
+        relationalDepth: 'attuned'
+      },
+      reason: 'writer-selected'
+    });
+  });
+
+  it('records a relational-depth-only transition against the last committed reply', () => {
+    pin();
+    service.beginPersonaMessage('host-open', 'Start.');
+    service.completeRun('host-open', 'Attuned reply.', undefined, false, 'host-conv');
+
+    service.setConversationBehavior({
+      ...service.getConversationBehavior(),
+      relationalDepth: 'reflective'
+    });
+
+    expect(service.beginPersonaMessage('host-next', 'Go deeper.').behaviorTransition).toEqual({
+      from: {
+        interactionMode: 'balanced',
+        expressionLevel: 'full',
+        relationalDepth: 'attuned'
+      },
+      to: {
+        interactionMode: 'balanced',
+        expressionLevel: 'full',
+        relationalDepth: 'reflective'
+      },
       reason: 'writer-selected'
     });
   });

@@ -217,7 +217,7 @@ export class WorkshopSessionService {
   /** System-prompt behavior that governed the latest committed persona reply. */
   private lastCommittedPersonaBehavior?: Pick<
     WorkshopConversationBehavior,
-    'interactionMode' | 'expressionLevel'
+    'interactionMode' | 'expressionLevel' | 'relationalDepth'
   >;
 
   constructor(
@@ -1006,7 +1006,8 @@ export class WorkshopSessionService {
     if ((isHost || isGuest) && active.behavior) {
       this.lastCommittedPersonaBehavior = {
         interactionMode: active.behavior.interactionMode,
-        expressionLevel: active.behavior.expressionLevel
+        expressionLevel: active.behavior.expressionLevel,
+        relationalDepth: active.behavior.relationalDepth
       };
     }
     return cloneTurn(turn);
@@ -1468,12 +1469,14 @@ export class WorkshopSessionService {
       && (
         this.lastCommittedPersonaBehavior.interactionMode !== behavior.interactionMode
         || this.lastCommittedPersonaBehavior.expressionLevel !== behavior.expressionLevel
+        || this.lastCommittedPersonaBehavior.relationalDepth !== behavior.relationalDepth
       )
       ? {
           from: { ...this.lastCommittedPersonaBehavior },
           to: {
             interactionMode: behavior.interactionMode,
-            expressionLevel: behavior.expressionLevel
+            expressionLevel: behavior.expressionLevel,
+            relationalDepth: behavior.relationalDepth
           },
           reason: 'writer-selected' as const
         }

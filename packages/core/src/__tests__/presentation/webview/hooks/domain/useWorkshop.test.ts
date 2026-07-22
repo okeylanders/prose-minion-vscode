@@ -169,7 +169,7 @@ describe('useWorkshop', () => {
     const selected = {
       interactionMode: 'analysis' as const,
       expressionLevel: 'subtle' as const,
-      reactToCurrentMessage: false,
+      relationalDepth: 'reserved' as const,
       carryCuesThroughSession: false
     };
 

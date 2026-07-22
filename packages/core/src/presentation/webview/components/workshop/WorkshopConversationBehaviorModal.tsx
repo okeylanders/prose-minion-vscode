@@ -19,9 +19,11 @@ import { Icon, IconName } from '@components/shared/Icon';
 import { WorkshopModalShell } from './WorkshopModalShell';
 import {
   WORKSHOP_INTERACTION_MODE_LABELS,
+  WORKSHOP_RELATIONAL_DEPTH_LABELS,
   WorkshopConversationBehavior,
   WorkshopInteractionMode,
-  WorkshopPersonaExpressionLevel
+  WorkshopPersonaExpressionLevel,
+  WorkshopRelationalDepth
 } from '@messages';
 
 /** Card copy is design-verbatim presentation text; labels stay shared/deterministic. */
@@ -69,24 +71,21 @@ const EXPRESSION_CARDS: ReadonlyArray<{
   }
 ];
 
-const ADAPTATION_TOGGLES: ReadonlyArray<{
-  key: 'reactToCurrentMessage' | 'carryCuesThroughSession';
-  name: string;
+const RELATIONAL_DEPTH_CARDS: ReadonlyArray<{
+  depth: WorkshopRelationalDepth;
   description: string;
 }> = [
   {
-    key: 'reactToCurrentMessage',
-    name: 'React to each message',
-    description:
-      'Pick up the tone, energy, humor, or urgency in the message you just sent and respond ' +
-      'in kind. Applies to that message only — nothing is labeled or stored.'
+    depth: 'reserved',
+    description: 'Responds to feelings and needs you state directly without unsolicited personal interpretation.'
   },
   {
-    key: 'carryCuesThroughSession',
-    name: 'Carry cues through this session',
-    description:
-      'Let cues build up across the conversation — like preferring blunt critique or brief ' +
-      'answers — and shape later turns. Cleared when the session ends or when you turn this off.'
+    depth: 'attuned',
+    description: 'Uses high emotional intelligence to notice likely immediate cues and adapt with humility.'
+  },
+  {
+    depth: 'reflective',
+    description: 'May connect the work with life experience you explicitly shared and invite deeper reflection.'
   }
 ];
 
@@ -120,7 +119,7 @@ const behaviorEquals = (
 ): boolean =>
   a.interactionMode === b.interactionMode &&
   a.expressionLevel === b.expressionLevel &&
-  a.reactToCurrentMessage === b.reactToCurrentMessage &&
+  a.relationalDepth === b.relationalDepth &&
   a.carryCuesThroughSession === b.carryCuesThroughSession;
 
 /** In-flight Apply: what was submitted, and what was committed at submit time. */
@@ -205,8 +204,13 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
     setDraft((current) => ({ ...current, interactionMode }));
   const selectExpression = (expressionLevel: WorkshopPersonaExpressionLevel) =>
     setDraft((current) => ({ ...current, expressionLevel }));
-  const flipToggle = (key: 'reactToCurrentMessage' | 'carryCuesThroughSession') =>
-    setDraft((current) => ({ ...current, [key]: !current[key] }));
+  const selectRelationalDepth = (relationalDepth: WorkshopRelationalDepth) =>
+    setDraft((current) => ({ ...current, relationalDepth }));
+  const flipCarryCues = () =>
+    setDraft((current) => ({
+      ...current,
+      carryCuesThroughSession: !current.carryCuesThroughSession
+    }));
 
   return (
     <WorkshopModalShell
@@ -290,30 +294,62 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
 
       <section className="pm-ws-tools-modal-section">
         <div className="pm-ws-tools-modal-rule">
-          <span className="pm-ws-eyebrow">Adaptation</span>
+          <span className="pm-ws-eyebrow">Relational depth</span>
           <hr />
         </div>
-        {ADAPTATION_TOGGLES.map((row) => (
-          <div key={row.key} className="pm-ws-behavior-row">
-            <div className="pm-ws-behavior-row-text">
-              <div className="pm-ws-behavior-row-name">{row.name}</div>
-              <div className="pm-ws-behavior-row-desc">{row.description}</div>
-            </div>
+        <div className="pm-ws-behavior-cards">
+          {RELATIONAL_DEPTH_CARDS.map((card) => (
             <button
-              type="button"
-              role="switch"
-              aria-checked={draft[row.key]}
-              aria-label={row.name}
-              disabled={editingLocked}
-              className={`pm-ws-behavior-toggle ${
-                draft[row.key] ? 'pm-ws-behavior-toggle-on' : ''
+              key={card.depth}
+              className={`pm-ws-behavior-card ${
+                draft.relationalDepth === card.depth ? 'pm-ws-behavior-card-selected' : ''
               }`}
-              onClick={() => flipToggle(row.key)}
+              type="button"
+              aria-pressed={draft.relationalDepth === card.depth}
+              disabled={editingLocked}
+              onClick={() => selectRelationalDepth(card.depth)}
             >
-              <span className="pm-ws-behavior-toggle-thumb" />
+              <span className="pm-ws-behavior-card-top">
+                <span className="pm-ws-behavior-card-name">
+                  {WORKSHOP_RELATIONAL_DEPTH_LABELS[card.depth]}
+                </span>
+              </span>
+              <span className="pm-ws-behavior-card-desc">{card.description}</span>
             </button>
+          ))}
+        </div>
+        <p className="pm-ws-behavior-note">
+          This is a permission ceiling, not a requirement. Each persona decides when depth helps.
+        </p>
+      </section>
+
+      <section className="pm-ws-tools-modal-section">
+        <div className="pm-ws-tools-modal-rule">
+          <span className="pm-ws-eyebrow">Session continuity</span>
+          <hr />
+        </div>
+        <div className="pm-ws-behavior-row">
+          <div className="pm-ws-behavior-row-text">
+            <div className="pm-ws-behavior-row-name">Carry cues through this session</div>
+            <div className="pm-ws-behavior-row-desc">
+              Let demonstrated interaction preferences—like preferring blunt critique or brief
+              answers—shape later turns. Cleared when the session ends or when you turn this off.
+            </div>
           </div>
-        ))}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={draft.carryCuesThroughSession}
+            aria-label="Carry cues through this session"
+            disabled={editingLocked}
+            className={`pm-ws-behavior-toggle ${
+              draft.carryCuesThroughSession ? 'pm-ws-behavior-toggle-on' : ''
+            }`}
+            onClick={flipCarryCues}
+          >
+            <span className="pm-ws-behavior-toggle-thumb" />
+          </button>
+        </div>
         {/* Future control, visibly disabled — never a nonfunctional consent
             toggle (ADR §11 rule 5 applies to every not-yet-real switch). */}
         <div className="pm-ws-behavior-row pm-ws-behavior-row-future">

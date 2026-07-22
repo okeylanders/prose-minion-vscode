@@ -87,8 +87,9 @@ export interface WorkshopPersonaConversationInput {
   excerpt: WorkshopExcerpt;
   message: string;
   /**
-   * The room's complete selected behavior (ADR 2026-07-20). Mode and
-   * expression jointly select the retained system-prompt resource set.
+   * The room's complete selected behavior (ADR 2026-07-20). Mode,
+   * expression, and relational depth jointly select the retained
+   * system-prompt resource set.
    */
   behavior: WorkshopConversationBehavior;
   /** True only for application-built envelopes whose dynamic fields are pre-encoded. */

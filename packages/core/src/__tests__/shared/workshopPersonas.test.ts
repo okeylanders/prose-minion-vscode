@@ -7,6 +7,8 @@ import {
   WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
   WORKSHOP_INTERACTION_MODE_PROMPT_PATHS,
   WORKSHOP_PERSONA_CATALOG,
+  WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
+  WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS,
   workshopPersonaSystemPromptPaths,
   workshopPersonaLabel
 } from '@shared/constants/workshopPersonas';
@@ -20,6 +22,7 @@ const SPECIALIST_SECTION_ORDER = [
   '## How you use your thinking space',
   '## How you sound',
   '## How you behave across turns',
+  '## Relational depth signature',
   '## What you do not sound like',
   '## Voice in practice',
   '## Your shelf',
@@ -47,7 +50,9 @@ describe('Workshop persona catalog and packaged prompts', () => {
       ...expressionPaths,
       ...calibrationPaths,
       WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
-      ...Object.values(WORKSHOP_INTERACTION_MODE_PROMPT_PATHS)
+      ...Object.values(WORKSHOP_INTERACTION_MODE_PROMPT_PATHS),
+      WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
+      ...Object.values(WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS)
     ];
     expect(new Set(foundationPaths).size).toBe(WORKSHOP_PERSONA_CATALOG.length);
     expect(new Set(expressionPaths).size).toBe(WORKSHOP_PERSONA_CATALOG.length);
@@ -63,7 +68,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
     }
   });
 
-  it('conditionally assembles expression resources and exactly one selected mode', () => {
+  it('conditionally assembles expression plus exactly one selected mode and depth', () => {
     for (const persona of WORKSHOP_PERSONA_CATALOG) {
       const expression = fs.readFileSync(
         path.resolve(PROMPTS_ROOT, persona.expressionProfilePath),
@@ -76,25 +81,37 @@ describe('Workshop persona catalog and packaged prompts', () => {
       const subtlePaths = workshopPersonaSystemPromptPaths(
         'workshop-personas/base.md',
         persona,
-        { interactionMode: 'conversational', expressionLevel: 'subtle' }
+        {
+          interactionMode: 'conversational',
+          expressionLevel: 'subtle',
+          relationalDepth: 'reserved'
+        }
       );
       expect(subtlePaths).toEqual([
         'workshop-personas/base.md',
         persona.promptPath,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
-        WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational
+        WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
+        WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
+        WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS.reserved
       ]);
 
       const fullPaths = workshopPersonaSystemPromptPaths(
         'workshop-personas/base.md',
         persona,
-        { interactionMode: 'conversational', expressionLevel: 'full' }
+        {
+          interactionMode: 'conversational',
+          expressionLevel: 'full',
+          relationalDepth: 'attuned'
+        }
       );
       expect(fullPaths).toEqual([
         'workshop-personas/base.md',
         persona.promptPath,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
+        WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
+        WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS.attuned,
         persona.expressionProfilePath
       ]);
       expect(fullPaths).not.toContain(WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.analysis);
@@ -103,16 +120,37 @@ describe('Workshop persona catalog and packaged prompts', () => {
       const amplifiedPaths = workshopPersonaSystemPromptPaths(
         'workshop-personas/base.md',
         persona,
-        { interactionMode: 'conversational', expressionLevel: 'amplified' }
+        {
+          interactionMode: 'conversational',
+          expressionLevel: 'amplified',
+          relationalDepth: 'reflective'
+        }
       );
       expect(amplifiedPaths).toEqual([
         'workshop-personas/base.md',
         persona.promptPath,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
+        WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
+        WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS.reflective,
         persona.expressionProfilePath,
         persona.expressionCalibrationPath
       ]);
+    }
+  });
+
+  it('gives every persona a complete relational signature without selecting a level', () => {
+    for (const persona of WORKSHOP_PERSONA_CATALOG) {
+      const foundation = fs.readFileSync(
+        path.resolve(PROMPTS_ROOT, persona.promptPath),
+        'utf8'
+      );
+      expect(foundation).toContain('## Relational depth signature');
+      expect(foundation).toContain('### Reserved');
+      expect(foundation).toContain('### Attuned');
+      expect(foundation).toContain('### Reflective');
+      expect(foundation).toMatch(/(?:ceiling|limit|furthest|jurisdictional)/i);
+      expect(foundation).toMatch(/(?:writer|selected|selection|choice)/i);
     }
   });
 

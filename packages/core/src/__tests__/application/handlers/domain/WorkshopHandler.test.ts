@@ -203,14 +203,14 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(router.handlerCount).toBe(26);
   });
 
-  it('commits reactivity-only behavior changes without rebuilding persona prompts', async () => {
+  it('commits carry-cues-only behavior changes without rebuilding persona prompts', async () => {
     await handler.handleSetConversationBehavior(message(
       MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR,
       {
         behavior: {
           interactionMode: 'balanced',
           expressionLevel: 'full',
-          reactToCurrentMessage: false,
+          relationalDepth: 'attuned',
           carryCuesThroughSession: false
         }
       }
@@ -225,7 +225,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(session.getConversationBehavior()).toEqual({
       interactionMode: 'balanced',
       expressionLevel: 'full',
-      reactToCurrentMessage: false,
+      relationalDepth: 'attuned',
       carryCuesThroughSession: false
     });
     expect(posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload.session.conversationBehavior)
@@ -249,7 +249,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         behavior: {
           interactionMode: 'conversational',
           expressionLevel: 'amplified',
-          reactToCurrentMessage: true,
+          relationalDepth: 'attuned',
           carryCuesThroughSession: true
         }
       }
@@ -261,7 +261,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     ], {
       interactionMode: 'conversational',
       expressionLevel: 'amplified',
-      reactToCurrentMessage: true,
+      relationalDepth: 'attuned',
       carryCuesThroughSession: true
     });
     expect(service.replaceWorkshopConversationBehavior.mock.invocationCallOrder[0])
@@ -283,7 +283,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         behavior: {
           interactionMode: 'balanced',
           expressionLevel: 'subtle',
-          reactToCurrentMessage: true,
+          relationalDepth: 'attuned',
           carryCuesThroughSession: true
         }
       }
@@ -308,7 +308,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         behavior: {
           interactionMode: 'analysis',
           expressionLevel: 'subtle',
-          reactToCurrentMessage: false,
+          relationalDepth: 'reserved',
           carryCuesThroughSession: false
         }
       }
@@ -328,7 +328,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         behavior: {
           interactionMode: 'balanced',
           expressionLevel: 'subtle',
-          reactToCurrentMessage: false,
+          relationalDepth: 'reserved',
           carryCuesThroughSession: false
         }
       }
@@ -356,7 +356,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         behavior: {
           interactionMode: 'analysis',
           expressionLevel: 'full',
-          reactToCurrentMessage: true,
+          relationalDepth: 'attuned',
           carryCuesThroughSession: true
         }
       }
@@ -382,7 +382,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         behavior: {
           interactionMode: 'conversational',
           expressionLevel: 'amplified',
-          reactToCurrentMessage: true,
+          relationalDepth: 'attuned',
           carryCuesThroughSession: false
         }
       }
@@ -401,7 +401,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(prompt).toContain('from-expression="full"');
     expect(prompt).toContain('to-expression="amplified"');
     expect(prompt).toContain('expression="amplified"');
-    expect(prompt).toContain('<workshop-behavior-activation mode="conversational" expression="amplified">');
+    expect(prompt).toContain('<workshop-behavior-activation mode="conversational" expression="amplified" relational-depth="attuned">');
     expect(session.getSnapshot().turns.at(-2)).toMatchObject({
       behavior: { interactionMode: 'conversational', expressionLevel: 'amplified' },
       behaviorTransition: {

@@ -105,6 +105,7 @@ export class WorkshopConversationBehaviorService {
     if (
       previous.interactionMode !== next.interactionMode
       || previous.expressionLevel !== next.expressionLevel
+      || previous.relationalDepth !== next.relationalDepth
     ) {
       await this.assistantToolService.replaceWorkshopConversationBehavior(
         this.replacementTargets(),
@@ -116,7 +117,7 @@ export class WorkshopConversationBehaviorService {
     this.outputChannel.appendLine(
       `[WorkshopConversationBehaviorService] Conversation behavior committed ` +
       `(mode=${next.interactionMode}, expression=${next.expressionLevel}, ` +
-      `react=${next.reactToCurrentMessage}, carry=${next.carryCuesThroughSession})`
+      `relationalDepth=${next.relationalDepth}, carry=${next.carryCuesThroughSession})`
     );
     return { changed: true, deferred: false };
   }
@@ -173,7 +174,7 @@ export class WorkshopConversationBehaviorService {
   ): boolean {
     return left.interactionMode === right.interactionMode
       && left.expressionLevel === right.expressionLevel
-      && left.reactToCurrentMessage === right.reactToCurrentMessage
+      && left.relationalDepth === right.relationalDepth
       && left.carryCuesThroughSession === right.carryCuesThroughSession;
   }
 
