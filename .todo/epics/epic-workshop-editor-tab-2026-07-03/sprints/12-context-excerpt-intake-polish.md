@@ -3,7 +3,8 @@
 > **Budget invariant (Sprint 06C):** attachment-size and aggregate context
 > caps live in `packages/core/src/shared/constants/promptBudgets.ts`.
 
-**Status**: Planned
+**Status**: Implementation merged in PR #80; Phase 8 manual polish and tracker
+reconciliation remain
 **Priority**: High (final live-session-shape and interface sprint before persistence)
 **Branch**: `sprint/workshop-editor-tab-12-context-excerpt-intake` -> PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 4-6 days

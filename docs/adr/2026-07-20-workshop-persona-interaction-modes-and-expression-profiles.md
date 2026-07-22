@@ -3,7 +3,10 @@
 - **Status:** Accepted — the core behavior controls and guarded between-run
   system-message replacement landed 2026-07-20; conditional expression
   assembly and the full-roster Amplified calibration set were accepted
-  2026-07-20; qualitative evaluation remains in progress
+  2026-07-20; the Relational Depth product amendment was accepted 2026-07-22
+  with implementation pending; the Writer Profile amendment was accepted
+  2026-07-22 with implementation pending; qualitative evaluation remains in
+  progress
 - **Date:** 2026-07-20
 - **Deciders:** Okey Landers, Ada Forge
 - **Related:**
@@ -14,6 +17,8 @@
   - [Workshop Session Persistence](2026-07-14-workshop-session-persistence.md)
   - [Workshop Living Room Chronicle and Episodic Persona Memory](2026-07-18-workshop-living-room-chronicle-and-episodic-memory.md)
   - [Workshop persona authoring guide](../../packages/core/resources/system-prompts/workshop-personas/README.md)
+  - [Workshop Relational Depth feature](../../.todo/features/feature-workshop-relational-depth/README.md)
+  - [Workshop Writer Profile feature](../../.todo/features/feature-workshop-writer-profile/README.md)
 
 ## Context
 
@@ -65,6 +70,11 @@ conditions that awaken it, and the person's way of regulating or repairing it.
 
 ## Decision summary
 
+Section 15's accepted Relational Depth amendment supersedes the binary
+current-turn reactivity layer in the target design. The diagram below reflects
+that target; the binary `reactToCurrentMessage` field remains the implemented
+baseline until the linked feature lands.
+
 Workshop persona behavior will be designed as a layered control stack:
 
 ```text
@@ -76,8 +86,10 @@ Shared host contract
        (subtle | full | amplified)
     -> writer-selected interaction mode
        (analysis | balanced | conversational)
-    -> current-turn reactivity
-       (whether delivery may respond to observable writer cues)
+    -> optional writer-authored profile context
+       (global, inspectable, never persona-authored)
+    -> writer-selected relational depth
+       (reserved | attuned | reflective permission ceiling)
     -> optional session attunement
        (extension-owned, bounded interaction preferences)
     -> response
@@ -92,9 +104,10 @@ The layers have different ownership and lifetimes:
 | Expression profile | Product/persona author | Persona version | No |
 | Expression level | Writer | Session state, stamped per turn | Yes, between turns |
 | Interaction mode | Writer | Session state, stamped per turn | Yes, between turns |
-| Current-turn reactivity | Writer | Session preference applied per turn | Yes, between turns |
+| Writer profile | Writer | Global setting, explicit opt-in | Yes, between turns |
+| Relational depth | Writer | Session preference, stamped per turn | Yes, between turns |
 | Session attunement | Writer/extension | Current Workshop session | Yes; may be cleared |
-| Cross-session preferences | Writer | Future, explicit opt-in only | Yes; inspectable and deletable |
+| Cross-session inferred preferences | Writer | Future, explicit opt-in only | Yes; inspectable and deletable |
 | Living Room/persona state | Validated product context | Frozen session snapshot | Only in a new session snapshot |
 
 Each interaction mode is defined once in its own shared prompt resource. The
@@ -135,7 +148,9 @@ There will not be 36 persona-mode prompt files.
 
 ## Non-goals
 
-- Diagnosing the writer's mood, personality, or mental health.
+- Diagnosing mental health, assigning psychiatric labels, or presenting a
+  contextual reading as an authoritative personality/motivational profile.
+  Tentative immediate inference is permitted by the Relational Depth amendment.
 - Persisting a hidden emotional profile of the writer.
 - Treating provider reasoning or a retained model conversation as an
   authoritative memory store.
@@ -144,7 +159,9 @@ There will not be 36 persona-mode prompt files.
   unusable feedback.
 - Giving deterministic tools or tool sidecars conversational modes.
 - Replacing a retained system message during an active run.
-- Replacing system messages for reactivity-only or attunement-only changes.
+- Replacing system messages for attunement-only changes. Relational Depth uses
+  guarded replacement under Section 15 because it changes interpretation
+  permissions.
 - Generating a separate prompt file for every persona-mode combination.
 - Forcing preferred words into replies regardless of meaning.
 - Solving Living Room generation, Room Ledger persistence, or day-card state in
@@ -428,6 +445,11 @@ when its system message changed; preserving honest behavior takes precedence.
 
 ## 3. Session and persistence shape
 
+This section records the implemented behavior-object baseline. Section 15
+defines the accepted target replacement of `reactToCurrentMessage` with
+`relationalDepth`; implementation and settings must continue using the baseline
+shape until that feature lands atomically.
+
 The host aggregate owns one transactional behavior object:
 
 ```ts
@@ -510,6 +532,11 @@ Workshop session schema. Do not add a speculative optional field to Sprint 10
 before the implementation is authorized merely to reserve space.
 
 ## 4. Reactivity and attunement have separate lifetimes
+
+This section records the implemented binary-reactivity baseline. Section 15's
+accepted amendment replaces that binary target with Reserved, Attuned, and
+Reflective Relational Depth while preserving session attunement as a separate
+lifetime control.
 
 Interaction mode and expression level are explicit. Adaptation has two bounded
 layers that the UI presents together but the runtime does not conflate.
@@ -987,6 +1014,10 @@ gain before expanding the calibration set beyond the initial four personas.
 
 ## 11. UI direction
 
+This section records the landed binary-reactivity modal. Section 15 defines the
+accepted target UI in which Relational Depth replaces `React to this message`;
+the two controls must not coexist in the implemented modal.
+
 The Workshop surfaces have separate conceptual jobs:
 
 | Surface | Writer question |
@@ -1359,3 +1390,327 @@ established the schema; all twelve calibrations are now authored and assembled.
 This completes resource coverage, not qualitative validation. Frozen-corpus
 and live evaluation still decide whether each field map increases identity
 without semantic distortion, shared-assistant tics, or replacement catchphrases.
+
+## 15. Accepted amendment: Relational Depth (2026-07-22)
+
+### Why the boundary changes
+
+The original non-goals correctly reject diagnosis, hidden emotional profiles,
+and provider-private reasoning as product memory. Read too broadly, however,
+"do not determine the writer's mood or motivation" suppresses the tentative,
+immediate inference ordinary emotional intelligence requires. A persona may
+notice the craft problem while declining to notice excitement, hesitation,
+discouragement, defensiveness, personal investment, or meaningful resonance
+between the project and life experience.
+
+This amendment sharpens the line:
+
+> Permit contextual emotional inference; forbid authoritative psychological
+> claims and hidden durable profiles.
+
+The product does not ask the model to expose private chain-of-thought or store
+an invisible psychological analysis. It defines the observable behavior,
+permission boundary, uncertainty language, provenance, and lifetime of a
+persona's relational judgment.
+
+Accordingly, the original non-goal **"Diagnosing the writer's mood,
+personality, or mental health"** is narrowed for this amendment:
+
+- diagnosing mental health, assigning psychiatric labels, or asserting a
+  personality/motivational profile remains out of bounds;
+- tentatively reading likely immediate affect, motivation, interaction need, or
+  personal resonance is permitted within the writer-selected level below; and
+- no inference becomes durable state merely because a model made it.
+
+### Decision: replace binary React with a permission scale
+
+The binary `reactToCurrentMessage` control is superseded by a three-level
+`relationalDepth` field:
+
+```ts
+export type WorkshopRelationalDepth =
+  | 'reserved'
+  | 'attuned'
+  | 'reflective';
+
+export interface WorkshopConversationBehavior {
+  interactionMode: WorkshopInteractionMode;
+  expressionLevel: WorkshopPersonaExpressionLevel;
+  relationalDepth: WorkshopRelationalDepth;
+  carryCuesThroughSession: boolean;
+}
+```
+
+The approved default is `attuned`. The complete object remains an explicit
+writer preference persisted under
+`proseMinion.workshop.conversationBehavior`, validated and committed atomically.
+Until the feature lands, the existing binary control remains the implemented
+runtime truth; documentation and implementation must not claim the new field is
+live prematurely.
+
+The level is a **permission ceiling, not a performance quota**. The writer
+chooses how deeply the room may interpret. Each persona decides whether and how
+to use that permission through her stable identity, temperament, craft
+jurisdiction, and the actual needs of the turn. Reflective therefore does not
+force a personal interpretation into every response.
+
+### User-facing levels
+
+The originating idea described `Subtle | Normal | Amplified`. The modal uses
+distinct language so it does not collide with Persona Expression's existing
+`Subtle | Full | Amplified` scale:
+
+| Level | Meaning |
+|---|---|
+| **Reserved** | Respond to feelings and needs the writer states explicitly; do not volunteer personal interpretations. Reserved remains warm and recognizably in-persona. |
+| **Attuned** | Use high emotional intelligence. Infer likely immediate affect, motivation, hesitation, excitement, vulnerability, or conversational need and adapt delivery with calibrated uncertainty. |
+| **Reflective** | Explore deeper connections among the writing, recurring project themes, and life experiences the writer explicitly shared. Offer bolder hypotheses and personally resonant questions while keeping them corrigible. |
+
+Every relational inference follows this grammar:
+
+```text
+observation -> tentative connection -> invitation to confirm, reject, or redirect
+```
+
+"You keep returning to this character's refusal to ask for help; I wonder
+whether that tension matters beyond scene mechanics—does it touch something
+personal, or am I overreading?" is permitted Reflective behavior. "You wrote
+this because you fear dependence" is not.
+
+### Invariants at every level
+
+No relational-depth selection authorizes a persona to:
+
+- diagnose mental health or assign psychiatric labels;
+- present hidden motives, personality traits, or emotional states as fact;
+- invent biography or treat fictional material as autobiography;
+- pressure personal disclosure or punish refusal/correction;
+- manipulate, shame, foster dependency, claim exclusivity, or discourage human
+  relationships or professional support;
+- retain inferred emotion or interpretation as hidden durable memory; or
+- override explicit writer instructions, project evidence, capability limits,
+  or the persona's craft jurisdiction.
+
+At Attuned and Reflective, calibrated inference is a feature rather than a
+violation. The persona may say "it sounds like," "I wonder," or "I may be
+reading this wrong," and must repair immediately when corrected.
+
+### Lifetime remains a separate permission
+
+Relational depth controls **how deeply** a persona may interpret. **Carry cues
+through this session** controls **how long** a bounded interaction preference
+may survive. These controls do not imply each other.
+
+- Reserved, Attuned, and Reflective may all operate with Carry Cues off.
+- Reflective does not enable session or cross-session memory.
+- Current affect expires with the turn or session; it never becomes a stable
+  preference automatically.
+- Cross-session personal context may come from the writer-authored, globally
+  inspectable Writer Profile accepted in Section 16. Relational Depth does not
+  populate or mutate that profile, and this amendment still does not create
+  inferred cross-session memory.
+
+Visible retained conversation remains ordinary conversational evidence. A
+persona may refer to something the writer explicitly said earlier in the same
+retained room; that is distinct from silently promoting an inferred profile
+into product-owned memory.
+
+### Prompt and transition contract
+
+Relational depth changes the interpretation permission granted to personas and
+therefore receives system-prompt priority rather than living only in a weak
+turn-level reminder:
+
+1. a shared relational invariant defines the boundaries that hold at every
+   level;
+2. exactly one Reserved, Attuned, or Reflective resource is assembled into the
+   host and every live persona guest system prompt;
+3. every persona base prompt defines a compact Reserved, Attuned, and Reflective
+   relational signature in that persona's own language, temperament, and craft
+   jurisdiction;
+4. the effective level is restated in the combined per-turn behavior activation
+   immediately before the writer message;
+5. changing relational depth uses the existing guarded, atomic between-run
+   system-message replacement and clears affected context-budget snapshots;
+6. the next committed writer turn records transition provenance; and
+7. deterministic tools and tool sidecars receive neither the resources nor the
+   behavior frame.
+
+The persona-authored signatures describe **how** that person uses the selected
+permission; they do not grant permission. A base prompt may describe all three
+levels for identity continuity, but only the conditionally assembled shared
+resource selects the operative ceiling. This preserves persona-specific social
+intelligence without letting Reflective language leak authority into Reserved.
+
+Conditionally assembling the selected resource prevents Reflective permission
+from leaking into Reserved through an always-loaded higher-priority prompt—the
+same class of failure that required conditional Persona Expression assembly.
+
+### Modal contract
+
+The target Behavior tab in Conversation Settings is ordered:
+
+1. **Response style** — `Analyze | Balanced | Converse`
+2. **Persona expression** — `Subtle | Full | Amplified`
+3. **Relational depth** — `Reserved | Attuned | Reflective`
+4. **Session continuity** — `Carry cues through this session`
+
+The relational cards use concise contrastive descriptions with progressively
+disclosed examples and boundaries. Reflective explicitly names its permission
+to connect the project with life experience the writer has shared; it is not
+described merely as "more empathy."
+
+The compact composer chip may continue emphasizing response style and
+expression, but its tooltip and accessible description expose all effective
+behavior axes. Apply remains atomic and unavailable during an active run.
+
+### Delivery and evaluation
+
+Delivery is tracked in
+[Workshop Relational Depth](../../.todo/features/feature-workshop-relational-depth/README.md).
+Implementation must include a frozen qualitative corpus spanning useful
+attunement, false inference, correction, vulnerability, project/life resonance,
+refusal, and boundary-setting across multiple personas and interaction modes.
+The corpus also compares blind samples across all twelve personas at each depth
+to catch convergence on one generic emotionally intelligent assistant voice.
+
+Success means Reserved is warm without unsolicited interpretation, Attuned is
+socially perceptive without confident invention, and Reflective creates grounded
+personal resonance without generic therapy language, compulsory disclosure, or
+pseudo-psychological certainty.
+
+## 16. Accepted amendment: Workshop Writer Profile (2026-07-22)
+
+### Why explicit biography belongs in the room
+
+Reflective relational depth may connect writing and project themes with life
+experience the writer has explicitly shared. Requiring that context to be
+reintroduced in every room is cumbersome; inferring it from prose or private
+reasoning would violate the ownership boundary established above.
+
+The accepted middle path is an optional, writer-authored **Writer Profile**:
+the writer may tell the room how to address them and supply a short amount of
+enduring personal context. The profile is inspectable settings data. It is not
+persona-authored memory, an inferred psychological profile, or evidence that
+fiction is autobiography.
+
+### Decision: a separate global profile object
+
+The profile is not added to `WorkshopConversationBehavior`. Behavior controls
+how personas respond; the profile supplies explicit facts they may respond
+with. Persist it as its own complete object under
+`proseMinion.workshop.writerProfile`:
+
+```ts
+export interface WorkshopWriterProfile {
+  enabled: boolean;
+  preferredAddress: string;
+  bio: string;
+}
+
+export const DEFAULT_WORKSHOP_WRITER_PROFILE: WorkshopWriterProfile = {
+  enabled: false,
+  preferredAddress: '',
+  bio: ''
+};
+```
+
+The initial bounds are 80 characters for `preferredAddress` and 1,000
+characters for `bio`. The complete persisted shape is validated and whitespace
+is normalized before commit. Invalid or partial settings fail closed to the
+disabled default. No prompt frame is emitted unless sharing is enabled and at
+least one field is non-empty.
+
+The existing VS Code adapter writes settings at the user/global target. That is
+the accepted ownership boundary: the profile follows the writer rather than
+becoming manuscript data. It is ordinary settings data, not secret storage;
+the modal must disclose that and discourage sensitive content.
+
+The raw profile is never copied into workspace session JSON, transcript turns,
+behavior-transition provenance, project resources, deterministic tools, tool
+sidecars, or an inferred memory store. Restored sessions use the current global
+profile when they create a fresh provider conversation; they do not revive a
+historical copy. Project-specific context belongs in explicit project resources
+or attachments instead.
+
+### Relationship to Relational Depth and Carry Cues
+
+The three controls remain orthogonal:
+
+- **Writer Profile** determines what enduring, writer-authored personal context
+  is available.
+- **Relational Depth** determines how deeply a persona may interpret that
+  context.
+- **Carry cues through this session** determines whether bounded interaction
+  preferences discovered in conversation may survive later turns in the live
+  room.
+
+Reserved may use the preferred address and directly relevant stated facts but
+does not volunteer personal interpretations. Attuned may use the profile to
+calibrate warmth, pacing, relevance, and questions. Reflective may offer
+grounded, tentative connections between the prose or project and life
+experience the writer supplied. At every level, explicit current instructions
+win, invented biography remains forbidden, and an enabled profile never forces
+the persona to mention it.
+
+Personas cannot add to, revise, or silently enrich the profile. Conversational
+inference remains contextual unless a future, separately accepted memory
+contract gives the writer explicit inspection, correction, and deletion
+controls.
+
+### Prompt and transition contract
+
+An active profile is assembled once into each host and live persona guest
+system prompt as a bounded `<workshop-writer-profile>` frame. The trusted
+wrapper identifies the enclosed fields as writer-supplied descriptive context,
+allows `preferredAddress` to operate as an interaction preference, and states
+that bio text is evidence rather than instructions. It cannot override the
+shared host contract, persona jurisdiction, current explicit requests, or the
+selected Relational Depth.
+
+Both fields are delimiter-neutralized before interpolation, and the frame name
+is registered with the shared reserved-frame neutralizer. This prevents profile
+content from closing or manufacturing trusted Workshop frames.
+
+Profile changes use the existing guarded, atomic between-run replacement for
+all retained host and live-guest system messages and clear affected
+context-budget measurements. New guests receive the current profile when their
+conversation is created. The profile is not repeated in every turn, and tool
+conversations receive neither the profile nor a profile activation frame.
+
+### Conversation Settings modal contract
+
+The existing surface remains **Conversation Settings**, but its content is
+divided into two tabs so the growing behavior controls and personal fields do
+not become one long scrolling wall:
+
+1. **Behavior** — Response style, Persona expression, Relational depth, and
+   Session continuity.
+2. **About you** — Share this profile toggle, preferred-address input, bounded
+   bio, global/non-secret disclosure, and Clear Profile action.
+
+The writer-facing questions are **How should the room address you?** and
+**What would you like the room to know about you?** The header, tabs, and footer
+remain fixed while the active tab body scrolls. Apply is atomic, unavailable
+during an active run, and closing without Apply discards the draft. Clear
+Profile intentionally empties both fields and disables sharing through the same
+commit path.
+
+The composer never displays profile content. Its settings tooltip or accessible
+description may expose only a compact **Profile shared** state so the writer can
+tell when personal context is active.
+
+### Delivery and evaluation
+
+Delivery is tracked in
+[Workshop Writer Profile](../../.todo/features/feature-workshop-writer-profile/README.md).
+Implementation must prove that disabled/empty profiles contribute no prompt
+content, frame injection is neutralized, profile removal takes effect on the
+next eligible turn, and raw profile strings never enter saved workspace
+sessions or tool conversations.
+
+Qualitative evaluation runs the same supplied profile through Reserved,
+Attuned, and Reflective across multiple personas. Success means personas use
+the preferred address naturally, gain relevant context without performing
+memory, and make only the kinds of personal connection the selected relational
+ceiling permits.

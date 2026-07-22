@@ -7,6 +7,7 @@ Amplified runtime behavior, and all twelve persona calibrations are ready for
 live testing; modal layout polish remains pending
 **Priority**: High
 **Estimated Effort**: Medium
+**Related feature**: [Workshop Relational Depth](../feature-workshop-relational-depth/README.md) — controls how deeply a persona may interpret and respond to the writer; distinct from how strongly the persona expresses herself
 
 ## Problem / Motivation
 

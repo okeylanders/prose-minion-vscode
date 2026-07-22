@@ -4,7 +4,7 @@
 **Priority**: High
 **Branch**: `sprint/conversation-widgets-01-widget-host-gesture-playground` -> PR into `epic/conversation-widgets`
 **Estimated Effort**: 4-6 days
-**Depends on**: ADR [2026-07-22 — Conversation Widgets](../../../../docs/adr/2026-07-22-conversation-widgets.md) (authored and accepted)
+**Depends on**: Workshop Sprint 10 persistence merged; ADR [2026-07-22 — Conversation Widgets](../../../../docs/adr/2026-07-22-conversation-widgets.md) authored and accepted
 **ADR**: same
 
 ## Goal
@@ -64,7 +64,10 @@ persona "here are the gesture directions I want *here*."
   directions I want for '<phrase>': …selected items…") plus a visible composer
   message. It rides exactly one turn, then becomes ordinary history.
 - **Every commit persists its full `Draft` by stable id in
-  `WorkshopSessionService`** so the chip re-hydrates the authoring UI.
+  `WorkshopSessionService`** so the chip re-hydrates the authoring UI. The
+  typed config collection joins Sprint 10's complete session serializer and
+  shared ordered autosave-dirty seam; named-session and restart restore preserve
+  the id and exact draft.
 - **The thread chip is presentation-only.** Webview renders a clickable marker
   over the committed turn; the model never sees the chip. Clicking re-opens
   Gesture Playground seeded from the persisted `Draft`.
@@ -89,6 +92,7 @@ persona "here are the gesture directions I want *here*."
 4. **Thread-artifact commit path** reusing the existing staged-artifact rail
    (`pendingMessageAttachments` / `buildWorkshopThreadArtifactFrame`).
 5. **Persisted widget config** by stable id in `WorkshopSessionService` +
+   complete snapshot serialization/hydration, ordered autosave, and
    reconciliation to the webview.
 6. **Presentation-only chip** in the transcript with clone-and-recommit
    re-launch.
@@ -96,8 +100,8 @@ persona "here are the gesture directions I want *here*."
    recommendation chip and an optional seed.
 8. Frame neutralization coverage for any new reserved delimiter introduced.
 9. Tests: host registry + commit contract; thread-artifact payload shape;
-   persistence round-trip; chip re-hydration seeds the Draft; neutralization
-   guard.
+   live and named-session persistence round-trip; chip re-hydration seeds the
+   exact Draft with the same stable id; neutralization guard.
 
 ## Out of Scope
 

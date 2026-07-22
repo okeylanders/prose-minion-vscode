@@ -2,9 +2,9 @@
 
 **Created**: 2026-07-22
 **Status**: Planning
-**Progress**: Epic and sprint plans drafted. No code yet. ADR pending (author before Sprint 01).
+**Progress**: Epic and sprint plans drafted; concept springs catalogued. No code yet. ADR pending (author before Sprint 01).
 **ADRs**: [2026-07-22 — Conversation Widgets](../../../docs/adr/2026-07-22-conversation-widgets.md) *(to author first — the two load-bearing decisions live here)*
-**Integration branch**: `epic/conversation-widgets` *(to branch from the workshop line once the ADR lands)*
+**Integration branch**: `epic/conversation-widgets` *(to branch from the completed Workshop line after Sprint 10 persistence and the widget ADR land)*
 
 ## Goal
 
@@ -99,6 +99,13 @@ These are the walls. Everything else is decoration that can move.
    widget's logic live in `packages/core`. Only the composer's *mounting* touches
    `apps/vscode-extension`. No `vscode` import crosses into core.
 
+9. **Widget state extends the accepted session-persistence spine.** Re-openable
+   authoring configs and standing directives are explicit typed collections in
+   the complete Workshop serializer, with absent collections hydrating empty.
+   Stable turn/artifact/config ids survive round-trip. Widget commit, edit, and
+   kill paths use Sprint 10's shared ordered autosave-dirty seam. There is no
+   generic extension bag and no second webview-owned persistence store.
+
 ## Sequencing
 
 Build the framework on the *cheapest* rail first (one concrete widget, slightly
@@ -110,7 +117,7 @@ with a second widget before adding v2 richness.
 |---|--------|------|--------|
 | 1 | [Widget host + Gesture Playground](sprints/01-widget-host-gesture-playground.md) | thread-artifact | The whole spine on the cheap rail: composer menu → pre-commit UI → validated payload → one-shot thread-artifact → re-openable chip → clone-and-recommit. |
 | 2 | [Lexical Gravity + standing prose-directive rail](sprints/02-lexical-gravity-standing-rail.md) | standing context | The durable rail exists, built with its first real widget: passage-scoped prose directive, coordinator in the `WorkshopConversationBehaviorService` mold, edit-in-place + shift marker, active-directive indicator + one-click kill. Single lens. |
-| 3 | [Prose Controller](sprints/03-prose-controller.md) | standing context | The standing rail generalizes across a second, structurally different shaping widget (syntax/rhythm/density/punctuation knobs), reusing Sprint 02's rail and coordinator. |
+| 3 | [Prose Controller](sprints/03-prose-controller.md) | standing context | The standing rail generalizes across an interactive craft-textbook controller for diction, syntax, rhythm, density, narrative handling, figurative texture, and punctuation. |
 | 4 | [Lexical Gravity: lens blending](sprints/04-lexical-gravity-lens-blending.md) | standing context | Multi-lens blending with explicit **dominance** weighting (never an unweighted average). |
 
 Each sprint lands as its own PR into `epic/conversation-widgets`. Final step
@@ -125,12 +132,32 @@ share the standing rail but answer different questions:
 - **Lexical Gravity** — *what words*: bias lexis toward an interpretive
   lens / world-view (Photography, Mathematics, Music…), with weight and
   degrees-of-separation, optional metaphor pull.
-- **Prose Controller** — *how the words are arranged*: lyricism, part-of-speech
-  density, sentence style, metaphor/simile density, punctuation style.
+- **Prose Controller** — *how the passage is made*: diction/register, sentence
+  architecture, rhythm/sound, lexical/modifier density, figurative/sensory
+  texture, narrative handling, and punctuation/emphasis.
 
 They coexist as distinct active directives on the passage (a writer can run both
 at once), each with its own chip and kill switch, both consulted at
 prose-generation time.
+
+## Concept springs (exploration, not committed sprints)
+
+The [`concepts/`](concepts/README.md) folder holds promising widget-shaped ideas
+before they earn a sprint. A concept spring may refine into a Conversation
+Widget, a resource-backed surface, or a different Workshop primitive; appearing
+here does **not** commit it to this epic's delivery sequence.
+
+| Concept | Current classification | Likely lifecycle |
+|---|---|---|
+| [Decisions](concepts/decisions-widget.md) | Conversation Widget + derived transcript view | Append-only thread artifact; deterministic scan assembles the decision list. |
+| [Project Scratch Pad](concepts/project-scratch-pad.md) | Resource-backed widget | Project JSON resource; each append also leaves a visible thread event. |
+| [Learner: English](concepts/learner-english.md) | Learning surface using the widget host | Exploration is free; selected lessons/questions may commit as one-shot artifacts. |
+| [Learner: Art of the Craft](concepts/learner-art-of-the-craft.md) | Learning surface using the widget host | Same Learner shell with a storytelling-craft curriculum pack. |
+| [Show vs. Tell Playground](concepts/show-v-tell-playground.md) | Conversation Widget | One-shot thread artifact; clone-and-recommit. |
+
+**Prose Controller is not a concept spring.** It remains committed Sprint 03
+work, but its plan now specifies an "Art of the Craft"-style control surface
+with deeper, teachable style levers rather than a thin bank of sliders.
 
 ## Related / deferred (not committed widget sprints)
 
@@ -144,7 +171,9 @@ prose-generation time.
   **do not** build it as a widget. Decision to be made in its own ADR/feature.
 - **More widgets are expected.** The host contract (Sprint 01) and the standing
   rail (Sprint 02) are the two reusable substrates; later widgets pick a rail and
-  supply a pre-commit UI + payload validator.
+  supply a pre-commit UI + payload validator. Resource-backed and learning
+  surfaces must state honestly where their durable truth lives and what, if
+  anything, they commit to the conversation.
 
 ## Architectural invariants (inherited from the Workshop epic)
 
@@ -153,6 +182,9 @@ prose-generation time.
   witness (`__tests__/architecture/`) stays green.
 - **Session state lives host-side** in `WorkshopSessionService`, never in the
   webview.
+- **Persistence remains complete and typed.** Widget state participates in
+  Sprint 10's serialize/hydrate contract and named-session browser restore;
+  provider `ConversationManager` history is never its only durable home.
 - **`packages/core` never imports `vscode`.**
 - **Behavior changes only between runs.** Standing-widget commits inherit the
   active-run guard and serialization discipline already coordinated by

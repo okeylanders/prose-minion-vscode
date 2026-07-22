@@ -1,8 +1,9 @@
 # ADR 2026-07-14: Workshop Session Persistence and the Session Browser
 
-**Status:** Proposed
+**Status:** Accepted — implementation scheduled last in the Workshop epic after
+Relational Depth and Writer Profile stabilize the behavior and prompt boundary
 **Date:** 2026-07-14
-**Extends:** [ADR 2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](2026-07-09-workshop-persona-hosted-conversations.md); [ADR 2026-07-11 — Workshop Excerpt Revision and Room Memory](2026-07-11-workshop-excerpt-revision-and-room-memory.md)
+**Extends:** [ADR 2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](2026-07-09-workshop-persona-hosted-conversations.md); [ADR 2026-07-11 — Workshop Excerpt Revision and Room Memory](2026-07-11-workshop-excerpt-revision-and-room-memory.md); [ADR 2026-07-20 — Workshop Persona Interaction Modes and Expression Profiles](2026-07-20-workshop-persona-interaction-modes-and-expression-profiles.md)
 **Epic:** [Assistant as a Full Editor Tab](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md)
 **Feature investigation:** [.todo/features/feature-workshop-session-persistence](../../.todo/features/feature-workshop-session-persistence/README.md)
 
@@ -41,10 +42,12 @@ to the writer, and multiple saved sessions × 10k-word excerpts is exactly the
 payload Mementos are not meant for.
 
 The sprint number remains Sprint 10, but implementation intentionally follows
-Sprints 11 and 12. File-access capabilities add artifact-turn variants, and the
-intake rework replaces the single brief with typed context attachments. Building
-the persistence boundary last lets its first schema describe the completed
-aggregate instead of requiring an immediate migration.
+Sprints 11 and 12 plus the accepted Relational Depth and Writer Profile work.
+File-access capabilities add artifact-turn variants, the intake rework replaces
+the single brief with typed context attachments, and Relational Depth replaces
+the binary reactivity field stamped onto persona turns. Building the persistence
+boundary last lets its first schema describe the completed aggregate instead of
+requiring an immediate migration.
 
 ## Decision
 
@@ -70,7 +73,9 @@ precedent and buys, for free:
 File naming: `YYYYMMDD-HHMM-<slug>.json` (memory-bank convention). The slug
 derives deterministically from the excerpt's first heading or opening words.
 The live autosave writes to a fixed name (`current.json`) so restart recovery
-never depends on the writer having pressed Save.
+never depends on the writer having pressed Save. Opening a named session
+immediately makes the hydrated state the new `current.json`; it is protected
+before the writer performs another mutation.
 
 **Privacy note:** manuscript text at rest in the workspace — the same posture
 as the manuscript files themselves. Never global storage; nothing leaves the
@@ -83,14 +88,17 @@ workspace folder.
 list (no 100-turn window), the todo list, excerpt text + `sourceUri` +
 `excerptSource` + `excerptVersion` + `replacementCount` + `turnCounter`, the
 ordered context attachments, all turn variants (including capability artifacts
-and context event turns), and participant *identities* (host persona id, tool
-sidecar ids, guest persona ids). It is a distinct type from the webview
-projection and must never be built from `getSnapshot()`.
+and context event turns), per-turn Conversation Behavior stamps and transition
+provenance, and participant *identities* (host persona id, tool sidecar ids,
+guest persona ids). It is a distinct type from the webview projection and must
+never be built from `getSnapshot()`.
 
-- **Autosave** writes through to `current.json` on every mutation seam —
+- **Autosave** marks `current.json` dirty on every mutation seam —
   `setExcerpt`/`replaceExcerpt`, context attachment add/update/remove, turn
-  completion, todo mutations, guest lifecycle — debounced host-side. `reset()`
-  deletes the blob: no stale session resurrecting on next launch.
+  completion, todo mutations, guest lifecycle — through one application-owned,
+  ordered autosave coordinator. It coalesces writes without letting an older
+  write win a race. `reset()` deletes the blob: no stale session resurrecting
+  on next launch. Future widget mutation coordinators use this same dirty seam.
 - **Save session** copies the current serialized state to a timestamped file
   and reports the saved name as a deterministic status line. Saved files are
   immutable records; continuing to work mutates only `current.json`.
@@ -100,6 +108,25 @@ A new infrastructure service, `WorkshopSessionStore` (core, consuming
 and tolerant reads. It is constructed in `extension.ts`, added to
 `CoreServices`, and injected into `WorkshopHandler` — nothing is `new`-ed in
 the handler (ADR 2026-06-18).
+
+### 2A. Explicit behavior and personal-context boundary
+
+The complete turn list preserves every persona-directed turn's effective
+Conversation Behavior and behavior-transition provenance. That is historical
+truth and includes the final `relationalDepth` shape accepted by the 2026-07-20
+ADR amendment.
+
+The session does not own the current global preference. Hydration receives the
+currently validated `WorkshopConversationBehavior` from the application
+boundary; opening an old named session never rewrites VS Code Settings. Older
+turns retain their historical stamps while the first fresh conversation uses
+the writer's current settings.
+
+Derived Carry Cues/session-attunement state is fresh-room memory and is not
+serialized. The Writer Profile is likewise global writer-owned settings data,
+not workspace session data. Raw preferred-address and bio strings never enter a
+session file. Fresh host/guest conversations assemble the currently enabled
+profile after restore.
 
 ### 3. Restored sessions are honest: full record, fresh memory (tier T2)
 
@@ -138,6 +165,14 @@ v1 and no v1 → v2 migration. For future *named saves* (writer-created records)
 prefer additive fields and cheap tolerant reads over discard when the cost is
 small; the autosave blob may still reset on a breaking alpha schema change.
 
+Future session-owned state, including Conversation Widget authoring configs and
+standing directives, extends the snapshot through explicit typed optional
+fields with deterministic empty defaults. V1 does not reserve a generic
+`Record<string, unknown>` extension bag or guess widget payloads before their
+ADR. Stable turn/artifact/config ids survive round-trip unchanged, browser
+summary extraction ignores additive payloads, and provider conversation history
+can never be the sole durable source for a widget artifact under T2.
+
 ### 5. The session browser reuses the modal shell; the panel comes back on restart
 
 The browser lists `prose-minion/sessions/*.json` newest-first (title, saved
@@ -159,6 +194,8 @@ the JSON file is the single source of truth.
 - A restart or crash no longer destroys writer work; re-pasting the manuscript
   and rebuilding context attachments — the sharpest papercut — is gone.
 - Sessions become durable, inspectable writer artifacts with a browsing UI.
+- The rolling working session restores without an explicit Save action; named
+  saves remain deliberate immutable checkpoints.
 - Zero new platform ports; one method added to `FileSystem`.
 - The dangling-conversation-id hazard is structurally impossible, not merely
   avoided.
@@ -169,8 +206,9 @@ the JSON file is the single source of truth.
   writer controls the folder.
 - Write-through on every mutation seam is a new cross-cutting concern on an
   aggregate already near its size threshold (see tech-debt
-  2026-07-12-workshop-session-capability-artifact-extraction) — the store call
-  belongs in `WorkshopHandler`'s mutation paths, not inside the aggregate.
+  2026-07-12-workshop-session-capability-artifact-extraction) — dirty marking
+  belongs at successful application mutation boundaries and ordered I/O in the
+  autosave coordinator, never inside the aggregate.
 - Serialized turn lists are unbounded (tech-debt
   2026-07-11-workshop-session-turn-retention); acceptable now, and the file
   format gives a natural place to window later.
@@ -185,8 +223,11 @@ the JSON file is the single source of truth.
   2026-07-11); no persistence tier grants anyone new memory.
 - `ConversationManager` is untouched — no provider-history serialization in
   this ADR.
+- Writer Profile and derived Carry Cues state remain outside the session
+  snapshot; restoring visible history does not restore hidden personal memory.
 
 ## Implementation
 
-Sprint 10 of the Workshop epic, intentionally executed after Sprints 11 and 12:
+Sprint 10 of the Workshop epic, intentionally executed after Sprints 11 and 12,
+Relational Depth, and Writer Profile:
 [.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md).

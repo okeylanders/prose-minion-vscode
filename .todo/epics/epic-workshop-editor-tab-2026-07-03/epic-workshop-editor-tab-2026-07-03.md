@@ -2,9 +2,10 @@
 
 **Created**: 2026-07-06
 **Status**: In Progress
-**Progress**: Sprints 01–09 merged (Sprint 09 [PR #76](https://github.com/okeylanders/prose-minion-vscode/pull/76)); Sprints 11 and 11B implementation complete; execution continues with Sprint 12 intake/polish, then the final Sprint 10 persistence pass (Sprint 01 [PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66); Sprint 02 [PR #67](https://github.com/okeylanders/prose-minion-vscode/pull/67); Sprint 03 [PR #68](https://github.com/okeylanders/prose-minion-vscode/pull/68); Sprint 04 [PR #69](https://github.com/okeylanders/prose-minion-vscode/pull/69))
+**Progress**: Sprints 01–09 merged (Sprint 09 [PR #76](https://github.com/okeylanders/prose-minion-vscode/pull/76)); Sprints 11 and 11B complete; Sprint 12 implementation merged in [PR #80](https://github.com/okeylanders/prose-minion-vscode/pull/80) with manual polish/tracker closeout remaining. Relational Depth and Writer Profile now stabilize the final behavior/personal-context boundary before the last Sprint 10 persistence pass (Sprint 01 [PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66); Sprint 02 [PR #67](https://github.com/okeylanders/prose-minion-vscode/pull/67); Sprint 03 [PR #68](https://github.com/okeylanders/prose-minion-vscode/pull/68); Sprint 04 [PR #69](https://github.com/okeylanders/prose-minion-vscode/pull/69))
 **Design source**: [Direction B — Split & Pinned](../../../docs/design/Prose%20Minion%20-%20Assistant%20Tab.html)
-**ADRs**: [2026-07-03 — Assistant as a Full Editor Tab](../../../docs/adr/2026-07-03-assistant-editor-tab.md); [2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](../../../docs/adr/2026-07-09-workshop-persona-hosted-conversations.md); [2026-07-11 — Workshop Excerpt Revision and Room Memory](../../../docs/adr/2026-07-11-workshop-excerpt-revision-and-room-memory.md); [2026-07-11 — Workshop Guest Persona Sidecars](../../../docs/adr/2026-07-11-workshop-guest-persona-sidecars.md); [2026-07-14 — Workshop Session Persistence and the Session Browser](../../../docs/adr/2026-07-14-workshop-session-persistence.md); [2026-07-16 — Workshop Retained-Context Observability](../../../docs/adr/2026-07-16-inference-context-observability.md)
+**ADRs**: [2026-07-03 — Assistant as a Full Editor Tab](../../../docs/adr/2026-07-03-assistant-editor-tab.md); [2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](../../../docs/adr/2026-07-09-workshop-persona-hosted-conversations.md); [2026-07-11 — Workshop Excerpt Revision and Room Memory](../../../docs/adr/2026-07-11-workshop-excerpt-revision-and-room-memory.md); [2026-07-11 — Workshop Guest Persona Sidecars](../../../docs/adr/2026-07-11-workshop-guest-persona-sidecars.md); [2026-07-14 — Workshop Session Persistence and the Session Browser](../../../docs/adr/2026-07-14-workshop-session-persistence.md); [2026-07-16 — Workshop Retained-Context Observability](../../../docs/adr/2026-07-16-inference-context-observability.md); [2026-07-20 — Workshop Persona Interaction Modes and Expression Profiles](../../../docs/adr/2026-07-20-workshop-persona-interaction-modes-and-expression-profiles.md)
+**Related active behavior features**: [Amplified Persona Expression](../../features/feature-workshop-amplified-expression/README.md); [Relational Depth](../../features/feature-workshop-relational-depth/README.md); [Writer Profile](../../features/feature-workshop-writer-profile/README.md)
 **Integration branch**: `epic/workshop-editor-tab`
 
 ## Goal
@@ -61,12 +62,18 @@ Each sprint is independently shippable behind the (initially unregistered)
 | 11B | `sprint/workshop-editor-tab-11b-context-budget-visibility` | [Context budget visibility and inference telemetry](sprints/11b-context-budget-visibility.md) | Workshop shows the current retained context separately from multi-call and cumulative processed usage; the gauge follows the active host, guest, or tool conversation. |
 | 12 | `sprint/workshop-editor-tab-12-context-excerpt-intake` | [Excerpt & context intake rework + polish](sprints/12-context-excerpt-intake-polish.md) | Intent-button intake replaces "pinning"; context becomes multiple visible attachments; the live session shape and shared browser shell stabilize before persistence. |
 
-**Execution order for the remaining work is 12 → 10.** The
-numbers and branch names remain stable planning identities; Sprint 10 runs last
-so persistence serializes the completed Workshop session and turn contracts
-once instead of chasing changes introduced by file-access artifacts and context
-attachments. Sprint 11B lands before those attachments so context pressure is
-measured honestly before the app intentionally adds more prompt material.
+**Execution order for the remaining feature work is Relational Depth → Writer
+Profile → Sprint 10.** Sprint 12 implementation is merged; its remaining Phase
+8 work is manual polish and tracker reconciliation. Sprint numbers and branch
+names remain stable planning identities. Sprint 10 runs last so persistence
+serializes the completed Workshop session, final `relationalDepth` turn shape,
+and restore-time personal-context boundary once instead of manufacturing an
+immediate schema migration.
+
+Sprint 10 also establishes the additive, typed persistence seams future
+Conversation Widgets need—stable ids, a shared ordered autosave-dirty seam, and
+browser summaries decoupled from full payload hydration—without guessing a
+generic widget blob before the widget ADR is accepted.
 
 The shared markdown-sanitization gate moves forward into Sprint 11's opening
 tasks (persona file access sharpens that risk — see Known Risks). Final step

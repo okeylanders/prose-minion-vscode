@@ -2,8 +2,9 @@
 
 **Status**: ADR drafted ([2026-07-14 — Workshop Session Persistence and the Session Browser](../../../docs/adr/2026-07-14-workshop-session-persistence.md));
 scheduled as [Sprint 10](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md),
-but intentionally executed last after Sprints 11 and 12. Sprint numbers and
-branch names remain unchanged; remaining execution order is **11 → 12 → 10**.
+but intentionally executed last after Sprints 11 and 12 plus Relational Depth
+and Writer Profile. Sprint numbers and branch names remain unchanged; current
+remaining feature order is **Relational Depth → Writer Profile → Sprint 10**.
 The ADR supersedes this README's storage direction: **JSON files under
 `prose-minion/sessions/` via the existing `FileSystem` port** (plus a small
 `delete()` port extension), not a `workspaceState` Memento/`KeyValueStore`
@@ -24,6 +25,14 @@ Code restarts?" — investigation on `sprint/workshop-editor-tab-07-persona-capa
 **Related features**: [feature-workshop-excerpt-revision-loop](../feature-workshop-excerpt-revision-loop/README.md)
 (the "UI shows continuity the model no longer has" hazard is the *same* seam,
 here across a restart instead of an excerpt swap)
+
+The accepted implementation also treats `current.json` as the rolling working
+session: reopening Workshop restores it without requiring an explicit Save.
+Future Conversation Widgets extend the complete snapshot through typed optional
+aggregate fields and the shared ordered autosave-dirty seam; no untyped
+extension bag is reserved. Historical behavior stamps survive, while the
+current Writer Profile and derived Carry Cues state remain outside workspace
+session files.
 
 ## Investigation Findings (2026-07-13)
 
