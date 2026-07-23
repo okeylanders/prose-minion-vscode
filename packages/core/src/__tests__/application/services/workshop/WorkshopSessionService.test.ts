@@ -784,7 +784,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     ]));
   });
 
-  it('reset disposes all participants and returns to Jill while preserving the excerpt', () => {
+  it('reset disposes all participants and returns to Jill while preserving the working set', () => {
     const excerpt = pin();
     service.selectPersona('theo');
     adoptReport('prose', 'tool-1', 'tool-conv');
@@ -802,7 +802,13 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
         source: { kind: 'file', relativePath: 'chapters/one.md' }
       },
       turns: [],
-      contextAttachments: [],
+      contextAttachments: [{
+        id: 'ctx-1',
+        kind: 'text',
+        origin: 'writer',
+        label: 'Temporary\u2026',
+        words: 2
+      }],
       pendingHostUpdate: undefined,
       replacementCount: 0,
       participants: {

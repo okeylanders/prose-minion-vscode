@@ -4,12 +4,19 @@ import {
 } from '@/application/handlers/domain/WorkshopHandler';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
-import { WorkshopConversationBehaviorService } from '@/application/services/workshop/WorkshopConversationBehaviorService';
+import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
+import { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import { MessageRouter } from '@/application/handlers/MessageRouter';
-import { ContextBudgetSnapshot, MessageType, API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
+import {
+  API_KEY_NOT_CONFIGURED_HEADING,
+  ContextBudgetSnapshot,
+  DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
+  DEFAULT_WORKSHOP_WRITER_PROFILE,
+  MessageType
+} from '@messages';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { FileType } from '@/platform';
 import type { FileSystem, LogSink, SettingsStore, ShellService, Workspace } from '@/platform';
@@ -47,6 +54,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   let workspace: Workspace;
   let settings: SettingsStore;
   let handler: WorkshopHandler;
+  let writerProfileService: WorkshopWriterProfileService;
   let capabilityFactory: WorkshopPersonaCapabilityFactory;
   let contextBudgets: Map<string, ContextBudgetSnapshot>;
   let contextSources: Map<string, import('@messages').ContextSourceEntry[]>;
@@ -91,7 +99,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       continueConversation: jest.fn().mockImplementation(async (conversationId: string) =>
         analysisResult('continued reply', { conversationId })
       ),
-      replaceWorkshopConversationBehavior: jest.fn().mockResolvedValue(undefined),
+      replaceWorkshopConversationSettings: jest.fn().mockResolvedValue(undefined),
       discardConversation: jest.fn((conversationId: string) => {
         contextBudgets.delete(conversationId);
       }),
@@ -147,6 +155,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       }))
     };
     const analysisSidePass = new WorkshopAnalysisSidePass(service, session, log);
+    writerProfileService = new WorkshopWriterProfileService(settings, log);
     handler = new WorkshopHandler(
       service,
       contextAssistant as never,
@@ -156,7 +165,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         analysisSidePass,
         session,
         capabilityFactory,
-        log
+        log,
+        writerProfileService
       ),
       capabilityFactory,
       postMessage,
@@ -164,7 +174,13 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       fileSystem,
       workspace,
       new WorkshopContextResourceService(resourceProviderFactory as never),
-      new WorkshopConversationBehaviorService(session, service, settings, log),
+      new WorkshopConversationSettingsService(
+        session,
+        service,
+        settings,
+        log,
+        writerProfileService
+      ),
       log
     );
   });
@@ -199,13 +215,13 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_ATTACH_MESSAGE_RESOURCES)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_ATTACH_MESSAGE_FILE)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_REMOVE_MESSAGE_ATTACHMENT)).toBe(true);
-    expect(router.hasHandler(MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS)).toBe(true);
     expect(router.handlerCount).toBe(26);
   });
 
   it('commits carry-cues-only behavior changes without rebuilding persona prompts', async () => {
-    await handler.handleSetConversationBehavior(message(
-      MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR,
+    await handler.handleSetConversationSettings(message(
+      MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS,
       {
         behavior: {
           interactionMode: 'balanced',
@@ -216,7 +232,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       }
     ) as any);
 
-    expect(service.replaceWorkshopConversationBehavior).not.toHaveBeenCalled();
+    expect(service.replaceWorkshopConversationSettings).not.toHaveBeenCalled();
     expect(settings.update).toHaveBeenCalledWith(
       'proseMinion',
       'workshop.conversationBehavior',
@@ -232,6 +248,31 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       .toEqual(session.getConversationBehavior());
   });
 
+  it('threads a non-default writer profile through the message boundary', async () => {
+    const writerProfile = {
+      enabled: true,
+      preferredAddress: 'Okey',
+      bio: 'I write fiction.'
+    };
+
+    await handler.handleSetConversationSettings(message(
+      MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS,
+      {
+        behavior: DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
+        writerProfile
+      }
+    ) as any);
+
+    expect(service.replaceWorkshopConversationSettings).toHaveBeenCalledWith(
+      [],
+      DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
+      writerProfile
+    );
+    expect(writerProfileService.getProfile()).toEqual(writerProfile);
+    expect(posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload.writerProfile)
+      .toEqual(writerProfile);
+  });
+
   it('rebuilds every live persona prompt once for a combined mode and expression change', async () => {
     await pin();
     await handler.handleSendMessage(message(
@@ -243,8 +284,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       { personaId: 'margot', openingMessage: 'Join us.' }
     ) as any);
 
-    await handler.handleSetConversationBehavior(message(
-      MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR,
+    await handler.handleSetConversationSettings(message(
+      MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS,
       {
         behavior: {
           interactionMode: 'conversational',
@@ -255,7 +296,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       }
     ) as any);
 
-    expect(service.replaceWorkshopConversationBehavior).toHaveBeenCalledWith([
+    expect(service.replaceWorkshopConversationSettings).toHaveBeenCalledWith([
       { conversationId: 'host-conv', personaId: 'jill', role: 'host' },
       { conversationId: 'guest-conv', personaId: 'margot', role: 'guest' }
     ], {
@@ -263,8 +304,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       expressionLevel: 'amplified',
       relationalDepth: 'attuned',
       carryCuesThroughSession: true
-    });
-    expect(service.replaceWorkshopConversationBehavior.mock.invocationCallOrder[0])
+    }, DEFAULT_WORKSHOP_WRITER_PROFILE);
+    expect(service.replaceWorkshopConversationSettings.mock.invocationCallOrder[0])
       .toBeLessThan((settings.update as jest.Mock).mock.invocationCallOrder[0]);
     expect(session.getConversationBehavior().interactionMode).toBe('conversational');
     expect(session.getConversationBehavior().expressionLevel).toBe('amplified');
@@ -277,8 +318,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       { text: 'Open the room.' }
     ) as any);
 
-    await handler.handleSetConversationBehavior(message(
-      MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR,
+    await handler.handleSetConversationSettings(message(
+      MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS,
       {
         behavior: {
           interactionMode: 'balanced',
@@ -289,9 +330,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       }
     ) as any);
 
-    expect(service.replaceWorkshopConversationBehavior).toHaveBeenCalledWith([
+    expect(service.replaceWorkshopConversationSettings).toHaveBeenCalledWith([
       { conversationId: 'host-conv', personaId: 'jill', role: 'host' }
-    ], expect.objectContaining({ interactionMode: 'balanced', expressionLevel: 'subtle' }));
+    ], expect.objectContaining({ interactionMode: 'balanced', expressionLevel: 'subtle' }), DEFAULT_WORKSHOP_WRITER_PROFILE);
   });
 
   it('keeps the previous behavior when retained prompt replacement fails', async () => {
@@ -300,10 +341,10 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       MessageType.WORKSHOP_SEND_MESSAGE,
       { text: 'Open the room.' }
     ) as any);
-    service.replaceWorkshopConversationBehavior.mockRejectedValueOnce(new Error('prompt missing'));
+    service.replaceWorkshopConversationSettings.mockRejectedValueOnce(new Error('prompt missing'));
 
-    await handler.handleSetConversationBehavior(message(
-      MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR,
+    await handler.handleSetConversationSettings(message(
+      MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS,
       {
         behavior: {
           interactionMode: 'analysis',
@@ -322,8 +363,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   it('keeps an applied behavior active when VS Code cannot persist it and reports the restart risk', async () => {
     (settings.update as jest.Mock).mockRejectedValueOnce(new Error('settings are read-only'));
 
-    await handler.handleSetConversationBehavior(message(
-      MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR,
+    await handler.handleSetConversationSettings(message(
+      MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS,
       {
         behavior: {
           interactionMode: 'balanced',
@@ -335,7 +376,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     ) as any);
 
     expect(session.getConversationBehavior().expressionLevel).toBe('subtle');
-    expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/could not save it for restart/i);
+    expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/could not save them for restart/i);
   });
 
   it('rejects behavior changes while a persona response is active', async () => {
@@ -350,8 +391,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     ) as any);
     await Promise.resolve();
 
-    await handler.handleSetConversationBehavior(message(
-      MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR,
+    await handler.handleSetConversationSettings(message(
+      MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS,
       {
         behavior: {
           interactionMode: 'analysis',
@@ -363,7 +404,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     ) as any);
 
     expect(session.getConversationBehavior().interactionMode).toBe('balanced');
-    expect(service.replaceWorkshopConversationBehavior).not.toHaveBeenCalled();
+    expect(service.replaceWorkshopConversationSettings).not.toHaveBeenCalled();
     expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/still running/i);
 
     finish(analysisResult('Finished.', { conversationId: 'host-conv' }));
@@ -376,8 +417,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       MessageType.WORKSHOP_SEND_MESSAGE,
       { text: 'Open the room.' }
     ) as any);
-    await handler.handleSetConversationBehavior(message(
-      MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR,
+    await handler.handleSetConversationSettings(message(
+      MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS,
       {
         behavior: {
           interactionMode: 'conversational',
@@ -1637,6 +1678,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   it('disposes all retained participants on reset and returns to Jill', async () => {
     await pin();
     await runProse();
+    session.addContextAttachment({
+      kind: 'text', origin: 'writer', label: 'Story bible\u2026', words: 3, content: 'Mara keeps watch.'
+    });
     for (const key of ['host-conv', 'tool-conv']) {
       storeContext(key, 10);
     }
@@ -1648,6 +1692,18 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(contextBudgets.get('host-conv')).toBeUndefined();
     expect(session.getSnapshot().participants.host.personaId).toBe('jill');
     expect(session.getSnapshot().turns).toEqual([]);
+    expect(session.getSnapshot().contextAttachments).toEqual([
+      expect.objectContaining({ id: 'ctx-1', label: 'Story bible\u2026', words: 3 })
+    ]);
+    expect(session.getSnapshot().pendingHostUpdate).toBeUndefined();
+
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Begin the fresh room.' }
+    ) as any);
+
+    const freshHostInput = service.startWorkshopPersonaConversation.mock.calls.at(-1)![0];
+    expect(freshHostInput.contextAttachmentsFrame).toContain('Mara keeps watch.');
   });
 
   describe('excerpt-source canonical resolution (Phase 6)', () => {

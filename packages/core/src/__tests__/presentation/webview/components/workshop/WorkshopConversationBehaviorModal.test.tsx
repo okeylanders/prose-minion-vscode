@@ -1,36 +1,23 @@
-/**
- * @jest-environment jsdom
- */
-
-/**
- * WorkshopConversationBehaviorModal tests (ADR 2026-07-20 §11).
- *
- * Behavior under test:
- * - the five sections render with the approved copy (exact subtitle),
- * - cards and switches edit a LOCAL draft (aria-pressed / aria-checked),
- * - Apply submits the COMPLETE draft once, then waits in a pending state
- *   until the host round-trips the committed object (close on match),
- * - while a response streams Apply locks with the busy note but inspection
- *   stays available,
- * - Cancel discards without applying; reopening reseeds from committed state,
- * - future rows (cross-session preferences, room memory) are honestly inert.
- */
+/** @jest-environment jsdom */
 
 import * as React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { WorkshopConversationBehaviorModal } from '@components/workshop/WorkshopConversationBehaviorModal';
 import {
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
-  WorkshopConversationBehavior
+  DEFAULT_WORKSHOP_WRITER_PROFILE,
+  WorkshopConversationBehavior,
+  WorkshopWriterProfile
 } from '@messages';
 
 describe('WorkshopConversationBehaviorModal', () => {
   const renderModal = (
     overrides: Partial<React.ComponentProps<typeof WorkshopConversationBehaviorModal>> = {}
   ) => {
-    const props = {
+    const props: React.ComponentProps<typeof WorkshopConversationBehaviorModal> = {
       open: true,
       behavior: { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR },
+      writerProfile: { ...DEFAULT_WORKSHOP_WRITER_PROFILE },
       isRunning: false,
       onApply: jest.fn(),
       onClose: jest.fn(),
@@ -40,170 +27,136 @@ describe('WorkshopConversationBehaviorModal', () => {
     return { props, view };
   };
 
-  it('renders all four sections with the approved header copy', () => {
+  it('renders accessible Behavior and About you tabs with the approved scope', () => {
     renderModal();
 
-    expect(screen.getByText('Workshop · Room settings')).not.toBeNull();
-    expect(screen.getByRole('heading', { name: 'Conversation behavior' })).not.toBeNull();
-    // The subtitle is the ADR's exact scope sentence — tools are NOT governed.
-    expect(
-      screen.getByText(
-        'Choose how Workshop personas respond. Applies to Jill and invited personas; tools are unchanged.'
-      )
-    ).not.toBeNull();
-
-    for (const section of [
-      'Response style',
-      'Persona expression',
-      'Relational depth',
-      'Session continuity',
-      'Room memory'
-    ]) {
-      expect(screen.getByText(section)).not.toBeNull();
-    }
-    expect(
-      screen.getByText('What you ask for always wins — “analyze this” gets analysis in any style.')
-    ).not.toBeNull();
-    expect(
-      screen.getByText('Identity and craft expertise remain present at every level.')
-    ).not.toBeNull();
+    expect(screen.getByRole('heading', { name: 'Conversation settings' })).not.toBeNull();
+    expect(screen.getByRole('tab', { name: 'Behavior' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: 'About you' }).getAttribute('aria-controls'))
+      .toBe('pm-ws-profile-panel');
+    expect(screen.getByRole('tabpanel').getAttribute('aria-labelledby')).toBe('pm-ws-behavior-tab');
+    expect(screen.getByText('Response style')).not.toBeNull();
+    expect(screen.getByText('Relational depth')).not.toBeNull();
   });
 
-  it('selecting mode and expression cards edits the draft (committed props untouched)', () => {
+  it('supports arrow-key tab navigation and moves focus', () => {
+    renderModal();
+    const behaviorTab = screen.getByRole('tab', { name: 'Behavior' });
+    behaviorTab.focus();
+    fireEvent.keyDown(behaviorTab, { key: 'ArrowRight' });
+
+    const profileTab = screen.getByRole('tab', { name: 'About you' });
+    expect(profileTab.getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(profileTab);
+    expect(screen.getByRole('tabpanel').getAttribute('aria-labelledby')).toBe('pm-ws-profile-tab');
+  });
+
+  it('edits profile fields locally and submits both complete drafts together', () => {
     const { props } = renderModal();
-
-    expect(screen.getByRole('button', { name: /Balanced/ }).getAttribute('aria-pressed')).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
-    expect(screen.getByRole('button', { name: /Analyze/ }).getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByRole('button', { name: /Balanced/ }).getAttribute('aria-pressed')).toBe('false');
-
-    expect(screen.getByRole('button', { name: /Full/ }).getAttribute('aria-pressed')).toBe('true');
-    fireEvent.click(screen.getByRole('button', { name: /Amplified/ }));
-    expect(screen.getByRole('button', { name: /Amplified/ }).getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByRole('button', { name: /Full/ }).getAttribute('aria-pressed')).toBe('false');
-
-    // Draft only — nothing was applied.
-    expect(props.onApply).not.toHaveBeenCalled();
-  });
-
-  it('relational depth cards and session continuity edit the draft', () => {
-    renderModal();
-
-    expect(screen.getByRole('button', { name: /Attuned/ }).getAttribute('aria-pressed')).toBe('true');
-    fireEvent.click(screen.getByRole('button', { name: /Reflective/ }));
-    expect(screen.getByRole('button', { name: /Reflective/ }).getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByRole('button', { name: /Attuned/ }).getAttribute('aria-pressed')).toBe('false');
-
-    const carry = screen.getByRole('switch', { name: 'Carry cues through this session' });
-    expect(carry.getAttribute('aria-checked')).toBe('true');
-
-    fireEvent.click(carry);
-    expect(carry.getAttribute('aria-checked')).toBe('false');
-  });
-
-  it('Apply submits the COMPLETE edited object once, waits pending, and closes on the host round-trip', () => {
-    const { props, view } = renderModal();
-
-    fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
-    fireEvent.click(screen.getByRole('button', { name: /Subtle/ }));
-    fireEvent.click(screen.getByRole('button', { name: /Reserved/ }));
-    fireEvent.click(screen.getByRole('switch', { name: 'Carry cues through this session' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'About you' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Share this profile with Workshop personas' }));
+    fireEvent.change(screen.getByRole('textbox', { name: /How should the room address you/ }), {
+      target: { value: '  Okey  ' }
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: /What would you like the room to know/ }), {
+      target: { value: '  I write fiction.  ' }
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Apply to next turn' }));
 
-    const submitted: WorkshopConversationBehavior = {
-      interactionMode: 'analysis',
-      expressionLevel: 'subtle',
-      relationalDepth: 'reserved',
-      carryCuesThroughSession: false
-    };
-    expect(props.onApply).toHaveBeenCalledTimes(1);
-    expect(props.onApply).toHaveBeenCalledWith(submitted);
+    expect(props.onApply).toHaveBeenCalledWith(
+      expect.objectContaining({ interactionMode: 'analysis' }),
+      { enabled: true, preferredAddress: 'Okey', bio: 'I write fiction.' }
+    );
+    expect(screen.getByText('Conversation settings are updating…')).not.toBeNull();
+  });
 
-    // Pending: no optimistic close — the modal reports the in-flight change
-    // and locks its controls until the committed object round-trips.
-    expect(screen.getByText('Conversation style is updating…')).not.toBeNull();
-    expect(
-      (screen.getByRole('button', { name: 'Apply to next turn' }) as HTMLButtonElement).disabled
-    ).toBe(true);
-    expect(
-      (screen.getByRole('button', { name: /Balanced/ }) as HTMLButtonElement).disabled
-    ).toBe(true);
+  it('requires confirmation before clearing and stages an empty disabled profile', () => {
+    const profile: WorkshopWriterProfile = {
+      enabled: true,
+      preferredAddress: 'Okey',
+      bio: 'Writer.'
+    };
+    const { props } = renderModal({ writerProfile: profile });
+    fireEvent.click(screen.getByRole('tab', { name: 'About you' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Clear profile…' }));
+    expect(screen.getByText('Clear both fields and turn sharing off?')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply to next turn' }));
+
+    expect(props.onApply).toHaveBeenCalledWith(
+      DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
+      DEFAULT_WORKSHOP_WRITER_PROFILE
+    );
+  });
+
+  it('waits for the host round-trip before closing', () => {
+    const { props, view } = renderModal();
+    fireEvent.click(screen.getByRole('button', { name: /Reserved/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply to next turn' }));
+    const submitted: WorkshopConversationBehavior = {
+      ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
+      relationalDepth: 'reserved'
+    };
     expect(props.onClose).not.toHaveBeenCalled();
 
-    // Host commits: the snapshot's behavior now deep-equals the submission.
     view.rerender(
-      <WorkshopConversationBehaviorModal {...props} behavior={{ ...submitted }} />
+      <WorkshopConversationBehaviorModal {...props} behavior={submitted} />
     );
     expect(props.onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('while a response streams, Apply locks with the busy note but inspection stays open', () => {
-    const { props } = renderModal({ isRunning: true });
-
-    expect(
-      screen.getByText('A response is in progress — changes are available when it finishes.')
-    ).not.toBeNull();
-    const apply = screen.getByRole('button', { name: 'Apply to next turn' }) as HTMLButtonElement;
-    expect(apply.disabled).toBe(true);
-    fireEvent.click(apply);
-    expect(props.onApply).not.toHaveBeenCalled();
-
-    // Inspection allowed: cards still respond while Apply is the only lock.
-    fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
-    expect(screen.getByRole('button', { name: /Analyze/ }).getAttribute('aria-pressed')).toBe('true');
-  });
-
-  it('releases a pending Apply when the host rejects the change', () => {
+  it('releases a pending apply when the host rejects the update', () => {
     const { props, view } = renderModal();
-
     fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Apply to next turn' }));
-    expect(screen.getByText('Conversation style is updating…')).not.toBeNull();
+    expect(screen.getByText('Conversation settings are updating…')).not.toBeNull();
 
     view.rerender(
       <WorkshopConversationBehaviorModal
         {...props}
-        errorMessage="Could not change conversation behavior."
+        errorMessage="Could not change conversation settings."
       />
     );
 
-    expect(screen.queryByText('Conversation style is updating…')).toBeNull();
-    expect(
-      (screen.getByRole('button', { name: 'Apply to next turn' }) as HTMLButtonElement).disabled
-    ).toBe(false);
+    expect(screen.queryByText('Conversation settings are updating…')).toBeNull();
+    expect((screen.getByRole('button', {
+      name: 'Apply to next turn'
+    }) as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it('Cancel discards the draft without applying; reopening reseeds from the committed object', () => {
+  it('discards a cancelled draft and reseeds it when the modal reopens', () => {
     const { props, view } = renderModal();
-
-    fireEvent.click(screen.getByRole('button', { name: /Converse/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(props.onClose).toHaveBeenCalledTimes(1);
-    expect(props.onApply).not.toHaveBeenCalled();
 
-    // Close-and-reopen: the abandoned draft never survives the shell.
     view.rerender(<WorkshopConversationBehaviorModal {...props} open={false} />);
-    view.rerender(<WorkshopConversationBehaviorModal {...props} open={true} />);
-    expect(screen.getByRole('button', { name: /Balanced/ }).getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByRole('button', { name: /Converse/ }).getAttribute('aria-pressed')).toBe('false');
+    view.rerender(<WorkshopConversationBehaviorModal {...props} open />);
+
+    expect(screen.getByRole('button', { name: /Balanced/ }).getAttribute('aria-pressed'))
+      .toBe('true');
+    expect(screen.getByRole('button', { name: /Analyze/ }).getAttribute('aria-pressed'))
+      .toBe('false');
   });
 
-  it('future rows are visibly disabled and non-interactive (never a dead consent toggle)', () => {
+  it('counts the trimmed profile text that will be submitted', () => {
     renderModal();
+    fireEvent.click(screen.getByRole('tab', { name: 'About you' }));
+    fireEvent.change(screen.getByRole('textbox', { name: /How should the room address you/ }), {
+      target: { value: '  Okey  ' }
+    });
 
-    const future = screen.getByRole('switch', {
-      name: 'Remember stable preferences across sessions'
-    }) as HTMLButtonElement;
-    expect(future.disabled).toBe(true);
-    expect(future.getAttribute('aria-checked')).toBe('false');
-    fireEvent.click(future);
-    expect(future.getAttribute('aria-checked')).toBe('false');
-    expect(screen.getByText('Future')).not.toBeNull();
+    expect(screen.getByText(`4 / 80`)).not.toBeNull();
+  });
 
-    // Room memory: a dashed placeholder row, not a control of any kind.
-    expect(screen.getByText('Coming later')).not.toBeNull();
-    expect(screen.getByText('Shared history and continuity')).not.toBeNull();
-    expect(screen.queryByRole('button', { name: /Shared history and continuity/ })).toBeNull();
-    expect(screen.queryByRole('switch', { name: /Shared history and continuity/ })).toBeNull();
+  it('locks Apply during a response while leaving inspection and drafts available', () => {
+    const { props } = renderModal({ isRunning: true });
+    expect(screen.getByText(/A response is in progress/)).not.toBeNull();
+    const apply = screen.getByRole('button', { name: 'Apply to next turn' }) as HTMLButtonElement;
+    expect(apply.disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
+    expect(screen.getByRole('button', { name: /Analyze/ }).getAttribute('aria-pressed')).toBe('true');
+    expect(props.onApply).not.toHaveBeenCalled();
   });
 });

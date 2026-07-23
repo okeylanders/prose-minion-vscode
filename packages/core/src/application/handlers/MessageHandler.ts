@@ -21,7 +21,8 @@ import {
   TokenUsageUpdateMessage,
   TokenUsageTotals,
   WorkshopSessionStateMessage,
-  WORKSHOP_CONVERSATION_BEHAVIOR_SETTING
+  WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
+  WORKSHOP_WRITER_PROFILE_SETTING
 } from '@messages';
 import {
   CoreServices,
@@ -173,7 +174,7 @@ export class MessageHandler {
       workshopPersonaCapabilityFactory,
       workshopToolSidePass,
       workshopContextResourceService,
-      workshopConversationBehaviorService
+      workshopConversationSettingsService
     } = services;
 
     // Token tracking: centralized in AgentRunEngine. Listener-based so
@@ -301,7 +302,7 @@ export class MessageHandler {
       this.platform.fileSystem,
       this.platform.workspace,
       workshopContextResourceService,
-      workshopConversationBehaviorService,
+      workshopConversationSettingsService,
       outputChannel
     );
     // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)
@@ -588,8 +589,10 @@ export class MessageHandler {
 
     const workshopBehaviorKey = `${WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.section}.` +
       WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.key;
-    if (affects(workshopBehaviorKey)) {
-      void this.workshopHandler.syncConversationBehaviorFromSettings();
+    const workshopWriterProfileKey = `${WORKSHOP_WRITER_PROFILE_SETTING.section}.` +
+      WORKSHOP_WRITER_PROFILE_SETTING.key;
+    if (affects(workshopBehaviorKey) || affects(workshopWriterProfileKey)) {
+      void this.workshopHandler.syncConversationSettingsFromSettings();
     }
 
     // Only refresh service if model configs changed

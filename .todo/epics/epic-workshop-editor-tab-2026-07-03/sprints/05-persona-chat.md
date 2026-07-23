@@ -40,8 +40,8 @@ conversation.
 ## Locked Decisions
 
 - Jill is the default host. A writer can choose a different host before the
-  host conversation begins. New session preserves the excerpt and restores
-  Jill.
+  host conversation begins. New session preserves the working excerpt and
+  standing context, then restores Jill.
 - Persona selection uses a browser modal visually parallel to the tool browser,
   not a native dropdown.
 - Each browser card shows a person-outline/avatar, a presentation-only focus
@@ -204,7 +204,8 @@ conversation.
   and description; the header reflects the selected host.
 - Follow-ups continue the same persona conversation and system prompt.
 - Selection locks after host conversation start; New session preserves the
-  excerpt, disposes the conversation, clears the thread, and restores Jill.
+  excerpt and standing context, disposes the conversation, clears the thread,
+  and restores Jill.
 - Reload/reopen restores selected persona, host state, thread, and in-flight
   request identity, sidecar availability, and direct target without exposing
   conversation ids.

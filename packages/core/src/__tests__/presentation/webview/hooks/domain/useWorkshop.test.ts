@@ -20,7 +20,10 @@
 import { renderHook, act } from '@testing-library/react';
 import { useWorkshop } from '@hooks/domain/useWorkshop';
 import { MessageType } from '@shared/types';
-import { DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR } from '@messages';
+import {
+  DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
+  DEFAULT_WORKSHOP_WRITER_PROFILE
+} from '@messages';
 import type {
   ErrorMessage,
   StatusMessage,
@@ -62,7 +65,8 @@ const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessio
         },
         conversationBehavior: { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR },
         ...session
-      }
+      },
+      writerProfile: { ...DEFAULT_WORKSHOP_WRITER_PROFILE }
     },
     timestamp: 0
   };
@@ -173,10 +177,16 @@ describe('useWorkshop', () => {
       carryCuesThroughSession: false
     };
 
-    act(() => result.current.setConversationBehavior(selected));
+    act(() => result.current.setConversationSettings(
+      selected,
+      DEFAULT_WORKSHOP_WRITER_PROFILE
+    ));
 
-    expect(posted(MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR).at(-1).payload)
-      .toEqual({ behavior: selected });
+    expect(posted(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS).at(-1).payload)
+      .toEqual({
+        behavior: selected,
+        writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE
+      });
     expect(result.current.conversationBehavior).toEqual(
       DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
     );

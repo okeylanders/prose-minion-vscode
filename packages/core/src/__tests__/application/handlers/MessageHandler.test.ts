@@ -5,6 +5,7 @@ import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWork
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import {
+  DEFAULT_WORKSHOP_WRITER_PROFILE,
   ExtensionToWebviewMessage,
   MessageType,
   TokenUsageTotals,
@@ -155,10 +156,11 @@ function createTestAssembly(): TestAssembly {
       create: jest.fn(() => ({ catalog: 'workshopPersona' }))
     } as unknown as WorkshopPersonaCapabilityFactory,
     workshopToolSidePass: { run: jest.fn() } as unknown as RunWorkshopToolSidePass,
-    workshopConversationBehaviorService: {
+    workshopConversationSettingsService: {
       applyFromWebview: jest.fn().mockResolvedValue({ changed: false, deferred: false }),
       syncFromSettings: jest.fn().mockResolvedValue({ changed: false, deferred: false }),
-      flushDeferredSettingsSync: jest.fn().mockResolvedValue({ changed: false, deferred: false })
+      flushDeferredSettingsSync: jest.fn().mockResolvedValue({ changed: false, deferred: false }),
+      getWriterProfile: jest.fn().mockReturnValue(DEFAULT_WORKSHOP_WRITER_PROFILE)
     }
   } as unknown as CoreServices;
 
@@ -419,17 +421,20 @@ describe('MessageHandler assembly', () => {
     );
   });
 
-  it('pulls external Workshop conversation-behavior settings into the live room', async () => {
+  it.each([
+    'proseMinion.workshop.conversationBehavior',
+    'proseMinion.workshop.writerProfile'
+  ])('pulls external Workshop setting %s into the live room', async (changedKey) => {
     const assembly = createTestAssembly();
     const handler = createHandler(assembly, jest.fn().mockResolvedValue(undefined));
 
     handler.handleConfigurationChange(
-      section => section === 'proseMinion.workshop.conversationBehavior'
+      section => section === changedKey
     );
     await flushQueuedWork();
 
     expect(
-      assembly.services.workshopConversationBehaviorService.syncFromSettings
+      assembly.services.workshopConversationSettingsService.syncFromSettings
     ).toHaveBeenCalledTimes(1);
   });
 

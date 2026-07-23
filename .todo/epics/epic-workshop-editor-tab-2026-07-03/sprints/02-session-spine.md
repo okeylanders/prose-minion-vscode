@@ -150,10 +150,10 @@ tool a second time starts a fresh turn, not a continuation.
    craft guides…" in the other with nothing to clear it. Cosmetic corollary:
    dictionary/context runs no longer piggyback the analysis-labelled guide
    ticker (that was an accident of the single slot).
-3. **`WORKSHOP_RESET_SESSION` keeps the pinned excerpt** — the acceptance
+3. **`WORKSHOP_RESET_SESSION` keeps the working set** — the acceptance
    criterion says "clears the thread and active tool", and a New Session over
-   the same working text is the useful behavior. Re-pinning replaces
-   explicitly.
+   the same excerpt and standing context is the useful behavior. Re-pinning or
+   removing context replaces either explicitly.
 4. **Session snapshots ride the replay cache** (`ResultCache.workshopSession`
    + visibility flush in the panel), so streams completed while the tab was
    hidden reconcile on re-reveal — same idiom as the sidebar's cached results.

@@ -3,7 +3,7 @@ import type { AIResourceManager } from '@orchestration/AIResourceManager';
 import type { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import type { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import type { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
-import { API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
+import { API_KEY_NOT_CONFIGURED_HEADING, DEFAULT_WORKSHOP_WRITER_PROFILE } from '@messages';
 
 const workshopCapability = { catalog: 'workshopPersona' } as never;
 
@@ -99,6 +99,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         relationalDepth: 'attuned',
         carryCuesThroughSession: true
       },
+      writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE,
       activationFrame: '<workshop-behavior-activation mode="balanced" expression="amplified">mode and signature floor</workshop-behavior-activation>',
       contextAttachmentsFrame: [
         '<context-attachments count="1">',
@@ -150,7 +151,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         expressionLevel: 'subtle',
         relationalDepth: 'attuned',
         carryCuesThroughSession: true
-      }
+      },
+      writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE
     });
 
     expect(loadPrompts).toHaveBeenCalledWith([
@@ -195,7 +197,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         expressionLevel: 'full',
         relationalDepth: 'attuned',
         carryCuesThroughSession: true
-      }
+      },
+      writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE
     }, { capability: workshopCapability });
 
     const userMessage = engine.runInitial.mock.calls[0][0].userMessage;
@@ -226,10 +229,10 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       relationalDepth: 'attuned' as const,
       carryCuesThroughSession: true
     };
-    await service.replaceWorkshopConversationBehavior([
+    await service.replaceWorkshopConversationSettings([
       { conversationId: 'host-conv', personaId: 'penny', role: 'host' },
       { conversationId: 'guest-conv', personaId: 'margot', role: 'guest' }
-    ], behavior);
+    ], behavior, DEFAULT_WORKSHOP_WRITER_PROFILE);
 
     expect(loadPrompts).toHaveBeenCalledTimes(2);
     expect(engine.replaceSystemMessagesBetweenRuns).toHaveBeenCalledTimes(1);
@@ -255,7 +258,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     const service = build(managerFor(() => engine), loadPrompts);
     await flush();
 
-    await expect(service.replaceWorkshopConversationBehavior([
+    await expect(service.replaceWorkshopConversationSettings([
       { conversationId: 'host-conv', personaId: 'jill', role: 'host' },
       { conversationId: 'guest-conv', personaId: 'margot', role: 'guest' }
     ], {
@@ -263,7 +266,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       expressionLevel: 'full',
       relationalDepth: 'attuned',
       carryCuesThroughSession: true
-    })).rejects.toThrow('guest prompt missing');
+    }, DEFAULT_WORKSHOP_WRITER_PROFILE)).rejects.toThrow('guest prompt missing');
 
     expect(engine.replaceSystemMessagesBetweenRuns).not.toHaveBeenCalled();
   });

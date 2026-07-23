@@ -41,7 +41,8 @@ import type {
   WorkshopConfiguredResourceRef,
   WorkshopConversationBehavior,
   WorkshopExcerpt,
-  WorkshopPersonaId
+  WorkshopPersonaId,
+  WorkshopWriterProfile
 } from '@messages';
 import {
   getWorkshopPersona,
@@ -51,6 +52,7 @@ import type { ConversationSystemMessageReplacement } from '@orchestration/Conver
 import { trimToWordLimit } from '@/utils/textUtils';
 import { neutralizeReservedPersonaPromptDelimiters } from '@/utils/workshopPromptFrames';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { buildWorkshopWriterProfileFrame } from '@/utils/workshopWriterProfile';
 
 /**
  * Options for streaming analysis operations
@@ -92,6 +94,8 @@ export interface WorkshopPersonaConversationInput {
    * system-prompt resource set.
    */
   behavior: WorkshopConversationBehavior;
+  /** Current global profile; never retained in Workshop session state. */
+  writerProfile: WorkshopWriterProfile;
   /** True only for application-built envelopes whose dynamic fields are pre-encoded. */
   messageIsTrustedEnvelope?: boolean;
   /**
@@ -133,6 +137,7 @@ export interface WorkshopGuestConversationInput {
   message: string;
   /** The room's complete selected behavior — guests share the room contract. */
   behavior: WorkshopConversationBehavior;
+  writerProfile: WorkshopWriterProfile;
 }
 
 /**
@@ -494,9 +499,9 @@ export class AssistantToolService {
     }
     const options = this.toolOptions.getOptions();
     const promptLoader = this.resourceLoader.getPromptLoader();
-    const systemPrompt = await promptLoader.loadPrompts(
+    const systemPrompt = this.withWriterProfile(await promptLoader.loadPrompts(
       workshopPersonaSystemPromptPaths('workshop-personas/base.md', persona, input.behavior)
-    );
+    ), input.behavior, input.writerProfile);
     const userMessage = this.buildWorkshopPersonaUserMessage(input);
 
     this.outputChannel?.appendLine(
@@ -550,13 +555,13 @@ export class AssistantToolService {
     }
     const options = this.toolOptions.getOptions();
     const promptLoader = this.resourceLoader.getPromptLoader();
-    const systemPrompt = await promptLoader.loadPrompts(
+    const systemPrompt = this.withWriterProfile(await promptLoader.loadPrompts(
       workshopPersonaSystemPromptPaths(
         'workshop-personas/guest-base.md',
         persona,
         input.behavior
       )
-    );
+    ), input.behavior, input.writerProfile);
 
     this.outputChannel?.appendLine(
       `[AssistantToolService] Starting Workshop guest ${persona.id} | Streaming: ${!!streamingOptions.onToken}`
@@ -651,9 +656,10 @@ export class AssistantToolService {
    * object afterwards is the caller's job — a throw here must leave the
    * previous behavior active.
    */
-  async replaceWorkshopConversationBehavior(
+  async replaceWorkshopConversationSettings(
     targets: readonly WorkshopBehaviorReplacementTarget[],
-    behavior: WorkshopConversationBehavior
+    behavior: WorkshopConversationBehavior,
+    writerProfile: WorkshopWriterProfile
   ): Promise<void> {
     if (targets.length === 0) {
       return;
@@ -671,7 +677,7 @@ export class AssistantToolService {
       if (!persona) {
         throw new Error(`Unknown Workshop persona: ${target.personaId}`);
       }
-      const systemMessage = await promptLoader.loadPrompts(
+      const systemMessage = this.withWriterProfile(await promptLoader.loadPrompts(
         workshopPersonaSystemPromptPaths(
           target.role === 'host'
             ? 'workshop-personas/base.md'
@@ -679,10 +685,19 @@ export class AssistantToolService {
           persona,
           behavior
         )
-      );
+      ), behavior, writerProfile);
       replacements.push({ conversationId: target.conversationId, systemMessage });
     }
     engine.replaceSystemMessagesBetweenRuns(replacements);
+  }
+
+  private withWriterProfile(
+    systemPrompt: string,
+    behavior: WorkshopConversationBehavior,
+    writerProfile: WorkshopWriterProfile
+  ): string {
+    const frame = buildWorkshopWriterProfileFrame(writerProfile, behavior.relationalDepth);
+    return frame ? `${systemPrompt}\n\n${frame}` : systemPrompt;
   }
 
   /**

@@ -48,6 +48,7 @@ button{font-family:var(--sans)}
 .mode-chip svg{color:var(--accent-hi)}
 .mode-chip b{color:var(--text);font-weight:600}
 .mode-chip .sub{font-family:var(--mono);font-size:10px;color:var(--dim);border-left:1px solid var(--border);padding-left:7px;margin-left:1px;letter-spacing:.04em}
+.mode-chip .chip-prof{width:6px;height:6px;border-radius:50%;background:var(--green);margin-left:1px;box-shadow:0 0 0 3px rgba(111,201,138,.14)}
 .mode-chip:hover{border-color:rgba(224,103,58,.6)}
 .send{width:34px;height:34px;border-radius:9px;background:linear-gradient(180deg,var(--accent-hi),var(--accent-lo));border:1px solid var(--accent-lo);display:grid;place-items:center;cursor:pointer}
 .send svg{width:15px;height:15px}
@@ -63,24 +64,33 @@ button{font-family:var(--sans)}
 /* ============ MODAL ============ */
 .overlay{position:fixed;inset:0;background:rgba(10,7,5,.62);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:50;padding:24px}
 .overlay.open{display:flex}
-.modal{width:min(560px,100%);max-height:calc(100vh - 80px);overflow-y:auto;background:#1e1712;border:1px solid var(--border-2);border-radius:14px;box-shadow:0 40px 90px rgba(0,0,0,.6);padding:24px 26px 20px;position:relative}
+.modal{width:min(560px,100%);max-height:calc(100vh - 80px);display:flex;flex-direction:column;background:#1e1712;border:1px solid var(--border-2);border-radius:14px;box-shadow:0 40px 90px rgba(0,0,0,.6);position:relative;overflow:hidden}
+.modal-head{padding:24px 26px 0;flex:none}
 .modal-eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
 .modal h2{font-size:19px;font-weight:650;margin:0 0 7px;letter-spacing:-.01em}
-.modal-sub{font-size:12.5px;color:var(--muted);line-height:1.55;margin:0 0 4px}
-.modal-x{position:absolute;top:18px;right:18px;width:30px;height:30px;border-radius:8px;background:var(--surface-2);border:1px solid var(--border);color:var(--muted);display:grid;place-items:center;cursor:pointer}
+.modal-sub{font-size:12.5px;color:var(--muted);line-height:1.55;margin:0}
+.modal-x{position:absolute;top:18px;right:18px;width:30px;height:30px;border-radius:8px;background:var(--surface-2);border:1px solid var(--border);color:var(--muted);display:grid;place-items:center;cursor:pointer;z-index:2}
 .modal-x:hover{color:var(--text);border-color:var(--border-2)}
+/* tab row */
+.tabs{display:flex;margin-top:16px;border-bottom:1px solid var(--border-soft)}
+.tab{appearance:none;background:transparent;border:none;padding:9px 2px;margin-right:22px;font-size:13px;font-weight:600;color:var(--dim);cursor:pointer;position:relative;letter-spacing:.01em}
+.tab:hover{color:var(--text-2)}
+.tab.active{color:var(--text)}
+.tab.active::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--accent);border-radius:2px}
+/* scrolling body + fixed footer */
+.modal-body{overflow-y:auto;padding:2px 26px 22px;flex:1}
+.tabpane{display:none}
+.tabpane.show{display:block}
 .msec{margin-top:20px}
 .msec-h{display:flex;align-items:center;gap:12px;margin-bottom:11px}
 .msec-h .t{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);font-weight:600;white-space:nowrap}
 .msec-h hr{flex:1;border:none;border-top:1px solid var(--border-soft);margin:0}
-.msec-h .ftag{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);border:1px solid var(--border-soft);border-radius:999px;padding:2px 8px;white-space:nowrap}
 /* segmented option cards */
 .segcards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.segcards.two{grid-template-columns:repeat(2,1fr)}
 .segcard{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 12px;cursor:pointer;text-align:left;transition:border-color .12s,background .12s}
 .segcard:hover{border-color:var(--border-2)}
 .segcard .sc-top{display:flex;align-items:center;gap:7px;margin-bottom:5px}
-.segcard .sc-top svg{width:14px;height:14px;color:var(--muted)}
+.segcard .sc-top svg{width:15px;height:15px;color:var(--muted);flex:none}
 .segcard .sc-name{font-size:13px;font-weight:600;color:var(--text-2)}
 .segcard .sc-desc{font-size:11px;color:var(--dim);line-height:1.5}
 .segcard.sel{background:var(--accent-soft);border-color:rgba(224,103,58,.5)}
@@ -91,25 +101,36 @@ button{font-family:var(--sans)}
 .msec-note b{color:var(--muted);font-weight:600}
 /* toggle rows */
 .trow{display:flex;align-items:flex-start;gap:12px;padding:11px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px}
-.trow + .trow{margin-top:8px}
-.trow.off-future{opacity:.55}
 .trow-txt{flex:1;min-width:0}
-.trow-name{font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px}
-.trow-name .ftag{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);border:1px solid var(--border-soft);border-radius:999px;padding:1px 7px}
+.trow-name{font-size:13px;font-weight:600;color:var(--text)}
 .trow-desc{font-size:11.5px;color:var(--dim);line-height:1.5;margin-top:3px}
-.tog{flex:none;width:36px;height:21px;border-radius:999px;background:var(--surface-3);border:1px solid var(--border-2);position:relative;cursor:pointer;transition:background .15s;margin-top:2px}
+.tog{appearance:none;flex:none;width:36px;height:21px;padding:0;border-radius:999px;background:var(--surface-3);border:1px solid var(--border-2);position:relative;cursor:pointer;transition:background .15s;margin-top:2px}
 .tog i{position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:var(--muted);transition:left .15s,background .15s}
 .tog.on{background:var(--accent);border-color:var(--accent-lo)}
 .tog.on i{left:17px;background:#fff}
-.tog.locked{cursor:not-allowed}
-/* room memory row */
-.roomrow{display:flex;align-items:center;gap:12px;padding:11px 12px;background:var(--inset);border:1px dashed var(--border);border-radius:10px}
-.roomrow .rr-txt{flex:1}
-.roomrow .rr-name{font-size:13px;font-weight:600;color:var(--dim)}
-.roomrow .rr-desc{font-size:11.5px;color:var(--faint);margin-top:3px;line-height:1.5}
-.roomrow .ftag{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);border:1px solid var(--border-soft);border-radius:999px;padding:2px 8px;white-space:nowrap}
+/* About you — form fields */
+.field{margin-top:16px}
+.field-label{font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;display:block}
+.field-hint{font-size:11.5px;color:var(--dim);line-height:1.5}
+.tin,.tar{width:100%;background:var(--inset);border:1px solid var(--border);border-radius:9px;color:var(--text);font-family:var(--sans);font-size:13px;padding:9px 11px}
+.tin::placeholder,.tar::placeholder{color:var(--faint)}
+.tin:focus,.tar:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.tar{min-height:118px;line-height:1.55;resize:vertical}
+.counter{font-family:var(--mono);font-size:10.5px;color:var(--faint);text-align:right;margin-top:5px}
+.counter.over{color:var(--accent-hi)}
+.notice{display:flex;gap:9px;padding:11px 12px;background:var(--inset);border:1px solid var(--border-soft);border-radius:9px;margin-top:18px;font-size:11.5px;color:var(--muted);line-height:1.55}
+.notice svg{flex:none;width:15px;height:15px;color:var(--dim);margin-top:1px}
+.clearrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border-soft)}
+.linkbtn{background:transparent;border:none;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;padding:0}
+.linkbtn:hover{color:var(--accent-hi)}
+.linkbtn svg{width:13px;height:13px}
+.confirm{display:flex;align-items:center;gap:9px}
+.confirm .q{font-size:12px;color:var(--text-2)}
+.confirm button{border-radius:8px;padding:6px 11px;font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid var(--border-2);background:var(--surface-3);color:var(--text)}
+.confirm button.danger{background:transparent;border-color:rgba(224,103,58,.5);color:var(--accent-hi)}
+.confirm button.danger:hover{background:var(--accent-soft)}
 /* footer */
-.mfoot{display:flex;align-items:center;gap:10px;margin-top:22px;padding-top:16px;border-top:1px solid var(--border-soft)}
+.modal-foot{display:flex;align-items:center;gap:10px;padding:15px 26px;border-top:1px solid var(--border-soft);flex:none;background:#1e1712}
 .mfoot-note{font-size:11px;color:var(--faint);line-height:1.5;flex:1}
 .mfoot-note.busy{color:var(--amber)}
 .mbtn{border:1px solid var(--border-2);background:var(--surface-3);color:var(--text);border-radius:9px;padding:9px 15px;font-size:12.5px;font-weight:600;cursor:pointer}
@@ -139,10 +160,11 @@ button{font-family:var(--sans)}
       <div class="composer-row">
         <button class="sqbtn" title="Attach">+</button>
         <div class="composer-actions">
-          <button class="abtn mode-chip" id="modeChip" title="Conversation settings: Balanced, full, Attuned" aria-label="Conversation settings: Balanced, full, Attuned">
+          <button class="abtn mode-chip" id="modeChip" type="button" title="Conversation settings: Balanced, full, Attuned, profile not shared" aria-label="Conversation settings: Balanced, full, Attuned, profile not shared">
             <svg viewBox="0 0 16 16" fill="none"><path d="M8 1.5L14.5 8 8 14.5 1.5 8 8 1.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"></path></svg>
             <b id="chipLabel">Balanced</b>
             <span class="sub" id="chipSub">FULL</span>
+            <span class="chip-prof" id="chipProf" aria-hidden="true" hidden></span>
           </button>
           <button class="abtn"><svg viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.4"></rect><rect x="9" y="2" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.4"></rect><rect x="2" y="9" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.4"></rect><rect x="9" y="9" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.4"></rect></svg>Tools</button>
           <button class="send"><svg viewBox="0 0 16 16" fill="none"><path d="M14 2L7 9M14 2L9.5 14 7 9 2 6.5 14 2z" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"></path></svg></button>
@@ -152,133 +174,182 @@ button{font-family:var(--sans)}
     <div class="enter-hint">Enter to send · <b>Shift+Enter</b> for a new line</div>
   </div>
   <div class="demo-ctl">
-    <label><span class="tog" id="busyTog"><i></i></span>Simulate active response (Apply disabled while a reply streams)</label>
+    <button class="tog" id="busyTog" type="button" role="switch" aria-checked="false" aria-label="Simulate active response"><i></i></button><span>Simulate active response (Apply disabled while a reply streams)</span>
   </div>
-  <p class="hint">The chip beside <code>Tools</code> shows the <b>active state</b> — mode label plus a small expression tag — not the generic phrase “Interaction Mode”. Its tooltip and accessible name include response style, expression, and relational depth. Click it to open the modal. The modal edits a local draft; <code>Apply to next turn</code> submits the complete behavior object atomically, <code>Cancel</code> / <code>Esc</code> discards. Future rows (cross-session preferences, room memory) are visibly disabled rather than pretending to work.</p>
+  <p class="hint">The chip beside <code>Tools</code> shows the <b>active state</b> — mode label plus a small expression tag. A green dot appears when a <b>writer profile</b> is shared, without exposing its content. Click the chip to open settings. The modal edits a local draft; <code>Apply to next turn</code> applies the complete behavior object and profile together to the active room, while <code>Cancel</code> / <code>Esc</code> discards.</p>
 </div>
 
-<!-- ============ Conversation behavior modal ============ -->
+<!-- ============ Conversation settings modal ============ -->
 <div class="overlay" id="overlay">
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Conversation behavior">
-    <button class="modal-x" id="mClose" title="Close"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg></button>
-    <div class="modal-eyebrow">Workshop · Room settings</div>
-    <h2>Conversation behavior</h2>
-    <p class="modal-sub">Choose how Workshop personas respond. Applies to Jill and invited personas; tools are unchanged.</p>
-
-    <div class="msec">
-      <div class="msec-h"><span class="t">Response style</span><hr></div>
-      <div class="segcards" id="modeCards">
-        <button class="segcard" data-mode="analysis">
-          <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><path d="M2.5 13.5v-4M8 13.5V2.5M13.5 13.5V7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg><span class="sc-name">Analyze</span></span>
-          <span class="sc-desc">Leads with the most important finding, traces evidence, offers next moves.</span>
-        </button>
-        <button class="segcard" data-mode="balanced">
-          <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2v12M3 5.5h10M4.5 5.5L3 10a2.2 2.2 0 003 0L4.5 5.5zM11.5 5.5L10 10a2.2 2.2 0 003 0l-1.5-4.5z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg><span class="sc-name">Balanced</span></span>
-          <span class="sc-desc">A workshop exchange — one meaningful observation, mixed with real conversation.</span>
-        </button>
-        <button class="segcard" data-mode="conversational">
-          <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><path d="M13.5 8A5.5 5.5 0 112.9 6.1L2 13.5l4.6-1.3A5.5 5.5 0 0013.5 8z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"></path></svg><span class="sc-name">Converse</span></span>
-          <span class="sc-desc">Shorter, responsive turns that follow your thought — no forced reports.</span>
-        </button>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="conversationSettingsTitle">
+    <button class="modal-x" id="mClose" type="button" aria-label="Close conversation settings"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg></button>
+    <div class="modal-head">
+      <div class="modal-eyebrow">Workshop · Room settings</div>
+      <h2 id="conversationSettingsTitle">Conversation settings</h2>
+      <p class="modal-sub">Choose how Workshop personas respond and what enduring context they may use. Applies to Jill and invited personas; tools are unchanged.</p>
+      <div class="tabs" role="tablist">
+        <button class="tab active" id="tabBehavior" type="button" role="tab" aria-selected="true" aria-controls="panelBehavior" tabindex="0">Behavior</button>
+        <button class="tab" id="tabProfile" type="button" role="tab" aria-selected="false" aria-controls="panelProfile" tabindex="-1">About you</button>
       </div>
-      <p class="msec-note">What you ask for always wins — “analyze this” gets analysis in any style.</p>
     </div>
 
-    <div class="msec">
-      <div class="msec-h"><span class="t">Persona expression</span><hr></div>
-      <div class="segcards" id="exprCards">
-        <button class="segcard" data-expr="subtle">
-          <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2.4 2.6"></circle></svg><span class="sc-name">Subtle</span></span>
-          <span class="sc-desc">Quieter delivery — fewer quirks and metaphors, same person and expertise.</span>
-        </button>
-        <button class="segcard" data-expr="full">
-          <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.4"></circle><circle cx="8" cy="8" r="2.2" fill="currentColor"></circle></svg><span class="sc-name">Full</span></span>
-          <span class="sc-desc">Their natural voice, tastes, trait tensions, and verbal palette without muting.</span>
-        </button>
-        <button class="segcard" data-expr="amplified">
-          <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2"></circle><circle cx="8" cy="8" r="4.2" stroke="currentColor" stroke-width="1.2"></circle><circle cx="8" cy="8" r="1.8" fill="currentColor"></circle></svg><span class="sc-name">Amplified</span></span>
-          <span class="sc-desc">Strongest authored differentiation — calibrated language and communication pressure.</span>
-        </button>
-      </div>
-      <p class="msec-note">Identity and craft expertise remain present at every level.</p>
-    </div>
-
-    <div class="msec">
-      <div class="msec-h"><span class="t">Relational depth</span><hr></div>
-      <div class="segcards" id="depthCards">
-        <button class="segcard" data-depth="reserved">
-          <span class="sc-top"><span class="sc-name">Reserved</span></span>
-          <span class="sc-desc">Responds to feelings and needs you state directly without unsolicited personal interpretation.</span>
-        </button>
-        <button class="segcard" data-depth="attuned">
-          <span class="sc-top"><span class="sc-name">Attuned</span></span>
-          <span class="sc-desc">Uses high emotional intelligence to notice likely immediate cues and adapt with humility.</span>
-        </button>
-        <button class="segcard" data-depth="reflective">
-          <span class="sc-top"><span class="sc-name">Reflective</span></span>
-          <span class="sc-desc">May connect the work with life experience you explicitly shared and invite deeper reflection.</span>
-        </button>
-      </div>
-      <p class="msec-note">This is a permission ceiling, not a requirement. Each persona decides when depth helps.</p>
-    </div>
-
-    <div class="msec">
-      <div class="msec-h"><span class="t">Session continuity</span><hr></div>
-      <div class="trow">
-        <div class="trow-txt">
-          <div class="trow-name">Carry cues through this session</div>
-          <div class="trow-desc">Let demonstrated interaction preferences—like preferring blunt critique or brief answers—shape later turns. Cleared when the session ends or when you turn this off.</div>
+    <div class="modal-body">
+      <!-- ===== BEHAVIOR TAB ===== -->
+      <div class="tabpane show" id="panelBehavior" data-pane="behavior" role="tabpanel" aria-labelledby="tabBehavior">
+        <div class="msec">
+          <div class="msec-h"><span class="t">Response style</span><hr></div>
+          <div class="segcards" id="modeCards">
+            <button class="segcard" data-mode="analysis">
+              <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><path d="M2.5 13.5v-4M8 13.5V2.5M13.5 13.5V7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg><span class="sc-name">Analyze</span></span>
+              <span class="sc-desc">Leads with the most important finding, traces evidence, offers next moves.</span>
+            </button>
+            <button class="segcard" data-mode="balanced">
+              <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2v12M3 5.5h10M4.5 5.5L3 10a2.2 2.2 0 003 0L4.5 5.5zM11.5 5.5L10 10a2.2 2.2 0 003 0l-1.5-4.5z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg><span class="sc-name">Balanced</span></span>
+              <span class="sc-desc">A workshop exchange — one meaningful observation, mixed with real conversation.</span>
+            </button>
+            <button class="segcard" data-mode="conversational">
+              <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><path d="M13.5 8A5.5 5.5 0 112.9 6.1L2 13.5l4.6-1.3A5.5 5.5 0 0013.5 8z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"></path></svg><span class="sc-name">Converse</span></span>
+              <span class="sc-desc">Shorter, responsive turns that follow your thought — no forced reports.</span>
+            </button>
+          </div>
+          <p class="msec-note">What you ask for always wins — “analyze this” gets analysis in any style.</p>
         </div>
-        <span class="tog on" data-key="carryCuesThroughSession"><i></i></span>
-      </div>
-      <div class="trow off-future">
-        <div class="trow-txt">
-          <div class="trow-name">Remember stable preferences across sessions <span class="ftag">Future</span></div>
-          <div class="trow-desc">Off until you can view, correct, and delete what is retained. Never stores temporary moods or emotions.</div>
-        </div>
-        <span class="tog locked" title="Coming later"><i></i></span>
-      </div>
-    </div>
 
-    <div class="msec">
-      <div class="msec-h"><span class="t">Room memory</span><hr><span class="ftag">Coming later</span></div>
-      <div class="roomrow">
-        <div class="rr-txt">
-          <div class="rr-name">Shared history and continuity</div>
-          <div class="rr-desc">View, manage, and delete what the room remembers across sessions. Arrives with its own decision — nothing is stored today.</div>
+        <div class="msec">
+          <div class="msec-h"><span class="t">Persona expression</span><hr></div>
+          <div class="segcards" id="exprCards">
+            <button class="segcard" data-expr="subtle">
+              <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2.4 2.6"></circle></svg><span class="sc-name">Subtle</span></span>
+              <span class="sc-desc">Quieter delivery — fewer quirks and metaphors, same person and expertise.</span>
+            </button>
+            <button class="segcard" data-expr="full">
+              <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.4"></circle><circle cx="8" cy="8" r="2.2" fill="currentColor"></circle></svg><span class="sc-name">Full</span></span>
+              <span class="sc-desc">Their natural voice, tastes, trait tensions, and verbal palette without muting.</span>
+            </button>
+            <button class="segcard" data-expr="amplified">
+              <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"></circle><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.3"></circle><circle cx="8" cy="8" r="1" fill="currentColor"></circle></svg><span class="sc-name">Amplified</span></span>
+              <span class="sc-desc">Strongest authored differentiation — calibrated language and communication pressure.</span>
+            </button>
+          </div>
+          <p class="msec-note">Identity and craft expertise remain present at every level.</p>
+        </div>
+
+        <div class="msec">
+          <div class="msec-h"><span class="t">Relational depth</span><hr></div>
+          <div class="segcards" id="depthCards">
+            <button class="segcard" data-depth="reserved">
+              <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><path d="M8 1.8l5 1.9v3.6c0 3.2-2.1 5.3-5 6.2-2.9-.9-5-3-5-6.2V3.7l5-1.9z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path></svg><span class="sc-name">Reserved</span></span>
+              <span class="sc-desc">Responds to feelings and needs you state directly without unsolicited personal interpretation.</span>
+            </button>
+            <button class="segcard" data-depth="attuned">
+              <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="11.6" r="1.1" fill="currentColor"></circle><path d="M4.8 9a4.4 4.4 0 016.4 0M2.7 6.6a7.4 7.4 0 0110.6 0" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg><span class="sc-name">Attuned</span></span>
+              <span class="sc-desc">Uses high emotional intelligence to notice likely immediate cues and adapt with humility.</span>
+            </button>
+            <button class="segcard" data-depth="reflective">
+              <span class="sc-top"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2v12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-dasharray="1.4 2"></path><path d="M5 3.5C6.6 5.4 6.6 10.6 5 12.5M11 3.5C9.4 5.4 9.4 10.6 11 12.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg><span class="sc-name">Reflective</span></span>
+              <span class="sc-desc">May connect the work with life experience you explicitly shared and invite deeper reflection.</span>
+            </button>
+          </div>
+          <p class="msec-note">This is a permission ceiling, not a requirement. Each persona decides when depth helps.</p>
+        </div>
+
+        <div class="msec">
+          <div class="msec-h"><span class="t">Session continuity</span><hr></div>
+          <div class="trow">
+            <div class="trow-txt">
+              <div class="trow-name">Carry cues through this session</div>
+              <div class="trow-desc">Let demonstrated interaction preferences—like preferring blunt critique or brief answers—shape later turns. Cleared when the session ends or when you turn this off.</div>
+            </div>
+            <button class="tog on" type="button" role="switch" aria-checked="true" aria-label="Carry cues through this session" data-key="carryCuesThroughSession"><i></i></button>
+          </div>
         </div>
       </div>
+
+      <!-- ===== ABOUT YOU TAB ===== -->
+      <div class="tabpane" id="panelProfile" data-pane="profile" role="tabpanel" aria-labelledby="tabProfile">
+        <div class="trow" style="margin-top:20px">
+          <div class="trow-txt">
+            <div class="trow-name">Share this profile with Workshop personas</div>
+            <div class="trow-desc">When on, the room may use the details below to address you and add relevant context. Relational depth still governs how far a persona interprets it.</div>
+          </div>
+          <button class="tog" type="button" role="switch" aria-checked="false" aria-label="Share this profile with Workshop personas" data-pkey="enabled"><i></i></button>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="paddr">How should the room address you?</label>
+          <input class="tin" id="paddr" type="text" maxlength="80" autocomplete="off" placeholder="e.g. Okey · Dr. Landers · “Okey is fine”">
+          <div class="counter" id="paddrCount">0 / 80</div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="pbio">What would you like the room to know about you?</label>
+          <textarea class="tar" id="pbio" maxlength="1000" placeholder="A few enduring facts or preferences — not a résumé. The room treats this as background, never as instructions, and won’t build a psychological profile from it."></textarea>
+          <div class="counter" id="pbioCount">0 / 1000</div>
+        </div>
+
+        <div class="notice">
+          <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.4" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 7.2v3.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path><circle cx="8" cy="4.9" r="0.9" fill="currentColor"></circle></svg>
+          <span>Stored with your global settings — it follows you across workspaces and is ordinary settings data, <b>not a secret</b>. Don’t include sensitive information. It’s never copied into transcripts, saved sessions, or tools. Personas use it as background instead of reciting it back or repeatedly using your name.</span>
+        </div>
+
+        <div class="clearrow">
+          <span class="field-hint" id="profileState" aria-live="polite">Off — nothing is shared.</span>
+          <div id="clearWrap">
+            <button class="linkbtn" id="clearBtn" type="button"><svg viewBox="0 0 16 16" fill="none"><path d="M3 4.5h10M6 4.5V3.2c0-.5.4-.9.9-.9h2.2c.5 0 .9.4.9.9V4.5M4.3 4.5l.6 8.1c0 .5.4.9.9.9h4.4c.5 0 .8-.4.9-.9l.6-8.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>Clear profile</button>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="mfoot">
-      <span class="mfoot-note" id="footNote">Takes effect on your next message. The conversation is never reset.</span>
-      <button class="mbtn ghost" id="mCancel">Cancel</button>
-      <button class="mbtn primary" id="mApply">Apply to next turn</button>
+    <div class="modal-foot">
+      <span class="mfoot-note" id="footNote" role="status">Takes effect on your next message. The conversation is never reset.</span>
+      <button class="mbtn ghost" id="mCancel" type="button">Cancel</button>
+      <button class="mbtn primary" id="mApply" type="button">Apply to next turn</button>
     </div>
   </div>
 </div>
 
 <script>
 const DEFAULTS = { interactionMode:'balanced', expressionLevel:'full', relationalDepth:'attuned', carryCuesThroughSession:true };
+const DEFAULT_PROFILE = { enabled:false, preferredAddress:'', bio:'' };
+const LIMITS = { preferredAddress:80, bio:1000 };
+
 let applied = { ...DEFAULTS };
-let draft = null;
+let appliedProfile = { ...DEFAULT_PROFILE };
+let draft = null, draftProfile = null;
 let busy = false;
+
 const MODE_LABEL = { analysis:'Analyze', balanced:'Balanced', conversational:'Converse' };
 const DEPTH_LABEL = { reserved:'Reserved', attuned:'Attuned', reflective:'Reflective' };
 const $ = id => document.getElementById(id);
 
+const profileActive = p => p.enabled && (p.preferredAddress.trim().length > 0 || p.bio.trim().length > 0);
+
 function renderChip(){
   $('chipLabel').textContent = MODE_LABEL[applied.interactionMode];
   $('chipSub').textContent = applied.expressionLevel.toUpperCase();
-  const description = `Conversation settings: ${MODE_LABEL[applied.interactionMode]}, ${applied.expressionLevel}, ${DEPTH_LABEL[applied.relationalDepth]}`;
+  const shared = profileActive(appliedProfile);
+  $('chipProf').hidden = !shared;
+  const description = `Conversation settings: ${MODE_LABEL[applied.interactionMode]}, ${applied.expressionLevel}, ${DEPTH_LABEL[applied.relationalDepth]}, profile ${shared ? 'shared' : 'not shared'}`;
   $('modeChip').title = description;
   $('modeChip').setAttribute('aria-label', description);
 }
+
+function renderProfileState(){
+  const p = draftProfile, el = $('profileState');
+  if (!p.enabled) el.textContent = 'Off — nothing is shared.';
+  else if (profileActive(p)) el.textContent = 'Sharing on · active for Workshop personas.';
+  else el.textContent = 'Sharing on · add a detail to activate.';
+}
+
 function renderModal(){
   document.querySelectorAll('#modeCards .segcard').forEach(c => c.classList.toggle('sel', c.dataset.mode === draft.interactionMode));
   document.querySelectorAll('#exprCards .segcard').forEach(c => c.classList.toggle('sel', c.dataset.expr === draft.expressionLevel));
   document.querySelectorAll('#depthCards .segcard').forEach(c => c.classList.toggle('sel', c.dataset.depth === draft.relationalDepth));
-  document.querySelectorAll('.tog[data-key]').forEach(t => t.classList.toggle('on', draft[t.dataset.key]));
+  document.querySelectorAll('.tog[data-key]').forEach(t => { const on = draft[t.dataset.key]; t.classList.toggle('on', on); t.setAttribute('aria-checked', on); });
+  document.querySelectorAll('.tog[data-pkey]').forEach(t => { const on = draftProfile[t.dataset.pkey]; t.classList.toggle('on', on); t.setAttribute('aria-checked', on); });
+  renderProfileState();
+
   const note = $('footNote'), apply = $('mApply');
   if (busy){
     apply.disabled = true;
@@ -290,8 +361,59 @@ function renderModal(){
     note.classList.remove('busy');
   }
 }
-function openModal(){ draft = { ...applied }; renderModal(); $('overlay').classList.add('open'); }
-function closeModal(){ $('overlay').classList.remove('open'); draft = null; }
+
+function syncCounter(inputId, countId, max){
+  const v = $(inputId).value;
+  const el = $(countId);
+  el.textContent = v.length + ' / ' + max;
+  el.classList.toggle('over', v.length >= max);
+}
+
+function loadProfileFields(){
+  $('paddr').value = draftProfile.preferredAddress;
+  $('pbio').value = draftProfile.bio;
+  syncCounter('paddr','paddrCount',LIMITS.preferredAddress);
+  syncCounter('pbio','pbioCount',LIMITS.bio);
+  resetClear();
+}
+
+function switchTab(name){
+  const behavior = name === 'behavior';
+  $('tabBehavior').classList.toggle('active', behavior);
+  $('tabProfile').classList.toggle('active', !behavior);
+  $('tabBehavior').setAttribute('aria-selected', behavior);
+  $('tabProfile').setAttribute('aria-selected', !behavior);
+  $('tabBehavior').tabIndex = behavior ? 0 : -1;
+  $('tabProfile').tabIndex = behavior ? -1 : 0;
+  document.querySelector('[data-pane="behavior"]').classList.toggle('show', behavior);
+  document.querySelector('[data-pane="profile"]').classList.toggle('show', !behavior);
+  const body = document.querySelector('.modal-body'); if (body) body.scrollTop = 0;
+}
+
+function openModal(){
+  draft = { ...applied };
+  draftProfile = { ...appliedProfile };
+  switchTab('behavior');
+  loadProfileFields();
+  renderModal();
+  $('overlay').classList.add('open');
+}
+function closeModal(){ $('overlay').classList.remove('open'); draft = null; draftProfile = null; }
+
+/* clear-profile inline confirmation */
+function resetClear(){
+  $('clearWrap').innerHTML = '<button class="linkbtn" id="clearBtn" type="button"><svg viewBox="0 0 16 16" fill="none"><path d="M3 4.5h10M6 4.5V3.2c0-.5.4-.9.9-.9h2.2c.5 0 .9.4.9.9V4.5M4.3 4.5l.6 8.1c0 .5.4.9.9.9h4.4c.5 0 .8-.4.9-.9l.6-8.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>Clear profile</button>';
+  $('clearBtn').addEventListener('click', showClearConfirm);
+}
+function showClearConfirm(){
+  $('clearWrap').innerHTML = '<div class="confirm"><span class="q">Clear both fields?</span><button id="clearKeep" type="button">Keep</button><button class="danger" id="clearYes" type="button">Clear</button></div>';
+  $('clearKeep').addEventListener('click', resetClear);
+  $('clearYes').addEventListener('click', () => {
+    draftProfile = { enabled:false, preferredAddress:'', bio:'' };
+    loadProfileFields();
+    renderModal();
+  });
+}
 
 $('modeChip').addEventListener('click', openModal);
 $('mClose').addEventListener('click', closeModal);
@@ -299,15 +421,37 @@ $('mCancel').addEventListener('click', closeModal);
 $('overlay').addEventListener('click', e => { if (e.target === $('overlay')) closeModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('overlay').classList.contains('open')) closeModal(); });
 
+$('tabBehavior').addEventListener('click', () => switchTab('behavior'));
+$('tabProfile').addEventListener('click', () => switchTab('profile'));
+document.querySelector('.tabs').addEventListener('keydown', e => {
+  if (!['ArrowLeft','ArrowRight','Home','End'].includes(e.key)) return;
+  e.preventDefault();
+  const profile = e.key === 'ArrowRight' || e.key === 'End';
+  switchTab(profile ? 'profile' : 'behavior');
+  $(profile ? 'tabProfile' : 'tabBehavior').focus();
+});
+
 $('modeCards').addEventListener('click', e => { const c = e.target.closest('[data-mode]'); if (c){ draft.interactionMode = c.dataset.mode; renderModal(); } });
 $('exprCards').addEventListener('click', e => { const c = e.target.closest('[data-expr]'); if (c){ draft.expressionLevel = c.dataset.expr; renderModal(); } });
 $('depthCards').addEventListener('click', e => { const c = e.target.closest('[data-depth]'); if (c){ draft.relationalDepth = c.dataset.depth; renderModal(); } });
 document.querySelectorAll('.tog[data-key]').forEach(t => t.addEventListener('click', () => { draft[t.dataset.key] = !draft[t.dataset.key]; renderModal(); }));
+document.querySelectorAll('.tog[data-pkey]').forEach(t => t.addEventListener('click', () => { draftProfile[t.dataset.pkey] = !draftProfile[t.dataset.pkey]; renderModal(); }));
 
-$('mApply').addEventListener('click', () => { if (busy) return; applied = { ...draft }; renderChip(); closeModal(); });
+$('paddr').addEventListener('input', () => { const el=$('paddr'); if (el.value.length>LIMITS.preferredAddress) el.value=el.value.slice(0,LIMITS.preferredAddress); draftProfile.preferredAddress = el.value; syncCounter('paddr','paddrCount',LIMITS.preferredAddress); renderProfileState(); });
+$('pbio').addEventListener('input', () => { const el=$('pbio'); if (el.value.length>LIMITS.bio) el.value=el.value.slice(0,LIMITS.bio); draftProfile.bio = el.value; syncCounter('pbio','pbioCount',LIMITS.bio); renderProfileState(); });
+
+resetClear();
+
+$('mApply').addEventListener('click', () => {
+  if (busy) return;
+  applied = { ...draft };
+  appliedProfile = { enabled:draftProfile.enabled, preferredAddress:draftProfile.preferredAddress.trim(), bio:draftProfile.bio.trim() };
+  renderChip();
+  closeModal();
+});
 
 /* demo: simulate active response */
-$('busyTog').addEventListener('click', () => { busy = !busy; $('busyTog').classList.toggle('on', busy); if (draft) renderModal(); });
+$('busyTog').addEventListener('click', () => { busy = !busy; $('busyTog').classList.toggle('on', busy); $('busyTog').setAttribute('aria-checked', busy); if (draft) renderModal(); });
 
 renderChip();
 </script>

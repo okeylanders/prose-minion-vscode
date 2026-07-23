@@ -1322,12 +1322,11 @@ export class WorkshopSessionService {
     return conversationIds;
   }
 
-  /** Fresh session boundary: preserve excerpt, clear thread, sidecars, and host. */
+  /** Fresh room boundary: preserve the working set, clear thread, sidecars, and host. */
   reset(): string[] {
     const conversationIds = this.clearAllConversations();
     this.turns = [];
     this.activeRun = undefined;
-    this.contextAttachments = [];
     this.pendingMessageAttachments = [];
     this.pendingContextRevision = undefined;
     this.replacementCount = 0;

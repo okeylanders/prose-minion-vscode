@@ -5,8 +5,9 @@
   assembly and the full-roster Amplified calibration set were accepted
   2026-07-20; the Relational Depth amendment was implemented and automatically
   validated on its feature branch 2026-07-22, with live qualitative scoring
-  pending; the Writer Profile amendment was accepted 2026-07-22 with
-  implementation pending; broader qualitative evaluation remains in progress
+  pending; the Writer Profile amendment was implemented and automatically
+  validated on its feature branch 2026-07-22; broader qualitative evaluation
+  remains in progress
 - **Date:** 2026-07-20
 - **Deciders:** Okey Landers, Ada Forge
 - **Related:**
@@ -1033,12 +1034,11 @@ The modal contains these sections:
    descriptions make the permission ceiling and explicit-life-context boundary
    visible.
 4. **Session continuity** — the separate `Carry cues through this session`
-   toggle plus a future cross-session preference control that is not
-   enabled until inspection, correction, and deletion exist.
+   toggle. The future cross-session preference control remains unrendered until
+   inspection, correction, and deletion exist.
 5. **Room memory** — a future home for shared-history generation and storage
-   from the separate ADR. Hide it until implementation is near, or show it as
-   clearly disabled `Coming later`; do not present a nonfunctional consent
-   toggle.
+   from the separate ADR. Keep it unrendered until implementation is near; do
+   not present a nonfunctional consent toggle or placeholder section.
 
 Descriptions should be thorough but progressively disclosed: each section gets
 one plain-language sentence, with examples or `Learn more` detail where needed.
@@ -1059,8 +1059,8 @@ The approved new-session defaults are:
 | Persona expression | `Full` |
 | Relational depth | `Attuned` |
 | Carry cues through this session | On |
-| Remember stable preferences across sessions | Off / future |
-| Shared room history storage | Off / future |
+| Remember stable preferences across sessions | Not rendered / future |
+| Shared room history storage | Not rendered / future |
 
 The behavior object is room-level. Jill and invited personas interpret it
 through their own profiles. Deterministic tool runs and direct tool-sidecar
@@ -1683,12 +1683,18 @@ not become one long scrolling wall:
 2. **About you** — Share this profile toggle, preferred-address input, bounded
    bio, global/non-secret disclosure, and Clear Profile action.
 
+This amendment preserves the live-only Behavior tab above: future preference
+memory and room-history storage remain absent until their separately accepted
+contracts are ready to implement.
+
 The writer-facing questions are **How should the room address you?** and
 **What would you like the room to know about you?** The header, tabs, and footer
-remain fixed while the active tab body scrolls. Apply is atomic, unavailable
-during an active run, and closing without Apply discards the draft. Clear
-Profile intentionally empties both fields and disables sharing through the same
-commit path.
+remain fixed while the active tab body scrolls. Apply enters the live room as
+one guarded commit, is unavailable during an active run, and closing without
+Apply discards the draft. VS Code persists the separate Behavior and Writer
+Profile keys independently; storage failures are surfaced rather than described
+as a transactional settings write. Clear Profile intentionally empties both
+fields and disables sharing through the same commit path.
 
 The composer never displays profile content. Its settings tooltip or accessible
 description may expose only a compact **Profile shared** state so the writer can
@@ -1696,12 +1702,12 @@ tell when personal context is active.
 
 ### Delivery and evaluation
 
-Delivery is tracked in
+Delivery and its deterministic validation are tracked in
 [Workshop Writer Profile](../../.todo/features/feature-workshop-writer-profile/README.md).
-Implementation must prove that disabled/empty profiles contribute no prompt
-content, frame injection is neutralized, profile removal takes effect on the
-next eligible turn, and raw profile strings never enter saved workspace
-sessions or tool conversations.
+The implementation proves that disabled/empty profiles contribute no prompt
+content, frame injection is neutralized, and raw profile strings remain outside
+the session aggregate and tool conversations. Profile removal uses the same
+guarded replacement path and therefore takes effect on the next eligible turn.
 
 Qualitative evaluation runs the same supplied profile through Reserved,
 Attuned, and Reflective across multiple personas. Success means personas use

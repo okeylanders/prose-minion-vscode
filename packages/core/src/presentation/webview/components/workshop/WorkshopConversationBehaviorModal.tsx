@@ -1,52 +1,29 @@
-/**
- * WorkshopConversationBehaviorModal — the room-level "how should personas
- * interact with me" settings (ADR 2026-07-20 §11; design source: the
- * Conversation Behavior comp's modal).
- *
- * The modal edits a LOCAL draft seeded from the committed object each time it
- * opens; "Apply to next turn" submits the COMPLETE draft atomically and waits
- * for the host to round-trip it via WORKSHOP_SESSION_STATE — there is no
- * optimistic commit, so the chip keeps the previous value while replacement
- * prompts are assembled and validated. Cancel/Escape/backdrop discard the
- * draft. While a response streams the modal stays open for inspection, but
- * Apply is disabled and the footer says changes wait for the run to finish.
- * Future rows (cross-session preferences, room memory) are visibly disabled
- * rather than pretending to work.
- */
+/** Conversation Settings — Behavior and global writer-profile drafts. */
 
 import * as React from 'react';
 import { Icon, IconName } from '@components/shared/Icon';
 import { WorkshopModalShell } from './WorkshopModalShell';
 import {
+  workshopConversationBehaviorsEqual,
+  workshopWriterProfilesEqual,
   WORKSHOP_INTERACTION_MODE_LABELS,
   WORKSHOP_RELATIONAL_DEPTH_LABELS,
+  WORKSHOP_WRITER_PROFILE_LIMITS,
   WorkshopConversationBehavior,
   WorkshopInteractionMode,
   WorkshopPersonaExpressionLevel,
-  WorkshopRelationalDepth
+  WorkshopRelationalDepth,
+  WorkshopWriterProfile
 } from '@messages';
 
-/** Card copy is design-verbatim presentation text; labels stay shared/deterministic. */
 const MODE_CARDS: ReadonlyArray<{
   mode: WorkshopInteractionMode;
   icon: IconName;
   description: string;
 }> = [
-  {
-    mode: 'analysis',
-    icon: 'bars',
-    description: 'Leads with the most important finding, traces evidence, offers next moves.'
-  },
-  {
-    mode: 'balanced',
-    icon: 'scale',
-    description: 'A workshop exchange — one meaningful observation, mixed with real conversation.'
-  },
-  {
-    mode: 'conversational',
-    icon: 'dialogue',
-    description: 'Shorter, responsive turns that follow your thought — no forced reports.'
-  }
+  { mode: 'analysis', icon: 'bars', description: 'Leads with the most important finding, traces evidence, offers next moves.' },
+  { mode: 'balanced', icon: 'scale', description: 'A workshop exchange — one meaningful observation, mixed with real conversation.' },
+  { mode: 'conversational', icon: 'dialogue', description: 'Shorter, responsive turns that follow your thought — no forced reports.' }
 ];
 
 const EXPRESSION_CARDS: ReadonlyArray<{
@@ -54,16 +31,8 @@ const EXPRESSION_CARDS: ReadonlyArray<{
   name: string;
   description: string;
 }> = [
-  {
-    level: 'subtle',
-    name: 'Subtle',
-    description: 'Quieter delivery — fewer quirks and metaphors, same person and expertise.'
-  },
-  {
-    level: 'full',
-    name: 'Full',
-    description: 'Their natural voice, tastes, trait tensions, and verbal palette without muting.'
-  },
+  { level: 'subtle', name: 'Subtle', description: 'Quieter delivery — fewer quirks and metaphors, same person and expertise.' },
+  { level: 'full', name: 'Full', description: 'Their natural voice, tastes, trait tensions, and verbal palette without muting.' },
   {
     level: 'amplified',
     name: 'Amplified',
@@ -73,35 +42,32 @@ const EXPRESSION_CARDS: ReadonlyArray<{
 
 const RELATIONAL_DEPTH_CARDS: ReadonlyArray<{
   depth: WorkshopRelationalDepth;
+  icon: IconName;
   description: string;
 }> = [
   {
     depth: 'reserved',
+    icon: 'hand',
     description: 'Responds to feelings and needs you state directly without unsolicited personal interpretation.'
   },
   {
     depth: 'attuned',
+    icon: 'sparkle',
     description: 'Uses high emotional intelligence to notice likely immediate cues and adapt with humility.'
   },
   {
     depth: 'reflective',
+    icon: 'eye',
     description: 'May connect the work with life experience you explicitly shared and invite deeper reflection.'
   }
 ];
 
-/**
- * Expression glyphs, inlined from the approved comp — the shared Icon set has
- * no dashed/solid-center circle pair (ContextBudget's chevron precedent).
- */
 const ExpressionGlyph: React.FC<{ level: WorkshopPersonaExpressionLevel }> = ({ level }) => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
     {level === 'subtle' ? (
       <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.4" strokeDasharray="2.4 2.6" />
     ) : level === 'full' ? (
-      <>
-        <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.4" />
-        <circle cx="8" cy="8" r="2.2" fill="currentColor" />
-      </>
+      <><circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.4" /><circle cx="8" cy="8" r="2.2" fill="currentColor" /></>
     ) : (
       <>
         <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.2" />
@@ -112,315 +78,443 @@ const ExpressionGlyph: React.FC<{ level: WorkshopPersonaExpressionLevel }> = ({ 
   </svg>
 );
 
-/** Whole-object equality — the behavior contract is four flat fields (ADR §3). */
-const behaviorEquals = (
-  a: WorkshopConversationBehavior,
-  b: WorkshopConversationBehavior
-): boolean =>
-  a.interactionMode === b.interactionMode &&
-  a.expressionLevel === b.expressionLevel &&
-  a.relationalDepth === b.relationalDepth &&
-  a.carryCuesThroughSession === b.carryCuesThroughSession;
-
-/** In-flight Apply: what was submitted, and what was committed at submit time. */
 interface PendingApply {
-  submitted: WorkshopConversationBehavior;
-  /** Distinguishes "no round-trip yet" from "the host committed something else". */
-  baseline: WorkshopConversationBehavior;
+  submittedBehavior: WorkshopConversationBehavior;
+  submittedProfile: WorkshopWriterProfile;
+  baselineBehavior: WorkshopConversationBehavior;
+  baselineProfile: WorkshopWriterProfile;
 }
 
 interface WorkshopConversationBehaviorModalProps {
   open: boolean;
-  /** The COMMITTED room behavior (host truth via the session snapshot). */
   behavior: WorkshopConversationBehavior;
-  /** A response is streaming — Apply locks; inspection stays available. */
+  writerProfile: WorkshopWriterProfile;
   isRunning: boolean;
-  /** Host rejection details; a new error releases a pending Apply for retry. */
   errorMessage?: string;
-  onApply: (behavior: WorkshopConversationBehavior) => void;
+  onApply: (behavior: WorkshopConversationBehavior, writerProfile: WorkshopWriterProfile) => void;
   onClose: () => void;
 }
+
+type SettingsTab = 'behavior' | 'profile';
 
 export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBehaviorModalProps> = ({
   open,
   behavior,
+  writerProfile,
   isRunning,
   errorMessage,
   onApply,
   onClose
 }) => {
-  const [draft, setDraft] = React.useState<WorkshopConversationBehavior>({ ...behavior });
+  const [tab, setTab] = React.useState<SettingsTab>('behavior');
+  const [behaviorDraft, setBehaviorDraft] = React.useState({ ...behavior });
+  const [profileDraft, setProfileDraft] = React.useState({ ...writerProfile });
   const [pending, setPending] = React.useState<PendingApply | null>(null);
+  const [confirmClear, setConfirmClear] = React.useState(false);
+  const behaviorTabRef = React.useRef<HTMLButtonElement>(null);
+  const profileTabRef = React.useRef<HTMLButtonElement>(null);
 
-  // Reseed from the committed object on each open; a stray snapshot while the
-  // modal is open must not clobber mid-edit draft state, so deps are [open]
-  // only (the open-transition closure carries the current committed value).
   React.useEffect(() => {
     if (open) {
-      setDraft({ ...behavior });
+      setTab('behavior');
+      setBehaviorDraft({ ...behavior });
+      setProfileDraft({ ...writerProfile });
       setPending(null);
+      setConfirmClear(false);
     }
   }, [open]);
 
-  // Pending resolution: the host round-trips the applied object through the
-  // next session state. Committed === submitted → done, close. Committed
-  // moved somewhere ELSE (handler rejected or another change won) → drop the
-  // wait state and hand the modal back. Closed mid-wait → nothing to resolve.
   React.useEffect(() => {
-    if (!pending) {
-      return;
-    }
+    if (!pending) return;
     if (!open) {
       setPending(null);
       return;
     }
-    if (behaviorEquals(behavior, pending.submitted)) {
+    if (
+      workshopConversationBehaviorsEqual(behavior, pending.submittedBehavior)
+      && workshopWriterProfilesEqual(writerProfile, pending.submittedProfile)
+    ) {
       setPending(null);
       onClose();
-    } else if (!behaviorEquals(behavior, pending.baseline)) {
+    } else if (
+      !workshopConversationBehaviorsEqual(behavior, pending.baselineBehavior)
+      || !workshopWriterProfilesEqual(writerProfile, pending.baselineProfile)
+    ) {
       setPending(null);
     }
-  }, [behavior, onClose, open, pending]);
+  }, [behavior, onClose, open, pending, writerProfile]);
 
   React.useEffect(() => {
-    if (pending && errorMessage) {
-      setPending(null);
-    }
+    if (pending && errorMessage) setPending(null);
   }, [errorMessage, pending]);
 
   const editingLocked = pending !== null;
   const applyLocked = isRunning || editingLocked;
-
-  const apply = () => {
-    if (applyLocked) {
-      return;
-    }
-    const submitted = { ...draft };
-    onApply(submitted);
-    setPending({ submitted, baseline: { ...behavior } });
+  const switchTab = (next: SettingsTab) => {
+    setTab(next);
+    setConfirmClear(false);
   };
-
-  const selectMode = (interactionMode: WorkshopInteractionMode) =>
-    setDraft((current) => ({ ...current, interactionMode }));
-  const selectExpression = (expressionLevel: WorkshopPersonaExpressionLevel) =>
-    setDraft((current) => ({ ...current, expressionLevel }));
-  const selectRelationalDepth = (relationalDepth: WorkshopRelationalDepth) =>
-    setDraft((current) => ({ ...current, relationalDepth }));
-  const flipCarryCues = () =>
-    setDraft((current) => ({
-      ...current,
-      carryCuesThroughSession: !current.carryCuesThroughSession
-    }));
+  const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    const next = event.key === 'ArrowLeft' || event.key === 'Home'
+      ? 'behavior'
+      : event.key === 'ArrowRight' || event.key === 'End'
+        ? 'profile'
+        : undefined;
+    if (!next) return;
+    event.preventDefault();
+    switchTab(next);
+    (next === 'behavior' ? behaviorTabRef : profileTabRef).current?.focus();
+  };
+  const apply = () => {
+    if (applyLocked) return;
+    const submittedBehavior = { ...behaviorDraft };
+    const submittedProfile = {
+      ...profileDraft,
+      preferredAddress: profileDraft.preferredAddress.trim(),
+      bio: profileDraft.bio.trim()
+    };
+    onApply(submittedBehavior, submittedProfile);
+    setPending({
+      submittedBehavior,
+      submittedProfile,
+      baselineBehavior: { ...behavior },
+      baselineProfile: { ...writerProfile }
+    });
+  };
+  const clearProfile = () => {
+    setProfileDraft({ enabled: false, preferredAddress: '', bio: '' });
+    setConfirmClear(false);
+  };
 
   return (
     <WorkshopModalShell
       open={open}
-      titleId="pm-ws-behavior-title"
-      closeLabel="Close conversation behavior"
+      titleId="pm-ws-settings-title"
+      closeLabel="Close conversation settings"
       className="pm-ws-behavior-modal"
       onClose={onClose}
     >
       <div className="pm-ws-tools-modal-head">
         <div>
           <div className="pm-ws-eyebrow">Workshop · Room settings</div>
-          <h2 id="pm-ws-behavior-title">Conversation behavior</h2>
-          <p>Choose how Workshop personas respond. Applies to Jill and invited personas; tools are unchanged.</p>
+          <h2 id="pm-ws-settings-title">Conversation settings</h2>
+          <p>Choose how Workshop personas respond and what you explicitly share with them. Tools are unchanged.</p>
         </div>
         <WorkshopModalShell.CloseButton />
       </div>
 
-      <div className="pm-ws-behavior-body">
-      <section className="pm-ws-tools-modal-section">
-        <div className="pm-ws-tools-modal-rule">
-          <span className="pm-ws-eyebrow">Response style</span>
-          <hr />
-        </div>
-        <div className="pm-ws-behavior-cards">
-          {MODE_CARDS.map((card) => (
-            <button
-              key={card.mode}
-              className={`pm-ws-behavior-card ${
-                draft.interactionMode === card.mode ? 'pm-ws-behavior-card-selected' : ''
-              }`}
-              type="button"
-              aria-pressed={draft.interactionMode === card.mode}
-              disabled={editingLocked}
-              onClick={() => selectMode(card.mode)}
-            >
-              <span className="pm-ws-behavior-card-top">
-                <Icon name={card.icon} size={14} />
-                <span className="pm-ws-behavior-card-name">
-                  {WORKSHOP_INTERACTION_MODE_LABELS[card.mode]}
-                </span>
-              </span>
-              <span className="pm-ws-behavior-card-desc">{card.description}</span>
-            </button>
-          ))}
-        </div>
-        <p className="pm-ws-behavior-note">
-          What you ask for always wins — “analyze this” gets analysis in any style.
-        </p>
-      </section>
-
-      <section className="pm-ws-tools-modal-section">
-        <div className="pm-ws-tools-modal-rule">
-          <span className="pm-ws-eyebrow">Persona expression</span>
-          <hr />
-        </div>
-        <div className="pm-ws-behavior-cards">
-          {EXPRESSION_CARDS.map((card) => (
-            <button
-              key={card.level}
-              className={`pm-ws-behavior-card ${
-                draft.expressionLevel === card.level ? 'pm-ws-behavior-card-selected' : ''
-              }`}
-              type="button"
-              aria-pressed={draft.expressionLevel === card.level}
-              disabled={editingLocked}
-              onClick={() => selectExpression(card.level)}
-            >
-              <span className="pm-ws-behavior-card-top">
-                <ExpressionGlyph level={card.level} />
-                <span className="pm-ws-behavior-card-name">{card.name}</span>
-              </span>
-              <span className="pm-ws-behavior-card-desc">{card.description}</span>
-            </button>
-          ))}
-        </div>
-        <p className="pm-ws-behavior-note">
-          Identity and craft expertise remain present at every level.
-        </p>
-      </section>
-
-      <section className="pm-ws-tools-modal-section">
-        <div className="pm-ws-tools-modal-rule">
-          <span className="pm-ws-eyebrow">Relational depth</span>
-          <hr />
-        </div>
-        <div className="pm-ws-behavior-cards">
-          {RELATIONAL_DEPTH_CARDS.map((card) => (
-            <button
-              key={card.depth}
-              className={`pm-ws-behavior-card ${
-                draft.relationalDepth === card.depth ? 'pm-ws-behavior-card-selected' : ''
-              }`}
-              type="button"
-              aria-pressed={draft.relationalDepth === card.depth}
-              disabled={editingLocked}
-              onClick={() => selectRelationalDepth(card.depth)}
-            >
-              <span className="pm-ws-behavior-card-top">
-                <span className="pm-ws-behavior-card-name">
-                  {WORKSHOP_RELATIONAL_DEPTH_LABELS[card.depth]}
-                </span>
-              </span>
-              <span className="pm-ws-behavior-card-desc">{card.description}</span>
-            </button>
-          ))}
-        </div>
-        <p className="pm-ws-behavior-note">
-          This is a permission ceiling, not a requirement. Each persona decides when depth helps.
-        </p>
-      </section>
-
-      <section className="pm-ws-tools-modal-section">
-        <div className="pm-ws-tools-modal-rule">
-          <span className="pm-ws-eyebrow">Session continuity</span>
-          <hr />
-        </div>
-        <div className="pm-ws-behavior-row">
-          <div className="pm-ws-behavior-row-text">
-            <div className="pm-ws-behavior-row-name">Carry cues through this session</div>
-            <div className="pm-ws-behavior-row-desc">
-              Let demonstrated interaction preferences—like preferring blunt critique or brief
-              answers—shape later turns. Cleared when the session ends or when you turn this off.
-            </div>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={draft.carryCuesThroughSession}
-            aria-label="Carry cues through this session"
-            disabled={editingLocked}
-            className={`pm-ws-behavior-toggle ${
-              draft.carryCuesThroughSession ? 'pm-ws-behavior-toggle-on' : ''
-            }`}
-            onClick={flipCarryCues}
-          >
-            <span className="pm-ws-behavior-toggle-thumb" />
-          </button>
-        </div>
-        {/* Future control, visibly disabled — never a nonfunctional consent
-            toggle (ADR §11 rule 5 applies to every not-yet-real switch). */}
-        <div className="pm-ws-behavior-row pm-ws-behavior-row-future">
-          <div className="pm-ws-behavior-row-text">
-            <div className="pm-ws-behavior-row-name">
-              Remember stable preferences across sessions
-              <span className="pm-ws-behavior-ftag">Future</span>
-            </div>
-            <div className="pm-ws-behavior-row-desc">
-              Off until you can view, correct, and delete what is retained. Never stores
-              temporary moods or emotions.
-            </div>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={false}
-            aria-label="Remember stable preferences across sessions"
-            title="Coming later"
-            disabled
-            className="pm-ws-behavior-toggle pm-ws-behavior-toggle-locked"
-          >
-            <span className="pm-ws-behavior-toggle-thumb" />
-          </button>
-        </div>
-      </section>
-
-      <section className="pm-ws-tools-modal-section">
-        <div className="pm-ws-tools-modal-rule">
-          <span className="pm-ws-eyebrow">Room memory</span>
-          <hr />
-          <span className="pm-ws-behavior-ftag">Coming later</span>
-        </div>
-        <div className="pm-ws-behavior-room-row">
-          <div className="pm-ws-behavior-row-text">
-            <div className="pm-ws-behavior-room-name">Shared history and continuity</div>
-            <div className="pm-ws-behavior-room-desc">
-              View, manage, and delete what the room remembers across sessions. Arrives with
-              its own decision — nothing is stored today.
-            </div>
-          </div>
-        </div>
-      </section>
+      <div className="pm-ws-settings-tabs" role="tablist" aria-label="Conversation settings sections">
+        <button
+          ref={behaviorTabRef}
+          type="button"
+          role="tab"
+          id="pm-ws-behavior-tab"
+          aria-selected={tab === 'behavior'}
+          aria-controls="pm-ws-behavior-panel"
+          tabIndex={tab === 'behavior' ? 0 : -1}
+          onClick={() => switchTab('behavior')}
+          onKeyDown={handleTabKeyDown}
+        >
+          Behavior
+        </button>
+        <button
+          ref={profileTabRef}
+          type="button"
+          role="tab"
+          id="pm-ws-profile-tab"
+          aria-selected={tab === 'profile'}
+          aria-controls="pm-ws-profile-panel"
+          tabIndex={tab === 'profile' ? 0 : -1}
+          onClick={() => switchTab('profile')}
+          onKeyDown={handleTabKeyDown}
+        >
+          About you
+        </button>
       </div>
+
+      {tab === 'behavior' ? (
+        <div
+          className="pm-ws-behavior-body"
+          role="tabpanel"
+          id="pm-ws-behavior-panel"
+          aria-labelledby="pm-ws-behavior-tab"
+        >
+          <SettingsRule label="Response style" />
+          <div className="pm-ws-behavior-cards">
+            {MODE_CARDS.map((card) => (
+              <OptionCard
+                key={card.mode}
+                selected={behaviorDraft.interactionMode === card.mode}
+                disabled={editingLocked}
+                icon={<Icon name={card.icon} size={14} />}
+                name={WORKSHOP_INTERACTION_MODE_LABELS[card.mode]}
+                description={card.description}
+                onClick={() => setBehaviorDraft((current) => ({
+                  ...current,
+                  interactionMode: card.mode
+                }))}
+              />
+            ))}
+          </div>
+          <p className="pm-ws-behavior-note">What you ask for always wins — “analyze this” gets analysis in any style.</p>
+
+          <SettingsRule label="Persona expression" />
+          <div className="pm-ws-behavior-cards">
+            {EXPRESSION_CARDS.map((card) => (
+              <OptionCard
+                key={card.level}
+                selected={behaviorDraft.expressionLevel === card.level}
+                disabled={editingLocked}
+                icon={<ExpressionGlyph level={card.level} />}
+                name={card.name}
+                description={card.description}
+                onClick={() => setBehaviorDraft((current) => ({
+                  ...current,
+                  expressionLevel: card.level
+                }))}
+              />
+            ))}
+          </div>
+          <p className="pm-ws-behavior-note">Identity and craft expertise remain present at every level.</p>
+
+          <SettingsRule label="Relational depth" />
+          <div className="pm-ws-behavior-cards">
+            {RELATIONAL_DEPTH_CARDS.map((card) => (
+              <OptionCard
+                key={card.depth}
+                selected={behaviorDraft.relationalDepth === card.depth}
+                disabled={editingLocked}
+                icon={<Icon name={card.icon} size={14} />}
+                name={WORKSHOP_RELATIONAL_DEPTH_LABELS[card.depth]}
+                description={card.description}
+                onClick={() => setBehaviorDraft((current) => ({
+                  ...current,
+                  relationalDepth: card.depth
+                }))}
+              />
+            ))}
+          </div>
+          <p className="pm-ws-behavior-note">This is a permission ceiling, not a requirement. Each persona decides when depth helps.</p>
+
+          <SettingsRule label="Session continuity" />
+          <div className="pm-ws-behavior-row">
+            <div className="pm-ws-behavior-row-text">
+              <div className="pm-ws-behavior-row-name">Carry cues through this session</div>
+              <div className="pm-ws-behavior-row-desc">
+                Let demonstrated interaction preferences—like preferring blunt critique or brief
+                answers—shape later turns. Cleared when the session ends or when you turn this off.
+              </div>
+            </div>
+            <Switch
+              checked={behaviorDraft.carryCuesThroughSession}
+              disabled={editingLocked}
+              label="Carry cues through this session"
+              onClick={() => setBehaviorDraft((current) => ({
+                ...current,
+                carryCuesThroughSession: !current.carryCuesThroughSession
+              }))}
+            />
+          </div>
+        </div>
+      ) : (
+        <div
+          className="pm-ws-behavior-body pm-ws-profile-body"
+          role="tabpanel"
+          id="pm-ws-profile-panel"
+          aria-labelledby="pm-ws-profile-tab"
+        >
+          <div className="pm-ws-profile-share-row">
+            <div>
+              <div className="pm-ws-behavior-row-name">
+                Share this profile with Workshop personas
+              </div>
+              <div className="pm-ws-behavior-row-desc">
+                Jill and invited personas receive it as background context. Analysis tools do not.
+              </div>
+            </div>
+            <Switch
+              checked={profileDraft.enabled}
+              disabled={editingLocked}
+              label="Share this profile with Workshop personas"
+              onClick={() => setProfileDraft((current) => ({
+                ...current,
+                enabled: !current.enabled
+              }))}
+            />
+          </div>
+
+          <label className="pm-ws-profile-field">
+            <span>How should the room address you?</span>
+            <input
+              type="text"
+              aria-label="How should the room address you?"
+              value={profileDraft.preferredAddress}
+              maxLength={WORKSHOP_WRITER_PROFILE_LIMITS.preferredAddress}
+              disabled={editingLocked}
+              placeholder="Okey, Dr. Landers, Okey is fine…"
+              onChange={(event) => setProfileDraft((current) => ({
+                ...current,
+                preferredAddress: event.target.value
+              }))}
+            />
+            <small>
+              {profileDraft.preferredAddress.trim().length}
+              {' / '}
+              {WORKSHOP_WRITER_PROFILE_LIMITS.preferredAddress}
+            </small>
+          </label>
+
+          <label className="pm-ws-profile-field">
+            <span>What would you like the room to know about you?</span>
+            <textarea
+              aria-label="What would you like the room to know about you?"
+              value={profileDraft.bio}
+              maxLength={WORKSHOP_WRITER_PROFILE_LIMITS.bio}
+              rows={8}
+              disabled={editingLocked}
+              placeholder="A little enduring context that can help the room work with you…"
+              onChange={(event) => setProfileDraft((current) => ({
+                ...current,
+                bio: event.target.value
+              }))}
+            />
+            <small>
+              {profileDraft.bio.trim().length}
+              {' / '}
+              {WORKSHOP_WRITER_PROFILE_LIMITS.bio}
+            </small>
+          </label>
+
+          <div className="pm-ws-profile-notice">
+            <Icon name="person" size={14} />
+            <span>
+              Stored globally in VS Code settings, not in this project or its session history.
+              This is ordinary settings data—not a secret—so don’t include sensitive information.
+              Personas use it as background context without reciting it or repeatedly using your
+              name.
+            </span>
+          </div>
+
+          <div className="pm-ws-profile-clear">
+            {confirmClear ? (
+              <>
+                <span role="status">Clear both fields and turn sharing off?</span>
+                <button
+                  type="button"
+                  className="pm-ws-action-btn"
+                  disabled={editingLocked}
+                  onClick={() => setConfirmClear(false)}
+                >
+                  Keep profile
+                </button>
+                <button
+                  type="button"
+                  className="pm-ws-danger-btn"
+                  disabled={editingLocked}
+                  onClick={clearProfile}
+                >
+                  Clear
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="pm-ws-action-btn"
+                disabled={
+                  editingLocked || (!profileDraft.preferredAddress && !profileDraft.bio)
+                }
+                onClick={() => setConfirmClear(true)}
+              >
+                Clear profile…
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="pm-ws-behavior-foot">
         {pending ? (
-          <span className="pm-ws-behavior-foot-note pm-ws-behavior-foot-note-busy" role="status">
-            Conversation style is updating…
+          <span
+            className="pm-ws-behavior-foot-note pm-ws-behavior-foot-note-busy"
+            role="status"
+          >
+            Conversation settings are updating…
           </span>
         ) : isRunning ? (
-          <span className="pm-ws-behavior-foot-note pm-ws-behavior-foot-note-busy" role="status">
+          <span
+            className="pm-ws-behavior-foot-note pm-ws-behavior-foot-note-busy"
+            role="status"
+          >
             A response is in progress — changes are available when it finishes.
           </span>
         ) : (
           <span className="pm-ws-behavior-foot-note">
-            Takes effect on your next message. The conversation is never reset.
+            Applies the Behavior and About You drafts together to the active room.
           </span>
         )}
-        <button className="pm-ws-action-btn" type="button" onClick={onClose}>
-          Cancel
-        </button>
-        <button
-          className="pm-ws-primary-btn"
-          type="button"
-          disabled={applyLocked}
-          onClick={apply}
-        >
-          Apply to next turn
-        </button>
+        <button className="pm-ws-action-btn" type="button" onClick={onClose}>Cancel</button>
+        <button className="pm-ws-primary-btn" type="button" disabled={applyLocked} onClick={apply}>Apply to next turn</button>
       </div>
     </WorkshopModalShell>
   );
 };
+
+const SettingsRule: React.FC<{ label: string }> = ({ label }) => (
+  <div className="pm-ws-tools-modal-rule">
+    <span className="pm-ws-eyebrow">{label}</span>
+    <hr />
+  </div>
+);
+
+interface OptionCardProps {
+  selected: boolean;
+  disabled: boolean;
+  icon: React.ReactNode;
+  name: string;
+  description: string;
+  onClick: () => void;
+}
+
+const OptionCard: React.FC<OptionCardProps> = ({
+  selected,
+  disabled,
+  icon,
+  name,
+  description,
+  onClick
+}) => (
+  <button
+    className={`pm-ws-behavior-card ${selected ? 'pm-ws-behavior-card-selected' : ''}`}
+    type="button"
+    aria-pressed={selected}
+    disabled={disabled}
+    onClick={onClick}
+  >
+    <span className="pm-ws-behavior-card-top">
+      {icon}
+      <span className="pm-ws-behavior-card-name">{name}</span>
+    </span>
+    <span className="pm-ws-behavior-card-desc">{description}</span>
+  </button>
+);
+
+interface SwitchProps {
+  checked: boolean;
+  disabled: boolean;
+  label: string;
+  onClick: () => void;
+}
+
+const Switch: React.FC<SwitchProps> = ({ checked, disabled, label, onClick }) => (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={checked}
+    aria-label={label}
+    disabled={disabled}
+    className={`pm-ws-behavior-toggle ${checked ? 'pm-ws-behavior-toggle-on' : ''}`}
+    onClick={onClick}
+  >
+    <span className="pm-ws-behavior-toggle-thumb" />
+  </button>
+);

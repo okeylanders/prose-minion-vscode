@@ -98,8 +98,10 @@ never be built from `getSnapshot()`.
   `setExcerpt`/`replaceExcerpt`, context attachment add/update/remove, turn
   completion, todo mutations, guest lifecycle — through one application-owned,
   ordered autosave coordinator. It coalesces writes without letting an older
-  write win a race. `reset()` deletes the blob: no stale session resurrecting
-  on next launch. Future widget mutation coordinators use this same dirty seam.
+  write win a race. `reset()` checkpoints the fresh-room state with the working
+  excerpt and standing context but without the old transcript, so stale room
+  memory cannot resurrect on next launch. Future widget mutation coordinators
+  use this same dirty seam.
 - **Save session** copies the current serialized state to a timestamped file
   and reports the saved name as a deterministic status line. Saved files are
   immutable records; continuing to work mutates only `current.json`.

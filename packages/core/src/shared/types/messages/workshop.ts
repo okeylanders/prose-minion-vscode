@@ -93,6 +93,103 @@ export const WORKSHOP_CONVERSATION_BEHAVIOR_SETTING = Object.freeze({
   key: 'workshop.conversationBehavior'
 });
 
+export function workshopConversationBehaviorsEqual(
+  left: WorkshopConversationBehavior,
+  right: WorkshopConversationBehavior
+): boolean {
+  return left.interactionMode === right.interactionMode
+    && left.expressionLevel === right.expressionLevel
+    && left.relationalDepth === right.relationalDepth
+    && left.carryCuesThroughSession === right.carryCuesThroughSession;
+}
+
+/** Writer-authored global context shared only with Workshop personas. */
+export interface WorkshopWriterProfile {
+  enabled: boolean;
+  preferredAddress: string;
+  bio: string;
+}
+
+export const DEFAULT_WORKSHOP_WRITER_PROFILE: Readonly<WorkshopWriterProfile> = Object.freeze({
+  enabled: false,
+  preferredAddress: '',
+  bio: ''
+});
+
+export const WORKSHOP_WRITER_PROFILE_LIMITS = Object.freeze({
+  preferredAddress: 80,
+  bio: 1_000
+});
+
+export const WORKSHOP_WRITER_PROFILE_SETTING = Object.freeze({
+  section: 'proseMinion',
+  key: 'workshop.writerProfile'
+});
+
+export function isValidWorkshopWriterProfile(raw: unknown): raw is WorkshopWriterProfile {
+  if (typeof raw !== 'object' || raw === null) {
+    return false;
+  }
+  const allowedKeys = new Set(['enabled', 'preferredAddress', 'bio']);
+  const keys = Object.keys(raw);
+  if (keys.length !== allowedKeys.size || keys.some((key) => !allowedKeys.has(key))) {
+    return false;
+  }
+  const candidate = raw as {
+    enabled?: unknown;
+    preferredAddress?: unknown;
+    bio?: unknown;
+  };
+  return typeof candidate.enabled === 'boolean'
+    && typeof candidate.preferredAddress === 'string'
+    && typeof candidate.bio === 'string'
+    && candidate.preferredAddress.trim().length
+      <= WORKSHOP_WRITER_PROFILE_LIMITS.preferredAddress
+    && candidate.bio.trim().length <= WORKSHOP_WRITER_PROFILE_LIMITS.bio;
+}
+
+/**
+ * Validate the complete profile and normalize its outer whitespace. Partial,
+ * overlong, unknown-key, or mistyped objects fail closed to disabled/empty.
+ */
+export function coerceWorkshopWriterProfile(raw: unknown): WorkshopWriterProfile {
+  if (!isValidWorkshopWriterProfile(raw)) {
+    return { ...DEFAULT_WORKSHOP_WRITER_PROFILE };
+  }
+  return {
+    enabled: raw.enabled,
+    preferredAddress: raw.preferredAddress.trim(),
+    bio: raw.bio.trim()
+  };
+}
+
+export function isWorkshopWriterProfileActive(profile: WorkshopWriterProfile): boolean {
+  return profile.enabled && (profile.preferredAddress.length > 0 || profile.bio.length > 0);
+}
+
+export function workshopWriterProfilesEqual(
+  left: WorkshopWriterProfile,
+  right: WorkshopWriterProfile
+): boolean {
+  return left.enabled === right.enabled
+    && left.preferredAddress === right.preferredAddress
+    && left.bio === right.bio;
+}
+
+/**
+ * Prompt-effective equality: every inactive profile emits no frame, while
+ * active profiles are equal only when their writer-authored content matches.
+ */
+export function workshopWriterProfilePromptsEqual(
+  left: WorkshopWriterProfile,
+  right: WorkshopWriterProfile
+): boolean {
+  const leftActive = isWorkshopWriterProfileActive(left);
+  const rightActive = isWorkshopWriterProfileActive(right);
+  return leftActive === rightActive
+    && (!leftActive || workshopWriterProfilesEqual(left, right));
+}
+
 /** Code-owned deterministic UI labels — never model-generated. */
 export const WORKSHOP_INTERACTION_MODE_LABELS: Readonly<Record<WorkshopInteractionMode, string>> =
   Object.freeze({
@@ -713,18 +810,18 @@ export interface WorkshopSetChatTargetMessage extends MessageEnvelope<WorkshopCh
 }
 
 /**
- * Atomic submission of the Conversation behavior modal's complete draft
- * (ADR 2026-07-20 §3). The handler validates the whole object, rejects it
- * during an active response, and commits it only after any required
- * system-message replacement batch succeeds.
+ * One submission of the Conversation Settings modal's complete draft. The
+ * profile remains a separate persisted object, but both values enter the live
+ * room only after the single guarded system-message replacement batch succeeds.
  */
-export interface WorkshopSetConversationBehaviorPayload {
+export interface WorkshopSetConversationSettingsPayload {
   behavior: WorkshopConversationBehavior;
+  writerProfile: WorkshopWriterProfile;
 }
 
-export interface WorkshopSetConversationBehaviorMessage
-  extends MessageEnvelope<WorkshopSetConversationBehaviorPayload> {
-  type: MessageType.WORKSHOP_SET_CONVERSATION_BEHAVIOR;
+export interface WorkshopSetConversationSettingsMessage
+  extends MessageEnvelope<WorkshopSetConversationSettingsPayload> {
+  type: MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS;
 }
 
 export interface WorkshopSetExcerptPayload {
@@ -942,12 +1039,14 @@ export interface WorkshopTurnMessage extends MessageEnvelope<WorkshopTurnPayload
 
 export interface WorkshopSessionStatePayload {
   session: WorkshopSessionSnapshot;
+  /** Global writer setting, deliberately outside the serializable session aggregate. */
+  writerProfile: WorkshopWriterProfile;
 }
 
 /**
- * Full session snapshot. Posted in reply to WORKSHOP_REQUEST_SESSION and after
- * host-side mutations (set-excerpt, reset, completed run) so the webview can
- * always reconcile to the aggregate instead of accumulating drift.
+ * Full session snapshot plus the current global profile beside it. Posted in
+ * reply to WORKSHOP_REQUEST_SESSION and after host-side mutations so the
+ * webview can reconcile without ever making profile data part of the session.
  */
 export interface WorkshopSessionStateMessage extends MessageEnvelope<WorkshopSessionStatePayload> {
   type: MessageType.WORKSHOP_SESSION_STATE;
