@@ -17,6 +17,7 @@ describe('Workshop writer profile settings contract', () => {
     const fullKey = `${WORKSHOP_WRITER_PROFILE_SETTING.section}.${WORKSHOP_WRITER_PROFILE_SETTING.key}`;
     const contributed = manifest.contributes.configuration.properties[fullKey];
 
+    expect(contributed.scope).toBe('application');
     expect(contributed.default).toEqual(DEFAULT_WORKSHOP_WRITER_PROFILE);
     expect(contributed.required.sort()).toEqual(Object.keys(DEFAULT_WORKSHOP_WRITER_PROFILE).sort());
     expect(contributed.additionalProperties).toBe(false);

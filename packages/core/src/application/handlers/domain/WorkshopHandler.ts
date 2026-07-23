@@ -32,7 +32,7 @@ import {
   WorkshopConfiguredResourceLoadResult,
   WorkshopContextResourceService
 } from '@/application/services/workshop/WorkshopContextResourceService';
-import { WorkshopConversationBehaviorService } from '@/application/services/workshop/WorkshopConversationBehaviorService';
+import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import {
   buildWorkshopContextAttachmentsFrame,
@@ -205,7 +205,7 @@ export class WorkshopHandler {
     private readonly fileSystem: FileSystem,
     private readonly workspace: Workspace,
     private readonly contextResourceService: WorkshopContextResourceService,
-    private readonly conversationBehaviorService: WorkshopConversationBehaviorService,
+    private readonly conversationSettingsService: WorkshopConversationSettingsService,
     private readonly outputChannel: LogSink
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
@@ -349,25 +349,33 @@ export class WorkshopHandler {
     if (this.activeRun) {
       this.sendError(
         'workshop',
-        'A Workshop response is still running. Wait for it to finish before changing conversation behavior.'
+        'A Workshop response is still running. Wait for it to finish before changing conversation settings.'
       );
       this.postSessionState();
       return;
     }
 
     try {
-      const result = await this.conversationBehaviorService.applyFromWebview(
+      const result = await this.conversationSettingsService.applyFromWebview(
         message.payload?.behavior,
         message.payload?.writerProfile
       );
-      if (result.persistenceError) {
+      if (result.persistenceErrors) {
+        const persistenceDetails = [
+          result.persistenceErrors.behavior
+            ? `behavior: ${result.persistenceErrors.behavior}`
+            : undefined,
+          result.persistenceErrors.writerProfile
+            ? `writer profile: ${result.persistenceErrors.writerProfile}`
+            : undefined
+        ].filter(Boolean).join('; ');
         this.outputChannel.appendLine(
-          `[WorkshopHandler] Conversation settings are active but could not be persisted: ${result.persistenceError}`
+          `[WorkshopHandler] Conversation settings are active but could not be persisted: ${persistenceDetails}`
         );
         this.sendError(
           'workshop',
           'Conversation settings changed for this session, but VS Code could not save them for restart.',
-          result.persistenceError
+          persistenceDetails
         );
       }
       this.postSessionState();
@@ -386,20 +394,20 @@ export class WorkshopHandler {
   }
 
   /** Pull an external VS Code Settings/settings.json edit into the live room. */
-  async syncConversationBehaviorFromSettings(): Promise<void> {
+  async syncConversationSettingsFromSettings(): Promise<void> {
     try {
-      const result = await this.conversationBehaviorService.syncFromSettings();
+      const result = await this.conversationSettingsService.syncFromSettings();
       if (!result.deferred) {
         this.postSessionState();
       }
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(
-        `[WorkshopHandler] External conversation behavior sync failed: ${details}`
+        `[WorkshopHandler] External conversation settings sync failed: ${details}`
       );
       this.sendError(
         'workshop',
-        'Could not apply the conversation behavior changed in VS Code Settings.',
+        'Could not apply the conversation settings changed in VS Code Settings.',
         details
       );
     }
@@ -507,7 +515,7 @@ export class WorkshopHandler {
           personaId,
           message: join.message,
           behavior: userTurn.behavior!,
-          writerProfile: this.conversationBehaviorService.getWriterProfile()
+          writerProfile: this.conversationSettingsService.getWriterProfile()
         }, {
           signal: controller.signal,
           onToken: (token: string) => this.sendStreamChunk(requestId, token)
@@ -843,7 +851,7 @@ export class WorkshopHandler {
             excerpt,
             message: modelMessage,
             behavior: userTurn.behavior!,
-            writerProfile: this.conversationBehaviorService.getWriterProfile(),
+            writerProfile: this.conversationSettingsService.getWriterProfile(),
             messageIsTrustedEnvelope: true,
             ...personaBehaviorFrames,
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
@@ -1912,13 +1920,13 @@ export class WorkshopHandler {
     this.cancelWizardRun('session reset');
     const discardedConversationIds = this.session.reset();
     this.discardConversations(discardedConversationIds);
-    await this.flushDeferredConversationBehavior();
+    await this.flushDeferredConversationSettings();
     this.outputChannel.appendLine(`[WorkshopHandler] Session reset (${discardedConversationIds.length} conversations discarded)`);
     this.postSessionState();
   }
 
   async handleRequestSession(_message: WorkshopRequestSessionMessage): Promise<void> {
-    await this.flushDeferredConversationBehavior();
+    await this.flushDeferredConversationSettings();
     this.postSessionState();
   }
 
@@ -1993,7 +2001,7 @@ export class WorkshopHandler {
     // "Streaming…" status mid-stream.
     if (!this.activeRun) {
       this.sendStatus('');
-      void this.flushDeferredConversationBehavior().then((changed) => {
+      void this.flushDeferredConversationSettings().then((changed) => {
         if (changed) {
           this.postSessionState();
         }
@@ -2001,18 +2009,18 @@ export class WorkshopHandler {
     }
   }
 
-  private async flushDeferredConversationBehavior(): Promise<boolean> {
+  private async flushDeferredConversationSettings(): Promise<boolean> {
     try {
-      const result = await this.conversationBehaviorService.flushDeferredSettingsSync();
+      const result = await this.conversationSettingsService.flushDeferredSettingsSync();
       return result.changed;
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(
-        `[WorkshopHandler] Deferred conversation behavior sync failed: ${details}`
+        `[WorkshopHandler] Deferred conversation settings sync failed: ${details}`
       );
       this.sendError(
         'workshop',
-        'Could not apply the deferred conversation behavior from VS Code Settings.',
+        'Could not apply the deferred conversation settings from VS Code Settings.',
         details
       );
       return false;
@@ -2147,7 +2155,7 @@ export class WorkshopHandler {
       source: 'extension.workshop',
       payload: {
         session,
-        writerProfile: this.conversationBehaviorService.getWriterProfile()
+        writerProfile: this.conversationSettingsService.getWriterProfile()
       },
       timestamp: Date.now()
     };

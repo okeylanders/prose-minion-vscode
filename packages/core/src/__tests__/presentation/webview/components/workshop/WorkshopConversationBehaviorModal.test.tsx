@@ -106,6 +106,50 @@ describe('WorkshopConversationBehaviorModal', () => {
     expect(props.onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('releases a pending apply when the host rejects the update', () => {
+    const { props, view } = renderModal();
+    fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply to next turn' }));
+    expect(screen.getByText('Conversation settings are updating…')).not.toBeNull();
+
+    view.rerender(
+      <WorkshopConversationBehaviorModal
+        {...props}
+        errorMessage="Could not change conversation settings."
+      />
+    );
+
+    expect(screen.queryByText('Conversation settings are updating…')).toBeNull();
+    expect((screen.getByRole('button', {
+      name: 'Apply to next turn'
+    }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('discards a cancelled draft and reseeds it when the modal reopens', () => {
+    const { props, view } = renderModal();
+    fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(props.onClose).toHaveBeenCalledTimes(1);
+
+    view.rerender(<WorkshopConversationBehaviorModal {...props} open={false} />);
+    view.rerender(<WorkshopConversationBehaviorModal {...props} open />);
+
+    expect(screen.getByRole('button', { name: /Balanced/ }).getAttribute('aria-pressed'))
+      .toBe('true');
+    expect(screen.getByRole('button', { name: /Analyze/ }).getAttribute('aria-pressed'))
+      .toBe('false');
+  });
+
+  it('counts the trimmed profile text that will be submitted', () => {
+    renderModal();
+    fireEvent.click(screen.getByRole('tab', { name: 'About you' }));
+    fireEvent.change(screen.getByRole('textbox', { name: /How should the room address you/ }), {
+      target: { value: '  Okey  ' }
+    });
+
+    expect(screen.getByText(`4 / 80`)).not.toBeNull();
+  });
+
   it('locks Apply during a response while leaving inspection and drafts available', () => {
     const { props } = renderModal({ isRunning: true });
     expect(screen.getByText(/A response is in progress/)).not.toBeNull();

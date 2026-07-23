@@ -1,6 +1,7 @@
-import { SettingsStore } from '@/platform';
+import { LogSink, SettingsStore } from '@/platform';
 import {
   coerceWorkshopWriterProfile,
+  isValidWorkshopWriterProfile,
   WORKSHOP_WRITER_PROFILE_SETTING,
   WorkshopWriterProfile
 } from '@messages';
@@ -13,7 +14,10 @@ import {
 export class WorkshopWriterProfileService {
   private current: WorkshopWriterProfile;
 
-  constructor(private readonly settings: SettingsStore) {
+  constructor(
+    private readonly settings: SettingsStore,
+    private readonly outputChannel: LogSink
+  ) {
     this.current = this.readSetting();
   }
 
@@ -22,12 +26,16 @@ export class WorkshopWriterProfileService {
   }
 
   readSetting(): WorkshopWriterProfile {
-    return coerceWorkshopWriterProfile(
-      this.settings.get<unknown>(
-        WORKSHOP_WRITER_PROFILE_SETTING.section,
-        WORKSHOP_WRITER_PROFILE_SETTING.key
-      )
+    const raw = this.settings.get<unknown>(
+      WORKSHOP_WRITER_PROFILE_SETTING.section,
+      WORKSHOP_WRITER_PROFILE_SETTING.key
     );
+    if (raw !== undefined && !isValidWorkshopWriterProfile(raw)) {
+      this.outputChannel.appendLine(
+        '[WorkshopWriterProfileService] Rejected invalid writer profile setting; using the disabled default'
+      );
+    }
+    return coerceWorkshopWriterProfile(raw);
   }
 
   commit(profile: WorkshopWriterProfile): void {

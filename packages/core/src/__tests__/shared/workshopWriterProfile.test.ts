@@ -30,6 +30,16 @@ describe('Workshop writer profile validation', () => {
     expect(coerceWorkshopWriterProfile(raw)).toEqual(DEFAULT_WORKSHOP_WRITER_PROFILE);
   });
 
+  it('accepts both writer-authored fields exactly at their configured limits', () => {
+    const atLimit = {
+      enabled: true,
+      preferredAddress: 'x'.repeat(WORKSHOP_WRITER_PROFILE_LIMITS.preferredAddress),
+      bio: 'y'.repeat(WORKSHOP_WRITER_PROFILE_LIMITS.bio)
+    };
+
+    expect(coerceWorkshopWriterProfile(atLimit)).toEqual(atLimit);
+  });
+
   it('is active only when enabled and at least one normalized field has content', () => {
     expect(isWorkshopWriterProfileActive(DEFAULT_WORKSHOP_WRITER_PROFILE)).toBe(false);
     expect(isWorkshopWriterProfileActive({ enabled: true, preferredAddress: '', bio: '' })).toBe(false);

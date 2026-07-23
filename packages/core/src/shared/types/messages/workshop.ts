@@ -93,6 +93,16 @@ export const WORKSHOP_CONVERSATION_BEHAVIOR_SETTING = Object.freeze({
   key: 'workshop.conversationBehavior'
 });
 
+export function workshopConversationBehaviorsEqual(
+  left: WorkshopConversationBehavior,
+  right: WorkshopConversationBehavior
+): boolean {
+  return left.interactionMode === right.interactionMode
+    && left.expressionLevel === right.expressionLevel
+    && left.relationalDepth === right.relationalDepth
+    && left.carryCuesThroughSession === right.carryCuesThroughSession;
+}
+
 /** Writer-authored global context shared only with Workshop personas. */
 export interface WorkshopWriterProfile {
   enabled: boolean;
@@ -116,43 +126,68 @@ export const WORKSHOP_WRITER_PROFILE_SETTING = Object.freeze({
   key: 'workshop.writerProfile'
 });
 
-/**
- * Validate the complete profile and normalize its outer whitespace. Partial,
- * overlong, unknown-key, or mistyped objects fail closed to disabled/empty.
- */
-export function coerceWorkshopWriterProfile(raw: unknown): WorkshopWriterProfile {
+export function isValidWorkshopWriterProfile(raw: unknown): raw is WorkshopWriterProfile {
   if (typeof raw !== 'object' || raw === null) {
-    return { ...DEFAULT_WORKSHOP_WRITER_PROFILE };
+    return false;
   }
   const allowedKeys = new Set(['enabled', 'preferredAddress', 'bio']);
-  if (Object.keys(raw).some((key) => !allowedKeys.has(key))) {
-    return { ...DEFAULT_WORKSHOP_WRITER_PROFILE };
+  const keys = Object.keys(raw);
+  if (keys.length !== allowedKeys.size || keys.some((key) => !allowedKeys.has(key))) {
+    return false;
   }
   const candidate = raw as {
     enabled?: unknown;
     preferredAddress?: unknown;
     bio?: unknown;
   };
-  if (
-    typeof candidate.enabled !== 'boolean'
-    || typeof candidate.preferredAddress !== 'string'
-    || typeof candidate.bio !== 'string'
-  ) {
+  return typeof candidate.enabled === 'boolean'
+    && typeof candidate.preferredAddress === 'string'
+    && typeof candidate.bio === 'string'
+    && candidate.preferredAddress.trim().length
+      <= WORKSHOP_WRITER_PROFILE_LIMITS.preferredAddress
+    && candidate.bio.trim().length <= WORKSHOP_WRITER_PROFILE_LIMITS.bio;
+}
+
+/**
+ * Validate the complete profile and normalize its outer whitespace. Partial,
+ * overlong, unknown-key, or mistyped objects fail closed to disabled/empty.
+ */
+export function coerceWorkshopWriterProfile(raw: unknown): WorkshopWriterProfile {
+  if (!isValidWorkshopWriterProfile(raw)) {
     return { ...DEFAULT_WORKSHOP_WRITER_PROFILE };
   }
-  const preferredAddress = candidate.preferredAddress.trim();
-  const bio = candidate.bio.trim();
-  if (
-    preferredAddress.length > WORKSHOP_WRITER_PROFILE_LIMITS.preferredAddress
-    || bio.length > WORKSHOP_WRITER_PROFILE_LIMITS.bio
-  ) {
-    return { ...DEFAULT_WORKSHOP_WRITER_PROFILE };
-  }
-  return { enabled: candidate.enabled, preferredAddress, bio };
+  return {
+    enabled: raw.enabled,
+    preferredAddress: raw.preferredAddress.trim(),
+    bio: raw.bio.trim()
+  };
 }
 
 export function isWorkshopWriterProfileActive(profile: WorkshopWriterProfile): boolean {
   return profile.enabled && (profile.preferredAddress.length > 0 || profile.bio.length > 0);
+}
+
+export function workshopWriterProfilesEqual(
+  left: WorkshopWriterProfile,
+  right: WorkshopWriterProfile
+): boolean {
+  return left.enabled === right.enabled
+    && left.preferredAddress === right.preferredAddress
+    && left.bio === right.bio;
+}
+
+/**
+ * Prompt-effective equality: every inactive profile emits no frame, while
+ * active profiles are equal only when their writer-authored content matches.
+ */
+export function workshopWriterProfilePromptsEqual(
+  left: WorkshopWriterProfile,
+  right: WorkshopWriterProfile
+): boolean {
+  const leftActive = isWorkshopWriterProfileActive(left);
+  const rightActive = isWorkshopWriterProfileActive(right);
+  return leftActive === rightActive
+    && (!leftActive || workshopWriterProfilesEqual(left, right));
 }
 
 /** Code-owned deterministic UI labels — never model-generated. */

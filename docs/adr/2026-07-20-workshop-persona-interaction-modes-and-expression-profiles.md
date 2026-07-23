@@ -1034,12 +1034,11 @@ The modal contains these sections:
    descriptions make the permission ceiling and explicit-life-context boundary
    visible.
 4. **Session continuity** — the separate `Carry cues through this session`
-   toggle plus a future cross-session preference control that is not
-   enabled until inspection, correction, and deletion exist.
+   toggle. The future cross-session preference control remains unrendered until
+   inspection, correction, and deletion exist.
 5. **Room memory** — a future home for shared-history generation and storage
-   from the separate ADR. Hide it until implementation is near, or show it as
-   clearly disabled `Coming later`; do not present a nonfunctional consent
-   toggle.
+   from the separate ADR. Keep it unrendered until implementation is near; do
+   not present a nonfunctional consent toggle or placeholder section.
 
 Descriptions should be thorough but progressively disclosed: each section gets
 one plain-language sentence, with examples or `Learn more` detail where needed.
@@ -1060,8 +1059,8 @@ The approved new-session defaults are:
 | Persona expression | `Full` |
 | Relational depth | `Attuned` |
 | Carry cues through this session | On |
-| Remember stable preferences across sessions | Off / future |
-| Shared room history storage | Off / future |
+| Remember stable preferences across sessions | Not rendered / future |
+| Shared room history storage | Not rendered / future |
 
 The behavior object is room-level. Jill and invited personas interpret it
 through their own profiles. Deterministic tool runs and direct tool-sidecar
@@ -1683,6 +1682,10 @@ not become one long scrolling wall:
    Session continuity.
 2. **About you** — Share this profile toggle, preferred-address input, bounded
    bio, global/non-secret disclosure, and Clear Profile action.
+
+This amendment preserves the live-only Behavior tab above: future preference
+memory and room-history storage remain absent until their separately accepted
+contracts are ready to implement.
 
 The writer-facing questions are **How should the room address you?** and
 **What would you like the room to know about you?** The header, tabs, and footer

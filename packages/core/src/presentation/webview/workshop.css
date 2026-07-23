@@ -2202,8 +2202,8 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--pm-success, #5fb878);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pm-success, #5fb878) 15%, transparent);
+  background: var(--pm-green);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pm-green) 15%, transparent);
 }
 /* Expression sub-tag (SUBTLE/FULL), split off by a hairline divider. */
 [data-pm-surface="workshop"] .pm-ws-mode-chip-sub {
@@ -2345,10 +2345,6 @@
 [data-pm-surface="workshop"] .pm-ws-behavior-row + .pm-ws-behavior-row {
   margin-top: 8px;
 }
-/* Future rows are honestly dimmed, never a live-looking dead switch. */
-[data-pm-surface="workshop"] .pm-ws-behavior-row-future {
-  opacity: 0.55;
-}
 [data-pm-surface="workshop"] .pm-ws-behavior-row-text {
   flex: 1;
   min-width: 0;
@@ -2397,9 +2393,6 @@
 [data-pm-surface="workshop"] .pm-ws-behavior-toggle-on .pm-ws-behavior-toggle-thumb {
   left: 17px;
   background: #fff;
-}
-[data-pm-surface="workshop"] .pm-ws-behavior-toggle-locked {
-  cursor: not-allowed;
 }
 [data-pm-surface="workshop"] .pm-ws-profile-body {
   padding-top: 18px;
@@ -2476,39 +2469,6 @@
   font: 600 11px var(--pm-sans);
   padding: 6px 11px;
   cursor: pointer;
-}
-/* Future/Coming-later tag (section header and future row name). */
-[data-pm-surface="workshop"] .pm-ws-behavior-ftag {
-  font-family: var(--pm-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: var(--pm-faint);
-  border: 1px solid var(--pm-border-soft);
-  border-radius: var(--pm-r-pill);
-  padding: 2px 8px;
-}
-/* Room memory: dashed, non-interactive — a future home, not a control. */
-[data-pm-surface="workshop"] .pm-ws-behavior-room-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 11px 12px;
-  background: var(--pm-inset);
-  border: 1px dashed var(--pm-border);
-  border-radius: var(--pm-r-tile);
-}
-[data-pm-surface="workshop"] .pm-ws-behavior-room-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--pm-dim);
-}
-[data-pm-surface="workshop"] .pm-ws-behavior-room-desc {
-  margin-top: 3px;
-  font-size: 11.5px;
-  line-height: 1.5;
-  color: var(--pm-faint);
 }
 /* Footer: note + Cancel + Apply. The note flips amber while a response is
    in flight (Apply locked) and while the applied draft awaits its host

@@ -1,9 +1,13 @@
-import { WorkshopConversationBehaviorService } from '@/application/services/workshop/WorkshopConversationBehaviorService';
+import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import type { LogSink, SettingsStore } from '@/platform';
-import { DEFAULT_WORKSHOP_WRITER_PROFILE, type WorkshopConversationBehavior } from '@messages';
+import {
+  DEFAULT_WORKSHOP_WRITER_PROFILE,
+  type WorkshopConversationBehavior,
+  type WorkshopWriterProfile
+} from '@messages';
 
 const balanced: WorkshopConversationBehavior = {
   interactionMode: 'balanced',
@@ -24,29 +28,35 @@ const conversational: WorkshopConversationBehavior = {
   expressionLevel: 'amplified'
 };
 
-describe('WorkshopConversationBehaviorService', () => {
+describe('WorkshopConversationSettingsService', () => {
   let session: WorkshopSessionService;
   let configured: WorkshopConversationBehavior;
+  let configuredProfile: WorkshopWriterProfile;
   let settings: jest.Mocked<SettingsStore>;
   let assistant: jest.Mocked<AssistantToolService>;
-  let service: WorkshopConversationBehaviorService;
+  let log: jest.Mocked<LogSink>;
+  let service: WorkshopConversationSettingsService;
 
   beforeEach(() => {
     session = new WorkshopSessionService(() => 1, balanced);
     configured = analysis;
+    configuredProfile = { ...DEFAULT_WORKSHOP_WRITER_PROFILE };
     settings = {
-      get: jest.fn(() => configured),
+      get: jest.fn((_section: string, key: string) =>
+        key === 'workshop.writerProfile' ? configuredProfile : configured
+      ),
       update: jest.fn().mockResolvedValue(undefined)
     } as unknown as jest.Mocked<SettingsStore>;
     assistant = {
       replaceWorkshopConversationSettings: jest.fn().mockResolvedValue(undefined)
     } as unknown as jest.Mocked<AssistantToolService>;
-    service = new WorkshopConversationBehaviorService(
+    log = { appendLine: jest.fn() } as unknown as jest.Mocked<LogSink>;
+    service = new WorkshopConversationSettingsService(
       session,
       assistant,
       settings,
-      { appendLine: jest.fn() } as unknown as LogSink,
-      new WorkshopWriterProfileService(settings)
+      log,
+      new WorkshopWriterProfileService(settings, log)
     );
   });
 
@@ -135,9 +145,84 @@ describe('WorkshopConversationBehaviorService', () => {
     await expect(service.applyFromWebview(analysis, DEFAULT_WORKSHOP_WRITER_PROFILE)).resolves.toEqual({
       changed: true,
       deferred: false,
-      persistenceError: 'behavior: disk full'
+      persistenceErrors: { behavior: 'disk full' }
     });
     expect(session.getConversationBehavior()).toEqual(analysis);
+  });
+
+  it('keeps a profile-only live commit active when persistence fails', async () => {
+    configured = balanced;
+    const profile = {
+      enabled: true,
+      preferredAddress: 'Okey',
+      bio: 'I write fiction.'
+    };
+    settings.update.mockRejectedValueOnce(new Error('profile is read-only'));
+
+    await expect(service.applyFromWebview(balanced, profile)).resolves.toEqual({
+      changed: true,
+      deferred: false,
+      persistenceErrors: { writerProfile: 'profile is read-only' }
+    });
+    await expect(service.syncFromSettings()).resolves.toEqual({
+      changed: false,
+      deferred: false
+    });
+
+    expect(service.getWriterProfile()).toEqual(profile);
+  });
+
+  it('does not let a successful behavior echo revert a profile whose persistence failed', async () => {
+    const profile = {
+      enabled: true,
+      preferredAddress: 'Okey',
+      bio: 'I write fiction.'
+    };
+    settings.update.mockImplementation(async (_section, key, value) => {
+      if (key === 'workshop.writerProfile') {
+        throw new Error('profile is read-only');
+      }
+      configured = value as WorkshopConversationBehavior;
+    });
+
+    await expect(service.applyFromWebview(analysis, profile)).resolves.toEqual({
+      changed: true,
+      deferred: false,
+      persistenceErrors: { writerProfile: 'profile is read-only' }
+    });
+    assistant.replaceWorkshopConversationSettings.mockClear();
+
+    await expect(service.syncFromSettings()).resolves.toEqual({
+      changed: false,
+      deferred: false
+    });
+
+    expect(session.getConversationBehavior()).toEqual(analysis);
+    expect(service.getWriterProfile()).toEqual(profile);
+    expect(assistant.replaceWorkshopConversationSettings).not.toHaveBeenCalled();
+  });
+
+  it('reports both persistence failures while retaining both live values', async () => {
+    const profile = {
+      enabled: true,
+      preferredAddress: 'Okey',
+      bio: 'I write fiction.'
+    };
+    settings.update
+      .mockRejectedValueOnce(new Error('behavior is read-only'))
+      .mockRejectedValueOnce(new Error('profile is read-only'));
+
+    await expect(service.applyFromWebview(analysis, profile)).resolves.toEqual({
+      changed: true,
+      deferred: false,
+      persistenceErrors: {
+        behavior: 'behavior is read-only',
+        writerProfile: 'profile is read-only'
+      }
+    });
+
+    expect(session.getConversationBehavior()).toEqual(analysis);
+    expect(service.getWriterProfile()).toEqual(profile);
   });
 
   it('replaces live persona prompts when only relational depth changes', async () => {
@@ -176,6 +261,24 @@ describe('WorkshopConversationBehaviorService', () => {
     expect(session.getConversationBehavior()).toEqual(withoutCarry);
   });
 
+  it('does not rebuild persona prompts when an empty profile is enabled', async () => {
+    await expect(service.applyFromWebview(balanced, {
+      enabled: true,
+      preferredAddress: '',
+      bio: ''
+    })).resolves.toEqual({
+      changed: true,
+      deferred: false
+    });
+
+    expect(assistant.replaceWorkshopConversationSettings).not.toHaveBeenCalled();
+    expect(service.getWriterProfile()).toEqual({
+      enabled: true,
+      preferredAddress: '',
+      bio: ''
+    });
+  });
+
   it('replaces persona prompts once and persists separately when only the profile changes', async () => {
     session.setExcerpt({ text: 'Excerpt', source: { kind: 'manual' } });
     session.beginPersonaMessage('host-open', 'Start.');
@@ -205,5 +308,29 @@ describe('WorkshopConversationBehaviorService', () => {
     expect(service.getWriterProfile()).toEqual(profile);
     expect(JSON.stringify(session.getSnapshot())).not.toContain('Okey');
     expect(JSON.stringify(session.getSnapshot())).not.toContain('I write fiction.');
+  });
+
+  it('removes an active profile through the guarded prompt-replacement path', async () => {
+    const profile = {
+      enabled: true,
+      preferredAddress: 'Okey',
+      bio: 'I write fiction.'
+    };
+    await service.applyFromWebview(balanced, profile);
+    assistant.replaceWorkshopConversationSettings.mockClear();
+
+    await expect(
+      service.applyFromWebview(balanced, DEFAULT_WORKSHOP_WRITER_PROFILE)
+    ).resolves.toEqual({
+      changed: true,
+      deferred: false
+    });
+
+    expect(assistant.replaceWorkshopConversationSettings).toHaveBeenCalledWith(
+      [],
+      balanced,
+      DEFAULT_WORKSHOP_WRITER_PROFILE
+    );
+    expect(service.getWriterProfile()).toEqual(DEFAULT_WORKSHOP_WRITER_PROFILE);
   });
 });

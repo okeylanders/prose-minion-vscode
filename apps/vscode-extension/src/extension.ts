@@ -40,7 +40,7 @@ import {
   WorkshopAnalysisSidePass,
   WorkshopPersonaCapabilityFactory,
   WorkshopContextResourceService,
-  WorkshopConversationBehaviorService,
+  WorkshopConversationSettingsService,
   WorkshopWriterProfileService,
   CoreServices,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
@@ -194,7 +194,10 @@ export function activate(context: vscode.ExtensionContext): void {
     workshopSessionService,
     outputChannel
   );
-  const workshopWriterProfileService = new WorkshopWriterProfileService(platform.settings);
+  const workshopWriterProfileService = new WorkshopWriterProfileService(
+    platform.settings,
+    outputChannel
+  );
   const workshopToolSidePass = new RunWorkshopToolSidePass(
     assistantToolService,
     workshopAnalysisSidePass,
@@ -204,7 +207,7 @@ export function activate(context: vscode.ExtensionContext): void {
     workshopWriterProfileService
   );
   const workshopContextResourceService = new WorkshopContextResourceService(contextResourceResolver);
-  const workshopConversationBehaviorService = new WorkshopConversationBehaviorService(
+  const workshopConversationSettingsService = new WorkshopConversationSettingsService(
     workshopSessionService,
     assistantToolService,
     platform.settings,
@@ -230,7 +233,7 @@ export function activate(context: vscode.ExtensionContext): void {
     workshopPersonaCapabilityFactory,
     workshopToolSidePass,
     workshopContextResourceService,
-    workshopConversationBehaviorService,
+    workshopConversationSettingsService,
     workshopWriterProfileService
   };
 

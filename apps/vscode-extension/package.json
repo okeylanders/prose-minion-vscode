@@ -377,6 +377,7 @@
         },
         "proseMinion.workshop.writerProfile": {
           "type": "object",
+          "scope": "application",
           "default": {
             "enabled": false,
             "preferredAddress": "",

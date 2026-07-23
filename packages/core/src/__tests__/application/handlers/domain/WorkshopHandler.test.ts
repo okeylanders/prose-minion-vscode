@@ -4,13 +4,19 @@ import {
 } from '@/application/handlers/domain/WorkshopHandler';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
-import { WorkshopConversationBehaviorService } from '@/application/services/workshop/WorkshopConversationBehaviorService';
+import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import { MessageRouter } from '@/application/handlers/MessageRouter';
-import { ContextBudgetSnapshot, MessageType, API_KEY_NOT_CONFIGURED_HEADING, DEFAULT_WORKSHOP_WRITER_PROFILE } from '@messages';
+import {
+  API_KEY_NOT_CONFIGURED_HEADING,
+  ContextBudgetSnapshot,
+  DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
+  DEFAULT_WORKSHOP_WRITER_PROFILE,
+  MessageType
+} from '@messages';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { FileType } from '@/platform';
 import type { FileSystem, LogSink, SettingsStore, ShellService, Workspace } from '@/platform';
@@ -149,7 +155,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       }))
     };
     const analysisSidePass = new WorkshopAnalysisSidePass(service, session, log);
-    writerProfileService = new WorkshopWriterProfileService(settings);
+    writerProfileService = new WorkshopWriterProfileService(settings, log);
     handler = new WorkshopHandler(
       service,
       contextAssistant as never,
@@ -168,7 +174,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       fileSystem,
       workspace,
       new WorkshopContextResourceService(resourceProviderFactory as never),
-      new WorkshopConversationBehaviorService(
+      new WorkshopConversationSettingsService(
         session,
         service,
         settings,
@@ -240,6 +246,31 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     });
     expect(posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload.session.conversationBehavior)
       .toEqual(session.getConversationBehavior());
+  });
+
+  it('threads a non-default writer profile through the message boundary', async () => {
+    const writerProfile = {
+      enabled: true,
+      preferredAddress: 'Okey',
+      bio: 'I write fiction.'
+    };
+
+    await handler.handleSetConversationSettings(message(
+      MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS,
+      {
+        behavior: DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
+        writerProfile
+      }
+    ) as any);
+
+    expect(service.replaceWorkshopConversationSettings).toHaveBeenCalledWith(
+      [],
+      DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
+      writerProfile
+    );
+    expect(writerProfileService.getProfile()).toEqual(writerProfile);
+    expect(posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload.writerProfile)
+      .toEqual(writerProfile);
   });
 
   it('rebuilds every live persona prompt once for a combined mode and expression change', async () => {
