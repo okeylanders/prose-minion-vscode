@@ -481,7 +481,7 @@ export const WorkshopApp: React.FC = () => {
             type="button"
             onClick={workshop.resetSession}
             disabled={!workshop.sessionReady}
-            title="Start a fresh session (keeps the pinned excerpt)"
+            title="Start a fresh session (keeps the excerpt and standing context)"
           >
             <Icon name="refresh" size={13} /> New session
           </button>

@@ -1647,6 +1647,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   it('disposes all retained participants on reset and returns to Jill', async () => {
     await pin();
     await runProse();
+    session.addContextAttachment({
+      kind: 'text', origin: 'writer', label: 'Story bible\u2026', words: 3, content: 'Mara keeps watch.'
+    });
     for (const key of ['host-conv', 'tool-conv']) {
       storeContext(key, 10);
     }
@@ -1658,6 +1661,18 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(contextBudgets.get('host-conv')).toBeUndefined();
     expect(session.getSnapshot().participants.host.personaId).toBe('jill');
     expect(session.getSnapshot().turns).toEqual([]);
+    expect(session.getSnapshot().contextAttachments).toEqual([
+      expect.objectContaining({ id: 'ctx-1', label: 'Story bible\u2026', words: 3 })
+    ]);
+    expect(session.getSnapshot().pendingHostUpdate).toBeUndefined();
+
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Begin the fresh room.' }
+    ) as any);
+
+    const freshHostInput = service.startWorkshopPersonaConversation.mock.calls.at(-1)![0];
+    expect(freshHostInput.contextAttachmentsFrame).toContain('Mara keeps watch.');
   });
 
   describe('excerpt-source canonical resolution (Phase 6)', () => {

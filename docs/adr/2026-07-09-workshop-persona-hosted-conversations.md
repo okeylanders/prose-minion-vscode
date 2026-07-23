@@ -53,10 +53,10 @@ host: normal composer messages go to that persona, and running a tool never
 replaces the host's system prompt.
 
 Persona switching is locked once a host conversation begins in v1. “New
-session” is the explicit host-switch boundary: it preserves the pinned excerpt,
-clears retained conversations and the thread, and restores Jill. This keeps
-persona identity honest without adding cross-persona handoff semantics to the
-initial release.
+session” is the explicit host-switch boundary: it preserves the pinned excerpt
+and standing context, clears retained conversations and the thread, and
+restores Jill. This keeps persona identity honest without adding cross-persona
+handoff semantics to the initial release.
 
 ### 2. Persona selection uses a browser modal, not a native dropdown
 

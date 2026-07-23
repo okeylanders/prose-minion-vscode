@@ -100,9 +100,10 @@ honestly marked as restored history with fresh room memory.
       seam, then call it after successful `WorkshopHandler` mutation paths
       (excerpt set/replace, context attachment add/update/remove, turn
       completion, todo mutations, guest lifecycle). It owns debounce and
-      write-order serialization; `reset()` deletes `current.json`. Future
-      widget coordinators use this same seam rather than inventing persistence
-      calls.
+      write-order serialization; `reset()` checkpoints the fresh room with its
+      preserved excerpt and standing context instead of resurrecting the old
+      transcript. Future widget coordinators use this same seam rather than
+      inventing persistence calls.
 - [ ] `WORKSHOP_SAVE_SESSION` route: copy current state to a timestamped file;
       deterministic status line names the saved file. Header affordance in
       `WorkshopApp` (near New session).
@@ -188,7 +189,9 @@ honestly marked as restored history with fresh room memory.
   opening it from a *different* session restores it behind a confirmation.
 - Deleting a session removes the file; malformed JSON in the folder never
   breaks the listing.
-- `reset()` leaves no `current.json`; a fresh window starts genuinely fresh.
+- `reset()` replaces `current.json` with the fresh-room state: preserved
+  excerpt and standing context, but no prior transcript or retained model
+  conversations.
 - Core still imports no `vscode`; architecture and assembly tests green; lint,
   typecheck, full tests, build, bundle verification pass. Record bundle deltas.
 
