@@ -27,6 +27,15 @@ Host continuity/corruption exercise and PR review remain.
 - The coordinator owns ordered autosave, named checkpoints, strict Open/New
   promotion/rollback, workspace-root pinning, unreadable-current protection,
   and activation/deactivation lifecycle barriers.
+- The first named Save now associates the live room with that immutable
+  `sessionId`. Every later committed mutation updates the exact named file
+  alongside `current.json`; explicit Save updates in place and **Save as new**
+  allocates another identity. The store caches only authoritatively resolved
+  immutable paths so per-turn autosave does not parse every saved transcript.
+- The header replaces the generic Sessions label with the active named-room
+  title and revision-aware `Saving…` / `Saved` / `Save failed` state. New
+  Session clears the visible thread immediately and restores it if durable room
+  replacement fails.
 - The approved session interface is split into its anchored header menu,
   focused Save dialog, and viewport-bounded full browser. The browser keeps
   Open/New controls in view, supports bounded search and date/excerpt grouping,
@@ -38,13 +47,14 @@ Host continuity/corruption exercise and PR review remain.
 ## Verification
 
 - `npm run typecheck`: core, webview, extension passed.
-- `npm test -- --runInBand`: 122 suites, 1,177 tests, 1 snapshot passed.
-- `npm run lint`: 0 errors, 766 repository-baseline warnings.
+- `npm test -- --runInBand`: 122 suites, 1,193 tests, 1 snapshot passed.
+- `npm run lint`: 0 errors, 767 warnings (the repository baseline plus the
+  new conventional message enum member).
 - `npm run build`: production extension/webview builds and bundle sentinels
   passed.
 - `npm run package`: VSIX packaging passed (176 files, 9.77 MB).
 - GitHub `verify`: passed on draft PR #85.
-- Bundle sizes: `extension.js` 2,547,503 bytes; `webview.js` 880,989 bytes.
+- Bundle sizes: `extension.js` 2,550,732 bytes; `webview.js` 885,161 bytes.
 
 ## Manual closeout
 

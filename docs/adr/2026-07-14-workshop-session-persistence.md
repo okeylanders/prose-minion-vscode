@@ -51,15 +51,15 @@ The store owns two kinds of files:
 
 - `current.json` is the ordered rolling checkpoint used for crash/restart
   recovery.
-- Named checkpoints use
+- Named sessions are first allocated as collision-safe checkpoint files using
   `YYYYMMDD-HHMMSS-<initial-title-slug>.json`.
 
 Every snapshot has an immutable `sessionId`, editable `title`, `startedAt`,
 `createdAt`, `updatedAt`, `savedAt`, and original IANA timezone. Changing a
 title updates metadata; it does not change `sessionId` or the filename.
-Duplicate creates a new session/checkpoint identity. This deliberately differs
-from the prototype’s slug-only path preview: titles are human labels, not
-storage keys.
+Duplicate and **Save as new** create a new session/checkpoint identity. This
+deliberately differs from the prototype’s slug-only path preview: titles are
+human labels, not storage keys.
 
 Files remain writer-owned, inspectable, committable, or `.gitignore`-able.
 Manuscript and conversation text therefore exist at rest in the workspace; they
@@ -182,21 +182,34 @@ revision. Future widget coordinators use the same seam and autosave only after
 their complete transaction: configuration, visible marker, system-message
 replacement, and telemetry invalidation.
 
-Explicit Save creates a named checkpoint from that same coherent snapshot.
-Opening a named checkpoint immediately promotes its hydrated state to
-`current.json`. New Session replaces `current.json` with a fresh-room snapshot
-after confirmation; stale conversation histories cannot resurrect.
+The first explicit Save creates a named checkpoint from that same coherent
+snapshot and associates the live room with its immutable `sessionId`. From
+then on, each ordered post-commit autosave updates both `current.json` and that
+exact named file in place. Explicit Save on an associated room is therefore an
+identity-checked update; it never finds a target by editable title. **Save as
+new** deliberately allocates a fresh id and filename.
+
+Opening a named checkpoint establishes the same association and immediately
+promotes its hydrated state to `current.json`. New Session replaces
+`current.json` with a fresh-room snapshot and clears the association; deleting
+the active named file also returns the live room to current-only autosave.
+Stale conversation histories cannot resurrect.
 
 ### 7. The browser adopts the approved interaction set
 
 The shared modal shell presents:
 
 - editable title in Save;
+- an identity-safe Update action for the active named room plus explicit
+  **Save as new**;
 - newest-first recent sessions;
 - search across title, participant metadata, excerpt, and transcript content;
 - grouping by date or excerpt identity;
-- open, rename-title, duplicate, reveal-file, and delete actions; and
-- clear distinction between the rolling current session and named checkpoints.
+- open, rename-title, duplicate, reveal-file, and delete actions;
+- clear distinction between the rolling current session and named checkpoints;
+  and
+- the active named room title and actual ordered-write state (`Saving…`,
+  `Saved`, or `Save failed`) in the header.
 
 Excerpt grouping uses persisted source identity when available and a stable
 excerpt fingerprint otherwise; the editable title is not the grouping key.
@@ -290,6 +303,13 @@ Open/New promote their replacement to `current.json` before old runtime
 histories are retired, and roll back the aggregate, bindings, and pending time
 notice on failure. Deactivation deterministically aborts/abandons an active
 Workshop run before the final coordinator flush.
+
+The implementation also treats a live named room as a moving durable room, not
+an accumulating series of same-title copies. Its immutable file path is cached
+only after authoritative creation or identity resolution, then revalidated
+before exact writes; ordinary per-turn autosave therefore does not rescan and
+parse every saved transcript. Queue status is revision-aware, so `Saved` is not
+emitted while a newer named-room revision is still waiting.
 
 Conversation Widgets remain a typed additive follow-up. No widget entity or
 standing-directive collection exists in the current aggregate, so Sprint 10

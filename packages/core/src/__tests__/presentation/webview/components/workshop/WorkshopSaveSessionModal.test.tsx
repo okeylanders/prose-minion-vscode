@@ -8,6 +8,21 @@ import {
 } from '@components/workshop/WorkshopSaveSessionModal';
 import { DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR } from '@messages';
 
+const activeNamedSession = {
+  sessionId: 'saved-room',
+  title: 'Pentecost — auditorium beat',
+  fileName: '20260723-103000-pentecost-auditorium-beat.json',
+  kind: 'named' as const,
+  startedAt: 1,
+  updatedAt: 2,
+  savedAt: 2,
+  timezone: 'America/Chicago',
+  hostPersonaId: 'jill' as const,
+  participantPersonaIds: ['jill' as const],
+  turnCount: 4,
+  excerptWordCount: 1751
+};
+
 const manifest: WorkshopSaveSessionManifest = {
   excerptVersion: 2,
   excerptWordCount: 1751,
@@ -56,6 +71,29 @@ describe('WorkshopSaveSessionModal', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
 
     expect(props.onSave).toHaveBeenCalledWith('Pentecost — auditorium beat');
+  });
+
+  it('updates the exact active named identity while still offering Save as new', () => {
+    const { props } = renderModal({
+      activeNamedSession,
+      suggestedTitle: activeNamedSession.title
+    });
+
+    expect(screen.getByText(/already autosaves after each committed turn/)).not.toBeNull();
+    expect(screen.getByText(/20260723-103000-pentecost-auditorium-beat\.json/))
+      .not.toBeNull();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Session name' }), {
+      target: { value: 'Pentecost — final pass' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Update session' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save as new' }));
+
+    expect(props.onSave).toHaveBeenNthCalledWith(
+      1,
+      'Pentecost — final pass',
+      'saved-room'
+    );
+    expect(props.onSave).toHaveBeenNthCalledWith(2, 'Pentecost — final pass');
   });
 
   it('explains unavailable persistence and disables the name and save controls', () => {

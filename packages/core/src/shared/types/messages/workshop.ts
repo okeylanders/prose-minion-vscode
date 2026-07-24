@@ -1026,9 +1026,14 @@ export interface WorkshopRequestSessionMessage extends MessageEnvelope<Record<st
   type: MessageType.WORKSHOP_REQUEST_SESSION;
 }
 
-/** Create a durable named checkpoint from the coherent current session. */
+/**
+ * Save the coherent current session. Without `sessionId` this creates a named
+ * checkpoint; with it, the host updates that exact checkpoint after verifying
+ * it is still the identity of the live room. Titles are never used as identity.
+ */
 export interface WorkshopSaveSessionMessage extends MessageEnvelope<{
   title: string;
+  sessionId?: string;
 }> {
   type: MessageType.WORKSHOP_SAVE_SESSION;
 }
@@ -1160,4 +1165,12 @@ export interface WorkshopSessionActionResultMessage extends MessageEnvelope<{
   session?: WorkshopSessionSummary;
 }> {
   type: MessageType.WORKSHOP_SESSION_ACTION_RESULT;
+}
+
+/** Actual named-checkpoint persistence state emitted by the ordered write queue. */
+export interface WorkshopNamedSaveStatusMessage extends MessageEnvelope<{
+  sessionId: string;
+  status: 'saving' | 'saved' | 'error';
+}> {
+  type: MessageType.WORKSHOP_NAMED_SAVE_STATUS;
 }

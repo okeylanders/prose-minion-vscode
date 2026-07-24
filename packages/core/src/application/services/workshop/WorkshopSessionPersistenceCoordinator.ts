@@ -55,6 +55,7 @@ interface LiveSessionIdentity {
 
 interface LiveSessionRollback {
   identity: LiveSessionIdentity;
+  activeNamedSessionId?: string;
   workshop: WorkshopSessionStateV1;
   bindings: WorkshopRuntimeConversationBindings;
   temporal: ReturnType<WorkshopSessionTimeService['exportRuntimeState']>;
@@ -84,6 +85,8 @@ export interface WorkshopSessionPersistenceCoordinatorOptions {
   ensureAssistantReady?: () => PromiseLike<unknown>;
 }
 
+export type WorkshopNamedSaveStatus = 'saving' | 'saved' | 'error';
+
 const normalizedIso = (date: Date): string => date.toISOString();
 
 const unique = <T>(values: readonly T[]): T[] => [...new Set(values)];
@@ -93,6 +96,10 @@ export class WorkshopSessionPersistenceCoordinator {
   private readonly idFactory: () => string;
   private readonly ensureAssistantReady?: () => PromiseLike<unknown>;
   private identity: LiveSessionIdentity;
+  private activeNamedSessionId?: string;
+  private readonly namedSaveStatusListeners = new Set<
+    (sessionId: string, status: WorkshopNamedSaveStatus) => void
+  >();
   private initialized = false;
   private initializePromise?: Promise<WorkshopSessionHydrateResult>;
   private writeQueue: Promise<void> = Promise.resolve();
@@ -148,6 +155,13 @@ export class WorkshopSessionPersistenceCoordinator {
     return this.pendingSessionOperations > 0;
   }
 
+  addNamedSaveStatusListener(
+    listener: (sessionId: string, status: WorkshopNamedSaveStatus) => void
+  ): () => void {
+    this.namedSaveStatusListeners.add(listener);
+    return () => this.namedSaveStatusListeners.delete(listener);
+  }
+
   async waitForSessionOperations(): Promise<void> {
     await this.initialize();
     await this.sessionOperationQueue;
@@ -180,12 +194,23 @@ export class WorkshopSessionPersistenceCoordinator {
       try {
         const current = await this.store.readCurrent();
         if (current) {
+          try {
+            if (await this.store.readNamed(current.sessionId)) {
+              this.activeNamedSessionId = current.sessionId;
+            }
+          } catch (error) {
+            this.outputChannel.appendLine(
+              `[WorkshopSessionPersistence] Could not confirm named autosave target ` +
+              `(id=${current.sessionId}): ${this.errorMessage(error)}`
+            );
+          }
           result = await this.hydrate(current);
         } else {
           this.recordStartMarker();
           this.markDirty('initial session');
         }
       } catch (error) {
+        this.activeNamedSessionId = undefined;
         const details = this.errorMessage(error);
         this.currentCheckpointError = details;
         this.outputChannel.appendLine(
@@ -221,6 +246,10 @@ export class WorkshopSessionPersistenceCoordinator {
     }
     this.dirtyRevision += 1;
     const revision = this.dirtyRevision;
+    const namedSessionId = this.activeNamedSessionId;
+    if (namedSessionId) {
+      this.emitNamedSaveStatus(namedSessionId, 'saving');
+    }
     const initializationBarrier = this.initializePromise ?? this.initialize();
     const operationBarrier = this.sessionOperationQueue;
     this.writeQueue = Promise.all([
@@ -238,9 +267,20 @@ export class WorkshopSessionPersistenceCoordinator {
         this.assertAcceptedWorkspace();
         const snapshot = await this.capture(this.identity);
         await this.store.writeCurrent(snapshot);
+        if (namedSessionId) {
+          await this.store.updateNamed(namedSessionId, {
+            ...snapshot,
+            savedAt: normalizedIso(this.now())
+          });
+        }
         this.writtenRevision = Math.max(this.writtenRevision, revision);
+        if (namedSessionId && revision >= this.dirtyRevision) {
+          this.emitNamedSaveStatus(namedSessionId, 'saved');
+        }
         this.outputChannel.appendLine(
-          `[WorkshopSessionPersistence] current.json committed (revision=${revision}, reason=${reason})`
+          `[WorkshopSessionPersistence] current.json${
+            namedSessionId ? ' + named session' : ''
+          } committed (revision=${revision}, reason=${reason})`
         );
       } catch (error) {
         if (error instanceof WorkshopSessionActiveRunPersistenceError) {
@@ -252,6 +292,9 @@ export class WorkshopSessionPersistenceCoordinator {
         this.outputChannel.appendLine(
           `[WorkshopSessionPersistence] Autosave failed (revision=${revision}, reason=${reason}): ${this.errorMessage(error)}`
         );
+        if (namedSessionId && revision >= this.dirtyRevision) {
+          this.emitNamedSaveStatus(namedSessionId, 'error');
+        }
       }
     });
     void this.writeQueue;
@@ -259,16 +302,27 @@ export class WorkshopSessionPersistenceCoordinator {
 
   /** Retry a dirty autosave after a run guard has cleared and await ordering. */
   async flush(): Promise<void> {
+    // First let an already-scheduled write settle. Only enqueue a retry when
+    // the revision is still dirty (for example, an active-run guard deferred
+    // capture). This avoids manufacturing a second write/status transition
+    // for every ordinary lifecycle flush.
+    await this.writeQueue;
     if (this.hasPendingWrite()) {
       this.markDirty('flush');
+      await this.writeQueue;
     }
-    await this.writeQueue;
   }
 
-  async saveNamed(title: string): Promise<WorkshopStoredSessionSummary> {
+  async saveNamed(
+    title: string,
+    targetSessionId?: string
+  ): Promise<WorkshopStoredSessionSummary> {
     return this.runSessionOperation(async () => {
       const normalizedTitle = this.requireTitle(title);
       const now = normalizedIso(this.now());
+      if (targetSessionId !== undefined) {
+        return this.updateActiveNamedSession(targetSessionId, normalizedTitle, now);
+      }
       const checkpointIdentity: LiveSessionIdentity = {
         sessionId: this.idFactory(),
         title: normalizedTitle,
@@ -280,9 +334,11 @@ export class WorkshopSessionPersistenceCoordinator {
         updatedAt: now
       };
       const summary = await this.store.saveNamed(checkpoint);
-      // A failed named write never changes the live room's title.
-      this.identity = { ...this.identity, title: normalizedTitle };
-      this.markDirty('named save title');
+      // A failed named write never changes the live identity. After success,
+      // the live room follows the checkpoint so later Save updates by id.
+      this.identity = checkpointIdentity;
+      this.activeNamedSessionId = checkpointIdentity.sessionId;
+      this.markDirty('named save identity');
       return summary;
     });
   }
@@ -323,6 +379,7 @@ export class WorkshopSessionPersistenceCoordinator {
       try {
         hydration = await this.hydrate(persisted, false, false);
         this.time.touch();
+        this.activeNamedSessionId = sessionId;
         const promoted = await this.capture(this.identity);
         await this.store.writeCurrent(promoted);
         this.currentCheckpointError = undefined;
@@ -341,9 +398,16 @@ export class WorkshopSessionPersistenceCoordinator {
   }
 
   async renameNamed(sessionId: string, title: string): Promise<WorkshopStoredSessionSummary> {
-    return this.runSessionOperation(() =>
-      this.store.renameNamed(sessionId, this.requireTitle(title))
-    );
+    return this.runSessionOperation(async () => {
+      if (this.activeNamedSessionId === sessionId) {
+        return this.updateActiveNamedSession(
+          sessionId,
+          this.requireTitle(title),
+          normalizedIso(this.now())
+        );
+      }
+      return this.store.renameNamed(sessionId, this.requireTitle(title));
+    });
   }
 
   async duplicateNamed(
@@ -369,7 +433,12 @@ export class WorkshopSessionPersistenceCoordinator {
   }
 
   async deleteNamed(sessionId: string): Promise<void> {
-    return this.runSessionOperation(() => this.store.deleteNamed(sessionId));
+    return this.runSessionOperation(async () => {
+      await this.store.deleteNamed(sessionId);
+      if (this.activeNamedSessionId === sessionId) {
+        this.activeNamedSessionId = undefined;
+      }
+    });
   }
 
   async resolveRevealPath(sessionId: string | 'current'): Promise<string> {
@@ -390,6 +459,7 @@ export class WorkshopSessionPersistenceCoordinator {
         title: this.defaultTitle(createdAt),
         createdAt
       };
+      this.activeNamedSessionId = undefined;
       this.degradedConversationKeys = [];
       this.recordStartMarker();
       try {
@@ -715,6 +785,7 @@ export class WorkshopSessionPersistenceCoordinator {
     }
     return {
       identity: { ...this.identity },
+      activeNamedSessionId: this.activeNamedSessionId,
       workshop,
       bindings,
       temporal: this.time.exportRuntimeState(),
@@ -746,6 +817,7 @@ export class WorkshopSessionPersistenceCoordinator {
       );
     this.time.restoreRuntimeState(rollback.temporal);
     this.identity = { ...rollback.identity };
+    this.activeNamedSessionId = rollback.activeNamedSessionId;
     this.degradedConversationKeys = [...rollback.degradedConversationKeys];
   }
 
@@ -770,6 +842,54 @@ export class WorkshopSessionPersistenceCoordinator {
       throw new Error('Workshop session titles are limited to 160 characters.');
     }
     return normalized;
+  }
+
+  /**
+   * Update the live room's exact named identity. `current.json` goes first:
+   * if the second atomic write fails or the host crashes between files, the
+   * newer rolling checkpoint remains the recovery authority and the next
+   * resume/autosave repairs the named copy instead of rolling it backward.
+   */
+  private async updateActiveNamedSession(
+    sessionId: string,
+    title: string,
+    savedAt: string
+  ): Promise<WorkshopStoredSessionSummary> {
+    if (
+      sessionId !== this.identity.sessionId ||
+      sessionId !== this.activeNamedSessionId
+    ) {
+      throw new Error(
+        'The saved session changed before it could be updated. Refresh Sessions and try again.'
+      );
+    }
+    const nextIdentity: LiveSessionIdentity = { ...this.identity, title };
+    const checkpoint = {
+      ...(await this.capture(nextIdentity)),
+      savedAt,
+      updatedAt: savedAt
+    };
+    this.emitNamedSaveStatus(sessionId, 'saving');
+    try {
+      await this.store.writeCurrent(checkpoint);
+      // Once current.json commits, this identity is the recoverable live truth
+      // even if the named mirror reports a failure below.
+      this.identity = nextIdentity;
+      this.currentCheckpointError = undefined;
+      const summary = await this.store.updateNamed(sessionId, checkpoint);
+      this.emitNamedSaveStatus(sessionId, 'saved');
+      return summary;
+    } catch (error) {
+      this.emitNamedSaveStatus(sessionId, 'error');
+      throw error;
+    }
+  }
+
+  private emitNamedSaveStatus(
+    sessionId: string,
+    status: WorkshopNamedSaveStatus
+  ): void {
+    this.namedSaveStatusListeners.forEach((listener) => listener(sessionId, status));
   }
 
   private errorMessage(error: unknown): string {

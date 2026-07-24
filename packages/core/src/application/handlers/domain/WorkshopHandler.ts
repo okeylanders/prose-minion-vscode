@@ -130,6 +130,7 @@ import {
   WorkshopSessionsDataMessage,
   WorkshopSessionAction,
   WorkshopSessionActionResultMessage,
+  WorkshopNamedSaveStatusMessage,
   WorkshopToolId,
   WorkshopPersonaId,
   WorkshopChatTarget,
@@ -206,6 +207,7 @@ export class WorkshopHandler {
   };
 
   private readonly disposeStatusListener: () => void;
+  private readonly disposeNamedSaveStatusListener: () => void;
 
   /** The single in-flight Context wizard run — independent of activeRun. */
   private wizardRun?: { requestId: string; excerptVersion: number; controller: AbortController };
@@ -236,6 +238,16 @@ export class WorkshopHandler {
         }
       }
     );
+    this.disposeNamedSaveStatusListener =
+      this.sessionPersistence.addNamedSaveStatusListener((sessionId, status) => {
+        const message: WorkshopNamedSaveStatusMessage = {
+          type: MessageType.WORKSHOP_NAMED_SAVE_STATUS,
+          source: 'extension.workshop',
+          payload: { sessionId, status },
+          timestamp: Date.now()
+        };
+        void this.postMessage(message);
+      });
   }
 
   /**
@@ -352,6 +364,7 @@ export class WorkshopHandler {
    */
   dispose(): void {
     this.disposeStatusListener();
+    this.disposeNamedSaveStatusListener();
     if (this.activeRun) {
       this.outputChannel.appendLine(
         `[WorkshopHandler] Aborting in-flight run on dispose: ${this.activeRun.requestId}`
@@ -2064,8 +2077,16 @@ export class WorkshopHandler {
       return;
     }
     try {
-      const saved = await this.sessionPersistence.saveNamed(message.payload?.title ?? '');
-      this.postSessionActionResult('save', true, `Saved “${saved.title}”.`);
+      const targetSessionId = message.payload?.sessionId?.trim() || undefined;
+      const saved = await this.sessionPersistence.saveNamed(
+        message.payload?.title ?? '',
+        targetSessionId
+      );
+      this.postSessionActionResult(
+        'save',
+        true,
+        targetSessionId ? `Updated “${saved.title}”.` : `Saved “${saved.title}”.`
+      );
     } catch (error) {
       this.postSessionActionFailure('save', error);
     }

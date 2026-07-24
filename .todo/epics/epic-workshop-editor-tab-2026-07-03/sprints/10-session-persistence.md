@@ -27,9 +27,13 @@ a corruption/incompatibility fallback, not the normal experience.
 ## Locked Decisions
 
 - Workspace JSON under `prose-minion/sessions/`; `current.json` is ordered
-  autosave, named files are collision-safe checkpoints.
+  autosave; the first named Save allocates a collision-safe file and associates
+  the live room with its immutable id.
 - Editable `title` is metadata. Immutable `sessionId` and filename are storage
   identity; rename does not move the file, duplicate creates a new identity.
+- An associated named room updates that exact file after every committed
+  mutation as well as `current.json`. Save updates by `sessionId`; **Save as
+  new** allocates a fresh identity. Titles are never lookup keys.
 - Persistence is a coherent product snapshot plus a typed
   `ConversationArchiveV1`; never serialize from windowed `getSnapshot()`.
 - Conversation archives use stable logical participant keys. Import mints fresh
@@ -118,6 +122,9 @@ a corruption/incompatibility fallback, not the normal experience.
 - [x] Build one application-owned dirty/autosave coordinator spanning aggregate
       and conversation history. Serialize writes; flush safely on lifecycle
       boundaries; prevent an older write from winning.
+- [x] Associate the first named Save (and any opened named checkpoint) with the
+      live room. Mirror subsequent committed revisions to its exact immutable
+      path without duplicating same-title files or rescanning every transcript.
 - [x] Mark dirty after every successful mutation: excerpt/context/todo/guest
       changes, completed persona/tool turns, behavior/directive replacement,
       and complete widget transactions.
@@ -132,6 +139,9 @@ a corruption/incompatibility fallback, not the normal experience.
 
 - [x] Implement Save dialog title input, filename/identity explanation, and the
       “included in this snapshot” manifest from the approved design.
+- [x] Make active-room Save an identity-checked Update with an explicit **Save
+      as new** escape hatch; show the active room title and revision-aware
+      `Saving…` / `Saved` / `Save failed` state in the header.
 - [x] Add typed routes for list/save/open/rename/duplicate/reveal/delete and
       explicit success/failure responses.
 - [x] Build newest-first Recent and browser views with cancellable bounded
@@ -208,18 +218,27 @@ extend; it does not invent an untyped placeholder blob.
   a viewport-bounded browser whose session list is the only scrolling region.
   Browser rows carry the saved host persona's focus icon, group by Date or
   Excerpt, and keep Open plus the fixed New Session footer on-screen.
+- New Session clears the visible conversation optimistically while the durable
+  replacement runs; a typed failure restores the exact prior thread. A
+  successful host snapshot then contributes only the trusted new-session time
+  boundary.
+- Once named, the room is a living checkpoint. The ordered queue writes
+  `current.json` and the exact associated named file after committed turns and
+  other successful room mutations. Revision-aware status never claims `Saved`
+  while newer work is queued.
 
 ## Verification (2026-07-23)
 
 - `npm run typecheck` — core, webview, and extension passed.
-- `npm test -- --runInBand` — 122 suites, 1,177 tests, 1 snapshot passed.
-- `npm run lint` — 0 errors, 766 repository-baseline warnings.
+- `npm test -- --runInBand` — 122 suites, 1,193 tests, 1 snapshot passed.
+- `npm run lint` — 0 errors, 767 warnings (the repository baseline plus the
+  new conventionally named message enum member).
 - `npm run build` — production webpack builds and bundle sentinel verification
   passed; existing webview size warnings remain.
 - `npm run package` — VSIX packaging passed (176 files, 9.77 MB).
 - GitHub `verify` — passed on draft PR #85.
-- Final production bundles: `extension.js` 2,547,503 bytes;
-  `webview.js` 880,989 bytes. A clean Sprint-10-only delta is not available
+- Final production bundles: `extension.js` 2,550,732 bytes;
+  `webview.js` 885,161 bytes. A clean Sprint-10-only delta is not available
   because the branch began after the design/integration sync; absolute sizes
   are recorded instead.
 - Manual Extension Development Host restart/corruption exercise remains open.
@@ -236,6 +255,12 @@ extend; it does not invent an untyped placeholder blob.
   affected participant visibly falls back to fresh memory and remains usable.
 - No explicit Save is required for recovery. Named Save accepts a title and the
   browser can search, group, open, rename, duplicate, reveal, and delete it.
+- The first named Save associates the room; subsequent turns update that same
+  immutable session identity automatically. Manual Save updates it in place,
+  while **Save as new** is the only Save-dialog action that creates another
+  checkpoint.
+- New Session immediately clears the old visible conversation and replaces its
+  durable current-room identity without deleting prior named sessions.
 - Opening an old session restores its widget settings and standing directives
   exactly without changing the user’s global last-used defaults.
 - Current global persona resources, behavior, and Writer Profile are used for

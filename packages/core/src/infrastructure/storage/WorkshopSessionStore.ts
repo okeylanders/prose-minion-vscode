@@ -155,6 +155,11 @@ interface StoredNamedSession {
   session: WorkshopPersistedSessionV1;
 }
 
+interface CachedNamedSessionPath {
+  filePath: string;
+  fileName: string;
+}
+
 /**
  * `current.json` and named checkpoint persistence, through host-agnostic ports.
  * The injected clock makes collision behavior deterministic in tests and keeps
@@ -162,6 +167,12 @@ interface StoredNamedSession {
  */
 export class WorkshopSessionStore {
   private temporaryWriteCounter = 0;
+  /**
+   * A named file's path is immutable after allocation. Cache only paths this
+   * store has created or resolved authoritatively so live-room autosave does
+   * not reparse every saved transcript after each committed mutation.
+   */
+  private readonly namedSessionPaths = new Map<string, CachedNamedSessionPath>();
 
   constructor(
     private readonly fileSystem: FileSystem,
@@ -201,7 +212,7 @@ export class WorkshopSessionStore {
     await this.writeSummarySidecar(paths, 'current.json', decoded);
   }
 
-  /** Write a new immutable named checkpoint. The caller supplies a fresh session id. */
+  /** Allocate a named file with immutable identity/path. The caller supplies a fresh id. */
   async saveNamed(session: WorkshopPersistedSessionV1): Promise<WorkshopStoredSessionSummary> {
     const paths = this.requireAvailability();
     const decoded = this.validateSessionForWrite(session);
@@ -216,6 +227,7 @@ export class WorkshopSessionStore {
       try {
         await this.writeAtomically(filePath, decoded, false);
         await this.writeSummarySidecar(paths, fileName, decoded);
+        this.rememberNamedSessionPath(paths, decoded.sessionId, fileName, filePath);
         return sessionSummary(decoded, fileName);
       } catch (error) {
         if (!isDestinationExistsError(error)) {
@@ -224,6 +236,28 @@ export class WorkshopSessionStore {
       }
     }
     throw new Error('Could not allocate a collision-free Workshop session filename.');
+  }
+
+  /** Replace one named checkpoint in place without changing its durable identity or path. */
+  async updateNamed(
+    sessionId: string,
+    session: WorkshopPersistedSessionV1
+  ): Promise<WorkshopStoredSessionSummary> {
+    const paths = this.requireAvailability();
+    const found = await this.requireNamedSession(sessionId, paths);
+    const decoded = this.validateSessionForWrite(session);
+    if (decoded.sessionId !== sessionId) {
+      throw new Error('Updated Workshop session identity does not match its target.');
+    }
+    await this.writeAtomically(found.filePath, decoded, true);
+    await this.writeSummarySidecar(paths, found.fileName, decoded);
+    this.rememberNamedSessionPath(
+      paths,
+      decoded.sessionId,
+      found.fileName,
+      found.filePath
+    );
+    return sessionSummary(decoded, found.fileName);
   }
 
   /** Load a named checkpoint by durable identity; a caller-supplied path is never accepted. */
@@ -287,6 +321,7 @@ export class WorkshopSessionStore {
     const found = await this.requireNamedSession(sessionId, paths);
     await this.fileSystem.delete(found.filePath);
     await this.deleteSummarySidecarIfPresent(paths, found.fileName);
+    this.namedSessionPaths.delete(this.namedSessionCacheKey(paths, sessionId));
   }
 
   /** Resolve a user-visible file action without exposing or accepting raw IPC paths. */
@@ -325,6 +360,17 @@ export class WorkshopSessionStore {
     if (!sessionId.trim()) {
       return undefined;
     }
+    const cacheKey = this.namedSessionCacheKey(paths, sessionId);
+    const cached = this.namedSessionPaths.get(cacheKey);
+    if (cached) {
+      const session = await this.readSessionFileExact(cached.filePath, cached.fileName);
+      if (session?.sessionId === sessionId) {
+        return { ...cached, session };
+      }
+      // Missing or manually replaced: fall back to a full conflict-aware
+      // resolution instead of writing through a stale path.
+      this.namedSessionPaths.delete(cacheKey);
+    }
     // Exact actions are not browser listing/search: scan all named files so an
     // existing session beyond the browser's safety window cannot be shadowed
     // by a duplicate id or become impossible to open/delete.
@@ -336,12 +382,39 @@ export class WorkshopSessionStore {
       throw new WorkshopNamedSessionIdentityConflictError(sessionId);
     }
     const found = matches[0];
+    if (found) {
+      this.rememberNamedSessionPath(
+        paths,
+        sessionId,
+        found.fileName,
+        found.filePath
+      );
+    }
     if (!found && entries.failures.length > 0 && !options.ignoreUnreadable) {
       // A malformed file may own the requested durable id. Exact operations
       // cannot honestly report "not found" until every named envelope was read.
       throw entries.failures[0];
     }
     return found;
+  }
+
+  private namedSessionCacheKey(
+    paths: Extract<WorkshopSessionStoreAvailability, { available: true }>,
+    sessionId: string
+  ): string {
+    return `${paths.sessionsDirectory}\u0000${sessionId}`;
+  }
+
+  private rememberNamedSessionPath(
+    paths: Extract<WorkshopSessionStoreAvailability, { available: true }>,
+    sessionId: string,
+    fileName: string,
+    filePath: string
+  ): void {
+    this.namedSessionPaths.set(
+      this.namedSessionCacheKey(paths, sessionId),
+      { fileName, filePath }
+    );
   }
 
   private async readNamedSessions(

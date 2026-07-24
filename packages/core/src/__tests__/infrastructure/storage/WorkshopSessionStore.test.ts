@@ -13,6 +13,7 @@ import { FileStat, FileSystem, FileType, LogSink, Workspace } from '@/platform';
 class MemoryFileSystem implements FileSystem {
   readonly files = new Map<string, Uint8Array>();
   readonly renameCalls: Array<{ fromPath: string; toPath: string; overwrite: boolean }> = [];
+  readDirectoryCalls = 0;
 
   async readFile(filePath: string): Promise<Uint8Array> {
     const value = this.files.get(filePath);
@@ -47,6 +48,7 @@ class MemoryFileSystem implements FileSystem {
   }
 
   async readDirectory(directoryPath: string): Promise<Array<[string, FileType]>> {
+    this.readDirectoryCalls += 1;
     const entries = [...this.files.keys()]
       .filter((filePath) => path.dirname(filePath) === directoryPath)
       .map((filePath) => [path.basename(filePath), FileType.File] as [string, FileType]);
@@ -287,6 +289,50 @@ describe('WorkshopSessionStore', () => {
     expect(renamed).toMatchObject({ sessionId: 'rename-me', title: 'After', fileName: saved.fileName });
     await expect(store.resolveRevealPath('rename-me')).resolves.toBe(beforePath);
     await expect(store.readNamed('rename-me')).resolves.toMatchObject({ title: 'After' });
+  });
+
+  it('updates a named checkpoint in place without duplicating its file or identity', async () => {
+    const store = createStore();
+    const saved = await store.saveNamed(session('living-room', 'Before'));
+    const beforePath = await store.resolveRevealPath('living-room');
+    fileSystem.readDirectoryCalls = 0;
+    const updatedSnapshot = session('living-room', 'After', {
+      updatedAt: '2026-07-23T11:00:00.000Z',
+      savedAt: '2026-07-23T11:00:00.000Z',
+      summary: {
+        ...session('summary', 'Summary').summary,
+        turnCount: 18,
+        preview: 'The conversation kept moving.'
+      }
+    });
+
+    const updated = await store.updateNamed('living-room', updatedSnapshot);
+
+    expect(updated).toMatchObject({
+      sessionId: 'living-room',
+      title: 'After',
+      fileName: saved.fileName,
+      turnCount: 18
+    });
+    await expect(store.resolveRevealPath('living-room')).resolves.toBe(beforePath);
+    await expect(store.list()).resolves.toMatchObject({
+      sessions: [expect.objectContaining({ sessionId: 'living-room', title: 'After' })]
+    });
+    // The live-room path was established by Save; updating it must not parse
+    // every other full checkpoint on every autosave.
+    expect(fileSystem.readDirectoryCalls).toBe(1);
+    expect([...fileSystem.files.keys()].filter((filePath) =>
+      filePath.endsWith('.json') && !filePath.endsWith('.summary.json')
+    )).toHaveLength(1);
+  });
+
+  it('rejects an update whose snapshot identity does not match the target', async () => {
+    const store = createStore();
+    await store.saveNamed(session('target', 'Target'));
+
+    await expect(store.updateNamed('target', session('intruder', 'Intruder')))
+      .rejects.toThrow('identity does not match');
+    await expect(store.readNamed('target')).resolves.toMatchObject({ title: 'Target' });
   });
 
   it('keeps current.json outside all named-session mutations', async () => {

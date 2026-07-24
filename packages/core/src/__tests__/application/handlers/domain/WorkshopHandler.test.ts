@@ -173,6 +173,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       getDegradedConversationKeys: jest.fn().mockReturnValue([]),
       isCurrentCheckpointProtected: jest.fn().mockReturnValue(false),
       isSessionOperationPending: jest.fn().mockReturnValue(false),
+      addNamedSaveStatusListener: jest.fn().mockReturnValue(() => undefined),
       waitForSessionOperations: jest.fn().mockResolvedValue(undefined),
       markDirty: jest.fn(),
       flush: jest.fn().mockResolvedValue(undefined),
@@ -278,6 +279,17 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_REMOVE_MESSAGE_ATTACHMENT)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS)).toBe(true);
     expect(router.handlerCount).toBe(33);
+  });
+
+  it('forwards the coordinator named-save state as typed Workshop IPC', () => {
+    const listener = persistence.addNamedSaveStatusListener.mock.calls[0][0];
+
+    listener('named-room', 'saving');
+
+    expect(posted(MessageType.WORKSHOP_NAMED_SAVE_STATUS).at(-1).payload).toEqual({
+      sessionId: 'named-room',
+      status: 'saving'
+    });
   });
 
   it('guards routed room mutations while a shared session operation is pending', async () => {
@@ -1774,7 +1786,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         {}
       ) as any);
 
-      expect(persistence.saveNamed).toHaveBeenCalledWith('Saved Room');
+      expect(persistence.saveNamed).toHaveBeenCalledWith('Saved Room', undefined);
       expect(persistence.list).toHaveBeenCalledWith('room');
       expect(persistence.openNamed).toHaveBeenCalledWith('saved-1');
       expect(persistence.renameNamed).toHaveBeenCalledWith('saved-1', 'Renamed Room');
@@ -1823,6 +1835,35 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
           action: 'new',
           ok: false,
           message: 'current promotion failed'
+        });
+    });
+
+    it('updates an explicitly identified live named session without title matching', async () => {
+      persistence.saveNamed.mockResolvedValueOnce({
+        sessionId: 'saved-1',
+        title: 'Living room',
+        createdAt: '2026-07-23T14:00:00.000Z',
+        updatedAt: '2026-07-23T14:00:00.000Z',
+        savedAt: '2026-07-23T14:00:00.000Z',
+        startedAt: '2026-07-23T14:00:00.000Z',
+        timezone: 'America/Chicago',
+        hostPersonaId: 'jill',
+        participantPersonaIds: ['jill'],
+        turnCount: 4,
+        excerptWordCount: 1751,
+        fileName: '20260723-090000-living-room.json'
+      });
+      await handler.handleSaveSession(message(
+        MessageType.WORKSHOP_SAVE_SESSION,
+        { title: 'Living room', sessionId: 'saved-1' }
+      ) as any);
+
+      expect(persistence.saveNamed).toHaveBeenCalledWith('Living room', 'saved-1');
+      expect(posted(MessageType.WORKSHOP_SESSION_ACTION_RESULT).at(-1).payload)
+        .toEqual({
+          action: 'save',
+          ok: true,
+          message: 'Updated “Living room”.'
         });
     });
 

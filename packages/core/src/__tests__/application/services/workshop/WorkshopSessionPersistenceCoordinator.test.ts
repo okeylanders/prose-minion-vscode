@@ -145,6 +145,14 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
         named.push(next);
         return summary(next);
       }),
+      updateNamed: jest.fn(async (id: string, next: WorkshopPersistedSessionV1) => {
+        const index = named.findIndex((entry) => entry.sessionId === id);
+        if (index < 0) {
+          throw new Error(`Named Workshop session ${id} was not found.`);
+        }
+        named[index] = next;
+        return summary(next, `saved-${index}.json`);
+      }),
       list: jest.fn(async () => ({
         current: current ? summary(current, 'current.json') : undefined,
         sessions: named.map((entry, index) => summary(entry, `saved-${index}.json`)),
@@ -214,6 +222,24 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(session.getExcerpt()?.text).toBe('The restored manuscript.');
     expect(session.getSnapshot().turns.map((turn) => turn.artifact))
       .toEqual(['session_start', 'session_resume']);
+  });
+
+  it('resumes the exact associated named checkpoint when current and named share an identity', async () => {
+    current = persistedSession('named-current', 'Living room', 'The restored manuscript.');
+    named.push(JSON.parse(JSON.stringify(current)) as WorkshopPersistedSessionV1);
+    const statuses: string[] = [];
+    const coordinator = createCoordinator();
+    coordinator.addNamedSaveStatusListener((_sessionId, status) => statuses.push(status));
+
+    await coordinator.initialize();
+    await coordinator.flush();
+
+    expect(store.updateNamed).toHaveBeenCalledWith(
+      'named-current',
+      expect.objectContaining({ sessionId: 'named-current', title: 'Living room' })
+    );
+    expect(named[0].workshop.turns.at(-1)?.artifact).toBe('session_resume');
+    expect(statuses).toEqual(['saving', 'saved']);
   });
 
   it('preflights a malformed aggregate before importing any provider history', async () => {
@@ -303,16 +329,136 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(coordinator.hasPendingWrite()).toBe(true);
   });
 
-  it('saves a named checkpoint with a fresh storage identity and editable title', async () => {
+  it('associates the live room with the first named checkpoint identity', async () => {
     const coordinator = createCoordinator();
     await coordinator.initialize();
 
     const saved = await coordinator.saveNamed('My named workshop');
+    await coordinator.flush();
 
     expect(saved.title).toBe('My named workshop');
     expect(named).toHaveLength(1);
-    expect(named[0].sessionId).not.toBe(current?.sessionId);
+    expect(named[0].sessionId).toBe(current?.sessionId);
     expect(named[0].savedAt).toBe(now.toISOString());
+  });
+
+  it('updates the associated named session after each committed autosave', async () => {
+    const coordinator = createCoordinator();
+    const statuses: Array<{ sessionId: string; status: string }> = [];
+    coordinator.addNamedSaveStatusListener((sessionId, status) => {
+      statuses.push({ sessionId, status });
+    });
+    await coordinator.initialize();
+    const saved = await coordinator.saveNamed('Living room');
+    await coordinator.flush();
+    store.updateNamed.mockClear();
+    statuses.length = 0;
+
+    session.setExcerpt({ text: 'A named-room excerpt.', source: { kind: 'manual' } });
+    session.beginPersonaMessage('turn-1', 'Keep this in the named room.');
+    session.completeRun('turn-1', 'I will.', undefined, false, 'host-conversation');
+    coordinator.markDirty('persona turn committed');
+    await coordinator.flush();
+
+    expect(store.updateNamed).toHaveBeenCalledWith(
+      saved.sessionId,
+      expect.objectContaining({
+        sessionId: saved.sessionId,
+        title: 'Living room',
+        savedAt: now.toISOString()
+      })
+    );
+    expect(named).toHaveLength(1);
+    expect(named[0].workshop.turns.at(-1)?.content).toBe('I will.');
+    expect(statuses[0]).toEqual({ sessionId: saved.sessionId, status: 'saving' });
+    expect(statuses.at(-1)).toEqual({ sessionId: saved.sessionId, status: 'saved' });
+  });
+
+  it('does not report Saved while a newer named-room revision is still queued', async () => {
+    const coordinator = createCoordinator();
+    await coordinator.initialize();
+    const saved = await coordinator.saveNamed('Living room');
+    await coordinator.flush();
+    const statuses: string[] = [];
+    coordinator.addNamedSaveStatusListener((_sessionId, status) => statuses.push(status));
+    const firstWrite = deferred();
+    store.writeCurrent.mockImplementationOnce(async () => firstWrite.promise);
+
+    coordinator.markDirty('first queued mutation');
+    coordinator.markDirty('newer queued mutation');
+    await Promise.resolve();
+
+    expect(statuses).toEqual(['saving', 'saving']);
+    firstWrite.resolve();
+    await coordinator.flush();
+
+    expect(statuses).toEqual(['saving', 'saving', 'saved']);
+    expect(named).toHaveLength(1);
+    expect(named[0].sessionId).toBe(saved.sessionId);
+  });
+
+  it('updates an associated checkpoint by identity and never by matching title', async () => {
+    const coordinator = createCoordinator();
+    await coordinator.initialize();
+    const saved = await coordinator.saveNamed('Draft name');
+    await coordinator.flush();
+    store.writeCurrent.mockClear();
+    store.updateNamed.mockClear();
+
+    const updated = await coordinator.saveNamed('Deliberate name', saved.sessionId);
+    await coordinator.flush();
+
+    expect(updated).toMatchObject({
+      sessionId: saved.sessionId,
+      title: 'Deliberate name'
+    });
+    expect(named).toHaveLength(1);
+    expect(named[0].title).toBe('Deliberate name');
+    expect(store.writeCurrent.mock.invocationCallOrder[0])
+      .toBeLessThan(store.updateNamed.mock.invocationCallOrder[0]);
+    await expect(coordinator.saveNamed('Wrong target', 'some-other-id'))
+      .rejects.toThrow('saved session changed');
+  });
+
+  it('keeps the newer current truth when an associated named mirror update fails', async () => {
+    const coordinator = createCoordinator();
+    await coordinator.initialize();
+    const saved = await coordinator.saveNamed('Before');
+    await coordinator.flush();
+    const statuses: string[] = [];
+    coordinator.addNamedSaveStatusListener((_sessionId, status) => statuses.push(status));
+    store.updateNamed.mockRejectedValueOnce(new Error('named mirror unavailable'));
+
+    await expect(coordinator.saveNamed('After', saved.sessionId))
+      .rejects.toThrow('named mirror unavailable');
+
+    expect(current?.title).toBe('After');
+    expect(named[0].title).toBe('Before');
+    expect(statuses).toEqual(['saving', 'error']);
+
+    coordinator.markDirty('repair named mirror');
+    await coordinator.flush();
+
+    expect(named[0].title).toBe('After');
+    expect(statuses.at(-1)).toBe('saved');
+  });
+
+  it('renames an active named room through the same current-first snapshot update', async () => {
+    const coordinator = createCoordinator();
+    await coordinator.initialize();
+    const saved = await coordinator.saveNamed('Before');
+    await coordinator.flush();
+    store.writeCurrent.mockClear();
+    store.updateNamed.mockClear();
+
+    const renamed = await coordinator.renameNamed(saved.sessionId, 'After');
+
+    expect(renamed.title).toBe('After');
+    expect(store.renameNamed).not.toHaveBeenCalled();
+    expect(store.writeCurrent.mock.invocationCallOrder[0])
+      .toBeLessThan(store.updateNamed.mock.invocationCallOrder[0]);
+    expect(current?.title).toBe('After');
+    expect(named[0].title).toBe('After');
   });
 
   it('settles assistant readiness before reading either half of a coherent snapshot', async () => {

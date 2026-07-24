@@ -115,6 +115,7 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
         getDegradedConversationKeys: jest.fn().mockReturnValue([]),
         isCurrentCheckpointProtected: jest.fn().mockReturnValue(false),
         isSessionOperationPending: jest.fn().mockReturnValue(false),
+        addNamedSaveStatusListener: jest.fn().mockReturnValue(() => undefined),
         waitForSessionOperations: jest.fn().mockResolvedValue(undefined),
         markDirty: jest.fn(),
         flush: jest.fn().mockResolvedValue(undefined),

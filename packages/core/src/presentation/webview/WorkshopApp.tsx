@@ -158,6 +158,7 @@ export const WorkshopApp: React.FC = () => {
   const [sessionsMenuOpen, setSessionsMenuOpen] = React.useState(false);
   const [saveSessionModalOpen, setSaveSessionModalOpen] = React.useState(false);
   const [sessionBrowserOpen, setSessionBrowserOpen] = React.useState(false);
+  const sessionListInitializedRef = React.useRef(false);
   const [contextSelectorMode, setContextSelectorMode] = React.useState<'attach' | 'excerpt' | 'message'>('attach');
   const [personaModalMode, setPersonaModalMode] = React.useState<'host' | 'guest'>('host');
   const [toast, setToast] = React.useState<WorkshopToastState | null>(null);
@@ -216,6 +217,7 @@ export const WorkshopApp: React.FC = () => {
     [MessageType.WORKSHOP_TURN]: workshop.handleTurn,
     [MessageType.WORKSHOP_SESSIONS_DATA]: workshop.handleSessionsData,
     [MessageType.WORKSHOP_SESSION_ACTION_RESULT]: workshop.handleSessionActionResult,
+    [MessageType.WORKSHOP_NAMED_SAVE_STATUS]: workshop.handleNamedSaveStatus,
     [MessageType.SELECTION_DATA]: excerptVerify.handleSelectionData,
     [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshop.handleContextCatalog,
     [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshop.handleContextSearchResults,
@@ -255,6 +257,14 @@ export const WorkshopApp: React.FC = () => {
     });
   }, [vscode]);
 
+  React.useEffect(() => {
+    if (!workshop.sessionReady || sessionListInitializedRef.current) {
+      return;
+    }
+    sessionListInitializedRef.current = true;
+    workshop.requestSessions('');
+  }, [workshop.requestSessions, workshop.sessionReady]);
+
   // The full session browser is intentionally a host-side bounded search. Debounce
   // the query so the writer can type naturally without a filesystem scan for
   // each keystroke; the hook's request id discards any late result.
@@ -282,7 +292,17 @@ export const WorkshopApp: React.FC = () => {
     if (result.ok && (result.action === 'open' || result.action === 'new')) {
       setSessionBrowserOpen(false);
     }
-    if (sessionBrowserOpen || sessionsMenuOpen || result.action === 'save') {
+    const sessionIndexChanged =
+      result.ok && result.action !== 'reveal';
+    const activeRoomIdentityChanged =
+      result.ok && (
+        result.action === 'save' ||
+        result.action === 'open' ||
+        result.action === 'new'
+      );
+    if (activeRoomIdentityChanged) {
+      workshop.requestSessions('');
+    } else if (sessionBrowserOpen || sessionsMenuOpen || sessionIndexChanged) {
       workshop.requestSessions();
     }
     workshop.consumeSessionActionResult();
@@ -528,9 +548,16 @@ export const WorkshopApp: React.FC = () => {
       : undefined;
     return sourcePath?.split(/[\\/]/).filter(Boolean).at(-1) ?? 'Untitled session';
   })();
-  const suggestedSessionTitle = `${excerptSessionLabel} — ${activePersona.label} — ${
-    new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-  }`;
+  const activeNamedSession = workshop.activeNamedSessionSummary;
+  const activeNamedSaveStatus =
+    workshop.namedSaveStatus &&
+    workshop.namedSaveStatus.sessionId === activeNamedSession?.sessionId
+      ? workshop.namedSaveStatus.status
+      : 'saved';
+  const suggestedSessionTitle = activeNamedSession?.title ??
+    `${excerptSessionLabel} — ${activePersona.label} — ${
+      new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    }`;
   const saveSessionManifest: WorkshopSaveSessionManifest = {
     excerptVersion: workshop.excerpt?.version,
     excerptWordCount,
@@ -622,6 +649,8 @@ export const WorkshopApp: React.FC = () => {
           </button>
           <WorkshopSessionsMenu
             open={sessionsMenuOpen}
+            activeSessionTitle={activeNamedSession?.title}
+            saveStatus={activeNamedSaveStatus}
             sessions={workshop.savedSessionSummaries}
             disabled={
               !workshop.sessionReady ||
@@ -997,6 +1026,7 @@ export const WorkshopApp: React.FC = () => {
         available={workshop.persistenceAvailable}
         unavailableReason={workshop.persistenceUnavailableReason}
         suggestedTitle={suggestedSessionTitle}
+        activeNamedSession={activeNamedSession}
         manifest={saveSessionManifest}
         saving={workshop.sessionActionPending === 'save'}
         onClose={closeSaveSessionModal}

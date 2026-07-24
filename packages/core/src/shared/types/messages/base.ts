@@ -143,7 +143,8 @@ export enum MessageType {
   WORKSHOP_TURN = 'workshop_turn',
   WORKSHOP_SESSION_STATE = 'workshop_session_state',
   WORKSHOP_SESSIONS_DATA = 'workshop_sessions_data',
-  WORKSHOP_SESSION_ACTION_RESULT = 'workshop_session_action_result'
+  WORKSHOP_SESSION_ACTION_RESULT = 'workshop_session_action_result',
+  WORKSHOP_NAMED_SAVE_STATUS = 'workshop_named_save_status'
 }
 
 export interface BaseMessage {

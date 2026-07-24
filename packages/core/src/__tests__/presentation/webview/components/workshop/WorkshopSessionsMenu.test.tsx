@@ -63,6 +63,19 @@ describe('WorkshopSessionsMenu', () => {
     expect(screen.queryByText('This one stays in the browser')).toBeNull();
   });
 
+  it('shows the active named room and its real persistence state in the header', () => {
+    const { view } = renderMenu({
+      activeSessionTitle: 'Pentecost — auditorium beat',
+      saveStatus: 'saving'
+    });
+
+    expect(screen.getByRole('button', {
+      name: /Pentecost — auditorium beat/
+    })).not.toBeNull();
+    expect(screen.getByRole('status').textContent).toContain('Saving');
+    expect(view.container.querySelector('.pm-ws-named-save-state-saving')).not.toBeNull();
+  });
+
   it('routes each compact action and closes the menu first', () => {
     const { props } = renderMenu();
 

@@ -13,6 +13,8 @@ import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 
 interface WorkshopSessionsMenuProps {
   open: boolean;
+  activeSessionTitle?: string;
+  saveStatus?: 'saving' | 'saved' | 'error';
   sessions: WorkshopSessionSummary[];
   disabled: boolean;
   newSessionDisabled: boolean;
@@ -52,6 +54,8 @@ const relativeSessionTime = (timestamp: number): string => {
 
 export const WorkshopSessionsMenu: React.FC<WorkshopSessionsMenuProps> = ({
   open,
+  activeSessionTitle,
+  saveStatus,
   sessions,
   disabled,
   newSessionDisabled,
@@ -113,9 +117,25 @@ export const WorkshopSessionsMenu: React.FC<WorkshopSessionsMenuProps> = ({
         title="Session commands and recent Workshop rooms"
       >
         <Icon name="cards" size={14} />
-        Sessions
+        <span className="pm-ws-sessions-trigger-label">
+          {activeSessionTitle ?? 'Sessions'}
+        </span>
         <Icon name="chevDown" size={13} />
       </button>
+      {activeSessionTitle && (
+        <span
+          className={`pm-ws-named-save-state pm-ws-named-save-state-${saveStatus ?? 'saved'}`}
+          role="status"
+          aria-live="polite"
+        >
+          <span />
+          {saveStatus === 'saving'
+            ? 'Saving…'
+            : saveStatus === 'error'
+              ? 'Save failed'
+              : 'Saved'}
+        </span>
+      )}
       {open && (
         <div
           id="pm-ws-sessions-menu"

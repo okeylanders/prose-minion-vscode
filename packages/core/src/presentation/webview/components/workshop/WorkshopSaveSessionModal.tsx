@@ -10,7 +10,8 @@ import * as React from 'react';
 import {
   WORKSHOP_INTERACTION_MODE_LABELS,
   WORKSHOP_RELATIONAL_DEPTH_LABELS,
-  WorkshopConversationBehavior
+  WorkshopConversationBehavior,
+  WorkshopSessionSummary
 } from '@messages';
 import { Icon } from '@components/shared/Icon';
 import { WorkshopModalShell } from './WorkshopModalShell';
@@ -31,10 +32,11 @@ interface WorkshopSaveSessionModalProps {
   available: boolean;
   unavailableReason?: 'no-workspace' | 'multi-root';
   suggestedTitle: string;
+  activeNamedSession?: WorkshopSessionSummary;
   manifest: WorkshopSaveSessionManifest;
   saving: boolean;
   onClose: () => void;
-  onSave: (title: string) => void;
+  onSave: (title: string, sessionId?: string) => void;
 }
 
 const plural = (count: number, singular: string): string =>
@@ -63,6 +65,7 @@ export const WorkshopSaveSessionModal: React.FC<WorkshopSaveSessionModalProps> =
   available,
   unavailableReason,
   suggestedTitle,
+  activeNamedSession,
   manifest,
   saving,
   onClose,
@@ -89,12 +92,17 @@ export const WorkshopSaveSessionModal: React.FC<WorkshopSaveSessionModalProps> =
     }
   }, [onClose, saving]);
 
-  const submit = React.useCallback(() => {
+  const submit = React.useCallback((sessionId?: string) => {
     const normalized = title.trim();
     if (available && !saving && normalized) {
-      onSave(normalized);
+      if (sessionId) {
+        onSave(normalized, sessionId);
+      } else {
+        onSave(normalized);
+      }
     }
   }, [available, onSave, saving, title]);
+  const updating = activeNamedSession !== undefined;
 
   const participantDetail = manifest.guestCount > 0
     ? `${manifest.hostLabel} + ${plural(manifest.guestCount, 'guest')}`
@@ -121,8 +129,9 @@ export const WorkshopSaveSessionModal: React.FC<WorkshopSaveSessionModalProps> =
           <div className="pm-ws-eyebrow">Workshop · Session</div>
           <h2 id="workshop-save-session-title">Save session</h2>
           <p id="workshop-save-session-description">
-            Writes a complete snapshot you can reopen later. Your working room also
-            autosaves on its own.
+            {updating
+              ? 'This named room already autosaves after each committed turn. Save now to update its title or force a checkpoint.'
+              : 'Writes a complete snapshot you can reopen later. Once named, this room will keep that checkpoint updated automatically.'}
           </p>
         </div>
         <WorkshopModalShell.CloseButton />
@@ -145,7 +154,7 @@ export const WorkshopSaveSessionModal: React.FC<WorkshopSaveSessionModalProps> =
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
                 event.preventDefault();
-                submit();
+                submit(activeNamedSession?.sessionId);
               }
             }}
           />
@@ -153,12 +162,16 @@ export const WorkshopSaveSessionModal: React.FC<WorkshopSaveSessionModalProps> =
         <div className="pm-ws-save-session-path" id="workshop-save-session-path-note">
           <Icon name="doc" size={12} />
           <span>
-            prose-minion/sessions/<strong>YYYYMMDD-HHMMSS-{titleSlug(title)}.json</strong>
+            prose-minion/sessions/<strong>
+              {activeNamedSession?.fileName ??
+                `YYYYMMDD-HHMMSS-${titleSlug(title)}.json`}
+            </strong>
           </span>
         </div>
         <p className="pm-ws-save-session-identity-note">
-          The timestamped filename is permanent. Renaming later changes the session
-          title, not its storage identity.
+          {updating
+            ? 'Updates this exact saved-session identity; another session with the same title is never selected by name.'
+            : 'The timestamped filename is permanent. Renaming later changes the session title, not its storage identity.'}
         </p>
 
         <section className="pm-ws-save-session-manifest" aria-label="Included in this snapshot">
@@ -177,7 +190,11 @@ export const WorkshopSaveSessionModal: React.FC<WorkshopSaveSessionModalProps> =
 
       <footer className="pm-ws-session-sheet-foot">
         <span>
-          Autosaves to <strong>current.json</strong>; this creates a named copy.
+          {updating ? (
+            <>Autosaves to <strong>current.json</strong> and this named session.</>
+          ) : (
+            <>Autosaves to <strong>current.json</strong>; this creates a named session.</>
+          )}
         </span>
         <button
           className="pm-ws-session-secondary"
@@ -187,14 +204,24 @@ export const WorkshopSaveSessionModal: React.FC<WorkshopSaveSessionModalProps> =
         >
           Cancel
         </button>
+        {updating && (
+          <button
+            className="pm-ws-session-secondary"
+            type="button"
+            disabled={!available || saving || !title.trim()}
+            onClick={() => submit()}
+          >
+            Save as new
+          </button>
+        )}
         <button
           className="pm-ws-session-primary pm-ws-session-primary-large"
           type="button"
           disabled={!available || saving || !title.trim()}
-          onClick={submit}
+          onClick={() => submit(activeNamedSession?.sessionId)}
         >
           <Icon name="save" size={14} />
-          {saving ? 'Saving…' : 'Save session'}
+          {saving ? 'Saving…' : updating ? 'Update session' : 'Save session'}
         </button>
       </footer>
     </WorkshopModalShell>

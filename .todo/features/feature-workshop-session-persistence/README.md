@@ -31,6 +31,11 @@ here across a restart instead of an excerpt swap)
 
 The accepted implementation treats `current.json` as the rolling working
 session: reopening Workshop restores it without requiring an explicit Save.
+The first named Save associates that live room with the newly allocated
+`sessionId`; subsequent committed turns update the same named file alongside
+`current.json`, and the header reports the real ordered-write state. Manual
+Save updates the associated identity, while **Save as new** is the deliberate
+copy operation. Editable titles are never used to choose an update target.
 It coordinates a complete product snapshot with typed retained
 `ConversationManager` histories keyed by logical participant, then mints fresh
 runtime conversation ids on hydrate. Leading system messages are rebuilt from
