@@ -1,9 +1,9 @@
 # Feature: Workshop Session Persistence (Survive VS Code Restart)
 
-**Status**: Implemented on
-`sprint/workshop-editor-tab-10-session-persistence` on 2026-07-23; automated
-verification complete, with manual Extension Development Host restart/corrupt
-archive verification and PR review remaining. See
+**Status**: Implemented in
+[draft PR #85](https://github.com/okeylanders/prose-minion-vscode/pull/85) on
+2026-07-23; automated verification and CI complete, with manual Extension
+Development Host restart/corrupt archive verification and PR review remaining. See
 [Sprint 10](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md)
 and [ADR 2026-07-14](../../../docs/adr/2026-07-14-workshop-session-persistence.md).
 The ADR supersedes this README's storage direction: **JSON files under

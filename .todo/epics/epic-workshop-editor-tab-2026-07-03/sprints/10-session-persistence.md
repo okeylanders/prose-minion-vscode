@@ -1,7 +1,8 @@
 # Sprint 10: Seamless Session Persistence, Save, and Browser
 
-**Status**: Implemented 2026-07-23 — automated verification complete; manual
-Extension Development Host continuity pass and PR review remain
+**Status**: Implemented 2026-07-23 — [draft PR #85](https://github.com/okeylanders/prose-minion-vscode/pull/85),
+automated verification and CI complete; manual Extension Development Host
+continuity pass and PR review remain
 **Priority**: High (restart currently destroys the Workshop)
 **Branch**: `sprint/workshop-editor-tab-10-session-persistence` -> PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 8-12 days
@@ -211,6 +212,7 @@ extend; it does not invent an untyped placeholder blob.
 - `npm run build` — production webpack builds and bundle sentinel verification
   passed; existing webview size warnings remain.
 - `npm run package` — VSIX packaging passed (176 files, 9.77 MB).
+- GitHub `verify` — passed on draft PR #85.
 - Final production bundles: `extension.js` 2,547,503 bytes;
   `webview.js` 859,326 bytes. A clean Sprint-10-only delta is not available
   because the branch began after the design/integration sync; absolute sizes

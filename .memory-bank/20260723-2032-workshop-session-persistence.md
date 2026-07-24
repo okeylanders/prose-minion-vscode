@@ -2,8 +2,10 @@
 
 **Date:** 2026-07-23
 **Branch:** `sprint/workshop-editor-tab-10-session-persistence`
-**Status:** Automated implementation and verification complete; manual
-Extension Development Host continuity/corruption exercise and PR review remain.
+**Status:** Implemented in
+[draft PR #85](https://github.com/okeylanders/prose-minion-vscode/pull/85);
+automated verification and GitHub CI complete. Manual Extension Development
+Host continuity/corruption exercise and PR review remain.
 
 ## Landed decisions
 
@@ -38,6 +40,7 @@ Extension Development Host continuity/corruption exercise and PR review remain.
 - `npm run build`: production extension/webview builds and bundle sentinels
   passed.
 - `npm run package`: VSIX packaging passed (176 files, 9.77 MB).
+- GitHub `verify`: passed on draft PR #85.
 - Bundle sizes: `extension.js` 2,547,503 bytes; `webview.js` 859,326 bytes.
 
 ## Manual closeout
