@@ -11,7 +11,8 @@ styles, scripts, and assets — no build step.
   `1219f905-e11d-4b1a-9fc9-f72634b10f4c` (owner: Okey Landers).
 - **Pulled via:** the `claude_design` MCP (`DesignSync` tool) + `/design-login`,
   2026-07-03; Workshop intake + context-bar comps re-pulled 2026-07-17; Persona
-  Schematic pulled 2026-07-21.
+  Schematic pulled 2026-07-21; **Workshop editor tab + session persistence
+  pulled 2026-07-23** (Sprint 10 interaction source of truth).
 - **Sync policy:** this folder is a snapshot, kept in sync by re-pulling from
   the design project (never hand-edit these files to change the design — edit
   in Claude Design, then re-pull). Local hand-edits are allowed only for
@@ -21,7 +22,8 @@ styles, scripts, and assets — no build step.
 
 | File | What it is | Status |
 |------|------------|--------|
-| `Prose Minion - Assistant Tab.html` | **Interactive prototype** of the full-tab Assistant, Direction B ("Split & pinned"): pinned excerpt + context rail on the left, chat thread with contextual quick-actions on the right, model dropdown, tools modal, toasts, localStorage-persisted thread. | **Approved direction — to implement** |
+| `Prose Minion - Assistant Tab.html` | **Interactive prototype** of the **Workshop editor tab** (Sprint 10 shape): full-viewport tab with the host/persona cluster, **Sessions menu** (New / Save / Open prior / Recent), model picker, pinned excerpt + context-budget rail, tools + widgets composer, and a restored-session state. Loads `pm-workshop.*` + `pm-sessions.*` + `pm-wk-modals.css` + `pm-widgets.*`. **Note:** this filename was repurposed from the old split-pane Assistant (now in `… (Direction B).html`). | **Approved interaction design** — persistence semantics are governed by the amended [ADR](../adr/2026-07-14-workshop-session-persistence.md) |
+| `Prose Minion - Assistant Tab (Direction B).html` | The earlier full-tab Assistant prototype, Direction B ("Split & pinned"): pinned excerpt + context rail, chat thread with contextual quick-actions, model dropdown, tools modal, localStorage-persisted thread. Superseded by the Workshop tab above; kept for reference (loads `pm-fulltab.css` + `pm-direction-b.*` + `pm-frames-fulltab.js`). | Reference / superseded |
 | `Prose Minion - Design Refresh.html` | The presentation canvas: Frame Minion design language applied to the sidebar chrome + all four tabs, the Writing Tools picker modal, and static comps of all three full-tab Assistant directions (A thread / B split / C branch board). | Reference / catalog |
 | `Prose Minion - Model Browser.html` | Sidebar-width model picker that replaces the model dropdown: search, By Provider / By Family pivots, filter chips, price + ctx badges, selected/offline states. | Designed, not implemented |
 | `Prose Minion - Intake Widgets.html` | **Interactive prototype** of the Sprint 12 excerpt & context intake: excerpt card (two-button empty state, verified paste provenance, locked-state `Update text…` / `Re-read from file`), context attachment pills + aggregate budget meter, and the category-grouped Context Selector modal with explore escape hatch. Self-contained (no `pm-*` support files). | **Approved — Sprint 12 source of truth** |
@@ -50,10 +52,67 @@ styles, scripts, and assets — no build step.
 - `pm-direction-b.js` — the interactive prototype logic for the Assistant Tab:
   per-tool analysis/action/variation content (`ASSIST`), streaming simulation,
   quick-action routing, tools modal, model menu, toasts, localStorage session.
+
+**Workshop editor tab (Sprint 10):**
+
+- `pm-workshop.css` / `pm-workshop.js` — **the Workshop tab** (`wk-` prefix,
+  `window.PMW`): app shell, header host/persona + model cluster, excerpt /
+  context-budget / tools / to-do rail, empty + restored-transcript center,
+  composer, toasts, and the host-picker / conversation-settings /
+  choose-from-project modals. Uses `pm-mock.css` tokens + the `pm-widgets.js`
+  modal shell.
+- `pm-sessions.css` / `pm-sessions.js` — **session persistence** UI
+  (`window.PMSessions`): the Sessions dropdown (New / Save / Open prior /
+  Recent), the **Save session** dialog (editable title, path preview, and
+  "included in this snapshot" manifest), and the **session browser** (search that greps
+  content, group by Date/Excerpt, per-row rename/duplicate/reveal/delete, and
+  the "memory not retained on restore" honesty note). Needs `pm-widgets.js` +
+  `pm-workshop.js`.
+- `pm-wk-modals.css` — shared Workshop modal chrome: sheet head,
+  conversation-settings segmented cards + toggles, host-picker grid,
+  choose-from-project file browser.
+- `pm-widgets.css` / `pm-widgets.js` — the **shared modal shell**
+  (`cwOpen`/`cwClose`/`cwXBtn` overlay) + the Conversation Widgets browser and
+  Gesture Playground. Load-bearing for both the Workshop session modals and the
+  next-epic widget spreads (see "Not pulled yet").
 - `assets/` — logo images. **Copied from
   [`apps/vscode-extension/assets/`](../../apps/vscode-extension/assets/)**
   (same files the extension ships) rather than pulled from the design project,
   to avoid duplicating binaries through the API.
+
+### Persistence reconciliation (2026-07-23)
+
+The synced prototype records the design state faithfully, including its
+“room memory not retained” restored divider and slug-only filename examples.
+Those two strings are **not** the implementation contract. Product planning now
+requires normal restore to continue retained persona conversations (T3), with
+the transcript-only treatment reserved for corrupt/incompatible-history
+recovery. Named files retain a collision-safe timestamped storage identity
+while the design's editable session name is stored as title metadata.
+
+The Save dialog, included-items manifest, Sessions menu, search, Date/Excerpt
+grouping, and rename/duplicate/reveal/delete browser actions are approved
+interaction scope. See the amended
+[session persistence ADR](../adr/2026-07-14-workshop-session-persistence.md)
+and [Sprint 10](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md)
+for behavioral truth. Do not hand-edit the synced prototype to erase this
+historical delta; update the remote design and re-pull when its copy catches up.
+
+## Present on remote, not pulled yet (next epic)
+
+The design project also holds the **Conversation Widgets** epic spreads — the
+epic that follows Workshop Editor Tab. They share only `pm-widgets.*` (already
+pulled above) and are deliberately left out of this snapshot until that epic
+starts. Re-pull with `DesignSync get_file` when it does:
+
+- `Prose Minion - Conversation Widgets.html` — Spread 01: the widget lifecycle
+  (play → commit → chip → clone-and-recommit), Gesture Playground live.
+- `Prose Minion - Lexical Gravity.html` + `pm-gravity.css` / `pm-gravity.js` —
+  Spread 02: the standing prose-directive rail.
+- `Prose Minion - Prose Controller.html` + `pm-controller.css` /
+  `pm-controller.js` — Spread 03: the seven-chapter craft control surface.
+- `Canvas.dc.html` + `support.js` — Claude Design's canvas-runtime scratch
+  frame, not a standalone prototype.
 
 ## Not pulled
 
@@ -73,7 +132,7 @@ Re-pull them with `DesignSync get_file` if ever needed.
 ## Viewing
 
 ```bash
-open "docs/design/Prose Minion - Assistant Tab.html"      # interactive prototype
+open "docs/design/Prose Minion - Assistant Tab.html"      # Workshop editor tab + session persistence
 open "docs/design/Prose Minion - Design Refresh.html"     # full design catalog
 open "docs/design/Prose Minion - Model Browser.html"      # model picker
 ```

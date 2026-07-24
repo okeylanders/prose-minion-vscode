@@ -77,25 +77,33 @@ These are the walls. Everything else is decoration that can move.
      `replaceWorkshopConversationBehavior`. Pre-commit tweaking is free; only the
      commit pays.
 
-5. **Config, not just output, is persisted by stable id in `WorkshopSessionService`.**
-   The chip re-hydrates the authoring UI, not a dead summary. Extends the
-   thread-artifact "addressable by stable id" pattern from one-shot payload to
-   re-openable payload-with-authoring-state.
+5. **Config, not just output, is session-owned and persisted by stable id.**
+   The chip re-hydrates the exact authoring UI, not a dead summary. VS Code
+   Settings may remember last-used values only to seed a *new* widget instance;
+   opening a session restores its committed configs and standing directives
+   without mutating those defaults.
 
-6. **New reserved frames register with the neutralizer.** Any widget frame must be
+6. **Occurrence, artifact, and authoring identity stay separate.** `turnId`
+   identifies the visible event, `artifactId` identifies what entered retained
+   history, and `widgetConfigId` identifies re-openable authoring state.
+   Clone-and-recommit mints all new identities (optionally linked by
+   `clonedFromConfigId`); standing edit-in-place retains its config/directive id
+   and increments a revision.
+
+7. **New reserved frames register with the neutralizer.** Any widget frame must be
    neutralized by `neutralizeReservedPersonaPromptDelimiters`
    (`utils/workshopPromptFrames.ts`) so a persona quoting a user's widget output
    cannot spoof/re-inject a frame. Ships in the same change as the frame, never
    after.
 
-7. **Deterministic scaffold vs. model call is an explicit seam inside each widget.**
+8. **Deterministic scaffold vs. model call is an explicit seam inside each widget.**
    POS tables, gradient buckets, sliders, punctuation counts — deterministic.
    Only semantic word-selection and phrase rewrites hit the model. Live iteration
    uses a fast/cheap model; the committed "full workup" may use a better one. The
    exploration UI is scaffolding thrown away at commit; what rides the rail is a
    compact, instruction-shaped directive — never the whole cloud.
 
-8. **Core stays host-agnostic.** The widget host, the registry, and every
+9. **Core stays host-agnostic.** The widget host, the registry, and every
    widget's logic live in `packages/core`. Only the composer's *mounting* touches
    `apps/vscode-extension`. No `vscode` import crosses into core.
 
@@ -183,8 +191,12 @@ with deeper, teachable style levers rather than a thin bank of sliders.
 - **Session state lives host-side** in `WorkshopSessionService`, never in the
   webview.
 - **Persistence remains complete and typed.** Widget state participates in
-  Sprint 10's serialize/hydrate contract and named-session browser restore;
-  provider `ConversationManager` history is never its only durable home.
+  Sprint 10's product-snapshot plus conversation-archive restore. Provider
+  history persists too, but it is never the only durable home for canonical
+  widget configuration or standing-directive state.
+- **Settings are defaults, sessions are historical truth.** Last-used values
+  may seed a new instance; an opened session restores its exact committed
+  configs without changing global Settings.
 - **`packages/core` never imports `vscode`.**
 - **Behavior changes only between runs.** Standing-widget commits inherit the
   active-run guard and serialization discipline already coordinated by

@@ -143,11 +143,15 @@ The app never stores arbitrary router metadata, messages, or manuscript text as
 telemetry. Sprint 11B observes compression; it does not enable, disable, or
 replace it.
 
-### 6. Persistence does not resurrect live context
+### 6. Persistence restores history, not a live measurement
 
-Context snapshots are ephemeral conversation state. Sprint 10 persists neither
-conversation ids nor context-budget readings. A restored T2 session starts at
-`Not measured yet` until its fresh Workshop conversation completes a request.
+The 2026-07-23 persistence amendment restores retained message histories under
+logical participant keys and remaps them to fresh runtime conversation ids.
+The last context-budget reading may be retained as historical diagnostics, but
+it is never presented as a current measurement after hydrate: the leading
+system prompt is rebuilt and provider/model conditions may have changed. A
+restored conversation displays `Not measured after restore` until its next
+successful provider response commits a fresh reading.
 
 ## Consequences
 

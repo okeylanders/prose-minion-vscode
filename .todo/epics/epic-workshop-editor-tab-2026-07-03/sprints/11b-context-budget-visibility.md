@@ -169,8 +169,10 @@ Compression          Not applied
 - Cancellation and transport failure preserve the prior committed reading.
 - A model change leaves the old measured model attached until a new turn
   commits.
-- Sprint 10 restored T2 sessions begin `Not measured yet`; archived transcript
-  history is not live provider memory.
+- Sprint 10 restores retained histories, but the prior reading is not claimed as
+  live after hydrate because the leading system prompt and provider conditions
+  may have changed. Show `Not measured after restore` until the next successful
+  request commits a fresh reading.
 
 ## Tasks
 
