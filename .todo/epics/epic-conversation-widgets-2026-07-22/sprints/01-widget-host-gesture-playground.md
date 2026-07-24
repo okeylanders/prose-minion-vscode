@@ -63,17 +63,23 @@ persona "here are the gesture directions I want *here*."
 - **Commit** stages a one-shot thread-artifact: a compact directive ("gesture
   directions I want for '<phrase>': …selected items…") plus a visible composer
   message. It rides exactly one turn, then becomes ordinary history.
-- **Every commit persists its full `Draft` by stable id in
+- **Every commit persists its full `Draft` under a `widgetConfigId` in
   `WorkshopSessionService`** so the chip re-hydrates the authoring UI. The
-  typed config collection joins Sprint 10's complete session serializer and
-  shared ordered autosave-dirty seam; named-session and restart restore preserve
-  the id and exact draft.
+  typed config collection joins Sprint 10's complete product snapshot and
+  shared ordered autosave seam; named-session and restart restore preserve the
+  exact historical draft. Any Settings-backed last-used values seed only brand
+  new instances.
+- **Three identities, three jobs:** `turnId` is the visible transcript event,
+  `artifactId` is the trusted one-shot history occurrence, and
+  `widgetConfigId` is its re-openable authoring state.
 - **The thread chip is presentation-only.** Webview renders a clickable marker
   over the committed turn; the model never sees the chip. Clicking re-opens
   Gesture Playground seeded from the persisted `Draft`.
 - **Re-launch = clone-and-recommit.** Editing the past artifact in place is out
   of scope and, for one-shot artifacts, incorrect. The old chip persists as a
-  historical marker; re-launch seeds a fresh commit at the head.
+  historical marker; re-launch copies its exact Draft into a new
+  `widgetConfigId`, mints a new artifact and turn, and may record
+  `clonedFromConfigId`.
 - **Persona protocol (minimum viable):** support *recommend* (a soft chip in a
   persona message that opens the widget) and *prefill* (persona-supplied `seed`).
   *launch* falls out of *recommend*. *auto-commit* is out of scope this sprint.
@@ -101,7 +107,9 @@ persona "here are the gesture directions I want *here*."
 8. Frame neutralization coverage for any new reserved delimiter introduced.
 9. Tests: host registry + commit contract; thread-artifact payload shape;
    live and named-session persistence round-trip; chip re-hydration seeds the
-   exact Draft with the same stable id; neutralization guard.
+   exact Draft while clone-and-recommit mints new config/artifact/turn ids and
+   preserves lineage; Settings defaults never overwrite restored config;
+   neutralization guard.
 
 ## Out of Scope
 

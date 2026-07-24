@@ -1,6 +1,6 @@
 # Feature: Workshop Session Persistence (Survive VS Code Restart)
 
-**Status**: ADR drafted ([2026-07-14 — Workshop Session Persistence and the Session Browser](../../../docs/adr/2026-07-14-workshop-session-persistence.md));
+**Status**: ADR accepted and amended 2026-07-23 ([2026-07-14 — Workshop Session Persistence and the Session Browser](../../../docs/adr/2026-07-14-workshop-session-persistence.md));
 scheduled as [Sprint 10](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md),
 but intentionally executed last after Sprints 11 and 12 plus Relational Depth
 and Writer Profile. Sprint numbers and branch names remain unchanged; current
@@ -9,7 +9,9 @@ The ADR supersedes this README's storage direction: **JSON files under
 `prose-minion/sessions/` via the existing `FileSystem` port** (plus a small
 `delete()` port extension), not a `workspaceState` Memento/`KeyValueStore`
 port — the session-browser requirement made file storage the better fit.
-Ship shape = T2 + explicit save + browser. The first persisted snapshot is
+Ship shape = **T3 seamless conversation restore + explicit save + the approved
+browser**, with T2 retained only as a visible per-conversation recovery
+fallback. The first persisted snapshot is
 defined only after the Workshop session shape stabilizes and includes the
 **todo list**, **guest participant identities/turns**, Sprint 11 capability
 artifacts, and Sprint 12's `excerptSource` + typed context attachments. The
@@ -26,13 +28,15 @@ Code restarts?" — investigation on `sprint/workshop-editor-tab-07-persona-capa
 (the "UI shows continuity the model no longer has" hazard is the *same* seam,
 here across a restart instead of an excerpt swap)
 
-The accepted implementation also treats `current.json` as the rolling working
+The accepted implementation treats `current.json` as the rolling working
 session: reopening Workshop restores it without requiring an explicit Save.
-Future Conversation Widgets extend the complete snapshot through typed optional
-aggregate fields and the shared ordered autosave-dirty seam; no untyped
-extension bag is reserved. Historical behavior stamps survive, while the
-current Writer Profile and derived Carry Cues state remain outside workspace
-session files.
+It coordinates a complete product snapshot with typed retained
+`ConversationManager` histories keyed by logical participant, then mints fresh
+runtime conversation ids on hydrate. Leading system messages are rebuilt from
+current persona resources, current global behavior/profile settings, and
+session-owned standing directives. Future Conversation Widgets extend the
+complete snapshot through typed aggregate fields and the shared ordered
+autosave seam; no untyped extension bag is reserved.
 
 ## Investigation Findings (2026-07-13)
 
@@ -106,13 +110,13 @@ model). The writer keeps the record; the persona still starts fresh. Requires a
 **complete** serialization (see "Windowed-snapshot trap" below), not the webview
 projection.
 
-### T3 — True cross-restart conversational continuity (deferred)
-Persist and rehydrate the `ConversationManager` histories too, so the persona
-actually remembers. Biggest cost (full message histories on disk, re-warm on
-load, a parallel serializer + port for ConversationManager) and an open product
-question: do writers *want* multi-day retained rooms, or is a fresh start with
-the transcript visible (T2) the better default? Gate behind that decision; T2 is
-the honest interim and the upgrade path is clean.
+### T3 — True cross-restart conversational continuity (selected 2026-07-23)
+Persist and rehydrate typed `ConversationManager` histories so the persona
+actually remembers. Runtime conversation ids remain ephemeral: histories are
+stored under logical participant keys, imported into fresh manager entries, and
+remapped into the product aggregate. The leading system message is reconstructed
+from current prompt/settings policy rather than replayed. T2 remains the honest
+fallback when an individual archived history cannot be validated.
 
 ## Historical Architecture Sketch (superseded by the ADR)
 
@@ -149,9 +153,10 @@ without it (rehydrate on the next manual open); it's a UX nicety, not a blocker.
   complete** serializer — reusing `getSnapshot()` would silently reset
   `turnCounter` (→ id collisions), `excerptVersion`, and delivery cursors on
   hydrate.
-- **Never persist a dangling conversation id in T1/T2.** Strip host + sidecar
-  `conversationId`s on the way out (or on hydrate) unless T3 also restores the
-  matching histories. This is the single correctness landmine.
+- **Never persist a dangling conversation id.** Durable archives use logical
+  participant keys. Hydrate imports validated histories, receives fresh runtime
+  ids, and reconnects the product aggregate atomically. An invalid archive
+  degrades that participant to T2 rather than retaining an unresolvable id.
 - **Scope = workspace, not global.** Excerpt is tied to a manuscript in the open
   workspace; `workspaceState` keys the blob per-workspace automatically.
 - **Schema-versioned + discard-on-mismatch.** Stamp a `schemaVersion`; on shape
@@ -196,14 +201,14 @@ without it (rehydrate on the next manual open); it's a UX nicety, not a blocker.
       session reports `hasHostConversation() === false` in T1/T2 (persona
       selection re-unlocks).
 
-## Open Questions
+## Resolved Questions
 
-- **T3 desirability.** Is a persona that remembers across days actually wanted,
-  or does it invite stale, confusing rooms? T2 (visible transcript, fresh
-  memory) may be the *correct* end state, not just the interim.
-- **Panel auto-reopen.** Register a `WebviewPanelSerializer` (VS Code reopens
-  the tab) or keep manual reopen? Serializer is required if we ever want the
-  window to come back exactly as left.
+- **T3 desirability:** yes. The Workshop restores the conversation and
+  workspace, not merely a readable transcript. Time-awareness frames make
+  multi-day continuity explicit without inviting the persona to invent what
+  happened during the gap.
+- **Panel auto-reopen:** register `WebviewPanelSerializer`; it owns no state and
+  reuses `current.json`.
 - **Multiple manuscripts / branch-board interplay.** If
   [feature-workshop-branch-board](../feature-workshop-branch-board/README.md)
   lands, "one session per workspace" may need to become "one per branch/excerpt

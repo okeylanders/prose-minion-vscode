@@ -1,236 +1,274 @@
 # ADR 2026-07-14: Workshop Session Persistence and the Session Browser
 
-**Status:** Accepted — implementation scheduled last in the Workshop epic after
-Relational Depth and Writer Profile stabilize the behavior and prompt boundary
+**Status:** Accepted; amended 2026-07-23 to make true cross-restart
+conversation continuity (T3) the normal restore path and to reconcile the
+approved Workshop design
 **Date:** 2026-07-14
+**Amended:** 2026-07-23
 **Extends:** [ADR 2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](2026-07-09-workshop-persona-hosted-conversations.md); [ADR 2026-07-11 — Workshop Excerpt Revision and Room Memory](2026-07-11-workshop-excerpt-revision-and-room-memory.md); [ADR 2026-07-20 — Workshop Persona Interaction Modes and Expression Profiles](2026-07-20-workshop-persona-interaction-modes-and-expression-profiles.md)
 **Epic:** [Assistant as a Full Editor Tab](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md)
 **Feature investigation:** [.todo/features/feature-workshop-session-persistence](../../.todo/features/feature-workshop-session-persistence/README.md)
+**Approved interaction design:** [Workshop editor tab](../design/Prose%20Minion%20-%20Assistant%20Tab.html)
 
 ## Context
 
-The Workshop session is one in-memory aggregate (`WorkshopSessionService`) plus
-provider conversation histories in `ConversationManager`'s in-memory `Map`.
-Reload/reopen inside one VS Code window survives via host-side rehydration;
-a process restart loses everything: the excerpt, writer-supplied context, the
-transcript, the Sprint 08 todo list, and every retained conversation.
+The Workshop is one product session assembled from two in-memory owners:
 
-The feature investigation (2026-07-13) established the two facts that shape
-this decision:
+- `WorkshopSessionService` owns the writer-visible aggregate: excerpt, context
+  attachments, participants, transcript turns, todos, artifact/configuration
+  records, counters, and delivery state.
+- `ConversationManager` owns the retained host and guest message histories that
+  make a later turn genuinely continue the earlier conversation.
 
-1. **The webview snapshot is a lossy projection.** `getSnapshot()` windows to
-   the newest 100 turns and omits conversation ids, delivery cursors,
-   `turnCounter`, and `excerptVersion`. Persisting it would silently reset
-   counters and collide turn ids on hydrate. Persistence needs a **separate,
-   complete serializer**.
-2. **Provider conversations cannot be restored from the session.**
-   `ConversationManager.continueConversation` throws
-   `ConversationNotFoundError` on an unknown id. A rehydrated session holding
-   yesterday's `conversationId`s would throw on the first post-restart turn.
-   Conversational *memory* lives in a sibling in-memory Map that dies with the
-   process.
+A webview reload survives while the extension host remains alive. A process
+restart destroys both owners. Persisting only the webview projection would be
+incorrect: `getSnapshot()` windows the transcript and omits counters, cursors,
+pending delivery state, and retained histories.
 
-The product ask is larger than "survive a restart": an explicit **Save
-session**, a **session browser** that lists prior sessions and reopens them,
-and restoration of the full room record — thread, tool reports, guest
-exchanges, todos — not just the writer's inputs.
+The original 2026-07-14 decision chose tier T2: restore the visible record but
+start every persona with fresh memory. Product clarification on 2026-07-23
+rejected that as the normal experience. The Workshop is a room the writer
+returns to, not a transcript viewer. Reopening it must restore the conversation
+and workspace as one coherent session.
 
-The investigation proposed a `workspaceState` Memento behind a new
-`KeyValueStore` platform port. That shape fits a single autosave blob but
-fights the browser: Mementos have no natural enumeration story, are invisible
-to the writer, and multiple saved sessions × 10k-word excerpts is exactly the
-payload Mementos are not meant for.
-
-The sprint number remains Sprint 10, but implementation intentionally follows
-Sprints 11 and 12 plus the accepted Relational Depth and Writer Profile work.
-File-access capabilities add artifact-turn variants, the intake rework replaces
-the single brief with typed context attachments, and Relational Depth replaces
-the former binary reactivity field with the `relationalDepth` value now stamped
-onto persona turns. Building the persistence
-boundary last lets its first schema describe the completed aggregate instead of
-requiring an immediate migration.
+The approved design also adds editable session titles and a richer browser:
+search, grouping, rename, duplicate, reveal, and delete. Its “room memory not
+retained” copy and slug-only filename examples reflect the superseded T2
+contract. The design remains authoritative for layout and interaction; this ADR
+is authoritative for persistence semantics and storage identity.
 
 ## Decision
 
-### 1. Sessions persist as JSON files in the workspace, through the existing `FileSystem` port
+### 1. Sessions are schema-versioned workspace JSON files
 
-Sessions are written to **`prose-minion/sessions/`** in the workspace root as
-schema-versioned JSON, via the existing `FileSystem` platform port
-(`readFile`/`writeFile`/`readDirectory`/`stat`/`createDirectory` — writeFile
-already auto-creates parents). This follows the `prose-minion/reports/`
-precedent and buys, for free:
+Sessions live under **`prose-minion/sessions/`** through the existing
+host-agnostic `FileSystem` and `Workspace` ports. `FileSystem` gains the narrow
+operations required by the approved browser (`delete` and `reveal`; reveal may
+remain an adapter command rather than a core filesystem primitive if the final
+message boundary is cleaner).
 
-- **The browser is `readDirectory`.** No blob-enumeration protocol invented on
-  a key-value port.
-- **Writer visibility and ownership.** Sessions are ordinary files: inspectable,
-  deletable, committable or `.gitignore`-able at the writer's choice.
-- **Portability.** The desktop-shell host implements `FileSystem` anyway; no
-  VS Code-specific storage dependency
-  ([feature-desktop-shell-adapter](../../.todo/features/feature-desktop-shell-adapter/README.md)).
-- **No new platform port.** One small extension to `FileSystem` — a
-  `delete(path)` method mirroring `vscode.workspace.fs.delete` — supports the
-  browser's delete action. That is the entire platform surface change.
+The store owns two kinds of files:
 
-File naming: `YYYYMMDD-HHMM-<slug>.json` (memory-bank convention). The slug
-derives deterministically from the excerpt's first heading or opening words.
-The live autosave writes to a fixed name (`current.json`) so restart recovery
-never depends on the writer having pressed Save. Opening a named session
-immediately makes the hydrated state the new `current.json`; it is protected
-before the writer performs another mutation.
+- `current.json` is the ordered rolling checkpoint used for crash/restart
+  recovery.
+- Named checkpoints use
+  `YYYYMMDD-HHMMSS-<initial-title-slug>.json`.
 
-**Privacy note:** manuscript text at rest in the workspace — the same posture
-as the manuscript files themselves. Never global storage; nothing leaves the
-workspace folder.
+Every snapshot has an immutable `sessionId`, editable `title`, `startedAt`,
+`createdAt`, `updatedAt`, `savedAt`, and original IANA timezone. Changing a
+title updates metadata; it does not change `sessionId` or the filename.
+Duplicate creates a new session/checkpoint identity. This deliberately differs
+from the prototype’s slug-only path preview: titles are human labels, not
+storage keys.
 
-### 2. One serializer, two triggers: autosave and explicit save
+Files remain writer-owned, inspectable, committable, or `.gitignore`-able.
+Manuscript and conversation text therefore exist at rest in the workspace; they
+never move to global storage.
 
-`WorkshopSessionService` gains `serialize(): WorkshopSessionSnapshotV1` and
-`static hydrate(snapshot, now)`. This snapshot is **complete** — the full turn
-list (no 100-turn window), the todo list, excerpt text + `sourceUri` +
-`excerptSource` + `excerptVersion` + `replacementCount` + `turnCounter`, the
-ordered context attachments, all turn variants (including capability artifacts
-and context event turns), per-turn Conversation Behavior stamps and transition
-provenance, and participant *identities* (host persona id, tool sidecar ids,
-guest persona ids). It is a distinct type from the webview projection and must
-never be built from `getSnapshot()`.
+### 2. Persistence is a coordinated two-part snapshot
 
-- **Autosave** marks `current.json` dirty on every mutation seam —
-  `setExcerpt`/`replaceExcerpt`, context attachment add/update/remove, turn
-  completion, todo mutations, guest lifecycle — through one application-owned,
-  ordered autosave coordinator. It coalesces writes without letting an older
-  write win a race. `reset()` checkpoints the fresh-room state with the working
-  excerpt and standing context but without the old transcript, so stale room
-  memory cannot resurrect on next launch. Future widget mutation coordinators
-  use this same dirty seam.
-- **Save session** copies the current serialized state to a timestamped file
-  and reports the saved name as a deterministic status line. Saved files are
-  immutable records; continuing to work mutates only `current.json`.
+One persisted session contains two typed sections committed from one
+application-owned save boundary:
 
-A new infrastructure service, `WorkshopSessionStore` (core, consuming
-`FileSystem` + `Workspace`), owns pathing, naming, schema stamping, listing,
-and tolerant reads. It is constructed in `extension.ts`, added to
-`CoreServices`, and injected into `WorkshopHandler` — nothing is `new`-ed in
-the handler (ADR 2026-06-18).
+1. **Product aggregate.** A complete `WorkshopSessionSnapshotV1`, distinct from
+   `getSnapshot()`, includes the full turn ledger; excerpt provenance and every
+   monotonic counter; ordered context attachments; todos; participants;
+   delivery cursors and pending committed updates; widget configuration and
+   standing-directive collections when present; and historical behavior stamps
+   and transition provenance.
+2. **Conversation archive.** A typed `ConversationArchiveV1` contains each
+   continuable persona history, keyed by a stable logical participant key such
+   as `host`, `guest:<participantId>`, rather than by an ephemeral runtime
+   conversation id. It includes the committed non-system messages, context
+   sources, artifact counter, last activity, and other state required for the
+   next successful continuation.
 
-### 2A. Explicit behavior and personal-context boundary
+`ConversationManager` gains narrow typed export/import operations. Import mints
+fresh runtime conversation ids and returns the logical-key-to-runtime-id map;
+the session hydrator reconnects participants and validates all cursors against
+the imported histories. No restored participant may retain an id that the
+manager cannot resolve.
 
-The complete turn list preserves every persona-directed turn's effective
-Conversation Behavior and behavior-transition provenance. That is historical
-truth and includes the final `relationalDepth` shape accepted by the 2026-07-20
-ADR amendment.
+Only successfully committed conversation transactions are serializable.
+In-flight runs, partial streams, uncommitted widget drafts, and half-applied
+configuration changes are not durable state. Autosave occurs after the product
+aggregate and retained history have both reached the same successful commit.
 
-The session does not own the current global preference. Hydration receives the
-currently validated `WorkshopConversationBehavior` from the application
-boundary; opening an old named session never rewrites VS Code Settings. Older
-turns retain their historical stamps while the first fresh conversation uses
-the writer's current settings.
+### 3. Leading system prompts are rebuilt, not replayed
 
-Derived Carry Cues/session-attunement state is fresh-room memory and is not
-serialized. The Writer Profile is likewise global writer-owned settings data,
-not workspace session data. Raw preferred-address and bio strings never enter a
-session file. Fresh host/guest conversations assemble the currently enabled
-profile after restore.
+The leading system message is intentionally excluded from the conversation
+archive. It can contain old persona resources, global Writer Profile content,
+global Conversation Behavior, and standing directive renderings. Replaying it
+would silently freeze settings and prompt versions from the day a session was
+saved.
 
-### 3. Restored sessions are honest: full record, fresh memory (tier T2)
+On hydrate, the application rebuilds each leading system message from:
 
-Opening a session — via restart recovery or the browser — restores:
+- the current persona resources and expression profile;
+- the current validated global Conversation Behavior;
+- the currently enabled global Writer Profile;
+- the session-owned active standing directives, rendered from normalized
+  persisted payloads; and
+- the restored session/excerpt/context framing required by the current prompt
+  contract.
 
-- the excerpt (live, editable, version counters intact),
-- the context attachments (live),
-- the todo list (live — todos are writer-owned data, not model memory),
-- the **entire transcript as read-only history**, capped with the existing
-  divider-turn mechanism: *"Previous session restored — transcript preserved,
-  room memory not retained."*
+Historical turns keep their saved effective-behavior stamps. Opening a session
+never writes session values into global VS Code Settings and never serializes
+raw Writer Profile fields. Derived Carry Cues/attunement are not persisted;
+they are rebuilt only through future successful conversation.
 
-**Every provider conversation id is stripped at serialization.** Delivery
-cursors and pending host updates — which only have meaning relative to live
-provider conversations — are dropped with them. On hydrate,
-`hasHostConversation()` is false, persona selection re-unlocks, tool sidecars
-and guests appear only as their transcript record. The first post-restore
-turn starts a fresh conversation seeded by the normal join machinery. No
-restored session can ever throw `ConversationNotFoundError` — this is the
-single correctness invariant of the design, enforced by type (the snapshot
-schema has no field for conversation ids) rather than by discipline.
+### 4. T3 is normal; T2 is an explicit recovery fallback
 
-**Tier T3 (true cross-restart conversational memory) is explicitly deferred**,
-unchanged from the investigation: it requires persisting `ConversationManager`
-histories and answering the open product question of whether multi-day
-retained rooms are even desirable. T2 is the honest interim and the schema
-leaves room for it (a future `schemaVersion` bump).
+Opening `current.json` or a named session normally restores:
 
-### 4. Schema-versioned, tolerant-forward
+- the exact editable excerpt and context workspace;
+- todos, participants, artifacts, widget configs, and active standing
+  directives;
+- the full visible transcript; and
+- continuable host and guest conversations remapped to live runtime ids.
 
-Every file carries `schemaVersion`. Unknown or malformed files are skipped by
-the browser listing and ignored by restart recovery — surfaced as a log line,
-never a crash. `WorkshopSessionSnapshotV1` is implemented only after Sprint 12
-establishes the attachment-based session shape, so there is no pre-attachment
-v1 and no v1 → v2 migration. For future *named saves* (writer-created records),
-prefer additive fields and cheap tolerant reads over discard when the cost is
-small; the autosave blob may still reset on a breaking alpha schema change.
+Tool sidecars remain bounded/stateless according to their own ADRs; their
+visible reports and canonical structured artifacts still round-trip.
 
-Future session-owned state, including Conversation Widget authoring configs and
-standing directives, extends the snapshot through explicit typed optional
-fields with deterministic empty defaults. V1 does not reserve a generic
-`Record<string, unknown>` extension bag or guess widget payloads before their
-ADR. Stable turn/artifact/config ids survive round-trip unchanged, browser
-summary extraction ignores additive payloads, and provider conversation history
-can never be the sole durable source for a widget artifact under T2.
+If one or more conversation archives are malformed, incompatible, or cannot be
+validated, the store must not brick the rest of the writer’s session. It
+restores the product aggregate in **degraded T2 mode**, visibly marks the
+affected persona histories as non-continuable, and starts fresh histories for
+later turns. It logs structured diagnostics without exposing prompt contents.
+T2 is recovery behavior, not the default product promise.
 
-### 5. The session browser reuses the modal shell; the panel comes back on restart
+### 5. Time passage is trusted session context
 
-The browser lists `prose-minion/sessions/*.json` newest-first (title, saved
-date, persona, turn count, excerpt word count) with open and delete actions,
-built on the shared browser-modal shell extracted by Sprint 12 (which resolves
-tech-debt 2026-07-10-workshop-browser-modal-shell). Opening a session replaces
-the current one behind the same confirmation used by "New session".
+Sessions persist temporal state rather than asking the model to infer it:
 
-A `WebviewPanelSerializer` is registered for the Workshop panel (resolving
-tech-debt 2026-07-07): after a restart VS Code reopens the tab, and the
-provider rehydrates from `current.json` through the standard
-`WORKSHOP_REQUEST_SESSION` path. The serializer stores no state of its own —
-the JSON file is the single source of truth.
+- `startedAt` and the session’s original timezone;
+- `lastActivityAt`; and
+- the last successfully delivered time-notice timestamp per persona
+  conversation.
+
+The transcript receives a visible session-start marker. Reopening a persisted
+session adds a visible resume marker with the current local date/time and
+elapsed interval. A panel/webview reload in the same live extension-host
+session does not create a false resume event.
+
+The application queues a deterministic trusted time frame for the next
+persona-directed turn:
+
+- on the first persona turn in the session;
+- after a persisted session is resumed; and
+- whenever at least one hour has elapsed since that persona conversation last
+  received a successful time notice.
+
+The frame states session start, current time, elapsed duration, timezone, and
+reason. It explicitly forbids inferring what the writer did, thought, or felt
+during the gap. It is prepended by deterministic orchestration, not stored as a
+user-authored message and not produced by a background model call. Failed or
+cancelled turns do not advance the delivered timestamp, so the notice retries
+on the next attempt.
+
+### 6. Autosave and explicit save share one ordered coordinator
+
+`WorkshopSessionStore` owns paths, schema stamping, atomic/tolerant reads,
+summary extraction, and file operations. It is constructed in `extension.ts`
+and injected through `CoreServices`.
+
+One application-owned autosave coordinator marks `current.json` dirty after
+every successful mutation seam and serializes writes so an older write cannot
+win. It snapshots the aggregate and conversation archive as one logical
+revision. Future widget coordinators use the same seam and autosave only after
+their complete transaction: configuration, visible marker, system-message
+replacement, and telemetry invalidation.
+
+Explicit Save creates a named checkpoint from that same coherent snapshot.
+Opening a named checkpoint immediately promotes its hydrated state to
+`current.json`. New Session replaces `current.json` with a fresh-room snapshot
+after confirmation; stale conversation histories cannot resurrect.
+
+### 7. The browser adopts the approved interaction set
+
+The shared modal shell presents:
+
+- editable title in Save;
+- newest-first recent sessions;
+- search across title, participant metadata, excerpt, and transcript content;
+- grouping by date or excerpt identity;
+- open, rename-title, duplicate, reveal-file, and delete actions; and
+- clear distinction between the rolling current session and named checkpoints.
+
+Excerpt grouping uses persisted source identity when available and a stable
+excerpt fingerprint otherwise; the editable title is not the grouping key.
+Opening or deleting/replacing the current session confirms when unsaved
+committed changes would be displaced.
+
+Browser summaries are tolerant and independent of full hydration. Malformed or
+unknown-version files are skipped with diagnostics, never allowed to crash the
+browser.
+
+### 8. Widget configuration is session truth; Settings are defaults
+
+Conversation Widget values may also be stored in VS Code Settings as convenient
+last-used defaults. The ownership rule is:
+
+- Settings seed **new** widget instances.
+- The session snapshot owns the exact configuration of every committed
+  one-shot artifact and active standing directive.
+- Opening a session restores its saved configurations without mutating global
+  Settings.
+
+The persisted graph distinguishes `turnId`, `artifactId`, and
+`widgetConfigId`. Clone-and-recommit mints new identities and may record
+`clonedFromConfigId`; editing a standing directive preserves its config/directive
+identity and increments a revision. Both the session’s thread-artifact counter
+and each conversation archive’s artifact counter survive round-trip.
+
+No generic `Record<string, unknown>` extension bag is reserved. Widget
+collections are explicit typed optional fields with deterministic empty
+defaults. Conversation history is never the only durable home of canonical
+widget data, even though that history now also persists.
+
+### 9. Panel restoration has no second state store
+
+A Workshop `WebviewPanelSerializer` allows VS Code to reopen the editor tab.
+The serializer stores no Workshop state; it rehydrates from `current.json`
+through the normal request path. Manual reopen uses the same path.
 
 ## Consequences
 
 **Gains**
 
-- A restart or crash no longer destroys writer work; re-pasting the manuscript
-  and rebuilding context attachments — the sharpest papercut — is gone.
-- Sessions become durable, inspectable writer artifacts with a browsing UI.
-- The rolling working session restores without an explicit Save action; named
-  saves remain deliberate immutable checkpoints.
-- Zero new platform ports; one method added to `FileSystem`.
-- The dangling-conversation-id hazard is structurally impossible, not merely
-  avoided.
+- Restart, crash, and named-session restore return the writer to the actual
+  conversation and workspace they left.
+- Current prompt/profile/directive policy remains current without falsifying
+  historical turns.
+- Session-owned artifacts and future widgets have one typed durable graph.
+- Rich browser actions operate on stable identities rather than filenames
+  pretending to be domain objects.
+- Corrupt conversation history degrades locally instead of destroying the
+  manuscript/session record.
 
-**Costs / risks**
+**Costs and risks**
 
-- Manuscript text at rest under `prose-minion/sessions/` — document it; the
-  writer controls the folder.
-- Write-through on every mutation seam is a new cross-cutting concern on an
-  aggregate already near its size threshold (see tech-debt
-  2026-07-12-workshop-session-capability-artifact-extraction) — dirty marking
-  belongs at successful application mutation boundaries and ordered I/O in the
-  autosave coordinator, never inside the aggregate.
-- Serialized turn lists are unbounded (tech-debt
-  2026-07-11-workshop-session-turn-retention); acceptable now, and the file
-  format gives a natural place to window later.
-- A restored room *looks* continuous but the persona remembers nothing — the
-  divider turn is the mitigation, and it must be impossible to miss.
+- The sprint now crosses two state owners and needs an atomic application
+  boundary; this is materially larger than the former T2 serializer.
+- Full message histories increase file size and place conversation content at
+  rest in the workspace.
+- Rebuilt system prompts may differ from those used earlier. That is deliberate
+  current-policy behavior and must be test-visible.
+- Transcript and archive retention are unbounded in v1; later compaction must
+  preserve structured artifacts and stable identities.
+- Rich content search should start with a simple bounded scan and remain
+  cancellable; do not build an index until workspace scale proves it necessary.
 
-**Explicitly unchanged**
+## Explicitly unchanged
 
-- The webview persists nothing (`WorkshopPersistence = Record<string, never>`);
-  host-side state remains the only truth.
-- Tool sidecars stay stateless instruments; guests stay bounded (ADR
-  2026-07-11); no persistence tier grants anyone new memory.
-- `ConversationManager` is untouched — no provider-history serialization in
-  this ADR.
-- Writer Profile and derived Carry Cues state remain outside the session
-  snapshot; restoring visible history does not restore hidden personal memory.
+- The webview persists nothing; host-side state remains authoritative.
+- `WorkshopSessionService` remains a pure aggregate with no I/O.
+- Core imports no `vscode`; the extension app remains the only composition
+  root.
+- Tool sidecars do not gain open-ended persona memory.
+- Global Conversation Behavior and Writer Profile remain settings-owned.
 
 ## Implementation
 
-Sprint 10 of the Workshop epic, intentionally executed after Sprints 11 and 12,
-Relational Depth, and Writer Profile:
-[.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md).
+[Sprint 10: Session Persistence, Save, and the Session Browser](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md),
+executed after the Workshop aggregate and prompt boundary stabilize.

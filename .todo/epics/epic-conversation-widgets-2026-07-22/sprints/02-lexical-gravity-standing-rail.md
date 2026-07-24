@@ -64,7 +64,13 @@ blending is Sprint 04.
   active Lexical Gravity directive on the passage. Clicking the chip edits the
   live directive; committing swaps the frame between runs and emits a "gravity
   shifted from X to Y" transition marker (mirroring
-  `<workshop-interaction-transition>`). Same cache cost class as a mode change.
+  `<workshop-interaction-transition>`). The directive/config id remains stable
+  and its revision increments. Same cache cost class as a mode change.
+- **The session owns the committed directive.** VS Code Settings may retain the
+  last-used Lexical Gravity values as defaults for a new directive, but opening
+  a session restores its exact normalized config without rewriting Settings.
+  Sprint 10 rebuilds the standing frame from that config; a serialized old
+  system message is never its source of truth.
 - **Pre-commit exploration is free.** The word cloud, gradient buckets, POS
   tables, before/after examples, weight slider, degrees-of-separation, and
   metaphor checkbox all live in the widget UI and touch no conversation state
@@ -100,14 +106,16 @@ blending is Sprint 04.
    control; metaphor-pull checkbox.
 4. **Live generation path** with debounce/recompute + caching, routed through
    core services on a fast model; final-workup generation option.
-5. **Commit path** onto the standing rail via the coordinator; persisted config
-   by stable id in `WorkshopSessionService`.
+5. **Commit path** onto the standing rail via the coordinator; normalized
+   session-owned config by stable id/revision in `WorkshopSessionService`,
+   distinct from any Settings-backed new-instance defaults.
 6. **Presentation-only chip** with **edit-in-place** re-launch + shift marker.
 7. **Active-directive indicator + one-click kill.**
 8. **Persona recommend/prefill** for Lexical Gravity (propose + seed).
 9. Tests: frame build + neutralization; coordinator serialization / active-run
    refusal / between-runs apply (mirroring the behavior-service tests);
-   edit-in-place shift marker; persistence round-trip; kill path; the
+   edit-in-place identity/revision + shift marker; T3 persistence and standing
+   frame reconstruction round-trip; Settings-default isolation; kill path; the
    deterministic scaffold functions (bucketing/gradient) in isolation.
 
 ## Out of Scope

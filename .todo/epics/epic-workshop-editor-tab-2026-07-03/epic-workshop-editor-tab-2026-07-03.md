@@ -57,7 +57,7 @@ Each sprint is independently shippable behind the (initially unregistered)
 | 7 | `sprint/workshop-editor-tab-07-persona-capabilities` | [Persona-callable capabilities](sprints/07-persona-capabilities.md) | Personas autonomously invoke bounded Writer's Dictionary and analysis capabilities through the proven typed host boundary. |
 | 8 | `sprint/workshop-editor-tab-08-actionable-tool-todos` | [Actionable tool To-do List](sprints/08-actionable-tool-todos.md) | Writers promote attributable tool findings into a durable task list the persona can see as bounded evidence. |
 | 9 | `sprint/workshop-editor-tab-09-persona-guest-sidecars` | [Guest persona sidecars](sprints/09-persona-guest-sidecars.md) | Writers summon a bounded second-opinion persona seeded with a labeled transcript snapshot and cursor-based catch-up. |
-| 10 | `sprint/workshop-editor-tab-10-session-persistence` | [Session persistence, save, and browser](sprints/10-session-persistence.md) | The final persistence pass: sessions survive VS Code restarts as workspace JSON records; a session browser reopens prior sessions with the full record and honestly fresh room memory. |
+| 10 | `sprint/workshop-editor-tab-10-session-persistence` | [Seamless session persistence, save, and browser](sprints/10-session-persistence.md) | The final persistence pass: sessions survive restarts as workspace JSON records; retained persona histories are remapped into live conversations, with transcript-only restore reserved for degraded recovery. |
 | 11 | `sprint/workshop-editor-tab-11-persona-file-access` | [Persona file access](sprints/11-persona-file-access.md) | The host persona searches and reads allowlisted project resources through the Sprint 07 capability boundary — after the markdown-sanitization gate lands as its opening task. |
 | 11B | `sprint/workshop-editor-tab-11b-context-budget-visibility` | [Context budget visibility and inference telemetry](sprints/11b-context-budget-visibility.md) | Workshop shows the current retained context separately from multi-call and cumulative processed usage; the gauge follows the active host, guest, or tool conversation. |
 | 12 | `sprint/workshop-editor-tab-12-context-excerpt-intake` | [Excerpt & context intake rework + polish](sprints/12-context-excerpt-intake-polish.md) | Intent-button intake replaces "pinning"; context becomes multiple visible attachments; the live session shape and shared browser shell stabilize before persistence. |
@@ -72,9 +72,10 @@ and restore-time personal-context boundary once instead of manufacturing an
 immediate schema migration.
 
 Sprint 10 also establishes the additive, typed persistence seams future
-Conversation Widgets need—stable ids, a shared ordered autosave-dirty seam, and
-browser summaries decoupled from full payload hydration—without guessing a
-generic widget blob before the widget ADR is accepted.
+Conversation Widgets need—stable turn/artifact/config ids, exact session-owned
+configs and standing directives, logical conversation-history remapping, a
+shared ordered autosave seam, and browser summaries decoupled from full payload
+hydration—without guessing a generic widget blob.
 
 The shared markdown-sanitization gate moves forward into Sprint 11's opening
 tasks (persona file access sharpens that risk — see Known Risks). Final step

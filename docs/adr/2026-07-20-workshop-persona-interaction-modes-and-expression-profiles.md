@@ -526,9 +526,10 @@ exposes the current object for the composer control and modal.
 
 Behavior-transition metadata is persisted with the next committed writer turn,
 not as a synthetic visible chat message. The retained message history and the
-extension-owned turn ledger keep their trusted frames; orchestration
-conversation ids remain ephemeral across persisted session restore even though
-an in-memory mode change preserves them.
+extension-owned turn ledger keep their trusted frames. Runtime orchestration
+conversation ids remain ephemeral across restore: Sprint 10 imports typed
+histories under logical participant keys, mints fresh ids, and rebuilds the
+leading system message from the current behavior/profile policy.
 
 If `carryCuesThroughSession` is enabled, the host may maintain a compact,
 structured attunement snapshot for the current Workshop session. Turning the

@@ -3,90 +3,53 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Prose Minion — Assistant (Direction B)</title>
+<title>Prose Minion — Workshop</title>
 <link rel="stylesheet" href="pm-mock.css">
-<link rel="stylesheet" href="pm-fulltab.css">
-<link rel="stylesheet" href="pm-direction-b.css">
+<link rel="stylesheet" href="pm-widgets.css">
+<link rel="stylesheet" href="pm-workshop.css">
+<link rel="stylesheet" href="pm-wk-modals.css">
+<link rel="stylesheet" href="pm-sessions.css">
+<style>a{color:var(--accent-hi)}a:hover{color:var(--text)}</style>
 <template id="__bundler_thumbnail">
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#15110d"/><rect x="30" y="30" width="40" height="40" rx="9" fill="#fff"/><circle cx="50" cy="46" r="11" fill="#e0673a"/><rect x="38" y="58" width="24" height="10" rx="2" fill="#3a1f2e"/></svg>
 </template>
 </head>
-<body>
+<body class="wk-body">
 
-<div class="vscode fill">
-  <div class="vscode-tabbar">
-    <div class="vs-traffic"><i class="r"></i><i class="y"></i><i class="g"></i></div>
-    <div class="vs-tab active"><span class="ic" style="background:#fff"><img src="assets/prose-minion-book.png" style="width:13px;height:13px"></span> Prose Minion <span class="x" id="ignore-x"></span></div>
-    <div class="vs-tab" id="vt-md"><span class="x"></span> chapter-5.8-rewrite.md <span class="x"></span></div>
+<div class="wk-app">
+  <div class="wk-topbar">
+    <div class="wk-tabs">
+      <div class="wk-tab"><span class="ic"><img src="assets/prose-minion-book.png" alt=""></span> Workshop <span class="x" id="wk-tabx"></span></div>
+    </div>
+    <div class="wk-topicons" id="wk-topicons"></div>
   </div>
 
-  <div class="vscode-body">
-    <div class="ed-header">
-      <div class="pm-brand">
-        <div class="pm-logo"><img src="assets/prose-minion-book.png" alt=""></div>
-        <div>
-          <div class="pm-eyebrow" style="margin:0 0 4px">Prose Minion · Assistant</div>
-          <div class="pm-title" style="font-size:23px">Workshop — chapter 5.8</div>
-          <div class="pm-subtitle mono" style="font-size:12px"><span id="sub-icon"></span> Drafts/workshop/chapter-5.8-rewrite.md</div>
-        </div>
-      </div>
-      <div class="flex center gap12">
-        <button class="reset-btn" data-reset="1" title="Start a fresh session"><span id="reset-ic"></span> New session</button>
-        <div class="model-wrap">
-          <button class="model-btn" data-model-toggle="1"><span id="modelLabel">Claude Opus 4.8</span><span id="model-chev"></span></button>
-          <div class="model-menu" id="modelMenu">
-            <button data-model="Claude Opus 4.8">Claude Opus 4.8</button>
-            <button data-model="Claude Sonnet 4.6">Claude Sonnet 4.6</button>
-            <button data-model="GPT-5.2">GPT-5.2</button>
-            <button data-model="Gemini 3.5 Pro">Gemini 3.5 Pro</button>
-          </div>
-        </div>
-        <div class="pm-balance">
-          <div class="pm-balance-rows">
-            <div class="pm-balance-row"><span class="pm-dot blue"></span><span class="pm-balance-label">OpenRouter</span><span class="pm-balance-val">$12.40</span></div>
-            <div class="pm-balance-sub">Last request&nbsp; <b>$0.014</b></div>
-          </div>
-          <span class="pm-chev" id="bal-chev"></span>
-        </div>
+  <header class="wk-header">
+    <div class="wk-brand">
+      <div class="wk-logo"><img src="assets/prose-minion-book.png" alt="Prose Minion"></div>
+      <div>
+        <div class="wk-eyebrow">Prose Minion · Assistant</div>
+        <h1 class="wk-title">Workshop</h1>
+        <div class="wk-sub" id="wk-sub"></div>
       </div>
     </div>
+    <div class="wk-hcluster" id="wk-hcluster"></div>
+  </header>
 
-    <div class="split fill">
-      <aside class="split-left" id="rail"></aside>
-      <section class="split-right">
-        <div id="thread"></div>
-        <div class="composer-wrap">
-          <div id="qbar"></div>
-          <div class="composer">
-            <button class="comp-add" id="composer-tools" title="Writing tools"><span id="add-ic"></span></button>
-            <input class="comp-input" id="composer-input" placeholder="Ask a follow-up, or pick a tool…" autocomplete="off">
-            <div class="comp-right">
-              <span class="comp-pill" id="composer-tools2" style="cursor:pointer"><span id="tools-ic"></span> Tools</span>
-              <button class="comp-send" id="composer-send"><span id="send-ic"></span></button>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
+  <div class="wk-split">
+    <aside class="wk-rail" id="wk-rail"></aside>
+    <section class="wk-main">
+      <div class="wk-center" id="wk-center"></div>
+      <div class="wk-composer-wrap" id="wk-composer"></div>
+    </section>
   </div>
 </div>
 
-<div class="modal-bd" id="modal"></div>
-<div id="toast"></div>
+<div id="wk-toast"></div>
 
 <script src="icons.js"></script>
-<script src="pm-frames-fulltab.js"></script>
-<script src="pm-direction-b.js"></script>
-<script>
-  // fill static icon slots
-  document.getElementById('sub-icon').innerHTML = ICONS.doc({ size: 12 });
-  document.getElementById('reset-ic').innerHTML = ICONS.refresh({ size: 13 });
-  document.getElementById('model-chev').innerHTML = ICONS.chevDown({ size: 13 });
-  document.getElementById('bal-chev').innerHTML = ICONS.chevDown({ size: 14 });
-  document.getElementById('add-ic').innerHTML = ICONS.plus({ size: 18 });
-  document.getElementById('tools-ic').innerHTML = ICONS.grid({ size: 13 });
-  document.getElementById('send-ic').innerHTML = ICONS.send({ size: 16 });
-  document.getElementById('composer-tools2').addEventListener('click', () => document.getElementById('composer-tools').click());
-</script>
+<script src="pm-widgets.js"></script>
+<script src="pm-sessions.js"></script>
+<script src="pm-workshop.js"></script>
 </body>
 </html>

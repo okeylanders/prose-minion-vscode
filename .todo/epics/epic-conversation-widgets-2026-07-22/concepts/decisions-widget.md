@@ -57,8 +57,9 @@ frame joins the delimiter neutralizer in the same change.
 
 The canonical decision record is a structured, stable-id artifact on the
 extension-owned Workshop turn. The same trusted frame is delivered into
-`ConversationManager` for the live conversation, but provider history is not
-its sole durable home: Sprint 10 intentionally does not serialize that history.
+`ConversationManager` for the live conversation. Sprint 10 now persists that
+history as part of T3 restore, but provider history is still not its sole
+durable home: the canonical typed payload belongs to the product session graph.
 **All decisions** is a projection produced by scanning the full session turn
 record; it is not another mutable decision collection in
 `WorkshopSessionService`.
@@ -69,13 +70,11 @@ That constraint has two consequences to settle before promotion:
    may be compacted around decision frames, but a retained decision record is
    copied verbatim into the compacted projection or explicitly superseded. A
    lossy summary must not become the source of truth for what was decided.
-2. **Restored-session behavior must be honest.** Sprint 10 persists the full
-   extension-owned turn record but not `ConversationManager` provider history.
-   Decision artifacts therefore round-trip with their originating turns and
-   remain available to the deterministic list projection after restore. A fresh
-   persona conversation receives the assembled list only through the closed
-   capability; no dead provider conversation is implied and no parallel
-   decision database is introduced.
+2. **Restored-session behavior must be honest.** Decision artifacts round-trip
+   in both the canonical extension-owned turn graph and the retained
+   conversation archive. The deterministic list still scans the canonical turn
+   graph, so degraded T2 recovery and later conversation compaction cannot erase
+   what was decided. No parallel mutable decision database is introduced.
 
 ## Likely UI
 
