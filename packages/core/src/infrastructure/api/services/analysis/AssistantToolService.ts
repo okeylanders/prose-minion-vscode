@@ -29,6 +29,7 @@ import {
   ContextSourceEntry,
   DialogueFocus,
   StatusEmitter,
+  WorkshopToolId,
   WritingToolsFocus
 } from '@messages';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
@@ -48,7 +49,13 @@ import {
   getWorkshopPersona,
   workshopPersonaSystemPromptPaths
 } from '@shared/constants/workshopPersonas';
-import type { ConversationSystemMessageReplacement } from '@orchestration/ConversationManager';
+import type {
+  ConversationArchiveEntryV1,
+  ConversationExportTarget,
+  ConversationImportOutcome,
+  ConversationImportTarget,
+  ConversationSystemMessageReplacement
+} from '@orchestration/ConversationManager';
 import { trimToWordLimit } from '@/utils/textUtils';
 import { neutralizeReservedPersonaPromptDelimiters } from '@/utils/workshopPromptFrames';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -128,6 +135,25 @@ export interface WorkshopBehaviorReplacementTarget {
   personaId: WorkshopPersonaId;
   /** Selects the host or guest base contract for the rebuilt prompt. */
   role: 'host' | 'guest';
+}
+
+type WorkshopConversationRoleDescriptor =
+  | { role: 'host'; personaId: WorkshopPersonaId }
+  | { role: 'guest'; personaId: WorkshopPersonaId }
+  | { role: 'tool'; toolId: WorkshopToolId };
+
+export type WorkshopConversationExportTarget<K extends string = string> =
+  ConversationExportTarget<K> & WorkshopConversationRoleDescriptor;
+
+export type WorkshopConversationImportTarget<K extends string = string> = {
+  entry: ConversationArchiveEntryV1<K>;
+} & WorkshopConversationRoleDescriptor;
+
+export interface WorkshopConversationImportOptions {
+  behavior: WorkshopConversationBehavior;
+  writerProfile: WorkshopWriterProfile;
+  /** Current renderings from normalized session-owned standing directives. */
+  standingDirectiveFrames?: readonly string[];
 }
 
 /** Inputs for the first retained exchange with an explicitly invited guest. */
@@ -498,10 +524,12 @@ export class AssistantToolService {
       throw new Error(`Unknown Workshop persona: ${input.personaId}`);
     }
     const options = this.toolOptions.getOptions();
-    const promptLoader = this.resourceLoader.getPromptLoader();
-    const systemPrompt = this.withWriterProfile(await promptLoader.loadPrompts(
-      workshopPersonaSystemPromptPaths('workshop-personas/base.md', persona, input.behavior)
-    ), input.behavior, input.writerProfile);
+    const systemPrompt = await this.buildWorkshopPersonaSystemMessage(
+      'host',
+      persona.id,
+      input.behavior,
+      input.writerProfile
+    );
     const userMessage = this.buildWorkshopPersonaUserMessage(input);
 
     this.outputChannel?.appendLine(
@@ -554,14 +582,12 @@ export class AssistantToolService {
       throw new Error(`Unknown Workshop persona: ${input.personaId}`);
     }
     const options = this.toolOptions.getOptions();
-    const promptLoader = this.resourceLoader.getPromptLoader();
-    const systemPrompt = this.withWriterProfile(await promptLoader.loadPrompts(
-      workshopPersonaSystemPromptPaths(
-        'workshop-personas/guest-base.md',
-        persona,
-        input.behavior
-      )
-    ), input.behavior, input.writerProfile);
+    const systemPrompt = await this.buildWorkshopPersonaSystemMessage(
+      'guest',
+      persona.id,
+      input.behavior,
+      input.writerProfile
+    );
 
     this.outputChannel?.appendLine(
       `[AssistantToolService] Starting Workshop guest ${persona.id} | Streaming: ${!!streamingOptions.onToken}`
@@ -670,25 +696,162 @@ export class AssistantToolService {
         'Assistant engine unavailable; cannot replace Workshop persona system messages.'
       );
     }
-    const promptLoader = this.resourceLoader.getPromptLoader();
     const replacements: ConversationSystemMessageReplacement[] = [];
     for (const target of targets) {
-      const persona = getWorkshopPersona(target.personaId);
-      if (!persona) {
-        throw new Error(`Unknown Workshop persona: ${target.personaId}`);
-      }
-      const systemMessage = this.withWriterProfile(await promptLoader.loadPrompts(
-        workshopPersonaSystemPromptPaths(
-          target.role === 'host'
-            ? 'workshop-personas/base.md'
-            : 'workshop-personas/guest-base.md',
-          persona,
-          behavior
-        )
-      ), behavior, writerProfile);
+      const systemMessage = await this.buildWorkshopPersonaSystemMessage(
+        target.role,
+        target.personaId,
+        behavior,
+        writerProfile
+      );
       replacements.push({ conversationId: target.conversationId, systemMessage });
     }
     engine.replaceSystemMessagesBetweenRuns(replacements);
+  }
+
+  /**
+   * Export the captured assistant generation's committed Workshop histories.
+   * Role descriptors remain application metadata; the generic manager only
+   * receives stable logical keys and runtime ids.
+   */
+  exportWorkshopConversationArchive<K extends string>(
+    targets: readonly WorkshopConversationExportTarget<K>[]
+  ): ConversationArchiveEntryV1<K>[] {
+    const engine = this.assistantEngine;
+    if (!engine) {
+      throw new Error('Assistant engine unavailable; cannot export Workshop conversations.');
+    }
+    const archive = engine.exportConversationsBetweenRuns(
+      targets.map(({ key, conversationId }) => ({ key, conversationId }))
+    );
+    archive.forEach((entry, index) => {
+      const expected = this.workshopToolName(targets[index]);
+      if (entry.toolName !== expected) {
+        throw new Error(
+          `Conversation ${entry.key} belongs to ${entry.toolName}; expected ${expected}`
+        );
+      }
+    });
+    return archive;
+  }
+
+  /**
+   * Rebuild current prompts and independently import every valid Workshop
+   * participant. Prompt assembly failure degrades only its own logical key.
+   */
+  async importWorkshopConversationArchive<K extends string>(
+    targets: readonly WorkshopConversationImportTarget<K>[],
+    options: WorkshopConversationImportOptions
+  ): Promise<ConversationImportOutcome<K>[]> {
+    const engine = this.assistantEngine;
+    if (!engine) {
+      return targets.map(({ entry }) => ({
+        key: entry.key,
+        status: 'degraded',
+        reason: 'Assistant engine unavailable; cannot import Workshop conversation.'
+      }));
+    }
+
+    const prepared: ConversationImportTarget<K>[] = [];
+    const promptFailures = new Map<K, ConversationImportOutcome<K>>();
+    for (const target of targets) {
+      try {
+        const expectedToolName = this.workshopToolName(target);
+        if (target.entry.toolName !== expectedToolName) {
+          throw new Error(
+            `Archived tool name ${target.entry.toolName} does not match ${expectedToolName}`
+          );
+        }
+        const systemMessage = target.role === 'tool'
+          ? await this.buildWorkshopToolSystemMessage(target.toolId)
+          : await this.buildWorkshopPersonaSystemMessage(
+              target.role,
+              target.personaId,
+              options.behavior,
+              options.writerProfile,
+              options.standingDirectiveFrames
+            );
+        prepared.push({ entry: target.entry, systemMessage });
+      } catch (error) {
+        promptFailures.set(target.entry.key, {
+          key: target.entry.key,
+          status: 'degraded',
+          reason: `Current system prompt could not be rebuilt: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        });
+      }
+    }
+
+    const imported = engine.importConversationsBetweenRuns(prepared);
+    const importedByKey = new Map(imported.map((outcome) => [outcome.key, outcome]));
+    return targets.map(({ entry }) =>
+      promptFailures.get(entry.key) ??
+      importedByKey.get(entry.key) ?? {
+        key: entry.key,
+        status: 'degraded',
+        reason: `Conversation ${entry.key} was not imported`
+      }
+    );
+  }
+
+  private async buildWorkshopPersonaSystemMessage(
+    role: 'host' | 'guest',
+    personaId: WorkshopPersonaId,
+    behavior: WorkshopConversationBehavior,
+    writerProfile: WorkshopWriterProfile,
+    standingDirectiveFrames: readonly string[] = []
+  ): Promise<string> {
+    const persona = getWorkshopPersona(personaId);
+    if (!persona) {
+      throw new Error(`Unknown Workshop persona: ${personaId}`);
+    }
+    const promptLoader = this.resourceLoader.getPromptLoader();
+    const systemPrompt = this.withWriterProfile(await promptLoader.loadPrompts(
+      workshopPersonaSystemPromptPaths(
+        role === 'host' ? 'workshop-personas/base.md' : 'workshop-personas/guest-base.md',
+        persona,
+        behavior
+      )
+    ), behavior, writerProfile);
+    const directives = standingDirectiveFrames
+      .map((frame) => frame.trim())
+      .filter(Boolean);
+    return [systemPrompt, ...directives].join('\n\n');
+  }
+
+  /**
+   * Reconstruct a retained analysis sidecar from current prompt resources.
+   * The deterministic role wrapper keeps this seam independent of the
+   * presentation profiles while using the same resource paths and shared
+   * prompt bundle as fresh tool runs.
+   */
+  private async buildWorkshopToolSystemMessage(toolId: WorkshopToolId): Promise<string> {
+    const promptLoader = this.resourceLoader.getPromptLoader();
+    const sharedPrompts = await promptLoader.loadSharedPrompts();
+    const paths = toolId === 'dialogue'
+      ? [
+          'dialog-microbeat-assistant/00-dialog-microbeat-assistant.md',
+          'dialog-microbeat-assistant/01-dialogue-tags-and-microbeats.md',
+          'dialog-microbeat-assistant/focus/both.md'
+        ]
+      : toolId === 'prose'
+        ? ['prose-assistant/00-prose-assistant.md']
+        : [
+            'writing-tools-assistant/00-writing-tools-base.md',
+            `writing-tools-assistant/focus/${toolId}.md`
+          ];
+    const toolPrompts = await promptLoader.loadPrompts(paths);
+    const role = `You are the retained Prose Minion Workshop ${toolId} analysis sidecar. Continue in the same specialist role using the current product instructions below.`;
+    return [role, toolPrompts, sharedPrompts].filter(Boolean).join('\n\n---\n\n');
+  }
+
+  private workshopToolName(target: WorkshopConversationRoleDescriptor): string {
+    if (target.role === 'host') return `workshop_persona_${target.personaId}`;
+    if (target.role === 'guest') return `workshop_guest_${target.personaId}`;
+    if (target.toolId === 'dialogue') return 'dialogue-microbeat-assistant';
+    if (target.toolId === 'prose') return 'prose-assistant';
+    return `writing-tools-${target.toolId}`;
   }
 
   private withWriterProfile(

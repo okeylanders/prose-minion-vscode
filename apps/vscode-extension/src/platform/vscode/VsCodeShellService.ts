@@ -3,8 +3,9 @@
  *
  * Behavior-preserving pass-throughs over `vscode.window` / `vscode.env`. The
  * editor-column logic for `openFileInEditor({ beside: true })` (reuse column two,
- * else open beside the webview) is moved here verbatim from UIHandler — it is a
- * VS-Code-specific editor-layout concern, so it belongs in the adapter, not core.
+ * else open beside the webview) and the operating-system reveal command stay
+ * here: they are VS-Code-specific UI concerns, so they belong in the adapter,
+ * not core.
  */
 import * as vscode from 'vscode';
 import { PickedFile, ShellService } from '@prose-minion/core';
@@ -49,5 +50,9 @@ export class VsCodeShellService implements ShellService {
     } else {
       await vscode.window.showTextDocument(uri, { preview: false });
     }
+  }
+
+  async revealFileInOS(filePath: string): Promise<void> {
+    await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(filePath));
   }
 }

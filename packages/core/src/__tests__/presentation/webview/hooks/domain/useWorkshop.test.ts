@@ -31,6 +31,8 @@ import type {
   StreamCompleteMessage,
   StreamStartedMessage,
   WorkshopSessionSnapshot,
+  WorkshopSessionActionResultMessage,
+  WorkshopSessionsDataMessage,
   WorkshopSessionStateMessage,
   WorkshopTurn,
   WorkshopTurnMessage
@@ -66,7 +68,8 @@ const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessio
         conversationBehavior: { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR },
         ...session
       },
-      writerProfile: { ...DEFAULT_WORKSHOP_WRITER_PROFILE }
+      writerProfile: { ...DEFAULT_WORKSHOP_WRITER_PROFILE },
+      persistence: { available: true, degradedConversationKeys: [] }
     },
     timestamp: 0
   };
@@ -166,6 +169,142 @@ describe('useWorkshop', () => {
     const requests = posted(MessageType.WORKSHOP_REQUEST_SESSION);
     expect(requests).toHaveLength(1);
     expect(requests[0].source).toBe('webview.workshop');
+  });
+
+  it('adopts persistence availability and degraded-memory truth from the host', () => {
+    const { result } = renderHook(() => useWorkshop());
+    const state = sessionState({});
+    state.payload.persistence = {
+      available: false,
+      unavailableReason: 'multi-root',
+      currentCheckpointProtected: true,
+      degradedConversationKeys: ['host', 'guest:margot']
+    };
+
+    act(() => result.current.handleSessionState(state));
+
+    expect(result.current.persistenceAvailable).toBe(false);
+    expect(result.current.persistenceUnavailableReason).toBe('multi-root');
+    expect(result.current.currentCheckpointProtected).toBe(true);
+    expect(result.current.degradedConversationKeys).toEqual(['host', 'guest:margot']);
+  });
+
+  it('posts typed session-browser actions without optimistic host state', () => {
+    const { result } = renderHook(() => useWorkshop());
+
+    act(() => {
+      result.current.saveSession('Chapter five room');
+      result.current.openSession('session-open');
+      result.current.renameSession('session-rename', 'New title');
+      result.current.duplicateSession('session-copy', 'Copy title');
+      result.current.revealSession('session-reveal');
+      result.current.deleteSession('session-delete');
+    });
+
+    expect(posted(MessageType.WORKSHOP_SAVE_SESSION).at(-1).payload)
+      .toEqual({ title: 'Chapter five room' });
+    expect(posted(MessageType.WORKSHOP_OPEN_SESSION).at(-1).payload)
+      .toEqual({ sessionId: 'session-open' });
+    expect(posted(MessageType.WORKSHOP_RENAME_SESSION).at(-1).payload)
+      .toEqual({ sessionId: 'session-rename', title: 'New title' });
+    expect(posted(MessageType.WORKSHOP_DUPLICATE_SESSION).at(-1).payload)
+      .toEqual({ sessionId: 'session-copy', title: 'Copy title' });
+    expect(posted(MessageType.WORKSHOP_REVEAL_SESSION).at(-1).payload)
+      .toEqual({ sessionId: 'session-reveal' });
+    expect(posted(MessageType.WORKSHOP_DELETE_SESSION).at(-1).payload)
+      .toEqual({ sessionId: 'session-delete' });
+  });
+
+  it('keeps only the newest bounded session-browser response', () => {
+    const { result } = renderHook(() => useWorkshop());
+
+    act(() => result.current.requestSessions('raven'));
+    const request = posted(MessageType.WORKSHOP_LIST_SESSIONS).at(-1);
+    expect(request.payload.query).toBe('raven');
+    expect(result.current.sessionsPending).toBe(true);
+
+    const response = (
+      requestId: string,
+      title: string
+    ): WorkshopSessionsDataMessage => ({
+      type: MessageType.WORKSHOP_SESSIONS_DATA,
+      source: 'extension.workshop',
+      payload: {
+        requestId,
+        available: true,
+        searchTruncated: true,
+        sessions: [{
+          sessionId: title,
+          title,
+          fileName: `${title}.json`,
+          kind: 'named',
+          startedAt: 1,
+          updatedAt: 2,
+          timezone: 'America/Chicago',
+          hostPersonaId: 'jill',
+          participantPersonaIds: ['jill'],
+          turnCount: 3,
+          excerptWordCount: 42
+        }]
+      },
+      timestamp: 0
+    });
+
+    act(() => result.current.handleSessionsData(response('stale-request', 'stale')));
+    expect(result.current.savedSessionSummaries).toEqual([]);
+    expect(result.current.sessionsPending).toBe(true);
+
+    act(() => result.current.handleSessionsData(response(request.payload.requestId, 'current')));
+    expect(result.current.savedSessionSummaries.map((session) => session.title))
+      .toEqual(['current']);
+    expect(result.current.sessionsPending).toBe(false);
+    expect(result.current.sessionsSearchTruncated).toBe(true);
+  });
+
+  it('settles the browser pending state when the host reports a bounded read failure', () => {
+    const { result } = renderHook(() => useWorkshop());
+    act(() => result.current.requestSessions());
+    const requestId = posted(MessageType.WORKSHOP_LIST_SESSIONS).at(-1).payload.requestId;
+
+    act(() => result.current.handleSessionsData({
+      type: MessageType.WORKSHOP_SESSIONS_DATA,
+      source: 'extension.workshop',
+      payload: {
+        requestId,
+        available: true,
+        error: 'session directory is unreadable',
+        sessions: []
+      },
+      timestamp: 0
+    }));
+
+    expect(result.current.sessionsPending).toBe(false);
+    expect(result.current.sessionsError).toBe('session directory is unreadable');
+    expect(result.current.sessionsSearchTruncated).toBe(false);
+  });
+
+  it('holds one session action result until the app consumes it', () => {
+    const { result } = renderHook(() => useWorkshop());
+    const response: WorkshopSessionActionResultMessage = {
+      type: MessageType.WORKSHOP_SESSION_ACTION_RESULT,
+      source: 'extension.workshop',
+      payload: {
+        action: 'open',
+        ok: true,
+        message: 'Session opened with conversation memory restored.'
+      },
+      timestamp: 0
+    };
+
+    act(() => result.current.openSession('saved-room'));
+    expect(result.current.sessionActionPending).toBe('open');
+
+    act(() => result.current.handleSessionActionResult(response));
+    expect(result.current.sessionActionResult).toEqual(response.payload);
+    expect(result.current.sessionActionPending).toBeUndefined();
+
+    act(() => result.current.consumeSessionActionResult());
+    expect(result.current.sessionActionResult).toBeUndefined();
   });
 
   it('submits one complete conversation behavior object without optimistic state', () => {

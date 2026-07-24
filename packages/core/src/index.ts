@@ -35,13 +35,64 @@ export type {
 } from '@/application/handlers/MessageHandlerContracts';
 
 // --- Application: Workshop session aggregate (ADR 2026-07-03) ---
-export { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+export {
+  WorkshopSessionService,
+  WorkshopSessionActiveRunPersistenceError,
+  parseWorkshopSessionStateV1
+} from '@/application/services/workshop/WorkshopSessionService';
+export type {
+  WorkshopConversationLogicalKey,
+  WorkshopRuntimeConversationBindings,
+  WorkshopSessionHydrationResult,
+  WorkshopSessionStateV1,
+  WorkshopStoredTodoItemV1
+} from '@/application/services/workshop/WorkshopSessionService';
+export {
+  WorkshopSessionTimeService,
+  parseWorkshopSessionTemporalStateV1,
+  workshopGuestConversationKey
+} from '@/application/services/workshop/WorkshopSessionTimeService';
+export type {
+  WorkshopPersonaConversationKey,
+  WorkshopPreparedTimeNotice,
+  WorkshopSessionTemporalStateV1,
+  WorkshopSessionTimeRuntimeState,
+  WorkshopTimeNoticeReason
+} from '@/application/services/workshop/WorkshopSessionTimeService';
+export {
+  WorkshopSessionPersistenceCoordinator
+} from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
+export type {
+  WorkshopSessionHydrateResult,
+  WorkshopSessionListData
+} from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
+export {
+  parseWorkshopPersistedSession
+} from '@/application/services/workshop/WorkshopPersistedSession';
+export type {
+  WorkshopPersistedSessionV1,
+  WorkshopPersistedSummaryV1
+} from '@/application/services/workshop/WorkshopPersistedSession';
 export { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 export { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 export { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 export { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
 export { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 export { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
+
+// --- Infrastructure: Workshop workspace-session store ---
+export {
+  WorkshopSessionStore,
+  WorkshopSessionStoreUnavailableError,
+  WorkshopSessionFileReadError,
+  WorkshopNamedSessionNotFoundError,
+  WorkshopNamedSessionIdentityConflictError
+} from '@/infrastructure/storage/WorkshopSessionStore';
+export type {
+  WorkshopSessionStoreAvailability,
+  WorkshopSessionStoreUnavailableReason,
+  WorkshopStoredSessionSummary
+} from '@/infrastructure/storage/WorkshopSessionStore';
 
 // --- Infrastructure: secrets ---
 export { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';

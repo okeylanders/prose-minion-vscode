@@ -42,6 +42,9 @@ import {
   WorkshopContextResourceService,
   WorkshopConversationSettingsService,
   WorkshopWriterProfileService,
+  WorkshopSessionTimeService,
+  WorkshopSessionStore,
+  WorkshopSessionPersistenceCoordinator,
   CoreServices,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
   coerceWorkshopConversationBehavior,
@@ -56,8 +59,9 @@ import { VsCodeEditorContext } from './platform/vscode/VsCodeEditorContext';
 
 let proseToolsViewProvider: ProseToolsViewProvider | undefined;
 let workshopPanelProvider: WorkshopPanelProvider | undefined;
+let workshopSessionPersistenceCoordinator: WorkshopSessionPersistenceCoordinator | undefined;
 
-export function activate(context: vscode.ExtensionContext): void {
+export async function activate(context: vscode.ExtensionContext): Promise<void> {
   // Create output channel for logging
   const outputChannel = vscode.window.createOutputChannel('Prose Minion');
   context.subscriptions.push(outputChannel);
@@ -214,6 +218,27 @@ export function activate(context: vscode.ExtensionContext): void {
     outputChannel,
     workshopWriterProfileService
   );
+  const workshopSessionTimeService = new WorkshopSessionTimeService();
+  const workshopSessionStore = new WorkshopSessionStore(
+    platform.fileSystem,
+    platform.workspace,
+    outputChannel
+  );
+  workshopSessionPersistenceCoordinator = new WorkshopSessionPersistenceCoordinator(
+    workshopSessionService,
+    assistantToolService,
+    workshopConversationSettingsService,
+    workshopSessionTimeService,
+    workshopSessionStore,
+    outputChannel,
+    {
+      ensureAssistantReady: () => aiResourceManager.ensureInitialized()
+    }
+  );
+  // Workshop handlers must not observe or mutate the fresh in-memory aggregate
+  // until rolling recovery has either completed or deliberately fallen back.
+  // Otherwise a fast webview message can race hydration and lose committed work.
+  await workshopSessionPersistenceCoordinator.initialize();
 
   const coreServices: CoreServices = {
     assistantToolService,
@@ -234,7 +259,9 @@ export function activate(context: vscode.ExtensionContext): void {
     workshopToolSidePass,
     workshopContextResourceService,
     workshopConversationSettingsService,
-    workshopWriterProfileService
+    workshopWriterProfileService,
+    workshopSessionTimeService,
+    workshopSessionPersistenceCoordinator
   };
 
   // Migrate API key from settings to SecretStorage if needed
@@ -274,7 +301,13 @@ export function activate(context: vscode.ExtensionContext): void {
     outputChannel,
     platform
   );
-  context.subscriptions.push(workshopPanelProvider);
+  context.subscriptions.push(
+    workshopPanelProvider,
+    vscode.window.registerWebviewPanelSerializer(
+      WorkshopPanelProvider.viewType,
+      workshopPanelProvider
+    )
+  );
 
   const focusToolsView = () => {
     void vscode.commands.executeCommand('prose-minion.toolsView.focus');
@@ -378,7 +411,14 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 }
 
-export function deactivate(): void {
+export async function deactivate(): Promise<void> {
+  // Quiesce the panel-owned Workshop handler first. Its dispose path
+  // aborts/abandons any in-flight run, so the coordinator's active-run guard
+  // cannot defer an earlier committed dirty revision past process shutdown.
+  workshopPanelProvider?.dispose();
+  workshopPanelProvider = undefined;
+  await workshopSessionPersistenceCoordinator?.flush();
+  workshopSessionPersistenceCoordinator = undefined;
   console.log('Prose Minion extension is now deactivated');
 }
 

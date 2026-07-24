@@ -1,6 +1,7 @@
 import { MessageHandler } from '@/application/handlers/MessageHandler';
 import { CoreServices } from '@/application/handlers/MessageHandlerContracts';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
@@ -161,6 +162,29 @@ function createTestAssembly(): TestAssembly {
       syncFromSettings: jest.fn().mockResolvedValue({ changed: false, deferred: false }),
       flushDeferredSettingsSync: jest.fn().mockResolvedValue({ changed: false, deferred: false }),
       getWriterProfile: jest.fn().mockReturnValue(DEFAULT_WORKSHOP_WRITER_PROFILE)
+    },
+    workshopSessionTimeService: new WorkshopSessionTimeService({
+      now: () => new Date('2026-07-23T14:00:00.000Z'),
+      timezone: 'America/Chicago'
+    }),
+    workshopSessionPersistenceCoordinator: {
+      availability: jest.fn().mockReturnValue({
+        available: true,
+        rootPath: '/workspace',
+        sessionsDirectory: '/workspace/prose-minion/sessions',
+        currentPath: '/workspace/prose-minion/sessions/current.json'
+      }),
+      getDegradedConversationKeys: jest.fn().mockReturnValue([]),
+      isCurrentCheckpointProtected: jest.fn().mockReturnValue(false),
+      isSessionOperationPending: jest.fn().mockReturnValue(false),
+      waitForSessionOperations: jest.fn().mockResolvedValue(undefined),
+      markDirty: jest.fn(),
+      flush: jest.fn().mockResolvedValue(undefined),
+      initialize: jest.fn().mockResolvedValue({
+        restored: false,
+        degradedConversationKeys: []
+      }),
+      resetSession: jest.fn().mockResolvedValue(undefined)
     }
   } as unknown as CoreServices;
 

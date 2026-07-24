@@ -19,6 +19,8 @@ import type { WorkshopPersonaCapabilityFactory } from '@/application/services/wo
 import type { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
 import type { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import type { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
+import type { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
+import type { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 import type { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import type { ProseStatsService } from '@services/measurement/ProseStatsService';
@@ -103,4 +105,8 @@ export interface CoreServices {
   workshopConversationSettingsService: WorkshopConversationSettingsService;
   /** Global writer-authored profile, deliberately outside the session aggregate. */
   workshopWriterProfileService: WorkshopWriterProfileService;
+  /** Session clock and successful-delivery notice ledger. */
+  workshopSessionTimeService: WorkshopSessionTimeService;
+  /** Ordered aggregate + conversation archive persistence boundary. */
+  workshopSessionPersistenceCoordinator: WorkshopSessionPersistenceCoordinator;
 }

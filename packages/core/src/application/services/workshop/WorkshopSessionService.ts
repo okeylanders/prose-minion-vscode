@@ -16,6 +16,9 @@ import {
   WorkshopConversationBehaviorTransition,
   WorkshopContextAttachmentSnapshot,
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
+  isWorkshopInteractionMode,
+  isWorkshopPersonaExpressionLevel,
+  isWorkshopRelationalDepth,
   WorkshopExcerpt,
   WorkshopExcerptSnapshot,
   WorkshopExcerptSource,
@@ -32,17 +35,18 @@ import {
   WorkshopTurnArtifact,
   WorkshopTurnKind
 } from '@messages';
-import { TokenUsage } from '@shared/types';
+import { isContextPathGroup, TokenUsage } from '@shared/types';
 import {
   WorkshopCapabilityArtifactDetails,
   WorkshopCapabilityResult
 } from '@shared/types/workshopCapabilities';
 import {
   DEFAULT_WORKSHOP_PERSONA_ID,
+  isWorkshopPersonaId,
   WORKSHOP_GUEST_CAPACITY,
   workshopPersonaLabel
 } from '@shared/constants/workshopPersonas';
-import { workshopToolLabel } from '@shared/constants/workshopTools';
+import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WORKSHOP_ACTIONABLE_FINDING_BOUNDS } from './WorkshopActionableFindings';
 
@@ -176,7 +180,97 @@ export interface WorkshopExcerptReplacement {
   replacementCount: number;
 }
 
-type StoredWorkshopTodoItem = Omit<WorkshopTodoItem, 'stale'>;
+export type WorkshopStoredTodoItemV1 = Omit<WorkshopTodoItem, 'stale'>;
+
+export type WorkshopConversationLogicalKey =
+  | 'host'
+  | `tool:${WorkshopToolId}`
+  | `guest:${WorkshopPersonaId}`;
+
+export type WorkshopRuntimeConversationBindings = Readonly<
+  Partial<Record<WorkshopConversationLogicalKey, string>>
+>;
+
+export interface WorkshopSessionStateV1 {
+  excerpt?: WorkshopExcerpt;
+  contextAttachments: WorkshopContextAttachment[];
+  pendingMessageAttachments: WorkshopMessageAttachment[];
+  revisions: {
+    excerpt: number;
+    replacementCount: number;
+    context: number;
+    pendingExcerpt?: number;
+    pendingContext?: number;
+  };
+  counters: {
+    attachment: number;
+    threadArtifact: number;
+    turn: number;
+    todo: number;
+  };
+  writerSources: {
+    host: ContextSourceEntry[];
+    tools: Partial<Record<WorkshopToolId, ContextSourceEntry[]>>;
+    guests: Array<{
+      personaId: WorkshopPersonaId;
+      sources: ContextSourceEntry[];
+    }>;
+  };
+  turns: WorkshopTurn[];
+  participants: {
+    host: {
+      personaId: WorkshopPersonaId;
+      conversationKey?: 'host';
+    };
+    toolSidecars: Array<{
+      toolId: WorkshopToolId;
+      conversationKey: `tool:${WorkshopToolId}`;
+      latestReportTurnId: string;
+      deliveredToHostThroughTurnId: string;
+    }>;
+    personaGuests: Array<{
+      personaId: WorkshopPersonaId;
+      conversationKey?: `guest:${WorkshopPersonaId}`;
+      lastSeenHostTurnId?: string;
+      deliveredToHostThroughTurnId?: string;
+      liveness: 'live' | 'disposed';
+    }>;
+    chatTarget: WorkshopChatTarget;
+  };
+  selectedToolId?: WorkshopToolId;
+  todos: WorkshopStoredTodoItemV1[];
+  lastCommittedPersonaBehavior?: Pick<
+    WorkshopConversationBehavior,
+    'interactionMode' | 'expressionLevel' | 'relationalDepth'
+  >;
+}
+
+export interface WorkshopSessionHydrationResult {
+  discardedConversationIds: string[];
+  degradedConversationKeys: WorkshopConversationLogicalKey[];
+}
+
+export class WorkshopSessionActiveRunPersistenceError extends Error {
+  constructor() {
+    super('Cannot persist Workshop session while a run is active');
+    this.name = 'WorkshopSessionActiveRunPersistenceError';
+  }
+}
+
+/**
+ * Decode the host-private aggregate at the raw JSON boundary. Structural
+ * validation is exact-key and recursive; semantic/referential validation then
+ * runs on a defensive clone. Conversation import may safely happen only after
+ * this preflight succeeds.
+ */
+export function parseWorkshopSessionStateV1(value: unknown): WorkshopSessionStateV1 {
+  assertWorkshopSessionStateShape(value);
+  const decoded = cloneWorkshopSessionState(value);
+  validatePersistedState(decoded);
+  return decoded;
+}
+
+type StoredWorkshopTodoItem = WorkshopStoredTodoItemV1;
 
 /** A pure aggregate: no I/O, no vscode, and only an injectable clock. */
 export class WorkshopSessionService {
@@ -244,6 +338,25 @@ export class WorkshopSessionService {
   /** Current metadata for a persona call that has no visible writer turn (tool synthesis). */
   getPersonaBehaviorMetadata(): Pick<WorkshopTurn, 'behavior' | 'behaviorTransition'> {
     return this.currentPersonaBehaviorMetadata();
+  }
+
+  /** Append one trusted, host-authored temporal boundary to the visible ledger. */
+  recordSessionMarker(kind: 'start' | 'resume', content: string): WorkshopTurn {
+    if (!content.trim()) {
+      throw new Error('Workshop session marker content cannot be blank');
+    }
+    const turn: WorkshopTurn = {
+      id: this.nextTurnId('system'),
+      role: 'system',
+      kind: 'divider',
+      participant: 'session',
+      artifact: kind === 'start' ? 'session_start' : 'session_resume',
+      excerptVersion: this.excerptVersion,
+      content,
+      timestamp: this.now()
+    };
+    this.turns.push(turn);
+    return cloneTurn(turn);
   }
 
   setExcerpt(input: WorkshopExcerptInput): WorkshopExcerpt {
@@ -1337,6 +1450,232 @@ export class WorkshopSessionService {
     return conversationIds;
   }
 
+  /**
+   * Export the complete host-private aggregate for a coordinated durable
+   * checkpoint. This is intentionally distinct from getSnapshot(): the
+   * webview projection is bounded and strips prompt-bearing content, private
+   * provenance, counters, cursors, and retained-participant state.
+   *
+   * An active run has already appended its visible writer turn but has not
+   * necessarily committed matching provider history. Refuse that ambiguous
+   * boundary rather than persisting two state owners from different moments.
+   */
+  exportCommittedState(): WorkshopSessionStateV1 {
+    if (this.activeRun) {
+      throw new WorkshopSessionActiveRunPersistenceError();
+    }
+
+    return {
+      excerpt: this.excerpt ? cloneExcerpt(this.excerpt) : undefined,
+      contextAttachments: this.contextAttachments.map(cloneAttachment),
+      pendingMessageAttachments: this.pendingMessageAttachments.map(cloneMessageAttachment),
+      revisions: {
+        excerpt: this.excerptVersion,
+        replacementCount: this.replacementCount,
+        context: this.contextRevision,
+        pendingExcerpt: this.pendingRevisionVersion,
+        pendingContext: this.pendingContextRevision
+      },
+      counters: {
+        attachment: this.attachmentCounter,
+        threadArtifact: this.threadArtifactCounter,
+        turn: this.turnCounter,
+        todo: this.todoCounter
+      },
+      writerSources: {
+        host: this.hostWriterSources.map(cloneSourceEntry),
+        tools: cloneToolWriterSources(this.toolWriterSources),
+        guests: [...this.guestWriterSources.entries()].map(([personaId, sources]) => ({
+          personaId,
+          sources: sources.map(cloneSourceEntry)
+        }))
+      },
+      turns: this.turns.map(cloneTurn),
+      participants: {
+        host: {
+          personaId: this.participants.host.personaId,
+          conversationKey: this.participants.host.conversationId ? 'host' : undefined
+        },
+        toolSidecars: Object.entries(this.participants.toolSidecars).flatMap(
+          ([rawToolId, sidecar]) => {
+            if (!sidecar) {
+              return [];
+            }
+            const toolId = rawToolId as WorkshopToolId;
+            return [{
+              toolId,
+              conversationKey: `tool:${toolId}` as `tool:${WorkshopToolId}`,
+              latestReportTurnId: sidecar.latestReportTurnId,
+              deliveredToHostThroughTurnId: sidecar.deliveredToHostThroughTurnId
+            }];
+          }
+        ),
+        personaGuests: [...this.participants.personaGuests.values()].map((guest) => ({
+          personaId: guest.personaId,
+          conversationKey: guest.conversationId
+            ? `guest:${guest.personaId}` as `guest:${WorkshopPersonaId}`
+            : undefined,
+          lastSeenHostTurnId: guest.lastSeenHostTurnId,
+          deliveredToHostThroughTurnId: guest.deliveredToHostThroughTurnId,
+          liveness: guest.liveness
+        })),
+        chatTarget: this.getChatTarget()
+      },
+      selectedToolId: this.selectedToolId,
+      todos: this.todos.map(cloneStoredTodo),
+      lastCommittedPersonaBehavior: this.lastCommittedPersonaBehavior
+        ? { ...this.lastCommittedPersonaBehavior }
+        : undefined
+    };
+  }
+
+  /**
+   * Replace the live aggregate from one validated product checkpoint and a set
+   * of freshly imported runtime conversation ids. Validation and defensive
+   * cloning finish before the first assignment, so callers never observe a
+   * half-hydrated room.
+   *
+   * Missing/blank/duplicate runtime bindings degrade only their logical
+   * participant. Tool sidecars are dropped, guests become disposed, host
+   * memory becomes fresh, and an invalid active target falls back to host.
+   * The current global behavior is injected rather than replayed from disk.
+   */
+  hydrateCommittedState(
+    state: WorkshopSessionStateV1,
+    runtimeBindings: WorkshopRuntimeConversationBindings,
+    currentBehavior: WorkshopConversationBehavior
+  ): WorkshopSessionHydrationResult {
+    validatePersistedState(state);
+
+    const excerpt = state.excerpt ? cloneExcerpt(state.excerpt) : undefined;
+    const contextAttachments = state.contextAttachments.map(cloneAttachment);
+    const pendingMessageAttachments = state.pendingMessageAttachments.map(cloneMessageAttachment);
+    const turns = state.turns.map(cloneTurn);
+    const todos = state.todos.map(cloneStoredTodo);
+    const behavior = { ...currentBehavior };
+    const lastCommittedPersonaBehavior = state.lastCommittedPersonaBehavior
+      ? { ...state.lastCommittedPersonaBehavior }
+      : undefined;
+    const hostWriterSources = state.writerSources.host.map(cloneSourceEntry);
+    const toolWriterSources = cloneToolWriterSources(state.writerSources.tools);
+    const guestWriterSources = new Map<WorkshopPersonaId, ContextSourceEntry[]>(
+      state.writerSources.guests.map(({ personaId, sources }) => [
+        personaId,
+        sources.map(cloneSourceEntry)
+      ])
+    );
+
+    const degradedConversationKeys: WorkshopConversationLogicalKey[] = [];
+    const usableBindings = usableRuntimeBindings(runtimeBindings);
+    const hostExpected = state.participants.host.conversationKey === 'host';
+    const hostConversationId = hostExpected ? usableBindings.get('host') : undefined;
+    let pendingRevisionVersion = state.revisions.pendingExcerpt;
+    let pendingContextRevision = state.revisions.pendingContext;
+    if (!hostConversationId) {
+      if (hostExpected) {
+        degradedConversationKeys.push('host');
+      }
+      hostWriterSources.length = 0;
+      pendingRevisionVersion = undefined;
+      pendingContextRevision = undefined;
+    }
+
+    const toolSidecars: WorkshopParticipants['toolSidecars'] = {};
+    for (const sidecar of state.participants.toolSidecars) {
+      const conversationId = usableBindings.get(sidecar.conversationKey);
+      if (!conversationId) {
+        degradedConversationKeys.push(sidecar.conversationKey);
+        delete toolWriterSources[sidecar.toolId];
+        continue;
+      }
+      toolSidecars[sidecar.toolId] = {
+        conversationId,
+        latestReportTurnId: sidecar.latestReportTurnId,
+        deliveredToHostThroughTurnId: sidecar.deliveredToHostThroughTurnId
+      };
+    }
+
+    const personaGuests = new Map<WorkshopPersonaId, WorkshopPersonaGuest>();
+    for (const guest of state.participants.personaGuests) {
+      const conversationId = guest.conversationKey
+        ? usableBindings.get(guest.conversationKey)
+        : undefined;
+      const restoredLive = guest.liveness === 'live' && conversationId !== undefined;
+      if (guest.liveness === 'live' && guest.conversationKey && !conversationId) {
+        degradedConversationKeys.push(guest.conversationKey);
+      }
+      if (!restoredLive) {
+        guestWriterSources.delete(guest.personaId);
+      }
+      personaGuests.set(guest.personaId, {
+        personaId: guest.personaId,
+        conversationId: restoredLive ? conversationId : undefined,
+        lastSeenHostTurnId: guest.lastSeenHostTurnId,
+        deliveredToHostThroughTurnId: guest.deliveredToHostThroughTurnId,
+        liveness: restoredLive ? 'live' : 'disposed'
+      });
+    }
+
+    const requestedTarget = cloneChatTarget(state.participants.chatTarget);
+    const chatTarget: WorkshopChatTarget = requestedTarget.kind === 'tool'
+      ? toolSidecars[requestedTarget.toolId]
+        ? requestedTarget
+        : { kind: 'host' }
+      : requestedTarget.kind === 'personaGuest'
+        ? personaGuests.get(requestedTarget.personaId)?.liveness === 'live'
+          ? requestedTarget
+          : { kind: 'host' }
+        : requestedTarget;
+
+    const activeHostPins = hostWriterSources.filter(
+      (source) => source.kind === 'pin' && source.stale !== true
+    );
+    if (activeHostPins.length > 1) {
+      throw new Error('Persisted Workshop state contains multiple live host pins');
+    }
+    const activeHostPin = hostConversationId ? activeHostPins[0] : undefined;
+    const participants: WorkshopParticipants = {
+      host: {
+        personaId: state.participants.host.personaId,
+        conversationId: hostConversationId
+      },
+      toolSidecars,
+      personaGuests,
+      chatTarget
+    };
+    const discardedConversationIds = this.conversationIds();
+
+    // Synchronous field replacement after every validation/clone/remap step.
+    this.excerpt = excerpt;
+    this.contextAttachments = contextAttachments;
+    this.excerptVersion = state.revisions.excerpt;
+    this.replacementCount = state.revisions.replacementCount;
+    this.contextRevision = state.revisions.context;
+    this.pendingRevisionVersion = pendingRevisionVersion;
+    this.pendingContextRevision = pendingContextRevision;
+    this.attachmentCounter = state.counters.attachment;
+    this.pendingMessageAttachments = pendingMessageAttachments;
+    this.threadArtifactCounter = state.counters.threadArtifact;
+    this.hostWriterSources = hostWriterSources;
+    this.activeHostPin = activeHostPin;
+    this.toolWriterSources = toolWriterSources;
+    this.guestWriterSources = guestWriterSources;
+    this.turns = turns;
+    this.activeRun = undefined;
+    this.participants = participants;
+    this.selectedToolId = state.selectedToolId;
+    this.turnCounter = state.counters.turn;
+    this.todoCounter = state.counters.todo;
+    this.todos = todos;
+    this.behavior = behavior;
+    this.lastCommittedPersonaBehavior = lastCommittedPersonaBehavior;
+
+    return {
+      discardedConversationIds,
+      degradedConversationKeys
+    };
+  }
+
   getSnapshot(): WorkshopSessionSnapshot {
     const windowed = this.turns.slice(-WORKSHOP_SNAPSHOT_TURN_WINDOW);
     return {
@@ -1565,6 +1904,991 @@ export class WorkshopSessionService {
   }
 }
 
+function cloneWorkshopSessionState(state: WorkshopSessionStateV1): WorkshopSessionStateV1 {
+  return {
+    excerpt: state.excerpt ? cloneExcerpt(state.excerpt) : undefined,
+    contextAttachments: state.contextAttachments.map(cloneAttachment),
+    pendingMessageAttachments: state.pendingMessageAttachments.map(cloneMessageAttachment),
+    revisions: { ...state.revisions },
+    counters: { ...state.counters },
+    writerSources: {
+      host: state.writerSources.host.map(cloneSourceEntry),
+      tools: cloneToolWriterSources(state.writerSources.tools),
+      guests: state.writerSources.guests.map(({ personaId, sources }) => ({
+        personaId,
+        sources: sources.map(cloneSourceEntry)
+      }))
+    },
+    turns: state.turns.map(cloneTurn),
+    participants: {
+      host: { ...state.participants.host },
+      toolSidecars: state.participants.toolSidecars.map((sidecar) => ({ ...sidecar })),
+      personaGuests: state.participants.personaGuests.map((guest) => ({ ...guest })),
+      chatTarget: cloneChatTarget(state.participants.chatTarget)
+    },
+    selectedToolId: state.selectedToolId,
+    todos: state.todos.map(cloneStoredTodo),
+    lastCommittedPersonaBehavior: state.lastCommittedPersonaBehavior
+      ? { ...state.lastCommittedPersonaBehavior }
+      : undefined
+  };
+}
+
+function assertWorkshopSessionStateShape(
+  value: unknown
+): asserts value is WorkshopSessionStateV1 {
+  const state = exactObject(
+    value,
+    'Workshop session state',
+    [
+      'contextAttachments',
+      'pendingMessageAttachments',
+      'revisions',
+      'counters',
+      'writerSources',
+      'turns',
+      'participants',
+      'todos'
+    ],
+    ['excerpt', 'selectedToolId', 'lastCommittedPersonaBehavior']
+  );
+  if (state.excerpt !== undefined) {
+    assertExcerpt(state.excerpt, 'Workshop session state.excerpt');
+  }
+  arrayOf(state.contextAttachments, 'Workshop session state.contextAttachments', assertContextAttachment);
+  arrayOf(
+    state.pendingMessageAttachments,
+    'Workshop session state.pendingMessageAttachments',
+    assertMessageAttachment
+  );
+  assertRevisions(state.revisions);
+  assertCounters(state.counters);
+  assertWriterSources(state.writerSources);
+  arrayOf(state.turns, 'Workshop session state.turns', assertTurn);
+  assertParticipants(state.participants);
+  if (state.selectedToolId !== undefined && !isWorkshopToolId(state.selectedToolId)) {
+    shapeError('Workshop session state.selectedToolId', 'known Workshop tool id');
+  }
+  arrayOf(state.todos, 'Workshop session state.todos', assertStoredTodo);
+  if (state.lastCommittedPersonaBehavior !== undefined) {
+    assertLastCommittedBehavior(
+      state.lastCommittedPersonaBehavior,
+      'Workshop session state.lastCommittedPersonaBehavior'
+    );
+  }
+}
+
+function assertExcerpt(value: unknown, path: string): void {
+  const excerpt = exactObject(
+    value,
+    path,
+    ['text', 'version', 'source', 'pinnedAt'],
+    ['truncation', 'sourceFingerprint']
+  );
+  stringAt(excerpt.text, `${path}.text`);
+  numberAt(excerpt.version, `${path}.version`);
+  assertExcerptSource(excerpt.source, `${path}.source`);
+  numberAt(excerpt.pinnedAt, `${path}.pinnedAt`);
+  if (excerpt.truncation !== undefined) {
+    const truncation = exactObject(
+      excerpt.truncation,
+      `${path}.truncation`,
+      ['pinnedWords', 'totalWords']
+    );
+    numberAt(truncation.pinnedWords, `${path}.truncation.pinnedWords`);
+    numberAt(truncation.totalWords, `${path}.truncation.totalWords`);
+  }
+  optionalStringAt(excerpt.sourceFingerprint, `${path}.sourceFingerprint`);
+}
+
+function assertExcerptSource(value: unknown, path: string): void {
+  const source = objectAt(value, path);
+  if (source.kind === 'manual') {
+    exactKeys(source, path, ['kind']);
+    return;
+  }
+  if (source.kind === 'file') {
+    exactKeys(source, path, ['kind', 'sourceUri', 'relativePath'], ['configuredResource']);
+    stringAt(source.sourceUri, `${path}.sourceUri`);
+    stringAt(source.relativePath, `${path}.relativePath`);
+    assertOptionalConfiguredResource(source.configuredResource, `${path}.configuredResource`);
+    return;
+  }
+  if (source.kind === 'editor-selection') {
+    exactKeys(
+      source,
+      path,
+      ['kind', 'sourceUri', 'relativePath'],
+      ['startLine', 'endLine', 'configuredResource']
+    );
+    stringAt(source.sourceUri, `${path}.sourceUri`);
+    stringAt(source.relativePath, `${path}.relativePath`);
+    optionalNumberAt(source.startLine, `${path}.startLine`);
+    optionalNumberAt(source.endLine, `${path}.endLine`);
+    assertOptionalConfiguredResource(source.configuredResource, `${path}.configuredResource`);
+    return;
+  }
+  shapeError(`${path}.kind`, 'manual, file, or editor-selection');
+}
+
+function assertContextAttachment(value: unknown, path: string): void {
+  const attachment = exactObject(
+    value,
+    path,
+    ['id', 'kind', 'origin', 'label', 'words', 'content', 'addedAt'],
+    ['relativePath', 'configuredResource', 'truncation', 'sourceUri']
+  );
+  stringAt(attachment.id, `${path}.id`);
+  enumAt(attachment.kind, `${path}.kind`, ['text', 'file']);
+  enumAt(attachment.origin, `${path}.origin`, ['writer', 'wizard']);
+  stringAt(attachment.label, `${path}.label`);
+  numberAt(attachment.words, `${path}.words`);
+  stringAt(attachment.content, `${path}.content`);
+  numberAt(attachment.addedAt, `${path}.addedAt`);
+  optionalStringAt(attachment.relativePath, `${path}.relativePath`);
+  optionalStringAt(attachment.sourceUri, `${path}.sourceUri`);
+  assertOptionalConfiguredResource(attachment.configuredResource, `${path}.configuredResource`);
+  if (attachment.truncation !== undefined) {
+    assertKeptWordTruncation(attachment.truncation, `${path}.truncation`);
+  }
+}
+
+function assertMessageAttachment(value: unknown, path: string): void {
+  const attachment = exactObject(
+    value,
+    path,
+    ['id', 'label', 'words', 'content'],
+    ['relativePath', 'configuredResource', 'truncation', 'sourceUri']
+  );
+  stringAt(attachment.id, `${path}.id`);
+  stringAt(attachment.label, `${path}.label`);
+  numberAt(attachment.words, `${path}.words`);
+  stringAt(attachment.content, `${path}.content`);
+  optionalStringAt(attachment.relativePath, `${path}.relativePath`);
+  optionalStringAt(attachment.sourceUri, `${path}.sourceUri`);
+  assertOptionalConfiguredResource(attachment.configuredResource, `${path}.configuredResource`);
+  if (attachment.truncation !== undefined) {
+    assertKeptWordTruncation(attachment.truncation, `${path}.truncation`);
+  }
+}
+
+function assertKeptWordTruncation(value: unknown, path: string): void {
+  const truncation = exactObject(value, path, ['keptWords', 'totalWords']);
+  numberAt(truncation.keptWords, `${path}.keptWords`);
+  numberAt(truncation.totalWords, `${path}.totalWords`);
+}
+
+function assertOptionalConfiguredResource(value: unknown, path: string): void {
+  if (value === undefined) {
+    return;
+  }
+  const resource = exactObject(value, path, ['group', 'path']);
+  if (typeof resource.group !== 'string' || !isContextPathGroup(resource.group)) {
+    shapeError(`${path}.group`, 'known context resource group');
+  }
+  stringAt(resource.path, `${path}.path`);
+}
+
+function assertRevisions(value: unknown): void {
+  const revisions = exactObject(
+    value,
+    'Workshop session state.revisions',
+    ['excerpt', 'replacementCount', 'context'],
+    ['pendingExcerpt', 'pendingContext']
+  );
+  numberAt(revisions.excerpt, 'Workshop session state.revisions.excerpt');
+  numberAt(revisions.replacementCount, 'Workshop session state.revisions.replacementCount');
+  numberAt(revisions.context, 'Workshop session state.revisions.context');
+  optionalNumberAt(revisions.pendingExcerpt, 'Workshop session state.revisions.pendingExcerpt');
+  optionalNumberAt(revisions.pendingContext, 'Workshop session state.revisions.pendingContext');
+}
+
+function assertCounters(value: unknown): void {
+  const counters = exactObject(
+    value,
+    'Workshop session state.counters',
+    ['attachment', 'threadArtifact', 'turn', 'todo']
+  );
+  numberAt(counters.attachment, 'Workshop session state.counters.attachment');
+  numberAt(counters.threadArtifact, 'Workshop session state.counters.threadArtifact');
+  numberAt(counters.turn, 'Workshop session state.counters.turn');
+  numberAt(counters.todo, 'Workshop session state.counters.todo');
+}
+
+function assertWriterSources(value: unknown): void {
+  const sources = exactObject(
+    value,
+    'Workshop session state.writerSources',
+    ['host', 'tools', 'guests']
+  );
+  arrayOf(sources.host, 'Workshop session state.writerSources.host', assertContextSource);
+  const tools = objectAt(sources.tools, 'Workshop session state.writerSources.tools');
+  for (const [toolId, entries] of Object.entries(tools)) {
+    if (!isWorkshopToolId(toolId)) {
+      shapeError(`Workshop session state.writerSources.tools.${toolId}`, 'known Workshop tool id');
+    }
+    arrayOf(
+      entries,
+      `Workshop session state.writerSources.tools.${toolId}`,
+      assertContextSource
+    );
+  }
+  arrayOf(
+    sources.guests,
+    'Workshop session state.writerSources.guests',
+    (guestValue, guestPath) => {
+      const guest = exactObject(guestValue, guestPath, ['personaId', 'sources']);
+      if (!isWorkshopPersonaId(guest.personaId)) {
+        shapeError(`${guestPath}.personaId`, 'known Workshop persona id');
+      }
+      arrayOf(guest.sources, `${guestPath}.sources`, assertContextSource);
+    }
+  );
+}
+
+function assertContextSource(value: unknown, path: string): void {
+  const source = exactObject(
+    value,
+    path,
+    ['kind', 'origin', 'label', 'sizeChars', 'isEstimate', 'deliveredAt'],
+    [
+      'configuredResource',
+      'promptTokensDelta',
+      'excerptVersion',
+      'stale',
+      'artifactId'
+    ]
+  );
+  enumAt(
+    source.kind,
+    `${path}.kind`,
+    ['pin', 'attachment', 'message-attachment', 'resource', 'tool-evidence', 'dictionary']
+  );
+  enumAt(source.origin, `${path}.origin`, ['writer', 'host', 'tool']);
+  stringAt(source.label, `${path}.label`);
+  numberAt(source.sizeChars, `${path}.sizeChars`);
+  booleanAt(source.isEstimate, `${path}.isEstimate`);
+  numberAt(source.deliveredAt, `${path}.deliveredAt`);
+  assertOptionalConfiguredResource(source.configuredResource, `${path}.configuredResource`);
+  optionalNumberAt(source.promptTokensDelta, `${path}.promptTokensDelta`);
+  optionalNumberAt(source.excerptVersion, `${path}.excerptVersion`);
+  optionalBooleanAt(source.stale, `${path}.stale`);
+  optionalStringAt(source.artifactId, `${path}.artifactId`);
+}
+
+function assertTurn(value: unknown, path: string): void {
+  const turn = exactObject(
+    value,
+    path,
+    ['id', 'role', 'kind', 'participant', 'artifact', 'excerptVersion', 'content', 'timestamp'],
+    [
+      'toolId',
+      'toolLabel',
+      'personaId',
+      'personaLabel',
+      'reportTurnId',
+      'capability',
+      'actionableFindings',
+      'messageAttachments',
+      'usage',
+      'truncated',
+      'behavior',
+      'behaviorTransition'
+    ]
+  );
+  stringAt(turn.id, `${path}.id`);
+  enumAt(turn.role, `${path}.role`, ['user', 'assistant', 'system']);
+  enumAt(turn.kind, `${path}.kind`, ['tool_run', 'message', 'divider']);
+  enumAt(turn.participant, `${path}.participant`, ['writer', 'host', 'guest', 'tool', 'session']);
+  enumAt(
+    turn.artifact,
+    `${path}.artifact`,
+    [
+      'tool_request',
+      'persona_message',
+      'tool_report',
+      'persona_synthesis',
+      'direct_tool_message',
+      'direct_tool_response',
+      'dictionary_lookup',
+      'dictionary_full_entry',
+      'resource_catalog',
+      'resource_search',
+      'resource_read',
+      'excerpt_revision',
+      'context_change',
+      'session_start',
+      'session_resume'
+    ]
+  );
+  numberAt(turn.excerptVersion, `${path}.excerptVersion`);
+  stringAt(turn.content, `${path}.content`);
+  numberAt(turn.timestamp, `${path}.timestamp`);
+  if (turn.toolId !== undefined && !isWorkshopToolId(turn.toolId)) {
+    shapeError(`${path}.toolId`, 'known Workshop tool id');
+  }
+  optionalStringAt(turn.toolLabel, `${path}.toolLabel`);
+  if (turn.personaId !== undefined && !isWorkshopPersonaId(turn.personaId)) {
+    shapeError(`${path}.personaId`, 'known Workshop persona id');
+  }
+  optionalStringAt(turn.personaLabel, `${path}.personaLabel`);
+  optionalStringAt(turn.reportTurnId, `${path}.reportTurnId`);
+  if (turn.capability !== undefined) {
+    assertCapability(turn.capability, `${path}.capability`);
+  }
+  if (turn.actionableFindings !== undefined) {
+    arrayOf(turn.actionableFindings, `${path}.actionableFindings`, assertFinding);
+  }
+  if (turn.messageAttachments !== undefined) {
+    arrayOf(
+      turn.messageAttachments,
+      `${path}.messageAttachments`,
+      assertMessageAttachmentSnapshot
+    );
+  }
+  if (turn.usage !== undefined) {
+    assertTokenUsage(turn.usage, `${path}.usage`);
+  }
+  optionalBooleanAt(turn.truncated, `${path}.truncated`);
+  if (turn.behavior !== undefined) {
+    assertBehavior(turn.behavior, `${path}.behavior`);
+  }
+  if (turn.behaviorTransition !== undefined) {
+    assertBehaviorTransition(turn.behaviorTransition, `${path}.behaviorTransition`);
+  }
+}
+
+function assertCapability(value: unknown, path: string): void {
+  const capability = exactObject(
+    value,
+    path,
+    ['operation', 'status', 'requestSummary', 'requestedByPersonaId'],
+    ['metadata']
+  );
+  enumAt(
+    capability.operation,
+    `${path}.operation`,
+    [
+      'dictionary.lookup',
+      'dictionary.full-entry',
+      'analysis.run',
+      'resource.catalog',
+      'resource.search',
+      'resource.read'
+    ]
+  );
+  enumAt(
+    capability.status,
+    `${path}.status`,
+    ['success', 'partial', 'failed', 'cancelled', 'rejected']
+  );
+  stringAt(capability.requestSummary, `${path}.requestSummary`);
+  if (!isWorkshopPersonaId(capability.requestedByPersonaId)) {
+    shapeError(`${path}.requestedByPersonaId`, 'known Workshop persona id');
+  }
+  if (capability.metadata !== undefined) {
+    jsonObjectAt(capability.metadata, `${path}.metadata`);
+  }
+}
+
+function assertFinding(value: unknown, path: string): void {
+  const finding = exactObject(value, path, ['key', 'text', 'ordinal'], ['priority']);
+  stringAt(finding.key, `${path}.key`);
+  stringAt(finding.text, `${path}.text`);
+  numberAt(finding.ordinal, `${path}.ordinal`);
+  if (finding.priority !== undefined) {
+    enumAt(finding.priority, `${path}.priority`, ['high', 'medium', 'low']);
+  }
+}
+
+function assertMessageAttachmentSnapshot(value: unknown, path: string): void {
+  const attachment = exactObject(
+    value,
+    path,
+    ['id', 'label', 'words'],
+    ['relativePath', 'configuredResource', 'truncation']
+  );
+  stringAt(attachment.id, `${path}.id`);
+  stringAt(attachment.label, `${path}.label`);
+  numberAt(attachment.words, `${path}.words`);
+  optionalStringAt(attachment.relativePath, `${path}.relativePath`);
+  assertOptionalConfiguredResource(attachment.configuredResource, `${path}.configuredResource`);
+  if (attachment.truncation !== undefined) {
+    assertKeptWordTruncation(attachment.truncation, `${path}.truncation`);
+  }
+}
+
+function assertTokenUsage(value: unknown, path: string): void {
+  const usage = exactObject(
+    value,
+    path,
+    ['promptTokens', 'completionTokens', 'totalTokens'],
+    ['requestCount', 'costUsd', 'isEstimate']
+  );
+  numberAt(usage.promptTokens, `${path}.promptTokens`);
+  numberAt(usage.completionTokens, `${path}.completionTokens`);
+  numberAt(usage.totalTokens, `${path}.totalTokens`);
+  optionalNumberAt(usage.requestCount, `${path}.requestCount`);
+  optionalNumberAt(usage.costUsd, `${path}.costUsd`);
+  optionalBooleanAt(usage.isEstimate, `${path}.isEstimate`);
+}
+
+function assertBehavior(value: unknown, path: string): void {
+  const behavior = exactObject(
+    value,
+    path,
+    ['interactionMode', 'expressionLevel', 'relationalDepth', 'carryCuesThroughSession']
+  );
+  if (!isWorkshopInteractionMode(behavior.interactionMode)) {
+    shapeError(`${path}.interactionMode`, 'valid Workshop interaction mode');
+  }
+  if (!isWorkshopPersonaExpressionLevel(behavior.expressionLevel)) {
+    shapeError(`${path}.expressionLevel`, 'valid Workshop expression level');
+  }
+  if (!isWorkshopRelationalDepth(behavior.relationalDepth)) {
+    shapeError(`${path}.relationalDepth`, 'valid Workshop relational depth');
+  }
+  booleanAt(behavior.carryCuesThroughSession, `${path}.carryCuesThroughSession`);
+}
+
+function assertLastCommittedBehavior(value: unknown, path: string): void {
+  const behavior = exactObject(
+    value,
+    path,
+    ['interactionMode', 'expressionLevel', 'relationalDepth']
+  );
+  if (!isWorkshopInteractionMode(behavior.interactionMode)) {
+    shapeError(`${path}.interactionMode`, 'valid Workshop interaction mode');
+  }
+  if (!isWorkshopPersonaExpressionLevel(behavior.expressionLevel)) {
+    shapeError(`${path}.expressionLevel`, 'valid Workshop expression level');
+  }
+  if (!isWorkshopRelationalDepth(behavior.relationalDepth)) {
+    shapeError(`${path}.relationalDepth`, 'valid Workshop relational depth');
+  }
+}
+
+function assertBehaviorTransition(value: unknown, path: string): void {
+  const transition = exactObject(value, path, ['from', 'to', 'reason']);
+  assertLastCommittedBehavior(transition.from, `${path}.from`);
+  assertLastCommittedBehavior(transition.to, `${path}.to`);
+  if (transition.reason !== 'writer-selected') {
+    shapeError(`${path}.reason`, 'writer-selected');
+  }
+}
+
+function assertParticipants(value: unknown): void {
+  const participants = exactObject(
+    value,
+    'Workshop session state.participants',
+    ['host', 'toolSidecars', 'personaGuests', 'chatTarget']
+  );
+  const host = exactObject(
+    participants.host,
+    'Workshop session state.participants.host',
+    ['personaId'],
+    ['conversationKey']
+  );
+  if (!isWorkshopPersonaId(host.personaId)) {
+    shapeError('Workshop session state.participants.host.personaId', 'known Workshop persona id');
+  }
+  if (host.conversationKey !== undefined && host.conversationKey !== 'host') {
+    shapeError('Workshop session state.participants.host.conversationKey', 'host');
+  }
+  arrayOf(
+    participants.toolSidecars,
+    'Workshop session state.participants.toolSidecars',
+    (sidecarValue, sidecarPath) => {
+      const sidecar = exactObject(
+        sidecarValue,
+        sidecarPath,
+        ['toolId', 'conversationKey', 'latestReportTurnId', 'deliveredToHostThroughTurnId']
+      );
+      if (!isWorkshopToolId(sidecar.toolId)) {
+        shapeError(`${sidecarPath}.toolId`, 'known Workshop tool id');
+      }
+      stringAt(sidecar.conversationKey, `${sidecarPath}.conversationKey`);
+      stringAt(sidecar.latestReportTurnId, `${sidecarPath}.latestReportTurnId`);
+      stringAt(sidecar.deliveredToHostThroughTurnId, `${sidecarPath}.deliveredToHostThroughTurnId`);
+    }
+  );
+  arrayOf(
+    participants.personaGuests,
+    'Workshop session state.participants.personaGuests',
+    (guestValue, guestPath) => {
+      const guest = exactObject(
+        guestValue,
+        guestPath,
+        ['personaId', 'liveness'],
+        ['conversationKey', 'lastSeenHostTurnId', 'deliveredToHostThroughTurnId']
+      );
+      if (!isWorkshopPersonaId(guest.personaId)) {
+        shapeError(`${guestPath}.personaId`, 'known Workshop persona id');
+      }
+      enumAt(guest.liveness, `${guestPath}.liveness`, ['live', 'disposed']);
+      optionalStringAt(guest.conversationKey, `${guestPath}.conversationKey`);
+      optionalStringAt(guest.lastSeenHostTurnId, `${guestPath}.lastSeenHostTurnId`);
+      optionalStringAt(
+        guest.deliveredToHostThroughTurnId,
+        `${guestPath}.deliveredToHostThroughTurnId`
+      );
+    }
+  );
+  assertChatTarget(participants.chatTarget, 'Workshop session state.participants.chatTarget');
+}
+
+function assertChatTarget(value: unknown, path: string): void {
+  const target = objectAt(value, path);
+  if (target.kind === 'host') {
+    exactKeys(target, path, ['kind']);
+    return;
+  }
+  if (target.kind === 'tool') {
+    exactKeys(target, path, ['kind', 'toolId']);
+    if (!isWorkshopToolId(target.toolId)) {
+      shapeError(`${path}.toolId`, 'known Workshop tool id');
+    }
+    return;
+  }
+  if (target.kind === 'personaGuest') {
+    exactKeys(target, path, ['kind', 'personaId']);
+    if (!isWorkshopPersonaId(target.personaId)) {
+      shapeError(`${path}.personaId`, 'known Workshop persona id');
+    }
+    return;
+  }
+  shapeError(`${path}.kind`, 'host, tool, or personaGuest');
+}
+
+function assertStoredTodo(value: unknown, path: string): void {
+  const todo = exactObject(
+    value,
+    path,
+    ['id', 'text', 'status', 'source', 'createdAt'],
+    ['priority', 'writerEdit']
+  );
+  stringAt(todo.id, `${path}.id`);
+  stringAt(todo.text, `${path}.text`);
+  enumAt(todo.status, `${path}.status`, ['open', 'completed', 'dismissed']);
+  if (todo.priority !== undefined) {
+    enumAt(todo.priority, `${path}.priority`, ['high', 'medium', 'low']);
+  }
+  assertTodoSource(todo.source, `${path}.source`);
+  numberAt(todo.createdAt, `${path}.createdAt`);
+  if (todo.writerEdit !== undefined) {
+    const writerEdit = exactObject(
+      todo.writerEdit,
+      `${path}.writerEdit`,
+      ['originalText', 'editedAt']
+    );
+    stringAt(writerEdit.originalText, `${path}.writerEdit.originalText`);
+    numberAt(writerEdit.editedAt, `${path}.writerEdit.editedAt`);
+  }
+}
+
+function assertTodoSource(value: unknown, path: string): void {
+  const source = objectAt(value, path);
+  const baseRequired = [
+    'kind',
+    'turnId',
+    'participantLabel',
+    'findingKey',
+    'findingText',
+    'excerptVersion'
+  ];
+  if (source.kind === 'tool_report') {
+    exactKeys(source, path, [...baseRequired, 'toolId']);
+    if (!isWorkshopToolId(source.toolId)) {
+      shapeError(`${path}.toolId`, 'known Workshop tool id');
+    }
+  } else if (source.kind === 'host_turn') {
+    exactKeys(source, path, [...baseRequired, 'personaId'], ['upstreamReportTurnId']);
+    if (!isWorkshopPersonaId(source.personaId)) {
+      shapeError(`${path}.personaId`, 'known Workshop persona id');
+    }
+    optionalStringAt(source.upstreamReportTurnId, `${path}.upstreamReportTurnId`);
+  } else {
+    shapeError(`${path}.kind`, 'tool_report or host_turn');
+  }
+  stringAt(source.turnId, `${path}.turnId`);
+  stringAt(source.participantLabel, `${path}.participantLabel`);
+  stringAt(source.findingKey, `${path}.findingKey`);
+  stringAt(source.findingText, `${path}.findingText`);
+  numberAt(source.excerptVersion, `${path}.excerptVersion`);
+}
+
+function exactObject(
+  value: unknown,
+  path: string,
+  required: readonly string[],
+  optional: readonly string[] = []
+): Record<string, unknown> {
+  const object = objectAt(value, path);
+  exactKeys(object, path, required, optional);
+  return object;
+}
+
+function objectAt(value: unknown, path: string): Record<string, unknown> {
+  if (
+    typeof value !== 'object'
+    || value === null
+    || Array.isArray(value)
+    || Object.getPrototypeOf(value) !== Object.prototype
+  ) {
+    shapeError(path, 'plain object');
+  }
+  return value as Record<string, unknown>;
+}
+
+function exactKeys(
+  object: Record<string, unknown>,
+  path: string,
+  required: readonly string[],
+  optional: readonly string[] = []
+): void {
+  const allowed = new Set([...required, ...optional]);
+  const unknown = Object.keys(object).find((key) => !allowed.has(key));
+  if (unknown) {
+    throw new Error(`${path} contains unknown field ${unknown}`);
+  }
+  const missing = required.find(
+    (key) => !Object.prototype.hasOwnProperty.call(object, key) || object[key] === undefined
+  );
+  if (missing) {
+    throw new Error(`${path} is missing required field ${missing}`);
+  }
+}
+
+function arrayOf(
+  value: unknown,
+  path: string,
+  assertItem: (item: unknown, itemPath: string) => void
+): void {
+  if (!Array.isArray(value)) {
+    shapeError(path, 'array');
+  }
+  value.forEach((item, index) => assertItem(item, `${path}[${index}]`));
+}
+
+function stringAt(value: unknown, path: string): void {
+  if (typeof value !== 'string') {
+    shapeError(path, 'string');
+  }
+}
+
+function optionalStringAt(value: unknown, path: string): void {
+  if (value !== undefined) {
+    stringAt(value, path);
+  }
+}
+
+function numberAt(value: unknown, path: string): void {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    shapeError(path, 'finite number');
+  }
+}
+
+function optionalNumberAt(value: unknown, path: string): void {
+  if (value !== undefined) {
+    numberAt(value, path);
+  }
+}
+
+function booleanAt(value: unknown, path: string): void {
+  if (typeof value !== 'boolean') {
+    shapeError(path, 'boolean');
+  }
+}
+
+function optionalBooleanAt(value: unknown, path: string): void {
+  if (value !== undefined) {
+    booleanAt(value, path);
+  }
+}
+
+function enumAt(value: unknown, path: string, allowed: readonly string[]): void {
+  if (typeof value !== 'string' || !allowed.includes(value)) {
+    shapeError(path, allowed.join(' | '));
+  }
+}
+
+function jsonObjectAt(value: unknown, path: string): void {
+  objectAt(value, path);
+  assertJsonValue(value, path);
+}
+
+function assertJsonValue(value: unknown, path: string): void {
+  if (
+    value === null
+    || typeof value === 'string'
+    || typeof value === 'boolean'
+  ) {
+    return;
+  }
+  if (typeof value === 'number') {
+    numberAt(value, path);
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => assertJsonValue(item, `${path}[${index}]`));
+    return;
+  }
+  const object = objectAt(value, path);
+  for (const [key, nested] of Object.entries(object)) {
+    assertJsonValue(nested, `${path}.${key}`);
+  }
+}
+
+function shapeError(path: string, expected: string): never {
+  throw new Error(`${path} must be ${expected}`);
+}
+
+function validatePersistedState(state: WorkshopSessionStateV1): void {
+  const requireCounter = (value: number, label: string): void => {
+    if (!Number.isSafeInteger(value) || value < 0) {
+      throw new Error(`Persisted Workshop ${label} must be a non-negative safe integer`);
+    }
+  };
+  requireCounter(state.revisions.excerpt, 'excerpt revision');
+  requireCounter(state.revisions.replacementCount, 'replacement count');
+  requireCounter(state.revisions.context, 'context revision');
+  requireCounter(state.counters.attachment, 'attachment counter');
+  requireCounter(state.counters.threadArtifact, 'thread-artifact counter');
+  requireCounter(state.counters.turn, 'turn counter');
+  requireCounter(state.counters.todo, 'todo counter');
+
+  if (state.excerpt) {
+    if (state.excerpt.version !== state.revisions.excerpt) {
+      throw new Error('Persisted Workshop excerpt version does not match its revision counter');
+    }
+  } else if (state.revisions.excerpt !== 0) {
+    throw new Error('Persisted Workshop state has an excerpt revision without an excerpt');
+  }
+  if (
+    state.revisions.pendingExcerpt !== undefined
+    && state.revisions.pendingExcerpt !== state.revisions.excerpt
+  ) {
+    throw new Error('Persisted Workshop pending excerpt revision is not current');
+  }
+  if (
+    state.revisions.pendingContext !== undefined
+    && (
+      !Number.isSafeInteger(state.revisions.pendingContext)
+      || state.revisions.pendingContext < 1
+      || state.revisions.pendingContext > state.revisions.context
+    )
+  ) {
+    throw new Error('Persisted Workshop pending context revision is invalid');
+  }
+
+  const attachmentIds = new Set<string>();
+  let greatestAttachmentNumber = 0;
+  for (const attachment of state.contextAttachments) {
+    if (attachmentIds.has(attachment.id)) {
+      throw new Error(`Duplicate persisted Workshop context attachment ${attachment.id}`);
+    }
+    attachmentIds.add(attachment.id);
+    greatestAttachmentNumber = Math.max(
+      greatestAttachmentNumber,
+      numericIdSuffix(attachment.id, /^ctx-(\d+)$/, 'context attachment')
+    );
+  }
+  if (greatestAttachmentNumber > state.counters.attachment) {
+    throw new Error('Persisted Workshop attachment counter trails an existing id');
+  }
+
+  const turnIds = new Set<string>();
+  let greatestTurnNumber = 0;
+  let greatestThreadArtifactNumber = 0;
+  for (const turn of state.turns) {
+    if (turnIds.has(turn.id)) {
+      throw new Error(`Duplicate persisted Workshop turn ${turn.id}`);
+    }
+    turnIds.add(turn.id);
+    greatestTurnNumber = Math.max(
+      greatestTurnNumber,
+      numericIdSuffix(
+        turn.id,
+        /^turn-(\d+)-(?:user|assistant|system)-\d+$/,
+        'turn'
+      )
+    );
+    for (const attachment of turn.messageAttachments ?? []) {
+      greatestThreadArtifactNumber = Math.max(
+        greatestThreadArtifactNumber,
+        numericIdSuffix(attachment.id, /^ta-(\d+)$/, 'thread artifact')
+      );
+    }
+  }
+  if (greatestTurnNumber > state.counters.turn) {
+    throw new Error('Persisted Workshop turn counter trails an existing id');
+  }
+
+  const pendingMessageIds = new Set<string>();
+  for (const attachment of state.pendingMessageAttachments) {
+    if (pendingMessageIds.has(attachment.id)) {
+      throw new Error(`Duplicate persisted Workshop pending message attachment ${attachment.id}`);
+    }
+    pendingMessageIds.add(attachment.id);
+    greatestThreadArtifactNumber = Math.max(
+      greatestThreadArtifactNumber,
+      numericIdSuffix(attachment.id, /^ta-(\d+)$/, 'thread artifact')
+    );
+  }
+  if (greatestThreadArtifactNumber > state.counters.threadArtifact) {
+    throw new Error('Persisted Workshop thread-artifact counter trails an existing id');
+  }
+
+  const todoIds = new Set<string>();
+  let greatestTodoNumber = 0;
+  for (const todo of state.todos) {
+    if (todoIds.has(todo.id)) {
+      throw new Error(`Duplicate persisted Workshop task ${todo.id}`);
+    }
+    todoIds.add(todo.id);
+    greatestTodoNumber = Math.max(
+      greatestTodoNumber,
+      numericIdSuffix(todo.id, /^todo-(\d+)-\d+$/, 'task')
+    );
+    if (!turnIds.has(todo.source.turnId)) {
+      throw new Error(`Persisted Workshop task ${todo.id} references an unknown turn`);
+    }
+  }
+  if (greatestTodoNumber > state.counters.todo) {
+    throw new Error('Persisted Workshop task counter trails an existing id');
+  }
+
+  if (!isWorkshopPersonaId(state.participants.host.personaId)) {
+    throw new Error('Persisted Workshop host persona is invalid');
+  }
+  if (
+    state.participants.host.conversationKey !== undefined
+    && state.participants.host.conversationKey !== 'host'
+  ) {
+    throw new Error('Persisted Workshop host conversation key is invalid');
+  }
+
+  const toolIds = new Set<WorkshopToolId>();
+  for (const sidecar of state.participants.toolSidecars) {
+    if (!isWorkshopToolId(sidecar.toolId) || toolIds.has(sidecar.toolId)) {
+      throw new Error(`Duplicate or invalid persisted Workshop tool sidecar ${String(sidecar.toolId)}`);
+    }
+    toolIds.add(sidecar.toolId);
+    if (sidecar.conversationKey !== `tool:${sidecar.toolId}`) {
+      throw new Error(`Persisted Workshop tool ${sidecar.toolId} has the wrong conversation key`);
+    }
+    const report = state.turns.find((turn) => turn.id === sidecar.latestReportTurnId);
+    if (
+      !report
+      || report.artifact !== 'tool_report'
+      || report.toolId !== sidecar.toolId
+    ) {
+      throw new Error(`Persisted Workshop tool ${sidecar.toolId} has an invalid latest report`);
+    }
+    if (!turnIds.has(sidecar.deliveredToHostThroughTurnId)) {
+      throw new Error(`Persisted Workshop tool ${sidecar.toolId} has an invalid delivery cursor`);
+    }
+  }
+
+  const guestIds = new Set<WorkshopPersonaId>();
+  for (const guest of state.participants.personaGuests) {
+    if (!isWorkshopPersonaId(guest.personaId) || guestIds.has(guest.personaId)) {
+      throw new Error(`Duplicate or invalid persisted Workshop guest ${String(guest.personaId)}`);
+    }
+    guestIds.add(guest.personaId);
+    const expectedKey = `guest:${guest.personaId}`;
+    if (guest.conversationKey !== undefined && guest.conversationKey !== expectedKey) {
+      throw new Error(`Persisted Workshop guest ${guest.personaId} has the wrong conversation key`);
+    }
+    if (guest.liveness === 'live' && guest.conversationKey === undefined) {
+      throw new Error(`Persisted live Workshop guest ${guest.personaId} has no conversation key`);
+    }
+    for (const cursor of [guest.lastSeenHostTurnId, guest.deliveredToHostThroughTurnId]) {
+      if (cursor !== undefined && !turnIds.has(cursor)) {
+        throw new Error(`Persisted Workshop guest ${guest.personaId} has an invalid delivery cursor`);
+      }
+    }
+  }
+
+  const writerSourceGuests = new Set<WorkshopPersonaId>();
+  for (const guest of state.writerSources.guests) {
+    if (!isWorkshopPersonaId(guest.personaId) || writerSourceGuests.has(guest.personaId)) {
+      throw new Error(`Duplicate or invalid persisted Workshop guest manifest ${String(guest.personaId)}`);
+    }
+    writerSourceGuests.add(guest.personaId);
+  }
+  for (const rawToolId of Object.keys(state.writerSources.tools)) {
+    if (!isWorkshopToolId(rawToolId)) {
+      throw new Error(`Invalid persisted Workshop tool manifest ${rawToolId}`);
+    }
+  }
+
+  const target = state.participants.chatTarget;
+  if (target.kind === 'tool' && !toolIds.has(target.toolId)) {
+    throw new Error('Persisted Workshop chat target references an unknown tool sidecar');
+  }
+  if (
+    target.kind === 'personaGuest'
+    && !state.participants.personaGuests.some(
+      (guest) => guest.personaId === target.personaId && guest.liveness === 'live'
+    )
+  ) {
+    throw new Error('Persisted Workshop chat target references a non-live guest');
+  }
+}
+
+function numericIdSuffix(id: string, pattern: RegExp, label: string): number {
+  const match = pattern.exec(id);
+  const value = match ? Number(match[1]) : Number.NaN;
+  if (!Number.isSafeInteger(value) || value < 1) {
+    throw new Error(`Persisted Workshop ${label} id is invalid: ${id}`);
+  }
+  return value;
+}
+
+function usableRuntimeBindings(
+  bindings: WorkshopRuntimeConversationBindings
+): Map<WorkshopConversationLogicalKey, string> {
+  const candidates = Object.entries(bindings).flatMap(([rawKey, rawId]) => {
+    if (typeof rawId !== 'string' || rawId.trim().length === 0) {
+      return [];
+    }
+    return [{
+      key: rawKey as WorkshopConversationLogicalKey,
+      conversationId: rawId
+    }];
+  });
+  const counts = new Map<string, number>();
+  for (const { conversationId } of candidates) {
+    counts.set(conversationId, (counts.get(conversationId) ?? 0) + 1);
+  }
+  return new Map(
+    candidates
+      .filter(({ conversationId }) => counts.get(conversationId) === 1)
+      .map(({ key, conversationId }) => [key, conversationId])
+  );
+}
+
+function cloneToolWriterSources(
+  sources: Partial<Record<WorkshopToolId, ContextSourceEntry[]>>
+): Partial<Record<WorkshopToolId, ContextSourceEntry[]>> {
+  return Object.fromEntries(
+    Object.entries(sources).flatMap(([toolId, entries]) =>
+      entries ? [[toolId, entries.map(cloneSourceEntry)]] : []
+    )
+  ) as Partial<Record<WorkshopToolId, ContextSourceEntry[]>>;
+}
+
+function cloneChatTarget(target: WorkshopChatTarget): WorkshopChatTarget {
+  if (target.kind === 'tool') {
+    return { kind: 'tool', toolId: target.toolId };
+  }
+  if (target.kind === 'personaGuest') {
+    return { kind: 'personaGuest', personaId: target.personaId };
+  }
+  return { kind: 'host' };
+}
+
 function cloneTurn(turn: WorkshopTurn): WorkshopTurn {
   return {
     ...turn,
@@ -1634,11 +2958,17 @@ function cloneFindings(findings: readonly WorkshopActionableFinding[]): Workshop
   return findings.map((finding) => ({ ...finding }));
 }
 
-function cloneTodo(todo: StoredWorkshopTodoItem, excerptVersion: number): WorkshopTodoItem {
+function cloneStoredTodo(todo: StoredWorkshopTodoItem): StoredWorkshopTodoItem {
   return {
     ...todo,
     source: { ...todo.source },
-    writerEdit: todo.writerEdit ? { ...todo.writerEdit } : undefined,
+    writerEdit: todo.writerEdit ? { ...todo.writerEdit } : undefined
+  };
+}
+
+function cloneTodo(todo: StoredWorkshopTodoItem, excerptVersion: number): WorkshopTodoItem {
+  return {
+    ...cloneStoredTodo(todo),
     stale: todo.source.excerptVersion !== excerptVersion
   };
 }

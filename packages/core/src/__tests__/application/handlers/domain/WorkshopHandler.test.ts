@@ -6,6 +6,8 @@ import { WorkshopSessionService } from '@/application/services/workshop/Workshop
 import { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
 import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
+import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
+import type { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
@@ -60,6 +62,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   let contextSources: Map<string, import('@messages').ContextSourceEntry[]>;
   let resourceFiles: Array<{ group: string; path: string; label: string; sizeBytes: number; absolutePath: string; content: string }>;
   let resourceProviderFactory: { createProvider: jest.Mock };
+  let persistence: jest.Mocked<WorkshopSessionPersistenceCoordinator>;
+  let timeNow: Date;
 
   const posted = (type: MessageType) => postMessage.mock.calls
     .map(([entry]) => entry)
@@ -81,6 +85,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   };
 
   beforeEach(() => {
+    timeNow = new Date('2026-07-23T14:00:00.000Z');
     session = new WorkshopSessionService(() => 1);
     contextBudgets = new Map();
     contextSources = new Map();
@@ -119,7 +124,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         requestedResources: ['Characters/raven.md']
       })
     };
-    shell = createFakeShellService();
+    shell = createFakeShellService({
+      revealFileInOS: jest.fn().mockResolvedValue(undefined)
+    });
     fileSystem = createFakeFileSystem();
     workspace = createFakeWorkspace();
     settings = {
@@ -156,6 +163,55 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     };
     const analysisSidePass = new WorkshopAnalysisSidePass(service, session, log);
     writerProfileService = new WorkshopWriterProfileService(settings, log);
+    persistence = {
+      availability: jest.fn().mockReturnValue({
+        available: true,
+        rootPath: '/workspace',
+        sessionsDirectory: '/workspace/prose-minion/sessions',
+        currentPath: '/workspace/prose-minion/sessions/current.json'
+      }),
+      getDegradedConversationKeys: jest.fn().mockReturnValue([]),
+      isCurrentCheckpointProtected: jest.fn().mockReturnValue(false),
+      isSessionOperationPending: jest.fn().mockReturnValue(false),
+      waitForSessionOperations: jest.fn().mockResolvedValue(undefined),
+      markDirty: jest.fn(),
+      flush: jest.fn().mockResolvedValue(undefined),
+      initialize: jest.fn().mockResolvedValue({
+        restored: false,
+        degradedConversationKeys: []
+      }),
+      resetSession: jest.fn(async () => {
+        session.reset().forEach((conversationId) => service.discardConversation(conversationId));
+      }),
+      saveNamed: jest.fn().mockResolvedValue({ sessionId: 'saved-1', title: 'Saved Room' }),
+      list: jest.fn().mockResolvedValue({
+        availability: { available: true },
+        current: {
+          sessionId: 'current',
+          title: 'Current Room',
+          fileName: 'current.json',
+          kind: 'current',
+          startedAt: 1,
+          updatedAt: 2,
+          timezone: 'America/Chicago',
+          hostPersonaId: 'jill',
+          participantPersonaIds: [],
+          turnCount: 0,
+          excerptWordCount: 0
+        },
+        sessions: [],
+        truncated: false,
+        searchTruncated: false
+      }),
+      openNamed: jest.fn().mockResolvedValue({
+        restored: true,
+        degradedConversationKeys: []
+      }),
+      renameNamed: jest.fn().mockResolvedValue({ sessionId: 'saved-1', title: 'Renamed Room' }),
+      duplicateNamed: jest.fn().mockResolvedValue({ sessionId: 'saved-2', title: 'Copied Room' }),
+      resolveRevealPath: jest.fn().mockResolvedValue('/workspace/prose-minion/sessions/saved-1.json'),
+      deleteNamed: jest.fn().mockResolvedValue(undefined)
+    } as unknown as jest.Mocked<WorkshopSessionPersistenceCoordinator>;
     handler = new WorkshopHandler(
       service,
       contextAssistant as never,
@@ -181,6 +237,11 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         log,
         writerProfileService
       ),
+      new WorkshopSessionTimeService({
+        now: () => new Date(timeNow),
+        timezone: 'America/Chicago'
+      }),
+      persistence,
       log
     );
   });
@@ -216,7 +277,40 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_ATTACH_MESSAGE_FILE)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_REMOVE_MESSAGE_ATTACHMENT)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS)).toBe(true);
-    expect(router.handlerCount).toBe(26);
+    expect(router.handlerCount).toBe(33);
+  });
+
+  it('guards routed room mutations while a shared session operation is pending', async () => {
+    const router = new MessageRouter();
+    handler.registerRoutes(router);
+    persistence.isSessionOperationPending.mockReturnValue(true);
+
+    await router.route(message(MessageType.WORKSHOP_SET_EXCERPT, {
+      text: 'Must not race an open.',
+      source: { kind: 'manual' }
+    }) as any);
+
+    expect(session.getExcerpt()).toBeUndefined();
+    expect(posted(MessageType.ERROR).at(-1).payload.message)
+      .toMatch(/session save or replacement/i);
+  });
+
+  it('settles a routed session action rejected behind an earlier operation', async () => {
+    const router = new MessageRouter();
+    handler.registerRoutes(router);
+    persistence.isSessionOperationPending.mockReturnValue(true);
+
+    await router.route(message(MessageType.WORKSHOP_OPEN_SESSION, {
+      sessionId: 'must-wait'
+    }) as any);
+
+    expect(persistence.openNamed).not.toHaveBeenCalled();
+    expect(posted(MessageType.WORKSHOP_SESSION_ACTION_RESULT).at(-1).payload)
+      .toMatchObject({
+        action: 'open',
+        ok: false,
+        message: expect.stringMatching(/session save or replacement/i)
+      });
   });
 
   it('commits carry-cues-only behavior changes without rebuilding persona prompts', async () => {
@@ -477,6 +571,100 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       participant: 'host',
       artifact: 'persona_message',
       personaId: 'jill'
+    });
+  });
+
+  describe('trusted persona time notices', () => {
+    it('sends the session-start frame on the first host call', async () => {
+      await pin();
+
+      await handler.handleSendMessage(message(
+        MessageType.WORKSHOP_SEND_MESSAGE,
+        { text: 'Where does this scene turn?' }
+      ) as any);
+
+      const input = service.startWorkshopPersonaConversation.mock.calls[0][0] as unknown as {
+        timeFrame?: string;
+      };
+      expect(input.timeFrame).toContain(
+        '<workshop-time-context reason="session-start">'
+      );
+      expect(input.timeFrame).toContain(
+        'Do not infer what the writer did, thought, or felt during any elapsed gap.'
+      );
+    });
+
+    it('does not consume a failed host notice and retries it on the next attempt', async () => {
+      await pin();
+      service.startWorkshopPersonaConversation
+        .mockRejectedValueOnce(new Error('temporary provider failure'));
+
+      await handler.handleSendMessage(message(
+        MessageType.WORKSHOP_SEND_MESSAGE,
+        { text: 'First attempt.' }
+      ) as any);
+      await handler.handleSendMessage(message(
+        MessageType.WORKSHOP_SEND_MESSAGE,
+        { text: 'Retry the opening.' }
+      ) as any);
+
+      const [first, retry] = service.startWorkshopPersonaConversation.mock.calls
+        .map(([input]) => input as unknown as { timeFrame?: string });
+      expect(first.timeFrame).toContain(
+        '<workshop-time-context reason="session-start">'
+      );
+      expect(retry.timeFrame).toContain(
+        '<workshop-time-context reason="session-start">'
+      );
+    });
+
+    it('consumes a successful host notice and does not resend it within one hour', async () => {
+      await pin();
+      await handler.handleSendMessage(message(
+        MessageType.WORKSHOP_SEND_MESSAGE,
+        { text: 'Open the room.' }
+      ) as any);
+      timeNow = new Date('2026-07-23T14:30:00.000Z');
+      service.continueConversation.mockClear();
+
+      await handler.handleSendMessage(message(
+        MessageType.WORKSHOP_SEND_MESSAGE,
+        { text: 'Continue thinking.' }
+      ) as any);
+
+      expect(service.continueConversation.mock.calls[0][1])
+        .not.toContain('<workshop-time-context');
+    });
+
+    it('tracks a guest notice independently from the host notice', async () => {
+      await pin();
+      await handler.handleSendMessage(message(
+        MessageType.WORKSHOP_SEND_MESSAGE,
+        { text: 'Open the room.' }
+      ) as any);
+      timeNow = new Date('2026-07-23T14:30:00.000Z');
+
+      await handler.handleInviteGuest(message(
+        MessageType.WORKSHOP_INVITE_GUEST,
+        { personaId: 'margot', openingMessage: 'Read this with us.' }
+      ) as any);
+
+      const guestMessage = service.startWorkshopGuestConversation.mock.calls[0][0].message;
+      expect(guestMessage).toContain(
+        '<workshop-time-context reason="session-start">'
+      );
+
+      await handler.handleSetChatTarget(message(
+        MessageType.WORKSHOP_SET_CHAT_TARGET,
+        { kind: 'host' }
+      ) as any);
+      service.continueConversation.mockClear();
+      await handler.handleSendMessage(message(
+        MessageType.WORKSHOP_SEND_MESSAGE,
+        { text: 'What did Margot reveal?' }
+      ) as any);
+      expect(service.continueConversation.mock.calls[0][1])
+        .not.toContain('<workshop-time-context');
     });
   });
 
@@ -1132,6 +1320,21 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(session.collectUnseenDirectExchanges()).toHaveLength(0);
   });
 
+  it('marks capability-committed host artifacts dirty immediately', async () => {
+    await pin();
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Open the host thread.' }
+    ) as any);
+    const capabilityRequest = (capabilityFactory.create as jest.Mock).mock.calls.at(-1)?.[0];
+    persistence.markDirty.mockClear();
+
+    capabilityRequest.events.sessionChanged();
+
+    expect(persistence.markDirty).toHaveBeenCalledWith('host capability committed');
+    expect(posted(MessageType.WORKSHOP_SESSION_STATE)).not.toHaveLength(0);
+  });
+
   it('includes pending direct exchanges when a new tool run is the next host turn', async () => {
     await pin();
     await runProse();
@@ -1509,6 +1712,217 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     });
   });
 
+  describe('session persistence routes', () => {
+    const invokeStateReplacingActions = async () => {
+      await handler.handleSaveSession(message(
+        MessageType.WORKSHOP_SAVE_SESSION,
+        { title: 'Saved Room' }
+      ) as any);
+      await handler.handleOpenSession(message(
+        MessageType.WORKSHOP_OPEN_SESSION,
+        { sessionId: 'saved-1' }
+      ) as any);
+      await handler.handleResetSession(message(
+        MessageType.WORKSHOP_RESET_SESSION,
+        {}
+      ) as any);
+      await handler.handleRenameSession(message(
+        MessageType.WORKSHOP_RENAME_SESSION,
+        { sessionId: 'saved-1', title: 'Renamed Room' }
+      ) as any);
+      await handler.handleDuplicateSession(message(
+        MessageType.WORKSHOP_DUPLICATE_SESSION,
+        { sessionId: 'saved-1', title: 'Copied Room' }
+      ) as any);
+      await handler.handleDeleteSession(message(
+        MessageType.WORKSHOP_DELETE_SESSION,
+        { sessionId: 'saved-1' }
+      ) as any);
+    };
+
+    it('delegates browser actions and posts typed list/action responses', async () => {
+      await handler.handleSaveSession(message(
+        MessageType.WORKSHOP_SAVE_SESSION,
+        { title: 'Saved Room' }
+      ) as any);
+      await handler.handleListSessions(message(
+        MessageType.WORKSHOP_LIST_SESSIONS,
+        { requestId: 'list-1', query: 'room' }
+      ) as any);
+      await handler.handleOpenSession(message(
+        MessageType.WORKSHOP_OPEN_SESSION,
+        { sessionId: 'saved-1' }
+      ) as any);
+      await handler.handleRenameSession(message(
+        MessageType.WORKSHOP_RENAME_SESSION,
+        { sessionId: 'saved-1', title: 'Renamed Room' }
+      ) as any);
+      await handler.handleDuplicateSession(message(
+        MessageType.WORKSHOP_DUPLICATE_SESSION,
+        { sessionId: 'saved-1', title: 'Copied Room' }
+      ) as any);
+      await handler.handleRevealSession(message(
+        MessageType.WORKSHOP_REVEAL_SESSION,
+        { sessionId: 'saved-1' }
+      ) as any);
+      await handler.handleDeleteSession(message(
+        MessageType.WORKSHOP_DELETE_SESSION,
+        { sessionId: 'saved-1' }
+      ) as any);
+      await handler.handleResetSession(message(
+        MessageType.WORKSHOP_RESET_SESSION,
+        {}
+      ) as any);
+
+      expect(persistence.saveNamed).toHaveBeenCalledWith('Saved Room');
+      expect(persistence.list).toHaveBeenCalledWith('room');
+      expect(persistence.openNamed).toHaveBeenCalledWith('saved-1');
+      expect(persistence.renameNamed).toHaveBeenCalledWith('saved-1', 'Renamed Room');
+      expect(persistence.duplicateNamed).toHaveBeenCalledWith('saved-1', 'Copied Room');
+      expect(persistence.resolveRevealPath).toHaveBeenCalledWith('saved-1');
+      expect(shell.revealFileInOS).toHaveBeenCalledWith(
+        '/workspace/prose-minion/sessions/saved-1.json'
+      );
+      expect(persistence.deleteNamed).toHaveBeenCalledWith('saved-1');
+      expect(persistence.resetSession).toHaveBeenCalledTimes(1);
+
+      expect(posted(MessageType.WORKSHOP_SESSIONS_DATA).at(-1)).toMatchObject({
+        source: 'extension.workshop',
+        payload: {
+          requestId: 'list-1',
+          available: true,
+          current: expect.objectContaining({ sessionId: 'current' }),
+          sessions: [],
+          truncated: false,
+          searchTruncated: false
+        }
+      });
+      expect(posted(MessageType.WORKSHOP_SESSION_ACTION_RESULT).map(
+        (entry) => entry.payload
+      )).toEqual([
+        expect.objectContaining({ action: 'save', ok: true }),
+        expect.objectContaining({ action: 'open', ok: true }),
+        expect.objectContaining({ action: 'rename', ok: true }),
+        expect.objectContaining({ action: 'duplicate', ok: true }),
+        expect.objectContaining({ action: 'reveal', ok: true }),
+        expect.objectContaining({ action: 'delete', ok: true }),
+        expect.objectContaining({ action: 'new', ok: true })
+      ]);
+    });
+
+    it('reports a failed durable New promotion without claiming the room changed', async () => {
+      persistence.resetSession.mockRejectedValueOnce(new Error('current promotion failed'));
+
+      await handler.handleResetSession(message(
+        MessageType.WORKSHOP_RESET_SESSION,
+        {}
+      ) as any);
+
+      expect(posted(MessageType.WORKSHOP_SESSION_ACTION_RESULT).at(-1).payload)
+        .toEqual({
+          action: 'new',
+          ok: false,
+          message: 'current promotion failed'
+        });
+    });
+
+    it('settles a failed browser request with a typed error response', async () => {
+      persistence.list.mockRejectedValueOnce(new Error('session directory is unreadable'));
+
+      await handler.handleListSessions(message(
+        MessageType.WORKSHOP_LIST_SESSIONS,
+        { requestId: 'list-failed' }
+      ) as any);
+
+      expect(posted(MessageType.WORKSHOP_SESSIONS_DATA).at(-1)).toMatchObject({
+        payload: {
+          requestId: 'list-failed',
+          available: true,
+          error: 'session directory is unreadable',
+          sessions: []
+        }
+      });
+      expect(posted(MessageType.ERROR).at(-1).payload).toMatchObject({
+        message: 'Could not list Workshop sessions.',
+        details: 'session directory is unreadable'
+      });
+    });
+
+    it.each(['persona response', 'Context wizard'] as const)(
+      'blocks state replacement during an active %s but permits list and reveal',
+      async (activeKind) => {
+        await pin();
+        let settle!: () => void;
+        let active: Promise<void>;
+        if (activeKind === 'persona response') {
+          service.startWorkshopPersonaConversation.mockImplementationOnce(
+            async () => new Promise((resolve) => {
+              settle = () => resolve(
+                analysisResult('Finished.', { conversationId: 'host-conv' }) as any
+              );
+            })
+          );
+          active = handler.handleSendMessage(message(
+            MessageType.WORKSHOP_SEND_MESSAGE,
+            { text: 'Keep thinking.' }
+          ) as any);
+        } else {
+          contextAssistant.generateContext.mockImplementationOnce(
+            async () => new Promise((resolve) => {
+              settle = () => resolve({
+                toolName: 'context_assistant',
+                content: 'Wizard finished.',
+                timestamp: new Date(0),
+                requestedResources: []
+              });
+            })
+          );
+          active = handler.handleRunContextWizard(message(
+            MessageType.WORKSHOP_RUN_CONTEXT_WIZARD,
+            {}
+          ) as any);
+        }
+        await Promise.resolve();
+
+        await invokeStateReplacingActions();
+        await handler.handleListSessions(message(
+          MessageType.WORKSHOP_LIST_SESSIONS,
+          { requestId: 'allowed-list' }
+        ) as any);
+        await handler.handleRevealSession(message(
+          MessageType.WORKSHOP_REVEAL_SESSION,
+          { sessionId: 'saved-1' }
+        ) as any);
+
+        expect(persistence.saveNamed).not.toHaveBeenCalled();
+        expect(persistence.openNamed).not.toHaveBeenCalled();
+        expect(persistence.resetSession).not.toHaveBeenCalled();
+        expect(persistence.renameNamed).not.toHaveBeenCalled();
+        expect(persistence.duplicateNamed).not.toHaveBeenCalled();
+        expect(persistence.deleteNamed).not.toHaveBeenCalled();
+        expect(persistence.list).toHaveBeenCalledWith(undefined);
+        expect(persistence.resolveRevealPath).toHaveBeenCalledWith('saved-1');
+        expect(posted(MessageType.WORKSHOP_SESSION_ACTION_RESULT).slice(0, 6).map(
+          (entry) => entry.payload
+        )).toEqual([
+          expect.objectContaining({ action: 'save', ok: false }),
+          expect.objectContaining({ action: 'open', ok: false }),
+          expect.objectContaining({ action: 'new', ok: false }),
+          expect.objectContaining({ action: 'rename', ok: false }),
+          expect.objectContaining({ action: 'duplicate', ok: false }),
+          expect.objectContaining({ action: 'delete', ok: false })
+        ]);
+        expect(posted(MessageType.WORKSHOP_SESSIONS_DATA).at(-1).payload.requestId)
+          .toBe('allowed-list');
+        expect(posted(MessageType.WORKSHOP_SESSION_ACTION_RESULT).at(-1).payload)
+          .toMatchObject({ action: 'reveal', ok: true });
+
+        settle();
+        await active;
+      }
+    );
+  });
+
   describe('Context wizard (Sprint 12 Phase 5)', () => {
     const runWizard = () =>
       handler.handleRunContextWizard(message(MessageType.WORKSHOP_RUN_CONTEXT_WIZARD, {}) as any);
@@ -1589,7 +2003,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       });
     });
 
-    it('aborts a wizard when the session resets', async () => {
+    it('rejects a session reset while the Context wizard is active', async () => {
       await pin();
       let reject!: (reason: unknown) => void;
       let signal!: AbortSignal;
@@ -1601,7 +2015,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       const run = runWizard();
       await Promise.resolve();
       await handler.handleResetSession(message(MessageType.WORKSHOP_RESET_SESSION, {}) as any);
-      expect(signal.aborted).toBe(true);
+      expect(signal.aborted).toBe(false);
+      expect(persistence.resetSession).not.toHaveBeenCalled();
       reject(Object.assign(new Error('cancelled'), { name: 'AbortError' }));
       await run;
     });

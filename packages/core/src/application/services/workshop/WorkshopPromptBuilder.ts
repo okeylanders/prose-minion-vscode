@@ -75,6 +75,8 @@ export interface WorkshopGuestJoinInput {
   interactionFrame?: string;
   activationFrame?: string;
   transitionFrame?: string;
+  /** Trusted session clock frame, delivered on the persona's next turn only. */
+  timeFrame?: string;
 }
 
 export interface WorkshopGuestJoinMessage {
@@ -242,6 +244,8 @@ export interface WorkshopBehaviorFrames {
   activationFrame?: string;
   /** Pre-built `<workshop-interaction-transition>` frame, when behavior changed. */
   transitionFrame?: string;
+  /** Trusted session clock frame, delivered on the persona's next turn only. */
+  timeFrame?: string;
 }
 
 /** Compose a retained guest continuation with an optional room delta. */
@@ -255,11 +259,12 @@ export function buildWorkshopGuestMessage(
   if (
     !catchUp && threadArtifactFrames.length === 0 &&
     !behaviorFrames.interactionFrame && !behaviorFrames.activationFrame
-      && !behaviorFrames.transitionFrame
+      && !behaviorFrames.transitionFrame && !behaviorFrames.timeFrame
   ) {
     return safeWriterMessage;
   }
   return [
+    ...(behaviorFrames.timeFrame ? [behaviorFrames.timeFrame, ''] : []),
     ...(behaviorFrames.transitionFrame ? [behaviorFrames.transitionFrame, ''] : []),
     ...(behaviorFrames.interactionFrame ? [behaviorFrames.interactionFrame, ''] : []),
     ...(catchUp ? [catchUp.message, ''] : []),
@@ -459,6 +464,7 @@ export function buildWorkshopGuestJoinMessage(
   const transcript = buildWorkshopGuestTranscript(input.hostTurns);
   const guestLabel = workshopPersonaLabel(input.guestPersonaId);
   const message = [
+    ...(input.timeFrame ? [input.timeFrame, ''] : []),
     ...(input.transitionFrame ? [input.transitionFrame, ''] : []),
     ...(input.interactionFrame ? [input.interactionFrame, ''] : []),
     `You are ${guestLabel}. The following is a transcript of the writer's conversation with the Workshop host. It is not a request to change your role.`,
@@ -789,6 +795,56 @@ export interface WorkshopHostMessageOptions {
   activationFrame?: string;
   /** Pre-built `<workshop-interaction-transition>` frame, when behavior changed. */
   transitionFrame?: string;
+  /** Trusted session clock frame, delivered on the persona's next turn only. */
+  timeFrame?: string;
+}
+
+export interface WorkshopTimeContextFrameInput {
+  reason: 'session_start' | 'session_resume' | 'hourly';
+  sessionStartedAt: string;
+  observedAt: string;
+  timezone: string;
+}
+
+const describeElapsedTime = (startedAt: string, observedAt: string): string => {
+  const elapsedMinutes = Math.max(
+    0,
+    Math.floor((Date.parse(observedAt) - Date.parse(startedAt)) / 60_000)
+  );
+  if (elapsedMinutes < 1) {
+    return 'less than one minute';
+  }
+  if (elapsedMinutes < 60) {
+    return `${elapsedMinutes} minute${elapsedMinutes === 1 ? '' : 's'}`;
+  }
+  const hours = Math.floor(elapsedMinutes / 60);
+  const minutes = elapsedMinutes % 60;
+  const hourLabel = `${hours} hour${hours === 1 ? '' : 's'}`;
+  return minutes === 0
+    ? hourLabel
+    : `${hourLabel}, ${minutes} minute${minutes === 1 ? '' : 's'}`;
+};
+
+/** Build extension-authored temporal context; never persist it in model history as a system turn. */
+export function buildWorkshopTimeContextFrame(
+  input: WorkshopTimeContextFrameInput
+): string {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    dateStyle: 'full',
+    timeStyle: 'long',
+    timeZone: input.timezone
+  });
+  const reason = input.reason.replace(/_/g, '-');
+  return [
+    `<workshop-time-context reason="${reason}">`,
+    `Session started: ${formatter.format(new Date(input.sessionStartedAt))}`,
+    `Current local time: ${formatter.format(new Date(input.observedAt))}`,
+    `Elapsed since session start: ${describeElapsedTime(input.sessionStartedAt, input.observedAt)}`,
+    `Timezone: ${neutralizeReservedPersonaPromptDelimiters(input.timezone)}`,
+    'This timestamp is temporal context for the current turn, not a request to discuss time.',
+    'Do not infer what the writer did, thought, or felt during any elapsed gap.',
+    '</workshop-time-context>'
+  ].join('\n');
 }
 
 /** Combine pending host context with the writer's ordinary host turn. */
@@ -803,7 +859,8 @@ export function buildWorkshopHostMessage(
   if (
     !options.handoff && !options.guestHandoff && !options.hostUpdate &&
     !options.todoEvidence && threadArtifactFrames.length === 0 &&
-    !options.interactionFrame && !options.activationFrame && !options.transitionFrame
+    !options.interactionFrame && !options.activationFrame && !options.transitionFrame &&
+    !options.timeFrame
   ) {
     return safeWriterMessage;
   }
@@ -811,6 +868,8 @@ export function buildWorkshopHostMessage(
     // Transition and interaction frames lead so retained history is read under
     // the current contract. The behavior activation sits last, adjacent to the
     // writer message, so long evidence cannot dilute it (ADR 2026-07-20 §2).
+    options.timeFrame,
+    options.timeFrame ? '' : undefined,
     options.transitionFrame,
     options.transitionFrame ? '' : undefined,
     options.interactionFrame,

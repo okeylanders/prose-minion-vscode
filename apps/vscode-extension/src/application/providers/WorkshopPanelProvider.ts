@@ -4,8 +4,10 @@
  * Owns the single Workshop editor-tab surface (ADR 2026-07-03): one
  * `WebviewPanel`, created on demand by the `prose-minion.openWorkshop`
  * command, revealed rather than duplicated when it already exists, and
- * retained while hidden so the panel survives tab switches (v1 persistence;
- * the WebviewPanelSerializer is explicitly out of scope).
+ * retained while hidden so the panel survives tab switches. VS Code may also
+ * restore the editor shell through this provider's serializer; session state
+ * still hydrates through the normal Workshop request path, never serializer
+ * state.
  *
  * Sprint 2 (session spine): the panel gets its own MessageHandler — the ONE
  * sanctioned `new` (the per-webview message seam, same as the sidebar) —
@@ -31,7 +33,7 @@ import {
 } from '@prose-minion/core';
 import { getWebviewHtml } from './webviewHtml';
 
-export class WorkshopPanelProvider implements vscode.Disposable {
+export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewPanelSerializer {
   public static readonly viewType = 'prose-minion.workshop';
 
   private panel?: vscode.WebviewPanel;
@@ -65,6 +67,37 @@ export class WorkshopPanelProvider implements vscode.Disposable {
         retainContextWhenHidden: true
       }
     );
+    this.attachPanel(panel, 'opened');
+  }
+
+  /**
+   * VS Code restores only the editor shell. The serialized webview state is
+   * deliberately ignored: WORKSHOP_REQUEST_SESSION follows the same shared
+   * current-session hydration path as a manually opened panel.
+   */
+  public deserializeWebviewPanel(
+    panel: vscode.WebviewPanel,
+    _state: unknown
+  ): Thenable<void> {
+    this.attachPanel(panel, 'restored');
+    return Promise.resolve();
+  }
+
+  private attachPanel(
+    panel: vscode.WebviewPanel,
+    lifecycle: 'opened' | 'restored'
+  ): void {
+    if (this.panel === panel) {
+      return;
+    }
+    // A serializer and command cannot normally race, but keep the one-panel
+    // invariant explicit if VS Code ever delivers both paths.
+    this.panel?.dispose();
+
+    panel.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [this.extensionUri]
+    };
     panel.iconPath = vscode.Uri.joinPath(this.extensionUri, 'assets', 'prose-minion-book.svg');
     panel.webview.html = getWebviewHtml(panel.webview, this.extensionUri, SURFACE_WORKSHOP);
 
@@ -121,15 +154,20 @@ export class WorkshopPanelProvider implements vscode.Disposable {
     panel.onDidDispose(() => {
       messageSubscription.dispose();
       viewStateSubscription.dispose();
-      this.configWatcher?.dispose();
-      this.configWatcher = undefined;
-      this.messageHandler?.dispose();
-      this.messageHandler = undefined;
-      this.panel = undefined;
+      // Only the panel that owns the current lifecycle may tear down the
+      // shared fields. This protects a restored panel if an older panel's
+      // disposal notification arrives late.
+      if (this.panel === panel) {
+        this.configWatcher?.dispose();
+        this.configWatcher = undefined;
+        this.messageHandler?.dispose();
+        this.messageHandler = undefined;
+        this.panel = undefined;
+      }
     });
 
     this.panel = panel;
-    this.outputChannel.appendLine('[Workshop] Panel opened');
+    this.outputChannel.appendLine(`[Workshop] Panel ${lifecycle}`);
   }
 
   /**
@@ -154,7 +192,16 @@ export class WorkshopPanelProvider implements vscode.Disposable {
   }
 
   public dispose(): void {
-    this.panel?.dispose();
+    // Shutdown must quiesce the Workshop run before the composition root awaits
+    // its final persistence flush. Do this explicitly rather than relying on the
+    // panel's disposal event ordering: MessageHandler.dispose aborts/abandons an
+    // active run, which makes the aggregate exportable at a committed boundary.
+    const panel = this.panel;
     this.panel = undefined;
+    this.configWatcher?.dispose();
+    this.configWatcher = undefined;
+    this.messageHandler?.dispose();
+    this.messageHandler = undefined;
+    panel?.dispose();
   }
 }

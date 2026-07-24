@@ -389,7 +389,9 @@ export type WorkshopTurnArtifact =
   | 'resource_search'
   | 'resource_read'
   | 'excerpt_revision'
-  | 'context_change';
+  | 'context_change'
+  | 'session_start'
+  | 'session_resume';
 
 /**
  * Truncation provenance for a file-seeded excerpt: the host pinned a
@@ -1024,6 +1026,53 @@ export interface WorkshopRequestSessionMessage extends MessageEnvelope<Record<st
   type: MessageType.WORKSHOP_REQUEST_SESSION;
 }
 
+/** Create a durable named checkpoint from the coherent current session. */
+export interface WorkshopSaveSessionMessage extends MessageEnvelope<{
+  title: string;
+}> {
+  type: MessageType.WORKSHOP_SAVE_SESSION;
+}
+
+/** Request tolerant, summary-only session-browser data. */
+export interface WorkshopListSessionsMessage extends MessageEnvelope<{
+  requestId: string;
+  query?: string;
+}> {
+  type: MessageType.WORKSHOP_LIST_SESSIONS;
+}
+
+export interface WorkshopOpenSessionMessage extends MessageEnvelope<{
+  sessionId: string;
+}> {
+  type: MessageType.WORKSHOP_OPEN_SESSION;
+}
+
+export interface WorkshopRenameSessionMessage extends MessageEnvelope<{
+  sessionId: string;
+  title: string;
+}> {
+  type: MessageType.WORKSHOP_RENAME_SESSION;
+}
+
+export interface WorkshopDuplicateSessionMessage extends MessageEnvelope<{
+  sessionId: string;
+  title?: string;
+}> {
+  type: MessageType.WORKSHOP_DUPLICATE_SESSION;
+}
+
+export interface WorkshopRevealSessionMessage extends MessageEnvelope<{
+  sessionId: string;
+}> {
+  type: MessageType.WORKSHOP_REVEAL_SESSION;
+}
+
+export interface WorkshopDeleteSessionMessage extends MessageEnvelope<{
+  sessionId: string;
+}> {
+  type: MessageType.WORKSHOP_DELETE_SESSION;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Extension → webview
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1041,6 +1090,14 @@ export interface WorkshopSessionStatePayload {
   session: WorkshopSessionSnapshot;
   /** Global writer setting, deliberately outside the serializable session aggregate. */
   writerProfile: WorkshopWriterProfile;
+  persistence: {
+    available: boolean;
+    unavailableReason?: 'no-workspace' | 'multi-root';
+    /** True when an unreadable current.json is protected from automatic overwrite. */
+    currentCheckpointProtected?: boolean;
+    /** Non-empty only when product state survived but retained memory did not. */
+    degradedConversationKeys: string[];
+  };
 }
 
 /**
@@ -1050,4 +1107,57 @@ export interface WorkshopSessionStatePayload {
  */
 export interface WorkshopSessionStateMessage extends MessageEnvelope<WorkshopSessionStatePayload> {
   type: MessageType.WORKSHOP_SESSION_STATE;
+}
+
+/** Lightweight, display-safe browser row. Full session content never crosses this route. */
+export interface WorkshopSessionSummary {
+  sessionId: string;
+  title: string;
+  fileName: string;
+  kind: 'current' | 'named';
+  startedAt: number;
+  updatedAt: number;
+  savedAt?: number;
+  timezone: string;
+  hostPersonaId: WorkshopPersonaId;
+  participantPersonaIds: WorkshopPersonaId[];
+  turnCount: number;
+  excerptWordCount: number;
+  excerptLabel?: string;
+  excerptIdentity?: string;
+  preview?: string;
+  degradedConversationKeys?: string[];
+}
+
+export interface WorkshopSessionsDataMessage extends MessageEnvelope<{
+  requestId: string;
+  available: boolean;
+  unavailableReason?: 'no-workspace' | 'multi-root';
+  /** A bounded browser read failed; clears pending UI without inventing summaries. */
+  error?: string;
+  current?: WorkshopSessionSummary;
+  sessions: WorkshopSessionSummary[];
+  truncated?: boolean;
+  /** Content search inspected only a bounded prefix for at least one session. */
+  searchTruncated?: boolean;
+}> {
+  type: MessageType.WORKSHOP_SESSIONS_DATA;
+}
+
+export type WorkshopSessionAction =
+  | 'new'
+  | 'save'
+  | 'open'
+  | 'rename'
+  | 'duplicate'
+  | 'reveal'
+  | 'delete';
+
+export interface WorkshopSessionActionResultMessage extends MessageEnvelope<{
+  action: WorkshopSessionAction;
+  ok: boolean;
+  message: string;
+  session?: WorkshopSessionSummary;
+}> {
+  type: MessageType.WORKSHOP_SESSION_ACTION_RESULT;
 }

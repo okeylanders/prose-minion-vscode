@@ -51,6 +51,7 @@ import { WorkshopPersonaBrowserModal } from './components/workshop/WorkshopPerso
 import { WorkshopPersonaSchematicModal } from './components/workshop/schematic/WorkshopPersonaSchematicModal';
 import { WorkshopContextSelectorModal } from './components/workshop/WorkshopContextSelectorModal';
 import { WorkshopConversationBehaviorModal } from './components/workshop/WorkshopConversationBehaviorModal';
+import { WorkshopSessionsModal } from './components/workshop/WorkshopSessionsModal';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WorkshopToast, WorkshopToastState } from './components/workshop/WorkshopToast';
 import { WorkshopTodoList } from './components/workshop/WorkshopTodoList';
@@ -149,6 +150,7 @@ export const WorkshopApp: React.FC = () => {
   const [personaModalOpen, setPersonaModalOpen] = React.useState(false);
   const [schematicPersonaId, setSchematicPersonaId] = React.useState<WorkshopPersonaId | null>(null);
   const [contextSelectorOpen, setContextSelectorOpen] = React.useState(false);
+  const [sessionsModalOpen, setSessionsModalOpen] = React.useState(false);
   const [contextSelectorMode, setContextSelectorMode] = React.useState<'attach' | 'excerpt' | 'message'>('attach');
   const [personaModalMode, setPersonaModalMode] = React.useState<'host' | 'guest'>('host');
   const [toast, setToast] = React.useState<WorkshopToastState | null>(null);
@@ -205,6 +207,8 @@ export const WorkshopApp: React.FC = () => {
   useMessageRouter({
     [MessageType.WORKSHOP_SESSION_STATE]: workshop.handleSessionState,
     [MessageType.WORKSHOP_TURN]: workshop.handleTurn,
+    [MessageType.WORKSHOP_SESSIONS_DATA]: workshop.handleSessionsData,
+    [MessageType.WORKSHOP_SESSION_ACTION_RESULT]: workshop.handleSessionActionResult,
     [MessageType.SELECTION_DATA]: excerptVerify.handleSelectionData,
     [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshop.handleContextCatalog,
     [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshop.handleContextSearchResults,
@@ -244,6 +248,36 @@ export const WorkshopApp: React.FC = () => {
     });
   }, [vscode]);
 
+  // The session browser is intentionally a host-side bounded search. Debounce
+  // the query so the writer can type naturally without a filesystem scan for
+  // each keystroke; the hook's request id discards any late result.
+  React.useEffect(() => {
+    if (!sessionsModalOpen) {
+      return undefined;
+    }
+    const timer = window.setTimeout(() => workshop.requestSessions(), 220);
+    return () => window.clearTimeout(timer);
+  }, [sessionsModalOpen, workshop.requestSessions, workshop.sessionSearchQuery]);
+
+  React.useEffect(() => {
+    const result = workshop.sessionActionResult;
+    if (!result) {
+      return;
+    }
+    showToast({
+      message: result.message,
+      icon: result.ok ? (result.action === 'save' ? 'save' : 'check') : 'x',
+      ...(result.ok ? {} : { tone: 'error' })
+    });
+    if (result.ok && result.action === 'open') {
+      setSessionsModalOpen(false);
+    }
+    if (sessionsModalOpen) {
+      workshop.requestSessions();
+    }
+    workshop.consumeSessionActionResult();
+  }, [sessionsModalOpen, showToast, workshop]);
+
   // Error boundary plumbing — same reporting path as App.tsx
   const handleBoundaryError = React.useCallback(
     (error: Error, errorInfo: React.ErrorInfo) => {
@@ -277,7 +311,9 @@ export const WorkshopApp: React.FC = () => {
     errorMessage: workshop.errorMessage
   });
 
-  const toolsEnabled = !!workshop.excerpt && !workshop.isRunning && workshop.sessionReady;
+  const roomMutationLocked =
+    workshop.isRunning || workshop.wizardRunning || workshop.sessionActionPending !== undefined;
+  const toolsEnabled = !!workshop.excerpt && !roomMutationLocked && workshop.sessionReady;
   const activePersona = getWorkshopPersona(workshop.selectedPersonaId)
     ?? getWorkshopPersona(DEFAULT_WORKSHOP_PERSONA_ID)!;
   const guestTargetPersonaId = workshop.chatTarget.kind === 'personaGuest'
@@ -304,10 +340,22 @@ export const WorkshopApp: React.FC = () => {
   // Invite appears once context is ready and the room has an open guest seat.
   const canInviteGuest = !!workshop.excerpt
     && workshop.sessionReady
+    && !roomMutationLocked
     && workshop.personaGuests.filter((guest) => guest.liveness === 'live').length
       < WORKSHOP_GUEST_CAPACITY;
+  const sessionMutationsDisabled = roomMutationLocked;
 
   const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
+  const openSessionsModal = React.useCallback(() => setSessionsModalOpen(true), []);
+  const closeSessionsModal = React.useCallback(() => setSessionsModalOpen(false), []);
+  const startNewSession = React.useCallback(() => {
+    if (window.confirm(
+      'Start a new Workshop session? The pinned excerpt and standing context stay; ' +
+      'the thread, tasks, guests, and conversation memory reset.'
+    )) {
+      workshop.resetSession();
+    }
+  }, [workshop.resetSession]);
   const openBehaviorModal = React.useCallback(() => setBehaviorModalOpen(true), []);
   const closeBehaviorModal = React.useCallback(() => setBehaviorModalOpen(false), []);
   const openContextSelector = React.useCallback((mode: 'attach' | 'excerpt' | 'message' = 'attach') => {
@@ -477,11 +525,21 @@ export const WorkshopApp: React.FC = () => {
             {activePersona.label}
           </button>
           <button
+            className="pm-ws-reset pm-ws-sessions-trigger"
+            type="button"
+            onClick={openSessionsModal}
+            title="Save, reopen, and manage Workshop sessions"
+          >
+            <Icon name="cards" size={14} /> Sessions
+          </button>
+          <button
             className="pm-ws-reset"
             type="button"
-            onClick={workshop.resetSession}
-            disabled={!workshop.sessionReady}
-            title="Start a fresh session (keeps the excerpt and standing context)"
+            onClick={startNewSession}
+            disabled={!workshop.sessionReady || sessionMutationsDisabled}
+            title={sessionMutationsDisabled
+              ? 'Wait for the active Workshop work to finish before starting a new session'
+              : 'Start a fresh session (keeps the excerpt and standing context)'}
           >
             <Icon name="refresh" size={13} /> New session
           </button>
@@ -520,6 +578,20 @@ export const WorkshopApp: React.FC = () => {
         </div>
       </header>
 
+      {workshop.degradedConversationKeys.length > 0 && (
+        <div className="pm-ws-degraded-memory" role="status">
+          <Icon name="refresh" size={14} />
+          Some restored persona memory could not be continued. The room and transcript are intact; those personas will begin fresh on their next turn.
+        </div>
+      )}
+      {workshop.currentCheckpointProtected && (
+        <div className="pm-ws-degraded-memory" role="alert">
+          <Icon name="save" size={14} />
+          Automatic recovery is paused because <code>current.json</code> could not be read.
+          This room remains open in memory; save a named checkpoint before replacing it.
+        </div>
+      )}
+
       <div className="pm-ws-split">
         <aside className="pm-ws-rail" aria-label="Session rail">
           <ErrorBoundary
@@ -534,7 +606,7 @@ export const WorkshopApp: React.FC = () => {
           >
             <ExcerptPanel
               excerpt={workshop.excerpt}
-              isRunning={workshop.isRunning || workshop.wizardRunning}
+              isRunning={roomMutationLocked}
               locked={workshop.hasHostConversation}
               verified={excerptVerify.verified}
               onSet={workshop.pinExcerpt}
@@ -546,7 +618,7 @@ export const WorkshopApp: React.FC = () => {
             <ContextPanel
               attachments={workshop.contextAttachments}
               pendingDelivery={workshop.contextPending}
-              isRunning={workshop.isRunning}
+              isRunning={roomMutationLocked}
               onAddText={workshop.addContextText}
               onAddFile={openAttachSelector}
               onRemove={workshop.removeContextAttachment}
@@ -734,7 +806,7 @@ export const WorkshopApp: React.FC = () => {
               personaGuests={workshop.personaGuests}
               chatTarget={workshop.chatTarget}
               onSetChatTarget={workshop.setChatTarget}
-              disabled={showLiveTurn}
+              disabled={showLiveTurn || roomMutationLocked}
               showInviteGuest={canInviteGuest}
               onInviteGuest={openGuestModal}
               onDismissGuest={workshop.dismissGuest}
@@ -748,7 +820,7 @@ export const WorkshopApp: React.FC = () => {
               requesterLabel={activePersona.label}
             />
             <WorkshopComposer
-              canMessage={workshop.canMessage}
+              canMessage={workshop.canMessage && !roomMutationLocked}
               hasConversation={workshop.chatTarget.kind === 'host' ? workshop.hasHostConversation : true}
               recipientLabel={chatTargetLabel}
               isRunning={workshop.isRunning}
@@ -783,7 +855,7 @@ export const WorkshopApp: React.FC = () => {
         open={behaviorModalOpen}
         behavior={workshop.conversationBehavior}
         writerProfile={workshop.writerProfile}
-        isRunning={workshop.isRunning}
+        isRunning={roomMutationLocked}
         errorMessage={workshop.errorMessage}
         onApply={workshop.setConversationSettings}
         onClose={closeBehaviorModal}
@@ -820,13 +892,36 @@ export const WorkshopApp: React.FC = () => {
         invitedPersonaIds={workshop.personaGuests
           .filter((guest) => guest.liveness === 'live')
           .map((guest) => guest.personaId)}
-        disabled={personaModalMode === 'host' ? workshop.isPersonaSelectionLocked : workshop.isRunning}
+        disabled={roomMutationLocked ||
+          (personaModalMode === 'host' ? workshop.isPersonaSelectionLocked : workshop.isRunning)}
         onClose={closePersonaModal}
         onSelect={selectPersona}
         onInvite={inviteGuest}
         onMoreInfo={openSchematic}
       />
       <WorkshopPersonaSchematicModal personaId={schematicPersonaId} onBack={backToPersonas} />
+      <WorkshopSessionsModal
+        open={sessionsModalOpen}
+        available={workshop.sessionsAvailable}
+        unavailableReason={workshop.sessionsUnavailableReason ?? workshop.persistenceUnavailableReason}
+        current={workshop.currentSessionSummary}
+        sessions={workshop.savedSessionSummaries}
+        truncated={workshop.sessionsTruncated}
+        searchTruncated={workshop.sessionsSearchTruncated}
+        pending={workshop.sessionsPending}
+        error={workshop.sessionsError}
+        query={workshop.sessionSearchQuery}
+        mutationsDisabled={sessionMutationsDisabled}
+        onClose={closeSessionsModal}
+        onQueryChange={workshop.setSessionSearchQuery}
+        onRefresh={() => workshop.requestSessions()}
+        onSave={workshop.saveSession}
+        onOpen={workshop.openSession}
+        onRename={workshop.renameSession}
+        onDuplicate={workshop.duplicateSession}
+        onReveal={workshop.revealSession}
+        onDelete={workshop.deleteSession}
+      />
       <WorkshopToast toast={toast} />
     </div>
   );

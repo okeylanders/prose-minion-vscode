@@ -84,6 +84,49 @@ describe('app-shell provider assembly', () => {
     expect(providerSource).not.toContain('extension.command.workshop_selection');
   });
 
+  it('registers one Workshop panel serializer that reuses the normal attachment path', () => {
+    const providerSource = fs.readFileSync(
+      path.join(PROVIDERS_ROOT, 'WorkshopPanelProvider.ts'),
+      'utf8'
+    );
+    const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
+
+    expect(providerSource).toContain('implements vscode.Disposable, vscode.WebviewPanelSerializer');
+    expect(providerSource).toMatch(/deserializeWebviewPanel\([\s\S]*?this\.attachPanel\(panel,\s*'restored'\)/);
+    expect(providerSource).toMatch(/openOrReveal\(\)[\s\S]*?this\.attachPanel\(panel,\s*'opened'\)/);
+    // Serializer state is intentionally not a second Workshop session store.
+    expect(providerSource).toContain('_state: unknown');
+    expect(providerSource).not.toMatch(/_state\.\w+/);
+
+    const registrations = extensionSource.match(/registerWebviewPanelSerializer\(/g) ?? [];
+    expect(registrations).toHaveLength(1);
+    expect(extensionSource).toMatch(
+      /registerWebviewPanelSerializer\(\s*WorkshopPanelProvider\.viewType,\s*workshopPanelProvider\s*\)/
+    );
+  });
+
+  it('quiesces the Workshop handler before the final deactivation flush', () => {
+    const providerSource = fs.readFileSync(
+      path.join(PROVIDERS_ROOT, 'WorkshopPanelProvider.ts'),
+      'utf8'
+    );
+    const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
+
+    const providerDispose = providerSource.slice(
+      providerSource.indexOf('public dispose(): void'),
+      providerSource.indexOf('\n  }\n}', providerSource.indexOf('public dispose(): void'))
+    );
+    expect(providerDispose.indexOf('this.messageHandler?.dispose()'))
+      .toBeLessThan(providerDispose.indexOf('panel?.dispose()'));
+
+    const deactivate = extensionSource.slice(
+      extensionSource.indexOf('export async function deactivate()'),
+      extensionSource.indexOf('\n}', extensionSource.indexOf('export async function deactivate()'))
+    );
+    expect(deactivate.indexOf('workshopPanelProvider?.dispose()'))
+      .toBeLessThan(deactivate.indexOf('await workshopSessionPersistenceCoordinator?.flush()'));
+  });
+
   it('every MessageHandler in a provider is built over the ONE injected coreServices bundle (PR #66 review #12)', () => {
     // The risk is not two panels — it is two independently-assembled service
     // bundles (e.g. a second polling AccountBalanceService) hiding behind

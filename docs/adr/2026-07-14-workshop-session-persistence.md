@@ -127,8 +127,11 @@ Opening `current.json` or a named session normally restores:
 - the full visible transcript; and
 - continuable host and guest conversations remapped to live runtime ids.
 
-Tool sidecars remain bounded/stateless according to their own ADRs; their
-visible reports and canonical structured artifacts still round-trip.
+The latest live retained tool-sidecar history also round-trips so an explicit
+direct-tool conversation can continue after restart. This does not change the
+bounded liveness contract: rerunning a tool still replaces its prior live
+sidecar, tools do not become permanent persona hosts, and their visible reports
+and canonical structured artifacts remain session-owned.
 
 If one or more conversation archives are malformed, incompatible, or cannot be
 validated, the store must not brick the rest of the writer’s session. It
@@ -204,6 +207,15 @@ Browser summaries are tolerant and independent of full hydration. Malformed or
 unknown-version files are skipped with diagnostics, never allowed to crash the
 browser.
 
+Full session files remain authoritative and exact reads are intentionally
+unbounded. The store writes strict, schema-versioned, bounded summary sidecars
+(`current.summary.json` and `<checkpoint>.summary.json`) so a valid long session
+does not disappear merely because it exceeds the browser's defensive full-file
+parse limit. Sidecars are indexes only: they cannot hydrate a room, are ignored
+by identity scans, and orphan/corrupt sidecars are skipped. Transcript content
+search remains a bounded scan and the UI discloses when it may have omitted a
+deep match.
+
 ### 8. Widget configuration is session truth; Settings are defaults
 
 Conversation Widget values may also be stored in VS Code Settings as convenient
@@ -258,6 +270,32 @@ through the normal request path. Manual reopen uses the same path.
   preserve structured artifacts and stable identities.
 - Rich content search should start with a simple bounded scan and remain
   cancellable; do not build an index until workspace scale proves it necessary.
+
+## Implementation outcome (2026-07-23)
+
+Sprint 10 implements this decision with two additional fail-closed lifecycle
+rules discovered during durability review:
+
+- The persistence coordinator pins the single workspace root accepted during
+  activation. If the root disappears or changes in the same extension-host
+  lifetime, autosave and exact session actions stop until the host reloads;
+  state hydrated from workspace A can never be written into workspace B.
+- A present but unreadable `current.json` is not treated as an empty room.
+  Rolling autosave is protected from overwriting it, the UI exposes the
+  protected-checkpoint state without leaking file contents, and the writer can
+  still create a named rescue checkpoint.
+
+Activation awaits current-session hydration before providers are exposed.
+Open/New promote their replacement to `current.json` before old runtime
+histories are retired, and roll back the aggregate, bindings, and pending time
+notice on failure. Deactivation deterministically aborts/abandons an active
+Workshop run before the final coordinator flush.
+
+Conversation Widgets remain a typed additive follow-up. No widget entity or
+standing-directive collection exists in the current aggregate, so Sprint 10
+does not manufacture an untyped extension bag. The exact parser, artifact
+counters, logical archives, summary index, and ordered post-commit dirty seam
+are the extension points for the Conversation Widgets epic.
 
 ## Explicitly unchanged
 
