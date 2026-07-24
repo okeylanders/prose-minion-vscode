@@ -1,8 +1,8 @@
 # Feature: Workshop Guest-to-Guest Room Catch-Up
 
 **Date Identified**: 2026-07-22
-**Status**: Proposed
-**Priority**: Medium
+**Status**: Planned in [Sprint 13](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/13-open-chat-guest-room-polish.md)
+**Priority**: High — room behavior is release-polish work once guests are visible participants
 **Estimated Effort**: Medium
 **Origin**: Writer UX review of direct switching between live guest personas
 **Related**: [Guest Persona Sidecars](../feature-workshop-persona-guest-sidecars/README.md),

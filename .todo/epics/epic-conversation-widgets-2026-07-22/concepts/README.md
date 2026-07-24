@@ -26,6 +26,7 @@ surface while the concept declares its actual lifecycle:
 | [Learner: English](learner-english.md) | English-language curriculum and passage exploration | Define the shared Learner shell and trustworthy packaged curriculum. |
 | [Learner: Art of the Craft](learner-art-of-the-craft.md) | Storytelling-craft curriculum and passage exploration | Share the Learner shell without collapsing the two curricula into one vague tutor. |
 | [Show vs. Tell Playground](show-v-tell-playground.md) | Local continuum playground for generated variations | Validate its boundary with Prose Controller's standing scene/summary lever. |
+| [Creative Variations Playground](creative-variations-playground.md) | Local structured variation studio | Prove typed generation, compact one-shot commit, and reuse across existing tool variation prompts. |
 
 ## Promotion rule
 

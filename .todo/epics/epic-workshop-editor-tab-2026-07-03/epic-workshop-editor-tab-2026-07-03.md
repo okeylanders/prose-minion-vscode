@@ -2,7 +2,8 @@
 
 **Created**: 2026-07-06
 **Status**: In Progress
-**Progress**: Sprints 01–09 merged (Sprint 09 [PR #76](https://github.com/okeylanders/prose-minion-vscode/pull/76)); Sprints 11, 11B, and 12 are integrated. Relational Depth and Writer Profile are integrated. Sprint 10 seamless session persistence is implemented in [draft PR #85](https://github.com/okeylanders/prose-minion-vscode/pull/85) with automated verification and CI complete; manual Extension Host continuity verification and PR review remain. (Sprint 01 [PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66); Sprint 02 [PR #67](https://github.com/okeylanders/prose-minion-vscode/pull/67); Sprint 03 [PR #68](https://github.com/okeylanders/prose-minion-vscode/pull/68); Sprint 04 [PR #69](https://github.com/okeylanders/prose-minion-vscode/pull/69))
+**Progress**: Sprints 01–12 are integrated, including Sprint 10 seamless
+session persistence ([PR #85](https://github.com/okeylanders/prose-minion-vscode/pull/85)). Relational Depth and Writer Profile are integrated. Sprint 13 is the release-polish follow-on for open chat and the participant room; it starts after the remaining manual Extension Host continuity verification is recorded. (Sprint 01 [PR #66](https://github.com/okeylanders/prose-minion-vscode/pull/66); Sprint 02 [PR #67](https://github.com/okeylanders/prose-minion-vscode/pull/67); Sprint 03 [PR #68](https://github.com/okeylanders/prose-minion-vscode/pull/68); Sprint 04 [PR #69](https://github.com/okeylanders/prose-minion-vscode/pull/69))
 **Design source**: [Direction B — Split & Pinned](../../../docs/design/Prose%20Minion%20-%20Assistant%20Tab.html)
 **ADRs**: [2026-07-03 — Assistant as a Full Editor Tab](../../../docs/adr/2026-07-03-assistant-editor-tab.md); [2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](../../../docs/adr/2026-07-09-workshop-persona-hosted-conversations.md); [2026-07-11 — Workshop Excerpt Revision and Room Memory](../../../docs/adr/2026-07-11-workshop-excerpt-revision-and-room-memory.md); [2026-07-11 — Workshop Guest Persona Sidecars](../../../docs/adr/2026-07-11-workshop-guest-persona-sidecars.md); [2026-07-14 — Workshop Session Persistence and the Session Browser](../../../docs/adr/2026-07-14-workshop-session-persistence.md); [2026-07-16 — Workshop Retained-Context Observability](../../../docs/adr/2026-07-16-inference-context-observability.md); [2026-07-20 — Workshop Persona Interaction Modes and Expression Profiles](../../../docs/adr/2026-07-20-workshop-persona-interaction-modes-and-expression-profiles.md)
 **Related active behavior features**: [Amplified Persona Expression](../../features/feature-workshop-amplified-expression/README.md); [Relational Depth](../../features/feature-workshop-relational-depth/README.md); [Writer Profile](../../features/feature-workshop-writer-profile/README.md)
@@ -61,12 +62,15 @@ Each sprint is independently shippable behind the (initially unregistered)
 | 11 | `sprint/workshop-editor-tab-11-persona-file-access` | [Persona file access](sprints/11-persona-file-access.md) | The host persona searches and reads allowlisted project resources through the Sprint 07 capability boundary — after the markdown-sanitization gate lands as its opening task. |
 | 11B | `sprint/workshop-editor-tab-11b-context-budget-visibility` | [Context budget visibility and inference telemetry](sprints/11b-context-budget-visibility.md) | Workshop shows the current retained context separately from multi-call and cumulative processed usage; the gauge follows the active host, guest, or tool conversation. |
 | 12 | `sprint/workshop-editor-tab-12-context-excerpt-intake` | [Excerpt & context intake rework + polish](sprints/12-context-excerpt-intake-polish.md) | Intent-button intake replaces "pinning"; context becomes multiple visible attachments; the live session shape and shared browser shell stabilize before persistence. |
+| 13 | `sprint/workshop-editor-tab-13-open-chat-guest-room-polish` | [Open Chat, guest agency, and room polish](sprints/13-open-chat-guest-room-polish.md) | Writers can start an honest open conversation, deliberately read in a guest, let guests use bounded evidence capabilities, and move among participants without hidden host routing. |
 
-The planned remaining-feature sequence is complete: Relational Depth → Writer
-Profile → Sprint 10. Sprint 10 now serializes the completed Workshop session,
-final `relationalDepth` turn shape, and restore-time personal-context boundary
-without manufacturing an immediate schema migration. Manual product exercises
-and integration PR review are the remaining closeout work.
+Sprint 10 serializes the completed Workshop session, final `relationalDepth`
+turn shape, and restore-time personal-context boundary without manufacturing an
+immediate schema migration. Sprint 13 is an explicitly post-persistence,
+release-polish increment; its additive session fields and room delivery state
+must preserve Sprint 10's truthful restore contract. Manual product exercises
+remain a release gate rather than a substitute for the sprint's automated
+coverage.
 
 Sprint 10 also establishes the additive, typed persistence seams future
 Conversation Widgets need—stable turn/artifact/config ids, exact session-owned

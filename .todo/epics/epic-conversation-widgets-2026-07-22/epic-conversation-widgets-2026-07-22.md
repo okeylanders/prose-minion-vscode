@@ -162,6 +162,7 @@ here does **not** commit it to this epic's delivery sequence.
 | [Learner: English](concepts/learner-english.md) | Learning surface using the widget host | Exploration is free; selected lessons/questions may commit as one-shot artifacts. |
 | [Learner: Art of the Craft](concepts/learner-art-of-the-craft.md) | Learning surface using the widget host | Same Learner shell with a storytelling-craft curriculum pack. |
 | [Show vs. Tell Playground](concepts/show-v-tell-playground.md) | Conversation Widget | One-shot thread artifact; clone-and-recommit. |
+| [Creative Variations Playground](concepts/creative-variations-playground.md) | Conversation Widget | One-shot thread artifact; structured alternatives, writer selection, and clone-and-recommit. |
 
 **Prose Controller is not a concept spring.** It remains committed Sprint 03
 work, but its plan now specifies an "Art of the Craft"-style control surface
