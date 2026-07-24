@@ -51,7 +51,12 @@ import { WorkshopPersonaBrowserModal } from './components/workshop/WorkshopPerso
 import { WorkshopPersonaSchematicModal } from './components/workshop/schematic/WorkshopPersonaSchematicModal';
 import { WorkshopContextSelectorModal } from './components/workshop/WorkshopContextSelectorModal';
 import { WorkshopConversationBehaviorModal } from './components/workshop/WorkshopConversationBehaviorModal';
-import { WorkshopSessionsModal } from './components/workshop/WorkshopSessionsModal';
+import { WorkshopSessionBrowserModal } from './components/workshop/WorkshopSessionBrowserModal';
+import {
+  WorkshopSaveSessionManifest,
+  WorkshopSaveSessionModal
+} from './components/workshop/WorkshopSaveSessionModal';
+import { WorkshopSessionsMenu } from './components/workshop/WorkshopSessionsMenu';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WorkshopToast, WorkshopToastState } from './components/workshop/WorkshopToast';
 import { WorkshopTodoList } from './components/workshop/WorkshopTodoList';
@@ -150,7 +155,9 @@ export const WorkshopApp: React.FC = () => {
   const [personaModalOpen, setPersonaModalOpen] = React.useState(false);
   const [schematicPersonaId, setSchematicPersonaId] = React.useState<WorkshopPersonaId | null>(null);
   const [contextSelectorOpen, setContextSelectorOpen] = React.useState(false);
-  const [sessionsModalOpen, setSessionsModalOpen] = React.useState(false);
+  const [sessionsMenuOpen, setSessionsMenuOpen] = React.useState(false);
+  const [saveSessionModalOpen, setSaveSessionModalOpen] = React.useState(false);
+  const [sessionBrowserOpen, setSessionBrowserOpen] = React.useState(false);
   const [contextSelectorMode, setContextSelectorMode] = React.useState<'attach' | 'excerpt' | 'message'>('attach');
   const [personaModalMode, setPersonaModalMode] = React.useState<'host' | 'guest'>('host');
   const [toast, setToast] = React.useState<WorkshopToastState | null>(null);
@@ -248,16 +255,16 @@ export const WorkshopApp: React.FC = () => {
     });
   }, [vscode]);
 
-  // The session browser is intentionally a host-side bounded search. Debounce
+  // The full session browser is intentionally a host-side bounded search. Debounce
   // the query so the writer can type naturally without a filesystem scan for
   // each keystroke; the hook's request id discards any late result.
   React.useEffect(() => {
-    if (!sessionsModalOpen) {
+    if (!sessionBrowserOpen) {
       return undefined;
     }
     const timer = window.setTimeout(() => workshop.requestSessions(), 220);
     return () => window.clearTimeout(timer);
-  }, [sessionsModalOpen, workshop.requestSessions, workshop.sessionSearchQuery]);
+  }, [sessionBrowserOpen, workshop.requestSessions, workshop.sessionSearchQuery]);
 
   React.useEffect(() => {
     const result = workshop.sessionActionResult;
@@ -269,14 +276,17 @@ export const WorkshopApp: React.FC = () => {
       icon: result.ok ? (result.action === 'save' ? 'save' : 'check') : 'x',
       ...(result.ok ? {} : { tone: 'error' })
     });
-    if (result.ok && result.action === 'open') {
-      setSessionsModalOpen(false);
+    if (result.ok && result.action === 'save') {
+      setSaveSessionModalOpen(false);
     }
-    if (sessionsModalOpen) {
+    if (result.ok && (result.action === 'open' || result.action === 'new')) {
+      setSessionBrowserOpen(false);
+    }
+    if (sessionBrowserOpen || sessionsMenuOpen || result.action === 'save') {
       workshop.requestSessions();
     }
     workshop.consumeSessionActionResult();
-  }, [sessionsModalOpen, showToast, workshop]);
+  }, [sessionBrowserOpen, sessionsMenuOpen, showToast, workshop]);
 
   // Error boundary plumbing — same reporting path as App.tsx
   const handleBoundaryError = React.useCallback(
@@ -346,8 +356,25 @@ export const WorkshopApp: React.FC = () => {
   const sessionMutationsDisabled = roomMutationLocked;
 
   const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
-  const openSessionsModal = React.useCallback(() => setSessionsModalOpen(true), []);
-  const closeSessionsModal = React.useCallback(() => setSessionsModalOpen(false), []);
+  const setSessionsMenuVisibility = React.useCallback((open: boolean) => {
+    setSessionsMenuOpen(open);
+    if (open) {
+      workshop.requestSessions('');
+    }
+  }, [workshop.requestSessions]);
+  const openSaveSessionModal = React.useCallback(() => {
+    setSessionsMenuOpen(false);
+    setSessionBrowserOpen(false);
+    setSaveSessionModalOpen(true);
+  }, []);
+  const closeSaveSessionModal = React.useCallback(() => setSaveSessionModalOpen(false), []);
+  const openSessionBrowser = React.useCallback(() => {
+    setSessionsMenuOpen(false);
+    setSaveSessionModalOpen(false);
+    workshop.setSessionSearchQuery('');
+    setSessionBrowserOpen(true);
+  }, [workshop.setSessionSearchQuery]);
+  const closeSessionBrowser = React.useCallback(() => setSessionBrowserOpen(false), []);
   const startNewSession = React.useCallback(() => {
     if (window.confirm(
       'Start a new Workshop session? The pinned excerpt and standing context stay; ' +
@@ -356,6 +383,15 @@ export const WorkshopApp: React.FC = () => {
       workshop.resetSession();
     }
   }, [workshop.resetSession]);
+  const openStoredSession = React.useCallback((session: typeof workshop.savedSessionSummaries[number]) => {
+    if (
+      window.confirm(
+        `Open “${session.title}”? Your current Workshop room will be replaced.`
+      )
+    ) {
+      workshop.openSession(session.sessionId);
+    }
+  }, [workshop.openSession]);
   const openBehaviorModal = React.useCallback(() => setBehaviorModalOpen(true), []);
   const closeBehaviorModal = React.useCallback(() => setBehaviorModalOpen(false), []);
   const openContextSelector = React.useCallback((mode: 'attach' | 'excerpt' | 'message' = 'attach') => {
@@ -486,6 +522,66 @@ export const WorkshopApp: React.FC = () => {
     return parts.join(' · ') || 'OpenRouter balance';
   })();
 
+  const excerptSessionLabel = (() => {
+    const sourcePath = workshop.excerpt
+      ? workshopExcerptSourcePath(workshop.excerpt.source)
+      : undefined;
+    return sourcePath?.split(/[\\/]/).filter(Boolean).at(-1) ?? 'Untitled session';
+  })();
+  const suggestedSessionTitle = `${excerptSessionLabel} — ${activePersona.label} — ${
+    new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  }`;
+  const saveSessionManifest: WorkshopSaveSessionManifest = {
+    excerptVersion: workshop.excerpt?.version,
+    excerptWordCount,
+    turnCount: workshop.turns.length + workshop.hiddenTurns,
+    hostLabel: activePersona.label,
+    guestCount: workshop.personaGuests.filter((guest) => guest.liveness === 'live').length,
+    contextAttachmentCount: workshop.contextAttachments.length,
+    todoCount: workshop.todos.length,
+    behavior: workshop.conversationBehavior
+  };
+
+  React.useEffect(() => {
+    const handleSessionShortcut = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return;
+      }
+      if (!(event.metaKey || event.ctrlKey)) {
+        return;
+      }
+      if (event.key.toLocaleLowerCase() === 's' && !event.shiftKey) {
+        event.preventDefault();
+        if (
+          workshop.sessionReady &&
+          workshop.persistenceAvailable &&
+          !sessionMutationsDisabled
+        ) {
+          openSaveSessionModal();
+        }
+      }
+      if (event.key.toLocaleLowerCase() === 'n' && event.shiftKey) {
+        event.preventDefault();
+        if (workshop.sessionReady && !sessionMutationsDisabled) {
+          startNewSession();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleSessionShortcut);
+    return () => window.removeEventListener('keydown', handleSessionShortcut);
+  }, [
+    openSaveSessionModal,
+    sessionMutationsDisabled,
+    startNewSession,
+    workshop.persistenceAvailable,
+    workshop.sessionReady
+  ]);
+
   return (
     <div className="pm-ws">
       <header className="pm-ws-header">
@@ -524,25 +620,21 @@ export const WorkshopApp: React.FC = () => {
             </span>
             {activePersona.label}
           </button>
-          <button
-            className="pm-ws-reset pm-ws-sessions-trigger"
-            type="button"
-            onClick={openSessionsModal}
-            title="Save, reopen, and manage Workshop sessions"
-          >
-            <Icon name="cards" size={14} /> Sessions
-          </button>
-          <button
-            className="pm-ws-reset"
-            type="button"
-            onClick={startNewSession}
-            disabled={!workshop.sessionReady || sessionMutationsDisabled}
-            title={sessionMutationsDisabled
-              ? 'Wait for the active Workshop work to finish before starting a new session'
-              : 'Start a fresh session (keeps the excerpt and standing context)'}
-          >
-            <Icon name="refresh" size={13} /> New session
-          </button>
+          <WorkshopSessionsMenu
+            open={sessionsMenuOpen}
+            sessions={workshop.savedSessionSummaries}
+            disabled={
+              !workshop.sessionReady ||
+              sessionMutationsDisabled ||
+              !workshop.persistenceAvailable
+            }
+            newSessionDisabled={!workshop.sessionReady || sessionMutationsDisabled}
+            onOpenChange={setSessionsMenuVisibility}
+            onNewSession={startNewSession}
+            onSaveSession={openSaveSessionModal}
+            onBrowseSessions={openSessionBrowser}
+            onOpenSession={openStoredSession}
+          />
           {/* Model browser — the SAME ModelSelector + ModelBrowserModal the
               sidebar uses (assistant scope, same MODEL_DATA rails); only the
               trigger is reskinned to the workshop chip via workshop.css. */}
@@ -900,8 +992,18 @@ export const WorkshopApp: React.FC = () => {
         onMoreInfo={openSchematic}
       />
       <WorkshopPersonaSchematicModal personaId={schematicPersonaId} onBack={backToPersonas} />
-      <WorkshopSessionsModal
-        open={sessionsModalOpen}
+      <WorkshopSaveSessionModal
+        open={saveSessionModalOpen}
+        available={workshop.persistenceAvailable}
+        unavailableReason={workshop.persistenceUnavailableReason}
+        suggestedTitle={suggestedSessionTitle}
+        manifest={saveSessionManifest}
+        saving={workshop.sessionActionPending === 'save'}
+        onClose={closeSaveSessionModal}
+        onSave={workshop.saveSession}
+      />
+      <WorkshopSessionBrowserModal
+        open={sessionBrowserOpen}
         available={workshop.sessionsAvailable}
         unavailableReason={workshop.sessionsUnavailableReason ?? workshop.persistenceUnavailableReason}
         current={workshop.currentSessionSummary}
@@ -912,11 +1014,12 @@ export const WorkshopApp: React.FC = () => {
         error={workshop.sessionsError}
         query={workshop.sessionSearchQuery}
         mutationsDisabled={sessionMutationsDisabled}
-        onClose={closeSessionsModal}
+        actionPending={workshop.sessionActionPending}
+        onClose={closeSessionBrowser}
         onQueryChange={workshop.setSessionSearchQuery}
         onRefresh={() => workshop.requestSessions()}
-        onSave={workshop.saveSession}
-        onOpen={workshop.openSession}
+        onNewSession={startNewSession}
+        onOpen={openStoredSession}
         onRename={workshop.renameSession}
         onDuplicate={workshop.duplicateSession}
         onReveal={workshop.revealSession}

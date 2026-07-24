@@ -203,18 +203,23 @@ extend; it does not invent an untyped placeholder blob.
 - The latest live tool-sidecar conversation archive round-trips along with host
   and guests so direct-tool follow-up remains continuable. Existing rerun
   replacement/stateless-tool semantics remain unchanged.
+- The approved session UX is three deliberately separate surfaces: an anchored
+  header menu for New/Save/recent rooms, a focused named-checkpoint dialog, and
+  a viewport-bounded browser whose session list is the only scrolling region.
+  Browser rows carry the saved host persona's focus icon, group by Date or
+  Excerpt, and keep Open plus the fixed New Session footer on-screen.
 
 ## Verification (2026-07-23)
 
 - `npm run typecheck` — core, webview, and extension passed.
-- `npm test -- --runInBand` — 120 suites, 1,170 tests, 1 snapshot passed.
-- `npm run lint` — 0 errors, 763 pre-existing warnings.
+- `npm test -- --runInBand` — 122 suites, 1,177 tests, 1 snapshot passed.
+- `npm run lint` — 0 errors, 766 repository-baseline warnings.
 - `npm run build` — production webpack builds and bundle sentinel verification
   passed; existing webview size warnings remain.
 - `npm run package` — VSIX packaging passed (176 files, 9.77 MB).
 - GitHub `verify` — passed on draft PR #85.
 - Final production bundles: `extension.js` 2,547,503 bytes;
-  `webview.js` 859,326 bytes. A clean Sprint-10-only delta is not available
+  `webview.js` 880,989 bytes. A clean Sprint-10-only delta is not available
   because the branch began after the design/integration sync; absolute sizes
   are recorded instead.
 - Manual Extension Development Host restart/corruption exercise remains open.

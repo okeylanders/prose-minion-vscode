@@ -27,21 +27,24 @@ Host continuity/corruption exercise and PR review remain.
 - The coordinator owns ordered autosave, named checkpoints, strict Open/New
   promotion/rollback, workspace-root pinning, unreadable-current protection,
   and activation/deactivation lifecycle barriers.
-- The session browser supports Save, bounded search, date/excerpt grouping,
-  Open, Rename, Duplicate, Reveal, and Delete with active-run/operation locks.
+- The approved session interface is split into its anchored header menu,
+  focused Save dialog, and viewport-bounded full browser. The browser keeps
+  Open/New controls in view, supports bounded search and date/excerpt grouping,
+  renders each saved host persona's focus icon, and offers Rename, Duplicate,
+  Reveal, and Delete under active-run/operation locks.
 - Conversation Widgets remain a typed additive follow-up. No untyped widget
   extension bag was introduced before those domain entities exist.
 
 ## Verification
 
 - `npm run typecheck`: core, webview, extension passed.
-- `npm test -- --runInBand`: 120 suites, 1,170 tests, 1 snapshot passed.
-- `npm run lint`: 0 errors, 763 existing warnings.
+- `npm test -- --runInBand`: 122 suites, 1,177 tests, 1 snapshot passed.
+- `npm run lint`: 0 errors, 766 repository-baseline warnings.
 - `npm run build`: production extension/webview builds and bundle sentinels
   passed.
 - `npm run package`: VSIX packaging passed (176 files, 9.77 MB).
 - GitHub `verify`: passed on draft PR #85.
-- Bundle sizes: `extension.js` 2,547,503 bytes; `webview.js` 859,326 bytes.
+- Bundle sizes: `extension.js` 2,547,503 bytes; `webview.js` 880,989 bytes.
 
 ## Manual closeout
 
