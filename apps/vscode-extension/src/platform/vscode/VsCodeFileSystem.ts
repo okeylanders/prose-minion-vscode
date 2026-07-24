@@ -17,8 +17,11 @@
  * promises mkdir-p, but `vscode.workspace.fs.writeFile` throws on a missing
  * parent — so this adapter `createDirectory`s the parent first (recursive +
  * idempotent). At every prior call site the parent already existed, so this is a
- * superset of the old behavior. `stat`/`readDirectory` map fields explicitly so
- * a future shape-drift is caught by the compiler instead of suppressed.
+ * superset of the old behavior. `rename` and `delete` preserve the native
+ * workspace filesystem operations so persistence can replace temp checkpoints
+ * without a read/write/delete emulation. `stat`/`readDirectory` map fields
+ * explicitly so a future shape-drift is caught by the compiler instead of
+ * suppressed.
  */
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -32,6 +35,22 @@ export class VsCodeFileSystem implements FileSystem {
   async writeFile(filePath: string, data: Uint8Array): Promise<void> {
     await vscode.workspace.fs.createDirectory(vscode.Uri.file(path.dirname(filePath)));
     await vscode.workspace.fs.writeFile(vscode.Uri.file(filePath), data);
+  }
+
+  rename(fromPath: string, toPath: string, options?: { overwrite?: boolean }): Promise<void> {
+    return Promise.resolve(
+      vscode.workspace.fs.rename(vscode.Uri.file(fromPath), vscode.Uri.file(toPath), {
+        overwrite: options?.overwrite ?? false,
+      })
+    );
+  }
+
+  delete(filePath: string, options?: { recursive?: boolean }): Promise<void> {
+    return Promise.resolve(
+      vscode.workspace.fs.delete(vscode.Uri.file(filePath), {
+        recursive: options?.recursive ?? false,
+      })
+    );
   }
 
   async readDirectory(filePath: string): Promise<Array<[string, FileType]>> {

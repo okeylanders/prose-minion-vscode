@@ -3,6 +3,8 @@ import { WorkshopSessionService } from '@/application/services/workshop/Workshop
 import { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
 import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
+import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
+import type { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
@@ -99,6 +101,30 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
         output,
         writerProfileService
       ),
+      new WorkshopSessionTimeService({
+        now: () => new Date('2026-07-23T14:00:00.000Z'),
+        timezone: 'America/Chicago'
+      }),
+      {
+        availability: jest.fn().mockReturnValue({
+          available: true,
+          rootPath: '/workspace',
+          sessionsDirectory: '/workspace/prose-minion/sessions',
+          currentPath: '/workspace/prose-minion/sessions/current.json'
+        }),
+        getDegradedConversationKeys: jest.fn().mockReturnValue([]),
+        isCurrentCheckpointProtected: jest.fn().mockReturnValue(false),
+        isSessionOperationPending: jest.fn().mockReturnValue(false),
+        addNamedSaveStatusListener: jest.fn().mockReturnValue(() => undefined),
+        waitForSessionOperations: jest.fn().mockResolvedValue(undefined),
+        markDirty: jest.fn(),
+        flush: jest.fn().mockResolvedValue(undefined),
+        initialize: jest.fn().mockResolvedValue({
+          restored: false,
+          degradedConversationKeys: []
+        }),
+        resetSession: jest.fn().mockResolvedValue(undefined)
+      } as unknown as WorkshopSessionPersistenceCoordinator,
       output
     );
     await handler.handleSetExcerpt({

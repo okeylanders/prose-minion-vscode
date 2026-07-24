@@ -150,8 +150,18 @@ import {
   WorkshopRereadExcerptMessage,
   WorkshopResetSessionMessage,
   WorkshopRequestSessionMessage,
+  WorkshopSaveSessionMessage,
+  WorkshopListSessionsMessage,
+  WorkshopOpenSessionMessage,
+  WorkshopRenameSessionMessage,
+  WorkshopDuplicateSessionMessage,
+  WorkshopRevealSessionMessage,
+  WorkshopDeleteSessionMessage,
   WorkshopTurnMessage,
-  WorkshopSessionStateMessage
+  WorkshopSessionStateMessage,
+  WorkshopSessionsDataMessage,
+  WorkshopSessionActionResultMessage,
+  WorkshopNamedSaveStatusMessage
 } from './workshop';
 
 export type WebviewToExtensionMessage =
@@ -221,7 +231,14 @@ export type WebviewToExtensionMessage =
   | WorkshopPickExcerptFileMessage
   | WorkshopRereadExcerptMessage
   | WorkshopResetSessionMessage
-  | WorkshopRequestSessionMessage;
+  | WorkshopRequestSessionMessage
+  | WorkshopSaveSessionMessage
+  | WorkshopListSessionsMessage
+  | WorkshopOpenSessionMessage
+  | WorkshopRenameSessionMessage
+  | WorkshopDuplicateSessionMessage
+  | WorkshopRevealSessionMessage
+  | WorkshopDeleteSessionMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
@@ -255,5 +272,8 @@ export type ExtensionToWebviewMessage =
   | StreamCompleteMessage
   | WorkshopTurnMessage
   | WorkshopSessionStateMessage
+  | WorkshopSessionsDataMessage
+  | WorkshopSessionActionResultMessage
+  | WorkshopNamedSaveStatusMessage
   | WorkshopContextCatalogMessage
   | WorkshopContextSearchResultsMessage;

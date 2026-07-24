@@ -1,6 +1,8 @@
 # Sprint 10: Seamless Session Persistence, Save, and Browser
 
-**Status**: Planned — replanned 2026-07-23 for T3 continuity and approved design
+**Status**: Implemented 2026-07-23 — [draft PR #85](https://github.com/okeylanders/prose-minion-vscode/pull/85),
+automated verification and CI complete; manual Extension Development Host
+continuity pass and PR review remain
 **Priority**: High (restart currently destroys the Workshop)
 **Branch**: `sprint/workshop-editor-tab-10-session-persistence` -> PR into `epic/workshop-editor-tab`
 **Estimated Effort**: 8-12 days
@@ -25,9 +27,13 @@ a corruption/incompatibility fallback, not the normal experience.
 ## Locked Decisions
 
 - Workspace JSON under `prose-minion/sessions/`; `current.json` is ordered
-  autosave, named files are collision-safe checkpoints.
+  autosave; the first named Save allocates a collision-safe file and associates
+  the live room with its immutable id.
 - Editable `title` is metadata. Immutable `sessionId` and filename are storage
   identity; rename does not move the file, duplicate creates a new identity.
+- An associated named room updates that exact file after every committed
+  mutation as well as `current.json`. Save updates by `sessionId`; **Save as
+  new** allocates a fresh identity. Titles are never lookup keys.
 - Persistence is a coherent product snapshot plus a typed
   `ConversationArchiveV1`; never serialize from windowed `getSnapshot()`.
 - Conversation archives use stable logical participant keys. Import mints fresh
@@ -50,97 +56,110 @@ a corruption/incompatibility fallback, not the normal experience.
 
 ### 1. Schema, ports, and store
 
-- [ ] Define `WorkshopPersistedSessionV1` with identity/timestamps/timezone,
+- [x] Define `WorkshopPersistedSessionV1` with identity/timestamps/timezone,
       summary metadata, complete `WorkshopSessionSnapshotV1`, and
       `ConversationArchiveV1`.
-- [ ] Inventory every aggregate field and monotonic counter, including excerpt
+- [x] Inventory every aggregate field and monotonic counter, including excerpt
       source/fingerprint/version/replacement count, full turns, todos,
       attachments and pending committed delivery state, participants/cursors,
       `turnCounter`, `todoCounter`, `attachmentCounter`,
       `threadArtifactCounter`, and widget collections when present.
-- [ ] Extend the host boundary for delete and reveal-file without importing
+- [x] Extend the host boundary for delete and reveal-file without importing
       `vscode` into core. Construct `WorkshopSessionStore` in `extension.ts` and
       inject it through `CoreServices`.
-- [ ] Implement atomic/ordered `current.json` writes, collision-safe
+- [x] Implement atomic/ordered `current.json` writes, collision-safe
       `YYYYMMDD-HHMMSS-<initial-slug>.json` saves, tolerant reads, summary-only
       listing, title updates, duplicate, delete, and reveal routing.
-- [ ] Define no-workspace and multi-root behavior explicitly; never guess which
+- [x] Define no-workspace and multi-root behavior explicitly; never guess which
       manuscript workspace owns a session.
 
 ### 2. Product aggregate serialization
 
-- [ ] Add complete serialize/hydrate operations separate from
+- [x] Add complete serialize/hydrate operations separate from
       `getSnapshot()`. Round-trip every turn variant, artifact payload,
       provenance stamp, participant, cursor, counter, todo, excerpt field, and
       ordered attachment.
-- [ ] Persist session start/activity/time-notice state and add trusted visible
+- [x] Persist session start/activity/time-notice state and add trusted visible
       `session_start` / `session_resume` marker variants without pretending a
       same-process webview reload is a resume.
-- [ ] Keep global Conversation Behavior and Writer Profile outside the session;
+- [x] Keep global Conversation Behavior and Writer Profile outside the session;
       preserve historical behavior stamps and exclude derived Carry Cues.
-- [ ] Reconcile pending message attachments and delivery cursors so committed
+- [x] Reconcile pending message attachments and delivery cursors so committed
       work survives and in-flight work cannot reappear as half a transaction.
 
 ### 3. Conversation archive and prompt rebuild
 
-- [ ] Add typed `ConversationManager.exportConversations()` /
+- [x] Add typed `ConversationManager.exportConversations()` /
       `importConversations()` seams for committed non-system messages, logical
       participant key, context sources, last activity, and
       `nextArtifactNumber`.
-- [ ] On import, mint runtime ids, validate message/cursor shape, return the
+- [x] On import, mint runtime ids, validate message/cursor shape, return the
       logical-key map, and reconnect host/guest participants atomically.
-- [ ] Rebuild each leading system message from current persona resources,
+- [x] Rebuild each leading system message from current persona resources,
       current validated global behavior/profile, restored session context, and
       normalized active standing directives. Never deserialize the old leading
       system message.
-- [ ] Make a single malformed conversation degrade only the affected
+- [x] Make a single malformed conversation degrade only the affected
       participant to a visible fresh-memory fallback; never throw
       `ConversationNotFoundError` from a successful hydrate.
-- [ ] Persist context-source state needed by the restored conversation but mark
+- [x] Persist context-source state needed by the restored conversation but mark
       derived context-budget telemetry unmeasured/stale until the next
       successful provider response.
 
 ### 4. Trusted time awareness
 
-- [ ] Add a deterministic time-frame builder with session start, current time,
+- [x] Add a deterministic time-frame builder with session start, current time,
       timezone, elapsed interval, reason, and the explicit “do not infer the
       writer’s gap” constraint.
-- [ ] Queue it for the first persona turn, after disk hydrate/open, and when
+- [x] Queue it for the first persona turn, after disk hydrate/open, and when
       that persona’s last successful notice is at least one hour old.
-- [ ] Advance the per-conversation notice timestamp only after a successful
+- [x] Advance the per-conversation notice timestamp only after a successful
       persona turn; cancellation/failure retries next turn. No background timer
       or tool-sidecar model call.
 
 ### 5. Autosave and lifecycle
 
-- [ ] Build one application-owned dirty/autosave coordinator spanning aggregate
+- [x] Build one application-owned dirty/autosave coordinator spanning aggregate
       and conversation history. Serialize writes; flush safely on lifecycle
       boundaries; prevent an older write from winning.
-- [ ] Mark dirty after every successful mutation: excerpt/context/todo/guest
+- [x] Associate the first named Save (and any opened named checkpoint) with the
+      live room. Mirror subsequent committed revisions to its exact immutable
+      path without duplicating same-title files or rescanning every transcript.
+- [x] Mark dirty after every successful mutation: excerpt/context/todo/guest
       changes, completed persona/tool turns, behavior/directive replacement,
       and complete widget transactions.
-- [ ] Decide active-run behavior for Save/Open/Rename/Duplicate/New. Prefer
+- [x] Decide active-run behavior for Save/Open/Rename/Duplicate/New. Prefer
       disabling state-replacing actions while a run is active rather than
       snapshotting ambiguous partial work.
-- [ ] Hydrate `current.json` on activation/panel open and immediately promote an
+- [x] Hydrate `current.json` on activation/panel open and immediately promote an
       opened named checkpoint to `current.json`.
-- [ ] Register `WebviewPanelSerializer`; it stores no duplicate state.
+- [x] Register `WebviewPanelSerializer`; it stores no duplicate state.
 
 ### 6. Save and browser UI
 
-- [ ] Implement Save dialog title input, filename/identity explanation, and the
+- [x] Implement Save dialog title input, filename/identity explanation, and the
       “included in this snapshot” manifest from the approved design.
-- [ ] Add typed routes for list/save/open/rename/duplicate/reveal/delete and
+- [x] Make active-room Save an identity-checked Update with an explicit **Save
+      as new** escape hatch; show the active room title and revision-aware
+      `Saving…` / `Saved` / `Save failed` state in the header.
+- [x] Add typed routes for list/save/open/rename/duplicate/reveal/delete and
       explicit success/failure responses.
-- [ ] Build newest-first Recent and browser views with cancellable bounded
+- [x] Build newest-first Recent and browser views with cancellable bounded
       search across title/participants/excerpt/transcript and grouping by date
       or stable excerpt identity.
-- [ ] Distinguish current from named checkpoints. Confirm state replacement and
+- [x] Distinguish current from named checkpoints. Confirm state replacement and
       delete; protect `current.json` from named-session actions.
-- [ ] Replace prototype T2 copy in implementation with seamless-restore
+- [x] Replace prototype T2 copy in implementation with seamless-restore
       language; show the memory-not-retained warning only for degraded recovery.
 
 ### 7. Conversation Widget seam
+
+Deferred intentionally to
+[`epic-conversation-widgets-2026-07-22`](../../epic-conversation-widgets-2026-07-22/epic-conversation-widgets-2026-07-22.md).
+That epic's typed widget/config/directive entities do not exist yet. Sprint 10
+delivers the exact aggregate parser, stable artifact counters, logical archive
+keys, summary sidecars, and one ordered post-commit autosave seam they will
+extend; it does not invent an untyped placeholder blob.
 
 - [ ] Persist exact normalized widget configs and active standing directives as
       typed session-owned collections even when Settings hold last-used
@@ -156,24 +175,73 @@ a corruption/incompatibility fallback, not the normal experience.
 
 ### 8. Verification
 
-- [ ] Unit: product and conversation round trips, every counter, logical-id
+- [x] Unit: product and conversation round trips, every counter, logical-id
       remapping, prompt rebuild/exclusion, per-participant degradation, schema
       mismatch, malformed file, ordering, collision resistance, and title
       metadata rename.
-- [ ] Unit: time frame first/resume/hour boundary/timezone, successful delivery,
+- [x] Unit: time frame first/resume/hour boundary/timezone, successful delivery,
       cancellation retry, and no false same-process resume.
-- [ ] Unit: current global behavior/profile applied without writing raw profile
+- [x] Unit: current global behavior/profile applied without writing raw profile
       content; historical behavior stamps preserved.
 - [ ] Unit: widget config/directive round trip, identity/revision rules, and no
       half-transaction autosave.
-- [ ] Integration: save/list/search/group/open/rename/duplicate/reveal/delete,
+- [x] Integration: save/list/search/group/open/rename/duplicate/reveal/delete,
       active-run guards, `current.json` promotion, panel serializer, multi-root
       handling, and T2 recovery UI.
 - [ ] Extension Development Host: quit mid-room, relaunch, continue host and
       guest conversations, verify time notice and restored workspace, then
       corrupt one archived history and verify graceful degraded recovery.
-- [ ] Run architecture, typecheck, lint, full tests, build, and bundle checks;
+- [x] Run architecture, typecheck, lint, full tests, build, and bundle checks;
       record bundle deltas.
+
+## Implementation Notes
+
+- Exact full snapshots are authoritative and unbounded for restore/actions.
+  Strict, bounded `current.summary.json` / `<checkpoint>.summary.json` sidecars
+  keep very large valid sessions discoverable without parsing their transcript
+  merely to open the browser. Content search remains bounded and discloses when
+  deep transcript matches may be omitted.
+- The coordinator pins the workspace root accepted at activation. A
+  single-root → multi-root → different-single-root transition fails closed
+  rather than retargeting a live room's autosave.
+- An unreadable `current.json` is protected from rolling overwrite. The writer
+  may save a named rescue checkpoint; replacing the current room remains an
+  explicit action.
+- Activation awaits current-session hydrate before registering Workshop UI.
+  Deactivation first aborts/abandons the active Workshop run, then flushes the
+  now-coherent aggregate.
+- The latest live tool-sidecar conversation archive round-trips along with host
+  and guests so direct-tool follow-up remains continuable. Existing rerun
+  replacement/stateless-tool semantics remain unchanged.
+- The approved session UX is three deliberately separate surfaces: an anchored
+  header menu for New/Save/recent rooms, a focused named-checkpoint dialog, and
+  a viewport-bounded browser whose session list is the only scrolling region.
+  Browser rows carry the saved host persona's focus icon, group by Date or
+  Excerpt, and keep Open plus the fixed New Session footer on-screen.
+- New Session clears the visible conversation optimistically while the durable
+  replacement runs; a typed failure restores the exact prior thread. A
+  successful host snapshot then contributes only the trusted new-session time
+  boundary.
+- Once named, the room is a living checkpoint. The ordered queue writes
+  `current.json` and the exact associated named file after committed turns and
+  other successful room mutations. Revision-aware status never claims `Saved`
+  while newer work is queued.
+
+## Verification (2026-07-23)
+
+- `npm run typecheck` — core, webview, and extension passed.
+- `npm test -- --runInBand` — 122 suites, 1,193 tests, 1 snapshot passed.
+- `npm run lint` — 0 errors, 767 warnings (the repository baseline plus the
+  new conventionally named message enum member).
+- `npm run build` — production webpack builds and bundle sentinel verification
+  passed; existing webview size warnings remain.
+- `npm run package` — VSIX packaging passed (176 files, 9.77 MB).
+- GitHub `verify` — passed on draft PR #85.
+- Final production bundles: `extension.js` 2,550,732 bytes;
+  `webview.js` 885,161 bytes. A clean Sprint-10-only delta is not available
+  because the branch began after the design/integration sync; absolute sizes
+  are recorded instead.
+- Manual Extension Development Host restart/corruption exercise remains open.
 
 ## Acceptance Criteria
 
@@ -187,6 +255,12 @@ a corruption/incompatibility fallback, not the normal experience.
   affected participant visibly falls back to fresh memory and remains usable.
 - No explicit Save is required for recovery. Named Save accepts a title and the
   browser can search, group, open, rename, duplicate, reveal, and delete it.
+- The first named Save associates the room; subsequent turns update that same
+  immutable session identity automatically. Manual Save updates it in place,
+  while **Save as new** is the only Save-dialog action that creates another
+  checkpoint.
+- New Session immediately clears the old visible conversation and replaces its
+  durable current-room identity without deleting prior named sessions.
 - Opening an old session restores its widget settings and standing directives
   exactly without changing the user’s global last-used defaults.
 - Current global persona resources, behavior, and Writer Profile are used for

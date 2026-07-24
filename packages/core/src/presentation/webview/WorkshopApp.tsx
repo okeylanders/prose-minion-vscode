@@ -51,6 +51,13 @@ import { WorkshopPersonaBrowserModal } from './components/workshop/WorkshopPerso
 import { WorkshopPersonaSchematicModal } from './components/workshop/schematic/WorkshopPersonaSchematicModal';
 import { WorkshopContextSelectorModal } from './components/workshop/WorkshopContextSelectorModal';
 import { WorkshopConversationBehaviorModal } from './components/workshop/WorkshopConversationBehaviorModal';
+import { WorkshopSessionBrowserModal } from './components/workshop/WorkshopSessionBrowserModal';
+import { WorkshopConfirmDialog } from './components/workshop/WorkshopConfirmDialog';
+import {
+  WorkshopSaveSessionManifest,
+  WorkshopSaveSessionModal
+} from './components/workshop/WorkshopSaveSessionModal';
+import { WorkshopSessionsMenu } from './components/workshop/WorkshopSessionsMenu';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WorkshopToast, WorkshopToastState } from './components/workshop/WorkshopToast';
 import { WorkshopTodoList } from './components/workshop/WorkshopTodoList';
@@ -149,6 +156,10 @@ export const WorkshopApp: React.FC = () => {
   const [personaModalOpen, setPersonaModalOpen] = React.useState(false);
   const [schematicPersonaId, setSchematicPersonaId] = React.useState<WorkshopPersonaId | null>(null);
   const [contextSelectorOpen, setContextSelectorOpen] = React.useState(false);
+  const [sessionsMenuOpen, setSessionsMenuOpen] = React.useState(false);
+  const [saveSessionModalOpen, setSaveSessionModalOpen] = React.useState(false);
+  const [sessionBrowserOpen, setSessionBrowserOpen] = React.useState(false);
+  const sessionListInitializedRef = React.useRef(false);
   const [contextSelectorMode, setContextSelectorMode] = React.useState<'attach' | 'excerpt' | 'message'>('attach');
   const [personaModalMode, setPersonaModalMode] = React.useState<'host' | 'guest'>('host');
   const [toast, setToast] = React.useState<WorkshopToastState | null>(null);
@@ -205,6 +216,9 @@ export const WorkshopApp: React.FC = () => {
   useMessageRouter({
     [MessageType.WORKSHOP_SESSION_STATE]: workshop.handleSessionState,
     [MessageType.WORKSHOP_TURN]: workshop.handleTurn,
+    [MessageType.WORKSHOP_SESSIONS_DATA]: workshop.handleSessionsData,
+    [MessageType.WORKSHOP_SESSION_ACTION_RESULT]: workshop.handleSessionActionResult,
+    [MessageType.WORKSHOP_NAMED_SAVE_STATUS]: workshop.handleNamedSaveStatus,
     [MessageType.SELECTION_DATA]: excerptVerify.handleSelectionData,
     [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshop.handleContextCatalog,
     [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshop.handleContextSearchResults,
@@ -244,6 +258,57 @@ export const WorkshopApp: React.FC = () => {
     });
   }, [vscode]);
 
+  React.useEffect(() => {
+    if (!workshop.sessionReady || sessionListInitializedRef.current) {
+      return;
+    }
+    sessionListInitializedRef.current = true;
+    workshop.requestSessions('');
+  }, [workshop.requestSessions, workshop.sessionReady]);
+
+  // The full session browser is intentionally a host-side bounded search. Debounce
+  // the query so the writer can type naturally without a filesystem scan for
+  // each keystroke; the hook's request id discards any late result.
+  React.useEffect(() => {
+    if (!sessionBrowserOpen) {
+      return undefined;
+    }
+    const timer = window.setTimeout(() => workshop.requestSessions(), 220);
+    return () => window.clearTimeout(timer);
+  }, [sessionBrowserOpen, workshop.requestSessions, workshop.sessionSearchQuery]);
+
+  React.useEffect(() => {
+    const result = workshop.sessionActionResult;
+    if (!result) {
+      return;
+    }
+    showToast({
+      message: result.message,
+      icon: result.ok ? (result.action === 'save' ? 'save' : 'check') : 'x',
+      ...(result.ok ? {} : { tone: 'error' })
+    });
+    if (result.ok && result.action === 'save') {
+      setSaveSessionModalOpen(false);
+    }
+    if (result.ok && (result.action === 'open' || result.action === 'new')) {
+      setSessionBrowserOpen(false);
+    }
+    const sessionIndexChanged =
+      result.ok && result.action !== 'reveal';
+    const activeRoomIdentityChanged =
+      result.ok && (
+        result.action === 'save' ||
+        result.action === 'open' ||
+        result.action === 'new'
+      );
+    if (activeRoomIdentityChanged) {
+      workshop.requestSessions('');
+    } else if (sessionBrowserOpen || sessionsMenuOpen || sessionIndexChanged) {
+      workshop.requestSessions();
+    }
+    workshop.consumeSessionActionResult();
+  }, [sessionBrowserOpen, sessionsMenuOpen, showToast, workshop]);
+
   // Error boundary plumbing — same reporting path as App.tsx
   const handleBoundaryError = React.useCallback(
     (error: Error, errorInfo: React.ErrorInfo) => {
@@ -277,7 +342,9 @@ export const WorkshopApp: React.FC = () => {
     errorMessage: workshop.errorMessage
   });
 
-  const toolsEnabled = !!workshop.excerpt && !workshop.isRunning && workshop.sessionReady;
+  const roomMutationLocked =
+    workshop.isRunning || workshop.wizardRunning || workshop.sessionActionPending !== undefined;
+  const toolsEnabled = !!workshop.excerpt && !roomMutationLocked && workshop.sessionReady;
   const activePersona = getWorkshopPersona(workshop.selectedPersonaId)
     ?? getWorkshopPersona(DEFAULT_WORKSHOP_PERSONA_ID)!;
   const guestTargetPersonaId = workshop.chatTarget.kind === 'personaGuest'
@@ -304,10 +371,60 @@ export const WorkshopApp: React.FC = () => {
   // Invite appears once context is ready and the room has an open guest seat.
   const canInviteGuest = !!workshop.excerpt
     && workshop.sessionReady
+    && !roomMutationLocked
     && workshop.personaGuests.filter((guest) => guest.liveness === 'live').length
       < WORKSHOP_GUEST_CAPACITY;
+  const sessionMutationsDisabled = roomMutationLocked;
 
   const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
+  const setSessionsMenuVisibility = React.useCallback((open: boolean) => {
+    setSessionsMenuOpen(open);
+    if (open) {
+      workshop.requestSessions('');
+    }
+  }, [workshop.requestSessions]);
+  const openSaveSessionModal = React.useCallback(() => {
+    setSessionsMenuOpen(false);
+    setSessionBrowserOpen(false);
+    setSaveSessionModalOpen(true);
+  }, []);
+  const closeSaveSessionModal = React.useCallback(() => setSaveSessionModalOpen(false), []);
+  const openSessionBrowser = React.useCallback(() => {
+    setSessionsMenuOpen(false);
+    setSaveSessionModalOpen(false);
+    workshop.setSessionSearchQuery('');
+    setSessionBrowserOpen(true);
+  }, [workshop.setSessionSearchQuery]);
+  const closeSessionBrowser = React.useCallback(() => setSessionBrowserOpen(false), []);
+  // window.confirm never renders inside VS Code's sandboxed webview (it
+  // returns false without a dialog), so state replacement confirms in-webview.
+  const [sessionConfirm, setSessionConfirm] = React.useState<
+    | { kind: 'new' }
+    | { kind: 'open'; sessionId: string; title: string }
+    | null
+  >(null);
+  const startNewSession = React.useCallback(() => {
+    setSessionConfirm({ kind: 'new' });
+  }, []);
+  const openStoredSession = React.useCallback((session: typeof workshop.savedSessionSummaries[number]) => {
+    setSessionConfirm({
+      kind: 'open',
+      sessionId: session.sessionId,
+      title: session.title
+    });
+  }, []);
+  const cancelSessionConfirm = React.useCallback(() => setSessionConfirm(null), []);
+  const acceptSessionConfirm = React.useCallback(() => {
+    if (!sessionConfirm) {
+      return;
+    }
+    setSessionConfirm(null);
+    if (sessionConfirm.kind === 'new') {
+      workshop.resetSession();
+    } else {
+      workshop.openSession(sessionConfirm.sessionId);
+    }
+  }, [sessionConfirm, workshop.resetSession, workshop.openSession]);
   const openBehaviorModal = React.useCallback(() => setBehaviorModalOpen(true), []);
   const closeBehaviorModal = React.useCallback(() => setBehaviorModalOpen(false), []);
   const openContextSelector = React.useCallback((mode: 'attach' | 'excerpt' | 'message' = 'attach') => {
@@ -438,6 +555,73 @@ export const WorkshopApp: React.FC = () => {
     return parts.join(' · ') || 'OpenRouter balance';
   })();
 
+  const excerptSessionLabel = (() => {
+    const sourcePath = workshop.excerpt
+      ? workshopExcerptSourcePath(workshop.excerpt.source)
+      : undefined;
+    return sourcePath?.split(/[\\/]/).filter(Boolean).at(-1) ?? 'Untitled session';
+  })();
+  const activeNamedSession = workshop.activeNamedSessionSummary;
+  const activeNamedSaveStatus =
+    workshop.namedSaveStatus &&
+    workshop.namedSaveStatus.sessionId === activeNamedSession?.sessionId
+      ? workshop.namedSaveStatus.status
+      : 'saved';
+  const suggestedSessionTitle = activeNamedSession?.title ??
+    `${excerptSessionLabel} — ${activePersona.label} — ${
+      new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    }`;
+  const saveSessionManifest: WorkshopSaveSessionManifest = {
+    excerptVersion: workshop.excerpt?.version,
+    excerptWordCount,
+    turnCount: workshop.turns.length + workshop.hiddenTurns,
+    hostLabel: activePersona.label,
+    guestCount: workshop.personaGuests.filter((guest) => guest.liveness === 'live').length,
+    contextAttachmentCount: workshop.contextAttachments.length,
+    todoCount: workshop.todos.length,
+    behavior: workshop.conversationBehavior
+  };
+
+  React.useEffect(() => {
+    const handleSessionShortcut = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return;
+      }
+      if (!(event.metaKey || event.ctrlKey)) {
+        return;
+      }
+      if (event.key.toLocaleLowerCase() === 's' && !event.shiftKey) {
+        event.preventDefault();
+        if (
+          workshop.sessionReady &&
+          workshop.persistenceAvailable &&
+          !sessionMutationsDisabled
+        ) {
+          openSaveSessionModal();
+        }
+      }
+      if (event.key.toLocaleLowerCase() === 'n' && event.shiftKey) {
+        event.preventDefault();
+        if (workshop.sessionReady && !sessionMutationsDisabled) {
+          startNewSession();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleSessionShortcut);
+    return () => window.removeEventListener('keydown', handleSessionShortcut);
+  }, [
+    openSaveSessionModal,
+    sessionMutationsDisabled,
+    startNewSession,
+    workshop.persistenceAvailable,
+    workshop.sessionReady
+  ]);
+
   return (
     <div className="pm-ws">
       <header className="pm-ws-header">
@@ -476,15 +660,23 @@ export const WorkshopApp: React.FC = () => {
             </span>
             {activePersona.label}
           </button>
-          <button
-            className="pm-ws-reset"
-            type="button"
-            onClick={workshop.resetSession}
-            disabled={!workshop.sessionReady}
-            title="Start a fresh session (keeps the excerpt and standing context)"
-          >
-            <Icon name="refresh" size={13} /> New session
-          </button>
+          <WorkshopSessionsMenu
+            open={sessionsMenuOpen}
+            activeSessionTitle={activeNamedSession?.title}
+            saveStatus={activeNamedSaveStatus}
+            sessions={workshop.savedSessionSummaries}
+            disabled={
+              !workshop.sessionReady ||
+              sessionMutationsDisabled ||
+              !workshop.persistenceAvailable
+            }
+            newSessionDisabled={!workshop.sessionReady || sessionMutationsDisabled}
+            onOpenChange={setSessionsMenuVisibility}
+            onNewSession={startNewSession}
+            onSaveSession={openSaveSessionModal}
+            onBrowseSessions={openSessionBrowser}
+            onOpenSession={openStoredSession}
+          />
           {/* Model browser — the SAME ModelSelector + ModelBrowserModal the
               sidebar uses (assistant scope, same MODEL_DATA rails); only the
               trigger is reskinned to the workshop chip via workshop.css. */}
@@ -520,6 +712,20 @@ export const WorkshopApp: React.FC = () => {
         </div>
       </header>
 
+      {workshop.degradedConversationKeys.length > 0 && (
+        <div className="pm-ws-degraded-memory" role="status">
+          <Icon name="refresh" size={14} />
+          Some restored persona memory could not be continued. The room and transcript are intact; those personas will begin fresh on their next turn.
+        </div>
+      )}
+      {workshop.currentCheckpointProtected && (
+        <div className="pm-ws-degraded-memory" role="alert">
+          <Icon name="save" size={14} />
+          Automatic recovery is paused because <code>current.json</code> could not be read.
+          This room remains open in memory; save a named checkpoint before replacing it.
+        </div>
+      )}
+
       <div className="pm-ws-split">
         <aside className="pm-ws-rail" aria-label="Session rail">
           <ErrorBoundary
@@ -534,7 +740,7 @@ export const WorkshopApp: React.FC = () => {
           >
             <ExcerptPanel
               excerpt={workshop.excerpt}
-              isRunning={workshop.isRunning || workshop.wizardRunning}
+              isRunning={roomMutationLocked}
               locked={workshop.hasHostConversation}
               verified={excerptVerify.verified}
               onSet={workshop.pinExcerpt}
@@ -546,7 +752,7 @@ export const WorkshopApp: React.FC = () => {
             <ContextPanel
               attachments={workshop.contextAttachments}
               pendingDelivery={workshop.contextPending}
-              isRunning={workshop.isRunning}
+              isRunning={roomMutationLocked}
               onAddText={workshop.addContextText}
               onAddFile={openAttachSelector}
               onRemove={workshop.removeContextAttachment}
@@ -734,7 +940,7 @@ export const WorkshopApp: React.FC = () => {
               personaGuests={workshop.personaGuests}
               chatTarget={workshop.chatTarget}
               onSetChatTarget={workshop.setChatTarget}
-              disabled={showLiveTurn}
+              disabled={showLiveTurn || roomMutationLocked}
               showInviteGuest={canInviteGuest}
               onInviteGuest={openGuestModal}
               onDismissGuest={workshop.dismissGuest}
@@ -748,7 +954,7 @@ export const WorkshopApp: React.FC = () => {
               requesterLabel={activePersona.label}
             />
             <WorkshopComposer
-              canMessage={workshop.canMessage}
+              canMessage={workshop.canMessage && !roomMutationLocked}
               hasConversation={workshop.chatTarget.kind === 'host' ? workshop.hasHostConversation : true}
               recipientLabel={chatTargetLabel}
               isRunning={workshop.isRunning}
@@ -783,7 +989,7 @@ export const WorkshopApp: React.FC = () => {
         open={behaviorModalOpen}
         behavior={workshop.conversationBehavior}
         writerProfile={workshop.writerProfile}
-        isRunning={workshop.isRunning}
+        isRunning={roomMutationLocked}
         errorMessage={workshop.errorMessage}
         onApply={workshop.setConversationSettings}
         onClose={closeBehaviorModal}
@@ -820,13 +1026,62 @@ export const WorkshopApp: React.FC = () => {
         invitedPersonaIds={workshop.personaGuests
           .filter((guest) => guest.liveness === 'live')
           .map((guest) => guest.personaId)}
-        disabled={personaModalMode === 'host' ? workshop.isPersonaSelectionLocked : workshop.isRunning}
+        disabled={roomMutationLocked ||
+          (personaModalMode === 'host' ? workshop.isPersonaSelectionLocked : workshop.isRunning)}
         onClose={closePersonaModal}
         onSelect={selectPersona}
         onInvite={inviteGuest}
         onMoreInfo={openSchematic}
       />
       <WorkshopPersonaSchematicModal personaId={schematicPersonaId} onBack={backToPersonas} />
+      <WorkshopSaveSessionModal
+        open={saveSessionModalOpen}
+        available={workshop.persistenceAvailable}
+        unavailableReason={workshop.persistenceUnavailableReason}
+        suggestedTitle={suggestedSessionTitle}
+        activeNamedSession={activeNamedSession}
+        manifest={saveSessionManifest}
+        saving={workshop.sessionActionPending === 'save'}
+        onClose={closeSaveSessionModal}
+        onSave={workshop.saveSession}
+      />
+      <WorkshopSessionBrowserModal
+        open={sessionBrowserOpen}
+        available={workshop.sessionsAvailable}
+        unavailableReason={workshop.sessionsUnavailableReason ?? workshop.persistenceUnavailableReason}
+        current={workshop.currentSessionSummary}
+        activeSessionId={activeNamedSession?.sessionId}
+        sessions={workshop.savedSessionSummaries}
+        truncated={workshop.sessionsTruncated}
+        searchTruncated={workshop.sessionsSearchTruncated}
+        pending={workshop.sessionsPending}
+        error={workshop.sessionsError}
+        query={workshop.sessionSearchQuery}
+        mutationsDisabled={sessionMutationsDisabled}
+        actionPending={workshop.sessionActionPending}
+        onClose={closeSessionBrowser}
+        onQueryChange={workshop.setSessionSearchQuery}
+        onRefresh={() => workshop.requestSessions()}
+        onNewSession={startNewSession}
+        onOpen={openStoredSession}
+        onRename={workshop.renameSession}
+        onDuplicate={workshop.duplicateSession}
+        onReveal={workshop.revealSession}
+        onDelete={workshop.deleteSession}
+      />
+      <WorkshopConfirmDialog
+        open={sessionConfirm !== null}
+        title={sessionConfirm?.kind === 'open'
+          ? `Open “${sessionConfirm.title}”?`
+          : 'Start a new session?'}
+        body={sessionConfirm?.kind === 'open'
+          ? 'Your current Workshop room will be replaced.'
+          : 'The pinned excerpt and standing context stay; the thread, tasks, ' +
+            'guests, and conversation memory reset.'}
+        confirmLabel={sessionConfirm?.kind === 'open' ? 'Open session' : 'New session'}
+        onConfirm={acceptSessionConfirm}
+        onCancel={cancelSessionConfirm}
+      />
       <WorkshopToast toast={toast} />
     </div>
   );

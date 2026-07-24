@@ -133,8 +133,18 @@ export enum MessageType {
   WORKSHOP_REREAD_EXCERPT = 'workshop_reread_excerpt',
   WORKSHOP_RESET_SESSION = 'workshop_reset_session',
   WORKSHOP_REQUEST_SESSION = 'workshop_request_session',
+  WORKSHOP_SAVE_SESSION = 'workshop_save_session',
+  WORKSHOP_LIST_SESSIONS = 'workshop_list_sessions',
+  WORKSHOP_OPEN_SESSION = 'workshop_open_session',
+  WORKSHOP_RENAME_SESSION = 'workshop_rename_session',
+  WORKSHOP_DUPLICATE_SESSION = 'workshop_duplicate_session',
+  WORKSHOP_REVEAL_SESSION = 'workshop_reveal_session',
+  WORKSHOP_DELETE_SESSION = 'workshop_delete_session',
   WORKSHOP_TURN = 'workshop_turn',
-  WORKSHOP_SESSION_STATE = 'workshop_session_state'
+  WORKSHOP_SESSION_STATE = 'workshop_session_state',
+  WORKSHOP_SESSIONS_DATA = 'workshop_sessions_data',
+  WORKSHOP_SESSION_ACTION_RESULT = 'workshop_session_action_result',
+  WORKSHOP_NAMED_SAVE_STATUS = 'workshop_named_save_status'
 }
 
 export interface BaseMessage {
