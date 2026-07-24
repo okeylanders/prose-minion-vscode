@@ -3,7 +3,7 @@
 // longer reserved name cannot be split by a first-alternative partial match
 // (ADR 2026-07-20: behavior frames are extension-authored only).
 const RESERVED_PERSONA_FRAME =
-  /<\/?(?:pinned-excerpt|context-attachments?|writer-message|workshop-tool-evidence|workshop-host-update|workshop-todo-snapshot|writer-owned-task|workshop-capability-result|workshop-transcript|workshop-guest-catch-up|workshop-guest-handoff|workshop-excerpt-source|workshop-interaction-transition|workshop-behavior-activation|workshop-interaction|workshop-writer-profile|workshop-session-attunement|thread-artifact|agent-artifact|prose-minion-tool-call)(?=[\s/]|>)[^>]*>/gi;
+  /<\/?(?:pinned-excerpt|context-attachments?|writer-message|workshop-tool-evidence|workshop-host-update|workshop-todo-snapshot|writer-owned-task|workshop-capability-result|workshop-transcript|workshop-guest-catch-up|workshop-guest-handoff|workshop-excerpt-source|workshop-interaction-transition|workshop-behavior-activation|workshop-interaction|workshop-writer-profile|workshop-session-attunement|workshop-time-context|thread-artifact|agent-artifact|prose-minion-tool-call)(?=[\s/]|>)[^>]*>/gi;
 
 export function neutralizeReservedPersonaPromptDelimiters(value: string): string {
   // Global escape: the frame's [^>]* filler admits nested '<' characters, so

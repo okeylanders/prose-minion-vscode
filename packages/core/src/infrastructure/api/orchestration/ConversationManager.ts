@@ -5,7 +5,12 @@
 
 import { LogSink } from '@/platform';
 import { OpenRouterMessage } from '@providers/OpenRouterClient';
-import { ContextBudgetSnapshot, ContextSourceEntry } from '@shared/types';
+import {
+  ContextBudgetSnapshot,
+  ContextSourceEntry,
+  isContextPathGroup
+} from '@shared/types';
+import { randomUUID } from 'node:crypto';
 
 /**
  * Thrown when a caller references a conversation id this manager no longer
@@ -53,6 +58,40 @@ export interface ConversationSystemMessageReplacement {
   systemMessage: string;
 }
 
+/** Provider-neutral committed history stored without its replaceable system prompt. */
+export interface ArchivedConversationMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+/**
+ * One V1 retained conversation addressed by an application-owned logical key.
+ * Runtime conversation ids and the leading system prompt are deliberately
+ * absent: import mints a fresh id and receives a current rebuilt prompt.
+ */
+export interface ConversationArchiveEntryV1<K extends string = string> {
+  key: K;
+  toolName: string;
+  messages: ArchivedConversationMessage[];
+  lastActivity: number;
+  contextSources: ContextSourceEntry[];
+  nextArtifactNumber: number;
+}
+
+export interface ConversationExportTarget<K extends string = string> {
+  key: K;
+  conversationId: string;
+}
+
+export interface ConversationImportTarget<K extends string = string> {
+  entry: ConversationArchiveEntryV1<K>;
+  systemMessage: string;
+}
+
+export type ConversationImportOutcome<K extends string = string> =
+  | { key: K; status: 'imported'; conversationId: string }
+  | { key: K; status: 'degraded'; reason: string };
+
 /**
  * Supersede identity for a manifest row: re-delivering the same canonical
  * resource (or same-kind/same-label item) REPLACES its entry instead of
@@ -74,7 +113,7 @@ export class ConversationManager {
    * @returns conversationId
    */
   startConversation(toolName: string, systemMessage: string): string {
-    const conversationId = `${toolName}-${this.nextId++}-${Date.now()}`;
+    const conversationId = this.createConversationId(toolName);
 
     this.conversations.set(conversationId, {
       toolName,
@@ -88,6 +127,113 @@ export class ConversationManager {
     });
 
     return conversationId;
+  }
+
+  /**
+   * Snapshot a coherent set of committed conversations. Any invalid target
+   * rejects the whole export: callers must never persist a deceptively
+   * partial room. The leading system entry is validated and excluded.
+   */
+  exportConversations<K extends string>(
+    targets: readonly ConversationExportTarget<K>[]
+  ): ConversationArchiveEntryV1<K>[] {
+    const seenKeys = new Set<string>();
+    const seenConversationIds = new Set<string>();
+    return targets.map(({ key, conversationId }) => {
+      if (!key.trim()) {
+        throw new Error('Conversation export key cannot be blank');
+      }
+      if (seenKeys.has(key)) {
+        throw new Error(`Duplicate conversation export key: ${key}`);
+      }
+      if (seenConversationIds.has(conversationId)) {
+        throw new Error(`Conversation ${conversationId} appears more than once in export`);
+      }
+      seenKeys.add(key);
+      seenConversationIds.add(conversationId);
+
+      const conversation = this.conversations.get(conversationId);
+      if (!conversation) {
+        throw new ConversationNotFoundError(conversationId);
+      }
+      this.assertCommittedMessageShape(conversation.messages, `conversation ${conversationId}`);
+
+      return {
+        key,
+        toolName: conversation.toolName,
+        messages: conversation.messages.slice(1).map((message) => ({
+          role: message.role as ArchivedConversationMessage['role'],
+          content: message.content
+        })),
+        lastActivity: conversation.lastActivity,
+        contextSources: cloneContextSources(conversation.contextSources ?? []),
+        nextArtifactNumber: conversation.nextArtifactNumber ?? 0
+      };
+    });
+  }
+
+  /**
+   * Restore every independently valid archive entry with a fresh runtime id.
+   * Candidates are all validated before any valid entry is installed; one bad
+   * participant degrades locally without poisoning its siblings.
+   */
+  importConversations<K extends string>(
+    targets: readonly ConversationImportTarget<K>[]
+  ): ConversationImportOutcome<K>[] {
+    const duplicateKeys = duplicateValues(targets.map(({ entry }) => entry.key));
+    const candidates: Array<{
+      key: K;
+      conversationId: string;
+      context: ConversationContext;
+    }> = [];
+    const outcomes: ConversationImportOutcome<K>[] = [];
+
+    for (const { entry, systemMessage } of targets) {
+      try {
+        if (duplicateKeys.has(entry.key)) {
+          throw new Error(`Duplicate conversation import key: ${entry.key}`);
+        }
+        this.validateArchiveEntry(entry, systemMessage);
+        const conversationId = this.createConversationId(entry.toolName);
+        candidates.push({
+          key: entry.key,
+          conversationId,
+          context: {
+            toolName: entry.toolName,
+            messages: [
+              { role: 'system', content: systemMessage },
+              ...entry.messages.map((message) => ({ ...message }))
+            ],
+            lastActivity: entry.lastActivity,
+            pinned: true,
+            contextSources: cloneContextSources(entry.contextSources),
+            nextArtifactNumber: entry.nextArtifactNumber
+          }
+        });
+      } catch (error) {
+        outcomes.push({
+          key: entry.key,
+          status: 'degraded',
+          reason: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    for (const candidate of candidates) {
+      this.conversations.set(candidate.conversationId, candidate.context);
+      outcomes.push({
+        key: candidate.key,
+        status: 'imported',
+        conversationId: candidate.conversationId
+      });
+    }
+
+    const outcomeByKey = new Map(outcomes.map((outcome) => [outcome.key, outcome]));
+    return targets.map(({ entry }) => outcomeByKey.get(entry.key) ?? {
+      key: entry.key,
+      status: 'degraded',
+      reason: `Conversation ${entry.key} was not imported`
+    });
   }
 
   /**
@@ -345,4 +491,134 @@ export class ConversationManager {
       lastActivity: conversation.lastActivity
     };
   }
+
+  private createConversationId(toolName: string): string {
+    return `${toolName}-${this.nextId++}-${Date.now()}-${randomUUID()}`;
+  }
+
+  private validateArchiveEntry<K extends string>(
+    entry: ConversationArchiveEntryV1<K>,
+    systemMessage: string
+  ): void {
+    if (!entry.key.trim()) {
+      throw new Error('Conversation import key cannot be blank');
+    }
+    if (!entry.toolName.trim()) {
+      throw new Error(`Conversation ${entry.key} has a blank tool name`);
+    }
+    if (!systemMessage.trim()) {
+      throw new Error(`Conversation ${entry.key} has a blank rebuilt system message`);
+    }
+    if (!Number.isFinite(entry.lastActivity) || entry.lastActivity < 0) {
+      throw new Error(`Conversation ${entry.key} has invalid last activity`);
+    }
+    if (!Number.isInteger(entry.nextArtifactNumber) || entry.nextArtifactNumber < 0) {
+      throw new Error(`Conversation ${entry.key} has an invalid artifact counter`);
+    }
+    this.assertArchivedMessageShape(entry.messages, `conversation ${entry.key}`);
+    this.validateContextSources(entry.contextSources, entry.key);
+    const highestArtifactNumber = Math.max(
+      0,
+      ...entry.messages.flatMap(({ content }) => artifactNumbers(content)),
+      ...entry.contextSources.flatMap(({ artifactId }) =>
+        artifactId ? artifactNumbers(artifactId) : []
+      )
+    );
+    if (entry.nextArtifactNumber < highestArtifactNumber) {
+      throw new Error(
+        `Conversation ${entry.key} artifact counter ${entry.nextArtifactNumber} is below retained art-${highestArtifactNumber}`
+      );
+    }
+  }
+
+  private assertCommittedMessageShape(
+    messages: readonly OpenRouterMessage[],
+    label: string
+  ): void {
+    const hasSoleLeadingSystem =
+      messages.length > 0 &&
+      messages[0].role === 'system' &&
+      !messages.some((message, index) => index > 0 && message.role === 'system');
+    if (!hasSoleLeadingSystem) {
+      throw new Error(`${label} does not hold a sole leading system message`);
+    }
+    this.assertArchivedMessageShape(messages.slice(1), label);
+  }
+
+  private assertArchivedMessageShape(
+    messages: readonly Pick<OpenRouterMessage, 'role' | 'content'>[],
+    label: string
+  ): void {
+    if (messages.length === 0 || messages.length % 2 !== 0) {
+      throw new Error(`${label} does not contain complete committed user/assistant exchanges`);
+    }
+    messages.forEach((message, index) => {
+      const expectedRole = index % 2 === 0 ? 'user' : 'assistant';
+      if (message.role !== expectedRole) {
+        throw new Error(`${label} has ${message.role} at message ${index}; expected ${expectedRole}`);
+      }
+      if (typeof message.content !== 'string') {
+        throw new Error(`${label} has non-string content at message ${index}`);
+      }
+    });
+  }
+
+  private validateContextSources<K extends string>(
+    sources: readonly ContextSourceEntry[],
+    key: K
+  ): void {
+    if (!Array.isArray(sources)) {
+      throw new Error(`Conversation ${key} has invalid context sources`);
+    }
+    const kinds = new Set(['pin', 'attachment', 'message-attachment', 'resource', 'tool-evidence', 'dictionary']);
+    const origins = new Set(['writer', 'host', 'tool']);
+    sources.forEach((source, index) => {
+      if (
+        !source ||
+        !kinds.has(source.kind) ||
+        !origins.has(source.origin) ||
+        typeof source.label !== 'string' ||
+        !Number.isInteger(source.sizeChars) ||
+        source.sizeChars < 0 ||
+        typeof source.isEstimate !== 'boolean' ||
+        !Number.isInteger(source.deliveredAt) ||
+        source.deliveredAt < 0 ||
+        (source.stale !== undefined && typeof source.stale !== 'boolean') ||
+        (source.artifactId !== undefined && !/^art-[1-9]\d*$/.test(source.artifactId)) ||
+        (source.promptTokensDelta !== undefined &&
+          (!Number.isInteger(source.promptTokensDelta) || source.promptTokensDelta < 0)) ||
+        (source.excerptVersion !== undefined &&
+          (!Number.isInteger(source.excerptVersion) || source.excerptVersion < 0))
+      ) {
+        throw new Error(`Conversation ${key} has invalid context source ${index}`);
+      }
+      if (source.configuredResource && (
+        !isContextPathGroup(source.configuredResource.group) ||
+        typeof source.configuredResource.path !== 'string' ||
+        !source.configuredResource.path.trim()
+      )) {
+        throw new Error(`Conversation ${key} has invalid configured resource ${index}`);
+      }
+    });
+  }
 }
+
+const cloneContextSources = (
+  sources: readonly ContextSourceEntry[]
+): ContextSourceEntry[] => sources.map((entry) => ({
+  ...entry,
+  configuredResource: entry.configuredResource ? { ...entry.configuredResource } : undefined
+}));
+
+const duplicateValues = <T>(values: readonly T[]): Set<T> => {
+  const seen = new Set<T>();
+  const duplicates = new Set<T>();
+  for (const value of values) {
+    if (seen.has(value)) duplicates.add(value);
+    seen.add(value);
+  }
+  return duplicates;
+};
+
+const artifactNumbers = (value: string): number[] =>
+  [...value.matchAll(/\bart-(\d+)\b/g)].map((match) => Number(match[1]));

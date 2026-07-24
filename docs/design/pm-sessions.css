@@ -37,8 +37,6 @@
 .sb-preview{font-size:12.5px;color:var(--dim);line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sb-preview .mk{color:var(--dim)}
 .sb-preview em{color:var(--amber);font-style:normal}
-.sb-note{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:var(--amber);opacity:.9}
-.sb-note svg{flex:none}
 
 .sb-actions{position:absolute;top:11px;right:11px;display:flex;gap:5px;opacity:0;transition:opacity .12s}
 .sb-row:hover .sb-actions,.sb-row:focus-within .sb-actions{opacity:1}

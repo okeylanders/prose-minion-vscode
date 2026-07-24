@@ -65,8 +65,8 @@ styles, scripts, and assets — no build step.
   (`window.PMSessions`): the Sessions dropdown (New / Save / Open prior /
   Recent), the **Save session** dialog (editable title, path preview, and
   "included in this snapshot" manifest), and the **session browser** (search that greps
-  content, group by Date/Excerpt, per-row rename/duplicate/reveal/delete, and
-  the "memory not retained on restore" honesty note). Needs `pm-widgets.js` +
+  content, group by Date/Excerpt, per-row hover-revealed
+  rename/duplicate/reveal/delete actions). Needs `pm-widgets.js` +
   `pm-workshop.js`.
 - `pm-wk-modals.css` — shared Workshop modal chrome: sheet head,
   conversation-settings segmented cards + toggles, host-picker grid,
@@ -82,12 +82,12 @@ styles, scripts, and assets — no build step.
 
 ### Persistence reconciliation (2026-07-23)
 
-The synced prototype records the design state faithfully, including its
-“room memory not retained” restored divider and slug-only filename examples.
-Those two strings are **not** the implementation contract. Product planning now
-requires normal restore to continue retained persona conversations (T3), with
-the transcript-only treatment reserved for corrupt/incompatible-history
-recovery. Named files retain a collision-safe timestamped storage identity
+The session-browser prototype copy has been aligned with the locked T3
+contract (2026-07-23): normal restore continues retained persona
+conversations, and the transcript-only "memory not retained" treatment is
+reserved for corrupt/incompatible-history recovery, so the prototype no longer
+shows a per-row honesty note. Its slug-only filename examples remain design
+shorthand only: named files use a collision-safe timestamped storage identity
 while the design's editable session name is stored as title metadata.
 
 The Save dialog, included-items manifest, Sessions menu, search, Date/Excerpt

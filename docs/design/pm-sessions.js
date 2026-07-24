@@ -139,7 +139,7 @@ const PMSessions = (() => {
     const root = document.createElement('div'); root.className='cw-sheet-wrap';
     root.appendChild(cwXBtn());
     root.insertAdjacentHTML('beforeend', `
-      <div class="wk-mhead"><div class="wk-mkicker">Workshop · Sessions</div><h2>Open a prior session</h2><p class="wk-msub">Reopening restores the excerpt, context, and transcript. Room memory from a saved session isn't retained — the persona starts fresh.</p></div>
+      <div class="wk-mhead"><div class="wk-mkicker">Workshop · Sessions</div><h2>Open a prior session</h2><p class="wk-msub">Reopening restores the complete room and continuable conversation memory. If one persona history cannot be recovered, only that participant starts fresh.</p></div>
       <div class="sb-toolbar">
         <div class="sb-search"><span class="si">${ICONS.search({size:16})}</span><input id="sb-q" placeholder="Search names and session content…"><span class="grep">greps content</span></div>
         <div class="sb-group"><span class="lab">Group by</span><div class="sb-seg"><button class="on" data-grp="date">Date</button><button data-grp="excerpt">Excerpt</button></div></div>
@@ -160,7 +160,6 @@ const PMSessions = (() => {
         ? `<input class="sb-rename" data-renameinput value="${esc(s.title)}">`
         : `<span class="sb-title">${esc(s.title)}</span>`;
       const src = s.excerpt ? s.excerpt.source : '—';
-      const note = `<span class="sb-note">${ICONS.bot({size:12,sw:1.6})} memory not retained on restore</span>`;
       const delConfirm = view.confirmDel===s.id;
       const actions = delConfirm
         ? `<button class="sb-act del" data-del="${s.id}" title="Confirm delete">${ICONS.check({size:14,sw:2.2})}</button><button class="sb-act" data-delcancel title="Keep">${ICONS.x({size:13,sw:2})}</button>`
@@ -171,7 +170,6 @@ const PMSessions = (() => {
           <div class="sb-titlerow">${titleEl}${badge}</div>
           <div class="sb-meta"><span class="host">${esc(P().hostName(s.host))}</span><span class="dotsep">·</span><span>${s.turns} turns</span><span class="dotsep">·</span><span>${s.excerpt?P().fmt(s.excerpt.words)+' words':'no excerpt'}</span><span class="dotsep">·</span><span>${esc(s.rel)}</span><span class="dotsep">·</span><span class="src">${esc(src)}</span></div>
           <div class="sb-preview">${esc(s.preview)}</div>
-          ${note}
         </div>
         <div class="sb-actions">${actions}</div>
         <button class="sb-open" data-openbtn="${s.id}">Open</button>

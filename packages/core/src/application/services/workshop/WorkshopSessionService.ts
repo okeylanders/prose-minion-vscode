@@ -16,6 +16,9 @@ import {
   WorkshopConversationBehaviorTransition,
   WorkshopContextAttachmentSnapshot,
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
+  isWorkshopInteractionMode,
+  isWorkshopPersonaExpressionLevel,
+  isWorkshopRelationalDepth,
   WorkshopExcerpt,
   WorkshopExcerptSnapshot,
   WorkshopExcerptSource,
@@ -32,19 +35,34 @@ import {
   WorkshopTurnArtifact,
   WorkshopTurnKind
 } from '@messages';
-import { TokenUsage } from '@shared/types';
+import { isContextPathGroup, TokenUsage } from '@shared/types';
 import {
   WorkshopCapabilityArtifactDetails,
   WorkshopCapabilityResult
 } from '@shared/types/workshopCapabilities';
 import {
   DEFAULT_WORKSHOP_PERSONA_ID,
+  isWorkshopPersonaId,
   WORKSHOP_GUEST_CAPACITY,
   workshopPersonaLabel
 } from '@shared/constants/workshopPersonas';
-import { workshopToolLabel } from '@shared/constants/workshopTools';
+import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { WORKSHOP_ACTIONABLE_FINDING_BOUNDS } from './WorkshopActionableFindings';
+import {
+  WORKSHOP_ACTIONABLE_FINDING_BOUNDS
+} from '@/application/services/workshop/WorkshopActionableFindings';
+import { WORKSHOP_TODO_BOUNDS } from '@/application/services/workshop/WorkshopSessionLimits';
+import {
+  WorkshopConversationLogicalKey,
+  WorkshopRuntimeConversationBindings,
+  WorkshopSessionStateV1,
+  WorkshopStoredTodoItemV1
+} from '@/application/services/workshop/WorkshopSessionStateV1';
+import {
+  validateWorkshopSessionStateV1
+} from '@/application/services/workshop/WorkshopSessionStateV1Integrity';
+
+export { WORKSHOP_TODO_BOUNDS } from '@/application/services/workshop/WorkshopSessionLimits';
 
 const assertNever = (value: never): never => {
   throw new Error(`Unhandled Workshop capability operation: ${JSON.stringify(value)}`);
@@ -59,10 +77,6 @@ export interface WorkshopExcerptInput {
 }
 
 export const WORKSHOP_SNAPSHOT_TURN_WINDOW = 100;
-export const WORKSHOP_TODO_BOUNDS = Object.freeze({
-  items: 200,
-  textCharacters: WORKSHOP_ACTIONABLE_FINDING_BOUNDS.itemCharacters
-});
 
 interface WorkshopToolSidecar {
   conversationId: string;
@@ -176,7 +190,20 @@ export interface WorkshopExcerptReplacement {
   replacementCount: number;
 }
 
-type StoredWorkshopTodoItem = Omit<WorkshopTodoItem, 'stale'>;
+
+export interface WorkshopSessionHydrationResult {
+  discardedConversationIds: string[];
+  degradedConversationKeys: WorkshopConversationLogicalKey[];
+}
+
+export class WorkshopSessionActiveRunPersistenceError extends Error {
+  constructor() {
+    super('Cannot persist Workshop session while a run is active');
+    this.name = 'WorkshopSessionActiveRunPersistenceError';
+  }
+}
+
+type StoredWorkshopTodoItem = WorkshopStoredTodoItemV1;
 
 /** A pure aggregate: no I/O, no vscode, and only an injectable clock. */
 export class WorkshopSessionService {
@@ -244,6 +271,25 @@ export class WorkshopSessionService {
   /** Current metadata for a persona call that has no visible writer turn (tool synthesis). */
   getPersonaBehaviorMetadata(): Pick<WorkshopTurn, 'behavior' | 'behaviorTransition'> {
     return this.currentPersonaBehaviorMetadata();
+  }
+
+  /** Append one trusted, host-authored temporal boundary to the visible ledger. */
+  recordSessionMarker(kind: 'start' | 'resume', content: string): WorkshopTurn {
+    if (!content.trim()) {
+      throw new Error('Workshop session marker content cannot be blank');
+    }
+    const turn: WorkshopTurn = {
+      id: this.nextTurnId('system'),
+      role: 'system',
+      kind: 'divider',
+      participant: 'session',
+      artifact: kind === 'start' ? 'session_start' : 'session_resume',
+      excerptVersion: this.excerptVersion,
+      content,
+      timestamp: this.now()
+    };
+    this.turns.push(turn);
+    return cloneTurn(turn);
   }
 
   setExcerpt(input: WorkshopExcerptInput): WorkshopExcerpt {
@@ -1337,6 +1383,232 @@ export class WorkshopSessionService {
     return conversationIds;
   }
 
+  /**
+   * Export the complete host-private aggregate for a coordinated durable
+   * checkpoint. This is intentionally distinct from getSnapshot(): the
+   * webview projection is bounded and strips prompt-bearing content, private
+   * provenance, counters, cursors, and retained-participant state.
+   *
+   * An active run has already appended its visible writer turn but has not
+   * necessarily committed matching provider history. Refuse that ambiguous
+   * boundary rather than persisting two state owners from different moments.
+   */
+  exportCommittedState(): WorkshopSessionStateV1 {
+    if (this.activeRun) {
+      throw new WorkshopSessionActiveRunPersistenceError();
+    }
+
+    return {
+      excerpt: this.excerpt ? cloneExcerpt(this.excerpt) : undefined,
+      contextAttachments: this.contextAttachments.map(cloneAttachment),
+      pendingMessageAttachments: this.pendingMessageAttachments.map(cloneMessageAttachment),
+      revisions: {
+        excerpt: this.excerptVersion,
+        replacementCount: this.replacementCount,
+        context: this.contextRevision,
+        pendingExcerpt: this.pendingRevisionVersion,
+        pendingContext: this.pendingContextRevision
+      },
+      counters: {
+        attachment: this.attachmentCounter,
+        threadArtifact: this.threadArtifactCounter,
+        turn: this.turnCounter,
+        todo: this.todoCounter
+      },
+      writerSources: {
+        host: this.hostWriterSources.map(cloneSourceEntry),
+        tools: cloneToolWriterSources(this.toolWriterSources),
+        guests: [...this.guestWriterSources.entries()].map(([personaId, sources]) => ({
+          personaId,
+          sources: sources.map(cloneSourceEntry)
+        }))
+      },
+      turns: this.turns.map(cloneTurn),
+      participants: {
+        host: {
+          personaId: this.participants.host.personaId,
+          conversationKey: this.participants.host.conversationId ? 'host' : undefined
+        },
+        toolSidecars: Object.entries(this.participants.toolSidecars).flatMap(
+          ([rawToolId, sidecar]) => {
+            if (!sidecar) {
+              return [];
+            }
+            const toolId = rawToolId as WorkshopToolId;
+            return [{
+              toolId,
+              conversationKey: `tool:${toolId}` as `tool:${WorkshopToolId}`,
+              latestReportTurnId: sidecar.latestReportTurnId,
+              deliveredToHostThroughTurnId: sidecar.deliveredToHostThroughTurnId
+            }];
+          }
+        ),
+        personaGuests: [...this.participants.personaGuests.values()].map((guest) => ({
+          personaId: guest.personaId,
+          conversationKey: guest.conversationId
+            ? `guest:${guest.personaId}` as `guest:${WorkshopPersonaId}`
+            : undefined,
+          lastSeenHostTurnId: guest.lastSeenHostTurnId,
+          deliveredToHostThroughTurnId: guest.deliveredToHostThroughTurnId,
+          liveness: guest.liveness
+        })),
+        chatTarget: this.getChatTarget()
+      },
+      selectedToolId: this.selectedToolId,
+      todos: this.todos.map(cloneStoredTodo),
+      lastCommittedPersonaBehavior: this.lastCommittedPersonaBehavior
+        ? { ...this.lastCommittedPersonaBehavior }
+        : undefined
+    };
+  }
+
+  /**
+   * Replace the live aggregate from one validated product checkpoint and a set
+   * of freshly imported runtime conversation ids. Validation and defensive
+   * cloning finish before the first assignment, so callers never observe a
+   * half-hydrated room.
+   *
+   * Missing/blank/duplicate runtime bindings degrade only their logical
+   * participant. Tool sidecars are dropped, guests become disposed, host
+   * memory becomes fresh, and an invalid active target falls back to host.
+   * The current global behavior is injected rather than replayed from disk.
+   */
+  hydrateCommittedState(
+    state: WorkshopSessionStateV1,
+    runtimeBindings: WorkshopRuntimeConversationBindings,
+    currentBehavior: WorkshopConversationBehavior
+  ): WorkshopSessionHydrationResult {
+    validateWorkshopSessionStateV1(state);
+
+    const excerpt = state.excerpt ? cloneExcerpt(state.excerpt) : undefined;
+    const contextAttachments = state.contextAttachments.map(cloneAttachment);
+    const pendingMessageAttachments = state.pendingMessageAttachments.map(cloneMessageAttachment);
+    const turns = state.turns.map(cloneTurn);
+    const todos = state.todos.map(cloneStoredTodo);
+    const behavior = { ...currentBehavior };
+    const lastCommittedPersonaBehavior = state.lastCommittedPersonaBehavior
+      ? { ...state.lastCommittedPersonaBehavior }
+      : undefined;
+    const hostWriterSources = state.writerSources.host.map(cloneSourceEntry);
+    const toolWriterSources = cloneToolWriterSources(state.writerSources.tools);
+    const guestWriterSources = new Map<WorkshopPersonaId, ContextSourceEntry[]>(
+      state.writerSources.guests.map(({ personaId, sources }) => [
+        personaId,
+        sources.map(cloneSourceEntry)
+      ])
+    );
+
+    const degradedConversationKeys: WorkshopConversationLogicalKey[] = [];
+    const usableBindings = usableRuntimeBindings(runtimeBindings);
+    const hostExpected = state.participants.host.conversationKey === 'host';
+    const hostConversationId = hostExpected ? usableBindings.get('host') : undefined;
+    let pendingRevisionVersion = state.revisions.pendingExcerpt;
+    let pendingContextRevision = state.revisions.pendingContext;
+    if (!hostConversationId) {
+      if (hostExpected) {
+        degradedConversationKeys.push('host');
+      }
+      hostWriterSources.length = 0;
+      pendingRevisionVersion = undefined;
+      pendingContextRevision = undefined;
+    }
+
+    const toolSidecars: WorkshopParticipants['toolSidecars'] = {};
+    for (const sidecar of state.participants.toolSidecars) {
+      const conversationId = usableBindings.get(sidecar.conversationKey);
+      if (!conversationId) {
+        degradedConversationKeys.push(sidecar.conversationKey);
+        delete toolWriterSources[sidecar.toolId];
+        continue;
+      }
+      toolSidecars[sidecar.toolId] = {
+        conversationId,
+        latestReportTurnId: sidecar.latestReportTurnId,
+        deliveredToHostThroughTurnId: sidecar.deliveredToHostThroughTurnId
+      };
+    }
+
+    const personaGuests = new Map<WorkshopPersonaId, WorkshopPersonaGuest>();
+    for (const guest of state.participants.personaGuests) {
+      const conversationId = guest.conversationKey
+        ? usableBindings.get(guest.conversationKey)
+        : undefined;
+      const restoredLive = guest.liveness === 'live' && conversationId !== undefined;
+      if (guest.liveness === 'live' && guest.conversationKey && !conversationId) {
+        degradedConversationKeys.push(guest.conversationKey);
+      }
+      if (!restoredLive) {
+        guestWriterSources.delete(guest.personaId);
+      }
+      personaGuests.set(guest.personaId, {
+        personaId: guest.personaId,
+        conversationId: restoredLive ? conversationId : undefined,
+        lastSeenHostTurnId: guest.lastSeenHostTurnId,
+        deliveredToHostThroughTurnId: guest.deliveredToHostThroughTurnId,
+        liveness: restoredLive ? 'live' : 'disposed'
+      });
+    }
+
+    const requestedTarget = cloneChatTarget(state.participants.chatTarget);
+    const chatTarget: WorkshopChatTarget = requestedTarget.kind === 'tool'
+      ? toolSidecars[requestedTarget.toolId]
+        ? requestedTarget
+        : { kind: 'host' }
+      : requestedTarget.kind === 'personaGuest'
+        ? personaGuests.get(requestedTarget.personaId)?.liveness === 'live'
+          ? requestedTarget
+          : { kind: 'host' }
+        : requestedTarget;
+
+    const activeHostPins = hostWriterSources.filter(
+      (source) => source.kind === 'pin' && source.stale !== true
+    );
+    if (activeHostPins.length > 1) {
+      throw new Error('Persisted Workshop state contains multiple live host pins');
+    }
+    const activeHostPin = hostConversationId ? activeHostPins[0] : undefined;
+    const participants: WorkshopParticipants = {
+      host: {
+        personaId: state.participants.host.personaId,
+        conversationId: hostConversationId
+      },
+      toolSidecars,
+      personaGuests,
+      chatTarget
+    };
+    const discardedConversationIds = this.conversationIds();
+
+    // Synchronous field replacement after every validation/clone/remap step.
+    this.excerpt = excerpt;
+    this.contextAttachments = contextAttachments;
+    this.excerptVersion = state.revisions.excerpt;
+    this.replacementCount = state.revisions.replacementCount;
+    this.contextRevision = state.revisions.context;
+    this.pendingRevisionVersion = pendingRevisionVersion;
+    this.pendingContextRevision = pendingContextRevision;
+    this.attachmentCounter = state.counters.attachment;
+    this.pendingMessageAttachments = pendingMessageAttachments;
+    this.threadArtifactCounter = state.counters.threadArtifact;
+    this.hostWriterSources = hostWriterSources;
+    this.activeHostPin = activeHostPin;
+    this.toolWriterSources = toolWriterSources;
+    this.guestWriterSources = guestWriterSources;
+    this.turns = turns;
+    this.activeRun = undefined;
+    this.participants = participants;
+    this.selectedToolId = state.selectedToolId;
+    this.turnCounter = state.counters.turn;
+    this.todoCounter = state.counters.todo;
+    this.todos = todos;
+    this.behavior = behavior;
+    this.lastCommittedPersonaBehavior = lastCommittedPersonaBehavior;
+
+    return {
+      discardedConversationIds,
+      degradedConversationKeys
+    };
+  }
+
   getSnapshot(): WorkshopSessionSnapshot {
     const windowed = this.turns.slice(-WORKSHOP_SNAPSHOT_TURN_WINDOW);
     return {
@@ -1565,6 +1837,50 @@ export class WorkshopSessionService {
   }
 }
 
+
+function usableRuntimeBindings(
+  bindings: WorkshopRuntimeConversationBindings
+): Map<WorkshopConversationLogicalKey, string> {
+  const candidates = Object.entries(bindings).flatMap(([rawKey, rawId]) => {
+    if (typeof rawId !== 'string' || rawId.trim().length === 0) {
+      return [];
+    }
+    return [{
+      key: rawKey as WorkshopConversationLogicalKey,
+      conversationId: rawId
+    }];
+  });
+  const counts = new Map<string, number>();
+  for (const { conversationId } of candidates) {
+    counts.set(conversationId, (counts.get(conversationId) ?? 0) + 1);
+  }
+  return new Map(
+    candidates
+      .filter(({ conversationId }) => counts.get(conversationId) === 1)
+      .map(({ key, conversationId }) => [key, conversationId])
+  );
+}
+
+function cloneToolWriterSources(
+  sources: Partial<Record<WorkshopToolId, ContextSourceEntry[]>>
+): Partial<Record<WorkshopToolId, ContextSourceEntry[]>> {
+  return Object.fromEntries(
+    Object.entries(sources).flatMap(([toolId, entries]) =>
+      entries ? [[toolId, entries.map(cloneSourceEntry)]] : []
+    )
+  ) as Partial<Record<WorkshopToolId, ContextSourceEntry[]>>;
+}
+
+function cloneChatTarget(target: WorkshopChatTarget): WorkshopChatTarget {
+  if (target.kind === 'tool') {
+    return { kind: 'tool', toolId: target.toolId };
+  }
+  if (target.kind === 'personaGuest') {
+    return { kind: 'personaGuest', personaId: target.personaId };
+  }
+  return { kind: 'host' };
+}
+
 function cloneTurn(turn: WorkshopTurn): WorkshopTurn {
   return {
     ...turn,
@@ -1634,11 +1950,17 @@ function cloneFindings(findings: readonly WorkshopActionableFinding[]): Workshop
   return findings.map((finding) => ({ ...finding }));
 }
 
-function cloneTodo(todo: StoredWorkshopTodoItem, excerptVersion: number): WorkshopTodoItem {
+function cloneStoredTodo(todo: StoredWorkshopTodoItem): StoredWorkshopTodoItem {
   return {
     ...todo,
     source: { ...todo.source },
-    writerEdit: todo.writerEdit ? { ...todo.writerEdit } : undefined,
+    writerEdit: todo.writerEdit ? { ...todo.writerEdit } : undefined
+  };
+}
+
+function cloneTodo(todo: StoredWorkshopTodoItem, excerptVersion: number): WorkshopTodoItem {
+  return {
+    ...cloneStoredTodo(todo),
     stale: todo.source.excerptVersion !== excerptVersion
   };
 }

@@ -1,6 +1,10 @@
 import { LogSink, SettingsStore } from '@/platform';
 import { OpenRouterClient, OpenRouterMessage } from '@providers/OpenRouterClient';
 import {
+  ConversationArchiveEntryV1,
+  ConversationExportTarget,
+  ConversationImportOutcome,
+  ConversationImportTarget,
   ConversationManager,
   ConversationNotFoundError,
   ConversationSystemMessageReplacement
@@ -486,6 +490,32 @@ export class AgentRunEngine {
       );
     }
     this.conversationManager.replaceSystemMessages(replacements);
+  }
+
+  /**
+   * Export committed retained history only while every target is settled.
+   * The activity check and manager snapshot are deliberately synchronous, so
+   * another run cannot begin between the guard and the copy.
+   */
+  exportConversationsBetweenRuns<K extends string>(
+    targets: readonly ConversationExportTarget<K>[]
+  ): ConversationArchiveEntryV1<K>[] {
+    const activeTargets = targets
+      .map(({ conversationId }) => conversationId)
+      .filter((conversationId) => this.activeConversationIds.has(conversationId));
+    if (activeTargets.length > 0) {
+      throw new Error(
+        `Cannot export conversations while a run is active for conversation(s): ${[...new Set(activeTargets)].join(', ')}`
+      );
+    }
+    return this.conversationManager.exportConversations(targets);
+  }
+
+  /** Import validated archives with rebuilt system prompts and fresh ids. */
+  importConversationsBetweenRuns<K extends string>(
+    targets: readonly ConversationImportTarget<K>[]
+  ): ConversationImportOutcome<K>[] {
+    return this.conversationManager.importConversations(targets);
   }
 
   getConversationContextBudget(conversationId: string | undefined): ContextBudgetSnapshot | undefined {

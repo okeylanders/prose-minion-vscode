@@ -1,10 +1,11 @@
 # Feature: Workshop Session Persistence (Survive VS Code Restart)
 
-**Status**: ADR accepted and amended 2026-07-23 ([2026-07-14 — Workshop Session Persistence and the Session Browser](../../../docs/adr/2026-07-14-workshop-session-persistence.md));
-scheduled as [Sprint 10](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md),
-but intentionally executed last after Sprints 11 and 12 plus Relational Depth
-and Writer Profile. Sprint numbers and branch names remain unchanged; current
-remaining feature order is **Relational Depth → Writer Profile → Sprint 10**.
+**Status**: Implemented in
+[draft PR #85](https://github.com/okeylanders/prose-minion-vscode/pull/85) on
+2026-07-23; automated verification and CI complete, with manual Extension
+Development Host restart/corrupt archive verification and PR review remaining. See
+[Sprint 10](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md)
+and [ADR 2026-07-14](../../../docs/adr/2026-07-14-workshop-session-persistence.md).
 The ADR supersedes this README's storage direction: **JSON files under
 `prose-minion/sessions/` via the existing `FileSystem` port** (plus a small
 `delete()` port extension), not a `workspaceState` Memento/`KeyValueStore`
@@ -30,6 +31,11 @@ here across a restart instead of an excerpt swap)
 
 The accepted implementation treats `current.json` as the rolling working
 session: reopening Workshop restores it without requiring an explicit Save.
+The first named Save associates that live room with the newly allocated
+`sessionId`; subsequent committed turns update the same named file alongside
+`current.json`, and the header reports the real ordered-write state. Manual
+Save updates the associated identity, while **Save as new** is the deliberate
+copy operation. Editable titles are never used to choose an update target.
 It coordinates a complete product snapshot with typed retained
 `ConversationManager` histories keyed by logical participant, then mints fresh
 runtime conversation ids on hydrate. Leading system messages are rebuilt from
@@ -213,3 +219,12 @@ without it (rehydrate on the next manual open); it's a UX nicety, not a blocker.
   [feature-workshop-branch-board](../feature-workshop-branch-board/README.md)
   lands, "one session per workspace" may need to become "one per branch/excerpt
   lineage" — keep the store key shape flexible (namespaced key, not a fixed one).
+
+## Implementation correction to the historical investigation
+
+The investigation's “discard-on-mismatch” line above is superseded. Named
+browser entries with malformed/unknown full envelopes are skipped with
+diagnostics, and a single malformed conversation degrades only that participant.
+A present but unreadable `current.json` is protected from automatic overwrite
+instead of being silently treated as absent. This preserves the writer's best
+chance of manual recovery while keeping a fresh in-memory Workshop usable.

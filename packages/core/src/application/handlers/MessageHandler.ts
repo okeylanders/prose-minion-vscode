@@ -174,7 +174,9 @@ export class MessageHandler {
       workshopPersonaCapabilityFactory,
       workshopToolSidePass,
       workshopContextResourceService,
-      workshopConversationSettingsService
+      workshopConversationSettingsService,
+      workshopSessionTimeService,
+      workshopSessionPersistenceCoordinator
     } = services;
 
     // Token tracking: centralized in AgentRunEngine. Listener-based so
@@ -303,6 +305,8 @@ export class MessageHandler {
       this.platform.workspace,
       workshopContextResourceService,
       workshopConversationSettingsService,
+      workshopSessionTimeService,
+      workshopSessionPersistenceCoordinator,
       outputChannel
     );
     // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)

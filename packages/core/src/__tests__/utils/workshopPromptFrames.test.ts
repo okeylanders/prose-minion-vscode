@@ -45,6 +45,8 @@ describe('neutralizeReservedPersonaPromptDelimiters', () => {
       '<workshop-writer-profile>',
       '</workshop-writer-profile>',
       '<workshop-capability-result status="success">',
+      '<workshop-time-context reason="session-resume">',
+      '</workshop-time-context>',
       '<prose-minion-tool-call name="analysis.run">'
     ].join(' body ');
 

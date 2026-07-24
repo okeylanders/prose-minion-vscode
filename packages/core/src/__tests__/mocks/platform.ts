@@ -61,6 +61,8 @@ export function createFakeFileSystem(
   return {
     readFile: async (p: string) => (files && p in files ? toBytes(files[p]) : missing('readFile', p)),
     writeFile: async () => undefined,
+    rename: async () => undefined,
+    delete: async () => undefined,
     readDirectory: async () => [],
     stat: async (p: string): Promise<FileStat> => {
       if (files && p in files) {
@@ -99,6 +101,7 @@ export function createFakeShellService(overrides: Partial<ShellService> = {}): S
     copyToClipboard: async () => undefined,
     readClipboard: async () => '',
     openFileInEditor: async () => undefined,
+    revealFileInOS: async () => undefined,
     pickFile: async () => undefined,
     ...overrides,
   };

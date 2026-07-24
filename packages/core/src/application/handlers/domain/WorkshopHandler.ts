@@ -33,6 +33,12 @@ import {
   WorkshopContextResourceService
 } from '@/application/services/workshop/WorkshopContextResourceService';
 import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
+import {
+  WorkshopPreparedTimeNotice,
+  WorkshopSessionTimeService,
+  workshopGuestConversationKey
+} from '@/application/services/workshop/WorkshopSessionTimeService';
+import { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import {
   buildWorkshopContextAttachmentsFrame,
@@ -114,6 +120,15 @@ import {
   WorkshopSetConversationSettingsMessage,
   WorkshopTodoActionMessage,
   WorkshopSessionStateMessage,
+  WorkshopSaveSessionMessage,
+  WorkshopListSessionsMessage,
+  WorkshopOpenSessionMessage,
+  WorkshopRenameSessionMessage,
+  WorkshopDuplicateSessionMessage,
+  WorkshopRevealSessionMessage,
+  WorkshopDeleteSessionMessage,
+  WorkshopSessionAction,
+  WorkshopSessionSaveStatusMessage,
   WorkshopToolId,
   WorkshopPersonaId,
   WorkshopChatTarget,
@@ -122,7 +137,8 @@ import {
   WorkshopTurnMessage,
 } from '@messages';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
-import { MessageRouter } from '../MessageRouter';
+import { MessageRouter } from '@handlers/MessageRouter';
+import { WorkshopSessionMessageHandler } from '@handlers/domain/WorkshopSessionMessageHandler';
 
 // Generate unique request IDs (module-scoped counter, same idiom as AnalysisHandler)
 let requestIdCounter = 0;
@@ -190,6 +206,8 @@ export class WorkshopHandler {
   };
 
   private readonly disposeStatusListener: () => void;
+  private readonly disposeSessionSaveStatusListener: () => void;
+  private readonly sessionMessageHandler: WorkshopSessionMessageHandler;
 
   /** The single in-flight Context wizard run — independent of activeRun. */
   private wizardRun?: { requestId: string; excerptVersion: number; controller: AbortController };
@@ -206,6 +224,8 @@ export class WorkshopHandler {
     private readonly workspace: Workspace,
     private readonly contextResourceService: WorkshopContextResourceService,
     private readonly conversationSettingsService: WorkshopConversationSettingsService,
+    private readonly sessionTime: WorkshopSessionTimeService,
+    private readonly sessionPersistence: WorkshopSessionPersistenceCoordinator,
     private readonly outputChannel: LogSink
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
@@ -218,27 +238,70 @@ export class WorkshopHandler {
         }
       }
     );
+    this.disposeSessionSaveStatusListener =
+      this.sessionPersistence.addSessionSaveStatusListener((event) => {
+        const message: WorkshopSessionSaveStatusMessage = {
+          type: MessageType.WORKSHOP_SESSION_SAVE_STATUS,
+          source: 'extension.workshop',
+          payload: { ...event },
+          timestamp: Date.now()
+        };
+        void this.postMessage(message);
+      });
+    this.sessionMessageHandler = new WorkshopSessionMessageHandler(
+      this.sessionPersistence,
+      this.postMessage,
+      this.shell,
+      this.outputChannel,
+      {
+        postSessionState: () => this.postSessionState(),
+        flushDeferredConversationSettings: async () => {
+          await this.flushDeferredConversationSettings();
+        },
+        reportError: (message, details) => {
+          this.sendError('workshop', message, details);
+        },
+        activeRunLabel: () => this.wizardRun
+          ? 'Context wizard'
+          : this.activeRun
+            ? 'response'
+            : undefined
+      }
+    );
   }
 
   /**
    * Register message routes for the workshop domain
    */
   registerRoutes(router: MessageRouter): void {
-    router.register(MessageType.WORKSHOP_RUN_TOOL, this.handleRunTool.bind(this));
-    router.register(MessageType.WORKSHOP_QUICK_ACTION, this.handleQuickAction.bind(this));
-    router.register(MessageType.WORKSHOP_SEND_MESSAGE, this.handleSendMessage.bind(this));
-    router.register(MessageType.WORKSHOP_INVITE_GUEST, this.handleInviteGuest.bind(this));
-    router.register(MessageType.WORKSHOP_DISMISS_GUEST, this.handleDismissGuest.bind(this));
-    router.register(MessageType.WORKSHOP_SELECT_PERSONA, this.handleSelectPersona.bind(this));
-    router.register(MessageType.WORKSHOP_SET_CHAT_TARGET, this.handleSetChatTarget.bind(this));
-    router.register(
+    const registerMutation = (
+      messageType: MessageType,
+      handler: (message: never) => Promise<void>,
+      sessionAction?: WorkshopSessionAction
+    ): void => {
+      router.register(messageType, async (message) => {
+        if (this.rejectRoomMutationDuringSessionOperation(sessionAction)) {
+          return;
+        }
+        await handler(message as never);
+      });
+    };
+
+    registerMutation(MessageType.WORKSHOP_RUN_TOOL, this.handleRunTool.bind(this));
+    registerMutation(MessageType.WORKSHOP_QUICK_ACTION, this.handleQuickAction.bind(this));
+    registerMutation(MessageType.WORKSHOP_SEND_MESSAGE, this.handleSendMessage.bind(this));
+    registerMutation(MessageType.WORKSHOP_INVITE_GUEST, this.handleInviteGuest.bind(this));
+    registerMutation(MessageType.WORKSHOP_DISMISS_GUEST, this.handleDismissGuest.bind(this));
+    registerMutation(MessageType.WORKSHOP_SELECT_PERSONA, this.handleSelectPersona.bind(this));
+    registerMutation(MessageType.WORKSHOP_SET_CHAT_TARGET, this.handleSetChatTarget.bind(this));
+    registerMutation(
       MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS,
       this.handleSetConversationSettings.bind(this)
     );
-    router.register(MessageType.WORKSHOP_SET_EXCERPT, this.handleSetExcerpt.bind(this));
-    router.register(MessageType.WORKSHOP_ADD_CONTEXT_TEXT, this.handleAddContextText.bind(this));
-    router.register(MessageType.WORKSHOP_ADD_CONTEXT_FILE, this.handleAddContextFile.bind(this));
-    router.register(
+    registerMutation(MessageType.WORKSHOP_SET_EXCERPT, this.handleSetExcerpt.bind(this));
+    registerMutation(MessageType.WORKSHOP_ADD_CONTEXT_TEXT, this.handleAddContextText.bind(this));
+    registerMutation(MessageType.WORKSHOP_ADD_CONTEXT_FILE, this.handleAddContextFile.bind(this));
+    registerMutation(
       MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT,
       this.handleRemoveContextAttachment.bind(this)
     );
@@ -250,35 +313,34 @@ export class WorkshopHandler {
       MessageType.WORKSHOP_SEARCH_CONTEXT_RESOURCES,
       this.handleSearchContextResources.bind(this)
     );
-    router.register(
+    registerMutation(
       MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES,
       this.handleAddContextResources.bind(this)
     );
-    router.register(
+    registerMutation(
       MessageType.WORKSHOP_ATTACH_MESSAGE_RESOURCES,
       this.handleAttachMessageResources.bind(this)
     );
-    router.register(
+    registerMutation(
       MessageType.WORKSHOP_ATTACH_MESSAGE_FILE,
       this.handleAttachMessageFile.bind(this)
     );
-    router.register(
+    registerMutation(
       MessageType.WORKSHOP_REMOVE_MESSAGE_ATTACHMENT,
       this.handleRemoveMessageAttachment.bind(this)
     );
-    router.register(
+    registerMutation(
       MessageType.WORKSHOP_SET_EXCERPT_RESOURCE,
       this.handleSetExcerptResource.bind(this)
     );
-    router.register(
+    registerMutation(
       MessageType.WORKSHOP_RUN_CONTEXT_WIZARD,
       this.handleRunContextWizard.bind(this)
     );
-    router.register(MessageType.WORKSHOP_TODO_ACTION, this.handleTodoAction.bind(this));
-    router.register(MessageType.WORKSHOP_PICK_EXCERPT_FILE, this.handlePickExcerptFile.bind(this));
-    router.register(MessageType.WORKSHOP_REREAD_EXCERPT, this.handleRereadExcerpt.bind(this));
-    router.register(MessageType.WORKSHOP_RESET_SESSION, this.handleResetSession.bind(this));
-    router.register(MessageType.WORKSHOP_REQUEST_SESSION, this.handleRequestSession.bind(this));
+    registerMutation(MessageType.WORKSHOP_TODO_ACTION, this.handleTodoAction.bind(this));
+    registerMutation(MessageType.WORKSHOP_PICK_EXCERPT_FILE, this.handlePickExcerptFile.bind(this));
+    registerMutation(MessageType.WORKSHOP_REREAD_EXCERPT, this.handleRereadExcerpt.bind(this));
+    this.sessionMessageHandler.registerRoutes(router, registerMutation);
     router.register(MessageType.CANCEL_WORKSHOP_REQUEST, this.handleCancelRequest.bind(this));
   }
 
@@ -290,6 +352,8 @@ export class WorkshopHandler {
    */
   dispose(): void {
     this.disposeStatusListener();
+    this.disposeSessionSaveStatusListener();
+    this.sessionMessageHandler.dispose();
     if (this.activeRun) {
       this.outputChannel.appendLine(
         `[WorkshopHandler] Aborting in-flight run on dispose: ${this.activeRun.requestId}`
@@ -299,6 +363,7 @@ export class WorkshopHandler {
       this.activeRun = undefined;
     }
     this.cancelWizardRun('dispose');
+    void this.sessionPersistence.flush();
   }
 
   // Message handlers
@@ -335,7 +400,10 @@ export class WorkshopHandler {
       streamCompleted: (requestId, content, cancelled, usage, truncated) =>
         this.sendStreamComplete(requestId, content, cancelled, usage, truncated),
       turnCompleted: (turn) => this.postTurn(turn),
-      sessionChanged: () => this.postSessionState(),
+      sessionChanged: () => {
+        this.sessionPersistence.markDirty('tool run committed');
+        this.postSessionState();
+      },
       status: (status, tickerMessage) => this.sendStatus(status, undefined, tickerMessage),
       error: (errorMessage, details) =>
         this.sendError('workshop.run_tool', errorMessage, details),
@@ -378,6 +446,9 @@ export class WorkshopHandler {
           persistenceDetails
         );
       }
+      if (result.changed) {
+        this.sessionPersistence.markDirty('conversation settings changed');
+      }
       this.postSessionState();
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
@@ -398,6 +469,9 @@ export class WorkshopHandler {
     try {
       const result = await this.conversationSettingsService.syncFromSettings();
       if (!result.deferred) {
+        if (result.changed) {
+          this.sessionPersistence.markDirty('external conversation settings changed');
+        }
         this.postSessionState();
       }
     } catch (error) {
@@ -430,6 +504,7 @@ export class WorkshopHandler {
       )
     ) {
       this.session.setChatTarget({ kind: 'host' });
+      this.sessionPersistence.markDirty('chat target returned to host');
       this.postSessionState();
     }
 
@@ -444,6 +519,7 @@ export class WorkshopHandler {
     }
     try {
       this.session.selectPersona(personaId);
+      this.sessionPersistence.markDirty('host persona selected');
       this.postSessionState();
     } catch (error) {
       this.sendError(
@@ -486,6 +562,9 @@ export class WorkshopHandler {
 
       const requestId = generateRequestId('workshop_guest_join');
       const controller = new AbortController();
+      const timeNotice = this.sessionTime.prepareNotice(
+        workshopGuestConversationKey(personaId)
+      );
       const userTurn = this.session.beginPersonaGuestJoin(
         personaId,
         requestId,
@@ -496,6 +575,7 @@ export class WorkshopHandler {
         excerpt,
         hostTurns: this.session.collectHostThreadTurns(),
         openingMessage,
+        timeFrame: timeNotice?.frame,
         ...behaviorFramesFor(userTurn)
       });
       this.activeRun = {
@@ -540,8 +620,10 @@ export class WorkshopHandler {
           }
         });
         if (assistantTurn) {
+          this.commitTimeNotice(timeNotice);
           this.session.setChatTarget({ kind: 'personaGuest', personaId });
           this.sendStatus(`${workshopPersonaLabel(personaId)} joined the room.`);
+          this.sessionPersistence.markDirty('guest invitation completed');
         }
         this.postSessionState();
       } catch (error) {
@@ -585,6 +667,7 @@ export class WorkshopHandler {
       `[WorkshopHandler] Guest dismissed (persona=${personaId}, conversation=${conversationId})`
     );
     this.sendStatus(`${workshopPersonaLabel(personaId)} left the room.`);
+    this.sessionPersistence.markDirty('guest dismissed');
     this.postSessionState();
   }
 
@@ -606,6 +689,7 @@ export class WorkshopHandler {
       this.sendError('workshop.set_chat_target', 'That Workshop participant is no longer available.');
       return;
     }
+    this.sessionPersistence.markDirty('chat target changed');
     this.postSessionState();
   }
 
@@ -772,11 +856,24 @@ export class WorkshopHandler {
     let modelMessage: string;
     let userTurn: WorkshopTurn;
     let statusMessage: string;
-    let personaBehaviorFrames: { interactionFrame?: string; transitionFrame?: string } = {};
+    const timeNotice = target.kind === 'host'
+      ? this.sessionTime.prepareNotice('host')
+      : target.kind === 'personaGuest'
+        ? this.sessionTime.prepareNotice(workshopGuestConversationKey(target.personaId))
+        : undefined;
+    let personaBehaviorFrames: {
+      interactionFrame?: string;
+      activationFrame?: string;
+      transitionFrame?: string;
+      timeFrame?: string;
+    } = {};
     switch (target.kind) {
       case 'host':
         userTurn = this.session.beginPersonaMessage(requestId, displayText, attachmentRefs);
-        personaBehaviorFrames = behaviorFramesFor(userTurn);
+        personaBehaviorFrames = {
+          ...behaviorFramesFor(userTurn),
+          timeFrame: timeNotice?.frame
+        };
         modelMessage = buildWorkshopHostMessage(text, {
           handoff,
           guestHandoff,
@@ -808,7 +905,10 @@ export class WorkshopHandler {
           displayText,
           attachmentRefs
         );
-        personaBehaviorFrames = behaviorFramesFor(userTurn);
+        personaBehaviorFrames = {
+          ...behaviorFramesFor(userTurn),
+          timeFrame: timeNotice?.frame
+        };
         modelMessage = buildWorkshopGuestMessage(
           text,
           guestCatchUp,
@@ -830,7 +930,10 @@ export class WorkshopHandler {
           events: {
             status: (message, tickerMessage) => this.sendStatus(message, undefined, tickerMessage),
             turnCompleted: (turn) => this.postTurn(turn),
-            sessionChanged: () => this.postSessionState()
+            sessionChanged: () => {
+              this.postSessionState();
+              this.sessionPersistence.markDirty('host capability committed');
+            }
           }
         })
       : undefined;
@@ -911,6 +1014,14 @@ export class WorkshopHandler {
           `[WorkshopHandler] Message attachments shipped (${messageAttachments.map((a) => a.id).join(', ')})`
         );
       }
+      if (assistantTurn) {
+        this.commitTimeNotice(timeNotice);
+        this.sessionPersistence.markDirty(
+          target.kind === 'tool'
+            ? 'direct tool turn completed'
+            : 'persona turn completed'
+        );
+      }
       this.postSessionState();
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
@@ -929,6 +1040,7 @@ export class WorkshopHandler {
         this.outputChannel.appendLine(
           `[WorkshopHandler] Conversation generation lost (${discardedConversationIds.length} conversations discarded: ${discardedConversationIds.join(', ') || 'none'}): ${details}`
         );
+        this.sessionPersistence.markDirty('expired conversation bindings cleared');
         this.sendError(
           'workshop.send_message',
           'This Workshop conversation is no longer available because settings changed. Send a new message to start the selected host again.',
@@ -1004,6 +1116,7 @@ export class WorkshopHandler {
       return;
     }
     this.replaceExcerpt({ text, source });
+    this.sessionPersistence.markDirty('excerpt replaced');
     this.postSessionState();
   }
 
@@ -1073,6 +1186,7 @@ export class WorkshopHandler {
     this.outputChannel.appendLine(
       `[WorkshopHandler] Context attachment removed (${removed.label}, ${removed.words} words)`
     );
+    this.sessionPersistence.markDirty('context attachment removed');
     this.postSessionState();
   }
 
@@ -1297,6 +1411,7 @@ export class WorkshopHandler {
     this.outputChannel.appendLine(
       `[WorkshopHandler] Message attachment removed (${removed.id}, ${removed.label})`
     );
+    this.sessionPersistence.markDirty('message attachment removed');
     this.postSessionState();
   }
 
@@ -1317,6 +1432,7 @@ export class WorkshopHandler {
     this.outputChannel.appendLine(
       `[WorkshopHandler] Message attachment staged (${result.attachment.id}, ${result.attachment.label}, ${result.attachment.words} words)`
     );
+    this.sessionPersistence.markDirty('message attachment staged');
     this.postSessionState();
   }
 
@@ -1392,6 +1508,7 @@ export class WorkshopHandler {
         : undefined,
       sourceFingerprint: resource.sourceFingerprint
     });
+    this.sessionPersistence.markDirty('configured excerpt replaced');
     this.postSessionState();
   }
 
@@ -1571,6 +1688,9 @@ export class WorkshopHandler {
           ? `Wizard finished \u2014 ${failed} requested item${failed === 1 ? '' : 's'} couldn\u2019t be loaded.`
           : 'Wizard finished \u2014 nothing new fit the budget.'
     );
+    if (attached > 0) {
+      this.sessionPersistence.markDirty('context wizard attachments committed');
+    }
     this.postSessionState();
   }
 
@@ -1595,6 +1715,7 @@ export class WorkshopHandler {
     this.outputChannel.appendLine(
       `[WorkshopHandler] Context attached (${result.attachment.kind}, ${result.attachment.label}, ${result.attachment.words} words)`
     );
+    this.sessionPersistence.markDirty('context attachment added');
     this.postSessionState();
   }
 
@@ -1721,6 +1842,7 @@ export class WorkshopHandler {
       this.outputChannel.appendLine(
         `[WorkshopHandler] Task action applied (${action.action}, ${target}, source=${message.source})`
       );
+      this.sessionPersistence.markDirty('task action committed');
       this.postSessionState();
     } catch (error) {
       this.sendError(
@@ -1778,6 +1900,7 @@ export class WorkshopHandler {
       truncation: loaded.truncation,
       sourceFingerprint: loaded.sourceFingerprint
     });
+    this.sessionPersistence.markDirty('file excerpt replaced');
     this.postSessionState();
   }
 
@@ -1843,6 +1966,7 @@ export class WorkshopHandler {
       truncation: loaded.truncation,
       sourceFingerprint: loaded.sourceFingerprint
     });
+    this.sessionPersistence.markDirty('file excerpt reread');
     this.postSessionState();
   }
 
@@ -1915,19 +2039,58 @@ export class WorkshopHandler {
     return { text, truncation, sourceFingerprint: createHash('sha256').update(raw).digest('hex') };
   }
 
-  async handleResetSession(_message: WorkshopResetSessionMessage): Promise<void> {
-    this.preemptActiveRun();
-    this.cancelWizardRun('session reset');
-    const discardedConversationIds = this.session.reset();
-    this.discardConversations(discardedConversationIds);
-    await this.flushDeferredConversationSettings();
-    this.outputChannel.appendLine(`[WorkshopHandler] Session reset (${discardedConversationIds.length} conversations discarded)`);
-    this.postSessionState();
+  // Public compatibility seam for focused tests and direct callers;
+  // implementation lives in the bounded session IPC collaborator.
+  handleResetSession(message: WorkshopResetSessionMessage): Promise<void> {
+    return this.sessionMessageHandler.handleResetSession(message);
   }
 
-  async handleRequestSession(_message: WorkshopRequestSessionMessage): Promise<void> {
-    await this.flushDeferredConversationSettings();
-    this.postSessionState();
+  handleRequestSession(message: WorkshopRequestSessionMessage): Promise<void> {
+    return this.sessionMessageHandler.handleRequestSession(message);
+  }
+
+  handleSaveSession(message: WorkshopSaveSessionMessage): Promise<void> {
+    return this.sessionMessageHandler.handleSaveSession(message);
+  }
+
+  handleListSessions(message: WorkshopListSessionsMessage): Promise<void> {
+    return this.sessionMessageHandler.handleListSessions(message);
+  }
+
+  handleOpenSession(message: WorkshopOpenSessionMessage): Promise<void> {
+    return this.sessionMessageHandler.handleOpenSession(message);
+  }
+
+  handleRenameSession(message: WorkshopRenameSessionMessage): Promise<void> {
+    return this.sessionMessageHandler.handleRenameSession(message);
+  }
+
+  handleDuplicateSession(message: WorkshopDuplicateSessionMessage): Promise<void> {
+    return this.sessionMessageHandler.handleDuplicateSession(message);
+  }
+
+  handleRevealSession(message: WorkshopRevealSessionMessage): Promise<void> {
+    return this.sessionMessageHandler.handleRevealSession(message);
+  }
+
+  handleDeleteSession(message: WorkshopDeleteSessionMessage): Promise<void> {
+    return this.sessionMessageHandler.handleDeleteSession(message);
+  }
+
+  private rejectRoomMutationDuringSessionOperation(
+    sessionAction?: WorkshopSessionAction
+  ): boolean {
+    if (!this.sessionPersistence.isSessionOperationPending()) {
+      return false;
+    }
+    const message =
+      'Wait for the current session save or replacement to finish before changing the room.';
+    if (sessionAction) {
+      this.sessionMessageHandler.postActionResult(sessionAction, false, message);
+    } else {
+      this.sendError('workshop', message);
+    }
+    return true;
   }
 
   private preemptActiveRun(): void {
@@ -2003,10 +2166,22 @@ export class WorkshopHandler {
       this.sendStatus('');
       void this.flushDeferredConversationSettings().then((changed) => {
         if (changed) {
+          this.sessionPersistence.markDirty('deferred conversation settings applied');
           this.postSessionState();
         }
       });
+      void this.sessionPersistence.flush();
     }
+  }
+
+  private commitTimeNotice(notice: WorkshopPreparedTimeNotice | undefined): void {
+    if (notice) {
+      this.sessionTime.commitNotice(notice);
+    }
+  }
+
+  private errorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
   }
 
   private async flushDeferredConversationSettings(): Promise<boolean> {
@@ -2150,12 +2325,20 @@ export class WorkshopHandler {
   private postSessionState(): void {
     const session = this.session.getSnapshot();
     session.contextBudget = this.activeContextBudget();
+    const availability = this.sessionPersistence.availability();
     const message: WorkshopSessionStateMessage = {
       type: MessageType.WORKSHOP_SESSION_STATE,
       source: 'extension.workshop',
       payload: {
         session,
-        writerProfile: this.conversationSettingsService.getWriterProfile()
+        writerProfile: this.conversationSettingsService.getWriterProfile(),
+        persistence: {
+          available: availability.available,
+          unavailableReason: availability.available ? undefined : availability.reason,
+          currentCheckpointProtected: this.sessionPersistence.isCurrentCheckpointProtected(),
+          degradedConversationKeys: this.sessionPersistence.getDegradedConversationKeys(),
+          degradedConversations: this.sessionPersistence.getDegradedConversations()
+        }
       },
       timestamp: Date.now()
     };

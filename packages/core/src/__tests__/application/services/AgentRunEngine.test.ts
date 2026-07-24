@@ -1115,4 +1115,73 @@ describe('AgentRunEngine', () => {
       expect(conversations.getContextSources(initial.conversationId)).toEqual(before);
     });
   });
+
+  describe('conversation archive boundary', () => {
+    it('rejects export while a target run is active, then exports after settlement', async () => {
+      client.createChatCompletion.mockResolvedValueOnce({ content: 'Initial reply' });
+      const initial = await engine.runInitial({
+        toolName: 'workshop_persona_jill',
+        systemMessage: 'Old prompt',
+        userMessage: 'Hello',
+        policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
+      });
+      const turn = deferredTurn();
+      client.createChatCompletion.mockReturnValueOnce(turn.promise);
+      const pending = engine.continueConversation({
+        conversationId: initial.conversationId!,
+        userMessage: 'Still there?',
+        policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
+      });
+
+      expect(() => engine.exportConversationsBetweenRuns([{
+        key: 'host',
+        conversationId: initial.conversationId!
+      }])).toThrow('Cannot export conversations while a run is active');
+
+      turn.resolve({ content: 'Still here.' });
+      await pending;
+      expect(engine.exportConversationsBetweenRuns([{
+        key: 'host',
+        conversationId: initial.conversationId!
+      }])[0].messages).toHaveLength(4);
+    });
+
+    it('continues imported history under the rebuilt system prompt and fresh runtime id', async () => {
+      client.createChatCompletion.mockResolvedValueOnce({ content: 'Initial reply' });
+      const initial = await engine.runInitial({
+        toolName: 'workshop_persona_jill',
+        systemMessage: 'Archived prompt',
+        userMessage: 'Hello',
+        policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
+      });
+      const entry = engine.exportConversationsBetweenRuns([{
+        key: 'host' as const,
+        conversationId: initial.conversationId!
+      }])[0];
+
+      const [outcome] = engine.importConversationsBetweenRuns([{
+        entry,
+        systemMessage: 'Rebuilt current prompt'
+      }]);
+      expect(outcome.status).toBe('imported');
+      if (outcome.status !== 'imported') {
+        throw new Error(outcome.reason);
+      }
+      expect(outcome.conversationId).not.toBe(initial.conversationId);
+
+      client.createChatCompletion.mockResolvedValueOnce({ content: 'Resumed reply' });
+      await engine.continueConversation({
+        conversationId: outcome.conversationId,
+        userMessage: 'Resume',
+        policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
+      });
+
+      expect(client.createChatCompletion.mock.calls.at(-1)?.[0]).toEqual([
+        { role: 'system', content: 'Rebuilt current prompt' },
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: 'Initial reply' },
+        { role: 'user', content: 'Resume' }
+      ]);
+    });
+  });
 });

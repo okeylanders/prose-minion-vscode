@@ -19,7 +19,15 @@ const makeEngine = (label: string) => ({
     finishReason: 'stop', conversationId: 'host-conv'
   }),
   discardConversation: jest.fn(),
-  replaceSystemMessagesBetweenRuns: jest.fn()
+  replaceSystemMessagesBetweenRuns: jest.fn(),
+  exportConversationsBetweenRuns: jest.fn().mockReturnValue([]),
+  importConversationsBetweenRuns: jest.fn().mockImplementation((targets: Array<{
+    entry: { key: string };
+  }>) => targets.map(({ entry }, index) => ({
+    key: entry.key,
+    status: 'imported',
+    conversationId: `restored-${index + 1}`
+  })))
 }) as unknown as jest.Mocked<AgentRunEngine> & { label: string };
 
 describe('AssistantToolService — manager-owned generation binding', () => {
@@ -269,6 +277,141 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     }, DEFAULT_WORKSHOP_WRITER_PROFILE)).rejects.toThrow('guest prompt missing');
 
     expect(engine.replaceSystemMessagesBetweenRuns).not.toHaveBeenCalled();
+  });
+
+  it('exports Workshop histories through the captured engine generation', async () => {
+    const captured = makeEngine('captured');
+    const later = makeEngine('later');
+    captured.exportConversationsBetweenRuns.mockReturnValueOnce([{
+      key: 'host',
+      toolName: 'workshop_persona_jill',
+      messages: [
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: 'Hi' }
+      ],
+      lastActivity: 1,
+      contextSources: [],
+      nextArtifactNumber: 0
+    }]);
+    let live: AgentRunEngine = captured;
+    const service = build(managerFor(() => live));
+    await flush();
+    live = later;
+
+    const archive = service.exportWorkshopConversationArchive([{
+      key: 'host',
+      conversationId: 'runtime-host',
+      role: 'host',
+      personaId: 'jill'
+    }]);
+
+    expect(archive[0].key).toBe('host');
+    expect(captured.exportConversationsBetweenRuns).toHaveBeenCalledWith([
+      { key: 'host', conversationId: 'runtime-host' }
+    ]);
+    expect(later.exportConversationsBetweenRuns).not.toHaveBeenCalled();
+  });
+
+  it('rebuilds current host, guest, and tool prompts before importing', async () => {
+    const engine = makeEngine('archive-import');
+    const loadPrompts = jest.fn(async (paths: string[]) => `loaded:${paths.join('|')}`);
+    const service = build(managerFor(() => engine), loadPrompts);
+    await flush();
+    const entry = (key: string, toolName: string) => ({
+      key,
+      toolName,
+      messages: [
+        { role: 'user' as const, content: 'Writer turn' },
+        { role: 'assistant' as const, content: 'Reply' }
+      ],
+      lastActivity: 1,
+      contextSources: [],
+      nextArtifactNumber: 0
+    });
+    const behavior = {
+      interactionMode: 'balanced' as const,
+      expressionLevel: 'amplified' as const,
+      relationalDepth: 'attuned' as const,
+      carryCuesThroughSession: true
+    };
+
+    const outcomes = await service.importWorkshopConversationArchive([
+      {
+        entry: entry('host', 'workshop_persona_jill'),
+        role: 'host',
+        personaId: 'jill'
+      },
+      {
+        entry: entry('guest:margot', 'workshop_guest_margot'),
+        role: 'guest',
+        personaId: 'margot'
+      },
+      {
+        entry: entry('tool:continuity', 'writing-tools-continuity'),
+        role: 'tool',
+        toolId: 'continuity'
+      }
+    ], {
+      behavior,
+      writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE,
+      standingDirectiveFrames: ['<standing-directive id="sd-1">Stay concrete.</standing-directive>']
+    });
+
+    expect(outcomes).toEqual([
+      expect.objectContaining({ key: 'host', status: 'imported' }),
+      expect.objectContaining({ key: 'guest:margot', status: 'imported' }),
+      expect.objectContaining({ key: 'tool:continuity', status: 'imported' })
+    ]);
+    const imports = engine.importConversationsBetweenRuns.mock.calls[0][0];
+    expect(imports[0].systemMessage).toContain('workshop-personas/base.md');
+    expect(imports[0].systemMessage).toContain('<standing-directive id="sd-1">');
+    expect(imports[1].systemMessage).toContain('workshop-personas/guest-base.md');
+    expect(imports[2].systemMessage).toContain('writing-tools-assistant/focus/continuity.md');
+    expect(imports[2].systemMessage).toContain('shared prompts');
+  });
+
+  it('degrades only the participant whose current prompt cannot be rebuilt', async () => {
+    const engine = makeEngine('partial-import');
+    const loadPrompts = jest.fn(async (paths: string[]) => {
+      if (paths.includes('workshop-personas/margot.md')) {
+        throw new Error('missing Margot prompt');
+      }
+      return `loaded:${paths.join('|')}`;
+    });
+    const service = build(managerFor(() => engine), loadPrompts);
+    await flush();
+    const archiveEntry = (key: 'host' | 'guest:margot') => ({
+      key,
+      toolName: key === 'host' ? 'workshop_persona_jill' : 'workshop_guest_margot',
+      messages: [
+        { role: 'user' as const, content: 'Writer turn' },
+        { role: 'assistant' as const, content: 'Reply' }
+      ],
+      lastActivity: 1,
+      contextSources: [],
+      nextArtifactNumber: 0
+    });
+
+    const outcomes = await service.importWorkshopConversationArchive([
+      { entry: archiveEntry('host'), role: 'host', personaId: 'jill' },
+      { entry: archiveEntry('guest:margot'), role: 'guest', personaId: 'margot' }
+    ], {
+      behavior: {
+        interactionMode: 'balanced',
+        expressionLevel: 'full',
+        relationalDepth: 'attuned',
+        carryCuesThroughSession: true
+      },
+      writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE
+    });
+
+    expect(outcomes[0]).toMatchObject({ key: 'host', status: 'imported' });
+    expect(outcomes[1]).toMatchObject({
+      key: 'guest:margot',
+      status: 'degraded',
+      reason: expect.stringContaining('missing Margot prompt')
+    });
+    expect(engine.importConversationsBetweenRuns.mock.calls[0][0]).toHaveLength(1);
   });
 
   it.each([

@@ -148,6 +148,18 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   const capabilityMetadata = capabilityMetadataRows(turn);
   const turnIdentity = { [WORKSHOP_TURN_ID_ATTRIBUTE]: turn.id };
 
+  if (
+    turn.participant === 'session' ||
+    turn.artifact === 'session_start' ||
+    turn.artifact === 'session_resume'
+  ) {
+    return (
+      <div className="pm-ws-revision-divider pm-ws-session-divider" role="separator">
+        <span>{turn.content}</span>
+      </div>
+    );
+  }
+
   if (turn.artifact === 'excerpt_revision') {
     return (
       <div className="pm-ws-revision-divider" role="separator">

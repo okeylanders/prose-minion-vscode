@@ -330,4 +330,147 @@ describe('ConversationManager', () => {
     expect(manager.getContextSources('missing')).toEqual([]);
     expect(() => manager.appendContextSources('missing', [entry(1, 1)])).toThrow('not found');
   });
+
+  describe('conversation archive V1', () => {
+    const completeConversation = (
+      target: ConversationManager,
+      systemMessage = 'Current secret system prompt'
+    ) => {
+      const id = target.startConversation('workshop_persona_jill', systemMessage);
+      target.pinConversation(id);
+      target.addMessages(id, [
+        { role: 'user', content: 'First writer turn' },
+        { role: 'assistant', content: 'First persona reply' }
+      ]);
+      return id;
+    };
+
+    it('exports committed non-system history with defensive source copies', () => {
+      const id = completeConversation(manager);
+      manager.appendContextSources(id, [{
+        kind: 'resource',
+        origin: 'host',
+        label: 'chapters/one.md',
+        configuredResource: { group: 'chapters', path: 'chapters/one.md' },
+        sizeChars: 120,
+        isEstimate: true,
+        artifactId: 'art-1',
+        deliveredAt: 10
+      }]);
+      expect(manager.nextArtifactId(id)).toBe('art-1');
+
+      const archive = manager.exportConversations([{ key: 'host' as const, conversationId: id }]);
+
+      expect(archive[0]).toMatchObject({
+        key: 'host',
+        toolName: 'workshop_persona_jill',
+        messages: [
+          { role: 'user', content: 'First writer turn' },
+          { role: 'assistant', content: 'First persona reply' }
+        ],
+        nextArtifactNumber: 1
+      });
+      expect(JSON.stringify(archive)).not.toContain('Current secret system prompt');
+
+      archive[0].messages[0].content = 'mutated';
+      archive[0].contextSources[0].configuredResource!.path = 'mutated.md';
+      expect(manager.getMessages(id)[1].content).toBe('First writer turn');
+      expect(manager.getContextSources(id)[0].configuredResource?.path).toBe('chapters/one.md');
+    });
+
+    it('imports with a fresh pinned id while restoring sources, activity, and skipped counters', () => {
+      const id = completeConversation(manager);
+      manager.setContextBudget(id, {
+        modelId: 'old/model',
+        contextTokens: 20,
+        promptTokens: 15,
+        completionTokens: 5,
+        peakPromptTokensThisTurn: 15,
+        requestedMaxOutputTokens: 100,
+        callsThisTurn: 1,
+        turnProcessedTokens: 20,
+        contextCompression: 'unknown',
+        measuredAt: 20
+      });
+      const entry = manager.exportConversations([{ key: 'host' as const, conversationId: id }])[0];
+      entry.lastActivity = 1234;
+      entry.nextArtifactNumber = 7;
+      entry.contextSources = [{
+        kind: 'dictionary',
+        origin: 'host',
+        label: 'liminal',
+        sizeChars: 30,
+        isEstimate: true,
+        deliveredAt: 22
+      }];
+
+      const restored = new ConversationManager();
+      const [outcome] = restored.importConversations([{
+        entry,
+        systemMessage: 'Rebuilt current system prompt'
+      }]);
+
+      expect(outcome.status).toBe('imported');
+      if (outcome.status !== 'imported') {
+        throw new Error(outcome.reason);
+      }
+      expect(outcome.conversationId).not.toBe(id);
+      expect(restored.getMessages(outcome.conversationId)).toEqual([
+        { role: 'system', content: 'Rebuilt current system prompt' },
+        { role: 'user', content: 'First writer turn' },
+        { role: 'assistant', content: 'First persona reply' }
+      ]);
+      expect(restored.getConversationInfo(outcome.conversationId)?.lastActivity).toBe(1234);
+      expect(restored.getContextSources(outcome.conversationId)).toHaveLength(1);
+      expect(restored.getContextBudget(outcome.conversationId)).toBeUndefined();
+      expect(restored.nextArtifactId(outcome.conversationId)).toBe('art-8');
+      expect(restored.clearOldConversations(-1)).toEqual([]);
+    });
+
+    it('degrades one malformed entry without blocking a valid sibling', () => {
+      const id = completeConversation(manager);
+      const valid = manager.exportConversations([{ key: 'host' as const, conversationId: id }])[0];
+      const malformed = {
+        ...valid,
+        key: 'guest:margot' as const,
+        messages: [{ role: 'system', content: 'smuggled prompt' }]
+      } as unknown as typeof valid;
+
+      const outcomes = new ConversationManager().importConversations([
+        { entry: valid, systemMessage: 'New host prompt' },
+        { entry: malformed, systemMessage: 'New guest prompt' }
+      ]);
+
+      expect(outcomes[0]).toMatchObject({ key: 'host', status: 'imported' });
+      expect(outcomes[1]).toMatchObject({ key: 'guest:margot', status: 'degraded' });
+    });
+
+    it('rejects duplicate logical keys and artifact-counter regression', () => {
+      const id = completeConversation(manager);
+      const entry = manager.exportConversations([{ key: 'host', conversationId: id }])[0];
+      const duplicated = new ConversationManager().importConversations([
+        { entry, systemMessage: 'Host prompt' },
+        { entry: { ...entry }, systemMessage: 'Other prompt' }
+      ]);
+      expect(duplicated).toEqual([
+        expect.objectContaining({ key: 'host', status: 'degraded' }),
+        expect.objectContaining({ key: 'host', status: 'degraded' })
+      ]);
+
+      const regressed = {
+        ...entry,
+        messages: [
+          { role: 'user' as const, content: '<agent-artifact id="art-3">evidence</agent-artifact>' },
+          { role: 'assistant' as const, content: 'reply' }
+        ],
+        nextArtifactNumber: 2
+      };
+      expect(new ConversationManager().importConversations([
+        { entry: regressed, systemMessage: 'Prompt' }
+      ])[0]).toMatchObject({
+        status: 'degraded',
+        reason: expect.stringContaining('below retained art-3')
+      });
+    });
+  });
 });

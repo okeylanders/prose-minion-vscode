@@ -11,8 +11,9 @@
  * Scoped to exactly what Prose Minion's core uses: notifications (incl. a modal
  * Yes/No confirm), clipboard read+write, opening a saved/reference file in an
  * editor, and a single-file open dialog (the Workshop's "Pin from file…" seam,
- * ADR 2026-07-03 Sprint 3). The editor-column logic for "open beside the
- * webview" lives in the VS Code adapter, not in core.
+ * ADR 2026-07-03 Sprint 3), and revealing a user-owned session file in the
+ * host OS. The editor-column logic for "open beside the webview" and the
+ * operating-system reveal command live in the VS Code adapter, not in core.
  */
 
 /** Result of a file-picker dialog: the chosen file, in both path and URI form. */
@@ -37,6 +38,13 @@ export interface ShellService {
    * in the active column (the saved-report behavior).
    */
   openFileInEditor(filePath: string, options?: { beside?: boolean }): Promise<void>;
+  /**
+   * Reveal a user-owned file in the host operating system's file browser.
+   * This is intentionally distinct from `openFileInEditor`: Session Browser's
+   * “Reveal file” action should show the inspectable JSON on disk, not open it
+   * as an editor document.
+   */
+  revealFileInOS(filePath: string): Promise<void>;
   /**
    * Open the host's single-file picker. Resolves to the chosen file, or
    * undefined when the user dismisses the dialog (dismissal is not an error).
