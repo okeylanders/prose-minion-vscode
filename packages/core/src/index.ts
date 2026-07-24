@@ -37,16 +37,20 @@ export type {
 // --- Application: Workshop session aggregate (ADR 2026-07-03) ---
 export {
   WorkshopSessionService,
-  WorkshopSessionActiveRunPersistenceError,
-  parseWorkshopSessionStateV1
+  WorkshopSessionActiveRunPersistenceError
 } from '@/application/services/workshop/WorkshopSessionService';
+export type {
+  WorkshopSessionHydrationResult
+} from '@/application/services/workshop/WorkshopSessionService';
+export {
+  parseWorkshopSessionStateV1
+} from '@/application/services/workshop/WorkshopSessionStateV1';
 export type {
   WorkshopConversationLogicalKey,
   WorkshopRuntimeConversationBindings,
-  WorkshopSessionHydrationResult,
   WorkshopSessionStateV1,
   WorkshopStoredTodoItemV1
-} from '@/application/services/workshop/WorkshopSessionService';
+} from '@/application/services/workshop/WorkshopSessionStateV1';
 export {
   WorkshopSessionTimeService,
   parseWorkshopSessionTemporalStateV1,

@@ -161,7 +161,7 @@ import {
   WorkshopSessionStateMessage,
   WorkshopSessionsDataMessage,
   WorkshopSessionActionResultMessage,
-  WorkshopNamedSaveStatusMessage
+  WorkshopSessionSaveStatusMessage
 } from './workshop';
 
 export type WebviewToExtensionMessage =
@@ -274,6 +274,6 @@ export type ExtensionToWebviewMessage =
   | WorkshopSessionStateMessage
   | WorkshopSessionsDataMessage
   | WorkshopSessionActionResultMessage
-  | WorkshopNamedSaveStatusMessage
+  | WorkshopSessionSaveStatusMessage
   | WorkshopContextCatalogMessage
   | WorkshopContextSearchResultsMessage;

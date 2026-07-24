@@ -229,7 +229,9 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     named.push(JSON.parse(JSON.stringify(current)) as WorkshopPersistedSessionV1);
     const statuses: string[] = [];
     const coordinator = createCoordinator();
-    coordinator.addNamedSaveStatusListener((_sessionId, status) => statuses.push(status));
+    coordinator.addSessionSaveStatusListener(({ status }) => {
+      statuses.push(status);
+    });
 
     await coordinator.initialize();
     await coordinator.flush();
@@ -342,10 +344,36 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(named[0].savedAt).toBe(now.toISOString());
   });
 
+  it('reports an unnamed rolling autosave failure with its session identity', async () => {
+    const coordinator = createCoordinator();
+    await coordinator.initialize();
+    await coordinator.flush();
+    const events: Array<{ sessionId: string; status: string; error?: string }> = [];
+    coordinator.addSessionSaveStatusListener((event) => {
+      events.push(event);
+    });
+    store.writeCurrent.mockRejectedValueOnce(new Error('disk full'));
+
+    session.setExcerpt({ text: 'Still needs a checkpoint.', source: { kind: 'manual' } });
+    coordinator.markDirty('unnamed room changed');
+    await coordinator.flush();
+
+    expect(events.slice(0, 2)).toEqual([
+      expect.objectContaining({ status: 'saving' }),
+      expect.objectContaining({ status: 'error', error: 'disk full' })
+    ]);
+    expect(events[0].sessionId).toBe(events[1].sessionId);
+    expect(log.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining(
+        `Autosave failed (id=${events[0].sessionId}, revision=`
+      )
+    );
+  });
+
   it('updates the associated named session after each committed autosave', async () => {
     const coordinator = createCoordinator();
     const statuses: Array<{ sessionId: string; status: string }> = [];
-    coordinator.addNamedSaveStatusListener((sessionId, status) => {
+    coordinator.addSessionSaveStatusListener(({ sessionId, status }) => {
       statuses.push({ sessionId, status });
     });
     await coordinator.initialize();
@@ -380,7 +408,9 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     const saved = await coordinator.saveNamed('Living room');
     await coordinator.flush();
     const statuses: string[] = [];
-    coordinator.addNamedSaveStatusListener((_sessionId, status) => statuses.push(status));
+    coordinator.addSessionSaveStatusListener(({ status }) => {
+      statuses.push(status);
+    });
     const firstWrite = deferred();
     store.writeCurrent.mockImplementationOnce(async () => firstWrite.promise);
 
@@ -426,7 +456,9 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     const saved = await coordinator.saveNamed('Before');
     await coordinator.flush();
     const statuses: string[] = [];
-    coordinator.addNamedSaveStatusListener((_sessionId, status) => statuses.push(status));
+    coordinator.addSessionSaveStatusListener(({ status }) => {
+      statuses.push(status);
+    });
     store.updateNamed.mockRejectedValueOnce(new Error('named mirror unavailable'));
 
     await expect(coordinator.saveNamed('After', saved.sessionId))
@@ -499,6 +531,46 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
       .toBeLessThan(exportTemporal.mock.invocationCallOrder[0]);
   });
 
+  it('preserves participant-local conversation degradation reasons for the UI', async () => {
+    const source = new WorkshopSessionService(() => now.getTime());
+    source.setExcerpt({ text: 'A room with memory.', source: { kind: 'manual' } });
+    source.beginPersonaMessage('host-run', 'Remember this room.');
+    source.completeRun('host-run', 'I remember.', undefined, false, 'old-host');
+    current = {
+      ...persistedSession('degraded-room', 'Degraded room', 'A room with memory.'),
+      workshop: source.exportCommittedState(),
+      conversations: [{
+        key: 'host',
+        toolName: 'workshop_persona_jill',
+        messages: [{ role: 'assistant', content: 'I remember.' }],
+        lastActivity: now.getTime(),
+        contextSources: [],
+        nextArtifactNumber: 0
+      }]
+    };
+    assistant.importWorkshopConversationArchive.mockResolvedValueOnce([{
+      key: 'host',
+      status: 'degraded',
+      reason: 'The provider no longer recognizes that conversation.'
+    }]);
+    const coordinator = createCoordinator();
+
+    const result = await coordinator.initialize();
+
+    expect(result.degradedConversations).toEqual([{
+      key: 'host',
+      reason: 'The provider no longer recognizes that conversation.'
+    }]);
+    expect(coordinator.getDegradedConversations()).toEqual(
+      result.degradedConversations
+    );
+    expect(log.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'degraded=host: The provider no longer recognizes that conversation.'
+      )
+    );
+  });
+
   it('does not mutate the live title when a named save fails', async () => {
     const coordinator = createCoordinator();
     await coordinator.initialize();
@@ -528,7 +600,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
 
     const result = await coordinator.list('matched');
 
-    expect(store.list).toHaveBeenCalledWith('matched');
+    expect(store.list).toHaveBeenCalledWith('matched', undefined);
     expect(store.readCurrent).not.toHaveBeenCalled();
     expect(result.current).toMatchObject({
       sessionId: 'filtered-current',

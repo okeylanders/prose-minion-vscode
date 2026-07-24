@@ -8,7 +8,15 @@
 
 import { WorkshopPersonaId } from '@messages';
 import { isWorkshopPersonaId } from '@shared/constants/workshopPersonas';
-import { buildWorkshopTimeContextFrame } from './WorkshopPromptBuilder';
+import {
+  buildWorkshopTimeContextFrame
+} from '@/application/services/workshop/WorkshopPromptBuilder';
+import {
+  assertTimezone,
+  exactKeys,
+  isTimestamp,
+  normalizeTimestamp
+} from '@/application/services/workshop/persistedValidation';
 
 export type WorkshopPersonaConversationKey =
   | 'host'
@@ -52,9 +60,6 @@ export interface WorkshopSessionTimeOptions {
 
 const NOTICE_INTERVAL_MS = 60 * 60 * 1_000;
 
-const isValidDateString = (value: unknown): value is string =>
-  typeof value === 'string' && Number.isFinite(Date.parse(value));
-
 const normalizeDate = (value: Date | string): string => {
   const date = value instanceof Date ? value : new Date(value);
   if (!Number.isFinite(date.getTime())) {
@@ -62,34 +67,6 @@ const normalizeDate = (value: Date | string): string => {
   }
   return date.toISOString();
 };
-
-function assertExactKeys(
-  value: object,
-  label: string,
-  expected: readonly string[]
-): void {
-  const actual = Object.keys(value);
-  const expectedKeys = new Set(expected);
-  const unknown = actual.find((key) => !expectedKeys.has(key));
-  if (unknown) {
-    throw new Error(`${label} contains unknown field ${unknown}.`);
-  }
-  const missing = expected.find((key) => !Object.prototype.hasOwnProperty.call(value, key));
-  if (missing) {
-    throw new Error(`${label} is missing required field ${missing}.`);
-  }
-}
-
-function assertTimezone(value: unknown): asserts value is string {
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new Error('Workshop session timezone must be a non-empty IANA timezone.');
-  }
-  try {
-    new Intl.DateTimeFormat('en-US', { timeZone: value }).format(new Date(0));
-  } catch {
-    throw new Error(`Invalid Workshop session timezone: ${value}`);
-  }
-}
 
 export const workshopGuestConversationKey = (
   personaId: WorkshopPersonaId
@@ -113,8 +90,8 @@ export function parseWorkshopSessionTemporalStateV1(
   if (!state || typeof state !== 'object') {
     throw new Error('Workshop temporal state must be an object.');
   }
-  assertExactKeys(
-    state,
+  exactKeys(
+    state as Record<string, unknown>,
     'Workshop temporal state',
     ['schemaVersion', 'startedAt', 'timezone', 'lastActivityAt', 'personaNotices']
   );
@@ -122,10 +99,10 @@ export function parseWorkshopSessionTemporalStateV1(
   if (candidate.schemaVersion !== 1) {
     throw new Error(`Unsupported Workshop temporal schema: ${String(candidate.schemaVersion)}`);
   }
-  if (!isValidDateString(candidate.startedAt)) {
+  if (!isTimestamp(candidate.startedAt)) {
     throw new Error('Workshop temporal state has an invalid startedAt timestamp.');
   }
-  if (!isValidDateString(candidate.lastActivityAt)) {
+  if (!isTimestamp(candidate.lastActivityAt)) {
     throw new Error('Workshop temporal state has an invalid lastActivityAt timestamp.');
   }
   assertTimezone(candidate.timezone);
@@ -139,12 +116,12 @@ export function parseWorkshopSessionTemporalStateV1(
       !notice ||
       typeof notice !== 'object' ||
       !isWorkshopPersonaConversationKey(notice.conversationKey) ||
-      !isValidDateString(notice.notifiedAt)
+      !isTimestamp(notice.notifiedAt)
     ) {
       throw new Error('Workshop temporal state contains an invalid persona notice.');
     }
-    assertExactKeys(
-      notice,
+    exactKeys(
+      notice as unknown as Record<string, unknown>,
       'Workshop temporal state persona notice',
       ['conversationKey', 'notifiedAt']
     );
@@ -154,15 +131,15 @@ export function parseWorkshopSessionTemporalStateV1(
     seenKeys.add(notice.conversationKey);
     return {
       conversationKey: notice.conversationKey,
-      notifiedAt: normalizeDate(notice.notifiedAt)
+      notifiedAt: normalizeTimestamp(notice.notifiedAt)
     };
   });
 
   return {
     schemaVersion: 1,
-    startedAt: normalizeDate(candidate.startedAt),
+    startedAt: normalizeTimestamp(candidate.startedAt),
     timezone: candidate.timezone,
-    lastActivityAt: normalizeDate(candidate.lastActivityAt),
+    lastActivityAt: normalizeTimestamp(candidate.lastActivityAt),
     personaNotices
   };
 }

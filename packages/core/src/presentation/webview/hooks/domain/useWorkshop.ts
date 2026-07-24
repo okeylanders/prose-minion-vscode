@@ -40,6 +40,7 @@ import {
   WorkshopContextCatalogMessage,
   WorkshopContextSearchResultsMessage,
   WorkshopContextSearchResultsPayload,
+  WorkshopConversationDegradation,
   WorkshopConversationBehavior,
   WorkshopExcerptSnapshot,
   WorkshopExcerptSource,
@@ -47,7 +48,7 @@ import {
   WorkshopChatTarget,
   WorkshopPersonaId,
   WorkshopPersonaGuestSnapshot,
-  WorkshopNamedSaveStatusMessage,
+  WorkshopSessionSaveStatusMessage,
   WorkshopSessionActionResultMessage,
   WorkshopSessionAction,
   WorkshopSessionSummary,
@@ -81,6 +82,7 @@ export interface WorkshopState {
   currentCheckpointProtected: boolean;
   /** Affected logical persona keys when a persisted archive used T2 recovery. */
   degradedConversationKeys: string[];
+  degradedConversations: WorkshopConversationDegradation[];
   excerpt: WorkshopExcerptSnapshot | null;
   contextAttachments: WorkshopContextAttachmentSnapshot[];
   /** Staged one-shot attachments for the writer's next message (Phase 6B). */
@@ -155,7 +157,7 @@ export interface WorkshopState {
   sessionSearchQuery: string;
   sessionActionPending?: WorkshopSessionAction;
   sessionActionResult?: WorkshopSessionActionResultMessage['payload'];
-  namedSaveStatus?: WorkshopNamedSaveStatusMessage['payload'];
+  sessionSaveStatus?: WorkshopSessionSaveStatusMessage['payload'];
 }
 
 export interface WorkshopActions {
@@ -205,7 +207,7 @@ export interface WorkshopActions {
   handleSessionState: (message: WorkshopSessionStateMessage) => void;
   handleSessionsData: (message: WorkshopSessionsDataMessage) => void;
   handleSessionActionResult: (message: WorkshopSessionActionResultMessage) => void;
-  handleNamedSaveStatus: (message: WorkshopNamedSaveStatusMessage) => void;
+  handleSessionSaveStatus: (message: WorkshopSessionSaveStatusMessage) => void;
   handleTurn: (message: WorkshopTurnMessage) => void;
   handleStreamStarted: (message: StreamStartedMessage) => void;
   handleStreamChunk: (message: StreamChunkMessage) => void;
@@ -237,6 +239,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
   >();
   const [currentCheckpointProtected, setCurrentCheckpointProtected] = React.useState(false);
   const [degradedConversationKeys, setDegradedConversationKeys] = React.useState<string[]>([]);
+  const [degradedConversations, setDegradedConversations] =
+    React.useState<WorkshopConversationDegradation[]>([]);
   const [excerpt, setExcerpt] = React.useState<WorkshopExcerptSnapshot | null>(null);
   const [contextAttachments, setContextAttachments] = React.useState<WorkshopContextAttachmentSnapshot[]>([]);
   const [pendingMessageAttachments, setPendingMessageAttachments] = React.useState<WorkshopMessageAttachmentSnapshot[]>([]);
@@ -280,8 +284,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
   >();
   const [sessionActionPending, setSessionActionPending] =
     React.useState<WorkshopSessionAction>();
-  const [namedSaveStatus, setNamedSaveStatus] =
-    React.useState<WorkshopNamedSaveStatusMessage['payload']>();
+  const [sessionSaveStatus, setSessionSaveStatus] =
+    React.useState<WorkshopSessionSaveStatusMessage['payload']>();
   const latestSessionsRequestIdRef = React.useRef<string>();
   const latestSessionsQueryRef = React.useRef('');
   const sessionsRequestCounterRef = React.useRef(0);
@@ -590,6 +594,9 @@ export const useWorkshop = (): UseWorkshopReturn => {
         message.payload.persistence.currentCheckpointProtected === true
       );
       setDegradedConversationKeys([...message.payload.persistence.degradedConversationKeys]);
+      setDegradedConversations(
+        (message.payload.persistence.degradedConversations ?? []).map((entry) => ({ ...entry }))
+      );
       setExcerpt(session.excerpt ?? null);
       setContextAttachments(session.contextAttachments ?? []);
       setPendingMessageAttachments(session.pendingMessageAttachments ?? []);
@@ -704,8 +711,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
     setSessionActionResult(message.payload);
   }, []);
 
-  const handleNamedSaveStatus = React.useCallback((message: WorkshopNamedSaveStatusMessage) => {
-    setNamedSaveStatus(message.payload);
+  const handleSessionSaveStatus = React.useCallback((message: WorkshopSessionSaveStatusMessage) => {
+    setSessionSaveStatus(message.payload);
   }, []);
 
   // totalTurns is deliberately NOT bumped here: a snapshot with the
@@ -807,6 +814,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     persistenceUnavailableReason,
     currentCheckpointProtected,
     degradedConversationKeys,
+    degradedConversations,
     excerpt,
     contextAttachments,
     pendingMessageAttachments,
@@ -853,7 +861,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     sessionSearchQuery,
     sessionActionPending,
     sessionActionResult,
-    namedSaveStatus,
+    sessionSaveStatus,
 
     // Actions
     pinExcerpt,
@@ -899,7 +907,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     handleSessionState,
     handleSessionsData,
     handleSessionActionResult,
-    handleNamedSaveStatus,
+    handleSessionSaveStatus,
     handleTurn,
     handleStreamStarted,
     handleStreamChunk,

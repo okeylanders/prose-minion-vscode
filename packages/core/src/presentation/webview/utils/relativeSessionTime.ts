@@ -19,7 +19,9 @@ export const relativeSessionTime = (timestamp: number): string => {
     return `${Math.max(1, Math.floor(elapsed / 3_600_000))}h ago`;
   }
   const value = new Date(timestamp);
-  const yesterday = new Date();
+  // Use the same clock as the elapsed ladder so tests and callers can supply
+  // one coherent notion of "now".
+  const yesterday = new Date(Date.now());
   yesterday.setDate(yesterday.getDate() - 1);
   if (value.toDateString() === yesterday.toDateString()) {
     return `Yesterday · ${value.toLocaleTimeString(undefined, {

@@ -1,9 +1,11 @@
 import {
-  parseWorkshopSessionStateV1,
   WorkshopSessionActiveRunPersistenceError,
-  WorkshopSessionService,
-  WorkshopSessionStateV1
+  WorkshopSessionService
 } from '@/application/services/workshop/WorkshopSessionService';
+import {
+  parseWorkshopSessionStateV1,
+  WorkshopSessionStateV1
+} from '@/application/services/workshop/WorkshopSessionStateV1';
 import { WorkshopConversationBehavior } from '@messages';
 
 const currentBehavior: WorkshopConversationBehavior = {

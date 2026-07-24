@@ -10,19 +10,30 @@
 
 import * as path from 'path';
 import {
-  WorkshopPersistedSummaryV1,
   WorkshopPersistedSessionV1,
   parseWorkshopPersistedSession
 } from '@/application/services/workshop/WorkshopPersistedSession';
 import { FileSystem, FileType, LogSink, Workspace } from '@/platform';
-import { isPathWithinRoot } from './pathContainment';
-import { WorkshopPersonaId } from '@messages';
-import { isWorkshopPersonaId } from '@shared/constants/workshopPersonas';
+import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
+import { isRecord } from '@/application/services/workshop/persistedValidation';
+import {
+  buildWorkshopSessionSearchIndexV1,
+  parseWorkshopSessionSearchIndexV1,
+  workshopSessionSearchIndexFileName,
+  workshopStoredSessionSummary,
+  workshopStoredSummaryFromSearchIndex,
+  WorkshopSessionSearchIndexV1,
+  WorkshopStoredSessionSummary
+} from '@/infrastructure/storage/WorkshopSessionSearchIndexV1';
+
+export type {
+  WorkshopStoredSessionSummary
+} from '@/infrastructure/storage/WorkshopSessionSearchIndexV1';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
-/** A sidecar is metadata, never a second full snapshot. */
-const MAXIMUM_SUMMARY_SIDECAR_BYTES = 64 * 1024;
+/** A search index is metadata, never a second full snapshot. */
+const MAXIMUM_SEARCH_INDEX_BYTES = 64 * 1024;
 
 export const WORKSHOP_SESSION_STORE_LIMITS = Object.freeze({
   /** Keep one noisy workspace directory from making browser open unbounded. */
@@ -91,26 +102,6 @@ export class WorkshopSessionFileReadError extends Error {
   }
 }
 
-export interface WorkshopStoredSessionSummary {
-  /** Durable envelope identity; safe to send back in typed IPC. Never a path. */
-  sessionId: string;
-  title: string;
-  createdAt: string;
-  updatedAt: string;
-  savedAt?: string;
-  startedAt: string;
-  timezone: string;
-  hostPersonaId: WorkshopPersistedSessionV1['summary']['hostPersonaId'];
-  participantPersonaIds: WorkshopPersistedSessionV1['summary']['participantPersonaIds'];
-  turnCount: number;
-  excerptWordCount: number;
-  excerptLabel?: string;
-  excerptIdentity?: string;
-  preview?: string;
-  /** Storage identity for diagnostic display only; never an absolute path. */
-  fileName: string;
-}
-
 export interface WorkshopSessionListResult {
   /** The rolling workspace checkpoint, when it exists and passed envelope validation. */
   current?: WorkshopStoredSessionSummary;
@@ -130,19 +121,6 @@ export interface WorkshopSessionListResult {
  * The snapshot remains the only durable authority; this is deliberately
  * enough to list/reveal/manage a long session without parsing its transcript.
  */
-interface WorkshopSessionSummarySidecarV1 {
-  schemaVersion: 1;
-  fileName: string;
-  sessionId: string;
-  title: string;
-  createdAt: string;
-  updatedAt: string;
-  savedAt?: string;
-  startedAt: string;
-  timezone: string;
-  summary: WorkshopPersistedSummaryV1;
-}
-
 interface BrowserFullRead {
   session?: WorkshopPersistedSessionV1;
   /** The browser chose not to parse this valid-looking large file. */
@@ -167,6 +145,7 @@ interface CachedNamedSessionPath {
  */
 export class WorkshopSessionStore {
   private temporaryWriteCounter = 0;
+  private readonly ensuredStorageDirectories = new Set<string>();
   /**
    * A named file's path is immutable after allocation. Cache only paths this
    * store has created or resolved authoritatively so live-room autosave does
@@ -208,8 +187,13 @@ export class WorkshopSessionStore {
   async writeCurrent(session: WorkshopPersistedSessionV1): Promise<void> {
     const paths = this.requireAvailability();
     const decoded = this.validateSessionForWrite(session);
-    await this.writeAtomically(paths.currentPath, decoded, true);
-    await this.writeSummarySidecar(paths, 'current.json', decoded);
+    await this.writeSnapshotWithSearchIndex(
+      paths,
+      paths.currentPath,
+      'current.json',
+      decoded,
+      true
+    );
   }
 
   /** Allocate a named file with immutable identity/path. The caller supplies a fresh id. */
@@ -225,10 +209,9 @@ export class WorkshopSessionStore {
       const fileName = this.namedFileName(initialSlug, attempt);
       const filePath = this.namedPath(paths, fileName);
       try {
-        await this.writeAtomically(filePath, decoded, false);
-        await this.writeSummarySidecar(paths, fileName, decoded);
+        await this.writeSnapshotWithSearchIndex(paths, filePath, fileName, decoded, false);
         this.rememberNamedSessionPath(paths, decoded.sessionId, fileName, filePath);
-        return sessionSummary(decoded, fileName);
+        return workshopStoredSessionSummary(decoded, fileName);
       } catch (error) {
         if (!isDestinationExistsError(error)) {
           throw error;
@@ -244,20 +227,25 @@ export class WorkshopSessionStore {
     session: WorkshopPersistedSessionV1
   ): Promise<WorkshopStoredSessionSummary> {
     const paths = this.requireAvailability();
-    const found = await this.requireNamedSession(sessionId, paths);
+    const found = await this.requireNamedSessionPath(sessionId, paths);
     const decoded = this.validateSessionForWrite(session);
     if (decoded.sessionId !== sessionId) {
       throw new Error('Updated Workshop session identity does not match its target.');
     }
-    await this.writeAtomically(found.filePath, decoded, true);
-    await this.writeSummarySidecar(paths, found.fileName, decoded);
+    await this.writeSnapshotWithSearchIndex(
+      paths,
+      found.filePath,
+      found.fileName,
+      decoded,
+      true
+    );
     this.rememberNamedSessionPath(
       paths,
       decoded.sessionId,
       found.fileName,
       found.filePath
     );
-    return sessionSummary(decoded, found.fileName);
+    return workshopStoredSessionSummary(decoded, found.fileName);
   }
 
   /** Load a named checkpoint by durable identity; a caller-supplied path is never accepted. */
@@ -267,11 +255,12 @@ export class WorkshopSessionStore {
     return found?.session;
   }
 
-  async list(query?: string): Promise<WorkshopSessionListResult> {
+  async list(query?: string, signal?: AbortSignal): Promise<WorkshopSessionListResult> {
     const paths = this.requireAvailability();
     const normalized = normalizedQuery(query);
-    const entries = await this.readNamedBrowserSessions(paths, normalized);
-    const current = await this.readCurrentForBrowser(paths, normalized);
+    const entries = await this.readNamedBrowserSessions(paths, normalized, signal);
+    throwIfAborted(signal);
+    const current = await this.readCurrentForBrowser(paths, normalized, signal);
     return {
       ...(current.summary ? { current: current.summary }
         : {}),
@@ -294,9 +283,14 @@ export class WorkshopSessionStore {
       updatedAt: this.now().toISOString()
     };
     const decoded = this.validateSessionForWrite(updated);
-    await this.writeAtomically(found.filePath, decoded, true);
-    await this.writeSummarySidecar(paths, found.fileName, decoded);
-    return sessionSummary(decoded, found.fileName);
+    await this.writeSnapshotWithSearchIndex(
+      paths,
+      found.filePath,
+      found.fileName,
+      decoded,
+      true
+    );
+    return workshopStoredSessionSummary(decoded, found.fileName);
   }
 
   /**
@@ -320,7 +314,7 @@ export class WorkshopSessionStore {
     const paths = this.requireAvailability();
     const found = await this.requireNamedSession(sessionId, paths);
     await this.fileSystem.delete(found.filePath);
-    await this.deleteSummarySidecarIfPresent(paths, found.fileName);
+    await this.deleteSearchIndexIfPresent(paths, found.fileName);
     this.namedSessionPaths.delete(this.namedSessionCacheKey(paths, sessionId));
   }
 
@@ -352,6 +346,33 @@ export class WorkshopSessionStore {
     return found;
   }
 
+  /**
+   * Autosave updates need the immutable target path, not the old transcript.
+   * A valid compact index confirms the cached identity without reparsing the
+   * full file immediately before it is replaced.
+   */
+  private async requireNamedSessionPath(
+    sessionId: string,
+    paths: Extract<WorkshopSessionStoreAvailability, { available: true }>
+  ): Promise<CachedNamedSessionPath> {
+    const cacheKey = this.namedSessionCacheKey(paths, sessionId);
+    const cached = this.namedSessionPaths.get(cacheKey);
+    if (cached) {
+      const indexFileName = workshopSessionSearchIndexFileName(cached.fileName);
+      const searchIndex = await this.readSearchIndexForBrowser(
+        this.namedPath(paths, indexFileName),
+        indexFileName,
+        cached.fileName
+      );
+      if (searchIndex?.sessionId === sessionId) {
+        return cached;
+      }
+      this.namedSessionPaths.delete(cacheKey);
+    }
+    const found = await this.requireNamedSession(sessionId, paths);
+    return { fileName: found.fileName, filePath: found.filePath };
+  }
+
   private async findNamedSession(
     sessionId: string,
     paths: Extract<WorkshopSessionStoreAvailability, { available: true }>,
@@ -374,7 +395,7 @@ export class WorkshopSessionStore {
     // Exact actions are not browser listing/search: scan all named files so an
     // existing session beyond the browser's safety window cannot be shadowed
     // by a duplicate id or become impossible to open/delete.
-    const entries = await this.readNamedSessions(paths);
+    const entries = await this.readNamedSessions(paths, sessionId);
     const matches = entries.sessions.filter((entry) => entry.session.sessionId === sessionId);
     if (matches.length > 1) {
       // A durable identity must select exactly one full authoritative file.
@@ -418,7 +439,8 @@ export class WorkshopSessionStore {
   }
 
   private async readNamedSessions(
-    paths: Extract<WorkshopSessionStoreAvailability, { available: true }>
+    paths: Extract<WorkshopSessionStoreAvailability, { available: true }>,
+    requestedSessionId: string
   ): Promise<{
     sessions: StoredNamedSession[];
     truncated: boolean;
@@ -446,6 +468,17 @@ export class WorkshopSessionStore {
     for (const fileName of names) {
       const filePath = this.namedPath(paths, fileName);
       try {
+        const indexFileName = workshopSessionSearchIndexFileName(fileName);
+        const searchIndex = await this.readSearchIndexForBrowser(
+          this.namedPath(paths, indexFileName),
+          indexFileName,
+          fileName
+        );
+        // Modern checkpoints can be ruled out from their bounded index. Only
+        // the requested match (or a legacy/index-less file) needs a full parse.
+        if (searchIndex && searchIndex.sessionId !== requestedSessionId) {
+          continue;
+        }
         const session = await this.readSessionFileExact(filePath, fileName);
         if (session) {
           sessions.push({ filePath, fileName, session });
@@ -465,10 +498,11 @@ export class WorkshopSessionStore {
     };
   }
 
-  /** Browser-only enumeration. Sidecars make large, valid checkpoints discoverable. */
+  /** Browser-only enumeration. Search indexes make large, valid checkpoints discoverable. */
   private async readNamedBrowserSessions(
     paths: Extract<WorkshopSessionStoreAvailability, { available: true }>,
-    query: string | undefined
+    query: string | undefined,
+    signal?: AbortSignal
   ): Promise<{
     sessions: WorkshopStoredSessionSummary[];
     truncated: boolean;
@@ -493,15 +527,28 @@ export class WorkshopSessionStore {
     let searchTruncated = false;
 
     for (const fileName of boundedNames) {
-      const sidecar = await this.readSummarySidecarForBrowser(
-        this.namedPath(paths, summarySidecarFileName(fileName)),
-        summarySidecarFileName(fileName),
+      throwIfAborted(signal);
+      const searchIndex = await this.readSearchIndexForBrowser(
+        this.namedPath(paths, workshopSessionSearchIndexFileName(fileName)),
+        workshopSessionSearchIndexFileName(fileName),
         fileName
       );
       const filePath = this.namedPath(paths, fileName);
-      const candidate = await this.browserSummaryForFile(filePath, fileName, sidecar, query);
+      const candidate = await this.browserSummaryForFile(
+        filePath,
+        fileName,
+        searchIndex,
+        query,
+        signal
+      );
       if (candidate.summary) {
         sessions.push(candidate.summary);
+        this.rememberNamedSessionPath(
+          paths,
+          candidate.summary.sessionId,
+          fileName,
+          filePath
+        );
       }
       searchTruncated ||= candidate.searchTruncated;
     }
@@ -515,38 +562,42 @@ export class WorkshopSessionStore {
 
   private async readCurrentForBrowser(
     paths: Extract<WorkshopSessionStoreAvailability, { available: true }>,
-    query: string | undefined
+    query: string | undefined,
+    signal?: AbortSignal
   ): Promise<{ summary?: WorkshopStoredSessionSummary; searchTruncated: boolean }> {
     const fullPath = paths.currentPath;
     if (!(await this.fileExists(fullPath))) {
-      // An orphan current sidecar must never invent a live session.
+      // An orphan current searchIndex must never invent a live session.
       return { searchTruncated: false };
     }
     const fileName = 'current.json';
-    const sidecar = await this.readSummarySidecarForBrowser(
-      this.namedPath(paths, summarySidecarFileName(fileName)),
-      summarySidecarFileName(fileName),
+    const searchIndex = await this.readSearchIndexForBrowser(
+      this.namedPath(paths, workshopSessionSearchIndexFileName(fileName)),
+      workshopSessionSearchIndexFileName(fileName),
       fileName
     );
-    return this.browserSummaryForFile(fullPath, fileName, sidecar, query);
+    return this.browserSummaryForFile(fullPath, fileName, searchIndex, query, signal);
   }
 
   /**
-   * Favor a valid sidecar for no-query/metadata matches. A content query must
+   * Favor a valid searchIndex for no-query/metadata matches. A content query must
    * still inspect the authoritative full payload within its defensive bound.
    */
   private async browserSummaryForFile(
     fullPath: string,
     fileName: string,
-    sidecar: WorkshopSessionSummarySidecarV1 | undefined,
-    query: string | undefined
+    searchIndex: WorkshopSessionSearchIndexV1 | undefined,
+    query: string | undefined,
+    signal?: AbortSignal
   ): Promise<{ summary?: WorkshopStoredSessionSummary; searchTruncated: boolean }> {
-    if (sidecar) {
-      const summary = sidecarSummary(sidecar);
+    throwIfAborted(signal);
+    if (searchIndex) {
+      const summary = workshopStoredSummaryFromSearchIndex(searchIndex);
       if (!query || summaryMatches(summary, query)) {
         return { summary, searchTruncated: false };
       }
       const full = await this.readSessionFileForBrowser(fullPath, fileName);
+      throwIfAborted(signal);
       if (!full.session) {
         return { searchTruncated: full.limited };
       }
@@ -557,12 +608,13 @@ export class WorkshopSessionStore {
       };
     }
 
-    // Pre-sidecar/legacy files retain their bounded full-parse fallback.
+    // Pre-searchIndex/legacy files retain their bounded full-parse fallback.
     const full = await this.readSessionFileForBrowser(fullPath, fileName);
+    throwIfAborted(signal);
     if (!full.session) {
       return { searchTruncated: full.limited && query !== undefined };
     }
-    const summary = sessionSummary(full.session, fileName);
+    const summary = workshopStoredSessionSummary(full.session, fileName);
     if (!query) {
       return { summary, searchTruncated: false };
     }
@@ -623,24 +675,24 @@ export class WorkshopSessionStore {
     }
   }
 
-  /** Sidecars are browser indexes only: bounded, strict, and never authoritative. */
-  private async readSummarySidecarForBrowser(
+  /** Search indexes are browser indexes only: bounded, strict, and never authoritative. */
+  private async readSearchIndexForBrowser(
     filePath: string,
     displayName: string,
     expectedFullFileName: string
-  ): Promise<WorkshopSessionSummarySidecarV1 | undefined> {
+  ): Promise<WorkshopSessionSearchIndexV1 | undefined> {
     try {
       const stat = await this.fileSystem.stat(filePath);
-      if (stat.size > MAXIMUM_SUMMARY_SIDECAR_BYTES) {
-        this.skip(displayName, `summary sidecar exceeds ${MAXIMUM_SUMMARY_SIDECAR_BYTES} byte browser bound`);
+      if (stat.size > MAXIMUM_SEARCH_INDEX_BYTES) {
+        this.skip(displayName, `search index exceeds ${MAXIMUM_SEARCH_INDEX_BYTES} byte browser bound`);
         return undefined;
       }
       const bytes = await this.fileSystem.readFile(filePath);
-      if (bytes.byteLength > MAXIMUM_SUMMARY_SIDECAR_BYTES) {
-        this.skip(displayName, `summary sidecar exceeds ${MAXIMUM_SUMMARY_SIDECAR_BYTES} byte browser bound`);
+      if (bytes.byteLength > MAXIMUM_SEARCH_INDEX_BYTES) {
+        this.skip(displayName, `search index exceeds ${MAXIMUM_SEARCH_INDEX_BYTES} byte browser bound`);
         return undefined;
       }
-      return parseSummarySidecar(JSON.parse(decoder.decode(bytes)), expectedFullFileName);
+      return parseWorkshopSessionSearchIndexV1(JSON.parse(decoder.decode(bytes)), expectedFullFileName);
     } catch (error) {
       if (!isMissingFileError(error)) {
         this.skip(displayName, errorMessage(error));
@@ -649,29 +701,29 @@ export class WorkshopSessionStore {
     }
   }
 
-  private async writeSummarySidecar(
+  private async writeSearchIndex(
     paths: Extract<WorkshopSessionStoreAvailability, { available: true }>,
     fullFileName: string,
     session: WorkshopPersistedSessionV1
   ): Promise<void> {
-    const sidecar = summarySidecar(session, fullFileName);
-    // Re-validate the exact compact contract before it reaches disk; a sidecar
+    const searchIndex = buildWorkshopSessionSearchIndexV1(session, fullFileName);
+    // Re-validate the exact compact contract before it reaches disk; a search index
     // cannot become a permissive parallel session format by accident.
-    const decoded = parseSummarySidecar(sidecar, fullFileName);
+    const decoded = parseWorkshopSessionSearchIndexV1(searchIndex, fullFileName);
     await this.writeJsonAtomically(
-      this.namedPath(paths, summarySidecarFileName(fullFileName)),
+      this.namedPath(paths, workshopSessionSearchIndexFileName(fullFileName)),
       decoded,
       true
     );
   }
 
-  private async deleteSummarySidecarIfPresent(
+  private async deleteSearchIndexIfPresent(
     paths: Extract<WorkshopSessionStoreAvailability, { available: true }>,
     fullFileName: string
   ): Promise<void> {
-    const sidecarPath = this.namedPath(paths, summarySidecarFileName(fullFileName));
+    const searchIndexPath = this.namedPath(paths, workshopSessionSearchIndexFileName(fullFileName));
     try {
-      await this.fileSystem.delete(sidecarPath);
+      await this.fileSystem.delete(searchIndexPath);
     } catch (error) {
       if (!isMissingFileError(error)) {
         throw error;
@@ -691,6 +743,54 @@ export class WorkshopSessionStore {
     }
   }
 
+  /**
+   * The full snapshot is authoritative; the compact search index is derived.
+   * If index replacement fails after the snapshot commits, remove any stale
+   * index so browser reads fall back to the authoritative file.
+   */
+  private async writeSnapshotWithSearchIndex(
+    paths: Extract<WorkshopSessionStoreAvailability, { available: true }>,
+    targetPath: string,
+    fileName: string,
+    session: WorkshopPersistedSessionV1,
+    overwrite: boolean
+  ): Promise<void> {
+    await this.ensureStorageDirectory(paths);
+    await this.writeAtomically(targetPath, session, overwrite);
+    try {
+      await this.writeSearchIndex(paths, fileName, session);
+    } catch (error) {
+      try {
+        await this.deleteSearchIndexIfPresent(paths, fileName);
+      } catch (cleanupError) {
+        this.skip(
+          workshopSessionSearchIndexFileName(fileName),
+          `index write failed (${errorMessage(error)}); stale-index cleanup also failed ` +
+          `(${errorMessage(cleanupError)})`
+        );
+        return;
+      }
+      this.skip(
+        workshopSessionSearchIndexFileName(fileName),
+        `index write failed after snapshot commit; removed stale index (${errorMessage(error)})`
+      );
+    }
+  }
+
+  private async ensureStorageDirectory(
+    paths: Extract<WorkshopSessionStoreAvailability, { available: true }>
+  ): Promise<void> {
+    if (this.ensuredStorageDirectories.has(paths.sessionsDirectory)) {
+      return;
+    }
+    await this.fileSystem.createDirectory(paths.sessionsDirectory);
+    const gitignorePath = this.namedPath(paths, '.gitignore');
+    if (!(await this.fileExists(gitignorePath))) {
+      await this.fileSystem.writeFile(gitignorePath, encoder.encode('*\n!.gitignore\n'));
+    }
+    this.ensuredStorageDirectories.add(paths.sessionsDirectory);
+  }
+
   private async writeAtomically(
     targetPath: string,
     session: WorkshopPersistedSessionV1,
@@ -701,7 +801,7 @@ export class WorkshopSessionStore {
 
   private async writeJsonAtomically(
     targetPath: string,
-    value: WorkshopPersistedSessionV1 | WorkshopSessionSummarySidecarV1,
+    value: WorkshopPersistedSessionV1 | WorkshopSessionSearchIndexV1,
     overwrite: boolean
   ): Promise<void> {
     const temporaryPath = `${targetPath}.tmp-${this.now().getTime()}-${++this.temporaryWriteCounter}`;
@@ -745,59 +845,6 @@ export class WorkshopSessionStore {
   }
 }
 
-function sessionSummary(
-  session: WorkshopPersistedSessionV1,
-  fileName: string
-): WorkshopStoredSessionSummary {
-  return sidecarSummary(summarySidecar(session, fileName));
-}
-
-function summarySidecar(
-  session: WorkshopPersistedSessionV1,
-  fileName: string
-): WorkshopSessionSummarySidecarV1 {
-  return {
-    schemaVersion: 1,
-    fileName,
-    sessionId: session.sessionId,
-    title: session.title,
-    createdAt: session.createdAt,
-    updatedAt: session.updatedAt,
-    ...(session.savedAt ? { savedAt: session.savedAt } : {}),
-    startedAt: session.temporal.startedAt,
-    timezone: session.temporal.timezone,
-    summary: {
-      hostPersonaId: session.summary.hostPersonaId,
-      participantPersonaIds: [...session.summary.participantPersonaIds],
-      turnCount: session.summary.turnCount,
-      excerptWordCount: session.summary.excerptWordCount,
-      ...(session.summary.excerptLabel ? { excerptLabel: session.summary.excerptLabel } : {}),
-      ...(session.summary.excerptIdentity ? { excerptIdentity: session.summary.excerptIdentity } : {}),
-      ...(session.summary.preview ? { preview: session.summary.preview } : {})
-    }
-  };
-}
-
-function sidecarSummary(sidecar: WorkshopSessionSummarySidecarV1): WorkshopStoredSessionSummary {
-  return {
-    sessionId: sidecar.sessionId,
-    title: sidecar.title,
-    createdAt: sidecar.createdAt,
-    updatedAt: sidecar.updatedAt,
-    ...(sidecar.savedAt ? { savedAt: sidecar.savedAt } : {}),
-    startedAt: sidecar.startedAt,
-    timezone: sidecar.timezone,
-    hostPersonaId: sidecar.summary.hostPersonaId,
-    participantPersonaIds: [...sidecar.summary.participantPersonaIds],
-    turnCount: sidecar.summary.turnCount,
-    excerptWordCount: sidecar.summary.excerptWordCount,
-    ...(sidecar.summary.excerptLabel ? { excerptLabel: sidecar.summary.excerptLabel } : {}),
-    ...(sidecar.summary.excerptIdentity ? { excerptIdentity: sidecar.summary.excerptIdentity } : {}),
-    ...(sidecar.summary.preview ? { preview: sidecar.summary.preview } : {}),
-    fileName: sidecar.fileName
-  };
-}
-
 function compareSummariesNewestFirst(left: WorkshopStoredSessionSummary, right: WorkshopStoredSessionSummary): number {
   const byUpdatedAt = Date.parse(right.updatedAt) - Date.parse(left.updatedAt);
   if (byUpdatedAt !== 0) {
@@ -827,15 +874,77 @@ function fullSessionMatches(
   query: string,
   maximumCharacters: number
 ): { matches: boolean; truncated: boolean } {
-  if (summaryMatches(sessionSummary(session, 'ignored.json'), query)) {
+  if (summaryMatches(workshopStoredSessionSummary(session, 'ignored.json'), query)) {
     return { matches: true, truncated: false };
   }
-  // Transcript and excerpt remain host-side; this bounded serialized scan lets
-  // the browser search them without shipping all session content to React.
-  const serialized = JSON.stringify(session.workshop);
+  // Transcript, excerpt, and archive-only memory remain host-side. Walk only
+  // the bounded amount of text the browser is allowed to inspect instead of
+  // serializing the full unbounded session and slicing afterward.
+  const bounded = boundedSearchText(
+    [session.workshop, session.conversations],
+    maximumCharacters
+  );
   return {
-    matches: serialized.slice(0, maximumCharacters).toLocaleLowerCase().includes(query),
-    truncated: serialized.length > maximumCharacters
+    matches: bounded.text.toLocaleLowerCase().includes(query),
+    truncated: bounded.truncated
+  };
+}
+
+function boundedSearchText(
+  roots: readonly unknown[],
+  maximumCharacters: number
+): { text: string; truncated: boolean } {
+  const stack = [...roots].reverse();
+  const chunks: string[] = [];
+  let length = 0;
+  let truncated = false;
+
+  const append = (value: string): boolean => {
+    const chunk = chunks.length === 0 ? value : `\n${value}`;
+    const remaining = Math.max(0, maximumCharacters - length);
+    if (chunk.length > remaining) {
+      chunks.push(chunk.slice(0, remaining));
+      length += remaining;
+      truncated = true;
+      return false;
+    }
+    chunks.push(chunk);
+    length += chunk.length;
+    return true;
+  };
+
+  while (stack.length > 0) {
+    const value = stack.pop();
+    if (
+      value === null ||
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
+      if (!append(String(value))) {
+        break;
+      }
+      continue;
+    }
+    if (Array.isArray(value)) {
+      for (let index = value.length - 1; index >= 0; index -= 1) {
+        stack.push(value[index]);
+      }
+      continue;
+    }
+    if (isRecord(value)) {
+      const entries = Object.entries(value);
+      for (let index = entries.length - 1; index >= 0; index -= 1) {
+        const [key, nested] = entries[index];
+        stack.push(nested);
+        stack.push(key);
+      }
+    }
+  }
+
+  return {
+    text: chunks.join(''),
+    truncated: truncated || stack.length > 0
   };
 }
 
@@ -853,162 +962,10 @@ function formatFilenameTimestamp(date: Date): string {
   return `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}-${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}${pad(date.getUTCSeconds())}`;
 }
 
-function summarySidecarFileName(fullFileName: string): string {
-  if (fullFileName === 'current.json') {
-    return 'current.summary.json';
-  }
-  return `${fullFileName.slice(0, -'.json'.length)}.summary.json`;
-}
-
 function isNamedSessionFileName(name: string): boolean {
   return name.endsWith('.json') &&
     name !== 'current.json' &&
     !name.endsWith('.summary.json');
-}
-
-function parseSummarySidecar(
-  value: unknown,
-  expectedFileName: string
-): WorkshopSessionSummarySidecarV1 {
-  if (!isRecord(value)) {
-    throw new Error('Workshop session summary sidecar must contain a JSON object.');
-  }
-  exactKeys(
-    value,
-    'Workshop session summary sidecar',
-    [
-      'schemaVersion',
-      'fileName',
-      'sessionId',
-      'title',
-      'createdAt',
-      'updatedAt',
-      'startedAt',
-      'timezone',
-      'summary'
-    ],
-    ['savedAt']
-  );
-  if (value.schemaVersion !== 1) {
-    throw new Error(`Unsupported Workshop summary schema: ${String(value.schemaVersion)}`);
-  }
-  if (value.fileName !== expectedFileName) {
-    throw new Error('Workshop session summary sidecar belongs to a different snapshot.');
-  }
-  for (const key of ['sessionId', 'title', 'createdAt', 'updatedAt', 'startedAt', 'timezone'] as const) {
-    if (typeof value[key] !== 'string' || value[key].trim().length === 0) {
-      throw new Error(`Workshop session summary sidecar has an invalid ${key}.`);
-    }
-  }
-  for (const key of ['createdAt', 'updatedAt', 'startedAt'] as const) {
-    if (!isTimestamp(value[key])) {
-      throw new Error(`Workshop session summary sidecar has an invalid ${key}.`);
-    }
-  }
-  if (value.savedAt !== undefined && !isTimestamp(value.savedAt)) {
-    throw new Error('Workshop session summary sidecar has an invalid savedAt.');
-  }
-  const sessionId = value.sessionId as string;
-  const title = value.title as string;
-  const createdAt = value.createdAt as string;
-  const updatedAt = value.updatedAt as string;
-  const startedAt = value.startedAt as string;
-  const timezone = value.timezone as string;
-  const savedAt = value.savedAt as string | undefined;
-  assertTimezone(timezone);
-  const summary = parseSidecarSummary(value.summary);
-  return {
-    schemaVersion: 1,
-    fileName: expectedFileName,
-    sessionId,
-    title,
-    createdAt: normalizeTimestamp(createdAt),
-    updatedAt: normalizeTimestamp(updatedAt),
-    ...(savedAt !== undefined ? { savedAt: normalizeTimestamp(savedAt) } : {}),
-    startedAt: normalizeTimestamp(startedAt),
-    timezone,
-    summary
-  };
-}
-
-function parseSidecarSummary(value: unknown): WorkshopPersistedSummaryV1 {
-  if (!isRecord(value)) {
-    throw new Error('Workshop session summary sidecar has an invalid summary.');
-  }
-  exactKeys(
-    value,
-    'Workshop session summary sidecar summary',
-    ['hostPersonaId', 'participantPersonaIds', 'turnCount', 'excerptWordCount'],
-    ['excerptLabel', 'excerptIdentity', 'preview']
-  );
-  if (!isWorkshopPersonaId(value.hostPersonaId)) {
-    throw new Error('Workshop session summary sidecar has an invalid host persona.');
-  }
-  if (!Array.isArray(value.participantPersonaIds) || value.participantPersonaIds.some(
-    (personaId) => !isWorkshopPersonaId(personaId)
-  )) {
-    throw new Error('Workshop session summary sidecar has invalid participant personas.');
-  }
-  if (!isNonNegativeInteger(value.turnCount) || !isNonNegativeInteger(value.excerptWordCount)) {
-    throw new Error('Workshop session summary sidecar has invalid counts.');
-  }
-  for (const key of ['excerptLabel', 'excerptIdentity', 'preview'] as const) {
-    if (value[key] !== undefined && typeof value[key] !== 'string') {
-      throw new Error(`Workshop session summary sidecar has an invalid ${key}.`);
-    }
-  }
-  return {
-    hostPersonaId: value.hostPersonaId as WorkshopPersonaId,
-    participantPersonaIds: [...value.participantPersonaIds] as WorkshopPersonaId[],
-    turnCount: value.turnCount,
-    excerptWordCount: value.excerptWordCount,
-    ...(typeof value.excerptLabel === 'string' ? { excerptLabel: value.excerptLabel } : {}),
-    ...(typeof value.excerptIdentity === 'string' ? { excerptIdentity: value.excerptIdentity } : {}),
-    ...(typeof value.preview === 'string' ? { preview: value.preview } : {})
-  };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-function exactKeys(
-  value: Record<string, unknown>,
-  label: string,
-  required: readonly string[],
-  optional: readonly string[] = []
-): void {
-  const allowed = new Set([...required, ...optional]);
-  for (const key of Object.keys(value)) {
-    if (!allowed.has(key)) {
-      throw new Error(`${label} contains unknown field ${key}.`);
-    }
-  }
-  for (const key of required) {
-    if (!Object.prototype.hasOwnProperty.call(value, key)) {
-      throw new Error(`${label} is missing required field ${key}.`);
-    }
-  }
-}
-
-function isTimestamp(value: unknown): value is string {
-  return typeof value === 'string' && Number.isFinite(Date.parse(value));
-}
-
-function normalizeTimestamp(value: string): string {
-  return new Date(value).toISOString();
-}
-
-function isNonNegativeInteger(value: unknown): value is number {
-  return Number.isSafeInteger(value) && (value as number) >= 0;
-}
-
-function assertTimezone(value: string): void {
-  try {
-    new Intl.DateTimeFormat('en-US', { timeZone: value }).format(new Date(0));
-  } catch {
-    throw new Error(`Workshop session summary sidecar has an invalid timezone: ${value}`);
-  }
 }
 
 function isMissingFileError(error: unknown): boolean {
@@ -1017,6 +974,14 @@ function isMissingFileError(error: unknown): boolean {
 
 function isDestinationExistsError(error: unknown): boolean {
   return /EEXIST|already exists|destination exists/i.test(errorMessage(error));
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) {
+    const error = new Error('Workshop session search was superseded.');
+    error.name = 'AbortError';
+    throw error;
+  }
 }
 
 function errorMessage(error: unknown): string {

@@ -66,7 +66,7 @@ const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)
 // composition-root-owned reload-safety aggregate — a handler `new`-ing its
 // own copy would silently fork the session per webview.
 const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
-  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService)\b`
+  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore)\b`
 );
 
 function collectSourceFiles(dir: string, acc: string[] = []): string[] {

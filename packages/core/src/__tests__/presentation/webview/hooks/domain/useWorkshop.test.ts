@@ -30,7 +30,7 @@ import type {
   StreamChunkMessage,
   StreamCompleteMessage,
   StreamStartedMessage,
-  WorkshopNamedSaveStatusMessage,
+  WorkshopSessionSaveStatusMessage,
   WorkshopSessionSummary,
   WorkshopSessionSnapshot,
   WorkshopSessionActionResultMessage,
@@ -801,21 +801,38 @@ describe('useWorkshop', () => {
     expect(result.current.turns).toEqual(priorTurns);
   });
 
-  it('mirrors the host-owned named checkpoint save status', () => {
+  it('mirrors the host-owned session save status', () => {
     const { result } = renderHook(() => useWorkshop());
-    const saving: WorkshopNamedSaveStatusMessage = {
-      type: MessageType.WORKSHOP_NAMED_SAVE_STATUS,
+    const saving: WorkshopSessionSaveStatusMessage = {
+      type: MessageType.WORKSHOP_SESSION_SAVE_STATUS,
       source: 'extension.workshop',
       payload: { sessionId: 'named-room', status: 'saving' },
       timestamp: 0
     };
 
-    act(() => result.current.handleNamedSaveStatus(saving));
+    act(() => result.current.handleSessionSaveStatus(saving));
 
-    expect(result.current.namedSaveStatus).toEqual({
+    expect(result.current.sessionSaveStatus).toEqual({
       sessionId: 'named-room',
       status: 'saving'
     });
+  });
+
+  it('preserves participant-local degradation reasons from the host snapshot', () => {
+    const { result } = renderHook(() => useWorkshop());
+    const state = sessionState({});
+    state.payload.persistence.degradedConversationKeys = ['host'];
+    state.payload.persistence.degradedConversations = [{
+      key: 'host',
+      reason: 'The provider no longer recognizes that conversation.'
+    }];
+
+    act(() => result.current.handleSessionState(state));
+
+    expect(result.current.degradedConversations).toEqual([{
+      key: 'host',
+      reason: 'The provider no longer recognizes that conversation.'
+    }]);
   });
 
   it('posts persona selection and direct-target changes, then restores both from a host snapshot', () => {

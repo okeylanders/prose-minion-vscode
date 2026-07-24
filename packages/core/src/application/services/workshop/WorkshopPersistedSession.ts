@@ -10,14 +10,24 @@ import {
   parseWorkshopSessionStateV1,
   WorkshopConversationLogicalKey,
   WorkshopSessionStateV1
-} from './WorkshopSessionService';
+} from '@/application/services/workshop/WorkshopSessionStateV1';
 import {
   parseWorkshopSessionTemporalStateV1,
   WorkshopSessionTemporalStateV1
-} from './WorkshopSessionTimeService';
+} from '@/application/services/workshop/WorkshopSessionTimeService';
 import { ConversationArchiveEntryV1 } from '@orchestration/ConversationManager';
 import { WorkshopPersonaId } from '@messages';
 import { isWorkshopPersonaId } from '@shared/constants/workshopPersonas';
+import {
+  exactKeys,
+  isNonNegativeInteger,
+  isRecord,
+  isTimestamp,
+  normalizeTimestamp
+} from '@/application/services/workshop/persistedValidation';
+import {
+  clonePersistedJson
+} from '@/application/services/workshop/persistedJson';
 
 export interface WorkshopPersistedSummaryV1 {
   hostPersonaId: WorkshopPersonaId;
@@ -41,36 +51,6 @@ export interface WorkshopPersistedSessionV1 {
   summary: WorkshopPersistedSummaryV1;
   workshop: WorkshopSessionStateV1;
   conversations: ConversationArchiveEntryV1<WorkshopConversationLogicalKey>[];
-}
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === 'object' && !Array.isArray(value);
-
-const isTimestamp = (value: unknown): value is string =>
-  typeof value === 'string' && Number.isFinite(Date.parse(value));
-
-const isNonNegativeInteger = (value: unknown): value is number =>
-  Number.isSafeInteger(value) && (value as number) >= 0;
-
-const normalizeTimestamp = (value: string): string => new Date(value).toISOString();
-
-function exactKeys(
-  value: Record<string, unknown>,
-  label: string,
-  required: readonly string[],
-  optional: readonly string[] = []
-): void {
-  const allowed = new Set([...required, ...optional]);
-  for (const key of Object.keys(value)) {
-    if (!allowed.has(key)) {
-      throw new Error(`${label} contains unknown field ${key}.`);
-    }
-  }
-  for (const key of required) {
-    if (!Object.prototype.hasOwnProperty.call(value, key)) {
-      throw new Error(`${label} is missing required field ${key}.`);
-    }
-  }
 }
 
 function parseSummary(value: unknown): WorkshopPersistedSummaryV1 {
@@ -109,40 +89,6 @@ function parseSummary(value: unknown): WorkshopPersistedSummaryV1 {
     ...(typeof excerptIdentity === 'string' ? { excerptIdentity } : {}),
     ...(typeof preview === 'string' ? { preview } : {})
   };
-}
-
-/**
- * Conversation entries intentionally validate independently during import so a
- * malformed participant can degrade without bricking the product aggregate.
- * This boundary still returns a defensive JSON clone and rejects values that
- * could not have come from a persisted JSON document.
- */
-function cloneConversationJson(value: unknown, path = 'conversations'): unknown {
-  if (
-    value === null ||
-    typeof value === 'string' ||
-    typeof value === 'boolean'
-  ) {
-    return value;
-  }
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) {
-      throw new Error(`Workshop session ${path} contains a non-finite number.`);
-    }
-    return value;
-  }
-  if (Array.isArray(value)) {
-    return value.map((entry, index) => cloneConversationJson(entry, `${path}[${index}]`));
-  }
-  if (isRecord(value)) {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, entry]) => [
-        key,
-        cloneConversationJson(entry, `${path}.${key}`)
-      ])
-    );
-  }
-  throw new Error(`Workshop session ${path} contains a non-JSON value.`);
 }
 
 /**
@@ -201,7 +147,7 @@ export function parseWorkshopPersistedSession(value: unknown): WorkshopPersisted
     temporal: parseWorkshopSessionTemporalStateV1(value.temporal),
     summary: parseSummary(value.summary),
     workshop: parseWorkshopSessionStateV1(value.workshop),
-    conversations: cloneConversationJson(value.conversations) as
+    conversations: clonePersistedJson(value.conversations, 'conversations') as
       ConversationArchiveEntryV1<WorkshopConversationLogicalKey>[]
   };
 }

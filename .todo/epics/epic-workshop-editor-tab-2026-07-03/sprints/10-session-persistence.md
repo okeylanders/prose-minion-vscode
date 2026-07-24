@@ -158,7 +158,7 @@ Deferred intentionally to
 [`epic-conversation-widgets-2026-07-22`](../../epic-conversation-widgets-2026-07-22/epic-conversation-widgets-2026-07-22.md).
 That epic's typed widget/config/directive entities do not exist yet. Sprint 10
 delivers the exact aggregate parser, stable artifact counters, logical archive
-keys, summary sidecars, and one ordered post-commit autosave seam they will
+keys, compact search indexes, and one ordered post-commit autosave seam they will
 extend; it does not invent an untyped placeholder blob.
 
 - [ ] Persist exact normalized widget configs and active standing directives as
@@ -197,10 +197,16 @@ extend; it does not invent an untyped placeholder blob.
 ## Implementation Notes
 
 - Exact full snapshots are authoritative and unbounded for restore/actions.
-  Strict, bounded `current.summary.json` / `<checkpoint>.summary.json` sidecars
+  Strict, bounded `current.summary.json` / `<checkpoint>.summary.json` search indexes
   keep very large valid sessions discoverable without parsing their transcript
-  merely to open the browser. Content search remains bounded and discloses when
-  deep transcript matches may be omitted.
+  merely to open the browser. Browser listing warms the immutable identity/path
+  cache, while exact cold actions use the index to avoid parsing unrelated full
+  transcripts. Content search covers the aggregate and retained conversation
+  archive, remains bounded/cancellable, and discloses when deep matches may be
+  omitted.
+- The generated sessions directory writes a safe-by-default `.gitignore`
+  (`*` plus an exception for the ignore file) without overwriting a writer-owned
+  policy.
 - The coordinator pins the workspace root accepted at activation. A
   single-root → multi-root → different-single-root transition fails closed
   rather than retargeting a live room's autosave.
@@ -221,11 +227,14 @@ extend; it does not invent an untyped placeholder blob.
 - New Session clears the visible conversation optimistically while the durable
   replacement runs; a typed failure restores the exact prior thread. A
   successful host snapshot then contributes only the trusted new-session time
-  boundary.
+  boundary. New/Open ask for replacement confirmation only when the live room
+  contains state worth displacing.
 - Once named, the room is a living checkpoint. The ordered queue writes
   `current.json` and the exact associated named file after committed turns and
   other successful room mutations. Revision-aware status never claims `Saved`
-  while newer work is queued.
+  while newer work is queued. Unnamed rooms use the same visible
+  Saving/Saved/failed status contract, and diagnostics include the durable
+  session id.
 
 ## Verification (2026-07-23)
 
@@ -242,6 +251,20 @@ extend; it does not invent an untyped placeholder blob.
   because the branch began after the design/integration sync; absolute sizes
   are recorded instead.
 - Manual Extension Development Host restart/corruption exercise remains open.
+
+## PR #85 review remediation verification (2026-07-24)
+
+- `npm run typecheck` — core, webview, and extension passed.
+- `npm test -- --runInBand` — 124 suites, 1,213 tests, 1 snapshot passed.
+- `npm run lint` — 0 errors, 768 warnings (repository warning baseline plus
+  the new session-status message enum).
+- `npm run build` — production webpack builds and bundle sentinel verification
+  passed; existing webview size warnings remain.
+- Remediated bundle sizes: `extension.js` 2,556,639 bytes;
+  `webview.js` 888,561 bytes.
+- `git diff --check` passed.
+- These remediation changes remain local; GitHub `verify` has not yet run
+  against them.
 
 ## Acceptance Criteria
 

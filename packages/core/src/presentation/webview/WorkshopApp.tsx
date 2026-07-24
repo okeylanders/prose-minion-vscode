@@ -218,7 +218,7 @@ export const WorkshopApp: React.FC = () => {
     [MessageType.WORKSHOP_TURN]: workshop.handleTurn,
     [MessageType.WORKSHOP_SESSIONS_DATA]: workshop.handleSessionsData,
     [MessageType.WORKSHOP_SESSION_ACTION_RESULT]: workshop.handleSessionActionResult,
-    [MessageType.WORKSHOP_NAMED_SAVE_STATUS]: workshop.handleNamedSaveStatus,
+    [MessageType.WORKSHOP_SESSION_SAVE_STATUS]: workshop.handleSessionSaveStatus,
     [MessageType.SELECTION_DATA]: excerptVerify.handleSelectionData,
     [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshop.handleContextCatalog,
     [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshop.handleContextSearchResults,
@@ -374,7 +374,7 @@ export const WorkshopApp: React.FC = () => {
     && !roomMutationLocked
     && workshop.personaGuests.filter((guest) => guest.liveness === 'live').length
       < WORKSHOP_GUEST_CAPACITY;
-  const sessionMutationsDisabled = roomMutationLocked;
+  const sessionMutationsDisabled = roomMutationLocked || !workshop.persistenceAvailable;
 
   const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
   const setSessionsMenuVisibility = React.useCallback((open: boolean) => {
@@ -403,16 +403,29 @@ export const WorkshopApp: React.FC = () => {
     | { kind: 'open'; sessionId: string; title: string }
     | null
   >(null);
+  const hasReplaceableSessionState =
+    workshop.hasHostConversation ||
+    workshop.turns.length + workshop.hiddenTurns > 0 ||
+    workshop.todos.length > 0 ||
+    workshop.personaGuests.some((guest) => guest.liveness === 'live');
   const startNewSession = React.useCallback(() => {
-    setSessionConfirm({ kind: 'new' });
-  }, []);
+    if (hasReplaceableSessionState) {
+      setSessionConfirm({ kind: 'new' });
+      return;
+    }
+    workshop.resetSession();
+  }, [hasReplaceableSessionState, workshop.resetSession]);
   const openStoredSession = React.useCallback((session: typeof workshop.savedSessionSummaries[number]) => {
-    setSessionConfirm({
-      kind: 'open',
-      sessionId: session.sessionId,
-      title: session.title
-    });
-  }, []);
+    if (hasReplaceableSessionState) {
+      setSessionConfirm({
+        kind: 'open',
+        sessionId: session.sessionId,
+        title: session.title
+      });
+      return;
+    }
+    workshop.openSession(session.sessionId);
+  }, [hasReplaceableSessionState, workshop.openSession]);
   const cancelSessionConfirm = React.useCallback(() => setSessionConfirm(null), []);
   const acceptSessionConfirm = React.useCallback(() => {
     if (!sessionConfirm) {
@@ -562,11 +575,7 @@ export const WorkshopApp: React.FC = () => {
     return sourcePath?.split(/[\\/]/).filter(Boolean).at(-1) ?? 'Untitled session';
   })();
   const activeNamedSession = workshop.activeNamedSessionSummary;
-  const activeNamedSaveStatus =
-    workshop.namedSaveStatus &&
-    workshop.namedSaveStatus.sessionId === activeNamedSession?.sessionId
-      ? workshop.namedSaveStatus.status
-      : 'saved';
+  const activeSessionSaveStatus = workshop.sessionSaveStatus?.status ?? 'saved';
   const suggestedSessionTitle = activeNamedSession?.title ??
     `${excerptSessionLabel} — ${activePersona.label} — ${
       new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
@@ -663,7 +672,7 @@ export const WorkshopApp: React.FC = () => {
           <WorkshopSessionsMenu
             open={sessionsMenuOpen}
             activeSessionTitle={activeNamedSession?.title}
-            saveStatus={activeNamedSaveStatus}
+            saveStatus={activeSessionSaveStatus}
             sessions={workshop.savedSessionSummaries}
             disabled={
               !workshop.sessionReady ||
@@ -715,7 +724,17 @@ export const WorkshopApp: React.FC = () => {
       {workshop.degradedConversationKeys.length > 0 && (
         <div className="pm-ws-degraded-memory" role="status">
           <Icon name="refresh" size={14} />
-          Some restored persona memory could not be continued. The room and transcript are intact; those personas will begin fresh on their next turn.
+          <span>
+            Some restored persona memory could not be continued. The room and transcript are
+            intact; those personas will begin fresh on their next turn.
+            {workshop.degradedConversations.length > 0 && (
+              <ul>
+                {workshop.degradedConversations.map(({ key, reason }) => (
+                  <li key={key}><code>{key}</code>: {reason}</li>
+                ))}
+              </ul>
+            )}
+          </span>
         </div>
       )}
       {workshop.currentCheckpointProtected && (
@@ -723,6 +742,15 @@ export const WorkshopApp: React.FC = () => {
           <Icon name="save" size={14} />
           Automatic recovery is paused because <code>current.json</code> could not be read.
           This room remains open in memory; save a named checkpoint before replacing it.
+        </div>
+      )}
+      {workshop.sessionSaveStatus?.status === 'error' && (
+        <div className="pm-ws-degraded-memory" role="alert">
+          <Icon name="save" size={14} />
+          Automatic session recovery failed. Your room remains open in memory.
+          {workshop.sessionSaveStatus.error
+            ? ` ${workshop.sessionSaveStatus.error}`
+            : ' Check the Prose Minion output for details.'}
         </div>
       )}
 

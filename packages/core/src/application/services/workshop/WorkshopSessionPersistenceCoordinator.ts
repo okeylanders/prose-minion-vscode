@@ -6,28 +6,32 @@
  * `current.json` can never describe a room from two different moments.
  */
 
-import { randomUUID, createHash } from 'node:crypto';
-import * as path from 'node:path';
+import { randomUUID, createHash } from 'crypto';
+import * as path from 'path';
 import { LogSink } from '@/platform';
+import {
+  WorkshopSessionActiveRunPersistenceError,
+  WorkshopSessionService
+} from '@/application/services/workshop/WorkshopSessionService';
 import {
   WorkshopConversationLogicalKey,
   WorkshopRuntimeConversationBindings,
-  WorkshopSessionActiveRunPersistenceError,
-  WorkshopSessionService,
   WorkshopSessionStateV1,
   parseWorkshopSessionStateV1
-} from './WorkshopSessionService';
+} from '@/application/services/workshop/WorkshopSessionStateV1';
 import {
   WorkshopPersonaConversationKey,
   WorkshopSessionTimeService,
   parseWorkshopSessionTemporalStateV1,
   workshopGuestConversationKey
-} from './WorkshopSessionTimeService';
+} from '@/application/services/workshop/WorkshopSessionTimeService';
 import {
   WorkshopPersistedSessionV1,
   WorkshopPersistedSummaryV1
-} from './WorkshopPersistedSession';
-import { WorkshopConversationSettingsService } from './WorkshopConversationSettingsService';
+} from '@/application/services/workshop/WorkshopPersistedSession';
+import {
+  WorkshopConversationSettingsService
+} from '@/application/services/workshop/WorkshopConversationSettingsService';
 import {
   WorkshopConversationExportTarget,
   WorkshopConversationImportTarget,
@@ -40,7 +44,9 @@ import {
 } from '@/infrastructure/storage/WorkshopSessionStore';
 import { ConversationArchiveEntryV1 } from '@orchestration/ConversationManager';
 import {
+  WorkshopConversationDegradation,
   WorkshopPersonaId,
+  WorkshopSessionSaveStatusMessage,
   WorkshopSessionSummary,
   WorkshopToolId
 } from '@messages';
@@ -60,6 +66,7 @@ interface LiveSessionRollback {
   bindings: WorkshopRuntimeConversationBindings;
   temporal: ReturnType<WorkshopSessionTimeService['exportRuntimeState']>;
   degradedConversationKeys: WorkshopConversationLogicalKey[];
+  degradedConversations: WorkshopConversationDegradation[];
 }
 
 interface WorkshopHydrationTransaction extends WorkshopSessionHydrateResult {
@@ -69,6 +76,7 @@ interface WorkshopHydrationTransaction extends WorkshopSessionHydrateResult {
 export interface WorkshopSessionHydrateResult {
   restored: boolean;
   degradedConversationKeys: WorkshopConversationLogicalKey[];
+  degradedConversations?: WorkshopConversationDegradation[];
 }
 
 export interface WorkshopSessionListData {
@@ -85,7 +93,7 @@ export interface WorkshopSessionPersistenceCoordinatorOptions {
   ensureAssistantReady?: () => PromiseLike<unknown>;
 }
 
-export type WorkshopNamedSaveStatus = 'saving' | 'saved' | 'error';
+export type WorkshopSessionSaveStatus = WorkshopSessionSaveStatusMessage['payload'];
 
 const normalizedIso = (date: Date): string => date.toISOString();
 
@@ -97,17 +105,18 @@ export class WorkshopSessionPersistenceCoordinator {
   private readonly ensureAssistantReady?: () => PromiseLike<unknown>;
   private identity: LiveSessionIdentity;
   private activeNamedSessionId?: string;
-  private readonly namedSaveStatusListeners = new Set<
-    (sessionId: string, status: WorkshopNamedSaveStatus) => void
+  private readonly sessionSaveStatusListeners = new Set<
+    (event: WorkshopSessionSaveStatus) => void
   >();
   private initialized = false;
   private initializePromise?: Promise<WorkshopSessionHydrateResult>;
-  private writeQueue: Promise<void> = Promise.resolve();
+  private autosaveQueue: Promise<void> = Promise.resolve();
   private sessionOperationQueue: Promise<void> = Promise.resolve();
   private pendingSessionOperations = 0;
   private dirtyRevision = 0;
   private writtenRevision = 0;
   private degradedConversationKeys: WorkshopConversationLogicalKey[] = [];
+  private degradedConversations: WorkshopConversationDegradation[] = [];
   private currentCheckpointError?: string;
   private acceptedWorkspaceRoot?: string;
   private initialUnavailableReason?: Extract<
@@ -147,6 +156,10 @@ export class WorkshopSessionPersistenceCoordinator {
     return [...this.degradedConversationKeys];
   }
 
+  getDegradedConversations(): WorkshopConversationDegradation[] {
+    return this.degradedConversations.map((entry) => ({ ...entry }));
+  }
+
   isCurrentCheckpointProtected(): boolean {
     return this.currentCheckpointError !== undefined;
   }
@@ -155,11 +168,11 @@ export class WorkshopSessionPersistenceCoordinator {
     return this.pendingSessionOperations > 0;
   }
 
-  addNamedSaveStatusListener(
-    listener: (sessionId: string, status: WorkshopNamedSaveStatus) => void
+  addSessionSaveStatusListener(
+    listener: (event: WorkshopSessionSaveStatus) => void
   ): () => void {
-    this.namedSaveStatusListeners.add(listener);
-    return () => this.namedSaveStatusListeners.delete(listener);
+    this.sessionSaveStatusListeners.add(listener);
+    return () => this.sessionSaveStatusListeners.delete(listener);
   }
 
   async waitForSessionOperations(): Promise<void> {
@@ -188,7 +201,8 @@ export class WorkshopSessionPersistenceCoordinator {
     }
     let result: WorkshopSessionHydrateResult = {
       restored: false,
-      degradedConversationKeys: []
+      degradedConversationKeys: [],
+      degradedConversations: []
     };
     if (availability.available) {
       try {
@@ -242,18 +256,22 @@ export class WorkshopSessionPersistenceCoordinator {
         `[WorkshopSessionPersistence] Autosave skipped while current.json is protected ` +
         `(reason=${reason}): ${this.currentCheckpointError}`
       );
+      this.emitSessionSaveStatus({
+        sessionId: this.identity.sessionId,
+        status: 'error',
+        error: this.currentCheckpointError
+      });
       return;
     }
     this.dirtyRevision += 1;
     const revision = this.dirtyRevision;
+    const sessionId = this.identity.sessionId;
     const namedSessionId = this.activeNamedSessionId;
-    if (namedSessionId) {
-      this.emitNamedSaveStatus(namedSessionId, 'saving');
-    }
+    this.emitSessionSaveStatus({ sessionId, status: 'saving' });
     const initializationBarrier = this.initializePromise ?? this.initialize();
     const operationBarrier = this.sessionOperationQueue;
-    this.writeQueue = Promise.all([
-      this.writeQueue,
+    this.autosaveQueue = Promise.all([
+      this.autosaveQueue,
       initializationBarrier,
       operationBarrier
     ]).then(async () => {
@@ -274,30 +292,36 @@ export class WorkshopSessionPersistenceCoordinator {
           });
         }
         this.writtenRevision = Math.max(this.writtenRevision, revision);
-        if (namedSessionId && revision >= this.dirtyRevision) {
-          this.emitNamedSaveStatus(namedSessionId, 'saved');
+        if (revision >= this.dirtyRevision) {
+          this.emitSessionSaveStatus({ sessionId, status: 'saved' });
         }
         this.outputChannel.appendLine(
           `[WorkshopSessionPersistence] current.json${
             namedSessionId ? ' + named session' : ''
-          } committed (revision=${revision}, reason=${reason})`
+          } committed (id=${sessionId}, revision=${revision}, reason=${reason})`
         );
       } catch (error) {
         if (error instanceof WorkshopSessionActiveRunPersistenceError) {
           this.outputChannel.appendLine(
-            `[WorkshopSessionPersistence] Autosave deferred at active-run boundary (revision=${revision}, reason=${reason})`
+            `[WorkshopSessionPersistence] Autosave deferred at active-run boundary ` +
+            `(id=${sessionId}, revision=${revision}, reason=${reason})`
           );
           return;
         }
         this.outputChannel.appendLine(
-          `[WorkshopSessionPersistence] Autosave failed (revision=${revision}, reason=${reason}): ${this.errorMessage(error)}`
+          `[WorkshopSessionPersistence] Autosave failed ` +
+          `(id=${sessionId}, revision=${revision}, reason=${reason}): ${this.errorMessage(error)}`
         );
-        if (namedSessionId && revision >= this.dirtyRevision) {
-          this.emitNamedSaveStatus(namedSessionId, 'error');
+        if (revision >= this.dirtyRevision) {
+          this.emitSessionSaveStatus({
+            sessionId,
+            status: 'error',
+            error: this.errorMessage(error)
+          });
         }
       }
     });
-    void this.writeQueue;
+    void this.autosaveQueue;
   }
 
   /** Retry a dirty autosave after a run guard has cleared and await ordering. */
@@ -306,10 +330,10 @@ export class WorkshopSessionPersistenceCoordinator {
     // the revision is still dirty (for example, an active-run guard deferred
     // capture). This avoids manufacturing a second write/status transition
     // for every ordinary lifecycle flush.
-    await this.writeQueue;
+    await this.autosaveQueue;
     if (this.hasPendingWrite()) {
       this.markDirty('flush');
-      await this.writeQueue;
+      await this.autosaveQueue;
     }
   }
 
@@ -317,7 +341,7 @@ export class WorkshopSessionPersistenceCoordinator {
     title: string,
     targetSessionId?: string
   ): Promise<WorkshopStoredSessionSummary> {
-    return this.runSessionOperation(async () => {
+    return this.serializeSessionOperation(async () => {
       const normalizedTitle = this.requireTitle(title);
       const now = normalizedIso(this.now());
       if (targetSessionId !== undefined) {
@@ -343,7 +367,7 @@ export class WorkshopSessionPersistenceCoordinator {
     });
   }
 
-  async list(query?: string): Promise<WorkshopSessionListData> {
+  async list(query?: string, signal?: AbortSignal): Promise<WorkshopSessionListData> {
     await this.initialize();
     await this.flush();
     this.assertAcceptedWorkspace();
@@ -356,7 +380,7 @@ export class WorkshopSessionPersistenceCoordinator {
         searchTruncated: false
       };
     }
-    const listed = await this.store.list(query);
+    const listed = await this.store.list(query, signal);
     return {
       availability,
       current: listed.current
@@ -369,7 +393,7 @@ export class WorkshopSessionPersistenceCoordinator {
   }
 
   async openNamed(sessionId: string): Promise<WorkshopSessionHydrateResult> {
-    return this.runSessionOperation(async () => {
+    return this.serializeSessionOperation(async () => {
       const persisted = await this.store.readNamed(sessionId);
       if (!persisted) {
         throw new Error(`Named Workshop session ${sessionId} was not found.`);
@@ -392,13 +416,14 @@ export class WorkshopSessionPersistenceCoordinator {
       );
       return {
         restored: hydration.restored,
-        degradedConversationKeys: hydration.degradedConversationKeys
+        degradedConversationKeys: hydration.degradedConversationKeys,
+        degradedConversations: hydration.degradedConversations
       };
     });
   }
 
   async renameNamed(sessionId: string, title: string): Promise<WorkshopStoredSessionSummary> {
-    return this.runSessionOperation(async () => {
+    return this.serializeSessionOperation(async () => {
       if (this.activeNamedSessionId === sessionId) {
         return this.updateActiveNamedSession(
           sessionId,
@@ -414,7 +439,7 @@ export class WorkshopSessionPersistenceCoordinator {
     sourceSessionId: string,
     requestedTitle?: string
   ): Promise<WorkshopStoredSessionSummary> {
-    return this.runSessionOperation(async () => {
+    return this.serializeSessionOperation(async () => {
       const source = await this.store.readNamed(sourceSessionId);
       if (!source) {
         throw new Error(`Named Workshop session ${sourceSessionId} was not found.`);
@@ -433,7 +458,7 @@ export class WorkshopSessionPersistenceCoordinator {
   }
 
   async deleteNamed(sessionId: string): Promise<void> {
-    return this.runSessionOperation(async () => {
+    return this.serializeSessionOperation(async () => {
       await this.store.deleteNamed(sessionId);
       if (this.activeNamedSessionId === sessionId) {
         this.activeNamedSessionId = undefined;
@@ -449,7 +474,7 @@ export class WorkshopSessionPersistenceCoordinator {
 
   /** Start a fresh thread while preserving the aggregate's working set. */
   async resetSession(): Promise<void> {
-    return this.runSessionOperation(async () => {
+    return this.serializeSessionOperation(async () => {
       const rollback = this.captureRollback();
       const discarded = this.session.reset();
       this.time.reset();
@@ -461,6 +486,7 @@ export class WorkshopSessionPersistenceCoordinator {
       };
       this.activeNamedSessionId = undefined;
       this.degradedConversationKeys = [];
+      this.degradedConversations = [];
       this.recordStartMarker();
       try {
         const promoted = await this.capture(this.identity);
@@ -604,6 +630,18 @@ export class WorkshopSessionPersistenceCoordinator {
       ...outcomes.flatMap((outcome) => outcome.status === 'degraded' ? [outcome.key] : []),
       ...missingKeys
     ]);
+    const outcomeReasons = new Map(
+      outcomes.flatMap((outcome) =>
+        outcome.status === 'degraded' ? [[outcome.key, outcome.reason] as const] : []
+      )
+    );
+    const degradedConversations = degradedKeys.map((key) => ({
+      key,
+      reason: outcomeReasons.get(key) ??
+        (missingKeys.includes(key)
+          ? 'No valid retained conversation archive was available for this participant.'
+          : 'The retained conversation could not be rebound to this participant.')
+    }));
     const personaResumeKeys: WorkshopPersonaConversationKey[] = [
       'host',
       ...workshop.participants.personaGuests
@@ -617,6 +655,7 @@ export class WorkshopSessionPersistenceCoordinator {
       createdAt: persisted.createdAt
     };
     this.degradedConversationKeys = degradedKeys;
+    this.degradedConversations = degradedConversations;
     this.session.recordSessionMarker('resume', this.time.describeVisibleMarker('resume'));
     if (retirePreviousConversations) {
       hydration.discardedConversationIds.forEach((conversationId) =>
@@ -625,7 +664,9 @@ export class WorkshopSessionPersistenceCoordinator {
     }
     this.outputChannel.appendLine(
       `[WorkshopSessionPersistence] Session hydrated ` +
-      `(id=${persisted.sessionId}, conversations=${outcomes.length}, degraded=${degradedKeys.join(',') || 'none'})`
+      `(id=${persisted.sessionId}, conversations=${outcomes.length}, degraded=${
+        degradedConversations.map(({ key, reason }) => `${key}: ${reason}`).join('; ') || 'none'
+      })`
     );
     if (scheduleResumeAutosave) {
       this.markDirty('resume marker');
@@ -633,6 +674,7 @@ export class WorkshopSessionPersistenceCoordinator {
     return {
       restored: true,
       degradedConversationKeys: degradedKeys,
+      degradedConversations,
       discardedConversationIds: hydration.discardedConversationIds
     };
   }
@@ -710,46 +752,26 @@ export class WorkshopSessionPersistenceCoordinator {
   }
 
   private toMessageSummary(
-    persisted: WorkshopPersistedSessionV1,
-    fileName: string,
-    kind: 'current'
-  ): WorkshopSessionSummary;
-  private toMessageSummary(
     persisted: WorkshopStoredSessionSummary,
-    kind: 'current'
-  ): WorkshopSessionSummary;
-  private toMessageSummary(
-    persisted: WorkshopStoredSessionSummary,
-    kind: 'named'
-  ): WorkshopSessionSummary;
-  private toMessageSummary(
-    value: WorkshopPersistedSessionV1 | WorkshopStoredSessionSummary,
-    fileNameOrKind: string,
-    currentKind?: 'current'
+    kind: 'current' | 'named'
   ): WorkshopSessionSummary {
-    const isCurrent = currentKind === 'current' || fileNameOrKind === 'current';
-    const summary = 'summary' in value ? value.summary : value;
-    const temporal = 'temporal' in value ? value.temporal : undefined;
+    const isCurrent = kind === 'current';
     return {
-      sessionId: value.sessionId,
-      title: value.title,
-      fileName: 'fileName' in value ? value.fileName : fileNameOrKind,
+      sessionId: persisted.sessionId,
+      title: persisted.title,
+      fileName: persisted.fileName,
       kind: isCurrent ? 'current' : 'named',
-      startedAt: Date.parse(
-        temporal?.startedAt ??
-        ('startedAt' in value ? value.startedAt : value.createdAt)
-      ),
-      updatedAt: Date.parse(value.updatedAt),
-      savedAt: value.savedAt ? Date.parse(value.savedAt) : undefined,
-      timezone: temporal?.timezone ??
-        ('timezone' in value ? value.timezone : 'UTC'),
-      hostPersonaId: summary.hostPersonaId,
-      participantPersonaIds: [...summary.participantPersonaIds],
-      turnCount: summary.turnCount,
-      excerptWordCount: summary.excerptWordCount,
-      excerptLabel: summary.excerptLabel,
-      excerptIdentity: summary.excerptIdentity,
-      preview: summary.preview,
+      startedAt: Date.parse(persisted.startedAt),
+      updatedAt: Date.parse(persisted.updatedAt),
+      savedAt: persisted.savedAt ? Date.parse(persisted.savedAt) : undefined,
+      timezone: persisted.timezone,
+      hostPersonaId: persisted.hostPersonaId,
+      participantPersonaIds: [...persisted.participantPersonaIds],
+      turnCount: persisted.turnCount,
+      excerptWordCount: persisted.excerptWordCount,
+      excerptLabel: persisted.excerptLabel,
+      excerptIdentity: persisted.excerptIdentity,
+      preview: persisted.preview,
       degradedConversationKeys: isCurrent ? this.getDegradedConversationKeys() : undefined
     };
   }
@@ -759,11 +781,11 @@ export class WorkshopSessionPersistenceCoordinator {
    * earlier operations and autosaves. A rejection is observable to the caller
    * but never poisons the queue for the next operation.
    */
-  private runSessionOperation<T>(operation: () => Promise<T>): Promise<T> {
+  private serializeSessionOperation<T>(operation: () => Promise<T>): Promise<T> {
     this.pendingSessionOperations += 1;
     const initialization = this.initialize();
     const priorOperation = this.sessionOperationQueue;
-    const priorWrites = this.writeQueue;
+    const priorWrites = this.autosaveQueue;
     const result = Promise.all([initialization, priorOperation, priorWrites]).then(() => {
       this.assertAcceptedWorkspace();
       return operation();
@@ -789,7 +811,8 @@ export class WorkshopSessionPersistenceCoordinator {
       workshop,
       bindings,
       temporal: this.time.exportRuntimeState(),
-      degradedConversationKeys: [...this.degradedConversationKeys]
+      degradedConversationKeys: [...this.degradedConversationKeys],
+      degradedConversations: this.getDegradedConversations()
     };
   }
 
@@ -819,6 +842,7 @@ export class WorkshopSessionPersistenceCoordinator {
     this.identity = { ...rollback.identity };
     this.activeNamedSessionId = rollback.activeNamedSessionId;
     this.degradedConversationKeys = [...rollback.degradedConversationKeys];
+    this.degradedConversations = rollback.degradedConversations.map((entry) => ({ ...entry }));
   }
 
   private recordStartMarker(): void {
@@ -869,7 +893,7 @@ export class WorkshopSessionPersistenceCoordinator {
       savedAt,
       updatedAt: savedAt
     };
-    this.emitNamedSaveStatus(sessionId, 'saving');
+    this.emitSessionSaveStatus({ sessionId, status: 'saving' });
     try {
       await this.store.writeCurrent(checkpoint);
       // Once current.json commits, this identity is the recoverable live truth
@@ -877,19 +901,20 @@ export class WorkshopSessionPersistenceCoordinator {
       this.identity = nextIdentity;
       this.currentCheckpointError = undefined;
       const summary = await this.store.updateNamed(sessionId, checkpoint);
-      this.emitNamedSaveStatus(sessionId, 'saved');
+      this.emitSessionSaveStatus({ sessionId, status: 'saved' });
       return summary;
     } catch (error) {
-      this.emitNamedSaveStatus(sessionId, 'error');
+      this.emitSessionSaveStatus({
+        sessionId,
+        status: 'error',
+        error: this.errorMessage(error)
+      });
       throw error;
     }
   }
 
-  private emitNamedSaveStatus(
-    sessionId: string,
-    status: WorkshopNamedSaveStatus
-  ): void {
-    this.namedSaveStatusListeners.forEach((listener) => listener(sessionId, status));
+  private emitSessionSaveStatus(event: WorkshopSessionSaveStatus): void {
+    this.sessionSaveStatusListeners.forEach((listener) => listener({ ...event }));
   }
 
   private errorMessage(error: unknown): string {

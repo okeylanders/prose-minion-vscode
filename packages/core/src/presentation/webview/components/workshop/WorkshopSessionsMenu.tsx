@@ -96,20 +96,18 @@ export const WorkshopSessionsMenu: React.FC<WorkshopSessionsMenuProps> = ({
         </span>
         <Icon name="chevDown" size={13} />
       </button>
-      {activeSessionTitle && (
-        <span
-          className={`pm-ws-named-save-state pm-ws-named-save-state-${saveStatus ?? 'saved'}`}
-          role="status"
-          aria-live="polite"
-        >
-          <span />
-          {saveStatus === 'saving'
-            ? 'Saving…'
-            : saveStatus === 'error'
-              ? 'Save failed'
-              : 'Saved'}
-        </span>
-      )}
+      <span
+        className={`pm-ws-named-save-state pm-ws-named-save-state-${saveStatus ?? 'saved'}`}
+        role="status"
+        aria-live="polite"
+      >
+        <span />
+        {saveStatus === 'saving'
+          ? 'Saving…'
+          : saveStatus === 'error'
+            ? 'Save failed'
+            : 'Saved'}
+      </span>
       {open && (
         <div
           id="pm-ws-sessions-menu"

@@ -221,13 +221,19 @@ unknown-version files are skipped with diagnostics, never allowed to crash the
 browser.
 
 Full session files remain authoritative and exact reads are intentionally
-unbounded. The store writes strict, schema-versioned, bounded summary sidecars
+unbounded. The store writes strict, schema-versioned, bounded search indexes
 (`current.summary.json` and `<checkpoint>.summary.json`) so a valid long session
 does not disappear merely because it exceeds the browser's defensive full-file
-parse limit. Sidecars are indexes only: they cannot hydrate a room, are ignored
-by identity scans, and orphan/corrupt sidecars are skipped. Transcript content
-search remains a bounded scan and the UI discloses when it may have omitted a
-deep match.
+parse limit. Search indexes cannot hydrate a room, are ignored by identity
+scans, and orphan/corrupt indexes are skipped. Browser listing warms the
+immutable path cache; cold exact actions use index identity to avoid parsing
+unrelated full transcripts. Transcript and retained-conversation content search
+uses a bounded, cancellable traversal rather than serializing the entire
+snapshot, and the UI discloses when it may have omitted a deep match.
+
+The generated sessions directory is private by default: first creation adds a
+local `.gitignore` for generated session files without overwriting an existing
+writer-owned policy.
 
 ### 8. Widget configuration is session truth; Settings are defaults
 

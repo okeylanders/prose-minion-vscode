@@ -113,9 +113,10 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
           currentPath: '/workspace/prose-minion/sessions/current.json'
         }),
         getDegradedConversationKeys: jest.fn().mockReturnValue([]),
+        getDegradedConversations: jest.fn().mockReturnValue([]),
         isCurrentCheckpointProtected: jest.fn().mockReturnValue(false),
         isSessionOperationPending: jest.fn().mockReturnValue(false),
-        addNamedSaveStatusListener: jest.fn().mockReturnValue(() => undefined),
+        addSessionSaveStatusListener: jest.fn().mockReturnValue(() => undefined),
         waitForSessionOperations: jest.fn().mockResolvedValue(undefined),
         markDirty: jest.fn(),
         flush: jest.fn().mockResolvedValue(undefined),

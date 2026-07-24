@@ -13,9 +13,12 @@ import { FileStat, FileSystem, FileType, LogSink, Workspace } from '@/platform';
 class MemoryFileSystem implements FileSystem {
   readonly files = new Map<string, Uint8Array>();
   readonly renameCalls: Array<{ fromPath: string; toPath: string; overwrite: boolean }> = [];
+  readonly readFileCalls: string[] = [];
   readDirectoryCalls = 0;
+  failRenameToPath?: string;
 
   async readFile(filePath: string): Promise<Uint8Array> {
+    this.readFileCalls.push(filePath);
     const value = this.files.get(filePath);
     if (!value) {
       throw new Error(`ENOENT: ${filePath}`);
@@ -28,6 +31,9 @@ class MemoryFileSystem implements FileSystem {
   }
 
   async rename(fromPath: string, toPath: string, options?: { overwrite?: boolean }): Promise<void> {
+    if (toPath === this.failRenameToPath) {
+      throw new Error(`EIO: ${toPath}`);
+    }
     const source = this.files.get(fromPath);
     if (!source) {
       throw new Error(`ENOENT: ${fromPath}`);
@@ -179,6 +185,24 @@ describe('WorkshopSessionStore', () => {
     await expect(store.readCurrent()).resolves.toEqual(current);
   });
 
+  it('creates a generated-files gitignore without overwriting workspace policy', async () => {
+    const store = createStore();
+    const gitignorePath = path.join(sessionsDirectory, '.gitignore');
+
+    await store.writeCurrent(session('current-1', 'Current room'));
+
+    expect(new TextDecoder().decode(fileSystem.files.get(gitignorePath))).toBe(
+      '*\n!.gitignore\n'
+    );
+
+    const existingPolicy = new TextEncoder().encode('# writer-owned policy\n');
+    fileSystem.files.clear();
+    fileSystem.files.set(gitignorePath, existingPolicy);
+    await createStore().writeCurrent(session('current-2', 'Another room'));
+
+    expect(fileSystem.files.get(gitignorePath)).toEqual(existingPolicy);
+  });
+
   it('returns undefined only when current.json is genuinely missing', async () => {
     const store = createStore();
 
@@ -255,6 +279,79 @@ describe('WorkshopSessionStore', () => {
     await expect(store.list('SILVER ANEMONE')).resolves.toMatchObject({
       sessions: [{ sessionId: 'newer' }, { sessionId: 'older' }]
     });
+  });
+
+  it('uses compact search indexes for a fresh no-query browser listing', async () => {
+    const writer = createStore();
+    const first = await writer.saveNamed(session('first', 'First'));
+    const second = await writer.saveNamed(session('second', 'Second'));
+    fileSystem.readFileCalls.length = 0;
+
+    await expect(createStore().list()).resolves.toMatchObject({
+      sessions: expect.arrayContaining([
+        expect.objectContaining({ sessionId: 'first' }),
+        expect.objectContaining({ sessionId: 'second' })
+      ])
+    });
+
+    const fullPaths = [first.fileName, second.fileName].map((fileName) =>
+      path.join(sessionsDirectory, fileName)
+    );
+    expect(fileSystem.readFileCalls).not.toEqual(
+      expect.arrayContaining(fullPaths)
+    );
+  });
+
+  it('updates a path warmed by listing without reparsing the transcript it replaces', async () => {
+    const writer = createStore();
+    const saved = await writer.saveNamed(session('warm-room', 'Before'));
+    const store = createStore();
+    await store.list();
+    fileSystem.readFileCalls.length = 0;
+
+    await store.updateNamed(
+      'warm-room',
+      session('warm-room', 'After', { updatedAt: '2026-07-23T11:00:00.000Z' })
+    );
+
+    expect(fileSystem.readFileCalls).not.toContain(
+      path.join(sessionsDirectory, saved.fileName)
+    );
+    await expect(store.readNamed('warm-room')).resolves.toMatchObject({
+      title: 'After'
+    });
+  });
+
+  it('searches retained conversation archives without stringifying the full snapshot', async () => {
+    const store = createStore();
+    await store.saveNamed(session('archive-memory', 'Archive memory', {
+      conversations: [{
+        key: 'host',
+        toolName: 'workshop_persona_jill',
+        messages: [{ role: 'assistant', content: 'The vespertine bell is the buried clue.' }],
+        lastActivity: 1_000,
+        contextSources: [],
+        nextArtifactNumber: 0
+      }]
+    }));
+
+    await expect(store.list('VESPERTINE BELL')).resolves.toMatchObject({
+      sessions: [{ sessionId: 'archive-memory' }],
+      searchTruncated: false
+    });
+  });
+
+  it('cancels a superseded browser scan before reading session payloads', async () => {
+    const store = createStore();
+    await store.saveNamed(session('cancel-me', 'Cancel me'));
+    fileSystem.readFileCalls.length = 0;
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(store.list(undefined, controller.signal)).rejects.toMatchObject({
+      name: 'AbortError'
+    });
+    expect(fileSystem.readFileCalls).toEqual([]);
   });
 
   it('skips malformed and unknown-version files while preserving healthy browser results', async () => {
@@ -360,7 +457,7 @@ describe('WorkshopSessionStore', () => {
     });
   });
 
-  it('keeps an oversized named checkpoint discoverable and manageable through its sidecar', async () => {
+  it('keeps an oversized named checkpoint discoverable and manageable through its search index', async () => {
     const store = createStore([root], {
       maximumFiles: 200,
       maximumFileBytes: 1_000,
@@ -395,14 +492,14 @@ describe('WorkshopSessionStore', () => {
     ))).toBe(false);
   });
 
-  it('tolerates orphan/corrupt sidecars and falls back to bounded legacy full snapshots', async () => {
+  it('tolerates orphan/corrupt search indexes and falls back to bounded legacy full snapshots', async () => {
     const store = createStore();
     const saved = await store.saveNamed(session('healthy', 'Healthy'));
-    const sidecarPath = path.join(
+    const searchIndexPath = path.join(
       sessionsDirectory,
       saved.fileName.replace(/\.json$/, '.summary.json')
     );
-    fileSystem.setJson(sidecarPath, { schemaVersion: 1, unexpected: true });
+    fileSystem.setJson(searchIndexPath, { schemaVersion: 1, unexpected: true });
     fileSystem.setJson(path.join(sessionsDirectory, 'orphan.summary.json'), {
       schemaVersion: 1,
       sessionId: 'orphan'
@@ -420,7 +517,7 @@ describe('WorkshopSessionStore', () => {
     ]));
   });
 
-  it('reports content-search limits while still returning sidecar metadata matches', async () => {
+  it('reports content-search limits while still returning search-index metadata matches', async () => {
     const store = createStore([root], {
       maximumFiles: 200,
       maximumFileBytes: 5 * 1024 * 1024,
@@ -439,10 +536,10 @@ describe('WorkshopSessionStore', () => {
     });
   });
 
-  it('ignores sidecars during identity scans, tolerates unrelated malformed files on save, and fails closed on duplicate full ids', async () => {
+  it('ignores search indexes during identity scans, tolerates unrelated malformed files on save, and fails closed on duplicate full ids', async () => {
     const store = createStore();
     fileSystem.setJson(path.join(sessionsDirectory, 'broken.json'), { not: 'a session' });
-    // A copied sidecar-looking filename is not a named authoritative snapshot.
+    // A copied search-index-looking filename is not a named authoritative snapshot.
     fileSystem.setJson(
       path.join(sessionsDirectory, 'copied.summary.json'),
       session('sidecar-only', 'Must not reserve identity')
@@ -460,5 +557,27 @@ describe('WorkshopSessionStore', () => {
     await expect(store.renameNamed('duplicate-id', 'Nope')).rejects.toEqual(
       expect.objectContaining({ name: 'WorkshopNamedSessionIdentityConflictError' })
     );
+  });
+
+  it('keeps the committed snapshot and removes a stale search index when index replacement fails', async () => {
+    const store = createStore();
+    const saved = await store.saveNamed(session('living-room', 'Before'));
+    const fullPath = path.join(sessionsDirectory, saved.fileName);
+    const searchIndexPath = path.join(
+      sessionsDirectory,
+      saved.fileName.replace(/\.json$/, '.summary.json')
+    );
+    fileSystem.failRenameToPath = searchIndexPath;
+
+    await expect(store.updateNamed(
+      'living-room',
+      session('living-room', 'After', { updatedAt: '2026-07-23T11:00:00.000Z' })
+    )).resolves.toMatchObject({ title: 'After' });
+
+    expect(fileSystem.json(fullPath)).toMatchObject({ title: 'After' });
+    expect(fileSystem.files.has(searchIndexPath)).toBe(false);
+    expect(logLines).toEqual(expect.arrayContaining([
+      expect.stringContaining('removed stale index')
+    ]));
   });
 });

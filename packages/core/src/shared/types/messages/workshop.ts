@@ -1102,7 +1102,14 @@ export interface WorkshopSessionStatePayload {
     currentCheckpointProtected?: boolean;
     /** Non-empty only when product state survived but retained memory did not. */
     degradedConversationKeys: string[];
+    /** Display-safe explanation for each participant whose retained memory degraded. */
+    degradedConversations?: WorkshopConversationDegradation[];
   };
+}
+
+export interface WorkshopConversationDegradation {
+  key: string;
+  reason: string;
 }
 
 /**
@@ -1167,10 +1174,11 @@ export interface WorkshopSessionActionResultMessage extends MessageEnvelope<{
   type: MessageType.WORKSHOP_SESSION_ACTION_RESULT;
 }
 
-/** Actual named-checkpoint persistence state emitted by the ordered write queue. */
-export interface WorkshopNamedSaveStatusMessage extends MessageEnvelope<{
+/** Actual rolling/named persistence state emitted by the ordered write queue. */
+export interface WorkshopSessionSaveStatusMessage extends MessageEnvelope<{
   sessionId: string;
   status: 'saving' | 'saved' | 'error';
+  error?: string;
 }> {
-  type: MessageType.WORKSHOP_NAMED_SAVE_STATUS;
+  type: MessageType.WORKSHOP_SESSION_SAVE_STATUS;
 }

@@ -105,6 +105,25 @@ describe('parseWorkshopPersistedSession', () => {
     expect(parsed.conversations[1]).not.toBe(source.conversations[1]);
   });
 
+  it('drops undefined optional archive members before strict JSON persistence', () => {
+    const source = persistedSession();
+    source.conversations[0].contextSources = [{
+      kind: 'resource',
+      origin: 'host',
+      label: 'chapters/one.md',
+      configuredResource: undefined,
+      sizeChars: 120,
+      isEstimate: true,
+      deliveredAt: 10
+    }];
+
+    const parsed = parseWorkshopPersistedSession(source);
+
+    expect(parsed.conversations[0].contextSources[0]).not.toHaveProperty(
+      'configuredResource'
+    );
+  });
+
   it('rejects unknown envelope and summary extension fields', () => {
     const outer = persistedSession() as unknown as Record<string, unknown>;
     outer.extensions = { someday: true };

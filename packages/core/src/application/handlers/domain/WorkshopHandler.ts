@@ -127,10 +127,8 @@ import {
   WorkshopDuplicateSessionMessage,
   WorkshopRevealSessionMessage,
   WorkshopDeleteSessionMessage,
-  WorkshopSessionsDataMessage,
   WorkshopSessionAction,
-  WorkshopSessionActionResultMessage,
-  WorkshopNamedSaveStatusMessage,
+  WorkshopSessionSaveStatusMessage,
   WorkshopToolId,
   WorkshopPersonaId,
   WorkshopChatTarget,
@@ -139,7 +137,8 @@ import {
   WorkshopTurnMessage,
 } from '@messages';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
-import { MessageRouter } from '../MessageRouter';
+import { MessageRouter } from '@handlers/MessageRouter';
+import { WorkshopSessionMessageHandler } from '@handlers/domain/WorkshopSessionMessageHandler';
 
 // Generate unique request IDs (module-scoped counter, same idiom as AnalysisHandler)
 let requestIdCounter = 0;
@@ -207,7 +206,8 @@ export class WorkshopHandler {
   };
 
   private readonly disposeStatusListener: () => void;
-  private readonly disposeNamedSaveStatusListener: () => void;
+  private readonly disposeSessionSaveStatusListener: () => void;
+  private readonly sessionMessageHandler: WorkshopSessionMessageHandler;
 
   /** The single in-flight Context wizard run — independent of activeRun. */
   private wizardRun?: { requestId: string; excerptVersion: number; controller: AbortController };
@@ -238,16 +238,36 @@ export class WorkshopHandler {
         }
       }
     );
-    this.disposeNamedSaveStatusListener =
-      this.sessionPersistence.addNamedSaveStatusListener((sessionId, status) => {
-        const message: WorkshopNamedSaveStatusMessage = {
-          type: MessageType.WORKSHOP_NAMED_SAVE_STATUS,
+    this.disposeSessionSaveStatusListener =
+      this.sessionPersistence.addSessionSaveStatusListener((event) => {
+        const message: WorkshopSessionSaveStatusMessage = {
+          type: MessageType.WORKSHOP_SESSION_SAVE_STATUS,
           source: 'extension.workshop',
-          payload: { sessionId, status },
+          payload: { ...event },
           timestamp: Date.now()
         };
         void this.postMessage(message);
       });
+    this.sessionMessageHandler = new WorkshopSessionMessageHandler(
+      this.sessionPersistence,
+      this.postMessage,
+      this.shell,
+      this.outputChannel,
+      {
+        postSessionState: () => this.postSessionState(),
+        flushDeferredConversationSettings: async () => {
+          await this.flushDeferredConversationSettings();
+        },
+        reportError: (message, details) => {
+          this.sendError('workshop', message, details);
+        },
+        activeRunLabel: () => this.wizardRun
+          ? 'Context wizard'
+          : this.activeRun
+            ? 'response'
+            : undefined
+      }
+    );
   }
 
   /**
@@ -320,39 +340,7 @@ export class WorkshopHandler {
     registerMutation(MessageType.WORKSHOP_TODO_ACTION, this.handleTodoAction.bind(this));
     registerMutation(MessageType.WORKSHOP_PICK_EXCERPT_FILE, this.handlePickExcerptFile.bind(this));
     registerMutation(MessageType.WORKSHOP_REREAD_EXCERPT, this.handleRereadExcerpt.bind(this));
-    registerMutation(
-      MessageType.WORKSHOP_RESET_SESSION,
-      this.handleResetSession.bind(this),
-      'new'
-    );
-    router.register(MessageType.WORKSHOP_REQUEST_SESSION, this.handleRequestSession.bind(this));
-    registerMutation(
-      MessageType.WORKSHOP_SAVE_SESSION,
-      this.handleSaveSession.bind(this),
-      'save'
-    );
-    router.register(MessageType.WORKSHOP_LIST_SESSIONS, this.handleListSessions.bind(this));
-    registerMutation(
-      MessageType.WORKSHOP_OPEN_SESSION,
-      this.handleOpenSession.bind(this),
-      'open'
-    );
-    registerMutation(
-      MessageType.WORKSHOP_RENAME_SESSION,
-      this.handleRenameSession.bind(this),
-      'rename'
-    );
-    registerMutation(
-      MessageType.WORKSHOP_DUPLICATE_SESSION,
-      this.handleDuplicateSession.bind(this),
-      'duplicate'
-    );
-    router.register(MessageType.WORKSHOP_REVEAL_SESSION, this.handleRevealSession.bind(this));
-    registerMutation(
-      MessageType.WORKSHOP_DELETE_SESSION,
-      this.handleDeleteSession.bind(this),
-      'delete'
-    );
+    this.sessionMessageHandler.registerRoutes(router, registerMutation);
     router.register(MessageType.CANCEL_WORKSHOP_REQUEST, this.handleCancelRequest.bind(this));
   }
 
@@ -364,7 +352,8 @@ export class WorkshopHandler {
    */
   dispose(): void {
     this.disposeStatusListener();
-    this.disposeNamedSaveStatusListener();
+    this.disposeSessionSaveStatusListener();
+    this.sessionMessageHandler.dispose();
     if (this.activeRun) {
       this.outputChannel.appendLine(
         `[WorkshopHandler] Aborting in-flight run on dispose: ${this.activeRun.requestId}`
@@ -2050,203 +2039,42 @@ export class WorkshopHandler {
     return { text, truncation, sourceFingerprint: createHash('sha256').update(raw).digest('hex') };
   }
 
-  async handleResetSession(_message: WorkshopResetSessionMessage): Promise<void> {
-    if (this.rejectSessionMutationWhileRunning('start a new session', 'new')) {
-      return;
-    }
-    try {
-      await this.sessionPersistence.resetSession();
-      await this.flushDeferredConversationSettings();
-      this.outputChannel.appendLine('[WorkshopHandler] Session reset and current checkpoint replaced');
-      this.postSessionState();
-      this.postSessionActionResult('new', true, 'Started a new Workshop session.');
-    } catch (error) {
-      this.postSessionState();
-      this.postSessionActionFailure('new', error);
-    }
+  // Public compatibility seam for focused tests and direct callers;
+  // implementation lives in the bounded session IPC collaborator.
+  handleResetSession(message: WorkshopResetSessionMessage): Promise<void> {
+    return this.sessionMessageHandler.handleResetSession(message);
   }
 
-  async handleRequestSession(_message: WorkshopRequestSessionMessage): Promise<void> {
-    await this.sessionPersistence.waitForSessionOperations();
-    await this.flushDeferredConversationSettings();
-    this.postSessionState();
+  handleRequestSession(message: WorkshopRequestSessionMessage): Promise<void> {
+    return this.sessionMessageHandler.handleRequestSession(message);
   }
 
-  async handleSaveSession(message: WorkshopSaveSessionMessage): Promise<void> {
-    if (this.rejectSessionMutationWhileRunning('save this session', 'save')) {
-      return;
-    }
-    try {
-      const targetSessionId = message.payload?.sessionId?.trim() || undefined;
-      const saved = await this.sessionPersistence.saveNamed(
-        message.payload?.title ?? '',
-        targetSessionId
-      );
-      this.postSessionActionResult(
-        'save',
-        true,
-        targetSessionId ? `Updated “${saved.title}”.` : `Saved “${saved.title}”.`
-      );
-    } catch (error) {
-      this.postSessionActionFailure('save', error);
-    }
+  handleSaveSession(message: WorkshopSaveSessionMessage): Promise<void> {
+    return this.sessionMessageHandler.handleSaveSession(message);
   }
 
-  async handleListSessions(message: WorkshopListSessionsMessage): Promise<void> {
-    const requestId = typeof message.payload?.requestId === 'string'
-      ? message.payload.requestId
-      : generateRequestId('workshop_sessions');
-    try {
-      const data = await this.sessionPersistence.list(message.payload?.query);
-      const response: WorkshopSessionsDataMessage = {
-        type: MessageType.WORKSHOP_SESSIONS_DATA,
-        source: 'extension.workshop',
-        payload: {
-          requestId,
-          available: data.availability.available,
-          unavailableReason: data.availability.available
-            ? undefined
-            : data.availability.reason,
-          current: data.current,
-          sessions: data.sessions,
-          truncated: data.truncated,
-          searchTruncated: data.searchTruncated
-        },
-        timestamp: Date.now()
-      };
-      void this.postMessage(response);
-    } catch (error) {
-      const details = this.errorMessage(error);
-      const availability = this.sessionPersistence.availability();
-      const response: WorkshopSessionsDataMessage = {
-        type: MessageType.WORKSHOP_SESSIONS_DATA,
-        source: 'extension.workshop',
-        payload: {
-          requestId,
-          available: availability.available,
-          unavailableReason: availability.available ? undefined : availability.reason,
-          error: details,
-          sessions: []
-        },
-        timestamp: Date.now()
-      };
-      void this.postMessage(response);
-      this.sendError('workshop', 'Could not list Workshop sessions.', details);
-    }
+  handleListSessions(message: WorkshopListSessionsMessage): Promise<void> {
+    return this.sessionMessageHandler.handleListSessions(message);
   }
 
-  async handleOpenSession(message: WorkshopOpenSessionMessage): Promise<void> {
-    if (this.rejectSessionMutationWhileRunning('open another session', 'open')) {
-      return;
-    }
-    try {
-      const result = await this.sessionPersistence.openNamed(message.payload?.sessionId ?? '');
-      this.postSessionState();
-      const degraded = result.degradedConversationKeys.length;
-      this.postSessionActionResult(
-        'open',
-        true,
-        degraded > 0
-          ? `Session opened. ${degraded} conversation ${degraded === 1 ? 'history was' : 'histories were'} restored without retained memory.`
-          : 'Session opened with conversation memory restored.'
-      );
-    } catch (error) {
-      this.postSessionActionFailure('open', error);
-    }
+  handleOpenSession(message: WorkshopOpenSessionMessage): Promise<void> {
+    return this.sessionMessageHandler.handleOpenSession(message);
   }
 
-  async handleRenameSession(message: WorkshopRenameSessionMessage): Promise<void> {
-    if (this.rejectSessionMutationWhileRunning('rename a saved session', 'rename')) {
-      return;
-    }
-    try {
-      const renamed = await this.sessionPersistence.renameNamed(
-        message.payload?.sessionId ?? '',
-        message.payload?.title ?? ''
-      );
-      this.postSessionActionResult('rename', true, `Renamed to “${renamed.title}”.`);
-    } catch (error) {
-      this.postSessionActionFailure('rename', error);
-    }
+  handleRenameSession(message: WorkshopRenameSessionMessage): Promise<void> {
+    return this.sessionMessageHandler.handleRenameSession(message);
   }
 
-  async handleDuplicateSession(message: WorkshopDuplicateSessionMessage): Promise<void> {
-    if (this.rejectSessionMutationWhileRunning('duplicate a saved session', 'duplicate')) {
-      return;
-    }
-    try {
-      const duplicated = await this.sessionPersistence.duplicateNamed(
-        message.payload?.sessionId ?? '',
-        message.payload?.title
-      );
-      this.postSessionActionResult(
-        'duplicate',
-        true,
-        `Duplicated as “${duplicated.title}”.`
-      );
-    } catch (error) {
-      this.postSessionActionFailure('duplicate', error);
-    }
+  handleDuplicateSession(message: WorkshopDuplicateSessionMessage): Promise<void> {
+    return this.sessionMessageHandler.handleDuplicateSession(message);
   }
 
-  async handleRevealSession(message: WorkshopRevealSessionMessage): Promise<void> {
-    try {
-      const sessionId = message.payload?.sessionId ?? '';
-      const filePath = await this.sessionPersistence.resolveRevealPath(sessionId);
-      await this.shell.revealFileInOS(filePath);
-      this.postSessionActionResult('reveal', true, 'Session file revealed.');
-    } catch (error) {
-      this.postSessionActionFailure('reveal', error);
-    }
+  handleRevealSession(message: WorkshopRevealSessionMessage): Promise<void> {
+    return this.sessionMessageHandler.handleRevealSession(message);
   }
 
-  async handleDeleteSession(message: WorkshopDeleteSessionMessage): Promise<void> {
-    if (this.rejectSessionMutationWhileRunning('delete a saved session', 'delete')) {
-      return;
-    }
-    try {
-      await this.sessionPersistence.deleteNamed(message.payload?.sessionId ?? '');
-      this.postSessionActionResult('delete', true, 'Saved session deleted.');
-    } catch (error) {
-      this.postSessionActionFailure('delete', error);
-    }
-  }
-
-  private postSessionActionResult(
-    action: WorkshopSessionAction,
-    ok: boolean,
-    message: string
-  ): void {
-    const result: WorkshopSessionActionResultMessage = {
-      type: MessageType.WORKSHOP_SESSION_ACTION_RESULT,
-      source: 'extension.workshop',
-      payload: { action, ok, message },
-      timestamp: Date.now()
-    };
-    void this.postMessage(result);
-  }
-
-  private postSessionActionFailure(action: WorkshopSessionAction, error: unknown): void {
-    const details = this.errorMessage(error);
-    this.outputChannel.appendLine(
-      `[WorkshopHandler] Session ${action} failed: ${details}`
-    );
-    this.postSessionActionResult(action, false, details);
-  }
-
-  private rejectSessionMutationWhileRunning(
-    action: string,
-    sessionAction: WorkshopSessionAction
-  ): boolean {
-    if (!this.activeRun && !this.wizardRun) {
-      return false;
-    }
-    this.postSessionActionResult(
-      sessionAction,
-      false,
-      `Wait for the current ${this.wizardRun ? 'Context wizard' : 'response'} to finish before you ${action}.`
-    );
-    return true;
+  handleDeleteSession(message: WorkshopDeleteSessionMessage): Promise<void> {
+    return this.sessionMessageHandler.handleDeleteSession(message);
   }
 
   private rejectRoomMutationDuringSessionOperation(
@@ -2258,7 +2086,7 @@ export class WorkshopHandler {
     const message =
       'Wait for the current session save or replacement to finish before changing the room.';
     if (sessionAction) {
-      this.postSessionActionResult(sessionAction, false, message);
+      this.sessionMessageHandler.postActionResult(sessionAction, false, message);
     } else {
       this.sendError('workshop', message);
     }
@@ -2508,7 +2336,8 @@ export class WorkshopHandler {
           available: availability.available,
           unavailableReason: availability.available ? undefined : availability.reason,
           currentCheckpointProtected: this.sessionPersistence.isCurrentCheckpointProtected(),
-          degradedConversationKeys: this.sessionPersistence.getDegradedConversationKeys()
+          degradedConversationKeys: this.sessionPersistence.getDegradedConversationKeys(),
+          degradedConversations: this.sessionPersistence.getDegradedConversations()
         }
       },
       timestamp: Date.now()

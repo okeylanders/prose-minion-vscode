@@ -171,9 +171,10 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         currentPath: '/workspace/prose-minion/sessions/current.json'
       }),
       getDegradedConversationKeys: jest.fn().mockReturnValue([]),
+      getDegradedConversations: jest.fn().mockReturnValue([]),
       isCurrentCheckpointProtected: jest.fn().mockReturnValue(false),
       isSessionOperationPending: jest.fn().mockReturnValue(false),
-      addNamedSaveStatusListener: jest.fn().mockReturnValue(() => undefined),
+      addSessionSaveStatusListener: jest.fn().mockReturnValue(() => undefined),
       waitForSessionOperations: jest.fn().mockResolvedValue(undefined),
       markDirty: jest.fn(),
       flush: jest.fn().mockResolvedValue(undefined),
@@ -282,14 +283,40 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   });
 
   it('forwards the coordinator named-save state as typed Workshop IPC', () => {
-    const listener = persistence.addNamedSaveStatusListener.mock.calls[0][0];
+    const listener = persistence.addSessionSaveStatusListener.mock.calls[0][0];
 
-    listener('named-room', 'saving');
+    listener({ sessionId: 'named-room', status: 'saving' });
 
-    expect(posted(MessageType.WORKSHOP_NAMED_SAVE_STATUS).at(-1).payload).toEqual({
+    expect(posted(MessageType.WORKSHOP_SESSION_SAVE_STATUS).at(-1).payload).toEqual({
       sessionId: 'named-room',
       status: 'saving'
     });
+  });
+
+  it('abandons an active run before flushing persistence on dispose', async () => {
+    await pin();
+    service.startWorkshopPersonaConversation.mockImplementationOnce(
+      async (_input, options) => new Promise((resolve) => {
+        options?.signal?.addEventListener('abort', () => resolve(
+          analysisResult('discarded completion', { conversationId: 'host-conv' })
+        ));
+      })
+    );
+    const abandonRun = jest.spyOn(session, 'abandonRun');
+    const delivery = handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Hold this thought through shutdown.' }
+    ) as any);
+    await Promise.resolve();
+    const requestId = session.getSnapshot().activeRequestId;
+
+    handler.dispose();
+    await delivery;
+
+    expect(abandonRun).toHaveBeenCalledWith(requestId);
+    expect(persistence.flush).toHaveBeenCalled();
+    expect(abandonRun.mock.invocationCallOrder[0])
+      .toBeLessThan(persistence.flush.mock.invocationCallOrder.at(-1)!);
   });
 
   it('guards routed room mutations while a shared session operation is pending', async () => {
@@ -1787,7 +1814,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       ) as any);
 
       expect(persistence.saveNamed).toHaveBeenCalledWith('Saved Room', undefined);
-      expect(persistence.list).toHaveBeenCalledWith('room');
+      expect(persistence.list).toHaveBeenCalledWith('room', expect.any(AbortSignal));
       expect(persistence.openNamed).toHaveBeenCalledWith('saved-1');
       expect(persistence.renameNamed).toHaveBeenCalledWith('saved-1', 'Renamed Room');
       expect(persistence.duplicateNamed).toHaveBeenCalledWith('saved-1', 'Copied Room');
@@ -1941,7 +1968,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         expect(persistence.renameNamed).not.toHaveBeenCalled();
         expect(persistence.duplicateNamed).not.toHaveBeenCalled();
         expect(persistence.deleteNamed).not.toHaveBeenCalled();
-        expect(persistence.list).toHaveBeenCalledWith(undefined);
+        expect(persistence.list).toHaveBeenCalledWith(undefined, expect.any(AbortSignal));
         expect(persistence.resolveRevealPath).toHaveBeenCalledWith('saved-1');
         expect(posted(MessageType.WORKSHOP_SESSION_ACTION_RESULT).slice(0, 6).map(
           (entry) => entry.payload

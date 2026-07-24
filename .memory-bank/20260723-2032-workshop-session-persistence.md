@@ -12,7 +12,8 @@ Host continuity/corruption exercise and PR review remain.
 - `prose-minion/sessions/current.json` is the rolling authoritative Workshop
   checkpoint; timestamped named JSON files are immutable storage identities
   with editable title metadata.
-- Strict bounded `.summary.json` sidecars make large sessions browser-visible.
+- Strict bounded `.summary.json` search indexes make large sessions
+  browser-visible and warm the immutable named-session path cache.
   Full JSON remains the only restore/action authority and exact reads are
   unbounded.
 - `WorkshopSessionService` exports/hydrates its complete committed aggregate,
@@ -32,6 +33,10 @@ Host continuity/corruption exercise and PR review remain.
   alongside `current.json`; explicit Save updates in place and **Save as new**
   allocates another identity. The store caches only authoritatively resolved
   immutable paths so per-turn autosave does not parse every saved transcript.
+- The generated sessions directory is gitignored by default; existing
+  writer-owned ignore policy is never overwritten.
+- Unnamed and named autosaves share one visible status/error contract, with
+  session identity in diagnostics.
 - The header replaces the generic Sessions label with the active named-room
   title and revision-aware `Saving…` / `Saved` / `Save failed` state. New
   Session clears the visible thread immediately and restores it if durable room
@@ -66,6 +71,22 @@ Use Extension Development Host to:
 4. Corrupt one archived participant history and confirm visible local
    degradation while excerpt/transcript/todos remain intact.
 5. Exercise Save/browser actions against both ordinary and long sessions.
+
+## PR #85 review remediation — 2026-07-24
+
+- Addressed review findings 1–11, 13–18, and 20–22.
+- Deferred findings 12 and 19 are explicit in
+  `.todo/tech-debt/2026-07-24-workshop-session-storage-bounds.md`.
+- The independent responsibility audit and later extraction triggers are in
+  `.todo/tech-debt/2026-07-24-workshop-session-responsibility-follow-ups.md`.
+- `npm run typecheck` passed.
+- `npm test -- --runInBand`: 124 suites, 1,213 tests, 1 snapshot passed.
+- `npm run lint`: 0 errors, 768 warnings.
+- `npm run build` and bundle sentinel verification passed.
+- `git diff --check` passed.
+- Remediated bundle sizes: `extension.js` 2,556,639 bytes;
+  `webview.js` 888,561 bytes.
+- Remediation is local and has not yet received GitHub CI.
 
 ## References
 
