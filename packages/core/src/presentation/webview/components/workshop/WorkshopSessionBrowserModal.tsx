@@ -18,12 +18,15 @@ import {
 } from '@shared/constants/workshopPersonas';
 import { WORKSHOP_PERSONA_FOCUS_ICONS } from './workshopPersonaIcons';
 import { WorkshopModalShell } from './WorkshopModalShell';
+import { relativeSessionTime } from '@utils/relativeSessionTime';
 
 interface WorkshopSessionBrowserModalProps {
   open: boolean;
   available: boolean | null;
   unavailableReason?: 'no-workspace' | 'multi-root';
   current?: WorkshopSessionSummary;
+  /** Named session currently associated with the live room, if any. */
+  activeSessionId?: string;
   sessions: WorkshopSessionSummary[];
   truncated: boolean;
   searchTruncated: boolean;
@@ -53,35 +56,6 @@ interface SessionGroup {
 
 const localDateTime = (timestamp: number): string =>
   Number.isFinite(timestamp) ? new Date(timestamp).toLocaleString() : 'Unknown date';
-
-const relativeTime = (timestamp: number): string => {
-  if (!Number.isFinite(timestamp)) {
-    return 'Unknown time';
-  }
-  const elapsed = Date.now() - timestamp;
-  if (elapsed >= 0 && elapsed < 60_000) {
-    return 'just now';
-  }
-  if (elapsed >= 0 && elapsed < 3_600_000) {
-    return `${Math.max(1, Math.floor(elapsed / 60_000))}m ago`;
-  }
-  if (elapsed >= 0 && elapsed < 86_400_000) {
-    return `${Math.max(1, Math.floor(elapsed / 3_600_000))}h ago`;
-  }
-  const value = new Date(timestamp);
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  if (value.toDateString() === yesterday.toDateString()) {
-    return `Yesterday · ${value.toLocaleTimeString(undefined, {
-      hour: 'numeric',
-      minute: '2-digit'
-    })}`;
-  }
-  return value.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric'
-  });
-};
 
 const startOfDay = (date: Date): number =>
   new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
@@ -141,6 +115,7 @@ export const WorkshopSessionBrowserModal: React.FC<WorkshopSessionBrowserModalPr
   available,
   unavailableReason,
   current,
+  activeSessionId,
   sessions,
   truncated,
   searchTruncated,
@@ -362,6 +337,7 @@ export const WorkshopSessionBrowserModal: React.FC<WorkshopSessionBrowserModalPr
                     key={session.sessionId}
                     session={session}
                     current={false}
+                    active={session.sessionId === activeSessionId}
                     disabled={stateChangingDisabled}
                     actionPending={actionPending}
                     editing={editingId === session.sessionId}
@@ -414,6 +390,8 @@ export const WorkshopSessionBrowserModal: React.FC<WorkshopSessionBrowserModalPr
 interface SessionBrowserRowProps {
   session: WorkshopSessionSummary;
   current: boolean;
+  /** True when this named checkpoint is the live Workshop room. */
+  active?: boolean;
   disabled: boolean;
   actionPending?: WorkshopSessionAction;
   editing: boolean;
@@ -434,6 +412,7 @@ interface SessionBrowserRowProps {
 const SessionBrowserRow: React.FC<SessionBrowserRowProps> = ({
   session,
   current,
+  active = false,
   disabled,
   actionPending,
   editing,
@@ -465,7 +444,11 @@ const SessionBrowserRow: React.FC<SessionBrowserRowProps> = ({
 
   return (
     <article
-      className={`pm-ws-session-browser-row${current ? ' pm-ws-session-current' : ''}`}
+      className={[
+        'pm-ws-session-browser-row',
+        current ? 'pm-ws-session-current' : '',
+        active ? 'pm-ws-session-active' : ''
+      ].filter(Boolean).join(' ')}
       onClick={openFromRow}
     >
       <div
@@ -500,6 +483,7 @@ const SessionBrowserRow: React.FC<SessionBrowserRowProps> = ({
             <strong title={session.title}>{session.title}</strong>
           )}
           {current && <span className="pm-ws-session-badge">Current · autosaved</span>}
+          {active && <span className="pm-ws-session-badge">Open in Workshop</span>}
         </div>
         <div className="pm-ws-session-row-meta" title={[
           workshopPersonaLabel(session.hostPersonaId),
@@ -516,7 +500,7 @@ const SessionBrowserRow: React.FC<SessionBrowserRowProps> = ({
           <span>·</span>
           <span>{session.excerptWordCount.toLocaleString()} words</span>
           <span>·</span>
-          <span>{relativeTime(session.updatedAt)}</span>
+          <span>{relativeSessionTime(session.updatedAt)}</span>
           <span>·</span>
           <span>{session.excerptLabel ?? 'No excerpt'}</span>
         </div>
@@ -533,6 +517,73 @@ const SessionBrowserRow: React.FC<SessionBrowserRowProps> = ({
           </div>
         )}
       </div>
+      {!current && (
+        <div
+          className={`pm-ws-session-utility-actions${
+            confirmDelete || editing ? ' pm-ws-session-utility-actions-live' : ''
+          }`}
+        >
+          {confirmDelete ? (
+            <>
+              <button
+                className="pm-ws-session-icon pm-ws-session-delete-confirm"
+                type="button"
+                disabled={disabled}
+                aria-label={`Confirm delete ${session.title}`}
+                onClick={() => onConfirmDelete(session)}
+              >
+                <Icon name="check" size={14} />
+              </button>
+              <button
+                className="pm-ws-session-icon"
+                type="button"
+                aria-label={`Keep ${session.title}`}
+                onClick={onCancelDelete}
+              >
+                <Icon name="x" size={13} />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className="pm-ws-session-icon"
+                type="button"
+                disabled={disabled}
+                aria-label={`Rename ${session.title}`}
+                onClick={() => onBeginRename(session)}
+              >
+                <Icon name="pen" size={13} />
+              </button>
+              <button
+                className="pm-ws-session-icon"
+                type="button"
+                disabled={disabled}
+                aria-label={`Duplicate ${session.title}`}
+                onClick={() => onDuplicate(session)}
+              >
+                <Icon name="copy" size={13} />
+              </button>
+              <button
+                className="pm-ws-session-icon"
+                type="button"
+                aria-label={`Reveal ${session.title} file`}
+                onClick={() => onReveal(session.sessionId)}
+              >
+                <Icon name="doc" size={13} />
+              </button>
+              <button
+                className="pm-ws-session-icon pm-ws-session-delete"
+                type="button"
+                disabled={disabled}
+                aria-label={`Delete ${session.title}`}
+                onClick={() => onBeginDelete(session)}
+              >
+                <Icon name="trash" size={14} />
+              </button>
+            </>
+          )}
+        </div>
+      )}
       <div className="pm-ws-session-row-actions">
         {current ? (
           <button
@@ -543,77 +594,14 @@ const SessionBrowserRow: React.FC<SessionBrowserRowProps> = ({
             <Icon name="doc" size={13} /> Reveal
           </button>
         ) : (
-          <>
-            <div className="pm-ws-session-utility-actions">
-              {confirmDelete ? (
-                <>
-                  <button
-                    className="pm-ws-session-icon pm-ws-session-delete-confirm"
-                    type="button"
-                    disabled={disabled}
-                    aria-label={`Confirm delete ${session.title}`}
-                    onClick={() => onConfirmDelete(session)}
-                  >
-                    <Icon name="check" size={14} />
-                  </button>
-                  <button
-                    className="pm-ws-session-icon"
-                    type="button"
-                    aria-label={`Keep ${session.title}`}
-                    onClick={onCancelDelete}
-                  >
-                    <Icon name="x" size={13} />
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    className="pm-ws-session-icon"
-                    type="button"
-                    disabled={disabled}
-                    aria-label={`Rename ${session.title}`}
-                    onClick={() => onBeginRename(session)}
-                  >
-                    <Icon name="pen" size={13} />
-                  </button>
-                  <button
-                    className="pm-ws-session-icon"
-                    type="button"
-                    disabled={disabled}
-                    aria-label={`Duplicate ${session.title}`}
-                    onClick={() => onDuplicate(session)}
-                  >
-                    <Icon name="copy" size={13} />
-                  </button>
-                  <button
-                    className="pm-ws-session-icon"
-                    type="button"
-                    aria-label={`Reveal ${session.title} file`}
-                    onClick={() => onReveal(session.sessionId)}
-                  >
-                    <Icon name="doc" size={13} />
-                  </button>
-                  <button
-                    className="pm-ws-session-icon pm-ws-session-delete"
-                    type="button"
-                    disabled={disabled}
-                    aria-label={`Delete ${session.title}`}
-                    onClick={() => onBeginDelete(session)}
-                  >
-                    <Icon name="x" size={13} />
-                  </button>
-                </>
-              )}
-            </div>
-            <button
-              className="pm-ws-session-primary pm-ws-session-open"
-              type="button"
-              disabled={disabled}
-              onClick={() => onOpen(session)}
-            >
-              {actionPending === 'open' ? 'Opening…' : 'Open'}
-            </button>
-          </>
+          <button
+            className="pm-ws-session-primary pm-ws-session-open"
+            type="button"
+            disabled={disabled}
+            onClick={() => onOpen(session)}
+          >
+            {actionPending === 'open' ? 'Opening…' : 'Open'}
+          </button>
         )}
       </div>
     </article>

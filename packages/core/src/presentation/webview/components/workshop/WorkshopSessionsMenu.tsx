@@ -10,6 +10,7 @@ import * as React from 'react';
 import { WorkshopSessionSummary } from '@messages';
 import { Icon } from '@components/shared/Icon';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
+import { relativeSessionTime } from '@utils/relativeSessionTime';
 
 interface WorkshopSessionsMenuProps {
   open: boolean;
@@ -24,33 +25,6 @@ interface WorkshopSessionsMenuProps {
   onBrowseSessions: () => void;
   onOpenSession: (session: WorkshopSessionSummary) => void;
 }
-
-const relativeSessionTime = (timestamp: number): string => {
-  if (!Number.isFinite(timestamp)) {
-    return 'Unknown time';
-  }
-  const elapsed = Date.now() - timestamp;
-  if (elapsed >= 0 && elapsed < 60_000) {
-    return 'just now';
-  }
-  if (elapsed >= 0 && elapsed < 3_600_000) {
-    return `${Math.max(1, Math.floor(elapsed / 60_000))}m ago`;
-  }
-  if (elapsed >= 0 && elapsed < 86_400_000) {
-    return `${Math.max(1, Math.floor(elapsed / 3_600_000))}h ago`;
-  }
-  const date = new Date(timestamp);
-  const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
-  if (date.toDateString() === yesterday.toDateString()) {
-    return `Yesterday · ${date.toLocaleTimeString(undefined, {
-      hour: 'numeric',
-      minute: '2-digit'
-    })}`;
-  }
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-};
 
 export const WorkshopSessionsMenu: React.FC<WorkshopSessionsMenuProps> = ({
   open,

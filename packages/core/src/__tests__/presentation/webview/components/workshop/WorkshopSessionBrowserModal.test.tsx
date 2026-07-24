@@ -78,6 +78,13 @@ describe('WorkshopSessionBrowserModal', () => {
     expect(screen.getByRole('button', { name: 'New session' })).not.toBeNull();
   });
 
+  it('badges the named session that is the live Workshop room', () => {
+    renderModal({ activeSessionId: 'named-id' });
+
+    expect(screen.getByText('Open in Workshop')).not.toBeNull();
+    expect(screen.getByText('Current · autosaved')).not.toBeNull();
+  });
+
   it('uses each saved host persona focus icon in session history', () => {
     const { view } = renderModal();
     const jillGlyph = view.container.querySelector('[data-persona-id="jill"]');

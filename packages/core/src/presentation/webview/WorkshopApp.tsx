@@ -52,6 +52,7 @@ import { WorkshopPersonaSchematicModal } from './components/workshop/schematic/W
 import { WorkshopContextSelectorModal } from './components/workshop/WorkshopContextSelectorModal';
 import { WorkshopConversationBehaviorModal } from './components/workshop/WorkshopConversationBehaviorModal';
 import { WorkshopSessionBrowserModal } from './components/workshop/WorkshopSessionBrowserModal';
+import { WorkshopConfirmDialog } from './components/workshop/WorkshopConfirmDialog';
 import {
   WorkshopSaveSessionManifest,
   WorkshopSaveSessionModal
@@ -395,23 +396,35 @@ export const WorkshopApp: React.FC = () => {
     setSessionBrowserOpen(true);
   }, [workshop.setSessionSearchQuery]);
   const closeSessionBrowser = React.useCallback(() => setSessionBrowserOpen(false), []);
+  // window.confirm never renders inside VS Code's sandboxed webview (it
+  // returns false without a dialog), so state replacement confirms in-webview.
+  const [sessionConfirm, setSessionConfirm] = React.useState<
+    | { kind: 'new' }
+    | { kind: 'open'; sessionId: string; title: string }
+    | null
+  >(null);
   const startNewSession = React.useCallback(() => {
-    if (window.confirm(
-      'Start a new Workshop session? The pinned excerpt and standing context stay; ' +
-      'the thread, tasks, guests, and conversation memory reset.'
-    )) {
-      workshop.resetSession();
-    }
-  }, [workshop.resetSession]);
+    setSessionConfirm({ kind: 'new' });
+  }, []);
   const openStoredSession = React.useCallback((session: typeof workshop.savedSessionSummaries[number]) => {
-    if (
-      window.confirm(
-        `Open “${session.title}”? Your current Workshop room will be replaced.`
-      )
-    ) {
-      workshop.openSession(session.sessionId);
+    setSessionConfirm({
+      kind: 'open',
+      sessionId: session.sessionId,
+      title: session.title
+    });
+  }, []);
+  const cancelSessionConfirm = React.useCallback(() => setSessionConfirm(null), []);
+  const acceptSessionConfirm = React.useCallback(() => {
+    if (!sessionConfirm) {
+      return;
     }
-  }, [workshop.openSession]);
+    setSessionConfirm(null);
+    if (sessionConfirm.kind === 'new') {
+      workshop.resetSession();
+    } else {
+      workshop.openSession(sessionConfirm.sessionId);
+    }
+  }, [sessionConfirm, workshop.resetSession, workshop.openSession]);
   const openBehaviorModal = React.useCallback(() => setBehaviorModalOpen(true), []);
   const closeBehaviorModal = React.useCallback(() => setBehaviorModalOpen(false), []);
   const openContextSelector = React.useCallback((mode: 'attach' | 'excerpt' | 'message' = 'attach') => {
@@ -1037,6 +1050,7 @@ export const WorkshopApp: React.FC = () => {
         available={workshop.sessionsAvailable}
         unavailableReason={workshop.sessionsUnavailableReason ?? workshop.persistenceUnavailableReason}
         current={workshop.currentSessionSummary}
+        activeSessionId={activeNamedSession?.sessionId}
         sessions={workshop.savedSessionSummaries}
         truncated={workshop.sessionsTruncated}
         searchTruncated={workshop.sessionsSearchTruncated}
@@ -1054,6 +1068,19 @@ export const WorkshopApp: React.FC = () => {
         onDuplicate={workshop.duplicateSession}
         onReveal={workshop.revealSession}
         onDelete={workshop.deleteSession}
+      />
+      <WorkshopConfirmDialog
+        open={sessionConfirm !== null}
+        title={sessionConfirm?.kind === 'open'
+          ? `Open “${sessionConfirm.title}”?`
+          : 'Start a new session?'}
+        body={sessionConfirm?.kind === 'open'
+          ? 'Your current Workshop room will be replaced.'
+          : 'The pinned excerpt and standing context stay; the thread, tasks, ' +
+            'guests, and conversation memory reset.'}
+        confirmLabel={sessionConfirm?.kind === 'open' ? 'Open session' : 'New session'}
+        onConfirm={acceptSessionConfirm}
+        onCancel={cancelSessionConfirm}
       />
       <WorkshopToast toast={toast} />
     </div>
