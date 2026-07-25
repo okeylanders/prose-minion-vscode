@@ -172,6 +172,34 @@ describe('WorkshopSessionService committed persistence', () => {
         (value as { counters: { turn: number } }).counters.turn = 0;
       },
       message: 'turn counter trails'
+    },
+    /**
+     * Sprint 13A: the aggregate always clears one slot when it fills the
+     * other, so this state is unreachable through the live API — which is
+     * exactly why it needs a test. The guard exists for a hand-edited or
+     * corrupted checkpoint, and without this case it could be inverted or
+     * dropped and nothing would fail red. A malformed state would then
+     * hydrate silently, with `excerpt ?? shelvedExcerpt` quietly picking one
+     * slot and ignoring the other's version.
+     */
+    {
+      label: 'a checkpoint claims the passage is both pinned and shelved',
+      mutate: (value: unknown) => {
+        const state = value as { excerpt: unknown; shelvedExcerpt: unknown };
+        state.shelvedExcerpt = JSON.parse(JSON.stringify(state.excerpt));
+      },
+      message: 'both a pinned and a shelved excerpt'
+    },
+    {
+      label: 'a checkpoint queues an excerpt delivery and its withdrawal at once',
+      mutate: (value: unknown) => {
+        const revisions = (value as {
+          revisions: { excerpt: number; pendingExcerpt?: number; pendingExcerptWithdrawal?: true };
+        }).revisions;
+        revisions.pendingExcerpt = revisions.excerpt;
+        revisions.pendingExcerptWithdrawal = true;
+      },
+      message: 'queues both an excerpt delivery and its withdrawal'
     }
   ])('rejects raw state when $label', ({ mutate, message }) => {
     const value: unknown = buildCompleteState();

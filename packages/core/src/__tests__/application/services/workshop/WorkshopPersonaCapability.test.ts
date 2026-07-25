@@ -81,6 +81,49 @@ describe('WorkshopPersonaCapability', () => {
     events
   });
 
+  /**
+   * The same adapter for an OPEN conversation — a room that has never been
+   * given a passage. `capability()` above is fed by a `beforeEach` that always
+   * pins one, so it cannot express the state the excerpt-scoped guards exist
+   * for: the sprint's defense-in-depth is that `analysis.run` is removed from
+   * the capability instruction AND refused if a non-compliant persona emits
+   * the call anyway, and only the second half needs this fixture.
+   */
+  const openChatCapability = () => {
+    const openSession = new WorkshopSessionService(() => 7);
+    openSession.setSessionScope('open');
+    openSession.beginPersonaMessage('open-request', 'Let us just talk.');
+    return new WorkshopPersonaCapabilityFactory(
+      dictionary,
+      analysis,
+      resourceProviderFactory,
+      openSession,
+      log
+    ).create({
+      requestId: 'open-request',
+      excerptVersion: openSession.getExcerptVersion(),
+      personaId: 'jill',
+      excerpt: openSession.getExcerpt(),
+      signal: controller.signal,
+      events
+    });
+  };
+
+  it('refuses excerpt analysis in an open conversation, whatever the persona was told', async () => {
+    const result = await openChatCapability().fulfill({
+      capability: 'analysis.run',
+      toolId: 'continuity'
+    });
+
+    // The refusal is host-side and unconditional: the instruction merely omits
+    // the example, so a persona that emits the call regardless must still be
+    // stopped before the tool runs against no prose at all.
+    expect(analysis.run).not.toHaveBeenCalled();
+    expect(result.deliveredItems).toEqual(['analysis.run:rejected']);
+    expect(result.evidence).toContain('open conversation with no excerpt');
+    expect(result.deliveredSources).toEqual([]);
+  });
+
   it('calls the dictionary service directly and records exact, versioned evidence', async () => {
     const adapter = capability();
     const result = await adapter.fulfill({
