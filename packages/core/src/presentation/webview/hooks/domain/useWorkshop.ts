@@ -686,7 +686,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
       setExcerpt(session.excerpt ?? null);
       setScopeState(session.scope);
       setShelvedExcerpt(session.shelvedExcerpt ?? null);
-      setRoomHasMemory(session.hasConversation);
+      setRoomHasMemory(session.roomHasMemory);
       setContextAttachments(session.contextAttachments ?? []);
       setPendingMessageAttachments(session.pendingMessageAttachments ?? []);
       setContextPending(session.pendingHostUpdate?.context ?? false);

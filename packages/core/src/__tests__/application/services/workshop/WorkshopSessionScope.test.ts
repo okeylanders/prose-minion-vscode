@@ -9,6 +9,7 @@
  */
 
 import {
+  WorkshopScopeLockedError,
   WorkshopSessionService,
   workshopTextNoteLabel
 } from '@/application/services/workshop/WorkshopSessionService';
@@ -166,12 +167,20 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
       expect(service.getShelvedExcerpt()).toBeDefined();
     });
 
-    it('names the recovery path in the refusal, rather than only refusing', () => {
+    it('returns a typed refusal so presentation owns the recovery copy', () => {
       pin();
       startHostConversation();
 
-      expect(() => service.setSessionScope('open'))
-        .toThrow(/Start a new session[\s\S]*carry over/);
+      try {
+        service.setSessionScope('open');
+        throw new Error('Expected the scope change to be refused');
+      } catch (error) {
+        expect(error).toBeInstanceOf(WorkshopScopeLockedError);
+        expect(error).toMatchObject({
+          code: 'workshop-scope-locked',
+          attempt: 'set this session to an open conversation'
+        });
+      }
     });
 
     it('still allows revising the pinned passage — that is not a path change', () => {
@@ -193,14 +202,39 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
      * session holds a turn before the writer acts. A turn-based lock would
      * fire on session creation and strand the writer on the path chooser.
      */
-    it('is not tripped by the session markers every room records before the writer acts', () => {
+    it('is not tripped by a fresh session marker before the writer acts', () => {
       service.recordSessionMarker('start', 'Session started at 10:00 AM.');
-      service.recordSessionMarker('resume', 'Session resumed at 4:00 PM after 6h.');
 
       expect(service.getSnapshot().turns.length).toBeGreaterThan(0);
       expect(service.hasRoomMemory()).toBe(false);
       expect(() => service.setSessionScope('open')).not.toThrow();
       expect(service.getScope()).toBe('open');
+    });
+
+    it('locks on a persona guest and stays locked after the guest is dismissed', () => {
+      pin();
+      const writerTurn = service.beginPersonaGuestJoin(
+        'margot',
+        'guest-join',
+        'Read this with me.'
+      );
+      const guestTurn = service.completeRun(
+        'guest-join',
+        'The voice pulls away in the second paragraph.',
+        undefined,
+        false,
+        'guest-conv'
+      )!;
+
+      expect(service.hasRoomMemory()).toBe(true);
+      expect(service.dismissPersonaGuest('margot')).toBe('guest-conv');
+      expect(service.hasRoomMemory()).toBe(true);
+      expect(() => service.setSessionScope('open'))
+        .toThrow(WorkshopScopeLockedError);
+      // Dismissal retires the provider sidecar, not the historical exchange.
+      // It remains honest host evidence because the passage path stayed fixed.
+      expect(service.collectUnseenGuestExchangesForHost().map((turn) => turn.id))
+        .toEqual([writerTurn.id, guestTurn.id]);
     });
 
     it('is not tripped by a run that failed without leaving a conversation', () => {
@@ -492,11 +526,46 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
       };
 
       const restored = new WorkshopSessionService(() => ++clock);
-      restored.hydrateCommittedState(legacy, { host: 'host-conv' }, service.getConversationBehavior());
+      const result = restored.hydrateCommittedState(
+        legacy,
+        { host: 'host-conv' },
+        service.getConversationBehavior()
+      );
 
       expect(restored.getScope()).toBe('excerpt');
       expect(restored.getExcerpt()?.version).toBe(1);
       expect(restored.getShelvedExcerpt()).toBeUndefined();
+      expect(result.migrations).toEqual([
+        'restored-undelivered-withdrawal',
+        'discarded-legacy-scope-transition'
+      ]);
+    });
+
+    it('normalizes a legacy open conversation that already carries an excerpt', () => {
+      pin();
+      startHostConversation();
+      const legacy = {
+        ...service.exportCommittedState(),
+        // Sprint 13A could persist this hybrid through both add and re-pin.
+        scope: 'open' as const
+      };
+
+      const restored = new WorkshopSessionService(() => ++clock);
+      const result = restored.hydrateCommittedState(
+        legacy,
+        { host: 'host-conv-restored' },
+        service.getConversationBehavior()
+      );
+
+      expect(result.migrations).toContain('normalized-open-session-with-excerpt');
+      expect(restored.getScope()).toBe('excerpt');
+      expect(restored.getExcerpt()?.version).toBe(1);
+      expect(restored.hasRoomMemory()).toBe(true);
+      expect(() => restored.replaceExcerpt({
+        text: 'The passage remains revisable.',
+        source: { kind: 'manual' }
+      })).not.toThrow();
+      expect(restored.getExcerpt()?.version).toBe(2);
     });
 
     it('leaves a legacy checkpoint alone when its withdrawal DID ship', () => {
@@ -518,7 +587,33 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
       expect(restored.getShelvedExcerpt()?.version).toBe(1);
     });
 
-    it('discards a legacy delivery reason rather than failing the session open', () => {
+    it('treats a legacy delivery reason as a revision when host memory survives', () => {
+      pin();
+      startHostConversation();
+      service.replaceExcerpt({ text: 'A later draft.', source: { kind: 'manual' } });
+      const exported = service.exportCommittedState();
+      const legacy = {
+        ...exported,
+        revisions: {
+          ...exported.revisions,
+          pendingExcerptChange: 'repinned' as const
+        }
+      };
+
+      const restored = new WorkshopSessionService(() => ++clock);
+      const result = restored.hydrateCommittedState(
+        legacy,
+        { host: 'host-conv-restored' },
+        service.getConversationBehavior()
+      );
+
+      expect(buildWorkshopHostUpdateFrame(restored.collectPendingHostUpdates()))
+        .toContain('revised the pinned excerpt');
+      expect(restored.exportCommittedState().revisions.pendingExcerptChange).toBeUndefined();
+      expect(result.migrations).toContain('discarded-legacy-scope-transition');
+    });
+
+    it('drops a legacy pending delivery when no host memory survives', () => {
       pin();
       const exported = service.exportCommittedState();
       const legacy = {
@@ -526,14 +621,14 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
         revisions: {
           ...exported.revisions,
           pendingExcerpt: 1,
-          pendingExcerptChange: 'repinned' as const
+          pendingExcerptChange: 'added' as const
         }
       };
 
       const restored = new WorkshopSessionService(() => ++clock);
-      expect(() =>
-        restored.hydrateCommittedState(legacy, { host: 'host-conv' }, service.getConversationBehavior())
-      ).not.toThrow();
+      restored.hydrateCommittedState(legacy, {}, service.getConversationBehavior());
+
+      expect(restored.collectPendingHostUpdates()).toBeUndefined();
       expect(restored.exportCommittedState().revisions.pendingExcerptChange).toBeUndefined();
     });
 

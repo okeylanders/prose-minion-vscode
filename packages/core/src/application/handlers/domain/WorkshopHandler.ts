@@ -26,6 +26,7 @@ import {
   WorkshopContextAttachmentInput,
   WorkshopExcerptReplacement,
   WorkshopMessageAttachmentInput,
+  WorkshopScopeLockedError,
   WorkshopScopeTransition,
   WorkshopSessionService,
   workshopTextNoteLabel
@@ -65,6 +66,9 @@ import {
   workshopMessageCompletionCopy
 } from '@/application/services/workshop/WorkshopRunCompletion';
 import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
+import {
+  WORKSHOP_SCOPE_LOCK_RECOVERY_MESSAGE
+} from '@shared/constants/workshopScope';
 import { isContextPathGroup } from '@shared/types/context';
 import {
   isWorkshopPersonaId,
@@ -178,6 +182,13 @@ const WORKSHOP_CONTEXT_EDIT_REFUSALS: Readonly<
   'over-budget': (remainingWords) =>
     `That edit exceeds the shared context budget — ${remainingWords.toLocaleString('en-US')} words are available. Trim it, or remove another attachment first.`
 });
+
+const workshopScopeMutationError = (error: unknown, fallback: string): string =>
+  error instanceof WorkshopScopeLockedError
+    ? WORKSHOP_SCOPE_LOCK_RECOVERY_MESSAGE
+    : error instanceof Error
+      ? error.message
+      : fallback;
 
 const isAbsolutePath = (filePath: string): boolean =>
   filePath.startsWith('/') || /^[A-Za-z]:[\\/]/.test(filePath) || filePath.startsWith('\\\\');
@@ -1186,7 +1197,7 @@ export class WorkshopHandler {
     if (this.rejectExcerptMutationWhileRunning()) {
       return;
     }
-    if (!this.replaceExcerpt({ text, source })) {
+    if (!this.tryReplaceExcerpt({ text, source })) {
       return;
     }
     this.sessionPersistence.markDirty('excerpt replaced');
@@ -1390,9 +1401,9 @@ export class WorkshopHandler {
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // Session scope (Sprint 13A §2/§4) — the path chooser and both reversals.
-  // Every one is a context transition inside ONE retained session: no
-  // conversation, transcript, task, or attachment is discarded.
+  // Session scope (ADR 2026-07-25) — choose or revise the path only before
+  // participant memory exists. Once locked, the aggregate refuses the change
+  // and the handler names the new-session recovery path.
   // ───────────────────────────────────────────────────────────────────────────
 
   async handleSetSessionScope(message: WorkshopSetSessionScopeMessage): Promise<void> {
@@ -1414,7 +1425,7 @@ export class WorkshopHandler {
     } catch (error) {
       this.sendError(
         'workshop',
-        error instanceof Error ? error.message : 'That session scope is unavailable.'
+        workshopScopeMutationError(error, 'That session scope is unavailable.')
       );
     }
   }
@@ -1428,7 +1439,7 @@ export class WorkshopHandler {
     } catch (error) {
       this.sendError(
         'workshop',
-        error instanceof Error ? error.message : 'There is no excerpt on the shelf.'
+        workshopScopeMutationError(error, 'There is no excerpt on the shelf.')
       );
     }
   }
@@ -1756,7 +1767,7 @@ export class WorkshopHandler {
     if (this.rejectExcerptMutationWhileRunning()) {
       return;
     }
-    if (!this.replaceExcerpt({
+    if (!this.tryReplaceExcerpt({
       text: resource.text,
       source: {
         kind: 'file',
@@ -2157,7 +2168,7 @@ export class WorkshopHandler {
       return;
     }
 
-    if (!this.replaceExcerpt({
+    if (!this.tryReplaceExcerpt({
       text: loaded.text,
       source,
       truncation: loaded.truncation,
@@ -2225,7 +2236,7 @@ export class WorkshopHandler {
       return;
     }
 
-    if (!this.replaceExcerpt({
+    if (!this.tryReplaceExcerpt({
       text: loaded.text,
       source: resolvedSource,
       truncation: loaded.truncation,
@@ -2537,13 +2548,16 @@ export class WorkshopHandler {
   }
 
   /**
-   * Pin or revise the excerpt. Returns false when the aggregate refused —
+   * Try to pin or revise the excerpt. Centralized because four intake paths
+   * share the same aggregate transition and refusal behavior.
+   *
+   * Returns false when the aggregate refused —
    * the scope lock (ADR 2026-07-25) will not let an open conversation adopt a
    * passage once it has a memory. The refusal names the recovery path, so it
    * belongs in front of the writer rather than escaping as an unhandled
    * rejection at the IPC boundary.
    */
-  private replaceExcerpt(input: {
+  private tryReplaceExcerpt(input: {
     text: string;
     source: WorkshopExcerptSource;
     truncation?: WorkshopExcerptTruncation;
@@ -2553,9 +2567,10 @@ export class WorkshopHandler {
     try {
       replacement = this.session.replaceExcerpt(input);
     } catch (error) {
-      const details = error instanceof Error ? error.message : String(error);
-      this.outputChannel.appendLine(`[WorkshopHandler] Excerpt pin refused: ${details}`);
-      this.sendError('workshop', details);
+      this.sendError(
+        'workshop',
+        workshopScopeMutationError(error, 'That excerpt cannot be pinned in this session.')
+      );
       return false;
     }
     this.discardConversations(replacement.disposedConversationIds);

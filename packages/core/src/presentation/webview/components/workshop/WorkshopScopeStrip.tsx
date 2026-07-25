@@ -14,6 +14,9 @@
 import * as React from 'react';
 import { WorkshopSessionScope } from '@messages';
 import { Icon } from '@components/shared/Icon';
+import {
+  WORKSHOP_SCOPE_LOCK_RECOVERY_MESSAGE
+} from '@shared/constants/workshopScope';
 
 interface WorkshopScopeStripProps {
   /**
@@ -63,7 +66,7 @@ export const WorkshopScopeStrip: React.FC<WorkshopScopeStripProps> = ({
       <span className="pm-ws-scope-text">Open conversation · No excerpt yet</span>
       <span className="pm-ws-scope-note">
         {roomHasMemory
-          ? `${hostLabel} hasn’t read any pages — start a new session to work on a passage`
+          ? `${hostLabel} hasn’t read any pages. ${WORKSHOP_SCOPE_LOCK_RECOVERY_MESSAGE}`
           : `${hostLabel} hasn’t read any pages`}
       </span>
       {/* Both affordances are pre-lock only. Once the host has been answering

@@ -45,7 +45,7 @@ describe('WorkshopScopeStrip — open conversation', () => {
 
     expect(screen.queryByRole('button', { name: /Add excerpt/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /Re-pin/ })).toBeNull();
-    expect(screen.getByText(/start a new session to work on a passage/)).toBeTruthy();
+    expect(screen.getByText(/Start a new session to change this/)).toBeTruthy();
   });
 });
 

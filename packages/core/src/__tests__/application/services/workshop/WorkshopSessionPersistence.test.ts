@@ -321,7 +321,8 @@ describe('WorkshopSessionService committed persistence', () => {
 
     expect(result).toEqual({
       discardedConversationIds: [],
-      degradedConversationKeys: []
+      degradedConversationKeys: [],
+      migrations: []
     });
     expect(restored.getHostConversationId()).toBe('host-runtime-after-open');
     expect(restored.getToolSidecarConversationId('prose')).toBe('tool-runtime-after-open');

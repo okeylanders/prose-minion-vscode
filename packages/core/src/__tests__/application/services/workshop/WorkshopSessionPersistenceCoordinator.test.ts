@@ -222,6 +222,24 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(session.getExcerpt()?.text).toBe('The restored manuscript.');
     expect(session.getSnapshot().turns.map((turn) => turn.artifact))
       .toEqual(['session_start', 'session_resume']);
+    // Exercise the actual persistence resume path named by ADR 2026-07-25,
+    // not merely two marker primitives on one never-persisted aggregate.
+    expect(session.hasRoomMemory()).toBe(false);
+    expect(() => session.setSessionScope('open')).not.toThrow();
+    expect(session.getScope()).toBe('open');
+  });
+
+  it('logs when hydration normalizes a legacy open session carrying an excerpt', async () => {
+    current = persistedSession('legacy-hybrid', 'Legacy hybrid', 'The restored manuscript.');
+    current.workshop.scope = 'open';
+    const coordinator = createCoordinator();
+
+    await coordinator.initialize();
+
+    expect(session.getScope()).toBe('excerpt');
+    expect(log.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('normalized-open-session-with-excerpt')
+    );
   });
 
   it('resumes the exact associated named checkpoint when current and named share an identity', async () => {

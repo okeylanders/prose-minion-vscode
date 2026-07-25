@@ -36,6 +36,9 @@ import {
   workshopExcerptTitle
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import {
+  WORKSHOP_SCOPE_LOCK_RECOVERY_MESSAGE
+} from '@shared/constants/workshopScope';
 
 export const EXCERPT_WORD_BUDGET = PROMPT_BUDGETS.fileExcerpt.words;
 
@@ -55,7 +58,7 @@ interface ExcerptPanelProps {
    * the passage makes it live just as the host does — and, per ADR
    * 2026-07-25, settles the session path: the reversals below disappear.
    */
-  locked: boolean;
+  roomHasMemory: boolean;
   /** Open the shared Edit/Preview sheet to paste or type the passage. */
   onOpenPasteSheet: () => void;
   /** Ask the host to open its file picker and set the chosen file's content. */
@@ -102,7 +105,7 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
   scope,
   hostLabel,
   isRunning,
-  locked,
+  roomHasMemory,
   onOpenPasteSheet,
   onChooseFile,
   onRereadFile,
@@ -129,7 +132,7 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
             <Icon name="doc" size={14} /> No excerpt yet
           </div>
           <div className="pm-ws-no-excerpt-desc">
-            {locked
+            {roomHasMemory
               ? `${hostLabel} hasn’t read any pages, and this conversation has started without them. Context attachments below still ride along with every message.`
               : `${hostLabel} hasn’t read any pages. Add one whenever you’re ready — this conversation stays, and the session keeps its history. Context attachments below still ride along with every message.`}
           </div>
@@ -137,13 +140,12 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
               the host has been answering without one (ADR 2026-07-25). The
               card stops offering and names the way out instead — a new
               session carries the excerpt and context across. */}
-          {locked ? (
+          {roomHasMemory ? (
             <div className="pm-ws-no-excerpt-desc pm-ws-no-excerpt-locked">
-              {'Start a new session to work on a passage. Your excerpt'
-                + (shelvedExcerpt && shelvedTitle
-                  ? ` (${shelvedTitle} v${shelvedExcerpt.version})`
-                  : '')
-                + ' and context attachments carry over.'}
+              {WORKSHOP_SCOPE_LOCK_RECOVERY_MESSAGE}
+              {shelvedExcerpt && shelvedTitle
+                ? ` Set-aside passage: ${shelvedTitle} v${shelvedExcerpt.version}.`
+                : ''}
             </div>
           ) : (
             <>
@@ -264,7 +266,7 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
           <Icon name="doc" size={12} /> Excerpt
         </div>
         <span className="pm-ws-pill">Excerpt · v{excerpt.version}</span>
-        {locked ? <span className="pm-ws-pill pm-ws-pill-lock">Session live</span> : null}
+        {roomHasMemory ? <span className="pm-ws-pill pm-ws-pill-lock">Session live</span> : null}
       </div>
 
       <div className="pm-ws-provenance">{sourceLine(excerpt.source)}</div>
@@ -277,7 +279,7 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
         </p>
       )}
       <div className="pm-ws-excerpt-actions">
-        {locked && fileBacked ? (
+        {roomHasMemory && fileBacked ? (
           <button
             className="pm-ws-action-btn"
             type="button"
@@ -295,14 +297,14 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
               disabled={isRunning}
               onClick={onOpenPasteSheet}
               title={
-                locked
+                roomHasMemory
                   ? 'Replace the excerpt text; the room keeps its memory and sees a new version'
                   : undefined
               }
             >
-              <Icon name="pen" size={12} /> {locked ? 'Update text…' : 'Paste or type'}
+              <Icon name="pen" size={12} /> {roomHasMemory ? 'Update text…' : 'Paste or type'}
             </button>
-            {locked ? null : (
+            {roomHasMemory ? null : (
               <button
                 className="pm-ws-action-btn"
                 type="button"
@@ -321,10 +323,9 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
           {hostLabel} has read the passage, un-reading it is not something the
           product can honestly deliver, so the reversal becomes a new session
           (ADR 2026-07-25, superseding Sprint 13A §4). */}
-      {locked ? (
+      {roomHasMemory ? (
         <div className="pm-ws-excerpt-locked-note">
-          Start a new session to chat without this passage — it stays on the shelf, and your
-          context attachments carry over.
+          {WORKSHOP_SCOPE_LOCK_RECOVERY_MESSAGE}
         </div>
       ) : (
         <button

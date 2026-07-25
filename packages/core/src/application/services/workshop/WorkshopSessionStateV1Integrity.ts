@@ -9,7 +9,19 @@ import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
 
-export function validateWorkshopSessionStateV1(state: WorkshopSessionStateV1): void {
+export interface WorkshopSessionStateV1ValidationOptions {
+  /**
+   * The pre-lock product could persist `scope: open` with a pinned excerpt.
+   * Only raw-checkpoint preflight may tolerate it; hydration normalizes the
+   * state and validates again under the current invariant.
+   */
+  allowLegacyOpenSessionWithExcerpt?: boolean;
+}
+
+export function validateWorkshopSessionStateV1(
+  state: WorkshopSessionStateV1,
+  options: WorkshopSessionStateV1ValidationOptions = {}
+): void {
   const requireCounter = (value: number, label: string): void => {
     if (!Number.isSafeInteger(value) || value < 0) {
       throw new Error(`Persisted Workshop ${label} must be a non-negative safe integer`);
@@ -29,6 +41,13 @@ export function validateWorkshopSessionStateV1(state: WorkshopSessionStateV1): v
   // slots may hold it.
   if (state.excerpt && state.shelvedExcerpt) {
     throw new Error('Persisted Workshop state has both a pinned and a shelved excerpt');
+  }
+  if (
+    state.scope === 'open'
+    && state.excerpt !== undefined
+    && options.allowLegacyOpenSessionWithExcerpt !== true
+  ) {
+    throw new Error('Persisted Workshop open session cannot hold a pinned excerpt');
   }
   const versionedExcerpt = state.excerpt ?? state.shelvedExcerpt;
   if (versionedExcerpt) {

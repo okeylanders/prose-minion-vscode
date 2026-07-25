@@ -795,7 +795,7 @@ export interface WorkshopSessionSnapshot {
    * `session_start` marker before the writer acts, so a turn-based test would
    * report a locked room the instant one was created.
    */
-  hasConversation: boolean;
+  roomHasMemory: boolean;
   /** The public participant graph. Conversation ids remain host-private. */
   participants: WorkshopParticipantsSnapshot;
   /** The room's current writer-owned conversation behavior (ADR 2026-07-20). */

@@ -126,6 +126,11 @@ export interface WorkshopSessionStateV1 {
 export function parseWorkshopSessionStateV1(value: unknown): WorkshopSessionStateV1 {
   assertWorkshopSessionStateShape(value);
   const decoded = clonePersistedJson(value, 'workshop');
-  validateWorkshopSessionStateV1(decoded);
+  // Compatibility states are accepted only at the raw checkpoint boundary.
+  // Hydration runs the named V1 migration and validates its output again
+  // against current invariants before replacing the live aggregate.
+  validateWorkshopSessionStateV1(decoded, {
+    allowLegacyOpenSessionWithExcerpt: true
+  });
   return decoded;
 }

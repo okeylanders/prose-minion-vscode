@@ -988,7 +988,7 @@ export const WorkshopApp: React.FC = () => {
               scope={workshop.scope}
               hostLabel={activePersona.label}
               isRunning={roomMutationLocked}
-              locked={workshop.roomHasMemory}
+              roomHasMemory={workshop.roomHasMemory}
               onOpenPasteSheet={openPasteSheet}
               onChooseFile={openExcerptSelector}
               onRereadFile={workshop.rereadExcerpt}

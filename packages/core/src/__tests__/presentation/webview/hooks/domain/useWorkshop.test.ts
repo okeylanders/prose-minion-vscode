@@ -63,7 +63,7 @@ const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessio
         turns,
         totalTurns: turns.length,
         truncatedTurns: 0,
-        hasConversation: false,
+        roomHasMemory: false,
         participants: {
           host: { personaId: 'jill', hasConversation: false },
           toolSidecars: [],
@@ -531,7 +531,7 @@ describe('useWorkshop', () => {
           excerpt: { text: 'Pinned prose.', version: 1, source: { kind: 'manual' }, pinnedAt: 1 },
           turns: [makeTurn({ id: 't1', toolId: 'gestures', toolLabel: 'Gestures' })],
           selectedToolId: 'gestures',
-          hasConversation: true
+          roomHasMemory: true
         })
       );
     });
@@ -865,7 +865,7 @@ describe('useWorkshop', () => {
           personaGuests: [],
           chatTarget: { kind: 'tool', toolId: 'continuity' }
         },
-        hasConversation: true
+        roomHasMemory: true
       }));
     });
 
@@ -1005,7 +1005,7 @@ describe('useWorkshop', () => {
     });
 
     /**
-     * The scope lock (ADR 2026-07-25) reaches the webview as `hasConversation`
+     * The scope lock (ADR 2026-07-25) reaches the webview as `roomHasMemory`
      * — the same predicate the aggregate locks on, not a second guess at it.
      */
     it('mirrors the scope lock so surfaces can stop offering path changes', () => {
@@ -1016,7 +1016,7 @@ describe('useWorkshop', () => {
 
       act(() => result.current.handleSessionState(sessionState({
         scope: 'open',
-        hasConversation: true
+        roomHasMemory: true
       })));
       expect(result.current.roomHasMemory).toBe(true);
     });

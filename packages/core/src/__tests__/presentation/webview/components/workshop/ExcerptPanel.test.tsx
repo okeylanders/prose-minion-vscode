@@ -48,7 +48,7 @@ const renderPanel = (overrides: Partial<React.ComponentProps<typeof ExcerptPanel
     scope: null,
     hostLabel: 'Jill',
     isRunning: false,
-    locked: false,
+    roomHasMemory: false,
     onOpenPasteSheet: jest.fn(),
     onChooseFile: jest.fn(),
     onRereadFile: jest.fn(),
@@ -152,7 +152,7 @@ describe('ExcerptPanel — passage pinned', () => {
   it('offers Re-read from file when locked on a file-backed excerpt', () => {
     const { props } = renderPanel({
       scope: 'excerpt',
-      locked: true,
+      roomHasMemory: true,
       excerpt: excerptWith(fileSource)
     });
 
@@ -165,7 +165,7 @@ describe('ExcerptPanel — passage pinned', () => {
   it('offers Update text… when locked on typed or pasted origin', () => {
     const { props } = renderPanel({
       scope: 'excerpt',
-      locked: true,
+      roomHasMemory: true,
       excerpt: excerptWith({ kind: 'manual' })
     });
 
@@ -192,11 +192,11 @@ describe('ExcerptPanel — passage pinned', () => {
    * and must be replaced by the way out, not by silence.
    */
   it('withdraws the reversal once the room has a memory, and names the way out', () => {
-    renderPanel({ scope: 'excerpt', excerpt: excerptWith(fileSource), locked: true });
+    renderPanel({ scope: 'excerpt', excerpt: excerptWith(fileSource), roomHasMemory: true });
 
     expect(screen.queryByRole('button', { name: /set this aside/i })).toBeNull();
-    expect(screen.getByText(/Start a new session to chat without this passage/)).toBeTruthy();
-    expect(screen.getByText(/context attachments carry over/)).toBeTruthy();
+    expect(screen.getByText(/Start a new session to change this/)).toBeTruthy();
+    expect(screen.getByText(/excerpt and context carry over/)).toBeTruthy();
   });
 });
 
@@ -209,22 +209,22 @@ describe('ExcerptPanel — open conversation', () => {
   });
 
   it('closes that door once the conversation has started, and says where to go', () => {
-    renderPanel({ scope: 'open', excerpt: null, locked: true });
+    renderPanel({ scope: 'open', excerpt: null, roomHasMemory: true });
 
     expect(screen.queryByRole('button', { name: /paste or type/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /from project/i })).toBeNull();
-    expect(screen.getByText(/Start a new session to work on a passage/)).toBeTruthy();
+    expect(screen.getByText(/Start a new session to change this/)).toBeTruthy();
   });
 
   it('names the set-aside passage in the signpost so it is not lost track of', () => {
     renderPanel({
       scope: 'open',
       excerpt: null,
-      locked: true,
+      roomHasMemory: true,
       shelvedExcerpt: excerptWith(fileSource)
     });
 
     expect(screen.getByText(/carry over/)).toBeTruthy();
-    expect(screen.getByText(/Your excerpt \(05 v2\)/)).toBeTruthy();
+    expect(screen.getByText(/Set-aside passage: 05 v2/)).toBeTruthy();
   });
 });

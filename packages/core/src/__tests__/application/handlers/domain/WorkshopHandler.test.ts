@@ -2597,6 +2597,11 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       expect(session.getScope()).toBe('excerpt');
       expect(session.getExcerpt()?.version).toBe(1);
       expect(session.getShelvedExcerpt()).toBeUndefined();
+      expect(log.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'ERROR [workshop]: Start a new session to change this'
+        )
+      );
     });
 
     it('re-pins the shelved passage before the room has a memory', async () => {
