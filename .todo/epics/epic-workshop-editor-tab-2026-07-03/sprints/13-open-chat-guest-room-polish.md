@@ -22,9 +22,10 @@ Make Workshop approachable as an open creative conversation, then make its
 guest-room promise honest and useful: a writer can begin chatting without an
 excerpt, invite a second persona through an intentional read-in flow, let a
 guest use the same bounded evidence capabilities as the host, and move between
-guests without treating the host as a secret routing clerk. A persona or writer
-can also run an analysis tool against a bounded local passage and deliberately
-choose whether the room's context travels with that run.
+guests without treating the host as a secret routing clerk. A host persona can
+also run an analysis tool against material it supplies itself, deciding what
+travels into that run — while the writer's only affordance stays a prefilled
+ask.
 
 This is not a free-form agent graph. The host remains immutable, tools remain
 bounded instruments, and the writer remains the only participant who launches
@@ -40,7 +41,7 @@ rollback needlessly opaque. Deliver them in order:
 | Sprint | Branch | Scope | Depends on | Reviewable proof |
 |---|---|---|---|---|
 | [13A](13a-open-chat.md) | `sprint/workshop-editor-tab-13a-open-chat` | Honest open conversation, later excerpt adoption, persistence metadata, and the empty-state/composer design. | Sprint 10 baseline | A writer can retain a Jill conversation with no excerpt, then add one without restarting. |
-| [13B](13b-run-local-analysis.md) | `sprint/workshop-editor-tab-13b-run-local-analysis` | Per-run analysis subject and explicit room-context policy. | 13A | A paragraph can be analyzed with replacement scene context while the room remains unchanged. |
+| [13B](13b-run-local-analysis.md) | `sprint/workshop-editor-tab-13b-run-local-analysis` | Persona-chosen analysis inputs: per-input excerpt/context modes, prefilled asks, no writer picker. | 13A | In a non-excerpt session the host can run Stock & Signature on a passage it supplies, with the room unchanged. |
 | [13C](13c-guest-agency.md) | `sprint/workshop-editor-tab-13c-guest-agency` | Deliberate guest read-in plus participant-owned bounded capabilities. | 13A | Selecting a guest spends nothing; one explicit submit creates one guest that can use attributable, private instruments. |
 | [13D](13d-room-catchup-release-polish.md) | `sprint/workshop-editor-tab-13d-room-catchup-release-polish` | One room ledger with per-participant delivery offsets, a single delivery site, atomic turns, and final release validation. | 13C | Guest B receives Guest A's eligible unseen exchange without a hidden host call, a skipped turn, or a split quote. |
 
@@ -59,7 +60,7 @@ this reason.
 | Sprint | Design load | Authoritative comp |
 |---|---|---|
 | 13A | **High** — path chooser, scope strips, Edit/Preview sheet, editor tab strip, gating badges, exact copy | [Assistant Tab](../../../../docs/design/Prose%20Minion%20-%20Assistant%20Tab.html) |
-| 13B | **No approved comp** — subject/policy controls and provenance block are visually unspecified | *(none — see 13B)* |
+| 13B | **Low** — divider variants and the run provenance block; the composer tool picker already exists | [Assistant Tab](../../../../docs/design/Prose%20Minion%20-%20Assistant%20Tab.html) (composer picker) |
 | 13C | **High** — Invite Guest and Choose Host sheets, plus the rail divider | [Invite Guest](../../../../docs/design/Prose%20Minion%20-%20Invite%20Guest.html), [Choose Host](../../../../docs/design/Prose%20Minion%20-%20Choose%20Host.html) |
 | 13D | **None** — aggregate, prompt-builder, and persistence only | n/a |
 
@@ -85,39 +86,45 @@ project. Sprints link the comp; they never re-sync or fork it.
   excerpt-free room is deferred unless the guest join prompt can make the same
   no-excerpt honesty guarantee without widening this sprint.
 
-### Analysis runs may use a local subject and explicit context policy
+### The persona chooses a tool run's inputs; the writer just asks
 
 `analysis.run` currently receives the session's pinned excerpt and context
 attachments unconditionally; the persona can supply only a tool id and focus
 instructions. That is too coarse for useful local work such as asking **Stock
-& Signature** to examine one paragraph and generate Creative Variations.
+& Signature** to examine one paragraph.
 
-Sprint 13 introduces a **run-local analysis scope**. It affects exactly one
-tool run and never changes the Workshop's pinned excerpt, context-attachment
-list, source provenance, retained persona history, or later tool runs.
+The analysis tools were built to run in isolation — excerpt plus context in,
+report out. That engine does not change. Sprint 13 widens what may be placed in
+those two input slots, and lets the **host persona** decide. There is no new
+writer-facing UI: no subject picker, no policy control, no free-text field.
 
-- **Subject** is the material the selected analysis tool examines: the pinned
-  excerpt, a verified editor/excerpt selection, or bounded pasted text. The
-  requested analysis focus remains a separate bounded instruction field.
-- **Context policy** is explicit:
-  - `inherit-room`: deliver the normal bounded room context — the pinned
-    excerpt as surrounding reference when the subject is a subset, plus current
-    context attachments — and optionally append bounded free text.
-  - `replace-room`: suppress the normal pinned/context-attachment material for
-    this run and deliver bounded writer/persona-provided free text instead.
-    Free text is required for this policy so an accidental toggle cannot create
-    an unintentionally contextless run.
-- The run's visible request and report state **Subject**, **Context policy**,
-  inherited/overridden material, and truncation. The persona may request the
-  same closed shape, but the host validates every size, source identity, and
-  policy value before the tool sees it.
-- This does not create arbitrary filesystem access. A configured-resource
-  read remains a separate, bounded, attributable operation; `replace-room`
-  removes host-delivered room context, not the project-resource safety gate.
-- The initial proving case is a selected paragraph + `stock-and-signature` +
-  `replace-room` free-text character/scene context + a Creative Variations
-  request. The tool may produce variations, but the user still owns copying,
-  widget selection, or any later apply-to-draft action.
+- Two independent inputs, each with a closed mode:
+  `excerpt: inherit | prepend(text) | replace(text) | omit` and
+  `context: inherit | prepend(text) | replace(text) | omit`.
+  `prepend` is how a persona places framing or instructions above existing
+  material; `omit`/`omit` is a legal vacuum run. There is no separate "Subject"
+  concept — the excerpt slot in `replace` mode *is* the local passage.
+- The host validates every mode, size, and source identity before the tool
+  executes. `prepend` against absent material, and `prepend`/`replace` with
+  empty text, are rejected with a visible reason.
+- **Excerpt-mode behavior is unchanged.** Rail and composer both run directly
+  against the pinned excerpt. In a non-excerpt session the rail stays gated and
+  the composer picker instead **prefills a persona-addressed ask** — one door
+  says "run this yourself against the passage," the other says "ask your host to
+  run this," and both say why.
+- The grammar lives in the **system prompt, stated mode-neutrally**, so a
+  mid-session scope flip needs no system-prompt swap. A small reserved-tag
+  per-turn frame reports current state (excerpt pinned or not, attachment
+  count). That frame is host-composed and rides *beside* the writer's turn —
+  never inside the editable prefill, which is writer prose.
+- The transcript divider names the door, and the run's request/report state each
+  input's mode, the material used, who chose it, and any truncation.
+- This does not create arbitrary filesystem access. A configured-resource read
+  remains a separate, bounded, attributable operation; `replace` removes
+  host-delivered room material, not the project-resource safety gate.
+- A tool may be *asked* for Creative Variations and return them in its report
+  body; the writer copies manually. Widgets, and any apply-to-draft action,
+  belong to the later Conversation Widgets epic.
 
 ### Guest read-in is select, then send
 
@@ -216,7 +223,7 @@ the summary below is subordinate to it.
 |---|---|---|
 | 0 | Cross-sprint baseline: ADR addendum and Sprint 10 manual continuity / participant-rail reconnect evidence. | Accepted addendum and recorded baseline before implementation begins. |
 | 1 | 13A — Open Chat session scope. | Optional excerpt remains honest; adoption does not restart the retained conversation. |
-| 1B | 13B — Run-local analysis scope. | Subject and context policy affect only one bounded run. |
+| 1B | 13B — Persona-chosen analysis inputs. | Per-input modes affect only one bounded run; excerpt mode is untouched. |
 | 2–3 | 13C — Guest read-in UX and participant-owned capabilities. | Selection is not submission; guest evidence stays attributable and private. |
 | 4–5 | 13D — Room ledger, delivery offsets, and release polish. | Delivery is contiguous, atomic, and single-sited; restored-session and accessibility evidence is recorded. |
 
