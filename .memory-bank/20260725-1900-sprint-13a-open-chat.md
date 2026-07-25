@@ -60,7 +60,7 @@ This is the comp's contract; both halves are asserted in `WorkshopHandler.test.t
 
 ## Verification
 
-Typecheck (core/webview/ext) · 126 suites / 1300 tests · lint 0 errors ·
+Typecheck (core/webview/ext) · 126 suites / 1304 tests · lint 0 errors ·
 production build + bundle sentinel check · `git diff --check` — all pass.
 
 New suites: `WorkshopSessionScope.test.ts` (30 cases),
@@ -70,6 +70,47 @@ handler, hook, composer, excerpt-panel, context-panel, and prompt-frame suites.
 `jest.config.js` gained a `marked` → UMD `moduleNameMapper` entry so components
 that render Markdown can be tested against the real renderer (the ESM-only
 build is unparseable by Jest's CJS runtime).
+
+## Bug found during the manual pass — session save was broken (pre-existing)
+
+Symptom, from the output channel on every autosave *and* manual save:
+
+```text
+Autosave failed (…, reason=persona turn completed):
+  Workshop session state.turns[4].capability.metadata.requestedEndLine
+  must be plain object
+```
+
+**Cause.** The two halves of the durable boundary disagreed about `undefined`.
+`clonePersistedJson` documents its policy explicitly — "`undefined` object
+members are omitted exactly as JSON.stringify omits them" — but
+`assertJsonValue` in `WorkshopSessionStateV1Shape.ts` had no `undefined` branch,
+so an `undefined` member fell through to `objectAt` and was reported as "must be
+plain object".
+
+The write path validates the **live in-memory object** (`exportCommittedState()`
+→ `validateSessionForWrite` → `parseWorkshopPersistedSession`), where optional
+capability-metadata fields the persona omitted really are `undefined` members.
+`WorkshopResourceCapability` sets `requestedEndLine: request.endLine`, which is
+`undefined` whenever the persona omits `endLine` — the *common* case, as the
+sibling `defaultLineWindow: request.endLine === undefined` shows. So **any
+session in which a persona read a project resource without an explicit end line
+could not be saved at all.**
+
+**Not a Sprint 13A regression.** `git diff epic/workshop-editor-tab...HEAD`
+touches neither `WorkshopResourceCapability.ts` nor `persistedJson.ts`, and this
+branch's only edits to the shape validator add scope/shelf/revision/artifact
+rules. The failure surfaced now because 13A's manual pass exercised persona
+resource reads.
+
+**Fix.** `assertJsonValue` now honors the documented policy: an `undefined`
+**object member** is an absent member. An `undefined` **array item** stays
+refused, because JSON has no hole and `JSON.stringify` writes `null` there —
+that would silently change the data rather than omit it.
+
+Four regression cases live in `WorkshopSessionPersistence.test.ts` under
+"capability metadata across the durable boundary". Reverting the one-line policy
+change fails three of them, so the test genuinely reproduces the bug.
 
 ## Outstanding
 

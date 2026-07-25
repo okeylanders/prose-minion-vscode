@@ -739,6 +739,23 @@ function jsonObjectAt(value: unknown, path: string): void {
   assertJsonValue(value, path);
 }
 
+/**
+ * Free-form JSON validation for capability metadata.
+ *
+ * This runs on BOTH sides of the durable boundary: on read against a
+ * `JSON.parse` result (where `undefined` cannot occur) and on write against the
+ * live in-memory object (where it routinely does — any optional metadata field
+ * the persona omitted is an `undefined` member).
+ *
+ * So it must honor the same policy `clonePersistedJson` documents: an
+ * `undefined` OBJECT MEMBER is an absent member, exactly as `JSON.stringify`
+ * omits it. Rejecting one used to fail every save of a session containing a
+ * `resource.read` without an explicit `endLine` — the validator refusing a value
+ * that would never have reached disk.
+ *
+ * An `undefined` ARRAY ITEM is a different matter and stays refused: JSON has no
+ * hole, so `JSON.stringify` writes `null` there, silently changing the data.
+ */
 function assertJsonValue(value: unknown, path: string): void {
   if (
     value === null
@@ -755,8 +772,15 @@ function assertJsonValue(value: unknown, path: string): void {
     value.forEach((item, index) => assertJsonValue(item, `${path}[${index}]`));
     return;
   }
+  if (value === undefined) {
+    // Only reachable as an array item: object members are skipped below.
+    shapeError(path, 'a JSON value (an undefined array item would be written as null)');
+  }
   const object = objectAt(value, path);
   for (const [key, nested] of Object.entries(object)) {
+    if (nested === undefined) {
+      continue;
+    }
     assertJsonValue(nested, `${path}.${key}`);
   }
 }

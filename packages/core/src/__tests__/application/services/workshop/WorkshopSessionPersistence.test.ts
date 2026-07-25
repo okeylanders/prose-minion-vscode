@@ -179,6 +179,65 @@ describe('WorkshopSessionService committed persistence', () => {
     expect(() => parseWorkshopSessionStateV1(value)).toThrow(message);
   });
 
+  /**
+   * Regression: the write side validates the LIVE object, where any optional
+   * capability-metadata field the persona omitted is an `undefined` member.
+   * `clonePersistedJson` documents that such a member is omitted exactly as
+   * JSON.stringify omits it, so the shape check has to agree — it used to
+   * reject one, which failed every save (auto and manual) of a session
+   * containing a `resource.read` without an explicit `endLine`.
+   */
+  describe('capability metadata across the durable boundary', () => {
+    /** Stamp one `resource.read` capability artifact onto an existing turn. */
+    const withMetadata = (metadata: Record<string, unknown>): unknown => {
+      const value = buildCompleteState();
+      const turn = value.turns.find((candidate) => candidate.participant === 'tool');
+      if (!turn) {
+        throw new Error('Fixture no longer contains a tool turn to stamp.');
+      }
+      turn.capability = {
+        operation: 'resource.read',
+        status: 'success',
+        requestSummary: 'resource.read chapters/05.md',
+        requestedByPersonaId: 'jill',
+        metadata
+      };
+      return value;
+    };
+
+    it('accepts an omitted optional field as the absent member it will be written as', () => {
+      const value = withMetadata({
+        group: 'chapters',
+        path: 'chapters/05.md',
+        startLine: 1,
+        requestedEndLine: undefined,
+        defaultLineWindow: true
+      });
+
+      expect(() => parseWorkshopSessionStateV1(value)).not.toThrow();
+      // And it is genuinely gone from the decoded clone, not carried as null.
+      const parsed = parseWorkshopSessionStateV1(value);
+      const metadata = parsed.turns.find((turn) => turn.capability)!.capability!.metadata!;
+      expect('requestedEndLine' in metadata).toBe(false);
+      expect(metadata.defaultLineWindow).toBe(true);
+    });
+
+    it('accepts an omitted field nested deeper in the metadata bag', () => {
+      const value = withMetadata({ slice: { startLine: 1, endLine: undefined } });
+      expect(() => parseWorkshopSessionStateV1(value)).not.toThrow();
+    });
+
+    it('still refuses an undefined ARRAY item, which JSON would write as null', () => {
+      const value = withMetadata({ partialFailures: ['timeout', undefined] });
+      expect(() => parseWorkshopSessionStateV1(value)).toThrow(/would be written as null/);
+    });
+
+    it('still refuses a genuinely non-JSON metadata value', () => {
+      const value = withMetadata({ startLine: Number.NaN });
+      expect(() => parseWorkshopSessionStateV1(value)).toThrow('must be finite number');
+    });
+  });
+
   it('rejects unknown top-level extension bags', () => {
     const value = buildCompleteState() as unknown as Record<string, unknown>;
     value.extensions = { someday: true };

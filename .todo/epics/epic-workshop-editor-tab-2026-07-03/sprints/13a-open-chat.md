@@ -196,9 +196,32 @@ over from the previous session. That is the comp's contract (its composer reads
 immediately by a message now requires one click on "Continue with current
 excerpt."** `WorkshopHandler.test.ts` asserts both halves.
 
+### Pre-existing save bug fixed here
+
+The first manual pass surfaced that **session save was failing outright** — both
+autosave and manual — with
+`state.turns[N].capability.metadata.requestedEndLine must be plain object`.
+
+The two halves of the durable boundary disagreed about `undefined`.
+`clonePersistedJson` documents that an `undefined` object member is omitted
+exactly as `JSON.stringify` omits it, but `assertJsonValue` had no `undefined`
+branch, so such a member fell through to the "plain object" check. Because the
+WRITE path validates the live in-memory object, and
+`WorkshopResourceCapability` sets `requestedEndLine: request.endLine` (undefined
+whenever the persona omits `endLine` — the common case), **any session where a
+persona read a project resource without an explicit end line could not be
+saved.**
+
+Not a 13A regression: this branch touches neither the resource capability nor
+the JSON policy. Fixed by making `assertJsonValue` honor the documented policy
+for object members while still refusing an `undefined` **array item**, which
+`JSON.stringify` would write as `null` — a silent data change rather than an
+omission. Four regression cases cover it in
+`WorkshopSessionPersistence.test.ts`; reverting the policy change fails three.
+
 ### Verification
 
-Typecheck (core + webview + ext), 126 suites / 1300 tests, lint (0 errors),
+Typecheck (core + webview + ext), 126 suites / 1304 tests, lint (0 errors),
 production build + bundle sentinel verification, and `git diff --check` all
 pass. New focused coverage: `WorkshopSessionScope.test.ts` (30),
 `WorkshopTextSheet.test.tsx` (17), plus scope/gating cases added to the handler,
