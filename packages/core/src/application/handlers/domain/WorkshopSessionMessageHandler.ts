@@ -89,18 +89,31 @@ export class WorkshopSessionMessageHandler {
     void this.postMessage(result);
   }
 
-  async handleResetSession(_message: WorkshopResetSessionMessage): Promise<void> {
+  async handleResetSession(message: WorkshopResetSessionMessage): Promise<void> {
     if (this.rejectWhileRunning('start a new session', 'new')) {
       return;
     }
+    const clearWorkingSet = message.payload?.clearWorkingSet === true;
     try {
-      await this.persistence.resetSession();
+      const cleared = await this.persistence.resetSession({ clearWorkingSet });
       await this.options.flushDeferredConversationSettings();
       this.outputChannel.appendLine(
-        '[WorkshopSessionMessageHandler] Session reset and current checkpoint replaced'
+        '[WorkshopSessionMessageHandler] Session reset and current checkpoint replaced' +
+        (clearWorkingSet
+          ? ` (full reset — excerpt: ${cleared.excerptLabel ?? 'none'};` +
+            ` context cleared: ${cleared.attachmentLabels.length > 0
+              ? cleared.attachmentLabels.join(', ')
+              : 'none'})`
+          : '')
       );
       this.options.postSessionState();
-      this.postActionResult('new', true, 'Started a new Workshop session.');
+      this.postActionResult(
+        'new',
+        true,
+        clearWorkingSet
+          ? 'Started an empty Workshop session — excerpt and context cleared.'
+          : 'Started a new Workshop session.'
+      );
     } catch (error) {
       this.options.postSessionState();
       this.postActionFailure('new', error);

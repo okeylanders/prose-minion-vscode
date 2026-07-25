@@ -3,7 +3,7 @@
  */
 
 import * as React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { WorkshopComposer } from '@components/workshop/WorkshopComposer';
 import {
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
@@ -16,6 +16,10 @@ describe('WorkshopComposer', () => {
   ) => {
     const props = {
       canMessage: true,
+      scope: 'excerpt' as const,
+      hasExcerpt: true,
+      onAddExcerpt: jest.fn(),
+      onGatedAction: jest.fn(),
       hasConversation: true,
       recipientLabel: 'Choreography',
       isRunning: false,
@@ -146,5 +150,70 @@ describe('WorkshopComposer', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove ch-04.md from this message' }));
     expect(onRemoveMessageAttachment).toHaveBeenCalledWith('ta-1');
+  });
+  /**
+   * Sprint 13A §9/§10 — the composer is scope-aware. Gating must be VISIBLE and
+   * announced: an affordance that silently does nothing teaches the writer that
+   * the product is broken rather than that an excerpt is missing.
+   */
+  describe('session scope (Sprint 13A)', () => {
+    it('asks what the writer wants to brainstorm in an excerpt-free room', () => {
+      renderComposer({ scope: 'open', hasExcerpt: false, hasConversation: false });
+      expect(screen.getByPlaceholderText('What would you like to brainstorm with Choreography?'))
+        .toBeTruthy();
+    });
+
+    it('tells the writer to pick a path before a scope exists', () => {
+      renderComposer({ scope: null, hasExcerpt: false, canMessage: false });
+      expect(screen.getByPlaceholderText('Pick a starting path above to begin…')).toBeTruthy();
+    });
+
+    it('notes the new excerpt once an open conversation adopts one', () => {
+      renderComposer({ scope: 'open', hasExcerpt: true, hasConversation: false });
+      expect(screen.getByPlaceholderText('Message Choreography — excerpt now attached…'))
+        .toBeTruthy();
+    });
+
+    it('offers Add excerpt only while the open room has none', () => {
+      const { onAddExcerpt } = renderComposer({ scope: 'open', hasExcerpt: false });
+      fireEvent.click(screen.getByRole('button', { name: /add excerpt/i }));
+      expect(onAddExcerpt).toHaveBeenCalled();
+
+      cleanup();
+      renderComposer({ scope: 'open', hasExcerpt: true });
+      expect(screen.queryByRole('button', { name: /add excerpt/i })).toBeNull();
+    });
+
+    it('gates Tools with a reachable, announced reason instead of a dead button', () => {
+      const { onGatedAction, onOpenTools } = renderComposer({ scope: 'open', hasExcerpt: false });
+      const tools = screen.getByRole('button', { name: /tools/i });
+
+      // aria-disabled, not `disabled`: the reason has to be focusable to be read.
+      expect(tools.getAttribute('aria-disabled')).toBe('true');
+      expect((tools as HTMLButtonElement).disabled).toBe(false);
+      expect(tools.getAttribute('title')).toBe('Add an excerpt to use analysis tools.');
+
+      fireEvent.click(tools);
+      expect(onGatedAction).toHaveBeenCalledWith('Add an excerpt to use analysis tools.');
+      expect(onOpenTools).not.toHaveBeenCalled();
+    });
+
+    it('opens Tools normally once a passage is pinned', () => {
+      const { onOpenTools } = renderComposer({ scope: 'excerpt', hasExcerpt: true });
+      fireEvent.click(screen.getByRole('button', { name: /tools/i }));
+      expect(onOpenTools).toHaveBeenCalled();
+    });
+
+    it('seeds the draft from a starter without sending it', () => {
+      const { onSend } = renderComposer({
+        scope: 'open',
+        hasExcerpt: false,
+        draftSeed: { text: 'Help me plan the next scene', token: 1 }
+      });
+
+      expect((screen.getByRole('textbox', { name: 'Message Choreography' }) as HTMLTextAreaElement).value)
+        .toBe('Help me plan the next scene');
+      expect(onSend).not.toHaveBeenCalled();
+    });
   });
 });

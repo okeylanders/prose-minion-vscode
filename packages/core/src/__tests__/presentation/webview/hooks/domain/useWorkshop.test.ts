@@ -52,6 +52,9 @@ const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessio
     source: 'extension.workshop',
     payload: {
       session: {
+        // Sprint 13A: scope is explicit session state. These fixtures describe
+        // passage sessions unless a case overrides it.
+        scope: 'excerpt',
         excerptVersion: 0,
         replacementCount: 0,
         contextAttachments: [],
@@ -135,6 +138,13 @@ describe('useWorkshop', () => {
   afterEach(() => {
     jest.useRealTimers();
     jest.clearAllMocks();
+  });
+
+  const excerptSnapshot = () => ({
+    text: 'Pinned prose.',
+    version: 1,
+    source: { kind: 'file' as const, relativePath: 'ch1.md' },
+    pinnedAt: 1
   });
 
   const posted = (type: MessageType) =>
@@ -975,5 +985,107 @@ describe('useWorkshop', () => {
 
     expect(result.current.turns.map((t) => t.id)).toEqual(['t3', 't4']);
     expect(result.current.hiddenTurns).toBe(2);
+  });
+  /**
+   * Sprint 13A §1 — the hook mirrors SCOPE, and every gate reads it rather
+   * than guessing from excerpt presence.
+   */
+  describe('session scope', () => {
+    it('mirrors scope and the shelf from the host snapshot', () => {
+      const { result } = renderHook(() => useWorkshop());
+
+      act(() => result.current.handleSessionState(sessionState({
+        scope: 'open',
+        excerpt: undefined,
+        shelvedExcerpt: excerptSnapshot(),
+        pendingHostUpdate: { context: false, excerptWithdrawn: true }
+      })));
+
+      expect(result.current.scope).toBe('open');
+      expect(result.current.shelvedExcerpt?.version).toBe(1);
+      expect(result.current.excerptWithdrawalPending).toBe(true);
+    });
+
+    it('permits messaging an excerpt-free open conversation', () => {
+      const { result } = renderHook(() => useWorkshop());
+
+      act(() => result.current.handleSessionState(sessionState({
+        scope: 'open',
+        excerpt: undefined
+      })));
+
+      expect(result.current.canMessage).toBe(true);
+    });
+
+    it('refuses messaging until the writer picks a path, even with an excerpt', () => {
+      const { result } = renderHook(() => useWorkshop());
+
+      act(() => result.current.handleSessionState(sessionState({
+        scope: null,
+        excerpt: excerptSnapshot()
+      })));
+
+      expect(result.current.canMessage).toBe(false);
+    });
+
+    it('posts the writer’s explicit scope choice and re-pin', () => {
+      const { result } = renderHook(() => useWorkshop());
+
+      act(() => result.current.setSessionScope('open'));
+      act(() => result.current.repinExcerpt());
+
+      expect(posted(MessageType.WORKSHOP_SET_SESSION_SCOPE).at(-1)?.payload)
+        .toEqual({ scope: 'open' });
+      expect(posted(MessageType.WORKSHOP_REPIN_EXCERPT)).toHaveLength(1);
+    });
+  });
+
+  describe('full reset', () => {
+    it('asks for the working set to be cleared only when told to', () => {
+      const { result } = renderHook(() => useWorkshop());
+
+      act(() => result.current.resetSession());
+      expect(posted(MessageType.WORKSHOP_RESET_SESSION).at(-1)?.payload).toEqual({});
+
+      act(() => result.current.resetSession({ clearWorkingSet: true }));
+      expect(posted(MessageType.WORKSHOP_RESET_SESSION).at(-1)?.payload)
+        .toEqual({ clearWorkingSet: true });
+    });
+  });
+
+  describe('attachment bodies for the Edit/Preview sheet', () => {
+    it('marks the request pending, then adopts the matching reply', () => {
+      const { result } = renderHook(() => useWorkshop());
+
+      act(() => result.current.requestContextAttachment('ctx-1'));
+      expect(result.current.attachmentContent).toEqual({ id: 'ctx-1', canOpenInEditor: false });
+
+      act(() => result.current.handleContextAttachmentContent({
+        type: MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT,
+        source: 'extension.workshop',
+        payload: { id: 'ctx-1', content: 'Kayla picks at her cuff.', canOpenInEditor: true },
+        timestamp: 1
+      } as any));
+
+      expect(result.current.attachmentContent).toMatchObject({
+        id: 'ctx-1',
+        content: 'Kayla picks at her cuff.',
+        canOpenInEditor: true
+      });
+    });
+
+    it('discards a late reply for an attachment the writer already closed', () => {
+      const { result } = renderHook(() => useWorkshop());
+
+      act(() => result.current.requestContextAttachment('ctx-2'));
+      act(() => result.current.handleContextAttachmentContent({
+        type: MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT,
+        source: 'extension.workshop',
+        payload: { id: 'ctx-1', content: 'Stale body.', canOpenInEditor: false },
+        timestamp: 1
+      } as any));
+
+      expect(result.current.attachmentContent).toEqual({ id: 'ctx-2', canOpenInEditor: false });
+    });
   });
 });

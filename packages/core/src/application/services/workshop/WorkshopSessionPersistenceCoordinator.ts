@@ -48,7 +48,8 @@ import {
   WorkshopPersonaId,
   WorkshopSessionSaveStatusMessage,
   WorkshopSessionSummary,
-  WorkshopToolId
+  WorkshopToolId,
+  workshopExcerptSourcePath
 } from '@messages';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { countWords } from '@/utils/textUtils';
@@ -85,6 +86,16 @@ export interface WorkshopSessionListData {
   sessions: WorkshopSessionSummary[];
   truncated: boolean;
   searchTruncated: boolean;
+}
+
+/**
+ * What a reset actually destroyed. Empty for an ordinary new session, which
+ * preserves the working set; populated only for a full reset, and captured
+ * before the aggregate is mutated so the caller can log specifics.
+ */
+export interface WorkshopResetSummary {
+  excerptLabel?: string;
+  attachmentLabels: string[];
 }
 
 export interface WorkshopSessionPersistenceCoordinatorOptions {
@@ -473,10 +484,26 @@ export class WorkshopSessionPersistenceCoordinator {
   }
 
   /** Start a fresh thread while preserving the aggregate's working set. */
-  async resetSession(): Promise<void> {
+  /**
+   * Replace the live room with a fresh one and promote it to `current.json`.
+   *
+   * `clearWorkingSet` additionally drops the excerpt, the shelf, and every
+   * context attachment. Named sessions on disk are never touched by either
+   * form; a write failure rolls the whole thing back.
+   */
+  async resetSession(
+    options: { clearWorkingSet?: boolean } = {}
+  ): Promise<WorkshopResetSummary> {
     return this.serializeSessionOperation(async () => {
       const rollback = this.captureRollback();
-      const discarded = this.session.reset();
+      // Read the working set BEFORE the aggregate drops it. A destructive
+      // reset is the one action here that can be disputed later, and "it
+      // deleted my context" is unanswerable against a log that only says a
+      // wipe happened.
+      const cleared = options.clearWorkingSet
+        ? this.describeClearedWorkingSet()
+        : { attachmentLabels: [] };
+      const discarded = this.session.reset(options);
       this.time.reset();
       const createdAt = normalizedIso(this.now());
       this.identity = {
@@ -499,7 +526,21 @@ export class WorkshopSessionPersistenceCoordinator {
       discarded.forEach((conversationId) =>
         this.assistantToolService.discardConversation(conversationId)
       );
+      return cleared;
     });
+  }
+
+  /** Name the writer-authored working set a full reset is about to destroy. */
+  private describeClearedWorkingSet(): WorkshopResetSummary {
+    const excerpt = this.session.getExcerpt() ?? this.session.getShelvedExcerpt();
+    return {
+      excerptLabel: excerpt
+        ? `${workshopExcerptSourcePath(excerpt.source) ?? 'Pasted excerpt'} v${excerpt.version}`
+        : undefined,
+      attachmentLabels: this.session
+        .getContextAttachments()
+        .map((attachment) => attachment.label)
+    };
   }
 
   private async capture(identity: LiveSessionIdentity): Promise<WorkshopPersistedSessionV1> {
@@ -740,6 +781,10 @@ export class WorkshopSessionPersistenceCoordinator {
       .find((turn) => turn.participant !== 'session' && turn.content.trim().length > 0);
     return {
       hostPersonaId: workshop.participants.host.personaId,
+      // Sprint 13A §11: scope is persisted alongside the room so restore and
+      // the browser can say what KIND of session this is, rather than
+      // inferring "open conversation" from a missing excerpt.
+      scope: workshop.scope ?? null,
       participantPersonaIds,
       turnCount: workshop.turns.length,
       excerptWordCount: excerpt ? countWords(excerpt.text) : 0,
@@ -769,6 +814,7 @@ export class WorkshopSessionPersistenceCoordinator {
       participantPersonaIds: [...persisted.participantPersonaIds],
       turnCount: persisted.turnCount,
       excerptWordCount: persisted.excerptWordCount,
+      scope: persisted.scope,
       excerptLabel: persisted.excerptLabel,
       excerptIdentity: persisted.excerptIdentity,
       preview: persisted.preview,

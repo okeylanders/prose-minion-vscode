@@ -40,6 +40,8 @@ const renderMenu = (
     newSessionDisabled: false,
     onOpenChange: jest.fn(),
     onNewSession: jest.fn(),
+    onFullResetSession: jest.fn(),
+    hasWorkingSet: true,
     onSaveSession: jest.fn(),
     onBrowseSessions: jest.fn(),
     onOpenSession: jest.fn(),
@@ -52,7 +54,7 @@ describe('WorkshopSessionsMenu', () => {
   it('keeps the approved session commands and three recent rooms in the compact menu', () => {
     renderMenu();
 
-    expect(screen.getByRole('menuitem', { name: /New session/ })).not.toBeNull();
+    expect(screen.getByRole('menuitem', { name: /^New session ⌘⇧N$/ })).not.toBeNull();
     expect(screen.getByRole('menuitem', { name: /Save session/ })).not.toBeNull();
     expect(screen.getByRole('menuitem', { name: /Open prior session/ })).not.toBeNull();
     expect(screen.getByRole('menuitem', { name: /Browse all sessions/ })).not.toBeNull();

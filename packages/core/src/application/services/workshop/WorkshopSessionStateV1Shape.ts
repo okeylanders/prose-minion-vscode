@@ -8,7 +8,8 @@
 import {
   isWorkshopInteractionMode,
   isWorkshopPersonaExpressionLevel,
-  isWorkshopRelationalDepth
+  isWorkshopRelationalDepth,
+  isWorkshopSessionScope
 } from '@messages';
 import { isContextPathGroup } from '@shared/types';
 import {
@@ -40,10 +41,22 @@ export function assertWorkshopSessionStateShape(
       'participants',
       'todos'
     ],
-    ['excerpt', 'selectedToolId', 'lastCommittedPersonaBehavior']
+    [
+      'excerpt',
+      'scope',
+      'shelvedExcerpt',
+      'selectedToolId',
+      'lastCommittedPersonaBehavior'
+    ]
   );
   if (state.excerpt !== undefined) {
     assertExcerpt(state.excerpt, 'Workshop session state.excerpt');
+  }
+  if (state.scope !== undefined && !isWorkshopSessionScope(state.scope)) {
+    shapeError('Workshop session state.scope', 'excerpt, open, or null');
+  }
+  if (state.shelvedExcerpt !== undefined) {
+    assertExcerpt(state.shelvedExcerpt, 'Workshop session state.shelvedExcerpt');
   }
   arrayOf(state.contextAttachments, 'Workshop session state.contextAttachments', assertContextAttachment);
   arrayOf(
@@ -184,12 +197,30 @@ function assertRevisions(value: unknown): void {
     value,
     'Workshop session state.revisions',
     ['excerpt', 'replacementCount', 'context'],
-    ['pendingExcerpt', 'pendingContext']
+    [
+      'pendingExcerpt',
+      'pendingExcerptChange',
+      'pendingExcerptWithdrawal',
+      'pendingContext'
+    ]
   );
   numberAt(revisions.excerpt, 'Workshop session state.revisions.excerpt');
   numberAt(revisions.replacementCount, 'Workshop session state.revisions.replacementCount');
   numberAt(revisions.context, 'Workshop session state.revisions.context');
   optionalNumberAt(revisions.pendingExcerpt, 'Workshop session state.revisions.pendingExcerpt');
+  if (revisions.pendingExcerptChange !== undefined) {
+    enumAt(
+      revisions.pendingExcerptChange,
+      'Workshop session state.revisions.pendingExcerptChange',
+      ['revised', 'added', 'repinned']
+    );
+  }
+  if (
+    revisions.pendingExcerptWithdrawal !== undefined &&
+    revisions.pendingExcerptWithdrawal !== true
+  ) {
+    shapeError('Workshop session state.revisions.pendingExcerptWithdrawal', 'true when present');
+  }
   optionalNumberAt(revisions.pendingContext, 'Workshop session state.revisions.pendingContext');
 }
 
@@ -308,7 +339,8 @@ function assertTurn(value: unknown, path: string): void {
       'excerpt_revision',
       'context_change',
       'session_start',
-      'session_resume'
+      'session_resume',
+      'scope_change'
     ]
   );
   numberAt(turn.excerptVersion, `${path}.excerptVersion`);
@@ -707,6 +739,23 @@ function jsonObjectAt(value: unknown, path: string): void {
   assertJsonValue(value, path);
 }
 
+/**
+ * Free-form JSON validation for capability metadata.
+ *
+ * This runs on BOTH sides of the durable boundary: on read against a
+ * `JSON.parse` result (where `undefined` cannot occur) and on write against the
+ * live in-memory object (where it routinely does — any optional metadata field
+ * the persona omitted is an `undefined` member).
+ *
+ * So it must honor the same policy `clonePersistedJson` documents: an
+ * `undefined` OBJECT MEMBER is an absent member, exactly as `JSON.stringify`
+ * omits it. Rejecting one used to fail every save of a session containing a
+ * `resource.read` without an explicit `endLine` — the validator refusing a value
+ * that would never have reached disk.
+ *
+ * An `undefined` ARRAY ITEM is a different matter and stays refused: JSON has no
+ * hole, so `JSON.stringify` writes `null` there, silently changing the data.
+ */
 function assertJsonValue(value: unknown, path: string): void {
   if (
     value === null
@@ -723,8 +772,15 @@ function assertJsonValue(value: unknown, path: string): void {
     value.forEach((item, index) => assertJsonValue(item, `${path}[${index}]`));
     return;
   }
+  if (value === undefined) {
+    // Only reachable as an array item: object members are skipped below.
+    shapeError(path, 'a JSON value (an undefined array item would be written as null)');
+  }
   const object = objectAt(value, path);
   for (const [key, nested] of Object.entries(object)) {
+    if (nested === undefined) {
+      continue;
+    }
     assertJsonValue(nested, `${path}.${key}`);
   }
 }

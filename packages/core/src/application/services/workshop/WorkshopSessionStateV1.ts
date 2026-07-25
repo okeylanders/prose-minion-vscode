@@ -12,12 +12,14 @@ import {
   WorkshopConversationBehavior,
   WorkshopExcerpt,
   WorkshopPersonaId,
+  WorkshopSessionScope,
   WorkshopToolId,
   WorkshopTurn,
   WorkshopTodoItem
 } from '@messages';
 import type {
   WorkshopContextAttachment,
+  WorkshopExcerptDeliveryReason,
   WorkshopMessageAttachment
 } from '@/application/services/workshop/WorkshopSessionService';
 import {
@@ -43,6 +45,15 @@ export type WorkshopRuntimeConversationBindings = Readonly<
 
 export interface WorkshopSessionStateV1 {
   excerpt?: WorkshopExcerpt;
+  /**
+   * Explicit session scope (Sprint 13A). OPTIONAL in the persisted grammar:
+   * checkpoints written before scope existed have none, and
+   * `hydrateCommittedState` migrates them once rather than refusing to open a
+   * writer's saved room.
+   */
+  scope?: WorkshopSessionScope;
+  /** The passage the writer set aside; restored by re-pin, never deleted. */
+  shelvedExcerpt?: WorkshopExcerpt;
   contextAttachments: WorkshopContextAttachment[];
   pendingMessageAttachments: WorkshopMessageAttachment[];
   revisions: {
@@ -50,6 +61,10 @@ export interface WorkshopSessionStateV1 {
     replacementCount: number;
     context: number;
     pendingExcerpt?: number;
+    /** Why the queued excerpt frame is being delivered (Sprint 13A). */
+    pendingExcerptChange?: WorkshopExcerptDeliveryReason;
+    /** A shelved passage still has to be withdrawn from the retained host. */
+    pendingExcerptWithdrawal?: true;
     pendingContext?: number;
   };
   counters: {

@@ -3225,3 +3225,859 @@
     display: none;
   }
 }
+
+/* ============================================================
+   Sprint 13A — Open Chat (session scope)
+
+   Ported from the approved comp "Prose Minion - Assistant Tab.html"
+   (pm-workshop.css, "Open-chat path" section). The comp's tokens are this
+   file's tokens verbatim, so values carry across 1:1 — only the `--` prefix
+   and the `pm-ws-` class vocabulary change.
+   ============================================================ */
+
+/* ---------- First-run: the two starting paths (§2) ---------- */
+/* The comp renders `wk-first` straight into the scroll container; ours lives
+   inside `.pm-ws-thread`, which already pads 28/32 — so this adds only the
+   remainder rather than stacking a second full inset. `flex: 1` reproduces the
+   comp's full-height vertical centering inside that flex column. */
+[data-pm-surface="workshop"] .pm-ws-first {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 4px 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-first-spark {
+  color: var(--pm-accent-hi);
+  margin-bottom: 10px;
+}
+[data-pm-surface="workshop"] .pm-ws-first h2 {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--pm-text);
+  margin: 0;
+  text-align: center;
+}
+[data-pm-surface="workshop"] .pm-ws-first-sub {
+  font-size: 13.5px;
+  color: var(--pm-muted);
+  line-height: 1.6;
+  margin: 9px 0 0;
+  max-width: 470px;
+  text-align: center;
+  text-wrap: pretty;
+}
+[data-pm-surface="workshop"] .pm-ws-paths {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-top: 26px;
+  width: 100%;
+  max-width: 740px;
+  align-items: stretch;
+}
+[data-pm-surface="workshop"] .pm-ws-path-card {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 19px 19px 17px;
+  border: 1px solid var(--pm-border);
+  background: var(--pm-surface);
+  border-radius: 14px;
+  text-align: left;
+}
+[data-pm-surface="workshop"] .pm-ws-path-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+[data-pm-surface="workshop"] .pm-ws-path-icon {
+  width: 31px;
+  height: 31px;
+  border-radius: var(--pm-r-tile);
+  display: grid;
+  place-items: center;
+  flex: none;
+  background: var(--pm-accent-soft);
+  color: var(--pm-accent-hi);
+  border: 1px solid color-mix(in srgb, var(--pm-accent) 30%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-path-title {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--pm-text);
+  line-height: 1.2;
+}
+[data-pm-surface="workshop"] .pm-ws-path-kicker {
+  display: block;
+  font-family: var(--pm-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--pm-dim);
+  margin-top: 3px;
+}
+[data-pm-surface="workshop"] .pm-ws-path-desc {
+  font-size: 12.5px;
+  color: var(--pm-muted);
+  line-height: 1.6;
+  text-wrap: pretty;
+  flex: 1;
+}
+[data-pm-surface="workshop"] .pm-ws-path-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-path-note {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  color: var(--pm-faint);
+  line-height: 1.5;
+}
+[data-pm-surface="workshop"] .pm-ws-path-carry {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  color: var(--pm-dim);
+  line-height: 1.5;
+  margin: -2px 0 4px;
+  text-align: center;
+}
+[data-pm-surface="workshop"] .pm-ws-path-card-chat {
+  /* Same green-family expression as this card's own icon two rules below, so
+     the card edge and its icon move together under a theme change. A bare hex
+     here would be the one border in this surface a re-theme silently misses. */
+  border-color: color-mix(in srgb, var(--pm-green) 26%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-path-card-chat .pm-ws-path-icon {
+  background: color-mix(in srgb, var(--pm-green) 9%, transparent);
+  color: var(--pm-green);
+  border-color: color-mix(in srgb, var(--pm-green) 26%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-path-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: var(--pm-r-tile);
+  border: 1px solid var(--pm-border-2);
+  background: var(--pm-surface-2);
+  color: var(--pm-text);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--pm-sans);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-path-btn:not(:disabled):hover {
+  background: var(--pm-surface-3);
+  border-color: var(--pm-accent);
+}
+[data-pm-surface="workshop"] .pm-ws-path-btn svg {
+  color: var(--pm-muted);
+  flex: none;
+}
+[data-pm-surface="workshop"] .pm-ws-path-btn:not(:disabled):hover svg {
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-path-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+[data-pm-surface="workshop"] .pm-ws-path-btn-solid {
+  background: linear-gradient(180deg, var(--pm-accent-hi), var(--pm-accent-lo));
+  border-color: var(--pm-accent-lo);
+  color: #fff;
+}
+[data-pm-surface="workshop"] .pm-ws-path-btn-solid svg,
+[data-pm-surface="workshop"] .pm-ws-path-btn-solid:not(:disabled):hover svg {
+  color: #fff;
+}
+[data-pm-surface="workshop"] .pm-ws-path-btn-solid:not(:disabled):hover {
+  filter: brightness(1.06);
+  background: linear-gradient(180deg, var(--pm-accent-hi), var(--pm-accent-lo));
+}
+[data-pm-surface="workshop"] .pm-ws-path-btn-calm {
+  border-color: color-mix(in srgb, var(--pm-green) 40%, transparent);
+  background: color-mix(in srgb, var(--pm-green) 7%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-path-btn-calm:not(:disabled):hover {
+  border-color: var(--pm-green);
+  background: color-mix(in srgb, var(--pm-green) 12%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-path-btn-calm svg,
+[data-pm-surface="workshop"] .pm-ws-path-btn-calm:not(:disabled):hover svg {
+  color: var(--pm-green);
+}
+[data-pm-surface="workshop"] .pm-ws-first-foot {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-faint);
+  margin-top: 20px;
+  text-align: center;
+  line-height: 1.6;
+  max-width: 560px;
+}
+[data-pm-surface="workshop"] .pm-ws-first-foot b {
+  color: var(--pm-muted);
+  font-weight: 500;
+}
+[data-pm-surface="workshop"] .pm-ws-first-foot-accent {
+  color: var(--pm-accent-hi);
+}
+
+/* ---------- Passage → open reversal in the ready state (§4) ---------- */
+[data-pm-surface="workshop"] .pm-ws-changed-mind {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  justify-content: center;
+  font-size: 12.5px;
+  color: var(--pm-faint);
+  margin-top: 18px;
+}
+[data-pm-surface="workshop"] .pm-ws-changed-mind button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid color-mix(in srgb, var(--pm-green) 34%, transparent);
+  background: color-mix(in srgb, var(--pm-green) 6%, transparent);
+  border-radius: var(--pm-r-pill);
+  padding: 7px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: var(--pm-sans);
+  color: var(--pm-text-2);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-changed-mind button:not(:disabled):hover {
+  border-color: var(--pm-green);
+  color: var(--pm-text);
+  background: color-mix(in srgb, var(--pm-green) 11%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-changed-mind button svg {
+  color: var(--pm-green);
+}
+[data-pm-surface="workshop"] .pm-ws-changed-mind button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- Center scope strip (§10) ---------- */
+[data-pm-surface="workshop"] .pm-ws-scope-strip {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 13px;
+  border: 1px solid color-mix(in srgb, var(--pm-green) 28%, transparent);
+  background: color-mix(in srgb, var(--pm-green) 5%, transparent);
+  border-radius: var(--pm-r-tile);
+}
+[data-pm-surface="workshop"] .pm-ws-scope-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pm-green);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--pm-green) 50%, transparent);
+  flex: none;
+}
+[data-pm-surface="workshop"] .pm-ws-scope-text {
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="workshop"] .pm-ws-scope-note {
+  font-size: 11.5px;
+  color: var(--pm-faint);
+  border-left: 1px solid var(--pm-border);
+  padding-left: 11px;
+}
+[data-pm-surface="workshop"] .pm-ws-scope-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--pm-sans);
+  color: var(--pm-text-2);
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-input);
+  padding: 8px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+[data-pm-surface="workshop"] .pm-ws-scope-btn:not(:disabled):hover {
+  border-color: var(--pm-border-2);
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-scope-btn svg {
+  color: var(--pm-muted);
+  flex: none;
+}
+[data-pm-surface="workshop"] .pm-ws-scope-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+[data-pm-surface="workshop"] .pm-ws-scope-strip-passage {
+  border-color: color-mix(in srgb, var(--pm-accent) 30%, transparent);
+  background: var(--pm-accent-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-scope-strip-passage .pm-ws-scope-dot {
+  background: var(--pm-accent);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--pm-accent) 50%, transparent);
+}
+
+/* The scope divider gets the accent so "conversation retained" is read. */
+[data-pm-surface="workshop"] .pm-ws-scope-divider span {
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-scope-divider::before,
+[data-pm-surface="workshop"] .pm-ws-scope-divider::after {
+  border-top: 1px dashed var(--pm-border-2);
+  background: none;
+  height: 0;
+}
+
+/* ---------- Open-conversation start block (§8/§10) ---------- */
+[data-pm-surface="workshop"] .pm-ws-open-start {
+  padding: 6px 2px 0;
+}
+[data-pm-surface="workshop"] .pm-ws-open-start-kicker {
+  font-family: var(--pm-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-open-start h3 {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--pm-text);
+  margin: 9px 0 0;
+}
+[data-pm-surface="workshop"] .pm-ws-open-start p {
+  font-size: 13.5px;
+  color: var(--pm-muted);
+  line-height: 1.65;
+  margin: 8px 0 0;
+  max-width: 560px;
+  text-wrap: pretty;
+}
+[data-pm-surface="workshop"] .pm-ws-starters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+[data-pm-surface="workshop"] .pm-ws-starter {
+  border: 1px solid var(--pm-border);
+  background: var(--pm-surface-2);
+  border-radius: var(--pm-r-pill);
+  padding: 8px 13px;
+  font-size: 12.5px;
+  font-family: var(--pm-sans);
+  color: var(--pm-text-2);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-starter:not(:disabled):hover {
+  border-color: var(--pm-border-2);
+  color: var(--pm-text);
+  background: var(--pm-surface-3);
+}
+[data-pm-surface="workshop"] .pm-ws-starter:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- Rail: "or" split + open-conversation entry (§2) ---------- */
+[data-pm-surface="workshop"] .pm-ws-or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 11px 0;
+}
+/* The rule and the word are ACCENTED, not faint: this divider is not
+   decoration between unrelated blocks — it is the fork itself, telling the
+   writer the two paths above and below are alternatives to each other. At
+   --pm-faint it read as a section break and the relationship was lost. */
+[data-pm-surface="workshop"] .pm-ws-or hr {
+  flex: 1;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--pm-accent) 26%, transparent);
+  margin: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-or span {
+  font-family: var(--pm-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pm-accent);
+}
+[data-pm-surface="workshop"] .pm-ws-chat-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid color-mix(in srgb, var(--pm-green) 30%, transparent);
+  background: color-mix(in srgb, var(--pm-green) 5.5%, transparent);
+  border-radius: 11px;
+  padding: 13px;
+  font-family: var(--pm-sans);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-chat-entry:not(:disabled):hover {
+  border-color: var(--pm-green);
+  background: color-mix(in srgb, var(--pm-green) 10%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-chat-entry:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+[data-pm-surface="workshop"] .pm-ws-chat-entry-icon {
+  color: var(--pm-green);
+  flex: none;
+  margin-top: 1px;
+  display: grid;
+  place-items: center;
+}
+[data-pm-surface="workshop"] .pm-ws-chat-entry-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-chat-entry-sub {
+  display: block;
+  font-size: 11.5px;
+  color: var(--pm-muted);
+  line-height: 1.5;
+  margin-top: 3px;
+}
+[data-pm-surface="workshop"] .pm-ws-chat-entry-mini {
+  margin-top: 9px;
+  padding: 11px 12px;
+}
+[data-pm-surface="workshop"] .pm-ws-chat-entry-mini .pm-ws-chat-entry-name {
+  font-size: 12.5px;
+}
+[data-pm-surface="workshop"] .pm-ws-chat-entry-mini .pm-ws-chat-entry-sub {
+  font-size: 11px;
+}
+
+/* ---------- Rail: open conversation with no passage (§8) ---------- */
+[data-pm-surface="workshop"] .pm-ws-pill-open {
+  color: var(--pm-green);
+  border-color: color-mix(in srgb, var(--pm-green) 35%, transparent);
+  background: color-mix(in srgb, var(--pm-green) 8%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-no-excerpt {
+  border: 1px dashed var(--pm-border-2);
+  border-radius: 11px;
+  padding: 14px;
+}
+[data-pm-surface="workshop"] .pm-ws-no-excerpt-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--pm-text-2);
+  font-weight: 600;
+}
+[data-pm-surface="workshop"] .pm-ws-no-excerpt-title svg {
+  color: var(--pm-dim);
+  flex: none;
+}
+[data-pm-surface="workshop"] .pm-ws-no-excerpt-desc {
+  font-size: 11.5px;
+  color: var(--pm-faint);
+  line-height: 1.55;
+  margin-top: 7px;
+}
+[data-pm-surface="workshop"] .pm-ws-no-excerpt .pm-ws-excerpt-actions {
+  margin-top: 12px;
+}
+[data-pm-surface="workshop"] .pm-ws-action-btn-grow {
+  flex: 1;
+  justify-content: center;
+}
+[data-pm-surface="workshop"] .pm-ws-excerpt-continue {
+  margin-bottom: 9px;
+  width: 100%;
+}
+
+/* ---------- Rail: gated tools (§9) ---------- */
+[data-pm-surface="workshop"] .pm-ws-tool-locked,
+[data-pm-surface="workshop"] .pm-ws-tool-locked:hover {
+  cursor: default;
+  color: var(--pm-dim);
+  background: color-mix(in srgb, var(--pm-surface-2) 40%, transparent);
+  border-color: var(--pm-border-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-tool-locked svg {
+  color: #6a5b4a;
+}
+[data-pm-surface="workshop"] .pm-ws-tool-lock {
+  margin-left: auto;
+  font-family: var(--pm-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7d6a55;
+}
+
+/* ---------- Composer: scope-aware affordances (§9/§10) ---------- */
+[data-pm-surface="workshop"] .pm-ws-comp-add-excerpt {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 13px;
+  border-radius: var(--pm-r-tile);
+  border: 1px solid var(--pm-border);
+  background: var(--pm-surface-2);
+  color: var(--pm-text-2);
+  font: 500 12.5px var(--pm-sans);
+  cursor: pointer;
+  white-space: nowrap;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-add-excerpt:not(:disabled):hover {
+  border-color: var(--pm-border-2);
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-comp-add-excerpt svg {
+  color: var(--pm-muted);
+  flex: none;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-add-excerpt:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-pill-off,
+[data-pm-surface="workshop"] .pm-ws-comp-pill-off:hover {
+  cursor: default;
+  color: #7d6a55;
+  background: color-mix(in srgb, var(--pm-surface-2) 40%, transparent);
+  border-color: var(--pm-border-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-comp-pill-off svg {
+  color: #6a5b4a;
+}
+
+/* ---------- Context pills: clickable labels (§7) ---------- */
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-open {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--pm-text-2);
+  cursor: pointer;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-open:hover {
+  color: var(--pm-text);
+  text-decoration-color: var(--pm-accent);
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-pill-file svg {
+  color: var(--pm-blue);
+}
+
+/* ---------- The shared Edit│Preview sheet (§5–§7) ---------- */
+[data-pm-surface="workshop"] .pm-ws-text-sheet {
+  width: min(940px, calc(100vw - 48px));
+  max-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  padding: 0 26px;
+  border-bottom: 1px solid var(--pm-border-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-tab {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  padding: 11px 14px;
+  color: var(--pm-dim);
+  font: 600 12.5px var(--pm-sans);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-tab:hover {
+  color: var(--pm-text-2);
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-tab-on {
+  color: var(--pm-text);
+  border-bottom-color: var(--pm-accent);
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-hint {
+  margin-left: auto;
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--pm-faint);
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 26px 0;
+  padding: 10px 13px;
+  border: 1px solid color-mix(in srgb, var(--pm-amber) 32%, transparent);
+  background: color-mix(in srgb, var(--pm-amber) 7%, transparent);
+  border-radius: var(--pm-r-tile);
+  color: var(--pm-amber);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-pane {
+  display: none;
+  padding: 22px 26px 24px;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-pane-on {
+  display: block;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 210px;
+  resize: vertical;
+  background: var(--pm-inset);
+  border: 1px solid var(--pm-border);
+  border-radius: 11px;
+  padding: 15px;
+  color: var(--pm-text);
+  font-family: var(--pm-mono);
+  font-size: 13px;
+  line-height: 1.7;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-input:focus {
+  outline: none;
+  border-color: var(--pm-accent);
+  box-shadow: 0 0 0 3px var(--pm-accent-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-input:focus-visible {
+  outline: 2px solid var(--pm-accent-hi);
+  outline-offset: 1px;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-input::placeholder {
+  color: var(--pm-faint);
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-input[readonly] {
+  color: var(--pm-text-2);
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-faint);
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-count {
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--pm-accent-hi);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-link:hover {
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview {
+  min-height: 210px;
+  max-height: 44vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overflow-wrap: break-word;
+  background: var(--pm-inset);
+  border: 1px solid var(--pm-border-soft);
+  border-radius: 11px;
+  padding: 18px 20px;
+  color: var(--pm-text-2);
+  font-size: 14px;
+  line-height: 1.72;
+  text-wrap: pretty;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview:focus-visible {
+  outline: 2px solid var(--pm-accent-hi);
+  outline-offset: 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview > *:first-child,
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview .markdown-content > *:first-child {
+  margin-top: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview h1,
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview h2,
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview h3,
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview h4 {
+  color: var(--pm-text);
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 20px 0 8px;
+  letter-spacing: -0.01em;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview h1 { font-size: 20px; }
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview h2 { font-size: 17px; }
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview h3 { font-size: 15px; }
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview h4 {
+  font-size: 13.5px;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview p {
+  margin: 0 0 12px;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview strong {
+  color: var(--pm-text);
+  font-weight: 700;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview em {
+  color: var(--pm-accent-hi);
+  font-style: italic;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview code {
+  font-family: var(--pm-mono);
+  font-size: 12.5px;
+  background: var(--pm-surface-2);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview pre {
+  background: var(--pm-surface-2);
+  border-radius: var(--pm-r-tile);
+  padding: 12px 14px;
+  overflow-x: auto;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview ul,
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview ol {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview li {
+  margin: 0 0 5px;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview li::marker {
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview blockquote {
+  margin: 0 0 12px;
+  padding: 2px 0 2px 15px;
+  border-left: 2px solid var(--pm-border-2);
+  color: var(--pm-muted);
+  font-style: italic;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview hr {
+  border: 0;
+  border-top: 1px dashed var(--pm-border-2);
+  margin: 16px 0;
+}
+[data-pm-surface="workshop"] .pm-ws-text-sheet-preview-empty {
+  font-family: var(--pm-mono);
+  font-size: 12px;
+  color: var(--pm-faint);
+}
+
+@media (max-width: 900px) {
+  [data-pm-surface="workshop"] .pm-ws-paths {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+   Full reset — new session AND an empty working set
+
+   Both affordances are styled destructive because they usually are NOT what
+   the writer wants: the whole point of the new-session boundary is that the
+   passage survives it (Sprint 13A §3). These are the deliberate exception.
+   ============================================================ */
+
+/* Sessions menu: sits directly under "New session", with the difference
+   between them spelled out on a second line. */
+[data-pm-surface="workshop"] .pm-ws-sessions-menu-item-danger {
+  align-items: start;
+}
+[data-pm-surface="workshop"] .pm-ws-sessions-menu-item-danger > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-sessions-menu-item-danger small {
+  color: var(--pm-faint);
+  font: 10.5px var(--pm-mono);
+  line-height: 1.4;
+}
+[data-pm-surface="workshop"] .pm-ws-sessions-menu-item-danger svg {
+  margin-top: 2px;
+  color: var(--pm-red);
+}
+[data-pm-surface="workshop"] .pm-ws-sessions-menu-item-danger:not(:disabled):hover {
+  background: color-mix(in srgb, var(--pm-red) 12%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-sessions-menu-item-danger:not(:disabled):hover small {
+  color: var(--pm-muted);
+}
+
+/* Path chooser: beneath the two cards, quiet until hovered — an escape hatch,
+   not a third path. The note names exactly what would be discarded. */
+[data-pm-surface="workshop"] .pm-ws-reset-working-set {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 7px 14px;
+  border: 1px solid color-mix(in srgb, var(--pm-red) 30%, transparent);
+  border-radius: var(--pm-r-pill);
+  background: transparent;
+  color: var(--pm-red);
+  font: 600 12px var(--pm-sans);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-reset-working-set:not(:disabled):hover {
+  border-color: var(--pm-red);
+  background: color-mix(in srgb, var(--pm-red) 10%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-reset-working-set:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+[data-pm-surface="workshop"] .pm-ws-reset-working-set svg {
+  flex: none;
+}
+[data-pm-surface="workshop"] .pm-ws-reset-working-set-note {
+  color: var(--pm-faint);
+  font: 10px var(--pm-mono);
+  letter-spacing: 0.04em;
+  border-left: 1px solid color-mix(in srgb, var(--pm-red) 25%, transparent);
+  padding-left: 9px;
+}

@@ -125,7 +125,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       })
     };
     shell = createFakeShellService({
-      revealFileInOS: jest.fn().mockResolvedValue(undefined)
+      revealFileInOS: jest.fn().mockResolvedValue(undefined),
+      openFileInEditor: jest.fn().mockResolvedValue(undefined)
     });
     fileSystem = createFakeFileSystem();
     workspace = createFakeWorkspace();
@@ -279,7 +280,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_ATTACH_MESSAGE_FILE)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_REMOVE_MESSAGE_ATTACHMENT)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS)).toBe(true);
-    expect(router.handlerCount).toBe(33);
+    expect(router.handlerCount).toBe(38);
   });
 
   it('forwards the coordinator named-save state as typed Workshop IPC', () => {
@@ -2179,7 +2180,15 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       expect.objectContaining({ id: 'ctx-1', label: 'Story bible\u2026', words: 3 })
     ]);
     expect(session.getSnapshot().pendingHostUpdate).toBeUndefined();
+    // Sprint 13A §3: the working set survives the boundary, but the path does
+    // not — the new room opens on the chooser and offers to continue.
+    expect(session.getSnapshot().scope).toBeNull();
+    expect(session.getSnapshot().excerpt).toBeDefined();
 
+    await handler.handleSetSessionScope(message(
+      MessageType.WORKSHOP_SET_SESSION_SCOPE,
+      { scope: 'excerpt' }
+    ) as any);
     await handler.handleSendMessage(message(
       MessageType.WORKSHOP_SEND_MESSAGE,
       { text: 'Begin the fresh room.' }
@@ -2187,6 +2196,21 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
     const freshHostInput = service.startWorkshopPersonaConversation.mock.calls.at(-1)![0];
     expect(freshHostInput.contextAttachmentsFrame).toContain('Mara keeps watch.');
+  });
+
+  it('refuses a message until the writer chooses a path for the new room', async () => {
+    await pin();
+    await handler.handleResetSession(message(MessageType.WORKSHOP_RESET_SESSION, {}) as any);
+    service.startWorkshopPersonaConversation.mockClear();
+
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Straight into it.' }
+    ) as any);
+
+    expect(service.startWorkshopPersonaConversation).not.toHaveBeenCalled();
+    expect(posted(MessageType.ERROR).at(-1)?.payload.message)
+      .toContain('Choose how to start this session');
   });
 
   describe('excerpt-source canonical resolution (Phase 6)', () => {
@@ -2461,6 +2485,229 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       ) as any);
       const replaced = posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload.session.contextBudget;
       expect(JSON.stringify(replaced?.sources ?? [])).not.toContain('ch-04.md');
+    });
+  });
+  /**
+   * Sprint 13A — Open Chat at the handler boundary. The sprint's exit criteria
+   * live here: an excerpt-free host conversation is real and honest, tools and
+   * guests stay gated, both reversals reach the aggregate, and the shared
+   * Edit/Preview sheet is served without shipping every attachment body in
+   * every snapshot.
+   */
+  describe('Open Chat (Sprint 13A)', () => {
+    const chooseOpen = () => handler.handleSetSessionScope(
+      message(MessageType.WORKSHOP_SET_SESSION_SCOPE, { scope: 'open' }) as any
+    );
+    const send = (text: string) => handler.handleSendMessage(
+      message(MessageType.WORKSHOP_SEND_MESSAGE, { text }) as any
+    );
+    const attachAvaFile = async () => {
+      const content = 'Ava keeps watch at the door.';
+      shell.pickFile = jest.fn().mockResolvedValue({
+        fsPath: '/ws/Characters/ava.md',
+        uri: 'file:///ws/Characters/ava.md'
+      });
+      fileSystem.stat = jest.fn().mockResolvedValue({ type: FileType.File, size: content.length });
+      fileSystem.readFile = jest.fn().mockResolvedValue(new TextEncoder().encode(content));
+      await handler.handleAddContextFile(message(MessageType.WORKSHOP_ADD_CONTEXT_FILE, {}) as any);
+    };
+
+    it('starts a retained host conversation with no excerpt and no fabricated one', async () => {
+      await chooseOpen();
+      await send('Help me plan the next scene.');
+
+      const input = service.startWorkshopPersonaConversation.mock.calls.at(-1)![0];
+      expect(input.excerpt).toBeUndefined();
+      expect(input.excerptSourceFrame).toBeUndefined();
+      expect(session.hasHostConversation()).toBe(true);
+    });
+
+    it('still delivers context attachments in an open conversation', async () => {
+      await chooseOpen();
+      await handler.handleAddContextText(message(
+        MessageType.WORKSHOP_ADD_CONTEXT_TEXT,
+        { text: '# Kayla — running notes\n\nShe does not believe it.' }
+      ) as any);
+      await send('What is she protecting?');
+
+      const input = service.startWorkshopPersonaConversation.mock.calls.at(-1)![0];
+      expect(input.contextAttachmentsFrame).toContain('She does not believe it.');
+    });
+
+    it('names a text note from its first line rather than a placeholder', async () => {
+      await chooseOpen();
+      await handler.handleAddContextText(message(
+        MessageType.WORKSHOP_ADD_CONTEXT_TEXT,
+        { text: '# Kayla — running notes\n\nShe does not believe it.' }
+      ) as any);
+
+      expect(session.getSnapshot().contextAttachments[0].label).toBe('Kayla — running notes');
+    });
+
+    it('refuses a tool run in an open conversation, with a visible reason', async () => {
+      await chooseOpen();
+      await runProse();
+
+      expect(service.analyzeProse).not.toHaveBeenCalled();
+      expect(posted(MessageType.ERROR).at(-1)?.payload.message).toContain('Pin an excerpt');
+    });
+
+    it('refuses a guest invitation in an excerpt-free room', async () => {
+      await chooseOpen();
+      await handler.handleInviteGuest(message(
+        MessageType.WORKSHOP_INVITE_GUEST,
+        { personaId: 'felix', openingMessage: 'Read the room.' }
+      ) as any);
+
+      expect(service.startWorkshopGuestConversation).not.toHaveBeenCalled();
+      expect(posted(MessageType.ERROR).at(-1)?.payload.message).toContain('Pin an excerpt');
+    });
+
+    it('adopts an excerpt mid-conversation without restarting it', async () => {
+      await chooseOpen();
+      await send('Help me plan the next scene.');
+      const conversationId = session.getHostConversationId();
+      service.startWorkshopPersonaConversation.mockClear();
+
+      await pin();
+
+      expect(session.getScope()).toBe('open');
+      expect(session.getHostConversationId()).toBe(conversationId);
+      expect(session.getSnapshot().turns.at(-1)).toMatchObject({
+        artifact: 'scope_change',
+        content: expect.stringContaining('same session, conversation retained')
+      });
+
+      await send('Now read it.');
+      // The SAME retained conversation continues; nothing was re-started.
+      expect(service.startWorkshopPersonaConversation).not.toHaveBeenCalled();
+      const continuation = service.continueConversation.mock.calls.at(-1)!;
+      expect(continuation[0]).toBe(conversationId);
+      expect(continuation[1]).toContain('FIRST passage you have been given here');
+    });
+
+    it('withdraws a shelved passage from the retained host', async () => {
+      await pin();
+      await send('Read this for me.');
+      await chooseOpen();
+      await send('Set that aside a moment.');
+
+      const continuation = service.continueConversation.mock.calls.at(-1)!;
+      expect(continuation[1]).toContain('set the excerpt aside');
+      expect(continuation[1]).toContain('Do not quote it');
+    });
+
+    it('re-pins the shelved passage without leaving the conversation', async () => {
+      await pin();
+      await chooseOpen();
+      await handler.handleRepinExcerpt(message(MessageType.WORKSHOP_REPIN_EXCERPT, {}) as any);
+
+      expect(session.getScope()).toBe('open');
+      expect(session.getExcerpt()?.version).toBe(1);
+      expect(session.getShelvedExcerpt()).toBeUndefined();
+    });
+
+    it('rejects an unknown scope without touching the room', async () => {
+      await pin();
+      await handler.handleSetSessionScope(
+        message(MessageType.WORKSHOP_SET_SESSION_SCOPE, { scope: 'whatever' }) as any
+      );
+
+      expect(session.getScope()).toBe('excerpt');
+      expect(posted(MessageType.ERROR).at(-1)?.payload.message).toContain('Unknown Workshop session scope');
+    });
+
+    it('serves one attachment body on request instead of every snapshot', async () => {
+      await chooseOpen();
+      await handler.handleAddContextText(message(
+        MessageType.WORKSHOP_ADD_CONTEXT_TEXT,
+        { text: 'Kayla picks at her cuff.' }
+      ) as any);
+      await handler.handleRequestContextAttachment(message(
+        MessageType.WORKSHOP_REQUEST_CONTEXT_ATTACHMENT,
+        { id: 'ctx-1' }
+      ) as any);
+
+      expect(posted(MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT).at(-1)?.payload).toEqual({
+        id: 'ctx-1',
+        content: 'Kayla picks at her cuff.',
+        canOpenInEditor: false
+      });
+    });
+
+    it('answers a request for a removed attachment with a reason, not silence', async () => {
+      await chooseOpen();
+      await handler.handleRequestContextAttachment(message(
+        MessageType.WORKSHOP_REQUEST_CONTEXT_ATTACHMENT,
+        { id: 'ctx-9' }
+      ) as any);
+
+      expect(posted(MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT).at(-1)?.payload)
+        .toMatchObject({ id: 'ctx-9', canOpenInEditor: false, error: expect.any(String) });
+    });
+
+    it('saves a sheet edit and tells the room it happened', async () => {
+      await chooseOpen();
+      await handler.handleAddContextText(message(
+        MessageType.WORKSHOP_ADD_CONTEXT_TEXT,
+        { text: '# Kayla\n\nFirst pass.' }
+      ) as any);
+      await send('Hold that thought.');
+      await handler.handleUpdateContextText(message(
+        MessageType.WORKSHOP_UPDATE_CONTEXT_TEXT,
+        { id: 'ctx-1', text: '# Kayla — revised\n\nSecond pass.' }
+      ) as any);
+
+      expect(session.getContextAttachment('ctx-1')).toMatchObject({
+        label: 'Kayla — revised',
+        content: '# Kayla — revised\n\nSecond pass.'
+      });
+      expect(session.getSnapshot().turns.at(-1)).toMatchObject({
+        artifact: 'context_change',
+        content: expect.stringContaining('Edited context: Kayla — revised')
+      });
+    });
+
+    it('refuses to edit a project file’s session copy, and says why', async () => {
+      await chooseOpen();
+      await attachAvaFile();
+      await handler.handleUpdateContextText(message(
+        MessageType.WORKSHOP_UPDATE_CONTEXT_TEXT,
+        { id: 'ctx-1', text: 'Rewritten.' }
+      ) as any);
+
+      expect(session.getContextAttachment('ctx-1')?.content).not.toBe('Rewritten.');
+      expect(posted(MessageType.ERROR).at(-1)?.payload.message)
+        .toContain('stay in sync with the file on disk');
+    });
+
+    it('opens a file-backed attachment through the ShellService port', async () => {
+      await chooseOpen();
+      await attachAvaFile();
+      await handler.handleOpenContextAttachmentFile(message(
+        MessageType.WORKSHOP_OPEN_CONTEXT_ATTACHMENT_FILE,
+        { id: 'ctx-1' }
+      ) as any);
+
+      expect(shell.openFileInEditor).toHaveBeenCalledWith(
+        '/ws/Characters/ava.md',
+        { beside: true }
+      );
+    });
+
+    it('explains that a typed note has no file to open', async () => {
+      await chooseOpen();
+      await handler.handleAddContextText(message(
+        MessageType.WORKSHOP_ADD_CONTEXT_TEXT,
+        { text: 'Kayla picks at her cuff.' }
+      ) as any);
+      await handler.handleOpenContextAttachmentFile(message(
+        MessageType.WORKSHOP_OPEN_CONTEXT_ATTACHMENT_FILE,
+        { id: 'ctx-1' }
+      ) as any);
+
+      expect(shell.openFileInEditor).not.toHaveBeenCalled();
+      expect(posted(MessageType.ERROR).at(-1)?.payload.message).toContain('has no file to open');
     });
   });
 });

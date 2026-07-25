@@ -41,6 +41,31 @@ export type WorkshopPersonaId =
   | 'theo'
   | 'wren';
 
+/**
+ * How this Workshop session was started (Sprint 13A).
+ *
+ * `null` means the writer has not chosen a path yet — the center shows the path
+ * chooser. Scope is ASSIGNED by an explicit writer action (choosing a path,
+ * pinning an excerpt, running a tool), never DERIVED from excerpt presence at
+ * read time: an open conversation that later adopts an excerpt stays `open`,
+ * and a passage session whose excerpt is shelved stays `excerpt`-free without
+ * pretending the writer asked for open chat.
+ */
+export type WorkshopSessionScope = 'excerpt' | 'open' | null;
+
+/** The two scopes a writer can explicitly select; `null` is never requested. */
+export type WorkshopSelectableSessionScope = Exclude<WorkshopSessionScope, null>;
+
+export function isWorkshopSelectableSessionScope(
+  value: unknown
+): value is WorkshopSelectableSessionScope {
+  return value === 'excerpt' || value === 'open';
+}
+
+export function isWorkshopSessionScope(value: unknown): value is WorkshopSessionScope {
+  return value === null || isWorkshopSelectableSessionScope(value);
+}
+
 /** The one explicit routing choice behind the Workshop composer. */
 export type WorkshopChatTarget =
   | { kind: 'host' }
@@ -391,7 +416,13 @@ export type WorkshopTurnArtifact =
   | 'excerpt_revision'
   | 'context_change'
   | 'session_start'
-  | 'session_resume';
+  | 'session_resume'
+  /**
+   * A session-scope transition inside ONE retained session (Sprint 13A):
+   * excerpt adopted mid-open-chat, passage shelved, or passage re-pinned. The
+   * conversation is retained across it — this divider says so out loud.
+   */
+  | 'scope_change';
 
 /**
  * Truncation provenance for a file-seeded excerpt: the host pinned a
@@ -463,6 +494,25 @@ export function workshopExcerptSourcePath(
   source: WorkshopExcerptSource | WorkshopExcerptSourceSnapshot
 ): string | undefined {
   return source.kind === 'manual' ? undefined : source.relativePath;
+}
+
+/**
+ * The passage's short display title (Sprint 13A) — the file's base name without
+ * its extension, or "Pasted passage" for typed text.
+ *
+ * Shared by the aggregate's scope dividers and every webview surface that names
+ * the excerpt (path chooser, scope strip, rail) so one passage never appears
+ * under two different names in the same room.
+ */
+export function workshopExcerptTitle(
+  source: WorkshopExcerptSource | WorkshopExcerptSourceSnapshot
+): string {
+  const relativePath = workshopExcerptSourcePath(source);
+  if (relativePath === undefined) {
+    return 'Pasted passage';
+  }
+  const base = relativePath.split(/[\\/]/).filter(Boolean).pop() ?? relativePath;
+  return base.replace(/\.[^.]+$/, '') || base;
 }
 
 /** Source document URI for a sourced excerpt; undefined for manual text. */
@@ -696,6 +746,16 @@ export interface WorkshopTurn {
  */
 export interface WorkshopSessionSnapshot {
   excerpt?: WorkshopExcerptSnapshot;
+  /**
+   * Explicit session scope (Sprint 13A). Center view, header meta, composer,
+   * and rail all key off THIS — never off `excerpt` being present.
+   */
+  scope: WorkshopSessionScope;
+  /**
+   * The passage the writer set aside when switching to open conversation.
+   * Shelved, not deleted: re-pinning restores this exact version.
+   */
+  shelvedExcerpt?: WorkshopExcerptSnapshot;
   /** Current monotonic excerpt version (zero before the first pin). */
   excerptVersion: number;
   /** Number of excerpt replacements since the last new-session boundary. */
@@ -712,6 +772,8 @@ export interface WorkshopSessionSnapshot {
     excerptVersion?: number;
     /** True when the attachment list changed since the host last saw it. */
     context: boolean;
+    /** True when a shelved passage still has to be withdrawn from the host. */
+    excerptWithdrawn?: boolean;
   };
   /** Host-owned, defensively copied writer task list in explicit order. */
   todos: WorkshopTodoItem[];
@@ -867,6 +929,93 @@ export interface WorkshopRemoveContextAttachmentMessage
   type: MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT;
 }
 
+/**
+ * Replace one authored attachment's text from the shared Edit/Preview sheet
+ * (Sprint 13A). Writer text notes and wizard suggestions are editable in
+ * session; a wizard edit never touches the source file on disk.
+ */
+export interface WorkshopUpdateContextTextPayload {
+  id: string;
+  text: string;
+}
+
+export interface WorkshopUpdateContextTextMessage
+  extends MessageEnvelope<WorkshopUpdateContextTextPayload> {
+  type: MessageType.WORKSHOP_UPDATE_CONTEXT_TEXT;
+}
+
+/**
+ * Fetch one attachment's body for the Edit/Preview sheet (Sprint 13A).
+ * Attachment content is prompt-bearing host state and is deliberately NOT in
+ * every session snapshot (the shared budget is 35,000 words) — the webview
+ * asks for exactly the one the writer opened.
+ */
+export interface WorkshopRequestContextAttachmentPayload {
+  id: string;
+}
+
+export interface WorkshopRequestContextAttachmentMessage
+  extends MessageEnvelope<WorkshopRequestContextAttachmentPayload> {
+  type: MessageType.WORKSHOP_REQUEST_CONTEXT_ATTACHMENT;
+}
+
+export interface WorkshopContextAttachmentContentPayload {
+  id: string;
+  /** Absent when the attachment was removed between request and reply. */
+  content?: string;
+  /** Display-safe reason when the body could not be produced. */
+  error?: string;
+  /** True when the host can open this attachment's source in an editor tab. */
+  canOpenInEditor: boolean;
+}
+
+export interface WorkshopContextAttachmentContentMessage
+  extends MessageEnvelope<WorkshopContextAttachmentContentPayload> {
+  type: MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT;
+}
+
+/**
+ * Open a file-backed attachment's source in a host editor tab (Sprint 13A).
+ * The webview sheet is the prettified markdown read; this is the escape hatch
+ * to the real document. Routed through the ShellService port, so core stays
+ * host-agnostic.
+ */
+export interface WorkshopOpenContextAttachmentFilePayload {
+  id: string;
+}
+
+export interface WorkshopOpenContextAttachmentFileMessage
+  extends MessageEnvelope<WorkshopOpenContextAttachmentFilePayload> {
+  type: MessageType.WORKSHOP_OPEN_CONTEXT_ATTACHMENT_FILE;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Session scope (Sprint 13A) — the path chooser and both reversals. Every one
+// of these is a context transition INSIDE one retained session, never a new
+// session and never a deletion.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface WorkshopSetSessionScopePayload {
+  scope: WorkshopSelectableSessionScope;
+}
+
+/**
+ * Choose (or change) the session path. `open` shelves any pinned passage;
+ * `excerpt` restores a shelved one. Rejected while a run is in flight.
+ */
+export interface WorkshopSetSessionScopeMessage
+  extends MessageEnvelope<WorkshopSetSessionScopePayload> {
+  type: MessageType.WORKSHOP_SET_SESSION_SCOPE;
+}
+
+/**
+ * Re-pin the shelved passage without leaving the open conversation. Zero
+ * payload — the shelf holds exactly one version.
+ */
+export interface WorkshopRepinExcerptMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.WORKSHOP_REPIN_EXCERPT;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Context Selector modal (Sprint 12 Phase 4) — browse/search the configured
 // resource catalog and attach by canonical { group, path }. Display-safe
@@ -1017,7 +1166,22 @@ export interface WorkshopRereadExcerptMessage extends MessageEnvelope<Record<str
  * (9 prior siblings; PR #67 review #9) — unlike an empty interface, it
  * actually rejects smuggled fields.
  */
-export interface WorkshopResetSessionMessage extends MessageEnvelope<Record<string, never>> {
+export interface WorkshopResetSessionPayload {
+  /**
+   * Clear the WORKING SET too — the pinned excerpt, the shelf, and every
+   * context attachment (Sprint 13A follow-up).
+   *
+   * The ordinary new-session boundary deliberately carries those across so the
+   * writer can keep workshopping the same passage in a fresh room. This asks
+   * for the other thing: an empty room. Saved sessions on disk are untouched
+   * either way — this replaces the live room and its rolling checkpoint, and
+   * never deletes a named session.
+   */
+  clearWorkingSet?: boolean;
+}
+
+export interface WorkshopResetSessionMessage
+  extends MessageEnvelope<WorkshopResetSessionPayload> {
   type: MessageType.WORKSHOP_RESET_SESSION;
 }
 
@@ -1139,6 +1303,11 @@ export interface WorkshopSessionSummary {
   excerptIdentity?: string;
   preview?: string;
   degradedConversationKeys?: string[];
+  /**
+   * The session's scope (Sprint 13A). Absent on rows written before scope
+   * existed — the browser says "Scope unknown" rather than guessing.
+   */
+  scope?: WorkshopSessionScope;
 }
 
 export interface WorkshopSessionsDataMessage extends MessageEnvelope<{

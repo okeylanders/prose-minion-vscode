@@ -207,6 +207,7 @@ export class RunWorkshopToolSidePass {
         requestId: synthesisRequestId,
         personaId,
         excerpt,
+        excerptVersion: excerpt.version,
         signal: controller.signal,
         events: {
           status: events.status,

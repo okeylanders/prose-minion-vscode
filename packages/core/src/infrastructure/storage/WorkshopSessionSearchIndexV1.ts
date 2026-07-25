@@ -9,7 +9,7 @@ import {
   WorkshopPersistedSessionV1,
   WorkshopPersistedSummaryV1
 } from '@/application/services/workshop/WorkshopPersistedSession';
-import { WorkshopPersonaId } from '@messages';
+import { WorkshopPersonaId, WorkshopSessionScope, isWorkshopSessionScope } from '@messages';
 import { isWorkshopPersonaId } from '@shared/constants/workshopPersonas';
 import {
   assertTimezone,
@@ -33,6 +33,8 @@ export interface WorkshopStoredSessionSummary {
   participantPersonaIds: WorkshopPersistedSessionV1['summary']['participantPersonaIds'];
   turnCount: number;
   excerptWordCount: number;
+  /** The session's scope (Sprint 13A); absent on rows written before it existed. */
+  scope?: WorkshopPersistedSummaryV1['scope'];
   excerptLabel?: string;
   excerptIdentity?: string;
   preview?: string;
@@ -79,6 +81,7 @@ export function buildWorkshopSessionSearchIndexV1(
       participantPersonaIds: [...session.summary.participantPersonaIds],
       turnCount: session.summary.turnCount,
       excerptWordCount: session.summary.excerptWordCount,
+      ...(session.summary.scope !== undefined ? { scope: session.summary.scope } : {}),
       ...(session.summary.excerptLabel ? { excerptLabel: session.summary.excerptLabel } : {}),
       ...(session.summary.excerptIdentity ? { excerptIdentity: session.summary.excerptIdentity } : {}),
       ...(session.summary.preview ? { preview: session.summary.preview } : {})
@@ -101,6 +104,7 @@ export function workshopStoredSummaryFromSearchIndex(
     participantPersonaIds: [...searchIndex.summary.participantPersonaIds],
     turnCount: searchIndex.summary.turnCount,
     excerptWordCount: searchIndex.summary.excerptWordCount,
+    ...(searchIndex.summary.scope !== undefined ? { scope: searchIndex.summary.scope } : {}),
     ...(searchIndex.summary.excerptLabel ? { excerptLabel: searchIndex.summary.excerptLabel } : {}),
     ...(searchIndex.summary.excerptIdentity ? { excerptIdentity: searchIndex.summary.excerptIdentity } : {}),
     ...(searchIndex.summary.preview ? { preview: searchIndex.summary.preview } : {}),
@@ -190,7 +194,7 @@ function parseWorkshopSessionSearchIndexSummary(value: unknown): WorkshopPersist
     value,
     'Workshop session search index summary',
     ['hostPersonaId', 'participantPersonaIds', 'turnCount', 'excerptWordCount'],
-    ['excerptLabel', 'excerptIdentity', 'preview']
+    ['scope', 'excerptLabel', 'excerptIdentity', 'preview']
   );
   if (!isWorkshopPersonaId(value.hostPersonaId)) {
     throw new Error('Workshop session search index has an invalid host persona.');
@@ -203,6 +207,9 @@ function parseWorkshopSessionSearchIndexSummary(value: unknown): WorkshopPersist
   if (!isNonNegativeInteger(value.turnCount) || !isNonNegativeInteger(value.excerptWordCount)) {
     throw new Error('Workshop session search index has invalid counts.');
   }
+  if (value.scope !== undefined && !isWorkshopSessionScope(value.scope)) {
+    throw new Error('Workshop session search index has an invalid scope.');
+  }
   for (const key of ['excerptLabel', 'excerptIdentity', 'preview'] as const) {
     if (value[key] !== undefined && typeof value[key] !== 'string') {
       throw new Error(`Workshop session search index has an invalid ${key}.`);
@@ -213,6 +220,7 @@ function parseWorkshopSessionSearchIndexSummary(value: unknown): WorkshopPersist
     participantPersonaIds: [...value.participantPersonaIds] as WorkshopPersonaId[],
     turnCount: value.turnCount,
     excerptWordCount: value.excerptWordCount,
+    ...(value.scope !== undefined ? { scope: value.scope as WorkshopSessionScope } : {}),
     ...(typeof value.excerptLabel === 'string' ? { excerptLabel: value.excerptLabel } : {}),
     ...(typeof value.excerptIdentity === 'string' ? { excerptIdentity: value.excerptIdentity } : {}),
     ...(typeof value.preview === 'string' ? { preview: value.preview } : {})

@@ -48,7 +48,20 @@ export interface WorkshopCapabilityEvents {
 export interface WorkshopPersonaCapabilityTurn {
   requestId: string;
   personaId: WorkshopPersonaId;
-  excerpt: WorkshopExcerpt;
+  /**
+   * The pinned passage — ABSENT in an open conversation (Sprint 13A §1).
+   * Excerpt-scoped capability operations stay unavailable while it is missing;
+   * the closed dictionary and configured-resource families are unaffected,
+   * because neither reads the excerpt.
+   */
+  excerpt?: WorkshopExcerpt;
+  /**
+   * The session's current excerpt revision, which is what correlates a late
+   * artifact to its run. Deliberately NOT derived from `excerpt`: a shelved
+   * passage leaves the version standing (shelved, not deleted), and an
+   * excerpt-free room still needs a stable correlation value.
+   */
+  excerptVersion: number;
   signal: AbortSignal;
   events: WorkshopCapabilityEvents;
 }
@@ -111,7 +124,12 @@ export class WorkshopPersonaCapability implements AgentCapability<
         `${error instanceof Error ? error.message : String(error)}`
       );
     }
-    return [userMessage, createWorkshopCapabilityInstruction(resourceGroups)].join('\n\n');
+    return [
+      userMessage,
+      createWorkshopCapabilityInstruction(resourceGroups, {
+        excerptAvailable: this.turn.excerpt !== undefined
+      })
+    ].join('\n\n');
   }
 
   async appendTurnContract(userMessage: string): Promise<string> {
@@ -152,7 +170,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       this.resultLogSummary(result)
     );
     return {
-      evidence: this.formatEvidence(result, this.turn.excerpt.version),
+      evidence: this.formatEvidence(result, this.turn.excerptVersion),
       artifacts: completedTurn ? [{
         catalog: this.catalog,
         id: completedTurn.id,
@@ -325,7 +343,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
     };
     const completion = this.session.recordCapabilityArtifact({
       hostRequestId: this.turn.requestId,
-      excerptVersion: this.turn.excerpt.version,
+      excerptVersion: this.turn.excerptVersion,
       details: {
         operation,
         status: result.status,
@@ -453,12 +471,22 @@ export class WorkshopPersonaCapability implements AgentCapability<
   private async runAnalysis(
     request: Extract<WorkshopCapabilityRequest, { capability: 'analysis.run' }>
   ): Promise<WorkshopCapabilityResult> {
+    const excerpt = this.turn.excerpt;
+    if (!excerpt) {
+      // Excerpt analysis is excerpt-SCOPED, and this room has no passage
+      // (Sprint 13A §9). Refuse with a visible reason rather than running the
+      // tool against nothing — the persona must not report on absent prose.
+      return this.rejected(
+        request,
+        'This is an open conversation with no excerpt attached, so excerpt analysis is unavailable. Ask the writer to add an excerpt, or answer without a tool report.'
+      );
+    }
     const toolLabel = workshopToolLabel(request.toolId);
     const personaLabel = workshopPersonaLabel(this.turn.personaId);
     let chunkCount = 0;
     const analysis = await this.analysisSidePass.run(
       request.toolId,
-      this.turn.excerpt,
+      excerpt,
       {
         signal: this.turn.signal,
         retainConversation: true,
@@ -531,7 +559,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
     const completion = request.capability === 'analysis.run'
       ? this.analysisSidePass.adoptPersonaReport({
           hostRequestId: this.turn.requestId,
-          excerptVersion: this.turn.excerpt.version,
+          excerptVersion: this.turn.excerptVersion,
           toolId: request.toolId,
           details,
           result,
@@ -540,7 +568,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
         })
       : this.session.recordCapabilityArtifact({
           hostRequestId: this.turn.requestId,
-          excerptVersion: this.turn.excerpt.version,
+          excerptVersion: this.turn.excerptVersion,
           details,
           result
         });
@@ -550,7 +578,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       if (request.capability !== 'analysis.run') {
         this.outputChannel.appendLine(
           `[WorkshopPersonaCapability] Refused late persona-requested ${request.capability} result ` +
-          `for request=${this.turn.requestId} persona=${this.turn.personaId} excerptVersion=${this.turn.excerpt.version}.`
+          `for request=${this.turn.requestId} persona=${this.turn.personaId} excerptVersion=${this.turn.excerptVersion}.`
         );
       }
       return undefined;

@@ -16,6 +16,12 @@
  * truth, so it doesn't belong in WorkshopSessionService (and losing it on a
  * webview reload is acceptable alpha behavior). Staged attachments are HOST
  * state — they survive reloads with the session snapshot.
+ *
+ * Sprint 13A: the composer is SCOPE-AWARE (§9/§10). In an open conversation the
+ * placeholder asks what you'd like to brainstorm, an "Add excerpt" affordance
+ * sits beside the attach button, and Tools is `aria-disabled` with a visible
+ * reason rather than silently dead — the writer learns why, and a screen reader
+ * hears the same sentence. Starters seed the draft through `draftSeed`.
  */
 
 import * as React from 'react';
@@ -24,12 +30,26 @@ import {
   WORKSHOP_INTERACTION_MODE_LABELS,
   WORKSHOP_RELATIONAL_DEPTH_LABELS,
   WorkshopConversationBehavior,
-  WorkshopMessageAttachmentSnapshot
+  WorkshopMessageAttachmentSnapshot,
+  WorkshopSessionScope
 } from '@messages';
 
+/** The one sentence the gated tool affordances say, everywhere (§9). */
+export const WORKSHOP_TOOLS_GATED_REASON = 'Add an excerpt to use analysis tools.';
+
 interface WorkshopComposerProps {
-  /** A valid excerpt is pinned and no run is in flight — sending is possible. */
+  /** The session has a subject (excerpt or open scope) and no run is in flight. */
   canMessage: boolean;
+  /** Explicit session scope — placeholder, tool gating, and copy all key off it. */
+  scope: WorkshopSessionScope;
+  /** True when a passage is pinned; the ONLY thing that unlocks analysis tools. */
+  hasExcerpt: boolean;
+  /** Prefill requested from outside (an open-chat starter chip); appended once. */
+  draftSeed?: { text: string; token: number };
+  /** Open the shared Edit/Preview sheet to add an excerpt mid-conversation. */
+  onAddExcerpt: () => void;
+  /** Announce why a gated affordance is unavailable (toast + live region). */
+  onGatedAction: (reason: string) => void;
   /** The current recipient already has a retained conversation (drives copy). */
   hasConversation: boolean;
   /** Deterministic current-recipient label for visible, accessible composer language. */
@@ -71,6 +91,11 @@ const ModeChipDiamond: React.FC = () => (
 
 export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   canMessage,
+  scope,
+  hasExcerpt,
+  draftSeed,
+  onAddExcerpt,
+  onGatedAction,
   hasConversation,
   recipientLabel,
   isRunning,
@@ -153,9 +178,29 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
     action();
   };
 
-  const placeholder = hasConversation
-    ? `Continue with ${recipientLabel}…`
-    : `Message ${recipientLabel} about this excerpt…`;
+  // Starter chips seed the draft rather than sending: the writer still owns the
+  // turn. Keyed on the token so clicking the same starter twice works, and so a
+  // re-render never re-applies a seed the writer has since edited away.
+  const appliedSeedRef = React.useRef<number>();
+  React.useEffect(() => {
+    if (!draftSeed || appliedSeedRef.current === draftSeed.token) {
+      return;
+    }
+    appliedSeedRef.current = draftSeed.token;
+    setDraft(draftSeed.text);
+    textareaRef.current?.focus();
+  }, [draftSeed]);
+
+  const openWithoutExcerpt = scope === 'open' && !hasExcerpt;
+  const placeholder = scope === null
+    ? 'Pick a starting path above to begin…'
+    : openWithoutExcerpt
+      ? `What would you like to brainstorm with ${recipientLabel}?`
+      : hasConversation
+        ? `Continue with ${recipientLabel}…`
+        : scope === 'open'
+          ? `Message ${recipientLabel} — excerpt now attached…`
+          : `Message ${recipientLabel} about this excerpt…`;
 
   return (
     <div className="pm-ws-composer-wrap">
@@ -234,6 +279,20 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
           placeholder={placeholder}
           aria-label={`Message ${recipientLabel}`}
         />
+        {openWithoutExcerpt && (
+          /* The composer's own door into the passage path (§4). It sits beside
+             the attach button rather than in the action cluster, because it
+             changes what the room IS, not how this one message is sent. */
+          <button
+            className="pm-ws-comp-add-excerpt"
+            type="button"
+            disabled={!sessionReady}
+            title="Add an excerpt to this session"
+            onClick={onAddExcerpt}
+          >
+            <Icon name="doc" size={14} /> Add excerpt
+          </button>
+        )}
         <div className="pm-ws-comp-right">
           {/* Current-mode chip (ADR 2026-07-20 §11): the visible label is the
               ACTIVE state, never the phrase "Interaction Mode"; the accessible
@@ -256,11 +315,18 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
               {conversationBehavior.expressionLevel.toUpperCase()}
             </span>
           </button>
+          {/* §9: gated, not deleted. `aria-disabled` keeps the button
+              focusable so the reason is reachable by keyboard and announced,
+              which a `disabled` attribute would hide entirely. */}
           <button
-            className="pm-ws-comp-pill"
+            className={`pm-ws-comp-pill${hasExcerpt ? '' : ' pm-ws-comp-pill-off'}`}
             type="button"
             disabled={!sessionReady}
-            onClick={onOpenTools}
+            aria-disabled={hasExcerpt ? undefined : true}
+            title={hasExcerpt ? undefined : WORKSHOP_TOOLS_GATED_REASON}
+            onClick={hasExcerpt
+              ? onOpenTools
+              : () => onGatedAction(WORKSHOP_TOOLS_GATED_REASON)}
           >
             <Icon name="grid" size={13} /> Tools
           </button>

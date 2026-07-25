@@ -57,7 +57,10 @@ import type {
   ConversationSystemMessageReplacement
 } from '@orchestration/ConversationManager';
 import { trimToWordLimit } from '@/utils/textUtils';
-import { neutralizeReservedPersonaPromptDelimiters } from '@/utils/workshopPromptFrames';
+import {
+  buildWorkshopOpenConversationFrame,
+  neutralizeReservedPersonaPromptDelimiters
+} from '@/utils/workshopPromptFrames';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { buildWorkshopWriterProfileFrame } from '@/utils/workshopWriterProfile';
 
@@ -93,7 +96,12 @@ export interface WorkshopHostStreamingOptions extends AnalysisStreamingOptions {
 /** Inputs that form the first retained exchange with a Workshop persona host. */
 export interface WorkshopPersonaConversationInput {
   personaId: WorkshopPersonaId;
-  excerpt: WorkshopExcerpt;
+  /**
+   * The pinned passage, when this room has one. ABSENT in an open conversation
+   * (Sprint 13A §1): an excerpt-free session is a real scope, so the envelope
+   * carries the honesty frame instead of a fabricated blank excerpt.
+   */
+  excerpt?: WorkshopExcerpt;
   message: string;
   /**
    * The room's complete selected behavior (ADR 2026-07-20). Mode,
@@ -901,6 +909,9 @@ export class AssistantToolService {
   }
 
   private buildWorkshopPersonaUserMessage(input: WorkshopPersonaConversationInput): string {
+    if (!input.excerpt) {
+      return this.buildWorkshopOpenConversationUserMessage(input);
+    }
     const trimmedExcerpt = trimToWordLimit(input.excerpt.text, PROMPT_BUDGETS.personaExcerpt.words);
     const excerpt = neutralizeReservedPersonaPromptDelimiters(trimmedExcerpt.trimmed);
     const provenance = [
@@ -931,6 +942,36 @@ export class AssistantToolService {
       '</pinned-excerpt>',
       input.contextAttachmentsFrame,
       '',
+      input.activationFrame,
+      input.activationFrame ? '' : undefined,
+      '<writer-message>',
+      input.messageIsTrustedEnvelope
+        ? input.message
+        : neutralizeReservedPersonaPromptDelimiters(input.message),
+      '</writer-message>'
+    ].filter((section): section is string => section !== undefined).join('\n');
+  }
+
+  /**
+   * The open-conversation initial envelope (Sprint 13A §11). Structurally the
+   * excerpt sibling above, minus `<pinned-excerpt>` and plus the honesty frame:
+   * the persona is told plainly it has read nothing, that context attachments
+   * still apply, and what this conversation is for. There is deliberately no
+   * empty `<pinned-excerpt>` — an absent passage must not look like a blank one.
+   */
+  private buildWorkshopOpenConversationUserMessage(
+    input: WorkshopPersonaConversationInput
+  ): string {
+    return [
+      input.transitionFrame,
+      input.interactionFrame,
+      input.transitionFrame || input.interactionFrame ? '' : undefined,
+      buildWorkshopOpenConversationFrame(
+        getWorkshopPersona(input.personaId)?.label ?? input.personaId
+      ),
+      '',
+      input.contextAttachmentsFrame,
+      input.contextAttachmentsFrame ? '' : undefined,
       input.activationFrame,
       input.activationFrame ? '' : undefined,
       '<writer-message>',

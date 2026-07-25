@@ -54,6 +54,20 @@ interface SessionGroup {
   sessions: WorkshopSessionSummary[];
 }
 
+/**
+ * How the browser names a session's scope (Sprint 13A §11). Rows written before
+ * scope existed say so rather than guessing: "no excerpt" and "open
+ * conversation" are different facts, and only one of them was chosen.
+ */
+const sessionScopeLabel = (scope: WorkshopSessionSummary['scope']): string => {
+  switch (scope) {
+    case 'excerpt': return 'Passage session';
+    case 'open': return 'Open conversation';
+    case null: return 'No path chosen';
+    default: return 'Scope unknown';
+  }
+};
+
 const localDateTime = (timestamp: number): string =>
   Number.isFinite(timestamp) ? new Date(timestamp).toLocaleString() : 'Unknown date';
 
@@ -487,6 +501,7 @@ const SessionBrowserRow: React.FC<SessionBrowserRowProps> = ({
         </div>
         <div className="pm-ws-session-row-meta" title={[
           workshopPersonaLabel(session.hostPersonaId),
+          sessionScopeLabel(session.scope),
           `${session.turnCount} turns`,
           `${session.excerptWordCount.toLocaleString()} words`,
           localDateTime(session.updatedAt),
@@ -495,6 +510,11 @@ const SessionBrowserRow: React.FC<SessionBrowserRowProps> = ({
           <span className="pm-ws-session-host-name">
             {persona?.label ?? workshopPersonaLabel(session.hostPersonaId)}
           </span>
+          <span>·</span>
+          {/* Sprint 13A §11: the row says what KIND of session this is, so an
+              open conversation never reads as a passage session that lost its
+              passage. */}
+          <span>{sessionScopeLabel(session.scope)}</span>
           <span>·</span>
           <span>{session.turnCount} turns</span>
           <span>·</span>
