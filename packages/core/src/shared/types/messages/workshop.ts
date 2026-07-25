@@ -42,14 +42,17 @@ export type WorkshopPersonaId =
   | 'wren';
 
 /**
- * How this Workshop session was started (Sprint 13A).
+ * How this Workshop session was started (Sprint 13A; locked by ADR 2026-07-25).
  *
  * `null` means the writer has not chosen a path yet — the center shows the path
  * chooser. Scope is ASSIGNED by an explicit writer action (choosing a path,
  * pinning an excerpt, running a tool), never DERIVED from excerpt presence at
- * read time: an open conversation that later adopts an excerpt stays `open`,
- * and a passage session whose excerpt is shelved stays `excerpt`-free without
- * pretending the writer asked for open chat.
+ * read time.
+ *
+ * It is also IMMUTABLE once the room has a memory: a session that has been
+ * talked to keeps the path it was started on, because changing it would mean
+ * asking a participant to un-read what it holds. Changing path means a new
+ * session, which carries the excerpt and context attachments across.
  */
 export type WorkshopSessionScope = 'excerpt' | 'open' | null;
 
@@ -418,9 +421,11 @@ export type WorkshopTurnArtifact =
   | 'session_start'
   | 'session_resume'
   /**
-   * A session-scope transition inside ONE retained session (Sprint 13A):
-   * excerpt adopted mid-open-chat, passage shelved, or passage re-pinned. The
-   * conversation is retained across it — this divider says so out loud.
+   * LEGACY (Sprint 13A, retired by ADR 2026-07-25). A mid-conversation
+   * session-scope transition. Scope is now immutable once the room has a
+   * memory, so no new turn of this artifact is ever minted — but real
+   * transcripts written before the lock contain them, and they must keep
+   * parsing and rendering as the history they are.
    */
   | 'scope_change';
 
@@ -772,8 +777,6 @@ export interface WorkshopSessionSnapshot {
     excerptVersion?: number;
     /** True when the attachment list changed since the host last saw it. */
     context: boolean;
-    /** True when a shelved passage still has to be withdrawn from the host. */
-    excerptWithdrawn?: boolean;
   };
   /** Host-owned, defensively copied writer task list in explicit order. */
   todos: WorkshopTodoItem[];
@@ -783,10 +786,16 @@ export interface WorkshopSessionSnapshot {
   /** Older turns omitted from this snapshot's window. */
   truncatedTurns: number;
   /**
-   * True when any retained host or tool-sidecar conversation remains live.
-   * Composer enablement also requires a ready, non-empty pinned excerpt.
+   * True when any participant holds a conversation — host, tool sidecar, or
+   * persona guest. This is ALSO the scope lock (ADR 2026-07-25): every surface
+   * that offers to change the session path must hide that offer once this is
+   * true, and point at a new session instead.
+   *
+   * Deliberately not "does the room have turns": every session records a
+   * `session_start` marker before the writer acts, so a turn-based test would
+   * report a locked room the instant one was created.
    */
-  hasConversation: boolean;
+  roomHasMemory: boolean;
   /** The public participant graph. Conversation ids remain host-private. */
   participants: WorkshopParticipantsSnapshot;
   /** The room's current writer-owned conversation behavior (ADR 2026-07-20). */

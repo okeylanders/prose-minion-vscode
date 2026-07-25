@@ -2563,46 +2563,53 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       expect(posted(MessageType.ERROR).at(-1)?.payload.message).toContain('Pin an excerpt');
     });
 
-    it('adopts an excerpt mid-conversation without restarting it', async () => {
+    /**
+     * ADR 2026-07-25. An open conversation that has been answering without a
+     * passage cannot be handed one — the writer is sent to a new session,
+     * which carries the excerpt and context across.
+     */
+    it('refuses to adopt an excerpt once the conversation has started', async () => {
       await chooseOpen();
       await send('Help me plan the next scene.');
       const conversationId = session.getHostConversationId();
-      service.startWorkshopPersonaConversation.mockClear();
 
       await pin();
 
       expect(session.getScope()).toBe('open');
+      expect(session.getExcerpt()).toBeUndefined();
       expect(session.getHostConversationId()).toBe(conversationId);
-      expect(session.getSnapshot().turns.at(-1)).toMatchObject({
-        artifact: 'scope_change',
-        content: expect.stringContaining('same session, conversation retained')
-      });
-
-      await send('Now read it.');
-      // The SAME retained conversation continues; nothing was re-started.
-      expect(service.startWorkshopPersonaConversation).not.toHaveBeenCalled();
-      const continuation = service.continueConversation.mock.calls.at(-1)!;
-      expect(continuation[0]).toBe(conversationId);
-      expect(continuation[1]).toContain('FIRST passage you have been given here');
+      expect(postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: MessageType.ERROR,
+          payload: expect.objectContaining({
+            message: expect.stringContaining('Start a new session')
+          })
+        })
+      );
     });
 
-    it('withdraws a shelved passage from the retained host', async () => {
+    it('refuses to shelve a passage the host has already read', async () => {
       await pin();
       await send('Read this for me.');
-      await chooseOpen();
-      await send('Set that aside a moment.');
 
-      const continuation = service.continueConversation.mock.calls.at(-1)!;
-      expect(continuation[1]).toContain('set the excerpt aside');
-      expect(continuation[1]).toContain('Do not quote it');
+      await chooseOpen();
+
+      expect(session.getScope()).toBe('excerpt');
+      expect(session.getExcerpt()?.version).toBe(1);
+      expect(session.getShelvedExcerpt()).toBeUndefined();
+      expect(log.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'ERROR [workshop]: Start a new session to change this'
+        )
+      );
     });
 
-    it('re-pins the shelved passage without leaving the conversation', async () => {
+    it('re-pins the shelved passage before the room has a memory', async () => {
       await pin();
       await chooseOpen();
       await handler.handleRepinExcerpt(message(MessageType.WORKSHOP_REPIN_EXCERPT, {}) as any);
 
-      expect(session.getScope()).toBe('open');
+      expect(session.getScope()).toBe('excerpt');
       expect(session.getExcerpt()?.version).toBe(1);
       expect(session.getShelvedExcerpt()).toBeUndefined();
     });

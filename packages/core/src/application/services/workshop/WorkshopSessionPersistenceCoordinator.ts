@@ -11,6 +11,7 @@ import * as path from 'path';
 import { LogSink } from '@/platform';
 import {
   WorkshopSessionActiveRunPersistenceError,
+  WorkshopSessionHydrationMigration,
   WorkshopSessionService
 } from '@/application/services/workshop/WorkshopSessionService';
 import {
@@ -655,6 +656,7 @@ export class WorkshopSessionPersistenceCoordinator {
         bindings as WorkshopRuntimeConversationBindings,
         this.session.getConversationBehavior()
       );
+      this.logHydrationMigrations(hydration.migrations);
     } catch (error) {
       importedIds.forEach((conversationId) =>
         this.assistantToolService.discardConversation(conversationId)
@@ -874,6 +876,7 @@ export class WorkshopSessionPersistenceCoordinator {
       rollback.bindings,
       this.session.getConversationBehavior()
     );
+    this.logHydrationMigrations(restored.migrations);
     const protectedConversationIds = new Set(
       Object.values(rollback.bindings).filter(
         (conversationId): conversationId is string => typeof conversationId === 'string'
@@ -893,6 +896,18 @@ export class WorkshopSessionPersistenceCoordinator {
 
   private recordStartMarker(): void {
     this.session.recordSessionMarker('start', this.time.describeVisibleMarker('start'));
+  }
+
+  private logHydrationMigrations(
+    migrations: readonly WorkshopSessionHydrationMigration[]
+  ): void {
+    if (migrations.length === 0) {
+      return;
+    }
+    this.outputChannel.appendLine(
+      `[WorkshopSessionPersistence] Legacy checkpoint normalized ` +
+      `(migrations=${migrations.join(', ')})`
+    );
   }
 
   private defaultTitle(createdAt: string): string {

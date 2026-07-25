@@ -48,7 +48,7 @@ const renderPanel = (overrides: Partial<React.ComponentProps<typeof ExcerptPanel
     scope: null,
     hostLabel: 'Jill',
     isRunning: false,
-    locked: false,
+    roomHasMemory: false,
     onOpenPasteSheet: jest.fn(),
     onChooseFile: jest.fn(),
     onRereadFile: jest.fn(),
@@ -152,7 +152,7 @@ describe('ExcerptPanel — passage pinned', () => {
   it('offers Re-read from file when locked on a file-backed excerpt', () => {
     const { props } = renderPanel({
       scope: 'excerpt',
-      locked: true,
+      roomHasMemory: true,
       excerpt: excerptWith(fileSource)
     });
 
@@ -165,7 +165,7 @@ describe('ExcerptPanel — passage pinned', () => {
   it('offers Update text… when locked on typed or pasted origin', () => {
     const { props } = renderPanel({
       scope: 'excerpt',
-      locked: true,
+      roomHasMemory: true,
       excerpt: excerptWith({ kind: 'manual' })
     });
 
@@ -179,15 +179,52 @@ describe('ExcerptPanel — passage pinned', () => {
     const setAside = screen.getByRole('button', { name: /set this aside/i });
 
     expect(setAside.textContent).toContain('Keeps the passage on the shelf');
-    expect(setAside.textContent).toContain('Jill stops treating it as read');
+    // Nobody has read it yet — that is the whole reason this reversal is still
+    // on offer (ADR 2026-07-25).
+    expect(setAside.textContent).toContain('Jill has not read it yet');
     fireEvent.click(setAside);
     expect(props.onSetAside).toHaveBeenCalled();
   });
 
-  it('names the reversal "unpin" once the room is already an open conversation', () => {
-    renderPanel({ scope: 'open', excerpt: excerptWith(fileSource) });
+  /**
+   * ADR 2026-07-25. Un-reading a passage is not something the product can
+   * honestly deliver, so once the room has a memory the reversal disappears —
+   * and must be replaced by the way out, not by silence.
+   */
+  it('withdraws the reversal once the room has a memory, and names the way out', () => {
+    renderPanel({ scope: 'excerpt', excerpt: excerptWith(fileSource), roomHasMemory: true });
 
-    expect(screen.getByRole('button', { name: /unpin — back to open conversation/i })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /set this aside/i })).toBeNull();
+    expect(screen.getByText(/Start a new session to change this/)).toBeTruthy();
+    expect(screen.getByText(/excerpt and context carry over/)).toBeTruthy();
+  });
+});
+
+describe('ExcerptPanel — open conversation', () => {
+  it('offers the passage path only while nobody has been prompted', () => {
+    renderPanel({ scope: 'open', excerpt: null });
+
+    expect(screen.getByRole('button', { name: /paste or type/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /from project/i })).toBeTruthy();
+  });
+
+  it('closes that door once the conversation has started, and says where to go', () => {
+    renderPanel({ scope: 'open', excerpt: null, roomHasMemory: true });
+
+    expect(screen.queryByRole('button', { name: /paste or type/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /from project/i })).toBeNull();
+    expect(screen.getByText(/Start a new session to change this/)).toBeTruthy();
+  });
+
+  it('names the set-aside passage in the signpost so it is not lost track of', () => {
+    renderPanel({
+      scope: 'open',
+      excerpt: null,
+      roomHasMemory: true,
+      shelvedExcerpt: excerptWith(fileSource)
+    });
+
+    expect(screen.getByText(/carry over/)).toBeTruthy();
+    expect(screen.getByText(/Set-aside passage: 05 v2/)).toBeTruthy();
   });
 });

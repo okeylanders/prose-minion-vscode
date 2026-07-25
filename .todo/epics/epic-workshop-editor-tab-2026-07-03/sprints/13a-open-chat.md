@@ -120,7 +120,7 @@ is persisted and surfaced in restore/browser metadata.
 
 ### Where the comp and the product disagreed
 
-Three places, all resolved toward product reality and recorded here rather than
+Four places, all resolved toward product reality and recorded here rather than
 silently absorbed:
 
 1. **The editor tab strip.** The comp draws a VS Code-style tab bar *inside the
@@ -140,6 +140,16 @@ silently absorbed:
 3. **Starter chips.** Implemented, but with generic copy — two of the comp's
    four name a character from its demo project. They prefill the composer; the
    writer still presses send.
+4. **Mid-conversation reversal affordances.** Superseded by
+   [ADR 2026-07-25](../../../../docs/adr/2026-07-25-workshop-scope-immutability.md)
+   and [Sprint 13A_2](13a_2-scope-immutability.md). §4's reversible path now
+   survives only before the room has a memory; after any host, tool-sidecar, or
+   guest conversation, scope is immutable. The comp's reversal controls
+   therefore deliberately disappear and are replaced by the recovery path:
+   *"Start a new session to change this — your excerpt and context carry
+   over."* The withdrawal frame, legacy delivery reasons, and new
+   `scope_change` turns retired with those controls. Existing `scope_change`
+   transcript rows remain parseable and renderable as history.
 
 ### Design language
 
@@ -270,10 +280,12 @@ restored open-conversation session.
 
 ## Exit criteria
 
-- A writer can have a retained host conversation with no excerpt, reload or
-  reopen it, and later adopt an excerpt without restarting.
+- A writer can have a retained host conversation with no excerpt, and reload or
+  reopen it. *(Adopting an excerpt mid-conversation was removed by ADR
+  2026-07-25 — see "Superseded" above.)*
 - Scope drives every surface; nothing infers scope from excerpt presence.
-- Both path reversals work and shelve rather than delete.
+- Both path reversals work and shelve rather than delete, **before the room has
+  a memory**; after that they are refused with the recovery path named.
 - A new session retains excerpt + context attachments and clears transcript,
   host settings, and to-dos.
 - The shared text sheet serves all four authoring cases, and wizard edits are

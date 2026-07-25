@@ -44,6 +44,11 @@ interface WorkshopComposerProps {
   scope: WorkshopSessionScope;
   /** True when a passage is pinned; the ONLY thing that unlocks analysis tools. */
   hasExcerpt: boolean;
+  /**
+   * The scope lock (ADR 2026-07-25). Once the room has a memory the path is
+   * settled, so the composer's door into the passage path closes.
+   */
+  roomHasMemory: boolean;
   /** Prefill requested from outside (an open-chat starter chip); appended once. */
   draftSeed?: { text: string; token: number };
   /** Open the shared Edit/Preview sheet to add an excerpt mid-conversation. */
@@ -93,6 +98,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   canMessage,
   scope,
   hasExcerpt,
+  roomHasMemory,
   draftSeed,
   onAddExcerpt,
   onGatedAction,
@@ -192,15 +198,16 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   }, [draftSeed]);
 
   const openWithoutExcerpt = scope === 'open' && !hasExcerpt;
+  // The passage path is only reachable from here while nobody has been
+  // prompted yet; after that it is a new session, not a button.
+  const canAddExcerpt = openWithoutExcerpt && !roomHasMemory;
   const placeholder = scope === null
     ? 'Pick a starting path above to begin…'
     : openWithoutExcerpt
       ? `What would you like to brainstorm with ${recipientLabel}?`
       : hasConversation
         ? `Continue with ${recipientLabel}…`
-        : scope === 'open'
-          ? `Message ${recipientLabel} — excerpt now attached…`
-          : `Message ${recipientLabel} about this excerpt…`;
+        : `Message ${recipientLabel} about this excerpt…`;
 
   return (
     <div className="pm-ws-composer-wrap">
@@ -279,10 +286,11 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
           placeholder={placeholder}
           aria-label={`Message ${recipientLabel}`}
         />
-        {openWithoutExcerpt && (
+        {canAddExcerpt && (
           /* The composer's own door into the passage path (§4). It sits beside
              the attach button rather than in the action cluster, because it
-             changes what the room IS, not how this one message is sent. */
+             changes what the room IS, not how this one message is sent — which
+             is also why it closes once the room has a memory. */
           <button
             className="pm-ws-comp-add-excerpt"
             type="button"

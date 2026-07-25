@@ -36,6 +36,9 @@ import {
   workshopExcerptTitle
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import {
+  WORKSHOP_SCOPE_LOCK_RECOVERY_MESSAGE
+} from '@shared/constants/workshopScope';
 
 export const EXCERPT_WORD_BUDGET = PROMPT_BUDGETS.fileExcerpt.words;
 
@@ -49,8 +52,13 @@ interface ExcerptPanelProps {
   hostLabel: string;
   /** Disables intake while a run is in flight (host guards too). */
   isRunning: boolean;
-  /** True once the host conversation exists — switches to locked affordances. */
-  locked: boolean;
+  /**
+   * True once ANY participant holds a conversation (the room has a memory).
+   * Switches the excerpt to its locked affordances — a tool sidecar that read
+   * the passage makes it live just as the host does — and, per ADR
+   * 2026-07-25, settles the session path: the reversals below disappear.
+   */
+  roomHasMemory: boolean;
   /** Open the shared Edit/Preview sheet to paste or type the passage. */
   onOpenPasteSheet: () => void;
   /** Ask the host to open its file picker and set the chosen file's content. */
@@ -97,7 +105,7 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
   scope,
   hostLabel,
   isRunning,
-  locked,
+  roomHasMemory,
   onOpenPasteSheet,
   onChooseFile,
   onRereadFile,
@@ -124,41 +132,56 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
             <Icon name="doc" size={14} /> No excerpt yet
           </div>
           <div className="pm-ws-no-excerpt-desc">
-            {hostLabel} hasn’t read any pages. Add one whenever you’re ready — this conversation
-            stays, and the session keeps its history. Context attachments below still ride along
-            with every message.
+            {roomHasMemory
+              ? `${hostLabel} hasn’t read any pages, and this conversation has started without them. Context attachments below still ride along with every message.`
+              : `${hostLabel} hasn’t read any pages. Add one whenever you’re ready — this conversation stays, and the session keeps its history. Context attachments below still ride along with every message.`}
           </div>
-          <div className="pm-ws-excerpt-actions">
-            <button
-              className="pm-ws-action-btn pm-ws-action-btn-grow"
-              type="button"
-              disabled={isRunning}
-              onClick={onOpenPasteSheet}
-            >
-              <Icon name="pen" size={13} /> Paste or type
-            </button>
-            <button
-              className="pm-ws-action-btn pm-ws-action-btn-grow"
-              type="button"
-              disabled={isRunning}
-              onClick={onChooseFile}
-            >
-              <Icon name="doc" size={13} /> From project…
-            </button>
-          </div>
-          {shelvedExcerpt && shelvedTitle ? (
-            <div className="pm-ws-excerpt-actions">
-              <button
-                className="pm-ws-action-btn pm-ws-action-btn-grow"
-                type="button"
-                disabled={isRunning}
-                onClick={onRepinExcerpt}
-                title="Bring the passage you set aside back into this conversation"
-              >
-                <Icon name="pin" size={13} /> Re-pin {shelvedTitle} v{shelvedExcerpt.version}
-              </button>
+          {/* Adding a passage is a path change, and the path is settled once
+              the host has been answering without one (ADR 2026-07-25). The
+              card stops offering and names the way out instead — a new
+              session carries the excerpt and context across. */}
+          {roomHasMemory ? (
+            <div className="pm-ws-no-excerpt-desc pm-ws-no-excerpt-locked">
+              {WORKSHOP_SCOPE_LOCK_RECOVERY_MESSAGE}
+              {shelvedExcerpt && shelvedTitle
+                ? ` Set-aside passage: ${shelvedTitle} v${shelvedExcerpt.version}.`
+                : ''}
             </div>
-          ) : null}
+          ) : (
+            <>
+              <div className="pm-ws-excerpt-actions">
+                <button
+                  className="pm-ws-action-btn pm-ws-action-btn-grow"
+                  type="button"
+                  disabled={isRunning}
+                  onClick={onOpenPasteSheet}
+                >
+                  <Icon name="pen" size={13} /> Paste or type
+                </button>
+                <button
+                  className="pm-ws-action-btn pm-ws-action-btn-grow"
+                  type="button"
+                  disabled={isRunning}
+                  onClick={onChooseFile}
+                >
+                  <Icon name="doc" size={13} /> From project…
+                </button>
+              </div>
+              {shelvedExcerpt && shelvedTitle ? (
+                <div className="pm-ws-excerpt-actions">
+                  <button
+                    className="pm-ws-action-btn pm-ws-action-btn-grow"
+                    type="button"
+                    disabled={isRunning}
+                    onClick={onRepinExcerpt}
+                    title="Bring the passage you set aside back into this session"
+                  >
+                    <Icon name="pin" size={13} /> Re-pin {shelvedTitle} v{shelvedExcerpt.version}
+                  </button>
+                </div>
+              ) : null}
+            </>
+          )}
         </div>
       </div>
     );
@@ -243,7 +266,7 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
           <Icon name="doc" size={12} /> Excerpt
         </div>
         <span className="pm-ws-pill">Excerpt · v{excerpt.version}</span>
-        {locked ? <span className="pm-ws-pill pm-ws-pill-lock">Session live</span> : null}
+        {roomHasMemory ? <span className="pm-ws-pill pm-ws-pill-lock">Session live</span> : null}
       </div>
 
       <div className="pm-ws-provenance">{sourceLine(excerpt.source)}</div>
@@ -256,7 +279,7 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
         </p>
       )}
       <div className="pm-ws-excerpt-actions">
-        {locked && fileBacked ? (
+        {roomHasMemory && fileBacked ? (
           <button
             className="pm-ws-action-btn"
             type="button"
@@ -274,14 +297,14 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
               disabled={isRunning}
               onClick={onOpenPasteSheet}
               title={
-                locked
+                roomHasMemory
                   ? 'Replace the excerpt text; the room keeps its memory and sees a new version'
                   : undefined
               }
             >
-              <Icon name="pen" size={12} /> {locked ? 'Update text…' : 'Paste or type'}
+              <Icon name="pen" size={12} /> {roomHasMemory ? 'Update text…' : 'Paste or type'}
             </button>
-            {locked ? null : (
+            {roomHasMemory ? null : (
               <button
                 className="pm-ws-action-btn"
                 type="button"
@@ -296,29 +319,32 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
         )}
       </div>
 
-      {/* Passage → open, in both directions of the sprint's copy (§4). The
-          passage is SHELVED: the button says what happens to it, and the
-          sub-line says what happens to the host's claim on it. */}
-      <button
-        className="pm-ws-chat-entry pm-ws-chat-entry-mini"
-        type="button"
-        disabled={isRunning}
-        onClick={onSetAside}
-      >
-        <span className="pm-ws-chat-entry-icon">
-          <Icon name="dialogue" size={15} />
-        </span>
-        <span>
-          <span className="pm-ws-chat-entry-name">
-            {scope === 'open' ? 'Unpin — back to open conversation' : 'Set this aside — just chat'}
+      {/* Passage → open. Offered only before the room has a memory: once
+          {hostLabel} has read the passage, un-reading it is not something the
+          product can honestly deliver, so the reversal becomes a new session
+          (ADR 2026-07-25, superseding Sprint 13A §4). */}
+      {roomHasMemory ? (
+        <div className="pm-ws-excerpt-locked-note">
+          {WORKSHOP_SCOPE_LOCK_RECOVERY_MESSAGE}
+        </div>
+      ) : (
+        <button
+          className="pm-ws-chat-entry pm-ws-chat-entry-mini"
+          type="button"
+          disabled={isRunning}
+          onClick={onSetAside}
+        >
+          <span className="pm-ws-chat-entry-icon">
+            <Icon name="dialogue" size={15} />
           </span>
-          <span className="pm-ws-chat-entry-sub">
-            {scope === 'open'
-              ? `Shelves the passage and keeps this conversation. ${hostLabel} stops treating it as read.`
-              : `Keeps the passage on the shelf. ${hostLabel} stops treating it as read.`}
+          <span>
+            <span className="pm-ws-chat-entry-name">Set this aside — just chat</span>
+            <span className="pm-ws-chat-entry-sub">
+              Keeps the passage on the shelf. {hostLabel} has not read it yet.
+            </span>
           </span>
-        </span>
-      </button>
+        </button>
+      )}
     </div>
   );
 };

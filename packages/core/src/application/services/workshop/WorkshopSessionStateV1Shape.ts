@@ -199,6 +199,8 @@ function assertRevisions(value: unknown): void {
     ['excerpt', 'replacementCount', 'context'],
     [
       'pendingExcerpt',
+      // Legacy, retired by ADR 2026-07-25. Still accepted so pre-lock
+      // checkpoints parse; discarded on hydrate, never written again.
       'pendingExcerptChange',
       'pendingExcerptWithdrawal',
       'pendingContext'

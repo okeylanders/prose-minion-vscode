@@ -9,7 +9,19 @@ import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
 
-export function validateWorkshopSessionStateV1(state: WorkshopSessionStateV1): void {
+export interface WorkshopSessionStateV1ValidationOptions {
+  /**
+   * The pre-lock product could persist `scope: open` with a pinned excerpt.
+   * Only raw-checkpoint preflight may tolerate it; hydration normalizes the
+   * state and validates again under the current invariant.
+   */
+  allowLegacyOpenSessionWithExcerpt?: boolean;
+}
+
+export function validateWorkshopSessionStateV1(
+  state: WorkshopSessionStateV1,
+  options: WorkshopSessionStateV1ValidationOptions = {}
+): void {
   const requireCounter = (value: number, label: string): void => {
     if (!Number.isSafeInteger(value) || value < 0) {
       throw new Error(`Persisted Workshop ${label} must be a non-negative safe integer`);
@@ -30,6 +42,13 @@ export function validateWorkshopSessionStateV1(state: WorkshopSessionStateV1): v
   if (state.excerpt && state.shelvedExcerpt) {
     throw new Error('Persisted Workshop state has both a pinned and a shelved excerpt');
   }
+  if (
+    state.scope === 'open'
+    && state.excerpt !== undefined
+    && options.allowLegacyOpenSessionWithExcerpt !== true
+  ) {
+    throw new Error('Persisted Workshop open session cannot hold a pinned excerpt');
+  }
   const versionedExcerpt = state.excerpt ?? state.shelvedExcerpt;
   if (versionedExcerpt) {
     if (versionedExcerpt.version !== state.revisions.excerpt) {
@@ -44,15 +63,11 @@ export function validateWorkshopSessionStateV1(state: WorkshopSessionStateV1): v
   ) {
     throw new Error('Persisted Workshop pending excerpt revision is not current');
   }
-  // A queued excerpt frame and a queued withdrawal are contradictory
-  // instructions to the same host turn; the aggregate clears one when it sets
-  // the other, and a checkpoint claiming both is corrupt.
-  if (state.revisions.pendingExcerptWithdrawal && state.revisions.pendingExcerpt !== undefined) {
-    throw new Error('Persisted Workshop state queues both an excerpt delivery and its withdrawal');
-  }
-  if (state.revisions.pendingExcerptChange !== undefined && state.revisions.pendingExcerpt === undefined) {
-    throw new Error('Persisted Workshop state names an excerpt delivery reason with nothing to deliver');
-  }
+  // `pendingExcerptWithdrawal` and `pendingExcerptChange` are deliberately NOT
+  // validated. ADR 2026-07-25 retired both; they survive in the grammar only
+  // so pre-lock checkpoints parse, and they are discarded on hydrate. Asserting
+  // consistency between fields we are about to throw away would fail a
+  // writer's real session open over state that no longer means anything.
   if (
     state.revisions.pendingContext !== undefined
     && (

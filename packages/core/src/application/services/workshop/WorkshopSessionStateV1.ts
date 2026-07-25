@@ -19,7 +19,6 @@ import {
 } from '@messages';
 import type {
   WorkshopContextAttachment,
-  WorkshopExcerptDeliveryReason,
   WorkshopMessageAttachment
 } from '@/application/services/workshop/WorkshopSessionService';
 import {
@@ -61,9 +60,17 @@ export interface WorkshopSessionStateV1 {
     replacementCount: number;
     context: number;
     pendingExcerpt?: number;
-    /** Why the queued excerpt frame is being delivered (Sprint 13A). */
-    pendingExcerptChange?: WorkshopExcerptDeliveryReason;
-    /** A shelved passage still has to be withdrawn from the retained host. */
+    /**
+     * LEGACY (Sprint 13A, retired by ADR 2026-07-25). Both fields serviced
+     * mid-conversation scope changes, which the scope lock made impossible.
+     * They are still ACCEPTED so that checkpoints written before the lock
+     * parse rather than failing a writer's real session open — and they are
+     * discarded at the hydration boundary and never written again. Removing
+     * them from this list would make the shape validator reject those files
+     * as carrying unknown fields.
+     */
+    pendingExcerptChange?: 'revised' | 'added' | 'repinned';
+    /** LEGACY — see `pendingExcerptChange`. */
     pendingExcerptWithdrawal?: true;
     pendingContext?: number;
   };
@@ -119,6 +126,11 @@ export interface WorkshopSessionStateV1 {
 export function parseWorkshopSessionStateV1(value: unknown): WorkshopSessionStateV1 {
   assertWorkshopSessionStateShape(value);
   const decoded = clonePersistedJson(value, 'workshop');
-  validateWorkshopSessionStateV1(decoded);
+  // Compatibility states are accepted only at the raw checkpoint boundary.
+  // Hydration runs the named V1 migration and validates its output again
+  // against current invariants before replacing the live aggregate.
+  validateWorkshopSessionStateV1(decoded, {
+    allowLegacyOpenSessionWithExcerpt: true
+  });
   return decoded;
 }

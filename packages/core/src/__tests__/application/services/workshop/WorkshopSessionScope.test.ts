@@ -9,6 +9,7 @@
  */
 
 import {
+  WorkshopScopeLockedError,
   WorkshopSessionService,
   workshopTextNoteLabel
 } from '@/application/services/workshop/WorkshopSessionService';
@@ -92,21 +93,8 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
       expect(service.getExcerptVersion()).toBe(pinned.version);
     });
 
-    it('mints one visible "conversation retained" divider', () => {
+    it('keeps the tasks and attachments across the transition', () => {
       pin();
-      const { dividerTurn } = service.setSessionScope('open');
-
-      expect(dividerTurn?.artifact).toBe('scope_change');
-      expect(dividerTurn?.participant).toBe('session');
-      expect(dividerTurn?.content).toBe(
-        'Excerpt set aside · one v1 — same session, conversation retained'
-      );
-      expect(service.getSnapshot().turns.at(-1)?.id).toBe(dividerTurn?.id);
-    });
-
-    it('keeps the transcript, tasks, and attachments across the transition', () => {
-      pin();
-      startHostConversation();
       service.addContextAttachment({
         kind: 'text', origin: 'writer', label: 'Kayla', words: 3, content: 'She lies here.'
       });
@@ -114,85 +102,177 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
 
       service.setSessionScope('open');
 
-      expect(service.getSnapshot().turns.length).toBe(turnsBefore + 1); // + the divider
-      expect(service.hasHostConversation()).toBe(true);
+      // No divider: nobody has been prompted, so nobody experienced a change.
+      expect(service.getSnapshot().turns.length).toBe(turnsBefore);
       expect(service.getContextAttachments()).toHaveLength(1);
     });
 
-    it('queues an explicit withdrawal for a retained host', () => {
-      pin();
-      startHostConversation();
-      service.setSessionScope('open');
-
-      const updates = service.collectPendingHostUpdates();
-      expect(updates?.excerptWithdrawn).toBe(true);
-      expect(updates?.excerpt).toBeUndefined();
-
-      const frame = buildWorkshopHostUpdateFrame(updates);
-      expect(frame).toContain('set the excerpt aside');
-      expect(frame).toContain('Do not quote it');
-    });
-
-    it('queues nothing when no host has been told about the passage yet', () => {
+    it('queues nothing for anyone — the room has no memory to correct', () => {
       pin();
       service.setSessionScope('open');
       expect(service.collectPendingHostUpdates()).toBeUndefined();
     });
 
-    it('is idempotent — asking for open chat twice mints one divider', () => {
+    it('is idempotent — asking for open chat twice changes nothing the second time', () => {
       pin();
       service.setSessionScope('open');
       const second = service.setSessionScope('open');
 
       expect(second.changed).toBe(false);
-      expect(second.dividerTurn).toBeUndefined();
-      expect(service.getSnapshot().turns.filter((t) => t.artifact === 'scope_change')).toHaveLength(1);
+      expect(service.getSnapshot().turns.filter((t) => t.artifact === 'scope_change')).toHaveLength(0);
+    });
+  });
+
+  /**
+   * ADR 2026-07-25: scope is chosen freely until the room has a memory and is
+   * fixed thereafter. These are the refusals that make findings #1 and #3 of
+   * the PR #86 review unreachable rather than merely derived correctly.
+   */
+  describe('the scope lock', () => {
+    it('refuses to shelve a passage the host has already read', () => {
+      pin();
+      startHostConversation();
+
+      expect(() => service.setSessionScope('open')).toThrow(/already has a conversation/);
+      expect(service.getScope()).toBe('excerpt');
+      expect(service.getExcerpt()).toBeDefined();
+    });
+
+    it('refuses to open a passage session once a TOOL has read the excerpt', () => {
+      // A sidecar holds the passage just as the host would; letting the room
+      // reverse here is the stale-sidecar defect wearing new paint.
+      pin();
+      service.beginToolRun('prose', 'prose-run');
+      service.completeToolReport('prose-run', 'Prose report.', 'prose-conv');
+
+      expect(() => service.setSessionScope('open')).toThrow(/already has a conversation/);
+    });
+
+    it('refuses to hand a passage to a conversation that has been running without one', () => {
+      service.setSessionScope('open');
+      startHostConversation();
+
+      expect(() => service.replaceExcerpt({ text: 'Read this now.', source: { kind: 'manual' } }))
+        .toThrow(/already has a conversation/);
+      expect(service.getExcerpt()).toBeUndefined();
+      expect(service.getScope()).toBe('open');
+    });
+
+    it('refuses a re-pin once the room has a memory', () => {
+      pin();
+      service.setSessionScope('open');
+      startHostConversation();
+
+      expect(() => service.repinShelvedExcerpt()).toThrow(/already has a conversation/);
+      expect(service.getShelvedExcerpt()).toBeDefined();
+    });
+
+    it('returns a typed refusal so presentation owns the recovery copy', () => {
+      pin();
+      startHostConversation();
+
+      try {
+        service.setSessionScope('open');
+        throw new Error('Expected the scope change to be refused');
+      } catch (error) {
+        expect(error).toBeInstanceOf(WorkshopScopeLockedError);
+        expect(error).toMatchObject({
+          code: 'workshop-scope-locked',
+          attempt: 'set this session to an open conversation'
+        });
+      }
+    });
+
+    it('still allows revising the pinned passage — that is not a path change', () => {
+      pin();
+      startHostConversation();
+
+      const replacement = service.replaceExcerpt({
+        text: 'The revised draft.',
+        source: { kind: 'manual' }
+      });
+
+      expect(replacement.excerpt.version).toBe(2);
+      expect(service.getScope()).toBe('excerpt');
+    });
+
+    /**
+     * The hazard that decides the predicate. `resetSession` records a
+     * `session_start` marker and `resumeSession` a `session_resume`, so EVERY
+     * session holds a turn before the writer acts. A turn-based lock would
+     * fire on session creation and strand the writer on the path chooser.
+     */
+    it('is not tripped by a fresh session marker before the writer acts', () => {
+      service.recordSessionMarker('start', 'Session started at 10:00 AM.');
+
+      expect(service.getSnapshot().turns.length).toBeGreaterThan(0);
+      expect(service.hasRoomMemory()).toBe(false);
+      expect(() => service.setSessionScope('open')).not.toThrow();
+      expect(service.getScope()).toBe('open');
+    });
+
+    it('locks on a persona guest and stays locked after the guest is dismissed', () => {
+      pin();
+      const writerTurn = service.beginPersonaGuestJoin(
+        'margot',
+        'guest-join',
+        'Read this with me.'
+      );
+      const guestTurn = service.completeRun(
+        'guest-join',
+        'The voice pulls away in the second paragraph.',
+        undefined,
+        false,
+        'guest-conv'
+      )!;
+
+      expect(service.hasRoomMemory()).toBe(true);
+      expect(service.dismissPersonaGuest('margot')).toBe('guest-conv');
+      expect(service.hasRoomMemory()).toBe(true);
+      expect(() => service.setSessionScope('open'))
+        .toThrow(WorkshopScopeLockedError);
+      // Dismissal retires the provider sidecar, not the historical exchange.
+      // It remains honest host evidence because the passage path stayed fixed.
+      expect(service.collectUnseenGuestExchangesForHost().map((turn) => turn.id))
+        .toEqual([writerTurn.id, guestTurn.id]);
+    });
+
+    it('is not tripped by a run that failed without leaving a conversation', () => {
+      service.setSessionScope('open');
+      service.beginPersonaMessage('doomed', 'Are you there?');
+      service.abandonRun('doomed');
+
+      expect(service.hasRoomMemory()).toBe(false);
+      expect(() => service.setSessionScope('excerpt')).toThrow(/without an excerpt/);
+      service.setExcerpt({ text: 'Now a passage.', source: { kind: 'manual' } });
+      expect(service.getScope()).toBe('excerpt');
     });
   });
 
   describe('open → passage', () => {
-    it('re-pins the shelved passage at its original version, staying open', () => {
+    it('re-pins the shelved passage at its original version', () => {
       const pinned = pin();
       service.setSessionScope('open');
       const transition = service.repinShelvedExcerpt();
 
-      expect(transition.scope).toBe('open');
+      // The room is workshopping the passage again, so it says so.
+      expect(transition.scope).toBe('excerpt');
       expect(service.getExcerpt()).toEqual(pinned);
       expect(service.getShelvedExcerpt()).toBeUndefined();
       expect(service.getExcerptVersion()).toBe(pinned.version);
-      expect(transition.dividerTurn?.content).toContain('Excerpt re-pinned · one v1');
     });
 
-    it('tells a retained host the passage is back, not that it was revised', () => {
-      pin();
-      startHostConversation();
+    it('makes an adopted passage a passage session — no open-with-excerpt hybrid', () => {
       service.setSessionScope('open');
-      service.commitPendingHostUpdates(service.collectPendingHostUpdates()!);
-      service.repinShelvedExcerpt();
-
-      const updates = service.collectPendingHostUpdates();
-      expect(updates?.excerptChange).toBe('repinned');
-      expect(buildWorkshopHostUpdateFrame(updates)).toContain('re-pinned the excerpt');
-    });
-
-    it('adopts a NEW excerpt mid-open-chat as an addition, keeping the scope open', () => {
-      service.setSessionScope('open');
-      startHostConversation();
-
-      const replacement = service.replaceExcerpt({
+      service.replaceExcerpt({
         text: 'They moved toward the auditorium as a group.',
         source: { kind: 'manual' }
       });
 
-      expect(service.getScope()).toBe('open');
-      expect(replacement.dividerTurn?.artifact).toBe('scope_change');
-      expect(replacement.dividerTurn?.content).toContain('Excerpt added · Pasted passage v1');
-
-      const updates = service.collectPendingHostUpdates();
-      expect(updates?.excerptChange).toBe('added');
-      const frame = buildWorkshopHostUpdateFrame(updates);
-      expect(frame).toContain('FIRST passage you have been given here');
-      expect(frame).not.toContain('revised the pinned excerpt');
+      expect(service.getScope()).toBe('excerpt');
+      // Nobody was prompted, so nothing is queued and no divider is minted.
+      expect(service.collectPendingHostUpdates()).toBeUndefined();
+      expect(service.getSnapshot().turns.filter((t) => t.artifact === 'scope_change')).toHaveLength(0);
     });
 
     it('reports a genuine replacement as a revision, not an addition', () => {
@@ -220,48 +300,23 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
     /**
      * Regression (PR #86 review, blocking): `replaceExcerpt` branched on
      * `this.excerpt`, which shelving empties while the passage lives on in
-     * `shelvedExcerpt` — so pinning over a shelved passage took the "first
-     * pin" branch and skipped every staleness protection. The shelf counts as
-     * previously carried: the sidecars read that passage and so did the host.
+     * `shelvedExcerpt`, so a pin over a shelved passage took the "first pin"
+     * branch and skipped every staleness protection. The scope lock now keeps
+     * this in the pre-memory window, but the shelf still counts as previously
+     * carried and the replacement bookkeeping must still run.
      */
     it('treats a pin over a SHELVED passage as a replacement, not a first pin', () => {
       pin();
-      startHostConversation();
-      // A tool that read the shelved passage, and a room pointed at it.
-      service.beginToolRun('prose', 'prose-run');
-      service.completeToolReport('prose-run', 'Prose report on v1.', 'prose-conv');
-      service.setChatTarget({ kind: 'tool', toolId: 'prose' });
       service.setSessionScope('open');
-      service.commitPendingHostUpdates(service.collectPendingHostUpdates()!);
 
       const replacement = service.replaceExcerpt({
         text: 'A different chapter entirely.',
         source: { kind: 'manual' }
       });
 
-      // The sidecar's conversation only ever read the shelved passage.
-      expect(replacement.disposedConversationIds).toEqual(['prose-conv']);
-      expect(replacement.retiredSidecarCount).toBe(1);
       expect(replacement.replacementCount).toBe(1);
-      // The room must not still be aimed at a tool that is about the old text.
-      expect(service.getChatTarget()).toEqual({ kind: 'host' });
-    });
-
-    it('never tells a host holding a shelved passage that this is its FIRST one', () => {
-      pin();
-      startHostConversation();
-      service.setSessionScope('open');
-      service.commitPendingHostUpdates(service.collectPendingHostUpdates()!);
-
-      service.replaceExcerpt({ text: 'A different chapter.', source: { kind: 'manual' } });
-
-      const updates = service.collectPendingHostUpdates();
-      expect(updates?.excerptChange).toBe('revised');
-      const frame = buildWorkshopHostUpdateFrame(updates);
-      expect(frame).toContain('revised the pinned excerpt');
-      // The host's own transcript still holds v1 — asserting it has never seen
-      // a passage would contradict its own history.
-      expect(frame).not.toContain('FIRST passage you have been given here');
+      expect(replacement.excerpt.version).toBe(2);
+      expect(service.getShelvedExcerpt()).toBeUndefined();
     });
 
     /**
@@ -280,9 +335,9 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
       });
 
       expect(replacement.discardedShelvedExcerpt).toEqual(shelved);
-      expect(replacement.dividerTurn?.artifact).toBe('scope_change');
+      expect(replacement.dividerTurn?.artifact).toBe('excerpt_revision');
       expect(replacement.dividerTurn?.content)
-        .toBe('Excerpt added · Pasted passage v2 — set-aside “one” v1 discarded, conversation retained');
+        .toBe('Excerpt v2 pinned · Pasted excerpt · retired: none · set-aside “one” v1 discarded');
       expect(service.getShelvedExcerpt()).toBeUndefined();
     });
 
@@ -291,8 +346,8 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
       const replacement = service.replaceExcerpt({ text: 'First one.', source: { kind: 'manual' } });
 
       expect(replacement.discardedShelvedExcerpt).toBeUndefined();
-      expect(replacement.dividerTurn?.content)
-        .toBe('Excerpt added · Pasted passage v1 — same session, conversation retained');
+      // First pin of the room: nothing displaced, so no divider at all.
+      expect(replacement.dividerTurn).toBeUndefined();
     });
 
     /**
@@ -304,36 +359,28 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
       // The opening prompt hands the host v1; no delta frame is involved.
       pin();
       startHostConversation();
-      // v2 is queued for the host and then shelved before any turn ships it.
       service.replaceExcerpt({ text: 'The revised draft.', source: { kind: 'manual' } });
-      service.setSessionScope('open');
-      service.repinShelvedExcerpt();
 
       const updates = service.collectPendingHostUpdates();
       expect(updates?.excerpt?.version).toBe(2);
-      expect(updates?.excerptChange).toBe('revised');
       const frame = buildWorkshopHostUpdateFrame(updates);
       expect(frame).toContain('Earlier versions in this conversation are superseded');
       expect(frame).not.toContain('unchanged');
     });
 
-    it('does not tell a host to withdraw a passage it was never handed', () => {
-      // A host conversation exists, but the pin was queued and never shipped.
+    /**
+     * The delivery record is still what decides, even though the lock leaves
+     * only one reason: a host that was never handed the original must not be
+     * sent a "revision" of it.
+     */
+    it('queues nothing for a host that was never handed the original', () => {
       service.setSessionScope('open');
       startHostConversation();
-      service.replaceExcerpt({ text: 'Queued but never sent.', source: { kind: 'manual' } });
-      service.setSessionScope('open');
-
-      expect(service.collectPendingHostUpdates()?.excerptWithdrawn).toBeUndefined();
-    });
-
-    it('clears a queued withdrawal once the passage comes back', () => {
-      pin();
-      startHostConversation();
-      service.setSessionScope('open');
-      service.repinShelvedExcerpt();
-
-      expect(service.collectPendingHostUpdates()?.excerptWithdrawn).toBeUndefined();
+      // Reaching a passage session from here is refused, so pin BEFORE the
+      // conversation and confirm the queue still keys off delivery.
+      expect(() => service.replaceExcerpt({ text: 'Nope.', source: { kind: 'manual' } }))
+        .toThrow(/already has a conversation/);
+      expect(service.collectPendingHostUpdates()).toBeUndefined();
     });
   });
 
@@ -343,8 +390,8 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
       service.addContextAttachment({
         kind: 'text', origin: 'writer', label: 'Kayla', words: 3, content: 'She lies here.'
       });
-      startHostConversation();
       service.setSessionScope('open');
+      startHostConversation();
 
       service.reset();
 
@@ -412,7 +459,7 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
 
     it('leaves no queued host delivery behind', () => {
       seedFullRoom();
-      service.setSessionScope('open');
+      service.replaceExcerpt({ text: 'A later draft.', source: { kind: 'manual' } });
       expect(service.collectPendingHostUpdates()).toBeDefined();
 
       service.reset({ clearWorkingSet: true });
@@ -440,26 +487,149 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
   });
 
   describe('committed-state round trip', () => {
-    it('carries scope, the shelf, and a queued withdrawal through export/hydrate', () => {
+    it('carries scope and the shelf through export/hydrate', () => {
       pin();
-      startHostConversation();
       service.setSessionScope('open');
       const exported = service.exportCommittedState();
 
       expect(exported.scope).toBe('open');
       expect(exported.shelvedExcerpt?.version).toBe(1);
-      expect(exported.revisions.pendingExcerptWithdrawal).toBe(true);
+      // Retired by ADR 2026-07-25 and never written again.
+      expect(exported.revisions.pendingExcerptWithdrawal).toBeUndefined();
+      expect(exported.revisions.pendingExcerptChange).toBeUndefined();
 
       const restored = new WorkshopSessionService(() => ++clock);
-      restored.hydrateCommittedState(
-        exported,
+      restored.hydrateCommittedState(exported, {}, service.getConversationBehavior());
+
+      expect(restored.getScope()).toBe('open');
+      expect(restored.getShelvedExcerpt()?.version).toBe(1);
+      expect(restored.collectPendingHostUpdates()).toBeUndefined();
+    });
+
+    /**
+     * ADR 2026-07-25 §7. A checkpoint written before the lock can hold an
+     * UNDELIVERED withdrawal: the writer shelved a passage but the frame
+     * telling the host to stop treating it as read never shipped, and that
+     * frame no longer exists. The host therefore still holds the passage, so
+     * the room is normalized to agree with what the host believes rather than
+     * with a reversal that never took effect.
+     */
+    it('normalizes a legacy checkpoint whose withdrawal never shipped', () => {
+      pin();
+      const exported = service.exportCommittedState();
+      const legacy = {
+        ...exported,
+        scope: 'open' as const,
+        excerpt: undefined,
+        shelvedExcerpt: exported.excerpt,
+        revisions: { ...exported.revisions, pendingExcerptWithdrawal: true as const }
+      };
+
+      const restored = new WorkshopSessionService(() => ++clock);
+      const result = restored.hydrateCommittedState(
+        legacy,
         { host: 'host-conv' },
         service.getConversationBehavior()
       );
 
+      expect(restored.getScope()).toBe('excerpt');
+      expect(restored.getExcerpt()?.version).toBe(1);
+      expect(restored.getShelvedExcerpt()).toBeUndefined();
+      expect(result.migrations).toEqual([
+        'restored-undelivered-withdrawal',
+        'discarded-legacy-scope-transition'
+      ]);
+    });
+
+    it('normalizes a legacy open conversation that already carries an excerpt', () => {
+      pin();
+      startHostConversation();
+      const legacy = {
+        ...service.exportCommittedState(),
+        // Sprint 13A could persist this hybrid through both add and re-pin.
+        scope: 'open' as const
+      };
+
+      const restored = new WorkshopSessionService(() => ++clock);
+      const result = restored.hydrateCommittedState(
+        legacy,
+        { host: 'host-conv-restored' },
+        service.getConversationBehavior()
+      );
+
+      expect(result.migrations).toContain('normalized-open-session-with-excerpt');
+      expect(restored.getScope()).toBe('excerpt');
+      expect(restored.getExcerpt()?.version).toBe(1);
+      expect(restored.hasRoomMemory()).toBe(true);
+      expect(() => restored.replaceExcerpt({
+        text: 'The passage remains revisable.',
+        source: { kind: 'manual' }
+      })).not.toThrow();
+      expect(restored.getExcerpt()?.version).toBe(2);
+    });
+
+    it('leaves a legacy checkpoint alone when its withdrawal DID ship', () => {
+      // No pending flag: the host was told, so open scope with a shelf is
+      // already consistent and must survive untouched.
+      pin();
+      const exported = service.exportCommittedState();
+      const legacy = {
+        ...exported,
+        scope: 'open' as const,
+        excerpt: undefined,
+        shelvedExcerpt: exported.excerpt
+      };
+
+      const restored = new WorkshopSessionService(() => ++clock);
+      restored.hydrateCommittedState(legacy, { host: 'host-conv' }, service.getConversationBehavior());
+
       expect(restored.getScope()).toBe('open');
       expect(restored.getShelvedExcerpt()?.version).toBe(1);
-      expect(restored.collectPendingHostUpdates()?.excerptWithdrawn).toBe(true);
+    });
+
+    it('treats a legacy delivery reason as a revision when host memory survives', () => {
+      pin();
+      startHostConversation();
+      service.replaceExcerpt({ text: 'A later draft.', source: { kind: 'manual' } });
+      const exported = service.exportCommittedState();
+      const legacy = {
+        ...exported,
+        revisions: {
+          ...exported.revisions,
+          pendingExcerptChange: 'repinned' as const
+        }
+      };
+
+      const restored = new WorkshopSessionService(() => ++clock);
+      const result = restored.hydrateCommittedState(
+        legacy,
+        { host: 'host-conv-restored' },
+        service.getConversationBehavior()
+      );
+
+      expect(buildWorkshopHostUpdateFrame(restored.collectPendingHostUpdates()))
+        .toContain('revised the pinned excerpt');
+      expect(restored.exportCommittedState().revisions.pendingExcerptChange).toBeUndefined();
+      expect(result.migrations).toContain('discarded-legacy-scope-transition');
+    });
+
+    it('drops a legacy pending delivery when no host memory survives', () => {
+      pin();
+      const exported = service.exportCommittedState();
+      const legacy = {
+        ...exported,
+        revisions: {
+          ...exported.revisions,
+          pendingExcerpt: 1,
+          pendingExcerptChange: 'added' as const
+        }
+      };
+
+      const restored = new WorkshopSessionService(() => ++clock);
+      restored.hydrateCommittedState(legacy, {}, service.getConversationBehavior());
+
+      expect(restored.collectPendingHostUpdates()).toBeUndefined();
+      expect(restored.exportCommittedState().revisions.pendingExcerptChange).toBeUndefined();
     });
 
     it('migrates a pre-scope checkpoint once, at the hydration boundary', () => {
@@ -485,15 +655,15 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
       expect(restored.getScope()).toBeNull();
     });
 
-    it('drops a queued withdrawal when the host memory did not survive', () => {
+    it('drops a queued revision when the host memory did not survive', () => {
       pin();
       startHostConversation();
-      service.setSessionScope('open');
+      service.replaceExcerpt({ text: 'A later draft.', source: { kind: 'manual' } });
 
       const restored = new WorkshopSessionService(() => ++clock);
       restored.hydrateCommittedState(
         service.exportCommittedState(),
-        {}, // no runtime binding: the host starts fresh and receives current scope
+        {}, // no runtime binding: the host starts fresh and receives current state
         service.getConversationBehavior()
       );
 

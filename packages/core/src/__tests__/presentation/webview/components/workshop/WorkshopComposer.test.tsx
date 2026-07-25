@@ -18,6 +18,7 @@ describe('WorkshopComposer', () => {
       canMessage: true,
       scope: 'excerpt' as const,
       hasExcerpt: true,
+      roomHasMemory: false,
       onAddExcerpt: jest.fn(),
       onGatedAction: jest.fn(),
       hasConversation: true,
@@ -168,10 +169,14 @@ describe('WorkshopComposer', () => {
       expect(screen.getByPlaceholderText('Pick a starting path above to begin…')).toBeTruthy();
     });
 
-    it('notes the new excerpt once an open conversation adopts one', () => {
-      renderComposer({ scope: 'open', hasExcerpt: true, hasConversation: false });
-      expect(screen.getByPlaceholderText('Message Choreography — excerpt now attached…'))
-        .toBeTruthy();
+    /**
+     * ADR 2026-07-25 retired the open-with-excerpt hybrid: pinning a passage
+     * makes the room a passage session, so there is no "open conversation that
+     * now has an excerpt" state left to caption.
+     */
+    it('closes the passage door once the open conversation has started', () => {
+      renderComposer({ scope: 'open', hasExcerpt: false, roomHasMemory: true });
+      expect(screen.queryByRole('button', { name: /add excerpt/i })).toBeNull();
     });
 
     it('offers Add excerpt only while the open room has none', () => {

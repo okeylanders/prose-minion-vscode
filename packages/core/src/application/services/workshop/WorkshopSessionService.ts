@@ -64,6 +64,13 @@ import {
 import {
   validateWorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1Integrity';
+import {
+  migrateWorkshopSessionStateV1ForHydration,
+  WorkshopSessionHydrationMigration
+} from '@/application/services/workshop/WorkshopSessionStateV1Migration';
+export type {
+  WorkshopSessionHydrationMigration
+} from '@/application/services/workshop/WorkshopSessionStateV1Migration';
 
 export { WORKSHOP_TODO_BOUNDS } from '@/application/services/workshop/WorkshopSessionLimits';
 
@@ -182,38 +189,22 @@ export type WorkshopMessageAttachmentResult =
 
 export interface WorkshopPendingHostUpdates {
   excerpt?: WorkshopExcerpt;
-  /**
-   * Why the excerpt frame is being delivered (Sprint 13A). `revised` is the
-   * pre-existing replacement case; `added`/`repinned` are scope transitions
-   * inside an open conversation, and read very differently to a persona.
-   */
-  excerptChange?: WorkshopExcerptDeliveryReason;
-  /**
-   * The writer shelved the passage. The retained host must be told to stop
-   * treating it as read — silence would leave it quoting material it no
-   * longer has.
-   */
-  excerptWithdrawn?: boolean;
   contextAttachments?: {
     revision: number;
     attachments: WorkshopContextAttachment[];
   };
 }
 
-/** Why a `<pinned-excerpt>` frame is reaching an already-retained host. */
-export type WorkshopExcerptDeliveryReason = 'revised' | 'added' | 'repinned';
-
 /**
  * The result of one session-scope transition. Every field describes state the
- * caller must broadcast; a transition NEVER discards the passage or the
- * retained conversation (Sprint 13A §4).
+ * caller must broadcast. A transition never discards the passage, and it can
+ * only happen before the room has a memory (ADR 2026-07-25) — which is why it
+ * carries no divider turn: no participant experienced it.
  */
 export interface WorkshopScopeTransition {
   scope: WorkshopSessionScope;
   /** False when the request was a no-op (already in that scope). */
   changed: boolean;
-  /** The visible "same session, conversation retained" divider, when one was minted. */
-  dividerTurn?: WorkshopTurn;
   /** The excerpt now pinned, if any. */
   excerpt?: WorkshopExcerpt;
   /** The excerpt now on the shelf, if any. */
@@ -254,12 +245,26 @@ export interface WorkshopExcerptReplacement {
 export interface WorkshopSessionHydrationResult {
   discardedConversationIds: string[];
   degradedConversationKeys: WorkshopConversationLogicalKey[];
+  migrations: WorkshopSessionHydrationMigration[];
 }
 
 export class WorkshopSessionActiveRunPersistenceError extends Error {
   constructor() {
     super('Cannot persist Workshop session while a run is active');
     this.name = 'WorkshopSessionActiveRunPersistenceError';
+  }
+}
+
+/**
+ * Domain refusal for an attempted path change after participant memory exists.
+ * Presentation adapters decide how to explain the recovery path to a writer.
+ */
+export class WorkshopScopeLockedError extends Error {
+  readonly code = 'workshop-scope-locked';
+
+  constructor(readonly attempt: string) {
+    super(`Cannot ${attempt}: this room already has a conversation`);
+    this.name = 'WorkshopScopeLockedError';
   }
 }
 
@@ -286,8 +291,6 @@ export class WorkshopSessionService {
   private replacementCount = 0;
   private contextRevision = 0;
   private pendingRevisionVersion?: number;
-  private pendingExcerptChange?: WorkshopExcerptDeliveryReason;
-  private pendingExcerptWithdrawal = false;
   private pendingContextRevision?: number;
   private attachmentCounter = 0;
   private pendingMessageAttachments: WorkshopMessageAttachment[] = [];
@@ -376,77 +379,81 @@ export class WorkshopSessionService {
   }
 
   /**
-   * Choose the session path, or reverse it (Sprint 13A §4).
+   * True once any participant holds or has held a conversation — the host, a
+   * tool sidecar, or a persona guest. This is the scope lock
+   * (ADR 2026-07-25).
    *
-   * `open` shelves any pinned passage and tells a retained host to stop
-   * treating it as read. `excerpt` restores a shelved passage. Both stay
-   * inside ONE retained session: no conversation, transcript, task, or
-   * attachment is discarded, and the excerpt version never moves.
+   * Deliberately NOT "does the room have any turn". Every session records a
+   * `session_start` marker before the writer does anything, and a resumed
+   * session records `session_resume`, so a turn-based lock would fire the
+   * instant a session was created and strand the writer on the path chooser
+   * with no way to choose. Ledger events append to `turns` and never touch
+   * `participants`, so no temporal frame can move this. A disposed guest stays
+   * in the participant map as a tombstone, preserving the lock after its
+   * provider conversation is discarded. Host/tool degradation is different:
+   * a failed runtime rebind leaves no retained model memory, so those missing
+   * live bindings do not lock; the persistence coordinator logs that loss.
+   */
+  hasRoomMemory(): boolean {
+    return this.conversationIds().length > 0
+      || this.participants.personaGuests.size > 0;
+  }
+
+  /** Scope is immutable once someone's memory depends on it (ADR 2026-07-25). */
+  private requireUnlockedScope(attempt: string): void {
+    if (this.hasRoomMemory()) {
+      throw new WorkshopScopeLockedError(attempt);
+    }
+  }
+
+  /**
+   * Choose the session path, or change it while the room has no memory yet
+   * (ADR 2026-07-25, superseding Sprint 13A §4).
+   *
+   * Because no participant has been prompted, a change here is invisible to
+   * everyone: there is nothing to withdraw, nothing to re-deliver, and no
+   * divider to record, since no one experienced the transition. `open` shelves
+   * a pinned passage rather than deleting it; `excerpt` takes it back.
    */
   setSessionScope(scope: WorkshopSelectableSessionScope): WorkshopScopeTransition {
-    if (scope === 'open') {
-      const alreadyOpen = this.scope === 'open';
-      if (alreadyOpen && !this.excerpt) {
-        return this.scopeTransition(false);
-      }
-      const shelved = this.excerpt;
-      this.scope = 'open';
-      if (!shelved) {
-        return this.scopeTransition(true);
-      }
-      this.shelvedExcerpt = shelved;
-      this.excerpt = undefined;
-      // A tool sidecar that already read the passage keeps its own memory;
-      // only the ROOM stops carrying it. The host, which is re-prompted from
-      // session state every turn, must be told explicitly.
-      //
-      // Dropping the queued delivery is safe because the reason for the NEXT
-      // one is re-derived from what the host was actually handed, not from
-      // what was queued here (see `excerptDeliveryReason`). A withdrawal is
-      // only honest if the host received the passage in the first place: a
-      // pin that was queued but never shipped has nothing to withdraw.
-      this.pendingRevisionVersion = undefined;
-      this.pendingExcerptChange = undefined;
-      if (this.hostDeliveredExcerptVersion() !== undefined) {
-        this.pendingExcerptWithdrawal = true;
-      }
-      return this.scopeTransition(
-        true,
-        this.recordScopeChange(
-          `Excerpt set aside · ${excerptLabel(shelved)} v${shelved.version}` +
-          ' — same session, conversation retained'
-        )
-      );
-    }
-
-    if (this.scope === 'excerpt' && this.excerpt) {
+    // The no-op check deliberately precedes the lock: reconciling a stale
+    // caller with the room's CURRENT path is safe even after memory exists.
+    if (this.isIdempotentScopeRequest(scope)) {
       return this.scopeTransition(false);
     }
+    this.requireUnlockedScope(
+      scope === 'open'
+        ? 'set this session to an open conversation'
+        : 'start a passage session'
+    );
+
+    if (scope === 'open') {
+      const shelved = this.excerpt;
+      this.scope = 'open';
+      if (shelved) {
+        this.shelvedExcerpt = shelved;
+        this.excerpt = undefined;
+        this.pendingRevisionVersion = undefined;
+      }
+      return this.scopeTransition(true);
+    }
+
     const restored = this.excerpt ?? this.shelvedExcerpt;
     if (!restored) {
       throw new Error('Cannot start a passage session without an excerpt');
     }
-    const wasShelved = this.excerpt === undefined;
+    this.adoptShelvedExcerpt(restored);
     this.scope = 'excerpt';
-    if (wasShelved) {
-      this.adoptShelvedExcerpt(restored);
-    }
-    return this.scopeTransition(
-      true,
-      wasShelved && this.turns.length > 0
-        ? this.recordScopeChange(
-            `Excerpt re-pinned · ${excerptLabel(restored)} v${restored.version}` +
-            ' — same session, conversation retained'
-          )
-        : undefined
-    );
+    return this.scopeTransition(true);
   }
 
-  /**
-   * Re-pin the shelved passage WITHOUT leaving the open conversation — the
-   * rail's "Re-pin <title> vN" affordance. Scope stays `open`, which is the
-   * honest record of how this room started.
-   */
+  private isIdempotentScopeRequest(scope: WorkshopSelectableSessionScope): boolean {
+    return scope === 'open'
+      ? this.scope === 'open' && this.excerpt === undefined
+      : this.scope === 'excerpt' && this.excerpt !== undefined;
+  }
+
+  /** Take the set-aside passage back off the shelf, before the room has a memory. */
   repinShelvedExcerpt(): WorkshopScopeTransition {
     const shelved = this.shelvedExcerpt;
     if (!shelved) {
@@ -455,35 +462,18 @@ export class WorkshopSessionService {
     if (this.excerpt) {
       throw new Error('An excerpt is already pinned in this Workshop session');
     }
+    this.requireUnlockedScope('re-pin the set-aside excerpt');
     this.adoptShelvedExcerpt(shelved);
-    return this.scopeTransition(
-      true,
-      this.recordScopeChange(
-        `Excerpt re-pinned · ${excerptLabel(shelved)} v${shelved.version}` +
-        ' — same session, conversation retained'
-      )
-    );
+    this.scope = 'excerpt';
+    return this.scopeTransition(true);
   }
 
   private adoptShelvedExcerpt(excerpt: WorkshopExcerpt): void {
-    const withdrawalUndelivered = this.pendingExcerptWithdrawal;
     this.excerpt = excerpt;
     this.shelvedExcerpt = undefined;
-    this.pendingExcerptWithdrawal = false;
+    // Pre-memory by construction (the scope lock), so there is no retained
+    // participant to notify and no queued delivery to reconcile.
     this.pendingRevisionVersion = undefined;
-    this.pendingExcerptChange = undefined;
-    if (!this.hasHostConversation()) {
-      return;
-    }
-    const reason = this.excerptDeliveryReason(excerpt.version);
-    if (withdrawalUndelivered && reason === 'repinned') {
-      // The withdrawal never shipped and the host still holds this exact
-      // version: the whole shelve/re-pin round trip is invisible to it.
-      // Announcing a change it never saw would be its own small lie.
-      return;
-    }
-    this.pendingRevisionVersion = excerpt.version;
-    this.pendingExcerptChange = reason;
   }
 
   /**
@@ -506,46 +496,13 @@ export class WorkshopSessionService {
     return undefined;
   }
 
-  /**
-   * Name a delivery by what the HOST holds, never by what the room holds
-   * (Sprint 13A §10). "Added" asserts the host has never seen a passage here,
-   * so it may only be used when the delivery record is genuinely empty.
-   */
-  private excerptDeliveryReason(version: number): WorkshopExcerptDeliveryReason {
-    const delivered = this.hostDeliveredExcerptVersion();
-    if (delivered === undefined) {
-      return 'added';
-    }
-    return delivered === version ? 'repinned' : 'revised';
-  }
-
-  private scopeTransition(
-    changed: boolean,
-    dividerTurn?: WorkshopTurn
-  ): WorkshopScopeTransition {
+  private scopeTransition(changed: boolean): WorkshopScopeTransition {
     return {
       scope: this.scope,
       changed,
-      dividerTurn,
       excerpt: this.getExcerpt(),
       shelvedExcerpt: this.getShelvedExcerpt()
     };
-  }
-
-  /** Append the visible "same session" boundary for a scope transition. */
-  private recordScopeChange(content: string): WorkshopTurn {
-    const turn: WorkshopTurn = {
-      id: this.nextTurnId('system'),
-      role: 'system',
-      kind: 'divider',
-      participant: 'session',
-      artifact: 'scope_change',
-      excerptVersion: this.excerptVersion,
-      content,
-      timestamp: this.now()
-    };
-    this.turns.push(turn);
-    return cloneTurn(turn);
   }
 
   setExcerpt(input: WorkshopExcerptInput): WorkshopExcerpt {
@@ -558,23 +515,27 @@ export class WorkshopSessionService {
       sourceFingerprint: input.sourceFingerprint,
       pinnedAt: this.now()
     };
-    // Pinning IS choosing the passage path — but an open conversation that
-    // adopts an excerpt stays open (Sprint 13A §4: a visible context
-    // transition, not a new session).
-    if (this.scope !== 'open') {
-      this.scope = 'excerpt';
-    }
+    // Pinning IS choosing the passage path (ADR 2026-07-25). The 13A hybrid —
+    // an open conversation carrying an excerpt — is gone: a room either
+    // workshops a passage or it does not, and the scope lock means this can
+    // only ever run before anyone has been prompted about either.
+    this.scope = 'excerpt';
     // A fresh pin supersedes anything on the shelf — exactly one slot may hold
     // the passage (the V1 integrity rule). Nothing lingers, and nothing
-    // vanishes quietly either: `replaceExcerpt` names the displaced passage in
-    // the divider and returns it so the caller can log and confirm it.
+    // vanishes quietly either: `replaceExcerpt` returns the displaced passage
+    // so the caller can log and confirm it.
     this.shelvedExcerpt = undefined;
-    this.pendingExcerptWithdrawal = false;
     return cloneExcerpt(this.excerpt);
   }
 
   /** Replace working text, preserve host memory, and retire stale tool sidecars. */
   replaceExcerpt(input: WorkshopExcerptInput): WorkshopExcerptReplacement {
+    if (this.scope === 'open') {
+      // An open conversation never gains a passage once it has a memory: the
+      // host has been answering without one, and handing it prose now would
+      // make everything already said ambiguous (ADR 2026-07-25).
+      this.requireUnlockedScope('add an excerpt to this open conversation');
+    }
     // The SHELF counts as previously carried. Shelving is not a deletion, so
     // pinning over a set-aside passage is a replacement, not a first pin: the
     // tool sidecars still hold that passage and so does the host's transcript.
@@ -582,9 +543,6 @@ export class WorkshopSessionService {
     // below and assert "your FIRST passage" to a host holding the last one.
     const displaced = this.shelvedExcerpt;
     const previous = this.excerpt ?? displaced;
-    // An open conversation that adopts a passage stays open (Sprint 13A §4:
-    // a visible context transition, not a new session).
-    const adoptingInOpenChat = this.scope === 'open';
 
     if (!previous) {
       const excerpt = this.setExcerpt(input);
@@ -592,12 +550,6 @@ export class WorkshopSessionService {
       return {
         excerpt,
         disposedConversationIds: [],
-        dividerTurn: adoptingInOpenChat
-          ? this.recordScopeChange(
-              `Excerpt added · ${excerptLabel(excerpt)} v${excerpt.version}` +
-              ' — same session, conversation retained'
-            )
-          : undefined,
         retiredSidecarCount: 0,
         replacementCount: this.replacementCount
       };
@@ -619,21 +571,14 @@ export class WorkshopSessionService {
     const retiredLabels = retired.map(sidecar => workshopToolLabel(sidecar.toolId)).sort();
     const source = workshopExcerptSourcePath(excerpt.source) ?? 'Pasted excerpt';
     const retiredText = retiredLabels.length > 0 ? retiredLabels.join(', ') : 'none';
-    // Only an open-scope room can be holding a shelf, so a displaced passage
-    // always rides the scope-transition divider — and it is NAMED there,
-    // because the shelf is one slot with no history and this pin is the last
-    // moment that passage exists anywhere.
-    const dividerTurn = adoptingInOpenChat
-      ? this.recordScopeChange(
-          `Excerpt added · ${excerptLabel(excerpt)} v${excerpt.version} — ` +
-          (displaced
-            ? `set-aside “${excerptLabel(displaced)}” v${displaced.version} discarded,`
-            : 'same session,') +
-          ' conversation retained'
-        )
-      : this.recordExcerptRevision(
-          `Excerpt v${excerpt.version} pinned · ${source} · retired: ${retiredText}`
-        );
+    // A displaced shelf is NAMED here: the shelf is one slot with no history,
+    // so this pin is the last moment that passage exists anywhere.
+    const dividerTurn = this.recordExcerptRevision(
+      `Excerpt v${excerpt.version} pinned · ${source} · retired: ${retiredText}` +
+      (displaced
+        ? ` · set-aside “${excerptLabel(displaced)}” v${displaced.version} discarded`
+        : '')
+    );
     return {
       excerpt,
       disposedConversationIds: conversationIds,
@@ -645,17 +590,20 @@ export class WorkshopSessionService {
   }
 
   /**
-   * Queue the retained host's excerpt delta frame. The REASON is derived from
-   * the delivery record, never from which method was called: the same pin can
-   * be this host's first passage, a revision of one it holds, or the exact
-   * version it already has coming back off the shelf.
+   * Queue the retained host's excerpt delta frame.
+   *
+   * Under the scope lock every surviving delivery is a REVISION of a passage
+   * the host already holds: an open conversation can never adopt one, and a
+   * re-pin can only happen before any host exists. `hostDeliveredExcerptVersion`
+   * is what makes that claim checkable rather than assumed — it is the honest
+   * answer to "what does the host actually have," and the one guard against
+   * queueing a revision to a host that was never handed the original.
    */
   private queueExcerptDelivery(excerpt: WorkshopExcerpt): void {
-    if (!this.hasHostConversation()) {
+    if (!this.hasHostConversation() || this.hostDeliveredExcerptVersion() === undefined) {
       return;
     }
     this.pendingRevisionVersion = excerpt.version;
-    this.pendingExcerptChange = this.excerptDeliveryReason(excerpt.version);
   }
 
   /** Append the visible "excerpt vN pinned" boundary for a passage revision. */
@@ -915,14 +863,8 @@ export class WorkshopSessionService {
           attachments: this.getContextAttachments()
         }
       : undefined;
-    const excerptWithdrawn = this.pendingExcerptWithdrawal ? true : undefined;
-    return excerpt || contextAttachments || excerptWithdrawn
-      ? {
-          excerpt,
-          excerptChange: excerpt ? this.pendingExcerptChange ?? 'revised' : undefined,
-          excerptWithdrawn,
-          contextAttachments
-        }
+    return excerpt || contextAttachments
+      ? { excerpt, contextAttachments }
       : undefined;
   }
 
@@ -930,21 +872,11 @@ export class WorkshopSessionService {
   commitPendingHostUpdates(delivered: WorkshopPendingHostUpdates): void {
     if (delivered.excerpt?.version === this.pendingRevisionVersion) {
       this.pendingRevisionVersion = undefined;
-      this.pendingExcerptChange = undefined;
       // The revision frame actually reached the host: only the one live pin
       // can change state. Earlier rows were made stale at their own revision.
       const pin = this.pinEntry();
       if (pin) {
         this.appendHostPin(pin);
-      }
-    }
-    if (delivered.excerptWithdrawn && this.pendingExcerptWithdrawal) {
-      this.pendingExcerptWithdrawal = false;
-      // The passage left the host's context: its live pin row is no longer
-      // carried material, so it joins the dimmed history (Phase 7).
-      if (this.activeHostPin) {
-        this.activeHostPin.stale = true;
-        this.activeHostPin = undefined;
       }
     }
     if (delivered.contextAttachments?.revision === this.pendingContextRevision) {
@@ -1757,8 +1689,6 @@ export class WorkshopSessionService {
       guest.liveness = 'disposed';
     }
     this.pendingRevisionVersion = undefined;
-    this.pendingExcerptChange = undefined;
-    this.pendingExcerptWithdrawal = false;
     this.pendingContextRevision = undefined;
     // Manifests live and die with their conversations (Phase 7).
     this.hostWriterSources = [];
@@ -1839,8 +1769,6 @@ export class WorkshopSessionService {
         replacementCount: this.replacementCount,
         context: this.contextRevision,
         pendingExcerpt: this.pendingRevisionVersion,
-        pendingExcerptChange: this.pendingExcerptChange,
-        pendingExcerptWithdrawal: this.pendingExcerptWithdrawal ? true : undefined,
         pendingContext: this.pendingContextRevision
       },
       counters: {
@@ -1912,31 +1840,33 @@ export class WorkshopSessionService {
     runtimeBindings: WorkshopRuntimeConversationBindings,
     currentBehavior: WorkshopConversationBehavior
   ): WorkshopSessionHydrationResult {
-    validateWorkshopSessionStateV1(state);
+    validateWorkshopSessionStateV1(state, {
+      allowLegacyOpenSessionWithExcerpt: true
+    });
+    const migration = migrateWorkshopSessionStateV1ForHydration(state);
+    const normalized = migration.state;
+    // The compatibility exception terminates at the migration boundary. From
+    // this point on, the current invariant is absolute.
+    validateWorkshopSessionStateV1(normalized);
 
-    const excerpt = state.excerpt ? cloneExcerpt(state.excerpt) : undefined;
-    const shelvedExcerpt = state.shelvedExcerpt ? cloneExcerpt(state.shelvedExcerpt) : undefined;
-    // Checkpoints written before scope existed carry none. Inferring once, at
-    // the migration boundary, is the only honest option — and it is NOT the
-    // live "infer scope from excerpt presence" the sprint forbids: from here on
-    // the restored value is authoritative state.
-    const scope: WorkshopSessionScope = state.scope !== undefined
-      ? state.scope
-      : excerpt
-        ? 'excerpt'
-        : null;
-    const contextAttachments = state.contextAttachments.map(cloneAttachment);
-    const pendingMessageAttachments = state.pendingMessageAttachments.map(cloneMessageAttachment);
-    const turns = state.turns.map(cloneTurn);
-    const todos = state.todos.map(cloneStoredTodo);
-    const behavior = { ...currentBehavior };
-    const lastCommittedPersonaBehavior = state.lastCommittedPersonaBehavior
-      ? { ...state.lastCommittedPersonaBehavior }
+    const excerpt = normalized.excerpt ? cloneExcerpt(normalized.excerpt) : undefined;
+    const shelvedExcerpt = normalized.shelvedExcerpt
+      ? cloneExcerpt(normalized.shelvedExcerpt)
       : undefined;
-    const hostWriterSources = state.writerSources.host.map(cloneSourceEntry);
-    const toolWriterSources = cloneToolWriterSources(state.writerSources.tools);
+    const scope = normalized.scope ?? null;
+    const contextAttachments = normalized.contextAttachments.map(cloneAttachment);
+    const pendingMessageAttachments =
+      normalized.pendingMessageAttachments.map(cloneMessageAttachment);
+    const turns = normalized.turns.map(cloneTurn);
+    const todos = normalized.todos.map(cloneStoredTodo);
+    const behavior = { ...currentBehavior };
+    const lastCommittedPersonaBehavior = normalized.lastCommittedPersonaBehavior
+      ? { ...normalized.lastCommittedPersonaBehavior }
+      : undefined;
+    const hostWriterSources = normalized.writerSources.host.map(cloneSourceEntry);
+    const toolWriterSources = cloneToolWriterSources(normalized.writerSources.tools);
     const guestWriterSources = new Map<WorkshopPersonaId, ContextSourceEntry[]>(
-      state.writerSources.guests.map(({ personaId, sources }) => [
+      normalized.writerSources.guests.map(({ personaId, sources }) => [
         personaId,
         sources.map(cloneSourceEntry)
       ])
@@ -1944,27 +1874,21 @@ export class WorkshopSessionService {
 
     const degradedConversationKeys: WorkshopConversationLogicalKey[] = [];
     const usableBindings = usableRuntimeBindings(runtimeBindings);
-    const hostExpected = state.participants.host.conversationKey === 'host';
+    const hostExpected = normalized.participants.host.conversationKey === 'host';
     const hostConversationId = hostExpected ? usableBindings.get('host') : undefined;
-    let pendingRevisionVersion = state.revisions.pendingExcerpt;
-    let pendingExcerptChange = state.revisions.pendingExcerptChange;
-    let pendingExcerptWithdrawal = state.revisions.pendingExcerptWithdrawal === true;
-    let pendingContextRevision = state.revisions.pendingContext;
+    let pendingRevisionVersion = normalized.revisions.pendingExcerpt;
+    let pendingContextRevision = normalized.revisions.pendingContext;
     if (!hostConversationId) {
       if (hostExpected) {
         degradedConversationKeys.push('host');
       }
       hostWriterSources.length = 0;
       pendingRevisionVersion = undefined;
-      pendingExcerptChange = undefined;
-      // A fresh host receives the current scope in its initial envelope, so
-      // there is nothing left to "update" it about.
-      pendingExcerptWithdrawal = false;
       pendingContextRevision = undefined;
     }
 
     const toolSidecars: WorkshopParticipants['toolSidecars'] = {};
-    for (const sidecar of state.participants.toolSidecars) {
+    for (const sidecar of normalized.participants.toolSidecars) {
       const conversationId = usableBindings.get(sidecar.conversationKey);
       if (!conversationId) {
         degradedConversationKeys.push(sidecar.conversationKey);
@@ -1979,7 +1903,7 @@ export class WorkshopSessionService {
     }
 
     const personaGuests = new Map<WorkshopPersonaId, WorkshopPersonaGuest>();
-    for (const guest of state.participants.personaGuests) {
+    for (const guest of normalized.participants.personaGuests) {
       const conversationId = guest.conversationKey
         ? usableBindings.get(guest.conversationKey)
         : undefined;
@@ -1999,7 +1923,7 @@ export class WorkshopSessionService {
       });
     }
 
-    const requestedTarget = cloneChatTarget(state.participants.chatTarget);
+    const requestedTarget = cloneChatTarget(normalized.participants.chatTarget);
     const chatTarget: WorkshopChatTarget = requestedTarget.kind === 'tool'
       ? toolSidecars[requestedTarget.toolId]
         ? requestedTarget
@@ -2019,7 +1943,7 @@ export class WorkshopSessionService {
     const activeHostPin = hostConversationId ? activeHostPins[0] : undefined;
     const participants: WorkshopParticipants = {
       host: {
-        personaId: state.participants.host.personaId,
+        personaId: normalized.participants.host.personaId,
         conversationId: hostConversationId
       },
       toolSidecars,
@@ -2033,16 +1957,14 @@ export class WorkshopSessionService {
     this.scope = scope;
     this.shelvedExcerpt = shelvedExcerpt;
     this.contextAttachments = contextAttachments;
-    this.excerptVersion = state.revisions.excerpt;
-    this.replacementCount = state.revisions.replacementCount;
-    this.contextRevision = state.revisions.context;
+    this.excerptVersion = normalized.revisions.excerpt;
+    this.replacementCount = normalized.revisions.replacementCount;
+    this.contextRevision = normalized.revisions.context;
     this.pendingRevisionVersion = pendingRevisionVersion;
-    this.pendingExcerptChange = pendingExcerptChange;
-    this.pendingExcerptWithdrawal = pendingExcerptWithdrawal;
     this.pendingContextRevision = pendingContextRevision;
-    this.attachmentCounter = state.counters.attachment;
+    this.attachmentCounter = normalized.counters.attachment;
     this.pendingMessageAttachments = pendingMessageAttachments;
-    this.threadArtifactCounter = state.counters.threadArtifact;
+    this.threadArtifactCounter = normalized.counters.threadArtifact;
     this.hostWriterSources = hostWriterSources;
     this.activeHostPin = activeHostPin;
     this.toolWriterSources = toolWriterSources;
@@ -2050,16 +1972,17 @@ export class WorkshopSessionService {
     this.turns = turns;
     this.activeRun = undefined;
     this.participants = participants;
-    this.selectedToolId = state.selectedToolId;
-    this.turnCounter = state.counters.turn;
-    this.todoCounter = state.counters.todo;
+    this.selectedToolId = normalized.selectedToolId;
+    this.turnCounter = normalized.counters.turn;
+    this.todoCounter = normalized.counters.todo;
     this.todos = todos;
     this.behavior = behavior;
     this.lastCommittedPersonaBehavior = lastCommittedPersonaBehavior;
 
     return {
       discardedConversationIds,
-      degradedConversationKeys
+      degradedConversationKeys,
+      migrations: migration.migrations
     };
   }
 
@@ -2075,18 +1998,16 @@ export class WorkshopSessionService {
       pendingMessageAttachments: this.pendingMessageAttachments.map(messageAttachmentSnapshot),
       pendingHostUpdate: this.pendingRevisionVersion !== undefined
         || this.pendingContextRevision !== undefined
-        || this.pendingExcerptWithdrawal
         ? {
             excerptVersion: this.pendingRevisionVersion,
-            context: this.pendingContextRevision !== undefined,
-            excerptWithdrawn: this.pendingExcerptWithdrawal ? true : undefined
+            context: this.pendingContextRevision !== undefined
           }
         : undefined,
       todos: this.todos.map((todo) => cloneTodo(todo, this.excerptVersion)),
       turns: windowed.map(cloneTurn),
       totalTurns: this.turns.length,
       truncatedTurns: this.turns.length - windowed.length,
-      hasConversation: this.conversationIds().length > 0,
+      roomHasMemory: this.hasRoomMemory(),
       participants: this.snapshotParticipants(),
       conversationBehavior: { ...this.behavior },
       selectedToolId: this.selectedToolId,
