@@ -3707,6 +3707,21 @@
 [data-pm-surface="workshop"] .pm-ws-no-excerpt .pm-ws-excerpt-actions {
   margin-top: 12px;
 }
+/* The locked-path signpost (ADR 2026-07-25). It replaces an affordance, so it
+   is given the inset treatment of a thing you can act on elsewhere rather than
+   the faint treatment of body copy — a dead end the writer cannot see the way
+   out of is the one failure this copy exists to prevent. */
+[data-pm-surface="workshop"] .pm-ws-no-excerpt-locked,
+[data-pm-surface="workshop"] .pm-ws-excerpt-locked-note {
+  margin-top: 11px;
+  padding: 9px 11px;
+  border: 1px solid var(--pm-border);
+  border-radius: 9px;
+  background: var(--pm-inset);
+  font-size: 11px;
+  color: var(--pm-dim);
+  line-height: 1.55;
+}
 [data-pm-surface="workshop"] .pm-ws-action-btn-grow {
   flex: 1;
   justify-content: center;

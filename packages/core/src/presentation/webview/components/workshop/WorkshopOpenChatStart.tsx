@@ -56,25 +56,3 @@ export const WorkshopOpenChatStart: React.FC<WorkshopOpenChatStartProps> = ({
     </div>
   </div>
 );
-
-interface WorkshopExcerptAdoptedNoticeProps {
-  hostLabel: string;
-}
-
-/**
- * The "scope changed" block that follows the excerpt-added divider (§10). It
- * exists to answer the question the transition raises: did I just lose the
- * conversation? No — and it says which things changed instead.
- */
-export const WorkshopExcerptAdoptedNotice: React.FC<WorkshopExcerptAdoptedNoticeProps> = ({
-  hostLabel
-}) => (
-  <div className="pm-ws-open-start">
-    <div className="pm-ws-open-start-kicker">Scope changed</div>
-    <h3>{hostLabel} can read the passage now.</h3>
-    <p>
-      Everything you’ve said so far is still here. Analysis tools have unlocked on the left, and
-      the excerpt stays pinned while the conversation continues.
-    </p>
-  </div>
-);

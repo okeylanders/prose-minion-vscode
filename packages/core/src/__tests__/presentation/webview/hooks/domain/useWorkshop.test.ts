@@ -997,13 +997,28 @@ describe('useWorkshop', () => {
       act(() => result.current.handleSessionState(sessionState({
         scope: 'open',
         excerpt: undefined,
-        shelvedExcerpt: excerptSnapshot(),
-        pendingHostUpdate: { context: false, excerptWithdrawn: true }
+        shelvedExcerpt: excerptSnapshot()
       })));
 
       expect(result.current.scope).toBe('open');
       expect(result.current.shelvedExcerpt?.version).toBe(1);
-      expect(result.current.excerptWithdrawalPending).toBe(true);
+    });
+
+    /**
+     * The scope lock (ADR 2026-07-25) reaches the webview as `hasConversation`
+     * — the same predicate the aggregate locks on, not a second guess at it.
+     */
+    it('mirrors the scope lock so surfaces can stop offering path changes', () => {
+      const { result } = renderHook(() => useWorkshop());
+
+      act(() => result.current.handleSessionState(sessionState({ scope: 'open' })));
+      expect(result.current.roomHasMemory).toBe(false);
+
+      act(() => result.current.handleSessionState(sessionState({
+        scope: 'open',
+        hasConversation: true
+      })));
+      expect(result.current.roomHasMemory).toBe(true);
     });
 
     it('permits messaging an excerpt-free open conversation', () => {

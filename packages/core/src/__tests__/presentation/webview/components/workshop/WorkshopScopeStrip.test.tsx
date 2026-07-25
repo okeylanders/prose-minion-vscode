@@ -21,9 +21,9 @@ const renderStrip = (props: Partial<React.ComponentProps<typeof WorkshopScopeStr
     <WorkshopScopeStrip
       scope="open"
       hostLabel="Jill"
+      roomHasMemory={false}
       disabled={false}
       onAddExcerpt={jest.fn()}
-      onSetAside={jest.fn()}
       onRepinExcerpt={jest.fn()}
       {...props}
     />
@@ -36,9 +36,16 @@ describe('WorkshopScopeStrip — open conversation', () => {
     expect(screen.getByText(/Jill hasn’t read any pages/)).toBeTruthy();
   });
 
-  it('admits the host still holds a set-aside passage until the next message', () => {
-    renderStrip({ withdrawalPending: true, shelvedExcerptTitle: 'one', shelvedExcerptVersion: 1 });
-    expect(screen.getByText(/still has the passage you set aside/)).toBeTruthy();
+  /**
+   * ADR 2026-07-25: an open conversation that has started stays open, so the
+   * strip stops offering and points at a new session instead.
+   */
+  it('closes the passage door once the conversation has started', () => {
+    renderStrip({ roomHasMemory: true, shelvedExcerptTitle: 'one', shelvedExcerptVersion: 1 });
+
+    expect(screen.queryByRole('button', { name: /Add excerpt/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Re-pin/ })).toBeNull();
+    expect(screen.getByText(/start a new session to work on a passage/)).toBeTruthy();
   });
 });
 
@@ -70,11 +77,6 @@ describe('WorkshopScopeStrip — the shelf', () => {
 });
 
 describe('WorkshopScopeStrip — scope is explicit', () => {
-  it('reports the passage treatment from the pinned excerpt it was given', () => {
-    renderStrip({ excerptTitle: 'chapters/one.md', excerptVersion: 3 });
-    expect(screen.getByText('Passage session · chapters/one.md v3')).toBeTruthy();
-  });
-
   /**
    * §1: nothing may infer "open conversation" from a missing excerpt. A
    * passage session with nothing pinned is not a state this strip can

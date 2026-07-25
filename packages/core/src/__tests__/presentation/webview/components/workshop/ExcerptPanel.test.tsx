@@ -179,15 +179,52 @@ describe('ExcerptPanel — passage pinned', () => {
     const setAside = screen.getByRole('button', { name: /set this aside/i });
 
     expect(setAside.textContent).toContain('Keeps the passage on the shelf');
-    expect(setAside.textContent).toContain('Jill stops treating it as read');
+    // Nobody has read it yet — that is the whole reason this reversal is still
+    // on offer (ADR 2026-07-25).
+    expect(setAside.textContent).toContain('Jill has not read it yet');
     fireEvent.click(setAside);
     expect(props.onSetAside).toHaveBeenCalled();
   });
 
-  it('names the reversal "unpin" once the room is already an open conversation', () => {
-    renderPanel({ scope: 'open', excerpt: excerptWith(fileSource) });
+  /**
+   * ADR 2026-07-25. Un-reading a passage is not something the product can
+   * honestly deliver, so once the room has a memory the reversal disappears —
+   * and must be replaced by the way out, not by silence.
+   */
+  it('withdraws the reversal once the room has a memory, and names the way out', () => {
+    renderPanel({ scope: 'excerpt', excerpt: excerptWith(fileSource), locked: true });
 
-    expect(screen.getByRole('button', { name: /unpin — back to open conversation/i })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /set this aside/i })).toBeNull();
+    expect(screen.getByText(/Start a new session to chat without this passage/)).toBeTruthy();
+    expect(screen.getByText(/context attachments carry over/)).toBeTruthy();
+  });
+});
+
+describe('ExcerptPanel — open conversation', () => {
+  it('offers the passage path only while nobody has been prompted', () => {
+    renderPanel({ scope: 'open', excerpt: null });
+
+    expect(screen.getByRole('button', { name: /paste or type/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /from project/i })).toBeTruthy();
+  });
+
+  it('closes that door once the conversation has started, and says where to go', () => {
+    renderPanel({ scope: 'open', excerpt: null, locked: true });
+
+    expect(screen.queryByRole('button', { name: /paste or type/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /from project/i })).toBeNull();
+    expect(screen.getByText(/Start a new session to work on a passage/)).toBeTruthy();
+  });
+
+  it('names the set-aside passage in the signpost so it is not lost track of', () => {
+    renderPanel({
+      scope: 'open',
+      excerpt: null,
+      locked: true,
+      shelvedExcerpt: excerptWith(fileSource)
+    });
+
+    expect(screen.getByText(/carry over/)).toBeTruthy();
+    expect(screen.getByText(/Your excerpt \(05 v2\)/)).toBeTruthy();
   });
 });

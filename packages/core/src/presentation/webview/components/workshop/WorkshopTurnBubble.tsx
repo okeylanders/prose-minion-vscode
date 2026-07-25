@@ -148,9 +148,10 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   const capabilityMetadata = capabilityMetadataRows(turn);
   const turnIdentity = { [WORKSHOP_TURN_ID_ATTRIBUTE]: turn.id };
 
-  // Scope transitions get the accent divider (Sprint 13A §10): "same session,
-  // conversation retained" is the reassurance the writer needs to actually read,
-  // so it must not blend into the quiet session-boundary treatment.
+  // Legacy scope-transition dividers (retired by ADR 2026-07-25). No new ones
+  // are minted, but transcripts written before the scope lock hold them and
+  // they stay on the accent treatment they were written with — rewriting how
+  // past history looks would be its own small dishonesty.
   if (turn.artifact === 'scope_change') {
     return (
       <div className="pm-ws-revision-divider pm-ws-scope-divider" role="separator">

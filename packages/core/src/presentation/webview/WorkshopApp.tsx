@@ -63,7 +63,6 @@ import { WorkshopSessionsMenu } from './components/workshop/WorkshopSessionsMenu
 import { WorkshopPathChooser } from './components/workshop/WorkshopPathChooser';
 import { WorkshopScopeStrip } from './components/workshop/WorkshopScopeStrip';
 import {
-  WorkshopExcerptAdoptedNotice,
   WorkshopOpenChatStart
 } from './components/workshop/WorkshopOpenChatStart';
 import {
@@ -989,7 +988,7 @@ export const WorkshopApp: React.FC = () => {
               scope={workshop.scope}
               hostLabel={activePersona.label}
               isRunning={roomMutationLocked}
-              locked={workshop.hasHostConversation}
+              locked={workshop.roomHasMemory}
               onOpenPasteSheet={openPasteSheet}
               onChooseFile={openExcerptSelector}
               onRereadFile={workshop.rereadExcerpt}
@@ -1108,16 +1107,11 @@ export const WorkshopApp: React.FC = () => {
                 <WorkshopScopeStrip
                   scope={workshop.scope}
                   hostLabel={activePersona.label}
-                  excerptTitle={
-                    workshop.excerpt ? workshopExcerptTitle(workshop.excerpt.source) : undefined
-                  }
-                  excerptVersion={workshop.excerpt?.version}
+                  roomHasMemory={workshop.roomHasMemory}
                   shelvedExcerptTitle={shelvedExcerptTitle}
                   shelvedExcerptVersion={workshop.shelvedExcerpt?.version}
-                  withdrawalPending={workshop.excerptWithdrawalPending}
                   disabled={roomMutationLocked}
                   onAddExcerpt={addExcerptByPaste}
-                  onSetAside={startOpenConversation}
                   onRepinExcerpt={workshop.repinExcerpt}
                 />
               )}
@@ -1185,17 +1179,6 @@ export const WorkshopApp: React.FC = () => {
                 onCopy={copyTurn}
                 onSave={saveTurn}
               />
-
-              {/* §10: the scope divider is a real turn in the ledger; this is
-                  the block that follows it and answers "did I lose the
-                  conversation?". Shown only while it is the newest thing that
-                  happened, so it reads as an event rather than a banner. */}
-              {workshop.scope === 'open'
-                && !!workshop.excerpt
-                && workshop.turns.at(-1)?.artifact === 'scope_change'
-                && !showLiveTurn && (
-                  <WorkshopExcerptAdoptedNotice hostLabel={activePersona.label} />
-                )}
 
               {showLiveTurn && (
                 workshop.streamingChunkCount === 0 ? (
@@ -1293,6 +1276,7 @@ export const WorkshopApp: React.FC = () => {
               canMessage={workshop.canMessage && !roomMutationLocked}
               scope={workshop.scope}
               hasExcerpt={hasExcerpt}
+              roomHasMemory={workshop.roomHasMemory}
               draftSeed={draftSeed}
               onAddExcerpt={addExcerptByPaste}
               onGatedAction={announceGate}

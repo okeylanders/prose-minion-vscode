@@ -108,7 +108,12 @@ export interface WorkshopState {
   /** The passage set aside for an open conversation; re-pinnable, never deleted. */
   shelvedExcerpt: WorkshopExcerptSnapshot | null;
   /** True when a shelved passage still has to be withdrawn from the host. */
-  excerptWithdrawalPending: boolean;
+  /**
+   * The scope lock (ADR 2026-07-25): true once ANY participant holds a
+   * conversation. Every surface offering to change the session path must hide
+   * that offer once this is true and point at a new session instead.
+   */
+  roomHasMemory: boolean;
   /** Attachment bodies fetched on demand for the Edit/Preview sheet. */
   attachmentContent: WorkshopAttachmentContentState | null;
   contextAttachments: WorkshopContextAttachmentSnapshot[];
@@ -278,7 +283,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const [excerpt, setExcerpt] = React.useState<WorkshopExcerptSnapshot | null>(null);
   const [scope, setScopeState] = React.useState<WorkshopSessionScope>(null);
   const [shelvedExcerpt, setShelvedExcerpt] = React.useState<WorkshopExcerptSnapshot | null>(null);
-  const [excerptWithdrawalPending, setExcerptWithdrawalPending] = React.useState(false);
+  const [roomHasMemory, setRoomHasMemory] = React.useState(false);
   const [attachmentContent, setAttachmentContent] =
     React.useState<WorkshopAttachmentContentState | null>(null);
   const [contextAttachments, setContextAttachments] = React.useState<WorkshopContextAttachmentSnapshot[]>([]);
@@ -681,7 +686,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
       setExcerpt(session.excerpt ?? null);
       setScopeState(session.scope);
       setShelvedExcerpt(session.shelvedExcerpt ?? null);
-      setExcerptWithdrawalPending(session.pendingHostUpdate?.excerptWithdrawn === true);
+      setRoomHasMemory(session.hasConversation);
       setContextAttachments(session.contextAttachments ?? []);
       setPendingMessageAttachments(session.pendingMessageAttachments ?? []);
       setContextPending(session.pendingHostUpdate?.context ?? false);
@@ -907,7 +912,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     excerpt,
     scope,
     shelvedExcerpt,
-    excerptWithdrawalPending,
+    roomHasMemory,
     attachmentContent,
     contextAttachments,
     pendingMessageAttachments,
