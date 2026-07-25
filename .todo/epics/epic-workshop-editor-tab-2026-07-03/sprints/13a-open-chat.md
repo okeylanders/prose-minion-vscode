@@ -188,6 +188,31 @@ remainder of the comp's inset instead of stacking a second one.
   now reports pastes and owns the draft-equality check, since only it knows the
   current draft.
 
+### Superseded by ADR 2026-07-25 (Sprint 13A_2)
+
+**§4 "The path is reversible in both directions" no longer holds.** Session
+scope is now IMMUTABLE once the room has a memory (any host, tool-sidecar, or
+guest conversation). The reversals survive only in the pre-memory window, where
+nobody has been prompted and a change is invisible to everyone.
+
+What that retired, and why: every mechanism §4 required existed to tell a model
+to stop believing something it had already read. The PR #86 review found three
+defects and all three lived in exactly that machinery. Deleted with it — the
+withdrawal frame and `pendingExcerptWithdrawal`, the `added`/`repinned`
+delivery reasons (`WorkshopExcerptDeliveryReason` is gone entirely), the
+mid-conversation `scope_change` divider, and the open-conversation-carrying-an-
+excerpt hybrid. Pinning a passage now simply makes the room a passage session.
+
+The comp's reversal affordances therefore disagree with the product on this
+point, deliberately. Where an affordance disappears, the surface names the
+recovery path instead: *"Start a new session to change this — your excerpt and
+context carry over."*
+
+See [ADR 2026-07-25](../../../../docs/adr/2026-07-25-workshop-scope-immutability.md)
+and [Sprint 13A_2](13a_2-scope-immutability.md). `scope_change` turns remain
+parseable and renderable — real transcripts written before the lock contain
+them, and they stay the history they are.
+
 ### Behavior change to flag for review
 
 `canMessage` is now false while scope is `null`, even when an excerpt carried
@@ -270,10 +295,12 @@ restored open-conversation session.
 
 ## Exit criteria
 
-- A writer can have a retained host conversation with no excerpt, reload or
-  reopen it, and later adopt an excerpt without restarting.
+- A writer can have a retained host conversation with no excerpt, and reload or
+  reopen it. *(Adopting an excerpt mid-conversation was removed by ADR
+  2026-07-25 — see "Superseded" above.)*
 - Scope drives every surface; nothing infers scope from excerpt presence.
-- Both path reversals work and shelve rather than delete.
+- Both path reversals work and shelve rather than delete, **before the room has
+  a memory**; after that they are refused with the recovery path named.
 - A new session retains excerpt + context attachments and clears transcript,
   host settings, and to-dos.
 - The shared text sheet serves all four authoring cases, and wizard edits are
