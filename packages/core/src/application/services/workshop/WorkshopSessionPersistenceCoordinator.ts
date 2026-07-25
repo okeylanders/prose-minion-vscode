@@ -473,10 +473,17 @@ export class WorkshopSessionPersistenceCoordinator {
   }
 
   /** Start a fresh thread while preserving the aggregate's working set. */
-  async resetSession(): Promise<void> {
+  /**
+   * Replace the live room with a fresh one and promote it to `current.json`.
+   *
+   * `clearWorkingSet` additionally drops the excerpt, the shelf, and every
+   * context attachment. Named sessions on disk are never touched by either
+   * form; a write failure rolls the whole thing back.
+   */
+  async resetSession(options: { clearWorkingSet?: boolean } = {}): Promise<void> {
     return this.serializeSessionOperation(async () => {
       const rollback = this.captureRollback();
-      const discarded = this.session.reset();
+      const discarded = this.session.reset(options);
       this.time.reset();
       const createdAt = normalizedIso(this.now());
       this.identity = {

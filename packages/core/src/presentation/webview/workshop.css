@@ -4006,3 +4006,71 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================================
+   Full reset — new session AND an empty working set
+
+   Both affordances are styled destructive because they usually are NOT what
+   the writer wants: the whole point of the new-session boundary is that the
+   passage survives it (Sprint 13A §3). These are the deliberate exception.
+   ============================================================ */
+
+/* Sessions menu: sits directly under "New session", with the difference
+   between them spelled out on a second line. */
+[data-pm-surface="workshop"] .pm-ws-sessions-menu-item-danger {
+  align-items: start;
+}
+[data-pm-surface="workshop"] .pm-ws-sessions-menu-item-danger > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-sessions-menu-item-danger small {
+  color: var(--pm-faint);
+  font: 10.5px var(--pm-mono);
+  line-height: 1.4;
+}
+[data-pm-surface="workshop"] .pm-ws-sessions-menu-item-danger svg {
+  margin-top: 2px;
+  color: var(--pm-red);
+}
+[data-pm-surface="workshop"] .pm-ws-sessions-menu-item-danger:not(:disabled):hover {
+  background: color-mix(in srgb, var(--pm-red) 12%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-sessions-menu-item-danger:not(:disabled):hover small {
+  color: var(--pm-muted);
+}
+
+/* Path chooser: beneath the two cards, quiet until hovered — an escape hatch,
+   not a third path. The note names exactly what would be discarded. */
+[data-pm-surface="workshop"] .pm-ws-reset-working-set {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 7px 14px;
+  border: 1px solid color-mix(in srgb, var(--pm-red) 30%, transparent);
+  border-radius: var(--pm-r-pill);
+  background: transparent;
+  color: var(--pm-red);
+  font: 600 12px var(--pm-sans);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-reset-working-set:not(:disabled):hover {
+  border-color: var(--pm-red);
+  background: color-mix(in srgb, var(--pm-red) 10%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-reset-working-set:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+[data-pm-surface="workshop"] .pm-ws-reset-working-set svg {
+  flex: none;
+}
+[data-pm-surface="workshop"] .pm-ws-reset-working-set-note {
+  color: var(--pm-faint);
+  font: 10px var(--pm-mono);
+  letter-spacing: 0.04em;
+  border-left: 1px solid color-mix(in srgb, var(--pm-red) 25%, transparent);
+  padding-left: 9px;
+}

@@ -219,9 +219,45 @@ for object members while still refusing an `undefined` **array item**, which
 omission. Four regression cases cover it in
 `WorkshopSessionPersistence.test.ts`; reverting the policy change fails three.
 
+### Added beyond scope: full reset (Okey's request, 2026-07-25)
+
+§3's boundary deliberately CARRIES the excerpt and context into a new session,
+which is right for "keep workshopping this passage in a fresh room" and wrong
+for "I'm done with that passage entirely". Using it made the gap obvious, so a
+second, explicitly destructive boundary now exists beside it:
+
+- **Sessions menu** — `New session: full reset`, directly under `New session`,
+  in the error accent with the subtitle "also clears the excerpt and context".
+  Its placement is the point: the two differ by exactly one thing.
+- **Path chooser** — `Reset excerpt and context` under the two cards, in the
+  error accent, shown **only when something would actually be discarded** and
+  annotated with what (`1 excerpt · 2 attachments`).
+- Both always confirm when they would discard anything, and the dialog says
+  what survives: *"Saved sessions on disk are not touched."*
+
+Wire contract: `WORKSHOP_RESET_SESSION` gained
+`{ clearWorkingSet?: boolean }` — the aggregate's own vocabulary for what the
+ordinary boundary preserves. `reset({ clearWorkingSet: true })` additionally
+clears the excerpt, the shelf, and every attachment, and **returns
+`revisions.excerpt` to zero**: the counter belongs to a passage, so leaving it
+set with nothing in either slot would fail the integrity rule at the next
+checkpoint. A failed promotion rolls the whole thing back — a destructive reset
+that cannot be written must not have destroyed anything.
+
+**Answering "are the excerpt and context stored somewhere else?"** No. They live
+in exactly two places: `WorkshopSessionService` **in memory** (composition-root
+owned, so it survives webview reloads) and `prose-minion/sessions/*.json`, which
+is written *from* memory. Deleting `current.json` while the extension runs clears
+the file, but nothing re-reads it at that point — the aggregate still holds the
+room and the next autosave rewrites the file from it. There is no VS Code
+`globalState`/`workspaceState` involvement anywhere in Workshop; only conversation
+behavior and the Writer Profile are settings-backed, and those are deliberately
+global rather than session state. So "clear everywhere" means clearing the
+aggregate and re-promoting the checkpoint, which is what this does.
+
 ### Verification
 
-Typecheck (core + webview + ext), 126 suites / 1304 tests, lint (0 errors),
+Typecheck (core + webview + ext), 126 suites / 1313 tests, lint (0 errors),
 production build + bundle sentinel verification, and `git diff --check` all
 pass. New focused coverage: `WorkshopSessionScope.test.ts` (30),
 `WorkshopTextSheet.test.tsx` (17), plus scope/gating cases added to the handler,

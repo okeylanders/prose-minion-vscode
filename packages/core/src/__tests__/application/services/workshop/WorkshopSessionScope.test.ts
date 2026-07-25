@@ -249,6 +249,86 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
     });
   });
 
+  describe('full reset — an empty room (Sprint 13A follow-up)', () => {
+    const seedFullRoom = () => {
+      pin();
+      service.addContextAttachment({
+        kind: 'text', origin: 'writer', label: 'Kayla', words: 3, content: 'She lies here.'
+      });
+      startHostConversation();
+    };
+
+    it('clears the working set the ordinary boundary deliberately keeps', () => {
+      seedFullRoom();
+      service.reset({ clearWorkingSet: true });
+
+      const snapshot = service.getSnapshot();
+      expect(snapshot.excerpt).toBeUndefined();
+      expect(snapshot.shelvedExcerpt).toBeUndefined();
+      expect(snapshot.contextAttachments).toEqual([]);
+      expect(snapshot.scope).toBeNull();
+      expect(snapshot.turns).toEqual([]);
+      expect(service.hasHostConversation()).toBe(false);
+    });
+
+    it('takes a SHELVED passage with it, not just the pinned one', () => {
+      pin();
+      service.setSessionScope('open');
+      expect(service.getShelvedExcerpt()).toBeDefined();
+
+      service.reset({ clearWorkingSet: true });
+      expect(service.getExcerpt()).toBeUndefined();
+      expect(service.getShelvedExcerpt()).toBeUndefined();
+    });
+
+    it('returns the excerpt revision to zero so the next checkpoint validates', () => {
+      seedFullRoom();
+      service.replaceExcerpt({ text: 'A second draft.', source: { kind: 'manual' } });
+      expect(service.getExcerptVersion()).toBeGreaterThan(1);
+
+      service.reset({ clearWorkingSet: true });
+
+      // The revision counter belongs to a passage. With none in either slot it
+      // must be zero, or export → validate throws "revision without an excerpt".
+      expect(service.getExcerptVersion()).toBe(0);
+      expect(() => service.exportCommittedState()).not.toThrow();
+      const restored = new WorkshopSessionService(() => ++clock);
+      expect(() => restored.hydrateCommittedState(
+        service.exportCommittedState(),
+        {},
+        service.getConversationBehavior()
+      )).not.toThrow();
+    });
+
+    it('leaves no queued host delivery behind', () => {
+      seedFullRoom();
+      service.setSessionScope('open');
+      expect(service.collectPendingHostUpdates()).toBeDefined();
+
+      service.reset({ clearWorkingSet: true });
+      expect(service.collectPendingHostUpdates()).toBeUndefined();
+    });
+
+    it('lets attachment ids start over cleanly', () => {
+      seedFullRoom();
+      service.reset({ clearWorkingSet: true });
+
+      const added = service.addContextAttachment({
+        kind: 'text', origin: 'writer', label: 'Fresh', words: 2, content: 'New note.'
+      });
+      expect(added.ok && added.attachment.id).toBe('ctx-1');
+      expect(() => service.exportCommittedState()).not.toThrow();
+    });
+
+    it('still keeps the working set when the flag is absent', () => {
+      seedFullRoom();
+      service.reset();
+
+      expect(service.getExcerpt()).toBeDefined();
+      expect(service.getContextAttachments()).toHaveLength(1);
+    });
+  });
+
   describe('committed-state round trip', () => {
     it('carries scope, the shelf, and a queued withdrawal through export/hydrate', () => {
       pin();

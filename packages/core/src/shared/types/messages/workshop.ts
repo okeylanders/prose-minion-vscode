@@ -1166,7 +1166,22 @@ export interface WorkshopRereadExcerptMessage extends MessageEnvelope<Record<str
  * (9 prior siblings; PR #67 review #9) — unlike an empty interface, it
  * actually rejects smuggled fields.
  */
-export interface WorkshopResetSessionMessage extends MessageEnvelope<Record<string, never>> {
+export interface WorkshopResetSessionPayload {
+  /**
+   * Clear the WORKING SET too — the pinned excerpt, the shelf, and every
+   * context attachment (Sprint 13A follow-up).
+   *
+   * The ordinary new-session boundary deliberately carries those across so the
+   * writer can keep workshopping the same passage in a fresh room. This asks
+   * for the other thing: an empty room. Saved sessions on disk are untouched
+   * either way — this replaces the live room and its rolling checkpoint, and
+   * never deletes a named session.
+   */
+  clearWorkingSet?: boolean;
+}
+
+export interface WorkshopResetSessionMessage
+  extends MessageEnvelope<WorkshopResetSessionPayload> {
   type: MessageType.WORKSHOP_RESET_SESSION;
 }
 

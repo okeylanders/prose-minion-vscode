@@ -1688,13 +1688,29 @@ export class WorkshopSessionService {
    * `null` so the new room opens on the path chooser and offers "Continue with
    * current excerpt". A shelved passage comes back off the shelf — the next
    * session should not inherit the previous one's set-aside decision.
+   *
+   * `clearWorkingSet` asks for the other boundary: an empty room. The excerpt,
+   * the shelf, and every context attachment go too. Nothing on disk is deleted
+   * — the caller replaces the rolling checkpoint; named sessions are untouched.
    */
-  reset(): string[] {
+  reset(options: { clearWorkingSet?: boolean } = {}): string[] {
     const conversationIds = this.clearAllConversations();
-    if (!this.excerpt && this.shelvedExcerpt) {
-      this.excerpt = this.shelvedExcerpt;
+    if (options.clearWorkingSet) {
+      this.excerpt = undefined;
+      this.shelvedExcerpt = undefined;
+      this.contextAttachments = [];
+      // The excerpt revision counter belongs to a passage. With no passage in
+      // either slot it MUST return to zero, or the next checkpoint would claim
+      // a revision with nothing to own it and fail its own integrity rule.
+      this.excerptVersion = 0;
+      this.contextRevision = 0;
+      this.attachmentCounter = 0;
+    } else {
+      if (!this.excerpt && this.shelvedExcerpt) {
+        this.excerpt = this.shelvedExcerpt;
+      }
+      this.shelvedExcerpt = undefined;
     }
-    this.shelvedExcerpt = undefined;
     this.scope = null;
     this.turns = [];
     this.activeRun = undefined;

@@ -1040,6 +1040,19 @@ describe('useWorkshop', () => {
     });
   });
 
+  describe('full reset', () => {
+    it('asks for the working set to be cleared only when told to', () => {
+      const { result } = renderHook(() => useWorkshop());
+
+      act(() => result.current.resetSession());
+      expect(posted(MessageType.WORKSHOP_RESET_SESSION).at(-1)?.payload).toEqual({});
+
+      act(() => result.current.resetSession({ clearWorkingSet: true }));
+      expect(posted(MessageType.WORKSHOP_RESET_SESSION).at(-1)?.payload)
+        .toEqual({ clearWorkingSet: true });
+    });
+  });
+
   describe('attachment bodies for the Edit/Preview sheet', () => {
     it('marks the request pending, then adopts the matching reply', () => {
       const { result } = renderHook(() => useWorkshop());

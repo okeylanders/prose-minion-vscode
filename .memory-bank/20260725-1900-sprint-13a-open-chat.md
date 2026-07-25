@@ -60,7 +60,7 @@ This is the comp's contract; both halves are asserted in `WorkshopHandler.test.t
 
 ## Verification
 
-Typecheck (core/webview/ext) · 126 suites / 1304 tests · lint 0 errors ·
+Typecheck (core/webview/ext) · 126 suites / 1313 tests · lint 0 errors ·
 production build + bundle sentinel check · `git diff --check` — all pass.
 
 New suites: `WorkshopSessionScope.test.ts` (30 cases),
@@ -111,6 +111,38 @@ that would silently change the data rather than omit it.
 Four regression cases live in `WorkshopSessionPersistence.test.ts` under
 "capability metadata across the durable boundary". Reverting the one-line policy
 change fails three of them, so the test genuinely reproduces the bug.
+
+## Follow-up added on request: full reset
+
+Okey asked for a destructive counterpart to the new-session boundary after using
+the feature. §3's boundary carries the excerpt and context forward on purpose;
+this adds the "empty room" option beside it.
+
+`WORKSHOP_RESET_SESSION` now takes `{ clearWorkingSet?: boolean }`. Surfaces:
+the Sessions menu ("New session: full reset", directly under New session, error
+accent, subtitle naming the difference) and the path chooser ("Reset excerpt and
+context", under the two cards, shown only when something would be discarded and
+annotated with what). Both confirm, and the dialog states that saved sessions on
+disk are untouched.
+
+**Two things a maintainer must not lose:**
+
+1. `reset({ clearWorkingSet: true })` **must** zero `revisions.excerpt`. The
+   counter belongs to a passage; leaving it set with nothing in the pinned or
+   shelved slot fails the V1 integrity rule at the next checkpoint. A test
+   asserts export + hydrate both stay clean after a full reset.
+2. A failed durable promotion rolls the whole reset back. A destructive action
+   that could not be written must not have destroyed anything; covered in the
+   coordinator suite.
+
+**Answer to "are the excerpt and context stored somewhere else?"** No — memory.
+They live in `WorkshopSessionService` (composition-root owned, so it survives
+webview reloads) and in `prose-minion/sessions/*.json`, which is written *from*
+memory. Deleting `current.json` while the host is running clears the file, but
+nothing re-reads it then, so the next autosave rewrites it from the aggregate.
+Workshop uses no `globalState`/`workspaceState` at all; only conversation
+behavior and the Writer Profile are settings-backed, and both are deliberately
+global rather than session state.
 
 ## Outstanding
 

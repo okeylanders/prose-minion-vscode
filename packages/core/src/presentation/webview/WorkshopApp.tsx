@@ -419,6 +419,7 @@ export const WorkshopApp: React.FC = () => {
   // returns false without a dialog), so state replacement confirms in-webview.
   const [sessionConfirm, setSessionConfirm] = React.useState<
     | { kind: 'new' }
+    | { kind: 'new-full' }
     | { kind: 'open'; sessionId: string; title: string }
     | null
   >(null);
@@ -427,6 +428,12 @@ export const WorkshopApp: React.FC = () => {
     workshop.turns.length + workshop.hiddenTurns > 0 ||
     workshop.todos.length > 0 ||
     workshop.personaGuests.some((guest) => guest.liveness === 'live');
+  // The working set is what an ordinary new session deliberately KEEPS, so a
+  // full reset is only meaningful — and only offered — when some of it exists.
+  const hasWorkingSet =
+    !!workshop.excerpt ||
+    !!workshop.shelvedExcerpt ||
+    workshop.contextAttachments.length > 0;
   const startNewSession = React.useCallback(() => {
     if (hasReplaceableSessionState) {
       setSessionConfirm({ kind: 'new' });
@@ -434,6 +441,16 @@ export const WorkshopApp: React.FC = () => {
     }
     workshop.resetSession();
   }, [hasReplaceableSessionState, workshop.resetSession]);
+  // A full reset ALWAYS confirms when it would discard something: the excerpt
+  // and context are work the writer chose, and this is the one action in the
+  // room that throws them away.
+  const startFullReset = React.useCallback(() => {
+    if (hasReplaceableSessionState || hasWorkingSet) {
+      setSessionConfirm({ kind: 'new-full' });
+      return;
+    }
+    workshop.resetSession({ clearWorkingSet: true });
+  }, [hasReplaceableSessionState, hasWorkingSet, workshop.resetSession]);
   const openStoredSession = React.useCallback((session: typeof workshop.savedSessionSummaries[number]) => {
     if (hasReplaceableSessionState) {
       setSessionConfirm({
@@ -453,6 +470,8 @@ export const WorkshopApp: React.FC = () => {
     setSessionConfirm(null);
     if (sessionConfirm.kind === 'new') {
       workshop.resetSession();
+    } else if (sessionConfirm.kind === 'new-full') {
+      workshop.resetSession({ clearWorkingSet: true });
     } else {
       workshop.openSession(sessionConfirm.sessionId);
     }
@@ -838,6 +857,8 @@ export const WorkshopApp: React.FC = () => {
             newSessionDisabled={!workshop.sessionReady || sessionMutationsDisabled}
             onOpenChange={setSessionsMenuVisibility}
             onNewSession={startNewSession}
+            onFullResetSession={startFullReset}
+            hasWorkingSet={hasWorkingSet}
             onSaveSession={openSaveSessionModal}
             onBrowseSessions={openSessionBrowser}
             onOpenSession={openStoredSession}
@@ -1032,11 +1053,14 @@ export const WorkshopApp: React.FC = () => {
                   hostSpecialty={activePersona.specialty}
                   carriedExcerpt={workshop.excerpt ?? workshop.shelvedExcerpt ?? undefined}
                   carriedExcerptWordCount={excerptWordCount}
+                  hasWorkingSet={hasWorkingSet}
+                  contextAttachmentCount={workshop.contextAttachments.length}
                   disabled={roomMutationLocked || !workshop.sessionReady}
                   onContinueWithExcerpt={continueWithExcerpt}
                   onPasteExcerpt={openPasteSheet}
                   onChooseFromProject={openExcerptSelector}
                   onStartOpenConversation={startOpenConversation}
+                  onResetWorkingSet={startFullReset}
                 />
               )}
 
@@ -1375,12 +1399,22 @@ export const WorkshopApp: React.FC = () => {
         open={sessionConfirm !== null}
         title={sessionConfirm?.kind === 'open'
           ? `Open “${sessionConfirm.title}”?`
-          : 'Start a new session?'}
+          : sessionConfirm?.kind === 'new-full'
+            ? 'Clear the excerpt and context?'
+            : 'Start a new session?'}
         body={sessionConfirm?.kind === 'open'
           ? 'Your current Workshop room will be replaced.'
-          : 'The pinned excerpt and standing context stay; the thread, tasks, ' +
-            'guests, and conversation memory reset.'}
-        confirmLabel={sessionConfirm?.kind === 'open' ? 'Open session' : 'New session'}
+          : sessionConfirm?.kind === 'new-full'
+            ? 'This starts an empty room: the excerpt, anything on the shelf, every ' +
+              'context attachment, the thread, tasks, guests, and conversation memory ' +
+              'are all cleared. Saved sessions on disk are not touched.'
+            : 'The pinned excerpt and standing context stay; the thread, tasks, ' +
+              'guests, and conversation memory reset.'}
+        confirmLabel={sessionConfirm?.kind === 'open'
+          ? 'Open session'
+          : sessionConfirm?.kind === 'new-full'
+            ? 'Clear everything'
+            : 'New session'}
         onConfirm={acceptSessionConfirm}
         onCancel={cancelSessionConfirm}
       />

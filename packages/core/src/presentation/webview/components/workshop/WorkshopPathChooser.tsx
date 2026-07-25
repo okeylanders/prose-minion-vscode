@@ -29,11 +29,17 @@ interface WorkshopPathChooserProps {
    */
   carriedExcerpt?: WorkshopExcerptSnapshot;
   carriedExcerptWordCount: number;
+  /** True when there is an excerpt, a shelved passage, or an attachment to clear. */
+  hasWorkingSet: boolean;
+  /** How many context attachments would be discarded; names the cost honestly. */
+  contextAttachmentCount: number;
   disabled: boolean;
   onContinueWithExcerpt: () => void;
   onPasteExcerpt: () => void;
   onChooseFromProject: () => void;
   onStartOpenConversation: () => void;
+  /** Clear the carried-over working set and start genuinely empty. */
+  onResetWorkingSet: () => void;
 }
 
 export const WorkshopPathChooser: React.FC<WorkshopPathChooserProps> = ({
@@ -41,11 +47,14 @@ export const WorkshopPathChooser: React.FC<WorkshopPathChooserProps> = ({
   hostSpecialty,
   carriedExcerpt,
   carriedExcerptWordCount,
+  hasWorkingSet,
+  contextAttachmentCount,
   disabled,
   onContinueWithExcerpt,
   onPasteExcerpt,
   onChooseFromProject,
-  onStartOpenConversation
+  onStartOpenConversation,
+  onResetWorkingSet
 }) => {
   const carriedSourcePath = carriedExcerpt
     ? workshopExcerptSourcePath(carriedExcerpt.source) ?? 'pasted text'
@@ -143,6 +152,30 @@ export const WorkshopPathChooser: React.FC<WorkshopPathChooserProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Offered only when something would actually be discarded: a button that
+          promises to clear nothing is noise, and this one is styled as
+          destructive precisely because it usually is not what the writer wants
+          (the whole point of the boundary is that the passage survives it). */}
+      {hasWorkingSet ? (
+        <button
+          className="pm-ws-reset-working-set"
+          type="button"
+          disabled={disabled}
+          onClick={onResetWorkingSet}
+          title="Discard the carried-over excerpt and context and start empty"
+        >
+          <Icon name="x" size={13} /> Reset excerpt and context
+          <span className="pm-ws-reset-working-set-note">
+            {[
+              carriedExcerpt ? '1 excerpt' : undefined,
+              contextAttachmentCount > 0
+                ? `${contextAttachmentCount} attachment${contextAttachmentCount === 1 ? '' : 's'}`
+                : undefined
+            ].filter(Boolean).join(' · ')}
+          </span>
+        </button>
+      ) : null}
 
       <div className="pm-ws-first-foot">
         Host for either path:{' '}

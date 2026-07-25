@@ -717,6 +717,50 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(assistant.discardConversation).not.toHaveBeenCalledWith('old-host');
   });
 
+  it('rolls back a FULL reset when durable current promotion fails', async () => {
+    const coordinator = createCoordinator();
+    await coordinator.initialize();
+    await coordinator.flush();
+    session.setExcerpt({ text: 'Keep this workspace.', source: { kind: 'manual' } });
+    session.addContextAttachment({
+      kind: 'text', origin: 'writer', label: 'Kayla', words: 3, content: 'She lies here.'
+    });
+    session.beginPersonaMessage('old-run', 'Keep this thread.');
+    session.completeRun('old-run', 'Kept.', undefined, false, 'old-host');
+    store.writeCurrent.mockRejectedValueOnce(new Error('full reset promotion failed'));
+
+    await expect(coordinator.resetSession({ clearWorkingSet: true }))
+      .rejects.toThrow('full reset promotion failed');
+
+    // A failed destructive reset must not have destroyed anything.
+    expect(session.getExcerpt()?.text).toBe('Keep this workspace.');
+    expect(session.getContextAttachments()).toHaveLength(1);
+    expect(session.getHostConversationId()).toBe('old-host');
+    expect(assistant.discardConversation).not.toHaveBeenCalledWith('old-host');
+  });
+
+  it('promotes an empty room and leaves named sessions alone on a full reset', async () => {
+    const coordinator = createCoordinator();
+    await coordinator.initialize();
+    await coordinator.flush();
+    named.push(persistedSession('keep-me', 'Keep me', 'A saved room.'));
+    session.setExcerpt({ text: 'Discard this.', source: { kind: 'manual' } });
+    session.addContextAttachment({
+      kind: 'text', origin: 'writer', label: 'Kayla', words: 3, content: 'She lies here.'
+    });
+
+    await coordinator.resetSession({ clearWorkingSet: true });
+
+    const promoted = store.writeCurrent.mock.calls.at(-1)![0];
+    expect(promoted.workshop.excerpt).toBeUndefined();
+    expect(promoted.workshop.contextAttachments).toEqual([]);
+    expect(promoted.workshop.scope).toBeNull();
+    expect(promoted.summary.excerptWordCount).toBe(0);
+    // Destructive to the LIVE room only: nothing on disk was deleted.
+    expect(store.deleteNamed).not.toHaveBeenCalled();
+    expect(named.map((entry) => entry.sessionId)).toContain('keep-me');
+  });
+
   it('waits for initialization before beginning a session mutation', async () => {
     const initialRead = deferred<WorkshopPersistedSessionV1 | undefined>();
     store.readCurrent.mockImplementationOnce(() => initialRead.promise);

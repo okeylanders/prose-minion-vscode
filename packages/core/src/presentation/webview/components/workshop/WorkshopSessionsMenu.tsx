@@ -21,6 +21,14 @@ interface WorkshopSessionsMenuProps {
   newSessionDisabled: boolean;
   onOpenChange: (open: boolean) => void;
   onNewSession: () => void;
+  /**
+   * New session AND an empty working set — the excerpt, the shelf, and every
+   * context attachment go too. Destructive, so it is styled as such and always
+   * confirms upstream.
+   */
+  onFullResetSession: () => void;
+  /** True when there is actually an excerpt or attachment to clear. */
+  hasWorkingSet: boolean;
   onSaveSession: () => void;
   onBrowseSessions: () => void;
   onOpenSession: (session: WorkshopSessionSummary) => void;
@@ -35,6 +43,8 @@ export const WorkshopSessionsMenu: React.FC<WorkshopSessionsMenuProps> = ({
   newSessionDisabled,
   onOpenChange,
   onNewSession,
+  onFullResetSession,
+  hasWorkingSet,
   onSaveSession,
   onBrowseSessions,
   onOpenSession
@@ -127,6 +137,26 @@ export const WorkshopSessionsMenu: React.FC<WorkshopSessionsMenuProps> = ({
             <Icon name="refresh" size={15} />
             <span>New session</span>
             <kbd>⌘⇧N</kbd>
+          </button>
+          {/* Sits directly under New session, because the difference between
+              them is exactly one thing: whether the working set survives. The
+              subtitle names that difference rather than making the writer
+              discover it. */}
+          <button
+            className="pm-ws-sessions-menu-item pm-ws-sessions-menu-item-danger"
+            type="button"
+            role="menuitem"
+            disabled={newSessionDisabled}
+            title={hasWorkingSet
+              ? 'Start over with no excerpt and no context attachments'
+              : 'Nothing is attached — this behaves like a new session'}
+            onClick={() => invoke(onFullResetSession)}
+          >
+            <Icon name="x" size={15} />
+            <span>
+              New session: full reset
+              <small>also clears the excerpt and context</small>
+            </span>
           </button>
           <button
             className="pm-ws-sessions-menu-item"

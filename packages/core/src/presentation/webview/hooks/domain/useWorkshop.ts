@@ -226,7 +226,7 @@ export interface WorkshopActions {
   ) => void;
   todoAction: (action: WorkshopTodoAction) => void;
   cancelRun: () => void;
-  resetSession: () => void;
+  resetSession: (options?: { clearWorkingSet?: boolean }) => void;
   requestSession: () => void;
   requestSessions: (query?: string) => void;
   setSessionSearchQuery: (query: string) => void;
@@ -573,7 +573,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     }
   }, [vscode]);
 
-  const resetSession = React.useCallback(() => {
+  const resetSession = React.useCallback((options: { clearWorkingSet?: boolean } = {}) => {
     setErrorMessage('');
     setSessionActionPending('new');
     pendingResetRollbackRef.current = {
@@ -585,7 +585,9 @@ export const useWorkshop = (): UseWorkshopReturn => {
     // the typed failure result restores this exact client-side window.
     setTurns([]);
     setTotalTurns(0);
-    post(MessageType.WORKSHOP_RESET_SESSION, {});
+    post(MessageType.WORKSHOP_RESET_SESSION, {
+      ...(options.clearWorkingSet ? { clearWorkingSet: true } : {})
+    });
   }, [post, totalTurns, turns]);
 
   const requestSession = React.useCallback(() => {
