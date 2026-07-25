@@ -120,7 +120,7 @@ is persisted and surfaced in restore/browser metadata.
 
 ### Where the comp and the product disagreed
 
-Three places, all resolved toward product reality and recorded here rather than
+Four places, all resolved toward product reality and recorded here rather than
 silently absorbed:
 
 1. **The editor tab strip.** The comp draws a VS Code-style tab bar *inside the
@@ -140,6 +140,16 @@ silently absorbed:
 3. **Starter chips.** Implemented, but with generic copy — two of the comp's
    four name a character from its demo project. They prefill the composer; the
    writer still presses send.
+4. **Mid-conversation reversal affordances.** Superseded by
+   [ADR 2026-07-25](../../../../docs/adr/2026-07-25-workshop-scope-immutability.md)
+   and [Sprint 13A_2](13a_2-scope-immutability.md). §4's reversible path now
+   survives only before the room has a memory; after any host, tool-sidecar, or
+   guest conversation, scope is immutable. The comp's reversal controls
+   therefore deliberately disappear and are replaced by the recovery path:
+   *"Start a new session to change this — your excerpt and context carry
+   over."* The withdrawal frame, legacy delivery reasons, and new
+   `scope_change` turns retired with those controls. Existing `scope_change`
+   transcript rows remain parseable and renderable as history.
 
 ### Design language
 
@@ -187,31 +197,6 @@ remainder of the comp's inset instead of stacking a second one.
   the rail initially dropped Sprint 12's verified-paste round trip. The sheet
   now reports pastes and owns the draft-equality check, since only it knows the
   current draft.
-
-### Superseded by ADR 2026-07-25 (Sprint 13A_2)
-
-**§4 "The path is reversible in both directions" no longer holds.** Session
-scope is now IMMUTABLE once the room has a memory (any host, tool-sidecar, or
-guest conversation). The reversals survive only in the pre-memory window, where
-nobody has been prompted and a change is invisible to everyone.
-
-What that retired, and why: every mechanism §4 required existed to tell a model
-to stop believing something it had already read. The PR #86 review found three
-defects and all three lived in exactly that machinery. Deleted with it — the
-withdrawal frame and `pendingExcerptWithdrawal`, the `added`/`repinned`
-delivery reasons (`WorkshopExcerptDeliveryReason` is gone entirely), the
-mid-conversation `scope_change` divider, and the open-conversation-carrying-an-
-excerpt hybrid. Pinning a passage now simply makes the room a passage session.
-
-The comp's reversal affordances therefore disagree with the product on this
-point, deliberately. Where an affordance disappears, the surface names the
-recovery path instead: *"Start a new session to change this — your excerpt and
-context carry over."*
-
-See [ADR 2026-07-25](../../../../docs/adr/2026-07-25-workshop-scope-immutability.md)
-and [Sprint 13A_2](13a_2-scope-immutability.md). `scope_change` turns remain
-parseable and renderable — real transcripts written before the lock contain
-them, and they stay the history they are.
 
 ### Behavior change to flag for review
 

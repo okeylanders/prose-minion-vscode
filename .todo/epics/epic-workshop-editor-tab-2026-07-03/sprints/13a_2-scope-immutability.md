@@ -1,6 +1,7 @@
 # Sprint 13A_2: Scope Immutability
 
-**Status**: In progress on `sprint/workshop-editor-tab-13a_2-scope-immutability`
+**Status**: Complete on `sprint/workshop-editor-tab-13a_2-scope-immutability`;
+PR #87 resolution pass verified 2026-07-25
 **Priority**: High
 **Branch**: `sprint/workshop-editor-tab-13a_2-scope-immutability` -> PR into `epic/workshop-editor-tab`
 **Implements**: [ADR 2026-07-25 — Workshop Session Scope Is Immutable Once the Room Has a Memory](../../../../docs/adr/2026-07-25-workshop-scope-immutability.md)
@@ -23,9 +24,11 @@ question instead.
 ### 1. The lock predicate
 
 `WorkshopSessionService.hasRoomMemory()` — true when `conversationIds()` is
-non-empty (host conversation, any tool sidecar, or any persona-guest
-conversation). Scope is freely selectable while it is false and fixed once it
-is true.
+non-empty (host conversation, any tool sidecar, or any live persona-guest
+conversation), or when the participant map retains a disposed guest tombstone.
+The tombstone proves a guest conversation existed after its provider history
+is discarded, so dismissal cannot reverse the lock. Scope is freely selectable
+while the predicate is false and fixed once it is true.
 
 A tool run locks the scope; a first message that fails and leaves no
 conversation does not.
@@ -99,13 +102,15 @@ recovery path is what makes the lock acceptable.
 
 ## Exit criteria
 
-- [ ] Scope cannot change once any conversation exists; refusal is tested.
-- [ ] A fresh session and a resumed session both report `hasRoomMemory() ===
+- [x] Scope cannot change once any conversation exists; refusal is tested.
+- [x] A persona-guest conversation locks scope, and dismissing the guest does
+      not unlock it or discard its pending host evidence.
+- [x] A fresh session and a resumed session both report `hasRoomMemory() ===
       false` despite their session markers, and scope stays selectable.
-- [ ] The withdrawal path and `WorkshopExcerptDeliveryReason` are gone from the
+- [x] The withdrawal path and `WorkshopExcerptDeliveryReason` are gone from the
       live model.
-- [ ] A checkpoint carrying legacy `pendingExcerptWithdrawal` /
+- [x] A checkpoint carrying legacy `pendingExcerptWithdrawal` /
       `pendingExcerptChange` hydrates cleanly and drops them.
-- [ ] Locked surfaces hide their mutations and name the recovery path.
-- [ ] Superseded tests removed rather than adapted; full suite green,
+- [x] Locked surfaces hide their mutations and name the recovery path.
+- [x] Superseded tests removed rather than adapted; full suite green,
       typecheck clean on all three projects, lint 0 errors.

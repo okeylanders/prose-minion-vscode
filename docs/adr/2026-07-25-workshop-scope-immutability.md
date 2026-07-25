@@ -1,6 +1,6 @@
 # ADR 2026-07-25: Workshop Session Scope Is Immutable Once the Room Has a Memory
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-07-25
 **Extends:** [ADR 2026-07-14 — Workshop Session Persistence and the Session Browser](2026-07-14-workshop-session-persistence.md); [ADR 2026-07-11 — Workshop Excerpt Revision and Room Memory](2026-07-11-workshop-excerpt-revision-and-room-memory.md)
 **Supersedes:** [Sprint 13A](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/13a-open-chat.md) §4 "The path is reversible in both directions" — reversibility is retained only before the room has a memory, and the mid-conversation transitions it specified are deleted rather than re-bounded. §§1–3 and 5–11 stand unchanged.
@@ -80,9 +80,11 @@ immutable thereafter.**
 
 ### 1. The lock predicate is "any conversation exists"
 
-Scope may change while `conversationIds()` is empty — no host conversation, no
-tool sidecar, no persona-guest conversation. Once any exists, `scope` is fixed
-for the life of the session.
+Scope may change while `conversationIds()` is empty and no persona-guest
+tombstone exists — no host conversation, no tool sidecar, and no current or
+former persona-guest conversation. Once any exists, `scope` is fixed for the
+life of the session. Dismissing a guest discards its provider conversation but
+keeps its participant record, so dismissal cannot reverse the lock.
 
 This predicate is chosen over the simpler "first visible turn" because it
 matches the underlying truth: scope is locked exactly when some participant's
@@ -95,8 +97,11 @@ memory depends on it. Two consequences follow, both intended:
   A network error on the first turn must not strand the writer in a mode they
   did not commit to.
 
-`WorkshopSessionService.conversationIds()` already enumerates exactly this set;
-the predicate is a new public `hasRoomMemory()` over it, not new bookkeeping.
+`WorkshopSessionService.conversationIds()` enumerates the live set.
+`hasRoomMemory()` adds the existing disposed-guest participant record as the
+historical proof that a guest conversation existed; this uses the durable
+tombstone already required for thread attribution rather than adding parallel
+bookkeeping.
 
 #### Temporal frames must never count as a turn
 
