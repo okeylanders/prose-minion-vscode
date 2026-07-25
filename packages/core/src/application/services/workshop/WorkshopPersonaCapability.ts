@@ -1,4 +1,11 @@
-import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
+import {
+  WorkshopAnalysisSidePass,
+  WorkshopPersonaAnalysisRunInputs
+} from '@/application/services/workshop/WorkshopAnalysisSidePass';
+import {
+  buildWorkshopContextAttachmentsFrame,
+  buildWorkshopExcerptSourceFrame
+} from '@/application/services/workshop/WorkshopPromptBuilder';
 import { WorkshopResourceCapability } from '@/application/services/workshop/WorkshopResourceCapability';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
@@ -18,9 +25,12 @@ import {
   isApiKeyNotConfiguredWarning,
   WorkshopExcerpt,
   WorkshopPersonaId,
-  WorkshopTurn
+  WorkshopTurn,
+  workshopExcerptTitle
 } from '@messages';
 import {
+  WorkshopAnalysisInputProvenance,
+  WorkshopAnalysisInputSelection,
   WorkshopCapabilityArtifactDetails,
   WorkshopCapabilityOperation,
   WorkshopCapabilityRequest,
@@ -33,6 +43,11 @@ import {
   WorkshopCapabilityInspection,
   WorkshopCapabilityXmlCodec
 } from './WorkshopCapabilityXmlCodec';
+import { countWords } from '@/utils/textUtils';
+import {
+  buildWorkshopAnalysisScopeFrame,
+  neutralizeReservedPersonaPromptDelimiters
+} from '@/utils/workshopPromptFrames';
 
 type WorkshopResourceOperation = Extract<
   WorkshopCapabilityOperation,
@@ -50,9 +65,8 @@ export interface WorkshopPersonaCapabilityTurn {
   personaId: WorkshopPersonaId;
   /**
    * The pinned passage — ABSENT in an open conversation (Sprint 13A §1).
-   * Excerpt-scoped capability operations stay unavailable while it is missing;
-   * the closed dictionary and configured-resource families are unaffected,
-   * because neither reads the excerpt.
+   * `analysis.run` may inherit it when present or use persona-selected local
+   * material when absent; the room itself is never changed by that choice.
    */
   excerpt?: WorkshopExcerpt;
   /**
@@ -126,14 +140,17 @@ export class WorkshopPersonaCapability implements AgentCapability<
     }
     return [
       userMessage,
-      createWorkshopCapabilityInstruction(resourceGroups, {
-        excerptAvailable: this.turn.excerpt !== undefined
-      })
+      this.analysisScopeFrame(),
+      createWorkshopCapabilityInstruction(resourceGroups)
     ].join('\n\n');
   }
 
   async appendTurnContract(userMessage: string): Promise<string> {
-    return [userMessage, createWorkshopCapabilityTurnReminder()].join('\n\n');
+    return [
+      userMessage,
+      this.analysisScopeFrame(),
+      createWorkshopCapabilityTurnReminder()
+    ].join('\n\n');
   }
 
   inspectRequest(candidate: string): WorkshopCapabilityInspection {
@@ -236,7 +253,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
     const persona = workshopPersonaLabel(this.turn.personaId);
     switch (request.capability) {
       case 'analysis.run':
-        return `${persona} is asking ${workshopToolLabel(request.toolId)} to examine the excerpt…`;
+        return `${persona} is asking ${workshopToolLabel(request.toolId)} to run an isolated analysis…`;
       case 'dictionary.lookup':
       case 'dictionary.full-entry':
         return `${persona} is checking the Writer's Dictionary for “${request.word}”…`;
@@ -272,7 +289,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
   requestLogSummary(request: WorkshopCapabilityRequest): string {
     switch (request.capability) {
       case 'analysis.run':
-        return `tool=${request.toolId}; instructionsChars=${request.instructions?.length ?? 0}`;
+        return `tool=${request.toolId}; excerptMode=${request.excerpt.mode}; ` +
+          `contextMode=${request.context.mode}`;
       case 'dictionary.lookup':
       case 'dictionary.full-entry':
         return `word=${JSON.stringify(request.word)}; contextChars=${request.context.length}; purposeChars=${request.purpose.length}`;
@@ -296,17 +314,19 @@ export class WorkshopPersonaCapability implements AgentCapability<
     rejection: Extract<WorkshopCapabilityInspection, { kind: 'invalid' }>
   ): readonly CapabilityArtifact[] {
     const operation = rejection.operation;
-    if (!this.isResourceOperation(operation)) {
+    if (!this.isRecordableRejectedOperation(operation)) {
       return [];
     }
 
     const requestSummary = rejection.field
       ? `${operation} rejected (${rejection.reason}: ${rejection.field})`
       : `${operation} rejected (${rejection.reason})`;
-    return this.recordRejectedResourceAttempt(
+    return this.recordRejectedAttempt(
       operation,
       requestSummary,
-      'The project-resource request failed schema or containment validation.',
+      operation === 'analysis.run'
+        ? 'The analysis request failed its closed input-mode schema validation.'
+        : 'The project-resource request failed schema or containment validation.',
       rejection.reason,
       {
         rejectionReason: rejection.reason,
@@ -316,20 +336,22 @@ export class WorkshopPersonaCapability implements AgentCapability<
   }
 
   handleCapabilityLimit(request: WorkshopCapabilityRequest): readonly CapabilityArtifact[] {
-    if (!this.isResourceOperation(request.capability)) {
+    if (!this.isRecordableRejectedOperation(request.capability)) {
       return [];
     }
-    return this.recordRejectedResourceAttempt(
+    return this.recordRejectedAttempt(
       request.capability,
       this.requestSummary(request),
-      'The project-resource request exceeded the shared per-turn capability-call limit.',
+      request.capability === 'analysis.run'
+        ? 'The analysis request exceeded the shared per-turn capability-call limit.'
+        : 'The project-resource request exceeded the shared per-turn capability-call limit.',
       'capability-call-limit',
       { rejectionReason: 'capability-call-limit' }
     );
   }
 
-  private recordRejectedResourceAttempt(
-    operation: WorkshopResourceOperation,
+  private recordRejectedAttempt(
+    operation: WorkshopResourceOperation | 'analysis.run',
     requestSummary: string,
     error: string,
     rejectionReason: string,
@@ -376,6 +398,12 @@ export class WorkshopPersonaCapability implements AgentCapability<
     return operation === 'resource.catalog' ||
       operation === 'resource.search' ||
       operation === 'resource.read';
+  }
+
+  private isRecordableRejectedOperation(
+    operation: string | undefined
+  ): operation is WorkshopResourceOperation | 'analysis.run' {
+    return operation === 'analysis.run' || this.isResourceOperation(operation);
   }
 
   invalidRequestInstruction(
@@ -471,22 +499,14 @@ export class WorkshopPersonaCapability implements AgentCapability<
   private async runAnalysis(
     request: Extract<WorkshopCapabilityRequest, { capability: 'analysis.run' }>
   ): Promise<WorkshopCapabilityResult> {
-    const excerpt = this.turn.excerpt;
-    if (!excerpt) {
-      // Excerpt analysis is excerpt-SCOPED, and this room has no passage
-      // (Sprint 13A §9). Refuse with a visible reason rather than running the
-      // tool against nothing — the persona must not report on absent prose.
-      return this.rejected(
-        request,
-        'This is an open conversation with no excerpt attached, so excerpt analysis is unavailable. Ask the writer to add an excerpt, or answer without a tool report.'
-      );
-    }
+    const resolved = this.resolveAnalysisInputs(request);
+    if ('error' in resolved) return this.rejected(request, resolved.error);
     const toolLabel = workshopToolLabel(request.toolId);
     const personaLabel = workshopPersonaLabel(this.turn.personaId);
     let chunkCount = 0;
-    const analysis = await this.analysisSidePass.run(
+    const analysis = await this.analysisSidePass.runWithInputs(
       request.toolId,
-      excerpt,
+      resolved,
       {
         signal: this.turn.signal,
         retainConversation: true,
@@ -502,8 +522,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
             );
           }
         }
-      },
-      request.instructions
+      }
     );
     if (this.turn.signal.aborted) {
       if (analysis.conversationId) {
@@ -536,7 +555,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
       metadata: {
         toolId: request.toolId,
         truncated: analysis.finishReason === 'length',
-        retainedSidecar: !failed
+        retainedSidecar: !failed,
+        runDoor: 'persona',
+        analysisInputs: resolved.provenance
       },
       usage: analysis.usage,
       error: failed
@@ -591,10 +612,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
   private requestSummary(request: WorkshopCapabilityRequest): string {
     switch (request.capability) {
       case 'analysis.run': {
-        const instructions = request.instructions?.trim();
-        return instructions
-          ? `${instructions.slice(0, 77)}${instructions.length > 77 ? '…' : ''}`
-          : 'Pinned excerpt review';
+        const modes = `excerpt ${request.excerpt.mode}, context ${request.context.mode}`;
+        return modes;
       }
       case 'dictionary.lookup':
       case 'dictionary.full-entry':
@@ -612,6 +631,150 @@ export class WorkshopPersonaCapability implements AgentCapability<
 
   private dictionaryContext(context: string, purpose: string): string {
     return [context, '', `Lookup purpose: ${purpose}`].join('\n');
+  }
+
+  private analysisScopeFrame(): string {
+    const attachments = this.session.getContextAttachments();
+    return buildWorkshopAnalysisScopeFrame({
+      excerpt: this.turn.excerpt
+        ? {
+            version: this.turn.excerpt.version,
+            words: countWords(this.turn.excerpt.text),
+            label: workshopExcerptTitle(this.turn.excerpt.source)
+          }
+        : undefined,
+      contextAttachments: attachments.map(({ label, words }) => ({ label, words }))
+    });
+  }
+
+  private resolveAnalysisInputs(
+    request: Extract<WorkshopCapabilityRequest, { capability: 'analysis.run' }>
+  ): WorkshopPersonaAnalysisRunInputs | { error: string } {
+    const personaLabel = workshopPersonaLabel(this.turn.personaId);
+    const attachments = this.session.getContextAttachments();
+    const inheritedContext = buildWorkshopContextAttachmentsFrame(attachments);
+    const excerpt = this.resolveAnalysisInput({
+      slot: 'excerpt',
+      selection: request.excerpt,
+      inheritedText: this.turn.excerpt?.text,
+      inheritedMaterial: this.turn.excerpt
+        ? `pinned excerpt v${this.turn.excerpt.version}`
+        : 'no pinned excerpt',
+      inheritedWords: this.turn.excerpt ? countWords(this.turn.excerpt.text) : 0,
+      wordLimit: PROMPT_BUDGETS.personaExcerpt.words,
+      chosenBy: personaLabel,
+      inheritedTruncation: this.turn.excerpt?.truncation
+        ? `${this.turn.excerpt.truncation.pinnedWords.toLocaleString('en-US')} of ` +
+          `${this.turn.excerpt.truncation.totalWords.toLocaleString('en-US')} words pinned`
+        : undefined
+    });
+    if ('error' in excerpt) return excerpt;
+
+    const attachmentTruncations = attachments
+      .filter((attachment) => attachment.truncation)
+      .map((attachment) =>
+        `${attachment.label}: ${attachment.truncation!.keptWords.toLocaleString('en-US')} of ` +
+        `${attachment.truncation!.totalWords.toLocaleString('en-US')} words`
+      );
+    const context = this.resolveAnalysisInput({
+      slot: 'context',
+      selection: request.context,
+      inheritedText: inheritedContext,
+      inheritedMaterial: attachments.length === 0
+        ? 'no context attachments'
+        : `${attachments.length} context ${attachments.length === 1 ? 'attachment' : 'attachments'} (${attachments.map((attachment) => attachment.label).join(', ')})`,
+      inheritedWords: attachments.reduce((total, attachment) => total + attachment.words, 0),
+      wordLimit: PROMPT_BUDGETS.contextAttachments.words,
+      chosenBy: personaLabel,
+      inheritedTruncation: attachmentTruncations.length > 0
+        ? attachmentTruncations.join('; ')
+        : undefined
+    });
+    if ('error' in context) return context;
+
+    const inheritsExcerpt =
+      request.excerpt.mode === 'inherit' || request.excerpt.mode === 'prepend';
+    const inheritedExcerpt = this.turn.excerpt;
+    return {
+      excerptText: excerpt.text ?? '',
+      context: context.text,
+      excerptSourceFrame: inheritsExcerpt && inheritedExcerpt
+        ? buildWorkshopExcerptSourceFrame(inheritedExcerpt.source)
+        : undefined,
+      workshopSource: inheritsExcerpt &&
+        inheritedExcerpt &&
+        inheritedExcerpt.source.kind !== 'manual'
+        ? inheritedExcerpt.source.configuredResource
+        : undefined,
+      provenance: {
+        excerpt: excerpt.provenance,
+        context: context.provenance
+      }
+    };
+  }
+
+  private resolveAnalysisInput(input: {
+    slot: 'excerpt' | 'context';
+    selection: WorkshopAnalysisInputSelection;
+    inheritedText?: string;
+    inheritedMaterial: string;
+    inheritedWords: number;
+    inheritedTruncation?: string;
+    wordLimit: number;
+    chosenBy: string;
+  }): { text?: string; provenance: WorkshopAnalysisInputProvenance } | { error: string } {
+    const { selection } = input;
+    const supplied = selection.text?.trim();
+    if (
+      selection.mode === 'prepend' &&
+      (!input.inheritedText || input.inheritedWords === 0)
+    ) {
+      return {
+        error: `Cannot prepend ${input.slot} text because this room has no inherited ${input.slot} material. Use replace or omit instead.`
+      };
+    }
+    const suppliedWords = supplied ? countWords(supplied) : 0;
+    const totalWords = selection.mode === 'inherit'
+      ? input.inheritedWords
+      : selection.mode === 'prepend'
+        ? suppliedWords + input.inheritedWords
+        : selection.mode === 'replace'
+          ? suppliedWords
+          : 0;
+    if (totalWords > input.wordLimit) {
+      return {
+        error: `The resolved ${input.slot} input is ${totalWords.toLocaleString('en-US')} words, above the ${input.wordLimit.toLocaleString('en-US')}-word limit. Nothing was truncated or run.`
+      };
+    }
+    const safeSupplied = supplied
+      ? neutralizeReservedPersonaPromptDelimiters(supplied)
+      : undefined;
+    const text = selection.mode === 'inherit'
+      ? input.inheritedText
+      : selection.mode === 'prepend'
+        ? `${safeSupplied}\n\n${input.inheritedText}`
+        : selection.mode === 'replace'
+          ? safeSupplied
+          : undefined;
+    const material = selection.mode === 'inherit'
+      ? input.inheritedMaterial
+      : selection.mode === 'prepend'
+        ? `persona-supplied prefix (${suppliedWords.toLocaleString('en-US')} words) + ${input.inheritedMaterial}`
+        : selection.mode === 'replace'
+          ? `persona-supplied ${input.slot} (${suppliedWords.toLocaleString('en-US')} words)`
+          : 'omitted';
+    return {
+      text,
+      provenance: {
+        mode: selection.mode,
+        material,
+        chosenBy: input.chosenBy,
+        words: totalWords,
+        truncation: selection.mode === 'inherit' || selection.mode === 'prepend'
+          ? input.inheritedTruncation
+          : undefined
+      }
+    };
   }
 
   private rejected(

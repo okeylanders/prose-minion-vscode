@@ -20,7 +20,6 @@ describe('WorkshopComposer', () => {
       hasExcerpt: true,
       roomHasMemory: false,
       onAddExcerpt: jest.fn(),
-      onGatedAction: jest.fn(),
       hasConversation: true,
       recipientLabel: 'Choreography',
       isRunning: false,
@@ -189,18 +188,16 @@ describe('WorkshopComposer', () => {
       expect(screen.queryByRole('button', { name: /add excerpt/i })).toBeNull();
     });
 
-    it('gates Tools with a reachable, announced reason instead of a dead button', () => {
-      const { onGatedAction, onOpenTools } = renderComposer({ scope: 'open', hasExcerpt: false });
+    it('opens the persona-ask tool door in an excerpt-free room', () => {
+      const { onOpenTools } = renderComposer({ scope: 'open', hasExcerpt: false });
       const tools = screen.getByRole('button', { name: /tools/i });
 
-      // aria-disabled, not `disabled`: the reason has to be focusable to be read.
-      expect(tools.getAttribute('aria-disabled')).toBe('true');
+      expect(tools.getAttribute('aria-disabled')).toBeNull();
       expect((tools as HTMLButtonElement).disabled).toBe(false);
-      expect(tools.getAttribute('title')).toBe('Add an excerpt to use analysis tools.');
+      expect(tools.getAttribute('title')).toBe('Ask your host to run a tool');
 
       fireEvent.click(tools);
-      expect(onGatedAction).toHaveBeenCalledWith('Add an excerpt to use analysis tools.');
-      expect(onOpenTools).not.toHaveBeenCalled();
+      expect(onOpenTools).toHaveBeenCalled();
     });
 
     it('opens Tools normally once a passage is pinned', () => {

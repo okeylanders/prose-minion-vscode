@@ -1190,6 +1190,10 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       'persona_synthesis'
     ]);
     expect(turns[1].content).toBe('tool report');
+    expect(turns[1].analysisInputs).toMatchObject({
+      excerpt: { mode: 'inherit', material: 'pinned excerpt v1' },
+      context: { mode: 'inherit' }
+    });
     expect(turns[2]).toMatchObject({ personaId: 'jill', reportTurnId: turns[1].id });
     expect(session.getToolSidecarConversationId('prose')).toBe('tool-conv');
     expect(session.getHostConversationId()).toBe('host-conv');
@@ -1237,7 +1241,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     await runProse();
 
     const turns = session.getSnapshot().turns;
-    expect(turns.some((turn) => turn.artifact === 'tool_report' && turn.content === 'tool report')).toBe(true);
+    expect(turns.some((turn) =>
+      turn.artifact === 'tool_report' && turn.content === 'tool report'
+    )).toBe(true);
     expect(turns.some((turn) => turn.artifact === 'persona_synthesis')).toBe(false);
     expect(session.getToolSidecarConversationId('prose')).toBe('tool-conv');
     expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/synthesis failed/);
@@ -1528,7 +1534,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     releaseSynthesis();
     await toolRun;
 
-    expect(session.getSnapshot().turns.some((turn) => turn.content === 'tool report')).toBe(true);
+    expect(session.getSnapshot().turns.some((turn) =>
+      turn.content === 'tool report'
+    )).toBe(true);
     expect(session.getSnapshot().turns.some((turn) => turn.content === 'zombie synthesis')).toBe(false);
     expect(service.discardConversation).toHaveBeenCalledWith('zombie-host-conv');
     expect(session.getHostConversationId()).toBe('host-conv');

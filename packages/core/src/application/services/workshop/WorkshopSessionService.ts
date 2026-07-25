@@ -41,6 +41,7 @@ import {
 import { isContextPathGroup, TokenUsage } from '@shared/types';
 import {
   WorkshopCapabilityArtifactDetails,
+  WorkshopAnalysisInputProvenance,
   WorkshopCapabilityResult
 } from '@shared/types/workshopCapabilities';
 import {
@@ -1126,7 +1127,11 @@ export class WorkshopSessionService {
     conversationId: string,
     usage?: TokenUsage,
     truncated?: boolean,
-    actionableFindings: WorkshopActionableFinding[] = []
+    actionableFindings: WorkshopActionableFinding[] = [],
+    analysisInputs?: {
+      excerpt: WorkshopAnalysisInputProvenance;
+      context: WorkshopAnalysisInputProvenance;
+    }
   ): WorkshopToolReportCompletion | undefined {
     const active = this.activeRun;
     if (
@@ -1153,6 +1158,7 @@ export class WorkshopSessionService {
       timestamp: this.now(),
       usage: usage ? { ...usage } : undefined,
       truncated: truncated || undefined,
+      analysisInputs: analysisInputs ? cloneAnalysisInputs(analysisInputs) : undefined,
       excerptVersion: active.excerptVersion,
       actionableFindings: actionableFindings.length > 0
         ? cloneFindings(actionableFindings)
@@ -1211,7 +1217,8 @@ export class WorkshopSessionService {
       toolId: isAnalysis ? input.toolId : undefined,
       toolLabel: isAnalysis && input.toolId
         ? workshopToolLabel(input.toolId)
-        : isResource ? 'Project Resources' : 'Writer\'s Dictionary',
+        : isAnalysis ? 'Analysis'
+          : isResource ? 'Project Resources' : 'Writer\'s Dictionary',
       reportTurnId: isAnalysis && input.conversationId ? turnId : undefined,
       capability: cloneCapabilityDetails(input.details),
       content: input.result.content ?? input.result.error ?? 'No capability result was returned.',
@@ -2299,6 +2306,9 @@ function cloneTurn(turn: WorkshopTurn): WorkshopTurn {
       : undefined,
     usage: turn.usage ? { ...turn.usage } : undefined,
     capability: turn.capability ? cloneCapabilityDetails(turn.capability) : undefined,
+    analysisInputs: turn.analysisInputs
+      ? cloneAnalysisInputs(turn.analysisInputs)
+      : undefined,
     actionableFindings: turn.actionableFindings
       ? cloneFindings(turn.actionableFindings)
       : undefined,
@@ -2380,6 +2390,13 @@ function cloneCapabilityDetails(
           Object.entries(details.metadata).map(([key, value]) => [key, cloneMetadataValue(value)])
         )
       : undefined
+  };
+}
+
+function cloneAnalysisInputs(inputs: NonNullable<WorkshopTurn['analysisInputs']>) {
+  return {
+    excerpt: { ...inputs.excerpt },
+    context: { ...inputs.context }
   };
 }
 

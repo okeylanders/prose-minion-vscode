@@ -63,6 +63,111 @@ Third version.`);
 });
 
 describe('WorkshopTurnBubble variation cards', () => {
+  it('renders the direct-run divider with the pinned revision', () => {
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          id: 'turn-request',
+          role: 'user',
+          kind: 'tool_run',
+          participant: 'writer',
+          artifact: 'tool_request',
+          toolId: 'stock-and-signature',
+          toolLabel: 'Stock & Signature',
+          content: 'Run it.',
+          timestamp: 0,
+          excerptVersion: 3
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(screen.getByRole('separator').textContent)
+      .toContain('Stock & Signature · direct run · excerpt v3');
+  });
+
+  it('renders host-owned direct-run provenance without altering report content', () => {
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('Verbatim report.'),
+          analysisInputs: {
+            excerpt: {
+              mode: 'inherit',
+              material: 'pinned excerpt v3',
+              chosenBy: 'Writer',
+              words: 240
+            },
+            context: {
+              mode: 'inherit',
+              material: 'no context attachments',
+              chosenBy: 'Writer',
+              words: 0
+            }
+          }
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('Verbatim report.')).toBeTruthy();
+    expect(screen.getByText(/Excerpt · inherit · pinned excerpt v3/)).toBeTruthy();
+    expect(screen.getByText(/Context · inherit · no context attachments/)).toBeTruthy();
+  });
+
+  it('renders persona-run divider and inspectable per-input provenance', () => {
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('Report.'),
+          toolId: 'stock-and-signature',
+          toolLabel: 'Stock & Signature',
+          capability: {
+            operation: 'analysis.run',
+            status: 'success',
+            requestSummary: 'excerpt replace, context omit',
+            requestedByPersonaId: 'jill',
+            metadata: {
+              analysisInputs: {
+                excerpt: {
+                  mode: 'replace',
+                  material: 'persona-supplied excerpt (240 words)',
+                  chosenBy: 'Jill',
+                  words: 240
+                },
+                context: {
+                  mode: 'omit',
+                  material: 'omitted',
+                  chosenBy: 'Jill',
+                  words: 0
+                }
+              }
+            }
+          }
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(screen.getByRole('separator').textContent)
+      .toContain('Stock & Signature · via Jill · persona-supplied passage, 240 words');
+    fireEvent.click(screen.getByText(/requested by Jill/));
+    expect(screen.getByText(/Excerpt · replace · persona-supplied excerpt/)).toBeTruthy();
+    expect(screen.getByText(/Context · omit · omitted/)).toBeTruthy();
+  });
+
   it('requires an explicit click to promote a structured finding', () => {
     const onAddTodo = jest.fn();
     render(

@@ -10,10 +10,17 @@ import {
   AnalysisStreamingOptions,
   AssistantToolService
 } from '@services/analysis/AssistantToolService';
-import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { trimToWordLimit } from '@/utils/textUtils';
-import { WorkshopExcerpt, WorkshopToolId, WorkshopTurn } from '@messages';
 import {
+  countWords
+} from '@/utils/textUtils';
+import {
+  WorkshopConfiguredResourceRef,
+  WorkshopExcerpt,
+  WorkshopToolId,
+  WorkshopTurn
+} from '@messages';
+import {
+  WorkshopAnalysisInputProvenance,
   WorkshopCapabilityArtifactDetails,
   WorkshopCapabilityResult
 } from '@shared/types/workshopCapabilities';
@@ -25,6 +32,21 @@ import {
 export interface PersonaAnalysisAdoption {
   turn: WorkshopTurn;
   replacedConversationId?: string;
+}
+
+export interface WorkshopPersonaAnalysisRunInputs {
+  excerptText: string;
+  context?: string;
+  excerptSourceFrame?: string;
+  workshopSource?: WorkshopConfiguredResourceRef;
+  provenance: {
+    excerpt: WorkshopAnalysisInputProvenance;
+    context: WorkshopAnalysisInputProvenance;
+  };
+}
+
+export interface WorkshopAnalysisRunResult extends AnalysisResult {
+  inputProvenance: WorkshopPersonaAnalysisRunInputs['provenance'];
 }
 
 /**
@@ -47,19 +69,86 @@ export class WorkshopAnalysisSidePass {
   async run(
     toolId: WorkshopToolId,
     excerpt: WorkshopExcerpt,
-    streamingOptions: AnalysisStreamingOptions,
-    personaInstructions?: string
-  ): Promise<AnalysisResult> {
-    const context = this.buildContext(excerpt, personaInstructions);
-    const options: AnalysisStreamingOptions = {
-      ...streamingOptions,
-      workshopSource: excerpt.source.kind !== 'manual'
-        ? excerpt.source.configuredResource
-        : undefined
+    streamingOptions: AnalysisStreamingOptions
+  ): Promise<WorkshopAnalysisRunResult> {
+    const attachments = this.session.getContextAttachments();
+    const context = this.buildContext(
+      buildWorkshopExcerptSourceFrame(excerpt.source),
+      buildWorkshopContextAttachmentsFrame(attachments)
+    );
+    const truncations = attachments
+      .filter((attachment) => attachment.truncation)
+      .map((attachment) =>
+        `${attachment.label}: ${attachment.truncation!.keptWords.toLocaleString('en-US')} of ` +
+        `${attachment.truncation!.totalWords.toLocaleString('en-US')} words`
+      );
+    const result = await this.execute(
+      toolId,
+      excerpt.text,
+      context,
+      {
+        ...streamingOptions,
+        workshopSource: excerpt.source.kind !== 'manual'
+          ? excerpt.source.configuredResource
+          : undefined
+      }
+    );
+    return {
+      ...this.withDeliveredContextProvenance(result),
+      inputProvenance: {
+      excerpt: {
+        mode: 'inherit',
+        material: `pinned excerpt v${excerpt.version}`,
+        chosenBy: 'Writer',
+        words: countWords(excerpt.text),
+        truncation: excerpt.truncation
+          ? `${excerpt.truncation.pinnedWords.toLocaleString('en-US')} of ${excerpt.truncation.totalWords.toLocaleString('en-US')} words pinned`
+          : undefined
+      },
+      context: {
+        mode: 'inherit',
+        material: attachments.length === 0
+          ? 'no context attachments'
+          : `${attachments.length} context ${attachments.length === 1 ? 'attachment' : 'attachments'} (${attachments.map((attachment) => attachment.label).join(', ')})`,
+        chosenBy: 'Writer',
+        words: attachments.reduce((total, attachment) => total + attachment.words, 0),
+        truncation: truncations.length > 0 ? truncations.join('; ') : undefined
+      }
+      }
     };
+  }
+
+  /** Execute one persona-selected analysis without changing session inputs. */
+  async runWithInputs(
+    toolId: WorkshopToolId,
+    inputs: WorkshopPersonaAnalysisRunInputs,
+    streamingOptions: AnalysisStreamingOptions
+  ): Promise<WorkshopAnalysisRunResult> {
+    const context = this.buildContext(
+      inputs.excerptSourceFrame,
+      inputs.context
+    );
+    const result = await this.execute(
+      toolId,
+      inputs.excerptText,
+      context,
+      { ...streamingOptions, workshopSource: inputs.workshopSource }
+    );
+    return {
+      ...this.withDeliveredContextProvenance(result),
+      inputProvenance: inputs.provenance
+    };
+  }
+
+  private async execute(
+    toolId: WorkshopToolId,
+    excerptText: string,
+    context: string | undefined,
+    options: AnalysisStreamingOptions
+  ): Promise<AnalysisResult> {
     const result = toolId === 'dialogue'
       ? await this.assistantToolService.analyzeDialogue(
-          excerpt.text,
+          excerptText,
           context,
           undefined,
           undefined,
@@ -67,19 +156,19 @@ export class WorkshopAnalysisSidePass {
         )
       : toolId === 'prose'
         ? await this.assistantToolService.analyzeProse(
-            excerpt.text,
+            excerptText,
             context,
             undefined,
             options
           )
         : await this.assistantToolService.analyzeWritingTools(
-            excerpt.text,
+            excerptText,
             context,
             undefined,
             toolId,
             options
           );
-    return this.withDeliveredContextProvenance(result);
+    return result;
   }
 
   /**
@@ -109,6 +198,7 @@ export class WorkshopAnalysisSidePass {
     usage?: AnalysisResult['usage'];
     truncated?: boolean;
     toolId: WorkshopToolId;
+    inputProvenance?: WorkshopAnalysisRunResult['inputProvenance'];
   }): WorkshopToolReportCompletion | undefined {
     const actionableFindings = this.inspectActionableFindings(
       input.content,
@@ -120,7 +210,8 @@ export class WorkshopAnalysisSidePass {
       input.conversationId,
       input.usage,
       input.truncated,
-      actionableFindings
+      actionableFindings,
+      input.inputProvenance
     );
     if (completion?.replacedConversationId) {
       this.assistantToolService.discardConversation(completion.replacedConversationId);
@@ -182,30 +273,11 @@ export class WorkshopAnalysisSidePass {
   }
 
   private buildContext(
-    excerpt: WorkshopExcerpt,
-    personaInstructions?: string
+    excerptSourceFrame: string | undefined,
+    inputContext: string | undefined
   ): string | undefined {
-    const sourceFrame = buildWorkshopExcerptSourceFrame(excerpt.source);
-    const attachmentsFrame = buildWorkshopContextAttachmentsFrame(
-      this.session.getContextAttachments()
-    );
-    const instructions = personaInstructions?.trim();
-    if (!instructions) {
-      return [sourceFrame, attachmentsFrame, WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION]
-        .filter((section): section is string => !!section)
-        .join('\n\n');
-    }
-    const safeInstructions = instructions.replace(
-      /<\/?persona-requested-analysis-focus\b[^>]*>/gi,
-      (tag) => tag.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    );
-    return [
-      sourceFrame,
-      attachmentsFrame,
-      WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION,
-      '<persona-requested-analysis-focus>',
-      safeInstructions,
-      '</persona-requested-analysis-focus>'
-    ].filter((section): section is string => !!section).join('\n\n');
+    return [excerptSourceFrame, inputContext, WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION]
+      .filter((section): section is string => !!section)
+      .join('\n\n');
   }
 }

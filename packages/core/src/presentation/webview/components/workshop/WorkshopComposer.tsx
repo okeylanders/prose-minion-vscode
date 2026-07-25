@@ -35,14 +35,14 @@ import {
 } from '@messages';
 
 /** The one sentence the gated tool affordances say, everywhere (§9). */
-export const WORKSHOP_TOOLS_GATED_REASON = 'Add an excerpt to use analysis tools.';
+export const WORKSHOP_TOOLS_GATED_REASON = 'Add an excerpt to run analysis tools directly.';
 
 interface WorkshopComposerProps {
   /** The session has a subject (excerpt or open scope) and no run is in flight. */
   canMessage: boolean;
   /** Explicit session scope — placeholder, tool gating, and copy all key off it. */
   scope: WorkshopSessionScope;
-  /** True when a passage is pinned; the ONLY thing that unlocks analysis tools. */
+  /** True when a passage is pinned; controls direct-run copy, not persona asks. */
   hasExcerpt: boolean;
   /**
    * The scope lock (ADR 2026-07-25). Once the room has a memory the path is
@@ -51,10 +51,8 @@ interface WorkshopComposerProps {
   roomHasMemory: boolean;
   /** Prefill requested from outside (an open-chat starter chip); appended once. */
   draftSeed?: { text: string; token: number };
-  /** Open the shared Edit/Preview sheet to add an excerpt mid-conversation. */
+  /** Open the shared Edit/Preview sheet to choose the passage path before memory exists. */
   onAddExcerpt: () => void;
-  /** Announce why a gated affordance is unavailable (toast + live region). */
-  onGatedAction: (reason: string) => void;
   /** The current recipient already has a retained conversation (drives copy). */
   hasConversation: boolean;
   /** Deterministic current-recipient label for visible, accessible composer language. */
@@ -101,7 +99,6 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   roomHasMemory,
   draftSeed,
   onAddExcerpt,
-  onGatedAction,
   hasConversation,
   recipientLabel,
   isRunning,
@@ -323,18 +320,15 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
               {conversationBehavior.expressionLevel.toUpperCase()}
             </span>
           </button>
-          {/* §9: gated, not deleted. `aria-disabled` keeps the button
-              focusable so the reason is reachable by keyboard and announced,
-              which a `disabled` attribute would hide entirely. */}
+          {/* Sprint 13B: this is the "ask the host" door. With an excerpt its
+              picker still runs directly; without one it seeds an editable ask
+              and never sends on the writer's behalf. The rail remains gated. */}
           <button
-            className={`pm-ws-comp-pill${hasExcerpt ? '' : ' pm-ws-comp-pill-off'}`}
+            className="pm-ws-comp-pill"
             type="button"
             disabled={!sessionReady}
-            aria-disabled={hasExcerpt ? undefined : true}
-            title={hasExcerpt ? undefined : WORKSHOP_TOOLS_GATED_REASON}
-            onClick={hasExcerpt
-              ? onOpenTools
-              : () => onGatedAction(WORKSHOP_TOOLS_GATED_REASON)}
+            title={hasExcerpt ? 'Run a tool against the pinned excerpt' : 'Ask your host to run a tool'}
+            onClick={onOpenTools}
           >
             <Icon name="grid" size={13} /> Tools
           </button>

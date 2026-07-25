@@ -20,6 +20,8 @@ interface WorkshopToolsModalProps {
   open: boolean;
   activeToolId: WorkshopToolId | null;
   disabled?: boolean;
+  requestViaPersona?: boolean;
+  personaLabel?: string;
   unavailableMessage?: string;
   onClose: () => void;
   onSelect: (toolId: WorkshopToolId) => void;
@@ -32,6 +34,8 @@ export const WorkshopToolsModal: React.FC<WorkshopToolsModalProps> = ({
   open,
   activeToolId,
   disabled = false,
+  requestViaPersona = false,
+  personaLabel = 'your host',
   unavailableMessage,
   onClose,
   onSelect
@@ -40,9 +44,15 @@ export const WorkshopToolsModal: React.FC<WorkshopToolsModalProps> = ({
     <WorkshopModalShell open={open} titleId="pm-ws-tools-title" closeLabel="Close tools" onClose={onClose}>
         <div className="pm-ws-tools-modal-head">
           <div>
-            <div className="pm-ws-eyebrow">Prose Excerpt Assistant</div>
+            <div className="pm-ws-eyebrow">
+              {requestViaPersona ? `Ask ${personaLabel}` : 'Prose Excerpt Assistant'}
+            </div>
             <h2 id="pm-ws-tools-title">Writing Tools</h2>
-            <p>Pick an analysis. Each runs on your pinned excerpt with your context attachments included.</p>
+            <p>
+              {requestViaPersona
+                ? `Pick an analysis to prefill an editable ask for ${personaLabel}. Nothing sends until you do.`
+                : 'Pick an analysis. Each runs on your pinned excerpt with your context attachments included.'}
+            </p>
             {unavailableMessage && <p className="pm-ws-tools-modal-notice" role="status">{unavailableMessage}</p>}
           </div>
           <WorkshopModalShell.CloseButton />

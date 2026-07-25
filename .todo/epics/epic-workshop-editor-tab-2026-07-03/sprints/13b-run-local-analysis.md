@@ -1,6 +1,6 @@
 # Sprint 13B: Persona-Chosen Analysis Inputs
 
-**Status**: Planned  
+**Status**: Completed (2026-07-25)
 **Priority**: High  
 **Branch**: `sprint/workshop-editor-tab-13b-run-local-analysis` -> PR into `epic/workshop-editor-tab`  
 **Depends on**: Sprint 13A  
@@ -60,9 +60,9 @@ Host-side validation before the tool executes:
 
 - **The grammar goes in the system prompt, stated mode-neutrally** — all four
   modes for both inputs, the validation rules, and the honesty rules. It must
-  not reference the current session's scope, because 13A makes scope reversible
-  mid-session and a scope-dependent system prompt would be swapped on every
-  flip, invalidating the persona's prompt cache each time.
+  not reference the current session's scope. Input facts may differ between
+  rooms and turns, and a scope-dependent system prompt would invalidate the
+  persona's prompt cache merely to report those facts.
 - **A per-turn frame carries only what varies** — the facts, not the rules:
 
   ```text
@@ -132,8 +132,9 @@ bounded, attributable capability.
 - `prepend` against absent material and `prepend`/`replace` with empty text are
   both rejected with a visible reason.
 - Excerpt-mode rail and composer runs behave exactly as before.
-- The grammar sits in the system prompt and survives a scope flip without a
-  system-prompt swap; the per-turn frame reports current state.
+- The grammar sits in the system prompt and is identical for open and passage
+  rooms; the per-turn frame reports current state without a system-prompt
+  variant.
 - The scope frame is a reserved tag and cannot be forged by writer prose.
 - The prefill never claims a thread target that is not there, and never sends
   on its own.
@@ -142,3 +143,32 @@ bounded, attributable capability.
 - The room's excerpt, attachments, and provenance are unchanged after a run.
 - Contract, validation, prompt-assembly, provenance, and direct/persona
   execution tests pass with normal repository validation.
+
+## Completion notes
+
+- Added the closed `analysis.run` input grammar to the stable Workshop host
+  system prompt. The user-turn capability contract now carries only dynamic
+  capability availability plus a reserved `<workshop-analysis-scope>` facts
+  frame.
+- Added strict host validation and one-run resolution for all 16 independent
+  excerpt/context mode pairings. Invalid modes, mismatched text fields,
+  oversized resolved inputs, and prepend-without-material requests reject
+  visibly; `omit`/`omit` runs legally.
+- Kept direct rail/composer runs unchanged in passage rooms. In open rooms the
+  rail stays gated while the composer palette seeds an editable, unsent ask for
+  the host.
+- Added host-owned divider and per-input provenance rendering. Tool report
+  bodies remain verbatim; provenance persists beside them as structured turn
+  metadata.
+- Confirmed local runs do not modify the pinned excerpt, standing context,
+  configured-resource boundary, or later-run inputs.
+- Reconciled the prompt language with ADR 2026-07-25: after a room has memory,
+  scope is immutable. The relevant cache invariant is therefore one stable
+  host prompt across open/passage creation and changing per-turn input facts,
+  not a mid-memory scope flip.
+
+### Verification
+
+- `npm run typecheck`
+- `npm run lint` (0 errors; repository baseline warnings remain)
+- `npm test -- --runInBand`

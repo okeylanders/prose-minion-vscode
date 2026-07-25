@@ -4,6 +4,69 @@ import type { AssistantToolService } from '@services/analysis/AssistantToolServi
 import type { LogSink } from '@/platform';
 
 describe('WorkshopAnalysisSidePass', () => {
+  it('executes a legal persona-selected vacuum run without mutating room inputs', async () => {
+    const service = {
+      analyzeWritingTools: jest.fn().mockResolvedValue({
+        toolName: 'writing_tools_fresh',
+        content: 'Vacuum report.',
+        conversationId: 'fresh-conv'
+      }),
+      discardConversation: jest.fn()
+    } as unknown as jest.Mocked<AssistantToolService>;
+    const session = new WorkshopSessionService(() => 3);
+    const excerpt = session.setExcerpt({ text: 'Room passage.', source: { kind: 'manual' } });
+    session.addContextAttachment({
+      kind: 'text',
+      origin: 'writer',
+      label: 'Room note',
+      words: 2,
+      content: 'Standing context.'
+    });
+    const beforeExcerpt = session.getExcerpt();
+    const beforeAttachments = session.getContextAttachments();
+    const sidePass = new WorkshopAnalysisSidePass(
+      service,
+      session,
+      { appendLine: jest.fn() } as unknown as LogSink
+    );
+
+    const result = await sidePass.runWithInputs(
+      'fresh',
+      {
+        excerptText: '',
+        provenance: {
+          excerpt: {
+            mode: 'omit', material: 'omitted', chosenBy: 'Jill', words: 0
+          },
+          context: {
+            mode: 'omit', material: 'omitted', chosenBy: 'Jill', words: 0
+          }
+        }
+      },
+      { retainConversation: true }
+    );
+
+    expect(service.analyzeWritingTools).toHaveBeenCalledWith(
+      '',
+      expect.not.stringContaining('Room passage.'),
+      undefined,
+      'fresh',
+      { retainConversation: true, workshopSource: undefined }
+    );
+    expect(result.content).toBe('Vacuum report.');
+    expect(result.inputProvenance).toEqual({
+      excerpt: {
+        mode: 'omit', material: 'omitted', chosenBy: 'Jill', words: 0
+      },
+      context: {
+        mode: 'omit', material: 'omitted', chosenBy: 'Jill', words: 0
+      }
+    });
+    expect(session.getExcerpt()).toEqual(beforeExcerpt);
+    expect(session.getContextAttachments()).toEqual(beforeAttachments);
+    expect(excerpt.text).toBe('Room passage.');
+  });
+
   it('shares tool invocation and atomically adopts a persona-requested retained report', async () => {
     const service = {
       analyzeWritingTools: jest.fn().mockResolvedValue({
@@ -29,8 +92,7 @@ describe('WorkshopAnalysisSidePass', () => {
     const result = await sidePass.run(
       'continuity',
       excerpt,
-      { retainConversation: true },
-      'Track the cup.'
+      { retainConversation: true }
     );
     const adoption = sidePass.adoptPersonaReport({
       hostRequestId: 'host-turn',
@@ -53,7 +115,7 @@ describe('WorkshopAnalysisSidePass', () => {
 
     expect(service.analyzeWritingTools).toHaveBeenCalledWith(
       'The cup moves.',
-      expect.stringContaining('<persona-requested-analysis-focus>\n\nTrack the cup.'),
+      expect.stringContaining('<context-attachments count="1">'),
       undefined,
       'continuity',
       { retainConversation: true }
@@ -197,7 +259,7 @@ describe('WorkshopAnalysisSidePass', () => {
     ]);
   });
 
-  it('leaves reports without delivered context untouched (Phase 6)', async () => {
+  it('returns deterministic input provenance without changing a plain report', async () => {
     const service = {
       analyzeProse: jest.fn().mockResolvedValue({
         toolName: 'prose_analysis',
@@ -217,5 +279,9 @@ describe('WorkshopAnalysisSidePass', () => {
     const result = await sidePass.run('prose', excerpt, { retainConversation: true });
 
     expect(result.content).toBe('Plain report.');
+    expect(result.inputProvenance).toMatchObject({
+      excerpt: { material: 'pinned excerpt v1', mode: 'inherit' },
+      context: { material: 'no context attachments', mode: 'inherit' }
+    });
   });
 });

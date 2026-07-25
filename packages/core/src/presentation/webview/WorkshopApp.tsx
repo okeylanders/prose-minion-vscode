@@ -89,6 +89,7 @@ import {
   resultToolNameForWorkshopTool,
   WORKSHOP_PERSONA_RESULT_TOOL_NAME
 } from '@shared/constants/resultToolNames';
+import { buildWorkshopToolAskPrefill } from '@utils/workshopToolAskPrefill';
 import { useVSCodeApi } from './hooks/useVSCodeApi';
 import { usePersistence } from './hooks/usePersistence';
 import { useMessageRouter } from './hooks/useMessageRouter';
@@ -363,6 +364,7 @@ export const WorkshopApp: React.FC = () => {
   const hasExcerpt = !!workshop.excerpt;
   const toolsGatedByExcerpt = !hasExcerpt;
   const toolsEnabled = hasExcerpt && !roomMutationLocked && workshop.sessionReady;
+  const composerToolsEnabled = !roomMutationLocked && workshop.sessionReady;
   const activePersona = getWorkshopPersona(workshop.selectedPersonaId)
     ?? getWorkshopPersona(DEFAULT_WORKSHOP_PERSONA_ID)!;
   const guestTargetPersonaId = workshop.chatTarget.kind === 'personaGuest'
@@ -671,9 +673,21 @@ export const WorkshopApp: React.FC = () => {
   const selectTool = React.useCallback(
     (toolId: WorkshopToolId) => {
       setToolsModalOpen(false);
-      workshop.runTool(toolId);
+      if (hasExcerpt) {
+        workshop.runTool(toolId);
+        return;
+      }
+      seedComposerDraft(
+        buildWorkshopToolAskPrefill(toolId, activePersona.label, workshop.turns)
+      );
     },
-    [workshop.runTool]
+    [
+      activePersona.label,
+      hasExcerpt,
+      seedComposerDraft,
+      workshop.runTool,
+      workshop.turns
+    ]
   );
   const openPersonaModal = React.useCallback(() => {
     setPersonaModalMode('host');
@@ -1279,7 +1293,6 @@ export const WorkshopApp: React.FC = () => {
               roomHasMemory={workshop.roomHasMemory}
               draftSeed={draftSeed}
               onAddExcerpt={addExcerptByPaste}
-              onGatedAction={announceGate}
               hasConversation={workshop.chatTarget.kind === 'host' ? workshop.hasHostConversation : true}
               recipientLabel={chatTargetLabel}
               isRunning={workshop.isRunning}
@@ -1331,7 +1344,9 @@ export const WorkshopApp: React.FC = () => {
       <WorkshopToolsModal
         open={toolsModalOpen}
         activeToolId={workshop.selectedToolId}
-        disabled={!toolsEnabled}
+        disabled={!composerToolsEnabled}
+        requestViaPersona={!hasExcerpt}
+        personaLabel={activePersona.label}
         unavailableMessage={undefined}
         onClose={closeToolsModal}
         onSelect={selectTool}

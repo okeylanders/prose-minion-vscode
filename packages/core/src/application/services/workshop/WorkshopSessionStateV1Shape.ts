@@ -311,6 +311,7 @@ function assertTurn(value: unknown, path: string): void {
       'personaLabel',
       'reportTurnId',
       'capability',
+      'analysisInputs',
       'actionableFindings',
       'messageAttachments',
       'usage',
@@ -360,6 +361,15 @@ function assertTurn(value: unknown, path: string): void {
   if (turn.capability !== undefined) {
     assertCapability(turn.capability, `${path}.capability`);
   }
+  if (turn.analysisInputs !== undefined) {
+    const inputs = exactObject(
+      turn.analysisInputs,
+      `${path}.analysisInputs`,
+      ['excerpt', 'context']
+    );
+    assertAnalysisInputProvenance(inputs.excerpt, `${path}.analysisInputs.excerpt`);
+    assertAnalysisInputProvenance(inputs.context, `${path}.analysisInputs.context`);
+  }
   if (turn.actionableFindings !== undefined) {
     arrayOf(turn.actionableFindings, `${path}.actionableFindings`, assertFinding);
   }
@@ -380,6 +390,20 @@ function assertTurn(value: unknown, path: string): void {
   if (turn.behaviorTransition !== undefined) {
     assertBehaviorTransition(turn.behaviorTransition, `${path}.behaviorTransition`);
   }
+}
+
+function assertAnalysisInputProvenance(value: unknown, path: string): void {
+  const input = exactObject(
+    value,
+    path,
+    ['mode', 'material', 'chosenBy', 'words'],
+    ['truncation']
+  );
+  enumAt(input.mode, `${path}.mode`, ['inherit', 'prepend', 'replace', 'omit']);
+  stringAt(input.material, `${path}.material`);
+  stringAt(input.chosenBy, `${path}.chosenBy`);
+  numberAt(input.words, `${path}.words`);
+  optionalStringAt(input.truncation, `${path}.truncation`);
 }
 
 function assertCapability(value: unknown, path: string): void {

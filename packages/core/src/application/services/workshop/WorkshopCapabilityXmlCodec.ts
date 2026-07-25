@@ -1,9 +1,13 @@
 import { SaxesParser, SaxesTagPlain } from 'saxes';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { isWorkshopToolId, WORKSHOP_TOOL_CATALOG } from '@shared/constants/workshopTools';
-import { WorkshopCapabilityRequest } from '@shared/types/workshopCapabilities';
+import { isWorkshopToolId } from '@shared/constants/workshopTools';
+import {
+  WorkshopAnalysisInputMode,
+  WorkshopCapabilityRequest
+} from '@shared/types/workshopCapabilities';
 import { ContextPathGroup, isContextPathGroup } from '@shared/types';
 import { findExecutableMarkerIndex } from '@orchestration/ResourceReadXmlCodec';
+import { countWords } from '@/utils/textUtils';
 import * as path from 'path';
 
 export type WorkshopCapabilityRejectionReason =
@@ -22,6 +26,8 @@ export type WorkshopCapabilityRejectionReason =
   | 'missing-field'
   | 'empty-field'
   | 'unknown-tool-id'
+  | 'unknown-input-mode'
+  | 'input-mode-text-mismatch'
   | 'unknown-resource-group'
   | 'invalid-resource-path'
   | 'invalid-line-range'
@@ -49,32 +55,16 @@ export const createWorkshopCapabilityTurnReminder = (): string =>
   `${PROMPT_BUDGETS.workshopCapability.callsPerTurn} capability calls. ` +
   'A limit reached in an earlier turn does not carry forward. Use the available calls when fresh evidence would materially improve the answer.';
 
-/** Room facts that change which capability families are actually callable. */
-export interface WorkshopCapabilityAvailability {
-  /**
-   * False in an open conversation (Sprint 13A §9): excerpt analysis is
-   * excerpt-SCOPED, so the protocol must not advertise a door that the host
-   * will refuse — an advertised-then-rejected call wastes a turn's allowance
-   * and reads to the persona as a malfunction.
-   */
-  excerptAvailable?: boolean;
-}
-
 export const createWorkshopCapabilityInstruction = (
-  resourceGroups: readonly WorkshopResourceGroupAvailability[] = [],
-  availability: WorkshopCapabilityAvailability = {}
+  resourceGroups: readonly WorkshopResourceGroupAvailability[] = []
 ): string => {
   const budgets = PROMPT_BUDGETS.workshopCapability;
   const resourceBudgets = PROMPT_BUDGETS.workshopResource;
-  const toolIds = WORKSHOP_TOOL_CATALOG.map(tool => tool.id).join(', ');
-  const excerptAvailable = availability.excerptAvailable !== false;
   const lines = [
     '## Workshop Capability Protocol',
     '',
     `You may make at most ${budgets.callsPerTurn} capability calls during this user turn. ` +
-      (excerptAvailable
-        ? `You may request dictionary.full-entry at most ${budgets.fullEntriesPerTurn} time and analysis.run at most ${budgets.analysisRunsPerTurn} time.`
-        : `You may request dictionary.full-entry at most ${budgets.fullEntriesPerTurn} time.`),
+      `You may request dictionary.full-entry at most ${budgets.fullEntriesPerTurn} time and analysis.run at most ${budgets.analysisRunsPerTurn} time.`,
     'This allowance resets with every new writer message. Never carry an exhausted capability budget forward from an earlier turn.',
     'A capability call must be your entire response: one bare, well-formed XML document with no prose, Markdown fence, second call, or characters before or after it.',
     '',
@@ -92,24 +82,9 @@ export const createWorkshopCapabilityInstruction = (
     '  <purpose>Compare diction options for this passage.</purpose>',
     '</prose-minion-tool-call>',
     '',
-    ...(excerptAvailable
-      ? [
-          'Isolated analysis side pass:',
-          '<prose-minion-tool-call name="analysis.run">',
-          '  <toolId>continuity</toolId>',
-          '  <instructions>Check whether the revised blocking is internally consistent.</instructions>',
-          '</prose-minion-tool-call>',
-          '',
-          `Allowed analysis tool ids: ${toolIds}.`
-        ]
-      : [
-          'Excerpt analysis (analysis.run) is UNAVAILABLE in this conversation because no excerpt is attached. Do not call it. If a question needs one, say so and ask the writer to add an excerpt.'
-        ]),
-    `Input ceilings are word ${budgets.wordCharacters} characters, context ${budgets.contextCharacters}, ` +
-      `purpose ${budgets.purposeCharacters}, and instructions ${budgets.instructionsCharacters}. Do not split or truncate an input to evade a ceiling.`,
-    ...(excerptAvailable
-      ? ['Never include excerpt text or a filesystem path in analysis.run; the host pins the current excerpt and stamps its provenance.']
-      : []),
+    'The stable analysis.run grammar and its validation rules are in your system instructions. The reserved analysis-scope frame beside this writer turn reports only the current inherited inputs.',
+    `Dictionary input ceilings are word ${budgets.wordCharacters} characters, context ${budgets.contextCharacters}, ` +
+      `and purpose ${budgets.purposeCharacters}. Do not split or truncate an input to evade a ceiling.`,
     'After evidence is returned, use it honestly. The dictionary and analysis agents remain separately attributed; never claim their report as your own.'
   ];
 
@@ -304,27 +279,87 @@ export class WorkshopCapabilityXmlCodec {
   }
 
   private analysisRequest(fields: ReadonlyMap<string, string>): WorkshopCapabilityInspection {
-    const fieldError = this.validateFields(fields, ['toolId'], ['instructions']);
-    if (fieldError) return fieldError;
+    const fieldError = this.validateFields(
+      fields,
+      ['toolId', 'excerptMode', 'contextMode'],
+      ['excerptText', 'contextText']
+    );
+    if (fieldError) return { ...fieldError, operation: 'analysis.run' };
     const toolId = fields.get('toolId')!;
     if (!isWorkshopToolId(toolId)) {
-      return { kind: 'invalid', reason: 'unknown-tool-id', field: 'toolId' };
+      return {
+        kind: 'invalid',
+        reason: 'unknown-tool-id',
+        field: 'toolId',
+        operation: 'analysis.run'
+      };
     }
-    const instructions = fields.get('instructions');
-    if (
-      instructions !== undefined &&
-      instructions.length > PROMPT_BUDGETS.workshopCapability.instructionsCharacters
-    ) {
-      return { kind: 'invalid', reason: 'oversized-input', field: 'instructions' };
-    }
+    const excerpt = this.analysisInput(fields, 'excerpt');
+    if ('kind' in excerpt) return excerpt;
+    const context = this.analysisInput(fields, 'context');
+    if ('kind' in context) return context;
     return {
       kind: 'request',
       request: {
         capability: 'analysis.run',
         toolId,
-        instructions: instructions || undefined
+        excerpt,
+        context
       }
     };
+  }
+
+  private analysisInput(
+    fields: ReadonlyMap<string, string>,
+    slot: 'excerpt' | 'context'
+  ):
+    | { mode: WorkshopAnalysisInputMode; text?: string }
+    | Extract<WorkshopCapabilityInspection, { kind: 'invalid' }> {
+    const modeField = `${slot}Mode`;
+    const textField = `${slot}Text`;
+    const mode = fields.get(modeField)!;
+    const text = fields.get(textField);
+    if (!this.isAnalysisInputMode(mode)) {
+      return {
+        kind: 'invalid',
+        reason: 'unknown-input-mode',
+        field: modeField,
+        operation: 'analysis.run'
+      };
+    }
+    const requiresText = mode === 'prepend' || mode === 'replace';
+    if (requiresText && !text) {
+      return {
+        kind: 'invalid',
+        reason: 'input-mode-text-mismatch',
+        field: textField,
+        operation: 'analysis.run'
+      };
+    }
+    if (!requiresText && text !== undefined) {
+      return {
+        kind: 'invalid',
+        reason: 'input-mode-text-mismatch',
+        field: textField,
+        operation: 'analysis.run'
+      };
+    }
+    const wordLimit = slot === 'excerpt'
+      ? PROMPT_BUDGETS.personaExcerpt.words
+      : PROMPT_BUDGETS.contextAttachments.words;
+    if (text && countWords(text) > wordLimit) {
+      return {
+        kind: 'invalid',
+        reason: 'oversized-input',
+        field: textField,
+        operation: 'analysis.run'
+      };
+    }
+    return { mode, text };
+  }
+
+  private isAnalysisInputMode(value: string): value is WorkshopAnalysisInputMode {
+    return value === 'inherit' || value === 'prepend' || value === 'replace' || value === 'omit';
   }
 
   private resourceCatalogRequest(

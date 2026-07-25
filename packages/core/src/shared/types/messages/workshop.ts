@@ -16,7 +16,10 @@ import { MessageEnvelope, MessageType } from './base';
 import { WritingToolsFocus } from './analysis';
 import { TokenUsage } from '../index';
 import type { LabeledContextBudgetSnapshot } from './inferenceContext';
-import type { WorkshopCapabilityArtifactDetails } from '../workshopCapabilities';
+import type {
+  WorkshopAnalysisInputProvenance,
+  WorkshopCapabilityArtifactDetails
+} from '../workshopCapabilities';
 import { ContextPathGroup, isContextPathGroup } from '../context';
 
 /**
@@ -708,6 +711,11 @@ export interface WorkshopTurn {
   reportTurnId?: string;
   /** Persona-callable capability provenance; raw protocol never crosses this boundary. */
   capability?: WorkshopCapabilityArtifactDetails;
+  /** Host-composed inputs delivered to an analysis report, direct or persona-run. */
+  analysisInputs?: {
+    excerpt: WorkshopAnalysisInputProvenance;
+    context: WorkshopAnalysisInputProvenance;
+  };
   /** Excerpt version this turn observed or announced. */
   excerptVersion: number;
   /** Strictly parsed actionable findings proposed by a tool report or host turn. */
