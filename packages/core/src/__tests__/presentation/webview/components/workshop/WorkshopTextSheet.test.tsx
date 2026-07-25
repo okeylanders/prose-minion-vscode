@@ -145,7 +145,15 @@ describe('WorkshopTextSheet — project files', () => {
 
   it('keeps the source visible but not editable', () => {
     renderSheet({ mode: fileMode, value: '# Ava' });
-    expect(screen.getByRole('textbox', { name: 'Source: character-ava.md' })).toHaveProperty('readOnly', true);
+    // A file opens on the rendered read, so reach the source the way a writer
+    // does. The Edit panel is `hidden` until selected — deliberately, so a
+    // screen reader is offered one panel and not both — and an accessible
+    // query must not be able to see it before then.
+    expect(screen.queryByRole('textbox', { name: 'Source: character-ava.md' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Source' }));
+    expect(screen.getByRole('textbox', { name: 'Source: character-ava.md' }))
+      .toHaveProperty('readOnly', true);
   });
 
   it('routes the editor-tab escape hatch when the host can open the file', () => {

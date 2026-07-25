@@ -1310,20 +1310,41 @@ export class WorkshopHandler {
       return;
     }
     const attachment = this.session.getContextAttachment(id);
+    if (!attachment) {
+      // The sheet renders this inline against the attachment it opened, so the
+      // reply still carries the message — but a lost race (one sheet removing
+      // what another is mid-fetch on) needs a trail to correlate against.
+      const detail = `Workshop context attachment ${id} was requested after it left the session`;
+      this.outputChannel.appendLine(`[WorkshopHandler] ${detail}`);
+      this.sendError(
+        'workshop',
+        'That context attachment is no longer attached to this session.',
+        detail
+      );
+      this.postMessage({
+        type: MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT,
+        source: 'extension.workshop',
+        payload: {
+          id,
+          error: 'That context attachment is no longer attached to this session.',
+          canOpenInEditor: false
+        },
+        timestamp: Date.now()
+      });
+      return;
+    }
+    this.outputChannel.appendLine(
+      `[WorkshopHandler] Context attachment served to the sheet (${attachment.label}, ` +
+      `${attachment.content.length} chars, origin=${attachment.origin})`
+    );
     this.postMessage({
       type: MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT,
       source: 'extension.workshop',
-      payload: attachment
-        ? {
-            id,
-            content: attachment.content,
-            canOpenInEditor: attachment.sourceUri !== undefined
-          }
-        : {
-            id,
-            error: 'That context attachment is no longer attached to this session.',
-            canOpenInEditor: false
-          },
+      payload: {
+        id,
+        content: attachment.content,
+        canOpenInEditor: attachment.sourceUri !== undefined
+      },
       timestamp: Date.now()
     });
   }
@@ -2523,6 +2544,16 @@ export class WorkshopHandler {
     this.outputChannel.appendLine(
       `[WorkshopHandler] Excerpt v${replacement.excerpt.version} pinned (${workshopExcerptSourcePath(replacement.excerpt.source) ?? 'pasted'}, ${replacement.excerpt.text.length} chars, ${replacement.retiredSidecarCount} sidecars retired)`
     );
+    if (replacement.discardedShelvedExcerpt) {
+      // The shelf holds one passage and no history, so this line is the only
+      // surviving record of what the pin destroyed.
+      const discarded = replacement.discardedShelvedExcerpt;
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Set-aside excerpt discarded by that pin (` +
+        `${workshopExcerptSourcePath(discarded.source) ?? 'pasted'}, ` +
+        `v${discarded.version}, ${discarded.text.length} chars)`
+      );
+    }
     const pendingHostUpdates = this.session.collectPendingHostUpdates();
     if (pendingHostUpdates?.excerpt) {
       this.outputChannel.appendLine(

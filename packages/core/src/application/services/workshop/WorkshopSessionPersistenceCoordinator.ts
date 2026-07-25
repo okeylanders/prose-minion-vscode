@@ -48,7 +48,8 @@ import {
   WorkshopPersonaId,
   WorkshopSessionSaveStatusMessage,
   WorkshopSessionSummary,
-  WorkshopToolId
+  WorkshopToolId,
+  workshopExcerptSourcePath
 } from '@messages';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { countWords } from '@/utils/textUtils';
@@ -85,6 +86,16 @@ export interface WorkshopSessionListData {
   sessions: WorkshopSessionSummary[];
   truncated: boolean;
   searchTruncated: boolean;
+}
+
+/**
+ * What a reset actually destroyed. Empty for an ordinary new session, which
+ * preserves the working set; populated only for a full reset, and captured
+ * before the aggregate is mutated so the caller can log specifics.
+ */
+export interface WorkshopResetSummary {
+  excerptLabel?: string;
+  attachmentLabels: string[];
 }
 
 export interface WorkshopSessionPersistenceCoordinatorOptions {
@@ -480,9 +491,18 @@ export class WorkshopSessionPersistenceCoordinator {
    * context attachment. Named sessions on disk are never touched by either
    * form; a write failure rolls the whole thing back.
    */
-  async resetSession(options: { clearWorkingSet?: boolean } = {}): Promise<void> {
+  async resetSession(
+    options: { clearWorkingSet?: boolean } = {}
+  ): Promise<WorkshopResetSummary> {
     return this.serializeSessionOperation(async () => {
       const rollback = this.captureRollback();
+      // Read the working set BEFORE the aggregate drops it. A destructive
+      // reset is the one action here that can be disputed later, and "it
+      // deleted my context" is unanswerable against a log that only says a
+      // wipe happened.
+      const cleared = options.clearWorkingSet
+        ? this.describeClearedWorkingSet()
+        : { attachmentLabels: [] };
       const discarded = this.session.reset(options);
       this.time.reset();
       const createdAt = normalizedIso(this.now());
@@ -506,7 +526,21 @@ export class WorkshopSessionPersistenceCoordinator {
       discarded.forEach((conversationId) =>
         this.assistantToolService.discardConversation(conversationId)
       );
+      return cleared;
     });
+  }
+
+  /** Name the writer-authored working set a full reset is about to destroy. */
+  private describeClearedWorkingSet(): WorkshopResetSummary {
+    const excerpt = this.session.getExcerpt() ?? this.session.getShelvedExcerpt();
+    return {
+      excerptLabel: excerpt
+        ? `${workshopExcerptSourcePath(excerpt.source) ?? 'Pasted excerpt'} v${excerpt.version}`
+        : undefined,
+      attachmentLabels: this.session
+        .getContextAttachments()
+        .map((attachment) => attachment.label)
+    };
   }
 
   private async capture(identity: LiveSessionIdentity): Promise<WorkshopPersistedSessionV1> {

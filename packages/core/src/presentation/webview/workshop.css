@@ -3349,7 +3349,10 @@
   text-align: center;
 }
 [data-pm-surface="workshop"] .pm-ws-path-card-chat {
-  border-color: #33362f;
+  /* Same green-family expression as this card's own icon two rules below, so
+     the card edge and its icon move together under a theme change. A bare hex
+     here would be the one border in this surface a re-theme silently misses. */
+  border-color: color-mix(in srgb, var(--pm-green) 26%, transparent);
 }
 [data-pm-surface="workshop"] .pm-ws-path-card-chat .pm-ws-path-icon {
   background: color-mix(in srgb, var(--pm-green) 9%, transparent);
@@ -3603,10 +3606,14 @@
   gap: 10px;
   margin: 11px 0;
 }
+/* The rule and the word are ACCENTED, not faint: this divider is not
+   decoration between unrelated blocks — it is the fork itself, telling the
+   writer the two paths above and below are alternatives to each other. At
+   --pm-faint it read as a section break and the relationship was lost. */
 [data-pm-surface="workshop"] .pm-ws-or hr {
   flex: 1;
   border: 0;
-  border-top: 1px solid var(--pm-border-soft);
+  border-top: 1px solid color-mix(in srgb, var(--pm-accent) 26%, transparent);
   margin: 0;
 }
 [data-pm-surface="workshop"] .pm-ws-or span {
@@ -3614,7 +3621,7 @@
   font-size: 9.5px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--pm-faint);
+  color: var(--pm-accent);
 }
 [data-pm-surface="workshop"] .pm-ws-chat-entry {
   display: flex;

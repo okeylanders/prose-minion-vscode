@@ -421,6 +421,7 @@ export const WorkshopApp: React.FC = () => {
     | { kind: 'new' }
     | { kind: 'new-full' }
     | { kind: 'open'; sessionId: string; title: string }
+    | { kind: 'replace-shelf'; resume: 'paste' | 'choose' }
     | null
   >(null);
   const hasReplaceableSessionState =
@@ -463,19 +464,6 @@ export const WorkshopApp: React.FC = () => {
     workshop.openSession(session.sessionId);
   }, [hasReplaceableSessionState, workshop.openSession]);
   const cancelSessionConfirm = React.useCallback(() => setSessionConfirm(null), []);
-  const acceptSessionConfirm = React.useCallback(() => {
-    if (!sessionConfirm) {
-      return;
-    }
-    setSessionConfirm(null);
-    if (sessionConfirm.kind === 'new') {
-      workshop.resetSession();
-    } else if (sessionConfirm.kind === 'new-full') {
-      workshop.resetSession({ clearWorkingSet: true });
-    } else {
-      workshop.openSession(sessionConfirm.sessionId);
-    }
-  }, [sessionConfirm, workshop.resetSession, workshop.openSession]);
   const openBehaviorModal = React.useCallback(() => setBehaviorModalOpen(true), []);
   const closeBehaviorModal = React.useCallback(() => setBehaviorModalOpen(false), []);
   const openContextSelector = React.useCallback((mode: 'attach' | 'excerpt' | 'message' = 'attach') => {
@@ -517,6 +505,55 @@ export const WorkshopApp: React.FC = () => {
       seed: workshop.excerpt?.text ?? ''
     });
   }, [workshop.excerpt, workshop.hasHostConversation]);
+
+  // A hand-pasted passage on the shelf exists NOWHERE else — no file on disk,
+  // and the shelf is one slot with no history. Pinning over it is
+  // unrecoverable, so it confirms first, the same care the full reset gets.
+  // A file-backed passage is still on disk, so that path stays frictionless.
+  const shelvedExcerptTitle = workshop.shelvedExcerpt
+    ? workshopExcerptTitle(workshop.shelvedExcerpt.source)
+    : undefined;
+  const shelvedPassageIsUnrecoverable = workshop.shelvedExcerpt?.source.kind === 'manual';
+  const addExcerptByPaste = React.useCallback(() => {
+    if (shelvedPassageIsUnrecoverable) {
+      setSessionConfirm({ kind: 'replace-shelf', resume: 'paste' });
+      return;
+    }
+    openPasteSheet();
+  }, [shelvedPassageIsUnrecoverable, openPasteSheet]);
+  const addExcerptFromProject = React.useCallback(() => {
+    if (shelvedPassageIsUnrecoverable) {
+      setSessionConfirm({ kind: 'replace-shelf', resume: 'choose' });
+      return;
+    }
+    openExcerptSelector();
+  }, [shelvedPassageIsUnrecoverable, openExcerptSelector]);
+
+  const acceptSessionConfirm = React.useCallback(() => {
+    if (!sessionConfirm) {
+      return;
+    }
+    setSessionConfirm(null);
+    if (sessionConfirm.kind === 'new') {
+      workshop.resetSession();
+    } else if (sessionConfirm.kind === 'new-full') {
+      workshop.resetSession({ clearWorkingSet: true });
+    } else if (sessionConfirm.kind === 'replace-shelf') {
+      if (sessionConfirm.resume === 'paste') {
+        openPasteSheet();
+      } else {
+        openExcerptSelector();
+      }
+    } else {
+      workshop.openSession(sessionConfirm.sessionId);
+    }
+  }, [
+    sessionConfirm,
+    workshop.resetSession,
+    workshop.openSession,
+    openPasteSheet,
+    openExcerptSelector
+  ]);
 
   const openAddTextSheet = React.useCallback(() => {
     setTextSheet({ mode: { kind: 'context-new' }, seed: '' });
@@ -815,7 +852,10 @@ export const WorkshopApp: React.FC = () => {
             {/* §10: header meta reports SCOPE, so an open conversation never
                 reads as a passage session that forgot its passage. */}
             <p className="pm-ws-subtitle">
-              <Icon name={workshop.excerpt || workshop.scope !== 'open' ? 'doc' : 'dialogue'} size={12} />{' '}
+              <Icon
+                name={workshop.scope === 'open' && !workshop.excerpt ? 'dialogue' : 'doc'}
+                size={12}
+              />{' '}
               {workshop.excerpt
                 ? `${workshopExcerptSourcePath(workshop.excerpt.source) ?? 'Pinned excerpt'} · v${workshop.excerpt.version} · ${excerptWordCount} words`
                 : workshop.scope === 'open'
@@ -1057,8 +1097,8 @@ export const WorkshopApp: React.FC = () => {
                   contextAttachmentCount={workshop.contextAttachments.length}
                   disabled={roomMutationLocked || !workshop.sessionReady}
                   onContinueWithExcerpt={continueWithExcerpt}
-                  onPasteExcerpt={openPasteSheet}
-                  onChooseFromProject={openExcerptSelector}
+                  onPasteExcerpt={addExcerptByPaste}
+                  onChooseFromProject={addExcerptFromProject}
                   onStartOpenConversation={startOpenConversation}
                   onResetWorkingSet={startFullReset}
                 />
@@ -1066,15 +1106,19 @@ export const WorkshopApp: React.FC = () => {
 
               {workshop.scope === 'open' && (
                 <WorkshopScopeStrip
+                  scope={workshop.scope}
                   hostLabel={activePersona.label}
                   excerptTitle={
                     workshop.excerpt ? workshopExcerptTitle(workshop.excerpt.source) : undefined
                   }
                   excerptVersion={workshop.excerpt?.version}
+                  shelvedExcerptTitle={shelvedExcerptTitle}
+                  shelvedExcerptVersion={workshop.shelvedExcerpt?.version}
                   withdrawalPending={workshop.excerptWithdrawalPending}
                   disabled={roomMutationLocked}
-                  onAddExcerpt={openPasteSheet}
+                  onAddExcerpt={addExcerptByPaste}
                   onSetAside={startOpenConversation}
+                  onRepinExcerpt={workshop.repinExcerpt}
                 />
               )}
 
@@ -1250,7 +1294,7 @@ export const WorkshopApp: React.FC = () => {
               scope={workshop.scope}
               hasExcerpt={hasExcerpt}
               draftSeed={draftSeed}
-              onAddExcerpt={openPasteSheet}
+              onAddExcerpt={addExcerptByPaste}
               onGatedAction={announceGate}
               hasConversation={workshop.chatTarget.kind === 'host' ? workshop.hasHostConversation : true}
               recipientLabel={chatTargetLabel}
@@ -1401,20 +1445,29 @@ export const WorkshopApp: React.FC = () => {
           ? `Open “${sessionConfirm.title}”?`
           : sessionConfirm?.kind === 'new-full'
             ? 'Clear the excerpt and context?'
-            : 'Start a new session?'}
+            : sessionConfirm?.kind === 'replace-shelf'
+              ? 'Replace the passage you set aside?'
+              : 'Start a new session?'}
         body={sessionConfirm?.kind === 'open'
           ? 'Your current Workshop room will be replaced.'
           : sessionConfirm?.kind === 'new-full'
             ? 'This starts an empty room: the excerpt, anything on the shelf, every ' +
               'context attachment, the thread, tasks, guests, and conversation memory ' +
               'are all cleared. Saved sessions on disk are not touched.'
-            : 'The pinned excerpt and standing context stay; the thread, tasks, ' +
-              'guests, and conversation memory reset.'}
+            : sessionConfirm?.kind === 'replace-shelf'
+              ? `“${shelvedExcerptTitle ?? 'The set-aside passage'}” was typed or pasted ` +
+                'straight into the room, so the shelf is the only place it exists — ' +
+                'pinning a new excerpt discards it for good. To bring it back instead, ' +
+                'cancel and use “Re-pin”. Your conversation is kept either way.'
+              : 'The pinned excerpt and standing context stay; the thread, tasks, ' +
+                'guests, and conversation memory reset.'}
         confirmLabel={sessionConfirm?.kind === 'open'
           ? 'Open session'
           : sessionConfirm?.kind === 'new-full'
             ? 'Clear everything'
-            : 'New session'}
+            : sessionConfirm?.kind === 'replace-shelf'
+              ? 'Discard and pin a new one'
+              : 'New session'}
         onConfirm={acceptSessionConfirm}
         onCancel={cancelSessionConfirm}
       />

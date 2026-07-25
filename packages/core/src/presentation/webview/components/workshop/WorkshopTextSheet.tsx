@@ -218,7 +218,7 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
     return undefined;
   }, [copy.readOnly, loading, open]);
 
-  const words = countWords(draft);
+  const words = React.useMemo(() => countWords(draft), [draft]);
   const wordLabel = `${words.toLocaleString()} ${words === 1 ? 'word' : 'words'}`;
   const unchanged = value !== undefined && draft === value;
   const canApply = !copy.readOnly && !applyDisabled && !loading && words > 0 && !unchanged;
@@ -291,10 +291,14 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
           </div>
         ) : null}
 
+        {/* `hidden` as well as the class: the class hides the pane from the
+            eye, but only `hidden` takes the inactive panel out of the
+            accessibility tree — without it a screen reader is offered BOTH. */}
         <div
           className={`pm-ws-text-sheet-pane${tab === 'edit' ? ' pm-ws-text-sheet-pane-on' : ''}`}
           id="workshop-text-sheet-edit"
           role="tabpanel"
+          hidden={tab !== 'edit'}
         >
           <textarea
             ref={textareaRef}
@@ -329,6 +333,7 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
           className={`pm-ws-text-sheet-pane${tab === 'preview' ? ' pm-ws-text-sheet-pane-on' : ''}`}
           id="workshop-text-sheet-preview"
           role="tabpanel"
+          hidden={tab !== 'preview'}
         >
           <div
             ref={previewRef}
@@ -336,7 +341,14 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
             tabIndex={0}
             aria-label="Formatted preview"
           >
-            {words > 0 ? (
+            {/* Render the markdown ONLY while this pane is the one being read.
+                `MarkdownRenderer` memoizes on `content`, but `draft` is the
+                textarea's own controlled state — it changes on every
+                keystroke, so a permanently-mounted preview would re-parse and
+                re-sanitize the whole draft per character typed in the Edit
+                tab. The textarea itself stays mounted, which costs nothing and
+                keeps the writer's cursor and scroll position across a toggle. */}
+            {tab !== 'preview' ? null : words > 0 ? (
               <MarkdownRenderer content={draft} />
             ) : (
               <div className="pm-ws-text-sheet-preview-empty">Nothing to preview yet.</div>

@@ -95,11 +95,16 @@ export class WorkshopSessionMessageHandler {
     }
     const clearWorkingSet = message.payload?.clearWorkingSet === true;
     try {
-      await this.persistence.resetSession({ clearWorkingSet });
+      const cleared = await this.persistence.resetSession({ clearWorkingSet });
       await this.options.flushDeferredConversationSettings();
       this.outputChannel.appendLine(
         '[WorkshopSessionMessageHandler] Session reset and current checkpoint replaced' +
-        (clearWorkingSet ? ' (full reset: excerpt and context cleared)' : '')
+        (clearWorkingSet
+          ? ` (full reset — excerpt: ${cleared.excerptLabel ?? 'none'};` +
+            ` context cleared: ${cleared.attachmentLabels.length > 0
+              ? cleared.attachmentLabels.join(', ')
+              : 'none'})`
+          : '')
       );
       this.options.postSessionState();
       this.postActionResult(
