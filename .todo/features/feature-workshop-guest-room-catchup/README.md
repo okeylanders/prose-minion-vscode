@@ -1,7 +1,7 @@
 # Feature: Workshop Guest-to-Guest Room Catch-Up
 
 **Date Identified**: 2026-07-22
-**Status**: Planned in [Sprint 13](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/13-open-chat-guest-room-polish.md)
+**Status**: Planned in [Sprint 13D](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/13d-room-catchup-release-polish.md), with the governing [Sprint 13 delivery plan](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/13-open-chat-guest-room-polish.md)
 **Priority**: High — room behavior is release-polish work once guests are visible participants
 **Estimated Effort**: Medium
 **Origin**: Writer UX review of direct switching between live guest personas
@@ -24,66 +24,67 @@ in the same Workshop room.
 
 No duplicate transcript store is needed. `WorkshopSessionService` already owns
 the session-wide ordered `turns: WorkshopTurn[]` log; every turn receives a
-universal `id` from `nextTurnId(...)`. The current guest state already keeps
-per-recipient acknowledgement state:
-
-- `lastSeenHostTurnId` — host turns delivered to that guest;
-- `deliveredToHostThroughTurnId` — that guest's exchanges delivered to the
-  host.
+universal `id` from `nextTurnId(...)`.
 
 Universal turn IDs identify records, but do not establish whether a particular
-recipient successfully received them. A per-guest delivery checkpoint remains
+recipient successfully received them. A per-recipient delivery position remains
 necessary for idempotence and retry safety.
+
+The design investigation for this feature found that the existing scheme —
+three cursors owned by *relationships* (`lastSeenHostTurnId`, and two
+`deliveredToHostThroughTurnId` families) — cannot absorb a fourth relationship
+without inheriting three live defects. The resolution is
+[ADR 2026-07-24 — The Workshop Room Ledger and Delivery Offsets](../../../docs/adr/2026-07-24-workshop-room-ledger-and-delivery-offsets.md),
+which is the governing contract; this document records the motivating problem.
 
 ## Proposal
 
-Replace the host-only guest catch-up with a bounded **room catch-up** on the
-guest's next message:
+Replace the host-only guest catch-up with a **room catch-up** on the guest's
+next message:
 
 1. Rail selection stays local and immediate. It does **not** invoke a hidden
    host model call, emit a synthetic host reply, or spend tokens.
-2. When the writer sends to Guest B, audit the shared turn log after B's room
-   checkpoint.
-3. Include eligible, speaker-labeled turns from the host and other live/
-   historical guests, while excluding B's already-retained own conversation
-   and direct-tool sidecar traffic.
-4. Pack the delta with the existing bounded transcript machinery and send it
-   beside the writer's new message.
-5. Advance B's checkpoint only after B's response succeeds, and only through
-   turn IDs actually included in the bounded frame. Omitted turns remain
-   pending for a later catch-up.
+2. When the writer sends to Guest B, walk the shared ledger forward from B's
+   own reading position.
+3. Include every turn whose `audience` is `room` and whose speaker is not B —
+   host turns, other guests' exchanges, and tool reports. Exclude B's own
+   turns, direct-tool sidecar conversation, and capability artifacts owned by
+   another principal.
+4. Deliver that contiguous prefix, whole turns only, beside the writer's new
+   message.
+5. Advance B's offset only after B's response succeeds, and only through the
+   prefix actually delivered.
 
-The host's existing bounded guest handoff remains independent: it still gets
-unseen guest exchanges when the writer next messages the host. Receiving the
-same guest exchange as bounded evidence in two different participant
-conversations is intentional; their retained contexts are separate.
+The host is a reader on the same terms. "What the host has seen of Guest A" is
+the host's own reading position, not a cursor stored on Guest A.
 
-## Why a Checkpoint, Not Just IDs
+## Why an Offset, Not Just IDs
 
 The shared log's IDs make the audit deterministic, but an ID alone cannot say
-whether Guest B saw it. Store an acknowledgement checkpoint such as
-`lastSeenRoomTurnId` (or an equivalent delivered-turn cursor) per guest. This
+whether Guest B saw it. Each participant stores one `lastSeenRoomTurnId`. That
 gives the desired idempotence:
 
-- cancelled/failed turns leave the checkpoint unchanged, so the next attempt
-  safely retries the same evidence;
+- cancelled/failed turns leave the offset unchanged, so the next attempt safely
+  retries the same evidence;
 - successful deliveries do not repeat already delivered turns;
-- bounded overflow remains pending rather than being silently marked seen.
+- because the offset can only mean "everything before this," it may never jump
+  a turn that was not delivered.
 
 ## Guardrails
 
 - Do not turn participant-rail clicks into host synthesis requests. That would
   add hidden AI turns, cost, latency, and ambiguous transcript semantics.
-- Do not advance a checkpoint merely because the rail target changed; delivery
-  occurs only when a guest prompt successfully completes.
+- Do not advance an offset merely because the rail target changed; delivery
+  occurs only when a prompt successfully completes.
 - Keep the catch-up explicitly labeled as quoted room context, not instructions
-  or proof that the recipient personally witnessed omitted turns.
-- Define visibility deliberately: host + other guests are room conversation;
-  direct tool sidecars remain transcript-free instruments.
+  or proof that the recipient personally witnessed anything omitted.
+- Never split a turn. Head-truncating another participant's speech is a
+  misquote, not a bound.
+- Every delivery goes through the one shared site — including the tool
+  side-pass, which currently commits its own cursor out of band.
 - Preserve current excerpt-version and disposed-guest semantics; a stale or
-  replaced conversation must not receive a room delta.
-- Retain the existing host handoff cursor separately; guest-to-guest visibility
-  must not consume evidence before the host sees it.
+  replaced conversation must not receive a room delta, and a re-invited persona
+  starts from a join snapshot rather than an inherited offset.
 
 ## Related Files
 
@@ -97,16 +98,20 @@ gives the desired idempotence:
 ## Completion Criteria
 
 - [ ] Sending a message to Guest B after a direct Guest A exchange gives B a
-      bounded, speaker-labeled catch-up containing A's unseen exchange.
+      speaker-labeled catch-up containing A's unseen exchange.
 - [ ] A host turn that Guest B missed is included in the same room catch-up.
-- [ ] Guest B's own prior conversation and direct-tool exchanges are excluded.
-- [ ] Catch-up uses universal turn IDs plus a per-guest acknowledgement
-      checkpoint; retries are idempotent and only successfully delivered IDs
-      advance the checkpoint.
-- [ ] Bounded overflow reports omission and remains eligible for a later
-      delivery.
-- [ ] Returning to the host still delivers Guest A/B exchanges through the
-      existing host handoff exactly once per host cursor.
+- [ ] Guest B's own prior conversation, direct-tool sidecar conversation, and
+      other principals' capability artifacts are excluded.
+- [ ] Catch-up uses universal turn IDs plus one `lastSeenRoomTurnId` per
+      participant; retries are idempotent and only the delivered prefix
+      advances the offset.
+- [ ] No frame splits a turn, within or across deliveries.
+- [ ] Returning to the host delivers Guest A/B exchanges exactly once, through
+      the host's own offset.
 - [ ] Target switching alone makes no provider call and appends no hidden turn.
+- [ ] The tool side-pass delivers through the single shared site; an
+      architecture guard asserts one catch-up call site and one offset-advance
+      call site.
 - [ ] Focused aggregate, prompt-builder, and handler tests cover A → B,
-      A → host, retries/cancellation, bounded overflow, and disposed guests.
+      A → host, retries/cancellation, atomic turns, disposed and re-invited
+      guests, and a session file carrying the legacy cursor keys.

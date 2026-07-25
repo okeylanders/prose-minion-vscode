@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prose Minion — Invite Guest</title>
+<style>
+:root{
+  --bg:#15110d;--surface:#221a13;--surface-2:#2b2017;--surface-3:#36281b;--inset:#1b150f;
+  --border:#3a2c1f;--border-2:#4d3a28;--border-soft:#2e231a;
+  --text:#f3ece1;--text-2:#c9bbab;--muted:#a4937f;--dim:#7a6c5b;--faint:#5c5044;
+  --accent:#e0673a;--accent-hi:#ee7d49;--accent-lo:#c8552c;--accent-soft:rgba(224,103,58,0.14);
+  --green:#6fc98a;--green-soft:rgba(111,201,138,.13);--amber:#e2b24a;--amber-soft:rgba(226,178,74,.13);
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{overflow-x:hidden}
+body{margin:0;background:var(--bg);background-image:linear-gradient(180deg,#211910 0%,var(--bg) 260px);font-family:var(--sans);color:var(--text);-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:34px 18px 46px}
+a{color:var(--accent-hi)}a:hover{color:var(--text)}
+button{font-family:var(--sans)}
+.demo{width:min(1040px,100%)}
+.demo-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:600;margin:0 2px 10px}
+
+/* ===== modal shell — the "sheet" pattern: fixed head, scrolling body, fixed foot ===== */
+.shell{position:relative;display:flex;flex-direction:column;height:min(824px,calc(100vh - 120px));min-height:480px;background:#1e1712;border:1px solid var(--border-2);border-radius:14px;box-shadow:0 40px 90px rgba(0,0,0,.55);overflow:hidden}
+
+/* close */
+.cw-x{position:absolute;top:16px;right:16px;z-index:5;width:30px;height:30px;border-radius:8px;background:var(--surface-2);border:1px solid var(--border);color:var(--muted);display:grid;place-items:center;cursor:pointer;transition:color .12s,border-color .12s}
+.cw-x:hover{color:var(--text);border-color:var(--border-2)}
+.cw-x svg{width:13px;height:13px}
+
+/* ===== sticky header ===== */
+.wk-mhead{flex:none;padding:24px 26px 18px;border-bottom:1px solid var(--border-soft);background:#1e1712}
+.wk-mkicker{font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+.wk-mhead h2{font-size:22px;font-weight:700;margin:0 0 7px;letter-spacing:-.01em;color:var(--text)}
+.wk-msub{font-size:13px;color:var(--muted);line-height:1.55;margin:0;max-width:660px}
+.wk-msub b{color:var(--text-2);font-weight:600}
+.hostpill{display:inline-flex;align-items:center;gap:6px;padding:2px 4px 2px 4px;border-radius:999px;color:var(--accent-hi);font-weight:600}
+.hostpill .av{position:relative;width:15px;height:15px;color:var(--accent-hi)}
+.hostpill .av .glyph{position:absolute;top:-3px;right:-4px}
+
+/* ===== scrolling body: persona grid ===== */
+.ig-body{flex:1;min-height:0;overflow-y:auto}
+.ig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 16px;padding:20px 26px 24px}
+.ig-cell{display:flex;flex-direction:column;gap:8px}
+
+.ig-card{position:relative;flex:1;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:15px 16px 14px;cursor:pointer;text-align:left;font-family:var(--sans);transition:border-color .13s,background .13s,box-shadow .13s}
+.ig-card:hover{border-color:var(--border-2);background:var(--surface-2)}
+.ig-card:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.ig-av{position:relative;width:27px;height:27px;color:var(--accent-hi);margin-bottom:12px}
+.ig-av svg{display:block}
+.ig-av .glyph{position:absolute;top:-4px;right:-7px;color:var(--accent-hi);line-height:0}
+.ig-name{font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;line-height:1.2}
+.ig-spec{font-size:12.5px;font-weight:600;color:var(--accent-hi);margin-bottom:9px}
+.ig-desc{font-size:12.5px;color:var(--muted);line-height:1.5;flex:1}
+
+/* check indicator */
+.ig-check{position:absolute;top:13px;right:13px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;border:1.5px solid var(--border-2);background:var(--inset);color:transparent;transition:border-color .13s,background .13s,color .13s,transform .13s}
+.ig-check svg{width:13px;height:13px}
+.ig-card:hover .ig-check{border-color:var(--muted)}
+
+/* selected (about to invite) — accent */
+.ig-card.sel{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px rgba(224,103,58,.35)}
+.ig-card.sel .ig-check{border-color:var(--accent);background:var(--accent);color:#fff;transform:scale(1.06)}
+
+/* already in the room — locked green check */
+.ig-card.inroom{cursor:default;opacity:.92}
+.ig-card.inroom:hover{border-color:var(--border);background:var(--surface)}
+.ig-card.inroom .ig-check{border-color:rgba(111,201,138,.5);background:var(--green-soft);color:var(--green)}
+.ig-roomtag{display:inline-flex;align-items:center;gap:5px;align-self:flex-start;margin-top:11px;font-family:var(--mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;font-weight:600;color:var(--green);border:1px solid rgba(111,201,138,.32);border-radius:999px;padding:3px 8px}
+.ig-roomtag.host{color:var(--accent-hi);border-color:rgba(224,103,58,.38)}
+.ig-roomtag i{width:5px;height:5px;border-radius:50%;background:currentColor;display:block}
+
+/* more info — sits outside the card, like the host picker */
+.ig-more{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;background:none;border:0;color:var(--dim);font-size:12.5px;font-weight:600;cursor:pointer;padding:0 2px;font-family:var(--sans);transition:color .12s}
+.ig-more svg{width:13px;height:13px;transition:transform .14s}
+.ig-more:hover{color:var(--accent-hi)}
+.ig-more:hover svg{transform:translateX(2px)}
+
+/* ===== sticky footer: the opening-message dock ===== */
+.ig-foot{flex:none;border-top:1px solid var(--border-soft);background:linear-gradient(180deg,#221a12,#1c1610);padding:15px 26px 17px}
+.ig-foot-head{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.ig-foot-label{font-size:12.5px;font-weight:600;color:var(--text-2);display:flex;align-items:center;gap:7px;white-space:nowrap}
+.ig-foot-label .to{color:var(--dim);font-weight:600}
+.ig-foot-label .who{color:var(--accent-hi);font-weight:700}
+.ig-foot-label .av{position:relative;width:15px;height:15px;color:var(--accent-hi)}
+.ig-foot-label .av .glyph{position:absolute;top:-3px;right:-4px}
+
+/* default / edited nudge chip — catches the eye you keep skipping */
+.ig-nudge{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;border-radius:999px;padding:3px 9px;cursor:pointer;border:1px solid var(--amber);color:var(--amber);background:var(--amber-soft);transition:opacity .15s}
+.ig-nudge i{width:5px;height:5px;border-radius:50%;background:currentColor;display:block}
+.ig-nudge:hover{filter:brightness(1.12)}
+.ig-nudge.edited{border-color:rgba(111,201,138,.4);color:var(--green);background:var(--green-soft);cursor:default}
+.ig-count{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--faint);white-space:nowrap}
+
+.ig-foot-row{display:flex;align-items:stretch;gap:12px}
+.ig-msg-wrap{flex:1;min-width:0;position:relative;border:1px solid var(--border);border-radius:11px;background:var(--inset);transition:border-color .14s,box-shadow .14s}
+.ig-msg-wrap.flash{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.ig-msg{width:100%;box-sizing:border-box;background:none;border:0;outline:none;resize:none;color:var(--text);font-family:var(--sans);font-size:13.5px;line-height:1.5;padding:11px 13px;max-height:84px;min-height:52px}
+.ig-msg::placeholder{color:var(--faint)}
+.ig-hintline{display:none;align-items:center;gap:7px;padding:0 13px 10px;font-size:11.5px;color:var(--amber);line-height:1.4}
+.ig-msg-wrap.confirm .ig-hintline{display:flex}
+.ig-hintline svg{width:13px;height:13px;flex:none}
+
+.ig-actions{display:flex;flex-direction:column;justify-content:flex-end;gap:8px;flex:none;width:210px}
+.ig-cancel{border:1px solid var(--border-2);background:transparent;color:var(--text-2);border-radius:9px;padding:0 16px;height:38px;font-size:13px;font-weight:600;cursor:pointer;transition:background .12s,color .12s}
+.ig-cancel:hover{background:var(--surface-3);color:var(--text)}
+.ig-launch{border:1px solid var(--accent-lo);background:linear-gradient(180deg,var(--accent-hi),var(--accent-lo));color:#fff;border-radius:9px;padding:0 16px;height:44px;font-size:13.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:9px;transition:filter .12s,opacity .12s}
+.ig-launch svg{width:16px;height:16px}
+.ig-launch:hover{filter:brightness(1.07)}
+.ig-launch:disabled{background:var(--surface-3);border-color:var(--border);color:var(--faint);cursor:not-allowed;filter:none}
+.ig-launch .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
+
+/* toast */
+#toast{position:absolute;left:50%;bottom:118px;transform:translateX(-50%) translateY(12px);z-index:8;display:flex;align-items:center;gap:9px;background:#2a2017;border:1px solid var(--border-2);border-radius:10px;padding:11px 15px;font-size:13px;color:var(--text);box-shadow:0 16px 40px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .22s,transform .22s}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast .ic{color:var(--accent-hi);display:grid;place-items:center}
+#toast .ic.green{color:var(--green)}
+#toast .ic svg{width:16px;height:16px}
+
+.hint{margin-top:16px;font-size:12px;color:var(--dim);line-height:1.75;max-width:940px}
+.hint b{color:var(--muted);font-weight:600}
+.hint code{font-family:var(--mono);font-size:11px;color:var(--text-2);background:var(--surface-2);padding:1px 5px;border-radius:4px}
+.hint .k{color:var(--accent-hi);font-weight:600}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+@media (max-width:860px){.ig-grid{grid-template-columns:repeat(2,1fr)}.ig-actions{width:180px}}
+@media (max-width:560px){.ig-grid{grid-template-columns:1fr}.ig-foot-row{flex-direction:column}.ig-actions{width:100%;flex-direction:row}.ig-launch{flex:1}}
+</style>
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#15110d"/><circle cx="42" cy="40" r="9" fill="none" stroke="#e0673a" stroke-width="3"/><path d="M27 66c0-9 7-15 15-15s15 6 15 15" fill="none" stroke="#e0673a" stroke-width="3"/><circle cx="70" cy="60" r="15" fill="#e0673a"/><path d="M63 60l5 5 9-10" fill="none" stroke="#15110d" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+</template>
+</head>
+<body>
+<div class="demo">
+  <div class="demo-label">Workshop · Invite guest — split sheet with docked opening message</div>
+  <div class="shell" id="shell">
+    <button class="cw-x" id="closeBtn" title="Close"></button>
+
+    <header class="wk-mhead">
+      <div class="wk-mkicker">Workshop · Guest</div>
+      <h2>Invite another lens</h2>
+      <p class="wk-msub">Invite a packaged persona to read the current room. A guest reads beside your host — <span class="hostpill" id="hostPill"></span> — and never replaces it.</p>
+    </header>
+
+    <div class="ig-body">
+      <div class="ig-grid" id="grid"></div>
+    </div>
+
+    <footer class="ig-foot">
+      <div class="ig-foot-head">
+        <div class="ig-foot-label" id="footLabel">Opening message</div>
+        <button class="ig-nudge" id="nudge" title="This is the boilerplate opening — click to personalize it"><i></i><span id="nudgeText">Default message</span></button>
+        <span class="ig-count" id="count">0 / 2,000</span>
+      </div>
+      <div class="ig-foot-row">
+        <div class="ig-msg-wrap" id="msgWrap">
+          <textarea class="ig-msg" id="msg" maxlength="2000" rows="2" spellcheck="false"></textarea>
+          <div class="ig-hintline" id="hintline"></div>
+        </div>
+        <div class="ig-actions">
+          <button class="ig-cancel" id="cancelBtn">Cancel</button>
+          <button class="ig-launch" id="launchBtn" disabled><span class="n" id="launchLabel">Select a persona</span></button>
+        </div>
+      </div>
+    </footer>
+
+    <div id="toast"></div>
+  </div>
+  <p class="hint">
+    <b>The fix.</b> The opening message used to sit at the top, above the grid, where the eye skips it. Here it's <span class="k">docked in the sticky footer, glued to the launch button</span> — always in view, and you read it on the way to the action. Three nudges fight the skip: the label names the persona (<code>Opening message → Sister Agnes</code>), the amber <span class="k">Default message</span> chip flags un-personalized boilerplate (click it to select-all and overtype), and launching an untouched default asks for one light confirming tap.<br>
+    <b>Interaction.</b> Click any persona to select + check-mark it instantly — single guest at a time. Personas already present show a locked green check: <code>Jill · Host</code> and <code>Felix · in the room</code> can't be re-invited. <b>More info</b> opens the persona schematic (unchanged). <code>Read in {Name}</code> launches the guest, adds them to the room, and resets for the next invite. <span class="k">⌘/Ctrl + Enter</span> launches; <code>Esc</code> clears the selection.<br>
+    <b>Reuses</b> the existing sheet shell — <code>wk-mhead</code> / scrolling body / fixed foot — and the host-picker card vocabulary. New parts: the footer message dock, click-to-select checkmarks, in-room states, and the default-nudge.
+  </p>
+</div>
+
+<script>
+/* ---------- icons (Prose Minion set) ---------- */
+const IC=(p,o={})=>{const s=o.size||24,sw=o.sw||1.8;return `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;};
+const ICONS={
+  person:o=>IC('<circle cx="12" cy="8" r="3.4"/><path d="M5.3 20c0-3.9 3-6.5 6.7-6.5s6.7 2.6 6.7 6.5"/>',o),
+  sparkle:o=>IC('<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/>',o),
+  repeat:o=>IC('<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',o),
+  dialogue:o=>IC('<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/>',o),
+  target:o=>IC('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/>',o),
+  wave:o=>IC('<path d="M2 12h2l2-6 3 14 3-18 3 14 2-4h5"/>',o),
+  sprout:o=>IC('<path d="M7 20h10M12 20v-9"/><path d="M12 11c0-3-2-5-5-5-1 0-2 .3-2 .3S5 9 5 11c2.8 0 5-1.3 7 0zM12 11c0-2.5 2-4.5 4.5-4.5 1 0 1.8.3 1.8.3S18 9 18 11c-2.4 0-4.4-1-6 0z"/>',o),
+  eye:o=>IC('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="2.5"/>',o),
+  book:o=>IC('<path d="M2 5a2 2 0 0 1 2-2h6v17H4a2 2 0 0 0-2 2z"/><path d="M22 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z"/>',o),
+  search:o=>IC('<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',o),
+  bolt:o=>IC('<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor" stroke="none"/>',o),
+  pen:o=>IC('<path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/>',o),
+  check:o=>IC('<polyline points="20 6 9 17 4 12"/>',o),
+  x:o=>IC('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',o),
+  chevRight:o=>IC('<polyline points="9 18 15 12 9 6"/>',o),
+  send:o=>IC('<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',o),
+  alert:o=>IC('<path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',o),
+};
+
+/* ---------- personas (from the Workshop roster) ---------- */
+const PERSONAS=[
+  {id:'jill',  name:'Jill',        spec:'Creative writing partner', glyph:'sparkle',  desc:'Warm developmental and line-level craft support for the work in front of you.'},
+  {id:'agnes', name:'Sister Agnes',spec:'Theme & symbolism',        glyph:'sparkle',  desc:'Keeps themes embodied, symbols intentional, and insight earned on the page.'},
+  {id:'cliff', name:'Cliff',       spec:'Cliché & repetition',      glyph:'repeat',   desc:'Finds tired phrasing, echo words, and accidental patterns without mistaking motifs for tics.'},
+  {id:'dev',   name:'Dev',         spec:'Dialogue & microbeats',    glyph:'dialogue', desc:'Listens for distinct voices, subtext, purposeful tags, and physical beats that reveal character.'},
+  {id:'edna',  name:'Edna',        spec:'Reader-breaking logic',    glyph:'target',   desc:'Flags only contradictions, impossible scene logic, and trust-breaking information errors.'},
+  {id:'felix', name:'Felix',       spec:'Rhythm & pacing',          glyph:'wave',     desc:'Reads for sentence music, white space, pace, and the moments prose needs a rest.'},
+  {id:'harper',name:'Harper',      spec:'Craft mentorship',         glyph:'sprout',   desc:'Turns visible patterns into durable writing principles and practical habits.'},
+  {id:'margot',name:'Margot',      spec:'Voice & POV',              glyph:'eye',      desc:'Tracks narrative distance, point of view, tense, and whether the narration stays in character.'},
+  {id:'penny', name:'Penny',       spec:'Reader experience',        glyph:'book',     desc:'Responds as an attentive young reader who knows only what the page has earned.'},
+  {id:'quinn', name:'Quinn',       spec:'Continuity & canon',       glyph:'search',   desc:'Checks names, timelines, and facts against the story bible and prior chapters.'},
+  {id:'theo',  name:'Theo',        spec:'Momentum & tension',       glyph:'bolt',     desc:"Tracks stakes, forward pull, and where a scene's energy sags."},
+  {id:'wren',  name:'Wren',        spec:'Line & style',             glyph:'pen',      desc:"Sentence-level polish: diction, cadence, and cutting what the line doesn't need."},
+];
+const P=id=>PERSONAS.find(p=>p.id===id);
+const DEFAULT_MSG='Read this room and give me your perspective on the pinned excerpt.';
+
+/* room state: Jill hosts, Felix already a guest (matches the composer) */
+const HOST='jill';
+const inRoom=new Set([HOST,'felix']);
+let selected=null, edited=false, confirmArmed=false;
+
+const $=id=>document.getElementById(id);
+function avatar(p,size){const g=Math.round(size*0.66);return `${ICONS.person({size,sw:1.7})}<span class="glyph">${ICONS[p.glyph]({size:g,sw:2})}</span>`;}
+
+/* ---------- header host pill ---------- */
+(function(){const h=P(HOST);$('hostPill').innerHTML=`<span class="av">${avatar(h,15)}</span>${h.name}`;})();
+
+/* ---------- render grid ---------- */
+function roleOf(id){return id===HOST?'host':(inRoom.has(id)?'guest':null);}
+function renderGrid(){
+  $('grid').innerHTML=PERSONAS.map(p=>{
+    const role=roleOf(p.id), locked=!!role, isSel=selected===p.id;
+    const tag=role==='host'?`<span class="ig-roomtag host"><i></i>Host</span>`
+      :role==='guest'?`<span class="ig-roomtag"><i></i>In the room</span>`:'';
+    const check=locked?ICONS.check({size:13,sw:2.4}):(isSel?ICONS.check({size:13,sw:2.4}):'');
+    return `<div class="ig-cell">
+      <button class="ig-card${isSel?' sel':''}${locked?' inroom':''}" data-id="${p.id}"${locked?' aria-disabled="true"':''} aria-pressed="${isSel}">
+        <span class="ig-check">${check}</span>
+        <span class="ig-av">${avatar(p,27)}</span>
+        <span class="ig-name">${p.name}</span>
+        <span class="ig-spec">${p.spec}</span>
+        <span class="ig-desc">${p.desc}</span>
+        ${tag}
+      </button>
+      <button class="ig-more" data-more="${p.id}">More info ${ICONS.chevRight({size:13,sw:2})}</button>
+    </div>`;
+  }).join('');
+}
+renderGrid();
+
+/* ---------- selection ---------- */
+function select(id){
+  const p=P(id);
+  selected=id;
+  renderGrid();
+  // footer label names the persona so the eye lands on it
+  $('footLabel').innerHTML=`<span class="to">Opening message to</span> <span class="av">${avatar(p,15)}</span><span class="who">${p.name}</span>`;
+  const lb=$('launchBtn'); lb.disabled=false;
+  $('launchLabel').innerHTML=`Read in ${p.name}`;
+  lb.innerHTML=`${ICONS.send({size:16})}<span class="n">Read in ${p.name}</span>`;
+  disarmConfirm();
+  // one-shot flash draws attention to the message you're about to send
+  const w=$('msgWrap'); w.classList.remove('flash'); void w.offsetWidth; w.classList.add('flash');
+  setTimeout(()=>w.classList.remove('flash'),1100);
+}
+
+/* ---------- message field ---------- */
+const msg=$('msg');
+msg.value=DEFAULT_MSG;
+function updateCount(){$('count').textContent=`${msg.value.length.toLocaleString('en-US')} / 2,000`;}
+function updateNudge(){
+  const n=$('nudge'), t=$('nudgeText');
+  const isDefault=msg.value.trim()===DEFAULT_MSG;
+  if(!msg.value.trim()){n.style.display='none';return;}
+  n.style.display='inline-flex';
+  if(isDefault && !edited){n.classList.remove('edited');t.textContent='Default message';n.title='This is the boilerplate opening — click to personalize it';}
+  else{n.classList.add('edited');t.textContent='Personalized';n.title='';}
+}
+msg.addEventListener('input',()=>{edited=true;disarmConfirm();updateCount();updateNudge();autoGrow();});
+function autoGrow(){msg.style.height='auto';msg.style.height=Math.min(msg.scrollHeight,84)+'px';}
+$('nudge').addEventListener('click',()=>{if($('nudge').classList.contains('edited'))return;msg.focus();msg.select();});
+updateCount();updateNudge();requestAnimationFrame(autoGrow);
+
+/* ---------- soft confirm when launching an untouched default ---------- */
+function armConfirm(){
+  confirmArmed=true;
+  $('msgWrap').classList.add('confirm');
+  $('hintline').innerHTML=`${ICONS.alert({size:13})}<span>You're sending the default opening — press <b>Read in</b> again to invite, or edit it above.</span>`;
+  const w=$('msgWrap'); w.classList.remove('flash'); void w.offsetWidth; w.classList.add('flash');
+  setTimeout(()=>w.classList.remove('flash'),1100);
+}
+function disarmConfirm(){confirmArmed=false;$('msgWrap').classList.remove('confirm');}
+
+/* ---------- launch / read-in ---------- */
+function launch(){
+  if(!selected)return;
+  const isDefault=msg.value.trim()===DEFAULT_MSG && !edited;
+  if(isDefault && !confirmArmed){armConfirm();return;}
+  const p=P(selected);
+  inRoom.add(p.id);
+  toast(`${p.name} read into the room`,true);
+  // reset for the next invite
+  selected=null; edited=false; disarmConfirm();
+  msg.value=DEFAULT_MSG; updateCount(); updateNudge(); autoGrow();
+  $('footLabel').textContent='Opening message';
+  const lb=$('launchBtn'); lb.disabled=true; lb.innerHTML='<span class="n" id="launchLabel">Select a persona</span>';
+  renderGrid();
+}
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(text,green){
+  const el=$('toast');
+  el.innerHTML=`<span class="ic${green?' green':''}">${green?ICONS.check({size:16,sw:2.2}):ICONS.sparkle({size:16})}</span><span>${text}</span>`;
+  el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),2400);
+}
+
+/* ---------- events ---------- */
+$('grid').addEventListener('click',e=>{
+  const more=e.target.closest('[data-more]');
+  if(more){toast('Persona schematic — '+P(more.dataset.more).name);return;}
+  const card=e.target.closest('[data-id]');
+  if(!card)return;
+  const id=card.dataset.id, role=roleOf(id);
+  if(role==='host'){toast(P(id).name+' is hosting this room');return;}
+  if(role==='guest'){toast(P(id).name+' is already in the room');return;}
+  select(id);
+});
+$('launchBtn').addEventListener('click',launch);
+$('cancelBtn').addEventListener('click',()=>toast('Invite dismissed'));
+$('closeBtn').innerHTML=ICONS.x({size:13,sw:1.9});
+$('closeBtn').addEventListener('click',()=>toast('Invite dismissed'));
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&selected){selected=null;disarmConfirm();renderGrid();$('footLabel').textContent='Opening message';const lb=$('launchBtn');lb.disabled=true;lb.innerHTML='<span class="n">Select a persona</span>';}
+  if((e.metaKey||e.ctrlKey)&&e.key==='Enter')launch();
+});
+</script>
+</body>
+</html>

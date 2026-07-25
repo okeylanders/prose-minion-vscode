@@ -1,22 +1,22 @@
-# Sprint 13: Open Chat, Guest Agency, and Room Polish
+# Sprint 13 Delivery Plan: Open Chat, Guest Agency, and Room Polish
 
-**Status**: Planned
+**Status**: Planned — split into reviewable implementation sprints 13A–13D
 **Priority**: High — release-polish work that makes Workshop useful before a
 writer has an excerpt and makes the participant room behave as it looks
-**Branch**: `sprint/workshop-editor-tab-13-open-chat-guest-room-polish` -> PR
-into `epic/workshop-editor-tab`
-**Estimated Effort**: 6-9 days
+**Implementation branches**: one branch and PR per child sprint, all into
+`epic/workshop-editor-tab`
 **Depends on**: Sprint 10 persistence merged and its manual Extension
 Development Host continuity pass complete
 **Extends**: [2026-07-09 — Workshop Persona Host, Tool Sidecars, and
 Capabilities](../../../../docs/adr/2026-07-09-workshop-persona-hosted-conversations.md),
 [2026-07-11 — Workshop Guest Persona Sidecars](../../../../docs/adr/2026-07-11-workshop-guest-persona-sidecars.md), and
-[2026-07-14 — Workshop Session Persistence and the Session Browser](../../../../docs/adr/2026-07-14-workshop-session-persistence.md)
+[2026-07-14 — Workshop Session Persistence and the Session Browser](../../../../docs/adr/2026-07-14-workshop-session-persistence.md), and
+[2026-07-24 — The Workshop Room Ledger and Delivery Offsets](../../../../docs/adr/2026-07-24-workshop-room-ledger-and-delivery-offsets.md)
 **Related**: [Guest-to-Guest Room Catch-Up](../../../features/feature-workshop-guest-room-catchup/README.md),
 [Guest Persona Sidecars](../../../features/feature-workshop-persona-guest-sidecars/README.md),
 [Workshop Participant Rail Review Follow-ups](../../../tech-debt/2026-07-17-workshop-participant-rail-review-follow-ups.md)
 
-## Goal
+## Purpose
 
 Make Workshop approachable as an open creative conversation, then make its
 guest-room promise honest and useful: a writer can begin chatting without an
@@ -29,6 +29,25 @@ choose whether the room's context travels with that run.
 This is not a free-form agent graph. The host remains immutable, tools remain
 bounded instruments, and the writer remains the only participant who launches
 people or commits widgets.
+
+## Delivery shape
+
+The original Sprint 13 scope crossed four independently reviewable contracts:
+optional-excerpt sessions, analysis-request scoping, guest agency/capabilities,
+and room-history delivery. Keeping them in one MR would make both testing and
+rollback needlessly opaque. Deliver them in order:
+
+| Sprint | Branch | Scope | Depends on | Reviewable proof |
+|---|---|---|---|---|
+| [13A](13a-open-chat.md) | `sprint/workshop-editor-tab-13a-open-chat` | Honest open conversation, later excerpt adoption, persistence metadata, and the empty-state/composer design. | Sprint 10 baseline | A writer can retain a Jill conversation with no excerpt, then add one without restarting. |
+| [13B](13b-run-local-analysis.md) | `sprint/workshop-editor-tab-13b-run-local-analysis` | Per-run analysis subject and explicit room-context policy. | 13A | A paragraph can be analyzed with replacement scene context while the room remains unchanged. |
+| [13C](13c-guest-agency.md) | `sprint/workshop-editor-tab-13c-guest-agency` | Deliberate guest read-in plus participant-owned bounded capabilities. | 13A | Selecting a guest spends nothing; one explicit submit creates one guest that can use attributable, private instruments. |
+| [13D](13d-room-catchup-release-polish.md) | `sprint/workshop-editor-tab-13d-room-catchup-release-polish` | One room ledger with per-participant delivery offsets, a single delivery site, atomic turns, and final release validation. | 13C | Guest B receives Guest A's eligible unseen exchange without a hidden host call, a skipped turn, or a split quote. |
+
+13B and 13C may proceed after 13A, but 13D starts only after the guest
+ownership contract in 13C lands. If capability ownership proves materially
+larger than expected, split 13C into a UI-only read-in MR and a follow-up
+capability MR; do not hide that boundary inside the modal change.
 
 ## Locked product decisions
 
@@ -142,39 +161,47 @@ behavior, and existing live-run lock.
 
 ### Room catch-up is a shared ledger, not host relay
 
-- `WorkshopSessionService.turns` stays the canonical ordered room ledger.
-  Target selection remains immediate and local; it never creates a hidden host
-  response or spends tokens.
-- On a writer message to Guest B, build a bounded, speaker-labeled room frame
-  from host and other-guest exchanges since B's room-delivery position. Exclude
-  B's retained conversation, direct-tool traffic, and private capability
-  artifacts.
-- Preserve the host's independent guest-handoff policy. A guest seeing another
-  guest does not consume evidence before the host sees it.
-- Delivery acknowledgement occurs only after the recipient's reply commits.
-  Failed/cancelled requests retry the same eligible evidence.
-- Use **contiguous delivery** for this sprint: pack the oldest pending eligible
-  turns first and advance one room cursor only through the delivered prefix.
-  This keeps a scalar cursor truthful under a character bound. Do not pair a
-  newest-first packer with a scalar cursor while claiming omitted turns remain
-  pending; that loses holes in the history. If a later release prefers freshest
-  context, it must explicitly accept dropped omissions or add delivered-range
-  tracking.
-- Extract the common bounded-turn packer before adding the new room frame, so
-  direct handoff, host-to-guest catch-up, guest-to-host handoff, and room
-  catch-up share window, truncation, attribution, and delivery-order rules.
+Design work during planning replaced the original per-relationship cursor
+scheme. The governing contract is now
+[ADR 2026-07-24 — The Workshop Room Ledger and Delivery Offsets](../../../../docs/adr/2026-07-24-workshop-room-ledger-and-delivery-offsets.md);
+the summary below is subordinate to it.
 
-## Phases
+- `WorkshopSessionService.turns` stays the canonical ordered room ledger, and
+  each participant's provider array is a derived view of it. Target selection
+  remains immediate and local; it never creates a hidden host response or
+  spends tokens.
+- **One computed predicate** decides visibility for every frame:
+  `audience(turn) → 'room' | 'private(principal)'`. Host and guests read
+  identically — there is no host-privileged class. A principal is any
+  conversation owner: host, guest, tool sidecar, or a future tangent thread.
+- **One inbound offset per participant** (`lastSeenRoomTurnId`), replacing
+  `lastSeenHostTurnId` and both `deliveredToHostThroughTurnId` families. "What
+  has the host seen of this guest" is the host's own reading position, not a
+  property of the guest.
+- **Exactly one delivery site.** `RunWorkshopToolSidePass` currently commits
+  its own handoff outside the room's accounting; it is routed through the
+  shared site. An architecture guard enforces the single site.
+- Delivery is a **contiguous oldest-first prefix of the reader's eligible
+  projection**. Acknowledgement follows only the recipient's committed reply;
+  failed or cancelled requests retry the same evidence.
+- **A turn is atomic.** No frame ships part of a turn — head-truncating quoted
+  speech is a misquote, not a bound. Catch-up delivery is unbounded for this
+  sprint; bounding belongs to the context-compaction work.
+- Direct-tool sidecar conversation becomes private to its sidecar. Tool
+  *reports* remain room history. The direct-tool handoff path is deleted, not
+  re-bounded.
+- Extract the common turn packer before the semantic change, so the refactor
+  and the contract change are reviewable separately.
+
+## Original phase-to-sprint mapping
 
 | Phase | Scope | Proof / exit condition |
 |---|---|---|
-| 0 | ADR addendum and release baseline: settle open-chat prompt honesty, run-local analysis scope/context policy, guest capability ownership, room visibility, contiguous delivery, and the invite modal contract; complete Sprint 10 manual continuity and participant-rail reconnect checks first. | Accepted addendum; manual baseline recorded; no silent change to the existing guest contract. |
-| 1 | Open Chat session scope: optional excerpt only where honest; prompt/envelope changes; later excerpt adoption as a visible transition; disabled unavailable tools/capabilities; persistence and browser metadata. | A writer can have a retained Jill conversation with no excerpt, then add one without restart; personas never claim unseen text. |
-| 1B | Run-local analysis scope: closed subject and context-policy contracts; selected/pasted bounded subject; inherited-room or replace-room free text; prompt framing, visible provenance, and direct/persona-requested analysis coverage. | Stock & Signature can inspect one paragraph with Creative Variations instructions and replacement free-text scene context, while the room's pinned excerpt and attachments remain unchanged. |
-| 2 | Guest read-in UX: modal-local selected persona, check-marked cards, sticky header/footer, persona-aware untouched default, explicit **Read in <Persona>** submit, keyboard/focus/reduced-motion coverage. Claude Design supplies the visual comp; this phase implements its accepted behavior. | Card selection makes no provider call; exactly one valid footer submit creates one guest conversation. |
-| 3 | Participant-owned capabilities: generalize factory/context/artifact ownership; enable guest dictionary, configured-resource, and analysis requests; preserve per-turn budgets and private instrument visibility. | A guest can inspect bounded project evidence and discuss it; host/other guests receive none unless the writer or guest explicitly carries it forward. |
-| 4 | Room catch-up: common bounded-turn packer; room cursor and framed host/other-guest delta; retries, overflow, dismissal, excerpt revision, host-handoff independence, and restore coverage. | A -> B includes A's unseen exchange without a host call; cancellation is idempotent; an overflow cannot silently skip pending turns. |
-| 5 | Release polish: full Workshop persistence/reopen exercise, reconnect/stale-cancel convergence, accessibility pass, bundle delta, and focused/full validation. | Extension Development Host behavior matches the documented contracts; release evidence is recorded. |
+| 0 | Cross-sprint baseline: ADR addendum and Sprint 10 manual continuity / participant-rail reconnect evidence. | Accepted addendum and recorded baseline before implementation begins. |
+| 1 | 13A — Open Chat session scope. | Optional excerpt remains honest; adoption does not restart the retained conversation. |
+| 1B | 13B — Run-local analysis scope. | Subject and context policy affect only one bounded run. |
+| 2–3 | 13C — Guest read-in UX and participant-owned capabilities. | Selection is not submission; guest evidence stays attributable and private. |
+| 4–5 | 13D — Room ledger, delivery offsets, and release polish. | Delivery is contiguous, atomic, and single-sited; restored-session and accessibility evidence is recorded. |
 
 ## Implementation surfaces
 
@@ -182,6 +209,9 @@ behavior, and existing live-run lock.
 - `packages/core/src/application/services/workshop/WorkshopPromptBuilder.ts`
 - `packages/core/src/application/services/workshop/WorkshopPersonaCapability.ts`
 - `packages/core/src/application/services/workshop/WorkshopAnalysisSidePass.ts`
+- `packages/core/src/application/services/workshop/RunWorkshopToolSidePass.ts`
+- `packages/core/src/application/services/workshop/WorkshopSessionStateV1Shape.ts`
+- `packages/core/src/application/services/workshop/WorkshopSessionStateV1Integrity.ts`
 - `packages/core/src/shared/types/workshopCapabilities.ts`
 - `packages/core/src/application/handlers/domain/WorkshopHandler.ts`
 - `packages/core/src/presentation/webview/WorkshopApp.tsx`
