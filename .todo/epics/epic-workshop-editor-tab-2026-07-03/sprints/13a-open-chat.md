@@ -5,7 +5,11 @@
 **Branch**: `sprint/workshop-editor-tab-13a-open-chat` -> PR into `epic/workshop-editor-tab`  
 **Depends on**: Sprint 10 persistence baseline and its recorded manual continuity pass  
 **Parent**: [Sprint 13 delivery plan](13-open-chat-guest-room-polish.md),
-approved design [Prose Minion - Assistant Tab](../../../../docs/design/Prose%20Minion%20-%20Assistant%20Tab.html) (synced 2026-07-24)
+approved design [Prose Minion - Assistant Tab](../../../../docs/design/Prose%20Minion%20-%20Assistant%20Tab.html) (synced 2026-07-24)\
+**Design load**: **High** — path chooser and path cards, scope strips, the
+Edit/Preview sheet with its markdown renderer, the editor tab strip, pill
+states, `NEEDS EXCERPT` badges, dividers, and a large amount of exact copy.
+Build against the comp; do not improvise layout or wording.
 
 ## Goal
 

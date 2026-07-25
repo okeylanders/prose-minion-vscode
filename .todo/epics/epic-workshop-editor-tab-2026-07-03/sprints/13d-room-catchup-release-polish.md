@@ -6,7 +6,10 @@
 **Depends on**: Sprint 13C  
 **Parent**: [Sprint 13 delivery plan](13-open-chat-guest-room-polish.md)  
 **Related**: [Guest-to-Guest Room Catch-Up](../../../features/feature-workshop-guest-room-catchup/README.md),
-governed by [ADR 2026-07-24 — The Workshop Room Ledger and Delivery Offsets](../../../../docs/adr/2026-07-24-workshop-room-ledger-and-delivery-offsets.md)
+governed by [ADR 2026-07-24 — The Workshop Room Ledger and Delivery Offsets](../../../../docs/adr/2026-07-24-workshop-room-ledger-and-delivery-offsets.md)\
+**Design load**: **None.** Aggregate, prompt-builder, and persistence work
+only — the rail divider moved to 13C so this sprint carries no pixel-fidelity
+surface.
 
 ## Goal
 
@@ -63,16 +66,19 @@ each other.
   `buildWorkshopDirectHandoff`, the `DIRECT-TOOL HANDOFF` envelope, and
   `WorkshopHostMessageOptions.handoff`.
 
-### 13D-c — Frames, rail, and release evidence
+### 13D-c — Frames and release evidence
 
 - The single catch-up frame, with writer attribution (`Writer (Okey) → Felix:`)
   passed as a render parameter and frame-level temporal markers.
 - Room-wide join snapshot (previously host-only), bounded, whole turns only.
-- Participants/instruments divider in the rail: real `role="separator"`,
-  labeled groups, and sidecar copy that does not imply its *reports* are
-  private.
 - Final persistence/reopen, reconnect/stale-cancel, accessibility, bundle,
   focused/full validation, and Extension Development Host exercises.
+
+The participants/instruments rail divider specified in
+[ADR 2026-07-24 §9](../../../../docs/adr/2026-07-24-workshop-room-ledger-and-delivery-offsets.md)
+is implemented in **13C**, which already owns the participant rail's visual
+vocabulary. Keeping it out of 13D leaves this sprint free of pixel-fidelity
+work.
 
 ## Explicit non-goals
 

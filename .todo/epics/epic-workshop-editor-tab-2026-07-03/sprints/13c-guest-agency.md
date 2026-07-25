@@ -5,7 +5,11 @@
 **Branch**: `sprint/workshop-editor-tab-13c-guest-agency` -> PR into `epic/workshop-editor-tab`  
 **Depends on**: Sprint 13A  
 **Parent**: [Sprint 13 delivery plan](13-open-chat-guest-room-polish.md),
-approved designs [Prose Minion - Invite Guest](../../../../docs/design/Prose%20Minion%20-%20Invite%20Guest.html) and [Prose Minion - Choose Host](../../../../docs/design/Prose%20Minion%20-%20Choose%20Host.html) (synced 2026-07-24)
+approved designs [Prose Minion - Invite Guest](../../../../docs/design/Prose%20Minion%20-%20Invite%20Guest.html) and [Prose Minion - Choose Host](../../../../docs/design/Prose%20Minion%20-%20Choose%20Host.html) (synced 2026-07-24)\
+**Design load**: **High** — two full sheets with docked footer, nudge-chip
+states, check / in-room / locked card states, the sticky shell, plus the rail
+divider moved here from 13D. Build against the comps; the only deliberate
+departures from the mock are recorded below.
 
 ## Goal
 
@@ -60,6 +64,17 @@ single-select, current host pre-selected and tagged `Current`. No opening
 message: the host is not handed a prompt, so the footer carries only the note
 and a **Choose &lt;Name&gt;** / **Keep &lt;Name&gt;** action. The header points at
 **More info**. `Esc` reverts to the current host.
+
+### Participants/instruments rail divider
+
+Moved here from 13D so all pixel-fidelity work in Sprint 13 lands in 13A and
+13C. Specified in
+[ADR 2026-07-24 §9](../../../../docs/adr/2026-07-24-workshop-room-ledger-and-delivery-offsets.md):
+
+- The rail separates participants from instruments with a real
+  `role="separator"` and labeled groups — not a decorative glyph.
+- UI copy may truthfully call a sidecar private, and must not imply that its
+  *reports* are: running a tool in the room publishes its report to the room.
 
 ### Participant-owned capabilities
 

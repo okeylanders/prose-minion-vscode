@@ -49,6 +49,23 @@ ownership contract in 13C lands. If capability ownership proves materially
 larger than expected, split 13C into a UI-only read-in MR and a follow-up
 capability MR; do not hide that boundary inside the modal change.
 
+### Design load
+
+Pixel-fidelity work is deliberately **concentrated in 13A and 13C** rather than
+spread evenly, so each sprint can be scheduled against an implementer suited to
+it. The participants/instruments rail divider was moved from 13D to 13C for
+this reason.
+
+| Sprint | Design load | Authoritative comp |
+|---|---|---|
+| 13A | **High** — path chooser, scope strips, Edit/Preview sheet, editor tab strip, gating badges, exact copy | [Assistant Tab](../../../../docs/design/Prose%20Minion%20-%20Assistant%20Tab.html) |
+| 13B | **No approved comp** — subject/policy controls and provenance block are visually unspecified | *(none — see 13B)* |
+| 13C | **High** — Invite Guest and Choose Host sheets, plus the rail divider | [Invite Guest](../../../../docs/design/Prose%20Minion%20-%20Invite%20Guest.html), [Choose Host](../../../../docs/design/Prose%20Minion%20-%20Choose%20Host.html) |
+| 13D | **None** — aggregate, prompt-builder, and persistence only | n/a |
+
+Design sources live in `docs/design/` and are synced from the Claude Design
+project. Sprints link the comp; they never re-sync or fork it.
+
 ## Locked product decisions
 
 ### Open Chat is a real scope, not an empty excerpt

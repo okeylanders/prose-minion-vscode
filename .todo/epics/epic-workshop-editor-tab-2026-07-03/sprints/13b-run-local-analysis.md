@@ -4,7 +4,13 @@
 **Priority**: High  
 **Branch**: `sprint/workshop-editor-tab-13b-run-local-analysis` -> PR into `epic/workshop-editor-tab`  
 **Depends on**: Sprint 13A  
-**Parent**: [Sprint 13 delivery plan](13-open-chat-guest-room-polish.md)
+**Parent**: [Sprint 13 delivery plan](13-open-chat-guest-room-polish.md)\
+**Design load**: **No approved comp.** The subject picker, context-policy
+control, free-text field, and the request/report provenance block have no
+accepted visual design. Whoever implements this will invent the layout —
+that is an absent spec, not a discipline problem. Either run a design pass
+first, or record here that improvisation is accepted and a redesign will
+follow.
 
 ## Goal
 
