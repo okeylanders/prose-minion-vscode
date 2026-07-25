@@ -242,6 +242,12 @@ export interface WorkshopExcerptReplacement {
   dividerTurn?: WorkshopTurn;
   retiredSidecarCount: number;
   replacementCount: number;
+  /**
+   * The set-aside passage this pin destroyed, when it displaced one. The shelf
+   * holds exactly one passage and no history, so this is the only record the
+   * caller gets — it belongs in the log and in the divider.
+   */
+  discardedShelvedExcerpt?: WorkshopExcerpt;
 }
 
 
@@ -393,9 +399,15 @@ export class WorkshopSessionService {
       // A tool sidecar that already read the passage keeps its own memory;
       // only the ROOM stops carrying it. The host, which is re-prompted from
       // session state every turn, must be told explicitly.
+      //
+      // Dropping the queued delivery is safe because the reason for the NEXT
+      // one is re-derived from what the host was actually handed, not from
+      // what was queued here (see `excerptDeliveryReason`). A withdrawal is
+      // only honest if the host received the passage in the first place: a
+      // pin that was queued but never shipped has nothing to withdraw.
       this.pendingRevisionVersion = undefined;
       this.pendingExcerptChange = undefined;
-      if (this.hasHostConversation()) {
+      if (this.hostDeliveredExcerptVersion() !== undefined) {
         this.pendingExcerptWithdrawal = true;
       }
       return this.scopeTransition(
@@ -417,7 +429,7 @@ export class WorkshopSessionService {
     const wasShelved = this.excerpt === undefined;
     this.scope = 'excerpt';
     if (wasShelved) {
-      this.adoptShelvedExcerpt(restored, 'repinned');
+      this.adoptShelvedExcerpt(restored);
     }
     return this.scopeTransition(
       true,
@@ -443,7 +455,7 @@ export class WorkshopSessionService {
     if (this.excerpt) {
       throw new Error('An excerpt is already pinned in this Workshop session');
     }
-    this.adoptShelvedExcerpt(shelved, 'repinned');
+    this.adoptShelvedExcerpt(shelved);
     return this.scopeTransition(
       true,
       this.recordScopeChange(
@@ -453,17 +465,58 @@ export class WorkshopSessionService {
     );
   }
 
-  private adoptShelvedExcerpt(
-    excerpt: WorkshopExcerpt,
-    reason: WorkshopExcerptDeliveryReason
-  ): void {
+  private adoptShelvedExcerpt(excerpt: WorkshopExcerpt): void {
+    const withdrawalUndelivered = this.pendingExcerptWithdrawal;
     this.excerpt = excerpt;
     this.shelvedExcerpt = undefined;
     this.pendingExcerptWithdrawal = false;
-    if (this.hasHostConversation()) {
-      this.pendingRevisionVersion = excerpt.version;
-      this.pendingExcerptChange = reason;
+    this.pendingRevisionVersion = undefined;
+    this.pendingExcerptChange = undefined;
+    if (!this.hasHostConversation()) {
+      return;
     }
+    const reason = this.excerptDeliveryReason(excerpt.version);
+    if (withdrawalUndelivered && reason === 'repinned') {
+      // The withdrawal never shipped and the host still holds this exact
+      // version: the whole shelve/re-pin round trip is invisible to it.
+      // Announcing a change it never saw would be its own small lie.
+      return;
+    }
+    this.pendingRevisionVersion = excerpt.version;
+    this.pendingExcerptChange = reason;
+  }
+
+  /**
+   * The excerpt version the retained host was actually HANDED — `undefined`
+   * when it has never been given a passage.
+   *
+   * What the host holds is its OWN fact and cannot be read off `this.excerpt`:
+   * shelving empties the pin slot while the host's transcript still carries
+   * the passage, and a pin can sit queued for delivery that never shipped. The
+   * writer-origin pin rows are the delivery record — superseded rows are kept
+   * (dimmed, Phase 7) and still name what was sent.
+   */
+  private hostDeliveredExcerptVersion(): number | undefined {
+    for (let index = this.hostWriterSources.length - 1; index >= 0; index -= 1) {
+      const entry = this.hostWriterSources[index];
+      if (entry.kind === 'pin' && entry.excerptVersion !== undefined) {
+        return entry.excerptVersion;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Name a delivery by what the HOST holds, never by what the room holds
+   * (Sprint 13A §10). "Added" asserts the host has never seen a passage here,
+   * so it may only be used when the delivery record is genuinely empty.
+   */
+  private excerptDeliveryReason(version: number): WorkshopExcerptDeliveryReason {
+    const delivered = this.hostDeliveredExcerptVersion();
+    if (delivered === undefined) {
+      return 'added';
+    }
+    return delivered === version ? 'repinned' : 'revised';
   }
 
   private scopeTransition(
@@ -511,7 +564,10 @@ export class WorkshopSessionService {
     if (this.scope !== 'open') {
       this.scope = 'excerpt';
     }
-    // A fresh pin supersedes anything on the shelf; nothing silently lingers.
+    // A fresh pin supersedes anything on the shelf — exactly one slot may hold
+    // the passage (the V1 integrity rule). Nothing lingers, and nothing
+    // vanishes quietly either: `replaceExcerpt` names the displaced passage in
+    // the divider and returns it so the caller can log and confirm it.
     this.shelvedExcerpt = undefined;
     this.pendingExcerptWithdrawal = false;
     return cloneExcerpt(this.excerpt);
@@ -519,28 +575,29 @@ export class WorkshopSessionService {
 
   /** Replace working text, preserve host memory, and retire stale tool sidecars. */
   replaceExcerpt(input: WorkshopExcerptInput): WorkshopExcerptReplacement {
-    const previous = this.excerpt;
+    // The SHELF counts as previously carried. Shelving is not a deletion, so
+    // pinning over a set-aside passage is a replacement, not a first pin: the
+    // tool sidecars still hold that passage and so does the host's transcript.
+    // Branching on `this.excerpt` alone would skip every staleness protection
+    // below and assert "your FIRST passage" to a host holding the last one.
+    const displaced = this.shelvedExcerpt;
+    const previous = this.excerpt ?? displaced;
+    // An open conversation that adopts a passage stays open (Sprint 13A §4:
+    // a visible context transition, not a new session).
+    const adoptingInOpenChat = this.scope === 'open';
+
     if (!previous) {
-      // First pin of this room, OR an open conversation adopting a passage
-      // mid-stream. The latter is a scope transition the room must SEE and the
-      // retained host must be TOLD about (Sprint 13A §10).
-      const adoptingInOpenChat = this.scope === 'open';
       const excerpt = this.setExcerpt(input);
-      let dividerTurn: WorkshopTurn | undefined;
-      if (adoptingInOpenChat) {
-        if (this.hasHostConversation()) {
-          this.pendingRevisionVersion = excerpt.version;
-          this.pendingExcerptChange = 'added';
-        }
-        dividerTurn = this.recordScopeChange(
-          `Excerpt added · ${excerptLabel(excerpt)} v${excerpt.version}` +
-          ' — same session, conversation retained'
-        );
-      }
+      this.queueExcerptDelivery(excerpt);
       return {
         excerpt,
         disposedConversationIds: [],
-        dividerTurn,
+        dividerTurn: adoptingInOpenChat
+          ? this.recordScopeChange(
+              `Excerpt added · ${excerptLabel(excerpt)} v${excerpt.version}` +
+              ' — same session, conversation retained'
+            )
+          : undefined,
         retiredSidecarCount: 0,
         replacementCount: this.replacementCount
       };
@@ -557,32 +614,64 @@ export class WorkshopSessionService {
     }
     const excerpt = this.setExcerpt(input);
     this.replacementCount += 1;
-    if (this.hasHostConversation()) {
-      this.pendingRevisionVersion = excerpt.version;
-      this.pendingExcerptChange = 'revised';
-    }
+    this.queueExcerptDelivery(excerpt);
 
     const retiredLabels = retired.map(sidecar => workshopToolLabel(sidecar.toolId)).sort();
     const source = workshopExcerptSourcePath(excerpt.source) ?? 'Pasted excerpt';
     const retiredText = retiredLabels.length > 0 ? retiredLabels.join(', ') : 'none';
-    const dividerTurn: WorkshopTurn = {
+    // Only an open-scope room can be holding a shelf, so a displaced passage
+    // always rides the scope-transition divider — and it is NAMED there,
+    // because the shelf is one slot with no history and this pin is the last
+    // moment that passage exists anywhere.
+    const dividerTurn = adoptingInOpenChat
+      ? this.recordScopeChange(
+          `Excerpt added · ${excerptLabel(excerpt)} v${excerpt.version} — ` +
+          (displaced
+            ? `set-aside “${excerptLabel(displaced)}” v${displaced.version} discarded,`
+            : 'same session,') +
+          ' conversation retained'
+        )
+      : this.recordExcerptRevision(
+          `Excerpt v${excerpt.version} pinned · ${source} · retired: ${retiredText}`
+        );
+    return {
+      excerpt,
+      disposedConversationIds: conversationIds,
+      dividerTurn,
+      retiredSidecarCount: retired.length,
+      replacementCount: this.replacementCount,
+      discardedShelvedExcerpt: displaced ? cloneExcerpt(displaced) : undefined
+    };
+  }
+
+  /**
+   * Queue the retained host's excerpt delta frame. The REASON is derived from
+   * the delivery record, never from which method was called: the same pin can
+   * be this host's first passage, a revision of one it holds, or the exact
+   * version it already has coming back off the shelf.
+   */
+  private queueExcerptDelivery(excerpt: WorkshopExcerpt): void {
+    if (!this.hasHostConversation()) {
+      return;
+    }
+    this.pendingRevisionVersion = excerpt.version;
+    this.pendingExcerptChange = this.excerptDeliveryReason(excerpt.version);
+  }
+
+  /** Append the visible "excerpt vN pinned" boundary for a passage revision. */
+  private recordExcerptRevision(content: string): WorkshopTurn {
+    const turn: WorkshopTurn = {
       id: this.nextTurnId('system'),
       role: 'system',
       kind: 'divider',
       participant: 'session',
       artifact: 'excerpt_revision',
-      excerptVersion: excerpt.version,
-      content: `Excerpt v${excerpt.version} pinned · ${source} · retired: ${retiredText}`,
+      excerptVersion: this.excerptVersion,
+      content,
       timestamp: this.now()
     };
-    this.turns.push(dividerTurn);
-    return {
-      excerpt,
-      disposedConversationIds: conversationIds,
-      dividerTurn: cloneTurn(dividerTurn),
-      retiredSidecarCount: retired.length,
-      replacementCount: this.replacementCount
-    };
+    this.turns.push(turn);
+    return cloneTurn(turn);
   }
 
   getExcerpt(): WorkshopExcerpt | undefined {

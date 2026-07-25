@@ -217,6 +217,116 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
       expect(service.getExcerpt()).toEqual(pinned);
     });
 
+    /**
+     * Regression (PR #86 review, blocking): `replaceExcerpt` branched on
+     * `this.excerpt`, which shelving empties while the passage lives on in
+     * `shelvedExcerpt` — so pinning over a shelved passage took the "first
+     * pin" branch and skipped every staleness protection. The shelf counts as
+     * previously carried: the sidecars read that passage and so did the host.
+     */
+    it('treats a pin over a SHELVED passage as a replacement, not a first pin', () => {
+      pin();
+      startHostConversation();
+      // A tool that read the shelved passage, and a room pointed at it.
+      service.beginToolRun('prose', 'prose-run');
+      service.completeToolReport('prose-run', 'Prose report on v1.', 'prose-conv');
+      service.setChatTarget({ kind: 'tool', toolId: 'prose' });
+      service.setSessionScope('open');
+      service.commitPendingHostUpdates(service.collectPendingHostUpdates()!);
+
+      const replacement = service.replaceExcerpt({
+        text: 'A different chapter entirely.',
+        source: { kind: 'manual' }
+      });
+
+      // The sidecar's conversation only ever read the shelved passage.
+      expect(replacement.disposedConversationIds).toEqual(['prose-conv']);
+      expect(replacement.retiredSidecarCount).toBe(1);
+      expect(replacement.replacementCount).toBe(1);
+      // The room must not still be aimed at a tool that is about the old text.
+      expect(service.getChatTarget()).toEqual({ kind: 'host' });
+    });
+
+    it('never tells a host holding a shelved passage that this is its FIRST one', () => {
+      pin();
+      startHostConversation();
+      service.setSessionScope('open');
+      service.commitPendingHostUpdates(service.collectPendingHostUpdates()!);
+
+      service.replaceExcerpt({ text: 'A different chapter.', source: { kind: 'manual' } });
+
+      const updates = service.collectPendingHostUpdates();
+      expect(updates?.excerptChange).toBe('revised');
+      const frame = buildWorkshopHostUpdateFrame(updates);
+      expect(frame).toContain('revised the pinned excerpt');
+      // The host's own transcript still holds v1 — asserting it has never seen
+      // a passage would contradict its own history.
+      expect(frame).not.toContain('FIRST passage you have been given here');
+    });
+
+    /**
+     * Regression (PR #86 review, high): the shelf is one slot with no history,
+     * so a pin that displaces it destroys writer-authored text. It may not do
+     * so silently — the divider names what went, and the caller gets it back
+     * to log and to confirm against.
+     */
+    it('names the set-aside passage it discarded, in the divider and to the caller', () => {
+      const shelved = pin();
+      service.setSessionScope('open');
+
+      const replacement = service.replaceExcerpt({
+        text: 'Something else entirely.',
+        source: { kind: 'manual' }
+      });
+
+      expect(replacement.discardedShelvedExcerpt).toEqual(shelved);
+      expect(replacement.dividerTurn?.artifact).toBe('scope_change');
+      expect(replacement.dividerTurn?.content)
+        .toBe('Excerpt added · Pasted passage v2 — set-aside “one” v1 discarded, conversation retained');
+      expect(service.getShelvedExcerpt()).toBeUndefined();
+    });
+
+    it('reports nothing discarded when the shelf was empty', () => {
+      service.setSessionScope('open');
+      const replacement = service.replaceExcerpt({ text: 'First one.', source: { kind: 'manual' } });
+
+      expect(replacement.discardedShelvedExcerpt).toBeUndefined();
+      expect(replacement.dividerTurn?.content)
+        .toBe('Excerpt added · Pasted passage v1 — same session, conversation retained');
+    });
+
+    /**
+     * Regression (PR #86 review, high): shelving dropped a queued-but-never-
+     * delivered revision, and the re-pin hardcoded `repinned` — telling a host
+     * holding v1 that it had the passage back "unchanged" at v2.
+     */
+    it('calls a re-pin a revision when the host never received the newer version', () => {
+      // The opening prompt hands the host v1; no delta frame is involved.
+      pin();
+      startHostConversation();
+      // v2 is queued for the host and then shelved before any turn ships it.
+      service.replaceExcerpt({ text: 'The revised draft.', source: { kind: 'manual' } });
+      service.setSessionScope('open');
+      service.repinShelvedExcerpt();
+
+      const updates = service.collectPendingHostUpdates();
+      expect(updates?.excerpt?.version).toBe(2);
+      expect(updates?.excerptChange).toBe('revised');
+      const frame = buildWorkshopHostUpdateFrame(updates);
+      expect(frame).toContain('Earlier versions in this conversation are superseded');
+      expect(frame).not.toContain('unchanged');
+    });
+
+    it('does not tell a host to withdraw a passage it was never handed', () => {
+      // A host conversation exists, but the pin was queued and never shipped.
+      service.setSessionScope('open');
+      startHostConversation();
+      service.replaceExcerpt({ text: 'Queued but never sent.', source: { kind: 'manual' } });
+      service.setSessionScope('open');
+
+      expect(service.collectPendingHostUpdates()?.excerptWithdrawn).toBeUndefined();
+    });
+
     it('clears a queued withdrawal once the passage comes back', () => {
       pin();
       startHostConversation();
