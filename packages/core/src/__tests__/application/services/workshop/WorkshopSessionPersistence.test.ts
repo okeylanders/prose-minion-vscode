@@ -189,17 +189,6 @@ describe('WorkshopSessionService committed persistence', () => {
         state.shelvedExcerpt = JSON.parse(JSON.stringify(state.excerpt));
       },
       message: 'both a pinned and a shelved excerpt'
-    },
-    {
-      label: 'a checkpoint queues an excerpt delivery and its withdrawal at once',
-      mutate: (value: unknown) => {
-        const revisions = (value as {
-          revisions: { excerpt: number; pendingExcerpt?: number; pendingExcerptWithdrawal?: true };
-        }).revisions;
-        revisions.pendingExcerpt = revisions.excerpt;
-        revisions.pendingExcerptWithdrawal = true;
-      },
-      message: 'queues both an excerpt delivery and its withdrawal'
     }
   ])('rejects raw state when $label', ({ mutate, message }) => {
     const value: unknown = buildCompleteState();

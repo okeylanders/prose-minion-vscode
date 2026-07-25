@@ -19,7 +19,6 @@ import {
 } from '@messages';
 import type {
   WorkshopContextAttachment,
-  WorkshopExcerptDeliveryReason,
   WorkshopPendingHostUpdates
 } from '@/application/services/workshop/WorkshopSessionService';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
@@ -588,25 +587,20 @@ export function buildWorkshopContextAttachmentsFrame(
 }
 
 /**
- * How each excerpt delivery reads to a retained host (Sprint 13A). "Revised"
- * supersedes; "added" and "repinned" are first sight of a passage inside a
- * conversation that has been running without one — a persona that treats those
- * as a revision would imply it had already read something.
+ * The only excerpt delta a retained host can receive (ADR 2026-07-25).
+ *
+ * Session scope is immutable once the room has a memory, so a host that gets
+ * an excerpt frame has already been handed that passage — this is always a
+ * revision. The 13A "added" and "repinned" leads existed for mid-conversation
+ * scope changes, which can no longer happen.
  */
-const WORKSHOP_EXCERPT_DELIVERY_LEAD: Readonly<Record<WorkshopExcerptDeliveryReason, string>> =
-  Object.freeze({
-    revised:
-      'The writer has revised the pinned excerpt. Earlier versions in this conversation are superseded.',
-    added:
-      'The writer has added an excerpt to this conversation. This is the FIRST passage you have been given here — you have not seen it or any other before now. Everything already said in this conversation still stands.',
-    repinned:
-      'The writer has re-pinned the excerpt they previously set aside. You have it again, unchanged, at the version below.'
-  });
+const WORKSHOP_EXCERPT_REVISION_LEAD =
+  'The writer has revised the pinned excerpt. Earlier versions in this conversation are superseded.';
 
 /**
  * Build the trusted, bounded delta delivered to an already-retained host.
- * The aggregate's tri-state context update is interpreted here, in the one
- * place that owns the resulting prompt frame.
+ * The aggregate's context update is interpreted here, in the one place that
+ * owns the resulting prompt frame.
  */
 export function buildWorkshopHostUpdateFrame(
   updates?: WorkshopPendingHostUpdates
@@ -616,14 +610,6 @@ export function buildWorkshopHostUpdateFrame(
   }
 
   const sections: string[] = [];
-  if (updates.excerptWithdrawn) {
-    // Silence here would leave the host quoting a passage it no longer holds
-    // (Sprint 13A §4: shelved, not deleted — but shelved out of ITS reach).
-    sections.push(
-      'The writer has set the excerpt aside. This is now an open conversation and no excerpt is attached.',
-      'You no longer have that passage. Do not quote it, summarize it, or reason from its specific wording; rely only on what this conversation has already established. The writer may re-pin it later, and you will be told when that happens.'
-    );
-  }
   if (updates.excerpt) {
     const excerptTrim = trimToWordLimit(
       updates.excerpt.text,
@@ -640,7 +626,7 @@ export function buildWorkshopHostUpdateFrame(
         : undefined
     ].filter((line): line is string => line !== undefined);
     sections.push(
-      WORKSHOP_EXCERPT_DELIVERY_LEAD[updates.excerptChange ?? 'revised'],
+      WORKSHOP_EXCERPT_REVISION_LEAD,
       ...provenance,
       ...(sourceFrame ? [sourceFrame] : []),
       `<pinned-excerpt version="${updates.excerpt.version}">`,
@@ -672,10 +658,7 @@ export function describeWorkshopPendingHostUpdates(
   updates: WorkshopPendingHostUpdates
 ): string {
   return [
-    updates.excerptWithdrawn ? 'excerpt withdrawn' : undefined,
-    updates.excerpt
-      ? `excerpt v${updates.excerpt.version} (${updates.excerptChange ?? 'revised'})`
-      : undefined,
+    updates.excerpt ? `excerpt v${updates.excerpt.version} (revised)` : undefined,
     updates.contextAttachments
       ? `context r${updates.contextAttachments.revision} (${updates.contextAttachments.attachments.length} attachments)`
       : undefined

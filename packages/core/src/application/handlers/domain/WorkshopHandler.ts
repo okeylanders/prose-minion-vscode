@@ -24,6 +24,7 @@ import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 import {
   WorkshopContextAttachmentInput,
+  WorkshopExcerptReplacement,
   WorkshopMessageAttachmentInput,
   WorkshopScopeTransition,
   WorkshopSessionService,
@@ -1185,7 +1186,9 @@ export class WorkshopHandler {
     if (this.rejectExcerptMutationWhileRunning()) {
       return;
     }
-    this.replaceExcerpt({ text, source });
+    if (!this.replaceExcerpt({ text, source })) {
+      return;
+    }
     this.sessionPersistence.markDirty('excerpt replaced');
     this.postSessionState();
   }
@@ -1438,9 +1441,6 @@ export class WorkshopHandler {
       // Idempotent: still broadcast so a stale webview reconciles.
       this.postSessionState();
       return;
-    }
-    if (transition.dividerTurn) {
-      this.postTurn(transition.dividerTurn);
     }
     this.outputChannel.appendLine(
       `[WorkshopHandler] ${reason} (scope=${transition.scope ?? 'unchosen'}, ` +
@@ -1756,7 +1756,7 @@ export class WorkshopHandler {
     if (this.rejectExcerptMutationWhileRunning()) {
       return;
     }
-    this.replaceExcerpt({
+    if (!this.replaceExcerpt({
       text: resource.text,
       source: {
         kind: 'file',
@@ -1768,7 +1768,9 @@ export class WorkshopHandler {
         ? { pinnedWords: resource.truncation.keptWords, totalWords: resource.truncation.totalWords }
         : undefined,
       sourceFingerprint: resource.sourceFingerprint
-    });
+    })) {
+      return;
+    }
     this.sessionPersistence.markDirty('configured excerpt replaced');
     this.postSessionState();
   }
@@ -2155,12 +2157,14 @@ export class WorkshopHandler {
       return;
     }
 
-    this.replaceExcerpt({
+    if (!this.replaceExcerpt({
       text: loaded.text,
       source,
       truncation: loaded.truncation,
       sourceFingerprint: loaded.sourceFingerprint
-    });
+    })) {
+      return;
+    }
     this.sessionPersistence.markDirty('file excerpt replaced');
     this.postSessionState();
   }
@@ -2221,12 +2225,14 @@ export class WorkshopHandler {
       return;
     }
 
-    this.replaceExcerpt({
+    if (!this.replaceExcerpt({
       text: loaded.text,
       source: resolvedSource,
       truncation: loaded.truncation,
       sourceFingerprint: loaded.sourceFingerprint
-    });
+    })) {
+      return;
+    }
     this.sessionPersistence.markDirty('file excerpt reread');
     this.postSessionState();
   }
@@ -2530,13 +2536,28 @@ export class WorkshopHandler {
     };
   }
 
+  /**
+   * Pin or revise the excerpt. Returns false when the aggregate refused —
+   * the scope lock (ADR 2026-07-25) will not let an open conversation adopt a
+   * passage once it has a memory. The refusal names the recovery path, so it
+   * belongs in front of the writer rather than escaping as an unhandled
+   * rejection at the IPC boundary.
+   */
   private replaceExcerpt(input: {
     text: string;
     source: WorkshopExcerptSource;
     truncation?: WorkshopExcerptTruncation;
     sourceFingerprint?: string;
-  }): void {
-    const replacement = this.session.replaceExcerpt(input);
+  }): boolean {
+    let replacement: WorkshopExcerptReplacement;
+    try {
+      replacement = this.session.replaceExcerpt(input);
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[WorkshopHandler] Excerpt pin refused: ${details}`);
+      this.sendError('workshop', details);
+      return false;
+    }
     this.discardConversations(replacement.disposedConversationIds);
     if (replacement.dividerTurn) {
       this.postTurn(replacement.dividerTurn);
@@ -2565,6 +2586,7 @@ export class WorkshopHandler {
         'This session now carries three excerpt revisions. Consider a new session soon to keep context cost down.'
       );
     }
+    return true;
   }
 
   private discardConversations(conversationIds: readonly string[]): void {

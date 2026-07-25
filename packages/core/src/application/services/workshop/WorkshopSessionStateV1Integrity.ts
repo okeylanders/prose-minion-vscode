@@ -44,15 +44,11 @@ export function validateWorkshopSessionStateV1(state: WorkshopSessionStateV1): v
   ) {
     throw new Error('Persisted Workshop pending excerpt revision is not current');
   }
-  // A queued excerpt frame and a queued withdrawal are contradictory
-  // instructions to the same host turn; the aggregate clears one when it sets
-  // the other, and a checkpoint claiming both is corrupt.
-  if (state.revisions.pendingExcerptWithdrawal && state.revisions.pendingExcerpt !== undefined) {
-    throw new Error('Persisted Workshop state queues both an excerpt delivery and its withdrawal');
-  }
-  if (state.revisions.pendingExcerptChange !== undefined && state.revisions.pendingExcerpt === undefined) {
-    throw new Error('Persisted Workshop state names an excerpt delivery reason with nothing to deliver');
-  }
+  // `pendingExcerptWithdrawal` and `pendingExcerptChange` are deliberately NOT
+  // validated. ADR 2026-07-25 retired both; they survive in the grammar only
+  // so pre-lock checkpoints parse, and they are discarded on hydrate. Asserting
+  // consistency between fields we are about to throw away would fail a
+  // writer's real session open over state that no longer means anything.
   if (
     state.revisions.pendingContext !== undefined
     && (
