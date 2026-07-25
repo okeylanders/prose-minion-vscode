@@ -12,6 +12,12 @@
  * "Add from project…" opens the Context Selector modal (which keeps the OS
  * picker as its explore escape hatch). The Context wizard reuses the sidebar
  * Context lane host-side; its picks land as ordinary wizard-tagged pills.
+ *
+ * Sprint 13A §6/§7: every pill is CLICKABLE and opens the shared Edit/Preview
+ * sheet — text notes and wizard suggestions for edit, project files as a
+ * prettified read with an "open in editor tab" escape hatch. "Add text" opens
+ * that same sheet instead of an inline textarea, so a note is composed and
+ * previewed in one place rather than typed blind into a rail box.
  */
 
 import * as React from 'react';
@@ -27,9 +33,12 @@ interface ContextPanelProps {
   /** True when the attachment list changed since the host last saw it. */
   pendingDelivery: boolean;
   isRunning: boolean;
-  onAddText: (text: string) => void;
+  /** Open the shared Edit/Preview sheet to compose a new text note. */
+  onAddText: () => void;
   /** Open the Context Selector modal. */
   onAddFile: () => void;
+  /** Open one attachment in the shared Edit/Preview sheet. */
+  onOpenAttachment: (attachment: WorkshopContextAttachmentSnapshot) => void;
   onRemove: (id: string) => void;
   /** Context wizard lane (Sprint 12): one run at a time, results are pills. */
   wizardRunning: boolean;
@@ -45,34 +54,31 @@ const meterTone = (used: number, budget: number): string => {
   return ratio >= 0.7 ? ' pm-ws-meter-warn' : '';
 };
 
+/** What clicking this pill will do, said in its tooltip before the click. */
+const openHint = (attachment: WorkshopContextAttachmentSnapshot): string => {
+  if (attachment.kind === 'file') {
+    return attachment.origin === 'wizard'
+      ? `${attachment.label} — open to read or edit this session's copy`
+      : `${attachment.label} — open to read; opens in an editor tab from there`;
+  }
+  return `${attachment.label} — open to read or edit`;
+};
+
 export const ContextPanel: React.FC<ContextPanelProps> = ({
   attachments,
   pendingDelivery,
   isRunning,
   onAddText,
   onAddFile,
+  onOpenAttachment,
   onRemove,
   wizardRunning,
   onRunWizard,
   onCancelWizard
 }) => {
-  const [adding, setAdding] = React.useState(false);
-  const [draft, setDraft] = React.useState('');
-  const [expandedId, setExpandedId] = React.useState<string | null>(null);
-
   const budget = PROMPT_BUDGETS.contextAttachments.words;
   const used = attachments.reduce((total, attachment) => total + attachment.words, 0);
-  const draftWords = countWords(draft);
   const hasAttachments = attachments.length > 0;
-
-  const confirmText = () => {
-    if (draft.trim().length === 0) {
-      return;
-    }
-    onAddText(draft.trim());
-    setDraft('');
-    setAdding(false);
-  };
 
   return (
     <div className="pm-ws-block" id={WORKSHOP_CONTEXT_PANEL_ID}>
@@ -89,93 +95,52 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
 
       {hasAttachments ? (
         <div className="pm-ws-ctx-pills">
-          {attachments.map((attachment) => {
-            const inspectable = attachment.kind === 'text' && attachment.content !== undefined;
-            const expanded = inspectable && expandedId === attachment.id;
-            return (
-              <React.Fragment key={attachment.id}>
-                <span
-                  className={`pm-ws-ctx-pill${attachment.origin === 'wizard' ? ' pm-ws-ctx-pill-wizard' : ''}`}
-                  title={
-                    attachment.truncation
-                      ? `${attachment.label} — head slice: ${attachment.truncation.keptWords.toLocaleString()} of ${attachment.truncation.totalWords.toLocaleString()} words`
-                      : attachment.relativePath ?? attachment.label
-                  }
-                >
-                  <Icon
-                    name={attachment.origin === 'wizard' ? 'sparkle' : attachment.kind === 'file' ? 'doc' : 'pen'}
-                    size={12}
-                  />
-                  {inspectable ? (
-                    <button
-                      className="pm-ws-ctx-pill-label pm-ws-ctx-pill-expand"
-                      type="button"
-                      aria-expanded={expanded}
-                      title={`${attachment.label} — click to ${expanded ? 'hide' : 'read'}`}
-                      onClick={() => setExpandedId(expanded ? null : attachment.id)}
-                    >
-                      {attachment.label}
-                    </button>
-                  ) : (
-                    <span className="pm-ws-ctx-pill-label">{attachment.label}</span>
-                  )}
-                  <span className="pm-ws-ctx-pill-size">
-                    {attachment.words.toLocaleString()} words
-                  </span>
-                  <button
-                    className="pm-ws-ctx-pill-remove"
-                    type="button"
-                    aria-label={`Remove ${attachment.label}`}
-                    onClick={() => onRemove(attachment.id)}
-                    disabled={isRunning}
-                  >
-                    <Icon name="x" size={9} />
-                  </button>
-                </span>
-                {expanded ? (
-                  <div className="pm-ws-ctx-note" role="note" aria-label={`${attachment.label} content`}>
-                    {attachment.content}
-                  </div>
-                ) : null}
-              </React.Fragment>
-            );
-          })}
+          {attachments.map((attachment) => (
+            <span
+              key={attachment.id}
+              className={`pm-ws-ctx-pill${attachment.origin === 'wizard' ? ' pm-ws-ctx-pill-wizard' : ''}${attachment.kind === 'file' && attachment.origin !== 'wizard' ? ' pm-ws-ctx-pill-file' : ''}`}
+              title={
+                attachment.truncation
+                  ? `${attachment.label} — head slice: ${attachment.truncation.keptWords.toLocaleString()} of ${attachment.truncation.totalWords.toLocaleString()} words`
+                  : attachment.relativePath ?? attachment.label
+              }
+            >
+              <Icon
+                name={attachment.origin === 'wizard' ? 'sparkle' : attachment.kind === 'file' ? 'doc' : 'pen'}
+                size={12}
+              />
+              <button
+                className="pm-ws-ctx-pill-label pm-ws-ctx-pill-open"
+                type="button"
+                title={openHint(attachment)}
+                onClick={() => onOpenAttachment(attachment)}
+              >
+                {attachment.label}
+              </button>
+              <span className="pm-ws-ctx-pill-size">
+                {attachment.words.toLocaleString()} words
+              </span>
+              <button
+                className="pm-ws-ctx-pill-remove"
+                type="button"
+                aria-label={`Remove ${attachment.label}`}
+                onClick={() => onRemove(attachment.id)}
+                disabled={isRunning}
+              >
+                <Icon name="x" size={9} />
+              </button>
+            </span>
+          ))}
         </div>
       ) : null}
 
-      {adding ? (
-        <div className="pm-ws-ctx-add">
-          <textarea
-            className="pm-ws-excerpt pm-ws-excerpt-input"
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder="Paste or type a context note…"
-            rows={4}
-            aria-label="Context text"
-          />
-          <div className="pm-ws-excerpt-count">
-            <b>{draftWords.toLocaleString()}</b>&nbsp;words
-          </div>
-          <div className="pm-ws-excerpt-actions">
-            <button
-              className="pm-ws-primary-btn"
-              type="button"
-              onClick={confirmText}
-              disabled={draft.trim().length === 0 || isRunning}
-            >
-              <Icon name="check" size={13} /> Add
-            </button>
-            <button className="pm-ws-action-btn" type="button" onClick={() => setAdding(false)}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : hasAttachments ? (
+      {hasAttachments ? (
+
         <div className="pm-ws-excerpt-actions">
           <button
             className="pm-ws-action-btn"
             type="button"
-            onClick={() => setAdding(true)}
+            onClick={onAddText}
             disabled={isRunning}
           >
             <Icon name="pen" size={12} /> Add text
@@ -205,7 +170,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             <button
               className="pm-ws-intake-btn"
               type="button"
-              onClick={() => setAdding(true)}
+              onClick={onAddText}
               disabled={isRunning}
             >
               <Icon name="pen" size={16} />
@@ -236,7 +201,8 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             </button>
           </div>
           <p className="pm-ws-intake-caption">
-            Context rides along with every message, to every participant.
+            Context rides along with every message, to every participant — in passage sessions and
+            open conversations alike.
           </p>
         </>
       )}
@@ -278,6 +244,11 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
               : ''}
         </div>
       </div>
+      {hasAttachments ? (
+        <p className="pm-ws-intake-caption">
+          Files open for reading · text and wizard notes open for edit or preview.
+        </p>
+      ) : null}
       {pendingDelivery ? (
         <p className="pm-ws-brief-note">Shared with your next host message.</p>
       ) : null}

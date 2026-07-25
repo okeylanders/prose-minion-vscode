@@ -34,9 +34,11 @@ import {
   StatusMessage,
   WorkshopToolId,
   WorkshopPersonaId,
+  WorkshopContextAttachmentSnapshot,
   WorkshopTurn,
   isWorkshopWriterProfileActive,
-  workshopExcerptSourcePath
+  workshopExcerptSourcePath,
+  workshopExcerptTitle
 } from '@messages';
 import { ModelSelector } from './components/shared/ModelSelector';
 import { ExcerptPanel } from './components/workshop/ExcerptPanel';
@@ -58,6 +60,17 @@ import {
   WorkshopSaveSessionModal
 } from './components/workshop/WorkshopSaveSessionModal';
 import { WorkshopSessionsMenu } from './components/workshop/WorkshopSessionsMenu';
+import { WorkshopPathChooser } from './components/workshop/WorkshopPathChooser';
+import { WorkshopScopeStrip } from './components/workshop/WorkshopScopeStrip';
+import {
+  WorkshopExcerptAdoptedNotice,
+  WorkshopOpenChatStart
+} from './components/workshop/WorkshopOpenChatStart';
+import {
+  WorkshopTextSheet,
+  WorkshopTextSheetMode
+} from './components/workshop/WorkshopTextSheet';
+import { WORKSHOP_TOOLS_GATED_REASON } from './components/workshop/WorkshopComposer';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WorkshopToast, WorkshopToastState } from './components/workshop/WorkshopToast';
 import { WorkshopTodoList } from './components/workshop/WorkshopTodoList';
@@ -221,6 +234,7 @@ export const WorkshopApp: React.FC = () => {
     [MessageType.WORKSHOP_SESSION_SAVE_STATUS]: workshop.handleSessionSaveStatus,
     [MessageType.SELECTION_DATA]: excerptVerify.handleSelectionData,
     [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshop.handleContextCatalog,
+    [MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT]: workshop.handleContextAttachmentContent,
     [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshop.handleContextSearchResults,
     [MessageType.STREAM_STARTED]: workshop.handleStreamStarted,
     [MessageType.STREAM_CHUNK]: workshop.handleStreamChunk,
@@ -344,7 +358,12 @@ export const WorkshopApp: React.FC = () => {
 
   const roomMutationLocked =
     workshop.isRunning || workshop.wizardRunning || workshop.sessionActionPending !== undefined;
-  const toolsEnabled = !!workshop.excerpt && !roomMutationLocked && workshop.sessionReady;
+  // Sprint 13A §9: gating has two independent reasons, and the UI must say
+  // WHICH one applies. No excerpt → a permanent, explained gate with a badge.
+  // Busy room → a temporary `disabled`, exactly as before.
+  const hasExcerpt = !!workshop.excerpt;
+  const toolsGatedByExcerpt = !hasExcerpt;
+  const toolsEnabled = hasExcerpt && !roomMutationLocked && workshop.sessionReady;
   const activePersona = getWorkshopPersona(workshop.selectedPersonaId)
     ?? getWorkshopPersona(DEFAULT_WORKSHOP_PERSONA_ID)!;
   const guestTargetPersonaId = workshop.chatTarget.kind === 'personaGuest'
@@ -460,6 +479,139 @@ export const WorkshopApp: React.FC = () => {
   );
 
   const openContext = openAttachSelector;
+
+  // ── The shared Edit/Preview sheet (Sprint 13A §5–§7) ──────────────────────
+  // One piece of state for all five cases. `attachmentId` is present only when
+  // the sheet is editing an existing attachment, and it is what a late
+  // WORKSHOP_CONTEXT_ATTACHMENT_CONTENT reply is matched against.
+  const [textSheet, setTextSheet] = React.useState<
+    { mode: WorkshopTextSheetMode; attachmentId?: string; seed?: string } | null
+  >(null);
+  const closeTextSheet = React.useCallback(() => {
+    setTextSheet(null);
+    workshop.clearAttachmentContent();
+  }, [workshop.clearAttachmentContent]);
+
+  const openPasteSheet = React.useCallback(() => {
+    setTextSheet({
+      mode: { kind: 'excerpt', retainedConversation: workshop.hasHostConversation },
+      seed: workshop.excerpt?.text ?? ''
+    });
+  }, [workshop.excerpt, workshop.hasHostConversation]);
+
+  const openAddTextSheet = React.useCallback(() => {
+    setTextSheet({ mode: { kind: 'context-new' }, seed: '' });
+  }, []);
+
+  const openAttachmentSheet = React.useCallback(
+    (attachment: WorkshopContextAttachmentSnapshot) => {
+      const mode: WorkshopTextSheetMode = attachment.origin === 'wizard'
+        ? { kind: 'context-wizard', label: attachment.label }
+        : attachment.kind === 'file'
+          ? {
+              kind: 'context-file',
+              label: attachment.label,
+              relativePath: attachment.relativePath
+            }
+          : { kind: 'context-text', label: attachment.label };
+      // Text notes already carry their body in the snapshot (the pill is the
+      // note's only home); file-backed bodies are fetched on demand.
+      if (attachment.content !== undefined) {
+        setTextSheet({ mode, attachmentId: attachment.id, seed: attachment.content });
+        return;
+      }
+      setTextSheet({ mode, attachmentId: attachment.id });
+      workshop.requestContextAttachment(attachment.id);
+    },
+    [workshop.requestContextAttachment]
+  );
+
+  const applyTextSheet = React.useCallback(
+    (text: string) => {
+      if (!textSheet) {
+        return;
+      }
+      if (textSheet.mode.kind === 'excerpt') {
+        // Verified provenance survives the move into the sheet: the claim
+        // applies only while the applied text still equals what the host
+        // verified against the editor selection.
+        const verified = excerptVerify.verified;
+        workshop.pinExcerpt(
+          text,
+          verified !== null && text === verified.text ? verified.source : undefined
+        );
+      } else if (textSheet.attachmentId) {
+        workshop.updateContextText(textSheet.attachmentId, text);
+      } else {
+        workshop.addContextText(text);
+      }
+      closeTextSheet();
+    },
+    [
+      closeTextSheet,
+      excerptVerify.verified,
+      textSheet,
+      workshop.addContextText,
+      workshop.pinExcerpt,
+      workshop.updateContextText
+    ]
+  );
+
+  const openAttachmentInEditor = React.useCallback(() => {
+    if (textSheet?.attachmentId) {
+      workshop.openContextAttachmentFile(textSheet.attachmentId);
+    }
+  }, [textSheet, workshop.openContextAttachmentFile]);
+
+  const chooseExcerptFromSheet = React.useCallback(() => {
+    setTextSheet(null);
+    openExcerptSelector();
+  }, [openExcerptSelector]);
+
+  // ── Scope transitions (§2/§4) ─────────────────────────────────────────────
+  const startOpenConversation = React.useCallback(
+    () => workshop.setSessionScope('open'),
+    [workshop.setSessionScope]
+  );
+  const continueWithExcerpt = React.useCallback(
+    () => workshop.setSessionScope('excerpt'),
+    [workshop.setSessionScope]
+  );
+
+  const announceGate = React.useCallback(
+    (reason: string) => showToast({ message: reason, icon: 'doc' }),
+    [showToast]
+  );
+  const announceToolGate = React.useCallback(
+    () => announceGate(WORKSHOP_TOOLS_GATED_REASON),
+    [announceGate]
+  );
+
+  // Open-chat starters prefill the composer; the writer still presses send.
+  const [draftSeed, setDraftSeed] = React.useState<{ text: string; token: number }>();
+  const seedComposerDraft = React.useCallback((text: string) => {
+    setDraftSeed({ text, token: Date.now() });
+  }, []);
+
+  // The fetched body, matched to the sheet that asked for it: a late reply for
+  // a pill the writer already closed must never paint into the open sheet.
+  const sheetAttachment = textSheet?.attachmentId !== undefined
+    && workshop.attachmentContent?.id === textSheet.attachmentId
+    ? workshop.attachmentContent
+    : undefined;
+
+  // Verified provenance is earned by a paste the host matched against the live
+  // editor selection. The sheet decides whether the claim still holds, because
+  // only the sheet knows the current draft.
+  const verifiedExcerpt = (() => {
+    const verified = excerptVerify.verified;
+    if (textSheet?.mode.kind !== 'excerpt' || verified?.source.kind !== 'editor-selection') {
+      return undefined;
+    }
+    const note = workshopExcerptSourcePath(verified.source);
+    return note ? { text: verified.text, note } : undefined;
+  })();
+
   const closeToolsModal = React.useCallback(() => setToolsModalOpen(false), []);
   const selectTool = React.useCallback(
     (toolId: WorkshopToolId) => {
@@ -641,11 +793,15 @@ export const WorkshopApp: React.FC = () => {
           <div>
             <div className="pm-ws-eyebrow pm-ws-header-eyebrow">Prose Minion · Assistant</div>
             <h1 className="pm-ws-title">Workshop</h1>
+            {/* §10: header meta reports SCOPE, so an open conversation never
+                reads as a passage session that forgot its passage. */}
             <p className="pm-ws-subtitle">
-              <Icon name="doc" size={12} />{' '}
+              <Icon name={workshop.excerpt || workshop.scope !== 'open' ? 'doc' : 'dialogue'} size={12} />{' '}
               {workshop.excerpt
                 ? `${workshopExcerptSourcePath(workshop.excerpt.source) ?? 'Pinned excerpt'} · v${workshop.excerpt.version} · ${excerptWordCount} words`
-                : 'No excerpt pinned yet'}
+                : workshop.scope === 'open'
+                  ? 'Open conversation · No excerpt yet'
+                  : 'No excerpt pinned yet'}
             </p>
           </div>
         </div>
@@ -768,54 +924,78 @@ export const WorkshopApp: React.FC = () => {
           >
             <ExcerptPanel
               excerpt={workshop.excerpt}
+              shelvedExcerpt={workshop.shelvedExcerpt}
+              scope={workshop.scope}
+              hostLabel={activePersona.label}
               isRunning={roomMutationLocked}
               locked={workshop.hasHostConversation}
-              verified={excerptVerify.verified}
-              onSet={workshop.pinExcerpt}
+              onOpenPasteSheet={openPasteSheet}
               onChooseFile={openExcerptSelector}
               onRereadFile={workshop.rereadExcerpt}
-              onPasteVerify={excerptVerify.requestVerify}
+              onContinueWithExcerpt={continueWithExcerpt}
+              onRepinExcerpt={workshop.repinExcerpt}
+              onSetAside={startOpenConversation}
+              onStartOpenConversation={startOpenConversation}
             />
 
             <ContextPanel
               attachments={workshop.contextAttachments}
               pendingDelivery={workshop.contextPending}
               isRunning={roomMutationLocked}
-              onAddText={workshop.addContextText}
+              onAddText={openAddTextSheet}
               onAddFile={openAttachSelector}
+              onOpenAttachment={openAttachmentSheet}
               onRemove={workshop.removeContextAttachment}
               wizardRunning={workshop.wizardRunning}
               onRunWizard={workshop.runContextWizard}
               onCancelWizard={workshop.cancelContextWizard}
             />
 
+            {/* §9: gating only — no tool is redesigned. While no excerpt
+                exists, each row keeps its place and gains a NEEDS EXCERPT
+                badge, `aria-disabled` (focusable, so the reason is reachable),
+                a tooltip, and a toast on activation. */}
             <div className="pm-ws-block pm-ws-block-grow">
-              <div className="pm-ws-eyebrow">Tools</div>
+              <div className="pm-ws-block-head">
+                <div className="pm-ws-eyebrow">Tools</div>
+                {toolsGatedByExcerpt ? (
+                  <span className="pm-ws-ctx-count">unavailable</span>
+                ) : null}
+              </div>
               <div className="pm-ws-tools" role="list">
                 {RAIL_TOOLS.map((tool) => (
                   <button
                     key={tool.id}
                     className={`pm-ws-tool ${
                       workshop.selectedToolId === tool.id ? 'pm-ws-tool-active' : ''
-                    }`}
+                    }${toolsGatedByExcerpt ? ' pm-ws-tool-locked' : ''}`}
                     type="button"
                     role="listitem"
-                    disabled={!toolsEnabled}
-                    onClick={() => workshop.runTool(tool.id)}
-                    title={workshop.excerpt
-                      ? `Have ${activePersona.label} ask ${tool.label} to inspect the pinned excerpt`
-                      : 'Pin an excerpt first'}
+                    disabled={toolsGatedByExcerpt ? false : !toolsEnabled}
+                    aria-disabled={toolsGatedByExcerpt ? true : undefined}
+                    onClick={toolsGatedByExcerpt
+                      ? announceToolGate
+                      : () => workshop.runTool(tool.id)}
+                    title={toolsGatedByExcerpt
+                      ? WORKSHOP_TOOLS_GATED_REASON
+                      : `Have ${activePersona.label} ask ${tool.label} to inspect the pinned excerpt`}
                   >
                     <Icon name={tool.icon} size={15} /> {tool.label}
+                    {toolsGatedByExcerpt ? (
+                      <span className="pm-ws-tool-lock">needs excerpt</span>
+                    ) : null}
                   </button>
                 ))}
                 <button
-                  className="pm-ws-tool pm-ws-tool-ghost"
+                  className={`pm-ws-tool pm-ws-tool-ghost${
+                    toolsGatedByExcerpt ? ' pm-ws-tool-locked' : ''
+                  }`}
                   type="button"
                   role="listitem"
-                  disabled={!toolsEnabled}
-                  onClick={openToolsModal}
-                  title="All writing tools"
+                  disabled={toolsGatedByExcerpt ? false : !toolsEnabled}
+                  aria-disabled={toolsGatedByExcerpt ? true : undefined}
+                  onClick={toolsGatedByExcerpt ? announceToolGate : openToolsModal}
+                  title={toolsGatedByExcerpt ? WORKSHOP_TOOLS_GATED_REASON : 'All writing tools'}
                 >
                   <Icon name="grid" size={15} /> All {WORKSHOP_TOOLS.length} tools…
                 </button>
@@ -842,34 +1022,75 @@ export const WorkshopApp: React.FC = () => {
             onError={handleBoundaryError}
           >
             <div className="pm-ws-thread" ref={threadRef}>
-              {workshop.turns.length === 0 && !showLiveTurn && (
+              {/* §1: the center view keys off SCOPE. Unchosen → the path
+                  chooser; open → the honest open-chat block (with the scope
+                  strip above it, which stays visible once an excerpt lands);
+                  excerpt → the pre-existing ready state plus the reversal. */}
+              {workshop.sessionReady && workshop.scope === null && !showLiveTurn && (
+                <WorkshopPathChooser
+                  hostLabel={activePersona.label}
+                  hostSpecialty={activePersona.specialty}
+                  carriedExcerpt={workshop.excerpt ?? workshop.shelvedExcerpt ?? undefined}
+                  carriedExcerptWordCount={excerptWordCount}
+                  disabled={roomMutationLocked || !workshop.sessionReady}
+                  onContinueWithExcerpt={continueWithExcerpt}
+                  onPasteExcerpt={openPasteSheet}
+                  onChooseFromProject={openExcerptSelector}
+                  onStartOpenConversation={startOpenConversation}
+                />
+              )}
+
+              {workshop.scope === 'open' && (
+                <WorkshopScopeStrip
+                  hostLabel={activePersona.label}
+                  excerptTitle={
+                    workshop.excerpt ? workshopExcerptTitle(workshop.excerpt.source) : undefined
+                  }
+                  excerptVersion={workshop.excerpt?.version}
+                  withdrawalPending={workshop.excerptWithdrawalPending}
+                  disabled={roomMutationLocked}
+                  onAddExcerpt={openPasteSheet}
+                  onSetAside={startOpenConversation}
+                />
+              )}
+
+              {workshop.scope === 'open' && workshop.turns.length === 0 && !showLiveTurn && (
+                <WorkshopOpenChatStart
+                  hostLabel={activePersona.label}
+                  disabled={!workshop.canMessage}
+                  onStarter={seedComposerDraft}
+                />
+              )}
+
+              {workshop.scope === 'excerpt' && workshop.turns.length === 0 && !showLiveTurn && (
                 <div className="pm-ws-thread-empty">
                   <Icon name="sparkle" size={22} />
-                  <p className="pm-ws-thread-empty-title">
-                    {workshop.excerpt
-                      ? `Your excerpt is pinned. Message ${activePersona.label}.`
-                      : 'Pin an excerpt to start the Workshop.'}
-                  </p>
+                  <p className="pm-ws-thread-empty-title">Ready when you are.</p>
                   <p className="pm-ws-thread-empty-sub">
-                    {workshop.excerpt
-                      ? `Ask ${activePersona.label} directly, or run a tool for a verbatim report and a separate host synthesis.`
-                      : 'Paste text or pin a file on the left. The excerpt stays fixed while the conversation grows here.'}
+                    Ask {activePersona.label} about the excerpt, or run a tool from the left. The
+                    excerpt stays pinned while the conversation grows here.
                   </p>
-                  {workshop.excerpt && (
-                    <div className="pm-ws-empty-actions">
-                      {EMPTY_STATE_TOOLS.map((tool) => (
-                        <button
-                          key={tool.id}
-                          className="pm-ws-qa"
-                          type="button"
-                          disabled={!toolsEnabled}
-                          onClick={() => workshop.runTool(tool.id)}
-                        >
-                          {tool.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  <div className="pm-ws-empty-actions">
+                    {EMPTY_STATE_TOOLS.map((tool) => (
+                      <button
+                        key={tool.id}
+                        className="pm-ws-qa"
+                        type="button"
+                        disabled={!toolsEnabled}
+                        onClick={() => workshop.runTool(tool.id)}
+                      >
+                        {tool.label}
+                      </button>
+                    ))}
+                  </div>
+                  {/* §4: the passage → open reversal, offered where the writer
+                      first realises they'd rather just talk. */}
+                  <div className="pm-ws-changed-mind">
+                    Changed your mind?{' '}
+                    <button type="button" disabled={roomMutationLocked} onClick={startOpenConversation}>
+                      <Icon name="dialogue" size={13} /> Just chatting / brainstorming
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -896,6 +1117,17 @@ export const WorkshopApp: React.FC = () => {
                 onCopy={copyTurn}
                 onSave={saveTurn}
               />
+
+              {/* §10: the scope divider is a real turn in the ledger; this is
+                  the block that follows it and answers "did I lose the
+                  conversation?". Shown only while it is the newest thing that
+                  happened, so it reads as an event rather than a banner. */}
+              {workshop.scope === 'open'
+                && !!workshop.excerpt
+                && workshop.turns.at(-1)?.artifact === 'scope_change'
+                && !showLiveTurn && (
+                  <WorkshopExcerptAdoptedNotice hostLabel={activePersona.label} />
+                )}
 
               {showLiveTurn && (
                 workshop.streamingChunkCount === 0 ? (
@@ -973,8 +1205,16 @@ export const WorkshopApp: React.FC = () => {
               onInviteGuest={openGuestModal}
               onDismissGuest={workshop.dismissGuest}
             />
+            {/* §10: the composer's context line reports SCOPE while the room
+                has no passage. "<Host> context" would be true but useless
+                there — what the writer needs to see is that no excerpt is in
+                it. Once one is pinned it returns to the participant gauge. */}
             <ContextBudget
-              label={workshop.contextBudget?.label ?? `${chatTargetLabel} context`}
+              label={
+                workshop.scope === 'open' && !hasExcerpt
+                  ? 'Open conversation · No excerpt yet'
+                  : workshop.contextBudget?.label ?? `${chatTargetLabel} context`
+              }
               snapshot={workshop.contextBudget?.snapshot}
               modelOptions={modelsSettings.modelOptions}
               cumulativeProcessedTokens={tokenTracking.usage.totalTokens}
@@ -983,6 +1223,11 @@ export const WorkshopApp: React.FC = () => {
             />
             <WorkshopComposer
               canMessage={workshop.canMessage && !roomMutationLocked}
+              scope={workshop.scope}
+              hasExcerpt={hasExcerpt}
+              draftSeed={draftSeed}
+              onAddExcerpt={openPasteSheet}
+              onGatedAction={announceGate}
               hasConversation={workshop.chatTarget.kind === 'host' ? workshop.hasHostConversation : true}
               recipientLabel={chatTargetLabel}
               isRunning={workshop.isRunning}
@@ -1002,6 +1247,35 @@ export const WorkshopApp: React.FC = () => {
         </section>
       </div>
 
+      {/* The ONE Edit/Preview sheet for excerpt paste, Add text, editing a
+          text note, editing a wizard suggestion, and reading a project file
+          (Sprint 13A §5–§7). */}
+      {textSheet && (
+        <WorkshopTextSheet
+          open
+          mode={textSheet.mode}
+          value={textSheet.seed ?? sheetAttachment?.content}
+          loading={
+            textSheet.seed === undefined
+            && sheetAttachment !== undefined
+            && sheetAttachment.content === undefined
+            && sheetAttachment.error === undefined
+          }
+          error={sheetAttachment?.error}
+          canOpenInEditor={sheetAttachment?.canOpenInEditor ?? false}
+          applyDisabled={roomMutationLocked}
+          onApply={applyTextSheet}
+          onPasteText={
+            textSheet.mode.kind === 'excerpt' ? excerptVerify.requestVerify : undefined
+          }
+          verified={verifiedExcerpt}
+          onOpenInEditor={openAttachmentInEditor}
+          onChooseFromProject={
+            textSheet.mode.kind === 'excerpt' ? chooseExcerptFromSheet : undefined
+          }
+          onClose={closeTextSheet}
+        />
+      )}
       <WorkshopToolsModal
         open={toolsModalOpen}
         activeToolId={workshop.selectedToolId}

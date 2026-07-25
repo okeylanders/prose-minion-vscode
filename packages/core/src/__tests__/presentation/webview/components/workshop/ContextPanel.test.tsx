@@ -37,6 +37,7 @@ const renderPanel = (overrides: Partial<React.ComponentProps<typeof ContextPanel
     isRunning: false,
     onAddText: jest.fn(),
     onAddFile: jest.fn(),
+    onOpenAttachment: jest.fn(),
     onRemove: jest.fn(),
     wizardRunning: false,
     onRunWizard: jest.fn(),
@@ -56,15 +57,13 @@ describe('ContextPanel', () => {
     expect(screen.getByText('0')).toBeTruthy();
   });
 
-  it('adds a text note through the inline flow', () => {
+  // Sprint 13A §6: "Add text" opens the shared Edit/Preview sheet rather than
+  // an inline rail textarea, so a note is composed and previewed in one place.
+  it('routes Add text to the shared text sheet instead of an inline draft', () => {
     const { props } = renderPanel();
     fireEvent.click(screen.getByRole('button', { name: /add text/i }));
-    fireEvent.change(screen.getByLabelText('Context text'), {
-      target: { value: '  Prom happens Friday.  ' }
-    });
-    fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
 
-    expect(props.onAddText).toHaveBeenCalledWith('Prom happens Friday.');
+    expect(props.onAddText).toHaveBeenCalled();
     expect(screen.queryByLabelText('Context text')).toBeNull();
   });
 
@@ -104,23 +103,33 @@ describe('ContextPanel', () => {
     expect(screen.getByText(/getting close to the cap/)).toBeTruthy();
   });
 
-  it('lets the writer read a text note by expanding its pill', () => {
-    renderPanel({
-      attachments: [attachment({
-        id: 'ctx-2',
-        kind: 'text',
-        origin: 'wizard',
-        label: 'Wizard brief…',
-        words: 320,
-        relativePath: undefined,
-        content: 'Genre: YA supernatural. Nate is learning to read the marks.'
-      })]
+  // Sprint 13A §7: EVERY pill opens, not just the ones whose body happened to
+  // ride the snapshot — the caller decides which sheet mode each one gets.
+  it('opens any pill in the shared sheet, files included', () => {
+    const wizardNote = attachment({
+      id: 'ctx-2',
+      kind: 'text',
+      origin: 'wizard',
+      label: 'Wizard brief…',
+      words: 320,
+      relativePath: undefined,
+      content: 'Genre: YA supernatural. Nate is learning to read the marks.'
     });
+    const { props } = renderPanel({ attachments: [attachment(), wizardNote] });
 
     fireEvent.click(screen.getByRole('button', { name: 'Wizard brief…' }));
-    expect(screen.getByRole('note').textContent).toContain('Nate is learning to read the marks.');
-    fireEvent.click(screen.getByRole('button', { name: 'Wizard brief…' }));
-    expect(screen.queryByRole('note')).toBeNull();
+    expect(props.onOpenAttachment).toHaveBeenCalledWith(wizardNote);
+
+    fireEvent.click(screen.getByRole('button', { name: 'character-sheet-raven.md' }));
+    expect(props.onOpenAttachment).toHaveBeenCalledTimes(2);
+  });
+
+  it('says what clicking a pill will do before the click', () => {
+    renderPanel({ attachments: [attachment()] });
+
+    expect(
+      screen.getByRole('button', { name: 'character-sheet-raven.md' }).getAttribute('title')
+    ).toContain('opens in an editor tab');
   });
 
   it('offers the Context wizard and swaps it for a cancellable status row while running', () => {

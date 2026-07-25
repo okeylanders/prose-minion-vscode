@@ -35,6 +35,7 @@ import {
   StreamCompleteMessage,
   StreamStartedMessage,
   WorkshopConfiguredResourceRef,
+  WorkshopContextAttachmentContentMessage,
   WorkshopContextAttachmentSnapshot,
   WorkshopContextCatalogEntry,
   WorkshopContextCatalogMessage,
@@ -51,6 +52,8 @@ import {
   WorkshopSessionSaveStatusMessage,
   WorkshopSessionActionResultMessage,
   WorkshopSessionAction,
+  WorkshopSelectableSessionScope,
+  WorkshopSessionScope,
   WorkshopSessionSummary,
   WorkshopSessionStateMessage,
   WorkshopSessionsDataMessage,
@@ -65,6 +68,18 @@ import {
   coerceWorkshopWriterProfile
 } from '@messages';
 import { LabeledContextBudgetSnapshot } from '@messages';
+
+/**
+ * One attachment body, fetched on demand for the Edit/Preview sheet (Sprint 13A
+ * §7). Attachment content is prompt-bearing host state under a shared 35,000-word
+ * budget, so it deliberately does not ride every session snapshot.
+ */
+export interface WorkshopAttachmentContentState {
+  id: string;
+  content?: string;
+  error?: string;
+  canOpenInEditor: boolean;
+}
 
 /** The one live-run tracker (PR #67 review #8). */
 interface LiveRun {
@@ -84,6 +99,18 @@ export interface WorkshopState {
   degradedConversationKeys: string[];
   degradedConversations: WorkshopConversationDegradation[];
   excerpt: WorkshopExcerptSnapshot | null;
+  /**
+   * Explicit session scope (Sprint 13A §1). EVERY surface keys off this —
+   * center view, header meta, composer, rail — so nothing has to guess what
+   * kind of room this is from whether `excerpt` happens to be set.
+   */
+  scope: WorkshopSessionScope;
+  /** The passage set aside for an open conversation; re-pinnable, never deleted. */
+  shelvedExcerpt: WorkshopExcerptSnapshot | null;
+  /** True when a shelved passage still has to be withdrawn from the host. */
+  excerptWithdrawalPending: boolean;
+  /** Attachment bodies fetched on demand for the Edit/Preview sheet. */
+  attachmentContent: WorkshopAttachmentContentState | null;
   contextAttachments: WorkshopContextAttachmentSnapshot[];
   /** Staged one-shot attachments for the writer's next message (Phase 6B). */
   pendingMessageAttachments: WorkshopMessageAttachmentSnapshot[];
@@ -167,6 +194,12 @@ export interface WorkshopActions {
   addContextText: (text: string) => void;
   addContextFile: () => void;
   removeContextAttachment: (id: string) => void;
+  updateContextText: (id: string, text: string) => void;
+  requestContextAttachment: (id: string) => void;
+  openContextAttachmentFile: (id: string) => void;
+  clearAttachmentContent: () => void;
+  setSessionScope: (scope: WorkshopSelectableSessionScope) => void;
+  repinExcerpt: () => void;
   requestContextCatalog: () => void;
   searchContextResources: (query: string) => void;
   clearContextSearch: () => void;
@@ -178,6 +211,7 @@ export interface WorkshopActions {
   runContextWizard: () => void;
   cancelContextWizard: () => void;
   handleContextCatalog: (message: WorkshopContextCatalogMessage) => void;
+  handleContextAttachmentContent: (message: WorkshopContextAttachmentContentMessage) => void;
   handleContextSearchResults: (message: WorkshopContextSearchResultsMessage) => void;
   runTool: (toolId: WorkshopToolId) => void;
   quickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
@@ -242,6 +276,11 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const [degradedConversations, setDegradedConversations] =
     React.useState<WorkshopConversationDegradation[]>([]);
   const [excerpt, setExcerpt] = React.useState<WorkshopExcerptSnapshot | null>(null);
+  const [scope, setScopeState] = React.useState<WorkshopSessionScope>(null);
+  const [shelvedExcerpt, setShelvedExcerpt] = React.useState<WorkshopExcerptSnapshot | null>(null);
+  const [excerptWithdrawalPending, setExcerptWithdrawalPending] = React.useState(false);
+  const [attachmentContent, setAttachmentContent] =
+    React.useState<WorkshopAttachmentContentState | null>(null);
   const [contextAttachments, setContextAttachments] = React.useState<WorkshopContextAttachmentSnapshot[]>([]);
   const [pendingMessageAttachments, setPendingMessageAttachments] = React.useState<WorkshopMessageAttachmentSnapshot[]>([]);
   const [contextPending, setContextPending] = React.useState(false);
@@ -351,6 +390,36 @@ export const useWorkshop = (): UseWorkshopReturn => {
     post(MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT, { id });
   }, [post]);
 
+  const updateContextText = React.useCallback((id: string, text: string) => {
+    post(MessageType.WORKSHOP_UPDATE_CONTEXT_TEXT, { id, text });
+  }, [post]);
+
+  /**
+   * Ask for one attachment's body. The pending marker carries the id so a
+   * stale reply for a previously opened pill cannot paint into the sheet the
+   * writer is looking at now.
+   */
+  const requestContextAttachment = React.useCallback((id: string) => {
+    setAttachmentContent({ id, canOpenInEditor: false });
+    post(MessageType.WORKSHOP_REQUEST_CONTEXT_ATTACHMENT, { id });
+  }, [post]);
+
+  const openContextAttachmentFile = React.useCallback((id: string) => {
+    post(MessageType.WORKSHOP_OPEN_CONTEXT_ATTACHMENT_FILE, { id });
+  }, [post]);
+
+  const clearAttachmentContent = React.useCallback(() => setAttachmentContent(null), []);
+
+  const setSessionScope = React.useCallback((next: WorkshopSelectableSessionScope) => {
+    setErrorMessage('');
+    post(MessageType.WORKSHOP_SET_SESSION_SCOPE, { scope: next });
+  }, [post]);
+
+  const repinExcerpt = React.useCallback(() => {
+    setErrorMessage('');
+    post(MessageType.WORKSHOP_REPIN_EXCERPT, {});
+  }, [post]);
+
   const requestContextCatalog = React.useCallback(() => {
     post(MessageType.WORKSHOP_REQUEST_CONTEXT_CATALOG, {});
   }, [post]);
@@ -402,6 +471,16 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const handleContextCatalog = React.useCallback((message: WorkshopContextCatalogMessage) => {
     setContextCatalog(message.payload.entries);
   }, []);
+
+  const handleContextAttachmentContent = React.useCallback(
+    (message: WorkshopContextAttachmentContentMessage) => {
+      const { id, content, error, canOpenInEditor } = message.payload;
+      setAttachmentContent((current) =>
+        current?.id === id ? { id, content, error, canOpenInEditor } : current
+      );
+    },
+    []
+  );
 
   const handleContextSearchResults = React.useCallback((message: WorkshopContextSearchResultsMessage) => {
     setContextSearch(message.payload);
@@ -598,6 +677,9 @@ export const useWorkshop = (): UseWorkshopReturn => {
         (message.payload.persistence.degradedConversations ?? []).map((entry) => ({ ...entry }))
       );
       setExcerpt(session.excerpt ?? null);
+      setScopeState(session.scope);
+      setShelvedExcerpt(session.shelvedExcerpt ?? null);
+      setExcerptWithdrawalPending(session.pendingHostUpdate?.excerptWithdrawn === true);
       setContextAttachments(session.contextAttachments ?? []);
       setPendingMessageAttachments(session.pendingMessageAttachments ?? []);
       setContextPending(session.pendingHostUpdate?.context ?? false);
@@ -804,7 +886,12 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const currentRequestId = liveRun?.phase === 'streaming' ? liveRun.requestId : null;
   const isRunning = currentRequestId !== null || activeToolId !== null;
   const hiddenTurns = Math.max(0, totalTurns - turns.length);
-  const canMessage = sessionReady && !!excerpt?.text.trim() && !isRunning;
+  // Sprint 13A §1: an open conversation is a real, messageable room; a session
+  // whose path is unchosen is not, even when an excerpt carried over from the
+  // previous one — the writer has not said what this room is for yet.
+  const canMessage = sessionReady
+    && !isRunning
+    && (scope === 'open' || (scope === 'excerpt' && !!excerpt?.text.trim()));
   const isPersonaSelectionLocked = hasHostConversation || isRunning;
 
   return {
@@ -816,6 +903,10 @@ export const useWorkshop = (): UseWorkshopReturn => {
     degradedConversationKeys,
     degradedConversations,
     excerpt,
+    scope,
+    shelvedExcerpt,
+    excerptWithdrawalPending,
+    attachmentContent,
     contextAttachments,
     pendingMessageAttachments,
     contextPending,
@@ -870,6 +961,12 @@ export const useWorkshop = (): UseWorkshopReturn => {
     addContextText,
     addContextFile,
     removeContextAttachment,
+    updateContextText,
+    requestContextAttachment,
+    openContextAttachmentFile,
+    clearAttachmentContent,
+    setSessionScope,
+    repinExcerpt,
     requestContextCatalog,
     searchContextResources,
     clearContextSearch,
@@ -881,6 +978,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     runContextWizard,
     cancelContextWizard,
     handleContextCatalog,
+    handleContextAttachmentContent,
     handleContextSearchResults,
     runTool,
     quickAction,

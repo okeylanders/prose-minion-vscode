@@ -740,6 +740,10 @@ export class WorkshopSessionPersistenceCoordinator {
       .find((turn) => turn.participant !== 'session' && turn.content.trim().length > 0);
     return {
       hostPersonaId: workshop.participants.host.personaId,
+      // Sprint 13A §11: scope is persisted alongside the room so restore and
+      // the browser can say what KIND of session this is, rather than
+      // inferring "open conversation" from a missing excerpt.
+      scope: workshop.scope ?? null,
       participantPersonaIds,
       turnCount: workshop.turns.length,
       excerptWordCount: excerpt ? countWords(excerpt.text) : 0,
@@ -769,6 +773,7 @@ export class WorkshopSessionPersistenceCoordinator {
       participantPersonaIds: [...persisted.participantPersonaIds],
       turnCount: persisted.turnCount,
       excerptWordCount: persisted.excerptWordCount,
+      scope: persisted.scope,
       excerptLabel: persisted.excerptLabel,
       excerptIdentity: persisted.excerptIdentity,
       preview: persisted.preview,

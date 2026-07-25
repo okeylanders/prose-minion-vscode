@@ -25,7 +25,9 @@ import { ContextAssistantService } from '@services/analysis/ContextAssistantServ
 import {
   WorkshopContextAttachmentInput,
   WorkshopMessageAttachmentInput,
-  WorkshopSessionService
+  WorkshopScopeTransition,
+  WorkshopSessionService,
+  workshopTextNoteLabel
 } from '@/application/services/workshop/WorkshopSessionService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import {
@@ -104,6 +106,12 @@ import {
   WorkshopAddContextTextMessage,
   WorkshopAddContextFileMessage,
   WorkshopRemoveContextAttachmentMessage,
+  WorkshopUpdateContextTextMessage,
+  WorkshopRequestContextAttachmentMessage,
+  WorkshopOpenContextAttachmentFileMessage,
+  WorkshopSetSessionScopeMessage,
+  WorkshopRepinExcerptMessage,
+  isWorkshopSelectableSessionScope,
   WorkshopRequestContextCatalogMessage,
   WorkshopContextCatalogMessage,
   WorkshopContextCatalogEntry,
@@ -154,6 +162,21 @@ const MID_RUN_EXCERPT_GUARD_MESSAGE =
   'A tool is still running. Wait for it to finish (or start a new session) before replacing the excerpt.';
 const MID_WIZARD_EXCERPT_GUARD_MESSAGE =
   'The Context wizard is still running. Wait for it to finish or cancel it before replacing the excerpt.';
+
+/**
+ * Why a context edit was refused (Sprint 13A §6). Every branch names a reason
+ * the writer can act on — the sheet keeps the draft, so a refusal must never
+ * read as "your edit vanished".
+ */
+const WORKSHOP_CONTEXT_EDIT_REFUSALS: Readonly<
+  Record<'unknown' | 'not-editable' | 'over-budget', (remainingWords: number) => string>
+> = Object.freeze({
+  unknown: () => 'That context attachment is no longer attached to this session.',
+  'not-editable': () =>
+    'Project files stay in sync with the file on disk. Edit the file itself, or add a text note instead.',
+  'over-budget': (remainingWords) =>
+    `That edit exceeds the shared context budget — ${remainingWords.toLocaleString('en-US')} words are available. Trim it, or remove another attachment first.`
+});
 
 const isAbsolutePath = (filePath: string): boolean =>
   filePath.startsWith('/') || /^[A-Za-z]:[\\/]/.test(filePath) || filePath.startsWith('\\\\');
@@ -305,6 +328,20 @@ export class WorkshopHandler {
       MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT,
       this.handleRemoveContextAttachment.bind(this)
     );
+    registerMutation(
+      MessageType.WORKSHOP_UPDATE_CONTEXT_TEXT,
+      this.handleUpdateContextText.bind(this)
+    );
+    // Reads, not mutations: opening the sheet or the file must work while a
+    // session operation is in flight.
+    router.register(
+      MessageType.WORKSHOP_REQUEST_CONTEXT_ATTACHMENT,
+      this.handleRequestContextAttachment.bind(this)
+    );
+    router.register(
+      MessageType.WORKSHOP_OPEN_CONTEXT_ATTACHMENT_FILE,
+      this.handleOpenContextAttachmentFile.bind(this)
+    );
     router.register(
       MessageType.WORKSHOP_REQUEST_CONTEXT_CATALOG,
       this.handleRequestContextCatalog.bind(this)
@@ -340,6 +377,11 @@ export class WorkshopHandler {
     registerMutation(MessageType.WORKSHOP_TODO_ACTION, this.handleTodoAction.bind(this));
     registerMutation(MessageType.WORKSHOP_PICK_EXCERPT_FILE, this.handlePickExcerptFile.bind(this));
     registerMutation(MessageType.WORKSHOP_REREAD_EXCERPT, this.handleRereadExcerpt.bind(this));
+    registerMutation(
+      MessageType.WORKSHOP_SET_SESSION_SCOPE,
+      this.handleSetSessionScope.bind(this)
+    );
+    registerMutation(MessageType.WORKSHOP_REPIN_EXCERPT, this.handleRepinExcerpt.bind(this));
     this.sessionMessageHandler.registerRoutes(router, registerMutation);
     router.register(MessageType.CANCEL_WORKSHOP_REQUEST, this.handleCancelRequest.bind(this));
   }
@@ -782,10 +824,35 @@ export class WorkshopHandler {
       this.sendError('workshop.send_message', targetDetails.missingConversationMessage);
       return;
     }
+    // Sprint 13A §1: what a turn needs depends on the session's SCOPE, not on
+    // whether an excerpt happens to be present. An open conversation is a real
+    // room; tool sidecars and guests still require the passage they read.
+    const scope = this.session.getScope();
     const excerpt = this.session.getExcerpt();
-    if (!excerpt || excerpt.text.trim().length === 0) {
-      this.sendError('workshop.send_message', 'Pin an excerpt before messaging the Workshop.');
+    const hasExcerpt = !!excerpt && excerpt.text.trim().length > 0;
+    // Scope first, and independently of excerpt presence: a new session
+    // deliberately CARRIES the previous room's passage across the boundary
+    // (§3), so "an excerpt exists" is not evidence that the writer has chosen
+    // what this room is for.
+    if (scope === null) {
+      this.sendError(
+        'workshop.send_message',
+        'Choose how to start this session — workshop an excerpt, or start an open conversation.'
+      );
       return;
+    }
+    if (!hasExcerpt) {
+      if (target.kind !== 'host') {
+        this.sendError(
+          'workshop.send_message',
+          'Add an excerpt before continuing with a tool or guest.'
+        );
+        return;
+      }
+      if (scope !== 'open') {
+        this.sendError('workshop.send_message', 'Pin an excerpt before messaging the Workshop.');
+        return;
+      }
     }
 
     this.preemptActiveRun();
@@ -926,6 +993,7 @@ export class WorkshopHandler {
           requestId,
           personaId,
           excerpt,
+          excerptVersion: this.session.getExcerptVersion(),
           signal: controller.signal,
           events: {
             status: (message, tickerMessage) => this.sendStatus(message, undefined, tickerMessage),
@@ -960,7 +1028,9 @@ export class WorkshopHandler {
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
               this.session.getContextAttachments()
             ),
-            excerptSourceFrame: buildWorkshopExcerptSourceFrame(excerpt.source)
+            excerptSourceFrame: excerpt
+              ? buildWorkshopExcerptSourceFrame(excerpt.source)
+              : undefined
           }, {
             signal: controller.signal,
             onToken: (token: string) => this.sendStreamChunk(requestId, token),
@@ -1126,14 +1196,15 @@ export class WorkshopHandler {
       this.sendError('workshop', 'Cannot attach empty context text.');
       return;
     }
-    const words = countWords(text);
-    const label = `${text.split(/\s+/).slice(0, 3).join(' ')}\u2026`;
     this.applyContextAttachment({
       kind: 'text',
       origin: 'writer',
-      label,
+      // Sprint 13A \u00a76: the note's own first line is its name. The old
+      // "first three words\u2026" placeholder was a stand-in for a pill the writer
+      // could not open; now that the sheet opens it, the title is real.
+      label: workshopTextNoteLabel(text),
       content: text,
-      words
+      words: countWords(text)
     });
   }
 
@@ -1187,6 +1258,175 @@ export class WorkshopHandler {
       `[WorkshopHandler] Context attachment removed (${removed.label}, ${removed.words} words)`
     );
     this.sessionPersistence.markDirty('context attachment removed');
+    this.postSessionState();
+  }
+
+  /**
+   * Save an edit made in the shared Edit/Preview sheet (Sprint 13A §6). The
+   * aggregate owns editability and the shared word budget; this handler owns
+   * the visible reason a refusal happened.
+   */
+  async handleUpdateContextText(message: WorkshopUpdateContextTextMessage): Promise<void> {
+    const id = message.payload?.id;
+    const text = typeof message.payload?.text === 'string' ? message.payload.text : '';
+    if (typeof id !== 'string' || id.length === 0) {
+      this.sendError('workshop', 'A context edit must identify an attachment.');
+      return;
+    }
+    if (text.trim().length === 0) {
+      this.sendError('workshop', 'Cannot save empty context text. Remove the attachment instead.');
+      return;
+    }
+    const result = this.session.updateContextAttachmentText(id, text, countWords(text));
+    if (!result.ok) {
+      this.sendError('workshop', WORKSHOP_CONTEXT_EDIT_REFUSALS[result.reason](result.remainingWords));
+      this.postSessionState();
+      return;
+    }
+    if (result.eventTurn) {
+      this.postTurn(result.eventTurn);
+    }
+    this.outputChannel.appendLine(
+      `[WorkshopHandler] Context attachment edited (${result.attachment.label}, ` +
+      `${result.attachment.words} words, origin=${result.attachment.origin})`
+    );
+    this.sessionPersistence.markDirty('context attachment edited');
+    this.postSessionState();
+  }
+
+  /**
+   * Serve ONE attachment's body to the Edit/Preview sheet (Sprint 13A §7).
+   *
+   * Attachment content is prompt-bearing host state under a 35,000-word shared
+   * budget, so it deliberately does not ride every session snapshot — the
+   * webview asks for exactly the one the writer opened.
+   */
+  async handleRequestContextAttachment(
+    message: WorkshopRequestContextAttachmentMessage
+  ): Promise<void> {
+    const id = message.payload?.id;
+    if (typeof id !== 'string' || id.length === 0) {
+      this.sendError('workshop', 'A context request must identify an attachment.');
+      return;
+    }
+    const attachment = this.session.getContextAttachment(id);
+    this.postMessage({
+      type: MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT,
+      source: 'extension.workshop',
+      payload: attachment
+        ? {
+            id,
+            content: attachment.content,
+            canOpenInEditor: attachment.sourceUri !== undefined
+          }
+        : {
+            id,
+            error: 'That context attachment is no longer attached to this session.',
+            canOpenInEditor: false
+          },
+      timestamp: Date.now()
+    });
+  }
+
+  /**
+   * Open a file-backed attachment's real document (Sprint 13A §7). The sheet
+   * is the prettified in-webview read; this is the escape hatch to the editor.
+   * Routed through the ShellService port, so core never touches `vscode`.
+   */
+  async handleOpenContextAttachmentFile(
+    message: WorkshopOpenContextAttachmentFileMessage
+  ): Promise<void> {
+    const id = message.payload?.id;
+    if (typeof id !== 'string' || id.length === 0) {
+      this.sendError('workshop', 'An open request must identify an attachment.');
+      return;
+    }
+    const attachment = this.session.getContextAttachment(id);
+    if (!attachment?.sourceUri) {
+      this.sendError(
+        'workshop',
+        attachment
+          ? `${attachment.label} is a typed note, so it has no file to open.`
+          : 'That context attachment is no longer attached to this session.'
+      );
+      return;
+    }
+    try {
+      await this.shell.openFileInEditor(fileURLToPath(attachment.sourceUri), { beside: true });
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Context attachment opened in an editor tab (${attachment.label})`
+      );
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Could not open ${attachment.label} in an editor tab: ${details}`
+      );
+      this.sendError('workshop', `Could not open ${attachment.label} in an editor tab.`, details);
+    }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Session scope (Sprint 13A §2/§4) — the path chooser and both reversals.
+  // Every one is a context transition inside ONE retained session: no
+  // conversation, transcript, task, or attachment is discarded.
+  // ───────────────────────────────────────────────────────────────────────────
+
+  async handleSetSessionScope(message: WorkshopSetSessionScopeMessage): Promise<void> {
+    const scope = message.payload?.scope;
+    if (!isWorkshopSelectableSessionScope(scope)) {
+      this.sendError('workshop', `Unknown Workshop session scope: ${String(scope)}`);
+      return;
+    }
+    // A scope flip changes what the NEXT turn is about; letting it land
+    // mid-stream would make the in-flight reply's subject ambiguous.
+    if (this.rejectExcerptMutationWhileRunning()) {
+      return;
+    }
+    try {
+      const transition = this.session.setSessionScope(scope);
+      this.applyScopeTransition(transition, scope === 'open'
+        ? 'session scope set to open conversation'
+        : 'session scope set to passage session');
+    } catch (error) {
+      this.sendError(
+        'workshop',
+        error instanceof Error ? error.message : 'That session scope is unavailable.'
+      );
+    }
+  }
+
+  async handleRepinExcerpt(_message: WorkshopRepinExcerptMessage): Promise<void> {
+    if (this.rejectExcerptMutationWhileRunning()) {
+      return;
+    }
+    try {
+      this.applyScopeTransition(this.session.repinShelvedExcerpt(), 'shelved excerpt re-pinned');
+    } catch (error) {
+      this.sendError(
+        'workshop',
+        error instanceof Error ? error.message : 'There is no excerpt on the shelf.'
+      );
+    }
+  }
+
+  private applyScopeTransition(
+    transition: WorkshopScopeTransition,
+    reason: string
+  ): void {
+    if (!transition.changed) {
+      // Idempotent: still broadcast so a stale webview reconciles.
+      this.postSessionState();
+      return;
+    }
+    if (transition.dividerTurn) {
+      this.postTurn(transition.dividerTurn);
+    }
+    this.outputChannel.appendLine(
+      `[WorkshopHandler] ${reason} (scope=${transition.scope ?? 'unchosen'}, ` +
+      `excerpt=${transition.excerpt ? `v${transition.excerpt.version}` : 'none'}, ` +
+      `shelved=${transition.shelvedExcerpt ? `v${transition.shelvedExcerpt.version}` : 'none'})`
+    );
+    this.sessionPersistence.markDirty(reason);
     this.postSessionState();
   }
 

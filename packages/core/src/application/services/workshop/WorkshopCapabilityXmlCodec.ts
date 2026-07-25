@@ -49,17 +49,32 @@ export const createWorkshopCapabilityTurnReminder = (): string =>
   `${PROMPT_BUDGETS.workshopCapability.callsPerTurn} capability calls. ` +
   'A limit reached in an earlier turn does not carry forward. Use the available calls when fresh evidence would materially improve the answer.';
 
+/** Room facts that change which capability families are actually callable. */
+export interface WorkshopCapabilityAvailability {
+  /**
+   * False in an open conversation (Sprint 13A §9): excerpt analysis is
+   * excerpt-SCOPED, so the protocol must not advertise a door that the host
+   * will refuse — an advertised-then-rejected call wastes a turn's allowance
+   * and reads to the persona as a malfunction.
+   */
+  excerptAvailable?: boolean;
+}
+
 export const createWorkshopCapabilityInstruction = (
-  resourceGroups: readonly WorkshopResourceGroupAvailability[] = []
+  resourceGroups: readonly WorkshopResourceGroupAvailability[] = [],
+  availability: WorkshopCapabilityAvailability = {}
 ): string => {
   const budgets = PROMPT_BUDGETS.workshopCapability;
   const resourceBudgets = PROMPT_BUDGETS.workshopResource;
   const toolIds = WORKSHOP_TOOL_CATALOG.map(tool => tool.id).join(', ');
+  const excerptAvailable = availability.excerptAvailable !== false;
   const lines = [
     '## Workshop Capability Protocol',
     '',
     `You may make at most ${budgets.callsPerTurn} capability calls during this user turn. ` +
-      `You may request dictionary.full-entry at most ${budgets.fullEntriesPerTurn} time and analysis.run at most ${budgets.analysisRunsPerTurn} time.`,
+      (excerptAvailable
+        ? `You may request dictionary.full-entry at most ${budgets.fullEntriesPerTurn} time and analysis.run at most ${budgets.analysisRunsPerTurn} time.`
+        : `You may request dictionary.full-entry at most ${budgets.fullEntriesPerTurn} time.`),
     'This allowance resets with every new writer message. Never carry an exhausted capability budget forward from an earlier turn.',
     'A capability call must be your entire response: one bare, well-formed XML document with no prose, Markdown fence, second call, or characters before or after it.',
     '',
@@ -77,16 +92,24 @@ export const createWorkshopCapabilityInstruction = (
     '  <purpose>Compare diction options for this passage.</purpose>',
     '</prose-minion-tool-call>',
     '',
-    'Isolated analysis side pass:',
-    '<prose-minion-tool-call name="analysis.run">',
-    '  <toolId>continuity</toolId>',
-    '  <instructions>Check whether the revised blocking is internally consistent.</instructions>',
-    '</prose-minion-tool-call>',
-    '',
-    `Allowed analysis tool ids: ${toolIds}.`,
+    ...(excerptAvailable
+      ? [
+          'Isolated analysis side pass:',
+          '<prose-minion-tool-call name="analysis.run">',
+          '  <toolId>continuity</toolId>',
+          '  <instructions>Check whether the revised blocking is internally consistent.</instructions>',
+          '</prose-minion-tool-call>',
+          '',
+          `Allowed analysis tool ids: ${toolIds}.`
+        ]
+      : [
+          'Excerpt analysis (analysis.run) is UNAVAILABLE in this conversation because no excerpt is attached. Do not call it. If a question needs one, say so and ask the writer to add an excerpt.'
+        ]),
     `Input ceilings are word ${budgets.wordCharacters} characters, context ${budgets.contextCharacters}, ` +
       `purpose ${budgets.purposeCharacters}, and instructions ${budgets.instructionsCharacters}. Do not split or truncate an input to evade a ceiling.`,
-    'Never include excerpt text or a filesystem path in analysis.run; the host pins the current excerpt and stamps its provenance.',
+    ...(excerptAvailable
+      ? ['Never include excerpt text or a filesystem path in analysis.run; the host pins the current excerpt and stamps its provenance.']
+      : []),
     'After evidence is returned, use it honestly. The dictionary and analysis agents remain separately attributed; never claim their report as your own.'
   ];
 

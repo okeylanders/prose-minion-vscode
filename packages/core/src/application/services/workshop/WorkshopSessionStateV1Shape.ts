@@ -8,7 +8,8 @@
 import {
   isWorkshopInteractionMode,
   isWorkshopPersonaExpressionLevel,
-  isWorkshopRelationalDepth
+  isWorkshopRelationalDepth,
+  isWorkshopSessionScope
 } from '@messages';
 import { isContextPathGroup } from '@shared/types';
 import {
@@ -40,10 +41,22 @@ export function assertWorkshopSessionStateShape(
       'participants',
       'todos'
     ],
-    ['excerpt', 'selectedToolId', 'lastCommittedPersonaBehavior']
+    [
+      'excerpt',
+      'scope',
+      'shelvedExcerpt',
+      'selectedToolId',
+      'lastCommittedPersonaBehavior'
+    ]
   );
   if (state.excerpt !== undefined) {
     assertExcerpt(state.excerpt, 'Workshop session state.excerpt');
+  }
+  if (state.scope !== undefined && !isWorkshopSessionScope(state.scope)) {
+    shapeError('Workshop session state.scope', 'excerpt, open, or null');
+  }
+  if (state.shelvedExcerpt !== undefined) {
+    assertExcerpt(state.shelvedExcerpt, 'Workshop session state.shelvedExcerpt');
   }
   arrayOf(state.contextAttachments, 'Workshop session state.contextAttachments', assertContextAttachment);
   arrayOf(
@@ -184,12 +197,30 @@ function assertRevisions(value: unknown): void {
     value,
     'Workshop session state.revisions',
     ['excerpt', 'replacementCount', 'context'],
-    ['pendingExcerpt', 'pendingContext']
+    [
+      'pendingExcerpt',
+      'pendingExcerptChange',
+      'pendingExcerptWithdrawal',
+      'pendingContext'
+    ]
   );
   numberAt(revisions.excerpt, 'Workshop session state.revisions.excerpt');
   numberAt(revisions.replacementCount, 'Workshop session state.revisions.replacementCount');
   numberAt(revisions.context, 'Workshop session state.revisions.context');
   optionalNumberAt(revisions.pendingExcerpt, 'Workshop session state.revisions.pendingExcerpt');
+  if (revisions.pendingExcerptChange !== undefined) {
+    enumAt(
+      revisions.pendingExcerptChange,
+      'Workshop session state.revisions.pendingExcerptChange',
+      ['revised', 'added', 'repinned']
+    );
+  }
+  if (
+    revisions.pendingExcerptWithdrawal !== undefined &&
+    revisions.pendingExcerptWithdrawal !== true
+  ) {
+    shapeError('Workshop session state.revisions.pendingExcerptWithdrawal', 'true when present');
+  }
   optionalNumberAt(revisions.pendingContext, 'Workshop session state.revisions.pendingContext');
 }
 
@@ -308,7 +339,8 @@ function assertTurn(value: unknown, path: string): void {
       'excerpt_revision',
       'context_change',
       'session_start',
-      'session_resume'
+      'session_resume',
+      'scope_change'
     ]
   );
   numberAt(turn.excerptVersion, `${path}.excerptVersion`);

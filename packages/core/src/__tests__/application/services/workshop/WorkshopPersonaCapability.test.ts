@@ -74,6 +74,7 @@ describe('WorkshopPersonaCapability', () => {
     log
   ).create({
     requestId: 'host-request',
+    excerptVersion: session.getExcerptVersion(),
     personaId: 'jill',
     excerpt: session.getExcerpt()!,
     signal: controller.signal,

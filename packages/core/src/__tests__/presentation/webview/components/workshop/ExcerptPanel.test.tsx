@@ -3,45 +3,65 @@
  */
 
 /**
- * ExcerptPanel — Sprint 12 intake rework. Behavior under test:
- * - two-button empty state with NO pin vocabulary anywhere,
- * - typing state: live word count, paste triggers the verify round-trip,
- *   verified provenance applies only while the draft matches the claim,
- * - set state: display-safe provenance line (file path + line range,
- *   honest "source unknown" for manual text),
+ * ExcerptPanel — Sprint 12 intake rework + Sprint 13A scope awareness.
+ *
+ * Sprint 12 behavior still under test:
+ * - no pin vocabulary in the empty state,
+ * - display-safe provenance line (file path + line range, honest
+ *   "source unknown" for manual text),
  * - locked affordances switch on source kind (`Update text…` vs
  *   `Re-read from file`).
+ *
+ * Sprint 13A behavior under test:
+ * - the block's three states key off SCOPE, not off excerpt presence,
+ * - the no-excerpt open-chat card is honest about what the host has read AND
+ *   about context still riding along,
+ * - both reversals are offered and shelve rather than delete,
+ * - authoring delegates to the shared Edit/Preview sheet (no inline draft).
  */
 
 import * as React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ExcerptPanel } from '@components/workshop/ExcerptPanel';
 import { WorkshopExcerpt, WorkshopExcerptSource } from '@messages';
-import { WorkshopVerifiedExcerpt } from '@hooks/domain/useWorkshopExcerptVerify';
 
-const excerptWith = (source: WorkshopExcerptSource, text = 'The prom lights die.'): WorkshopExcerpt => ({
+const excerptWith = (
+  source: WorkshopExcerptSource,
+  text = 'The prom lights die.'
+): WorkshopExcerpt => ({
   text,
   version: 2,
   source,
   pinnedAt: 1
 });
 
+const fileSource: WorkshopExcerptSource = {
+  kind: 'file',
+  sourceUri: 'file:///chapters/05.md',
+  relativePath: 'chapters/05.md'
+};
+
 const renderPanel = (overrides: Partial<React.ComponentProps<typeof ExcerptPanel>> = {}) => {
   const props: React.ComponentProps<typeof ExcerptPanel> = {
     excerpt: null,
+    shelvedExcerpt: null,
+    scope: null,
+    hostLabel: 'Jill',
     isRunning: false,
     locked: false,
-    verified: null,
-    onSet: jest.fn(),
+    onOpenPasteSheet: jest.fn(),
     onChooseFile: jest.fn(),
     onRereadFile: jest.fn(),
-    onPasteVerify: jest.fn(),
+    onContinueWithExcerpt: jest.fn(),
+    onRepinExcerpt: jest.fn(),
+    onSetAside: jest.fn(),
+    onStartOpenConversation: jest.fn(),
     ...overrides
   };
   return { ...render(<ExcerptPanel {...props} />), props };
 };
 
-describe('ExcerptPanel', () => {
+describe('ExcerptPanel — path unchosen', () => {
   it('opens with two intent buttons and no pin vocabulary', () => {
     const { container } = renderPanel();
 
@@ -51,81 +71,67 @@ describe('ExcerptPanel', () => {
     expect(container.textContent).not.toMatch(/\bpin(ned|ning|s)?\b/i);
   });
 
+  it('delegates authoring to the shared sheet instead of an inline draft', () => {
+    const { props } = renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: /paste or type/i }));
+
+    expect(props.onOpenPasteSheet).toHaveBeenCalled();
+    expect(screen.queryByLabelText('Excerpt text')).toBeNull();
+  });
+
   it('routes the file button to the host picker', () => {
     const { props } = renderPanel();
     fireEvent.click(screen.getByRole('button', { name: /choose from project/i }));
     expect(props.onChooseFile).toHaveBeenCalled();
   });
 
-  it('counts words live while drafting', () => {
-    renderPanel();
-    fireEvent.click(screen.getByRole('button', { name: /paste or type/i }));
-
-    fireEvent.change(screen.getByLabelText('Excerpt text'), {
-      target: { value: 'Five words typed right here.' }
-    });
-
-    expect(screen.getByText('5')).toBeTruthy();
-  });
-
-  it('asks for verification on paste', () => {
+  it('offers the open-conversation path from the rail', () => {
     const { props } = renderPanel();
-    fireEvent.click(screen.getByRole('button', { name: /paste or type/i }));
+    fireEvent.click(screen.getByRole('button', { name: /start a conversation/i }));
+    expect(props.onStartOpenConversation).toHaveBeenCalled();
+  });
 
-    fireEvent.paste(screen.getByLabelText('Excerpt text'), {
-      clipboardData: { getData: () => 'Pasted passage.' }
+  it('leads with the carried-over passage after a new session', () => {
+    const { props } = renderPanel({ shelvedExcerpt: excerptWith(fileSource) });
+
+    fireEvent.click(screen.getByRole('button', { name: /continue with 05 v2/i }));
+    expect(props.onContinueWithExcerpt).toHaveBeenCalled();
+  });
+});
+
+describe('ExcerptPanel — open conversation without a passage', () => {
+  const openProps = { scope: 'open' as const, excerpt: null };
+
+  it('says what the host has read, and that context still rides along', () => {
+    const { container } = renderPanel(openProps);
+
+    expect(screen.getByText('Open conversation')).toBeTruthy();
+    expect(container.textContent).toContain('Jill hasn’t read any pages');
+    expect(container.textContent).toContain('Context attachments below still ride along');
+    expect(container.textContent).toContain('the session keeps its history');
+  });
+
+  it('offers re-pinning the shelved passage without leaving the conversation', () => {
+    const { props } = renderPanel({
+      ...openProps,
+      shelvedExcerpt: excerptWith(fileSource)
     });
 
-    expect(props.onPasteVerify).toHaveBeenCalledWith('Pasted passage.');
+    fireEvent.click(screen.getByRole('button', { name: /re-pin 05 v2/i }));
+    expect(props.onRepinExcerpt).toHaveBeenCalled();
+    expect(props.onContinueWithExcerpt).not.toHaveBeenCalled();
   });
 
-  it('confirms with verified provenance only while the draft matches the claim', () => {
-    const verified: WorkshopVerifiedExcerpt = {
-      text: 'Pasted passage.',
-      source: {
-        kind: 'editor-selection',
-        sourceUri: 'file:///chapters/05.md',
-        relativePath: 'chapters/05.md',
-        startLine: 143,
-        endLine: 151
-      }
-    };
-    const { props } = renderPanel({ verified });
-    fireEvent.click(screen.getByRole('button', { name: /paste or type/i }));
-    const textarea = screen.getByLabelText('Excerpt text');
-
-    fireEvent.change(textarea, { target: { value: 'Pasted passage.' } });
-    expect(screen.getByRole('status').textContent).toContain('chapters/05.md');
-
-    fireEvent.change(textarea, { target: { value: 'Pasted passage. Edited.' } });
-    expect(screen.queryByRole('status')).toBeNull();
-
-    fireEvent.click(screen.getByRole('button', { name: /confirm/i }));
-    expect(props.onSet).toHaveBeenCalledWith('Pasted passage. Edited.', undefined);
+  it('offers no re-pin affordance when nothing is on the shelf', () => {
+    renderPanel(openProps);
+    expect(screen.queryByRole('button', { name: /re-pin/i })).toBeNull();
   });
+});
 
-  it('confirm passes the verified source on an exact match', () => {
-    const verified: WorkshopVerifiedExcerpt = {
-      text: 'Pasted passage.',
-      source: {
-        kind: 'editor-selection',
-        sourceUri: 'file:///chapters/05.md',
-        relativePath: 'chapters/05.md'
-      }
-    };
-    const { props } = renderPanel({ verified });
-    fireEvent.click(screen.getByRole('button', { name: /paste or type/i }));
-    fireEvent.change(screen.getByLabelText('Excerpt text'), {
-      target: { value: 'Pasted passage.' }
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /confirm/i }));
-
-    expect(props.onSet).toHaveBeenCalledWith('Pasted passage.', verified.source);
-  });
-
+describe('ExcerptPanel — passage pinned', () => {
   it('shows the source line for a verified selection, with its line range', () => {
     renderPanel({
+      scope: 'excerpt',
       excerpt: excerptWith({
         kind: 'editor-selection',
         sourceUri: 'file:///chapters/05.md',
@@ -139,14 +145,15 @@ describe('ExcerptPanel', () => {
   });
 
   it('stays honest about unknown sources', () => {
-    renderPanel({ excerpt: excerptWith({ kind: 'manual' }) });
+    renderPanel({ scope: 'excerpt', excerpt: excerptWith({ kind: 'manual' }) });
     expect(screen.getByText(/Pasted or typed · source unknown/)).toBeTruthy();
   });
 
   it('offers Re-read from file when locked on a file-backed excerpt', () => {
     const { props } = renderPanel({
+      scope: 'excerpt',
       locked: true,
-      excerpt: excerptWith({ kind: 'file', sourceUri: 'file:///chapters/05.md', relativePath: 'chapters/05.md' })
+      excerpt: excerptWith(fileSource)
     });
 
     expect(screen.getByText(/Session live/i)).toBeTruthy();
@@ -156,10 +163,31 @@ describe('ExcerptPanel', () => {
   });
 
   it('offers Update text… when locked on typed or pasted origin', () => {
-    renderPanel({ locked: true, excerpt: excerptWith({ kind: 'manual' }) });
+    const { props } = renderPanel({
+      scope: 'excerpt',
+      locked: true,
+      excerpt: excerptWith({ kind: 'manual' })
+    });
 
     expect(screen.queryByRole('button', { name: /re-read from file/i })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /update text/i }));
-    expect(screen.getByLabelText('Excerpt text')).toBeTruthy();
+    expect(props.onOpenPasteSheet).toHaveBeenCalled();
+  });
+
+  it('shelves the passage rather than deleting it, and says so', () => {
+    const { props } = renderPanel({ scope: 'excerpt', excerpt: excerptWith(fileSource) });
+    const setAside = screen.getByRole('button', { name: /set this aside/i });
+
+    expect(setAside.textContent).toContain('Keeps the passage on the shelf');
+    expect(setAside.textContent).toContain('Jill stops treating it as read');
+    fireEvent.click(setAside);
+    expect(props.onSetAside).toHaveBeenCalled();
+  });
+
+  it('names the reversal "unpin" once the room is already an open conversation', () => {
+    renderPanel({ scope: 'open', excerpt: excerptWith(fileSource) });
+
+    expect(screen.getByRole('button', { name: /unpin — back to open conversation/i })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /set this aside/i })).toBeNull();
   });
 });

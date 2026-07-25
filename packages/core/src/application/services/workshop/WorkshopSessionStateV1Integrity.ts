@@ -23,8 +23,16 @@ export function validateWorkshopSessionStateV1(state: WorkshopSessionStateV1): v
   requireCounter(state.counters.turn, 'turn counter');
   requireCounter(state.counters.todo, 'todo counter');
 
-  if (state.excerpt) {
-    if (state.excerpt.version !== state.revisions.excerpt) {
+  // Sprint 13A: the revision counter belongs to the passage, and a SHELVED
+  // passage still owns it — shelving is not a deletion, so the version stands
+  // and a later re-pin restores that exact version. Exactly one of the two
+  // slots may hold it.
+  if (state.excerpt && state.shelvedExcerpt) {
+    throw new Error('Persisted Workshop state has both a pinned and a shelved excerpt');
+  }
+  const versionedExcerpt = state.excerpt ?? state.shelvedExcerpt;
+  if (versionedExcerpt) {
+    if (versionedExcerpt.version !== state.revisions.excerpt) {
       throw new Error('Persisted Workshop excerpt version does not match its revision counter');
     }
   } else if (state.revisions.excerpt !== 0) {
@@ -35,6 +43,15 @@ export function validateWorkshopSessionStateV1(state: WorkshopSessionStateV1): v
     && state.revisions.pendingExcerpt !== state.revisions.excerpt
   ) {
     throw new Error('Persisted Workshop pending excerpt revision is not current');
+  }
+  // A queued excerpt frame and a queued withdrawal are contradictory
+  // instructions to the same host turn; the aggregate clears one when it sets
+  // the other, and a checkpoint claiming both is corrupt.
+  if (state.revisions.pendingExcerptWithdrawal && state.revisions.pendingExcerpt !== undefined) {
+    throw new Error('Persisted Workshop state queues both an excerpt delivery and its withdrawal');
+  }
+  if (state.revisions.pendingExcerptChange !== undefined && state.revisions.pendingExcerpt === undefined) {
+    throw new Error('Persisted Workshop state names an excerpt delivery reason with nothing to deliver');
   }
   if (
     state.revisions.pendingContext !== undefined

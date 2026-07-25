@@ -16,7 +16,7 @@ import {
   WorkshopSessionTemporalStateV1
 } from '@/application/services/workshop/WorkshopSessionTimeService';
 import { ConversationArchiveEntryV1 } from '@orchestration/ConversationManager';
-import { WorkshopPersonaId } from '@messages';
+import { WorkshopPersonaId, WorkshopSessionScope, isWorkshopSessionScope } from '@messages';
 import { isWorkshopPersonaId } from '@shared/constants/workshopPersonas';
 import {
   exactKeys,
@@ -31,6 +31,12 @@ import {
 
 export interface WorkshopPersistedSummaryV1 {
   hostPersonaId: WorkshopPersonaId;
+  /**
+   * The session's scope (Sprint 13A §11), surfaced in restore/browser
+   * metadata. Optional: rows written before scope existed have none, and the
+   * browser says so rather than guessing.
+   */
+  scope?: WorkshopSessionScope;
   participantPersonaIds: WorkshopPersonaId[];
   turnCount: number;
   excerptWordCount: number;
@@ -61,8 +67,11 @@ function parseSummary(value: unknown): WorkshopPersistedSummaryV1 {
     value,
     'Workshop session summary',
     ['hostPersonaId', 'participantPersonaIds', 'turnCount', 'excerptWordCount'],
-    ['excerptLabel', 'excerptIdentity', 'preview']
+    ['scope', 'excerptLabel', 'excerptIdentity', 'preview']
   );
+  if (value.scope !== undefined && !isWorkshopSessionScope(value.scope)) {
+    throw new Error('Workshop session summary has an invalid scope.');
+  }
   if (
     !Array.isArray(value.participantPersonaIds) ||
     value.participantPersonaIds.some((personaId) => !isWorkshopPersonaId(personaId))
@@ -85,6 +94,7 @@ function parseSummary(value: unknown): WorkshopPersistedSummaryV1 {
     participantPersonaIds: [...value.participantPersonaIds] as WorkshopPersonaId[],
     turnCount: value.turnCount as number,
     excerptWordCount: value.excerptWordCount as number,
+    ...(value.scope !== undefined ? { scope: value.scope as WorkshopSessionScope } : {}),
     ...(typeof excerptLabel === 'string' ? { excerptLabel } : {}),
     ...(typeof excerptIdentity === 'string' ? { excerptIdentity } : {}),
     ...(typeof preview === 'string' ? { preview } : {})
