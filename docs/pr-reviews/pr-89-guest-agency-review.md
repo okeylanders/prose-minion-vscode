@@ -36,6 +36,46 @@ act before merge · **Deferred** = real issue, safe to punt for a stated reason 
 | 22 | 🟢 Praise | `resource.read` containment remains catalog-bound, not path-bound | Patricia | — | **N/A** |
 | 23 | 🟢 Praise | Transcript scans stayed O(turns); every principal-guard call site lines up | Tim, Blake | 🎯 | **N/A** |
 
+## Verification pass — 2026-07-26, at `c1b5ac4`
+
+Blake, Sam, and Cal were sent back in adversarially against their own findings,
+briefed to default to "not fixed" unless they could walk the corrected path
+themselves. Repo-wide validation re-run independently of the author's claim:
+**typecheck clean (3 configs) · lint 0 errors · jest 129 suites / 1402 tests pass**
+(+8 tests). CI `verify` green on `c1b5ac4`.
+
+| Finding | Verifier | Verdict |
+| --- | --- | --- |
+| #1 handoff drops the writer's prompt | 🔥 Blake | **Closed with caveat** — walked the corrected path in a throwaway run; the walk is bounded by the cursor and cannot double-deliver. Caveat below. |
+| #2 guest charter denies its own capabilities | 🔥 Blake | **Closed** — confirmed on the *fresh* guest run, not just rehydration; grant and charter now agree. Caveat below. |
+| #4 `edited` latch dodges the soft confirm | 🔍 Sam | **Closed** — `isDefaultOpening` re-derives from current text; cross-persona reselect still pins writer edits. |
+| #9 stale selection survives a lock | 🔍 Sam | **Closed with caveat** — guard is content-based, so it self-corrects; effect churn noted below. |
+| #3 / #5 / #6 / #10 / #12 / #18 test claims | 🧪 Cal | **Verified ×6** — every claimed assertion exists, targets the code path the fix touched, and would fail if the fix were reverted. |
+
+**Caveats carried forward (none blocking):**
+
+1. `'workshop-personas/guest-base.md'` is a hardcoded literal duplicated across
+   `AssistantToolService.ts` and `workshopPersonas.ts`, while every sibling
+   prompt path is a shared constant. A rename, or a third participant base,
+   silently re-opens finding #2. → *Worth a constant next time this file is open.*
+2. `locks` re-memoizes every render because `WorkshopApp` rebuilds
+   `livePersonaGuestIds` as a fresh array literal, so the new lock effect
+   re-fires needlessly. Content-based guard means no misfire; pre-existing
+   footgun, not introduced here.
+3. The new backward walk skips only the guest's *own* capability artifacts. A
+   `session` / `context_change` turn minted mid-guest-run reproduces the original
+   symptom. Tracked with the item below.
+
+**Discovered during verification, pre-existing and out of scope:**
+handoff cursors advance to the newest *delivered* turn while the frame builder
+trims **oldest-first**, so a windowed or over-budget exchange is silently
+consumed rather than deferred — contradicting the invariant `commitHostHandoff`
+documents from PR #72 review #1. `WorkshopPromptBuilder.ts` and
+`commitHostGuestHandoff()` are untouched by this branch. Filed as
+[`.todo/tech-debt/2026-07-26-handoff-cursor-advances-past-undelivered-turns.md`](../../.todo/tech-debt/2026-07-26-handoff-cursor-advances-past-undelivered-turns.md)
+and pointed at 13D, which replaces this machinery with a single offset-advance
+call site.
+
 ---
 
 ## Blast Radius
