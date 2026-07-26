@@ -42,9 +42,10 @@ evidence instruments as the host without granting ambient room power.
   `Hey Felix! read the room and help me with the rhythm here.`
 - Changing selection rewrites only untouched generated copy. Writer-edited text
   is never overwritten.
-- The default must not reference a pinned excerpt — a guest may be invited into
-  a session whose scope has no excerpt, and boilerplate that names a passage
-  would have the guest looking for prose that does not exist.
+- The default must not prescribe a pinned-excerpt task. Guest invitation is
+  currently excerpt-gated, but the room transcript and the writer's opening
+  determine why the guest was invited; neutral generated copy must not presume
+  that the writer wants direct passage feedback.
 
 ### Two nudges against the skipped field (from design)
 

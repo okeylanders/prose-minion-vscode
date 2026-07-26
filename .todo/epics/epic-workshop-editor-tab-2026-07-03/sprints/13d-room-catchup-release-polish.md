@@ -1,6 +1,6 @@
 # Sprint 13D: Room Ledger, Delivery Offsets, and Release Polish
 
-**Status**: Planned  
+**Status**: In Progress (2026-07-26)
 **Priority**: High  
 **Branch**: `sprint/workshop-editor-tab-13d-room-catchup-release-polish` -> PR into `epic/workshop-editor-tab`  
 **Depends on**: Sprint 13C  
@@ -27,6 +27,26 @@ reader-owned offset per participant. The net change deletes more than it adds.
 ## Scope
 
 Delivered as four reviewable steps on one branch.
+
+### Architecture constraints
+
+13D is a consolidation, not permission to enlarge the existing Workshop
+orchestrators:
+
+- `WorkshopSessionService` owns durable ledger state and aggregate invariants.
+  It does not render prompt frames or grow reader-specific delivery branches.
+- One bounded delivery collaborator owns eligible projection, pending-turn
+  materialization, and acknowledgement. It is injected through the existing
+  composition root rather than constructed inside `WorkshopHandler`.
+- `WorkshopPromptBuilder` renders turns already selected by the delivery
+  policy. It does not make a second audience decision.
+- `WorkshopHandler` coordinates the use case. It does not reimplement
+  projection, packing, cursor arithmetic, or capability-publication policy.
+- Audience and packing rules stay pure and independently testable. Do not
+  replace the removed relationship methods with boolean policy flags or a
+  generic "room manager" that owns unrelated lifecycle work.
+- The ordered ledger remains the sole delivery source of truth. No participant
+  mailbox, pending-queue mirror, or second transcript store is introduced.
 
 ### 13D-a — Extract the shared packer
 
@@ -85,6 +105,38 @@ is implemented in **13C**, which already owns the participant rail's visual
 vocabulary. Keeping it out of 13D leaves this sprint free of pixel-fidelity
 work.
 
+## Inherited verification follow-ups
+
+### Release-blocking delivery invariant
+
+[Handoff cursors advance past turns the envelope never shipped](../../../tech-debt/2026-07-26-handoff-cursor-advances-past-undelivered-turns.md)
+is pre-existing, reproduced during PR #89 verification, and owned by this
+sprint because 13D deletes the affected relationship machinery.
+
+- The replacement acknowledgement must advance through the newest
+  **contiguous delivered turn in the reader's eligible projection**, never the
+  newest delivered turn by max index.
+- Do not carry the `newestIndex` / `Math.max` scan shape into the single
+  acknowledgement site.
+- Pairing and publication must not depend on physical adjacency in the ledger;
+  `session` events and private capability work may interleave an exchange.
+- Regression coverage must preserve Blake's three proofs: one ~25k-character
+  reply, five short exchanges, and four ~6k-character exchanges. In the new
+  protocol, an intentionally undelivered turn or hole remains pending and is
+  returned on the next collection.
+- Restate the PR #72 review #1 invariant at the surviving acknowledgement site,
+  where the code now makes it true.
+
+### Small release-polish follow-ups from PR #89
+
+- Replace the duplicated `'workshop-personas/guest-base.md'` literal in
+  `workshopPersonas.ts` and `AssistantToolService.ts` with one shared prompt-path
+  constant. Prompt assembly and its tests must consume that same value so a
+  rename cannot silently split the guest charter from its capability policy.
+- Stabilize `livePersonaGuestIds` across unchanged `WorkshopApp` renders so the
+  invite modal's lock effect does not re-fire on array identity churn. Keep it
+  derived—do not add mirrored state or another synchronization effect.
+
 ## Explicit non-goals
 
 - No live relay of every room turn to every retained conversation.
@@ -103,6 +155,9 @@ work.
   invoking participant's final reply commits.
 - Catalog/search traffic and failed, rejected, cancelled, stale, or
   uncommitted capability work reach only their invoking principal.
+- The sole acknowledgement site advances only through the newest contiguous
+  delivered turn; a delivery hole remains pending and retries without loss.
+- Exchange ownership/publication does not depend on adjacent ledger rows.
 - No frame splits a turn, within or across deliveries.
 - Delivery acknowledgement follows only the recipient's committed reply;
   cancellation and retry are idempotent.
@@ -111,6 +166,9 @@ work.
 - A re-invited guest starts from a join snapshot rather than an inherited
   offset.
 - A session file carrying the legacy cursor keys opens cleanly.
+- Guest base-prompt selection uses one shared path constant.
+- Unchanged live-guest membership keeps a stable `livePersonaGuestIds`
+  identity without mirrored React state.
 - Manual evidence covers open chat, later excerpt adoption, both local-analysis
   policies, guest invitation/capabilities, A -> B catch-up, cancellation/retry,
   and restored sessions.
