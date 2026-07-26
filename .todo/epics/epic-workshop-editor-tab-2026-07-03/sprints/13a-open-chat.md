@@ -184,7 +184,7 @@ remainder of the comp's inset instead of stacking a second one.
   *and* refused with a reason if requested anyway. Advertising a door the host
   will slam wastes a turn's allowance and reads to the persona as a
   malfunction. Dictionary and configured-resource families are unaffected.
-- **Attachment bodies are fetched on demand.** The shared budget is 35,000
+- **Attachment bodies are fetched on demand.** The shared budget is 50,000
   words, so shipping every body in every session snapshot would be a
   ~200 KB broadcast on each state change. `WORKSHOP_REQUEST_CONTEXT_ATTACHMENT`
   serves exactly the one the writer opened, and the hook discards a late reply

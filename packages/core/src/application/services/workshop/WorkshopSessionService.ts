@@ -91,7 +91,7 @@ export interface WorkshopExcerptInput {
   sourceFingerprint?: string;
 }
 
-export const WORKSHOP_SNAPSHOT_TURN_WINDOW = 100;
+export const WORKSHOP_SNAPSHOT_TURN_WINDOW = 200;
 
 interface WorkshopToolSidecar {
   conversationId: string;

@@ -1183,13 +1183,6 @@ export const WorkshopApp: React.FC = () => {
                 </div>
               )}
 
-              {workshop.hiddenTurns > 0 && (
-                <div className="pm-ws-thread-hidden">
-                  {workshop.hiddenTurns.toLocaleString()} earlier turn
-                  {workshop.hiddenTurns === 1 ? '' : 's'} from this session aren&apos;t shown
-                  after reload.
-                </div>
-              )}
               <WorkshopThread
                 turns={workshop.turns}
                 toolSidecars={workshop.toolSidecars}
@@ -1240,6 +1233,15 @@ export const WorkshopApp: React.FC = () => {
                   <button type="button" onClick={workshop.clearError} aria-label="Dismiss error">
                     <Icon name="x" size={13} />
                   </button>
+                </div>
+              )}
+
+              {workshop.hiddenTurns > 0 && (
+                <div className="pm-ws-thread-hidden">
+                  Only the latest {workshop.turns.length.toLocaleString()} turns are visible;{' '}
+                  {workshop.hiddenTurns.toLocaleString()} earlier turn
+                  {workshop.hiddenTurns === 1 ? ' is' : 's are'} preserved.
+                  {' '}Pagination is coming soon. The full session remains preserved.
                 </div>
               )}
             </div>

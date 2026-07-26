@@ -70,10 +70,10 @@ export interface PromptBudgets {
 export const PROMPT_BUDGETS: PromptBudgets = {
   fileExcerpt: { words: 10_000, bytes: 5 * 1024 * 1024 },
   personaExcerpt: { words: 10_000, characters: 120_000 },
-  // Sprint 12 interim bump (10k → 35k, Okey 2026-07-17). Making this a user
+  // Raised to 50k for long-form Workshop rooms (Okey 2026-07-26). Making this a user
   // setting is tracked in .todo/tech-debt/2026-07-17-context-attachment-budget-setting.md.
   contextAttachments: {
-    words: 35_000,
+    words: 50_000,
     characters: 420_000,
     fileBytes: 5 * 1024 * 1024
   },
@@ -100,8 +100,8 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {
-    turns: 20,
-    characters: 24_000,
+    turns: 100,
+    characters: 100_000,
     headerAllowanceCharacters: 1_200
   },
   workshopRoom: {

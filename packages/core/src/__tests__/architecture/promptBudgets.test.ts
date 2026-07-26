@@ -53,6 +53,15 @@ function collectLimitDeclarationNames(source: string, fileName = 'prompt-budget-
 }
 
 describe('prompt budgets', () => {
+  it('keeps the writer-selected Workshop room and standing-context bounds', () => {
+    expect(PROMPT_BUDGETS.guestJoinSnapshot).toEqual({
+      turns: 100,
+      characters: 100_000,
+      headerAllowanceCharacters: 1_200
+    });
+    expect(PROMPT_BUDGETS.contextAttachments.words).toBe(50_000);
+  });
+
   it('keeps the locked Workshop capability ceilings in the shared table', () => {
     expect(PROMPT_BUDGETS.workshopCapability).toEqual({
       wordCharacters: 100,

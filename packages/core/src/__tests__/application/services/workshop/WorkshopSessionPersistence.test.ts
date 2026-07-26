@@ -1,4 +1,5 @@
 import {
+  WORKSHOP_SNAPSHOT_TURN_WINDOW,
   WorkshopSessionActiveRunPersistenceError,
   WorkshopSessionService
 } from '@/application/services/workshop/WorkshopSessionService';
@@ -637,16 +638,17 @@ describe('WorkshopSessionService committed persistence', () => {
 
   it('exports and restores the full ledger even when the webview projection is windowed', () => {
     const session = new WorkshopSessionService(() => 1);
-    for (let index = 0; index < 105; index += 1) {
+    const storedTurns = WORKSHOP_SNAPSHOT_TURN_WINDOW + 5;
+    for (let index = 0; index < storedTurns; index += 1) {
       session.recordSessionMarker(index === 0 ? 'start' : 'resume', `Marker ${index}.`);
     }
 
-    expect(session.getSnapshot().turns).toHaveLength(100);
+    expect(session.getSnapshot().turns).toHaveLength(WORKSHOP_SNAPSHOT_TURN_WINDOW);
     const state = session.exportCommittedState();
-    expect(state.turns).toHaveLength(105);
+    expect(state.turns).toHaveLength(storedTurns);
     const restored = new WorkshopSessionService(() => 2);
     restored.hydrateCommittedState(state, {}, currentBehavior);
-    expect(restored.exportCommittedState().turns).toHaveLength(105);
+    expect(restored.exportCommittedState().turns).toHaveLength(storedTurns);
     expect(restored.exportCommittedState().turns[0].content).toBe('Marker 0.');
   });
 

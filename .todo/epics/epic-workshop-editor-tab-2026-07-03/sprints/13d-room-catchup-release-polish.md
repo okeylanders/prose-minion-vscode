@@ -194,11 +194,15 @@ five reviewable implementation passes:
    only through the delivered contiguous prefix, hardens packing/rendering,
    and gives guest-persona `### Next steps` the same durable proposal workflow
    as the host.
+6. Post-review room bounds — raises fresh-guest context to 100 whole turns /
+   100,000 characters, raises standing context to 50,000 words, and bounds the
+   webview to the latest 200 turns with an explicit preservation/pagination
+   notice while retaining the complete saved ledger.
 
 Automated release evidence on 2026-07-26:
 
 - `npm run typecheck` — passed for core, webview, and extension.
-- `npm test -- --runInBand` — 133 suites / 1,436 tests passed.
+- `npm test -- --runInBand` — 133 suites / 1,437 tests passed.
 - `npm run lint -- --no-cache` — passed with the repository's pre-existing
   786-warning baseline and zero errors.
 - `npm run build` — production extension + webview bundles compiled;

@@ -1367,7 +1367,7 @@ export class WorkshopHandler {
   /**
    * Serve ONE attachment's body to the Edit/Preview sheet (Sprint 13A §7).
    *
-   * Attachment content is prompt-bearing host state under a 35,000-word shared
+   * Attachment content is prompt-bearing host state under a 50,000-word shared
    * budget, so it deliberately does not ride every session snapshot — the
    * webview asks for exactly the one the writer opened.
    */
