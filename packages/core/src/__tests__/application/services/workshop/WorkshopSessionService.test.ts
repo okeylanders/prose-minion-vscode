@@ -797,8 +797,8 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
 
     it('publishes committed guest evidence to the host and other guests', () => {
       pin();
-      service.adoptPersonaGuest('margot', 'margot-conv');
-      service.adoptPersonaGuest('quinn', 'quinn-conv');
+      service.adoptPersonaGuest('margot', 'margot-conv', []);
+      service.adoptPersonaGuest('quinn', 'quinn-conv', []);
       service.beginPersonaGuestMessage('margot', 'guest-run', 'Look up liminal.');
 
       const completion = service.recordCapabilityArtifact({
@@ -829,7 +829,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
 
     it('pairs the writer prompt across several interleaved private artifacts and commits cleanly', () => {
       pin();
-      service.adoptPersonaGuest('margot', 'margot-conv');
+      service.adoptPersonaGuest('margot', 'margot-conv', []);
       service.beginPersonaGuestMessage('margot', 'guest-run', 'Check two words.');
       service.recordCapabilityArtifact({ requestId: 'guest-run', ...guestLookup('margot') });
       service.recordCapabilityArtifact({ requestId: 'guest-run', ...guestLookup('margot') });
@@ -884,8 +884,8 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       })).toBeUndefined();
       service.completeRun('host-run', 'Host reply.', undefined, false, 'host-conv');
 
-      service.adoptPersonaGuest('margot', 'margot-conv');
-      service.adoptPersonaGuest('quinn', 'quinn-conv');
+      service.adoptPersonaGuest('margot', 'margot-conv', []);
+      service.adoptPersonaGuest('quinn', 'quinn-conv', []);
       service.beginPersonaGuestMessage('margot', 'guest-run', 'Guest asks.');
       expect(service.recordCapabilityArtifact({
         requestId: 'guest-run',
@@ -954,15 +954,15 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     service.beginPersonaMessage('host-1', 'The room is open.');
     service.completeRun('host-1', 'Let us begin.', undefined, false, 'host-conv');
 
-    expect(() => service.adoptPersonaGuest('jill', 'jill-guest-conv')).toThrow(
+    expect(() => service.adoptPersonaGuest('jill', 'jill-guest-conv', [])).toThrow(
       'The Workshop host is already in the room'
     );
-    service.adoptPersonaGuest('margot', 'margot-conv');
-    service.adoptPersonaGuest('quinn', 'quinn-conv');
-    expect(() => service.adoptPersonaGuest('margot', 'duplicate-conv')).toThrow(
+    service.adoptPersonaGuest('margot', 'margot-conv', []);
+    service.adoptPersonaGuest('quinn', 'quinn-conv', []);
+    expect(() => service.adoptPersonaGuest('margot', 'duplicate-conv', [])).toThrow(
       'Margot is already in the room'
     );
-    expect(() => service.adoptPersonaGuest('wren', 'wren-conv')).toThrow(
+    expect(() => service.adoptPersonaGuest('wren', 'wren-conv', [])).toThrow(
       'Workshop supports at most 2 live guests'
     );
 
@@ -988,7 +988,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     pin();
     service.beginPersonaMessage('host-1', 'Host opening.');
     service.completeRun('host-1', 'Host reply.', undefined, false, 'host-conv');
-    service.adoptPersonaGuest('margot', 'margot-conv');
+    service.adoptPersonaGuest('margot', 'margot-conv', []);
 
     service.beginPersonaMessage('host-2', 'A later host question.');
     service.completeRun('host-2', 'A later host answer.');
@@ -1053,7 +1053,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
 
   it('returns composer routing to the host when a tool run begins', () => {
     pin();
-    service.adoptPersonaGuest('margot', 'margot-conv');
+    service.adoptPersonaGuest('margot', 'margot-conv', []);
     expect(service.setChatTarget({ kind: 'personaGuest', personaId: 'margot' })).toBe(true);
 
     service.beginToolRun('prose', 'tool-run');
@@ -1063,7 +1063,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
 
   it('retains dismissed guest evidence, permits re-invitation, and unlocks host selection', () => {
     pin();
-    service.adoptPersonaGuest('margot', 'margot-conv');
+    service.adoptPersonaGuest('margot', 'margot-conv', []);
     const writerTurn = service.beginPersonaGuestMessage('margot', 'guest-1', 'What do you see?');
     const guestTurn = service.completeRun('guest-1', 'The narrative distance drifts.')!;
 
@@ -1087,8 +1087,8 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
 
   it('interleaves two guests in ledger order and advances the host offset once', () => {
     pin();
-    service.adoptPersonaGuest('margot', 'margot-conv');
-    service.adoptPersonaGuest('quinn', 'quinn-conv');
+    service.adoptPersonaGuest('margot', 'margot-conv', []);
+    service.adoptPersonaGuest('quinn', 'quinn-conv', []);
 
     const margotWriter = service.beginPersonaGuestMessage('margot', 'margot-1', 'Read the voice.');
     const margotReply = service.completeRun('margot-1', 'The voice pulls away here.')!;
@@ -1120,7 +1120,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(new WorkshopRoomDeliveryService(service).prepareJoinSnapshot({
       kind: 'personaGuest',
       personaId: 'margot'
-    }, invitation.id).map((turn) => turn.content)).toEqual([
+    }, invitation.turn.id).map((turn) => turn.content)).toEqual([
       'Host opening.',
       'Host reply.'
     ]);
@@ -1134,7 +1134,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       'margot-conv'
     )!;
 
-    expect(invitation.personaId).toBe('margot');
+    expect(invitation.turn.personaId).toBe('margot');
     expect(reply.participant).toBe('guest');
     expect(service.getPersonaGuestConversationId('margot')).toBe('margot-conv');
     expect(service.getChatTarget()).toEqual({ kind: 'host' });
@@ -1142,7 +1142,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
 
   it('refuses a late guest completion after dismissal', () => {
     pin();
-    service.adoptPersonaGuest('margot', 'margot-conv');
+    service.adoptPersonaGuest('margot', 'margot-conv', []);
     service.beginPersonaGuestMessage('margot', 'guest-run', 'Read this.');
     service.dismissPersonaGuest('margot');
 
@@ -1270,6 +1270,49 @@ describe('writer-origin context sources (Phase 7)', () => {
     expect(session.collectWriterSources({ kind: 'host' }).filter((s) => s.kind === 'pin')).toHaveLength(1);
   });
 
+  it('seeds an open-room guest manifest from the join snapshot, not completion-time state', () => {
+    const session = new WorkshopSessionService(() => 7);
+    session.setSessionScope('open');
+    const delivered = session.addContextAttachment({
+      kind: 'text',
+      origin: 'writer',
+      label: 'Story compass',
+      words: 6,
+      content: 'The middle should feel increasingly breathless.'
+    });
+    expect(delivered.ok).toBe(true);
+    session.beginPersonaGuestJoin('felix', 'felix-join', 'Read the room.');
+
+    if (delivered.ok) {
+      session.removeContextAttachment(delivered.attachment.id);
+    }
+    session.addContextAttachment({
+      kind: 'text',
+      origin: 'writer',
+      label: 'Late note',
+      words: 3,
+      content: 'This arrived later.'
+    });
+    session.completeRun(
+      'felix-join',
+      'I can help with the shape.',
+      undefined,
+      false,
+      'felix-conv'
+    );
+
+    expect(session.collectWriterSources({
+      kind: 'personaGuest',
+      personaId: 'felix'
+    })).toEqual([
+      expect.objectContaining({
+        kind: 'attachment',
+        origin: 'writer',
+        label: 'Story compass'
+      })
+    ]);
+  });
+
   it('marks prior pin rows stale only when the revision frame actually ships', () => {
     const session = new WorkshopSessionService(() => 7);
     pinned(session);
@@ -1338,9 +1381,18 @@ describe('writer-origin context sources (Phase 7)', () => {
   it('stamps guests at join, clears them on dismissal, and routes shipped message attachments by target', () => {
     const session = new WorkshopSessionService(() => 7);
     pinned(session);
-    session.adoptPersonaGuest('margot', 'guest-conv');
+    session.addContextAttachment({
+      kind: 'text',
+      origin: 'writer',
+      label: 'Scene compass',
+      words: 4,
+      content: 'Keep the pressure narrowing.'
+    });
+    session.beginPersonaGuestJoin('margot', 'guest-join', 'Read this.');
+    session.completeRun('guest-join', 'The pin and compass agree.', undefined, false, 'guest-conv');
     expect(session.collectWriterSources({ kind: 'personaGuest', personaId: 'margot' })).toEqual([
-      expect.objectContaining({ kind: 'pin', excerptVersion: 1 })
+      expect.objectContaining({ kind: 'pin', excerptVersion: 1 }),
+      expect.objectContaining({ kind: 'attachment', label: 'Scene compass' })
     ]);
 
     session.addMessageAttachment({
@@ -1351,6 +1403,7 @@ describe('writer-origin context sources (Phase 7)', () => {
     session.commitMessageAttachments(['ta-1'], { kind: 'personaGuest', personaId: 'margot' });
     expect(session.collectWriterSources({ kind: 'personaGuest', personaId: 'margot' })).toEqual([
       expect.objectContaining({ kind: 'pin' }),
+      expect.objectContaining({ kind: 'attachment', label: 'Scene compass' }),
       expect.objectContaining({
         kind: 'message-attachment',
         origin: 'writer',

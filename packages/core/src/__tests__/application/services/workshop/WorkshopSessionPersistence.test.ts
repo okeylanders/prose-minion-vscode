@@ -96,7 +96,7 @@ const buildCompleteState = (): WorkshopSessionStateV1 => {
     [{ key: 'finding-1', text: 'Tighten the second sentence.', ordinal: 1, priority: 'high' }]
   )!.turn;
   session.addTodoFromFinding(report.id, 'finding-1');
-  session.adoptPersonaGuest('margot', 'guest-runtime-before-save');
+  session.adoptPersonaGuest('margot', 'guest-runtime-before-save', []);
   session.setChatTarget({ kind: 'personaGuest', personaId: 'margot' });
   session.beginPersonaGuestMessage('margot', 'guest-message', 'How does the voice sound?');
   session.completeRun('guest-message', 'Close and controlled.');
@@ -125,7 +125,7 @@ describe('WorkshopSessionService committed persistence', () => {
   it('round-trips guest-origin next steps with their persona provenance', () => {
     const session = new WorkshopSessionService(() => 1);
     session.setExcerpt({ text: 'Pinned.', source: { kind: 'manual' } });
-    session.adoptPersonaGuest('felix', 'felix-before-save');
+    session.adoptPersonaGuest('felix', 'felix-before-save', []);
     session.beginPersonaGuestMessage('felix', 'felix-run', 'What should change?');
     const guestTurn = session.completeRun(
       'felix-run',

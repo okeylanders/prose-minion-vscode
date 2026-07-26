@@ -282,6 +282,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     React.useState<WorkshopConversationDegradation[]>([]);
   const [excerpt, setExcerpt] = React.useState<WorkshopExcerptSnapshot | null>(null);
   const [scope, setScopeState] = React.useState<WorkshopSessionScope>(null);
+  const [participantSubjectReady, setParticipantSubjectReady] = React.useState(false);
   const [shelvedExcerpt, setShelvedExcerpt] = React.useState<WorkshopExcerptSnapshot | null>(null);
   const [roomHasMemory, setRoomHasMemory] = React.useState(false);
   const [attachmentContent, setAttachmentContent] =
@@ -685,6 +686,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
       );
       setExcerpt(session.excerpt ?? null);
       setScopeState(session.scope);
+      setParticipantSubjectReady(session.participantSubjectReady);
       setShelvedExcerpt(session.shelvedExcerpt ?? null);
       setRoomHasMemory(session.roomHasMemory);
       setContextAttachments(session.contextAttachments ?? []);
@@ -885,12 +887,11 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const currentRequestId = liveRun?.phase === 'streaming' ? liveRun.requestId : null;
   const isRunning = currentRequestId !== null || activeToolId !== null;
   const hiddenTurns = Math.max(0, totalTurns - turns.length);
-  // Sprint 13A §1: an open conversation is a real, messageable room; a session
-  // whose path is unchosen is not, even when an excerpt carried over from the
-  // previous one — the writer has not said what this room is for yet.
+  // ADR 2026-07-26: the aggregate owns subject validity. The webview combines
+  // that host decision only with local readiness/run state.
   const canMessage = sessionReady
     && !isRunning
-    && (scope === 'open' || (scope === 'excerpt' && !!excerpt?.text.trim()));
+    && participantSubjectReady;
   const isPersonaSelectionLocked = hasHostConversation || isRunning;
 
   return {

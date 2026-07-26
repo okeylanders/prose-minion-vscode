@@ -27,7 +27,10 @@ import {
   WorkshopRoomFrameRenderOptions,
   WorkshopTranscript
 } from '@/application/services/workshop/WorkshopRoomFrameRenderer';
-import { neutralizeReservedPersonaPromptDelimiters } from '@/utils/workshopPromptFrames';
+import {
+  buildWorkshopOpenConversationFrame,
+  neutralizeReservedPersonaPromptDelimiters
+} from '@/utils/workshopPromptFrames';
 import { trimToWordLimit } from '@/utils/textUtils';
 
 export {
@@ -81,7 +84,9 @@ export function buildWorkshopAnalysisScopeFrame(
 
 export interface WorkshopGuestJoinInput {
   guestPersonaId: WorkshopPersonaId;
-  excerpt: WorkshopExcerpt;
+  excerpt?: WorkshopExcerpt;
+  /** Standing context delivered beside either valid session subject. */
+  contextAttachmentsFrame?: string;
   roomTurns: Parameters<typeof buildWorkshopGuestTranscript>[0];
   openingMessage: string;
   roomFrameOptions?: WorkshopRoomFrameRenderOptions;
@@ -351,6 +356,9 @@ export function buildWorkshopGuestJoinMessage(
     input.roomFrameOptions
   );
   const guestLabel = workshopPersonaLabel(input.guestPersonaId);
+  const subjectFrame = input.excerpt
+    ? buildGuestExcerptFrame(input.excerpt)
+    : buildWorkshopOpenConversationFrame(guestLabel);
   const message = [
     ...(input.timeFrame ? [input.timeFrame, ''] : []),
     ...(input.transitionFrame ? [input.transitionFrame, ''] : []),
@@ -359,9 +367,10 @@ export function buildWorkshopGuestJoinMessage(
     '',
     transcript.message,
     '',
-    'CURRENT PINNED EXCERPT:',
-    buildGuestExcerptFrame(input.excerpt),
+    input.excerpt ? 'CURRENT PINNED EXCERPT:' : 'CURRENT ROOM SUBJECT:',
+    subjectFrame,
     '',
+    ...(input.contextAttachmentsFrame ? [input.contextAttachmentsFrame, ''] : []),
     ...(input.activationFrame ? [input.activationFrame, ''] : []),
     '<writer-message>',
     neutralizeReservedPersonaPromptDelimiters(input.openingMessage),

@@ -1,4 +1,5 @@
 import { ContextBudgetSnapshot, ModelOption } from '@shared/types';
+import { WORKSHOP_PERSONA_CATALOG } from '@shared/constants/workshopPersonas';
 
 export type ContextBudgetTone = 'normal' | 'watch' | 'high' | 'critical' | 'unknown';
 
@@ -33,17 +34,24 @@ export const contextBudgetView = (
   };
 };
 
+const PARTICIPANT_IDENTITY_COLOR_COUNT = WORKSHOP_PERSONA_CATALOG.length;
+const PERSONA_IDENTITY_COLOR_INDEX: ReadonlyMap<string, number> = new Map(
+  WORKSHOP_PERSONA_CATALOG.map((persona, index) => [persona.id, index])
+);
+
 /**
- * Deterministic identity color slot for a participant label. Conversation ids
- * never reach the webview, so the label is the only stable identity — a hash
- * keeps each participant's dot color steady across renders and reloads.
+ * Deterministic identity color slot. Canonical Workshop personas receive
+ * collision-free roster slots; other participant kinds retain a stable hash.
  */
-export const participantDotIndex = (label: string): number => {
+export const participantIdentityColorIndex = (identity: string): number => {
+  const personaIndex = PERSONA_IDENTITY_COLOR_INDEX.get(identity);
+  if (personaIndex !== undefined) return personaIndex;
+
   let hash = 0;
-  for (let i = 0; i < label.length; i += 1) {
-    hash = (hash * 31 + label.charCodeAt(i)) | 0;
+  for (let i = 0; i < identity.length; i += 1) {
+    hash = (hash * 31 + identity.charCodeAt(i)) | 0;
   }
-  return Math.abs(hash) % 5;
+  return Math.abs(hash) % PARTICIPANT_IDENTITY_COLOR_COUNT;
 };
 
 export const formatCompactTokens = (tokens: number): string => {

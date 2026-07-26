@@ -29,6 +29,20 @@ export interface WorkshopPreparedRoomDelivery {
   frame?: string;
   deliveredTurnIds: string[];
   deferredTurns: number;
+  /** Classification of the complete eligible backlog, before runaway shaping. */
+  hasConversationalCatchUp: boolean;
+}
+
+/**
+ * Session lifecycle markers are durable room history, but delivering only
+ * those markers is not conversational catch-up worth announcing to the user.
+ */
+export function hasWorkshopConversationalCatchUp(
+  turns: readonly WorkshopTurn[]
+): boolean {
+  return turns.some(
+    (turn) => turn.artifact !== 'session_start' && turn.artifact !== 'session_resume'
+  );
 }
 
 export function projectWorkshopRoomTurns(
@@ -101,7 +115,10 @@ export function guardWorkshopRoomDelivery(
 }
 
 export class WorkshopRoomDeliveryService {
-  constructor(private readonly session: WorkshopSessionService) {}
+  constructor(
+    private readonly session: WorkshopSessionService,
+    private readonly characterGuard = WORKSHOP_ROOM_DELIVERY_RUNAWAY_CHARACTERS
+  ) {}
 
   prepareJoinSnapshot(
     reader: WorkshopCapabilityPrincipal,
@@ -125,7 +142,7 @@ export class WorkshopRoomDeliveryService {
       reader,
       state.lastSeenRoomTurnId
     );
-    const turns = guardWorkshopRoomDelivery(pending);
+    const turns = guardWorkshopRoomDelivery(pending, this.characterGuard);
     return {
       reader: { ...reader },
       startingOffset: state.lastSeenRoomTurnId,
@@ -136,7 +153,8 @@ export class WorkshopRoomDeliveryService {
         frameOptions
       ),
       deliveredTurnIds: turns.map((turn) => turn.id),
-      deferredTurns: pending.length - turns.length
+      deferredTurns: pending.length - turns.length,
+      hasConversationalCatchUp: hasWorkshopConversationalCatchUp(pending)
     };
   }
 

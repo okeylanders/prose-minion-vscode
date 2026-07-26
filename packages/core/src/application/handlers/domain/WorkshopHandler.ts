@@ -607,8 +607,15 @@ export class WorkshopHandler {
       return;
     }
 
-    const excerpt = this.session.getExcerpt();
-    if (!excerpt || excerpt.text.trim().length === 0) {
+    const subjectStatus = this.session.getParticipantSubjectStatus();
+    if (!subjectStatus.ready && subjectStatus.reason === 'scope-unchosen') {
+      this.sendError(
+        'workshop.invite_guest',
+        'Choose how to start this session before inviting a guest.'
+      );
+      return;
+    }
+    if (!subjectStatus.ready) {
       this.sendError('workshop.invite_guest', 'Pin an excerpt before inviting a guest.');
       return;
     }
@@ -623,25 +630,28 @@ export class WorkshopHandler {
         workshopGuestConversationKey(personaId)
       );
       const writerProfile = this.conversationSettingsService.getWriterProfile();
-      const userTurn = this.session.beginPersonaGuestJoin(
+      const joinStart = this.session.beginPersonaGuestJoin(
         personaId,
         requestId,
         openingMessage
       );
       const join = buildWorkshopGuestJoinMessage({
         guestPersonaId: personaId,
-        excerpt,
+        excerpt: joinStart.excerpt,
+        contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
+          joinStart.contextAttachments
+        ),
         roomTurns: this.roomDelivery.prepareJoinSnapshot({
           kind: 'personaGuest',
           personaId
-        }, userTurn.id),
+        }, joinStart.turn.id),
         openingMessage,
         roomFrameOptions: {
           writerName: workshopWriterPreferredAddress(writerProfile),
           renderedAt: Date.now()
         },
         timeFrame: timeNotice?.frame,
-        ...behaviorFramesFor(userTurn)
+        ...behaviorFramesFor(joinStart.turn)
       });
       this.activeRun = {
         requestId,
@@ -650,19 +660,19 @@ export class WorkshopHandler {
         controller
       };
 
-      this.postTurn(userTurn);
+      this.postTurn(joinStart.turn);
       this.postSessionState();
       this.sendStreamStarted(requestId);
       this.sendStatus(`Inviting ${workshopPersonaLabel(personaId)} into the room…`);
 
-      // Sprint 13C: the joining guest owns the same bounded instruments as
-      // the host — dictionary, configured resources, excerpt analysis — with
-      // its own principal persisted on every artifact.
+      // Sprint 13D_2 / ADR 2026-07-26: the joining guest owns the same bounded
+      // instruments as the host. Excerpt-dependent work remains unavailable
+      // when this open-room join has no excerpt.
       const guestCapability = this.capabilityFactory.create({
         requestId,
         personaId,
         owner: { kind: 'personaGuest', personaId },
-        excerpt,
+        excerpt: joinStart.excerpt,
         excerptVersion: this.session.getExcerptVersion(),
         signal: controller.signal,
         events: {
@@ -679,7 +689,7 @@ export class WorkshopHandler {
         const result = await this.assistantToolService.startWorkshopGuestConversation({
           personaId,
           message: join.message,
-          behavior: userTurn.behavior!,
+          behavior: joinStart.turn.behavior!,
           writerProfile
         }, {
           signal: controller.signal,
@@ -870,15 +880,15 @@ export class WorkshopHandler {
     }
     // Sprint 13A §1: what a turn needs depends on the session's SCOPE, not on
     // whether an excerpt happens to be present. An open conversation is a real
-    // room; tool sidecars and guests still require the passage they read.
-    const scope = this.session.getScope();
+    // room; direct tool sidecars still require the passage they read.
     const excerpt = this.session.getExcerpt();
     const hasExcerpt = !!excerpt && excerpt.text.trim().length > 0;
+    const subjectStatus = this.session.getParticipantSubjectStatus();
     // Scope first, and independently of excerpt presence: a new session
     // deliberately CARRIES the previous room's passage across the boundary
     // (§3), so "an excerpt exists" is not evidence that the writer has chosen
     // what this room is for.
-    if (scope === null) {
+    if (!subjectStatus.ready && subjectStatus.reason === 'scope-unchosen') {
       this.sendError(
         'workshop.send_message',
         'Choose how to start this session — workshop an excerpt, or start an open conversation.'
@@ -886,14 +896,14 @@ export class WorkshopHandler {
       return;
     }
     if (!hasExcerpt) {
-      if (target.kind !== 'host') {
+      if (target.kind === 'tool') {
         this.sendError(
           'workshop.send_message',
-          'Add an excerpt before continuing with a tool or guest.'
+          'Add an excerpt before continuing with a tool.'
         );
         return;
       }
-      if (scope !== 'open') {
+      if (!subjectStatus.ready) {
         this.sendError('workshop.send_message', 'Pin an excerpt before messaging the Workshop.');
         return;
       }
@@ -914,6 +924,7 @@ export class WorkshopHandler {
         })
       : undefined;
     const roomCatchUp = roomDelivery?.frame;
+    const hasConversationalCatchUp = roomDelivery?.hasConversationalCatchUp ?? false;
     const pendingHostUpdates = target.kind === 'host'
       ? this.session.collectPendingHostUpdates()
       : undefined;
@@ -932,7 +943,7 @@ export class WorkshopHandler {
     }
     if (roomDelivery && roomDelivery.deliveredTurnIds.length > 0) {
       this.outputChannel.appendLine(
-        `[WorkshopHandler] Room catch-up prepared (${roomReader?.kind === 'host' ? 'host' : `guest=${roomReader?.personaId}`}): ${roomDelivery.deliveredTurnIds.length} whole turns included, ${roomDelivery.deferredTurns} deferred`
+        `[WorkshopHandler] Room catch-up prepared (${roomReader?.kind === 'host' ? 'host' : `guest=${roomReader?.personaId}`}): ${roomDelivery.deliveredTurnIds.length} whole turns included, ${roomDelivery.deferredTurns} deferred, status=${hasConversationalCatchUp ? 'conversational' : 'lifecycle-only'}`
       );
     }
     const { conversationId, label, requestType, toolId, guestPersonaId } = targetDetails;
@@ -987,7 +998,7 @@ export class WorkshopHandler {
           threadArtifactFrames,
           ...(conversationId ? personaBehaviorFrames : {})
         });
-        statusMessage = roomCatchUp
+        statusMessage = hasConversationalCatchUp
           ? `Catching ${label} up on the room…`
           : `Streaming ${label}…`;
         break;
@@ -1020,7 +1031,7 @@ export class WorkshopHandler {
           threadArtifactFrames,
           personaBehaviorFrames
         );
-        statusMessage = roomCatchUp
+        statusMessage = hasConversationalCatchUp
           ? `Catching ${label} up on the room…`
           : `Continuing with ${label}…`;
         break;

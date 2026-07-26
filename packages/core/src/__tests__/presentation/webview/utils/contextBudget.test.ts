@@ -2,8 +2,9 @@ import {
   contextBudgetTone,
   contextBudgetView,
   formatCompactTokens,
-  participantDotIndex
+  participantIdentityColorIndex
 } from '@utils/contextBudget';
+import { WORKSHOP_PERSONA_CATALOG } from '@shared/constants/workshopPersonas';
 import { ContextBudgetSnapshot, ModelOption } from '@shared/types';
 
 const snapshot = (contextTokens: number): ContextBudgetSnapshot => ({
@@ -51,11 +52,17 @@ describe('context budget formatting', () => {
     expect(formatCompactTokens(190_000)).toBe('190K');
   });
 
-  it('assigns each participant label a stable identity-dot slot', () => {
-    const jill = participantDotIndex('Jill context');
-    expect(jill).toBe(participantDotIndex('Jill context'));
-    expect(jill).toBeGreaterThanOrEqual(0);
-    expect(jill).toBeLessThan(5);
-    expect(participantDotIndex('')).toBe(0);
+  it('assigns every canonical persona a distinct stable identity-color slot', () => {
+    const slots = WORKSHOP_PERSONA_CATALOG.map(({ id }) =>
+      participantIdentityColorIndex(id)
+    );
+
+    expect(new Set(slots).size).toBe(WORKSHOP_PERSONA_CATALOG.length);
+    expect(participantIdentityColorIndex('jill')).toBe(
+      participantIdentityColorIndex('jill')
+    );
+    expect(participantIdentityColorIndex('tool:continuity')).toBe(
+      participantIdentityColorIndex('tool:continuity')
+    );
   });
 });

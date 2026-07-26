@@ -53,11 +53,18 @@ summary.pm-context-budget-row:focus-visible {
   flex: none;
   background: var(--pm-dim);
 }
-.pm-context-budget-dot-0 { background: var(--pm-accent); }
-.pm-context-budget-dot-1 { background: var(--pm-blue); }
-.pm-context-budget-dot-2 { background: var(--pm-green); }
-.pm-context-budget-dot-3 { background: var(--pm-amber); }
-.pm-context-budget-dot-4 { background: var(--pm-link); }
+.pm-context-budget-dot-0 { background: var(--pm-identity-0); }
+.pm-context-budget-dot-1 { background: var(--pm-identity-1); }
+.pm-context-budget-dot-2 { background: var(--pm-identity-2); }
+.pm-context-budget-dot-3 { background: var(--pm-identity-3); }
+.pm-context-budget-dot-4 { background: var(--pm-identity-4); }
+.pm-context-budget-dot-5 { background: var(--pm-identity-5); }
+.pm-context-budget-dot-6 { background: var(--pm-identity-6); }
+.pm-context-budget-dot-7 { background: var(--pm-identity-7); }
+.pm-context-budget-dot-8 { background: var(--pm-identity-8); }
+.pm-context-budget-dot-9 { background: var(--pm-identity-9); }
+.pm-context-budget-dot-10 { background: var(--pm-identity-10); }
+.pm-context-budget-dot-11 { background: var(--pm-identity-11); }
 
 .pm-context-budget-name {
   font-size: 12.5px;

@@ -44,6 +44,22 @@
   --pm-amber:  #e2b24a;
   --pm-red:    #ef7d66;
 
+  /* Stable participant identity palette. Roster slots are assigned in
+     WORKSHOP_PERSONA_CATALOG order; these tokens can later travel from the
+     context dot into participant-card accents without re-deriving identity. */
+  --pm-identity-0:  #ee7d49;
+  --pm-identity-1:  #5aa2f0;
+  --pm-identity-2:  #6fc98a;
+  --pm-identity-3:  #e0589e;
+  --pm-identity-4:  #e2b24a;
+  --pm-identity-5:  #a78bfa;
+  --pm-identity-6:  #4fc3c8;
+  --pm-identity-7:  #f08aa6;
+  --pm-identity-8:  #a8c95f;
+  --pm-identity-9:  #7db7e8;
+  --pm-identity-10: #d99a62;
+  --pm-identity-11: #c69cf4;
+
   --pm-r-card: 12px;
   --pm-r-tile: 9px;
   --pm-r-input: 8px;

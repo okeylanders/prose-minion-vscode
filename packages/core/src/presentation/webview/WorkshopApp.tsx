@@ -378,6 +378,11 @@ export const WorkshopApp: React.FC = () => {
         ?? guestTargetPersonaId
         ?? 'Guest'
       : activePersona.label;
+  const chatTargetIdentity = workshop.chatTarget.kind === 'tool'
+    ? `tool:${workshop.chatTarget.toolId}`
+    : workshop.chatTarget.kind === 'personaGuest'
+      ? guestTargetPersonaId ?? 'guest:unknown'
+      : activePersona.id;
 
   // Recomputing a full word split per streamed token was O(excerpt) work on
   // the token clock (PR #67 review #11) — the excerpt only changes on re-pin.
@@ -396,8 +401,7 @@ export const WorkshopApp: React.FC = () => {
   // Live run bubble: visible from run start until the assistant turn lands.
   const showLiveTurn = workshop.isRunning || workshop.isStreaming || workshop.streamingContent.length > 0;
   // Invite appears once context is ready and the room has an open guest seat.
-  const canInviteGuest = !!workshop.excerpt
-    && workshop.sessionReady
+  const canInviteGuest = workshop.canMessage
     && !roomMutationLocked
     && workshop.personaGuests.filter((guest) => guest.liveness === 'live').length
       < WORKSHOP_GUEST_CAPACITY;
@@ -1285,16 +1289,12 @@ export const WorkshopApp: React.FC = () => {
               onInviteGuest={openGuestModal}
               onDismissGuest={workshop.dismissGuest}
             />
-            {/* §10: the composer's context line reports SCOPE while the room
-                has no passage. "<Host> context" would be true but useless
-                there — what the writer needs to see is that no excerpt is in
-                it. Once one is pinned it returns to the participant gauge. */}
+            {/* Scope copy belongs to the header and scope strip. This gauge
+                names the participant whose retained context it measures. */}
             <ContextBudget
-              label={
-                workshop.scope === 'open' && !hasExcerpt
-                  ? 'Open conversation · No excerpt yet'
-                  : workshop.contextBudget?.label ?? `${chatTargetLabel} context`
-              }
+              participantIdentity={chatTargetIdentity}
+              participantLabel={chatTargetLabel}
+              showsContextSuffix={!(workshop.scope === 'open' && !hasExcerpt)}
               snapshot={workshop.contextBudget?.snapshot}
               modelOptions={modelsSettings.modelOptions}
               cumulativeProcessedTokens={tokenTracking.usage.totalTokens}

@@ -2574,8 +2574,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   });
   /**
    * Sprint 13A — Open Chat at the handler boundary. The sprint's exit criteria
-   * live here: an excerpt-free host conversation is real and honest, tools and
-   * guests stay gated, both reversals reach the aggregate, and the shared
+   * live here: an excerpt-free participant conversation is real and honest,
+   * tools stay gated, both reversals reach the aggregate, and the shared
    * Edit/Preview sheet is served without shipping every attachment body in
    * every snapshot.
    */
@@ -2596,6 +2596,27 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       fileSystem.readFile = jest.fn().mockResolvedValue(new TextEncoder().encode(content));
       await handler.handleAddContextFile(message(MessageType.WORKSHOP_ADD_CONTEXT_FILE, {}) as any);
     };
+
+    it('explains both participant-subject refusal reasons before inviting a guest', async () => {
+      await handler.handleInviteGuest(message(
+        MessageType.WORKSHOP_INVITE_GUEST,
+        { personaId: 'felix', openingMessage: 'Read the room.' }
+      ) as any);
+      expect(posted(MessageType.ERROR).at(-1)?.payload.message)
+        .toBe('Choose how to start this session before inviting a guest.');
+
+      jest.spyOn(session, 'getParticipantSubjectStatus').mockReturnValue({
+        ready: false,
+        reason: 'excerpt-missing'
+      });
+      await handler.handleInviteGuest(message(
+        MessageType.WORKSHOP_INVITE_GUEST,
+        { personaId: 'felix', openingMessage: 'Read the room.' }
+      ) as any);
+      expect(posted(MessageType.ERROR).at(-1)?.payload.message)
+        .toBe('Pin an excerpt before inviting a guest.');
+      expect(service.startWorkshopGuestConversation).not.toHaveBeenCalled();
+    });
 
     it('starts a retained host conversation with no excerpt and no fabricated one', async () => {
       await chooseOpen();
@@ -2637,15 +2658,74 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       expect(posted(MessageType.ERROR).at(-1)?.payload.message).toContain('Pin an excerpt');
     });
 
-    it('refuses a guest invitation in an excerpt-free room', async () => {
+    it('invites and continues an honest guest with open-room standing context', async () => {
       await chooseOpen();
+      await handler.handleAddContextText(message(
+        MessageType.WORKSHOP_ADD_CONTEXT_TEXT,
+        { text: '# Story compass\n\nThe middle should feel increasingly breathless.' }
+      ) as any);
       await handler.handleInviteGuest(message(
         MessageType.WORKSHOP_INVITE_GUEST,
         { personaId: 'felix', openingMessage: 'Read the room.' }
       ) as any);
 
-      expect(service.startWorkshopGuestConversation).not.toHaveBeenCalled();
-      expect(posted(MessageType.ERROR).at(-1)?.payload.message).toContain('Pin an excerpt');
+      const join = service.startWorkshopGuestConversation.mock.calls.at(-1)![0];
+      expect(join.personaId).toBe('felix');
+      expect(join.message).toContain('<workshop-open-conversation>');
+      expect(join.message).toContain('No excerpt has been provided.');
+      expect(join.message).toContain('The middle should feel increasingly breathless.');
+      expect(join.message).not.toContain('<pinned-excerpt>');
+      expect((capabilityFactory.create as jest.Mock).mock.calls.at(-1)?.[0])
+        .toMatchObject({
+          owner: { kind: 'personaGuest', personaId: 'felix' },
+          excerpt: undefined
+        });
+      expect(session.collectWriterSources({
+        kind: 'personaGuest',
+        personaId: 'felix'
+      })).toEqual([
+        expect.objectContaining({ kind: 'attachment', label: 'Story compass' })
+      ]);
+
+      service.continueConversation.mockClear();
+      await send('What rhythm would serve that shape?');
+      expect(service.continueConversation).toHaveBeenCalledWith(
+        'guest-conv',
+        expect.stringContaining('What rhythm would serve that shape?'),
+        expect.objectContaining({
+          capability: expect.objectContaining({ catalog: 'workshopPersona' })
+        })
+      );
+    });
+
+    it('does not call a session marker conversational catch-up', async () => {
+      await chooseOpen();
+      session.recordSessionMarker('start', 'Session started now.');
+
+      await send('Help me plan the next scene.');
+
+      const statuses = posted(MessageType.STATUS)
+        .map((entry) => entry.payload.message);
+      expect(statuses).toContain('Streaming Jill…');
+      expect(statuses).not.toContain('Catching Jill up on the room…');
+      expect(log.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('status=lifecycle-only')
+      );
+    });
+
+    it('still announces catch-up for actual unseen room conversation', async () => {
+      await chooseOpen();
+      session.adoptPersonaGuest('margot', 'margot-conv', []);
+      session.beginPersonaGuestMessage('margot', 'guest-run', 'What should the turn do?');
+      session.completeRun('guest-run', 'Let it narrow before it breaks.');
+
+      await send('What did Margot see?');
+
+      expect(posted(MessageType.STATUS).map((entry) => entry.payload.message))
+        .toContain('Catching Jill up on the room…');
+      expect(log.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('status=conversational')
+      );
     });
 
     /**

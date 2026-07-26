@@ -1,5 +1,6 @@
 import {
   guardWorkshopRoomDelivery,
+  hasWorkshopConversationalCatchUp,
   projectWorkshopJoinSnapshotTurns,
   projectWorkshopRoomTurns,
   WorkshopRoomDeliveryService
@@ -25,6 +26,37 @@ const turn = (
 });
 
 describe('WorkshopRoomDeliveryService', () => {
+  it('distinguishes lifecycle-only delivery from conversational catch-up', () => {
+    expect(hasWorkshopConversationalCatchUp([
+      turn('start', { participant: 'session', artifact: 'session_start' }),
+      turn('resume', { participant: 'session', artifact: 'session_resume' })
+    ])).toBe(false);
+    expect(hasWorkshopConversationalCatchUp([
+      turn('start', { participant: 'session', artifact: 'session_start' }),
+      turn('guest-reply')
+    ])).toBe(true);
+  });
+
+  it('classifies the complete pending backlog before the runaway guard defers conversation', () => {
+    const session = new WorkshopSessionService(() => 1);
+    session.recordSessionMarker('start', 'Session started.');
+    session.setSessionScope('open');
+    session.adoptPersonaGuest('margot', 'margot-conv', []);
+    session.beginPersonaGuestMessage('margot', 'guest-run', 'A real question.');
+    session.completeRun('guest-run', 'A real answer.');
+
+    const delivery = new WorkshopRoomDeliveryService(
+      session,
+      'Session started.'.length
+    ).prepare({ kind: 'host' });
+
+    expect(delivery.turns).toEqual([
+      expect.objectContaining({ artifact: 'session_start' })
+    ]);
+    expect(delivery.deferredTurns).toBe(2);
+    expect(delivery.hasConversationalCatchUp).toBe(true);
+  });
+
   it('projects room turns after the offset without quoting the reader to itself', () => {
     const turns = [
       turn('host-1', { participant: 'host', personaId: 'jill' }),
@@ -113,7 +145,7 @@ describe('WorkshopRoomDeliveryService', () => {
   it('builds a cold re-invitation snapshot from room history including the guest own prior turns', () => {
     const session = new WorkshopSessionService(() => 1);
     session.setExcerpt({ text: 'Passage.', source: { kind: 'manual' } });
-    session.adoptPersonaGuest('margot', 'margot-conv');
+    session.adoptPersonaGuest('margot', 'margot-conv', []);
     session.beginPersonaGuestMessage('margot', 'margot-run', 'Question.');
     session.completeRun('margot-run', 'Answer.');
     session.dismissPersonaGuest('margot');
@@ -126,7 +158,7 @@ describe('WorkshopRoomDeliveryService', () => {
     const snapshot = new WorkshopRoomDeliveryService(session).prepareJoinSnapshot({
       kind: 'personaGuest',
       personaId: 'margot'
-    }, invitation.id);
+    }, invitation.turn.id);
 
     expect(snapshot.map((candidate) => candidate.content)).toEqual([
       'Question.',
@@ -149,7 +181,7 @@ describe('WorkshopRoomDeliveryService', () => {
   it('rejects a hole instead of advancing to the newest delivered turn', () => {
     const session = new WorkshopSessionService(() => 1);
     session.setExcerpt({ text: 'Passage.', source: { kind: 'manual' } });
-    session.adoptPersonaGuest('margot', 'margot-conv');
+    session.adoptPersonaGuest('margot', 'margot-conv', []);
     session.beginPersonaGuestMessage('margot', 'margot-run', 'Question.');
     session.completeRun('margot-run', 'Answer.');
 
@@ -173,7 +205,7 @@ describe('WorkshopRoomDeliveryService', () => {
   it('acknowledges the exact prefix and leaves a guarded suffix pending', () => {
     const session = new WorkshopSessionService(() => 1);
     session.setExcerpt({ text: 'Passage.', source: { kind: 'manual' } });
-    session.adoptPersonaGuest('margot', 'margot-conv');
+    session.adoptPersonaGuest('margot', 'margot-conv', []);
     session.beginPersonaGuestMessage('margot', 'margot-run', 'Question.');
     session.completeRun('margot-run', 'Answer.');
 
@@ -188,7 +220,7 @@ describe('WorkshopRoomDeliveryService', () => {
   it('advances through the delivered prefix rather than a newer ineligible ledger tail', () => {
     const session = new WorkshopSessionService(() => 1);
     session.setExcerpt({ text: 'Passage.', source: { kind: 'manual' } });
-    session.adoptPersonaGuest('margot', 'margot-conv');
+    session.adoptPersonaGuest('margot', 'margot-conv', []);
     session.beginPersonaGuestMessage('margot', 'margot-run', 'Question.');
     session.completeRun('margot-run', 'Answer.');
 
@@ -213,7 +245,7 @@ describe('WorkshopRoomDeliveryService', () => {
   }) => {
     const session = new WorkshopSessionService(() => 1);
     session.setExcerpt({ text: 'Passage.', source: { kind: 'manual' } });
-    session.adoptPersonaGuest('margot', 'margot-conv');
+    session.adoptPersonaGuest('margot', 'margot-conv', []);
     for (let index = 0; index < exchanges; index += 1) {
       session.beginPersonaGuestMessage('margot', `guest-${index}`, `Question ${index}.`);
       session.completeRun(`guest-${index}`, `${index}:${'x'.repeat(replyCharacters)}`);

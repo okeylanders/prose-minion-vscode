@@ -64,7 +64,7 @@ describe('WorkshopConversationSettingsService', () => {
     session.setExcerpt({ text: 'Excerpt', source: { kind: 'manual' } });
     session.beginPersonaMessage('host-open', 'Start.');
     session.completeRun('host-open', 'Ready.', undefined, false, 'host-conv');
-    session.adoptPersonaGuest('margot', 'guest-conv');
+    session.adoptPersonaGuest('margot', 'guest-conv', []);
 
     await expect(service.syncFromSettings()).resolves.toEqual({
       changed: true,

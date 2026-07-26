@@ -108,7 +108,7 @@ describe('completeWorkshopRun', () => {
   });
 
   it('attaches proposals to a guest turn and promotes them with guest provenance', () => {
-    session.adoptPersonaGuest('felix', 'felix-conv');
+    session.adoptPersonaGuest('felix', 'felix-conv', []);
     session.beginPersonaGuestMessage('felix', 'req-1', 'Turn the review into tasks.');
 
     const turn = completeWorkshopRun({
