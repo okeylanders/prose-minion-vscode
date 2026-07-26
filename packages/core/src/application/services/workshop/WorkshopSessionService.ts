@@ -1108,7 +1108,7 @@ export class WorkshopSessionService {
   adoptPersonaGuest(
     personaId: WorkshopPersonaId,
     conversationId: string,
-    deliveredWriterSources: readonly ContextSourceEntry[] = []
+    deliveredWriterSources: readonly ContextSourceEntry[]
   ): void {
     this.validatePersonaGuestInvitation(personaId);
     if (!conversationId.trim()) {
@@ -1536,6 +1536,12 @@ export class WorkshopSessionService {
     }
     if (isGuest && active.guestPersonaId && conversationId) {
       if (!this.isLivePersonaGuest(active.guestPersonaId)) {
+        if (!active.guestJoinWriterSources) {
+          throw new Error(
+            `Cannot adopt Workshop guest ${workshopPersonaLabel(active.guestPersonaId)} ` +
+            'without a join-time writer-source snapshot'
+          );
+        }
         this.adoptPersonaGuest(
           active.guestPersonaId,
           conversationId,

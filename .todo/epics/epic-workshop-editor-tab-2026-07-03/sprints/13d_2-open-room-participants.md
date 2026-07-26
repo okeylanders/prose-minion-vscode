@@ -1,6 +1,6 @@
 # Sprint 13D_2: Open Room Participants
 
-**Status**: Implementation complete — manual Extension Development Host smoke pending
+**Status**: Complete — Extension Development Host smoke performed
 **Priority**: High
 **Branch**: `sprint/workshop-editor-tab-13d_2-open-room-participants` -> PR into `epic/workshop-editor-tab`
 **Depends on**: Sprint 13D / PR #90
@@ -69,3 +69,10 @@ composer status copy.
   sentinel verification passed; webpack reported only its existing size
   warnings.
 - `git diff --check`: passed.
+- Extension Development Host smoke exercised open-room invitation, target
+  switching, and the bare participant context label. The smoke exposed a
+  five-slot identity-dot collision; the final fix gives all twelve canonical
+  personas distinct stable slots and is covered by component/utility tests.
+- Final re-review hardening makes the guest join writer-source snapshot a
+  required adoption input; missing provenance can no longer silently become an
+  empty manifest.

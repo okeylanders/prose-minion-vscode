@@ -48,6 +48,14 @@ act before merge · **Deferred** = real issue, safe to punt for a stated reason 
 7. The capability invariant comment now cites Sprint 13D_2 / ADR 2026-07-26.
 8. The existing delivery-accounting log now records
    `status=conversational|lifecycle-only`, with tests for both values.
+9. Re-review hardening removed `adoptPersonaGuest`'s empty-manifest default.
+   Adoption now requires the delivered writer-source snapshot, and completion
+   fails loudly if a future join path reaches adoption without capturing one.
+10. EDH smoke exposed collisions in the five-slot label hash (`Jill` and
+    `Sister Agnes` both resolved to coral). The context meter now receives a
+    canonical participant identity, and all twelve personas have distinct,
+    stable roster slots. Carrying those colors into response-card borders and
+    names is tracked separately.
 
 ---
 

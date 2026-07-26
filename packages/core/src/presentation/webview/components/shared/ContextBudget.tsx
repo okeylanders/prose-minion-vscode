@@ -9,10 +9,12 @@ import {
 import {
   contextBudgetView,
   formatCompactTokens,
-  participantDotIndex
+  participantIdentityColorIndex
 } from '@utils/contextBudget';
 
 interface ContextBudgetProps {
+  /** Canonical persona id or a namespaced non-persona participant key. */
+  participantIdentity: string;
   participantLabel: string;
   /** Scope copy lives elsewhere; false renders only the participant's name. */
   showsContextSuffix?: boolean;
@@ -97,9 +99,9 @@ const Chevron: React.FC = () => (
   </span>
 );
 
-const IdentityDot: React.FC<{ label: string }> = ({ label }) => (
+const IdentityDot: React.FC<{ identity: string }> = ({ identity }) => (
   <span
-    className={`pm-context-budget-dot pm-context-budget-dot-${participantDotIndex(label)}`}
+    className={`pm-context-budget-dot pm-context-budget-dot-${participantIdentityColorIndex(identity)}`}
     aria-hidden="true"
   />
 );
@@ -115,6 +117,7 @@ const ParticipantLabel: React.FC<{
 );
 
 export const ContextBudget: React.FC<ContextBudgetProps> = ({
+  participantIdentity,
   participantLabel,
   showsContextSuffix = true,
   snapshot,
@@ -130,7 +133,7 @@ export const ContextBudget: React.FC<ContextBudgetProps> = ({
     return (
       <div className="pm-context-budget pm-context-budget-empty" role="status" aria-label={`${accessibleLabel}: not measured yet`}>
         <div className="pm-context-budget-row">
-          <IdentityDot label={participantLabel} />
+          <IdentityDot identity={participantIdentity} />
           <ParticipantLabel
             participantLabel={participantLabel}
             showsContextSuffix={showsContextSuffix}
@@ -158,7 +161,7 @@ export const ContextBudget: React.FC<ContextBudgetProps> = ({
         aria-label={accessible}
         title="Retained context after the last committed reply — click for details"
       >
-        <IdentityDot label={participantLabel} />
+        <IdentityDot identity={participantIdentity} />
         <ParticipantLabel
           participantLabel={participantLabel}
           showsContextSuffix={showsContextSuffix}

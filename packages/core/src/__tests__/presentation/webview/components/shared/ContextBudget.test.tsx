@@ -21,6 +21,7 @@ const snapshot: ContextBudgetSnapshot = {
 describe('ContextBudget', () => {
   it('renders retained context separately from last-request, processed-turn, cumulative, and compression details', () => {
     render(<ContextBudget
+      participantIdentity="jill"
       participantLabel="Jill"
       snapshot={snapshot}
       modelOptions={[
@@ -48,6 +49,7 @@ describe('ContextBudget', () => {
 
   it('renders empty and unavailable states without a hardcoded context window', () => {
     const { rerender } = render(<ContextBudget
+      participantIdentity="quinn"
       participantLabel="Quinn"
       modelOptions={[]}
       cumulativeProcessedTokens={0}
@@ -55,6 +57,7 @@ describe('ContextBudget', () => {
     expect(screen.getByText(/Not measured yet — updates after the first reply/)).toBeTruthy();
 
     rerender(<ContextBudget
+      participantIdentity="quinn"
       participantLabel="Quinn"
       snapshot={snapshot}
       modelOptions={[{
@@ -66,8 +69,9 @@ describe('ContextBudget', () => {
     expect(screen.getAllByText('Unavailable')).toHaveLength(2);
   });
 
-  it('renders a bare participant label without manufacturing a context suffix', () => {
-    render(<ContextBudget
+  it('renders a bare participant label without changing its identity color', () => {
+    const { rerender } = render(<ContextBudget
+      participantIdentity="jill"
       participantLabel="Jill"
       showsContextSuffix={false}
       modelOptions={[]}
@@ -76,10 +80,22 @@ describe('ContextBudget', () => {
 
     expect(screen.getByText('Jill')).toBeTruthy();
     expect(screen.queryByText('context')).toBeNull();
+    const bareDotClass = document.querySelector('.pm-context-budget-dot')?.className;
+
+    rerender(<ContextBudget
+      participantIdentity="jill"
+      participantLabel="Jill"
+      showsContextSuffix
+      modelOptions={[]}
+      cumulativeProcessedTokens={0}
+    />);
+
+    expect(document.querySelector('.pm-context-budget-dot')?.className).toBe(bareDotClass);
   });
 
   it('renders the In-context manifest with parenthetical kinds, attribution, and stale dimming (Phase 7)', () => {
     render(<ContextBudget
+      participantIdentity="jill"
       participantLabel="Jill"
       snapshot={snapshot}
       modelOptions={[{ id: 'model/a', label: 'Model A', contextLength: 200_000, liveDataAvailable: true }]}

@@ -378,6 +378,11 @@ export const WorkshopApp: React.FC = () => {
         ?? guestTargetPersonaId
         ?? 'Guest'
       : activePersona.label;
+  const chatTargetIdentity = workshop.chatTarget.kind === 'tool'
+    ? `tool:${workshop.chatTarget.toolId}`
+    : workshop.chatTarget.kind === 'personaGuest'
+      ? guestTargetPersonaId ?? 'guest:unknown'
+      : activePersona.id;
 
   // Recomputing a full word split per streamed token was O(excerpt) work on
   // the token clock (PR #67 review #11) — the excerpt only changes on re-pin.
@@ -1287,6 +1292,7 @@ export const WorkshopApp: React.FC = () => {
             {/* Scope copy belongs to the header and scope strip. This gauge
                 names the participant whose retained context it measures. */}
             <ContextBudget
+              participantIdentity={chatTargetIdentity}
               participantLabel={chatTargetLabel}
               showsContextSuffix={!(workshop.scope === 'open' && !hasExcerpt)}
               snapshot={workshop.contextBudget?.snapshot}

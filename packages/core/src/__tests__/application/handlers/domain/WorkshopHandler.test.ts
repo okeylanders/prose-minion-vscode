@@ -2715,7 +2715,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
     it('still announces catch-up for actual unseen room conversation', async () => {
       await chooseOpen();
-      session.adoptPersonaGuest('margot', 'margot-conv');
+      session.adoptPersonaGuest('margot', 'margot-conv', []);
       session.beginPersonaGuestMessage('margot', 'guest-run', 'What should the turn do?');
       session.completeRun('guest-run', 'Let it narrow before it breaks.');
 
