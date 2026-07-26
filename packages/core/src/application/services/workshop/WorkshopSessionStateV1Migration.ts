@@ -1,7 +1,8 @@
 /**
  * One-way compatibility normalization for checkpoints written before Workshop
- * scope became immutable. Current code cannot write these states; saved writer
- * sessions may still contain them.
+ * scope became immutable, and before capability artifacts persisted their
+ * invoking principal (Sprint 13C). Current code cannot write these states;
+ * saved writer sessions may still contain them.
  */
 
 import type {
@@ -12,7 +13,8 @@ export type WorkshopSessionHydrationMigration =
   | 'discarded-legacy-scope-transition'
   | 'inferred-missing-scope'
   | 'normalized-open-session-with-excerpt'
-  | 'restored-undelivered-withdrawal';
+  | 'restored-undelivered-withdrawal'
+  | 'defaulted-capability-principal';
 
 export interface WorkshopSessionStateV1MigrationResult {
   state: WorkshopSessionStateV1;
@@ -45,6 +47,24 @@ export function migrateWorkshopSessionStateV1ForHydration(
     migrations.push('discarded-legacy-scope-transition');
   }
 
+  // Pre-13C capability artifacts carry no invoking principal. The host was
+  // the sole possible invoker then, so stamping `host` records the truth —
+  // and keeps ownership recoverable now that guests invoke too (ADR §2).
+  let defaultedPrincipal = false;
+  const turns = state.turns.map((turn) => {
+    if (!turn.capability || turn.capability.invokedBy !== undefined) {
+      return turn;
+    }
+    defaultedPrincipal = true;
+    return {
+      ...turn,
+      capability: { ...turn.capability, invokedBy: { kind: 'host' as const } }
+    };
+  });
+  if (defaultedPrincipal) {
+    migrations.push('defaulted-capability-principal');
+  }
+
   const excerpt = withdrawalNeverShipped
     ? state.shelvedExcerpt
     : state.excerpt;
@@ -61,6 +81,7 @@ export function migrateWorkshopSessionStateV1ForHydration(
   return {
     state: {
       ...state,
+      turns,
       excerpt,
       scope,
       shelvedExcerpt,

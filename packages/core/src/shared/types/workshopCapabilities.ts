@@ -78,11 +78,23 @@ export interface WorkshopCapabilityResult {
   error?: string;
 }
 
+/**
+ * The conversation owner on whose behalf a capability ran
+ * (ADR 2026-07-24 §2). Persisted on the turn: who invoked a capability is a
+ * historical fact, and once guests are invokers ownership is unrecoverable
+ * from the record unless it is stored. Whether an owner implies privacy stays
+ * a computed policy (13D's `audience()`), never a stored classification.
+ */
+export type WorkshopCapabilityPrincipal =
+  | { kind: 'host' }
+  | { kind: 'personaGuest'; personaId: WorkshopPersonaId };
+
 /** Reload-safe provenance rendered with a completed capability artifact. */
 export interface WorkshopCapabilityArtifactDetails {
   operation: WorkshopCapabilityOperation;
   status: WorkshopCapabilityStatus;
   requestSummary: string;
   requestedByPersonaId: WorkshopPersonaId;
+  invokedBy: WorkshopCapabilityPrincipal;
   metadata?: Record<string, unknown>;
 }

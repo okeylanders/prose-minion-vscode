@@ -181,6 +181,31 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     expect(engine.runInitial.mock.calls[0][0]).not.toHaveProperty('capability');
   });
 
+  it('starts a guest with its participant-owned capability under the workshop-host policy (13C)', async () => {
+    const engine = makeEngine('guest');
+    const service = build(managerFor(() => engine), jest.fn().mockResolvedValue('guest system prompt'));
+    await flush();
+    const capability = { catalog: 'workshopPersona' } as never;
+
+    await service.startWorkshopGuestConversation({
+      personaId: 'margot',
+      message: '<workshop-transcript>\nWriter:\nThe room is tense.\n</workshop-transcript>',
+      behavior: {
+        interactionMode: 'conversational',
+        expressionLevel: 'subtle',
+        relationalDepth: 'attuned',
+        carryCuesThroughSession: true
+      },
+      writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE
+    }, { capability });
+
+    expect(engine.runInitial).toHaveBeenCalledWith(expect.objectContaining({
+      toolName: 'workshop_guest_margot',
+      policy: expect.objectContaining({ id: 'workshop-host' }),
+      capability
+    }));
+  });
+
   it.each([
     ['direct-pinned', { kind: 'manual' } as const],
     [

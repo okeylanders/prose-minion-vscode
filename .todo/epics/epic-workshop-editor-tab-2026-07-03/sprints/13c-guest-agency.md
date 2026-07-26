@@ -1,6 +1,6 @@
 # Sprint 13C: Guest Agency
 
-**Status**: Planned  
+**Status**: Implemented (2026-07-26) — manual EDH pass outstanding  
 **Priority**: High  
 **Branch**: `sprint/workshop-editor-tab-13c-guest-agency` -> PR into `epic/workshop-editor-tab`  
 **Depends on**: Sprint 13A  
@@ -97,6 +97,40 @@ Moved here from 13D so all pixel-fidelity work in Sprint 13 lands in 13A and
 - No serial invite flow — one guest per modal session.
 - No guest-created personas, host swapping, arbitrary filesystem access, or
   guest auto-commit of widgets.
+
+## Deliberate departures from the mock (recorded per the design-load note)
+
+- **`Esc` closes the sheet** (shell keyboard contract), which discards the
+  guest selection / reverts to the current host because selection is
+  modal-local. The mock's `Esc`-clears-selection-in-place is not reproduced.
+- **Plain `Enter` does not commit in Choose Host** — focus sits on card
+  buttons where `Enter` means *select*. `⌘/Ctrl+Enter` commits in both sheets,
+  as in the mock.
+- **No serial invite reset** — a successful submit closes the modal (already
+  called out in Scope as mock convenience).
+- **Close control** stays the shell-managed button (focus capture/return),
+  absolutely positioned top-right to match the comp's `cw-x`.
+- **Capacity-excluded cards** state why with a `Room full` tag + reason; the
+  mock never showed a full room.
+
+## Implementation notes (2026-07-26)
+
+- New `WorkshopInviteGuestModal` / `WorkshopChooseHostModal` over a shared
+  `WorkshopPersonaSheetGrid` and a `WorkshopModalShell` `variant="sheet"`;
+  `WorkshopPersonaBrowserModal` removed.
+- Untouched defaults are generated per persona via
+  `defaultWorkshopGuestOpening()` (`guestOpeningFocus` on the catalog); the
+  old excerpt-referencing `DEFAULT_WORKSHOP_GUEST_OPENING` is gone.
+- Capability turns now carry `owner` + retained `conversationId`;
+  `WorkshopCapabilityArtifactDetails.invokedBy` persists the principal, the
+  session guard matches principal↔active run, `isHostThreadTurn` excludes
+  guest-invoked artifacts, and hydration migration
+  `defaulted-capability-principal` stamps `host` on pre-13C checkpoints.
+- Guests get the capability on join (`startWorkshopGuestConversation` now
+  accepts one; workshop-host run policy) and on every continue turn.
+- Also landed with 13C (writer request + approved workshop comp `.wk-crow`):
+  the composer stacked — full-width textarea with the mode/Tools/send
+  controls row docked beneath it.
 
 ## Exit criteria
 

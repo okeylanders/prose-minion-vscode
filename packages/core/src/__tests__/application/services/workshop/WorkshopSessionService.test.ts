@@ -701,13 +701,14 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     service.beginPersonaMessage('host-capabilities', 'Check this word and continuity.');
 
     const dictionary = service.recordCapabilityArtifact({
-      hostRequestId: 'host-capabilities',
+      requestId: 'host-capabilities',
       excerptVersion: 1,
       details: {
         operation: 'dictionary.lookup',
         status: 'success',
         requestSummary: 'liminal',
-        requestedByPersonaId: 'jill'
+        requestedByPersonaId: 'jill',
+        invokedBy: { kind: 'host' }
       },
       result: {
         capability: 'dictionary.lookup',
@@ -718,7 +719,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       }
     });
     const analysis = service.recordCapabilityArtifact({
-      hostRequestId: 'host-capabilities',
+      requestId: 'host-capabilities',
       excerptVersion: 1,
       toolId: 'continuity',
       details: {
@@ -726,6 +727,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
         status: 'success',
         requestSummary: 'Continuity',
         requestedByPersonaId: 'jill',
+        invokedBy: { kind: 'host' },
         metadata: { toolId: 'continuity' }
       },
       result: {
@@ -761,13 +763,14 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     service.beginPersonaMessage('host-capabilities', 'Check this word.');
 
     const completion = service.recordCapabilityArtifact({
-      hostRequestId: 'host-capabilities',
+      requestId: 'host-capabilities',
       excerptVersion: 1,
       details: {
         operation: 'dictionary.lookup',
         status: 'success',
         requestSummary: 'liminal',
-        requestedByPersonaId: 'jill'
+        requestedByPersonaId: 'jill',
+        invokedBy: { kind: 'host' }
       },
       result: {
         capability: 'dictionary.lookup',
@@ -781,6 +784,94 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(service.getSnapshot().turns).not.toEqual(expect.arrayContaining([
       expect.objectContaining({ content: 'Stale evidence.' })
     ]));
+  });
+
+  describe('participant-owned capability artifacts (Sprint 13C, ADR 2026-07-24 §2)', () => {
+    const guestLookup = (personaId: 'margot' | 'quinn') => ({
+      excerptVersion: 1,
+      details: {
+        operation: 'dictionary.lookup' as const,
+        status: 'success' as const,
+        requestSummary: 'liminal',
+        requestedByPersonaId: personaId,
+        invokedBy: { kind: 'personaGuest' as const, personaId }
+      },
+      result: {
+        capability: 'dictionary.lookup' as const,
+        status: 'success' as const,
+        requestSummary: 'liminal',
+        content: 'Threshold-toned.'
+      }
+    });
+
+    it('records a guest-invoked artifact with its persisted principal, private from host and other guests', () => {
+      pin();
+      service.adoptPersonaGuest('margot', 'margot-conv');
+      service.adoptPersonaGuest('quinn', 'quinn-conv');
+      service.beginPersonaGuestMessage('margot', 'guest-run', 'Look up liminal.');
+
+      const completion = service.recordCapabilityArtifact({
+        requestId: 'guest-run',
+        ...guestLookup('margot')
+      });
+      expect(completion?.turn).toMatchObject({
+        participant: 'tool',
+        artifact: 'dictionary_lookup',
+        capability: {
+          requestedByPersonaId: 'margot',
+          invokedBy: { kind: 'personaGuest', personaId: 'margot' }
+        }
+      });
+      service.completeRun('guest-run', 'Margot reply.');
+
+      // The artifact is in the ledger for the writer, but never in the host
+      // thread, another guest's catch-up, or the guest-to-host handoff.
+      expect(service.getSnapshot().turns.map((turn) => turn.content))
+        .toContain('Threshold-toned.');
+      expect(service.collectHostThreadTurns().map((turn) => turn.content))
+        .not.toContain('Threshold-toned.');
+      expect(service.collectUnseenHostTurnsForGuest('quinn').map((turn) => turn.content))
+        .not.toContain('Threshold-toned.');
+      expect(service.collectUnseenGuestExchangesForHost().map((turn) => turn.content))
+        .not.toContain('Threshold-toned.');
+    });
+
+    it('refuses an artifact whose principal does not own the active run', () => {
+      pin();
+      service.beginPersonaMessage('host-run', 'Host asks.');
+      expect(service.recordCapabilityArtifact({
+        requestId: 'host-run',
+        ...guestLookup('margot')
+      })).toBeUndefined();
+      service.completeRun('host-run', 'Host reply.', undefined, false, 'host-conv');
+
+      service.adoptPersonaGuest('margot', 'margot-conv');
+      service.adoptPersonaGuest('quinn', 'quinn-conv');
+      service.beginPersonaGuestMessage('margot', 'guest-run', 'Guest asks.');
+      expect(service.recordCapabilityArtifact({
+        requestId: 'guest-run',
+        excerptVersion: 1,
+        details: {
+          operation: 'dictionary.lookup',
+          status: 'success',
+          requestSummary: 'liminal',
+          requestedByPersonaId: 'jill',
+          invokedBy: { kind: 'host' }
+        },
+        result: {
+          capability: 'dictionary.lookup',
+          status: 'success',
+          requestSummary: 'liminal',
+          content: 'Wrong principal.'
+        }
+      })).toBeUndefined();
+      expect(service.recordCapabilityArtifact({
+        requestId: 'guest-run',
+        ...guestLookup('quinn')
+      })).toBeUndefined();
+      expect(service.getSnapshot().turns.map((turn) => turn.content))
+        .not.toEqual(expect.arrayContaining(['Threshold-toned.', 'Wrong principal.']));
+    });
   });
 
   it('reset disposes all participants and returns to Jill while preserving the working set', () => {

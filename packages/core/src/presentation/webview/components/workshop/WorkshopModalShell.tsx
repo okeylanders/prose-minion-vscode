@@ -20,13 +20,19 @@ interface WorkshopModalShellProps {
   closeLabel: string;
   /** Extra class(es) on the dialog box beside pm-ws-tools-modal. */
   className?: string;
+  /**
+   * `sheet` (Sprint 13C) is the split-sheet layout from the approved comps:
+   * fixed header, scrolling body, docked footer. The dialog box stops
+   * scrolling itself; the caller's `.pm-ws-sheet-body` owns the scroll.
+   */
+  variant?: 'panel' | 'sheet';
   onClose: () => void;
   children: React.ReactNode;
 }
 
 export const WorkshopModalShell: React.FC<WorkshopModalShellProps> & {
   CloseButton: typeof WorkshopModalCloseButton;
-} = ({ open, titleId, closeLabel, className, onClose, children }) => {
+} = ({ open, titleId, closeLabel, className, variant = 'panel', onClose, children }) => {
   const returnFocusRef = React.useRef<HTMLElement | null>(null);
   const closeButtonRef = React.useRef<HTMLButtonElement>(null);
 
@@ -65,7 +71,7 @@ export const WorkshopModalShell: React.FC<WorkshopModalShellProps> & {
   return (
     <div className="pm-ws-modal-backdrop" role="presentation" onMouseDown={handleBackdropClick}>
       <div
-        className={`pm-ws-tools-modal${className ? ` ${className}` : ''}`}
+        className={`pm-ws-tools-modal${variant === 'sheet' ? ' pm-ws-modal-sheet' : ''}${className ? ` ${className}` : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

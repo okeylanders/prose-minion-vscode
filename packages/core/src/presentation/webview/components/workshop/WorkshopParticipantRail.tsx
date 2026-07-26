@@ -83,9 +83,14 @@ export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = (
       ref={railRef}
       className="pm-ws-participant-rail"
       role="toolbar"
-      aria-label="Conversation participants"
+      aria-label="Conversation participants and instruments"
       tabIndex={-1}
     >
+      {/* Participants and instruments are DIFFERENT kinds of thing
+          (ADR 2026-07-24 §9): labeled groups plus a real separator, not a
+          decorative glyph. Participants join the conversation; instruments
+          publish reports into it. */}
+      <div className="pm-ws-rail-group" role="group" aria-label="Participants">
       <span className="pm-ws-rail-label" aria-hidden="true">Talking to</span>
       <button
         className={`pm-ws-participant-chip ${hostActive ? 'pm-ws-chip-active' : ''}`}
@@ -146,36 +151,6 @@ export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = (
           </span>
         );
       })}
-      {toolSidecars.map((sidecar) => {
-        const label = workshopToolLabel(sidecar.toolId);
-        const active = sidecar.activeTarget;
-        const unavailable = !sidecar.availableForDirectFollowUp;
-        return (
-          <button
-            key={sidecar.toolId}
-            className={`pm-ws-participant-chip ${active ? 'pm-ws-chip-active pm-ws-chip-direct' : ''}`}
-            type="button"
-            aria-pressed={active}
-            disabled={disabled || unavailable}
-            onClick={() => {
-              if (!active) {
-                onSetChatTarget({ kind: 'tool', toolId: sidecar.toolId });
-              }
-            }}
-            title={
-              unavailable
-                ? `${label}'s conversation is no longer available`
-                : disabled
-                  ? lockedControlTitle
-                  : active
-                    ? `Talking directly to ${label}`
-                    : `Talk directly to ${label} about its latest report`
-            }
-          >
-            <Icon name={workshopToolIcon(sidecar.toolId)} size={12} /> {label}
-          </button>
-        );
-      })}
       {showInviteGuest && (
         <button
           className="pm-ws-participant-chip pm-ws-chip-invite"
@@ -186,6 +161,52 @@ export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = (
         >
           <Icon name="person" size={12} /> Invite guest
         </button>
+      )}
+      </div>
+      {toolSidecars.length > 0 && (
+        <>
+          <span
+            className="pm-ws-rail-divider"
+            role="separator"
+            aria-orientation="vertical"
+          />
+          <div className="pm-ws-rail-group" role="group" aria-label="Instruments">
+            <span className="pm-ws-rail-label" aria-hidden="true">Instruments</span>
+            {toolSidecars.map((sidecar) => {
+              const label = workshopToolLabel(sidecar.toolId);
+              const active = sidecar.activeTarget;
+              const unavailable = !sidecar.availableForDirectFollowUp;
+              return (
+                <button
+                  key={sidecar.toolId}
+                  className={`pm-ws-participant-chip ${active ? 'pm-ws-chip-active pm-ws-chip-direct' : ''}`}
+                  type="button"
+                  aria-pressed={active}
+                  disabled={disabled || unavailable}
+                  onClick={() => {
+                    if (!active) {
+                      onSetChatTarget({ kind: 'tool', toolId: sidecar.toolId });
+                    }
+                  }}
+                  /* The sidecar CONVERSATION is private; its reports are not —
+                     running a tool in the room publishes its report to the
+                     room, so this copy never claims report privacy (§9). */
+                  title={
+                    unavailable
+                      ? `${label}'s conversation is no longer available`
+                      : disabled
+                        ? lockedControlTitle
+                        : active
+                          ? `Talking directly to ${label}`
+                          : `Talk directly to ${label} about its latest report`
+                  }
+                >
+                  <Icon name={workshopToolIcon(sidecar.toolId)} size={12} /> {label}
+                </button>
+              );
+            })}
+          </div>
+        </>
       )}
       {/* The banner this rail replaced was role="status" — keep direct-mode
           switches audible to screen readers, not just visible as chip state. */}

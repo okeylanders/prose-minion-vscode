@@ -135,6 +135,7 @@ describe('WorkshopTurnBubble variation cards', () => {
             status: 'success',
             requestSummary: 'excerpt replace, context omit',
             requestedByPersonaId: 'jill',
+            invokedBy: { kind: 'host' },
             metadata: {
               analysisInputs: {
                 excerpt: {
@@ -375,7 +376,8 @@ describe('WorkshopTurnBubble variation cards', () => {
             operation: 'dictionary.lookup',
             status: 'success',
             requestSummary: 'liminal',
-            requestedByPersonaId: 'jill'
+            requestedByPersonaId: 'jill',
+            invokedBy: { kind: 'host' }
           }
         }}
         quickActionToolId={null}
@@ -406,6 +408,7 @@ describe('WorkshopTurnBubble variation cards', () => {
             status: 'partial',
             requestSummary: 'liminal',
             requestedByPersonaId: 'jill',
+            invokedBy: { kind: 'host' },
             metadata: {
               successCount: 14,
               totalBlocks: 15,
@@ -439,7 +442,8 @@ describe('WorkshopTurnBubble variation cards', () => {
             operation: 'analysis.run',
             status: 'success',
             requestSummary: 'Track the cup.',
-            requestedByPersonaId: 'jill'
+            requestedByPersonaId: 'jill',
+            invokedBy: { kind: 'host' }
           }
         }}
         quickActionToolId={null}
@@ -468,6 +472,7 @@ describe('WorkshopTurnBubble variation cards', () => {
             status: 'success',
             requestSummary: 'characters/raven.md',
             requestedByPersonaId: 'jill',
+            invokedBy: { kind: 'host' },
             metadata: {
               group: 'characters',
               path: 'characters/raven.md',
@@ -509,6 +514,7 @@ describe('WorkshopTurnBubble variation cards', () => {
             status: 'success',
             requestSummary: '“Micah” in characters',
             requestedByPersonaId: 'jill',
+            invokedBy: { kind: 'host' },
             metadata: {
               group: 'characters',
               searchMode: 'catalog',

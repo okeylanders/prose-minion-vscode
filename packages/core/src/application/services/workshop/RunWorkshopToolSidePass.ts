@@ -207,6 +207,8 @@ export class RunWorkshopToolSidePass {
       const hostCapability = this.capabilityFactory.create({
         requestId: synthesisRequestId,
         personaId,
+        owner: { kind: 'host' },
+        conversationId: hostConversationId,
         excerpt,
         excerptVersion: excerpt.version,
         signal: controller.signal,

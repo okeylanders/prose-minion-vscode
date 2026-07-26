@@ -217,6 +217,7 @@ describe('WorkshopSessionService committed persistence', () => {
         status: 'success',
         requestSummary: 'resource.read chapters/05.md',
         requestedByPersonaId: 'jill',
+        invokedBy: { kind: 'host' },
         metadata
       };
       return value;
@@ -357,6 +358,30 @@ describe('WorkshopSessionService committed persistence', () => {
       content: 'Next.',
       relativePath: 'next.md'
     })).toMatchObject({ ok: true, attachment: { id: 'ta-3' } });
+  });
+
+  it('stamps the host principal on pre-13C capability artifacts during hydration', () => {
+    const state = buildCompleteState();
+    const toolTurn = state.turns.find((turn) => turn.participant === 'tool');
+    if (!toolTurn) {
+      throw new Error('Fixture no longer contains a tool turn to stamp.');
+    }
+    // A checkpoint written before Sprint 13C: capability provenance without an
+    // invoking principal. The host was the only possible invoker back then.
+    toolTurn.capability = {
+      operation: 'dictionary.lookup',
+      status: 'success',
+      requestSummary: 'liminal',
+      requestedByPersonaId: 'jill'
+    } as unknown as NonNullable<typeof toolTurn.capability>;
+
+    const restored = new WorkshopSessionService(() => 50_000);
+    const result = restored.hydrateCommittedState(state, {}, currentBehavior);
+
+    expect(result.migrations).toContain('defaulted-capability-principal');
+    const hydrated = restored.exportCommittedState().turns
+      .find((turn) => turn.capability)!;
+    expect(hydrated.capability!.invokedBy).toEqual({ kind: 'host' });
   });
 
   it('exports defensively and hydrates from defensive clones', () => {

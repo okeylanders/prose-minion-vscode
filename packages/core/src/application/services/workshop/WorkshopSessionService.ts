@@ -218,7 +218,8 @@ export interface WorkshopToolReportCompletion {
 }
 
 export interface WorkshopCapabilityArtifactInput {
-  hostRequestId: string;
+  /** The invoking participant's active run (host or persona guest — 13C). */
+  requestId: string;
   excerptVersion: number;
   details: WorkshopCapabilityArtifactDetails;
   result: WorkshopCapabilityResult;
@@ -1179,17 +1180,23 @@ export class WorkshopSessionService {
 
   /**
    * Append completed nested capability evidence without replacing the active
-   * host run. Capability artifacts are transcript evidence only and can never
+   * run. Capability artifacts are transcript evidence only and can never
    * adopt a direct-tool sidecar. A reset/preemption refuses the late artifact
-   * atomically.
+   * atomically. Sprint 13C: the invoking principal (host or persona guest)
+   * must match the run that is actually active — a guest's artifact can only
+   * land inside that guest's own turn.
    */
   recordCapabilityArtifact(
     input: WorkshopCapabilityArtifactInput
   ): WorkshopToolReportCompletion | undefined {
     const active = this.activeRun;
+    const principal = input.details.invokedBy;
+    const principalMatchesRun = principal.kind === 'host'
+      ? active?.target === 'host'
+      : active?.target === 'personaGuest' && active.guestPersonaId === principal.personaId;
     if (
-      active?.requestId !== input.hostRequestId ||
-      active.target !== 'host' ||
+      active?.requestId !== input.requestId ||
+      !principalMatchesRun ||
       active.excerptVersion !== input.excerptVersion
     ) {
       return undefined;
@@ -2221,6 +2228,12 @@ export class WorkshopSessionService {
     if (turn.artifact === 'direct_tool_message' || turn.artifact === 'direct_tool_response') {
       return false;
     }
+    // A guest-invoked capability artifact belongs to that guest's own
+    // conversation (Sprint 13C; ADR 2026-07-24 §2): the host and other
+    // guests never silently receive it as room evidence.
+    if (turn.capability?.invokedBy.kind === 'personaGuest') {
+      return false;
+    }
     return turn.participant === 'writer'
       || turn.participant === 'host'
       || turn.participant === 'tool'
@@ -2377,6 +2390,7 @@ function cloneCapabilityDetails(
 ): WorkshopCapabilityArtifactDetails {
   return {
     ...details,
+    invokedBy: { ...details.invokedBy },
     metadata: details.metadata
       ? Object.fromEntries(
           Object.entries(details.metadata).map(([key, value]) => [key, cloneMetadataValue(value)])

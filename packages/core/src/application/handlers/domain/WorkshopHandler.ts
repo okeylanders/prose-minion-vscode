@@ -644,6 +644,26 @@ export class WorkshopHandler {
       this.sendStreamStarted(requestId);
       this.sendStatus(`Inviting ${workshopPersonaLabel(personaId)} into the room…`);
 
+      // Sprint 13C: the joining guest owns the same bounded instruments as
+      // the host — dictionary, configured resources, excerpt analysis — with
+      // its own principal persisted on every artifact.
+      const guestCapability = this.capabilityFactory.create({
+        requestId,
+        personaId,
+        owner: { kind: 'personaGuest', personaId },
+        excerpt,
+        excerptVersion: this.session.getExcerptVersion(),
+        signal: controller.signal,
+        events: {
+          status: (message, tickerMessage) => this.sendStatus(message, undefined, tickerMessage),
+          turnCompleted: (turn) => this.postTurn(turn),
+          sessionChanged: () => {
+            this.postSessionState();
+            this.sessionPersistence.markDirty('participant capability committed');
+          }
+        }
+      });
+
       try {
         const result = await this.assistantToolService.startWorkshopGuestConversation({
           personaId,
@@ -652,7 +672,8 @@ export class WorkshopHandler {
           writerProfile: this.conversationSettingsService.getWriterProfile()
         }, {
           signal: controller.signal,
-          onToken: (token: string) => this.sendStreamChunk(requestId, token)
+          onToken: (token: string) => this.sendStreamChunk(requestId, token),
+          capability: guestCapability
         });
         const assistantTurn = completeWorkshopRun({
           session: this.session,
@@ -1000,10 +1021,17 @@ export class WorkshopHandler {
         break;
     }
     this.activeRun = { requestId, label, toolId, guestPersonaId, controller };
-    const hostCapability = target.kind === 'host'
+    // Sprint 13C: capabilities are participant-owned. Host and persona-guest
+    // turns each mint one adapter with their own principal; direct-tool
+    // sidecars stay capability-free instruments.
+    const participantCapability = target.kind === 'host' || target.kind === 'personaGuest'
       ? this.capabilityFactory.create({
           requestId,
-          personaId,
+          personaId: target.kind === 'personaGuest' ? target.personaId : personaId,
+          owner: target.kind === 'personaGuest'
+            ? { kind: 'personaGuest', personaId: target.personaId }
+            : { kind: 'host' },
+          conversationId,
           excerpt,
           excerptVersion: this.session.getExcerptVersion(),
           signal: controller.signal,
@@ -1012,7 +1040,7 @@ export class WorkshopHandler {
             turnCompleted: (turn) => this.postTurn(turn),
             sessionChanged: () => {
               this.postSessionState();
-              this.sessionPersistence.markDirty('host capability committed');
+              this.sessionPersistence.markDirty('participant capability committed');
             }
           }
         })
@@ -1027,7 +1055,7 @@ export class WorkshopHandler {
         ? await this.assistantToolService.continueConversation(conversationId, modelMessage, {
             signal: controller.signal,
             onToken: (token: string) => this.sendStreamChunk(requestId, token),
-            capability: hostCapability
+            capability: participantCapability
           })
         : await this.assistantToolService.startWorkshopPersonaConversation({
             personaId,
@@ -1046,7 +1074,7 @@ export class WorkshopHandler {
           }, {
             signal: controller.signal,
             onToken: (token: string) => this.sendStreamChunk(requestId, token),
-            capability: hostCapability!
+            capability: participantCapability!
           });
 
       const assistantTurn = completeWorkshopRun({

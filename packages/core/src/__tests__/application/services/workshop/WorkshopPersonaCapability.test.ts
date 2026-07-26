@@ -89,6 +89,7 @@ describe('WorkshopPersonaCapability', () => {
     requestId: 'host-request',
     excerptVersion: session.getExcerptVersion(),
     personaId: 'jill',
+    owner: { kind: 'host' },
     excerpt: session.getExcerpt()!,
     signal: controller.signal,
     events
@@ -113,6 +114,7 @@ describe('WorkshopPersonaCapability', () => {
       requestId: 'open-request',
       excerptVersion: openSession.getExcerptVersion(),
       personaId: 'jill',
+      owner: { kind: 'host' },
       excerpt: openSession.getExcerpt(),
       signal: controller.signal,
       events
@@ -425,7 +427,7 @@ describe('WorkshopPersonaCapability', () => {
     );
     expect(adapter.statusTicker(request)).toBe('Waiting for first chunks…');
     expect(analysis.adoptPersonaReport).toHaveBeenCalledWith(expect.objectContaining({
-      hostRequestId: 'host-request',
+      requestId: 'host-request',
       excerptVersion: 1,
       toolId: 'continuity',
       result: expect.objectContaining({ content: 'Verbatim continuity report.' })

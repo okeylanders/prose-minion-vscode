@@ -29,6 +29,7 @@ import {
 import {
   WorkshopCapabilityArtifactDetails,
   WorkshopCapabilityOperation,
+  WorkshopCapabilityPrincipal,
   WorkshopCapabilityRequest,
   WorkshopCapabilityResult
 } from '@shared/types/workshopCapabilities';
@@ -54,7 +55,16 @@ export interface WorkshopCapabilityEvents {
 
 export interface WorkshopPersonaCapabilityTurn {
   requestId: string;
+  /** The persona speaking this turn (the host persona, or the guest itself). */
   personaId: WorkshopPersonaId;
+  /**
+   * The participant that owns this turn's conversation (Sprint 13C;
+   * ADR 2026-07-24 §2). Persisted on every capability artifact — once guests
+   * are invokers, ownership is unrecoverable from the record unless stored.
+   */
+  owner: WorkshopCapabilityPrincipal;
+  /** The retained provider conversation this turn continues, when one exists. */
+  conversationId?: string;
   /**
    * The pinned passage — ABSENT in an open conversation (Sprint 13A §1).
    * `analysis.run` may inherit it when present or use persona-selected local
@@ -72,7 +82,7 @@ export interface WorkshopPersonaCapabilityTurn {
   events: WorkshopCapabilityEvents;
 }
 
-/** Mints one stateful capability adapter per host user turn. */
+/** Mints one stateful capability adapter per participant user turn (host or persona guest). */
 export class WorkshopPersonaCapabilityFactory {
   constructor(
     private readonly dictionaryService: DictionaryService,
@@ -355,13 +365,14 @@ export class WorkshopPersonaCapability implements AgentCapability<
       error
     };
     const completion = this.session.recordCapabilityArtifact({
-      hostRequestId: this.turn.requestId,
+      requestId: this.turn.requestId,
       excerptVersion: this.turn.excerptVersion,
       details: {
         operation,
         status: result.status,
         requestSummary,
         requestedByPersonaId: this.turn.personaId,
+        invokedBy: this.turn.owner,
         metadata
       },
       result
@@ -586,11 +597,12 @@ export class WorkshopPersonaCapability implements AgentCapability<
       status: result.status,
       requestSummary: result.requestSummary,
       requestedByPersonaId: this.turn.personaId,
+      invokedBy: this.turn.owner,
       metadata: result.metadata ? { ...result.metadata } : undefined
     };
     const completion = request.capability === 'analysis.run'
       ? this.analysisSidePass.adoptPersonaReport({
-          hostRequestId: this.turn.requestId,
+          requestId: this.turn.requestId,
           excerptVersion: this.turn.excerptVersion,
           toolId: request.toolId,
           details,
@@ -598,7 +610,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
           truncated: result.metadata?.truncated === true
         })
       : this.session.recordCapabilityArtifact({
-          hostRequestId: this.turn.requestId,
+          requestId: this.turn.requestId,
           excerptVersion: this.turn.excerptVersion,
           details,
           result

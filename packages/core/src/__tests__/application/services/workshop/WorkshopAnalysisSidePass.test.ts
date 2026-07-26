@@ -102,7 +102,7 @@ describe('WorkshopAnalysisSidePass', () => {
       { retainConversation: true }
     );
     const adoption = sidePass.adoptPersonaReport({
-      hostRequestId: 'host-turn',
+      requestId: 'host-turn',
       excerptVersion: excerpt.version,
       toolId: 'continuity',
       conversationId: result.conversationId,
@@ -110,7 +110,8 @@ describe('WorkshopAnalysisSidePass', () => {
         operation: 'analysis.run',
         status: 'success',
         requestSummary: 'Continuity',
-        requestedByPersonaId: 'jill'
+        requestedByPersonaId: 'jill',
+        invokedBy: { kind: 'host' }
       },
       result: {
         capability: 'analysis.run',
@@ -163,14 +164,15 @@ describe('WorkshopAnalysisSidePass', () => {
 
     session.beginPersonaMessage('host-run', 'Check the report.');
     sidePass.adoptPersonaReport({
-      hostRequestId: 'host-run',
+      requestId: 'host-run',
       excerptVersion: 1,
       toolId: 'prose',
       details: {
         operation: 'analysis.run',
         status: 'success',
         requestSummary: 'Prose',
-        requestedByPersonaId: 'jill'
+        requestedByPersonaId: 'jill',
+        invokedBy: { kind: 'host' }
       },
       result: {
         capability: 'analysis.run',
