@@ -218,7 +218,8 @@ export interface WorkshopToolReportCompletion {
 }
 
 export interface WorkshopCapabilityArtifactInput {
-  hostRequestId: string;
+  /** The invoking participant's active run (host or persona guest — 13C). */
+  requestId: string;
   excerptVersion: number;
   details: WorkshopCapabilityArtifactDetails;
   result: WorkshopCapabilityResult;
@@ -1179,19 +1180,23 @@ export class WorkshopSessionService {
 
   /**
    * Append completed nested capability evidence without replacing the active
-   * host run. Capability artifacts are transcript evidence only and can never
+   * run. Capability artifacts are transcript evidence only and can never
    * adopt a direct-tool sidecar. A reset/preemption refuses the late artifact
    * atomically.
+   *
+   * Sprint 13C: the invoking principal (host or persona guest) must match the
+   * run that is actually active. This is an EVIDENCE-ADMISSION gate, not
+   * authorization (PR #89 review #8): the capability call has already fully
+   * executed by the time this runs — the real privilege boundary is the
+   * closed request catalog. `invokedBy` is caller-supplied; today every mint
+   * site builds it from the same locals that set `activeRun`, and this guard
+   * exists so a future mis-wired site drops evidence loudly (callers log
+   * `describeCapabilityArtifactRefusal`) instead of misattributing it.
    */
   recordCapabilityArtifact(
     input: WorkshopCapabilityArtifactInput
   ): WorkshopToolReportCompletion | undefined {
-    const active = this.activeRun;
-    if (
-      active?.requestId !== input.hostRequestId ||
-      active.target !== 'host' ||
-      active.excerptVersion !== input.excerptVersion
-    ) {
+    if (this.capabilityArtifactRefusal(input)) {
       return undefined;
     }
 
@@ -1233,6 +1238,45 @@ export class WorkshopSessionService {
 
     this.turns.push(turn);
     return { turn: cloneTurn(turn) };
+  }
+
+  /**
+   * Why `recordCapabilityArtifact` would refuse this artifact, for caller
+   * logging (PR #89 review #6): a benign late arrival and a principal-wiring
+   * bug must not produce byte-identical log lines. Returns undefined when the
+   * artifact would be accepted.
+   */
+  describeCapabilityArtifactRefusal(
+    input: Pick<WorkshopCapabilityArtifactInput, 'requestId' | 'excerptVersion' | 'details'>
+  ): string | undefined {
+    return this.capabilityArtifactRefusal(input);
+  }
+
+  private capabilityArtifactRefusal(
+    input: Pick<WorkshopCapabilityArtifactInput, 'requestId' | 'excerptVersion' | 'details'>
+  ): string | undefined {
+    const active = this.activeRun;
+    if (!active) {
+      return 'no-active-run';
+    }
+    if (active.requestId !== input.requestId) {
+      return `request-mismatch (artifact=${input.requestId}, active=${active.requestId})`;
+    }
+    const principal = input.details.invokedBy;
+    const principalLabel = principal.kind === 'host' ? 'host' : `personaGuest:${principal.personaId}`;
+    const activeLabel = active.target === 'personaGuest' && active.guestPersonaId
+      ? `personaGuest:${active.guestPersonaId}`
+      : active.target;
+    const principalMatchesRun = principal.kind === 'host'
+      ? active.target === 'host'
+      : active.target === 'personaGuest' && active.guestPersonaId === principal.personaId;
+    if (!principalMatchesRun) {
+      return `principal-mismatch (artifact=${principalLabel}, active=${activeLabel})`;
+    }
+    if (active.excerptVersion !== input.excerptVersion) {
+      return `stale-excerpt-version (artifact=${input.excerptVersion}, active=${active.excerptVersion})`;
+    }
+    return undefined;
   }
 
   /** Begin the host-only synthesis phase correlated to a visible report. */
@@ -1519,9 +1563,20 @@ export class WorkshopSessionService {
         if (response.participant !== 'guest' || response.personaId !== guest.personaId) {
           continue;
         }
-        const writerTurn = this.turns[index - 1];
+        // The writer's prompt is no longer guaranteed to sit at `index - 1`:
+        // Sprint 13C lets the guest's own capability artifacts land between
+        // the prompt and the reply (PR #89 review #1). Walk back past this
+        // guest's private artifacts to the turn that actually asked.
+        let writerIndex = index - 1;
+        while (
+          writerIndex > cursorIndex &&
+          isGuestOwnedCapabilityTurn(this.turns[writerIndex], guest.personaId)
+        ) {
+          writerIndex -= 1;
+        }
+        const writerTurn = this.turns[writerIndex];
         if (
-          index - 1 > cursorIndex &&
+          writerIndex > cursorIndex &&
           writerTurn?.participant === 'writer' &&
           writerTurn.personaId === guest.personaId &&
           writerTurn.artifact === 'persona_message'
@@ -2221,6 +2276,9 @@ export class WorkshopSessionService {
     if (turn.artifact === 'direct_tool_message' || turn.artifact === 'direct_tool_response') {
       return false;
     }
+    if (isGuestOwnedCapabilityTurn(turn)) {
+      return false;
+    }
     return turn.participant === 'writer'
       || turn.participant === 'host'
       || turn.participant === 'tool'
@@ -2232,6 +2290,24 @@ export class WorkshopSessionService {
   }
 }
 
+
+/**
+ * A guest's private capability evidence (Sprint 13C; ADR 2026-07-24 §2): the
+ * artifact belongs to the invoking guest's own conversation, so the host and
+ * other guests never receive it as room evidence. This named predicate is the
+ * seam 13D's computed `audience()` policy will grow from — keep the rule
+ * here, not inlined into transcript filters.
+ */
+function isGuestOwnedCapabilityTurn(
+  turn: WorkshopTurn,
+  personaId?: WorkshopPersonaId
+): boolean {
+  const principal = turn.capability?.invokedBy;
+  if (principal?.kind !== 'personaGuest') {
+    return false;
+  }
+  return personaId === undefined || principal.personaId === personaId;
+}
 
 /**
  * Display name for a passage in a visible divider. Uses the SHARED title
@@ -2377,6 +2453,7 @@ function cloneCapabilityDetails(
 ): WorkshopCapabilityArtifactDetails {
   return {
     ...details,
+    invokedBy: { ...details.invokedBy },
     metadata: details.metadata
       ? Object.fromEntries(
           Object.entries(details.metadata).map(([key, value]) => [key, cloneMetadataValue(value)])

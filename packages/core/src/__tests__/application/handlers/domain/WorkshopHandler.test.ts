@@ -726,7 +726,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         onToken: expect.any(Function)
       })
     );
-    expect((service.startWorkshopGuestConversation.mock.calls[0]?.[1] as any).capability).toBeUndefined();
+    // Sprint 13C: the joining guest owns its own bounded capability adapter.
+    expect((service.startWorkshopGuestConversation.mock.calls[0]?.[1] as any).capability)
+      .toMatchObject({ catalog: 'workshopPersona' });
     expect(session.getPersonaGuestConversationId('margot')).toBe('guest-conv');
     expect(session.getChatTarget()).toEqual({ kind: 'personaGuest', personaId: 'margot' });
     expect(session.getSnapshot().turns).toEqual(expect.arrayContaining([
@@ -799,7 +801,39 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(session.getChatTarget()).toEqual({ kind: 'host' });
   });
 
-  it('continues the guest without capabilities and hands guest evidence back to the host', async () => {
+  it('stamps the invoking principal on every minted capability (review #5)', async () => {
+    const create = capabilityFactory.create as jest.Mock;
+    await pin();
+
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Host turn.' }
+    ) as any);
+    expect(create.mock.calls.at(-1)?.[0]).toMatchObject({
+      owner: { kind: 'host' },
+      personaId: 'jill'
+    });
+
+    await handler.handleInviteGuest(message(
+      MessageType.WORKSHOP_INVITE_GUEST,
+      { personaId: 'margot', openingMessage: 'Read the room.' }
+    ) as any);
+    expect(create.mock.calls.at(-1)?.[0]).toMatchObject({
+      owner: { kind: 'personaGuest', personaId: 'margot' },
+      personaId: 'margot'
+    });
+
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Guest follow-up.' }
+    ) as any);
+    expect(create.mock.calls.at(-1)?.[0]).toMatchObject({
+      owner: { kind: 'personaGuest', personaId: 'margot' },
+      personaId: 'margot'
+    });
+  });
+
+  it('continues the guest with its own capability and hands guest evidence back to the host', async () => {
     await pin();
     await handler.handleInviteGuest(message(
       MessageType.WORKSHOP_INVITE_GUEST,
@@ -815,7 +849,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(service.continueConversation).toHaveBeenCalledWith(
       'guest-conv',
       expect.stringContaining('What changes the point of view here?'),
-      expect.objectContaining({ capability: undefined })
+      expect.objectContaining({
+        capability: expect.objectContaining({ catalog: 'workshopPersona' })
+      })
     );
     expect(session.getSnapshot().turns.at(-1)).toMatchObject({
       participant: 'guest',
@@ -1377,7 +1413,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
     capabilityRequest.events.sessionChanged();
 
-    expect(persistence.markDirty).toHaveBeenCalledWith('host capability committed');
+    expect(persistence.markDirty).toHaveBeenCalledWith('participant capability committed');
     expect(posted(MessageType.WORKSHOP_SESSION_STATE)).not.toHaveLength(0);
   });
 

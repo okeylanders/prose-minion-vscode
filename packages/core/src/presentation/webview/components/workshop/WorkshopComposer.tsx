@@ -231,7 +231,22 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
           <span className="pm-ws-comp-attachment-hint">rides the next message only</span>
         </div>
       )}
+      {/* Sprint 13C: the composer stacks — full-width text entry on top, the
+          controls row docked beneath it (approved workshop comp `.wk-crow`).
+          Chips beside the textarea were squeezing the writing space. */}
       <form className="pm-ws-composer" onSubmit={submit}>
+        <textarea
+          ref={textareaRef}
+          className="pm-ws-comp-input"
+          rows={2}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={!canMessage}
+          placeholder={placeholder}
+          aria-label={`Message ${recipientLabel}`}
+        />
+        <div className="pm-ws-comp-controls">
         <div className="pm-ws-comp-add-wrap" ref={addMenuRef}>
           <button
             className="pm-ws-comp-add"
@@ -272,17 +287,6 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
             </div>
           )}
         </div>
-        <textarea
-          ref={textareaRef}
-          className="pm-ws-comp-input"
-          rows={3}
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={!canMessage}
-          placeholder={placeholder}
-          aria-label={`Message ${recipientLabel}`}
-        />
         {canAddExcerpt && (
           /* The composer's own door into the passage path (§4). It sits beside
              the attach button rather than in the action cluster, because it
@@ -357,6 +361,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
               <Icon name="send" size={16} />
             </button>
           )}
+        </div>
         </div>
       </form>
       {/* Learn-once chrome, centered in the quiet zone below the input: the

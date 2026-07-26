@@ -49,7 +49,8 @@ import { ContextBudget } from './components/shared/ContextBudget';
 import { WorkshopThread } from './components/workshop/WorkshopThread';
 import { WORKSHOP_TURN_ID_ATTRIBUTE } from './components/workshop/WorkshopTurnBubble';
 import { WorkshopToolsModal } from './components/workshop/WorkshopToolsModal';
-import { WorkshopPersonaBrowserModal } from './components/workshop/WorkshopPersonaBrowserModal';
+import { WorkshopChooseHostModal } from './components/workshop/WorkshopChooseHostModal';
+import { WorkshopInviteGuestModal } from './components/workshop/WorkshopInviteGuestModal';
 import { WorkshopPersonaSchematicModal } from './components/workshop/schematic/WorkshopPersonaSchematicModal';
 import { WorkshopContextSelectorModal } from './components/workshop/WorkshopContextSelectorModal';
 import { WorkshopConversationBehaviorModal } from './components/workshop/WorkshopConversationBehaviorModal';
@@ -1394,17 +1395,22 @@ export const WorkshopApp: React.FC = () => {
               : workshop.addContextFile}
           onClose={() => setContextSelectorOpen(false)}
         />
-      <WorkshopPersonaBrowserModal
-        open={personaModalOpen}
+      <WorkshopChooseHostModal
+        open={personaModalOpen && personaModalMode === 'host'}
         activePersonaId={workshop.selectedPersonaId}
-        mode={personaModalMode}
-        invitedPersonaIds={workshop.personaGuests
+        disabled={roomMutationLocked || workshop.isPersonaSelectionLocked}
+        onClose={closePersonaModal}
+        onChooseHost={selectPersona}
+        onMoreInfo={openSchematic}
+      />
+      <WorkshopInviteGuestModal
+        open={personaModalOpen && personaModalMode === 'guest'}
+        hostPersonaId={workshop.selectedPersonaId}
+        livePersonaGuestIds={workshop.personaGuests
           .filter((guest) => guest.liveness === 'live')
           .map((guest) => guest.personaId)}
-        disabled={roomMutationLocked ||
-          (personaModalMode === 'host' ? workshop.isPersonaSelectionLocked : workshop.isRunning)}
+        disabled={roomMutationLocked}
         onClose={closePersonaModal}
-        onSelect={selectPersona}
         onInvite={inviteGuest}
         onMoreInfo={openSchematic}
       />

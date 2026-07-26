@@ -29,6 +29,7 @@ import {
 import {
   WorkshopCapabilityArtifactDetails,
   WorkshopCapabilityOperation,
+  WorkshopCapabilityPrincipal,
   WorkshopCapabilityRequest,
   WorkshopCapabilityResult
 } from '@shared/types/workshopCapabilities';
@@ -54,7 +55,16 @@ export interface WorkshopCapabilityEvents {
 
 export interface WorkshopPersonaCapabilityTurn {
   requestId: string;
+  /** The persona speaking this turn (the host persona, or the guest itself). */
   personaId: WorkshopPersonaId;
+  /**
+   * The participant that owns this turn's conversation (Sprint 13C;
+   * ADR 2026-07-24 §2). Persisted on every capability artifact — once guests
+   * are invokers, ownership is unrecoverable from the record unless stored.
+   */
+  owner: WorkshopCapabilityPrincipal;
+  /** The retained provider conversation this turn continues, when one exists. */
+  conversationId?: string;
   /**
    * The pinned passage — ABSENT in an open conversation (Sprint 13A §1).
    * `analysis.run` may inherit it when present or use persona-selected local
@@ -72,7 +82,7 @@ export interface WorkshopPersonaCapabilityTurn {
   events: WorkshopCapabilityEvents;
 }
 
-/** Mints one stateful capability adapter per host user turn. */
+/** Mints one stateful capability adapter per participant user turn (host or persona guest). */
 export class WorkshopPersonaCapabilityFactory {
   constructor(
     private readonly dictionaryService: DictionaryService,
@@ -172,8 +182,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
       : 0;
     this.outputChannel.appendLine(
       `[WorkshopPersonaCapability] request=${this.turn.requestId} persona=${this.turn.personaId} ` +
+      `owner=${this.ownerLogLabel()} conversation=${this.turn.conversationId ?? 'fresh'} ` +
       `capability=${request.capability} input=${this.requestLogSummary(request)} ` +
-      `outcome=${completedTurn ? result.status : 'discarded-stale-run'} ` +
+      `outcome=${completedTurn ? result.status : 'refused'} ` +
       `capabilityOutcome=${result.status} durationMs=${duration} partialFailures=${partialFailures} ` +
       this.resultLogSummary(result)
     );
@@ -354,21 +365,24 @@ export class WorkshopPersonaCapability implements AgentCapability<
       requestSummary,
       error
     };
-    const completion = this.session.recordCapabilityArtifact({
-      hostRequestId: this.turn.requestId,
+    const artifactInput = {
+      requestId: this.turn.requestId,
       excerptVersion: this.turn.excerptVersion,
       details: {
         operation,
         status: result.status,
         requestSummary,
         requestedByPersonaId: this.turn.personaId,
+        invokedBy: this.turn.owner,
         metadata
       },
       result
-    });
+    };
+    const completion = this.session.recordCapabilityArtifact(artifactInput);
     this.outputChannel.appendLine(
       `[WorkshopPersonaCapability] request=${this.turn.requestId} persona=${this.turn.personaId} ` +
-      `capability=${operation} outcome=${completion ? 'rejected' : 'discarded-stale-run'} ` +
+      `owner=${this.ownerLogLabel()} capability=${operation} ` +
+      `outcome=${completion ? 'rejected' : `refused (${this.session.describeCapabilityArtifactRefusal(artifactInput) ?? 'unknown'})`} ` +
       `rejectionReason=${rejectionReason}`
     );
     if (!completion) return [];
@@ -489,7 +503,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       {
         signal: this.turn.signal,
         onProgress: progress => this.turn.events.status(
-          `${workshopPersonaLabel(this.turn.personaId)} is building the Writer's Dictionary entry…`,
+          `${this.speakerLabel()} is building the Writer's Dictionary entry…`,
           `${progress.completedBlocks.length}/${progress.totalBlocks} sections`
         )
       }
@@ -513,7 +527,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
     inputs: WorkshopPersonaAnalysisRunInputs
   ): Promise<WorkshopCapabilityResult> {
     const toolLabel = workshopToolLabel(request.toolId);
-    const personaLabel = workshopPersonaLabel(this.turn.personaId);
+    const personaLabel = this.speakerLabel();
     let chunkCount = 0;
     const analysis = await this.analysisSidePass.runWithInputs(
       request.toolId,
@@ -586,28 +600,30 @@ export class WorkshopPersonaCapability implements AgentCapability<
       status: result.status,
       requestSummary: result.requestSummary,
       requestedByPersonaId: this.turn.personaId,
+      invokedBy: this.turn.owner,
       metadata: result.metadata ? { ...result.metadata } : undefined
+    };
+    const artifactInput = {
+      requestId: this.turn.requestId,
+      excerptVersion: this.turn.excerptVersion,
+      details,
+      result
     };
     const completion = request.capability === 'analysis.run'
       ? this.analysisSidePass.adoptPersonaReport({
-          hostRequestId: this.turn.requestId,
-          excerptVersion: this.turn.excerptVersion,
+          ...artifactInput,
           toolId: request.toolId,
-          details,
-          result,
           truncated: result.metadata?.truncated === true
         })
-      : this.session.recordCapabilityArtifact({
-          hostRequestId: this.turn.requestId,
-          excerptVersion: this.turn.excerptVersion,
-          details,
-          result
-        });
+      : this.session.recordCapabilityArtifact(artifactInput);
     if (!completion) {
       if (request.capability !== 'analysis.run') {
+        // Name WHICH check refused (PR #89 review #6): a benign late arrival
+        // and a principal-wiring bug must not read identically at 2am.
         this.outputChannel.appendLine(
-          `[WorkshopPersonaCapability] Refused late persona-requested ${request.capability} result ` +
-          `for request=${this.turn.requestId} persona=${this.turn.personaId} excerptVersion=${this.turn.excerptVersion}.`
+          `[WorkshopPersonaCapability] Refused persona-requested ${request.capability} result ` +
+          `for request=${this.turn.requestId} persona=${this.turn.personaId} owner=${this.ownerLogLabel()} ` +
+          `reason=${this.session.describeCapabilityArtifactRefusal(artifactInput) ?? 'unknown'}.`
         );
       }
       return undefined;
@@ -639,6 +655,22 @@ export class WorkshopPersonaCapability implements AgentCapability<
 
   private dictionaryContext(context: string, purpose: string): string {
     return [context, '', `Lookup purpose: ${purpose}`].join('\n');
+  }
+
+  /**
+   * The live-signal name for whoever is calling (PR #89 review #16): the same
+   * persona can speak as host in one session and as an invited guest in the
+   * next, and the ticker must tell those threads apart while a run is live.
+   */
+  private speakerLabel(): string {
+    const label = workshopPersonaLabel(this.turn.personaId);
+    return this.turn.owner.kind === 'personaGuest' ? `${label} (guest)` : label;
+  }
+
+  private ownerLogLabel(): string {
+    return this.turn.owner.kind === 'personaGuest'
+      ? `personaGuest:${this.turn.owner.personaId}`
+      : 'host';
   }
 
   private analysisScopeFrame(): string {

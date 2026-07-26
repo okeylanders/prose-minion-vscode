@@ -17,6 +17,12 @@ export interface WorkshopPersonaDescriptor {
   label: string;
   specialty: string;
   description: string;
+  /**
+   * The lane fragment the generated guest opening asks for ("the rhythm",
+   * "the dialogue"). Sprint 13C: the untouched default must be
+   * persona-addressed and must never reference a pinned excerpt.
+   */
+  guestOpeningFocus: string;
   promptPath: string;
   /**
    * Full-expression overlay paired 1:1 with the foundation prompt
@@ -31,25 +37,37 @@ export interface WorkshopPersonaDescriptor {
 
 export const DEFAULT_WORKSHOP_PERSONA_ID: WorkshopPersonaId = 'jill';
 
-export const DEFAULT_WORKSHOP_GUEST_OPENING =
-  'Read this room and give me your perspective on the pinned excerpt.';
-
 export const WORKSHOP_GUEST_CAPACITY = 2;
 
 export const WORKSHOP_PERSONA_CATALOG: readonly WorkshopPersonaDescriptor[] = [
-  { id: 'jill', label: 'Jill', specialty: 'Creative writing partner', description: 'Warm developmental and line-level craft support for the work in front of you.', promptPath: 'workshop-personas/jill.md', expressionProfilePath: 'workshop-personas/expression-profiles/jill.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/jill.md' },
-  { id: 'agnes', label: 'Sister Agnes', specialty: 'Theme & symbolism', description: 'Keeps themes embodied, symbols intentional, and insight earned on the page.', promptPath: 'workshop-personas/agnes.md', expressionProfilePath: 'workshop-personas/expression-profiles/agnes.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/agnes.md' },
-  { id: 'cliff', label: 'Cliff', specialty: 'Cliché & repetition', description: 'Finds tired phrasing, echo words, and accidental patterns without mistaking motifs for tics.', promptPath: 'workshop-personas/cliff.md', expressionProfilePath: 'workshop-personas/expression-profiles/cliff.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/cliff.md' },
-  { id: 'dev', label: 'Dev', specialty: 'Dialogue & microbeats', description: 'Listens for distinct voices, subtext, purposeful tags, and physical beats that reveal character.', promptPath: 'workshop-personas/dev.md', expressionProfilePath: 'workshop-personas/expression-profiles/dev.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/dev.md' },
-  { id: 'edna', label: 'Edna', specialty: 'Reader-breaking logic', description: 'Flags only contradictions, impossible scene logic, and trust-breaking information errors.', promptPath: 'workshop-personas/edna.md', expressionProfilePath: 'workshop-personas/expression-profiles/edna.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/edna.md' },
-  { id: 'felix', label: 'Felix', specialty: 'Rhythm & pacing', description: 'Reads for sentence music, white space, pace, and the moments prose needs a rest.', promptPath: 'workshop-personas/felix.md', expressionProfilePath: 'workshop-personas/expression-profiles/felix.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/felix.md' },
-  { id: 'harper', label: 'Harper', specialty: 'Craft mentorship', description: 'Turns visible patterns into durable writing principles and practical habits.', promptPath: 'workshop-personas/harper.md', expressionProfilePath: 'workshop-personas/expression-profiles/harper.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/harper.md' },
-  { id: 'margot', label: 'Margot', specialty: 'Voice & POV', description: 'Tracks narrative distance, point of view, tense, and whether the narration stays in character.', promptPath: 'workshop-personas/margot.md', expressionProfilePath: 'workshop-personas/expression-profiles/margot.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/margot.md' },
-  { id: 'penny', label: 'Penny', specialty: 'Reader experience', description: 'Responds as an attentive young reader who knows only what the page has earned.', promptPath: 'workshop-personas/penny.md', expressionProfilePath: 'workshop-personas/expression-profiles/penny.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/penny.md' },
-  { id: 'quinn', label: 'Quinn', specialty: 'Continuity', description: 'Traces props, blocking, timeline, weather, and character state through the scene.', promptPath: 'workshop-personas/quinn.md', expressionProfilePath: 'workshop-personas/expression-profiles/quinn.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/quinn.md' },
-  { id: 'theo', label: 'Theo', specialty: 'Stakes & engagement', description: 'Tests a scene’s engine: goals, obstacles, turns, consequences, and forward pull.', promptPath: 'workshop-personas/theo.md', expressionProfilePath: 'workshop-personas/expression-profiles/theo.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/theo.md' },
-  { id: 'wren', label: 'Wren', specialty: 'Line craft', description: 'Strengthens specific sentences through vivid detail, precise verbs, and cleaner distance.', promptPath: 'workshop-personas/wren.md', expressionProfilePath: 'workshop-personas/expression-profiles/wren.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/wren.md' }
+  { id: 'jill', label: 'Jill', specialty: 'Creative writing partner', description: 'Warm developmental and line-level craft support for the work in front of you.', guestOpeningFocus: 'the writing', promptPath: 'workshop-personas/jill.md', expressionProfilePath: 'workshop-personas/expression-profiles/jill.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/jill.md' },
+  { id: 'agnes', label: 'Sister Agnes', specialty: 'Theme & symbolism', description: 'Keeps themes embodied, symbols intentional, and insight earned on the page.', guestOpeningFocus: 'the theme and symbolism', promptPath: 'workshop-personas/agnes.md', expressionProfilePath: 'workshop-personas/expression-profiles/agnes.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/agnes.md' },
+  { id: 'cliff', label: 'Cliff', specialty: 'Cliché & repetition', description: 'Finds tired phrasing, echo words, and accidental patterns without mistaking motifs for tics.', guestOpeningFocus: 'the repetition', promptPath: 'workshop-personas/cliff.md', expressionProfilePath: 'workshop-personas/expression-profiles/cliff.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/cliff.md' },
+  { id: 'dev', label: 'Dev', specialty: 'Dialogue & microbeats', description: 'Listens for distinct voices, subtext, purposeful tags, and physical beats that reveal character.', guestOpeningFocus: 'the dialogue', promptPath: 'workshop-personas/dev.md', expressionProfilePath: 'workshop-personas/expression-profiles/dev.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/dev.md' },
+  { id: 'edna', label: 'Edna', specialty: 'Reader-breaking logic', description: 'Flags only contradictions, impossible scene logic, and trust-breaking information errors.', guestOpeningFocus: 'the scene logic', promptPath: 'workshop-personas/edna.md', expressionProfilePath: 'workshop-personas/expression-profiles/edna.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/edna.md' },
+  { id: 'felix', label: 'Felix', specialty: 'Rhythm & pacing', description: 'Reads for sentence music, white space, pace, and the moments prose needs a rest.', guestOpeningFocus: 'the rhythm', promptPath: 'workshop-personas/felix.md', expressionProfilePath: 'workshop-personas/expression-profiles/felix.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/felix.md' },
+  { id: 'harper', label: 'Harper', specialty: 'Craft mentorship', description: 'Turns visible patterns into durable writing principles and practical habits.', guestOpeningFocus: 'the craft lessons', promptPath: 'workshop-personas/harper.md', expressionProfilePath: 'workshop-personas/expression-profiles/harper.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/harper.md' },
+  { id: 'margot', label: 'Margot', specialty: 'Voice & POV', description: 'Tracks narrative distance, point of view, tense, and whether the narration stays in character.', guestOpeningFocus: 'the voice', promptPath: 'workshop-personas/margot.md', expressionProfilePath: 'workshop-personas/expression-profiles/margot.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/margot.md' },
+  { id: 'penny', label: 'Penny', specialty: 'Reader experience', description: 'Responds as an attentive young reader who knows only what the page has earned.', guestOpeningFocus: 'the reader experience', promptPath: 'workshop-personas/penny.md', expressionProfilePath: 'workshop-personas/expression-profiles/penny.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/penny.md' },
+  { id: 'quinn', label: 'Quinn', specialty: 'Continuity', description: 'Traces props, blocking, timeline, weather, and character state through the scene.', guestOpeningFocus: 'the continuity', promptPath: 'workshop-personas/quinn.md', expressionProfilePath: 'workshop-personas/expression-profiles/quinn.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/quinn.md' },
+  { id: 'theo', label: 'Theo', specialty: 'Stakes & engagement', description: 'Tests a scene’s engine: goals, obstacles, turns, consequences, and forward pull.', guestOpeningFocus: 'the stakes', promptPath: 'workshop-personas/theo.md', expressionProfilePath: 'workshop-personas/expression-profiles/theo.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/theo.md' },
+  { id: 'wren', label: 'Wren', specialty: 'Line craft', description: 'Strengthens specific sentences through vivid detail, precise verbs, and cleaner distance.', guestOpeningFocus: 'the lines', promptPath: 'workshop-personas/wren.md', expressionProfilePath: 'workshop-personas/expression-profiles/wren.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/wren.md' }
 ];
+
+/**
+ * The generated guest opening (Sprint 13C): persona-addressed, warm, and
+ * deliberately excerpt-free — a guest may join a session whose scope has no
+ * excerpt, and boilerplate that names a passage would send the guest hunting
+ * for prose that does not exist. With no persona selected yet the fallback
+ * still reads as a room ask, never a passage ask.
+ */
+export function defaultWorkshopGuestOpening(personaId?: WorkshopPersonaId): string {
+  const persona = personaId ? PERSONAS_BY_ID.get(personaId) : undefined;
+  if (!persona) {
+    return 'Read the room and give me your perspective here.';
+  }
+  return `Hey ${persona.label}! read the room and help me with ${persona.guestOpeningFocus} here.`;
+}
 
 /**
  * Shared interaction resources (ADR 2026-07-20 §2). One contract, three mode
@@ -102,7 +120,13 @@ export function workshopPersonaSystemPromptPaths(
   return [
     basePromptPath,
     persona.promptPath,
+    // Sprint 13C (PR #89 review #2): guests carry the same bounded capability
+    // grammar as the host, so BOTH participant bases get the analysis
+    // capability resource — the injected protocol points at it, and a charter
+    // that denies capabilities while the run policy grants them ships two
+    // contradictory instructions.
     ...(basePromptPath === 'workshop-personas/base.md'
+      || basePromptPath === 'workshop-personas/guest-base.md'
       ? [WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH]
       : []),
     WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,

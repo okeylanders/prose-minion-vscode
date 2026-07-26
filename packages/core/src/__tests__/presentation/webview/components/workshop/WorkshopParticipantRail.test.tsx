@@ -192,4 +192,43 @@ describe('WorkshopParticipantRail', () => {
     expect(onInviteGuest).toHaveBeenCalledTimes(1);
     expect(onSetChatTarget).toHaveBeenCalledWith({ kind: 'personaGuest', personaId: 'margot' });
   });
+
+  // Sprint 13C (ADR 2026-07-24 §9): participants and instruments are labeled
+  // groups separated by a real separator, not a decorative glyph.
+  it('separates labeled participant and instrument groups with a real separator', () => {
+    render(
+      <WorkshopParticipantRail
+        personaId="jill"
+        personaLabel="Jill"
+        toolSidecars={[sidecar('continuity')]}
+        personaGuests={[guest]}
+        chatTarget={{ kind: 'host' }}
+        onSetChatTarget={jest.fn()}
+      />
+    );
+
+    const participants = screen.getByRole('group', { name: 'Participants' });
+    const instruments = screen.getByRole('group', { name: 'Instruments' });
+    expect(screen.getByRole('separator')).not.toBeNull();
+    expect(participants.textContent).toContain('Jill');
+    expect(participants.textContent).toContain('Margot');
+    expect(instruments.textContent).toContain('Continuity');
+    expect(participants.textContent).not.toContain('Continuity');
+  });
+
+  it('omits the separator and instrument group when no sidecar is live', () => {
+    render(
+      <WorkshopParticipantRail
+        personaId="jill"
+        personaLabel="Jill"
+        toolSidecars={[]}
+        personaGuests={[guest]}
+        chatTarget={{ kind: 'host' }}
+        onSetChatTarget={jest.fn()}
+      />
+    );
+
+    expect(screen.queryByRole('separator')).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Instruments' })).toBeNull();
+  });
 });

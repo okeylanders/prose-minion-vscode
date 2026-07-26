@@ -407,11 +407,15 @@ function assertAnalysisInputProvenance(value: unknown, path: string): void {
 }
 
 function assertCapability(value: unknown, path: string): void {
+  // `invokedBy` is optional at the SHAPE layer only: checkpoints written
+  // before Sprint 13C lack it, and hydration migration stamps the host
+  // principal (the sole possible invoker back then). Current code always
+  // writes it.
   const capability = exactObject(
     value,
     path,
     ['operation', 'status', 'requestSummary', 'requestedByPersonaId'],
-    ['metadata']
+    ['metadata', 'invokedBy']
   );
   enumAt(
     capability.operation,
@@ -434,8 +438,23 @@ function assertCapability(value: unknown, path: string): void {
   if (!isWorkshopPersonaId(capability.requestedByPersonaId)) {
     shapeError(`${path}.requestedByPersonaId`, 'known Workshop persona id');
   }
+  if (capability.invokedBy !== undefined) {
+    assertCapabilityPrincipal(capability.invokedBy, `${path}.invokedBy`);
+  }
   if (capability.metadata !== undefined) {
     jsonObjectAt(capability.metadata, `${path}.metadata`);
+  }
+}
+
+function assertCapabilityPrincipal(value: unknown, path: string): void {
+  const principal = exactObject(value, path, ['kind'], ['personaId']);
+  enumAt(principal.kind, `${path}.kind`, ['host', 'personaGuest']);
+  if (principal.kind === 'personaGuest') {
+    if (!isWorkshopPersonaId(principal.personaId)) {
+      shapeError(`${path}.personaId`, 'known Workshop persona id');
+    }
+  } else if (principal.personaId !== undefined) {
+    shapeError(`${path}.personaId`, 'absent for a host principal');
   }
 }
 

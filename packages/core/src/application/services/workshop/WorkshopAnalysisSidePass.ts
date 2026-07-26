@@ -204,7 +204,7 @@ export class WorkshopAnalysisSidePass {
   }
 
   adoptPersonaReport(input: {
-    hostRequestId: string;
+    requestId: string;
     excerptVersion: number;
     toolId: WorkshopToolId;
     details: WorkshopCapabilityArtifactDetails;
@@ -222,7 +222,7 @@ export class WorkshopAnalysisSidePass {
       `${input.toolId} persona-requested report`
     );
     const completion = this.session.recordCapabilityArtifact({
-      hostRequestId: input.hostRequestId,
+      requestId: input.requestId,
       excerptVersion: input.excerptVersion,
       toolId: input.toolId,
       details: input.details,
@@ -232,7 +232,8 @@ export class WorkshopAnalysisSidePass {
     });
     if (!completion) {
       this.outputChannel.appendLine(
-        `[WorkshopAnalysisSidePass] Refused late persona-requested ${input.toolId} report for ${input.hostRequestId}.`
+        `[WorkshopAnalysisSidePass] Refused persona-requested ${input.toolId} report for ${input.requestId} ` +
+        `reason=${this.session.describeCapabilityArtifactRefusal(input) ?? 'unknown'}.`
       );
       return undefined;
     }
