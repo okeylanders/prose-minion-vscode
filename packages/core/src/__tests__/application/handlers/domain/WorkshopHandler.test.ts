@@ -2597,6 +2597,27 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       await handler.handleAddContextFile(message(MessageType.WORKSHOP_ADD_CONTEXT_FILE, {}) as any);
     };
 
+    it('explains both participant-subject refusal reasons before inviting a guest', async () => {
+      await handler.handleInviteGuest(message(
+        MessageType.WORKSHOP_INVITE_GUEST,
+        { personaId: 'felix', openingMessage: 'Read the room.' }
+      ) as any);
+      expect(posted(MessageType.ERROR).at(-1)?.payload.message)
+        .toBe('Choose how to start this session before inviting a guest.');
+
+      jest.spyOn(session, 'getParticipantSubjectStatus').mockReturnValue({
+        ready: false,
+        reason: 'excerpt-missing'
+      });
+      await handler.handleInviteGuest(message(
+        MessageType.WORKSHOP_INVITE_GUEST,
+        { personaId: 'felix', openingMessage: 'Read the room.' }
+      ) as any);
+      expect(posted(MessageType.ERROR).at(-1)?.payload.message)
+        .toBe('Pin an excerpt before inviting a guest.');
+      expect(service.startWorkshopGuestConversation).not.toHaveBeenCalled();
+    });
+
     it('starts a retained host conversation with no excerpt and no fabricated one', async () => {
       await chooseOpen();
       await send('Help me plan the next scene.');
@@ -2687,6 +2708,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         .map((entry) => entry.payload.message);
       expect(statuses).toContain('Streaming Jill…');
       expect(statuses).not.toContain('Catching Jill up on the room…');
+      expect(log.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('status=lifecycle-only')
+      );
     });
 
     it('still announces catch-up for actual unseen room conversation', async () => {
@@ -2699,6 +2723,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
       expect(posted(MessageType.STATUS).map((entry) => entry.payload.message))
         .toContain('Catching Jill up on the room…');
+      expect(log.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('status=conversational')
+      );
     });
 
     /**

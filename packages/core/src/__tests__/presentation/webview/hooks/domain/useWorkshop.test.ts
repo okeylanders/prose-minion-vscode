@@ -55,6 +55,7 @@ const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessio
         // Sprint 13A: scope is explicit session state. These fixtures describe
         // passage sessions unless a case overrides it.
         scope: 'excerpt',
+        participantSubjectReady: true,
         excerptVersion: 0,
         replacementCount: 0,
         contextAttachments: [],
@@ -1026,6 +1027,7 @@ describe('useWorkshop', () => {
 
       act(() => result.current.handleSessionState(sessionState({
         scope: 'open',
+        participantSubjectReady: true,
         excerpt: undefined
       })));
 
@@ -1037,6 +1039,7 @@ describe('useWorkshop', () => {
 
       act(() => result.current.handleSessionState(sessionState({
         scope: null,
+        participantSubjectReady: false,
         excerpt: excerptSnapshot()
       })));
 

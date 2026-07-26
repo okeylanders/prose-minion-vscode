@@ -21,7 +21,7 @@ const snapshot: ContextBudgetSnapshot = {
 describe('ContextBudget', () => {
   it('renders retained context separately from last-request, processed-turn, cumulative, and compression details', () => {
     render(<ContextBudget
-      label="Jill context"
+      participantLabel="Jill"
       snapshot={snapshot}
       modelOptions={[
         { id: 'model/b', label: 'Newly selected Model B', contextLength: 1_000_000, liveDataAvailable: true },
@@ -48,14 +48,14 @@ describe('ContextBudget', () => {
 
   it('renders empty and unavailable states without a hardcoded context window', () => {
     const { rerender } = render(<ContextBudget
-      label="Quinn context"
+      participantLabel="Quinn"
       modelOptions={[]}
       cumulativeProcessedTokens={0}
     />);
     expect(screen.getByText(/Not measured yet — updates after the first reply/)).toBeTruthy();
 
     rerender(<ContextBudget
-      label="Quinn context"
+      participantLabel="Quinn"
       snapshot={snapshot}
       modelOptions={[{
         id: 'model/a', label: 'Offline Model A', contextLength: 200_000, liveDataAvailable: false
@@ -68,7 +68,8 @@ describe('ContextBudget', () => {
 
   it('renders a bare participant label without manufacturing a context suffix', () => {
     render(<ContextBudget
-      label="Jill"
+      participantLabel="Jill"
+      showsContextSuffix={false}
       modelOptions={[]}
       cumulativeProcessedTokens={0}
     />);
@@ -79,7 +80,7 @@ describe('ContextBudget', () => {
 
   it('renders the In-context manifest with parenthetical kinds, attribution, and stale dimming (Phase 7)', () => {
     render(<ContextBudget
-      label="Jill context"
+      participantLabel="Jill"
       snapshot={snapshot}
       modelOptions={[{ id: 'model/a', label: 'Model A', contextLength: 200_000, liveDataAvailable: true }]}
       cumulativeProcessedTokens={429_000}

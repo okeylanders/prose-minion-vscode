@@ -42,9 +42,12 @@ An unchosen `scope: null` remains invalid. Direct tool sidecars and
 writer-launched analysis tools remain excerpt-gated. This change does not make
 a blank `WorkshopExcerpt` legal and does not widen filesystem access.
 
-The aggregate owns this invariant once as the participant-subject guard.
-Handlers may translate it into user-facing errors, but may not recreate a
-different host-versus-guest policy.
+The aggregate owns this invariant once as a typed participant-subject status.
+Its private guard enforces that status, handlers translate its refusal reason
+into user-facing errors, and the session snapshot exposes only the resulting
+`participantSubjectReady` boolean to the webview. Presentation code may combine
+that answer with local busy/readiness state; it may not recreate a different
+host-versus-guest policy.
 
 ### 2. A guest join receives one truthful subject envelope
 
@@ -55,17 +58,23 @@ history. Beside it, the guest receives exactly one current-subject frame:
 - open scope: the existing `<workshop-open-conversation>` honesty frame,
   addressed to that guest.
 
-The join also carries the session's standing context attachments. Those
-attachments are recorded in the new guest's context-source manifest because
-they were actually delivered. Resource catalog/search traffic remains private
-under the room-ledger ADR; evidence publication rules are unchanged.
+The join also carries the session's standing context attachments. Guest-join
+start atomically captures the excerpt and attachments used to build the
+provider envelope, plus the writer-source rows derived from them. Those rows
+ride the active run across the awaited provider call and seed the retained
+guest manifest at adoption; adoption never re-reads live room context.
+Resource catalog/search traffic remains private under the room-ledger ADR;
+evidence publication rules are unchanged.
 
 ### 3. Lifecycle markers do not impersonate conversation
 
 `session_start` and `session_resume` remain durable room turns and may remain
-in a delivered catch-up frame. A delivery containing only those lifecycle
-markers does not trigger `Catching <participant> up on the room…`. Any other
-eligible pending turn is conversational catch-up and keeps the existing copy.
+in a delivered catch-up frame. A complete eligible backlog containing only
+those lifecycle markers does not trigger
+`Catching <participant> up on the room…`. Any other eligible pending turn is
+conversational catch-up and keeps the existing copy. Classification happens
+before the runaway guard shapes the delivered prefix, so deferred conversation
+cannot be hidden behind lifecycle-only status.
 
 This is a status classification, not a new audience class or a second delivery
 cursor.
@@ -73,9 +82,10 @@ cursor.
 ### 4. Scope and participant identity have separate UI owners
 
 The scope strip and header own the explicit open-room/no-excerpt explanation.
-The context meter names the active participant. In an unmeasured open room it
-therefore shows the participant name (`Jill`), not another copy of the scope
-warning.
+The context meter names the active participant. Its caller supplies the
+participant label and an explicit `showsContextSuffix` flag; suffix presence
+is never inferred from string shape. In an unmeasured open room it therefore
+shows the participant name (`Jill`), not another copy of the scope warning.
 
 ## Consequences
 

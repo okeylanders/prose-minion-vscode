@@ -1120,7 +1120,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(new WorkshopRoomDeliveryService(service).prepareJoinSnapshot({
       kind: 'personaGuest',
       personaId: 'margot'
-    }, invitation.id).map((turn) => turn.content)).toEqual([
+    }, invitation.turn.id).map((turn) => turn.content)).toEqual([
       'Host opening.',
       'Host reply.'
     ]);
@@ -1134,7 +1134,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       'margot-conv'
     )!;
 
-    expect(invitation.personaId).toBe('margot');
+    expect(invitation.turn.personaId).toBe('margot');
     expect(reply.participant).toBe('guest');
     expect(service.getPersonaGuestConversationId('margot')).toBe('margot-conv');
     expect(service.getChatTarget()).toEqual({ kind: 'host' });
@@ -1270,18 +1270,36 @@ describe('writer-origin context sources (Phase 7)', () => {
     expect(session.collectWriterSources({ kind: 'host' }).filter((s) => s.kind === 'pin')).toHaveLength(1);
   });
 
-  it('seeds an open-room guest manifest with the standing context delivered at join', () => {
+  it('seeds an open-room guest manifest from the join snapshot, not completion-time state', () => {
     const session = new WorkshopSessionService(() => 7);
     session.setSessionScope('open');
-    session.addContextAttachment({
+    const delivered = session.addContextAttachment({
       kind: 'text',
       origin: 'writer',
       label: 'Story compass',
       words: 6,
       content: 'The middle should feel increasingly breathless.'
     });
+    expect(delivered.ok).toBe(true);
+    session.beginPersonaGuestJoin('felix', 'felix-join', 'Read the room.');
 
-    session.adoptPersonaGuest('felix', 'felix-conv');
+    if (delivered.ok) {
+      session.removeContextAttachment(delivered.attachment.id);
+    }
+    session.addContextAttachment({
+      kind: 'text',
+      origin: 'writer',
+      label: 'Late note',
+      words: 3,
+      content: 'This arrived later.'
+    });
+    session.completeRun(
+      'felix-join',
+      'I can help with the shape.',
+      undefined,
+      false,
+      'felix-conv'
+    );
 
     expect(session.collectWriterSources({
       kind: 'personaGuest',
@@ -1363,9 +1381,18 @@ describe('writer-origin context sources (Phase 7)', () => {
   it('stamps guests at join, clears them on dismissal, and routes shipped message attachments by target', () => {
     const session = new WorkshopSessionService(() => 7);
     pinned(session);
-    session.adoptPersonaGuest('margot', 'guest-conv');
+    session.addContextAttachment({
+      kind: 'text',
+      origin: 'writer',
+      label: 'Scene compass',
+      words: 4,
+      content: 'Keep the pressure narrowing.'
+    });
+    session.beginPersonaGuestJoin('margot', 'guest-join', 'Read this.');
+    session.completeRun('guest-join', 'The pin and compass agree.', undefined, false, 'guest-conv');
     expect(session.collectWriterSources({ kind: 'personaGuest', personaId: 'margot' })).toEqual([
-      expect.objectContaining({ kind: 'pin', excerptVersion: 1 })
+      expect.objectContaining({ kind: 'pin', excerptVersion: 1 }),
+      expect.objectContaining({ kind: 'attachment', label: 'Scene compass' })
     ]);
 
     session.addMessageAttachment({
@@ -1376,6 +1403,7 @@ describe('writer-origin context sources (Phase 7)', () => {
     session.commitMessageAttachments(['ta-1'], { kind: 'personaGuest', personaId: 'margot' });
     expect(session.collectWriterSources({ kind: 'personaGuest', personaId: 'margot' })).toEqual([
       expect.objectContaining({ kind: 'pin' }),
+      expect.objectContaining({ kind: 'attachment', label: 'Scene compass' }),
       expect.objectContaining({
         kind: 'message-attachment',
         origin: 'writer',

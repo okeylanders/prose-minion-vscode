@@ -33,7 +33,6 @@ import {
 } from '@/application/services/workshop/WorkshopSessionService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import {
-  hasWorkshopConversationalCatchUp,
   WorkshopRoomDeliveryService
 } from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import {
@@ -608,16 +607,15 @@ export class WorkshopHandler {
       return;
     }
 
-    const scope = this.session.getScope();
-    const excerpt = this.session.getExcerpt();
-    if (scope === null) {
+    const subjectStatus = this.session.getParticipantSubjectStatus();
+    if (!subjectStatus.ready && subjectStatus.reason === 'scope-unchosen') {
       this.sendError(
         'workshop.invite_guest',
         'Choose how to start this session before inviting a guest.'
       );
       return;
     }
-    if (scope === 'excerpt' && (!excerpt || excerpt.text.trim().length === 0)) {
+    if (!subjectStatus.ready) {
       this.sendError('workshop.invite_guest', 'Pin an excerpt before inviting a guest.');
       return;
     }
@@ -632,28 +630,28 @@ export class WorkshopHandler {
         workshopGuestConversationKey(personaId)
       );
       const writerProfile = this.conversationSettingsService.getWriterProfile();
-      const userTurn = this.session.beginPersonaGuestJoin(
+      const joinStart = this.session.beginPersonaGuestJoin(
         personaId,
         requestId,
         openingMessage
       );
       const join = buildWorkshopGuestJoinMessage({
         guestPersonaId: personaId,
-        excerpt,
+        excerpt: joinStart.excerpt,
         contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
-          this.session.getContextAttachments()
+          joinStart.contextAttachments
         ),
         roomTurns: this.roomDelivery.prepareJoinSnapshot({
           kind: 'personaGuest',
           personaId
-        }, userTurn.id),
+        }, joinStart.turn.id),
         openingMessage,
         roomFrameOptions: {
           writerName: workshopWriterPreferredAddress(writerProfile),
           renderedAt: Date.now()
         },
         timeFrame: timeNotice?.frame,
-        ...behaviorFramesFor(userTurn)
+        ...behaviorFramesFor(joinStart.turn)
       });
       this.activeRun = {
         requestId,
@@ -662,19 +660,19 @@ export class WorkshopHandler {
         controller
       };
 
-      this.postTurn(userTurn);
+      this.postTurn(joinStart.turn);
       this.postSessionState();
       this.sendStreamStarted(requestId);
       this.sendStatus(`Inviting ${workshopPersonaLabel(personaId)} into the room…`);
 
-      // The joining guest owns the same bounded instruments as the host, with
-      // its own principal persisted on every artifact. Excerpt-dependent work
-      // remains unavailable when this open-room join has no excerpt.
+      // Sprint 13D_2 / ADR 2026-07-26: the joining guest owns the same bounded
+      // instruments as the host. Excerpt-dependent work remains unavailable
+      // when this open-room join has no excerpt.
       const guestCapability = this.capabilityFactory.create({
         requestId,
         personaId,
         owner: { kind: 'personaGuest', personaId },
-        excerpt,
+        excerpt: joinStart.excerpt,
         excerptVersion: this.session.getExcerptVersion(),
         signal: controller.signal,
         events: {
@@ -691,7 +689,7 @@ export class WorkshopHandler {
         const result = await this.assistantToolService.startWorkshopGuestConversation({
           personaId,
           message: join.message,
-          behavior: userTurn.behavior!,
+          behavior: joinStart.turn.behavior!,
           writerProfile
         }, {
           signal: controller.signal,
@@ -883,14 +881,14 @@ export class WorkshopHandler {
     // Sprint 13A §1: what a turn needs depends on the session's SCOPE, not on
     // whether an excerpt happens to be present. An open conversation is a real
     // room; direct tool sidecars still require the passage they read.
-    const scope = this.session.getScope();
     const excerpt = this.session.getExcerpt();
     const hasExcerpt = !!excerpt && excerpt.text.trim().length > 0;
+    const subjectStatus = this.session.getParticipantSubjectStatus();
     // Scope first, and independently of excerpt presence: a new session
     // deliberately CARRIES the previous room's passage across the boundary
     // (§3), so "an excerpt exists" is not evidence that the writer has chosen
     // what this room is for.
-    if (scope === null) {
+    if (!subjectStatus.ready && subjectStatus.reason === 'scope-unchosen') {
       this.sendError(
         'workshop.send_message',
         'Choose how to start this session — workshop an excerpt, or start an open conversation.'
@@ -905,7 +903,7 @@ export class WorkshopHandler {
         );
         return;
       }
-      if (scope !== 'open') {
+      if (!subjectStatus.ready) {
         this.sendError('workshop.send_message', 'Pin an excerpt before messaging the Workshop.');
         return;
       }
@@ -926,9 +924,7 @@ export class WorkshopHandler {
         })
       : undefined;
     const roomCatchUp = roomDelivery?.frame;
-    const hasConversationalCatchUp = roomDelivery
-      ? hasWorkshopConversationalCatchUp(roomDelivery.turns)
-      : false;
+    const hasConversationalCatchUp = roomDelivery?.hasConversationalCatchUp ?? false;
     const pendingHostUpdates = target.kind === 'host'
       ? this.session.collectPendingHostUpdates()
       : undefined;
@@ -947,7 +943,7 @@ export class WorkshopHandler {
     }
     if (roomDelivery && roomDelivery.deliveredTurnIds.length > 0) {
       this.outputChannel.appendLine(
-        `[WorkshopHandler] Room catch-up prepared (${roomReader?.kind === 'host' ? 'host' : `guest=${roomReader?.personaId}`}): ${roomDelivery.deliveredTurnIds.length} whole turns included, ${roomDelivery.deferredTurns} deferred`
+        `[WorkshopHandler] Room catch-up prepared (${roomReader?.kind === 'host' ? 'host' : `guest=${roomReader?.personaId}`}): ${roomDelivery.deliveredTurnIds.length} whole turns included, ${roomDelivery.deferredTurns} deferred, status=${hasConversationalCatchUp ? 'conversational' : 'lifecycle-only'}`
       );
     }
     const { conversationId, label, requestType, toolId, guestPersonaId } = targetDetails;

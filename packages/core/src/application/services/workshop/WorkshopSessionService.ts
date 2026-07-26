@@ -138,6 +138,8 @@ interface ActiveRun {
   behaviorTransition?: WorkshopConversationBehaviorTransition;
   /** Provisional evidence finalized only if this participant reply commits. */
   capabilityTurnIds?: string[];
+  /** Writer-origin rows captured from the exact fresh-guest join envelope. */
+  guestJoinWriterSources?: ContextSourceEntry[];
 }
 
 /**
@@ -152,6 +154,31 @@ export interface WorkshopContextAttachment extends WorkshopContextAttachmentSnap
 }
 
 export type WorkshopContextAttachmentInput = Omit<WorkshopContextAttachment, 'id' | 'addedAt'>;
+
+export type WorkshopParticipantSubjectStatus =
+  | { ready: true }
+  | { ready: false; reason: 'scope-unchosen' | 'excerpt-missing' };
+
+export function workshopParticipantSubjectStatus(
+  scope: WorkshopSessionScope,
+  excerpt?: Pick<WorkshopExcerpt, 'text'>
+): WorkshopParticipantSubjectStatus {
+  if (scope === null) {
+    return { ready: false, reason: 'scope-unchosen' };
+  }
+  if (scope === 'open') {
+    return { ready: true };
+  }
+  return excerpt && excerpt.text.trim().length > 0
+    ? { ready: true }
+    : { ready: false, reason: 'excerpt-missing' };
+}
+
+export interface WorkshopPersonaGuestJoinStart {
+  turn: WorkshopTurn;
+  excerpt?: WorkshopExcerpt;
+  contextAttachments: WorkshopContextAttachment[];
+}
 
 export type WorkshopContextAttachmentResult =
   | { ok: true; attachment: WorkshopContextAttachment; eventTurn?: WorkshopTurn }
@@ -907,12 +934,12 @@ export class WorkshopSessionService {
     ];
   }
 
-  /** The current pin as a manifest row; undefined before the first pin. */
-  private pinEntry(): ContextSourceEntry | undefined {
-    if (!this.excerpt) {
+  /** One captured pin as a manifest row; current pin by default. */
+  private pinEntry(excerpt = this.excerpt): ContextSourceEntry | undefined {
+    if (!excerpt) {
       return undefined;
     }
-    const source = this.excerpt.source;
+    const source = excerpt.source;
     return {
       kind: 'pin',
       origin: 'writer',
@@ -920,10 +947,10 @@ export class WorkshopSessionService {
       configuredResource: source.kind !== 'manual' && source.configuredResource
         ? { ...source.configuredResource }
         : undefined,
-      sizeChars: this.excerpt.text.length,
+      sizeChars: excerpt.text.length,
       isEstimate: true,
-      excerptVersion: this.excerpt.version,
-      deliveredAt: this.excerpt.pinnedAt
+      excerptVersion: excerpt.version,
+      deliveredAt: excerpt.pinnedAt
     };
   }
 
@@ -1078,7 +1105,11 @@ export class WorkshopSessionService {
   }
 
   /** Adopt a successful fresh guest conversation at the join snapshot's head. */
-  adoptPersonaGuest(personaId: WorkshopPersonaId, conversationId: string): void {
+  adoptPersonaGuest(
+    personaId: WorkshopPersonaId,
+    conversationId: string,
+    deliveredWriterSources: readonly ContextSourceEntry[] = []
+  ): void {
     this.validatePersonaGuestInvitation(personaId);
     if (!conversationId.trim()) {
       throw new Error('Cannot retain a guest without a conversation id');
@@ -1090,13 +1121,12 @@ export class WorkshopSessionService {
       lastSeenRoomTurnId: roomHead,
       liveness: 'live'
     });
-    // The join envelope delivered the current subject and standing context
-    // (ADR 2026-07-26). The retained manifest must describe that exact input.
-    const pin = this.pinEntry();
-    this.guestWriterSources.set(personaId, [
-      ...(pin ? [pin] : []),
-      ...this.contextAttachments.map((attachment) => this.attachmentEntry(attachment))
-    ]);
+    // Never re-read live room state here: adoption follows an awaited provider
+    // call, so only the join-time snapshot can truthfully describe what shipped.
+    this.guestWriterSources.set(
+      personaId,
+      deliveredWriterSources.map(cloneSourceEntry)
+    );
   }
 
   /** Dispose one guest while preserving its historical thread attribution. */
@@ -1409,10 +1439,24 @@ export class WorkshopSessionService {
     personaId: WorkshopPersonaId,
     requestId: string,
     displayText: string
-  ): WorkshopTurn {
+  ): WorkshopPersonaGuestJoinStart {
     this.requireParticipantSubject();
     this.validatePersonaGuestInvitation(personaId);
-    return this.beginMessage(requestId, displayText, 'personaGuest', undefined, personaId);
+    const excerpt = this.getExcerpt();
+    const contextAttachments = this.getContextAttachments();
+    const turn = this.beginMessage(
+      requestId,
+      displayText,
+      'personaGuest',
+      undefined,
+      personaId
+    );
+    const pin = this.pinEntry(excerpt);
+    this.activeRun!.guestJoinWriterSources = [
+      ...(pin ? [pin] : []),
+      ...contextAttachments.map((attachment) => this.attachmentEntry(attachment))
+    ];
+    return { turn, excerpt, contextAttachments };
   }
 
   /** Begin a direct follow-up to a retained tool sidecar. */
@@ -1492,7 +1536,11 @@ export class WorkshopSessionService {
     }
     if (isGuest && active.guestPersonaId && conversationId) {
       if (!this.isLivePersonaGuest(active.guestPersonaId)) {
-        this.adoptPersonaGuest(active.guestPersonaId, conversationId);
+        this.adoptPersonaGuest(
+          active.guestPersonaId,
+          conversationId,
+          active.guestJoinWriterSources
+        );
       }
       const guest = this.participants.personaGuests.get(active.guestPersonaId);
       if (guest?.liveness === 'live') {
@@ -1948,6 +1996,7 @@ export class WorkshopSessionService {
     return {
       excerpt: this.excerpt ? excerptSnapshot(this.excerpt) : undefined,
       scope: this.scope,
+      participantSubjectReady: this.getParticipantSubjectStatus().ready,
       shelvedExcerpt: this.shelvedExcerpt ? excerptSnapshot(this.shelvedExcerpt) : undefined,
       excerptVersion: this.excerptVersion,
       replacementCount: this.replacementCount,
@@ -2065,11 +2114,16 @@ export class WorkshopSessionService {
    * whose path is still unchosen has no subject at all — the writer has not
    * told us what this room is for yet.
    */
+  getParticipantSubjectStatus(): WorkshopParticipantSubjectStatus {
+    return workshopParticipantSubjectStatus(this.scope, this.excerpt);
+  }
+
   private requireParticipantSubject(): void {
-    if (this.scope === 'open') {
+    const status = this.getParticipantSubjectStatus();
+    if (status.ready) {
       return;
     }
-    if (this.scope === null) {
+    if (status.reason === 'scope-unchosen') {
       throw new Error('Choose how to start this Workshop session before messaging');
     }
     this.requireExcerpt();

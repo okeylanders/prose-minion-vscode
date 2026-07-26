@@ -37,6 +37,26 @@ describe('WorkshopRoomDeliveryService', () => {
     ])).toBe(true);
   });
 
+  it('classifies the complete pending backlog before the runaway guard defers conversation', () => {
+    const session = new WorkshopSessionService(() => 1);
+    session.recordSessionMarker('start', 'Session started.');
+    session.setSessionScope('open');
+    session.adoptPersonaGuest('margot', 'margot-conv');
+    session.beginPersonaGuestMessage('margot', 'guest-run', 'A real question.');
+    session.completeRun('guest-run', 'A real answer.');
+
+    const delivery = new WorkshopRoomDeliveryService(
+      session,
+      'Session started.'.length
+    ).prepare({ kind: 'host' });
+
+    expect(delivery.turns).toEqual([
+      expect.objectContaining({ artifact: 'session_start' })
+    ]);
+    expect(delivery.deferredTurns).toBe(2);
+    expect(delivery.hasConversationalCatchUp).toBe(true);
+  });
+
   it('projects room turns after the offset without quoting the reader to itself', () => {
     const turns = [
       turn('host-1', { participant: 'host', personaId: 'jill' }),
@@ -138,7 +158,7 @@ describe('WorkshopRoomDeliveryService', () => {
     const snapshot = new WorkshopRoomDeliveryService(session).prepareJoinSnapshot({
       kind: 'personaGuest',
       personaId: 'margot'
-    }, invitation.id);
+    }, invitation.turn.id);
 
     expect(snapshot.map((candidate) => candidate.content)).toEqual([
       'Question.',

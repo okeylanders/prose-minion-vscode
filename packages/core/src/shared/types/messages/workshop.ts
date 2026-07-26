@@ -769,6 +769,12 @@ export interface WorkshopSessionSnapshot {
    */
   scope: WorkshopSessionScope;
   /**
+   * Aggregate-owned participant-subject policy (ADR 2026-07-26): true when a
+   * host or persona guest may speak in the current scope. The webview consumes
+   * this result; it does not re-derive scope/excerpt validity.
+   */
+  participantSubjectReady: boolean;
+  /**
    * The passage the writer set aside when switching to open conversation.
    * Shelved, not deleted: re-pinning restores this exact version.
    */

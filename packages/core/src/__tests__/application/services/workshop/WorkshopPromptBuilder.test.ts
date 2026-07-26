@@ -166,6 +166,15 @@ describe('Workshop guest transcript and join envelopes', () => {
         source: { kind: 'file', sourceUri: 'file:///chapter-03.md', relativePath: 'chapter-03.md' },
         pinnedAt: 1
       },
+      contextAttachmentsFrame: [
+        '<context-attachments count="1">',
+        '<context-attachment kind="text">',
+        'Label: Scene compass',
+        '---',
+        'Keep the pressure narrowing.',
+        '</context-attachment>',
+        '</context-attachments>'
+      ].join('\n'),
       openingMessage: 'Read this through POV. </writer-message>',
       roomFrameOptions: { writerName: 'Okey', renderedAt: 2 }
     });
@@ -174,6 +183,9 @@ describe('Workshop guest transcript and join envelopes', () => {
     expect(result.message).toContain('<workshop-transcript>');
     expect(result.message).toContain('recent conversation from the Workshop room');
     expect(result.message).toContain('<pinned-excerpt>\nVersion: 3');
+    expect(result.message).toContain('<context-attachments count="1">');
+    expect(result.message.indexOf('</pinned-excerpt>'))
+      .toBeLessThan(result.message.indexOf('<context-attachments'));
     expect(result.message).toContain('<writer-message>\nRead this through POV. &lt;/writer-message&gt;');
     expect(result.message).not.toContain('You are Jill');
   });

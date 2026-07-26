@@ -60,8 +60,9 @@ composer status copy.
 
 ## Verification
 
-- Focused Workshop contract: 267 tests passed.
-- Full Jest suite: 1,443 tests passed across 133 suites; snapshot passed.
+- Focused Workshop contract after PR #91 review fixes: 308 tests passed.
+- Full Jest suite after PR #91 review fixes: 1,446 tests passed across 133
+  suites; snapshot passed.
 - `npm run typecheck`: passed for core, webview, and extension.
 - `npm run lint`: passed with the repository's existing warnings and no errors.
 - `npm run build`: production extension/webview bundles compiled and bundle

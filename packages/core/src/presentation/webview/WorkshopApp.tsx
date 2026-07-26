@@ -396,9 +396,7 @@ export const WorkshopApp: React.FC = () => {
   // Live run bubble: visible from run start until the assistant turn lands.
   const showLiveTurn = workshop.isRunning || workshop.isStreaming || workshop.streamingContent.length > 0;
   // Invite appears once context is ready and the room has an open guest seat.
-  const canInviteGuest = workshop.scope !== null
-    && (workshop.scope === 'open' || !!workshop.excerpt)
-    && workshop.sessionReady
+  const canInviteGuest = workshop.canMessage
     && !roomMutationLocked
     && workshop.personaGuests.filter((guest) => guest.liveness === 'live').length
       < WORKSHOP_GUEST_CAPACITY;
@@ -1289,11 +1287,8 @@ export const WorkshopApp: React.FC = () => {
             {/* Scope copy belongs to the header and scope strip. This gauge
                 names the participant whose retained context it measures. */}
             <ContextBudget
-              label={
-                workshop.scope === 'open' && !hasExcerpt
-                  ? chatTargetLabel
-                  : workshop.contextBudget?.label ?? `${chatTargetLabel} context`
-              }
+              participantLabel={chatTargetLabel}
+              showsContextSuffix={!(workshop.scope === 'open' && !hasExcerpt)}
               snapshot={workshop.contextBudget?.snapshot}
               modelOptions={modelsSettings.modelOptions}
               cumulativeProcessedTokens={tokenTracking.usage.totalTokens}

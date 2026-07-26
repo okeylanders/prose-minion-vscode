@@ -13,7 +13,9 @@ import {
 } from '@utils/contextBudget';
 
 interface ContextBudgetProps {
-  label: string;
+  participantLabel: string;
+  /** Scope copy lives elsewhere; false renders only the participant's name. */
+  showsContextSuffix?: boolean;
   snapshot?: ContextBudgetSnapshot;
   modelOptions: readonly ModelOption[];
   cumulativeProcessedTokens: number;
@@ -87,9 +89,6 @@ const compressionValueClass = (value: ContextBudgetSnapshot['contextCompression'
   unknown: 'pm-ctx-dim'
 })[value];
 
-/** Most measured labels include "context"; the footer wants the bare name. */
-const participantName = (label: string): string => label.replace(/\s+context$/i, '');
-
 const Chevron: React.FC = () => (
   <span className="pm-context-budget-chev" aria-hidden="true">
     <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
@@ -105,27 +104,37 @@ const IdentityDot: React.FC<{ label: string }> = ({ label }) => (
   />
 );
 
-const ParticipantLabel: React.FC<{ label: string }> = ({ label }) => (
+const ParticipantLabel: React.FC<{
+  participantLabel: string;
+  showsContextSuffix: boolean;
+}> = ({ participantLabel, showsContextSuffix }) => (
   <span className="pm-context-budget-name">
-    <b>{participantName(label)}</b>
-    {/\s+context$/i.test(label) ? <>&nbsp;context</> : null}
+    <b>{participantLabel}</b>
+    {showsContextSuffix ? <>&nbsp;context</> : null}
   </span>
 );
 
 export const ContextBudget: React.FC<ContextBudgetProps> = ({
-  label,
+  participantLabel,
+  showsContextSuffix = true,
   snapshot,
   modelOptions,
   cumulativeProcessedTokens,
   sources,
   requesterLabel
 }) => {
+  const accessibleLabel = showsContextSuffix
+    ? `${participantLabel} context`
+    : participantLabel;
   if (!snapshot) {
     return (
-      <div className="pm-context-budget pm-context-budget-empty" role="status" aria-label={`${label}: not measured yet`}>
+      <div className="pm-context-budget pm-context-budget-empty" role="status" aria-label={`${accessibleLabel}: not measured yet`}>
         <div className="pm-context-budget-row">
-          <IdentityDot label={label} />
-          <ParticipantLabel label={label} />
+          <IdentityDot label={participantLabel} />
+          <ParticipantLabel
+            participantLabel={participantLabel}
+            showsContextSuffix={showsContextSuffix}
+          />
           <span className="pm-context-budget-track" />
           <span className="pm-context-budget-nums">Not measured yet — updates after the first reply</span>
         </div>
@@ -139,7 +148,7 @@ export const ContextBudget: React.FC<ContextBudgetProps> = ({
   const primary = view.usableInputTokens === undefined
     ? `Context ${formatCompactTokens(snapshot.contextTokens)} · Window unavailable`
     : `Context ${formatCompactTokens(snapshot.contextTokens)} / ${formatCompactTokens(view.usableInputTokens)} · ${percent}%`;
-  const accessible = `${label}. ${primary}. ${snapshot.callsThisTurn} calls this turn, ` +
+  const accessible = `${accessibleLabel}. ${primary}. ${snapshot.callsThisTurn} calls this turn, ` +
     `${snapshot.turnProcessedTokens.toLocaleString()} tokens processed. Compression ${compressionLabel(snapshot.contextCompression)}.`;
 
   return (
@@ -149,8 +158,11 @@ export const ContextBudget: React.FC<ContextBudgetProps> = ({
         aria-label={accessible}
         title="Retained context after the last committed reply — click for details"
       >
-        <IdentityDot label={label} />
-        <ParticipantLabel label={label} />
+        <IdentityDot label={participantLabel} />
+        <ParticipantLabel
+          participantLabel={participantLabel}
+          showsContextSuffix={showsContextSuffix}
+        />
         <span className="pm-context-budget-track">
           {percent !== undefined && (
             <span
@@ -199,7 +211,7 @@ export const ContextBudget: React.FC<ContextBudgetProps> = ({
         <InContextSources sources={sources} requesterLabel={requesterLabel} />
       )}
       <div className="pm-context-budget-foot">
-        Context measured on <b>{participantName(label)}</b>&rsquo;s last committed reply. Each participant keeps
+        Context measured on <b>{participantLabel}</b>&rsquo;s last committed reply. Each participant keeps
         its own conversation; switching targets never resets it.
       </div>
     </details>

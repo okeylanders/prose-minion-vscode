@@ -11,6 +11,7 @@
 import {
   WorkshopScopeLockedError,
   WorkshopSessionService,
+  workshopParticipantSubjectStatus,
   workshopTextNoteLabel
 } from '@/application/services/workshop/WorkshopSessionService';
 import {
@@ -42,13 +43,26 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
   };
 
   describe('scope assignment', () => {
+    it('classifies every participant-subject policy branch in one place', () => {
+      expect(workshopParticipantSubjectStatus(null))
+        .toEqual({ ready: false, reason: 'scope-unchosen' });
+      expect(workshopParticipantSubjectStatus('excerpt'))
+        .toEqual({ ready: false, reason: 'excerpt-missing' });
+      expect(workshopParticipantSubjectStatus('excerpt', { text: 'Passage.' }))
+        .toEqual({ ready: true });
+      expect(workshopParticipantSubjectStatus('open'))
+        .toEqual({ ready: true });
+    });
+
     it('starts unchosen — an excerpt-free room is not automatically open chat', () => {
       expect(service.getScope()).toBeNull();
       expect(service.getSnapshot().scope).toBeNull();
     });
 
-    it('refuses a host turn until the writer chooses a path', () => {
+    it('refuses host and guest turns until the writer chooses a path', () => {
       expect(() => service.beginPersonaMessage('req-1', 'Hello?'))
+        .toThrow(/Choose how to start/);
+      expect(() => service.beginPersonaGuestJoin('felix', 'req-guest', 'Join me.'))
         .toThrow(/Choose how to start/);
     });
 
@@ -78,7 +92,7 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
     it('admits persona guests but still refuses tool sidecars without a passage', () => {
       service.setSessionScope('open');
       expect(() => service.beginToolRun('prose', 'req-tool')).toThrow(/without a pinned excerpt/);
-      expect(service.beginPersonaGuestJoin('felix', 'req-guest', 'Read the room.'))
+      expect(service.beginPersonaGuestJoin('felix', 'req-guest', 'Read the room.').turn)
         .toMatchObject({ participant: 'writer', personaId: 'felix' });
     });
   });
@@ -220,7 +234,7 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
         'margot',
         'guest-join',
         'Read this with me.'
-      );
+      ).turn;
       const guestTurn = service.completeRun(
         'guest-join',
         'The voice pulls away in the second paragraph.',
