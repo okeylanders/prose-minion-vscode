@@ -167,6 +167,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     expect(loadPrompts).toHaveBeenCalledWith([
       'workshop-personas/guest-base.md',
       'workshop-personas/margot.md',
+      // 13C: guests carry the same capability grammar resource as the host.
+      'workshop-personas/analysis-capability.md',
       'workshop-personas/interaction-contract.md',
       'workshop-personas/interaction-modes/conversational.md',
       'workshop-personas/relational-contract.md',

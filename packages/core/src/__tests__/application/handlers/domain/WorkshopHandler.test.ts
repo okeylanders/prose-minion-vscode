@@ -801,6 +801,38 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(session.getChatTarget()).toEqual({ kind: 'host' });
   });
 
+  it('stamps the invoking principal on every minted capability (review #5)', async () => {
+    const create = capabilityFactory.create as jest.Mock;
+    await pin();
+
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Host turn.' }
+    ) as any);
+    expect(create.mock.calls.at(-1)?.[0]).toMatchObject({
+      owner: { kind: 'host' },
+      personaId: 'jill'
+    });
+
+    await handler.handleInviteGuest(message(
+      MessageType.WORKSHOP_INVITE_GUEST,
+      { personaId: 'margot', openingMessage: 'Read the room.' }
+    ) as any);
+    expect(create.mock.calls.at(-1)?.[0]).toMatchObject({
+      owner: { kind: 'personaGuest', personaId: 'margot' },
+      personaId: 'margot'
+    });
+
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Guest follow-up.' }
+    ) as any);
+    expect(create.mock.calls.at(-1)?.[0]).toMatchObject({
+      owner: { kind: 'personaGuest', personaId: 'margot' },
+      personaId: 'margot'
+    });
+  });
+
   it('continues the guest with its own capability and hands guest evidence back to the host', async () => {
     await pin();
     await handler.handleInviteGuest(message(

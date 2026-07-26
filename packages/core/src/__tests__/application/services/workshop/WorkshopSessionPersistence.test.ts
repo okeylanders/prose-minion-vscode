@@ -384,6 +384,31 @@ describe('WorkshopSessionService committed persistence', () => {
     expect(hydrated.capability!.invokedBy).toEqual({ kind: 'host' });
   });
 
+  it('never relabels an already-stamped guest principal during hydration (review #10)', () => {
+    const state = buildCompleteState();
+    const toolTurn = state.turns.find((turn) => turn.participant === 'tool');
+    if (!toolTurn) {
+      throw new Error('Fixture no longer contains a tool turn to stamp.');
+    }
+    toolTurn.capability = {
+      operation: 'dictionary.lookup',
+      status: 'success',
+      requestSummary: 'liminal',
+      requestedByPersonaId: 'margot',
+      invokedBy: { kind: 'personaGuest', personaId: 'margot' }
+    };
+
+    const restored = new WorkshopSessionService(() => 50_000);
+    const result = restored.hydrateCommittedState(state, {}, currentBehavior);
+
+    // A regression to always-stamp would relabel guest evidence as host —
+    // silently defeating the privacy guarantee on the next save/load.
+    expect(result.migrations).not.toContain('defaulted-capability-principal');
+    const hydrated = restored.exportCommittedState().turns
+      .find((turn) => turn.capability)!;
+    expect(hydrated.capability!.invokedBy).toEqual({ kind: 'personaGuest', personaId: 'margot' });
+  });
+
   it('exports defensively and hydrates from defensive clones', () => {
     const source = buildCompleteState();
     const originalText = source.excerpt!.text;

@@ -37,7 +37,7 @@ import {
   AnyAgentCapability,
   StreamingTokenCallback
 } from '@orchestration/AgentRunContracts';
-import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
+import { AGENT_RUN_POLICIES, resolveWorkshopParticipantPolicy } from '@orchestration/AgentRunPolicies';
 import type {
   WorkshopConfiguredResourceRef,
   WorkshopConversationBehavior,
@@ -607,9 +607,7 @@ export class AssistantToolService {
       toolName: `workshop_guest_${persona.id}`,
       systemMessage: systemPrompt,
       userMessage: input.message,
-      policy: streamingOptions.capability
-        ? AGENT_RUN_POLICIES.workshopHost
-        : AGENT_RUN_POLICIES.workshopToolWithoutResources,
+      policy: resolveWorkshopParticipantPolicy(streamingOptions.capability),
       ...(streamingOptions.capability ? { capability: streamingOptions.capability } : {}),
       options: {
         temperature: options.temperature,
@@ -662,9 +660,7 @@ export class AssistantToolService {
     const executionResult = await engine.continueConversation({
       conversationId,
       userMessage,
-      policy: capability
-        ? AGENT_RUN_POLICIES.workshopHost
-        : AGENT_RUN_POLICIES.workshopToolWithoutResources,
+      policy: resolveWorkshopParticipantPolicy(capability),
       capability,
       options: {
         temperature: options.temperature,

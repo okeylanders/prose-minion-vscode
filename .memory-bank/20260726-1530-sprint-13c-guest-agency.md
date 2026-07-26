@@ -65,6 +65,22 @@
 - `npm run build` — webpack + verify-bundle OK.
 - **Outstanding**: manual EDH pass (F5) for visual fidelity + reduced-motion.
 
+## PR #89 review pass (2026-07-26, same day)
+
+All code findings from `docs/pr-reviews/pr-89-guest-agency-review.md` addressed
+(ledger updated in place). Highlights: handoff pairing now walks back past a
+guest's private artifacts to the owning writer turn (blocker #1); guest-base
+charter + prompt assembly now grant the capability grammar they run under
+(blocker #2); `resolveWorkshopParticipantPolicy()` is the single policy seam;
+`describeCapabilityArtifactRefusal()` names refusal causes; invite modal
+re-derives default-opening state and clears lock-stale selections. Left to
+Okey's docs pass: #11 (sprint-doc rationale) and #15's sprint-notes line.
+
+**Tim's #15 number, on record**: a capability-bearing guest turn worst-cases at
+1 initial + 5 capability rounds = 6 provider calls, each carrying ~1,000 tokens
+of repeated static capability instruction ≈ 6,000 extra tokens per guest turn —
+identical to the host's existing meter, per acceptance criterion #7.
+
 ## Follow-ups / notes
 
 - 13D still owns: `audience()` predicate, `includeGuestTurns` removal, room

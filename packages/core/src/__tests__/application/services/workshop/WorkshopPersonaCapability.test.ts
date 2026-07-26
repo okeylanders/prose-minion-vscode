@@ -349,7 +349,7 @@ describe('WorkshopPersonaCapability', () => {
     });
     expect(events.turnCompleted).toHaveBeenCalledTimes(1);
     expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining(
-      'request=host-request persona=jill capability=dictionary.lookup'
+      'request=host-request persona=jill owner=host conversation=fresh capability=dictionary.lookup'
     ));
     expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining(
       'contextChars=24; purposeChars=29 outcome=success capabilityOutcome=success durationMs='
@@ -371,11 +371,15 @@ describe('WorkshopPersonaCapability', () => {
 
     expect(result.artifacts).toEqual([]);
     expect(events.turnCompleted).not.toHaveBeenCalled();
+    // Review #6: the refusal names WHICH check failed, not just that one did.
     expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining(
-      'Refused late persona-requested dictionary.lookup result'
+      'Refused persona-requested dictionary.lookup result'
     ));
     expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining(
-      'outcome=discarded-stale-run capabilityOutcome=success'
+      'reason=no-active-run'
+    ));
+    expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining(
+      'outcome=refused capabilityOutcome=success'
     ));
   });
 

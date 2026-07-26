@@ -149,6 +149,7 @@ import {
   WorkshopTurn,
   WorkshopTurnMessage,
 } from '@messages';
+import { WorkshopCapabilityPrincipal } from '@shared/types/workshopCapabilities';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
 import { WorkshopSessionMessageHandler } from '@handlers/domain/WorkshopSessionMessageHandler';
@@ -1023,14 +1024,22 @@ export class WorkshopHandler {
     this.activeRun = { requestId, label, toolId, guestPersonaId, controller };
     // Sprint 13C: capabilities are participant-owned. Host and persona-guest
     // turns each mint one adapter with their own principal; direct-tool
-    // sidecars stay capability-free instruments.
-    const participantCapability = target.kind === 'host' || target.kind === 'personaGuest'
+    // sidecars stay capability-free instruments. Decide "which participant is
+    // this" exactly once (PR #89 review #13) so the gate, the speaking
+    // persona, and the persisted principal cannot drift apart.
+    const participantOwner: WorkshopCapabilityPrincipal | undefined =
+      target.kind === 'personaGuest'
+        ? { kind: 'personaGuest', personaId: target.personaId }
+        : target.kind === 'host'
+          ? { kind: 'host' }
+          : undefined;
+    const participantCapability = participantOwner
       ? this.capabilityFactory.create({
           requestId,
-          personaId: target.kind === 'personaGuest' ? target.personaId : personaId,
-          owner: target.kind === 'personaGuest'
-            ? { kind: 'personaGuest', personaId: target.personaId }
-            : { kind: 'host' },
+          personaId: participantOwner.kind === 'personaGuest'
+            ? participantOwner.personaId
+            : personaId,
+          owner: participantOwner,
           conversationId,
           excerpt,
           excerptVersion: this.session.getExcerptVersion(),

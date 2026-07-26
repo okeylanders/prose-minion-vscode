@@ -105,11 +105,56 @@ describe('WorkshopInviteGuestModal', () => {
 
     fireEvent.click(launchButton());
     expect(onInvite).not.toHaveBeenCalled();
-    expect(screen.getByText(/sending the default opening/)).not.toBeNull();
+    // The hint's announcement contract, not just its text (review #18): the
+    // instruction must live in a `role="status"` region.
+    const statusRegions = screen.getAllByRole('status');
+    expect(statusRegions.some((region) =>
+      /sending the default opening/.test(region.textContent ?? '')
+    )).toBe(true);
 
     fireEvent.click(launchButton());
     expect(onInvite).toHaveBeenCalledTimes(1);
     expect(onInvite).toHaveBeenCalledWith('felix', defaultWorkshopGuestOpening('felix'));
+  });
+
+  it('still treats text typed back to the exact default as boilerplate (review #4)', () => {
+    const { onInvite } = renderModal();
+    fireEvent.click(screen.getByRole('button', { name: /^Felix/ }));
+    const opening = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+    // One keystroke and a backspace: the box again holds the literal default.
+    fireEvent.change(opening, { target: { value: `${defaultWorkshopGuestOpening('felix')}x` } });
+    fireEvent.change(opening, { target: { value: defaultWorkshopGuestOpening('felix') } });
+
+    expect(screen.getByRole('button', { name: 'Default message' })).not.toBeNull();
+    fireEvent.click(launchButton());
+    expect(onInvite).not.toHaveBeenCalled();
+    fireEvent.click(launchButton());
+    expect(onInvite).toHaveBeenCalledWith('felix', defaultWorkshopGuestOpening('felix'));
+  });
+
+  it('clears a selection whose card becomes locked before launch (review #9)', () => {
+    const onInvite = jest.fn();
+    const props = {
+      open: true,
+      hostPersonaId: 'jill' as const,
+      onClose: jest.fn(),
+      onInvite
+    };
+    const { rerender } = render(
+      <WorkshopInviteGuestModal {...props} livePersonaGuestIds={[]} />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /^Felix/ }));
+    expect(launchButton().textContent).toContain('Read in Felix');
+
+    // Felix joins the room out from under the open modal.
+    rerender(<WorkshopInviteGuestModal {...props} livePersonaGuestIds={['felix']} />);
+
+    const launch = launchButton();
+    expect(launch.textContent).toContain('Select a persona');
+    expect(launch.disabled).toBe(true);
+    fireEvent.click(launch);
+    expect(onInvite).not.toHaveBeenCalled();
   });
 
   it('disarms the soft confirm on any edit and invites a personalized opening in one press', () => {

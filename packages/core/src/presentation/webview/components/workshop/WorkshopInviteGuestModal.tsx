@@ -10,11 +10,12 @@
  * mock convenience, not the contract.
  *
  * Two nudges fight the skipped field: the amber `Default message` chip
- * (click selects all for overtyping; flips to green `Personalized` once
- * edited) and a one-shot soft confirm when launching an untouched default.
- * Both are announced to assistive technology, never signalled by colour
- * alone. Changing selection rewrites only untouched generated copy —
- * writer-edited text is never overwritten.
+ * (click selects all for overtyping; flips to green `Personalized` while the
+ * text differs from the generated default) and a one-shot soft confirm when
+ * launching text that still equals that default. Both are announced to
+ * assistive technology, never signalled by colour alone. Changing selection
+ * rewrites only untouched generated copy — writer-edited text is never
+ * overwritten.
  */
 
 import * as React from 'react';
@@ -58,9 +59,9 @@ export const WorkshopInviteGuestModal: React.FC<WorkshopInviteGuestModalProps> =
   const [message, setMessage] = React.useState(() => defaultWorkshopGuestOpening());
   const [edited, setEdited] = React.useState(false);
   const [confirmArmed, setConfirmArmed] = React.useState(false);
-  const [flashToken, setFlashToken] = React.useState(0);
   const [flashing, setFlashing] = React.useState(false);
   const messageRef = React.useRef<HTMLTextAreaElement>(null);
+  const flashTimerRef = React.useRef<number>();
 
   // Selection is discarded on cancel: every open starts from a clean sheet,
   // so no half-invitation can survive a dismissed modal.
@@ -73,15 +74,16 @@ export const WorkshopInviteGuestModal: React.FC<WorkshopInviteGuestModalProps> =
     }
   }, [open]);
 
+  React.useEffect(() => () => window.clearTimeout(flashTimerRef.current), []);
+
   // One-shot attention flash on the message dock (selection change / confirm).
-  React.useEffect(() => {
-    if (flashToken === 0) {
-      return undefined;
-    }
+  // A ref-held timer, not render state (PR #89 review #17): the class is a
+  // plain transition, so all a repeat trigger needs is a timer restart.
+  const flash = () => {
     setFlashing(true);
-    const timer = window.setTimeout(() => setFlashing(false), 1100);
-    return () => window.clearTimeout(timer);
-  }, [flashToken]);
+    window.clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = window.setTimeout(() => setFlashing(false), 1100);
+  };
 
   const roomFull = livePersonaGuestIds.length >= WORKSHOP_GUEST_CAPACITY;
   const locks = React.useMemo(() => {
@@ -115,9 +117,28 @@ export const WorkshopInviteGuestModal: React.FC<WorkshopInviteGuestModalProps> =
 
   const trimmed = message.trim();
   const generatedDefault = defaultWorkshopGuestOpening(selected ?? undefined);
-  const isUntouchedDefault = !edited && trimmed === generatedDefault.trim();
+  // Re-derived from CURRENT text, never latched (PR #89 review #4): typing a
+  // character and backspacing it leaves the literal boilerplate in the box,
+  // and the chip and soft confirm must tell the truth about what will send.
+  // `edited` remains only the rewrite-on-selection rule — once the writer has
+  // touched the field, selection changes stop regenerating it.
+  const isDefaultOpening = trimmed === generatedDefault.trim();
   const selectedLabel = selected ? workshopPersonaLabel(selected) : null;
   const canLaunch = !disabled && !!selected && trimmed.length > 0 && trimmed.length <= PROMPT_BUDGETS.guestOpening.characters;
+
+  // A selection made before a lock arrived (a guest joined, the room filled)
+  // must not leave the footer aiming at an uninvitable card (review #9).
+  React.useEffect(() => {
+    if (selected && locks[selected]) {
+      setSelected(null);
+      setConfirmArmed(false);
+      setMessage((current) =>
+        !edited && current.trim() === defaultWorkshopGuestOpening(selected).trim()
+          ? defaultWorkshopGuestOpening()
+          : current
+      );
+    }
+  }, [edited, locks, selected]);
 
   const selectPersona = (personaId: WorkshopPersonaId) => {
     setSelected(personaId);
@@ -126,7 +147,7 @@ export const WorkshopInviteGuestModal: React.FC<WorkshopInviteGuestModalProps> =
     if (!edited) {
       setMessage(defaultWorkshopGuestOpening(personaId));
     }
-    setFlashToken((token) => token + 1);
+    flash();
   };
 
   const editMessage = (value: string) => {
@@ -139,9 +160,9 @@ export const WorkshopInviteGuestModal: React.FC<WorkshopInviteGuestModalProps> =
     if (!canLaunch || !selected) {
       return;
     }
-    if (isUntouchedDefault && !confirmArmed) {
+    if (isDefaultOpening && !confirmArmed) {
       setConfirmArmed(true);
-      setFlashToken((token) => token + 1);
+      flash();
       return;
     }
     onInvite(selected, trimmed);
@@ -200,7 +221,7 @@ export const WorkshopInviteGuestModal: React.FC<WorkshopInviteGuestModalProps> =
               )}
             </span>
             {trimmed.length > 0 && (
-              isUntouchedDefault ? (
+              isDefaultOpening ? (
                 <button
                   className="pm-ws-nudge"
                   type="button"
@@ -249,12 +270,12 @@ export const WorkshopInviteGuestModal: React.FC<WorkshopInviteGuestModalProps> =
                 )}
               </p>
             </div>
-            <div className="pm-ws-invite-actions">
-              <button className="pm-ws-invite-cancel" type="button" onClick={onClose}>
+            <div className="pm-ws-sheet-actions">
+              <button className="pm-ws-sheet-cancel" type="button" onClick={onClose}>
                 Cancel
               </button>
               <button
-                className="pm-ws-invite-launch"
+                className="pm-ws-sheet-commit"
                 type="button"
                 disabled={!canLaunch}
                 onClick={launch}
@@ -262,10 +283,10 @@ export const WorkshopInviteGuestModal: React.FC<WorkshopInviteGuestModalProps> =
                 {selectedLabel ? (
                   <>
                     <Icon name="send" size={15} />
-                    <span className="pm-ws-invite-launch-label">Read in {selectedLabel}</span>
+                    <span className="pm-ws-sheet-commit-label">Read in {selectedLabel}</span>
                   </>
                 ) : (
-                  <span className="pm-ws-invite-launch-label">Select a persona</span>
+                  <span className="pm-ws-sheet-commit-label">Select a persona</span>
                 )}
               </button>
             </div>
@@ -274,7 +295,7 @@ export const WorkshopInviteGuestModal: React.FC<WorkshopInviteGuestModalProps> =
           <span className="pm-ws-visually-hidden" role="status">
             {trimmed.length === 0
               ? 'Opening message is empty'
-              : isUntouchedDefault
+              : isDefaultOpening
                 ? 'Opening message is the default boilerplate'
                 : 'Opening message personalized'}
           </span>

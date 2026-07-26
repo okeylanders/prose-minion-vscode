@@ -120,7 +120,13 @@ export function workshopPersonaSystemPromptPaths(
   return [
     basePromptPath,
     persona.promptPath,
+    // Sprint 13C (PR #89 review #2): guests carry the same bounded capability
+    // grammar as the host, so BOTH participant bases get the analysis
+    // capability resource — the injected protocol points at it, and a charter
+    // that denies capabilities while the run policy grants them ships two
+    // contradictory instructions.
     ...(basePromptPath === 'workshop-personas/base.md'
+      || basePromptPath === 'workshop-personas/guest-base.md'
       ? [WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH]
       : []),
     WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,

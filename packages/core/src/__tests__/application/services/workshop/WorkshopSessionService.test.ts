@@ -832,8 +832,55 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
         .not.toContain('Threshold-toned.');
       expect(service.collectUnseenHostTurnsForGuest('quinn').map((turn) => turn.content))
         .not.toContain('Threshold-toned.');
+      // PR #89 review #1 (blocking): the private artifact sits BETWEEN the
+      // writer's prompt and the guest's reply, and the handoff must still
+      // deliver the full exchange — absence of the artifact is not enough,
+      // the writer's question has to be present.
       expect(service.collectUnseenGuestExchangesForHost().map((turn) => turn.content))
-        .not.toContain('Threshold-toned.');
+        .toEqual(['Look up liminal.', 'Margot reply.']);
+    });
+
+    it('pairs the writer prompt across several interleaved private artifacts and commits cleanly', () => {
+      pin();
+      service.adoptPersonaGuest('margot', 'margot-conv');
+      service.beginPersonaGuestMessage('margot', 'guest-run', 'Check two words.');
+      service.recordCapabilityArtifact({ requestId: 'guest-run', ...guestLookup('margot') });
+      service.recordCapabilityArtifact({ requestId: 'guest-run', ...guestLookup('margot') });
+      service.completeRun('guest-run', 'Margot reply.');
+
+      const unseen = service.collectUnseenGuestExchangesForHost();
+      expect(unseen.map((turn) => turn.content)).toEqual(['Check two words.', 'Margot reply.']);
+
+      service.commitHostGuestHandoff(unseen.map((turn) => turn.id));
+      expect(service.collectUnseenGuestExchangesForHost()).toEqual([]);
+    });
+
+    it('names which check refused an artifact so callers can log the difference (review #6)', () => {
+      pin();
+      const hostDetails = {
+        operation: 'dictionary.lookup' as const,
+        status: 'success' as const,
+        requestSummary: 'liminal',
+        requestedByPersonaId: 'jill' as const,
+        invokedBy: { kind: 'host' as const }
+      };
+      expect(service.describeCapabilityArtifactRefusal({
+        requestId: 'ghost-run', excerptVersion: 1, details: hostDetails
+      })).toBe('no-active-run');
+
+      service.beginPersonaMessage('host-run', 'Host asks.');
+      expect(service.describeCapabilityArtifactRefusal({
+        requestId: 'other-run', excerptVersion: 1, details: hostDetails
+      })).toMatch(/^request-mismatch \(artifact=other-run, active=host-run\)/);
+      expect(service.describeCapabilityArtifactRefusal({
+        requestId: 'host-run', excerptVersion: 1, details: guestLookup('margot').details
+      })).toBe('principal-mismatch (artifact=personaGuest:margot, active=host)');
+      expect(service.describeCapabilityArtifactRefusal({
+        requestId: 'host-run', excerptVersion: 9, details: hostDetails
+      })).toBe('stale-excerpt-version (artifact=9, active=1)');
+      expect(service.describeCapabilityArtifactRefusal({
+        requestId: 'host-run', excerptVersion: 1, details: hostDetails
+      })).toBeUndefined();
     });
 
     it('refuses an artifact whose principal does not own the active run', () => {

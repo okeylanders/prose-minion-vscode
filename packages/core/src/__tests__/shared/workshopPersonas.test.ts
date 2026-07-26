@@ -143,7 +143,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
     }
   });
 
-  it('keeps the complete mode-neutral analysis grammar in the host system prompt only', () => {
+  it('keeps the complete mode-neutral analysis grammar in BOTH participant system prompts', () => {
     const prompt = fs.readFileSync(
       path.resolve(PROMPTS_ROOT, WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH),
       'utf8'
@@ -156,6 +156,10 @@ describe('Workshop persona catalog and packaged prompts', () => {
     expect(prompt).toContain('`omit` plus `omit` is legal');
     expect(prompt).toContain('never changes the room');
 
+    // Sprint 13C (PR #89 review #2): guests are capability-bearing
+    // participants, so the guest base carries the same grammar resource —
+    // the injected capability protocol points the persona at its system
+    // instructions, and they must actually be there.
     const guestPaths = workshopPersonaSystemPromptPaths(
       'workshop-personas/guest-base.md',
       WORKSHOP_PERSONA_CATALOG[0],
@@ -165,7 +169,16 @@ describe('Workshop persona catalog and packaged prompts', () => {
         relationalDepth: 'reserved'
       }
     );
-    expect(guestPaths).not.toContain(WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH);
+    expect(guestPaths).toContain(WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH);
+  });
+
+  it('never ships a guest charter that denies the capabilities the run policy grants (review #2)', () => {
+    const guestBase = fs.readFileSync(
+      path.resolve(PROMPTS_ROOT, 'workshop-personas/guest-base.md'),
+      'utf8'
+    );
+    expect(guestBase).not.toMatch(/no tools or Workshop capabilities/i);
+    expect(guestBase).toContain('capability calls documented in your instructions');
   });
 
   it('gives every persona a complete relational signature without selecting a level', () => {

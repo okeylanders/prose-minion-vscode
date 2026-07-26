@@ -1,4 +1,4 @@
-import { RunPolicy } from './AgentRunContracts';
+import { AnyAgentCapability, RunPolicy } from './AgentRunContracts';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 const policy = (value: RunPolicy): RunPolicy => value;
@@ -48,11 +48,31 @@ export const AGENT_RUN_POLICIES = {
   })
 } as const;
 
+/**
+ * The ONE place that decides which policy a Workshop persona participant run
+ * takes (Sprint 13C; PR #89 review #3/#12). A capability-bearing turn — host
+ * or persona guest — runs under `workshopHost`; a capability-free retained
+ * sidecar turn stays on the inert no-resources policy. Both
+ * `AssistantToolService` participant call sites resolve through this function
+ * so the route matrix below cannot silently drift from the runtime branch.
+ */
+export function resolveWorkshopParticipantPolicy(
+  capability: AnyAgentCapability | undefined
+): RunPolicy {
+  return capability
+    ? AGENT_RUN_POLICIES.workshopHost
+    : AGENT_RUN_POLICIES.workshopToolWithoutResources;
+}
+
 export const AGENT_RUN_ROUTE_MATRIX = [
   { caller: 'AssistantToolService dialogue/prose/writing sidebar', policy: AGENT_RUN_POLICIES.assistant },
   { caller: 'WorkshopHandler tool runs', policy: AGENT_RUN_POLICIES.workshopTool },
   { caller: 'WorkshopHandler persona host turns', policy: AGENT_RUN_POLICIES.workshopHost },
-  { caller: 'WorkshopHandler persona guest sidecars', policy: AGENT_RUN_POLICIES.workshopToolWithoutResources },
+  // Sprint 13C: guests are capability-bearing participants — the handler
+  // mints a capability for every guest turn, so guest sidecars resolve to
+  // `workshopHost` via resolveWorkshopParticipantPolicy. The no-resources
+  // policy remains only as that function's capability-free fallback.
+  { caller: 'WorkshopHandler persona guest sidecars (resolveWorkshopParticipantPolicy)', policy: AGENT_RUN_POLICIES.workshopHost },
   { caller: 'DictionaryService standard and parallel blocks', policy: AGENT_RUN_POLICIES.dictionary },
   { caller: 'CategorySearchService batches', policy: AGENT_RUN_POLICIES.categorySearch },
   { caller: 'ContextAssistantService', policy: AGENT_RUN_POLICIES.context }

@@ -2044,7 +2044,7 @@
 [data-pm-surface="workshop"] .pm-ws-invite-confirm .pm-ws-invite-hintline {
   display: flex;
 }
-[data-pm-surface="workshop"] .pm-ws-invite-actions {
+[data-pm-surface="workshop"] .pm-ws-sheet-actions {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -2052,7 +2052,7 @@
   flex: none;
   width: 210px;
 }
-[data-pm-surface="workshop"] .pm-ws-invite-cancel {
+[data-pm-surface="workshop"] .pm-ws-sheet-cancel {
   border: 1px solid var(--pm-border-2);
   background: transparent;
   color: var(--pm-text-2);
@@ -2063,11 +2063,11 @@
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
 }
-[data-pm-surface="workshop"] .pm-ws-invite-cancel:hover {
+[data-pm-surface="workshop"] .pm-ws-sheet-cancel:hover {
   background: var(--pm-surface-3);
   color: var(--pm-text);
 }
-[data-pm-surface="workshop"] .pm-ws-invite-launch {
+[data-pm-surface="workshop"] .pm-ws-sheet-commit {
   border: 1px solid var(--pm-accent-lo);
   background: linear-gradient(180deg, var(--pm-accent-hi), var(--pm-accent-lo));
   color: #fff;
@@ -2082,16 +2082,16 @@
   gap: 9px;
   transition: filter 0.12s;
 }
-[data-pm-surface="workshop"] .pm-ws-invite-launch:not(:disabled):hover {
+[data-pm-surface="workshop"] .pm-ws-sheet-commit:not(:disabled):hover {
   filter: brightness(1.07);
 }
-[data-pm-surface="workshop"] .pm-ws-invite-launch:disabled {
+[data-pm-surface="workshop"] .pm-ws-sheet-commit:disabled {
   background: var(--pm-surface-3);
   border-color: var(--pm-border);
   color: var(--pm-faint);
   cursor: not-allowed;
 }
-[data-pm-surface="workshop"] .pm-ws-invite-launch-label {
+[data-pm-surface="workshop"] .pm-ws-sheet-commit-label {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2128,7 +2128,7 @@
   align-items: center;
   width: auto;
 }
-[data-pm-surface="workshop"] .pm-ws-host-actions .pm-ws-invite-cancel {
+[data-pm-surface="workshop"] .pm-ws-host-actions .pm-ws-sheet-cancel {
   height: 42px;
 }
 
@@ -2136,7 +2136,7 @@
   [data-pm-surface="workshop"] .pm-ws-persona-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  [data-pm-surface="workshop"] .pm-ws-invite-actions {
+  [data-pm-surface="workshop"] .pm-ws-sheet-actions {
     width: 180px;
   }
 }
@@ -2147,11 +2147,11 @@
   [data-pm-surface="workshop"] .pm-ws-invite-foot-row {
     flex-direction: column;
   }
-  [data-pm-surface="workshop"] .pm-ws-invite-actions {
+  [data-pm-surface="workshop"] .pm-ws-sheet-actions {
     width: 100%;
     flex-direction: row;
   }
-  [data-pm-surface="workshop"] .pm-ws-invite-launch {
+  [data-pm-surface="workshop"] .pm-ws-sheet-commit {
     flex: 1;
   }
   [data-pm-surface="workshop"] .pm-ws-host-foot {

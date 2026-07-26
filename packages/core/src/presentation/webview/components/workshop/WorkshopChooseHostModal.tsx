@@ -111,18 +111,18 @@ export const WorkshopChooseHostModal: React.FC<WorkshopChooseHostModalProps> = (
               Your host leads every turn. <b>Start a new session</b> to change hosts later.
             </span>
           </p>
-          <div className="pm-ws-invite-actions pm-ws-host-actions">
-            <button className="pm-ws-invite-cancel" type="button" onClick={onClose}>
+          <div className="pm-ws-sheet-actions pm-ws-host-actions">
+            <button className="pm-ws-sheet-cancel" type="button" onClick={onClose}>
               Cancel
             </button>
             <button
-              className="pm-ws-invite-launch"
+              className="pm-ws-sheet-commit"
               type="button"
               disabled={disabled}
               onClick={commit}
             >
               <Icon name="check" size={15} />
-              <span className="pm-ws-invite-launch-label">
+              <span className="pm-ws-sheet-commit-label">
                 {keepingCurrent ? `Keep ${selectedLabel}` : `Choose ${selectedLabel}`}
               </span>
             </button>
