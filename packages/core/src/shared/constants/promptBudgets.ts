@@ -8,8 +8,12 @@
 
 export interface PromptBudgets {
   readonly fileExcerpt: Readonly<{ words: number; bytes: number }>;
-  readonly personaExcerpt: Readonly<{ words: number }>;
-  readonly contextAttachments: Readonly<{ words: number; fileBytes: number }>;
+  readonly personaExcerpt: Readonly<{ words: number; characters: number }>;
+  readonly contextAttachments: Readonly<{
+    words: number;
+    characters: number;
+    fileBytes: number;
+  }>;
   readonly workshopCapability: Readonly<{
     wordCharacters: number;
     contextCharacters: number;
@@ -73,10 +77,14 @@ export interface PromptBudgets {
 
 export const PROMPT_BUDGETS: PromptBudgets = {
   fileExcerpt: { words: 10_000, bytes: 5 * 1024 * 1024 },
-  personaExcerpt: { words: 10_000 },
+  personaExcerpt: { words: 10_000, characters: 120_000 },
   // Sprint 12 interim bump (10k → 35k, Okey 2026-07-17). Making this a user
   // setting is tracked in .todo/tech-debt/2026-07-17-context-attachment-budget-setting.md.
-  contextAttachments: { words: 35_000, fileBytes: 5 * 1024 * 1024 },
+  contextAttachments: {
+    words: 35_000,
+    characters: 420_000,
+    fileBytes: 5 * 1024 * 1024
+  },
   workshopCapability: {
     wordCharacters: 100,
     contextCharacters: 4_000,

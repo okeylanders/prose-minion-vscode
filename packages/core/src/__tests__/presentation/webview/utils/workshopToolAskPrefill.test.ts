@@ -17,7 +17,7 @@ const turn = (overrides: Partial<WorkshopTurn>): WorkshopTurn => ({
 
 describe('buildWorkshopToolAskPrefill', () => {
   it('points to a suggestion only when a persona reply is the semantic tail', () => {
-    expect(buildWorkshopToolAskPrefill('stock-and-signature', 'Jill', [
+    expect(buildWorkshopToolAskPrefill('stock-and-signature', 'Jill', 'jill', [
       turn({ participant: 'session', role: 'system', kind: 'divider', artifact: 'session_start' }),
       turn({})
     ])).toBe(
@@ -30,7 +30,13 @@ describe('buildWorkshopToolAskPrefill', () => {
     ['writer tail', [turn({ role: 'user', participant: 'writer', personaId: undefined })]],
     ['tool tail', [turn({ participant: 'tool', personaId: undefined, artifact: 'tool_report' })]]
   ])('stays target-neutral for an %s', (_label, turns) => {
-    expect(buildWorkshopToolAskPrefill('stock-and-signature', 'Jill', turns))
+    expect(buildWorkshopToolAskPrefill('stock-and-signature', 'Jill', 'jill', turns))
       .toBe('Hey Jill! Run Stock & Signature and tell me what it finds.');
+  });
+
+  it('does not credit a guest suggestion to the host', () => {
+    expect(buildWorkshopToolAskPrefill('prose', 'Jill', 'jill', [
+      turn({ participant: 'guest', personaId: 'margot', personaLabel: 'Margot' })
+    ])).toBe('Hey Jill! Run Prose and tell me what it finds.');
   });
 });

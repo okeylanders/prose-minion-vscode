@@ -67,7 +67,7 @@ describe('WorkshopAnalysisSidePass', () => {
     expect(excerpt.text).toBe('Room passage.');
   });
 
-  it('shares tool invocation and atomically adopts a persona-requested retained report', async () => {
+  it('records persona analysis as transcript evidence without replacing the writer sidecar', async () => {
     const service = {
       analyzeWritingTools: jest.fn().mockResolvedValue({
         toolName: 'writing_tools_continuity',
@@ -82,12 +82,19 @@ describe('WorkshopAnalysisSidePass', () => {
       kind: 'text', origin: 'writer', label: 'Mara note\u2026', words: 6,
       content: 'Mara cannot see the cup.'
     });
-    session.beginPersonaMessage('host-turn', 'Check continuity.');
     const sidePass = new WorkshopAnalysisSidePass(
       service,
       session,
       { appendLine: jest.fn() } as unknown as LogSink
     );
+    session.beginToolRun('continuity', 'writer-run');
+    sidePass.adoptWriterReport({
+      requestId: 'writer-run',
+      content: 'Writer continuity report.',
+      conversationId: 'writer-conv',
+      toolId: 'continuity'
+    });
+    session.beginPersonaMessage('host-turn', 'Check continuity.');
 
     const result = await sidePass.run(
       'continuity',
@@ -130,7 +137,9 @@ describe('WorkshopAnalysisSidePass', () => {
         { key: 'finding-1', ordinal: 1, text: 'Put the cup back.' }
       ]
     });
-    expect(session.getToolSidecarConversationId('continuity')).toBe('continuity-conv');
+    expect(session.getToolSidecarConversationId('continuity')).toBe('writer-conv');
+    expect(service.discardConversation).toHaveBeenCalledWith('continuity-conv');
+    expect(service.discardConversation).not.toHaveBeenCalledWith('writer-conv');
     expect(session.getSnapshot().activeRequestId).toBe('host-turn');
   });
 

@@ -4,7 +4,9 @@
 - **Priority**: Medium
 - **Filed**: 2026-07-25
 - **Source**: [PR #86 review](../../docs/pr-reviews/pr-86-open-chat-session-scope-review.md),
-  finding #7 (🎯🎯 strong consensus — Marcus, Parker, Stan)
+  finding #7 (🎯🎯 strong consensus — Marcus, Parker, Stan), and
+  [PR #88 review](../../docs/pr-reviews/pr-88-persona-analysis-inputs-review.md),
+  finding #10
 
 ## Problem
 
@@ -32,6 +34,12 @@ incident. The pattern exists and works; new work simply isn't using it.
 The cost is concentration risk: a single file is becoming the place every
 Workshop change has to touch, which makes review harder, merge conflicts more
 likely, and the blast radius of any edit larger than the edit deserves.
+
+PR #88 also identified `WorkshopPersonaCapability` as a smaller instance of
+the same pressure. That local seam was addressed immediately:
+`WorkshopAnalysisInputs` now owns analysis-input resolution and shared
+provenance descriptions, reducing the capability adapter from ~850 to ~740
+lines. The two larger files below remain the tracked debt.
 
 ## Candidate seams
 
@@ -65,4 +73,5 @@ Named by the reviewers, in rough order of cohesion:
 ## Related
 
 - [PR #86 review](../../docs/pr-reviews/pr-86-open-chat-session-scope-review.md)
+- [PR #88 review](../../docs/pr-reviews/pr-88-persona-analysis-inputs-review.md)
 - ADR 2026-06-18: MessageHandler Composition-Root Consolidation

@@ -678,13 +678,19 @@ export const WorkshopApp: React.FC = () => {
         return;
       }
       seedComposerDraft(
-        buildWorkshopToolAskPrefill(toolId, activePersona.label, workshop.turns)
+        buildWorkshopToolAskPrefill(
+          toolId,
+          activePersona.label,
+          workshop.selectedPersonaId,
+          workshop.turns
+        )
       );
     },
     [
       activePersona.label,
       hasExcerpt,
       seedComposerDraft,
+      workshop.selectedPersonaId,
       workshop.runTool,
       workshop.turns
     ]

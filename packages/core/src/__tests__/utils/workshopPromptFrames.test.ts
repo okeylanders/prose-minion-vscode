@@ -1,9 +1,9 @@
 import {
-  buildWorkshopAnalysisScopeFrame,
   buildWorkshopOpenConversationFrame,
   neutralizeReservedPersonaPromptDelimiters,
   wrapAgentFetchedArtifactEvidence
 } from '@/utils/workshopPromptFrames';
+import { buildWorkshopAnalysisScopeFrame } from '@/application/services/workshop/WorkshopPromptBuilder';
 
 describe('buildWorkshopAnalysisScopeFrame', () => {
   it('reports only current inherited-input facts and reserves its delimiter', () => {

@@ -747,8 +747,15 @@ export class AgentRunEngine {
       return;
     }
 
+    const operation = 'operation' in inspection && typeof inspection.operation === 'string'
+      ? ` operation=${inspection.operation}`
+      : '';
+    const field = 'field' in inspection && typeof inspection.field === 'string'
+      ? ` field=${inspection.field}`
+      : '';
     this.outputChannel?.appendLine(
-      `[AgentRunEngine] Rejected ${capability.catalog} capability request${attribution}: reason=${inspection.reason}.`
+      `[AgentRunEngine] Rejected ${capability.catalog} capability request${attribution}:` +
+      `${operation}${field} reason=${inspection.reason}.`
     );
     // The full dump may quote the writer's manuscript, and Output channels
     // get pasted into public bug reports — so it is opt-in, not always-on.

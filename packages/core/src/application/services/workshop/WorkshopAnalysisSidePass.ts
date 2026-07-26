@@ -5,22 +5,22 @@ import {
   buildWorkshopContextAttachmentsFrame,
   buildWorkshopExcerptSourceFrame
 } from '@/application/services/workshop/WorkshopPromptBuilder';
+import {
+  describeWorkshopInheritedContext,
+  describeWorkshopInheritedExcerpt,
+  WorkshopPersonaAnalysisRunInputs
+} from '@/application/services/workshop/WorkshopAnalysisInputs';
 import type { WorkshopToolReportCompletion } from '@/application/services/workshop/WorkshopSessionService';
 import {
   AnalysisStreamingOptions,
   AssistantToolService
 } from '@services/analysis/AssistantToolService';
 import {
-  countWords
-} from '@/utils/textUtils';
-import {
-  WorkshopConfiguredResourceRef,
   WorkshopExcerpt,
   WorkshopToolId,
   WorkshopTurn
 } from '@messages';
 import {
-  WorkshopAnalysisInputProvenance,
   WorkshopCapabilityArtifactDetails,
   WorkshopCapabilityResult
 } from '@shared/types/workshopCapabilities';
@@ -31,18 +31,6 @@ import {
 
 export interface PersonaAnalysisAdoption {
   turn: WorkshopTurn;
-  replacedConversationId?: string;
-}
-
-export interface WorkshopPersonaAnalysisRunInputs {
-  excerptText: string;
-  context?: string;
-  excerptSourceFrame?: string;
-  workshopSource?: WorkshopConfiguredResourceRef;
-  provenance: {
-    excerpt: WorkshopAnalysisInputProvenance;
-    context: WorkshopAnalysisInputProvenance;
-  };
 }
 
 export interface WorkshopAnalysisRunResult extends AnalysisResult {
@@ -51,8 +39,9 @@ export interface WorkshopAnalysisRunResult extends AnalysisResult {
 
 /**
  * The one isolated Workshop analysis boundary shared by user-triggered and
- * persona-triggered side passes. It owns tool invocation and sidecar adoption;
- * callers own the surrounding host synthesis/capability loop.
+ * persona-triggered side passes. It owns tool invocation, writer-sidecar
+ * adoption, and isolated persona-report recording; callers own the
+ * surrounding host synthesis/capability loop.
  */
 export class WorkshopAnalysisSidePass {
   constructor(
@@ -76,12 +65,8 @@ export class WorkshopAnalysisSidePass {
       buildWorkshopExcerptSourceFrame(excerpt.source),
       buildWorkshopContextAttachmentsFrame(attachments)
     );
-    const truncations = attachments
-      .filter((attachment) => attachment.truncation)
-      .map((attachment) =>
-        `${attachment.label}: ${attachment.truncation!.keptWords.toLocaleString('en-US')} of ` +
-        `${attachment.truncation!.totalWords.toLocaleString('en-US')} words`
-      );
+    const inheritedExcerpt = describeWorkshopInheritedExcerpt(excerpt);
+    const inheritedContext = describeWorkshopInheritedContext(attachments);
     const result = await this.execute(
       toolId,
       excerpt.text,
@@ -96,24 +81,20 @@ export class WorkshopAnalysisSidePass {
     return {
       ...this.withDeliveredContextProvenance(result),
       inputProvenance: {
-      excerpt: {
-        mode: 'inherit',
-        material: `pinned excerpt v${excerpt.version}`,
-        chosenBy: 'Writer',
-        words: countWords(excerpt.text),
-        truncation: excerpt.truncation
-          ? `${excerpt.truncation.pinnedWords.toLocaleString('en-US')} of ${excerpt.truncation.totalWords.toLocaleString('en-US')} words pinned`
-          : undefined
-      },
-      context: {
-        mode: 'inherit',
-        material: attachments.length === 0
-          ? 'no context attachments'
-          : `${attachments.length} context ${attachments.length === 1 ? 'attachment' : 'attachments'} (${attachments.map((attachment) => attachment.label).join(', ')})`,
-        chosenBy: 'Writer',
-        words: attachments.reduce((total, attachment) => total + attachment.words, 0),
-        truncation: truncations.length > 0 ? truncations.join('; ') : undefined
-      }
+        excerpt: {
+          mode: 'inherit',
+          material: inheritedExcerpt.material,
+          chosenBy: 'Writer',
+          words: inheritedExcerpt.words,
+          truncation: inheritedExcerpt.truncation
+        },
+        context: {
+          mode: 'inherit',
+          material: inheritedContext.material,
+          chosenBy: 'Writer',
+          words: inheritedContext.words,
+          truncation: inheritedContext.truncation
+        }
       }
     };
   }
@@ -231,29 +212,29 @@ export class WorkshopAnalysisSidePass {
     conversationId?: string;
     truncated?: boolean;
   }): PersonaAnalysisAdoption | undefined {
+    // Persona-requested runs are transcript evidence, not direct conversation
+    // participants. Never let one adopt or replace the writer-owned sidecar.
+    if (input.conversationId) {
+      this.assistantToolService.discardConversation(input.conversationId);
+    }
     const actionableFindings = this.inspectActionableFindings(
       input.result.content ?? input.result.error ?? '',
       `${input.toolId} persona-requested report`
     );
     const completion = this.session.recordCapabilityArtifact({
-      ...input,
+      hostRequestId: input.hostRequestId,
+      excerptVersion: input.excerptVersion,
       toolId: input.toolId,
+      details: input.details,
+      result: input.result,
+      truncated: input.truncated,
       actionableFindings
     });
     if (!completion) {
-      if (input.conversationId) {
-        this.assistantToolService.discardConversation(input.conversationId);
-      }
       this.outputChannel.appendLine(
         `[WorkshopAnalysisSidePass] Refused late persona-requested ${input.toolId} report for ${input.hostRequestId}.`
       );
       return undefined;
-    }
-    if (completion.replacedConversationId) {
-      this.assistantToolService.discardConversation(completion.replacedConversationId);
-      this.outputChannel.appendLine(
-        `[WorkshopAnalysisSidePass] Tool sidecar replaced: ${completion.replacedConversationId} → ${input.conversationId} (${input.toolId}, persona-requested)`
-      );
     }
     return completion;
   }

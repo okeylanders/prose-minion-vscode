@@ -40,46 +40,6 @@ export function buildWorkshopOpenConversationFrame(personaLabel: string): string
   ].join('\n');
 }
 
-export interface WorkshopAnalysisScopeFrameInput {
-  excerpt?: {
-    version: number;
-    words: number;
-    label: string;
-  };
-  contextAttachments: readonly {
-    label: string;
-    words: number;
-  }[];
-}
-
-/**
- * Current analysis-input facts carried beside every writer turn. The rules
- * live in the stable host system prompt; this reserved frame is deliberately
- * factual and scope-local so changing room inputs never swaps that prompt.
- */
-export function buildWorkshopAnalysisScopeFrame(
-  input: WorkshopAnalysisScopeFrameInput
-): string {
-  const excerpt = input.excerpt
-    ? `Pinned excerpt: v${input.excerpt.version}, ${input.excerpt.words.toLocaleString('en-US')} words (${neutralizeReservedPersonaPromptDelimiters(input.excerpt.label)}).`
-    : 'Pinned excerpt: none.';
-  const attachments = input.contextAttachments.length === 0
-    ? 'Context attachments: none.'
-    : `Context attachments: ${input.contextAttachments.length} (` +
-      input.contextAttachments
-        .map((attachment) =>
-          `${neutralizeReservedPersonaPromptDelimiters(attachment.label)}, ${attachment.words.toLocaleString('en-US')} words`
-        )
-        .join('; ') +
-      ').';
-  return [
-    '<workshop-analysis-scope>',
-    excerpt,
-    attachments,
-    '</workshop-analysis-scope>'
-  ].join('\n');
-}
-
 const AGENT_ARTIFACT_ID = /^art-\d+$/;
 
 /**

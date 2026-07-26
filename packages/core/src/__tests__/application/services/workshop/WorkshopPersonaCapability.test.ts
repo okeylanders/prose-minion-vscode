@@ -4,13 +4,14 @@ import { WorkshopPersonaCapabilityFactory } from '@/application/services/worksho
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import type { LogSink } from '@/platform';
 import type { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 const usage = { promptTokens: 4, completionTokens: 6, totalTokens: 10, costUsd: 0.001 };
 const inheritedAnalysisRequest = {
   capability: 'analysis.run' as const,
   toolId: 'continuity' as const,
   excerpt: { mode: 'inherit' as const },
-  context: { mode: 'inherit' as const }
+  context: { mode: 'omit' as const }
 };
 
 describe('WorkshopPersonaCapability', () => {
@@ -135,14 +136,14 @@ describe('WorkshopPersonaCapability', () => {
         provenance: {
           excerpt: expect.objectContaining({
             mode: 'replace',
-            material: 'persona-supplied excerpt (5 words)',
+            material: 'persona-supplied excerpt',
             chosenBy: 'Jill',
             words: 5
           }),
           context: expect.objectContaining({ mode: 'omit', words: 0 })
         }
       }),
-      expect.objectContaining({ signal: controller.signal, retainConversation: true })
+      expect.objectContaining({ signal: controller.signal, retainConversation: false })
     );
     expect(result.deliveredItems).toEqual(['analysis.run:success']);
   });
@@ -157,7 +158,106 @@ describe('WorkshopPersonaCapability', () => {
 
     expect(analysis.runWithInputs).not.toHaveBeenCalled();
     expect(result.deliveredItems).toEqual(['analysis.run:rejected']);
-    expect(result.evidence).toContain('Cannot prepend excerpt text');
+    expect(result.evidence).toContain('Cannot prepend excerpt material');
+  });
+
+  it.each(['inherit', 'prepend'] as const)(
+    'rejects context %s when the room has no inherited context',
+    async (mode) => {
+      const result = await openChatCapability().fulfill({
+        capability: 'analysis.run',
+        toolId: 'continuity',
+        excerpt: { mode: 'replace', text: 'A local passage.' },
+        context: mode === 'prepend'
+          ? { mode, text: 'Track the timeline.' }
+          : { mode }
+      });
+
+      expect(analysis.runWithInputs).not.toHaveBeenCalled();
+      expect(result.evidence).toContain(`Cannot ${mode} context material`);
+    }
+  );
+
+  it('rejects absent inherited excerpt without billing an empty analysis run', async () => {
+    const result = await openChatCapability().fulfill({
+      capability: 'analysis.run',
+      toolId: 'continuity',
+      excerpt: { mode: 'inherit' },
+      context: { mode: 'omit' }
+    });
+
+    expect(analysis.runWithInputs).not.toHaveBeenCalled();
+    expect(result.evidence).toContain('Cannot inherit excerpt material');
+  });
+
+  it('does not spend the run allowance on semantic rejection', async () => {
+    const adapter = openChatCapability();
+    const rejected = await adapter.fulfill({
+      capability: 'analysis.run',
+      toolId: 'continuity',
+      excerpt: {
+        mode: 'replace',
+        text: 'x'.repeat(PROMPT_BUDGETS.personaExcerpt.characters + 1)
+      },
+      context: { mode: 'omit' }
+    });
+    const corrected = await adapter.fulfill({
+      capability: 'analysis.run',
+      toolId: 'continuity',
+      excerpt: { mode: 'replace', text: 'A bounded passage.' },
+      context: { mode: 'omit' }
+    });
+
+    expect(rejected.deliveredItems).toEqual(['analysis.run:rejected']);
+    expect(corrected.deliveredItems).toEqual(['analysis.run:success']);
+    expect(analysis.runWithInputs).toHaveBeenCalledTimes(1);
+    expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining(
+      'analysisMetrics=excerptMode=n/a;excerptWords=n/a;contextMode=n/a;contextWords=n/a;' +
+      'truncated=false;rejection=oversized-input:excerpt'
+    ));
+  });
+
+  it('allows a persona prefix above a max-sized inherited excerpt', async () => {
+    session.setExcerpt({
+      text: Array(PROMPT_BUDGETS.personaExcerpt.words).fill('word').join(' '),
+      source: { kind: 'manual' }
+    });
+    const result = await capability().fulfill({
+      capability: 'analysis.run',
+      toolId: 'continuity',
+      excerpt: { mode: 'prepend', text: 'Focus.' },
+      context: { mode: 'omit' }
+    });
+
+    expect(result.deliveredItems).toEqual(['analysis.run:success']);
+    expect(analysis.runWithInputs.mock.calls[0][1].provenance.excerpt).toMatchObject({
+      mode: 'prepend',
+      chosenBy: 'Jill + Writer',
+      words: PROMPT_BUDGETS.personaExcerpt.words + 1
+    });
+  });
+
+  it('allows a persona prefix above max-sized inherited context', async () => {
+    session.addContextAttachment({
+      kind: 'text',
+      origin: 'writer',
+      label: 'Full context',
+      words: PROMPT_BUDGETS.contextAttachments.words,
+      content: Array(PROMPT_BUDGETS.contextAttachments.words).fill('word').join(' ')
+    });
+    const result = await capability().fulfill({
+      capability: 'analysis.run',
+      toolId: 'continuity',
+      excerpt: { mode: 'inherit' },
+      context: { mode: 'prepend', text: 'Focus.' }
+    });
+
+    expect(result.deliveredItems).toEqual(['analysis.run:success']);
+    expect(analysis.runWithInputs.mock.calls[0][1].provenance.context).toMatchObject({
+      mode: 'prepend',
+      chosenBy: 'Jill + Writer',
+      words: PROMPT_BUDGETS.contextAttachments.words + 1
+    });
   });
 
   it('calls the dictionary service directly and records exact, versioned evidence', async () => {
@@ -259,7 +359,7 @@ describe('WorkshopPersonaCapability', () => {
       }),
       expect.objectContaining({
         signal: controller.signal,
-        retainConversation: true,
+        retainConversation: false,
         onToken: expect.any(Function)
       })
     );
@@ -271,9 +371,9 @@ describe('WorkshopPersonaCapability', () => {
       hostRequestId: 'host-request',
       excerptVersion: 1,
       toolId: 'continuity',
-      conversationId: 'continuity-conv',
       result: expect.objectContaining({ content: 'Verbatim continuity report.' })
     }));
+    expect(analysis.discardConversation).toHaveBeenCalledWith('continuity-conv');
     expect(result.evidence).toContain('Verbatim continuity report.');
     expect(result.evidence).toContain(
       '<request-summary>excerpt inherit, context replace</request-summary>'
@@ -282,6 +382,10 @@ describe('WorkshopPersonaCapability', () => {
       participant: 'tool',
       artifact: 'tool_report'
     }));
+    expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining(
+      'analysisMetrics=excerptMode=inherit;excerptWords=5;contextMode=replace;' +
+      'contextWords=3;truncated=false;rejection=none'
+    ));
   });
 
   it('resolves every independent excerpt/context mode pairing for one run only', async () => {
@@ -315,22 +419,29 @@ describe('WorkshopPersonaCapability', () => {
           }
         });
         expect(result.deliveredItems).toEqual(['analysis.run:success']);
+        const resolved = analysis.runWithInputs.mock.calls.at(-1)![1];
+        const expectedExcerpt = excerptMode === 'inherit'
+          ? 'The cup crossed the table.'
+          : excerptMode === 'prepend'
+            ? 'Local passage.\n\nThe cup crossed the table.'
+            : excerptMode === 'replace'
+              ? 'Local passage.'
+              : '';
+        const inheritedContext = expect.stringContaining('<context-attachments count="1">');
+        expect(resolved.excerptText).toBe(expectedExcerpt);
+        if (contextMode === 'inherit') {
+          expect(resolved.context).toEqual(inheritedContext);
+        } else if (contextMode === 'prepend') {
+          expect(resolved.context).toEqual(
+            expect.stringMatching(/^Local context\.\n\n<context-attachments count="1">/)
+          );
+        } else {
+          expect(resolved.context).toBe(contextMode === 'replace' ? 'Local context.' : undefined);
+        }
       }
     }
 
     expect(analysis.runWithInputs).toHaveBeenCalledTimes(16);
-    const resolvedRuns = analysis.runWithInputs.mock.calls.map((call) => call[1]);
-    expect(resolvedRuns).toEqual(expect.arrayContaining([
-      expect.objectContaining({ excerptText: '', context: undefined }),
-      expect.objectContaining({
-        excerptText: expect.stringMatching(/^Local passage\.\n\nThe cup crossed/),
-        context: expect.stringMatching(/^Local context\.\n\n<context-attachments/)
-      }),
-      expect.objectContaining({
-        excerptText: 'Local passage.',
-        context: 'Local context.'
-      })
-    ]));
     expect(session.getExcerpt()).toEqual(beforeExcerpt);
     expect(session.getContextAttachments()).toEqual(beforeContext);
   });

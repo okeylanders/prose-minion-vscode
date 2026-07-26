@@ -347,7 +347,10 @@ export class WorkshopCapabilityXmlCodec {
     const wordLimit = slot === 'excerpt'
       ? PROMPT_BUDGETS.personaExcerpt.words
       : PROMPT_BUDGETS.contextAttachments.words;
-    if (text && countWords(text) > wordLimit) {
+    const characterLimit = slot === 'excerpt'
+      ? PROMPT_BUDGETS.personaExcerpt.characters
+      : PROMPT_BUDGETS.contextAttachments.characters;
+    if (text && (countWords(text) > wordLimit || text.length > characterLimit)) {
       return {
         kind: 'invalid',
         reason: 'oversized-input',

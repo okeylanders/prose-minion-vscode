@@ -223,7 +223,6 @@ export interface WorkshopCapabilityArtifactInput {
   details: WorkshopCapabilityArtifactDetails;
   result: WorkshopCapabilityResult;
   toolId?: WorkshopToolId;
-  conversationId?: string;
   truncated?: boolean;
   actionableFindings?: WorkshopActionableFinding[];
 }
@@ -1180,7 +1179,9 @@ export class WorkshopSessionService {
 
   /**
    * Append completed nested capability evidence without replacing the active
-   * host run. A reset/preemption refuses the late artifact atomically.
+   * host run. Capability artifacts are transcript evidence only and can never
+   * adopt a direct-tool sidecar. A reset/preemption refuses the late artifact
+   * atomically.
    */
   recordCapabilityArtifact(
     input: WorkshopCapabilityArtifactInput
@@ -1219,7 +1220,6 @@ export class WorkshopSessionService {
         ? workshopToolLabel(input.toolId)
         : isAnalysis ? 'Analysis'
           : isResource ? 'Project Resources' : 'Writer\'s Dictionary',
-      reportTurnId: isAnalysis && input.conversationId ? turnId : undefined,
       capability: cloneCapabilityDetails(input.details),
       content: input.result.content ?? input.result.error ?? 'No capability result was returned.',
       timestamp: this.now(),
@@ -1231,16 +1231,8 @@ export class WorkshopSessionService {
         : undefined
     };
 
-    let replacedConversationId: string | undefined;
-    if (isAnalysis && input.toolId && input.conversationId) {
-      replacedConversationId = this.adoptToolSidecar(
-        input.toolId,
-        input.conversationId,
-        turnId
-      );
-    }
     this.turns.push(turn);
-    return { turn: cloneTurn(turn), replacedConversationId };
+    return { turn: cloneTurn(turn) };
   }
 
   /** Begin the host-only synthesis phase correlated to a visible report. */

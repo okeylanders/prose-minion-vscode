@@ -1,4 +1,4 @@
-import { WorkshopToolId, WorkshopTurn } from '@messages';
+import { WorkshopPersonaId, WorkshopToolId, WorkshopTurn } from '@messages';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
 
 /**
@@ -9,11 +9,12 @@ import { workshopToolLabel } from '@shared/constants/workshopTools';
 export function buildWorkshopToolAskPrefill(
   toolId: WorkshopToolId,
   hostLabel: string,
+  hostPersonaId: WorkshopPersonaId,
   turns: readonly WorkshopTurn[]
 ): string {
   const toolLabel = workshopToolLabel(toolId);
   const tail = [...turns].reverse().find((turn) => turn.participant !== 'session');
-  return tail?.role === 'assistant' && tail.personaId
+  return tail?.role === 'assistant' && tail.personaId === hostPersonaId
     ? `Hey ${hostLabel}! Run ${toolLabel} on your last suggestion and let's see what it finds.`
     : `Hey ${hostLabel}! Run ${toolLabel} and tell me what it finds.`;
 }

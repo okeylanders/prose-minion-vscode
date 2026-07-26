@@ -220,6 +220,50 @@ describe('WorkshopCapabilityXmlCodec', () => {
     });
   });
 
+  it.each([
+    [
+      'excerptText word ceiling',
+      analysisCall(
+        `<toolId>prose</toolId><excerptMode>replace</excerptMode>` +
+        `<excerptText>${'word '.repeat(PROMPT_BUDGETS.personaExcerpt.words + 1)}</excerptText>` +
+        '<contextMode>omit</contextMode>'
+      ),
+      'excerptText'
+    ],
+    [
+      'excerptText character ceiling',
+      analysisCall(
+        `<toolId>prose</toolId><excerptMode>replace</excerptMode>` +
+        `<excerptText>${'x'.repeat(PROMPT_BUDGETS.personaExcerpt.characters + 1)}</excerptText>` +
+        '<contextMode>omit</contextMode>'
+      ),
+      'excerptText'
+    ],
+    [
+      'contextText character ceiling',
+      analysisCall(
+        '<toolId>prose</toolId><excerptMode>omit</excerptMode><contextMode>replace</contextMode>' +
+        `<contextText>${'x'.repeat(PROMPT_BUDGETS.contextAttachments.characters + 1)}</contextText>`
+      ),
+      'contextText'
+    ]
+  ])('rejects an oversized analysis %s', (_label, candidate, field) => {
+    expect(codec.inspect(candidate)).toEqual({
+      kind: 'invalid',
+      reason: 'oversized-input',
+      field,
+      operation: 'analysis.run'
+    });
+  });
+
+  it('accepts persona analysis text at the exact character ceiling', () => {
+    expect(codec.inspect(analysisCall(
+      '<toolId>prose</toolId><excerptMode>replace</excerptMode>' +
+      `<excerptText>${'x'.repeat(PROMPT_BUDGETS.personaExcerpt.characters)}</excerptText>` +
+      '<contextMode>omit</contextMode>'
+    ))).toMatchObject({ kind: 'request' });
+  });
+
   it('accepts every ceiling exactly and never truncates the request', () => {
     const word = 'w'.repeat(PROMPT_BUDGETS.workshopCapability.wordCharacters);
     const context = 'c'.repeat(PROMPT_BUDGETS.workshopCapability.contextCharacters);

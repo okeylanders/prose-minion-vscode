@@ -32,6 +32,42 @@ export {
   neutralizeReservedPersonaPromptDelimiters
 } from '@/utils/workshopPromptFrames';
 
+export interface WorkshopAnalysisScopeFrameInput {
+  excerpt?: {
+    version: number;
+    words: number;
+    label: string;
+  };
+  contextAttachments: readonly {
+    label: string;
+    words: number;
+  }[];
+}
+
+/** Current analysis-input facts carried beside every writer turn. */
+export function buildWorkshopAnalysisScopeFrame(
+  input: WorkshopAnalysisScopeFrameInput
+): string {
+  const excerpt = input.excerpt
+    ? `Pinned excerpt: v${input.excerpt.version}, ${input.excerpt.words.toLocaleString('en-US')} words (${neutralizeReservedPersonaPromptDelimiters(input.excerpt.label)}).`
+    : 'Pinned excerpt: none.';
+  const attachments = input.contextAttachments.length === 0
+    ? 'Context attachments: none.'
+    : `Context attachments: ${input.contextAttachments.length} (` +
+      input.contextAttachments
+        .map((attachment) =>
+          `${neutralizeReservedPersonaPromptDelimiters(attachment.label)}, ${attachment.words.toLocaleString('en-US')} words`
+        )
+        .join('; ') +
+      ').';
+  return [
+    '<workshop-analysis-scope>',
+    excerpt,
+    attachments,
+    '</workshop-analysis-scope>'
+  ].join('\n');
+}
+
 /**
  * Character budget reserved for the envelope's safety frame — the header
  * counts, the truncation marker, and the anti-hallucination instruction.
