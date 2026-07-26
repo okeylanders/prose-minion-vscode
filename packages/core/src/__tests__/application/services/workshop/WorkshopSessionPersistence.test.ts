@@ -121,6 +121,43 @@ describe('WorkshopSessionService committed persistence', () => {
     expect(state.writerSources.host[0].label).not.toBe('Mutated parsed source.');
   });
 
+  it('round-trips guest-origin next steps with their persona provenance', () => {
+    const session = new WorkshopSessionService(() => 1);
+    session.setExcerpt({ text: 'Pinned.', source: { kind: 'manual' } });
+    session.adoptPersonaGuest('felix', 'felix-before-save');
+    session.beginPersonaGuestMessage('felix', 'felix-run', 'What should change?');
+    const guestTurn = session.completeRun(
+      'felix-run',
+      'Review.',
+      undefined,
+      false,
+      'felix-before-save',
+      [{ key: 'finding-1', ordinal: 1, text: 'Restore the breath.', priority: 'high' }]
+    )!;
+    session.addTodoFromFinding(guestTurn.id, 'finding-1');
+
+    const restored = new WorkshopSessionService(() => 2);
+    restored.hydrateCommittedState(
+      parseWorkshopSessionStateV1(
+        JSON.parse(JSON.stringify(session.exportCommittedState()))
+      ),
+      { ['guest:felix']: 'felix-after-save' },
+      currentBehavior
+    );
+
+    expect(restored.getSnapshot().todos).toEqual([
+      expect.objectContaining({
+        text: 'Restore the breath.',
+        source: expect.objectContaining({
+          kind: 'guest_turn',
+          turnId: guestTurn.id,
+          personaId: 'felix',
+          participantLabel: 'Felix'
+        })
+      })
+    ]);
+  });
+
   it.each([
     {
       label: 'a nested collection is not an array',

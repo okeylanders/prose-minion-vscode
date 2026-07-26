@@ -194,6 +194,36 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(onAddTodo).toHaveBeenCalledWith('turn-1', 'finding-1');
   });
 
+  it('renders the same proposal menu for a guest persona turn', () => {
+    const onAddTodo = jest.fn();
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('Felix review.\n\n### Next steps\n- Restore the breath.'),
+          id: 'guest-turn',
+          kind: 'message',
+          participant: 'guest',
+          artifact: 'persona_message',
+          personaId: 'felix',
+          personaLabel: 'Felix',
+          actionableFindings: [
+            { key: 'finding-1', ordinal: 1, text: 'Restore the breath.' }
+          ]
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onAddTodo={onAddTodo}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText(/add a next step/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
+    expect(onAddTodo).toHaveBeenCalledWith('guest-turn', 'finding-1');
+  });
+
   it('shows already-promoted findings without adding them again', () => {
     render(
       <WorkshopTurnBubble

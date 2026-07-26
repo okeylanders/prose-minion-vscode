@@ -8,16 +8,16 @@
  */
 
 import { WorkshopTurn } from '@messages';
-import { WorkshopCapabilityPrincipal } from '@shared/types';
+import { WorkshopCapabilityPrincipal } from '@shared/types/workshopCapabilities';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
   buildWorkshopRoomCatchUp,
   WorkshopRoomFrameRenderOptions
 } from '@/application/services/workshop/WorkshopRoomFrameRenderer';
 import {
+  isWorkshopTurnAlreadyVisibleToPrincipal,
   sameParticipantPrincipal,
-  workshopTurnAudience,
-  workshopTurnBelongsToPrincipal
+  workshopTurnAudience
 } from '@/application/services/workshop/WorkshopRoomAudience';
 
 export const WORKSHOP_ROOM_DELIVERY_RUNAWAY_CHARACTERS = 1_000_000;
@@ -44,7 +44,26 @@ export function projectWorkshopRoomTurns(
   }
 
   return turns.slice(offsetIndex + 1).filter((turn) => {
-    if (workshopTurnBelongsToPrincipal(turn, reader)) {
+    if (isWorkshopTurnAlreadyVisibleToPrincipal(turn, reader)) {
+      return false;
+    }
+    return workshopTurnAudience(turn).kind === 'room';
+  });
+}
+
+/**
+ * A join snapshot targets a brand-new retained conversation. Unlike an
+ * incremental delta, it must include the joining persona's own prior exchange
+ * and private capability work because none of it exists in the cold-start
+ * provider transcript.
+ */
+export function projectWorkshopJoinSnapshotTurns(
+  turns: readonly WorkshopTurn[],
+  reader: WorkshopCapabilityPrincipal,
+  currentInvitationTurnId?: string
+): WorkshopTurn[] {
+  return turns.filter((turn) => {
+    if (turn.id === currentInvitationTurnId) {
       return false;
     }
     const audience = workshopTurnAudience(turn);
@@ -84,9 +103,16 @@ export function guardWorkshopRoomDelivery(
 export class WorkshopRoomDeliveryService {
   constructor(private readonly session: WorkshopSessionService) {}
 
-  prepareJoinSnapshot(reader: WorkshopCapabilityPrincipal): WorkshopTurn[] {
+  prepareJoinSnapshot(
+    reader: WorkshopCapabilityPrincipal,
+    currentInvitationTurnId: string
+  ): WorkshopTurn[] {
     const state = this.session.readRoomLedger();
-    return projectWorkshopRoomTurns(state, reader);
+    return projectWorkshopJoinSnapshotTurns(
+      state,
+      reader,
+      currentInvitationTurnId
+    );
   }
 
   prepare(
@@ -123,8 +149,15 @@ export class WorkshopRoomDeliveryService {
    */
   commit(delivery: WorkshopPreparedRoomDelivery): void {
     const state = this.session.readRoomDeliveryState(delivery.reader);
+    const readerLabel = delivery.reader.kind === 'host'
+      ? 'host'
+      : `guest:${delivery.reader.personaId}`;
     if (state.lastSeenRoomTurnId !== delivery.startingOffset) {
-      throw new Error('Workshop room delivery receipt is stale');
+      throw new Error(
+        `Workshop room delivery receipt is stale for ${readerLabel} ` +
+        `(expected offset=${delivery.startingOffset ?? '<start>'}, ` +
+        `actual=${state.lastSeenRoomTurnId ?? '<start>'})`
+      );
     }
     const pendingIds = projectWorkshopRoomTurns(
       state.turns,
@@ -135,13 +168,17 @@ export class WorkshopRoomDeliveryService {
       (turnId, index) => pendingIds[index] === turnId
     );
     if (!isExactPrefix) {
-      throw new Error('Workshop room delivery receipt is not a contiguous prefix');
+      throw new Error(
+        `Workshop room delivery receipt is not a contiguous prefix for ${readerLabel} ` +
+        `(offset=${state.lastSeenRoomTurnId ?? '<start>'}, ` +
+        `expected=${pendingIds.slice(0, delivery.deliveredTurnIds.length).join(',') || '<none>'}, ` +
+        `actual=${delivery.deliveredTurnIds.join(',') || '<none>'})`
+      );
     }
-    const allEligibleTurnsDelivered =
-      delivery.deliveredTurnIds.length === pendingIds.length;
-    const deliveredThroughTurnId = allEligibleTurnsDelivered
-      ? state.turns.at(-1)?.id
-      : delivery.deliveredTurnIds.at(-1);
+    // ADR §5: the durable offset records the delivered eligible prefix's last
+    // id, never the physical ledger tail. Ineligible rows may be scanned again
+    // on the next projection; they may not be silently acknowledged.
+    const deliveredThroughTurnId = delivery.deliveredTurnIds.at(-1);
     if (deliveredThroughTurnId === undefined) {
       return;
     }

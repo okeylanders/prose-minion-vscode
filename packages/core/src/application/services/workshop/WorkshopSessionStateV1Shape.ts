@@ -689,8 +689,13 @@ function assertTodoSource(value: unknown, path: string): void {
       shapeError(`${path}.personaId`, 'known Workshop persona id');
     }
     optionalStringAt(source.upstreamReportTurnId, `${path}.upstreamReportTurnId`);
+  } else if (source.kind === 'guest_turn') {
+    exactKeys(source, path, [...baseRequired, 'personaId']);
+    if (!isWorkshopPersonaId(source.personaId)) {
+      shapeError(`${path}.personaId`, 'known Workshop persona id');
+    }
   } else {
-    shapeError(`${path}.kind`, 'tool_report or host_turn');
+    shapeError(`${path}.kind`, 'tool_report, host_turn, or guest_turn');
   }
   stringAt(source.turnId, `${path}.turnId`);
   stringAt(source.participantLabel, `${path}.participantLabel`);

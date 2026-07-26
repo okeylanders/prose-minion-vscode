@@ -634,7 +634,7 @@ export class WorkshopHandler {
         roomTurns: this.roomDelivery.prepareJoinSnapshot({
           kind: 'personaGuest',
           personaId
-        }),
+        }, userTurn.id),
         openingMessage,
         roomFrameOptions: {
           writerName: workshopWriterPreferredAddress(writerProfile),
@@ -1105,7 +1105,33 @@ export class WorkshopHandler {
         }
       });
       if (assistantTurn && roomDelivery) {
-        this.roomDelivery.commit(roomDelivery);
+        try {
+          this.roomDelivery.commit(roomDelivery);
+          this.outputChannel.appendLine(
+            `[WorkshopHandler] Room delivery committed ` +
+            `(${roomDelivery.reader.kind === 'host'
+              ? 'host'
+              : `guest=${roomDelivery.reader.personaId}`}; ` +
+            `through=${roomDelivery.deliveredTurnIds.at(-1) ?? '<none>'})`
+          );
+        } catch (error) {
+          // The model reply is already committed and visible. A failed
+          // acknowledgement is bookkeeping failure only; retain the offset so
+          // the same contiguous prefix retries instead of misreporting the
+          // successful participant turn as failed.
+          this.outputChannel.appendLine(
+            `[WorkshopHandler] Room delivery acknowledgement retained for retry after ` +
+            `committed ${label} reply: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+      } else if (roomDelivery) {
+        this.outputChannel.appendLine(
+          `[WorkshopHandler] Room delivery retained after incomplete ${label} reply ` +
+          `(${roomDelivery.reader.kind === 'host'
+            ? 'host'
+            : `guest=${roomDelivery.reader.personaId}`}; ` +
+          `${roomDelivery.deliveredTurnIds.length} turns remain pending)`
+        );
       }
       if (assistantTurn && target.kind === 'host' && pendingHostUpdates) {
         this.session.commitPendingHostUpdates(pendingHostUpdates);

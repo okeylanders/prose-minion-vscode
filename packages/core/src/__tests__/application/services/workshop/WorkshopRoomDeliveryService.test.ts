@@ -1,5 +1,6 @@
 import {
   guardWorkshopRoomDelivery,
+  projectWorkshopJoinSnapshotTurns,
   projectWorkshopRoomTurns,
   WorkshopRoomDeliveryService
 } from '@/application/services/workshop/WorkshopRoomDeliveryService';
@@ -66,6 +67,73 @@ describe('WorkshopRoomDeliveryService', () => {
     ).map((candidate) => candidate.id)).toEqual(['margot-1', 'quinn-1']);
   });
 
+  it('replays a re-invited guest own prior exchange without leaking another private exchange', () => {
+    const turns = [
+      turn('writer-margot', {
+        role: 'user',
+        participant: 'writer',
+        personaId: 'margot'
+      }),
+      turn('margot-1'),
+      turn('margot-private-search', {
+        participant: 'tool',
+        artifact: 'resource_search',
+        capability: {
+          operation: 'resource.search',
+          status: 'success',
+          requestSummary: 'search',
+          requestedByPersonaId: 'margot',
+          invokedBy: { kind: 'personaGuest', personaId: 'margot' }
+        }
+      }),
+      turn('quinn-private-search', {
+        participant: 'tool',
+        artifact: 'resource_search',
+        personaId: 'quinn',
+        capability: {
+          operation: 'resource.search',
+          status: 'success',
+          requestSummary: 'search',
+          requestedByPersonaId: 'quinn',
+          invokedBy: { kind: 'personaGuest', personaId: 'quinn' }
+        }
+      })
+    ];
+
+    expect(projectWorkshopJoinSnapshotTurns(
+      turns,
+      { kind: 'personaGuest', personaId: 'margot' }
+    ).map((candidate) => candidate.id)).toEqual([
+      'writer-margot',
+      'margot-1',
+      'margot-private-search'
+    ]);
+  });
+
+  it('builds a cold re-invitation snapshot from room history including the guest own prior turns', () => {
+    const session = new WorkshopSessionService(() => 1);
+    session.setExcerpt({ text: 'Passage.', source: { kind: 'manual' } });
+    session.adoptPersonaGuest('margot', 'margot-conv');
+    session.beginPersonaGuestMessage('margot', 'margot-run', 'Question.');
+    session.completeRun('margot-run', 'Answer.');
+    session.dismissPersonaGuest('margot');
+    const invitation = session.beginPersonaGuestJoin(
+      'margot',
+      'margot-rejoin',
+      'Read the room again.'
+    );
+
+    const snapshot = new WorkshopRoomDeliveryService(session).prepareJoinSnapshot({
+      kind: 'personaGuest',
+      personaId: 'margot'
+    }, invitation.id);
+
+    expect(snapshot.map((candidate) => candidate.content)).toEqual([
+      'Question.',
+      'Answer.'
+    ]);
+  });
+
   it('keeps whole turns and defers the remainder oldest-first', () => {
     const pending = [
       turn('one', { content: '123456' }),
@@ -91,7 +159,13 @@ describe('WorkshopRoomDeliveryService', () => {
     expect(() => delivery.commit({
       ...prepared,
       deliveredTurnIds: [prepared.deliveredTurnIds[1]]
-    })).toThrow('not a contiguous prefix');
+    })).toThrow(
+      new RegExp(
+        `not a contiguous prefix for host .*` +
+        `offset=<start>.*expected=${prepared.deliveredTurnIds[0]}.*` +
+        `actual=${prepared.deliveredTurnIds[1]}`
+      )
+    );
     expect(delivery.prepare({ kind: 'host' }).deliveredTurnIds)
       .toEqual(prepared.deliveredTurnIds);
   });
@@ -109,6 +183,24 @@ describe('WorkshopRoomDeliveryService', () => {
 
     expect(delivery.prepare({ kind: 'host' }).deliveredTurnIds)
       .toEqual([prepared.deliveredTurnIds[1]]);
+  });
+
+  it('advances through the delivered prefix rather than a newer ineligible ledger tail', () => {
+    const session = new WorkshopSessionService(() => 1);
+    session.setExcerpt({ text: 'Passage.', source: { kind: 'manual' } });
+    session.adoptPersonaGuest('margot', 'margot-conv');
+    session.beginPersonaGuestMessage('margot', 'margot-run', 'Question.');
+    session.completeRun('margot-run', 'Answer.');
+
+    const delivery = new WorkshopRoomDeliveryService(session);
+    const prepared = delivery.prepare({ kind: 'host' });
+    session.beginPersonaMessage('host-run', 'My follow-up.');
+    session.completeRun('host-run', 'My answer.', undefined, false, 'host-conv');
+
+    delivery.commit(prepared);
+
+    expect(session.readRoomDeliveryState({ kind: 'host' }).lastSeenRoomTurnId)
+      .toBe(prepared.deliveredTurnIds.at(-1));
   });
 
   it.each([

@@ -1120,7 +1120,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(new WorkshopRoomDeliveryService(service).prepareJoinSnapshot({
       kind: 'personaGuest',
       personaId: 'margot'
-    }).map((turn) => turn.content)).toEqual([
+    }, invitation.id).map((turn) => turn.content)).toEqual([
       'Host opening.',
       'Host reply.'
     ]);

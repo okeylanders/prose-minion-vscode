@@ -13,7 +13,7 @@ import {
 import {
   WorkshopCapabilityArtifactDetails,
   WorkshopCapabilityPrincipal
-} from '@shared/types';
+} from '@shared/types/workshopCapabilities';
 
 export type WorkshopRoomPrincipal =
   | WorkshopCapabilityPrincipal
@@ -68,7 +68,7 @@ export function isWorkshopPublishableCapabilityEvidence(
  * True when a turn is already materialized in this participant's own retained
  * conversation and therefore must not be quoted back through room catch-up.
  */
-export function workshopTurnBelongsToPrincipal(
+export function isWorkshopTurnAlreadyVisibleToPrincipal(
   turn: WorkshopTurn,
   principal: WorkshopCapabilityPrincipal
 ): boolean {

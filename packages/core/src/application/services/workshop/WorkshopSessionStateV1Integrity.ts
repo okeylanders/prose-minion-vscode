@@ -6,8 +6,8 @@ import { WorkshopPersonaId, WorkshopToolId } from '@messages';
 import { isWorkshopPersonaId } from '@shared/constants/workshopPersonas';
 import { isWorkshopToolId } from '@shared/constants/workshopTools';
 import {
-  isWorkshopPublishableCapabilityEvidence,
-  workshopTurnBelongsToPrincipal
+  isWorkshopTurnAlreadyVisibleToPrincipal,
+  isWorkshopPublishableCapabilityEvidence
 } from '@/application/services/workshop/WorkshopRoomAudience';
 import type {
   WorkshopSessionStateV1
@@ -143,7 +143,7 @@ export function validateWorkshopSessionStateV1(
       || responseIndex <= index
       || response?.role !== 'assistant'
       || (response.artifact !== 'persona_message' && response.artifact !== 'persona_synthesis')
-      || !workshopTurnBelongsToPrincipal(response, principal)
+      || !isWorkshopTurnAlreadyVisibleToPrincipal(response, principal)
     ) {
       throw new Error(
         `Persisted Workshop capability ${turn.id} has an invalid publication response`

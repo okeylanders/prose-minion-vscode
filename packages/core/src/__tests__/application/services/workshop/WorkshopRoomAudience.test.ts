@@ -1,6 +1,6 @@
 import {
+  isWorkshopTurnAlreadyVisibleToPrincipal,
   workshopTurnAudience,
-  workshopTurnBelongsToPrincipal
 } from '@/application/services/workshop/WorkshopRoomAudience';
 import { WorkshopTurn } from '@messages';
 
@@ -99,19 +99,19 @@ describe('workshopTurnAudience', () => {
   });
 });
 
-describe('workshopTurnBelongsToPrincipal', () => {
+describe('isWorkshopTurnAlreadyVisibleToPrincipal', () => {
   it('recognizes both sides of each participant conversation', () => {
-    expect(workshopTurnBelongsToPrincipal(turn(), { kind: 'host' })).toBe(true);
-    expect(workshopTurnBelongsToPrincipal(turn({
+    expect(isWorkshopTurnAlreadyVisibleToPrincipal(turn(), { kind: 'host' })).toBe(true);
+    expect(isWorkshopTurnAlreadyVisibleToPrincipal(turn({
       role: 'user',
       participant: 'writer',
       personaId: undefined
     }), { kind: 'host' })).toBe(true);
-    expect(workshopTurnBelongsToPrincipal(turn({
+    expect(isWorkshopTurnAlreadyVisibleToPrincipal(turn({
       participant: 'guest',
       personaId: 'felix'
     }), { kind: 'personaGuest', personaId: 'felix' })).toBe(true);
-    expect(workshopTurnBelongsToPrincipal(turn({
+    expect(isWorkshopTurnAlreadyVisibleToPrincipal(turn({
       role: 'user',
       participant: 'writer',
       personaId: 'felix'
@@ -119,7 +119,7 @@ describe('workshopTurnBelongsToPrincipal', () => {
   });
 
   it('does not treat another participant conversation as already materialized', () => {
-    expect(workshopTurnBelongsToPrincipal(turn({
+    expect(isWorkshopTurnAlreadyVisibleToPrincipal(turn({
       participant: 'guest',
       personaId: 'margot'
     }), { kind: 'personaGuest', personaId: 'felix' })).toBe(false);

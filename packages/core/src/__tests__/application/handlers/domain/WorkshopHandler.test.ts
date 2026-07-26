@@ -59,6 +59,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   let workspace: Workspace;
   let settings: SettingsStore;
   let handler: WorkshopHandler;
+  let roomDelivery: WorkshopRoomDeliveryService;
   let writerProfileService: WorkshopWriterProfileService;
   let capabilityFactory: WorkshopPersonaCapabilityFactory;
   let contextBudgets: Map<string, ContextBudgetSnapshot>;
@@ -218,7 +219,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       resolveRevealPath: jest.fn().mockResolvedValue('/workspace/prose-minion/sessions/saved-1.json'),
       deleteNamed: jest.fn().mockResolvedValue(undefined)
     } as unknown as jest.Mocked<WorkshopSessionPersistenceCoordinator>;
-    const roomDelivery = new WorkshopRoomDeliveryService(session);
+    roomDelivery = new WorkshopRoomDeliveryService(session);
     handler = new WorkshopHandler(
       service,
       contextAssistant as never,
@@ -1290,6 +1291,34 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(turns.some((turn) => turn.artifact === 'persona_synthesis')).toBe(false);
     expect(session.getToolSidecarConversationId('prose')).toBe('tool-conv');
     expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/synthesis failed/);
+    const pending = new WorkshopRoomDeliveryService(session).prepare({ kind: 'host' });
+    expect(pending.turns).toEqual(expect.arrayContaining([
+      expect.objectContaining({ artifact: 'tool_report', content: 'tool report' })
+    ]));
+  });
+
+  it('retains a failed room acknowledgement without misreporting a committed reply', async () => {
+    await pin();
+    jest.spyOn(roomDelivery, 'commit').mockImplementationOnce(() => {
+      throw new Error('offset changed during delivery');
+    });
+    postMessage.mockClear();
+
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Start host.' }
+    ) as any);
+
+    expect(session.getSnapshot().turns.at(-1)).toMatchObject({
+      participant: 'host',
+      content: 'Jill synthesis'
+    });
+    expect(posted(MessageType.ERROR)).toEqual([]);
+    expect(log.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'Room delivery acknowledgement retained for retry after committed Jill reply'
+      )
+    );
   });
 
   it('replaces and disposes only the prior sidecar for the same tool', async () => {
@@ -1532,6 +1561,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(session.getSnapshot().turns.some((turn) => turn.artifact === 'tool_report')).toBe(true);
     expect(session.getSnapshot().turns.some((turn) => turn.artifact === 'persona_synthesis')).toBe(false);
     expect(session.getToolSidecarConversationId('prose')).toBe('tool-conv');
+    expect(log.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('Room delivery retained after incomplete synthesis')
+    );
   });
 
   it('discards a zombie tool completion after a newer host turn preempts it', async () => {

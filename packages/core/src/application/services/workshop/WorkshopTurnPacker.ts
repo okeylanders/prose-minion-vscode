@@ -30,7 +30,8 @@ export function packWorkshopTurnsNewestFirst<T extends { id: string }>(
   formatTurn: (turn: T) => string,
   policy: WorkshopTurnPackingPolicy
 ): WorkshopPackedTurns {
-  const newest = turns.slice(-policy.turnLimit);
+  const turnLimit = Math.max(0, Math.floor(policy.turnLimit));
+  const newest = turnLimit === 0 ? [] : turns.slice(-turnLimit);
   const blocks: string[] = [];
   const deliveredTurnIds: string[] = [];
   let omittedTurns = turns.length - newest.length;

@@ -265,7 +265,25 @@ export class RunWorkshopToolSidePass {
         }
       });
       if (synthesisTurn) {
-        this.roomDelivery.commit(pendingRoomDelivery);
+        try {
+          this.roomDelivery.commit(pendingRoomDelivery);
+          this.outputChannel.appendLine(
+            `[RunWorkshopToolSidePass] Room delivery committed for host ` +
+            `(through=${pendingRoomDelivery.deliveredTurnIds.at(-1) ?? '<none>'})`
+          );
+        } catch (error) {
+          // Synthesis already landed. Keep the room offset pending and retry
+          // the same contiguous prefix on the next host turn.
+          this.outputChannel.appendLine(
+            `[RunWorkshopToolSidePass] Room delivery acknowledgement retained for retry ` +
+            `after committed synthesis: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+      } else {
+        this.outputChannel.appendLine(
+          `[RunWorkshopToolSidePass] Room delivery retained after incomplete synthesis ` +
+          `(${pendingRoomDelivery.deliveredTurnIds.length} turns remain pending)`
+        );
       }
       if (synthesisTurn && pendingHostUpdates) {
         this.session.commitPendingHostUpdates(pendingHostUpdates);

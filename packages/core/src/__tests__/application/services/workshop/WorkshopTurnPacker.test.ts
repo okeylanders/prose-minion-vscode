@@ -62,4 +62,16 @@ describe('packWorkshopTurnsNewestFirst', () => {
     expect(packed.deliveredTurnIds).toEqual(['turn-3']);
     expect(packed.omittedTurns).toBe(2);
   });
+
+  it('treats a zero turn limit as an empty window', () => {
+    const packed = packWorkshopTurnsNewestFirst(
+      turns('one', 'two'),
+      (turn) => turn.content,
+      policy({ turnLimit: 0 })
+    );
+
+    expect(packed.blocks).toEqual([]);
+    expect(packed.deliveredTurnIds).toEqual([]);
+    expect(packed.omittedTurns).toBe(2);
+  });
 });

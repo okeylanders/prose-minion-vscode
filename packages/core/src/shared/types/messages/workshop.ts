@@ -382,6 +382,10 @@ export type WorkshopTodoSource =
       personaId: WorkshopPersonaId;
       /** Tool report the host was synthesizing, when this proposal derived from one. */
       upstreamReportTurnId?: string;
+    })
+  | (WorkshopTodoSourceBase & {
+      kind: 'guest_turn';
+      personaId: WorkshopPersonaId;
     });
 
 /** Writer-owned planning item with immutable source-turn provenance. */

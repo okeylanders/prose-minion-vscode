@@ -178,7 +178,7 @@ sprint because 13D deletes the affected relationship machinery.
 ## Implementation record
 
 Completed on `sprint/workshop-editor-tab-13d-room-catchup-release-polish` as
-four reviewable commits:
+five reviewable implementation passes:
 
 1. `91c1383` — extracted the shared turn packer.
 2. `301a122` — persisted room audience facts and one inbound offset per
@@ -189,11 +189,16 @@ four reviewable commits:
    `WorkshopRoomFrameRenderer`, adds render-time writer attribution and
    frame-level relative-time markers, and makes the bounded room-wide join
    snapshot whole-turn-only.
+5. PR #90 review fixes — separates cold-start join projection from incremental
+   delivery, makes acknowledgement failures retryable bookkeeping, advances
+   only through the delivered contiguous prefix, hardens packing/rendering,
+   and gives guest-persona `### Next steps` the same durable proposal workflow
+   as the host.
 
 Automated release evidence on 2026-07-26:
 
 - `npm run typecheck` — passed for core, webview, and extension.
-- `npm test -- --runInBand` — 132 suites / 1,424 tests passed.
+- `npm test -- --runInBand` — 133 suites / 1,436 tests passed.
 - `npm run lint -- --no-cache` — passed with the repository's pre-existing
   786-warning baseline and zero errors.
 - `npm run build` — production extension + webview bundles compiled;

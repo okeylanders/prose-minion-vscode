@@ -1032,17 +1032,32 @@ export class WorkshopSessionService {
     expectedOffset: string | undefined,
     deliveredThroughTurnId: string
   ): void {
+    const readerLabel = reader.kind === 'host'
+      ? 'host'
+      : `guest:${reader.personaId}`;
     if (!this.turns.some((turn) => turn.id === deliveredThroughTurnId)) {
-      throw new Error(`Cannot advance Workshop room offset to unknown turn ${deliveredThroughTurnId}`);
+      throw new Error(
+        `Cannot advance Workshop room offset for ${readerLabel} to unknown turn ` +
+        `${deliveredThroughTurnId} (expected offset=${expectedOffset ?? '<start>'})`
+      );
     }
     const participant = reader.kind === 'host'
       ? this.participants.host
       : this.participants.personaGuests.get(reader.personaId);
     if (!participant || ('liveness' in participant && participant.liveness !== 'live')) {
-      throw new Error('Cannot advance a non-live Workshop participant');
+      throw new Error(
+        `Cannot advance Workshop room offset for non-live ${readerLabel} ` +
+        `(expected offset=${expectedOffset ?? '<start>'}, ` +
+        `delivered through=${deliveredThroughTurnId})`
+      );
     }
     if (participant.lastSeenRoomTurnId !== expectedOffset) {
-      throw new Error('Workshop room offset changed during delivery');
+      throw new Error(
+        `Workshop room offset changed during delivery for ${readerLabel} ` +
+        `(expected=${expectedOffset ?? '<start>'}, ` +
+        `actual=${participant.lastSeenRoomTurnId ?? '<start>'}, ` +
+        `delivered through=${deliveredThroughTurnId})`
+      );
     }
     participant.lastSeenRoomTurnId = deliveredThroughTurnId;
   }
@@ -1452,7 +1467,7 @@ export class WorkshopSessionService {
       usage: usage ? { ...usage } : undefined,
       truncated: truncated || undefined,
       excerptVersion: active.excerptVersion,
-      actionableFindings: isHost && actionableFindings.length > 0
+      actionableFindings: (isHost || isGuest) && actionableFindings.length > 0
         ? cloneFindings(actionableFindings)
         : undefined,
       behavior: (isHost || isGuest) && active.behavior
@@ -1506,14 +1521,20 @@ export class WorkshopSessionService {
     const sourceTurn = this.turns.find(
       (turn) =>
         turn.id === sourceTurnId &&
-        (turn.artifact === 'tool_report' || turn.participant === 'host')
+        (
+          turn.artifact === 'tool_report'
+          || turn.participant === 'host'
+          || turn.participant === 'guest'
+        )
     );
     const finding = sourceTurn?.actionableFindings?.find(
       (candidate) => candidate.key === findingKey
     );
     const isToolReport = sourceTurn?.artifact === 'tool_report' && !!sourceTurn.toolId;
-    const isHostTurn = sourceTurn?.participant === 'host' && !!sourceTurn.personaId;
-    if (!sourceTurn || (!isToolReport && !isHostTurn) || !finding) {
+    const isPersonaTurn =
+      (sourceTurn?.participant === 'host' || sourceTurn?.participant === 'guest')
+      && !!sourceTurn.personaId;
+    if (!sourceTurn || (!isToolReport && !isPersonaTurn) || !finding) {
       throw new Error('Cannot add a task from an unknown actionable finding');
     }
     if (sourceTurn.excerptVersion !== this.excerptVersion) {
@@ -1539,7 +1560,7 @@ export class WorkshopSessionService {
           excerptVersion: sourceTurn.excerptVersion
         }
       : {
-          kind: 'host_turn',
+          kind: sourceTurn.participant === 'host' ? 'host_turn' : 'guest_turn',
           turnId: sourceTurnId,
           participantLabel: sourceTurn.personaLabel ?? workshopPersonaLabel(sourceTurn.personaId!),
           personaId: sourceTurn.personaId!,
