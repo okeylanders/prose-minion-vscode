@@ -42,7 +42,7 @@ Three kinds of prompt material, each with distinct lifecycle and framing:
    lists deltas since the last delivered turn. Cost trade, eyes open:
    every churn invalidates provider prompt cache from the entry forward
    (one full-price call) in exchange for permanent window relief — the
-   right trade for prose (token-heavy files, 35k lists, window pressure,
+   right trade for prose (token-heavy files, 50k lists, window pressure,
    provider caching varies on OpenRouter anyway).
 2. **Thread-artifacts** (one-shot, writer-added via chat): BUILT in Sprint 12
    Phase 6B. The composer `+` offers "Attach to this message" beside "Add to

@@ -1,7 +1,11 @@
 import {
+  WORKSHOP_SNAPSHOT_TURN_WINDOW,
   WorkshopSessionActiveRunPersistenceError,
   WorkshopSessionService
 } from '@/application/services/workshop/WorkshopSessionService';
+import {
+  WorkshopRoomDeliveryService
+} from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import {
   parseWorkshopSessionStateV1,
   WorkshopSessionStateV1
@@ -97,6 +101,8 @@ const buildCompleteState = (): WorkshopSessionStateV1 => {
   session.beginPersonaGuestMessage('margot', 'guest-message', 'How does the voice sound?');
   session.completeRun('guest-message', 'Close and controlled.');
   session.recordSessionMarker('resume', 'Session resumed at 11:30 AM.');
+  const hostDelivery = new WorkshopRoomDeliveryService(session);
+  hostDelivery.commit(hostDelivery.prepare({ kind: 'host' }));
 
   return session.exportCommittedState();
 };
@@ -114,6 +120,43 @@ describe('WorkshopSessionService committed persistence', () => {
     expect(state.excerpt!.text).toBe('The second cup breaks.');
     expect(state.turns[0].content).not.toBe('Mutated parsed turn.');
     expect(state.writerSources.host[0].label).not.toBe('Mutated parsed source.');
+  });
+
+  it('round-trips guest-origin next steps with their persona provenance', () => {
+    const session = new WorkshopSessionService(() => 1);
+    session.setExcerpt({ text: 'Pinned.', source: { kind: 'manual' } });
+    session.adoptPersonaGuest('felix', 'felix-before-save');
+    session.beginPersonaGuestMessage('felix', 'felix-run', 'What should change?');
+    const guestTurn = session.completeRun(
+      'felix-run',
+      'Review.',
+      undefined,
+      false,
+      'felix-before-save',
+      [{ key: 'finding-1', ordinal: 1, text: 'Restore the breath.', priority: 'high' }]
+    )!;
+    session.addTodoFromFinding(guestTurn.id, 'finding-1');
+
+    const restored = new WorkshopSessionService(() => 2);
+    restored.hydrateCommittedState(
+      parseWorkshopSessionStateV1(
+        JSON.parse(JSON.stringify(session.exportCommittedState()))
+      ),
+      { ['guest:felix']: 'felix-after-save' },
+      currentBehavior
+    );
+
+    expect(restored.getSnapshot().todos).toEqual([
+      expect.objectContaining({
+        text: 'Restore the breath.',
+        source: expect.objectContaining({
+          kind: 'guest_turn',
+          turnId: guestTurn.id,
+          personaId: 'felix',
+          participantLabel: 'Felix'
+        })
+      })
+    ]);
   });
 
   it.each([
@@ -409,6 +452,54 @@ describe('WorkshopSessionService committed persistence', () => {
     expect(hydrated.capability!.invokedBy).toEqual({ kind: 'personaGuest', personaId: 'margot' });
   });
 
+  it('drops legacy delivery cursors and heads missing room offsets during hydration', () => {
+    const state = buildCompleteState();
+    const headTurnId = state.turns.at(-1)!.id;
+    delete state.participants.host.lastSeenRoomTurnId;
+    state.participants.toolSidecars[0].deliveredToHostThroughTurnId =
+      state.participants.toolSidecars[0].latestReportTurnId;
+    const guest = state.participants.personaGuests[0];
+    delete guest.lastSeenRoomTurnId;
+    guest.lastSeenHostTurnId = state.turns[0].id;
+    guest.deliveredToHostThroughTurnId = state.turns[1].id;
+
+    const restored = new WorkshopSessionService(() => 50_000);
+    const result = restored.hydrateCommittedState(state, {
+      host: 'restored-host',
+      ['tool:prose']: 'restored-tool',
+      ['guest:margot']: 'restored-guest'
+    }, currentBehavior);
+    const normalized = restored.exportCommittedState();
+
+    expect(result.migrations).toEqual(expect.arrayContaining([
+      'discarded-legacy-delivery-cursors',
+      'headed-missing-room-offsets'
+    ]));
+    expect(normalized.participants.host.lastSeenRoomTurnId).toBe(headTurnId);
+    expect(normalized.participants.personaGuests[0].lastSeenRoomTurnId).toBe(headTurnId);
+    expect(normalized.participants.toolSidecars[0])
+      .not.toHaveProperty('deliveredToHostThroughTurnId');
+    expect(normalized.participants.personaGuests[0]).not.toHaveProperty('lastSeenHostTurnId');
+    expect(normalized.participants.personaGuests[0])
+      .not.toHaveProperty('deliveredToHostThroughTurnId');
+  });
+
+  it('rejects capability publication that does not point to its participant reply', () => {
+    const state = buildCompleteState();
+    const capabilityTurn = state.turns.find((turn) => turn.artifact === 'tool_report')!;
+    capabilityTurn.capability = {
+      operation: 'analysis.run',
+      status: 'success',
+      requestSummary: 'Continuity',
+      requestedByPersonaId: 'jill',
+      invokedBy: { kind: 'host' },
+      publishedWithTurnId: state.turns[0].id
+    };
+
+    expect(() => parseWorkshopSessionStateV1(state))
+      .toThrow(`capability ${capabilityTurn.id} has an invalid publication response`);
+  });
+
   it('exports defensively and hydrates from defensive clones', () => {
     const source = buildCompleteState();
     const originalText = source.excerpt!.text;
@@ -547,16 +638,17 @@ describe('WorkshopSessionService committed persistence', () => {
 
   it('exports and restores the full ledger even when the webview projection is windowed', () => {
     const session = new WorkshopSessionService(() => 1);
-    for (let index = 0; index < 105; index += 1) {
+    const storedTurns = WORKSHOP_SNAPSHOT_TURN_WINDOW + 5;
+    for (let index = 0; index < storedTurns; index += 1) {
       session.recordSessionMarker(index === 0 ? 'start' : 'resume', `Marker ${index}.`);
     }
 
-    expect(session.getSnapshot().turns).toHaveLength(100);
+    expect(session.getSnapshot().turns).toHaveLength(WORKSHOP_SNAPSHOT_TURN_WINDOW);
     const state = session.exportCommittedState();
-    expect(state.turns).toHaveLength(105);
+    expect(state.turns).toHaveLength(storedTurns);
     const restored = new WorkshopSessionService(() => 2);
     restored.hydrateCommittedState(state, {}, currentBehavior);
-    expect(restored.exportCommittedState().turns).toHaveLength(105);
+    expect(restored.exportCommittedState().turns).toHaveLength(storedTurns);
     expect(restored.exportCommittedState().turns[0].content).toBe('Marker 0.');
   });
 

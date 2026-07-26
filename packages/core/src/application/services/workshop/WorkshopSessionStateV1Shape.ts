@@ -415,7 +415,7 @@ function assertCapability(value: unknown, path: string): void {
     value,
     path,
     ['operation', 'status', 'requestSummary', 'requestedByPersonaId'],
-    ['metadata', 'invokedBy']
+    ['metadata', 'invokedBy', 'publishedWithTurnId']
   );
   enumAt(
     capability.operation,
@@ -441,6 +441,7 @@ function assertCapability(value: unknown, path: string): void {
   if (capability.invokedBy !== undefined) {
     assertCapabilityPrincipal(capability.invokedBy, `${path}.invokedBy`);
   }
+  optionalStringAt(capability.publishedWithTurnId, `${path}.publishedWithTurnId`);
   if (capability.metadata !== undefined) {
     jsonObjectAt(capability.metadata, `${path}.metadata`);
   }
@@ -554,7 +555,7 @@ function assertParticipants(value: unknown): void {
     participants.host,
     'Workshop session state.participants.host',
     ['personaId'],
-    ['conversationKey']
+    ['conversationKey', 'lastSeenRoomTurnId']
   );
   if (!isWorkshopPersonaId(host.personaId)) {
     shapeError('Workshop session state.participants.host.personaId', 'known Workshop persona id');
@@ -562,6 +563,10 @@ function assertParticipants(value: unknown): void {
   if (host.conversationKey !== undefined && host.conversationKey !== 'host') {
     shapeError('Workshop session state.participants.host.conversationKey', 'host');
   }
+  optionalStringAt(
+    host.lastSeenRoomTurnId,
+    'Workshop session state.participants.host.lastSeenRoomTurnId'
+  );
   arrayOf(
     participants.toolSidecars,
     'Workshop session state.participants.toolSidecars',
@@ -569,14 +574,18 @@ function assertParticipants(value: unknown): void {
       const sidecar = exactObject(
         sidecarValue,
         sidecarPath,
-        ['toolId', 'conversationKey', 'latestReportTurnId', 'deliveredToHostThroughTurnId']
+        ['toolId', 'conversationKey', 'latestReportTurnId'],
+        ['deliveredToHostThroughTurnId']
       );
       if (!isWorkshopToolId(sidecar.toolId)) {
         shapeError(`${sidecarPath}.toolId`, 'known Workshop tool id');
       }
       stringAt(sidecar.conversationKey, `${sidecarPath}.conversationKey`);
       stringAt(sidecar.latestReportTurnId, `${sidecarPath}.latestReportTurnId`);
-      stringAt(sidecar.deliveredToHostThroughTurnId, `${sidecarPath}.deliveredToHostThroughTurnId`);
+      optionalStringAt(
+        sidecar.deliveredToHostThroughTurnId,
+        `${sidecarPath}.deliveredToHostThroughTurnId`
+      );
     }
   );
   arrayOf(
@@ -587,13 +596,19 @@ function assertParticipants(value: unknown): void {
         guestValue,
         guestPath,
         ['personaId', 'liveness'],
-        ['conversationKey', 'lastSeenHostTurnId', 'deliveredToHostThroughTurnId']
+        [
+          'conversationKey',
+          'lastSeenRoomTurnId',
+          'lastSeenHostTurnId',
+          'deliveredToHostThroughTurnId'
+        ]
       );
       if (!isWorkshopPersonaId(guest.personaId)) {
         shapeError(`${guestPath}.personaId`, 'known Workshop persona id');
       }
       enumAt(guest.liveness, `${guestPath}.liveness`, ['live', 'disposed']);
       optionalStringAt(guest.conversationKey, `${guestPath}.conversationKey`);
+      optionalStringAt(guest.lastSeenRoomTurnId, `${guestPath}.lastSeenRoomTurnId`);
       optionalStringAt(guest.lastSeenHostTurnId, `${guestPath}.lastSeenHostTurnId`);
       optionalStringAt(
         guest.deliveredToHostThroughTurnId,
@@ -674,8 +689,13 @@ function assertTodoSource(value: unknown, path: string): void {
       shapeError(`${path}.personaId`, 'known Workshop persona id');
     }
     optionalStringAt(source.upstreamReportTurnId, `${path}.upstreamReportTurnId`);
+  } else if (source.kind === 'guest_turn') {
+    exactKeys(source, path, [...baseRequired, 'personaId']);
+    if (!isWorkshopPersonaId(source.personaId)) {
+      shapeError(`${path}.personaId`, 'known Workshop persona id');
+    }
   } else {
-    shapeError(`${path}.kind`, 'tool_report or host_turn');
+    shapeError(`${path}.kind`, 'tool_report, host_turn, or guest_turn');
   }
   stringAt(source.turnId, `${path}.turnId`);
   stringAt(source.participantLabel, `${path}.participantLabel`);

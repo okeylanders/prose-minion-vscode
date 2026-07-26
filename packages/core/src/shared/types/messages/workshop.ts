@@ -382,6 +382,10 @@ export type WorkshopTodoSource =
       personaId: WorkshopPersonaId;
       /** Tool report the host was synthesizing, when this proposal derived from one. */
       upstreamReportTurnId?: string;
+    })
+  | (WorkshopTodoSourceBase & {
+      kind: 'guest_turn';
+      personaId: WorkshopPersonaId;
     });
 
 /** Writer-owned planning item with immutable source-turn provenance. */
@@ -964,7 +968,7 @@ export interface WorkshopUpdateContextTextMessage
 /**
  * Fetch one attachment's body for the Edit/Preview sheet (Sprint 13A).
  * Attachment content is prompt-bearing host state and is deliberately NOT in
- * every session snapshot (the shared budget is 35,000 words) — the webview
+ * every session snapshot (the shared budget is 50,000 words) — the webview
  * asks for exactly the one the writer opened.
  */
 export interface WorkshopRequestContextAttachmentPayload {

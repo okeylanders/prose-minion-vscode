@@ -71,7 +71,7 @@ import { LabeledContextBudgetSnapshot } from '@messages';
 
 /**
  * One attachment body, fetched on demand for the Edit/Preview sheet (Sprint 13A
- * §7). Attachment content is prompt-bearing host state under a shared 35,000-word
+ * §7). Attachment content is prompt-bearing host state under a shared 50,000-word
  * budget, so it deliberately does not ride every session snapshot.
  */
 export interface WorkshopAttachmentContentState {
@@ -704,18 +704,10 @@ export const useWorkshop = (): UseWorkshopReturn => {
       setTodos(session.todos);
       setSelectedToolId(session.selectedToolId ?? null);
       setActiveToolId(session.activeToolId ?? null);
-      setTurns((prev) => {
-        if (session.truncatedTurns === 0) {
-          // Complete snapshot — authoritative wholesale replace.
-          return session.turns;
-        }
-        // Bounded snapshot (PR #67 review #12): the window carries only the
-        // most recent turns. Never shrink a live thread — keep the older
-        // turns this webview already holds, then reconcile the window.
-        const windowIds = new Set(session.turns.map((t) => t.id));
-        const older = prev.filter((t) => !windowIds.has(t.id));
-        return [...older, ...session.turns];
-      });
+      // The host snapshot is authoritative. Marathon sessions deliberately
+      // expose only the latest bounded window in the webview; the aggregate and
+      // persisted session retain the complete ledger for future pagination.
+      setTurns(session.turns);
 
       const activeRequestId = session.activeRequestId ?? null;
       if (activeRequestId) {

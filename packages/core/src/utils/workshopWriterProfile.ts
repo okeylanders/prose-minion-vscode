@@ -5,6 +5,15 @@ import {
 } from '@messages';
 import { neutralizeReservedPersonaPromptDelimiters } from './workshopPromptFrames';
 
+/** The prompt-effective writer name used by both profile and room frames. */
+export function workshopWriterPreferredAddress(
+  profile: WorkshopWriterProfile
+): string | undefined {
+  return profile.enabled && profile.preferredAddress.length > 0
+    ? profile.preferredAddress
+    : undefined;
+}
+
 /**
  * Build the one trusted, system-level writer-profile frame. Empty or disabled
  * profiles contribute zero prompt content. Dynamic strings are neutralized at
@@ -18,7 +27,9 @@ export function buildWorkshopWriterProfileFrame(
     return undefined;
   }
 
-  const preferredAddress = neutralizeReservedPersonaPromptDelimiters(profile.preferredAddress);
+  const preferredAddress = neutralizeReservedPersonaPromptDelimiters(
+    workshopWriterPreferredAddress(profile) ?? ''
+  );
   const bio = neutralizeReservedPersonaPromptDelimiters(profile.bio);
   return [
     '<workshop-writer-profile>',

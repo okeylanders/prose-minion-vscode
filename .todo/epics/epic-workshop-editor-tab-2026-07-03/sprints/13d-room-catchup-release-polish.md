@@ -1,6 +1,6 @@
 # Sprint 13D: Room Ledger, Delivery Offsets, and Release Polish
 
-**Status**: Planned  
+**Status**: Implementation Complete — manual Extension Development Host smoke pending (2026-07-26)
 **Priority**: High  
 **Branch**: `sprint/workshop-editor-tab-13d-room-catchup-release-polish` -> PR into `epic/workshop-editor-tab`  
 **Depends on**: Sprint 13C  
@@ -27,6 +27,26 @@ reader-owned offset per participant. The net change deletes more than it adds.
 ## Scope
 
 Delivered as four reviewable steps on one branch.
+
+### Architecture constraints
+
+13D is a consolidation, not permission to enlarge the existing Workshop
+orchestrators:
+
+- `WorkshopSessionService` owns durable ledger state and aggregate invariants.
+  It does not render prompt frames or grow reader-specific delivery branches.
+- One bounded delivery collaborator owns eligible projection, pending-turn
+  materialization, and acknowledgement. It is injected through the existing
+  composition root rather than constructed inside `WorkshopHandler`.
+- `WorkshopPromptBuilder` renders turns already selected by the delivery
+  policy. It does not make a second audience decision.
+- `WorkshopHandler` coordinates the use case. It does not reimplement
+  projection, packing, cursor arithmetic, or capability-publication policy.
+- Audience and packing rules stay pure and independently testable. Do not
+  replace the removed relationship methods with boolean policy flags or a
+  generic "room manager" that owns unrelated lifecycle work.
+- The ordered ledger remains the sole delivery source of truth. No participant
+  mailbox, pending-queue mirror, or second transcript store is introduced.
 
 ### 13D-a — Extract the shared packer
 
@@ -85,6 +105,38 @@ is implemented in **13C**, which already owns the participant rail's visual
 vocabulary. Keeping it out of 13D leaves this sprint free of pixel-fidelity
 work.
 
+## Inherited verification follow-ups
+
+### Release-blocking delivery invariant
+
+[Handoff cursors advance past turns the envelope never shipped](../../../tech-debt/2026-07-26-handoff-cursor-advances-past-undelivered-turns.md)
+is pre-existing, reproduced during PR #89 verification, and owned by this
+sprint because 13D deletes the affected relationship machinery.
+
+- The replacement acknowledgement must advance through the newest
+  **contiguous delivered turn in the reader's eligible projection**, never the
+  newest delivered turn by max index.
+- Do not carry the `newestIndex` / `Math.max` scan shape into the single
+  acknowledgement site.
+- Pairing and publication must not depend on physical adjacency in the ledger;
+  `session` events and private capability work may interleave an exchange.
+- Regression coverage must preserve Blake's three proofs: one ~25k-character
+  reply, five short exchanges, and four ~6k-character exchanges. In the new
+  protocol, an intentionally undelivered turn or hole remains pending and is
+  returned on the next collection.
+- Restate the PR #72 review #1 invariant at the surviving acknowledgement site,
+  where the code now makes it true.
+
+### Small release-polish follow-ups from PR #89
+
+- Replace the duplicated `'workshop-personas/guest-base.md'` literal in
+  `workshopPersonas.ts` and `AssistantToolService.ts` with one shared prompt-path
+  constant. Prompt assembly and its tests must consume that same value so a
+  rename cannot silently split the guest charter from its capability policy.
+- Stabilize `livePersonaGuestIds` across unchanged `WorkshopApp` renders so the
+  invite modal's lock effect does not re-fire on array identity churn. Keep it
+  derived—do not add mirrored state or another synchronization effect.
+
 ## Explicit non-goals
 
 - No live relay of every room turn to every retained conversation.
@@ -103,6 +155,9 @@ work.
   invoking participant's final reply commits.
 - Catalog/search traffic and failed, rejected, cancelled, stale, or
   uncommitted capability work reach only their invoking principal.
+- The sole acknowledgement site advances only through the newest contiguous
+  delivered turn; a delivery hole remains pending and retries without loss.
+- Exchange ownership/publication does not depend on adjacent ledger rows.
 - No frame splits a turn, within or across deliveries.
 - Delivery acknowledgement follows only the recipient's committed reply;
   cancellation and retry are idempotent.
@@ -111,8 +166,55 @@ work.
 - A re-invited guest starts from a join snapshot rather than an inherited
   offset.
 - A session file carrying the legacy cursor keys opens cleanly.
+- Guest base-prompt selection uses one shared path constant.
+- Unchanged live-guest membership keeps a stable `livePersonaGuestIds`
+  identity without mirrored React state.
 - Manual evidence covers open chat, later excerpt adoption, both local-analysis
   policies, guest invitation/capabilities, A -> B catch-up, cancellation/retry,
   and restored sessions.
 - Typecheck, full suite, lint, production build/bundle, accessibility pass,
   and `git diff --check` pass.
+
+## Implementation record
+
+Completed on `sprint/workshop-editor-tab-13d-room-catchup-release-polish` as
+five reviewable implementation passes:
+
+1. `91c1383` — extracted the shared turn packer.
+2. `301a122` — persisted room audience facts and one inbound offset per
+   participant.
+3. `63fe132` — routed participant delivery and acknowledgement through one
+   collaborator and deleted the relationship handoff paths.
+4. 13D-c (this implementation checkpoint) — renders room frames through the focused
+   `WorkshopRoomFrameRenderer`, adds render-time writer attribution and
+   frame-level relative-time markers, and makes the bounded room-wide join
+   snapshot whole-turn-only.
+5. PR #90 review fixes — separates cold-start join projection from incremental
+   delivery, makes acknowledgement failures retryable bookkeeping, advances
+   only through the delivered contiguous prefix, hardens packing/rendering,
+   and gives guest-persona `### Next steps` the same durable proposal workflow
+   as the host.
+6. Post-review room bounds — raises fresh-guest context to 100 whole turns /
+   100,000 characters, raises standing context to 50,000 words, and bounds the
+   webview to the latest 200 turns with an explicit preservation/pagination
+   notice while retaining the complete saved ledger.
+
+Automated release evidence on 2026-07-26:
+
+- `npm run typecheck` — passed for core, webview, and extension.
+- `npm test -- --runInBand` — 133 suites / 1,437 tests passed.
+- `npm run lint -- --no-cache` — passed with the repository's pre-existing
+  786-warning baseline and zero errors.
+- `npm run build` — production extension + webview bundles compiled;
+  `verify:bundle` passed. Webpack retained its existing webview asset-size
+  warnings.
+- `npm run package` — produced `prose-minion-2.0.3.vsix` (177 files,
+  9.79 MB).
+- `git diff --check` — passed.
+- Workshop modal, rail, composer, thread, persistence/reopen, stale-run,
+  cancellation/retry, and architecture suites passed as part of the full run.
+
+Still intentionally manual before merge: exercise open chat, later excerpt
+adoption, both local-analysis policies, guest invitation/capabilities, A → B
+catch-up, cancellation/retry, and a restored session in the Extension
+Development Host; include keyboard/screen-reader inspection in that pass.

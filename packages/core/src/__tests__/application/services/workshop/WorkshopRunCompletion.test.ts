@@ -107,6 +107,49 @@ describe('completeWorkshopRun', () => {
     });
   });
 
+  it('attaches proposals to a guest turn and promotes them with guest provenance', () => {
+    session.adoptPersonaGuest('felix', 'felix-conv');
+    session.beginPersonaGuestMessage('felix', 'req-1', 'Turn the review into tasks.');
+
+    const turn = completeWorkshopRun({
+      session,
+      requestId: 'req-1',
+      label: 'Felix',
+      result: result([
+        'The cadence has one revision target.',
+        '',
+        '### Next steps',
+        '- [high] Restore the breath before the final image.'
+      ].join('\n'), { conversationId: 'felix-conv' }),
+      aborted: false,
+      createsRetainedConversation: false,
+      copy: workshopMessageCompletionCopy('Felix'),
+      discardConversation,
+      log,
+      events
+    })!;
+
+    expect(turn).toMatchObject({
+      participant: 'guest',
+      personaId: 'felix',
+      actionableFindings: [{
+        key: 'finding-1',
+        ordinal: 1,
+        priority: 'high',
+        text: 'Restore the breath before the final image.'
+      }]
+    });
+    expect(session.addTodoFromFinding(turn.id, 'finding-1')).toMatchObject({
+      priority: 'high',
+      source: {
+        kind: 'guest_turn',
+        turnId: turn.id,
+        participantLabel: 'Felix',
+        personaId: 'felix'
+      }
+    });
+  });
+
   it('logs a whole-section rejection without adopting any malformed proposals', () => {
     session.beginPersonaMessage('req-1', 'Turn the review into tasks.');
 

@@ -93,17 +93,25 @@ export interface WorkshopSessionStateV1 {
     host: {
       personaId: WorkshopPersonaId;
       conversationKey?: 'host';
+      lastSeenRoomTurnId?: string;
     };
     toolSidecars: Array<{
       toolId: WorkshopToolId;
       conversationKey: `tool:${WorkshopToolId}`;
       latestReportTurnId: string;
-      deliveredToHostThroughTurnId: string;
+      /**
+       * LEGACY (Sprint 13D). Accepted only at the raw checkpoint boundary,
+       * discarded during hydration, and never written again.
+       */
+      deliveredToHostThroughTurnId?: string;
     }>;
     personaGuests: Array<{
       personaId: WorkshopPersonaId;
       conversationKey?: `guest:${WorkshopPersonaId}`;
+      lastSeenRoomTurnId?: string;
+      /** LEGACY — see the tool-sidecar delivery cursor above. */
       lastSeenHostTurnId?: string;
+      /** LEGACY — see the tool-sidecar delivery cursor above. */
       deliveredToHostThroughTurnId?: string;
       liveness: 'live' | 'disposed';
     }>;

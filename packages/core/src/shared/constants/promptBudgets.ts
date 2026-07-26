@@ -35,14 +35,8 @@ export interface PromptBudgets {
     readSourceBytes: number;
     readBytes: number;
   }>;
-  readonly toolEvidence: Readonly<{ characters: number }>;
   readonly workshopTodos: Readonly<{
     items: number;
-    characters: number;
-    headerAllowanceCharacters: number;
-  }>;
-  readonly directHandoff: Readonly<{
-    turns: number;
     characters: number;
     headerAllowanceCharacters: number;
   }>;
@@ -51,10 +45,8 @@ export interface PromptBudgets {
     characters: number;
     headerAllowanceCharacters: number;
   }>;
-  readonly guestCatchUp: Readonly<{
-    turns: number;
-    characters: number;
-    headerAllowanceCharacters: number;
+  readonly workshopRoom: Readonly<{
+    gapMilliseconds: number;
   }>;
   readonly guestOpening: Readonly<{ characters: number }>;
   readonly contextFiles: Readonly<{ words: number; catalogItems: number }>;
@@ -78,10 +70,10 @@ export interface PromptBudgets {
 export const PROMPT_BUDGETS: PromptBudgets = {
   fileExcerpt: { words: 10_000, bytes: 5 * 1024 * 1024 },
   personaExcerpt: { words: 10_000, characters: 120_000 },
-  // Sprint 12 interim bump (10k → 35k, Okey 2026-07-17). Making this a user
+  // Raised to 50k for long-form Workshop rooms (Okey 2026-07-26). Making this a user
   // setting is tracked in .todo/tech-debt/2026-07-17-context-attachment-budget-setting.md.
   contextAttachments: {
-    words: 35_000,
+    words: 50_000,
     characters: 420_000,
     fileBytes: 5 * 1024 * 1024
   },
@@ -106,22 +98,14 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     readSourceBytes: 2 * 1024 * 1024,
     readBytes: 64 * 1024
   },
-  toolEvidence: { characters: 50_000 },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
-  directHandoff: {
-    turns: 8,
-    characters: 20_000,
-    headerAllowanceCharacters: 800
-  },
   guestJoinSnapshot: {
-    turns: 20,
-    characters: 24_000,
+    turns: 100,
+    characters: 100_000,
     headerAllowanceCharacters: 1_200
   },
-  guestCatchUp: {
-    turns: 8,
-    characters: 20_000,
-    headerAllowanceCharacters: 800
+  workshopRoom: {
+    gapMilliseconds: 60 * 60 * 1_000
   },
   guestOpening: { characters: 2_000 },
   contextFiles: { words: 50_000, catalogItems: 100 },

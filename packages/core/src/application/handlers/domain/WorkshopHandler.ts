@@ -33,6 +33,9 @@ import {
 } from '@/application/services/workshop/WorkshopSessionService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import {
+  WorkshopRoomDeliveryService
+} from '@/application/services/workshop/WorkshopRoomDeliveryService';
+import {
   WorkshopConfiguredResourceLoadResult,
   WorkshopContextResourceService
 } from '@/application/services/workshop/WorkshopContextResourceService';
@@ -46,10 +49,7 @@ import { WorkshopSessionPersistenceCoordinator } from '@/application/services/wo
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import {
   buildWorkshopContextAttachmentsFrame,
-  buildWorkshopDirectHandoff,
   buildWorkshopExcerptSourceFrame,
-  buildWorkshopGuestCatchUp,
-  buildWorkshopGuestHandoff,
   buildWorkshopGuestJoinMessage,
   buildWorkshopGuestMessage,
   buildWorkshopHostMessage,
@@ -76,6 +76,7 @@ import {
 } from '@shared/constants/workshopPersonas';
 import { workshopQuickActionPrompt } from '@shared/constants/workshopQuickActions';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
+import { workshopWriterPreferredAddress } from '@/utils/workshopWriterProfile';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { createHash } from 'crypto';
 import * as path from 'path';
@@ -252,6 +253,7 @@ export class WorkshopHandler {
     private readonly assistantToolService: AssistantToolService,
     private readonly contextAssistantService: ContextAssistantService,
     private readonly session: WorkshopSessionService,
+    private readonly roomDelivery: WorkshopRoomDeliveryService,
     private readonly runToolSidePass: RunWorkshopToolSidePass,
     private readonly capabilityFactory: WorkshopPersonaCapabilityFactory,
     private readonly postMessage: MessageTransport,
@@ -620,6 +622,7 @@ export class WorkshopHandler {
       const timeNotice = this.sessionTime.prepareNotice(
         workshopGuestConversationKey(personaId)
       );
+      const writerProfile = this.conversationSettingsService.getWriterProfile();
       const userTurn = this.session.beginPersonaGuestJoin(
         personaId,
         requestId,
@@ -628,8 +631,15 @@ export class WorkshopHandler {
       const join = buildWorkshopGuestJoinMessage({
         guestPersonaId: personaId,
         excerpt,
-        hostTurns: this.session.collectHostThreadTurns(),
+        roomTurns: this.roomDelivery.prepareJoinSnapshot({
+          kind: 'personaGuest',
+          personaId
+        }, userTurn.id),
         openingMessage,
+        roomFrameOptions: {
+          writerName: workshopWriterPreferredAddress(writerProfile),
+          renderedAt: Date.now()
+        },
         timeFrame: timeNotice?.frame,
         ...behaviorFramesFor(userTurn)
       });
@@ -670,7 +680,7 @@ export class WorkshopHandler {
           personaId,
           message: join.message,
           behavior: userTurn.behavior!,
-          writerProfile: this.conversationSettingsService.getWriterProfile()
+          writerProfile
         }, {
           signal: controller.signal,
           onToken: (token: string) => this.sendStreamChunk(requestId, token),
@@ -890,15 +900,20 @@ export class WorkshopHandler {
     }
 
     this.preemptActiveRun();
-    const handoff = target.kind === 'host'
-      ? buildWorkshopDirectHandoff(this.session.collectUnseenDirectExchanges())
+    const roomReader: WorkshopCapabilityPrincipal | undefined =
+      target.kind === 'host'
+        ? { kind: 'host' }
+        : target.kind === 'personaGuest'
+          ? { kind: 'personaGuest', personaId: target.personaId }
+          : undefined;
+    const writerProfile = this.conversationSettingsService.getWriterProfile();
+    const roomDelivery = roomReader
+      ? this.roomDelivery.prepare(roomReader, {
+          writerName: workshopWriterPreferredAddress(writerProfile),
+          renderedAt: Date.now()
+        })
       : undefined;
-    const guestHandoff = target.kind === 'host'
-      ? buildWorkshopGuestHandoff(this.session.collectUnseenGuestExchangesForHost())
-      : undefined;
-    const guestCatchUp = target.kind === 'personaGuest'
-      ? buildWorkshopGuestCatchUp(this.session.collectUnseenHostTurnsForGuest(target.personaId))
-      : undefined;
+    const roomCatchUp = roomDelivery?.frame;
     const pendingHostUpdates = target.kind === 'host'
       ? this.session.collectPendingHostUpdates()
       : undefined;
@@ -915,19 +930,9 @@ export class WorkshopHandler {
         `[WorkshopHandler] Pending host update prepared (${describeWorkshopPendingHostUpdates(pendingHostUpdates)}; ${hostConversationId ? 'retained delta frame' : 'fresh-host initial envelope'})`
       );
     }
-    if (handoff) {
+    if (roomDelivery && roomDelivery.deliveredTurnIds.length > 0) {
       this.outputChannel.appendLine(
-        `[WorkshopHandler] Direct handoff prepared: ${handoff.unseenTurns} unseen → ${handoff.includedTurns} included, ${handoff.omittedTurns} omitted, ${handoff.truncatedCharacters} chars truncated`
-      );
-    }
-    if (guestHandoff) {
-      this.outputChannel.appendLine(
-        `[WorkshopHandler] Guest handoff prepared: ${guestHandoff.includedTurns} included, ${guestHandoff.omittedTurns} omitted, ${guestHandoff.truncatedCharacters} chars truncated`
-      );
-    }
-    if (guestCatchUp && target.kind === 'personaGuest') {
-      this.outputChannel.appendLine(
-        `[WorkshopHandler] Guest catch-up prepared (persona=${target.personaId}): ${guestCatchUp.includedTurns} included, ${guestCatchUp.omittedTurns} omitted, ${guestCatchUp.truncatedCharacters} chars truncated`
+        `[WorkshopHandler] Room catch-up prepared (${roomReader?.kind === 'host' ? 'host' : `guest=${roomReader?.personaId}`}): ${roomDelivery.deliveredTurnIds.length} whole turns included, ${roomDelivery.deferredTurns} deferred`
       );
     }
     const { conversationId, label, requestType, toolId, guestPersonaId } = targetDetails;
@@ -976,15 +981,14 @@ export class WorkshopHandler {
           timeFrame: timeNotice?.frame
         };
         modelMessage = buildWorkshopHostMessage(text, {
-          handoff,
-          guestHandoff,
+          roomCatchUp,
           todoEvidence,
           hostUpdate: hostUpdateFrame,
           threadArtifactFrames,
           ...(conversationId ? personaBehaviorFrames : {})
         });
-        statusMessage = handoff
-          ? `Handing ${handoff.unseenTurns} unseen direct-tool turn${handoff.unseenTurns === 1 ? '' : 's'} back to ${label}…`
+        statusMessage = roomCatchUp
+          ? `Catching ${label} up on the room…`
           : `Streaming ${label}…`;
         break;
       case 'tool':
@@ -1012,11 +1016,11 @@ export class WorkshopHandler {
         };
         modelMessage = buildWorkshopGuestMessage(
           text,
-          guestCatchUp,
+          roomCatchUp,
           threadArtifactFrames,
           personaBehaviorFrames
         );
-        statusMessage = guestCatchUp
+        statusMessage = roomCatchUp
           ? `Catching ${label} up on the room…`
           : `Continuing with ${label}…`;
         break;
@@ -1027,12 +1031,7 @@ export class WorkshopHandler {
     // sidecars stay capability-free instruments. Decide "which participant is
     // this" exactly once (PR #89 review #13) so the gate, the speaking
     // persona, and the persisted principal cannot drift apart.
-    const participantOwner: WorkshopCapabilityPrincipal | undefined =
-      target.kind === 'personaGuest'
-        ? { kind: 'personaGuest', personaId: target.personaId }
-        : target.kind === 'host'
-          ? { kind: 'host' }
-          : undefined;
+    const participantOwner = roomReader;
     const participantCapability = participantOwner
       ? this.capabilityFactory.create({
           requestId,
@@ -1071,7 +1070,7 @@ export class WorkshopHandler {
             excerpt,
             message: modelMessage,
             behavior: userTurn.behavior!,
-            writerProfile: this.conversationSettingsService.getWriterProfile(),
+            writerProfile,
             messageIsTrustedEnvelope: true,
             ...personaBehaviorFrames,
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
@@ -1105,14 +1104,34 @@ export class WorkshopHandler {
             this.sendError('workshop.send_message', errorMessage, details)
         }
       });
-      if (assistantTurn && target.kind === 'host' && handoff) {
-        this.session.commitHostHandoff(handoff.deliveredTurnIds);
-      }
-      if (assistantTurn && target.kind === 'host' && guestHandoff) {
-        this.session.commitHostGuestHandoff(guestHandoff.deliveredTurnIds);
-      }
-      if (assistantTurn && target.kind === 'personaGuest') {
-        this.session.commitGuestCatchUp(target.personaId, guestCatchUp?.deliveredTurnIds ?? []);
+      if (assistantTurn && roomDelivery) {
+        try {
+          this.roomDelivery.commit(roomDelivery);
+          this.outputChannel.appendLine(
+            `[WorkshopHandler] Room delivery committed ` +
+            `(${roomDelivery.reader.kind === 'host'
+              ? 'host'
+              : `guest=${roomDelivery.reader.personaId}`}; ` +
+            `through=${roomDelivery.deliveredTurnIds.at(-1) ?? '<none>'})`
+          );
+        } catch (error) {
+          // The model reply is already committed and visible. A failed
+          // acknowledgement is bookkeeping failure only; retain the offset so
+          // the same contiguous prefix retries instead of misreporting the
+          // successful participant turn as failed.
+          this.outputChannel.appendLine(
+            `[WorkshopHandler] Room delivery acknowledgement retained for retry after ` +
+            `committed ${label} reply: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+      } else if (roomDelivery) {
+        this.outputChannel.appendLine(
+          `[WorkshopHandler] Room delivery retained after incomplete ${label} reply ` +
+          `(${roomDelivery.reader.kind === 'host'
+            ? 'host'
+            : `guest=${roomDelivery.reader.personaId}`}; ` +
+          `${roomDelivery.deliveredTurnIds.length} turns remain pending)`
+        );
       }
       if (assistantTurn && target.kind === 'host' && pendingHostUpdates) {
         this.session.commitPendingHostUpdates(pendingHostUpdates);
@@ -1348,7 +1367,7 @@ export class WorkshopHandler {
   /**
    * Serve ONE attachment's body to the Edit/Preview sheet (Sprint 13A §7).
    *
-   * Attachment content is prompt-bearing host state under a 35,000-word shared
+   * Attachment content is prompt-bearing host state under a 50,000-word shared
    * budget, so it deliberately does not ride every session snapshot — the
    * webview asks for exactly the one the writer opened.
    */

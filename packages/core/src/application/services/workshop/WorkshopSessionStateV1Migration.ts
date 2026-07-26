@@ -11,10 +11,12 @@ import type {
 
 export type WorkshopSessionHydrationMigration =
   | 'discarded-legacy-scope-transition'
+  | 'discarded-legacy-delivery-cursors'
   | 'inferred-missing-scope'
   | 'normalized-open-session-with-excerpt'
   | 'restored-undelivered-withdrawal'
-  | 'defaulted-capability-principal';
+  | 'defaulted-capability-principal'
+  | 'headed-missing-room-offsets';
 
 export interface WorkshopSessionStateV1MigrationResult {
   state: WorkshopSessionStateV1;
@@ -65,6 +67,60 @@ export function migrateWorkshopSessionStateV1ForHydration(
     migrations.push('defaulted-capability-principal');
   }
 
+  const ledgerHead = turns.at(-1)?.id;
+  const discardedLegacyDeliveryCursors =
+    state.participants.toolSidecars.some(
+      (sidecar) => sidecar.deliveredToHostThroughTurnId !== undefined
+    )
+    || state.participants.personaGuests.some(
+      (guest) =>
+        guest.lastSeenHostTurnId !== undefined
+        || guest.deliveredToHostThroughTurnId !== undefined
+    );
+  const headedMissingRoomOffsets =
+    ledgerHead !== undefined
+    && (
+      state.participants.host.lastSeenRoomTurnId === undefined
+      || state.participants.personaGuests.some(
+        (guest) => guest.lastSeenRoomTurnId === undefined
+      )
+    );
+  if (discardedLegacyDeliveryCursors) {
+    migrations.push('discarded-legacy-delivery-cursors');
+  }
+  if (headedMissingRoomOffsets) {
+    migrations.push('headed-missing-room-offsets');
+  }
+
+  const toolSidecars = state.participants.toolSidecars.map((sidecar) => {
+    const {
+      deliveredToHostThroughTurnId: _legacyDeliveryCursor,
+      ...currentSidecar
+    } = sidecar;
+    return currentSidecar;
+  });
+  const personaGuests = state.participants.personaGuests.map((guest) => {
+    const {
+      lastSeenHostTurnId: _legacyHostCursor,
+      deliveredToHostThroughTurnId: _legacyDeliveryCursor,
+      ...currentGuest
+    } = guest;
+    return {
+      ...currentGuest,
+      lastSeenRoomTurnId: currentGuest.lastSeenRoomTurnId ?? ledgerHead
+    };
+  });
+  const participants = {
+    ...state.participants,
+    host: {
+      ...state.participants.host,
+      lastSeenRoomTurnId:
+        state.participants.host.lastSeenRoomTurnId ?? ledgerHead
+    },
+    toolSidecars,
+    personaGuests
+  };
+
   const excerpt = withdrawalNeverShipped
     ? state.shelvedExcerpt
     : state.excerpt;
@@ -85,7 +141,8 @@ export function migrateWorkshopSessionStateV1ForHydration(
       excerpt,
       scope,
       shelvedExcerpt,
-      revisions
+      revisions,
+      participants
     },
     migrations
   };

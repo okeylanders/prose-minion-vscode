@@ -1,7 +1,7 @@
 # Feature: Workshop Guest-to-Guest Room Catch-Up
 
 **Date Identified**: 2026-07-22
-**Status**: Planned in [Sprint 13D](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/13d-room-catchup-release-polish.md), with the governing [Sprint 13 delivery plan](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/13-open-chat-guest-room-polish.md)
+**Status**: Implemented in [Sprint 13D](../../epics/epic-workshop-editor-tab-2026-07-03/sprints/13d-room-catchup-release-polish.md); manual release smoke pending
 **Priority**: High — room behavior is release-polish work once guests are visible participants
 **Estimated Effort**: Medium
 **Origin**: Writer UX review of direct switching between live guest personas
@@ -99,25 +99,25 @@ gives the desired idempotence:
 
 ## Completion Criteria
 
-- [ ] Sending a message to Guest B after a direct Guest A exchange gives B a
+- [x] Sending a message to Guest B after a direct Guest A exchange gives B a
       speaker-labeled catch-up containing A's unseen exchange.
-- [ ] A host turn that Guest B missed is included in the same room catch-up.
-- [ ] Guest B's own prior conversation, direct-tool sidecar conversation,
+- [x] A host turn that Guest B missed is included in the same room catch-up.
+- [x] Guest B's own prior conversation, direct-tool sidecar conversation,
       catalog/search traffic, and failed/cancelled/uncommitted capability work
       owned by other principals are excluded.
-- [ ] Evidence-bearing resource reads, dictionary results, and
+- [x] Evidence-bearing resource reads, dictionary results, and
       participant-requested analysis results become room evidence only when the
       invoking participant's final reply commits.
-- [ ] Catch-up uses universal turn IDs plus one `lastSeenRoomTurnId` per
+- [x] Catch-up uses universal turn IDs plus one `lastSeenRoomTurnId` per
       participant; retries are idempotent and only the delivered prefix
       advances the offset.
-- [ ] No frame splits a turn, within or across deliveries.
-- [ ] Returning to the host delivers Guest A/B exchanges exactly once, through
+- [x] No frame splits a turn, within or across deliveries.
+- [x] Returning to the host delivers Guest A/B exchanges exactly once, through
       the host's own offset.
-- [ ] Target switching alone makes no provider call and appends no hidden turn.
-- [ ] The tool side-pass delivers through the single shared site; an
+- [x] Target switching alone makes no provider call and appends no hidden turn.
+- [x] The tool side-pass delivers through the single shared site; an
       architecture guard asserts one catch-up call site and one offset-advance
       call site.
-- [ ] Focused aggregate, prompt-builder, and handler tests cover A → B,
+- [x] Focused aggregate, prompt-builder, and handler tests cover A → B,
       A → host, retries/cancellation, atomic turns, disposed and re-invited
       guests, and a session file carrying the legacy cursor keys.

@@ -1,12 +1,14 @@
 /** Focused Sprint 06B use case: isolated tool report, then host synthesis. */
 
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import {
+  WorkshopRoomDeliveryService
+} from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
 import {
   buildWorkshopContextAttachmentsFrame,
-  buildWorkshopDirectHandoff,
   buildWorkshopExcerptSourceFrame,
   buildWorkshopBehaviorActivationFrame,
   buildWorkshopHostMessage,
@@ -14,8 +16,7 @@ import {
   buildWorkshopInteractionFrame,
   buildWorkshopInteractionTransitionFrame,
   buildWorkshopTodoEvidence,
-  describeWorkshopPendingHostUpdates,
-  buildWorkshopToolEvidence
+  describeWorkshopPendingHostUpdates
 } from '@/application/services/workshop/WorkshopPromptBuilder';
 import {
   completeWorkshopRun,
@@ -25,6 +26,7 @@ import { LogSink } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
+import { workshopWriterPreferredAddress } from '@/utils/workshopWriterProfile';
 import {
   isApiKeyNotConfiguredWarning,
   TokenUsage,
@@ -64,6 +66,7 @@ export class RunWorkshopToolSidePass {
     private readonly assistantToolService: AssistantToolService,
     private readonly analysisSidePass: WorkshopAnalysisSidePass,
     private readonly session: WorkshopSessionService,
+    private readonly roomDelivery: WorkshopRoomDeliveryService,
     private readonly capabilityFactory: WorkshopPersonaCapabilityFactory,
     private readonly outputChannel: LogSink,
     private readonly writerProfileService: WorkshopWriterProfileService
@@ -83,7 +86,6 @@ export class RunWorkshopToolSidePass {
     let reportAdopted = false;
     let hostDeliveryAttempted = false;
     const hadHostConversation = this.session.hasHostConversation();
-    const pendingHandoff = buildWorkshopDirectHandoff(this.session.collectUnseenDirectExchanges());
     const pendingHostUpdates = this.session.collectPendingHostUpdates();
     const todoEvidence = buildWorkshopTodoEvidence(this.session.collectOpenTodosForHost());
     const hostUpdateFrame = hadHostConversation
@@ -92,11 +94,6 @@ export class RunWorkshopToolSidePass {
     if (pendingHostUpdates) {
       this.outputChannel.appendLine(
         `[RunWorkshopToolSidePass] Pending host update prepared for synthesis (${describeWorkshopPendingHostUpdates(pendingHostUpdates)}; ${hadHostConversation ? 'retained delta frame' : 'fresh-host initial envelope'})`
-      );
-    }
-    if (pendingHandoff) {
-      this.outputChannel.appendLine(
-        `[RunWorkshopToolSidePass] Direct handoff prepared for synthesis: ${pendingHandoff.unseenTurns} unseen → ${pendingHandoff.includedTurns} included, ${pendingHandoff.omittedTurns} omitted, ${pendingHandoff.truncatedCharacters} chars truncated`
       );
     }
 
@@ -169,6 +166,20 @@ export class RunWorkshopToolSidePass {
       reportAdopted = true;
       events.sessionChanged();
 
+      const writerProfile = this.writerProfileService.getProfile();
+      const pendingRoomDelivery = this.roomDelivery.prepare(
+        { kind: 'host' },
+        {
+          writerName: workshopWriterPreferredAddress(writerProfile),
+          renderedAt: Date.now()
+        }
+      );
+      const roomCatchUp = pendingRoomDelivery.frame;
+      if (roomCatchUp) {
+        this.outputChannel.appendLine(
+          `[RunWorkshopToolSidePass] Room catch-up prepared for synthesis: ${pendingRoomDelivery.deliveredTurnIds.length} whole turns included, ${pendingRoomDelivery.deferredTurns} deferred`
+        );
+      }
       const synthesisRequestId = createRequestId(`workshop_${toolId}_synthesis`);
       currentRequestId = synthesisRequestId;
       events.activatePhase(synthesisRequestId, personaLabel, toolId, controller);
@@ -176,13 +187,8 @@ export class RunWorkshopToolSidePass {
       events.streamStarted(synthesisRequestId);
       events.status(`Waiting for ${personaLabel} to synthesize ${toolLabel}…`);
 
-      const evidence = buildWorkshopToolEvidence({
-        toolId,
-        originatingRequest: userTurn.content,
-        report: result.content,
-        usage: result.usage,
-        truncated
-      });
+      const synthesisRequest =
+        `Synthesize ${toolLabel}'s newly completed room report for the writer.`;
       const behaviorMetadata = this.session.getPersonaBehaviorMetadata();
       const behaviorFrames = {
         interactionFrame: behaviorMetadata.behavior
@@ -196,8 +202,8 @@ export class RunWorkshopToolSidePass {
           : undefined
       };
       const hostConversationId = this.session.getHostConversationId();
-      const hostMessage = buildWorkshopHostMessage(evidence, {
-        handoff: pendingHandoff,
+      const hostMessage = buildWorkshopHostMessage(synthesisRequest, {
+        roomCatchUp,
         todoEvidence,
         writerMessageIsTrustedEnvelope: true,
         hostUpdate: hostUpdateFrame,
@@ -229,7 +235,7 @@ export class RunWorkshopToolSidePass {
             excerpt,
             message: hostMessage,
             behavior: behaviorMetadata.behavior!,
-            writerProfile: this.writerProfileService.getProfile(),
+            writerProfile,
             messageIsTrustedEnvelope: true,
             ...behaviorFrames,
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
@@ -258,8 +264,26 @@ export class RunWorkshopToolSidePass {
           error: events.error
         }
       });
-      if (synthesisTurn && pendingHandoff) {
-        this.session.commitHostHandoff(pendingHandoff.deliveredTurnIds);
+      if (synthesisTurn) {
+        try {
+          this.roomDelivery.commit(pendingRoomDelivery);
+          this.outputChannel.appendLine(
+            `[RunWorkshopToolSidePass] Room delivery committed for host ` +
+            `(through=${pendingRoomDelivery.deliveredTurnIds.at(-1) ?? '<none>'})`
+          );
+        } catch (error) {
+          // Synthesis already landed. Keep the room offset pending and retry
+          // the same contiguous prefix on the next host turn.
+          this.outputChannel.appendLine(
+            `[RunWorkshopToolSidePass] Room delivery acknowledgement retained for retry ` +
+            `after committed synthesis: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+      } else {
+        this.outputChannel.appendLine(
+          `[RunWorkshopToolSidePass] Room delivery retained after incomplete synthesis ` +
+          `(${pendingRoomDelivery.deliveredTurnIds.length} turns remain pending)`
+        );
       }
       if (synthesisTurn && pendingHostUpdates) {
         this.session.commitPendingHostUpdates(pendingHostUpdates);

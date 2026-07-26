@@ -2,10 +2,10 @@
  * Host-owned Workshop session aggregate (ADR 2026-07-09, Sprint 06B).
  *
  * The aggregate owns one immutable persona host identity, the latest retained
- * sidecar per tool, explicit composer routing, report correlation, and the
- * transactional direct-tool delivery cursor, versioned excerpt revisions, and
- * pending host updates. Provider conversation ids never cross the
- * extension/webview boundary.
+ * sidecar per tool, explicit composer routing, report correlation,
+ * participant room offsets, versioned excerpt revisions, and pending host
+ * updates. Provider conversation ids never cross the extension/webview
+ * boundary.
  */
 
 import {
@@ -42,6 +42,7 @@ import { isContextPathGroup, TokenUsage } from '@shared/types';
 import {
   WorkshopCapabilityArtifactDetails,
   WorkshopAnalysisInputProvenance,
+  WorkshopCapabilityPrincipal,
   WorkshopCapabilityResult
 } from '@shared/types/workshopCapabilities';
 import {
@@ -55,6 +56,9 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   WORKSHOP_ACTIONABLE_FINDING_BOUNDS
 } from '@/application/services/workshop/WorkshopActionableFindings';
+import {
+  isWorkshopPublishableCapabilityEvidence
+} from '@/application/services/workshop/WorkshopRoomAudience';
 import { WORKSHOP_TODO_BOUNDS } from '@/application/services/workshop/WorkshopSessionLimits';
 import {
   WorkshopConversationLogicalKey,
@@ -87,18 +91,18 @@ export interface WorkshopExcerptInput {
   sourceFingerprint?: string;
 }
 
-export const WORKSHOP_SNAPSHOT_TURN_WINDOW = 100;
+export const WORKSHOP_SNAPSHOT_TURN_WINDOW = 200;
 
 interface WorkshopToolSidecar {
   conversationId: string;
   latestReportTurnId: string;
-  deliveredToHostThroughTurnId: string;
 }
 
 interface WorkshopParticipants {
   host: {
     personaId: WorkshopPersonaId;
     conversationId?: string;
+    lastSeenRoomTurnId?: string;
   };
   toolSidecars: Partial<Record<WorkshopToolId, WorkshopToolSidecar>>;
   personaGuests: Map<WorkshopPersonaId, WorkshopPersonaGuest>;
@@ -108,8 +112,7 @@ interface WorkshopParticipants {
 interface WorkshopPersonaGuest {
   personaId: WorkshopPersonaId;
   conversationId?: string;
-  lastSeenHostTurnId?: string;
-  deliveredToHostThroughTurnId?: string;
+  lastSeenRoomTurnId?: string;
   liveness: 'live' | 'disposed';
 }
 
@@ -133,6 +136,8 @@ interface ActiveRun {
   /** Behavior captured when a persona run begins; settings cannot change mid-run. */
   behavior?: WorkshopConversationBehavior;
   behaviorTransition?: WorkshopConversationBehaviorTransition;
+  /** Provisional evidence finalized only if this participant reply commits. */
+  capabilityTurnIds?: string[];
 }
 
 /**
@@ -988,6 +993,75 @@ export class WorkshopSessionService {
       : undefined;
   }
 
+  /**
+   * Narrow aggregate port for WorkshopRoomDeliveryService. The aggregate
+   * exposes durable facts; projection and acknowledgement policy stay in the
+   * injected delivery collaborator.
+   */
+  readRoomDeliveryState(reader: WorkshopCapabilityPrincipal): {
+    turns: WorkshopTurn[];
+    lastSeenRoomTurnId?: string;
+  } {
+    if (reader.kind === 'host') {
+      return {
+        turns: this.turns.map(cloneTurn),
+        lastSeenRoomTurnId: this.participants.host.lastSeenRoomTurnId
+      };
+    }
+    const guest = this.participants.personaGuests.get(reader.personaId);
+    if (guest?.liveness !== 'live') {
+      throw new Error(`Workshop guest ${reader.personaId} is not a live room reader`);
+    }
+    return {
+      turns: this.turns.map(cloneTurn),
+      lastSeenRoomTurnId: guest.lastSeenRoomTurnId
+    };
+  }
+
+  /** Full defensive ledger read used only for a new participant's snapshot. */
+  readRoomLedger(): WorkshopTurn[] {
+    return this.turns.map(cloneTurn);
+  }
+
+  /**
+   * Compare-and-set the durable room offset after the delivery collaborator
+   * has proved an exact contiguous receipt.
+   */
+  advanceRoomDeliveryOffset(
+    reader: WorkshopCapabilityPrincipal,
+    expectedOffset: string | undefined,
+    deliveredThroughTurnId: string
+  ): void {
+    const readerLabel = reader.kind === 'host'
+      ? 'host'
+      : `guest:${reader.personaId}`;
+    if (!this.turns.some((turn) => turn.id === deliveredThroughTurnId)) {
+      throw new Error(
+        `Cannot advance Workshop room offset for ${readerLabel} to unknown turn ` +
+        `${deliveredThroughTurnId} (expected offset=${expectedOffset ?? '<start>'})`
+      );
+    }
+    const participant = reader.kind === 'host'
+      ? this.participants.host
+      : this.participants.personaGuests.get(reader.personaId);
+    if (!participant || ('liveness' in participant && participant.liveness !== 'live')) {
+      throw new Error(
+        `Cannot advance Workshop room offset for non-live ${readerLabel} ` +
+        `(expected offset=${expectedOffset ?? '<start>'}, ` +
+        `delivered through=${deliveredThroughTurnId})`
+      );
+    }
+    if (participant.lastSeenRoomTurnId !== expectedOffset) {
+      throw new Error(
+        `Workshop room offset changed during delivery for ${readerLabel} ` +
+        `(expected=${expectedOffset ?? '<start>'}, ` +
+        `actual=${participant.lastSeenRoomTurnId ?? '<start>'}, ` +
+        `delivered through=${deliveredThroughTurnId})`
+      );
+    }
+    participant.lastSeenRoomTurnId = deliveredThroughTurnId;
+  }
+
   /** Validate a user invitation before the provider conversation is created. */
   validatePersonaGuestInvitation(personaId: WorkshopPersonaId): void {
     if (personaId === this.participants.host.personaId) {
@@ -1003,20 +1077,17 @@ export class WorkshopSessionService {
     }
   }
 
-  /** Adopt a successful fresh guest conversation and establish its cursors. */
+  /** Adopt a successful fresh guest conversation at the join snapshot's head. */
   adoptPersonaGuest(personaId: WorkshopPersonaId, conversationId: string): void {
     this.validatePersonaGuestInvitation(personaId);
     if (!conversationId.trim()) {
       throw new Error('Cannot retain a guest without a conversation id');
     }
-    const cursor = this.latestHostThreadTurnId();
-    const previousDeliveryCursor = this.participants.personaGuests.get(personaId)
-      ?.deliveredToHostThroughTurnId;
+    const roomHead = this.turns.at(-1)?.id;
     this.participants.personaGuests.set(personaId, {
       personaId,
       conversationId,
-      lastSeenHostTurnId: cursor,
-      deliveredToHostThroughTurnId: previousDeliveryCursor ?? cursor,
+      lastSeenRoomTurnId: roomHead,
       liveness: 'live'
     });
     // The join envelope delivered the current pin (Phase 7).
@@ -1237,6 +1308,10 @@ export class WorkshopSessionService {
     };
 
     this.turns.push(turn);
+    this.activeRun!.capabilityTurnIds = [
+      ...(this.activeRun!.capabilityTurnIds ?? []),
+      turn.id
+    ];
     return { turn: cloneTurn(turn) };
   }
 
@@ -1363,7 +1438,6 @@ export class WorkshopSessionService {
     }
 
     const active = this.activeRun;
-    this.activeRun = undefined;
     const isHost = active.target === 'host';
     const isGuest = active.target === 'personaGuest';
     const toolSidecar = active.toolId
@@ -1393,7 +1467,7 @@ export class WorkshopSessionService {
       usage: usage ? { ...usage } : undefined,
       truncated: truncated || undefined,
       excerptVersion: active.excerptVersion,
-      actionableFindings: isHost && actionableFindings.length > 0
+      actionableFindings: (isHost || isGuest) && actionableFindings.length > 0
         ? cloneFindings(actionableFindings)
         : undefined,
       behavior: (isHost || isGuest) && active.behavior
@@ -1422,6 +1496,17 @@ export class WorkshopSessionService {
       }
     }
     this.turns.push(turn);
+    const capabilityTurnIds = new Set(active.capabilityTurnIds ?? []);
+    for (const capabilityTurn of this.turns) {
+      if (
+        capabilityTurnIds.has(capabilityTurn.id)
+        && capabilityTurn.capability
+        && isWorkshopPublishableCapabilityEvidence(capabilityTurn.capability)
+      ) {
+        capabilityTurn.capability.publishedWithTurnId = turn.id;
+      }
+    }
+    this.activeRun = undefined;
     if ((isHost || isGuest) && active.behavior) {
       this.lastCommittedPersonaBehavior = {
         interactionMode: active.behavior.interactionMode,
@@ -1432,208 +1517,24 @@ export class WorkshopSessionService {
     return cloneTurn(turn);
   }
 
-  /**
-   * Collect the unseen direct-tool exchanges (writer message + tool response
-   * pairs) past every sidecar's delivery cursor, in thread order. A pure
-   * state query with no cursor movement: the bounded prompt envelope is
-   * WorkshopPromptBuilder's job, and cursors advance only through
-   * commitHostHandoff with the turn ids that actually shipped (PR #72
-   * reviews #1/#6).
-   */
-  collectUnseenDirectExchanges(): WorkshopTurn[] {
-    const turnIndexes = new Map(this.turns.map((turn, index) => [turn.id, index]));
-    const unseen: WorkshopTurn[] = [];
-
-    for (const [rawToolId, sidecar] of Object.entries(this.participants.toolSidecars)) {
-      if (!sidecar) {
-        continue;
-      }
-      const toolId = rawToolId as WorkshopToolId;
-      const deliveredIndex = turnIndexes.get(sidecar.deliveredToHostThroughTurnId) ?? -1;
-      for (let index = deliveredIndex + 1; index < this.turns.length; index += 1) {
-        const response = this.turns[index];
-        if (response.toolId !== toolId || response.artifact !== 'direct_tool_response') {
-          continue;
-        }
-        // Exchanges keep the reportTurnId of the report they followed; a
-        // replaced report does NOT orphan them — the cursor alone decides
-        // delivery (PR #72 review #2). The pair check only guards integrity.
-        const writerTurn = this.turns[index - 1];
-        if (
-          index - 1 > deliveredIndex &&
-          writerTurn?.toolId === toolId &&
-          writerTurn.artifact === 'direct_tool_message' &&
-          writerTurn.reportTurnId === response.reportTurnId
-        ) {
-          unseen.push(writerTurn);
-        }
-        unseen.push(response);
-      }
-    }
-
-    unseen.sort((left, right) =>
-      (turnIndexes.get(left.id) ?? 0) - (turnIndexes.get(right.id) ?? 0)
-    );
-    return unseen.map(cloneTurn);
-  }
-
-  /**
-   * Advance per-tool delivery cursors after a successful host turn, given the
-   * turn ids whose content actually shipped in the handoff envelope. Deriving
-   * the commit from the SHIPPED set — never from the unseen set — means
-   * windowing and character budgeting can only defer an exchange to the next
-   * handoff, not silently mark it delivered (PR #72 review #1). Cursors only
-   * move forward.
-   */
-  commitHostHandoff(deliveredTurnIds: readonly string[]): void {
-    const turnIndexes = new Map(this.turns.map((turn, index) => [turn.id, index]));
-    for (const [rawToolId, sidecar] of Object.entries(this.participants.toolSidecars)) {
-      if (!sidecar) {
-        continue;
-      }
-      const toolId = rawToolId as WorkshopToolId;
-      let cursorIndex = turnIndexes.get(sidecar.deliveredToHostThroughTurnId) ?? -1;
-      for (const turnId of deliveredTurnIds) {
-        const index = turnIndexes.get(turnId);
-        if (index !== undefined && index > cursorIndex && this.turns[index].toolId === toolId) {
-          cursorIndex = index;
-          sidecar.deliveredToHostThroughTurnId = turnId;
-        }
-      }
-    }
-  }
-
-  /** Collect room turns a guest has not yet seen; this is a pure cursor read. */
-  collectUnseenHostTurnsForGuest(personaId: WorkshopPersonaId): WorkshopTurn[] {
-    const guest = this.participants.personaGuests.get(personaId);
-    if (guest?.liveness !== 'live') {
-      return [];
-    }
-    const turnIndexes = new Map(this.turns.map((turn, index) => [turn.id, index]));
-    const cursorIndex = guest.lastSeenHostTurnId
-      ? turnIndexes.get(guest.lastSeenHostTurnId) ?? -1
-      : -1;
-    return this.turns
-      .slice(cursorIndex + 1)
-      .filter((turn) => this.isHostThreadTurn(turn))
-      .map(cloneTurn);
-  }
-
-  /** Full host-room view used only to build a bounded guest join envelope. */
-  collectHostThreadTurns(): WorkshopTurn[] {
-    return this.turns.filter((turn) => this.isHostThreadTurn(turn)).map(cloneTurn);
-  }
-
-  /** Adopt only the host delta that actually reached a successful guest turn. */
-  commitGuestCatchUp(personaId: WorkshopPersonaId, deliveredTurnIds: readonly string[]): void {
-    const guest = this.participants.personaGuests.get(personaId);
-    if (guest?.liveness !== 'live' || deliveredTurnIds.length === 0) {
-      return;
-    }
-    const turnIndexes = new Map(this.turns.map((turn, index) => [turn.id, index]));
-    let newestIndex = guest.lastSeenHostTurnId
-      ? turnIndexes.get(guest.lastSeenHostTurnId) ?? -1
-      : -1;
-    let newestTurnId = guest.lastSeenHostTurnId;
-    for (const turnId of deliveredTurnIds) {
-      const index = turnIndexes.get(turnId);
-      if (index !== undefined && index > newestIndex && this.isHostThreadTurn(this.turns[index])) {
-        newestIndex = index;
-        newestTurnId = turnId;
-      }
-    }
-    if (newestTurnId !== undefined) {
-      guest.lastSeenHostTurnId = newestTurnId;
-    }
-  }
-
-  /** Collect guest exchanges that the host has not yet received as evidence. */
-  collectUnseenGuestExchangesForHost(): WorkshopTurn[] {
-    if (this.participants.personaGuests.size === 0) {
-      return [];
-    }
-    const turnIndexes = new Map(this.turns.map((turn, index) => [turn.id, index]));
-    const unseen: WorkshopTurn[] = [];
-    for (const guest of this.participants.personaGuests.values()) {
-      const cursorIndex = guest.deliveredToHostThroughTurnId
-        ? turnIndexes.get(guest.deliveredToHostThroughTurnId) ?? -1
-        : -1;
-      for (let index = cursorIndex + 1; index < this.turns.length; index += 1) {
-        const response = this.turns[index];
-        if (response.participant !== 'guest' || response.personaId !== guest.personaId) {
-          continue;
-        }
-        // The writer's prompt is no longer guaranteed to sit at `index - 1`:
-        // Sprint 13C lets the guest's own capability artifacts land between
-        // the prompt and the reply (PR #89 review #1). Walk back past this
-        // guest's private artifacts to the turn that actually asked.
-        let writerIndex = index - 1;
-        while (
-          writerIndex > cursorIndex &&
-          isGuestOwnedCapabilityTurn(this.turns[writerIndex], guest.personaId)
-        ) {
-          writerIndex -= 1;
-        }
-        const writerTurn = this.turns[writerIndex];
-        if (
-          writerIndex > cursorIndex &&
-          writerTurn?.participant === 'writer' &&
-          writerTurn.personaId === guest.personaId &&
-          writerTurn.artifact === 'persona_message'
-        ) {
-          unseen.push(writerTurn);
-        }
-        unseen.push(response);
-      }
-    }
-    unseen.sort((left, right) =>
-      (turnIndexes.get(left.id) ?? 0) - (turnIndexes.get(right.id) ?? 0)
-    );
-    return unseen.map(cloneTurn);
-  }
-
-  /** Advance guest-to-host cursors only after the host turn succeeds. */
-  commitHostGuestHandoff(deliveredTurnIds: readonly string[]): void {
-    if (deliveredTurnIds.length === 0 || this.participants.personaGuests.size === 0) {
-      return;
-    }
-    const turnIndexes = new Map(this.turns.map((turn, index) => [turn.id, index]));
-    for (const guest of this.participants.personaGuests.values()) {
-      let newestIndex = guest.deliveredToHostThroughTurnId
-        ? turnIndexes.get(guest.deliveredToHostThroughTurnId) ?? -1
-        : -1;
-      let newestTurnId = guest.deliveredToHostThroughTurnId;
-      for (const turnId of deliveredTurnIds) {
-        const index = turnIndexes.get(turnId);
-        const turn = index === undefined ? undefined : this.turns[index];
-        if (
-          index !== undefined &&
-          index > newestIndex &&
-          turn?.participant === 'guest' &&
-          turn.personaId === guest.personaId
-        ) {
-          newestIndex = index;
-          newestTurnId = turnId;
-        }
-      }
-      if (newestTurnId !== undefined) {
-        guest.deliveredToHostThroughTurnId = newestTurnId;
-      }
-    }
-  }
-
   addTodoFromFinding(sourceTurnId: string, findingKey: string): WorkshopTodoItem {
     const sourceTurn = this.turns.find(
       (turn) =>
         turn.id === sourceTurnId &&
-        (turn.artifact === 'tool_report' || turn.participant === 'host')
+        (
+          turn.artifact === 'tool_report'
+          || turn.participant === 'host'
+          || turn.participant === 'guest'
+        )
     );
     const finding = sourceTurn?.actionableFindings?.find(
       (candidate) => candidate.key === findingKey
     );
     const isToolReport = sourceTurn?.artifact === 'tool_report' && !!sourceTurn.toolId;
-    const isHostTurn = sourceTurn?.participant === 'host' && !!sourceTurn.personaId;
-    if (!sourceTurn || (!isToolReport && !isHostTurn) || !finding) {
+    const isPersonaTurn =
+      (sourceTurn?.participant === 'host' || sourceTurn?.participant === 'guest')
+      && !!sourceTurn.personaId;
+    if (!sourceTurn || (!isToolReport && !isPersonaTurn) || !finding) {
       throw new Error('Cannot add a task from an unknown actionable finding');
     }
     if (sourceTurn.excerptVersion !== this.excerptVersion) {
@@ -1659,7 +1560,7 @@ export class WorkshopSessionService {
           excerptVersion: sourceTurn.excerptVersion
         }
       : {
-          kind: 'host_turn',
+          kind: sourceTurn.participant === 'host' ? 'host_turn' : 'guest_turn',
           turnId: sourceTurnId,
           participantLabel: sourceTurn.personaLabel ?? workshopPersonaLabel(sourceTurn.personaId!),
           personaId: sourceTurn.personaId!,
@@ -1843,7 +1744,8 @@ export class WorkshopSessionService {
       participants: {
         host: {
           personaId: this.participants.host.personaId,
-          conversationKey: this.participants.host.conversationId ? 'host' : undefined
+          conversationKey: this.participants.host.conversationId ? 'host' : undefined,
+          lastSeenRoomTurnId: this.participants.host.lastSeenRoomTurnId
         },
         toolSidecars: Object.entries(this.participants.toolSidecars).flatMap(
           ([rawToolId, sidecar]) => {
@@ -1854,8 +1756,7 @@ export class WorkshopSessionService {
             return [{
               toolId,
               conversationKey: `tool:${toolId}` as `tool:${WorkshopToolId}`,
-              latestReportTurnId: sidecar.latestReportTurnId,
-              deliveredToHostThroughTurnId: sidecar.deliveredToHostThroughTurnId
+              latestReportTurnId: sidecar.latestReportTurnId
             }];
           }
         ),
@@ -1864,8 +1765,7 @@ export class WorkshopSessionService {
           conversationKey: guest.conversationId
             ? `guest:${guest.personaId}` as `guest:${WorkshopPersonaId}`
             : undefined,
-          lastSeenHostTurnId: guest.lastSeenHostTurnId,
-          deliveredToHostThroughTurnId: guest.deliveredToHostThroughTurnId,
+          lastSeenRoomTurnId: guest.lastSeenRoomTurnId,
           liveness: guest.liveness
         })),
         chatTarget: this.getChatTarget()
@@ -1951,8 +1851,7 @@ export class WorkshopSessionService {
       }
       toolSidecars[sidecar.toolId] = {
         conversationId,
-        latestReportTurnId: sidecar.latestReportTurnId,
-        deliveredToHostThroughTurnId: sidecar.deliveredToHostThroughTurnId
+        latestReportTurnId: sidecar.latestReportTurnId
       };
     }
 
@@ -1971,8 +1870,7 @@ export class WorkshopSessionService {
       personaGuests.set(guest.personaId, {
         personaId: guest.personaId,
         conversationId: restoredLive ? conversationId : undefined,
-        lastSeenHostTurnId: guest.lastSeenHostTurnId,
-        deliveredToHostThroughTurnId: guest.deliveredToHostThroughTurnId,
+        lastSeenRoomTurnId: guest.lastSeenRoomTurnId,
         liveness: restoredLive ? 'live' : 'disposed'
       });
     }
@@ -1998,7 +1896,8 @@ export class WorkshopSessionService {
     const participants: WorkshopParticipants = {
       host: {
         personaId: normalized.participants.host.personaId,
-        conversationId: hostConversationId
+        conversationId: hostConversationId,
+        lastSeenRoomTurnId: normalized.participants.host.lastSeenRoomTurnId
       },
       toolSidecars,
       personaGuests,
@@ -2135,11 +2034,7 @@ export class WorkshopSessionService {
     const replaced = this.participants.toolSidecars[toolId];
     this.participants.toolSidecars[toolId] = {
       conversationId,
-      latestReportTurnId,
-      // A replacement report inherits the prior cursor: undelivered direct
-      // exchanges remain claimable until a successful host turn ships them.
-      deliveredToHostThroughTurnId:
-        replaced?.deliveredToHostThroughTurnId ?? latestReportTurnId
+      latestReportTurnId
     };
     // A sidecar is a fresh conversation on adoption: its writer-origin rows
     // are exactly the pin + standing attachments its run received (Phase 7).
@@ -2257,57 +2152,11 @@ export class WorkshopSessionService {
     };
   }
 
-  private latestHostThreadTurnId(): string | undefined {
-    for (let index = this.turns.length - 1; index >= 0; index -= 1) {
-      if (this.isHostThreadTurn(this.turns[index])) {
-        return this.turns[index].id;
-      }
-    }
-    return undefined;
-  }
-
-  private isHostThreadTurn(turn: WorkshopTurn): boolean {
-    if (turn.participant === 'guest') {
-      return false;
-    }
-    if (turn.participant === 'writer' && turn.personaId) {
-      return false;
-    }
-    if (turn.artifact === 'direct_tool_message' || turn.artifact === 'direct_tool_response') {
-      return false;
-    }
-    if (isGuestOwnedCapabilityTurn(turn)) {
-      return false;
-    }
-    return turn.participant === 'writer'
-      || turn.participant === 'host'
-      || turn.participant === 'tool'
-      || turn.participant === 'session';
-  }
-
   private nextTurnId(role: 'user' | 'assistant' | 'system'): string {
     return `turn-${++this.turnCounter}-${role}-${this.now()}`;
   }
 }
 
-
-/**
- * A guest's private capability evidence (Sprint 13C; ADR 2026-07-24 §2): the
- * artifact belongs to the invoking guest's own conversation, so the host and
- * other guests never receive it as room evidence. This named predicate is the
- * seam 13D's computed `audience()` policy will grow from — keep the rule
- * here, not inlined into transcript filters.
- */
-function isGuestOwnedCapabilityTurn(
-  turn: WorkshopTurn,
-  personaId?: WorkshopPersonaId
-): boolean {
-  const principal = turn.capability?.invokedBy;
-  if (principal?.kind !== 'personaGuest') {
-    return false;
-  }
-  return personaId === undefined || principal.personaId === personaId;
-}
 
 /**
  * Display name for a passage in a visible divider. Uses the SHARED title

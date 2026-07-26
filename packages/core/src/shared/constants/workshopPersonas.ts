@@ -38,6 +38,8 @@ export interface WorkshopPersonaDescriptor {
 export const DEFAULT_WORKSHOP_PERSONA_ID: WorkshopPersonaId = 'jill';
 
 export const WORKSHOP_GUEST_CAPACITY = 2;
+export const WORKSHOP_HOST_BASE_PROMPT_PATH = 'workshop-personas/base.md';
+export const WORKSHOP_GUEST_BASE_PROMPT_PATH = 'workshop-personas/guest-base.md';
 
 export const WORKSHOP_PERSONA_CATALOG: readonly WorkshopPersonaDescriptor[] = [
   { id: 'jill', label: 'Jill', specialty: 'Creative writing partner', description: 'Warm developmental and line-level craft support for the work in front of you.', guestOpeningFocus: 'the writing', promptPath: 'workshop-personas/jill.md', expressionProfilePath: 'workshop-personas/expression-profiles/jill.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/jill.md' },
@@ -56,10 +58,10 @@ export const WORKSHOP_PERSONA_CATALOG: readonly WorkshopPersonaDescriptor[] = [
 
 /**
  * The generated guest opening (Sprint 13C): persona-addressed, warm, and
- * deliberately excerpt-free — a guest may join a session whose scope has no
- * excerpt, and boilerplate that names a passage would send the guest hunting
- * for prose that does not exist. With no persona selected yet the fallback
- * still reads as a room ask, never a passage ask.
+ * deliberately assignment-neutral. Invitations are excerpt-gated, but the
+ * room may contain broader conversation and resources; boilerplate must not
+ * falsely prescribe the pin as the guest's task. With no persona selected yet
+ * the fallback still reads as a room ask, never a passage ask.
  */
 export function defaultWorkshopGuestOpening(personaId?: WorkshopPersonaId): string {
   const persona = personaId ? PERSONAS_BY_ID.get(personaId) : undefined;
@@ -125,8 +127,8 @@ export function workshopPersonaSystemPromptPaths(
     // capability resource — the injected protocol points at it, and a charter
     // that denies capabilities while the run policy grants them ships two
     // contradictory instructions.
-    ...(basePromptPath === 'workshop-personas/base.md'
-      || basePromptPath === 'workshop-personas/guest-base.md'
+    ...(basePromptPath === WORKSHOP_HOST_BASE_PROMPT_PATH
+      || basePromptPath === WORKSHOP_GUEST_BASE_PROMPT_PATH
       ? [WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH]
       : []),
     WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,

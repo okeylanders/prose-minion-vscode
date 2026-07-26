@@ -1,7 +1,23 @@
-import { buildWorkshopWriterProfileFrame } from '@/utils/workshopWriterProfile';
+import {
+  buildWorkshopWriterProfileFrame,
+  workshopWriterPreferredAddress
+} from '@/utils/workshopWriterProfile';
 import { DEFAULT_WORKSHOP_WRITER_PROFILE } from '@messages';
 
 describe('buildWorkshopWriterProfileFrame', () => {
+  it('exposes the same prompt-effective preferred address to room frames', () => {
+    expect(workshopWriterPreferredAddress({
+      enabled: true,
+      preferredAddress: 'Okey',
+      bio: ''
+    })).toBe('Okey');
+    expect(workshopWriterPreferredAddress({
+      enabled: false,
+      preferredAddress: 'Okey',
+      bio: ''
+    })).toBeUndefined();
+  });
+
   it('omits disabled and content-empty profiles', () => {
     expect(buildWorkshopWriterProfileFrame(DEFAULT_WORKSHOP_WRITER_PROFILE, 'attuned'))
       .toBeUndefined();

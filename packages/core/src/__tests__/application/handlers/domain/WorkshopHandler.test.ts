@@ -3,6 +3,9 @@ import {
   WorkshopHandler
 } from '@/application/handlers/domain/WorkshopHandler';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import {
+  WorkshopRoomDeliveryService
+} from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
 import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
@@ -56,6 +59,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   let workspace: Workspace;
   let settings: SettingsStore;
   let handler: WorkshopHandler;
+  let roomDelivery: WorkshopRoomDeliveryService;
   let writerProfileService: WorkshopWriterProfileService;
   let capabilityFactory: WorkshopPersonaCapabilityFactory;
   let contextBudgets: Map<string, ContextBudgetSnapshot>;
@@ -215,14 +219,17 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       resolveRevealPath: jest.fn().mockResolvedValue('/workspace/prose-minion/sessions/saved-1.json'),
       deleteNamed: jest.fn().mockResolvedValue(undefined)
     } as unknown as jest.Mocked<WorkshopSessionPersistenceCoordinator>;
+    roomDelivery = new WorkshopRoomDeliveryService(session);
     handler = new WorkshopHandler(
       service,
       contextAssistant as never,
       session,
+      roomDelivery,
       new RunWorkshopToolSidePass(
         service,
         analysisSidePass,
         session,
+        roomDelivery,
         capabilityFactory,
         log,
         writerProfileService
@@ -868,7 +875,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     ) as any);
 
     const hostMessage = service.startWorkshopPersonaConversation.mock.calls.at(-1)![0].message;
-    expect(hostMessage).toContain('<workshop-guest-handoff>');
+    expect(hostMessage).toContain('<workshop-room-catch-up>');
     expect(hostMessage).toContain('Margot guest read');
   });
 
@@ -900,7 +907,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
     const retryInput = service.startWorkshopPersonaConversation.mock.calls.at(-1)![0];
     expect(retryInput.contextAttachmentsFrame).toContain('Mara is hiding her identity.');
-    expect(retryInput.message).toBe('Retry host.');
+    expect(retryInput.message).toContain('<workshop-room-catch-up>');
+    expect(retryInput.message).toContain('Retry host.');
     expect(retryInput.message).not.toContain('<workshop-host-update>');
     expect(session.getSnapshot().pendingHostUpdate).toBeUndefined();
   });
@@ -1246,7 +1254,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(service.startWorkshopPersonaConversation).toHaveBeenCalledWith(
       expect.objectContaining({
         message: expect.stringContaining(
-          '<workshop-tool-evidence>\nTool: Prose (prose)'
+          '<workshop-room-catch-up>'
         )
       }),
       expect.anything()
@@ -1263,7 +1271,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(service.analyzeProse).toHaveBeenCalledTimes(1);
     expect(service.continueConversation).toHaveBeenCalledWith(
       'host-conv',
-      expect.stringContaining('VERBATIM TOOL REPORT'),
+      expect.stringContaining('Prose (report):\ntool report'),
       expect.anything()
     );
     expect(session.getHostConversationId()).toBe('host-conv');
@@ -1283,6 +1291,34 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(turns.some((turn) => turn.artifact === 'persona_synthesis')).toBe(false);
     expect(session.getToolSidecarConversationId('prose')).toBe('tool-conv');
     expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/synthesis failed/);
+    const pending = new WorkshopRoomDeliveryService(session).prepare({ kind: 'host' });
+    expect(pending.turns).toEqual(expect.arrayContaining([
+      expect.objectContaining({ artifact: 'tool_report', content: 'tool report' })
+    ]));
+  });
+
+  it('retains a failed room acknowledgement without misreporting a committed reply', async () => {
+    await pin();
+    jest.spyOn(roomDelivery, 'commit').mockImplementationOnce(() => {
+      throw new Error('offset changed during delivery');
+    });
+    postMessage.mockClear();
+
+    await handler.handleSendMessage(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Start host.' }
+    ) as any);
+
+    expect(session.getSnapshot().turns.at(-1)).toMatchObject({
+      participant: 'host',
+      content: 'Jill synthesis'
+    });
+    expect(posted(MessageType.ERROR)).toEqual([]);
+    expect(log.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'Room delivery acknowledgement retained for retry after committed Jill reply'
+      )
+    );
   });
 
   it('replaces and disposes only the prior sidecar for the same tool', async () => {
@@ -1328,7 +1364,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(session.getChatTarget()).toEqual({ kind: 'host' });
   });
 
-  it('routes direct messages to the retained sidecar and hands unseen deltas to host once', async () => {
+  it('routes direct messages to the retained sidecar without publishing them to the host', async () => {
     await pin();
     await runProse();
     await handler.handleSetChatTarget(message(
@@ -1357,8 +1393,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     ) as any);
     const firstHostMessage = service.continueConversation.mock.calls.at(-1)![1];
     const firstHostOptions = service.continueConversation.mock.calls.at(-1)![2];
-    expect(firstHostMessage).toContain('DIRECT-TOOL HANDOFF');
-    expect(firstHostMessage).toContain('Why did you flag that sentence?');
+    expect(firstHostMessage).not.toContain('DIRECT-TOOL HANDOFF');
+    expect(firstHostMessage).not.toContain('Why did you flag that sentence?');
     expect(firstHostMessage).toContain('What should I fix first?');
     expect(firstHostOptions?.capability).toEqual(expect.objectContaining({
       catalog: 'workshopPersona'
@@ -1371,7 +1407,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(service.continueConversation.mock.calls.at(-1)![1]).toContain('And second?');
   });
 
-  it('does not consume an unseen direct delta when the host turn fails', async () => {
+  it('keeps direct sidecar work private across a failed host turn and retry', async () => {
     await pin();
     await runProse();
     await handler.handleSetChatTarget(message(
@@ -1392,14 +1428,15 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       MessageType.WORKSHOP_SEND_MESSAGE,
       { text: 'First host attempt.' }
     ) as any);
-    expect(session.collectUnseenDirectExchanges()).toHaveLength(2);
+    expect(new WorkshopRoomDeliveryService(session)
+      .prepare({ kind: 'host' }).turns.map((turn) => turn.content))
+      .not.toContain('Direct evidence.');
 
     await handler.handleSendMessage(message(
       MessageType.WORKSHOP_SEND_MESSAGE,
       { text: 'Retry host.' }
     ) as any);
-    expect(service.continueConversation.mock.calls.at(-1)![1]).toContain('Direct evidence.');
-    expect(session.collectUnseenDirectExchanges()).toHaveLength(0);
+    expect(service.continueConversation.mock.calls.at(-1)![1]).not.toContain('Direct evidence.');
   });
 
   it('marks capability-committed host artifacts dirty immediately', async () => {
@@ -1417,7 +1454,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(posted(MessageType.WORKSHOP_SESSION_STATE)).not.toHaveLength(0);
   });
 
-  it('includes pending direct exchanges when a new tool run is the next host turn', async () => {
+  it('does not publish direct exchanges when a new tool run is the next host turn', async () => {
     await pin();
     await runProse();
     await handler.handleSetChatTarget(message(
@@ -1437,10 +1474,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
     expect(service.continueConversation).toHaveBeenCalledWith(
       'host-conv',
-      expect.stringContaining('Carry this direct exchange forward.'),
+      expect.not.stringContaining('Carry this direct exchange forward.'),
       expect.anything()
     );
-    expect(session.collectUnseenDirectExchanges()).toHaveLength(0);
   });
 
   it('cancels a direct-tool continuation without losing its usable sidecar', async () => {
@@ -1474,7 +1510,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(session.getSnapshot().turns.some(
       (turn) => turn.content === 'partial direct response'
     )).toBe(false);
-    expect(session.collectUnseenDirectExchanges()).toHaveLength(0);
+    expect(new WorkshopRoomDeliveryService(session)
+      .prepare({ kind: 'host' }).turns.map((turn) => turn.content))
+      .not.toEqual(expect.arrayContaining(['Stop this follow-up.', 'partial direct response']));
   });
 
   it('uses a narrow active-persona greeting as an optional return shortcut', async () => {
@@ -1523,6 +1561,9 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(session.getSnapshot().turns.some((turn) => turn.artifact === 'tool_report')).toBe(true);
     expect(session.getSnapshot().turns.some((turn) => turn.artifact === 'persona_synthesis')).toBe(false);
     expect(session.getToolSidecarConversationId('prose')).toBe('tool-conv');
+    expect(log.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('Room delivery retained after incomplete synthesis')
+    );
   });
 
   it('discards a zombie tool completion after a newer host turn preempts it', async () => {

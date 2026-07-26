@@ -386,6 +386,12 @@ export const WorkshopApp: React.FC = () => {
     const trimmed = excerptText?.trim() ?? '';
     return trimmed.length === 0 ? 0 : trimmed.split(/\s+/).length;
   }, [excerptText]);
+  const livePersonaGuestIds = React.useMemo(
+    () => workshop.personaGuests
+      .filter((guest) => guest.liveness === 'live')
+      .map((guest) => guest.personaId),
+    [workshop.personaGuests]
+  );
 
   // Live run bubble: visible from run start until the assistant turn lands.
   const showLiveTurn = workshop.isRunning || workshop.isStreaming || workshop.streamingContent.length > 0;
@@ -1177,13 +1183,6 @@ export const WorkshopApp: React.FC = () => {
                 </div>
               )}
 
-              {workshop.hiddenTurns > 0 && (
-                <div className="pm-ws-thread-hidden">
-                  {workshop.hiddenTurns.toLocaleString()} earlier turn
-                  {workshop.hiddenTurns === 1 ? '' : 's'} from this session aren&apos;t shown
-                  after reload.
-                </div>
-              )}
               <WorkshopThread
                 turns={workshop.turns}
                 toolSidecars={workshop.toolSidecars}
@@ -1234,6 +1233,15 @@ export const WorkshopApp: React.FC = () => {
                   <button type="button" onClick={workshop.clearError} aria-label="Dismiss error">
                     <Icon name="x" size={13} />
                   </button>
+                </div>
+              )}
+
+              {workshop.hiddenTurns > 0 && (
+                <div className="pm-ws-thread-hidden">
+                  Only the latest {workshop.turns.length.toLocaleString()} turns are visible;{' '}
+                  {workshop.hiddenTurns.toLocaleString()} earlier turn
+                  {workshop.hiddenTurns === 1 ? ' is' : 's are'} preserved.
+                  {' '}Pagination is coming soon. The full session remains preserved.
                 </div>
               )}
             </div>
@@ -1406,9 +1414,7 @@ export const WorkshopApp: React.FC = () => {
       <WorkshopInviteGuestModal
         open={personaModalOpen && personaModalMode === 'guest'}
         hostPersonaId={workshop.selectedPersonaId}
-        livePersonaGuestIds={workshop.personaGuests
-          .filter((guest) => guest.liveness === 'live')
-          .map((guest) => guest.personaId)}
+        livePersonaGuestIds={livePersonaGuestIds}
         disabled={roomMutationLocked}
         onClose={closePersonaModal}
         onInvite={inviteGuest}

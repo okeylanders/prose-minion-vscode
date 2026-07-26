@@ -947,7 +947,7 @@ describe('useWorkshop', () => {
 
   // ── Sprint 3: bounded snapshots (PR #67 review #12) ──────────────────────
 
-  it('a truncated snapshot MERGES with held turns instead of shrinking the live thread', () => {
+  it('a truncated snapshot replaces held turns with the authoritative visible window', () => {
     const { result } = renderHook(() => useWorkshop());
     const t1 = makeTurn({ id: 't1' });
     const t2 = makeTurn({ id: 't2', role: 'assistant', content: 'first analysis' });
@@ -966,9 +966,9 @@ describe('useWorkshop', () => {
       );
     });
 
-    // Nothing hidden — the webview still holds everything.
-    expect(result.current.turns.map((t) => t.id)).toEqual(['t1', 't2', 't3', 't4']);
-    expect(result.current.hiddenTurns).toBe(0);
+    // The full ledger remains host-side; the webview exposes the bounded window.
+    expect(result.current.turns.map((t) => t.id)).toEqual(['t3', 't4']);
+    expect(result.current.hiddenTurns).toBe(2);
   });
 
   it('a truncated snapshot on a FRESH mount reports the hidden turns', () => {

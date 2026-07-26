@@ -1712,8 +1712,8 @@
   color: var(--pm-amber);
   margin: 6px 0 0;
 }
-/* Older turns exist host-side but fell outside the bounded snapshot window
-   (reload of a marathon thread). */
+/* Older turns remain in the saved ledger but fall outside the bounded webview
+   projection until pagination is available. */
 [data-pm-surface="workshop"] .pm-ws-thread-hidden {
   align-self: center;
   font-size: 11.5px;
