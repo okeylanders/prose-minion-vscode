@@ -42,9 +42,9 @@ dev agent; validation was green when these were filed (typecheck, lint 0 errors,
 
 | # | Sev | Finding | Status |
 |---|-----|---------|--------|
-| 22 | 🟡 Standard | `context: inherit` now rejects in any room with zero context attachments — the guard at `WorkshopAnalysisInputs.ts:163-173` covers `inherit`, and `buildWorkshopContextAttachmentsFrame([])` returns `undefined` with `words: 0`. In a passage room with a pinned excerpt and no attachments, the natural `excerpt=inherit, context=inherit` call is refused, while the writer's own rail run in that same room succeeds. The prompt states "The underlying material must exist" for `prepend` only, so a compliant persona cannot know. Recoverable (budget uncharged, visible reason, retry with `omit` works) — costs a correction round-trip, not the turn. **Suggested:** keep the rejection for excerpt, where absence is a real mistake; degrade `context: inherit` with no attachments to `omit` and record `mode: 'omit'` in the provenance. Alternatively, add the existence caveat to `inherit` in the prompt. | **Open** |
-| 23 | 🟢 Nit | The character ceiling is measured on raw `supplied` before neutralization, which can expand matched reserved tags by roughly a third. Fine as a backstop against whitespace-free payloads rather than a tight buffer — noted for the measurement point only. | **Deferred** |
-| 24 | 🟢 Nit | `prepend` builds `` `${safeSupplied}\n\n${inherited.text}` `` without verifying `safeSupplied` exists. The codec guarantees it today, but `resolveWorkshopPersonaAnalysisInputs` is now exported and standalone, so a future caller would get a literal `"undefined"` in the prompt. | **Open** |
+| 22 | 🟡 Standard | `context: inherit` now rejects in any room with zero context attachments — the guard at `WorkshopAnalysisInputs.ts:163-173` covers `inherit`, and `buildWorkshopContextAttachmentsFrame([])` returns `undefined` with `words: 0`. In a passage room with a pinned excerpt and no attachments, the natural `excerpt=inherit, context=inherit` call is refused, while the writer's own rail run in that same room succeeds. The prompt states "The underlying material must exist" for `prepend` only, so a compliant persona cannot know. Recoverable (budget uncharged, visible reason, retry with `omit` works) — costs a correction round-trip, not the turn. **Suggested:** keep the rejection for excerpt, where absence is a real mistake; degrade `context: inherit` with no attachments to `omit` and record `mode: 'omit'` in the provenance. Alternatively, add the existence caveat to `inherit` in the prompt. | **Addressed** — empty context now succeeds as `inherit` with honest zero-material provenance, matching the direct rail without erasing the requested policy |
+| 23 | 🟢 Nit | The character ceiling is measured on raw `supplied` before neutralization, which can expand matched reserved tags by roughly a third. Fine as a backstop against whitespace-free payloads rather than a tight buffer — noted for the measurement point only. | **Addressed** — enforced before and after neutralization |
+| 24 | 🟢 Nit | `prepend` builds `` `${safeSupplied}\n\n${inherited.text}` `` without verifying `safeSupplied` exists. The codec guarantees it today, but `resolveWorkshopPersonaAnalysisInputs` is now exported and standalone, so a future caller would get a literal `"undefined"` in the prompt. | **Addressed** — standalone resolution rejects blank text for both `prepend` and `replace` |
 
 ### Implementation resolution
 
@@ -62,6 +62,13 @@ includes all 16 mode pairings, absent inherited inputs in both slots,
 max-sized inherited inputs plus a prefix, parser and capability oversize
 boundaries, sidecar preservation, guest-tail prefill attribution, and
 structured rejection metrics.
+
+The fix-review follow-up preserves `context: inherit` when the inherited
+attachment set is empty: provenance records `inherit`, `no context
+attachments`, and zero words, distinguishing “the room had none” from a
+persona deliberately choosing `omit`. The standalone resolver also validates
+required local text independently of the XML codec and applies character
+ceilings to the safely neutralized prompt payload.
 
 ---
 

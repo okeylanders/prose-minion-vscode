@@ -32,7 +32,7 @@ export type WorkshopAnalysisInputResolution =
       kind: 'rejected';
       error: string;
       field: 'excerpt' | 'context';
-      reason: 'missing-inherited-input' | 'oversized-input';
+      reason: 'input-mode-text-mismatch' | 'missing-inherited-input' | 'oversized-input';
     };
 
 interface ResolveWorkshopAnalysisInputsInput {
@@ -63,7 +63,7 @@ type SingleInputResolution =
       kind: 'rejected';
       error: string;
       field: 'excerpt' | 'context';
-      reason: 'missing-inherited-input' | 'oversized-input';
+      reason: 'input-mode-text-mismatch' | 'missing-inherited-input' | 'oversized-input';
     };
 
 export function describeWorkshopInheritedExcerpt(
@@ -159,10 +159,24 @@ function resolveInput(input: {
   personaLabel: string;
 }): SingleInputResolution {
   const supplied = input.selection.text?.trim();
+  const requiresSupplied =
+    input.selection.mode === 'prepend' || input.selection.mode === 'replace';
+  if (requiresSupplied && !supplied) {
+    return {
+      kind: 'rejected',
+      field: input.slot,
+      reason: 'input-mode-text-mismatch',
+      error: `${input.selection.mode} requires non-empty persona-supplied ${input.slot} text. Nothing was run.`
+    };
+  }
   const suppliedWords = supplied ? countWords(supplied) : 0;
+  const missingInherited = !input.inherited.text || input.inherited.words === 0;
   if (
-    (input.selection.mode === 'inherit' || input.selection.mode === 'prepend') &&
-    (!input.inherited.text || input.inherited.words === 0)
+    missingInherited &&
+    (
+      input.selection.mode === 'prepend' ||
+      (input.selection.mode === 'inherit' && input.slot === 'excerpt')
+    )
   ) {
     return {
       kind: 'rejected',
@@ -190,6 +204,19 @@ function resolveInput(input: {
   const safeSupplied = supplied
     ? neutralizeReservedPersonaPromptDelimiters(supplied)
     : undefined;
+  if (safeSupplied && safeSupplied.length > input.characterLimit) {
+    return {
+      kind: 'rejected',
+      field: input.slot,
+      reason: 'oversized-input',
+      error:
+        `The safely encoded persona-supplied ${input.slot} input is ` +
+        `${safeSupplied.length.toLocaleString('en-US')} characters, above the ` +
+        `${input.characterLimit.toLocaleString('en-US')}-character limit. ` +
+        'Reserved prompt delimiters expanded during safe encoding; nothing was truncated or run.'
+    };
+  }
+  const suppliedText = safeSupplied ?? '';
   let text: string | undefined;
   let material: string;
   let words: number;
@@ -205,14 +232,14 @@ function resolveInput(input: {
       truncation = input.inherited.truncation;
       break;
     case 'prepend':
-      text = `${safeSupplied}\n\n${input.inherited.text}`;
+      text = `${suppliedText}\n\n${input.inherited.text}`;
       material = `persona-supplied prefix + ${input.inherited.material}`;
       words = suppliedWords + input.inherited.words;
       chosenBy = `${input.personaLabel} + Writer`;
       truncation = input.inherited.truncation;
       break;
     case 'replace':
-      text = safeSupplied;
+      text = suppliedText;
       material = `persona-supplied ${input.slot}`;
       words = suppliedWords;
       chosenBy = input.personaLabel;

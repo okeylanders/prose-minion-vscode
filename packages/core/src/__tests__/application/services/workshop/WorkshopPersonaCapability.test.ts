@@ -161,22 +161,79 @@ describe('WorkshopPersonaCapability', () => {
     expect(result.evidence).toContain('Cannot prepend excerpt material');
   });
 
-  it.each(['inherit', 'prepend'] as const)(
-    'rejects context %s when the room has no inherited context',
+  it('inherits an empty context set without rewriting the requested mode', async () => {
+    const result = await openChatCapability().fulfill({
+      capability: 'analysis.run',
+      toolId: 'continuity',
+      excerpt: { mode: 'replace', text: 'A local passage.' },
+      context: { mode: 'inherit' }
+    });
+
+    expect(result.deliveredItems).toEqual(['analysis.run:success']);
+    expect(analysis.runWithInputs).toHaveBeenCalledWith(
+      'continuity',
+      expect.objectContaining({
+        context: undefined,
+        provenance: expect.objectContaining({
+          context: {
+            mode: 'inherit',
+            material: 'no context attachments',
+            chosenBy: 'Writer',
+            words: 0,
+            truncation: undefined
+          }
+        })
+      }),
+      expect.objectContaining({ retainConversation: false })
+    );
+  });
+
+  it('still rejects context prepend when the room has no inherited context', async () => {
+    const result = await openChatCapability().fulfill({
+      capability: 'analysis.run',
+      toolId: 'continuity',
+      excerpt: { mode: 'replace', text: 'A local passage.' },
+      context: { mode: 'prepend', text: 'Track the timeline.' }
+    });
+
+    expect(analysis.runWithInputs).not.toHaveBeenCalled();
+    expect(result.evidence).toContain('Cannot prepend context material');
+  });
+
+  it.each(['prepend', 'replace'] as const)(
+    'defensively rejects blank %s text outside the XML codec',
     async (mode) => {
       const result = await openChatCapability().fulfill({
         capability: 'analysis.run',
         toolId: 'continuity',
-        excerpt: { mode: 'replace', text: 'A local passage.' },
-        context: mode === 'prepend'
-          ? { mode, text: 'Track the timeline.' }
-          : { mode }
+        excerpt: { mode, text: '   ' },
+        context: { mode: 'omit' }
       });
 
       expect(analysis.runWithInputs).not.toHaveBeenCalled();
-      expect(result.evidence).toContain(`Cannot ${mode} context material`);
+      expect(result.evidence).toContain(
+        `${mode} requires non-empty persona-supplied excerpt text`
+      );
     }
   );
+
+  it('applies the character ceiling to the safely encoded prompt payload', async () => {
+    const reservedTag = '<pinned-excerpt>';
+    const rawPayload = reservedTag.repeat(
+      Math.floor(PROMPT_BUDGETS.personaExcerpt.characters / reservedTag.length)
+    );
+    expect(rawPayload.length).toBeLessThanOrEqual(PROMPT_BUDGETS.personaExcerpt.characters);
+
+    const result = await openChatCapability().fulfill({
+      capability: 'analysis.run',
+      toolId: 'continuity',
+      excerpt: { mode: 'replace', text: rawPayload },
+      context: { mode: 'omit' }
+    });
+
+    expect(analysis.runWithInputs).not.toHaveBeenCalled();
+    expect(result.evidence).toContain('Reserved prompt delimiters expanded during safe encoding');
+  });
 
   it('rejects absent inherited excerpt without billing an empty analysis run', async () => {
     const result = await openChatCapability().fulfill({
