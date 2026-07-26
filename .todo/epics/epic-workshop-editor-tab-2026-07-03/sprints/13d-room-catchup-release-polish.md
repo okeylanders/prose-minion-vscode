@@ -44,6 +44,11 @@ each other.
 - Persist the invoking **principal** on capability turns. Today they are
   appended as `participant: 'tool'` with no `personaId`, which is only safe
   because the host is the sole invoker; 13C makes guests invokers.
+- Persist enough capability-run correlation to publish evidence transactionally:
+  successful/partial resource reads, dictionary evidence, and
+  participant-requested analysis results become room evidence only with the
+  invoking participant's committed final reply. Catalog/search traffic and
+  failed, rejected, cancelled, stale, or uncommitted work stay private.
 - One inbound offset per participant (`lastSeenRoomTurnId`), including the
   host's — a new participant record shape. Remove
   `guest.lastSeenHostTurnId`, `guest.deliveredToHostThroughTurnId`, and
@@ -94,7 +99,10 @@ work.
 - A -> B carries A's eligible unseen exchange without a host call.
 - A tool report reaches every participant; its sidecar conversation reaches
   none.
-- Capability artifacts reach only their invoking principal.
+- Evidence-bearing capability results reach every participant only after the
+  invoking participant's final reply commits.
+- Catalog/search traffic and failed, rejected, cancelled, stale, or
+  uncommitted capability work reach only their invoking principal.
 - No frame splits a turn, within or across deliveries.
 - Delivery acknowledgement follows only the recipient's committed reply;
   cancellation and retry are idempotent.

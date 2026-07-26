@@ -61,7 +61,8 @@ five structural problems:
    filters again in `isGuestTranscriptTurn`, already carrying an
    `includeGuestTurns` boolean. A room frame adds materially harder rules
    (include other guests, exclude the recipient's own retained conversation,
-   exclude private capability artifacts) to both sites.
+   exclude private capability work, include published capability evidence) to
+   both sites.
 4. **Cursors are multiplying per relationship.** A fourth relationship implies a
    fourth cursor and a fourth hand-rolled max-index scan. Per-relationship
    cursors grow with the square of participants.
@@ -111,21 +112,45 @@ cover cases that look unrelated:
 
 | Turn | Classification |
 |---|---|
-| Writer message, host reply, guest reply, tool report | `room` |
+| Writer message, host reply, guest reply, room-commissioned tool report | `room` |
 | Direct-tool sidecar exchange | `private(sidecar:<toolId>)` |
-| Capability artifact invoked by a guest | `private(guest:<personaId>)` |
+| Capability catalog/search request or non-success result | `private(invoking principal)` |
+| Evidence-bearing capability result published with a committed participant reply | `room` |
+| Evidence-bearing capability result whose participant reply did not commit | `private(invoking principal)` |
 | Future tangent / sub-agent thread | `private(tangent:<id>)` |
 
 A tangent thread requires no new visibility value, no new cursor, and no schema
 change. That an unbuilt feature already fits is the evidence the two-value model
 is the right size.
 
-**Principals are persisted; classification is not.** Who invoked a capability is
-a historical fact and must be recorded on the turn — today capability artifacts
-are appended as `participant: 'tool'` with no `personaId`, which is safe only
-because the host is currently the sole invoker. Sprint 13C makes guests
-invokers, at which point ownership becomes unrecoverable from the record unless
-it is stored. Whether that owner *implies privacy* remains a computed policy.
+**Principals and publication are persisted facts; classification is not.** Who
+invoked a capability is a historical fact and must be recorded on the turn —
+today capability artifacts are appended as `participant: 'tool'` with no
+`personaId`, which is safe only because the host is currently the sole invoker.
+Sprint 13C makes guests invokers, at which point ownership becomes unrecoverable
+from the record unless it is stored.
+
+Publication is also a historical fact: an evidence-bearing result either
+belonged to a participant turn whose final reply committed, or it did not. The
+durable model records enough correlation to prove that committed publication;
+it does not ask a model or a later heuristic whether the persona "used" the
+evidence. The `audience` classification remains a computed policy over those
+facts.
+
+Capability traffic follows this publication rule:
+
+- `resource.catalog` and `resource.search` remain private discovery work even
+  when successful. Their listings, snippets, and intermediate rummaging would
+  add room noise without bringing a source to the table.
+- Successful or partial `resource.read`, dictionary lookup/full-entry, and
+  participant-requested analysis results are evidence-bearing. They become
+  `room` evidence only when the invoking participant's final reply commits.
+- Failed, rejected, cancelled, or stale capability results remain private.
+  Evidence from a participant turn whose final reply fails or is cancelled also
+  remains private.
+- Publication changes model-visible room context, not the capability result's
+  speaker or provenance. The result remains attributed to its invoking
+  principal.
 
 The predicate is a total function of stored turn fields plus the reading
 principal — a turn is never quoted back to its own speaker. Both the collector
@@ -266,7 +291,7 @@ Truncation markers and character accounting are removed with §6.
 The extraction lands first, as a pure refactor with no behavior change and
 existing tests untouched, so the semantic changes are reviewable on their own.
 
-### 8. Classification is immediate; delivery stays lazy
+### 8. Classification is immediate except transactional capability publication; delivery stays lazy
 
 Turn commit performs no provider work for other participants. It cannot: a
 provider array that ends on a `user` message is an incomplete exchange, which
@@ -274,6 +299,20 @@ provider array that ends on a `user` message is an incomplete exchange, which
 fan-out would require either running every persona on every turn (rejected as a
 non-goal and an N× cost) or a per-participant pending queue (rejected in
 *Alternatives considered*).
+
+Ordinary room turns are classifiable as soon as they commit. Capability
+evidence is the deliberate exception: it stays private while its participant
+turn is in flight and becomes publishable atomically with that participant's
+committed final reply. A failed or cancelled turn cannot leak its intermediate
+research into the room. This publication transition performs no provider work;
+other participants still receive the evidence lazily on their next successful
+turn through the one delivery site.
+
+The Workshop admits only one active room run. Publication resolves before that
+run unlocks or another participant can advance an offset, so no reader can pass
+provisionally private evidence that later becomes `room`. This transactional
+ordering is required; without it, prospective reclassification (§2) could strand
+newly published evidence behind a reader's offset.
 
 What *is* immediate is everything that costs nothing: unread counts and rail
 state are computed on demand by counting eligible turns past each offset. The
@@ -291,7 +330,8 @@ instruments read nothing:
 |---|---|---|
 | Tool **report** commissioned in the room | visible | never |
 | **Direct-tool sidecar** conversation | never | its own sidecar only |
-| Capability artifact | its owning principal only | never |
+| Published evidence-bearing capability result | visible | never |
+| Catalog/search, failed, cancelled, or uncommitted capability work | invoking principal only | never |
 
 **An instrument's output is its report; the conversation around it is working
 notes.** The report is room history and always was. The exchange that produced
@@ -344,7 +384,7 @@ bookkeeping instead of prose. Therefore:
 - Timestamps are host-stamped and never model-generated, matching the existing
   discipline for `personaLabel` and `toolLabel`.
 
-### 12. Legacy cursor keys are ignored, not migrated
+### 12. Legacy cursor keys and capability publication are normalized in V1
 
 `parseWorkshopSessionStateV1` validates shape with exact-key recursion *before*
 the aggregate exists, so a session file written by an earlier build fails at the
@@ -358,9 +398,17 @@ rather than replaying itself. No V2, no migration step, no data loss. The
 allowance is a named exception with a removal date — v1.0 — not a compatibility
 layer.
 
+Pre-13D capability artifacts also lack committed-publication correlation. The
+shape validator accepts that absence and hydration treats those artifacts as
+legacy-private rather than retroactively publishing evidence into conversations
+that never received it. Newly committed capability evidence always records the
+publication fact. Existing sessions therefore open without inventing shared
+history, and new evidence follows §2.
+
 `WorkshopSessionStateV1Shape` and `WorkshopSessionStateV1Integrity` validate the
-new field, including the host's, which is a new participant record shape since
-the host previously held no delivery state.
+current participant offsets, including the host's, and the capability
+publication facts. The host participant record is a new shape because it
+previously held no delivery state.
 
 ## Alternatives considered
 
@@ -411,14 +459,18 @@ keep opening.
   field, not N relationships.
 - Three existing relationships stop silently losing turns, and stop shipping
   half-quotes as delivered evidence.
-- The persisted V1 shape **shrinks**: three cursor families out, one field per
-  participant in, plus a principal on capability turns. No new persisted
-  structures are introduced.
+- The persisted V1 shape **shrinks** overall: three cursor families out, one
+  field per participant in, plus capability principal and publication facts.
+  No new persisted collection is introduced.
 - Four collect/commit method pairs, two packers, three frame builders, and two
   delivery sites reduce to one of each. The direct-tool handoff path is deleted
   outright, so its tests are removed rather than rewritten.
 - The host stops receiving the writer's direct-tool exchanges. It sees the
   report and nothing else. Reversing this is a §2 predicate value.
+- Participants share evidence-bearing resource reads, dictionary evidence, and
+  participant-requested analysis results once the invoking participant's reply
+  commits. Catalog/search traffic and unsuccessful or orphaned capability work
+  remain private.
 - Catch-up messages can be large, and grow with how long a participant has gone
   unaddressed. This is accepted for 13D and is the entry point for the
   compaction work; it is not a bug to be patched with truncation.
@@ -438,8 +490,10 @@ keep opening.
   This was a policy; per §3 it is now a property of per-participant offsets.
 - Quoted room history remains context, not instructions, and no participant may
   claim to have witnessed turns omitted by a snapshot bound.
-- Conversation Widgets remain writer-owned. Capability artifacts remain private
-  to their invoking principal's retained conversation.
+- Conversation Widgets remain writer-owned. Capability discovery traffic and
+  unsuccessful/uncommitted capability artifacts remain private to their
+  invoking principal; published evidence-bearing results become room context
+  under §2.
 - Target selection makes no provider call and spends no tokens.
 - Excerpt, context-attachment, and thread-artifact head slices keep their
   existing bounds and disclosed provenance (§6).
@@ -450,9 +504,10 @@ Sprint 13D, in four reviewable steps on one branch:
 
 1. **13D-a** — extract the shared packer. Pure refactor; no behavior change;
    existing tests untouched.
-2. **13D-b1** — the durable model: `audience(turn)` over principals, the
-   persisted principal on capability turns, one offset per participant, legacy
-   key allowance, hydration. Invariant tests land here.
+2. **13D-b1** — the durable model: `audience(turn)` over principals, persisted
+   principal and committed-publication facts on capability turns, one offset
+   per participant, legacy key allowance, hydration. Invariant tests land
+   here.
 3. **13D-b2** — switch every delivery path to the single site and the
    contiguous-prefix receipt; delete the direct-tool handoff path; make turns
    atomic and catch-up unbounded. The surviving guest-handoff tests encode the
@@ -469,8 +524,10 @@ protocol in one diff.
 Focused tests must cover: A→B carrying A's unseen exchange; a host turn missed
 by B arriving in the same frame; B's own turns never quoted back to B; a tool
 report reaching every participant while its sidecar conversation reaches none;
-capability artifacts reaching only their invoking principal; a turn never split
-across or within frames; retry and cancellation idempotence; the tool side-pass
-delivering through the single site; a re-invited guest starting from a snapshot
-rather than an inherited offset; and a session file carrying the legacy cursor
-keys opening cleanly.
+an evidence-bearing capability result reaching every participant only after its
+invoking participant's reply commits; catalog/search and
+failed/cancelled/uncommitted capability work remaining private; a turn never
+split across or within frames; retry and cancellation idempotence; the tool
+side-pass delivering through the single site; a re-invited guest starting from
+a snapshot rather than an inherited offset; and a session file carrying the
+legacy cursor keys opening cleanly.

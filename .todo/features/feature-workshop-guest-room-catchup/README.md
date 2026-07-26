@@ -47,8 +47,10 @@ next message:
 2. When the writer sends to Guest B, walk the shared ledger forward from B's
    own reading position.
 3. Include every turn whose `audience` is `room` and whose speaker is not B —
-   host turns, other guests' exchanges, and tool reports. Exclude B's own
-   turns, direct-tool sidecar conversation, and capability artifacts owned by
+   host turns, other guests' exchanges, tool reports, and evidence-bearing
+   capability results published with a committed participant reply. Exclude
+   B's own turns, direct-tool sidecar conversation, catalog/search traffic,
+   and failed, cancelled, stale, or uncommitted capability work owned by
    another principal.
 4. Deliver that contiguous prefix, whole turns only, beside the writer's new
    message.
@@ -100,8 +102,12 @@ gives the desired idempotence:
 - [ ] Sending a message to Guest B after a direct Guest A exchange gives B a
       speaker-labeled catch-up containing A's unseen exchange.
 - [ ] A host turn that Guest B missed is included in the same room catch-up.
-- [ ] Guest B's own prior conversation, direct-tool sidecar conversation, and
-      other principals' capability artifacts are excluded.
+- [ ] Guest B's own prior conversation, direct-tool sidecar conversation,
+      catalog/search traffic, and failed/cancelled/uncommitted capability work
+      owned by other principals are excluded.
+- [ ] Evidence-bearing resource reads, dictionary results, and
+      participant-requested analysis results become room evidence only when the
+      invoking participant's final reply commits.
 - [ ] Catch-up uses universal turn IDs plus one `lastSeenRoomTurnId` per
       participant; retries are idempotent and only the delivered prefix
       advances the offset.
