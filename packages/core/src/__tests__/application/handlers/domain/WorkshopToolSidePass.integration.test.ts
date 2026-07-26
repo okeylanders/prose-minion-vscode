@@ -1,5 +1,8 @@
 import { WorkshopHandler } from '@/application/handlers/domain/WorkshopHandler';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import {
+  WorkshopRoomDeliveryService
+} from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
 import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
@@ -74,14 +77,17 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
     } as unknown as WorkshopPersonaCapabilityFactory;
     const settings = createFakeSettings();
     const writerProfileService = new WorkshopWriterProfileService(settings, output);
+    const roomDelivery = new WorkshopRoomDeliveryService(session);
     const handler = new WorkshopHandler(
       assistantService,
       { generateContext: jest.fn() } as never,
       session,
+      roomDelivery,
       new RunWorkshopToolSidePass(
         assistantService,
         analysisSidePass,
         session,
+        roomDelivery,
         capabilityFactory,
         output,
         writerProfileService
@@ -158,7 +164,7 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
       capability: { catalog: 'workshopPersona' }
     });
     expect(engine.runInitial.mock.calls[1][0].userMessage).toContain('verbatim engine report');
-    expect(engine.runInitial.mock.calls[1][0].userMessage).toContain('<workshop-tool-evidence>');
+    expect(engine.runInitial.mock.calls[1][0].userMessage).toContain('<workshop-room-catch-up>');
     expect(engine.runInitial.mock.calls[1][0].userMessage).toContain('<workshop-interaction');
     expect(promptLoader.loadPrompts.mock.calls[1][0]).toContain(
       'workshop-personas/interaction-modes/balanced.md'

@@ -14,6 +14,9 @@ import {
   workshopTextNoteLabel
 } from '@/application/services/workshop/WorkshopSessionService';
 import {
+  WorkshopRoomDeliveryService
+} from '@/application/services/workshop/WorkshopRoomDeliveryService';
+import {
   buildWorkshopHostUpdateFrame
 } from '@/application/services/workshop/WorkshopPromptBuilder';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -233,7 +236,8 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
         .toThrow(WorkshopScopeLockedError);
       // Dismissal retires the provider sidecar, not the historical exchange.
       // It remains honest host evidence because the passage path stayed fixed.
-      expect(service.collectUnseenGuestExchangesForHost().map((turn) => turn.id))
+      expect(new WorkshopRoomDeliveryService(service)
+        .prepare({ kind: 'host' }).turns.map((turn) => turn.id))
         .toEqual([writerTurn.id, guestTurn.id]);
     });
 

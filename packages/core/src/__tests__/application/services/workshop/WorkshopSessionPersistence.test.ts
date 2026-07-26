@@ -3,6 +3,9 @@ import {
   WorkshopSessionService
 } from '@/application/services/workshop/WorkshopSessionService';
 import {
+  WorkshopRoomDeliveryService
+} from '@/application/services/workshop/WorkshopRoomDeliveryService';
+import {
   parseWorkshopSessionStateV1,
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
@@ -97,6 +100,8 @@ const buildCompleteState = (): WorkshopSessionStateV1 => {
   session.beginPersonaGuestMessage('margot', 'guest-message', 'How does the voice sound?');
   session.completeRun('guest-message', 'Close and controlled.');
   session.recordSessionMarker('resume', 'Session resumed at 11:30 AM.');
+  const hostDelivery = new WorkshopRoomDeliveryService(session);
+  hostDelivery.commit(hostDelivery.prepare({ kind: 'host' }));
 
   return session.exportCommittedState();
 };

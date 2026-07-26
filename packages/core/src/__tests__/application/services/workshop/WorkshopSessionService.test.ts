@@ -4,9 +4,8 @@ import {
   WORKSHOP_TODO_BOUNDS
 } from '@/application/services/workshop/WorkshopSessionService';
 import {
-  buildWorkshopDirectHandoff,
-  buildWorkshopGuestHandoff
-} from '@/application/services/workshop/WorkshopPromptBuilder';
+  WorkshopRoomDeliveryService
+} from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', () => {
@@ -492,79 +491,14 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(service.getSnapshot().participants.toolSidecars[0].activeTarget).toBe(true);
   });
 
-  it('collects the unseen delta and advances cursors only for shipped turns after commit', () => {
+  it('keeps direct sidecar exchanges private from every room participant', () => {
     pin();
     adoptReport('prose');
-    for (let index = 0; index < 6; index += 1) {
-      directExchange('prose', index);
-    }
+    directExchange('prose', 1, 'private insight');
+    const delivery = new WorkshopRoomDeliveryService(service);
 
-    const handoff = buildWorkshopDirectHandoff(service.collectUnseenDirectExchanges())!;
-    expect(handoff.unseenTurns).toBe(12);
-    expect(handoff.includedTurns).toBe(PROMPT_BUDGETS.directHandoff.turns);
-    expect(handoff.omittedTurns).toBe(4);
-
-    // A failed/cancelled host turn does not consume the delta.
-    expect(service.collectUnseenDirectExchanges()).toHaveLength(12);
-    service.commitHostHandoff(handoff.deliveredTurnIds);
-    expect(service.collectUnseenDirectExchanges()).toHaveLength(0);
-
-    directExchange('prose', 7);
-    expect(service.collectUnseenDirectExchanges()).toHaveLength(2);
-  });
-
-  it('does not advance a cursor for a tool whose exchanges the turn window dropped (PR #72 #1)', () => {
-    pin();
-    adoptReport('prose');
-    directExchange('prose', 1, 'the oldest unseen exchange');
-    adoptReport('continuity');
-    for (let index = 0; index < 4; index += 1) {
-      directExchange('continuity', index);
-    }
-
-    const unseen = service.collectUnseenDirectExchanges();
-    expect(unseen).toHaveLength(10);
-    const handoff = buildWorkshopDirectHandoff(unseen)!;
-    // The newest-8 window is filled entirely by continuity turns.
-    expect(handoff.includedTurns).toBe(PROMPT_BUDGETS.directHandoff.turns);
-    expect(handoff.omittedTurns).toBe(2);
-    expect(handoff.message).not.toContain('the oldest unseen exchange');
-
-    service.commitHostHandoff(handoff.deliveredTurnIds);
-
-    // Continuity is caught up; prose's undelivered pair survives for the next handoff.
-    const stillUnseen = service.collectUnseenDirectExchanges();
-    expect(stillUnseen.map((turn) => turn.toolId)).toEqual(['prose', 'prose']);
-    expect(stillUnseen[1].content).toBe('the oldest unseen exchange');
-  });
-
-  it('keeps undelivered direct exchanges claimable across a same-tool re-run (PR #72 #2)', () => {
-    pin();
-    adoptReport('prose', 'first-run', 'first-conv');
-    directExchange('prose', 1, 'undelivered insight');
-
-    // Side-pass order: the pending delta is snapshotted, then the replacement
-    // report is adopted — and its synthesis fails, so nothing commits.
-    expect(service.collectUnseenDirectExchanges()).toHaveLength(2);
-    adoptReport('prose', 'second-run', 'second-conv');
-
-    const survivors = service.collectUnseenDirectExchanges();
-    expect(survivors.map((turn) => turn.content)).toEqual(['writer 1', 'undelivered insight']);
-
-    // A later successful host turn ships and commits them exactly once.
-    const handoff = buildWorkshopDirectHandoff(survivors)!;
-    expect(handoff.message).toContain('undelivered insight');
-    service.commitHostHandoff(handoff.deliveredTurnIds);
-    expect(service.collectUnseenDirectExchanges()).toHaveLength(0);
-  });
-
-  it('does not hand a cancelled direct attempt to the host as a completed exchange', () => {
-    pin();
-    adoptReport('prose');
-    service.beginDirectToolMessage('prose', 'cancelled-direct', 'Never delivered');
-    service.abandonRun('cancelled-direct');
-
-    expect(service.collectUnseenDirectExchanges()).toHaveLength(0);
+    expect(delivery.prepare({ kind: 'host' }).turns.map((turn) => turn.content))
+      .not.toEqual(expect.arrayContaining(['writer 1', 'private insight']));
   });
 
   it('preserves the host, retires sidecars, versions turns, and collapses replacement notices', () => {
@@ -861,7 +795,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       }
     });
 
-    it('records a guest-invoked artifact with its persisted principal, private from host and other guests', () => {
+    it('publishes committed guest evidence to the host and other guests', () => {
       pin();
       service.adoptPersonaGuest('margot', 'margot-conv');
       service.adoptPersonaGuest('quinn', 'quinn-conv');
@@ -881,20 +815,16 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       });
       service.completeRun('guest-run', 'Margot reply.');
 
-      // The artifact is in the ledger for the writer, but never in the host
-      // thread, another guest's catch-up, or the guest-to-host handoff.
+      const delivery = new WorkshopRoomDeliveryService(service);
       expect(service.getSnapshot().turns.map((turn) => turn.content))
         .toContain('Threshold-toned.');
-      expect(service.collectHostThreadTurns().map((turn) => turn.content))
-        .not.toContain('Threshold-toned.');
-      expect(service.collectUnseenHostTurnsForGuest('quinn').map((turn) => turn.content))
-        .not.toContain('Threshold-toned.');
-      // PR #89 review #1 (blocking): the private artifact sits BETWEEN the
-      // writer's prompt and the guest's reply, and the handoff must still
-      // deliver the full exchange — absence of the artifact is not enough,
-      // the writer's question has to be present.
-      expect(service.collectUnseenGuestExchangesForHost().map((turn) => turn.content))
-        .toEqual(['Look up liminal.', 'Margot reply.']);
+      expect(delivery.prepare({ kind: 'host' }).turns.map((turn) => turn.content))
+        .toEqual(['Look up liminal.', 'Threshold-toned.', 'Margot reply.']);
+      expect(delivery.prepare({
+        kind: 'personaGuest',
+        personaId: 'quinn'
+      }).turns.map((turn) => turn.content))
+        .toEqual(['Look up liminal.', 'Threshold-toned.', 'Margot reply.']);
     });
 
     it('pairs the writer prompt across several interleaved private artifacts and commits cleanly', () => {
@@ -905,11 +835,16 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       service.recordCapabilityArtifact({ requestId: 'guest-run', ...guestLookup('margot') });
       service.completeRun('guest-run', 'Margot reply.');
 
-      const unseen = service.collectUnseenGuestExchangesForHost();
-      expect(unseen.map((turn) => turn.content)).toEqual(['Check two words.', 'Margot reply.']);
-
-      service.commitHostGuestHandoff(unseen.map((turn) => turn.id));
-      expect(service.collectUnseenGuestExchangesForHost()).toEqual([]);
+      const delivery = new WorkshopRoomDeliveryService(service);
+      const prepared = delivery.prepare({ kind: 'host' });
+      expect(prepared.turns.map((turn) => turn.content)).toEqual([
+        'Check two words.',
+        'Threshold-toned.',
+        'Threshold-toned.',
+        'Margot reply.'
+      ]);
+      delivery.commit(prepared);
+      expect(delivery.prepare({ kind: 'host' }).turns).toEqual([]);
     });
 
     it('names which check refused an artifact so callers can log the difference (review #6)', () => {
@@ -1049,21 +984,28 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     ]);
   });
 
-  it('tracks guest cursors in both directions and stamps guest turns', () => {
+  it('tracks one inbound room offset per participant and stamps guest turns', () => {
     pin();
     service.beginPersonaMessage('host-1', 'Host opening.');
     service.completeRun('host-1', 'Host reply.', undefined, false, 'host-conv');
     service.adoptPersonaGuest('margot', 'margot-conv');
 
     service.beginPersonaMessage('host-2', 'A later host question.');
-    const hostReply = service.completeRun('host-2', 'A later host answer.')!;
-    const missed = service.collectUnseenHostTurnsForGuest('margot');
-    expect(missed.map((turn) => turn.content)).toEqual([
+    service.completeRun('host-2', 'A later host answer.');
+    const delivery = new WorkshopRoomDeliveryService(service);
+    const guestCatchUp = delivery.prepare({
+      kind: 'personaGuest',
+      personaId: 'margot'
+    });
+    expect(guestCatchUp.turns.map((turn) => turn.content)).toEqual([
       'A later host question.',
       'A later host answer.'
     ]);
-    service.commitGuestCatchUp('margot', [hostReply.id]);
-    expect(service.collectUnseenHostTurnsForGuest('margot')).toEqual([]);
+    delivery.commit(guestCatchUp);
+    expect(delivery.prepare({
+      kind: 'personaGuest',
+      personaId: 'margot'
+    }).turns).toEqual([]);
 
     expect(service.setChatTarget({ kind: 'personaGuest', personaId: 'margot' })).toBe(true);
     const guestMessage = service.beginPersonaGuestMessage(
@@ -1092,10 +1034,13 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       artifact: 'persona_message'
     });
 
-    const guestEvidence = service.collectUnseenGuestExchangesForHost();
-    expect(guestEvidence.map((turn) => turn.id)).toEqual([guestMessage.id, guestReply.id]);
-    service.commitHostGuestHandoff([guestMessage.id, guestReply.id]);
-    expect(service.collectUnseenGuestExchangesForHost()).toEqual([]);
+    const guestEvidence = delivery.prepare({ kind: 'host' });
+    expect(guestEvidence.turns.map((turn) => turn.id)).toEqual([
+      guestMessage.id,
+      guestReply.id
+    ]);
+    delivery.commit(guestEvidence);
+    expect(delivery.prepare({ kind: 'host' }).turns).toEqual([]);
 
     expect(service.dismissPersonaGuest('margot')).toBe('margot-conv');
     expect(service.getChatTarget()).toEqual({ kind: 'host' });
@@ -1123,12 +1068,14 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     const guestTurn = service.completeRun('guest-1', 'The narrative distance drifts.')!;
 
     expect(service.dismissPersonaGuest('margot')).toBe('margot-conv');
-    expect(service.collectUnseenGuestExchangesForHost().map((turn) => turn.id)).toEqual([
+    const delivery = new WorkshopRoomDeliveryService(service);
+    const guestEvidence = delivery.prepare({ kind: 'host' });
+    expect(guestEvidence.turns.map((turn) => turn.id)).toEqual([
       writerTurn.id,
       guestTurn.id
     ]);
-    service.commitHostGuestHandoff([writerTurn.id, guestTurn.id]);
-    expect(service.collectUnseenGuestExchangesForHost()).toEqual([]);
+    delivery.commit(guestEvidence);
+    expect(delivery.prepare({ kind: 'host' }).turns).toEqual([]);
 
     service.beginPersonaGuestJoin('margot', 'guest-rejoin', 'Take another look.');
     service.completeRun('guest-rejoin', 'I see one more distance shift.', undefined, false, 'margot-conv-2');
@@ -1138,7 +1085,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(service.getSelectedPersonaId()).toBe('theo');
   });
 
-  it('interleaves two guests in thread order and advances each handoff cursor', () => {
+  it('interleaves two guests in ledger order and advances the host offset once', () => {
     pin();
     service.adoptPersonaGuest('margot', 'margot-conv');
     service.adoptPersonaGuest('quinn', 'quinn-conv');
@@ -1148,20 +1095,16 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     const quinnWriter = service.beginPersonaGuestMessage('quinn', 'quinn-1', 'Check the cup.');
     const quinnReply = service.completeRun('quinn-1', 'The cup changes hands twice.')!;
 
-    const unseen = service.collectUnseenGuestExchangesForHost();
-    expect(unseen.map((turn) => turn.id)).toEqual([
+    const delivery = new WorkshopRoomDeliveryService(service);
+    const unseen = delivery.prepare({ kind: 'host' });
+    expect(unseen.turns.map((turn) => turn.id)).toEqual([
       margotWriter.id,
       margotReply.id,
       quinnWriter.id,
       quinnReply.id
     ]);
-    const handoff = buildWorkshopGuestHandoff(unseen)!;
-    expect(handoff.message).toContain('Margot:\nThe voice pulls away here.');
-    expect(handoff.message).toContain('Quinn:\nThe cup changes hands twice.');
-
-    service.commitHostGuestHandoff(handoff.deliveredTurnIds);
-
-    expect(service.collectUnseenGuestExchangesForHost()).toEqual([]);
+    delivery.commit(unseen);
+    expect(delivery.prepare({ kind: 'host' }).turns).toEqual([]);
   });
 
   it('adopts a fresh guest only when its invitation run completes', () => {
@@ -1174,7 +1117,10 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       'guest-join-1',
       'Read the room.'
     );
-    expect(service.collectHostThreadTurns().map((turn) => turn.content)).toEqual([
+    expect(new WorkshopRoomDeliveryService(service).prepareJoinSnapshot({
+      kind: 'personaGuest',
+      personaId: 'margot'
+    }).map((turn) => turn.content)).toEqual([
       'Host opening.',
       'Host reply.'
     ]);

@@ -66,7 +66,7 @@ const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)
 // composition-root-owned reload-safety aggregate — a handler `new`-ing its
 // own copy would silently fork the session per webview.
 const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
-  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore)\b`
+  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore)\b`
 );
 
 function collectSourceFiles(dir: string, acc: string[] = []): string[] {
@@ -107,5 +107,26 @@ describe('architectural boundaries', () => {
       .map((file) => path.relative(SRC_ROOT, file));
 
     expect(offenders).toEqual([]);
+  });
+
+  it('Workshop has one room-frame materializer and one offset-advance call site', () => {
+    const sourceFiles = collectSourceFiles(SRC_ROOT);
+    const frameMaterializers = sourceFiles
+      .filter((file) =>
+        /import\s*\{[^}]*buildWorkshopRoomCatchUp[^}]*\}\s*from/s.test(
+          fs.readFileSync(file, 'utf8')
+        )
+      )
+      .map((file) => path.relative(SRC_ROOT, file));
+    const offsetAdvancers = sourceFiles
+      .filter((file) => /\.advanceRoomDeliveryOffset\(/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+
+    expect(frameMaterializers).toEqual([
+      'application/services/workshop/WorkshopRoomDeliveryService.ts'
+    ]);
+    expect(offsetAdvancers).toEqual([
+      'application/services/workshop/WorkshopRoomDeliveryService.ts'
+    ]);
   });
 });

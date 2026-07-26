@@ -78,6 +78,9 @@ export type {
   WorkshopPersistedSummaryV1
 } from '@/application/services/workshop/WorkshopPersistedSession';
 export { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
+export {
+  WorkshopRoomDeliveryService
+} from '@/application/services/workshop/WorkshopRoomDeliveryService';
 export { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 export { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 export { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';

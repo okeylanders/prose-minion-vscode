@@ -35,23 +35,12 @@ export interface PromptBudgets {
     readSourceBytes: number;
     readBytes: number;
   }>;
-  readonly toolEvidence: Readonly<{ characters: number }>;
   readonly workshopTodos: Readonly<{
     items: number;
     characters: number;
     headerAllowanceCharacters: number;
   }>;
-  readonly directHandoff: Readonly<{
-    turns: number;
-    characters: number;
-    headerAllowanceCharacters: number;
-  }>;
   readonly guestJoinSnapshot: Readonly<{
-    turns: number;
-    characters: number;
-    headerAllowanceCharacters: number;
-  }>;
-  readonly guestCatchUp: Readonly<{
     turns: number;
     characters: number;
     headerAllowanceCharacters: number;
@@ -106,22 +95,11 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     readSourceBytes: 2 * 1024 * 1024,
     readBytes: 64 * 1024
   },
-  toolEvidence: { characters: 50_000 },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
-  directHandoff: {
-    turns: 8,
-    characters: 20_000,
-    headerAllowanceCharacters: 800
-  },
   guestJoinSnapshot: {
     turns: 20,
     characters: 24_000,
     headerAllowanceCharacters: 1_200
-  },
-  guestCatchUp: {
-    turns: 8,
-    characters: 20_000,
-    headerAllowanceCharacters: 800
   },
   guestOpening: { characters: 2_000 },
   contextFiles: { words: 50_000, catalogItems: 100 },

@@ -36,6 +36,7 @@ import {
   AccountBalanceService,
   OpenRouterAccountClient,
   WorkshopSessionService,
+  WorkshopRoomDeliveryService,
   RunWorkshopToolSidePass,
   WorkshopAnalysisSidePass,
   WorkshopPersonaCapabilityFactory,
@@ -186,6 +187,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       )
     )
   );
+  const workshopRoomDeliveryService = new WorkshopRoomDeliveryService(
+    workshopSessionService
+  );
   const workshopAnalysisSidePass = new WorkshopAnalysisSidePass(
     assistantToolService,
     workshopSessionService,
@@ -206,6 +210,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     assistantToolService,
     workshopAnalysisSidePass,
     workshopSessionService,
+    workshopRoomDeliveryService,
     workshopPersonaCapabilityFactory,
     outputChannel,
     workshopWriterProfileService
@@ -255,6 +260,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     categorySearchService,
     accountBalanceService,
     workshopSessionService,
+    workshopRoomDeliveryService,
     workshopPersonaCapabilityFactory,
     workshopToolSidePass,
     workshopContextResourceService,

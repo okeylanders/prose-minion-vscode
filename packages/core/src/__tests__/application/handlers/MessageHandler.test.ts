@@ -1,6 +1,9 @@
 import { MessageHandler } from '@/application/handlers/MessageHandler';
 import { CoreServices } from '@/application/handlers/MessageHandlerContracts';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import {
+  WorkshopRoomDeliveryService
+} from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
@@ -153,6 +156,7 @@ function createTestAssembly(): TestAssembly {
     // Real aggregate on purpose: it is pure/dependency-free, and using it makes
     // the reload-safety test below exercise true session behavior.
     workshopSessionService,
+    workshopRoomDeliveryService: new WorkshopRoomDeliveryService(workshopSessionService),
     workshopPersonaCapabilityFactory: {
       create: jest.fn(() => ({ catalog: 'workshopPersona' }))
     } as unknown as WorkshopPersonaCapabilityFactory,

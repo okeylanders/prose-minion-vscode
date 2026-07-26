@@ -14,6 +14,9 @@ import type {
 import type { AIResourceManager } from '@orchestration/AIResourceManager';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import type { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import type {
+  WorkshopRoomDeliveryService
+} from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import type { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import type { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import type { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
@@ -97,6 +100,7 @@ export interface CoreServices {
    * or reloading its webview rehydrates from this one instance.
    */
   workshopSessionService: WorkshopSessionService;
+  workshopRoomDeliveryService: WorkshopRoomDeliveryService;
   workshopPersonaCapabilityFactory: WorkshopPersonaCapabilityFactory;
   workshopToolSidePass: RunWorkshopToolSidePass;
   /** Configured-resource intake for Workshop's context selector flows (Sprint 12). */
