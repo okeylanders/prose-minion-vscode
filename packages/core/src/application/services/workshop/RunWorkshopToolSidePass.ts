@@ -26,6 +26,7 @@ import { LogSink } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
+import { workshopWriterPreferredAddress } from '@/utils/workshopWriterProfile';
 import {
   isApiKeyNotConfiguredWarning,
   TokenUsage,
@@ -165,7 +166,14 @@ export class RunWorkshopToolSidePass {
       reportAdopted = true;
       events.sessionChanged();
 
-      const pendingRoomDelivery = this.roomDelivery.prepare({ kind: 'host' });
+      const writerProfile = this.writerProfileService.getProfile();
+      const pendingRoomDelivery = this.roomDelivery.prepare(
+        { kind: 'host' },
+        {
+          writerName: workshopWriterPreferredAddress(writerProfile),
+          renderedAt: Date.now()
+        }
+      );
       const roomCatchUp = pendingRoomDelivery.frame;
       if (roomCatchUp) {
         this.outputChannel.appendLine(
@@ -227,7 +235,7 @@ export class RunWorkshopToolSidePass {
             excerpt,
             message: hostMessage,
             behavior: behaviorMetadata.behavior!,
-            writerProfile: this.writerProfileService.getProfile(),
+            writerProfile,
             messageIsTrustedEnvelope: true,
             ...behaviorFrames,
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(

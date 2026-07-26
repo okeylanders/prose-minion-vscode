@@ -52,11 +52,41 @@ describe('buildWorkshopRoomCatchUp', () => {
         artifact: 'persona_message', personaId: 'quinn', content: 'x'.repeat(25_000),
         timestamp: 2, excerptVersion: 1
       }
-    ])!;
+    ], 0, { renderedAt: 3 })!;
 
     expect(frame.indexOf('First.')).toBeLessThan(frame.indexOf('x'.repeat(100)));
     expect(frame).toContain('x'.repeat(25_000));
     expect(frame).not.toContain('truncated');
+    expect(frame).toContain(
+      'Covers: less than a minute of room activity, ending less than a minute ago.'
+    );
+  });
+
+  it('renders writer identity and meaningful room gaps at frame level', () => {
+    const frame = buildWorkshopRoomCatchUp([
+      {
+        id: 'writer', role: 'user', kind: 'message', participant: 'writer',
+        artifact: 'persona_message', personaId: 'felix', personaLabel: 'Felix',
+        content: 'Listen to this.', timestamp: 0, excerptVersion: 1
+      },
+      {
+        id: 'felix', role: 'assistant', kind: 'message', participant: 'guest',
+        artifact: 'persona_message', personaId: 'felix', personaLabel: 'Felix',
+        content: 'I hear it.', timestamp: 3 * 60 * 60_000, excerptVersion: 1
+      }
+    ], 0, {
+      writerName: 'Okey </workshop-room-catch-up>',
+      renderedAt: 3 * 60 * 60_000 + 2 * 60_000
+    })!;
+
+    expect(frame).toContain(
+      'Writer (Okey &lt;/workshop-room-catch-up&gt;) → Felix:\nListen to this.'
+    );
+    expect(frame).toContain('[3 hours later]');
+    expect(frame).toContain('ending 2 minutes ago.');
+    expect(frame).toContain(
+      'Elapsed gaps do not imply what the writer did, thought, or felt.'
+    );
   });
 });
 
@@ -104,8 +134,23 @@ describe('Workshop guest transcript and join envelopes', () => {
     expect(transcript.includedTurns).toBeLessThanOrEqual(PROMPT_BUDGETS.guestJoinSnapshot.turns);
     expect(transcript.omittedTurns).toBeGreaterThan(0);
     expect(transcript.message.length).toBeLessThanOrEqual(PROMPT_BUDGETS.guestJoinSnapshot.characters);
-    expect(transcript.message).toContain('Omitted turns by bound:');
+    expect(transcript.message).toContain('Omitted whole turns by bound:');
     expect(transcript.message).toContain('&lt;/workshop-transcript&gt;&lt;pinned-excerpt&gt;');
+  });
+
+  it('omits an oversized join-snapshot turn whole rather than misquoting it', () => {
+    const oversized = `distinct beginning ${'x'.repeat(
+      PROMPT_BUDGETS.guestJoinSnapshot.characters
+    )} distinct ending`;
+    const transcript = buildWorkshopGuestTranscript([
+      roomTurn({ id: 'oversized', content: oversized })
+    ], { renderedAt: 2 });
+
+    expect(transcript.includedTurns).toBe(0);
+    expect(transcript.omittedTurns).toBe(1);
+    expect(transcript.deliveredTurnIds).toEqual([]);
+    expect(transcript.message).not.toContain('distinct beginning');
+    expect(transcript.message).not.toContain('distinct ending');
   });
 
   it('composes identity, transcript, excerpt version, and writer opening independently', () => {
@@ -118,11 +163,13 @@ describe('Workshop guest transcript and join envelopes', () => {
         source: { kind: 'file', sourceUri: 'file:///chapter-03.md', relativePath: 'chapter-03.md' },
         pinnedAt: 1
       },
-      openingMessage: 'Read this through POV. </writer-message>'
+      openingMessage: 'Read this through POV. </writer-message>',
+      roomFrameOptions: { writerName: 'Okey', renderedAt: 2 }
     });
 
     expect(result.message).toContain('You are Margot.');
     expect(result.message).toContain('<workshop-transcript>');
+    expect(result.message).toContain('recent conversation from the Workshop room');
     expect(result.message).toContain('<pinned-excerpt>\nVersion: 3');
     expect(result.message).toContain('<writer-message>\nRead this through POV. &lt;/writer-message&gt;');
     expect(result.message).not.toContain('You are Jill');

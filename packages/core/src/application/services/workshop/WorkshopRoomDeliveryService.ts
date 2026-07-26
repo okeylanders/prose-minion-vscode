@@ -11,8 +11,9 @@ import { WorkshopTurn } from '@messages';
 import { WorkshopCapabilityPrincipal } from '@shared/types';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
-  buildWorkshopRoomCatchUp
-} from '@/application/services/workshop/WorkshopPromptBuilder';
+  buildWorkshopRoomCatchUp,
+  WorkshopRoomFrameRenderOptions
+} from '@/application/services/workshop/WorkshopRoomFrameRenderer';
 import {
   sameParticipantPrincipal,
   workshopTurnAudience,
@@ -88,7 +89,10 @@ export class WorkshopRoomDeliveryService {
     return projectWorkshopRoomTurns(state, reader);
   }
 
-  prepare(reader: WorkshopCapabilityPrincipal): WorkshopPreparedRoomDelivery {
+  prepare(
+    reader: WorkshopCapabilityPrincipal,
+    frameOptions: WorkshopRoomFrameRenderOptions = {}
+  ): WorkshopPreparedRoomDelivery {
     const state = this.session.readRoomDeliveryState(reader);
     const pending = projectWorkshopRoomTurns(
       state.turns,
@@ -100,7 +104,11 @@ export class WorkshopRoomDeliveryService {
       reader: { ...reader },
       startingOffset: state.lastSeenRoomTurnId,
       turns,
-      frame: buildWorkshopRoomCatchUp(turns, pending.length - turns.length),
+      frame: buildWorkshopRoomCatchUp(
+        turns,
+        pending.length - turns.length,
+        frameOptions
+      ),
       deliveredTurnIds: turns.map((turn) => turn.id),
       deferredTurns: pending.length - turns.length
     };

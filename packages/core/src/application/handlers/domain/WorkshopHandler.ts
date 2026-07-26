@@ -76,6 +76,7 @@ import {
 } from '@shared/constants/workshopPersonas';
 import { workshopQuickActionPrompt } from '@shared/constants/workshopQuickActions';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
+import { workshopWriterPreferredAddress } from '@/utils/workshopWriterProfile';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { createHash } from 'crypto';
 import * as path from 'path';
@@ -621,6 +622,7 @@ export class WorkshopHandler {
       const timeNotice = this.sessionTime.prepareNotice(
         workshopGuestConversationKey(personaId)
       );
+      const writerProfile = this.conversationSettingsService.getWriterProfile();
       const userTurn = this.session.beginPersonaGuestJoin(
         personaId,
         requestId,
@@ -634,6 +636,10 @@ export class WorkshopHandler {
           personaId
         }),
         openingMessage,
+        roomFrameOptions: {
+          writerName: workshopWriterPreferredAddress(writerProfile),
+          renderedAt: Date.now()
+        },
         timeFrame: timeNotice?.frame,
         ...behaviorFramesFor(userTurn)
       });
@@ -674,7 +680,7 @@ export class WorkshopHandler {
           personaId,
           message: join.message,
           behavior: userTurn.behavior!,
-          writerProfile: this.conversationSettingsService.getWriterProfile()
+          writerProfile
         }, {
           signal: controller.signal,
           onToken: (token: string) => this.sendStreamChunk(requestId, token),
@@ -900,8 +906,12 @@ export class WorkshopHandler {
         : target.kind === 'personaGuest'
           ? { kind: 'personaGuest', personaId: target.personaId }
           : undefined;
+    const writerProfile = this.conversationSettingsService.getWriterProfile();
     const roomDelivery = roomReader
-      ? this.roomDelivery.prepare(roomReader)
+      ? this.roomDelivery.prepare(roomReader, {
+          writerName: workshopWriterPreferredAddress(writerProfile),
+          renderedAt: Date.now()
+        })
       : undefined;
     const roomCatchUp = roomDelivery?.frame;
     const pendingHostUpdates = target.kind === 'host'
@@ -1060,7 +1070,7 @@ export class WorkshopHandler {
             excerpt,
             message: modelMessage,
             behavior: userTurn.behavior!,
-            writerProfile: this.conversationSettingsService.getWriterProfile(),
+            writerProfile,
             messageIsTrustedEnvelope: true,
             ...personaBehaviorFrames,
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(

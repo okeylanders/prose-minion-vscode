@@ -1,6 +1,6 @@
 # Handoff cursors advance past turns the envelope never shipped
 
-**Status**: Open
+**Status**: Resolved in Sprint 13D (`63fe132`)
 **Priority**: High
 **Discovered**: 2026-07-26, during the PR #89 (Sprint 13C) fix-verification pass
 **Owner candidate**: Sprint 13D (the delivery-offset rewrite already replaces this machinery)
@@ -79,6 +79,16 @@ the new single call site.
   not consumed — asserting the dropped turn is still returned on the next collect.
 - Pairing no longer depends on turn adjacency.
 - The `PR #72 review #1` invariant is restated on the new call site and is true.
+
+## Resolution
+
+Sprint 13D deleted both max-index handoff committers and replaced them with
+`WorkshopRoomDeliveryService.commit()`. The surviving site accepts only the
+exact oldest contiguous prefix of the reader's eligible projection; a hole
+throws and leaves the offset unchanged. The service tests preserve all three
+reproductions (one ~25k reply, five short exchanges, four ~6k exchanges), plus
+an explicit hole/retry proof. The architecture suite guards the single
+catch-up construction and single offset-advance call sites.
 
 ## Related
 

@@ -1,6 +1,6 @@
 # Sprint 13D: Room Ledger, Delivery Offsets, and Release Polish
 
-**Status**: In Progress (2026-07-26)
+**Status**: Implementation Complete — manual Extension Development Host smoke pending (2026-07-26)
 **Priority**: High  
 **Branch**: `sprint/workshop-editor-tab-13d-room-catchup-release-polish` -> PR into `epic/workshop-editor-tab`  
 **Depends on**: Sprint 13C  
@@ -174,3 +174,38 @@ sprint because 13D deletes the affected relationship machinery.
   and restored sessions.
 - Typecheck, full suite, lint, production build/bundle, accessibility pass,
   and `git diff --check` pass.
+
+## Implementation record
+
+Completed on `sprint/workshop-editor-tab-13d-room-catchup-release-polish` as
+four reviewable commits:
+
+1. `91c1383` — extracted the shared turn packer.
+2. `301a122` — persisted room audience facts and one inbound offset per
+   participant.
+3. `63fe132` — routed participant delivery and acknowledgement through one
+   collaborator and deleted the relationship handoff paths.
+4. 13D-c (this implementation checkpoint) — renders room frames through the focused
+   `WorkshopRoomFrameRenderer`, adds render-time writer attribution and
+   frame-level relative-time markers, and makes the bounded room-wide join
+   snapshot whole-turn-only.
+
+Automated release evidence on 2026-07-26:
+
+- `npm run typecheck` — passed for core, webview, and extension.
+- `npm test -- --runInBand` — 132 suites / 1,424 tests passed.
+- `npm run lint -- --no-cache` — passed with the repository's pre-existing
+  786-warning baseline and zero errors.
+- `npm run build` — production extension + webview bundles compiled;
+  `verify:bundle` passed. Webpack retained its existing webview asset-size
+  warnings.
+- `npm run package` — produced `prose-minion-2.0.3.vsix` (177 files,
+  9.79 MB).
+- `git diff --check` — passed.
+- Workshop modal, rail, composer, thread, persistence/reopen, stale-run,
+  cancellation/retry, and architecture suites passed as part of the full run.
+
+Still intentionally manual before merge: exercise open chat, later excerpt
+adoption, both local-analysis policies, guest invitation/capabilities, A → B
+catch-up, cancellation/retry, and a restored session in the Extension
+Development Host; include keyboard/screen-reader inspection in that pass.

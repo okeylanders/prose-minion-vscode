@@ -9,11 +9,6 @@ const policy = (
   turnLimit: 3,
   characterLimit: 100,
   headerAllowanceCharacters: 0,
-  oversizedTurn: {
-    kind: 'head-truncate',
-    marker: '[trimmed]'
-  },
-  receiptOrder: 'frame-order',
   ...overrides
 });
 
@@ -33,27 +28,38 @@ describe('packWorkshopTurnsNewestFirst', () => {
     expect(packed.omittedTurns).toBe(1);
   });
 
-  it('can preserve the legacy newest-first receipt order independently of frame order', () => {
+  it('keeps receipts in the same ledger order as rendered blocks', () => {
     const packed = packWorkshopTurnsNewestFirst(
       turns('one', 'two', 'three'),
       (turn) => turn.content,
-      policy({ receiptOrder: 'newest-first' })
+      policy()
     );
 
     expect(packed.blocks).toEqual(['one', 'two', 'three']);
-    expect(packed.deliveredTurnIds).toEqual(['turn-3', 'turn-2', 'turn-1']);
+    expect(packed.deliveredTurnIds).toEqual(['turn-1', 'turn-2', 'turn-3']);
   });
 
-  it('head-truncates only the newest oversized turn and spends the remaining budget', () => {
+  it('omits an oversized newest turn whole instead of quoting part of it', () => {
     const packed = packWorkshopTurnsNewestFirst(
       turns('older', 'x'.repeat(40)),
       (turn) => turn.content,
       policy({ characterLimit: 20 })
     );
 
-    expect(packed.blocks).toEqual([`${'x'.repeat(11)}[trimmed]`]);
-    expect(packed.deliveredTurnIds).toEqual(['turn-2']);
-    expect(packed.omittedTurns).toBe(1);
-    expect(packed.truncatedCharacters).toBe(29 + 'older'.length);
+    expect(packed.blocks).toEqual([]);
+    expect(packed.deliveredTurnIds).toEqual([]);
+    expect(packed.omittedTurns).toBe(2);
+  });
+
+  it('omits one contiguous older prefix when the next whole turn does not fit', () => {
+    const packed = packWorkshopTurnsNewestFirst(
+      turns('old', 'x'.repeat(18), 'new'),
+      (turn) => turn.content,
+      policy({ characterLimit: 20 })
+    );
+
+    expect(packed.blocks).toEqual(['new']);
+    expect(packed.deliveredTurnIds).toEqual(['turn-3']);
+    expect(packed.omittedTurns).toBe(2);
   });
 });

@@ -45,6 +45,9 @@ export interface PromptBudgets {
     characters: number;
     headerAllowanceCharacters: number;
   }>;
+  readonly workshopRoom: Readonly<{
+    gapMilliseconds: number;
+  }>;
   readonly guestOpening: Readonly<{ characters: number }>;
   readonly contextFiles: Readonly<{ words: number; catalogItems: number }>;
   readonly guides: Readonly<{ words: number }>;
@@ -100,6 +103,9 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     turns: 20,
     characters: 24_000,
     headerAllowanceCharacters: 1_200
+  },
+  workshopRoom: {
+    gapMilliseconds: 60 * 60 * 1_000
   },
   guestOpening: { characters: 2_000 },
   contextFiles: { words: 50_000, catalogItems: 100 },
