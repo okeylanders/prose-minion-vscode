@@ -87,7 +87,7 @@ const compressionValueClass = (value: ContextBudgetSnapshot['contextCompression'
   unknown: 'pm-ctx-dim'
 })[value];
 
-/** The gauge label is "<participant> context"; the footer wants the bare name. */
+/** Most measured labels include "context"; the footer wants the bare name. */
 const participantName = (label: string): string => label.replace(/\s+context$/i, '');
 
 const Chevron: React.FC = () => (
@@ -107,7 +107,8 @@ const IdentityDot: React.FC<{ label: string }> = ({ label }) => (
 
 const ParticipantLabel: React.FC<{ label: string }> = ({ label }) => (
   <span className="pm-context-budget-name">
-    <b>{participantName(label)}</b>&nbsp;context
+    <b>{participantName(label)}</b>
+    {/\s+context$/i.test(label) ? <>&nbsp;context</> : null}
   </span>
 );
 

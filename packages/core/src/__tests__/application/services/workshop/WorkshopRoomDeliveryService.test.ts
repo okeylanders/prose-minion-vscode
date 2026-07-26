@@ -1,5 +1,6 @@
 import {
   guardWorkshopRoomDelivery,
+  hasWorkshopConversationalCatchUp,
   projectWorkshopJoinSnapshotTurns,
   projectWorkshopRoomTurns,
   WorkshopRoomDeliveryService
@@ -25,6 +26,17 @@ const turn = (
 });
 
 describe('WorkshopRoomDeliveryService', () => {
+  it('distinguishes lifecycle-only delivery from conversational catch-up', () => {
+    expect(hasWorkshopConversationalCatchUp([
+      turn('start', { participant: 'session', artifact: 'session_start' }),
+      turn('resume', { participant: 'session', artifact: 'session_resume' })
+    ])).toBe(false);
+    expect(hasWorkshopConversationalCatchUp([
+      turn('start', { participant: 'session', artifact: 'session_start' }),
+      turn('guest-reply')
+    ])).toBe(true);
+  });
+
   it('projects room turns after the offset without quoting the reader to itself', () => {
     const turns = [
       turn('host-1', { participant: 'host', personaId: 'jill' }),

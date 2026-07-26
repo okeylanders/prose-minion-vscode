@@ -75,11 +75,11 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
       expect(service.getExcerpt()).toBeUndefined();
     });
 
-    it('still refuses a tool run and a guest join without a passage', () => {
+    it('admits persona guests but still refuses tool sidecars without a passage', () => {
       service.setSessionScope('open');
       expect(() => service.beginToolRun('prose', 'req-tool')).toThrow(/without a pinned excerpt/);
-      expect(() => service.beginPersonaGuestJoin('felix', 'req-guest', 'Read the room.'))
-        .toThrow(/without a pinned excerpt/);
+      expect(service.beginPersonaGuestJoin('felix', 'req-guest', 'Read the room.'))
+        .toMatchObject({ participant: 'writer', personaId: 'felix' });
     });
   });
 

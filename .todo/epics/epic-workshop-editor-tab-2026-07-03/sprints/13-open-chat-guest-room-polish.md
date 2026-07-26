@@ -1,6 +1,6 @@
 # Sprint 13 Delivery Plan: Open Chat, Guest Agency, and Room Polish
 
-**Status**: Planned — split into reviewable implementation sprints 13A–13D
+**Status**: Sprints 13A–13D merged; 13D_2 implementation complete with manual smoke pending
 **Priority**: High — release-polish work that makes Workshop useful before a
 writer has an excerpt and makes the participant room behave as it looks
 **Implementation branches**: one branch and PR per child sprint, all into
@@ -44,6 +44,7 @@ rollback needlessly opaque. Deliver them in order:
 | [13B](13b-run-local-analysis.md) | `sprint/workshop-editor-tab-13b-run-local-analysis` | Persona-chosen analysis inputs: per-input excerpt/context modes, prefilled asks, no writer picker. | 13A | In a non-excerpt session the host can run Stock & Signature on a passage it supplies, with the room unchanged. |
 | [13C](13c-guest-agency.md) | `sprint/workshop-editor-tab-13c-guest-agency` | Deliberate guest read-in plus participant-owned bounded capabilities. | 13A | Selecting a guest spends nothing; one explicit submit creates one guest that can use attributable, private instruments. |
 | [13D](13d-room-catchup-release-polish.md) | `sprint/workshop-editor-tab-13d-room-catchup-release-polish` | One room ledger with per-participant delivery offsets, a single delivery site, atomic turns, and final release validation. | 13C | Guest B receives Guest A's eligible unseen exchange without a hidden host call, a skipped turn, or a split quote. |
+| [13D_2](13d_2-open-room-participants.md) | `sprint/workshop-editor-tab-13d_2-open-room-participants` | Open-room persona guests, lifecycle-only catch-up status, and participant-owned context copy. | 13D | An excerpt-free room can invite and continue with a truthful guest without mislabeling its session marker as conversational catch-up. |
 
 13B and 13C may proceed after 13A, but 13D starts only after the guest
 ownership contract in 13C lands. If capability ownership proves materially
@@ -82,9 +83,9 @@ project. Sprints link the comp; they never re-sync or fork it.
 - Excerpt-dependent tools and excerpt-scoped capability operations stay
   unavailable in open chat. A writer may add an excerpt later; that is a
   visible, retained-conversation context transition, not a new session.
-- The first slice permits the chosen host in open chat. Guest invitation in an
-  excerpt-free room is deferred unless the guest join prompt can make the same
-  no-excerpt honesty guarantee without widening this sprint.
+- The first slice permits the chosen host in open chat. Guest invitation was
+  initially deferred; [Sprint 13D_2](13d_2-open-room-participants.md) supplies
+  the no-excerpt honesty envelope and opens the room to persona guests.
 
 ### The persona chooses a tool run's inputs; the writer just asks
 

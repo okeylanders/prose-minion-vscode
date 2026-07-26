@@ -1270,6 +1270,31 @@ describe('writer-origin context sources (Phase 7)', () => {
     expect(session.collectWriterSources({ kind: 'host' }).filter((s) => s.kind === 'pin')).toHaveLength(1);
   });
 
+  it('seeds an open-room guest manifest with the standing context delivered at join', () => {
+    const session = new WorkshopSessionService(() => 7);
+    session.setSessionScope('open');
+    session.addContextAttachment({
+      kind: 'text',
+      origin: 'writer',
+      label: 'Story compass',
+      words: 6,
+      content: 'The middle should feel increasingly breathless.'
+    });
+
+    session.adoptPersonaGuest('felix', 'felix-conv');
+
+    expect(session.collectWriterSources({
+      kind: 'personaGuest',
+      personaId: 'felix'
+    })).toEqual([
+      expect.objectContaining({
+        kind: 'attachment',
+        origin: 'writer',
+        label: 'Story compass'
+      })
+    ]);
+  });
+
   it('marks prior pin rows stale only when the revision frame actually ships', () => {
     const session = new WorkshopSessionService(() => 7);
     pinned(session);

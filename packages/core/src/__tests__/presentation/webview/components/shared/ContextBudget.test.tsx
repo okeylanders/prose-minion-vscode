@@ -66,6 +66,17 @@ describe('ContextBudget', () => {
     expect(screen.getAllByText('Unavailable')).toHaveLength(2);
   });
 
+  it('renders a bare participant label without manufacturing a context suffix', () => {
+    render(<ContextBudget
+      label="Jill"
+      modelOptions={[]}
+      cumulativeProcessedTokens={0}
+    />);
+
+    expect(screen.getByText('Jill')).toBeTruthy();
+    expect(screen.queryByText('context')).toBeNull();
+  });
+
   it('renders the In-context manifest with parenthetical kinds, attribution, and stale dimming (Phase 7)', () => {
     render(<ContextBudget
       label="Jill context"

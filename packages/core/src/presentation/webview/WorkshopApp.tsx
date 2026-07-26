@@ -396,7 +396,8 @@ export const WorkshopApp: React.FC = () => {
   // Live run bubble: visible from run start until the assistant turn lands.
   const showLiveTurn = workshop.isRunning || workshop.isStreaming || workshop.streamingContent.length > 0;
   // Invite appears once context is ready and the room has an open guest seat.
-  const canInviteGuest = !!workshop.excerpt
+  const canInviteGuest = workshop.scope !== null
+    && (workshop.scope === 'open' || !!workshop.excerpt)
     && workshop.sessionReady
     && !roomMutationLocked
     && workshop.personaGuests.filter((guest) => guest.liveness === 'live').length
@@ -1285,14 +1286,12 @@ export const WorkshopApp: React.FC = () => {
               onInviteGuest={openGuestModal}
               onDismissGuest={workshop.dismissGuest}
             />
-            {/* §10: the composer's context line reports SCOPE while the room
-                has no passage. "<Host> context" would be true but useless
-                there — what the writer needs to see is that no excerpt is in
-                it. Once one is pinned it returns to the participant gauge. */}
+            {/* Scope copy belongs to the header and scope strip. This gauge
+                names the participant whose retained context it measures. */}
             <ContextBudget
               label={
                 workshop.scope === 'open' && !hasExcerpt
-                  ? 'Open conversation · No excerpt yet'
+                  ? chatTargetLabel
                   : workshop.contextBudget?.label ?? `${chatTargetLabel} context`
               }
               snapshot={workshop.contextBudget?.snapshot}

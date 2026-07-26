@@ -31,6 +31,18 @@ export interface WorkshopPreparedRoomDelivery {
   deferredTurns: number;
 }
 
+/**
+ * Session lifecycle markers are durable room history, but delivering only
+ * those markers is not conversational catch-up worth announcing to the user.
+ */
+export function hasWorkshopConversationalCatchUp(
+  turns: readonly WorkshopTurn[]
+): boolean {
+  return turns.some(
+    (turn) => turn.artifact !== 'session_start' && turn.artifact !== 'session_resume'
+  );
+}
+
 export function projectWorkshopRoomTurns(
   turns: readonly WorkshopTurn[],
   reader: WorkshopCapabilityPrincipal,

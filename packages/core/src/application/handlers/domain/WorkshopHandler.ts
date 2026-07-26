@@ -33,6 +33,7 @@ import {
 } from '@/application/services/workshop/WorkshopSessionService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import {
+  hasWorkshopConversationalCatchUp,
   WorkshopRoomDeliveryService
 } from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import {
@@ -607,8 +608,16 @@ export class WorkshopHandler {
       return;
     }
 
+    const scope = this.session.getScope();
     const excerpt = this.session.getExcerpt();
-    if (!excerpt || excerpt.text.trim().length === 0) {
+    if (scope === null) {
+      this.sendError(
+        'workshop.invite_guest',
+        'Choose how to start this session before inviting a guest.'
+      );
+      return;
+    }
+    if (scope === 'excerpt' && (!excerpt || excerpt.text.trim().length === 0)) {
       this.sendError('workshop.invite_guest', 'Pin an excerpt before inviting a guest.');
       return;
     }
@@ -631,6 +640,9 @@ export class WorkshopHandler {
       const join = buildWorkshopGuestJoinMessage({
         guestPersonaId: personaId,
         excerpt,
+        contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
+          this.session.getContextAttachments()
+        ),
         roomTurns: this.roomDelivery.prepareJoinSnapshot({
           kind: 'personaGuest',
           personaId
@@ -655,9 +667,9 @@ export class WorkshopHandler {
       this.sendStreamStarted(requestId);
       this.sendStatus(`Inviting ${workshopPersonaLabel(personaId)} into the room…`);
 
-      // Sprint 13C: the joining guest owns the same bounded instruments as
-      // the host — dictionary, configured resources, excerpt analysis — with
-      // its own principal persisted on every artifact.
+      // The joining guest owns the same bounded instruments as the host, with
+      // its own principal persisted on every artifact. Excerpt-dependent work
+      // remains unavailable when this open-room join has no excerpt.
       const guestCapability = this.capabilityFactory.create({
         requestId,
         personaId,
@@ -870,7 +882,7 @@ export class WorkshopHandler {
     }
     // Sprint 13A §1: what a turn needs depends on the session's SCOPE, not on
     // whether an excerpt happens to be present. An open conversation is a real
-    // room; tool sidecars and guests still require the passage they read.
+    // room; direct tool sidecars still require the passage they read.
     const scope = this.session.getScope();
     const excerpt = this.session.getExcerpt();
     const hasExcerpt = !!excerpt && excerpt.text.trim().length > 0;
@@ -886,10 +898,10 @@ export class WorkshopHandler {
       return;
     }
     if (!hasExcerpt) {
-      if (target.kind !== 'host') {
+      if (target.kind === 'tool') {
         this.sendError(
           'workshop.send_message',
-          'Add an excerpt before continuing with a tool or guest.'
+          'Add an excerpt before continuing with a tool.'
         );
         return;
       }
@@ -914,6 +926,9 @@ export class WorkshopHandler {
         })
       : undefined;
     const roomCatchUp = roomDelivery?.frame;
+    const hasConversationalCatchUp = roomDelivery
+      ? hasWorkshopConversationalCatchUp(roomDelivery.turns)
+      : false;
     const pendingHostUpdates = target.kind === 'host'
       ? this.session.collectPendingHostUpdates()
       : undefined;
@@ -987,7 +1002,7 @@ export class WorkshopHandler {
           threadArtifactFrames,
           ...(conversationId ? personaBehaviorFrames : {})
         });
-        statusMessage = roomCatchUp
+        statusMessage = hasConversationalCatchUp
           ? `Catching ${label} up on the room…`
           : `Streaming ${label}…`;
         break;
@@ -1020,7 +1035,7 @@ export class WorkshopHandler {
           threadArtifactFrames,
           personaBehaviorFrames
         );
-        statusMessage = roomCatchUp
+        statusMessage = hasConversationalCatchUp
           ? `Catching ${label} up on the room…`
           : `Continuing with ${label}…`;
         break;

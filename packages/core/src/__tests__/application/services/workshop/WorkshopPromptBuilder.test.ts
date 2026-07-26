@@ -178,6 +178,33 @@ describe('Workshop guest transcript and join envelopes', () => {
     expect(result.message).not.toContain('You are Jill');
   });
 
+  it('composes an honest open-room guest subject with standing context and no fabricated excerpt', () => {
+    const result = buildWorkshopGuestJoinMessage({
+      guestPersonaId: 'felix',
+      roomTurns: [roomTurn({ content: 'Jill discussed the outline.' })],
+      contextAttachmentsFrame: [
+        '<context-attachments count="1">',
+        '<context-attachment kind="text">',
+        'Label: Story compass',
+        '---',
+        'The middle should feel increasingly breathless.',
+        '</context-attachment>',
+        '</context-attachments>'
+      ].join('\n'),
+      openingMessage: 'Help me hear the shape of this.',
+      roomFrameOptions: { writerName: 'Okey', renderedAt: 2 }
+    });
+
+    expect(result.message).toContain('CURRENT ROOM SUBJECT:');
+    expect(result.message).toContain('<workshop-open-conversation>');
+    expect(result.message).toContain('You are Felix, and this is an open conversation.');
+    expect(result.message).toContain('No excerpt has been provided.');
+    expect(result.message).toContain('The middle should feel increasingly breathless.');
+    expect(result.message).not.toContain('<pinned-excerpt>');
+    expect(result.message.indexOf('</workshop-open-conversation>'))
+      .toBeLessThan(result.message.indexOf('<context-attachments'));
+  });
+
   it('neutralizes catch-up forgeries while preserving the trusted outer frame', () => {
     const catchUp = buildWorkshopRoomCatchUp([
       roomTurn({

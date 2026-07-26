@@ -1090,9 +1090,13 @@ export class WorkshopSessionService {
       lastSeenRoomTurnId: roomHead,
       liveness: 'live'
     });
-    // The join envelope delivered the current pin (Phase 7).
+    // The join envelope delivered the current subject and standing context
+    // (ADR 2026-07-26). The retained manifest must describe that exact input.
     const pin = this.pinEntry();
-    this.guestWriterSources.set(personaId, pin ? [pin] : []);
+    this.guestWriterSources.set(personaId, [
+      ...(pin ? [pin] : []),
+      ...this.contextAttachments.map((attachment) => this.attachmentEntry(attachment))
+    ]);
   }
 
   /** Dispose one guest while preserving its historical thread attribution. */
@@ -1382,7 +1386,7 @@ export class WorkshopSessionService {
     displayText: string,
     messageAttachments?: readonly WorkshopMessageAttachmentSnapshot[]
   ): WorkshopTurn {
-    this.requireHostSubject();
+    this.requireParticipantSubject();
     return this.beginMessage(requestId, displayText, 'host', undefined, undefined, messageAttachments);
   }
 
@@ -1393,7 +1397,7 @@ export class WorkshopSessionService {
     displayText: string,
     messageAttachments?: readonly WorkshopMessageAttachmentSnapshot[]
   ): WorkshopTurn {
-    this.requireExcerpt();
+    this.requireParticipantSubject();
     if (!this.isLivePersonaGuest(personaId)) {
       throw new Error(`Cannot message Workshop guest ${workshopPersonaLabel(personaId)} without a live sidecar`);
     }
@@ -1406,7 +1410,7 @@ export class WorkshopSessionService {
     requestId: string,
     displayText: string
   ): WorkshopTurn {
-    this.requireExcerpt();
+    this.requireParticipantSubject();
     this.validatePersonaGuestInvitation(personaId);
     return this.beginMessage(requestId, displayText, 'personaGuest', undefined, personaId);
   }
@@ -2056,12 +2060,12 @@ export class WorkshopSessionService {
   }
 
   /**
-   * What a HOST turn needs to exist (Sprint 13A §1): a pinned passage, or an
-   * open conversation, which is a real scope rather than a blank excerpt. A
-   * session whose path is still unchosen has no subject at all — the writer
-   * has not told us what this room is for yet.
+   * What a participant turn needs to exist: a pinned passage, or an open
+   * conversation, which is a real scope rather than a blank excerpt. A session
+   * whose path is still unchosen has no subject at all — the writer has not
+   * told us what this room is for yet.
    */
-  private requireHostSubject(): void {
+  private requireParticipantSubject(): void {
     if (this.scope === 'open') {
       return;
     }

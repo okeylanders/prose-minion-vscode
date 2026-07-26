@@ -111,7 +111,9 @@ is persisted and surfaced in restore/browser metadata.
 
 ## Explicit non-goals
 
-- No guest invitation in an excerpt-free room.
+- No guest invitation in an excerpt-free room in 13A. This temporary boundary
+  is superseded by [Sprint 13D_2](13d_2-open-room-participants.md), which adds
+  the required no-excerpt guest honesty envelope.
 - No tool eligibility via a blank, fabricated, or implied excerpt.
 - No guest capability or room-catch-up changes.
 - No tool redesign — gating only.
