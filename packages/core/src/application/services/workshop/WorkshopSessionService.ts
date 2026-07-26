@@ -55,6 +55,9 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   WORKSHOP_ACTIONABLE_FINDING_BOUNDS
 } from '@/application/services/workshop/WorkshopActionableFindings';
+import {
+  isWorkshopPublishableCapabilityEvidence
+} from '@/application/services/workshop/WorkshopRoomAudience';
 import { WORKSHOP_TODO_BOUNDS } from '@/application/services/workshop/WorkshopSessionLimits';
 import {
   WorkshopConversationLogicalKey,
@@ -99,6 +102,7 @@ interface WorkshopParticipants {
   host: {
     personaId: WorkshopPersonaId;
     conversationId?: string;
+    lastSeenRoomTurnId?: string;
   };
   toolSidecars: Partial<Record<WorkshopToolId, WorkshopToolSidecar>>;
   personaGuests: Map<WorkshopPersonaId, WorkshopPersonaGuest>;
@@ -108,6 +112,7 @@ interface WorkshopParticipants {
 interface WorkshopPersonaGuest {
   personaId: WorkshopPersonaId;
   conversationId?: string;
+  lastSeenRoomTurnId?: string;
   lastSeenHostTurnId?: string;
   deliveredToHostThroughTurnId?: string;
   liveness: 'live' | 'disposed';
@@ -133,6 +138,8 @@ interface ActiveRun {
   /** Behavior captured when a persona run begins; settings cannot change mid-run. */
   behavior?: WorkshopConversationBehavior;
   behaviorTransition?: WorkshopConversationBehaviorTransition;
+  /** Provisional evidence finalized only if this participant reply commits. */
+  capabilityTurnIds?: string[];
 }
 
 /**
@@ -1003,18 +1010,20 @@ export class WorkshopSessionService {
     }
   }
 
-  /** Adopt a successful fresh guest conversation and establish its cursors. */
+  /** Adopt a successful fresh guest conversation at the join snapshot's head. */
   adoptPersonaGuest(personaId: WorkshopPersonaId, conversationId: string): void {
     this.validatePersonaGuestInvitation(personaId);
     if (!conversationId.trim()) {
       throw new Error('Cannot retain a guest without a conversation id');
     }
     const cursor = this.latestHostThreadTurnId();
+    const roomHead = this.turns.at(-1)?.id;
     const previousDeliveryCursor = this.participants.personaGuests.get(personaId)
       ?.deliveredToHostThroughTurnId;
     this.participants.personaGuests.set(personaId, {
       personaId,
       conversationId,
+      lastSeenRoomTurnId: roomHead,
       lastSeenHostTurnId: cursor,
       deliveredToHostThroughTurnId: previousDeliveryCursor ?? cursor,
       liveness: 'live'
@@ -1237,6 +1246,10 @@ export class WorkshopSessionService {
     };
 
     this.turns.push(turn);
+    this.activeRun!.capabilityTurnIds = [
+      ...(this.activeRun!.capabilityTurnIds ?? []),
+      turn.id
+    ];
     return { turn: cloneTurn(turn) };
   }
 
@@ -1363,7 +1376,6 @@ export class WorkshopSessionService {
     }
 
     const active = this.activeRun;
-    this.activeRun = undefined;
     const isHost = active.target === 'host';
     const isGuest = active.target === 'personaGuest';
     const toolSidecar = active.toolId
@@ -1422,6 +1434,17 @@ export class WorkshopSessionService {
       }
     }
     this.turns.push(turn);
+    const capabilityTurnIds = new Set(active.capabilityTurnIds ?? []);
+    for (const capabilityTurn of this.turns) {
+      if (
+        capabilityTurnIds.has(capabilityTurn.id)
+        && capabilityTurn.capability
+        && isWorkshopPublishableCapabilityEvidence(capabilityTurn.capability)
+      ) {
+        capabilityTurn.capability.publishedWithTurnId = turn.id;
+      }
+    }
+    this.activeRun = undefined;
     if ((isHost || isGuest) && active.behavior) {
       this.lastCommittedPersonaBehavior = {
         interactionMode: active.behavior.interactionMode,
@@ -1843,7 +1866,9 @@ export class WorkshopSessionService {
       participants: {
         host: {
           personaId: this.participants.host.personaId,
-          conversationKey: this.participants.host.conversationId ? 'host' : undefined
+          conversationKey: this.participants.host.conversationId ? 'host' : undefined,
+          lastSeenRoomTurnId:
+            this.participants.host.lastSeenRoomTurnId ?? this.turns.at(-1)?.id
         },
         toolSidecars: Object.entries(this.participants.toolSidecars).flatMap(
           ([rawToolId, sidecar]) => {
@@ -1854,8 +1879,7 @@ export class WorkshopSessionService {
             return [{
               toolId,
               conversationKey: `tool:${toolId}` as `tool:${WorkshopToolId}`,
-              latestReportTurnId: sidecar.latestReportTurnId,
-              deliveredToHostThroughTurnId: sidecar.deliveredToHostThroughTurnId
+              latestReportTurnId: sidecar.latestReportTurnId
             }];
           }
         ),
@@ -1864,8 +1888,7 @@ export class WorkshopSessionService {
           conversationKey: guest.conversationId
             ? `guest:${guest.personaId}` as `guest:${WorkshopPersonaId}`
             : undefined,
-          lastSeenHostTurnId: guest.lastSeenHostTurnId,
-          deliveredToHostThroughTurnId: guest.deliveredToHostThroughTurnId,
+          lastSeenRoomTurnId: guest.lastSeenRoomTurnId ?? this.turns.at(-1)?.id,
           liveness: guest.liveness
         })),
         chatTarget: this.getChatTarget()
@@ -1952,7 +1975,9 @@ export class WorkshopSessionService {
       toolSidecars[sidecar.toolId] = {
         conversationId,
         latestReportTurnId: sidecar.latestReportTurnId,
-        deliveredToHostThroughTurnId: sidecar.deliveredToHostThroughTurnId
+        // Transitional runtime value: 13D-b2 removes the relationship-owned
+        // path entirely. Hydrated sidecars never replay private scratch work.
+        deliveredToHostThroughTurnId: sidecar.latestReportTurnId
       };
     }
 
@@ -1971,8 +1996,9 @@ export class WorkshopSessionService {
       personaGuests.set(guest.personaId, {
         personaId: guest.personaId,
         conversationId: restoredLive ? conversationId : undefined,
-        lastSeenHostTurnId: guest.lastSeenHostTurnId,
-        deliveredToHostThroughTurnId: guest.deliveredToHostThroughTurnId,
+        lastSeenRoomTurnId: guest.lastSeenRoomTurnId,
+        lastSeenHostTurnId: guest.lastSeenRoomTurnId,
+        deliveredToHostThroughTurnId: guest.lastSeenRoomTurnId,
         liveness: restoredLive ? 'live' : 'disposed'
       });
     }

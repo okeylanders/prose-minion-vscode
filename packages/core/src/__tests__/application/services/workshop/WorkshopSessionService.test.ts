@@ -748,13 +748,70 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(service.getSnapshot().activeRequestId).toBe('host-capabilities');
     expect(service.getToolSidecarConversationId('continuity')).toBeUndefined();
 
-    service.completeRun('host-capabilities', 'Here is my synthesis.', undefined, false, 'host-conv');
+    const reply = service.completeRun(
+      'host-capabilities',
+      'Here is my synthesis.',
+      undefined,
+      false,
+      'host-conv'
+    )!;
     const snapshot = service.getSnapshot();
     expect(snapshot.turns.slice(-3).map(turn => turn.artifact)).toEqual([
       'dictionary_lookup', 'tool_report', 'persona_message'
     ]);
+    expect(snapshot.turns.slice(-3, -1).map(
+      (turn) => turn.capability?.publishedWithTurnId
+    )).toEqual([reply.id, reply.id]);
     snapshot.turns.at(-3)!.capability!.metadata = { mutated: true };
     expect(service.getSnapshot().turns.at(-3)!.capability?.metadata).not.toEqual({ mutated: true });
+  });
+
+  it('publishes only evidence from a run whose participant reply commits', () => {
+    pin();
+    service.beginPersonaMessage('abandoned-capability', 'Check this word.');
+    service.recordCapabilityArtifact({
+      requestId: 'abandoned-capability',
+      excerptVersion: 1,
+      details: {
+        operation: 'dictionary.lookup',
+        status: 'success',
+        requestSummary: 'liminal',
+        requestedByPersonaId: 'jill',
+        invokedBy: { kind: 'host' }
+      },
+      result: {
+        capability: 'dictionary.lookup',
+        status: 'success',
+        requestSummary: 'liminal',
+        content: 'Uncommitted evidence.'
+      }
+    });
+    service.abandonRun('abandoned-capability');
+
+    service.beginPersonaMessage('catalog-capability', 'Find the chapter.');
+    service.recordCapabilityArtifact({
+      requestId: 'catalog-capability',
+      excerptVersion: 1,
+      details: {
+        operation: 'resource.catalog',
+        status: 'success',
+        requestSummary: 'catalog chapters',
+        requestedByPersonaId: 'jill',
+        invokedBy: { kind: 'host' }
+      },
+      result: {
+        capability: 'resource.catalog',
+        status: 'success',
+        requestSummary: 'catalog chapters',
+        content: 'Private discovery traffic.'
+      }
+    });
+    service.completeRun('catalog-capability', 'I found the chapter.', undefined, false, 'host-conv');
+
+    const [uncommitted, catalog] = service.getSnapshot().turns
+      .filter((turn) => turn.capability);
+    expect(uncommitted.capability?.publishedWithTurnId).toBeUndefined();
+    expect(catalog.capability?.publishedWithTurnId).toBeUndefined();
   });
 
   it('refuses a capability artifact stamped with a stale excerpt version', () => {

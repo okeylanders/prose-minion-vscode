@@ -5,6 +5,10 @@
 import { WorkshopPersonaId, WorkshopToolId } from '@messages';
 import { isWorkshopPersonaId } from '@shared/constants/workshopPersonas';
 import { isWorkshopToolId } from '@shared/constants/workshopTools';
+import {
+  isWorkshopPublishableCapabilityEvidence,
+  workshopTurnBelongsToPrincipal
+} from '@/application/services/workshop/WorkshopRoomAudience';
 import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
@@ -122,6 +126,31 @@ export function validateWorkshopSessionStateV1(
     throw new Error('Persisted Workshop turn counter trails an existing id');
   }
 
+  const turnIndexes = new Map(state.turns.map((turn, index) => [turn.id, index]));
+  for (const [index, turn] of state.turns.entries()) {
+    const publicationTurnId = turn.capability?.publishedWithTurnId;
+    if (publicationTurnId === undefined) {
+      continue;
+    }
+    const principal = turn.capability?.invokedBy;
+    const responseIndex = turnIndexes.get(publicationTurnId);
+    const response = responseIndex === undefined ? undefined : state.turns[responseIndex];
+    if (
+      !turn.capability
+      || !principal
+      || !isWorkshopPublishableCapabilityEvidence(turn.capability)
+      || responseIndex === undefined
+      || responseIndex <= index
+      || response?.role !== 'assistant'
+      || (response.artifact !== 'persona_message' && response.artifact !== 'persona_synthesis')
+      || !workshopTurnBelongsToPrincipal(response, principal)
+    ) {
+      throw new Error(
+        `Persisted Workshop capability ${turn.id} has an invalid publication response`
+      );
+    }
+  }
+
   const pendingMessageIds = new Set<string>();
   for (const attachment of state.pendingMessageAttachments) {
     if (pendingMessageIds.has(attachment.id)) {
@@ -165,6 +194,12 @@ export function validateWorkshopSessionStateV1(
   ) {
     throw new Error('Persisted Workshop host conversation key is invalid');
   }
+  if (
+    state.participants.host.lastSeenRoomTurnId !== undefined
+    && !turnIds.has(state.participants.host.lastSeenRoomTurnId)
+  ) {
+    throw new Error('Persisted Workshop host has an invalid room offset');
+  }
 
   const toolIds = new Set<WorkshopToolId>();
   for (const sidecar of state.participants.toolSidecars) {
@@ -183,9 +218,8 @@ export function validateWorkshopSessionStateV1(
     ) {
       throw new Error(`Persisted Workshop tool ${sidecar.toolId} has an invalid latest report`);
     }
-    if (!turnIds.has(sidecar.deliveredToHostThroughTurnId)) {
-      throw new Error(`Persisted Workshop tool ${sidecar.toolId} has an invalid delivery cursor`);
-    }
+    // The legacy delivery cursor is intentionally ignored. Hydration strips
+    // it, and sidecars are no longer readers in the shared room protocol.
   }
 
   const guestIds = new Set<WorkshopPersonaId>();
@@ -201,11 +235,13 @@ export function validateWorkshopSessionStateV1(
     if (guest.liveness === 'live' && guest.conversationKey === undefined) {
       throw new Error(`Persisted live Workshop guest ${guest.personaId} has no conversation key`);
     }
-    for (const cursor of [guest.lastSeenHostTurnId, guest.deliveredToHostThroughTurnId]) {
-      if (cursor !== undefined && !turnIds.has(cursor)) {
-        throw new Error(`Persisted Workshop guest ${guest.personaId} has an invalid delivery cursor`);
-      }
+    if (
+      guest.lastSeenRoomTurnId !== undefined
+      && !turnIds.has(guest.lastSeenRoomTurnId)
+    ) {
+      throw new Error(`Persisted Workshop guest ${guest.personaId} has an invalid room offset`);
     }
+    // Both legacy guest cursors are known-but-ignored compatibility fields.
   }
 
   const writerSourceGuests = new Set<WorkshopPersonaId>();

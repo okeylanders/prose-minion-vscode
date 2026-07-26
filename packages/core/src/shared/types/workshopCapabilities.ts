@@ -96,5 +96,10 @@ export interface WorkshopCapabilityArtifactDetails {
   requestSummary: string;
   requestedByPersonaId: WorkshopPersonaId;
   invokedBy: WorkshopCapabilityPrincipal;
+  /**
+   * Final participant reply that transactionally published this evidence to
+   * the room. Absent means private, including all pre-13D artifacts.
+   */
+  publishedWithTurnId?: string;
   metadata?: Record<string, unknown>;
 }

@@ -409,6 +409,54 @@ describe('WorkshopSessionService committed persistence', () => {
     expect(hydrated.capability!.invokedBy).toEqual({ kind: 'personaGuest', personaId: 'margot' });
   });
 
+  it('drops legacy delivery cursors and heads missing room offsets during hydration', () => {
+    const state = buildCompleteState();
+    const headTurnId = state.turns.at(-1)!.id;
+    delete state.participants.host.lastSeenRoomTurnId;
+    state.participants.toolSidecars[0].deliveredToHostThroughTurnId =
+      state.participants.toolSidecars[0].latestReportTurnId;
+    const guest = state.participants.personaGuests[0];
+    delete guest.lastSeenRoomTurnId;
+    guest.lastSeenHostTurnId = state.turns[0].id;
+    guest.deliveredToHostThroughTurnId = state.turns[1].id;
+
+    const restored = new WorkshopSessionService(() => 50_000);
+    const result = restored.hydrateCommittedState(state, {
+      host: 'restored-host',
+      ['tool:prose']: 'restored-tool',
+      ['guest:margot']: 'restored-guest'
+    }, currentBehavior);
+    const normalized = restored.exportCommittedState();
+
+    expect(result.migrations).toEqual(expect.arrayContaining([
+      'discarded-legacy-delivery-cursors',
+      'headed-missing-room-offsets'
+    ]));
+    expect(normalized.participants.host.lastSeenRoomTurnId).toBe(headTurnId);
+    expect(normalized.participants.personaGuests[0].lastSeenRoomTurnId).toBe(headTurnId);
+    expect(normalized.participants.toolSidecars[0])
+      .not.toHaveProperty('deliveredToHostThroughTurnId');
+    expect(normalized.participants.personaGuests[0]).not.toHaveProperty('lastSeenHostTurnId');
+    expect(normalized.participants.personaGuests[0])
+      .not.toHaveProperty('deliveredToHostThroughTurnId');
+  });
+
+  it('rejects capability publication that does not point to its participant reply', () => {
+    const state = buildCompleteState();
+    const capabilityTurn = state.turns.find((turn) => turn.artifact === 'tool_report')!;
+    capabilityTurn.capability = {
+      operation: 'analysis.run',
+      status: 'success',
+      requestSummary: 'Continuity',
+      requestedByPersonaId: 'jill',
+      invokedBy: { kind: 'host' },
+      publishedWithTurnId: state.turns[0].id
+    };
+
+    expect(() => parseWorkshopSessionStateV1(state))
+      .toThrow(`capability ${capabilityTurn.id} has an invalid publication response`);
+  });
+
   it('exports defensively and hydrates from defensive clones', () => {
     const source = buildCompleteState();
     const originalText = source.excerpt!.text;

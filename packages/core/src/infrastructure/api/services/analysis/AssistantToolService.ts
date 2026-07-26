@@ -47,6 +47,8 @@ import type {
 } from '@messages';
 import {
   getWorkshopPersona,
+  WORKSHOP_GUEST_BASE_PROMPT_PATH,
+  WORKSHOP_HOST_BASE_PROMPT_PATH,
   workshopPersonaSystemPromptPaths
 } from '@shared/constants/workshopPersonas';
 import type {
@@ -818,7 +820,9 @@ export class AssistantToolService {
     const promptLoader = this.resourceLoader.getPromptLoader();
     const systemPrompt = this.withWriterProfile(await promptLoader.loadPrompts(
       workshopPersonaSystemPromptPaths(
-        role === 'host' ? 'workshop-personas/base.md' : 'workshop-personas/guest-base.md',
+        role === 'host'
+          ? WORKSHOP_HOST_BASE_PROMPT_PATH
+          : WORKSHOP_GUEST_BASE_PROMPT_PATH,
         persona,
         behavior
       )

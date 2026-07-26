@@ -386,6 +386,12 @@ export const WorkshopApp: React.FC = () => {
     const trimmed = excerptText?.trim() ?? '';
     return trimmed.length === 0 ? 0 : trimmed.split(/\s+/).length;
   }, [excerptText]);
+  const livePersonaGuestIds = React.useMemo(
+    () => workshop.personaGuests
+      .filter((guest) => guest.liveness === 'live')
+      .map((guest) => guest.personaId),
+    [workshop.personaGuests]
+  );
 
   // Live run bubble: visible from run start until the assistant turn lands.
   const showLiveTurn = workshop.isRunning || workshop.isStreaming || workshop.streamingContent.length > 0;
@@ -1406,9 +1412,7 @@ export const WorkshopApp: React.FC = () => {
       <WorkshopInviteGuestModal
         open={personaModalOpen && personaModalMode === 'guest'}
         hostPersonaId={workshop.selectedPersonaId}
-        livePersonaGuestIds={workshop.personaGuests
-          .filter((guest) => guest.liveness === 'live')
-          .map((guest) => guest.personaId)}
+        livePersonaGuestIds={livePersonaGuestIds}
         disabled={roomMutationLocked}
         onClose={closePersonaModal}
         onInvite={inviteGuest}
