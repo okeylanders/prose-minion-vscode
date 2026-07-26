@@ -721,7 +721,6 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       hostRequestId: 'host-capabilities',
       excerptVersion: 1,
       toolId: 'continuity',
-      conversationId: 'persona-continuity-conv',
       details: {
         operation: 'analysis.run',
         status: 'success',
@@ -745,7 +744,7 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       capability: { operation: 'analysis.run' }
     });
     expect(service.getSnapshot().activeRequestId).toBe('host-capabilities');
-    expect(service.getToolSidecarConversationId('continuity')).toBe('persona-continuity-conv');
+    expect(service.getToolSidecarConversationId('continuity')).toBeUndefined();
 
     service.completeRun('host-capabilities', 'Here is my synthesis.', undefined, false, 'host-conv');
     const snapshot = service.getSnapshot();

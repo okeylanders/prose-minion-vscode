@@ -124,6 +124,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     expect(loadPrompts).toHaveBeenCalledWith([
       'workshop-personas/base.md',
       'workshop-personas/quinn.md',
+      'workshop-personas/analysis-capability.md',
       'workshop-personas/interaction-contract.md',
       'workshop-personas/interaction-modes/balanced.md',
       'workshop-personas/relational-contract.md',

@@ -633,7 +633,12 @@ describe('AgentRunEngine', () => {
     const narration = 'I want to look up that word first. ';
     const mixed = `${narration}${PERSONA_REQUEST}`;
     adapter.inspectRequest.mockImplementation(candidate => candidate === mixed
-      ? { kind: 'invalid', reason: 'mixed-content' }
+      ? {
+          kind: 'invalid',
+          reason: 'mixed-content',
+          operation: 'analysis.run',
+          field: 'excerptText'
+        }
       : { kind: 'none' });
     client.createStreamingChatCompletion
       .mockReturnValueOnce(stream([narration, PERSONA_REQUEST]))
@@ -651,7 +656,8 @@ describe('AgentRunEngine', () => {
       expect(visible.join('')).toBe('Recovered Workshop answer.');
       expect(result.content).toBe('Recovered Workshop answer.');
       expect(output.appendLine.mock.calls.flat().join('\n')).toContain(
-        'Rejected workshopPersona capability request request=host-request persona=jill: reason=mixed-content.'
+        'Rejected workshopPersona capability request request=host-request persona=jill:' +
+        ' operation=analysis.run field=excerptText reason=mixed-content.'
       );
     } finally {
       diagnosticEngine.dispose();

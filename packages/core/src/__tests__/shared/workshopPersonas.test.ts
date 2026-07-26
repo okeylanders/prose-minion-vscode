@@ -4,6 +4,7 @@ import {
   DEFAULT_WORKSHOP_PERSONA_ID,
   getWorkshopPersona,
   isWorkshopPersonaId,
+  WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH,
   WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
   WORKSHOP_INTERACTION_MODE_PROMPT_PATHS,
   WORKSHOP_PERSONA_CATALOG,
@@ -90,6 +91,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
       expect(subtlePaths).toEqual([
         'workshop-personas/base.md',
         persona.promptPath,
+        WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
         WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
@@ -108,6 +110,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
       expect(fullPaths).toEqual([
         'workshop-personas/base.md',
         persona.promptPath,
+        WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
         WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
@@ -129,6 +132,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
       expect(amplifiedPaths).toEqual([
         'workshop-personas/base.md',
         persona.promptPath,
+        WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
         WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
@@ -137,6 +141,31 @@ describe('Workshop persona catalog and packaged prompts', () => {
         persona.expressionCalibrationPath
       ]);
     }
+  });
+
+  it('keeps the complete mode-neutral analysis grammar in the host system prompt only', () => {
+    const prompt = fs.readFileSync(
+      path.resolve(PROMPTS_ROOT, WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH),
+      'utf8'
+    );
+    expect(prompt).toContain('<excerptMode>inherit</excerptMode>');
+    expect(prompt).toContain('<contextMode>prepend</contextMode>');
+    for (const mode of ['inherit', 'prepend', 'replace', 'omit']) {
+      expect(prompt).toContain(`\`${mode}\``);
+    }
+    expect(prompt).toContain('`omit` plus `omit` is legal');
+    expect(prompt).toContain('never changes the room');
+
+    const guestPaths = workshopPersonaSystemPromptPaths(
+      'workshop-personas/guest-base.md',
+      WORKSHOP_PERSONA_CATALOG[0],
+      {
+        interactionMode: 'conversational',
+        expressionLevel: 'subtle',
+        relationalDepth: 'reserved'
+      }
+    );
+    expect(guestPaths).not.toContain(WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH);
   });
 
   it('gives every persona a complete relational signature without selecting a level', () => {

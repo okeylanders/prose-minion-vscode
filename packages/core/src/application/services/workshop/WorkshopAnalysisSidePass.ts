@@ -5,14 +5,21 @@ import {
   buildWorkshopContextAttachmentsFrame,
   buildWorkshopExcerptSourceFrame
 } from '@/application/services/workshop/WorkshopPromptBuilder';
+import {
+  describeWorkshopInheritedContext,
+  describeWorkshopInheritedExcerpt,
+  WorkshopPersonaAnalysisRunInputs
+} from '@/application/services/workshop/WorkshopAnalysisInputs';
 import type { WorkshopToolReportCompletion } from '@/application/services/workshop/WorkshopSessionService';
 import {
   AnalysisStreamingOptions,
   AssistantToolService
 } from '@services/analysis/AssistantToolService';
-import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { trimToWordLimit } from '@/utils/textUtils';
-import { WorkshopExcerpt, WorkshopToolId, WorkshopTurn } from '@messages';
+import {
+  WorkshopExcerpt,
+  WorkshopToolId,
+  WorkshopTurn
+} from '@messages';
 import {
   WorkshopCapabilityArtifactDetails,
   WorkshopCapabilityResult
@@ -24,13 +31,17 @@ import {
 
 export interface PersonaAnalysisAdoption {
   turn: WorkshopTurn;
-  replacedConversationId?: string;
+}
+
+export interface WorkshopAnalysisRunResult extends AnalysisResult {
+  inputProvenance: WorkshopPersonaAnalysisRunInputs['provenance'];
 }
 
 /**
  * The one isolated Workshop analysis boundary shared by user-triggered and
- * persona-triggered side passes. It owns tool invocation and sidecar adoption;
- * callers own the surrounding host synthesis/capability loop.
+ * persona-triggered side passes. It owns tool invocation, writer-sidecar
+ * adoption, and isolated persona-report recording; callers own the
+ * surrounding host synthesis/capability loop.
  */
 export class WorkshopAnalysisSidePass {
   constructor(
@@ -47,19 +58,78 @@ export class WorkshopAnalysisSidePass {
   async run(
     toolId: WorkshopToolId,
     excerpt: WorkshopExcerpt,
-    streamingOptions: AnalysisStreamingOptions,
-    personaInstructions?: string
-  ): Promise<AnalysisResult> {
-    const context = this.buildContext(excerpt, personaInstructions);
-    const options: AnalysisStreamingOptions = {
-      ...streamingOptions,
-      workshopSource: excerpt.source.kind !== 'manual'
-        ? excerpt.source.configuredResource
-        : undefined
+    streamingOptions: AnalysisStreamingOptions
+  ): Promise<WorkshopAnalysisRunResult> {
+    const attachments = this.session.getContextAttachments();
+    const context = this.buildContext(
+      buildWorkshopExcerptSourceFrame(excerpt.source),
+      buildWorkshopContextAttachmentsFrame(attachments)
+    );
+    const inheritedExcerpt = describeWorkshopInheritedExcerpt(excerpt);
+    const inheritedContext = describeWorkshopInheritedContext(attachments);
+    const result = await this.execute(
+      toolId,
+      excerpt.text,
+      context,
+      {
+        ...streamingOptions,
+        workshopSource: excerpt.source.kind !== 'manual'
+          ? excerpt.source.configuredResource
+          : undefined
+      }
+    );
+    return {
+      ...this.withDeliveredContextProvenance(result),
+      inputProvenance: {
+        excerpt: {
+          mode: 'inherit',
+          material: inheritedExcerpt.material,
+          chosenBy: 'Writer',
+          words: inheritedExcerpt.words,
+          truncation: inheritedExcerpt.truncation
+        },
+        context: {
+          mode: 'inherit',
+          material: inheritedContext.material,
+          chosenBy: 'Writer',
+          words: inheritedContext.words,
+          truncation: inheritedContext.truncation
+        }
+      }
     };
+  }
+
+  /** Execute one persona-selected analysis without changing session inputs. */
+  async runWithInputs(
+    toolId: WorkshopToolId,
+    inputs: WorkshopPersonaAnalysisRunInputs,
+    streamingOptions: AnalysisStreamingOptions
+  ): Promise<WorkshopAnalysisRunResult> {
+    const context = this.buildContext(
+      inputs.excerptSourceFrame,
+      inputs.context
+    );
+    const result = await this.execute(
+      toolId,
+      inputs.excerptText,
+      context,
+      { ...streamingOptions, workshopSource: inputs.workshopSource }
+    );
+    return {
+      ...this.withDeliveredContextProvenance(result),
+      inputProvenance: inputs.provenance
+    };
+  }
+
+  private async execute(
+    toolId: WorkshopToolId,
+    excerptText: string,
+    context: string | undefined,
+    options: AnalysisStreamingOptions
+  ): Promise<AnalysisResult> {
     const result = toolId === 'dialogue'
       ? await this.assistantToolService.analyzeDialogue(
-          excerpt.text,
+          excerptText,
           context,
           undefined,
           undefined,
@@ -67,19 +137,19 @@ export class WorkshopAnalysisSidePass {
         )
       : toolId === 'prose'
         ? await this.assistantToolService.analyzeProse(
-            excerpt.text,
+            excerptText,
             context,
             undefined,
             options
           )
         : await this.assistantToolService.analyzeWritingTools(
-            excerpt.text,
+            excerptText,
             context,
             undefined,
             toolId,
             options
           );
-    return this.withDeliveredContextProvenance(result);
+    return result;
   }
 
   /**
@@ -109,6 +179,7 @@ export class WorkshopAnalysisSidePass {
     usage?: AnalysisResult['usage'];
     truncated?: boolean;
     toolId: WorkshopToolId;
+    inputProvenance?: WorkshopAnalysisRunResult['inputProvenance'];
   }): WorkshopToolReportCompletion | undefined {
     const actionableFindings = this.inspectActionableFindings(
       input.content,
@@ -120,7 +191,8 @@ export class WorkshopAnalysisSidePass {
       input.conversationId,
       input.usage,
       input.truncated,
-      actionableFindings
+      actionableFindings,
+      input.inputProvenance
     );
     if (completion?.replacedConversationId) {
       this.assistantToolService.discardConversation(completion.replacedConversationId);
@@ -140,29 +212,29 @@ export class WorkshopAnalysisSidePass {
     conversationId?: string;
     truncated?: boolean;
   }): PersonaAnalysisAdoption | undefined {
+    // Persona-requested runs are transcript evidence, not direct conversation
+    // participants. Never let one adopt or replace the writer-owned sidecar.
+    if (input.conversationId) {
+      this.assistantToolService.discardConversation(input.conversationId);
+    }
     const actionableFindings = this.inspectActionableFindings(
       input.result.content ?? input.result.error ?? '',
       `${input.toolId} persona-requested report`
     );
     const completion = this.session.recordCapabilityArtifact({
-      ...input,
+      hostRequestId: input.hostRequestId,
+      excerptVersion: input.excerptVersion,
       toolId: input.toolId,
+      details: input.details,
+      result: input.result,
+      truncated: input.truncated,
       actionableFindings
     });
     if (!completion) {
-      if (input.conversationId) {
-        this.assistantToolService.discardConversation(input.conversationId);
-      }
       this.outputChannel.appendLine(
         `[WorkshopAnalysisSidePass] Refused late persona-requested ${input.toolId} report for ${input.hostRequestId}.`
       );
       return undefined;
-    }
-    if (completion.replacedConversationId) {
-      this.assistantToolService.discardConversation(completion.replacedConversationId);
-      this.outputChannel.appendLine(
-        `[WorkshopAnalysisSidePass] Tool sidecar replaced: ${completion.replacedConversationId} → ${input.conversationId} (${input.toolId}, persona-requested)`
-      );
     }
     return completion;
   }
@@ -182,30 +254,11 @@ export class WorkshopAnalysisSidePass {
   }
 
   private buildContext(
-    excerpt: WorkshopExcerpt,
-    personaInstructions?: string
+    excerptSourceFrame: string | undefined,
+    inputContext: string | undefined
   ): string | undefined {
-    const sourceFrame = buildWorkshopExcerptSourceFrame(excerpt.source);
-    const attachmentsFrame = buildWorkshopContextAttachmentsFrame(
-      this.session.getContextAttachments()
-    );
-    const instructions = personaInstructions?.trim();
-    if (!instructions) {
-      return [sourceFrame, attachmentsFrame, WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION]
-        .filter((section): section is string => !!section)
-        .join('\n\n');
-    }
-    const safeInstructions = instructions.replace(
-      /<\/?persona-requested-analysis-focus\b[^>]*>/gi,
-      (tag) => tag.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    );
-    return [
-      sourceFrame,
-      attachmentsFrame,
-      WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION,
-      '<persona-requested-analysis-focus>',
-      safeInstructions,
-      '</persona-requested-analysis-focus>'
-    ].filter((section): section is string => !!section).join('\n\n');
+    return [excerptSourceFrame, inputContext, WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION]
+      .filter((section): section is string => !!section)
+      .join('\n\n');
   }
 }

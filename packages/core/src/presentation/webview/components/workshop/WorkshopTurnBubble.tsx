@@ -75,44 +75,63 @@ export const parseVariations = (content: string): ParsedVariations | null => {
 
 const capabilityMetadataRows = (turn: WorkshopTurn): string[] => {
   const metadata = turn.capability?.metadata;
-  if (!metadata) return [];
   const rows: string[] = [];
-  if (typeof metadata.successCount === 'number' && typeof metadata.totalBlocks === 'number') {
+  if (typeof metadata?.successCount === 'number' && typeof metadata.totalBlocks === 'number') {
     rows.push(`${metadata.successCount}/${metadata.totalBlocks} dictionary sections completed`);
   }
-  if (typeof metadata.totalDuration === 'number') {
+  if (typeof metadata?.totalDuration === 'number') {
     rows.push(`Completed in ${(metadata.totalDuration / 1000).toFixed(1)}s`);
   }
-  if (Array.isArray(metadata.partialFailures) && metadata.partialFailures.length > 0) {
+  if (Array.isArray(metadata?.partialFailures) && metadata.partialFailures.length > 0) {
     rows.push(`Partial failures: ${metadata.partialFailures.join(', ')}`);
   }
-  if (metadata.truncated === true) {
+  if (metadata?.truncated === true) {
     rows.push(turn.capability?.operation.startsWith('resource.')
       ? 'Result was bounded by the project-resource limits'
       : 'Result reached its response-token limit');
   }
-  if (typeof metadata.fileCount === 'number') {
+  const analysisInputs = metadata?.analysisInputs ?? turn.analysisInputs;
+  if (analysisInputs && typeof analysisInputs === 'object') {
+    for (const [label, value] of Object.entries(analysisInputs)) {
+      if (!value || typeof value !== 'object') continue;
+      const input = value as Record<string, unknown>;
+      if (
+        typeof input.mode !== 'string' ||
+        typeof input.material !== 'string' ||
+        typeof input.chosenBy !== 'string' ||
+        typeof input.words !== 'number'
+      ) {
+        continue;
+      }
+      rows.push(
+        `${label === 'excerpt' ? 'Excerpt' : 'Context'} · ${input.mode} · ` +
+        `${input.material} · ${input.words.toLocaleString()} words · chosen by ${input.chosenBy}` +
+        (typeof input.truncation === 'string' ? ` · truncation: ${input.truncation}` : '')
+      );
+    }
+  }
+  if (typeof metadata?.fileCount === 'number') {
     rows.push(`${metadata.fileCount} configured ${metadata.fileCount === 1 ? 'file' : 'files'} listed`);
   }
-  if (metadata.searchMode === 'catalog' && typeof metadata.catalogEntriesScanned === 'number') {
+  if (metadata?.searchMode === 'catalog' && typeof metadata.catalogEntriesScanned === 'number') {
     rows.push(`${metadata.catalogEntriesScanned} configured ${metadata.catalogEntriesScanned === 1 ? 'path' : 'paths'} searched`);
   }
-  if (typeof metadata.filesScanned === 'number' && metadata.filesScanned > 0) {
+  if (typeof metadata?.filesScanned === 'number' && metadata.filesScanned > 0) {
     rows.push(`${metadata.filesScanned} configured ${metadata.filesScanned === 1 ? 'file' : 'files'} searched`);
   }
-  if (typeof metadata.matchCount === 'number') {
+  if (typeof metadata?.matchCount === 'number') {
     rows.push(`${metadata.matchCount} ${metadata.matchCount === 1 ? 'match' : 'matches'} found`);
   }
   if (
-    typeof metadata.startLine === 'number' &&
+    typeof metadata?.startLine === 'number' &&
     typeof metadata.endLine === 'number' &&
     typeof metadata.totalLines === 'number'
   ) {
     rows.push(`lines ${metadata.startLine}–${metadata.endLine} of ${metadata.totalLines}`);
   }
-  if (typeof metadata.bytes === 'number' && typeof metadata.totalBytes === 'number') {
+  if (typeof metadata?.bytes === 'number' && typeof metadata.totalBytes === 'number') {
     rows.push(`${metadata.bytes.toLocaleString()} of ${metadata.totalBytes.toLocaleString()} bytes read`);
-  } else if (typeof metadata.bytesScanned === 'number' && metadata.bytesScanned > 0) {
+  } else if (typeof metadata?.bytesScanned === 'number' && metadata.bytesScanned > 0) {
     rows.push(`${metadata.bytesScanned.toLocaleString()} bytes searched`);
   }
   return rows;
@@ -147,6 +166,31 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
     : undefined;
   const capabilityMetadata = capabilityMetadataRows(turn);
   const turnIdentity = { [WORKSHOP_TURN_ID_ATTRIBUTE]: turn.id };
+  const analysisInputs = turn.capability?.metadata?.analysisInputs;
+  const analysisExcerpt = analysisInputs && typeof analysisInputs === 'object'
+    ? (analysisInputs as Record<string, unknown>).excerpt
+    : undefined;
+  const personaRunDivider = turn.capability?.operation === 'analysis.run'
+    ? (() => {
+        if (turn.capability?.status === 'rejected') {
+          return `Analysis · via ${workshopPersonaLabel(turn.capability.requestedByPersonaId)} · request rejected`;
+        }
+        const excerpt = analysisExcerpt && typeof analysisExcerpt === 'object'
+          ? analysisExcerpt as Record<string, unknown>
+          : undefined;
+        const mode = excerpt?.mode;
+        const words = excerpt?.words;
+        const material = excerpt?.material;
+        const subject = mode === 'replace' && typeof words === 'number'
+          ? `persona-supplied passage, ${words.toLocaleString()} words`
+          : mode === 'omit'
+            ? 'excerpt omitted'
+            : typeof material === 'string'
+              ? material
+              : 'persona-chosen inputs';
+        return `${turn.toolLabel ?? 'Analysis'} · via ${workshopPersonaLabel(turn.capability!.requestedByPersonaId)} · ${subject}`;
+      })()
+    : undefined;
 
   // Legacy scope-transition dividers (retired by ADR 2026-07-25). No new ones
   // are minted, but transcripts written before the scope lock hold them and
@@ -200,9 +244,9 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
       );
     }
     return (
-      <div className="pm-ws-turn pm-ws-turn-user">
-        <span className="pm-ws-turn-chip">
-          {turn.toolId && <Icon name={workshopToolIcon(turn.toolId)} size={13} />} {turn.toolLabel}
+      <div className="pm-ws-revision-divider pm-ws-tool-run-divider" role="separator">
+        <span>
+          {turn.toolLabel} · direct run · excerpt v{turn.excerptVersion}
         </span>
       </div>
     );
@@ -210,6 +254,11 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
 
   return (
     <>
+      {personaRunDivider && (
+        <div className="pm-ws-revision-divider pm-ws-tool-run-divider" role="separator">
+          <span>{personaRunDivider}</span>
+        </div>
+      )}
       <div
         className="pm-ws-turn pm-ws-turn-assistant"
         {...turnIdentity}
@@ -231,6 +280,14 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
         </div>
         {turn.truncated && (
           <p className="pm-ws-turn-truncated">Response hit the max-token limit and was truncated.</p>
+        )}
+        {!turn.capability && turn.analysisInputs && capabilityMetadata.length > 0 && (
+          <div className="pm-ws-capability-artifact pm-ws-analysis-provenance">
+            <div className="pm-ws-eyebrow">Analysis run provenance</div>
+            <ul className="pm-ws-capability-metadata" aria-label="Analysis input provenance">
+              {capabilityMetadata.map((row) => <li key={row}>{row}</li>)}
+            </ul>
+          </div>
         )}
         {turn.capability ? (
           <details className="pm-ws-capability-artifact">

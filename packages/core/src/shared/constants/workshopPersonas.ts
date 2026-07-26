@@ -70,6 +70,8 @@ export const WORKSHOP_INTERACTION_MODE_PROMPT_PATHS: Readonly<
 
 export const WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH =
   'workshop-personas/relational-contract.md';
+export const WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH =
+  'workshop-personas/analysis-capability.md';
 
 export const WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS: Readonly<
   Record<WorkshopRelationalDepth, string>
@@ -100,6 +102,9 @@ export function workshopPersonaSystemPromptPaths(
   return [
     basePromptPath,
     persona.promptPath,
+    ...(basePromptPath === 'workshop-personas/base.md'
+      ? [WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH]
+      : []),
     WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
     WORKSHOP_INTERACTION_MODE_PROMPT_PATHS[behavior.interactionMode],
     WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,

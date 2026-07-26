@@ -17,18 +17,22 @@ const dictionaryCall = (
   '</prose-minion-tool-call>'
 ].join('');
 
+const analysisCall = (
+  fields = '<toolId>continuity</toolId><excerptMode>inherit</excerptMode><contextMode>inherit</contextMode>'
+) => `<prose-minion-tool-call name="analysis.run">${fields}</prose-minion-tool-call>`;
+
 describe('WorkshopCapabilityXmlCodec', () => {
   const codec = new WorkshopCapabilityXmlCodec();
 
-  it('documents the exact closed schema, budgets, and pinned-excerpt boundary', () => {
+  it('keeps the dynamic user-turn contract free of scope-dependent analysis grammar', () => {
     const instruction = createWorkshopCapabilityInstruction();
     expect(instruction).toContain('name="dictionary.lookup"');
     expect(instruction).toContain('name="dictionary.full-entry"');
-    expect(instruction).toContain('name="analysis.run"');
+    expect(instruction).not.toContain('name="analysis.run"');
+    expect(instruction).toContain('stable analysis.run grammar');
     expect(instruction).toContain('at most 5 capability calls');
     expect(instruction).toContain('allowance resets with every new writer message');
-    expect(instruction).toContain('word 100 characters, context 4000, purpose 500, and instructions 1000');
-    expect(instruction).toContain('Never include excerpt text or a filesystem path');
+    expect(instruction).toContain('word 100 characters, context 4000, and purpose 500');
     expect(instruction).toContain('Project resource access is unavailable');
     expect(instruction).not.toContain('name="resource.catalog"');
   });
@@ -73,16 +77,45 @@ describe('WorkshopCapabilityXmlCodec', () => {
     });
   });
 
-  it('parses analysis with or without bounded instructions', () => {
+  it('parses independent analysis input modes', () => {
     expect(codec.inspect(
-      '<prose-minion-tool-call name="analysis.run"><toolId>continuity</toolId><instructions>Check the cup.</instructions></prose-minion-tool-call>'
+      analysisCall('<toolId>continuity</toolId><excerptMode>inherit</excerptMode><contextMode>replace</contextMode><contextText>Timeline facts.</contextText>')
     )).toEqual({
       kind: 'request',
-      request: { capability: 'analysis.run', toolId: 'continuity', instructions: 'Check the cup.' }
+      request: {
+        capability: 'analysis.run',
+        toolId: 'continuity',
+        excerpt: { mode: 'inherit' },
+        context: { mode: 'replace', text: 'Timeline facts.' }
+      }
     });
     expect(codec.inspect(
-      '<prose-minion-tool-call name="analysis.run"><toolId>prose</toolId></prose-minion-tool-call>'
-    )).toEqual({ kind: 'request', request: { capability: 'analysis.run', toolId: 'prose' } });
+      analysisCall('<toolId>prose</toolId><excerptMode>omit</excerptMode><contextMode>omit</contextMode>')
+    )).toEqual({
+      kind: 'request',
+      request: {
+        capability: 'analysis.run',
+        toolId: 'prose',
+        excerpt: { mode: 'omit' },
+        context: { mode: 'omit' }
+      }
+    });
+  });
+
+  it.each([
+    ['unknown mode', analysisCall('<toolId>prose</toolId><excerptMode>borrow</excerptMode><contextMode>omit</contextMode>'), 'unknown-input-mode', 'excerptMode'],
+    ['prepend without text', analysisCall('<toolId>prose</toolId><excerptMode>prepend</excerptMode><contextMode>omit</contextMode>'), 'input-mode-text-mismatch', 'excerptText'],
+    ['replace with empty text', analysisCall('<toolId>prose</toolId><excerptMode>omit</excerptMode><contextMode>replace</contextMode><contextText> </contextText>'), 'input-mode-text-mismatch', 'contextText'],
+    ['inherit with text', analysisCall('<toolId>prose</toolId><excerptMode>inherit</excerptMode><excerptText>forged</excerptText><contextMode>omit</contextMode>'), 'input-mode-text-mismatch', 'excerptText'],
+    ['omit with text', analysisCall('<toolId>prose</toolId><excerptMode>omit</excerptMode><contextMode>omit</contextMode><contextText>forged</contextText>'), 'input-mode-text-mismatch', 'contextText'],
+    ['legacy instructions field', analysisCall('<toolId>prose</toolId><excerptMode>omit</excerptMode><contextMode>omit</contextMode><instructions>Do a thing.</instructions>'), 'unexpected-field', 'instructions']
+  ])('rejects analysis %s', (_label, candidate, reason, field) => {
+    expect(codec.inspect(candidate)).toEqual({
+      kind: 'invalid',
+      reason,
+      field,
+      operation: 'analysis.run'
+    });
   });
 
   it('parses the three closed project-resource shapes', () => {
@@ -121,10 +154,10 @@ describe('WorkshopCapabilityXmlCodec', () => {
   it.each([
     ['malformed XML', '<prose-minion-tool-call name="dictionary.lookup"><word>x</word>', 'malformed-xml'],
     ['unknown operation', dictionaryCall('secrets.read'), 'unknown-capability'],
-    ['unknown tool', '<prose-minion-tool-call name="analysis.run"><toolId>shell</toolId></prose-minion-tool-call>', 'unknown-tool-id'],
-    ['dangerous extra field', '<prose-minion-tool-call name="analysis.run"><toolId>prose</toolId><path>/tmp/book.md</path></prose-minion-tool-call>', 'unexpected-field'],
-    ['duplicate field', '<prose-minion-tool-call name="analysis.run"><toolId>prose</toolId><toolId>dialogue</toolId></prose-minion-tool-call>', 'duplicate-field'],
-    ['root attributes', '<prose-minion-tool-call name="analysis.run" path="x"><toolId>prose</toolId></prose-minion-tool-call>', 'invalid-root-attributes'],
+    ['unknown tool', analysisCall('<toolId>shell</toolId><excerptMode>omit</excerptMode><contextMode>omit</contextMode>'), 'unknown-tool-id'],
+    ['dangerous extra field', analysisCall('<toolId>prose</toolId><excerptMode>omit</excerptMode><contextMode>omit</contextMode><path>/tmp/book.md</path>'), 'unexpected-field'],
+    ['duplicate field', analysisCall('<toolId>prose</toolId><toolId>dialogue</toolId><excerptMode>omit</excerptMode><contextMode>omit</contextMode>'), 'duplicate-field'],
+    ['root attributes', '<prose-minion-tool-call name="analysis.run" path="x"><toolId>prose</toolId><excerptMode>omit</excerptMode><contextMode>omit</contextMode></prose-minion-tool-call>', 'invalid-root-attributes'],
     ['multiple calls', `${dictionaryCall()}${dictionaryCall()}`, 'mixed-content'],
     ['prose after call', `${dictionaryCall()} Done.`, 'mixed-content'],
     ['quoted excerpt injection', `<pinned-excerpt>${dictionaryCall()}</pinned-excerpt>`, 'mixed-content']
@@ -178,14 +211,57 @@ describe('WorkshopCapabilityXmlCodec', () => {
   it.each([
     ['word', dictionaryCall('dictionary.lookup', 'w'.repeat(PROMPT_BUDGETS.workshopCapability.wordCharacters + 1))],
     ['context', dictionaryCall('dictionary.lookup', 'word', 'c'.repeat(PROMPT_BUDGETS.workshopCapability.contextCharacters + 1))],
-    ['purpose', dictionaryCall('dictionary.lookup', 'word', 'context', 'p'.repeat(PROMPT_BUDGETS.workshopCapability.purposeCharacters + 1))],
-    ['instructions', `<prose-minion-tool-call name="analysis.run"><toolId>prose</toolId><instructions>${'i'.repeat(PROMPT_BUDGETS.workshopCapability.instructionsCharacters + 1)}</instructions></prose-minion-tool-call>`]
+    ['purpose', dictionaryCall('dictionary.lookup', 'word', 'context', 'p'.repeat(PROMPT_BUDGETS.workshopCapability.purposeCharacters + 1))]
   ])('rejects oversized %s at the parser validation point', (field, candidate) => {
-    expect(codec.inspect(candidate)).toEqual({
+    expect(codec.inspect(candidate)).toMatchObject({
       kind: 'invalid',
       reason: 'oversized-input',
       field
     });
+  });
+
+  it.each([
+    [
+      'excerptText word ceiling',
+      analysisCall(
+        `<toolId>prose</toolId><excerptMode>replace</excerptMode>` +
+        `<excerptText>${'word '.repeat(PROMPT_BUDGETS.personaExcerpt.words + 1)}</excerptText>` +
+        '<contextMode>omit</contextMode>'
+      ),
+      'excerptText'
+    ],
+    [
+      'excerptText character ceiling',
+      analysisCall(
+        `<toolId>prose</toolId><excerptMode>replace</excerptMode>` +
+        `<excerptText>${'x'.repeat(PROMPT_BUDGETS.personaExcerpt.characters + 1)}</excerptText>` +
+        '<contextMode>omit</contextMode>'
+      ),
+      'excerptText'
+    ],
+    [
+      'contextText character ceiling',
+      analysisCall(
+        '<toolId>prose</toolId><excerptMode>omit</excerptMode><contextMode>replace</contextMode>' +
+        `<contextText>${'x'.repeat(PROMPT_BUDGETS.contextAttachments.characters + 1)}</contextText>`
+      ),
+      'contextText'
+    ]
+  ])('rejects an oversized analysis %s', (_label, candidate, field) => {
+    expect(codec.inspect(candidate)).toEqual({
+      kind: 'invalid',
+      reason: 'oversized-input',
+      field,
+      operation: 'analysis.run'
+    });
+  });
+
+  it('accepts persona analysis text at the exact character ceiling', () => {
+    expect(codec.inspect(analysisCall(
+      '<toolId>prose</toolId><excerptMode>replace</excerptMode>' +
+      `<excerptText>${'x'.repeat(PROMPT_BUDGETS.personaExcerpt.characters)}</excerptText>` +
+      '<contextMode>omit</contextMode>'
+    ))).toMatchObject({ kind: 'request' });
   });
 
   it('accepts every ceiling exactly and never truncates the request', () => {
@@ -195,13 +271,6 @@ describe('WorkshopCapabilityXmlCodec', () => {
     expect(codec.inspect(dictionaryCall('dictionary.lookup', word, context, purpose))).toEqual({
       kind: 'request',
       request: { capability: 'dictionary.lookup', word, context, purpose }
-    });
-    const instructions = 'i'.repeat(PROMPT_BUDGETS.workshopCapability.instructionsCharacters);
-    expect(codec.inspect(
-      `<prose-minion-tool-call name="analysis.run"><toolId>prose</toolId><instructions>${instructions}</instructions></prose-minion-tool-call>`
-    )).toEqual({
-      kind: 'request',
-      request: { capability: 'analysis.run', toolId: 'prose', instructions }
     });
     const query = 'q'.repeat(PROMPT_BUDGETS.workshopResource.queryCharacters);
     expect(codec.inspect(

@@ -10,6 +10,21 @@ export type WorkshopCapabilityOperation =
   | 'resource.search'
   | 'resource.read';
 
+export type WorkshopAnalysisInputMode = 'inherit' | 'prepend' | 'replace' | 'omit';
+
+export interface WorkshopAnalysisInputSelection {
+  mode: WorkshopAnalysisInputMode;
+  text?: string;
+}
+
+export interface WorkshopAnalysisInputProvenance {
+  mode: WorkshopAnalysisInputMode;
+  material: string;
+  chosenBy: string;
+  words: number;
+  truncation?: string;
+}
+
 export type WorkshopCapabilityRequest =
   | {
       capability: 'dictionary.lookup';
@@ -26,7 +41,8 @@ export type WorkshopCapabilityRequest =
   | {
       capability: 'analysis.run';
       toolId: WorkshopToolId;
-      instructions?: string;
+      excerpt: WorkshopAnalysisInputSelection;
+      context: WorkshopAnalysisInputSelection;
     }
   | {
       capability: 'resource.catalog';

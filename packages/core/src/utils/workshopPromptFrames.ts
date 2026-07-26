@@ -3,7 +3,7 @@
 // longer reserved name cannot be split by a first-alternative partial match
 // (ADR 2026-07-20: behavior frames are extension-authored only).
 const RESERVED_PERSONA_FRAME =
-  /<\/?(?:pinned-excerpt|context-attachments?|writer-message|workshop-tool-evidence|workshop-host-update|workshop-todo-snapshot|writer-owned-task|workshop-capability-result|workshop-transcript|workshop-guest-catch-up|workshop-guest-handoff|workshop-excerpt-source|workshop-open-conversation|workshop-interaction-transition|workshop-behavior-activation|workshop-interaction|workshop-writer-profile|workshop-session-attunement|workshop-time-context|thread-artifact|agent-artifact|prose-minion-tool-call)(?=[\s/]|>)[^>]*>/gi;
+  /<\/?(?:pinned-excerpt|context-attachments?|writer-message|workshop-tool-evidence|workshop-host-update|workshop-todo-snapshot|writer-owned-task|workshop-capability-result|workshop-transcript|workshop-guest-catch-up|workshop-guest-handoff|workshop-excerpt-source|workshop-open-conversation|workshop-analysis-scope|workshop-interaction-transition|workshop-behavior-activation|workshop-interaction|workshop-writer-profile|workshop-session-attunement|workshop-time-context|thread-artifact|agent-artifact|prose-minion-tool-call)(?=[\s/]|>)[^>]*>/gi;
 
 export function neutralizeReservedPersonaPromptDelimiters(value: string): string {
   // Global escape: the frame's [^>]* filler admits nested '<' characters, so
@@ -18,8 +18,8 @@ export function neutralizeReservedPersonaPromptDelimiters(value: string): string
  * The open-conversation honesty frame (Sprint 13A §11).
  *
  * An excerpt-free room is a real scope, not a blank excerpt — so the persona is
- * told plainly what it has NOT seen, what this conversation is for, and that an
- * excerpt may arrive later. Extension-authored; the tag is reserved above, so
+ * told plainly what it has NOT seen and what this conversation is for.
+ * Extension-authored; the tag is reserved above, so
  * writer prose can neither forge nor close one.
  *
  * It lives here rather than in WorkshopPromptBuilder because the INITIAL
@@ -35,7 +35,7 @@ export function buildWorkshopOpenConversationFrame(personaLabel: string): string
     'Do not claim or imply that you have read a passage, do not describe or summarize prose you have not been shown, and do not invent quotations from one. If a question depends on text you do not have, say so plainly and ask for it.',
     'This conversation is for planning, ideation, craft discussion, or simply getting to know how you work. Treat it as real work, not as a holding pattern.',
     'Any context attachments below ARE available to you and were chosen by the writer; only the excerpt is missing.',
-    'The writer may add an excerpt later. You will be told explicitly when that happens — until then, assume there is none.',
+    'This room will remain excerpt-free. If the writer wants to workshop a passage, they must start a new passage session.',
     '</workshop-open-conversation>'
   ].join('\n');
 }
