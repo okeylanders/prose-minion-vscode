@@ -35,7 +35,12 @@ const buildCompleteState = (): WorkshopSessionStateV1 => {
   });
   session.recordSessionMarker('start', 'Session started at 10:00 AM.');
   session.beginPersonaMessage('host-open', 'Begin.');
-  session.completeRun('host-open', 'I am here.', undefined, false, 'host-runtime-before-save');
+  session.completeRun('host-open', 'I am here.', undefined, false, 'host-runtime-before-save', [], [{
+    url: 'https://www.anthropic.com/news/claude-opus-5',
+    title: 'Introducing Claude Opus 5',
+    startIndex: 0,
+    endIndex: 4
+  }]);
 
   session.replaceExcerpt({
     text: 'The second cup breaks.',
@@ -120,6 +125,12 @@ describe('WorkshopSessionService committed persistence', () => {
     expect(state.excerpt!.text).toBe('The second cup breaks.');
     expect(state.turns[0].content).not.toBe('Mutated parsed turn.');
     expect(state.writerSources.host[0].label).not.toBe('Mutated parsed source.');
+    expect(parsed.turns.find((turn) => turn.citations !== undefined)?.citations).toEqual([{
+      url: 'https://www.anthropic.com/news/claude-opus-5',
+      title: 'Introducing Claude Opus 5',
+      startIndex: 0,
+      endIndex: 4
+    }]);
   });
 
   it('round-trips guest-origin next steps with their persona provenance', () => {

@@ -315,6 +315,7 @@ function assertTurn(value: unknown, path: string): void {
       'actionableFindings',
       'messageAttachments',
       'usage',
+      'citations',
       'truncated',
       'behavior',
       'behaviorTransition'
@@ -383,6 +384,9 @@ function assertTurn(value: unknown, path: string): void {
   if (turn.usage !== undefined) {
     assertTokenUsage(turn.usage, `${path}.usage`);
   }
+  if (turn.citations !== undefined) {
+    arrayOf(turn.citations, `${path}.citations`, assertCitation);
+  }
   optionalBooleanAt(turn.truncated, `${path}.truncated`);
   if (turn.behavior !== undefined) {
     assertBehavior(turn.behavior, `${path}.behavior`);
@@ -390,6 +394,14 @@ function assertTurn(value: unknown, path: string): void {
   if (turn.behaviorTransition !== undefined) {
     assertBehaviorTransition(turn.behaviorTransition, `${path}.behaviorTransition`);
   }
+}
+
+function assertCitation(value: unknown, path: string): void {
+  const citation = exactObject(value, path, ['url'], ['title', 'startIndex', 'endIndex']);
+  stringAt(citation.url, `${path}.url`);
+  optionalStringAt(citation.title, `${path}.title`);
+  optionalNumberAt(citation.startIndex, `${path}.startIndex`);
+  optionalNumberAt(citation.endIndex, `${path}.endIndex`);
 }
 
 function assertAnalysisInputProvenance(value: unknown, path: string): void {
