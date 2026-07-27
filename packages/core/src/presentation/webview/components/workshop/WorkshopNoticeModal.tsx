@@ -66,10 +66,13 @@ const PAGES: readonly NoticePage[] = [
     body: (
       <>
         Find the diamond-shaped <b>Conversation Controller</b> chip in the composer controls.
-        It sets how host and guest personas respond: <b>mode</b> (how opinionated),{' '}
+        The <b>Behavior</b> tab sets how host and guest personas respond: <b>mode</b> (how opinionated),{' '}
         <b>expression</b> (how much they say), and <b>depth</b> (how far they read into things).
-        These settings are per-session, stay visible, and never change silently. They do not
-        apply to direct instrument threads.
+        Those choices are per-session, stay visible, and never change silently. The <b>About
+        you</b> tab lets you choose how the room addresses you and share a short writer profile
+        as background context. In <b>Advanced</b>, you can let personas research the live web
+        when it helps; their replies show each source as a clickable citation pill. These
+        conversation controls do not apply to direct instrument threads.
       </>
     )
   },

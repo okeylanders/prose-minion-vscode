@@ -39,7 +39,7 @@ describe('WorkshopNoticeModal', () => {
     expect(next.disabled).toBe(true);
   });
 
-  it('explains host choice, model guidance, controller scope, and persona-run tools', () => {
+  it('explains host choice, model guidance, conversation settings, and persona-run tools', () => {
     renderModal();
 
     fireEvent.click(screen.getByRole('button', { name: 'Notice 3' }));
@@ -50,6 +50,8 @@ describe('WorkshopNoticeModal', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Notice 4' }));
     expect(screen.getByText(/Conversation Controller/)).toBeTruthy();
+    expect(screen.getByText(/About you/)).toBeTruthy();
+    expect(screen.getByText(/clickable citation pill/)).toBeTruthy();
     expect(screen.getByText(/do not apply to direct instrument threads/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Notice 5' }));
