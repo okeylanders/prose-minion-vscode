@@ -601,7 +601,8 @@ export class AgentRunEngine {
         const response = await this.openRouterClient.createChatCompletion(messages, {
           temperature: options.temperature,
           maxTokens: options.maxTokens,
-          signal: options.signal
+          signal: options.signal,
+          tools: options.tools
         });
         this.emitUsage(response.usage);
         const inspection = capability?.inspectRequest(response.content);
@@ -635,7 +636,8 @@ export class AgentRunEngine {
       for await (const chunk of this.openRouterClient.createStreamingChatCompletion(messages, {
         temperature: options.temperature,
         maxTokens: options.maxTokens,
-        signal: options.signal
+        signal: options.signal,
+        tools: options.tools
       })) {
         if (chunk.done) {
           usage = chunk.usage ?? usage;

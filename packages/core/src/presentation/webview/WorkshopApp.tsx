@@ -1398,6 +1398,7 @@ export const WorkshopApp: React.FC = () => {
         open={behaviorModalOpen}
         behavior={workshop.conversationBehavior}
         writerProfile={workshop.writerProfile}
+        webResearch={workshop.webResearch}
         isRunning={roomMutationLocked}
         errorMessage={workshop.errorMessage}
         onApply={workshop.setConversationSettings}

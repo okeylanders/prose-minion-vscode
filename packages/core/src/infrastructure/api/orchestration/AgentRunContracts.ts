@@ -1,4 +1,5 @@
 import { ContextPathGroup, TokenUsage } from '@shared/types';
+import type { OpenRouterWebSearchTool } from '@providers/OpenRouterClient';
 
 /** The caller-selected capability surface available to one agent turn. */
 export type CapabilityCatalog =
@@ -121,6 +122,8 @@ export interface AgentRunOptions {
   readonly signal?: AbortSignal;
   readonly timeoutMs?: number;
   readonly onToken?: StreamingTokenCallback;
+  /** Provider server tools explicitly granted to this one inference request. */
+  readonly tools?: OpenRouterWebSearchTool[];
 }
 
 export interface InitialRunRequest {

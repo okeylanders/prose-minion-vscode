@@ -13,7 +13,9 @@ import {
   WorkshopInteractionMode,
   WorkshopPersonaExpressionLevel,
   WorkshopRelationalDepth,
-  WorkshopWriterProfile
+  WorkshopWriterProfile,
+  WorkshopWebResearchSettings,
+  workshopWebResearchSettingsEqual
 } from '@messages';
 
 const MODE_CARDS: ReadonlyArray<{
@@ -83,15 +85,17 @@ interface PendingApply {
   submittedProfile: WorkshopWriterProfile;
   baselineBehavior: WorkshopConversationBehavior;
   baselineProfile: WorkshopWriterProfile;
+  submittedWebResearch: WorkshopWebResearchSettings;
 }
 
 interface WorkshopConversationBehaviorModalProps {
   open: boolean;
   behavior: WorkshopConversationBehavior;
   writerProfile: WorkshopWriterProfile;
+  webResearch: WorkshopWebResearchSettings;
   isRunning: boolean;
   errorMessage?: string;
-  onApply: (behavior: WorkshopConversationBehavior, writerProfile: WorkshopWriterProfile) => void;
+  onApply: (behavior: WorkshopConversationBehavior, writerProfile: WorkshopWriterProfile, webResearch: WorkshopWebResearchSettings) => void;
   onClose: () => void;
 }
 
@@ -101,6 +105,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
   open,
   behavior,
   writerProfile,
+  webResearch,
   isRunning,
   errorMessage,
   onApply,
@@ -109,6 +114,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
   const [tab, setTab] = React.useState<SettingsTab>('behavior');
   const [behaviorDraft, setBehaviorDraft] = React.useState({ ...behavior });
   const [profileDraft, setProfileDraft] = React.useState({ ...writerProfile });
+  const [webResearchDraft, setWebResearchDraft] = React.useState({ ...webResearch });
   const [pending, setPending] = React.useState<PendingApply | null>(null);
   const [confirmClear, setConfirmClear] = React.useState(false);
   const behaviorTabRef = React.useRef<HTMLButtonElement>(null);
@@ -119,10 +125,11 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
       setTab('behavior');
       setBehaviorDraft({ ...behavior });
       setProfileDraft({ ...writerProfile });
+      setWebResearchDraft({ ...webResearch });
       setPending(null);
       setConfirmClear(false);
     }
-  }, [open]);
+  }, [open, webResearch]);
 
   React.useEffect(() => {
     if (!pending) return;
@@ -133,6 +140,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
     if (
       workshopConversationBehaviorsEqual(behavior, pending.submittedBehavior)
       && workshopWriterProfilesEqual(writerProfile, pending.submittedProfile)
+      && workshopWebResearchSettingsEqual(webResearch, pending.submittedWebResearch)
     ) {
       setPending(null);
       onClose();
@@ -142,7 +150,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
     ) {
       setPending(null);
     }
-  }, [behavior, onClose, open, pending, writerProfile]);
+  }, [behavior, onClose, open, pending, webResearch, writerProfile]);
 
   React.useEffect(() => {
     if (pending && errorMessage) setPending(null);
@@ -173,12 +181,13 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
       preferredAddress: profileDraft.preferredAddress.trim(),
       bio: profileDraft.bio.trim()
     };
-    onApply(submittedBehavior, submittedProfile);
+    onApply(submittedBehavior, submittedProfile, webResearchDraft);
     setPending({
       submittedBehavior,
       submittedProfile,
       baselineBehavior: { ...behavior },
-      baselineProfile: { ...writerProfile }
+      baselineProfile: { ...writerProfile },
+      submittedWebResearch: { ...webResearchDraft }
     });
   };
   const clearProfile = () => {
@@ -198,7 +207,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
         <div>
           <div className="pm-ws-eyebrow">Workshop · Room settings</div>
           <h2 id="pm-ws-settings-title">Conversation settings</h2>
-          <p>Choose how Workshop personas respond and what you explicitly share with them. Tools are unchanged.</p>
+          <p>Choose how Workshop personas respond, what you explicitly share, and whether they may research the live web. Tools are unchanged.</p>
         </div>
         <WorkshopModalShell.CloseButton />
       </div>
@@ -325,6 +334,20 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
         >
           <div className="pm-ws-profile-share-row">
             <div>
+              <div className="pm-ws-behavior-row-name">Allow live web research</div>
+              <div className="pm-ws-behavior-row-desc">
+                Persona conversations may search current web information when it helps. This can add latency and provider charges; Grok can also search X when supported.
+              </div>
+            </div>
+            <Switch
+              checked={webResearchDraft.enabled}
+              disabled={editingLocked}
+              label="Allow live web research"
+              onClick={() => setWebResearchDraft((current) => ({ enabled: !current.enabled }))}
+            />
+          </div>
+          <div className="pm-ws-profile-share-row">
+            <div>
               <div className="pm-ws-behavior-row-name">
                 Share this profile with Workshop personas
               </div>
@@ -449,7 +472,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
           </span>
         ) : (
           <span className="pm-ws-behavior-foot-note">
-            Applies the Behavior and About You drafts together to the active room.
+            Applies the Behavior, About You, and Research drafts together. Research takes effect on your next message.
           </span>
         )}
         <button className="pm-ws-action-btn" type="button" onClick={onClose}>Cancel</button>

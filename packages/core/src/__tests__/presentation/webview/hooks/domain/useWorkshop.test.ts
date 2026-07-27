@@ -75,6 +75,7 @@ const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessio
         ...session
       },
       writerProfile: { ...DEFAULT_WORKSHOP_WRITER_PROFILE },
+      webResearch: { enabled: false },
       persistence: { available: true, degradedConversationKeys: [] }
     },
     timestamp: 0
@@ -441,6 +442,7 @@ describe('useWorkshop', () => {
       .toEqual({
         behavior: selected,
         writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE
+        ,webResearch: { enabled: false }
       });
     expect(result.current.conversationBehavior).toEqual(
       DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR

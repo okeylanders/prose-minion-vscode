@@ -98,6 +98,28 @@ describe('OpenRouterClient model hot-swap', () => {
     }
   });
 
+  it('sends an explicitly enabled web-search server tool unchanged', async () => {
+    const originalFetch = global.fetch;
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        id: 'response-1', choices: [{ message: { role: 'assistant', content: 'Hi' }, finish_reason: 'stop' }]
+      })
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    try {
+      await new OpenRouterClient('key', 'model/requested').createChatCompletion(
+        [{ role: 'user', content: 'Hello' }],
+        { tools: [{ type: 'openrouter:web_search', parameters: { engine: 'auto', max_uses: 2, max_total_results: 10 } }] }
+      );
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body as string).tools).toEqual([
+        { type: 'openrouter:web_search', parameters: { engine: 'auto', max_uses: 2, max_total_results: 10 } }
+      ]);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
   it('emits streaming terminal usage and metadata exactly once when they arrive after finish reason', async () => {
     const originalFetch = global.fetch;
     const fetchMock = jest.fn().mockResolvedValue(streamingResponse(

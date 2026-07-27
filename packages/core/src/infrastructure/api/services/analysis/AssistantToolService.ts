@@ -65,6 +65,7 @@ import {
 } from '@/utils/workshopPromptFrames';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { buildWorkshopWriterProfileFrame } from '@/utils/workshopWriterProfile';
+import type { OpenRouterWebSearchTool } from '@providers/OpenRouterClient';
 
 /**
  * Options for streaming analysis operations
@@ -89,6 +90,8 @@ export interface AnalysisStreamingOptions {
    * Meaningful only with retainConversation; sidebar runs never set it.
    */
   workshopSource?: WorkshopConfiguredResourceRef;
+  /** Opt-in, per-turn server-side web search for Workshop persona conversations. */
+  webResearch?: boolean;
 }
 
 export interface WorkshopHostStreamingOptions extends AnalysisStreamingOptions {
@@ -556,7 +559,8 @@ export class AssistantToolService {
         temperature: options.temperature,
         maxTokens: options.maxTokens,
         signal: streamingOptions?.signal,
-        onToken: streamingOptions?.onToken
+        onToken: streamingOptions?.onToken,
+        tools: this.workshopWebSearchTools(streamingOptions?.webResearch)
       }
     });
 
@@ -615,7 +619,8 @@ export class AssistantToolService {
         temperature: options.temperature,
         maxTokens: options.maxTokens,
         signal: streamingOptions.signal,
-        onToken: streamingOptions.onToken
+        onToken: streamingOptions.onToken,
+        tools: this.workshopWebSearchTools(streamingOptions.webResearch)
       }
     });
 
@@ -668,7 +673,8 @@ export class AssistantToolService {
         temperature: options.temperature,
         maxTokens: options.maxTokens,
         signal: streamingOptions?.signal,
-        onToken: streamingOptions?.onToken
+        onToken: streamingOptions?.onToken,
+        tools: this.workshopWebSearchTools(streamingOptions?.webResearch)
       }
     });
 
@@ -680,6 +686,13 @@ export class AssistantToolService {
       executionResult.finishReason,
       executionResult.conversationId
     );
+  }
+
+  private workshopWebSearchTools(enabled: boolean | undefined): OpenRouterWebSearchTool[] | undefined {
+    return enabled ? [{
+      type: 'openrouter:web_search',
+      parameters: { engine: 'auto', max_uses: 2, max_total_results: 10 }
+    }] : undefined;
   }
 
   /**

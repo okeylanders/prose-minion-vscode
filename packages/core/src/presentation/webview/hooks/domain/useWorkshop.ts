@@ -29,6 +29,7 @@ import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
 import {
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
   DEFAULT_WORKSHOP_WRITER_PROFILE,
+  DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS,
   ErrorMessage,
   StatusMessage,
   StreamChunkMessage,
@@ -64,8 +65,10 @@ import {
   WorkshopTurn,
   WorkshopTurnMessage,
   WorkshopWriterProfile,
+  WorkshopWebResearchSettings,
   coerceWorkshopConversationBehavior,
-  coerceWorkshopWriterProfile
+  coerceWorkshopWriterProfile,
+  coerceWorkshopWebResearchSettings
 } from '@messages';
 import { LabeledContextBudgetSnapshot } from '@messages';
 
@@ -147,6 +150,7 @@ export interface WorkshopState {
   conversationBehavior: WorkshopConversationBehavior;
   /** Global profile mirrored beside, never inside, the host session snapshot. */
   writerProfile: WorkshopWriterProfile;
+  webResearch: WorkshopWebResearchSettings;
   /** Public metadata for the latest retained sidecar per tool. */
   toolSidecars: WorkshopToolSidecarSnapshot[];
   /** Explicitly invited persona guests, including disposed history markers. */
@@ -227,7 +231,8 @@ export interface WorkshopActions {
   setChatTarget: (target: WorkshopChatTarget) => void;
   setConversationSettings: (
     behavior: WorkshopConversationBehavior,
-    writerProfile: WorkshopWriterProfile
+    writerProfile: WorkshopWriterProfile,
+    webResearch?: WorkshopWebResearchSettings
   ) => void;
   todoAction: (action: WorkshopTodoAction) => void;
   cancelRun: () => void;
@@ -302,6 +307,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
     React.useState<WorkshopConversationBehavior>({ ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR });
   const [writerProfile, setWriterProfile] =
     React.useState<WorkshopWriterProfile>({ ...DEFAULT_WORKSHOP_WRITER_PROFILE });
+  const [webResearch, setWebResearch] =
+    React.useState<WorkshopWebResearchSettings>({ ...DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS });
   const [toolSidecars, setToolSidecars] = React.useState<WorkshopToolSidecarSnapshot[]>([]);
   const [personaGuests, setPersonaGuests] = React.useState<WorkshopPersonaGuestSnapshot[]>([]);
   const [contextBudget, setContextBudget] = React.useState<LabeledContextBudgetSnapshot | undefined>();
@@ -553,11 +560,12 @@ export const useWorkshop = (): UseWorkshopReturn => {
   // the system-message replacement batch the old mode stays visible. The new
   // object arrives with the next WORKSHOP_SESSION_STATE.
   const setConversationSettings = React.useCallback(
-    (behavior: WorkshopConversationBehavior, profile: WorkshopWriterProfile) => {
+    (behavior: WorkshopConversationBehavior, profile: WorkshopWriterProfile, research = DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS) => {
       setErrorMessage('');
       post(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS, {
         behavior,
-        writerProfile: profile
+        writerProfile: profile,
+        webResearch: research
       });
     },
     [post]
@@ -700,6 +708,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
       // degrades to the COMPLETE approved default, never a per-field blend.
       setConversationBehaviorState(coerceWorkshopConversationBehavior(session.conversationBehavior));
       setWriterProfile(coerceWorkshopWriterProfile(message.payload.writerProfile));
+      setWebResearch(coerceWorkshopWebResearchSettings(message.payload.webResearch));
       setToolSidecars(session.participants.toolSidecars);
       setPersonaGuests(session.participants.personaGuests);
       setContextBudget(session.contextBudget);
@@ -920,6 +929,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     chatTarget,
     conversationBehavior,
     writerProfile,
+    webResearch,
     toolSidecars,
     personaGuests,
     contextBudget,

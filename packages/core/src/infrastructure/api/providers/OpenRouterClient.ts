@@ -25,6 +25,15 @@ export interface OpenRouterRequest {
   usage?: { include: boolean };
 }
 
+export interface OpenRouterWebSearchTool {
+  type: 'openrouter:web_search';
+  parameters: {
+    engine: 'auto';
+    max_uses: number;
+    max_total_results: number;
+  };
+}
+
 export interface OpenRouterResponse {
   id: string;
   model: string;
@@ -95,6 +104,7 @@ export class OpenRouterClient {
       temperature?: number;
       maxTokens?: number;
       signal?: AbortSignal;
+      tools?: OpenRouterWebSearchTool[];
     }
   ): Promise<{
     content: string;
@@ -120,7 +130,8 @@ export class OpenRouterClient {
         messages,
         temperature: options?.temperature ?? 0.7,
         max_tokens: requestedMaxOutputTokens,
-        usage: { include: true }
+        usage: { include: true },
+        ...(options?.tools ? { tools: options.tools } : {})
       })
     });
 
@@ -162,6 +173,7 @@ export class OpenRouterClient {
       temperature?: number;
       maxTokens?: number;
       signal?: AbortSignal;
+      tools?: OpenRouterWebSearchTool[];
     }
   ): AsyncGenerator<{
     token: string;
@@ -188,7 +200,8 @@ export class OpenRouterClient {
         stream: true,
         temperature: options?.temperature ?? 0.7,
         max_tokens: requestedMaxOutputTokens,
-        stream_options: { include_usage: true }
+        stream_options: { include_usage: true },
+        ...(options?.tools ? { tools: options.tools } : {})
       })
     });
 
