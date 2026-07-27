@@ -372,13 +372,16 @@ export class OpenRouterClient {
     current: UrlCitation[] | undefined,
     additions: UrlCitation[]
   ): UrlCitation[] | undefined {
+    // `merged` is a shallow copy, so its entries are still shared with `current`
+    // and `additions`. Copy on insert and replace on backfill so a caller holding
+    // either array never observes a citation changing under it.
     const merged = [...(current ?? [])];
     for (const citation of additions) {
-      const existing = merged.find((entry) => entry.url === citation.url);
-      if (!existing) {
-        merged.push(citation);
-      } else if (!existing.title?.trim() && citation.title?.trim()) {
-        existing.title = citation.title;
+      const index = merged.findIndex((entry) => entry.url === citation.url);
+      if (index < 0) {
+        merged.push({ ...citation });
+      } else if (!merged[index].title?.trim() && citation.title?.trim()) {
+        merged[index] = { ...merged[index], title: citation.title };
       }
     }
     return merged.length > 0 ? merged : undefined;
