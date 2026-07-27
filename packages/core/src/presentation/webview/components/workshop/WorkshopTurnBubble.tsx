@@ -422,15 +422,23 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
         {citations.length > 0 && (
           <div className="pm-ws-turn-citations" aria-label="Web sources">
             <div className="pm-ws-eyebrow">Web sources</div>
-            <ol>
+            <div className="pm-ws-turn-citation-pills">
               {citations.map((citation, index) => (
-                <li key={citation.url}>
-                  <a href={citation.url} target="_blank" rel="noreferrer">
-                    [{index + 1}] {citationLabel(citation)}
-                  </a>
-                </li>
+                <a
+                  key={citation.url}
+                  className="pm-ws-ctx-pill pm-ws-turn-citation-pill"
+                  href={citation.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={citation.url}
+                  aria-label={`Open web source ${index + 1}: ${citationLabel(citation)}`}
+                >
+                  <Icon name="link" size={12} />
+                  <span className="pm-ws-turn-citation-number">{index + 1}</span>
+                  <span className="pm-ws-ctx-pill-label">{citationLabel(citation)}</span>
+                </a>
               ))}
-            </ol>
+            </div>
           </div>
         )}
         <div className="pm-ws-turn-actions">
