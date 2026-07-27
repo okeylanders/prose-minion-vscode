@@ -84,6 +84,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     log: outputChannel,
     secrets: context.secrets,
     settings: new VsCodeSettingsStore(),
+    globalState: context.globalState,
     fileSystem: new VsCodeFileSystem(),
     workspace: new VsCodeWorkspace(context.extensionUri),
     shell: new VsCodeShellService(),

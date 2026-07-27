@@ -49,6 +49,9 @@ import { ContextBudget } from './components/shared/ContextBudget';
 import { WorkshopThread } from './components/workshop/WorkshopThread';
 import { WORKSHOP_TURN_ID_ATTRIBUTE } from './components/workshop/WorkshopTurnBubble';
 import { WorkshopToolsModal } from './components/workshop/WorkshopToolsModal';
+import { WorkshopWidgetsModal } from './components/workshop/WorkshopWidgetsModal';
+import { WorkshopNoticeModal } from './components/workshop/WorkshopNoticeModal';
+import { useStartupNotice } from './hooks/domain/useStartupNotice';
 import { WorkshopChooseHostModal } from './components/workshop/WorkshopChooseHostModal';
 import { WorkshopInviteGuestModal } from './components/workshop/WorkshopInviteGuestModal';
 import { WorkshopPersonaSchematicModal } from './components/workshop/schematic/WorkshopPersonaSchematicModal';
@@ -164,8 +167,10 @@ export const WorkshopApp: React.FC = () => {
   const excerptVerify = useWorkshopExcerptVerify();
   const modelsSettings = useModelsSettings();
   const tokenTracking = useTokenTracking();
+  const startupNotice = useStartupNotice();
   const [hasSavedKey, setHasSavedKey] = React.useState(false);
   const [toolsModalOpen, setToolsModalOpen] = React.useState(false);
+  const [widgetsModalOpen, setWidgetsModalOpen] = React.useState(false);
   const [behaviorModalOpen, setBehaviorModalOpen] = React.useState(false);
   const [personaModalOpen, setPersonaModalOpen] = React.useState(false);
   const [schematicPersonaId, setSchematicPersonaId] = React.useState<WorkshopPersonaId | null>(null);
@@ -246,6 +251,7 @@ export const WorkshopApp: React.FC = () => {
     [MessageType.SETTINGS_DATA]: modelsSettings.handleSettingsData,
     [MessageType.TOKEN_USAGE_UPDATE]: tokenTracking.handleTokenUsageUpdate,
     [MessageType.ACCOUNT_BALANCE_DATA]: accountBalance.handleAccountBalanceData,
+    [MessageType.STARTUP_NOTICE_DATA]: startupNotice.handleStartupNoticeData,
     [MessageType.API_KEY_STATUS]: handleApiKeyStatus,
     [MessageType.COPY_RESULT_SUCCESS]: handleCopyResultSuccess,
     [MessageType.SAVE_RESULT_SUCCESS]: handleSaveResultSuccess,
@@ -263,6 +269,12 @@ export const WorkshopApp: React.FC = () => {
   React.useEffect(() => {
     modelsSettings.requestModelData();
   }, [modelsSettings.requestModelData]);
+
+  // Startup notice check — the host answers from per-machine storage, so the
+  // box shows once per notice version unless "Don't show again" was recorded.
+  React.useEffect(() => {
+    startupNotice.requestStartupNotice();
+  }, [startupNotice.requestStartupNotice]);
 
   React.useEffect(() => {
     vscode.postMessage({
@@ -408,6 +420,12 @@ export const WorkshopApp: React.FC = () => {
   const sessionMutationsDisabled = roomMutationLocked || !workshop.persistenceAvailable;
 
   const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
+  const openWidgetsModal = React.useCallback(() => setWidgetsModalOpen(true), []);
+  const closeWidgetsModal = React.useCallback(() => setWidgetsModalOpen(false), []);
+  const closeStartupNotice = React.useCallback(
+    () => startupNotice.dismissStartupNotice(false),
+    [startupNotice.dismissStartupNotice]
+  );
   const setSessionsMenuVisibility = React.useCallback((open: boolean) => {
     setSessionsMenuOpen(open);
     if (open) {
@@ -1322,6 +1340,7 @@ export const WorkshopApp: React.FC = () => {
               onRemoveMessageAttachment={workshop.removeMessageAttachment}
               onOpenConversationSettings={openBehaviorModal}
               onOpenTools={openToolsModal}
+              onOpenWidgets={openWidgetsModal}
             />
           </ErrorBoundary>
         </section>
@@ -1365,6 +1384,12 @@ export const WorkshopApp: React.FC = () => {
         unavailableMessage={undefined}
         onClose={closeToolsModal}
         onSelect={selectTool}
+      />
+      <WorkshopWidgetsModal open={widgetsModalOpen} onClose={closeWidgetsModal} />
+      <WorkshopNoticeModal
+        open={startupNotice.noticeOpen}
+        onClose={closeStartupNotice}
+        onDismiss={startupNotice.dismissStartupNotice}
       />
       {/* Conversation behavior (ADR 2026-07-20 §11): behavior is the COMMITTED
           object from the session snapshot — the modal drafts locally and waits

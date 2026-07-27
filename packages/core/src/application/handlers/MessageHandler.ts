@@ -273,6 +273,7 @@ export class MessageHandler {
       this.platform.workspace,
       this.platform.shell,
       this.platform.editor,
+      this.platform.globalState,
       this.uiActions
     );
 

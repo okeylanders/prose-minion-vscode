@@ -121,6 +121,47 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(screen.getByText('Verbatim report.')).toBeTruthy();
     expect(screen.getByText(/Excerpt · inherit · pinned excerpt v3/)).toBeTruthy();
     expect(screen.getByText(/Context · inherit · no context attachments/)).toBeTruthy();
+    expect(screen.queryByText(/Private · you/)).toBeNull();
+  });
+
+  it('marks both sides of a direct instrument follow-up as private', () => {
+    const directUserTurn: WorkshopTurn = {
+      id: 'direct-user',
+      role: 'user',
+      kind: 'message',
+      participant: 'writer',
+      artifact: 'direct_tool_message',
+      toolId: 'dialogue',
+      toolLabel: 'Dialogue & Beats',
+      reportTurnId: 'report-1',
+      content: 'Can you explain the second finding?',
+      timestamp: 1,
+      excerptVersion: 1
+    };
+    const directToolTurn: WorkshopTurn = {
+      ...assistantTurn('The second finding is about beat placement.'),
+      id: 'direct-tool',
+      kind: 'message',
+      artifact: 'direct_tool_response',
+      toolId: 'dialogue',
+      toolLabel: 'Dialogue & Beats',
+      reportTurnId: 'report-1'
+    };
+    const props = {
+      quickActionToolId: null,
+      onQuickAction: jest.fn(),
+      onTalkDirectly: jest.fn(),
+      onCopy: jest.fn(),
+      onSave: jest.fn()
+    };
+    const { rerender } = render(<WorkshopTurnBubble turn={directUserTurn} {...props} />);
+
+    expect(screen.getByText('Private · you + Dialogue & Beats')).toBeTruthy();
+    expect(document.querySelector('.pm-ws-turn-private')).toBeTruthy();
+
+    rerender(<WorkshopTurnBubble turn={directToolTurn} {...props} />);
+    expect(screen.getByText('Private · you + Dialogue & Beats')).toBeTruthy();
+    expect(document.querySelector('.pm-ws-turn-private')).toBeTruthy();
   });
 
   it('renders persona-run divider and inspectable per-input provenance', () => {

@@ -48,6 +48,9 @@ export enum MessageType {
   TAB_CHANGED = 'tab_changed',
   SELECTION_UPDATED = 'selection_updated',
   OPEN_WORKSHOP = 'open_workshop',
+  REQUEST_STARTUP_NOTICE = 'request_startup_notice',
+  STARTUP_NOTICE_DATA = 'startup_notice_data',
+  DISMISS_STARTUP_NOTICE = 'dismiss_startup_notice',
 
   // Configuration messages
   REQUEST_MODEL_DATA = 'request_model_data',

@@ -27,6 +27,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   'nousresearch': 'Nous Research',
   'openai': 'OpenAI',
   'qwen': 'Qwen',
+  'sakana': 'Sakana',
   'sao10k': 'Sao10K',
   'stepfun': 'StepFun',
   'thedrummer': 'TheDrummer',

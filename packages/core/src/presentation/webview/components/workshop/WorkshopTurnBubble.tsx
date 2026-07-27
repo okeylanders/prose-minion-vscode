@@ -166,6 +166,9 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
     : undefined;
   const capabilityMetadata = capabilityMetadataRows(turn);
   const turnIdentity = { [WORKSHOP_TURN_ID_ATTRIBUTE]: turn.id };
+  const isPrivateInstrumentTurn =
+    turn.artifact === 'direct_tool_message' || turn.artifact === 'direct_tool_response';
+  const privateInstrumentLabel = `Private · you + ${turn.toolLabel ?? 'instrument'}`;
   const analysisInputs = turn.capability?.metadata?.analysisInputs;
   const analysisExcerpt = analysisInputs && typeof analysisInputs === 'object'
     ? (analysisInputs as Record<string, unknown>).excerpt
@@ -227,7 +230,11 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   if (turn.role === 'user') {
     if (turn.kind === 'message') {
       return (
-        <div className="pm-ws-turn pm-ws-turn-user">
+        <div
+          className={`pm-ws-turn pm-ws-turn-user${
+            isPrivateInstrumentTurn ? ' pm-ws-turn-private' : ''
+          }`}
+        >
           {turn.messageAttachments && turn.messageAttachments.length > 0 && (
             <div className="pm-ws-turn-attachments" aria-label="Message attachments">
               {turn.messageAttachments.map((attachment) => (
@@ -238,6 +245,11 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
                 </span>
               ))}
             </div>
+          )}
+          {isPrivateInstrumentTurn && (
+            <span className="pm-ws-private-thread-label">
+              <Icon name="info" size={11} /> {privateInstrumentLabel}
+            </span>
           )}
           <div className="pm-ws-turn-message">{turn.content}</div>
         </div>
@@ -260,7 +272,9 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
         </div>
       )}
       <div
-        className="pm-ws-turn pm-ws-turn-assistant"
+        className={`pm-ws-turn pm-ws-turn-assistant${
+          isPrivateInstrumentTurn ? ' pm-ws-turn-private' : ''
+        }`}
         {...turnIdentity}
         tabIndex={-1}
       >
@@ -269,6 +283,11 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
             <Icon name={turn.personaId ? 'person' : 'sparkle'} size={12} />{' '}
             {turn.personaLabel ?? turn.toolLabel ?? 'Follow-up'}
           </span>
+          {isPrivateInstrumentTurn && (
+            <span className="pm-ws-private-thread-label">
+              <Icon name="info" size={11} /> {privateInstrumentLabel}
+            </span>
+          )}
           {turn.usage && (
             <span
               className="pm-ws-turn-usage"

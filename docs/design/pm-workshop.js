@@ -85,11 +85,13 @@ Kayla's diction is short, concrete, and Anglo-Saxon under pressure. She reaches 
     participants: null,       // [personaId] restored in the room
     restored: false,
     session: null,            // {name}
+    pins: {influence:[], decisions:[]},   // standing influence chips + pinned decisions
     model: 'Arcee Trinity Large Thinking',
     processed: 0,
     tabs: [],                 // open editor tabs (file names)
   };
   const BUDGET = 35000;
+  const START_STR = (()=>{ const d=new Date(); const s=d.toLocaleString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit',timeZoneName:'short'}); const tz=(Intl.DateTimeFormat().resolvedOptions().timeZone||'').toUpperCase(); return (s+(tz?' ('+tz+')':'')).toUpperCase(); })();
   const ctxTotal = () => state.context.reduce((a,x)=>a+x.words,0);
 
   /* ---------- icon helpers ---------- */
@@ -325,6 +327,8 @@ Kayla's diction is short, concrete, and Anglo-Saxon under pressure. She reaches 
           </div>
         </div>
         <div class="ffoot">Host for either path: <b>${h} · ${esc(PERSONAS[state.host].spec)}</b> — <span class="acc">Or select another host up top.</span></div>
+        ${(state.excerpt||state.shelved||state.context.length)?`<div class="wk-resetrow"><button class="wk-reset" data-act="reset-ec">${ICONS.x({size:13,sw:2.2})} Reset excerpt and context<span class="d">${(state.excerpt||state.shelved)?'1 excerpt':'no excerpt'} · ${state.context.length} attachment${state.context.length===1?'':'s'}</span></button></div>`:''}
+        <div class="wk-started"><hr><span>Session started ${START_STR}.</span><hr></div>
       </div>`;
     }
   }
@@ -351,6 +355,7 @@ Kayla's diction is short, concrete, and Anglo-Saxon under pressure. She reaches 
       ? `<button class="wk-abtn" data-act="tools-all">${ICONS.grid({size:14,sw:1.7})}Tools</button>`
       : `<button class="wk-abtn off" data-act="tools-locked" aria-disabled="true" title="Add an excerpt to use analysis tools">${ICONS.grid({size:14,sw:1.7})}Tools</button>`;
     $('#wk-composer').innerHTML = `
+      ${window.PMPins?PMPins.railHTML(state):''}
       <div class="wk-ctxline">${lead}${ctx}</div>
       <div class="wk-composer">
         <div class="wk-cinput">${placeholder}</div>
@@ -626,18 +631,19 @@ Kayla's diction is short, concrete, and Anglo-Saxon under pressure. She reaches 
   }
 
   /* ---- tools modal ---- */
+  const TOOL_GDESC = {
+    'Primary':'The daily passes — the six the rail keeps at hand.',
+    'Craft & Voice':'How it sounds and how it’s built.',
+    'Technical':'Mechanics, continuity, and fresh eyes.'
+  };
   function openTools(){
-    const el = document.createElement('div'); el.className='cw-browser';
-    el.appendChild(cwXBtn());
-    el.insertAdjacentHTML('beforeend', `<div class="cw-eyebrow">Prose Excerpt Assistant</div><h3>Writing tools</h3><p class="bsub">Pick an analysis — each runs on your excerpt with the context brief attached.</p>`);
-    ['Primary','Craft & Voice','Technical'].forEach(g=>{
-      el.insertAdjacentHTML('beforeend', `<div class="cw-mgh"><span class="t">${g}</span><hr></div>`);
-      TOOLS.filter(t=>t.g===g).forEach(t=>{
-        const b=document.createElement('button'); b.className='cw-brow';
-        b.innerHTML=`<span class="ic">${ICONS[t.i]({size:16})}</span><span class="bt"><span class="nm">${t.n}</span><span class="bl">${t.d}</span></span>`;
-        b.addEventListener('click', ()=>{ cwClose(); toast(t.n+' — running on excerpt','sparkle'); });
-        el.appendChild(b);
-      });
+    const el = cwSheetBrowser({
+      kicker:'Prose Excerpt Assistant', title:'Writing tools', noun:'tool', verb:'Run',
+      sub:'Each runs <b>once</b> on your excerpt with the context briefs attached — the result lands in the thread as a visible event, in '+esc(hostName(state.host))+'’s voice.',
+      emptyNote:'Select a tool — one run on the excerpt, one visible result.',
+      groups:['Primary','Craft & Voice','Technical'].map(g=>({name:g, desc:TOOL_GDESC[g], items:TOOLS.filter(t=>t.g===g).map(t=>({id:t.n, icon:t.i, name:t.n, blurb:t.d, live:true, cost:'one run on the excerpt · lands in the thread'}))})),
+      inModal:true,
+      onLaunch:t=>{ cwClose(); toast(t.name+' — running on excerpt','sparkle'); }
     });
     wkOpen(el, 'wide');
   }
@@ -674,6 +680,7 @@ Kayla's diction is short, concrete, and Anglo-Saxon under pressure. She reaches 
       if (a==='ex-repin'){ state.excerpt=state.shelved; state.shelved=null; render(); toast('Excerpt re-pinned — conversation kept','pin'); return; }
       if (a==='set-aside'){ state.shelved=state.excerpt; state.excerpt=null; state.scope='open'; render(); toast('Passage set aside — open conversation','dialogue'); return; }
       if (a==='open-chat'){ state.scope='open'; if(state.excerpt){ state.shelved=state.excerpt; state.excerpt=null; } render(); toast('Open conversation with '+hostName(state.host),'dialogue'); return; }
+      if (a==='reset-ec'){ state.excerpt=null; state.shelved=null; state.context=[]; render(); toast('Excerpt and context cleared','x'); return; }
       if (a==='starter'){ toast('Starters are inert in this mock','dialogue'); return; }
       if (a==='tools-locked'){ toast('Add an excerpt to use analysis tools','doc'); return; }
       if (a==='ctx-file'){ addCtxDemo('file'); return; }
@@ -710,6 +717,7 @@ Kayla's diction is short, concrete, and Anglo-Saxon under pressure. She reaches 
     state.todo = (sess.todo||[]).map(x=>({...x}));
     state.transcript = (sess.transcript||[]).map(x=>({...x}));
     state.participants = sess.participants ? [...sess.participants] : [sess.host||'jill'];
+    state.pins = sess.pins ? {influence:(sess.pins.influence||[]).map(x=>({...x})), decisions:(sess.pins.decisions||[]).map(x=>({...x}))} : {influence:[],decisions:[]};
     state.restored = true;
     state.session = {name: sess.title};
     render();
@@ -721,7 +729,15 @@ Kayla's diction is short, concrete, and Anglo-Saxon under pressure. She reaches 
     state.shelved = null; state.scope = null;
     state.host='jill'; state.mode='balanced'; state.expr='amplified'; state.depth='reflective';
     state.todo=[]; state.transcript=null; state.participants=null; state.restored=false; state.session=null; state.profileShared=false;
+    state.pins={influence:[],decisions:[]};
     render(); toast('New session started','refresh');
+  }
+  function fullReset(){
+    state.excerpt=null; state.shelved=null; state.context=[]; state.scope=null;
+    state.host='jill'; state.mode='balanced'; state.expr='amplified'; state.depth='reflective';
+    state.todo=[]; state.transcript=null; state.participants=null; state.restored=false; state.session=null; state.profileShared=false;
+    state.pins={influence:[],decisions:[]};
+    render(); toast('Full reset — session, excerpt and context cleared','refresh');
   }
   function currentSnapshot(){
     return {
@@ -729,6 +745,7 @@ Kayla's diction is short, concrete, and Anglo-Saxon under pressure. She reaches 
       mode: state.mode, expr: state.expr, todo: state.todo,
       turns: state.transcript ? state.transcript.length : 0,
       participants: state.participants || [state.host],
+      pins: state.pins,
       hostName: hostName(state.host),
     };
   }
@@ -740,7 +757,7 @@ Kayla's diction is short, concrete, and Anglo-Saxon under pressure. She reaches 
   document.addEventListener('DOMContentLoaded', init);
 
   return { PERSONAS, HOST_ORDER, personIc, hostGlyphs, hostName, fmt, esc, state,
-           render, toast, loadSession, newSession, currentSnapshot, setSessionName,
+           render, toast, loadSession, newSession, fullReset, currentSnapshot, setSessionName,
            openBrowserFallback: ()=>window.PMSessions&&PMSessions.openBrowser(),
            MODES };
 })();

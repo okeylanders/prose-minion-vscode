@@ -74,6 +74,18 @@ describe('WorkshopParticipantRail', () => {
     expect(toolChip.className).toContain('pm-ws-chip-direct');
     // The rail replaced the role="status" banner — the announcement survives.
     expect(screen.getByRole('status').textContent).toContain('Talking directly to');
+    const scope = screen.getByLabelText('Private instrument thread');
+    expect(scope.textContent).toContain('Private instrument thread · you + Cliché');
+    expect(scope.textContent).toContain('not shared with Jill or guests');
+    expect(scope.textContent).toContain('cannot see your conversations with them');
+    expect(scope.textContent).toContain('persona voice, Writer Profile, and Conversation Controller settings do not apply');
+    expect(scope.textContent).toContain('original report remains visible to the room');
+  });
+
+  it('shows no private-thread boundary while talking to a room participant', () => {
+    renderRail([sidecar('cliche')], { kind: 'host' });
+
+    expect(screen.queryByLabelText('Private instrument thread')).toBeNull();
   });
 
   it('switches targets both directions and never re-posts the active target', () => {

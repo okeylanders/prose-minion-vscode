@@ -11,6 +11,7 @@ import {
   FileStat,
   FileSystem,
   FileType,
+  GlobalStateStore,
   SettingsStore,
   ShellService,
   Workspace,
@@ -34,6 +35,26 @@ export function createFakeSettings(values: Record<string, unknown> = {}): Settin
   return {
     get: get as SettingsStore['get'],
     update: async () => undefined,
+  };
+}
+
+/**
+ * An in-memory GlobalStateStore (the Memento-shaped per-machine KV port).
+ * Seed via `values`; `update` mutates the same map so tests can assert on
+ * round-trips through the store.
+ */
+export function createFakeGlobalState(
+  values: Record<string, unknown> = {},
+  overrides: Partial<GlobalStateStore> = {}
+): GlobalStateStore {
+  const get = (<T>(key: string, defaultValue?: T): T | undefined =>
+    key in values ? (values[key] as T) : defaultValue);
+  return {
+    get: get as GlobalStateStore['get'],
+    update: async (key, value) => {
+      values[key] = value;
+    },
+    ...overrides
   };
 }
 

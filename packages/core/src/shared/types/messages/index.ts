@@ -97,6 +97,9 @@ import {
   OpenSettingsMessage,
   OpenSettingsToggleMessage,
   OpenWorkshopMessage,
+  RequestStartupNoticeMessage,
+  StartupNoticeDataMessage,
+  DismissStartupNoticeMessage,
   WebviewErrorMessage
 } from './ui';
 import { ErrorMessage } from './error';
@@ -180,6 +183,8 @@ export type WebviewToExtensionMessage =
   | UpdateSettingMessage
   | RequestSettingsDataMessage
   | RequestSelectionMessage
+  | RequestStartupNoticeMessage
+  | DismissStartupNoticeMessage
   | GenerateContextMessage
   | MeasureProseStatsMessage
   | MeasureStyleFlagsMessage
@@ -264,6 +269,7 @@ export type ExtensionToWebviewMessage =
   | OpenSettingsMessage
   | OpenSettingsToggleMessage
   | SelectionDataMessage
+  | StartupNoticeDataMessage
   | ErrorMessage
   | StatusMessage
   | SelectionUpdatedMessage

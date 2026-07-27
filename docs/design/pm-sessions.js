@@ -12,6 +12,7 @@ const PMSessions = (() => {
     ch6:  {title:'Blackout — the doors', source:'Drafts/chapter-6.md', version:1, words:2380, text:`# Blackout\n\nThe lights died all at once, and the gym became a throat. Kayla reached for a wall that had been there a second ago.\n\n"Nate?" Her voice went nowhere. "Nate, say something."`},
     ch5:  {title:'Prom confrontation', source:'Drafts/chapter-5.md', version:3, words:1740, text:`# The gym floor\n\nRaven crossed the floor like she owned the deed to it. "You brought it here," she said. "To prom. Of all the nights."\n\nBradley didn't answer, which was its own kind of answer.`},
     ch4:  {title:'Chapter 4 opening', source:'Drafts/chapter-4.md', version:1, words:3120, text:`# Chapter Four\n\nMorning came the way it always did in that town, gray and unhurried, indifferent to the thing they'd buried in the field the night before and the promises they'd made over the loose dirt.`},
+    ch59: {title:'Recognition of the marks', source:'Drafts/chapter-5.9.md', version:3, words:2046, text:`# Recognition\n\nKayla turned the phone so the others could see it. The mark over the door was the same mark from the field — nobody said so, but everybody's face said so.\n\nMicah's hands opened at his sides, then curled again.`},
     raven:{title:'Raven voice study', source:'Characters/Raven/raven-voice-guide.md', version:1, words:980, text:`Raven — voice guide\n\nClipped. Sardonic when cornered. Never explains a joke. Trusts action over apology, and reads a room in the first three seconds she's in it.`},
   };
   const T = (...lines) => lines.map(l => ({who:l[0], text:l[1], by:l[2]}));
@@ -24,6 +25,41 @@ const PMSessions = (() => {
      todo:[{text:'Rework the exit beat — gesture, not a second monosyllable.',done:false},{text:'Check Micah is anchored before the door.',done:true}],
      mode:'balanced', expr:'amplified',
      transcript:T(['you','Look at the exit beat at the end of the Pentecost scene — does the dialogue land?'],['bot','The clipped <em>"Ya." / "Yep."</em> earns its terseness, but two bare monosyllables back-to-back flatten the rhythm right before the group exit. Let one speaker answer with a gesture instead of a word.'],['you','Do a tighter pass.'],['bot','Ava caught Raven\'s eye and winked. They moved for the door, Micah breaking the lead.'])},
+    {id:'d59', title:'5.9 — Nate recognition of the marks', host:'jill', turns:12, group:'today', rel:'33m ago',
+     excerpt:{...EX.ch59}, key:'chapter-5.9.md',
+     preview:'Three decisions pinned — Micah confesses helplessness; the workup is one ask away.',
+     context:[{kind:'file',label:'character-micah.md',words:3076},{kind:'file',label:'character-nate.md',words:2765},{kind:'file',label:'chapter-5.8.md',words:1840}],
+     todo:[{text:'Replace Micah’s denial exchange with the protective-helplessness sequence.',done:false},{text:'Keep physical beats restrained — hands, phone, blazer cuff, raised palms.',done:false}],
+     mode:'balanced', expr:'amplified', participants:['jill'],
+     pins:{influence:[
+       {kind:'gravity', icon:'orbit',   name:'Lexical Gravity',  meta:'Photography · 0.6'},
+       {kind:'ctrl',    icon:'sliders', name:'Prose Controller', meta:'restraint profile'},
+       {kind:'genre',   icon:'cards',   name:'Genre position',   meta:'noir · withholding held'}],
+      decisions:[
+       {id:'d1', title:'Micah confesses helplessness', turn:3, from:'Jill’s Option 1',
+        orig:'"You think I marked the door?" Micah said, looking from Kayla to Prim. "You were the ones out there. You saw it and you ran."',
+        upd:'Micah’s hands opened at his sides, then curled again. "I hear you. I just don’t know how I’m supposed to keep anybody safe from something nobody can point at."',
+        why:'Confession instead of prosecution — the aborted-action beat gives an athlete whose first language is motion nothing to grab, shield, or fight. That changes the emotional geometry of the whole scene.',
+        notes:'Keep the hands. Do not let a later pass give him something to hold.'},
+       {id:'d2', title:'Nate’s shoulder touch — second stabilization', turn:7, from:'Jill’s revision',
+        orig:'Ava quickly stepped between Micah and the two girls, hands up in a calming gesture. "Hey, hey, let’s not turn on each other. We’re all freaked out." Nate stepped closer to Kayla...',
+        upd:'Nate stepped closer to Kayla and rested a hand on her shoulder. She leaned into it for one second before straightening again. "Nobody has to explain it perfectly," he said. His voice came out quieter than he expected. "We’re here."',
+        why:'Ava gathers the room; Nate’s touch becomes a second, more intimate stabilization. Each person answers the threat in their own language — Ava regulates, Nate comforts, Raven forms the team, Jasper investigates.',
+        notes:'Keep Raven’s "Then we stay together." exactly as is.'},
+       {id:'d3', title:'Kayla’s "We saw it and ran" stays plain', turn:9, from:'Jill’s taste note, accepted',
+        orig:'"We saw it and ran," Kayla said. "We did not remain to investigate," Prim added.',
+        upd:'"We saw it and ran." — Prim, too quickly, worrying at the cuff of her blazer: "Which was, I think, entirely rational."',
+        why:'The two original sentences repeat the same factual beat. Kayla’s blunt wording stands alone; Prim translates it into her own clipped, self-protective defense instead of restating it.',
+        notes:''}]},
+     transcript:T(
+       ['you','Run the dialogue pass on the recognition scene — Micah’s denial exchange feels like a fight the scene doesn’t need.'],
+       ['bot','Agreed — it re-solves a conflict the new version wisely removes. Two options for the beat after Kayla shows the phone. <b>Option 1</b> — Micah confesses helplessness instead of prosecuting: <em>"Micah’s hands opened at his sides, then curled again. ‘I hear you. I just don’t know how I’m supposed to keep anybody safe from something nobody can point at.’"</em> <b>Option 2</b> — keep the denial but soften the target. Option 1 changes the geometry: confession, not prosecution.'],
+       ['you','I like your option 1 here — <b>pin that</b>. And let’s discuss the next item.'],
+       ['bot','Pinned — <em>Micah confesses helplessness</em> is standing now, with the original text, the replacement, and my reasoning attached. Next item: Nate’s beat. Instead of trailing Ava’s intervention, let his shoulder touch become a second, more intimate stabilization after she gathers the room.'],
+       ['you','Pin the shoulder-touch version too. And keep Kayla’s "We saw it and ran" plain — pin that as a keeper.'],
+       ['bot','Both pinned — <b>three decisions standing</b>. I’ll argue from them and won’t relitigate: no restored denial, no lyric relief on Kayla’s line. Say the word when you want the workup.'],
+       ['you','We’re close to done — <b>give me all the decisions</b>.'],
+       ['bot','Here’s the workup, from the pins:<br><br><b>1 · Micah confesses helplessness.</b> Denial exchange → hands open, then curl + "I hear you…" — confession, not prosecution.<br><b>2 · Nate’s shoulder touch.</b> A second stabilization after Ava’s — each person answers the threat in their own language.<br><b>3 · Kayla’s wording stays plain.</b> "We saw it and ran." stands alone; Prim translates it into her own clipped defense.<br><br>Every pin carries its original text, updated text, reasoning, and your notes — open any of them from the rail below the thread.'])},
     {id:'s2', title:'Pentecost — dialogue pass', host:'dev', turns:9, group:'today', rel:'2h ago',
      excerpt:{...EX.ch58, version:1}, key:'chapter-5.8.md',
      preview:'Nate and Kayla read as one voice here — no tags, no distinct rhythm.',
@@ -73,6 +109,7 @@ const PMSessions = (() => {
     el.innerHTML = `
       <div class="mh">Session</div>
       <button class="wk-mitem" data-s-act="new">${ICONS.refresh({size:15,sw:1.7})} New session <span class="kbd">⌘⇧N</span></button>
+      <button class="wk-mitem danger" data-s-act="fullreset">${ICONS.x({size:15,sw:2})} <span class="mi-t">New session: full reset<span class="mi-sub">also clears the excerpt and context</span></span></button>
       <button class="wk-mitem" data-s-act="save">${ICONS.save({size:15,sw:1.7})} Save session… <span class="kbd">⌘S</span></button>
       <hr>
       <button class="wk-mitem" data-s-act="browse">${ICONS.cards({size:15,sw:1.7})} Open prior session…</button>
@@ -87,6 +124,7 @@ const PMSessions = (() => {
       if (item.dataset.open){ const s=SESSIONS.find(x=>x.id===item.dataset.open); if(s) P().loadSession(s); return; }
       const a = item.dataset.sAct;
       if (a==='new') P().newSession();
+      if (a==='fullreset') P().fullReset();
       if (a==='save') openSave();
       if (a==='browse') openBrowser();
     };
@@ -108,6 +146,7 @@ const PMSessions = (() => {
       ['Participants', partLabel],
       ['Context', `${snap.context.length} attachment${snap.context.length===1?'':'s'}`],
       ['To-do list', `${snap.todo.length} item${snap.todo.length===1?'':'s'}`],
+      ['Standing pins', snap.pins&&(snap.pins.influence.length+snap.pins.decisions.length)?`${snap.pins.influence.length} influence · ${snap.pins.decisions.length} decision${snap.pins.decisions.length===1?'':'s'}`:'none'],
       ['Room settings', `${P().MODES[snap.mode]} · ${snap.expr.charAt(0).toUpperCase()+snap.expr.slice(1)}`],
     ];
     root.insertAdjacentHTML('beforeend', `
@@ -139,7 +178,7 @@ const PMSessions = (() => {
     const root = document.createElement('div'); root.className='cw-sheet-wrap';
     root.appendChild(cwXBtn());
     root.insertAdjacentHTML('beforeend', `
-      <div class="wk-mhead"><div class="wk-mkicker">Workshop · Sessions</div><h2>Open a prior session</h2><p class="wk-msub">Reopening restores the complete room and continuable conversation memory. If one persona history cannot be recovered, only that participant starts fresh.</p></div>
+      <div class="wk-mhead"><div class="wk-mkicker">Workshop · Sessions</div><h2>Open a prior session</h2><p class="wk-msub">Reopening restores the excerpt, context, and transcript. Room memory from a saved session isn't retained — the persona starts fresh.</p></div>
       <div class="sb-toolbar">
         <div class="sb-search"><span class="si">${ICONS.search({size:16})}</span><input id="sb-q" placeholder="Search names and session content…"><span class="grep">greps content</span></div>
         <div class="sb-group"><span class="lab">Group by</span><div class="sb-seg"><button class="on" data-grp="date">Date</button><button data-grp="excerpt">Excerpt</button></div></div>
@@ -160,6 +199,7 @@ const PMSessions = (() => {
         ? `<input class="sb-rename" data-renameinput value="${esc(s.title)}">`
         : `<span class="sb-title">${esc(s.title)}</span>`;
       const src = s.excerpt ? s.excerpt.source : '—';
+      const note = `<span class="sb-note">${ICONS.bot({size:12,sw:1.6})} memory not retained on restore</span>`;
       const delConfirm = view.confirmDel===s.id;
       const actions = delConfirm
         ? `<button class="sb-act del" data-del="${s.id}" title="Confirm delete">${ICONS.check({size:14,sw:2.2})}</button><button class="sb-act" data-delcancel title="Keep">${ICONS.x({size:13,sw:2})}</button>`
@@ -170,6 +210,7 @@ const PMSessions = (() => {
           <div class="sb-titlerow">${titleEl}${badge}</div>
           <div class="sb-meta"><span class="host">${esc(P().hostName(s.host))}</span><span class="dotsep">·</span><span>${s.turns} turns</span><span class="dotsep">·</span><span>${s.excerpt?P().fmt(s.excerpt.words)+' words':'no excerpt'}</span><span class="dotsep">·</span><span>${esc(s.rel)}</span><span class="dotsep">·</span><span class="src">${esc(src)}</span></div>
           <div class="sb-preview">${esc(s.preview)}</div>
+          ${note}
         </div>
         <div class="sb-actions">${actions}</div>
         <button class="sb-open" data-openbtn="${s.id}">Open</button>

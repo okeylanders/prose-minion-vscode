@@ -160,3 +160,34 @@ export function coerceWebviewErrorText(raw: unknown): string | undefined {
     ? `${flattened.slice(0, WEBVIEW_ERROR_TEXT_MAX)}…`
     : flattened;
 }
+
+/**
+ * Startup notice (Sprint 14 §5). The webview asks whether the Workshop's
+ * six-page beta notice should show; the host answers from per-machine
+ * GlobalStateStore against the current notice version. Dismissal is only
+ * recorded when the writer checks "Don't show again" — a plain Dismiss
+ * closes locally and sends nothing.
+ */
+export interface RequestStartupNoticeMessage
+  extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.REQUEST_STARTUP_NOTICE;
+}
+
+export interface StartupNoticePayload {
+  shouldShow: boolean;
+  /** The current notice content version — echoed back on dismissal. */
+  noticeVersion: string;
+}
+
+export interface StartupNoticeDataMessage extends MessageEnvelope<StartupNoticePayload> {
+  type: MessageType.STARTUP_NOTICE_DATA;
+}
+
+export interface DismissStartupNoticePayload {
+  noticeVersion: string;
+}
+
+export interface DismissStartupNoticeMessage
+  extends MessageEnvelope<DismissStartupNoticePayload> {
+  type: MessageType.DISMISS_STARTUP_NOTICE;
+}

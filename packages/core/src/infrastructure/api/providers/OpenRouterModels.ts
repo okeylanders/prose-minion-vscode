@@ -151,6 +151,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Latest Gemini 3.5 fast tier — strong reasoning at high throughput for large category lists'
   },
   {
+    id: 'google/gemini-3.6-flash',
+    name: 'Gemini 3.6 Flash',
+    family: 'Gemini 3.6',
+    description: 'Newest Gemini fast tier — quick, low-cost matching with long context for large category lists'
+  },
+  {
     id: 'deepseek/deepseek-v4-flash',
     name: 'DeepSeek V4 Flash',
     family: 'DeepSeek V4',
@@ -357,6 +363,18 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Higher-throughput Opus 4.8. Same model family and context window with faster output for iterative chapter passes and rapid critique loops.'
   },
   {
+    id: 'anthropic/claude-opus-5',
+    name: 'Claude Opus 5',
+    family: 'Claude Opus',
+    description: 'Anthropic\'s most capable model. Careful, sustained work on a long manuscript — deep revision passes, structural analysis, and feedback that holds together across a whole chapter. Slower and pricier, strongest judgment.'
+  },
+  {
+    id: 'anthropic/claude-opus-5-fast',
+    name: 'Claude Opus 5 Fast',
+    family: 'Claude Opus',
+    description: 'The same Opus 5 brain tuned to answer noticeably faster, at double the price. For iterating live on a scene when tempo matters as much as the notes.'
+  },
+  {
     id: 'deepcogito/cogito-v2.1-671b',
     name: 'Cogito v2.1 671B',
     family: 'Cogito',
@@ -463,6 +481,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Gemini 3.5 Flash',
     family: 'Gemini 3.5',
     description: 'Latest Gemini fast tier. Stronger reasoning than 3-flash with high throughput — good for rapid prose critique and dictionary alternatives.'
+  },
+  {
+    id: 'google/gemini-3.6-flash',
+    name: 'Gemini 3.6 Flash',
+    family: 'Gemini 3.6',
+    description: 'Google\'s fast, inexpensive workhorse. Quick answers, long context, low cost — best for rapid line checks, summaries, and dictionary-style lookups.'
   },
   {
     id: 'z-ai/glm-4.5',
@@ -675,6 +699,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Long-horizon reasoning model with strong multimodal and agentic performance. Good for extended writing workflows and context-heavy critique.'
   },
   {
+    id: 'moonshotai/kimi-k3',
+    name: 'Kimi K3',
+    family: 'Kimi K3',
+    description: 'Moonshot AI\'s big open-weight reasoner. Punches near the frontier at a lower price and handles very long documents well — a solid mid-cost pick for whole-manuscript analysis.'
+  },
+  {
     id: 'mistralai/mistral-large-2512',
     name: 'Mistral Large 2512',
     family: 'Mistral Large',
@@ -757,6 +787,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Qwen3.7 Plus',
     family: 'Qwen3.7',
     description: 'Cost-effective Qwen3.7 sibling with 1M context. Strong value option for long-context prose analysis, dictionary rewrites, and structured edits at a fraction of 3.7 Max\'s price.'
+  },
+  {
+    id: 'sakana/fugu-ultra',
+    name: 'Sakana Fugu Ultra',
+    family: 'Fugu',
+    description: 'Sakana\'s trained conductor. Routes your request across a pool of underlying models and assembles the best answer. Strong on complex multi-step work; slower, with less predictable cost.'
   },
   {
     id: 'sao10k/l3.3-euryale-70b',

@@ -4,7 +4,14 @@
  */
 
 import * as path from 'path';
-import { EditorContext, FileSystem, LogSink, ShellService, Workspace } from '@/platform';
+import {
+  EditorContext,
+  FileSystem,
+  GlobalStateStore,
+  LogSink,
+  ShellService,
+  Workspace
+} from '@/platform';
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 import {
   OpenGuideFileMessage,
@@ -12,6 +19,8 @@ import {
   OpenResourceMessage,
   RequestSelectionMessage,
   SelectionDataMessage,
+  DismissStartupNoticeMessage,
+  StartupNoticeDataMessage,
   MessageType,
   ErrorSource,
   ErrorMessage,
@@ -19,6 +28,10 @@ import {
   WebviewErrorMessage,
   coerceWebviewErrorText
 } from '@messages';
+import {
+  WORKSHOP_STARTUP_NOTICE_DISMISSED_KEY,
+  WORKSHOP_STARTUP_NOTICE_VERSION
+} from '@shared/constants/workshopNotices';
 import { MessageTransport, WorkshopUiActions } from '@handlers/MessageHandlerContracts';
 
 import { MessageRouter } from '../MessageRouter';
@@ -31,6 +44,7 @@ export class UIHandler {
     private readonly workspace: Workspace,
     private readonly shell: ShellService,
     private readonly editor: EditorContext,
+    private readonly globalState: GlobalStateStore,
     private readonly workshopUiActions: WorkshopUiActions = {}
   ) {}
 
@@ -44,7 +58,66 @@ export class UIHandler {
     router.register(MessageType.REQUEST_SELECTION, this.handleSelectionRequest.bind(this));
     router.register(MessageType.WEBVIEW_ERROR, this.handleWebviewError.bind(this));
     router.register(MessageType.OPEN_WORKSHOP, this.handleOpenWorkshop.bind(this));
+    router.register(MessageType.REQUEST_STARTUP_NOTICE, this.handleStartupNoticeRequest.bind(this));
+    router.register(MessageType.DISMISS_STARTUP_NOTICE, this.handleStartupNoticeDismiss.bind(this));
     router.register(MessageType.TAB_CHANGED, async () => {}); // No-op handler for tab changes
+  }
+
+  /**
+   * Startup notice (Sprint 14 §5): show unless THIS notice version was
+   * dismissed on this machine. A different stored version — older or unset —
+   * re-shows the box, which is how revised notice content re-announces itself.
+   */
+  private async handleStartupNoticeRequest(): Promise<void> {
+    const dismissedVersion = this.globalState.get<string>(WORKSHOP_STARTUP_NOTICE_DISMISSED_KEY);
+    const shouldShow = dismissedVersion !== WORKSHOP_STARTUP_NOTICE_VERSION;
+    this.outputChannel.appendLine(
+      `[UIHandler] Startup notice check: dismissed=${dismissedVersion ?? 'none'}, ` +
+      `current=${WORKSHOP_STARTUP_NOTICE_VERSION}, shouldShow=${shouldShow}`
+    );
+    const message: StartupNoticeDataMessage = {
+      type: MessageType.STARTUP_NOTICE_DATA,
+      source: 'extension.ui',
+      payload: {
+        shouldShow,
+        noticeVersion: WORKSHOP_STARTUP_NOTICE_VERSION
+      },
+      timestamp: Date.now()
+    };
+    void this.postMessage(message);
+  }
+
+  private async handleStartupNoticeDismiss(message: DismissStartupNoticeMessage): Promise<void> {
+    const version = message.payload?.noticeVersion;
+    if (version !== WORKSHOP_STARTUP_NOTICE_VERSION) {
+      this.outputChannel.appendLine(
+        `[UIHandler] Ignored startup-notice dismissal for unexpected version ` +
+        `${typeof version === 'string' && version.length > 0 ? version : '<missing>'}; ` +
+        `current=${WORKSHOP_STARTUP_NOTICE_VERSION}`
+      );
+      return;
+    }
+    try {
+      await this.globalState.update(
+        WORKSHOP_STARTUP_NOTICE_DISMISSED_KEY,
+        WORKSHOP_STARTUP_NOTICE_VERSION
+      );
+      this.outputChannel.appendLine(
+        `[UIHandler] Startup notice ${WORKSHOP_STARTUP_NOTICE_VERSION} dismissed for this machine`
+      );
+    } catch (error) {
+      // Worst case the notice shows again next launch — log, never throw to the router.
+      const details = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(
+        `[UIHandler] Failed to record startup-notice dismissal ` +
+        `${WORKSHOP_STARTUP_NOTICE_VERSION}: ${details}`
+      );
+      this.sendError(
+        'ui.startup_notice',
+        'Could not remember your startup-notice preference.',
+        details
+      );
+    }
   }
 
   // Helper methods (domain owns its message lifecycle)

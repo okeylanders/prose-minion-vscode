@@ -50,6 +50,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/anthropic/claude-opus-4.8
   - Anthropic: https://www.anthropic.com
 
+### Claude Opus 5 — Strongest Judgment
+
+- **Best For:** Deep revision passes, structural analysis, and feedback that holds together across a whole chapter
+- **Description:** Anthropic's most capable model for careful, sustained work on a long manuscript. Slower and pricier, strongest judgment
+- **Links:**
+  - OpenRouter: https://openrouter.ai/anthropic/claude-opus-5
+  - Anthropic: https://www.anthropic.com
+
 ### Aion 3.0 — Collaborative Storytelling
 
 - **Best For:** Narrative tension, character conflict, and exploratory scene work
@@ -157,6 +165,22 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 - **Links:**
   - OpenRouter: https://openrouter.ai/moonshotai/kimi-k2-thinking
   - Moonshot AI: https://www.moonshot.cn/
+
+### Kimi K3 — Near-Frontier Value
+
+- **Best For:** Whole-manuscript analysis and very long documents at mid-range cost
+- **Description:** Moonshot AI's big open-weight reasoner that punches near the frontier at a lower price
+- **Links:**
+  - OpenRouter: https://openrouter.ai/moonshotai/kimi-k3
+  - Moonshot AI: https://www.moonshot.cn/
+
+### Sakana Fugu Ultra — Model Orchestration
+
+- **Best For:** Complex multi-step work that benefits from multiple models' strengths
+- **Description:** Sakana's trained conductor routes your request across a pool of underlying models and assembles the best answer. Slower, and orchestration tokens make cost less predictable
+- **Links:**
+  - OpenRouter: https://openrouter.ai/sakana/fugu-ultra
+  - Sakana AI: https://sakana.ai/
 
 ---
 
@@ -274,12 +298,28 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/google/gemini-2.5-flash
   - Google DeepMind: https://deepmind.google/technologies/gemini/
 
+### Gemini 3.6 Flash — Fast Workhorse
+
+- **Best For:** Rapid line checks, summaries, and dictionary-style lookups
+- **Description:** Google's fast, inexpensive workhorse — quick answers, long context, low cost
+- **Links:**
+  - OpenRouter: https://openrouter.ai/google/gemini-3.6-flash
+  - Google DeepMind: https://deepmind.google/technologies/gemini/
+
 ### Claude Opus 4.8 Fast — Premium Iteration
 
 - **Best For:** Iterative chapter passes and rapid critique loops
 - **Description:** Higher-throughput Opus 4.8 variant with the same 1M context family for faster editorial feedback
 - **Links:**
   - OpenRouter: https://openrouter.ai/anthropic/claude-opus-4.8-fast
+  - Anthropic: https://www.anthropic.com
+
+### Claude Opus 5 Fast — Live Iteration
+
+- **Best For:** Iterating live on a scene when tempo matters as much as the notes
+- **Description:** The same Opus 5 brain tuned to answer noticeably faster, at double the price
+- **Links:**
+  - OpenRouter: https://openrouter.ai/anthropic/claude-opus-5-fast
   - Anthropic: https://www.anthropic.com
 
 ### Step 3.7 Flash — Utility Drafting

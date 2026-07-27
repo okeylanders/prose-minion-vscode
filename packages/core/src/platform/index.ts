@@ -8,6 +8,7 @@
  */
 export * from './EditorContext';
 export * from './FileSystem';
+export * from './GlobalStateStore';
 export * from './LogSink';
 export * from './SecretStore';
 export * from './SettingsStore';
