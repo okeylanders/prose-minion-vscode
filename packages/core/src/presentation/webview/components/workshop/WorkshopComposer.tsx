@@ -74,6 +74,7 @@ interface WorkshopComposerProps {
   onRemoveMessageAttachment: (id: string) => void;
   onOpenConversationSettings: () => void;
   onOpenTools: () => void;
+  onOpenWidgets: () => void;
 }
 
 /**
@@ -112,7 +113,8 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   onAttachToMessage,
   onRemoveMessageAttachment,
   onOpenConversationSettings,
-  onOpenTools
+  onOpenTools,
+  onOpenWidgets
 }) => {
   const [draft, setDraft] = React.useState('');
   const [addMenuOpen, setAddMenuOpen] = React.useState(false);
@@ -323,6 +325,17 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
             <span className="pm-ws-mode-chip-sub">
               {conversationBehavior.expressionLevel.toUpperCase()}
             </span>
+          </button>
+          {/* Sprint 14: the Conversation Widgets preview — browsable registry,
+              nothing opens yet. Not excerpt-gated; it costs nothing to look. */}
+          <button
+            className="pm-ws-comp-pill"
+            type="button"
+            disabled={!sessionReady}
+            title="Browse the Conversation Widgets preview"
+            onClick={onOpenWidgets}
+          >
+            <Icon name="sparkle" size={13} /> Widgets
           </button>
           {/* Sprint 13B: this is the "ask the host" door. With an excerpt its
               picker still runs directly; without one it seeds an editable ask

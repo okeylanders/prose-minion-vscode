@@ -33,6 +33,7 @@ describe('WorkshopComposer', () => {
       onAttachToMessage: jest.fn(),
       onRemoveMessageAttachment: jest.fn(),
       onOpenTools: jest.fn(),
+      onOpenWidgets: jest.fn(),
       onOpenConversationSettings: jest.fn(),
       ...overrides
     };

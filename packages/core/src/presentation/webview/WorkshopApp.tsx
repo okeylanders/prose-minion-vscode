@@ -49,6 +49,7 @@ import { ContextBudget } from './components/shared/ContextBudget';
 import { WorkshopThread } from './components/workshop/WorkshopThread';
 import { WORKSHOP_TURN_ID_ATTRIBUTE } from './components/workshop/WorkshopTurnBubble';
 import { WorkshopToolsModal } from './components/workshop/WorkshopToolsModal';
+import { WorkshopWidgetsModal } from './components/workshop/WorkshopWidgetsModal';
 import { WorkshopChooseHostModal } from './components/workshop/WorkshopChooseHostModal';
 import { WorkshopInviteGuestModal } from './components/workshop/WorkshopInviteGuestModal';
 import { WorkshopPersonaSchematicModal } from './components/workshop/schematic/WorkshopPersonaSchematicModal';
@@ -166,6 +167,7 @@ export const WorkshopApp: React.FC = () => {
   const tokenTracking = useTokenTracking();
   const [hasSavedKey, setHasSavedKey] = React.useState(false);
   const [toolsModalOpen, setToolsModalOpen] = React.useState(false);
+  const [widgetsModalOpen, setWidgetsModalOpen] = React.useState(false);
   const [behaviorModalOpen, setBehaviorModalOpen] = React.useState(false);
   const [personaModalOpen, setPersonaModalOpen] = React.useState(false);
   const [schematicPersonaId, setSchematicPersonaId] = React.useState<WorkshopPersonaId | null>(null);
@@ -408,6 +410,8 @@ export const WorkshopApp: React.FC = () => {
   const sessionMutationsDisabled = roomMutationLocked || !workshop.persistenceAvailable;
 
   const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
+  const openWidgetsModal = React.useCallback(() => setWidgetsModalOpen(true), []);
+  const closeWidgetsModal = React.useCallback(() => setWidgetsModalOpen(false), []);
   const setSessionsMenuVisibility = React.useCallback((open: boolean) => {
     setSessionsMenuOpen(open);
     if (open) {
@@ -1322,6 +1326,7 @@ export const WorkshopApp: React.FC = () => {
               onRemoveMessageAttachment={workshop.removeMessageAttachment}
               onOpenConversationSettings={openBehaviorModal}
               onOpenTools={openToolsModal}
+              onOpenWidgets={openWidgetsModal}
             />
           </ErrorBoundary>
         </section>
@@ -1366,6 +1371,7 @@ export const WorkshopApp: React.FC = () => {
         onClose={closeToolsModal}
         onSelect={selectTool}
       />
+      <WorkshopWidgetsModal open={widgetsModalOpen} onClose={closeWidgetsModal} />
       {/* Conversation behavior (ADR 2026-07-20 §11): behavior is the COMMITTED
           object from the session snapshot — the modal drafts locally and waits
           for the host round-trip, so no optimistic state lives here either. */}
