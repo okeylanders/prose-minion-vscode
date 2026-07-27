@@ -20,6 +20,8 @@ import {
   MessageType,
   PM_SURFACE_ATTR,
   SURFACE_WORKSHOP,
+  WORKSHOP_NOTICE_SHOT_DIR,
+  WORKSHOP_NOTICE_SHOTS,
   WebviewSurface,
 } from '@prose-minion/core';
 
@@ -38,6 +40,17 @@ export function getWebviewHtml(
   const helloWorldLoadingGifUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, 'assets', 'assistant-working-prose-minion-hello-world.gif')
   );
+
+  // Workshop startup-notice screenshots. The webview cannot mint
+  // `vscode-webview://` URIs, so the host resolves one per name from the
+  // shared contract; the notice modal and the project-configuration guide
+  // look them up by the same name (`@shared/constants/workshopNotices`).
+  const noticeShotEntries = WORKSHOP_NOTICE_SHOTS.map((name) => {
+    const uri = webview.asWebviewUri(
+      vscode.Uri.joinPath(extensionUri, 'assets', WORKSHOP_NOTICE_SHOT_DIR, `${name}.png`)
+    );
+    return `${JSON.stringify(name)}: ${JSON.stringify(String(uri))}`;
+  }).join(',\n        ');
 
   const nonce = getNonce();
 
@@ -76,6 +89,10 @@ export function getWebviewHtml(
       loadingGifCredits: {
         'assistant-working-prose-minion-my-world-is-user-generated.gif': 'Generated with Adobe Firefly',
         'assistant-working-prose-minion-hello-world.gif': 'Generated with Adobe Firefly'
+      },
+      // Workshop notice screenshots, keyed by WORKSHOP_NOTICE_SHOTS name
+      noticeShots: {
+        ${noticeShotEntries}
       }
     };
   </script>

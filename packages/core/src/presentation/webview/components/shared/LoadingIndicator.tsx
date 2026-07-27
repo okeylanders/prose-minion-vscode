@@ -5,17 +5,8 @@
  */
 
 import * as React from 'react';
-
-declare global {
-  interface Window {
-    proseMinonAssets?: {
-      vhsLoadingGif?: string;
-      loadingGifs?: string[];
-      loadingGifList?: string[];
-      loadingGifCredits?: Record<string, { label: string; href: string } | string>;
-    };
-  }
-}
+/* The host→webview asset bridge (and its `declare global`) lives in one place. */
+import { getProseMinionAssets } from '@utils/proseMinionAssets';
 
 interface LoadingIndicatorProps {
   /** Whether loading state is active */
@@ -52,7 +43,7 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
 
   // Pick random GIF (consolidated from LoadingWidget)
   const pickRandomGif = () => {
-    const assets = window.proseMinonAssets;
+    const assets = getProseMinionAssets();
     const arr = assets?.loadingGifs && assets.loadingGifs.length > 0
       ? assets.loadingGifs
       : (assets?.vhsLoadingGif ? [assets.vhsLoadingGif] : []);

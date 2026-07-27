@@ -111,6 +111,37 @@ Port `PMNotify` into the extension as a real feature, not a mock transplant:
   version (e.g. `workshopNotice.dismissedVersion`). Revising the notice
   content bumps the version and legitimately re-shows the box.
 
+#### Amended by the 2026-07-27 design drop
+
+The narrow text-only box above shipped first and is now superseded. The
+[re-pulled design](../../../../docs/design/README.md) widens it and gives the
+tour pictures, because "the diamond chip in the composer bar" is a sentence a
+new writer cannot act on without knowing which chip:
+
+- **Wide format** — `min(1040px, 100%)`, two columns: an annotated media well
+  (screenshots of the real controls, numbered call-out boxes, matching legend)
+  beside the copy, over a docked footer holding the checkbox, pager, and
+  Dismiss. Call-outs are positioned in percentages, so re-shooting a screenshot
+  at the same crop keeps its annotations.
+- **Shipped screenshots** — ten PNGs in
+  `apps/vscode-extension/assets/workshop-notices/`, named for what they show.
+  The host resolves one webview URI per name (`WORKSHOP_NOTICE_SHOTS` →
+  `window.proseMinonAssets.noticeShots`) because a webview cannot mint
+  `vscode-webview://` URIs itself.
+- **Full-surface configuration guide** — notices 2 and 6 link to "How to
+  configure your project": the three setup steps, a worked example layout
+  beside the settings pane that consumes it, and the field → glob mapping.
+  It takes the whole surface rather than a nested dialog because both of its
+  screenshots are tall enough to be unreadable in a box.
+- **Notice version → `v3`.** Copy and layout both changed, so every machine
+  sees the tour once more. That is the versioning rule working, not a bug.
+- **One shipped-copy delta is deliberately NOT reverted**: notice 4 keeps the
+  web-research privacy sentence ("search queries may use active room context
+  and run through OpenRouter and search providers, so enable it only for
+  material you are comfortable sharing"), which the comp omits and which
+  mirrors the Advanced tab's own disclosure. A test pins it so a future
+  re-pull cannot quietly drop it.
+
 ### 6. Model catalog refresh
 
 Ensure the model catalog and the Workshop model picker include these five

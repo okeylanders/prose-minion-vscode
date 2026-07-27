@@ -27,6 +27,19 @@ exports[`getWebviewHtml pins the sidebar surface output — the extraction promi
       loadingGifCredits: {
         'assistant-working-prose-minion-my-world-is-user-generated.gif': 'Generated with Adobe Firefly',
         'assistant-working-prose-minion-hello-world.gif': 'Generated with Adobe Firefly'
+      },
+      // Workshop notice screenshots, keyed by WORKSHOP_NOTICE_SHOTS name
+      noticeShots: {
+        "header-cluster": "https://webview.test/ext/assets/workshop-notices/header-cluster.png",
+        "talking-to-rail": "https://webview.test/ext/assets/workshop-notices/talking-to-rail.png",
+        "composer-controls": "https://webview.test/ext/assets/workshop-notices/composer-controls.png",
+        "vscode-open-folder": "https://webview.test/ext/assets/workshop-notices/vscode-open-folder.png",
+        "sidebar-settings-gear": "https://webview.test/ext/assets/workshop-notices/sidebar-settings-gear.png",
+        "controller-behavior": "https://webview.test/ext/assets/workshop-notices/controller-behavior.png",
+        "controller-about-you": "https://webview.test/ext/assets/workshop-notices/controller-about-you.png",
+        "controller-advanced": "https://webview.test/ext/assets/workshop-notices/controller-advanced.png",
+        "project-layout": "https://webview.test/ext/assets/workshop-notices/project-layout.png",
+        "settings-resource-locations": "https://webview.test/ext/assets/workshop-notices/settings-resource-locations.png"
       }
     };
   </script>

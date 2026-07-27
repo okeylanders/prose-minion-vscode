@@ -15,7 +15,11 @@ styles, scripts, and assets — no build step.
   pulled 2026-07-23** (Sprint 10 interaction source of truth); **Workshop tab
   re-pulled 2026-07-26** (Sprint 14 source: carded intake rail, sheet-pattern
   tools/widgets browsers, startup beta notices, standing-pins scaffold —
-  new files `pm-wk-notify.js`, `pm-wk-pins.css`, `pm-wk-pins.js`).
+  new files `pm-wk-notify.js`, `pm-wk-pins.css`, `pm-wk-pins.js`);
+  **notice modal re-pulled 2026-07-27** (new file
+  `Prose Minion - Notice Modal.html`; `pm-wk-notify.js` + the notice block of
+  `pm-wk-pins.css` rewritten for the wide screenshot format, and the
+  `uploads/` screenshots it renders now committed — see below).
 - **Sync policy:** this folder is a snapshot, kept in sync by re-pulling from
   the design project (never hand-edit these files to change the design — edit
   in Claude Design, then re-pull). Local hand-edits are allowed only for
@@ -33,6 +37,7 @@ styles, scripts, and assets — no build step.
 | `Prose Minion - Context Bar v2.html` | Context Bar with the "In context" sources panel (per-participant manifest rows with stale dimming) and a Memory row (Compress / Compact strategy menus). Sprint 12 supplies the sources data; Compress/Compact is the post-launch compaction ADR's scope. Self-contained. | **Approved — Sprint 12 renders `sources`** |
 | `Prose Minion - Context Bar.html` | Context Bar v1 — the per-participant context gauge as shipped by Sprint 11B (expandable details grid, unmeasured state, amber/red thresholds). Kept for reference; superseded by v2. | Implemented (11B) / superseded |
 | `Prose Minion - Persona Schematic.html` | **Interactive prototype** of the Workshop persona browser → persona configuration schematic: a persona grid ("More info" opens a read-only schematic in the same modal shell) and a nine-panel schematic (Identity hub, Trait tensions, Turn-taking signature, Personal aperture, Verbal palette, Lexical gravity, Communication gradients, Trait pressure, Signature floor) with clickable hub navigation. Demoed with Margot (maximal spec) and Penny (near-empty spec, reads as tuned not broken); Jill/Quinn shown as spec-pending stub cards. Every field is laid out as a dashed, not-yet-wired `edit` affordance for a future persona config utility. Self-contained (no `pm-*` support files). | **Implemented (read-only) 2026-07-21** — see [ADR](../adr/2026-07-21-persona-schematic-read-model.md) & [feature](../../.todo/features/feature-workshop-persona-schematic/README.md) |
+| `Prose Minion - Notice Modal.html` | **Spec sheet + interactive prototype** for the first-run Workshop notice, redesigned wide and with pictures. Three parts: the published copy of all six notices beside annotated screenshots of the control each one points at; the full **How to configure your project** walkthrough referenced by notice 2 (three steps, a well-aligned example project beside the settings pane, and the field → glob mapping table); and a clickable prototype of the widened notice widget (media well left, copy right, docked footer). Loads `pm-mock.css` + `uploads/`. The shipped notice itself is `pm-wk-notify.js` + the notice block of `pm-wk-pins.css`. | **Implemented 2026-07-27** — `WorkshopNoticeModal` + `WorkshopConfigureGuide`; notice version `v3` |
 
 ## Support files
 
@@ -86,7 +91,12 @@ styles, scripts, and assets — no build step.
   dismissible "Workshop · beta" modal opened 400ms after load (welcome, project
   folder setup, hosts & guests, conversation controller, tools, agents), with
   prev/next arrows, dot pager, and a "Don't show again" checkbox persisted to
-  `localStorage` (`pm-wk-notice-dsa-v1`).
+  `localStorage` (`pm-wk-notice-dsa-v1`). **The 2026-07-27 drop widens it to
+  `min(1040px, 100%)`** and adds the media well: each page declares its
+  screenshots with a max width, an `aspect-ratio`, an optional crop width (a
+  percentage over 100 shows only the figure's top-left region), and call-out
+  boxes given as `[left, top, width, height, label]` percentages paired with a
+  legend. The notice's own styles live in `pm-wk-pins.css`, not here.
 - `pm-wk-pins.css` / `pm-wk-pins.js` — **standing-pins scaffold**
   (`window.PMPins`): a two-row rail above the composer — Standing influence
   chips (Lexical Gravity, Prose Controller, Genre position) and a "Pinned
@@ -97,6 +107,12 @@ styles, scripts, and assets — no build step.
   [`apps/vscode-extension/assets/`](../../apps/vscode-extension/assets/)**
   (same files the extension ships) rather than pulled from the design project,
   to avoid duplicating binaries through the API.
+- `uploads/` — the sixteen 2026-07-27 screenshots
+  `Prose Minion - Notice Modal.html` and `pm-wk-notify.js` render. Committed as
+  of the 2026-07-27 pull: they stopped being reference input the moment the
+  notice design started *displaying* them, and without them that page opens
+  full of broken images. The older reference sets are still left on the remote
+  (see "Not pulled").
 
 ### Persistence reconciliation (2026-07-23)
 
@@ -126,6 +142,18 @@ behavior + the ADR remain truth; the note is not ported.** Update the remote
 design and re-pull when its copy catches up — see
 [Sprint 14](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/14-design-catchup-release-candidate.md).
 
+### Notice-copy reconciliation (2026-07-27)
+
+The comp's notice 4 says only that personas "research the live web when it
+helps". The **shipped** copy keeps an extra sentence the comp omits — "search
+queries may use active room context and run through OpenRouter and search
+providers, so enable it only for material you are comfortable sharing" — which
+mirrors the disclosure on the Conversation Controller's own Advanced tab. A
+privacy disclosure is not a design detail to be lost in a re-pull, so
+`WorkshopNoticeModal.test.tsx` pins that phrase. Everything else on the six
+pages is the comp's copy verbatim. Update the remote design when convenient;
+until then, do not "fix" the delta in either direction.
+
 ## Present on remote, not pulled yet (next epic)
 
 The design project also holds the **Conversation Widgets** epic spreads — the
@@ -144,15 +172,18 @@ starts. Re-pull with `DesignSync get_file` when it does:
 
 ## Not pulled
 
-The design project also contains reference-image folders that are inputs to the
-design, not outputs of it — they are not needed to render any `.html` here:
+The design project also contains reference images that are inputs to the design,
+not outputs of it — they are not needed to render any `.html` here:
 
-- `uploads/` — screenshots of the current extension (2026-06-16 set + frame
-  minion references) the design was drawn from. The repo's own
+- `uploads/` **except the 2026-07-27 set** — screenshots of earlier extension
+  builds (the 2026-06-16 set, the 2026-07-16 → 07-26 sets, frame minion
+  references) the design was drawn from. The repo's own
   [`screenshots/`](../../screenshots/) folder is the canonical home for app
-  screenshots.
-- `screenshots/mb-panel.png`, `screenshots/mb-bottom.png` — renders of the
-  Model Browser design.
+  screenshots. Only the 2026-07-27 screenshots are committed, because the
+  notice design renders them rather than merely referencing them.
+- `screenshots/mb-panel.png`, `screenshots/mb-bottom.png`,
+  `screenshots/behavior-scrolled.png`, `screenshots/parts.png` — renders of
+  design surfaces.
 - `.thumbnail`, `assets/pixel-minion-icon.png` duplicates of shipped assets.
 
 Re-pull them with `DesignSync get_file` if ever needed.
@@ -161,6 +192,7 @@ Re-pull them with `DesignSync get_file` if ever needed.
 
 ```bash
 open "docs/design/Prose Minion - Assistant Tab.html"      # Workshop editor tab + session persistence
+open "docs/design/Prose Minion - Notice Modal.html"       # first-run notices + project-configuration guide
 open "docs/design/Prose Minion - Design Refresh.html"     # full design catalog
 open "docs/design/Prose Minion - Model Browser.html"      # model picker
 ```

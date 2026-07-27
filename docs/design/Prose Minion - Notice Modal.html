@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prose Minion — Workshop notice modal</title>
+<link rel="stylesheet" href="pm-mock.css">
+<style>
+body{background:var(--bg);color:var(--text);font-family:var(--sans);margin:0}
+a{color:var(--accent-hi);text-decoration:none}a:hover{color:var(--text)}
+.pg{max-width:1180px;margin:0 auto;padding:56px 40px 120px}
+.hd{border-bottom:1px solid var(--border);padding-bottom:28px;margin-bottom:44px}
+.eb{font:600 11px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
+h1{font-size:40px;line-height:1.08;letter-spacing:-.02em;margin:0 0 14px;font-weight:650}
+.lede{font-size:16.5px;line-height:1.6;color:var(--text-2);max-width:74ch;margin:0;text-wrap:pretty}
+h2{font-size:13px;font-family:var(--mono);font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 22px;padding-bottom:10px;border-bottom:1px solid var(--border-soft)}
+section{margin-bottom:64px}
+.note{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:34px;align-items:start;padding:26px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);margin-bottom:22px}
+.note>figure{margin:0}
+.shot{width:100%;display:block;border-radius:10px;border:1px solid var(--border-2)}
+.step{font:600 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:10px}
+.step b{color:var(--accent);font-weight:600}
+.note h3{font-size:21px;line-height:1.2;letter-spacing:-.01em;margin:0 0 12px;font-weight:640}
+.copy{font-size:14.5px;line-height:1.62;color:var(--text-2);margin:0;text-wrap:pretty}
+.copy b{color:var(--text);font-weight:640}
+.ptr{margin-top:20px;padding-top:18px;border-top:1px dashed var(--border-2)}
+.ptr .lbl{font:600 10.5px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.ann{position:relative;display:block;margin-bottom:12px}
+.ann img{width:100%;display:block;border-radius:9px;border:1px solid var(--border-2)}
+.crop{position:relative;overflow:hidden;border-radius:9px;border:1px solid var(--border-2);aspect-ratio:797/1217;margin-bottom:12px}
+.crop img{position:absolute;top:0;left:0;width:161.3%;display:block}
+.bx{position:absolute;border:2px solid var(--accent-hi);border-radius:9px;box-shadow:0 0 0 3px rgba(224,103,58,.16),0 0 20px rgba(224,103,58,.32)}
+.bx>i{position:absolute;top:-11px;left:-11px;width:22px;height:22px;border-radius:999px;background:var(--accent);color:#1c0f07;font:700 12px/22px var(--sans);text-align:center;font-style:normal;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+.leg{display:flex;flex-direction:column;gap:7px;margin:0;padding:0;list-style:none}
+.leg li{display:flex;gap:9px;font-size:13px;line-height:1.45;color:var(--muted)}
+.leg .n{flex:none;width:18px;height:18px;border-radius:999px;background:var(--accent-soft);border:1px solid var(--accent-lo);color:var(--accent-hi);font:700 10.5px/17px var(--sans);text-align:center}
+.leg b{color:var(--text-2);font-weight:600}
+.cfg{background:var(--surface);border:1px solid var(--border-2);border-radius:16px;padding:34px}
+.cfg h3{font-size:26px;letter-spacing:-.015em;margin:0 0 10px;font-weight:650}
+.cfg .sub{font-size:15px;line-height:1.6;color:var(--text-2);max-width:78ch;margin:0 0 30px;text-wrap:pretty}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-bottom:32px}
+.stepbox{background:var(--inset);border:1px solid var(--border);border-radius:11px;padding:18px}
+.stepbox .k{font:700 10.5px/1 var(--mono);letter-spacing:.14em;color:var(--accent);margin-bottom:9px}
+.stepbox h4{font-size:15px;margin:0 0 7px;font-weight:640}
+.stepbox p{font-size:13.5px;line-height:1.55;color:var(--muted);margin:0}
+.two{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1fr);gap:26px;align-items:start;margin-bottom:30px}
+.panel{background:var(--inset);border:1px solid var(--border);border-radius:11px;padding:16px}
+.panel .cap{font:600 10.5px/1 var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.panel .cap2{font-size:12.5px;line-height:1.5;color:var(--dim);margin:0 0 14px}
+.panel img{width:100%;display:block;border-radius:8px;border:1px solid var(--border-2)}
+.warn{margin-top:12px;font-size:12.5px;line-height:1.5;color:var(--amber);font-family:var(--mono)}
+.tabs3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.tabs3 figure{margin:0}
+.tabs3 img{width:100%;display:block;border-radius:8px;border:1px solid var(--border-2)}
+.tabs3 figcaption{margin-top:7px;font:500 11px/1.35 var(--mono);color:var(--dim)}
+.flip{background:var(--surface);border:1px solid var(--border-2);border-radius:16px;padding:30px 34px 26px}
+.flip .stage{position:relative;display:flex;justify-content:center;align-items:flex-start;min-height:520px}
+.flip .stage img{max-width:100%;max-height:520px;border-radius:12px;border:1px solid var(--border-2);box-shadow:0 22px 50px rgba(0,0,0,.45)}
+.flip .bar{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:24px}
+.flip .arr{width:38px;height:38px;border-radius:9px;background:var(--surface-2);border:1px solid var(--border-2);color:var(--text-2);font-size:15px;cursor:pointer;display:grid;place-items:center}
+.flip .arr:hover{background:var(--surface-3);color:var(--text)}
+.flip .arr:disabled{opacity:.35;cursor:default}
+.flip .dots{display:flex;gap:9px}
+.flip .dot{width:9px;height:9px;border-radius:999px;border:0;background:var(--border-2);cursor:pointer;padding:0}
+.flip .dot.on{background:var(--accent)}
+.flip .cnt{text-align:center;margin-top:14px;font:600 11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.scrim{background:radial-gradient(120% 120% at 50% 0%,#1d1610 0%,#0d0a07 100%);border:1px solid var(--border);border-radius:18px;padding:40px}
+.nw{position:relative;background:var(--surface);border:1px solid var(--border-2);border-radius:16px;box-shadow:0 40px 90px rgba(0,0,0,.6);overflow:hidden}
+.nw-x{position:absolute;top:18px;right:18px;width:34px;height:34px;border-radius:9px;background:var(--surface-2);border:1px solid var(--border-2);color:var(--text-2);cursor:pointer;font-size:13px}
+.nw-x:hover{background:var(--surface-3);color:var(--text)}
+.nw-hd{display:flex;align-items:center;gap:10px;padding:20px 26px 0}
+.nw-eb{font:600 11px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.nw-tag{font:600 10px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--amber);border:1px solid var(--amber);border-radius:999px;padding:4px 9px}
+.nw-body{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:26px;padding:18px 26px 26px}
+.nw-well{background:var(--inset);border:1px solid var(--border);border-radius:13px;padding:18px;display:flex;flex-direction:column;gap:14px;min-height:430px}
+.nw-well-t{font:600 10.5px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.nw-media{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;min-height:0}
+.nw-well .leg{margin-top:2px;padding-top:14px;border-top:1px solid var(--border-soft)}
+.nw-well .leg:empty{display:none}
+.wm{position:relative;margin:0;width:100%;max-width:100%;overflow:hidden;border-radius:9px;border:1px solid var(--border-2)}
+.wm>img{width:100%;display:block}
+.wrow{display:flex;gap:12px;width:100%;justify-content:center;align-items:flex-start}
+.wm.sm{position:static;flex:1;max-width:184px;border:0;overflow:visible;border-radius:0}
+.wm.sm .ph{display:block;aspect-ratio:4/5;border-radius:8px;border:1px solid var(--border-2);overflow:hidden;background:var(--surface)}
+.wm.sm img{width:100%;height:100%;object-fit:cover;object-position:top left;display:block}
+.wm.sm figcaption{margin-top:8px;font:500 11px/1 var(--mono);color:var(--dim)}
+.nw-copy{padding-top:6px}
+.nw-k{font:600 11.5px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:14px}
+.nw-k b{color:var(--accent);font-weight:600}
+.nw-copy h3{font-size:27px;line-height:1.15;letter-spacing:-.015em;margin:0 0 16px;font-weight:650}
+.nw-copy p{font-size:15px;line-height:1.65;color:var(--text-2);margin:0;text-wrap:pretty}
+.nw-copy p b{color:var(--text);font-weight:640}
+.nw-ft{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:16px 26px;border-top:1px solid var(--border);background:var(--surface-2)}
+.nw-dsa{display:flex;align-items:center;gap:10px;background:none;border:0;color:var(--text-2);font-size:14px;cursor:pointer;font-family:var(--sans)}
+.nw-dsa .bxx{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--border-2);background:var(--inset)}
+.nw-dsa.on .bxx{background:var(--accent);border-color:var(--accent)}
+.nw-dsa .all{font-family:var(--mono);font-size:11.5px;color:var(--dim)}
+.nw-nav{display:flex;align-items:center;gap:14px}
+.nw-nav .arr{width:36px;height:36px;border-radius:9px;background:var(--surface);border:1px solid var(--border-2);color:var(--text-2);font-size:15px;cursor:pointer}
+.nw-nav .arr:hover:not(:disabled){background:var(--surface-3);color:var(--text)}
+.nw-nav .arr:disabled{opacity:.32;cursor:default}
+.nw-nav .dots{display:flex;gap:8px}
+.nw-nav .dot{width:8px;height:8px;border-radius:999px;border:0;background:var(--border-2);cursor:pointer;padding:0}
+.nw-nav .dot.on{background:var(--accent)}
+.nw-dismiss{margin-left:8px;padding:9px 22px;border-radius:9px;border:0;background:var(--accent);color:#1c0f07;font:650 14px/1 var(--sans);cursor:pointer}
+.nw-dismiss:hover{background:var(--accent-hi)}
+@media(max-width:900px){.nw-body{grid-template-columns:1fr}}
+.map{border:1px solid var(--border);border-radius:11px;overflow:hidden}
+.map .row{display:grid;grid-template-columns:minmax(180px,.6fr) minmax(0,1fr);gap:0;border-bottom:1px solid var(--border-soft)}
+.map .row:last-child{border-bottom:0}
+.map .row.h{background:var(--surface-2)}
+.map .row.h div{font:600 10.5px/1 var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--muted);padding:11px 16px}
+.map .f{padding:12px 16px;font-size:13.5px;color:var(--text-2);font-weight:600;border-right:1px solid var(--border-soft)}
+.map .g{padding:12px 16px;font-family:var(--mono);font-size:12.5px;color:var(--accent-hi);word-break:break-all}
+.tip{margin-top:22px;display:flex;gap:12px;align-items:flex-start;background:var(--accent-soft);border:1px solid var(--accent-lo);border-radius:10px;padding:15px 17px}
+.tip .d{flex:none;width:8px;height:8px;margin-top:6px;background:var(--accent);transform:rotate(45deg)}
+.tip p{margin:0;font-size:13.5px;line-height:1.55;color:var(--text-2)}
+.tip b{color:var(--text)}
+@media(max-width:900px){.note,.two,.steps{grid-template-columns:1fr}}
+</style>
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#15110d"/><rect x="22" y="28" width="56" height="44" rx="8" fill="#2b2017" stroke="#e0673a" stroke-width="2"/><rect x="30" y="38" width="30" height="4" rx="2" fill="#f3ece1"/><rect x="30" y="48" width="40" height="3" rx="1.5" fill="#a4937f"/><rect x="30" y="56" width="34" height="3" rx="1.5" fill="#a4937f"/></svg>
+</template>
+</head>
+<body>
+<div class="pg">
+
+<header class="hd">
+  <div class="eb">Prose Minion · Workshop</div>
+  <h1>First-run notice modal</h1>
+  <p class="lede">Six notices shown once per install, on the first open of the Workshop tab. Below is the published copy for each page alongside the control it points to, plus the full project-configuration walkthrough referenced by notice 2.</p>
+</header>
+
+<section>
+  <h2>The six notices</h2>
+
+  <article class="note">
+    <figure><img class="shot" src="uploads/Screenshot 2026-07-27 at 12.19.47 PM.png" alt="Notice 1 of 6"></figure>
+    <div>
+      <div class="step"><b>1 / 6</b> · Beta</div>
+      <h3>Welcome to the Workshop beta</h3>
+      <p class="copy">The Workshop is a conversation space for working with a host, focused guests, and analysis instruments. It is still settling, so this short tour points to the controls that matter most. You decide when to send a message, run a tool, attach context, or apply text; Prose Minion never changes project files on its own.</p>
+      <div class="ptr">
+        <div class="lbl">In the modal</div>
+        <ul class="leg">
+          <li><span class="n">1</span><span><b>Close (×)</b> — dismisses this run only; the tour returns next launch.</span></li>
+          <li><span class="n">2</span><span><b>Don't show again</b> — one checkbox, applies to all six notices.</span></li>
+          <li><span class="n">3</span><span><b>Dots / arrows</b> — jump between notices in any order.</span></li>
+        </ul>
+      </div>
+    </div>
+  </article>
+
+  <article class="note">
+    <figure><img class="shot" src="uploads/Screenshot 2026-07-27 at 12.19.52 PM.png" alt="Notice 2 of 6"></figure>
+    <div>
+      <div class="step"><b>2 / 6</b> · Setup</div>
+      <h3>Start with an open project folder</h3>
+      <p class="copy">Open your writing project folder in VS Code. Then use the <b>Prose Minion Settings</b> gear in the sidebar to tell the extension where character sheets, locations, project notes, drafts, and manuscript chapters live. For the best results, split drafts and manuscripts into individual chapter files so assistants can find and read the right material without treating a whole novel as one document.</p>
+      <div class="ptr">
+        <div class="lbl">Where to do it</div>
+        <figure class="crop">
+          <img src="uploads/Screenshot 2026-07-27 at 12.06.02 PM.png" alt="VS Code File menu, Open Folder">
+          <span class="bx" style="left:23.2%;top:26.4%;width:68.4%;height:4.8%"><i>1</i></span>
+        </figure>
+        <figure class="ann">
+          <img src="uploads/Screenshot 2026-07-27 at 1.46.23 PM.png" alt="Prose Minion sidebar header with settings gear">
+          <span class="bx" style="left:91.3%;top:7.4%;width:5.2%;height:13.2%"><i>2</i></span>
+        </figure>
+        <ul class="leg">
+          <li><span class="n">1</span><span><b>File → Open Folder…</b> — point VS Code at the project root before anything else.</span></li>
+          <li><span class="n">2</span><span><b>Settings gear</b> — top-right of the Prose Minion sidebar; opens Project Resource Locations.</span></li>
+        </ul>
+        <p class="copy" style="margin-top:12px;font-size:13.5px">Then follow <a href="#configure">How to configure your project</a> below.</p>
+      </div>
+    </div>
+  </article>
+
+  <article class="note">
+    <figure><img class="shot" src="uploads/Screenshot 2026-07-27 at 12.20.00 PM.png" alt="Notice 3 of 6"></figure>
+    <div>
+      <div class="step"><b>3 / 6</b> · Primer</div>
+      <h3>Choose a host, then invite guests</h3>
+      <p class="copy">Every session has a <b>host</b>. Jill is the default, but you can choose a different host before the conversation begins. You can also invite <b>guest personas</b> with focused specialties such as rhythm &amp; pacing, continuity, dialogue, or voice &amp; POV; they work beside the host, never replace it. For especially distinctive persona voices and strong judgment about when to read project resources or run another analysis, try <b>Gemini 3.6 Flash</b>. <b>GPT-5.6 Terra</b> and <b>GPT-5.6 Sol</b> are also excellent choices.</p>
+      <div class="ptr">
+        <div class="lbl">Where to look</div>
+        <figure class="ann">
+          <img src="uploads/Screenshot 2026-07-27 at 12.02.06 PM.png" alt="Workshop header cluster">
+          <span class="bx" style="left:6.4%;top:19%;width:18.9%;height:52%"><i>1</i></span>
+          <span class="bx" style="left:67%;top:19%;width:31.4%;height:52%"><i>2</i></span>
+        </figure>
+        <figure class="ann">
+          <img src="uploads/Screenshot 2026-07-27 at 12.02.15 PM.png" alt="Talking to rail">
+          <span class="bx" style="left:22.9%;top:33%;width:24.8%;height:45%"><i>3</i></span>
+          <span class="bx" style="left:48.4%;top:33%;width:41.9%;height:45%"><i>4</i></span>
+        </figure>
+        <ul class="leg">
+          <li><span class="n">1</span><span><b>Host chip</b> — set before the conversation begins.</span></li>
+          <li><span class="n">2</span><span><b>Model picker</b> — Gemini 3.6 Flash, GPT-5.6 Terra, GPT-5.6 Sol.</span></li>
+          <li><span class="n">3</span><span><b>Talking to</b> — who is currently in the room.</span></li>
+          <li><span class="n">4</span><span><b>Invite guest</b> — add a focused specialist beside the host.</span></li>
+        </ul>
+      </div>
+    </div>
+  </article>
+
+  <article class="note">
+    <figure><img class="shot" src="uploads/Screenshot 2026-07-27 at 12.20.07 PM.png" alt="Notice 4 of 6"></figure>
+    <div>
+      <div class="step"><b>4 / 6</b> · Primer</div>
+      <h3>Set the room's conversation style</h3>
+      <p class="copy">Find the diamond-shaped <b>Conversation Controller</b> chip in the composer controls. The <b>Behavior</b> tab sets how host and guest personas respond: <b>mode</b> (how opinionated), <b>expression</b> (how much they say), and <b>depth</b> (how far they read into things). Those choices are per-session, stay visible, and never change silently. The <b>About you</b> tab lets you choose how the room addresses you and share a short writer profile as background context. In <b>Advanced</b>, you can let personas research the live web when it helps; their replies show each source as a clickable citation pill. These conversation controls do not apply to direct instrument threads.</p>
+      <div class="ptr">
+        <div class="lbl">Where to look</div>
+        <figure class="ann">
+          <img src="uploads/Screenshot 2026-07-27 at 12.02.37 PM.png" alt="Composer controls">
+          <span class="bx" style="left:32.4%;top:52.5%;width:28.7%;height:22%"><i>1</i></span>
+        </figure>
+        <ul class="leg">
+          <li><span class="n">1</span><span><b>Conversation Controller</b> — the diamond chip in the composer bar; the label reads out the current mode.</span></li>
+        </ul>
+        <div class="lbl" style="margin-top:20px">Three tabs inside</div>
+        <div class="tabs3">
+          <figure><img src="uploads/Screenshot 2026-07-27 at 12.51.13 PM.png" alt="Behavior tab"><figcaption>Behavior — mode, expression, depth</figcaption></figure>
+          <figure><img src="uploads/Screenshot 2026-07-27 at 12.48.45 PM.png" alt="About you tab"><figcaption>About you — name and writer profile</figcaption></figure>
+          <figure><img src="uploads/Screenshot 2026-07-27 at 12.49.00 PM.png" alt="Advanced tab"><figcaption>Advanced — live web research</figcaption></figure>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <article class="note">
+    <figure><img class="shot" src="uploads/Screenshot 2026-07-27 at 12.20.15 PM.png" alt="Notice 5 of 6"></figure>
+    <div>
+      <div class="step"><b>5 / 6</b> · Primer</div>
+      <h3>Tools — run them directly, or ask a persona</h3>
+      <p class="copy">Run any of the fourteen analyses directly against a pinned excerpt and its report lands visibly in the thread. Or ask your host or a guest to run an isolated analysis on a specific line, variation, or question from the conversation. Just ask: the persona can decide when a tool would help and bring the useful result back into the room. Direct tool runs unlock when an excerpt is set.</p>
+      <div class="ptr">
+        <div class="lbl">Where to look</div>
+        <figure class="ann">
+          <img src="uploads/Screenshot 2026-07-27 at 12.02.37 PM.png" alt="Composer controls, Tools">
+          <span class="bx" style="left:77.2%;top:52.5%;width:11.2%;height:22%"><i>1</i></span>
+          <span class="bx" style="left:3.5%;top:52.5%;width:6%;height:22%"><i>2</i></span>
+        </figure>
+        <ul class="leg">
+          <li><span class="n">1</span><span><b>Tools</b> — the fourteen analyses; enabled once an excerpt is pinned.</span></li>
+          <li><span class="n">2</span><span><b>+</b> — pin the excerpt and attach project context.</span></li>
+        </ul>
+      </div>
+    </div>
+  </article>
+
+  <article class="note">
+    <figure><img class="shot" src="uploads/Screenshot 2026-07-27 at 12.20.24 PM.png" alt="Notice 6 of 6"></figure>
+    <div>
+      <div class="step"><b>6 / 6</b> · Primer</div>
+      <h3>Agents can work with your project</h3>
+      <p class="copy">With project paths configured, hosts and guests can <b>find and read relevant project files</b> when the conversation calls for them — you do not need to attach every file by hand. They can also use the dictionary, run analyses, and inspect a particular variation without derailing the main conversation. The <b>Widgets</b> browser is a preview of tools still to come; it does not launch widgets yet.</p>
+      <div class="ptr">
+        <div class="lbl">Where to look</div>
+        <figure class="ann">
+          <img src="uploads/Screenshot 2026-07-27 at 12.02.37 PM.png" alt="Composer controls, Widgets">
+          <span class="bx" style="left:63.8%;top:52.5%;width:12.4%;height:22%"><i>1</i></span>
+        </figure>
+        <ul class="leg">
+          <li><span class="n">1</span><span><b>Widgets</b> — a preview browser; nothing launches yet.</span></li>
+        </ul>
+        <p class="copy" style="margin-top:12px;font-size:13.5px">Project-file reading depends on the paths set in <a href="#configure">Project Resource Locations</a>.</p>
+      </div>
+    </div>
+  </article>
+</section>
+
+<section id="configure">
+  <h2>Referenced by notice 2</h2>
+  <div class="cfg">
+    <h3>How to configure your project</h3>
+    <p class="sub">Prose Minion never guesses at your folder layout. You tell it where each kind of material lives with glob patterns, and every host, guest, and instrument reads from those paths. Three steps, once per project.</p>
+
+    <div class="steps">
+      <div class="stepbox">
+        <div class="k">STEP 1</div>
+        <h4>Open the project folder</h4>
+        <p>VS Code → <b>File → Open Folder…</b> and select your book's root folder. The extension only sees what is inside the open workspace.</p>
+      </div>
+      <div class="stepbox">
+        <div class="k">STEP 2</div>
+        <h4>Open Prose Minion Settings</h4>
+        <p>Click the <b>Settings</b> gear in the Prose Minion sidebar and scroll to <b>Project Resource Locations</b>.</p>
+      </div>
+      <div class="stepbox">
+        <div class="k">STEP 3</div>
+        <h4>Fill in one glob per field</h4>
+        <p>Comma-separate multiple patterns. Patterns are relative to the workspace root; <b>**/*</b> means "everything below this folder".</p>
+      </div>
+    </div>
+
+    <div class="two">
+      <div class="panel">
+        <div class="cap">A well-aligned project</div>
+        <p class="cap2">One folder per resource type, one file per chapter — this is the layout the fields below map onto.</p>
+        <img src="uploads/Screenshot 2026-07-27 at 12.25.15 PM.png" alt="Example project folder structure in the VS Code explorer">
+      </div>
+      <div class="panel">
+        <div class="cap">Where you enter it — Settings → Project Resource Locations</div>
+        <p class="cap2">Eight fields, each with its own hint and example beneath the input.</p>
+        <img src="uploads/Screenshot 2026-07-27 at 12.05.25 PM.png" alt="Project Resource Locations settings fields">
+        <p class="warn">Values shown are from another project — use the mapping below.</p>
+      </div>
+    </div>
+
+    <div class="map">
+      <div class="row h"><div>Settings field</div><div>Pattern for the layout above</div></div>
+      <div class="row"><div class="f">Characters</div><div class="g">characters/**/*</div></div>
+      <div class="row"><div class="f">Locations &amp; Settings</div><div class="g">locations-and-settings/**/*</div></div>
+      <div class="row"><div class="f">Themes</div><div class="g">themes-and-literary-devices/**/*</div></div>
+      <div class="row"><div class="f">Things / Props</div><div class="g">things-and-props/**/*</div></div>
+      <div class="row"><div class="f">Draft Chapters &amp; Outlines</div><div class="g">draft-chapters/*.md,outlines/*.md</div></div>
+      <div class="row"><div class="f">Manuscript Chapters</div><div class="g">manuscript-chapters/*.md</div></div>
+      <div class="row"><div class="f">Project Brief Materials</div><div class="g">project-brief/**/*,*.md</div></div>
+      <div class="row"><div class="f">General References</div><div class="g">references/**/*,research/**/*</div></div>
+    </div>
+
+    <div class="tip">
+      <span class="d"></span>
+      <p><b>Split chapters into individual files.</b> Draft and manuscript fields end in <b>*.md</b> rather than <b>**/*</b> on purpose: one chapter per file lets an assistant open exactly the chapter it needs instead of loading a whole novel as a single document.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Redesigned notice widget — wide, with screenshots</h2>
+  <p class="lede" style="margin:-8px 0 22px">Same six notices, one large panel: media well on the left, copy on the right, navigation and dismissal along the bottom. Click through it below.</p>
+  <div class="scrim">
+    <div class="nw" role="dialog" aria-label="Workshop notices">
+      <button class="nw-x" id="nw-x" aria-label="Close">&#10005;</button>
+      <div class="nw-hd"><span class="nw-eb">Workshop</span><span class="nw-tag">beta</span></div>
+      <div class="nw-body">
+        <div class="nw-well">
+          <div class="nw-well-t" id="nw-well-t"></div>
+          <div class="nw-media" id="nw-media"></div>
+          <ul class="leg" id="nw-leg"></ul>
+        </div>
+        <div class="nw-copy">
+          <div class="nw-k" id="nw-k"></div>
+          <h3 id="nw-title"></h3>
+          <p id="nw-text"></p>
+        </div>
+      </div>
+      <div class="nw-ft">
+        <button class="nw-dsa" id="nw-dsa" role="checkbox" aria-checked="false"><span class="bxx"></span>Don't show again <span class="all">· applies to all 6 notices in this box</span></button>
+        <div class="nw-nav">
+          <button class="arr" id="nw-prev" aria-label="Previous">&#8249;</button>
+          <div class="dots" id="nw-dots"></div>
+          <button class="arr" id="nw-next" aria-label="Next">&#8250;</button>
+          <button class="nw-dismiss" id="nw-dismiss">Dismiss</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+(function(){
+  var U='uploads/Screenshot 2026-07-27 at ';
+  var P=[
+    {k:'Beta',t:'Welcome to the Workshop beta',
+     d:'The Workshop is a conversation space for working with a host, focused guests, and analysis instruments. It is still settling, so this short tour points to the controls that matter most. You decide when to send a message, run a tool, attach context, or apply text; Prose Minion never changes project files on its own.',
+     wt:'What you are looking at',
+     m:[{s:'12.02.06 PM',w:560,ar:'884/150'},{s:'12.02.37 PM',w:640,ar:'1320/338'}],
+     l:[]},
+    {k:'Setup',t:'Start with an open project folder',
+     d:'Open your writing project folder in VS Code. Then use the <b>Prose Minion Settings</b> gear in the sidebar to tell the extension where character sheets, locations, project notes, drafts, and manuscript chapters live. For the best results, split drafts and manuscripts into individual chapter files so assistants can find and read the right material without treating a whole novel as one document.',
+     wt:'Where to do it',
+     m:[{s:'12.06.02 PM',w:238,ar:'797/1217',crop:161.3,b:[[23.2,26.4,68.4,4.8,1]]},{s:'1.46.23 PM',w:420,ar:'882/446',b:[[91.3,7.4,5.2,13.2,2]]}],
+     l:[['1','File → Open Folder…','point VS Code at the project root before anything else.'],['2','Settings gear','top-right of the Prose Minion sidebar — opens Project Resource Locations.']]},
+    {k:'Primer',t:'Choose a host, then invite guests',
+     d:'Every session has a <b>host</b>. Jill is the default, but you can choose a different host before the conversation begins. You can also invite <b>guest personas</b> with focused specialties such as rhythm &amp; pacing, continuity, dialogue, or voice &amp; POV; they work beside the host, never replace it. For especially distinctive persona voices and strong judgment about when to read project resources or run another analysis, try <b>Gemini 3.6 Flash</b>. <b>GPT-5.6 Terra</b> and <b>GPT-5.6 Sol</b> are also excellent choices.',
+     wt:'Where to look',
+     m:[{s:'12.02.06 PM',w:560,ar:'884/150',b:[[6.4,19,18.9,52,1],[67,19,31.4,52,2]]},{s:'12.02.15 PM',w:360,ar:'516/140',b:[[22.9,33,24.8,45,3],[48.4,33,41.9,45,4]]}],
+     l:[['1','Host chip','set before the conversation begins.'],['2','Model picker','Gemini 3.6 Flash, GPT-5.6 Terra, GPT-5.6 Sol.'],['3','Talking to','who is currently in the room.'],['4','Invite guest','add a focused specialist beside the host.']]},
+    {k:'Primer',t:"Set the room's conversation style",
+     d:'Find the diamond-shaped <b>Conversation Controller</b> chip in the composer controls. The <b>Behavior</b> tab sets how host and guest personas respond: <b>mode</b> (how opinionated), <b>expression</b> (how much they say), and <b>depth</b> (how far they read into things). Those choices are per-session, stay visible, and never change silently. The <b>About you</b> tab lets you choose how the room addresses you and share a short writer profile as background context. In <b>Advanced</b>, you can let personas research the live web when it helps; their replies show each source as a clickable citation pill. These conversation controls do not apply to direct instrument threads.',
+     wt:'Where to look',
+     m:[{s:'12.02.37 PM',w:640,ar:'1320/338',b:[[32.4,52.5,28.7,22,1]]},
+        {row:[{s:'12.51.13 PM',ar:'786/968',c:'Behavior'},{s:'12.48.45 PM',ar:'712/908',c:'About you'},{s:'12.49.00 PM',ar:'696/744',c:'Advanced'}]}],
+     l:[['1','Conversation Controller','the diamond chip in the composer bar; three tabs inside.']]},
+    {k:'Primer',t:'Tools — run them directly, or ask a persona',
+     d:'Run any of the fourteen analyses directly against a pinned excerpt and its report lands visibly in the thread. Or ask your host or a guest to run an isolated analysis on a specific line, variation, or question from the conversation. Just ask: the persona can decide when a tool would help and bring the useful result back into the room. Direct tool runs unlock when an excerpt is set.',
+     wt:'Where to look',
+     m:[{s:'12.02.37 PM',w:640,ar:'1320/338',b:[[77.2,52.5,11.2,22,1],[3.5,52.5,6,22,2]]}],
+     l:[['1','Tools','the fourteen analyses; enabled once an excerpt is pinned.'],['2','+','pin the excerpt and attach project context.']]},
+    {k:'Primer',t:'Agents can work with your project',
+     d:'With project paths configured, hosts and guests can <b>find and read relevant project files</b> when the conversation calls for them — you do not need to attach every file by hand. They can also use the dictionary, run analyses, and inspect a particular variation without derailing the main conversation. The <b>Widgets</b> browser is a preview of tools still to come; it does not launch widgets yet.',
+     wt:'Where to look',
+     m:[{s:'12.02.37 PM',w:640,ar:'1320/338',b:[[63.8,52.5,12.4,22,1]]}],
+     l:[['1','Widgets','a preview browser; nothing launches yet.']]}
+  ];
+  var i=0,dsa=false;
+  var $=function(id){return document.getElementById(id);};
+  function shot(o){
+    var boxes=(o.b||[]).map(function(b){return '<span class="bx" style="left:'+b[0]+'%;top:'+b[1]+'%;width:'+b[2]+'%;height:'+b[3]+'%"><i>'+b[4]+'</i></span>';}).join('');
+    var img='<img src="'+U+o.s+'.png" alt="" style="'+(o.crop?'position:absolute;top:0;left:0;width:'+o.crop+'%':'width:100%;display:block')+'">';
+    return '<figure class="wm" style="aspect-ratio:'+o.ar+';max-width:'+(o.w||240)+'px">'+img+boxes+'</figure>';
+  }
+  function r(){
+    var p=P[i];
+    $('nw-k').innerHTML='<b>'+(i+1)+' / '+P.length+'</b> · '+p.k;
+    $('nw-title').textContent=p.t;
+    $('nw-text').innerHTML=p.d;
+    $('nw-well-t').textContent=p.wt;
+    $('nw-media').innerHTML=p.m.map(function(o){
+      if(o.row) return '<div class="wrow">'+o.row.map(function(x){return '<figure class="wm sm"><span class="ph"><img src="'+U+x.s+'.png" alt=""></span><figcaption>'+x.c+'</figcaption></figure>';}).join('')+'</div>';
+      return shot(o);
+    }).join('');
+    $('nw-leg').innerHTML=p.l.map(function(x){return '<li><span class="n">'+x[0]+'</span><span><b>'+x[1]+'</b> — '+x[2]+'</span></li>';}).join('');
+    [].forEach.call($('nw-dots').children,function(d,n){d.classList.toggle('on',n===i);});
+    $('nw-prev').disabled=i===0; $('nw-next').disabled=i===P.length-1;
+  }
+  P.forEach(function(_,n){var b=document.createElement('button');b.className='dot';b.setAttribute('aria-label','Notice '+(n+1));b.onclick=function(){i=n;r();};$('nw-dots').appendChild(b);});
+  $('nw-prev').onclick=function(){if(i>0){i--;r();}};
+  $('nw-next').onclick=function(){if(i<P.length-1){i++;r();}};
+  $('nw-dsa').onclick=function(){dsa=!dsa;this.classList.toggle('on',dsa);this.setAttribute('aria-checked',String(dsa));};
+  $('nw-dismiss').onclick=$('nw-x').onclick=function(){i=0;r();};
+  r();
+})();
+</script>
+
+</div>
+</body>
+</html>

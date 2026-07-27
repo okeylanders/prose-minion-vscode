@@ -38,7 +38,12 @@ jest.mock('crypto', () => {
 });
 
 import type * as vscode from 'vscode';
-import { MessageType, PM_SURFACE_ATTR, SURFACE_WORKSHOP } from '@prose-minion/core';
+import {
+  MessageType,
+  PM_SURFACE_ATTR,
+  SURFACE_WORKSHOP,
+  WORKSHOP_NOTICE_SHOTS
+} from '@prose-minion/core';
 import { getWebviewHtml } from '../../../application/providers/webviewHtml';
 
 const fakeWebview = {
@@ -90,5 +95,21 @@ describe('getWebviewHtml', () => {
   it('bootstrap error bridge posts the shared MessageType, not a hand-synced literal', () => {
     const workshop = getWebviewHtml(fakeWebview, extensionUri, 'workshop');
     expect(workshop).toContain(`postMessage({ type: '${MessageType.WEBVIEW_ERROR}'`);
+  });
+
+  /**
+   * The notice modal looks its screenshots up by name; a name the host forgets
+   * to resolve renders a broken picture in the first-run tour, which is the one
+   * surface a new writer sees. Drive the map off the shared list so adding a
+   * screenshot cannot half-land.
+   */
+  it('resolves a webview URI for every notice screenshot in the shared list', () => {
+    const workshop = getWebviewHtml(fakeWebview, extensionUri, 'workshop');
+
+    for (const name of WORKSHOP_NOTICE_SHOTS) {
+      expect(workshop).toContain(
+        `"${name}": "https://webview.test/ext/assets/workshop-notices/${name}.png"`
+      );
+    }
   });
 });
