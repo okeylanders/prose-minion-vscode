@@ -130,7 +130,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
       setPending(null);
       setConfirmClear(false);
     }
-  }, [open, webResearch]);
+  }, [open]);
 
   React.useEffect(() => {
     if (!pending) return;
@@ -466,7 +466,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
             <div>
               <div className="pm-ws-behavior-row-name">Allow live web research</div>
               <div className="pm-ws-behavior-row-desc">
-                Persona conversations may search current web information when it helps. This can add latency and provider charges; Grok can also search X when supported.
+                Persona conversations may search current web information when it helps. Search queries can draw on the active room, excerpt, attachments, and shared profile, then run through OpenRouter and its search providers. Enable it only for material you are comfortable sharing. It can add latency and provider charges; Grok can also search X when supported.
               </div>
             </div>
             <Switch
@@ -496,7 +496,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
           </span>
         ) : (
           <span className="pm-ws-behavior-foot-note">
-            Applies the Behavior, About You, and Research drafts together. Research takes effect on your next message.
+            Applies the Behavior, About You, and Advanced drafts together. Live web research takes effect on your next message.
           </span>
         )}
         <button className="pm-ws-action-btn" type="button" onClick={onClose}>Cancel</button>

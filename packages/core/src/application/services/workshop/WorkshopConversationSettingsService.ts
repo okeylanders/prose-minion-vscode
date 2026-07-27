@@ -15,6 +15,7 @@ import {
   WorkshopWriterProfile,
   WorkshopWebResearchSettings,
   coerceWorkshopWebResearchSettings,
+  isValidWorkshopWebResearchSettings,
   workshopWebResearchSettingsEqual
 } from '@messages';
 
@@ -56,6 +57,7 @@ export class WorkshopConversationSettingsService {
   private externalSyncPending = false;
   private pendingBehaviorPersistence?: PendingPersistence<WorkshopConversationBehavior>;
   private pendingProfilePersistence?: PendingPersistence<WorkshopWriterProfile>;
+  private pendingWebResearchPersistence?: PendingPersistence<WorkshopWebResearchSettings>;
   private webResearch: WorkshopWebResearchSettings;
 
   constructor(
@@ -68,11 +70,11 @@ export class WorkshopConversationSettingsService {
     this.webResearch = this.readWebResearchSetting();
   }
 
-  /** Apply and persist the modal's complete Behavior + About You submission. */
+  /** Apply and persist the modal's complete Behavior, About You, and Advanced submission. */
   applyFromWebview(
     rawBehavior: unknown,
     rawWriterProfile: unknown,
-    rawWebResearch?: unknown
+    rawWebResearch: unknown = undefined
   ): Promise<WorkshopConversationSettingsUpdate> {
     const nextBehavior = coerceWorkshopConversationBehavior(rawBehavior);
     const nextProfile = coerceWorkshopWriterProfile(rawWriterProfile);
@@ -83,6 +85,7 @@ export class WorkshopConversationSettingsService {
       this.externalSyncPending = false;
       const pendingBehavior = this.pendingBehaviorPersistence;
       const pendingProfile = this.pendingProfilePersistence;
+      const pendingWebResearch = this.pendingWebResearchPersistence;
       const persistBehavior = result.behaviorChanged
         || (pendingBehavior !== undefined
           && workshopConversationBehaviorsEqual(pendingBehavior.appliedValue, nextBehavior));
@@ -90,10 +93,13 @@ export class WorkshopConversationSettingsService {
         || (pendingProfile !== undefined
           && workshopWriterProfilesEqual(pendingProfile.appliedValue, nextProfile));
       const webResearchChanged = !workshopWebResearchSettingsEqual(this.webResearch, nextWebResearch);
-      const persistWebResearch = webResearchChanged;
+      const persistWebResearch = webResearchChanged
+        || (pendingWebResearch !== undefined
+          && workshopWebResearchSettingsEqual(pendingWebResearch.appliedValue, nextWebResearch));
       this.webResearch = nextWebResearch;
+      const changed = result.changed || webResearchChanged;
       if (!persistBehavior && !persistProfile && !persistWebResearch) {
-        return this.publicResult({ ...result, changed: result.changed || webResearchChanged });
+        return this.publicResult({ ...result, changed });
       }
 
       const persistenceErrors: WorkshopConversationSettingsPersistenceErrors = {};
@@ -132,14 +138,20 @@ export class WorkshopConversationSettingsService {
             WORKSHOP_WEB_RESEARCH_SETTING.key,
             nextWebResearch
           );
+          this.pendingWebResearchPersistence = undefined;
         } catch (error) {
           persistenceErrors.webResearch = this.errorMessage(error);
+          this.pendingWebResearchPersistence = {
+            storedValue: this.readWebResearchSetting(),
+            appliedValue: { ...nextWebResearch }
+          };
         }
       }
+      if (changed) this.logSettingsApplied(nextBehavior, nextProfile, nextWebResearch);
       return this.publicResult(
         Object.keys(persistenceErrors).length > 0
-          ? { ...result, changed: result.changed || webResearchChanged, persistenceErrors }
-          : { ...result, changed: result.changed || webResearchChanged }
+          ? { ...result, changed, persistenceErrors }
+          : { ...result, changed }
       );
     });
   }
@@ -163,11 +175,17 @@ export class WorkshopConversationSettingsService {
         this.resolveBehaviorSetting(this.readBehaviorSetting()),
         this.resolveProfileSetting(this.writerProfileService.readSetting())
       );
-      this.webResearch = this.readWebResearchSetting();
+      this.webResearch = this.resolveWebResearchSetting(this.readWebResearchSetting());
       this.externalSyncPending = false;
+      const changed = result.changed || !workshopWebResearchSettingsEqual(previousWebResearch, this.webResearch);
+      if (changed) this.logSettingsApplied(
+        this.session.getConversationBehavior(),
+        this.writerProfileService.getProfile(),
+        this.webResearch
+      );
       return this.publicResult({
         ...result,
-        changed: result.changed || !workshopWebResearchSettingsEqual(previousWebResearch, this.webResearch)
+        changed
       });
     });
   }
@@ -186,11 +204,17 @@ export class WorkshopConversationSettingsService {
         this.resolveBehaviorSetting(this.readBehaviorSetting()),
         this.resolveProfileSetting(this.writerProfileService.readSetting())
       );
-      this.webResearch = this.readWebResearchSetting();
+      this.webResearch = this.resolveWebResearchSetting(this.readWebResearchSetting());
       this.externalSyncPending = false;
+      const changed = result.changed || !workshopWebResearchSettingsEqual(previousWebResearch, this.webResearch);
+      if (changed) this.logSettingsApplied(
+        this.session.getConversationBehavior(),
+        this.writerProfileService.getProfile(),
+        this.webResearch
+      );
       return this.publicResult({
         ...result,
-        changed: result.changed || !workshopWebResearchSettingsEqual(previousWebResearch, this.webResearch)
+        changed
       });
     });
   }
@@ -227,12 +251,6 @@ export class WorkshopConversationSettingsService {
 
     this.session.setConversationBehavior(nextBehavior);
     this.writerProfileService.commit(nextProfile);
-    this.outputChannel.appendLine(
-      `[WorkshopConversationSettingsService] Conversation settings committed ` +
-      `(mode=${nextBehavior.interactionMode}, expression=${nextBehavior.expressionLevel}, ` +
-      `relationalDepth=${nextBehavior.relationalDepth}, carry=${nextBehavior.carryCuesThroughSession}, ` +
-      `profileEnabled=${nextProfile.enabled}, profileHasContent=${nextProfile.preferredAddress.length > 0 || nextProfile.bio.length > 0})`
-    );
     return { changed: true, deferred: false, behaviorChanged, profileChanged };
   }
 
@@ -245,10 +263,16 @@ export class WorkshopConversationSettingsService {
   }
 
   private readWebResearchSetting(): WorkshopWebResearchSettings {
-    return coerceWorkshopWebResearchSettings(this.settings.get<unknown>(
+    const raw = this.settings.get<unknown>(
       WORKSHOP_WEB_RESEARCH_SETTING.section,
       WORKSHOP_WEB_RESEARCH_SETTING.key
-    ));
+    );
+    if (raw !== undefined && !isValidWorkshopWebResearchSettings(raw)) {
+      this.outputChannel.appendLine(
+        '[WorkshopConversationSettingsService] Rejected invalid web research setting; using the disabled default'
+      );
+    }
+    return coerceWorkshopWebResearchSettings(raw);
   }
 
   private replacementTargets(): Array<{
@@ -311,6 +335,32 @@ export class WorkshopConversationSettingsService {
     }
     this.pendingProfilePersistence = undefined;
     return storedValue;
+  }
+
+  private resolveWebResearchSetting(
+    storedValue: WorkshopWebResearchSettings
+  ): WorkshopWebResearchSettings {
+    const pending = this.pendingWebResearchPersistence;
+    if (!pending) return storedValue;
+    if (workshopWebResearchSettingsEqual(storedValue, pending.storedValue)) {
+      return { ...pending.appliedValue };
+    }
+    this.pendingWebResearchPersistence = undefined;
+    return storedValue;
+  }
+
+  private logSettingsApplied(
+    behavior: WorkshopConversationBehavior,
+    profile: WorkshopWriterProfile,
+    webResearch: WorkshopWebResearchSettings
+  ): void {
+    this.outputChannel.appendLine(
+      `[WorkshopConversationSettingsService] Conversation settings applied ` +
+      `(mode=${behavior.interactionMode}, expression=${behavior.expressionLevel}, ` +
+      `relationalDepth=${behavior.relationalDepth}, carry=${behavior.carryCuesThroughSession}, ` +
+      `profileEnabled=${profile.enabled}, profileHasContent=${profile.preferredAddress.length > 0 || profile.bio.length > 0}, ` +
+      `webResearchEnabled=${webResearch.enabled})`
+    );
   }
 
   private assertBetweenRuns(): void {

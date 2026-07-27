@@ -71,7 +71,9 @@ const PAGES: readonly NoticePage[] = [
         Those choices are per-session, stay visible, and never change silently. The <b>About
         you</b> tab lets you choose how the room addresses you and share a short writer profile
         as background context. In <b>Advanced</b>, you can let personas research the live web
-        when it helps; their replies show each source as a clickable citation pill. These
+        when it helps; search queries may use active room context and run through OpenRouter and
+        search providers, so enable it only for material you are comfortable sharing. Their
+        replies show each source as a clickable citation pill. These
         conversation controls do not apply to direct instrument threads.
       </>
     )

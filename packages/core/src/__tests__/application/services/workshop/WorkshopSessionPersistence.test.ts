@@ -202,6 +202,15 @@ describe('WorkshopSessionService committed persistence', () => {
       message: 'actionableFindings must be array'
     },
     {
+      label: 'a persisted citation has an unsafe URL',
+      mutate: (value: unknown) => {
+        const report = (value as { turns: Array<{ citations?: Array<{ url: string }> }> }).turns
+          .find((turn) => turn.citations !== undefined)!;
+        report.citations![0].url = 'file:///private/draft';
+      },
+      message: 'citations[0].url must be a complete HTTP(S) URL'
+    },
+    {
       label: 'a participant union contains an invalid liveness value',
       mutate: (value: unknown) => {
         (value as { participants: { personaGuests: Array<{ liveness: unknown }> } })

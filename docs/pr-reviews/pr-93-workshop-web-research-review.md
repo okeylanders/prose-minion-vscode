@@ -13,28 +13,39 @@ findings are addressed so this file stays a living record. Legend: **Open** = ac
 
 | # | Sev | Finding | Reviewers | Consensus | Status |
 |---|-----|---------|-----------|-----------|--------|
-| 1 | 🔴 Blocking | `npm test` is red — modal suite fails to compile, `MessageHandler` test throws `getWebResearch is not a function` | Cal, Bria | 🎯🎯 | **Open** |
-| 2 | 🔴 Blocking | `[open, webResearch]` dep array wipes half-typed Conversation Settings drafts on every session-state push | Blake, Tim, Bria | 🎯🎯 | **Open** |
-| 3 | 🔴 Blocking | `assertCitation` accepts any string as a URL; `new URL()` in render then takes out the whole thread pane | Sam, Patricia, Blake | 🎯🎯 | **Open** |
-| 4 | 🔴 Blocking | `webResearch` skips the pending-persistence guard PR #83 added — failed write silently reverts | Marcus, Stan | 🎯 | **Open** |
-| 5 | 🟠 High | `citations: last.citations` drops every source found before the final turn of a multi-turn run | Blake | — | **Open** |
-| 6 | 🟠 High | `RunWorkshopToolSidePass` host tool-synthesis turn never receives `webResearch` | Bria | — | **Open** |
-| 7 | 🟠 High | No session-level cap on web-search spend or latency; attached to every persona turn | Tim | — | **Open** |
-| 8 | 🟠 High | `scope: "application"` on a network capability — no per-workspace opt-out, syncs across machines | Patricia | — | **Open** |
-| 9 | 🟠 High | Disclosure names latency and provider charges, never the second data recipient | Patricia | — | **Open** |
-| 10 | 🟠 High | First-wins citation merge silently discards a richer duplicate's title | Sam | — | **Open** |
-| 11 | 🟠 High | Pill numbers can disagree with the model's own inline `[n]` markers | Sam | — | **Open** |
-| 12 | 🟠 High | `WorkshopConversationSettingsService` web-research logic untested — and the existing mock would mask a backwards wiring | Cal | — | **Open** |
-| 13 | 🟠 High | The default-off case — the whole point of the feature — is never asserted | Cal | — | **Open** |
-| 14 | 🟠 High | Citation parse failures are indistinguishable from "the model cited nothing" | Oliver | — | **Open** |
-| 15 | 🟠 High | `createAnalysisResult` reaches 8 positional params; 3 call sites pad slot 7 with a literal `undefined` | Parker | — | **Open** |
-| 16 | 🟡 Standard | `readWebResearchSetting` drops the rejection-logging convention its writer-profile sibling adopted | Stan, Oliver | 🎯 | **Open** |
-| 17 | 🟡 Standard | Nothing logs that a turn attached the web-search tool; a research-only toggle logs nothing at all | Oliver | — | **Open** |
-| 18 | 🟡 Standard | Dedicated-service pattern not extended — web research is a bare private field on the coordinator | Marcus | — | **Open** |
-| 19 | 🟡 Standard | `changed: result.changed \|\| webResearchChanged` spelled out 3×, plus a rename that never diverges | Parker | — | **Open** |
-| 20 | 🟡 Standard | One feature, four names — Advanced / Research / `webResearch` / "live web research" | Parker | — | **Open** |
-| 21 | 🟢 Nit | `UrlCitation` forks the `TokenUsage` precedent for where cross-cutting provider types live | Marcus | — | **Open** |
-| 22 | 🟢 Nit | New `coerce`/`equal` pair ships without the doc comments both siblings carry; lone optional param | Stan | — | **Open** |
+| 1 | 🔴 Blocking | `npm test` is red — modal suite fails to compile, `MessageHandler` test throws `getWebResearch is not a function` | Cal, Bria | 🎯🎯 | **Addressed** |
+| 2 | 🔴 Blocking | `[open, webResearch]` dep array wipes half-typed Conversation Settings drafts on every session-state push | Blake, Tim, Bria | 🎯🎯 | **Addressed** |
+| 3 | 🔴 Blocking | `assertCitation` accepts any string as a URL; `new URL()` in render then takes out the whole thread pane | Sam, Patricia, Blake | 🎯🎯 | **Addressed** |
+| 4 | 🔴 Blocking | `webResearch` skips the pending-persistence guard PR #83 added — failed write silently reverts | Marcus, Stan | 🎯 | **Addressed** |
+| 5 | 🟠 High | `citations: last.citations` drops every source found before the final turn of a multi-turn run | Blake | — | **Addressed** |
+| 6 | 🟠 High | `RunWorkshopToolSidePass` host tool-synthesis turn never receives `webResearch` | Bria | — | **Addressed** |
+| 7 | 🟠 High | No session-level cap on web-search spend or latency; attached to every persona turn | Tim | — | **Deferred** |
+| 8 | 🟠 High | `scope: "application"` on a network capability — no per-workspace opt-out, syncs across machines | Patricia | — | **Addressed** |
+| 9 | 🟠 High | Disclosure names latency and provider charges, never the second data recipient | Patricia | — | **Addressed** |
+| 10 | 🟠 High | First-wins citation merge silently discards a richer duplicate's title | Sam | — | **Addressed** |
+| 11 | 🟠 High | Pill numbers can disagree with the model's own inline `[n]` markers | Sam | — | **Deferred** |
+| 12 | 🟠 High | `WorkshopConversationSettingsService` web-research logic untested — and the existing mock would mask a backwards wiring | Cal | — | **Addressed** |
+| 13 | 🟠 High | The default-off case — the whole point of the feature — is never asserted | Cal | — | **Addressed** |
+| 14 | 🟠 High | Citation parse failures are indistinguishable from "the model cited nothing" | Oliver | — | **Addressed** |
+| 15 | 🟠 High | `createAnalysisResult` reaches 8 positional params; 3 call sites pad slot 7 with a literal `undefined` | Parker | — | **Addressed** |
+| 16 | 🟡 Standard | `readWebResearchSetting` drops the rejection-logging convention its writer-profile sibling adopted | Stan, Oliver | 🎯 | **Addressed** |
+| 17 | 🟡 Standard | Nothing logs that a turn attached the web-search tool; a research-only toggle logs nothing at all | Oliver | — | **Addressed** |
+| 18 | 🟡 Standard | Dedicated-service pattern not extended — web research is a bare private field on the coordinator | Marcus | — | **Deferred** |
+| 19 | 🟡 Standard | `changed: result.changed \|\| webResearchChanged` spelled out 3×, plus a rename that never diverges | Parker | — | **Addressed** |
+| 20 | 🟡 Standard | One feature, four names — Advanced / Research / `webResearch` / "live web research" | Parker | — | **N/A** |
+| 21 | 🟢 Nit | `UrlCitation` forks the `TokenUsage` precedent for where cross-cutting provider types live | Marcus | — | **Addressed** |
+| 22 | 🟢 Nit | New `coerce`/`equal` pair ships without the doc comments both siblings carry; lone optional param | Stan | — | **Addressed** |
+
+---
+
+## Resolution notes — 2026-07-27
+
+- Findings **1–6**, **8–10**, and **12–17** now have direct regression coverage. Citation URLs are validated at provider ingestion and persisted-state restoration; the renderer also has a safe fallback.
+- Finding **7** is deferred to `.todo/tech-debt/2026-07-27-workshop-web-research-budget-and-citation-contract.md`: OpenRouter's current response does not provide an authoritative server-tool invocation count, so a session cap needs an explicit product/accounting contract rather than a misleading arbitrary limit.
+- Finding **11** is deferred in the same tracked item. The UI intentionally retains the user-requested independently numbered, clickable source pills; it does not claim an unprovable mapping to model-authored inline markers.
+- Finding **18** is deferred with that expansion path: the current single enablement toggle has the coordinator's guarded persistence contract, while any budget/control expansion must extract a dedicated web-research settings service.
+- Finding **20** is **N/A**: **Advanced** is the user-directed tab location, while **live web research** is the capability label and `webResearch` remains the precise internal setting name.
+- Findings **21–22** move `UrlCitation` into the cross-cutting messages barrel and align the web-research coercion API with sibling documentation/default-parameter conventions.
 
 ---
 

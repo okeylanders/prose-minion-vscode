@@ -15,7 +15,7 @@
 import { MessageEnvelope, MessageType } from './base';
 import { WritingToolsFocus } from './analysis';
 import { TokenUsage } from '../index';
-import { UrlCitation } from '../citations';
+import { UrlCitation } from './citations';
 import type { LabeledContextBudgetSnapshot } from './inferenceContext';
 import type {
   WorkshopAnalysisInputProvenance,
@@ -171,13 +171,20 @@ export const WORKSHOP_WEB_RESEARCH_SETTING = Object.freeze({
   key: 'workshop.webResearch'
 });
 
-export function coerceWorkshopWebResearchSettings(raw: unknown): WorkshopWebResearchSettings {
+/** Fail closed: only the complete one-field setting shape may enable research. */
+export function isValidWorkshopWebResearchSettings(raw: unknown): raw is WorkshopWebResearchSettings {
   return typeof raw === 'object' && raw !== null && !Array.isArray(raw)
-    && Object.keys(raw).length === 1 && typeof (raw as { enabled?: unknown }).enabled === 'boolean'
+    && Object.keys(raw).length === 1 && typeof (raw as { enabled?: unknown }).enabled === 'boolean';
+}
+
+/** Coerce untrusted settings to the default-off live-web capability. */
+export function coerceWorkshopWebResearchSettings(raw: unknown): WorkshopWebResearchSettings {
+  return isValidWorkshopWebResearchSettings(raw)
     ? { enabled: (raw as { enabled: boolean }).enabled }
     : { ...DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS };
 }
 
+/** Compare the value rather than allocation identity for settings synchronization. */
 export function workshopWebResearchSettingsEqual(
   left: WorkshopWebResearchSettings,
   right: WorkshopWebResearchSettings

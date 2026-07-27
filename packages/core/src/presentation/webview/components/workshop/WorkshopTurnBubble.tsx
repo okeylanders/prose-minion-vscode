@@ -49,7 +49,12 @@ export const WORKSHOP_TURN_ID_ATTRIBUTE = 'data-turn-id';
 
 const citationLabel = (citation: { url: string; title?: string }): string => {
   const title = citation.title?.trim();
-  return title && !/^\d+$/.test(title) ? title : new URL(citation.url).hostname;
+  if (title && !/^\d+$/.test(title)) return title;
+  try {
+    return new URL(citation.url).hostname || citation.url;
+  } catch {
+    return citation.url;
+  }
 };
 
 export const parseVariations = (content: string): ParsedVariations | null => {

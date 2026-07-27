@@ -6,6 +6,7 @@
  */
 
 import {
+  isHttpUrl,
   isWorkshopInteractionMode,
   isWorkshopPersonaExpressionLevel,
   isWorkshopRelationalDepth,
@@ -399,6 +400,9 @@ function assertTurn(value: unknown, path: string): void {
 function assertCitation(value: unknown, path: string): void {
   const citation = exactObject(value, path, ['url'], ['title', 'startIndex', 'endIndex']);
   stringAt(citation.url, `${path}.url`);
+  if (!isHttpUrl(citation.url)) {
+    throw new Error(`${path}.url must be a complete HTTP(S) URL`);
+  }
   optionalStringAt(citation.title, `${path}.title`);
   optionalNumberAt(citation.startIndex, `${path}.startIndex`);
   optionalNumberAt(citation.endIndex, `${path}.endIndex`);

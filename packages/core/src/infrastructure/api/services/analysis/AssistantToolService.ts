@@ -358,11 +358,13 @@ export class AssistantToolService {
       return AnalysisResultFactory.createAnalysisResult(
         'dialogue_analysis',
         executionResult.content,
-        executionResult.usedGuides,
-        executionResult.usage,
-        executionResult.finishReason,
-        executionResult.conversationId,
-        executionResult.requestedResources
+        {
+          usedGuides: executionResult.usedGuides,
+          usage: executionResult.usage,
+          finishReason: executionResult.finishReason,
+          conversationId: executionResult.conversationId,
+          requestedResources: executionResult.requestedResources
+        }
       );
     } catch (error) {
       // AbortError is now caught in the orchestrator, so this is only for other errors
@@ -430,11 +432,13 @@ export class AssistantToolService {
       return AnalysisResultFactory.createAnalysisResult(
         `writing_tools_${focus}`,
         executionResult.content,
-        executionResult.usedGuides,
-        executionResult.usage,
-        executionResult.finishReason,
-        executionResult.conversationId,
-        executionResult.requestedResources
+        {
+          usedGuides: executionResult.usedGuides,
+          usage: executionResult.usage,
+          finishReason: executionResult.finishReason,
+          conversationId: executionResult.conversationId,
+          requestedResources: executionResult.requestedResources
+        }
       );
     } catch (error) {
       // AbortError is now caught in the orchestrator, so this is only for other errors
@@ -499,11 +503,13 @@ export class AssistantToolService {
       return AnalysisResultFactory.createAnalysisResult(
         'prose_analysis',
         executionResult.content,
-        executionResult.usedGuides,
-        executionResult.usage,
-        executionResult.finishReason,
-        executionResult.conversationId,
-        executionResult.requestedResources
+        {
+          usedGuides: executionResult.usedGuides,
+          usage: executionResult.usage,
+          finishReason: executionResult.finishReason,
+          conversationId: executionResult.conversationId,
+          requestedResources: executionResult.requestedResources
+        }
       );
     } catch (error) {
       // AbortError is now caught in the orchestrator, so this is only for other errors
@@ -567,12 +573,13 @@ export class AssistantToolService {
     return AnalysisResultFactory.createAnalysisResult(
       'workshop_persona',
       executionResult.content,
-      executionResult.usedGuides,
-      executionResult.usage,
-      executionResult.finishReason,
-      executionResult.conversationId,
-      undefined,
-      executionResult.citations
+      {
+        usedGuides: executionResult.usedGuides,
+        usage: executionResult.usage,
+        finishReason: executionResult.finishReason,
+        conversationId: executionResult.conversationId,
+        citations: executionResult.citations
+      }
     );
   }
 
@@ -629,12 +636,13 @@ export class AssistantToolService {
     return AnalysisResultFactory.createAnalysisResult(
       'workshop_guest',
       executionResult.content,
-      executionResult.usedGuides,
-      executionResult.usage,
-      executionResult.finishReason,
-      executionResult.conversationId,
-      undefined,
-      executionResult.citations
+      {
+        usedGuides: executionResult.usedGuides,
+        usage: executionResult.usage,
+        finishReason: executionResult.finishReason,
+        conversationId: executionResult.conversationId,
+        citations: executionResult.citations
+      }
     );
   }
 
@@ -685,20 +693,25 @@ export class AssistantToolService {
     return AnalysisResultFactory.createAnalysisResult(
       'workshop_follow_up',
       executionResult.content,
-      executionResult.usedGuides,
-      executionResult.usage,
-      executionResult.finishReason,
-      executionResult.conversationId,
-      undefined,
-      executionResult.citations
+      {
+        usedGuides: executionResult.usedGuides,
+        usage: executionResult.usage,
+        finishReason: executionResult.finishReason,
+        conversationId: executionResult.conversationId,
+        citations: executionResult.citations
+      }
     );
   }
 
   private workshopWebSearchTools(enabled: boolean | undefined): OpenRouterWebSearchTool[] | undefined {
-    return enabled ? [{
+    if (!enabled) return undefined;
+    this.outputChannel?.appendLine(
+      '[AssistantToolService] Attaching OpenRouter web research tool (max uses=2, max results=10)'
+    );
+    return [{
       type: 'openrouter:web_search',
       parameters: { engine: 'auto', max_uses: 2, max_total_results: 10 }
-    }] : undefined;
+    }];
   }
 
   /**

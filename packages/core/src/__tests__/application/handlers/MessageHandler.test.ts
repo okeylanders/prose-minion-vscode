@@ -167,7 +167,8 @@ function createTestAssembly(): TestAssembly {
       applyFromWebview: jest.fn().mockResolvedValue({ changed: false, deferred: false }),
       syncFromSettings: jest.fn().mockResolvedValue({ changed: false, deferred: false }),
       flushDeferredSettingsSync: jest.fn().mockResolvedValue({ changed: false, deferred: false }),
-      getWriterProfile: jest.fn().mockReturnValue(DEFAULT_WORKSHOP_WRITER_PROFILE)
+      getWriterProfile: jest.fn().mockReturnValue(DEFAULT_WORKSHOP_WRITER_PROFILE),
+      getWebResearch: jest.fn().mockReturnValue({ enabled: false })
     },
     workshopSessionTimeService: new WorkshopSessionTimeService({
       now: () => new Date('2026-07-23T14:00:00.000Z'),
@@ -455,7 +456,8 @@ describe('MessageHandler assembly', () => {
 
   it.each([
     'proseMinion.workshop.conversationBehavior',
-    'proseMinion.workshop.writerProfile'
+    'proseMinion.workshop.writerProfile',
+    'proseMinion.workshop.webResearch'
   ])('pulls external Workshop setting %s into the live room', async (changedKey) => {
     const assembly = createTestAssembly();
     const handler = createHandler(assembly, jest.fn().mockResolvedValue(undefined));

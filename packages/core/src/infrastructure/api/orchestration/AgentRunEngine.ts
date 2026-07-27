@@ -1,6 +1,6 @@
 import { LogSink, SettingsStore } from '@/platform';
 import { OpenRouterClient, OpenRouterMessage } from '@providers/OpenRouterClient';
-import type { UrlCitation } from '@shared/types/citations';
+import type { UrlCitation } from '@messages';
 import {
   ConversationArchiveEntryV1,
   ConversationExportTarget,
@@ -274,6 +274,7 @@ export class AgentRunEngine {
     const requestedResources: string[] = [];
     const collectedSources: ContextSourceEntry[] = [];
     let totalUsage: TokenUsage | undefined;
+    let runCitations: UrlCitation[] | undefined;
     let latestObservation: InferenceRequestObservation | undefined;
     let peakPromptTokens = 0;
     let correctionTurns = 0;
@@ -296,6 +297,7 @@ export class AgentRunEngine {
       const next = await this.executeTurn(currentMessages(), runOptions, capability);
       recordObservation(next.observation);
       totalUsage = this.addUsage(totalUsage, next.usage);
+      runCitations = this.mergeUrlCitations(runCitations, next.citations);
       return next;
     };
 
@@ -328,6 +330,7 @@ export class AgentRunEngine {
       let last = await this.executeTurn(currentMessages(), runOptions, capability);
       recordObservation(last.observation);
       totalUsage = this.addUsage(totalUsage, last.usage);
+      runCitations = this.mergeUrlCitations(runCitations, last.citations);
       last = await recoverInvalidRequest(last);
       let rounds = 0;
 
@@ -459,7 +462,7 @@ export class AgentRunEngine {
         artifacts,
         usage: totalUsage,
         finishReason: last.finishReason,
-        citations: last.citations,
+        citations: runCitations,
         cancelled
       };
     } finally {
@@ -793,6 +796,23 @@ export class AgentRunEngine {
         ? (total.costUsd ?? 0) + (usage.costUsd ?? 0)
         : undefined
     };
+  }
+
+  private mergeUrlCitations(
+    current: UrlCitation[] | undefined,
+    additions: UrlCitation[] | undefined
+  ): UrlCitation[] | undefined {
+    if (!additions?.length) return current;
+    const merged = [...(current ?? [])];
+    for (const citation of additions) {
+      const existing = merged.find((entry) => entry.url === citation.url);
+      if (!existing) {
+        merged.push({ ...citation });
+      } else if (!existing.title?.trim() && citation.title?.trim()) {
+        existing.title = citation.title;
+      }
+    }
+    return merged.length > 0 ? merged : undefined;
   }
 
   private emitUsage(usage?: TokenUsage): void {

@@ -9,7 +9,7 @@ import {
   InferenceRequestObservation,
   TokenUsage
 } from '@shared/types';
-import type { UrlCitation } from '@shared/types/citations';
+import { isHttpUrl, type UrlCitation } from '@messages';
 
 const FALLBACK_OUTPUT_RESERVE_TOKENS = 10000;
 
@@ -328,12 +328,24 @@ export class OpenRouterClient {
 
   private toUrlCitations(raw: unknown): UrlCitation[] | undefined {
     if (!Array.isArray(raw)) return undefined;
+    const rejectedTypes: string[] = [];
     const citations = raw.flatMap((annotation): UrlCitation[] => {
-      if (typeof annotation !== 'object' || annotation === null) return [];
+      if (typeof annotation !== 'object' || annotation === null) {
+        rejectedTypes.push(typeof annotation);
+        return [];
+      }
       const source = (annotation as { url_citation?: unknown }).url_citation;
-      if (typeof source !== 'object' || source === null) return [];
+      if (typeof source !== 'object' || source === null) {
+        rejectedTypes.push(typeof (annotation as { type?: unknown }).type === 'string'
+          ? (annotation as { type: string }).type
+          : 'unknown');
+        return [];
+      }
       const value = source as Record<string, unknown>;
-      if (typeof value.url !== 'string' || !/^https?:\/\//.test(value.url)) return [];
+      if (!isHttpUrl(value.url)) {
+        rejectedTypes.push('url_citation:invalid-url');
+        return [];
+      }
       return [{
         url: value.url,
         title: typeof value.title === 'string' ? value.title : undefined,
@@ -341,7 +353,19 @@ export class OpenRouterClient {
         endIndex: typeof value.end_index === 'number' ? value.end_index : undefined
       }];
     });
-    return this.mergeUrlCitations(undefined, citations);
+    if (rejectedTypes.length > 0) {
+      this.outputChannel?.appendLine(
+        `[OpenRouterClient] Dropped ${rejectedTypes.length}/${raw.length} unparseable citation annotation(s): ` +
+        [...new Set(rejectedTypes)].join(', ')
+      );
+    }
+    const merged = this.mergeUrlCitations(undefined, citations);
+    if (merged?.length) {
+      this.outputChannel?.appendLine(
+        `[OpenRouterClient] Parsed ${merged.length} web citation(s) from ${raw.length} annotation(s)`
+      );
+    }
+    return merged;
   }
 
   private mergeUrlCitations(
@@ -350,8 +374,11 @@ export class OpenRouterClient {
   ): UrlCitation[] | undefined {
     const merged = [...(current ?? [])];
     for (const citation of additions) {
-      if (!merged.some((existing) => existing.url === citation.url)) {
+      const existing = merged.find((entry) => entry.url === citation.url);
+      if (!existing) {
         merged.push(citation);
+      } else if (!existing.title?.trim() && citation.title?.trim()) {
+        existing.title = citation.title;
       }
     }
     return merged.length > 0 ? merged : undefined;

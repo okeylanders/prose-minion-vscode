@@ -5,6 +5,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { WorkshopConversationBehaviorModal } from '@components/workshop/WorkshopConversationBehaviorModal';
 import {
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
+  DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS,
   DEFAULT_WORKSHOP_WRITER_PROFILE,
   WorkshopConversationBehavior,
   WorkshopWriterProfile
@@ -18,6 +19,7 @@ describe('WorkshopConversationBehaviorModal', () => {
       open: true,
       behavior: { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR },
       writerProfile: { ...DEFAULT_WORKSHOP_WRITER_PROFILE },
+      webResearch: { ...DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS },
       isRunning: false,
       onApply: jest.fn(),
       onClose: jest.fn(),
@@ -27,13 +29,15 @@ describe('WorkshopConversationBehaviorModal', () => {
     return { props, view };
   };
 
-  it('renders accessible Behavior and About you tabs with the approved scope', () => {
+  it('renders accessible Behavior, About you, and Advanced tabs with the approved scope', () => {
     renderModal();
 
     expect(screen.getByRole('heading', { name: 'Conversation settings' })).not.toBeNull();
     expect(screen.getByRole('tab', { name: 'Behavior' }).getAttribute('aria-selected')).toBe('true');
     expect(screen.getByRole('tab', { name: 'About you' }).getAttribute('aria-controls'))
       .toBe('pm-ws-profile-panel');
+    expect(screen.getByRole('tab', { name: 'Advanced' }).getAttribute('aria-controls'))
+      .toBe('pm-ws-advanced-panel');
     expect(screen.getByRole('tabpanel').getAttribute('aria-labelledby')).toBe('pm-ws-behavior-tab');
     expect(screen.getByText('Response style')).not.toBeNull();
     expect(screen.getByText('Relational depth')).not.toBeNull();
@@ -49,6 +53,14 @@ describe('WorkshopConversationBehaviorModal', () => {
     expect(profileTab.getAttribute('aria-selected')).toBe('true');
     expect(document.activeElement).toBe(profileTab);
     expect(screen.getByRole('tabpanel').getAttribute('aria-labelledby')).toBe('pm-ws-profile-tab');
+
+    fireEvent.keyDown(profileTab, { key: 'ArrowRight' });
+    const advancedTab = screen.getByRole('tab', { name: 'Advanced' });
+    expect(advancedTab.getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(advancedTab);
+
+    fireEvent.keyDown(advancedTab, { key: 'ArrowRight' });
+    expect(behaviorTab.getAttribute('aria-selected')).toBe('true');
   });
 
   it('edits profile fields locally and submits both complete drafts together', () => {
@@ -66,7 +78,8 @@ describe('WorkshopConversationBehaviorModal', () => {
 
     expect(props.onApply).toHaveBeenCalledWith(
       expect.objectContaining({ interactionMode: 'analysis' }),
-      { enabled: true, preferredAddress: 'Okey', bio: 'I write fiction.' }
+      { enabled: true, preferredAddress: 'Okey', bio: 'I write fiction.' },
+      DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS
     );
     expect(screen.getByText('Conversation settings are updating…')).not.toBeNull();
   });
@@ -86,7 +99,8 @@ describe('WorkshopConversationBehaviorModal', () => {
 
     expect(props.onApply).toHaveBeenCalledWith(
       DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
-      DEFAULT_WORKSHOP_WRITER_PROFILE
+      DEFAULT_WORKSHOP_WRITER_PROFILE,
+      DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS
     );
   });
 
@@ -148,6 +162,36 @@ describe('WorkshopConversationBehaviorModal', () => {
     });
 
     expect(screen.getByText(`4 / 80`)).not.toBeNull();
+  });
+
+  it('keeps drafts intact when an unrelated session-state push re-allocates web research', () => {
+    const { props, view } = renderModal();
+    fireEvent.click(screen.getByRole('tab', { name: 'About you' }));
+    fireEvent.change(screen.getByRole('textbox', { name: /How should the room address you/ }), {
+      target: { value: 'Half-typed' }
+    });
+
+    view.rerender(
+      <WorkshopConversationBehaviorModal {...props} webResearch={{ enabled: false }} />
+    );
+
+    expect(screen.getByRole('tab', { name: 'About you' }).getAttribute('aria-selected')).toBe('true');
+    expect((screen.getByRole('textbox', {
+      name: /How should the room address you/
+    }) as HTMLInputElement).value).toBe('Half-typed');
+  });
+
+  it('submits the Advanced research draft with the other conversation settings', () => {
+    const { props } = renderModal();
+    fireEvent.click(screen.getByRole('tab', { name: 'Advanced' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Allow live web research' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply to next turn' }));
+
+    expect(props.onApply).toHaveBeenCalledWith(
+      DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
+      DEFAULT_WORKSHOP_WRITER_PROFILE,
+      { enabled: true }
+    );
   });
 
   it('locks Apply during a response while leaving inspection and drafts available', () => {

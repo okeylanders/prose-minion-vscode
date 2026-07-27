@@ -39,7 +39,7 @@ import {
   WorkshopTurnKind
 } from '@messages';
 import { isContextPathGroup, TokenUsage } from '@shared/types';
-import type { UrlCitation } from '@shared/types/citations';
+import type { UrlCitation } from '@messages';
 import {
   WorkshopCapabilityArtifactDetails,
   WorkshopAnalysisInputProvenance,
