@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="pm-widgets.css">
 <link rel="stylesheet" href="pm-workshop.css">
 <link rel="stylesheet" href="pm-wk-modals.css">
+<link rel="stylesheet" href="pm-wk-pins.css">
 <link rel="stylesheet" href="pm-sessions.css">
 <style>a{color:var(--accent-hi)}a:hover{color:var(--text)}</style>
 <template id="__bundler_thumbnail">
@@ -49,5 +50,8 @@
 <script src="pm-widgets.js"></script>
 <script src="pm-sessions.js"></script>
 <script src="pm-workshop.js"></script>
+<script src="pm-wk-pins.js"></script>
+<script src="pm-wk-notify.js"></script>
+<script>window.addEventListener('load',function(){ setTimeout(function(){ PMNotify.open(false); },400); });</script>
 </body>
 </html>

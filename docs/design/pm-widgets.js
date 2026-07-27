@@ -9,18 +9,23 @@ const cwIc = (n,o)=> (ICONS[n]||CWX[n])(o||{size:15,sw:1.7});
 const cwEsc = s=> s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
 const CW_WIDGETS = [
-  {group:'Ready now', items:[
-    {id:'gesture',icon:'hand',name:'Gesture Playground',rail:'oneshot',railT:'one-shot',blurb:'One model call returns a menu of gesture directions for a phrase — keep the ones you want, commit them to the room.',tag:'Sprint 01',live:true}]},
-  {group:'Committed sprints', items:[
+  {group:'Playgrounds', desc:'Play a beat before anything commits — generate, keep what lands, commit once.', items:[
+    {id:'gesture',icon:'hand',name:'Gesture Playground',rail:'oneshot',railT:'one-shot',blurb:'One model call returns a menu of gesture directions for a phrase — keep the ones you want, commit them to the room.',tag:'Sprint 01',live:true},
+    {id:'svt',icon:'eye',name:'Show vs. Tell Playground',rail:'oneshot',railT:'one-shot',blurb:'Recast a told beat as shown alternatives; keep the ones that land.',tag:'concept'},
+    {id:'cvx',icon:'branch',name:'Creative Variations Explorer',rail:'oneshot',railT:'one-shot',blurb:'Three to five genuinely different takes on a passage under invariants you declare — aimed by a sampling dial or a bound frame, measured for distinctness, compared side by side.',tag:'concept'}]},
+  {group:'Explorers', desc:'Derive a relationship — typed, span-anchored, graded for resemblance, never quality.', items:[
+    {id:'trx',icon:'link',name:'Topic Relationship Explorer',rail:'oneshot',railT:'one-shot',blurb:'Name a topic — a thinker, a framework, a tradition — and derive its relationship to the passage as a typed dossier: span-anchored points of contact, graded grounding, where the lens distorts, one question.',tag:'concept'},
+    {id:'grx',icon:'cards',name:'Genre Relationship Explorer',rail:'oneshot',railT:'one-shot',blurb:'Survey a chapter for the genres it’s in conversation with, then take one apart tell by tell — expectation against span-anchored evidence: matches, departs, subverts.',tag:'concept'}]},
+  {group:'Influences', desc:'Standing surfaces — pinned to the room, weighing on every turn until unpinned.', items:[
     {id:'gravity',icon:'orbit',name:'Lexical Gravity',rail:'standing',railT:'standing',blurb:'Pull the passage’s lexis toward an interpretive lens — Photography, Mathematics, Music — with weight and reach.',tag:'Sprint 02'},
     {id:'ctrl',icon:'sliders',name:'Prose Controller',rail:'standing',railT:'standing',blurb:'How the passage is made: diction, sentence architecture, rhythm, density, figurative texture, punctuation.',tag:'Sprint 03'},
     {id:'blend',icon:'scale',name:'Gravity: Lens Blending',rail:'standing',railT:'standing',blurb:'Blend multiple lenses with explicit dominance weighting — never an unweighted average.',tag:'Sprint 04'}]},
-  {group:'Concept springs', items:[
-    {id:'decisions',icon:'stamp',name:'Decisions',rail:'oneshot',railT:'one-shot',blurb:'Append-only decision record; a deterministic scan assembles the running list.',tag:'concept'},
-    {id:'scratch',icon:'doc',name:'Project Scratch Pad',rail:'resource',railT:'resource',blurb:'Durable project notes; each append also leaves a visible thread event.',tag:'concept'},
-    {id:'learnen',icon:'cap',name:'Learner: English',rail:'oneshot',railT:'one-shot',blurb:'Lessons and drills; selected exercises commit as one-shot artifacts.',tag:'concept'},
-    {id:'learncraft',icon:'book',name:'Learner: Art of the Craft',rail:'oneshot',railT:'one-shot',blurb:'The Learner shell with a storytelling-craft curriculum pack.',tag:'concept'},
-    {id:'svt',icon:'eye',name:'Show vs. Tell Playground',rail:'oneshot',railT:'one-shot',blurb:'Recast a told beat as shown alternatives; keep the ones that land.',tag:'concept'}]}
+  {group:'Learners', desc:'Curriculum packs over your own pages — learn, inspect, practise, bring back a question.', items:[
+    {id:'learnen',icon:'cap',name:'Learner: English & Writing',rail:'oneshot',railT:'one-shot',blurb:'The Learner shell with a Working English pack — parse the passage, see what is a rule and what is a choice, bring back a question.',tag:'concept'},
+    {id:'learncraft',icon:'book',name:'Learner: The Storytelling Craft',rail:'oneshot',railT:'one-shot',blurb:'The Learner shell with a storytelling-craft curriculum pack — learn, inspect the passage, practise, and bring back only what was useful.',tag:'concept'}]},
+  {group:'Resources', desc:'Durable records — they outlive the session and every one-shot around them.', items:[
+    {id:'decisions',icon:'stamp',name:'Decisions',rail:'resource',railT:'resource',blurb:'Append-only decision record; a deterministic scan assembles the running list.',tag:'concept'},
+    {id:'scratch',icon:'doc',name:'Project Scratch Pad',rail:'resource',railT:'resource',blurb:'Durable project notes; each append also leaves a visible thread event.',tag:'concept'}]}
 ];
 
 const CW_MENU = [
@@ -54,28 +59,63 @@ function cwXBtn(){
   b.innerHTML=cwIc('x',{size:13,sw:1.8}); b.addEventListener('click',cwClose); return b;
 }
 
+/* ---------- sheet browser (Invite Guest pattern: locked head + foot, categorized card grid) ---------- */
+const CW_RAILCOST={oneshot:'plays free — commits exactly one turn',standing:'pins to the room — rides every turn until unpinned',resource:'durable — persists across sessions'};
+function cwSheetBrowser(cfg){
+  const el=document.createElement('div'); el.className='cwx-sheet'+(cfg.inModal?'':' solo');
+  if(cfg.inModal) el.appendChild(cwXBtn());
+  let body='';
+  cfg.groups.forEach(g=>{
+    body+=`<div class="cwx-gh"><span class="t">${g.name}</span><span class="d">${g.desc||''}</span><hr></div><div class="cwx-grid">`;
+    g.items.forEach(w=>{
+      body+=`<button class="cwx-card${w.live?'':' dis'}" data-wid="${w.id}" aria-pressed="false"${w.live?'':' title="Not playable in this spread — visible so the registry ships with honest state"'}>
+        <span class="chk">${cwIc('check',{size:12,sw:2.6})}</span>
+        <span class="ic">${cwIc(w.icon,{size:16,sw:1.7})}</span>
+        <span class="nm">${w.name}</span>
+        <span class="tags">${w.railT?`<span class="cw-rail ${w.rail}">${w.railT}</span>`:''}${w.tag?`<span class="cw-stag">${w.tag}</span>`:''}</span>
+        <span class="bl">${w.blurb}</span></button>`;
+    });
+    body+='</div>';
+  });
+  el.insertAdjacentHTML('beforeend',`
+    <header class="cwx-head"><div class="kick">${cfg.kicker}</div><h2>${cfg.title}</h2><p>${cfg.sub}</p></header>
+    <div class="cwx-body">${body}</div>
+    <footer class="cwx-foot">
+      <div class="sum"><span class="none">${cfg.emptyNote}</span></div>
+      ${cfg.inModal?'<button class="cwx-cancel">Cancel</button>':''}
+      <button class="cwx-launch" disabled><span class="n">${cfg.verb} a ${cfg.noun}</span></button>
+    </footer>`);
+  const sum=el.querySelector('.sum'), launch=el.querySelector('.cwx-launch');
+  const find=id=>{for(const g of cfg.groups){const w=g.items.find(x=>x.id===id);if(w)return w;}};
+  let sel=null;
+  const setSel=id=>{
+    sel=id;
+    el.querySelectorAll('.cwx-card').forEach(c=>{const on=c.dataset.wid===id;c.classList.toggle('sel',on);c.setAttribute('aria-pressed',String(on));});
+    const w=id&&find(id);
+    if(!w){ sum.innerHTML=`<span class="none">${cfg.emptyNote}</span>`; launch.disabled=true; launch.innerHTML=`<span class="n">${cfg.verb} a ${cfg.noun}</span>`; launch.title=''; return; }
+    sum.innerHTML=`<span class="ic">${cwIc(w.icon,{size:15,sw:1.8})}</span><b>${w.name}</b>${w.railT?`<span class="cw-rail ${w.rail}">${w.railT}</span>`:''}<span class="note">${w.cost||CW_RAILCOST[w.rail]||''}</span>`;
+    launch.disabled=!w.live;
+    launch.innerHTML=`<span class="n">${w.live?cfg.verb+' '+w.name:'Not in this spread'}</span>`;
+    launch.title=w.live?'':'Playable in its own spread — listed here so the registry is honest';
+  };
+  el.querySelector('.cwx-body').addEventListener('click',e=>{
+    const c=e.target.closest('.cwx-card'); if(!c) return;
+    setSel(sel===c.dataset.wid?null:c.dataset.wid);
+  });
+  launch.addEventListener('click',()=>{ const w=sel&&find(sel); if(w&&w.live) cfg.onLaunch(w); });
+  const cx=el.querySelector('.cwx-cancel'); if(cx) cx.addEventListener('click',cwClose);
+  return el;
+}
+
 /* ---------- widget browser ---------- */
 function buildWidgetBrowser(onPick, inModal, liveIds){
-  const el=document.createElement('div'); el.className='cw-browser';
-  if(inModal) el.appendChild(cwXBtn());
-  el.insertAdjacentHTML('beforeend',
-    `<div class="cw-eyebrow">Workshop · Composer</div><h3>Widgets</h3>
-     <p class="bsub">Interactive surfaces you <b>play with before anything commits</b>. Tools run once; messages just say things; a widget is played, then committed — a visible event plus an optional shaping payload.</p>`);
-  CW_WIDGETS.forEach(g=>{
-    el.insertAdjacentHTML('beforeend',`<div class="cw-mgh"><span class="t">${g.group}</span><hr></div>`);
-    g.items.forEach(w=>{
-      const b=document.createElement('button');
-      const live = liveIds ? liveIds.includes(w.id) : w.live;
-      b.className='cw-brow'+(live?'':' dis');
-      if(!live) b.title='Not playable in this spread — visible so the registry ships with honest state';
-      b.innerHTML=`<span class="ic">${cwIc(w.icon,{size:16,sw:1.7})}</span>
-        <span class="bt"><span class="nm">${w.name} <span class="cw-rail ${w.rail}">${w.railT}</span> <span class="cw-stag">${w.tag}</span></span>
-        <span class="bl">${w.blurb}</span></span>`;
-      if(live) b.addEventListener('click',()=>onPick(w));
-      el.appendChild(b);
-    });
+  return cwSheetBrowser({
+    kicker:'Workshop · Composer', title:'Widgets', noun:'widget', verb:'Open',
+    sub:'Interactive surfaces you <b>play with before anything commits</b>. Playgrounds and Explorers ride one turn; Influences stand until unpinned; Resources outlive the session.',
+    emptyNote:'Select a widget — the rail on each card states what opening it can cost.',
+    groups:CW_WIDGETS.map(g=>({name:g.group,desc:g.desc,items:g.items.map(w=>({...w,live:liveIds?liveIds.includes(w.id):w.live}))})),
+    inModal, onLaunch:onPick
   });
-  return el;
 }
 
 /* ---------- gesture playground panel ---------- */

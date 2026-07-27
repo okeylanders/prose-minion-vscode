@@ -12,7 +12,10 @@ styles, scripts, and assets — no build step.
 - **Pulled via:** the `claude_design` MCP (`DesignSync` tool) + `/design-login`,
   2026-07-03; Workshop intake + context-bar comps re-pulled 2026-07-17; Persona
   Schematic pulled 2026-07-21; **Workshop editor tab + session persistence
-  pulled 2026-07-23** (Sprint 10 interaction source of truth).
+  pulled 2026-07-23** (Sprint 10 interaction source of truth); **Workshop tab
+  re-pulled 2026-07-26** (Sprint 14 source: carded intake rail, sheet-pattern
+  tools/widgets browsers, startup beta notices, standing-pins scaffold —
+  new files `pm-wk-notify.js`, `pm-wk-pins.css`, `pm-wk-pins.js`).
 - **Sync policy:** this folder is a snapshot, kept in sync by re-pulling from
   the design project (never hand-edit these files to change the design — edit
   in Claude Design, then re-pull). Local hand-edits are allowed only for
@@ -22,7 +25,7 @@ styles, scripts, and assets — no build step.
 
 | File | What it is | Status |
 |------|------------|--------|
-| `Prose Minion - Assistant Tab.html` | **Interactive prototype** of the **Workshop editor tab** (Sprint 10 shape): full-viewport tab with the host/persona cluster, **Sessions menu** (New / Save / Open prior / Recent), model picker, pinned excerpt + context-budget rail, tools + widgets composer, and a restored-session state. Loads `pm-workshop.*` + `pm-sessions.*` + `pm-wk-modals.css` + `pm-widgets.*`. **Note:** this filename was repurposed from the old split-pane Assistant (now in `… (Direction B).html`). | **Approved interaction design** — persistence semantics are governed by the amended [ADR](../adr/2026-07-14-workshop-session-persistence.md) |
+| `Prose Minion - Assistant Tab.html` | **Interactive prototype** of the **Workshop editor tab** (Sprint 10 shape): full-viewport tab with the host/persona cluster, **Sessions menu** (New / Save / Open prior / Recent), model picker, pinned excerpt + context-budget rail, tools + widgets composer, and a restored-session state. Loads `pm-workshop.*` + `pm-sessions.*` + `pm-wk-modals.css` + `pm-widgets.*` + `pm-wk-pins.*` + `pm-wk-notify.js` (the 2026-07-26 drop adds the carded intake rail, the `cwx-*` sheet-pattern tools/widgets browsers, the six-page startup beta notice, and a not-yet-wired standing-pins rail). **Note:** this filename was repurposed from the old split-pane Assistant (now in `… (Direction B).html`). | **Approved interaction design** — persistence semantics are governed by the amended [ADR](../adr/2026-07-14-workshop-session-persistence.md) |
 | `Prose Minion - Assistant Tab (Direction B).html` | The earlier full-tab Assistant prototype, Direction B ("Split & pinned"): pinned excerpt + context rail, chat thread with contextual quick-actions, model dropdown, tools modal, localStorage-persisted thread. Superseded by the Workshop tab above; kept for reference (loads `pm-fulltab.css` + `pm-direction-b.*` + `pm-frames-fulltab.js`). | Reference / superseded |
 | `Prose Minion - Design Refresh.html` | The presentation canvas: Frame Minion design language applied to the sidebar chrome + all four tabs, the Writing Tools picker modal, and static comps of all three full-tab Assistant directions (A thread / B split / C branch board). | Reference / catalog |
 | `Prose Minion - Model Browser.html` | Sidebar-width model picker that replaces the model dropdown: search, By Provider / By Family pivots, filter chips, price + ctx badges, selected/offline states. | Designed, not implemented |
@@ -73,8 +76,23 @@ styles, scripts, and assets — no build step.
   choose-from-project file browser.
 - `pm-widgets.css` / `pm-widgets.js` — the **shared modal shell**
   (`cwOpen`/`cwClose`/`cwXBtn` overlay) + the Conversation Widgets browser and
-  Gesture Playground. Load-bearing for both the Workshop session modals and the
-  next-epic widget spreads (see "Not pulled yet").
+  Gesture Playground. The 2026-07-26 drop adds `cwSheetBrowser()` (`cwx-*`
+  classes): a shared 940×780 sheet with locked head/foot and a categorized
+  selectable card grid, now backing both the Tools and Widgets browsers; the
+  widget registry is regrouped into Playgrounds / Explorers / Influences /
+  Learners / Resources. Load-bearing for both the Workshop session modals and
+  the next-epic widget spreads (see "Not pulled yet").
+- `pm-wk-notify.js` — **startup beta notices** (`window.PMNotify`): a six-page
+  dismissible "Workshop · beta" modal opened 400ms after load (welcome, project
+  folder setup, hosts & guests, conversation controller, tools, agents), with
+  prev/next arrows, dot pager, and a "Don't show again" checkbox persisted to
+  `localStorage` (`pm-wk-notice-dsa-v1`).
+- `pm-wk-pins.css` / `pm-wk-pins.js` — **standing-pins scaffold**
+  (`window.PMPins`): a two-row rail above the composer — Standing influence
+  chips (Lexical Gravity, Prose Controller, Genre position) and a "Pinned
+  decisions" fan whose decision modal shows original/updated/reasoning/notes —
+  plus "Talking to" host chips. Display scaffolding only: actions fire toasts;
+  the functionality is deliberately unwired (next epic).
 - `assets/` — logo images. **Copied from
   [`apps/vscode-extension/assets/`](../../apps/vscode-extension/assets/)**
   (same files the extension ships) rather than pulled from the design project,
@@ -97,6 +115,16 @@ interaction scope. See the amended
 and [Sprint 10](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md)
 for behavioral truth. Do not hand-edit the synced prototype to erase this
 historical delta; update the remote design and re-pull when its copy catches up.
+
+**Delta reopened by the 2026-07-26 re-pull:** the remote design now shows a
+per-row amber `.sb-note` ("memory not retained on restore") and browser subcopy
+saying "Room memory from a saved session isn't retained — the persona starts
+fresh". That contradicts the locked T3 contract above (normal restore continues
+retained persona conversations; transcript-only restore is reserved for
+degraded recovery). **Resolved at Sprint 14 kickoff (2026-07-26): shipped
+behavior + the ADR remain truth; the note is not ported.** Update the remote
+design and re-pull when its copy catches up — see
+[Sprint 14](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/14-design-catchup-release-candidate.md).
 
 ## Present on remote, not pulled yet (next epic)
 
