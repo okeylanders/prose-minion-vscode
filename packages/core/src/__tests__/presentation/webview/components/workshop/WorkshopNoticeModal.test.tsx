@@ -48,4 +48,13 @@ describe('WorkshopNoticeModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(onDismiss).toHaveBeenCalledWith(true);
   });
+
+  it('plain close invokes onClose and never records a dismissal', () => {
+    const { onClose, onDismiss } = renderModal();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close notices' }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
 });

@@ -153,6 +153,23 @@ catalog at implementation time (`$PROSE_MINION_API_KEY` is exported in
 scoped-model settings enums; confirm the picker renders and persists the new
 entries.
 
+### 7. Instrument-thread audience clarity
+
+Make the existing room-ledger boundary visible rather than relying on the
+active instrument chip alone:
+
+- While an instrument is the composer target, show a persistent scope note
+  naming the thread as private to the writer and that instrument.
+- State both directions of isolation: Jill and guests do not receive direct
+  instrument follow-ups, and the instrument does not receive Jill/guest
+  conversations.
+- State that instruments use their own analysis instructions; persona voice,
+  Writer Profile, and Conversation Controller settings do not apply.
+- Keep the initial commissioned tool report explicitly distinct: it remains
+  Room-visible and available to the host for synthesis.
+- Label both the writer and instrument bubbles in a direct exchange with their
+  private audience. Do not mark ordinary tool reports private.
+
 ## Out of scope (explicit)
 
 - **The second rail (standing pins / pinned decisions / `pm-wk-pins.*`)** —
@@ -194,6 +211,9 @@ entries.
   persistence that survives reload and restart.
 - [ ] The model picker offers the refreshed catalog with verified OpenRouter
   ids; selection persists.
+- [x] Direct instrument mode states both directions of conversation isolation,
+  states that persona/controller attributes do not apply, distinguishes the
+  Room-visible original report, and labels both sides of private follow-ups.
 - [ ] No standing-pins rail, no set-aside affordance in a started chat, and
   no restore-copy regression ships.
 - [ ] Focused tests, typecheck, lint, architecture checks, and the full suite
@@ -202,10 +222,11 @@ entries.
 
 ## Verification
 
-Automated (2026-07-26, implementation complete):
+Automated (2026-07-26, implementation + PR review resolution complete):
 
-- Full Jest suite: 1,462 tests passed across 136 suites (13 new tests:
-  Tools/Widgets sheet browsers, notice modal, UIHandler notice contract);
+- Full Jest suite: 1,472 tests passed across 137 suites (23 new tests across
+  Tools/Widgets sheet browsers, notice modal and hook, UIHandler notice
+  contract/failure behavior, and instrument audience rendering);
   snapshot passed; architecture guards green.
 - `npm run typecheck`: passed for core, webview, and extension.
 - `npm run lint`: passed with the repository's existing warnings, no errors.

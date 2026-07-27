@@ -4,12 +4,16 @@
  *
  * Presentation-only over WorkshopParticipantsSnapshot: the persona chip
  * returns to host (replacing the old "Back to <persona>" banner link), tool
- * chips enter direct mode via WORKSHOP_SET_CHAT_TARGET, and the active chip
- * IS the mode indicator — this rail subsumes the direct-mode banner. Chips
- * render only live sidecars; the host snapshot drops disposed ones, so a
- * chip can never target a dead conversation.
+ * chips enter direct mode via WORKSHOP_SET_CHAT_TARGET. The active chip is
+ * the routing indicator; the adjacent scope note carries the fuller audience
+ * contract without bringing back the old transient banner. Chips render only
+ * live sidecars; the host snapshot drops disposed ones, so a chip can never
+ * target a dead conversation.
  * During an active response, the rail stays mounted as a stable participant
- * map while every routing control is temporarily locked.
+ * map while every routing control is temporarily locked. Direct instrument
+ * mode also renders the durable audience boundary below the rail: the active
+ * chip identifies WHERE the next message goes; the note explains who can and
+ * cannot see that exchange and which persona settings do not apply.
  *
  * Deliberately NOT a host persona picker (ADR §1): the persona chip is the
  * return-to-host affordance. The explicit Invite guest chip is the one
@@ -79,13 +83,14 @@ export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = (
   const lockedControlTitle = 'Available once the response finishes';
 
   return (
-    <div
-      ref={railRef}
-      className="pm-ws-participant-rail"
-      role="toolbar"
-      aria-label="Conversation participants and instruments"
-      tabIndex={-1}
-    >
+    <>
+      <div
+        ref={railRef}
+        className="pm-ws-participant-rail"
+        role="toolbar"
+        aria-label="Conversation participants and instruments"
+        tabIndex={-1}
+      >
       {/* Participants and instruments are DIFFERENT kinds of thing
           (ADR 2026-07-24 §9): labeled groups plus a real separator, not a
           decorative glyph. Participants join the conversation; instruments
@@ -210,13 +215,28 @@ export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = (
       )}
       {/* The banner this rail replaced was role="status" — keep direct-mode
           switches audible to screen readers, not just visible as chip state. */}
-      <span className="pm-ws-visually-hidden" role="status">
-        {activeToolLabel
-          ? `Talking directly to ${activeToolLabel}`
-          : activeGuestLabel
-            ? `Talking to ${activeGuestLabel}`
-            : `Talking to ${personaLabel}`}
-      </span>
-    </div>
+        <span className="pm-ws-visually-hidden" role="status">
+          {activeToolLabel
+            ? `Talking directly to ${activeToolLabel}`
+            : activeGuestLabel
+              ? `Talking to ${activeGuestLabel}`
+              : `Talking to ${personaLabel}`}
+        </span>
+      </div>
+      {activeToolLabel && (
+        <aside className="pm-ws-instrument-scope" aria-label="Private instrument thread">
+          <Icon name="info" size={14} />
+          <div>
+            <strong>Private instrument thread · you + {activeToolLabel}</strong>
+            <span>
+              These direct follow-ups are not shared with {personaLabel} or guests, and{' '}
+              {activeToolLabel} cannot see your conversations with them. Instruments follow their
+              own analysis instructions; persona voice, Writer Profile, and Conversation
+              Controller settings do not apply. The original report remains visible to the room.
+            </span>
+          </div>
+        </aside>
+      )}
+    </>
   );
 };

@@ -151,9 +151,9 @@ export const WorkshopNoticeModal: React.FC<WorkshopNoticeModalProps> = ({
             <Icon name="chevDown" size={14} />
           </button>
           <div className="pm-ws-notice-dots">
-            {PAGES.map((entry, dotIndex) => (
+            {PAGES.map((_entry, dotIndex) => (
               <button
-                key={entry.title}
+                key={dotIndex}
                 type="button"
                 className={`pm-ws-notice-dot${dotIndex === index ? ' pm-ws-notice-dot-on' : ''}`}
                 aria-label={`Notice ${dotIndex + 1}`}

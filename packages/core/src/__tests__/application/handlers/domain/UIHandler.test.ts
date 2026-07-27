@@ -78,6 +78,10 @@ describe('UIHandler', () => {
         shouldShow: true,
         noticeVersion: WORKSHOP_STARTUP_NOTICE_VERSION
       });
+      expect(appendLine).toHaveBeenCalledWith(
+        `[UIHandler] Startup notice check: dismissed=none, ` +
+        `current=${WORKSHOP_STARTUP_NOTICE_VERSION}, shouldShow=true`
+      );
     });
 
     it('answers shouldShow=false once THIS version was dismissed, true for a stale one', async () => {
@@ -131,6 +135,64 @@ describe('UIHandler', () => {
       } as any);
 
       expect(store[WORKSHOP_STARTUP_NOTICE_DISMISSED_KEY]).toBeUndefined();
+    });
+
+    it('rejects a webview-claimed version and keeps the host version authoritative', async () => {
+      const store: Record<string, unknown> = {};
+      handler = new UIHandler(
+        postMessage as any,
+        { appendLine } as any,
+        createFakeFileSystem(),
+        createFakeWorkspace(),
+        createFakeShellService(),
+        createFakeEditorContext(),
+        createFakeGlobalState(store)
+      );
+      handler.registerRoutes(router);
+
+      await router.route({
+        type: MessageType.DISMISS_STARTUP_NOTICE,
+        source: 'webview.workshop',
+        payload: { noticeVersion: `${WORKSHOP_STARTUP_NOTICE_VERSION}-claimed` },
+        timestamp: 1
+      } as any);
+
+      expect(store[WORKSHOP_STARTUP_NOTICE_DISMISSED_KEY]).toBeUndefined();
+      expect(appendLine).toHaveBeenCalledWith(expect.stringContaining('unexpected version'));
+    });
+
+    it('logs and reports a persistence failure without rejecting the route', async () => {
+      const update = jest.fn().mockRejectedValue(new Error('Memento write failed'));
+      handler = new UIHandler(
+        postMessage as any,
+        { appendLine } as any,
+        createFakeFileSystem(),
+        createFakeWorkspace(),
+        createFakeShellService(),
+        createFakeEditorContext(),
+        createFakeGlobalState({}, { update })
+      );
+      handler.registerRoutes(router);
+
+      await expect(router.route({
+        type: MessageType.DISMISS_STARTUP_NOTICE,
+        source: 'webview.workshop',
+        payload: { noticeVersion: WORKSHOP_STARTUP_NOTICE_VERSION },
+        timestamp: 1
+      } as any)).resolves.not.toThrow();
+
+      expect(appendLine).toHaveBeenCalledWith(
+        `[UIHandler] Failed to record startup-notice dismissal ` +
+        `${WORKSHOP_STARTUP_NOTICE_VERSION}: Memento write failed`
+      );
+      expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+        type: MessageType.ERROR,
+        payload: {
+          source: 'ui.startup_notice',
+          message: 'Could not remember your startup-notice preference.',
+          details: 'Memento write failed'
+        }
+      }));
     });
   });
 

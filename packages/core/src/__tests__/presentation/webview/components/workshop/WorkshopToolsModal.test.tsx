@@ -26,11 +26,14 @@ describe('WorkshopToolsModal (sheet browser)', () => {
   it('renders all 14 tools across the three groups', () => {
     renderModal();
     expect(screen.getByText('Primary')).toBeTruthy();
+    expect(screen.getByText('The daily passes — the six the rail keeps at hand.')).toBeTruthy();
     expect(screen.getByText('Craft & Voice')).toBeTruthy();
     expect(screen.getByText('Technical')).toBeTruthy();
     // 14 selectable cards + Cancel + launch + close = the card count is the contract.
     const cards = document.querySelectorAll('.pm-ws-sb-card');
     expect(cards).toHaveLength(14);
+    expect(document.querySelector('.pm-ws-browser-modal')?.className)
+      .toContain('pm-ws-modal-sheet');
   });
 
   it('keeps launch disabled until a tool is selected, then launches exactly once', () => {

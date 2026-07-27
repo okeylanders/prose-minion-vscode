@@ -1259,11 +1259,24 @@
   padding: 14px 16px;
   max-width: 860px;
 }
+[data-pm-surface="workshop"] .pm-ws-turn-private.pm-ws-turn-assistant {
+  border-color: color-mix(in srgb, var(--pm-accent-lo) 52%, var(--pm-border-soft));
+  background: color-mix(in srgb, var(--pm-accent-soft) 24%, var(--pm-surface));
+}
 [data-pm-surface="workshop"] .pm-ws-turn-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+[data-pm-surface="workshop"] .pm-ws-private-thread-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--pm-accent-hi);
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.02em;
 }
 [data-pm-surface="workshop"] .pm-ws-turn-usage {
   font-family: var(--pm-mono);
@@ -1727,6 +1740,10 @@
   padding: 10px 14px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-private .pm-ws-turn-message {
+  border-color: color-mix(in srgb, var(--pm-accent-lo) 52%, var(--pm-border-2));
+  background: color-mix(in srgb, var(--pm-accent-soft) 28%, var(--pm-surface-3));
 }
 /* Head-slice notice on a file-pinned excerpt (guardrail is visible, never silent). */
 [data-pm-surface="workshop"] .pm-ws-excerpt-truncated {
@@ -2355,9 +2372,10 @@
 }
 
 /* Participant rail (feature-workshop-participant-rail): who's in the room.
-   The active chip IS the direct-mode indicator — this rail replaced the
-   pm-ws-direct-mode banner. Chips wrap rather than scroll so up to 14 tool
-   sidecars stay reachable without hijacking horizontal scroll. */
+   The active chip identifies the routing target; the instrument scope note
+   below it explains the direct thread's audience. Chips wrap rather than
+   scroll so up to 14 tool sidecars stay reachable without hijacking
+   horizontal scroll. */
 [data-pm-surface="workshop"] .pm-ws-participant-rail {
   flex-shrink: 0;
   display: flex;
@@ -2365,6 +2383,33 @@
   flex-wrap: wrap;
   gap: 7px;
   padding: 10px 32px 0;
+}
+[data-pm-surface="workshop"] .pm-ws-instrument-scope {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 8px 32px 0;
+  padding: 9px 11px;
+  border: 1px solid color-mix(in srgb, var(--pm-accent-lo) 42%, var(--pm-border-soft));
+  border-radius: var(--pm-r-input);
+  background: color-mix(in srgb, var(--pm-accent-soft) 34%, transparent);
+  color: var(--pm-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+[data-pm-surface="workshop"] .pm-ws-instrument-scope > svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-instrument-scope > div {
+  display: grid;
+  gap: 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-instrument-scope strong {
+  color: var(--pm-accent-hi);
+  font-weight: 650;
 }
 [data-pm-surface="workshop"] .pm-ws-rail-label {
   color: var(--pm-faint);
@@ -4531,15 +4576,6 @@
 [data-pm-surface="workshop"] .pm-ws-browser-modal {
   width: min(940px, 100%);
   height: min(780px, calc(100vh - 70px));
-  padding: 0;
-  overflow: hidden;
-  display: flex;
-}
-[data-pm-surface="workshop"] .pm-ws-browser-modal .pm-ws-modal-close {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  z-index: 5;
 }
 [data-pm-surface="workshop"] .pm-ws-sb {
   flex: 1;
@@ -4554,12 +4590,7 @@
   padding: 22px 26px 15px;
   border-bottom: 1px solid var(--pm-border-soft);
 }
-[data-pm-surface="workshop"] .pm-ws-sb-kick {
-  font-family: var(--pm-mono);
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--pm-dim);
+[data-pm-surface="workshop"] .pm-ws-sb-eyebrow {
   margin-bottom: 7px;
 }
 [data-pm-surface="workshop"] .pm-ws-sb-head h2 {

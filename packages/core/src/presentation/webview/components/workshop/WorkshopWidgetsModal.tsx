@@ -30,12 +30,13 @@ export const WorkshopWidgetsModal: React.FC<WorkshopWidgetsModalProps> = ({ open
       open={open}
       titleId="pm-ws-widgets-title"
       closeLabel="Close widgets"
+      variant="sheet"
       className="pm-ws-browser-modal"
       onClose={onClose}
     >
       <WorkshopSheetBrowser
         titleId="pm-ws-widgets-title"
-        kicker="Workshop · Composer"
+        eyebrow="Workshop · Composer"
         title="Widgets"
         sub={
           <>

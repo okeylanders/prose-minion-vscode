@@ -28,10 +28,10 @@ import { WORKSHOP_TOOL_ICONS } from './workshopToolIcons';
 const TOOL_GROUPS: readonly WorkshopToolGroup[] = ['Primary', 'Craft & Voice', 'Technical'];
 
 /* Group taglines from the design comp (docs/design/pm-workshop.js TOOL_GDESC).
-   The comp's Primary line claims "the six the rail keeps at hand", but its own
-   Primary group — and ours — holds three; the copy here stays honest instead. */
+   "The six the rail keeps at hand" names WorkshopApp's six quick-launch tools,
+   not the three-card Primary catalog group rendered immediately below it. */
 const TOOL_GROUP_DESCRIPTIONS: Record<WorkshopToolGroup, string> = {
-  Primary: 'The daily passes — the ones the rail keeps at hand.',
+  Primary: 'The daily passes — the six the rail keeps at hand.',
   'Craft & Voice': 'How it sounds and how it’s built.',
   Technical: 'Mechanics, continuity, and fresh eyes.'
 };
@@ -97,12 +97,13 @@ export const WorkshopToolsModal: React.FC<WorkshopToolsModalProps> = ({
       open={open}
       titleId="pm-ws-tools-title"
       closeLabel="Close tools"
+      variant="sheet"
       className="pm-ws-browser-modal"
       onClose={onClose}
     >
       <WorkshopSheetBrowser
         titleId="pm-ws-tools-title"
-        kicker={requestViaPersona ? `Ask ${personaLabel}` : 'Prose Excerpt Assistant'}
+        eyebrow={requestViaPersona ? `Ask ${personaLabel}` : 'Prose Excerpt Assistant'}
         title="Writing tools"
         sub={
           <>

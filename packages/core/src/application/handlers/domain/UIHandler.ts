@@ -70,11 +70,16 @@ export class UIHandler {
    */
   private async handleStartupNoticeRequest(): Promise<void> {
     const dismissedVersion = this.globalState.get<string>(WORKSHOP_STARTUP_NOTICE_DISMISSED_KEY);
+    const shouldShow = dismissedVersion !== WORKSHOP_STARTUP_NOTICE_VERSION;
+    this.outputChannel.appendLine(
+      `[UIHandler] Startup notice check: dismissed=${dismissedVersion ?? 'none'}, ` +
+      `current=${WORKSHOP_STARTUP_NOTICE_VERSION}, shouldShow=${shouldShow}`
+    );
     const message: StartupNoticeDataMessage = {
       type: MessageType.STARTUP_NOTICE_DATA,
       source: 'extension.ui',
       payload: {
-        shouldShow: dismissedVersion !== WORKSHOP_STARTUP_NOTICE_VERSION,
+        shouldShow,
         noticeVersion: WORKSHOP_STARTUP_NOTICE_VERSION
       },
       timestamp: Date.now()
@@ -84,17 +89,33 @@ export class UIHandler {
 
   private async handleStartupNoticeDismiss(message: DismissStartupNoticeMessage): Promise<void> {
     const version = message.payload?.noticeVersion;
-    if (typeof version !== 'string' || version.length === 0) {
-      this.outputChannel.appendLine('[UIHandler] Ignored startup-notice dismissal without a version');
+    if (version !== WORKSHOP_STARTUP_NOTICE_VERSION) {
+      this.outputChannel.appendLine(
+        `[UIHandler] Ignored startup-notice dismissal for unexpected version ` +
+        `${typeof version === 'string' && version.length > 0 ? version : '<missing>'}; ` +
+        `current=${WORKSHOP_STARTUP_NOTICE_VERSION}`
+      );
       return;
     }
     try {
-      await this.globalState.update(WORKSHOP_STARTUP_NOTICE_DISMISSED_KEY, version);
-      this.outputChannel.appendLine(`[UIHandler] Startup notice ${version} dismissed for this machine`);
+      await this.globalState.update(
+        WORKSHOP_STARTUP_NOTICE_DISMISSED_KEY,
+        WORKSHOP_STARTUP_NOTICE_VERSION
+      );
+      this.outputChannel.appendLine(
+        `[UIHandler] Startup notice ${WORKSHOP_STARTUP_NOTICE_VERSION} dismissed for this machine`
+      );
     } catch (error) {
       // Worst case the notice shows again next launch — log, never throw to the router.
+      const details = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(
-        `[UIHandler] Failed to record startup-notice dismissal: ${error instanceof Error ? error.message : String(error)}`
+        `[UIHandler] Failed to record startup-notice dismissal ` +
+        `${WORKSHOP_STARTUP_NOTICE_VERSION}: ${details}`
+      );
+      this.sendError(
+        'ui.startup_notice',
+        'Could not remember your startup-notice preference.',
+        details
       );
     }
   }

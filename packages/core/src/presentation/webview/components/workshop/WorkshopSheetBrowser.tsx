@@ -8,8 +8,8 @@
  * Selection is CONTROLLED by the consumer — the Tools browser seeds it from
  * the active tool and launches a run; the Widgets browser lets you browse but
  * keeps the primary action honest ("Coming soon"). The component renders
- * inside a `WorkshopModalShell` whose `className` includes
- * `pm-ws-browser-modal` (the 940×780 sheet geometry lives in workshop.css).
+ * inside the shared `WorkshopModalShell` sheet variant; `pm-ws-browser-modal`
+ * narrows that shared geometry to the design's 940×780 dimensions.
  */
 
 import * as React from 'react';
@@ -41,7 +41,7 @@ export interface WorkshopSheetGroup {
 
 interface WorkshopSheetBrowserProps {
   titleId: string;
-  kicker: string;
+  eyebrow: string;
   title: string;
   sub: React.ReactNode;
   /** Footer copy while nothing is selected. */
@@ -73,7 +73,7 @@ const TagPill: React.FC<{ tag: WorkshopSheetTag }> = ({ tag }) => (
 
 export const WorkshopSheetBrowser: React.FC<WorkshopSheetBrowserProps> = ({
   titleId,
-  kicker,
+  eyebrow,
   title,
   sub,
   emptyNote,
@@ -94,7 +94,7 @@ export const WorkshopSheetBrowser: React.FC<WorkshopSheetBrowserProps> = ({
     <div className="pm-ws-sb">
       {closeButton}
       <header className="pm-ws-sb-head">
-        <div className="pm-ws-sb-kick">{kicker}</div>
+        <div className="pm-ws-eyebrow pm-ws-sb-eyebrow">{eyebrow}</div>
         <h2 id={titleId}>{title}</h2>
         <p>{sub}</p>
       </header>

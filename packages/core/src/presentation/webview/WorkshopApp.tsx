@@ -422,6 +422,10 @@ export const WorkshopApp: React.FC = () => {
   const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
   const openWidgetsModal = React.useCallback(() => setWidgetsModalOpen(true), []);
   const closeWidgetsModal = React.useCallback(() => setWidgetsModalOpen(false), []);
+  const closeStartupNotice = React.useCallback(
+    () => startupNotice.dismissStartupNotice(false),
+    [startupNotice.dismissStartupNotice]
+  );
   const setSessionsMenuVisibility = React.useCallback((open: boolean) => {
     setSessionsMenuOpen(open);
     if (open) {
@@ -1384,7 +1388,7 @@ export const WorkshopApp: React.FC = () => {
       <WorkshopWidgetsModal open={widgetsModalOpen} onClose={closeWidgetsModal} />
       <WorkshopNoticeModal
         open={startupNotice.noticeOpen}
-        onClose={() => startupNotice.dismissStartupNotice(false)}
+        onClose={closeStartupNotice}
         onDismiss={startupNotice.dismissStartupNotice}
       />
       {/* Conversation behavior (ADR 2026-07-20 §11): behavior is the COMMITTED

@@ -168,12 +168,8 @@ export function coerceWebviewErrorText(raw: unknown): string | undefined {
  * recorded when the writer checks "Don't show again" — a plain Dismiss
  * closes locally and sends nothing.
  */
-export interface RequestStartupNoticePayload {
-  [key: string]: never;
-}
-
 export interface RequestStartupNoticeMessage
-  extends MessageEnvelope<RequestStartupNoticePayload> {
+  extends MessageEnvelope<Record<string, never>> {
   type: MessageType.REQUEST_STARTUP_NOTICE;
 }
 

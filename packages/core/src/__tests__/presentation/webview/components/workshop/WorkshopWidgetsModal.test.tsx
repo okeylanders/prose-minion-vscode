@@ -24,6 +24,8 @@ describe('WorkshopWidgetsModal (coming-soon preview)', () => {
     const cardCount = WORKSHOP_WIDGET_GROUPS.reduce((n, group) => n + group.items.length, 0);
     expect(document.querySelectorAll('.pm-ws-sb-card')).toHaveLength(cardCount);
     expect(screen.getByText(/A preview of what’s coming soon/)).toBeTruthy();
+    expect(document.querySelector('.pm-ws-browser-modal')?.className)
+      .toContain('pm-ws-modal-sheet');
   });
 
   it('keeps the primary action "Coming soon" and disabled even with a selection', () => {

@@ -1,6 +1,8 @@
 /**
  * GlobalStateStore — per-machine key/value persistence for host-owned UI
- * state (e.g. the Workshop startup-notice dismissal). Deliberately NOT the
+ * state (ADR 2026-06-16).
+ *
+ * Used for state such as the Workshop startup-notice dismissal. Deliberately NOT the
  * SettingsStore: values here are not user configuration, must not appear in
  * the Settings UI, and must not ride Settings Sync.
  *

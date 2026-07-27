@@ -753,6 +753,8 @@ Potential areas for expansion:
 
 **Testing**: Press F5 to launch Extension Development Host. Check Output Channel for backend logging. Verify persistence across reloads.
 
+**GitHub CLI Authentication**: This machine's valid `gh` authentication is loaded by the interactive Zsh environment. A non-interactive shell can falsely report an invalid token. Run GitHub CLI authentication checks and GitHub CLI operations through an interactive login shell, for example `zsh -ic 'gh auth status'`.
+
 **Memory Bank**: Use format `YYYYMMDD-HHMM-title.md` for all entries.
 
 ## Anti-Pattern Checklist
