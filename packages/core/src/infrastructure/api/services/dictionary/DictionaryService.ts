@@ -177,9 +177,7 @@ export class DictionaryService {
       return AnalysisResultFactory.createAnalysisResult(
         'dictionary_lookup',
         executionResult.content,
-        undefined,
-        executionResult.usage,
-        executionResult.finishReason
+        { usage: executionResult.usage, finishReason: executionResult.finishReason }
       );
     } catch (error) {
       return AnalysisResultFactory.createAnalysisResult(
@@ -230,9 +228,7 @@ export class DictionaryService {
       return AnalysisResultFactory.createAnalysisResult(
         'dictionary_lookup',
         executionResult.content,
-        undefined,
-        executionResult.usage,
-        executionResult.finishReason
+        { usage: executionResult.usage, finishReason: executionResult.finishReason }
       );
     } catch (error) {
       // AbortError is now caught in the orchestrator, so this is only for other errors

@@ -5031,3 +5031,32 @@
 [data-pm-surface="workshop"] .pm-ws-notice-dismiss:hover {
   filter: brightness(1.07);
 }
+
+[data-pm-surface="workshop"] .pm-ws-turn-citations {
+  margin: 14px 0 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-citation-pills {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  margin: 6px 0 0;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-citation-pill {
+  cursor: pointer;
+  text-decoration: none;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-citation-number {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  color: var(--pm-muted);
+  white-space: nowrap;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-citation-pill:hover {
+  color: var(--pm-text);
+  border-color: var(--pm-accent-hi);
+  background: color-mix(in srgb, var(--pm-accent-hi) 10%, var(--pm-surface-2));
+}
+[data-pm-surface="workshop"] .pm-ws-turn-citation-pill:focus-visible {
+  outline: 2px solid var(--pm-accent-hi);
+  outline-offset: 2px;
+}

@@ -5,8 +5,10 @@ import type { AssistantToolService } from '@services/analysis/AssistantToolServi
 import type { LogSink, SettingsStore } from '@/platform';
 import {
   DEFAULT_WORKSHOP_WRITER_PROFILE,
+  DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS,
   type WorkshopConversationBehavior,
-  type WorkshopWriterProfile
+  type WorkshopWriterProfile,
+  type WorkshopWebResearchSettings
 } from '@messages';
 
 const balanced: WorkshopConversationBehavior = {
@@ -32,6 +34,7 @@ describe('WorkshopConversationSettingsService', () => {
   let session: WorkshopSessionService;
   let configured: WorkshopConversationBehavior;
   let configuredProfile: WorkshopWriterProfile;
+  let configuredWebResearch: WorkshopWebResearchSettings;
   let settings: jest.Mocked<SettingsStore>;
   let assistant: jest.Mocked<AssistantToolService>;
   let log: jest.Mocked<LogSink>;
@@ -41,10 +44,13 @@ describe('WorkshopConversationSettingsService', () => {
     session = new WorkshopSessionService(() => 1, balanced);
     configured = analysis;
     configuredProfile = { ...DEFAULT_WORKSHOP_WRITER_PROFILE };
+    configuredWebResearch = { ...DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS };
     settings = {
-      get: jest.fn((_section: string, key: string) =>
-        key === 'workshop.writerProfile' ? configuredProfile : configured
-      ),
+      get: jest.fn((_section: string, key: string) => {
+        if (key === 'workshop.writerProfile') return configuredProfile;
+        if (key === 'workshop.webResearch') return configuredWebResearch;
+        return configured;
+      }),
       update: jest.fn().mockResolvedValue(undefined)
     } as unknown as jest.Mocked<SettingsStore>;
     assistant = {
@@ -170,6 +176,53 @@ describe('WorkshopConversationSettingsService', () => {
     });
 
     expect(service.getWriterProfile()).toEqual(profile);
+  });
+
+  describe('web research', () => {
+    it('defaults off and persists an explicit enabled choice', async () => {
+      expect(service.getWebResearch()).toEqual(DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS);
+
+      await expect(
+        service.applyFromWebview(balanced, DEFAULT_WORKSHOP_WRITER_PROFILE, { enabled: true })
+      ).resolves.toEqual({ changed: true, deferred: false });
+
+      expect(settings.update).toHaveBeenCalledWith(
+        'proseMinion',
+        'workshop.webResearch',
+        { enabled: true }
+      );
+      expect(service.getWebResearch()).toEqual({ enabled: true });
+      expect(log.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('webResearchEnabled=true')
+      );
+    });
+
+    it('retains an applied research choice after its settings write fails', async () => {
+      configured = balanced;
+      settings.update.mockImplementation(async (_section, key) => {
+        if (key === 'workshop.webResearch') throw new Error('research is read-only');
+      });
+
+      await expect(
+        service.applyFromWebview(balanced, DEFAULT_WORKSHOP_WRITER_PROFILE, { enabled: true })
+      ).resolves.toEqual({
+        changed: true,
+        deferred: false,
+        persistenceErrors: { webResearch: 'research is read-only' }
+      });
+      await expect(service.syncFromSettings()).resolves.toEqual({ changed: false, deferred: false });
+
+      expect(service.getWebResearch()).toEqual({ enabled: true });
+    });
+
+    it('reports an external research-only setting change', async () => {
+      configured = balanced;
+      configuredWebResearch = { enabled: true };
+
+      await expect(service.syncFromSettings()).resolves.toEqual({ changed: true, deferred: false });
+
+      expect(service.getWebResearch()).toEqual({ enabled: true });
+    });
   });
 
   it('does not let a successful behavior echo revert a profile whose persistence failed', async () => {

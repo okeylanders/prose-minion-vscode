@@ -15,6 +15,7 @@
 import { MessageEnvelope, MessageType } from './base';
 import { WritingToolsFocus } from './analysis';
 import { TokenUsage } from '../index';
+import { UrlCitation } from './citations';
 import type { LabeledContextBudgetSnapshot } from './inferenceContext';
 import type {
   WorkshopAnalysisInputProvenance,
@@ -156,6 +157,40 @@ export const WORKSHOP_WRITER_PROFILE_SETTING = Object.freeze({
   section: 'proseMinion',
   key: 'workshop.writerProfile'
 });
+
+/** Optional live-web capability for persona conversations; deterministic tools stay offline. */
+export interface WorkshopWebResearchSettings {
+  enabled: boolean;
+}
+
+export const DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS: Readonly<WorkshopWebResearchSettings> =
+  Object.freeze({ enabled: false });
+
+export const WORKSHOP_WEB_RESEARCH_SETTING = Object.freeze({
+  section: 'proseMinion',
+  key: 'workshop.webResearch'
+});
+
+/** Fail closed: only the complete one-field setting shape may enable research. */
+export function isValidWorkshopWebResearchSettings(raw: unknown): raw is WorkshopWebResearchSettings {
+  return typeof raw === 'object' && raw !== null && !Array.isArray(raw)
+    && Object.keys(raw).length === 1 && typeof (raw as { enabled?: unknown }).enabled === 'boolean';
+}
+
+/** Coerce untrusted settings to the default-off live-web capability. */
+export function coerceWorkshopWebResearchSettings(raw: unknown): WorkshopWebResearchSettings {
+  return isValidWorkshopWebResearchSettings(raw)
+    ? { enabled: (raw as { enabled: boolean }).enabled }
+    : { ...DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS };
+}
+
+/** Compare the value rather than allocation identity for settings synchronization. */
+export function workshopWebResearchSettingsEqual(
+  left: WorkshopWebResearchSettings,
+  right: WorkshopWebResearchSettings
+): boolean {
+  return left.enabled === right.enabled;
+}
 
 export function isValidWorkshopWriterProfile(raw: unknown): raw is WorkshopWriterProfile {
   if (typeof raw !== 'object' || raw === null) {
@@ -734,6 +769,8 @@ export interface WorkshopTurn {
   timestamp: number;
   /** Usage for assistant turns, when the provider reported it. */
   usage?: TokenUsage;
+  /** Provider-returned web sources; model-authored [n] markers remain ordinary text. */
+  citations?: UrlCitation[];
   /** True when the response stopped at the max-token limit (assistant turns). */
   truncated?: boolean;
   /**
@@ -908,6 +945,7 @@ export interface WorkshopSetChatTargetMessage extends MessageEnvelope<WorkshopCh
 export interface WorkshopSetConversationSettingsPayload {
   behavior: WorkshopConversationBehavior;
   writerProfile: WorkshopWriterProfile;
+  webResearch: WorkshopWebResearchSettings;
 }
 
 export interface WorkshopSetConversationSettingsMessage
@@ -1286,6 +1324,8 @@ export interface WorkshopSessionStatePayload {
   session: WorkshopSessionSnapshot;
   /** Global writer setting, deliberately outside the serializable session aggregate. */
   writerProfile: WorkshopWriterProfile;
+  /** Global web-research preference; deliberately outside the session aggregate. */
+  webResearch: WorkshopWebResearchSettings;
   persistence: {
     available: boolean;
     unavailableReason?: 'no-workspace' | 'multi-root';

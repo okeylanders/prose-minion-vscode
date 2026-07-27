@@ -47,6 +47,16 @@ interface ParsedVariations {
 const VARIATION_HEADING = /^#{2,4}\s*Variation\s+(\d+)(?:\s*[-:]\s*(.+))?\s*$/gim;
 export const WORKSHOP_TURN_ID_ATTRIBUTE = 'data-turn-id';
 
+const citationLabel = (citation: { url: string; title?: string }): string => {
+  const title = citation.title?.trim();
+  if (title && !/^\d+$/.test(title)) return title;
+  try {
+    return new URL(citation.url).hostname || citation.url;
+  } catch {
+    return citation.url;
+  }
+};
+
 export const parseVariations = (content: string): ParsedVariations | null => {
   const matches = [...content.matchAll(VARIATION_HEADING)];
   if (matches.length < 2) {
@@ -165,6 +175,14 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
         : turn.toolLabel ?? 'Analysis'} · ${turn.capability.requestSummary} · requested by ${workshopPersonaLabel(turn.capability.requestedByPersonaId)}`
     : undefined;
   const capabilityMetadata = capabilityMetadataRows(turn);
+  const citations = React.useMemo(() => {
+    const seen = new Set<string>();
+    return (turn.citations ?? []).filter((citation) => {
+      if (seen.has(citation.url)) return false;
+      seen.add(citation.url);
+      return true;
+    });
+  }, [turn.citations]);
   const turnIdentity = { [WORKSHOP_TURN_ID_ATTRIBUTE]: turn.id };
   const isPrivateInstrumentTurn =
     turn.artifact === 'direct_tool_message' || turn.artifact === 'direct_tool_response';
@@ -404,6 +422,28 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
                 </div>
               );
             })}
+          </div>
+        )}
+        {citations.length > 0 && (
+          <div className="pm-ws-turn-citations" aria-label="Web sources">
+            <div className="pm-ws-eyebrow">Web sources</div>
+            <div className="pm-ws-turn-citation-pills">
+              {citations.map((citation, index) => (
+                <a
+                  key={citation.url}
+                  className="pm-ws-ctx-pill pm-ws-turn-citation-pill"
+                  href={citation.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={citation.url}
+                  aria-label={`Open web source ${index + 1}: ${citationLabel(citation)}`}
+                >
+                  <Icon name="link" size={12} />
+                  <span className="pm-ws-turn-citation-number">{index + 1}</span>
+                  <span className="pm-ws-ctx-pill-label">{citationLabel(citation)}</span>
+                </a>
+              ))}
+            </div>
           </div>
         )}
         <div className="pm-ws-turn-actions">

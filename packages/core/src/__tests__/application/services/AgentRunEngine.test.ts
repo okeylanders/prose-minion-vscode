@@ -143,6 +143,32 @@ describe('AgentRunEngine', () => {
     });
   });
 
+  it('retains citations gathered before a capability round produces the final response', async () => {
+    const guides = capability();
+    guides.fulfill.mockResolvedValueOnce({
+      evidence: 'Evidence', deliveredItems: ['dialogue.md'], artifacts: []
+    });
+    client.createChatCompletion
+      .mockResolvedValueOnce({
+        content: GUIDE_REQUEST,
+        citations: [{ url: 'https://one.example', title: 'First source' }]
+      })
+      .mockResolvedValueOnce({
+        content: 'Final response.',
+        citations: [{ url: 'https://two.example', title: 'Second source' }]
+      });
+
+    const result = await engine.runInitial({
+      toolName: 'dialogue', systemMessage: 'System', userMessage: 'Analyze.',
+      policy: { ...AGENT_RUN_POLICIES.assistant, retention: 'retain' }, capability: guides
+    });
+
+    expect(result.citations).toEqual([
+      { url: 'https://one.example', title: 'First source' },
+      { url: 'https://two.example', title: 'Second source' }
+    ]);
+  });
+
   it('buffers an exact XML request, then progressively streams the final answer', async () => {
     const guides = capability();
     client.createStreamingChatCompletion

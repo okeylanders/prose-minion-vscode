@@ -483,7 +483,8 @@ export class WorkshopHandler {
     try {
       const result = await this.conversationSettingsService.applyFromWebview(
         message.payload?.behavior,
-        message.payload?.writerProfile
+        message.payload?.writerProfile,
+        message.payload?.webResearch
       );
       if (result.persistenceErrors) {
         const persistenceDetails = [
@@ -492,6 +493,9 @@ export class WorkshopHandler {
             : undefined,
           result.persistenceErrors.writerProfile
             ? `writer profile: ${result.persistenceErrors.writerProfile}`
+            : undefined,
+          result.persistenceErrors.webResearch
+            ? `web research: ${result.persistenceErrors.webResearch}`
             : undefined
         ].filter(Boolean).join('; ');
         this.outputChannel.appendLine(
@@ -694,7 +698,8 @@ export class WorkshopHandler {
         }, {
           signal: controller.signal,
           onToken: (token: string) => this.sendStreamChunk(requestId, token),
-          capability: guestCapability
+          capability: guestCapability,
+          webResearch: this.conversationSettingsService.getWebResearch().enabled
         });
         const assistantTurn = completeWorkshopRun({
           session: this.session,
@@ -1074,7 +1079,8 @@ export class WorkshopHandler {
         ? await this.assistantToolService.continueConversation(conversationId, modelMessage, {
             signal: controller.signal,
             onToken: (token: string) => this.sendStreamChunk(requestId, token),
-            capability: participantCapability
+            capability: participantCapability,
+            webResearch: this.conversationSettingsService.getWebResearch().enabled
           })
         : await this.assistantToolService.startWorkshopPersonaConversation({
             personaId,
@@ -1093,7 +1099,8 @@ export class WorkshopHandler {
           }, {
             signal: controller.signal,
             onToken: (token: string) => this.sendStreamChunk(requestId, token),
-            capability: participantCapability!
+            capability: participantCapability!,
+            webResearch: this.conversationSettingsService.getWebResearch().enabled
           });
 
       const assistantTurn = completeWorkshopRun({
@@ -2707,6 +2714,7 @@ export class WorkshopHandler {
       payload: {
         session,
         writerProfile: this.conversationSettingsService.getWriterProfile(),
+        webResearch: this.conversationSettingsService.getWebResearch(),
         persistence: {
           available: availability.available,
           unavailableReason: availability.available ? undefined : availability.reason,

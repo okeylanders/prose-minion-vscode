@@ -98,6 +98,91 @@ describe('OpenRouterClient model hot-swap', () => {
     }
   });
 
+  it('sends an explicitly enabled web-search server tool unchanged', async () => {
+    const originalFetch = global.fetch;
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        id: 'response-1', choices: [{ message: { role: 'assistant', content: 'Hi' }, finish_reason: 'stop' }]
+      })
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    try {
+      await new OpenRouterClient('key', 'model/requested').createChatCompletion(
+        [{ role: 'user', content: 'Hello' }],
+        { tools: [{ type: 'openrouter:web_search', parameters: { engine: 'auto', max_uses: 2, max_total_results: 10 } }] }
+      );
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body as string).tools).toEqual([
+        { type: 'openrouter:web_search', parameters: { engine: 'auto', max_uses: 2, max_total_results: 10 } }
+      ]);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('preserves structured web citations outside the model-authored response text', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        id: 'response-1',
+        choices: [{
+          message: {
+            role: 'assistant', content: 'Grounded answer [1]',
+            annotations: [{ type: 'url_citation', url_citation: {
+              url: 'https://www.anthropic.com/news/example', title: 'Primary source', start_index: 16, end_index: 19
+            } }]
+          },
+          finish_reason: 'stop'
+        }]
+      })
+    }) as unknown as typeof fetch;
+    try {
+      const result = await new OpenRouterClient('key').createChatCompletion([{ role: 'user', content: 'Hello' }]);
+      expect(result).toMatchObject({
+        content: 'Grounded answer [1]',
+        citations: [{ url: 'https://www.anthropic.com/news/example', title: 'Primary source', startIndex: 16, endIndex: 19 }]
+      });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('drops malformed citation URLs with a diagnostic while retaining valid sources', async () => {
+    const originalFetch = global.fetch;
+    const output = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        id: 'response-1',
+        choices: [{
+          message: {
+            role: 'assistant', content: 'Grounded answer.',
+            annotations: [
+              { type: 'url_citation', url_citation: { url: 'https://', title: 'Broken' } },
+              { type: 'url_citation', url_citation: { url: 'file:///private/draft', title: 'Unsafe' } },
+              { type: 'url_citation', url_citation: { url: 'https://www.anthropic.com/news/example', title: 'Primary source' } }
+            ]
+          },
+          finish_reason: 'stop'
+        }]
+      })
+    }) as unknown as typeof fetch;
+    try {
+      const result = await new OpenRouterClient('key', undefined, output).createChatCompletion(
+        [{ role: 'user', content: 'Hello' }]
+      );
+      expect(result.citations).toEqual([
+        { url: 'https://www.anthropic.com/news/example', title: 'Primary source', startIndex: undefined, endIndex: undefined }
+      ]);
+      expect(output.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('Dropped 2/3 unparseable citation annotation(s)')
+      );
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
   it('emits streaming terminal usage and metadata exactly once when they arrive after finish reason', async () => {
     const originalFetch = global.fetch;
     const fetchMock = jest.fn().mockResolvedValue(streamingResponse(
@@ -132,6 +217,49 @@ describe('OpenRouterClient model hot-swap', () => {
           requestedMaxOutputTokens: 5000,
           contextCompression: 'not-applied'
         }
+      });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('accumulates citations reported across streaming frames', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue(streamingResponse(
+      { choices: [{ delta: { annotations: [{ type: 'url_citation', url_citation: { url: 'https://one.example', title: 'One' } }] } }] },
+      { choices: [{ delta: { annotations: [{ type: 'url_citation', url_citation: { url: 'https://two.example', title: 'Two' } }] }, finish_reason: 'stop' }] },
+      '[DONE]'
+    )) as unknown as typeof fetch;
+    try {
+      const chunks = [];
+      for await (const chunk of new OpenRouterClient('key').createStreamingChatCompletion([{ role: 'user', content: 'Hello' }])) {
+        chunks.push(chunk);
+      }
+      expect(chunks.at(-1)).toMatchObject({
+        citations: [
+          { url: 'https://one.example', title: 'One' },
+          { url: 'https://two.example', title: 'Two' }
+        ]
+      });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('backfills a duplicate citation title from a later streaming annotation', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue(streamingResponse(
+      { choices: [{ delta: { annotations: [{ type: 'url_citation', url_citation: { url: 'https://one.example' } }] } }] },
+      { choices: [{ delta: { annotations: [{ type: 'url_citation', url_citation: { url: 'https://one.example', title: 'One' } }] }, finish_reason: 'stop' }] },
+      '[DONE]'
+    )) as unknown as typeof fetch;
+    try {
+      const chunks = [];
+      for await (const chunk of new OpenRouterClient('key').createStreamingChatCompletion([{ role: 'user', content: 'Hello' }])) {
+        chunks.push(chunk);
+      }
+      expect(chunks.at(-1)).toMatchObject({
+        citations: [{ url: 'https://one.example', title: 'One' }]
       });
     } finally {
       global.fetch = originalFetch;

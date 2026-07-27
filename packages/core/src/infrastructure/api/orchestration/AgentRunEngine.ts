@@ -1,5 +1,6 @@
 import { LogSink, SettingsStore } from '@/platform';
 import { OpenRouterClient, OpenRouterMessage } from '@providers/OpenRouterClient';
+import type { UrlCitation } from '@messages';
 import {
   ConversationArchiveEntryV1,
   ConversationExportTarget,
@@ -49,6 +50,7 @@ interface TurnResult {
   readonly exactRequest?: unknown;
   /** A protocol-shaped response failed structural or allow-list validation. */
   readonly invalidRequest?: AgentCapabilityRejection;
+  readonly citations?: UrlCitation[];
 }
 
 const TOOL_CALL_OPEN = '<prose-minion-tool-call';
@@ -272,6 +274,7 @@ export class AgentRunEngine {
     const requestedResources: string[] = [];
     const collectedSources: ContextSourceEntry[] = [];
     let totalUsage: TokenUsage | undefined;
+    let runCitations: UrlCitation[] | undefined;
     let latestObservation: InferenceRequestObservation | undefined;
     let peakPromptTokens = 0;
     let correctionTurns = 0;
@@ -294,6 +297,7 @@ export class AgentRunEngine {
       const next = await this.executeTurn(currentMessages(), runOptions, capability);
       recordObservation(next.observation);
       totalUsage = this.addUsage(totalUsage, next.usage);
+      runCitations = this.mergeUrlCitations(runCitations, next.citations);
       return next;
     };
 
@@ -326,6 +330,7 @@ export class AgentRunEngine {
       let last = await this.executeTurn(currentMessages(), runOptions, capability);
       recordObservation(last.observation);
       totalUsage = this.addUsage(totalUsage, last.usage);
+      runCitations = this.mergeUrlCitations(runCitations, last.citations);
       last = await recoverInvalidRequest(last);
       let rounds = 0;
 
@@ -457,6 +462,7 @@ export class AgentRunEngine {
         artifacts,
         usage: totalUsage,
         finishReason: last.finishReason,
+        citations: runCitations,
         cancelled
       };
     } finally {
@@ -601,7 +607,8 @@ export class AgentRunEngine {
         const response = await this.openRouterClient.createChatCompletion(messages, {
           temperature: options.temperature,
           maxTokens: options.maxTokens,
-          signal: options.signal
+          signal: options.signal,
+          tools: options.tools
         });
         this.emitUsage(response.usage);
         const inspection = capability?.inspectRequest(response.content);
@@ -611,6 +618,7 @@ export class AgentRunEngine {
           finishReason: response.finishReason,
           usage: response.usage,
           observation: response.observation,
+          citations: response.citations,
           cancelled: this.isAborted(options.signal),
           exactRequest: inspection?.kind === 'request' ? inspection.request : undefined,
           invalidRequest: inspection?.kind === 'invalid' ? inspection : undefined
@@ -627,6 +635,7 @@ export class AgentRunEngine {
     let usage: TokenUsage | undefined;
     let finishReason: string | undefined;
     let observation: InferenceRequestObservation | undefined;
+    let citations: UrlCitation[] | undefined;
     let cancelled = false;
     let classification: 'undecided' | 'text' | 'candidate' = 'undecided';
     const visibilityGuard = capability ? new ToolCallStreamVisibilityGuard() : undefined;
@@ -635,12 +644,14 @@ export class AgentRunEngine {
       for await (const chunk of this.openRouterClient.createStreamingChatCompletion(messages, {
         temperature: options.temperature,
         maxTokens: options.maxTokens,
-        signal: options.signal
+        signal: options.signal,
+        tools: options.tools
       })) {
         if (chunk.done) {
           usage = chunk.usage ?? usage;
           finishReason = chunk.finishReason ?? finishReason;
           observation = chunk.observation ?? observation;
+          citations = chunk.citations ?? citations;
           continue;
         }
         if (!chunk.token) continue;
@@ -705,6 +716,7 @@ export class AgentRunEngine {
       finishReason,
       usage,
       observation,
+      citations,
       cancelled,
       exactRequest,
       invalidRequest
@@ -784,6 +796,26 @@ export class AgentRunEngine {
         ? (total.costUsd ?? 0) + (usage.costUsd ?? 0)
         : undefined
     };
+  }
+
+  private mergeUrlCitations(
+    current: UrlCitation[] | undefined,
+    additions: UrlCitation[] | undefined
+  ): UrlCitation[] | undefined {
+    if (!additions?.length) return current;
+    // `merged` is a shallow copy, so its entries are still shared with `current`
+    // and `additions`. Copy on insert and replace on backfill so a caller holding
+    // either array never observes a citation changing under it.
+    const merged = [...(current ?? [])];
+    for (const citation of additions) {
+      const index = merged.findIndex((entry) => entry.url === citation.url);
+      if (index < 0) {
+        merged.push({ ...citation });
+      } else if (!merged[index].title?.trim() && citation.title?.trim()) {
+        merged[index] = { ...merged[index], title: citation.title };
+      }
+    }
+    return merged.length > 0 ? merged : undefined;
   }
 
   private emitUsage(usage?: TokenUsage): void {

@@ -405,6 +405,22 @@
           "description": "Optional global writer profile shared only with Workshop personas. It is not session memory and is not copied into project data.",
           "order": 51
         },
+        "proseMinion.workshop.webResearch": {
+          "type": "object",
+          "default": {
+            "enabled": false
+          },
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Allow Workshop personas to use live web research when current information helps. Queries can draw on room context and are processed by OpenRouter and search providers; enable only for material you are comfortable sharing. May add latency and charges."
+            }
+          },
+          "required": ["enabled"],
+          "additionalProperties": false,
+          "description": "Optional per-window live-web research for Workshop persona conversations. Research may share active conversation context with OpenRouter and search providers. Workshop tools remain unchanged.",
+          "order": 52
+        },
         "proseMinion.publishingStandards.preset": {
           "type": "string",
           "default": "none",

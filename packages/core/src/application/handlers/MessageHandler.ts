@@ -22,7 +22,8 @@ import {
   TokenUsageTotals,
   WorkshopSessionStateMessage,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
-  WORKSHOP_WRITER_PROFILE_SETTING
+  WORKSHOP_WRITER_PROFILE_SETTING,
+  WORKSHOP_WEB_RESEARCH_SETTING
 } from '@messages';
 import {
   CoreServices,
@@ -598,7 +599,9 @@ export class MessageHandler {
       WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.key;
     const workshopWriterProfileKey = `${WORKSHOP_WRITER_PROFILE_SETTING.section}.` +
       WORKSHOP_WRITER_PROFILE_SETTING.key;
-    if (affects(workshopBehaviorKey) || affects(workshopWriterProfileKey)) {
+    const workshopWebResearchKey = `${WORKSHOP_WEB_RESEARCH_SETTING.section}.` +
+      WORKSHOP_WEB_RESEARCH_SETTING.key;
+    if (affects(workshopBehaviorKey) || affects(workshopWriterProfileKey) || affects(workshopWebResearchKey)) {
       void this.workshopHandler.syncConversationSettingsFromSettings();
     }
 

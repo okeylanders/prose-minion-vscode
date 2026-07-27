@@ -90,7 +90,8 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
         roomDelivery,
         capabilityFactory,
         output,
-        writerProfileService
+        writerProfileService,
+        () => true
       ),
       capabilityFactory,
       postMessage,
@@ -176,6 +177,10 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
       'tool_report',
       'persona_synthesis'
     ]);
+    expect(engine.runInitial.mock.calls[1]![0].options?.tools).toEqual([{
+      type: 'openrouter:web_search',
+      parameters: { engine: 'auto', max_uses: 2, max_total_results: 10 }
+    }]);
     expect(session.getSnapshot().turns.at(-1)?.behavior).toMatchObject({
       interactionMode: 'balanced',
       expressionLevel: 'full'

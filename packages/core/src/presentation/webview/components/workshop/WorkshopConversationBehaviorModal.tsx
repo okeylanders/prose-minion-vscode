@@ -13,7 +13,9 @@ import {
   WorkshopInteractionMode,
   WorkshopPersonaExpressionLevel,
   WorkshopRelationalDepth,
-  WorkshopWriterProfile
+  WorkshopWriterProfile,
+  WorkshopWebResearchSettings,
+  workshopWebResearchSettingsEqual
 } from '@messages';
 
 const MODE_CARDS: ReadonlyArray<{
@@ -83,24 +85,27 @@ interface PendingApply {
   submittedProfile: WorkshopWriterProfile;
   baselineBehavior: WorkshopConversationBehavior;
   baselineProfile: WorkshopWriterProfile;
+  submittedWebResearch: WorkshopWebResearchSettings;
 }
 
 interface WorkshopConversationBehaviorModalProps {
   open: boolean;
   behavior: WorkshopConversationBehavior;
   writerProfile: WorkshopWriterProfile;
+  webResearch: WorkshopWebResearchSettings;
   isRunning: boolean;
   errorMessage?: string;
-  onApply: (behavior: WorkshopConversationBehavior, writerProfile: WorkshopWriterProfile) => void;
+  onApply: (behavior: WorkshopConversationBehavior, writerProfile: WorkshopWriterProfile, webResearch: WorkshopWebResearchSettings) => void;
   onClose: () => void;
 }
 
-type SettingsTab = 'behavior' | 'profile';
+type SettingsTab = 'behavior' | 'profile' | 'advanced';
 
 export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBehaviorModalProps> = ({
   open,
   behavior,
   writerProfile,
+  webResearch,
   isRunning,
   errorMessage,
   onApply,
@@ -109,16 +114,19 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
   const [tab, setTab] = React.useState<SettingsTab>('behavior');
   const [behaviorDraft, setBehaviorDraft] = React.useState({ ...behavior });
   const [profileDraft, setProfileDraft] = React.useState({ ...writerProfile });
+  const [webResearchDraft, setWebResearchDraft] = React.useState({ ...webResearch });
   const [pending, setPending] = React.useState<PendingApply | null>(null);
   const [confirmClear, setConfirmClear] = React.useState(false);
   const behaviorTabRef = React.useRef<HTMLButtonElement>(null);
   const profileTabRef = React.useRef<HTMLButtonElement>(null);
+  const advancedTabRef = React.useRef<HTMLButtonElement>(null);
 
   React.useEffect(() => {
     if (open) {
       setTab('behavior');
       setBehaviorDraft({ ...behavior });
       setProfileDraft({ ...writerProfile });
+      setWebResearchDraft({ ...webResearch });
       setPending(null);
       setConfirmClear(false);
     }
@@ -133,6 +141,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
     if (
       workshopConversationBehaviorsEqual(behavior, pending.submittedBehavior)
       && workshopWriterProfilesEqual(writerProfile, pending.submittedProfile)
+      && workshopWebResearchSettingsEqual(webResearch, pending.submittedWebResearch)
     ) {
       setPending(null);
       onClose();
@@ -142,7 +151,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
     ) {
       setPending(null);
     }
-  }, [behavior, onClose, open, pending, writerProfile]);
+  }, [behavior, onClose, open, pending, webResearch, writerProfile]);
 
   React.useEffect(() => {
     if (pending && errorMessage) setPending(null);
@@ -155,15 +164,17 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
     setConfirmClear(false);
   };
   const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
-    const next = event.key === 'ArrowLeft' || event.key === 'Home'
-      ? 'behavior'
-      : event.key === 'ArrowRight' || event.key === 'End'
-        ? 'profile'
-        : undefined;
+    const tabs: SettingsTab[] = ['behavior', 'profile', 'advanced'];
+    const currentIndex = tabs.indexOf(tab);
+    const next = event.key === 'Home' ? 'behavior'
+      : event.key === 'End' ? 'advanced'
+        : event.key === 'ArrowLeft' ? tabs[(currentIndex + tabs.length - 1) % tabs.length]
+          : event.key === 'ArrowRight' ? tabs[(currentIndex + 1) % tabs.length]
+            : undefined;
     if (!next) return;
     event.preventDefault();
     switchTab(next);
-    (next === 'behavior' ? behaviorTabRef : profileTabRef).current?.focus();
+    (next === 'behavior' ? behaviorTabRef : next === 'profile' ? profileTabRef : advancedTabRef).current?.focus();
   };
   const apply = () => {
     if (applyLocked) return;
@@ -173,12 +184,13 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
       preferredAddress: profileDraft.preferredAddress.trim(),
       bio: profileDraft.bio.trim()
     };
-    onApply(submittedBehavior, submittedProfile);
+    onApply(submittedBehavior, submittedProfile, webResearchDraft);
     setPending({
       submittedBehavior,
       submittedProfile,
       baselineBehavior: { ...behavior },
-      baselineProfile: { ...writerProfile }
+      baselineProfile: { ...writerProfile },
+      submittedWebResearch: { ...webResearchDraft }
     });
   };
   const clearProfile = () => {
@@ -198,7 +210,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
         <div>
           <div className="pm-ws-eyebrow">Workshop · Room settings</div>
           <h2 id="pm-ws-settings-title">Conversation settings</h2>
-          <p>Choose how Workshop personas respond and what you explicitly share with them. Tools are unchanged.</p>
+          <p>Choose how Workshop personas respond, what you explicitly share, and whether they may research the live web. Tools are unchanged.</p>
         </div>
         <WorkshopModalShell.CloseButton />
       </div>
@@ -229,6 +241,19 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
           onKeyDown={handleTabKeyDown}
         >
           About you
+        </button>
+        <button
+          ref={advancedTabRef}
+          type="button"
+          role="tab"
+          id="pm-ws-advanced-tab"
+          aria-selected={tab === 'advanced'}
+          aria-controls="pm-ws-advanced-panel"
+          tabIndex={tab === 'advanced' ? 0 : -1}
+          onClick={() => switchTab('advanced')}
+          onKeyDown={handleTabKeyDown}
+        >
+          Advanced
         </button>
       </div>
 
@@ -316,7 +341,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
             />
           </div>
         </div>
-      ) : (
+      ) : tab === 'profile' ? (
         <div
           className="pm-ws-behavior-body pm-ws-profile-body"
           role="tabpanel"
@@ -430,6 +455,28 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
             )}
           </div>
         </div>
+      ) : (
+        <div
+          className="pm-ws-behavior-body pm-ws-profile-body"
+          role="tabpanel"
+          id="pm-ws-advanced-panel"
+          aria-labelledby="pm-ws-advanced-tab"
+        >
+          <div className="pm-ws-profile-share-row">
+            <div>
+              <div className="pm-ws-behavior-row-name">Allow live web research</div>
+              <div className="pm-ws-behavior-row-desc">
+                Persona conversations may search current web information when it helps. Search queries can draw on the active room, excerpt, attachments, and shared profile, then run through OpenRouter and its search providers. Enable it only for material you are comfortable sharing. It can add latency and provider charges; Grok can also search X when supported.
+              </div>
+            </div>
+            <Switch
+              checked={webResearchDraft.enabled}
+              disabled={editingLocked}
+              label="Allow live web research"
+              onClick={() => setWebResearchDraft((current) => ({ enabled: !current.enabled }))}
+            />
+          </div>
+        </div>
       )}
 
       <div className="pm-ws-behavior-foot">
@@ -449,7 +496,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
           </span>
         ) : (
           <span className="pm-ws-behavior-foot-note">
-            Applies the Behavior and About You drafts together to the active room.
+            Applies the Behavior, About You, and Advanced drafts together. Live web research takes effect on your next message.
           </span>
         )}
         <button className="pm-ws-action-btn" type="button" onClick={onClose}>Cancel</button>

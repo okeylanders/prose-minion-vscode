@@ -128,7 +128,8 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     result.usage,
     truncated,
     result.conversationId,
-    actionableFindings.findings
+    actionableFindings.findings,
+    result.citations
   );
   if (!turn) {
     if (input.createsRetainedConversation && result.conversationId) {

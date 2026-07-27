@@ -232,7 +232,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         roomDelivery,
         capabilityFactory,
         log,
-        writerProfileService
+        writerProfileService,
+        () => false
       ),
       capabilityFactory,
       postMessage,

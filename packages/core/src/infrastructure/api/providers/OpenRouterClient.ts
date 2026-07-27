@@ -9,6 +9,7 @@ import {
   InferenceRequestObservation,
   TokenUsage
 } from '@shared/types';
+import { isHttpUrl, type UrlCitation } from '@messages';
 
 const FALLBACK_OUTPUT_RESERVE_TOKENS = 10000;
 
@@ -25,6 +26,15 @@ export interface OpenRouterRequest {
   usage?: { include: boolean };
 }
 
+export interface OpenRouterWebSearchTool {
+  type: 'openrouter:web_search';
+  parameters: {
+    engine: 'auto';
+    max_uses: number;
+    max_total_results: number;
+  };
+}
+
 export interface OpenRouterResponse {
   id: string;
   model: string;
@@ -32,6 +42,7 @@ export interface OpenRouterResponse {
     message: {
       role: string;
       content: string;
+      annotations?: unknown;
     };
     finish_reason: string;
   }>;
@@ -95,6 +106,7 @@ export class OpenRouterClient {
       temperature?: number;
       maxTokens?: number;
       signal?: AbortSignal;
+      tools?: OpenRouterWebSearchTool[];
     }
   ): Promise<{
     content: string;
@@ -102,6 +114,7 @@ export class OpenRouterClient {
     usage?: TokenUsage;
     observation?: InferenceRequestObservation;
     id?: string;
+    citations?: UrlCitation[];
   }> {
     const requestedModel = this.model;
     const requestedMaxOutputTokens = options?.maxTokens ?? FALLBACK_OUTPUT_RESERVE_TOKENS;
@@ -120,7 +133,8 @@ export class OpenRouterClient {
         messages,
         temperature: options?.temperature ?? 0.7,
         max_tokens: requestedMaxOutputTokens,
-        usage: { include: true }
+        usage: { include: true },
+        ...(options?.tools ? { tools: options.tools } : {})
       })
     });
 
@@ -141,6 +155,7 @@ export class OpenRouterClient {
       content: data.choices[0].message.content,
       finishReason: data.choices[0]?.finish_reason,
       usage,
+      citations: this.toUrlCitations(data.choices[0].message.annotations),
       observation: usage ? this.toObservation(
         data.model || requestedModel,
         requestedMaxOutputTokens,
@@ -162,6 +177,7 @@ export class OpenRouterClient {
       temperature?: number;
       maxTokens?: number;
       signal?: AbortSignal;
+      tools?: OpenRouterWebSearchTool[];
     }
   ): AsyncGenerator<{
     token: string;
@@ -169,6 +185,7 @@ export class OpenRouterClient {
     usage?: TokenUsage;
     finishReason?: string;
     observation?: InferenceRequestObservation;
+    citations?: UrlCitation[];
   }> {
     const requestedModel = this.model;
     const requestedMaxOutputTokens = options?.maxTokens ?? FALLBACK_OUTPUT_RESERVE_TOKENS;
@@ -188,7 +205,8 @@ export class OpenRouterClient {
         stream: true,
         temperature: options?.temperature ?? 0.7,
         max_tokens: requestedMaxOutputTokens,
-        stream_options: { include_usage: true }
+        stream_options: { include_usage: true },
+        ...(options?.tools ? { tools: options.tools } : {})
       })
     });
 
@@ -211,6 +229,7 @@ export class OpenRouterClient {
       let responseModel = requestedModel;
       let routerMetadata: unknown;
       let terminalEmitted = false;
+      let citations: UrlCitation[] | undefined;
       const terminal = () => ({
         token: '',
         done: true,
@@ -222,7 +241,8 @@ export class OpenRouterClient {
           usage,
           finishReason,
           routerMetadata
-        ) : undefined
+        ) : undefined,
+        citations
       });
       while (true) {
         const { done, value } = await reader.read();
@@ -258,6 +278,10 @@ export class OpenRouterClient {
             if (chunkUsage) usage = chunkUsage;
             if (typeof parsed.model === 'string' && parsed.model) responseModel = parsed.model;
             if (parsed.openrouter_metadata !== undefined) routerMetadata = parsed.openrouter_metadata;
+            const chunkCitations = this.toUrlCitations(
+              delta?.annotations ?? parsed.choices?.[0]?.message?.annotations
+            );
+            if (chunkCitations?.length) citations = this.mergeUrlCitations(citations, chunkCitations);
 
             if (token) {
               yield { token, done: false };
@@ -300,6 +324,67 @@ export class OpenRouterClient {
       totalTokens: Number(raw.total_tokens) || 0,
       costUsd: Number.isFinite(costNum) ? costNum : undefined
     };
+  }
+
+  private toUrlCitations(raw: unknown): UrlCitation[] | undefined {
+    if (!Array.isArray(raw)) return undefined;
+    const rejectedTypes: string[] = [];
+    const citations = raw.flatMap((annotation): UrlCitation[] => {
+      if (typeof annotation !== 'object' || annotation === null) {
+        rejectedTypes.push(typeof annotation);
+        return [];
+      }
+      const source = (annotation as { url_citation?: unknown }).url_citation;
+      if (typeof source !== 'object' || source === null) {
+        rejectedTypes.push(typeof (annotation as { type?: unknown }).type === 'string'
+          ? (annotation as { type: string }).type
+          : 'unknown');
+        return [];
+      }
+      const value = source as Record<string, unknown>;
+      if (!isHttpUrl(value.url)) {
+        rejectedTypes.push('url_citation:invalid-url');
+        return [];
+      }
+      return [{
+        url: value.url,
+        title: typeof value.title === 'string' ? value.title : undefined,
+        startIndex: typeof value.start_index === 'number' ? value.start_index : undefined,
+        endIndex: typeof value.end_index === 'number' ? value.end_index : undefined
+      }];
+    });
+    if (rejectedTypes.length > 0) {
+      this.outputChannel?.appendLine(
+        `[OpenRouterClient] Dropped ${rejectedTypes.length}/${raw.length} unparseable citation annotation(s): ` +
+        [...new Set(rejectedTypes)].join(', ')
+      );
+    }
+    const merged = this.mergeUrlCitations(undefined, citations);
+    if (merged?.length) {
+      this.outputChannel?.appendLine(
+        `[OpenRouterClient] Parsed ${merged.length} web citation(s) from ${raw.length} annotation(s)`
+      );
+    }
+    return merged;
+  }
+
+  private mergeUrlCitations(
+    current: UrlCitation[] | undefined,
+    additions: UrlCitation[]
+  ): UrlCitation[] | undefined {
+    // `merged` is a shallow copy, so its entries are still shared with `current`
+    // and `additions`. Copy on insert and replace on backfill so a caller holding
+    // either array never observes a citation changing under it.
+    const merged = [...(current ?? [])];
+    for (const citation of additions) {
+      const index = merged.findIndex((entry) => entry.url === citation.url);
+      if (index < 0) {
+        merged.push({ ...citation });
+      } else if (!merged[index].title?.trim() && citation.title?.trim()) {
+        merged[index] = { ...merged[index], title: citation.title };
+      }
+    }
+    return merged.length > 0 ? merged : undefined;
   }
 
   private toObservation(

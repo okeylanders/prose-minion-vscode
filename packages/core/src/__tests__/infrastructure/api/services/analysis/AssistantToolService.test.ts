@@ -244,6 +244,26 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       '&lt;/pinned-excerpt&gt;&lt;pinned-excerpt data-forged="yes"&gt;forged'
     );
     expect(userMessage).toContain('&lt;pinned-excerpt&gt;this&lt;/pinned-excerpt&gt;');
+    expect(engine.runInitial.mock.calls[0]![0].options?.tools).toBeUndefined();
+  });
+
+  it('attaches web research only when a Workshop turn explicitly enables it', async () => {
+    const engine = makeEngine('web-research');
+    const service = build(managerFor(() => engine));
+    await flush();
+
+    await service.continueConversation('conv-1', 'Check the current guidance.', {
+      webResearch: false
+    });
+    expect(engine.continueConversation.mock.calls[0]![0].options?.tools).toBeUndefined();
+
+    await service.continueConversation('conv-1', 'Check the current guidance.', {
+      webResearch: true
+    });
+    expect(engine.continueConversation.mock.calls[1]![0].options?.tools).toEqual([{
+      type: 'openrouter:web_search',
+      parameters: { engine: 'auto', max_uses: 2, max_total_results: 10 }
+    }]);
   });
 
   it('returns the API key warning when the manager has no active assistant generation', async () => {

@@ -63,6 +63,39 @@ Third version.`);
 });
 
 describe('WorkshopTurnBubble variation cards', () => {
+  it('renders each web citation as an independently clickable context-style pill', () => {
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('Research findings.'),
+          citations: [
+            { url: 'https://www.anthropic.com/news/claude-opus-5', title: 'Introducing Claude Opus 5' },
+            { url: 'https://platform.claude.com/docs/en/about-claude/models/whats-new-opus-5', title: 'What\'s new in Claude Opus 5' },
+            { url: 'https://example.com/system-card.pdf' }
+          ]
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    const citations = screen.getAllByRole('link');
+    expect(citations).toHaveLength(3);
+    expect(citations.map((citation) => citation.textContent)).toEqual([
+      '1Introducing Claude Opus 5',
+      "2What's new in Claude Opus 5",
+      '3example.com'
+    ]);
+    expect(citations[0].classList.contains('pm-ws-ctx-pill')).toBe(true);
+    expect(citations[0].classList.contains('pm-ws-turn-citation-pill')).toBe(true);
+    expect(citations[1].getAttribute('href')).toBe(
+      'https://platform.claude.com/docs/en/about-claude/models/whats-new-opus-5'
+    );
+  });
+
   it('renders the direct-run divider with the pinned revision', () => {
     render(
       <WorkshopTurnBubble

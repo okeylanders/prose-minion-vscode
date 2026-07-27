@@ -9,14 +9,20 @@ import {
   workshopWriterProfilePromptsEqual,
   workshopWriterProfilesEqual,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
+  WORKSHOP_WEB_RESEARCH_SETTING,
   WorkshopConversationBehavior,
   WorkshopPersonaId,
-  WorkshopWriterProfile
+  WorkshopWriterProfile,
+  WorkshopWebResearchSettings,
+  coerceWorkshopWebResearchSettings,
+  isValidWorkshopWebResearchSettings,
+  workshopWebResearchSettingsEqual
 } from '@messages';
 
 export interface WorkshopConversationSettingsPersistenceErrors {
   behavior?: string;
   writerProfile?: string;
+  webResearch?: string;
 }
 
 export interface WorkshopConversationSettingsUpdate {
@@ -51,6 +57,8 @@ export class WorkshopConversationSettingsService {
   private externalSyncPending = false;
   private pendingBehaviorPersistence?: PendingPersistence<WorkshopConversationBehavior>;
   private pendingProfilePersistence?: PendingPersistence<WorkshopWriterProfile>;
+  private pendingWebResearchPersistence?: PendingPersistence<WorkshopWebResearchSettings>;
+  private webResearch: WorkshopWebResearchSettings;
 
   constructor(
     private readonly session: WorkshopSessionService,
@@ -58,29 +66,40 @@ export class WorkshopConversationSettingsService {
     private readonly settings: SettingsStore,
     private readonly outputChannel: LogSink,
     private readonly writerProfileService: WorkshopWriterProfileService
-  ) {}
+  ) {
+    this.webResearch = this.readWebResearchSetting();
+  }
 
-  /** Apply and persist the modal's complete Behavior + About You submission. */
+  /** Apply and persist the modal's complete Behavior, About You, and Advanced submission. */
   applyFromWebview(
     rawBehavior: unknown,
-    rawWriterProfile: unknown
+    rawWriterProfile: unknown,
+    rawWebResearch: unknown = undefined
   ): Promise<WorkshopConversationSettingsUpdate> {
     const nextBehavior = coerceWorkshopConversationBehavior(rawBehavior);
     const nextProfile = coerceWorkshopWriterProfile(rawWriterProfile);
+    const nextWebResearch = coerceWorkshopWebResearchSettings(rawWebResearch);
     return this.serialize(async () => {
       this.assertBetweenRuns();
       const result = await this.apply(nextBehavior, nextProfile);
       this.externalSyncPending = false;
       const pendingBehavior = this.pendingBehaviorPersistence;
       const pendingProfile = this.pendingProfilePersistence;
+      const pendingWebResearch = this.pendingWebResearchPersistence;
       const persistBehavior = result.behaviorChanged
         || (pendingBehavior !== undefined
           && workshopConversationBehaviorsEqual(pendingBehavior.appliedValue, nextBehavior));
       const persistProfile = result.profileChanged
         || (pendingProfile !== undefined
           && workshopWriterProfilesEqual(pendingProfile.appliedValue, nextProfile));
-      if (!persistBehavior && !persistProfile) {
-        return this.publicResult(result);
+      const webResearchChanged = !workshopWebResearchSettingsEqual(this.webResearch, nextWebResearch);
+      const persistWebResearch = webResearchChanged
+        || (pendingWebResearch !== undefined
+          && workshopWebResearchSettingsEqual(pendingWebResearch.appliedValue, nextWebResearch));
+      this.webResearch = nextWebResearch;
+      const changed = result.changed || webResearchChanged;
+      if (!persistBehavior && !persistProfile && !persistWebResearch) {
+        return this.publicResult({ ...result, changed });
       }
 
       const persistenceErrors: WorkshopConversationSettingsPersistenceErrors = {};
@@ -112,10 +131,27 @@ export class WorkshopConversationSettingsService {
           };
         }
       }
+      if (persistWebResearch) {
+        try {
+          await this.settings.update(
+            WORKSHOP_WEB_RESEARCH_SETTING.section,
+            WORKSHOP_WEB_RESEARCH_SETTING.key,
+            nextWebResearch
+          );
+          this.pendingWebResearchPersistence = undefined;
+        } catch (error) {
+          persistenceErrors.webResearch = this.errorMessage(error);
+          this.pendingWebResearchPersistence = {
+            storedValue: this.readWebResearchSetting(),
+            appliedValue: { ...nextWebResearch }
+          };
+        }
+      }
+      if (changed) this.logSettingsApplied(nextBehavior, nextProfile, nextWebResearch);
       return this.publicResult(
         Object.keys(persistenceErrors).length > 0
-          ? { ...result, persistenceErrors }
-          : result
+          ? { ...result, changed, persistenceErrors }
+          : { ...result, changed }
       );
     });
   }
@@ -134,12 +170,23 @@ export class WorkshopConversationSettingsService {
         );
         return { changed: false, deferred: true };
       }
+      const previousWebResearch = this.webResearch;
       const result = await this.apply(
         this.resolveBehaviorSetting(this.readBehaviorSetting()),
         this.resolveProfileSetting(this.writerProfileService.readSetting())
       );
+      this.webResearch = this.resolveWebResearchSetting(this.readWebResearchSetting());
       this.externalSyncPending = false;
-      return this.publicResult(result);
+      const changed = result.changed || !workshopWebResearchSettingsEqual(previousWebResearch, this.webResearch);
+      if (changed) this.logSettingsApplied(
+        this.session.getConversationBehavior(),
+        this.writerProfileService.getProfile(),
+        this.webResearch
+      );
+      return this.publicResult({
+        ...result,
+        changed
+      });
     });
   }
 
@@ -152,12 +199,23 @@ export class WorkshopConversationSettingsService {
       if (this.hasActiveRun()) {
         return { changed: false, deferred: true };
       }
+      const previousWebResearch = this.webResearch;
       const result = await this.apply(
         this.resolveBehaviorSetting(this.readBehaviorSetting()),
         this.resolveProfileSetting(this.writerProfileService.readSetting())
       );
+      this.webResearch = this.resolveWebResearchSetting(this.readWebResearchSetting());
       this.externalSyncPending = false;
-      return this.publicResult(result);
+      const changed = result.changed || !workshopWebResearchSettingsEqual(previousWebResearch, this.webResearch);
+      if (changed) this.logSettingsApplied(
+        this.session.getConversationBehavior(),
+        this.writerProfileService.getProfile(),
+        this.webResearch
+      );
+      return this.publicResult({
+        ...result,
+        changed
+      });
     });
   }
 
@@ -193,17 +251,28 @@ export class WorkshopConversationSettingsService {
 
     this.session.setConversationBehavior(nextBehavior);
     this.writerProfileService.commit(nextProfile);
-    this.outputChannel.appendLine(
-      `[WorkshopConversationSettingsService] Conversation settings committed ` +
-      `(mode=${nextBehavior.interactionMode}, expression=${nextBehavior.expressionLevel}, ` +
-      `relationalDepth=${nextBehavior.relationalDepth}, carry=${nextBehavior.carryCuesThroughSession}, ` +
-      `profileEnabled=${nextProfile.enabled}, profileHasContent=${nextProfile.preferredAddress.length > 0 || nextProfile.bio.length > 0})`
-    );
     return { changed: true, deferred: false, behaviorChanged, profileChanged };
   }
 
   getWriterProfile(): WorkshopWriterProfile {
     return this.writerProfileService.getProfile();
+  }
+
+  getWebResearch(): WorkshopWebResearchSettings {
+    return { ...this.webResearch };
+  }
+
+  private readWebResearchSetting(): WorkshopWebResearchSettings {
+    const raw = this.settings.get<unknown>(
+      WORKSHOP_WEB_RESEARCH_SETTING.section,
+      WORKSHOP_WEB_RESEARCH_SETTING.key
+    );
+    if (raw !== undefined && !isValidWorkshopWebResearchSettings(raw)) {
+      this.outputChannel.appendLine(
+        '[WorkshopConversationSettingsService] Rejected invalid web research setting; using the disabled default'
+      );
+    }
+    return coerceWorkshopWebResearchSettings(raw);
   }
 
   private replacementTargets(): Array<{
@@ -266,6 +335,32 @@ export class WorkshopConversationSettingsService {
     }
     this.pendingProfilePersistence = undefined;
     return storedValue;
+  }
+
+  private resolveWebResearchSetting(
+    storedValue: WorkshopWebResearchSettings
+  ): WorkshopWebResearchSettings {
+    const pending = this.pendingWebResearchPersistence;
+    if (!pending) return storedValue;
+    if (workshopWebResearchSettingsEqual(storedValue, pending.storedValue)) {
+      return { ...pending.appliedValue };
+    }
+    this.pendingWebResearchPersistence = undefined;
+    return storedValue;
+  }
+
+  private logSettingsApplied(
+    behavior: WorkshopConversationBehavior,
+    profile: WorkshopWriterProfile,
+    webResearch: WorkshopWebResearchSettings
+  ): void {
+    this.outputChannel.appendLine(
+      `[WorkshopConversationSettingsService] Conversation settings applied ` +
+      `(mode=${behavior.interactionMode}, expression=${behavior.expressionLevel}, ` +
+      `relationalDepth=${behavior.relationalDepth}, carry=${behavior.carryCuesThroughSession}, ` +
+      `profileEnabled=${profile.enabled}, profileHasContent=${profile.preferredAddress.length > 0 || profile.bio.length > 0}, ` +
+      `webResearchEnabled=${webResearch.enabled})`
+    );
   }
 
   private assertBetweenRuns(): void {

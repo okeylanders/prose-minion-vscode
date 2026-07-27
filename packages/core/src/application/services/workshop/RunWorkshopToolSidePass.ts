@@ -69,7 +69,8 @@ export class RunWorkshopToolSidePass {
     private readonly roomDelivery: WorkshopRoomDeliveryService,
     private readonly capabilityFactory: WorkshopPersonaCapabilityFactory,
     private readonly outputChannel: LogSink,
-    private readonly writerProfileService: WorkshopWriterProfileService
+    private readonly writerProfileService: WorkshopWriterProfileService,
+    private readonly webResearchEnabled: () => boolean
   ) {}
 
   async run(
@@ -228,7 +229,8 @@ export class RunWorkshopToolSidePass {
         ? await this.assistantToolService.continueConversation(hostConversationId, hostMessage, {
             signal: controller.signal,
             onToken: (token: string) => events.streamChunk(synthesisRequestId, token),
-            capability: hostCapability
+            capability: hostCapability,
+            webResearch: this.webResearchEnabled()
           })
         : await this.assistantToolService.startWorkshopPersonaConversation({
             personaId,
@@ -245,7 +247,8 @@ export class RunWorkshopToolSidePass {
           }, {
             signal: controller.signal,
             onToken: (token: string) => events.streamChunk(synthesisRequestId, token),
-            capability: hostCapability
+            capability: hostCapability,
+            webResearch: this.webResearchEnabled()
           });
       const synthesisTurn = completeWorkshopRun({
         session: this.session,
