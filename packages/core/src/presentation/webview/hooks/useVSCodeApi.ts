@@ -23,10 +23,16 @@ let cachedApi: VSCodeAPI | undefined;
  * Singleton accessor for the VS Code webview API (the `AppMessagePort` impl).
  * Exported for non-hook callers (e.g. the index.tsx bootstrap error path) so
  * the `acquireVsCodeApi()` global stays referenced in exactly one module.
+ *
+ * The host's HTML shell runs before this bundle and acquires the API there, so
+ * its pre-React error handlers keep working after we load. `acquireVsCodeApi()`
+ * throws on a second call, so prefer that handle when it exists rather than
+ * racing the shell for the one acquisition (PR #94 review, Oliver).
  */
 export const getVSCodeApi = (): VSCodeAPI => {
   if (!cachedApi) {
-    cachedApi = acquireVsCodeApi();
+    const shellApi = (window as Window & { __pmVsCodeApi?: VSCodeAPI }).__pmVsCodeApi;
+    cachedApi = shellApi ?? acquireVsCodeApi();
   }
   return cachedApi;
 };

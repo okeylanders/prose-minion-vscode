@@ -154,6 +154,17 @@ privacy disclosure is not a design detail to be lost in a re-pull, so
 pages is the comp's copy verbatim. Update the remote design when convenient;
 until then, do not "fix" the delta in either direction.
 
+### Notice-layout reconciliation (2026-07-27)
+
+One **layout** delta, for the same reason and with the same fence. Notice 2
+sizes its two screenshots **180px / 340px**, not the comp's 216 / 400. At the
+comp's widths the two do not both fit the media well's height cap — and that
+page points at two separate places (the VS Code File menu *and* the sidebar
+gear), so pushing the second below a scroll defeats the picture. Also pinned by
+a test, because "an inline comment is not a fence against a re-pull" (PR #94
+review, Bria). Adjust the remote comp when convenient; do not silently widen
+these back.
+
 ## Present on remote, not pulled yet (next epic)
 
 The design project also holds the **Conversation Widgets** epic spreads — the

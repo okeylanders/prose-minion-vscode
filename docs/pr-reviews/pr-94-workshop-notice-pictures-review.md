@@ -15,23 +15,45 @@ act before merge · **Deferred** = real issue, safe to punt for a stated reason 
 
 | # | Sev | Finding | Reviewers | Consensus | Status |
 |---|-----|---------|-----------|-----------|--------|
-| 1 | 🟠 High | Shipped screenshots captured against the live daily-driver setup — manuscript working title + OpenRouter balance | Patricia | — | **Open** |
-| 2 | 🟠 High | `WorkshopConfigureGuide` hand-copies the shell's focus/Escape effect — and the two managers fight, jumping focus out of the modal on every guide round trip | Marcus, Parker, Stan, Sam | 🎯🎯 Strong | **Open** |
-| 3 | 🟠 High | The "cannot half-land" test never checks the PNG exists on disk | Cal, Oliver, Blake | 🎯🎯 Strong | **Open** |
-| 4 | 🟡 Standard | A broken `<img>` leaves no trail — bubble-phase error handler structurally cannot see it, no `onError` anywhere | Oliver, Blake | 🎯 | **Open** |
-| 5 | 🟡 Standard | Trailing-period bug (`guideLink.trail`) has no regression test; the API shape invites the bug | Parker, Cal | 🎯 | **Open** |
-| 6 | 🟡 Standard | Four shipped PNGs oversampled 2–2.3× — ~600 KB recoverable by resize, no visible quality loss | Tim | — | **Open** |
-| 7 | 🟡 Standard | All 10 shipped PNGs are byte-identical duplicates of `docs/design/uploads/` — repo carries 1.6 MB twice, permanently | Tim | — | **Open** |
-| 8 | 🟡 Standard | Comp deviation #2 (figure widths) has no doc entry and no test, unlike deviation #1 | Bria | — | **Open** |
-| 9 | 🟡 Standard | PR description caveat "typecheck was already red" does not reproduce — it passes clean | Blake | — | **Open** |
-| 10 | 🟡 Standard | Media well scroll offset survives a page change it should reset for | Sam | — | **Open** |
-| 11 | 🟡 Standard | Guide round-trip tests never exercise the boundary page (Notice 6) | Cal | — | **Open** |
-| 12 | 🟡 Standard | `NoticeCallout` is an interface, `NoticeLegendRow` a positional tuple — same conceptual data, two shapes | Parker | — | **Open** |
+| 1 | 🟠 High | Shipped screenshots captured against the live daily-driver setup — manuscript working title + OpenRouter balance | Patricia | — | **Open — Okey** re-shooting against the template fixture |
+| 2 | 🟠 High | `WorkshopConfigureGuide` hand-copies the shell's focus/Escape effect — and the two managers fight, jumping focus out of the modal on every guide round trip | Marcus, Parker, Stan, Sam | 🎯🎯 Strong | **Addressed** — extracted to `useOverlayDismiss`; both overlays consume it, and an overlay handoff now leaves focus alone entirely |
+| 3 | 🟠 High | The "cannot half-land" test never checks the PNG exists on disk | Cal, Oliver, Blake | 🎯🎯 Strong | **Addressed** — set equality against the folder + a size floor, both directions |
+| 4 | 🟡 Standard | A broken `<img>` leaves no trail — bubble-phase error handler structurally cannot see it, no `onError` anywhere | Oliver, Blake | 🎯 | **Addressed** — capture-phase listener posts the failed asset; verified firing in Chromium |
+| 5 | 🟡 Standard | Trailing-period bug (`guideLink.trail`) has no regression test; the API shape invites the bug | Parker, Cal | 🎯 | **Addressed** — renderer owns spacing; both sentences pinned by full-`textContent` assertions |
+| 6 | 🟡 Standard | Four shipped PNGs oversampled 2–2.3× — ~600 KB recoverable by resize, no visible quality loss | Tim | — | **Deferred → folded into #1** — the re-shoot replaces these four files, so resizing now is thrown away. Target widths recorded below |
+| 7 | 🟡 Standard | All 10 shipped PNGs are byte-identical duplicates of `docs/design/uploads/` — repo carries 1.6 MB twice, permanently | Tim | — | **Deferred → dissolved by #1** — scrubbed shipped shots will no longer be byte-identical to the comp's live-setup originals; see note below |
+| 8 | 🟡 Standard | Comp deviation #2 (figure widths) has no doc entry and no test, unlike deviation #1 | Bria | — | **Addressed** — README "Notice-layout reconciliation" + a test pinning 180/340 and both ratios |
+| 9 | 🟡 Standard | PR description caveat "typecheck was already red" does not reproduce — it passes clean | Blake | — | **Addressed** — Blake was right; caveat was an artifact of an `npx`-fetched TS 7.x before `npm ci`. Removed from the PR body |
+| 10 | 🟡 Standard | Media well scroll offset survives a page change it should reset for | Sam | — | **Addressed** — `key` on the scroller, so each page opens at the top |
+| 11 | 🟡 Standard | Guide round-trip tests never exercise the boundary page (Notice 6) | Cal | — | **Addressed** — Notice 6 now round-trips and asserts `6 / 6` + next-disabled |
+| 12 | 🟡 Standard | `NoticeCallout` is an interface, `NoticeLegendRow` a positional tuple — same conceptual data, two shapes | Parker | — | **Addressed** — `NoticeLegendRow` is now an interface with named fields |
 | 13 | 🟡 Standard | Guide nested inside the notice modal; every other overlay is a flat `WorkshopApp` sibling | Marcus | — | **Deferred** — works, and auto-closing with the notice is a genuine benefit; revisit if a third entry point appears |
-| 14 | 🟡 Standard | `proseMinonAssets` typo preserved against the alpha no-compat policy; the cached-shell rationale doesn't hold | Stan | — | **Open** |
-| 15 | 🟡 Standard | Full-surface guide is opaque but not `inert` — Tab reaches the hidden composer | Blake | — | **Deferred** — pre-existing hole in `WorkshopModalShell` too; fix once, for both, in its own commit |
-| 16 | 🟢 Nit | Barrel omits `WORKSHOP_STARTUP_NOTICE_VERSION` / `_DISMISSED_KEY` while adding its siblings | Stan | — | **Open** |
-| 17 | 🟢 Nit | "Fill in one glob per field" — three of eight rows have two globs | Bria | — | **Open** |
+| 14 | 🟡 Standard | `proseMinonAssets` typo preserved against the alpha no-compat policy; the cached-shell rationale doesn't hold | Stan | — | **Addressed** — renamed to `proseMinionAssets` everywhere; stale rationale replaced with why it was safe |
+| 15 | 🟡 Standard | Full-surface guide is opaque but not `inert` — Tab reaches the hidden composer | Blake | — | **Deferred** — pre-existing hole in `WorkshopModalShell` too; `useOverlayDismiss` now makes it a one-place fix, in its own commit |
+| 16 | 🟢 Nit | Barrel omits `WORKSHOP_STARTUP_NOTICE_VERSION` / `_DISMISSED_KEY` while adding its siblings | Stan | — | **Addressed** |
+| 17 | 🟢 Nit | "Fill in one glob per field" — three of eight rows have two globs | Bria | — | **Addressed** — now "Fill in the fields with globs", body says when to comma-separate |
+| 22 | 🟠 High | *Found while fixing #4:* the shell's pre-existing error bridge silently stopped forwarding once React booted — `acquireVsCodeApi()` throws on the second call and its `try/catch` swallowed it | — (Ada, prompted by Oliver) | — | **Addressed** — shell acquires once into `window.__pmVsCodeApi`; `getVSCodeApi()` prefers that handle |
+
+### Notes on the deferred asset items (#6, #7)
+
+Both are real, and both are **entangled with #1** in a way that makes acting now
+wasteful rather than thorough:
+
+- Re-shooting against the template fixture **replaces** all four of Tim's
+  oversampled files, so a resize pass today is thrown away. What survives is the
+  measurement — shoot to roughly **2× the rendered width**:
+  `vscode-open-folder` ≈ **580px** (it renders ~290px effective after the
+  161.3% crop), and the three `controller-*` tabs ≈ **336px** each. For contrast,
+  `project-layout` and `settings-resource-locations` are already correct at their
+  native widths; leave those alone.
+- The 1.6 MB duplication exists *because* the shipped shots are currently the
+  comp's exact bytes. After #1 they diverge on purpose — the comp keeps the
+  live-setup originals it was drawn from, the `.vsix` ships scrubbed ones — so
+  there is nothing left to deduplicate. Deduping first would create a shared
+  file that #1 then has to split apart again.
+
+Blake's blast-radius note stands either way: git never shrinks a committed blob,
+so the current bytes are permanent regardless. The win is in not compounding it.
 | 18 | 🟢 Praise | Asset-bridge `declare global` consolidation is the right boundary move | Marcus | — | **N/A** |
 | 19 | 🟢 Praise | Escape sequencing and empty-`src` degradation are both genuinely correct | Blake | — | **N/A** |
 | 20 | 🟢 Praise | Web-research privacy sentence verified accurate against the implementation | Patricia | — | **N/A** |

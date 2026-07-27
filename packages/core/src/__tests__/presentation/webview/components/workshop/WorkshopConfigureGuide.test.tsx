@@ -15,11 +15,13 @@
 import * as React from 'react';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { WorkshopConfigureGuide } from '@components/workshop/WorkshopConfigureGuide';
+import { __resetOverlayFocusStateForTests } from '@hooks/useOverlayDismiss';
 
 describe('WorkshopConfigureGuide', () => {
   afterEach(() => {
     cleanup();
-    delete window.proseMinonAssets;
+    delete window.proseMinionAssets;
+    __resetOverlayFocusStateForTests();
   });
 
   it('renders nothing while closed', () => {
@@ -34,7 +36,7 @@ describe('WorkshopConfigureGuide', () => {
     expect(steps).toHaveLength(3);
     expect(steps[0].textContent).toContain('Open the project folder');
     expect(steps[1].textContent).toContain('Open Prose Minion Settings');
-    expect(steps[2].textContent).toContain('Fill in one glob per field');
+    expect(steps[2].textContent).toContain('Fill in the fields with globs');
   });
 
   it('maps every settings field to the glob for the example layout', () => {
@@ -71,7 +73,7 @@ describe('WorkshopConfigureGuide', () => {
   });
 
   it('renders the two walkthrough screenshots from the host-resolved URIs', () => {
-    window.proseMinonAssets = {
+    window.proseMinionAssets = {
       noticeShots: {
         'project-layout': 'https://webview.test/project-layout.png',
         'settings-resource-locations': 'https://webview.test/settings.png'

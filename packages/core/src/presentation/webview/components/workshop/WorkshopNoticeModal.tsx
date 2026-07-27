@@ -63,8 +63,18 @@ interface NoticeThumbRow {
 
 type NoticeMedia = NoticeFigure | NoticeThumbRow;
 
-/** One legend row: the number, the control it names, and what it does. */
-type NoticeLegendRow = [label: string, term: string, detail: string];
+/**
+ * One legend row — the same "what does call-out N point at" data as
+ * {@link NoticeCallout}, so it reads by property name too rather than by
+ * position (PR #94 review, Parker).
+ */
+interface NoticeLegendRow {
+  /** Matches the {@link NoticeCallout} label it explains. */
+  label: string;
+  /** The control's name, as it appears in the UI. */
+  term: string;
+  detail: string;
+}
 
 interface NoticePage {
   title: string;
@@ -75,11 +85,19 @@ interface NoticePage {
   media: readonly NoticeMedia[];
   legend: readonly NoticeLegendRow[];
   /**
-   * Sentence pointing at the full project-configuration walkthrough. `trail`
-   * is rendered verbatim after the link, so it carries its own leading space
-   * when it needs one — otherwise a closing period lands as "Locations .".
+   * Sentence pointing at the full project-configuration walkthrough. The
+   * renderer owns ALL spacing: `lead` gets a space after it, and `trail`
+   * continues the sentence immediately, so a closing period reads "Locations."
+   * and a following clause needs no hand-typed leading space. An earlier
+   * revision made spacing the caller's job and promptly shipped "Locations ."
+   * (PR #94 review, Parker/Cal) — a contract no type could enforce.
    */
-  guideLink?: { lead: string; label: string; trail?: string };
+  guideLink?: {
+    lead: string;
+    label: string;
+    /** Continues straight after the link: punctuation, or ` and then …`. */
+    trail?: string;
+  };
 }
 
 const COMPOSER_CONTROLS_ALT = 'The Workshop composer control bar';
@@ -155,8 +173,8 @@ const PAGES: readonly NoticePage[] = [
       }
     ],
     legend: [
-      ['1', 'File → Open Folder…', 'point VS Code at the project root before anything else.'],
-      ['2', 'Settings gear', 'top-right of the Prose Minion sidebar; opens Project Resource Locations.']
+      { label: '1', term: 'File → Open Folder…', detail: 'point VS Code at the project root before anything else.' },
+      { label: '2', term: 'Settings gear', detail: 'top-right of the Prose Minion sidebar; opens Project Resource Locations.' }
     ],
     guideLink: {
       lead: 'Then follow',
@@ -203,10 +221,10 @@ const PAGES: readonly NoticePage[] = [
       }
     ],
     legend: [
-      ['1', 'Host chip', 'set before the conversation begins.'],
-      ['2', 'Model picker', 'Gemini 3.6 Flash, GPT-5.6 Terra, GPT-5.6 Sol.'],
-      ['3', 'Talking to', 'who is currently in the room.'],
-      ['4', 'Invite guest', 'add a focused specialist beside the host.']
+      { label: '1', term: 'Host chip', detail: 'set before the conversation begins.' },
+      { label: '2', term: 'Model picker', detail: 'Gemini 3.6 Flash, GPT-5.6 Terra, GPT-5.6 Sol.' },
+      { label: '3', term: 'Talking to', detail: 'who is currently in the room.' },
+      { label: '4', term: 'Invite guest', detail: 'add a focused specialist beside the host.' }
     ]
   },
   {
@@ -260,7 +278,7 @@ const PAGES: readonly NoticePage[] = [
       }
     ],
     legend: [
-      ['1', 'Conversation Controller', 'the diamond chip in the composer bar; three tabs inside.']
+      { label: '1', term: 'Conversation Controller', detail: 'the diamond chip in the composer bar; three tabs inside.' }
     ]
   },
   {
@@ -290,8 +308,8 @@ const PAGES: readonly NoticePage[] = [
       }
     ],
     legend: [
-      ['1', 'Tools', 'the fourteen analyses; enabled once an excerpt is pinned.'],
-      ['2', '+', 'pin the excerpt and attach project context.']
+      { label: '1', term: 'Tools', detail: 'the fourteen analyses; enabled once an excerpt is pinned.' },
+      { label: '2', term: '+', detail: 'pin the excerpt and attach project context.' }
     ]
   },
   {
@@ -319,7 +337,9 @@ const PAGES: readonly NoticePage[] = [
         ]
       }
     ],
-    legend: [['1', 'Widgets', 'a preview browser; nothing launches yet.']],
+    legend: [
+      { label: '1', term: 'Widgets', detail: 'a preview browser; nothing launches yet.' }
+    ],
     guideLink: {
       lead: 'Project-file reading depends on the paths set in',
       label: 'Project Resource Locations',
@@ -441,16 +461,21 @@ export const WorkshopNoticeModal: React.FC<WorkshopNoticeModalProps> = ({
           <div className="pm-ws-notice-body">
             <div className="pm-ws-notice-well">
               <div className="pm-ws-notice-well-title">{page.wellTitle}</div>
-              <div className="pm-ws-notice-media">
+              {/* `key` on the scroller, not just its children: it is one DOM
+                  node across a page change, so without this a writer who
+                  scrolled the setup page's tall figures lands on the next
+                  notice already scrolled past its lead screenshot, with nothing
+                  saying to scroll up (PR #94 review, Sam). */}
+              <div className="pm-ws-notice-media" key={`media-${index}`}>
                 <NoticeMediaWell media={page.media} />
               </div>
               {page.legend.length > 0 && (
                 <ul className="pm-ws-notice-legend">
-                  {page.legend.map(([label, term, detail]) => (
-                    <li key={label}>
-                      <span className="pm-ws-notice-legend-num">{label}</span>
+                  {page.legend.map((row) => (
+                    <li key={row.label}>
+                      <span className="pm-ws-notice-legend-num">{row.label}</span>
                       <span>
-                        <b>{term}</b> — {detail}
+                        <b>{row.term}</b> — {row.detail}
                       </span>
                     </li>
                   ))}
@@ -468,7 +493,7 @@ export const WorkshopNoticeModal: React.FC<WorkshopNoticeModalProps> = ({
               <p>{page.body}</p>
               {page.guideLink && (
                 <p className="pm-ws-notice-guide-note">
-                  {page.guideLink.lead}{' '}
+                  {`${page.guideLink.lead} `}
                   <button
                     type="button"
                     className="pm-ws-notice-guide-link"

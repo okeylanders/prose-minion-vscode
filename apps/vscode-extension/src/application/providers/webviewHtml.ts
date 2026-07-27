@@ -74,7 +74,7 @@ export function getWebviewHtml(
 <body>
   ${rootDiv}
   <script nonce="${nonce}">
-    window.proseMinonAssets = {
+    window.proseMinionAssets = {
       vhsLoadingGif: "${myWorldLoadingGifUri}",
       loadingGifs: [
         "${myWorldLoadingGifUri}",
@@ -98,14 +98,39 @@ export function getWebviewHtml(
   </script>
   <script nonce="${nonce}">
     console.log('[Prose Minion] Webview HTML loaded');
+    // acquireVsCodeApi() may be called ONCE per webview. This script runs before
+    // the bundle, so acquire here and share it: the bundle's getVSCodeApi()
+    // prefers this handle instead of acquiring a second time (which throws).
+    // Without this the handlers below silently stopped forwarding the moment the
+    // React app acquired the API — their try/catch swallowed the throw.
+    window.__pmVsCodeApi = (function () { try { return acquireVsCodeApi(); } catch { return undefined; } })();
+    function pmPostWebviewError(message) {
+      try {
+        const api = window.__pmVsCodeApi;
+        if (api && api.postMessage) api.postMessage({ type: '${MessageType.WEBVIEW_ERROR}', message: message });
+      } catch {}
+    }
     window.addEventListener('error', function (e) {
       try {
         const el = document.getElementById('root');
         if (el) el.textContent = 'Webview error: ' + (e?.message || 'unknown');
-        // Forward to extension output channel if API is available
-        try { const vscode = acquireVsCodeApi && acquireVsCodeApi(); vscode && vscode.postMessage && vscode.postMessage({ type: '${MessageType.WEBVIEW_ERROR}', message: e?.message || 'unknown' }); } catch {}
+        pmPostWebviewError(e?.message || 'unknown');
       } catch {}
     });
+    // Resource load failures (a missing <img>, a dropped asset) fire AT the
+    // element and do not bubble, so the bubble-phase handler above structurally
+    // cannot see them — a broken screenshot in the first-run tour used to leave
+    // no trail at all (PR #94 review, Oliver). Capture phase catches them.
+    // Deliberately NOT routed through the handler above: that one replaces
+    // #root's text, which would trade one broken picture for a blank Workshop.
+    window.addEventListener('error', function (e) {
+      try {
+        const el = e?.target;
+        const src = el && el.tagName === 'IMG' ? (el.currentSrc || el.src || '') : '';
+        if (!src) return;
+        pmPostWebviewError('asset failed to load: ' + src);
+      } catch {}
+    }, true);
   </script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>

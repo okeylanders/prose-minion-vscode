@@ -11,6 +11,7 @@
 
 import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
+import { useOverlayDismiss } from '@hooks/useOverlayDismiss';
 
 interface WorkshopModalShellProps {
   open: boolean;
@@ -33,27 +34,10 @@ interface WorkshopModalShellProps {
 export const WorkshopModalShell: React.FC<WorkshopModalShellProps> & {
   CloseButton: typeof WorkshopModalCloseButton;
 } = ({ open, titleId, closeLabel, className, variant = 'panel', onClose, children }) => {
-  const returnFocusRef = React.useRef<HTMLElement | null>(null);
-  const closeButtonRef = React.useRef<HTMLButtonElement>(null);
-
-  React.useEffect(() => {
-    if (!open) {
-      return undefined;
-    }
-    returnFocusRef.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    closeButtonRef.current?.focus();
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      returnFocusRef.current?.focus();
-    };
-  }, [onClose, open]);
+  /* Escape + focus capture/return live in the shared hook, so this shell and
+     the full-surface guide cannot drift apart — or fight over focus when one
+     hands off to the other (PR #94 review). */
+  const closeButtonRef = useOverlayDismiss({ open, onClose });
 
   const handleBackdropClick = React.useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {

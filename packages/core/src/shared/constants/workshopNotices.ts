@@ -17,7 +17,7 @@ export const WORKSHOP_STARTUP_NOTICE_DISMISSED_KEY =
 /**
  * Folder under the extension's `assets/` holding the notice screenshots.
  * The webview cannot build `vscode-webview://` URIs itself, so the host
- * resolves one per name into `window.proseMinonAssets.noticeShots`.
+ * resolves one per name into `window.proseMinionAssets.noticeShots`.
  */
 export const WORKSHOP_NOTICE_SHOT_DIR = 'workshop-notices';
 

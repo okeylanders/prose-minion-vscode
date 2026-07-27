@@ -16,6 +16,7 @@
 
 import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
+import { useOverlayDismiss } from '@hooks/useOverlayDismiss';
 import { getNoticeShotUri } from '@utils/proseMinionAssets';
 
 interface GuideStep {
@@ -47,11 +48,14 @@ const STEPS: readonly GuideStep[] = [
   },
   {
     key: 'STEP 3',
-    title: 'Fill in one glob per field',
+    /* "one glob per field" undersold it — three of the eight rows in the table
+       below carry two patterns (PR #94 review, Bria). */
+    title: 'Fill in the fields with globs',
     body: (
       <>
-        Comma-separate multiple patterns. Patterns are relative to the workspace root;{' '}
-        <b>**/*</b> means &ldquo;everything below this folder&rdquo;.
+        One pattern is usually enough; comma-separate when a field spans two folders. Patterns
+        are relative to the workspace root; <b>**/*</b> means &ldquo;everything below this
+        folder&rdquo;.
       </>
     )
   }
@@ -78,27 +82,9 @@ export const WorkshopConfigureGuide: React.FC<WorkshopConfigureGuideProps> = ({
   open,
   onClose
 }) => {
-  const closeButtonRef = React.useRef<HTMLButtonElement>(null);
-  const returnFocusRef = React.useRef<HTMLElement | null>(null);
-
-  React.useEffect(() => {
-    if (!open) {
-      return undefined;
-    }
-    returnFocusRef.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    closeButtonRef.current?.focus();
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      returnFocusRef.current?.focus();
-    };
-  }, [onClose, open]);
+  /* Same hook the boxed modal shell uses — this overlay only opts out of the
+     shell's backdrop LAYOUT, not its Escape and focus contract. */
+  const closeButtonRef = useOverlayDismiss({ open, onClose });
 
   if (!open) {
     return null;

@@ -2,14 +2,15 @@
  * proseMinionAssets — the ONE typed view of the host→webview asset bridge.
  *
  * A webview cannot mint `vscode-webview://` URIs, so the host stamps a small
- * literal onto `window.proseMinonAssets` (see the extension's
+ * literal onto `window.proseMinionAssets` (see the extension's
  * `webviewHtml.ts`) and everything DOM-side reads it from here. Keeping the
  * `declare global` in a single module is what stops two components from
  * declaring conflicting shapes for the same window property.
  *
- * (The `proseMinon` spelling is a long-standing typo in the shipped bridge.
- * Renaming it would break any webview loaded from a cached HTML shell, so the
- * misspelling stays and this comment carries the apology.)
+ * The property was `proseMinonAssets` (sic) until PR #94's review: the host
+ * regenerates this whole script on every panel creation, so there was never a
+ * cached shell to go stale and nothing to stay compatible with — exactly the
+ * kind of "kept for compatibility" the alpha guidelines say to delete.
  */
 
 import { WorkshopNoticeShot } from '@shared/constants/workshopNotices';
@@ -25,12 +26,12 @@ export interface ProseMinionAssets {
 
 declare global {
   interface Window {
-    proseMinonAssets?: ProseMinionAssets;
+    proseMinionAssets?: ProseMinionAssets;
   }
 }
 
 export function getProseMinionAssets(): ProseMinionAssets | undefined {
-  return typeof window === 'undefined' ? undefined : window.proseMinonAssets;
+  return typeof window === 'undefined' ? undefined : window.proseMinionAssets;
 }
 
 /**
