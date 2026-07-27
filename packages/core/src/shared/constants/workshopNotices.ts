@@ -8,7 +8,7 @@
  * deliberate product behavior (Sprint 14 §5), not a bug.
  */
 
-export const WORKSHOP_STARTUP_NOTICE_VERSION = 'v1';
+export const WORKSHOP_STARTUP_NOTICE_VERSION = 'v2';
 
 export const WORKSHOP_STARTUP_NOTICE_DISMISSED_KEY =
   'proseMinion.workshopNotice.dismissedVersion';

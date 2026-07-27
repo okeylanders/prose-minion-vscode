@@ -22,72 +22,80 @@ interface NoticePage {
 
 const PAGES: readonly NoticePage[] = [
   {
-    title: 'Welcome — this is a Beta experience',
+    title: 'Welcome to the Workshop beta',
     tag: 'beta',
     body: (
       <>
-        The Workshop is new and still settling. There&rsquo;s no written guide yet — this tour is
-        it, so feel free to explore: nothing here spends anything until you explicitly press a
-        button that says so, and nothing you try can damage your project files.
+        The Workshop is a conversation space for working with a host, focused guests, and
+        analysis instruments. It is still settling, so this short tour points to the controls
+        that matter most. You decide when to send a message, run a tool, attach context, or apply
+        text; Prose Minion never changes project files on its own.
       </>
     )
   },
   {
-    title: 'Works best with a project folder configured',
+    title: 'Start with an open project folder',
     tag: 'setup',
     body: (
       <>
-        Point the <b>Open Folder</b> setting (see the Settings tab) at your project, organized the
-        way the browse-project modal expects: <b>Characters</b>, <b>Locations &amp; Settings</b>,{' '}
-        <b>Themes</b>, <b>Project Brief materials</b>, and individual files per chapter. Once
-        configured, assistants can read those files as context — and the category picker maps
-        straight onto your folders.
+        Open your writing project folder in VS Code. Then use the <b>Prose Minion Settings</b>{' '}
+        gear in the sidebar to tell the extension where character sheets, locations, project
+        notes, drafts, and manuscript chapters live. For the best results, split drafts and
+        manuscripts into individual chapter files so assistants can find and read the right
+        material without treating a whole novel as one document.
       </>
     )
   },
   {
-    title: 'Assistants — a host, and guests',
+    title: 'Choose a host, then invite guests',
     tag: 'primer',
     body: (
       <>
-        Every session has a <b>host</b> (Jill by default — a warm developmental partner) and you
-        can invite <b>guest personas</b>, each with a narrow specialty: rhythm &amp; pacing,
-        continuity, dialogue, voice &amp; POV, and more. Guests read beside your host, never
-        replace it.
+        Every session has a <b>host</b>. Jill is the default, but you can choose a different host
+        before the conversation begins. You can also invite <b>guest personas</b> with focused
+        specialties such as rhythm &amp; pacing, continuity, dialogue, or voice &amp; POV; they work
+        beside the host, never replace it. For especially distinctive persona voices and strong
+        judgment about when to read project resources or run another analysis, try <b>Gemini 3.6
+        Flash</b>. <b>GPT-5.6 Terra</b> and <b>GPT-5.6 Sol</b> are also excellent choices.
       </>
     )
   },
   {
-    title: 'The conversation controller',
+    title: 'Set the room\'s conversation style',
     tag: 'primer',
     body: (
       <>
-        The chip beside the composer sets how the room responds: <b>mode</b> (how opinionated),{' '}
-        <b>expression</b> (how much it says), and <b>depth</b> (how far it reads into things).
-        It&rsquo;s per-session, visible at all times, and never changes silently.
+        Find the diamond-shaped <b>Conversation Controller</b> chip in the composer controls.
+        It sets how host and guest personas respond: <b>mode</b> (how opinionated),{' '}
+        <b>expression</b> (how much they say), and <b>depth</b> (how far they read into things).
+        These settings are per-session, stay visible, and never change silently. They do not
+        apply to direct instrument threads.
       </>
     )
   },
   {
-    title: 'Tools — one run, one visible result',
+    title: 'Tools — run them directly, or ask a persona',
     tag: 'primer',
     body: (
       <>
-        Fourteen analyses (dialogue &amp; beats, prose, cliché, show &amp; tell…) run <b>once</b>{' '}
-        on your excerpt with your context attached. Each result lands in the thread as a visible
-        event — nothing runs in the background. Tools unlock when an excerpt is set.
+        Run any of the fourteen analyses directly against a pinned excerpt and its report lands
+        visibly in the thread. Or ask your host or a guest to run an isolated analysis on a
+        specific line, variation, or question from the conversation. Just ask: the persona can
+        decide when a tool would help and bring the useful result back into the room. Direct tool
+        runs unlock when an excerpt is set.
       </>
     )
   },
   {
-    title: 'Agents can do real work',
+    title: 'Agents can work with your project',
     tag: 'primer',
     body: (
       <>
-        With a configured project, assistants can <b>run analyses</b>, <b>read project files</b>{' '}
-        you attach, <b>use the dictionary</b>, and <b>run isolated tools on specific
-        variations</b> — a one-off pass on one option without touching the conversation. Widgets
-        go further: play first, and only what you deliberately bring back ever reaches the room.
+        With project paths configured, hosts and guests can <b>find and read relevant project
+        files</b> when the conversation calls for them — you do not need to attach every file by
+        hand. They can also use the dictionary, run analyses, and inspect a particular variation
+        without derailing the main conversation. The <b>Widgets</b> browser is a preview of tools
+        still to come; it does not launch widgets yet.
       </>
     )
   }
