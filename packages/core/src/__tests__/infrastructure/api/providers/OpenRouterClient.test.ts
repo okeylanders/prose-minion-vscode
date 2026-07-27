@@ -120,6 +120,34 @@ describe('OpenRouterClient model hot-swap', () => {
     }
   });
 
+  it('preserves structured web citations outside the model-authored response text', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        id: 'response-1',
+        choices: [{
+          message: {
+            role: 'assistant', content: 'Grounded answer [1]',
+            annotations: [{ type: 'url_citation', url_citation: {
+              url: 'https://www.anthropic.com/news/example', title: 'Primary source', start_index: 16, end_index: 19
+            } }]
+          },
+          finish_reason: 'stop'
+        }]
+      })
+    }) as unknown as typeof fetch;
+    try {
+      const result = await new OpenRouterClient('key').createChatCompletion([{ role: 'user', content: 'Hello' }]);
+      expect(result).toMatchObject({
+        content: 'Grounded answer [1]',
+        citations: [{ url: 'https://www.anthropic.com/news/example', title: 'Primary source', startIndex: 16, endIndex: 19 }]
+      });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
   it('emits streaming terminal usage and metadata exactly once when they arrive after finish reason', async () => {
     const originalFetch = global.fetch;
     const fetchMock = jest.fn().mockResolvedValue(streamingResponse(

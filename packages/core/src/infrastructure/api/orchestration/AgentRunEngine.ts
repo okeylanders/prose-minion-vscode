@@ -1,5 +1,6 @@
 import { LogSink, SettingsStore } from '@/platform';
 import { OpenRouterClient, OpenRouterMessage } from '@providers/OpenRouterClient';
+import type { UrlCitation } from '@shared/types/citations';
 import {
   ConversationArchiveEntryV1,
   ConversationExportTarget,
@@ -49,6 +50,7 @@ interface TurnResult {
   readonly exactRequest?: unknown;
   /** A protocol-shaped response failed structural or allow-list validation. */
   readonly invalidRequest?: AgentCapabilityRejection;
+  readonly citations?: UrlCitation[];
 }
 
 const TOOL_CALL_OPEN = '<prose-minion-tool-call';
@@ -457,6 +459,7 @@ export class AgentRunEngine {
         artifacts,
         usage: totalUsage,
         finishReason: last.finishReason,
+        citations: last.citations,
         cancelled
       };
     } finally {
@@ -612,6 +615,7 @@ export class AgentRunEngine {
           finishReason: response.finishReason,
           usage: response.usage,
           observation: response.observation,
+          citations: response.citations,
           cancelled: this.isAborted(options.signal),
           exactRequest: inspection?.kind === 'request' ? inspection.request : undefined,
           invalidRequest: inspection?.kind === 'invalid' ? inspection : undefined
@@ -628,6 +632,7 @@ export class AgentRunEngine {
     let usage: TokenUsage | undefined;
     let finishReason: string | undefined;
     let observation: InferenceRequestObservation | undefined;
+    let citations: UrlCitation[] | undefined;
     let cancelled = false;
     let classification: 'undecided' | 'text' | 'candidate' = 'undecided';
     const visibilityGuard = capability ? new ToolCallStreamVisibilityGuard() : undefined;
@@ -643,6 +648,7 @@ export class AgentRunEngine {
           usage = chunk.usage ?? usage;
           finishReason = chunk.finishReason ?? finishReason;
           observation = chunk.observation ?? observation;
+          citations = chunk.citations ?? citations;
           continue;
         }
         if (!chunk.token) continue;
@@ -707,6 +713,7 @@ export class AgentRunEngine {
       finishReason,
       usage,
       observation,
+      citations,
       cancelled,
       exactRequest,
       invalidRequest

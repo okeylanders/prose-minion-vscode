@@ -99,7 +99,7 @@ interface WorkshopConversationBehaviorModalProps {
   onClose: () => void;
 }
 
-type SettingsTab = 'behavior' | 'profile';
+type SettingsTab = 'behavior' | 'profile' | 'advanced';
 
 export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBehaviorModalProps> = ({
   open,
@@ -119,6 +119,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
   const [confirmClear, setConfirmClear] = React.useState(false);
   const behaviorTabRef = React.useRef<HTMLButtonElement>(null);
   const profileTabRef = React.useRef<HTMLButtonElement>(null);
+  const advancedTabRef = React.useRef<HTMLButtonElement>(null);
 
   React.useEffect(() => {
     if (open) {
@@ -163,15 +164,17 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
     setConfirmClear(false);
   };
   const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
-    const next = event.key === 'ArrowLeft' || event.key === 'Home'
-      ? 'behavior'
-      : event.key === 'ArrowRight' || event.key === 'End'
-        ? 'profile'
-        : undefined;
+    const tabs: SettingsTab[] = ['behavior', 'profile', 'advanced'];
+    const currentIndex = tabs.indexOf(tab);
+    const next = event.key === 'Home' ? 'behavior'
+      : event.key === 'End' ? 'advanced'
+        : event.key === 'ArrowLeft' ? tabs[(currentIndex + tabs.length - 1) % tabs.length]
+          : event.key === 'ArrowRight' ? tabs[(currentIndex + 1) % tabs.length]
+            : undefined;
     if (!next) return;
     event.preventDefault();
     switchTab(next);
-    (next === 'behavior' ? behaviorTabRef : profileTabRef).current?.focus();
+    (next === 'behavior' ? behaviorTabRef : next === 'profile' ? profileTabRef : advancedTabRef).current?.focus();
   };
   const apply = () => {
     if (applyLocked) return;
@@ -238,6 +241,19 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
           onKeyDown={handleTabKeyDown}
         >
           About you
+        </button>
+        <button
+          ref={advancedTabRef}
+          type="button"
+          role="tab"
+          id="pm-ws-advanced-tab"
+          aria-selected={tab === 'advanced'}
+          aria-controls="pm-ws-advanced-panel"
+          tabIndex={tab === 'advanced' ? 0 : -1}
+          onClick={() => switchTab('advanced')}
+          onKeyDown={handleTabKeyDown}
+        >
+          Advanced
         </button>
       </div>
 
@@ -325,27 +341,13 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
             />
           </div>
         </div>
-      ) : (
+      ) : tab === 'profile' ? (
         <div
           className="pm-ws-behavior-body pm-ws-profile-body"
           role="tabpanel"
           id="pm-ws-profile-panel"
           aria-labelledby="pm-ws-profile-tab"
         >
-          <div className="pm-ws-profile-share-row">
-            <div>
-              <div className="pm-ws-behavior-row-name">Allow live web research</div>
-              <div className="pm-ws-behavior-row-desc">
-                Persona conversations may search current web information when it helps. This can add latency and provider charges; Grok can also search X when supported.
-              </div>
-            </div>
-            <Switch
-              checked={webResearchDraft.enabled}
-              disabled={editingLocked}
-              label="Allow live web research"
-              onClick={() => setWebResearchDraft((current) => ({ enabled: !current.enabled }))}
-            />
-          </div>
           <div className="pm-ws-profile-share-row">
             <div>
               <div className="pm-ws-behavior-row-name">
@@ -451,6 +453,28 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
                 Clear profile…
               </button>
             )}
+          </div>
+        </div>
+      ) : (
+        <div
+          className="pm-ws-behavior-body pm-ws-profile-body"
+          role="tabpanel"
+          id="pm-ws-advanced-panel"
+          aria-labelledby="pm-ws-advanced-tab"
+        >
+          <div className="pm-ws-profile-share-row">
+            <div>
+              <div className="pm-ws-behavior-row-name">Allow live web research</div>
+              <div className="pm-ws-behavior-row-desc">
+                Persona conversations may search current web information when it helps. This can add latency and provider charges; Grok can also search X when supported.
+              </div>
+            </div>
+            <Switch
+              checked={webResearchDraft.enabled}
+              disabled={editingLocked}
+              label="Allow live web research"
+              onClick={() => setWebResearchDraft((current) => ({ enabled: !current.enabled }))}
+            />
           </div>
         </div>
       )}

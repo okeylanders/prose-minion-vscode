@@ -3,6 +3,8 @@
  * Represents the output from prose analysis tools ( Prose Excerpt Assistant )
  */
 
+import type { UrlCitation } from '@shared/types/citations';
+
 export interface AnalysisResult {
   readonly toolName: string;
   readonly content: string;
@@ -14,6 +16,7 @@ export interface AnalysisResult {
   readonly finishReason?: string;
   /** Retained conversation id, when the run asked for continuation (Workshop multi-turn). */
   readonly conversationId?: string;
+  readonly citations?: UrlCitation[];
 }
 
 export interface MetricsResult {
@@ -23,7 +26,7 @@ export interface MetricsResult {
 }
 
 export class AnalysisResultFactory {
-  static createAnalysisResult(toolName: string, content: string, usedGuides?: string[], usage?: TokenUsage, finishReason?: string, conversationId?: string, requestedResources?: string[]): AnalysisResult {
+  static createAnalysisResult(toolName: string, content: string, usedGuides?: string[], usage?: TokenUsage, finishReason?: string, conversationId?: string, requestedResources?: string[], citations?: UrlCitation[]): AnalysisResult {
     return {
       toolName,
       content,
@@ -32,7 +35,8 @@ export class AnalysisResultFactory {
       requestedResources,
       usage,
       finishReason,
-      conversationId
+      conversationId,
+      citations
     };
   }
 

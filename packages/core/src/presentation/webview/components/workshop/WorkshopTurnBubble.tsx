@@ -165,6 +165,14 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
         : turn.toolLabel ?? 'Analysis'} · ${turn.capability.requestSummary} · requested by ${workshopPersonaLabel(turn.capability.requestedByPersonaId)}`
     : undefined;
   const capabilityMetadata = capabilityMetadataRows(turn);
+  const citations = React.useMemo(() => {
+    const seen = new Set<string>();
+    return (turn.citations ?? []).filter((citation) => {
+      if (seen.has(citation.url)) return false;
+      seen.add(citation.url);
+      return true;
+    });
+  }, [turn.citations]);
   const turnIdentity = { [WORKSHOP_TURN_ID_ATTRIBUTE]: turn.id };
   const isPrivateInstrumentTurn =
     turn.artifact === 'direct_tool_message' || turn.artifact === 'direct_tool_response';
@@ -404,6 +412,20 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
                 </div>
               );
             })}
+          </div>
+        )}
+        {citations.length > 0 && (
+          <div className="pm-ws-turn-citations" aria-label="Web sources">
+            <div className="pm-ws-eyebrow">Web sources</div>
+            <ol>
+              {citations.map((citation, index) => (
+                <li key={citation.url}>
+                  <a href={citation.url} target="_blank" rel="noreferrer">
+                    [{index + 1}] {citation.title || new URL(citation.url).hostname}
+                  </a>
+                </li>
+              ))}
+            </ol>
           </div>
         )}
         <div className="pm-ws-turn-actions">

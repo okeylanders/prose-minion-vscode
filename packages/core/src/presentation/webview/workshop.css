@@ -5031,3 +5031,18 @@
 [data-pm-surface="workshop"] .pm-ws-notice-dismiss:hover {
   filter: brightness(1.07);
 }
+
+[data-pm-surface="workshop"] .pm-ws-turn-citations {
+  margin: 14px 0 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-button);
+  background: var(--pm-panel);
+}
+[data-pm-surface="workshop"] .pm-ws-turn-citations ol {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-citations a {
+  color: var(--pm-accent);
+}

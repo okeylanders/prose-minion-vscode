@@ -15,6 +15,7 @@
 import { MessageEnvelope, MessageType } from './base';
 import { WritingToolsFocus } from './analysis';
 import { TokenUsage } from '../index';
+import { UrlCitation } from '../citations';
 import type { LabeledContextBudgetSnapshot } from './inferenceContext';
 import type {
   WorkshopAnalysisInputProvenance,
@@ -761,6 +762,8 @@ export interface WorkshopTurn {
   timestamp: number;
   /** Usage for assistant turns, when the provider reported it. */
   usage?: TokenUsage;
+  /** Provider-returned web sources; model-authored [n] markers remain ordinary text. */
+  citations?: UrlCitation[];
   /** True when the response stopped at the max-token limit (assistant turns). */
   truncated?: boolean;
   /**

@@ -570,7 +570,9 @@ export class AssistantToolService {
       executionResult.usedGuides,
       executionResult.usage,
       executionResult.finishReason,
-      executionResult.conversationId
+      executionResult.conversationId,
+      undefined,
+      executionResult.citations
     );
   }
 
@@ -630,7 +632,9 @@ export class AssistantToolService {
       executionResult.usedGuides,
       executionResult.usage,
       executionResult.finishReason,
-      executionResult.conversationId
+      executionResult.conversationId,
+      undefined,
+      executionResult.citations
     );
   }
 
@@ -684,7 +688,9 @@ export class AssistantToolService {
       executionResult.usedGuides,
       executionResult.usage,
       executionResult.finishReason,
-      executionResult.conversationId
+      executionResult.conversationId,
+      undefined,
+      executionResult.citations
     );
   }
 

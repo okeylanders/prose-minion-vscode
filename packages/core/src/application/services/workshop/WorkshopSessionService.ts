@@ -39,6 +39,7 @@ import {
   WorkshopTurnKind
 } from '@messages';
 import { isContextPathGroup, TokenUsage } from '@shared/types';
+import type { UrlCitation } from '@shared/types/citations';
 import {
   WorkshopCapabilityArtifactDetails,
   WorkshopAnalysisInputProvenance,
@@ -1479,7 +1480,8 @@ export class WorkshopSessionService {
     usage?: TokenUsage,
     truncated?: boolean,
     conversationId?: string,
-    actionableFindings: WorkshopActionableFinding[] = []
+    actionableFindings: WorkshopActionableFinding[] = [],
+    citations?: UrlCitation[]
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
@@ -1513,6 +1515,7 @@ export class WorkshopSessionService {
       content,
       timestamp: this.now(),
       usage: usage ? { ...usage } : undefined,
+      citations: citations?.map((citation) => ({ ...citation })),
       truncated: truncated || undefined,
       excerptVersion: active.excerptVersion,
       actionableFindings: (isHost || isGuest) && actionableFindings.length > 0
@@ -2286,6 +2289,7 @@ function cloneTurn(turn: WorkshopTurn): WorkshopTurn {
         }
       : undefined,
     usage: turn.usage ? { ...turn.usage } : undefined,
+    citations: turn.citations?.map((citation) => ({ ...citation })),
     capability: turn.capability ? cloneCapabilityDetails(turn.capability) : undefined,
     analysisInputs: turn.analysisInputs
       ? cloneAnalysisInputs(turn.analysisInputs)

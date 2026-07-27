@@ -9,6 +9,7 @@ import {
   InferenceRequestObservation,
   TokenUsage
 } from '@shared/types';
+import type { UrlCitation } from '@shared/types/citations';
 
 const FALLBACK_OUTPUT_RESERVE_TOKENS = 10000;
 
@@ -41,6 +42,7 @@ export interface OpenRouterResponse {
     message: {
       role: string;
       content: string;
+      annotations?: unknown;
     };
     finish_reason: string;
   }>;
@@ -112,6 +114,7 @@ export class OpenRouterClient {
     usage?: TokenUsage;
     observation?: InferenceRequestObservation;
     id?: string;
+    citations?: UrlCitation[];
   }> {
     const requestedModel = this.model;
     const requestedMaxOutputTokens = options?.maxTokens ?? FALLBACK_OUTPUT_RESERVE_TOKENS;
@@ -152,6 +155,7 @@ export class OpenRouterClient {
       content: data.choices[0].message.content,
       finishReason: data.choices[0]?.finish_reason,
       usage,
+      citations: this.toUrlCitations(data.choices[0].message.annotations),
       observation: usage ? this.toObservation(
         data.model || requestedModel,
         requestedMaxOutputTokens,
@@ -181,6 +185,7 @@ export class OpenRouterClient {
     usage?: TokenUsage;
     finishReason?: string;
     observation?: InferenceRequestObservation;
+    citations?: UrlCitation[];
   }> {
     const requestedModel = this.model;
     const requestedMaxOutputTokens = options?.maxTokens ?? FALLBACK_OUTPUT_RESERVE_TOKENS;
@@ -224,6 +229,7 @@ export class OpenRouterClient {
       let responseModel = requestedModel;
       let routerMetadata: unknown;
       let terminalEmitted = false;
+      let citations: UrlCitation[] | undefined;
       const terminal = () => ({
         token: '',
         done: true,
@@ -235,7 +241,8 @@ export class OpenRouterClient {
           usage,
           finishReason,
           routerMetadata
-        ) : undefined
+        ) : undefined,
+        citations
       });
       while (true) {
         const { done, value } = await reader.read();
@@ -271,6 +278,10 @@ export class OpenRouterClient {
             if (chunkUsage) usage = chunkUsage;
             if (typeof parsed.model === 'string' && parsed.model) responseModel = parsed.model;
             if (parsed.openrouter_metadata !== undefined) routerMetadata = parsed.openrouter_metadata;
+            const chunkCitations = this.toUrlCitations(
+              delta?.annotations ?? parsed.choices?.[0]?.message?.annotations
+            );
+            if (chunkCitations?.length) citations = chunkCitations;
 
             if (token) {
               yield { token, done: false };
@@ -313,6 +324,24 @@ export class OpenRouterClient {
       totalTokens: Number(raw.total_tokens) || 0,
       costUsd: Number.isFinite(costNum) ? costNum : undefined
     };
+  }
+
+  private toUrlCitations(raw: unknown): UrlCitation[] | undefined {
+    if (!Array.isArray(raw)) return undefined;
+    const citations = raw.flatMap((annotation): UrlCitation[] => {
+      if (typeof annotation !== 'object' || annotation === null) return [];
+      const source = (annotation as { url_citation?: unknown }).url_citation;
+      if (typeof source !== 'object' || source === null) return [];
+      const value = source as Record<string, unknown>;
+      if (typeof value.url !== 'string' || !/^https?:\/\//.test(value.url)) return [];
+      return [{
+        url: value.url,
+        title: typeof value.title === 'string' ? value.title : undefined,
+        startIndex: typeof value.start_index === 'number' ? value.start_index : undefined,
+        endIndex: typeof value.end_index === 'number' ? value.end_index : undefined
+      }];
+    });
+    return citations.length > 0 ? citations : undefined;
   }
 
   private toObservation(

@@ -1,5 +1,6 @@
 import { ContextPathGroup, TokenUsage } from '@shared/types';
 import type { OpenRouterWebSearchTool } from '@providers/OpenRouterClient';
+import type { UrlCitation } from '@shared/types/citations';
 
 /** The caller-selected capability surface available to one agent turn. */
 export type CapabilityCatalog =
@@ -154,4 +155,5 @@ export interface ExecutionResult {
   readonly finishReason?: string;
   readonly cancelled?: boolean;
   readonly conversationId?: string;
+  readonly citations?: UrlCitation[];
 }
