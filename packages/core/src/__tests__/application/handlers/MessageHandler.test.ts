@@ -23,6 +23,7 @@ import {
 import {
   createFakeEditorContext,
   createFakeFileSystem,
+  createFakeGlobalState,
   createFakeSettings,
   createFakeShellService,
   createFakeWorkspace
@@ -74,6 +75,7 @@ function createTestAssembly(): TestAssembly {
     log,
     secrets: secretStore,
     settings: createFakeSettings(),
+    globalState: createFakeGlobalState(),
     fileSystem: createFakeFileSystem(),
     workspace: createFakeWorkspace(),
     shell: createFakeShellService(),

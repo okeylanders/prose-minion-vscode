@@ -9,9 +9,14 @@ import { MessageType } from '@/shared/types/messages';
 import {
   createFakeEditorContext,
   createFakeFileSystem,
+  createFakeGlobalState,
   createFakeShellService,
   createFakeWorkspace,
 } from '../../../mocks/platform';
+import {
+  WORKSHOP_STARTUP_NOTICE_DISMISSED_KEY,
+  WORKSHOP_STARTUP_NOTICE_VERSION
+} from '@shared/constants/workshopNotices';
 
 describe('UIHandler', () => {
   let handler: UIHandler;
@@ -28,7 +33,8 @@ describe('UIHandler', () => {
       createFakeFileSystem(),
       createFakeWorkspace(),
       createFakeShellService(),
-      createFakeEditorContext()
+      createFakeEditorContext(),
+      createFakeGlobalState()
     );
     router = new MessageRouter();
   });
@@ -42,7 +48,9 @@ describe('UIHandler', () => {
         MessageType.OPEN_GUIDE_FILE,
         MessageType.OPEN_RESOURCE,
         MessageType.REQUEST_SELECTION,
-        MessageType.OPEN_WORKSHOP
+        MessageType.OPEN_WORKSHOP,
+        MessageType.REQUEST_STARTUP_NOTICE,
+        MessageType.DISMISS_STARTUP_NOTICE
       ];
 
       expectedRoutes.forEach(route => {
@@ -52,7 +60,77 @@ describe('UIHandler', () => {
 
     it('should register at least 4 routes', () => {
       handler.registerRoutes(router);
-      expect(router.handlerCount).toBe(7);
+      expect(router.handlerCount).toBe(9);
+    });
+  });
+
+  describe('startup notice', () => {
+    const request = { type: MessageType.REQUEST_STARTUP_NOTICE, source: 'webview.workshop', payload: {}, timestamp: 1 };
+
+    it('answers shouldShow=true when no dismissal is recorded', async () => {
+      handler.registerRoutes(router);
+      await router.route(request as any);
+
+      expect(postMessage).toHaveBeenCalledTimes(1);
+      const posted = postMessage.mock.calls[0][0];
+      expect(posted.type).toBe(MessageType.STARTUP_NOTICE_DATA);
+      expect(posted.payload).toEqual({
+        shouldShow: true,
+        noticeVersion: WORKSHOP_STARTUP_NOTICE_VERSION
+      });
+    });
+
+    it('answers shouldShow=false once THIS version was dismissed, true for a stale one', async () => {
+      const store: Record<string, unknown> = {};
+      handler = new UIHandler(
+        postMessage as any,
+        { appendLine } as any,
+        createFakeFileSystem(),
+        createFakeWorkspace(),
+        createFakeShellService(),
+        createFakeEditorContext(),
+        createFakeGlobalState(store)
+      );
+      handler.registerRoutes(router);
+
+      await router.route({
+        type: MessageType.DISMISS_STARTUP_NOTICE,
+        source: 'webview.workshop',
+        payload: { noticeVersion: WORKSHOP_STARTUP_NOTICE_VERSION },
+        timestamp: 1
+      } as any);
+      expect(store[WORKSHOP_STARTUP_NOTICE_DISMISSED_KEY]).toBe(WORKSHOP_STARTUP_NOTICE_VERSION);
+
+      await router.route(request as any);
+      expect(postMessage.mock.calls[0][0].payload.shouldShow).toBe(false);
+
+      // A revised notice version re-shows the box (Sprint 14 §5 contract).
+      store[WORKSHOP_STARTUP_NOTICE_DISMISSED_KEY] = 'v0-stale';
+      await router.route(request as any);
+      expect(postMessage.mock.calls[1][0].payload.shouldShow).toBe(true);
+    });
+
+    it('ignores a dismissal without a version instead of recording garbage', async () => {
+      const store: Record<string, unknown> = {};
+      handler = new UIHandler(
+        postMessage as any,
+        { appendLine } as any,
+        createFakeFileSystem(),
+        createFakeWorkspace(),
+        createFakeShellService(),
+        createFakeEditorContext(),
+        createFakeGlobalState(store)
+      );
+      handler.registerRoutes(router);
+
+      await router.route({
+        type: MessageType.DISMISS_STARTUP_NOTICE,
+        source: 'webview.workshop',
+        payload: {},
+        timestamp: 1
+      } as any);
+
+      expect(store[WORKSHOP_STARTUP_NOTICE_DISMISSED_KEY]).toBeUndefined();
     });
   });
 
@@ -66,6 +144,7 @@ describe('UIHandler', () => {
         createFakeWorkspace(),
         createFakeShellService(),
         createFakeEditorContext(),
+        createFakeGlobalState(),
         { openWorkshop }
       );
       handler.registerRoutes(router);

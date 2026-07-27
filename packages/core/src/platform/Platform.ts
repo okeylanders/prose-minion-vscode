@@ -8,6 +8,7 @@
  */
 import { EditorContext } from './EditorContext';
 import { FileSystem } from './FileSystem';
+import { GlobalStateStore } from './GlobalStateStore';
 import { LogSink } from './LogSink';
 import { SecretStore } from './SecretStore';
 import { SettingsStore } from './SettingsStore';
@@ -18,6 +19,7 @@ export interface Platform {
   readonly log: LogSink;
   readonly secrets: SecretStore;
   readonly settings: SettingsStore;
+  readonly globalState: GlobalStateStore;
   readonly fileSystem: FileSystem;
   readonly workspace: Workspace;
   readonly shell: ShellService;

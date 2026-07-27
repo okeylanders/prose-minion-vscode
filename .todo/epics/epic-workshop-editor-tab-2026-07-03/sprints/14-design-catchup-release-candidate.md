@@ -200,11 +200,24 @@ entries.
   pass; Extension Development Host smoke covers rail carding, both sheets,
   notices, and model selection.
 
-## Verification (planned)
+## Verification
 
-- Focused Workshop contract suite + full Jest suite.
-- `npm run typecheck`, `npm run lint`, `npm run build` (bundle sentinel).
-- Extension Development Host smoke with screenshots against the mock.
+Automated (2026-07-26, implementation complete):
+
+- Full Jest suite: 1,462 tests passed across 136 suites (13 new tests:
+  Tools/Widgets sheet browsers, notice modal, UIHandler notice contract);
+  snapshot passed; architecture guards green.
+- `npm run typecheck`: passed for core, webview, and extension.
+- `npm run lint`: passed with the repository's existing warnings, no errors.
+- `npm run build`: production bundles compiled; bundle sentinel passed;
+  webpack reported only its existing size warnings.
+- `git diff --check`: passed.
+
+Pending:
+
+- Extension Development Host smoke with screenshots against the mock (rail
+  carding, both sheets, wide controller, notices show/dismiss/persist across
+  restart, model picker).
 
 ## Resolutions (Okey, 2026-07-26)
 
