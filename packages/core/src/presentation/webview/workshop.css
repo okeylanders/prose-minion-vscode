@@ -5043,6 +5043,9 @@
   margin: 6px 0 0;
   padding-left: 20px;
 }
+[data-pm-surface="workshop"] .pm-ws-turn-citations li + li {
+  margin-top: 6px;
+}
 [data-pm-surface="workshop"] .pm-ws-turn-citations a {
   color: var(--pm-accent);
 }

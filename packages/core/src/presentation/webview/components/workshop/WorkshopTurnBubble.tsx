@@ -47,6 +47,11 @@ interface ParsedVariations {
 const VARIATION_HEADING = /^#{2,4}\s*Variation\s+(\d+)(?:\s*[-:]\s*(.+))?\s*$/gim;
 export const WORKSHOP_TURN_ID_ATTRIBUTE = 'data-turn-id';
 
+const citationLabel = (citation: { url: string; title?: string }): string => {
+  const title = citation.title?.trim();
+  return title && !/^\d+$/.test(title) ? title : new URL(citation.url).hostname;
+};
+
 export const parseVariations = (content: string): ParsedVariations | null => {
   const matches = [...content.matchAll(VARIATION_HEADING)];
   if (matches.length < 2) {
@@ -421,7 +426,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
               {citations.map((citation, index) => (
                 <li key={citation.url}>
                   <a href={citation.url} target="_blank" rel="noreferrer">
-                    [{index + 1}] {citation.title || new URL(citation.url).hostname}
+                    [{index + 1}] {citationLabel(citation)}
                   </a>
                 </li>
               ))}

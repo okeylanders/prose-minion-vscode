@@ -187,4 +187,27 @@ describe('OpenRouterClient model hot-swap', () => {
       global.fetch = originalFetch;
     }
   });
+
+  it('accumulates citations reported across streaming frames', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue(streamingResponse(
+      { choices: [{ delta: { annotations: [{ type: 'url_citation', url_citation: { url: 'https://one.example', title: 'One' } }] } }] },
+      { choices: [{ delta: { annotations: [{ type: 'url_citation', url_citation: { url: 'https://two.example', title: 'Two' } }] }, finish_reason: 'stop' }] },
+      '[DONE]'
+    )) as unknown as typeof fetch;
+    try {
+      const chunks = [];
+      for await (const chunk of new OpenRouterClient('key').createStreamingChatCompletion([{ role: 'user', content: 'Hello' }])) {
+        chunks.push(chunk);
+      }
+      expect(chunks.at(-1)).toMatchObject({
+        citations: [
+          { url: 'https://one.example', title: 'One' },
+          { url: 'https://two.example', title: 'Two' }
+        ]
+      });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });

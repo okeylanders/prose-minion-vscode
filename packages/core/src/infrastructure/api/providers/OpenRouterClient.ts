@@ -281,7 +281,7 @@ export class OpenRouterClient {
             const chunkCitations = this.toUrlCitations(
               delta?.annotations ?? parsed.choices?.[0]?.message?.annotations
             );
-            if (chunkCitations?.length) citations = chunkCitations;
+            if (chunkCitations?.length) citations = this.mergeUrlCitations(citations, chunkCitations);
 
             if (token) {
               yield { token, done: false };
@@ -341,7 +341,20 @@ export class OpenRouterClient {
         endIndex: typeof value.end_index === 'number' ? value.end_index : undefined
       }];
     });
-    return citations.length > 0 ? citations : undefined;
+    return this.mergeUrlCitations(undefined, citations);
+  }
+
+  private mergeUrlCitations(
+    current: UrlCitation[] | undefined,
+    additions: UrlCitation[]
+  ): UrlCitation[] | undefined {
+    const merged = [...(current ?? [])];
+    for (const citation of additions) {
+      if (!merged.some((existing) => existing.url === citation.url)) {
+        merged.push(citation);
+      }
+    }
+    return merged.length > 0 ? merged : undefined;
   }
 
   private toObservation(
