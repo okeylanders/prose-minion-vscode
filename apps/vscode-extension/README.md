@@ -24,11 +24,11 @@
 
 ---
 
-## What's new in v2.0.3
+## What's new in v2.1.0 — Workshop beta
 
-- **GPT-5.6 base tiers** — Luna, Terra, and Sol are now available in the curated model catalog, covering fast, balanced, and flagship 1M-context writing workflows.
-- **New Grok and Aion choices** — Grok 4.5 plus Aion 3.0 and Aion 3.0 Mini join the existing Grok and storytelling-model options.
-- **Catalog reliability** — removed the soon-to-expire `openai/gpt-5.2-chat` choice and added a guard that keeps Category Search settings synchronized with the curated list.
+- **A full Workshop editor tab** — start from an excerpt or an open conversation, choose a Writers' Room host, invite persona guests, and keep sustained manuscript work in one persistent thread.
+- **Context and craft tools that stay honest** — attach project resources and one-shot evidence, run any of the fourteen writing tools as visible sidecars, and give personas bounded access to focused analysis, dictionary, project-resource, and optional web-research capabilities.
+- **Durable writing sessions** — save, browse, rename, duplicate, reopen, and recover Workshop sessions with host-side state, explicit privacy boundaries, and versioned beta guidance for the new surface.
 
 Full history → [CHANGELOG.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/CHANGELOG.md)
 
