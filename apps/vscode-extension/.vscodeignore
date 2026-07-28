@@ -29,6 +29,11 @@ coverage/**
 # NOTE: assets/assistant-working-*.gif are intentionally SHIPPED — they're the
 # webview loading animation (referenced by ProseToolsViewProvider via extensionUri),
 # not bloat (PR #60 review #12). Only the README-only assets below are excluded.
+#
+# NOTE: assets/workshop-notices/** is also intentionally SHIPPED — the annotated
+# screenshots the first-run Workshop notice and its project-configuration guide
+# render (resolved by webviewHtml.ts from WORKSHOP_NOTICE_SHOTS). Excluding them
+# would leave a new writer's very first screen full of broken images.
 
 # README-only assets (not needed at runtime)
 assets/prose-minion-book-animated.gif

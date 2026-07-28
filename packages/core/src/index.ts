@@ -24,6 +24,15 @@ export * from '@shared/types';
 // --- Platform ports (the interfaces each app's adapters implement) + the Platform bundle ---
 export * from '@/platform';
 
+// --- Shared contract: Workshop startup notice (version + screenshot names) ---
+export {
+  WORKSHOP_NOTICE_SHOT_DIR,
+  WORKSHOP_NOTICE_SHOTS,
+  WORKSHOP_STARTUP_NOTICE_DISMISSED_KEY,
+  WORKSHOP_STARTUP_NOTICE_VERSION
+} from '@shared/constants/workshopNotices';
+export type { WorkshopNoticeShot } from '@shared/constants/workshopNotices';
+
 // --- Application: host message router ---
 export { MessageHandler } from '@/application/handlers/MessageHandler';
 export type {

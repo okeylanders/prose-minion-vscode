@@ -37,8 +37,15 @@ jest.mock('crypto', () => {
   };
 });
 
+import * as fs from 'fs';
+import * as path from 'path';
 import type * as vscode from 'vscode';
-import { MessageType, PM_SURFACE_ATTR, SURFACE_WORKSHOP } from '@prose-minion/core';
+import {
+  MessageType,
+  PM_SURFACE_ATTR,
+  SURFACE_WORKSHOP,
+  WORKSHOP_NOTICE_SHOTS
+} from '@prose-minion/core';
 import { getWebviewHtml } from '../../../application/providers/webviewHtml';
 
 const fakeWebview = {
@@ -90,5 +97,88 @@ describe('getWebviewHtml', () => {
   it('bootstrap error bridge posts the shared MessageType, not a hand-synced literal', () => {
     const workshop = getWebviewHtml(fakeWebview, extensionUri, 'workshop');
     expect(workshop).toContain(`postMessage({ type: '${MessageType.WEBVIEW_ERROR}'`);
+  });
+
+  /**
+   * Resource-load failures fire at the element and do NOT bubble, so a
+   * bubble-phase listener cannot see a broken `<img>` (PR #94 review, Oliver).
+   * The capture flag is the whole fix — drop it and the handler compiles, runs,
+   * and silently never fires.
+   */
+  it('listens for asset load failures in the capture phase, on both surfaces', () => {
+    for (const surface of ['sidebar', 'workshop'] as const) {
+      const html = getWebviewHtml(fakeWebview, extensionUri, surface);
+      expect(html).toContain("pmPostWebviewError('asset failed to load: ' + src)");
+      expect(html).toMatch(/window\.addEventListener\('error',[\s\S]*?\}, true\);/);
+    }
+  });
+
+  /**
+   * `acquireVsCodeApi()` throws on a second call and the bundle caches its own
+   * handle, so the shell must acquire once and share — otherwise every handler
+   * here stops forwarding the moment React boots.
+   */
+  it('acquires the VS Code API once in the shell and shares it with the bundle', () => {
+    const workshop = getWebviewHtml(fakeWebview, extensionUri, 'workshop');
+
+    expect(workshop).toContain('window.__pmVsCodeApi = (function ()');
+    expect(workshop).toContain('const api = window.__pmVsCodeApi;');
+
+    /* Exactly one CALL site — count code lines only, since the surrounding
+       comment names the function too. A second call throws and would take the
+       error bridge down with it. */
+    const callSites = workshop
+      .split('\n')
+      .filter((line) => !line.trim().startsWith('//'))
+      .join('\n')
+      .match(/acquireVsCodeApi\(\)/g);
+    expect(callSites).toHaveLength(1);
+  });
+
+  /**
+   * The notice modal looks its screenshots up by name; a name the host forgets
+   * to resolve renders a broken picture in the first-run tour, which is the one
+   * surface a new writer sees. Drive the map off the shared list so adding a
+   * screenshot cannot half-land.
+   */
+  it('resolves a webview URI for every notice screenshot in the shared list', () => {
+    const workshop = getWebviewHtml(fakeWebview, extensionUri, 'workshop');
+
+    for (const name of WORKSHOP_NOTICE_SHOTS) {
+      expect(workshop).toContain(
+        `"${name}": "https://webview.test/ext/assets/workshop-notices/${name}.png"`
+      );
+    }
+  });
+
+  /**
+   * The assertion above only proves the host FORMATS a URI — `asWebviewUri`
+   * mints one for any path, existing or not, and the fake here is string
+   * concatenation (PR #94 review: Cal, Oliver, Blake). So it would pass just as
+   * happily with the PNG deleted, which is the exact half-landing it was cited
+   * as preventing. This is the half that touches the disk.
+   *
+   * Both directions matter: a name without a file ships a broken picture, and a
+   * file without a name is dead weight in the .vsix. `.vscodeignore` currently
+   * protects this folder with a comment; the set equality below is the part a
+   * packaging change cannot quietly break.
+   */
+  it('ships exactly the notice screenshots the shared list names — no more, no fewer', () => {
+    const shotDir = path.resolve(__dirname, '../../../../assets/workshop-notices');
+
+    const onDisk = fs
+      .readdirSync(shotDir)
+      .filter((entry) => entry.endsWith('.png'))
+      .map((entry) => entry.replace(/\.png$/, ''))
+      .sort();
+
+    expect(onDisk).toEqual([...WORKSHOP_NOTICE_SHOTS].sort());
+
+    for (const name of WORKSHOP_NOTICE_SHOTS) {
+      const file = path.join(shotDir, `${name}.png`);
+      expect(fs.existsSync(file)).toBe(true);
+      /* A zero-byte or truncated PNG resolves and 404s just as silently. */
+      expect(fs.statSync(file).size).toBeGreaterThan(1024);
+    }
   });
 });

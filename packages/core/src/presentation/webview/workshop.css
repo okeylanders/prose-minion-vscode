@@ -4855,16 +4855,17 @@
   }
 }
 
-/* ---------- Startup beta notices (Sprint 14 §5) ----------
-   Six-page "Workshop · beta" tour, ported from the comp's wk-notice / nt-*
-   system (docs/design/pm-wk-pins.css). */
+/* ---------- Startup beta notices ----------
+   Six-page "Workshop · beta" tour in the wide screenshot format from the
+   2026-07-27 drop, ported from the comp's wk-notice / nt-* system
+   (docs/design/pm-wk-pins.css). */
 [data-pm-surface="workshop"] .pm-ws-notice-modal {
-  width: min(520px, 100%);
+  width: min(1040px, 100%);
   padding: 0;
 }
 [data-pm-surface="workshop"] .pm-ws-notice {
   position: relative;
-  padding: 22px 24px 16px;
+  padding: 20px 24px 0;
 }
 [data-pm-surface="workshop"] .pm-ws-notice .pm-ws-modal-close {
   position: absolute;
@@ -4887,28 +4888,189 @@
   letter-spacing: 0.09em;
   text-transform: uppercase;
 }
+/* Two columns: annotated media well left, copy right. */
+[data-pm-surface="workshop"] .pm-ws-notice-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 22px;
+  margin-top: 14px;
+}
+[data-pm-surface="workshop"] .pm-ws-notice-well {
+  background: var(--pm-inset);
+  border: 1px solid var(--pm-border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-notice-well-title {
+  font-family: var(--pm-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-notice-media {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 0;
+  /* Tall shots scroll inside the well rather than growing the dialog. Raised
+     from the comp's 340px so the setup page's two stacked shots — the File menu
+     and the settings gear, which are separate things to find — both fit without
+     scrolling at ordinary editor heights. */
+  max-height: min(56vh, 470px);
+  overflow: auto;
+}
+[data-pm-surface="workshop"] .pm-ws-notice-figure {
+  position: relative;
+  margin: 0;
+  /* flex: none is load-bearing. These figures are sized by aspect-ratio, so
+     letting a column flex item shrink its HEIGHT collapses the tall ones to a
+     sliver instead of scaling them. Keep the height; scroll the well. */
+  flex: none;
+  width: 100%;
+  /* --pm-notice-ratio comes from the page data. It is what gives a CROPPED
+     figure any height at all: its image is absolutely positioned, so without a
+     declared ratio the box has no in-flow content to size against. */
+  aspect-ratio: var(--pm-notice-ratio, auto);
+  overflow: hidden;
+  border-radius: 9px;
+  border: 1px solid var(--pm-border-2);
+}
+[data-pm-surface="workshop"] .pm-ws-notice-figure > img {
+  width: 100%;
+  display: block;
+}
+/* Cropped shot: over-wide and pinned top-left, so the figure box frames only
+   the region the notice is pointing at. Width comes from the page data. */
+[data-pm-surface="workshop"] .pm-ws-notice-figure > img.pm-ws-notice-figure-crop {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-notice-callout {
+  position: absolute;
+  border: 2px solid var(--pm-accent-hi);
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 3px rgba(224, 103, 58, 0.16),
+    0 0 18px rgba(224, 103, 58, 0.3);
+}
+[data-pm-surface="workshop"] .pm-ws-notice-callout > i {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--pm-r-pill);
+  background: var(--pm-accent);
+  color: #1c0f07;
+  font: 700 11px/20px var(--pm-sans);
+  text-align: center;
+  font-style: normal;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+[data-pm-surface="workshop"] .pm-ws-notice-thumbs {
+  display: flex;
+  flex: none;
+  gap: 10px;
+  width: 100%;
+  justify-content: center;
+  align-items: flex-start;
+}
+[data-pm-surface="workshop"] .pm-ws-notice-thumb {
+  flex: 1;
+  /* Without this the captions' intrinsic width keeps the row wider than the
+     well and clips the third tab off the right edge. */
+  min-width: 0;
+  max-width: 168px;
+  margin: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-notice-thumb-frame {
+  display: block;
+  aspect-ratio: 4 / 5;
+  border-radius: 8px;
+  border: 1px solid var(--pm-border-2);
+  overflow: hidden;
+  background: var(--pm-surface);
+}
+[data-pm-surface="workshop"] .pm-ws-notice-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top left;
+  display: block;
+}
+[data-pm-surface="workshop"] .pm-ws-notice-thumb figcaption {
+  margin-top: 7px;
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  color: var(--pm-faint);
+}
+[data-pm-surface="workshop"] .pm-ws-notice-legend {
+  list-style: none;
+  margin: 0;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--pm-border-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+[data-pm-surface="workshop"] .pm-ws-notice-legend li {
+  display: flex;
+  gap: 8px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-notice-legend-num {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--pm-r-pill);
+  background: rgba(224, 103, 58, 0.14);
+  border: 1px solid var(--pm-accent-lo);
+  color: var(--pm-accent-hi);
+  font: 700 9.5px/15px var(--pm-sans);
+  text-align: center;
+}
+[data-pm-surface="workshop"] .pm-ws-notice-legend b {
+  color: var(--pm-muted);
+  font-weight: 600;
+}
 [data-pm-surface="workshop"] .pm-ws-notice-page {
-  min-height: 168px;
+  padding-top: 4px;
 }
 [data-pm-surface="workshop"] .pm-ws-notice-counter {
   display: block;
   font-family: var(--pm-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.1em;
+  font-size: 10px;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
   color: var(--pm-faint);
-  margin: 10px 0 7px;
+  margin: 0 0 10px;
+}
+[data-pm-surface="workshop"] .pm-ws-notice-counter b {
+  color: var(--pm-accent);
+  font-weight: 600;
 }
 [data-pm-surface="workshop"] .pm-ws-notice-page h2 {
-  font-size: 17.5px;
+  font-size: 22px;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
   color: var(--pm-text);
-  margin: 0 0 9px;
+  margin: 0 0 12px;
 }
 [data-pm-surface="workshop"] .pm-ws-notice-page p {
-  font-size: 13px;
-  line-height: 1.65;
+  font-size: 13.5px;
+  line-height: 1.68;
   color: var(--pm-muted);
   margin: 0;
 }
@@ -4916,18 +5078,48 @@
   color: var(--pm-text-2);
   font-weight: 600;
 }
+[data-pm-surface="workshop"] .pm-ws-notice-guide-note {
+  margin-top: 14px !important;
+  padding-top: 12px;
+  border-top: 1px dashed var(--pm-border-2);
+  font-size: 12.5px !important;
+  color: var(--pm-dim) !important;
+}
+[data-pm-surface="workshop"] .pm-ws-notice-guide-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: var(--pm-sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pm-accent-hi);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-notice-guide-link:hover {
+  color: var(--pm-text);
+}
 [data-pm-surface="workshop"] .pm-ws-notice-nav {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 16px;
+  flex: none;
+}
+@media (max-width: 820px) {
+  [data-pm-surface="workshop"] .pm-ws-notice-body {
+    grid-template-columns: 1fr;
+  }
 }
 [data-pm-surface="workshop"] .pm-ws-notice-arrow {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
-  background: var(--pm-surface-2);
-  border: 1px solid var(--pm-border);
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-border-2);
   color: var(--pm-muted);
   display: grid;
   place-items: center;
@@ -4948,9 +5140,7 @@
   transform: rotate(-90deg);
 }
 [data-pm-surface="workshop"] .pm-ws-notice-dots {
-  flex: 1;
   display: flex;
-  justify-content: center;
   gap: 7px;
 }
 [data-pm-surface="workshop"] .pm-ws-notice-dot {
@@ -4966,13 +5156,19 @@
   background: var(--pm-accent);
   border-color: var(--pm-accent);
 }
+/* Docked footer: the media well scrolls under it, so Dismiss never leaves. */
 [data-pm-surface="workshop"] .pm-ws-notice-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 14px;
   border-top: 1px solid var(--pm-border-soft);
-  margin: 15px -24px 0;
-  padding: 10px 24px 2px;
+  margin: 18px -24px 0;
+  padding: 12px 24px;
+  background: var(--pm-surface-2);
 }
 [data-pm-surface="workshop"] .pm-ws-notice-dsa {
   display: inline-flex;
@@ -4985,7 +5181,6 @@
   font-size: 11.5px;
   color: var(--pm-dim);
   cursor: pointer;
-  flex: 1;
   text-align: left;
   white-space: nowrap;
 }
@@ -5030,6 +5225,224 @@
 }
 [data-pm-surface="workshop"] .pm-ws-notice-dismiss:hover {
   filter: brightness(1.07);
+}
+
+/* ---------- "How to configure your project" (full-surface guide) ----------
+   Reference sheet opened from notices 2 and 6. Ported from the comp's
+   §configure block (docs/design/`Prose Minion - Notice Modal.html`). */
+[data-pm-surface="workshop"] .pm-ws-guide {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  overflow: auto;
+  background: var(--pm-bg);
+}
+[data-pm-surface="workshop"] .pm-ws-guide-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 34px 16px;
+  border-bottom: 1px solid var(--pm-border);
+  background: var(--pm-surface-2);
+}
+[data-pm-surface="workshop"] .pm-ws-guide-head h2 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--pm-text);
+  margin: 8px 0 0;
+}
+[data-pm-surface="workshop"] .pm-ws-guide-back {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-button);
+  padding: 8px 15px;
+  font-family: var(--pm-sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pm-text-2);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-guide-back:hover {
+  border-color: var(--pm-accent-lo);
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-guide-back svg {
+  transform: rotate(180deg);
+}
+[data-pm-surface="workshop"] .pm-ws-guide-body {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 34px 72px;
+}
+[data-pm-surface="workshop"] .pm-ws-guide-lede {
+  font-size: 14.5px;
+  line-height: 1.62;
+  color: var(--pm-text-2);
+  max-width: 78ch;
+  margin: 0 0 28px;
+}
+[data-pm-surface="workshop"] .pm-ws-guide-steps {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 0 0 30px;
+  padding: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-guide-step {
+  background: var(--pm-inset);
+  border: 1px solid var(--pm-border);
+  border-radius: 11px;
+  padding: 18px;
+}
+[data-pm-surface="workshop"] .pm-ws-guide-step-key {
+  display: block;
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--pm-accent);
+  margin-bottom: 9px;
+}
+[data-pm-surface="workshop"] .pm-ws-guide-step h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--pm-text);
+  margin: 0 0 7px;
+}
+[data-pm-surface="workshop"] .pm-ws-guide-step p {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--pm-muted);
+  margin: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-guide-step b {
+  color: var(--pm-text-2);
+  font-weight: 600;
+}
+[data-pm-surface="workshop"] .pm-ws-guide-panels {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+  margin-bottom: 28px;
+}
+[data-pm-surface="workshop"] .pm-ws-guide-panel {
+  background: var(--pm-inset);
+  border: 1px solid var(--pm-border);
+  border-radius: 11px;
+  padding: 16px;
+}
+[data-pm-surface="workshop"] .pm-ws-guide-panel-cap {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--pm-muted);
+  margin: 0 0 6px;
+}
+[data-pm-surface="workshop"] .pm-ws-guide-panel-sub {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--pm-dim);
+  margin: 0 0 14px;
+}
+[data-pm-surface="workshop"] .pm-ws-guide-panel img {
+  width: 100%;
+  display: block;
+  border-radius: 8px;
+  border: 1px solid var(--pm-border-2);
+}
+[data-pm-surface="workshop"] .pm-ws-guide-warn {
+  margin: 12px 0 0;
+  font-family: var(--pm-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--pm-amber);
+}
+[data-pm-surface="workshop"] .pm-ws-guide-map {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--pm-border);
+  border-radius: 11px;
+  overflow: hidden;
+}
+[data-pm-surface="workshop"] .pm-ws-guide-map th,
+[data-pm-surface="workshop"] .pm-ws-guide-map td {
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--pm-border-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-guide-map tbody tr:last-child th,
+[data-pm-surface="workshop"] .pm-ws-guide-map tbody tr:last-child td {
+  border-bottom: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-guide-map thead th {
+  background: var(--pm-surface-2);
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--pm-muted);
+  padding: 11px 16px;
+}
+[data-pm-surface="workshop"] .pm-ws-guide-map tbody th {
+  width: 34%;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--pm-text-2);
+  border-right: 1px solid var(--pm-border-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-guide-map code {
+  font-family: var(--pm-mono);
+  font-size: 12.5px;
+  color: var(--pm-accent-hi);
+  word-break: break-all;
+}
+[data-pm-surface="workshop"] .pm-ws-guide-tip {
+  margin-top: 22px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: var(--pm-accent-soft);
+  border: 1px solid var(--pm-accent-lo);
+  border-radius: 10px;
+  padding: 15px 17px;
+}
+[data-pm-surface="workshop"] .pm-ws-guide-tip-mark {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  background: var(--pm-accent);
+  transform: rotate(45deg);
+}
+[data-pm-surface="workshop"] .pm-ws-guide-tip p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="workshop"] .pm-ws-guide-tip b {
+  color: var(--pm-text);
+  font-weight: 600;
+}
+@media (max-width: 900px) {
+  [data-pm-surface="workshop"] .pm-ws-guide-steps,
+  [data-pm-surface="workshop"] .pm-ws-guide-panels {
+    grid-template-columns: 1fr;
+  }
 }
 
 [data-pm-surface="workshop"] .pm-ws-turn-citations {
