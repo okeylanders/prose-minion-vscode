@@ -4,7 +4,9 @@
  */
 
 import { PromptLoader } from '../shared/prompts';
-import { AIResourceOrchestrator, ExecutionResult, StreamingTokenCallback } from '@orchestration/AIResourceOrchestrator';
+import { AgentRunEngine } from '@orchestration/AgentRunEngine';
+import { ExecutionResult, StreamingTokenCallback } from '@orchestration/AgentRunContracts';
+import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 
 export interface DictionaryLookupInput {
   word: string;
@@ -23,7 +25,7 @@ export interface DictionaryLookupOptions {
 
 export class DictionaryUtility {
   constructor(
-    private readonly aiResourceOrchestrator: AIResourceOrchestrator,
+    private readonly agentRunEngine: AgentRunEngine,
     private readonly promptLoader: PromptLoader
   ) {}
 
@@ -40,17 +42,18 @@ export class DictionaryUtility {
     const systemMessage = this.buildSystemMessage(sharedPrompts, toolPrompts);
     const userMessage = this.buildUserMessage(input);
 
-    return await this.aiResourceOrchestrator.executeWithoutCapabilities(
-      'dictionary-utility',
+    return this.agentRunEngine.runInitial({
+      toolName: 'dictionary-utility',
       systemMessage,
       userMessage,
-      {
+      policy: AGENT_RUN_POLICIES.dictionary,
+      options: {
         temperature: options?.temperature ?? 0.4,
         maxTokens: options?.maxTokens ?? 10000,
         signal: options?.signal,
         onToken: options?.onToken
       }
-    );
+    });
   }
 
   private async loadToolPrompts(): Promise<string> {

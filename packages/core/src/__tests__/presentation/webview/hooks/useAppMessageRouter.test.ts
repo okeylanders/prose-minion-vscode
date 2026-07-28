@@ -38,6 +38,7 @@ const EXPECTED_ROUTES: MessageType[] = [
   MessageType.TOKEN_USAGE_UPDATE,
   MessageType.ACCOUNT_BALANCE_DATA,
   MessageType.CLEAR_TRANSIENT_API_KEY_WARNING,
+  MessageType.COPY_RESULT_SUCCESS,
   MessageType.SAVE_RESULT_SUCCESS,
   MessageType.ERROR,
 ];

@@ -19,6 +19,11 @@
  *    (presentation/webview/ports/) and referenced in exactly ONE module — the
  *    VS Code adapter `presentation/webview/hooks/useVSCodeApi.ts`. It is NOT an
  *    `import 'vscode'`, so this import-scan guard does not (and need not) catch it.
+ *
+ *    APP-SHELL WITNESSES live on the other side of the split, next to the
+ *    adapter they verify: apps/vscode-extension/src/__tests__/architecture/.
+ *    This suite scans packages/core/src ONLY — core must never read the VS
+ *    Code shell's source, not even in tests (PR #66 review, Marcus).
  */
 
 import * as fs from 'fs';
@@ -49,8 +54,19 @@ const HANDLERS_ROOT = path.join(
   'handlers'
 );
 
+const WORKSHOP_CAPABILITY_BOUNDARY = [
+  path.join(SRC_ROOT, 'shared', 'types', 'workshopCapabilities.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopAnalysisSidePass.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopCapabilityXmlCodec.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopPersonaCapability.ts')
+];
+const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)|import\s+.*['"](?:vscode|react|@providers\/))/;
+
+// WorkshopSessionService is in the net (PR #67 review #14): it is the
+// composition-root-owned reload-safety aggregate — a handler `new`-ing its
+// own copy would silently fork the session per webview.
 const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
-  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository)\b`
+  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore)\b`
 );
 
 function collectSourceFiles(dir: string, acc: string[] = []): string[] {
@@ -83,5 +99,34 @@ describe('architectural boundaries', () => {
       .map((file) => path.relative(SRC_ROOT, file));
 
     expect(offenders).toEqual([]);
+  });
+
+  it('Workshop capability contracts and routes import no host, React, or provider types', () => {
+    const offenders = WORKSHOP_CAPABILITY_BOUNDARY
+      .filter((file) => HOST_OR_PRESENTATION_IMPORT.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('Workshop has one room-frame materializer and one offset-advance call site', () => {
+    const sourceFiles = collectSourceFiles(SRC_ROOT);
+    const frameMaterializers = sourceFiles
+      .filter((file) =>
+        /import\s*\{[^}]*buildWorkshopRoomCatchUp[^}]*\}\s*from/s.test(
+          fs.readFileSync(file, 'utf8')
+        )
+      )
+      .map((file) => path.relative(SRC_ROOT, file));
+    const offsetAdvancers = sourceFiles
+      .filter((file) => /\.advanceRoomDeliveryOffset\(/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+
+    expect(frameMaterializers).toEqual([
+      'application/services/workshop/WorkshopRoomDeliveryService.ts'
+    ]);
+    expect(offsetAdvancers).toEqual([
+      'application/services/workshop/WorkshopRoomDeliveryService.ts'
+    ]);
   });
 });

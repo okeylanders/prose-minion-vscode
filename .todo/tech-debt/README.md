@@ -63,6 +63,8 @@ elsewhere.
 | Low | [App-side VS Code Jest mock](2026-06-29-app-side-vscode-jest-mock.md) | Deferred |
 | Low | [Manuscript read and boundary guard performance](2026-06-29-manuscript-read-and-boundary-guard-performance.md) | Deferred |
 | Low | [Build command gate semantics](2026-06-29-build-command-gate-semantics.md) | Deferred |
+| Low | [Workshop bounded turn packer](2026-07-14-workshop-bounded-turn-packer.md) | Deferred |
+| Medium | [Persona prompt/validator contract drift](2026-07-26-persona-prompt-validator-contract-drift.md) | Open |
 
 ## Review Guidance
 

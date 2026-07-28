@@ -34,6 +34,11 @@ module.exports = {
     // every alias (bare `@secrets`/`@standards`/`@messages`, `@prose-minion/core`,
     // `@app/*`, etc.) automatically.
     ...pathsToModuleNameMapper(compilerOptions.paths, { prefix: '<rootDir>/' }),
+    // `marked` ships ESM-only, which Jest's CJS runtime cannot parse. Point it at
+    // the UMD build so components that render Markdown (the Workshop
+    // Edit/Preview sheet, Sprint 13A) can be tested against the REAL renderer
+    // instead of a stub that would prove nothing about the output.
+    '^marked$': '<rootDir>/node_modules/marked/lib/marked.umd.js',
   },
   collectCoverageFrom: [
     'packages/core/src/**/*.{ts,tsx}',

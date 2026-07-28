@@ -1,0 +1,155 @@
+/**
+ * Deterministic Workshop host catalog (ADR 2026-07-09).
+ *
+ * The catalog is product metadata only: it has no React concerns and every
+ * prompt path is relative to PromptLoader's system-prompts root.
+ */
+
+import type {
+  WorkshopConversationBehavior,
+  WorkshopInteractionMode,
+  WorkshopPersonaId,
+  WorkshopRelationalDepth
+} from '@messages';
+
+export interface WorkshopPersonaDescriptor {
+  id: WorkshopPersonaId;
+  label: string;
+  specialty: string;
+  description: string;
+  /**
+   * The lane fragment the generated guest opening asks for ("the rhythm",
+   * "the dialogue"). Sprint 13C: the untouched default must be
+   * persona-addressed and must never reference a pinned excerpt.
+   */
+  guestOpeningFocus: string;
+  promptPath: string;
+  /**
+   * Full-expression overlay paired 1:1 with the foundation prompt
+   * (ADR 2026-07-20 §5). Included for Full and Amplified; omitted for Subtle.
+   */
+  expressionProfilePath: string;
+  /**
+   * Amplified calibration paired 1:1 with the foundation and Full overlay.
+   */
+  expressionCalibrationPath: string;
+}
+
+export const DEFAULT_WORKSHOP_PERSONA_ID: WorkshopPersonaId = 'jill';
+
+export const WORKSHOP_GUEST_CAPACITY = 2;
+export const WORKSHOP_HOST_BASE_PROMPT_PATH = 'workshop-personas/base.md';
+export const WORKSHOP_GUEST_BASE_PROMPT_PATH = 'workshop-personas/guest-base.md';
+
+export const WORKSHOP_PERSONA_CATALOG: readonly WorkshopPersonaDescriptor[] = [
+  { id: 'jill', label: 'Jill', specialty: 'Creative writing partner', description: 'Warm developmental and line-level craft support for the work in front of you.', guestOpeningFocus: 'the writing', promptPath: 'workshop-personas/jill.md', expressionProfilePath: 'workshop-personas/expression-profiles/jill.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/jill.md' },
+  { id: 'agnes', label: 'Sister Agnes', specialty: 'Theme & symbolism', description: 'Keeps themes embodied, symbols intentional, and insight earned on the page.', guestOpeningFocus: 'the theme and symbolism', promptPath: 'workshop-personas/agnes.md', expressionProfilePath: 'workshop-personas/expression-profiles/agnes.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/agnes.md' },
+  { id: 'cliff', label: 'Cliff', specialty: 'Cliché & repetition', description: 'Finds tired phrasing, echo words, and accidental patterns without mistaking motifs for tics.', guestOpeningFocus: 'the repetition', promptPath: 'workshop-personas/cliff.md', expressionProfilePath: 'workshop-personas/expression-profiles/cliff.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/cliff.md' },
+  { id: 'dev', label: 'Dev', specialty: 'Dialogue & microbeats', description: 'Listens for distinct voices, subtext, purposeful tags, and physical beats that reveal character.', guestOpeningFocus: 'the dialogue', promptPath: 'workshop-personas/dev.md', expressionProfilePath: 'workshop-personas/expression-profiles/dev.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/dev.md' },
+  { id: 'edna', label: 'Edna', specialty: 'Reader-breaking logic', description: 'Flags only contradictions, impossible scene logic, and trust-breaking information errors.', guestOpeningFocus: 'the scene logic', promptPath: 'workshop-personas/edna.md', expressionProfilePath: 'workshop-personas/expression-profiles/edna.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/edna.md' },
+  { id: 'felix', label: 'Felix', specialty: 'Rhythm & pacing', description: 'Reads for sentence music, white space, pace, and the moments prose needs a rest.', guestOpeningFocus: 'the rhythm', promptPath: 'workshop-personas/felix.md', expressionProfilePath: 'workshop-personas/expression-profiles/felix.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/felix.md' },
+  { id: 'harper', label: 'Harper', specialty: 'Craft mentorship', description: 'Turns visible patterns into durable writing principles and practical habits.', guestOpeningFocus: 'the craft lessons', promptPath: 'workshop-personas/harper.md', expressionProfilePath: 'workshop-personas/expression-profiles/harper.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/harper.md' },
+  { id: 'margot', label: 'Margot', specialty: 'Voice & POV', description: 'Tracks narrative distance, point of view, tense, and whether the narration stays in character.', guestOpeningFocus: 'the voice', promptPath: 'workshop-personas/margot.md', expressionProfilePath: 'workshop-personas/expression-profiles/margot.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/margot.md' },
+  { id: 'penny', label: 'Penny', specialty: 'Reader experience', description: 'Responds as an attentive young reader who knows only what the page has earned.', guestOpeningFocus: 'the reader experience', promptPath: 'workshop-personas/penny.md', expressionProfilePath: 'workshop-personas/expression-profiles/penny.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/penny.md' },
+  { id: 'quinn', label: 'Quinn', specialty: 'Continuity', description: 'Traces props, blocking, timeline, weather, and character state through the scene.', guestOpeningFocus: 'the continuity', promptPath: 'workshop-personas/quinn.md', expressionProfilePath: 'workshop-personas/expression-profiles/quinn.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/quinn.md' },
+  { id: 'theo', label: 'Theo', specialty: 'Stakes & engagement', description: 'Tests a scene’s engine: goals, obstacles, turns, consequences, and forward pull.', guestOpeningFocus: 'the stakes', promptPath: 'workshop-personas/theo.md', expressionProfilePath: 'workshop-personas/expression-profiles/theo.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/theo.md' },
+  { id: 'wren', label: 'Wren', specialty: 'Line craft', description: 'Strengthens specific sentences through vivid detail, precise verbs, and cleaner distance.', guestOpeningFocus: 'the lines', promptPath: 'workshop-personas/wren.md', expressionProfilePath: 'workshop-personas/expression-profiles/wren.md', expressionCalibrationPath: 'workshop-personas/expression-calibrations/wren.md' }
+];
+
+/**
+ * The generated guest opening (Sprint 13C): persona-addressed, warm, and
+ * deliberately assignment-neutral. Invitations are excerpt-gated, but the
+ * room may contain broader conversation and resources; boilerplate must not
+ * falsely prescribe the pin as the guest's task. With no persona selected yet
+ * the fallback still reads as a room ask, never a passage ask.
+ */
+export function defaultWorkshopGuestOpening(personaId?: WorkshopPersonaId): string {
+  const persona = personaId ? PERSONAS_BY_ID.get(personaId) : undefined;
+  if (!persona) {
+    return 'Read the room and give me your perspective here.';
+  }
+  return `Hey ${persona.label}! read the room and help me with ${persona.guestOpeningFocus} here.`;
+}
+
+/**
+ * Shared interaction resources (ADR 2026-07-20 §2). One contract, three mode
+ * definitions — exactly one selected mode is assembled per persona
+ * conversation. Mode resources contain no persona names; personas are never
+ * forked into per-mode prompt files.
+ */
+export const WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH =
+  'workshop-personas/interaction-contract.md';
+
+export const WORKSHOP_INTERACTION_MODE_PROMPT_PATHS: Readonly<
+  Record<WorkshopInteractionMode, string>
+> = Object.freeze({
+  analysis: 'workshop-personas/interaction-modes/analysis.md',
+  balanced: 'workshop-personas/interaction-modes/balanced.md',
+  conversational: 'workshop-personas/interaction-modes/conversational.md'
+});
+
+export const WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH =
+  'workshop-personas/relational-contract.md';
+export const WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH =
+  'workshop-personas/analysis-capability.md';
+
+export const WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS: Readonly<
+  Record<WorkshopRelationalDepth, string>
+> = Object.freeze({
+  reserved: 'workshop-personas/relational-depth/reserved.md',
+  attuned: 'workshop-personas/relational-depth/attuned.md',
+  reflective: 'workshop-personas/relational-depth/reflective.md'
+});
+
+/**
+ * The ONE definition of the persona system-prompt assembly chain
+ * (ADR 2026-07-20 §10): host/guest base, persona foundation, the shared
+ * interaction contract, exactly one selected mode resource, the relational
+ * invariant plus exactly one selected depth resource, then the persona-specific
+ * Full overlay and Amplified calibration when selected.
+ * Keeping the most specific expression layer last gives it the final word
+ * without duplicating the shared product contract. Both initial assembly and
+ * between-run replacement call this.
+ */
+export function workshopPersonaSystemPromptPaths(
+  basePromptPath: string,
+  persona: WorkshopPersonaDescriptor,
+  behavior: Pick<
+    WorkshopConversationBehavior,
+    'interactionMode' | 'expressionLevel' | 'relationalDepth'
+  >
+): string[] {
+  return [
+    basePromptPath,
+    persona.promptPath,
+    // Sprint 13C (PR #89 review #2): guests carry the same bounded capability
+    // grammar as the host, so BOTH participant bases get the analysis
+    // capability resource — the injected protocol points at it, and a charter
+    // that denies capabilities while the run policy grants them ships two
+    // contradictory instructions.
+    ...(basePromptPath === WORKSHOP_HOST_BASE_PROMPT_PATH
+      || basePromptPath === WORKSHOP_GUEST_BASE_PROMPT_PATH
+      ? [WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH]
+      : []),
+    WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
+    WORKSHOP_INTERACTION_MODE_PROMPT_PATHS[behavior.interactionMode],
+    WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
+    WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS[behavior.relationalDepth],
+    ...(behavior.expressionLevel === 'subtle' ? [] : [persona.expressionProfilePath]),
+    ...(behavior.expressionLevel === 'amplified' ? [persona.expressionCalibrationPath] : [])
+  ];
+}
+
+const PERSONAS_BY_ID: ReadonlyMap<WorkshopPersonaId, WorkshopPersonaDescriptor> = new Map(
+  WORKSHOP_PERSONA_CATALOG.map((persona) => [persona.id, persona])
+);
+
+export const isWorkshopPersonaId = (value: unknown): value is WorkshopPersonaId =>
+  typeof value === 'string' && PERSONAS_BY_ID.has(value as WorkshopPersonaId);
+
+/** Returns undefined for an unknown id so display callers can fail soft. */
+export const getWorkshopPersona = (id: WorkshopPersonaId): WorkshopPersonaDescriptor | undefined =>
+  PERSONAS_BY_ID.get(id);
+
+/** Display label for a persona id; falls back to the raw id for forward compat. */
+export const workshopPersonaLabel = (id: WorkshopPersonaId): string => getWorkshopPersona(id)?.label ?? id;

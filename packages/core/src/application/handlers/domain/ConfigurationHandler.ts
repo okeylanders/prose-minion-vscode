@@ -19,7 +19,6 @@ import {
   ModelDataMessage,
   ModelScope,
   ModelOption,
-  TokenUsageUpdateMessage,
   RequestApiKeyMessage,
   ApiKeyStatusMessage,
   UpdateApiKeyMessage,
@@ -30,7 +29,6 @@ import {
 } from '@messages';
 import {
   MessageTransport,
-  ResultCache,
   SecretsPort
 } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
@@ -50,15 +48,7 @@ export class ConfigurationHandler {
     private readonly settings: SettingsStore,
     private readonly shell: ShellService,
     private readonly postMessage: MessageTransport,
-    private readonly outputChannel: LogSink,
-    private readonly resultCache: ResultCache,
-    private readonly tokenTotals: {
-      promptTokens: number;
-      completionTokens: number;
-      totalTokens: number;
-      costUsd?: number;
-      lastRequestCostUsd?: number;
-    }
+    private readonly outputChannel: LogSink
   ) {}
 
   /**
@@ -241,26 +231,7 @@ export class ConfigurationHandler {
 
   async handleResetTokenUsage(): Promise<void> {
     try {
-      this.tokenTotals.promptTokens = 0;
-      this.tokenTotals.completionTokens = 0;
-      this.tokenTotals.totalTokens = 0;
-      // Reset clears cumulative cost AND the last-request cost so the widget
-      // returns to a clean slate, not a lingering "Last request $X".
-      this.tokenTotals.costUsd = 0;
-      this.tokenTotals.lastRequestCostUsd = undefined;
-
-      const { lastRequestCostUsd, ...totals } = this.tokenTotals;
-      const message: TokenUsageUpdateMessage = {
-        type: MessageType.TOKEN_USAGE_UPDATE,
-        source: 'extension.handler',
-        payload: {
-          totals: { ...totals },
-          lastRequestCostUsd
-        },
-        timestamp: Date.now()
-      };
-      this.resultCache.tokenUsage = { ...message };
-      void this.postMessage(message);
+      this.aiResourceManager.resetTokenUsage();
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.sendError('settings.tokens', 'Failed to reset token usage', msg);

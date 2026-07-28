@@ -24,14 +24,91 @@ export * from '@shared/types';
 // --- Platform ports (the interfaces each app's adapters implement) + the Platform bundle ---
 export * from '@/platform';
 
+// --- Shared contract: Workshop startup notice (version + screenshot names) ---
+export {
+  WORKSHOP_NOTICE_SHOT_DIR,
+  WORKSHOP_NOTICE_SHOTS,
+  WORKSHOP_STARTUP_NOTICE_DISMISSED_KEY,
+  WORKSHOP_STARTUP_NOTICE_VERSION
+} from '@shared/constants/workshopNotices';
+export type { WorkshopNoticeShot } from '@shared/constants/workshopNotices';
+
 // --- Application: host message router ---
 export { MessageHandler } from '@/application/handlers/MessageHandler';
 export type {
   CoreServices,
   MessageTransport,
   ResultCache,
-  SecretsPort
+  SecretsPort,
+  WorkshopUiActions
 } from '@/application/handlers/MessageHandlerContracts';
+
+// --- Application: Workshop session aggregate (ADR 2026-07-03) ---
+export {
+  WorkshopSessionService,
+  WorkshopSessionActiveRunPersistenceError
+} from '@/application/services/workshop/WorkshopSessionService';
+export type {
+  WorkshopSessionHydrationResult
+} from '@/application/services/workshop/WorkshopSessionService';
+export {
+  parseWorkshopSessionStateV1
+} from '@/application/services/workshop/WorkshopSessionStateV1';
+export type {
+  WorkshopConversationLogicalKey,
+  WorkshopRuntimeConversationBindings,
+  WorkshopSessionStateV1,
+  WorkshopStoredTodoItemV1
+} from '@/application/services/workshop/WorkshopSessionStateV1';
+export {
+  WorkshopSessionTimeService,
+  parseWorkshopSessionTemporalStateV1,
+  workshopGuestConversationKey
+} from '@/application/services/workshop/WorkshopSessionTimeService';
+export type {
+  WorkshopPersonaConversationKey,
+  WorkshopPreparedTimeNotice,
+  WorkshopSessionTemporalStateV1,
+  WorkshopSessionTimeRuntimeState,
+  WorkshopTimeNoticeReason
+} from '@/application/services/workshop/WorkshopSessionTimeService';
+export {
+  WorkshopSessionPersistenceCoordinator
+} from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
+export type {
+  WorkshopSessionHydrateResult,
+  WorkshopSessionListData
+} from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
+export {
+  parseWorkshopPersistedSession
+} from '@/application/services/workshop/WorkshopPersistedSession';
+export type {
+  WorkshopPersistedSessionV1,
+  WorkshopPersistedSummaryV1
+} from '@/application/services/workshop/WorkshopPersistedSession';
+export { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
+export {
+  WorkshopRoomDeliveryService
+} from '@/application/services/workshop/WorkshopRoomDeliveryService';
+export { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
+export { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
+export { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
+export { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
+export { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
+
+// --- Infrastructure: Workshop workspace-session store ---
+export {
+  WorkshopSessionStore,
+  WorkshopSessionStoreUnavailableError,
+  WorkshopSessionFileReadError,
+  WorkshopNamedSessionNotFoundError,
+  WorkshopNamedSessionIdentityConflictError
+} from '@/infrastructure/storage/WorkshopSessionStore';
+export type {
+  WorkshopSessionStoreAvailability,
+  WorkshopSessionStoreUnavailableReason,
+  WorkshopStoredSessionSummary
+} from '@/infrastructure/storage/WorkshopSessionStore';
 
 // --- Infrastructure: secrets ---
 export { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
@@ -52,6 +129,7 @@ export { CategorySearchService } from '@services/search/CategorySearchService';
 export { StandardsService } from '@services/resources/StandardsService';
 export { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
 export { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
+export { ContextResourceResolver } from '@/infrastructure/context/ContextResourceResolver';
 export {
   AccountBalanceService,
   OpenRouterAccountClient

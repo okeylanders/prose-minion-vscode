@@ -20,6 +20,12 @@
  *   - `writeFile` auto-creates parent directories (mkdir -p before write).
  *     `vscode.workspace.fs.writeFile` does NOT do this on its own, so the adapter
  *     `createDirectory`s the parent first to honor this contract.
+ *   - `rename` is the replace primitive used for ordered, temp-file-backed
+ *     writes. Callers may request replacement of an existing destination.
+ *     Adapters should use their host's native rename rather than emulating it
+ *     with read/write/delete, which would reintroduce a torn-write window.
+ *   - `delete` removes a file or directory. Recursive deletion is explicit so
+ *     callers cannot accidentally erase a directory tree.
  *   - `stat` / `readFile` THROW on a missing path; callers catch for existence.
  *   - `createDirectory` is recursive and idempotent.
  */
@@ -43,6 +49,17 @@ export interface FileSystem {
   readFile(path: string): Promise<Uint8Array>;
   /** Write bytes, creating parent directories as needed (workspace.fs semantics). */
   writeFile(path: string, data: Uint8Array): Promise<void>;
+  /**
+   * Move a path to a new location. `overwrite` defaults to false, matching
+   * VS Code's workspace.fs.rename behavior; callers that use a temp file to
+   * replace a checkpoint must opt in explicitly.
+   */
+  rename(fromPath: string, toPath: string, options?: { overwrite?: boolean }): Promise<void>;
+  /**
+   * Delete a path. `recursive` defaults to false so deleting a directory tree
+   * is always deliberate.
+   */
+  delete(path: string, options?: { recursive?: boolean }): Promise<void>;
   /** List a directory as [name, type] tuples. */
   readDirectory(path: string): Promise<Array<[string, FileType]>>;
   /** Stat a path. Throws if missing (callers catch for existence checks). */

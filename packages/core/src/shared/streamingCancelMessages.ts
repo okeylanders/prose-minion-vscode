@@ -3,6 +3,7 @@ import {
   CancelCategorySearchRequestMessage,
   CancelContextRequestMessage,
   CancelDictionaryRequestMessage,
+  CancelWorkshopRequestMessage,
   MessageType,
   StreamingDomain
 } from '@messages';
@@ -11,17 +12,27 @@ export type CancelRequestMessage =
   | CancelAnalysisRequestMessage
   | CancelDictionaryRequestMessage
   | CancelContextRequestMessage
-  | CancelCategorySearchRequestMessage;
+  | CancelCategorySearchRequestMessage
+  | CancelWorkshopRequestMessage;
 
-const cancelMessageTypes: Record<StreamingDomain, CancelRequestMessage['type']> = {
+/**
+ * Every streaming domain now has a webview-initiated cancel message. (The
+ * Sprint 2 `Exclude<…, 'workshop'>` compile-time gate retired on schedule
+ * when Sprint 3 landed the workshop cancel wire.)
+ */
+export type CancellableStreamingDomain = StreamingDomain;
+
+const cancelMessageTypes: Record<CancellableStreamingDomain, CancelRequestMessage['type']> = {
   analysis: MessageType.CANCEL_ANALYSIS_REQUEST,
   dictionary: MessageType.CANCEL_DICTIONARY_REQUEST,
   context: MessageType.CANCEL_CONTEXT_REQUEST,
-  search: MessageType.CANCEL_CATEGORY_SEARCH_REQUEST
+  search: MessageType.CANCEL_CATEGORY_SEARCH_REQUEST,
+  workshop: MessageType.CANCEL_WORKSHOP_REQUEST,
+  'workshop-context': MessageType.CANCEL_WORKSHOP_REQUEST
 };
 
 export function createCancelRequestMessage(
-  domain: StreamingDomain,
+  domain: CancellableStreamingDomain,
   requestId: string,
   source: string
 ): CancelRequestMessage {

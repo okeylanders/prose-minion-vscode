@@ -1,0 +1,242 @@
+/**
+ * WorkshopParticipantRail — "who's in the room" chips in the composer band
+ * (feature-workshop-participant-rail; ADR 2026-07-09 §3–4).
+ *
+ * Presentation-only over WorkshopParticipantsSnapshot: the persona chip
+ * returns to host (replacing the old "Back to <persona>" banner link), tool
+ * chips enter direct mode via WORKSHOP_SET_CHAT_TARGET. The active chip is
+ * the routing indicator; the adjacent scope note carries the fuller audience
+ * contract without bringing back the old transient banner. Chips render only
+ * live sidecars; the host snapshot drops disposed ones, so a chip can never
+ * target a dead conversation.
+ * During an active response, the rail stays mounted as a stable participant
+ * map while every routing control is temporarily locked. Direct instrument
+ * mode also renders the durable audience boundary below the rail: the active
+ * chip identifies WHERE the next message goes; the note explains who can and
+ * cannot see that exchange and which persona settings do not apply.
+ *
+ * Deliberately NOT a host persona picker (ADR §1): the persona chip is the
+ * return-to-host affordance. The explicit Invite guest chip is the one
+ * discoverable entry point for adding a sidecar.
+ */
+
+import * as React from 'react';
+import { Icon } from '@components/shared/Icon';
+import {
+  WorkshopChatTarget,
+  WorkshopPersonaId,
+  WorkshopPersonaGuestSnapshot,
+  WorkshopToolSidecarSnapshot
+} from '@messages';
+import { workshopToolLabel } from '@shared/constants/workshopTools';
+import { WORKSHOP_PERSONA_FOCUS_ICONS } from './workshopPersonaIcons';
+import { workshopToolIcon } from './workshopToolIcons';
+
+interface WorkshopParticipantRailProps {
+  /** Session host (locked mid-session; rendered as the return-to-host chip). */
+  personaId: WorkshopPersonaId;
+  personaLabel: string;
+  /** Live retained sidecars, in run order (host snapshot truth). */
+  toolSidecars: WorkshopToolSidecarSnapshot[];
+  personaGuests?: WorkshopPersonaGuestSnapshot[];
+  chatTarget: WorkshopChatTarget;
+  onSetChatTarget: (target: WorkshopChatTarget) => void;
+  /** Disables every rail control without changing whether the rail renders. */
+  disabled?: boolean;
+  showInviteGuest?: boolean;
+  onInviteGuest?: () => void;
+  onDismissGuest?: (personaId: WorkshopPersonaId) => void;
+}
+
+export const WorkshopParticipantRail: React.FC<WorkshopParticipantRailProps> = ({
+  personaId,
+  personaLabel,
+  toolSidecars,
+  personaGuests = [],
+  chatTarget,
+  onSetChatTarget,
+  disabled = false,
+  showInviteGuest = false,
+  onInviteGuest = () => undefined,
+  onDismissGuest = () => undefined
+}) => {
+  const railRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (disabled && railRef.current?.contains(document.activeElement)) {
+      railRef.current.focus();
+    }
+  }, [disabled]);
+
+  if (toolSidecars.length === 0 && personaGuests.length === 0 && !showInviteGuest) {
+    return null;
+  }
+
+  const hostActive = chatTarget.kind === 'host';
+  const activeToolLabel = chatTarget.kind === 'tool'
+    ? workshopToolLabel(chatTarget.toolId)
+    : null;
+  const activeGuestLabel = chatTarget.kind === 'personaGuest'
+    ? personaGuests.find((guest) => guest.personaId === chatTarget.personaId)?.personaLabel
+      ?? chatTarget.personaId
+    : null;
+  const lockedControlTitle = 'Available once the response finishes';
+
+  return (
+    <>
+      <div
+        ref={railRef}
+        className="pm-ws-participant-rail"
+        role="toolbar"
+        aria-label="Conversation participants and instruments"
+        tabIndex={-1}
+      >
+      {/* Participants and instruments are DIFFERENT kinds of thing
+          (ADR 2026-07-24 §9): labeled groups plus a real separator, not a
+          decorative glyph. Participants join the conversation; instruments
+          publish reports into it. */}
+      <div className="pm-ws-rail-group" role="group" aria-label="Participants">
+      <span className="pm-ws-rail-label" aria-hidden="true">Talking to</span>
+      <button
+        className={`pm-ws-participant-chip ${hostActive ? 'pm-ws-chip-active' : ''}`}
+        type="button"
+        aria-pressed={hostActive}
+        disabled={disabled}
+        onClick={() => {
+          if (!hostActive) {
+            onSetChatTarget({ kind: 'host' });
+          }
+        }}
+        title={disabled
+          ? lockedControlTitle
+          : hostActive
+            ? `Messages go to ${personaLabel}`
+            : `Back to ${personaLabel}`}
+      >
+        <Icon name={WORKSHOP_PERSONA_FOCUS_ICONS[personaId]} size={12} /> {personaLabel}
+      </button>
+      {personaGuests.map((guest) => {
+        const active = guest.activeTarget && guest.liveness === 'live';
+        const unavailable = guest.liveness !== 'live' || !guest.hasConversation;
+        return (
+          <span key={guest.personaId} className="pm-ws-participant-guest">
+            <button
+              className={`pm-ws-participant-chip ${active ? 'pm-ws-chip-active pm-ws-chip-guest' : ''}`}
+              type="button"
+              aria-pressed={active}
+              disabled={disabled || unavailable}
+              onClick={() => {
+                if (!active) {
+                  onSetChatTarget({ kind: 'personaGuest', personaId: guest.personaId });
+                }
+              }}
+              title={unavailable
+                ? `${guest.personaLabel}'s conversation is no longer available`
+                : disabled
+                  ? lockedControlTitle
+                  : active
+                    ? `Talking to ${guest.personaLabel}`
+                    : `Talk to ${guest.personaLabel}`}
+            >
+              <Icon name={WORKSHOP_PERSONA_FOCUS_ICONS[guest.personaId]} size={12} /> {guest.personaLabel}
+            </button>
+            {guest.liveness === 'live' && (
+              <button
+                className="pm-ws-participant-dismiss"
+                type="button"
+                aria-label={disabled
+                  ? `Dismiss ${guest.personaLabel} — available once the response finishes`
+                  : `Dismiss ${guest.personaLabel}`}
+                disabled={disabled}
+                onClick={() => onDismissGuest(guest.personaId)}
+              >
+                <Icon name="x" size={10} />
+              </button>
+            )}
+          </span>
+        );
+      })}
+      {showInviteGuest && (
+        <button
+          className="pm-ws-participant-chip pm-ws-chip-invite"
+          type="button"
+          disabled={disabled}
+          onClick={onInviteGuest}
+          title={disabled ? lockedControlTitle : 'Invite a persona guest into the room'}
+        >
+          <Icon name="person" size={12} /> Invite guest
+        </button>
+      )}
+      </div>
+      {toolSidecars.length > 0 && (
+        <>
+          <span
+            className="pm-ws-rail-divider"
+            role="separator"
+            aria-orientation="vertical"
+          />
+          <div className="pm-ws-rail-group" role="group" aria-label="Instruments">
+            <span className="pm-ws-rail-label" aria-hidden="true">Instruments</span>
+            {toolSidecars.map((sidecar) => {
+              const label = workshopToolLabel(sidecar.toolId);
+              const active = sidecar.activeTarget;
+              const unavailable = !sidecar.availableForDirectFollowUp;
+              return (
+                <button
+                  key={sidecar.toolId}
+                  className={`pm-ws-participant-chip ${active ? 'pm-ws-chip-active pm-ws-chip-direct' : ''}`}
+                  type="button"
+                  aria-pressed={active}
+                  disabled={disabled || unavailable}
+                  onClick={() => {
+                    if (!active) {
+                      onSetChatTarget({ kind: 'tool', toolId: sidecar.toolId });
+                    }
+                  }}
+                  /* The sidecar CONVERSATION is private; its reports are not —
+                     running a tool in the room publishes its report to the
+                     room, so this copy never claims report privacy (§9). */
+                  title={
+                    unavailable
+                      ? `${label}'s conversation is no longer available`
+                      : disabled
+                        ? lockedControlTitle
+                        : active
+                          ? `Talking directly to ${label}`
+                          : `Talk directly to ${label} about its latest report`
+                  }
+                >
+                  <Icon name={workshopToolIcon(sidecar.toolId)} size={12} /> {label}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+      {/* The banner this rail replaced was role="status" — keep direct-mode
+          switches audible to screen readers, not just visible as chip state. */}
+        <span className="pm-ws-visually-hidden" role="status">
+          {activeToolLabel
+            ? `Talking directly to ${activeToolLabel}`
+            : activeGuestLabel
+              ? `Talking to ${activeGuestLabel}`
+              : `Talking to ${personaLabel}`}
+        </span>
+      </div>
+      {activeToolLabel && (
+        <aside className="pm-ws-instrument-scope" aria-label="Private instrument thread">
+          <Icon name="info" size={14} />
+          <div>
+            <strong>Private instrument thread · you + {activeToolLabel}</strong>
+            <span>
+              These direct follow-ups are not shared with {personaLabel} or guests, and{' '}
+              {activeToolLabel} cannot see your conversations with them. Instruments follow their
+              own analysis instructions; persona voice, Writer Profile, and Conversation
+              Controller settings do not apply. The original report remains visible to the room.
+            </span>
+          </div>
+        </aside>
+      )}
+    </>
+  );
+};

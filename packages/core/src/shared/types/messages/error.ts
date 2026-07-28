@@ -56,10 +56,23 @@ export type ErrorSource =
   | 'ui.docs'
   | 'ui.resource'
   | 'ui.selection'
+  | 'ui.workshop'
+  | 'ui.startup_notice'
 
   // File operations
   | 'file_ops.copy'
   | 'file_ops.save'
+
+  // Workshop editor tab
+  | 'workshop'
+  | 'workshop.run_tool'
+  | 'workshop.quick_action'
+  | 'workshop.send_message'
+  | 'workshop.invite_guest'
+  | 'workshop.dismiss_guest'
+  | 'workshop.select_persona'
+  | 'workshop.set_chat_target'
+  | 'workshop.todo'
 
   // Unknown/legacy (fallback)
   | 'unknown';

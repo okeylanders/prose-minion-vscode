@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prose Minion — Persona Schematic</title>
+<style>
+:root{
+  --bg:#15110d;--surface:#221a13;--surface-2:#2b2017;--inset:#1b150f;
+  --border:#3a2c1f;--border-2:#4d3a28;--border-soft:#2e231a;
+  --text:#f3ece1;--text-2:#c9bbab;--muted:#a4937f;--dim:#7a6c5b;--faint:#5c5044;
+  --accent:#e0673a;--accent-hi:#ee7d49;--accent-lo:#c8552c;--accent-soft:rgba(224,103,58,0.14);
+  --red:#e05545;--shadowc:#8d84b5;--green:#6fc98a;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{overflow-x:hidden}
+body{margin:0;background:var(--bg);background-image:linear-gradient(180deg,#211910 0%,var(--bg) 260px);font-family:var(--sans);color:var(--text);-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:34px 18px 40px}
+a{color:var(--accent-hi)}a:hover{color:var(--text)}
+button{font-family:var(--sans)}
+.demo{width:min(1100px,100%)}
+.demo-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:600;margin:0 2px 10px}
+.hint{margin-top:14px;font-size:12px;color:var(--dim);line-height:1.7;max-width:880px}
+.hint code{font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--surface-2);padding:1px 5px;border-radius:4px}
+
+/* ===== modal shell ===== */
+.shell{position:relative;height:min(780px,calc(100vh - 130px));min-height:540px;background:#1e1712;border:1px solid var(--border-2);border-radius:14px;box-shadow:0 40px 90px rgba(0,0,0,.55);overflow:hidden;perspective:1600px}
+.view{position:absolute;inset:0;display:flex;flex-direction:column;transition:opacity .32s ease,transform .32s ease;backface-visibility:hidden}
+.view.gone{opacity:0;pointer-events:none;visibility:hidden;transition:opacity .32s ease,transform .32s ease,visibility 0s .32s}
+#viewGrid.gone{transform:translateX(-30px) rotateY(6deg)}
+#viewSchem.gone{transform:translateX(30px) rotateY(-6deg)}
+
+/* ===== State A: persona browser ===== */
+.pb-head{padding:22px 26px 0}
+.pb-eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+.pb-head h2{font-size:19px;font-weight:650;margin:0 0 6px;letter-spacing:-.01em}
+.pb-sub{font-size:12.5px;color:var(--muted);line-height:1.55;margin:0}
+.pb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;padding:20px 26px 26px;overflow-y:auto}
+.pcard{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:15px 15px 12px;display:flex;flex-direction:column;gap:9px;transition:border-color .12s}
+.pcard:hover{border-color:var(--border-2)}
+.pc-head{display:flex;align-items:center;gap:10px}
+.pc-ic{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--border);color:var(--muted);flex:none}
+.pc-ic svg{width:17px;height:17px}
+.pc-name{font-size:14.5px;font-weight:650;margin:0}
+.pc-spec{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-top:2px}
+.pc-desc{font-size:12px;color:var(--muted);line-height:1.55;margin:0;flex:1}
+.pc-more{display:flex;align-items:center;gap:7px;margin:2px -4px -2px;padding:7px 8px;border-radius:8px;border:none;background:transparent;color:var(--dim);font-size:11.5px;font-weight:600;cursor:pointer;text-align:left;transition:color .12s,background .12s}
+.pc-more svg{width:12px;height:12px;transition:transform .15s}
+.pc-more:hover{color:var(--accent-hi);background:var(--accent-soft)}
+.pc-more:hover svg{transform:translateX(2px)}
+.pc-more:disabled{cursor:default;color:var(--faint)}
+.pc-more:disabled:hover{background:transparent;color:var(--faint)}
+.pc-more:disabled:hover svg{transform:none}
+.ftag{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);border:1px solid var(--border-soft);border-radius:999px;padding:1px 7px;white-space:nowrap}
+
+/* ===== State B: schematic ===== */
+.schem{--pa:#e8b45a;--pa-hi:#f4cd83;--pa-soft:rgba(232,180,90,.12);--pa-line:rgba(232,180,90,.32);
+  flex:1;display:flex;flex-direction:column;min-height:0;background:#0e0b08;
+  background-image:radial-gradient(900px 420px at 50% 175px,var(--pa-soft) 0%,transparent 62%),repeating-linear-gradient(0deg,rgba(243,236,225,.022) 0 1px,transparent 1px 30px),repeating-linear-gradient(90deg,rgba(243,236,225,.022) 0 1px,transparent 1px 30px)}
+.sc-top{display:flex;align-items:center;gap:14px;padding:13px 20px;border-bottom:1px solid rgba(243,236,225,.07);background:rgba(14,11,8,.72);backdrop-filter:blur(4px);flex:none;flex-wrap:wrap}
+.back{display:flex;align-items:center;gap:7px;height:32px;padding:0 13px;border-radius:8px;background:var(--surface-2);border:1px solid var(--border);color:var(--text-2);font-size:12.5px;font-weight:600;cursor:pointer}
+.back:hover{border-color:var(--border-2);color:var(--text)}
+.sc-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--dim)}
+.sc-title b{color:var(--pa);font-weight:600}
+.sc-tags{margin-left:auto;display:flex;align-items:center;gap:8px}
+.ro-tag{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);border:1px solid var(--border);border-radius:999px;padding:3px 9px;display:flex;align-items:center;gap:6px}
+.ro-tag i{width:6px;height:6px;border-radius:50%;background:var(--pa);box-shadow:0 0 6px var(--pa);display:inline-block}
+.edit-cta{display:flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:8px;border:1px dashed var(--border-2);background:transparent;color:var(--faint);font-size:11px;font-weight:600;cursor:not-allowed}
+.edit-cta svg{width:11px;height:11px}
+.sc-scroll{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0;scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){.sc-scroll{scroll-behavior:auto}}
+.sc-inner{max-width:980px;margin:0 auto;padding:8px 22px 46px}
+
+/* hub */
+.hub{position:relative;margin:2px auto 6px}
+.hub svg{display:block;width:100%;height:auto}
+.hub text{font-family:var(--mono)}
+.hub-node{cursor:pointer}
+.hub-node:focus{outline:none}
+.hub-node:focus .nhalo,.hub-node:hover .nhalo{stroke:var(--pa);stroke-opacity:.9}
+.hub-node:hover .nlabel,.hub-node:focus .nlabel{fill:var(--text)}
+.core-ring{transform-origin:center;transform-box:fill-box}
+@keyframes breathe{0%,100%{opacity:.45}50%{opacity:1}}
+@keyframes coreglow{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:.9;transform:scale(1.05)}}
+.core-glow{animation:coreglow 4.2s ease-in-out infinite;transform-origin:center;transform-box:fill-box}
+.br1{animation:breathe 4.2s ease-in-out infinite}
+.br2{animation:breathe 4.2s ease-in-out .6s infinite}
+.br3{animation:breathe 4.2s ease-in-out 1.2s infinite}
+
+/* panels */
+.panel{background:rgba(26,20,14,.72);border:1px solid rgba(243,236,225,.09);border-radius:13px;padding:16px 18px 17px;margin-top:14px;scroll-margin-top:14px}
+.panel.flash{border-color:var(--pa);box-shadow:0 0 0 1px var(--pa-soft),0 0 30px -8px var(--pa-line)}
+.ph{display:flex;align-items:center;gap:11px;margin-bottom:13px}
+.ph .num{font-family:var(--mono);font-size:10px;color:var(--pa);letter-spacing:.1em}
+.ph .t{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-2);font-weight:600}
+.ph hr{flex:1;border:none;border-top:1px solid rgba(243,236,225,.08);margin:0}
+.ph .edit-hint{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);border:1px dashed var(--border-soft);border-radius:999px;padding:2px 8px;cursor:not-allowed}
+.ph .edit-hint svg{width:9px;height:9px}
+.pnote{font-size:11px;color:var(--dim);line-height:1.6;margin:10px 0 0}
+.pnote b{color:var(--muted);font-weight:600}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.duo .panel{margin-top:0}
+@media (max-width:760px){.duo{grid-template-columns:1fr}}
+
+/* trait tensions */
+.tens-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+details.tension{background:var(--inset);border:1px solid var(--border-soft);border-radius:11px;overflow:hidden}
+details.tension[open]{border-color:var(--border-2)}
+details.tension summary{list-style:none;cursor:pointer;padding:13px 14px 11px}
+details.tension summary::-webkit-details-marker{display:none}
+.tg-head{display:flex;align-items:center;gap:9px}
+.tg-idx{font-family:var(--mono);font-size:9.5px;color:var(--pa);border:1px solid var(--pa-line);border-radius:5px;padding:2px 6px}
+.tg-title{font-size:12.5px;font-weight:650;color:var(--text);flex:1;line-height:1.35}
+.tg-caret{color:var(--faint);flex:none;transition:transform .18s}
+details[open] .tg-caret{transform:rotate(180deg)}
+.tg-svg{display:block;width:100%;max-width:320px;margin:6px auto 0}
+@keyframes gaugeTip{0%,42%{transform:rotate(-48deg)}54%{transform:rotate(24deg)}60%{transform:rotate(19deg)}72%{transform:rotate(-51deg)}78%,100%{transform:rotate(-48deg)}}
+.tg-needle{animation:gaugeTip 11s cubic-bezier(.6,0,.3,1) infinite;animation-delay:var(--d,0s)}
+@keyframes zoneGlow{0%,42%,78%,100%{opacity:.28}54%,62%{opacity:.85}}
+.tg-zone{animation:zoneGlow 11s ease infinite;animation-delay:var(--d,0s)}
+@keyframes trigGlow{0%,42%,78%,100%{color:var(--dim);border-color:var(--border-soft)}52%,62%{color:var(--shadowc);border-color:rgba(141,132,181,.5)}}
+.tg-trigger{display:flex;gap:8px;align-items:baseline;font-size:11px;color:var(--dim);line-height:1.5;border:1px solid var(--border-soft);border-radius:8px;padding:7px 10px;margin-top:9px;animation:trigGlow 11s ease infinite;animation-delay:var(--d,0s)}
+.tg-trigger b{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;color:var(--shadowc);flex:none;font-weight:600}
+.tg-open-hint{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);text-align:center;margin-top:9px}
+.tg-fields{border-top:1px solid var(--border-soft);padding:4px 14px 12px}
+.tf{display:grid;grid-template-columns:104px 1fr;gap:10px;padding:8px 0;border-bottom:1px solid rgba(243,236,225,.05);font-size:11.5px;line-height:1.55}
+.tf:last-child{border-bottom:none}
+.tf b{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;padding-top:2px}
+.tf span{color:var(--text-2)}
+.tf.k-strength b{color:var(--pa)}.tf.k-shadow b{color:var(--shadowc)}.tf.k-trigger b{color:var(--shadowc)}.tf.k-observable b{color:var(--dim)}.tf.k-regulator b{color:var(--green)}.tf.k-boundary b{color:var(--red)}
+.tf.k-boundary span{color:var(--muted)}
+
+/* seq list (turn-taking) */
+.seq{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none;counter-reset:s}
+.seq li{display:flex;gap:11px;font-size:12px;color:var(--text-2);line-height:1.55;counter-increment:s}
+.seq li::before{content:counter(s,decimal-leading-zero);font-family:var(--mono);font-size:10px;color:var(--pa);border:1px solid var(--pa-line);border-radius:6px;height:20px;min-width:24px;display:grid;place-items:center;flex:none;margin-top:1px}
+
+/* aperture */
+.apt{display:flex;gap:16px;align-items:flex-start}
+.apt svg{flex:none}
+.apt p{font-size:12px;color:var(--text-2);line-height:1.6;margin:0}
+.apt-tag{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--pa);border:1px solid var(--pa-line);border-radius:999px;padding:2px 8px;display:inline-block;margin-bottom:8px}
+
+/* verbal palette */
+.pal{display:grid;grid-template-columns:1fr 96px;gap:16px}
+@media (max-width:640px){.pal{grid-template-columns:1fr}}
+.pal-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-content:start}
+@media (max-width:640px){.pal-grid{grid-template-columns:1fr}}
+.pf{background:var(--inset);border:1px solid var(--border-soft);border-radius:9px;padding:9px 11px}
+.pf b{display:block;font-family:var(--mono);font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);font-weight:600;margin-bottom:4px}
+.pf span{font-size:11.5px;color:var(--text-2);line-height:1.5}
+.pf.resist{border-style:dashed}
+.pf.resist b{color:var(--red)}
+.pf.resist span{color:var(--dim)}
+.pf.none span{color:var(--pa);font-family:var(--mono);font-size:10.5px;letter-spacing:.06em}
+.meter{display:flex;flex-direction:column;align-items:center;gap:8px}
+.meter-col{display:flex;flex-direction:column-reverse;gap:3px;background:var(--inset);border:1px solid var(--border-soft);border-radius:8px;padding:7px 6px}
+.mseg{width:34px;height:9px;border-radius:2px;background:rgba(243,236,225,.06)}
+.mseg.lit{background:var(--pa);box-shadow:0 0 8px -1px var(--pa)}
+@keyframes steadyGlow{0%,100%{box-shadow:0 0 6px -1px var(--pa)}50%{box-shadow:0 0 12px 0 var(--pa)}}
+.mseg.lit.steady{animation:steadyGlow 3.4s ease-in-out infinite}
+.meter-lab{font-family:var(--mono);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--pa);text-align:center;line-height:1.7}
+.meter-lab small{display:block;color:var(--dim);font-size:8px;text-transform:none;letter-spacing:.04em}
+
+/* constellation */
+.constel svg{display:block;width:100%;height:auto}
+.constel text{font-family:var(--mono)}
+@keyframes drift{0%,100%{translate:0 0;opacity:.5}50%{translate:var(--dx,4px) var(--dy,2px);opacity:.32}}
+.anti-w{animation:drift 7s ease-in-out infinite;animation-delay:var(--ad,0s)}
+.legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:6px;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.legend i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:0}
+.legend .l1 i{background:var(--pa);box-shadow:0 0 6px var(--pa)}
+.legend .l2 i{background:var(--faint)}
+
+/* tracks */
+.ax{display:grid;grid-template-columns:118px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid rgba(243,236,225,.05);align-items:start}
+.ax:last-of-type{border-bottom:none}
+.ax-name{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding-top:5px;line-height:1.5}
+.trk{display:grid;grid-template-columns:repeat(var(--n,3),1fr)}
+.stop{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:0 10px}
+.stop::before{content:"";position:absolute;top:8.5px;right:50%;width:100%;height:1px;background:rgba(243,236,225,.14)}
+.stop:first-child::before{display:none}
+.stop.span2{grid-column:3}
+.stop.span2::before{width:200%}
+.stop i{width:9px;height:9px;border-radius:50%;background:#2a2118;border:1px solid rgba(243,236,225,.25);flex:none;margin-top:4px;position:relative;z-index:1}
+.stop .stl{font-size:10.5px;color:var(--dim);line-height:1.45}
+.stop.def i{background:var(--pa);border-color:var(--pa-hi);box-shadow:0 0 9px var(--pa)}
+.stop.def .stl{color:var(--text);font-weight:600}
+.stop.def::after{content:"default";font-family:var(--mono);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--pa)}
+.stop.far{opacity:.62}
+.stop.far i{background:transparent;border-style:dashed}
+.farnote{font-family:var(--mono);font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);border:1px dashed var(--border-2);border-radius:999px;padding:2px 7px;display:flex;align-items:center;gap:5px}
+.farnote svg{width:8px;height:8px;flex:none}
+.farnote.locked{color:var(--red);border-color:rgba(224,85,69,.4)}
+.stop.ceil i{border-color:var(--red);background:rgba(224,85,69,.18)}
+.stop.ceil .farnote{color:var(--red);border-color:rgba(224,85,69,.4)}
+.ax-note{grid-column:2;font-size:10.5px;color:var(--dim);font-style:italic;margin-top:-2px}
+
+/* signature floor */
+.floor-wrap{position:relative;padding:10px 6px 30px}
+.floor-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.fchip{font-size:11px;color:var(--text-2);line-height:1.45;background:var(--inset);border:1px solid var(--border-soft);border-radius:9px;padding:7px 11px;max-width:290px}
+.fchip b{font-family:var(--mono);font-size:8.5px;color:var(--pa);letter-spacing:.1em;margin-right:6px}
+.floor-line{position:absolute;left:0;right:0;bottom:16px;height:2px;background:linear-gradient(90deg,transparent,var(--pa) 12%,var(--pa) 88%,transparent);box-shadow:0 0 12px -1px var(--pa)}
+@keyframes floorPulse{0%,100%{opacity:.75}50%{opacity:1}}
+.floor-line{animation:floorPulse 4.2s ease-in-out infinite}
+.floor-lab{position:absolute;bottom:0;left:0;font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--pa)}
+.floor-lab2{position:absolute;bottom:0;right:0;font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+@media (max-width:640px){.ax{grid-template-columns:1fr;gap:4px}.ax-note{grid-column:1}.tens-grid{grid-template-columns:1fr}}
+</style>
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#0e0b08"/><circle cx="50" cy="50" r="10" fill="#e8b45a"/><circle cx="50" cy="50" r="19" fill="none" stroke="#e8b45a" stroke-opacity=".6" stroke-width="2"/><circle cx="50" cy="50" r="28" fill="none" stroke="#e8b45a" stroke-opacity=".3" stroke-width="2"/><line x1="50" y1="50" x2="16" y2="22" stroke="#e8b45a" stroke-opacity=".5" stroke-width="1.5"/><line x1="50" y1="50" x2="84" y2="22" stroke="#e8b45a" stroke-opacity=".5" stroke-width="1.5"/><line x1="50" y1="50" x2="16" y2="80" stroke="#e8b45a" stroke-opacity=".5" stroke-width="1.5"/><line x1="50" y1="50" x2="84" y2="80" stroke="#e8b45a" stroke-opacity=".5" stroke-width="1.5"/></svg>
+</template>
+</head>
+<body>
+<div class="demo">
+  <div class="demo-label">Workshop · Persona browser → persona schematic</div>
+  <div class="shell" id="shell">
+
+    <div class="view" id="viewGrid">
+      <div class="pb-head">
+        <div class="pb-eyebrow">Workshop · Personas</div>
+        <h2>Choose a persona</h2>
+        <p class="pb-sub">Invite a craft persona into the room. <b>More info</b> opens the persona's full configuration schematic.</p>
+      </div>
+      <div class="pb-grid" id="pbGrid"></div>
+    </div>
+
+    <div class="view gone" id="viewSchem" aria-hidden="true"></div>
+
+  </div>
+  <p class="hint"><b>State A → B</b> transitions in place inside the same modal shell (subtle flip). <code>Esc</code> or <code>← Back to personas</code> returns; focus is handed back to the originating card. The schematic is <b>read-only today</b> — every field is laid out as a bindable unit, and the dashed <code>edit</code> affordances mark where the persona config utility will attach inline editors. Hub nodes navigate to their category panel. Margot is the maximal spec; Penny proves a near-empty spec still reads as <i>tuned, not broken</i>. Calm motion only; <code>prefers-reduced-motion</code> freezes everything to a still state.</p>
+</div>
+
+<script>
+/* ============================= DATA ============================= */
+const LOCK = '<svg viewBox="0 0 10 10" fill="none"><rect x="1.5" y="4.2" width="7" height="4.6" rx="1" stroke="currentColor"></rect><path d="M3.2 4V3a1.8 1.8 0 013.6 0v1" stroke="currentColor"></path></svg>';
+const ICONS = {
+  eye:'<svg viewBox="0 0 16 16" fill="none"><path d="M1.5 8s2.4-4.2 6.5-4.2S14.5 8 14.5 8 12.1 12.2 8 12.2 1.5 8 1.5 8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"></circle></svg>',
+  book:'<svg viewBox="0 0 16 16" fill="none"><path d="M8 3.5C6.8 2.6 5 2.3 2.5 2.3v10.4C5 12.7 6.8 13 8 13.9c1.2-.9 3-1.2 5.5-1.2V2.3C11 2.3 9.2 2.6 8 3.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path><path d="M8 3.5v10.4" stroke="currentColor" stroke-width="1.3"></path></svg>',
+  spark:'<svg viewBox="0 0 16 16" fill="none"><path d="M8 1.5l1.6 4.9L14.5 8l-4.9 1.6L8 14.5 6.4 9.6 1.5 8l4.9-1.6L8 1.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path></svg>',
+  waves:'<svg viewBox="0 0 16 16" fill="none"><path d="M2 8h1.5M5 4.5v7M8 2.5v11M11 5v6M14 7v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>'
+};
+const CATS = [null,'Identity','Trait tensions','Turn-taking signature','Personal aperture','Verbal palette','Lexical gravity','Communication gradients','Trait pressure','Signature floor'];
+
+const PERSONAS = {
+margot:{
+ name:'Margot',spec:'Voice & POV',icon:'eye',
+ line:'Tracks narrative distance, point of view, tense, and whether the narration stays in character.',
+ metaphor:'the recording booth',
+ acc:{a:'#e8b45a',hi:'#f4cd83',soft:'rgba(232,180,90,.12)',line:'rgba(232,180,90,.32)'},
+ tensions:[
+  {title:'Contract precision, overenforced',
+   strength:'Hears the exact line where the performer changes; names the precise permission that moved — knowledge, register, tense, distance.',
+   shadow:'Files deliberate double-register as a violation; demands a casting decision the writer hasn’t chosen to make.',
+   trigger:'A lone retrospective line in a close chapter; free-indirect coloring that could belong to either voice.',
+   observable:'“We changed performers” where the honest note is “two castable takes.”',
+   regulator:'Offer the takes and hand the writer the dial; ambiguity gets a casting choice, not a citation.',
+   boundary:'Never flattens a chosen ambiguity for a tidy contract.'},
+  {title:'Directorial economy, run cold',
+   strength:'Exact, compact notes; a session moves and nothing needs cutting.',
+   shadow:'The same economy reads as cold when the writer needed the WHY.',
+   trigger:'Repeated slips of the same kind; the late hours of a long session.',
+   observable:'“Take it again from I knew” with no reason attached.',
+   regulator:'When stakes or vulnerability rise, add the reason.',
+   boundary:'The booth voice never becomes the scold’s.'}],
+ turns:['Playback first: quote the line and perform who seems to be speaking; diagnosis second.',
+  'Hand over the dial: the adjustment is a direction the writer turns, not a rewrite.',
+  'Offer a second take once; clean takes stay closed on later turns.',
+  'A quiet “Yes. That’s her.” is a complete rave.'],
+ aperture:{r:.24,tag:'One story per session',
+  text:'Opens through booth stories (a narrator who couldn’t perform a broken sentence; a chapter re-recorded over one wrong pronoun of distance). At most one per session. Every story returns to the next line and who should be cast to speak it.'},
+ palette:[
+  ['Default register','A director between takes — attentive, exact, economical.'],
+  ['Favored verb families','reads, performs, enters, holds, carries, casts, steps back'],
+  ['Favored noun fields','take, reading, register, distance, booth, playback, entrance, permission, mic'],
+  ['Adjective temperature','Precise, auditory — close, held, clean.'],
+  ['Primary metaphor field','The recording booth.'],
+  ['Secondary adjacent flavor','Rooms and acoustics.'],
+  ['Neutral baseline','Clean controlled sentences; a short directive where it serves.']],
+ resist:'A camera move for every shift; theater jargon; POV alphabet-soup terminology.',
+ sat:{lit:7,of:12,label:'Moderate',sub:''},
+ gravity:{
+  nouns:['speaker','voice','take','reading','register','distance','permission','knowledge','entrance','booth','playback','mic','room tone'],
+  nounNote:null,
+  anti:['architecture','scaffolding','load-bearing','framework','voicey','authentic','cinematic','lens','zoom','head-hop','psychic distance'],
+  verb:{stops:['says / knows / changes','reads / enters / holds / carries / steps back / recedes','bleeds through / overdubs / trespasses / ventriloquizes'],d:1,note:'default: the directorial middle'},
+  adj:{stops:['close / distant / clear','held / clean / intimate / retrospective','reverberant / disembodied / ventriloquial'],d:0,note:null},
+  analogy:'Performance & recording first; rooms & acoustics second; camera distance a rationed third.'},
+ comm:[
+  {a:'Directness',s:['attentive playback','exact direction','booth command'],d:1},
+  {a:'Technicality',s:['plain voice','precise craft term','recording / narratology specialist'],d:1},
+  {a:'Lyricism',s:['controlled','acoustic image','ornate performance'],d:0},
+  {a:'Pedagogy',s:['identify speaker','explain permission','lecture on POV'],d:0},
+  {a:'Turn length',s:['pickup note','developed studio note','director’s commentary'],d:0},
+  {a:'Question pressure',s:['give the take','ask intended distance','casting session'],d:0},
+  {a:'Warmth',s:['exact attention','care made explicit','applause'],d:0},
+  {a:'Certainty',s:['supported take','clean violation','compulsory casting'],d:0,note:'default: match the strength of the permission evidence'}],
+ pressure:[
+  {t:'Contract precision',s:['identify permission','enforce contract','flatten double register']},
+  {t:'Directorial economy',s:['concise note','clipped command','cold dismissal']},
+  {t:'Auditory sensitivity',s:['hear voice','distinguish layers','turn every difference into bleed']},
+  {t:'Control',s:['offer a take','direct the adjustment','recast the manuscript']}],
+ floor:{lead:'Every substantive reply lets the writer hear at least one signature:',
+  items:['play back the exact word where the speaker changes','name the distance / permission shift','offer a reversible alternate take','catch vocal grain, bleed, or a false entrance','land one clipped recognition'],
+  note:'A developed reply carries ~2, from different families.'}
+},
+penny:{
+ name:'Penny',spec:'Reader experience',icon:'book',
+ line:'Responds as an attentive young reader who knows only what the page has earned.',
+ metaphor:null,
+ acc:{a:'#d9cba9',hi:'#ecdfc2',soft:'rgba(217,203,169,.11)',line:'rgba(217,203,169,.3)'},
+ tensions:[
+  {title:'First-read honesty, universalized',
+   strength:'Reports the read that actually happened — the one datum nobody else can supply.',
+   shadow:'Her disengagement hardens into the book’s verdict (“I got bored” → “this is boring”).',
+   trigger:'A book clearly written for someone who isn’t her; a slow patch after a gripping chapter.',
+   observable:'A verdict about the book where the honest note is a report about her read.',
+   regulator:'Pin the reaction to the exact line, mark it as one reader’s data, say what she cared about instead.',
+   boundary:'Never performs boredom; “I don’t care” stays in the drawer until literally true.'},
+  {title:'Enthusiasm, speaking for everyone',
+   strength:'When a page wins her, the delight is specific — she quotes the exact line.',
+   shadow:'Excitement inflates into market prediction (“everyone will love this”).',
+   trigger:'A passage that genuinely thrills her; a discouraged writer she wants to hand good news.',
+   regulator:'Report what the book did to HER and stop there.',
+   boundary:'A reader, not a focus group; never manufactures teen-speak.'}],
+ turns:['Report the exact moment attention changed, in order, and wait before guessing why.',
+  'Ask “what happens next?” only when she genuinely wants to know.',
+  'Keep reactions short, then give the writer the move.'],
+ aperture:{r:.82,tag:'One channel, wide open',
+  text:'Wide open about exactly one thing — her reading life (the 2 a.m. school-night finish, crying on a bus over a paperback). The rest of her life stays out. She closes the window by getting back to what happens next.'},
+ palette:[
+  ['Default register','Plain, first person, present tense — talk, not prose.'],
+  ['Favored verb families','got, wanted, skimmed, went back, pictured, believed'],
+  ['Favored noun fields','Concrete page-stuff (the key, the dog, the letter) + body reactions (chills, laughing out loud).'],
+  ['Adjective temperature','Quick, unliterary — weird, so good, confusing.'],
+  ['Primary metaphor field','NONE — plainness is the voice',1],
+  ['Secondary adjacent flavor','The occasional absurd image she actually pictured.'],
+  ['Neutral baseline','The report she’d give a friend at lunch.']],
+ resist:'Every workshop word — POV, stakes, arc, beats, exposition — plus review-speak like “compelling” and “immersive.”',
+ sat:{lit:2,of:12,label:'Lowest in the room — by design',sub:'Plainness is credibility. Steady, not empty.',steady:true},
+ gravity:{
+  nouns:['the key','the dog','the letter','chills','laughing out loud','what happens next'],
+  nounNote:'No noun neighborhoods authored — concrete page-stuff holds the center. The absence is the field.',
+  anti:['architecture','scaffolding','compelling','immersive','effective','stakes','arc','beat','exposition','resonant'],
+  verb:{stops:['saw / got / wanted','pictured / believed / went back','couldn’t stop / lost / bailed'],d:0,note:'default: near the plain center'},
+  adj:{stops:['clear / odd / slow','weird / confusing / so good','a brief exact reaction (“creepy enough that I checked the door”)'],d:0,note:null},
+  analogy:'Almost none; prefer the literal report.'},
+ comm:[
+  {a:'Directness',s:['careful','plain','blunt'],d:1},
+  {a:'Lyricism',s:['flat','one concrete image','literary'],d:0,lock:'ceiling: one image'},
+  {a:'Pedagogy',s:['reaction','reaction + exact trigger','lesson'],d:1},
+  {a:'Certainty',s:['unsure','personally certain','universally certain'],d:1,lock:'closed'},
+  {a:'Turn length',s:['quick reaction','short account','full report'],d:0},
+  {a:'Question pressure',s:['none / one real question','interview'],d:0},
+  {a:'Warmth',s:['honest','openly delighted','reassuring performance'],d:0}],
+ pressure:[
+  {t:'First-read conviction',s:['tentative','exact personal verdict','book-level verdict']},
+  {t:'Enthusiasm',s:['interested','excited','evangelizing']},
+  {t:'Curiosity',s:['wondering','urgently wanting the next fact','inventing possibilities']}],
+ floor:{lead:'At least one of, every turn:',
+  items:['tell what she first thought and where it changed','point at the exact line / person / object she couldn’t shake','admit what her attention actually did (stopped, skipped, went back)','the blunt version of what confused or delighted her','the question she’s genuinely carrying'],
+  note:null}
+}};
+
+const GRID_CARDS = [
+ {id:'jill',name:'Jill',spec:'Craft analysis',icon:'spark',desc:'Reads the manuscript whole and names the pattern underneath the page.',stub:true},
+ {id:'margot',name:'Margot',spec:'Voice & POV',icon:'eye',desc:PERSONAS.margot.line},
+ {id:'penny',name:'Penny',spec:'Reader experience',icon:'book',desc:PERSONAS.penny.line},
+ {id:'quinn',name:'Quinn',spec:'Dialogue & beats',icon:'waves',desc:'Hears the rhythm of spoken exchanges and the silences between the lines.',stub:true}
+];
+
+/* ============================= RENDER: GRID ============================= */
+const $ = id=>document.getElementById(id);
+$('pbGrid').innerHTML = GRID_CARDS.map(c=>`
+ <article class="pcard">
+  <div class="pc-head"><span class="pc-ic">${ICONS[c.icon]}</span><div><h3 class="pc-name">${c.name}</h3><div class="pc-spec">${c.spec}</div></div></div>
+  <p class="pc-desc">${c.desc}</p>
+  ${c.stub
+   ? `<button class="pc-more" disabled title="This persona’s authoring spec hasn’t been written yet">More info <span class="ftag">spec pending</span></button>`
+   : `<button class="pc-more" data-open="${c.id}" id="more-${c.id}">More info <svg viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>`}
+ </article>`).join('');
+
+/* ============================= COMPONENTS ============================= */
+function editHint(){return `<span class="edit-hint" title="Inline editing arrives with the persona config utility — every field here is a bindable unit">${LOCK} edit</span>`}
+function panel(num,inner,extra=''){return `<section class="panel" id="sec-${num}"><div class="ph"><span class="num">0${num}</span><span class="t">${CATS[num]}</span><hr>${extra}${editHint()}</div>${inner}</section>`}
+
+function track(stops,d,opts={}){
+ const n=stops.length;
+ return `<div class="trk" style="--n:3">${stops.map((s,i)=>{
+  const far=i===n-1&&i!==d, cls=['stop',i===d?'def':'',far?'far':'',far&&opts.ceil?'ceil':'',n===2&&i===1?'span2':''].join(' ');
+  const note=far&&opts.farNote?`<span class="farnote ${opts.locked?'locked':''}">${opts.locked?LOCK:''}${opts.farNote}</span>`:'';
+  return `<span class="${cls}"><i></i><span class="stl">${s}</span>${note}</span>`;
+ }).join('')}</div>`;
+}
+
+function gauge(i){
+ const d=`--d:${i*1.7}s`;
+ return `<svg class="tg-svg" viewBox="0 0 300 128" aria-hidden="true">
+  <path d="M64.1 81.7 A88 88 0 0 1 235.9 81.7" fill="none" stroke="rgba(243,236,225,.16)" stroke-width="2"></path>
+  <path class="tg-zone" style="${d}" d="M187.2 20.2 A88 88 0 0 1 226.2 56" fill="none" stroke="var(--shadowc)" stroke-width="7" stroke-linecap="round"></path>
+  <line x1="240.2" y1="67.2" x2="225.2" y2="72.6" stroke="var(--red)" stroke-width="2.5"></line>
+  <text x="250" y="64" font-size="7.5" fill="var(--red)" letter-spacing="1">LIMIT</text>
+  <path d="M110 88 q-5 -7 2 -10 q7 -3 2 -10 q-5 -7 2 -10" fill="none" stroke="var(--green)" stroke-width="1.4" opacity=".75"></path>
+  <text x="98" y="44" font-size="7.5" fill="var(--green)" letter-spacing="1" text-anchor="middle">REGULATOR</text>
+  <g class="tg-needle" style="transform-origin:150px 100px;${d}">
+   <line x1="150" y1="100" x2="150" y2="26" stroke="var(--pa)" stroke-width="2.5" stroke-linecap="round"></line>
+   <circle cx="150" cy="100" r="5" fill="var(--pa)"></circle>
+  </g>
+  <text x="56" y="106" font-size="8" fill="var(--pa)" letter-spacing="1.5">STRENGTH</text>
+  <text x="212" y="106" font-size="8" fill="var(--shadowc)" letter-spacing="1.5">SHADOW</text>
+  <text x="150" y="124" font-size="7.5" fill="rgba(243,236,225,.3)" letter-spacing="1" text-anchor="middle">RESTS AT STRENGTH · TIPS UNDER TRIGGER</text>
+ </svg>`;
+}
+
+function tensions(p){
+ const cards=p.tensions.map((t,i)=>{
+  const F=[['strength','Strength',t.strength],['shadow','Shadow',t.shadow],['trigger','Trigger',t.trigger],['observable','Observable',t.observable],['regulator','Regulator',t.regulator],['boundary','Caricature boundary',t.boundary]]
+   .filter(f=>f[2]).map(f=>`<div class="tf k-${f[0]}"><b>${f[1]}</b><span>${f[2]}</span></div>`).join('');
+  return `<details class="tension">
+   <summary><div class="tg-head"><span class="tg-idx">T${i+1}</span><span class="tg-title">${t.title}</span><svg class="tg-caret" width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+   ${gauge(i)}
+   <div class="tg-trigger" style="--d:${i*1.7}s"><b>TRIGGER</b><span>${t.trigger}</span></div>
+   <div class="tg-open-hint">open the mechanism ▾</div></summary>
+   <div class="tg-fields">${F}</div>
+  </details>`;
+ }).join('');
+ return panel(2,`<div class="tens-grid">${cards}</div><p class="pnote"><b>Causal, not cosmetic:</b> the needle rests at the strength pole; only the named trigger tips it into the shadow zone; the regulator is the restoring spring; the red line is a hard caricature limit the persona never crosses.</p>`);
+}
+
+function apertureSVG(r,acc){
+ const R=34, inner=Math.max(5,R*r*0.9);
+ return `<svg width="88" height="88" viewBox="0 0 88 88">
+  <circle cx="44" cy="44" r="${R+5}" fill="none" stroke="rgba(243,236,225,.12)" stroke-width="1.5"></circle>
+  <circle cx="44" cy="44" r="${R}" fill="none" stroke="${acc}" stroke-opacity=".55" stroke-width="1.5" stroke-dasharray="4 5"></circle>
+  <circle class="br2" cx="44" cy="44" r="${inner}" fill="${acc}" fill-opacity=".16" stroke="${acc}" stroke-width="1.5"></circle>
+  <text x="44" y="83" font-family="var(--mono)" font-size="7.5" fill="rgba(243,236,225,.35)" letter-spacing="1.5" text-anchor="middle">APERTURE</text>
+ </svg>`;
+}
+
+function constellation(p){
+ const g=p.gravity, W=880, H=310, cx=W/2, cy=H/2-6;
+ let s=`<svg viewBox="0 0 ${W} ${H}" aria-hidden="true">
+  <circle cx="${cx}" cy="${cy}" r="13" fill="var(--pa)" fill-opacity=".22" stroke="var(--pa)" stroke-width="1.4" class="br1"></circle>
+  <circle cx="${cx}" cy="${cy}" r="24" fill="none" stroke="var(--pa)" stroke-opacity=".3" stroke-width="1" class="br2"></circle>`;
+ g.nouns.forEach((w,i)=>{
+  const ang=(i*137.5)*Math.PI/180, rad=64+(i%3)*30;
+  const x=cx+rad*Math.cos(ang)*1.9, y=cy+rad*Math.sin(ang)*0.62;
+  s+=`<text x="${x.toFixed(0)}" y="${y.toFixed(0)}" font-size="12" fill="var(--pa-hi)" fill-opacity="${(0.95-(i%3)*0.14).toFixed(2)}" text-anchor="middle">${w}</text>`;
+ });
+ g.anti.forEach((w,i)=>{
+  const ang=((i*137.5)+64)*Math.PI/180, rad=132+(i%2)*22;
+  const x=cx+rad*Math.cos(ang)*2.6, y=cy+rad*Math.sin(ang)*0.78;
+  const dx=(Math.cos(ang)*7).toFixed(1), dy=(Math.sin(ang)*5).toFixed(1);
+  const X=Math.min(W-14,Math.max(14,x)), Y=Math.min(H-8,Math.max(12,y));
+  s+=`<text class="anti-w" style="--dx:${dx}px;--dy:${dy}px;--ad:${(i*0.55).toFixed(2)}s" x="${X.toFixed(0)}" y="${Y.toFixed(0)}" font-size="11" font-style="italic" fill="rgba(243,236,225,.32)" text-anchor="middle">${w}</text>`;
+ });
+ s+=`</svg>`;
+ const tracks=`
+  <div class="ax"><span class="ax-name">Verb gradient</span>${track(g.verb.stops,g.verb.d,{farNote:'needs a real collision to unlock',locked:true})}${g.verb.note?`<span class="ax-note">${g.verb.note}</span>`:''}</div>
+  <div class="ax"><span class="ax-name">Adjective gradient</span>${track(g.adj.stops,g.adj.d,{farNote:'needs a real collision to unlock',locked:true})}${g.adj.note?`<span class="ax-note">${g.adj.note}</span>`:''}</div>
+  <div class="ax"><span class="ax-name">Analogy palette</span><span style="font-size:11.5px;color:var(--text-2);line-height:1.55;padding-top:4px">${g.analogy}</span></div>`;
+ return panel(6,`<div class="constel">${s}</div>
+  <div class="legend"><span class="l1"><i></i>Noun neighborhoods — strong gravity, held close</span><span class="l2"><i></i>Weak gravity — anti-vocabulary, drifting away</span></div>
+  ${g.nounNote?`<p class="pnote"><b>Note:</b> ${g.nounNote}</p>`:''}
+  <div style="margin-top:10px">${tracks}</div>`);
+}
+
+function paletteP(p){
+ const cells=p.palette.map(f=>`<div class="pf ${f[2]?'none':''}"><b>${f[0]}</b><span>${f[1]}</span></div>`).join('')
+  +`<div class="pf resist"><b>Assistant vocabulary to resist</b><span>${p.resist}</span></div>`;
+ const segs=Array.from({length:p.sat.of},(_,i)=>`<span class="mseg ${i<p.sat.lit?'lit':''} ${p.sat.steady?'steady':''}"></span>`).join('');
+ return panel(5,`<div class="pal"><div class="pal-grid">${cells}</div>
+  <div class="meter"><div class="meter-col">${segs}</div><div class="meter-lab">Saturation<br>${p.sat.label}${p.sat.sub?`<small>${p.sat.sub}</small>`:''}</div></div></div>`);
+}
+
+function commP(p){
+ const rows=p.comm.map(c=>`<div class="ax"><span class="ax-name">${c.a}</span>${track(c.s,c.d,{farNote:c.lock||'requires justification',locked:!!c.lock})}${c.note?`<span class="ax-note">${c.note}</span>`:''}</div>`).join('');
+ return panel(7,rows+`<p class="pnote"><b>Reading the tracks:</b> the glowing detent is the default the persona returns to. The dimmed far zone is governed — reachable only with justification. A padlock means that end is closed for this persona.</p>`);
+}
+
+function pressureP(p){
+ const rows=p.pressure.map(c=>`<div class="ax"><span class="ax-name">${c.t}</span>${track(c.s,0,{farNote:'overreach ceiling',ceil:true})}</div>`).join('');
+ return panel(8,rows+`<p class="pnote">Each trait runs default → mid → ceiling. The red-ringed stop is the overreach the regulators exist to prevent.</p>`);
+}
+
+function floorP(p){
+ const chips=p.floor.items.map((f,i)=>`<span class="fchip"><b>F${i+1}</b>${f}</span>`).join('');
+ return panel(9,`<p class="pnote" style="margin:0 0 12px"><b>${p.floor.lead}</b></p>
+  <div class="floor-wrap"><div class="floor-chips">${chips}</div>
+  <div class="floor-line"></div><span class="floor-lab">identity floor — nonzero minimum</span><span class="floor-lab2">every reply must clear this line</span></div>
+  ${p.floor.note?`<p class="pnote">${p.floor.note}</p>`:''}`);
+}
+
+/* hub */
+function hub(p){
+ const W=960,H=440,cx=480,cy=215;
+ const nodes=[
+  {n:2,x:170,y:75},{n:7,x:95,y:215},{n:8,x:170,y:355},
+  {n:3,x:790,y:75},{n:5,x:865,y:215},{n:6,x:790,y:355},
+  {n:4,x:480,y:48},{n:9,x:480,y:392}];
+ let traces='',pulses='',dots='';
+ nodes.forEach((nd,i)=>{
+  const dx=nd.x-cx,dy=nd.y-cy,len=Math.hypot(dx,dy),ux=dx/len,uy=dy/len;
+  const sx=cx+ux*70,sy=cy+uy*70;
+  const mx=(sx+nd.x)/2+uy*18,my=(sy+nd.y)/2-ux*18;
+  const d=`M${sx.toFixed(0)} ${sy.toFixed(0)} Q${mx.toFixed(0)} ${my.toFixed(0)} ${nd.x} ${nd.y}`;
+  traces+=`<path d="${d}" fill="none" stroke="var(--pa)" stroke-opacity=".22" stroke-width="1.2"></path>`;
+  pulses+=`<circle r="2.4" fill="var(--pa-hi)" opacity=".9"><animateMotion dur="${(5.5+i*0.6).toFixed(1)}s" begin="${(i*0.8).toFixed(1)}s" repeatCount="indefinite" path="${d}"></animateMotion></circle>`;
+  const labAbove=nd.y<cy;
+  dots+=`<g class="hub-node" role="button" tabindex="0" data-sec="${nd.n}" aria-label="Open ${CATS[nd.n]}">
+   <circle cx="${nd.x}" cy="${nd.y}" r="22" fill="transparent"></circle>
+   <circle class="nhalo" cx="${nd.x}" cy="${nd.y}" r="9.5" fill="none" stroke="var(--pa)" stroke-opacity=".35" stroke-width="1"></circle>
+   <circle cx="${nd.x}" cy="${nd.y}" r="4.2" fill="var(--pa)"></circle>
+   <text x="${nd.x}" y="${labAbove?nd.y-24:nd.y+22}" font-size="8" fill="var(--pa)" fill-opacity=".8" letter-spacing="1.2" text-anchor="middle">0${nd.n}</text>
+   <text class="nlabel" x="${nd.x}" y="${labAbove?nd.y-13:nd.y+34}" font-size="9.5" fill="rgba(243,236,225,.62)" letter-spacing="1.4" text-anchor="middle">${CATS[nd.n].toUpperCase()}</text>
+  </g>`;
+ });
+ return `<div class="hub"><svg viewBox="0 0 ${W} ${H}" role="group" aria-label="Persona configuration map">
+  ${traces}${pulses}
+  <circle class="core-glow" cx="${cx}" cy="${cy}" r="52" fill="var(--pa)" fill-opacity=".1"></circle>
+  <circle class="br3" cx="${cx}" cy="${cy}" r="62" fill="none" stroke="var(--pa)" stroke-opacity=".25" stroke-width="1"></circle>
+  <circle class="br2" cx="${cx}" cy="${cy}" r="46" fill="none" stroke="var(--pa)" stroke-opacity=".4" stroke-width="1.2" stroke-dasharray="3 6"></circle>
+  <circle class="br1" cx="${cx}" cy="${cy}" r="31" fill="none" stroke="var(--pa)" stroke-opacity=".65" stroke-width="1.4"></circle>
+  <circle cx="${cx}" cy="${cy}" r="17" fill="var(--pa)" fill-opacity=".14" stroke="var(--pa)" stroke-width="1.5"></circle>
+  <text x="${cx}" y="${cy+5}" font-size="15" fill="var(--pa-hi)" text-anchor="middle" font-weight="600">${p.name[0]}</text>
+  <text x="${cx}" y="${cy+88}" font-size="8" fill="var(--pa)" letter-spacing="1.5" text-anchor="middle">01 IDENTITY</text>
+  <text x="${cx}" y="${cy+104}" font-size="13" fill="var(--text)" text-anchor="middle" font-weight="600" font-family="var(--sans)">${p.name} · ${p.spec}</text>
+  <text x="${cx}" y="${cy+120}" font-size="9" fill="rgba(243,236,225,.45)" letter-spacing="1" text-anchor="middle">${p.metaphor?`PRIMARY METAPHOR FIELD: ${p.metaphor.toUpperCase()}`:'PRIMARY METAPHOR FIELD: NONE — PLAINNESS IS THE VOICE'}</text>
+  ${dots}
+ </svg></div>`;
+}
+
+/* ============================= SCHEMATIC ASSEMBLY ============================= */
+function renderSchematic(pid){
+ const p=PERSONAS[pid];
+ const v=$('viewSchem');
+ v.innerHTML=`<div class="schem" style="--pa:${p.acc.a};--pa-hi:${p.acc.hi};--pa-soft:${p.acc.soft};--pa-line:${p.acc.line}">
+  <div class="sc-top">
+   <button class="back" id="backBtn"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M13 8H3M7 4L3 8l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>Back to personas</button>
+   <span class="sc-title">Persona schematic · <b>${p.name.toUpperCase()}</b></span>
+   <div class="sc-tags">
+    <span class="ro-tag"><i></i>live config · read-only</span>
+    <button class="edit-cta" disabled title="Inline editing arrives with the persona config utility">${LOCK} Edit persona</button>
+   </div>
+  </div>
+  <div class="sc-scroll" id="scScroll"><div class="sc-inner">
+   ${hub(p)}
+   ${tensions(p)}
+   <div class="duo">
+    ${panel(3,`<ol class="seq">${p.turns.map(t=>`<li>${t}</li>`).join('')}</ol>`)}
+    ${panel(4,`<div class="apt">${apertureSVG(p.aperture.r,p.acc.a)}<div><span class="apt-tag">${p.aperture.tag}</span><p>${p.aperture.text}</p></div></div>`)}
+   </div>
+   ${paletteP(p)}
+   ${constellation(p)}
+   ${commP(p)}
+   ${pressureP(p)}
+   ${floorP(p)}
+  </div></div>`;
+ v.querySelectorAll('.hub-node').forEach(n=>{
+  const go=()=>{const sec=v.querySelector('#sec-'+n.dataset.sec);const sc=$('scScroll');
+   sc.scrollTo({top:sec.offsetTop-10,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+   v.querySelectorAll('.panel.flash').forEach(x=>x.classList.remove('flash'));
+   sec.classList.add('flash');setTimeout(()=>sec.classList.remove('flash'),1800);};
+  n.addEventListener('click',go);
+  n.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});
+ });
+ $('backBtn').addEventListener('click',showGrid);
+ if(matchMedia('(prefers-reduced-motion: reduce)').matches)
+  v.querySelectorAll('svg').forEach(s=>s.pauseAnimations&&s.pauseAnimations());
+}
+
+/* ============================= STATE / TRANSITIONS ============================= */
+let lastTrigger=null;
+function showSchematic(pid,trigger){
+ lastTrigger=trigger||null;
+ renderSchematic(pid);
+ $('viewGrid').classList.add('gone');$('viewGrid').setAttribute('aria-hidden','true');
+ $('viewSchem').classList.remove('gone');$('viewSchem').removeAttribute('aria-hidden');
+ requestAnimationFrame(()=>$('backBtn').focus());
+}
+function showGrid(){
+ $('viewSchem').classList.add('gone');$('viewSchem').setAttribute('aria-hidden','true');
+ $('viewGrid').classList.remove('gone');$('viewGrid').removeAttribute('aria-hidden');
+ if(lastTrigger)lastTrigger.focus();
+}
+document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>showSchematic(b.dataset.open,b)));
+document.addEventListener('keydown',e=>{
+ if(e.key==='Escape'&&!$('viewSchem').classList.contains('gone'))showGrid();
+});
+</script>
+</body>
+</html>

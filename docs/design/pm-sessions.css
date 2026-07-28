@@ -1,0 +1,70 @@
+/* ============================================================
+   Prose Minion — Session persistence: browser + save dialog
+   ============================================================ */
+/* ---------- session browser ---------- */
+.sb-toolbar{display:flex;align-items:center;gap:12px;padding:10px 26px 14px;flex:none}
+.sb-search{flex:1;display:flex;align-items:center;gap:11px;background:var(--inset);border:1px solid var(--border);border-radius:11px;padding:5px 12px 5px 14px}
+.sb-search .si{color:var(--dim);flex:none}
+.sb-search input{flex:1;background:none;border:0;outline:none;color:var(--text);font-size:13.5px;font-family:var(--sans);padding:8px 0}
+.sb-search input::placeholder{color:var(--faint)}
+.sb-search .grep{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);border:1px solid var(--border-soft);border-radius:999px;padding:3px 8px;white-space:nowrap}
+.sb-group{display:flex;align-items:center;gap:8px;flex:none}
+.sb-group .lab{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.sb-seg{display:flex;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:3px}
+.sb-seg button{background:none;border:0;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--sans)}
+.sb-seg button.on{background:var(--surface-3);color:var(--text);box-shadow:0 0 0 1px rgba(224,103,58,.25)}
+
+.sb-body{overflow-y:auto;flex:1;min-height:0;padding:2px 20px 18px}
+.sb-gh{display:flex;align-items:baseline;gap:9px;padding:16px 6px 8px}
+.sb-gh .t{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);font-weight:600}
+.sb-gh .c{font-family:var(--mono);font-size:10px;color:var(--faint)}
+.sb-gh.first{padding-top:4px}
+
+.sb-row{position:relative;display:flex;align-items:flex-start;gap:14px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 15px;cursor:pointer;font-family:var(--sans);margin-bottom:9px;transition:border-color .12s,background .12s}
+.sb-row:hover{border-color:var(--border-2);background:var(--surface-2)}
+.sb-row.current{border-color:rgba(224,103,58,.45);background:var(--accent-soft)}
+.sb-host{flex:none;width:38px;height:38px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);display:grid;place-items:center;color:var(--accent-hi);position:relative}
+.sb-row.current .sb-host{background:rgba(224,103,58,.16);border-color:rgba(224,103,58,.4)}
+.sb-host .glyph{position:absolute;top:-3px;right:-4px;color:var(--accent-hi)}
+.sb-main{flex:1;min-width:0}
+.sb-titlerow{display:flex;align-items:center;gap:9px;margin-bottom:4px}
+.sb-title{font-size:14.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-badge{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-hi);border:1px solid rgba(224,103,58,.4);background:var(--accent-soft);border-radius:5px;padding:2px 7px;flex:none}
+.sb-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px}
+.sb-meta .dotsep{color:var(--faint)}
+.sb-meta .src{color:var(--dim)}
+.sb-meta .host{color:var(--accent-hi)}
+.sb-preview{font-size:12.5px;color:var(--dim);line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-preview .mk{color:var(--dim)}
+.sb-preview em{color:var(--amber);font-style:normal}
+.sb-note{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:var(--amber);opacity:.9}
+.sb-note svg{flex:none}
+
+.sb-actions{position:absolute;top:11px;right:11px;display:flex;gap:5px;opacity:0;transition:opacity .12s}
+.sb-row:hover .sb-actions,.sb-row:focus-within .sb-actions{opacity:1}
+.sb-act{width:29px;height:29px;border-radius:8px;background:var(--surface-3);border:1px solid var(--border);color:var(--muted);display:grid;place-items:center;cursor:pointer}
+.sb-act:hover{color:var(--text);border-color:var(--border-2)}
+.sb-act.del:hover{color:#e8776b;border-color:rgba(224,90,78,.5);background:rgba(224,90,78,.08)}
+.sb-open{flex:none;align-self:center;display:flex;align-items:center;gap:6px;height:32px;padding:0 14px;border-radius:8px;background:var(--surface-3);border:1px solid var(--border-2);color:var(--text);font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--sans)}
+.sb-open:hover{background:#40301f}
+.sb-row.current .sb-open{background:linear-gradient(180deg,var(--accent-hi),var(--accent-lo));border-color:var(--accent-lo);color:#fff}
+.sb-rename{width:100%;box-sizing:border-box;background:var(--inset);border:1px solid var(--accent);border-radius:7px;color:var(--text);font-family:var(--sans);font-size:14px;font-weight:600;padding:5px 8px;outline:none;margin-bottom:4px}
+
+.sb-empty{text-align:center;color:var(--dim);font-size:13px;padding:48px 20px;line-height:1.6}
+.sb-empty svg{color:var(--faint);margin-bottom:10px}
+
+/* ---------- save dialog ---------- */
+.sv-body{padding:8px 26px 4px}
+.sv-field{margin-top:8px}
+.sv-label{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:8px;display:block}
+.sv-input{width:100%;box-sizing:border-box;background:var(--inset);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--sans);font-size:15px;font-weight:600;padding:12px 13px;outline:none}
+.sv-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.sv-path{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-top:9px;display:flex;align-items:center;gap:7px}
+.sv-path b{color:var(--muted);font-weight:500}
+.sv-incl{margin-top:20px;border:1px solid var(--border-soft);background:var(--inset);border-radius:11px;padding:14px 15px}
+.sv-incl .h{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:11px}
+.sv-inclrow{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text-2);padding:4px 0}
+.sv-inclrow svg{color:var(--green);flex:none}
+.sv-inclrow .m{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--faint)}
+.sv-note{display:flex;gap:9px;align-items:flex-start;font-size:11.5px;color:var(--muted);line-height:1.55;margin-top:16px}
+.sv-note svg{flex:none;color:var(--dim);margin-top:1px}

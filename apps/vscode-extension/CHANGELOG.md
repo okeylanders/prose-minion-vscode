@@ -2,6 +2,75 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [Unreleased]
+
+### Added
+
+- **Workshop · beta**: Added a full editor-tab writers' room for sustained
+  manuscript work. Start from an excerpt or an open conversation, choose Jill
+  or one of eleven specialist hosts, invite persona guests, and keep the work
+  in one persistent thread.
+- **Persona-hosted conversations**: Added retained multi-turn host and guest
+  conversations, participant switching, truthful bounded room catch-up, and
+  distinct private instrument follow-ups.
+- **Writing tools in the room**: All 14 Workshop tools can run as isolated
+  sidecars. Their verbatim reports remain visible, feed the host as evidence,
+  and can be addressed directly without making the tool impersonate a persona.
+- **Bounded agent capabilities**: Workshop personas can request Writer's
+  Dictionary lookups, focused analyses, allowlisted project-resource search
+  and reads, and optional live web research through typed, budgeted host
+  boundaries.
+- **Excerpt and context workflow**: Added passage/open-session intake, excerpt
+  provenance and revision continuity, multiple standing context attachments,
+  one-shot message attachments, project browsing, a Context wizard, and
+  retained-context visibility.
+- **Conversation controls**: Added Analyze/Balanced/Converse interaction modes,
+  Subtle/Full/Amplified expression, Reserved/Attuned/Reflective relational
+  depth, and an optional writer-authored profile.
+- **Actionable findings**: Tool and persona findings can become attributable,
+  persistent Workshop tasks visible to the room.
+- **Durable sessions**: Added atomic workspace autosave, named checkpoints,
+  session search/browse/rename/duplicate/reveal/delete actions, degraded
+  recovery, and seamless restoration of retained conversation histories after
+  restart.
+- **Workshop beta tour**: Added a versioned, illustrated startup guide,
+  configuration walkthrough, categorized tool and widget-preview sheets, and
+  release-candidate visual polish.
+- **Model catalog additions**: Added Claude Opus 5, Claude Opus 5 Fast,
+  Kimi K3, Gemini 3.6 Flash, and Fugu Ultra without changing existing defaults.
+
+### Changed
+
+- **Shared agent runtime**: Consolidated Workshop and existing assistant routes
+  onto the same cancellation-aware agent-run engine, resource catalog policy,
+  capability gate, and usage accounting.
+- **Host-side session truth**: Workshop state, participant ownership, delivery
+  offsets, persistence, and active-run guards live in the extension host;
+  React renders typed snapshots rather than owning the aggregate.
+- **Markdown and resource safety**: Model/workspace Markdown is sanitized,
+  resource paths remain allowlisted and contained, and prompt/session/resource
+  budgets fail closed.
+
+### Fixed
+
+- Restored Workshop editor tabs now activate without first opening the Prose
+  Minion sidebar.
+- Persisted Workshop JSON is limited to 25 MiB and 100 nesting levels on both
+  read and write, preventing hostile workspace files from exhausting the
+  extension host or creating checkpoints that cannot be restored.
+- Hardened stale-run handling, cancellation, excerpt replacement, participant
+  delivery, session rollback, focus return, notice privacy, and citation
+  persistence across the incremental Workshop review series.
+
+### Technical Details
+
+- Epic integration PR: [#95](https://github.com/okeylanders/prose-minion-vscode/pull/95).
+- Developed and reviewed incrementally through Workshop PRs #66–#94.
+- Final epic validation: 139 Jest suites / 1,518 tests, all three TypeScript
+  projects, lint, production bundles, bundle sentinels, and GitHub Actions.
+- Workshop remains explicitly labeled beta. Web research is opt-in and
+  disabled by default.
+
 ## [2.0.3] - 2026-07-13
 
 ### Added

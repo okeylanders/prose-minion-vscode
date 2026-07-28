@@ -95,10 +95,13 @@
   ],
   "activationEvents": [
     "onView:prose-minion.toolsView",
+    "onWebviewPanel:prose-minion.workshop",
     "onCommand:prose-minion.assistantSelection",
     "onCommand:prose-minion.wordLookupSelection",
     "onCommand:prose-minion.analyzeSelection",
-    "onCommand:prose-minion.showOutputChannel"
+    "onCommand:prose-minion.showOutputChannel",
+    "onCommand:prose-minion.openWorkshop",
+    "onCommand:prose-minion.workshopSelection"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -138,6 +141,14 @@
         "command": "prose-minion.showOutputChannel",
         "title": "Prose Minion: Show Debug Output",
         "icon": "$(bug)"
+      },
+      {
+        "command": "prose-minion.openWorkshop",
+        "title": "Prose Minion: Open Workshop"
+      },
+      {
+        "command": "prose-minion.workshopSelection",
+        "title": "Prose Minion: Send Selection to Workshop"
       }
     ],
     "menus": {
@@ -146,6 +157,11 @@
           "when": "editorHasSelection",
           "command": "prose-minion.assistantSelection",
           "group": "prose-minion@1"
+        },
+        {
+          "when": "editorHasSelection",
+          "command": "prose-minion.workshopSelection",
+          "group": "prose-minion@2"
         },
         {
           "when": "editorHasSelection",
@@ -207,6 +223,7 @@
             "google/gemini-3-flash-preview",
             "google/gemini-3.1-flash-lite-preview",
             "google/gemini-3.5-flash",
+            "google/gemini-3.6-flash",
             "google/gemini-2.5-flash",
             "google/gemini-2.5-pro",
             "deepseek/deepseek-v4-flash",
@@ -320,6 +337,90 @@
           "default": "research/**/*,Research/**/*,tone-and-style/**/*,Tone-And-Style/**/*,literary-devices/**/*,Literary-Devices/**/*,**/story-bible.md,**/synopsis.md,**/voice-and-tone.md,**/genre-conventions.md",
           "description": "Comma-separated glob patterns for general reference material (only .md and .txt files are used).",
           "order": 16
+        },
+        "proseMinion.workshop.conversationBehavior": {
+          "type": "object",
+          "default": {
+            "interactionMode": "balanced",
+            "expressionLevel": "full",
+            "relationalDepth": "attuned",
+            "carryCuesThroughSession": true
+          },
+          "properties": {
+            "interactionMode": {
+              "type": "string",
+              "enum": ["analysis", "balanced", "conversational"],
+              "description": "Default Workshop response style."
+            },
+            "expressionLevel": {
+              "type": "string",
+              "enum": ["subtle", "full", "amplified"],
+              "description": "How audibly the selected persona expresses their authored voice, from quiet to deliberately amplified."
+            },
+            "relationalDepth": {
+              "type": "string",
+              "enum": ["reserved", "attuned", "reflective"],
+              "description": "How deeply Workshop personas may interpret and respond to emotional cues and explicitly shared personal context."
+            },
+            "carryCuesThroughSession": {
+              "type": "boolean",
+              "description": "Allow demonstrated interaction preferences to shape later turns in the current Workshop session."
+            }
+          },
+          "required": [
+            "interactionMode",
+            "expressionLevel",
+            "relationalDepth",
+            "carryCuesThroughSession"
+          ],
+          "additionalProperties": false,
+          "description": "Durable defaults for Workshop conversation behavior. These explicit choices survive restart; inferred conversation-cue memory remains session-scoped.",
+          "order": 50
+        },
+        "proseMinion.workshop.writerProfile": {
+          "type": "object",
+          "scope": "application",
+          "default": {
+            "enabled": false,
+            "preferredAddress": "",
+            "bio": ""
+          },
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Share this profile with Workshop personas. Empty profiles remain inactive."
+            },
+            "preferredAddress": {
+              "type": "string",
+              "maxLength": 80,
+              "description": "How Workshop personas should address you."
+            },
+            "bio": {
+              "type": "string",
+              "maxLength": 1000,
+              "description": "Short writer-authored context for Workshop personas. Stored globally; do not include sensitive information."
+            }
+          },
+          "required": ["enabled", "preferredAddress", "bio"],
+          "additionalProperties": false,
+          "description": "Optional global writer profile shared only with Workshop personas. It is not session memory and is not copied into project data.",
+          "order": 51
+        },
+        "proseMinion.workshop.webResearch": {
+          "type": "object",
+          "default": {
+            "enabled": false
+          },
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Allow Workshop personas to use live web research when current information helps. Queries can draw on room context and are processed by OpenRouter and search providers; enable only for material you are comfortable sharing. May add latency and charges."
+            }
+          },
+          "required": ["enabled"],
+          "additionalProperties": false,
+          "description": "Optional per-window live-web research for Workshop persona conversations. Research may share active conversation context with OpenRouter and search providers. Workshop tools remain unchanged.",
+          "order": 52
         },
         "proseMinion.publishingStandards.preset": {
           "type": "string",
@@ -457,6 +558,12 @@
           "default": true,
           "markdownDescription": "Apply context window trimming to prevent token limit errors. **Limits**: UI recommends 500-word excerpts; Context Agent (50K words), Analysis Agents (75K words total: excerpt + context + guides). Targets 128K token context window. Disable if using models with larger context windows (e.g., 200K+).",
           "order": 35
+        },
+        "proseMinion.debugLogging": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Log full rejected AI responses to the Output channel for protocol diagnosis. **Privacy**: these dumps may quote your manuscript text — leave off unless debugging, and avoid pasting the Output channel into public bug reports while enabled.",
+          "order": 36
         },
         "proseMinion.categorySearch.ngramMode": {
           "type": "string",

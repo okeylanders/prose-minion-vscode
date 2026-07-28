@@ -31,6 +31,14 @@ export interface CopyResultMessage extends MessageEnvelope<CopyResultPayload> {
   type: MessageType.COPY_RESULT;
 }
 
+export interface CopyResultSuccessPayload {
+  toolName: string;
+}
+
+export interface CopyResultSuccessMessage extends MessageEnvelope<CopyResultSuccessPayload> {
+  type: MessageType.COPY_RESULT_SUCCESS;
+}
+
 export interface SaveResultPayload {
   toolName: string;
   content: string;

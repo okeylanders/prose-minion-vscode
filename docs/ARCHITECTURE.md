@@ -63,7 +63,7 @@ packages/core/src/
 │       ├── MessageHandler.ts           # Main dispatcher
 │       ├── MessageHandlerContracts.ts  # CoreServices + typed transport/cache/seams
 │       ├── MessageRouter.ts            # Strategy registry (MessageType → handler)
-│       └── domain/                     # 11 domain handlers
+│       └── domain/                     # 12 domain handlers (including Workshop)
 ├── domain/             # Domain models
 │   └── models/
 ├── infrastructure/     # External integrations
@@ -146,6 +146,7 @@ Frontend hooks mirror backend handlers by domain:
 | `usePublishingSettings` | `PublishingHandler` | Publishing standards |
 | `useSelection` | `UIHandler` | Selection/paste operations |
 | `useAccountBalance` | `AccountBalanceHandler` | OpenRouter balance |
+| `useWorkshop` | `WorkshopHandler` | Pinned excerpt, persona host, and retained tool sidecars |
 
 ### 4. Tripartite Hook Interface
 
@@ -158,6 +159,91 @@ Each domain hook in `packages/core/src/presentation/webview/hooks/domain/` expor
 ### 5. Composed Persistence
 
 `App.tsx` composes each hook's `persistedState` into a single `usePersistence()` call that syncs to webview storage on every state change.
+
+### 6. Workshop Host and Retained Participants
+
+Workshop session truth lives in the composition-root-owned
+`WorkshopSessionService`, never in React. Its private participant graph has one
+selected persona host, the latest retained conversation for each tool, and an
+optional direct-tool target. Provider conversation ids never cross the
+extension/webview boundary; `WorkshopSessionSnapshot` exposes only host
+identity, each sidecar's latest report correlation/availability, the current
+target, and the in-flight phase.
+
+`WORKSHOP_SEND_MESSAGE` is the only composer action. It starts or continues
+the selected persona host unless `WORKSHOP_SET_CHAT_TARGET` selects a live tool
+sidecar; the handler validates that sidecar rather than trusting the webview.
+Persona prompts are immutable for a retained conversation, assembled through
+`PromptLoader` from a shared base and one curated prompt under
+`packages/core/resources/system-prompts/workshop-personas/`. The deterministic
+persona catalog stays in shared code; presentation-only focus icons stay in
+the webview.
+
+`RunWorkshopToolSidePass` is a composition-root-owned application use case.
+Every user-triggered tool run starts a fresh retained tool conversation,
+atomically adopts its exact report as the latest sidecar for that tool, and
+only then starts/continues the host with bounded structured evidence. The
+report and persona synthesis remain separately attributed turns; synthesis
+failure never rolls back the valid report. Reserved persona-frame delimiters
+inside quoted excerpts/evidence are encoded before prompt assembly.
+
+Persona-callable operations use the same isolated analysis boundary through
+`WorkshopAnalysisSidePass`, but remain inside the active host turn. A fresh
+`WorkshopPersonaCapability` is minted per user turn from the
+composition-root-owned factory. Its strict single-root XML codec recognizes
+only `dictionary.lookup`, `dictionary.full-entry`, and `analysis.run`; runtime
+validation rejects unknown fields/tools and oversized values before any
+service executes. Dictionary services and the analysis side-pass are injected
+directly—capabilities never route through handlers or fabricate webview
+messages. Completed evidence becomes a separately attributed, expandable,
+reload-safe artifact stamped with the excerpt version it observed.
+
+`AgentRunEngine` treats capability work as a per-turn concern for both initial
+and retained conversations. The initial turn appends the capability contract
+to history once; every later host turn mints fresh validation/budget state.
+Initial and continuation paths share one bounded loop and one correction
+budget. They build a working transcript (writer message, capability calls,
+evidence, final prose) and commit it atomically only on success. Consequently a
+pending excerpt/context frame appears once across all capability rounds, while
+cancellation or transport failure leaves both retained history and pending
+delivery state untouched. The Workshop host permits five calls per user turn,
+at most one full dictionary entry and one analysis side pass, then forces final
+prose.
+
+Direct-tool exchanges continue the report-owned sidecar without a persona
+relay call. Returning to the host prepares at most the newest 8 unseen turns
+and 20,000 characters; omission/truncation provenance is explicit, and the
+per-sidecar delivery cursors advance only after the host turn is successfully
+adopted. Quick actions carry the report turn id and are rejected once a newer
+run replaces that sidecar.
+
+Excerpt replacement is a versioned host-memory transition. It preserves the
+retained persona conversation, retires only stale tool sidecars/direct mode,
+and records a participant-neutral divider. The newest replacement is queued as
+a bounded `<pinned-excerpt version="N">` update ahead of the next host turn;
+failure or cancellation leaves it pending, while successful adoption clears
+it. Multiple pre-delivery replacements collapse to the newest version. The
+editable project context brief uses the same pending-update transaction when
+changed after host start, survives excerpt replacement, and is read fresh by
+every tool run. Reset clears the thread, participants, brief, and pending
+updates while preserving the current excerpt.
+
+All static prompt-side input ceilings live in
+`packages/core/src/shared/constants/promptBudgets.ts`; word- and
+character-based trim helpers report provenance rather than hiding slices.
+Workshop capability inputs are rejected rather than truncated at 100
+characters for `word`, 4,000 for `context`, 500 for `purpose`, and 1,000 for
+analysis `instructions`.
+
+Model selection is transport state, not conversation identity. A model-setting
+change hot-swaps the corresponding `OpenRouterClient` through the existing
+`AgentRunEngine`; engines, conversation managers, provider-independent message
+history, and Workshop participant ids remain intact. Full resource rebuilds
+are reserved for credential/lifecycle changes. An in-flight request uses the
+model captured when its HTTP request was dispatched; the next request uses the
+new selection.
+
+**References**: [Workshop Persona Host, Tool Sidecars, and Capabilities (2026-07-09)](adr/2026-07-09-workshop-persona-hosted-conversations.md), [Workshop Excerpt Revision and Room Memory (2026-07-11)](adr/2026-07-11-workshop-excerpt-revision-and-room-memory.md)
 
 ---
 
@@ -207,5 +293,6 @@ The VS Code adapter uses **dual webpack** (`apps/vscode-extension/webpack.config
 - [Unified Settings Architecture (2025-11-03)](adr/2025-11-03-unified-settings-architecture.md)
 - [Secure API Key Storage (2025-10-27)](adr/2025-10-27-secure-api-key-storage.md)
 - [Lightweight Testing Framework (2025-11-15)](adr/2025-11-15-lightweight-testing-framework.md)
+- [Workshop Persona Host, Tool Sidecars, and Capabilities (2026-07-09)](adr/2026-07-09-workshop-persona-hosted-conversations.md)
 
 See [TESTING.md](TESTING.md) for the test strategy, [CONFIGURATION.md](CONFIGURATION.md) for settings, and [TOOLS.md](TOOLS.md) for the tool inventory.

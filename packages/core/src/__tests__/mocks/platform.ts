@@ -11,6 +11,7 @@ import {
   FileStat,
   FileSystem,
   FileType,
+  GlobalStateStore,
   SettingsStore,
   ShellService,
   Workspace,
@@ -38,6 +39,26 @@ export function createFakeSettings(values: Record<string, unknown> = {}): Settin
 }
 
 /**
+ * An in-memory GlobalStateStore (the Memento-shaped per-machine KV port).
+ * Seed via `values`; `update` mutates the same map so tests can assert on
+ * round-trips through the store.
+ */
+export function createFakeGlobalState(
+  values: Record<string, unknown> = {},
+  overrides: Partial<GlobalStateStore> = {}
+): GlobalStateStore {
+  const get = (<T>(key: string, defaultValue?: T): T | undefined =>
+    key in values ? (values[key] as T) : defaultValue);
+  return {
+    get: get as GlobalStateStore['get'],
+    update: async (key, value) => {
+      values[key] = value;
+    },
+    ...overrides
+  };
+}
+
+/**
  * A FileSystem that mirrors the REAL port contract (ADR 2026-06-16): `stat` and
  * `readFile` THROW on a missing path. So by default — with nothing seeded —
  * every path is "missing": a test that reads a file it never set up fails loud
@@ -61,6 +82,8 @@ export function createFakeFileSystem(
   return {
     readFile: async (p: string) => (files && p in files ? toBytes(files[p]) : missing('readFile', p)),
     writeFile: async () => undefined,
+    rename: async () => undefined,
+    delete: async () => undefined,
     readDirectory: async () => [],
     stat: async (p: string): Promise<FileStat> => {
       if (files && p in files) {
@@ -88,8 +111,9 @@ export function createFakeWorkspace(overrides: Partial<Workspace> = {}): Workspa
 }
 
 /**
- * A ShellService whose notifications return undefined (dialog dismissed) and
- * whose clipboard is empty by default; override any method to assert/feed values.
+ * A ShellService whose notifications return undefined (dialog dismissed), whose
+ * clipboard is empty, and whose file picker is dismissed by default; override
+ * any method to assert/feed values.
  */
 export function createFakeShellService(overrides: Partial<ShellService> = {}): ShellService {
   return {
@@ -98,6 +122,8 @@ export function createFakeShellService(overrides: Partial<ShellService> = {}): S
     copyToClipboard: async () => undefined,
     readClipboard: async () => '',
     openFileInEditor: async () => undefined,
+    revealFileInOS: async () => undefined,
+    pickFile: async () => undefined,
     ...overrides,
   };
 }

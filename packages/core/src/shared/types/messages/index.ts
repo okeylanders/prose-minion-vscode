@@ -10,6 +10,8 @@ export * from './base';
 export * from './error';
 export * from './status';
 export * from './tokenUsage';
+export * from './citations';
+export * from './inferenceContext';
 export * from './accountBalance';
 export * from './warnings';
 
@@ -25,6 +27,7 @@ export * from './sources';
 export * from './ui';
 export * from './results';
 export * from './streaming';
+export * from './workshop';
 
 // Union types for message routing
 import {
@@ -94,6 +97,10 @@ import {
   SelectionUpdatedMessage,
   OpenSettingsMessage,
   OpenSettingsToggleMessage,
+  OpenWorkshopMessage,
+  RequestStartupNoticeMessage,
+  StartupNoticeDataMessage,
+  DismissStartupNoticeMessage,
   WebviewErrorMessage
 } from './ui';
 import { ErrorMessage } from './error';
@@ -105,6 +112,7 @@ import {
 } from './accountBalance';
 import {
   CopyResultMessage,
+  CopyResultSuccessMessage,
   SaveResultMessage,
   SaveResultSuccessMessage
 } from './results';
@@ -115,8 +123,56 @@ import {
   CancelAnalysisRequestMessage,
   CancelDictionaryRequestMessage,
   CancelContextRequestMessage,
-  CancelCategorySearchRequestMessage
+  CancelCategorySearchRequestMessage,
+  CancelWorkshopRequestMessage
 } from './streaming';
+import {
+  WorkshopRunToolMessage,
+  WorkshopQuickActionMessage,
+  WorkshopSendMessageMessage,
+  WorkshopInviteGuestMessage,
+  WorkshopDismissGuestMessage,
+  WorkshopSelectPersonaMessage,
+  WorkshopSetChatTargetMessage,
+  WorkshopSetConversationSettingsMessage,
+  WorkshopSetExcerptMessage,
+  WorkshopAddContextTextMessage,
+  WorkshopAddContextFileMessage,
+  WorkshopRemoveContextAttachmentMessage,
+  WorkshopUpdateContextTextMessage,
+  WorkshopRequestContextAttachmentMessage,
+  WorkshopContextAttachmentContentMessage,
+  WorkshopOpenContextAttachmentFileMessage,
+  WorkshopRequestContextCatalogMessage,
+  WorkshopContextCatalogMessage,
+  WorkshopSearchContextResourcesMessage,
+  WorkshopContextSearchResultsMessage,
+  WorkshopAddContextResourcesMessage,
+  WorkshopAttachMessageResourcesMessage,
+  WorkshopAttachMessageFileMessage,
+  WorkshopRemoveMessageAttachmentMessage,
+  WorkshopSetExcerptResourceMessage,
+  WorkshopRunContextWizardMessage,
+  WorkshopTodoActionMessage,
+  WorkshopPickExcerptFileMessage,
+  WorkshopRereadExcerptMessage,
+  WorkshopSetSessionScopeMessage,
+  WorkshopRepinExcerptMessage,
+  WorkshopResetSessionMessage,
+  WorkshopRequestSessionMessage,
+  WorkshopSaveSessionMessage,
+  WorkshopListSessionsMessage,
+  WorkshopOpenSessionMessage,
+  WorkshopRenameSessionMessage,
+  WorkshopDuplicateSessionMessage,
+  WorkshopRevealSessionMessage,
+  WorkshopDeleteSessionMessage,
+  WorkshopTurnMessage,
+  WorkshopSessionStateMessage,
+  WorkshopSessionsDataMessage,
+  WorkshopSessionActionResultMessage,
+  WorkshopSessionSaveStatusMessage
+} from './workshop';
 
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
@@ -128,6 +184,8 @@ export type WebviewToExtensionMessage =
   | UpdateSettingMessage
   | RequestSettingsDataMessage
   | RequestSelectionMessage
+  | RequestStartupNoticeMessage
+  | DismissStartupNoticeMessage
   | GenerateContextMessage
   | MeasureProseStatsMessage
   | MeasureStyleFlagsMessage
@@ -152,11 +210,52 @@ export type WebviewToExtensionMessage =
   | UpdateApiKeyMessage
   | DeleteApiKeyMessage
   | WebviewErrorMessage
+  | OpenWorkshopMessage
   | FastGenerateDictionaryMessage
   | CancelAnalysisRequestMessage
   | CancelDictionaryRequestMessage
   | CancelContextRequestMessage
-  | CancelCategorySearchRequestMessage;
+  | CancelCategorySearchRequestMessage
+  | CancelWorkshopRequestMessage
+  | WorkshopRunToolMessage
+  | WorkshopQuickActionMessage
+  | WorkshopSendMessageMessage
+  | WorkshopInviteGuestMessage
+  | WorkshopDismissGuestMessage
+  | WorkshopSelectPersonaMessage
+  | WorkshopSetChatTargetMessage
+  | WorkshopSetConversationSettingsMessage
+  | WorkshopSetExcerptMessage
+  | WorkshopAddContextTextMessage
+  | WorkshopAddContextFileMessage
+  | WorkshopRemoveContextAttachmentMessage
+  | WorkshopUpdateContextTextMessage
+  | WorkshopRequestContextAttachmentMessage
+  | WorkshopOpenContextAttachmentFileMessage
+  | WorkshopRequestContextCatalogMessage
+  | WorkshopContextCatalogMessage
+  | WorkshopSearchContextResourcesMessage
+  | WorkshopContextSearchResultsMessage
+  | WorkshopAddContextResourcesMessage
+  | WorkshopAttachMessageResourcesMessage
+  | WorkshopAttachMessageFileMessage
+  | WorkshopRemoveMessageAttachmentMessage
+  | WorkshopSetExcerptResourceMessage
+  | WorkshopRunContextWizardMessage
+  | WorkshopTodoActionMessage
+  | WorkshopPickExcerptFileMessage
+  | WorkshopRereadExcerptMessage
+  | WorkshopSetSessionScopeMessage
+  | WorkshopRepinExcerptMessage
+  | WorkshopResetSessionMessage
+  | WorkshopRequestSessionMessage
+  | WorkshopSaveSessionMessage
+  | WorkshopListSessionsMessage
+  | WorkshopOpenSessionMessage
+  | WorkshopRenameSessionMessage
+  | WorkshopDuplicateSessionMessage
+  | WorkshopRevealSessionMessage
+  | WorkshopDeleteSessionMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
@@ -165,11 +264,13 @@ export type ExtensionToWebviewMessage =
   | CategorySearchResultMessage
   | DictionaryResultMessage
   | ContextResultMessage
+  | CopyResultSuccessMessage
   | SaveResultSuccessMessage
   | SettingsDataMessage
   | OpenSettingsMessage
   | OpenSettingsToggleMessage
   | SelectionDataMessage
+  | StartupNoticeDataMessage
   | ErrorMessage
   | StatusMessage
   | SelectionUpdatedMessage
@@ -186,4 +287,12 @@ export type ExtensionToWebviewMessage =
   | DictionaryGenerationProgressMessage
   | StreamStartedMessage
   | StreamChunkMessage
-  | StreamCompleteMessage;
+  | StreamCompleteMessage
+  | WorkshopTurnMessage
+  | WorkshopSessionStateMessage
+  | WorkshopSessionsDataMessage
+  | WorkshopSessionActionResultMessage
+  | WorkshopSessionSaveStatusMessage
+  | WorkshopContextCatalogMessage
+  | WorkshopContextSearchResultsMessage
+  | WorkshopContextAttachmentContentMessage;

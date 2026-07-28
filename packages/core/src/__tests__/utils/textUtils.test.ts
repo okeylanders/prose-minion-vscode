@@ -1,4 +1,4 @@
-import { countWords, trimToWordLimit } from '@/utils/textUtils';
+import { countWords, trimToCharacterLimit, trimToWordLimit } from '@/utils/textUtils';
 
 describe('textUtils', () => {
   describe('countWords', () => {
@@ -36,6 +36,26 @@ describe('textUtils', () => {
         trimmed: 'one two three.',
         originalWords: 7,
         trimmedWords: 3,
+        wasTrimmed: true
+      });
+    });
+  });
+
+  describe('trimToCharacterLimit', () => {
+    it('returns unchanged text with character provenance when within the limit', () => {
+      expect(trimToCharacterLimit('abc', 3)).toEqual({
+        trimmed: 'abc',
+        originalCharacters: 3,
+        trimmedCharacters: 3,
+        wasTrimmed: false
+      });
+    });
+
+    it('head-slices text and reports the omitted character count inputs', () => {
+      expect(trimToCharacterLimit('abcdef', 4)).toEqual({
+        trimmed: 'abcd',
+        originalCharacters: 6,
+        trimmedCharacters: 4,
         wasTrimmed: true
       });
     });

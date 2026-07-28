@@ -1,14 +1,14 @@
 /**
  * AIResourceManager
  *
- * Single Responsibility: Manage OpenRouterClient and AIResourceOrchestrator lifecycle per model scope
+ * Single Responsibility: Manage OpenRouterClient and AgentRunEngine lifecycle per model scope
  *
  * This is the most critical service in the refactor. It handles the complex lifecycle
  * of AI resources including:
  * - API key retrieval (SecretStorage with settings fallback)
  * - Model scope resolution (assistant, dictionary, context)
  * - OpenRouterClient creation per scope
- * - AIResourceOrchestrator lifecycle management
+ * - AgentRunEngine lifecycle management
  * - StatusCallback propagation
  * - Resource disposal and cleanup
  *
@@ -16,21 +16,32 @@
  */
 
 import { LogSink, SettingsStore } from '@/platform';
+import { ListenerSet } from '@/utils/ListenerSet';
+import { TokenUsage } from '@shared/types';
 import { OpenRouterClient } from '@providers/OpenRouterClient';
-import { AIResourceOrchestrator, StatusCallback, TokenUsageCallback } from './AIResourceOrchestrator';
+import { AgentRunEngine, StatusCallback, TokenUsageCallback } from './AgentRunEngine';
 import { ConversationManager } from './ConversationManager';
-import { GuideRegistry } from '@/infrastructure/guides/GuideRegistry';
-import { GuideLoader } from '@/tools/shared/guides';
 import { ModelScope } from '@shared/types';
 import { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
 import { ResourceLoaderService } from './ResourceLoaderService';
+import { GuideCapability } from './capabilities/GuideCapability';
+import { ContextFileCapability } from './capabilities/ContextFileCapability';
+import {
+  WorkshopToolContextCapability,
+  WorkshopToolContextCapabilityInput
+} from './capabilities/WorkshopToolContextCapability';
+import {
+  ContextResourceProvider,
+  ContextResourceProviderFactory
+} from '@/domain/models/ContextGeneration';
 
 /**
  * Bundle of AI resources for a specific model scope
  */
 export interface AIResourceBundle {
   model: string;
-  orchestrator: AIResourceOrchestrator;
+  generation: number;
+  engine: AgentRunEngine;
 }
 
 /**
@@ -47,15 +58,40 @@ export interface ModelConfiguration {
 export class AIResourceManager {
   private aiResources: Partial<Record<ModelScope, AIResourceBundle>> = {};
   private resolvedModels: Partial<Record<ModelScope, string>> = {};
+  private generation = 0;
+  private initialized = false;
+  private initialization?: Promise<void>;
   private statusCallback?: StatusCallback;
-  private tokenUsageCallback?: TokenUsageCallback;
+  private readonly tokenUsageListeners: ListenerSet<[TokenUsage]>;
+  private readonly tokenUsageResetListeners: ListenerSet<[]>;
+
+  /**
+   * Single stable closure handed to every orchestrator: fans token usage out
+   * to all registered listeners — one per live webview MessageHandler, now
+   * that the sidebar and the Workshop panel share this manager (ADR
+   * 2026-07-03). Stable identity means re-initialized orchestrators can never
+   * hold a stale generation of listeners.
+   */
+  private readonly tokenUsageFanout: TokenUsageCallback = (usage) => {
+    this.tokenUsageListeners.emit(usage);
+  };
 
   constructor(
     private readonly resourceLoader: ResourceLoaderService,
     private readonly secretsService: SecretStorageService,
     private readonly settings: SettingsStore,
+    private readonly contextResourceProviderFactory: ContextResourceProviderFactory,
     private readonly outputChannel?: LogSink
-  ) {}
+  ) {
+    this.tokenUsageListeners = new ListenerSet(
+      '[AIResourceManager] Token usage listener',
+      outputChannel
+    );
+    this.tokenUsageResetListeners = new ListenerSet(
+      '[AIResourceManager] Token usage reset listener',
+      outputChannel
+    );
+  }
 
   /**
    * Initialize AI resources for all model scopes
@@ -70,7 +106,84 @@ export class AIResourceManager {
    * @param apiKey - Optional API key override (if not provided, retrieves from storage)
    * @param modelConfig - Optional model configuration override
    */
-  async initializeResources(
+  async ensureInitialized(): Promise<void> {
+    if (this.initialized) return;
+    if (!this.initialization) {
+      this.initialization = this.startRebuild();
+    }
+    await this.initialization;
+  }
+
+  /** Rebuild only for an explicit configuration change. */
+  async refreshConfiguration(): Promise<void> {
+    this.initialization = this.startRebuild();
+    await this.initialization;
+  }
+
+  /**
+   * Apply model-selection changes in place. Engines and their conversation
+   * managers survive; only future provider requests use the new model.
+   * Duplicate calls from multiple live webview surfaces are idempotent.
+   */
+  async refreshModelSelections(): Promise<void> {
+    await this.ensureInitialized();
+    const selections = this.resolveModelSelections();
+    const normalizedSelections = {} as Record<ModelScope, string>;
+    const changes = (Object.keys(selections) as ModelScope[]).flatMap((scope) => {
+      const resource = this.aiResources[scope];
+      const model = selections[scope].trim();
+      if (!model) {
+        const message = `Model hot-swap failed for ${scope}: OpenRouter model id cannot be empty`;
+        this.outputChannel?.appendLine(`[AIResourceManager] ${message}`);
+        throw new Error(message);
+      }
+      normalizedSelections[scope] = model;
+      return resource && resource.model !== model
+        ? [{ scope, resource, previousModel: resource.model, model }]
+        : [];
+    });
+
+    const applied: typeof changes = [];
+    try {
+      for (const change of changes) {
+        change.resource.engine.setModel(change.model);
+        change.resource.model = change.model;
+        applied.push(change);
+      }
+      this.resolvedModels = normalizedSelections;
+      for (const change of changes) {
+        this.outputChannel?.appendLine(
+          `[AIResourceManager] Hot-swapped ${change.scope} model: ${change.previousModel} → ${change.model} (generation ${change.resource.generation}; conversations preserved)`
+        );
+      }
+    } catch (error) {
+      const failedScope = changes[applied.length]?.scope ?? 'unknown';
+      for (const change of applied.reverse()) {
+        change.resource.engine.setModel(change.previousModel);
+        change.resource.model = change.previousModel;
+      }
+      this.outputChannel?.appendLine(
+        `[AIResourceManager] Model hot-swap failed for ${failedScope}; applied scopes rolled back: ${error instanceof Error ? error.message : String(error)}`
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * A failed build must not poison the singleton: clear the cached promise
+   * on rejection so the next call retries instead of re-awaiting the corpse.
+   */
+  private startRebuild(): Promise<void> {
+    return this.rebuildResources().catch(error => {
+      this.initialization = undefined;
+      this.outputChannel?.appendLine(
+        `[AIResourceManager] Resource build failed; will retry on next use: ${error instanceof Error ? error.message : String(error)}`
+      );
+      throw error;
+    });
+  }
+
+  private async rebuildResources(
     apiKey?: string,
     modelConfig?: ModelConfiguration
   ): Promise<void> {
@@ -86,20 +199,22 @@ export class AIResourceManager {
 
     // Dispose existing resources before creating new ones
     this.disposeResources();
+    this.generation += 1;
 
     // Check if API key is configured
     if (!OpenRouterClient.isConfigured(apiKey)) {
       this.outputChannel?.appendLine('[AIResourceManager] OpenRouter API key not configured. AI tools disabled.');
       this.resolvedModels = {};
+      this.initialized = true;
       return;
     }
 
     // Resolve model selections with fallbacks
-    const fallbackModel = modelConfig?.fallbackModel ?? 'anthropic/claude-sonnet-5';
-    const assistantModel = modelConfig?.assistantModel ?? this.settings.get<string>('proseMinion', 'assistantModel') ?? fallbackModel;
-    const dictionaryModel = modelConfig?.dictionaryModel ?? this.settings.get<string>('proseMinion', 'dictionaryModel') ?? fallbackModel;
-    const contextModel = modelConfig?.contextModel ?? this.settings.get<string>('proseMinion', 'contextModel') ?? fallbackModel;
-    const categoryModel = modelConfig?.categoryModel ?? this.settings.get<string>('proseMinion', 'categoryModel') ?? fallbackModel;
+    const selections = this.resolveModelSelections(modelConfig);
+    const assistantModel = selections.assistant;
+    const dictionaryModel = selections.dictionary;
+    const contextModel = selections.context;
+    const categoryModel = selections.category;
 
     // Create AI resources for each scope
     const assistantResources = this.createResourceBundle(apiKey!, 'assistant', assistantModel);
@@ -124,16 +239,76 @@ export class AIResourceManager {
       context: contextModel,
       category: categoryModel
     };
+    this.initialized = true;
+  }
+
+  private resolveModelSelections(modelConfig?: ModelConfiguration): Record<ModelScope, string> {
+    const fallbackModel = modelConfig?.fallbackModel ?? 'anthropic/claude-sonnet-5';
+    return {
+      assistant: modelConfig?.assistantModel
+        ?? this.settings.get<string>('proseMinion', 'assistantModel')
+        ?? fallbackModel,
+      dictionary: modelConfig?.dictionaryModel
+        ?? this.settings.get<string>('proseMinion', 'dictionaryModel')
+        ?? fallbackModel,
+      context: modelConfig?.contextModel
+        ?? this.settings.get<string>('proseMinion', 'contextModel')
+        ?? fallbackModel,
+      category: modelConfig?.categoryModel
+        ?? this.settings.get<string>('proseMinion', 'categoryModel')
+        ?? fallbackModel
+    };
   }
 
   /**
-   * Get the AIResourceOrchestrator for a specific model scope
+   * Get the manager-owned agent-run engine for a specific model scope.
    *
    * @param scope - The model scope ('assistant', 'dictionary', 'context')
-   * @returns AIResourceOrchestrator if available, undefined otherwise
+   * @returns AgentRunEngine if available, undefined otherwise
    */
-  getOrchestrator(scope: ModelScope): AIResourceOrchestrator | undefined {
-    return this.aiResources[scope]?.orchestrator;
+  getEngine(scope: ModelScope): AgentRunEngine | undefined {
+    return this.aiResources[scope]?.engine;
+  }
+
+  getGeneration(scope: ModelScope): number | undefined {
+    return this.aiResources[scope]?.generation;
+  }
+
+  /** Build the bounded guides adapter used by explicitly guides-scoped routes. */
+  createGuideCapability(): GuideCapability {
+    return new GuideCapability(
+      this.resourceLoader.getGuideRegistry(),
+      this.resourceLoader.getGuideLoader(),
+      this.settings,
+      this.outputChannel
+    );
+  }
+
+  /** Build the bounded project-context adapter used by context-scoped routes. */
+  createContextFileCapability(provider: ContextResourceProvider): ContextFileCapability {
+    return new ContextFileCapability(provider, this.settings, this.outputChannel);
+  }
+
+  /**
+   * Build the composite source+neighbors+guides catalog for one Workshop tool
+   * initial run (Sprint 12 Phase 6). Returns undefined when the run has
+   * nothing to offer — guides disabled AND no resolved configured source —
+   * so the caller falls back to the capability-free policy.
+   */
+  createWorkshopToolContextCapability(
+    input: WorkshopToolContextCapabilityInput
+  ): WorkshopToolContextCapability | undefined {
+    if (!input.includeGuides && !input.source) {
+      return undefined;
+    }
+    return new WorkshopToolContextCapability(
+      this.resourceLoader.getGuideRegistry(),
+      this.resourceLoader.getGuideLoader(),
+      this.contextResourceProviderFactory,
+      this.settings,
+      input,
+      this.outputChannel
+    );
   }
 
   /**
@@ -158,49 +333,46 @@ export class AIResourceManager {
   /**
    * Set the status callback for guide loading notifications
    *
-   * This callback is propagated to all AIResourceOrchestrators
+   * This callback is propagated to all AgentRunEngines.
    *
    * @param callback - Status callback function
    */
   setStatusCallback(callback?: StatusCallback): void {
     this.statusCallback = callback;
     Object.values(this.aiResources).forEach(resource => {
-      resource?.orchestrator.setStatusCallback(callback);
+      resource?.engine.setStatusCallback(callback);
     });
   }
 
   /**
-   * Set the token usage callback for centralized token tracking
+   * Subscribe to per-request token usage (centralized token tracking).
    *
-   * This callback is propagated to all AIResourceOrchestrators
-   * and will be called after each API call with usage data
-   *
-   * @param callback - Token usage callback function
+   * Every engine reports through one stable fan-out, so multiple
+   * webview MessageHandlers can track usage concurrently without stealing
+   * each other's callback slot. Returns an unsubscribe function — callers own
+   * their registration and MUST release it on dispose.
    */
-  setTokenUsageCallback(callback?: TokenUsageCallback): void {
-    this.tokenUsageCallback = callback;
-    Object.values(this.aiResources).forEach(resource => {
-      resource?.orchestrator.setTokenUsageCallback(callback);
-    });
+  addTokenUsageListener(listener: TokenUsageCallback): () => void {
+    return this.tokenUsageListeners.add(listener);
   }
 
-  /**
-   * Refresh configuration by reinitializing all resources
-   *
-   * This is called when configuration changes (API key, model selections, etc.)
-   */
-  async refreshConfiguration(): Promise<void> {
-    await this.initializeResources();
+  /** Reset every live webview's cumulative processed-usage meter together. */
+  resetTokenUsage(): void {
+    this.tokenUsageResetListeners.emit();
+  }
+
+  addTokenUsageResetListener(listener: () => void): () => void {
+    return this.tokenUsageResetListeners.add(listener);
   }
 
   /**
    * Dispose of all AI resources (cleanup)
    *
-   * This disposes all AIResourceOrchestrators and clears the resource map
+   * This disposes all AgentRunEngines and clears the resource map.
    */
   disposeResources(): void {
     Object.values(this.aiResources).forEach(resource => {
-      resource?.orchestrator.dispose();
+      resource?.engine.dispose();
     });
     this.aiResources = {};
   }
@@ -213,8 +385,11 @@ export class AIResourceManager {
   dispose(): void {
     this.disposeResources();
     this.resolvedModels = {};
+    this.initialized = false;
+    this.initialization = undefined;
     this.statusCallback = undefined;
-    this.tokenUsageCallback = undefined;
+    this.tokenUsageListeners.clear();
+    this.tokenUsageResetListeners.clear();
   }
 
   /**
@@ -231,29 +406,25 @@ export class AIResourceManager {
     model: string
   ): AIResourceBundle | undefined {
     try {
-      const guideRegistry = this.resourceLoader.getGuideRegistry();
-      const guideLoader = this.resourceLoader.getGuideLoader();
-
       const client = new OpenRouterClient(apiKey, model, this.outputChannel);
-      const conversationManager = new ConversationManager();
-      const orchestrator = new AIResourceOrchestrator(
+      const conversationManager = new ConversationManager(this.outputChannel);
+      const engine = new AgentRunEngine(
         client,
         conversationManager,
-        guideRegistry,
-        guideLoader,
-        this.settings,
         this.statusCallback,
         this.outputChannel,
-        this.tokenUsageCallback
+        this.tokenUsageFanout,
+        this.settings
       );
 
       this.outputChannel?.appendLine(
-        `[AIResourceManager] Initialized ${scope} model: ${model}`
+        `[AIResourceManager] Initialized ${scope} model: ${model} (generation ${this.generation})`
       );
 
       return {
         model,
-        orchestrator
+        generation: this.generation,
+        engine
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

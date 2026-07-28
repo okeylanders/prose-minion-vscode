@@ -21,6 +21,7 @@ export type SelectionTarget =
   | 'assistant_excerpt'
   | 'assistant_context'
   | 'assistant_excerpt_verify'  // For Ctrl+V paste verification - compares, doesn't overwrite
+  | 'workshop_excerpt_verify'   // Workshop panel's own verify lane (Sprint 12) - same compare-only contract
   | 'dictionary_word'
   | 'dictionary_context';
 
@@ -69,6 +70,13 @@ export interface SelectionDataPayload {
   content: string;
   sourceUri?: string;
   relativePath?: string;
+  /**
+   * 1-based inclusive selection lines. Present only when the content came from
+   * a live editor selection (never for the clipboard fallback) and the host
+   * editor supplied a range.
+   */
+  startLine?: number;
+  endLine?: number;
 }
 
 export interface SelectionDataMessage extends MessageEnvelope<SelectionDataPayload> {
@@ -95,6 +103,10 @@ export interface OpenSettingsToggleMessage extends MessageEnvelope<Record<string
   type: MessageType.OPEN_SETTINGS_TOGGLE;
 }
 
+export interface OpenWorkshopMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.OPEN_WORKSHOP;
+}
+
 // Webview diagnostics → extension output channel
 export interface WebviewErrorPayload {
   message: string;
@@ -103,4 +115,79 @@ export interface WebviewErrorPayload {
 
 export interface WebviewErrorMessage extends MessageEnvelope<WebviewErrorPayload> {
   type: MessageType.WEBVIEW_ERROR;
+}
+
+/** Longest webview-supplied error text a host log line will carry verbatim. */
+export const WEBVIEW_ERROR_TEXT_MAX = 500;
+
+/**
+ * The ONE parser for `webview_error` wire traffic (PR #66 review, Oliver +
+ * Patricia). Two producer shapes exist by design: React error paths post the
+ * full envelope (`payload.message`), while the pre-React bootstrap scripts in
+ * webviewHtml.ts post a flat `{ type, message }` because they run before any
+ * envelope helper is loaded. Every consumer (UIHandler for the sidebar,
+ * WorkshopPanelProvider for the panel) goes through here so the shapes can't
+ * fork again.
+ *
+ * The input crosses the webview IPC boundary, so it is validated as `unknown`
+ * — TS annotations on the other side prove nothing at runtime — and the text
+ * is flattened (no newline forgery into the log) and length-capped.
+ *
+ * Returns undefined when the value is not a webview_error or carries no
+ * usable text.
+ */
+export function coerceWebviewErrorText(raw: unknown): string | undefined {
+  if (typeof raw !== 'object' || raw === null) {
+    return undefined;
+  }
+  const candidate = raw as { type?: unknown; message?: unknown; payload?: { message?: unknown } };
+  if (candidate.type !== MessageType.WEBVIEW_ERROR) {
+    return undefined;
+  }
+  const text = typeof candidate.payload?.message === 'string'
+    ? candidate.payload.message
+    : typeof candidate.message === 'string'
+      ? candidate.message
+      : undefined;
+  if (text === undefined) {
+    return undefined;
+  }
+  const flattened = text.replace(/\s+/g, ' ').trim();
+  if (flattened.length === 0) {
+    return undefined;
+  }
+  return flattened.length > WEBVIEW_ERROR_TEXT_MAX
+    ? `${flattened.slice(0, WEBVIEW_ERROR_TEXT_MAX)}…`
+    : flattened;
+}
+
+/**
+ * Startup notice (Sprint 14 §5). The webview asks whether the Workshop's
+ * six-page beta notice should show; the host answers from per-machine
+ * GlobalStateStore against the current notice version. Dismissal is only
+ * recorded when the writer checks "Don't show again" — a plain Dismiss
+ * closes locally and sends nothing.
+ */
+export interface RequestStartupNoticeMessage
+  extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.REQUEST_STARTUP_NOTICE;
+}
+
+export interface StartupNoticePayload {
+  shouldShow: boolean;
+  /** The current notice content version — echoed back on dismissal. */
+  noticeVersion: string;
+}
+
+export interface StartupNoticeDataMessage extends MessageEnvelope<StartupNoticePayload> {
+  type: MessageType.STARTUP_NOTICE_DATA;
+}
+
+export interface DismissStartupNoticePayload {
+  noticeVersion: string;
+}
+
+export interface DismissStartupNoticeMessage
+  extends MessageEnvelope<DismissStartupNoticePayload> {
+  type: MessageType.DISMISS_STARTUP_NOTICE;
 }

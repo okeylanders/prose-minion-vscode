@@ -22,6 +22,18 @@ export interface TrimResult {
   wasTrimmed: boolean;
 }
 
+/** Character-based counterpart to TrimResult for already-framed prompt text. */
+export interface CharacterTrimResult {
+  /** The trimmed text. */
+  trimmed: string;
+  /** Original UTF-16 character count before trimming. */
+  originalCharacters: number;
+  /** Final UTF-16 character count after trimming. */
+  trimmedCharacters: number;
+  /** Whether any trimming occurred. */
+  wasTrimmed: boolean;
+}
+
 /**
  * Count words in text using simple whitespace splitting
  * Matches typical word processor counts
@@ -95,5 +107,17 @@ export function trimToWordLimit(text: string, maxWords: number): TrimResult {
     originalWords,
     trimmedWords: countWords(trimmed),
     wasTrimmed: true
+  };
+}
+
+/** Trim prompt text by character count while preserving trim provenance. */
+export function trimToCharacterLimit(text: string, maxCharacters: number): CharacterTrimResult {
+  const originalCharacters = text.length;
+  const trimmed = originalCharacters > maxCharacters ? text.slice(0, maxCharacters) : text;
+  return {
+    trimmed,
+    originalCharacters,
+    trimmedCharacters: trimmed.length,
+    wasTrimmed: originalCharacters > maxCharacters
   };
 }

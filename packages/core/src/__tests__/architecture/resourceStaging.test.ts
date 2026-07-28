@@ -17,6 +17,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { PromptLoader } from '@/tools/shared/prompts';
 import { FileSystem, FileType, FileStat } from '@/platform';
+import { WORKSHOP_PERSONA_CATALOG } from '@shared/constants/workshopPersonas';
 
 // Minimal Node-fs implementation of the FileSystem port. The loader only needs
 // readFile; the rest are implemented for interface honesty and double as a
@@ -28,6 +29,18 @@ const nodeFileSystem: FileSystem = {
   async writeFile(p: string, data: Uint8Array): Promise<void> {
     await fs.promises.mkdir(path.dirname(p), { recursive: true });
     await fs.promises.writeFile(p, data);
+  },
+  async rename(fromPath: string, toPath: string, options?: { overwrite?: boolean }): Promise<void> {
+    if (!options?.overwrite) {
+      await fs.promises.access(toPath).then(
+        () => Promise.reject(new Error(`Destination already exists: ${toPath}`)),
+        () => undefined
+      );
+    }
+    await fs.promises.rename(fromPath, toPath);
+  },
+  async delete(p: string, options?: { recursive?: boolean }): Promise<void> {
+    await fs.promises.rm(p, { recursive: options?.recursive ?? false });
   },
   async readDirectory(p: string): Promise<Array<[string, FileType]>> {
     const entries = await fs.promises.readdir(p, { withFileTypes: true });
@@ -56,8 +69,11 @@ const CORE_RESOURCES = path.resolve(__dirname, '..', '..', '..', 'resources');
 function countFiles(dir: string): number {
   let n = 0;
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (e.isDirectory()) n += countFiles(path.join(dir, e.name));
-    else n += 1;
+    if (e.isDirectory()) {
+      n += countFiles(path.join(dir, e.name));
+    } else {
+      n += 1;
+    }
   }
   return n;
 }
@@ -79,6 +95,13 @@ describe('D22 — staged resources resolve through the runtime loader', () => {
     const loader = new PromptLoader(stageRoot, nodeFileSystem);
     const content = await loader.loadPrompt('dictionary-utility/00-dictionary-utility.md');
     expect(content.trim().length).toBeGreaterThan(0);
+  });
+
+  it('stages and loads the shared Workshop base plus every persona prompt through PromptLoader', async () => {
+    const loader = new PromptLoader(stageRoot, nodeFileSystem);
+    const paths = ['workshop-personas/base.md', ...WORKSHOP_PERSONA_CATALOG.map((persona) => persona.promptPath)];
+
+    await expect(loader.loadPrompts(paths)).resolves.toContain('Workshop host contract');
   });
 
   it('the staged tree mirrors the core source (the copy drops no files)', () => {

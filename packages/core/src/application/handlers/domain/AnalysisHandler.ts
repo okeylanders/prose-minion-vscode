@@ -34,15 +34,37 @@ export class AnalysisHandler {
   // Track active abort controllers by request ID for cancellation
   private activeRequests = new Map<string, AbortController>();
 
+  private readonly disposeStatusListener: () => void;
+
   constructor(
     private readonly assistantToolService: AssistantToolService,
     private readonly postMessage: MessageTransport,
     private readonly settings: SettingsStore
   ) {
-    // Inject status emitter for guide loading notifications
-    this.assistantToolService.setStatusEmitter((message, progress, tickerMessage) => {
-      this.sendStatus(message, progress, tickerMessage);
-    });
+    // Guide-loading status is forwarded ONLY while this handler has a run in
+    // flight: the service is shared across webviews (sidebar + Workshop), and
+    // un-gated forwarding would strand another surface's "Loading craft
+    // guides…" here with nothing to ever clear it.
+    this.disposeStatusListener = this.assistantToolService.addStatusListener(
+      (message, progress, tickerMessage) => {
+        if (this.activeRequests.size > 0) {
+          this.sendStatus(message, progress, tickerMessage);
+        }
+      }
+    );
+  }
+
+  /**
+   * Release the shared-service subscription and abort any in-flight runs.
+   * Called by MessageHandler when its webview goes away — a disposed surface
+   * must neither receive status nor keep burning tokens.
+   */
+  dispose(): void {
+    this.disposeStatusListener();
+    for (const controller of this.activeRequests.values()) {
+      controller.abort();
+    }
+    this.activeRequests.clear();
   }
 
   /**

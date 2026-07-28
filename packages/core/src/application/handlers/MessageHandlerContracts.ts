@@ -8,10 +8,22 @@ import type {
   MetricsResultMessage,
   SearchResultMessage,
   StatusMessage,
-  TokenUsageUpdateMessage
+  TokenUsageUpdateMessage,
+  WorkshopSessionStateMessage
 } from '@messages';
 import type { AIResourceManager } from '@orchestration/AIResourceManager';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
+import type { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import type {
+  WorkshopRoomDeliveryService
+} from '@/application/services/workshop/WorkshopRoomDeliveryService';
+import type { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
+import type { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
+import type { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
+import type { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
+import type { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
+import type { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
+import type { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 import type { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import type { ProseStatsService } from '@services/measurement/ProseStatsService';
@@ -41,6 +53,15 @@ export type MessageTransport = (
   message: ExtensionToWebviewMessage
 ) => PromiseLike<unknown>;
 
+/**
+ * UI capabilities owned by the host shell and exposed to core message handlers.
+ * Kept named so new cross-surface actions extend one contract instead of
+ * growing anonymous callback bags at each boundary.
+ */
+export interface WorkshopUiActions {
+  openWorkshop?: () => void;
+}
+
 /** Per-MessageHandler replay cache. Never share this across webview lifetimes. */
 export interface ResultCache {
   analysis?: AnalysisResultMessage;
@@ -52,6 +73,7 @@ export interface ResultCache {
   status?: StatusMessage;
   error?: ErrorMessage;
   tokenUsage?: TokenUsageUpdateMessage;
+  workshopSession?: WorkshopSessionStateMessage;
 }
 
 /**
@@ -72,4 +94,23 @@ export interface CoreServices {
   textSourceResolver: TextSourceResolver;
   categorySearchService: CategorySearchService;
   accountBalanceService: AccountBalanceService;
+  /**
+   * Workshop session aggregate (ADR 2026-07-03). Composition-root-owned so the
+   * thread outlives any single webview's MessageHandler — reopening the panel
+   * or reloading its webview rehydrates from this one instance.
+   */
+  workshopSessionService: WorkshopSessionService;
+  workshopRoomDeliveryService: WorkshopRoomDeliveryService;
+  workshopPersonaCapabilityFactory: WorkshopPersonaCapabilityFactory;
+  workshopToolSidePass: RunWorkshopToolSidePass;
+  /** Configured-resource intake for Workshop's context selector flows (Sprint 12). */
+  workshopContextResourceService: WorkshopContextResourceService;
+  /** Serialized Behavior + Writer Profile live-prompt coordination across webview surfaces. */
+  workshopConversationSettingsService: WorkshopConversationSettingsService;
+  /** Global writer-authored profile, deliberately outside the session aggregate. */
+  workshopWriterProfileService: WorkshopWriterProfileService;
+  /** Session clock and successful-delivery notice ledger. */
+  workshopSessionTimeService: WorkshopSessionTimeService;
+  /** Ordered aggregate + conversation archive persistence boundary. */
+  workshopSessionPersistenceCoordinator: WorkshopSessionPersistenceCoordinator;
 }

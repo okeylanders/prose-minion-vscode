@@ -13,6 +13,7 @@
 
 import * as vscode from 'vscode';
 import { ProseToolsViewProvider } from './application/providers/ProseToolsViewProvider';
+import { WorkshopPanelProvider } from './application/providers/WorkshopPanelProvider';
 // Core services + the Platform port type — imported via the public barrel only
 // (ADR 2026-06-16 monorepo boundary; enforced by eslint no-restricted-imports).
 import {
@@ -31,9 +32,24 @@ import {
   WordSearchService,
   CategorySearchService,
   TextSourceResolver,
+  ContextResourceResolver,
   AccountBalanceService,
   OpenRouterAccountClient,
+  WorkshopSessionService,
+  WorkshopRoomDeliveryService,
+  RunWorkshopToolSidePass,
+  WorkshopAnalysisSidePass,
+  WorkshopPersonaCapabilityFactory,
+  WorkshopContextResourceService,
+  WorkshopConversationSettingsService,
+  WorkshopWriterProfileService,
+  WorkshopSessionTimeService,
+  WorkshopSessionStore,
+  WorkshopSessionPersistenceCoordinator,
   CoreServices,
+  WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
+  coerceWorkshopConversationBehavior,
+  toInclusiveLineRange,
 } from '@prose-minion/core';
 // VS Code adapters (app-local; the composition root wires them into the ports)
 import { VsCodeSettingsStore } from './platform/vscode/VsCodeSettingsStore';
@@ -43,8 +59,10 @@ import { VsCodeShellService } from './platform/vscode/VsCodeShellService';
 import { VsCodeEditorContext } from './platform/vscode/VsCodeEditorContext';
 
 let proseToolsViewProvider: ProseToolsViewProvider | undefined;
+let workshopPanelProvider: WorkshopPanelProvider | undefined;
+let workshopSessionPersistenceCoordinator: WorkshopSessionPersistenceCoordinator | undefined;
 
-export function activate(context: vscode.ExtensionContext): void {
+export async function activate(context: vscode.ExtensionContext): Promise<void> {
   // Create output channel for logging
   const outputChannel = vscode.window.createOutputChannel('Prose Minion');
   context.subscriptions.push(outputChannel);
@@ -60,14 +78,17 @@ export function activate(context: vscode.ExtensionContext): void {
   // Platform ports (ADR 2026-06-16). Assembled once at the composition root: the
   // VS Code adapters translate to the vscode-free port shapes; the structural
   // ports (log, secrets) are the native vscode objects passed directly.
+  const editorContext = new VsCodeEditorContext();
+  context.subscriptions.push(editorContext);
   const platform: Platform = {
     log: outputChannel,
     secrets: context.secrets,
     settings: new VsCodeSettingsStore(),
+    globalState: context.globalState,
     fileSystem: new VsCodeFileSystem(),
     workspace: new VsCodeWorkspace(context.extensionUri),
     shell: new VsCodeShellService(),
-    editor: new VsCodeEditorContext()
+    editor: editorContext
   };
 
   // SPRINT 01: Initialize infrastructure layer (dependency injection)
@@ -75,7 +96,22 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // SPRINT 01: Create resource services (foundation)
   const resourceLoader = new ResourceLoaderService(platform.workspace.extensionPath, platform.fileSystem, outputChannel);
-  const aiResourceManager = new AIResourceManager(resourceLoader, secretsService, platform.settings, outputChannel);
+  // Built before the AI resource manager: the Workshop composite tool catalog
+  // (Sprint 12 Phase 6) resolves configured resources through this factory.
+  const contextResourceResolver = new ContextResourceResolver(
+    platform.settings,
+    platform.fileSystem,
+    platform.workspace,
+    outputChannel
+  );
+  const aiResourceManager = new AIResourceManager(resourceLoader, secretsService, platform.settings, contextResourceResolver, outputChannel);
+  // Lifecycle starts once at the composition root. Services only bind to the
+  // manager-owned generation; none may rebuild all model scopes on startup.
+  // Fire-and-forget, but never unobserved: the manager resets on rejection
+  // and the next use retries, so this log is the only trace of a bad start.
+  aiResourceManager.ensureInitialized().catch(error => {
+    outputChannel.appendLine(`[extension] Initial AI resource build failed: ${error instanceof Error ? error.message : String(error)}`);
+  });
   const standardsService = new StandardsService(platform.workspace.extensionPath, platform.fileSystem, platform.settings, outputChannel);
   const toolOptions = new ToolOptionsProvider(platform.settings);
 
@@ -135,6 +171,81 @@ export function activate(context: vscode.ExtensionContext): void {
     new OpenRouterAccountClient(secretsService, outputChannel),
     outputChannel
   );
+  // The balance service is shared by BOTH webview surfaces, so its lifecycle
+  // belongs here, not to any single MessageHandler's dispose (which would
+  // strip the surviving surface's refresh listeners).
+  context.subscriptions.push({ dispose: () => accountBalanceService.dispose() });
+
+  // Workshop session aggregate (ADR 2026-07-03): one instance, owned by the
+  // composition root, so the thread survives panel close/reopen and webview
+  // reloads — reload-safety lives HERE, not in React state.
+  const workshopSessionService = new WorkshopSessionService(
+    Date.now,
+    coerceWorkshopConversationBehavior(
+      platform.settings.get<unknown>(
+        WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.section,
+        WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.key
+      )
+    )
+  );
+  const workshopRoomDeliveryService = new WorkshopRoomDeliveryService(
+    workshopSessionService
+  );
+  const workshopAnalysisSidePass = new WorkshopAnalysisSidePass(
+    assistantToolService,
+    workshopSessionService,
+    outputChannel
+  );
+  const workshopPersonaCapabilityFactory = new WorkshopPersonaCapabilityFactory(
+    dictionaryService,
+    workshopAnalysisSidePass,
+    contextResourceResolver,
+    workshopSessionService,
+    outputChannel
+  );
+  const workshopWriterProfileService = new WorkshopWriterProfileService(
+    platform.settings,
+    outputChannel
+  );
+  const workshopConversationSettingsService = new WorkshopConversationSettingsService(
+    workshopSessionService,
+    assistantToolService,
+    platform.settings,
+    outputChannel,
+    workshopWriterProfileService
+  );
+  const workshopToolSidePass = new RunWorkshopToolSidePass(
+    assistantToolService,
+    workshopAnalysisSidePass,
+    workshopSessionService,
+    workshopRoomDeliveryService,
+    workshopPersonaCapabilityFactory,
+    outputChannel,
+    workshopWriterProfileService,
+    () => workshopConversationSettingsService.getWebResearch().enabled
+  );
+  const workshopContextResourceService = new WorkshopContextResourceService(contextResourceResolver);
+  const workshopSessionTimeService = new WorkshopSessionTimeService();
+  const workshopSessionStore = new WorkshopSessionStore(
+    platform.fileSystem,
+    platform.workspace,
+    outputChannel
+  );
+  workshopSessionPersistenceCoordinator = new WorkshopSessionPersistenceCoordinator(
+    workshopSessionService,
+    assistantToolService,
+    workshopConversationSettingsService,
+    workshopSessionTimeService,
+    workshopSessionStore,
+    outputChannel,
+    {
+      ensureAssistantReady: () => aiResourceManager.ensureInitialized()
+    }
+  );
+  // Workshop handlers must not observe or mutate the fresh in-memory aggregate
+  // until rolling recovery has either completed or deliberately fallen back.
+  // Otherwise a fast webview message can race hydration and lose committed work.
+  await workshopSessionPersistenceCoordinator.initialize();
 
   const coreServices: CoreServices = {
     assistantToolService,
@@ -149,7 +260,16 @@ export function activate(context: vscode.ExtensionContext): void {
     secretsService,
     textSourceResolver,
     categorySearchService,
-    accountBalanceService
+    accountBalanceService,
+    workshopSessionService,
+    workshopRoomDeliveryService,
+    workshopPersonaCapabilityFactory,
+    workshopToolSidePass,
+    workshopContextResourceService,
+    workshopConversationSettingsService,
+    workshopWriterProfileService,
+    workshopSessionTimeService,
+    workshopSessionPersistenceCoordinator
   };
 
   // Migrate API key from settings to SecretStorage if needed
@@ -160,7 +280,10 @@ export function activate(context: vscode.ExtensionContext): void {
     context.extensionUri,
     coreServices,
     outputChannel,
-    platform
+    platform,
+    {
+      openWorkshop: () => workshopPanelProvider?.openOrReveal()
+    }
   );
 
   // Register webview provider
@@ -177,6 +300,22 @@ export function activate(context: vscode.ExtensionContext): void {
     )
   );
   console.log('Webview provider registered successfully');
+
+  // Workshop editor-tab surface (ADR 2026-07-03, Sprint 1: shell only).
+  // Same CoreServices bundle as the sidebar — the provider constructs nothing.
+  workshopPanelProvider = new WorkshopPanelProvider(
+    context.extensionUri,
+    coreServices,
+    outputChannel,
+    platform
+  );
+  context.subscriptions.push(
+    workshopPanelProvider,
+    vscode.window.registerWebviewPanelSerializer(
+      WorkshopPanelProvider.viewType,
+      workshopPanelProvider
+    )
+  );
 
   const focusToolsView = () => {
     void vscode.commands.executeCommand('prose-minion.toolsView.focus');
@@ -199,8 +338,13 @@ export function activate(context: vscode.ExtensionContext): void {
 
     const uri = editor.document.uri;
     const relativePath = vscode.workspace.asRelativePath(uri, false);
+    const lineRange = toInclusiveLineRange({
+      startLine: selection.start.line,
+      endLine: selection.end.line,
+      endCharacter: selection.end.character
+    });
 
-    return { text, uri, relativePath };
+    return { text, uri, relativePath, lineRange };
   };
 
   const sendSelection = (
@@ -226,6 +370,27 @@ export function activate(context: vscode.ExtensionContext): void {
     sendSelection('assistant', payload);
   };
 
+  // Workshop seeding (Sprint 3): same selection-payload path as the sidebar's
+  // assistant command, but the destination is the Workshop panel's session —
+  // seedExcerpt routes WORKSHOP_SET_EXCERPT through the panel's own
+  // MessageHandler, so guards and provenance match a webview pin exactly.
+  const handleWorkshopSelection = () => {
+    const payload = getSelectionPayload();
+    if (!payload) {
+      return;
+    }
+    workshopPanelProvider?.seedExcerpt({
+      text: payload.text,
+      source: {
+        kind: 'editor-selection',
+        sourceUri: payload.uri.toString(),
+        relativePath: payload.relativePath,
+        startLine: payload.lineRange.startLine,
+        endLine: payload.lineRange.endLine
+      }
+    });
+  };
+
   const handleWordLookupSelection = () => {
     const payload = getSelectionPayload();
     if (!payload) {
@@ -246,11 +411,22 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('prose-minion.openSettingsOverlay', () => {
       focusToolsView();
       proseToolsViewProvider?.openSettings();
-    })
+    }),
+    vscode.commands.registerCommand('prose-minion.openWorkshop', () => {
+      workshopPanelProvider?.openOrReveal();
+    }),
+    vscode.commands.registerCommand('prose-minion.workshopSelection', handleWorkshopSelection)
   );
 }
 
-export function deactivate(): void {
+export async function deactivate(): Promise<void> {
+  // Quiesce the panel-owned Workshop handler first. Its dispose path
+  // aborts/abandons any in-flight run, so the coordinator's active-run guard
+  // cannot defer an earlier committed dirty revision past process shutdown.
+  workshopPanelProvider?.dispose();
+  workshopPanelProvider = undefined;
+  await workshopSessionPersistenceCoordinator?.flush();
+  workshopSessionPersistenceCoordinator = undefined;
   console.log('Prose Minion extension is now deactivated');
 }
 

@@ -19,12 +19,17 @@ import {
   StatusMessage,
   ExtensionToWebviewMessage,
   TokenUsageUpdateMessage,
-  TokenUsageTotals
+  TokenUsageTotals,
+  WorkshopSessionStateMessage,
+  WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
+  WORKSHOP_WRITER_PROFILE_SETTING,
+  WORKSHOP_WEB_RESEARCH_SETTING
 } from '@messages';
 import {
   CoreServices,
   MessageTransport,
-  ResultCache
+  ResultCache,
+  WorkshopUiActions
 } from '@handlers/MessageHandlerContracts';
 
 // Message routing
@@ -42,6 +47,7 @@ import { SourcesHandler } from './domain/SourcesHandler';
 import { UIHandler } from './domain/UIHandler';
 import { FileOperationsHandler } from './domain/FileOperationsHandler';
 import { AccountBalanceHandler } from './domain/AccountBalanceHandler';
+import { WorkshopHandler } from './domain/WorkshopHandler';
 
 export class MessageHandler {
   private readonly resultCache: ResultCache = {};
@@ -70,7 +76,15 @@ export class MessageHandler {
   private readonly uiHandler: UIHandler;
   private readonly fileOperationsHandler: FileOperationsHandler;
   private readonly accountBalanceHandler: AccountBalanceHandler;
+  private readonly workshopHandler: WorkshopHandler;
 
+  // Per-instance registrations on SHARED services (sidebar + Workshop panel
+  // each run a MessageHandler over the one CoreServices bundle). Dispose
+  // releases exactly these — never service-wide state another surface uses.
+  private readonly disposeTokenUsageListener: () => void;
+  private readonly disposeProcessedUsageResetListener: () => void;
+  private readonly disposeDictionaryStatusListener: () => void;
+  private readonly disposeSearchStatusListener: () => void;
   private readonly disposeBalanceListener: () => void;
   private readonly disposeSecretListener: () => void;
 
@@ -140,7 +154,8 @@ export class MessageHandler {
     // distinct name is deliberate so the unwrapped one isn't grabbed by accident.
     private readonly transport: MessageTransport,
     private readonly platform: Platform,
-    private readonly outputChannel: LogSink
+    private readonly outputChannel: LogSink,
+    private readonly uiActions: WorkshopUiActions = {}
   ) {
     const {
       assistantToolService,
@@ -155,20 +170,27 @@ export class MessageHandler {
       secretsService,
       textSourceResolver,
       categorySearchService,
-      accountBalanceService
+      accountBalanceService,
+      workshopSessionService,
+      workshopRoomDeliveryService,
+      workshopPersonaCapabilityFactory,
+      workshopToolSidePass,
+      workshopContextResourceService,
+      workshopConversationSettingsService,
+      workshopSessionTimeService,
+      workshopSessionPersistenceCoordinator
     } = services;
 
-    aiResourceManager.setStatusCallback((message: string, tickerMessage?: string) => {
-      this.sendStatus(message, tickerMessage);
-    });
-
-    // Token tracking: centralized in AIResourceOrchestrator
-    // This callback is called after each API call with usage data
-    aiResourceManager.setTokenUsageCallback((usage) => {
+    // Token tracking: centralized in AgentRunEngine. Listener-based so
+    // every live webview (sidebar + Workshop) tracks usage from ANY surface's
+    // requests; each MessageHandler keeps its own totals bag + replay cache.
+    this.disposeTokenUsageListener = aiResourceManager.addTokenUsageListener((usage) => {
       this.applyTokenUsage(usage);
     });
+    this.disposeProcessedUsageResetListener = aiResourceManager.addTokenUsageResetListener(
+      () => this.resetTokenUsageTotals()
+    );
 
-    // Token tracking is now centralized in AIResourceOrchestrator via setTokenUsageCallback
     this.analysisHandler = new AnalysisHandler(
       assistantToolService,
       this.postMessage.bind(this),
@@ -180,8 +202,10 @@ export class MessageHandler {
       this.postMessage.bind(this)
     );
 
-    // Set status emitter for dictionary service (for fast generation progress)
-    dictionaryService.setStatusEmitter(this.sendDictionaryStatus.bind(this));
+    // Subscribe dictionary generation progress into this webview's status rail
+    this.disposeDictionaryStatusListener = dictionaryService.addStatusListener(
+      this.sendDictionaryStatus.bind(this)
+    );
 
     this.contextHandler = new ContextHandler(
       contextAssistantService,
@@ -198,7 +222,9 @@ export class MessageHandler {
       textSourceResolver
     );
 
-    categorySearchService.setStatusEmitter(this.sendSearchStatus.bind(this));
+    this.disposeSearchStatusListener = categorySearchService.addStatusListener(
+      this.sendSearchStatus.bind(this)
+    );
 
     this.searchHandler = new SearchHandler(
       wordSearchService,
@@ -217,9 +243,7 @@ export class MessageHandler {
       this.platform.settings,
       this.platform.shell,
       this.postMessage.bind(this),
-      outputChannel,
-      this.resultCache,
-      this.tokenTotals
+      outputChannel
     );
 
     // Ensure token totals are reset on activation/startup so the webview does not
@@ -249,7 +273,9 @@ export class MessageHandler {
       this.platform.fileSystem,
       this.platform.workspace,
       this.platform.shell,
-      this.platform.editor
+      this.platform.editor,
+      this.platform.globalState,
+      this.uiActions
     );
 
     this.fileOperationsHandler = new FileOperationsHandler(
@@ -263,6 +289,28 @@ export class MessageHandler {
     this.accountBalanceHandler = new AccountBalanceHandler(
       this.postMessage.bind(this),
       accountBalanceService,
+      outputChannel
+    );
+
+    // Workshop editor tab (ADR 2026-07-03) — the 12th domain, composed exactly
+    // like the other 11: injected services + platform ports, nothing
+    // constructed here beyond the handler itself. Shell/fileSystem/workspace
+    // feed the Sprint 3 "Pin from file…" seam (picker → read → provenance).
+    this.workshopHandler = new WorkshopHandler(
+      assistantToolService,
+      contextAssistantService,
+      workshopSessionService,
+      workshopRoomDeliveryService,
+      workshopToolSidePass,
+      workshopPersonaCapabilityFactory,
+      this.postMessage.bind(this),
+      this.platform.shell,
+      this.platform.fileSystem,
+      this.platform.workspace,
+      workshopContextResourceService,
+      workshopConversationSettingsService,
+      workshopSessionTimeService,
+      workshopSessionPersistenceCoordinator,
       outputChannel
     );
     // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)
@@ -294,6 +342,7 @@ export class MessageHandler {
     this.uiHandler.registerRoutes(this.router);
     this.fileOperationsHandler.registerRoutes(this.router);
     this.accountBalanceHandler.registerRoutes(this.router);
+    this.workshopHandler.registerRoutes(this.router);
 
     this.flushCachedResults();
   }
@@ -392,6 +441,29 @@ export class MessageHandler {
     }
   }
 
+  private resetTokenUsageTotals(): void {
+    this.tokenTotals.promptTokens = 0;
+    this.tokenTotals.completionTokens = 0;
+    this.tokenTotals.totalTokens = 0;
+    this.tokenTotals.costUsd = 0;
+    this.tokenTotals.lastRequestCostUsd = undefined;
+    const message: TokenUsageUpdateMessage = {
+      type: MessageType.TOKEN_USAGE_UPDATE,
+      source: 'extension.handler',
+      payload: {
+        totals: {
+          promptTokens: 0,
+          completionTokens: 0,
+          totalTokens: 0,
+          costUsd: 0
+        }
+      },
+      timestamp: Date.now()
+    };
+    this.resultCache.tokenUsage = { ...message };
+    void this.postMessage(message);
+  }
+
   private sendSearchStatus(message: string, progress?: { current: number; total: number }): void {
     try {
       const status: StatusMessage = {
@@ -487,6 +559,21 @@ export class MessageHandler {
     }
   }
 
+  private async refreshModelSelections(): Promise<void> {
+    try {
+      await this.services.aiResourceManager.refreshModelSelections();
+      this.outputChannel.appendLine(
+        '[MessageHandler] Model selections hot-swapped; retained conversations preserved'
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(
+        `[MessageHandler] Model hot-swap failed: ${message}`
+      );
+      this.sendStatus('Model change failed. The previous model remains active.', message);
+    }
+  }
+
   private postClearTransientApiKeyWarning(): void {
     void this.postMessage({
       type: MessageType.CLEAR_TRANSIENT_API_KEY_WARNING,
@@ -508,10 +595,20 @@ export class MessageHandler {
       this.outputChannel.appendLine('[ConfigWatcher] Config change detected');
     }
 
+    const workshopBehaviorKey = `${WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.section}.` +
+      WORKSHOP_CONVERSATION_BEHAVIOR_SETTING.key;
+    const workshopWriterProfileKey = `${WORKSHOP_WRITER_PROFILE_SETTING.section}.` +
+      WORKSHOP_WRITER_PROFILE_SETTING.key;
+    const workshopWebResearchKey = `${WORKSHOP_WEB_RESEARCH_SETTING.section}.` +
+      WORKSHOP_WEB_RESEARCH_SETTING.key;
+    if (affects(workshopBehaviorKey) || affects(workshopWriterProfileKey) || affects(workshopWebResearchKey)) {
+      void this.workshopHandler.syncConversationSettingsFromSettings();
+    }
+
     // Only refresh service if model configs changed
     if (this.MODEL_KEYS.some(key => affects(key))) {
-      this.outputChannel.appendLine('[ConfigWatcher] Model config changed, refreshing service');
-      void this.refreshServiceConfiguration();
+      this.outputChannel.appendLine('[ConfigWatcher] Model config changed, hot-swapping selection');
+      void this.refreshModelSelections();
 
       // Send MODEL_DATA if this change came from external source (VS Code Settings UI)
       // handleSetModelSelection will send it for webview changes (with echo prevention)
@@ -661,6 +758,10 @@ export class MessageHandler {
     if (this.resultCache.tokenUsage) {
       void this.postMessage(this.resultCache.tokenUsage);
     }
+
+    if (this.resultCache.workshopSession) {
+      void this.postMessage(this.resultCache.workshopSession);
+    }
   }
 
   private async postMessage(message: ExtensionToWebviewMessage): Promise<void> {
@@ -692,6 +793,9 @@ export class MessageHandler {
         break;
       case MessageType.TOKEN_USAGE_UPDATE:
         this.resultCache.tokenUsage = { ...message as TokenUsageUpdateMessage };
+        break;
+      case MessageType.WORKSHOP_SESSION_STATE:
+        this.resultCache.workshopSession = { ...message as WorkshopSessionStateMessage };
         break;
       case MessageType.ERROR:
         const error = message as ErrorMessage;
@@ -726,23 +830,25 @@ export class MessageHandler {
   }
 
   dispose(): void {
-    // Clear callbacks on shared services to avoid stale webview references.
-    // The config-change watcher is now owned + disposed by the shell (the provider),
-    // so MessageHandler holds no host disposables of its own.
+    // Release ONLY this instance's registrations on the shared services. Two
+    // webviews (sidebar + Workshop panel) run MessageHandlers over the same
+    // CoreServices bundle, so service-wide teardown here would blind the
+    // surviving surface. Service lifecycle belongs to the composition root
+    // (extension.ts); the config-change watcher is owned by the shell.
     try {
-      this.services.aiResourceManager.setStatusCallback(undefined);
-      this.services.aiResourceManager.setTokenUsageCallback(undefined);
-      this.services.assistantToolService.setStatusEmitter(undefined);
-      this.services.dictionaryService.setStatusEmitter(undefined);
-      this.services.categorySearchService.setStatusEmitter(undefined);
+      this.disposeTokenUsageListener();
+      this.disposeProcessedUsageResetListener();
+      this.disposeDictionaryStatusListener();
+      this.disposeSearchStatusListener();
+      this.analysisHandler.dispose();
+      this.workshopHandler.dispose();
     } catch {
       // noop
     }
-    // Cancel any armed balance refresh timer + drop the listener so a disposed
-    // handler can't fire a fetch/post after teardown.
+    // Drop the balance refresh listener so a disposed handler can't post after
+    // teardown. The service's timer keeps running for other surfaces.
     try {
       this.disposeBalanceListener();
-      this.services.accountBalanceService.dispose();
     } catch {
       // noop
     }

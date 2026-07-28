@@ -8,14 +8,14 @@ import { DictionaryService } from '@/infrastructure/api/services/dictionary/Dict
 describe('DictionaryService', () => {
   it('includes the Special Focus block before AI Advisory Notes in fast generation', async () => {
     const loadPrompts = jest.fn().mockImplementation(async (paths: string[]) => paths[0]);
-    const executeWithoutCapabilities = jest.fn().mockImplementation(async (toolName: string) => ({
+    const runInitial = jest.fn().mockImplementation(async ({ toolName }: { toolName: string }) => ({
       content: `# ${toolName.replace('dictionary-fast-', '').replace(/-/g, ' ')}`,
       usage: undefined
     }));
 
     const aiResourceManager = {
-      initializeResources: jest.fn().mockResolvedValue(undefined),
-      getOrchestrator: jest.fn().mockReturnValue({ executeWithoutCapabilities })
+      ensureInitialized: jest.fn().mockResolvedValue(undefined),
+      getEngine: jest.fn().mockReturnValue({ runInitial })
     };
 
     const service = new DictionaryService(
@@ -44,14 +44,14 @@ describe('DictionaryService', () => {
 
   it('only asks the special-focus block to generate the Special Focus section', async () => {
     const loadPrompts = jest.fn().mockImplementation(async (paths: string[]) => paths[0]);
-    const executeWithoutCapabilities = jest.fn().mockResolvedValue({
+    const runInitial = jest.fn().mockResolvedValue({
       content: '## content',
       usage: undefined
     });
 
     const aiResourceManager = {
-      initializeResources: jest.fn().mockResolvedValue(undefined),
-      getOrchestrator: jest.fn().mockReturnValue({ executeWithoutCapabilities })
+      ensureInitialized: jest.fn().mockResolvedValue(undefined),
+      getEngine: jest.fn().mockReturnValue({ runInitial })
     };
 
     const service = new DictionaryService(
@@ -64,18 +64,18 @@ describe('DictionaryService', () => {
 
     await service.generateParallelDictionary('crash', 'Need scene-specific guidance.');
 
-    const specialFocusCalls = executeWithoutCapabilities.mock.calls.filter((call) => call[0] === 'dictionary-fast-special-focus');
-    const definitionCalls = executeWithoutCapabilities.mock.calls.filter((call) => call[0] === 'dictionary-fast-definition');
+    const specialFocusCalls = runInitial.mock.calls.filter(([call]) => call.toolName === 'dictionary-fast-special-focus');
+    const definitionCalls = runInitial.mock.calls.filter(([call]) => call.toolName === 'dictionary-fast-definition');
 
     expect(specialFocusCalls).toHaveLength(1);
     expect(definitionCalls).toHaveLength(1);
-    expect(specialFocusCalls[0][2]).toContain('generate the dedicated "Special Focus" section');
-    expect(definitionCalls[0][2]).toContain('Do NOT generate a "Special Focus" section in this block.');
+    expect(specialFocusCalls[0][0].userMessage).toContain('generate the dedicated "Special Focus" section');
+    expect(definitionCalls[0][0].userMessage).toContain('Do NOT generate a "Special Focus" section in this block.');
   });
 
   it('strips stray Special Focus sections from non-special-focus blocks during assembly', async () => {
     const loadPrompts = jest.fn().mockImplementation(async (paths: string[]) => paths[0]);
-    const executeWithoutCapabilities = jest.fn().mockImplementation(async (toolName: string) => {
+    const runInitial = jest.fn().mockImplementation(async ({ toolName }: { toolName: string }) => {
       if (toolName === 'dictionary-fast-special-focus') {
         return {
           content: '## **Special Focus: Scene Fit**\n- Keep it punchy.',
@@ -90,8 +90,8 @@ describe('DictionaryService', () => {
     });
 
     const aiResourceManager = {
-      initializeResources: jest.fn().mockResolvedValue(undefined),
-      getOrchestrator: jest.fn().mockReturnValue({ executeWithoutCapabilities })
+      ensureInitialized: jest.fn().mockResolvedValue(undefined),
+      getEngine: jest.fn().mockReturnValue({ runInitial })
     };
 
     const service = new DictionaryService(

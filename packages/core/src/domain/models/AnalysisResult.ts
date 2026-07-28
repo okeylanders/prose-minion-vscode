@@ -3,13 +3,20 @@
  * Represents the output from prose analysis tools ( Prose Excerpt Assistant )
  */
 
+import type { UrlCitation } from '@messages';
+
 export interface AnalysisResult {
   readonly toolName: string;
   readonly content: string;
   readonly timestamp: Date;
   readonly usedGuides?: string[];  // Array of guide paths that were used
+  /** Display-safe configured-resource paths delivered to the run (Sprint 12 Phase 6). */
+  readonly requestedResources?: string[];
   readonly usage?: TokenUsage;
   readonly finishReason?: string;
+  /** Retained conversation id, when the run asked for continuation (Workshop multi-turn). */
+  readonly conversationId?: string;
+  readonly citations?: UrlCitation[];
 }
 
 export interface MetricsResult {
@@ -18,15 +25,26 @@ export interface MetricsResult {
   readonly timestamp: Date;
 }
 
+export interface AnalysisResultOptions {
+  usedGuides?: string[];
+  requestedResources?: string[];
+  usage?: TokenUsage;
+  finishReason?: string;
+  conversationId?: string;
+  citations?: UrlCitation[];
+}
+
 export class AnalysisResultFactory {
-  static createAnalysisResult(toolName: string, content: string, usedGuides?: string[], usage?: TokenUsage, finishReason?: string): AnalysisResult {
+  static createAnalysisResult(
+    toolName: string,
+    content: string,
+    options: AnalysisResultOptions = {}
+  ): AnalysisResult {
     return {
       toolName,
       content,
       timestamp: new Date(),
-      usedGuides,
-      usage,
-      finishReason
+      ...options
     };
   }
 
