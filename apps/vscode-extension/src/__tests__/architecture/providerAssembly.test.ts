@@ -15,6 +15,7 @@ import * as path from 'path';
 const APP_SRC_ROOT = path.resolve(__dirname, '..', '..');
 const PROVIDERS_ROOT = path.join(APP_SRC_ROOT, 'application', 'providers');
 const EXTENSION_ENTRY = path.join(APP_SRC_ROOT, 'extension.ts');
+const EXTENSION_MANIFEST = path.resolve(APP_SRC_ROOT, '..', 'package.json');
 
 /**
  * Providers assemble nothing: every service arrives via the CoreServices
@@ -102,6 +103,13 @@ describe('app-shell provider assembly', () => {
     expect(registrations).toHaveLength(1);
     expect(extensionSource).toMatch(
       /registerWebviewPanelSerializer\(\s*WorkshopPanelProvider\.viewType,\s*workshopPanelProvider\s*\)/
+    );
+
+    const manifest = JSON.parse(fs.readFileSync(EXTENSION_MANIFEST, 'utf8')) as {
+      activationEvents?: string[];
+    };
+    expect(manifest.activationEvents).toContain(
+      'onWebviewPanel:prose-minion.workshop'
     );
   });
 

@@ -65,7 +65,10 @@ class MemoryFileSystem implements FileSystem {
   }
 
   async stat(filePath: string): Promise<FileStat> {
-    const bytes = await this.readFile(filePath);
+    const bytes = this.files.get(filePath);
+    if (!bytes) {
+      throw new Error(`ENOENT: ${filePath}`);
+    }
     return { type: FileType.File, ctime: 0, mtime: 0, size: bytes.byteLength };
   }
 
@@ -216,10 +219,95 @@ describe('WorkshopSessionStore', () => {
     );
   });
 
+  it('rejects exact reads above the Marketplace safety bound before loading file bytes', async () => {
+    const currentPath = path.join(sessionsDirectory, 'current.json');
+    const store = createStore([root], {
+      maximumFiles: 200,
+      maximumFileBytes: 100,
+      maximumExactFileBytes: 1_000,
+      maximumSearchCharacters: 250_000,
+      maximumNameCollisions: 100
+    });
+    fileSystem.files.set(currentPath, new Uint8Array(1_001));
+
+    await expect(store.readCurrent()).rejects.toThrow(
+      'file exceeds the 1,000 bytes exact-read bound'
+    );
+    expect(fileSystem.readFileCalls).not.toContain(currentPath);
+  });
+
+  it('rejects deeply nested persisted JSON before recursive schema validation', async () => {
+    const currentPath = path.join(sessionsDirectory, 'current.json');
+    let nested: unknown = 'leaf';
+    for (let depth = 0; depth < 110; depth += 1) {
+      nested = { nested };
+    }
+    fileSystem.setJson(currentPath, {
+      ...session('deep-current', 'Deep current'),
+      conversations: nested
+    });
+
+    await expect(createStore().readCurrent()).rejects.toThrow(
+      'exceeds the maximum JSON nesting depth of 100'
+    );
+  });
+
+  it.each([
+    { absoluteDepth: 99, accepted: true },
+    { absoluteDepth: 100, accepted: true },
+    { absoluteDepth: 101, accepted: false }
+  ])(
+    'uses the same $absoluteDepth-level JSON depth boundary on write and read',
+    async ({ absoluteDepth, accepted }) => {
+      // File root + conversations array account for two levels.
+      let nestedConversation: unknown = null;
+      for (let depth = 0; depth < absoluteDepth - 2; depth += 1) {
+        nestedConversation = [nestedConversation];
+      }
+      const candidate = session(`depth-${absoluteDepth}`, `Depth ${absoluteDepth}`, {
+        conversations: [nestedConversation] as unknown as
+          WorkshopPersistedSessionV1['conversations']
+      });
+      const store = createStore();
+
+      if (!accepted) {
+        await expect(store.writeCurrent(candidate)).rejects.toThrow(
+          'exceeds the maximum JSON nesting depth of 100'
+        );
+        await expect(store.readCurrent()).resolves.toBeUndefined();
+        return;
+      }
+
+      await store.writeCurrent(candidate);
+      await expect(store.readCurrent()).resolves.toMatchObject({
+        sessionId: `depth-${absoluteDepth}`
+      });
+    }
+  );
+
+  it('refuses to persist a snapshot that the exact reader could not restore', async () => {
+    const currentPath = path.join(sessionsDirectory, 'current.json');
+    const store = createStore([root], {
+      maximumFiles: 200,
+      maximumFileBytes: 100,
+      maximumExactFileBytes: 1_000,
+      maximumSearchCharacters: 250_000,
+      maximumNameCollisions: 100
+    });
+
+    await expect(store.writeCurrent(session('oversized-current', 'Oversized current')))
+      .rejects.toThrow(
+        'exceeds the maximum persisted size of 1,000 bytes. ' +
+        'Start a new Workshop session or remove retained context'
+      );
+    expect(fileSystem.files.has(currentPath)).toBe(false);
+  });
+
   it('reads exact snapshots and discovers current/named sidecars beyond the browser byte bound', async () => {
     const limits = {
       maximumFiles: 200,
       maximumFileBytes: 1_000,
+      maximumExactFileBytes: 100_000,
       maximumSearchCharacters: 250_000,
       maximumNameCollisions: 100
     };
@@ -445,6 +533,7 @@ describe('WorkshopSessionStore', () => {
     const store = createStore([root], {
       maximumFiles: 1,
       maximumFileBytes: 5 * 1024 * 1024,
+      maximumExactFileBytes: 25 * 1024 * 1024,
       maximumSearchCharacters: 250_000,
       maximumNameCollisions: 100
     });
@@ -461,6 +550,7 @@ describe('WorkshopSessionStore', () => {
     const store = createStore([root], {
       maximumFiles: 200,
       maximumFileBytes: 1_000,
+      maximumExactFileBytes: 100_000,
       maximumSearchCharacters: 250_000,
       maximumNameCollisions: 100
     });
@@ -521,6 +611,7 @@ describe('WorkshopSessionStore', () => {
     const store = createStore([root], {
       maximumFiles: 200,
       maximumFileBytes: 5 * 1024 * 1024,
+      maximumExactFileBytes: 25 * 1024 * 1024,
       maximumSearchCharacters: 10,
       maximumNameCollisions: 100
     });

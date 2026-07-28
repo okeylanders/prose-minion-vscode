@@ -220,16 +220,20 @@ Browser summaries are tolerant and independent of full hydration. Malformed or
 unknown-version files are skipped with diagnostics, never allowed to crash the
 browser.
 
-Full session files remain authoritative and exact reads are intentionally
-unbounded. The store writes strict, schema-versioned, bounded search indexes
-(`current.summary.json` and `<checkpoint>.summary.json`) so a valid long session
-does not disappear merely because it exceeds the browser's defensive full-file
-parse limit. Search indexes cannot hydrate a room, are ignored by identity
-scans, and orphan/corrupt indexes are skipped. Browser listing warms the
-immutable path cache; cold exact actions use index identity to avoid parsing
-unrelated full transcripts. Transcript and retained-conversation content search
-uses a bounded, cancellable traversal rather than serializing the entire
-snapshot, and the UI discloses when it may have omitted a deep match.
+Full session files remain authoritative. Exact reads use a 25 MB Marketplace
+safety ceiling—larger than the browser's 5 MB defensive bound—and persisted
+JSON nesting is capped at 100 levels before recursive schema validation. The
+store applies the same byte ceiling on write so it cannot create a checkpoint
+that it later refuses to restore. It also writes strict, schema-versioned,
+bounded search indexes (`current.summary.json` and
+`<checkpoint>.summary.json`) so a valid long session does not disappear merely
+because it exceeds the browser's defensive full-file parse limit. Search
+indexes cannot hydrate a room, are ignored by identity scans, and
+orphan/corrupt indexes are skipped. Browser listing warms the immutable path
+cache; cold exact actions use index identity to avoid parsing unrelated full
+transcripts. Transcript and retained-conversation content search uses a
+bounded, cancellable traversal rather than serializing the entire snapshot,
+and the UI discloses when it may have omitted a deep match.
 
 The generated sessions directory is private by default: first creation adds a
 local `.gitignore` for generated session files without overwriting an existing

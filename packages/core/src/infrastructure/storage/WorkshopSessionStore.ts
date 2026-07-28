@@ -17,6 +17,9 @@ import { FileSystem, FileType, LogSink, Workspace } from '@/platform';
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 import { isRecord } from '@/application/services/workshop/persistedValidation';
 import {
+  assertPersistedJsonNestingDepth
+} from '@/application/services/workshop/persistedJson';
+import {
   buildWorkshopSessionSearchIndexV1,
   parseWorkshopSessionSearchIndexV1,
   workshopSessionSearchIndexFileName,
@@ -40,6 +43,11 @@ export const WORKSHOP_SESSION_STORE_LIMITS = Object.freeze({
   maximumFiles: 200,
   /** Session JSON is user-owned input; do not eagerly parse an arbitrary blob. */
   maximumFileBytes: 5 * 1024 * 1024,
+  /**
+   * Exact restore/open actions may exceed the browser preview bound, but must
+   * never allocate an arbitrary workspace blob inside the extension host.
+   */
+  maximumExactFileBytes: 25 * 1024 * 1024,
   /** Bound the amount of serialized session text inspected for browser search. */
   maximumSearchCharacters: 250_000,
   /** A failed write must not spin forever on a hostile filesystem provider. */
@@ -49,6 +57,7 @@ export const WORKSHOP_SESSION_STORE_LIMITS = Object.freeze({
 export interface WorkshopSessionStoreLimits {
   maximumFiles: number;
   maximumFileBytes: number;
+  maximumExactFileBytes: number;
   maximumSearchCharacters: number;
   maximumNameCollisions: number;
 }
@@ -626,14 +635,25 @@ export class WorkshopSessionStore {
   }
 
   /**
-   * Identity-sensitive reads are intentionally unbounded. V1 stores the full
-   * transcript and provider archive, so a snapshot written by this store must
-   * remain readable regardless of the browser's defensive enumeration limit.
+   * Identity-sensitive reads use a larger bound than browser enumeration, but
+   * remain bounded because workspace files are untrusted Marketplace input.
    */
   private async readSessionFileExact(
     filePath: string,
     displayName: string
   ): Promise<WorkshopPersistedSessionV1 | undefined> {
+    try {
+      const stat = await this.fileSystem.stat(filePath);
+      this.assertExactFileSize(stat.size, displayName);
+    } catch (error) {
+      if (isMissingFileError(error)) {
+        return undefined;
+      }
+      if (error instanceof WorkshopSessionFileReadError) {
+        throw error;
+      }
+      throw new WorkshopSessionFileReadError(displayName, errorMessage(error));
+    }
     let bytes: Uint8Array;
     try {
       bytes = await this.fileSystem.readFile(filePath);
@@ -644,8 +664,14 @@ export class WorkshopSessionStore {
       throw new WorkshopSessionFileReadError(displayName, errorMessage(error));
     }
     try {
-      return parseWorkshopPersistedSession(JSON.parse(decoder.decode(bytes)));
+      this.assertExactFileSize(bytes.byteLength, displayName);
+      const text = decoder.decode(bytes);
+      assertPersistedJsonNestingDepth(text, `Workshop session ${displayName}`);
+      return parseWorkshopPersistedSession(JSON.parse(text));
     } catch (error) {
+      if (error instanceof WorkshopSessionFileReadError) {
+        throw error;
+      }
       throw new WorkshopSessionFileReadError(displayName, errorMessage(error));
     }
   }
@@ -713,7 +739,9 @@ export class WorkshopSessionStore {
     await this.writeJsonAtomically(
       this.namedPath(paths, workshopSessionSearchIndexFileName(fullFileName)),
       decoded,
-      true
+      true,
+      MAXIMUM_SEARCH_INDEX_BYTES,
+      'Workshop session search index'
     );
   }
 
@@ -796,17 +824,38 @@ export class WorkshopSessionStore {
     session: WorkshopPersistedSessionV1,
     overwrite: boolean
   ): Promise<void> {
-    await this.writeJsonAtomically(targetPath, session, overwrite);
+    await this.writeJsonAtomically(
+      targetPath,
+      session,
+      overwrite,
+      this.limits.maximumExactFileBytes,
+      'Workshop session'
+    );
   }
 
   private async writeJsonAtomically(
     targetPath: string,
     value: WorkshopPersistedSessionV1 | WorkshopSessionSearchIndexV1,
-    overwrite: boolean
+    overwrite: boolean,
+    maximumBytes: number,
+    description: string
   ): Promise<void> {
+    const text = JSON.stringify(value, undefined, 2);
+    assertPersistedJsonNestingDepth(text, description);
+    const bytes = encoder.encode(text);
+    if (bytes.byteLength > maximumBytes) {
+      const guidance = description === 'Workshop session'
+        ? ' Start a new Workshop session or remove retained context; the existing checkpoint remains unchanged.'
+        : '';
+      throw new Error(
+        `${description} exceeds the maximum persisted size of ` +
+        `${formatByteLimit(maximumBytes)}.${guidance}`
+      );
+    }
+
     const temporaryPath = `${targetPath}.tmp-${this.now().getTime()}-${++this.temporaryWriteCounter}`;
     try {
-      await this.fileSystem.writeFile(temporaryPath, encoder.encode(JSON.stringify(value, undefined, 2)));
+      await this.fileSystem.writeFile(temporaryPath, bytes);
       await this.fileSystem.rename(temporaryPath, targetPath, { overwrite });
     } catch (error) {
       try {
@@ -840,6 +889,16 @@ export class WorkshopSessionStore {
     return parseWorkshopPersistedSession(session);
   }
 
+  private assertExactFileSize(size: number, displayName: string): void {
+    if (size > this.limits.maximumExactFileBytes) {
+      throw new WorkshopSessionFileReadError(
+        displayName,
+        `file exceeds the ${formatByteLimit(this.limits.maximumExactFileBytes)} ` +
+        'exact-read bound. Move or remove this checkpoint before reopening Workshop.'
+      );
+    }
+  }
+
   private skip(fileName: string, reason: string): void {
     this.log.appendLine(`[WorkshopSessionStore] Skipped ${fileName}: ${reason}`);
   }
@@ -856,6 +915,13 @@ function compareSummariesNewestFirst(left: WorkshopStoredSessionSummary, right: 
 function normalizedQuery(query: string | undefined): string | undefined {
   const normalized = query?.trim().toLocaleLowerCase();
   return normalized || undefined;
+}
+
+function formatByteLimit(bytes: number): string {
+  const mebibyte = 1024 * 1024;
+  return bytes % mebibyte === 0
+    ? `${bytes / mebibyte} MiB`
+    : `${bytes.toLocaleString('en-US')} bytes`;
 }
 
 function summaryMatches(summary: WorkshopStoredSessionSummary, query: string): boolean {

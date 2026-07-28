@@ -22,6 +22,9 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   WORKSHOP_TODO_BOUNDS
 } from '@/application/services/workshop/WorkshopSessionLimits';
+import {
+  MAXIMUM_PERSISTED_JSON_DEPTH
+} from '@/application/services/workshop/persistedJson';
 import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
@@ -837,7 +840,12 @@ function jsonObjectAt(value: unknown, path: string): void {
  * An `undefined` ARRAY ITEM is a different matter and stays refused: JSON has no
  * hole, so `JSON.stringify` writes `null` there, silently changing the data.
  */
-function assertJsonValue(value: unknown, path: string): void {
+function assertJsonValue(value: unknown, path: string, depth = 0): void {
+  if (depth > MAXIMUM_PERSISTED_JSON_DEPTH) {
+    throw new Error(
+      `${path} exceeds the maximum JSON nesting depth of ${MAXIMUM_PERSISTED_JSON_DEPTH}.`
+    );
+  }
   if (
     value === null
     || typeof value === 'string'
@@ -850,7 +858,9 @@ function assertJsonValue(value: unknown, path: string): void {
     return;
   }
   if (Array.isArray(value)) {
-    value.forEach((item, index) => assertJsonValue(item, `${path}[${index}]`));
+    value.forEach((item, index) =>
+      assertJsonValue(item, `${path}[${index}]`, depth + 1)
+    );
     return;
   }
   if (value === undefined) {
@@ -862,7 +872,7 @@ function assertJsonValue(value: unknown, path: string): void {
     if (nested === undefined) {
       continue;
     }
-    assertJsonValue(nested, `${path}.${key}`);
+    assertJsonValue(nested, `${path}.${key}`, depth + 1);
   }
 }
 
