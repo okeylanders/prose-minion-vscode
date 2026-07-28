@@ -19,7 +19,7 @@
   - [Workshop Living Room Chronicle and Episodic Persona Memory](2026-07-18-workshop-living-room-chronicle-and-episodic-memory.md)
   - [Workshop persona authoring guide](../../packages/core/resources/system-prompts/workshop-personas/README.md)
   - [Workshop Relational Depth feature](../../.todo/features/feature-workshop-relational-depth/README.md)
-  - [Workshop Writer Profile feature](../../.todo/features/feature-workshop-writer-profile/README.md)
+  - [Workshop Writer Profile feature](../../.todo/archive/features/feature-workshop-writer-profile/README.md)
 
 ## Context
 
@@ -1704,7 +1704,7 @@ tell when personal context is active.
 ### Delivery and evaluation
 
 Delivery and its deterministic validation are tracked in
-[Workshop Writer Profile](../../.todo/features/feature-workshop-writer-profile/README.md).
+[Workshop Writer Profile](../../.todo/archive/features/feature-workshop-writer-profile/README.md).
 The implementation proves that disabled/empty profiles contribute no prompt
 content, frame injection is neutralized, and raw profile strings remain outside
 the session aggregate and tool conversations. Profile removal uses the same

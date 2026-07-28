@@ -3,8 +3,8 @@
 **Status:** Accepted
 **Date:** 2026-07-25
 **Extends:** [ADR 2026-07-14 — Workshop Session Persistence and the Session Browser](2026-07-14-workshop-session-persistence.md); [ADR 2026-07-11 — Workshop Excerpt Revision and Room Memory](2026-07-11-workshop-excerpt-revision-and-room-memory.md)
-**Supersedes:** [Sprint 13A](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/13a-open-chat.md) §4 "The path is reversible in both directions" — reversibility is retained only before the room has a memory, and the mid-conversation transitions it specified are deleted rather than re-bounded. §§1–3 and 5–11 stand unchanged.
-**Epic:** [Assistant as a Full Editor Tab](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md)
+**Supersedes:** [Sprint 13A](../../.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/sprints/13a-open-chat.md) §4 "The path is reversible in both directions" — reversibility is retained only before the room has a memory, and the mid-conversation transitions it specified are deleted rather than re-bounded. §§1–3 and 5–11 stand unchanged.
+**Epic:** [Assistant as a Full Editor Tab](../../.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md)
 **Origin:** [PR #86 review](../pr-reviews/pr-86-open-chat-session-scope-review.md) findings #1–#3, and the writer-facing confusion they were symptoms of.
 
 ## Context

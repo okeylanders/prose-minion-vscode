@@ -3,8 +3,8 @@
 **Status:** Accepted
 **Date:** 2026-07-11
 **Extends:** [ADR 2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](2026-07-09-workshop-persona-hosted-conversations.md)
-**Epic:** [Assistant as a Full Editor Tab](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md)
-**Feature investigation:** [.todo/features/feature-workshop-excerpt-revision-loop](../../.todo/features/feature-workshop-excerpt-revision-loop/README.md)
+**Epic:** [Assistant as a Full Editor Tab](../../.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md)
+**Feature investigation:** [.todo/archive/features/feature-workshop-excerpt-revision-loop](../../.todo/archive/features/feature-workshop-excerpt-revision-loop/README.md)
 
 ## Context
 
@@ -147,7 +147,7 @@ first pinned excerpt. The mid-run replacement guard
 
 ## Implementation
 
-Sprint [06C — Excerpt Revision Loop](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/06c-excerpt-revision-loop.md).
+Sprint [06C — Excerpt Revision Loop](../../.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/sprints/06c-excerpt-revision-loop.md).
 
 Implemented on `sprint/workshop-editor-tab-06c-excerpt-revision-loop`. The
 same transactional delivery path also carries the paste-only editable context

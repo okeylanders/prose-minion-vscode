@@ -3,8 +3,8 @@
 **Status:** Proposed
 **Date:** 2026-07-11
 **Extends:** [ADR 2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](2026-07-09-workshop-persona-hosted-conversations.md); [ADR 2026-07-11 — Workshop Excerpt Revision and Room Memory](2026-07-11-workshop-excerpt-revision-and-room-memory.md)
-**Epic:** [Assistant as a Full Editor Tab](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md)
-**Feature investigation:** [.todo/features/feature-workshop-persona-guest-sidecars](../../.todo/features/feature-workshop-persona-guest-sidecars/README.md)
+**Epic:** [Assistant as a Full Editor Tab](../../.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md)
+**Feature investigation:** [.todo/archive/features/feature-workshop-persona-guest-sidecars](../../.todo/archive/features/feature-workshop-persona-guest-sidecars/README.md)
 
 ## Context
 
@@ -124,5 +124,5 @@ every participant:
 
 ## Implementation
 
-Sprint [09 — Guest Persona Sidecars](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/09-persona-guest-sidecars.md),
+Sprint [09 — Guest Persona Sidecars](../../.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/sprints/09-persona-guest-sidecars.md),
 after Sprint 06C (memory model) and Sprint 07 (unified turn loop).

@@ -396,7 +396,7 @@ It's also a corvid in the less flattering sense: it re-hid one guest's entire st
 
 ## Summary
 
-This is strong work on a genuinely hard problem, and the harshest reviewer on the panel independently attacked the central claim and confirmed it holds — the acknowledgement bug from `.todo/tech-debt/2026-07-26-handoff-cursor-advances-past-undelivered-turns.md` is really closed, and the new `boundaries.test.ts` guard converts the ADR's "one delivery protocol" from prose into an enforced invariant. The audience/delivery/render split is the rare decomposition that earns its keep.
+This is strong work on a genuinely hard problem, and the harshest reviewer on the panel independently attacked the central claim and confirmed it holds — the acknowledgement bug from `.todo/archive/tech-debt/2026-07-26-handoff-cursor-advances-past-undelivered-turns.md` is really closed, and the new `boundaries.test.ts` guard converts the ADR's "one delivery protocol" from prose into an enforced invariant. The audience/delivery/render split is the rare decomposition that earns its keep.
 
 Two things want attention before merge. The join snapshot reusing the incremental-delta filter is a real behavioral defect with a verified reproduction and no test coverage at all — a re-invited guest is handed a conversation with her own half removed and a frame that reports nothing was omitted. And three reviewers independently landed on the same four lines of `commit()`: the head-jump is safe today, but it contradicts the ADR's own wording and depends entirely on an invariant named nowhere near it. Neither is a rewrite; both are small, surgical, and the tests to lock them in are obvious.
 

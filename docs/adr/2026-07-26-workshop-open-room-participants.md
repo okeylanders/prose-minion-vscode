@@ -3,7 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-07-26
 **Extends:** [ADR 2026-07-11 — Workshop Guest Persona Sidecars](2026-07-11-workshop-guest-persona-sidecars.md), [ADR 2026-07-24 — The Workshop Room Ledger and Delivery Offsets](2026-07-24-workshop-room-ledger-and-delivery-offsets.md), and [ADR 2026-07-25 — Workshop Session Scope Is Immutable After Conversation Starts](2026-07-25-workshop-scope-immutability.md)
-**Implementing sprint:** [Sprint 13D_2 — Open Room Participants](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/13d_2-open-room-participants.md)
+**Implementing sprint:** [Sprint 13D_2 — Open Room Participants](../../.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/sprints/13d_2-open-room-participants.md)
 
 ## Context
 

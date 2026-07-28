@@ -407,7 +407,7 @@ afterward.
 
 ### 🟠 High — The divergence landed in a new section, not the one the ADR named [🎯 Consensus]
 
-[`13a-open-chat.md:191`](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/13a-open-chat.md#L191)
+[`13a-open-chat.md:191`](../../.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/sprints/13a-open-chat.md#L191)
 
 ADR §Consequences is explicit: *"that divergence must be recorded in the sprint's 'Where the comp and
 the product disagreed' section, **as its siblings were**."* That section already exists at line 121 and

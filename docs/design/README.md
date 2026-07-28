@@ -134,7 +134,7 @@ The Save dialog, included-items manifest, Sessions menu, search, Date/Excerpt
 grouping, and rename/duplicate/reveal/delete browser actions are approved
 interaction scope. See the amended
 [session persistence ADR](../adr/2026-07-14-workshop-session-persistence.md)
-and [Sprint 10](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md)
+and [Sprint 10](../../.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md)
 for behavioral truth. Do not hand-edit the synced prototype to erase this
 historical delta; update the remote design and re-pull when its copy catches up.
 
@@ -146,7 +146,7 @@ retained persona conversations; transcript-only restore is reserved for
 degraded recovery). **Resolved at Sprint 14 kickoff (2026-07-26): shipped
 behavior + the ADR remain truth; the note is not ported.** Update the remote
 design and re-pull when its copy catches up — see
-[Sprint 14](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/14-design-catchup-release-candidate.md).
+[Sprint 14](../../.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/sprints/14-design-catchup-release-candidate.md).
 
 ### Notice-copy reconciliation (2026-07-27)
 

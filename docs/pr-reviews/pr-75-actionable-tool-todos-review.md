@@ -236,7 +236,7 @@ the three 🟠 High fixes, including the panel-consensus UX gap:
 
 ### 🟢 Nit — Sprint checklist still shows the `+` routing item unchecked despite being implemented and tested
 
-`.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/08-actionable-tool-todos.md:64` — The only unchecked UI item, yet the same diff's Kickoff Implementation Record says "The `+` routing bug itself is fixed" and ships the test + wiring. Likely deliberate: what shipped (focus the Context Brief) is narrower than the literal task text ("Context Selector / project-file browser"), which the clarifications defer. Worth confirming that reading rather than the box simply being missed.
+`.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/sprints/08-actionable-tool-todos.md:64` — The only unchecked UI item, yet the same diff's Kickoff Implementation Record says "The `+` routing bug itself is fixed" and ships the test + wiring. Likely deliberate: what shipped (focus the Context Brief) is narrower than the literal task text ("Context Selector / project-file browser"), which the clarifications defer. Worth confirming that reading rather than the box simply being missed.
 
 ### 🟢 Nit — "Add"/"Add all" stay clickable on stale-excerpt turns; rejection surfaces as an error toast [🎯 Consensus]
 

@@ -6,9 +6,9 @@
 **Supersedes:**
 [ADR 2026-07-11 — Workshop Guest Persona Sidecars](2026-07-11-workshop-guest-persona-sidecars.md) §3 "Isolated after join; cursor-based catch-up in both directions" — the catch-up directions and cursor semantics are restated here; §§1, 2, 4, 5 stand unchanged.
 [ADR 2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](2026-07-09-workshop-persona-hosted-conversations.md), the direct-tool handoff rule ("…has not yet seen as a bounded, structured handoff") — that path is deleted, not re-bounded.
-**Epic:** [Assistant as a Full Editor Tab](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md)
-**Implementing sprint:** [Sprint 13D — Room Catch-up and Release Polish](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/13d-room-catchup-release-polish.md)
-**Feature investigation:** [Guest-to-Guest Room Catch-Up](../../.todo/features/feature-workshop-guest-room-catchup/README.md)
+**Epic:** [Assistant as a Full Editor Tab](../../.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md)
+**Implementing sprint:** [Sprint 13D — Room Catch-up and Release Polish](../../.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/sprints/13d-room-catchup-release-polish.md)
+**Feature investigation:** [Guest-to-Guest Room Catch-Up](../../.todo/archive/features/feature-workshop-guest-room-catchup/README.md)
 
 ## Context
 

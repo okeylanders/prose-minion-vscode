@@ -3,7 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-07-09
 **Extends:** [ADR 2026-07-03 — Assistant as a Full Editor Tab](2026-07-03-assistant-editor-tab.md)
-**Epic:** [Assistant as a Full Editor Tab](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md)
+**Epic:** [Assistant as a Full Editor Tab](../../.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md)
 
 ## Context
 

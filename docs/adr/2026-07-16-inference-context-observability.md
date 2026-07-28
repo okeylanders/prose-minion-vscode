@@ -3,8 +3,8 @@
 **Status:** Accepted
 **Date:** 2026-07-16
 **Extends:** [ADR 2026-06-16 — Monorepo Ports and Adapters](2026-06-16-monorepo-ports-and-adapters.md), [ADR 2026-06-18 — MessageHandler Composition-Root Consolidation](2026-06-18-messagehandler-composition-root-consolidation.md), [ADR 2026-07-10 — Agent-Run Engine and Resource Catalog Policies](2026-07-10-agent-run-engine-and-resource-catalogs.md), [ADR 2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](2026-07-09-workshop-persona-hosted-conversations.md)
-**Epic:** [Assistant as a Full Editor Tab](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md)
-**Implementation:** [Sprint 11B — Context Budget Visibility and Inference Telemetry](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/11b-context-budget-visibility.md)
+**Epic:** [Assistant as a Full Editor Tab](../../.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md)
+**Implementation:** [Sprint 11B — Context Budget Visibility and Inference Telemetry](../../.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/sprints/11b-context-budget-visibility.md)
 
 ## Context
 
@@ -202,4 +202,4 @@ successful provider response commits a fresh reading.
 
 ## Implementation
 
-[Sprint 11B — Context Budget Visibility and Inference Telemetry](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/11b-context-budget-visibility.md), executed after Sprint 11 and before Sprint 12.
+[Sprint 11B — Context Budget Visibility and Inference Telemetry](../../.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/sprints/11b-context-budget-visibility.md), executed after Sprint 11 and before Sprint 12.

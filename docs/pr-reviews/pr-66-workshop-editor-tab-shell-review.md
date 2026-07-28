@@ -270,7 +270,7 @@ Traced the worst case end to end: `WorkshopApp` throws synchronously during firs
 
 ### 🟡 Standard — sprint doc's own Branch field is stale — contradicted by a doc this same PR adds
 
-`.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/01-shell.md:5` — `**Branch**: `feat/workshop-s1-shell``
+`.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/sprints/01-shell.md:5` — `**Branch**: `feat/workshop-s1-shell``
 
 Actual head branch is `claude/sprint-01-workshop-editor-tab-u49fd5` — and this PR's own new memory-bank note records that correctly. The diff edits 30+ lines of this exact sprint doc — ticking 8 boxes, adding a whole Verification section — without touching the stale header, so the sprint doc now disagrees with its sibling introduced in the same commit. Whoever opens the sprint doc to find the branch gets sent to one that was never pushed.
 

@@ -165,7 +165,7 @@ sidebar and Workshop is acceptable in alpha.
 
 Implementation split the original dense middle sprint and later added the
 persona-hosted conversation expansion. The live seven-sprint sequence is tracked
-in the [epic plan](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md); the three steps below preserve the
+in the [epic plan](../../.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md); the three steps below preserve the
 original decision record.
 
 Each sprint independently shippable behind the command:

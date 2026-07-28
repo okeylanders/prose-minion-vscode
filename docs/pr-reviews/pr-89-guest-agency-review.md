@@ -72,7 +72,7 @@ trims **oldest-first**, so a windowed or over-budget exchange is silently
 consumed rather than deferred — contradicting the invariant `commitHostHandoff`
 documents from PR #72 review #1. `WorkshopPromptBuilder.ts` and
 `commitHostGuestHandoff()` are untouched by this branch. Filed as
-[`.todo/tech-debt/2026-07-26-handoff-cursor-advances-past-undelivered-turns.md`](../../.todo/tech-debt/2026-07-26-handoff-cursor-advances-past-undelivered-turns.md)
+[`.todo/archive/tech-debt/2026-07-26-handoff-cursor-advances-past-undelivered-turns.md`](../../.todo/archive/tech-debt/2026-07-26-handoff-cursor-advances-past-undelivered-turns.md)
 and pointed at 13D, which replaces this machinery with a single offset-advance
 call site.
 

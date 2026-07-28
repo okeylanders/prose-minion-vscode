@@ -5,6 +5,208 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Workshop beta
+
+### Overview
+
+This release candidate introduces **Workshop · beta**, a second Prose Minion
+surface built for sustained manuscript work in a full VS Code editor tab.
+Instead of treating every analysis as a one-shot sidebar action, Workshop keeps
+the active excerpt, project context, tool evidence, tasks, and a persona-hosted
+conversation together in one durable room.
+
+**Integration branch:** `epic/workshop-editor-tab`
+
+**Integration PR:** [#95](https://github.com/okeylanders/prose-minion-vscode/pull/95)
+
+**Incremental review series:** PRs #66–#94
+
+**Release state:** Feature-locked beta release candidate; version assigned by
+the later Marketplace release workflow.
+
+### Added — Workshop surface and writing loop
+
+- **Dedicated editor-tab surface** — `WorkshopPanelProvider` owns one
+  reveal-or-create `WebviewPanel`; the shared webview bundle selects
+  `WorkshopApp` from its surface marker while the existing sidebar continues
+  rendering `App`.
+- **Two honest session scopes** — writers may begin with a bounded passage or
+  start an open-room conversation without pretending the personas have read an
+  excerpt. Once a room has memory, its scope cannot be silently rewritten.
+- **Multi-turn writing loop** — retained conversations support follow-ups,
+  streaming, cancellation, quick actions, editor-selection seeding,
+  choose-from-project intake, and excerpt revision without silently discarding
+  host memory.
+- **Source-aware excerpt revisions** — excerpt provenance, versioned revision
+  frames, reread verification, and immutable session-scope guards make it clear
+  what text the room has actually seen.
+
+### Added — Writers' Room personas and participants
+
+- **Twelve deterministic hosts** — Jill plus Sister Agnes, Cliff, Dev, Edna,
+  Felix, Harper, Margot, Penny, Quinn, Theo, and Wren ship as packaged persona
+  resources with authored specialties, expression profiles, focus icons, and
+  read-only configuration schematics.
+- **Persona selection and guest agency** — writers can choose a host, invite
+  bounded persona guests, dismiss or re-invite them, and address any live
+  participant from the rail without changing the room's permanent host.
+- **Truthful shared-room delivery** — one ordered room ledger plus
+  participant-owned delivery offsets supplies bounded, speaker-labeled catch-up
+  exactly once after a successful turn. Failed, cancelled, stale, private, or
+  uncommitted work does not advance a reader.
+- **Participant identity** — host, guests, and instruments retain explicit
+  attribution, focus icons, availability, audience labels, and stable identity
+  treatments throughout the thread and context display.
+
+### Added — tools, capabilities, and evidence
+
+- **Fourteen Workshop tools** — every writing tool runs in an isolated,
+  stateless sidecar against the current excerpt and context. The exact report
+  enters the visible thread before persona synthesis.
+- **Direct instrument conversations** — writers may address a retained tool
+  sidecar directly. The UI states that these follow-ups are private to the
+  writer and instrument; persona voice, profile, and conversation controls do
+  not apply.
+- **Host handoff** — unseen direct-tool exchanges are delivered to the host as
+  bounded evidence on the next successful host turn rather than through hidden
+  relay model calls.
+- **Persona-callable capabilities** — a closed XML/typed boundary permits
+  bounded dictionary lookup and generation, focused local analysis,
+  project-resource catalog/search/read operations, and guide access. Inputs,
+  rounds, calls, results, paths, and prompt contribution are independently
+  limited.
+- **Run-local analysis scope** — a persona can choose an explicit subject and
+  inherited or replacement context for one analysis without mutating standing
+  room context.
+- **Optional web research** — an Advanced setting enables live research and
+  citation pills. It is disabled by default and carries explicit
+  OpenRouter/search-provider privacy and cost guidance.
+- **Actionable findings and tasks** — attributable tool findings and host
+  proposals can be promoted into persistent todo items with bounded evidence
+  visible to later persona turns.
+
+### Added — context and conversation controls
+
+- **Typed standing context** — multiple manual-text and project-file
+  attachments replace the original single context brief. Attachments have
+  provenance, size accounting, edit/remove actions, prompt framing, and durable
+  session representation.
+- **Context Selector and wizard** — writers can browse configured project
+  categories, search bounded resource catalogs, attach files deliberately, or
+  run the existing Context lane through Workshop without giving the webview raw
+  filesystem access.
+- **One-shot message attachments** — a writer can attach bounded project
+  resources to the next message without silently promoting them into standing
+  context.
+- **Context visibility** — the Context Bar and source manifest distinguish the
+  active conversation's retained context from per-call and cumulative processed
+  usage, including honest provider-compression unknowns.
+- **Conversation Controller** — Analyze, Balanced, and Converse interaction
+  modes combine with Subtle, Full, and Amplified persona expression and
+  Reserved, Attuned, and Reflective relational depth.
+- **Writer Profile** — an optional, bounded global profile supplies a preferred
+  form of address and writer-authored context. It is inspectable and removable,
+  never inferred, never copied into workspace session JSON, and interpreted
+  only within the selected relational-depth policy.
+
+### Added — durable session lifecycle
+
+- **Atomic workspace persistence** — `current.json` is the rolling checkpoint;
+  named checkpoint identities remain stable while titles and contents update.
+  Temporary-file replacement prevents torn writes.
+- **Exact conversation restoration** — product aggregate state and retained
+  provider-neutral conversation archives are captured together, then imported
+  under fresh runtime IDs with current system prompts after restart.
+- **Degraded recovery** — corruption in one retained participant history
+  degrades that conversation locally while preserving the excerpt, transcript,
+  tasks, participants, and healthy archives.
+- **Session browser** — bounded search/listing plus compact summary indexes
+  support Save, Save as new, Open, New, Rename, Duplicate, Reveal, and Delete
+  without parsing every long transcript for ordinary browsing.
+- **Lifecycle restoration** — a dedicated `onWebviewPanel` activation event
+  revives Workshop tabs without requiring the sidebar to activate the
+  extension first. Shutdown quiesces active runs before the final persistence
+  flush.
+- **Untrusted JSON limits** — exact session reads and writes share a 25 MiB
+  ceiling, serialized JSON is capped at 100 nesting levels, and boundary tests
+  prove levels 99/100 round-trip while 101 fails before persistence.
+
+### Added — release-candidate experience
+
+- **Carded intake rail and sheet browsers** — excerpt/context sections,
+  participant controls, categorized Tools, the coming-soon Conversation
+  Widgets preview, and the Conversation Controller follow the final design
+  system.
+- **Versioned beta notice** — a six-part illustrated tour explains project
+  setup, hosts and guests, conversation controls, instruments, agent
+  capabilities, and optional web research. Suppression is explicit,
+  machine-scoped, and content-versioned.
+- **Model catalog refresh** — added Claude Opus 5, Claude Opus 5 Fast, Kimi K3,
+  Gemini 3.6 Flash, and Fugu Ultra without replacing existing options or
+  changing defaults.
+
+### Architecture and safety
+
+- **One composition root** — all Workshop services, persistence, capabilities,
+  and platform adapters are assembled in `apps/vscode-extension/src/extension.ts`.
+  Providers receive the shared `CoreServices`/`Platform` bundles and construct
+  only their per-webview `MessageHandler`.
+- **Host-agnostic core preserved** — `packages/core` imports no `vscode`; file,
+  workspace, shell, settings, secrets, editor, and log behavior crosses
+  explicit platform ports.
+- **Shared agent-run engine** — Workshop and sidebar assistants share one
+  cancellation-aware run lifecycle, capability loop, usage aggregation,
+  resource-request gate, and tolerant structured-response parser.
+- **Host-side aggregate ownership** — `WorkshopSessionService` owns committed
+  room state and invariants. React receives typed snapshots; it does not own
+  conversation IDs, persistence transactions, or participant delivery state.
+- **Prompt and content boundaries** — trusted frames neutralize reserved
+  delimiters; resource reads remain allowlisted and path-contained; Markdown is
+  sanitized with executable/image-beacon surfaces removed; prompt, excerpt,
+  context, capability, catch-up, search, and persistence inputs are bounded.
+- **Architecture witnesses** — tests protect the core/VS Code import boundary,
+  sole composition root, serializer path, session assembly, resource staging,
+  prompt-budget constants, room materialization, and delivery-offset ownership.
+
+### Fixed and hardened during incremental review
+
+- Corrected first-continuation generation capture, stale/cancelled completion
+  handling, streaming capability parsing, usage accounting, and nested status
+  reporting.
+- Hardened excerpt replacement, scope immutability, standing-context retention,
+  run-local inputs, guest adoption, participant ownership, room delivery
+  retries, and cursor advancement.
+- Added atomic session open/new rollback, unreadable-checkpoint protection,
+  immutable named paths, save-status diagnostics, and corruption-local restore.
+- Stabilized participant/composer layout, modal focus return, reduced-motion
+  behavior, startup-notice privacy/redaction, citation persistence, and hidden
+  panel state replay.
+
+### Verification
+
+- GitHub Actions passed on the release-candidate head before PR #95 opened.
+- `npm test -- --runInBand`: **139 suites / 1,518 tests / 1 snapshot passed**.
+- `npm run typecheck`: core, webview, and extension TypeScript projects passed.
+- Changed-file lint passed; repository-wide lint retains its warning-only
+  baseline with no errors.
+- `npm run build`: extension and webview production bundles compiled; resource
+  staging and bundle sentinel verification passed.
+- `git diff --check`: passed.
+
+### Accepted post-beta follow-up
+
+- Replace full-snapshot autosave rewriting with an incremental/compaction
+  strategy for very long sessions.
+- Split the largest Workshop coordinators and UI controllers along the named
+  responsibility seams before substantial new feature growth.
+- Introduce application-owned ports for remaining concrete infrastructure
+  dependencies and normalize missing-file errors across filesystem adapters.
+- Continue qualitative persona calibration and relational-depth evaluation.
+- Revisit web-research session budgets/canonical citation contracts before
+  expanding it beyond opt-in beta usage.
+- Conversation Widgets, apply-to-draft, the branch board, and task sidecar
+  conversations remain separately tracked future work.
+
 ## [2.0.3] - 2026-07-13
 
 ### Overview

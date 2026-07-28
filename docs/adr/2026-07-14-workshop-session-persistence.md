@@ -6,8 +6,8 @@ approved Workshop design
 **Date:** 2026-07-14
 **Amended:** 2026-07-23
 **Extends:** [ADR 2026-07-09 — Workshop Persona Host, Tool Sidecars, and Capabilities](2026-07-09-workshop-persona-hosted-conversations.md); [ADR 2026-07-11 — Workshop Excerpt Revision and Room Memory](2026-07-11-workshop-excerpt-revision-and-room-memory.md); [ADR 2026-07-20 — Workshop Persona Interaction Modes and Expression Profiles](2026-07-20-workshop-persona-interaction-modes-and-expression-profiles.md)
-**Epic:** [Assistant as a Full Editor Tab](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md)
-**Feature investigation:** [.todo/features/feature-workshop-session-persistence](../../.todo/features/feature-workshop-session-persistence/README.md)
+**Epic:** [Assistant as a Full Editor Tab](../../.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/epic-workshop-editor-tab-2026-07-03.md)
+**Feature investigation:** [.todo/archive/features/feature-workshop-session-persistence](../../.todo/archive/features/feature-workshop-session-persistence/README.md)
 **Approved interaction design:** [Workshop editor tab](../design/Prose%20Minion%20-%20Assistant%20Tab.html)
 
 ## Context
@@ -338,5 +338,5 @@ are the extension points for the Conversation Widgets epic.
 
 ## Implementation
 
-[Sprint 10: Session Persistence, Save, and the Session Browser](../../.todo/epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md),
+[Sprint 10: Session Persistence, Save, and the Session Browser](../../.todo/archive/epics/epic-workshop-editor-tab-2026-07-03/sprints/10-session-persistence.md),
 executed after the Workshop aggregate and prompt boundary stabilize.
