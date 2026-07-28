@@ -20,8 +20,8 @@ act before merge · **Deferred** = real issue, safe to punt for a stated reason 
 | 3 | 🟠 High | The "cannot half-land" test never checks the PNG exists on disk | Cal, Oliver, Blake | 🎯🎯 Strong | **Addressed** — set equality against the folder + a size floor, both directions |
 | 4 | 🟡 Standard | A broken `<img>` leaves no trail — bubble-phase error handler structurally cannot see it, no `onError` anywhere | Oliver, Blake | 🎯 | **Addressed** — capture-phase listener posts the failed asset; verified firing in Chromium |
 | 5 | 🟡 Standard | Trailing-period bug (`guideLink.trail`) has no regression test; the API shape invites the bug | Parker, Cal | 🎯 | **Addressed** — renderer owns spacing; both sentences pinned by full-`textContent` assertions |
-| 6 | 🟡 Standard | Four shipped PNGs oversampled 2–2.3× — ~600 KB recoverable by resize, no visible quality loss | Tim | — | **Open** — no longer blocked on #1 now that it was resolved by redaction; mechanical, own commit. Target widths recorded below |
-| 7 | 🟡 Standard | All 10 shipped PNGs are byte-identical duplicates of `docs/design/uploads/` — repo carries 1.6 MB twice, permanently | Tim | — | **Open** — redaction kept the copies identical rather than splitting them, so the duplication stands; repo hygiene, own commit |
+| 6 | 🟡 Standard | Four shipped PNGs oversampled 2–2.3× — ~600 KB recoverable by resize, no visible quality loss | Tim | — | **Deferred** — package-size optimization with no meaningful user impact at the current scale; not worth acting on before merge |
+| 7 | 🟡 Standard | All 10 shipped PNGs are byte-identical duplicates of `docs/design/uploads/` — repo carries 1.6 MB twice, permanently | Tim | — | **Deferred** — repository hygiene only, with no runtime or package-size impact; not worth acting on before merge |
 | 8 | 🟡 Standard | Comp deviation #2 (figure widths) has no doc entry and no test, unlike deviation #1 | Bria | — | **Addressed** — README "Notice-layout reconciliation" + a test pinning 180/340 and both ratios |
 | 9 | 🟡 Standard | PR description caveat "typecheck was already red" does not reproduce — it passes clean | Blake | — | **Addressed** — Blake was right; caveat was an artifact of an `npx`-fetched TS 7.x before `npm ci`. Removed from the PR body |
 | 10 | 🟡 Standard | Media well scroll offset survives a page change it should reset for | Sam | — | **Addressed** — `key` on the scroller, so each page opens at the top |
@@ -65,12 +65,12 @@ remaining items:
 
 ### Notes on the deferred asset items (#6, #7)
 
-Both are real. They were entangled with a re-shoot; redaction untangles them, so
-both are simply open — cheap, mechanical, and safe to take in their own commit:
+Both are real but intentionally deferred: neither has meaningful user impact at
+the current scale, and neither is worth holding the PR open for.
 
 - Redaction (see #1) leaves all four of Tim's oversampled files in place, so
-  this is still open and now decoupled from #1 — a resize pass is safe to do
-  whenever. Targets: roughly **2× the rendered width**,
+  a future resize pass remains safe and mechanical. Targets: roughly **2× the
+  rendered width**,
   `vscode-open-folder` ≈ **580px** (it renders ~290px effective after the
   161.3% crop), and the three `controller-*` tabs ≈ **336px** each. For contrast,
   `project-layout` and `settings-resource-locations` are already correct at their
