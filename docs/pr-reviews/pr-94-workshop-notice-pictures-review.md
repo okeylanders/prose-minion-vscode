@@ -15,13 +15,13 @@ act before merge · **Deferred** = real issue, safe to punt for a stated reason 
 
 | # | Sev | Finding | Reviewers | Consensus | Status |
 |---|-----|---------|-----------|-----------|--------|
-| 1 | 🟠 High | Shipped screenshots captured against the live daily-driver setup — manuscript working title + OpenRouter balance | Patricia | — | **Open — Okey** re-shooting against the template fixture |
+| 1 | 🟠 High | Shipped screenshots captured against the live daily-driver setup — manuscript working title + OpenRouter balance | Patricia | — | **Partially addressed** — manuscript title destructively redacted in *both* committed copies, pinned by `noticeScreenshotRedaction.test.ts`. **Balance intentionally left** (Okey's call: not worth acting on). See note below |
 | 2 | 🟠 High | `WorkshopConfigureGuide` hand-copies the shell's focus/Escape effect — and the two managers fight, jumping focus out of the modal on every guide round trip | Marcus, Parker, Stan, Sam | 🎯🎯 Strong | **Addressed** — extracted to `useOverlayDismiss`; both overlays consume it, and an overlay handoff now leaves focus alone entirely |
 | 3 | 🟠 High | The "cannot half-land" test never checks the PNG exists on disk | Cal, Oliver, Blake | 🎯🎯 Strong | **Addressed** — set equality against the folder + a size floor, both directions |
 | 4 | 🟡 Standard | A broken `<img>` leaves no trail — bubble-phase error handler structurally cannot see it, no `onError` anywhere | Oliver, Blake | 🎯 | **Addressed** — capture-phase listener posts the failed asset; verified firing in Chromium |
 | 5 | 🟡 Standard | Trailing-period bug (`guideLink.trail`) has no regression test; the API shape invites the bug | Parker, Cal | 🎯 | **Addressed** — renderer owns spacing; both sentences pinned by full-`textContent` assertions |
-| 6 | 🟡 Standard | Four shipped PNGs oversampled 2–2.3× — ~600 KB recoverable by resize, no visible quality loss | Tim | — | **Deferred → folded into #1** — the re-shoot replaces these four files, so resizing now is thrown away. Target widths recorded below |
-| 7 | 🟡 Standard | All 10 shipped PNGs are byte-identical duplicates of `docs/design/uploads/` — repo carries 1.6 MB twice, permanently | Tim | — | **Deferred → dissolved by #1** — scrubbed shipped shots will no longer be byte-identical to the comp's live-setup originals; see note below |
+| 6 | 🟡 Standard | Four shipped PNGs oversampled 2–2.3× — ~600 KB recoverable by resize, no visible quality loss | Tim | — | **Open** — no longer blocked on #1 now that it was resolved by redaction; mechanical, own commit. Target widths recorded below |
+| 7 | 🟡 Standard | All 10 shipped PNGs are byte-identical duplicates of `docs/design/uploads/` — repo carries 1.6 MB twice, permanently | Tim | — | **Open** — redaction kept the copies identical rather than splitting them, so the duplication stands; repo hygiene, own commit |
 | 8 | 🟡 Standard | Comp deviation #2 (figure widths) has no doc entry and no test, unlike deviation #1 | Bria | — | **Addressed** — README "Notice-layout reconciliation" + a test pinning 180/340 and both ratios |
 | 9 | 🟡 Standard | PR description caveat "typecheck was already red" does not reproduce — it passes clean | Blake | — | **Addressed** — Blake was right; caveat was an artifact of an `npx`-fetched TS 7.x before `npm ci`. Removed from the PR body |
 | 10 | 🟡 Standard | Media well scroll offset survives a page change it should reset for | Sam | — | **Addressed** — `key` on the scroller, so each page opens at the top |
@@ -34,23 +34,51 @@ act before merge · **Deferred** = real issue, safe to punt for a stated reason 
 | 17 | 🟢 Nit | "Fill in one glob per field" — three of eight rows have two globs | Bria | — | **Addressed** — now "Fill in the fields with globs", body says when to comma-separate |
 | 22 | 🟠 High | *Found while fixing #4:* the shell's pre-existing error bridge silently stopped forwarding once React booted — `acquireVsCodeApi()` throws on the second call and its `try/catch` swallowed it | — (Ada, prompted by Oliver) | — | **Addressed** — shell acquires once into `window.__pmVsCodeApi`; `getVSCodeApi()` prefers that handle |
 
+### Note on #1 — redaction instead of re-shoot
+
+Resolved by redacting rather than re-shooting, which changes the shape of the
+remaining items:
+
+- **The manuscript title is gone from both copies.** It sat in
+  `vscode-open-folder.png` *and*, byte-identically, in
+  `docs/design/uploads/Screenshot 2026-07-27 at 12.06.02 PM.png` — that folder is
+  as public as the `.vsix`, so redacting only the shipped asset would have left
+  the title one directory away. The band is mosaicked then blurred (a Gaussian
+  alone can be partly inverted for known text; a coarse mosaic cannot), verified
+  unreadable at full resolution, and the modal still renders with call-out 1
+  landing on "Open Folder…".
+- **The `$1.09` balance stays.** Raised and declined — it's a trivial figure on
+  Okey's own account, and unlike the title it isn't tied to unpublished work.
+  Recorded here so the decision is visible rather than looking like an oversight.
+- **The remote design project still holds the unredacted original**, so the most
+  likely future edit to that file is a re-pull that silently restores the title.
+  Patricia's finding therefore got a test, not a paragraph — Sensei's Lesson 5,
+  applied to the one file where it had teeth.
+- Also worth stating plainly: the unredacted bytes were already committed and
+  pushed in `5d9b109`, and git does not forget. Redaction stops this shipping in
+  the package and makes it the version anyone reads from here on; it does not
+  retroactively un-disclose the earlier commit.
+- **Other eight shipped shots audited** while in there, since the review named
+  only two. `controller-about-you.png` was the one worth checking — it shows the
+  writer-profile fields — and it holds demo data ("Emma", "hobby fiction
+  writer"), not real identity. The rest are product chrome. No further action.
+
 ### Notes on the deferred asset items (#6, #7)
 
-Both are real, and both are **entangled with #1** in a way that makes acting now
-wasteful rather than thorough:
+Both are real. They were entangled with a re-shoot; redaction untangles them, so
+both are simply open — cheap, mechanical, and safe to take in their own commit:
 
-- Re-shooting against the template fixture **replaces** all four of Tim's
-  oversampled files, so a resize pass today is thrown away. What survives is the
-  measurement — shoot to roughly **2× the rendered width**:
+- Redaction (see #1) leaves all four of Tim's oversampled files in place, so
+  this is still open and now decoupled from #1 — a resize pass is safe to do
+  whenever. Targets: roughly **2× the rendered width**,
   `vscode-open-folder` ≈ **580px** (it renders ~290px effective after the
   161.3% crop), and the three `controller-*` tabs ≈ **336px** each. For contrast,
   `project-layout` and `settings-resource-locations` are already correct at their
   native widths; leave those alone.
-- The 1.6 MB duplication exists *because* the shipped shots are currently the
-  comp's exact bytes. After #1 they diverge on purpose — the comp keeps the
-  live-setup originals it was drawn from, the `.vsix` ships scrubbed ones — so
-  there is nothing left to deduplicate. Deduping first would create a shared
-  file that #1 then has to split apart again.
+- The 1.6 MB duplication stands: nine of the ten shipped shots are still the
+  comp's exact bytes, and the tenth is now redacted in both places rather than
+  in one. Still repo hygiene only — no user impact — but no longer blocked on
+  anything.
 
 Blake's blast-radius note stands either way: git never shrinks a committed blob,
 so the current bytes are permanent regardless. The win is in not compounding it.

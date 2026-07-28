@@ -113,6 +113,12 @@ styles, scripts, and assets — no build step.
   notice design started *displaying* them, and without them that page opens
   full of broken images. The older reference sets are still left on the remote
   (see "Not pulled").
+  **One file is deliberately NOT byte-identical to the remote:**
+  `Screenshot 2026-07-27 at 12.06.02 PM.png` has its VS Code title bar
+  destructively obscured, because the capture held an unpublished manuscript's
+  working title (PR #94 review). The remote project still has the original, so
+  a re-pull WILL reintroduce it — `noticeScreenshotRedaction.test.ts` fails
+  when that happens. Re-redact, don't revert the test.
 
 ### Persistence reconciliation (2026-07-23)
 
