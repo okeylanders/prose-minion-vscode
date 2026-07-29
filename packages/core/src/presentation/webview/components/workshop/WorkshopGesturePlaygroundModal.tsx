@@ -108,7 +108,8 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
     setGenerateError(null);
     setCommitPending(false);
     setCommitError(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reseed on open only
+    /* Reseed on open only — `opening` is intentionally not a dependency, so a
+       background snapshot refresh cannot clobber in-progress editing. */
   }, [open]);
 
   /* Absorb the generate result for OUR in-flight token; stale tokens drop. */
