@@ -5,6 +5,8 @@
  * rejects wholesale rather than becoming writer state.
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   GesturePlaygroundService,
   buildGestureDirective
@@ -21,14 +23,15 @@ const build = (content: string) => {
     content,
     usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 }
   });
+  const appendLine = jest.fn();
   const manager = {
     getEngine: jest.fn().mockReturnValue({ runInitial })
   } as never;
   const promptLoader = {
     loadPrompts: jest.fn().mockResolvedValue('gesture system prompt')
   } as never;
-  const service = new GesturePlaygroundService(manager, promptLoader, { appendLine: jest.fn() } as never);
-  return { service, runInitial, manager };
+  const service = new GesturePlaygroundService(manager, promptLoader, { appendLine } as never);
+  return { service, runInitial, manager, appendLine };
 };
 
 const request = {
@@ -36,6 +39,24 @@ const request = {
   contextText: 'He set the mug down. She smiled. "Somebody had to."',
   characterNotes: 'Mara — guarded.'
 };
+
+describe('Gesture Playground creative brief', () => {
+  it('asks for divergent, context-mined alternatives instead of an anatomical inventory', () => {
+    const prompt = fs.readFileSync(
+      path.resolve(
+        process.cwd(),
+        'packages/core/resources/system-prompts/gesture-playground/00-gesture-playground.md'
+      ),
+      'utf8'
+    );
+
+    expect(prompt).toContain('dramatic function to');
+    expect(prompt).toContain('Do not default to anatomical headings');
+    expect(prompt).toContain('replacement-ready prose');
+    expect(prompt).toContain('Mine the surrounding context');
+    expect(prompt).toContain('## Quality benchmark');
+  });
+});
 
 describe('GesturePlaygroundService.generateMenu', () => {
   it('runs one call on the widget engine and returns the parsed menu', async () => {
@@ -45,7 +66,13 @@ describe('GesturePlaygroundService.generateMenu', () => {
     expect(runInitial).toHaveBeenCalledWith(expect.objectContaining({
       toolName: 'gesture-playground',
       systemMessage: 'gesture system prompt',
-      userMessage: expect.stringContaining('Target phrase: she smiled')
+      userMessage: expect.stringContaining(
+        'Treat the target as a dramatic function you may rephrase, relocate, or replace'
+      ),
+      options: expect.objectContaining({
+        temperature: 0.9,
+        maxTokens: 10_000
+      })
     }));
     expect(result.menu).toHaveLength(2);
     expect(result.menu[0]).toEqual({
@@ -72,6 +99,18 @@ describe('GesturePlaygroundService.generateMenu', () => {
     expect(runInitial).not.toHaveBeenCalled();
   });
 
+  it('accepts 10,000 surrounding-context characters and rejects one more before any model spend', async () => {
+    const { service, runInitial } = build(goodMenu);
+    const contextCharacters = PROMPT_BUDGETS.workshopWidgets.gestureContextCharacters;
+
+    await expect(service.generateMenu({ ...request, contextText: 'x'.repeat(contextCharacters) }))
+      .resolves.toEqual(expect.objectContaining({ menu: expect.any(Array) }));
+    await expect(service.generateMenu({ ...request, contextText: 'x'.repeat(contextCharacters + 1) }))
+      .rejects.toThrow(`Surrounding context exceeds ${contextCharacters} characters`);
+
+    expect(runInitial).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     ['not JSON at all', 'Here are some ideas: the eyes...'],
     ['not an array', '{"heading":"x","options":["y"]}'],
@@ -95,6 +134,26 @@ describe('GesturePlaygroundService.generateMenu', () => {
   ])('rejects wholesale: %s', async (_label, content) => {
     const { service } = build(content);
     await expect(service.generateMenu(request)).rejects.toThrow(/unusable menu/);
+  });
+
+  it('prints the complete raw response between diagnostic markers when JSON parsing fails', async () => {
+    const malformed = [
+      '[',
+      '  {"heading":"A useful start","options":["first option"]}',
+      '  {"heading":"Missing comma","options":["the failure is down here"]}',
+      ']'
+    ].join('\n');
+    const { service, appendLine } = build(malformed);
+
+    await expect(service.generateMenu(request)).rejects.toThrow(/unusable menu/);
+
+    expect(appendLine).toHaveBeenCalledWith(
+      '[GesturePlaygroundService] --- BEGIN REJECTED MODEL RESPONSE ---'
+    );
+    expect(appendLine).toHaveBeenCalledWith(malformed);
+    expect(appendLine).toHaveBeenCalledWith(
+      '[GesturePlaygroundService] --- END REJECTED MODEL RESPONSE ---'
+    );
   });
 });
 

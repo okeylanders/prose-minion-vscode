@@ -74,7 +74,8 @@ export class GesturePlaygroundService {
         : undefined,
       request.characterNotes.trim().length > 0
         ? `Character notes:\n${request.characterNotes.trim()}`
-        : undefined
+        : undefined,
+      'Build a deliberately varied menu. Treat the target as a dramatic function you may rephrase, relocate, or replace—not a motion you must preserve.'
     ].filter((part): part is string => part !== undefined).join('\n\n');
 
     const result = await engine.runInitial({
@@ -83,8 +84,8 @@ export class GesturePlaygroundService {
       userMessage,
       policy: AGENT_RUN_POLICIES.assistantWithoutResources,
       options: {
-        temperature: 0.8,
-        maxTokens: 2_000,
+        temperature: 0.9,
+        maxTokens: 10_000,
         signal: request.signal
       }
     });
@@ -165,7 +166,14 @@ export class GesturePlaygroundService {
         `[GesturePlaygroundService] Rejected menu wholesale: ${message}`
       );
       this.outputChannel?.appendLine(
-        `[GesturePlaygroundService] Response length: ${content.length}; first 200: ${content.substring(0, 200)}`
+        `[GesturePlaygroundService] Rejected response follows (${content.length} characters):`
+      );
+      this.outputChannel?.appendLine(
+        '[GesturePlaygroundService] --- BEGIN REJECTED MODEL RESPONSE ---'
+      );
+      this.outputChannel?.appendLine(content);
+      this.outputChannel?.appendLine(
+        '[GesturePlaygroundService] --- END REJECTED MODEL RESPONSE ---'
       );
       throw new Error(`The model returned an unusable menu (${message}). Try Generate again.`);
     }

@@ -5483,13 +5483,28 @@
 
 [data-pm-surface="workshop"] .pm-ws-gesture-modal {
   width: min(600px, calc(100vw - 48px));
+  height: min(824px, calc(100vh - 70px));
   max-height: calc(100vh - 70px);
-  overflow-y: auto;
+  padding: 0;
+  overflow: hidden;
 }
 [data-pm-surface="workshop"] .pm-ws-gesture {
-  padding: 22px 24px 18px;
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-head {
+  position: relative;
+  flex: none;
+  padding: 22px 64px 17px 24px;
+  border-bottom: 1px solid var(--pm-border-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 24px 22px;
 }
 [data-pm-surface="workshop"] .pm-ws-gesture-eyebrow {
   display: flex;
@@ -5715,12 +5730,14 @@
   color: #fff;
 }
 [data-pm-surface="workshop"] .pm-ws-gesture-foot {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: 20px;
-  padding-top: 14px;
+  margin: 0;
+  padding: 14px 24px 18px;
   border-top: 1px solid var(--pm-border-soft);
+  background: var(--pm-surface);
 }
 [data-pm-surface="workshop"] .pm-ws-gesture-fnote {
   flex: 1;

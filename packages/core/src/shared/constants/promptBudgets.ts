@@ -132,7 +132,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   workshopThreadArtifacts: { itemsPerMessage: 3, words: 10_000 },
   workshopWidgets: {
     gestureTargetPhraseCharacters: 300,
-    gestureContextCharacters: 4_000,
+    gestureContextCharacters: 10_000,
     gestureCharacterNotesCharacters: 1_500,
     gestureNoteCharacters: 300,
     gestureMenuGroups: 6,

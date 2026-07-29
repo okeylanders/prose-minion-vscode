@@ -59,7 +59,7 @@ describe('WorkshopGesturePlaygroundModal', () => {
     expect((screen.getByRole('button', { name: 'Commit to thread' }) as HTMLButtonElement).disabled)
       .toBe(true);
     // No phrase yet → generate stays disabled too.
-    expect((screen.getByRole('button', { name: /Generate directions/ }) as HTMLButtonElement).disabled)
+    expect((screen.getByRole('button', { name: /Generate alternatives/ }) as HTMLButtonElement).disabled)
       .toBe(true);
   });
 
@@ -68,7 +68,7 @@ describe('WorkshopGesturePlaygroundModal', () => {
     fireEvent.change(screen.getByPlaceholderText('e.g. she smiled'), {
       target: { value: 'she smiled' }
     });
-    fireEvent.click(screen.getByRole('button', { name: /Generate directions/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Generate alternatives/ }));
     expect(props.onGenerate).toHaveBeenCalledWith(expect.objectContaining({
       widgetId: 'gesture-playground',
       targetPhrase: 'she smiled',
@@ -87,6 +87,20 @@ describe('WorkshopGesturePlaygroundModal', () => {
       .toBe('she smiled');
     expect((screen.getByPlaceholderText('Who is this person in this beat?') as HTMLTextAreaElement).value)
       .toBe('Mara — guarded.');
+  });
+
+  it('uses a fixed sheet shell with the editable content in the scrolling center', () => {
+    const { view } = renderModal({ kind: 'clone', config });
+    const dialog = screen.getByRole('dialog');
+    const header = view.container.querySelector('.pm-ws-gesture-head');
+    const body = view.container.querySelector('.pm-ws-gesture-body');
+    const footer = view.container.querySelector('.pm-ws-gesture-foot');
+
+    expect(dialog.classList.contains('pm-ws-modal-sheet')).toBe(true);
+    expect(header?.contains(screen.getByText('Gesture Playground'))).toBe(true);
+    expect(body?.contains(screen.getByPlaceholderText('e.g. she smiled'))).toBe(true);
+    expect(footer?.contains(screen.getByRole('button', { name: 'Commit as new turn' }))).toBe(true);
+    expect(screen.getByRole('button', { name: 'Close Gesture Playground' })).toBeTruthy();
   });
 
   it('re-hydrates the exact prior draft on clone and commits as a new turn', () => {

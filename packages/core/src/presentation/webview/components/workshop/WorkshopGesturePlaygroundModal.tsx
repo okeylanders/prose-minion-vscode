@@ -202,144 +202,150 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
   return (
     <WorkshopModalShell
       open={open}
+      variant="sheet"
       titleId="pm-ws-gesture-title"
       closeLabel="Close Gesture Playground"
       className="pm-ws-gesture-modal"
       onClose={close}
     >
       <div className="pm-ws-gesture">
-        <div className="pm-ws-eyebrow pm-ws-gesture-eyebrow">
-          Widget <span className="pm-ws-sb-railtag pm-ws-sb-railtag-oneshot">one-shot · thread-artifact</span>
+        <header className="pm-ws-gesture-head">
+          <div className="pm-ws-eyebrow pm-ws-gesture-eyebrow">
+            Widget <span className="pm-ws-sb-railtag pm-ws-sb-railtag-oneshot">one-shot · thread-artifact</span>
+          </div>
+          <h2 id="pm-ws-gesture-title">
+            <Icon name="hand" size={17} /> Gesture Playground
+          </h2>
+          <p className="pm-ws-gesture-sub">
+            A menu of creative alternatives for one beat. Play freely —{' '}
+            <b>nothing touches the conversation until you commit</b>.
+          </p>
+
+          {opening.kind === 'seed' && (
+            <div className="pm-ws-gesture-banner pm-ws-gesture-banner-seed">
+              <Icon name="sparkle" size={13} />
+              <span>
+                <b>Recommended and prefilled by {opening.personaLabel}.</b> Everything here is
+                editable — they set the table, you decide what commits.
+              </span>
+            </div>
+          )}
+          {opening.kind === 'clone' && (
+            <div className="pm-ws-gesture-banner pm-ws-gesture-banner-clone">
+              <Icon name="refresh" size={13} />
+              <span>
+                <b>Re-opened from a committed turn.</b> The old chip stays as history — committing
+                again creates a <b>new</b> turn at the head. History is never rewritten.
+              </span>
+            </div>
+          )}
+          <WorkshopModalShell.CloseButton />
+        </header>
+
+        <div className="pm-ws-gesture-body">
+          <label className="pm-ws-gesture-field">
+            <span className="pm-ws-gesture-flabel">Target phrase</span>
+            <input
+              type="text"
+              value={targetPhrase}
+              maxLength={BUDGET.gestureTargetPhraseCharacters}
+              disabled={locked}
+              placeholder="e.g. she smiled"
+              onChange={(event) => setTargetPhrase(event.target.value)}
+            />
+          </label>
+          <label className="pm-ws-gesture-field">
+            <span className="pm-ws-gesture-flabel">Surrounding context <i>optional</i></span>
+            <textarea
+              value={contextText}
+              maxLength={BUDGET.gestureContextCharacters}
+              disabled={locked}
+              rows={3}
+              placeholder="The sentences around the phrase."
+              onChange={(event) => setContextText(event.target.value)}
+            />
+          </label>
+          <label className="pm-ws-gesture-field">
+            <span className="pm-ws-gesture-flabel">
+              Character notes{' '}
+              <i>{opening.kind === 'seed' && opening.seed.characterNotes ? `prefilled by ${opening.personaLabel}` : 'optional'}</i>
+            </span>
+            <textarea
+              value={characterNotes}
+              maxLength={BUDGET.gestureCharacterNotesCharacters}
+              disabled={locked}
+              rows={2}
+              placeholder="Who is this person in this beat?"
+              onChange={(event) => setCharacterNotes(event.target.value)}
+            />
+          </label>
+
+          {generating ? (
+            <button type="button" className="pm-ws-gesture-gen pm-ws-gesture-gen-busy" onClick={cancelGenerate}>
+              One fast model call… (click to cancel)
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={`pm-ws-gesture-gen${menu ? ' pm-ws-gesture-gen-ghost' : ''}`}
+              disabled={locked || targetPhrase.trim().length === 0}
+              onClick={generate}
+            >
+              <Icon name={menu ? 'refresh' : 'sparkle'} size={13} />{' '}
+              {menu ? 'Regenerate' : 'Generate alternatives'}
+            </button>
+          )}
+          {!menu && !generating && (
+            <div className="pm-ws-gesture-seam">
+              deterministic scaffold · one model call, fast tier · commit never re-runs it
+            </div>
+          )}
+          {generateError && <div className="pm-ws-gesture-error" role="alert">{generateError}</div>}
+
+          {menu && (
+            <div className="pm-ws-gesture-menu">
+              {menu.map((group) => (
+                <React.Fragment key={group.heading}>
+                  <div className="pm-ws-gesture-mgh">
+                    <span>{group.heading}</span>
+                    <hr />
+                  </div>
+                  {group.options.map((option) => {
+                    const selected = selections.includes(option);
+                    return (
+                      <button
+                        key={option}
+                        type="button"
+                        className={`pm-ws-gesture-opt${selected ? ' pm-ws-gesture-opt-selected' : ''}`}
+                        aria-pressed={selected}
+                        disabled={locked}
+                        onClick={() => toggleSelection(option)}
+                      >
+                        <span className="pm-ws-gesture-opt-bx" aria-hidden="true">
+                          <Icon name="check" size={10} />
+                        </span>
+                        <span>{option}</span>
+                      </button>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+              <label className="pm-ws-gesture-field">
+                <span className="pm-ws-gesture-flabel">Optional note to the room</span>
+                <input
+                  type="text"
+                  value={note}
+                  maxLength={BUDGET.gestureNoteCharacters}
+                  disabled={locked}
+                  placeholder="e.g. keep it small"
+                  onChange={(event) => setNote(event.target.value)}
+                />
+              </label>
+            </div>
+          )}
+
+          {commitError && <div className="pm-ws-gesture-error" role="alert">{commitError}</div>}
         </div>
-        <h2 id="pm-ws-gesture-title">
-          <Icon name="hand" size={17} /> Gesture Playground
-        </h2>
-        <p className="pm-ws-gesture-sub">
-          A menu of gesture directions for one phrase. Play freely —{' '}
-          <b>nothing touches the conversation until you commit</b>.
-        </p>
-
-        {opening.kind === 'seed' && (
-          <div className="pm-ws-gesture-banner pm-ws-gesture-banner-seed">
-            <Icon name="sparkle" size={13} />
-            <span>
-              <b>Recommended and prefilled by {opening.personaLabel}.</b> Everything here is
-              editable — they set the table, you decide what commits.
-            </span>
-          </div>
-        )}
-        {opening.kind === 'clone' && (
-          <div className="pm-ws-gesture-banner pm-ws-gesture-banner-clone">
-            <Icon name="refresh" size={13} />
-            <span>
-              <b>Re-opened from a committed turn.</b> The old chip stays as history — committing
-              again creates a <b>new</b> turn at the head. History is never rewritten.
-            </span>
-          </div>
-        )}
-
-        <label className="pm-ws-gesture-field">
-          <span className="pm-ws-gesture-flabel">Target phrase</span>
-          <input
-            type="text"
-            value={targetPhrase}
-            maxLength={BUDGET.gestureTargetPhraseCharacters}
-            disabled={locked}
-            placeholder="e.g. she smiled"
-            onChange={(event) => setTargetPhrase(event.target.value)}
-          />
-        </label>
-        <label className="pm-ws-gesture-field">
-          <span className="pm-ws-gesture-flabel">Surrounding context <i>optional</i></span>
-          <textarea
-            value={contextText}
-            maxLength={BUDGET.gestureContextCharacters}
-            disabled={locked}
-            rows={3}
-            placeholder="The sentences around the phrase."
-            onChange={(event) => setContextText(event.target.value)}
-          />
-        </label>
-        <label className="pm-ws-gesture-field">
-          <span className="pm-ws-gesture-flabel">
-            Character notes{' '}
-            <i>{opening.kind === 'seed' && opening.seed.characterNotes ? `prefilled by ${opening.personaLabel}` : 'optional'}</i>
-          </span>
-          <textarea
-            value={characterNotes}
-            maxLength={BUDGET.gestureCharacterNotesCharacters}
-            disabled={locked}
-            rows={2}
-            placeholder="Who is this person in this beat?"
-            onChange={(event) => setCharacterNotes(event.target.value)}
-          />
-        </label>
-
-        {generating ? (
-          <button type="button" className="pm-ws-gesture-gen pm-ws-gesture-gen-busy" onClick={cancelGenerate}>
-            One fast model call… (click to cancel)
-          </button>
-        ) : (
-          <button
-            type="button"
-            className={`pm-ws-gesture-gen${menu ? ' pm-ws-gesture-gen-ghost' : ''}`}
-            disabled={locked || targetPhrase.trim().length === 0}
-            onClick={generate}
-          >
-            <Icon name={menu ? 'refresh' : 'sparkle'} size={13} />{' '}
-            {menu ? 'Regenerate' : 'Generate directions'}
-          </button>
-        )}
-        {!menu && !generating && (
-          <div className="pm-ws-gesture-seam">
-            deterministic scaffold · one model call, fast tier · commit never re-runs it
-          </div>
-        )}
-        {generateError && <div className="pm-ws-gesture-error" role="alert">{generateError}</div>}
-
-        {menu && (
-          <div className="pm-ws-gesture-menu">
-            {menu.map((group) => (
-              <React.Fragment key={group.heading}>
-                <div className="pm-ws-gesture-mgh">
-                  <span>{group.heading}</span>
-                  <hr />
-                </div>
-                {group.options.map((option) => {
-                  const selected = selections.includes(option);
-                  return (
-                    <button
-                      key={option}
-                      type="button"
-                      className={`pm-ws-gesture-opt${selected ? ' pm-ws-gesture-opt-selected' : ''}`}
-                      aria-pressed={selected}
-                      disabled={locked}
-                      onClick={() => toggleSelection(option)}
-                    >
-                      <span className="pm-ws-gesture-opt-bx" aria-hidden="true">
-                        <Icon name="check" size={10} />
-                      </span>
-                      <span>{option}</span>
-                    </button>
-                  );
-                })}
-              </React.Fragment>
-            ))}
-            <label className="pm-ws-gesture-field">
-              <span className="pm-ws-gesture-flabel">Optional note to the room</span>
-              <input
-                type="text"
-                value={note}
-                maxLength={BUDGET.gestureNoteCharacters}
-                disabled={locked}
-                placeholder="e.g. keep it small"
-                onChange={(event) => setNote(event.target.value)}
-              />
-            </label>
-          </div>
-        )}
-
-        {commitError && <div className="pm-ws-gesture-error" role="alert">{commitError}</div>}
 
         <footer className="pm-ws-gesture-foot">
           <span className="pm-ws-gesture-fnote">
