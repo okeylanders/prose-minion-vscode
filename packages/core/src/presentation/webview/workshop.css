@@ -5473,3 +5473,353 @@
   outline: 2px solid var(--pm-accent-hi);
   outline-offset: 2px;
 }
+
+/* ============================================================================
+   Conversation Widgets — Gesture Playground (ADR 2026-07-22, Sprint 01).
+   Ported from the design drop's cw-* classes (docs/design/pm-widgets.css)
+   onto the pm-* token vocabulary. Chips are presentation-only decorations on
+   committed turns; the modal is the pre-commit surface.
+   ========================================================================= */
+
+[data-pm-surface="workshop"] .pm-ws-gesture-modal {
+  width: min(600px, calc(100vw - 48px));
+  max-height: calc(100vh - 70px);
+  overflow-y: auto;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture {
+  padding: 22px 24px 18px;
+  display: flex;
+  flex-direction: column;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-eyebrow {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture h2 {
+  font-size: 18px;
+  font-weight: 650;
+  margin: 0 0 6px;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture h2 svg {
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-sub {
+  font-size: 12.5px;
+  color: var(--pm-muted);
+  line-height: 1.55;
+  margin: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-sub b {
+  color: var(--pm-text-2);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-banner {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 11.5px;
+  line-height: 1.55;
+  border-radius: 8px;
+  padding: 8px 11px;
+  margin-top: 14px;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-banner svg {
+  flex: none;
+  margin-top: 1px;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-banner-seed {
+  color: var(--pm-accent-hi);
+  border: 1px solid rgba(224, 103, 58, 0.35);
+  background: var(--pm-accent-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-banner-clone {
+  color: var(--pm-amber);
+  border: 1px solid rgba(226, 178, 74, 0.35);
+  background: rgba(226, 178, 74, 0.07);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-field {
+  display: block;
+  margin-top: 13px;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-flabel {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pm-dim);
+  margin-bottom: 6px;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-flabel i {
+  color: var(--pm-faint);
+  border: 1px solid var(--pm-border-soft);
+  border-radius: 999px;
+  padding: 1px 7px;
+  letter-spacing: 0.05em;
+  text-transform: none;
+  font-size: 9.5px;
+  font-style: normal;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-field input,
+[data-pm-surface="workshop"] .pm-ws-gesture-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  border-radius: 8px;
+  color: var(--pm-text);
+  font-family: var(--pm-sans);
+  font-size: 12.5px;
+  padding: 8px 10px;
+  outline: none;
+  resize: vertical;
+  line-height: 1.55;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-field input:focus,
+[data-pm-surface="workshop"] .pm-ws-gesture-field textarea:focus {
+  border-color: var(--pm-accent);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-gen {
+  margin-top: 15px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 36px;
+  border-radius: 9px;
+  background: linear-gradient(180deg, var(--pm-accent-hi), var(--pm-accent-lo));
+  border: 1px solid var(--pm-accent-lo);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-gen:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-gen:disabled {
+  filter: saturate(0.3) brightness(0.65);
+  cursor: not-allowed;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-gen-busy {
+  filter: saturate(0.35) brightness(0.8);
+  cursor: wait;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-gen-ghost {
+  width: auto;
+  height: 28px;
+  padding: 0 11px;
+  margin: 15px 0 0;
+  align-self: flex-start;
+  background: transparent;
+  border: 1px solid var(--pm-border);
+  color: var(--pm-dim);
+  font-weight: 500;
+  font-size: 11.5px;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-gen-ghost:hover:not(:disabled) {
+  color: var(--pm-text-2);
+  border-color: var(--pm-border-2);
+  filter: none;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-seam {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  color: var(--pm-faint);
+  text-align: center;
+  margin-top: 7px;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-error {
+  margin-top: 10px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--pm-red);
+  border: 1px solid rgba(239, 125, 102, 0.4);
+  background: rgba(239, 125, 102, 0.08);
+  border-radius: 8px;
+  padding: 7px 10px;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-mgh {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-mgh span {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--pm-dim);
+  font-weight: 600;
+  white-space: nowrap;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-mgh hr {
+  flex: 1;
+  border: none;
+  border-top: 1px solid var(--pm-border-soft);
+  margin: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-opt {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-border);
+  border-radius: 9px;
+  padding: 8px 10px;
+  cursor: pointer;
+  color: var(--pm-text-2);
+  font-size: 12.5px;
+  line-height: 1.5;
+  font-family: var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-opt + .pm-ws-gesture-opt {
+  margin-top: 6px;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-opt-bx {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border: 1px solid var(--pm-border-2);
+  margin-top: 2px;
+  display: grid;
+  place-items: center;
+  color: transparent;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-opt:hover:not(:disabled) {
+  border-color: var(--pm-border-2);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-opt-selected {
+  background: var(--pm-accent-soft);
+  border-color: rgba(224, 103, 58, 0.5);
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-opt-selected .pm-ws-gesture-opt-bx {
+  background: var(--pm-accent);
+  border-color: var(--pm-accent-lo);
+  color: #fff;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--pm-border-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-fnote {
+  flex: 1;
+  font-size: 11px;
+  color: var(--pm-faint);
+  line-height: 1.5;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-count {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-cancel {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--pm-muted);
+  border-radius: 9px;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-cancel:hover:not(:disabled) {
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-commit {
+  background: linear-gradient(180deg, var(--pm-accent-hi), var(--pm-accent-lo));
+  border: 1px solid var(--pm-accent-lo);
+  color: #fff;
+  border-radius: 9px;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-commit:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-commit:disabled {
+  filter: saturate(0.3) brightness(0.65);
+  cursor: not-allowed;
+}
+
+/* Committed-turn chip + persona recommend chip (both presentation-only). */
+[data-pm-surface="workshop"] .pm-ws-widget-chipwrap {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+[data-pm-surface="workshop"] .pm-ws-widget-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(224, 103, 58, 0.45);
+  background: linear-gradient(180deg, rgba(224, 103, 58, 0.16), rgba(224, 103, 58, 0.06));
+  color: var(--pm-text-2);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-widget-chip svg {
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-widget-chip:hover {
+  border-color: var(--pm-accent);
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-widget-chip-meta {
+  font-family: var(--pm-mono);
+  font-size: 9.5px;
+  color: var(--pm-dim);
+  border-left: 1px solid var(--pm-border);
+  padding-left: 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-widget-reco {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 10px 16px 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px dashed rgba(224, 103, 58, 0.5);
+  background: var(--pm-accent-soft);
+  color: var(--pm-accent-hi);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--pm-sans);
+  align-self: flex-start;
+}
+[data-pm-surface="workshop"] .pm-ws-widget-reco:hover {
+  border-style: solid;
+}
+[data-pm-surface="workshop"] .pm-ws-widget-reco .pm-ws-widget-chip-meta {
+  border-left: none;
+  padding-left: 0;
+}

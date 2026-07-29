@@ -36,6 +36,7 @@ import {
   WorkshopPersonaId,
   WorkshopContextAttachmentSnapshot,
   WorkshopTurn,
+  WorkshopWidgetId,
   isWorkshopWriterProfileActive,
   workshopExcerptSourcePath,
   workshopExcerptTitle
@@ -50,6 +51,10 @@ import { WorkshopThread } from './components/workshop/WorkshopThread';
 import { WORKSHOP_TURN_ID_ATTRIBUTE } from './components/workshop/WorkshopTurnBubble';
 import { WorkshopToolsModal } from './components/workshop/WorkshopToolsModal';
 import { WorkshopWidgetsModal } from './components/workshop/WorkshopWidgetsModal';
+import {
+  WorkshopGesturePlaygroundModal,
+  WorkshopGestureOpening
+} from './components/workshop/WorkshopGesturePlaygroundModal';
 import { WorkshopNoticeModal } from './components/workshop/WorkshopNoticeModal';
 import { useStartupNotice } from './hooks/domain/useStartupNotice';
 import { WorkshopChooseHostModal } from './components/workshop/WorkshopChooseHostModal';
@@ -171,6 +176,8 @@ export const WorkshopApp: React.FC = () => {
   const [hasSavedKey, setHasSavedKey] = React.useState(false);
   const [toolsModalOpen, setToolsModalOpen] = React.useState(false);
   const [widgetsModalOpen, setWidgetsModalOpen] = React.useState(false);
+  /** Non-null while the Gesture Playground pre-commit surface is open. */
+  const [gestureOpening, setGestureOpening] = React.useState<WorkshopGestureOpening | null>(null);
   const [behaviorModalOpen, setBehaviorModalOpen] = React.useState(false);
   const [personaModalOpen, setPersonaModalOpen] = React.useState(false);
   const [schematicPersonaId, setSchematicPersonaId] = React.useState<WorkshopPersonaId | null>(null);
@@ -242,6 +249,8 @@ export const WorkshopApp: React.FC = () => {
     [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshop.handleContextCatalog,
     [MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT]: workshop.handleContextAttachmentContent,
     [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshop.handleContextSearchResults,
+    [MessageType.WORKSHOP_WIDGET_MENU_RESULT]: workshop.handleWidgetMenuResult,
+    [MessageType.WORKSHOP_WIDGET_ACTION_RESULT]: workshop.handleWidgetActionResult,
     [MessageType.STREAM_STARTED]: workshop.handleStreamStarted,
     [MessageType.STREAM_CHUNK]: workshop.handleStreamChunk,
     [MessageType.STREAM_COMPLETE]: workshop.handleStreamComplete,
@@ -422,6 +431,39 @@ export const WorkshopApp: React.FC = () => {
   const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
   const openWidgetsModal = React.useCallback(() => setWidgetsModalOpen(true), []);
   const closeWidgetsModal = React.useCallback(() => setWidgetsModalOpen(false), []);
+  // Conversation Widgets (ADR 2026-07-22): three doors into the same
+  // pre-commit surface — the browser (fresh), a persona recommend chip
+  // (seeded), and a committed turn's chip (clone-and-recommit).
+  const launchWidget = React.useCallback((widgetId: WorkshopWidgetId) => {
+    if (widgetId !== 'gesture-playground') {
+      return;
+    }
+    setWidgetsModalOpen(false);
+    setGestureOpening({ kind: 'new' });
+  }, []);
+  const openWidgetConfig = React.useCallback((widgetConfigId: string) => {
+    const config = workshop.widgetConfigs.find((candidate) => candidate.id === widgetConfigId);
+    if (config) {
+      setGestureOpening({ kind: 'clone', config });
+    }
+  }, [workshop.widgetConfigs]);
+  const openWidgetRecommendation = React.useCallback(
+    (
+      recommendation: NonNullable<WorkshopTurn['widgetRecommendation']>,
+      personaLabel?: string
+    ) => {
+      setGestureOpening({
+        kind: 'seed',
+        seed: recommendation.seed ?? {},
+        personaLabel: personaLabel ?? 'the persona'
+      });
+    },
+    []
+  );
+  const closeGesture = React.useCallback(() => {
+    setGestureOpening(null);
+    workshop.consumeWidgetActionResult();
+  }, [workshop.consumeWidgetActionResult]);
   const closeStartupNotice = React.useCallback(
     () => startupNotice.dismissStartupNotice(false),
     [startupNotice.dismissStartupNotice]
@@ -1220,6 +1262,8 @@ export const WorkshopApp: React.FC = () => {
                 })}
                 onCopy={copyTurn}
                 onSave={saveTurn}
+                onOpenWidgetConfig={openWidgetConfig}
+                onOpenWidgetRecommendation={openWidgetRecommendation}
               />
 
               {showLiveTurn && (
@@ -1385,7 +1429,25 @@ export const WorkshopApp: React.FC = () => {
         onClose={closeToolsModal}
         onSelect={selectTool}
       />
-      <WorkshopWidgetsModal open={widgetsModalOpen} onClose={closeWidgetsModal} />
+      <WorkshopWidgetsModal
+        open={widgetsModalOpen}
+        onClose={closeWidgetsModal}
+        onLaunchWidget={launchWidget}
+      />
+      {/* Gesture Playground (ADR 2026-07-22): the Draft lives in the modal
+          until commit; the host round-trip closes it — no optimistic state. */}
+      <WorkshopGesturePlaygroundModal
+        open={gestureOpening !== null}
+        opening={gestureOpening ?? { kind: 'new' }}
+        menuResult={workshop.widgetMenuResult}
+        actionResult={workshop.widgetActionResult}
+        onGenerate={workshop.generateWidgetMenu}
+        onCancelGenerate={workshop.cancelWidgetGenerate}
+        onCommit={(draft, clonedFromConfigId) =>
+          workshop.commitWidget({ widgetId: 'gesture-playground', draft, clonedFromConfigId })}
+        onConsumeActionResult={workshop.consumeWidgetActionResult}
+        onClose={closeGesture}
+      />
       <WorkshopNoticeModal
         open={startupNotice.noticeOpen}
         onClose={closeStartupNotice}

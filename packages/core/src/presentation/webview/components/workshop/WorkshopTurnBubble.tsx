@@ -31,6 +31,17 @@ interface WorkshopTurnBubbleProps {
   onAddTodo?: (sourceTurnId: string, findingKey: string) => void;
   onCopy: (content: string, turn: WorkshopTurn) => void;
   onSave: (content: string, turn: WorkshopTurn) => void;
+  /**
+   * Chip click on a committed widget turn (ADR 2026-07-22): re-opens the
+   * exact Draft for clone-and-recommit. Presentation-only — the model never
+   * sees the chip.
+   */
+  onOpenWidgetConfig?: (widgetConfigId: string) => void;
+  /** Persona recommend chip: opens the widget seeded from the parsed prefill. */
+  onOpenWidgetRecommendation?: (
+    recommendation: NonNullable<WorkshopTurn['widgetRecommendation']>,
+    personaLabel?: string
+  ) => void;
 }
 
 interface ParsedVariation {
@@ -158,7 +169,9 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   onTalkDirectly,
   onAddTodo = () => undefined,
   onCopy,
-  onSave
+  onSave,
+  onOpenWidgetConfig,
+  onOpenWidgetRecommendation
 }) => {
   // Persona replies are editorial conversation, not a tool artifact. Never
   // reinterpret their headings as tool variations with copy/save provenance.
@@ -270,6 +283,22 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
             </span>
           )}
           <div className="pm-ws-turn-message">{turn.content}</div>
+          {turn.widgetCommit && onOpenWidgetConfig && (
+            <div className="pm-ws-widget-chipwrap">
+              <button
+                type="button"
+                className="pm-ws-widget-chip"
+                title="Presentation-only — the model never sees this chip"
+                onClick={() => onOpenWidgetConfig(turn.widgetCommit!.widgetConfigId)}
+              >
+                <Icon name="hand" size={13} /> Gesture Playground{' '}
+                <span className="pm-ws-widget-chip-meta">
+                  {turn.widgetCommit.selectionCount} direction
+                  {turn.widgetCommit.selectionCount === 1 ? '' : 's'} · re-open
+                </span>
+              </button>
+            </div>
+          )}
         </div>
       );
     }
@@ -459,6 +488,21 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
             </button>
           )}
         </div>
+        {turn.widgetRecommendation && onOpenWidgetRecommendation && (
+          <button
+            type="button"
+            className="pm-ws-widget-reco"
+            title="Opens Gesture Playground prefilled — everything stays editable, nothing runs until you say so"
+            onClick={() => onOpenWidgetRecommendation(turn.widgetRecommendation!, turn.personaLabel)}
+          >
+            <Icon name="hand" size={13} /> Gesture Playground{' '}
+            <span className="pm-ws-widget-chip-meta">
+              {turn.widgetRecommendation.seed?.targetPhrase
+                ? `prefilled · “${turn.widgetRecommendation.seed.targetPhrase}”`
+                : 'recommended'}
+            </span>
+          </button>
+        )}
       </div>
       {quickActionToolId && (
         <WorkshopQuickActionBar

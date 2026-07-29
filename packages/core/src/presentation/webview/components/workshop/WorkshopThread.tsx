@@ -20,6 +20,12 @@ interface WorkshopThreadProps {
   onAddTodo?: (sourceTurnId: string, findingKey: string) => void;
   onCopy: (content: string, turn: WorkshopTurn) => void;
   onSave: (content: string, turn: WorkshopTurn) => void;
+  /** Widget chips (ADR 2026-07-22): clone-and-recommit + persona recommend. */
+  onOpenWidgetConfig?: (widgetConfigId: string) => void;
+  onOpenWidgetRecommendation?: (
+    recommendation: NonNullable<WorkshopTurn['widgetRecommendation']>,
+    personaLabel?: string
+  ) => void;
 }
 
 export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
@@ -32,7 +38,9 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
   onTalkDirectly,
   onAddTodo = () => undefined,
   onCopy,
-  onSave
+  onSave,
+  onOpenWidgetConfig,
+  onOpenWidgetRecommendation
 }) => (
   <>
     {turns.map((turn) => {
@@ -68,6 +76,8 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
           onAddTodo={onAddTodo}
           onCopy={onCopy}
           onSave={onSave}
+          onOpenWidgetConfig={onOpenWidgetConfig}
+          onOpenWidgetRecommendation={onOpenWidgetRecommendation}
         />
       );
     })}
