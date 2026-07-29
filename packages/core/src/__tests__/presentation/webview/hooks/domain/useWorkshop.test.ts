@@ -60,6 +60,7 @@ const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessio
         replacementCount: 0,
         contextAttachments: [],
         pendingMessageAttachments: [],
+        widgetConfigs: [],
         todos: [],
         turns,
         totalTurns: turns.length,

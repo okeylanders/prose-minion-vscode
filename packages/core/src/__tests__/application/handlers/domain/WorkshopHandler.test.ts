@@ -253,6 +253,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         timezone: 'America/Chicago'
       }),
       persistence,
+      { generateMenu: jest.fn() } as never,
       log
     );
   });
@@ -288,7 +289,12 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_ATTACH_MESSAGE_FILE)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_REMOVE_MESSAGE_ATTACHMENT)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS)).toBe(true);
-    expect(router.handlerCount).toBe(38);
+    // Conversation Widgets (ADR 2026-07-22): generate + cancel are free
+    // preview routes; commit is mutation-gated.
+    expect(router.hasHandler(MessageType.WORKSHOP_WIDGET_GENERATE)).toBe(true);
+    expect(router.hasHandler(MessageType.CANCEL_WIDGET_GENERATE_REQUEST)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_COMMIT_WIDGET)).toBe(true);
+    expect(router.handlerCount).toBe(41);
   });
 
   it('forwards the coordinator named-save state as typed Workshop IPC', () => {

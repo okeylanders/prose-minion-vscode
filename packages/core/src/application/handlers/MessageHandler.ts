@@ -178,7 +178,8 @@ export class MessageHandler {
       workshopContextResourceService,
       workshopConversationSettingsService,
       workshopSessionTimeService,
-      workshopSessionPersistenceCoordinator
+      workshopSessionPersistenceCoordinator,
+      gesturePlaygroundService
     } = services;
 
     // Token tracking: centralized in AgentRunEngine. Listener-based so
@@ -311,6 +312,7 @@ export class MessageHandler {
       workshopConversationSettingsService,
       workshopSessionTimeService,
       workshopSessionPersistenceCoordinator,
+      gesturePlaygroundService,
       outputChannel
     );
     // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)

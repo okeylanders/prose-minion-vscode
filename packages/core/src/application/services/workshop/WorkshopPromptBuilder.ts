@@ -21,6 +21,10 @@ import type {
 } from '@/application/services/workshop/WorkshopSessionService';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
+import {
+  workshopWidgetArtifactKind,
+  workshopWidgetIdFromArtifactKind
+} from '@shared/constants/workshopWidgets';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   buildWorkshopGuestTranscript,
@@ -204,6 +208,12 @@ const THREAD_ARTIFACT_ID = /^ta-\d+$/;
 export interface WorkshopThreadArtifactFrameInput {
   /** Host-minted stable id (`ta-N`) — the tombstone-surgery address, never writer text. */
   id: string;
+  /**
+   * Optional artifact kind (`widget:<registry id>`, ADR 2026-07-22). Derived
+   * mechanically from the closed widget registry — never caller prose. The
+   * builder throws on any kind that does not round-trip through the registry.
+   */
+  kind?: string;
   /** Display name (file basename or note label); writer-controlled, neutralized. */
   name: string;
   /** Display-safe workspace-relative source path, when file-backed. */
@@ -216,7 +226,9 @@ export interface WorkshopThreadArtifactFrameInput {
 /**
  * One-shot writer thread-artifact frame (ADR 2026-07-18; contract fixed in
  * Sprint 12 Phase 6, first produced by the Phase 6B composer affordance):
- * the id is the only attribute (host-minted, shape-validated), all
+ * the id, plus a host-minted `kind` from the closed widget registry when the
+ * artifact is a widget commit (ADR 2026-07-22), are the only attributes —
+ * both host-minted and shape-validated, never writer text. All
  * writer-controlled provenance rides as neutralized header lines per house
  * style, and the artifact rides exactly one user turn — never re-shipped.
  */
@@ -226,8 +238,18 @@ export function buildWorkshopThreadArtifactFrame(
   if (!THREAD_ARTIFACT_ID.test(input.id)) {
     throw new Error(`Thread artifact ids must match ta-<n>; received ${JSON.stringify(input.id)}`);
   }
+  if (input.kind !== undefined) {
+    const widgetId = workshopWidgetIdFromArtifactKind(input.kind);
+    if (widgetId === undefined || workshopWidgetArtifactKind(widgetId) !== input.kind) {
+      throw new Error(
+        `Thread artifact kinds must be widget:<registry id>; received ${JSON.stringify(input.kind)}`
+      );
+    }
+  }
   return [
-    `<thread-artifact id="${input.id}">`,
+    input.kind !== undefined
+      ? `<thread-artifact id="${input.id}" kind="${input.kind}">`
+      : `<thread-artifact id="${input.id}">`,
     `Name: ${neutralizeReservedPersonaPromptDelimiters(input.name)}`,
     input.sourcePath !== undefined
       ? `Source: ${neutralizeReservedPersonaPromptDelimiters(input.sourcePath)}`

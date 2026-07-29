@@ -133,6 +133,7 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
         }),
         resetSession: jest.fn().mockResolvedValue(undefined)
       } as unknown as WorkshopSessionPersistenceCoordinator,
+      { generateMenu: jest.fn() } as never,
       output
     );
     await handler.handleSetExcerpt({

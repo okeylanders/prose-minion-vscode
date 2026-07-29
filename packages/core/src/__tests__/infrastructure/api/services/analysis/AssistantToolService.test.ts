@@ -176,7 +176,9 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     ]);
     expect(engine.runInitial).toHaveBeenCalledWith(expect.objectContaining({
       toolName: 'workshop_guest_margot',
-      systemMessage: 'guest system prompt',
+      // The widget-recommendation contract rides every persona system message
+      // (ADR 2026-07-22 decision 13).
+      systemMessage: expect.stringContaining('guest system prompt'),
       userMessage: expect.stringContaining('<workshop-transcript>'),
       policy: expect.objectContaining({ id: 'workshop-tool-no-resources', capabilityCatalog: 'none', retention: 'retain' }),
     }));

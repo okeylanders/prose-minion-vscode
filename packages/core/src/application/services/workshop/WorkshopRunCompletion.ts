@@ -15,6 +15,7 @@ import { AnalysisResult } from '@/domain/models/AnalysisResult';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { isApiKeyNotConfiguredWarning, TokenUsage, WorkshopTurn } from '@messages';
 import { inspectWorkshopActionableFindings } from './WorkshopActionableFindings';
+import { inspectWorkshopWidgetRecommendation } from '@/utils/workshopWidgetRecommendation';
 
 export interface WorkshopRunCompletionCopy {
   cancelledStatus: string;
@@ -122,6 +123,12 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
       `Actionable findings ${actionableFindings.outcome}: ${actionableFindings.findings.length} items (${label}${actionableFindings.outcome === 'rejected' ? `; reason=${actionableFindings.rejection}` : ''})`
     );
   }
+  const widgetRecommendation = inspectWorkshopWidgetRecommendation(result.content);
+  if (widgetRecommendation.outcome !== 'absent') {
+    input.log(
+      `Widget recommendation ${widgetRecommendation.outcome} (${label}${widgetRecommendation.outcome === 'rejected' ? `; reason=${widgetRecommendation.rejection}` : ''})`
+    );
+  }
   const turn = session.completeRun(
     requestId,
     result.content,
@@ -129,7 +136,8 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     truncated,
     result.conversationId,
     actionableFindings.findings,
-    result.citations
+    result.citations,
+    widgetRecommendation.outcome === 'accepted' ? widgetRecommendation.recommendation : undefined
   );
   if (!turn) {
     if (input.createsRetainedConversation && result.conversationId) {

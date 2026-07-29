@@ -40,7 +40,8 @@ import {
   WorkshopTurnKind,
   WorkshopTurnWidgetCommit,
   WorkshopWidgetConfigSnapshot,
-  WorkshopWidgetId
+  WorkshopWidgetId,
+  WorkshopWidgetRecommendation
 } from '@messages';
 import { isContextPathGroup, TokenUsage } from '@shared/types';
 import type { UrlCitation } from '@messages';
@@ -1601,7 +1602,8 @@ export class WorkshopSessionService {
     truncated?: boolean,
     conversationId?: string,
     actionableFindings: WorkshopActionableFinding[] = [],
-    citations?: UrlCitation[]
+    citations?: UrlCitation[],
+    widgetRecommendation?: WorkshopWidgetRecommendation
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
@@ -1643,6 +1645,13 @@ export class WorkshopSessionService {
         : undefined,
       behavior: (isHost || isGuest) && active.behavior
         ? { ...active.behavior }
+        : undefined,
+      // Persona-only decoration: tool reports never carry recommendation chips.
+      widgetRecommendation: (isHost || isGuest) && widgetRecommendation
+        ? {
+            widgetId: widgetRecommendation.widgetId,
+            seed: widgetRecommendation.seed ? { ...widgetRecommendation.seed } : undefined
+          }
         : undefined
     };
 

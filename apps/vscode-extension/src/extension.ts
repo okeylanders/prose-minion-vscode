@@ -46,6 +46,7 @@ import {
   WorkshopSessionTimeService,
   WorkshopSessionStore,
   WorkshopSessionPersistenceCoordinator,
+  GesturePlaygroundService,
   CoreServices,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
   coerceWorkshopConversationBehavior,
@@ -247,6 +248,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Otherwise a fast webview message can race hydration and lose committed work.
   await workshopSessionPersistenceCoordinator.initialize();
 
+  // Conversation Widgets (ADR 2026-07-22): Gesture Playground's one fast-tier
+  // model call, routed through the manager-owned `widget` scope engine.
+  const gesturePlaygroundService = new GesturePlaygroundService(
+    aiResourceManager,
+    resourceLoader.getPromptLoader(),
+    outputChannel
+  );
+
   const coreServices: CoreServices = {
     assistantToolService,
     dictionaryService,
@@ -269,7 +278,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopConversationSettingsService,
     workshopWriterProfileService,
     workshopSessionTimeService,
-    workshopSessionPersistenceCoordinator
+    workshopSessionPersistenceCoordinator,
+    gesturePlaygroundService
   };
 
   // Migrate API key from settings to SecretStorage if needed

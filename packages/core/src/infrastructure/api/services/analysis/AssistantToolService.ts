@@ -65,6 +65,7 @@ import {
 } from '@/utils/workshopPromptFrames';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { buildWorkshopWriterProfileFrame } from '@/utils/workshopWriterProfile';
+import { WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION } from '@/utils/workshopWidgetRecommendation';
 import type { OpenRouterWebSearchTool } from '@providers/OpenRouterClient';
 
 /**
@@ -862,7 +863,9 @@ export class AssistantToolService {
     const directives = standingDirectiveFrames
       .map((frame) => frame.trim())
       .filter(Boolean);
-    return [systemPrompt, ...directives].join('\n\n');
+    // Personas may recommend (never commit) Conversation Widgets — the
+    // contract rides every persona system message (ADR 2026-07-22).
+    return [systemPrompt, ...directives, WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION].join('\n\n');
   }
 
   /**

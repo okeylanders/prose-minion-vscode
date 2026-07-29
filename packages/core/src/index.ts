@@ -95,6 +95,29 @@ export { WorkshopPersonaCapabilityFactory } from '@/application/services/worksho
 export { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
 export { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 export { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
+export {
+  GesturePlaygroundService,
+  buildGestureDirective
+} from '@services/widgets/GesturePlaygroundService';
+export {
+  WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION,
+  inspectWorkshopWidgetRecommendation
+} from '@/utils/workshopWidgetRecommendation';
+export {
+  WORKSHOP_WIDGET_CATALOG,
+  workshopWidgetDescriptor,
+  workshopWidgetLabel,
+  isWorkshopWidgetId,
+  isLiveWorkshopWidgetId,
+  workshopWidgetArtifactKind,
+  workshopWidgetIdFromArtifactKind
+} from '@shared/constants/workshopWidgets';
+export type {
+  WorkshopWidgetDescriptor,
+  WorkshopWidgetGroupDescriptor,
+  WorkshopWidgetRail,
+  WorkshopWidgetGroupName
+} from '@shared/constants/workshopWidgets';
 
 // --- Infrastructure: Workshop workspace-session store ---
 export {
